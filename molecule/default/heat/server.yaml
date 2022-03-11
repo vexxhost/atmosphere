@@ -1,0 +1,126 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+heat_template_version: 2016-10-14
+
+parameters:
+  name:
+    type: string
+
+  index:
+    type: number
+
+  image:
+    type: string
+    default: Ubuntu 20.04.3 LTS (x86_64) [2021-10-04]
+    constraints:
+      - custom_constraint: glance.image
+
+  instance_type:
+    type: string
+    default: v3-standard-4
+    constraints:
+      - custom_constraint: nova.flavor
+
+  internal_network:
+    type: string
+    constraints:
+      - custom_constraint: neutron.network
+
+  key_name:
+    type: string
+    constraints:
+      - custom_constraint: nova.keypair
+
+  security_group:
+    type: string
+    constraints:
+      - custom_constraint: neutron.security_group
+
+  public_network:
+    type: string
+    default: public
+    constraints:
+      - custom_constraint: neutron.network
+
+  external_network:
+    type: string
+    constraints:
+      - custom_constraint: neutron.network
+
+  extra_volumes_count:
+    type: number
+    default: 0
+
+  extra_volumes_size:
+    type: number
+    default: 0
+
+conditions:
+  has_extra_volumes:
+    not:
+      equals:
+        - get_param: extra_volumes_count
+        - 0
+
+resources:
+  internal_port:
+    type: OS::Neutron::Port
+    properties:
+      network: { get_param: internal_network }
+      port_security_enabled: false
+
+  floating_ip:
+    type: OS::Neutron::FloatingIP
+    properties:
+      floating_network: { get_param: public_network }
+      port_id: { get_resource: internal_port }
+
+  external_port:
+    type: OS::Neutron::Port
+    properties:
+      network: { get_param: external_network }
+      security_groups:
+        - { get_param: security_group }
+
+  server:
+    type: OS::Nova::Server
+    properties:
+      name:
+        yaql:
+          expression: concat($.data.name, str($.data.index + 1))
+          data:
+            name: { get_param: name }
+            index: { get_param: index }
+      image: { get_param: image }
+      flavor: { get_param: instance_type }
+      key_name: { get_param: key_name }
+      networks:
+        - port: { get_resource: internal_port }
+        - port: { get_resource: external_port }
+
+  volumes:
+    type: OS::Heat::ResourceGroup
+    condition: has_extra_volumes
+    properties:
+      count: { get_param: extra_volumes_count }
+      resource_def:
+        type: volume.yaml
+        properties:
+          instance_uuid: { get_resource: server }
+          volume_size: { get_param: extra_volumes_size }
+
+outputs:
+  floating_ip_address:
+    value: { get_attr: [floating_ip, floating_ip_address] }

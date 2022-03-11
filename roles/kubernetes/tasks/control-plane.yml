@@ -1,0 +1,89 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Upload configuration for Keepalived
+  block:
+    - name: Create folder
+      ansible.builtin.file:
+        dest: /etc/keepalived
+        state: directory
+    - name: Upload configuration
+      ansible.builtin.template:
+        src: keepalived.conf.j2
+        dest: /etc/keepalived/keepalived.conf
+    - name: Upload health check
+      ansible.builtin.template:
+        src: check_apiserver.sh.j2
+        dest: /etc/keepalived/check_apiserver.sh
+        mode: 0755
+    - name: Upload Kubernetes manifest
+      ansible.builtin.copy:
+        src: keepalived.yaml
+        dest: /etc/kubernetes/manifests/keepalived.yaml
+
+- name: Upload configuration for HAproxy
+  block:
+    - name: Create folder
+      ansible.builtin.file:
+        dest: /etc/haproxy
+        state: directory
+    - name: Upload configuration
+      ansible.builtin.template:
+        src: haproxy.cfg.j2
+        dest: /etc/haproxy/haproxy.cfg
+    - name: Upload Kubernetes manifest
+      ansible.builtin.copy:
+        src: haproxy.yaml
+        dest: /etc/kubernetes/manifests/haproxy.yaml
+
+- name: Bootstrap cluster
+  include_tasks: bootstrap-cluster.yml
+
+- name: create folder for admin configuration
+  ansible.builtin.file:
+    path: /root/.kube
+    state: directory
+
+- name: copy admin configuration file
+  ansible.builtin.copy:
+    src: /etc/kubernetes/admin.conf
+    dest: /root/.kube/config
+    mode: 0600
+    remote_src: true
+
+- name: install pip
+  ansible.builtin.apt:
+    name: python3-pip
+    install_recommends: false
+
+- name: install kubernetes python package
+  ansible.builtin.pip:
+    name: kubernetes
+
+- name: Allow workloads on control plane nodes
+  run_once: true
+  ansible.builtin.shell: |
+    kubectl taint nodes --all node-role.kubernetes.io/master-
+  ignore_errors: true
+  changed_when: false
+
+- name: Add labels to control plane nodes
+  kubernetes.core.k8s:
+    state: patched
+    kind: Node
+    name: "{{ inventory_hostname_short }}"
+    definition:
+      metadata:
+        labels:
+          openstack-control-plane: enabled

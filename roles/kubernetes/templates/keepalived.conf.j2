@@ -1,0 +1,25 @@
+global_defs {
+    router_id LVS_DEVEL
+}
+
+vrrp_script check_apiserver {
+    script "/etc/keepalived/check_apiserver.sh"
+    interval 3
+    weight -2
+    fall 10
+    rise 2
+}
+
+vrrp_instance kubernetes {
+    state MASTER
+    interface {{ kubernetes_keepalived_interface }}
+    virtual_router_id {{ kubernetes_keepalived_vrid }}
+
+    virtual_ipaddress {
+        {{ kubernetes_keepalived_vip }}
+    }
+
+    track_script {
+        check_apiserver
+    }
+}

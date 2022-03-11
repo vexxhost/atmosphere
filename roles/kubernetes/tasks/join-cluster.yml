@@ -1,0 +1,63 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Check if the node is already part of the cluster
+  ansible.builtin.stat:
+    path: /etc/kubernetes/kubelet.conf
+  register: _stat_etc_kubernetes_kubelet_conf
+
+- name: Generate control-plane certificates for joining cluster
+  run_once: true
+  delegate_to: "{{ _kubernetes_bootstrap_node | default(groups[kubernetes_control_plane_group][0]) }}"
+  ansible.builtin.shell: |
+    kubeadm init phase upload-certs --upload-certs 2>/dev/null | grep -v upload-certs
+  changed_when: false
+  register: _kubeadm_init_upload_certs
+  when:
+    - not _stat_etc_kubernetes_kubelet_conf.stat.exists
+    - inventory_hostname in groups[kubernetes_control_plane_group]
+
+- name: Retrieve SHA256 certificate hash
+  run_once: true
+  delegate_to: "{{ _kubernetes_bootstrap_node | default(groups[kubernetes_control_plane_group][0]) }}"
+  community.crypto.x509_certificate_info:
+    path: /etc/kubernetes/pki/ca.crt
+  register: _kubeadm_certificate_info
+  when:
+    - not _stat_etc_kubernetes_kubelet_conf.stat.exists
+
+- name: Generate token for joining cluster
+  run_once: true
+  delegate_to: "{{ _kubernetes_bootstrap_node | default(groups[kubernetes_control_plane_group][0]) }}"
+  ansible.builtin.shell: |
+    kubeadm token create
+  register: _kubeadm_token_create
+  when:
+    - not _stat_etc_kubernetes_kubelet_conf.stat.exists
+
+- name: Upload kubeadm configuration
+  ansible.builtin.template:
+    src: kubeadm.yaml.j2
+    dest: /etc/kubernetes/kubeadm.yaml
+  when:
+    - not _stat_etc_kubernetes_kubelet_conf.stat.exists
+
+- name: Join cluster
+  ansible.builtin.shell: |
+    kubeadm join --config /etc/kubernetes/kubeadm.yaml \
+                 --ignore-preflight-errors=DirAvailable--etc-kubernetes-manifests
+  environment:
+    PATH: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+  args:
+    creates: /etc/kubernetes/kubelet.conf
