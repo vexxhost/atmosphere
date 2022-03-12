@@ -1,0 +1,82 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+_openstack_helm_neutron_values:
+  endpoints: "{{ openstack_helm_endpoints }}"
+  images:
+    tags:
+      bootstrap: "{{ openstack_helm_neutron_image_repository }}/heat:{{ openstack_helm_neutron_heat_image_tag }}"
+      db_drop: "{{ openstack_helm_neutron_image_repository }}/heat:{{ openstack_helm_neutron_heat_image_tag }}"
+      db_init: "{{ openstack_helm_neutron_image_repository }}/heat:{{ openstack_helm_neutron_heat_image_tag }}"
+      dep_check: "{{ openstack_helm_neutron_image_repository }}/kubernetes-entrypoint:latest"
+      ks_endpoints: "{{ openstack_helm_neutron_image_repository }}/heat:{{ openstack_helm_neutron_heat_image_tag }}"
+      ks_service: "{{ openstack_helm_neutron_image_repository }}/heat:{{ openstack_helm_neutron_heat_image_tag }}"
+      ks_user: "{{ openstack_helm_neutron_image_repository }}/heat:{{ openstack_helm_neutron_heat_image_tag }}"
+      neutron_bagpipe_bgp: "{{ openstack_helm_neutron_image_repository }}/neutron:{{ openstack_helm_neutron_image_tag }}"
+      neutron_db_sync: "{{ openstack_helm_neutron_image_repository }}/neutron:{{ openstack_helm_neutron_image_tag }}"
+      neutron_dhcp: "{{ openstack_helm_neutron_image_repository }}/neutron:{{ openstack_helm_neutron_image_tag }}"
+      neutron_ironic_agent: "{{ openstack_helm_neutron_image_repository }}/neutron:{{ openstack_helm_neutron_image_tag }}"
+      neutron_l2gw: "{{ openstack_helm_neutron_image_repository }}/neutron:{{ openstack_helm_neutron_image_tag }}"
+      neutron_l3: "{{ openstack_helm_neutron_image_repository }}/neutron:{{ openstack_helm_neutron_image_tag }}"
+      neutron_linuxbridge_agent: "{{ openstack_helm_neutron_image_repository }}/neutron:{{ openstack_helm_neutron_image_tag }}"
+      neutron_metadata: "{{ openstack_helm_neutron_image_repository }}/neutron:{{ openstack_helm_neutron_image_tag }}"
+      neutron_netns_cleanup_cron: "{{ openstack_helm_neutron_image_repository }}/neutron:{{ openstack_helm_neutron_image_tag }}"
+      neutron_openvswitch_agent: "{{ openstack_helm_neutron_image_repository }}/neutron:{{ openstack_helm_neutron_image_tag }}"
+      neutron_server: "{{ openstack_helm_neutron_image_repository }}/neutron:{{ openstack_helm_neutron_image_tag }}"
+      neutron_sriov_agent_init: "{{ openstack_helm_neutron_image_repository }}/neutron:{{ openstack_helm_neutron_image_tag }}"
+      neutron_sriov_agent: "{{ openstack_helm_neutron_image_repository }}/neutron:{{ openstack_helm_neutron_image_tag }}"
+      rabbit_init: "{{ openstack_helm_neutron_image_repository }}/rabbitmq:3.8.23-management"
+  pod:
+    replicas:
+      server: 3
+  conf:
+    paste:
+      composite:neutronapi_v2_0:
+        keystone: cors http_proxy_to_wsgi request_id catch_errors authtoken keystonecontext extensions neutronapiapp_v2_0
+    neutron:
+      DEFAULT:
+        api_workers: 8
+        dhcp_agents_per_network: 3
+        log_config_append: null
+        rpc_workers: 8
+        service_plugins: router,vpnaas
+      cors:
+        allowed_origin: "*"
+      service_providers:
+        service_provider: VPN:strongswan:neutron_vpnaas.services.vpn.service_drivers.ipsec.IPsecVPNDriver:default
+    dhcp_agent:
+      DEFAULT:
+        dnsmasq_dns_servers: 1.1.1.1
+        enable_isolated_metadata: true
+    l3_agent:
+      AGENT:
+        extensions: vpnaas
+      vpnagent:
+        vpn_device_driver: neutron_vpnaas.services.vpn.device_drivers.strongswan_ipsec.StrongSwanDriver
+    metadata_agent:
+      DEFAULT:
+        nova_metadata_port: 8776
+        metadata_proxy_shared_secret: "{{ openstack_helm_endpoints['compute_metadata']['secret'] }}"
+    plugins:
+      ml2_conf:
+        ml2:
+          extension_drivers: port_security,dns
+          type_drivers: flat,gre,vlan,vxlan
+        ml2_type_gre:
+          tunnel_id_ranges: 1:1000
+        ml2_type_vlan:
+          network_vlan_ranges: external:1:4094
+  manifests:
+    ingress_server: false
+    service_ingress_server: false

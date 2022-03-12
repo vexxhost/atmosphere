@@ -1,0 +1,61 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+_openstack_helm_cinder_values:
+  endpoints: "{{ openstack_helm_endpoints }}"
+  images:
+    tags:
+      bootstrap: "{{ openstack_helm_cinder_image_repository }}/heat:{{ openstack_helm_cinder_heat_image_tag }}"
+      cinder_api: "{{ openstack_helm_cinder_image_repository }}/cinder:{{ openstack_helm_cinder_image_tag }}"
+      cinder_backup_storage_init: "{{ openstack_helm_cinder_image_repository }}/cinder:{{ openstack_helm_cinder_image_tag }}"
+      cinder_backup: "{{ openstack_helm_cinder_image_repository }}/cinder:{{ openstack_helm_cinder_image_tag }}"
+      cinder_db_sync: "{{ openstack_helm_cinder_image_repository }}/cinder:{{ openstack_helm_cinder_image_tag }}"
+      cinder_scheduler: "{{ openstack_helm_cinder_image_repository }}/cinder:{{ openstack_helm_cinder_image_tag }}"
+      cinder_storage_init: "{{ openstack_helm_cinder_image_repository }}/cinder:{{ openstack_helm_cinder_image_tag }}"
+      cinder_volume_usage_audit: "{{ openstack_helm_cinder_image_repository }}/cinder:{{ openstack_helm_cinder_image_tag }}"
+      cinder_volume: "{{ openstack_helm_cinder_image_repository }}/cinder:{{ openstack_helm_cinder_image_tag }}"
+      db_drop: "{{ openstack_helm_cinder_image_repository }}/heat:{{ openstack_helm_cinder_heat_image_tag }}"
+      db_init: "{{ openstack_helm_cinder_image_repository }}/heat:{{ openstack_helm_cinder_heat_image_tag }}"
+      dep_check: "{{ openstack_helm_cinder_image_repository }}/kubernetes-entrypoint:latest"
+      ks_endpoints: "{{ openstack_helm_cinder_image_repository }}/heat:{{ openstack_helm_cinder_heat_image_tag }}"
+      ks_service: "{{ openstack_helm_cinder_image_repository }}/heat:{{ openstack_helm_cinder_heat_image_tag }}"
+      ks_user: "{{ openstack_helm_cinder_image_repository }}/heat:{{ openstack_helm_cinder_heat_image_tag }}"
+      rabbit_init: "{{ openstack_helm_cinder_image_repository }}/rabbitmq:3.8.23-management"
+  pod:
+    replicas:
+      api: 3
+      scheduler: 3
+  conf:
+    paste:
+      composite:openstack_volume_api_v3:
+        use: call:cinder.api.middleware.auth:pipeline_factory
+        noauth: cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler noauth apiv3
+        keystone: cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler authtoken keystonecontext apiv3
+        keystone_nolimit: cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler authtoken keystonecontext apiv3
+    cinder:
+      DEFAULT:
+        allowed_direct_url_schemes: cinder
+        backup_driver: cinder.backup.drivers.ceph.CephBackupDriver
+        log_config_append: null
+        os_region_name: "{{ openstack_helm_endpoints['identity']['auth']['cinder']['region_name'] }}"
+        volume_usage_audit_period: hour
+        volume_name_template: volume-%s
+      barbican:
+        barbican_endpoint_type: internal
+      cors:
+        allowed_origins: "*"
+  manifests:
+    ingress_api: false
+    job_clean: false
+    service_ingress_api: false

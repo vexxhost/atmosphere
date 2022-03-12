@@ -7,7 +7,7 @@ nodeRegistration:
   kubeletExtraArgs:
     cgroups-per-qos: "false"
     enforce-node-allocatable: ""
-    node-ip: "{{ ansible_host }}"
+    node-ip: "{{ ansible_default_ipv4.address }}"
 ---
 apiVersion: kubeadm.k8s.io/v1beta3
 kind: JoinConfiguration
@@ -15,7 +15,7 @@ nodeRegistration:
   kubeletExtraArgs:
     cgroups-per-qos: "false"
     enforce-node-allocatable: ""
-    node-ip: "{{ ansible_host }}"
+    node-ip: "{{ ansible_default_ipv4.address }}"
 {% if (_kubernetes_bootstrap_node is not defined) or (_kubernetes_bootstrap_node is defined and inventory_hostname != _kubernetes_bootstrap_node) %}
 discovery:
   bootstrapToken:

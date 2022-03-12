@@ -1,0 +1,43 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Deploy Helm chart
+  kubernetes.core.helm:
+    name: cert-manager
+    chart_ref: jetstack/cert-manager
+    chart_version: v1.7.1
+    release_namespace: cert-manager
+    create_namespace: true
+    kubeconfig: /etc/kubernetes/admin.conf
+    values:
+      installCRDs: true
+      volumes:
+        - name: etc-ssl-certs
+          hostPath:
+            path: /etc/ssl/certs
+      volumeMounts:
+        - name: etc-ssl-certs
+          mountPath: /etc/ssl/certs
+          readOnly: true
+
+- name: Create issuer
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: cert-manager.io/v1
+      kind: Issuer
+      metadata:
+        name: openstack
+        namespace: openstack
+      spec: "{{ cert_manager_issuer }}"

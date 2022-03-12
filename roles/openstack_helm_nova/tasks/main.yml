@@ -1,0 +1,104 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Generate OpenStack-Helm endpoints
+  ansible.builtin.include_role:
+    name: openstack_helm_endpoints
+  vars:
+    openstack_helm_endpoints_repo_name: "{{ openstack_helm_nova_chart_repo_name }}"
+    openstack_helm_endpoints_repo_url: "{{ openstack_helm_nova_chart_repo_url }}"
+    openstack_helm_endpoints_chart: "{{ openstack_helm_nova_chart_name }}"
+
+- name: Generate Helm values comparison
+  ansible.builtin.include_role:
+    name: helm_diff
+  vars:
+    helm_diff_release_name: "{{ openstack_helm_nova_chart_name }}"
+    helm_diff_release_namespace: openstack
+    helm_diff_values: "{{ _openstack_helm_nova_values }}"
+  when:
+    - openstack_helm_nova_diff | bool
+
+- name: Migrate database from MariaDB to Percona XtraDB Cluster
+  ansible.builtin.include_role:
+    name: openstack_helm_migrate_to_percona_xtradb_cluster
+  vars:
+    openstack_helm_migrate_to_percona_xtradb_cluster_release_name: "{{ openstack_helm_nova_chart_name }}"
+    openstack_helm_migrate_to_percona_xtradb_cluster_release_namespace: openstack
+    openstack_helm_migrate_to_percona_xtradb_cluster_databases:
+      - nova
+      - nova_api
+      - nova_cell0
+    openstack_helm_migrate_to_percona_xtradb_cluster_services:
+      - kind: Deployment
+        name: nova-api-metadata
+      - kind: Deployment
+        name: nova-api-osapi
+      - kind: Deployment
+        name: nova-conductor
+      - kind: Deployment
+        name: nova-scheduler
+  when:
+    - openstack_helm_nova_migrate_from_mariadb | bool
+
+- name: Deploy Helm chart
+  kubernetes.core.helm:
+    name: "{{ openstack_helm_nova_chart_name }}"
+    chart_ref: "{{ openstack_helm_nova_chart_repo_name }}/{{ openstack_helm_nova_chart_name }}"
+    chart_version: 0.2.30
+    release_namespace: openstack
+    kubeconfig: /etc/kubernetes/admin.conf
+    values: "{{ _openstack_helm_nova_values }}"
+    # NOTE(mnaser): This is a a workaround due to the fact that Nova's online
+    #               data migrations take forever.
+    wait_timeout: 10m
+
+- name: Create Ingress
+  ansible.builtin.include_role:
+    name: openstack_helm_ingress
+  vars:
+    openstack_helm_ingress_endpoint: compute
+    openstack_helm_ingress_service_name: nova-api
+    openstack_helm_ingress_service_port: 8774
+
+- name: Create Ingress
+  ansible.builtin.include_role:
+    name: openstack_helm_ingress
+  vars:
+    openstack_helm_ingress_endpoint: compute_novnc_proxy
+    openstack_helm_ingress_service_name: nova-novncproxy
+    openstack_helm_ingress_service_port: 6080
+
+- name: Create flavors
+  openstack.cloud.compute_flavor:
+    auth:
+      auth_url: "https://{{ openstack_helm_endpoints['identity']['host_fqdn_override']['public']['host'] }}"
+      username: "{{ openstack_helm_endpoints['identity']['auth']['admin']['username'] }}"
+      password: "{{ openstack_helm_endpoints['identity']['auth']['admin']['password'] }}"
+      project_name: admin
+      user_domain_name: Default
+      project_domain_name: Default
+    region_name: "{{ openstack_helm_endpoints['identity']['auth']['neutron']['region_name'] }}"
+    # Flavor settings
+    flavorid: "{{ item.flavorid | default(omit) }}"
+    name: "{{ item.name }}"
+    vcpus: "{{ item.vcpus }}"
+    ram: "{{ item.ram }}"
+    disk: "{{ item.disk | default(omit) }}"
+    ephemeral: "{{ item.ephemeral | default(omit) }}"
+    swap: "{{ item.swap | default(omit) }}"
+    is_public: "{{ item.is_public | default(omit) }}"
+    rxtx_factor: "{{ item.rxtx_factor | default(omit) }}"
+    extra_specs: "{{ item.extra_specs | default(omit) }}"
+  loop: "{{ openstack_helm_nova_flavors }}"

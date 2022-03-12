@@ -1,0 +1,54 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+_openstack_helm_heat_values: "{{ __openstack_helm_heat_values | combine(openstack_helm_heat_values, recursive=True) }}"
+__openstack_helm_heat_values:
+  endpoints: "{{ openstack_helm_endpoints }}"
+  images:
+    tags:
+      bootstrap: "{{ openstack_helm_heat_image_repository }}/heat:{{ openstack_helm_heat_image_tag }}"
+      db_drop: "{{ openstack_helm_heat_image_repository }}/heat:{{ openstack_helm_heat_image_tag }}"
+      db_init: "{{ openstack_helm_heat_image_repository }}/heat:{{ openstack_helm_heat_image_tag }}"
+      dep_check: "{{ openstack_helm_heat_image_repository }}/kubernetes-entrypoint:latest"
+      heat_api: "{{ openstack_helm_heat_image_repository }}/heat:{{ openstack_helm_heat_image_tag }}"
+      heat_cfn: "{{ openstack_helm_heat_image_repository }}/heat:{{ openstack_helm_heat_image_tag }}"
+      heat_cloudwatch: "{{ openstack_helm_heat_image_repository }}/heat:{{ openstack_helm_heat_image_tag }}"
+      heat_db_sync: "{{ openstack_helm_heat_image_repository }}/heat:{{ openstack_helm_heat_image_tag }}"
+      heat_engine_cleaner: "{{ openstack_helm_heat_image_repository }}/heat:{{ openstack_helm_heat_image_tag }}"
+      heat_engine: "{{ openstack_helm_heat_image_repository }}/heat:{{ openstack_helm_heat_image_tag }}"
+      heat_purge_deleted: "{{ openstack_helm_heat_image_repository }}/heat:{{ openstack_helm_heat_image_tag }}"
+      ks_endpoints: "{{ openstack_helm_heat_image_repository }}/heat:{{ openstack_helm_heat_image_tag }}"
+      ks_service: "{{ openstack_helm_heat_image_repository }}/heat:{{ openstack_helm_heat_image_tag }}"
+      ks_user: "{{ openstack_helm_heat_image_repository }}/heat:{{ openstack_helm_heat_image_tag }}"
+      rabbit_init: "{{ openstack_helm_heat_image_repository }}/rabbitmq:3.8.23-management"
+  pod:
+    replicas:
+      api: 3
+      cfn: 3
+      cloudwatch: 3
+      engine: 3
+  conf:
+    heat:
+      DEFAULT:
+        auth_encryption_key: "{{ openstack_helm_heat_auth_encryption_key }}"
+        log_config_append: null
+        region_name_for_services: "{{ openstack_helm_endpoints['identity']['auth']['heat']['region_name'] }}"
+        server_keystone_endpoint_type: public
+      clients_keystone:
+        endpoint_type: publicURL
+  manifests:
+    ingress_api: false
+    ingress_cfn: false
+    service_ingress_api: false
+    service_ingress_cfn: false

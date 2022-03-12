@@ -1,0 +1,229 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+_openstack_helm_keystone_values:
+  endpoints: "{{ openstack_helm_endpoints }}"
+  images:
+    tags:
+      bootstrap: "{{ openstack_helm_keystone_image_repository }}/heat:{{ openstack_helm_keystone_heat_image_tag }}"
+      db_drop: "{{ openstack_helm_keystone_image_repository }}/heat:{{ openstack_helm_keystone_heat_image_tag }}"
+      db_init: "{{ openstack_helm_keystone_image_repository }}/heat:{{ openstack_helm_keystone_heat_image_tag }}"
+      dep_check: "{{ openstack_helm_keystone_image_repository }}/kubernetes-entrypoint:latest"
+      keystone_api: "{{ openstack_helm_keystone_image_repository }}/keystone:{{ openstack_helm_keystone_image_tag }}"
+      keystone_credential_cleanup: "{{ openstack_helm_keystone_image_repository }}/heat:{{ openstack_helm_keystone_heat_image_tag }}"
+      keystone_credential_rotate: "{{ openstack_helm_keystone_image_repository }}/keystone:{{ openstack_helm_keystone_image_tag }}"
+      keystone_credential_setup: "{{ openstack_helm_keystone_image_repository }}/keystone:{{ openstack_helm_keystone_image_tag }}"
+      keystone_db_sync: "{{ openstack_helm_keystone_image_repository }}/keystone:{{ openstack_helm_keystone_image_tag }}"
+      keystone_domain_manage: "{{ openstack_helm_keystone_image_repository }}/keystone:{{ openstack_helm_keystone_image_tag }}"
+      keystone_fernet_rotate: "{{ openstack_helm_keystone_image_repository }}/keystone:{{ openstack_helm_keystone_image_tag }}"
+      keystone_fernet_setup: "{{ openstack_helm_keystone_image_repository }}/keystone:{{ openstack_helm_keystone_image_tag }}"
+      ks_user: "{{ openstack_helm_keystone_image_repository }}/heat:{{ openstack_helm_keystone_heat_image_tag }}"
+      rabbit_init: "{{ openstack_helm_keystone_image_repository }}/rabbitmq:3.8.23-management"
+  pod:
+    #     mounts = {
+    #       keystone_api = {
+    #         keystone_api = {
+    #           volumeMounts = [
+    #             {
+    #               name      = kubernetes_config_map.keystone_ldap_ca.metadata[0].name
+    #               mountPath = "/etc/keystone/ldap"
+    #             },
+    #             {
+    #               name      = kubernetes_config_map.keystone_openid_connect_metadata.metadata[0].name
+    #               mountPath = "/var/lib/apache2/oidc"
+    #             }
+    #           ],
+    #           volumes = [
+    #             {
+    #               name = kubernetes_config_map.keystone_ldap_ca.metadata[0].name
+    #               configMap = {
+    #                 name = kubernetes_config_map.keystone_ldap_ca.metadata[0].name
+    #               }
+    #             },
+    #             {
+    #               name = kubernetes_config_map.keystone_openid_connect_metadata.metadata[0].name
+    #               configMap = {
+    #                 name = kubernetes_config_map.keystone_openid_connect_metadata.metadata[0].name
+    #               }
+    #             }
+    #           ]
+    #         }
+    #       }
+    #     },
+    replicas:
+      api: 3
+  conf:
+    keystone:
+      DEFAULT:
+        log_config_append: null
+      auth:
+        methods: password,token,openid,application_credential
+      cors:
+        allowed_origins: "*"
+      federation:
+        assertion_prefix: OIDC-
+        remote_id_attribute: OIDC-iss
+        # TODO(mnaser): Lookup using openstack_helm_endpoints
+        trusted_dashboard: "https://{{ openstack_helm_endpoints_horizon_api_host }}/auth/websso/"
+      identity:
+        domain_configuration_from_database: true
+  manifests:
+    job_credential_cleanup: false
+    ingress_api: false
+    service_ingress_api: false
+# # LDAP configuration
+# yamlencode({
+#   conf = {
+#     ks_domains = {
+#       for domain, details in var.keystone_ldap_domains : domain => {
+#         identity = {
+#           driver = "ldap"
+#         }
+#         ldap = merge({
+#           tls_cacertfile = "/etc/keystone/ldap/${domain}.crt"
+#         }, details.conf)
+#       }
+#     }
+#   }
+# }),
+
+# # OpenID Connect
+# yamlencode({
+#   bootstrap = {
+#     script = <<-EOT
+#     # Create role for publishing images
+#     openstack role create --or-show image-publisher
+
+#     # Add member role for admin user
+#     openstack role add \
+#           --user="$${OS_USERNAME}" \
+#           --user-domain="$${OS_USER_DOMAIN_NAME}" \
+#           --project-domain="$${OS_PROJECT_DOMAIN_NAME}" \
+#           --project="$${OS_PROJECT_NAME}" \
+#           "member"
+
+#     # Create project for tempest-pushgateway
+#     openstack project create --or-show \
+#       "${kubernetes_secret.tempest_pushgateway.data.OS_PROJECT_NAME}"
+#     openstack user create --or-show \
+#       "${kubernetes_secret.tempest_pushgateway.data.OS_USERNAME}"
+#     openstack user set \
+#       --password="${kubernetes_secret.tempest_pushgateway.data.OS_PASSWORD}" \
+#       "${kubernetes_secret.tempest_pushgateway.data.OS_USERNAME}"
+#     openstack role add \
+#       --user="${kubernetes_secret.tempest_pushgateway.data.OS_USERNAME}" \
+#       --project="${kubernetes_secret.tempest_pushgateway.data.OS_PROJECT_NAME}" \
+#       "member"
+
+#     # Add admin user to default domain
+#     openstack role add \
+#           --user="$${OS_USERNAME}" \
+#           --domain="$${OS_DEFAULT_DOMAIN}" \
+#           "admin"
+#     %{for name, config in var.keystone_openid_connect_idps}
+#     # OpenID connect (${name})
+
+#     # Create Identity provider if it doesn't exist
+#     IDP_ID=$(openstack identity provider show ${name} -c id -f value || :)
+#     if [ -z "$IDP_ID" ]; then
+#         openstack identity provider create --remote-id ${config.issuer} ${name}
+#     else
+#         openstack identity provider set --remote-id ${config.issuer} ${name}
+#     fi
+
+#     # Generate mapping
+#     cat <<EOF | tee /tmp/mapping.json
+#     ${jsonencode(local.keystone_mappings[name])}
+#     EOF
+
+#     # Upload mapping to Keystone
+#     MAPPING_ID=$(openstack mapping show ${name} -c id -f value || :)
+#     if [ -z "$MAPPING_ID" ]; then
+#         openstack mapping create --rules /tmp/mapping.json ${name}
+#     else
+#         openstack mapping set --rules /tmp/mapping.json ${name}
+#     fi
+
+#     # Create federation
+#     FEDERATION_ID=$(openstack federation protocol show --identity-provider ${name} openid -c id -f value || :)
+#     if [ -z "$FEDERATION_ID" ]; then
+#         openstack federation protocol create --identity-provider ${name} --mapping ${name} openid
+#     fi
+#     %{endfor~}
+#     EOT
+#   }
+#   conf = {
+#     wsgi_keystone = <<-EOT
+#     {{- $portInt := tuple "identity" "internal" "api" $ | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+
+#     Listen 0.0.0.0:{{ $portInt }}
+
+#     LogFormat "%h %l %u %t \"%r\" %>s %b \"%%{Referer}i\" \"%%{User-Agent}i\"" combined
+#     LogFormat "%%{X-Forwarded-For}i %l %u %t \"%r\" %>s %b \"%%{Referer}i\" \"%%{User-Agent}i\"" proxy
+
+#     SetEnvIf X-Forwarded-For "^.*\..*\..*\..*" forwarded
+#     CustomLog /dev/stdout combined env=!forwarded
+#     CustomLog /dev/stdout proxy env=forwarded
+
+#     <VirtualHost *:{{ $portInt }}>
+#         WSGIDaemonProcess keystone-public processes=4 threads=1 user=keystone group=keystone display-name=%%{GROUP}
+#         WSGIProcessGroup keystone-public
+#         WSGIScriptAlias / /var/www/cgi-bin/keystone/keystone-wsgi-public
+#         WSGIApplicationGroup %%{GLOBAL}
+#         WSGIPassAuthorization On
+#         <IfVersion >= 2.4>
+#           ErrorLogFormat "%%{cu}t %M"
+#         </IfVersion>
+#         ErrorLog /dev/stdout
+
+#         SetEnvIf X-Forwarded-For "^.*\..*\..*\..*" forwarded
+#         CustomLog /dev/stdout combined env=!forwarded
+#         CustomLog /dev/stdout proxy env=forwarded
+
+#         # OpenID connect
+#         OIDCMetadataDir /var/lib/apache2/oidc
+#         OIDCClaimPrefix "OIDC-"
+#         OIDCSessionType client-cookie
+#         OIDCCryptoPassphrase ${random_password.keystone_openid_connect_crypto_passphrase.result}
+#         OIDCRedirectURLsAllowed ^https://${var.horizon_api_host}/auth/logout/$ ^https://${var.keystone_api_host}
+#         OIDCOAuthVerifyJwksUri https://vexxhost.us.auth0.com/.well-known/jwks.json
+
+#         OIDCRedirectURI https://${var.keystone_api_host}/v3/auth/OS-FEDERATION/identity_providers/redirect
+#         <Location /v3/auth/OS-FEDERATION/identity_providers/redirect>
+#             AuthType openid-connect
+#             Require valid-user
+#         </Location>
+#         <Location /v3/auth/OS-FEDERATION/websso/openid>
+#             AuthType openid-connect
+#             Require valid-user
+#         </Location>
+
+#     %{for name, config in var.keystone_openid_connect_idps}
+#         <Location /v3/auth/OS-FEDERATION/identity_providers/${name}/protocols/openid/websso>
+#             OIDCDiscoverURL https://${var.keystone_api_host}/v3/auth/OS-FEDERATION/identity_providers/redirect?iss=${urlencode(config.issuer)}
+#             AuthType openid-connect
+#             Require valid-user
+#         </Location>
+#         <Location /v3/OS-FEDERATION/identity_providers/${name}/protocols/openid/auth>
+#             LoadModule headers_module /usr/lib/apache2/modules/mod_headers.so
+#             Header set Access-Control-Allow-Headers "Authorization,Content-Type"
+#             Header set Access-Control-Allow-Origin "*"
+#             AuthType oauth20
+#             Require valid-user
+#         </Location>
+#     %{endfor}
+#     </VirtualHost>
+#     EOT
+#   }
+# }),

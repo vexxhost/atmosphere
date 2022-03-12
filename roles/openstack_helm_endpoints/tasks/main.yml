@@ -1,0 +1,65 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Get Helm values if chart is provided
+  block:
+    - name: Get the default values for the Helm chart
+      ansible.builtin.shell: helm show values {{ openstack_helm_endpoints_repo_name }}/{{ openstack_helm_endpoints_chart }}
+      changed_when: false
+      register: _helm_show_values
+
+    - name: Retrieve list of all the needed endpoints
+      ansible.builtin.set_fact:
+        openstack_helm_endpoints_list: "{{ _helm_show_values.stdout | from_yaml | community.general.json_query('keys(endpoints)') | difference(_openstack_helm_endpoints_ignore) }}"
+  when:
+    - openstack_helm_endpoints_list is not defined or openstack_helm_endpoints_list == None
+
+# NOTE(mnaser): Since we deploy the database using the operator and we let it
+#               generate the root password, we look it up if the fact has not
+#               been cached from a previous run.
+- name: Append endpoints for "oslo_db"
+  block:
+    - name: Grab Percona XtraDB cluster secret
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Secret
+        name: percona-xtradb
+        namespace: openstack
+      register: _openstack_helm_endpoints_oslo_db_secret
+
+    - name: Cache fact with Percona XtraDB password
+      ansible.builtin.set_fact:
+        openstack_helm_endpoints_maridb_admin_password: "{{ _openstack_helm_endpoints_oslo_db_secret.resources[0]['data']['root'] | b64decode }}"
+  when:
+    - '"oslo_db" in openstack_helm_endpoints_list'
+    - openstack_helm_endpoints_maridb_admin_password is not defined
+
+- name: Reset value for OpenStack_Helm endpoints
+  ansible.builtin.set_fact:
+    openstack_helm_endpoints: "{{ openstack_helm_endpoints_config }}"
+
+- name: Generate OpenStack-Helm endpoints
+  ansible.builtin.set_fact:
+    openstack_helm_endpoints: |
+      {{ openstack_helm_endpoints | combine(lookup('vars', '_openstack_helm_endpoints_' + service), recursive=True) }}
+  loop: "{{ openstack_helm_endpoints_list }}"
+  loop_control:
+    loop_var: service
+
+# NOTE(mnaser): Since we use `openstack_helm_endpoints_list` to ensure that we
+#               have a common entry for endpoints and stay DRY, we need to
+#               reset the fact so it works for follow-up requests.
+- name: Clean-up facts
+  ansible.builtin.set_fact:
+    openstack_helm_endpoints_list:
