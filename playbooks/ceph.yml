@@ -12,5 +12,26 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- import_playbook: vexxhost.atmosphere.ceph
-- import_playbook: vexxhost.atmosphere.kubernetes
+- name: Setup Ceph repository
+  hosts: cephs
+  become: true
+  roles:
+    - ceph_repository
+
+- name: Deploy Ceph monitors
+  hosts: ceph_mons
+  become: true
+  roles:
+    - ceph_mon
+
+- name: Deploy Ceph managers
+  hosts: ceph_mgrs
+  become: true
+  roles:
+    - ceph_mgr
+
+- name: Deploy Ceph OSDs
+  hosts: ceph_osds
+  become: true
+  roles:
+    - ceph_osd

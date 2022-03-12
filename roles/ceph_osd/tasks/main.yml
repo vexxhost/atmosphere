@@ -1,0 +1,87 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: install packages
+  ansible.builtin.apt:
+    name: ["udev", "ceph-osd"]
+    install_recommends: false
+
+- name: grab ceph fsid from monitors
+  delegate_to: "{{ groups[ceph_osd_mons_group][0] }}"
+  register: _ceph_fsid
+  changed_when: false
+  ansible.builtin.shell: ceph fsid
+
+- name: collect facts for all monitors
+  delegate_to: "{{ item }}"
+  delegate_facts: true
+  ansible.builtin.setup:
+    gather_subset: network
+  loop: "{{ groups[ceph_osd_mons_group] }}"
+  when: inventory_hostname == ansible_play_hosts_all[0]
+
+- name: generate basic configuration file
+  community.general.ini_file:
+    path: /etc/ceph/ceph.conf
+    section: global
+    option: "{{ item.option }}"
+    value: "{{ item.value }}"
+  loop:
+    - option: fsid
+      value: "{{ _ceph_fsid.stdout | trim }}"
+    - option: mon host
+      value: "{{ groups[ceph_osd_mons_group] | map('extract', hostvars, ['ansible_default_ipv4', 'address']) | join(',') }}"
+
+- name: grab bootstrap-osd from monitors
+  delegate_to: "{{ groups[ceph_osd_mons_group][0] }}"
+  register: _ceph_bootstrap_osd_keyring
+  changed_when: false
+  ansible.builtin.shell: ceph auth get client.bootstrap-osd
+
+- name: install bootstrap-osd keyring
+  ansible.builtin.copy:
+    content: "{{ _ceph_bootstrap_osd_keyring.stdout }}\n"
+    dest: /var/lib/ceph/bootstrap-osd/ceph.keyring
+
+- name: workaround to allow usage of loop devices
+  ansible.builtin.replace:
+    path: /usr/lib/python3/dist-packages/ceph_volume/util/disk.py
+    regexp: "'mpath']"
+    replace: "'mpath', 'loop']"
+  when: molecule | default(false)
+
+# NOTE(mnaser): https://bugs.launchpad.net/ubuntu/+source/ceph/+bug/1917414/comments/30
+- name: workaround for aarch64 systems
+  community.general.ini_file:
+    path: /lib/systemd/system/ceph-osd@.service
+    section: Service
+    option: MemoryDenyWriteExecute
+    value: false
+  register: _ceph_aarch64_fix
+  when: ansible_architecture == 'aarch64'
+
+- name: reload systemd
+  ansible.builtin.service:
+    daemon_reload: "{{ _ceph_aarch64_fix.changed }}"
+
+- name: get which devices don't contain osds
+  register: _ceph_osd_check
+  failed_when: false
+  changed_when: false
+  ansible.builtin.command: /usr/sbin/ceph-volume lvm list {{ item }}
+  loop: "{{ ceph_osd_devices }}"
+
+- name: create osds for volumes which are not setup
+  ansible.builtin.command: /usr/sbin/ceph-volume lvm create --data {{ item }}
+  loop: "{{ _ceph_osd_check.results | selectattr('rc', 'equalto', 1) | map(attribute='item') }}"

@@ -12,5 +12,18 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- import_playbook: vexxhost.atmosphere.ceph
-- import_playbook: vexxhost.atmosphere.kubernetes
+- name: add apt key
+  ansible.builtin.apt_key:
+    url: "{{ ceph_repository_apt_key }}"
+    state: present
+
+- name: configure version pinning
+  ansible.builtin.template:
+    src: apt-preferences.j2
+    dest: /etc/apt/preferences.d/ceph
+    mode: 0644
+
+- name: add apt repository
+  ansible.builtin.apt_repository:
+    repo: "deb {{ ceph_repository_url }} {{ ansible_distribution_release }} main"
+    state: present
