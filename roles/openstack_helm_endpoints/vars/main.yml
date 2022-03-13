@@ -327,6 +327,31 @@ _openstack_helm_endpoints_cloudformation:
       api:
         public: 443
 
+_openstack_helm_endpoints_clustering:
+  identity:
+    auth:
+      senlin:
+        region_name: "{{ openstack_helm_endpoints_senlin_region_name }}"
+        username: "cinder-{{ openstack_helm_endpoints_senlin_region_name }}"
+        password: "{{ openstack_helm_endpoints_senlin_keystone_password }}"
+  clustering:
+    scheme:
+      public: https
+    host_fqdn_override:
+      public:
+        host: "{{ openstack_helm_endpoints_senlin_api_host }}"
+    port:
+      api:
+        public: 443
+  oslo_db:
+    auth:
+      senlin:
+        password: "{{ openstack_helm_endpoints_senlin_mariadb_password }}"
+  oslo_messaging:
+    auth:
+      senlin:
+        password: "{{ openstack_helm_endpoints_senlin_rabbitmq_password }}"
+
 _openstack_helm_endpoints_orchestration:
   identity:
     auth:
