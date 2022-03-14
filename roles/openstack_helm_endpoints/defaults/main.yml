@@ -1,109 +1,408 @@
-# Copyright (c) 2022 VEXXHOST, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"); you may
-# not use this file except in compliance with the License. You may obtain
-# a copy of the License at
-#
-#      http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-# License for the specific language governing permissions and limitations
-# under the License.
+---
+# .. vim: foldmarker=[[[,]]]:foldmethod=marker
 
-# Base configuration
-openstack_helm_endpoints_region_name: "{{ undef(hint='You must specify an OpenStack region name') }}"
+# .. Copyright (C) 2022 VEXXHOST, Inc.
+# .. SPDX-License-Identifier: Apache-2.0
+
+# Default variables
+# =================
+
+# .. contents:: Sections
+#    :local:
+
+# .. envvar:: openstack_helm_endpoints_config [[[
+#
+# Additional overrides for the OpenStack Helm endpoints
 openstack_helm_endpoints_config: {}
 
-# RabbitMQ
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_region_name [[[
+#
+# Default OpenStack region name
+openstack_helm_endpoints_region_name: "{{ undef(hint='You must specify an OpenStack region name') }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_rabbitmq_erlang_cookie [[[
+#
+# Erlang cookie for RabbitMQ
 openstack_helm_endpoints_rabbitmq_erlang_cookie: "{{ undef(hint='You must specify an RabbitMQ Erlang cookie') }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_rabbitmq_admin_password [[[
+#
+# RabbitMQ administrator password
 openstack_helm_endpoints_rabbitmq_admin_password: "{{ undef(hint='You must specify a RabbitMQ admin password') }}"
 
-# Memcached
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_memcached_secret_key [[[
+#
+# Memcached secret key for ``oslo.cache``
 openstack_helm_endpoints_memcached_secret_key: "{{ undef(hint='You must specify a Memcached secret key') }}"
 
-# Keystone
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_keystone_api_host [[[
+#
+# API hostname for OpenStack Identity Service
 openstack_helm_endpoints_keystone_api_host: "{{ undef(hint='You must specify a Keystone API hostname') }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_keystone_region_name [[[
+#
+# Region name for service
 openstack_helm_endpoints_keystone_region_name: "{{ openstack_helm_endpoints_region_name }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_keystone_admin_password [[[
+#
+# Keystone password for ``admin`` user
 openstack_helm_endpoints_keystone_admin_password: "{{ undef(hint='You must specify a Keystone administrator password') }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_keystone_mariadb_password [[[
+#
+# Database password for service
 openstack_helm_endpoints_keystone_mariadb_password: "{{ undef(hint='You must specify a Keystone MariaDB password') }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_keystone_rabbitmq_password [[[
+#
+# RabbitMQ password for service
 openstack_helm_endpoints_keystone_rabbitmq_password: "{{ undef(hint='You must specify a Keystone RabbitMQ password') }}"
 
-# Glance
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_glance_api_host [[[
+#
+# API hostname for OpenStack Image Service
 openstack_helm_endpoints_glance_api_host: "{{ undef(hint='You must specify a Glance API hostname') }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_glance_region_name [[[
+#
+# Region name for service
 openstack_helm_endpoints_glance_region_name: "{{ openstack_helm_endpoints_region_name }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_glance_keystone_password [[[
+#
+# Keystone password for service
 openstack_helm_endpoints_glance_keystone_password: "{{ undef(hint='You must specify a Glance Keystone password') }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_glance_mariadb_password [[[
+#
+# Database password for service
 openstack_helm_endpoints_glance_mariadb_password: "{{ undef(hint='You must specify a Glance MariaDB password') }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_glance_rabbitmq_password [[[
+#
+# RabbitMQ password for service
 openstack_helm_endpoints_glance_rabbitmq_password: "{{ undef(hint='You must specify a Glance RabbitMQ password') }}"
 
-# Cinder
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_cinder_api_host [[[
+#
+# API hostname for OpenStack Block Storage Service
 openstack_helm_endpoints_cinder_api_host: "{{ undef(hint='You must specify a Cinder API hostname') }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_cinder_region_name [[[
+#
+# Region name for service
 openstack_helm_endpoints_cinder_region_name: "{{ openstack_helm_endpoints_region_name }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_cinder_keystone_password [[[
+#
+# Keystone password for service
 openstack_helm_endpoints_cinder_keystone_password: "{{ undef(hint='You must specify a Cinder Keystone password') }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_cinder_mariadb_password [[[
+#
+# Database password for service
 openstack_helm_endpoints_cinder_mariadb_password: "{{ undef(hint='You must specify a Cinder MariaDB password') }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_cinder_rabbitmq_password [[[
+#
+# RabbitMQ password for service
 openstack_helm_endpoints_cinder_rabbitmq_password: "{{ undef(hint='You must specify a Cinder RabbitMQ password') }}"
 
-# Placement
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_placement_api_host [[[
+#
+# API hostname for OpenStack Placement Service
 openstack_helm_endpoints_placement_api_host: "{{ undef(hint='You must specify a Placement API hostname') }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_placement_region_name [[[
+#
+# Region name for service
 openstack_helm_endpoints_placement_region_name: "{{ openstack_helm_endpoints_region_name }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_placement_keystone_password [[[
+#
+# Keystone password for service
 openstack_helm_endpoints_placement_keystone_password: "{{ undef(hint='You must specify a Placement Keystone password') }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_placement_mariadb_password [[[
+#
+# Database password for service
 openstack_helm_endpoints_placement_mariadb_password: "{{ undef(hint='You must specify a Placement MariaDB password') }}"
 
-# Neutron
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_neutron_api_host [[[
+#
+# API hostname for OpenStack Networking Service
 openstack_helm_endpoints_neutron_api_host: "{{ undef(hint='You must specify a Neutron API hostname') }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_neutron_region_name [[[
+#
+# Region name for service
 openstack_helm_endpoints_neutron_region_name: "{{ openstack_helm_endpoints_region_name }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_neutron_keystone_password [[[
+#
+# Keystone password for service
 openstack_helm_endpoints_neutron_keystone_password: "{{ undef(hint='You must specify a Neutron Keystone password') }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_neutron_mariadb_password [[[
+#
+# Database password for service
 openstack_helm_endpoints_neutron_mariadb_password: "{{ undef(hint='You must specify a Neutron MariaDB password') }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_neutron_rabbitmq_password [[[
+#
+# RabbitMQ password for service
 openstack_helm_endpoints_neutron_rabbitmq_password: "{{ undef(hint='You must specify a Neutron RabbitMQ password') }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_neutron_metadata_secret [[[
+#
+# Shared secret for Nova metadata service
 openstack_helm_endpoints_neutron_metadata_secret: "{{ undef(hint='You must specify a Neutron metadata secret') }}"
 
-# Nova
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_nova_api_host [[[
+#
+# API hostname for OpenStack Compute Service
 openstack_helm_endpoints_nova_api_host: "{{ undef(hint='You must specify a Nova API hostname') }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_nova_novnc_host [[[
+#
+# API hostname for OpenStack Compute Service (VNC)
 openstack_helm_endpoints_nova_novnc_host: "{{ undef(hint='You must specify a Nova NoVNC hostname') }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_nova_region_name [[[
+#
+# Region name for service
 openstack_helm_endpoints_nova_region_name: "{{ openstack_helm_endpoints_region_name }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_nova_keystone_password [[[
+#
+# Keystone password for service
 openstack_helm_endpoints_nova_keystone_password: "{{ undef(hint='You must specify a Nova Keystone password') }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_nova_mariadb_password [[[
+#
+# Database password for service
 openstack_helm_endpoints_nova_mariadb_password: "{{ undef(hint='You must specify a Nova MariaDB password') }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_nova_rabbitmq_password [[[
+#
+# RabbitMQ password for service
 openstack_helm_endpoints_nova_rabbitmq_password: "{{ undef(hint='You must specify a Nova RabbitMQ password') }}"
 
-# Ironic
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_ironic_api_host [[[
+#
+# API hostname for OpenStack Bare Metal Service
 openstack_helm_endpoints_ironic_api_host: "{{ undef(hint='You must specify an Ironic API hostname') }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_ironic_region_name [[[
+#
+# Region name for service
 openstack_helm_endpoints_ironic_region_name: "{{ openstack_helm_endpoints_region_name }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_ironic_keystone_password [[[
+#
+# Keystone password for service
 openstack_helm_endpoints_ironic_keystone_password: "{{ undef(hint='You must specify an Ironic Keystone password') }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_ironic_mariadb_password [[[
+#
+# Database password for service
 openstack_helm_endpoints_ironic_mariadb_password: "{{ undef(hint='You must specify an Ironic MariaDB password') }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_ironic_rabbitmq_password [[[
+#
+# RabbitMQ password for service
 openstack_helm_endpoints_ironic_rabbitmq_password: "{{ undef(hint='You must specify an Ironic RabbitMQ password') }}"
 
-# Designate
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_designate_api_host [[[
+#
+# API hostname for OpenStack DNS Service
 openstack_helm_endpoints_designate_api_host: "{{ undef(hint='You must specify a Designate API hostname') }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_designate_region_name [[[
+#
+# Region name for service
 openstack_helm_endpoints_designate_region_name: "{{ openstack_helm_endpoints_region_name }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_designate_keystone_password [[[
+#
+# Keystone password for service
 openstack_helm_endpoints_designate_keystone_password: "{{ undef(hint='You must specify a Designate Keystone password') }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_designate_mariadb_password [[[
+#
+# Database password for service
 openstack_helm_endpoints_designate_mariadb_password: "{{ undef(hint='You must specify a Designate MariaDB password') }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_designate_rabbitmq_password [[[
+#
+# RabbitMQ password for service
 openstack_helm_endpoints_designate_rabbitmq_password: "{{ undef(hint='You must specify a Designate RabbitMQ password') }}"
 
-# Octavia
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_octavia_api_host [[[
+#
+# API hostname for OpenStack Load Balancer Service
 openstack_helm_endpoints_octavia_api_host: "{{ undef(hint='You must specify an Octavia API hostname') }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_octavia_region_name [[[
+#
+# Region name for service
 openstack_helm_endpoints_octavia_region_name: "{{ openstack_helm_endpoints_region_name }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_octavia_keystone_password [[[
+#
+# Keystone password for service
 openstack_helm_endpoints_octavia_keystone_password: "{{ undef(hint='You must specify an Octavia Keystone password') }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_octavia_mariadb_password [[[
+#
+# Database password for service
 openstack_helm_endpoints_octavia_mariadb_password: "{{ undef(hint='You must specify an Octavia MariaDB password') }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_octavia_rabbitmq_password [[[
+#
+# RabbitMQ password for service
 openstack_helm_endpoints_octavia_rabbitmq_password: "{{ undef(hint='You must specify an Octavia RabbitMQ password') }}"
 
-# Senlin
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_senlin_api_host [[[
+#
+# API hostname for OpenStack Clustering Service
 openstack_helm_endpoints_senlin_api_host: "{{ undef(hint='You must specify a Senlin API hostname') }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_senlin_region_name [[[
+#
+# Region name for service
 openstack_helm_endpoints_senlin_region_name: "{{ openstack_helm_endpoints_region_name }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_senlin_keystone_password [[[
+#
+# Keystone password for service
 openstack_helm_endpoints_senlin_keystone_password: "{{ undef(hint='You must specify a Senlin Keystone password') }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_senlin_mariadb_password [[[
+#
+# Database password for service
 openstack_helm_endpoints_senlin_mariadb_password: "{{ undef(hint='You must specify a Senlin MariaDB password') }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_senlin_rabbitmq_password [[[
+#
+# RabbitMQ password for service
 openstack_helm_endpoints_senlin_rabbitmq_password: "{{ undef(hint='You must specify a Senlin RabbitMQ password') }}"
 
-# Heat
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_heat_api_host [[[
+#
+# API hostname for OpenStack Orchestration Service
 openstack_helm_endpoints_heat_api_host: "{{ undef(hint='You must specify a Heat API hostname') }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_heat_region_name [[[
+#
+# Region name for service
 openstack_helm_endpoints_heat_region_name: "{{ openstack_helm_endpoints_region_name }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_heat_keystone_password [[[
+#
+# Keystone password for service
 openstack_helm_endpoints_heat_keystone_password: "{{ undef(hint='You must specify a Heat Keystone password') }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_heat_trustee_keystone_password [[[
+#
+# Keystone password for service
 openstack_helm_endpoints_heat_trustee_keystone_password: "{{ undef(hint='You must specify a Heat trustee Keystone password') }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_heat_stack_user_keystone_password [[[
+#
+# Keystone password for service
 openstack_helm_endpoints_heat_stack_user_keystone_password: "{{ undef(hint='You must specify a Heat stack user Keystone password') }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_heat_mariadb_password [[[
+#
+# Database password for service
 openstack_helm_endpoints_heat_mariadb_password: "{{ undef(hint='You must specify a Heat MariaDB password') }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_heat_rabbitmq_password [[[
+#
+# RabbitMQ password for service
 openstack_helm_endpoints_heat_rabbitmq_password: "{{ undef(hint='You must specify a Heat RabbitMQ password') }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_heat_cfn_api_host [[[
+#
+# API hostname for OpenStack Orchestration Service (CloudFormation)
 openstack_helm_endpoints_heat_cfn_api_host: "{{ undef(hint='You must specify a Heat CloudFormation API hostname') }}"
 
-# Horizon
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_horizon_api_host [[[
+#
+# API hostname for OpenStack Dashboard
 openstack_helm_endpoints_horizon_api_host: "{{ undef(hint='You must specify a Horizon API hostname') }}"
+
+                                                                   # ]]]
+# .. envvar:: openstack_helm_endpoints_horizon_mariadb_password [[[
+#
+# Database password for service
 openstack_helm_endpoints_horizon_mariadb_password: "{{ undef(hint='You must specify a Horizon MariaDB password') }}"
+
+                                                                   # ]]]
