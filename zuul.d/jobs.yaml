@@ -13,6 +13,14 @@
 # under the License.
 
 - job:
+    name: ansible-collection-atmosphere-tox-build
+    parent: tox
+    post-run:
+      - zuul.d/playbooks/ansible-collection-atmosphere-tox-build/post-run.yml
+    vars:
+      tox_envlist: build
+
+- job:
     name: ansible-collection-atmosphere-tox-molecule
     parent: vexxhost-tox-molecule
     pre-run:
