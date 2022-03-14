@@ -10,6 +10,7 @@ Welcome to Atmosphere's documentation!
    :maxdepth: 1
    :caption: Contents:
 
+   user/index
    roles/index
    releasenotes
 

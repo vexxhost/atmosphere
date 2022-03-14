@@ -19,6 +19,8 @@
       - zuul.d/playbooks/ansible-collection-atmosphere-tox-build/post-run.yml
     vars:
       tox_envlist: build
+    irrelevant-files:
+      - doc/.*
 
 - job:
     name: ansible-collection-atmosphere-tox-molecule
@@ -31,6 +33,8 @@
     vars:
       tox_environment:
         STACK_NAME: "atmosphere-{{ zuul.build }}"
+    irrelevant-files:
+      - doc/.*
 
 - job:
     name: ansible-collection-atmosphere-tox-molecule-default
