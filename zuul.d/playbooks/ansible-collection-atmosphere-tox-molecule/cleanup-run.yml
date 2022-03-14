@@ -13,6 +13,8 @@
 # under the License.
 
 - hosts: all
-  tasks:
-    - name: Destroy the Molecule environment
-      shell: tox -e molecule -- destroy --all
+  roles:
+    - role: tox
+      vars:
+        tox_envlist: molecule
+        tox_extra_args: '-- destroy --all'
