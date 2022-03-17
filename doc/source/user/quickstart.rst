@@ -29,10 +29,47 @@ system with ``git`` by running the following command::
 
    $ git clone https://opendev.org/vexxhost/ansible-collection-atmosphere
 
-You will need ``tox`` installed on your operating system, you can simply make
+.. note::
+   There is a `current issue <https://github.com/ansible-community/molecule/pull/3225>`_
+   in Molecule where it fails to resolve playbooks based on their fully qualified
+   collection name (FQCN).  The workaround for this time is to make a maunal
+   symbolic link to workaround it::
+
+       $ mkdir -p $HOME/.ansible/collections/ansible_collections/vexxhost
+       $ ln -s ansible-collection-atmosphere $HOME/.ansible/collections/ansible_collections/vexxhost/atmosphere
+
+   You'll have to make sure you replace ``ansible-collection-atmosphere`` with
+   the path to where you cloned the repository.
+
+You will need ``tox`` installed on your operating system.  You will need to make
 sure that you have the appropriate OpenStack environment variables set (such
-as ``OS_CLOUD`` or ``OS_AUTH_URL``, etc.) and then you can run the following
-command::
+as ``OS_CLOUD`` or ``OS_AUTH_URL``, etc.).  You can also use the following
+environment variables to tweak the behaviour of the Heat stack that is created:
+
+``ATMOSPHERE_STACK_NAME``
+    The name of the Heat stack to be created (defaults to ``atmosphere``).
+
+``ATMOSPHERE_PUBLIC_NETWORK``
+    The name of the public network to attach floating IPs from (defaults to
+    ``public``).
+
+``ATMOSPHERE_IMAGE``
+   The name or UUID of the image to be used for deploying the instances (
+   defaults to ``Ubuntu 20.04.3 LTS (x86_64) [2021-10-04]``).
+
+``ATMOSPHERE_INSTANCE_TYPE``
+   The instance type used to deploy all of the different instances (defaults
+   to ``v3-standard-4``).
+
+``ATMOSPHERE_NAMESERVERS``
+   A comma-separated list of nameservers to be used for the instances (defaults
+   to `1.1.1.1`).
+
+``ATMOSPHERE_USERNAME``
+  The username what is used to login into the instances (defaults to ``ubuntu``).
+
+Once you're ready to get started, you can run the following command to build
+the Heat stack and ::
 
    $ tox -e molecule -- converge
 
