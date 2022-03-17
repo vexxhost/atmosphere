@@ -18,6 +18,7 @@
   no_log: "{{ molecule_no_log }}"
   vars:
     stack_name: "{{ lookup('env', 'STACK_NAME') | default('atmosphere', True) }}"
+    secrets_path: "{{ lookup('env', 'MOLECULE_EPHEMERAL_DIRECTORY') }}/secrets.yml"
   tasks:
     - os_stack:
         name: "{{ stack_name }}"
@@ -26,3 +27,7 @@
     - file:
         path: "{{ molecule_instance_config }}"
         state: absent
+
+    - copy:
+        dest: "{{ secrets_path }}"
+        content: "{}"

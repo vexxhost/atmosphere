@@ -42,8 +42,11 @@ platforms:
     groups: *kvm_groups
 provisioner:
   name: ansible
-  env:
-    ANSIBLE_PIPELINING: "True"
+  options:
+    extra-vars: "@${MOLECULE_EPHEMERAL_DIRECTORY}/secrets.yml"
+  config_options:
+    ssh_connection:
+      pipelining: true
   inventory:
     group_vars:
       all:
@@ -54,36 +57,16 @@ provisioner:
         kubernetes_keepalived_interface: ens3
         kubernetes_keepalived_vip: 10.96.240.10
         openstack_helm_endpoints_region_name: RegionOne
-        # Memcached
-        openstack_helm_endpoints_memcached_secret_key: 7XsFMtMoUT9c8eCqbBNJycqwIepvLYzfOI2kpYhBUJSl2X5RDHiyolaQqQp36nVR
-        # RabbitMQ
-        openstack_helm_endpoints_rabbitmq_erlang_cookie: openstack-cookie
-        openstack_helm_endpoints_rabbitmq_admin_password: password123
         # Keystone
         openstack_helm_endpoints_keystone_api_host: "identity.{{ hostvars['ctl1']['ansible_host'].replace('.', '-') }}.nip.io"
-        openstack_helm_endpoints_keystone_mariadb_password: keystone-mariadb-password
-        openstack_helm_endpoints_keystone_rabbitmq_password: keystone-rabbitmq-password
-        openstack_helm_endpoints_keystone_admin_password: keystone-admin-password
         # Glance
         openstack_helm_endpoints_glance_api_host: "image.{{ hostvars['ctl1']['ansible_host'].replace('.', '-') }}.nip.io"
-        openstack_helm_endpoints_glance_mariadb_password: glance-mariadb-password
-        openstack_helm_endpoints_glance_rabbitmq_password: glance-rabbitmq-password
-        openstack_helm_endpoints_glance_keystone_password: glance-keystone-password
         # Cinder
         openstack_helm_endpoints_cinder_api_host: "volume.{{ hostvars['ctl1']['ansible_host'].replace('.', '-') }}.nip.io"
-        openstack_helm_endpoints_cinder_mariadb_password: cinder-mariadb-password
-        openstack_helm_endpoints_cinder_rabbitmq_password: cinder-rabbitmq-password
-        openstack_helm_endpoints_cinder_keystone_password: cinder-keystone-password
         # Placement
         openstack_helm_endpoints_placement_api_host: "placement.{{ hostvars['ctl1']['ansible_host'].replace('.', '-') }}.nip.io"
-        openstack_helm_endpoints_placement_keystone_password: placement-keystone-password
-        openstack_helm_endpoints_placement_mariadb_password: placement-mariadb-password
         # Neutron
         openstack_helm_endpoints_neutron_api_host: "network.{{ hostvars['ctl1']['ansible_host'].replace('.', '-') }}.nip.io"
-        openstack_helm_endpoints_neutron_mariadb_password: neutron-mariadb-password
-        openstack_helm_endpoints_neutron_rabbitmq_password: neutron-rabbitmq-password
-        openstack_helm_endpoints_neutron_keystone_password: neutron-keystone-password
-        openstack_helm_endpoints_neutron_metadata_secret: neutron-metadata-secret
         openstack_helm_neutron_values:
           conf:
             auto_bridge_add:
@@ -91,38 +74,17 @@ provisioner:
         # Nova
         openstack_helm_endpoints_nova_api_host: "compute.{{ hostvars['ctl1']['ansible_host'].replace('.', '-') }}.nip.io"
         openstack_helm_endpoints_nova_novnc_host: "vnc.{{ hostvars['ctl1']['ansible_host'].replace('.', '-') }}.nip.io"
-        openstack_helm_endpoints_nova_mariadb_password: nova-mariadb-password
-        openstack_helm_endpoints_nova_rabbitmq_password: nova-rabbitmq-password
-        openstack_helm_endpoints_nova_keystone_password: nova-keystone-password
         # Ironic
         openstack_helm_endpoints_ironic_api_host: "baremetal.{{ hostvars['ctl1']['ansible_host'].replace('.', '-') }}.nip.io"
-        openstack_helm_endpoints_ironic_mariadb_password: ironic-mariadb-password
-        openstack_helm_endpoints_ironic_rabbitmq_password: ironic-rabbitmq-password
-        openstack_helm_endpoints_ironic_keystone_password: ironic-keystone-password
         # Designate
         openstack_helm_endpoints_designate_api_host: "dns.{{ hostvars['ctl1']['ansible_host'].replace('.', '-') }}.nip.io"
-        openstack_helm_endpoints_designate_mariadb_password: designate-mariadb-password
-        openstack_helm_endpoints_designate_rabbitmq_password: designate-rabbitmq-password
-        openstack_helm_endpoints_designate_keystone_password: designate-keystone-password
         # Octavia
         openstack_helm_endpoints_octavia_api_host: "load-balancer.{{ hostvars['ctl1']['ansible_host'].replace('.', '-') }}.nip.io"
-        openstack_helm_endpoints_octavia_mariadb_password: octavia-mariadb-password
-        openstack_helm_endpoints_octavia_rabbitmq_password: octavia-rabbitmq-password
-        openstack_helm_endpoints_octavia_keystone_password: octavia-keystone-password
         # Senlin
         openstack_helm_endpoints_senlin_api_host: "clustering.{{ hostvars['ctl1']['ansible_host'].replace('.', '-') }}.nip.io"
-        openstack_helm_endpoints_senlin_mariadb_password: senlin-mariadb-password
-        openstack_helm_endpoints_senlin_rabbitmq_password: senlin-rabbitmq-password
-        openstack_helm_endpoints_senlin_keystone_password: senlin-keystone-password
         # Heat
         openstack_helm_endpoints_heat_api_host: "orchestration.{{ hostvars['ctl1']['ansible_host'].replace('.', '-') }}.nip.io"
-        openstack_helm_endpoints_heat_keystone_password: heat-keystone-password
-        openstack_helm_endpoints_heat_trustee_keystone_password: heat-trustee-keystone-password
-        openstack_helm_endpoints_heat_stack_user_keystone_password: heat-stack-user-keystone-password
-        openstack_helm_endpoints_heat_mariadb_password: heat-mariadb-password
-        openstack_helm_endpoints_heat_rabbitmq_password: heat-rabbitmq-password
         openstack_helm_endpoints_heat_cfn_api_host: "cloudformation.{{ hostvars['ctl1']['ansible_host'].replace('.', '-') }}.nip.io"
-        openstack_helm_heat_auth_encryption_key: heat-auth-encryption-key
         # Horizon
         openstack_helm_endpoints_horizon_api_host: "dashboard.{{ hostvars['ctl1']['ansible_host'].replace('.', '-') }}.nip.io"
         openstack_helm_endpoints_horizon_mariadb_password: horizon-mariadb-password
