@@ -12,6 +12,10 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+- import_playbook: vexxhost.atmosphere.generate_secrets
+  vars:
+    secrets_path: "{{ lookup('env', 'MOLECULE_EPHEMERAL_DIRECTORY') }}/secrets.yml"
+
 - hosts: localhost
   connection: local
   gather_facts: false
