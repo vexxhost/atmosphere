@@ -4,7 +4,7 @@ from pbr.version import VersionInfo
 GALAXY_YML = {
     'namespace': 'vexxhost',
     'name': 'atmosphere',
-    'version': VersionInfo('ansible-collection-atmosphere').release_string(),
+    'version': VersionInfo('ansible-collection-atmosphere').release_string().replace('.dev', '-'),
     'readme': 'README.md',
     'authors': [
         "Mohammed Naser <mnaser@vexxhost.com>",
