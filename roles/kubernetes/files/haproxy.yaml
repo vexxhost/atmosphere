@@ -5,23 +5,23 @@ metadata:
   namespace: kube-system
 spec:
   containers:
-  - image: haproxy:2.5
-    name: haproxy
-    livenessProbe:
-      failureThreshold: 8
-      httpGet:
-        host: localhost
-        path: /healthz
-        port: 6443
-        scheme: HTTPS
-    volumeMounts:
-    - mountPath: /usr/local/etc/haproxy/haproxy.cfg
-      name: haproxyconf
-      readOnly: true
+    - image: haproxy:2.5
+      name: haproxy
+      livenessProbe:
+        failureThreshold: 8
+        httpGet:
+          host: localhost
+          path: /healthz
+          port: 6443
+          scheme: HTTPS
+      volumeMounts:
+        - mountPath: /usr/local/etc/haproxy/haproxy.cfg
+          name: haproxyconf
+          readOnly: true
   hostNetwork: true
   volumes:
-  - hostPath:
-      path: /etc/haproxy/haproxy.cfg
-      type: FileOrCreate
-    name: haproxyconf
+    - hostPath:
+        path: /etc/haproxy/haproxy.cfg
+        type: FileOrCreate
+      name: haproxyconf
 status: {}

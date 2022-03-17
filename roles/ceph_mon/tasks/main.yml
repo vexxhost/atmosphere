@@ -18,7 +18,7 @@
     install_recommends: false
 
 - name: set ceph monitor ip address
-  set_fact:
+  ansible.builtin.set_fact:
     ceph_mon_ip_address: "{{ ansible_default_ipv4.address }}"
 
 - name: generate basic configuration file
@@ -27,6 +27,9 @@
     section: global
     option: "{{ item.option }}"
     value: "{{ item.value }}"
+    owner: ceph
+    group: ceph
+    mode: 0640
   loop:
     - option: fsid
       value: "{{ ceph_mon_fsid }}"
@@ -70,12 +73,12 @@
   when: inventory_hostname != _ceph_mon_bootstrap_node
 
 - name: get monitor keyring
-  ansible.builtin.shell: ceph auth get mon. -o /tmp/ceph.mon.keyring
+  ansible.builtin.command: ceph auth get mon. -o /tmp/ceph.mon.keyring
   changed_when: false
   when: inventory_hostname != _ceph_mon_bootstrap_node
 
 - name: get monmap keyring
-  ansible.builtin.shell: ceph mon getmap -o /tmp/monmap
+  ansible.builtin.command: ceph mon getmap -o /tmp/monmap
   changed_when: false
   when: inventory_hostname != _ceph_mon_bootstrap_node
 
@@ -84,6 +87,6 @@
   when: inventory_hostname != _ceph_mon_bootstrap_node
 
 - name: enable msgr2
-  ansible.builtin.shell: ceph mon enable-msgr2
+  ansible.builtin.command: ceph mon enable-msgr2
   changed_when: false
   when: inventory_hostname == _ceph_mon_bootstrap_node

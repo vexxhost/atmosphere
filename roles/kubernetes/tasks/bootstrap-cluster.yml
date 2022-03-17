@@ -20,7 +20,7 @@
       register: _kubernetes_stat
       loop: "{{ groups[kubernetes_control_plane_group] }}"
       delegate_to: "{{ item }}"
-      delegate_facts: True
+      delegate_facts: true
 
 - name: Pick node from pre-existing cluster
   ansible.builtin.set_fact:
@@ -40,6 +40,9 @@
   ansible.builtin.template:
     src: kubeadm.yaml.j2
     dest: /etc/kubernetes/kubeadm.yaml
+    owner: root
+    group: root
+    mode: 0640
   when: inventory_hostname == _kubernetes_bootstrap_node
 
 - name: Initialize cluster

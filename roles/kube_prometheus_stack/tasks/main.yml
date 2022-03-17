@@ -12,19 +12,23 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- ansible.builtin.slurp:
+- name: Retrieve "etcd" CA certificate
+  ansible.builtin.slurp:
     src: /etc/kubernetes/pki/etcd/ca.crt
   register: _etcd_ca_crt
 
-- ansible.builtin.slurp:
+- name: Retrieve "etcd" client certificate
+  ansible.builtin.slurp:
     src: /etc/kubernetes/pki/etcd/healthcheck-client.crt
   register: _etcd_healthcheck_client_crt
 
-- ansible.builtin.slurp:
+- name: Retrieve "etcd" client key
+  ansible.builtin.slurp:
     src: /etc/kubernetes/pki/etcd/healthcheck-client.key
   register: _etcd_healthcheck_client_key
 
-- kubernetes.core.helm:
+- name: Deploy Helm chart
+  kubernetes.core.helm:
     name: kube-prometheus-stack
     chart_ref: prometheus-community/kube-prometheus-stack
     chart_version: 30.2.0
@@ -183,12 +187,18 @@
                   labels:
                     severity: critical
                 - alert: CoreDNSErrorsHigh
-                  expr: sum(rate(coredns_dns_responses_total{job="coredns",rcode="SERVFAIL"}[5m])) / sum(rate(coredns_dns_responses_total{job="coredns"}[5m])) > 0.01
+                  expr:
+                    sum(rate(coredns_dns_responses_total{job="coredns",rcode="SERVFAIL"}[5m]))
+                    /
+                    sum(rate(coredns_dns_responses_total{job="coredns"}[5m])) > 0.01
                   for: 10m
                   labels:
                     severity: warning
                 - alert: CoreDNSErrorsHigh
-                  expr: sum(rate(coredns_dns_responses_total{job="coredns",rcode="SERVFAIL"}[5m])) / sum(rate(coredns_dns_responses_total{job="coredns"}[5m])) > 0.03
+                  expr:
+                    sum(rate(coredns_dns_responses_total{job="coredns",rcode="SERVFAIL"}[5m]))
+                    /
+                    sum(rate(coredns_dns_responses_total{job="coredns"}[5m])) > 0.03
                   for: 10m
                   labels:
                     severity: critical
@@ -200,12 +210,18 @@
                   labels:
                     severity: critical
                 - alert: CoreDNSForwardErrorsHigh
-                  expr: sum(rate(coredns_forward_responses_total{job="coredns",rcode="SERVFAIL"}[5m])) / sum(rate(coredns_forward_responses_total{job="coredns"}[5m])) > 0.01
+                  expr:
+                    sum(rate(coredns_forward_responses_total{job="coredns",rcode="SERVFAIL"}[5m]))
+                    /
+                    sum(rate(coredns_forward_responses_total{job="coredns"}[5m])) > 0.01
                   for: 10m
                   labels:
                     severity: warning
                 - alert: CoreDNSForwardErrorsHigh
-                  expr: sum(rate(coredns_forward_responses_total{job="coredns",rcode="SERVFAIL"}[5m])) / sum(rate(coredns_forward_responses_total{job="coredns"}[5m])) > 0.03
+                  expr:
+                    sum(rate(coredns_forward_responses_total{job="coredns",rcode="SERVFAIL"}[5m]))
+                    /
+                    sum(rate(coredns_forward_responses_total{job="coredns"}[5m])) > 0.03
                   for: 10m
                   labels:
                     severity: critical
@@ -256,7 +272,8 @@
                   labels:
                     severity: critical
 
-- kubernetes.core.k8s:
+- name: Create Secret with "etcd" TLS certificates
+  kubernetes.core.k8s:
     state: present
     definition:
       apiVersion: v1

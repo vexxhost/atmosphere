@@ -35,14 +35,20 @@
     name: "{{ openstack_helm_migrate_to_percona_xtradb_cluster_release_name }}"
     release_namespace: "{{ openstack_helm_migrate_to_percona_xtradb_cluster_release_namespace }}"
   register: _openstack_helm_migrate_to_percona_xtradb_cluster_helm_info
-  failed_when: _openstack_helm_migrate_to_percona_xtradb_cluster_helm_info.status['values']['endpoints']['oslo_db'].get('hosts', {}).get('default', '') == 'percona-xtradb-haproxy'
+  failed_when: _oslo_db_endpoints.get('hosts', {}).get('default', '') == 'percona-xtradb-haproxy'
+  vars:
+    _oslo_db_endpoints: "{{ _openstack_helm_migrate_to_percona_xtradb_cluster_helm_info.status['values']['endpoints']['oslo_db'] }}"
 
 - name: Set facts for database endpoints
   ansible.builtin.set_fact:
-    _openstack_helm_migrate_to_percona_xtradb_cluster_legacy_ip: "{{ _openstack_helm_migrate_to_percona_xtradb_cluster_legacy_service.resources[0]['spec']['clusterIP'] }}"
-    _openstack_helm_migrate_to_percona_xtradb_cluster_legacy_password: "{{ _openstack_helm_migrate_to_percona_xtradb_cluster_helm_info.status['values']['endpoints']['oslo_db']['auth']['admin']['password'] }}"
-    _openstack_helm_migrate_to_percona_xtradb_cluster_ip: "{{ _openstack_helm_migrate_to_percona_xtradb_cluster_service.resources[0]['spec']['clusterIP'] }}"
-    _openstack_helm_migrate_to_percona_xtradb_cluster_password: "{{ openstack_helm_endpoints['oslo_db']['auth']['admin']['password'] }}"
+    _openstack_helm_migrate_to_percona_xtradb_cluster_legacy_ip: |-
+      {{ _openstack_helm_migrate_to_percona_xtradb_cluster_legacy_service.resources[0]['spec']['clusterIP'] }}
+    _openstack_helm_migrate_to_percona_xtradb_cluster_legacy_password: |-
+      {{ _openstack_helm_migrate_to_percona_xtradb_cluster_helm_info.status['values']['endpoints']['oslo_db']['auth']['admin']['password'] }}
+    _openstack_helm_migrate_to_percona_xtradb_cluster_ip: |-
+      {{ _openstack_helm_migrate_to_percona_xtradb_cluster_service.resources[0]['spec']['clusterIP'] }}
+    _openstack_helm_migrate_to_percona_xtradb_cluster_password: |-
+      {{ openstack_helm_endpoints['oslo_db']['auth']['admin']['password'] }}
 
 - name: Ensure PyMySQL packages are installed
   ansible.builtin.pip:
@@ -94,7 +100,11 @@
     login_host: "{{ _openstack_helm_migrate_to_percona_xtradb_cluster_ip }}"
     login_user: root
     login_password: "{{ _openstack_helm_migrate_to_percona_xtradb_cluster_password }}"
-    name: "{{ (openstack_helm_migrate_to_percona_xtradb_cluster_databases | length > 1) | ternary('all', openstack_helm_migrate_to_percona_xtradb_cluster_databases) }}"
+    name: |-
+      {{
+        (openstack_helm_migrate_to_percona_xtradb_cluster_databases | length > 1) |
+          ternary('all', openstack_helm_migrate_to_percona_xtradb_cluster_databases)
+      }}
     state: import
     target: "{{ _openstack_helm_migrate_to_percona_xtradb_cluster_file.path }}"
   async: 7200

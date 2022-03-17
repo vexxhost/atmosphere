@@ -12,45 +12,68 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+# TODO(mnaser): Move to using vexxhost.atmosphere.ceph_key
 - name: create monitor keyring
-  ansible.builtin.shell: |
-    ceph-authtool --create-keyring /tmp/ceph.mon.keyring --gen-key -n mon. --cap mon 'allow *'
+  ansible.builtin.command:
+    ceph-authtool --gen-key --create-keyring
+                  --name mon.
+                  --cap mon 'allow *'
+                  /tmp/ceph.mon.keyring
   args:
     creates: /tmp/ceph.mon.keyring
   when:
     - inventory_hostname == groups[ceph_mon_group][0]
 
+# TODO(mnaser): Move to using vexxhost.atmosphere.ceph_key
 - name: create admin keyring
-  ansible.builtin.shell: |
-    ceph-authtool --create-keyring /etc/ceph/ceph.client.admin.keyring --gen-key -n client.admin --cap mon 'allow *' --cap osd 'allow *' --cap mds 'allow *' --cap mgr 'allow *'
+  ansible.builtin.command:
+    ceph-authtool --gen-key --create-keyring
+                  --name client.admin
+                  --cap mon 'allow *'
+                  --cap osd 'allow *'
+                  --cap mds 'allow *'
+                  --cap mgr 'allow *'
+                  /etc/ceph/ceph.client.admin.keyring
   args:
     creates: /etc/ceph/ceph.client.admin.keyring
   when:
     - inventory_hostname == groups[ceph_mon_group][0]
 
+# TODO(mnaser): Move to using vexxhost.atmosphere.ceph_key
 - name: create bootstrap-osd keyring
-  ansible.builtin.shell: |
-    ceph-authtool --create-keyring /var/lib/ceph/bootstrap-osd/ceph.keyring --gen-key -n client.bootstrap-osd --cap mon 'profile bootstrap-osd' --cap mgr 'allow r'
+  ansible.builtin.command:
+    ceph-authtool --gen-key --create-keyring
+                  --name client.bootstrap-osd
+                  --cap mon 'profile bootstrap-osd'
+                  --cap mgr 'allow r'
+                  /var/lib/ceph/bootstrap-osd/ceph.keyring
   args:
     creates: /var/lib/ceph/bootstrap-osd/ceph.keyring
   when:
     - inventory_hostname == groups[ceph_mon_group][0]
 
+# TODO(mnaser): Move to using vexxhost.atmosphere.ceph_key
 - name: add admin keyring to monitor
-  ansible.builtin.shell: |
-    ceph-authtool /tmp/ceph.mon.keyring --import-keyring /etc/ceph/ceph.client.admin.keyring
+  ansible.builtin.command:
+    ceph-authtool --import-keyring /etc/ceph/ceph.client.admin.keyring
+                  /tmp/ceph.mon.keyring
   when:
     - inventory_hostname == groups[ceph_mon_group][0]
 
+# TODO(mnaser): Move to using vexxhost.atmosphere.ceph_key
 - name: add bootstrap-osd keyring to monitor
-  ansible.builtin.shell: |
-    ceph-authtool /tmp/ceph.mon.keyring --import-keyring /var/lib/ceph/bootstrap-osd/ceph.keyring
+  ansible.builtin.command:
+    ceph-authtool --import-keyring /var/lib/ceph/bootstrap-osd/ceph.keyring
+                  /tmp/ceph.mon.keyring
   when:
     - inventory_hostname == groups[ceph_mon_group][0]
 
 - name: create monmap
-  ansible.builtin.shell: |
-    monmaptool --create --add {{ inventory_hostname_short }} {{ ceph_mon_ip_address }} --fsid {{ ceph_mon_fsid }} /tmp/monmap
+  ansible.builtin.command:
+    monmaptool --create
+               --fsid {{ ceph_mon_fsid }}
+               --add {{ inventory_hostname_short }} {{ ceph_mon_ip_address }}
+               /tmp/monmap
   args:
     creates: /tmp/monmap
   when:
@@ -60,6 +83,9 @@
   ansible.builtin.file:
     path: "/var/lib/ceph/mon/ceph-{{ inventory_hostname_short }}"
     state: directory
+    owner: ceph
+    group: ceph
+    mode: 0700
   when:
     - inventory_hostname == groups[ceph_mon_group][0]
 
@@ -69,6 +95,9 @@
     section: global
     option: mon initial members
     value: "{{ inventory_hostname_short }}"
+    owner: ceph
+    group: ceph
+    mode: 0640
 
 - name: start monitor
   ansible.builtin.include_tasks: start-monitor.yml

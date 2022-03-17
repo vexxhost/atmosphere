@@ -18,10 +18,16 @@
       ansible.builtin.file:
         dest: /etc/keepalived
         state: directory
+        owner: root
+        group: root
+        mode: 0755
     - name: Upload configuration
       ansible.builtin.template:
         src: keepalived.conf.j2
         dest: /etc/keepalived/keepalived.conf
+        owner: root
+        group: root
+        mode: 0644
     - name: Upload health check
       ansible.builtin.template:
         src: check_apiserver.sh.j2
@@ -31,6 +37,9 @@
       ansible.builtin.copy:
         src: keepalived.yaml
         dest: /etc/kubernetes/manifests/keepalived.yaml
+        owner: root
+        group: root
+        mode: 0644
 
 - name: Upload configuration for HAproxy
   block:
@@ -38,14 +47,23 @@
       ansible.builtin.file:
         dest: /etc/haproxy
         state: directory
+        owner: root
+        group: root
+        mode: 0755
     - name: Upload configuration
       ansible.builtin.template:
         src: haproxy.cfg.j2
         dest: /etc/haproxy/haproxy.cfg
+        owner: root
+        group: root
+        mode: 0644
     - name: Upload Kubernetes manifest
       ansible.builtin.copy:
         src: haproxy.yaml
         dest: /etc/kubernetes/manifests/haproxy.yaml
+        owner: root
+        group: root
+        mode: 0644
 
 - name: Bootstrap cluster
   include_tasks: bootstrap-cluster.yml
@@ -54,6 +72,9 @@
   ansible.builtin.file:
     path: /root/.kube
     state: directory
+    owner: root
+    group: root
+    mode: 0750
 
 - name: copy admin configuration file
   ansible.builtin.copy:
@@ -75,7 +96,7 @@
   run_once: true
   ansible.builtin.shell: |
     kubectl taint nodes --all node-role.kubernetes.io/master-
-  ignore_errors: true
+  failed_when: false
   changed_when: false
 
 - name: Add labels to control plane nodes

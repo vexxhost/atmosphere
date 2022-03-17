@@ -20,8 +20,18 @@
       - zuul.d/playbooks/ansible-collection-atmosphere-check-commit/run.yml
 
 - job:
-    name: ansible-collection-atmosphere-tox-build
+    name: ansible-collection-atmosphere-tox
     parent: tox
+
+- job:
+    name: ansible-collection-atmosphere-tox-linters
+    parent: ansible-collection-atmosphere-tox
+    vars:
+      tox_envlist: linters
+
+- job:
+    name: ansible-collection-atmosphere-tox-build
+    parent: ansible-collection-atmosphere-tox
     post-run:
       - zuul.d/playbooks/ansible-collection-atmosphere-tox-build/post-run.yml
     vars:

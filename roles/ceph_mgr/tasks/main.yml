@@ -21,22 +21,30 @@
   ansible.builtin.file:
     path: "/var/lib/ceph/mgr/ceph-{{ inventory_hostname_short }}"
     state: directory
+    owner: ceph
+    group: ceph
+    mode: 0700
 
-- name: create mgr keyring
-  ansible.builtin.shell: |
-    ceph auth get-or-create mgr.{{ inventory_hostname_short }} mon 'allow profile mgr' osd 'allow *' mds 'allow *' > /var/lib/ceph/mgr/ceph-{{ inventory_hostname_short }}/keyring
-  args:
-    creates: "/var/lib/ceph/mgr/ceph-{{ inventory_hostname_short }}/keyring"
+- name: Create Ceph manager keyring
+  vexxhost.atmosphere.ceph_key:
+    name: "mgr.{{ inventory_hostname_short }}"
+    dest: "/var/lib/ceph/mgr/ceph-{{ inventory_hostname_short }}/keyring"
+    caps:
+      mon: allow profile mgr
+      osd: allow *
+      mds: allow *
+    owner: ceph
+    group: ceph
 
 - name: ensure permissions are fixed
   ansible.builtin.file:
     path: "/var/lib/ceph/mon/ceph-{{ inventory_hostname_short }}"
     owner: ceph
     group: ceph
-    recurse: yes
+    recurse: true
 
 - name: enable and start service
   ansible.builtin.service:
     name: "ceph-mgr@{{ inventory_hostname_short }}"
     state: started
-    enabled: yes
+    enabled: true

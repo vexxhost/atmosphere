@@ -12,7 +12,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: collect facts for all monitors
+- name: Collect facts for all monitors
   run_once: true
   delegate_to: "{{ item }}"
   delegate_facts: true
@@ -20,28 +20,33 @@
     gather_subset: network
   loop: "{{ groups[ceph_csi_rbd_mons_group] }}"
 
-- vexxhost.atmosphere.ceph_pool:
+- name: Create Ceph pool
+  vexxhost.atmosphere.ceph_pool:
     name: "{{ ceph_csi_rbd_pool }}"
     application: rbd
-    pg_autoscale_mode: on
+    pg_autoscale_mode: "on"
 
-- vexxhost.atmosphere.ceph_key:
+- name: Create {{ ceph_csi_rbd_user }} user
+  vexxhost.atmosphere.ceph_key:
     name: "{{ ceph_csi_rbd_user }}"
     caps:
       mon: profile rbd
       mgr: profile rbd pool={{ ceph_csi_rbd_pool }}
       osd: profile rbd pool={{ ceph_csi_rbd_pool }}
 
-- vexxhost.atmosphere.ceph_key:
+- name: Retrieve {{ ceph_csi_rbd_user }} keyring
+  vexxhost.atmosphere.ceph_key:
     name: "{{ ceph_csi_rbd_user }}"
     state: info
     output_format: json
   register: _ceph_key
 
-- ansible.builtin.set_fact:
+- name: Store keyring inside fact
+  ansible.builtin.set_fact:
     _ceph_rbd_csi_ceph_keyring: "{{ _ceph_key.stdout | from_json | first }}"
 
-- kubernetes.core.helm:
+- name: Deploy Helm chart
+  kubernetes.core.helm:
     name: ceph-csi-rbd
     chart_ref: ceph/ceph-csi-rbd
     chart_version: 3.5.1

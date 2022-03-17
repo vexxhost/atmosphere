@@ -23,7 +23,7 @@
     path: "/var/lib/ceph/mon/ceph-{{ inventory_hostname_short }}"
     owner: ceph
     group: ceph
-    recurse: yes
+    recurse: true
 
 # NOTE(mnaser): https://bugs.launchpad.net/ubuntu/+source/ceph/+bug/1917414/comments/30
 - name: workaround for aarch64 systems
@@ -32,6 +32,9 @@
     section: Service
     option: MemoryDenyWriteExecute
     value: false
+    owner: ceph
+    group: ceph
+    mode: 0644
   register: _ceph_aarch64_fix
   when: ansible_architecture == 'aarch64'
 
@@ -39,5 +42,5 @@
   ansible.builtin.service:
     name: "ceph-mon@{{ inventory_hostname_short }}"
     state: started
-    enabled: yes
+    enabled: true
     daemon_reload: "{{ _ceph_aarch64_fix.changed }}"

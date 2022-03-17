@@ -15,13 +15,14 @@
 - name: Get Helm values if chart is provided
   block:
     - name: Get the default values for the Helm chart
-      ansible.builtin.shell: helm show values {{ openstack_helm_endpoints_repo_name }}/{{ openstack_helm_endpoints_chart }}
+      ansible.builtin.command: helm show values {{ openstack_helm_endpoints_repo_name }}/{{ openstack_helm_endpoints_chart }}
       changed_when: false
       register: _helm_show_values
 
     - name: Retrieve list of all the needed endpoints
       ansible.builtin.set_fact:
-        openstack_helm_endpoints_list: "{{ _helm_show_values.stdout | from_yaml | community.general.json_query('keys(endpoints)') | difference(_openstack_helm_endpoints_ignore) }}"
+        openstack_helm_endpoints_list: |-
+          {{ _helm_show_values.stdout | from_yaml | community.general.json_query('keys(endpoints)') | difference(_openstack_helm_endpoints_ignore) }}
   when:
     - openstack_helm_endpoints_list is not defined or openstack_helm_endpoints_list == None
 

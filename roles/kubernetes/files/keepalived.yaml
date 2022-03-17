@@ -6,27 +6,27 @@ metadata:
   namespace: kube-system
 spec:
   containers:
-  - name: keepalived
-    image: us-docker.pkg.dev/vexxhost-infra/openstack/keepalived:2.0.19
-    command: ["keepalived", "-f", "/etc/keepalived/keepalived.conf", "--dont-fork", "--log-console", "--log-detail", "--dump-conf"]
-    resources: {}
-    securityContext:
-      capabilities:
-        add:
-        - NET_ADMIN
-        - NET_BROADCAST
-        - NET_RAW
-    volumeMounts:
-    - mountPath: /etc/keepalived/keepalived.conf
-      name: config
-    - mountPath: /etc/keepalived/check_apiserver.sh
-      name: check
+    - name: keepalived
+      image: us-docker.pkg.dev/vexxhost-infra/openstack/keepalived:2.0.19
+      command: ["keepalived", "-f", "/etc/keepalived/keepalived.conf", "--dont-fork", "--log-console", "--log-detail", "--dump-conf"]
+      resources: {}
+      securityContext:
+        capabilities:
+          add:
+            - NET_ADMIN
+            - NET_BROADCAST
+            - NET_RAW
+      volumeMounts:
+        - mountPath: /etc/keepalived/keepalived.conf
+          name: config
+        - mountPath: /etc/keepalived/check_apiserver.sh
+          name: check
   hostNetwork: true
   volumes:
-  - hostPath:
-      path: /etc/keepalived/keepalived.conf
-    name: config
-  - hostPath:
-      path: /etc/keepalived/check_apiserver.sh
-    name: check
+    - hostPath:
+        path: /etc/keepalived/keepalived.conf
+      name: config
+    - hostPath:
+        path: /etc/keepalived/check_apiserver.sh
+      name: check
 status: {}

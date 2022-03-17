@@ -21,7 +21,7 @@
   delegate_to: "{{ groups[ceph_osd_mons_group][0] }}"
   register: _ceph_fsid
   changed_when: false
-  ansible.builtin.shell: ceph fsid
+  ansible.builtin.command: ceph fsid
 
 - name: collect facts for all monitors
   delegate_to: "{{ item }}"
@@ -37,6 +37,9 @@
     section: global
     option: "{{ item.option }}"
     value: "{{ item.value }}"
+    owner: ceph
+    group: ceph
+    mode: 0640
   loop:
     - option: fsid
       value: "{{ _ceph_fsid.stdout | trim }}"
@@ -47,18 +50,24 @@
   delegate_to: "{{ groups[ceph_osd_mons_group][0] }}"
   register: _ceph_bootstrap_osd_keyring
   changed_when: false
-  ansible.builtin.shell: ceph auth get client.bootstrap-osd
+  ansible.builtin.command: ceph auth get client.bootstrap-osd
 
 - name: install bootstrap-osd keyring
   ansible.builtin.copy:
     content: "{{ _ceph_bootstrap_osd_keyring.stdout }}\n"
     dest: /var/lib/ceph/bootstrap-osd/ceph.keyring
+    owner: ceph
+    group: ceph
+    mode: 0640
 
 - name: workaround to allow usage of loop devices
   ansible.builtin.replace:
     path: /usr/lib/python3/dist-packages/ceph_volume/util/disk.py
     regexp: "'mpath']"
     replace: "'mpath', 'loop']"
+    owner: ceph
+    group: ceph
+    mode: 0640
   when: molecule | default(false)
 
 # NOTE(mnaser): https://bugs.launchpad.net/ubuntu/+source/ceph/+bug/1917414/comments/30
@@ -68,6 +77,9 @@
     section: Service
     option: MemoryDenyWriteExecute
     value: false
+    owner: ceph
+    group: ceph
+    mode: 0644
   register: _ceph_aarch64_fix
   when: ansible_architecture == 'aarch64'
 
@@ -83,5 +95,6 @@
   loop: "{{ ceph_osd_devices }}"
 
 - name: create osds for volumes which are not setup
+  changed_when: true
   ansible.builtin.command: /usr/sbin/ceph-volume lvm create --data {{ item }}
   loop: "{{ _ceph_osd_check.results | selectattr('rc', 'equalto', 1) | map(attribute='item') }}"

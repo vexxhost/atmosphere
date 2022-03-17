@@ -16,12 +16,20 @@
   ansible.builtin.copy:
     src: apt-key.gpg
     dest: /usr/share/keyrings/kubernetes-archive-keyring.gpg
+    owner: root
+    group: root
+    mode: 0644
   when:
     - kubernetes_repo_url == _kubernetes_upstream_apt_repository
 
 - name: Add repository
   ansible.builtin.apt_repository:
-    repo: "deb {% if kubernetes_repo_url == _kubernetes_upstream_apt_repository %}[signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg]{% endif %} {{ kubernetes_repo_url }} kubernetes-xenial main"
+    repo:
+      deb
+      {% if kubernetes_repo_url == _kubernetes_upstream_apt_repository %}[signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg]{% endif %}
+      {{ kubernetes_repo_url }}
+      kubernetes-xenial
+      main
     state: present
 
 - name: Setup version pins
@@ -43,6 +51,9 @@
   ansible.builtin.template:
     src: modules-load.conf.j2
     dest: /etc/modules-load.d/k8s.conf
+    owner: root
+    group: root
+    mode: 0644
 
 - name: Enable kernel modules in runtime
   community.general.modprobe:
