@@ -17,8 +17,9 @@
   gather_facts: false
   no_log: "{{ molecule_no_log }}"
   vars:
-    stack_name: "{{ lookup('env', 'STACK_NAME') | default('atmosphere', True) }}"
     secrets_path: "{{ lookup('env', 'MOLECULE_EPHEMERAL_DIRECTORY') }}/secrets.yml"
+
+    stack_name: "{{ lookup('env', 'ATMOSPHERE_STACK_NAME') | default('atmosphere', True) }}"
   tasks:
     - os_stack:
         name: "{{ stack_name }}"

@@ -21,6 +21,9 @@ parameters:
     constraints:
       - custom_constraint: net_cidr
 
+  nameservers:
+    type: comma_delimited_list
+
   external_cidr:
     type: string
     default: 10.96.250.0/24
@@ -29,19 +32,16 @@ parameters:
 
   public_network:
     type: string
-    default: public
     constraints:
       - custom_constraint: neutron.network
 
   image:
     type: string
-    default: Ubuntu 20.04.3 LTS (x86_64) [2021-10-04]
     constraints:
       - custom_constraint: glance.image
 
   instance_type:
     type: string
-    default: v3-standard-4
     constraints:
       - custom_constraint: nova.flavor
 
@@ -71,7 +71,7 @@ resources:
     properties:
       network: { get_resource: internal_network }
       cidr: { get_param: internal_cidr }
-      dns_nameservers: ["1.1.1.1"]
+      dns_nameservers: { get_param: nameservers }
 
   internal_network_router_interface:
     type: OS::Neutron::RouterInterface
@@ -100,7 +100,7 @@ resources:
     properties:
       network: { get_resource: external_network }
       cidr: { get_param: external_cidr }
-      dns_nameservers: ["1.1.1.1"]
+      dns_nameservers: { get_param: nameservers }
       gateway_ip: null
 
   external_network_vip:

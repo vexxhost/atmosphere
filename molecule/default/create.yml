@@ -22,15 +22,24 @@
   no_log: "{{ molecule_no_log }}"
   vars:
     ssh_port: 22
-    stack_name: "{{ lookup('env', 'STACK_NAME') | default('atmosphere', True) }}"
     identity_file: "{{ lookup('env', 'MOLECULE_EPHEMERAL_DIRECTORY') }}/id_rsa"
+
+    stack_name: "{{ lookup('env', 'ATMOSPHERE_STACK_NAME') | default('atmosphere', True) }}"
+    public_network: "{{ lookup('env', 'ATMOSPHERE_PUBLIC_NETWORK') | default('public', True) }}"
+    image: "{{ lookup('env', 'ATMOSPHERE_IMAGE') | default('Ubuntu 20.04.3 LTS (x86_64) [2021-10-04]', True) }}"
+    instance_type: "{{ lookup('env', 'ATMOSPHERE_INSTANCE_TYPE') | default('v3-standard-4', True) }}"
+    nameservers: "{{ lookup('env', 'ATMOSPHERE_NAMESERVERS') | default('1.1.1.1', True) }}"
   tasks:
     - name: create stack
       openstack.cloud.stack:
         name: "{{ stack_name }}"
         template: heat/stack.yaml
+        parameters:
+          public_network: "{{ public_network }}"
+          image: "{{ image }}"
+          instance_type: "{{ instance_type }}"
+          nameservers: "{{ nameservers }}"
       register: _os_stack
-
     - debug:
         msg: "{{ _os_stack.stack }}"
 
@@ -52,6 +61,8 @@
         host: "{{ item }}"
         search_regex: SSH
         timeout: 60
+      retries: 5
+      delay: 10
       loop: "{{ controller_ips + storage_ips + compute_ips }}"
 
     - name: generate private key file
@@ -66,7 +77,7 @@
         dest: "{{ molecule_instance_config }}"
       vars:
         base_instance_config: &instance_config
-          user: "ubuntu"
+          user: "{{ lookup('env', 'ATMOSPHERE_USERNAME') | default('ubuntu', True) }}"
           port: "{{ ssh_port }}"
           identity_file: "{{ identity_file }}"
         instance_config:
