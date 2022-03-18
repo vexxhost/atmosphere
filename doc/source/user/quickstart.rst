@@ -29,18 +29,6 @@ system with ``git`` by running the following command::
 
    $ git clone https://opendev.org/vexxhost/ansible-collection-atmosphere
 
-.. note::
-   There is a `current issue <https://github.com/ansible-community/molecule/pull/3225>`_
-   in Molecule where it fails to resolve playbooks based on their fully qualified
-   collection name (FQCN).  The workaround for this time is to make a maunal
-   symbolic link to workaround it::
-
-       $ mkdir -p $HOME/.ansible/collections/ansible_collections/vexxhost
-       $ ln -s ansible-collection-atmosphere $HOME/.ansible/collections/ansible_collections/vexxhost/atmosphere
-
-   You'll have to make sure you replace ``ansible-collection-atmosphere`` with
-   the path to where you cloned the repository.
-
 You will need ``tox`` installed on your operating system.  You will need to make
 sure that you have the appropriate OpenStack environment variables set (such
 as ``OS_CLOUD`` or ``OS_AUTH_URL``, etc.).  You can also use the following
