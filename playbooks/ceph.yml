@@ -13,25 +13,20 @@
 # under the License.
 
 - name: Setup Ceph repository
-  hosts: cephs
+  hosts: controllers:cephs
   become: true
   roles:
     - ceph_repository
 
-- name: Deploy Ceph monitors
-  hosts: ceph_mons
+- name: Deploy Ceph monitors & managers
+  hosts: controllers
   become: true
   roles:
     - ceph_mon
-
-- name: Deploy Ceph managers
-  hosts: ceph_mgrs
-  become: true
-  roles:
     - ceph_mgr
 
 - name: Deploy Ceph OSDs
-  hosts: ceph_osds
+  hosts: cephs
   become: true
   roles:
     - ceph_osd
