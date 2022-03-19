@@ -17,7 +17,7 @@
   gather_facts: false
   no_log: "{{ molecule_no_log }}"
   vars:
-    secrets_path: "{{ lookup('env', 'MOLECULE_EPHEMERAL_DIRECTORY') }}/secrets.yml"
+    workspace_path: "{{ lookup('env', 'MOLECULE_SCENARIO_DIRECTORY') }}"
 
     stack_name: "{{ lookup('env', 'ATMOSPHERE_STACK_NAME') | default('atmosphere', True) }}"
   tasks:
@@ -29,6 +29,7 @@
         path: "{{ molecule_instance_config }}"
         state: absent
 
-    - copy:
-        dest: "{{ secrets_path }}"
-        content: "{}"
+    - shell: rm -rf {{ workspace_path }}/{{ item }}/*
+      loop:
+        - group_vars
+        - host_vars

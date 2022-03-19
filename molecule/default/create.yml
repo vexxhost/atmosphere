@@ -12,9 +12,10 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- import_playbook: vexxhost.atmosphere.generate_secrets
+- import_playbook: vexxhost.atmosphere.generate_workspace
   vars:
-    secrets_path: "{{ lookup('env', 'MOLECULE_EPHEMERAL_DIRECTORY') }}/secrets.yml"
+    workspace_path: "{{ lookup('env', 'MOLECULE_SCENARIO_DIRECTORY') }}"
+    domain_name: "{{ '{{' }} hostvars['ctl1']['ansible_host'].replace('.', '-') {{ '}}' }}.nip.io"
 
 - hosts: localhost
   connection: local
