@@ -48,6 +48,11 @@ __openstack_helm_nova_values:
       nova_spiceproxy_assets: "{{ openstack_helm_nova_image_repository }}/nova:{{ openstack_helm_nova_image_tag }}"
       nova_spiceproxy: "{{ openstack_helm_nova_image_repository }}/nova:{{ openstack_helm_nova_image_tag }}"
       rabbit_init: "{{ openstack_helm_nova_image_repository }}/rabbitmq:3.8.23-management"
+  network:
+    ssh:
+      enabled: true
+      public_key: "{{ _nova_ssh_publickey.public_key }}"
+      private_key: "{{ openstack_helm_nova_ssh_key }}"
   bootstrap:
     structured:
       flavors:

@@ -52,6 +52,36 @@
   when:
     - openstack_helm_nova_migrate_from_mariadb | bool
 
+- name: Generate public key for SSH private key
+  become: false
+  delegate_to: localhost
+  block:
+    - name: Generate temporary file for SSH public key
+      changed_when: false
+      ansible.builtin.tempfile:
+        state: file
+        prefix: nova_ssh_key_
+      register: _nova_ssh_key_tempfile
+    # NOTE(mnaser): It's important to add a trailing newline at the end of this
+    #               string or else `ssh-keygen` will not be happy.`
+    - name: Write contents of current private SSH key
+      changed_when: false
+      ansible.builtin.copy:
+        dest: "{{ _nova_ssh_key_tempfile.path }}"
+        content: "{{ openstack_helm_nova_ssh_key }}\n"
+    - name: Generate public key for SSH private key
+      changed_when: false
+      community.crypto.openssh_keypair:
+        path: "{{ _nova_ssh_key_tempfile.path }}"
+        regenerate: never
+      register: _nova_ssh_publickey
+  always:
+    - name: Delete temporary file for public SSH key
+      changed_when: false
+      ansible.builtin.file:
+        path: "{{ _nova_ssh_key_tempfile.path }}"
+        state: absent
+
 - name: Deploy Helm chart
   kubernetes.core.helm:
     name: "{{ openstack_helm_nova_chart_name }}"
