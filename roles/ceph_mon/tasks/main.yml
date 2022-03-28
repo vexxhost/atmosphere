@@ -19,7 +19,7 @@
 
 - name: set ceph monitor ip address
   ansible.builtin.set_fact:
-    ceph_mon_ip_address: "{{ ansible_default_ipv4.address }}"
+    ceph_mon_ip_address: "{{ ansible_all_ipv4_addresses | ansible.netcommon.ipaddr(ceph_mon_public_network) | first }}"
 
 - name: generate basic configuration file
   community.general.ini_file:
