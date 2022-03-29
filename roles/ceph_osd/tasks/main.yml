@@ -23,13 +23,17 @@
   changed_when: false
   ansible.builtin.command: ceph fsid
 
-- name: collect facts for all monitors
-  delegate_to: "{{ item }}"
-  delegate_facts: true
-  ansible.builtin.setup:
-    gather_subset: network
-  loop: "{{ groups[ceph_osd_mons_group] }}"
-  when: inventory_hostname == ansible_play_hosts_all[0]
+- name: Collect "ceph mon dump" output from a monitor
+  delegate_to: "{{ groups[ceph_osd_mons_group][0] }}"
+  run_once: true
+  ansible.builtin.command: ceph mon dump -f json
+  changed_when: false
+  register: _ceph_mon_dump
+
+- name: Generate fact with list of Ceph monitors
+  run_once: true
+  ansible.builtin.set_fact:
+    ceph_monitors: "{{ _ceph_mon_dump.stdout | from_json | community.general.json_query('mons[*].addr') | map('regex_replace', '(.*):(.*)', '\\1') }}"
 
 - name: generate basic configuration file
   community.general.ini_file:
@@ -44,7 +48,7 @@
     - option: fsid
       value: "{{ _ceph_fsid.stdout | trim }}"
     - option: mon host
-      value: "{{ groups[ceph_osd_mons_group] | map('extract', hostvars, ['ansible_default_ipv4', 'address']) | join(',') }}"
+      value: "{{ ceph_monitors | join(',') }}"
 
 - name: grab bootstrap-osd from monitors
   delegate_to: "{{ groups[ceph_osd_mons_group][0] }}"
