@@ -51,6 +51,7 @@ _openstack_helm_neutron_values:
         log_config_append: null
         rpc_workers: 8
         service_plugins: router,vpnaas
+        external_dns_driver: designate
       cors:
         allowed_origin: "*"
       service_providers:
@@ -71,7 +72,7 @@ _openstack_helm_neutron_values:
     plugins:
       ml2_conf:
         ml2:
-          extension_drivers: port_security,dns
+          extension_drivers: port_security,dns_domain_ports
           type_drivers: flat,gre,vlan,vxlan
         ml2_type_gre:
           tunnel_id_ranges: 1:1000
