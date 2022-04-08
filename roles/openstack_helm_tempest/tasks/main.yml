@@ -1,0 +1,141 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Generate OpenStack-Helm endpoints
+  ansible.builtin.include_role:
+    name: openstack_helm_endpoints
+  vars:
+    openstack_helm_endpoints_repo_name: "{{ openstack_helm_tempest_chart_repo_name }}"
+    openstack_helm_endpoints_repo_url: "{{ openstack_helm_tempest_chart_repo_url }}"
+    openstack_helm_endpoints_chart: "{{ openstack_helm_tempest_chart_name }}"
+
+- name: Configure tempest
+  block:
+    - name: Get test image object
+      openstack.cloud.image_info:
+        auth:
+          auth_url: "https://{{ openstack_helm_endpoints['identity']['host_fqdn_override']['public']['host'] }}"
+          username: "{{ openstack_helm_endpoints['identity']['auth']['admin']['username'] }}"
+          password: "{{ openstack_helm_endpoints['identity']['auth']['admin']['password'] }}"
+          project_name: admin
+          user_domain_name: Default
+          project_domain_name: Default
+        image: cirros
+      register: _openstack_helm_tempest_test_image
+      when: openstack_helm_tempest_values.conf.tempest.compute.image_ref is not defined
+
+    - name: Configure test image ref
+      ansible.builtin.set_fact:
+        openstack_helm_tempest_values: "{{ openstack_helm_tempest_values | default({}) | combine({item.key: item.value}, recursive=True) }}"
+      with_dict:
+        conf:
+          tempest:
+            compute:
+              image_ref: "{{ _openstack_helm_tempest_test_image.openstack_image.id }}"
+      when:
+        - openstack_helm_tempest_values.conf.tempest.compute.image_ref is not defined
+        - _openstack_helm_tempest_test_image.openstack_image.id is defined
+
+    - name: Get test flavor object
+      openstack.cloud.compute_flavor_info:
+        auth:
+          auth_url: "https://{{ openstack_helm_endpoints['identity']['host_fqdn_override']['public']['host'] }}"
+          username: "{{ openstack_helm_endpoints['identity']['auth']['admin']['username'] }}"
+          password: "{{ openstack_helm_endpoints['identity']['auth']['admin']['password'] }}"
+          project_name: admin
+          user_domain_name: Default
+          project_domain_name: Default
+        name: m1.tiny
+      register: _openstack_helm_tempest_test_flavor
+      when: openstack_helm_tempest_values.conf.tempest.compute.flavor_ref is not defined
+
+    - name: Set test flavor ref
+      ansible.builtin.set_fact:
+        openstack_helm_tempest_values: "{{ openstack_helm_tempest_values | default({}) | combine({item.key: item.value}, recursive=True) }}"
+      with_dict:
+        conf:
+          tempest:
+            compute:
+              flavor_ref: "{{ _openstack_helm_tempest_test_flavor.openstack_flavors[0].id }}"
+      when:
+        - openstack_helm_tempest_values.conf.tempest.compute.flavor_ref is not defined
+        - _openstack_helm_tempest_test_flavor.openstack_flavors[0].id is defined
+
+    - name: Get test network object
+      openstack.cloud.networks_info:
+        auth:
+          auth_url: "https://{{ openstack_helm_endpoints['identity']['host_fqdn_override']['public']['host'] }}"
+          username: "{{ openstack_helm_endpoints['identity']['auth']['admin']['username'] }}"
+          password: "{{ openstack_helm_endpoints['identity']['auth']['admin']['password'] }}"
+          project_name: admin
+          user_domain_name: Default
+          project_domain_name: Default
+        name: public
+      register: _openstack_helm_tempest_test_network
+      when: openstack_helm_tempest_values.conf.tempest.network.public_network_id is not defined
+
+    - name: Set test network ref
+      ansible.builtin.set_fact:
+        openstack_helm_tempest_values: "{{ openstack_helm_tempest_values | default({}) | combine({item.key: item.value}, recursive=True) }}"
+      with_dict:
+        conf:
+          tempest:
+            network:
+              public_network_id: "{{ _openstack_helm_tempest_test_network.openstack_networks[0].id }}"
+      when:
+        - openstack_helm_tempest_values.conf.tempest.network.public_network_id is not defined
+        - _openstack_helm_tempest_test_network.openstack_networks[0].id is defined
+
+- name: Deploy Helm chart
+  kubernetes.core.helm:
+    name: "{{ openstack_helm_tempest_chart_name }}"
+    chart_ref: "{{ openstack_helm_tempest_chart_repo_name }}/{{ openstack_helm_tempest_chart_name }}"
+    chart_version: 0.2.3
+    release_namespace: openstack
+    kubeconfig: /etc/kubernetes/admin.conf
+    wait: true
+    wait_timeout: 20m
+    values: "{{ _openstack_helm_tempest_values | combine(openstack_helm_tempest_values, recursive=True) }}"
+
+- name: Get tempest job object
+  kubernetes.core.k8s_info:
+    api_version: batch/v1
+    kind: Job
+    name: tempest-run-tests
+    namespace: openstack
+  register: _tempest_job_obj
+
+- name: Get tempest log
+  kubernetes.core.k8s_log:
+    namespace: openstack
+    label_selectors:
+      - job-name=tempest-run-tests
+  register: _tempest_log
+
+- name: Print success tempest result
+  ansible.builtin.debug:
+    msg: "Tempest success!"
+  when:
+    - _tempest_job_obj.resources[0]['status']['succeeded'] is defined
+    - _tempest_job_obj.resources[0]['status']['succeeded'] == 1
+
+- name: Print failed tempest result
+  ansible.builtin.debug:
+    msg: "Tempest failed!"
+  when: _tempest_job_obj.resources[0]['status']['succeeded'] is not defined or
+        _tempest_job_obj.resources[0]['status']['succeeded'] != 1
+
+- name: Print tempest log details
+  ansible.builtin.debug:
+    msg: "{{ _tempest_log.log_lines }}"
