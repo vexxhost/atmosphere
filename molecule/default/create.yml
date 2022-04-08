@@ -15,7 +15,7 @@
 - import_playbook: vexxhost.atmosphere.generate_workspace
   vars:
     workspace_path: "{{ lookup('env', 'MOLECULE_SCENARIO_DIRECTORY') }}"
-    domain_name: "{{ '{{' }} hostvars['ctl1']['ansible_host'].replace('.', '-') {{ '}}' }}.nip.io"
+    domain_name: "{{ '{{' }} hostvars['ctl1']['ansible_host'].replace('.', '-') {{ '}}' }}.{{ lookup('env', 'ATMOSPHERE_DNS_SUFFIX_NAME') | default('nip.io', True) }}"
 
 - hosts: localhost
   connection: local
