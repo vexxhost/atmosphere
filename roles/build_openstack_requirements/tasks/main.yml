@@ -83,6 +83,15 @@
     CASS_DRIVER_BUILD_CONCURRENCY: "{{ ansible_processor_vcpus }}"
     MAKEFLAGS: "-j{{ ansible_processor_vcpus }}"
 
+- name: Build wheels for extra packages
+  changed_when: false
+  ansible.builtin.command:
+    pip wheel --no-deps -c {{ _upper_constraints_file.path }} uwsgi
+  args:
+    chdir: "{{ build_openstack_requirements_wheels_path }}"
+  environment:
+    MAKEFLAGS: "-j{{ ansible_processor_vcpus }}"
+
 - name: Create archive with all wheels
   # TODO(mnaser): Switch this to "community.general.archive" once Zuul is using
   #               a new enough Ansible.

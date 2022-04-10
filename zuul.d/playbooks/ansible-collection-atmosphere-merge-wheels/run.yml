@@ -36,9 +36,17 @@
       loop: "{{ zuul.artifacts }}"
       when: item.metadata.get("type") == "wheels"
 
+    - name: Add upper-constraints.txt to the folder
+      ansible.builtin.get_url:
+        url: "https://releases.openstack.org/constraints/upper/{{ build_openstack_requirements_release }}"
+        dest: /tmp/wheels/upper-constraints.txt
+        mode: 0644
+
     - name: Create archive with all wheels
       # TODO(mnaser): Switch this to "community.general.archive" once Zuul is using
       #               a new enough Ansible.
       archive:
-        path: "/tmp/wheels/*.whl"
         dest: /tmp/wheels.tar.gz
+        path:
+          - /tmp/wheels/*.whl
+          - /tmp/wheels/*.txt
