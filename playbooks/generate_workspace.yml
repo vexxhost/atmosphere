@@ -134,6 +134,39 @@
         content: "{{ kubernetes | to_nice_yaml(indent=2, width=180) }}"
         dest: "{{ _kubernetes_path }}"
 
+- name: Generate Keepalived configuration for workspace
+  hosts: localhost
+  gather_facts: false
+  vars:
+    _keepalived_path: "{{ workspace_path }}/group_vars/all/keepalived.yml"
+  tasks:
+    - name: Ensure the Keeaplived configuration file exists
+      ansible.builtin.file:
+        path: "{{ _keepalived_path }}"
+        state: touch
+
+    - name: Load the current Keepalived configuration into a variable
+      ansible.builtin.include_vars:
+        file: "{{ _keepalived_path }}"
+        name: keepalived
+
+    - name: Generate Keepalived values for missing variables
+      ansible.builtin.set_fact:
+        keepalived: "{{ keepalived | default({}) | combine({item.key: item.value}) }}"
+      # NOTE(mnaser): We don't want to override existing Keepalived configurations,
+      #               so we generate a stub one if and only if it doesn't exist
+      when: item.key not in keepalived
+      # NOTE(mnaser): This is absolutely hideous but there's no clean way of
+      #               doing this using `with_fileglob` or `with_filetree`
+      with_dict:
+        keepalived_interface: ens4
+        keepalived_vip: 10.96.250.10
+
+    - name: Write new Keepalived configuration file to disk
+      ansible.builtin.copy:
+        content: "{{ keepalived | to_nice_yaml(indent=2, width=180) }}"
+        dest: "{{ _keepalived_path }}"
+
 - name: Generate endpoints for workspace
   hosts: localhost
   gather_facts: false
