@@ -12,13 +12,17 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Collect facts for all monitors
+- name: Collect "ceph mon dump" output from a monitor
+  delegate_to: "{{ groups[ceph_csi_rbd_mons_group][0] }}"
   run_once: true
-  delegate_to: "{{ item }}"
-  delegate_facts: true
-  ansible.builtin.setup:
-    gather_subset: network
-  loop: "{{ groups[ceph_csi_rbd_mons_group] }}"
+  ansible.builtin.command: ceph mon dump -f json
+  changed_when: false
+  register: _ceph_mon_dump
+
+- name: Generate fact with list of Ceph monitors
+  run_once: true
+  ansible.builtin.set_fact:
+    ceph_monitors: "{{ _ceph_mon_dump.stdout | from_json | community.general.json_query('mons[*].addr') | map('regex_replace', '(.*):(.*)', '\\1') }}"
 
 - name: Create Ceph pool
   vexxhost.atmosphere.ceph_pool:
@@ -55,7 +59,7 @@
     values:
       csiConfig:
         - clusterID: "{{ ceph_mon_fsid }}"
-          monitors: "{{ groups[ceph_csi_rbd_mons_group] | map('extract', hostvars, ['ansible_default_ipv4', 'address']) }}"
+          monitors: "{{ ceph_monitors }}"
       nodeplugin:
         httpMetrics:
           containerPort: 8081
