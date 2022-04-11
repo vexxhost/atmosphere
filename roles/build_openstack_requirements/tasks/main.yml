@@ -33,8 +33,11 @@
 - name: Add the Ubuntu Cloud Archive repository
   become: true
   ansible.builtin.apt_repository:
-    repo: deb http://ubuntu-cloud.archive.canonical.com/ubuntu focal-updates/wallaby main
+    repo: deb http://ubuntu-cloud.archive.canonical.com/ubuntu {{ ansible_distribution_release }}-updates/{{ _uca_release }} main
     state: present
+  vars:
+    # NOTE(mnaser): If we're building master, we'll use the latest possible Ubuntu cloud archive.
+    _uca_release: "{{ (build_openstack_requirements_release == 'master') | ternary('yoga', build_openstack_requirements_release) }}"
 
 - name: Install build requirements
   become: true
@@ -49,6 +52,7 @@
       - libssl-dev
       - libsystemd-dev
       - libvirt-dev
+      - pkg-config
     state: present
 
 - name: Remove certain dependencies from upper-constraints.txt

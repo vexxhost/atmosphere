@@ -21,8 +21,6 @@
       - zuul.d/playbooks/ansible-collection-atmosphere-build-wheels/run.yml
     post-run:
       - zuul.d/playbooks/ansible-collection-atmosphere-build-wheels/post-run.yml
-    files: &build-wheels-files
-      - roles/build_openstack_requirements/.*
     vars:
       build_openstack_requirements_wheels_directory: /tmp
 
@@ -33,7 +31,6 @@
       - zuul.d/playbooks/ansible-collection-atmosphere-merge-wheels/run.yml
     post-run:
       - zuul.d/playbooks/ansible-collection-atmosphere-merge-wheels/post-run.yml
-    files: *build-wheels-files
 
 - job:
     name: ansible-collection-atmosphere-promote-wheels
@@ -43,4 +40,3 @@
       download_artifact_job: "{{ zuul.job | replace('promote', 'merge') }}"
       download_artifact_type:
         - wheels
-    files: *build-wheels-files

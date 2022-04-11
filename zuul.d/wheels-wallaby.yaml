@@ -15,7 +15,8 @@
 - job:
     name: ansible-collection-atmosphere-build-wheels-wallaby
     parent: ansible-collection-atmosphere-build-wheels
-    files:
+    files: &build-wheels-files
+      - roles/build_openstack_requirements/.*
       - zuul.d/wheels-wallaby.yaml
     vars:
       build_openstack_requirements_release: wallaby
@@ -33,6 +34,7 @@
 - job:
     name: ansible-collection-atmosphere-merge-wheels-wallaby
     parent: ansible-collection-atmosphere-merge-wheels
+    files: *build-wheels-files
     dependencies:
       - ansible-collection-atmosphere-build-wheels-wallaby-amd64
       - ansible-collection-atmosphere-build-wheels-wallaby-aarch64
@@ -44,6 +46,7 @@
 - job:
     name: ansible-collection-atmosphere-promote-wheels-wallaby
     parent: ansible-collection-atmosphere-promote-wheels
+    files: *build-wheels-files
     vars:
       artifact_extra_name: wheels-wallaby
 
