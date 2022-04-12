@@ -41,3 +41,37 @@
         name: openstack
         namespace: openstack
       spec: "{{ cert_manager_issuer }}"
+
+- name: Create self-signed issuer
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: cert-manager.io/v1
+      kind: ClusterIssuer
+      metadata:
+        name: selfsigned-issuer
+      spec:
+        selfSigned: {}
+
+- name: Bootstrap a custom root certificate for a private PKI
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: cert-manager.io/v1
+      kind: Certificate
+      metadata:
+        name: selfsigned-ca
+        namespace: openstack
+      spec:
+        isCA: true
+        commonName: selfsigned-ca
+        secretName: root-secret
+        duration: 86400h # 3600d
+        renewBefore: 360h # 15d
+        privateKey:
+          algorithm: ECDSA
+          size: 256
+        issuerRef:
+          name: selfsigned-issuer
+          kind: ClusterIssuer
+          group: cert-manager.io
