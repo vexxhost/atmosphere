@@ -56,6 +56,15 @@ environment variables to tweak the behaviour of the Heat stack that is created:
 ``ATMOSPHERE_USERNAME``
   The username what is used to login into the instances (defaults to ``ubuntu``).
 
+``ATMOSPHERE_DNS_SUFFIX_NAME``
+  The DNS domainname that is used for the API and Horizon. (defaults
+  to ``nip.io``).
+
+``ATMOSPHERE_ACME_SERVER``
+  The ACME server, currenly this is from Letsencrypt, with
+  StepCA from smallstep it is possible to run a internal ACME server.
+  The CA of that ACME server should be present in the instance image.
+
 Once you're ready to get started, you can run the following command to build
 the Heat stack and ::
 
