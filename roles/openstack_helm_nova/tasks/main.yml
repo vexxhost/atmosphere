@@ -110,6 +110,23 @@
     openstack_helm_ingress_service_name: nova-novncproxy
     openstack_helm_ingress_service_port: 6080
 
+- name: Wait until compute api service ready
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    name: nova-api-osapi
+    namespace: openstack
+    wait_sleep: 10
+    wait_timeout: 600
+    wait: true
+    wait_condition:
+      type: Available
+      status: true
+
+- name: Install openstacksdk
+  ansible.builtin.pip:
+    name: openstacksdk
+
 - name: Create flavors
   openstack.cloud.compute_flavor:
     auth:
