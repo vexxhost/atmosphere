@@ -1,0 +1,40 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- hosts: all
+  tasks:
+    - name: Include manifest file with all the image information
+      ansible.builtin.include_vars:
+        file: "../../../images/{{ openstack_release }}.yml"
+        name: image_manifest
+
+    - name: Create manifest for every project built
+      command:
+        podman manifest create {{ item | basename }}:{{ image_manifest['projects'][item.rsplit('/')[-1]]['tag'] }}
+      loop: "{{ zuul.artifacts | selectattr('metadata.repository', 'defined') | map(attribute='metadata.repository') | sort | unique }}"
+
+    - name: Add image to their manifest
+      command:
+        podman manifest add
+          --arch {{ (item.metadata.arch == "aarch64") | ternary("arm64", "amd64") }}
+          {{ item.metadata.project }}:{{ image_manifest['projects'][item.metadata.project]['tag'] }}
+          {{ item.url }}
+      loop: "{{ zuul.artifacts | selectattr('metadata.type', 'defined') | selectattr('metadata.type', 'equalto', 'image') | list }}"
+
+    - name: Push manifests to buildset registry
+      command:
+        podman manifest push
+          {{ item | basename }}:{{ image_manifest['projects'][item.rsplit('/')[-1]]['tag'] }}
+          {{ item }}:{{ image_manifest['projects'][item.rsplit('/')[-1]]['tag'] }}
+      loop: "{{ zuul.artifacts | selectattr('metadata.repository', 'defined') | map(attribute='metadata.repository') | sort | unique }}"
