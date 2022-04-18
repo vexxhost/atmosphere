@@ -42,36 +42,63 @@
         namespace: openstack
       spec: "{{ cert_manager_issuer }}"
 
-- name: Create self-signed issuer
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: cert-manager.io/v1
-      kind: ClusterIssuer
-      metadata:
-        name: selfsigned-issuer
-      spec:
-        selfSigned: {}
-
-- name: Bootstrap a custom root certificate for a private PKI
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: cert-manager.io/v1
-      kind: Certificate
-      metadata:
-        name: selfsigned-ca
-        namespace: openstack
-      spec:
-        isCA: true
-        commonName: selfsigned-ca
-        secretName: root-secret
-        duration: 86400h # 3600d
-        renewBefore: 360h # 15d
-        privateKey:
-          algorithm: ECDSA
-          size: 256
-        issuerRef:
-          name: selfsigned-issuer
+- name: Bootstrap self-signed PKI
+  block:
+    - name: Create self-signed issuer
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: cert-manager.io/v1
           kind: ClusterIssuer
-          group: cert-manager.io
+          metadata:
+            name: selfsigned-issuer
+          spec:
+            selfSigned: {}
+
+    - name: Bootstrap a custom root certificate for a private PKI
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: cert-manager.io/v1
+          kind: Certificate
+          metadata:
+            name: selfsigned-ca
+            namespace: openstack
+          spec:
+            isCA: true
+            commonName: selfsigned-ca
+            secretName: root-secret
+            duration: 86400h # 3600d
+            renewBefore: 360h # 15d
+            privateKey:
+              algorithm: ECDSA
+              size: 256
+            issuerRef:
+              name: selfsigned-issuer
+              kind: ClusterIssuer
+              group: cert-manager.io
+
+    - name: Wait till the root secret is created
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Secret
+        wait: true
+        name: root-secret
+        namespace: openstack
+        wait_sleep: 10
+        wait_timeout: 300
+      register: _openstack_helm_root_secret
+
+    - name: Copy CA certificate on host
+      ansible.builtin.copy:
+        content: "{{ _openstack_helm_root_secret.resources[0].data['tls.crt'] | b64decode }}"
+        dest: "/usr/local/share/ca-certificates/self-signed-osh-ca.crt"
+        mode: "0644"
+
+    - name: Update ca certificates on host
+      ansible.builtin.command:
+        cmd: update-ca-certificates
+      changed_when: false
+  when:
+    - cert_manager_issuer.ca.secretName is defined
+    - cert_manager_issuer.ca.secretName == "root-secret"

@@ -29,7 +29,19 @@
         path: "{{ molecule_instance_config }}"
         state: absent
 
-    - shell: rm -rf {{ workspace_path }}/{{ item }}/*
-      loop:
-        - group_vars
-        - host_vars
+    - name: Capture var files to delete
+      find:
+        paths:
+          - "{{ workspace_path }}/group_vars"
+          - "{{ workspace_path }}/host_vars"
+        file_type: file
+        recurse: true
+        excludes:
+          - "molecule.yml"
+      register: _var_files
+
+    - name: Delete var files
+      file:
+        path: "{{ item.path }}"
+        state: absent
+      with_items: "{{ _var_files['files'] }}"
