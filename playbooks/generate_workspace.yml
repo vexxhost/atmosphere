@@ -159,7 +159,7 @@
       # NOTE(mnaser): This is absolutely hideous but there's no clean way of
       #               doing this using `with_fileglob` or `with_filetree`
       with_dict:
-        keepalived_interface: ens4
+        keepalived_interface: br-ex
         keepalived_vip: 10.96.250.10
 
     - name: Write new Keepalived configuration file to disk
@@ -297,7 +297,7 @@
       with_lines: >
         ls {{ playbook_dir }}/../roles/*/defaults/main.yml |
           xargs grep undef |
-            egrep -v '(_host|region_name|_ssh_key)' |
+            egrep -v '(_host|region_name|_ssh_key|_vip|_interface)' |
               cut -d':' -f2
 
     - name: Generate temporary files for generating keys for missing variables
