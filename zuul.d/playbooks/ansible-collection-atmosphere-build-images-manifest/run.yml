@@ -19,6 +19,11 @@
         file: "../../../images/{{ openstack_release }}.yml"
         name: image_manifest
 
+    - name: Login container registry
+      when: zuul.job is not search("build")
+      command:
+        podman login -u {{ docker_credentials.username }} -p {{ docker_credentials.password }} {{ image_manifest.registry }}
+
     - name: Create manifest for every project built
       command:
         podman manifest create {{ item | basename }}:{{ image_manifest['projects'][item.rsplit('/')[-1]]['tag'] }}
@@ -32,7 +37,7 @@
           {{ item.url }}
       loop: "{{ zuul.artifacts | selectattr('metadata.type', 'defined') | selectattr('metadata.type', 'equalto', 'image') | list }}"
 
-    - name: Push manifests to buildset registry
+    - name: Push manifests to container registry
       command:
         podman manifest push
           {{ item | basename }}:{{ image_manifest['projects'][item.rsplit('/')[-1]]['tag'] }}
