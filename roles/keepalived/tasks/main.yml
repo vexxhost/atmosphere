@@ -13,6 +13,7 @@
 # under the License.
 
 - name: Create Secret
+  when: keepalived_enabled | bool
   kubernetes.core.k8s:
     state: present
     definition:
@@ -46,6 +47,7 @@
           }
 
 - name: Create ConfigMap
+  when: keepalived_enabled | bool
   kubernetes.core.k8s:
     state: present
     definition:
@@ -70,6 +72,7 @@
           done
 
 - name: Create Role
+  when: keepalived_enabled | bool
   kubernetes.core.k8s:
     state: present
     definition:
@@ -88,6 +91,7 @@
             - get
 
 - name: Create ServiceAccount
+  when: keepalived_enabled | bool
   kubernetes.core.k8s:
     state: present
     definition:
@@ -99,6 +103,7 @@
         namespace: openstack
 
 - name: Create ServiceAccount
+  when: keepalived_enabled | bool
   kubernetes.core.k8s:
     state: present
     definition:
@@ -117,6 +122,7 @@
           namespace: openstack
 
 - name: Create DaemonSet
+  when: keepalived_enabled | bool
   kubernetes.core.k8s:
     state: present
     definition:
