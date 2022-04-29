@@ -209,6 +209,7 @@
       vars:
         default_map:
           openstack_helm_endpoints_region_name: "{{ region_name }}"
+          openstack_helm_endpoints_barbican_api_host: "key-manager.{{ domain_name }}"
           openstack_helm_endpoints_cinder_api_host: "volume.{{ domain_name }}"
           openstack_helm_endpoints_designate_api_host: "dns.{{ domain_name }}"
           openstack_helm_endpoints_glance_api_host: "image.{{ domain_name }}"
@@ -297,7 +298,21 @@
       with_lines: >
         ls {{ playbook_dir }}/../roles/*/defaults/main.yml |
           xargs grep undef |
-            egrep -v '(_host|region_name|_ssh_key|_vip|_interface)' |
+            egrep -v '(_host|region_name|_ssh_key|_vip|_interface|_kek)' |
+              cut -d':' -f2
+
+    - name: Generate base64 encoded secrets
+      ansible.builtin.set_fact:
+        secrets: "{{ secrets | default({}) | combine({item: lookup('password', '/dev/null chars=ascii_lowercase,ascii_uppercase,digits length=32') | b64encode}) }}"
+      # NOTE(mnaser): We don't want to override existing secrets, so we generate
+      #               a new one if and only if it doesn't exist
+      when: item not in secrets
+      # NOTE(mnaser): This is absolutely hideous but there's no clean way of
+      #               doing this using `with_fileglob` or `with_filetree`
+      with_lines: >
+        ls {{ playbook_dir }}/../roles/*/defaults/main.yml |
+          xargs grep undef |
+            egrep '(_kek)' |
               cut -d':' -f2
 
     - name: Generate temporary files for generating keys for missing variables
