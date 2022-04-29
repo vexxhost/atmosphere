@@ -1,0 +1,250 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+_kube_prometheus_stack_values:
+  alertmanager:
+    serviceMonitor:
+      relabelings:
+        - sourceLabels: ["__meta_kubernetes_pod_name"]
+          targetLabel: "instance"
+        - action: "labeldrop"
+          regex: "^(container|endpoint|namespace|pod|service)$"
+  grafana:
+    serviceMonitor:
+      relabelings:
+        - sourceLabels: ["__meta_kubernetes_pod_name"]
+          targetLabel: "instance"
+        - action: "labeldrop"
+          regex: "^(container|endpoint|namespace|pod|service)$"
+  kubeApiServer:
+    serviceMonitor:
+      relabelings:
+        - sourceLabels: ["__meta_kubernetes_pod_node_name"]
+          targetLabel: "instance"
+        - action: "labeldrop"
+          regex: "^(container|endpoint|namespace|pod|service)$"
+  kubelet:
+    serviceMonitor:
+      cAdvisorRelabelings:
+        - sourceLabels: [__metrics_path__]
+          targetLabel: metrics_path
+        - sourceLabels: ["node"]
+          targetLabel: "instance"
+        - action: "labeldrop"
+          regex: "^(container|endpoint|namespace|node|service)$"
+      probesRelabelings:
+        - sourceLabels: [__metrics_path__]
+          targetLabel: metrics_path
+        - sourceLabels: ["node"]
+          targetLabel: "instance"
+        - action: "labeldrop"
+          regex: "^(container|endpoint|namespace|node|service)$"
+      relabelings:
+        - sourceLabels: [__metrics_path__]
+          targetLabel: metrics_path
+        - sourceLabels: ["node"]
+          targetLabel: "instance"
+        - action: "labeldrop"
+          regex: "^(container|endpoint|namespace|node|service)$"
+  kubeControllerManager:
+    serviceMonitor:
+      relabelings:
+        - sourceLabels: ["__meta_kubernetes_pod_node_name"]
+          targetLabel: "instance"
+        - action: "labeldrop"
+          regex: "^(container|endpoint|namespace|pod|service)$"
+  coreDns:
+    serviceMonitor:
+      relabelings:
+        - sourceLabels: ["__meta_kubernetes_pod_name"]
+          targetLabel: "instance"
+        - regex: "^(container|endpoint|namespace|pod|service)$"
+          action: "labeldrop"
+  kubeEtcd:
+    serviceMonitor:
+      scheme: https
+      serverName: localhost
+      insecureSkipVerify: false
+      caFile: /etc/prometheus/secrets/kube-prometheus-stack-etcd-client-cert/ca.crt
+      certFile: /etc/prometheus/secrets/kube-prometheus-stack-etcd-client-cert/healthcheck-client.crt
+      keyFile: /etc/prometheus/secrets/kube-prometheus-stack-etcd-client-cert/healthcheck-client.key
+      relabelings:
+        - sourceLabels: ["__meta_kubernetes_pod_node_name"]
+          targetLabel: "instance"
+        - action: "labeldrop"
+          regex: "^(container|endpoint|namespace|pod|service)$"
+  kubeScheduler:
+    service:
+      port: 10259
+      targetPort: 10259
+    serviceMonitor:
+      https: true
+      insecureSkipVerify: true
+      relabelings:
+        - sourceLabels: ["__meta_kubernetes_pod_node_name"]
+          targetLabel: "instance"
+        - action: "labeldrop"
+          regex: "^(container|endpoint|namespace|pod|service)$"
+  kubeProxy:
+    serviceMonitor:
+      relabelings:
+        - sourceLabels: ["__meta_kubernetes_pod_node_name"]
+          targetLabel: "instance"
+        - action: "labeldrop"
+          regex: "^(container|endpoint|namespace|pod|service)$"
+  kube-state-metrics:
+    prometheus:
+      monitor:
+        relabelings:
+          - sourceLabels: ["__meta_kubernetes_pod_name"]
+            targetLabel: "instance"
+          - action: "labeldrop"
+            regex: "^(container|endpoint|namespace|pod|service)$"
+    nodeSelector:
+      openstack-control-plane: enabled
+  prometheus:
+    serviceMonitor:
+      relabelings:
+        - sourceLabels: ["__meta_kubernetes_pod_name"]
+          targetLabel: "instance"
+        - action: "labeldrop"
+          regex: "^(container|endpoint|namespace|pod|service)$"
+    prometheusSpec:
+      nodeSelector:
+        openstack-control-plane: enabled
+      secrets:
+        - kube-prometheus-stack-etcd-client-cert
+  prometheusOperator:
+    serviceMonitor:
+      relabelings:
+        - sourceLabels: ["__meta_kubernetes_pod_name"]
+          targetLabel: "instance"
+        - action: "labeldrop"
+          regex: "^(container|endpoint|namespace|pod|service)$"
+    nodeSelector:
+      openstack-control-plane: enabled
+  prometheus-node-exporter:
+    extraArgs:
+      - --collector.diskstats.ignored-devices=^(ram|loop|nbd|fd|(h|s|v|xv)d[a-z]|nvme\\d+n\\d+p)\\d+$
+      - --collector.filesystem.fs-types-exclude=^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|fusectl|fuse.squashfuse_ll|hugetlbfs|iso9660|mqueue|nsfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|sysfs|tracefs)$
+      - --collector.filesystem.mount-points-exclude=^/(dev|proc|run/credentials/.+|sys|var/lib/docker/.+|var/lib/kubelet/pods/.+|var/lib/kubelet/plugins/kubernetes.io/csi/.+|run/containerd/.+)($|/)
+      - --collector.netclass.ignored-devices=^(lxc|cilium_|qbr|qvb|qvo|ovs-system).*$
+      - --collector.netdev.device-exclude=^(lxc|cilium_|qbr|qvb|qvo|ovs-system).*$
+    prometheus:
+      monitor:
+        relabelings:
+          - sourceLabels: ["__meta_kubernetes_pod_node_name"]
+            targetLabel: "instance"
+          - action: "labeldrop"
+            regex: "^(container|endpoint|namespace|pod|service)$"
+  additionalPrometheusRulesMap:
+    coredns:
+      groups:
+        - name: coredns
+          rules:
+            - alert: CoreDNSDown
+              expr: absent(up{job="coredns"} == 1)
+              for: 15m
+              labels:
+                severity: critical
+            - alert: CoreDNSLatencyHigh
+              expr: histogram_quantile(0.99, sum(rate(coredns_dns_request_duration_seconds_bucket{job="coredns"}[5m])) by(server, zone, le)) > 4
+              for: 10m
+              labels:
+                severity: critical
+            - alert: CoreDNSErrorsHigh
+              expr:
+                sum(rate(coredns_dns_responses_total{job="coredns",rcode="SERVFAIL"}[5m]))
+                /
+                sum(rate(coredns_dns_responses_total{job="coredns"}[5m])) > 0.01
+              for: 10m
+              labels:
+                severity: warning
+            - alert: CoreDNSErrorsHigh
+              expr:
+                sum(rate(coredns_dns_responses_total{job="coredns",rcode="SERVFAIL"}[5m]))
+                /
+                sum(rate(coredns_dns_responses_total{job="coredns"}[5m])) > 0.03
+              for: 10m
+              labels:
+                severity: critical
+        - name: coredns_forward
+          rules:
+            - alert: CoreDNSForwardLatencyHigh
+              expr: histogram_quantile(0.99, sum(rate(coredns_forward_request_duration_seconds_bucket{job="coredns"}[5m])) by(to, le)) > 4
+              for: 10m
+              labels:
+                severity: critical
+            - alert: CoreDNSForwardErrorsHigh
+              expr:
+                sum(rate(coredns_forward_responses_total{job="coredns",rcode="SERVFAIL"}[5m]))
+                /
+                sum(rate(coredns_forward_responses_total{job="coredns"}[5m])) > 0.01
+              for: 10m
+              labels:
+                severity: warning
+            - alert: CoreDNSForwardErrorsHigh
+              expr:
+                sum(rate(coredns_forward_responses_total{job="coredns",rcode="SERVFAIL"}[5m]))
+                /
+                sum(rate(coredns_forward_responses_total{job="coredns"}[5m])) > 0.03
+              for: 10m
+              labels:
+                severity: critical
+            - alert: CoreDNSForwardHealthcheckFailureCount
+              expr: sum(rate(coredns_forward_healthcheck_failures_total{job="coredns"}[5m])) by (to) > 0
+              for: 2m
+              labels:
+                severity: warning
+            - alert: CoreDNSForwardHealthcheckBrokenCount
+              expr: sum(rate(coredns_forward_healthcheck_broken_total{job="coredns"}[5m])) > 0
+              for: 2m
+              labels:
+                severity: critical
+    node-exporter-local:
+      groups:
+        - name: node
+          rules:
+            - alert: NodeHighLoadAverage
+              expr: node_load5 / count(node_cpu_seconds_total{mode="system"}) without (cpu, mode) > 1.5
+              for: 30m
+              labels:
+                severity: warning
+            - alert: NodeHighMemoryUsage
+              expr: (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 < 2.5
+              for: 2m
+              labels:
+                severity: critical
+            - alert: NodeHighCpuUsage
+              expr: sum by(instance)(irate(node_cpu_seconds_total{mode='idle'}[5m])) < 1
+              for: 2m
+              labels:
+                severity: warning
+            - alert: NodeLowEntropy
+              expr: node_entropy_available_bits < 1000
+              for: 5m
+              labels:
+                severity: warning
+        - name: softnet
+          rules:
+            - alert: NodeSoftNetTimesSqueezed
+              expr: sum(rate(node_softnet_times_squeezed_total[1m])) by (instance) > 10
+              for: 10m
+              labels:
+                severity: warning
+            - alert: NodeSoftNetDrops
+              expr: sum(rate(node_softnet_dropped_total[1m])) by (instance) != 0
+              for: 1m
+              labels:
+                severity: critical
