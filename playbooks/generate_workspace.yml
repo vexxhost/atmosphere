@@ -257,18 +257,85 @@
       # NOTE(mnaser): We don't want to override existing Ceph configurations,
       #               so we generate a stub one if and only if it doesn't exist
       when: item.key not in neutron
-      # NOTE(mnaser): This is absolutely hideous but there's no clean way of
-      #               doing this using `with_fileglob` or `with_filetree`
       with_dict:
         openstack_helm_neutron_values:
           conf:
             auto_bridge_add:
               br-ex: ens4
+        openstack_helm_neutron_networks:
+          - name: public
+            external: true
+            shared: true
+            mtu_size: 1500
+            port_security_enabled: true
+            provider_network_type: flat
+            provider_physical_network: external
+            subnets:
+              - name: public-subnet
+                cidr: 10.96.250.0/24
+                gateway_ip: 10.96.250.1
+                allocation_pool_start: 10.96.250.200
+                allocation_pool_end: 10.96.250.220
+                dns_nameservers:
+                  - 1.1.1.1
+                  - 1.0.0.1
+                enable_dhcp: true
 
     - name: Write new Neutron configuration file to disk
       ansible.builtin.copy:
         content: "{{ neutron | to_nice_yaml(indent=2, width=180) }}"
         dest: "{{ _neutron_path }}"
+
+- name: Generate Nova configuration for workspace
+  hosts: localhost
+  gather_facts: false
+  vars:
+    _nova_path: "{{ workspace_path }}/group_vars/all/nova.yml"
+    # Input variables
+  tasks:
+    - name: Ensure the Nova configuration file exists
+      ansible.builtin.file:
+        path: "{{ _nova_path }}"
+        state: touch
+
+    - name: Load the current Nova configuration into a variable
+      ansible.builtin.include_vars:
+        file: "{{ _nova_path }}"
+        name: nova
+
+    - name: Generate Nova values for missing variables
+      ansible.builtin.set_fact:
+        nova: "{{ nova | default({}) | combine({item.key: item.value}) }}"
+      # NOTE(mnaser): We don't want to override existing Nova configurations,
+      #               so we generate a stub one if and only if it doesn't exist
+      when: item.key not in nova
+      with_dict:
+        openstack_helm_nova_flavors:
+          - name: m1.tiny
+            ram: 512
+            disk: 1
+            vcpus: 1
+          - name: m1.small
+            ram: 2048
+            disk: 20
+            vcpus: 1
+          - name: "m1.medium"
+            ram: 4096
+            disk: 40
+            vcpus: 2
+          - name: "m1.large"
+            ram: 8192
+            disk: 80
+            vcpus: 4
+          - name: "m1.xlarge"
+            ram: 16384
+            disk: 160
+            vcpus: 8
+
+    - name: Write new Nova configuration file to disk
+      ansible.builtin.copy:
+        content: "{{ nova | to_nice_yaml(indent=2, width=180) }}"
+        dest: "{{ _nova_path }}"
 
 - name: Generate secrets for workspace
   hosts: localhost

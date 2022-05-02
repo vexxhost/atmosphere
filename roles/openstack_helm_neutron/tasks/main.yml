@@ -37,6 +37,23 @@
     openstack_helm_ingress_service_name: neutron-server
     openstack_helm_ingress_service_port: 9696
 
+- name: Wait until network service ready
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    name: neutron-server
+    namespace: openstack
+    wait_sleep: 10
+    wait_timeout: 600
+    wait: true
+    wait_condition:
+      type: Available
+      status: true
+
+- name: Install openstacksdk
+  ansible.builtin.pip:
+    name: openstacksdk
+
 - name: Create networks
   openstack.cloud.network:
     auth:
