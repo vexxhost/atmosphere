@@ -25,7 +25,7 @@ _openstack_helm_keystone_values:
       keystone_credential_rotate: "{{ openstack_helm_keystone_image_repository }}/keystone:{{ openstack_helm_keystone_image_tag }}"
       keystone_credential_setup: "{{ openstack_helm_keystone_image_repository }}/keystone:{{ openstack_helm_keystone_image_tag }}"
       keystone_db_sync: "{{ openstack_helm_keystone_image_repository }}/keystone:{{ openstack_helm_keystone_image_tag }}"
-      keystone_domain_manage: "{{ openstack_helm_keystone_image_repository }}/keystone:{{ openstack_helm_keystone_image_tag }}"
+      keystone_domain_manage: "{{ openstack_helm_keystone_image_repository }}/heat:{{ openstack_helm_keystone_heat_image_tag }}"
       keystone_fernet_rotate: "{{ openstack_helm_keystone_image_repository }}/keystone:{{ openstack_helm_keystone_image_tag }}"
       keystone_fernet_setup: "{{ openstack_helm_keystone_image_repository }}/keystone:{{ openstack_helm_keystone_image_tag }}"
       ks_user: "{{ openstack_helm_keystone_image_repository }}/heat:{{ openstack_helm_keystone_heat_image_tag }}"
@@ -77,7 +77,7 @@ _openstack_helm_keystone_values:
         # TODO(mnaser): Lookup using openstack_helm_endpoints
         trusted_dashboard: "https://{{ openstack_helm_endpoints_horizon_api_host }}/auth/websso/"
       identity:
-        domain_configuration_from_database: true
+        domain_configurations_from_database: true
   manifests:
     job_credential_cleanup: false
     ingress_api: false
