@@ -114,17 +114,50 @@
               - "{{ image_manifest['projects'][item]['tag'] }}-{{ ansible_architecture }}"
 
     - name: Return artifacts to Zuul
-      zuul_return:
-        data:
-          zuul:
-            artifacts:
-              - name: "{{ item }} ({{ ansible_architecture }})"
-                url: "docker://{{ _docker_registry }}/{{ item }}:{{ image_manifest['projects'][item]['tag'] }}-{{ ansible_architecture }}"
-                metadata:
-                  type: image
-                  repository: "docker://{{ _docker_registry }}/{{ item }}"
-                  project: "{{ item }}"
-                  arch: "{{ ansible_architecture }}"
-      vars:
-        _docker_registry: "{{ (docker_registry is defined) | ternary(docker_registry, 'zuul-jobs.buildset-registry:5000') }}"
-      loop: "{{ _build_docker_image.results | map(attribute='item') | list }}"
+      block:
+        - name: Return artifacts to Zuul for build
+          when: zuul.job is search("build")
+          zuul_return:
+            data:
+              zuul:
+                artifacts:
+                  - name: "{{ item }} ({{ ansible_architecture }})"
+                    url: "docker://{{ _docker_registry }}/{{ item }}:{{ image_manifest['projects'][item]['tag'] }}-{{ ansible_architecture }}"
+                    metadata:
+                      type: image
+                      repository: "docker://{{ _docker_registry }}/{{ item }}"
+                      project: "{{ item }}"
+                      arch: "{{ ansible_architecture }}"
+          vars:
+            _docker_registry: "zuul-jobs.buildset-registry:5000"
+          loop: "{{ _build_docker_image.results | map(attribute='item') | list }}"
+
+        - name: Return artifacts to Zuul for upload
+          when: zuul.job is search("upload")
+          zuul_return:
+            data:
+              zuul:
+                artifacts:
+                  - name: "{{ item }} ({{ ansible_architecture }})"
+                    url: "docker://{{ image_manifest.registry }}/{{ item }}:{{ ('change_' + zuul.change) if (zuul.change is defined) else zuul.pipeline }}_{{ image_manifest['projects'][item]['tag'] }}-{{ ansible_architecture }}"
+                    metadata:
+                      type: image
+                      repository: "docker://{{ image_manifest.registry }}/{{ item }}"
+                      project: "{{ item }}"
+                      arch: "{{ ansible_architecture }}"
+          loop: "{{ _build_docker_image.results | map(attribute='item') | list }}"
+
+        - name: Return artifacts to Zuul for promote
+          when: zuul.job is search("promote")
+          zuul_return:
+            data:
+              zuul:
+                artifacts:
+                  - name: "{{ item }} ({{ ansible_architecture }})"
+                    url: "docker://{{ image_manifest.registry }}/{{ item }}:{{ image_manifest['projects'][item]['tag'] }}-{{ ansible_architecture }}"
+                    metadata:
+                      type: image
+                      repository: "docker://{{ image_manifest.registry }}/{{ item }}"
+                      project: "{{ item }}"
+                      arch: "{{ ansible_architecture }}"
+          loop: "{{ _build_docker_image.results | map(attribute='item') | list }}"
