@@ -30,6 +30,7 @@
     image: "{{ lookup('env', 'ATMOSPHERE_IMAGE') | default('Ubuntu 20.04.3 LTS (x86_64) [2021-10-04]', True) }}"
     instance_type: "{{ lookup('env', 'ATMOSPHERE_INSTANCE_TYPE') | default('v3-standard-4', True) }}"
     nameservers: "{{ lookup('env', 'ATMOSPHERE_NAMESERVERS') | default('1.1.1.1', True) }}"
+    boot_from_volume: "{{ lookup('env', 'ATMOSPHERE_BOOT_FROM_VOLUME') | bool }}"
   tasks:
     - name: create stack
       openstack.cloud.stack:
@@ -40,6 +41,7 @@
           image: "{{ image }}"
           instance_type: "{{ instance_type }}"
           nameservers: "{{ nameservers }}"
+          boot_from_volume: "{{  boot_from_volume }}"
       register: _os_stack
     - debug:
         msg: "{{ _os_stack.stack }}"
