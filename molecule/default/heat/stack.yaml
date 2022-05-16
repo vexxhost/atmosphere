@@ -40,6 +40,10 @@ parameters:
     constraints:
       - custom_constraint: glance.image
 
+  boot_from_volume:
+    type: boolean
+    default: false
+
   instance_type:
     type: string
     constraints:
@@ -123,6 +127,8 @@ resources:
           internal_network: { get_resource: internal_network }
           public_network: { get_param: public_network }
           external_network: { get_resource: external_network }
+          boot_volumes_size: 40
+          boot_from_volume: { get_param: boot_from_volume  }
 
   storage:
     type: OS::Heat::ResourceGroup
@@ -143,6 +149,8 @@ resources:
           external_network: { get_resource: external_network }
           extra_volumes_count: 3
           extra_volumes_size: 40
+          boot_volumes_size: 40
+          boot_from_volume: { get_param: boot_from_volume  }
 
   compute:
     type: OS::Heat::ResourceGroup
@@ -161,6 +169,8 @@ resources:
           internal_network: { get_resource: internal_network }
           public_network: { get_param: public_network }
           external_network: { get_resource: external_network }
+          boot_volumes_size: 40
+          boot_from_volume: { get_param: boot_from_volume  }
 
 outputs:
   controller_floating_ip_addresses:
