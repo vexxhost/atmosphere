@@ -67,14 +67,7 @@
 
     - name: Upload images
       openstack.cloud.image:
-        auth:
-          auth_url: "https://{{ openstack_helm_endpoints['identity']['host_fqdn_override']['public']['host'] }}"
-          username: "{{ openstack_helm_endpoints['identity']['auth']['admin']['username'] }}"
-          password: "{{ openstack_helm_endpoints['identity']['auth']['admin']['password'] }}"
-          project_name: admin
-          user_domain_name: Default
-          project_domain_name: Default
-        region_name: "{{ openstack_helm_endpoints['identity']['auth']['glance']['region_name'] }}"
+        cloud: atmosphere
         name: "{{ item.name }}"
         state: present
         filename: "/tmp/{{ item.image_file }}"

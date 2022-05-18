@@ -56,14 +56,7 @@
 
 - name: Create networks
   openstack.cloud.network:
-    auth:
-      auth_url: "https://{{ openstack_helm_endpoints['identity']['host_fqdn_override']['public']['host'] }}"
-      username: "{{ openstack_helm_endpoints['identity']['auth']['admin']['username'] }}"
-      password: "{{ openstack_helm_endpoints['identity']['auth']['admin']['password'] }}"
-      project_name: admin
-      user_domain_name: Default
-      project_domain_name: Default
-    region_name: "{{ openstack_helm_endpoints['identity']['auth']['neutron']['region_name'] }}"
+    cloud: atmosphere
     # Network settings
     name: "{{ item.name }}"
     external: "{{ item.external | default(omit) }}"
@@ -77,14 +70,7 @@
 
 - name: Create subnets
   openstack.cloud.subnet:
-    auth:
-      auth_url: "https://{{ openstack_helm_endpoints['identity']['host_fqdn_override']['public']['host'] }}"
-      username: "{{ openstack_helm_endpoints['identity']['auth']['admin']['username'] }}"
-      password: "{{ openstack_helm_endpoints['identity']['auth']['admin']['password'] }}"
-      project_name: admin
-      user_domain_name: Default
-      project_domain_name: Default
-    region_name: "{{ openstack_helm_endpoints['identity']['auth']['neutron']['region_name'] }}"
+    cloud: atmosphere
     # Subnet settings
     network_name: "{{ item.0.name }}"
     name: "{{ item.1.name }}"
