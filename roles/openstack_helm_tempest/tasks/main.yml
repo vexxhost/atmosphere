@@ -24,13 +24,7 @@
   block:
     - name: Get test image object
       openstack.cloud.image_info:
-        auth:
-          auth_url: "https://{{ openstack_helm_endpoints['identity']['host_fqdn_override']['public']['host'] }}"
-          username: "{{ openstack_helm_endpoints['identity']['auth']['admin']['username'] }}"
-          password: "{{ openstack_helm_endpoints['identity']['auth']['admin']['password'] }}"
-          project_name: admin
-          user_domain_name: Default
-          project_domain_name: Default
+        cloud: atmosphere
         image: cirros
       register: _openstack_helm_tempest_test_image
       when: openstack_helm_tempest_values.conf.tempest.compute.image_ref is not defined
@@ -49,13 +43,7 @@
 
     - name: Get test flavor object
       openstack.cloud.compute_flavor_info:
-        auth:
-          auth_url: "https://{{ openstack_helm_endpoints['identity']['host_fqdn_override']['public']['host'] }}"
-          username: "{{ openstack_helm_endpoints['identity']['auth']['admin']['username'] }}"
-          password: "{{ openstack_helm_endpoints['identity']['auth']['admin']['password'] }}"
-          project_name: admin
-          user_domain_name: Default
-          project_domain_name: Default
+        cloud: atmosphere
         name: m1.tiny
       register: _openstack_helm_tempest_test_flavor
       when: openstack_helm_tempest_values.conf.tempest.compute.flavor_ref is not defined
@@ -74,13 +62,7 @@
 
     - name: Get test network object
       openstack.cloud.networks_info:
-        auth:
-          auth_url: "https://{{ openstack_helm_endpoints['identity']['host_fqdn_override']['public']['host'] }}"
-          username: "{{ openstack_helm_endpoints['identity']['auth']['admin']['username'] }}"
-          password: "{{ openstack_helm_endpoints['identity']['auth']['admin']['password'] }}"
-          project_name: admin
-          user_domain_name: Default
-          project_domain_name: Default
+        cloud: atmosphere
         name: public
       register: _openstack_helm_tempest_test_network
       when: openstack_helm_tempest_values.conf.tempest.network.public_network_id is not defined
