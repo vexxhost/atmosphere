@@ -25,12 +25,15 @@
     ceph_monitors: "{{ _ceph_mon_dump.stdout | from_json | community.general.json_query('mons[*].addr') | map('regex_replace', '(.*):(.*)', '\\1') }}"
 
 - name: Create Ceph pool
+  delegate_to: "{{ groups[ceph_csi_rbd_mons_group][0] }}"
   vexxhost.atmosphere.ceph_pool:
     name: "{{ ceph_csi_rbd_pool }}"
+    rule_name: "{{ ceph_csi_rbd_rule_name | default(omit) }}"
     application: rbd
     pg_autoscale_mode: "on"
 
 - name: Create {{ ceph_csi_rbd_user }} user
+  delegate_to: "{{ groups[ceph_csi_rbd_mons_group][0] }}"
   vexxhost.atmosphere.ceph_key:
     name: "{{ ceph_csi_rbd_user }}"
     caps:
@@ -39,6 +42,7 @@
       osd: profile rbd pool={{ ceph_csi_rbd_pool }}
 
 - name: Retrieve {{ ceph_csi_rbd_user }} keyring
+  delegate_to: "{{ groups[ceph_csi_rbd_mons_group][0] }}"
   vexxhost.atmosphere.ceph_key:
     name: "{{ ceph_csi_rbd_user }}"
     state: info
@@ -58,7 +62,7 @@
     kubeconfig: /etc/kubernetes/admin.conf
     values:
       csiConfig:
-        - clusterID: "{{ ceph_mon_fsid }}"
+        - clusterID: "{{ ceph_csi_rbd_ceph_fsid }}"
           monitors: "{{ ceph_monitors }}"
       nodeplugin:
         httpMetrics:
