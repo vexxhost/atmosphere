@@ -37,16 +37,18 @@ _openstack_helm_endpoints_oslo_db:
 _openstack_helm_endpoints_oslo_messaging:
   oslo_messaging:
     auth:
-      erlang_cookie: "{{ openstack_helm_endpoints_rabbitmq_erlang_cookie }}"
       user:
-        password: "{{ openstack_helm_endpoints_rabbitmq_admin_password }}"
+        username: "{{ _openstack_helm_endpoints_rabbitmq_cluster_username }}"
+        password: "{{ _openstack_helm_endpoints_rabbitmq_cluster_password }}"
       # NOTE(mnaser): The following is not actually used by the chart, however,
       #               since we are actually doing dynamic lookups to generate
       #               endpoints, we add it here.
       admin:
-        password: "{{ openstack_helm_endpoints_rabbitmq_admin_password }}"
-    statefulset:
-      replicas: 3
+        username: "{{ _openstack_helm_endpoints_rabbitmq_cluster_username }}"
+        password: "{{ _openstack_helm_endpoints_rabbitmq_cluster_password }}"
+    statefulset: null
+    hosts:
+      default: "rabbitmq-{{ openstack_helm_endpoints_chart }}"
 
 _openstack_helm_endpoints_oslo_cache:
   oslo_cache:

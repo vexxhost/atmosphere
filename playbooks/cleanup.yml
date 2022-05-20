@@ -12,18 +12,24 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-galaxy_info:
-  author: VEXXHOST, Inc.
-  description: Ansible role for RabbitMQ
-  license: Apache-2.0
-  min_ansible_version: 5.5.0
-  platforms:
-    - name: Ubuntu
-      versions:
-        - focal
+- name: Clean-up legacy RabbitMQ cluster
+  hosts: controllers[0]
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Delete the Helm release
+      kubernetes.core.helm:
+        name: rabbitmq
+        namespace: openstack
+        kubeconfig: /etc/kubernetes/admin.conf
+        state: absent
+        wait: true
 
-dependencies:
-  - role: helm_repository
-    vars:
-      helm_repository_name: "{{ openstack_helm_infra_rabbitmq_chart_repo_name }}"
-      helm_repository_repo_url: "{{ openstack_helm_infra_rabbitmq_chart_repo_url }}"
+    - name: Delete the PVCs
+      kubernetes.core.k8s:
+        state: absent
+        api_version: v1
+        kind: PersistentVolumeClaim
+        namespace: openstack
+        name: "rabbitmq-data-rabbitmq-rabbitmq-{{ item }}"
+      loop: "{{ range(0, 3) | list }}"

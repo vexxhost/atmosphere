@@ -26,6 +26,34 @@
   when:
     - openstack_helm_endpoints_list is not defined or openstack_helm_endpoints_list == None
 
+# NOTE(mnaser): Since we manage one-RabbitMQ per service, we create the RabbitMQ
+#               cluster here and then append the necessary values to be used
+#               inside the `oslo_messaging` section.
+- name: Configure oslo.messaging
+  block:
+    - name: Create RabbitMQ cluster
+      ansible.builtin.include_role:
+        name: rabbitmq
+      vars:
+        rabbitmq_cluster_name: "{{ openstack_helm_endpoints_chart }}"
+
+    - name: Grab RabbitMQ cluster secret
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Secret
+        name: "rabbitmq-{{ openstack_helm_endpoints_chart }}-default-user"
+        namespace: openstack
+      register: _openstack_helm_endpoints_rabbitmq_cluster_secret
+
+    - name: Cache fact with RabbitMQ cluster credentials
+      ansible.builtin.set_fact:
+        _openstack_helm_endpoints_rabbitmq_cluster_username: |-
+          {{ _openstack_helm_endpoints_rabbitmq_cluster_secret.resources[0]['data']['username'] | b64decode }}
+        _openstack_helm_endpoints_rabbitmq_cluster_password: |-
+          {{ _openstack_helm_endpoints_rabbitmq_cluster_secret.resources[0]['data']['password'] | b64decode }}
+  when:
+    - '"oslo_messaging" in openstack_helm_endpoints_list'
+
 # NOTE(mnaser): Since we deploy the database using the operator and we let it
 #               generate the root password, we look it up if the fact has not
 #               been cached from a previous run.

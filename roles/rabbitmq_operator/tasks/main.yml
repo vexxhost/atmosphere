@@ -12,78 +12,52 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Generate OpenStack-Helm endpoints
-  ansible.builtin.include_role:
-    name: openstack_helm_endpoints
-  vars:
-    openstack_helm_endpoints_repo_name: "{{ openstack_helm_infra_rabbitmq_chart_repo_name }}"
-    openstack_helm_endpoints_repo_url: "{{ openstack_helm_infra_rabbitmq_chart_repo_url }}"
-    openstack_helm_endpoints_chart: "{{ openstack_helm_infra_rabbitmq_chart_name }}"
-
 - name: Deploy Helm chart
   kubernetes.core.helm:
-    name: "{{ openstack_helm_infra_rabbitmq_chart_name }}"
-    chart_ref: "{{ openstack_helm_infra_rabbitmq_chart_repo_name }}/{{ openstack_helm_infra_rabbitmq_chart_name }}"
-    chart_version: 0.1.15
+    name: rabbitmq-cluster-operator
+    chart_ref: bitnami/rabbitmq-cluster-operator
+    chart_version: 2.5.2
     release_namespace: openstack
     kubeconfig: /etc/kubernetes/admin.conf
     values:
-      endpoints: "{{ openstack_helm_endpoints }}"
-      images:
-        tags:
-          dep_check: "{{ openstack_helm_infra_rabbitmq_image_repository }}/kubernetes-entrypoint:latest"
-          rabbitmq_init: "{{ openstack_helm_infra_rabbitmq_image_repository }}/cli:latest"
-          rabbitmq: "{{ openstack_helm_infra_rabbitmq_image_repository }}/rabbitmq:3.8.23"
-      pod:
-        replicas:
-          server: 3
-      conf:
-        enabled_plugins:
-          - rabbitmq_management
-          - rabbitmq_peer_discovery_k8s
-          - rabbitmq_prometheus
-      volume:
-        size: 10Gi
-      manifests:
-        ingress_management: false
+      rabbitmqImage:
+        repository: library/rabbitmq
+        tag: 3.10.2-management
+      credentialUpdaterImage:
+        repository: rabbitmqoperator/default-user-credential-updater
+        tag: 1.0.2
+      clusterOperator:
+        image:
+          repository: rabbitmqoperator/cluster-operator
+          tag: 1.13.1
+        fullnameOverride: rabbitmq-cluster-operator
+        nodeSelector:
+          openstack-control-plane: enabled
+      msgTopologyOperator:
+        image:
+          repository: rabbitmqoperator/messaging-topology-operator
+          tag: 1.6.0
+        fullnameOverride: rabbitmq-messaging-topology-operator
+        nodeSelector:
+          openstack-control-plane: enabled
+      useCertManager: true
 
-- name: Create Service for metrics
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: v1
-      kind: Service
-      metadata:
-        name: rabbitmq-metrics
-        namespace: openstack
-        labels:
-          application: rabbitmq
-          component: server
-      spec:
-        selector:
-          application: rabbitmq
-          component: server
-        ports:
-          - name: metrics
-            port: 15692
-            targetPort: 15692
-
-- name: Create ServiceMonitor
+- name: Create PodMonitor
   kubernetes.core.k8s:
     state: present
     definition:
       apiVersion: monitoring.coreos.com/v1
-      kind: ServiceMonitor
+      kind: PodMonitor
       metadata:
         name: rabbitmq
         namespace: monitoring
         labels:
           release: kube-prometheus-stack
       spec:
-        jobLabel: application
-        endpoints:
-          - port: "metrics"
-            path: "/metrics"
+        jobLabel: app.kubernetes.io/component
+        podMetricsEndpoints:
+          - port: prometheus
+            path: /metrics
             relabelings:
               - sourceLabels: ["__meta_kubernetes_pod_name"]
                 targetLabel: "instance"
@@ -94,8 +68,7 @@
             - openstack
         selector:
           matchLabels:
-            application: rabbitmq
-            component: server
+            app.kubernetes.io/component: rabbitmq
 
 - name: Create PrometheusRule
   kubernetes.core.k8s:
@@ -110,23 +83,8 @@
           release: kube-prometheus-stack
       spec:
         groups:
-          - name: rules
+          - name: limits
             rules:
-              - alert: RabbitmqDown
-                expr: absent(rabbitmq_build_info)
-                for: 1m
-                labels:
-                  severity: critical
-              - alert: RabbitmqNodeDown
-                expr: sum(rabbitmq_build_info) < 3
-                for: 1m
-                labels:
-                  severity: critical
-              - alert: RabbitmqNodeNotDistributed
-                expr: erlang_vm_dist_node_state < 3
-                for: 1m
-                labels:
-                  severity: critical
               - alert: RabbitmqMemoryHigh
                 expr: rabbitmq_process_resident_memory_bytes / rabbitmq_resident_memory_limit_bytes > 0.80
                 labels:
@@ -143,6 +101,12 @@
                 expr: rabbitmq_process_open_fds / rabbitmq_process_max_fds > 0.95
                 labels:
                   severity: critical
+              - alert: RabbitmqConnections
+                expr: rabbitmq_connections > 1000
+                labels:
+                  severity: warning
+          - name: msgs
+            rules:
               - alert: RabbitmqUnackedMessages
                 expr: sum(rabbitmq_queue_messages_unacked) BY (queue) > 1000
                 for: 5m
@@ -153,7 +117,3 @@
                 for: 1h
                 labels:
                   severity: critical
-              - alert: RabbitmqConnections
-                expr: rabbitmq_connections > 1000
-                labels:
-                  severity: warning
