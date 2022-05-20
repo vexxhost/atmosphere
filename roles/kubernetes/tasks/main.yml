@@ -114,9 +114,7 @@
     name: "{{ inventory_hostname_short }}"
     definition:
       metadata:
-        labels:
-          openstack-control-plane: enabled
-          openvswitch: enabled
+        labels: "{{ kubernetes_control_plane_labels }}"
   when:
     - inventory_hostname in groups['controllers']
 
@@ -128,8 +126,6 @@
     name: "{{ inventory_hostname_short }}"
     definition:
       metadata:
-        labels:
-          openstack-compute-node: enabled
-          openvswitch: enabled
+        labels: "{{ kubernetes_compute_node_labels }}"
   when:
     - inventory_hostname in groups['computes']
