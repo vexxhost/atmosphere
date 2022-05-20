@@ -13,6 +13,7 @@
 # under the License.
 
 - name: Upload configuration for Keepalived
+  when: kubernetes_keepalived_interface is defined
   block:
     - name: Create folder
       ansible.builtin.file:
@@ -42,6 +43,7 @@
         mode: 0644
 
 - name: Upload configuration for HAproxy
+  when: kubernetes_keepalived_interface is defined
   block:
     - name: Create folder
       ansible.builtin.file:
