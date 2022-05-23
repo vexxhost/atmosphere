@@ -30,6 +30,17 @@
         - name: etc-ssl-certs
           mountPath: /etc/ssl/certs
           readOnly: true
+      nodeSelector:
+        openstack-control-plane: enabled
+      webhook:
+        nodeSelector:
+          openstack-control-plane: enabled
+      cainjector:
+        nodeSelector:
+          openstack-control-plane: enabled
+      startupapicheck:
+        nodeSelector:
+          openstack-control-plane: enabled
 
 - name: Create issuer
   kubernetes.core.k8s:

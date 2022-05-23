@@ -20,6 +20,9 @@ _kube_prometheus_stack_values:
           targetLabel: "instance"
         - action: "labeldrop"
           regex: "^(container|endpoint|namespace|pod|service)$"
+    alertmanagerSpec:
+      nodeSelector:
+        openstack-control-plane: enabled
   grafana:
     serviceMonitor:
       relabelings:
@@ -27,6 +30,8 @@ _kube_prometheus_stack_values:
           targetLabel: "instance"
         - action: "labeldrop"
           regex: "^(container|endpoint|namespace|pod|service)$"
+    nodeSelector:
+      openstack-control-plane: enabled
   kubeApiServer:
     serviceMonitor:
       relabelings:
@@ -126,6 +131,10 @@ _kube_prometheus_stack_values:
       secrets:
         - kube-prometheus-stack-etcd-client-cert
   prometheusOperator:
+    admissionWebhooks:
+      patch:
+        nodeSelector:
+          openstack-control-plane: enabled
     serviceMonitor:
       relabelings:
         - sourceLabels: ["__meta_kubernetes_pod_name"]
