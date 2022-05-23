@@ -1,0 +1,35 @@
+---
+# .. vim: foldmarker=[[[,]]]:foldmethod=marker
+
+# .. Copyright (C) 2022 VEXXHOST, Inc.
+# .. SPDX-License-Identifier: Apache-2.0
+
+# Default variables
+# =================
+
+# .. contents:: Sections
+#    :local:
+
+
+# .. envvar:: ipmi_exporter_config [[[
+#
+# Configuration for the IPMI exporter
+ipmi_exporter_config:
+  modules:
+    default:
+      collectors: ["bmc", "ipmi", "chassis", "sel"]
+      exclude_sensor_ids: [50, 52, 54, 82]
+
+                                                                   # ]]]
+# .. envvar:: ipmi_exporter_image_repository [[[
+#
+# Keepalived container image repository location
+ipmi_exporter_image_repository: "{{ atmosphere_image_repository | default('us-docker.pkg.dev/vexxhost-infra/openstack') }}"
+
+                                                                   # ]]]
+# .. envvar:: ipmi_exporter_image_tag [[[
+#
+# Keepalived container image tag
+ipmi_exporter_image_tag: 1.4.0
+
+                                                                   # ]]]
