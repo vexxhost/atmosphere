@@ -13,6 +13,11 @@
 # under the License.
 
 _kube_prometheus_stack_values:
+  defaultRules:
+    disabled:
+      # NOTE(mnaser): https://github.com/prometheus-community/helm-charts/issues/144
+      #               https://github.com/openshift/cluster-monitoring-operator/issues/248
+      etcdHighNumberOfFailedGRPCRequests: true
   alertmanager:
     serviceMonitor:
       relabelings:
