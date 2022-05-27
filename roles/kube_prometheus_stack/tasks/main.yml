@@ -27,15 +27,14 @@
     src: /etc/kubernetes/pki/etcd/healthcheck-client.key
   register: _etcd_healthcheck_client_key
 
-- name: Deploy Helm chart
-  kubernetes.core.helm:
-    name: kube-prometheus-stack
-    chart_ref: prometheus-community/kube-prometheus-stack
-    chart_version: 30.2.0
-    release_namespace: monitoring
-    create_namespace: true
-    kubeconfig: /etc/kubernetes/admin.conf
-    values: "{{ _kube_prometheus_stack_values | combine(kube_prometheus_stack_values, recursive=True) }}"
+- name: Create namespace
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: monitoring
 
 - name: Create Secret with "etcd" TLS certificates
   kubernetes.core.k8s:
@@ -50,3 +49,13 @@
         ca.crt: "{{ _etcd_ca_crt.content }}"
         healthcheck-client.crt: "{{ _etcd_healthcheck_client_crt.content }}"
         healthcheck-client.key: "{{ _etcd_healthcheck_client_key.content }}"
+
+- name: Deploy Helm chart
+  kubernetes.core.helm:
+    name: kube-prometheus-stack
+    chart_ref: prometheus-community/kube-prometheus-stack
+    chart_version: 30.2.0
+    release_namespace: monitoring
+    kubeconfig: /etc/kubernetes/admin.conf
+    values: "{{ _kube_prometheus_stack_values | combine(kube_prometheus_stack_values, recursive=True) }}"
+    wait: true
