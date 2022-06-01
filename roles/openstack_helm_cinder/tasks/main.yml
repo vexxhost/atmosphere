@@ -36,6 +36,4 @@
     openstack_helm_ingress_endpoint: volumev3
     openstack_helm_ingress_service_name: cinder-api
     openstack_helm_ingress_service_port: 8776
-    openstack_helm_ingress_annotations:
-      nginx.ingress.kubernetes.io/proxy-body-size: "0"
-      nginx.ingress.kubernetes.io/proxy-request-buffering: "off"
+    openstack_helm_ingress_annotations: "{{ _openstack_helm_cinder_ingress_annotations | combine(openstack_helm_cinder_ingress_annotations) }}"
