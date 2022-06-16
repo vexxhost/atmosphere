@@ -85,6 +85,12 @@
     mode: 0600
     remote_src: true
 
+- name: add bash autocomplete for kubectl
+  ansible.builtin.lineinfile:
+    path: /root/.bashrc
+    line: 'source <(kubectl completion bash)'
+    insertbefore: EOF
+
 - name: install pip
   ansible.builtin.apt:
     name: python3-pip

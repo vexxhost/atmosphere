@@ -32,3 +32,9 @@
   ansible.builtin.apt:
     name: ["helm"]
     install_recommends: false
+
+- name: add bash autocomplete for helm
+  ansible.builtin.lineinfile:
+    path: /root/.bashrc
+    line: 'source <(helm completion bash)'
+    insertbefore: EOF
