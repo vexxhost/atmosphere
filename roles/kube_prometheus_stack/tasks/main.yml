@@ -50,11 +50,33 @@
         healthcheck-client.crt: "{{ _etcd_healthcheck_client_crt.content }}"
         healthcheck-client.key: "{{ _etcd_healthcheck_client_key.content }}"
 
+- name: Create CRDs for Prometheus Operator
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('ansible.builtin.url', 'https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.57.0/example/prometheus-operator-crd/monitoring.coreos.com_' ~ item ~ '.yaml', split_lines=false) | regex_replace('- =$', '- \"=\"', multiline=True) | from_yaml_all }}" # yamllint disable-line rule:line-length
+    apply: true
+    server_side_apply:
+      field_manager: Atmosphere
+      force_conflicts: true
+  loop:
+    - alertmanagerconfigs
+    - alertmanagers
+    - podmonitors
+    - probes
+    - prometheuses
+    - prometheusrules
+    - servicemonitors
+    - thanosrulers
+  # NOTE(mnaser): We replace `- =` with `- "="` to avoid a YAML error, this also
+  #               breaks idempotency so we flip to `changed_when: false`.
+  #               See: https://github.com/yaml/pyyaml/issues/619
+  changed_when: false
+
 - name: Deploy Helm chart
   kubernetes.core.helm:
     name: kube-prometheus-stack
     chart_ref: prometheus-community/kube-prometheus-stack
-    chart_version: 30.2.0
+    chart_version: 36.2.0
     release_namespace: monitoring
     kubeconfig: /etc/kubernetes/admin.conf
     values: "{{ _kube_prometheus_stack_values | combine(kube_prometheus_stack_values, recursive=True) }}"
