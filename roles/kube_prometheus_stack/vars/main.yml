@@ -135,6 +135,25 @@ _kube_prometheus_stack_values:
         openstack-control-plane: enabled
       secrets:
         - kube-prometheus-stack-etcd-client-cert
+    additionalServiceMonitors:
+      - name: ceph
+        selector:
+          matchLabels:
+            application: ceph
+        jobLabel: application
+        namespaceSelector:
+          matchNames:
+            - openstack
+        endpoints:
+          - port: metrics
+            honorLabels: true
+            relabelings:
+              - action: replace
+                regex: (.*)
+                replacement: ceph
+                targetLabel: cluster
+              - action: "labeldrop"
+                regex: "^(container|endpoint|namespace|pod|service)$"
   prometheusOperator:
     admissionWebhooks:
       patch:
@@ -153,8 +172,8 @@ _kube_prometheus_stack_values:
       - --collector.diskstats.ignored-devices=^(ram|loop|nbd|fd|(h|s|v|xv)d[a-z]|nvme\\d+n\\d+p)\\d+$
       - --collector.filesystem.fs-types-exclude=^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|fusectl|fuse.squashfuse_ll|hugetlbfs|iso9660|mqueue|nsfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|sysfs|tracefs)$
       - --collector.filesystem.mount-points-exclude=^/(dev|proc|run/credentials/.+|sys|var/lib/docker/.+|var/lib/kubelet/pods/.+|var/lib/kubelet/plugins/kubernetes.io/csi/.+|run/containerd/.+)($|/)
-      - --collector.netclass.ignored-devices=^(lxc|cilium_|qbr|qvb|qvo|ovs-system).*$
-      - --collector.netdev.device-exclude=^(lxc|cilium_|qbr|qvb|qvo|ovs-system).*$
+      - --collector.netclass.ignored-devices=^(lxc|cilium_|qbr|qvb|qvo|tap|ovs-system|br).*$
+      - --collector.netdev.device-exclude=^(lxc|cilium_|qbr|qvb|qvo|tap|ovs-system|br).*$
     prometheus:
       monitor:
         relabelings:
@@ -163,6 +182,7 @@ _kube_prometheus_stack_values:
           - action: "labeldrop"
             regex: "^(container|endpoint|namespace|pod|service)$"
   additionalPrometheusRulesMap:
+    ceph: "{{ lookup('ansible.builtin.file', 'prometheus_alerts.yml') | from_yaml }}"
     coredns:
       groups:
         - name: coredns

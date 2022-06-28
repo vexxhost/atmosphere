@@ -14,7 +14,7 @@ GALAXY_YML = {
         'ansible.utils': '2.5.2',
         'community.crypto': '2.2.3',
         'community.general': '4.5.0',
-        'kubernetes.core': '2.2.3',
+        'kubernetes.core': '2.3.2',
         'openstack.cloud': '1.7.0',
     },
     'build_ignore': [
