@@ -78,12 +78,12 @@
     group: root
     mode: 0750
 
-- name: copy admin configuration file
-  ansible.builtin.copy:
+- name: Creating a symlink for admin configuration file
+  ansible.builtin.file:
     src: /etc/kubernetes/admin.conf
     dest: /root/.kube/config
-    mode: 0600
-    remote_src: true
+    state: link
+    force: true
 
 - name: add bash autocomplete for kubectl
   ansible.builtin.lineinfile:
