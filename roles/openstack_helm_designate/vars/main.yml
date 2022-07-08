@@ -1,0 +1,33 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+_openstack_helm_designate_values:
+  endpoints: "{{ openstack_helm_endpoints }}"
+  images:
+    tags:
+      bootstrap: "{{ openstack_helm_designate_image_repository }}/heat:{{ openstack_helm_designate_heat_image_tag }}"
+      db_init: "{{ openstack_helm_designate_image_repository }}/heat:{{ openstack_helm_designate_heat_image_tag }}"
+      db_drop: "{{ openstack_helm_designate_image_repository }}/heat:{{ openstack_helm_designate_heat_image_tag }}"
+      rabbit_init: "{{ openstack_helm_designate_image_repository }}/rabbitmq:3.8.23-management"
+      ks_user: "{{ openstack_helm_designate_image_repository }}/heat:{{ openstack_helm_designate_heat_image_tag }}"
+      ks_service: "{{ openstack_helm_designate_image_repository }}/heat:{{ openstack_helm_designate_heat_image_tag }}"
+      ks_endpoints: "{{ openstack_helm_designate_image_repository }}/heat:{{ openstack_helm_designate_heat_image_tag }}"
+      dep_check: "{{ openstack_helm_designate_image_repository }}/kubernetes-entrypoint:latest"
+      designate_db_sync: "{{ openstack_helm_designate_image_repository }}/designate:{{ openstack_helm_designate_image_tag }}"
+      designate_api: "{{ openstack_helm_designate_image_repository }}/designate:{{ openstack_helm_designate_image_tag }}"
+      designate_central: "{{ openstack_helm_designate_image_repository }}/designate:{{ openstack_helm_designate_image_tag }}"
+      designate_mdns: "{{ openstack_helm_designate_image_repository }}/designate:{{ openstack_helm_designate_image_tag }}"
+      designate_worker: "{{ openstack_helm_designate_image_repository }}/designate:{{ openstack_helm_designate_image_tag }}"
+      designate_producer: "{{ openstack_helm_designate_image_repository }}/designate:{{ openstack_helm_designate_image_tag }}"
+      designate_sink: "{{ openstack_helm_designate_image_repository }}/designate:{{ openstack_helm_designate_image_tag }}"

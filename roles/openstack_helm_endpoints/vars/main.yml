@@ -301,6 +301,35 @@ _openstack_helm_endpoints_dns:
       designate:
         password: "{{ openstack_helm_endpoints_designate_rabbitmq_password }}"
 
+_openstack_helm_endpoints_mdns:
+  name: minidns
+  hosts:
+    default: minidns
+    public: designate-mdns
+  host_fqdn_override:
+    default: "{{ openstack_helm_endpoints_designate_api_host }}"
+  path:
+    default: /
+  scheme:
+    default: 'tcp'
+  port:
+    ipc:
+      default: 5354
+
+_openstack_helm_endpoints_powerdns:
+  auth:
+    service:
+      token: chiave_segreta
+  hosts:
+    default: powerdns
+  host_fqdn_override:
+    default: "{{ openstack_helm_endpoints_designate_api_host }}"
+  port:
+    powerdns_api:
+      default: 8081
+    powerdns:
+      default: 53
+
 _openstack_helm_endpoints_load_balancer:
   identity:
     auth:
