@@ -26,6 +26,14 @@ _kube_prometheus_stack_values:
         - action: "labeldrop"
           regex: "^(container|endpoint|namespace|pod|service)$"
     alertmanagerSpec:
+      storage:
+        volumeClaimTemplate:
+          spec:
+            storageClassName: general
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 40Gi
       nodeSelector:
         openstack-control-plane: enabled
   grafana:
