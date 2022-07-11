@@ -89,6 +89,7 @@
     wait: true
     wait_timeout: 20m
     values: "{{ _openstack_helm_tempest_values | combine(openstack_helm_tempest_values, recursive=True) }}"
+  ignore_errors: true
 
 - name: Get tempest job object
   kubernetes.core.k8s_info:
@@ -105,19 +106,12 @@
       - job-name=tempest-run-tests
   register: _tempest_log
 
-- name: Print success tempest result
-  ansible.builtin.debug:
-    msg: "Tempest success!"
-  when:
-    - _tempest_job_obj.resources[0]['status']['succeeded'] is defined
-    - _tempest_job_obj.resources[0]['status']['succeeded'] == 1
-
-- name: Print failed tempest result
-  ansible.builtin.debug:
-    msg: "Tempest failed!"
-  when: _tempest_job_obj.resources[0]['status']['succeeded'] is not defined or
-        _tempest_job_obj.resources[0]['status']['succeeded'] != 1
-
 - name: Print tempest log details
   ansible.builtin.debug:
     msg: "{{ _tempest_log.log_lines }}"
+
+- name: Fail when tempest result is failed
+  ansible.builtin.fail:
+    msg: "Tempest failed!"
+  when: _tempest_job_obj.resources[0]['status']['succeeded'] is not defined or
+        _tempest_job_obj.resources[0]['status']['succeeded'] != 1
