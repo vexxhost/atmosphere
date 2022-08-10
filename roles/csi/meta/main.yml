@@ -12,25 +12,18 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Setup Ceph repository
-  hosts: controllers:cephs
-  become: true
-  roles:
-    - role: ceph_repository
-      when: atmosphere_ceph_enabled | default(true)
+galaxy_info:
+  author: VEXXHOST, Inc.
+  description: Meta role for managing CSI
+  license: Apache-2.0
+  min_ansible_version: 5.5.0
+  platforms:
+    - name: Ubuntu
+      versions:
+        - focal
 
-- name: Deploy Ceph monitors & managers
-  hosts: controllers
-  become: true
-  roles:
-    - role: ceph_mon
-      when: atmosphere_ceph_enabled | default(true)
-    - role: ceph_mgr
-      when: atmosphere_ceph_enabled | default(true)
-
-- name: Deploy Ceph OSDs
-  hosts: cephs
-  become: true
-  roles:
-    - role: ceph_osd
-      when: atmosphere_ceph_enabled | default(true)
+dependencies:
+  - role: ceph_csi_rbd
+    when: csi_driver == "rbd"
+  - role: powerstore_csi
+    when: csi_driver == "powerstore"

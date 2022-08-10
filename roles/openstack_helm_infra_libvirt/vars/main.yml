@@ -20,5 +20,7 @@ _openstack_helm_infra_libvirt_values:
       dep_check: "{{ openstack_helm_infra_libvirt_image_repository }}/kubernetes-entrypoint:latest"
       libvirt: "{{ openstack_helm_infra_libvirt_image_repository }}/libvirt:{{ openstack_helm_infra_libvirt_image_tag }}"
   conf:
+    ceph:
+      enabled: "{{ atmosphere_ceph_enabled | default(true) | bool }}"
     libvirt:
       listen_addr: 0.0.0.0
