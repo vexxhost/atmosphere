@@ -13,107 +13,134 @@
 # under the License.
 
 - name: Deploy Helm chart
-  kubernetes.core.helm:
-    name: rabbitmq-cluster-operator
-    chart_ref: bitnami/rabbitmq-cluster-operator
-    chart_version: 2.5.2
-    release_namespace: openstack
-    kubeconfig: /etc/kubernetes/admin.conf
-    values:
-      rabbitmqImage:
-        repository: library/rabbitmq
-        tag: 3.10.2-management
-      credentialUpdaterImage:
-        repository: rabbitmqoperator/default-user-credential-updater
-        tag: 1.0.2
-      clusterOperator:
-        image:
-          repository: rabbitmqoperator/cluster-operator
-          tag: 1.13.1
-        fullnameOverride: rabbitmq-cluster-operator
-        nodeSelector:
-          openstack-control-plane: enabled
-      msgTopologyOperator:
-        image:
-          repository: rabbitmqoperator/messaging-topology-operator
-          tag: 1.6.0
-        fullnameOverride: rabbitmq-messaging-topology-operator
-        nodeSelector:
-          openstack-control-plane: enabled
-      useCertManager: true
-
-- name: Create PodMonitor
   kubernetes.core.k8s:
     state: present
     definition:
-      apiVersion: monitoring.coreos.com/v1
-      kind: PodMonitor
-      metadata:
-        name: rabbitmq
-        namespace: monitoring
-        labels:
-          release: kube-prometheus-stack
-      spec:
-        jobLabel: app.kubernetes.io/component
-        podMetricsEndpoints:
-          - port: prometheus
-            path: /metrics
-            relabelings:
-              - sourceLabels: ["__meta_kubernetes_pod_name"]
-                targetLabel: "instance"
-              - action: "labeldrop"
-                regex: "^(container|endpoint|namespace|pod|service)$"
-        namespaceSelector:
-          matchNames:
-            - openstack
-        selector:
-          matchLabels:
-            app.kubernetes.io/component: rabbitmq
+      - apiVersion: source.toolkit.fluxcd.io/v1beta2
+        kind: HelmRepository
+        metadata:
+          name: bitnami
+          namespace: openstack
+        spec:
+          interval: 60s
+          url: https://charts.bitnami.com/bitnami
 
-- name: Create PrometheusRule
+      - apiVersion: helm.toolkit.fluxcd.io/v2beta1
+        kind: HelmRelease
+        metadata:
+          name: rabbitmq-cluster-operator
+          namespace: openstack
+        spec:
+          interval: 60s
+          chart:
+            spec:
+              chart: rabbitmq-cluster-operator
+              version: 2.5.2
+              sourceRef:
+                kind: HelmRepository
+                name: bitnami
+          install:
+            crds: CreateReplace
+          upgrade:
+            crds: CreateReplace
+          values:
+            rabbitmqImage:
+              repository: library/rabbitmq
+              tag: 3.10.2-management
+            credentialUpdaterImage:
+              repository: rabbitmqoperator/default-user-credential-updater
+              tag: 1.0.2
+            clusterOperator:
+              image:
+                repository: rabbitmqoperator/cluster-operator
+                tag: 1.13.1
+              fullnameOverride: rabbitmq-cluster-operator
+              nodeSelector:
+                openstack-control-plane: enabled
+            msgTopologyOperator:
+              image:
+                repository: rabbitmqoperator/messaging-topology-operator
+                tag: 1.6.0
+              fullnameOverride: rabbitmq-messaging-topology-operator
+              nodeSelector:
+                openstack-control-plane: enabled
+            useCertManager: true
+
+- name: Deploy monitoring for RabbitMQ
   kubernetes.core.k8s:
     state: present
     definition:
-      apiVersion: monitoring.coreos.com/v1
-      kind: PrometheusRule
-      metadata:
-        name: rabbitmq
-        namespace: monitoring
-        labels:
-          release: kube-prometheus-stack
-      spec:
-        groups:
-          - name: limits
-            rules:
-              - alert: RabbitmqMemoryHigh
-                expr: rabbitmq_process_resident_memory_bytes / rabbitmq_resident_memory_limit_bytes > 0.80
-                labels:
-                  severity: warning
-              - alert: RabbitmqMemoryHigh
-                expr: rabbitmq_process_resident_memory_bytes / rabbitmq_resident_memory_limit_bytes > 0.95
-                labels:
-                  severity: critical
-              - alert: RabbitmqFileDescriptorsUsage
-                expr: rabbitmq_process_open_fds / rabbitmq_process_max_fds > 0.80
-                labels:
-                  severity: warning
-              - alert: RabbitmqFileDescriptorsUsage
-                expr: rabbitmq_process_open_fds / rabbitmq_process_max_fds > 0.95
-                labels:
-                  severity: critical
-              - alert: RabbitmqConnections
-                expr: rabbitmq_connections > 1000
-                labels:
-                  severity: warning
-          - name: msgs
-            rules:
-              - alert: RabbitmqUnackedMessages
-                expr: sum(rabbitmq_queue_messages_unacked) BY (queue) > 1000
-                for: 5m
-                labels:
-                  severity: warning
-              - alert: RabbitmqUnackedMessages
-                expr: sum(rabbitmq_queue_messages_unacked) BY (queue) > 1000
-                for: 1h
-                labels:
-                  severity: critical
+      - apiVersion: monitoring.coreos.com/v1
+        kind: PodMonitor
+        metadata:
+          name: rabbitmq
+          namespace: monitoring
+          labels:
+            release: kube-prometheus-stack
+        spec:
+          jobLabel: app.kubernetes.io/component
+          podMetricsEndpoints:
+            - port: prometheus
+              path: /metrics
+              relabelings:
+                - sourceLabels: ["__meta_kubernetes_pod_name"]
+                  targetLabel: "instance"
+                - action: "labeldrop"
+                  regex: "^(container|endpoint|namespace|pod|service)$"
+          namespaceSelector:
+            matchNames:
+              - openstack
+          selector:
+            matchLabels:
+              app.kubernetes.io/component: rabbitmq
+
+      - apiVersion: monitoring.coreos.com/v1
+        kind: PrometheusRule
+        metadata:
+          name: rabbitmq
+          namespace: monitoring
+          labels:
+            release: kube-prometheus-stack
+        spec:
+          groups:
+            - name: limits
+              rules:
+                - alert: RabbitmqMemoryHigh
+                  expr: rabbitmq_process_resident_memory_bytes / rabbitmq_resident_memory_limit_bytes > 0.80
+                  labels:
+                    severity: warning
+                - alert: RabbitmqMemoryHigh
+                  expr: rabbitmq_process_resident_memory_bytes / rabbitmq_resident_memory_limit_bytes > 0.95
+                  labels:
+                    severity: critical
+                - alert: RabbitmqFileDescriptorsUsage
+                  expr: rabbitmq_process_open_fds / rabbitmq_process_max_fds > 0.80
+                  labels:
+                    severity: warning
+                - alert: RabbitmqFileDescriptorsUsage
+                  expr: rabbitmq_process_open_fds / rabbitmq_process_max_fds > 0.95
+                  labels:
+                    severity: critical
+                - alert: RabbitmqConnections
+                  expr: rabbitmq_connections > 1000
+                  labels:
+                    severity: warning
+            - name: msgs
+              rules:
+                - alert: RabbitmqUnackedMessages
+                  expr: sum(rabbitmq_queue_messages_unacked) BY (queue) > 1000
+                  for: 5m
+                  labels:
+                    severity: warning
+                - alert: RabbitmqUnackedMessages
+                  expr: sum(rabbitmq_queue_messages_unacked) BY (queue) > 1000
+                  for: 1h
+                  labels:
+                    severity: critical
+  # NOTE(mnaser): Since we haven't moved to the operator pattern yet, we need to
+  #               keep retrying a few times as the CRDs might not be installed
+  #               yet.
+  retries: 60
+  delay: 5
+  register: _result
+  until: _result is not failed

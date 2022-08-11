@@ -13,16 +13,36 @@
 # under the License.
 
 - name: Deploy Helm chart
-  kubernetes.core.helm:
-    name: node-feature-discovery
-    chart_ref: node-feature-discovery/node-feature-discovery
-    chart_version: 0.10.0
-    release_namespace: monitoring
-    kubeconfig: /etc/kubernetes/admin.conf
-    values:
-      image:
-        repository: "{{ atmosphere_image_repository | default('us-docker.pkg.dev/vexxhost-infra/openstack') }}/node-feature-discovery"
-        tag: 0.10.0
-      master:
-        nodeSelector:
-          openstack-control-plane: enabled
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      - apiVersion: source.toolkit.fluxcd.io/v1beta2
+        kind: HelmRepository
+        metadata:
+          name: node-feature-discovery
+          namespace: monitoring
+        spec:
+          interval: 60s
+          url: https://kubernetes-sigs.github.io/node-feature-discovery/charts
+
+      - apiVersion: helm.toolkit.fluxcd.io/v2beta1
+        kind: HelmRelease
+        metadata:
+          name: node-feature-discovery
+          namespace: monitoring
+        spec:
+          interval: 60s
+          chart:
+            spec:
+              chart: node-feature-discovery
+              version: 0.10.0
+              sourceRef:
+                kind: HelmRepository
+                name: node-feature-discovery
+          values:
+            image:
+              repository: "{{ atmosphere_image_repository | default('us-docker.pkg.dev/vexxhost-infra/openstack') }}/node-feature-discovery"
+              tag: 0.10.0
+            master:
+              nodeSelector:
+                openstack-control-plane: enabled

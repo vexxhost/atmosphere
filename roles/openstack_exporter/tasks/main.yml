@@ -29,363 +29,354 @@
     project: service
     domain: service
 
-- name: Create Secret
+- name: Deploy service
   kubernetes.core.k8s:
     state: present
     definition:
-      apiVersion: v1
-      kind: Secret
-      metadata:
-        name: openstack-config
-        namespace: monitoring
-      type: Opaque
-      stringData:
-        clouds.yaml: |
-          clouds:
-            openstack:
-              auth:
-                auth_url: http://keystone-api.openstack.svc.cluster.local:5000
-                project_domain_name: service
-                project_name: service
-                user_domain_name: service
-                username: openstack-exporter-{{ openstack_helm_endpoints_region_name }}
-                password: {{ openstack_helm_endpoints_openstack_exporter_keystone_password }}
-              region_name: {{ openstack_helm_endpoints_region_name }}
-              interface: internal
-              identity_api_version: 3
-              identity_interface: internal
+      - apiVersion: v1
+        kind: Secret
+        metadata:
+          name: openstack-config
+          namespace: monitoring
+        type: Opaque
+        stringData:
+          clouds.yaml: |
+            clouds:
+              openstack:
+                auth:
+                  auth_url: http://keystone-api.openstack.svc.cluster.local:5000
+                  project_domain_name: service
+                  project_name: service
+                  user_domain_name: service
+                  username: openstack-exporter-{{ openstack_helm_endpoints_region_name }}
+                  password: {{ openstack_helm_endpoints_openstack_exporter_keystone_password }}
+                region_name: {{ openstack_helm_endpoints_region_name }}
+                interface: internal
+                identity_api_version: 3
+                identity_interface: internal
 
-- name: Create deploy
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: apps/v1
-      kind: Deployment
-      metadata:
-        name: openstack-exporter
-        namespace: monitoring
-        labels:
-          application: openstack-exporter
-      spec:
-        replicas: 1
-        selector:
-          matchLabels:
+      - apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: openstack-exporter
+          namespace: monitoring
+          labels:
             application: openstack-exporter
-        template:
-          metadata:
-            labels:
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
               application: openstack-exporter
-          spec:
-            nodeSelector:
-              openstack-control-plane: enabled
-            containers:
-              - name: openstack-exporter
-                image: "{{ openstack_exporter_image_repository }}/openstack-exporter-linux-amd64:{{ openstack_exporter_image_tag }}"
-                args:
-                  - --endpoint-type
-                  - internal
-                  - default
-                  - --collect-metric-time
-                  - --disable-service.identity
-                  - --disable-service.image
-                  - --disable-metric=cinder-limits_volume_max_gb
-                  - --disable-metric=cinder-limits_volume_used_gb
-                  - --disable-metric=cinder-volumes
-                  - --disable-metric=cinder-volume_status
-                  - --disable-metric=neutron-floating_ips
-                  - --disable-metric=neutron-networks
-                  - --disable-metric=neutron-security_groups
-                  - --disable-metric=neutron-subnets
-                  - --disable-metric=neutron-routers
-                  - --disable-metric=nova-flavors
-                  - --disable-metric=nova-availability_zones
-                  - --disable-metric=nova-security_groups
-                  - --disable-metric=nova-limits_vcpus_max
-                  - --disable-metric=nova-limits_vcpus_used
-                  - --disable-metric=nova-limits_memory_max
-                  - --disable-metric=nova-limits_memory_used
-                port:
-                  name: metrics
-                  containerPort: 9180
-                volumeMounts:
-                  - name: openstack-config
-                    mountPath: "/etc/openstack"
-            volumes:
-              - name: openstack-config
-                secret:
-                  secretName: openstack-config
+          template:
+            metadata:
+              labels:
+                application: openstack-exporter
+            spec:
+              nodeSelector:
+                openstack-control-plane: enabled
+              containers:
+                - name: openstack-exporter
+                  image: "{{ openstack_exporter_image_repository }}/openstack-exporter-linux-amd64:{{ openstack_exporter_image_tag }}"
+                  args:
+                    - --endpoint-type
+                    - internal
+                    - default
+                    - --collect-metric-time
+                    - --disable-service.identity
+                    - --disable-service.image
+                    - --disable-metric=cinder-limits_volume_max_gb
+                    - --disable-metric=cinder-limits_volume_used_gb
+                    - --disable-metric=cinder-volumes
+                    - --disable-metric=cinder-volume_status
+                    - --disable-metric=neutron-floating_ips
+                    - --disable-metric=neutron-networks
+                    - --disable-metric=neutron-security_groups
+                    - --disable-metric=neutron-subnets
+                    - --disable-metric=neutron-routers
+                    - --disable-metric=nova-flavors
+                    - --disable-metric=nova-availability_zones
+                    - --disable-metric=nova-security_groups
+                    - --disable-metric=nova-limits_vcpus_max
+                    - --disable-metric=nova-limits_vcpus_used
+                    - --disable-metric=nova-limits_memory_max
+                    - --disable-metric=nova-limits_memory_used
+                  port:
+                    name: metrics
+                    containerPort: 9180
+                  volumeMounts:
+                    - name: openstack-config
+                      mountPath: "/etc/openstack"
+              volumes:
+                - name: openstack-config
+                  secret:
+                    secretName: openstack-config
 
-- name: Create service
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: v1
-      kind: Service
-      metadata:
-        name: openstack-exporter
-        namespace: monitoring
-        labels:
-          application: openstack-exporter
-      spec:
-        clusterIP: None
-        ports:
-          - name: metrics
-            port: 9180
-            targetPort: metrics
-        selector:
-          application: openstack-exporter
-
-- name: Create service monitor
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: monitoring.coreos.com/v1
-      kind: ServiceMonitor
-      metadata:
-        name: openstack-exporter
-        namespace: monitoring
-        labels:
-          application: openstack-exporter
-      spec:
-        endpoints:
-          - interval: 1m
-            scrapeTimeout: 30s
-            port: metrics
-            relabelings:
-              - action: replace
-                regex: (.*)
-                replacement: default
-                targetLabel: instance
-        jobLabel: jobLabel
-        namespaceSelector:
-          any: true
-        selector:
-          matchLabels:
+      - apiVersion: v1
+        kind: Service
+        metadata:
+          name: openstack-exporter
+          namespace: monitoring
+          labels:
+            application: openstack-exporter
+        spec:
+          clusterIP: None
+          ports:
+            - name: metrics
+              port: 9180
+              targetPort: metrics
+          selector:
             application: openstack-exporter
 
-- name: Create Prometheus Rule
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: monitoring.coreos.com/v1
-      kind: PrometheusRule
-      metadata:
-        name: openstack-exporter
-        namespace: monitoring
-        labels:
-          application: openstack-exporter
-      spec:
-        groups:
-          - name: cinder
-            rules:
-              - alert: CinderAgentDown
-                annotations:
-                  description: |
-                    '{% raw %}The service {{ $labels.exported_service }} running
-                    on {{ $labels.hostname }} is being reported as down.{% endraw %}'
-                  summary: |
-                    '{% raw %}[{{ $labels.hostname }}] {{ $labels.exported_service }}
-                    down{% endraw %}'
-                expr: |
-                  openstack_cinder_agent_state != 1
-                labels:
-                  severity: warning
-              - alert: CinderAgentDown
-                annotations:
-                  description: |
-                    '{% raw %}The service {{ $labels.exported_service }} running on
-                    {{ $labels.hostname }} is being reported as down for 5 minutes.
-                    This can affect volume operations so it must be resolved as
-                    quickly as possible.{% endraw %}'
-                  summary: |
-                    '{% raw %}[{{ $labels.hostname }}] {{ $labels.exported_service }}
-                    down{% endraw %}'
-                expr: |
-                  openstack_cinder_agent_state != 1
-                for: 5m
-                labels:
-                  severity: critical
-              - alert: CinderAgentDisabled
-                annotations:
-                  description: |
-                    '{% raw %}The service {{ $labels.exported_service }} running on {{ $labels.hostname }}
-                    has been disabled for 60 minutes.  This can affect volume operations so it must be
-                    resolved as quickly as possible.{% endraw %}'
-                  summary: |
-                    '{% raw %}[{{ $labels.hostname }}] {{ $labels.exported_service }}
-                    disabled{% endraw %}'
-                expr: |
-                  openstack_cinder_agent_state{adminState!="enabled"}
-                for: 1h
-                labels:
-                  severity: warning
-              - alert: CinderVolumeInError
-                annotations:
-                  description: |
-                    '{% raw %}The volume {{ $labels.id }} has been in ERROR state for over 24 hours.
-                    It must be cleaned up or removed in order to provide a consistent customer
-                    experience.{% endraw %}'
-                  summary: |
-                    '{% raw %}[{{ $labels.id }}] Volume in ERROR state{% endraw %}'
-                expr: |
-                  openstack_cinder_volume_status{status=~"error.*"}
-                for: 24h
-                labels:
-                  severity: warning
-          - name: neutron
-            rules:
-              - alert: NeutronAgentDown
-                annotations:
-                  description: |
-                    '{% raw %}The service {{ $labels.exported_service }} running on {{ $labels.hostname }}
-                    is being reported as down.{% endraw %}'
-                  summary: |
-                    '{% raw %}[{{ $labels.hostname }}] {{ $labels.exported_service }}
-                    down{% endraw %}'
-                expr: |
-                  openstack_neutron_agent_state != 1
-                labels:
-                  severity: warning
-              - alert: NeutronAgentDown
-                annotations:
-                  description: |
-                    '{% raw %}The service {{ $labels.exported_service }} running on {{ $labels.hostname }}
-                    is being reported as down for 5 minutes. This can affect network operations so it
-                    must be resolved as quickly as possible.{% endraw %}'
-                  summary: |
-                    '{% raw %}[{{ $labels.hostname }}] {{ $labels.exported_service }}
-                    down{% endraw %}'
-                expr: |
-                  openstack_neutron_agent_state != 1
-                for: 5m
-                labels:
-                  severity: critical
-              - alert: NeutronAgentDisabled
-                annotations:
-                  description: |
-                    '{% raw %}The service {{ $labels.exported_service }} running on {{ $labels.hostname }}
-                    has been disabled for 60 minutes.  This can affect network operations so it must be
-                    resolved as quickly as possible.{% endraw %}'
-                  summary: |
-                    '{% raw %}[{{ $labels.hostname }}] {{ $labels.exported_service }}
-                    disabled{% endraw %}'
-                expr: |
-                  openstack_neutron_agent_state{adminState!="up"}
-                for: 1h
-                labels:
-                  severity: warning
-              - alert: NeutronBindingFailedPorts
-                annotations:
-                  description: |
-                    '{% raw %}The NIC {{ $labels.mac_address }} of {{ $labels.device_owner }}
-                    has binding failed port now.{% endraw %}'
-                  summary: |
-                    '{% raw %}[{{ $labels.device_owner }}] {{ $labels.mac_address }}
-                    binding failed{% endraw %}'
-                expr: |
-                  openstack_neutron_port{binding_vif_type="binding_failed"} != 0
-                labels:
-                  severity: warning
-              - alert: NeutronNetworkOutOfIPs
-                annotations:
-                  description: |
-                    '{% raw %}The subnet {{ $labels.subnet_name }} within {{ $labels.network_name }}
-                    is currently at {{ $value }}% utilization.  If the IP addresses run out, it will
-                    impact the provisioning of new ports.{% endraw %}'
-                  summary: |
-                    '{% raw %}[{{ $labels.network_name }}] {{ $labels.subnet_name }}
-                    running out of IPs{% endraw %}'
-                expr: |
-                  sum by (network_id) (openstack_neutron_network_ip_availabilities_used{project_id!=""}) / sum by (network_id)
-                  (openstack_neutron_network_ip_availabilities_total{project_id!=""}) * 100 > 80
-                labels:
-                  severity: warning
-          - name: nova
-            rules:
-              - alert: NovaAgentDown
-                annotations:
-                  description: |
-                    '{% raw %}The service {{ $labels.exported_service }} running on {{ $labels.hostname }}
-                    is being reported as down.{% endraw %}'
-                  summary: |
-                    '{% raw %}[{{ $labels.hostname }}] {{ $labels.exported_service }}
-                    down{% endraw %}'
-                expr: |
-                  openstack_nova_agent_state != 1
-                labels:
-                  severity: warning
-              - alert: NovaAgentDown
-                annotations:
-                  description: |
-                    '{% raw %}The service {{ $labels.exported_service }} running on {{ $labels.hostname }} is
-                    being reported as down.  This can affect compute operations so it must be resolved as
-                    quickly as possible.{% endraw %}'
-                  summary: |
-                    '{% raw %}[{{ $labels.hostname }}] {{ $labels.exported_service }}
-                    down{% endraw %}'
-                expr: |
-                  openstack_nova_agent_state != 1
-                for: 5m
-                labels:
-                  severity: critical
-              - alert: NovaAgentDisabled
-                annotations:
-                  description: |
-                    '{% raw %}The service {{ $labels.exported_service }} running on {{ $labels.hostname }} has been
-                    disabled for 60 minutes.  This can affect compute operations so it must be resolved as quickly
-                    as possible.{% endraw %}'
-                  summary: |
-                    '{% raw %}[{{ $labels.hostname }}] {{ $labels.exported_service }}
-                    disabled{% endraw %}'
-                expr: |
-                  openstack_nova_agent_state{adminState!="enabled"}
-                for: 1h
-                labels:
-                  severity: warning
-              - alert: NovaInstanceInError
-                annotations:
-                  description: |
-                    '{% raw %}The instance {{ $labels.id }} has been in ERROR state for over 24 hours.
-                    It must be cleaned up or removed in order to provide a consistent customer
-                    experience.{% endraw %}'
-                  summary: '{% raw %}[{{ $labels.id }}] Instance in ERROR state{% endraw %}'
-                expr: |
-                  openstack_nova_server_status{status="ERROR"}
-                for: 24h
-                labels:
-                  severity: warning
-              - alert: NovaFailureRisk
-                annotations:
-                  description: |
-                    '{% raw %}The cloud capacity will be at {{ $value }} in the event of the failure of
-                    a single hypervisor which puts the cloud at risk of not being able to recover should
-                    any hypervisor failures occur.  Please ensure that adequate amount of infrastructure
-                    is assigned to this deployment to prevent this.{% endraw %}'
-                  summary: '{% raw %}[nova] Failure risk{% endraw %}'
-                expr: |
-                  (sum(openstack_nova_memory_available_bytes-openstack_nova_memory_used_bytes) - max(openstack_nova_memory_used_bytes))
-                  / sum(openstack_nova_memory_available_bytes-openstack_nova_memory_used_bytes) * 100 < 0.25
-                for: 6h
-                labels:
-                  severity: warning
-              - alert: NovaCapacity
-                annotations:
-                  description: |
-                    '{% raw %}The cloud capacity is currently at `{{ $value }}` which means there is a
-                    risk of running out of capacity due to the timeline required to add new nodes.
-                    Please ensure that adequate amount of infrastructure is assigned to this deployment
-                    to prevent this.{% endraw %}'
-                  summary: '{% raw %}[nova] Capacity risk{% endraw %}'
-                expr: |
-                  sum (
-                      openstack_nova_memory_used_bytes
-                    + on(hostname) group_left(adminState)
-                      (0 * openstack_nova_agent_state{exported_service="nova-compute",adminState="enabled"})
-                  ) / sum (
-                      openstack_nova_memory_available_bytes
-                    + on(hostname) group_left(adminState)
-                      (0 * openstack_nova_agent_state{exported_service="nova-compute",adminState="enabled"})
-                  ) * 100 > 75
-                for: 6h
-                labels:
-                  severity: warning
+      - apiVersion: monitoring.coreos.com/v1
+        kind: ServiceMonitor
+        metadata:
+          name: openstack-exporter
+          namespace: monitoring
+          labels:
+            application: openstack-exporter
+        spec:
+          endpoints:
+            - interval: 1m
+              scrapeTimeout: 30s
+              port: metrics
+              relabelings:
+                - action: replace
+                  regex: (.*)
+                  replacement: default
+                  targetLabel: instance
+          jobLabel: jobLabel
+          namespaceSelector:
+            any: true
+          selector:
+            matchLabels:
+              application: openstack-exporter
+
+      - apiVersion: monitoring.coreos.com/v1
+        kind: PrometheusRule
+        metadata:
+          name: openstack-exporter
+          namespace: monitoring
+          labels:
+            application: openstack-exporter
+        spec:
+          groups:
+            - name: cinder
+              rules:
+                - alert: CinderAgentDown
+                  annotations:
+                    description: |
+                      '{% raw %}The service {{ $labels.exported_service }} running
+                      on {{ $labels.hostname }} is being reported as down.{% endraw %}'
+                    summary: |
+                      '{% raw %}[{{ $labels.hostname }}] {{ $labels.exported_service }}
+                      down{% endraw %}'
+                  expr: |
+                    openstack_cinder_agent_state != 1
+                  labels:
+                    severity: warning
+                - alert: CinderAgentDown
+                  annotations:
+                    description: |
+                      '{% raw %}The service {{ $labels.exported_service }} running on
+                      {{ $labels.hostname }} is being reported as down for 5 minutes.
+                      This can affect volume operations so it must be resolved as
+                      quickly as possible.{% endraw %}'
+                    summary: |
+                      '{% raw %}[{{ $labels.hostname }}] {{ $labels.exported_service }}
+                      down{% endraw %}'
+                  expr: |
+                    openstack_cinder_agent_state != 1
+                  for: 5m
+                  labels:
+                    severity: critical
+                - alert: CinderAgentDisabled
+                  annotations:
+                    description: |
+                      '{% raw %}The service {{ $labels.exported_service }} running on {{ $labels.hostname }}
+                      has been disabled for 60 minutes.  This can affect volume operations so it must be
+                      resolved as quickly as possible.{% endraw %}'
+                    summary: |
+                      '{% raw %}[{{ $labels.hostname }}] {{ $labels.exported_service }}
+                      disabled{% endraw %}'
+                  expr: |
+                    openstack_cinder_agent_state{adminState!="enabled"}
+                  for: 1h
+                  labels:
+                    severity: warning
+                - alert: CinderVolumeInError
+                  annotations:
+                    description: |
+                      '{% raw %}The volume {{ $labels.id }} has been in ERROR state for over 24 hours.
+                      It must be cleaned up or removed in order to provide a consistent customer
+                      experience.{% endraw %}'
+                    summary: |
+                      '{% raw %}[{{ $labels.id }}] Volume in ERROR state{% endraw %}'
+                  expr: |
+                    openstack_cinder_volume_status{status=~"error.*"}
+                  for: 24h
+                  labels:
+                    severity: warning
+            - name: neutron
+              rules:
+                - alert: NeutronAgentDown
+                  annotations:
+                    description: |
+                      '{% raw %}The service {{ $labels.exported_service }} running on {{ $labels.hostname }}
+                      is being reported as down.{% endraw %}'
+                    summary: |
+                      '{% raw %}[{{ $labels.hostname }}] {{ $labels.exported_service }}
+                      down{% endraw %}'
+                  expr: |
+                    openstack_neutron_agent_state != 1
+                  labels:
+                    severity: warning
+                - alert: NeutronAgentDown
+                  annotations:
+                    description: |
+                      '{% raw %}The service {{ $labels.exported_service }} running on {{ $labels.hostname }}
+                      is being reported as down for 5 minutes. This can affect network operations so it
+                      must be resolved as quickly as possible.{% endraw %}'
+                    summary: |
+                      '{% raw %}[{{ $labels.hostname }}] {{ $labels.exported_service }}
+                      down{% endraw %}'
+                  expr: |
+                    openstack_neutron_agent_state != 1
+                  for: 5m
+                  labels:
+                    severity: critical
+                - alert: NeutronAgentDisabled
+                  annotations:
+                    description: |
+                      '{% raw %}The service {{ $labels.exported_service }} running on {{ $labels.hostname }}
+                      has been disabled for 60 minutes.  This can affect network operations so it must be
+                      resolved as quickly as possible.{% endraw %}'
+                    summary: |
+                      '{% raw %}[{{ $labels.hostname }}] {{ $labels.exported_service }}
+                      disabled{% endraw %}'
+                  expr: |
+                    openstack_neutron_agent_state{adminState!="up"}
+                  for: 1h
+                  labels:
+                    severity: warning
+                - alert: NeutronBindingFailedPorts
+                  annotations:
+                    description: |
+                      '{% raw %}The NIC {{ $labels.mac_address }} of {{ $labels.device_owner }}
+                      has binding failed port now.{% endraw %}'
+                    summary: |
+                      '{% raw %}[{{ $labels.device_owner }}] {{ $labels.mac_address }}
+                      binding failed{% endraw %}'
+                  expr: |
+                    openstack_neutron_port{binding_vif_type="binding_failed"} != 0
+                  labels:
+                    severity: warning
+                - alert: NeutronNetworkOutOfIPs
+                  annotations:
+                    description: |
+                      '{% raw %}The subnet {{ $labels.subnet_name }} within {{ $labels.network_name }}
+                      is currently at {{ $value }}% utilization.  If the IP addresses run out, it will
+                      impact the provisioning of new ports.{% endraw %}'
+                    summary: |
+                      '{% raw %}[{{ $labels.network_name }}] {{ $labels.subnet_name }}
+                      running out of IPs{% endraw %}'
+                  expr: |
+                    sum by (network_id) (openstack_neutron_network_ip_availabilities_used{project_id!=""}) / sum by (network_id)
+                    (openstack_neutron_network_ip_availabilities_total{project_id!=""}) * 100 > 80
+                  labels:
+                    severity: warning
+            - name: nova
+              rules:
+                - alert: NovaAgentDown
+                  annotations:
+                    description: |
+                      '{% raw %}The service {{ $labels.exported_service }} running on {{ $labels.hostname }}
+                      is being reported as down.{% endraw %}'
+                    summary: |
+                      '{% raw %}[{{ $labels.hostname }}] {{ $labels.exported_service }}
+                      down{% endraw %}'
+                  expr: |
+                    openstack_nova_agent_state != 1
+                  labels:
+                    severity: warning
+                - alert: NovaAgentDown
+                  annotations:
+                    description: |
+                      '{% raw %}The service {{ $labels.exported_service }} running on {{ $labels.hostname }} is
+                      being reported as down.  This can affect compute operations so it must be resolved as
+                      quickly as possible.{% endraw %}'
+                    summary: |
+                      '{% raw %}[{{ $labels.hostname }}] {{ $labels.exported_service }}
+                      down{% endraw %}'
+                  expr: |
+                    openstack_nova_agent_state != 1
+                  for: 5m
+                  labels:
+                    severity: critical
+                - alert: NovaAgentDisabled
+                  annotations:
+                    description: |
+                      '{% raw %}The service {{ $labels.exported_service }} running on {{ $labels.hostname }} has been
+                      disabled for 60 minutes.  This can affect compute operations so it must be resolved as quickly
+                      as possible.{% endraw %}'
+                    summary: |
+                      '{% raw %}[{{ $labels.hostname }}] {{ $labels.exported_service }}
+                      disabled{% endraw %}'
+                  expr: |
+                    openstack_nova_agent_state{adminState!="enabled"}
+                  for: 1h
+                  labels:
+                    severity: warning
+                - alert: NovaInstanceInError
+                  annotations:
+                    description: |
+                      '{% raw %}The instance {{ $labels.id }} has been in ERROR state for over 24 hours.
+                      It must be cleaned up or removed in order to provide a consistent customer
+                      experience.{% endraw %}'
+                    summary: '{% raw %}[{{ $labels.id }}] Instance in ERROR state{% endraw %}'
+                  expr: |
+                    openstack_nova_server_status{status="ERROR"}
+                  for: 24h
+                  labels:
+                    severity: warning
+                - alert: NovaFailureRisk
+                  annotations:
+                    description: |
+                      '{% raw %}The cloud capacity will be at {{ $value }} in the event of the failure of
+                      a single hypervisor which puts the cloud at risk of not being able to recover should
+                      any hypervisor failures occur.  Please ensure that adequate amount of infrastructure
+                      is assigned to this deployment to prevent this.{% endraw %}'
+                    summary: '{% raw %}[nova] Failure risk{% endraw %}'
+                  expr: |
+                    (sum(openstack_nova_memory_available_bytes-openstack_nova_memory_used_bytes) - max(openstack_nova_memory_used_bytes))
+                    / sum(openstack_nova_memory_available_bytes-openstack_nova_memory_used_bytes) * 100 < 0.25
+                  for: 6h
+                  labels:
+                    severity: warning
+                - alert: NovaCapacity
+                  annotations:
+                    description: |
+                      '{% raw %}The cloud capacity is currently at `{{ $value }}` which means there is a
+                      risk of running out of capacity due to the timeline required to add new nodes.
+                      Please ensure that adequate amount of infrastructure is assigned to this deployment
+                      to prevent this.{% endraw %}'
+                    summary: '{% raw %}[nova] Capacity risk{% endraw %}'
+                  expr: |
+                    sum (
+                        openstack_nova_memory_used_bytes
+                      + on(hostname) group_left(adminState)
+                        (0 * openstack_nova_agent_state{exported_service="nova-compute",adminState="enabled"})
+                    ) / sum (
+                        openstack_nova_memory_available_bytes
+                      + on(hostname) group_left(adminState)
+                        (0 * openstack_nova_agent_state{exported_service="nova-compute",adminState="enabled"})
+                    ) * 100 > 75
+                  for: 6h
+                  labels:
+                    severity: warning
+  # NOTE(mnaser): Since we haven't moved to the operator pattern yet, we need to
+  #               keep retrying a few times as the CRDs might not be installed
+  #               yet.
+  retries: 60
+  delay: 5
+  register: _result
+  until: _result is not failed

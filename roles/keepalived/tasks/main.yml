@@ -12,195 +12,170 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Create Secret
+- name: Deploy service
   when: keepalived_enabled | bool
   kubernetes.core.k8s:
     state: present
     definition:
-      apiVersion: v1
-      kind: Secret
-      metadata:
-        name: keepalived-etc
-        namespace: openstack
-      stringData:
-        keepalived.conf: |
-          global_defs {
-            default_interface {{ keepalived_interface }}
-          }
-
-          vrrp_instance VI_1 {
-            interface {{ keepalived_interface }}
-
-            state BACKUP
-            virtual_router_id {{ keepalived_vrid }}
-            priority 150
-            nopreempt
-
-            virtual_ipaddress {
-              {{ keepalived_vip }}
+      - apiVersion: v1
+        kind: Secret
+        metadata:
+          name: keepalived-etc
+          namespace: openstack
+        stringData:
+          keepalived.conf: |
+            global_defs {
+              default_interface {{ keepalived_interface }}
             }
 
-            authentication {
-              auth_type PASS
-              auth_pass {{ keepalived_password }}
+            vrrp_instance VI_1 {
+              interface {{ keepalived_interface }}
+
+              state BACKUP
+              virtual_router_id {{ keepalived_vrid }}
+              priority 150
+              nopreempt
+
+              virtual_ipaddress {
+                {{ keepalived_vip }}
+              }
+
+              authentication {
+                auth_type PASS
+                auth_pass {{ keepalived_password }}
+              }
             }
-          }
 
-- name: Create ConfigMap
-  when: keepalived_enabled | bool
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: v1
-      kind: ConfigMap
-      metadata:
-        name: keepalived-bin
-        namespace: openstack
-      data:
-        wait-for-ip.sh: |
-          #!/bin/sh -x
+      - apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: keepalived-bin
+          namespace: openstack
+        data:
+          wait-for-ip.sh: |
+            #!/bin/sh -x
 
-          while true; do
-              ip -4 addr list dev {{ keepalived_interface }} | grep {{ keepalived_interface }}
+            while true; do
+                ip -4 addr list dev {{ keepalived_interface }} | grep {{ keepalived_interface }}
 
-              # We detected an IP address
-              if [ $? -eq 0 ]; then
-                  break
-              fi
+                # We detected an IP address
+                if [ $? -eq 0 ]; then
+                    break
+                fi
 
-              sleep 1
-          done
+                sleep 1
+            done
 
-- name: Create Role
-  when: keepalived_enabled | bool
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: rbac.authorization.k8s.io/v1
-      kind: Role
-      metadata:
-        name: keepalived
-        namespace: openstack
-      rules:
-        - apiGroups:
-            - ""
-          resources:
-            - pods
-          verbs:
-            - list
-            - get
-
-- name: Create ServiceAccount
-  when: keepalived_enabled | bool
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: v1
-      automountServiceAccountToken: true
-      kind: ServiceAccount
-      metadata:
-        name: keepalived
-        namespace: openstack
-
-- name: Create ServiceAccount
-  when: keepalived_enabled | bool
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: rbac.authorization.k8s.io/v1
-      kind: RoleBinding
-      metadata:
-        name: keepalived
-        namespace: openstack
-      roleRef:
-        apiGroup: rbac.authorization.k8s.io
+      - apiVersion: rbac.authorization.k8s.io/v1
         kind: Role
-        name: keepalived
-      subjects:
-        - kind: ServiceAccount
+        metadata:
+          name: keepalived
+          namespace: openstack
+        rules:
+          - apiGroups:
+              - ""
+            resources:
+              - pods
+            verbs:
+              - list
+              - get
+
+      - apiVersion: v1
+        automountServiceAccountToken: true
+        kind: ServiceAccount
+        metadata:
           name: keepalived
           namespace: openstack
 
-- name: Create DaemonSet
-  when: keepalived_enabled | bool
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: apps/v1
-      kind: DaemonSet
-      metadata:
-        name: keepalived
-        namespace: openstack
-      spec:
-        selector:
-          matchLabels:
-            application: keepalived
-        template:
-          metadata:
-            labels:
+      - apiVersion: rbac.authorization.k8s.io/v1
+        kind: RoleBinding
+        metadata:
+          name: keepalived
+          namespace: openstack
+        roleRef:
+          apiGroup: rbac.authorization.k8s.io
+          kind: Role
+          name: keepalived
+        subjects:
+          - kind: ServiceAccount
+            name: keepalived
+            namespace: openstack
+
+      - apiVersion: apps/v1
+        kind: DaemonSet
+        metadata:
+          name: keepalived
+          namespace: openstack
+        spec:
+          selector:
+            matchLabels:
               application: keepalived
-          spec:
-            automountServiceAccountToken: true
-            initContainers:
-              - name: init
-                image: "{{ keepalived_image_repository }}/kubernetes-entrypoint:latest"
-                env:
-                  - name: NAMESPACE
-                    valueFrom:
-                      fieldRef:
-                        apiVersion: v1
-                        fieldPath: metadata.namespace
-                  - name: POD_NAME
-                    valueFrom:
-                      fieldRef:
-                        apiVersion: v1
-                        fieldPath: metadata.name
-                  - name: DEPENDENCY_POD_JSON
-                    value: '[{"labels":{"application":"neutron","component":"neutron-ovs-agent"},"requireSameNode":true}]'
-              - name: wait-for-ip
-                image: "{{ keepalived_image_repository }}/keepalived:{{ keepalived_image_tag }}"
-                command:
-                  - /bin/wait-for-ip.sh
-                volumeMounts:
-                  - mountPath: /bin/wait-for-ip.sh
-                    mountPropagation: None
+          template:
+            metadata:
+              labels:
+                application: keepalived
+            spec:
+              automountServiceAccountToken: true
+              initContainers:
+                - name: init
+                  image: "{{ keepalived_image_repository }}/kubernetes-entrypoint:latest"
+                  env:
+                    - name: NAMESPACE
+                      valueFrom:
+                        fieldRef:
+                          apiVersion: v1
+                          fieldPath: metadata.namespace
+                    - name: POD_NAME
+                      valueFrom:
+                        fieldRef:
+                          apiVersion: v1
+                          fieldPath: metadata.name
+                    - name: DEPENDENCY_POD_JSON
+                      value: '[{"labels":{"application":"neutron","component":"neutron-ovs-agent"},"requireSameNode":true}]'
+                - name: wait-for-ip
+                  image: "{{ keepalived_image_repository }}/keepalived:{{ keepalived_image_tag }}"
+                  command:
+                    - /bin/wait-for-ip.sh
+                  volumeMounts:
+                    - mountPath: /bin/wait-for-ip.sh
+                      mountPropagation: None
+                      name: keepalived-bin
+                      readOnly: true
+                      subPath: wait-for-ip.sh
+              containers:
+                - name: keepalived
+                  image: "{{ keepalived_image_repository }}/keepalived:{{ keepalived_image_tag }}"
+                  command:
+                    - keepalived
+                    - -f
+                    - /etc/keepalived/keepalived.conf
+                    - --dont-fork
+                    - --log-console
+                    - --log-detail
+                    - --dump-conf
+                  securityContext:
+                    allowPrivilegeEscalation: true
+                    capabilities:
+                      add:
+                        - NET_ADMIN
+                        - NET_BROADCAST
+                        - NET_RAW
+                  volumeMounts:
+                    - mountPath: /etc/keepalived
+                      mountPropagation: None
+                      name: keepalived-etc
+                      readOnly: true
+              hostNetwork: true
+              nodeSelector:
+                openstack-control-plane: enabled
+              serviceAccountName: keepalived
+              volumes:
+                - name: keepalived-etc
+                  secret:
+                    optional: false
+                    secretName: keepalived-etc
+                - configMap:
+                    defaultMode: 0755
                     name: keepalived-bin
-                    readOnly: true
-                    subPath: wait-for-ip.sh
-            containers:
-              - name: keepalived
-                image: "{{ keepalived_image_repository }}/keepalived:{{ keepalived_image_tag }}"
-                command:
-                  - keepalived
-                  - -f
-                  - /etc/keepalived/keepalived.conf
-                  - --dont-fork
-                  - --log-console
-                  - --log-detail
-                  - --dump-conf
-                securityContext:
-                  allowPrivilegeEscalation: true
-                  capabilities:
-                    add:
-                      - NET_ADMIN
-                      - NET_BROADCAST
-                      - NET_RAW
-                volumeMounts:
-                  - mountPath: /etc/keepalived
-                    mountPropagation: None
-                    name: keepalived-etc
-                    readOnly: true
-            hostNetwork: true
-            nodeSelector:
-              openstack-control-plane: enabled
-            serviceAccountName: keepalived
-            volumes:
-              - name: keepalived-etc
-                secret:
-                  optional: false
-                  secretName: keepalived-etc
-              - configMap:
-                  defaultMode: 0755
+                    optional: false
                   name: keepalived-bin
-                  optional: false
-                name: keepalived-bin

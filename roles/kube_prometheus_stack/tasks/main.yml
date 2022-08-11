@@ -50,34 +50,54 @@
         healthcheck-client.crt: "{{ _etcd_healthcheck_client_crt.content }}"
         healthcheck-client.key: "{{ _etcd_healthcheck_client_key.content }}"
 
-- name: Create CRDs for Prometheus Operator
+- name: Deploy Helm chart
   kubernetes.core.k8s:
     state: present
-    definition: "{{ lookup('ansible.builtin.url', 'https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.57.0/example/prometheus-operator-crd/monitoring.coreos.com_' ~ item ~ '.yaml', split_lines=false) | regex_replace('- =$', '- \"=\"', multiline=True) | from_yaml_all }}" # yamllint disable-line rule:line-length
-    apply: true
-    server_side_apply:
-      field_manager: Atmosphere
-      force_conflicts: true
-  loop:
-    - alertmanagerconfigs
-    - alertmanagers
-    - podmonitors
-    - probes
-    - prometheuses
-    - prometheusrules
-    - servicemonitors
-    - thanosrulers
-  # NOTE(mnaser): We replace `- =` with `- "="` to avoid a YAML error, this also
-  #               breaks idempotency so we flip to `changed_when: false`.
-  #               See: https://github.com/yaml/pyyaml/issues/619
-  changed_when: false
+    definition:
+      - apiVersion: source.toolkit.fluxcd.io/v1beta2
+        kind: HelmRepository
+        metadata:
+          name: prometheus-community
+          namespace: monitoring
+        spec:
+          interval: 60s
+          url: https://prometheus-community.github.io/helm-charts
 
-- name: Deploy Helm chart
-  kubernetes.core.helm:
+      - apiVersion: helm.toolkit.fluxcd.io/v2beta1
+        kind: HelmRelease
+        metadata:
+          name: kube-prometheus-stack
+          namespace: monitoring
+        spec:
+          interval: 60s
+          chart:
+            spec:
+              chart: kube-prometheus-stack
+              version: 36.2.0
+              sourceRef:
+                kind: HelmRepository
+                name: prometheus-community
+          install:
+            crds: CreateReplace
+          upgrade:
+            crds: CreateReplace
+          values: "{{ _kube_prometheus_stack_values | combine(kube_prometheus_stack_values, recursive=True) }}"
+
+# NOTE(mnaser): Since runs are so fast, the Prometheus Operator resoruces are
+#               created before the MutatingWebhookConfiguration is ready, so
+#               the resources end up being changed on the second apply.
+#
+#               The workaround for now is to wait for the operator to go up
+#               which means the MutatingWebhookConfiguration is also ready.
+- name: Wait for the Helm chart to be deployed
+  kubernetes.core.k8s_info:
+    api_version: helm.toolkit.fluxcd.io/v2beta1
+    kind: HelmRelease
     name: kube-prometheus-stack
-    chart_ref: prometheus-community/kube-prometheus-stack
-    chart_version: 36.2.0
-    release_namespace: monitoring
-    kubeconfig: /etc/kubernetes/admin.conf
-    values: "{{ _kube_prometheus_stack_values | combine(kube_prometheus_stack_values, recursive=True) }}"
+    namespace: monitoring
+    wait_sleep: 5
+    wait_timeout: 600
     wait: true
+    wait_condition:
+      type: Ready
+      status: true

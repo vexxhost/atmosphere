@@ -16,41 +16,9 @@
   ansible.builtin.include_role:
     name: openstack_helm_endpoints
   vars:
-    openstack_helm_endpoints_repo_name: "{{ openstack_helm_nova_chart_repo_name }}"
-    openstack_helm_endpoints_repo_url: "{{ openstack_helm_nova_chart_repo_url }}"
-    openstack_helm_endpoints_chart: "{{ openstack_helm_nova_chart_name }}"
-
-- name: Generate Helm values comparison
-  ansible.builtin.include_role:
-    name: helm_diff
-  vars:
-    helm_diff_release_name: "{{ openstack_helm_nova_chart_name }}"
-    helm_diff_release_namespace: openstack
-    helm_diff_values: "{{ _openstack_helm_nova_values }}"
-  when:
-    - openstack_helm_nova_diff | bool
-
-- name: Migrate database from MariaDB to Percona XtraDB Cluster
-  ansible.builtin.include_role:
-    name: openstack_helm_migrate_to_percona_xtradb_cluster
-  vars:
-    openstack_helm_migrate_to_percona_xtradb_cluster_release_name: "{{ openstack_helm_nova_chart_name }}"
-    openstack_helm_migrate_to_percona_xtradb_cluster_release_namespace: openstack
-    openstack_helm_migrate_to_percona_xtradb_cluster_databases:
-      - nova
-      - nova_api
-      - nova_cell0
-    openstack_helm_migrate_to_percona_xtradb_cluster_services:
-      - kind: Deployment
-        name: nova-api-metadata
-      - kind: Deployment
-        name: nova-api-osapi
-      - kind: Deployment
-        name: nova-conductor
-      - kind: Deployment
-        name: nova-scheduler
-  when:
-    - openstack_helm_nova_migrate_from_mariadb | bool
+    openstack_helm_endpoints_repo_name: openstack-helm
+    openstack_helm_endpoints_repo_url: https://tarballs.opendev.org/openstack/openstack-helm/
+    openstack_helm_endpoints_chart: nova
 
 - name: Generate public key for SSH private key
   become: false
@@ -69,6 +37,7 @@
       ansible.builtin.copy:
         dest: "{{ _nova_ssh_key_tempfile.path }}"
         content: "{{ openstack_helm_nova_ssh_key }}\n"
+        mode: "0600"
     - name: Generate public key for SSH private key
       changed_when: false
       community.crypto.openssh_keypair:
@@ -83,16 +52,65 @@
         state: absent
 
 - name: Deploy Helm chart
-  kubernetes.core.helm:
-    name: "{{ openstack_helm_nova_chart_name }}"
-    chart_ref: "{{ openstack_helm_nova_chart_repo_name }}/{{ openstack_helm_nova_chart_name }}"
-    chart_version: 0.2.32
-    release_namespace: openstack
-    kubeconfig: /etc/kubernetes/admin.conf
-    values: "{{ _openstack_helm_nova_values }}"
-    # NOTE(mnaser): This is a a workaround due to the fact that Nova's online
-    #               data migrations take forever.
-    timeout: 10m
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      - apiVersion: source.toolkit.fluxcd.io/v1beta2
+        kind: HelmRepository
+        metadata:
+          name: openstack-helm
+          namespace: openstack
+        spec:
+          interval: 60s
+          url: https://tarballs.opendev.org/openstack/openstack-helm/
+
+      - apiVersion: v1
+        kind: Secret
+        metadata:
+          name: atmosphere-nova
+          namespace: openstack
+        stringData:
+          values.yaml: "{{ _openstack_helm_nova_values | to_nice_yaml }}"
+
+      - apiVersion: helm.toolkit.fluxcd.io/v2beta1
+        kind: HelmRelease
+        metadata:
+          name: nova
+          namespace: openstack
+        spec:
+          interval: 60s
+          chart:
+            spec:
+              chart: nova
+              version: 0.2.32
+              sourceRef:
+                kind: HelmRepository
+                name: openstack-helm
+          install:
+            disableWait: true
+          valuesFrom:
+            - kind: Secret
+              name: atmosphere-nova
+            - kind: Secret
+              name: percona-xtradb
+              valuesKey: root
+              targetPath: endpoints.oslo_db.auth.admin.password
+            - kind: Secret
+              name: percona-xtradb
+              valuesKey: root
+              targetPath: endpoints.oslo_db_api.auth.admin.password
+            - kind: Secret
+              name: percona-xtradb
+              valuesKey: root
+              targetPath: endpoints.oslo_db_cell0.auth.admin.password
+            - kind: Secret
+              name: rabbitmq-nova-default-user
+              valuesKey: username
+              targetPath: endpoints.oslo_messaging.auth.admin.username
+            - kind: Secret
+              name: rabbitmq-nova-default-user
+              valuesKey: password
+              targetPath: endpoints.oslo_messaging.auth.admin.password
 
 - name: Create Ingress
   ansible.builtin.include_role:
@@ -112,31 +130,34 @@
     openstack_helm_ingress_service_port: 6080
     openstack_helm_ingress_annotations: "{{ openstack_helm_nova_ingress_annotations }}"
 
-- name: Wait until compute api service ready
-  kubernetes.core.k8s_info:
-    api_version: apps/v1
-    kind: Deployment
-    name: nova-api-osapi
-    namespace: openstack
-    wait_sleep: 10
-    wait_timeout: 600
-    wait: true
-    wait_condition:
-      type: Available
-      status: true
-
 - name: Create flavors
-  openstack.cloud.compute_flavor:
-    cloud: atmosphere
-    # Flavor settings
-    flavorid: "{{ item.flavorid | default(omit) }}"
-    name: "{{ item.name }}"
-    vcpus: "{{ item.vcpus }}"
-    ram: "{{ item.ram }}"
-    disk: "{{ item.disk | default(omit) }}"
-    ephemeral: "{{ item.ephemeral | default(omit) }}"
-    swap: "{{ item.swap | default(omit) }}"
-    is_public: "{{ item.is_public | default(omit) }}"
-    rxtx_factor: "{{ item.rxtx_factor | default(omit) }}"
-    extra_specs: "{{ item.extra_specs | default(omit) }}"
-  loop: "{{ openstack_helm_nova_flavors }}"
+  when: openstack_helm_nova_flavors | length > 0
+  block:
+    - name: Wait until compute api service ready
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: Deployment
+        name: nova-api-osapi
+        namespace: openstack
+        wait_sleep: 10
+        wait_timeout: 600
+        wait: true
+        wait_condition:
+          type: Available
+          status: true
+
+    - name: Create flavors
+      openstack.cloud.compute_flavor:
+        cloud: atmosphere
+        # Flavor settings
+        flavorid: "{{ item.flavorid | default(omit) }}"
+        name: "{{ item.name }}"
+        vcpus: "{{ item.vcpus }}"
+        ram: "{{ item.ram }}"
+        disk: "{{ item.disk | default(omit) }}"
+        ephemeral: "{{ item.ephemeral | default(omit) }}"
+        swap: "{{ item.swap | default(omit) }}"
+        is_public: "{{ item.is_public | default(omit) }}"
+        rxtx_factor: "{{ item.rxtx_factor | default(omit) }}"
+        extra_specs: "{{ item.extra_specs | default(omit) }}"
+      loop: "{{ openstack_helm_nova_flavors }}"

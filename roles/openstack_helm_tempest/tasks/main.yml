@@ -16,9 +16,9 @@
   ansible.builtin.include_role:
     name: openstack_helm_endpoints
   vars:
-    openstack_helm_endpoints_repo_name: "{{ openstack_helm_tempest_chart_repo_name }}"
-    openstack_helm_endpoints_repo_url: "{{ openstack_helm_tempest_chart_repo_url }}"
-    openstack_helm_endpoints_chart: "{{ openstack_helm_tempest_chart_name }}"
+    openstack_helm_endpoints_repo_name: openstack-helm
+    openstack_helm_endpoints_repo_url: https://tarballs.opendev.org/openstack/openstack-helm/
+    openstack_helm_endpoints_chart: tempest
 
 - name: Configure tempest
   block:
@@ -79,17 +79,22 @@
         - openstack_helm_tempest_values.conf.tempest.network.public_network_id is not defined
         - _openstack_helm_tempest_test_network.openstack_networks[0].id is defined
 
+- name: Configure Helm repository
+  kubernetes.core.helm_repository:
+    name: openstack-helm
+    repo_url: https://tarballs.opendev.org/openstack/openstack-helm/
+
 - name: Deploy Helm chart
+  failed_when: false
   kubernetes.core.helm:
-    name: "{{ openstack_helm_tempest_chart_name }}"
-    chart_ref: "{{ openstack_helm_tempest_chart_repo_name }}/{{ openstack_helm_tempest_chart_name }}"
+    name: tempest
+    chart_ref: openstack-helm/tempest
     chart_version: 0.2.3
     release_namespace: openstack
     kubeconfig: /etc/kubernetes/admin.conf
     wait: true
     wait_timeout: 20m
     values: "{{ _openstack_helm_tempest_values | combine(openstack_helm_tempest_values, recursive=True) }}"
-  ignore_errors: true
 
 - name: Get tempest job object
   kubernetes.core.k8s_info:
