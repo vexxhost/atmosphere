@@ -16,18 +16,62 @@
   ansible.builtin.include_role:
     name: openstack_helm_endpoints
   vars:
-    openstack_helm_endpoints_repo_name: "{{ openstack_helm_cinder_chart_repo_name }}"
-    openstack_helm_endpoints_repo_url: "{{ openstack_helm_cinder_chart_repo_url }}"
-    openstack_helm_endpoints_chart: "{{ openstack_helm_cinder_chart_name }}"
+    openstack_helm_endpoints_repo_name: openstack-helm
+    openstack_helm_endpoints_repo_url: https://tarballs.opendev.org/openstack/openstack-helm/
+    openstack_helm_endpoints_chart: cinder
 
 - name: Deploy Helm chart
-  kubernetes.core.helm:
-    name: "{{ openstack_helm_cinder_chart_name }}"
-    chart_ref: "{{ openstack_helm_cinder_chart_repo_name }}/{{ openstack_helm_cinder_chart_name }}"
-    chart_version: 0.2.15
-    release_namespace: openstack
-    kubeconfig: /etc/kubernetes/admin.conf
-    values: "{{ _openstack_helm_cinder_values | combine(openstack_helm_cinder_values, recursive=True) }}"
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      - apiVersion: source.toolkit.fluxcd.io/v1beta2
+        kind: HelmRepository
+        metadata:
+          name: openstack-helm
+          namespace: openstack
+        spec:
+          interval: 60s
+          url: https://tarballs.opendev.org/openstack/openstack-helm/
+
+      - apiVersion: v1
+        kind: Secret
+        metadata:
+          name: atmosphere-cinder
+          namespace: openstack
+        stringData:
+          values.yaml: "{{ _openstack_helm_cinder_values | combine(openstack_helm_cinder_values, recursive=True) | to_nice_yaml }}"
+
+      - apiVersion: helm.toolkit.fluxcd.io/v2beta1
+        kind: HelmRelease
+        metadata:
+          name: cinder
+          namespace: openstack
+        spec:
+          interval: 60s
+          chart:
+            spec:
+              chart: cinder
+              version: 0.2.25
+              sourceRef:
+                kind: HelmRepository
+                name: openstack-helm
+          install:
+            disableWait: true
+          valuesFrom:
+            - kind: Secret
+              name: atmosphere-cinder
+            - kind: Secret
+              name: percona-xtradb
+              valuesKey: root
+              targetPath: endpoints.oslo_db.auth.admin.password
+            - kind: Secret
+              name: rabbitmq-cinder-default-user
+              valuesKey: username
+              targetPath: endpoints.oslo_messaging.auth.admin.username
+            - kind: Secret
+              name: rabbitmq-cinder-default-user
+              valuesKey: password
+              targetPath: endpoints.oslo_messaging.auth.admin.password
 
 - name: Create Ingress
   ansible.builtin.include_role:

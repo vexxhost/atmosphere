@@ -20,6 +20,18 @@
       tags:
         - cilium
 
+- hosts: controllers
+  gather_facts: false
+  become: true
+  roles:
+    - role: flux
+      tags:
+        - flux
+
+- hosts: controllers[0]
+  gather_facts: false
+  become: true
+  roles:
     - role: csi
       tags:
         - csi

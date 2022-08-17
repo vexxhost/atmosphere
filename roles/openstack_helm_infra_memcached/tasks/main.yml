@@ -16,107 +16,116 @@
   ansible.builtin.include_role:
     name: openstack_helm_endpoints
   vars:
-    openstack_helm_endpoints_repo_name: "{{ openstack_helm_infra_memcached_chart_repo_name }}"
-    openstack_helm_endpoints_repo_url: "{{ openstack_helm_infra_memcached_chart_repo_url }}"
-    openstack_helm_endpoints_chart: "{{ openstack_helm_infra_memcached_chart_name }}"
-
-- name: Generate Helm values comparison
-  ansible.builtin.include_role:
-    name: helm_diff
-  vars:
-    helm_diff_release_name: "{{ openstack_helm_infra_memcached_chart_name }}"
-    helm_diff_release_namespace: openstack
-    helm_diff_values: "{{ _openstack_helm_infra_memcached_values }}"
-  when:
-    - openstack_helm_infra_memcached_diff | bool
+    openstack_helm_endpoints_repo_name: openstack-helm-infra
+    openstack_helm_endpoints_repo_url: https://tarballs.opendev.org/openstack/openstack-helm-infra/
+    openstack_helm_endpoints_chart: memcached
 
 - name: Deploy Helm chart
-  kubernetes.core.helm:
-    name: "{{ openstack_helm_infra_memcached_chart_name }}"
-    chart_ref: "{{ openstack_helm_infra_memcached_chart_repo_name }}/{{ openstack_helm_infra_memcached_chart_name }}"
-    chart_version: 0.1.6
-    release_namespace: openstack
-    create_namespace: true
-    kubeconfig: /etc/kubernetes/admin.conf
-    values: "{{ _openstack_helm_infra_memcached_values }}"
-
-- name: Create Service for metrics
   kubernetes.core.k8s:
     state: present
     definition:
-      apiVersion: v1
-      kind: Service
-      metadata:
-        name: memcached-metrics
-        namespace: openstack
-        labels:
-          application: memcached
-          component: server
-      spec:
-        selector:
-          application: memcached
-          component: server
-        ports:
-          - name: metrics
-            port: 9150
-            targetPort: 9150
+      - apiVersion: source.toolkit.fluxcd.io/v1beta2
+        kind: HelmRepository
+        metadata:
+          name: openstack-helm-infra
+          namespace: openstack
+        spec:
+          interval: 60s
+          url: https://tarballs.opendev.org/openstack/openstack-helm-infra/
 
-- name: Create ServiceMonitor
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: monitoring.coreos.com/v1
-      kind: ServiceMonitor
-      metadata:
-        name: memcached
-        namespace: monitoring
-        labels:
-          release: kube-prometheus-stack
-      spec:
-        jobLabel: application
-        endpoints:
-          - port: "metrics"
-            path: "/metrics"
-            relabelings:
-              - sourceLabels: ["__meta_kubernetes_pod_name"]
-                targetLabel: "instance"
-              - action: "labeldrop"
-                regex: "^(container|endpoint|namespace|pod|service)$"
-        namespaceSelector:
-          matchNames:
-            - openstack
-        selector:
-          matchLabels:
+      - apiVersion: v1
+        kind: Secret
+        metadata:
+          name: atmosphere-memcached
+          namespace: openstack
+        stringData:
+          values.yaml: "{{ _openstack_helm_infra_memcached_values | to_nice_yaml }}"
+
+      - apiVersion: helm.toolkit.fluxcd.io/v2beta1
+        kind: HelmRelease
+        metadata:
+          name: memcached
+          namespace: openstack
+        spec:
+          interval: 60s
+          chart:
+            spec:
+              chart: memcached
+              version: 0.1.6
+              sourceRef:
+                kind: HelmRepository
+                name: openstack-helm-infra
+          install:
+            disableWait: true
+          valuesFrom:
+            - kind: Secret
+              name: atmosphere-memcached
+
+      - apiVersion: v1
+        kind: Service
+        metadata:
+          name: memcached-metrics
+          namespace: openstack
+          labels:
             application: memcached
             component: server
+        spec:
+          selector:
+            application: memcached
+            component: server
+          ports:
+            - name: metrics
+              port: 9150
+              targetPort: 9150
 
-- name: Create PrometheusRule
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: monitoring.coreos.com/v1
-      kind: PrometheusRule
-      metadata:
-        name: memcached
-        namespace: monitoring
-        labels:
-          release: kube-prometheus-stack
-      spec:
-        groups:
-          - name: memcached
-            rules:
-              - alert: MemcachedDown
-                expr: memcached_up == 0
-                for: 5m
-                labels:
-                  severity: critical
-              - alert: MemcachedConnectionLimitApproaching
-                expr: (memcached_current_connections / memcached_max_connections * 100) > 80
-                for: 5m
-                labels:
-                  severity: warning
-              - alert: MemcachedConnectionLimitApproaching
-                expr: (memcached_current_connections / memcached_max_connections * 100) > 95
-                for: 5m
-                labels:
-                  severity: critical
+      - apiVersion: monitoring.coreos.com/v1
+        kind: ServiceMonitor
+        metadata:
+          name: memcached
+          namespace: monitoring
+          labels:
+            release: kube-prometheus-stack
+        spec:
+          jobLabel: application
+          endpoints:
+            - port: "metrics"
+              path: "/metrics"
+              relabelings:
+                - sourceLabels: ["__meta_kubernetes_pod_name"]
+                  targetLabel: "instance"
+                - action: "labeldrop"
+                  regex: "^(container|endpoint|namespace|pod|service)$"
+          namespaceSelector:
+            matchNames:
+              - openstack
+          selector:
+            matchLabels:
+              application: memcached
+              component: server
+
+      - apiVersion: monitoring.coreos.com/v1
+        kind: PrometheusRule
+        metadata:
+          name: memcached
+          namespace: monitoring
+          labels:
+            release: kube-prometheus-stack
+        spec:
+          groups:
+            - name: memcached
+              rules:
+                - alert: MemcachedDown
+                  expr: memcached_up == 0
+                  for: 5m
+                  labels:
+                    severity: critical
+                - alert: MemcachedConnectionLimitApproaching
+                  expr: (memcached_current_connections / memcached_max_connections * 100) > 80
+                  for: 5m
+                  labels:
+                    severity: warning
+                - alert: MemcachedConnectionLimitApproaching
+                  expr: (memcached_current_connections / memcached_max_connections * 100) > 95
+                  for: 5m
+                  labels:
+                    severity: critical

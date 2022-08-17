@@ -12,37 +12,69 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Deploy Helm chart
-  kubernetes.core.helm:
-    name: cert-manager
-    chart_ref: jetstack/cert-manager
-    chart_version: v1.7.1
-    release_namespace: cert-manager
-    create_namespace: true
-    kubeconfig: /etc/kubernetes/admin.conf
-    values:
-      installCRDs: true
-      volumes:
-        - name: etc-ssl-certs
-          hostPath:
-            path: /etc/ssl/certs
-      volumeMounts:
-        - name: etc-ssl-certs
-          mountPath: /etc/ssl/certs
-          readOnly: true
-      nodeSelector:
-        openstack-control-plane: enabled
-      webhook:
-        nodeSelector:
-          openstack-control-plane: enabled
-      cainjector:
-        nodeSelector:
-          openstack-control-plane: enabled
-      startupapicheck:
-        nodeSelector:
-          openstack-control-plane: enabled
+- name: Create namespace
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: cert-manager
 
-- name: Create issuer
+- name: Deploy Helm chart
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      - apiVersion: source.toolkit.fluxcd.io/v1beta2
+        kind: HelmRepository
+        metadata:
+          name: jetstack
+          namespace: cert-manager
+        spec:
+          interval: 60s
+          url: https://charts.jetstack.io
+
+      - apiVersion: helm.toolkit.fluxcd.io/v2beta1
+        kind: HelmRelease
+        metadata:
+          name: cert-manager
+          namespace: cert-manager
+        spec:
+          interval: 60s
+          chart:
+            spec:
+              chart: cert-manager
+              version: v1.7.1
+              sourceRef:
+                kind: HelmRepository
+                name: jetstack
+          install:
+            crds: CreateReplace
+          upgrade:
+            crds: CreateReplace
+          values:
+            installCRDs: true
+            volumes:
+              - name: etc-ssl-certs
+                hostPath:
+                  path: /etc/ssl/certs
+            volumeMounts:
+              - name: etc-ssl-certs
+                mountPath: /etc/ssl/certs
+                readOnly: true
+            nodeSelector:
+              openstack-control-plane: enabled
+            webhook:
+              nodeSelector:
+                openstack-control-plane: enabled
+            cainjector:
+              nodeSelector:
+                openstack-control-plane: enabled
+            startupapicheck:
+              nodeSelector:
+                openstack-control-plane: enabled
+
+- name: Create Issuer
   kubernetes.core.k8s:
     state: present
     definition:
@@ -52,6 +84,13 @@
         name: openstack
         namespace: openstack
       spec: "{{ cert_manager_issuer }}"
+  # NOTE(mnaser): Since we haven't moved to the operator pattern yet, we need to
+  #               keep retrying a few times as the CRDs might not be installed
+  #               yet.
+  retries: 60
+  delay: 5
+  register: _result
+  until: _result is not failed
 
 - name: Bootstrap self-signed PKI
   block:

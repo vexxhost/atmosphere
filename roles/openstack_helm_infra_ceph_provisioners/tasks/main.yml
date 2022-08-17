@@ -103,27 +103,42 @@
         key: "{{ _openstack_helm_infra_ceph_provisioners_keyring.key }}"
 
 - name: Deploy Helm chart
-  kubernetes.core.helm:
-    name: "{{ openstack_helm_infra_ceph_provisioners_chart_name }}"
-    chart_ref: "{{ openstack_helm_infra_ceph_provisioners_chart_repo_name }}/{{ openstack_helm_infra_ceph_provisioners_chart_name }}"
-    chart_version: 0.1.17
-    release_namespace: openstack
-    kubeconfig: /etc/kubernetes/admin.conf
-    values:
-      network:
-        public: "{{ openstack_helm_infra_ceph_provisioners_ceph_public_network }}"
-        cluster: "{{ openstack_helm_infra_ceph_provisioners_ceph_cluster_network }}"
-      conf:
-        ceph:
-          global:
-            fsid: "{{ openstack_helm_infra_ceph_provisioners_ceph_fsid }}"
-      manifests:
-        configmap_bin: false
-        configmap_bin_common: false
-        deployment_rbd_provisioner: false
-        deployment_csi_rbd_provisioner: false
-        deployment_cephfs_provisioner: false
-        job_cephfs_client_key: false
-        job_namespace_client_key_cleaner: false
-        job_namespace_client_key: false
-        storageclass: false
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      - apiVersion: source.toolkit.fluxcd.io/v1beta2
+        kind: HelmRepository
+        metadata:
+          name: openstack-helm-infra
+          namespace: openstack
+        spec:
+          interval: 60s
+          url: https://tarballs.opendev.org/openstack/openstack-helm-infra/
+
+      - apiVersion: v1
+        kind: Secret
+        metadata:
+          name: atmosphere-ceph-provisioners
+          namespace: openstack
+        stringData:
+          values.yaml: "{{ openstack_helm_infra_ceph_provisioners_values | to_nice_yaml }}"
+
+      - apiVersion: helm.toolkit.fluxcd.io/v2beta1
+        kind: HelmRelease
+        metadata:
+          name: ceph-provisioners
+          namespace: openstack
+        spec:
+          interval: 60s
+          chart:
+            spec:
+              chart: ceph-provisioners
+              version: 0.1.8
+              sourceRef:
+                kind: HelmRepository
+                name: openstack-helm-infra
+          install:
+            disableWait: true
+          valuesFrom:
+            - kind: Secret
+              name: atmosphere-ceph-provisioners

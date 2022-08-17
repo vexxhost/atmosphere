@@ -16,46 +16,62 @@
   ansible.builtin.include_role:
     name: openstack_helm_endpoints
   vars:
-    openstack_helm_endpoints_repo_name: "{{ openstack_helm_heat_chart_repo_name }}"
-    openstack_helm_endpoints_repo_url: "{{ openstack_helm_heat_chart_repo_url }}"
-    openstack_helm_endpoints_chart: "{{ openstack_helm_heat_chart_name }}"
-
-- name: Generate Helm values comparison
-  ansible.builtin.include_role:
-    name: helm_diff
-  vars:
-    helm_diff_release_name: "{{ openstack_helm_heat_chart_name }}"
-    helm_diff_release_namespace: openstack
-    helm_diff_values: "{{ _openstack_helm_heat_values }}"
-  when:
-    - openstack_helm_heat_diff | bool
-
-- name: Migrate database from MariaDB to Percona XtraDB Cluster
-  ansible.builtin.include_role:
-    name: openstack_helm_migrate_to_percona_xtradb_cluster
-  vars:
-    openstack_helm_migrate_to_percona_xtradb_cluster_release_name: "{{ openstack_helm_heat_chart_name }}"
-    openstack_helm_migrate_to_percona_xtradb_cluster_release_namespace: openstack
-    openstack_helm_migrate_to_percona_xtradb_cluster_databases:
-      - heat
-    openstack_helm_migrate_to_percona_xtradb_cluster_services:
-      - kind: Deployment
-        name: heat-api
-      - kind: Deployment
-        name: heat-cfn
-      - kind: Deployment
-        name: heat-engine
-  when:
-    - openstack_helm_heat_migrate_from_mariadb | bool
+    openstack_helm_endpoints_repo_name: openstack-helm
+    openstack_helm_endpoints_repo_url: https://tarballs.opendev.org/openstack/openstack-helm/
+    openstack_helm_endpoints_chart: heat
 
 - name: Deploy Helm chart
-  kubernetes.core.helm:
-    name: "{{ openstack_helm_heat_chart_name }}"
-    chart_ref: "{{ openstack_helm_heat_chart_repo_name }}/{{ openstack_helm_heat_chart_name }}"
-    chart_version: 0.2.8
-    release_namespace: openstack
-    kubeconfig: /etc/kubernetes/admin.conf
-    values: "{{ _openstack_helm_heat_values }}"
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      - apiVersion: source.toolkit.fluxcd.io/v1beta2
+        kind: HelmRepository
+        metadata:
+          name: openstack-helm
+          namespace: openstack
+        spec:
+          interval: 60s
+          url: https://tarballs.opendev.org/openstack/openstack-helm/
+
+      - apiVersion: v1
+        kind: Secret
+        metadata:
+          name: atmosphere-heat
+          namespace: openstack
+        stringData:
+          values.yaml: "{{ _openstack_helm_heat_values | to_nice_yaml }}"
+
+      - apiVersion: helm.toolkit.fluxcd.io/v2beta1
+        kind: HelmRelease
+        metadata:
+          name: heat
+          namespace: openstack
+        spec:
+          interval: 60s
+          chart:
+            spec:
+              chart: heat
+              version: 0.2.8
+              sourceRef:
+                kind: HelmRepository
+                name: openstack-helm
+          install:
+            disableWait: true
+          valuesFrom:
+            - kind: Secret
+              name: atmosphere-heat
+            - kind: Secret
+              name: percona-xtradb
+              valuesKey: root
+              targetPath: endpoints.oslo_db.auth.admin.password
+            - kind: Secret
+              name: rabbitmq-heat-default-user
+              valuesKey: username
+              targetPath: endpoints.oslo_messaging.auth.admin.username
+            - kind: Secret
+              name: rabbitmq-heat-default-user
+              valuesKey: password
+              targetPath: endpoints.oslo_messaging.auth.admin.password
 
 - name: Create Ingress
   ansible.builtin.include_role:

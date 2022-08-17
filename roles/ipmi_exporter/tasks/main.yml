@@ -12,167 +12,162 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Create ConfigMap
+- name: Deploy service
   kubernetes.core.k8s:
     state: present
     definition:
-      apiVersion: v1
-      kind: ConfigMap
-      metadata:
-        name: ipmi-exporter
-        namespace: monitoring
-        labels:
-          application: ipmi-exporter
-      data:
-        config.yml: "{{ ipmi_exporter_config | to_yaml }}"
-
-- name: Create DaemonSet
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: apps/v1
-      kind: DaemonSet
-      metadata:
-        name: ipmi-exporter
-        namespace: monitoring
-        labels:
-          application: ipmi-exporter
-      spec:
-        selector:
-          matchLabels:
+      - apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ipmi-exporter
+          namespace: monitoring
+          labels:
             application: ipmi-exporter
-        template:
-          metadata:
-            annotations:
-              config-hash: "{{ ipmi_exporter_config | to_yaml | hash('md5') }}"
-            labels:
+        data:
+          config.yml: "{{ ipmi_exporter_config | to_yaml }}"
+
+      - apiVersion: apps/v1
+        kind: DaemonSet
+        metadata:
+          name: ipmi-exporter
+          namespace: monitoring
+          labels:
+            application: ipmi-exporter
+        spec:
+          selector:
+            matchLabels:
               application: ipmi-exporter
-              job: ipmi
-          spec:
-            containers:
-              - name: exporter
-                image: "{{ ipmi_exporter_image_repository }}/ipmi-exporter:{{ ipmi_exporter_image_tag }}"
-                ports:
-                  - name: metrics
-                    containerPort: 9290
-                securityContext:
-                  privileged: true
-                volumeMounts:
-                  - name: dev-ipmi0
-                    mountPath: /dev/ipmi0
-                  - name: ipmi-exporter
-                    mountPath: /config.yml
-                    subPath: config.yml
-            volumes:
-              - name: dev-ipmi0
-                hostPath:
-                  path: /dev/ipmi0
-              - name: ipmi-exporter
-                configMap:
-                  name: ipmi-exporter
-            affinity:
-              nodeAffinity:
-                requiredDuringSchedulingIgnoredDuringExecution:
-                  nodeSelectorTerms:
-                    - matchExpressions:
-                        - key: feature.node.kubernetes.io/cpu-cpuid.HYPERVISOR
-                          operator: NotIn
-                          values: ["true"]
+          template:
+            metadata:
+              annotations:
+                config-hash: "{{ ipmi_exporter_config | to_yaml | hash('md5') }}"
+              labels:
+                application: ipmi-exporter
+                job: ipmi
+            spec:
+              containers:
+                - name: exporter
+                  image: "{{ ipmi_exporter_image_repository }}/ipmi-exporter:{{ ipmi_exporter_image_tag }}"
+                  ports:
+                    - name: metrics
+                      containerPort: 9290
+                  securityContext:
+                    privileged: true
+                  volumeMounts:
+                    - name: dev-ipmi0
+                      mountPath: /dev/ipmi0
+                    - name: ipmi-exporter
+                      mountPath: /config.yml
+                      subPath: config.yml
+              volumes:
+                - name: dev-ipmi0
+                  hostPath:
+                    path: /dev/ipmi0
+                - name: ipmi-exporter
+                  configMap:
+                    name: ipmi-exporter
+              affinity:
+                nodeAffinity:
+                  requiredDuringSchedulingIgnoredDuringExecution:
+                    nodeSelectorTerms:
+                      - matchExpressions:
+                          - key: feature.node.kubernetes.io/cpu-cpuid.HYPERVISOR
+                            operator: NotIn
+                            values: ["true"]
 
-- name: Create PodMonitor
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: monitoring.coreos.com/v1
-      kind: PodMonitor
-      metadata:
-        name: ipmi-exporter
-        namespace: monitoring
-        labels:
-          application: ipmi-exporter
-          release: kube-prometheus-stack
-      spec:
-        jobLabel: job
-        podMetricsEndpoints:
-          - port: metrics
-            path: /metrics
-            interval: 60s
-            relabelings:
-              - sourceLabels: ["__meta_kubernetes_pod_node_name"]
-                targetLabel: instance
-              - action: labeldrop
-                regex: ^(container|endpoint|namespace|pod)$
-        selector:
-          matchLabels:
+      - apiVersion: monitoring.coreos.com/v1
+        kind: PodMonitor
+        metadata:
+          name: ipmi-exporter
+          namespace: monitoring
+          labels:
             application: ipmi-exporter
+            release: kube-prometheus-stack
+        spec:
+          jobLabel: job
+          podMetricsEndpoints:
+            - port: metrics
+              path: /metrics
+              interval: 60s
+              relabelings:
+                - sourceLabels: ["__meta_kubernetes_pod_node_name"]
+                  targetLabel: instance
+                - action: labeldrop
+                  regex: ^(container|endpoint|namespace|pod)$
+          selector:
+            matchLabels:
+              application: ipmi-exporter
 
-- name: Create PrometheusRule
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: monitoring.coreos.com/v1
-      kind: PrometheusRule
-      metadata:
-        name: ipmi-exporter
-        namespace: monitoring
-        labels:
-          application: ipmi-exporter
-          release: kube-prometheus-stack
-      spec:
-        groups:
-          - name: rules
-            rules:
-              - alert: IpmiCollectorDown
-                expr: ipmi_up == 0
-          - name: collectors-state-warning
-            rules:
-              - alert: IpmiCurrent
-                expr: ipmi_current_state == 1
-                labels:
-                  severity: warning
-              - alert: IpmiFanSpeed
-                expr: ipmi_fan_speed_state == 1
-                labels:
-                  severity: warning
-              - alert: IpmiPower
-                expr: ipmi_power_state == 1
-                labels:
-                  severity: warning
-              - alert: IpmiSensor
-                expr: ipmi_sensor_state == 1
-                labels:
-                  severity: warning
-              - alert: IpmiTemperature
-                expr: ipmi_temperature_state == 1
-                labels:
-                  severity: warning
-              - alert: IpmiVoltage
-                expr: ipmi_voltage_state == 1
-                labels:
-                  severity: warning
-          - name: collectors-state-critical
-            rules:
-              - alert: IpmiCurrent
-                expr: ipmi_current_state == 2
-                labels:
-                  severity: critical
-              - alert: IpmiFanSpeed
-                expr: ipmi_fan_speed_state == 2
-                labels:
-                  severity: critical
-              - alert: IpmiPower
-                expr: ipmi_power_state == 2
-                labels:
-                  severity: critical
-              - alert: IpmiSensor
-                expr: ipmi_sensor_state == 2
-                labels:
-                  severity: critical
-              - alert: IpmiTemperature
-                expr: ipmi_temperature_state == 2
-                labels:
-                  severity: critical
-              - alert: IpmiVoltage
-                expr: ipmi_voltage_state == 2
-                labels:
-                  severity: critical
+      - apiVersion: monitoring.coreos.com/v1
+        kind: PrometheusRule
+        metadata:
+          name: ipmi-exporter
+          namespace: monitoring
+          labels:
+            application: ipmi-exporter
+            release: kube-prometheus-stack
+        spec:
+          groups:
+            - name: rules
+              rules:
+                - alert: IpmiCollectorDown
+                  expr: ipmi_up == 0
+            - name: collectors-state-warning
+              rules:
+                - alert: IpmiCurrent
+                  expr: ipmi_current_state == 1
+                  labels:
+                    severity: warning
+                - alert: IpmiFanSpeed
+                  expr: ipmi_fan_speed_state == 1
+                  labels:
+                    severity: warning
+                - alert: IpmiPower
+                  expr: ipmi_power_state == 1
+                  labels:
+                    severity: warning
+                - alert: IpmiSensor
+                  expr: ipmi_sensor_state == 1
+                  labels:
+                    severity: warning
+                - alert: IpmiTemperature
+                  expr: ipmi_temperature_state == 1
+                  labels:
+                    severity: warning
+                - alert: IpmiVoltage
+                  expr: ipmi_voltage_state == 1
+                  labels:
+                    severity: warning
+            - name: collectors-state-critical
+              rules:
+                - alert: IpmiCurrent
+                  expr: ipmi_current_state == 2
+                  labels:
+                    severity: critical
+                - alert: IpmiFanSpeed
+                  expr: ipmi_fan_speed_state == 2
+                  labels:
+                    severity: critical
+                - alert: IpmiPower
+                  expr: ipmi_power_state == 2
+                  labels:
+                    severity: critical
+                - alert: IpmiSensor
+                  expr: ipmi_sensor_state == 2
+                  labels:
+                    severity: critical
+                - alert: IpmiTemperature
+                  expr: ipmi_temperature_state == 2
+                  labels:
+                    severity: critical
+                - alert: IpmiVoltage
+                  expr: ipmi_voltage_state == 2
+                  labels:
+                    severity: critical
+  # NOTE(mnaser): Since we haven't moved to the operator pattern yet, we need to
+  #               keep retrying a few times as the CRDs might not be installed
+  #               yet.
+  retries: 60
+  delay: 5
+  register: _result
+  until: _result is not failed
