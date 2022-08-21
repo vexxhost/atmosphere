@@ -103,14 +103,40 @@
             release: kube-prometheus-stack
         spec:
           groups:
+            - name: recording
+              rules:
+                - record: rabbitmq:usage:memory
+                  labels:
+                    job: rabbitmq
+                  expr: |
+                    sum without (job) (
+                      rabbitmq_process_resident_memory_bytes
+                    ) / sum without (
+                      container,
+                      pod,
+                      job,
+                      namespace,
+                      node,
+                      resource,
+                      uid,
+                      unit
+                    ) (
+                      label_replace(
+                        cluster:namespace:pod_memory:active:kube_pod_container_resource_limits,
+                        "instance",
+                        "$1",
+                        "pod",
+                        "(.*)"
+                      )
+                    )
             - name: limits
               rules:
                 - alert: RabbitmqMemoryHigh
-                  expr: rabbitmq_process_resident_memory_bytes / rabbitmq_resident_memory_limit_bytes > 0.80
+                  expr: rabbitmq:usage:memory > 0.80
                   labels:
                     severity: warning
                 - alert: RabbitmqMemoryHigh
-                  expr: rabbitmq_process_resident_memory_bytes / rabbitmq_resident_memory_limit_bytes > 0.95
+                  expr: rabbitmq:usage:memory > 0.95
                   labels:
                     severity: critical
                 - alert: RabbitmqFileDescriptorsUsage
