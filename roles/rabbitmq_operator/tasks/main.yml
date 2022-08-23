@@ -129,6 +129,20 @@
                         "(.*)"
                       )
                     )
+            - name: alarms
+              rules:
+                - alert: RabbitmqAlarmFreeDiskSpace
+                  expr: rabbitmq_alarms_free_disk_space_watermark == 1
+                  labels:
+                    severity: critical
+                - alert: RabbitmqAlarmMemoryUsedWatermark
+                  expr: rabbitmq_alarms_memory_used_watermark == 1
+                  labels:
+                    severity: critical
+                - alert: RabbitmqAlarmFileDescriptorLimit
+                  expr: rabbitmq_alarms_file_descriptor_limit == 1
+                  labels:
+                    severity: critical
             - name: limits
               rules:
                 - alert: RabbitmqMemoryHigh
@@ -147,10 +161,14 @@
                   expr: rabbitmq_process_open_fds / rabbitmq_process_max_fds > 0.95
                   labels:
                     severity: critical
-                - alert: RabbitmqConnections
-                  expr: rabbitmq_connections > 1000
+                - alert: RabbitmqTcpSocketsUsage
+                  expr: rabbitmq_process_open_tcp_sockets / rabbitmq_process_max_tcp_sockets > 0.80
                   labels:
                     severity: warning
+                - alert: RabbitmqTcpSocketsUsage
+                  expr: rabbitmq_process_open_tcp_sockets / rabbitmq_process_max_tcp_sockets > 0.95
+                  labels:
+                    severity: critical
             - name: msgs
               rules:
                 - alert: RabbitmqUnackedMessages
