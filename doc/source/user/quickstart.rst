@@ -27,7 +27,7 @@ follows:
 First of all, you'll have to make sure you clone the repository locally to your
 system with ``git`` by running the following command::
 
-   $ git clone https://opendev.org/vexxhost/ansible-collection-atmosphere
+   $ git clone https://github.com/vexxhost/atmosphere
 
 You will need ``tox`` installed on your operating system.  You will need to make
 sure that you have the appropriate OpenStack environment variables set (such
