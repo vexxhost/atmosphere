@@ -1,0 +1,15 @@
+name: lint
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  ansible-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3.0.2
+      - uses: ansible-community/ansible-lint-action@v6.3.0
+        with:
+          path: roles
