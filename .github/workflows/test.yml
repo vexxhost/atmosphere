@@ -1,0 +1,77 @@
+name: test
+on:
+  pull_request: {}
+  push:
+    branches:
+      - main
+
+jobs:
+  build-matrix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3.0.2
+      - id: set-matrix
+        run: |
+          echo '::set-output name=release::$(./ci/build-release-matrix)'
+          echo '::set-output name=project::$(./ci/build-project-matrix)'
+    outputs:
+      release_matrix: ${{ steps.set-matrix.outputs.release }}
+      project_matrix: ${{ steps.set-matrix.outputs.project }}
+
+  build-openstack-images:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project: ${{ fromJson(needs.build-matrix.outputs.project_matrix) }}
+        release: ${{ fromJson(needs.build-matrix.outputs.release_matrix) }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: docker/setup-qemu-action@v2
+      - uses: docker/setup-buildx-action@v2
+      - run: ./ci/openstack-image-build-env ${{ matrix.project }} ${{ matrix.release }} >> $GITHUB_ENV
+      - uses: docker/login-action@v2
+        with:
+          registry: quay.io
+          username: ${{ secrets.QUAY_USERNAME }}
+          password: ${{ secrets.QUAY_ROBOT_TOKEN }}
+      - uses: docker/build-push-action@v3
+        with:
+          context: images/openstack
+          cache-from: type=gha,scope=${{ matrix.project }}-${{ matrix.release }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.project }}-${{ matrix.release }}
+          platforms: ${{ env.PLATFORMS }}
+          push: true
+          build-args: |
+            RELEASE=${{ matrix.release }}
+            PROJECT=${{ matrix.project }}
+            PROJECT_REF=${{ env.PROJECT_REF }}
+            PROFILES=${{ env.PROFILES }}
+            DIST_PACKAGES=${{ env.DIST_PACKAGES }}
+            PIP_PACKAGES=${{ env.PIP_PACKAGES }}
+          tags: |
+            quay.io/vexxhost/${{ matrix.project }}:${{ env.PROJECT_REF }}
+
+  # TODO(mnaser): Molecule
+
+  promote-openstack-images:
+    if: ${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
+    needs:
+      - build-openstack-images
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project: ${{ fromJson(needs.build-matrix.outputs.project_matrix) }}
+        release: ${{ fromJson(needs.build-matrix.outputs.release_matrix) }}
+    steps:
+      - run: ./ci/openstack-image-build-env ${{ matrix.project }} ${{ matrix.release }} >> $GITHUB_ENV
+      - uses: docker/login-action@v2
+        with:
+          registry: quay.io
+          username: ${{ secrets.QUAY_USERNAME }}
+          password: ${{ secrets.QUAY_ROBOT_TOKEN }}
+      - uses: akhilerm/tag-push-action@v2.0.0
+        with:
+          src: quay.io/vexxhost/${{ matrix.project }}:${{ env.PROJECT_REF }}
+          dst: quay.io/vexxhost/${{ matrix.project }}:${{ matrix.release }}
