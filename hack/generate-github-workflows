@@ -98,6 +98,8 @@ for release in RELEASES:
     #     tags: |
     #       quay.io/vexxhost/${{ matrix.project }}:${{ env.PROJECT_REF }}
 
+    workflow_name = f"test-{release}"
+
     build_openstack_images_steps = (
         [
             {"uses": "actions/checkout@v3.0.2"},
@@ -133,4 +135,5 @@ for release in RELEASES:
         },
     }
 
-    print(yaml.dump(workflow, sort_keys=False))
+    with open(f".github/workflows/{workflow_name}.yml", "w") as fd:
+        yaml.dump(workflow, fd, sort_keys=False)
