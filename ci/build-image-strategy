@@ -12,15 +12,42 @@ PROJECTS = sorted([r.split("/")[-1] for r in glob.glob("images/openstack/project
 
 DATA = {}
 
-if len(sys.argv) > 1 and sys.argv[1] == "all":
-    DATA = {
-        "fail-fast": False,
-        "matrix": {
-            "release": RELEASES,
-            "project": PROJECTS,
-        },
-    }
-else:
+if sys.argv[1] == "promote":
+    for release in RELEASES:
+        for project in PROJECTS:
+            ref = (
+                open(f"images/openstack/projects/{project}/{release}/ref", "r")
+                .read()
+                .strip()
+            )
+
+            r = requests.get(
+                f"https://quay.io/api/v1/repository/vexxhost/{project}/tag/?specificTag={release}"
+            )
+            tags = r.json().get("tags")
+            if len(tags) == 0:
+                MATRIX += [
+                    {
+                        "release": release,
+                        "project": project,
+                    }
+                ]
+            sha1_manifest_digest = tags[0].get("manifest_digest")
+
+            r = requests.get(
+                f"https://quay.io/api/v1/repository/vexxhost/{project}/tag/?specificTag={ref}"
+            )
+            tags = r.json().get("tags")
+            release_manifest_digest = tags[0].get("manifest_digest")
+
+            if release_manifest_digest != sha1_manifest_digest:
+                MATRIX += [
+                    {
+                        "release": release,
+                        "project": project,
+                    }
+                ]
+elif sys.argv[1] == "build":
     for release in RELEASES:
         for project in PROJECTS:
             ref = (
@@ -41,12 +68,12 @@ else:
                     }
                 ]
 
-    if len(MATRIX) != 0:
-        DATA = {
-            "fail-fast": False,
-            "matrix": {
-                "include": MATRIX,
-            },
-        }
 
+if len(MATRIX) != 0:
+    DATA = {
+        "fail-fast": False,
+        "matrix": {
+            "include": MATRIX,
+        },
+    }
 json.dump(DATA, sys.stdout, separators=(",", ":"))
