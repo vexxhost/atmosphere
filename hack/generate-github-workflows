@@ -1,16 +1,28 @@
 #!/usr/bin/env python3
 
-import glob
 import yaml
 
 PROJECTS = [
-    r.split("/")[-1]
-    for r in glob.glob('images/openstack/projects/*')
+    "cinder",
+    "heat",
+    "senlin",
+    "octavia",
+    "barbican",
+    "designate",
+    "nova",
+    "neutron",
+    "monasca-notification",
+    "monasca-agent",
+    "keystone",
+    "horizon",
+    "monasca-api",
+    "ironic",
+    "glance",
+    "magnum",
+    "monasca-persister",
+    "placement",
 ]
-RELEASES = [
-    r.split("/")[-1]
-    for r in glob.glob('images/openstack/releases/*')
-]
+RELEASES = ["xena", "wallaby", "yoga", "master"]
 
 
 def get_ref_for_project(project, release):
@@ -73,7 +85,7 @@ def get_job_for_project(project, release):
     ref = get_ref_for_project(project, release)
 
     return {
-        "name": "Build OpenStack {}".format(project.title()),
+        "name": "Build openstack/{}".format(project),
         "uses": "docker/build-push-action@v3.1.1",
         "with": {
             "context": "images/openstack",
@@ -88,45 +100,7 @@ def get_job_for_project(project, release):
 
 
 for release in RELEASES:
-    # - uses: docker/build-push-action@v3
-    #   with:
-    #     context: .
-    #     cache-from: type=registry,ref=quay.io/vexxhost/${{ matrix.project }}:${{ matrix.release }}
-    #     cache-to: type=inline
-    #     push: ${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
-    #     platforms: ${{ env.PLATFORMS }}
-    #     build-args: |
-    #       RELEASE=${{ matrix.release }}
-    #       PROJECT=${{ matrix.project }}
-    #       PROJECT_REF=${{ env.PROJECT_REF }}
-    #       PROFILES=${{ env.PROFILES }}
-    #       DIST_PACKAGES=${{ env.DIST_PACKAGES }}
-    #       PIP_PACKAGES=${{ env.PIP_PACKAGES }}
-    #     tags: |
-    #       quay.io/vexxhost/${{ matrix.project }}:${{ env.PROJECT_REF }}
-
     workflow_name = f"test-{release}"
-
-    build_openstack_images_steps = (
-        [
-            {"uses": "actions/checkout@v3.0.2"},
-            {"uses": "docker/setup-qemu-action@v2.0.0"},
-            {"uses": "docker/setup-buildx-action@v2.0.0"},
-            {
-                "uses": "docker/login-action@v2.0.0",
-                "with": {
-                    "registry": "quay.io",
-                    "username": "${{ secrets.QUAY_USERNAME }}",
-                    "password": "${{ secrets.QUAY_ROBOT_TOKEN }}",
-                },
-            },
-        ]
-        + [get_job_for_project(project, release) for project in PROJECTS]
-        + [
-            # molecule
-            # promote image if it is the default branch
-        ]
-    )
 
     workflow = {
         "name": f"test-{release}",
@@ -137,7 +111,24 @@ for release in RELEASES:
         "jobs": {
             "build-images": {
                 "runs-on": "ubuntu-latest",
-                "steps": build_openstack_images_steps,
+                "steps": [
+                    {"uses": "actions/checkout@v3.0.2"},
+                    {"uses": "docker/setup-qemu-action@v2.0.0"},
+                    {"uses": "docker/setup-buildx-action@v2.0.0"},
+                    {
+                        "uses": "docker/login-action@v2.0.0",
+                        "with": {
+                            "registry": "quay.io",
+                            "username": "${{ secrets.QUAY_USERNAME }}",
+                            "password": "${{ secrets.QUAY_ROBOT_TOKEN }}",
+                        },
+                    },
+                ]
+                + [get_job_for_project(project, release) for project in PROJECTS]
+                + [
+                    # molecule
+                    # promote image if it is the default branch
+                ],
             }
         },
     }
