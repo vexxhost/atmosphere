@@ -11,23 +11,23 @@ jobs:
     - uses: actions/checkout@v3.0.2
     - uses: docker/setup-qemu-action@v2.0.0
     - uses: docker/setup-buildx-action@v2.0.0
-    - name: Build OpenStack Nova
+    - name: Build OpenStack Keystone
       uses: docker/build-push-action@v3.1.1
       with:
         context: images/openstack
-        cache-from: type=registry,ref=quay.io/vexxhost/nova:wallaby
+        cache-from: type=registry,ref=quay.io/vexxhost/keystone:wallaby
         cache-to: type=inline
         push: true
-        platforms: linux/amd64,linux/arm64
+        platforms: linux/amd64
         build-args: 'RELEASE=wallaby
 
-          PROJECT=nova
+          PROJECT=keystone
 
-          PROJECT_REF=2f7f4cc0babbda80946d9b56eae8f988b39a4d9d
+          PROJECT_REF=6c75b657352a86e50e63aec44d28784d8863df99
 
-          PROFILES=ceph openvswitch configdrive qemu migration
+          PROFILES=apache ldap openidc
 
-          DIST_PACKAGES=ovmf qemu-efi-aarch64
+          DIST_PACKAGES=
 
           PIP_PACKAGES='
-        tags: quay.io/vexxhost/nova:2f7f4cc0babbda80946d9b56eae8f988b39a4d9d
+        tags: quay.io/vexxhost/keystone:6c75b657352a86e50e63aec44d28784d8863df99
