@@ -71,8 +71,8 @@ def get_job_for_project(project, release):
         "uses": "docker/build-push-action@v3.1.1",
         "with": {
             "context": "images/openstack",
-            "cache-from": f"type=registry,ref=quay.io/vexxhost/{project}:{release}",
-            "cache-to": "type=inline",
+            "cache-from": "type=gha",
+            "cache-to": "type=gha,mode=max",
             "push": True,
             "platforms": get_platforms_for_project(project),
             "build-args": "\n".join([f"{k}={v}" for k, v in build_args.items()]),
