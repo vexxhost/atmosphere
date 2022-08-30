@@ -84,7 +84,7 @@ def get_image_build_job_for_project(project, release):
         "with": {
             "context": "images/openstack",
             "cache-from": f"type=gha,scope={project}-{release}",
-            "cache-to": "type=gha,mode=max,scope={project}-{release}",
+            "cache-to": f"type=gha,mode=max,scope={project}-{release}",
             "push": True,
             "platforms": PLATFORMS.get(project, "linux/amd64"),
             "build-args": "\n".join([f"{k}={v}" for k, v in build_args.items()]),
