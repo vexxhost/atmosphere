@@ -41,4 +41,20 @@ jobs:
           tags: |
             quay.io/vexxhost/ethtool-exporter:${{ env.PROJECT_REF }}
 
-  # TODO(mnaser): Molecule
+  molecule:
+    runs-on: ubuntu-latest
+    # needs:
+    #   - build-openstack-images
+    steps:
+      - uses: actions/checkout@v3.0.2
+      # TODO: run cleanup
+      - uses: gofrolist/molecule-action@v2.2.38
+        env:
+          OS_AUTH_URL: https://auth.vexxhost.net/v3
+          OS_REGION_NAME: ca-ymq-1
+          OS_USER_DOMAIN_NAME: Default
+          OS_USERNAME: ${{ secrets.OS_USERNAME }}
+          OS_PASSWORD: ${{ secrets.OS_PASSWORD }}
+          OS_PROJECT_DOMAIN_NAME: Default
+          OS_PROJECT_NAME: ${{ secrets.OS_PROJECT_NAME }}
+
