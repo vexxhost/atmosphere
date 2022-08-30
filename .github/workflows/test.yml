@@ -16,7 +16,7 @@ jobs:
       strategy: ${{ steps.set-strategy.outputs.strategy }}
 
   build-openstack-images:
-    if: fromJSON(needs.build-image-strategy.outputs.strategy) != {}
+    if: needs.build-image-strategy.outputs.strategy != '{}'
     runs-on: ubuntu-latest
     needs:
       - build-image-strategy
