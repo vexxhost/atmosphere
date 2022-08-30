@@ -10,6 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3.0.2
+      - run: |
+          echo "Releases: $(./ci/build-release-matrix)"
+          echo "Projects: $(./ci/build-project-matrix)"
       - id: set-matrix
         run: |
           echo "::set-output name=release::$(./ci/build-release-matrix)"
@@ -23,8 +26,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        project: ${{ fromJson(needs.build-matrix.outputs.project_matrix) }}
         release: ${{ fromJson(needs.build-matrix.outputs.release_matrix) }}
+        project: ${{ fromJson(needs.build-matrix.outputs.project_matrix) }}
     steps:
       - uses: actions/checkout@v3
       - uses: docker/setup-qemu-action@v2
