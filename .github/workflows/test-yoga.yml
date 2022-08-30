@@ -16,86 +16,6 @@ jobs:
         registry: quay.io
         username: ${{ secrets.QUAY_USERNAME }}
         password: ${{ secrets.QUAY_ROBOT_TOKEN }}
-    - name: Build openstack/cinder
-      uses: docker/build-push-action@v3.1.1
-      with:
-        context: images/openstack
-        cache-from: type=gha,scope=cinder-yoga
-        cache-to: type=gha,mode=max,scope=cinder-yoga
-        push: true
-        platforms: linux/amd64
-        build-args: 'RELEASE=yoga
-
-          PROJECT=cinder
-
-          PROJECT_REF=9b583401adfd63d3d311bb9515f9a27b9b679a6f
-
-          PROFILES=ceph qemu
-
-          DIST_PACKAGES=
-
-          PIP_PACKAGES='
-        tags: quay.io/vexxhost/cinder:9b583401adfd63d3d311bb9515f9a27b9b679a6f
-    - name: Build openstack/heat
-      uses: docker/build-push-action@v3.1.1
-      with:
-        context: images/openstack
-        cache-from: type=gha,scope=heat-yoga
-        cache-to: type=gha,mode=max,scope=heat-yoga
-        push: true
-        platforms: linux/amd64
-        build-args: 'RELEASE=yoga
-
-          PROJECT=heat
-
-          PROJECT_REF=a406dff43d2f057674da9e564071e78c533006e0
-
-          PROFILES=
-
-          DIST_PACKAGES=curl
-
-          PIP_PACKAGES='
-        tags: quay.io/vexxhost/heat:a406dff43d2f057674da9e564071e78c533006e0
-    - name: Build openstack/senlin
-      uses: docker/build-push-action@v3.1.1
-      with:
-        context: images/openstack
-        cache-from: type=gha,scope=senlin-yoga
-        cache-to: type=gha,mode=max,scope=senlin-yoga
-        push: true
-        platforms: linux/amd64
-        build-args: 'RELEASE=yoga
-
-          PROJECT=senlin
-
-          PROJECT_REF=804056e856fb80bc881f6ef22eb57bc4adf7a287
-
-          PROFILES=
-
-          DIST_PACKAGES=
-
-          PIP_PACKAGES='
-        tags: quay.io/vexxhost/senlin:804056e856fb80bc881f6ef22eb57bc4adf7a287
-    - name: Build openstack/octavia
-      uses: docker/build-push-action@v3.1.1
-      with:
-        context: images/openstack
-        cache-from: type=gha,scope=octavia-yoga
-        cache-to: type=gha,mode=max,scope=octavia-yoga
-        push: true
-        platforms: linux/amd64
-        build-args: 'RELEASE=yoga
-
-          PROJECT=octavia
-
-          PROJECT_REF=9c30758dfbdc4d0dc5ff9a942ffece64e5cde325
-
-          PROFILES=
-
-          DIST_PACKAGES=
-
-          PIP_PACKAGES='
-        tags: quay.io/vexxhost/octavia:9c30758dfbdc4d0dc5ff9a942ffece64e5cde325
     - name: Build openstack/barbican
       uses: docker/build-push-action@v3.1.1
       with:
@@ -116,6 +36,26 @@ jobs:
 
           PIP_PACKAGES='
         tags: quay.io/vexxhost/barbican:29e8fd054dbee79be2403e81fbe864aef8773ffe
+    - name: Build openstack/cinder
+      uses: docker/build-push-action@v3.1.1
+      with:
+        context: images/openstack
+        cache-from: type=gha,scope=cinder-yoga
+        cache-to: type=gha,mode=max,scope=cinder-yoga
+        push: true
+        platforms: linux/amd64
+        build-args: 'RELEASE=yoga
+
+          PROJECT=cinder
+
+          PROJECT_REF=9b583401adfd63d3d311bb9515f9a27b9b679a6f
+
+          PROFILES=ceph qemu
+
+          DIST_PACKAGES=
+
+          PIP_PACKAGES='
+        tags: quay.io/vexxhost/cinder:9b583401adfd63d3d311bb9515f9a27b9b679a6f
     - name: Build openstack/designate
       uses: docker/build-push-action@v3.1.1
       with:
@@ -136,107 +76,46 @@ jobs:
 
           PIP_PACKAGES='
         tags: quay.io/vexxhost/designate:2dc40a15894d2c2010b7176ff6f1dff0c8621503
-    - name: Build openstack/nova
+    - name: Build openstack/glance
       uses: docker/build-push-action@v3.1.1
       with:
         context: images/openstack
-        cache-from: type=gha,scope=nova-yoga
-        cache-to: type=gha,mode=max,scope=nova-yoga
-        push: true
-        platforms: linux/amd64,linux/arm64
-        build-args: 'RELEASE=yoga
-
-          PROJECT=nova
-
-          PROJECT_REF=6d61fccb8455367aaa37ae7bddf3b8befd3c3d88
-
-          PROFILES=ceph openvswitch configdrive qemu migration
-
-          DIST_PACKAGES=ovmf qemu-efi-aarch64
-
-          PIP_PACKAGES='
-        tags: quay.io/vexxhost/nova:6d61fccb8455367aaa37ae7bddf3b8befd3c3d88
-    - name: Build openstack/neutron
-      uses: docker/build-push-action@v3.1.1
-      with:
-        context: images/openstack
-        cache-from: type=gha,scope=neutron-yoga
-        cache-to: type=gha,mode=max,scope=neutron-yoga
-        push: true
-        platforms: linux/amd64,linux/arm64
-        build-args: 'RELEASE=yoga
-
-          PROJECT=neutron
-
-          PROJECT_REF=0836d57199a9fa337fe3bb9a5d2ad5e4cd814586
-
-          PROFILES=openvswitch vpn
-
-          DIST_PACKAGES=jq ethtool lshw
-
-          PIP_PACKAGES=neutron-vpnaas'
-        tags: quay.io/vexxhost/neutron:0836d57199a9fa337fe3bb9a5d2ad5e4cd814586
-    - name: Build openstack/monasca-notification
-      uses: docker/build-push-action@v3.1.1
-      with:
-        context: images/openstack
-        cache-from: type=gha,scope=monasca-notification-yoga
-        cache-to: type=gha,mode=max,scope=monasca-notification-yoga
+        cache-from: type=gha,scope=glance-yoga
+        cache-to: type=gha,mode=max,scope=glance-yoga
         push: true
         platforms: linux/amd64
         build-args: 'RELEASE=yoga
 
-          PROJECT=monasca-notification
+          PROJECT=glance
 
-          PROJECT_REF=50dac47ff801b784b9ad3cb701f6c9b04d0fa350
+          PROJECT_REF=20110a7d0c310eac81635d1f8c60bce423418820
 
-          PROFILES=
+          PROFILES=ceph
 
           DIST_PACKAGES=
 
           PIP_PACKAGES='
-        tags: quay.io/vexxhost/monasca-notification:50dac47ff801b784b9ad3cb701f6c9b04d0fa350
-    - name: Build openstack/monasca-agent
+        tags: quay.io/vexxhost/glance:20110a7d0c310eac81635d1f8c60bce423418820
+    - name: Build openstack/heat
       uses: docker/build-push-action@v3.1.1
       with:
         context: images/openstack
-        cache-from: type=gha,scope=monasca-agent-yoga
-        cache-to: type=gha,mode=max,scope=monasca-agent-yoga
+        cache-from: type=gha,scope=heat-yoga
+        cache-to: type=gha,mode=max,scope=heat-yoga
         push: true
         platforms: linux/amd64
         build-args: 'RELEASE=yoga
 
-          PROJECT=monasca-agent
+          PROJECT=heat
 
-          PROJECT_REF=f0b09bec09883680390d61860f91dc4322a9f084
+          PROJECT_REF=a406dff43d2f057674da9e564071e78c533006e0
 
           PROFILES=
 
-          DIST_PACKAGES=iproute2 libvirt-clients lshw
-
-          PIP_PACKAGES=libvirt-python python-glanceclient python-neutronclient python-novaclient
-          py3nvml'
-        tags: quay.io/vexxhost/monasca-agent:f0b09bec09883680390d61860f91dc4322a9f084
-    - name: Build openstack/keystone
-      uses: docker/build-push-action@v3.1.1
-      with:
-        context: images/openstack
-        cache-from: type=gha,scope=keystone-yoga
-        cache-to: type=gha,mode=max,scope=keystone-yoga
-        push: true
-        platforms: linux/amd64
-        build-args: 'RELEASE=yoga
-
-          PROJECT=keystone
-
-          PROJECT_REF=74be2e2465277aa93932fb9cabb3781451fcbe8a
-
-          PROFILES=apache ldap openidc
-
-          DIST_PACKAGES=
+          DIST_PACKAGES=curl
 
           PIP_PACKAGES='
-        tags: quay.io/vexxhost/keystone:74be2e2465277aa93932fb9cabb3781451fcbe8a
+        tags: quay.io/vexxhost/heat:a406dff43d2f057674da9e564071e78c533006e0
     - name: Build openstack/horizon
       uses: docker/build-push-action@v3.1.1
       with:
@@ -258,26 +137,6 @@ jobs:
           PIP_PACKAGES=designate-dashboard heat-dashboard ironic-ui magnum-ui neutron-vpnaas-dashboard
           octavia-dashboard senlin-dashboard monasca-ui'
         tags: quay.io/vexxhost/horizon:a9ae00b16453b4d0ff1803651fe726da55a3f08d
-    - name: Build openstack/monasca-api
-      uses: docker/build-push-action@v3.1.1
-      with:
-        context: images/openstack
-        cache-from: type=gha,scope=monasca-api-yoga
-        cache-to: type=gha,mode=max,scope=monasca-api-yoga
-        push: true
-        platforms: linux/amd64
-        build-args: 'RELEASE=yoga
-
-          PROJECT=monasca-api
-
-          PROJECT_REF=0b7851cab47c8e7484e3ce669c5d485bd180c504
-
-          PROFILES=apache influxdb
-
-          DIST_PACKAGES=
-
-          PIP_PACKAGES='
-        tags: quay.io/vexxhost/monasca-api:0b7851cab47c8e7484e3ce669c5d485bd180c504
     - name: Build openstack/ironic
       uses: docker/build-push-action@v3.1.1
       with:
@@ -298,26 +157,26 @@ jobs:
 
           PIP_PACKAGES=python-dracclient sushy'
         tags: quay.io/vexxhost/ironic:8034242c225f3293c08ca46dc588d00c5ad0e10a
-    - name: Build openstack/glance
+    - name: Build openstack/keystone
       uses: docker/build-push-action@v3.1.1
       with:
         context: images/openstack
-        cache-from: type=gha,scope=glance-yoga
-        cache-to: type=gha,mode=max,scope=glance-yoga
+        cache-from: type=gha,scope=keystone-yoga
+        cache-to: type=gha,mode=max,scope=keystone-yoga
         push: true
         platforms: linux/amd64
         build-args: 'RELEASE=yoga
 
-          PROJECT=glance
+          PROJECT=keystone
 
-          PROJECT_REF=20110a7d0c310eac81635d1f8c60bce423418820
+          PROJECT_REF=74be2e2465277aa93932fb9cabb3781451fcbe8a
 
-          PROFILES=ceph
+          PROFILES=apache ldap openidc
 
           DIST_PACKAGES=
 
           PIP_PACKAGES='
-        tags: quay.io/vexxhost/glance:20110a7d0c310eac81635d1f8c60bce423418820
+        tags: quay.io/vexxhost/keystone:74be2e2465277aa93932fb9cabb3781451fcbe8a
     - name: Build openstack/magnum
       uses: docker/build-push-action@v3.1.1
       with:
@@ -338,6 +197,67 @@ jobs:
 
           PIP_PACKAGES='
         tags: quay.io/vexxhost/magnum:2ae6cd95f18a1675ec6059e6434ee58a1868b07f
+    - name: Build openstack/monasca-agent
+      uses: docker/build-push-action@v3.1.1
+      with:
+        context: images/openstack
+        cache-from: type=gha,scope=monasca-agent-yoga
+        cache-to: type=gha,mode=max,scope=monasca-agent-yoga
+        push: true
+        platforms: linux/amd64
+        build-args: 'RELEASE=yoga
+
+          PROJECT=monasca-agent
+
+          PROJECT_REF=f0b09bec09883680390d61860f91dc4322a9f084
+
+          PROFILES=
+
+          DIST_PACKAGES=iproute2 libvirt-clients lshw
+
+          PIP_PACKAGES=libvirt-python python-glanceclient python-neutronclient python-novaclient
+          py3nvml'
+        tags: quay.io/vexxhost/monasca-agent:f0b09bec09883680390d61860f91dc4322a9f084
+    - name: Build openstack/monasca-api
+      uses: docker/build-push-action@v3.1.1
+      with:
+        context: images/openstack
+        cache-from: type=gha,scope=monasca-api-yoga
+        cache-to: type=gha,mode=max,scope=monasca-api-yoga
+        push: true
+        platforms: linux/amd64
+        build-args: 'RELEASE=yoga
+
+          PROJECT=monasca-api
+
+          PROJECT_REF=0b7851cab47c8e7484e3ce669c5d485bd180c504
+
+          PROFILES=apache influxdb
+
+          DIST_PACKAGES=
+
+          PIP_PACKAGES='
+        tags: quay.io/vexxhost/monasca-api:0b7851cab47c8e7484e3ce669c5d485bd180c504
+    - name: Build openstack/monasca-notification
+      uses: docker/build-push-action@v3.1.1
+      with:
+        context: images/openstack
+        cache-from: type=gha,scope=monasca-notification-yoga
+        cache-to: type=gha,mode=max,scope=monasca-notification-yoga
+        push: true
+        platforms: linux/amd64
+        build-args: 'RELEASE=yoga
+
+          PROJECT=monasca-notification
+
+          PROJECT_REF=50dac47ff801b784b9ad3cb701f6c9b04d0fa350
+
+          PROFILES=
+
+          DIST_PACKAGES=
+
+          PIP_PACKAGES='
+        tags: quay.io/vexxhost/monasca-notification:50dac47ff801b784b9ad3cb701f6c9b04d0fa350
     - name: Build openstack/monasca-persister
       uses: docker/build-push-action@v3.1.1
       with:
@@ -358,6 +278,66 @@ jobs:
 
           PIP_PACKAGES='
         tags: quay.io/vexxhost/monasca-persister:21e6581b44f70bd2464921c389fd44dad10d460f
+    - name: Build openstack/neutron
+      uses: docker/build-push-action@v3.1.1
+      with:
+        context: images/openstack
+        cache-from: type=gha,scope=neutron-yoga
+        cache-to: type=gha,mode=max,scope=neutron-yoga
+        push: true
+        platforms: linux/amd64,linux/arm64
+        build-args: 'RELEASE=yoga
+
+          PROJECT=neutron
+
+          PROJECT_REF=0836d57199a9fa337fe3bb9a5d2ad5e4cd814586
+
+          PROFILES=openvswitch vpn
+
+          DIST_PACKAGES=jq ethtool lshw
+
+          PIP_PACKAGES=neutron-vpnaas'
+        tags: quay.io/vexxhost/neutron:0836d57199a9fa337fe3bb9a5d2ad5e4cd814586
+    - name: Build openstack/nova
+      uses: docker/build-push-action@v3.1.1
+      with:
+        context: images/openstack
+        cache-from: type=gha,scope=nova-yoga
+        cache-to: type=gha,mode=max,scope=nova-yoga
+        push: true
+        platforms: linux/amd64,linux/arm64
+        build-args: 'RELEASE=yoga
+
+          PROJECT=nova
+
+          PROJECT_REF=6d61fccb8455367aaa37ae7bddf3b8befd3c3d88
+
+          PROFILES=ceph openvswitch configdrive qemu migration
+
+          DIST_PACKAGES=ovmf qemu-efi-aarch64
+
+          PIP_PACKAGES='
+        tags: quay.io/vexxhost/nova:6d61fccb8455367aaa37ae7bddf3b8befd3c3d88
+    - name: Build openstack/octavia
+      uses: docker/build-push-action@v3.1.1
+      with:
+        context: images/openstack
+        cache-from: type=gha,scope=octavia-yoga
+        cache-to: type=gha,mode=max,scope=octavia-yoga
+        push: true
+        platforms: linux/amd64
+        build-args: 'RELEASE=yoga
+
+          PROJECT=octavia
+
+          PROJECT_REF=9c30758dfbdc4d0dc5ff9a942ffece64e5cde325
+
+          PROFILES=
+
+          DIST_PACKAGES=
+
+          PIP_PACKAGES='
+        tags: quay.io/vexxhost/octavia:9c30758dfbdc4d0dc5ff9a942ffece64e5cde325
     - name: Build openstack/placement
       uses: docker/build-push-action@v3.1.1
       with:
@@ -378,93 +358,113 @@ jobs:
 
           PIP_PACKAGES=httplib2'
         tags: quay.io/vexxhost/placement:4d3df47ee3e394e3178d58c15306620809ad2806
-    - name: Promote openstack/cinder
-      uses: akhilerm/tag-push-action@v2.0.0
+    - name: Build openstack/senlin
+      uses: docker/build-push-action@v3.1.1
       with:
-        src: quay.io/vexxhost/cinder:9b583401adfd63d3d311bb9515f9a27b9b679a6f
-        dst: quay.io/vexxhost/cinder:yoga
-    - name: Promote openstack/heat
-      uses: akhilerm/tag-push-action@v2.0.0
-      with:
-        src: quay.io/vexxhost/heat:a406dff43d2f057674da9e564071e78c533006e0
-        dst: quay.io/vexxhost/heat:yoga
-    - name: Promote openstack/senlin
-      uses: akhilerm/tag-push-action@v2.0.0
-      with:
-        src: quay.io/vexxhost/senlin:804056e856fb80bc881f6ef22eb57bc4adf7a287
-        dst: quay.io/vexxhost/senlin:yoga
-    - name: Promote openstack/octavia
-      uses: akhilerm/tag-push-action@v2.0.0
-      with:
-        src: quay.io/vexxhost/octavia:9c30758dfbdc4d0dc5ff9a942ffece64e5cde325
-        dst: quay.io/vexxhost/octavia:yoga
+        context: images/openstack
+        cache-from: type=gha,scope=senlin-yoga
+        cache-to: type=gha,mode=max,scope=senlin-yoga
+        push: true
+        platforms: linux/amd64
+        build-args: 'RELEASE=yoga
+
+          PROJECT=senlin
+
+          PROJECT_REF=804056e856fb80bc881f6ef22eb57bc4adf7a287
+
+          PROFILES=
+
+          DIST_PACKAGES=
+
+          PIP_PACKAGES='
+        tags: quay.io/vexxhost/senlin:804056e856fb80bc881f6ef22eb57bc4adf7a287
     - name: Promote openstack/barbican
       uses: akhilerm/tag-push-action@v2.0.0
       with:
         src: quay.io/vexxhost/barbican:29e8fd054dbee79be2403e81fbe864aef8773ffe
         dst: quay.io/vexxhost/barbican:yoga
+    - name: Promote openstack/cinder
+      uses: akhilerm/tag-push-action@v2.0.0
+      with:
+        src: quay.io/vexxhost/cinder:9b583401adfd63d3d311bb9515f9a27b9b679a6f
+        dst: quay.io/vexxhost/cinder:yoga
     - name: Promote openstack/designate
       uses: akhilerm/tag-push-action@v2.0.0
       with:
         src: quay.io/vexxhost/designate:2dc40a15894d2c2010b7176ff6f1dff0c8621503
         dst: quay.io/vexxhost/designate:yoga
-    - name: Promote openstack/nova
-      uses: akhilerm/tag-push-action@v2.0.0
-      with:
-        src: quay.io/vexxhost/nova:6d61fccb8455367aaa37ae7bddf3b8befd3c3d88
-        dst: quay.io/vexxhost/nova:yoga
-    - name: Promote openstack/neutron
-      uses: akhilerm/tag-push-action@v2.0.0
-      with:
-        src: quay.io/vexxhost/neutron:0836d57199a9fa337fe3bb9a5d2ad5e4cd814586
-        dst: quay.io/vexxhost/neutron:yoga
-    - name: Promote openstack/monasca-notification
-      uses: akhilerm/tag-push-action@v2.0.0
-      with:
-        src: quay.io/vexxhost/monasca-notification:50dac47ff801b784b9ad3cb701f6c9b04d0fa350
-        dst: quay.io/vexxhost/monasca-notification:yoga
-    - name: Promote openstack/monasca-agent
-      uses: akhilerm/tag-push-action@v2.0.0
-      with:
-        src: quay.io/vexxhost/monasca-agent:f0b09bec09883680390d61860f91dc4322a9f084
-        dst: quay.io/vexxhost/monasca-agent:yoga
-    - name: Promote openstack/keystone
-      uses: akhilerm/tag-push-action@v2.0.0
-      with:
-        src: quay.io/vexxhost/keystone:74be2e2465277aa93932fb9cabb3781451fcbe8a
-        dst: quay.io/vexxhost/keystone:yoga
-    - name: Promote openstack/horizon
-      uses: akhilerm/tag-push-action@v2.0.0
-      with:
-        src: quay.io/vexxhost/horizon:a9ae00b16453b4d0ff1803651fe726da55a3f08d
-        dst: quay.io/vexxhost/horizon:yoga
-    - name: Promote openstack/monasca-api
-      uses: akhilerm/tag-push-action@v2.0.0
-      with:
-        src: quay.io/vexxhost/monasca-api:0b7851cab47c8e7484e3ce669c5d485bd180c504
-        dst: quay.io/vexxhost/monasca-api:yoga
-    - name: Promote openstack/ironic
-      uses: akhilerm/tag-push-action@v2.0.0
-      with:
-        src: quay.io/vexxhost/ironic:8034242c225f3293c08ca46dc588d00c5ad0e10a
-        dst: quay.io/vexxhost/ironic:yoga
     - name: Promote openstack/glance
       uses: akhilerm/tag-push-action@v2.0.0
       with:
         src: quay.io/vexxhost/glance:20110a7d0c310eac81635d1f8c60bce423418820
         dst: quay.io/vexxhost/glance:yoga
+    - name: Promote openstack/heat
+      uses: akhilerm/tag-push-action@v2.0.0
+      with:
+        src: quay.io/vexxhost/heat:a406dff43d2f057674da9e564071e78c533006e0
+        dst: quay.io/vexxhost/heat:yoga
+    - name: Promote openstack/horizon
+      uses: akhilerm/tag-push-action@v2.0.0
+      with:
+        src: quay.io/vexxhost/horizon:a9ae00b16453b4d0ff1803651fe726da55a3f08d
+        dst: quay.io/vexxhost/horizon:yoga
+    - name: Promote openstack/ironic
+      uses: akhilerm/tag-push-action@v2.0.0
+      with:
+        src: quay.io/vexxhost/ironic:8034242c225f3293c08ca46dc588d00c5ad0e10a
+        dst: quay.io/vexxhost/ironic:yoga
+    - name: Promote openstack/keystone
+      uses: akhilerm/tag-push-action@v2.0.0
+      with:
+        src: quay.io/vexxhost/keystone:74be2e2465277aa93932fb9cabb3781451fcbe8a
+        dst: quay.io/vexxhost/keystone:yoga
     - name: Promote openstack/magnum
       uses: akhilerm/tag-push-action@v2.0.0
       with:
         src: quay.io/vexxhost/magnum:2ae6cd95f18a1675ec6059e6434ee58a1868b07f
         dst: quay.io/vexxhost/magnum:yoga
+    - name: Promote openstack/monasca-agent
+      uses: akhilerm/tag-push-action@v2.0.0
+      with:
+        src: quay.io/vexxhost/monasca-agent:f0b09bec09883680390d61860f91dc4322a9f084
+        dst: quay.io/vexxhost/monasca-agent:yoga
+    - name: Promote openstack/monasca-api
+      uses: akhilerm/tag-push-action@v2.0.0
+      with:
+        src: quay.io/vexxhost/monasca-api:0b7851cab47c8e7484e3ce669c5d485bd180c504
+        dst: quay.io/vexxhost/monasca-api:yoga
+    - name: Promote openstack/monasca-notification
+      uses: akhilerm/tag-push-action@v2.0.0
+      with:
+        src: quay.io/vexxhost/monasca-notification:50dac47ff801b784b9ad3cb701f6c9b04d0fa350
+        dst: quay.io/vexxhost/monasca-notification:yoga
     - name: Promote openstack/monasca-persister
       uses: akhilerm/tag-push-action@v2.0.0
       with:
         src: quay.io/vexxhost/monasca-persister:21e6581b44f70bd2464921c389fd44dad10d460f
         dst: quay.io/vexxhost/monasca-persister:yoga
+    - name: Promote openstack/neutron
+      uses: akhilerm/tag-push-action@v2.0.0
+      with:
+        src: quay.io/vexxhost/neutron:0836d57199a9fa337fe3bb9a5d2ad5e4cd814586
+        dst: quay.io/vexxhost/neutron:yoga
+    - name: Promote openstack/nova
+      uses: akhilerm/tag-push-action@v2.0.0
+      with:
+        src: quay.io/vexxhost/nova:6d61fccb8455367aaa37ae7bddf3b8befd3c3d88
+        dst: quay.io/vexxhost/nova:yoga
+    - name: Promote openstack/octavia
+      uses: akhilerm/tag-push-action@v2.0.0
+      with:
+        src: quay.io/vexxhost/octavia:9c30758dfbdc4d0dc5ff9a942ffece64e5cde325
+        dst: quay.io/vexxhost/octavia:yoga
     - name: Promote openstack/placement
       uses: akhilerm/tag-push-action@v2.0.0
       with:
         src: quay.io/vexxhost/placement:4d3df47ee3e394e3178d58c15306620809ad2806
         dst: quay.io/vexxhost/placement:yoga
+    - name: Promote openstack/senlin
+      uses: akhilerm/tag-push-action@v2.0.0
+      with:
+        src: quay.io/vexxhost/senlin:804056e856fb80bc881f6ef22eb57bc4adf7a287
+        dst: quay.io/vexxhost/senlin:yoga
