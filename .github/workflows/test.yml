@@ -10,24 +10,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3.0.2
-      - run: |
-          echo "Releases: $(./ci/build-release-matrix)"
-          echo "Projects: $(./ci/build-project-matrix)"
       - id: set-matrix
-        run: |
-          echo "::set-output name=release::$(./ci/build-release-matrix)"
-          echo "::set-output name=project::$(./ci/build-project-matrix)"
+        run: echo "::set-output name=matrix::$(./ci/build-matrix)"
     outputs:
-      release_matrix: ${{ steps.set-matrix.outputs.release }}
-      project_matrix: ${{ steps.set-matrix.outputs.project }}
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
 
   build-openstack-images:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix:
-        release: ${{ fromJson(needs.build-matrix.outputs.release_matrix) }}
-        project: ${{ fromJson(needs.build-matrix.outputs.project_matrix) }}
+      matrix: ${{ fromJSON(needs.build-matrix.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v3
       - uses: docker/setup-qemu-action@v2
