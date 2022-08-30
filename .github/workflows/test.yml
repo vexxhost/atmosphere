@@ -29,7 +29,7 @@ jobs:
       - run: ./ci/openstack-image-build-env ${{ matrix.project }} ${{ matrix.release }} >> $GITHUB_ENV
       - uses: actions/cache@v3
         with:
-          key: ${{ runner.os }}-${{ matrix.project }}-${{ matrix.release }}-${{ hashFiles('images/openstack/projects/' + matrix.project + '/' + matrix.release + '/ref') }}
+          key: ${{ runner.os }}-${{ matrix.project }}-${{ matrix.release }}-${{ hashFiles(format('images/openstack/projects/{0}/{1}/ref', matrix.project, matrix.release)) }}
           path: /tmp/.buildx-cache
           restore-keys: |
             ${{ runner.os }}-${{ matrix.project }}-${{ matrix.release }}-
