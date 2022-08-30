@@ -24,6 +24,34 @@ PROJECTS = [
 ]
 RELEASES = ["xena", "wallaby", "yoga", "master"]
 
+PROFILES = {
+    "cinder": "ceph qemu",
+    "nova": "ceph openvswitch configdrive qemu migration",
+    "neutron": "openvswitch vpn",
+    "keystone": "apache ldap openidc",
+    "horizon": "apache",
+    "monasca-api": "apache influxdb",
+    "ironic": "ipxe ipmi qemu tftp",
+    "glance": "ceph",
+    "monasca-persister": "influxdb",
+    "placement": "apache",
+}
+DIST_PACKAGES = {
+    "heat": "curl",
+    "designate": "bind9utils",
+    "nova": "ovmf qemu-efi-aarch64",
+    "neutron": "jq ethtool lshw",
+    "monasca-agent": "iproute2 libvirt-clients lshw",
+    "ironic": "ethtool lshw iproute2",
+}
+PIP_PACKAGES = {
+    "neutron": "neutron-vpnaas",
+    "monasca-agent": "libvirt-python python-glanceclient python-neutronclient python-novaclient py3nvml",
+    "horizon": "designate-dashboard heat-dashboard ironic-ui magnum-ui neutron-vpnaas-dashboard octavia-dashboard senlin-dashboard monasca-ui",
+    "ironic": "python-dracclient sushy",
+    "placement": "httplib2",
+}
+
 
 def get_ref_for_project(project, release):
     return (
@@ -31,43 +59,14 @@ def get_ref_for_project(project, release):
     )
 
 
-def get_profiles_for_project(project):
-    try:
-        return open(f"images/openstack/projects/{project}/profiles", "r").read().strip()
-    except FileNotFoundError:
-        return ""
-
-
-def get_dist_packages_for_project(project):
-    try:
-        return (
-            open(f"images/openstack/projects/{project}/dist-packages", "r")
-            .read()
-            .strip()
-        )
-    except FileNotFoundError:
-        return ""
-
-
-def get_pip_packages_for_project(project):
-    try:
-        return (
-            open(f"images/openstack/projects/{project}/pip-packages", "r")
-            .read()
-            .strip()
-        )
-    except FileNotFoundError:
-        return ""
-
-
 def get_build_args_for_project(project, release):
     return {
         "RELEASE": release,
         "PROJECT": project,
         "PROJECT_REF": get_ref_for_project(project, release),
-        "PROFILES": get_profiles_for_project(project),
-        "DIST_PACKAGES": get_dist_packages_for_project(project),
-        "PIP_PACKAGES": get_pip_packages_for_project(project),
+        "PROFILES": PROFILES.get(project, ""),
+        "DIST_PACKAGES": DIST_PACKAGES.get(project, ""),
+        "PIP_PACKAGES": PIP_PACKAGES.get(project, ""),
     }
 
 
