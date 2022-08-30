@@ -30,13 +30,12 @@ for release in RELEASES:
                 }
             ]
 
-
-json.dump(
-    {
+DATA = None
+if len(MATRIX) != 0:
+    DATA = {
         "release": [],
         "project": [],
         "include": MATRIX,
-    },
-    sys.stdout,
-    separators=(",", ":"),
-)
+    }
+
+json.dump(DATA, sys.stdout, separators=(",", ":"))
