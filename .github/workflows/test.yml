@@ -29,14 +29,6 @@ jobs:
       - run: ./ci/openstack-image-build-env ${{ matrix.project }} ${{ matrix.release }} >> $GITHUB_ENV
       - id: check-image
         run: echo "::set-output name=DOCKER_TAG::$(./ci/check-image-exists ${{ matrix.project }} ${{ env.PROJECT_REF }})"
-      - uses: actions/cache@v3
-        if: ${{ steps.check-image.outputs.DOCKER_TAG == 'ENOENT' }}
-        with:
-          key: ${{ runner.os }}-${{ matrix.project }}-${{ matrix.release }}-${{ hashFiles(format('images/openstack/projects/{0}/{1}/ref', matrix.project, matrix.release)) }}
-          path: /tmp/.buildx-cache
-          restore-keys: |
-            ${{ runner.os }}-${{ matrix.project }}-${{ matrix.release }}-
-            ${{ runner.os }}-${{ matrix.project }}-
       - uses: docker/login-action@v2.0.0
         if: ${{ steps.check-image.outputs.DOCKER_TAG == 'ENOENT' }}
         with:
@@ -47,8 +39,8 @@ jobs:
         if: ${{ steps.check-image.outputs.DOCKER_TAG == 'ENOENT' }}
         with:
           context: images/openstack
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+          cache-from: type=gha,scope=${{ matrix.project }}-${{ matrix.release }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.project }}-${{ matrix.release }}
           platforms: ${{ env.PLATFORMS }}
           push: true
           build-args: |
@@ -60,17 +52,6 @@ jobs:
             PIP_PACKAGES=${{ env.PIP_PACKAGES }}
           tags: |
             quay.io/vexxhost/${{ matrix.project }}:${{ env.PROJECT_REF }}
-      # NOTE(mnaser): Due to the amount of images that we build, we make too
-      #               many requests to use `gha` as cache backend, so we work
-      #               around by using `local` as cache backend.
-      #
-      #               https://github.com/moby/buildkit/issues/2804
-      #               https://github.com/docker/build-push-action/issues/252
-      #               https://github.com/moby/buildkit/issues/1896
-      - if: ${{ steps.check-image.outputs.DOCKER_TAG == 'ENOENT' }}
-        run: |
-          rm -rf /tmp/.buildx-cache
-          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
 
   # TODO(mnaser): Molecule
 
