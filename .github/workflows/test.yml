@@ -13,7 +13,7 @@ jobs:
       - id: set-matrix
         run: |
           export MATRIX=$(./ci/build-image-matrix)
-          echo "::set-output name=skip::$(echo ${MATRIX} | | fgrep -c '[]')"
+          echo "::set-output name=skip::$(echo ${MATRIX} | fgrep -c '[]')"
           echo "::set-output name=matrix::${MATRIX}"
     outputs:
       skip: ${{ steps.set-matrix.outputs.skip }}
