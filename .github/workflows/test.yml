@@ -27,7 +27,10 @@ jobs:
       - uses: docker/setup-qemu-action@v2.0.0
       - uses: docker/setup-buildx-action@v2.0.0
       - run: ./ci/openstack-image-build-env ${{ matrix.project }} ${{ matrix.release }} >> $GITHUB_ENV
+      - id: check-image
+        run: echo "::set-output name=DOCKER_TAG::$(./ci/check-image-exists ${{ matrix.project }} ${{ env.PROJECT_REF }})"
       - uses: actions/cache@v3
+        if: ${{ steps.check-image.outputs.DOCKER_TAG == 'ENOENT' }}
         with:
           key: ${{ runner.os }}-${{ matrix.project }}-${{ matrix.release }}-${{ hashFiles(format('images/openstack/projects/{0}/{1}/ref', matrix.project, matrix.release)) }}
           path: /tmp/.buildx-cache
@@ -35,11 +38,13 @@ jobs:
             ${{ runner.os }}-${{ matrix.project }}-${{ matrix.release }}-
             ${{ runner.os }}-${{ matrix.project }}-
       - uses: docker/login-action@v2.0.0
+        if: ${{ steps.check-image.outputs.DOCKER_TAG == 'ENOENT' }}
         with:
           registry: quay.io
           username: ${{ secrets.QUAY_USERNAME }}
           password: ${{ secrets.QUAY_ROBOT_TOKEN }}
       - uses: docker/build-push-action@v3.1.1
+        if: ${{ steps.check-image.outputs.DOCKER_TAG == 'ENOENT' }}
         with:
           context: images/openstack
           cache-from: type=local,src=/tmp/.buildx-cache
@@ -62,7 +67,8 @@ jobs:
       #               https://github.com/moby/buildkit/issues/2804
       #               https://github.com/docker/build-push-action/issues/252
       #               https://github.com/moby/buildkit/issues/1896
-      - run: |
+      - if: ${{ steps.check-image.outputs.DOCKER_TAG == 'ENOENT' }}
+        run: |
           rm -rf /tmp/.buildx-cache
           mv /tmp/.buildx-cache-new /tmp/.buildx-cache
 

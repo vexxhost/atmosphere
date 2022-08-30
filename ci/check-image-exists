@@ -1,0 +1,16 @@
+#!/bin/bash
+
+PROJECT=$1
+SHA1=$2
+
+DOCKER_TAG=$(
+  curl -s https://quay.io/api/v1/repository/vexxhost/${PROJECT}/tag/?specificTag=${SHA1} | \
+    jq -r '.tags | select(length > 0)[0].name'
+)
+
+if [ "${SHA1}" != "${DOCKER_TAG}" ]; then
+  echo ENOENT
+  exit
+fi
+
+echo ${DOCKER_TAG}
