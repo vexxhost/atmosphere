@@ -1,0 +1,14 @@
+name: linters
+on:
+  pull_request: {}
+  push:
+    branches:
+    - main
+
+jobs:
+  verify-github-workflows:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3.0.2
+    - run: ./hack/generate-github-workflows
+    - run: git diff --exit-code
