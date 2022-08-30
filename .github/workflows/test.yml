@@ -11,11 +11,16 @@ jobs:
     steps:
       - uses: actions/checkout@v3.0.2
       - id: set-matrix
-        run: echo "::set-output name=matrix::$(./ci/build-image-matrix)"
+        run: |
+          export MATRIX=$(./ci/build-image-matrix)
+          echo "::set-output name=skip::$(echo ${MATRIX} | | fgrep -c '[]')"
+          echo "::set-output name=matrix::${MATRIX}"
     outputs:
+      skip: ${{ steps.set-matrix.outputs.skip }}
       matrix: ${{ steps.set-matrix.outputs.matrix }}
 
   build-openstack-images:
+    if: ${{ needs.build-image-matrix.outputs.skip == "1" }}
     runs-on: ubuntu-latest
     needs:
       - build-image-matrix
@@ -52,7 +57,7 @@ jobs:
   # TODO(mnaser): Molecule
 
   promote-openstack-images:
-    if: ${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
+    if: ${{ needs.build-image-matrix.outputs.skip == "1" || github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
     runs-on: ubuntu-latest
     needs:
       - build-image-matrix
