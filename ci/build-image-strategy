@@ -10,33 +10,43 @@ MATRIX = []
 RELEASES = sorted([r.split("/")[-1] for r in glob.glob("images/openstack/releases/*")])
 PROJECTS = sorted([r.split("/")[-1] for r in glob.glob("images/openstack/projects/*")])
 
-for release in RELEASES:
-    for project in PROJECTS:
-        ref = (
-            open(f"images/openstack/projects/{project}/{release}/ref", "r")
-            .read()
-            .strip()
-        )
-
-        r = requests.get(
-            f"https://quay.io/api/v1/repository/vexxhost/{project}/tag/?specificTag={ref}"
-        )
-
-        if r.json().get("tags") == []:
-            MATRIX += [
-                {
-                    "release": release,
-                    "project": project,
-                }
-            ]
-
 DATA = {}
-if len(MATRIX) != 0:
+
+if len(sys.argv) > 1 and sys.argv[1] == "all":
     DATA = {
         "fail-fast": False,
         "matrix": {
-            "include": MATRIX,
+            "release": RELEASES,
+            "project": PROJECTS,
         },
     }
+else:
+    for release in RELEASES:
+        for project in PROJECTS:
+            ref = (
+                open(f"images/openstack/projects/{project}/{release}/ref", "r")
+                .read()
+                .strip()
+            )
+
+            r = requests.get(
+                f"https://quay.io/api/v1/repository/vexxhost/{project}/tag/?specificTag={ref}"
+            )
+
+            if r.json().get("tags") == []:
+                MATRIX += [
+                    {
+                        "release": release,
+                        "project": project,
+                    }
+                ]
+
+    if len(MATRIX) != 0:
+        DATA = {
+            "fail-fast": False,
+            "matrix": {
+                "include": MATRIX,
+            },
+        }
 
 json.dump(DATA, sys.stdout, separators=(",", ":"))
