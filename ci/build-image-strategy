@@ -30,12 +30,13 @@ for release in RELEASES:
                 }
             ]
 
-DATA = None
+DATA = {}
 if len(MATRIX) != 0:
     DATA = {
-        "release": [],
-        "project": [],
-        "include": MATRIX,
+        "fail-fast": False,
+        "matrix": {
+            "include": MATRIX,
+        },
     }
 
 json.dump(DATA, sys.stdout, separators=(",", ":"))
