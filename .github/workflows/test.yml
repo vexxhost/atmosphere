@@ -13,13 +13,13 @@ jobs:
       - run: |
           echo "Releases: $(./ci/build-release-matrix)"
           echo "Projects: $(./ci/build-project-matrix)"
-      - id: set-release-matrix
-        run: echo "::set-output name=data::$(./ci/build-release-matrix)"
-      - id: set-project-matrix
-        run: echo "::set-output name=data::$(./ci/build-project-matrix)"
+      - id: set-matrix
+        run: |
+          echo "::set-output name=release::$(./ci/build-release-matrix)"
+          echo "::set-output name=project::$(./ci/build-project-matrix)"
     outputs:
-      release_matrix: ${{ steps.set-release-matrix.outputs.data }}
-      project_matrix: ${{ steps.set-project-matrix.outputs.data }}
+      release_matrix: ${{ steps.set-matrix.outputs.release }}
+      project_matrix: ${{ steps.set-matrix.outputs.project }}
 
   build-openstack-images:
     runs-on: ubuntu-latest
