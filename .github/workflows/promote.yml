@@ -20,6 +20,7 @@ jobs:
       - build-image-strategy
     strategy: ${{ fromJSON(needs.build-image-strategy.outputs.strategy) }}
     steps:
+      - uses: actions/checkout@v3.0.2
       - run: ./ci/openstack-image-build-env ${{ matrix.project }} ${{ matrix.release }} >> $GITHUB_ENV
       - uses: docker/login-action@v2.0.0
         with:
