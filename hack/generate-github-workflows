@@ -1,0 +1,136 @@
+#!/usr/bin/env python3
+
+import yaml
+
+PROJECTS = ["nova"]
+
+RELEASES = ["wallaby"]
+
+
+def get_ref_for_project(project, release):
+    return (
+        open(f"images/openstack/projects/{project}/{release}/ref", "r").read().strip()
+    )
+
+
+def get_profiles_for_project(project):
+    try:
+        return open(f"images/openstack/projects/{project}/profiles", "r").read().strip()
+    except FileNotFoundError:
+        return ""
+
+
+def get_dist_packages_for_project(project):
+    try:
+        return (
+            open(f"images/openstack/projects/{project}/dist-packages", "r")
+            .read()
+            .strip()
+        )
+    except FileNotFoundError:
+        return ""
+
+
+def get_pip_packages_for_project(project):
+    try:
+        return (
+            open(f"images/openstack/projects/{project}/pip-packages", "r")
+            .read()
+            .strip()
+        )
+    except FileNotFoundError:
+        return ""
+
+
+def get_build_args_for_project(project, release):
+    return {
+        "RELEASE": release,
+        "PROJECT": project,
+        "PROJECT_REF": get_ref_for_project(project, release),
+        "PROFILES": get_profiles_for_project(project),
+        "DIST_PACKAGES": get_dist_packages_for_project(project),
+        "PIP_PACKAGES": get_pip_packages_for_project(project),
+    }
+
+
+def get_platforms_for_project(project):
+    try:
+        return (
+            open(f"images/openstack/projects/{project}/platforms", "r").read().strip()
+        )
+    except FileNotFoundError:
+        return "linux/amd64"
+
+
+def get_job_for_project(project, release):
+    build_args = get_build_args_for_project(project, release)
+    ref = get_ref_for_project(project, release)
+
+    return {
+        "uses": "docker/build-push-action@v3.1.1",
+        "with": {
+            "context": "images/openstack",
+            "cache-from": f"type=registry,ref=quay.io/vexxhost/{project}:{release}",
+            "cache-to": "type=inline",
+            "push": True,
+            "platforms": get_platforms_for_project(project),
+            "build-args": "\n".join([f"{k}={v}" for k, v in build_args.items()]),
+            "tags": f"quay.io/vexxhost/{project}:{ref}",
+        },
+    }
+
+
+for release in RELEASES:
+    # - uses: docker/build-push-action@v3
+    #   with:
+    #     context: .
+    #     cache-from: type=registry,ref=quay.io/vexxhost/${{ matrix.project }}:${{ matrix.release }}
+    #     cache-to: type=inline
+    #     push: ${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
+    #     platforms: ${{ env.PLATFORMS }}
+    #     build-args: |
+    #       RELEASE=${{ matrix.release }}
+    #       PROJECT=${{ matrix.project }}
+    #       PROJECT_REF=${{ env.PROJECT_REF }}
+    #       PROFILES=${{ env.PROFILES }}
+    #       DIST_PACKAGES=${{ env.DIST_PACKAGES }}
+    #       PIP_PACKAGES=${{ env.PIP_PACKAGES }}
+    #     tags: |
+    #       quay.io/vexxhost/${{ matrix.project }}:${{ env.PROJECT_REF }}
+
+    build_openstack_images_steps = (
+        [
+            {"uses": "actions/checkout@v3.0.2"},
+            {"uses": "docker/setup-qemu-action@v2.0.0"},
+            {"uses": "docker/setup-buildx-action@v2.0.0"},
+            {
+                "uses": "docker/login-action@v2.0.0",
+                "with": {
+                    "registry": "quay.io",
+                    "username": "${{ secrets.QUAY_USERNAME }}",
+                    "password": "${{ secrets.QUAY_ROBOT_TOKEN }}",
+                },
+            },
+        ]
+        + [get_job_for_project(project, release) for project in PROJECTS]
+        + [
+            # molecule
+            # promote image if it is the default branch
+        ]
+    )
+
+    workflow = {
+        "name": f"test-{release}",
+        "on": {
+            "pull_request": {},
+            "push": {"branches": ["main"]},
+        },
+        "jobs": {
+            "build-images": {
+                "runs-on": "ubuntu-latest",
+                "steps": build_openstack_images_steps,
+            }
+        },
+    }
+
+    print(yaml.dump(workflow, sort_keys=False))
