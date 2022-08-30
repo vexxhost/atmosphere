@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
 
+import glob
 import yaml
 
-PROJECTS = ["keystone"]
-
-RELEASES = ["wallaby"]
+PROJECTS = [
+    r.split("/")[-1]
+    for r in glob.glob('images/openstack/projects/*')
+]
+RELEASES = [
+    r.split("/")[-1]
+    for r in glob.glob('images/openstack/releases/*')
+]
 
 
 def get_ref_for_project(project, release):
