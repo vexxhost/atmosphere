@@ -1,4 +1,11 @@
 #!/bin/sh
 
+# NOTE(mnaser): In our CI, we run a containerized build of Molecule which does
+#               not ship with build dependencies, so we install those packages
+#               that need to be built here.
+if [ -e /etc/alpine-release ]; then
+  apk add py3-netifaces
+fi
+
 # Install OpenStack SDK
 pip install 'openstacksdk<0.99.0'
