@@ -1,10 +1,16 @@
 #!/bin/sh
 
-# NOTE(mnaser): In our CI, we run a containerized build of Molecule which does
-#               not ship with build dependencies, so we install those packages
-#               that need to be built here.
+# NOTE(mnaser): The Molecule image does not ship with any build packages and it
+#               does not use Alpine-shipped Python, this is a gross workaround
+#               to avoid building `netifaces`.
 if [ -e /etc/alpine-release ]; then
   apk add py3-netifaces
+  ln -s \
+    /usr/lib/python3.9/site-packages/netifaces-0.11.0-py3.9.egg-info \
+    /usr/local/lib/python3.9/site-packages/netifaces-0.11.0-py3.9.egg-info
+  ln -s \
+    /usr/lib/python3.9/site-packages/netifaces.cpython-39-x86_64-linux-musl.so \
+    /usr/local/lib/python3.9/site-packages/netifaces.cpython-39-x86_64-linux-musl.so
 fi
 
 # Install OpenStack SDK
