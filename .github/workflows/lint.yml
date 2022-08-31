@@ -8,8 +8,10 @@ on:
 jobs:
   ansible-lint:
     runs-on: ubuntu-latest
+    container: haxorof/ansible-lint:v6
     steps:
       - uses: actions/checkout@v3.0.2
-      - uses: ansible-community/ansible-lint-action@v6.3.0
-        with:
-          path: roles
+      - run: ansible-lint roles
+        env:
+          GITHUB_ACTIONS: true
+          GITHUB_WORKFLOW: "{{ github.workflow.name }}"
