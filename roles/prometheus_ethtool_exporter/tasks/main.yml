@@ -1,0 +1,50 @@
+- name: Deploy exporter
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      - apiVersion: apps/v1
+        kind: DaemonSet
+        metadata:
+          name: ethtool-exporter
+          namespace: monitoring
+          labels:
+            application: ethtool-exporter
+        spec:
+          selector:
+            matchLabels:
+              application: ethtool-exporter
+          template:
+            metadata:
+              labels:
+                application: ethtool-exporter
+            spec:
+              hostNetwork: true
+              containers:
+                - name: ethtool-exporter
+                  env:
+                    - name: IP
+                      valueFrom:
+                        fieldRef:
+                          fieldPath: status.podIP
+                  image: drdivano/ethtool-exporter@sha256:39e0916b16de07f62c2becb917c94cbb3a6e124a577e1325505e4d0cdd550d7b
+                  command:
+                    - "sh"
+                    - "-exc"
+                    - "python3 /ethtool-exporter.py -l $(IP):9417 -I '(eth|em|eno|ens|enp)[0-9s]+'"
+                  ports:
+                    - name: metrics
+                      containerPort: 9417
+      # - apiVersion: v1
+      #   kind: Service
+      #   metadata:
+      #     name: ethtool-exporter
+      #     namespace: monitoring
+      #     labels:
+      #       application: ethtool-exporter
+      #   spec:
+      #     clusterIP: None
+      #     ports:
+      #       - name: metrics
+      #         port: 9417
+      #     selector:
+      #       application: ethtool-exporter
