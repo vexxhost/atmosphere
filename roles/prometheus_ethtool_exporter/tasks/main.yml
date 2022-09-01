@@ -10,6 +10,9 @@
           labels:
             application: ethtool-exporter
         spec:
+          updateStrategy:
+            rollingUpdate:
+              maxUnavailable: 100%
           selector:
             matchLabels:
               application: ethtool-exporter
@@ -20,6 +23,7 @@
                 job: ethtool
             spec:
               hostNetwork: true
+              terminationGracePeriodSeconds: 0
               containers:
                 - name: ethtool-exporter
                   env:
@@ -27,11 +31,14 @@
                       valueFrom:
                         fieldRef:
                           fieldPath: status.podIP
-                  image: drdivano/ethtool-exporter@sha256:39e0916b16de07f62c2becb917c94cbb3a6e124a577e1325505e4d0cdd550d7b
-                  command:
-                    - "sh"
-                    - "-exc"
-                    - "python3 /ethtool-exporter.py -l $(IP):9417 -I '(eth|em|eno|ens|enp)[0-9s]+'"
+                  image: quay.io/vexxhost/ethtool-exporter:5f05120a743a71adcbceb9f8ee1d43ecc7c4183a
+                  args:
+                    - "-L"
+                    - "$(IP)"
+                    - "-p"
+                    - "9417"
+                    - "-I"
+                    - "(eth|em|eno|ens|enp)[0-9s]+"
                   ports:
                     - name: metrics
                       containerPort: 9417
