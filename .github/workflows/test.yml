@@ -17,6 +17,8 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
       - uses: docker/setup-buildx-action@v2.0.0
         if: steps.changed-files.outputs.any_changed == 'true'
+      - run: echo PROJECT_REF=$(cat images/prometheus-ethtool-exporter/ref) >> $GITHUB_ENV
+        if: steps.changed-files.outputs.any_changed == 'true'
       - uses: docker/login-action@v2.0.0
         if: steps.changed-files.outputs.any_changed == 'true'
         with:
@@ -32,9 +34,9 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           build-args: |
-            PROJECT_REF=$(cat images/prometheus-ethtool-exporter/ref)
+            PROJECT_REF=${{ env.PROJECT_REF }}
           tags: |
-            quay.io/vexxhost/ethtool-exporter:$(cat images/prometheus-ethtool-exporter/ref)
+            quay.io/vexxhost/ethtool-exporter:${{ env.PROJECT_REF }}
 
   build-image-strategy:
     runs-on: ubuntu-latest
