@@ -1,0 +1,17 @@
+- name: Create folder for persistent configuration
+  ansible.builtin.file:
+    path: /etc/networkd-dispatcher/configuring.d
+    state: directory
+
+- name: Install persistent "ethtool" tuning
+  ansible.builtin.copy:
+    src: ethtool
+    dest: /etc/networkd-dispatcher/configuring.d/01-ethtool
+    mode: 0755
+    owner: root
+    group: root
+
+- name: Run "ethtool" tuning
+  ansible.builtin.command:
+    /etc/networkd-dispatcher/configuring.d/01-ethtool
+  changed_when: false

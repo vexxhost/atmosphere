@@ -1,0 +1,23 @@
+#!/bin/sh
+
+logger -sp info "atmosphere: bumping network rx/tx buffers"
+
+for i in $(ls -l /sys/class/net/*/device/driver/module | cut -d/ -f5); do
+  logger -sp info "atmosphere: ${i} bumping network rx/tx buffers"
+
+  CURRENT_RX=$(ethtool -g ${i} | tac | grep -m1 '^RX:' | awk '{ print $2 }')
+  CURRENT_RX_MINI=$(ethtool -g ${i} | tac | grep -m1 '^RX Mini:' | awk '{ print $3 }')
+  CURRENT_RX_JUMBO=$(ethtool -g ${i} | tac | grep -m1 '^RX Jumbo:' | awk '{ print $3 }')
+  CURRENT_TX=$(ethtool -g ${i} | tac | grep -m1 '^TX:' | awk '{ print $2 }')
+
+  logger -sp info "atmosphere: ${i} current rx:${CURRENT_RX}, rxmini:${CURRENT_RX_MINI}, rxjumbo:${CURRENT_RX_JUMBO}, tx:${CURRENT_TX}"
+
+  MAX_RX=$(ethtool -g ${i} | grep -m1 '^RX:' | awk '{ print $2 }')
+  MAX_RX_MINI=$(ethtool -g ${i} | grep -m1 '^RX Mini:' | awk '{ print $3 }')
+  MAX_RX_JUMBO=$(ethtool -g ${i} | grep -m1 '^RX Jumbo:' | awk '{ print $3 }')
+  MAX_TX=$(ethtool -g ${i} | grep -m1 '^TX:' | awk '{ print $2 }')
+
+  logger -sp info "atmosphere: ${i} max rx:${MAX_RX}, rxmini:${MAX_RX_MINI}, rxjumbo:${MAX_RX_JUMBO}, tx:${MAX_TX}"
+
+  ethtool -G ${i} rx ${MAX_RX} rx-mini ${MAX_RX_MINI} rx-jumbo ${MAX_RX_JUMBO} tx ${MAX_TX} || :
+done
