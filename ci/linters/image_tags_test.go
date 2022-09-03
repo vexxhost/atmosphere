@@ -19,7 +19,7 @@ func getImageTag(t *testing.T, file string) string {
 }
 
 func getAnsibleTag(t *testing.T, role string) string {
-	path := fmt.Sprint("../roles/", role, "/defaults/main.yml")
+	path := fmt.Sprint("../../roles/", role, "/defaults/main.yml")
 	data, err := os.ReadFile(path)
 	require.NoError(t, err)
 
@@ -42,9 +42,9 @@ func assertImageTag(t *testing.T, imageTagFile string, ansibleRole string) {
 }
 
 func TestPrometheusEthtoolExporterTag(t *testing.T) {
-	assertImageTag(t, "../images/prometheus-ethtool-exporter/ref", "prometheus_ethtool_exporter")
+	assertImageTag(t, "../../images/prometheus-ethtool-exporter/ref", "prometheus_ethtool_exporter")
 }
 
 func TestOpenstackHelmKeystoneTag(t *testing.T) {
-	assertImageTag(t, "../images/openstack/projects/keystone/wallaby/ref", "openstack_helm_keystone")
+	assertImageTag(t, "../../images/openstack/projects/keystone/wallaby/ref", "openstack_helm_keystone")
 }
