@@ -49,8 +49,25 @@ jobs:
     steps:
       - uses: actions/checkout@v3.0.2
       # TODO: run cleanup
-      # - uses: gofrolist/molecule-action@v2.2.38
-      - uses: mnaser/molecule-action@fix-defunct-procs-test
+
+      - name: Set up Go
+        uses: actions/setup-go@v3.3.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Clean-up stale stacks
+        run: go run ci/molecule.go
+        env:
+          OS_AUTH_URL: https://auth.vexxhost.net/v3
+          OS_REGION_NAME: ca-ymq-1
+          OS_USER_DOMAIN_NAME: Default
+          OS_USERNAME: ${{ secrets.OS_USERNAME }}
+          OS_PASSWORD: ${{ secrets.OS_PASSWORD }}
+          OS_PROJECT_DOMAIN_NAME: Default
+          OS_PROJECT_NAME: ${{ secrets.OS_PROJECT_NAME }}
+
+      - uses: gofrolist/molecule-action@v2.2.40
         timeout-minutes: 90
         env:
           ATMOSPHERE_STACK_NAME: "atmosphere-${{ github.run_id }}-${{ github.run_attempt }}"
