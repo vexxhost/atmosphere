@@ -58,3 +58,31 @@ cert_manager_issuer:
   ca:
     secretName: root-secret
 ```
+
+## Using pre-existing CA
+
+If you have your own CA and want to use it, you will need to update your Ansible inventory to be the following:
+
+```yaml
+cert_manager_issuer:
+  ca:
+    secretName: custom-openstack-ca-key-pair
+```
+
+After you're done, you'll need to add a new secret to the Kubernetes cluster,
+you will need to do it by using the following YAML file:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: custom-openstack-ca-key-pair
+  namespace: openstack
+type: Opaque
+stringData:
+  tls.crt: |
+    CA_CERTIFICATE_HERE
+  tls.key: |
+    CA_PRIVATE_KEY_HERE
+```
+NOTE: If your issuer represents an intermediate, ensure that tls.crt contains the issuer's full chain in the correct order: issuer -> intermediate(s) -> root.
