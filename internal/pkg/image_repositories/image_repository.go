@@ -62,13 +62,6 @@ func (i *ImageRepository) WriteFiles(fs billy.Filesystem) error {
 		return err
 	}
 
-	// .github/dependabot.yml
-	dab := NewDependabotConfig()
-	err = dab.WriteFile(fs)
-	if err != nil {
-		return err
-	}
-
 	// .dockerignore
 	di := NewDockerIgnore()
 	err = di.WriteFile(fs)
@@ -109,6 +102,20 @@ func (i *ImageRepository) WriteFiles(fs billy.Filesystem) error {
 		return err
 	}
 	err = rm.WriteFile(fs)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (i *ImageRepository) CreateGithubRepository(ctx context.Context) error {
+	repo := &github.Repository{
+		Name:     github.String(i.githubProjectName),
+		AutoInit: github.Bool(true),
+	}
+
+	_, _, err := i.githubClient.Repositories.Create(ctx, "vexxhost", repo)
 	if err != nil {
 		return err
 	}
@@ -176,7 +183,7 @@ func (i *ImageRepository) UpdateGithubConfiguration(ctx context.Context) error {
 		},
 		RequiredConversationResolution: github.Bool(true),
 		RequireLinearHistory:           github.Bool(true),
-		EnforceAdmins:                  true,
+		EnforceAdmins:                  false,
 		AllowForcePushes:               github.Bool(false),
 		AllowDeletions:                 github.Bool(false),
 	}
