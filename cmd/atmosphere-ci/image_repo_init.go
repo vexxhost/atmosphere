@@ -9,26 +9,26 @@ import (
 )
 
 var (
-	admin bool
-
-	imageRepoSyncCmd = &cobra.Command{
-		Use:   "sync [project]",
-		Short: "Sync image repository",
+	imageRepoInitCmd = &cobra.Command{
+		Use:   "init [project]",
+		Short: "Initialize image repository",
 		Args:  cobra.MinimumNArgs(1),
 
 		Run: func(cmd *cobra.Command, args []string) {
 			ctx := context.TODO()
 
 			repo := image_repositories.NewImageRepository(args[0])
-
-			if admin {
-				err := repo.UpdateGithubConfiguration(ctx)
-				if err != nil {
-					log.Panic(err)
-				}
+			err := repo.CreateGithubRepository(ctx)
+			if err != nil {
+				log.Panic(err)
 			}
 
-			err := repo.Synchronize(ctx)
+			err = repo.UpdateGithubConfiguration(ctx)
+			if err != nil {
+				log.Panic(err)
+			}
+
+			err = repo.Synchronize(ctx)
 			if err != nil {
 				log.Panic(err)
 			}
@@ -37,7 +37,5 @@ var (
 )
 
 func init() {
-	imageRepoCmd.PersistentFlags().BoolVar(&admin, "admin", false, "Run using admin PAT (will update repo configs)")
-
-	imageRepoCmd.AddCommand(imageRepoSyncCmd)
+	imageRepoCmd.AddCommand(imageRepoInitCmd)
 }
