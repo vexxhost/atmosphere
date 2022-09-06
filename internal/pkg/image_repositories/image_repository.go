@@ -125,10 +125,21 @@ func (i *ImageRepository) CreateGithubRepository(ctx context.Context) error {
 	return nil
 }
 
-func (i *ImageRepository) GetGitHubRepository(ctx context.Context) (*github.Repository, error) {
-	repo, _, err := i.githubClient.Repositories.Get(ctx, "vexxhost", i.githubProjectName)
+func (i *ImageRepository) GetGitHubRepository(ctx context.Context, owner string) (*github.Repository, error) {
+	repo, _, err := i.githubClient.Repositories.Get(ctx, owner, i.githubProjectName)
 	if err != nil {
 		return nil, err
+	}
+
+	return repo, nil
+}
+
+func (i *ImageRepository) ForkGitHubRepository(ctx context.Context) (*github.Repository, error) {
+	repo, err := i.GetGitHubRepository(ctx, "vexxhost-bot")
+	if err != nil {
+		i.githubClient.Repositories.CreateFork(ctx, "vexxhost", i.githubProjectName, nil)
+		time.Sleep(20 * time.Second)
+		return i.GetGitHubRepository(ctx, "vexxhost-bot")
 	}
 
 	return repo, nil
@@ -197,8 +208,16 @@ func (i *ImageRepository) UpdateGithubConfiguration(ctx context.Context) error {
 	return nil
 }
 
-func (i *ImageRepository) Synchronize(ctx context.Context) error {
-	githubRepo, err := i.GetGitHubRepository(ctx)
+func (i *ImageRepository) Synchronize(ctx context.Context, admin bool) error {
+	var githubRepo *github.Repository
+	var err error
+
+	if admin {
+		githubRepo, err = i.GetGitHubRepository(ctx, "vexxhost")
+	} else {
+		githubRepo, err = i.ForkGitHubRepository(ctx)
+	}
+
 	if err != nil {
 		return err
 	}
@@ -206,9 +225,19 @@ func (i *ImageRepository) Synchronize(ctx context.Context) error {
 	storer := memory.NewStorage()
 	fs := memfs.New()
 
+	upstreamUrl := fmt.Sprintf("https://github.com/vexxhost/%s.git", i.githubProjectName)
 	repo, err := git.Clone(storer, fs, &git.CloneOptions{
-		Auth: i.gitAuth,
-		URL:  *githubRepo.CloneURL,
+		Auth:       i.gitAuth,
+		URL:        upstreamUrl,
+		RemoteName: "upstream",
+	})
+	if err != nil {
+		return err
+	}
+
+	_, err = repo.CreateRemote(&config.RemoteConfig{
+		Name: "origin",
+		URLs: []string{*githubRepo.CloneURL},
 	})
 	if err != nil {
 		return err
@@ -260,8 +289,8 @@ func (i *ImageRepository) Synchronize(ctx context.Context) error {
 	commit, err := worktree.Commit("chore: sync using `atmosphere-ci`", &git.CommitOptions{
 		All: true,
 		Author: &object.Signature{
-			Name:  "github-actions[bot]",
-			Email: "41898282+github-actions[bot]@users.noreply.github.com",
+			Name:  "vexxhost-bot",
+			Email: "mnaser+bot@vexxhost.com",
 			When:  time.Now(),
 		},
 	})
@@ -270,9 +299,10 @@ func (i *ImageRepository) Synchronize(ctx context.Context) error {
 	}
 
 	err = repo.Push(&git.PushOptions{
-		Auth:     i.gitAuth,
-		RefSpecs: []config.RefSpec{"refs/heads/sync/atmosphere-ci:refs/heads/sync/atmosphere-ci"},
-		Force:    true,
+		Auth:       i.gitAuth,
+		RefSpecs:   []config.RefSpec{"refs/heads/*:refs/heads/*"},
+		RemoteName: "origin",
+		Force:      true,
 	})
 	if err != nil {
 		return err
@@ -287,9 +317,11 @@ func (i *ImageRepository) Synchronize(ctx context.Context) error {
 }
 
 func (i *ImageRepository) CreatePullRequest(ctx context.Context, repo *github.Repository, commit plumbing.Hash) error {
+	head := fmt.Sprintf("%s:%s", *repo.Owner.Login, "sync/atmosphere-ci")
+
 	newPR := &github.NewPullRequest{
 		Title: github.String("⚙️ Automatic sync from `atmosphere-ci`"),
-		Head:  github.String("sync/atmosphere-ci"),
+		Head:  github.String(head),
 		Base:  github.String("main"),
 		Body:  github.String("This is an automatic pull request from `atmosphere-ci`"),
 	}
@@ -304,7 +336,7 @@ func (i *ImageRepository) CreatePullRequest(ctx context.Context, repo *github.Re
 		return nil
 	}
 
-	pr, resp, err := i.githubClient.PullRequests.Create(ctx, *repo.Owner.Login, *repo.Name, newPR)
+	pr, resp, err := i.githubClient.PullRequests.Create(ctx, "vexxhost", *repo.Name, newPR)
 	if err != nil && resp.StatusCode != http.StatusUnprocessableEntity {
 		return err
 	}

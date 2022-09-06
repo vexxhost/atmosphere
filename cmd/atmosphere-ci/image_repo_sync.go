@@ -28,7 +28,7 @@ var (
 				}
 			}
 
-			err := repo.Synchronize(ctx)
+			err := repo.Synchronize(ctx, admin)
 			if err != nil {
 				log.Panic(err)
 			}

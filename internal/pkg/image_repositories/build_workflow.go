@@ -109,6 +109,7 @@ func NewBuildWorkflow(project string) *GithubWorkflow {
 					{
 						Name: "Authenticate with Quay.io",
 						Uses: "docker/login-action@v2",
+						If:   "${{ github.event_name == 'push' }}",
 						With: map[string]string{
 							"registry": "quay.io",
 							"username": "${{ secrets.QUAY_USERNAME }}",
@@ -123,7 +124,7 @@ func NewBuildWorkflow(project string) *GithubWorkflow {
 							"cache-from": "type=gha,scope=${{ matrix.release }}",
 							"cache-to":   "type=gha,mode=max,scope=${{ matrix.release }}",
 							"platforms":  platforms,
-							"push":       "true",
+							"push":       "${{ github.event_name == 'push' }}",
 							"build-args": strings.Join(buildArgs, "\n"),
 							"tags":       fmt.Sprintf("quay.io/vexxhost/%s:${{ env.PROJECT_REF }}", project),
 						},

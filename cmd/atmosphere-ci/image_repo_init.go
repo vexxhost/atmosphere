@@ -28,7 +28,7 @@ var (
 				log.Panic(err)
 			}
 
-			err = repo.Synchronize(ctx)
+			err = repo.Synchronize(ctx, true)
 			if err != nil {
 				log.Panic(err)
 			}
