@@ -47,7 +47,7 @@ func NewImageRepository(project string) *ImageRepository {
 	}
 }
 
-func (i *ImageRepository) WriteFiles(fs billy.Filesystem) error {
+func (i *ImageRepository) WriteFiles(ctx context.Context, fs billy.Filesystem) error {
 	// .github/workflows/build.yml
 	build := NewBuildWorkflow(i.Project)
 	err := build.WriteFile(fs)
@@ -77,7 +77,7 @@ func (i *ImageRepository) WriteFiles(fs billy.Filesystem) error {
 	}
 
 	// Dockerfile
-	df, err := NewDockerfile()
+	df, err := NewDockerfile(ctx, i)
 	if err != nil {
 		return err
 	}
@@ -235,7 +235,7 @@ func (i *ImageRepository) Synchronize(ctx context.Context) error {
 		return err
 	}
 
-	err = i.WriteFiles(fs)
+	err = i.WriteFiles(ctx, fs)
 	if err != nil {
 		return err
 	}
