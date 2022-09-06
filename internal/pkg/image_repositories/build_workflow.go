@@ -19,6 +19,7 @@ var PROFILES map[string]string = map[string]string{
 }
 var DIST_PACAKGES map[string]string = map[string]string{
 	"designate":     "bind9utils",
+	"glance":        "kubectl",
 	"heat":          "curl",
 	"ironic":        "ethtool lshw iproute2",
 	"monasca-agent": "iproute2 libvirt-clients lshw",
