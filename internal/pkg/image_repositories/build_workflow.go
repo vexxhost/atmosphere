@@ -7,29 +7,30 @@ import (
 
 var PROFILES map[string]string = map[string]string{
 	"cinder":            "ceph qemu",
-	"nova":              "ceph openvswitch configdrive qemu migration",
-	"neutron":           "openvswitch vpn",
-	"keystone":          "apache ldap openidc",
-	"horizon":           "apache",
-	"monasca-api":       "apache influxdb",
-	"ironic":            "ipxe ipmi qemu tftp",
 	"glance":            "ceph",
+	"horizon":           "apache",
+	"ironic":            "ipxe ipmi qemu tftp",
+	"keystone":          "apache ldap openidc",
+	"monasca-api":       "apache influxdb",
 	"monasca-persister": "influxdb",
+	"neutron":           "openvswitch vpn",
+	"nova":              "ceph openvswitch configdrive qemu migration",
 	"placement":         "apache",
 }
 var DIST_PACAKGES map[string]string = map[string]string{
-	"heat":          "curl",
 	"designate":     "bind9utils",
-	"nova":          "ovmf qemu-efi-aarch64",
-	"neutron":       "jq ethtool lshw",
-	"monasca-agent": "iproute2 libvirt-clients lshw",
+	"heat":          "curl",
 	"ironic":        "ethtool lshw iproute2",
+	"monasca-agent": "iproute2 libvirt-clients lshw",
+	"neutron":       "jq ethtool lshw",
+	"nova":          "ovmf qemu-efi-aarch64",
 }
 var PIP_PACKAGES map[string]string = map[string]string{
-	"neutron":       "neutron-vpnaas",
-	"monasca-agent": "libvirt-python python-glanceclient python-neutronclient python-novaclient py3nvml",
+	"glance":        "python-cinderclient os-brick",
 	"horizon":       "designate-dashboard heat-dashboard ironic-ui magnum-ui neutron-vpnaas-dashboard octavia-dashboard senlin-dashboard monasca-ui",
 	"ironic":        "python-dracclient sushy",
+	"monasca-agent": "libvirt-python python-glanceclient python-neutronclient python-novaclient py3nvml",
+	"neutron":       "neutron-vpnaas",
 	"placement":     "httplib2",
 }
 var PLATFORMS map[string]string = map[string]string{
