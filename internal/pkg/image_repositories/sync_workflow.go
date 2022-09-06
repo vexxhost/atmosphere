@@ -48,6 +48,9 @@ func NewSyncWorkflow(project string) *GithubWorkflow {
 					{
 						Name: "Synchronize Image Repository",
 						Run:  fmt.Sprintf("go run ./cmd/atmosphere-ci image repo sync %s", project),
+						Environment: map[string]string{
+							"GITHUB_TOKEN": "${{ secrets.GITHUB_TOKEN }}",
+						},
 					},
 				},
 			},

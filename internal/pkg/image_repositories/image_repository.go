@@ -198,7 +198,7 @@ func (i *ImageRepository) Synchronize(ctx context.Context) error {
 
 	repo, err := git.Clone(storer, fs, &git.CloneOptions{
 		Auth: i.gitAuth,
-		URL:  *githubRepo.SSHURL,
+		URL:  *githubRepo.CloneURL,
 	})
 	if err != nil {
 		return err
