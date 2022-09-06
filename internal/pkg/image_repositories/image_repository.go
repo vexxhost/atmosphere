@@ -41,7 +41,8 @@ func NewImageRepository(project string) *ImageRepository {
 		githubClient:      github.NewClient(tc),
 		githubProjectName: fmt.Sprintf("docker-openstack-%s", project),
 		gitAuth: &git_http.BasicAuth{
-			Username: githubToken,
+			Username: "x-access-token",
+			Password: githubToken,
 		},
 	}
 }
