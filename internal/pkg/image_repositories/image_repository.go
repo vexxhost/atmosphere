@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/go-git/go-billy/v5"
 	"github.com/go-git/go-billy/v5/memfs"
@@ -261,6 +262,7 @@ func (i *ImageRepository) Synchronize(ctx context.Context) error {
 		Author: &object.Signature{
 			Name:  "github-actions[bot]",
 			Email: "41898282+github-actions[bot]@users.noreply.github.com",
+			When:  time.Now(),
 		},
 	})
 	if err != nil {
