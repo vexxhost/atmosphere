@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-git/go-billy/v5"
 	"github.com/go-git/go-billy/v5/memfs"
+	"github.com/go-git/go-git/plumbing/object"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
@@ -257,6 +258,10 @@ func (i *ImageRepository) Synchronize(ctx context.Context) error {
 
 	commit, err := worktree.Commit("chore: sync using `atmosphere-ci`", &git.CommitOptions{
 		All: true,
+		Author: &object.Signature{
+			Name:  "github-actions[bot]",
+			Email: "41898282+github-actions[bot]@users.noreply.github.com",
+		},
 	})
 	if err != nil {
 		return err
