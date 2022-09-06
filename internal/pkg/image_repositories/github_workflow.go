@@ -1,6 +1,7 @@
 package image_repositories
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/go-git/go-billy/v5"
@@ -8,26 +9,49 @@ import (
 )
 
 type GithubWorkflow struct {
-	Name string                       `yaml:"name"`
-	On   GithubWorkflowTrigger        `yaml:"on"`
-	Jobs map[string]GithubWorkflowJob `yaml:"jobs"`
+	Name        string                       `yaml:"name"`
+	Concurrency GithubWorkflowConcurrency    `yaml:"concurrency"`
+	On          GithubWorkflowTrigger        `yaml:"on"`
+	Jobs        map[string]GithubWorkflowJob `yaml:"jobs"`
 }
 
 type GithubWorkflowTrigger struct {
-	PullRequest GithubWorkflowPullRequest `yaml:"pull_request"`
-	Push        GithubWorkflowPush        `yaml:"push"`
+	PullRequest      GithubWorkflowPullRequest `yaml:"pull_request,omitempty"`
+	Push             GithubWorkflowPush        `yaml:"push,omitempty"`
+	Schedule         []GithubWorkflowSchedule  `yaml:"schedule,omitempty"`
+	WorkflowDispatch GithubWorkflowDispatch    `yaml:"workflow_dispatch,omitempty"`
 }
 
 type GithubWorkflowPullRequest struct {
+	Types []string `yaml:"types,omitempty"`
 }
 
 type GithubWorkflowPush struct {
 	Branches []string `yaml:"branches"`
 }
 
+type GithubWorkflowSchedule struct {
+	Cron string `yaml:"cron"`
+}
+
+type GithubWorkflowDispatch struct {
+	Inputs map[string]GithubWorkflowDispatchInput `yaml:"inputs,omitempty"`
+}
+
+type GithubWorkflowDispatchInput struct {
+	Description string `yaml:"description"`
+	Required    bool   `yaml:"required"`
+	Default     string `yaml:"default"`
+}
+
+type GithubWorkflowConcurrency struct {
+	Group            string `yaml:"group"`
+	CancelInProgress bool   `yaml:"cancel-in-progress"`
+}
+
 type GithubWorkflowJob struct {
 	RunsOn   string                 `yaml:"runs-on"`
-	Strategy GithubWorkflowStrategy `yaml:"strategy"`
+	Strategy GithubWorkflowStrategy `yaml:"strategy,omitempty"`
 	Steps    []GithubWorkflowStep   `yaml:"steps"`
 }
 
@@ -54,7 +78,9 @@ func (g *GithubWorkflow) Write(wr io.Writer) error {
 }
 
 func (g *GithubWorkflow) WriteFile(fs billy.Filesystem) error {
-	f, err := fs.Create(".github/workflows/build.yml")
+	file := fmt.Sprintf(".github/workflows/%s.yml", g.Name)
+
+	f, err := fs.Create(file)
 	if err != nil {
 		return err
 	}

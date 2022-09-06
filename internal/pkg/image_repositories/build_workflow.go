@@ -69,8 +69,14 @@ func NewBuildWorkflow(project string) *GithubWorkflow {
 
 	return &GithubWorkflow{
 		Name: "build",
+		Concurrency: GithubWorkflowConcurrency{
+			Group:            "${{ github.head_ref || github.run_id }}",
+			CancelInProgress: true,
+		},
 		On: GithubWorkflowTrigger{
-			PullRequest: GithubWorkflowPullRequest{},
+			PullRequest: GithubWorkflowPullRequest{
+				Types: []string{"opened", "synchronize", "reopened"},
+			},
 			Push: GithubWorkflowPush{
 				Branches: []string{"main"},
 			},
