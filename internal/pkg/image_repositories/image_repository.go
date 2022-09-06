@@ -21,8 +21,9 @@ import (
 type ImageRepository struct {
 	Project string
 
-	githubClient *github.Client
-	gitAuth      *git_http.BasicAuth
+	githubClient      *github.Client
+	githubProjectName string
+	gitAuth           *git_http.BasicAuth
 }
 
 func NewImageRepository(project string) *ImageRepository {
@@ -37,7 +38,8 @@ func NewImageRepository(project string) *ImageRepository {
 	return &ImageRepository{
 		Project: project,
 
-		githubClient: github.NewClient(tc),
+		githubClient:      github.NewClient(tc),
+		githubProjectName: fmt.Sprintf("docker-openstack-%s", project),
 		gitAuth: &git_http.BasicAuth{
 			Username: githubToken,
 		},
@@ -53,6 +55,11 @@ func (i *ImageRepository) WriteFiles(fs billy.Filesystem) error {
 	}
 
 	// .github/workflows/sync.yml
+	sync := NewSyncWorkflow(i.Project)
+	err = sync.WriteFile(fs)
+	if err != nil {
+		return err
+	}
 
 	// .github/dependabot.yml
 	dab := NewDependabotConfig()
@@ -108,19 +115,16 @@ func (i *ImageRepository) WriteFiles(fs billy.Filesystem) error {
 	return nil
 }
 
-func (i *ImageRepository) CreateOrGet(ctx context.Context) (*github.Repository, error) {
-	projectName := fmt.Sprintf("docker-openstack-%s", i.Project)
-
-	_, resp, err := i.githubClient.Repositories.Get(ctx, "vexxhost", projectName)
-	if err != nil && resp.StatusCode == http.StatusNotFound {
-		_, _, err = i.githubClient.Repositories.Create(ctx, "vexxhost", &github.Repository{
-			Name: github.String(projectName),
-		})
-		if err != nil {
-			return nil, err
-		}
+func (i *ImageRepository) GetGitHubRepository(ctx context.Context) (*github.Repository, error) {
+	repo, _, err := i.githubClient.Repositories.Get(ctx, "vexxhost", i.githubProjectName)
+	if err != nil {
+		return nil, err
 	}
 
+	return repo, nil
+}
+
+func (i *ImageRepository) UpdateGithubConfiguration(ctx context.Context) error {
 	// Description
 	description := fmt.Sprintf("Docker image for OpenStack: %s", i.Project)
 
@@ -138,9 +142,9 @@ func (i *ImageRepository) CreateOrGet(ctx context.Context) (*github.Repository, 
 	}
 
 	// Update the repository with the correct settings
-	repo, _, err = i.githubClient.Repositories.Edit(ctx, "vexxhost", projectName, repo)
+	repo, _, err := i.githubClient.Repositories.Edit(ctx, "vexxhost", i.githubProjectName, repo)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// Branch protection
@@ -177,14 +181,14 @@ func (i *ImageRepository) CreateOrGet(ctx context.Context) (*github.Repository, 
 	}
 	_, _, err = i.githubClient.Repositories.UpdateBranchProtection(ctx, *repo.Owner.Login, *repo.Name, "main", protection)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return repo, err
+	return nil
 }
 
 func (i *ImageRepository) Synchronize(ctx context.Context) error {
-	githubRepo, err := i.CreateOrGet(ctx)
+	githubRepo, err := i.GetGitHubRepository(ctx)
 	if err != nil {
 		return err
 	}
