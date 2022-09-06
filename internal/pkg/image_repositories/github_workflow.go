@@ -60,11 +60,12 @@ type GithubWorkflowStrategy struct {
 }
 
 type GithubWorkflowStep struct {
-	Name string            `yaml:"name"`
-	Run  string            `yaml:"run,omitempty"`
-	Uses string            `yaml:"uses,omitempty"`
-	If   string            `yaml:"if,omitempty"`
-	With map[string]string `yaml:"with,omitempty"`
+	Name        string            `yaml:"name"`
+	Run         string            `yaml:"run,omitempty"`
+	Uses        string            `yaml:"uses,omitempty"`
+	If          string            `yaml:"if,omitempty"`
+	With        map[string]string `yaml:"with,omitempty"`
+	Environment map[string]string `yaml:"env,omitempty"`
 }
 
 func (g *GithubWorkflow) Write(wr io.Writer) error {
