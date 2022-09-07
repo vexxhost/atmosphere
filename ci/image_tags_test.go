@@ -1,50 +1,29 @@
 package linters
 
 import (
-	"fmt"
 	"os"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 )
 
-func getImageTag(t *testing.T, file string) string {
-	imageFile, err := os.ReadFile(file)
-	require.NoError(t, err)
+func TestPrometheusEthtoolExporterTag(t *testing.T) {
+	imageFile, err := os.ReadFile("../images/prometheus-ethtool-exporter/ref")
+	assert.NoError(t, err)
 
-	return strings.TrimSpace(string(imageFile))
-}
+	imageTag := strings.TrimSpace(string(imageFile))
 
-func getAnsibleTag(t *testing.T, role string) string {
-	path := fmt.Sprint("../../roles/", role, "/defaults/main.yml")
-	data, err := os.ReadFile(path)
-	require.NoError(t, err)
+	data, err := os.ReadFile("../roles/prometheus_ethtool_exporter/defaults/main.yml")
+	assert.NoError(t, err)
 
 	defaults := make(map[interface{}]interface{})
 	err = yaml.Unmarshal(data, &defaults)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
-	key := fmt.Sprint(role, "_image_tag")
-	ansibleTag, ok := defaults[key]
-	require.True(t, ok)
-
-	return ansibleTag.(string)
-}
-
-func assertImageTag(t *testing.T, imageTagFile string, ansibleRole string) {
-	imageTag := getImageTag(t, imageTagFile)
-	ansibleTag := getAnsibleTag(t, ansibleRole)
-
-	assert.Equal(t, imageTag, ansibleTag)
-}
-
-func TestPrometheusEthtoolExporterTag(t *testing.T) {
-	assertImageTag(t, "../../images/prometheus-ethtool-exporter/ref", "prometheus_ethtool_exporter")
-}
-
-func TestOpenstackHelmKeystoneTag(t *testing.T) {
-	assertImageTag(t, "../../images/openstack/projects/keystone/wallaby/ref", "openstack_helm_keystone")
+	ansibleTag, ok := defaults["prometheus_ethtool_exporter_image_tag"]
+	if assert.True(t, ok) {
+		assert.Equal(t, imageTag, ansibleTag)
+	}
 }
