@@ -33,6 +33,11 @@ func NewDockerfile(ctx context.Context, ir *ImageRepository) (*Dockerfile, error
 		return nil, err
 	}
 
+	builderImageTag, err := getImageTag(ctx, ir.githubClient, "docker-openstack-builder", "openstack-builder-focal")
+	if err != nil {
+		return nil, err
+	}
+
 	runtimeImageTag, err := getImageTag(ctx, ir.githubClient, "docker-openstack-runtime", "openstack-runtime-focal")
 	if err != nil {
 		return nil, err
@@ -42,7 +47,7 @@ func NewDockerfile(ctx context.Context, ir *ImageRepository) (*Dockerfile, error
 		BindepImage:     "quay.io/vexxhost/bindep-loci",
 		BindepImageTag:  "latest",
 		BuilderImage:    "quay.io/vexxhost/openstack-builder-focal",
-		BuilderImageTag: "latest",
+		BuilderImageTag: builderImageTag,
 		RuntimeImage:    "quay.io/vexxhost/openstack-runtime-focal",
 		RuntimeImageTag: runtimeImageTag,
 
