@@ -5,6 +5,7 @@ import (
 	"strings"
 )
 
+var EXTRAS map[string]string = map[string]string{}
 var PROFILES map[string]string = map[string]string{
 	"cinder":            "ceph qemu",
 	"glance":            "ceph",
@@ -27,7 +28,7 @@ var DIST_PACAKGES map[string]string = map[string]string{
 	"nova":          "ovmf qemu-efi-aarch64",
 }
 var PIP_PACKAGES map[string]string = map[string]string{
-	"glance":        "python-cinderclient os-brick",
+	"glance":        "glance_store[cinder]",
 	"horizon":       "designate-dashboard heat-dashboard ironic-ui magnum-ui neutron-vpnaas-dashboard octavia-dashboard senlin-dashboard monasca-ui",
 	"ironic":        "python-dracclient sushy",
 	"monasca-agent": "libvirt-python python-glanceclient python-neutronclient python-novaclient py3nvml",
@@ -40,6 +41,11 @@ var PLATFORMS map[string]string = map[string]string{
 }
 
 func NewBuildWorkflow(project string) *GithubWorkflow {
+	extras := ""
+	if val, ok := EXTRAS[project]; ok {
+		extras = fmt.Sprintf("[%s]", val)
+	}
+
 	profiles := ""
 	if val, ok := PROFILES[project]; ok {
 		profiles = val
@@ -64,6 +70,7 @@ func NewBuildWorkflow(project string) *GithubWorkflow {
 		"RELEASE=${{ matrix.release }}",
 		fmt.Sprintf("PROJECT=%s", project),
 		"PROJECT_REF=${{ env.PROJECT_REF }}",
+		fmt.Sprintf("EXTRAS=%s", extras),
 		fmt.Sprintf("PROFILES=%s", profiles),
 		fmt.Sprintf("DIST_PACKAGES=%s", distPackages),
 		fmt.Sprintf("PIP_PACKAGES=%s", pipPackages),
