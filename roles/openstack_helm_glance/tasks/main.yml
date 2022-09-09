@@ -25,13 +25,28 @@
     state: present
     definition:
       - apiVersion: source.toolkit.fluxcd.io/v1beta2
-        kind: HelmRepository
+        kind: GitRepository
+        metadata:
+          name: openstack-helm-infra
+          namespace: openstack
+        spec:
+          interval: 60s
+          url: https://opendev.org/openstack/openstack-helm-infra
+
+      - apiVersion: source.toolkit.fluxcd.io/v1beta2
+        kind: GitRepository
         metadata:
           name: openstack-helm
           namespace: openstack
         spec:
           interval: 60s
-          url: https://tarballs.opendev.org/openstack/openstack-helm/
+          url: https://github.com/vexxhost/openstack-helm
+          ref:
+            commit: 8348cb0d995b2c52a5bd3d3d3e1d9b7ffb517ee9
+          include:
+            - repository:
+                name: openstack-helm-infra
+              toPath: ../openstack-helm-infra
 
       - apiVersion: v1
         kind: Secret
@@ -50,10 +65,9 @@
           interval: 60s
           chart:
             spec:
-              chart: glance
-              version: 0.2.10
+              chart: ./glance
               sourceRef:
-                kind: HelmRepository
+                kind: GitRepository
                 name: openstack-helm
           install:
             disableWait: true
