@@ -16,6 +16,7 @@ _openstack_helm_glance_values:
   endpoints: "{{ openstack_helm_endpoints }}"
   storage: rbd
   images:
+    pull_policy: Always
     tags:
       bootstrap: "{{ openstack_helm_glance_image_repository }}/heat:{{ openstack_helm_glance_heat_image_tag }}"
       db_drop: "{{ openstack_helm_glance_image_repository }}/heat:{{ openstack_helm_glance_heat_image_tag }}"
@@ -33,6 +34,17 @@ _openstack_helm_glance_values:
   bootstrap:
     enabled: false
   pod:
+    security_context:
+      glance:
+        container:
+          glance_api:
+            allowPrivilegeEscalation: "{{ ('cinder' in openstack_helm_glance_values.get('conf', {}).get('glance', {}).get('glance_store', {}).get('stores', '')) | bool }}"
+            readOnlyRootFilesystem: "{{ ('cinder' not in openstack_helm_glance_values.get('conf', {}).get('glance', {}).get('glance_store', {}).get('stores', '')) | bool }}"
+            privileged: "{{ ('cinder' in openstack_helm_glance_values.get('conf', {}).get('glance', {}).get('glance_store', {}).get('stores', '')) | bool }}"
+            capabilities:
+              add: "{{ ('cinder' in openstack_helm_glance_values.get('conf', {}).get('glance', {}).get('glance_store', {}).get('stores', '')) | ternary(['SYS_ADMIN'], []) }}"
+    useHostNetwork:
+      api: "{{ ('cinder' in openstack_helm_glance_values.get('conf', {}).get('glance', {}).get('glance_store', {}).get('stores', '')) | bool }}"
     replicas:
       api: 3
   conf:
@@ -44,8 +56,6 @@ _openstack_helm_glance_values:
         enable_import_methods: "[]"
       cors:
         allowed_origins: "*"
-      glance_store:
-        cinder_catalog_info: volumev3::internalURL
       image_formats:
         disk_formats: "qcow2,raw"
       oslo_messaging_notifications:
