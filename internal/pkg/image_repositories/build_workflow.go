@@ -19,6 +19,7 @@ var PROFILES map[string]string = map[string]string{
 	"placement":         "apache",
 }
 var DIST_PACAKGES map[string]string = map[string]string{
+	"cinder":        "kubectl",
 	"designate":     "bind9utils",
 	"glance":        "kubectl lsscsi nvme-cli sysfsutils udev util-linux",
 	"heat":          "curl",
