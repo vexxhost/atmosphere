@@ -12,7 +12,7 @@ import (
 
 var (
 	configFile string
-	wait       bool
+	validate   bool
 
 	deployCmd = &cobra.Command{
 		Use: "deploy",
@@ -49,12 +49,23 @@ var (
 			if err != nil {
 				log.WithError(err).Fatal("Failed to deploy OpenStack charts")
 			}
+
+			log.Info("🔑 Starting validation")
+
+			if validate {
+				if err := deployment.Validate(); err != nil {
+					log.WithError(err).Fatal("💥 Failed to validate")
+				}
+			}
+
+			log.Info("🎉 Successfully deployed")
 		},
 	}
 )
 
 func init() {
 	deployCmd.PersistentFlags().StringVar(&configFile, "config", "/etc/atmosphere/config.toml", "Configuration file")
+	deployCmd.PersistentFlags().BoolVar(&validate, "validate", false, "Validate post-deployment")
 
 	rootCmd.AddCommand(deployCmd)
 }
