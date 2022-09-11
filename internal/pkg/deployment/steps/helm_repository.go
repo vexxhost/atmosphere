@@ -19,10 +19,12 @@ type HelmRepositoryStep struct {
 	URL       string
 }
 
-func (s *HelmRepositoryStep) Execute(ctx context.Context) error {
-	log := log.WithField("repository", s.Name)
+func (s *HelmRepositoryStep) Logger() *log.Entry {
+	return log.WithField("repository", s.Name)
+}
 
-	repo := &sourcev1.HelmRepository{
+func (s *HelmRepositoryStep) GenerateHelmRepository() *sourcev1.HelmRepository {
+	return &sourcev1.HelmRepository{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      s.Name,
 			Namespace: s.Namespace,
@@ -37,38 +39,77 @@ func (s *HelmRepositoryStep) Execute(ctx context.Context) error {
 			},
 		},
 	}
+}
+
+func (s *HelmRepositoryStep) GetHelmRepository(ctx context.Context) (*sourcev1.HelmRepository, error) {
+	repo := s.GenerateHelmRepository()
 	deployedRepo := &sourcev1.HelmRepository{
 		ObjectMeta: repo.ObjectMeta,
 	}
 
 	err := s.Client.Get(ctx, client.ObjectKey{Name: s.Name, Namespace: s.Namespace}, deployedRepo)
-	if client.IgnoreNotFound(err) != nil {
+	return deployedRepo, err
+}
+
+func (s *HelmRepositoryStep) Execute(ctx context.Context) error {
+	validation, err := s.Validate(ctx)
+	if err != nil {
 		return err
 	}
 
-	if errors.IsNotFound(err) {
+	repo := s.GenerateHelmRepository()
+
+	if !validation.Installed {
 		if err := s.Client.Create(ctx, repo); err != nil {
 			return err
 		}
 
-		log.Info("🚀 Helm repository created")
-	} else {
-		if reflect.DeepEqual(deployedRepo.Spec, repo.Spec) {
-			log.Info("🚀 Helm repository already up to date")
-			return nil
+		s.Logger().Info("🚀 Helm repository created")
+	} else if !validation.Updated {
+		deployedRepo, err := s.GetHelmRepository(ctx)
+		if err != nil {
+			return err
 		}
 
 		deployedRepo.Spec = repo.Spec
 		if err := s.Client.Update(ctx, deployedRepo); err != nil {
 			return err
 		}
-
-		log.Info("🚀 Helm repository updated")
+		s.Logger().Info("🚀 Helm repository updated")
 	}
 
 	return nil
 }
 
-func (s *HelmRepositoryStep) Validate(ctx context.Context) error {
-	panic("TODO")
+func (s *HelmRepositoryStep) Validate(ctx context.Context) (*ValidationResult, error) {
+	repo := s.GenerateHelmRepository()
+	deployedRepo, err := s.GetHelmRepository(ctx)
+	if client.IgnoreNotFound(err) != nil {
+		return nil, err
+	}
+
+	if errors.IsNotFound(err) {
+		s.Logger().Info("⏳ Helm repository missing from cluster")
+		return &ValidationResult{
+			Installed: false,
+			Updated:   false,
+			Tested:    false,
+		}, nil
+	}
+
+	if !reflect.DeepEqual(deployedRepo.Spec, repo.Spec) {
+		s.Logger().Info("⏳ Helm repository configuration needs to be updated")
+		return &ValidationResult{
+			Installed: true,
+			Updated:   false,
+			Tested:    false,
+		}, nil
+	}
+
+	s.Logger().Info("🚀 Helm repository is up to date")
+	return &ValidationResult{
+		Installed: true,
+		Updated:   true,
+		Tested:    true,
+	}, nil
 }

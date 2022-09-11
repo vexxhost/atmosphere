@@ -71,7 +71,7 @@ func (d *Deployment) Execute() error {
 
 func (d *Deployment) Validate() error {
 	for _, step := range d.Steps {
-		if err := step.Validate(d.context); err != nil {
+		if _, err := step.Validate(d.context); err != nil {
 			return err
 		}
 	}

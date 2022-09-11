@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	helmv2 "github.com/fluxcd/helm-controller/api/v2beta1"
+	log "github.com/sirupsen/logrus"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -13,6 +14,10 @@ type OpenStackHelmRelease struct {
 	Namespace   string
 	ReleaseName string
 	ChartSpec   helmv2.HelmChartTemplateSpec
+}
+
+func (s *OpenStackHelmRelease) Logger() *log.Entry {
+	return log.WithField("release", s.ReleaseName)
 }
 
 func (s *OpenStackHelmRelease) GetHelmReleaseStep() *HelmReleaseStep {
@@ -45,6 +50,6 @@ func (s *OpenStackHelmRelease) Execute(ctx context.Context) error {
 	return s.GetHelmReleaseStep().Execute(ctx)
 }
 
-func (s *OpenStackHelmRelease) Validate(ctx context.Context) error {
+func (s *OpenStackHelmRelease) Validate(ctx context.Context) (*ValidationResult, error) {
 	return s.GetHelmReleaseStep().Validate(ctx)
 }

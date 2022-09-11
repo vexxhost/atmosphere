@@ -5,7 +5,6 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -15,37 +14,47 @@ type NamespaceStep struct {
 	Namespace string
 }
 
-func (s *NamespaceStep) Execute(ctx context.Context) error {
-	log := log.WithField("namespace", s.Namespace)
-	namespace := &corev1.Namespace{
+func (s *NamespaceStep) Logger() *log.Entry {
+	return log.WithField("namespace", s.Namespace)
+}
+
+func (s *NamespaceStep) GenerateNamespace() *corev1.Namespace {
+	return &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: s.Namespace,
 		},
 	}
+}
 
-	err := s.Client.Get(ctx, client.ObjectKey{Name: s.Namespace}, namespace)
-	if client.IgnoreNotFound(err) != nil {
+func (s *NamespaceStep) Execute(ctx context.Context) error {
+	validation, err := s.Validate(ctx)
+	if err != nil {
 		return err
 	}
 
-	if errors.IsNotFound(err) {
+	namespace := s.GenerateNamespace()
+
+	if !validation.Installed {
 		if err := s.Client.Create(ctx, namespace); err != nil {
 			return err
 		}
-		log.Info("🚀 Namespace created")
-	} else {
-		log.Info("🚀 Namespace already exists")
+
+		s.Logger().Info("🚀 Namespace created")
 	}
 
 	return nil
 }
 
-func (s *NamespaceStep) Validate(ctx context.Context) error {
+func (s *NamespaceStep) Validate(ctx context.Context) (*ValidationResult, error) {
 	ns := &corev1.Namespace{}
 	if err := s.Client.Get(ctx, client.ObjectKey{Name: s.Namespace}, ns); err != nil {
-		return err
+		return nil, err
 	}
 
-	log.Info("🚀 Namespace validated")
-	return nil
+	s.Logger().Info("🚀 Namespace is up to date")
+	return &ValidationResult{
+		Installed: true,
+		Updated:   true,
+		Tested:    true,
+	}, nil
 }
