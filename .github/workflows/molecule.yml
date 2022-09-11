@@ -1,4 +1,4 @@
-name: integration
+name: molecule
 
 concurrency:
   group: ${{ github.head_ref || github.run_id }}
@@ -11,7 +11,7 @@ on:
     - synchronize
     - reopened
     paths:
-    - .github/workflows/integration.yml
+    - .github/workflows/molecule.yml
     - molecule/**
     - playbooks/**
     - plugins/**
@@ -20,14 +20,14 @@ on:
     branches:
     - main
     paths:
-    - .github/workflows/integration.yml
+    - .github/workflows/molecule.yml
     - molecule/**
     - playbooks/**
     - plugins/**
     - roles/**
 
 jobs:
-  molecule:
+  wallaby:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout project
