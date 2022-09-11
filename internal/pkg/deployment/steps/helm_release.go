@@ -11,6 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -109,11 +110,28 @@ func (s *HelmReleaseStep) Validate(ctx context.Context) (*ValidationResult, erro
 		}, nil
 	}
 
-	releaseReady := apimeta.IsStatusConditionTrue(deployedRelease.Status.Conditions, fluxmeta.ReadyCondition)
-	releaseStatus := apimeta.IsStatusConditionTrue(deployedRelease.Status.Conditions, helmv2.ReleasedCondition)
+	err = wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
+		deployedRelease, err := s.Get(ctx)
+		if client.IgnoreNotFound(err) != nil {
+			return true, err
+		}
 
-	if !releaseStatus || !releaseReady {
-		s.Logger().Info("⏳ Helm release is not ready")
+		releaseReady := apimeta.IsStatusConditionTrue(deployedRelease.Status.Conditions, fluxmeta.ReadyCondition)
+		releaseStatus := apimeta.IsStatusConditionTrue(deployedRelease.Status.Conditions, helmv2.ReleasedCondition)
+
+		done := releaseReady && releaseStatus
+
+		return done, nil
+	})
+	if err == wait.ErrWaitTimeout {
+		s.Logger().WithError(err).Error("⏳ Helm release is not ready")
+		return &ValidationResult{
+			Installed: true,
+			Updated:   true,
+			Tested:    false,
+		}, nil
+	} else if err != nil {
+		s.Logger().WithError(err).Error("⏳ Failed to check Helm release status")
 		return &ValidationResult{
 			Installed: true,
 			Updated:   true,
