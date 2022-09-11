@@ -18,10 +18,17 @@ var (
 	rootCmd = &cobra.Command{
 		Use: "atmosphere",
 		Run: func(cmd *cobra.Command, args []string) {
-			deployment := deployment.NewDeployment()
-			deployment.Execute()
+			deployment, err := deployment.NewDeployment()
+			if err != nil {
+				log.WithError(err).Fatal("💥 Failed to initialize")
+			}
 
-			err := openstack_helm.Deploy(context.TODO())
+			err = deployment.Execute()
+			if err != nil {
+				log.WithError(err).Fatal("💥 Failed to deploy")
+			}
+
+			err = openstack_helm.Deploy(context.TODO())
 			if err != nil {
 				log.WithError(err).Fatal("Failed to deploy OpenStack charts")
 			}
