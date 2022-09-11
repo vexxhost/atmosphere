@@ -85,7 +85,6 @@ func (s *HelmReleaseStep) Execute(ctx context.Context) error {
 }
 
 func (s *HelmReleaseStep) Validate(ctx context.Context) (*ValidationResult, error) {
-	release := s.Generate()
 	deployedRelease, err := s.Get(ctx)
 	if client.IgnoreNotFound(err) != nil {
 		return nil, err
@@ -100,6 +99,7 @@ func (s *HelmReleaseStep) Validate(ctx context.Context) (*ValidationResult, erro
 		}, nil
 	}
 
+	release := s.Generate()
 	if !reflect.DeepEqual(deployedRelease.Spec, release.Spec) {
 		s.Logger().Info("⏳ Helm release configuration needs to be updated")
 		return &ValidationResult{

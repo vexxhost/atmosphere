@@ -23,7 +23,7 @@ func (s *HelmRepositoryStep) Logger() *log.Entry {
 	return log.WithField("repository", s.Name)
 }
 
-func (s *HelmRepositoryStep) GenerateHelmRepository() *sourcev1.HelmRepository {
+func (s *HelmRepositoryStep) Generate() *sourcev1.HelmRepository {
 	return &sourcev1.HelmRepository{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      s.Name,
@@ -41,8 +41,8 @@ func (s *HelmRepositoryStep) GenerateHelmRepository() *sourcev1.HelmRepository {
 	}
 }
 
-func (s *HelmRepositoryStep) GetHelmRepository(ctx context.Context) (*sourcev1.HelmRepository, error) {
-	repo := s.GenerateHelmRepository()
+func (s *HelmRepositoryStep) Get(ctx context.Context) (*sourcev1.HelmRepository, error) {
+	repo := s.Generate()
 	deployedRepo := &sourcev1.HelmRepository{
 		ObjectMeta: repo.ObjectMeta,
 	}
@@ -57,7 +57,7 @@ func (s *HelmRepositoryStep) Execute(ctx context.Context) error {
 		return err
 	}
 
-	repo := s.GenerateHelmRepository()
+	repo := s.Generate()
 
 	if !validation.Installed {
 		if err := s.Client.Create(ctx, repo); err != nil {
@@ -66,7 +66,7 @@ func (s *HelmRepositoryStep) Execute(ctx context.Context) error {
 
 		s.Logger().Info("🚀 Helm repository created")
 	} else if !validation.Updated {
-		deployedRepo, err := s.GetHelmRepository(ctx)
+		deployedRepo, err := s.Get(ctx)
 		if err != nil {
 			return err
 		}
@@ -82,8 +82,7 @@ func (s *HelmRepositoryStep) Execute(ctx context.Context) error {
 }
 
 func (s *HelmRepositoryStep) Validate(ctx context.Context) (*ValidationResult, error) {
-	repo := s.GenerateHelmRepository()
-	deployedRepo, err := s.GetHelmRepository(ctx)
+	deployedRepo, err := s.Get(ctx)
 	if client.IgnoreNotFound(err) != nil {
 		return nil, err
 	}
@@ -97,6 +96,7 @@ func (s *HelmRepositoryStep) Validate(ctx context.Context) (*ValidationResult, e
 		}, nil
 	}
 
+	repo := s.Generate()
 	if !reflect.DeepEqual(deployedRepo.Spec, repo.Spec) {
 		s.Logger().Info("⏳ Helm repository configuration needs to be updated")
 		return &ValidationResult{
