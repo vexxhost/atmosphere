@@ -1,6 +1,8 @@
 package deployment
 
 import (
+	"reflect"
+
 	helmv2 "github.com/fluxcd/helm-controller/api/v2beta1"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -25,6 +27,11 @@ func (d *Deployment) EnsureHelmRelease(release *helmv2.HelmRelease) error {
 
 		log.Info("🚀 Helm release created")
 	} else {
+		if reflect.DeepEqual(deployedRelease.Spec, release.Spec) {
+			log.Info("🚀 Helm release already up to date")
+			return nil
+		}
+
 		deployedRelease.Spec = release.Spec
 		if err := d.client.Update(d.context, deployedRelease); err != nil {
 			return err
