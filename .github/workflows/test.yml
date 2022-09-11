@@ -1,39 +1,40 @@
 name: test
+
+concurrency:
+  group: ${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
 on:
-  pull_request: {}
+  pull_request:
+    types:
+    - opened
+    - synchronize
+    - reopened
+    paths:
+    - cmd/atmosphere/**
+    - internal/**
+  push:
+    branches:
+    - main
+    paths:
+    - cmd/atmosphere/**
+    - internal/**
 
 jobs:
-  build-prometheus-ethtool-exporter:
+  atmosphere-cli:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3.0.2 
+      - name: Checkout
+        uses: actions/checkout@v3.0.2
+
+      - name: Set up Go
+        uses: actions/setup-go@v3.3.0
         with:
-          fetch-depth: 0
-      - uses: tj-actions/changed-files@v29.0.4
-        id: changed-files
-        with:
-          files: images/prometheus-ethtool-exporter/*
-      - uses: docker/setup-qemu-action@v2.0.0
-        if: steps.changed-files.outputs.any_changed == 'true'
-      - uses: docker/setup-buildx-action@v2.0.0
-        if: steps.changed-files.outputs.any_changed == 'true'
-      - run: echo PROJECT_REF=$(cat images/prometheus-ethtool-exporter/ref) >> $GITHUB_ENV
-        if: steps.changed-files.outputs.any_changed == 'true'
-      - uses: docker/login-action@v2.0.0
-        if: steps.changed-files.outputs.any_changed == 'true'
-        with:
-          registry: quay.io
-          username: ${{ secrets.QUAY_USERNAME }}
-          password: ${{ secrets.QUAY_ROBOT_TOKEN }}
-      - uses: docker/build-push-action@v3.1.1
-        if: steps.changed-files.outputs.any_changed == 'true'
-        with:
-          context: images/prometheus-ethtool-exporter
-          cache-from: type=gha,scope=prometheus-ethtool-exporter
-          cache-to: type=gha,mode=max,scope=prometheus-ethtool-exporter
-          platforms: linux/amd64,linux/arm64
-          push: true
-          build-args: |
-            PROJECT_REF=${{ env.PROJECT_REF }}
-          tags: |
-            quay.io/vexxhost/ethtool-exporter:${{ env.PROJECT_REF }}
+          go-version-file: go.mod
+          cache: true
+
+      - name: Deploy a KinD cluster
+        uses: helm/kind-action@v1.3.0
+
+      - name: Run Atmosphere deployment
+        run: go run cmd/atmosphere/main.go
