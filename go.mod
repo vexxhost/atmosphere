@@ -5,6 +5,7 @@ go 1.19
 require (
 	code.gitea.io/sdk/gitea v0.15.1
 	github.com/fluxcd/helm-controller/api v0.23.1
+	github.com/fluxcd/pkg/apis/meta v0.15.0
 	github.com/fluxcd/source-controller/api v0.29.0
 	github.com/go-git/go-billy/v5 v5.3.1
 	github.com/go-git/go-git/v5 v5.4.2
@@ -40,7 +41,6 @@ require (
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/fluxcd/pkg/apis/acl v0.1.0 // indirect
 	github.com/fluxcd/pkg/apis/kustomize v0.5.0 // indirect
-	github.com/fluxcd/pkg/apis/meta v0.15.0 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
 	github.com/go-git/gcfg v1.5.0 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
