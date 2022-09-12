@@ -5,4 +5,3 @@ User Guide
    :maxdepth: 1
 
    quickstart
-   operations_guide
