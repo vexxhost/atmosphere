@@ -1,3 +1,33 @@
 # download atmosphere if it doesn't exist
 # export (it will already exist if we're running from a pull request)
 # add flag to run with `--diff` to see what changed
+
+- name: Install Atmosphere
+  ansible.builtin.unarchive:
+    src: "{{ item }}"
+    dest: /usr/local/bin
+  with_fileglob:
+    - files/atmosphere_*_linux_amd64.tar.gz
+
+- name: Create temporary file for Atmosphere configuration
+  changed_when: false
+  ansible.builtin.tempfile:
+    state: file
+    prefix: atmosphere.
+    suffix: .yml
+  register: _atmosphere_tempfile_config
+
+- name: Generate Atmosphere configuration
+  changed_when: false
+  ansible.builtin.copy:
+    content: "{{ _atmosphere_config | combine(atmosphere_config, recursive=True) | to_nice_yaml(indent=2) }}"
+    dest: "{{ _atmosphere_tempfile_config.path }}"
+
+- name: Run Atmosphere
+  changed_when: false
+  ansible.builtin.shell: "/usr/local/bin/atmosphere deploy --config {{ _atmosphere_tempfile_config.path }}"
+  register: _atmosphere_result
+
+- name: Print Atmosphere output
+  ansible.builtin.debug:
+    msg: "{{ _atmosphere_result.stderr_lines }}"
