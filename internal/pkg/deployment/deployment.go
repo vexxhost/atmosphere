@@ -32,6 +32,12 @@ func NewDeployment() (*Deployment, error) {
 				Client:    client,
 				Namespace: "openstack",
 			},
+			&steps.SecretStep{
+				Client:    client,
+				Namespace: "openstack",
+				Name:      "openstack-helm-config",
+				Data:      OpenstackHelmConfig.ToByteMap(),
+			},
 			&steps.HelmRepositoryStep{
 				Client:    client,
 				Namespace: "openstack",

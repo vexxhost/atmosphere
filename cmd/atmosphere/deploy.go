@@ -1,13 +1,10 @@
 package main
 
 import (
-	"context"
-
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/vexxhost/atmosphere/internal/pkg/deployment"
-	"github.com/vexxhost/atmosphere/internal/pkg/openstack_helm"
 )
 
 var (
@@ -43,11 +40,6 @@ var (
 			err = deployment.Execute()
 			if err != nil {
 				log.WithError(err).Fatal("💥 Failed to deploy")
-			}
-
-			err = openstack_helm.Deploy(context.TODO())
-			if err != nil {
-				log.WithError(err).Fatal("Failed to deploy OpenStack charts")
 			}
 
 			log.Info("🔑 Starting validation")

@@ -8,10 +8,8 @@ type Prometheus struct {
 	Enabled bool `yaml:"enabled,omitempty"`
 }
 
-func NewMonitoringFromChart(chart string) *Monitoring {
-	return &Monitoring{
-		Prometheus: Prometheus{
-			Enabled: true,
-		},
-	}
+var MemcachedMonitoring Monitoring = Monitoring{
+	Prometheus: Prometheus{
+		Enabled: true,
+	},
 }
