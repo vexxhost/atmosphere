@@ -27,15 +27,6 @@
     src: /etc/kubernetes/pki/etcd/healthcheck-client.key
   register: _etcd_healthcheck_client_key
 
-- name: Create namespace
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: v1
-      kind: Namespace
-      metadata:
-        name: monitoring
-
 - name: Create Secret with "etcd" TLS certificates
   kubernetes.core.k8s:
     state: present
