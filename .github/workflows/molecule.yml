@@ -46,6 +46,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Bundle Atmosphere CLI
+        run: cp -v dist/*.tar.gz roles/atmosphere/files/
+
       - name: Clean-up stale stacks
         run: go run ./cmd/atmosphere-ci molecule cleanup
         env:
