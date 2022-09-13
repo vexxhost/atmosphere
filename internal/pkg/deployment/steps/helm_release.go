@@ -2,6 +2,7 @@ package steps
 
 import (
 	"context"
+	"encoding/json"
 	"reflect"
 	"sync"
 	"time"
@@ -9,6 +10,7 @@ import (
 	helmv2 "github.com/fluxcd/helm-controller/api/v2beta1"
 	fluxmeta "github.com/fluxcd/pkg/apis/meta"
 	log "github.com/sirupsen/logrus"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -21,6 +23,7 @@ type HelmReleaseStep struct {
 	Namespace   string
 	ReleaseName string
 	ChartSpec   helmv2.HelmChartTemplateSpec
+	Values      map[string]interface{}
 	ValuesFrom  []helmv2.ValuesReference
 }
 
@@ -29,7 +32,7 @@ func (s *HelmReleaseStep) Logger() *log.Entry {
 }
 
 func (s *HelmReleaseStep) Generate() *helmv2.HelmRelease {
-	return &helmv2.HelmRelease{
+	release := &helmv2.HelmRelease{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      s.ReleaseName,
 			Namespace: s.Namespace,
@@ -44,6 +47,19 @@ func (s *HelmReleaseStep) Generate() *helmv2.HelmRelease {
 			ValuesFrom: s.ValuesFrom,
 		},
 	}
+
+	if s.Values != nil {
+		raw, err := json.Marshal(s.Values)
+		if err != nil {
+			s.Logger().WithError(err).Fatal("⏳ Failed to marshal Helm release values")
+		}
+
+		release.Spec.Values = &apiextensionsv1.JSON{
+			Raw: raw,
+		}
+	}
+
+	return release
 }
 
 func (s *HelmReleaseStep) Get(ctx context.Context) (*helmv2.HelmRelease, error) {

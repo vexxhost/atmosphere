@@ -28,8 +28,8 @@ func NewHelmRepositoryPhase(client client.Client) Phase {
 			},
 			&steps.HelmRepositoryStep{
 				Client:    client,
-				Namespace: "monitoring",
-				Name:      "node-feature-discovery",
+				Namespace: NodeFeatureDiscoverySourceRef.Namespace,
+				Name:      NodeFeatureDiscoverySourceRef.Name,
 				URL:       "https://kubernetes-sigs.github.io/node-feature-discovery/charts",
 			},
 			&steps.HelmRepositoryStep{
@@ -53,14 +53,14 @@ func NewHelmRepositoryPhase(client client.Client) Phase {
 			&steps.HelmRepositoryStep{
 				Client:    client,
 				Namespace: "openstack",
-				Name:      "openstack-helm-infra",
-				URL:       "https://tarballs.opendev.org/openstack/openstack-helm-infra/",
+				Name:      "coredns",
+				URL:       "https://coredns.github.io/helm",
 			},
 			&steps.HelmRepositoryStep{
 				Client:    client,
-				Namespace: "openstack",
-				Name:      "coredns",
-				URL:       "https://coredns.github.io/helm",
+				Namespace: OpenstackHelmInfraSourceRef.Namespace,
+				Name:      OpenstackHelmInfraSourceRef.Name,
+				URL:       "https://tarballs.opendev.org/openstack/openstack-helm-infra/",
 			},
 			&steps.HelmRepositoryStep{
 				Client:    client,
