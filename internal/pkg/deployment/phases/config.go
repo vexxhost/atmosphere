@@ -29,11 +29,11 @@ func (c Config) ToByteMap() map[string][]byte {
 	return byteMap
 }
 
-func NewConfigPhase(client client.Client) Phase {
+func NewConfigPhase(kubeClient client.Client) Phase {
 	return Phase{
 		Steps: []steps.Step{
 			&steps.SecretStep{
-				Client:    client,
+				Client:    kubeClient,
 				Namespace: "openstack",
 				Name:      "openstack-helm-config",
 				Data:      OpenstackHelmConfig.ToByteMap(),

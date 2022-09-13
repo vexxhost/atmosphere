@@ -10,18 +10,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type OpenStackHelmRelease struct {
+type OpenStackHelmReleaseStep struct {
 	Client      client.Client
 	Namespace   string
 	ReleaseName string
 	ChartSpec   helmv2.HelmChartTemplateSpec
 }
 
-func (s *OpenStackHelmRelease) Logger() *log.Entry {
-	return log.WithField("release", s.ReleaseName)
-}
-
-func (s *OpenStackHelmRelease) GetHelmReleaseStep() *HelmReleaseStep {
+func (s *OpenStackHelmReleaseStep) GetHelmReleaseStep() *HelmReleaseStep {
 	return &HelmReleaseStep{
 		Client:      s.Client,
 		Namespace:   s.Namespace,
@@ -47,10 +43,14 @@ func (s *OpenStackHelmRelease) GetHelmReleaseStep() *HelmReleaseStep {
 	}
 }
 
-func (s *OpenStackHelmRelease) Execute(ctx context.Context, wg *sync.WaitGroup) error {
+func (s *OpenStackHelmReleaseStep) Logger() *log.Entry {
+	return s.GetHelmReleaseStep().Logger()
+}
+
+func (s *OpenStackHelmReleaseStep) Execute(ctx context.Context, wg *sync.WaitGroup) error {
 	return s.GetHelmReleaseStep().Execute(ctx, wg)
 }
 
-func (s *OpenStackHelmRelease) Validate(ctx context.Context) (*ValidationResult, error) {
+func (s *OpenStackHelmReleaseStep) Validate(ctx context.Context) (*ValidationResult, error) {
 	return s.GetHelmReleaseStep().Validate(ctx)
 }

@@ -44,6 +44,12 @@ func (s *HelmReleaseStep) Generate() *helmv2.HelmRelease {
 			Interval: metav1.Duration{
 				Duration: time.Minute,
 			},
+			Install: &helmv2.Install{
+				CRDs: helmv2.CreateReplace,
+			},
+			Upgrade: &helmv2.Upgrade{
+				CRDs: helmv2.CreateReplace,
+			},
 			ValuesFrom: s.ValuesFrom,
 		},
 	}
