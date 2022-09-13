@@ -3,6 +3,7 @@ package steps
 import (
 	"context"
 	"reflect"
+	"sync"
 	"time"
 
 	sourcev1 "github.com/fluxcd/source-controller/api/v1beta1"
@@ -51,7 +52,9 @@ func (s *HelmRepositoryStep) Get(ctx context.Context) (*sourcev1.HelmRepository,
 	return deployedRepo, err
 }
 
-func (s *HelmRepositoryStep) Execute(ctx context.Context) error {
+func (s *HelmRepositoryStep) Execute(ctx context.Context, wg *sync.WaitGroup) error {
+	defer wg.Done()
+
 	validation, err := s.Validate(ctx)
 	if err != nil {
 		return err

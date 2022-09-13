@@ -1,8 +1,10 @@
-package deployment
+package phases
 
 import (
+	"github.com/vexxhost/atmosphere/internal/pkg/deployment/steps"
 	"github.com/vexxhost/atmosphere/internal/pkg/openstack_helm"
 	"github.com/vexxhost/atmosphere/internal/pkg/yaml"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type Config map[string]interface{}
@@ -25,4 +27,17 @@ func (c Config) ToByteMap() map[string][]byte {
 	}
 
 	return byteMap
+}
+
+func NewConfigPhase(client client.Client) Phase {
+	return Phase{
+		Steps: []steps.Step{
+			&steps.SecretStep{
+				Client:    client,
+				Namespace: "openstack",
+				Name:      "openstack-helm-config",
+				Data:      OpenstackHelmConfig.ToByteMap(),
+			},
+		},
+	}
 }

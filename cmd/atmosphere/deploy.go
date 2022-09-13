@@ -42,9 +42,8 @@ var (
 				log.WithError(err).Fatal("💥 Failed to deploy")
 			}
 
-			log.Info("🔑 Starting validation")
-
 			if validate {
+				log.Info("🔑 Starting validation")
 				if err := deployment.Validate(); err != nil {
 					log.WithError(err).Fatal("💥 Failed to validate")
 				}

@@ -3,6 +3,7 @@ package steps
 import (
 	"context"
 	"reflect"
+	"sync"
 
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
@@ -42,7 +43,9 @@ func (s *SecretStep) Get(ctx context.Context) (*corev1.Secret, error) {
 	return deployedSecret, err
 }
 
-func (s *SecretStep) Execute(ctx context.Context) error {
+func (s *SecretStep) Execute(ctx context.Context, wg *sync.WaitGroup) error {
+	defer wg.Done()
+
 	validation, err := s.Validate(ctx)
 	if err != nil {
 		return err

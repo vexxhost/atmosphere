@@ -2,6 +2,7 @@ package steps
 
 import (
 	"context"
+	"sync"
 
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
@@ -37,7 +38,9 @@ func (s *NamespaceStep) Get(ctx context.Context) (*corev1.Namespace, error) {
 	return deployedNamespace, err
 }
 
-func (s *NamespaceStep) Execute(ctx context.Context) error {
+func (s *NamespaceStep) Execute(ctx context.Context, wg *sync.WaitGroup) error {
+	defer wg.Done()
+
 	validation, err := s.Validate(ctx)
 	if err != nil {
 		return err

@@ -3,6 +3,7 @@ package steps
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	helmv2 "github.com/fluxcd/helm-controller/api/v2beta1"
 	log "github.com/sirupsen/logrus"
@@ -46,8 +47,8 @@ func (s *OpenStackHelmRelease) GetHelmReleaseStep() *HelmReleaseStep {
 	}
 }
 
-func (s *OpenStackHelmRelease) Execute(ctx context.Context) error {
-	return s.GetHelmReleaseStep().Execute(ctx)
+func (s *OpenStackHelmRelease) Execute(ctx context.Context, wg *sync.WaitGroup) error {
+	return s.GetHelmReleaseStep().Execute(ctx, wg)
 }
 
 func (s *OpenStackHelmRelease) Validate(ctx context.Context) (*ValidationResult, error) {

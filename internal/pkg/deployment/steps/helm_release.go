@@ -3,6 +3,7 @@ package steps
 import (
 	"context"
 	"reflect"
+	"sync"
 	"time"
 
 	helmv2 "github.com/fluxcd/helm-controller/api/v2beta1"
@@ -55,7 +56,9 @@ func (s *HelmReleaseStep) Get(ctx context.Context) (*helmv2.HelmRelease, error) 
 	return deployedRelease, err
 }
 
-func (s *HelmReleaseStep) Execute(ctx context.Context) error {
+func (s *HelmReleaseStep) Execute(ctx context.Context, wg *sync.WaitGroup) error {
+	defer wg.Done()
+
 	validation, err := s.Validate(ctx)
 	if err != nil {
 		return err
