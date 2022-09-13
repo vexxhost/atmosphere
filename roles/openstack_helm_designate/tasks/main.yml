@@ -24,7 +24,7 @@
   kubernetes.core.helm:
     name: "{{ openstack_helm_designate_chart_name }}"
     chart_ref: "{{ openstack_helm_designate_chart_repo_name }}/{{ openstack_helm_designate_chart_name }}"
-    chart_version: 0.2.5
+    chart_version: 0.2.7
     release_namespace: openstack
     kubeconfig: /etc/kubernetes/admin.conf
     values: "{{ _openstack_helm_designate_values | combine(openstack_helm_designate_values, recursive=True) }}"
@@ -33,7 +33,7 @@
   ansible.builtin.include_role:
     name: openstack_helm_ingress
   vars:
-    openstack_helm_ingress_endpoint: designate
+    openstack_helm_ingress_endpoint: dns
     openstack_helm_ingress_service_name: designate-api
     openstack_helm_ingress_service_port: 8778
     openstack_helm_ingress_annotations: "{{ openstack_helm_designate_ingress_annotations }}"
