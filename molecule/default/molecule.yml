@@ -13,7 +13,8 @@
 # under the License.
 
 dependency:
-  name: galaxy
+  name: shell
+  command: "${MOLECULE_SCENARIO_DIRECTORY}/tools/install-dependencies"
 driver:
   name: delegated
 platforms:
@@ -43,6 +44,7 @@ provisioner:
   config_options:
     ssh_connection:
       pipelining: true
+      ssh_args: -o ControlMaster=auto -o ControlPersist=270s -o ServerAliveInterval=15
   inventory:
     links:
       host_vars: "${MOLECULE_SCENARIO_DIRECTORY}/host_vars"
