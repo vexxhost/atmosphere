@@ -38,46 +38,4 @@ jobs:
           tags: |
             quay.io/vexxhost/ethtool-exporter:${{ env.PROJECT_REF }}
 
-  build-image-strategy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3.0.2
-      - id: set-strategy
-        run: echo "::set-output name=strategy::$(./ci/build-image-strategy build)"
-    outputs:
-      strategy: ${{ steps.set-strategy.outputs.strategy }}
-
-  build-openstack-images:
-    if: needs.build-image-strategy.outputs.strategy != '{}'
-    runs-on: ubuntu-latest
-    needs:
-      - build-image-strategy
-    strategy: ${{ fromJSON(needs.build-image-strategy.outputs.strategy) }}
-    steps:
-      - uses: actions/checkout@v3.0.2
-      - uses: docker/setup-qemu-action@v2.0.0
-      - uses: docker/setup-buildx-action@v2.0.0
-      - run: ./ci/openstack-image-build-env ${{ matrix.project }} ${{ matrix.release }} >> $GITHUB_ENV
-      - uses: docker/login-action@v2.0.0
-        with:
-          registry: quay.io
-          username: ${{ secrets.QUAY_USERNAME }}
-          password: ${{ secrets.QUAY_ROBOT_TOKEN }}
-      - uses: docker/build-push-action@v3.1.1
-        with:
-          context: images/openstack
-          cache-from: type=gha,scope=${{ matrix.project }}-${{ matrix.release }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.project }}-${{ matrix.release }}
-          platforms: ${{ env.PLATFORMS }}
-          push: true
-          build-args: |
-            RELEASE=${{ matrix.release }}
-            PROJECT=${{ matrix.project }}
-            PROJECT_REF=${{ env.PROJECT_REF }}
-            PROFILES=${{ env.PROFILES }}
-            DIST_PACKAGES=${{ env.DIST_PACKAGES }}
-            PIP_PACKAGES=${{ env.PIP_PACKAGES }}
-          tags: |
-            quay.io/vexxhost/${{ matrix.project }}:${{ env.PROJECT_REF }}
-
   # TODO(mnaser): Molecule
