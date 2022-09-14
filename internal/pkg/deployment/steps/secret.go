@@ -82,7 +82,7 @@ func (s *SecretStep) Validate(ctx context.Context) (*ValidationResult, error) {
 	}
 
 	if errors.IsNotFound(err) {
-		s.Logger().Info("⏳ Secret missing from cluster")
+		s.Logger().Info("⏳ Secret missing from Kubernetes")
 		return &ValidationResult{
 			Installed: false,
 			Updated:   false,

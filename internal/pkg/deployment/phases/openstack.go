@@ -8,7 +8,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func NewHelmReleasePhase(kubeClient client.Client) Phase {
+func NewOpenstackPhase(kubeClient client.Client) Phase {
 	return Phase{
 		Steps: []steps.Step{
 			&steps.HelmReleaseStep{
@@ -29,6 +29,7 @@ func NewHelmReleasePhase(kubeClient client.Client) Phase {
 					},
 				},
 			},
+
 			&steps.HelmReleaseStep{
 				Client:      kubeClient,
 				Namespace:   "openstack",
@@ -66,6 +67,7 @@ func NewHelmReleasePhase(kubeClient client.Client) Phase {
 					},
 				},
 			},
+
 			&steps.OpenStackHelmReleaseStep{
 				Client:      kubeClient,
 				Namespace:   "openstack",
@@ -75,6 +77,46 @@ func NewHelmReleasePhase(kubeClient client.Client) Phase {
 					Version:   "0.1.6",
 					SourceRef: OpenstackHelmInfraSourceRef,
 				},
+			},
+
+			&steps.OpenstackRabbitmqStep{
+				Client: kubeClient,
+				Name:   "keystone",
+			},
+
+			&steps.OpenstackRabbitmqStep{
+				Client: kubeClient,
+				Name:   "barbican",
+			},
+
+			&steps.OpenstackRabbitmqStep{
+				Client: kubeClient,
+				Name:   "glance",
+			},
+
+			&steps.OpenstackRabbitmqStep{
+				Client: kubeClient,
+				Name:   "cinder",
+			},
+
+			&steps.OpenstackRabbitmqStep{
+				Client: kubeClient,
+				Name:   "neutron",
+			},
+
+			&steps.OpenstackRabbitmqStep{
+				Client: kubeClient,
+				Name:   "nova",
+			},
+
+			&steps.OpenstackRabbitmqStep{
+				Client: kubeClient,
+				Name:   "senlin",
+			},
+
+			&steps.OpenstackRabbitmqStep{
+				Client: kubeClient,
+				Name:   "heat",
 			},
 		},
 	}

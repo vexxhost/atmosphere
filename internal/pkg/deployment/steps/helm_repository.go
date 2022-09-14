@@ -91,7 +91,7 @@ func (s *HelmRepositoryStep) Validate(ctx context.Context) (*ValidationResult, e
 	}
 
 	if errors.IsNotFound(err) {
-		s.Logger().Info("⏳ Helm repository missing from cluster")
+		s.Logger().Info("⏳ Helm repository missing from Kubernetes")
 		return &ValidationResult{
 			Installed: false,
 			Updated:   false,

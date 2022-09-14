@@ -13,6 +13,7 @@ require (
 	github.com/google/go-github/v47 v47.0.0
 	github.com/gophercloud/gophercloud v1.0.0
 	github.com/gophercloud/utils v0.0.0-20220704184730-55bdbbaec4ba
+	github.com/rabbitmq/cluster-operator v1.14.0
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.5.0
 	github.com/spf13/viper v1.13.0

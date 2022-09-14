@@ -66,7 +66,7 @@ func (s *NamespaceStep) Validate(ctx context.Context) (*ValidationResult, error)
 	}
 
 	if errors.IsNotFound(err) {
-		s.Logger().Info("⏳ Namespace missing from cluster")
+		s.Logger().Info("⏳ Namespace missing from Kubernetes")
 		return &ValidationResult{
 			Installed: false,
 			Updated:   false,

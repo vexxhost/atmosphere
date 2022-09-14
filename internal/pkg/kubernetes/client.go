@@ -3,6 +3,7 @@ package kubernetes
 import (
 	helmv2 "github.com/fluxcd/helm-controller/api/v2beta1"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1beta1"
+	rabbitmqv1beta1 "github.com/rabbitmq/cluster-operator/api/v1beta1"
 	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/discovery"
@@ -18,6 +19,7 @@ func GetClient() (client.Client, error) {
 	_ = apiextensions.AddToScheme(scheme)
 	_ = sourcev1.AddToScheme(scheme)
 	_ = helmv2.AddToScheme(scheme)
+	_ = rabbitmqv1beta1.AddToScheme(scheme)
 
 	return client.New(ctrl.GetConfigOrDie(), client.Options{Scheme: scheme})
 }

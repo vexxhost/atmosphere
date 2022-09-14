@@ -32,7 +32,7 @@ func NewDeployment() (*Deployment, error) {
 			phases.NewHelmRepositoryPhase(client),
 			phases.NewCertManagerPhase(client),
 			phases.NewCrdHelmReleasePhase(client),
-			phases.NewHelmReleasePhase(client),
+			phases.NewOpenstackPhase(client),
 		},
 
 		client:  client,
