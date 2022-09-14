@@ -46,13 +46,17 @@ openstack_helm_glance_values:
   storage: cinder
   conf:
     glance:
+      image_formats:
+        disk_formats: raw
       glance_store:
         stores: cinder
         default_store: cinder
 ```
 
 Please note that Glance images will not function until the Cinder service is
-deployed.
+deployed.  In addition, we're forcing all images to be `raw` format in order to
+avoid any issues with the PowerStore driver having to constantly download and
+upload the images.
 
 ### Cinder
 
