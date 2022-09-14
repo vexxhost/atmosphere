@@ -9,24 +9,32 @@
   with_fileglob:
     - atmosphere_*_linux_amd64.tar.gz
 
-- name: Create temporary file for Atmosphere configuration
-  changed_when: false
-  ansible.builtin.tempfile:
-    state: file
-    prefix: atmosphere.
-    suffix: .yml
-  register: _atmosphere_tempfile_config
+- name: Run Atmosphere with temporary configuration
+  block:
+    - name: Create temporary file for Atmosphere configuration
+      changed_when: false
+      ansible.builtin.tempfile:
+        state: file
+        prefix: atmosphere.
+        suffix: .yml
+      register: _atmosphere_tempfile_config
 
-- name: Generate Atmosphere configuration
-  changed_when: false
-  ansible.builtin.copy:
-    content: "{{ _atmosphere_config | combine(atmosphere_config, recursive=True) | to_nice_yaml(indent=2) }}"
-    dest: "{{ _atmosphere_tempfile_config.path }}"
+    - name: Generate Atmosphere configuration
+      changed_when: false
+      ansible.builtin.copy:
+        content: "{{ _atmosphere_config | combine(atmosphere_config, recursive=True) | to_nice_yaml(indent=2) }}"
+        dest: "{{ _atmosphere_tempfile_config.path }}"
 
-- name: Run Atmosphere
-  changed_when: false
-  ansible.builtin.shell: "/usr/local/bin/atmosphere deploy --config {{ _atmosphere_tempfile_config.path }}"
-  register: _atmosphere_result
+    - name: Run Atmosphere
+      changed_when: false
+      ansible.builtin.shell: "/usr/local/bin/atmosphere deploy --config {{ _atmosphere_tempfile_config.path }}"
+      register: _atmosphere_result
+  always:
+    - name: Clean-up temporary file
+      changed_when: false
+      ansible.builtin.file:
+        path: "{{ _atmosphere_tempfile_config.path }}"
+        state: absent
 
 - name: Print Atmosphere output
   ansible.builtin.debug:
