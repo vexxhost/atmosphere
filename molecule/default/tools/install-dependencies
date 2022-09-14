@@ -26,3 +26,9 @@ if [ ! -L "${COLLECTION_PATH}" ] && [ -d "${COLLECTION_PATH}" ]; then
   rm -rf ${COLLECTION_PATH}
   ln -s $(pwd) ${COLLECTION_PATH}
 fi
+
+# Build new version of Atmosphere CLI
+goreleaser release --rm-dist --snapshot
+
+# Install new version of Atmosphere CLI
+cp -v dist/*.tar.gz roles/atmosphere/files/
