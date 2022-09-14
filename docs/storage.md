@@ -46,11 +46,11 @@ openstack_helm_glance_values:
   storage: cinder
   conf:
     glance:
-      image_formats:
-        disk_formats: raw
       glance_store:
         stores: cinder
         default_store: cinder
+      image_formats:
+        disk_formats: raw
 ```
 
 Please note that Glance images will not function until the Cinder service is
@@ -115,3 +115,19 @@ openstack_helm_cinder_values:
 It's important to note that the configuration above will disable the Cinder
 backup service.  In the future, we'll update this sample configuration to use
 the Cinder backup service.
+
+### Nova
+
+You can enable the native PowerStore driver for Cinder with the following
+configuration inside your Ansible inventory:
+
+```yaml
+openstack_helm_nova_values:
+  conf:
+    enable_iscsi: true
+```
+
+> **Note**
+>
+> The PowerStore driver will use the storage protocol specified inside Cinder,
+> even if the above mentions `iscsi`.
