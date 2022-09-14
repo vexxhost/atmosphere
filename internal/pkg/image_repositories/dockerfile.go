@@ -17,6 +17,8 @@ import (
 var dockerfileTemplate string
 
 type Dockerfile struct {
+	Project string
+
 	BindepImage     string
 	BindepImageTag  string
 	BuilderImage    string
@@ -44,6 +46,8 @@ func NewDockerfile(ctx context.Context, ir *ImageRepository) (*Dockerfile, error
 	}
 
 	return &Dockerfile{
+		Project: ir.Project,
+
 		BindepImage:     "quay.io/vexxhost/bindep-loci",
 		BindepImageTag:  "latest",
 		BuilderImage:    "quay.io/vexxhost/openstack-builder-focal",
