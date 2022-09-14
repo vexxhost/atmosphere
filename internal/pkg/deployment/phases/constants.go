@@ -26,6 +26,18 @@ var IngressNginxSourceRef helmv2.CrossNamespaceObjectReference = helmv2.CrossNam
 	Name:      "ingress-nginx",
 }
 
+var PerconaSourceRef helmv2.CrossNamespaceObjectReference = helmv2.CrossNamespaceObjectReference{
+	Kind:      "HelmRepository",
+	Namespace: "openstack",
+	Name:      "percona",
+}
+
+var BitnamiSourceRef helmv2.CrossNamespaceObjectReference = helmv2.CrossNamespaceObjectReference{
+	Kind:      "HelmRepository",
+	Namespace: "openstack",
+	Name:      "bitnami",
+}
+
 var OpenstackHelmInfraSourceRef helmv2.CrossNamespaceObjectReference = helmv2.CrossNamespaceObjectReference{
 	Kind:      "HelmRepository",
 	Namespace: "openstack",

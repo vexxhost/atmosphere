@@ -12,51 +12,6 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Deploy Helm chart
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      - apiVersion: helm.toolkit.fluxcd.io/v2beta1
-        kind: HelmRelease
-        metadata:
-          name: rabbitmq-cluster-operator
-          namespace: openstack
-        spec:
-          interval: 60s
-          chart:
-            spec:
-              chart: rabbitmq-cluster-operator
-              version: 2.5.2
-              sourceRef:
-                kind: HelmRepository
-                name: bitnami
-          install:
-            crds: CreateReplace
-          upgrade:
-            crds: CreateReplace
-          values:
-            rabbitmqImage:
-              repository: library/rabbitmq
-              tag: 3.10.2-management
-            credentialUpdaterImage:
-              repository: rabbitmqoperator/default-user-credential-updater
-              tag: 1.0.2
-            clusterOperator:
-              image:
-                repository: rabbitmqoperator/cluster-operator
-                tag: 1.13.1
-              fullnameOverride: rabbitmq-cluster-operator
-              nodeSelector:
-                openstack-control-plane: enabled
-            msgTopologyOperator:
-              image:
-                repository: rabbitmqoperator/messaging-topology-operator
-                tag: 1.6.0
-              fullnameOverride: rabbitmq-messaging-topology-operator
-              nodeSelector:
-                openstack-control-plane: enabled
-            useCertManager: true
-
 - name: Deploy monitoring for RabbitMQ
   kubernetes.core.k8s:
     state: present

@@ -40,14 +40,14 @@ func NewHelmRepositoryPhase(kubeClient client.Client) Phase {
 			},
 			&steps.HelmRepositoryStep{
 				Client:    kubeClient,
-				Namespace: "openstack",
-				Name:      "percona",
+				Namespace: PerconaSourceRef.Namespace,
+				Name:      PerconaSourceRef.Name,
 				URL:       "https://percona.github.io/percona-helm-charts/",
 			},
 			&steps.HelmRepositoryStep{
 				Client:    kubeClient,
-				Namespace: "openstack",
-				Name:      "bitnami",
+				Namespace: BitnamiSourceRef.Namespace,
+				Name:      BitnamiSourceRef.Name,
 				URL:       "https://charts.bitnami.com/bitnami",
 			},
 			&steps.HelmRepositoryStep{

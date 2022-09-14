@@ -46,14 +46,14 @@ func (s *CrdHelmReleaseStep) Execute(ctx context.Context, wg *sync.WaitGroup) er
 
 	discoveryClient, err := kubernetes.GetDiscoveryClient()
 	if err != nil {
-		log.WithError(err).Fatal("Failed to get discovery client")
+		s.Logger().WithError(err).Fatal("Failed to get discovery client")
 		return err
 	}
 
 	err = wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
 		apiGroup, _, err := discoveryClient.ServerGroupsAndResources()
 		if err != nil {
-			log.WithError(err).Fatal("Failed to list groups and resources")
+			s.Logger().WithError(err).Fatal("Failed to list groups and resources")
 		}
 
 		for _, group := range apiGroup {
@@ -66,8 +66,10 @@ func (s *CrdHelmReleaseStep) Execute(ctx context.Context, wg *sync.WaitGroup) er
 	})
 
 	if err != nil {
-		log.WithError(err).Fatal("Failed to wait for CRD to be available")
+		s.Logger().WithError(err).Fatal("Failed to wait for CRD to be available")
 	}
+
+	s.Logger().Info("🚀 CRD ready")
 
 	return nil
 }

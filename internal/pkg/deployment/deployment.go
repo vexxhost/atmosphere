@@ -30,6 +30,7 @@ func NewDeployment() (*Deployment, error) {
 			phases.NewNamespacePhase(client),
 			phases.NewConfigPhase(client),
 			phases.NewHelmRepositoryPhase(client),
+			phases.NewCertManagerPhase(client),
 			phases.NewCrdHelmReleasePhase(client),
 			phases.NewHelmReleasePhase(client),
 		},

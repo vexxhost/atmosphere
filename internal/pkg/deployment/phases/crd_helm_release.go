@@ -3,7 +3,6 @@ package phases
 import (
 	helmv2 "github.com/fluxcd/helm-controller/api/v2beta1"
 	"github.com/vexxhost/atmosphere/internal/pkg/deployment/steps"
-	v1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -15,43 +14,54 @@ func NewCrdHelmReleasePhase(kubeClient client.Client) Phase {
 		Steps: []steps.Step{
 			&steps.CrdHelmReleaseStep{
 				Client:      kubeClient,
-				Namespace:   "cert-manager",
-				ReleaseName: "cert-manager",
-				ApiGroup:    "cert-manager.io",
+				Namespace:   "openstack",
+				ReleaseName: "pxc-operator",
+				ApiGroup:    "pxc.percona.com",
 				ChartSpec: helmv2.HelmChartTemplateSpec{
-					Chart:     "cert-manager",
-					Version:   "v1.7.1",
-					SourceRef: CertManagerSourceRef,
+					Chart:     "pxc-operator",
+					Version:   "1.10.0",
+					SourceRef: PerconaSourceRef,
 				},
 				Values: map[string]interface{}{
-					"installCRDs": true,
-					"volumes": []v1.Volume{
-						{
-							Name: "etc-ssl-certs",
-							VolumeSource: v1.VolumeSource{
-								HostPath: &v1.HostPathVolumeSource{
-									Path: "/etc/ssl/certs",
-								},
-							},
-						},
-					},
-					"volumeMounts": []v1.VolumeMount{
-						{
-							Name:      "etc-ssl-certs",
-							ReadOnly:  true,
-							MountPath: "/etc/ssl/certs",
-						},
-					},
 					"nodeSelector": ControlPlaneNodeSelector,
-					"webhook": map[string]interface{}{
-						"nodeSelector": ControlPlaneNodeSelector,
+				},
+			},
+			&steps.CrdHelmReleaseStep{
+				Client:      kubeClient,
+				Namespace:   "openstack",
+				ReleaseName: "rabbitmq-cluster-operator",
+				ApiGroup:    "rabbitmq.com",
+				ChartSpec: helmv2.HelmChartTemplateSpec{
+					Chart:     "rabbitmq-cluster-operator",
+					Version:   "2.5.2",
+					SourceRef: BitnamiSourceRef,
+				},
+				Values: map[string]interface{}{
+					"rabbitmqImage": map[string]string{
+						"repository": "library/rabbitmq",
+						"tag":        "3.10.2-management",
 					},
-					"cainjector": map[string]interface{}{
-						"nodeSelector": ControlPlaneNodeSelector,
+					"credentialUpdaterImage": map[string]string{
+						"repository": "rabbitmqoperator/default-user-credential-updater",
+						"tag":        "1.0.2",
 					},
-					"startupapicheck": map[string]interface{}{
-						"nodeSelector": ControlPlaneNodeSelector,
+					"clusterOperator": map[string]interface{}{
+						"image": map[string]string{
+							"repository": "rabbitmqoperator/cluster-operator",
+							"tag":        "1.13.1",
+						},
+						"fullnameOverride": "rabbitmq-cluster-operator",
+						"nodeSelector":     ControlPlaneNodeSelector,
 					},
+					"msgTopologyOperator": map[string]interface{}{
+						"image": map[string]string{
+							"repository": "rabbitmqoperator/messaging-topology-operator",
+							"tag":        "1.6.0",
+						},
+						"fullnameOverride": "rabbitmq-messaging-topology-operator",
+						"nodeSelector":     ControlPlaneNodeSelector,
+					},
+					"useCertManager": true,
 				},
 			},
 		},
