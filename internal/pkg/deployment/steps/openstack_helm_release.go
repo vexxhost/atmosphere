@@ -47,10 +47,10 @@ func (s *OpenStackHelmReleaseStep) Logger() *log.Entry {
 	return s.GetHelmReleaseStep().Logger()
 }
 
-func (s *OpenStackHelmReleaseStep) Execute(ctx context.Context, wg *sync.WaitGroup) error {
-	return s.GetHelmReleaseStep().Execute(ctx, wg)
+func (s *OpenStackHelmReleaseStep) Execute(ctx context.Context, diff bool, wg *sync.WaitGroup) error {
+	return s.GetHelmReleaseStep().Execute(ctx, diff, wg)
 }
 
-func (s *OpenStackHelmReleaseStep) Validate(ctx context.Context) (*ValidationResult, error) {
-	return s.GetHelmReleaseStep().Validate(ctx)
+func (s *OpenStackHelmReleaseStep) Validate(ctx context.Context, diff bool) (*ValidationResult, error) {
+	return s.GetHelmReleaseStep().Validate(ctx, diff)
 }

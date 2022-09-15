@@ -35,11 +35,11 @@ func (s *CrdHelmReleaseStep) Logger() *log.Entry {
 	return s.GetHelmReleaseStep().Logger()
 }
 
-func (s *CrdHelmReleaseStep) Execute(ctx context.Context, wg *sync.WaitGroup) error {
+func (s *CrdHelmReleaseStep) Execute(ctx context.Context, diff bool, wg *sync.WaitGroup) error {
 	defer wg.Done()
 
 	wg.Add(1)
-	err := s.GetHelmReleaseStep().Execute(ctx, wg)
+	err := s.GetHelmReleaseStep().Execute(ctx, diff, wg)
 	if err != nil {
 		return err
 	}
@@ -74,6 +74,6 @@ func (s *CrdHelmReleaseStep) Execute(ctx context.Context, wg *sync.WaitGroup) er
 	return nil
 }
 
-func (s *CrdHelmReleaseStep) Validate(ctx context.Context) (*ValidationResult, error) {
-	return s.GetHelmReleaseStep().Validate(ctx)
+func (s *CrdHelmReleaseStep) Validate(ctx context.Context, diff bool) (*ValidationResult, error) {
+	return s.GetHelmReleaseStep().Validate(ctx, diff)
 }

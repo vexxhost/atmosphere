@@ -11,12 +11,12 @@ type Phase struct {
 	Steps []steps.Step
 }
 
-func (p *Phase) Execute(ctx context.Context) error {
+func (p *Phase) Execute(ctx context.Context, diff bool) error {
 	var wg sync.WaitGroup
 
 	for _, step := range p.Steps {
 		wg.Add(1)
-		go step.Execute(ctx, &wg)
+		go step.Execute(ctx, diff, &wg)
 	}
 
 	wg.Wait()
@@ -24,9 +24,9 @@ func (p *Phase) Execute(ctx context.Context) error {
 	return nil
 }
 
-func (p *Phase) Validate(ctx context.Context) error {
+func (p *Phase) Validate(ctx context.Context, diff bool) error {
 	for _, step := range p.Steps {
-		if _, err := step.Validate(ctx); err != nil {
+		if _, err := step.Validate(ctx, diff); err != nil {
 			return err
 		}
 	}

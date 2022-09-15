@@ -7,6 +7,8 @@ import (
 )
 
 var (
+	validateDiff bool
+
 	validateCmd = &cobra.Command{
 		Use: "validate",
 		Run: func(cmd *cobra.Command, args []string) {
@@ -15,7 +17,7 @@ var (
 				log.WithError(err).Fatal("💥 Failed to initialize")
 			}
 
-			err = deployment.Validate()
+			err = deployment.Validate(validateDiff)
 			if err != nil {
 				log.WithError(err).Fatal("💥 Failed to validate")
 			}
@@ -24,5 +26,7 @@ var (
 )
 
 func init() {
+	validateCmd.PersistentFlags().BoolVar(&validateDiff, "diff", false, "Print diff between current and desired state")
+
 	rootCmd.AddCommand(validateCmd)
 }

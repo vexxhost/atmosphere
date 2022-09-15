@@ -3,6 +3,7 @@ package phases
 import (
 	helmv2 "github.com/fluxcd/helm-controller/api/v2beta1"
 	"github.com/vexxhost/atmosphere/internal/pkg/deployment/steps"
+	"github.com/vexxhost/atmosphere/internal/pkg/images"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -38,8 +39,8 @@ func NewCrdHelmReleasePhase(kubeClient client.Client) Phase {
 				},
 				Values: map[string]interface{}{
 					"rabbitmqImage": map[string]string{
-						"repository": "library/rabbitmq",
-						"tag":        "3.10.2-management",
+						"repository": images.GetRepository("rabbitmq", "library/rabbitmq"),
+						"tag":        steps.RabbitmqImageTag,
 					},
 					"credentialUpdaterImage": map[string]string{
 						"repository": "rabbitmqoperator/default-user-credential-updater",

@@ -9,6 +9,6 @@ import (
 
 type Step interface {
 	Logger() *log.Entry
-	Execute(context.Context, *sync.WaitGroup) error
-	Validate(context.Context) (*ValidationResult, error)
+	Execute(context.Context, bool, *sync.WaitGroup) error
+	Validate(context.Context, bool) (*ValidationResult, error)
 }

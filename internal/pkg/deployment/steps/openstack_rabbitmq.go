@@ -3,21 +3,25 @@ package steps
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"strings"
 	"sync"
 
+	"github.com/google/go-cmp/cmp"
 	log "github.com/sirupsen/logrus"
+	"github.com/vexxhost/atmosphere/internal/pkg/images"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/pointer"
 
 	rabbitmqv1beta1 "github.com/rabbitmq/cluster-operator/api/v1beta1"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+var RabbitmqImageTag string = "3.10.2-management"
 
 type OpenstackRabbitmqStep struct {
 	Client client.Client
@@ -29,6 +33,7 @@ func (s *OpenstackRabbitmqStep) Logger() *log.Entry {
 }
 
 func (s *OpenstackRabbitmqStep) Generate() *rabbitmqv1beta1.RabbitmqCluster {
+	storage := resource.MustParse("10Gi")
 	extraConfig := []string{
 		"vm_memory_high_watermark.relative = 0.9",
 	}
@@ -39,6 +44,8 @@ func (s *OpenstackRabbitmqStep) Generate() *rabbitmqv1beta1.RabbitmqCluster {
 			Name:      fmt.Sprintf("rabbitmq-%s", s.Name),
 		},
 		Spec: rabbitmqv1beta1.RabbitmqClusterSpec{
+			Replicas: pointer.Int32Ptr(1),
+			Image:    images.GetReference("rabbitmq", "docker.io/library/rabbitmq", RabbitmqImageTag),
 			Resources: &corev1.ResourceRequirements{
 				Limits: corev1.ResourceList{
 					corev1.ResourceCPU:    resource.MustParse("1"),
@@ -49,6 +56,13 @@ func (s *OpenstackRabbitmqStep) Generate() *rabbitmqv1beta1.RabbitmqCluster {
 					corev1.ResourceMemory: resource.MustParse("1Gi"),
 				},
 			},
+			Service: rabbitmqv1beta1.RabbitmqClusterServiceSpec{
+				Type: corev1.ServiceTypeClusterIP,
+			},
+			Persistence: rabbitmqv1beta1.RabbitmqClusterPersistenceSpec{
+				Storage: &storage,
+			},
+			TerminationGracePeriodSeconds: pointer.Int64(604800),
 			Affinity: &corev1.Affinity{
 				NodeAffinity: &corev1.NodeAffinity{
 					RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
@@ -81,10 +95,10 @@ func (s *OpenstackRabbitmqStep) Get(ctx context.Context) (*rabbitmqv1beta1.Rabbi
 	return deployedRabbitmq, err
 }
 
-func (s *OpenstackRabbitmqStep) Execute(ctx context.Context, wg *sync.WaitGroup) error {
+func (s *OpenstackRabbitmqStep) Execute(ctx context.Context, diff bool, wg *sync.WaitGroup) error {
 	defer wg.Done()
 
-	validation, err := s.Validate(ctx)
+	validation, err := s.Validate(ctx, diff)
 	if err != nil {
 		return err
 	}
@@ -113,7 +127,7 @@ func (s *OpenstackRabbitmqStep) Execute(ctx context.Context, wg *sync.WaitGroup)
 	return nil
 }
 
-func (s *OpenstackRabbitmqStep) Validate(ctx context.Context) (*ValidationResult, error) {
+func (s *OpenstackRabbitmqStep) Validate(ctx context.Context, diff bool) (*ValidationResult, error) {
 	deployedRabbitmq, err := s.Get(ctx)
 	if client.IgnoreNotFound(err) != nil {
 		return nil, err
@@ -129,8 +143,13 @@ func (s *OpenstackRabbitmqStep) Validate(ctx context.Context) (*ValidationResult
 	}
 
 	rabbitmq := s.Generate()
-	if !reflect.DeepEqual(deployedRabbitmq.Spec, rabbitmq.Spec) {
+	if !cmp.Equal(deployedRabbitmq.Spec, rabbitmq.Spec) {
 		s.Logger().Info("⏳ RabbitMQ configuration needs to be updated")
+
+		if diff {
+			s.Logger().Info(cmp.Diff(deployedRabbitmq.Spec, rabbitmq.Spec))
+		}
+
 		return &ValidationResult{
 			Installed: true,
 			Updated:   false,

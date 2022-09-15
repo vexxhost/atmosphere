@@ -9,6 +9,7 @@ import (
 
 var (
 	configFile string
+	deployDiff bool
 	validate   bool
 
 	deployCmd = &cobra.Command{
@@ -37,14 +38,14 @@ var (
 				log.WithError(err).Fatal("💥 Failed to initialize")
 			}
 
-			err = deployment.Execute()
+			err = deployment.Execute(deployDiff)
 			if err != nil {
 				log.WithError(err).Fatal("💥 Failed to deploy")
 			}
 
 			if validate {
 				log.Info("🔑 Starting validation")
-				if err := deployment.Validate(); err != nil {
+				if err := deployment.Validate(deployDiff); err != nil {
 					log.WithError(err).Fatal("💥 Failed to validate")
 				}
 			}
@@ -56,6 +57,7 @@ var (
 
 func init() {
 	deployCmd.PersistentFlags().StringVar(&configFile, "config", "/etc/atmosphere/config.toml", "Configuration file")
+	deployCmd.PersistentFlags().BoolVar(&deployDiff, "diff", false, "Print diff between current and desired state")
 	deployCmd.PersistentFlags().BoolVar(&validate, "validate", false, "Validate post-deployment")
 
 	rootCmd.AddCommand(deployCmd)

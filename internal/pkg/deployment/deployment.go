@@ -40,9 +40,9 @@ func NewDeployment() (*Deployment, error) {
 	}, nil
 }
 
-func (d *Deployment) Execute() error {
+func (d *Deployment) Execute(diff bool) error {
 	for _, phase := range d.Phases {
-		if err := phase.Execute(d.context); err != nil {
+		if err := phase.Execute(d.context, diff); err != nil {
 			return err
 		}
 	}
@@ -50,9 +50,9 @@ func (d *Deployment) Execute() error {
 	return nil
 }
 
-func (d *Deployment) Validate() error {
+func (d *Deployment) Validate(diff bool) error {
 	for _, phase := range d.Phases {
-		if err := phase.Validate(d.context); err != nil {
+		if err := phase.Validate(d.context, diff); err != nil {
 			return err
 		}
 	}

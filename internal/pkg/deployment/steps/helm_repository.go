@@ -2,11 +2,11 @@ package steps
 
 import (
 	"context"
-	"reflect"
 	"sync"
 	"time"
 
 	sourcev1 "github.com/fluxcd/source-controller/api/v1beta1"
+	"github.com/google/go-cmp/cmp"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -52,10 +52,10 @@ func (s *HelmRepositoryStep) Get(ctx context.Context) (*sourcev1.HelmRepository,
 	return deployedRepo, err
 }
 
-func (s *HelmRepositoryStep) Execute(ctx context.Context, wg *sync.WaitGroup) error {
+func (s *HelmRepositoryStep) Execute(ctx context.Context, diff bool, wg *sync.WaitGroup) error {
 	defer wg.Done()
 
-	validation, err := s.Validate(ctx)
+	validation, err := s.Validate(ctx, diff)
 	if err != nil {
 		return err
 	}
@@ -84,7 +84,7 @@ func (s *HelmRepositoryStep) Execute(ctx context.Context, wg *sync.WaitGroup) er
 	return nil
 }
 
-func (s *HelmRepositoryStep) Validate(ctx context.Context) (*ValidationResult, error) {
+func (s *HelmRepositoryStep) Validate(ctx context.Context, diff bool) (*ValidationResult, error) {
 	deployedRepo, err := s.Get(ctx)
 	if client.IgnoreNotFound(err) != nil {
 		return nil, err
@@ -100,8 +100,13 @@ func (s *HelmRepositoryStep) Validate(ctx context.Context) (*ValidationResult, e
 	}
 
 	repo := s.Generate()
-	if !reflect.DeepEqual(deployedRepo.Spec, repo.Spec) {
+	if !cmp.Equal(deployedRepo.Spec, repo.Spec) {
 		s.Logger().Info("⏳ Helm repository configuration needs to be updated")
+
+		if diff {
+			s.Logger().Infof(cmp.Diff(deployedRepo.Spec, repo.Spec))
+		}
+
 		return &ValidationResult{
 			Installed: true,
 			Updated:   false,

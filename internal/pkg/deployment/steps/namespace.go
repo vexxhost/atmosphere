@@ -38,10 +38,10 @@ func (s *NamespaceStep) Get(ctx context.Context) (*corev1.Namespace, error) {
 	return deployedNamespace, err
 }
 
-func (s *NamespaceStep) Execute(ctx context.Context, wg *sync.WaitGroup) error {
+func (s *NamespaceStep) Execute(ctx context.Context, diff bool, wg *sync.WaitGroup) error {
 	defer wg.Done()
 
-	validation, err := s.Validate(ctx)
+	validation, err := s.Validate(ctx, diff)
 	if err != nil {
 		return err
 	}
@@ -59,7 +59,7 @@ func (s *NamespaceStep) Execute(ctx context.Context, wg *sync.WaitGroup) error {
 	return nil
 }
 
-func (s *NamespaceStep) Validate(ctx context.Context) (*ValidationResult, error) {
+func (s *NamespaceStep) Validate(ctx context.Context, diff bool) (*ValidationResult, error) {
 	_, err := s.Get(ctx)
 	if client.IgnoreNotFound(err) != nil {
 		return nil, err

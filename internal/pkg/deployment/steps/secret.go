@@ -2,9 +2,9 @@ package steps
 
 import (
 	"context"
-	"reflect"
 	"sync"
 
+	"github.com/google/go-cmp/cmp"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -43,10 +43,10 @@ func (s *SecretStep) Get(ctx context.Context) (*corev1.Secret, error) {
 	return deployedSecret, err
 }
 
-func (s *SecretStep) Execute(ctx context.Context, wg *sync.WaitGroup) error {
+func (s *SecretStep) Execute(ctx context.Context, diff bool, wg *sync.WaitGroup) error {
 	defer wg.Done()
 
-	validation, err := s.Validate(ctx)
+	validation, err := s.Validate(ctx, diff)
 	if err != nil {
 		return err
 	}
@@ -75,7 +75,7 @@ func (s *SecretStep) Execute(ctx context.Context, wg *sync.WaitGroup) error {
 	return nil
 }
 
-func (s *SecretStep) Validate(ctx context.Context) (*ValidationResult, error) {
+func (s *SecretStep) Validate(ctx context.Context, diff bool) (*ValidationResult, error) {
 	deployedSecret, err := s.Get(ctx)
 	if client.IgnoreNotFound(err) != nil {
 		return nil, err
@@ -91,8 +91,13 @@ func (s *SecretStep) Validate(ctx context.Context) (*ValidationResult, error) {
 	}
 
 	secret := s.Generate()
-	if !reflect.DeepEqual(deployedSecret.Data, secret.Data) {
+	if !cmp.Equal(deployedSecret.Data, secret.Data) {
 		s.Logger().Info("⏳ Secret configuration needs to be updated")
+
+		if diff {
+			s.Logger().Info(cmp.Diff(deployedSecret.Data, secret.Data))
+		}
+
 		return &ValidationResult{
 			Installed: true,
 			Updated:   false,

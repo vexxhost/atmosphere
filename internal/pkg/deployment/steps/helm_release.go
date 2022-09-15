@@ -3,14 +3,16 @@ package steps
 import (
 	"context"
 	"encoding/json"
-	"reflect"
 	"sync"
 	"time"
 
 	helmv2 "github.com/fluxcd/helm-controller/api/v2beta1"
 	fluxmeta "github.com/fluxcd/pkg/apis/meta"
+	"github.com/google/go-cmp/cmp"
 	log "github.com/sirupsen/logrus"
+
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -32,6 +34,8 @@ func (s *HelmReleaseStep) Logger() *log.Entry {
 }
 
 func (s *HelmReleaseStep) Generate() *helmv2.HelmRelease {
+	s.ChartSpec.ReconcileStrategy = "ChartVersion"
+
 	release := &helmv2.HelmRelease{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      s.ReleaseName,
@@ -78,10 +82,10 @@ func (s *HelmReleaseStep) Get(ctx context.Context) (*helmv2.HelmRelease, error) 
 	return deployedRelease, err
 }
 
-func (s *HelmReleaseStep) Execute(ctx context.Context, wg *sync.WaitGroup) error {
+func (s *HelmReleaseStep) Execute(ctx context.Context, diff bool, wg *sync.WaitGroup) error {
 	defer wg.Done()
 
-	validation, err := s.Validate(ctx)
+	validation, err := s.Validate(ctx, diff)
 	if err != nil {
 		return err
 	}
@@ -110,7 +114,7 @@ func (s *HelmReleaseStep) Execute(ctx context.Context, wg *sync.WaitGroup) error
 	return nil
 }
 
-func (s *HelmReleaseStep) Validate(ctx context.Context) (*ValidationResult, error) {
+func (s *HelmReleaseStep) Validate(ctx context.Context, diff bool) (*ValidationResult, error) {
 	deployedRelease, err := s.Get(ctx)
 	if client.IgnoreNotFound(err) != nil {
 		return nil, err
@@ -126,8 +130,26 @@ func (s *HelmReleaseStep) Validate(ctx context.Context) (*ValidationResult, erro
 	}
 
 	release := s.Generate()
-	if !reflect.DeepEqual(deployedRelease.Spec, release.Spec) {
+
+	// NOTE(mnaser): v1.JSON will not be equal by default so we'll have to setup
+	//               our own equality check.
+	transformer := cmp.Transformer("v1.JSON", func(x v1.JSON) map[string]interface{} {
+		var data map[string]interface{}
+
+		if err := json.Unmarshal(x.Raw, &data); err != nil {
+			log.WithError(err).Error("Failed to unmarshal JSON")
+		}
+
+		return data
+	})
+
+	if !cmp.Equal(deployedRelease.Spec, release.Spec, transformer) {
 		s.Logger().Info("⏳ Helm release configuration needs to be updated")
+
+		if diff {
+			s.Logger().Info(cmp.Diff(deployedRelease.Spec, release.Spec, transformer))
+		}
+
 		return &ValidationResult{
 			Installed: true,
 			Updated:   false,
