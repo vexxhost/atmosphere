@@ -10,7 +10,7 @@ def test_kubernetes_version(kind_cluster):
     assert kind_cluster.api.version == ("1", "25")
 
 
-def test_deployment(kind_cluster, tmp_path):
+def test_deployment(kind_cluster):
     kind_cluster.kubectl("create", "namespace", "openstack")
 
     deploy.run(api=kind_cluster.api)
