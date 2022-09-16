@@ -1,5 +1,3 @@
-import uuid
-
 from atmosphere.models import conf
 from atmosphere.models.openstack_helm import images as osh_images
 
