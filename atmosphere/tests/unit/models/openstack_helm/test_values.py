@@ -1,24 +1,26 @@
+import confspirator
 import pykube
 import pytest
 
-from atmosphere.models import conf
+from atmosphere.config import CONF
 from atmosphere.models.openstack_helm import values as osh_values
 
 
 class TestMemcachedValues:
     def test_values_for_chart(self):
-        data = conf.AtmosphereConfig.get_mock_object()
-        data.memcached.secret_key = "foobar"
-
-        values = osh_values.Values.for_chart("memcached", data)
+        values = osh_values.Values.for_chart("memcached")
 
         assert {
-            "endpoints": {"oslo_cache": {"auth": {"memcache_secret_key": "foobar"}}},
+            "endpoints": {
+                "oslo_cache": {
+                    "auth": {"memcache_secret_key": CONF.memcached.secret_key}
+                }
+            },
             "images": {
                 "pull_policy": "Always",
                 "tags": {
-                    "memcached": data.memcached.images.memcached,
-                    "prometheus_memcached_exporter": data.memcached.images.prometheus_memcached_exporter,
+                    "memcached": CONF.images.memcached,
+                    "prometheus_memcached_exporter": CONF.images.memcached_exporter,
                 },
             },
             "monitoring": {
@@ -29,10 +31,7 @@ class TestMemcachedValues:
         } == values.to_primitive()
 
     def test_apply_for_chart_with_no_existing_config(self, mocker):
-        data = conf.AtmosphereConfig.get_mock_object()
-        data.memcached.secret_key = "foobar"
-
-        values = osh_values.Values.for_chart("memcached", data)
+        values = osh_values.Values.for_chart("memcached")
 
         api = mocker.MagicMock()
 
@@ -48,13 +47,11 @@ class TestMemcachedValues:
         mocked_secret_class.assert_called_once_with(api, values.secret())
         mocked_secret.exists.assert_called_once()
         mocked_secret.create.assert_called_once()
+        mocked_secret.reload.assert_called_once()
         mocked_secret.update.assert_not_called()
 
     def test_apply_for_chart_with_no_config_change(self, mocker):
-        data = conf.AtmosphereConfig.get_mock_object()
-        data.memcached.secret_key = "foobar"
-
-        values = osh_values.Values.for_chart("memcached", data)
+        values = osh_values.Values.for_chart("memcached")
 
         api = mocker.MagicMock()
 
@@ -70,16 +67,21 @@ class TestMemcachedValues:
         mocked_secret_class.assert_called_once_with(api, values.secret())
         mocked_secret.exists.assert_called_once()
         mocked_secret.create.assert_not_called()
+        mocked_secret.reload.assert_called_once()
         mocked_secret.update.assert_not_called()
 
     def test_apply_for_chart_with_config_change(self, mocker):
-        data = conf.AtmosphereConfig.get_mock_object()
-        data.memcached.secret_key = "foobar"
+        old_values = osh_values.Values.for_chart("memcached")
 
-        old_values = osh_values.Values.for_chart("memcached", data)
-
-        data.memcached.secret_key = "barfoo"
-        new_values = osh_values.Values.for_chart("memcached", data)
+        with confspirator.modify_conf(
+            CONF,
+            {
+                "atmosphere.memcached.secret_key": [
+                    {"operation": "override", "value": "barfoo"}
+                ],
+            },
+        ):
+            new_values = osh_values.Values.for_chart("memcached")
 
         api = mocker.MagicMock()
 
@@ -95,13 +97,11 @@ class TestMemcachedValues:
         mocked_secret_class.assert_called_once_with(api, new_values.secret())
         mocked_secret.exists.assert_called_once()
         mocked_secret.create.assert_not_called()
+        mocked_secret.reload.assert_called_once()
         mocked_secret.update.assert_called_once()
 
     def test_apply_for_chart_with_unknown_failure(self, mocker):
-        data = conf.AtmosphereConfig.get_mock_object()
-        data.memcached.secret_key = "foobar"
-
-        values = osh_values.Values.for_chart("memcached", data)
+        values = osh_values.Values.for_chart("memcached")
 
         api = mocker.MagicMock()
         mocked_secret = mocker.MagicMock()

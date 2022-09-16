@@ -20,13 +20,13 @@ class Values(base.Model):
         roles = {"default": blacklist("chart")}
 
     @classmethod
-    def for_chart(cls, chart, config):
+    def for_chart(cls, chart):
         return cls(
             {
                 "chart": chart,
-                "endpoints": endpoints.Endpoints.for_chart(chart, config),
-                "images": images.Images.for_chart(chart, config),
-                "monitoring": monitoring.Monitoring.for_chart(chart, config),
+                "endpoints": endpoints.Endpoints.for_chart(chart),
+                "images": images.Images.for_chart(chart),
+                "monitoring": monitoring.Monitoring.for_chart(chart),
             }
         )
 
@@ -47,10 +47,12 @@ class Values(base.Model):
 
     def apply(self, api):
         resource = self.secret()
-        secret = pykube.Secret(api, resource)
+        secret = pykube.Secret(api, self.secret())
 
         if not secret.exists():
             secret.create()
+
+        secret.reload()
 
         if secret.obj["data"] != resource["data"]:
             secret.obj["data"] = resource["data"]
