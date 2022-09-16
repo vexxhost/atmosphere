@@ -1,4 +1,4 @@
-import toml
+import tomli
 
 from schematics import types
 
