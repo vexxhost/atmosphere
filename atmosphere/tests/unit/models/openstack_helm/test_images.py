@@ -18,7 +18,9 @@ def test_images_for_chart_memcached_with_defaults():
     CONF,
     {
         "atmosphere.images.memcached": [{"operation": "override", "value": "foo"}],
-        "atmosphere.images.memcached_exporter": [{"operation": "override", "value": "bar"}],
+        "atmosphere.images.memcached_exporter": [
+            {"operation": "override", "value": "bar"}
+        ],
     },
 )
 def test_images_for_chart_memcached_with_overrides():

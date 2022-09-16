@@ -10,7 +10,7 @@ _root_config = groups.ConfigGroup("atmosphere")
 _root_config.register_child_config(images.config_group)
 _root_config.register_child_config(memcached.config_group)
 
-CONFIG_FILE = os.environ.get('ATMOSPHERE_CONFIG', '/etc/atmosphere/config.toml')
+CONFIG_FILE = os.environ.get("ATMOSPHERE_CONFIG", "/etc/atmosphere/config.toml")
 
 
 def _load_config():
