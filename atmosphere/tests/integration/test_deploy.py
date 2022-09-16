@@ -18,6 +18,7 @@ def test_deployment(kind_cluster):
     initial_memcache_secret = pykube.Secret(
         kind_cluster.api, values.Values.for_chart("memcached").secret()
     )
+    initial_memcache_secret.reload()
     assert initial_memcache_secret.exists()
 
     with confspirator.modify_conf(
@@ -33,6 +34,7 @@ def test_deployment(kind_cluster):
     updated_memcache_secret = pykube.Secret(
         kind_cluster.api, values.Values.for_chart("memcached").secret()
     )
+    updated_memcache_secret.reload()
     assert updated_memcache_secret.exists()
 
     assert initial_memcache_secret.obj["data"] != updated_memcache_secret.obj["data"]
