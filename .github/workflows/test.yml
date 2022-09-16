@@ -37,3 +37,24 @@ jobs:
             PROJECT_REF=${{ env.PROJECT_REF }}
           tags: |
             quay.io/vexxhost/ethtool-exporter:${{ env.PROJECT_REF }}
+
+  pytest:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        type: [unit, integration]
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v3.0.2
+
+      - name: Install Poetry
+        run: pipx install poetry
+
+      - name: Setup Python
+        uses: actions/setup-python@v4.2.0
+        with:
+          cache: poetry
+
+      - name: Run test suite
+        run: poetry run pytest atmosphere/tests/${{ matrix.type }}
