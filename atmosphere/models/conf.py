@@ -29,7 +29,7 @@ class AtmosphereConfig(base.Model):
 
 
 def from_toml(data):
-    cfg = AtmosphereConfig(toml.loads(data), validate=True)
+    cfg = AtmosphereConfig(tomli.loads(data), validate=True)
     cfg.validate()
     return cfg
 
