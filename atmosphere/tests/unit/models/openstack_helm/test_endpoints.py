@@ -1,6 +1,4 @@
-import uuid
 import pytest
-
 from schematics import exceptions
 
 from atmosphere.models import conf

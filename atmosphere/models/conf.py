@@ -1,5 +1,4 @@
 import tomli
-
 from schematics import types
 
 from atmosphere.models import base

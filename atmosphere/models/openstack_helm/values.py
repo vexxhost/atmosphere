@@ -1,14 +1,12 @@
 import base64
 
+import pykube
+import yaml
 from schematics import types
 from schematics.transforms import blacklist
-import yaml
-import pykube
 
 from atmosphere.models import base
-from atmosphere.models.openstack_helm import endpoints
-from atmosphere.models.openstack_helm import images
-from atmosphere.models.openstack_helm import monitoring
+from atmosphere.models.openstack_helm import endpoints, images, monitoring
 
 
 class Values(base.Model):
@@ -51,7 +49,7 @@ class Values(base.Model):
         resource = self.secret()
         secret = pykube.Secret(api, resource)
 
-        if secret.exists() != True:
+        if not secret.exists():
             secret.create()
 
         if secret.obj["data"] != resource["data"]:
