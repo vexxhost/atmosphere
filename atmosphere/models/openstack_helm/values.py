@@ -50,10 +50,10 @@ class Values(base.Model):
     def apply(self, api):
         resource = self.secret()
         secret = pykube.Secret(api, resource)
-        
+
         if secret.exists() != True:
             secret.create()
 
-        if secret.obj["data"] != resource['data']:
-            secret.obj["data"] = resource['data']
+        if secret.obj["data"] != resource["data"]:
+            secret.obj["data"] = resource["data"]
             secret.update()
