@@ -59,7 +59,7 @@ def test_e2e_for_operator(tmp_path, kind_cluster, docker_image):
         "-n", "openstack", "rollout", "status", "deployment/atmosphere-operator"
     )
 
-    for pod in pykube.Pod.objects(kind_cluster.api).filter(
+    for pod in pykube.Pod.objects(kind_cluster.api, namespace="openstack").filter(
         selector="application=atmosphere"
     ):
         assert "successfully started" in pod.logs()
