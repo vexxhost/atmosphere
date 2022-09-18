@@ -13,11 +13,11 @@ _root_config.register_child_config(memcached.config_group)
 CONFIG_FILE = os.environ.get("ATMOSPHERE_CONFIG", "/etc/atmosphere/config.toml")
 
 
-def _load_config():
+def load_config(file=CONFIG_FILE):
     if "pytest" in sys.modules:
         return confspirator.load_dict(_root_config, {}, test_mode=True)
 
-    return confspirator.load_file(_root_config, CONFIG_FILE)
+    return confspirator.load_file(_root_config, file)
 
 
-CONF = _load_config()
+CONF = load_config()
