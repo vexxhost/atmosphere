@@ -12,14 +12,6 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Generate OpenStack-Helm endpoints
-  ansible.builtin.include_role:
-    name: openstack_helm_endpoints
-  vars:
-    openstack_helm_endpoints_repo_name: openstack-helm-infra
-    openstack_helm_endpoints_repo_url: https://tarballs.opendev.org/openstack/openstack-helm-infra/
-    openstack_helm_endpoints_chart: memcached
-
 - name: Deploy Helm chart
   kubernetes.core.k8s:
     state: present
@@ -32,14 +24,6 @@
         spec:
           interval: 60s
           url: https://tarballs.opendev.org/openstack/openstack-helm-infra/
-
-      - apiVersion: v1
-        kind: Secret
-        metadata:
-          name: atmosphere-memcached
-          namespace: openstack
-        stringData:
-          values.yaml: "{{ _openstack_helm_infra_memcached_values | to_nice_yaml }}"
 
       - apiVersion: helm.toolkit.fluxcd.io/v2beta1
         kind: HelmRelease
