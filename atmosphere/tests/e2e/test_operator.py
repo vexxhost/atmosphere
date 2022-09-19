@@ -7,6 +7,7 @@ import pytest
 import toml
 from jinja2 import Environment, FileSystemLoader
 from python_on_whales import docker
+from tenacity import Retrying, retry_if_exception_type, stop_after_delay
 
 
 @pytest.fixture
@@ -62,7 +63,11 @@ def test_e2e_for_operator(tmp_path, kind_cluster, docker_image):
     for pod in pykube.Pod.objects(kind_cluster.api, namespace="openstack").filter(
         selector="application=atmosphere"
     ):
-        assert "successfully started" in pod.logs()
+        for attempt in Retrying(
+            retry=retry_if_exception_type(AssertionError), stop=stop_after_delay(30)
+        ):
+            with attempt:
+                assert "successfully started" in pod.logs()
 
     for secret_name in ["atmosphere-config", "atmosphere-memcached"]:
         secret = pykube.Secret.objects(
