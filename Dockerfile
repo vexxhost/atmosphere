@@ -6,6 +6,10 @@ RUN --mount=type=cache,target=/root/.cache <<EOF
 EOF
 
 FROM poetry AS builder
+RUN <<EOF
+  apt-get update
+  apt-get install -y gcc
+EOF
 ADD . /app
 WORKDIR /app
 ENV POETRY_VIRTUALENVS_IN_PROJECT=true
