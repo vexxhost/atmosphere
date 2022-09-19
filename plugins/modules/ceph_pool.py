@@ -15,27 +15,29 @@
 # limitations under the License.
 
 from __future__ import absolute_import, division, print_function
-__metaclass__ = type
 
-from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.vexxhost.atmosphere.plugins.module_utils.ca_common import generate_ceph_cmd, \
-    pre_generate_ceph_cmd, \
-    is_containerized, \
-    exec_command, \
-    exit_module
+__metaclass__ = type
 
 import datetime
 import json
 import os
 
+from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.vexxhost.atmosphere.plugins.module_utils.ca_common import (
+    exec_command,
+    exit_module,
+    generate_ceph_cmd,
+    is_containerized,
+    pre_generate_ceph_cmd,
+)
 
 ANSIBLE_METADATA = {
-    'metadata_version': '1.1',
-    'status': ['preview'],
-    'supported_by': 'community'
+    "metadata_version": "1.1",
+    "status": ["preview"],
+    "supported_by": "community",
 }
 
-DOCUMENTATION = '''
+DOCUMENTATION = """
 ---
 module: ceph_pool
 
@@ -122,9 +124,9 @@ options:
             - Set the pool application on the pool.
         required: false
         default: None
-'''
+"""
 
-EXAMPLES = '''
+EXAMPLES = """
 
 pools:
   - { name: foo, size: 3, application: rbd, pool_type: 'replicated',
@@ -142,153 +144,146 @@ pools:
         pool_type: "{{ item.pool_type }}"
         pg_autoscale_mode: "{{ item.pg_autoscale_mode }}"
       with_items: "{{ pools }}"
-'''
+"""
 
-RETURN = '''#  '''
+RETURN = """#  """
 
 
-def check_pool_exist(cluster,
-                     name,
-                     user,
-                     user_key,
-                     output_format='json',
-                     container_image=None):
-    '''
+def check_pool_exist(
+    cluster, name, user, user_key, output_format="json", container_image=None
+):
+    """
     Check if a given pool exists
-    '''
+    """
 
-    args = ['stats', name, '-f', output_format]
+    args = ["stats", name, "-f", output_format]
 
-    cmd = generate_ceph_cmd(sub_cmd=['osd', 'pool'],
-                            args=args,
-                            cluster=cluster,
-                            user=user,
-                            user_key=user_key,
-                            container_image=container_image)
+    cmd = generate_ceph_cmd(
+        sub_cmd=["osd", "pool"],
+        args=args,
+        cluster=cluster,
+        user=user,
+        user_key=user_key,
+        container_image=container_image,
+    )
 
     return cmd
 
 
-def generate_get_config_cmd(param,
-                            cluster,
-                            user,
-                            user_key,
-                            container_image=None):
+def generate_get_config_cmd(param, cluster, user, user_key, container_image=None):
     _cmd = pre_generate_ceph_cmd(container_image=container_image)
     args = [
-        '-n',
+        "-n",
         user,
-        '-k',
+        "-k",
         user_key,
-        '--cluster',
+        "--cluster",
         cluster,
-        'config',
-        'get',
-        'mon.*',
-        param
+        "config",
+        "get",
+        "mon.*",
+        param,
     ]
     cmd = _cmd + args
     return cmd
 
 
-def get_application_pool(cluster,
-                         name,
-                         user,
-                         user_key,
-                         output_format='json',
-                         container_image=None):
-    '''
+def get_application_pool(
+    cluster, name, user, user_key, output_format="json", container_image=None
+):
+    """
     Get application type enabled on a given pool
-    '''
+    """
 
-    args = ['application', 'get', name, '-f', output_format]
+    args = ["application", "get", name, "-f", output_format]
 
-    cmd = generate_ceph_cmd(sub_cmd=['osd', 'pool'],
-                            args=args,
-                            cluster=cluster,
-                            user=user,
-                            user_key=user_key,
-                            container_image=container_image)
+    cmd = generate_ceph_cmd(
+        sub_cmd=["osd", "pool"],
+        args=args,
+        cluster=cluster,
+        user=user,
+        user_key=user_key,
+        container_image=container_image,
+    )
 
     return cmd
 
 
-def enable_application_pool(cluster,
-                            name,
-                            application,
-                            user,
-                            user_key,
-                            container_image=None):
-    '''
+def enable_application_pool(
+    cluster, name, application, user, user_key, container_image=None
+):
+    """
     Enable application on a given pool
-    '''
+    """
 
-    args = ['application', 'enable', name, application]
+    args = ["application", "enable", name, application]
 
-    cmd = generate_ceph_cmd(sub_cmd=['osd', 'pool'],
-                            args=args,
-                            cluster=cluster,
-                            user=user,
-                            user_key=user_key,
-                            container_image=container_image)
+    cmd = generate_ceph_cmd(
+        sub_cmd=["osd", "pool"],
+        args=args,
+        cluster=cluster,
+        user=user,
+        user_key=user_key,
+        container_image=container_image,
+    )
 
     return cmd
 
 
-def disable_application_pool(cluster,
-                             name,
-                             application,
-                             user,
-                             user_key,
-                             container_image=None):
-    '''
+def disable_application_pool(
+    cluster, name, application, user, user_key, container_image=None
+):
+    """
     Disable application on a given pool
-    '''
+    """
 
-    args = ['application', 'disable', name,
-            application, '--yes-i-really-mean-it']
+    args = ["application", "disable", name, application, "--yes-i-really-mean-it"]
 
-    cmd = generate_ceph_cmd(sub_cmd=['osd', 'pool'],
-                            args=args,
-                            cluster=cluster,
-                            user=user,
-                            user_key=user_key,
-                            container_image=container_image)
+    cmd = generate_ceph_cmd(
+        sub_cmd=["osd", "pool"],
+        args=args,
+        cluster=cluster,
+        user=user,
+        user_key=user_key,
+        container_image=container_image,
+    )
 
     return cmd
 
 
-def get_pool_details(module,
-                     cluster,
-                     name,
-                     user,
-                     user_key,
-                     output_format='json',
-                     container_image=None):
-    '''
+def get_pool_details(
+    module, cluster, name, user, user_key, output_format="json", container_image=None
+):
+    """
     Get details about a given pool
-    '''
+    """
 
-    args = ['ls', 'detail', '-f', output_format]
+    args = ["ls", "detail", "-f", output_format]
 
-    cmd = generate_ceph_cmd(sub_cmd=['osd', 'pool'],
-                            args=args,
-                            cluster=cluster,
-                            user=user,
-                            user_key=user_key,
-                            container_image=container_image)
+    cmd = generate_ceph_cmd(
+        sub_cmd=["osd", "pool"],
+        args=args,
+        cluster=cluster,
+        user=user,
+        user_key=user_key,
+        container_image=container_image,
+    )
 
     rc, cmd, out, err = exec_command(module, cmd)
 
     if rc == 0:
-        out = [p for p in json.loads(out.strip()) if p['pool_name'] == name][0]
+        out = [p for p in json.loads(out.strip()) if p["pool_name"] == name][0]
 
-    _rc, _cmd, application_pool, _err = exec_command(module,
-                                                     get_application_pool(cluster,    # noqa: E501
-                                                                          name,    # noqa: E501
-                                                                          user,    # noqa: E501
-                                                                          user_key,    # noqa: E501
-                                                                          container_image=container_image))  # noqa: E501
+    _rc, _cmd, application_pool, _err = exec_command(
+        module,
+        get_application_pool(
+            cluster,  # noqa: E501
+            name,  # noqa: E501
+            user,  # noqa: E501
+            user_key,  # noqa: E501
+            container_image=container_image,
+        ),
+    )  # noqa: E501
 
     # This is a trick because "target_size_ratio" isn't present at the same
     # level in the dict
@@ -303,181 +298,231 @@ def get_pool_details(module,
     # }
     # If 'target_size_ratio' is present in 'options', we set it, this way we
     # end up with a dict containing all needed keys at the same level.
-    if 'target_size_ratio' in out['options'].keys():
-        out['target_size_ratio'] = out['options']['target_size_ratio']
+    if "target_size_ratio" in out["options"].keys():
+        out["target_size_ratio"] = out["options"]["target_size_ratio"]
     else:
-        out['target_size_ratio'] = None
+        out["target_size_ratio"] = None
 
     application = list(json.loads(application_pool.strip()).keys())
 
     if len(application) == 0:
-        out['application'] = ''
+        out["application"] = ""
     else:
-        out['application'] = application[0]
+        out["application"] = application[0]
 
     return rc, cmd, out, err
 
 
 def compare_pool_config(user_pool_config, running_pool_details):
-    '''
+    """
     Compare user input config pool details with current running pool details
-    '''
+    """
 
     delta = {}
-    filter_keys = ['pg_num', 'pg_placement_num', 'size',
-                   'pg_autoscale_mode', 'target_size_ratio']
+    filter_keys = [
+        "pg_num",
+        "pg_placement_num",
+        "size",
+        "pg_autoscale_mode",
+        "target_size_ratio",
+    ]
     for key in filter_keys:
-        if (str(running_pool_details[key]) != user_pool_config[key]['value'] and  # noqa: E501
-                user_pool_config[key]['value']):
+        if (
+            str(running_pool_details[key]) != user_pool_config[key]["value"]
+            and user_pool_config[key]["value"]  # noqa: E501
+        ):
             delta[key] = user_pool_config[key]
 
-    if (running_pool_details['application'] !=
-            user_pool_config['application']['value'] and
-            user_pool_config['application']['value']):
-        delta['application'] = {}
-        delta['application']['new_application'] = user_pool_config['application']['value']  # noqa: E501
+    if (
+        running_pool_details["application"] != user_pool_config["application"]["value"]
+        and user_pool_config["application"]["value"]
+    ):
+        delta["application"] = {}
+        delta["application"]["new_application"] = user_pool_config["application"][
+            "value"
+        ]  # noqa: E501
         # to be improved (for update_pools()...)
-        delta['application']['value'] = delta['application']['new_application']
-        delta['application']['old_application'] = running_pool_details['application']  # noqa: E501
+        delta["application"]["value"] = delta["application"]["new_application"]
+        delta["application"]["old_application"] = running_pool_details[
+            "application"
+        ]  # noqa: E501
 
     return delta
 
 
-def list_pools(cluster,
-               user,
-               user_key,
-               details,
-               output_format='json',
-               container_image=None):
-    '''
+def list_pools(
+    cluster, user, user_key, details, output_format="json", container_image=None
+):
+    """
     List existing pools
-    '''
+    """
 
-    args = ['ls']
+    args = ["ls"]
 
     if details:
-        args.append('detail')
+        args.append("detail")
 
-    args.extend(['-f', output_format])
+    args.extend(["-f", output_format])
 
-    cmd = generate_ceph_cmd(sub_cmd=['osd', 'pool'],
-                            args=args,
-                            cluster=cluster,
-                            user=user,
-                            user_key=user_key,
-                            container_image=container_image)
+    cmd = generate_ceph_cmd(
+        sub_cmd=["osd", "pool"],
+        args=args,
+        cluster=cluster,
+        user=user,
+        user_key=user_key,
+        container_image=container_image,
+    )
 
     return cmd
 
 
-def create_pool(cluster,
-                name,
-                user,
-                user_key,
-                user_pool_config,
-                container_image=None):
-    '''
+def create_pool(cluster, name, user, user_key, user_pool_config, container_image=None):
+    """
     Create a new pool
-    '''
+    """
 
-    args = ['create', user_pool_config['pool_name']['value'],
-            user_pool_config['type']['value']]
+    args = [
+        "create",
+        user_pool_config["pool_name"]["value"],
+        user_pool_config["type"]["value"],
+    ]
 
-    if user_pool_config['pg_autoscale_mode']['value'] != 'on':
-        args.extend(['--pg_num',
-                     user_pool_config['pg_num']['value'],
-                     '--pgp_num',
-                     user_pool_config['pgp_num']['value'] or
-                     user_pool_config['pg_num']['value']])
-    elif user_pool_config['target_size_ratio']['value']:
-        args.extend(['--target_size_ratio',
-                     user_pool_config['target_size_ratio']['value']])
+    if user_pool_config["pg_autoscale_mode"]["value"] != "on":
+        args.extend(
+            [
+                "--pg_num",
+                user_pool_config["pg_num"]["value"],
+                "--pgp_num",
+                user_pool_config["pgp_num"]["value"]
+                or user_pool_config["pg_num"]["value"],
+            ]
+        )
+    elif user_pool_config["target_size_ratio"]["value"]:
+        args.extend(
+            ["--target_size_ratio", user_pool_config["target_size_ratio"]["value"]]
+        )
 
-    if user_pool_config['type']['value'] == 'replicated':
-        args.extend([user_pool_config['crush_rule']['value'],
-                     '--expected_num_objects',
-                     user_pool_config['expected_num_objects']['value'],
-                     '--autoscale-mode',
-                     user_pool_config['pg_autoscale_mode']['value']])
+    if user_pool_config["type"]["value"] == "replicated":
+        args.extend(
+            [
+                user_pool_config["crush_rule"]["value"],
+                "--expected_num_objects",
+                user_pool_config["expected_num_objects"]["value"],
+                "--autoscale-mode",
+                user_pool_config["pg_autoscale_mode"]["value"],
+            ]
+        )
 
-    if (user_pool_config['size']['value'] and
-            user_pool_config['type']['value'] == "replicated"):
-        args.extend(['--size', user_pool_config['size']['value']])
+    if (
+        user_pool_config["size"]["value"]
+        and user_pool_config["type"]["value"] == "replicated"
+    ):
+        args.extend(["--size", user_pool_config["size"]["value"]])
 
-    elif user_pool_config['type']['value'] == 'erasure':
-        args.extend([user_pool_config['erasure_profile']['value']])
+    elif user_pool_config["type"]["value"] == "erasure":
+        args.extend([user_pool_config["erasure_profile"]["value"]])
 
-        if user_pool_config['crush_rule']['value']:
-            args.extend([user_pool_config['crush_rule']['value']])
+        if user_pool_config["crush_rule"]["value"]:
+            args.extend([user_pool_config["crush_rule"]["value"]])
 
-        args.extend(['--expected_num_objects',
-                     user_pool_config['expected_num_objects']['value'],
-                     '--autoscale-mode',
-                     user_pool_config['pg_autoscale_mode']['value']])
+        args.extend(
+            [
+                "--expected_num_objects",
+                user_pool_config["expected_num_objects"]["value"],
+                "--autoscale-mode",
+                user_pool_config["pg_autoscale_mode"]["value"],
+            ]
+        )
 
-    cmd = generate_ceph_cmd(sub_cmd=['osd', 'pool'],
-                            args=args,
-                            cluster=cluster,
-                            user=user,
-                            user_key=user_key,
-                            container_image=container_image)
+    cmd = generate_ceph_cmd(
+        sub_cmd=["osd", "pool"],
+        args=args,
+        cluster=cluster,
+        user=user,
+        user_key=user_key,
+        container_image=container_image,
+    )
 
     return cmd
 
 
 def remove_pool(cluster, name, user, user_key, container_image=None):
-    '''
+    """
     Remove a pool
-    '''
+    """
 
-    args = ['rm', name, name, '--yes-i-really-really-mean-it']
+    args = ["rm", name, name, "--yes-i-really-really-mean-it"]
 
-    cmd = generate_ceph_cmd(sub_cmd=['osd', 'pool'],
-                            args=args,
-                            cluster=cluster,
-                            user=user,
-                            user_key=user_key,
-                            container_image=container_image)
+    cmd = generate_ceph_cmd(
+        sub_cmd=["osd", "pool"],
+        args=args,
+        cluster=cluster,
+        user=user,
+        user_key=user_key,
+        container_image=container_image,
+    )
 
     return cmd
 
 
-def update_pool(module, cluster, name,
-                user, user_key, delta, container_image=None):
-    '''
+def update_pool(module, cluster, name, user, user_key, delta, container_image=None):
+    """
     Update an existing pool
-    '''
+    """
 
     report = ""
 
     for key in delta.keys():
-        if key != 'application':
-            args = ['set',
-                    name,
-                    delta[key]['cli_set_opt'],
-                    delta[key]['value']]
+        if key != "application":
+            args = ["set", name, delta[key]["cli_set_opt"], delta[key]["value"]]
 
-            cmd = generate_ceph_cmd(sub_cmd=['osd', 'pool'],
-                                    args=args,
-                                    cluster=cluster,
-                                    user=user,
-                                    user_key=user_key,
-                                    container_image=container_image)
+            cmd = generate_ceph_cmd(
+                sub_cmd=["osd", "pool"],
+                args=args,
+                cluster=cluster,
+                user=user,
+                user_key=user_key,
+                container_image=container_image,
+            )
 
             rc, cmd, out, err = exec_command(module, cmd)
             if rc != 0:
                 return rc, cmd, out, err
 
         else:
-            rc, cmd, out, err = exec_command(module, disable_application_pool(cluster, name, delta['application']['old_application'], user, user_key, container_image=container_image))  # noqa: E501
+            rc, cmd, out, err = exec_command(
+                module,
+                disable_application_pool(
+                    cluster,
+                    name,
+                    delta["application"]["old_application"],
+                    user,
+                    user_key,
+                    container_image=container_image,
+                ),
+            )  # noqa: E501
             if rc != 0:
                 return rc, cmd, out, err
 
-            rc, cmd, out, err = exec_command(module, enable_application_pool(cluster, name, delta['application']['new_application'], user, user_key, container_image=container_image))  # noqa: E501
+            rc, cmd, out, err = exec_command(
+                module,
+                enable_application_pool(
+                    cluster,
+                    name,
+                    delta["application"]["new_application"],
+                    user,
+                    user_key,
+                    container_image=container_image,
+                ),
+            )  # noqa: E501
             if rc != 0:
                 return rc, cmd, out, err
 
-        report = report + "\n" + "{} has been updated: {} is now {}".format(name, key, delta[key]['value'])  # noqa: E501
+        report = (
+            report
+            + "\n"
+            + "{} has been updated: {} is now {}".format(name, key, delta[key]["value"])
+        )  # noqa: E501
 
     out = report
     return rc, cmd, out, err
@@ -485,92 +530,99 @@ def update_pool(module, cluster, name,
 
 def run_module():
     module_args = dict(
-        cluster=dict(type='str', required=False, default='ceph'),
-        name=dict(type='str', required=True),
-        state=dict(type='str', required=False, default='present',
-                   choices=['present', 'absent', 'list']),
-        details=dict(type='bool', required=False, default=False),
-        size=dict(type='str', required=False),
-        min_size=dict(type='str', required=False),
-        pg_num=dict(type='str', required=False),
-        pgp_num=dict(type='str', required=False),
-        pg_autoscale_mode=dict(type='str', required=False, default='on'),
-        target_size_ratio=dict(type='str', required=False, default=None),
-        pool_type=dict(type='str', required=False, default='replicated',
-                       choices=['replicated', 'erasure', '1', '3']),
-        erasure_profile=dict(type='str', required=False, default='default'),
-        rule_name=dict(type='str', required=False, default=None),
-        expected_num_objects=dict(type='str', required=False, default="0"),
-        application=dict(type='str', required=False, default=None),
+        cluster=dict(type="str", required=False, default="ceph"),
+        name=dict(type="str", required=True),
+        state=dict(
+            type="str",
+            required=False,
+            default="present",
+            choices=["present", "absent", "list"],
+        ),
+        details=dict(type="bool", required=False, default=False),
+        size=dict(type="str", required=False),
+        min_size=dict(type="str", required=False),
+        pg_num=dict(type="str", required=False),
+        pgp_num=dict(type="str", required=False),
+        pg_autoscale_mode=dict(type="str", required=False, default="on"),
+        target_size_ratio=dict(type="str", required=False, default=None),
+        pool_type=dict(
+            type="str",
+            required=False,
+            default="replicated",
+            choices=["replicated", "erasure", "1", "3"],
+        ),
+        erasure_profile=dict(type="str", required=False, default="default"),
+        rule_name=dict(type="str", required=False, default=None),
+        expected_num_objects=dict(type="str", required=False, default="0"),
+        application=dict(type="str", required=False, default=None),
     )
 
-    module = AnsibleModule(
-        argument_spec=module_args,
-        supports_check_mode=True
-    )
+    module = AnsibleModule(argument_spec=module_args, supports_check_mode=True)
 
     # Gather module parameters in variables
-    cluster = module.params.get('cluster')
-    name = module.params.get('name')
-    state = module.params.get('state')
-    details = module.params.get('details')
-    size = module.params.get('size')
-    min_size = module.params.get('min_size')
-    pg_num = module.params.get('pg_num')
-    pgp_num = module.params.get('pgp_num')
-    pg_autoscale_mode = module.params.get('pg_autoscale_mode')
-    target_size_ratio = module.params.get('target_size_ratio')
-    application = module.params.get('application')
+    cluster = module.params.get("cluster")
+    name = module.params.get("name")
+    state = module.params.get("state")
+    details = module.params.get("details")
+    size = module.params.get("size")
+    min_size = module.params.get("min_size")
+    pg_num = module.params.get("pg_num")
+    pgp_num = module.params.get("pgp_num")
+    pg_autoscale_mode = module.params.get("pg_autoscale_mode")
+    target_size_ratio = module.params.get("target_size_ratio")
+    application = module.params.get("application")
 
-    if (module.params.get('pg_autoscale_mode').lower() in
-            ['true', 'on', 'yes']):
-        pg_autoscale_mode = 'on'
-    elif (module.params.get('pg_autoscale_mode').lower() in
-          ['false', 'off', 'no']):
-        pg_autoscale_mode = 'off'
+    if module.params.get("pg_autoscale_mode").lower() in ["true", "on", "yes"]:
+        pg_autoscale_mode = "on"
+    elif module.params.get("pg_autoscale_mode").lower() in ["false", "off", "no"]:
+        pg_autoscale_mode = "off"
     else:
-        pg_autoscale_mode = 'warn'
+        pg_autoscale_mode = "warn"
 
-    if module.params.get('pool_type') == '1':
-        pool_type = 'replicated'
-    elif module.params.get('pool_type') == '3':
-        pool_type = 'erasure'
+    if module.params.get("pool_type") == "1":
+        pool_type = "replicated"
+    elif module.params.get("pool_type") == "3":
+        pool_type = "erasure"
     else:
-        pool_type = module.params.get('pool_type')
+        pool_type = module.params.get("pool_type")
 
-    if not module.params.get('rule_name'):
-        rule_name = 'replicated_rule' if pool_type == 'replicated' else None
+    if not module.params.get("rule_name"):
+        rule_name = "replicated_rule" if pool_type == "replicated" else None
     else:
-        rule_name = module.params.get('rule_name')
+        rule_name = module.params.get("rule_name")
 
-    erasure_profile = module.params.get('erasure_profile')
-    expected_num_objects = module.params.get('expected_num_objects')
+    erasure_profile = module.params.get("erasure_profile")
+    expected_num_objects = module.params.get("expected_num_objects")
     user_pool_config = {
-        'pool_name': {'value': name},
-        'pg_num': {'value': pg_num, 'cli_set_opt': 'pg_num'},
-        'pgp_num': {'value': pgp_num, 'cli_set_opt': 'pgp_num'},
-        'pg_autoscale_mode': {'value': pg_autoscale_mode,
-                              'cli_set_opt': 'pg_autoscale_mode'},
-        'target_size_ratio': {'value': target_size_ratio,
-                              'cli_set_opt': 'target_size_ratio'},
-        'application': {'value': application},
-        'type': {'value': pool_type},
-        'erasure_profile': {'value': erasure_profile},
-        'crush_rule': {'value': rule_name, 'cli_set_opt': 'crush_rule'},
-        'expected_num_objects': {'value': expected_num_objects},
-        'size': {'value': size, 'cli_set_opt': 'size'},
-        'min_size': {'value': min_size}
+        "pool_name": {"value": name},
+        "pg_num": {"value": pg_num, "cli_set_opt": "pg_num"},
+        "pgp_num": {"value": pgp_num, "cli_set_opt": "pgp_num"},
+        "pg_autoscale_mode": {
+            "value": pg_autoscale_mode,
+            "cli_set_opt": "pg_autoscale_mode",
+        },
+        "target_size_ratio": {
+            "value": target_size_ratio,
+            "cli_set_opt": "target_size_ratio",
+        },
+        "application": {"value": application},
+        "type": {"value": pool_type},
+        "erasure_profile": {"value": erasure_profile},
+        "crush_rule": {"value": rule_name, "cli_set_opt": "crush_rule"},
+        "expected_num_objects": {"value": expected_num_objects},
+        "size": {"value": size, "cli_set_opt": "size"},
+        "min_size": {"value": min_size},
     }
 
     if module.check_mode:
         module.exit_json(
             changed=False,
-            stdout='',
-            stderr='',
+            stdout="",
+            stderr="",
             rc=0,
-            start='',
-            end='',
-            delta='',
+            start="",
+            end="",
+            delta="",
         )
 
     startd = datetime.datetime.now()
@@ -580,105 +632,120 @@ def run_module():
     container_image = is_containerized()
 
     user = "client.admin"
-    keyring_filename = cluster + '.' + user + '.keyring'
+    keyring_filename = cluster + "." + user + ".keyring"
     user_key = os.path.join("/etc/ceph/", keyring_filename)
 
     if state == "present":
-        rc, cmd, out, err = exec_command(module,
-                                         check_pool_exist(cluster,
-                                                          name,
-                                                          user,
-                                                          user_key,
-                                                          container_image=container_image))  # noqa: E501
+        rc, cmd, out, err = exec_command(
+            module,
+            check_pool_exist(
+                cluster, name, user, user_key, container_image=container_image
+            ),
+        )  # noqa: E501
         if rc == 0:
-            running_pool_details = get_pool_details(module,
-                                                    cluster,
-                                                    name,
-                                                    user,
-                                                    user_key,
-                                                    container_image=container_image)  # noqa: E501
-            user_pool_config['pg_placement_num'] = {'value': str(running_pool_details[2]['pg_placement_num']), 'cli_set_opt': 'pgp_num'}  # noqa: E501
-            delta = compare_pool_config(user_pool_config,
-                                        running_pool_details[2])
+            running_pool_details = get_pool_details(
+                module, cluster, name, user, user_key, container_image=container_image
+            )  # noqa: E501
+            user_pool_config["pg_placement_num"] = {
+                "value": str(running_pool_details[2]["pg_placement_num"]),
+                "cli_set_opt": "pgp_num",
+            }  # noqa: E501
+            delta = compare_pool_config(user_pool_config, running_pool_details[2])
             if len(delta) > 0:
                 keys = list(delta.keys())
                 details = running_pool_details[2]
-                if details['erasure_code_profile'] and 'size' in keys:
-                    del delta['size']
-                if details['pg_autoscale_mode'] == 'on':
-                    delta.pop('pg_num', None)
-                    delta.pop('pgp_num', None)
+                if details["erasure_code_profile"] and "size" in keys:
+                    del delta["size"]
+                if details["pg_autoscale_mode"] == "on":
+                    delta.pop("pg_num", None)
+                    delta.pop("pgp_num", None)
 
                 if len(delta) == 0:
-                    out = "Skipping pool {}.\nUpdating either 'size' on an erasure-coded pool or 'pg_num'/'pgp_num' on a pg autoscaled pool is incompatible".format(name)  # noqa: E501
+                    out = "Skipping pool {}.\nUpdating either 'size' on an erasure-coded pool or 'pg_num'/'pgp_num' on a pg autoscaled pool is incompatible".format(
+                        name
+                    )  # noqa: E501
                 else:
-                    rc, cmd, out, err = update_pool(module,
-                                                    cluster,
-                                                    name,
-                                                    user,
-                                                    user_key,
-                                                    delta,
-                                                    container_image=container_image)  # noqa: E501
+                    rc, cmd, out, err = update_pool(
+                        module,
+                        cluster,
+                        name,
+                        user,
+                        user_key,
+                        delta,
+                        container_image=container_image,
+                    )  # noqa: E501
                     if rc == 0:
                         changed = True
             else:
-                out = "Pool {} already exists and there is nothing to update.".format(name)  # noqa: E501
+                out = "Pool {} already exists and there is nothing to update.".format(
+                    name
+                )  # noqa: E501
         else:
-            rc, cmd, out, err = exec_command(module,
-                                             create_pool(cluster,
-                                                         name,
-                                                         user,
-                                                         user_key,
-                                                         user_pool_config=user_pool_config,  # noqa: E501
-                                                         container_image=container_image))  # noqa: E501
-            if user_pool_config['application']['value']:
-                rc, _, _, _ = exec_command(module,
-                                           enable_application_pool(cluster,
-                                                                   name,
-                                                                   user_pool_config['application']['value'],  # noqa: E501
-                                                                   user,
-                                                                   user_key,
-                                                                   container_image=container_image))  # noqa: E501
-            if user_pool_config['min_size']['value']:
+            rc, cmd, out, err = exec_command(
+                module,
+                create_pool(
+                    cluster,
+                    name,
+                    user,
+                    user_key,
+                    user_pool_config=user_pool_config,  # noqa: E501
+                    container_image=container_image,
+                ),
+            )  # noqa: E501
+            if user_pool_config["application"]["value"]:
+                rc, _, _, _ = exec_command(
+                    module,
+                    enable_application_pool(
+                        cluster,
+                        name,
+                        user_pool_config["application"]["value"],  # noqa: E501
+                        user,
+                        user_key,
+                        container_image=container_image,
+                    ),
+                )  # noqa: E501
+            if user_pool_config["min_size"]["value"]:
                 # not implemented yet
                 pass
             changed = True
 
     elif state == "list":
-        rc, cmd, out, err = exec_command(module,
-                                         list_pools(cluster,
-                                                    name, user,
-                                                    user_key,
-                                                    details,
-                                                    container_image=container_image))  # noqa: E501
+        rc, cmd, out, err = exec_command(
+            module,
+            list_pools(
+                cluster, name, user, user_key, details, container_image=container_image
+            ),
+        )  # noqa: E501
         if rc != 0:
             out = "Couldn't list pool(s) present on the cluster"
 
     elif state == "absent":
-        rc, cmd, out, err = exec_command(module,
-                                         check_pool_exist(cluster,
-                                                          name, user,
-                                                          user_key,
-                                                          container_image=container_image))  # noqa: E501
+        rc, cmd, out, err = exec_command(
+            module,
+            check_pool_exist(
+                cluster, name, user, user_key, container_image=container_image
+            ),
+        )  # noqa: E501
         if rc == 0:
-            rc, cmd, out, err = exec_command(module,
-                                             remove_pool(cluster,
-                                                         name,
-                                                         user,
-                                                         user_key,
-                                                         container_image=container_image))  # noqa: E501
+            rc, cmd, out, err = exec_command(
+                module,
+                remove_pool(
+                    cluster, name, user, user_key, container_image=container_image
+                ),
+            )  # noqa: E501
             changed = True
         else:
             rc = 0
             out = "Skipped, since pool {} doesn't exist".format(name)
 
-    exit_module(module=module, out=out, rc=rc, cmd=cmd, err=err, startd=startd,
-                changed=changed)
+    exit_module(
+        module=module, out=out, rc=rc, cmd=cmd, err=err, startd=startd, changed=changed
+    )
 
 
 def main():
     run_module()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -22,38 +22,40 @@
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
+import glob
+
 # -- yaml2rst ----------------------------------------------------------------
 import os
-import glob
+import pathlib
+
 import yaml2rst
 from yaml4rst.reformatter import YamlRstReformatter
-import pathlib
 
 for defaults_file in glob.glob("../../roles/*/defaults/main.yml"):
     role_name = defaults_file.split("/")[-3]
 
     YamlRstReformatter._HEADER_END_LINES = {
-        'yaml4rst': [
-            '# Default variables',
-            '#    :local:',
-            '# .. contents:: Sections',
-            '# .. include:: includes/all.rst',
-            '# .. include:: includes/role.rst',
-            '# .. include:: ../../../includes/global.rst',
-            '# -----------------',
+        "yaml4rst": [
+            "# Default variables",
+            "#    :local:",
+            "# .. contents:: Sections",
+            "# .. include:: includes/all.rst",
+            "# .. include:: includes/role.rst",
+            "# .. include:: ../../../includes/global.rst",
+            "# -----------------",
         ],
     }
 
     reformatter = YamlRstReformatter(
-        preset='yaml4rst',
+        preset="yaml4rst",
         template_path=os.path.join(
             os.path.abspath(os.path.dirname(__file__)),
-            '_templates',
+            "_templates",
         ),
         config={
-            'ansible_full_role_name': f"vexxhost.atmosphere.{role_name}",
-            'ansible_role_name': role_name,
-        }
+            "ansible_full_role_name": f"vexxhost.atmosphere.{role_name}",
+            "ansible_role_name": role_name,
+        },
     )
     reformatter.read_file(defaults_file)
     reformatter.reformat()
@@ -67,16 +69,16 @@ for defaults_file in glob.glob("../../roles/*/defaults/main.yml"):
     rst_content = yaml2rst.convert_file(
         defaults_file,
         f"roles/{role_name}/defaults/main.rst",
-        strip_regex=r'\s*(:?\[{3}|\]{3})\d?$',
-        yaml_strip_regex=r'^\s{66,67}#\s\]{3}\d?$',
+        strip_regex=r"\s*(:?\[{3}|\]{3})\d?$",
+        yaml_strip_regex=r"^\s{66,67}#\s\]{3}\d?$",
     )
 
 
 # -- Project information -----------------------------------------------------
 
-project = 'Atmosphere'
-copyright = '2022, VEXXHOST, Inc.'
-author = 'VEXXHOST, Inc.'
+project = "Atmosphere"
+copyright = "2022, VEXXHOST, Inc."
+author = "VEXXHOST, Inc."
 
 
 # -- General configuration ---------------------------------------------------
@@ -85,11 +87,11 @@ author = 'VEXXHOST, Inc.'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'reno.sphinxext',
+    "reno.sphinxext",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ['_templates']
+templates_path = ["_templates"]
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -102,9 +104,9 @@ exclude_patterns = []
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'sphinx_rtd_theme'
+html_theme = "sphinx_rtd_theme"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+html_static_path = ["_static"]
