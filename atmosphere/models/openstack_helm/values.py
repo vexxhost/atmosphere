@@ -1,7 +1,6 @@
-import base64
-
 import mergedeep
 import yaml
+from oslo_serialization import base64
 from schematics import types
 from schematics.transforms import blacklist
 
@@ -37,6 +36,4 @@ class Values(base.Model):
         overrides = getattr(CONF, self.chart).overrides
         values = mergedeep.merge({}, data, overrides)
         values_yaml = yaml.dump(values, default_flow_style=False)
-        return {
-            "values.yaml": base64.b64encode(values_yaml.encode("utf-8")).decode("utf-8")
-        }
+        return {"values.yaml": base64.encode_as_text(values_yaml)}
