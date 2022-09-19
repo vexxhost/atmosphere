@@ -4,7 +4,6 @@ import taskflow.engines
 
 from atmosphere import flows
 from atmosphere.config import CONF
-from atmosphere.models.openstack_helm import values
 
 
 def test_kubernetes_version(kind_cluster):
