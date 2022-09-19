@@ -30,34 +30,3 @@ jobs:
           name: test-log
           path: /tmp/gotest.log
           if-no-files-found: error
-
-  black:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout project
-        uses: actions/checkout@v3.0.2
-
-      - name: Run "Black"
-        uses: psf/black@stable
-        with:
-          src: ./atmosphere
-
-  flake8:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout project
-        uses: actions/checkout@v3.0.2
-
-      - name: Install Poetry
-        run: pipx install poetry
-
-      - name: Setup Python
-        uses: actions/setup-python@v4.2.0
-        with:
-          cache: poetry
-
-      - name: Install dependencies
-        run: poetry install --no-interaction
-
-      - name: Run Flake8
-        run: poetry run flake8 ./atmosphere
