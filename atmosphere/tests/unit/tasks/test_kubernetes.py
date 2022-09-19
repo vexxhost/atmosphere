@@ -4,6 +4,7 @@ import pytest
 from atmosphere.tasks import kubernetes
 
 
+@pytest.mark.usefixtures("pykube")
 class TestExecuteSecretTask:
     def test_with_no_existing_secret(self, mocker):
         task = kubernetes.EnsureSecretTask()
