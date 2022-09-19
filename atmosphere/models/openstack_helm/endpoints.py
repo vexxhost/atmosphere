@@ -64,7 +64,7 @@ class Endpoints(base.Model):
     }
 
     ENDPOINTS = {
-        "memcached": ["oslo_cache", "oslo_db"],
+        "memcached": ["oslo_cache"],
     }
 
     @classmethod
