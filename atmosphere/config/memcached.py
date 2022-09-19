@@ -20,3 +20,10 @@ config_group.register_child_config(
         test_default=uuid.uuid4().hex,
     ),
 )
+config_group.register_child_config(
+    fields.DictConfig(
+        "overrides",
+        help_text="Override Helm chart values",
+        default={},
+    )
+)
