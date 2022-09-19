@@ -1,9 +1,10 @@
 import time
 
+import taskflow.engines
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
-from atmosphere import config, deploy, logger
+from atmosphere import config, flows, logger
 from atmosphere.config import CONF
 
 LOG = logger.get_logger()
@@ -19,17 +20,21 @@ class AtmosphereFileSystemEventHandler(FileSystemEventHandler):
         for c in config._root_config:
             group = conf.get(c.name)
             setattr(CONF, c.name, group)
-        deploy.run()
+        engine = taskflow.engines.load(flows.DEPLOY)
+        engine.run()
 
 
 def main():
     LOG.info("Starting Atmosphere operator")
 
-    deploy.run()
+    engine = taskflow.engines.load(flows.DEPLOY)
+    engine.run()
     LOG.info("Atmosphere operator successfully started")
 
     observer = Observer()
-    observer.schedule(AtmosphereFileSystemEventHandler(), config.CONFIG_FILE)
+    observer.schedule(
+        AtmosphereFileSystemEventHandler(), config.CONFIG_FILE, recursive=True
+    )
 
     observer.start()
     try:

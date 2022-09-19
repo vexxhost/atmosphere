@@ -1,7 +1,6 @@
 import base64
 
 import mergedeep
-import pykube
 import yaml
 from schematics import types
 from schematics.transforms import blacklist
@@ -32,34 +31,12 @@ class Values(base.Model):
             }
         )
 
-    def secret(self):
+    @property
+    def secret_data(self):
         data = self.to_native()
         overrides = getattr(CONF, self.chart).overrides
-
-        merged_values = mergedeep.merge({}, data, overrides)
-        values = yaml.dump(merged_values, default_flow_style=False)
-
+        values = mergedeep.merge({}, data, overrides)
+        values_yaml = yaml.dump(values, default_flow_style=False)
         return {
-            "apiVersion": "v1",
-            "kind": "Secret",
-            "metadata": {
-                "name": f"atmosphere-{self.chart}",
-                "namespace": "openstack",
-            },
-            "data": {
-                "values.yaml": base64.b64encode(values.encode("utf-8")).decode("utf-8"),
-            },
+            "values.yaml": base64.b64encode(values_yaml.encode("utf-8")).decode("utf-8")
         }
-
-    def apply(self, api):
-        resource = self.secret()
-        secret = pykube.Secret(api, self.secret())
-
-        if not secret.exists():
-            secret.create()
-
-        secret.reload()
-
-        if secret.obj["data"] != resource["data"]:
-            secret.obj["data"] = resource["data"]
-            secret.update()
