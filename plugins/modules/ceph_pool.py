@@ -661,9 +661,9 @@ def run_module():
                     delta.pop("pgp_num", None)
 
                 if len(delta) == 0:
-                    out = "Skipping pool {}.\nUpdating either 'size' on an erasure-coded pool or 'pg_num'/'pgp_num' on a pg autoscaled pool is incompatible".format(
+                    out = "Skipping pool {}.\nUpdating either 'size' on an erasure-coded pool or 'pg_num'/'pgp_num' on a pg autoscaled pool is incompatible".format(  # noqa: E501
                         name
-                    )  # noqa: E501
+                    )
                 else:
                     rc, cmd, out, err = update_pool(
                         module,
