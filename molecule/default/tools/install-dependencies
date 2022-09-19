@@ -7,11 +7,7 @@ fi
 
 # Generate image tag file
 IMAGE_TAG_FILE="${MOLECULE_EPHEMERAL_DIRECTORY}/image"
-
-# Check if it exists, otherwise create it.
-if [ ! -f "${IMAGE_TAG_FILE}" ]; then
-  echo "ttl.sh/$(uuidgen | tr '[:upper:]' '[:lower:]'):1d" > ${IMAGE_TAG_FILE}
-fi
+echo "ttl.sh/$(uuidgen | tr '[:upper:]' '[:lower:]'):1d" > ${IMAGE_TAG_FILE}
 
 # Build operator image
 docker buildx build --platform linux/amd64 --tag $(cat ${IMAGE_TAG_FILE}) --push .
