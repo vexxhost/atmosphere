@@ -73,22 +73,3 @@
           upgrade:
             crds: CreateReplace
           values: "{{ _kube_prometheus_stack_values | combine(kube_prometheus_stack_values, recursive=True) }}"
-
-# NOTE(mnaser): Since runs are so fast, the Prometheus Operator resoruces are
-#               created before the MutatingWebhookConfiguration is ready, so
-#               the resources end up being changed on the second apply.
-#
-#               The workaround for now is to wait for the operator to go up
-#               which means the MutatingWebhookConfiguration is also ready.
-- name: Wait for the Helm chart to be deployed
-  kubernetes.core.k8s_info:
-    api_version: apps/v1
-    kind: Deployment
-    name: kube-prometheus-stack-operator
-    namespace: monitoring
-    wait_sleep: 1
-    wait_timeout: 600
-    wait: true
-    wait_condition:
-      type: Available
-      status: true
