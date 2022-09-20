@@ -90,6 +90,3 @@ def get_deployment_flow():
         )
 
     return flow
-
-
-DEPLOY = get_deployment_flow()

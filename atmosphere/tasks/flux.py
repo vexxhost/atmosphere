@@ -24,7 +24,9 @@ class CreateOrUpdateHelmRepositoryTask(kubernetes.CreateOrUpdateKubernetesObject
             **kwargs
         )
 
-    def generate_object(self, namespace, name, url, *args, **kwargs):
+    def generate_object(
+        self, namespace: pykube.Namespace, name: str, url: str, *args, **kwargs
+    ):
         return HelmRepository(
             self.api,
             {
@@ -40,3 +42,8 @@ class CreateOrUpdateHelmRepositoryTask(kubernetes.CreateOrUpdateKubernetesObject
                 },
             },
         )
+
+    def update_object(
+        self, resource: pykube.objects.APIObject, url: str, *args, **kwargs
+    ):
+        resource.obj["spec"]["url"] = url

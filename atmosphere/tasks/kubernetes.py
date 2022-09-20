@@ -50,13 +50,18 @@ class CreateOrUpdateKubernetesObjectTask(task.Task):
     def generate_object(self, *args, **kwargs):
         raise NotImplementedError
 
-    def ensure_object(self, resource, *args, **kwargs):
+    def update_object(self, resource: pykube.objects.APIObject, *args, **kwargs):
+        raise NotImplementedError
+
+    def ensure_object(self, resource: pykube.objects.APIObject, *args, **kwargs):
         self.logger.debug("Ensuring resource")
 
         if not resource.exists():
             self.logger.debug("Resource does not exist, creating")
             resource.create()
         else:
+            resource.reload()
+            self.update_object(resource, *args, **kwargs)
             resource.update()
 
         self.logger.info("Ensured resource")
@@ -67,7 +72,7 @@ class CreateOrUpdateKubernetesObjectTask(task.Task):
 
     def execute(self, *args, **kwargs):
         resource = self.generate_object(*args, **kwargs)
-        return self.ensure_object(resource)
+        return self.ensure_object(resource, *args, **kwargs)
 
 
 class CreateOrUpdateNamespaceTask(CreateOrUpdateKubernetesObjectTask):
@@ -92,6 +97,9 @@ class CreateOrUpdateNamespaceTask(CreateOrUpdateKubernetesObjectTask):
             },
         )
 
+    def update_object(self, resource: pykube.objects.APIObject, *args, **kwargs):
+        pass
+
 
 class CreateOrUpdateSecretTask(CreateOrUpdateKubernetesObjectTask):
     def __init__(self, namespace: str, name: str, data: str, *args, **kwargs):
@@ -105,7 +113,9 @@ class CreateOrUpdateSecretTask(CreateOrUpdateKubernetesObjectTask):
             **kwargs,
         )
 
-    def generate_object(self, namespace, name, data, *args, **kwargs):
+    def generate_object(
+        self, namespace: pykube.Namespace, name: str, data: dict, *args, **kwargs
+    ):
         return pykube.Secret(
             self.api,
             {
@@ -118,3 +128,12 @@ class CreateOrUpdateSecretTask(CreateOrUpdateKubernetesObjectTask):
                 "data": data,
             },
         )
+
+    def update_object(
+        self,
+        resource: pykube.objects.APIObject,
+        data: dict,
+        *args,
+        **kwargs,
+    ):
+        resource.obj["data"] = data
