@@ -128,30 +128,6 @@
             application: openstack-exporter
 
       - apiVersion: monitoring.coreos.com/v1
-        kind: ServiceMonitor
-        metadata:
-          name: openstack-exporter
-          namespace: monitoring
-          labels:
-            application: openstack-exporter
-        spec:
-          endpoints:
-            - interval: 1m
-              scrapeTimeout: 30s
-              port: metrics
-              relabelings:
-                - action: replace
-                  regex: (.*)
-                  replacement: default
-                  targetLabel: instance
-          jobLabel: jobLabel
-          namespaceSelector:
-            any: true
-          selector:
-            matchLabels:
-              application: openstack-exporter
-
-      - apiVersion: monitoring.coreos.com/v1
         kind: PrometheusRule
         metadata:
           name: openstack-exporter
