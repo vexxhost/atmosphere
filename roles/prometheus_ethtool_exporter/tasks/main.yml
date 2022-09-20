@@ -42,20 +42,3 @@
                   ports:
                     - name: metrics
                       containerPort: 9417
-
-      - apiVersion: monitoring.coreos.com/v1
-        kind: PrometheusRule
-        metadata:
-          name: ethtool-exporter
-          namespace: monitoring
-          labels:
-            application: ethtool-exporter
-            release: kube-prometheus-stack
-        spec:
-          groups:
-            - name: rules
-              rules:
-                - alert: EthernetReceiveDiscards
-                  expr: rate(node_net_ethtool{type="rx_discards"}[1m]) > 0
-                  labels:
-                    severity: warning
