@@ -91,13 +91,13 @@
 #               which means the MutatingWebhookConfiguration is also ready.
 - name: Wait for the Helm chart to be deployed
   kubernetes.core.k8s_info:
-    api_version: helm.toolkit.fluxcd.io/v2beta1
-    kind: HelmRelease
-    name: kube-prometheus-stack
+    api_version: apps/v1
+    kind: Deployment
+    name: kube-prometheus-stack-operator
     namespace: monitoring
-    wait_sleep: 5
+    wait_sleep: 1
     wait_timeout: 600
     wait: true
     wait_condition:
-      type: Ready
+      type: Available
       status: true
