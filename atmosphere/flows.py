@@ -1,7 +1,7 @@
-from taskflow.patterns import graph_flow, linear_flow
+from taskflow.patterns import graph_flow
 
 from atmosphere.config import CONF
-from atmosphere.tasks import kubernetes, openstack_helm
+from atmosphere.tasks import flux, kubernetes, openstack_helm
 
 
 def generate_for_openstack_helm_chart(chart):
@@ -16,6 +16,14 @@ def generate_for_openstack_helm_chart(chart):
     return flow
 
 
-DEPLOY = linear_flow.Flow("deploy").add(
+DEPLOY = graph_flow.Flow("deploy").add(
+    flux.EnsureHelmRepositoryTask(
+        provides="openstack-helm-infra",
+        inject={
+            "namespace": "openstack",
+            "name": "openstack-helm-infra",
+            "url": "https://tarballs.opendev.org/openstack/openstack-helm-infra/",
+        },
+    ),
     generate_for_openstack_helm_chart("memcached"),
 )
