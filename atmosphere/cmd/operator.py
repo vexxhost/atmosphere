@@ -20,14 +20,14 @@ class AtmosphereFileSystemEventHandler(FileSystemEventHandler):
         for c in config._root_config:
             group = conf.get(c.name)
             setattr(CONF, c.name, group)
-        engine = taskflow.engines.load(flows.DEPLOY)
+        engine = taskflow.engines.load(flows.get_deployment_flow())
         engine.run()
 
 
 def main():
     LOG.info("Starting Atmosphere operator")
 
-    engine = taskflow.engines.load(flows.DEPLOY)
+    engine = taskflow.engines.load(flows.get_deployment_flow())
     engine.run()
     LOG.info("Atmosphere operator successfully started")
 

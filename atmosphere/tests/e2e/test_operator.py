@@ -18,9 +18,9 @@ def docker_image():
     return image
 
 
-def test_e2e_for_operator(tmp_path, kind_cluster, docker_image):
-    kind_cluster.load_docker_image(docker_image)
-    kind_cluster.kubectl(
+def test_e2e_for_operator(tmp_path, flux_cluster, docker_image):
+    flux_cluster.load_docker_image(docker_image)
+    flux_cluster.kubectl(
         "label", "node", "pytest-kind-control-plane", "openstack-control-plane=enabled"
     )
 
@@ -45,7 +45,7 @@ def test_e2e_for_operator(tmp_path, kind_cluster, docker_image):
     file = tmp_path / "namespace.yml"
     template = env.get_template("namespace.yml")
     file.write_text(template.render(**args))
-    kind_cluster.kubectl("apply", "-f", file)
+    flux_cluster.kubectl("apply", "-f", file)
 
     for manifest in glob.glob("roles/atmosphere/templates/*.yml"):
         filename = posixpath.basename(manifest)
@@ -54,13 +54,13 @@ def test_e2e_for_operator(tmp_path, kind_cluster, docker_image):
         file = tmp_path / filename
         file.write_text(template.render(**args))
 
-        kind_cluster.kubectl("apply", "-f", file)
+        flux_cluster.kubectl("apply", "-f", file)
 
-    kind_cluster.kubectl(
+    flux_cluster.kubectl(
         "-n", "openstack", "rollout", "status", "deployment/atmosphere-operator"
     )
 
-    for pod in pykube.Pod.objects(kind_cluster.api, namespace="openstack").filter(
+    for pod in pykube.Pod.objects(flux_cluster.api, namespace="openstack").filter(
         selector="application=atmosphere"
     ):
         for attempt in Retrying(
@@ -71,6 +71,6 @@ def test_e2e_for_operator(tmp_path, kind_cluster, docker_image):
 
     for secret_name in ["atmosphere-config", "atmosphere-memcached"]:
         secret = pykube.Secret.objects(
-            kind_cluster.api, namespace="openstack"
+            flux_cluster.api, namespace="openstack"
         ).get_by_name(secret_name)
         assert secret.exists()

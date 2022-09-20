@@ -6,20 +6,20 @@ from atmosphere import flows
 from atmosphere.config import CONF
 
 
-def test_kubernetes_version(kind_cluster):
-    assert kind_cluster.api.version == ("1", "25")
+def test_kubernetes_version(flux_cluster):
+    assert flux_cluster.api.version == ("1", "25")
 
 
-def test_deployment(mocker, kind_cluster):
-    mocker.patch("atmosphere.clients.get_pykube_api", return_value=kind_cluster.api)
+def test_deployment(mocker, flux_cluster):
+    mocker.patch("atmosphere.clients.get_pykube_api", return_value=flux_cluster.api)
 
-    kind_cluster.kubectl("create", "namespace", "openstack")
+    flux_cluster.kubectl("create", "namespace", "openstack")
 
-    engine = taskflow.engines.load(flows.DEPLOY)
+    engine = taskflow.engines.load(flows.get_deployment_flow())
     engine.run()
 
     initial_memcache_secret = pykube.Secret.objects(
-        kind_cluster.api, namespace="openstack"
+        flux_cluster.api, namespace="openstack"
     ).get_by_name("atmosphere-memcached")
     assert initial_memcache_secret.exists()
 
@@ -31,11 +31,11 @@ def test_deployment(mocker, kind_cluster):
             ],
         },
     ):
-        engine = taskflow.engines.load(flows.DEPLOY)
+        engine = taskflow.engines.load(flows.get_deployment_flow())
         engine.run()
 
     updated_memcache_secret = pykube.Secret.objects(
-        kind_cluster.api, namespace="openstack"
+        flux_cluster.api, namespace="openstack"
     ).get_by_name("atmosphere-memcached")
     assert updated_memcache_secret.exists()
 
