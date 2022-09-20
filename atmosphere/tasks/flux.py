@@ -1,7 +1,7 @@
 import pykube
-from taskflow import task
 
-from atmosphere import clients, logger
+from atmosphere import logger
+from atmosphere.tasks import kubernetes
 
 LOG = logger.get_logger()
 
@@ -12,20 +12,27 @@ class HelmRepository(pykube.objects.NamespacedAPIObject):
     kind = "HelmRepository"
 
 
-class EnsureHelmRepositoryTask(task.Task):
-    def execute(self, namespace, name, url, *args, **kwargs):
-        log = LOG.bind(kind="HelmRelease", namespace=namespace, name=name)
-        api = clients.get_pykube_api()
+class CreateOrUpdateHelmRepositoryTask(kubernetes.CreateOrUpdateKubernetesObjectTask):
+    def __init__(self, namespace: str, name: str, url: str, *args, **kwargs):
+        super().__init__(
+            HelmRepository,
+            namespace,
+            name,
+            requires=set(["namespace", "name", "url"]),
+            inject={"name": name, "url": url},
+            *args,
+            **kwargs
+        )
 
-        log.debug("Ensuring HelmRepository")
-        repository = HelmRepository(
-            api,
+    def generate_object(self, namespace, name, url, *args, **kwargs):
+        return HelmRepository(
+            self.api,
             {
                 "apiVersion": "source.toolkit.fluxcd.io/v1beta2",
                 "kind": "HelmRepository",
                 "metadata": {
                     "name": name,
-                    "namespace": namespace,
+                    "namespace": namespace.name,
                 },
                 "spec": {
                     "interval": "1m",
@@ -33,11 +40,3 @@ class EnsureHelmRepositoryTask(task.Task):
                 },
             },
         )
-
-        if not repository.exists():
-            log.debug("Resource does not exist, creating")
-            repository.create()
-        else:
-            repository.update()
-
-        log.info("Ensured resource")
