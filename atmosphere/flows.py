@@ -4,9 +4,17 @@ from atmosphere.config import CONF
 from atmosphere.tasks import flux, kubernetes, openstack_helm
 
 HELM_REPOSITORIES_BY_NAMESPACE = {
+    "kube-system": {
+        "ceph": "https://ceph.github.io/csi-charts",
+    },
     "openstack": {
+        "bitnami": "https://charts.bitnami.com/bitnami",
+        "coredns": "https://coredns.github.io/helm",
+        "ingress-nginx": "https://kubernetes.github.io/ingress-nginx",
         "openstack-helm-infra": "https://tarballs.opendev.org/openstack/openstack-helm-infra/",
-    }
+        "openstack-helm": "https://tarballs.opendev.org/openstack/openstack-helm/",
+        "percona": "https://percona.github.io/percona-helm-charts/",
+    },
 }
 
 OPENSTACK_HELM_CHARTS_BY_NAMESPACE = {
@@ -32,6 +40,7 @@ def get_deployment_flow():
     for namespace, repos in HELM_REPOSITORIES_BY_NAMESPACE.items():
         for repo, url in repos.items():
             task = flux.EnsureHelmRepositoryTask(
+                name=repo,
                 inject={"namespace": namespace, "name": repo, "url": url},
                 provides=f"helm-repository-{repo}",
             )
