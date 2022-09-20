@@ -76,29 +76,6 @@
                             values: ["true"]
 
       - apiVersion: monitoring.coreos.com/v1
-        kind: PodMonitor
-        metadata:
-          name: ipmi-exporter
-          namespace: monitoring
-          labels:
-            application: ipmi-exporter
-            release: kube-prometheus-stack
-        spec:
-          jobLabel: job
-          podMetricsEndpoints:
-            - port: metrics
-              path: /metrics
-              interval: 60s
-              relabelings:
-                - sourceLabels: ["__meta_kubernetes_pod_node_name"]
-                  targetLabel: instance
-                - action: labeldrop
-                  regex: ^(container|endpoint|namespace|pod)$
-          selector:
-            matchLabels:
-              application: ipmi-exporter
-
-      - apiVersion: monitoring.coreos.com/v1
         kind: PrometheusRule
         metadata:
           name: ipmi-exporter

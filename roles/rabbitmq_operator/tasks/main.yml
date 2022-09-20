@@ -62,30 +62,6 @@
     state: present
     definition:
       - apiVersion: monitoring.coreos.com/v1
-        kind: PodMonitor
-        metadata:
-          name: rabbitmq
-          namespace: monitoring
-          labels:
-            release: kube-prometheus-stack
-        spec:
-          jobLabel: app.kubernetes.io/component
-          podMetricsEndpoints:
-            - port: prometheus
-              path: /metrics
-              relabelings:
-                - sourceLabels: ["__meta_kubernetes_pod_name"]
-                  targetLabel: "instance"
-                - action: "labeldrop"
-                  regex: "^(container|endpoint|namespace|pod|service)$"
-          namespaceSelector:
-            matchNames:
-              - openstack
-          selector:
-            matchLabels:
-              app.kubernetes.io/component: rabbitmq
-
-      - apiVersion: monitoring.coreos.com/v1
         kind: PrometheusRule
         metadata:
           name: rabbitmq

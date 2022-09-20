@@ -145,10 +145,10 @@ _kube_prometheus_stack_values:
         - kube-prometheus-stack-etcd-client-cert
     additionalServiceMonitors:
       - name: ceph
+        jobLabel: application
         selector:
           matchLabels:
             application: ceph
-        jobLabel: application
         namespaceSelector:
           matchNames:
             - openstack
@@ -160,6 +160,120 @@ _kube_prometheus_stack_values:
                 regex: (.*)
                 replacement: ceph
                 targetLabel: cluster
+              - action: "labeldrop"
+                regex: "^(container|endpoint|namespace|pod|service)$"
+      - name: coredns
+        jobLabel: app.kubernetes.io/name
+        namespaceSelector:
+          matchNames:
+            - openstack
+        selector:
+          matchLabels:
+            app.kubernetes.io/name: coredns
+            app.kubernetes.io/component: metrics
+        endpoints:
+          - port: "metrics"
+            path: "/metrics"
+            relabelings:
+              - sourceLabels: ["__meta_kubernetes_pod_label_application"]
+                targetLabel: "application"
+              - sourceLabels: ["__meta_kubernetes_pod_name"]
+                targetLabel: "instance"
+              - action: "labeldrop"
+                regex: "^(container|endpoint|namespace|pod|service)$"
+      - name: memcached
+        jobLabel: application
+        namespaceSelector:
+          matchNames:
+            - openstack
+        selector:
+          matchLabels:
+            application: memcached
+            component: server
+        endpoints:
+          - port: "metrics"
+            path: "/metrics"
+            relabelings:
+              - sourceLabels: ["__meta_kubernetes_pod_name"]
+                targetLabel: "instance"
+              - action: "labeldrop"
+                regex: "^(container|endpoint|namespace|pod|service)$"
+      - name: openstack-exporter
+        jobLabel: jobLabel
+        namespaceSelector:
+          matchNames:
+            - openstack
+        selector:
+          matchLabels:
+            application: openstack-exporter
+        endpoints:
+          - interval: 1m
+            scrapeTimeout: 30s
+            port: metrics
+            relabelings:
+              - action: replace
+                regex: (.*)
+                replacement: default
+                targetLabel: instance
+    additionalPodMonitors:
+      - name: ethtool-exporter
+        jobLabel: job
+        selector:
+          matchLabels:
+            application: ethtool-exporter
+        podMetricsEndpoints:
+          - port: metrics
+            path: /metrics
+            relabelings:
+              - sourceLabels: ["__meta_kubernetes_pod_node_name"]
+                targetLabel: instance
+              - action: labeldrop
+                regex: ^(container|endpoint|namespace|pod)$
+      - name: ipmi-exporter
+        jobLabel: job
+        selector:
+          matchLabels:
+            application: ipmi-exporter
+        podMetricsEndpoints:
+          - port: metrics
+            path: /metrics
+            interval: 60s
+            relabelings:
+              - sourceLabels: ["__meta_kubernetes_pod_node_name"]
+                targetLabel: instance
+              - action: labeldrop
+                regex: ^(container|endpoint|namespace|pod)$
+      - name: percona-xtradb-pxc
+        jobLabel: app.kubernetes.io/component
+        namespaceSelector:
+          matchNames:
+            - openstack
+        selector:
+          matchLabels:
+            app.kubernetes.io/component: pxc
+            app.kubernetes.io/instance: percona-xtradb
+        podMetricsEndpoints:
+          - port: metrics
+            path: /metrics
+            relabelings:
+              - sourceLabels: ["__meta_kubernetes_pod_name"]
+                targetLabel: "instance"
+              - action: "labeldrop"
+                regex: "^(container|endpoint|namespace|pod|service)$"
+      - name: rabbitmq
+        jobLabel: app.kubernetes.io/component
+        namespaceSelector:
+          matchNames:
+            - openstack
+        selector:
+          matchLabels:
+            app.kubernetes.io/component: rabbitmq
+        podMetricsEndpoints:
+          - port: prometheus
+            path: /metrics
+            relabelings:
+              - sourceLabels: ["__meta_kubernetes_pod_name"]
+                targetLabel: "instance"
               - action: "labeldrop"
                 regex: "^(container|endpoint|namespace|pod|service)$"
   prometheusOperator:

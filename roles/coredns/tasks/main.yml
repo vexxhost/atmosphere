@@ -81,30 +81,3 @@
               component: coredns
             deployment:
               name: neutron-coredns
-
-      - apiVersion: monitoring.coreos.com/v1
-        kind: ServiceMonitor
-        metadata:
-          name: neutron-coredns
-          namespace: monitoring
-          labels:
-            release: kube-prometheus-stack
-        spec:
-          jobLabel: app.kubernetes.io/name
-          endpoints:
-            - port: "metrics"
-              path: "/metrics"
-              relabelings:
-                - sourceLabels: ["__meta_kubernetes_pod_label_application"]
-                  targetLabel: "application"
-                - sourceLabels: ["__meta_kubernetes_pod_name"]
-                  targetLabel: "instance"
-                - action: "labeldrop"
-                  regex: "^(container|endpoint|namespace|pod|service)$"
-          namespaceSelector:
-            matchNames:
-              - openstack
-          selector:
-            matchLabels:
-              app.kubernetes.io/name: coredns
-              app.kubernetes.io/component: metrics
