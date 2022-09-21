@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/vexxhost/atmosphere/compare/v0.1.0...v0.1.1) (2022-09-21)
+
+
+### Bug Fixes
+
+* galaxy.yml metadata ([7505359](https://github.com/vexxhost/atmosphere/commit/7505359ad515ac55e194f20573621e6ffebc4802))
+
 ## 0.1.0 (2022-09-21)
 
 
