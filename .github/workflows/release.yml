@@ -1,0 +1,18 @@
+name: release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v3.0.2
+
+      - name: Run "release-please"
+        uses: google-github-actions/release-please-action@v3
+        with:
+          command: manifest
