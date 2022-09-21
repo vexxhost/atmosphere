@@ -19,6 +19,14 @@ HELM_REPOSITORY_OPENSTACK_HELM_INFRA = "openstack-helm-infra"
 HELM_REPOSITORY_PERCONA = "percona"
 HELM_REPOSITORY_PROMETHEUS_COMMUINTY = "prometheus-community"
 
+CONTROL_PLANE_NODE_SELECTOR = {
+    "openstack-control-plane": "enabled",
+}
+
+NODE_FEATURE_DISCOVERY_VALUES = {
+    "master": {"nodeSelector": CONTROL_PLANE_NODE_SELECTOR}
+}
+
 
 def get_deployment_flow():
     flow = graph_flow.Flow("deploy").add(
@@ -47,6 +55,14 @@ def get_deployment_flow():
             namespace=NAMESPACE_MONITORING,
             name=HELM_REPOSITORY_NODE_FEATURE_DISCOVERY,
             url="https://kubernetes-sigs.github.io/node-feature-discovery/charts",
+        ),
+        flux.CreateOrUpdateHelmReleaseTask(
+            namespace=NAMESPACE_MONITORING,
+            name="node-feature-discovery",
+            repository=HELM_REPOSITORY_NODE_FEATURE_DISCOVERY,
+            chart="node-feature-discovery",
+            version="0.11.2",
+            values=NODE_FEATURE_DISCOVERY_VALUES,
         ),
         # openstack
         kubernetes.CreateOrUpdateNamespaceTask(name=NAMESPACE_OPENSTACK),
