@@ -101,6 +101,49 @@ class CreateOrUpdateNamespaceTask(CreateOrUpdateKubernetesObjectTask):
         pass
 
 
+class CreateOrUpdateServiceTask(CreateOrUpdateKubernetesObjectTask):
+    def __init__(self, namespace: str, name: str, labels: dict, spec: dict):
+        super().__init__(
+            pykube.Service,
+            namespace,
+            name,
+            requires=set(["namespace", "name", "labels", "spec"]),
+            inject={"name": name, "labels": labels, "spec": spec},
+        )
+
+    def generate_object(
+        self,
+        namespace: pykube.Namespace,
+        name: str,
+        labels: dict,
+        spec: dict,
+        *args,
+        **kwargs,
+    ) -> pykube.Service:
+        return pykube.Service(
+            self.api,
+            {
+                "apiVersion": "v1",
+                "kind": "Service",
+                "metadata": {
+                    "name": name,
+                    "namespace": namespace.name,
+                    "labels": labels,
+                },
+                "spec": spec,
+            },
+        )
+
+    def update_object(
+        self,
+        resource: pykube.Service,
+        labels: dict,
+        spec: dict,
+    ):
+        resource.obj["metadata"]["labels"] = labels
+        resource.obj["spec"] = spec
+
+
 class CreateOrUpdateSecretTask(CreateOrUpdateKubernetesObjectTask):
     def __init__(self, namespace: str, name: str, data: str, *args, **kwargs):
         super().__init__(

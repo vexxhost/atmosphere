@@ -103,6 +103,33 @@ def get_deployment_flow():
             openstack_helm.CreateOrUpdateReleaseSecretTask(
                 namespace=NAMESPACE_OPENSTACK, chart="memcached"
             ),
+            openstack_helm.CreateOrUpdateHelmReleaseTask(
+                namespace=NAMESPACE_OPENSTACK,
+                repository=HELM_REPOSITORY_OPENSTACK_HELM_INFRA,
+                name="memcached",
+                version="0.1.12",
+            ),
+            kubernetes.CreateOrUpdateServiceTask(
+                namespace=NAMESPACE_OPENSTACK,
+                name="memcached-metrics",
+                labels={
+                    "application": "memcached",
+                    "component": "server",
+                },
+                spec={
+                    "selector": {
+                        "application": "memcached",
+                        "component": "server",
+                    },
+                    "ports": [
+                        {
+                            "name": "metrics",
+                            "port": 9150,
+                            "targetPort": 9150,
+                        }
+                    ],
+                },
+            ),
         )
 
     return flow

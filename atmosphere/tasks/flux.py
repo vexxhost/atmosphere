@@ -63,17 +63,30 @@ class CreateOrUpdateHelmReleaseTask(kubernetes.CreateOrUpdateKubernetesObjectTas
         repository: str,
         chart: str,
         version: str,
-        values: dict,
+        values: dict = {},
+        values_from: list = [],
         *args,
         **kwargs,
     ):
+        kwargs.setdefault("requires", set())
+        kwargs["requires"] = kwargs["requires"].union(
+            set(
+                [
+                    "namespace",
+                    "name",
+                    "repository",
+                    "chart",
+                    "version",
+                    "values",
+                    "values_from",
+                ]
+            )
+        )
+
         super().__init__(
             HelmRelease,
             namespace,
             name,
-            requires=set(
-                ["namespace", "name", "repository", "chart", "version", "values"]
-            ),
             rebind={"repository": f"helm-repository-{namespace}-{repository}"},
             inject={
                 "name": name,
@@ -81,6 +94,7 @@ class CreateOrUpdateHelmReleaseTask(kubernetes.CreateOrUpdateKubernetesObjectTas
                 "chart": chart,
                 "version": version,
                 "values": values,
+                "values_from": values_from,
             },
             *args,
             **kwargs,
@@ -94,6 +108,7 @@ class CreateOrUpdateHelmReleaseTask(kubernetes.CreateOrUpdateKubernetesObjectTas
         chart: str,
         version: str,
         values: dict,
+        values_from: list,
         *args,
         **kwargs,
     ) -> HelmRelease:
@@ -118,10 +133,25 @@ class CreateOrUpdateHelmReleaseTask(kubernetes.CreateOrUpdateKubernetesObjectTas
                             },
                         }
                     },
+                    "install": {
+                        "disableWait": True,
+                    },
+                    "upgrade": {
+                        "disableWait": True,
+                    },
                     "values": values,
+                    "valuesFrom": values_from,
                 },
             },
         )
 
-    def update_object(self, resource: HelmRelease, values: dict = {}, *args, **kwargs):
+    def update_object(
+        self,
+        resource: HelmRelease,
+        values: dict = {},
+        values_from: list = [],
+        *args,
+        **kwargs,
+    ):
         resource.obj["spec"]["values"] = values
+        resource.obj["spec"]["valuesFrom"] = values_from
