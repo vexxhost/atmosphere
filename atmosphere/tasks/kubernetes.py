@@ -139,6 +139,8 @@ class CreateOrUpdateServiceTask(CreateOrUpdateKubernetesObjectTask):
         resource: pykube.Service,
         labels: dict,
         spec: dict,
+        *args,
+        **kwargs,
     ):
         resource.obj["metadata"]["labels"] = labels
         resource.obj["spec"] = spec
