@@ -28,7 +28,7 @@ def test_e2e_for_operator(tmp_path, flux_cluster, docker_image):
         loader=FileSystemLoader("roles/atmosphere/templates"),
         extensions=["jinja2_base64_filters.Base64Filters"],
     )
-    env.filters["to_toml"] = toml.dumps
+    env.filters["vexxhost.atmosphere.to_toml"] = toml.dumps
 
     args = {
         "atmosphere_image": docker_image,
