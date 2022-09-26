@@ -1,0 +1,30 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: atmosphere-operator
+  namespace: openstack
+spec:
+  selector:
+    matchLabels:
+      application: atmosphere
+      component: operator
+  template:
+    metadata:
+      labels:
+        application: atmosphere
+        component: operator
+    spec:
+      serviceAccountName: atmosphere
+      containers:
+        - name: operator
+          image: "{{ atmosphere_image }}"
+          volumeMounts:
+            - name: config
+              mountPath: /etc/atmosphere
+      nodeSelector:
+        openstack-control-plane: enabled
+      volumes:
+        - name: config
+          secret:
+            secretName: atmosphere-config

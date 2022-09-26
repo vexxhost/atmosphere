@@ -19,14 +19,14 @@ var PROFILES map[string]string = map[string]string{
 	"placement":         "apache",
 }
 var DIST_PACAKGES map[string]string = map[string]string{
-	"cinder":        "kubectl",
+	"cinder":        "kubectl lsscsi nvme-cli sysfsutils udev util-linux",
 	"designate":     "bind9utils",
 	"glance":        "kubectl lsscsi nvme-cli sysfsutils udev util-linux",
 	"heat":          "curl",
 	"ironic":        "ethtool lshw iproute2",
 	"monasca-agent": "iproute2 libvirt-clients lshw",
 	"neutron":       "jq ethtool lshw",
-	"nova":          "ovmf qemu-efi-aarch64",
+	"nova":          "ovmf qemu-efi-aarch64 lsscsi nvme-cli sysfsutils udev util-linux",
 }
 var PIP_PACKAGES map[string]string = map[string]string{
 	"glance":        "glance_store[cinder]",

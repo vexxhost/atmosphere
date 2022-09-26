@@ -1,28 +1,19 @@
 #!/bin/sh -e
 
+# Install software dependencies
+if [ -f /etc/alpine-release ]; then
+  apk add docker-cli-buildx uuidgen
+fi
+
+# Generate image tag file
+IMAGE_TAG_FILE="${MOLECULE_EPHEMERAL_DIRECTORY}/image"
+echo "ttl.sh/$(uuidgen | tr '[:upper:]' '[:lower:]'):1d" > ${IMAGE_TAG_FILE}
+
+# Build operator image
+docker buildx build --platform linux/amd64 --tag $(cat ${IMAGE_TAG_FILE}) --push .
+
 # Install OpenStack SDK
 pip install \
   --extra-index-url https://vexxhost.github.io/wheels/alpine-3.15/ \
   netaddr \
   'openstacksdk<0.99.0'
-
-# Get the path for the collection
-COLLECTION_PATH="${HOME}/.ansible/collections/ansible_collections/vexxhost/atmosphere"
-
-# Clean-up old soft link to allow successful installation
-if [ -L "${COLLECTION_PATH}" ] && [ -d "${COLLECTION_PATH}" ]; then
-  echo "Deleting old soft link to allow successful installation"
-
-  rm ${COLLECTION_PATH}
-fi
-
-# Install Atmosphere collection
-ansible-galaxy collection install .
-
-# Switch to symbolic link after installation
-if [ ! -L "${COLLECTION_PATH}" ] && [ -d "${COLLECTION_PATH}" ]; then
-  echo "Deleting installed collection and adding soft link instead."
-
-  rm -rf ${COLLECTION_PATH}
-  ln -s . ${COLLECTION_PATH}
-fi

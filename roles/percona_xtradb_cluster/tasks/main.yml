@@ -16,15 +16,6 @@
   kubernetes.core.k8s:
     state: present
     definition:
-      - apiVersion: source.toolkit.fluxcd.io/v1beta2
-        kind: HelmRepository
-        metadata:
-          name: percona
-          namespace: openstack
-        spec:
-          interval: 60s
-          url: https://percona.github.io/percona-helm-charts/
-
       - apiVersion: helm.toolkit.fluxcd.io/v2beta1
         kind: HelmRelease
         metadata:
@@ -98,100 +89,6 @@
             image: percona/percona-xtradb-cluster-operator:1.10.0-haproxy
             nodeSelector:
               openstack-control-plane: enabled
-
-      - apiVersion: monitoring.coreos.com/v1
-        kind: PodMonitor
-        metadata:
-          name: percona-xtradb-pxc
-          namespace: monitoring
-          labels:
-            release: kube-prometheus-stack
-        spec:
-          jobLabel: app.kubernetes.io/component
-          podMetricsEndpoints:
-            - port: metrics
-              path: /metrics
-              relabelings:
-                - sourceLabels: ["__meta_kubernetes_pod_name"]
-                  targetLabel: "instance"
-                - action: "labeldrop"
-                  regex: "^(container|endpoint|namespace|pod|service)$"
-          namespaceSelector:
-            matchNames:
-              - openstack
-          selector:
-            matchLabels:
-              app.kubernetes.io/component: pxc
-              app.kubernetes.io/instance: percona-xtradb
-
-      - apiVersion: monitoring.coreos.com/v1
-        kind: PrometheusRule
-        metadata:
-          name: percona-xtradb-pxc
-          namespace: monitoring
-          labels:
-            release: kube-prometheus-stack
-        spec:
-          groups:
-            # TODO: basic rules
-            - name: general
-              rules:
-                - alert: MySQLDown
-                  expr: mysql_up != 1
-                  for: 5m
-                  labels:
-                    severity: critical
-                - alert: MysqlTooManyConnections
-                  expr: max_over_time(mysql_global_status_threads_connected[1m]) / mysql_global_variables_max_connections * 100 > 80
-                  for: 2m
-                  labels:
-                    severity: warning
-                - alert: MysqlHighThreadsRunning
-                  expr: max_over_time(mysql_global_status_threads_running[1m]) / mysql_global_variables_max_connections * 100 > 60
-                  for: 2m
-                  labels:
-                    severity: warning
-                - alert: MysqlSlowQueries
-                  expr: increase(mysql_global_status_slow_queries[1m]) > 0
-                  for: 2m
-                  labels:
-                    severity: warning
-            - name: galera
-              rules:
-                - alert: MySQLGaleraNotReady
-                  expr: mysql_global_status_wsrep_ready != 1
-                  for: 5m
-                  labels:
-                    severity: critical
-                - alert: MySQLGaleraOutOfSync
-                  expr: mysql_global_status_wsrep_local_state != 4 and mysql_global_variables_wsrep_desync == 0
-                  for: 5m
-                  labels:
-                    severity: critical
-                - alert: MySQLGaleraDonorFallingBehind
-                  expr: mysql_global_status_wsrep_local_state == 2 and mysql_global_status_wsrep_local_recv_queue > 100
-                  for: 5m
-                  labels:
-                    severity: warning
-                - alert: MySQLReplicationNotRunning
-                  expr: mysql_slave_status_slave_io_running == 0 or mysql_slave_status_slave_sql_running == 0
-                  for: 2m
-                  labels:
-                    severity: critical
-                - alert: MySQLReplicationLag
-                  expr: (instance:mysql_slave_lag_seconds > 30) and on(instance) (predict_linear(instance:mysql_slave_lag_seconds[5m], 60 * 2) > 0)
-                  for: 1m
-                  labels:
-                    severity: critical
-                - alert: MySQLHeartbeatLag
-                  expr: (instance:mysql_heartbeat_lag_seconds > 30) and on(instance) (predict_linear(instance:mysql_heartbeat_lag_seconds[5m], 60 * 2) > 0)
-                  for: 1m
-                  labels:
-                    severity: critical
-                - alert: MySQLInnoDBLogWaits
-                  expr: rate(mysql_global_status_innodb_log_waits[15m]) > 10
-                  labels:
-                    severity: warning
   # NOTE(mnaser): Since we haven't moved to the operator pattern yet, we need to
   #               keep retrying a few times as the CRDs might not be installed
   #               yet.

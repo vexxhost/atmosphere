@@ -145,10 +145,10 @@ _kube_prometheus_stack_values:
         - kube-prometheus-stack-etcd-client-cert
     additionalServiceMonitors:
       - name: ceph
+        jobLabel: application
         selector:
           matchLabels:
             application: ceph
-        jobLabel: application
         namespaceSelector:
           matchNames:
             - openstack
@@ -160,6 +160,120 @@ _kube_prometheus_stack_values:
                 regex: (.*)
                 replacement: ceph
                 targetLabel: cluster
+              - action: "labeldrop"
+                regex: "^(container|endpoint|namespace|pod|service)$"
+      - name: coredns
+        jobLabel: app.kubernetes.io/name
+        namespaceSelector:
+          matchNames:
+            - openstack
+        selector:
+          matchLabels:
+            app.kubernetes.io/name: coredns
+            app.kubernetes.io/component: metrics
+        endpoints:
+          - port: "metrics"
+            path: "/metrics"
+            relabelings:
+              - sourceLabels: ["__meta_kubernetes_pod_label_application"]
+                targetLabel: "application"
+              - sourceLabels: ["__meta_kubernetes_pod_name"]
+                targetLabel: "instance"
+              - action: "labeldrop"
+                regex: "^(container|endpoint|namespace|pod|service)$"
+      - name: memcached
+        jobLabel: application
+        namespaceSelector:
+          matchNames:
+            - openstack
+        selector:
+          matchLabels:
+            application: memcached
+            component: server
+        endpoints:
+          - port: "metrics"
+            path: "/metrics"
+            relabelings:
+              - sourceLabels: ["__meta_kubernetes_pod_name"]
+                targetLabel: "instance"
+              - action: "labeldrop"
+                regex: "^(container|endpoint|namespace|pod|service)$"
+      - name: openstack-exporter
+        jobLabel: jobLabel
+        namespaceSelector:
+          matchNames:
+            - openstack
+        selector:
+          matchLabels:
+            application: openstack-exporter
+        endpoints:
+          - interval: 1m
+            scrapeTimeout: 30s
+            port: metrics
+            relabelings:
+              - action: replace
+                regex: (.*)
+                replacement: default
+                targetLabel: instance
+    additionalPodMonitors:
+      - name: ethtool-exporter
+        jobLabel: job
+        selector:
+          matchLabels:
+            application: ethtool-exporter
+        podMetricsEndpoints:
+          - port: metrics
+            path: /metrics
+            relabelings:
+              - sourceLabels: ["__meta_kubernetes_pod_node_name"]
+                targetLabel: instance
+              - action: labeldrop
+                regex: ^(container|endpoint|namespace|pod)$
+      - name: ipmi-exporter
+        jobLabel: job
+        selector:
+          matchLabels:
+            application: ipmi-exporter
+        podMetricsEndpoints:
+          - port: metrics
+            path: /metrics
+            interval: 60s
+            relabelings:
+              - sourceLabels: ["__meta_kubernetes_pod_node_name"]
+                targetLabel: instance
+              - action: labeldrop
+                regex: ^(container|endpoint|namespace|pod)$
+      - name: percona-xtradb-pxc
+        jobLabel: app.kubernetes.io/component
+        namespaceSelector:
+          matchNames:
+            - openstack
+        selector:
+          matchLabels:
+            app.kubernetes.io/component: pxc
+            app.kubernetes.io/instance: percona-xtradb
+        podMetricsEndpoints:
+          - port: metrics
+            path: /metrics
+            relabelings:
+              - sourceLabels: ["__meta_kubernetes_pod_name"]
+                targetLabel: "instance"
+              - action: "labeldrop"
+                regex: "^(container|endpoint|namespace|pod|service)$"
+      - name: rabbitmq
+        jobLabel: app.kubernetes.io/component
+        namespaceSelector:
+          matchNames:
+            - openstack
+        selector:
+          matchLabels:
+            app.kubernetes.io/component: rabbitmq
+        podMetricsEndpoints:
+          - port: prometheus
+            path: /metrics
+            relabelings:
+              - sourceLabels: ["__meta_kubernetes_pod_name"]
+                targetLabel: "instance"
               - action: "labeldrop"
                 regex: "^(container|endpoint|namespace|pod|service)$"
   prometheusOperator:
@@ -254,6 +368,91 @@ _kube_prometheus_stack_values:
               for: 2m
               labels:
                 severity: critical
+    ethtool-exporter:
+      groups:
+        - name: rules
+          rules:
+            - alert: EthernetReceiveDiscards
+              expr: rate(node_net_ethtool{type="rx_discards"}[1m]) > 0
+              labels:
+                severity: warning
+    ipmi-exporter:
+      groups:
+        - name: rules
+          rules:
+            - alert: IpmiCollectorDown
+              expr: ipmi_up == 0
+        - name: collectors-state-warning
+          rules:
+            - alert: IpmiCurrent
+              expr: ipmi_current_state == 1
+              labels:
+                severity: warning
+            - alert: IpmiFanSpeed
+              expr: ipmi_fan_speed_state == 1
+              labels:
+                severity: warning
+            - alert: IpmiPower
+              expr: ipmi_power_state == 1
+              labels:
+                severity: warning
+            - alert: IpmiSensor
+              expr: ipmi_sensor_state == 1
+              labels:
+                severity: warning
+            - alert: IpmiTemperature
+              expr: ipmi_temperature_state == 1
+              labels:
+                severity: warning
+            - alert: IpmiVoltage
+              expr: ipmi_voltage_state == 1
+              labels:
+                severity: warning
+        - name: collectors-state-critical
+          rules:
+            - alert: IpmiCurrent
+              expr: ipmi_current_state == 2
+              labels:
+                severity: critical
+            - alert: IpmiFanSpeed
+              expr: ipmi_fan_speed_state == 2
+              labels:
+                severity: critical
+            - alert: IpmiPower
+              expr: ipmi_power_state == 2
+              labels:
+                severity: critical
+            - alert: IpmiSensor
+              expr: ipmi_sensor_state == 2
+              labels:
+                severity: critical
+            - alert: IpmiTemperature
+              expr: ipmi_temperature_state == 2
+              labels:
+                severity: critical
+            - alert: IpmiVoltage
+              expr: ipmi_voltage_state == 2
+              labels:
+                severity: critical
+    memcached:
+      groups:
+        - name: memcached
+          rules:
+            - alert: MemcachedDown
+              expr: memcached_up == 0
+              for: 5m
+              labels:
+                severity: critical
+            - alert: MemcachedConnectionLimitApproaching
+              expr: (memcached_current_connections / memcached_max_connections * 100) > 80
+              for: 5m
+              labels:
+                severity: warning
+            - alert: MemcachedConnectionLimitApproaching
+              expr: (memcached_current_connections / memcached_max_connections * 100) > 95
+              for: 5m
+              labels:
+                severity: critical
     node-exporter-local:
       groups:
         - name: node
@@ -288,5 +487,361 @@ _kube_prometheus_stack_values:
             - alert: NodeSoftNetDrops
               expr: sum(rate(node_softnet_dropped_total[1m])) by (instance) != 0
               for: 1m
+              labels:
+                severity: critical
+    openstack-exporter:
+      groups:
+        - name: cinder
+          rules:
+            - alert: CinderAgentDown
+              annotations:
+                description: |
+                  '{% raw %}The service {{ $labels.exported_service }} running
+                  on {{ $labels.hostname }} is being reported as down.{% endraw %}'
+                summary: |
+                  '{% raw %}[{{ $labels.hostname }}] {{ $labels.exported_service }}
+                  down{% endraw %}'
+              expr: |
+                openstack_cinder_agent_state != 1
+              labels:
+                severity: warning
+            - alert: CinderAgentDown
+              annotations:
+                description: |
+                  '{% raw %}The service {{ $labels.exported_service }} running on
+                  {{ $labels.hostname }} is being reported as down for 5 minutes.
+                  This can affect volume operations so it must be resolved as
+                  quickly as possible.{% endraw %}'
+                summary: |
+                  '{% raw %}[{{ $labels.hostname }}] {{ $labels.exported_service }}
+                  down{% endraw %}'
+              expr: |
+                openstack_cinder_agent_state != 1
+              for: 5m
+              labels:
+                severity: critical
+            - alert: CinderAgentDisabled
+              annotations:
+                description: |
+                  '{% raw %}The service {{ $labels.exported_service }} running on {{ $labels.hostname }}
+                  has been disabled for 60 minutes.  This can affect volume operations so it must be
+                  resolved as quickly as possible.{% endraw %}'
+                summary: |
+                  '{% raw %}[{{ $labels.hostname }}] {{ $labels.exported_service }}
+                  disabled{% endraw %}'
+              expr: |
+                openstack_cinder_agent_state{adminState!="enabled"}
+              for: 1h
+              labels:
+                severity: warning
+            - alert: CinderVolumeInError
+              annotations:
+                description: |
+                  '{% raw %}The volume {{ $labels.id }} has been in ERROR state for over 24 hours.
+                  It must be cleaned up or removed in order to provide a consistent customer
+                  experience.{% endraw %}'
+                summary: |
+                  '{% raw %}[{{ $labels.id }}] Volume in ERROR state{% endraw %}'
+              expr: |
+                openstack_cinder_volume_status{status=~"error.*"}
+              for: 24h
+              labels:
+                severity: warning
+        - name: neutron
+          rules:
+            - alert: NeutronAgentDown
+              annotations:
+                description: |
+                  '{% raw %}The service {{ $labels.exported_service }} running on {{ $labels.hostname }}
+                  is being reported as down.{% endraw %}'
+                summary: |
+                  '{% raw %}[{{ $labels.hostname }}] {{ $labels.exported_service }}
+                  down{% endraw %}'
+              expr: |
+                openstack_neutron_agent_state != 1
+              labels:
+                severity: warning
+            - alert: NeutronAgentDown
+              annotations:
+                description: |
+                  '{% raw %}The service {{ $labels.exported_service }} running on {{ $labels.hostname }}
+                  is being reported as down for 5 minutes. This can affect network operations so it
+                  must be resolved as quickly as possible.{% endraw %}'
+                summary: |
+                  '{% raw %}[{{ $labels.hostname }}] {{ $labels.exported_service }}
+                  down{% endraw %}'
+              expr: |
+                openstack_neutron_agent_state != 1
+              for: 5m
+              labels:
+                severity: critical
+            - alert: NeutronAgentDisabled
+              annotations:
+                description: |
+                  '{% raw %}The service {{ $labels.exported_service }} running on {{ $labels.hostname }}
+                  has been disabled for 60 minutes.  This can affect network operations so it must be
+                  resolved as quickly as possible.{% endraw %}'
+                summary: |
+                  '{% raw %}[{{ $labels.hostname }}] {{ $labels.exported_service }}
+                  disabled{% endraw %}'
+              expr: |
+                openstack_neutron_agent_state{adminState!="up"}
+              for: 1h
+              labels:
+                severity: warning
+            - alert: NeutronBindingFailedPorts
+              annotations:
+                description: |
+                  '{% raw %}The NIC {{ $labels.mac_address }} of {{ $labels.device_owner }}
+                  has binding failed port now.{% endraw %}'
+                summary: |
+                  '{% raw %}[{{ $labels.device_owner }}] {{ $labels.mac_address }}
+                  binding failed{% endraw %}'
+              expr: |
+                openstack_neutron_port{binding_vif_type="binding_failed"} != 0
+              labels:
+                severity: warning
+            - alert: NeutronNetworkOutOfIPs
+              annotations:
+                description: |
+                  '{% raw %}The subnet {{ $labels.subnet_name }} within {{ $labels.network_name }}
+                  is currently at {{ $value }}% utilization.  If the IP addresses run out, it will
+                  impact the provisioning of new ports.{% endraw %}'
+                summary: |
+                  '{% raw %}[{{ $labels.network_name }}] {{ $labels.subnet_name }}
+                  running out of IPs{% endraw %}'
+              expr: |
+                sum by (network_id) (openstack_neutron_network_ip_availabilities_used{project_id!=""}) / sum by (network_id)
+                (openstack_neutron_network_ip_availabilities_total{project_id!=""}) * 100 > 80
+              labels:
+                severity: warning
+        - name: nova
+          rules:
+            - alert: NovaAgentDown
+              annotations:
+                description: |
+                  '{% raw %}The service {{ $labels.exported_service }} running on {{ $labels.hostname }}
+                  is being reported as down.{% endraw %}'
+                summary: |
+                  '{% raw %}[{{ $labels.hostname }}] {{ $labels.exported_service }}
+                  down{% endraw %}'
+              expr: |
+                openstack_nova_agent_state != 1
+              labels:
+                severity: warning
+            - alert: NovaAgentDown
+              annotations:
+                description: |
+                  '{% raw %}The service {{ $labels.exported_service }} running on {{ $labels.hostname }} is
+                  being reported as down.  This can affect compute operations so it must be resolved as
+                  quickly as possible.{% endraw %}'
+                summary: |
+                  '{% raw %}[{{ $labels.hostname }}] {{ $labels.exported_service }}
+                  down{% endraw %}'
+              expr: |
+                openstack_nova_agent_state != 1
+              for: 5m
+              labels:
+                severity: critical
+            - alert: NovaAgentDisabled
+              annotations:
+                description: |
+                  '{% raw %}The service {{ $labels.exported_service }} running on {{ $labels.hostname }} has been
+                  disabled for 60 minutes.  This can affect compute operations so it must be resolved as quickly
+                  as possible.{% endraw %}'
+                summary: |
+                  '{% raw %}[{{ $labels.hostname }}] {{ $labels.exported_service }}
+                  disabled{% endraw %}'
+              expr: |
+                openstack_nova_agent_state{adminState!="enabled"}
+              for: 1h
+              labels:
+                severity: warning
+            - alert: NovaInstanceInError
+              annotations:
+                description: |
+                  '{% raw %}The instance {{ $labels.id }} has been in ERROR state for over 24 hours.
+                  It must be cleaned up or removed in order to provide a consistent customer
+                  experience.{% endraw %}'
+                summary: "{% raw %}[{{ $labels.id }}] Instance in ERROR state{% endraw %}"
+              expr: |
+                openstack_nova_server_status{status="ERROR"}
+              for: 24h
+              labels:
+                severity: warning
+            - alert: NovaFailureRisk
+              annotations:
+                description: |
+                  '{% raw %}The cloud capacity will be at {{ $value }} in the event of the failure of
+                  a single hypervisor which puts the cloud at risk of not being able to recover should
+                  any hypervisor failures occur.  Please ensure that adequate amount of infrastructure
+                  is assigned to this deployment to prevent this.{% endraw %}'
+                summary: "{% raw %}[nova] Failure risk{% endraw %}"
+              expr: |
+                (sum(openstack_nova_memory_available_bytes-openstack_nova_memory_used_bytes) - max(openstack_nova_memory_used_bytes))
+                / sum(openstack_nova_memory_available_bytes-openstack_nova_memory_used_bytes) * 100 < 0.25
+              for: 6h
+              labels:
+                severity: warning
+            - alert: NovaCapacity
+              annotations:
+                description: |
+                  '{% raw %}The cloud capacity is currently at `{{ $value }}` which means there is a
+                  risk of running out of capacity due to the timeline required to add new nodes.
+                  Please ensure that adequate amount of infrastructure is assigned to this deployment
+                  to prevent this.{% endraw %}'
+                summary: "{% raw %}[nova] Capacity risk{% endraw %}"
+              expr: |
+                sum (
+                    openstack_nova_memory_used_bytes
+                  + on(hostname) group_left(adminState)
+                    (0 * openstack_nova_agent_state{exported_service="nova-compute",adminState="enabled"})
+                ) / sum (
+                    openstack_nova_memory_available_bytes
+                  + on(hostname) group_left(adminState)
+                    (0 * openstack_nova_agent_state{exported_service="nova-compute",adminState="enabled"})
+                ) * 100 > 75
+              for: 6h
+              labels:
+                severity: warning
+    percona-xtradb-pxc:
+      groups:
+        # TODO: basic rules
+        - name: general
+          rules:
+            - alert: MySQLDown
+              expr: mysql_up != 1
+              for: 5m
+              labels:
+                severity: critical
+            - alert: MysqlTooManyConnections
+              expr: max_over_time(mysql_global_status_threads_connected[1m]) / mysql_global_variables_max_connections * 100 > 80
+              for: 2m
+              labels:
+                severity: warning
+            - alert: MysqlHighThreadsRunning
+              expr: max_over_time(mysql_global_status_threads_running[1m]) / mysql_global_variables_max_connections * 100 > 60
+              for: 2m
+              labels:
+                severity: warning
+            - alert: MysqlSlowQueries
+              expr: increase(mysql_global_status_slow_queries[1m]) > 0
+              for: 2m
+              labels:
+                severity: warning
+        - name: galera
+          rules:
+            - alert: MySQLGaleraNotReady
+              expr: mysql_global_status_wsrep_ready != 1
+              for: 5m
+              labels:
+                severity: critical
+            - alert: MySQLGaleraOutOfSync
+              expr: mysql_global_status_wsrep_local_state != 4 and mysql_global_variables_wsrep_desync == 0
+              for: 5m
+              labels:
+                severity: critical
+            - alert: MySQLGaleraDonorFallingBehind
+              expr: mysql_global_status_wsrep_local_state == 2 and mysql_global_status_wsrep_local_recv_queue > 100
+              for: 5m
+              labels:
+                severity: warning
+            - alert: MySQLReplicationNotRunning
+              expr: mysql_slave_status_slave_io_running == 0 or mysql_slave_status_slave_sql_running == 0
+              for: 2m
+              labels:
+                severity: critical
+            - alert: MySQLReplicationLag
+              expr: (instance:mysql_slave_lag_seconds > 30) and on(instance) (predict_linear(instance:mysql_slave_lag_seconds[5m], 60 * 2) > 0)
+              for: 1m
+              labels:
+                severity: critical
+            - alert: MySQLHeartbeatLag
+              expr: (instance:mysql_heartbeat_lag_seconds > 30) and on(instance) (predict_linear(instance:mysql_heartbeat_lag_seconds[5m], 60 * 2) > 0)
+              for: 1m
+              labels:
+                severity: critical
+            - alert: MySQLInnoDBLogWaits
+              expr: rate(mysql_global_status_innodb_log_waits[15m]) > 10
+              labels:
+                severity: warning
+    rabbitmq:
+      groups:
+        - name: recording
+          rules:
+            - record: rabbitmq:usage:memory
+              labels:
+                job: rabbitmq
+              expr: |
+                sum without (job) (
+                  rabbitmq_process_resident_memory_bytes
+                ) / sum without (
+                  container,
+                  pod,
+                  job,
+                  namespace,
+                  node,
+                  resource,
+                  uid,
+                  unit
+                ) (
+                  label_replace(
+                    cluster:namespace:pod_memory:active:kube_pod_container_resource_limits,
+                    "instance",
+                    "$1",
+                    "pod",
+                    "(.*)"
+                  )
+                )
+        - name: alarms
+          rules:
+            - alert: RabbitmqAlarmFreeDiskSpace
+              expr: rabbitmq_alarms_free_disk_space_watermark == 1
+              labels:
+                severity: critical
+            - alert: RabbitmqAlarmMemoryUsedWatermark
+              expr: rabbitmq_alarms_memory_used_watermark == 1
+              labels:
+                severity: critical
+            - alert: RabbitmqAlarmFileDescriptorLimit
+              expr: rabbitmq_alarms_file_descriptor_limit == 1
+              labels:
+                severity: critical
+        - name: limits
+          rules:
+            - alert: RabbitmqMemoryHigh
+              expr: rabbitmq:usage:memory > 0.80
+              labels:
+                severity: warning
+            - alert: RabbitmqMemoryHigh
+              expr: rabbitmq:usage:memory > 0.95
+              labels:
+                severity: critical
+            - alert: RabbitmqFileDescriptorsUsage
+              expr: rabbitmq_process_open_fds / rabbitmq_process_max_fds > 0.80
+              labels:
+                severity: warning
+            - alert: RabbitmqFileDescriptorsUsage
+              expr: rabbitmq_process_open_fds / rabbitmq_process_max_fds > 0.95
+              labels:
+                severity: critical
+            - alert: RabbitmqTcpSocketsUsage
+              expr: rabbitmq_process_open_tcp_sockets / rabbitmq_process_max_tcp_sockets > 0.80
+              labels:
+                severity: warning
+            - alert: RabbitmqTcpSocketsUsage
+              expr: rabbitmq_process_open_tcp_sockets / rabbitmq_process_max_tcp_sockets > 0.95
+              labels:
+                severity: critical
+        - name: msgs
+          rules:
+            - alert: RabbitmqUnackedMessages
+              expr: sum(rabbitmq_queue_messages_unacked) BY (queue) > 1000
+              for: 5m
+              labels:
+                severity: warning
+            - alert: RabbitmqUnackedMessages
+              expr: sum(rabbitmq_queue_messages_unacked) BY (queue) > 1000
+              for: 1h
               labels:
                 severity: critical

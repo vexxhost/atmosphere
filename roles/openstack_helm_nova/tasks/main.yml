@@ -55,15 +55,6 @@
   kubernetes.core.k8s:
     state: present
     definition:
-      - apiVersion: source.toolkit.fluxcd.io/v1beta2
-        kind: HelmRepository
-        metadata:
-          name: openstack-helm
-          namespace: openstack
-        spec:
-          interval: 60s
-          url: https://tarballs.opendev.org/openstack/openstack-helm/
-
       - apiVersion: v1
         kind: Secret
         metadata:
@@ -163,3 +154,12 @@
         rxtx_factor: "{{ item.rxtx_factor | default(omit) }}"
         extra_specs: "{{ item.extra_specs | default(omit) }}"
       loop: "{{ openstack_helm_nova_flavors }}"
+      # NOTE(mnaser): This often fails with a 503 since we're sending a request
+      #               way too fast after the service is ready, retry for now
+      #               but the Helm chart should be fixed.
+      #
+      #               See: https://github.com/vexxhost/atmosphere/issues/72
+      retries: 60
+      delay: 5
+      register: _result
+      until: _result is not failed

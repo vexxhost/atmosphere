@@ -16,15 +16,6 @@
   kubernetes.core.k8s:
     state: present
     definition:
-      - apiVersion: source.toolkit.fluxcd.io/v1beta2
-        kind: HelmRepository
-        metadata:
-          name: coredns
-          namespace: openstack
-        spec:
-          interval: 60s
-          url: https://coredns.github.io/helm
-
       - apiVersion: helm.toolkit.fluxcd.io/v2beta1
         kind: HelmRelease
         metadata:
@@ -90,30 +81,3 @@
               component: coredns
             deployment:
               name: neutron-coredns
-
-      - apiVersion: monitoring.coreos.com/v1
-        kind: ServiceMonitor
-        metadata:
-          name: neutron-coredns
-          namespace: monitoring
-          labels:
-            release: kube-prometheus-stack
-        spec:
-          jobLabel: app.kubernetes.io/name
-          endpoints:
-            - port: "metrics"
-              path: "/metrics"
-              relabelings:
-                - sourceLabels: ["__meta_kubernetes_pod_label_application"]
-                  targetLabel: "application"
-                - sourceLabels: ["__meta_kubernetes_pod_name"]
-                  targetLabel: "instance"
-                - action: "labeldrop"
-                  regex: "^(container|endpoint|namespace|pod|service)$"
-          namespaceSelector:
-            matchNames:
-              - openstack
-          selector:
-            matchLabels:
-              app.kubernetes.io/name: coredns
-              app.kubernetes.io/component: metrics
