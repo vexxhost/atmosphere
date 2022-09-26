@@ -1,4 +1,6 @@
 import pykube
+from oslo_utils import strutils
+from tenacity import retry, retry_if_result, stop_after_delay
 
 from atmosphere import logger
 from atmosphere.tasks.kubernetes import base
@@ -140,13 +142,13 @@ class ApplyHelmReleaseTask(base.ApplyKubernetesObjectTask):
             },
         )
 
-    def update_object(
-        self,
-        resource: HelmRelease,
-        values: dict = {},
-        values_from: list = [],
-        *args,
-        **kwargs,
-    ):
-        resource.obj["spec"]["values"] = values
-        resource.obj["spec"]["valuesFrom"] = values_from
+    @retry(retry=retry_if_result(lambda f: f is False), stop=stop_after_delay(30))
+    def wait_for_resource(self, resource: HelmRelease, *args, **kwargs) -> bool:
+        resource.reload()
+
+        conditions = {
+            condition["type"]: strutils.bool_from_string(condition["status"])
+            for condition in resource.obj["status"].get("conditions", [])
+        }
+
+        return conditions.get("Ready", False) and conditions.get("Released", False)

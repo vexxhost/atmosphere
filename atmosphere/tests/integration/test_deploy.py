@@ -1,6 +1,5 @@
 import confspirator
 import pykube
-import taskflow.engines
 
 from atmosphere import flows
 from atmosphere.config import CONF
@@ -15,7 +14,7 @@ def test_deployment(mocker, flux_cluster):
 
     flux_cluster.kubectl("create", "namespace", "openstack")
 
-    engine = taskflow.engines.load(flows.get_deployment_flow())
+    engine = flows.get_engine()
     engine.run()
 
     initial_memcache_secret = pykube.Secret.objects(
@@ -31,7 +30,7 @@ def test_deployment(mocker, flux_cluster):
             ],
         },
     ):
-        engine = taskflow.engines.load(flows.get_deployment_flow())
+        engine = flows.get_engine()
         engine.run()
 
     updated_memcache_secret = pykube.Secret.objects(
