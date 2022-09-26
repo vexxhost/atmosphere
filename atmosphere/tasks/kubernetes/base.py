@@ -46,10 +46,15 @@ class ApplyKubernetesObjectTask(task.Task):
         )
         if self._obj_namespace:
             log = log.bind(namespace=self._obj_namespace)
+        if self.requires:
+            log = log.bind(requires=list(self.requires))
         return log
 
     def generate_object(self, *args, **kwargs) -> pykube.objects.APIObject:
         raise NotImplementedError
+
+    def wait_for_resource(self, resource: pykube.objects.APIObject):
+        pass
 
     def execute(self, *args, **kwargs):
         self.logger.debug("Ensuring resource")
@@ -70,6 +75,8 @@ class ApplyKubernetesObjectTask(task.Task):
 
         resource.api.raise_for_status(resp)
         resource.set_obj(resp.json())
+
+        self.wait_for_resource(resource)
 
         self.logger.info("Ensured resource")
 

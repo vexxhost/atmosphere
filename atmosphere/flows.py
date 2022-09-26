@@ -1,112 +1,98 @@
+from taskflow import engines
 from taskflow.patterns import graph_flow
 
 from atmosphere.config import CONF
+from atmosphere.tasks import constants
 from atmosphere.tasks.composite import openstack_helm
 from atmosphere.tasks.kubernetes import flux, v1
 
-NAMESPACE_CERT_MANAGER = "cert-manager"
-NAMESPACE_KUBE_SYSTEM = "kube-system"
-NAMESPACE_MONITORING = "monitoring"
-NAMESPACE_OPENSTACK = "openstack"
 
-HELM_REPOSITORY_BITNAMI = "bitnami"
-HELM_REPOSITORY_CEPH = "ceph"
-HELM_REPOSITORY_COREDNS = "coredns"
-HELM_REPOSITORY_INGRESS_NGINX = "ingress-nginx"
-HELM_REPOSITORY_JETSTACK = "jetstack"
-HELM_REPOSITORY_NODE_FEATURE_DISCOVERY = "node-feature-discovery"
-HELM_REPOSITORY_OPENSTACK_HELM = "openstack-helm"
-HELM_REPOSITORY_OPENSTACK_HELM_INFRA = "openstack-helm-infra"
-HELM_REPOSITORY_PERCONA = "percona"
-HELM_REPOSITORY_PROMETHEUS_COMMUINTY = "prometheus-community"
-
-CONTROL_PLANE_NODE_SELECTOR = {
-    "openstack-control-plane": "enabled",
-}
-
-NODE_FEATURE_DISCOVERY_VALUES = {
-    "master": {"nodeSelector": CONTROL_PLANE_NODE_SELECTOR}
-}
-
-PERCONA_XTRADB_OPERATOR_VALUES = {
-    "nodeSelector": CONTROL_PLANE_NODE_SELECTOR,
-}
+def get_engine():
+    return engines.load(
+        get_deployment_flow(),
+        executor="greenthreaded",
+        engine="parallel",
+        max_workers=4,
+    )
 
 
 def get_deployment_flow():
     flow = graph_flow.Flow("deploy").add(
         # kube-system
-        v1.ApplyNamespaceTask(name=NAMESPACE_KUBE_SYSTEM),
+        v1.ApplyNamespaceTask(name=constants.NAMESPACE_KUBE_SYSTEM),
         flux.ApplyHelmRepositoryTask(
-            namespace=NAMESPACE_KUBE_SYSTEM,
-            name=HELM_REPOSITORY_CEPH,
+            namespace=constants.NAMESPACE_KUBE_SYSTEM,
+            name=constants.HELM_REPOSITORY_CEPH,
             url="https://ceph.github.io/csi-charts",
         ),
         # cert-manager
-        v1.ApplyNamespaceTask(name=NAMESPACE_CERT_MANAGER),
+        v1.ApplyNamespaceTask(name=constants.NAMESPACE_CERT_MANAGER),
         flux.ApplyHelmRepositoryTask(
-            namespace=NAMESPACE_CERT_MANAGER,
-            name=HELM_REPOSITORY_JETSTACK,
+            namespace=constants.NAMESPACE_CERT_MANAGER,
+            name=constants.HELM_REPOSITORY_JETSTACK,
             url="https://charts.jetstack.io",
         ),
         # monitoring
-        v1.ApplyNamespaceTask(name=NAMESPACE_MONITORING),
+        v1.ApplyNamespaceTask(name=constants.NAMESPACE_MONITORING),
         flux.ApplyHelmRepositoryTask(
-            namespace=NAMESPACE_MONITORING,
-            name=HELM_REPOSITORY_PROMETHEUS_COMMUINTY,
+            namespace=constants.NAMESPACE_MONITORING,
+            name=constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY,
             url="https://prometheus-community.github.io/helm-charts",
         ),
         flux.ApplyHelmRepositoryTask(
-            namespace=NAMESPACE_MONITORING,
-            name=HELM_REPOSITORY_NODE_FEATURE_DISCOVERY,
+            namespace=constants.NAMESPACE_MONITORING,
+            name=constants.HELM_REPOSITORY_NODE_FEATURE_DISCOVERY,
             url="https://kubernetes-sigs.github.io/node-feature-discovery/charts",
         ),
         flux.ApplyHelmReleaseTask(
-            namespace=NAMESPACE_MONITORING,
+            namespace=constants.NAMESPACE_MONITORING,
             name="node-feature-discovery",
-            repository=HELM_REPOSITORY_NODE_FEATURE_DISCOVERY,
+            repository=constants.HELM_REPOSITORY_NODE_FEATURE_DISCOVERY,
             chart="node-feature-discovery",
             version="0.11.2",
-            values=NODE_FEATURE_DISCOVERY_VALUES,
+            values=constants.HELM_RELEASE_NODE_FEATURE_DISCOVERY_VALUES,
         ),
         # openstack
-        v1.ApplyNamespaceTask(name=NAMESPACE_OPENSTACK),
+        v1.ApplyNamespaceTask(name=constants.NAMESPACE_OPENSTACK),
         flux.ApplyHelmRepositoryTask(
-            namespace=NAMESPACE_OPENSTACK,
-            name=HELM_REPOSITORY_BITNAMI,
+            namespace=constants.NAMESPACE_OPENSTACK,
+            name=constants.HELM_REPOSITORY_BITNAMI,
             url="https://charts.bitnami.com/bitnami",
         ),
         flux.ApplyHelmRepositoryTask(
-            namespace=NAMESPACE_OPENSTACK,
-            name=HELM_REPOSITORY_PERCONA,
+            namespace=constants.NAMESPACE_OPENSTACK,
+            name=constants.HELM_REPOSITORY_PERCONA,
             url="https://percona.github.io/percona-helm-charts/",
         ),
         flux.ApplyHelmReleaseTask(
-            namespace=NAMESPACE_OPENSTACK,
-            name="pxc-operator",
-            repository=HELM_REPOSITORY_PERCONA,
-            chart="pxc-operator",
-            version="1.10.0",
-            values=PERCONA_XTRADB_OPERATOR_VALUES,
+            namespace=constants.NAMESPACE_OPENSTACK,
+            name=constants.HELM_RELEASE_PXC_OPERATOR_NAME,
+            repository=constants.HELM_REPOSITORY_PERCONA,
+            chart=constants.HELM_RELEASE_PXC_OPERATOR_NAME,
+            version=constants.HELM_RELEASE_PXC_OPERATOR_VERSION,
+            values=constants.HELM_RELEASE_PXC_OPERATOR_VALUES,
+        ),
+        openstack_helm.ApplyPerconaXtraDBClusterTask(
+            namespace=constants.NAMESPACE_OPENSTACK,
         ),
         flux.ApplyHelmRepositoryTask(
-            namespace=NAMESPACE_OPENSTACK,
-            name=HELM_REPOSITORY_INGRESS_NGINX,
+            namespace=constants.NAMESPACE_OPENSTACK,
+            name=constants.HELM_REPOSITORY_INGRESS_NGINX,
             url="https://kubernetes.github.io/ingress-nginx",
         ),
         flux.ApplyHelmRepositoryTask(
-            namespace=NAMESPACE_OPENSTACK,
-            name=HELM_REPOSITORY_OPENSTACK_HELM_INFRA,
+            namespace=constants.NAMESPACE_OPENSTACK,
+            name=constants.HELM_REPOSITORY_OPENSTACK_HELM_INFRA,
             url="https://tarballs.opendev.org/openstack/openstack-helm-infra/",
         ),
         flux.ApplyHelmRepositoryTask(
-            namespace=NAMESPACE_OPENSTACK,
-            name=HELM_REPOSITORY_COREDNS,
+            namespace=constants.NAMESPACE_OPENSTACK,
+            name=constants.HELM_REPOSITORY_COREDNS,
             url="https://coredns.github.io/helm",
         ),
         flux.ApplyHelmRepositoryTask(
-            namespace=NAMESPACE_OPENSTACK,
-            name=HELM_REPOSITORY_OPENSTACK_HELM,
+            namespace=constants.NAMESPACE_OPENSTACK,
+            name=constants.HELM_REPOSITORY_OPENSTACK_HELM,
             url="https://tarballs.opendev.org/openstack/openstack-helm/",
         ),
     )
@@ -114,16 +100,16 @@ def get_deployment_flow():
     if CONF.memcached.enabled:
         flow.add(
             openstack_helm.ApplyReleaseSecretTask(
-                namespace=NAMESPACE_OPENSTACK, chart="memcached"
+                namespace=constants.NAMESPACE_OPENSTACK, chart="memcached"
             ),
             openstack_helm.ApplyHelmReleaseTask(
-                namespace=NAMESPACE_OPENSTACK,
-                repository=HELM_REPOSITORY_OPENSTACK_HELM_INFRA,
+                namespace=constants.NAMESPACE_OPENSTACK,
+                repository=constants.HELM_REPOSITORY_OPENSTACK_HELM_INFRA,
                 name="memcached",
                 version="0.1.12",
             ),
             v1.ApplyServiceTask(
-                namespace=NAMESPACE_OPENSTACK,
+                namespace=constants.NAMESPACE_OPENSTACK,
                 name="memcached-metrics",
                 labels={
                     "application": "memcached",
