@@ -1,7 +1,7 @@
 import pykube
 
 from atmosphere import logger
-from atmosphere.tasks import kubernetes
+from atmosphere.tasks.kubernetes import base
 
 LOG = logger.get_logger()
 
@@ -12,7 +12,7 @@ class HelmRepository(pykube.objects.NamespacedAPIObject):
     kind = "HelmRepository"
 
 
-class CreateOrUpdateHelmRepositoryTask(kubernetes.CreateOrUpdateKubernetesObjectTask):
+class ApplyHelmRepositoryTask(base.ApplyKubernetesObjectTask):
     def __init__(self, namespace: str, name: str, url: str, *args, **kwargs):
         super().__init__(
             HelmRepository,
@@ -43,11 +43,6 @@ class CreateOrUpdateHelmRepositoryTask(kubernetes.CreateOrUpdateKubernetesObject
             },
         )
 
-    def update_object(
-        self, resource: pykube.objects.APIObject, url: str, *args, **kwargs
-    ):
-        resource.obj["spec"]["url"] = url
-
 
 class HelmRelease(pykube.objects.NamespacedAPIObject):
     version = "helm.toolkit.fluxcd.io/v2beta1"
@@ -55,7 +50,7 @@ class HelmRelease(pykube.objects.NamespacedAPIObject):
     kind = "HelmRelease"
 
 
-class CreateOrUpdateHelmReleaseTask(kubernetes.CreateOrUpdateKubernetesObjectTask):
+class ApplyHelmReleaseTask(base.ApplyKubernetesObjectTask):
     def __init__(
         self,
         namespace: str,
