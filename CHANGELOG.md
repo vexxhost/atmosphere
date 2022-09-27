@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/vexxhost/atmosphere/compare/v0.2.0...v0.2.1) (2022-09-27)
+
+
+### Bug Fixes
+
+* **rabbitmq:** drop terminationGracePeriodSeconds down ([f791801](https://github.com/vexxhost/atmosphere/commit/f791801625f30ae01d457a00cf223565261ec1b4))
+
 ## [0.2.0](https://github.com/vexxhost/atmosphere/compare/v0.1.1...v0.2.0) (2022-09-27)
 
 
