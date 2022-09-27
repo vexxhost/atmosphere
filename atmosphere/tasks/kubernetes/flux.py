@@ -144,7 +144,7 @@ class ApplyHelmReleaseTask(base.ApplyKubernetesObjectTask):
 
     @retry(
         retry=retry_if_result(lambda f: f is False),
-        stop=stop_after_delay(60),
+        stop=stop_after_delay(120),
         wait=wait_fixed(1),
     )
     def wait_for_resource(self, resource: HelmRelease, *args, **kwargs) -> bool:
