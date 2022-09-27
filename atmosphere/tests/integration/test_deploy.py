@@ -13,6 +13,9 @@ def test_deployment(mocker, flux_cluster):
     mocker.patch("atmosphere.clients.get_pykube_api", return_value=flux_cluster.api)
 
     flux_cluster.kubectl("create", "namespace", "openstack")
+    flux_cluster.kubectl(
+        "label", "node", "pytest-kind-control-plane", "openstack-control-plane=enabled"
+    )
 
     engine = flows.get_engine()
     engine.run()
