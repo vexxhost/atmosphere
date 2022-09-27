@@ -1,6 +1,6 @@
 import pykube
 from oslo_utils import strutils
-from tenacity import retry, retry_if_result, stop_after_delay
+from tenacity import retry, retry_if_result, stop_after_delay, wait_fixed
 
 from atmosphere import logger
 from atmosphere.tasks.kubernetes import base
@@ -142,7 +142,11 @@ class ApplyHelmReleaseTask(base.ApplyKubernetesObjectTask):
             },
         )
 
-    @retry(retry=retry_if_result(lambda f: f is False), stop=stop_after_delay(30))
+    @retry(
+        retry=retry_if_result(lambda f: f is False),
+        stop=stop_after_delay(60),
+        wait=wait_fixed(1),
+    )
     def wait_for_resource(self, resource: HelmRelease, *args, **kwargs) -> bool:
         resource.reload()
 
