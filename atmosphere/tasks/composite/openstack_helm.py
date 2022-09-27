@@ -118,3 +118,62 @@ class ApplyPerconaXtraDBClusterTask(base.ApplyKubernetesObjectTask):
                 },
             },
         )
+
+
+class RabbitmqCluster(pykube.objects.NamespacedAPIObject):
+    version = "rabbitmq.com/v1beta1"
+    endpoint = "rabbitmqclusters"
+    kind = "RabbitmqCluster"
+
+
+class ApplyRabbitmqClusterTask(base.ApplyKubernetesObjectTask):
+    def __init__(self, name: str):
+        super().__init__(
+            kind=RabbitmqCluster,
+            namespace=constants.NAMESPACE_OPENSTACK,
+            name=name,
+            requires=[
+                f"helm-release-{constants.NAMESPACE_OPENSTACK}-{constants.HELM_RELEASE_RABBITMQ_OPERATOR_NAME}",
+                "name",
+            ],
+            inject={"name": name},
+        )
+
+    def generate_object(self, namespace, name, **kwargs) -> RabbitmqCluster:
+        return RabbitmqCluster(
+            self.api,
+            {
+                "apiVersion": self._obj_kind.version,
+                "kind": self._obj_kind.kind,
+                "metadata": {
+                    "name": f"rabbitmq-{name}",
+                    "namespace": namespace.name,
+                },
+                "spec": {
+                    "affinity": {
+                        "nodeAffinity": {
+                            "requiredDuringSchedulingIgnoredDuringExecution": {
+                                "nodeSelectorTerms": [
+                                    {
+                                        "matchExpressions": [
+                                            {
+                                                "key": "openstack-control-plane",
+                                                "operator": "In",
+                                                "values": ["enabled"],
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    "rabbitmq": {
+                        "additionalConfig": "vm_memory_high_watermark.relative = 0.9\n"
+                    },
+                    "resources": {
+                        "requests": {"cpu": "500m", "memory": "1Gi"},
+                        "limits": {"cpu": "1", "memory": "2Gi"},
+                    },
+                },
+            },
+        )

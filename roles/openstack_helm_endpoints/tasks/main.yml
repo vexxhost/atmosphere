@@ -19,17 +19,6 @@
   when:
     - openstack_helm_endpoints_list is not defined or openstack_helm_endpoints_list == None
 
-# NOTE(mnaser): Since we manage one-RabbitMQ per service, we create the RabbitMQ
-#               cluster here and then append the necessary values to be used
-#               inside the `oslo_messaging` section.
-- name: Create RabbitMQ cluster
-  ansible.builtin.include_role:
-    name: rabbitmq
-  vars:
-    rabbitmq_cluster_name: "{{ openstack_helm_endpoints_chart }}"
-  when:
-    - '"oslo_messaging" in openstack_helm_endpoints_list'
-
 - name: Reset value for OpenStack_Helm endpoints
   ansible.builtin.set_fact:
     openstack_helm_endpoints: "{{ openstack_helm_endpoints_config }}"
