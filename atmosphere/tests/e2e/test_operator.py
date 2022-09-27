@@ -64,7 +64,7 @@ def test_e2e_for_operator(tmp_path, flux_cluster, docker_image):
         selector="application=atmosphere"
     ):
         for attempt in Retrying(
-            retry=retry_if_exception_type(AssertionError), stop=stop_after_delay(30)
+            retry=retry_if_exception_type(AssertionError), stop=stop_after_delay(60)
         ):
             with attempt:
                 assert "successfully started" in pod.logs()
