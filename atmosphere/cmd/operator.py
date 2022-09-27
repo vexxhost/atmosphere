@@ -1,6 +1,5 @@
 import time
 
-import taskflow.engines
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
@@ -20,14 +19,14 @@ class AtmosphereFileSystemEventHandler(FileSystemEventHandler):
         for c in config._root_config:
             group = conf.get(c.name)
             setattr(CONF, c.name, group)
-        engine = taskflow.engines.load(flows.get_deployment_flow())
+        engine = flows.get_engine()
         engine.run()
 
 
 def main():
     LOG.info("Starting Atmosphere operator")
 
-    engine = taskflow.engines.load(flows.get_deployment_flow())
+    engine = flows.get_engine()
     engine.run()
     LOG.info("Atmosphere operator successfully started")
 

@@ -32,3 +32,10 @@
           - secretName: "{{ openstack_helm_ingress_service_name }}-certs"
             hosts:
               - "{{ openstack_helm_endpoints[openstack_helm_ingress_endpoint]['host_fqdn_override']['public']['host'] }}"
+  # NOTE(mnaser): The Atmosphere operator is so fast that the Ingress webhook
+  #               is not up yet by the time we run this for the first time, so
+  #               we retry until we let the operator handle creating the ingress.
+  retries: 60
+  delay: 5
+  register: _result
+  until: _result is not failed

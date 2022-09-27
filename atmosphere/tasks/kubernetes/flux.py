@@ -1,7 +1,9 @@
 import pykube
+from oslo_utils import strutils
+from tenacity import retry, retry_if_result, stop_after_delay, wait_fixed
 
 from atmosphere import logger
-from atmosphere.tasks import kubernetes
+from atmosphere.tasks.kubernetes import base
 
 LOG = logger.get_logger()
 
@@ -12,7 +14,7 @@ class HelmRepository(pykube.objects.NamespacedAPIObject):
     kind = "HelmRepository"
 
 
-class CreateOrUpdateHelmRepositoryTask(kubernetes.CreateOrUpdateKubernetesObjectTask):
+class ApplyHelmRepositoryTask(base.ApplyKubernetesObjectTask):
     def __init__(self, namespace: str, name: str, url: str, *args, **kwargs):
         super().__init__(
             HelmRepository,
@@ -43,11 +45,6 @@ class CreateOrUpdateHelmRepositoryTask(kubernetes.CreateOrUpdateKubernetesObject
             },
         )
 
-    def update_object(
-        self, resource: pykube.objects.APIObject, url: str, *args, **kwargs
-    ):
-        resource.obj["spec"]["url"] = url
-
 
 class HelmRelease(pykube.objects.NamespacedAPIObject):
     version = "helm.toolkit.fluxcd.io/v2beta1"
@@ -55,7 +52,7 @@ class HelmRelease(pykube.objects.NamespacedAPIObject):
     kind = "HelmRelease"
 
 
-class CreateOrUpdateHelmReleaseTask(kubernetes.CreateOrUpdateKubernetesObjectTask):
+class ApplyHelmReleaseTask(base.ApplyKubernetesObjectTask):
     def __init__(
         self,
         namespace: str,
@@ -145,13 +142,17 @@ class CreateOrUpdateHelmReleaseTask(kubernetes.CreateOrUpdateKubernetesObjectTas
             },
         )
 
-    def update_object(
-        self,
-        resource: HelmRelease,
-        values: dict = {},
-        values_from: list = [],
-        *args,
-        **kwargs,
-    ):
-        resource.obj["spec"]["values"] = values
-        resource.obj["spec"]["valuesFrom"] = values_from
+    @retry(
+        retry=retry_if_result(lambda f: f is False),
+        stop=stop_after_delay(300),
+        wait=wait_fixed(1),
+    )
+    def wait_for_resource(self, resource: HelmRelease, *args, **kwargs) -> bool:
+        resource.reload()
+
+        conditions = {
+            condition["type"]: strutils.bool_from_string(condition["status"])
+            for condition in resource.obj["status"].get("conditions", [])
+        }
+
+        return conditions.get("Ready", False) and conditions.get("Released", False)
