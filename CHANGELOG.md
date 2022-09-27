@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/vexxhost/atmosphere/compare/v0.2.1...v0.2.2) (2022-09-27)
+
+
+### Bug Fixes
+
+* **memcached:** add protocol to service ([c252a9b](https://github.com/vexxhost/atmosphere/commit/c252a9b0db0d61a4745c4177c378d83232fa5c4c))
+
 ## [0.2.1](https://github.com/vexxhost/atmosphere/compare/v0.2.0...v0.2.1) (2022-09-27)
 
 
