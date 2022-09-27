@@ -7,7 +7,7 @@ import pytest
 import toml
 from jinja2 import Environment, FileSystemLoader
 from python_on_whales import docker
-from tenacity import Retrying, retry_if_exception_type, stop_after_delay
+from tenacity import Retrying, retry_if_exception_type, stop_after_delay, wait_fixed
 
 
 @pytest.fixture
@@ -64,7 +64,9 @@ def test_e2e_for_operator(tmp_path, flux_cluster, docker_image):
         selector="application=atmosphere"
     ):
         for attempt in Retrying(
-            retry=retry_if_exception_type(AssertionError), stop=stop_after_delay(60)
+            retry=retry_if_exception_type(AssertionError),
+            stop=stop_after_delay(60),
+            wait=wait_fixed(1),
         ):
             with attempt:
                 assert "successfully started" in pod.logs()
