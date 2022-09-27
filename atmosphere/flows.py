@@ -32,6 +32,14 @@ def get_deployment_flow():
             name=constants.HELM_REPOSITORY_JETSTACK,
             url="https://charts.jetstack.io",
         ),
+        flux.ApplyHelmReleaseTask(
+            namespace=constants.NAMESPACE_CERT_MANAGER,
+            name=constants.HELM_RELEASE_CERT_MANAGER_NAME,
+            repository=constants.HELM_REPOSITORY_JETSTACK,
+            chart=constants.HELM_RELEASE_CERT_MANAGER_NAME,
+            version=constants.HELM_RELEASE_CERT_MANAGER_VERSION,
+            values=constants.HELM_RELEASE_CERT_MANAGER_VALUES,
+        ),
         # monitoring
         v1.ApplyNamespaceTask(name=constants.NAMESPACE_MONITORING),
         flux.ApplyHelmRepositoryTask(
@@ -58,6 +66,15 @@ def get_deployment_flow():
             namespace=constants.NAMESPACE_OPENSTACK,
             name=constants.HELM_REPOSITORY_BITNAMI,
             url="https://charts.bitnami.com/bitnami",
+        ),
+        flux.ApplyHelmReleaseTask(
+            namespace=constants.NAMESPACE_OPENSTACK,
+            name=constants.HELM_RELEASE_RABBITMQ_OPERATOR_NAME,
+            repository=constants.HELM_REPOSITORY_BITNAMI,
+            chart=constants.HELM_RELEASE_RABBITMQ_OPERATOR_NAME,
+            version=constants.HELM_RELEASE_RABBITMQ_OPERATOR_VERSION,
+            values=constants.HELM_RELEASE_RABBITMQ_OPERATOR_VALUES,
+            requires=constants.HELM_RELEASE_RABBITMQ_OPERATOR_REQUIRES,
         ),
         flux.ApplyHelmRepositoryTask(
             namespace=constants.NAMESPACE_OPENSTACK,
