@@ -112,6 +112,30 @@ def get_deployment_flow():
             name=constants.HELM_REPOSITORY_OPENSTACK_HELM,
             url="https://tarballs.opendev.org/openstack/openstack-helm/",
         ),
+        openstack_helm.ApplyRabbitmqClusterTask(
+            name=constants.HELM_RELEASE_KEYSTONE_NAME,
+        ),
+        openstack_helm.ApplyRabbitmqClusterTask(
+            name=constants.HELM_RELEASE_BARBICAN_NAME,
+        ),
+        openstack_helm.ApplyRabbitmqClusterTask(
+            name=constants.HELM_RELEASE_GLANCE_NAME,
+        ),
+        openstack_helm.ApplyRabbitmqClusterTask(
+            name=constants.HELM_RELEASE_CINDER_NAME,
+        ),
+        openstack_helm.ApplyRabbitmqClusterTask(
+            name=constants.HELM_RELEASE_NEUTRON_NAME,
+        ),
+        openstack_helm.ApplyRabbitmqClusterTask(
+            name=constants.HELM_RELEASE_NOVA_NAME,
+        ),
+        openstack_helm.ApplyRabbitmqClusterTask(
+            name=constants.HELM_RELEASE_SENLIN_NAME,
+        ),
+        openstack_helm.ApplyRabbitmqClusterTask(
+            name=constants.HELM_RELEASE_HEAT_NAME,
+        ),
     )
 
     if CONF.memcached.enabled:
