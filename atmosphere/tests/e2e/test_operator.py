@@ -65,7 +65,7 @@ def test_e2e_for_operator(tmp_path, flux_cluster, docker_image):
     ):
         for attempt in Retrying(
             retry=retry_if_exception_type(AssertionError),
-            stop=stop_after_delay(120),
+            stop=stop_after_delay(300),
             wait=wait_fixed(1),
         ):
             with attempt:
