@@ -1,1 +1,0 @@
-# `ingress_nginx`

@@ -18,6 +18,24 @@ HELM_REPOSITORY_OPENSTACK_HELM_INFRA = "openstack-helm-infra"
 HELM_REPOSITORY_PERCONA = "percona"
 HELM_REPOSITORY_PROMETHEUS_COMMUINTY = "prometheus-community"
 
+HELM_RELEASE_INGRESS_NGINX_NAME = "ingress-nginx"
+HELM_RELEASE_INGRESS_NGINX_VERSION = "4.0.17"
+HELM_RELEASE_INGRESS_NGINX_VALUES = {
+    "controller": {
+        "config": {"proxy-buffer-size": "16k"},
+        "dnsPolicy": "ClusterFirstWithHostNet",
+        "hostNetwork": True,
+        "ingressClassResource": {"name": "openstack"},
+        "ingressClass": "openstack",
+        "extraArgs": {"default-ssl-certificate": "ingress-nginx/wildcard"},
+        "kind": "DaemonSet",
+        "nodeSelector": NODE_SELECTOR_CONTROL_PLANE,
+        "service": {"type": "ClusterIP"},
+        "admissionWebhooks": {"port": 7443},
+    },
+    "defaultBackend": {"enabled": True},
+}
+
 HELM_RELEASE_CERT_MANAGER_NAME = "cert-manager"
 HELM_RELEASE_CERT_MANAGER_VERSION = "v1.7.1"
 HELM_RELEASE_CERT_MANAGER_VALUES = {
