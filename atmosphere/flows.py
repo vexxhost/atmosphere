@@ -167,6 +167,7 @@ def get_deployment_flow():
                     "ports": [
                         {
                             "name": "metrics",
+                            "protocol": "TCP",
                             "port": 9150,
                             "targetPort": 9150,
                         }
