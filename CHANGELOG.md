@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/vexxhost/atmosphere/compare/v0.2.2...v0.3.0) (2022-09-28)
+
+
+### Features
+
+* **ingress:** move to operator ([46475f8](https://github.com/vexxhost/atmosphere/commit/46475f8c98d538d8c194ba9de8b9b926a50193d2))
+
 ## [0.2.2](https://github.com/vexxhost/atmosphere/compare/v0.2.1...v0.2.2) (2022-09-27)
 
 
