@@ -132,6 +132,9 @@ def get_deployment_flow(config):
         openstack_helm.ApplyRabbitmqClusterTask(
             name=constants.HELM_RELEASE_HEAT_NAME,
         ),
+        openstack_helm.ApplyRabbitmqClusterTask(
+            name=constants.HELM_RELEASE_DESIGNATE_NAME,
+        ),
     )
 
     if config.memcached.enabled:
