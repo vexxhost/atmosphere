@@ -25,8 +25,8 @@ openstack_helm_designate_pools: |
         description: PowerDNS Server
         # MiniDNS Configuration options
         masters:
-          - host: {{ tuple "mdns" "public" . | include "helm-toolkit.endpoints.endpoint_host_lookup" }}
-            port: {{ tuple "mdns" "public" "ipc" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+          - host: minidns
+            port: 5354
         # PowerDNS Configuration options
         options:
           host: 165.231.78.211
