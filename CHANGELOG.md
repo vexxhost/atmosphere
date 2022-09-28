@@ -1,5 +1,43 @@
 # Changelog
 
+## [0.2.2](https://github.com/vexxhost/atmosphere/compare/v0.2.1...v0.2.2) (2022-09-27)
+
+
+### Bug Fixes
+
+* **memcached:** add protocol to service ([c252a9b](https://github.com/vexxhost/atmosphere/commit/c252a9b0db0d61a4745c4177c378d83232fa5c4c))
+
+## [0.2.1](https://github.com/vexxhost/atmosphere/compare/v0.2.0...v0.2.1) (2022-09-27)
+
+
+### Bug Fixes
+
+* **rabbitmq:** drop terminationGracePeriodSeconds down ([f791801](https://github.com/vexxhost/atmosphere/commit/f791801625f30ae01d457a00cf223565261ec1b4))
+
+## [0.2.0](https://github.com/vexxhost/atmosphere/compare/v0.1.1...v0.2.0) (2022-09-27)
+
+
+### Features
+
+* migrate cert-mgr + rmq to operator ([e1e1ae4](https://github.com/vexxhost/atmosphere/commit/e1e1ae4075bef7fec6668b5a10e1e847d2a9ff48))
+* move pxc to operator ([bdb9774](https://github.com/vexxhost/atmosphere/commit/bdb9774bed5e819a19199bfc6b6f82643c22d6b1))
+* move rmq to operator ([196945a](https://github.com/vexxhost/atmosphere/commit/196945a07fc381ca178d0cfab4c42e3500564d3c))
+* use server-side apply ([2222854](https://github.com/vexxhost/atmosphere/commit/2222854a76cc4d778ccf092d0ada985ddc7feb18))
+
+
+### Bug Fixes
+
+* add services to cluster role ([168c264](https://github.com/vexxhost/atmosphere/commit/168c2649d2d5e1184cddae93fac82ca508409f25))
+* avoid race condition with csi not up ([2621136](https://github.com/vexxhost/atmosphere/commit/2621136bce9d453d41353acbd653679cb3de0683))
+* bump timeout to 300s ([ac0d453](https://github.com/vexxhost/atmosphere/commit/ac0d45336a5510a2dfe65597693adedb18a059b9))
+* increase wait timeout ([3ffc33e](https://github.com/vexxhost/atmosphere/commit/3ffc33e751b56fcc632f64afe34e67529da436ce))
+* move memcached to operator ([e48a677](https://github.com/vexxhost/atmosphere/commit/e48a6779969e9ad829d9d4366853db0fa5b9be7b))
+* slow down API polls ([da561e3](https://github.com/vexxhost/atmosphere/commit/da561e36bcb5f32f3565a3f490fa41d86801e746))
+* solve config.toml rendering ([40e63b1](https://github.com/vexxhost/atmosphere/commit/40e63b10f084288e921975825c1f869127620834))
+* solve ingress race conditions ([ff5e860](https://github.com/vexxhost/atmosphere/commit/ff5e86011cfdad85af2b4c46931e74358b93af27))
+* solve update_object for svc ([3e66870](https://github.com/vexxhost/atmosphere/commit/3e668702b16c6e6eb206b769a98c2332b0b97ecc))
+* update role to create pxc ([6203025](https://github.com/vexxhost/atmosphere/commit/6203025ffef4cdc2f55ff2960dbc95475272685f))
+
 ## [0.1.1](https://github.com/vexxhost/atmosphere/compare/v0.1.0...v0.1.1) (2022-09-21)
 
 
