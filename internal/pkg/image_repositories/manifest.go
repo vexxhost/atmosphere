@@ -17,6 +17,7 @@ type ImageManifest struct {
 	Wallaby *ReleaseManifest `yaml:"wallaby"`
 	Xena    *ReleaseManifest `yaml:"xena"`
 	Yoga    *ReleaseManifest `yaml:"yoga"`
+	Zed     *ReleaseManifest `yaml:"zed"`
 }
 
 func NewImageManifest(project string) (*ImageManifest, error) {
@@ -40,10 +41,16 @@ func NewImageManifest(project string) (*ImageManifest, error) {
 		return nil, err
 	}
 
+	zed, err := getReleaseManifest(client, project, "zed")
+	if err != nil {
+		return nil, err
+	}
+
 	return &ImageManifest{
 		Wallaby: wallaby,
 		Xena:    xena,
 		Yoga:    yoga,
+		Zed:     zed,
 	}, nil
 }
 
