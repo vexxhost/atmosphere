@@ -96,7 +96,7 @@ func NewBuildWorkflow(project string) *GithubWorkflow {
 				RunsOn: "ubuntu-latest",
 				Strategy: GithubWorkflowStrategy{
 					Matrix: map[string][]string{
-						"release": {"wallaby", "xena", "yoga"},
+						"release": {"wallaby", "xena", "yoga", "zed"},
 					},
 				},
 				Steps: []GithubWorkflowStep{

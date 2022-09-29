@@ -97,6 +97,14 @@ def get_deployment_flow():
             name=constants.HELM_REPOSITORY_INGRESS_NGINX,
             url="https://kubernetes.github.io/ingress-nginx",
         ),
+        flux.ApplyHelmReleaseTask(
+            namespace=constants.NAMESPACE_OPENSTACK,
+            name=constants.HELM_RELEASE_INGRESS_NGINX_NAME,
+            repository=constants.HELM_REPOSITORY_INGRESS_NGINX,
+            chart=constants.HELM_RELEASE_INGRESS_NGINX_NAME,
+            version=constants.HELM_RELEASE_INGRESS_NGINX_VERSION,
+            values=constants.HELM_RELEASE_INGRESS_NGINX_VALUES,
+        ),
         flux.ApplyHelmRepositoryTask(
             namespace=constants.NAMESPACE_OPENSTACK,
             name=constants.HELM_REPOSITORY_OPENSTACK_HELM_INFRA,

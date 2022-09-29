@@ -192,6 +192,9 @@ func (i *ImageRepository) UpdateGithubConfiguration(ctx context.Context) error {
 				{
 					Context: "image (yoga)",
 				},
+				{
+					Context: "image (zed)",
+				},
 			},
 		},
 		RequiredConversationResolution: github.Bool(true),
