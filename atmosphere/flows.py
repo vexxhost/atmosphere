@@ -3,7 +3,7 @@ from taskflow.patterns import graph_flow
 
 from atmosphere.tasks import constants
 from atmosphere.tasks.composite import openstack_helm
-from atmosphere.tasks.kubernetes import flux, v1
+from atmosphere.tasks.kubernetes import cert_manager, flux, v1
 
 
 def get_engine(config):
@@ -88,9 +88,7 @@ def get_deployment_flow(config):
             version=constants.HELM_RELEASE_PXC_OPERATOR_VERSION,
             values=constants.HELM_RELEASE_PXC_OPERATOR_VALUES,
         ),
-        openstack_helm.ApplyPerconaXtraDBClusterTask(
-            namespace=constants.NAMESPACE_OPENSTACK,
-        ),
+        openstack_helm.ApplyPerconaXtraDBClusterTask(),
         flux.ApplyHelmRepositoryTask(
             namespace=constants.NAMESPACE_OPENSTACK,
             name=constants.HELM_REPOSITORY_INGRESS_NGINX,
@@ -144,6 +142,9 @@ def get_deployment_flow(config):
             name=constants.HELM_RELEASE_HEAT_NAME,
         ),
     )
+
+    for t in cert_manager.ApplyIssuerTask.from_config(config.issuer):
+        flow.add(t)
 
     if config.memcached.enabled:
         flow.add(
