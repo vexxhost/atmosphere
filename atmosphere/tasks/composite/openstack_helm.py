@@ -10,14 +10,14 @@ from atmosphere.tasks.kubernetes import base, flux, v1
 
 
 class ApplyReleaseSecretTask(v1.ApplySecretTask):
-    def __init__(self, namespace: str, chart: str, *args, **kwargs):
-        cfg = config.Config.load_from_file()
-        vals = values.Values.for_chart(chart, cfg)
-
-        data = values.to_native()
-        overrides = getattr(cfg, chart).overrides
-
-        vals = mergedeep.merge({}, data, overrides)
+    def __init__(
+        self, config: config.Config, namespace: str, chart: str, *args, **kwargs
+    ):
+        vals = mergedeep.merge(
+            {},
+            values.Values.for_chart(chart, config).to_native(),
+            getattr(config, chart).overrides,
+        )
         values_yaml = yaml.dump(vals, default_flow_style=False)
 
         super().__init__(

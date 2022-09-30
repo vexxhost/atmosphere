@@ -13,7 +13,7 @@ class Values(base.Model):
     monitoring = types.ModelType(monitoring.Monitoring)
 
     class Options:
-        roles = {"default": blacklist("chart", "config")}
+        roles = {"default": blacklist("chart")}
 
     @classmethod
     def for_chart(cls, chart, config):

@@ -65,7 +65,9 @@ class MemcachedConfig(base.Model):
 
 
 class Config(base.Model):
-    memcached = types.ModelType(MemcachedConfig, required=True)
+    memcached = types.ModelType(
+        MemcachedConfig, default=MemcachedConfig(), required=True
+    )
     issuer = types.DictType(
         types.PolyModelType([AcmeIssuerConfig, SelfSignedIssuerConfig])
     )
