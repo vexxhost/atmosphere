@@ -9,7 +9,7 @@ LOG = logger.get_logger()
 def main():
     LOG.info("Starting Atmosphere operator")
 
-    cfg = config.load_from_file()
+    cfg = config.Config.load_from_file()
 
     engine = flows.get_engine(cfg)
     engine.run()
