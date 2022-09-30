@@ -27,11 +27,13 @@ HELM_RELEASE_INGRESS_NGINX_VALUES = {
         "hostNetwork": True,
         "ingressClassResource": {"name": "openstack"},
         "ingressClass": "openstack",
-        "extraArgs": {"default-ssl-certificate": "ingress-nginx/wildcard"},
         "kind": "DaemonSet",
         "nodeSelector": NODE_SELECTOR_CONTROL_PLANE,
         "service": {"type": "ClusterIP"},
         "admissionWebhooks": {"port": 7443},
+        "tcp": {
+            "5354": "openstack/minidns:5354",
+        },
     },
     "defaultBackend": {"enabled": True},
 }
