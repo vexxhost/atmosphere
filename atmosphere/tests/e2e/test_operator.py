@@ -35,7 +35,10 @@ def test_e2e_for_operator(tmp_path, flux_cluster, docker_image):
         "atmosphere_config": {
             "memcached": {
                 "secret_key": "foobar",
-            }
+            },
+            "issuer": {
+                "email": "test@example.com",
+            },
         },
     }
 

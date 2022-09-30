@@ -59,7 +59,7 @@ class ApplyKubernetesObjectTask(task.Task):
     def execute(self, *args, **kwargs):
         self.logger.debug("Ensuring resource")
 
-        resource = self.generate_object(*args, **kwargs)
+        resource = self.generate_object()
         resp = resource.api.patch(
             **resource.api_kwargs(
                 headers={

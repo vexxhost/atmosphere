@@ -7,86 +7,69 @@ LOG = logger.get_logger()
 
 
 class ApplyNamespaceTask(base.ApplyKubernetesObjectTask):
-    def __init__(self, name: str, *args, **kwargs):
-        super().__init__(
-            pykube.Namespace,
-            None,
-            name,
-            requires=set(["name"]),
-            inject={"name": name},
-            *args,
-            **kwargs,
-        )
+    def __init__(self, name: str):
+        super().__init__(kind=pykube.Namespace, namespace=None, name=name)
 
-    def generate_object(self, name, *args, **kwargs):
+    def generate_object(self) -> pykube.Namespace:
         return pykube.Namespace(
             self.api,
             {
-                "apiVersion": "v1",
-                "kind": "Namespace",
-                "metadata": {"name": name},
+                "apiVersion": self._obj_kind.version,
+                "kind": self._obj_kind.kind,
+                "metadata": {"name": self._obj_name},
             },
         )
 
 
 class ApplyServiceTask(base.ApplyKubernetesObjectTask):
     def __init__(self, namespace: str, name: str, labels: dict, spec: dict):
+        self._labels = labels
+        self._spec = spec
+
         super().__init__(
-            pykube.Service,
-            namespace,
-            name,
-            requires=set(["namespace", "name", "labels", "spec"]),
-            inject={"name": name, "labels": labels, "spec": spec},
+            kind=pykube.Service,
+            namespace=namespace,
+            name=name,
+            requires=set(["namespace"]),
         )
 
-    def generate_object(
-        self,
-        namespace: pykube.Namespace,
-        name: str,
-        labels: dict,
-        spec: dict,
-        *args,
-        **kwargs,
-    ) -> pykube.Service:
+    def generate_object(self) -> pykube.Service:
         return pykube.Service(
             self.api,
             {
-                "apiVersion": "v1",
-                "kind": "Service",
+                "apiVersion": self._obj_kind.version,
+                "kind": self._obj_kind.kind,
                 "metadata": {
-                    "name": name,
-                    "namespace": namespace.name,
-                    "labels": labels,
+                    "name": self._obj_name,
+                    "namespace": self._obj_namespace,
+                    "labels": self._labels,
                 },
-                "spec": spec,
+                "spec": self._spec,
             },
         )
 
 
 class ApplySecretTask(base.ApplyKubernetesObjectTask):
-    def __init__(self, namespace: str, name: str, data: str, *args, **kwargs):
+    def __init__(self, namespace: str, name: str, data: str):
+        self._data = data
+
         super().__init__(
-            pykube.Secret,
-            namespace,
-            name,
-            requires=set(["namespace", "name", "data"]),
-            inject={"name": name, "data": data},
-            *args,
-            **kwargs,
+            kind=pykube.Secret,
+            namespace=namespace,
+            name=name,
+            requires=set(["namespace"]),
         )
 
-    def generate_object(
-        self, namespace: pykube.Namespace, name: str, data: dict, *args, **kwargs
-    ):
+    def generate_object(self) -> pykube.Secret:
         return pykube.Secret(
             self.api,
             {
                 "apiVersion": "v1",
                 "kind": "Secret",
                 "metadata": {
-                    "name": name,
-                    "namespace": namespace.name,
+                    "name": self._obj_name,
+                    "namespace": self._obj_namespace,
                 },
-                "data": data,
+                "data": self._data,
             },
         )

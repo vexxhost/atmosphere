@@ -15,32 +15,29 @@ class HelmRepository(pykube.objects.NamespacedAPIObject):
 
 
 class ApplyHelmRepositoryTask(base.ApplyKubernetesObjectTask):
-    def __init__(self, namespace: str, name: str, url: str, *args, **kwargs):
+    def __init__(self, namespace: str, name: str, url: str):
+        self._url = url
+
         super().__init__(
-            HelmRepository,
-            namespace,
-            name,
-            requires=set(["namespace", "name", "url"]),
-            inject={"name": name, "url": url},
-            *args,
-            **kwargs,
+            kind=HelmRepository,
+            namespace=namespace,
+            name=name,
+            requires=set(["namespace"]),
         )
 
-    def generate_object(
-        self, namespace: pykube.Namespace, name: str, url: str, *args, **kwargs
-    ):
+    def generate_object(self) -> HelmRepository:
         return HelmRepository(
             self.api,
             {
-                "apiVersion": "source.toolkit.fluxcd.io/v1beta2",
-                "kind": "HelmRepository",
+                "apiVersion": self._obj_kind.version,
+                "kind": self._obj_kind.kind,
                 "metadata": {
-                    "name": name,
-                    "namespace": namespace.name,
+                    "name": self._obj_name,
+                    "namespace": self._obj_namespace,
                 },
                 "spec": {
                     "interval": "1m",
-                    "url": url,
+                    "url": self._url,
                 },
             },
         )
@@ -65,68 +62,43 @@ class ApplyHelmReleaseTask(base.ApplyKubernetesObjectTask):
         *args,
         **kwargs,
     ):
+        self._repository = repository
+        self._chart = chart
+        self._version = version
+        self._values = values
+        self._values_from = values_from
+
         kwargs.setdefault("requires", set())
-        kwargs["requires"] = kwargs["requires"].union(
-            set(
-                [
-                    "namespace",
-                    "name",
-                    "repository",
-                    "chart",
-                    "version",
-                    "values",
-                    "values_from",
-                ]
-            )
-        )
+        kwargs["requires"] = kwargs["requires"].union(set(["repository"]))
 
         super().__init__(
-            HelmRelease,
-            namespace,
-            name,
+            kind=HelmRelease,
+            namespace=namespace,
+            name=name,
             rebind={"repository": f"helm-repository-{namespace}-{repository}"},
-            inject={
-                "name": name,
-                "repository": repository,
-                "chart": chart,
-                "version": version,
-                "values": values,
-                "values_from": values_from,
-            },
             *args,
             **kwargs,
         )
 
-    def generate_object(
-        self,
-        namespace: pykube.Namespace,
-        name: str,
-        repository: HelmRepository,
-        chart: str,
-        version: str,
-        values: dict,
-        values_from: list,
-        *args,
-        **kwargs,
-    ) -> HelmRelease:
+    def generate_object(self) -> HelmRelease:
         return HelmRelease(
             self.api,
             {
-                "apiVersion": "helm.toolkit.fluxcd.io/v2beta1",
-                "kind": "HelmRelease",
+                "apiVersion": self._obj_kind.version,
+                "kind": self._obj_kind.kind,
                 "metadata": {
-                    "name": name,
-                    "namespace": namespace.name,
+                    "name": self._obj_name,
+                    "namespace": self._obj_namespace,
                 },
                 "spec": {
                     "interval": "60s",
                     "chart": {
                         "spec": {
-                            "chart": chart,
-                            "version": version,
+                            "chart": self._chart,
+                            "version": self._version,
                             "sourceRef": {
                                 "kind": "HelmRepository",
-                                "name": repository.name,
+                                "name": self._repository,
                             },
                         }
                     },
@@ -136,8 +108,8 @@ class ApplyHelmReleaseTask(base.ApplyKubernetesObjectTask):
                     "upgrade": {
                         "disableWait": True,
                     },
-                    "values": values,
-                    "valuesFrom": values_from,
+                    "values": self._values,
+                    "valuesFrom": self._values_from,
                 },
             },
         )
