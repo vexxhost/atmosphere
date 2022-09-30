@@ -4,7 +4,7 @@ import uuid
 
 import pykube
 import pytest
-import toml
+import tomli
 from jinja2 import Environment, FileSystemLoader
 from python_on_whales import docker
 from tenacity import Retrying, retry_if_exception_type, stop_after_delay, wait_fixed
@@ -28,7 +28,7 @@ def test_e2e_for_operator(tmp_path, flux_cluster, docker_image):
         loader=FileSystemLoader("roles/atmosphere/templates"),
         extensions=["jinja2_base64_filters.Base64Filters"],
     )
-    env.filters["vexxhost.atmosphere.to_toml"] = toml.dumps
+    env.filters["vexxhost.atmosphere.to_toml"] = tomli.dumps
 
     args = {
         "atmosphere_image": docker_image,
