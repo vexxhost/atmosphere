@@ -148,7 +148,9 @@ def get_deployment_flow(config):
     if config.memcached.enabled:
         flow.add(
             openstack_helm.ApplyReleaseSecretTask(
-                namespace=constants.NAMESPACE_OPENSTACK, chart="memcached"
+                config=config,
+                namespace=constants.NAMESPACE_OPENSTACK,
+                chart="memcached",
             ),
             openstack_helm.ApplyHelmReleaseTask(
                 namespace=constants.NAMESPACE_OPENSTACK,
