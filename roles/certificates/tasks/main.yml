@@ -24,7 +24,7 @@
         wait_sleep: 1
         wait_timeout: 300
       register: _openstack_helm_root_secret
-      when: atomsphere_issuer_config.type == "self-signed"
+      when: atmosphere_issuer_config.type == "self-signed"
 
     - name: Wait till the secret is created
       kubernetes.core.k8s_info:
@@ -36,7 +36,7 @@
         wait_sleep: 1
         wait_timeout: 300
       register: _openstack_helm_root_secret
-      when: atomsphere_issuer_config.type == "ca"
+      when: atmosphere_issuer_config.type == "ca"
 
     - name: Copy CA certificate on host
       ansible.builtin.copy:
@@ -49,5 +49,5 @@
         cmd: update-ca-certificates
       changed_when: false
   when:
-    - atomsphere_issuer_config.type is defined
-    - atomsphere_issuer_config.type in ("self-signed", "ca")
+    - atmosphere_issuer_config.type is defined
+    - atmosphere_issuer_config.type in ("self-signed", "ca")
