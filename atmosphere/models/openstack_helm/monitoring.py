@@ -11,7 +11,7 @@ class Monitoring(base.Model):
     prometheus = types.ModelType(PrometheusMonitoring)
 
     @classmethod
-    def for_chart(cls, chart):
+    def for_chart(cls, chart, config):
         if chart == "memcached":
             return Monitoring(
                 {
