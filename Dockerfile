@@ -10,9 +10,12 @@ RUN <<EOF
   apt-get update
   apt-get install -y gcc
 EOF
-ADD . /app
 WORKDIR /app
+ADD poetry.lock /app
+ADD pyproject.toml /app
 ENV POETRY_VIRTUALENVS_IN_PROJECT=true
+RUN poetry install --only main --no-root --no-interaction
+ADD . /app
 RUN poetry install --only main --no-interaction
 
 FROM python:3.10-slim AS runtime
