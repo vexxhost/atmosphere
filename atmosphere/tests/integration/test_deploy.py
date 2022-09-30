@@ -1,8 +1,7 @@
-import confspirator
 import pykube
 
 from atmosphere import flows
-from atmosphere.config import CONF
+from atmosphere.models import config
 
 
 def test_kubernetes_version(flux_cluster):
@@ -17,7 +16,8 @@ def test_deployment(mocker, flux_cluster):
         "label", "node", "pytest-kind-control-plane", "openstack-control-plane=enabled"
     )
 
-    engine = flows.get_engine()
+    cfg = config.Config.get_mock_object()
+    engine = flows.get_engine(cfg)
     engine.run()
 
     initial_memcache_secret = pykube.Secret.objects(
@@ -25,16 +25,9 @@ def test_deployment(mocker, flux_cluster):
     ).get_by_name("atmosphere-memcached")
     assert initial_memcache_secret.exists()
 
-    with confspirator.modify_conf(
-        CONF,
-        {
-            "atmosphere.memcached.secret_key": [
-                {"operation": "override", "value": "not-secret"}
-            ],
-        },
-    ):
-        engine = flows.get_engine()
-        engine.run()
+    cfg.memcached.secret_key = "not-secret"
+    engine = flows.get_engine(cfg)
+    engine.run()
 
     updated_memcache_secret = pykube.Secret.objects(
         flux_cluster.api, namespace="openstack"

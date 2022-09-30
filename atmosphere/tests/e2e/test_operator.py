@@ -33,10 +33,8 @@ def test_e2e_for_operator(tmp_path, flux_cluster, docker_image):
     args = {
         "atmosphere_image": docker_image,
         "atmosphere_config": {
-            "atmosphere": {
-                "memcached": {
-                    "secret_key": "foobar",
-                }
+            "memcached": {
+                "secret_key": "foobar",
             }
         },
     }

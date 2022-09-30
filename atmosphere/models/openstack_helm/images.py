@@ -1,6 +1,5 @@
 from schematics import types
 
-from atmosphere.config import CONF
 from atmosphere.models import base
 
 
@@ -13,11 +12,11 @@ class MemcachedImagesTags(ImagesTags):
     prometheus_memcached_exporter = types.StringType(required=True)
 
     @classmethod
-    def for_chart(cls, chart):
+    def for_chart(cls, chart, config):
         return cls(
             {
-                "memcached": CONF.images.memcached,
-                "prometheus_memcached_exporter": CONF.images.memcached_exporter,
+                "memcached": config.memcached.images.memcached,
+                "prometheus_memcached_exporter": config.memcached.images.exporter,
             }
         )
 
@@ -31,9 +30,9 @@ class Images(base.Model):
     }
 
     @classmethod
-    def for_chart(cls, chart):
+    def for_chart(cls, chart, config):
         return cls(
             {
-                "tags": cls.MAPPINGS[chart].for_chart(chart),
+                "tags": cls.MAPPINGS[chart].for_chart(chart, config),
             }
         )

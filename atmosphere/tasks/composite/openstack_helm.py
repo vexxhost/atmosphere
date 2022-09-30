@@ -1,5 +1,9 @@
+import mergedeep
 import pykube
+import yaml
+from oslo_serialization import base64
 
+from atmosphere.models import config
 from atmosphere.models.openstack_helm import values
 from atmosphere.tasks import constants
 from atmosphere.tasks.kubernetes import base, flux, v1
@@ -7,10 +11,19 @@ from atmosphere.tasks.kubernetes import base, flux, v1
 
 class ApplyReleaseSecretTask(v1.ApplySecretTask):
     def __init__(self, namespace: str, chart: str, *args, **kwargs):
+        cfg = config.Config.load_from_file()
+        vals = values.Values.for_chart(chart, cfg)
+
+        data = values.to_native()
+        overrides = getattr(cfg, chart).overrides
+
+        vals = mergedeep.merge({}, data, overrides)
+        values_yaml = yaml.dump(vals, default_flow_style=False)
+
         super().__init__(
             namespace,
             f"atmosphere-{chart}",
-            values.Values.for_chart(chart).secret_data,
+            {"values.yaml": base64.encode_as_text(values_yaml)},
             *args,
             **kwargs,
         )

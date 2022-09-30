@@ -1,22 +1,21 @@
 from taskflow import engines
 from taskflow.patterns import graph_flow
 
-from atmosphere.config import CONF
 from atmosphere.tasks import constants
 from atmosphere.tasks.composite import openstack_helm
 from atmosphere.tasks.kubernetes import flux, v1
 
 
-def get_engine():
+def get_engine(config):
     return engines.load(
-        get_deployment_flow(),
+        get_deployment_flow(config),
         executor="greenthreaded",
         engine="parallel",
         max_workers=4,
     )
 
 
-def get_deployment_flow():
+def get_deployment_flow(config):
     flow = graph_flow.Flow("deploy").add(
         # kube-system
         v1.ApplyNamespaceTask(name=constants.NAMESPACE_KUBE_SYSTEM),
@@ -146,7 +145,7 @@ def get_deployment_flow():
         ),
     )
 
-    if CONF.memcached.enabled:
+    if config.memcached.enabled:
         flow.add(
             openstack_helm.ApplyReleaseSecretTask(
                 namespace=constants.NAMESPACE_OPENSTACK, chart="memcached"

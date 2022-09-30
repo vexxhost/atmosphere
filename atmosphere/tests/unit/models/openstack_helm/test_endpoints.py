@@ -2,7 +2,7 @@ import pytest
 import requests
 import yaml
 
-from atmosphere.config import CONF
+from atmosphere.models import config
 from atmosphere.models.openstack_helm import endpoints as osh_endpoints
 
 # XXX(mnaser): Once we have the details of our charts codified, we can get rid
@@ -30,18 +30,21 @@ def test_openstack_helm_endpoint_keys(project, chart):
     data = yaml.safe_load(raw_data)
 
     chart_keys = data["endpoints"].keys() - ignored_keys
-    atmosphere_keys = osh_endpoints.Endpoints.for_chart(chart).to_native().keys()
+
+    cfg = config.Config.get_mock_object()
+    atmosphere_keys = osh_endpoints.Endpoints.for_chart(chart, cfg).to_native().keys()
 
     assert chart_keys == atmosphere_keys
 
 
 def test_endpoint_for_chart_memcached():
-    endpoints = osh_endpoints.Endpoints.for_chart("memcached")
+    cfg = config.Config.get_mock_object()
+    endpoints = osh_endpoints.Endpoints.for_chart("memcached", cfg)
 
     assert {
         "oslo_cache": {
             "auth": {
-                "memcache_secret_key": CONF.memcached.secret_key,
+                "memcache_secret_key": cfg.memcached.secret_key,
             }
         }
     } == endpoints.to_primitive()

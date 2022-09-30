@@ -1,33 +1,13 @@
-import confspirator
-
-from atmosphere.config import CONF
+from atmosphere.models import config
 from atmosphere.models.openstack_helm import images as osh_images
 
 
-def test_images_for_chart_memcached_with_defaults():
+def test_images_for_chart_memcached():
+    cfg = config.Config.get_mock_object()
     assert {
         "pull_policy": "Always",
         "tags": {
-            "memcached": CONF.images.memcached,
-            "prometheus_memcached_exporter": CONF.images.memcached_exporter,
+            "memcached": cfg.memcached.images.memcached,
+            "prometheus_memcached_exporter": cfg.memcached.images.exporter,
         },
-    } == osh_images.Images.for_chart("memcached").to_primitive()
-
-
-@confspirator.modify_conf(
-    CONF,
-    {
-        "atmosphere.images.memcached": [{"operation": "override", "value": "foo"}],
-        "atmosphere.images.memcached_exporter": [
-            {"operation": "override", "value": "bar"}
-        ],
-    },
-)
-def test_images_for_chart_memcached_with_overrides():
-    assert {
-        "pull_policy": "Always",
-        "tags": {
-            "memcached": "foo",
-            "prometheus_memcached_exporter": "bar",
-        },
-    } == osh_images.Images.for_chart("memcached").to_primitive()
+    } == osh_images.Images.for_chart("memcached", cfg).to_primitive()
