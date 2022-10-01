@@ -2,7 +2,7 @@
 
 import json
 
-import toml
+import tomli_w
 
 
 class FilterModule(object):
@@ -12,4 +12,4 @@ class FilterModule(object):
     def to_toml(self, variable):
         s = json.dumps(dict(variable))
         d = json.loads(s)
-        return toml.dumps(d)
+        return tomli_w.dumps(d)

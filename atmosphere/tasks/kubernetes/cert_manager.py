@@ -198,10 +198,8 @@ class ApplyIssuerTask(base.ApplyKubernetesObjectTask):
                         "renewBefore": "360h",
                         "privateKey": {"algorithm": "ECDSA", "size": 256},
                         "issuerRef": {
-                            "name": "self-signed",
-                            "namespace": constants.NAMESPACE_OPENSTACK,
                             "kind": "Issuer",
-                            "group": "cert-manager.io",
+                            "name": "self-signed",
                         },
                     },
                 ),
