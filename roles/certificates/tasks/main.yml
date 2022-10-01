@@ -18,7 +18,7 @@
       kubernetes.core.k8s_info:
         api_version: v1
         kind: Secret
-        name: "{{ atmosphere_issuer_config.type == 'self-signed' | ternary('cert-manager-selfsigned-ca', 'cert-manager-issuer-ca') }}"
+        name: "{{ (atmosphere_issuer_config.type == 'self-signed') | ternary('cert-manager-selfsigned-ca', 'cert-manager-issuer-ca') }}"
         namespace: openstack
         wait: true
         wait_sleep: 1
