@@ -21,8 +21,8 @@ point towards it by setting the `server` field.
 
 ```yaml
 atmosphere_issuer_config:
-  server: https://acme.example.com
   email: foo@bar.com
+  server: https://acme.example.com
 ```
 
 ### DNS-01 challenges
@@ -40,6 +40,7 @@ challenges, you can use the following configuration:
 
 ```yaml
 atmosphere_issuer_config:
+  email: foo@bar.com
   solver:
     type: rfc2136
     nameserver: <NAMESERVER>:<PORT>
