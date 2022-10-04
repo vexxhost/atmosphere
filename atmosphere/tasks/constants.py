@@ -31,11 +31,11 @@ HELM_RELEASE_INGRESS_NGINX_VALUES = {
         "nodeSelector": NODE_SELECTOR_CONTROL_PLANE,
         "service": {"type": "ClusterIP"},
         "admissionWebhooks": {"port": 7443},
-        "tcp": {
-            "5354": "openstack/minidns:5354",
-        },
     },
     "defaultBackend": {"enabled": True},
+    "tcp": {
+        "5354": "openstack/minidns:5354",
+    },
 }
 
 HELM_RELEASE_CERT_MANAGER_NAME = "cert-manager"
