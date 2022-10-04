@@ -9,8 +9,13 @@ fi
 IMAGE_TAG_FILE="${MOLECULE_EPHEMERAL_DIRECTORY}/image"
 echo "ttl.sh/$(uuidgen | tr '[:upper:]' '[:lower:]'):1d" > ${IMAGE_TAG_FILE}
 
-# Build operator image
-docker buildx build --platform linux/amd64 --tag $(cat ${IMAGE_TAG_FILE}) --push .
+# Build operator image (try Docker first, then fall-back to Podman)
+if command -v docker; then
+    docker buildx build --platform linux/amd64 --tag $(cat ${IMAGE_TAG_FILE}) --push .
+else
+    podman build --tag "$(cat ${IMAGE_TAG_FILE})" --file Dockerfile .
+    podman push $(cat ${IMAGE_TAG_FILE})
+fi
 
 # Install OpenStack SDK
 pip install \
