@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/vexxhost/atmosphere/compare/v0.4.0...v0.4.1) (2022-10-04)
+
+
+### Bug Fixes
+
+* **ingress:** point to correct tcp port ([54e074c](https://github.com/vexxhost/atmosphere/commit/54e074c1b01a3a5cac2915c459e336932fe2b137))
+
 ## [0.4.0](https://github.com/vexxhost/atmosphere/compare/v0.3.0...v0.4.0) (2022-10-02)
 
 
