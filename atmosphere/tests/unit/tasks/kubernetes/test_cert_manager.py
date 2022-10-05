@@ -304,5 +304,5 @@ def test_apply_issuer_task_from_config(pykube, cfg_data, expected):
     cfg.issuer.validate()
     assert [
         t.generate_object().obj
-        for t in cert_manager.ApplyIssuerTask.from_config(cfg.issuer)
+        for t in cert_manager.issuer_tasks_from_config(cfg.issuer)
     ] == expected
