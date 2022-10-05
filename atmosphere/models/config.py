@@ -77,21 +77,29 @@ class SelfSignedIssuerConfig(Issuer):
     TYPE = "self-signed"
 
 
+class ChartConfig(base.Model):
+    enabled = types.BooleanType(default=True, required=True)
+    overrides = types.DictType(types.BaseType(), default={})
+
+
 class MemcachedImagesConfig(base.Model):
     memcached = types.StringType(default="docker.io/library/memcached:1.6.17")
     exporter = types.StringType(default="quay.io/prometheus/memcached-exporter:v0.10.0")
 
 
-class MemcachedConfig(base.Model):
-    enabled = types.BooleanType(default=True)
+class MemcachedChartConfig(ChartConfig):
     secret_key = types.StringType(required=True)
     images = types.ModelType(MemcachedImagesConfig, default=MemcachedImagesConfig())
-    overrides = types.DictType(types.BaseType(), default={})
+
+
+class IngressNginxConfig(ChartConfig):
+    pass
 
 
 class Config(base.Model):
+    ingress_nginx = types.ModelType(IngressNginxConfig, default=IngressNginxConfig())
     memcached = types.ModelType(
-        MemcachedConfig, default=MemcachedConfig(), required=True
+        MemcachedChartConfig, default=MemcachedChartConfig(), required=True
     )
     issuer = types.PolyModelType(
         [AcmeIssuerConfig, CaIssuerConfig, SelfSignedIssuerConfig],

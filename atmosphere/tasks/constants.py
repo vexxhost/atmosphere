@@ -10,7 +10,10 @@ NAMESPACE_OPENSTACK = "openstack"
 HELM_REPOSITORY_BITNAMI = "bitnami"
 HELM_REPOSITORY_CEPH = "ceph"
 HELM_REPOSITORY_COREDNS = "coredns"
+
 HELM_REPOSITORY_INGRESS_NGINX = "ingress-nginx"
+HELM_REPOSITORY_INGRESS_NGINX_URL = "https://kubernetes.github.io/ingress-nginx"
+
 HELM_REPOSITORY_JETSTACK = "jetstack"
 HELM_REPOSITORY_NODE_FEATURE_DISCOVERY = "node-feature-discovery"
 HELM_REPOSITORY_OPENSTACK_HELM = "openstack-helm"

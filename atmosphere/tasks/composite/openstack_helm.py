@@ -49,6 +49,33 @@ class ApplyHelmReleaseTask(flux.ApplyHelmReleaseTask):
         )
 
 
+def ingress_nginx_tasks_from_config(config: config.IngressNginxConfig):
+    if not config.enabled:
+        return []
+
+    values = mergedeep.merge(
+        {},
+        constants.HELM_RELEASE_INGRESS_NGINX_VALUES,
+        config.overrides,
+    )
+
+    return [
+        flux.ApplyHelmRepositoryTask(
+            namespace=constants.NAMESPACE_OPENSTACK,
+            name=constants.HELM_REPOSITORY_INGRESS_NGINX,
+            url=constants.HELM_REPOSITORY_INGRESS_NGINX_URL,
+        ),
+        flux.ApplyHelmReleaseTask(
+            namespace=constants.NAMESPACE_OPENSTACK,
+            name=constants.HELM_RELEASE_INGRESS_NGINX_NAME,
+            repository=constants.HELM_REPOSITORY_INGRESS_NGINX,
+            chart=constants.HELM_RELEASE_INGRESS_NGINX_NAME,
+            version=constants.HELM_RELEASE_INGRESS_NGINX_VERSION,
+            values=values,
+        ),
+    ]
+
+
 class PerconaXtraDBCluster(pykube.objects.NamespacedAPIObject):
     version = "pxc.percona.com/v1-10-0"
     endpoint = "perconaxtradbclusters"

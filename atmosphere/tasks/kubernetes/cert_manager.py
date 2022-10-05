@@ -77,146 +77,146 @@ class ApplyIssuerTask(base.ApplyKubernetesObjectTask):
             },
         )
 
-    @classmethod
-    def from_config(cls, config: config.Issuer) -> list:
-        objects = []
 
-        if config.type == "acme":
-            spec = {
-                "acme": {
-                    "email": config.email,
-                    "server": config.server,
-                    "privateKeySecretRef": {
-                        "name": "cert-manager-issuer-account-key",
+def issuer_tasks_from_config(config: config.Issuer) -> list:
+    objects = []
+
+    if config.type == "acme":
+        spec = {
+            "acme": {
+                "email": config.email,
+                "server": config.server,
+                "privateKeySecretRef": {
+                    "name": "cert-manager-issuer-account-key",
+                },
+            },
+        }
+
+        if config.solver.type == "http":
+            spec["acme"]["solvers"] = [
+                {
+                    "http01": {
+                        "ingress": {
+                            "class": "openstack",
+                        },
                     },
                 },
-            }
-
-            if config.solver.type == "http":
-                spec["acme"]["solvers"] = [
-                    {
-                        "http01": {
-                            "ingress": {
-                                "class": "openstack",
-                            },
-                        },
-                    },
-                ]
-            elif config.solver.type == "rfc2136":
-                # NOTE(mnaser): We have to create a secret containing the AWS
-                #               credentials in this case.
-                objects.append(
-                    v1.ApplySecretTask(
-                        constants.NAMESPACE_OPENSTACK,
-                        "cert-manager-issuer-tsig-secret-key",
-                        data={
-                            "tsig-secret-key": base64.encode_as_text(
-                                config.solver.tsig_secret
-                            ),
-                        },
-                    )
-                )
-
-                spec["acme"]["solvers"] = [
-                    {
-                        "dns01": {
-                            "rfc2136": {
-                                "nameserver": config.solver.nameserver,
-                                "tsigAlgorithm": config.solver.tsig_algorithm,
-                                "tsigKeyName": config.solver.tsig_key_name,
-                                "tsigSecretSecretRef": {
-                                    "name": "cert-manager-issuer-tsig-secret-key",
-                                    "key": "tsig-secret-key",
-                                },
-                            },
-                        },
-                    },
-                ]
-            elif config.solver.type == "route53":
-                # NOTE(mnaser): We have to create a secret containing the AWS
-                #               credentials in this case.
-                objects.append(
-                    v1.ApplySecretTask(
-                        constants.NAMESPACE_OPENSTACK,
-                        "cert-manager-issuer-route53-credentials",
-                        data={
-                            "secret-access-key": base64.encode_as_text(
-                                config.solver.secret_access_key
-                            ),
-                        },
-                    )
-                )
-
-                spec["acme"]["solvers"] = [
-                    {
-                        "dns01": {
-                            "route53": {
-                                "region": config.solver.region,
-                                "hostedZoneID": config.solver.hosted_zone_id,
-                                "accessKeyID": config.solver.access_key_id,
-                                "secretAccessKeySecretRef": {
-                                    "name": "cert-manager-issuer-route53-credentials",
-                                    "key": "secret-access-key",
-                                },
-                            },
-                        },
-                    },
-                ]
-        elif config.type == "ca":
-            # NOTE(mnaser): We have to create a secret containing the CA
-            #               certificate and key in this case.
+            ]
+        elif config.solver.type == "rfc2136":
+            # NOTE(mnaser): We have to create a secret containing the AWS
+            #               credentials in this case.
             objects.append(
                 v1.ApplySecretTask(
                     constants.NAMESPACE_OPENSTACK,
-                    "cert-manager-issuer-ca",
+                    "cert-manager-issuer-tsig-secret-key",
                     data={
-                        "tls.crt": base64.encode_as_text(config.certificate),
-                        "tls.key": base64.encode_as_text(config.private_key),
+                        "tsig-secret-key": base64.encode_as_text(
+                            config.solver.tsig_secret
+                        ),
                     },
                 )
             )
 
-            spec = {
-                "ca": {
-                    "secretName": "cert-manager-issuer-ca",
-                }
-            }
-        elif config.type == "self-signed":
-            # NOTE(mnaser): We have to setup the self-signed CA in this case
-            objects += [
-                ApplyIssuerTask(
-                    namespace=constants.NAMESPACE_OPENSTACK,
-                    name="self-signed",
-                    spec={
-                        "selfSigned": {},
-                    },
-                ),
-                ApplyCertificateTask(
-                    namespace=constants.NAMESPACE_OPENSTACK,
-                    name="self-signed-ca",
-                    spec={
-                        "isCA": True,
-                        "commonName": "selfsigned-ca",
-                        "secretName": "cert-manager-selfsigned-ca",
-                        "duration": "86400h",
-                        "renewBefore": "360h",
-                        "privateKey": {"algorithm": "ECDSA", "size": 256},
-                        "issuerRef": {
-                            "kind": "Issuer",
-                            "name": "self-signed",
+            spec["acme"]["solvers"] = [
+                {
+                    "dns01": {
+                        "rfc2136": {
+                            "nameserver": config.solver.nameserver,
+                            "tsigAlgorithm": config.solver.tsig_algorithm,
+                            "tsigKeyName": config.solver.tsig_key_name,
+                            "tsigSecretSecretRef": {
+                                "name": "cert-manager-issuer-tsig-secret-key",
+                                "key": "tsig-secret-key",
+                            },
                         },
                     },
-                ),
+                },
             ]
-
-            spec = {
-                "ca": {
-                    "secretName": "cert-manager-selfsigned-ca",
-                }
-            }
-
-        return objects + [
-            ApplyIssuerTask(
-                namespace=constants.NAMESPACE_OPENSTACK, name="openstack", spec=spec
+        elif config.solver.type == "route53":
+            # NOTE(mnaser): We have to create a secret containing the AWS
+            #               credentials in this case.
+            objects.append(
+                v1.ApplySecretTask(
+                    constants.NAMESPACE_OPENSTACK,
+                    "cert-manager-issuer-route53-credentials",
+                    data={
+                        "secret-access-key": base64.encode_as_text(
+                            config.solver.secret_access_key
+                        ),
+                    },
+                )
             )
+
+            spec["acme"]["solvers"] = [
+                {
+                    "dns01": {
+                        "route53": {
+                            "region": config.solver.region,
+                            "hostedZoneID": config.solver.hosted_zone_id,
+                            "accessKeyID": config.solver.access_key_id,
+                            "secretAccessKeySecretRef": {
+                                "name": "cert-manager-issuer-route53-credentials",
+                                "key": "secret-access-key",
+                            },
+                        },
+                    },
+                },
+            ]
+    elif config.type == "ca":
+        # NOTE(mnaser): We have to create a secret containing the CA
+        #               certificate and key in this case.
+        objects.append(
+            v1.ApplySecretTask(
+                constants.NAMESPACE_OPENSTACK,
+                "cert-manager-issuer-ca",
+                data={
+                    "tls.crt": base64.encode_as_text(config.certificate),
+                    "tls.key": base64.encode_as_text(config.private_key),
+                },
+            )
+        )
+
+        spec = {
+            "ca": {
+                "secretName": "cert-manager-issuer-ca",
+            }
+        }
+    elif config.type == "self-signed":
+        # NOTE(mnaser): We have to setup the self-signed CA in this case
+        objects += [
+            ApplyIssuerTask(
+                namespace=constants.NAMESPACE_OPENSTACK,
+                name="self-signed",
+                spec={
+                    "selfSigned": {},
+                },
+            ),
+            ApplyCertificateTask(
+                namespace=constants.NAMESPACE_OPENSTACK,
+                name="self-signed-ca",
+                spec={
+                    "isCA": True,
+                    "commonName": "selfsigned-ca",
+                    "secretName": "cert-manager-selfsigned-ca",
+                    "duration": "86400h",
+                    "renewBefore": "360h",
+                    "privateKey": {"algorithm": "ECDSA", "size": 256},
+                    "issuerRef": {
+                        "kind": "Issuer",
+                        "name": "self-signed",
+                    },
+                },
+            ),
         ]
+
+        spec = {
+            "ca": {
+                "secretName": "cert-manager-selfsigned-ca",
+            }
+        }
+
+    return objects + [
+        ApplyIssuerTask(
+            namespace=constants.NAMESPACE_OPENSTACK, name="openstack", spec=spec
+        )
+    ]

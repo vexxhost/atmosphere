@@ -39,6 +39,7 @@ def get_deployment_flow(config):
             version=constants.HELM_RELEASE_CERT_MANAGER_VERSION,
             values=constants.HELM_RELEASE_CERT_MANAGER_VALUES,
         ),
+        *cert_manager.issuer_tasks_from_config(config.issuer),
         # monitoring
         v1.ApplyNamespaceTask(name=constants.NAMESPACE_MONITORING),
         flux.ApplyHelmRepositoryTask(
@@ -89,19 +90,7 @@ def get_deployment_flow(config):
             values=constants.HELM_RELEASE_PXC_OPERATOR_VALUES,
         ),
         openstack_helm.ApplyPerconaXtraDBClusterTask(),
-        flux.ApplyHelmRepositoryTask(
-            namespace=constants.NAMESPACE_OPENSTACK,
-            name=constants.HELM_REPOSITORY_INGRESS_NGINX,
-            url="https://kubernetes.github.io/ingress-nginx",
-        ),
-        flux.ApplyHelmReleaseTask(
-            namespace=constants.NAMESPACE_OPENSTACK,
-            name=constants.HELM_RELEASE_INGRESS_NGINX_NAME,
-            repository=constants.HELM_REPOSITORY_INGRESS_NGINX,
-            chart=constants.HELM_RELEASE_INGRESS_NGINX_NAME,
-            version=constants.HELM_RELEASE_INGRESS_NGINX_VERSION,
-            values=constants.HELM_RELEASE_INGRESS_NGINX_VALUES,
-        ),
+        *openstack_helm.ingress_nginx_tasks_from_config(config.ingress_nginx),
         flux.ApplyHelmRepositoryTask(
             namespace=constants.NAMESPACE_OPENSTACK,
             name=constants.HELM_REPOSITORY_OPENSTACK_HELM_INFRA,
@@ -142,9 +131,6 @@ def get_deployment_flow(config):
             name=constants.HELM_RELEASE_HEAT_NAME,
         ),
     )
-
-    for t in cert_manager.ApplyIssuerTask.from_config(config.issuer):
-        flow.add(t)
 
     if config.memcached.enabled:
         flow.add(
