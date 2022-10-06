@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.0](https://github.com/vexxhost/atmosphere/compare/v0.4.1...v0.5.0) (2022-10-06)
+
+
+### Features
+
+* **ingress:** enable overriding/disabling ([e04907d](https://github.com/vexxhost/atmosphere/commit/e04907d8d80c5bae7f601acb2315d0b4553377ef))
+
+
+### Documentation
+
+* **ingress:** add initial ([c9dddd0](https://github.com/vexxhost/atmosphere/commit/c9dddd054ba3fb5035abd0f03ec6f75ef10b83ae))
+
 ## [0.4.1](https://github.com/vexxhost/atmosphere/compare/v0.4.0...v0.4.1) (2022-10-04)
 
 
