@@ -49,7 +49,7 @@ class ApplyHelmReleaseTask(flux.ApplyHelmReleaseTask):
         )
 
 
-def ingress_nginx_tasks_from_config(config: config.IngressNginxConfig):
+def ingress_nginx_tasks_from_config(config: config.IngressNginxChartConfig):
     if not config.enabled:
         return []
 

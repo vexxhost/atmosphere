@@ -92,12 +92,14 @@ class MemcachedChartConfig(ChartConfig):
     images = types.ModelType(MemcachedImagesConfig, default=MemcachedImagesConfig())
 
 
-class IngressNginxConfig(ChartConfig):
+class IngressNginxChartConfig(ChartConfig):
     pass
 
 
 class Config(base.Model):
-    ingress_nginx = types.ModelType(IngressNginxConfig, default=IngressNginxConfig())
+    ingress_nginx = types.ModelType(
+        IngressNginxChartConfig, default=IngressNginxChartConfig()
+    )
     memcached = types.ModelType(
         MemcachedChartConfig, default=MemcachedChartConfig(), required=True
     )
