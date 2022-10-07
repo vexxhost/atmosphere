@@ -136,17 +136,17 @@ def get_deployment_flow(config):
         flow.add(
             openstack_helm.ApplyReleaseSecretTask(
                 config=config,
-                namespace=constants.NAMESPACE_OPENSTACK,
+                namespace=config.memcached.namespace,
                 chart="memcached",
             ),
             openstack_helm.ApplyHelmReleaseTask(
-                namespace=constants.NAMESPACE_OPENSTACK,
+                namespace=config.memcached.namespace,
                 repository=constants.HELM_REPOSITORY_OPENSTACK_HELM_INFRA,
                 name="memcached",
                 version="0.1.12",
             ),
             v1.ApplyServiceTask(
-                namespace=constants.NAMESPACE_OPENSTACK,
+                namespace=config.memcached.namespace,
                 name="memcached-metrics",
                 labels={
                     "application": "memcached",

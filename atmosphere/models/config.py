@@ -88,6 +88,7 @@ class MemcachedImagesConfig(base.Model):
 
 
 class MemcachedChartConfig(ChartConfig):
+    namespace = types.StringType(default="openstack", required=True)
     secret_key = types.StringType(required=True)
     images = types.ModelType(MemcachedImagesConfig, default=MemcachedImagesConfig())
 
