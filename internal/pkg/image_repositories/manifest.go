@@ -84,6 +84,6 @@ func getReleaseManifest(client *github.Client, project, release string) (*Releas
 	}
 
 	return &ReleaseManifest{
-		SHA: *branch.Commit.Commit.SHA,
+		SHA: branch.GetCommit().GetSHA(),
 	}, nil
 }
