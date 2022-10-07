@@ -61,12 +61,12 @@ def ingress_nginx_tasks_from_config(config: config.IngressNginxChartConfig):
 
     return [
         flux.ApplyHelmRepositoryTask(
-            namespace=constants.NAMESPACE_OPENSTACK,
+            namespace=config.namespace,
             name=constants.HELM_REPOSITORY_INGRESS_NGINX,
             url=constants.HELM_REPOSITORY_INGRESS_NGINX_URL,
         ),
         flux.ApplyHelmReleaseTask(
-            namespace=constants.NAMESPACE_OPENSTACK,
+            namespace=config.namespace,
             name=constants.HELM_RELEASE_INGRESS_NGINX_NAME,
             repository=constants.HELM_REPOSITORY_INGRESS_NGINX,
             chart=constants.HELM_RELEASE_INGRESS_NGINX_NAME,

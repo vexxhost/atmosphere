@@ -94,7 +94,7 @@ class MemcachedChartConfig(ChartConfig):
 
 
 class IngressNginxChartConfig(ChartConfig):
-    pass
+    namespace = types.StringType(default="openstack", required=True)
 
 
 class Config(base.Model):
