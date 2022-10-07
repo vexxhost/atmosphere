@@ -1,12 +1,13 @@
 package image_repositories
 
 import (
+	"context"
 	"fmt"
 	"io"
 
-	"code.gitea.io/sdk/gitea"
 	"github.com/go-git/go-billy/v5"
 	"github.com/goccy/go-yaml"
+	"github.com/google/go-github/v47/github"
 )
 
 type ReleaseManifest struct {
@@ -20,12 +21,7 @@ type ImageManifest struct {
 	Zed     *ReleaseManifest `yaml:"zed"`
 }
 
-func NewImageManifest(project string) (*ImageManifest, error) {
-	client, err := gitea.NewClient("https://opendev.org")
-	if err != nil {
-		return nil, err
-	}
-
+func NewImageManifest(project string, client *github.Client) (*ImageManifest, error) {
 	wallaby, err := getReleaseManifest(client, project, "wallaby")
 	if err != nil {
 		return nil, err
@@ -74,15 +70,20 @@ func (m *ImageManifest) WriteFile(fs billy.Filesystem) error {
 	return m.Write(f)
 }
 
-func getReleaseManifest(client *gitea.Client, project, release string) (*ReleaseManifest, error) {
+func getReleaseManifest(client *github.Client, project, release string) (*ReleaseManifest, error) {
 	branchName := fmt.Sprintf("stable/%s", release)
 
-	branch, _, err := client.GetRepoBranch("openstack", project, branchName)
+	gitOrg := "openstack"
+	if _, ok := FORKED_PROJECTS[project]; ok {
+		gitOrg = "vexxhost"
+	}
+
+	branch, _, err := client.Repositories.GetBranch(context.TODO(), gitOrg, project, branchName, true)
 	if err != nil {
 		return nil, err
 	}
 
 	return &ReleaseManifest{
-		SHA: branch.Commit.ID,
+		SHA: *branch.Commit.Commit.SHA,
 	}, nil
 }
