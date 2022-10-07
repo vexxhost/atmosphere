@@ -5,6 +5,9 @@ import (
 	"strings"
 )
 
+var FORKED_PROJECTS map[string]bool = map[string]bool{
+	"keystone": true,
+}
 var EXTRAS map[string]string = map[string]string{}
 var PROFILES map[string]string = map[string]string{
 	"cinder":            "ceph qemu",
@@ -67,9 +70,15 @@ func NewBuildWorkflow(project string) *GithubWorkflow {
 		platforms = val
 	}
 
+	gitRepo := fmt.Sprintf("https://github.com/openstack/%s", project)
+	if _, ok := FORKED_PROJECTS[project]; ok {
+		gitRepo = fmt.Sprintf("https://github.com/vexxhost/%s", project)
+	}
+
 	buildArgs := []string{
 		"RELEASE=${{ matrix.release }}",
 		fmt.Sprintf("PROJECT=%s", project),
+		fmt.Sprintf("PROJECT_REPO=%s", gitRepo),
 		"PROJECT_REF=${{ env.PROJECT_REF }}",
 		fmt.Sprintf("EXTRAS=%s", extras),
 		fmt.Sprintf("PROFILES=%s", profiles),
