@@ -89,7 +89,7 @@ func (i *ImageRepository) WriteFiles(ctx context.Context, fs billy.Filesystem) e
 	}
 
 	// manifest.yml
-	mf, err := NewImageManifest(i.Project)
+	mf, err := NewImageManifest(i.Project, i.githubClient)
 	if err != nil {
 		return err
 	}

@@ -23,7 +23,7 @@
         namespace: openstack
         annotations: "{{ _openstack_helm_ingress_annotations | combine(openstack_helm_ingress_annotations, recursive=True) }}"
       spec:
-        ingressClassName: openstack
+        ingressClassName: "{{ openstack_helm_ingress_class_name | default('openstack') }}"
         rules:
           - host: "{{ openstack_helm_endpoints[openstack_helm_ingress_endpoint]['host_fqdn_override']['public']['host'] }}"
             http:

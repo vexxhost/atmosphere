@@ -1,5 +1,44 @@
 # Changelog
 
+## [0.5.0](https://github.com/vexxhost/atmosphere/compare/v0.4.1...v0.5.0) (2022-10-06)
+
+
+### Features
+
+* **ingress:** enable overriding/disabling ([e04907d](https://github.com/vexxhost/atmosphere/commit/e04907d8d80c5bae7f601acb2315d0b4553377ef))
+
+
+### Documentation
+
+* **ingress:** add initial ([c9dddd0](https://github.com/vexxhost/atmosphere/commit/c9dddd054ba3fb5035abd0f03ec6f75ef10b83ae))
+
+## [0.4.1](https://github.com/vexxhost/atmosphere/compare/v0.4.0...v0.4.1) (2022-10-04)
+
+
+### Bug Fixes
+
+* **ingress:** point to correct tcp port ([54e074c](https://github.com/vexxhost/atmosphere/commit/54e074c1b01a3a5cac2915c459e336932fe2b137))
+
+## [0.4.0](https://github.com/vexxhost/atmosphere/compare/v0.3.0...v0.4.0) (2022-10-02)
+
+
+### Features
+
+* **cert-manager:** migrate to operator + add docs ([57b5339](https://github.com/vexxhost/atmosphere/commit/57b5339db15b28a6d29115e04be2ef24c764ff79))
+
+
+### Bug Fixes
+
+* add cert dep on helmrelease ([3cb0041](https://github.com/vexxhost/atmosphere/commit/3cb004114f3f2dd57c706d25a60e06f584044428))
+* add designate minidns to ingress ([f5ab8b5](https://github.com/vexxhost/atmosphere/commit/f5ab8b5302cc4a05f461644fddfc18469f913d76))
+* **atmosphere:** typo in atmosphere_issuer_config ([625b1e4](https://github.com/vexxhost/atmosphere/commit/625b1e4e98274c1049f23abbe97c75ad7c95da79))
+* **certificates:** resolve secret retrival ([8e11a31](https://github.com/vexxhost/atmosphere/commit/8e11a3179949bb0819d6f969e26e67d8992786d0))
+* **certs:** resolve ansible ternary ([6e557c8](https://github.com/vexxhost/atmosphere/commit/6e557c812a9860fae78f95c6065573f8fb91fc5c))
+* **endpoints:** move novnc endpoint to correct url ([b0ffc60](https://github.com/vexxhost/atmosphere/commit/b0ffc60b2e41add67f91a9eb93c5262900660ef7))
+* **endpoints:** Use /vnc_lite for novnc ([aeffc1b](https://github.com/vexxhost/atmosphere/commit/aeffc1b7a2e683a16764e624753bbba9a22018bd))
+* **operator:** fix load_from_file ([921aac8](https://github.com/vexxhost/atmosphere/commit/921aac854ca2b6c9d0d86660fa3a6f1d1ce495ea))
+* **operator:** openstack_cli deployment ([76605b1](https://github.com/vexxhost/atmosphere/commit/76605b1726bd532fd67733be04897505d75cf2fb))
+
 ## [0.3.0](https://github.com/vexxhost/atmosphere/compare/v0.2.2...v0.3.0) (2022-09-28)
 
 

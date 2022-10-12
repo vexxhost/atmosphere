@@ -1,6 +1,5 @@
 from schematics import types
 
-from atmosphere.config import CONF
 from atmosphere.models import base
 
 
@@ -20,12 +19,12 @@ class OsloCacheEndpoint(Endpoint):
     auth = types.ModelType(OsloCacheEndpointAuth)
 
     @classmethod
-    def for_chart(cls, chart):
+    def for_chart(cls, chart, config):
         return cls(
             {
                 "auth": OsloCacheEndpointAuth(
                     {
-                        "memcache_secret_key": CONF.memcached.secret_key,
+                        "memcache_secret_key": config.memcached.secret_key,
                     }
                 )
             }
@@ -50,7 +49,7 @@ class OsloDbEndpoint(Endpoint):
     hosts = types.ModelType(OsloDbEndpointHosts, default=OsloDbEndpointHosts())
 
     @classmethod
-    def for_chart(cls, chart):
+    def for_chart(cls, chart, config):
         pass
 
 
@@ -68,11 +67,13 @@ class Endpoints(base.Model):
     }
 
     @classmethod
-    def for_chart(cls, chart):
+    def for_chart(cls, chart, config):
         endpoint = cls()
 
         for endpoint_name in cls.ENDPOINTS[chart]:
-            endpoint[endpoint_name] = cls.MAPPINGS[endpoint_name].for_chart(chart)
+            endpoint[endpoint_name] = cls.MAPPINGS[endpoint_name].for_chart(
+                chart, config
+            )
         endpoint.validate()
 
         return endpoint

@@ -1,18 +1,27 @@
+import mergedeep
 import pykube
+import yaml
+from oslo_serialization import base64
 
+from atmosphere.models import config
 from atmosphere.models.openstack_helm import values
 from atmosphere.tasks import constants
 from atmosphere.tasks.kubernetes import base, flux, v1
 
 
 class ApplyReleaseSecretTask(v1.ApplySecretTask):
-    def __init__(self, namespace: str, chart: str, *args, **kwargs):
+    def __init__(self, config: config.Config, namespace: str, chart: str):
+        vals = mergedeep.merge(
+            {},
+            values.Values.for_chart(chart, config).to_native(),
+            getattr(config, chart).overrides,
+        )
+        values_yaml = yaml.dump(vals, default_flow_style=False)
+
         super().__init__(
-            namespace,
-            f"atmosphere-{chart}",
-            values.Values.for_chart(chart).secret_data,
-            *args,
-            **kwargs,
+            namespace=namespace,
+            name=f"atmosphere-{chart}",
+            data={"values.yaml": base64.encode_as_text(values_yaml)},
         )
 
 
@@ -40,6 +49,33 @@ class ApplyHelmReleaseTask(flux.ApplyHelmReleaseTask):
         )
 
 
+def ingress_nginx_tasks_from_config(config: config.IngressNginxChartConfig):
+    if not config.enabled:
+        return []
+
+    values = mergedeep.merge(
+        {},
+        constants.HELM_RELEASE_INGRESS_NGINX_VALUES,
+        config.overrides,
+    )
+
+    return [
+        flux.ApplyHelmRepositoryTask(
+            namespace=config.namespace,
+            name=constants.HELM_REPOSITORY_INGRESS_NGINX,
+            url=constants.HELM_REPOSITORY_INGRESS_NGINX_URL,
+        ),
+        flux.ApplyHelmReleaseTask(
+            namespace=config.namespace,
+            name=constants.HELM_RELEASE_INGRESS_NGINX_NAME,
+            repository=constants.HELM_REPOSITORY_INGRESS_NGINX,
+            chart=constants.HELM_RELEASE_INGRESS_NGINX_NAME,
+            version=constants.HELM_RELEASE_INGRESS_NGINX_VERSION,
+            values=values,
+        ),
+    ]
+
+
 class PerconaXtraDBCluster(pykube.objects.NamespacedAPIObject):
     version = "pxc.percona.com/v1-10-0"
     endpoint = "perconaxtradbclusters"
@@ -47,27 +83,25 @@ class PerconaXtraDBCluster(pykube.objects.NamespacedAPIObject):
 
 
 class ApplyPerconaXtraDBClusterTask(base.ApplyKubernetesObjectTask):
-    def __init__(self, namespace: str):
+    def __init__(self):
         super().__init__(
             kind=PerconaXtraDBCluster,
-            namespace=namespace,
+            namespace=constants.NAMESPACE_OPENSTACK,
             name="percona-xtradb",
             requires=[
-                f"helm-release-{namespace}-{constants.HELM_RELEASE_PXC_OPERATOR_NAME}",
-                "name",
+                f"helm-release-{constants.NAMESPACE_OPENSTACK}-{constants.HELM_RELEASE_PXC_OPERATOR_NAME}",
             ],
-            inject={"name": "percona-xtradb"},
         )
 
-    def generate_object(self, namespace, name, **kwargs) -> PerconaXtraDBCluster:
+    def generate_object(self) -> PerconaXtraDBCluster:
         return PerconaXtraDBCluster(
             self.api,
             {
                 "apiVersion": self._obj_kind.version,
                 "kind": self._obj_kind.kind,
                 "metadata": {
-                    "name": name,
-                    "namespace": namespace.name,
+                    "name": self._obj_name,
+                    "namespace": self._obj_namespace,
                 },
                 "spec": {
                     "crVersion": "1.10.0",
@@ -134,20 +168,18 @@ class ApplyRabbitmqClusterTask(base.ApplyKubernetesObjectTask):
             name=name,
             requires=[
                 f"helm-release-{constants.NAMESPACE_OPENSTACK}-{constants.HELM_RELEASE_RABBITMQ_OPERATOR_NAME}",
-                "name",
             ],
-            inject={"name": name},
         )
 
-    def generate_object(self, namespace, name, **kwargs) -> RabbitmqCluster:
+    def generate_object(self) -> RabbitmqCluster:
         return RabbitmqCluster(
             self.api,
             {
                 "apiVersion": self._obj_kind.version,
                 "kind": self._obj_kind.kind,
                 "metadata": {
-                    "name": f"rabbitmq-{name}",
-                    "namespace": namespace.name,
+                    "name": f"rabbitmq-{self._obj_name}",
+                    "namespace": self._obj_namespace,
                 },
                 "spec": {
                     "affinity": {

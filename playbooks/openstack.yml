@@ -52,10 +52,6 @@
       tags:
         - prometheus-pushgateway
 
-    - role: cert_manager
-      tags:
-        - cert-manager
-
     - role: keepalived
       tags:
         - keepalived
@@ -126,6 +122,7 @@
         - openstack-exporter
 
 - hosts: controllers
+  become: true
   gather_facts: false
   roles:
     - role: openstack_cli

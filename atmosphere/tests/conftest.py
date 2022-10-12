@@ -4,6 +4,19 @@ import subprocess
 import pytest
 import requests
 
+from atmosphere.models import config
+
+
+@pytest.fixture
+def sample_config():
+    return config.Config(
+        {
+            "memcached": {
+                "secret_key": "foobar",
+            }
+        }
+    )
+
 
 @pytest.fixture
 def pykube(mocker):

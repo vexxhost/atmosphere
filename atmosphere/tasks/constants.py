@@ -10,7 +10,10 @@ NAMESPACE_OPENSTACK = "openstack"
 HELM_REPOSITORY_BITNAMI = "bitnami"
 HELM_REPOSITORY_CEPH = "ceph"
 HELM_REPOSITORY_COREDNS = "coredns"
+
 HELM_REPOSITORY_INGRESS_NGINX = "ingress-nginx"
+HELM_REPOSITORY_INGRESS_NGINX_URL = "https://kubernetes.github.io/ingress-nginx"
+
 HELM_REPOSITORY_JETSTACK = "jetstack"
 HELM_REPOSITORY_NODE_FEATURE_DISCOVERY = "node-feature-discovery"
 HELM_REPOSITORY_OPENSTACK_HELM = "openstack-helm"
@@ -27,13 +30,15 @@ HELM_RELEASE_INGRESS_NGINX_VALUES = {
         "hostNetwork": True,
         "ingressClassResource": {"name": "openstack"},
         "ingressClass": "openstack",
-        "extraArgs": {"default-ssl-certificate": "ingress-nginx/wildcard"},
         "kind": "DaemonSet",
         "nodeSelector": NODE_SELECTOR_CONTROL_PLANE,
         "service": {"type": "ClusterIP"},
         "admissionWebhooks": {"port": 7443},
     },
     "defaultBackend": {"enabled": True},
+    "tcp": {
+        "5354": "openstack/minidns:5354",
+    },
 }
 
 HELM_RELEASE_CERT_MANAGER_NAME = "cert-manager"
