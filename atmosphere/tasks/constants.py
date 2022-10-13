@@ -339,6 +339,9 @@ HELM_RELEASE_INGRESS_NGINX_VALUES = {
     "tcp": {
         "5354": "openstack/minidns:5354",
     },
+    "udp": {
+        "5354": "openstack/minidns:5354",
+    },
 }
 
 HELM_RELEASE_CERT_MANAGER_NAME = "cert-manager"
