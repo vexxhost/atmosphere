@@ -8,7 +8,7 @@ EOF
 FROM poetry AS builder
 RUN <<EOF
   apt-get update
-  apt-get install -y gcc
+  apt-get install -y gcc make
 EOF
 WORKDIR /app
 ADD poetry.lock /app
