@@ -46,9 +46,9 @@ from atmosphere.tasks.composite import openstack_helm
                                 "version": constants.HELM_RELEASE_INGRESS_NGINX_VERSION,
                             }
                         },
-                        "install": {"disableWait": True},
+                        "install": {"crds": "CreateReplace", "disableWait": True},
                         "interval": "60s",
-                        "upgrade": {"disableWait": True},
+                        "upgrade": {"crds": "CreateReplace", "disableWait": True},
                         "values": constants.HELM_RELEASE_INGRESS_NGINX_VALUES,
                         "valuesFrom": [],
                     },
@@ -94,9 +94,9 @@ from atmosphere.tasks.composite import openstack_helm
                                 "version": constants.HELM_RELEASE_INGRESS_NGINX_VERSION,
                             }
                         },
-                        "install": {"disableWait": True},
+                        "install": {"crds": "CreateReplace", "disableWait": True},
                         "interval": "60s",
-                        "upgrade": {"disableWait": True},
+                        "upgrade": {"crds": "CreateReplace", "disableWait": True},
                         "values": {
                             **constants.HELM_RELEASE_INGRESS_NGINX_VALUES,
                             "foo": "bar",
