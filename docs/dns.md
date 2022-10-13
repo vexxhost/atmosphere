@@ -25,7 +25,11 @@ openstack_helm_designate_pools: |
         description: PowerDNS Server
         # MiniDNS Configuration options
         masters:
-          - host: minidns
+          - host: {{ hostvars['ctl1']['ansible_host'] }}
+            port: 5354
+          - host: {{ hostvars['ctl2']['ansible_host'] }}
+            port: 5354
+          - host: {{ hostvars['ctl3']['ansible_host'] }}
             port: 5354
         # PowerDNS Configuration options
         options:
