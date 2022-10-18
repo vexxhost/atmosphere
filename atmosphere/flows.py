@@ -3,7 +3,7 @@ from taskflow.patterns import graph_flow
 
 from atmosphere.tasks import constants
 from atmosphere.tasks.composite import openstack_helm
-from atmosphere.tasks.kubernetes import cert_manager, flux, v1
+from atmosphere.tasks.kubernetes import cert_manager, flux, rook, v1
 
 
 def get_engine(config):
@@ -24,21 +24,7 @@ def get_deployment_flow(config):
             name=constants.HELM_REPOSITORY_CEPH,
             url="https://ceph.github.io/csi-charts",
         ),
-        # rook-ceph
-        v1.ApplyNamespaceTask(name=constants.NAMESPACE_ROOK_CEPH),
-        flux.ApplyHelmRepositoryTask(
-            namespace=constants.NAMESPACE_ROOK_CEPH,
-            name=constants.HELM_REPOSITORY_ROOK_CEPH,
-            url="https://charts.rook.io/release",
-        ),
-        flux.ApplyHelmReleaseTask(
-            namespace=constants.NAMESPACE_ROOK_CEPH,
-            name=constants.HELM_REPOSITORY_ROOK_CEPH,
-            repository=constants.HELM_REPOSITORY_ROOK_CEPH,
-            chart=constants.HELM_RELEASE_ROOK_CEPH_NAME,
-            version=constants.HELM_RELEASE_ROOK_CEPH_VERSION,
-            values=constants.HELM_RELEASE_ROOK_CEPH_VALUES,
-        ),
+        *rook.tasks_from_config(config.rook),
         # cert-manager
         v1.ApplyNamespaceTask(name=constants.NAMESPACE_CERT_MANAGER),
         flux.ApplyHelmRepositoryTask(

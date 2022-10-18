@@ -58,6 +58,12 @@ HELM_RELEASE_ROOK_CEPH_NAME = "rook-ceph"
 HELM_RELEASE_ROOK_CEPH_VERSION = "1.10.3"
 HELM_RELEASE_ROOK_CEPH_VALUES = {
     "nodeSelector": NODE_SELECTOR_CONTROL_PLANE,
+    # NOTE(mnaser): Once we implement storage inside Atmosphere, we can rely on
+    #               Rook to manage this.
+    "csi": {
+        "enableRbdDriver": False,
+        "enableCephfsDriver": False,
+    },
 }
 
 HELM_RELEASE_KUBE_PROMETHEUS_STACK_NAME = "kube-prometheus-stack"

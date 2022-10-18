@@ -86,6 +86,18 @@ class KubePrometheusStackChartConfig(ChartConfig):
     namespace = types.StringType(default="monitoring", required=True)
 
 
+class MonitorRookCephChartConfig(base.Model):
+    name = types.StringType(required=True)
+    address = types.StringType(required=True)
+
+
+class RookCephChartConfig(ChartConfig):
+    fsid = types.StringType(required=True)
+    admin_secret = types.StringType(required=True)
+    monitors = types.ListType(types.ModelType(MonitorRookCephChartConfig), min_size=1)
+    monitor_secret = types.StringType(required=True)
+
+
 class MemcachedImagesConfig(base.Model):
     memcached = types.StringType(default="docker.io/library/memcached:1.6.17")
     exporter = types.StringType(default="quay.io/prometheus/memcached-exporter:v0.10.0")
@@ -102,6 +114,7 @@ class IngressNginxChartConfig(ChartConfig):
 
 
 class Config(base.Model):
+    rook = types.ModelType(RookCephChartConfig, default=RookCephChartConfig())
     kube_prometheus_stack = types.ModelType(
         KubePrometheusStackChartConfig, default=KubePrometheusStackChartConfig()
     )

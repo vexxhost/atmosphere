@@ -1,4 +1,40 @@
+- name: Retrieve keyring for client.admin
+  run_once: true
+  vexxhost.atmosphere.ceph_key:
+    name: client.admin
+    state: info
+    output_format: json
+  register: _ceph_key
+
+- name: Store keyring inside fact for client.admin
+  ansible.builtin.set_fact:
+    _atmosphere_rook_client_admin_key: "{{ (_ceph_key.stdout | from_json | first).key }}"
+
+- name: Retrieve keyring for monitors
+  run_once: true
+  vexxhost.atmosphere.ceph_key:
+    name: mon.
+    state: info
+    output_format: json
+  register: _ceph_key
+
+- name: Store keyring inside fact for monitors
+  ansible.builtin.set_fact:
+    _atmosphere_rook_mon_key: "{{ (_ceph_key.stdout | from_json | first).key }}"
+
+- name: Collect "ceph mon dump" output from a monitor
+  run_once: true
+  ansible.builtin.command: ceph mon dump -f json
+  changed_when: false
+  register: _ceph_mon_dump
+
+- name: Generate fact with list of Ceph monitors
+  run_once: true
+  ansible.builtin.set_fact:
+    _atmosphere_ceph_monitors: "{{ _ceph_mon_dump.stdout | from_json | community.general.json_query('mons[*].{name: name, address: addr}') }}"
+
 - name: Install operator
+  run_once: true
   kubernetes.core.k8s:
     state: present
     template:
