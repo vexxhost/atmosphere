@@ -39,6 +39,17 @@ def test_e2e_for_operator(tmp_path, flux_cluster, docker_image):
             "issuer": {
                 "email": "test@example.com",
             },
+            "rook": {
+                "fsid": "50f5933e-ba53-4fae-b563-c9d409284c32",
+                "admin_secret": "admin-secret",
+                "monitor_secret": "monitor-secret",
+                "monitors": [
+                    {
+                        "name": "mon-a",
+                        "address": "1.1.1.1",
+                    }
+                ],
+            },
         },
     }
 
