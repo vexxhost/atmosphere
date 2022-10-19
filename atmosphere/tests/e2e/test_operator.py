@@ -18,7 +18,7 @@ def docker_image():
     return image
 
 
-def test_e2e_for_operator(tmp_path, flux_cluster, docker_image):
+def test_e2e_for_operator(tmp_path, flux_cluster, docker_image, sample_config):
     flux_cluster.load_docker_image(docker_image)
     flux_cluster.kubectl(
         "label", "node", "pytest-kind-control-plane", "openstack-control-plane=enabled"
@@ -32,25 +32,7 @@ def test_e2e_for_operator(tmp_path, flux_cluster, docker_image):
 
     args = {
         "atmosphere_image": docker_image,
-        "atmosphere_config": {
-            "memcached": {
-                "secret_key": "foobar",
-            },
-            "issuer": {
-                "email": "test@example.com",
-            },
-            "rook": {
-                "fsid": "50f5933e-ba53-4fae-b563-c9d409284c32",
-                "admin_secret": "admin-secret",
-                "monitor_secret": "monitor-secret",
-                "monitors": [
-                    {
-                        "name": "mon-a",
-                        "address": "1.1.1.1",
-                    }
-                ],
-            },
-        },
+        "atmosphere_config": sample_config,
     }
 
     # NOTE(mnaser): Create namespace before anything

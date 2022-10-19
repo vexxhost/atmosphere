@@ -11,6 +11,7 @@ from atmosphere.models import config
 def sample_config():
     return config.Config(
         {
+            "domain": "example.com",
             "memcached": {
                 "secret_key": "foobar",
             },
