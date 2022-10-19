@@ -195,4 +195,45 @@ def tasks_from_config(config: config.Config) -> list:
             cluster="rook-ceph",
             name="rook-ceph",
         ),
+        v1.ApplyIngressTask(
+            namespace=constants.NAMESPACE_ROOK_CEPH,
+            name="rook-ceph-rgw",
+            annotations={
+                "cert-manager.io/cluster-issuer": "atmosphere",
+                "nginx.ingress.kubernetes.io/proxy-body-size": "0",
+                "nginx.ingress.kubernetes.io/proxy-request-buffering": "off",
+            },
+            spec={
+                "ingressClassName": "openstack",
+                "rules": [
+                    {
+                        "host": f"object-storage.{config.domain}",
+                        "http": {
+                            "paths": [
+                                {
+                                    "path": "/",
+                                    "pathType": "Prefix",
+                                    "backend": {
+                                        "service": {
+                                            "name": "rook-ceph-rgw-rook-ceph",
+                                            "port": {
+                                                "number": 80,
+                                            },
+                                        }
+                                    },
+                                },
+                            ],
+                        },
+                    },
+                ],
+                "tls": [
+                    {
+                        "secretName": "swift-tls",
+                        "hosts": [
+                            f"object-storage.{config.domain}",
+                        ],
+                    },
+                ],
+            },
+        ),
     ]

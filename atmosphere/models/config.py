@@ -141,6 +141,7 @@ class IngressNginxChartConfig(ChartConfig):
 
 
 class Config(base.Model):
+    domain = types.StringType(required=True)
     rook = types.ModelType(RookCephChartConfig, default=RookCephChartConfig())
     kube_prometheus_stack = types.ModelType(
         KubePrometheusStackChartConfig, default=KubePrometheusStackChartConfig()

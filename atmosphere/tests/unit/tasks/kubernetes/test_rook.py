@@ -14,6 +14,8 @@ from atmosphere.tasks.kubernetes import rook
         pytest.param(
             textwrap.dedent(
                 """\
+                domain = "example.com"
+
                 [rook]
                 fsid = "b5273e43-f475-4c80-b37e-c6ac18042111"
                 admin_secret = "secret-for-admin"
@@ -174,6 +176,48 @@ from atmosphere.tasks.kubernetes import rook
                             "replicated": {"size": 3},
                         },
                         "preservePoolsOnDelete": True,
+                    },
+                },
+                {
+                    "apiVersion": "networking.k8s.io/v1",
+                    "kind": "Ingress",
+                    "metadata": {
+                        "name": "rook-ceph-rgw",
+                        "namespace": "rook-ceph",
+                        "labels": {},
+                        "annotations": {
+                            "cert-manager.io/cluster-issuer": "atmosphere",
+                            "nginx.ingress.kubernetes.io/proxy-body-size": "0",
+                            "nginx.ingress.kubernetes.io/proxy-request-buffering": "off",
+                        },
+                    },
+                    "spec": {
+                        "ingressClassName": "openstack",
+                        "rules": [
+                            {
+                                "host": "object-storage.example.com",
+                                "http": {
+                                    "paths": [
+                                        {
+                                            "path": "/",
+                                            "pathType": "Prefix",
+                                            "backend": {
+                                                "service": {
+                                                    "name": "rook-ceph-rgw-rook-ceph",
+                                                    "port": {"number": 80},
+                                                },
+                                            },
+                                        }
+                                    ]
+                                },
+                            }
+                        ],
+                        "tls": [
+                            {
+                                "secretName": "swift-tls",
+                                "hosts": ["object-storage.example.com"],
+                            }
+                        ],
                     },
                 },
             ],
