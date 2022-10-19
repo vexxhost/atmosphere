@@ -18,6 +18,7 @@ from atmosphere.tasks.kubernetes import rook
                 fsid = "b5273e43-f475-4c80-b37e-c6ac18042111"
                 admin_secret = "secret-for-admin"
                 monitor_secret = "secret-for-monitor"
+                keystone_password = "secret-for-keystone"
 
                 [[rook.monitors]]
                 name = "mon0"
@@ -113,10 +114,10 @@ from atmosphere.tasks.kubernetes import rook
                             [client]
                             rgw keystone api version = 3
                             rgw keystone url =  http://keystone-api.openstack.svc.cluster.local:5000
-                            rgw keystone admin user = admin
-                            rgw keystone admin password = FOOBAR
-                            rgw_keystone admin domain = services
-                            rgw_keystone admin project = admin
+                            rgw keystone admin user = swift
+                            rgw keystone admin password = secret-for-keystone
+                            rgw_keystone admin domain = service
+                            rgw_keystone admin project = service
                             rgw keystone implicit tenants = true
                             rgw keystone accepted roles = member,admin
                             rgw_keystone accepted admin roles = admin

@@ -170,14 +170,14 @@ def tasks_from_config(config: config.Config) -> list:
             name="rook-config-override",
             data={
                 "config": textwrap.dedent(
-                    """\
+                    f"""\
                     [client]
                     rgw keystone api version = 3
                     rgw keystone url =  http://keystone-api.openstack.svc.cluster.local:5000
-                    rgw keystone admin user = admin
-                    rgw keystone admin password = FOOBAR
-                    rgw_keystone admin domain = services
-                    rgw_keystone admin project = admin
+                    rgw keystone admin user = swift
+                    rgw keystone admin password = {config.rook.keystone_password}
+                    rgw_keystone admin domain = service
+                    rgw_keystone admin project = service
                     rgw keystone implicit tenants = true
                     rgw keystone accepted roles = member,admin
                     rgw_keystone accepted admin roles = admin

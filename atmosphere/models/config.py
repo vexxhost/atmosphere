@@ -97,6 +97,7 @@ class RookCephChartConfig(ChartConfig):
     admin_secret = types.StringType()
     monitors = types.ListType(types.ModelType(MonitorRookCephChartConfig), min_size=1)
     monitor_secret = types.StringType()
+    keystone_password = types.StringType()
 
     def validate_fsid(self, data, value):
         if data["enabled"] and not value:
@@ -114,6 +115,11 @@ class RookCephChartConfig(ChartConfig):
         return value
 
     def validate_monitor_secret(self, data, value):
+        if data["enabled"] and not value:
+            raise ValidationError(types.BaseType.MESSAGES["required"])
+        return value
+
+    def validate_keystone_password(self, data, value):
         if data["enabled"] and not value:
             raise ValidationError(types.BaseType.MESSAGES["required"])
         return value
