@@ -15,7 +15,9 @@ NAMESPACE_ROOK_CEPH = "rook-ceph"
 HELM_REPOSITORY_BITNAMI = "bitnami"
 HELM_REPOSITORY_CEPH = "ceph"
 HELM_REPOSITORY_COREDNS = "coredns"
+
 HELM_REPOSITORY_ROOK_CEPH = "rook-ceph"
+HELM_REPOSITORY_ROOK_CEPH_URL = "https://charts.rook.io/release"
 
 HELM_REPOSITORY_INGRESS_NGINX = "ingress-nginx"
 HELM_REPOSITORY_INGRESS_NGINX_URL = "https://kubernetes.github.io/ingress-nginx"

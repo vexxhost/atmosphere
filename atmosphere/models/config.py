@@ -2,6 +2,7 @@ import os
 
 import tomli
 from schematics import types
+from schematics.exceptions import ValidationError
 
 from atmosphere.models import base
 
@@ -92,10 +93,30 @@ class MonitorRookCephChartConfig(base.Model):
 
 
 class RookCephChartConfig(ChartConfig):
-    fsid = types.StringType(required=True)
-    admin_secret = types.StringType(required=True)
+    fsid = types.StringType()
+    admin_secret = types.StringType()
     monitors = types.ListType(types.ModelType(MonitorRookCephChartConfig), min_size=1)
-    monitor_secret = types.StringType(required=True)
+    monitor_secret = types.StringType()
+
+    def validate_fsid(self, data, value):
+        if data["enabled"] and not value:
+            raise ValidationError(types.BaseType.MESSAGES["required"])
+        return value
+
+    def validate_admin_secret(self, data, value):
+        if data["enabled"] and not value:
+            raise ValidationError(types.BaseType.MESSAGES["required"])
+        return value
+
+    def validate_monitors(self, data, value):
+        if data["enabled"] and not value:
+            raise ValidationError(types.BaseType.MESSAGES["required"])
+        return value
+
+    def validate_monitor_secret(self, data, value):
+        if data["enabled"] and not value:
+            raise ValidationError(types.BaseType.MESSAGES["required"])
+        return value
 
 
 class MemcachedImagesConfig(base.Model):
