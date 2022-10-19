@@ -60,9 +60,9 @@ func NewBuildWorkflow(project string) *GithubWorkflow {
 		distPackages = val
 	}
 
-	pipPackages := ""
+	pipPackages := "cryptography"
 	if val, ok := PIP_PACKAGES[project]; ok {
-		pipPackages = val
+		pipPackages += fmt.Sprintf(" %s", val)
 	}
 
 	platforms := "linux/amd64"
