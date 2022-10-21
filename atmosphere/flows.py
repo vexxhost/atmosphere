@@ -123,6 +123,9 @@ def get_deployment_flow(config):
             name=constants.HELM_RELEASE_NOVA_NAME,
         ),
         openstack_helm.ApplyRabbitmqClusterTask(
+            name=constants.HELM_RELEASE_OCTAVIA_NAME,
+        ),
+        openstack_helm.ApplyRabbitmqClusterTask(
             name=constants.HELM_RELEASE_SENLIN_NAME,
         ),
         openstack_helm.ApplyRabbitmqClusterTask(
