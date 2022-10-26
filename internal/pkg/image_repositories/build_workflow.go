@@ -29,7 +29,7 @@ var DIST_PACAKGES map[string]string = map[string]string{
 	"ironic":        "ethtool lshw iproute2",
 	"monasca-agent": "iproute2 libvirt-clients lshw",
 	"neutron":       "jq ethtool lshw",
-	"nova":          "ovmf qemu-efi-aarch64 lsscsi nvme-cli sysfsutils udev util-linux",
+	"nova":          "ovmf qemu-efi-aarch64 lsscsi nvme-cli sysfsutils udev util-linux ndctl",
 }
 var PIP_PACKAGES map[string]string = map[string]string{
 	"glance":        "glance_store[cinder]",
