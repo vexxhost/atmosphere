@@ -33,7 +33,7 @@ var DIST_PACAKGES map[string]string = map[string]string{
 }
 var PIP_PACKAGES map[string]string = map[string]string{
 	"glance":        "glance_store[cinder]",
-	"horizon":       "designate-dashboard heat-dashboard ironic-ui magnum-ui neutron-vpnaas-dashboard octavia-dashboard senlin-dashboard monasca-ui",
+	"horizon":       "git+https://github.com/openstack/designate-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/heat-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/ironic-ui.git@stable/${{ matrix.release }} git+https://github.com/openstack/magnum-ui.git@stable/${{ matrix.release }} git+https://github.com/openstack/neutron-vpnaas-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/octavia-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/senlin-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/monasca-ui.git@stable/${{ matrix.release }}",
 	"ironic":        "python-dracclient sushy",
 	"monasca-agent": "libvirt-python python-glanceclient python-neutronclient python-novaclient py3nvml",
 	"neutron":       "neutron-vpnaas",
