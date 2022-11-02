@@ -46,6 +46,6 @@ list of services that are planned to be included in the future.
 
 !!! note
 
-    The list of services is not final and may change over time, with no promised
-    timeline on the addition of those feature.  If you would like to sponsor the
-    development of a specific service, please [contact us](https://vexxhost.com/contact-us/).
+   The list of services is not final and may change over time, with no promised
+   timeline on the addition of those feature.  If you would like to sponsor the
+   development of a specific service, please [contact us](https://vexxhost.com/contact-us/).

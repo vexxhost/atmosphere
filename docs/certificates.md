@@ -66,8 +66,8 @@ atmosphere_issuer_config:
 
 !!! note
 
-    You'll need to make sure that your AWS credentials have the correct
-    permissions to update the Route53 zone.
+   You'll need to make sure that your AWS credentials have the correct
+   permissions to update the Route53 zone.
 
 ## Using pre-existing CA
 
@@ -93,9 +93,9 @@ atmosphere_issuer_config:
 
 !!! note
 
-    If your issuer is an intermediate certificate, you will need to ensure that
-    they `certificate` key includes the full chain in the correct order of issuer,
-    intermediate(s) then root.
+   If your issuer is an intermediate certificate, you will need to ensure that
+   they `certificate` key includes the full chain in the correct order of issuer,
+   intermediate(s) then root.
 
 ## Self-signed certificates
 
@@ -110,5 +110,5 @@ atmosphere_issuer_config:
 
 !!! warning
 
-    Self-signed certificates are not recommended for production environments,
-    they are only recommended for development and testing environments.
+   Self-signed certificates are not recommended for production environments,
+   they are only recommended for development and testing environments.

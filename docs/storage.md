@@ -12,11 +12,9 @@ atmosphere_ceph_enabled: false
 ### Dell PowerStore
 
 In order to be able to use Dell PowerStore, you'll need to make sure that you
-setup the hosts inside of your storage array.  You'll also need to make sure
+setup the hosts inside of your storage array. You'll also need to make sure
 that they are not inside a host group or otherwise individual attachments will
 not work.
-
-
 
 ### CSI
 
@@ -54,7 +52,7 @@ openstack_helm_glance_values:
 ```
 
 Please note that Glance images will not function until the Cinder service is
-deployed.  In addition, we're forcing all images to be `raw` format in order to
+deployed. In addition, we're forcing all images to be `raw` format in order to
 avoid any issues with the PowerStore driver having to constantly download and
 upload the images.
 
@@ -113,7 +111,7 @@ openstack_helm_cinder_values:
 ```
 
 It's important to note that the configuration above will disable the Cinder
-backup service.  In the future, we'll update this sample configuration to use
+backup service. In the future, we'll update this sample configuration to use
 the Cinder backup service.
 
 ### Nova
