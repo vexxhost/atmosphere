@@ -32,7 +32,7 @@
     application: rbd
     pg_autoscale_mode: "on"
 
-- name: Create {{ ceph_csi_rbd_user }} user
+- name: Create user {{ ceph_csi_rbd_user }}
   delegate_to: "{{ groups[ceph_csi_rbd_mons_group][0] }}"
   vexxhost.atmosphere.ceph_key:
     name: "{{ ceph_csi_rbd_user }}"
@@ -41,7 +41,7 @@
       mgr: profile rbd pool={{ ceph_csi_rbd_pool }}
       osd: profile rbd pool={{ ceph_csi_rbd_pool }}
 
-- name: Retrieve {{ ceph_csi_rbd_user }} keyring
+- name: Retrieve keyring for {{ ceph_csi_rbd_user }}
   delegate_to: "{{ groups[ceph_csi_rbd_mons_group][0] }}"
   vexxhost.atmosphere.ceph_key:
     name: "{{ ceph_csi_rbd_user }}"

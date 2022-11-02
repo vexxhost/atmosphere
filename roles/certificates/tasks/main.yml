@@ -13,6 +13,9 @@
 # under the License.
 
 - name: Bootstrap PKI
+  when:
+    - atmosphere_issuer_config.type is defined
+    - atmosphere_issuer_config.type in ("self-signed", "ca")
   block:
     - name: Wait till the secret is created
       kubernetes.core.k8s_info:
@@ -35,6 +38,3 @@
       ansible.builtin.command:
         cmd: update-ca-certificates
       changed_when: false
-  when:
-    - atmosphere_issuer_config.type is defined
-    - atmosphere_issuer_config.type in ("self-signed", "ca")
