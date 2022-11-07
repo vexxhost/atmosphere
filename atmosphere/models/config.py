@@ -82,6 +82,10 @@ class ChartConfig(base.Model):
     overrides = types.DictType(types.BaseType(), default={})
 
 
+class KubePrometheusStackChartConfig(ChartConfig):
+    namespace = types.StringType(default="monitoring", required=True)
+
+
 class MemcachedImagesConfig(base.Model):
     memcached = types.StringType(default="docker.io/library/memcached:1.6.17")
     exporter = types.StringType(default="quay.io/prometheus/memcached-exporter:v0.10.0")
@@ -98,6 +102,9 @@ class IngressNginxChartConfig(ChartConfig):
 
 
 class Config(base.Model):
+    kube_prometheus_stack = types.ModelType(
+        KubePrometheusStackChartConfig, default=KubePrometheusStackChartConfig()
+    )
     ingress_nginx = types.ModelType(
         IngressNginxChartConfig, default=IngressNginxChartConfig()
     )

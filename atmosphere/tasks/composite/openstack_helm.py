@@ -49,6 +49,35 @@ class ApplyHelmReleaseTask(flux.ApplyHelmReleaseTask):
         )
 
 
+def kube_prometheus_stack_tasks_from_config(
+    config: config.KubePrometheusStackChartConfig,
+):
+    if not config.enabled:
+        return []
+
+    values = mergedeep.merge(
+        {},
+        constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_VALUES,
+        config.overrides,
+    )
+
+    return [
+        flux.ApplyHelmRepositoryTask(
+            namespace=constants.NAMESPACE_MONITORING,
+            name=constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY,
+            url="https://prometheus-community.github.io/helm-charts",
+        ),
+        flux.ApplyHelmReleaseTask(
+            namespace=config.namespace,
+            name=constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_NAME,
+            repository=constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY,
+            chart=constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_NAME,
+            version=constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_VERSION,
+            values=values,
+        ),
+    ]
+
+
 def ingress_nginx_tasks_from_config(config: config.IngressNginxChartConfig):
     if not config.enabled:
         return []
