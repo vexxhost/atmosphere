@@ -1,6 +1,8 @@
 atmosphere_image: quay.io/vexxhost/atmosphere:0.5.0 # x-release-please-version
 
 atmosphere_config:
+  kube_prometheus_stack:
+    overrides: "{{ kube_prometheus_stack_values | default({}) }}"
   memcached:
     secret_key: "{{ openstack_helm_endpoints_memcached_secret_key }}"
     overrides: "{{ openstack_helm_infra_memcached_values | default({}) }}"
