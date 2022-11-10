@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.6.0](https://github.com/vexxhost/atmosphere/compare/v0.5.0...v0.6.0) (2022-11-10)
+
+
+### Features
+
+* allow for a custom cluster IP address for the neutron coredns service, with a default of '10.96.0.20' ([662866f](https://github.com/vexxhost/atmosphere/commit/662866fb56b6601bf0348428641f445604b2b3fd))
+* allow for a custom ingressClassName on OpenStack component ingress objects, with a default of 'openstack' ([d8d1fde](https://github.com/vexxhost/atmosphere/commit/d8d1fde11eeb7e36eb10ec01d318af4d2a1cee71))
+* **ingress:** allow overriding ingress namespace ([31e528b](https://github.com/vexxhost/atmosphere/commit/31e528b39822db1513623e3db0cc8e4fe388ebc1))
+* **memcached:** allow overriding namespace ([661b0b0](https://github.com/vexxhost/atmosphere/commit/661b0b0ee56361806f3d425e047705c5c76f6be0))
+* **monitoring:** add to operator ([7d3c797](https://github.com/vexxhost/atmosphere/commit/7d3c797689f60c904a7a2bc3dd923af2fe3ef379))
+
+
+### Bug Fixes
+
+* bump magnum-capi ([aeb2081](https://github.com/vexxhost/atmosphere/commit/aeb208142574a289bab4044559437fa74d1b5b4e))
+* bump magnum-capi ([3d9509a](https://github.com/vexxhost/atmosphere/commit/3d9509a8a50ff1bcfe214f8584d28da6b395dfae))
+* use release specific dashboard addons ([7f45988](https://github.com/vexxhost/atmosphere/commit/7f45988ebf9db38463b9e91808b498cc9072e86f))
+
+
+### Documentation
+
+* add initial ([c45b71c](https://github.com/vexxhost/atmosphere/commit/c45b71ccd350207d1486bc534607b756c654a82f))
+
 ## [0.5.0](https://github.com/vexxhost/atmosphere/compare/v0.4.1...v0.5.0) (2022-10-06)
 
 
