@@ -53,7 +53,7 @@ PROMETHEUS_MONITOR_RELABELINGS_KUBELET = [
 ]
 
 HELM_RELEASE_KUBE_PROMETHEUS_STACK_NAME = "kube-prometheus-stack"
-HELM_RELEASE_KUBE_PROMETHEUS_STACK_VERSION = "41.0.0"
+HELM_RELEASE_KUBE_PROMETHEUS_STACK_VERSION = "41.7.3"
 HELM_RELEASE_KUBE_PROMETHEUS_STACK_VALUES = {
     "defaultRules": {
         "disabled": {
@@ -108,6 +108,10 @@ HELM_RELEASE_KUBE_PROMETHEUS_STACK_VALUES = {
         }
     },
     "kubeEtcd": {
+        "service": {
+            "port": 2379,
+            "targetPort": 2379,
+        },
         "serviceMonitor": {
             "scheme": "https",
             "serverName": "localhost",
@@ -116,7 +120,7 @@ HELM_RELEASE_KUBE_PROMETHEUS_STACK_VALUES = {
             "certFile": "/etc/prometheus/secrets/kube-prometheus-stack-etcd-client-cert/healthcheck-client.crt",
             "keyFile": "/etc/prometheus/secrets/kube-prometheus-stack-etcd-client-cert/healthcheck-client.key",
             "relabelings": PROMETHEUS_MONITOR_RELABELINGS_INSTANCE_TO_NODE_NAME,
-        }
+        },
     },
     "kubeScheduler": {
         "service": {"port": 10259, "targetPort": 10259},
