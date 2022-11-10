@@ -153,7 +153,7 @@
           },
           {
             alert: 'NodeLowEntropy',
-            expr: 'node_entropy_available_bits < 1000',
+            expr: 'node_entropy_available_bits / node_entropy_pool_size_bits < 0.20',
             'for': '5m',
             labels: {
               severity: 'warning',
