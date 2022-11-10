@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.6.1](https://github.com/vexxhost/atmosphere/compare/v0.6.0...v0.6.1) (2022-11-10)
+
+
+### Bug Fixes
+
+* **monitoring:** correct CoreDNS selector ([92df86a](https://github.com/vexxhost/atmosphere/commit/92df86a232c8f351bee2572443b15cb7478d9841))
+* **monitoring:** fix NodeLowEntropy alerts ([5d41d7f](https://github.com/vexxhost/atmosphere/commit/5d41d7f3a201f12d8d9144396a5402aef3c1575d))
+* **monitoring:** resolve etcd monitoring ([ba92607](https://github.com/vexxhost/atmosphere/commit/ba9260717d2547d74f92e37130c0cff2017f81d7))
+
 ## [0.6.0](https://github.com/vexxhost/atmosphere/compare/v0.5.0...v0.6.0) (2022-11-10)
 
 
