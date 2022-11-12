@@ -24,6 +24,17 @@ from atmosphere.tasks.kubernetes import cert_manager
                     "apiVersion": cert_manager.Issuer.version,
                     "kind": cert_manager.Issuer.kind,
                     "metadata": {
+                        "name": "self-signed",
+                        "namespace": constants.NAMESPACE_OPENSTACK,
+                    },
+                    "spec": {
+                        "selfSigned": {},
+                    },
+                },
+                {
+                    "apiVersion": cert_manager.Issuer.version,
+                    "kind": cert_manager.Issuer.kind,
+                    "metadata": {
                         "name": "openstack",
                         "namespace": constants.NAMESPACE_OPENSTACK,
                     },
@@ -64,6 +75,17 @@ from atmosphere.tasks.kubernetes import cert_manager
                 """
             ),
             [
+                {
+                    "apiVersion": cert_manager.Issuer.version,
+                    "kind": cert_manager.Issuer.kind,
+                    "metadata": {
+                        "name": "self-signed",
+                        "namespace": constants.NAMESPACE_OPENSTACK,
+                    },
+                    "spec": {
+                        "selfSigned": {},
+                    },
+                },
                 {
                     "apiVersion": pykube.Secret.version,
                     "kind": pykube.Secret.kind,
@@ -124,6 +146,17 @@ from atmosphere.tasks.kubernetes import cert_manager
                 """
             ),
             [
+                {
+                    "apiVersion": cert_manager.Issuer.version,
+                    "kind": cert_manager.Issuer.kind,
+                    "metadata": {
+                        "name": "self-signed",
+                        "namespace": constants.NAMESPACE_OPENSTACK,
+                    },
+                    "spec": {
+                        "selfSigned": {},
+                    },
+                },
                 {
                     "apiVersion": pykube.Secret.version,
                     "kind": pykube.Secret.kind,
@@ -194,6 +227,17 @@ from atmosphere.tasks.kubernetes import cert_manager
                 """
             ),
             [
+                {
+                    "apiVersion": cert_manager.Issuer.version,
+                    "kind": cert_manager.Issuer.kind,
+                    "metadata": {
+                        "name": "self-signed",
+                        "namespace": constants.NAMESPACE_OPENSTACK,
+                    },
+                    "spec": {
+                        "selfSigned": {},
+                    },
+                },
                 {
                     "apiVersion": pykube.Secret.version,
                     "kind": pykube.Secret.kind,
