@@ -86,6 +86,8 @@
   ansible.builtin.set_fact:
     _openstack_helm_octavia_controller_ip_port_list: "{{ _openstack_helm_octavia_controller_ip_port_list | d([]) + [item.openstack_ports[0].fixed_ips[0].ip_address + ':5555'] }}"
   loop: "{{ _openstack_helm_octavia_health_manager_ports.results }}"
+  loop_control:
+    label: "{{ item.openstack_ports[0].name }}"
 
 - name: Create amphora security group
   openstack.cloud.security_group:
@@ -134,91 +136,61 @@
       - "amphora"
   register: _openstack_helm_octavia_amphora_image
 
-- name: Check if certificate secret exists
-  kubernetes.core.k8s_info:
-    kind: Secret
-    name: octavia-certs
-    namespace: openstack
-  register: _openstack_helm_octavia_cert_secret
+- name: Create CAs & Issuers
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      - apiVersion: cert-manager.io/v1
+        kind: Certificate
+        metadata:
+          name: "{{ item }}-ca"
+          namespace: openstack
+        spec:
+          isCA: true
+          commonName: "{{ item }}"
+          secretName: "{{ item }}-ca"
+          duration: 87600h
+          renewBefore: 720h
+          privateKey:
+            algorithm: ECDSA
+            size: 256
+          issuerRef:
+            name: self-signed
+            kind: Issuer
+            group: cert-manager.io
 
-# TODO(mnaser): we should just use cert-manager for this?
-- name: Create certificate secret
-  when: (_openstack_helm_octavia_cert_secret.resources | length) == 0
-  block:
-    - name: Create CA private key
-      community.crypto.openssl_privatekey_pipe:
-        type: RSA
-      register: _openstack_helm_octavia_ca_key
+      - apiVersion: cert-manager.io/v1
+        kind: Issuer
+        metadata:
+          name: "{{ item }}"
+          namespace: openstack
+        spec:
+          ca:
+            secretName: "{{ item }}-ca"
+  loop:
+    - octavia-client
+    - octavia-server
 
-    - name: Create certificate signing request (CSR) for CA
-      community.crypto.openssl_csr_pipe:
-        basic_constraints:
-          - 'CA:TRUE'
-        basic_constraints_critical: true
-        common_name: "octavia"
-        key_usage:
-          - "keyEncipherment"
-          - "digitalSignature"
-          - "keyCertSign"
-        key_usage_critical: true
-        organization_name: "VEXXHOST OpenStack - Octavia"
-        privatekey_content: "{{ _openstack_helm_octavia_ca_key.privatekey }}"
-        use_common_name_for_san: false
-      register: _openstack_helm_octavia_ca_csr
-
-    - name: Create self-signed CA certificate from CSR
-      community.crypto.x509_certificate_pipe:
-        csr_content: "{{ _openstack_helm_octavia_ca_csr.csr }}"
-        entrust_not_after: "+3650d"
-        privatekey_content: "{{ _openstack_helm_octavia_ca_key.privatekey }}"
-        provider: selfsigned
-      register: _openstack_helm_octavia_ca
-
-    - name: Create client private key
-      community.crypto.openssl_privatekey_pipe:
-        type: RSA
-      register: _openstack_helm_octavia_client_ca_key
-
-    - name: Create certificate signing request (CSR) for client
-      community.crypto.openssl_csr_pipe:
-        common_name: "octavia-node"
-        key_usage:
-          - "keyEncipherment"
-          - "digitalSignature"
-          - "keyCertSign"
-        organization_name: "VEXXHOST OpenStack - Octavia"
-        privatekey_content: "{{ _openstack_helm_octavia_client_ca_key.privatekey }}"
-        use_common_name_for_san: false
-      register: _openstack_helm_octavia_client_csr
-
-    - name: Create self-signed client certificate
-      community.crypto.x509_certificate_pipe:
-        csr_content: "{{ _openstack_helm_octavia_client_csr.csr }}"
-        ownca_content: "{{ _openstack_helm_octavia_ca.certificate }}"
-        ownca_privatekey_content: "{{ _openstack_helm_octavia_ca_key.privatekey }}"
-        ownca_not_after: "+3650d"
-        entrust_not_after: "+3650d"
-        privatekey_content: "{{ _openstack_helm_octavia_client_ca_key.privatekey }}"
-        provider: ownca
-      register: _openstack_helm_octavia_client_ca
-
-    - name: Createa kubernetes secret
-      kubernetes.core.k8s:
-        state: present
-        definition:
-          apiVersion: v1
-          kind: Secret
-          metadata:
-            name: octavia-certs
-            namespace: openstack
-          stringData:
-            ca_01.pem: |
-              {{ _openstack_helm_octavia_ca.certificate }}
-            cakey.pem: |
-              {{ _openstack_helm_octavia_ca_key.privatekey }}
-            client.pem: |
-              {{ _openstack_helm_octavia_client_ca.certificate }}
-              {{ _openstack_helm_octavia_client_ca_key.privatekey }}
+- name: Create certificate for Octavia clients
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: cert-manager.io/v1
+      kind: Certificate
+      metadata:
+        name: octavia-client-certs
+        namespace: openstack
+      spec:
+        commonName: octavia-client
+        secretName: octavia-client-certs
+        additionalOutputFormats:
+          - type: CombinedPEM
+        duration: 87600h
+        renewBefore: 720h
+        issuerRef:
+          name: octavia-client
+          kind: Issuer
+          group: cert-manager.io
 
 - name: Create admin compute quotaset
   openstack.cloud.quota:
