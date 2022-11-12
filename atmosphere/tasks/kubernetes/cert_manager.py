@@ -79,7 +79,15 @@ class ApplyIssuerTask(base.ApplyKubernetesObjectTask):
 
 
 def issuer_tasks_from_config(config: config.Issuer) -> list:
-    objects = []
+    objects = [
+        ApplyIssuerTask(
+            namespace=constants.NAMESPACE_OPENSTACK,
+            name="self-signed",
+            spec={
+                "selfSigned": {},
+            },
+        )
+    ]
 
     if config.type == "acme":
         spec = {
@@ -184,13 +192,6 @@ def issuer_tasks_from_config(config: config.Issuer) -> list:
     elif config.type == "self-signed":
         # NOTE(mnaser): We have to setup the self-signed CA in this case
         objects += [
-            ApplyIssuerTask(
-                namespace=constants.NAMESPACE_OPENSTACK,
-                name="self-signed",
-                spec={
-                    "selfSigned": {},
-                },
-            ),
             ApplyCertificateTask(
                 namespace=constants.NAMESPACE_OPENSTACK,
                 name="self-signed-ca",

@@ -341,6 +341,7 @@ HELM_RELEASE_CERT_MANAGER_NAME = "cert-manager"
 HELM_RELEASE_CERT_MANAGER_VERSION = "v1.7.1"
 HELM_RELEASE_CERT_MANAGER_VALUES = {
     "installCRDs": True,
+    "featureGates": "AdditionalCertificateOutputFormats=true",
     "volumes": [
         {
             "name": "etc-ssl-certs",
@@ -358,6 +359,9 @@ HELM_RELEASE_CERT_MANAGER_VALUES = {
     ],
     "nodeSelector": NODE_SELECTOR_CONTROL_PLANE,
     "webhook": {
+        "extraArgs": [
+            "--feature-gates=AdditionalCertificateOutputFormats=true",
+        ],
         "nodeSelector": NODE_SELECTOR_CONTROL_PLANE,
     },
     "cainjector": {
