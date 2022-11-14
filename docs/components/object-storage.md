@@ -39,3 +39,28 @@ atmosphere_object_storage_service_user_password: "password"
     openstack endpoint create --region <REGION> object-store public 'https://object-storage.<CLOUD-DOMAIN>/swift/v1/%(tenant_id)s'
     openstack endpoint create --region <REGION> object-store internal 'http://rook-ceph-rgw-rook-ceph.rook-ceph.svc.cluster.local/swift/v1/%(tenant_id)s'
     ```
+
+## Usage
+
+### S3
+
+The object storage presents an S3-compatible API which can with credentials
+generated using the OpenStack CLI.
+
+```console
+$ openstack ec2 credentials create
++------------+----------------------------------------------------------------------------------------------------------------------------------------+
+| Field      | Value                                                                                                                                  |
++------------+----------------------------------------------------------------------------------------------------------------------------------------+
+| access     | 4cbacab165774994bcadba4a5451cbdc                                                                                                       |
+| links      | {'self': 'https://identity.example.com/v3/users/dd5664a9739d4afba929b37d3f123f28/credentials/OS-EC2/4cbacab165774994bcadba4a5451cbdc'} |
+| project_id | f5ed2d21437644adb2669f9ade9c949b                                                                                                       |
+| secret     | b3ca0842898e4692a71a9ae1233e8c8e                                                                                                       |
+| trust_id   | None                                                                                                                                   |
+| user_id    | dd5664a9739d4afba929b37d3f123f28                                                                                                       |
++------------+----------------------------------------------------------------------------------------------------------------------------------------+
+```
+
+With the credentials above, you should be able to access the object storage
+using the `access` and `secret` values, with your object storage to be located
+at `https://object-storage.<CLOUD-DOMAIN>/`.
