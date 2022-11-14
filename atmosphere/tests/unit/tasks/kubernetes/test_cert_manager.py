@@ -20,22 +20,20 @@ from atmosphere.tasks.kubernetes import cert_manager
             ),
             [
                 {
-                    "apiVersion": cert_manager.Issuer.version,
-                    "kind": cert_manager.Issuer.kind,
+                    "apiVersion": cert_manager.ClusterIssuer.version,
+                    "kind": cert_manager.ClusterIssuer.kind,
                     "metadata": {
                         "name": "self-signed",
-                        "namespace": constants.NAMESPACE_OPENSTACK,
                     },
                     "spec": {
                         "selfSigned": {},
                     },
                 },
                 {
-                    "apiVersion": cert_manager.Issuer.version,
-                    "kind": cert_manager.Issuer.kind,
+                    "apiVersion": cert_manager.ClusterIssuer.version,
+                    "kind": cert_manager.ClusterIssuer.kind,
                     "metadata": {
                         "name": "openstack",
-                        "namespace": constants.NAMESPACE_OPENSTACK,
                     },
                     "spec": {
                         "acme": {
@@ -75,11 +73,10 @@ from atmosphere.tasks.kubernetes import cert_manager
             ),
             [
                 {
-                    "apiVersion": cert_manager.Issuer.version,
-                    "kind": cert_manager.Issuer.kind,
+                    "apiVersion": cert_manager.ClusterIssuer.version,
+                    "kind": cert_manager.ClusterIssuer.kind,
                     "metadata": {
                         "name": "self-signed",
-                        "namespace": constants.NAMESPACE_OPENSTACK,
                     },
                     "spec": {
                         "selfSigned": {},
@@ -90,18 +87,17 @@ from atmosphere.tasks.kubernetes import cert_manager
                     "kind": pykube.Secret.kind,
                     "metadata": {
                         "name": "cert-manager-issuer-tsig-secret-key",
-                        "namespace": constants.NAMESPACE_OPENSTACK,
+                        "namespace": constants.NAMESPACE_CERT_MANAGER,
                     },
                     "stringData": {
                         "tsig-secret-key": "secret123",
                     },
                 },
                 {
-                    "apiVersion": cert_manager.Issuer.version,
-                    "kind": cert_manager.Issuer.kind,
+                    "apiVersion": cert_manager.ClusterIssuer.version,
+                    "kind": cert_manager.ClusterIssuer.kind,
                     "metadata": {
                         "name": "openstack",
-                        "namespace": constants.NAMESPACE_OPENSTACK,
                     },
                     "spec": {
                         "acme": {
@@ -146,11 +142,10 @@ from atmosphere.tasks.kubernetes import cert_manager
             ),
             [
                 {
-                    "apiVersion": cert_manager.Issuer.version,
-                    "kind": cert_manager.Issuer.kind,
+                    "apiVersion": cert_manager.ClusterIssuer.version,
+                    "kind": cert_manager.ClusterIssuer.kind,
                     "metadata": {
                         "name": "self-signed",
-                        "namespace": constants.NAMESPACE_OPENSTACK,
                     },
                     "spec": {
                         "selfSigned": {},
@@ -161,18 +156,17 @@ from atmosphere.tasks.kubernetes import cert_manager
                     "kind": pykube.Secret.kind,
                     "metadata": {
                         "name": "cert-manager-issuer-route53-credentials",
-                        "namespace": constants.NAMESPACE_OPENSTACK,
+                        "namespace": constants.NAMESPACE_CERT_MANAGER,
                     },
                     "stringData": {
                         "secret-access-key": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
                     },
                 },
                 {
-                    "apiVersion": cert_manager.Issuer.version,
-                    "kind": cert_manager.Issuer.kind,
+                    "apiVersion": cert_manager.ClusterIssuer.version,
+                    "kind": cert_manager.ClusterIssuer.kind,
                     "metadata": {
                         "name": "openstack",
-                        "namespace": constants.NAMESPACE_OPENSTACK,
                     },
                     "spec": {
                         "acme": {
@@ -225,11 +219,10 @@ from atmosphere.tasks.kubernetes import cert_manager
             ),
             [
                 {
-                    "apiVersion": cert_manager.Issuer.version,
-                    "kind": cert_manager.Issuer.kind,
+                    "apiVersion": cert_manager.ClusterIssuer.version,
+                    "kind": cert_manager.ClusterIssuer.kind,
                     "metadata": {
                         "name": "self-signed",
-                        "namespace": constants.NAMESPACE_OPENSTACK,
                     },
                     "spec": {
                         "selfSigned": {},
@@ -240,7 +233,7 @@ from atmosphere.tasks.kubernetes import cert_manager
                     "kind": pykube.Secret.kind,
                     "metadata": {
                         "name": "cert-manager-issuer-ca",
-                        "namespace": constants.NAMESPACE_OPENSTACK,
+                        "namespace": constants.NAMESPACE_CERT_MANAGER,
                     },
                     "stringData": {
                         "tls.crt": textwrap.dedent(
@@ -264,11 +257,10 @@ from atmosphere.tasks.kubernetes import cert_manager
                     },
                 },
                 {
-                    "apiVersion": cert_manager.Issuer.version,
-                    "kind": cert_manager.Issuer.kind,
+                    "apiVersion": cert_manager.ClusterIssuer.version,
+                    "kind": cert_manager.ClusterIssuer.kind,
                     "metadata": {
                         "name": "openstack",
-                        "namespace": constants.NAMESPACE_OPENSTACK,
                     },
                     "spec": {
                         "ca": {
@@ -288,11 +280,10 @@ from atmosphere.tasks.kubernetes import cert_manager
             ),
             [
                 {
-                    "apiVersion": cert_manager.Issuer.version,
-                    "kind": cert_manager.Issuer.kind,
+                    "apiVersion": cert_manager.ClusterIssuer.version,
+                    "kind": cert_manager.ClusterIssuer.kind,
                     "metadata": {
                         "name": "self-signed",
-                        "namespace": constants.NAMESPACE_OPENSTACK,
                     },
                     "spec": {
                         "selfSigned": {},
@@ -303,7 +294,7 @@ from atmosphere.tasks.kubernetes import cert_manager
                     "kind": cert_manager.Certificate.kind,
                     "metadata": {
                         "name": "self-signed-ca",
-                        "namespace": constants.NAMESPACE_OPENSTACK,
+                        "namespace": constants.NAMESPACE_CERT_MANAGER,
                     },
                     "spec": {
                         "isCA": True,
@@ -313,17 +304,16 @@ from atmosphere.tasks.kubernetes import cert_manager
                         "renewBefore": "360h",
                         "privateKey": {"algorithm": "ECDSA", "size": 256},
                         "issuerRef": {
-                            "kind": "Issuer",
+                            "kind": "ClusterIssuer",
                             "name": "self-signed",
                         },
                     },
                 },
                 {
-                    "apiVersion": cert_manager.Issuer.version,
-                    "kind": cert_manager.Issuer.kind,
+                    "apiVersion": cert_manager.ClusterIssuer.version,
+                    "kind": cert_manager.ClusterIssuer.kind,
                     "metadata": {
                         "name": "openstack",
-                        "namespace": constants.NAMESPACE_OPENSTACK,
                     },
                     "spec": {
                         "ca": {

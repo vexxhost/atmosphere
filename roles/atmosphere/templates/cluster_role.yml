@@ -5,6 +5,10 @@ metadata:
   name: atmosphere
 rules:
   - apiGroups: [""]
+    resources: ["namespaces", "services", "configmaps", "secrets"]
+    verbs: ["get", "create", "patch"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses"]
     resources: ["namespaces", "services"]
     verbs: ["get", "create", "patch"]
   - apiGroups: ["source.toolkit.fluxcd.io"]
@@ -12,4 +16,10 @@ rules:
     verbs: ["get", "create", "patch"]
   - apiGroups: ["helm.toolkit.fluxcd.io"]
     resources: ["helmreleases"]
+    verbs: ["get", "create", "patch"]
+  - apiGroups: ["cert-manager.io"]
+    resources: ["certificates", "clusterissuers"]
+    verbs: ["get", "create", "patch"]
+  - apiGroups: ["ceph.rook.io"]
+    resources: ["cephclusters", "cephobjectstores"]
     verbs: ["get", "create", "patch"]

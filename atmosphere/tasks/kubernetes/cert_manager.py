@@ -41,19 +41,19 @@ class ApplyCertificateTask(base.ApplyKubernetesObjectTask):
         )
 
 
-class Issuer(pykube.objects.NamespacedAPIObject):
+class ClusterIssuer(pykube.objects.APIObject):
     version = "cert-manager.io/v1"
-    endpoint = "issuers"
-    kind = "Issuer"
+    endpoint = "clusterissuers"
+    kind = "ClusterIssuer"
 
 
-class ApplyIssuerTask(base.ApplyKubernetesObjectTask):
-    def __init__(self, namespace: str, name: str, spec: dict):
+class ApplyClusterIssuerTask(base.ApplyKubernetesObjectTask):
+    def __init__(self, name: str, spec: dict):
         self._spec = spec
 
         super().__init__(
-            kind=Issuer,
-            namespace=namespace,
+            kind=ClusterIssuer,
+            namespace=None,
             name=name,
             requires=set(
                 [
@@ -62,15 +62,14 @@ class ApplyIssuerTask(base.ApplyKubernetesObjectTask):
             ),
         )
 
-    def generate_object(self) -> Issuer:
-        return Issuer(
+    def generate_object(self) -> ClusterIssuer:
+        return ClusterIssuer(
             self.api,
             {
                 "apiVersion": self._obj_kind.version,
                 "kind": self._obj_kind.kind,
                 "metadata": {
                     "name": self._obj_name,
-                    "namespace": self._obj_namespace,
                 },
                 "spec": self._spec,
             },
@@ -79,8 +78,7 @@ class ApplyIssuerTask(base.ApplyKubernetesObjectTask):
 
 def issuer_tasks_from_config(config: config.Issuer) -> list:
     objects = [
-        ApplyIssuerTask(
-            namespace=constants.NAMESPACE_OPENSTACK,
+        ApplyClusterIssuerTask(
             name="self-signed",
             spec={
                 "selfSigned": {},
@@ -114,7 +112,7 @@ def issuer_tasks_from_config(config: config.Issuer) -> list:
             #               credentials in this case.
             objects.append(
                 v1.ApplySecretTask(
-                    constants.NAMESPACE_OPENSTACK,
+                    constants.NAMESPACE_CERT_MANAGER,
                     "cert-manager-issuer-tsig-secret-key",
                     data={
                         "tsig-secret-key": config.solver.tsig_secret,
@@ -142,7 +140,7 @@ def issuer_tasks_from_config(config: config.Issuer) -> list:
             #               credentials in this case.
             objects.append(
                 v1.ApplySecretTask(
-                    constants.NAMESPACE_OPENSTACK,
+                    constants.NAMESPACE_CERT_MANAGER,
                     "cert-manager-issuer-route53-credentials",
                     data={
                         "secret-access-key": config.solver.secret_access_key,
@@ -170,7 +168,7 @@ def issuer_tasks_from_config(config: config.Issuer) -> list:
         #               certificate and key in this case.
         objects.append(
             v1.ApplySecretTask(
-                constants.NAMESPACE_OPENSTACK,
+                constants.NAMESPACE_CERT_MANAGER,
                 "cert-manager-issuer-ca",
                 data={
                     "tls.crt": config.certificate,
@@ -188,7 +186,7 @@ def issuer_tasks_from_config(config: config.Issuer) -> list:
         # NOTE(mnaser): We have to setup the self-signed CA in this case
         objects += [
             ApplyCertificateTask(
-                namespace=constants.NAMESPACE_OPENSTACK,
+                namespace=constants.NAMESPACE_CERT_MANAGER,
                 name="self-signed-ca",
                 spec={
                     "isCA": True,
@@ -198,7 +196,7 @@ def issuer_tasks_from_config(config: config.Issuer) -> list:
                     "renewBefore": "360h",
                     "privateKey": {"algorithm": "ECDSA", "size": 256},
                     "issuerRef": {
-                        "kind": "Issuer",
+                        "kind": "ClusterIssuer",
                         "name": "self-signed",
                     },
                 },
@@ -211,8 +209,4 @@ def issuer_tasks_from_config(config: config.Issuer) -> list:
             }
         }
 
-    return objects + [
-        ApplyIssuerTask(
-            namespace=constants.NAMESPACE_OPENSTACK, name="openstack", spec=spec
-        )
-    ]
+    return objects + [ApplyClusterIssuerTask(name="openstack", spec=spec)]
