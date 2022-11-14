@@ -2,7 +2,6 @@ import textwrap
 
 import pykube
 import pytest
-from oslo_serialization import base64
 
 from atmosphere.models import config
 from atmosphere.tasks import constants
@@ -93,8 +92,8 @@ from atmosphere.tasks.kubernetes import cert_manager
                         "name": "cert-manager-issuer-tsig-secret-key",
                         "namespace": constants.NAMESPACE_OPENSTACK,
                     },
-                    "data": {
-                        "tsig-secret-key": base64.encode_as_text("secret123"),
+                    "stringData": {
+                        "tsig-secret-key": "secret123",
                     },
                 },
                 {
@@ -164,10 +163,8 @@ from atmosphere.tasks.kubernetes import cert_manager
                         "name": "cert-manager-issuer-route53-credentials",
                         "namespace": constants.NAMESPACE_OPENSTACK,
                     },
-                    "data": {
-                        "secret-access-key": base64.encode_as_text(
-                            "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
-                        ),
+                    "stringData": {
+                        "secret-access-key": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
                     },
                 },
                 {
@@ -245,28 +242,24 @@ from atmosphere.tasks.kubernetes import cert_manager
                         "name": "cert-manager-issuer-ca",
                         "namespace": constants.NAMESPACE_OPENSTACK,
                     },
-                    "data": {
-                        "tls.crt": base64.encode_as_text(
-                            textwrap.dedent(
-                                """\
-                                -----BEGIN CERTIFICATE-----
-                                MIIDBjCCAe4CCQDQ3Z0Z2Z0Z0jANBgkqhkiG9w0BAQsFADCBhTELMAkGA1UEBhMC
-                                VVMxEzARBgNVBAgTCkNhbGlmb3JuaWExFjAUBgNVBAcTDVNhbiBGcmFuY2lzY28x
-                                ...
-                                -----END CERTIFICATE-----
-                                """
-                            )
+                    "stringData": {
+                        "tls.crt": textwrap.dedent(
+                            """\
+                            -----BEGIN CERTIFICATE-----
+                            MIIDBjCCAe4CCQDQ3Z0Z2Z0Z0jANBgkqhkiG9w0BAQsFADCBhTELMAkGA1UEBhMC
+                            VVMxEzARBgNVBAgTCkNhbGlmb3JuaWExFjAUBgNVBAcTDVNhbiBGcmFuY2lzY28x
+                            ...
+                            -----END CERTIFICATE-----
+                            """
                         ),
-                        "tls.key": base64.encode_as_text(
-                            textwrap.dedent(
-                                """\
-                                -----BEGIN RSA PRIVATE KEY-----
-                                MIIEpAIBAAKCAQEAw3Z0Z2Z0Z0jANBgkqhkiG9w0BAQsFADCBhTELMAkGA1UEBhMC
-                                VVMxEzARBgNVBAgTCkNhbGlmb3JuaWExFjAUBgNVBAcTDVNhbiBGcmFuY2lzY28x
-                                ...
-                                -----END RSA PRIVATE KEY-----
-                                """
-                            )
+                        "tls.key": textwrap.dedent(
+                            """\
+                            -----BEGIN RSA PRIVATE KEY-----
+                            MIIEpAIBAAKCAQEAw3Z0Z2Z0Z0jANBgkqhkiG9w0BAQsFADCBhTELMAkGA1UEBhMC
+                            VVMxEzARBgNVBAgTCkNhbGlmb3JuaWExFjAUBgNVBAcTDVNhbiBGcmFuY2lzY28x
+                            ...
+                            -----END RSA PRIVATE KEY-----
+                            """
                         ),
                     },
                 },

@@ -1,7 +1,6 @@
 import mergedeep
 import pykube
 import yaml
-from oslo_serialization import base64
 
 from atmosphere.models import config
 from atmosphere.models.openstack_helm import values
@@ -21,7 +20,7 @@ class ApplyReleaseSecretTask(v1.ApplySecretTask):
         super().__init__(
             namespace=namespace,
             name=f"atmosphere-{chart}",
-            data={"values.yaml": base64.encode_as_text(values_yaml)},
+            data={"values.yaml": values_yaml},
         )
 
 

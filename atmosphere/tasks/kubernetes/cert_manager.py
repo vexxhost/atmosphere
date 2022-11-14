@@ -1,5 +1,4 @@
 import pykube
-from oslo_serialization import base64
 
 from atmosphere.models import config
 from atmosphere.tasks import constants
@@ -118,9 +117,7 @@ def issuer_tasks_from_config(config: config.Issuer) -> list:
                     constants.NAMESPACE_OPENSTACK,
                     "cert-manager-issuer-tsig-secret-key",
                     data={
-                        "tsig-secret-key": base64.encode_as_text(
-                            config.solver.tsig_secret
-                        ),
+                        "tsig-secret-key": config.solver.tsig_secret,
                     },
                 )
             )
@@ -148,9 +145,7 @@ def issuer_tasks_from_config(config: config.Issuer) -> list:
                     constants.NAMESPACE_OPENSTACK,
                     "cert-manager-issuer-route53-credentials",
                     data={
-                        "secret-access-key": base64.encode_as_text(
-                            config.solver.secret_access_key
-                        ),
+                        "secret-access-key": config.solver.secret_access_key,
                     },
                 )
             )
@@ -178,8 +173,8 @@ def issuer_tasks_from_config(config: config.Issuer) -> list:
                 constants.NAMESPACE_OPENSTACK,
                 "cert-manager-issuer-ca",
                 data={
-                    "tls.crt": base64.encode_as_text(config.certificate),
-                    "tls.key": base64.encode_as_text(config.private_key),
+                    "tls.crt": config.certificate,
+                    "tls.key": config.private_key,
                 },
             )
         )

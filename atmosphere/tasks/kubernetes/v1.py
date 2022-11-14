@@ -70,6 +70,6 @@ class ApplySecretTask(base.ApplyKubernetesObjectTask):
                     "name": self._obj_name,
                     "namespace": self._obj_namespace,
                 },
-                "data": self._data,
+                "stringData": self._data,
             },
         )
