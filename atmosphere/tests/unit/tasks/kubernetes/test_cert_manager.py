@@ -33,7 +33,7 @@ from atmosphere.tasks.kubernetes import cert_manager
                     "apiVersion": cert_manager.ClusterIssuer.version,
                     "kind": cert_manager.ClusterIssuer.kind,
                     "metadata": {
-                        "name": "openstack",
+                        "name": "atmosphere",
                     },
                     "spec": {
                         "acme": {
@@ -97,7 +97,7 @@ from atmosphere.tasks.kubernetes import cert_manager
                     "apiVersion": cert_manager.ClusterIssuer.version,
                     "kind": cert_manager.ClusterIssuer.kind,
                     "metadata": {
-                        "name": "openstack",
+                        "name": "atmosphere",
                     },
                     "spec": {
                         "acme": {
@@ -159,14 +159,14 @@ from atmosphere.tasks.kubernetes import cert_manager
                         "namespace": constants.NAMESPACE_CERT_MANAGER,
                     },
                     "stringData": {
-                        "secret-access-key": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+                        "secret-access-key": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
                     },
                 },
                 {
                     "apiVersion": cert_manager.ClusterIssuer.version,
                     "kind": cert_manager.ClusterIssuer.kind,
                     "metadata": {
-                        "name": "openstack",
+                        "name": "atmosphere",
                     },
                     "spec": {
                         "acme": {
@@ -260,7 +260,7 @@ from atmosphere.tasks.kubernetes import cert_manager
                     "apiVersion": cert_manager.ClusterIssuer.version,
                     "kind": cert_manager.ClusterIssuer.kind,
                     "metadata": {
-                        "name": "openstack",
+                        "name": "atmosphere",
                     },
                     "spec": {
                         "ca": {
@@ -313,7 +313,7 @@ from atmosphere.tasks.kubernetes import cert_manager
                     "apiVersion": cert_manager.ClusterIssuer.version,
                     "kind": cert_manager.ClusterIssuer.kind,
                     "metadata": {
-                        "name": "openstack",
+                        "name": "atmosphere",
                     },
                     "spec": {
                         "ca": {
