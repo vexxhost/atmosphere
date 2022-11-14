@@ -142,9 +142,7 @@ def issuer_tasks_from_config(config: config.Issuer) -> list:
                 v1.ApplySecretTask(
                     constants.NAMESPACE_CERT_MANAGER,
                     "cert-manager-issuer-route53-credentials",
-                    data={
-                        "secret-access-key": config.solver.secret_access_key,
-                    },
+                    data={"secret-access-key": config.solver.secret_access_key},
                 )
             )
 
@@ -209,4 +207,4 @@ def issuer_tasks_from_config(config: config.Issuer) -> list:
             }
         }
 
-    return objects + [ApplyClusterIssuerTask(name="openstack", spec=spec)]
+    return objects + [ApplyClusterIssuerTask(name="atmosphere", spec=spec)]
