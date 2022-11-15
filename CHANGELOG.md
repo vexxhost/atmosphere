@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.7.0](https://github.com/vexxhost/atmosphere/compare/v0.6.1...v0.7.0) (2022-11-15)
+
+
+### Features
+
+* **octavia:** add role ([d8d2aa1](https://github.com/vexxhost/atmosphere/commit/d8d2aa1eb40cad5028ff2c5a8224ffd1234e0e56))
+
+
+### Bug Fixes
+
+* bump osh for ovs fixes ([1ceda87](https://github.com/vexxhost/atmosphere/commit/1ceda87baa1e5fa3099d78b3d9a7b637f8fc20ef))
+* bump ovs to 2.17.0 ([dc07e23](https://github.com/vexxhost/atmosphere/commit/dc07e23e9e1c10a71e1d7bd9b7bf6d261539d9c7))
+* **containerd:** bump DefaultLimitMEMLOCK to inf ([ff1980a](https://github.com/vexxhost/atmosphere/commit/ff1980a9ba5a792ef04b754de383b85769c03752)), closes [#169](https://github.com/vexxhost/atmosphere/issues/169)
+* **octavia:** resolve unit tests ([d945774](https://github.com/vexxhost/atmosphere/commit/d945774c6e63c9424dc32e26c7d881a704dd8fae))
+* **octavia:** switch to cert-manager issuer certs ([c582420](https://github.com/vexxhost/atmosphere/commit/c58242052e49d30d01e0beb3d4c97f6d731180b6))
+* unit tests + cluster role ([4a402ab](https://github.com/vexxhost/atmosphere/commit/4a402ab35aaffee3a86c1356bf84ddd018f5b8a6))
+* use correct issuer name ([e7f470a](https://github.com/vexxhost/atmosphere/commit/e7f470af16a754a7078fab9aead05d6c5253aa0a))
+
 ## [0.6.1](https://github.com/vexxhost/atmosphere/compare/v0.6.0...v0.6.1) (2022-11-10)
 
 
