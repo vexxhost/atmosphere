@@ -1,0 +1,35 @@
+---
+apiVersion: identity.atmosphere.vexxhost.com/v1alpha1
+kind: CatalogService
+metadata:
+  name: swift
+  namespace: openstack
+spec:
+  type: object-store
+  description: OpenStack Object Storage
+---
+apiVersion: identity.atmosphere.vexxhost.com/v1alpha1
+kind: CatalogEndpoint
+metadata:
+  name: swift-internal
+  namespace: openstack
+spec:
+  region: "{{ openstack_helm_endpoints_region_name }}"
+  serviceRef:
+    name: swift
+    namespace: openstack
+  interface: internal
+  url: "http://rook-ceph-rgw-rook-ceph.rook-ceph.svc.cluster.local/swift/v1/%(tenant_id)s"
+---
+apiVersion: identity.atmosphere.vexxhost.com/v1alpha1
+kind: CatalogEndpoint
+metadata:
+  name: swift-public
+  namespace: openstack
+spec:
+  region: "{{ openstack_helm_endpoints_region_name }}"
+  serviceRef:
+    name: swift
+    namespace: openstack
+  interface: public
+  url: "https://object-storage.{{ atmosphere_domain }}/swift/v1/%(tenant_id)s"

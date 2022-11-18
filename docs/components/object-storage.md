@@ -32,14 +32,6 @@ atmosphere_object_storage_service_user_password: "password"
    openstack role add --project service --user-domain service --user swift admin
    ```
 
-1. Create service and endpoints for the object storage service.
-
-    ```bash
-    openstack service create --name swift --description "OpenStack Object Storage" object-store
-    openstack endpoint create --region <REGION> object-store public 'https://object-storage.<CLOUD-DOMAIN>/swift/v1/%(tenant_id)s'
-    openstack endpoint create --region <REGION> object-store internal 'http://rook-ceph-rgw-rook-ceph.rook-ceph.svc.cluster.local/swift/v1/%(tenant_id)s'
-    ```
-
 ## Usage
 
 ### S3
