@@ -69,7 +69,7 @@
   changed_when: false
   ansible.builtin.shell: |
     openstack port set \
-      --host {{ hostvars[item]['ansible_fqdn'] }} \
+      --host {{ item }} \
       octavia-health-manager-port-{{ hostvars[item]['inventory_hostname_short'] }}
   environment:
     OS_CLOUD: atmosphere
@@ -78,7 +78,7 @@
 - name: Get health manager networking ports
   openstack.cloud.port_info:
     cloud: atmosphere
-    port: "octavia-health-manager-port-{{ hostvars[item]['ansible_fqdn'] | split('.') | first }}"
+    port: "octavia-health-manager-port-{{ hostvars[item]['inventory_hostname_short'] }}"
   loop: "{{ groups['controllers'] }}"
   register: _openstack_helm_octavia_health_manager_ports
 
