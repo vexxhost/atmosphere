@@ -43,7 +43,8 @@ def get_deployment_flow(config):
         # monitoring
         v1.ApplyNamespaceTask(name=constants.NAMESPACE_MONITORING),
         *openstack_helm.kube_prometheus_stack_tasks_from_config(
-            config.kube_prometheus_stack
+            config.kube_prometheus_stack,
+            opsgenie=config.opsgenie,
         ),
         flux.ApplyHelmRepositoryTask(
             namespace=constants.NAMESPACE_MONITORING,
