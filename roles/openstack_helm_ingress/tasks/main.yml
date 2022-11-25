@@ -29,7 +29,7 @@
             http:
               paths: "{{ _openstack_helm_ingress_paths }}"
         tls:
-          - secretName: "{{ openstack_helm_ingress_secretname | default(openstack_helm_ingress_service_name + '-certs') }}"
+          - secretName: "{{ openstack_helm_ingress_secret_name | default(openstack_helm_ingress_service_name + '-certs') }}"
             hosts:
               - "{{ openstack_helm_endpoints[openstack_helm_ingress_endpoint]['host_fqdn_override']['public']['host'] }}"
   # NOTE(mnaser): The Atmosphere operator is so fast that the Ingress webhook
