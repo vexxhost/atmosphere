@@ -1,10 +1,9 @@
-import glob
-import posixpath
 import uuid
 
 import pykube
 import pytest
 import tomli_w
+import yaml
 from jinja2 import Environment, FileSystemLoader
 from python_on_whales import docker
 from tenacity import Retrying, retry_if_exception_type, stop_after_delay, wait_fixed
@@ -42,14 +41,12 @@ def test_e2e_for_operator(tmp_path, flux_cluster, docker_image):
         },
     }
 
-    # NOTE(mnaser): Create namespace before anything
-    file = tmp_path / "namespace.yml"
-    template = env.get_template("namespace.yml")
-    file.write_text(template.render(**args))
-    flux_cluster.kubectl("apply", "-f", file)
+    # Parse the Ansible task to get order of manifests
+    with open("roles/atmosphere/tasks/main.yml") as fd:
+        tasks = yaml.safe_load(fd)
+        files = tasks[0]["kubernetes.core.k8s"]["template"]
 
-    for manifest in glob.glob("roles/atmosphere/templates/*.yml"):
-        filename = posixpath.basename(manifest)
+    for filename in files:
         template = env.get_template(filename)
 
         file = tmp_path / filename
@@ -70,7 +67,7 @@ def test_e2e_for_operator(tmp_path, flux_cluster, docker_image):
             wait=wait_fixed(1),
         ):
             with attempt:
-                assert "successfully started" in pod.logs()
+                assert "Initial authentication has finished." in pod.logs()
 
     for secret_name in ["atmosphere-config", "atmosphere-memcached"]:
         secret = pykube.Secret.objects(
