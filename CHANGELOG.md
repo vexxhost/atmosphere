@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.1](https://github.com/vexxhost/atmosphere/compare/v0.8.0...v0.8.1) (2022-11-28)
+
+
+### Bug Fixes
+
+* switch opsgenie config variable ([377a81b](https://github.com/vexxhost/atmosphere/commit/377a81b812c6c19b5af19753960f696165bd079e))
+
 ## [0.8.0](https://github.com/vexxhost/atmosphere/compare/v0.7.0...v0.8.0) (2022-11-28)
 
 
