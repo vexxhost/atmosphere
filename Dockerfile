@@ -21,4 +21,4 @@ RUN poetry install --only main --no-interaction
 FROM python:3.10-slim AS runtime
 ENV PATH="/app/.venv/bin:$PATH"
 COPY --from=builder --link /app /app
-CMD ["atmosphere-operator"]
+CMD ["kopf", "run", "/app/atmosphere/cmd/operator.py"]

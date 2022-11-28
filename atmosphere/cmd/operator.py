@@ -1,24 +1,20 @@
-import time
+import os
 
-from atmosphere import flows, logger
+import kopf
+
+from atmosphere import flows
 from atmosphere.models import config
+from atmosphere.operator import controllers  # noqa: F401
 
-LOG = logger.get_logger()
+
+@kopf.on.startup()
+def configure(settings: kopf.OperatorSettings, **_):
+    settings.admission.server = kopf.WebhookServer(host=os.environ["POD_IP"])
+    settings.admission.managed = "auto.atmosphere.vexxhost.com"
 
 
-def main():
-    LOG.info("Starting Atmosphere operator")
-
+@kopf.on.startup()
+def startup(**_):
     cfg = config.Config.from_file()
-
     engine = flows.get_engine(cfg)
     engine.run()
-    LOG.info("Atmosphere operator successfully started")
-
-    try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        pass
-
-    LOG.info("Stopping Atmosphere operator")
