@@ -12,54 +12,15 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Create keystone user
-  openstack.cloud.identity_user:
-    cloud: atmosphere
-    state: present
-    name: openstack-exporter-{{ openstack_helm_endpoints_region_name }}
-    password: "{{ openstack_helm_endpoints_openstack_exporter_keystone_password }}"
-    domain: service
-    default_project: service
-
-- name: Assign admin role to service user
-  openstack.cloud.role_assignment:
-    cloud: atmosphere
-    user: openstack-exporter-{{ openstack_helm_endpoints_region_name }}
-    role: admin
-    project: service
-    domain: service
-
 - name: Deploy service
   kubernetes.core.k8s:
     state: present
     definition:
-      - apiVersion: v1
-        kind: Secret
-        metadata:
-          name: openstack-config
-          namespace: monitoring
-        type: Opaque
-        stringData:
-          clouds.yaml: |
-            clouds:
-              openstack:
-                auth:
-                  auth_url: http://keystone-api.openstack.svc.cluster.local:5000
-                  project_domain_name: service
-                  project_name: service
-                  user_domain_name: service
-                  username: openstack-exporter-{{ openstack_helm_endpoints_region_name }}
-                  password: {{ openstack_helm_endpoints_openstack_exporter_keystone_password }}
-                region_name: {{ openstack_helm_endpoints_region_name }}
-                interface: internal
-                identity_api_version: 3
-                identity_interface: internal
-
       - apiVersion: apps/v1
         kind: Deployment
         metadata:
           name: openstack-exporter
-          namespace: monitoring
+          namespace: openstack
           labels:
             application: openstack-exporter
         spec:
@@ -74,6 +35,34 @@
             spec:
               nodeSelector:
                 openstack-control-plane: enabled
+              initContainers:
+                - name: build-config
+                  image: quay.io/vexxhost/openstack-runtime-focal:latest
+                  command: ["bash", "-ec"]
+                  args:
+                    - |
+                      cat <<EOF > /etc/openstack/clouds.yaml
+                      ---
+                      clouds:
+                        default:
+                          auth:
+                            auth_url: "$(OS_AUTH_URL)"
+                            project_domain_name: "$(OS_PROJECT_DOMAIN_NAME)"
+                            project_name: "$(OS_PROJECT_NAME)"
+                            user_domain_name: "$(OS_USER_DOMAIN_NAME)"
+                            username: "$(OS_USERNAME)"
+                            password: "$(OS_PASSWORD)"
+                          region_name: "$(OS_REGION_NAME)"
+                          interface: "$(OS_INTERFACE)"
+                          identity_api_version: 3
+                          identity_interface: "$(OS_INTERFACE)"
+                      EOF
+                  envFrom:
+                    - secretRef:
+                        name: keystone-keystone-admin
+                  volumeMounts:
+                    - name: openstack-config
+                      mountPath: /etc/openstack
               containers:
                 - name: openstack-exporter
                   image: "{{ openstack_exporter_image_repository }}/openstack-exporter:{{ openstack_exporter_image_tag }}"
@@ -105,17 +94,31 @@
                     containerPort: 9180
                   volumeMounts:
                     - name: openstack-config
-                      mountPath: "/etc/openstack"
+                      mountPath: /etc/openstack
+                  readinessProbe:
+                    failureThreshold: 3
+                    httpGet:
+                      path: /
+                      port: 9180
+                      scheme: HTTP
+                  livenessProbe:
+                    failureThreshold: 3
+                    httpGet:
+                      path: /
+                      port: 9180
+                      scheme: HTTP
+                    periodSeconds: 10
+                    successThreshold: 1
+                    timeoutSeconds: 1
               volumes:
                 - name: openstack-config
-                  secret:
-                    secretName: openstack-config
+                  emptyDir: {}
 
       - apiVersion: v1
         kind: Service
         metadata:
           name: openstack-exporter
-          namespace: monitoring
+          namespace: openstack
           labels:
             application: openstack-exporter
         spec:
