@@ -1,8 +1,13 @@
-- name: Install operator
+- name: Install CRDs
   kubernetes.core.k8s:
     state: present
     template:
       - crds.yml
+
+- name: Install operator
+  kubernetes.core.k8s:
+    state: present
+    template:
       - cluster_role.yml
       - cluster_role_binding.yml
       - namespace.yml
