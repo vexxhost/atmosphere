@@ -43,16 +43,12 @@ def test_e2e_for_operator(tmp_path, flux_cluster, docker_image):
 
     # Parse the Ansible task to get order of manifests
     with open("roles/atmosphere/tasks/main.yml") as fd:
-        tasks = yaml.safe_load(fd)
-        files = tasks[0]["kubernetes.core.k8s"]["template"]
-
-    for filename in files:
-        template = env.get_template(filename)
-
-        file = tmp_path / filename
-        file.write_text(template.render(**args))
-
-        flux_cluster.kubectl("apply", "-f", file)
+        for task in yaml.safe_load(fd):
+            for filename in task["kubernetes.core.k8s"]["template"]:
+                template = env.get_template(filename)
+                file = tmp_path / filename
+                file.write_text(template.render(**args))
+                flux_cluster.kubectl("apply", "-f", file)
 
     flux_cluster.kubectl(
         "-n", "openstack", "rollout", "status", "deployment/atmosphere-operator"
