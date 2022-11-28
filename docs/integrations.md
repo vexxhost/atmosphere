@@ -21,7 +21,7 @@ Afterwards, you can configure the following options for the Atmosphere config:
 atmosphere_opsgenie_config:
   enabled: true
   api_key: <your-api-key>
-  heartbeat_name: <your-heartbeat-name>
+  heartbeat: <your-heartbeat-name>
 ```
 
 Once this is done and deployed, you'll start to see alerts inside OpsGenie and
