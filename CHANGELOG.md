@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.8.0](https://github.com/vexxhost/atmosphere/compare/v0.7.0...v0.8.0) (2022-11-28)
+
+
+### Features
+
+* **opsgenie:** add integration ([ad5e265](https://github.com/vexxhost/atmosphere/commit/ad5e265891d7ed06aa2f68e8448a7b4e4d3a2994))
+
+
+### Bug Fixes
+
+* bump to ovs 2.17.3 ([d2f69ef](https://github.com/vexxhost/atmosphere/commit/d2f69ef203a3dc654f249fccd01ca15d355e4133))
+
 ## [0.7.0](https://github.com/vexxhost/atmosphere/compare/v0.6.1...v0.7.0) (2022-11-15)
 
 
