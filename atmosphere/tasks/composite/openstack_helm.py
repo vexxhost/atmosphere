@@ -81,11 +81,11 @@ def generate_alertmanager_config_for_opsgenie(
                             {{- if eq .GroupLabels.severity "critical" -}}
                             P1
                             {{- else if eq .GroupLabels.severity "warning" -}}
-                            P2
-                            {{- else if eq .GroupLabels.severity "info" -}}
                             P3
+                            {{- else if eq .GroupLabels.severity "info" -}}
+                            P5
                             {{- else -}}
-                            P4
+                            P3
                             {{- end -}}
                             """
                         ),
