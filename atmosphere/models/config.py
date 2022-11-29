@@ -2,6 +2,7 @@ import os
 
 import tomli
 from schematics import types
+from schematics.exceptions import ValidationError
 
 from atmosphere.models import base
 
@@ -102,6 +103,22 @@ class IngressNginxChartConfig(ChartConfig):
     namespace = types.StringType(default="openstack", required=True)
 
 
+class OpsGenieConfig(base.Model):
+    enabled = types.BooleanType(default=False, required=True)
+    api_key = types.StringType()
+    heartbeat = types.StringType()
+
+    def validate_api_key(self, data, value):
+        if data["enabled"] and not value:
+            raise ValidationError(types.BaseType.MESSAGES["required"])
+        return value
+
+    def validate_heartbeat(self, data, value):
+        if data["enabled"] and not value:
+            raise ValidationError(types.BaseType.MESSAGES["required"])
+        return value
+
+
 class Config(base.Model):
     kube_prometheus_stack = types.ModelType(
         KubePrometheusStackChartConfig, default=KubePrometheusStackChartConfig()
@@ -117,6 +134,7 @@ class Config(base.Model):
         default=AcmeIssuerConfig(),
         required=True,
     )
+    opsgenie = types.ModelType(OpsGenieConfig, default=OpsGenieConfig())
 
     @classmethod
     def from_toml(cls, data, validate=True):
