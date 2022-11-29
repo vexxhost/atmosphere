@@ -24,23 +24,28 @@ def get_deployment_flow(config):
             name=constants.HELM_REPOSITORY_CEPH,
             url="https://ceph.github.io/csi-charts",
         ),
+    )
         # cert-manager
-        v1.ApplyNamespaceTask(name=constants.NAMESPACE_CERT_MANAGER),
-        flux.ApplyHelmRepositoryTask(
-            namespace=constants.NAMESPACE_CERT_MANAGER,
-            name=constants.HELM_REPOSITORY_JETSTACK,
-            url="https://charts.jetstack.io",
-        ),
-        flux.ApplyHelmReleaseTask(
-            namespace=constants.NAMESPACE_CERT_MANAGER,
-            name=constants.HELM_RELEASE_CERT_MANAGER_NAME,
-            repository=constants.HELM_REPOSITORY_JETSTACK,
-            chart=constants.HELM_RELEASE_CERT_MANAGER_NAME,
-            version=constants.HELM_RELEASE_CERT_MANAGER_VERSION,
-            values=constants.HELM_RELEASE_CERT_MANAGER_VALUES,
-        ),
-        *cert_manager.issuer_tasks_from_config(config.issuer),
+    if config.issuer.enabled:
+        flow.add(
+            v1.ApplyNamespaceTask(name=constants.NAMESPACE_CERT_MANAGER),
+            flux.ApplyHelmRepositoryTask(
+                namespace=constants.NAMESPACE_CERT_MANAGER,
+                name=constants.HELM_REPOSITORY_JETSTACK,
+                url="https://charts.jetstack.io",
+            ),
+            flux.ApplyHelmReleaseTask(
+                namespace=constants.NAMESPACE_CERT_MANAGER,
+                name=constants.HELM_RELEASE_CERT_MANAGER_NAME,
+                repository=constants.HELM_REPOSITORY_JETSTACK,
+                chart=constants.HELM_RELEASE_CERT_MANAGER_NAME,
+                version=constants.HELM_RELEASE_CERT_MANAGER_VERSION,
+                values=constants.HELM_RELEASE_CERT_MANAGER_VALUES,
+            ),
+            *cert_manager.issuer_tasks_from_config(config.issuer),
+        )
         # monitoring
+    flow.add(
         v1.ApplyNamespaceTask(name=constants.NAMESPACE_MONITORING),
         *openstack_helm.kube_prometheus_stack_tasks_from_config(
             config.kube_prometheus_stack
@@ -65,15 +70,31 @@ def get_deployment_flow(config):
             name=constants.HELM_REPOSITORY_BITNAMI,
             url="https://charts.bitnami.com/bitnami",
         ),
-        flux.ApplyHelmReleaseTask(
-            namespace=constants.NAMESPACE_OPENSTACK,
-            name=constants.HELM_RELEASE_RABBITMQ_OPERATOR_NAME,
-            repository=constants.HELM_REPOSITORY_BITNAMI,
-            chart=constants.HELM_RELEASE_RABBITMQ_OPERATOR_NAME,
-            version=constants.HELM_RELEASE_RABBITMQ_OPERATOR_VERSION,
-            values=constants.HELM_RELEASE_RABBITMQ_OPERATOR_VALUES,
-            requires=constants.HELM_RELEASE_RABBITMQ_OPERATOR_REQUIRES,
-        ),
+    )
+    if config.issuer.enabled:
+        flow.add(
+            flux.ApplyHelmReleaseTask(
+                namespace=constants.NAMESPACE_OPENSTACK,
+                name=constants.HELM_RELEASE_RABBITMQ_OPERATOR_NAME,
+                repository=constants.HELM_REPOSITORY_BITNAMI,
+                chart=constants.HELM_RELEASE_RABBITMQ_OPERATOR_NAME,
+                version=constants.HELM_RELEASE_RABBITMQ_OPERATOR_VERSION,
+                values=constants.HELM_RELEASE_RABBITMQ_OPERATOR_VALUES,
+                requires=constants.HELM_RELEASE_RABBITMQ_OPERATOR_REQUIRES,
+            ),
+        )
+    else:
+        flow.add(
+            flux.ApplyHelmReleaseTask(
+                namespace=constants.NAMESPACE_OPENSTACK,
+                name=constants.HELM_RELEASE_RABBITMQ_OPERATOR_NAME,
+                repository=constants.HELM_REPOSITORY_BITNAMI,
+                chart=constants.HELM_RELEASE_RABBITMQ_OPERATOR_NAME,
+                version=constants.HELM_RELEASE_RABBITMQ_OPERATOR_VERSION,
+                values=constants.HELM_RELEASE_RABBITMQ_OPERATOR_VALUES,
+            ),
+        )
+    flow.add(
         flux.ApplyHelmRepositoryTask(
             namespace=constants.NAMESPACE_OPENSTACK,
             name=constants.HELM_REPOSITORY_PERCONA,
