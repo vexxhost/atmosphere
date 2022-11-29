@@ -23,7 +23,11 @@ HELM_REPOSITORY_NODE_FEATURE_DISCOVERY = "node-feature-discovery"
 HELM_REPOSITORY_OPENSTACK_HELM = "openstack-helm"
 HELM_REPOSITORY_OPENSTACK_HELM_INFRA = "openstack-helm-infra"
 HELM_REPOSITORY_PERCONA = "percona"
+
 HELM_REPOSITORY_PROMETHEUS_COMMUINTY = "prometheus-community"
+HELM_REPOSITORY_PROMETHEUS_COMMUINTY_URL = (
+    "https://prometheus-community.github.io/helm-charts"
+)
 
 PROMETHEUS_MONITOR_RELABELING_SET_NODE_NAME_TO_INSTANCE = {
     "sourceLabels": ["__meta_kubernetes_pod_node_name"],
