@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.9.0](https://github.com/vexxhost/atmosphere/compare/v0.8.1...v0.9.0) (2022-11-29)
+
+
+### Features
+
+* allow for custom clusterissuer and certificate secretName when atmosphere is not responsible for cert-manager. ([fa960d4](https://github.com/vexxhost/atmosphere/commit/fa960d40c93bfcd17d5af2b6f5405ce174b193a2))
+
+
+### Bug Fixes
+
+* **monitoring:** enable openstack exporter ([b77cea1](https://github.com/vexxhost/atmosphere/commit/b77cea160393211c65df7afa5db564ba2b1666c7))
+* **openstack-exporter:** solve containerPort issues ([c90235e](https://github.com/vexxhost/atmosphere/commit/c90235ea57bd01b1f833315397b0fdd8157296fb))
+* **opsgenie:** adjust severity levels ([b26524f](https://github.com/vexxhost/atmosphere/commit/b26524fbefe1fe9829614cb35c21cf8e0acbf7bb))
+
+
+### Documentation
+
+* basic etcdDatabaseHighFragmentationRatio response ([5af93c0](https://github.com/vexxhost/atmosphere/commit/5af93c07716972c9039bc9158aaf6c02f808f80d))
+
 ## [0.8.1](https://github.com/vexxhost/atmosphere/compare/v0.8.0...v0.8.1) (2022-11-28)
 
 
