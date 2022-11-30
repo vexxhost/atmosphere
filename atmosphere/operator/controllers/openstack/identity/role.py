@@ -1,17 +1,8 @@
 import kopf
-from kopf._cogs.structs import patches, references
+from kopf._cogs.structs import patches
 
 from atmosphere.operator.api.openstack import identity
 from atmosphere.operator.controllers.openstack import utils as openstack_utils
-
-
-@kopf.on.validate(
-    identity.Role.version,
-    identity.Role.kind,
-    operation="UPDATE",
-)
-def disallow_role_update(resource: references.Resource, **_):
-    raise kopf.AdmissionError(f"{resource.kind} is immutable.")
 
 
 @kopf.on.create(identity.Role.version, identity.Role.kind)
