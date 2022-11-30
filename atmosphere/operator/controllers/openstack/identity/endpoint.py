@@ -1,18 +1,9 @@
 import kopf
-from kopf._cogs.structs import patches, references
+from kopf._cogs.structs import patches
 
 from atmosphere import clients
 from atmosphere.operator.api.openstack import identity
 from atmosphere.operator.controllers.openstack import utils as openstack_utils
-
-
-@kopf.on.validate(
-    identity.Endpoint.version,
-    identity.Endpoint.kind,
-    operation="UPDATE",
-)
-def disallow_endpoint_update(resource: references.Resource, **_):
-    raise kopf.AdmissionError(f"{resource.kind} is immutable.")
 
 
 @kopf.on.create(identity.Endpoint.version, identity.Endpoint.kind)

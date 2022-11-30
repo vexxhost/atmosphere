@@ -1,18 +1,8 @@
 import kopf
-from kopf._cogs.structs import references
 
 from atmosphere import clients
 from atmosphere.operator.api.openstack import identity
 from atmosphere.operator.controllers.openstack import utils as openstack_utils
-
-
-@kopf.on.validate(
-    identity.ImpliedRole.version,
-    identity.ImpliedRole.kind,
-    operation="UPDATE",
-)
-def disallow_implied_role_update(resource: references.Resource, **_):
-    raise kopf.AdmissionError(f"{resource.kind} is immutable.")
 
 
 @kopf.on.create(identity.ImpliedRole.version, identity.ImpliedRole.kind)
