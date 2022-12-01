@@ -24,32 +24,6 @@
   kubernetes.core.k8s:
     state: present
     definition:
-      - apiVersion: source.toolkit.fluxcd.io/v1beta2
-        kind: GitRepository
-        metadata:
-          name: openstack-helm-infra
-          namespace: openstack
-        spec:
-          interval: 60s
-          url: https://github.com/vexxhost/openstack-helm-infra
-          ref:
-            commit: 24726dffd6f1e5ac91620e92e04a782cb94340e8
-
-      - apiVersion: source.toolkit.fluxcd.io/v1beta2
-        kind: GitRepository
-        metadata:
-          name: openstack-helm
-          namespace: openstack
-        spec:
-          interval: 60s
-          url: https://github.com/vexxhost/openstack-helm
-          ref:
-            commit: 340c5840434d510d5c977618fea236403ca1bbfb
-          include:
-            - repository:
-                name: openstack-helm-infra
-              toPath: ../openstack-helm-infra
-
       - apiVersion: v1
         kind: Secret
         metadata:
@@ -64,12 +38,13 @@
           name: glance
           namespace: openstack
         spec:
-          interval: 60s
+          interval:
           chart:
             spec:
-              chart: ./glance
+              chart: glance
+              version: 0.4.1
               sourceRef:
-                kind: GitRepository
+                kind: HelmRepository
                 name: openstack-helm
           install:
             disableWait: true
