@@ -16,7 +16,7 @@ rules:
     resources: [namespaces]
     verbs: [list, watch]
   # Framework: admission webhook configuration management.
-  - apiGroups: [admissionregistration.k8s.io/v1, admissionregistration.k8s.io/v1beta1]
+  - apiGroups: [admissionregistration.k8s.io, admissionregistration.k8s.io]
     resources: [validatingwebhookconfigurations, mutatingwebhookconfigurations]
     verbs: [create, patch]
   # Framework: posting the events about the handlers progress/errors.
@@ -24,8 +24,8 @@ rules:
     resources: [events]
     verbs: [create]
   # Application: read-only access for watching cluster-wide.
-  - apiGroups: [identity.atmosphere.vexxhost.com]
-    resources: [catalogservices, catalogendpoints]
+  - apiGroups: [identity.openstack.atmosphere.vexxhost.com]
+    resources: [endpoints, impliedroles, roles, services]
     verbs: [get, list, watch, patch]
   # Application: other resources it produces and manipulates.
   - apiGroups: [""]

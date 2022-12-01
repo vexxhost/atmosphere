@@ -12,15 +12,13 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-_openstack_helm_ingress_annotations:
-  cert-manager.io/cluster-issuer: "{{ openstack_helm_ingress_cluster_issuer | default('atmosphere') }}"
-
-_openstack_helm_ingress_paths: "{{ openstack_helm_ingress_paths + __openstack_helm_ingress_paths }}"
-__openstack_helm_ingress_paths:
-  - path: /
-    pathType: Prefix
-    backend:
-      service:
-        name: "{{ openstack_helm_ingress_service_name }}"
-        port:
-          number: "{{ openstack_helm_ingress_service_port }}"
+galaxy_info:
+  author: VEXXHOST, Inc.
+  description: Ansible role for sysctl tuning
+  license: Apache-2.0
+  min_ansible_version: 5.5.0
+  standalone: false
+  platforms:
+    - name: Ubuntu
+      versions:
+        - focal

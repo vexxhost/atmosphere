@@ -33,6 +33,12 @@
   ansible.builtin.set_fact:
     _atmosphere_ceph_monitors: "{{ _ceph_mon_dump.stdout | from_json | community.general.json_query('mons[*].{name: name, address: addr}') }}"
 
+- name: Install CRDs
+  kubernetes.core.k8s:
+    state: present
+    template:
+      - crds.yml
+
 - name: Install operator
   run_once: true
   kubernetes.core.k8s:
