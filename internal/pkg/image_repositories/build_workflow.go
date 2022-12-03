@@ -168,11 +168,7 @@ func NewBuildWorkflow(project string) *GithubWorkflow {
 					{
 						Name: "Promote image",
 						Uses: "akhilerm/tag-push-action@v2.0.0",
-						If: `
-							github.event_name == 'push' && (
-							(matrix.from == 'focal') ||
-							(matrix.from == 'jammy' && matrix.release != 'yoga')
-						)`,
+						If:   `github.event_name == 'push' && ((matrix.from == 'focal') || (matrix.from == 'jammy' && matrix.release != 'yoga'))`,
 						With: map[string]string{
 							"src": fmt.Sprintf("quay.io/vexxhost/%s:${{ env.PROJECT_REF }}-${{ matrix.from }}", project),
 							"dst": fmt.Sprintf("quay.io/vexxhost/%s:${{ matrix.release }}", project),
