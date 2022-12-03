@@ -77,6 +77,7 @@ func NewBuildWorkflow(project string) *GithubWorkflow {
 	}
 
 	buildArgs := []string{
+		"BUILDER_IMAGE=quay.io/vexxhost/openstack-builder-${{ matrix.from }}",
 		"RUNTIME_IMAGE=quay.io/vexxhost/openstack-runtime-${{ matrix.from }}",
 		"RELEASE=${{ matrix.release }}",
 		fmt.Sprintf("PROJECT=%s", project),
