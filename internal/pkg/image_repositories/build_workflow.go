@@ -77,6 +77,7 @@ func NewBuildWorkflow(project string) *GithubWorkflow {
 	}
 
 	buildArgs := []string{
+		"RUNTIME_IMAGE=quay.io/vexxhost/openstack-runtime-${{ matrix.from }}",
 		"RELEASE=${{ matrix.release }}",
 		fmt.Sprintf("PROJECT=%s", project),
 		fmt.Sprintf("PROJECT_REPO=%s", gitRepo),
@@ -105,8 +106,23 @@ func NewBuildWorkflow(project string) *GithubWorkflow {
 			"image": {
 				RunsOn: "ubuntu-latest",
 				Strategy: GithubWorkflowStrategy{
-					Matrix: map[string][]string{
-						"release": {"wallaby", "xena", "yoga", "zed"},
+					Matrix: map[string]interface{}{
+						"from":    []string{"focal", "jammy"},
+						"release": []string{"wallaby", "xena", "yoga", "zed"},
+						"exclude": []map[string]string{
+							{
+								"from":    "focal",
+								"release": "zed",
+							},
+							{
+								"from":    "jammy",
+								"release": "wallaby",
+							},
+							{
+								"from":    "jammy",
+								"release": "xena",
+							},
+						},
 					},
 				},
 				Steps: []GithubWorkflowStep{
@@ -141,20 +157,24 @@ func NewBuildWorkflow(project string) *GithubWorkflow {
 						Uses: "docker/build-push-action@v3",
 						With: map[string]string{
 							"context":    ".",
-							"cache-from": "type=gha,scope=${{ matrix.release }}",
-							"cache-to":   "type=gha,mode=max,scope=${{ matrix.release }}",
+							"cache-from": "type=gha,scope=${{ matrix.from }}-${{ matrix.release }}",
+							"cache-to":   "type=gha,mode=max,scope=${{ matrix.from }}-${{ matrix.release }}",
 							"platforms":  platforms,
 							"push":       "${{ github.event_name == 'push' }}",
 							"build-args": strings.Join(buildArgs, "\n"),
-							"tags":       fmt.Sprintf("quay.io/vexxhost/%s:${{ env.PROJECT_REF }}", project),
+							"tags":       fmt.Sprintf("quay.io/vexxhost/%s:${{ env.PROJECT_REF }}-${{ matrix.from }}", project),
 						},
 					},
 					{
 						Name: "Promote image",
 						Uses: "akhilerm/tag-push-action@v2.0.0",
-						If:   "github.ref == 'refs/heads/main'",
+						If: `
+							github.event_name == 'push' && (
+							(matrix.from == 'focal') ||
+							(matrix.from == 'jammy' && matrix.release != 'yoga')
+						)`,
 						With: map[string]string{
-							"src": fmt.Sprintf("quay.io/vexxhost/%s:${{ env.PROJECT_REF }}", project),
+							"src": fmt.Sprintf("quay.io/vexxhost/%s:${{ env.PROJECT_REF }}-${{ matrix.from }}", project),
 							"dst": fmt.Sprintf("quay.io/vexxhost/%s:${{ matrix.release }}", project),
 						},
 					},
