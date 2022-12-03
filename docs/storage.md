@@ -65,6 +65,19 @@ is already setup accordingly to the host's storage capabilities.
    mount /var/lib/libvirt/rbd-cache
    ```
 
+6. Fix ownership for the rbd-cache directory for `nova` user in `kvm` group:
+
+   ```shell
+  chown 42424:110 -R /var/lib/libvirt/rbd-cache
+   ```
+
+7. Allow user and group to read, write and execute:
+
+    ```shell
+  chmod 0775 -R /var/lib/libvirt/rbd-cache
+   ```
+   
+
 ##### Atmosphere
 
 In order to be able to configure write-back cache, you will need to override the
