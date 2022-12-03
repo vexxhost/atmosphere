@@ -6,7 +6,7 @@ FROM {{ .BuilderImage }}:{{ .BuilderImageTag }} AS builder
 COPY --from=bindep --link /runtime-pip-packages /runtime-pip-packages
 
 ARG RUNTIME_IMAGE={{ .RuntimeImage }}
-FROM ${FROM}:{{ .RuntimeImageTag }} AS runtime
+FROM ${RUNTIME_IMAGE}:{{ .RuntimeImageTag }} AS runtime
 COPY --from=bindep --link /runtime-dist-packages /runtime-dist-packages
 COPY --from=builder --link /var/lib/openstack /var/lib/openstack
 
