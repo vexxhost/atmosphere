@@ -26,6 +26,8 @@ together out of the box inside Atmosphere.
 - [Senlin](https://docs.openstack.org/senlin/latest/)
 - [Heat](https://docs.openstack.org/heat/latest/)
 - [Horizon](https://docs.openstack.org/horizon/latest/)
+- [Octavia](https://docs.openstack.org/octavia/latest/)
+- [Designate](https://docs.openstack.org/designate/latest/)
 
 ### Planned Supported Services
 
@@ -33,9 +35,7 @@ The following OpenStack services are planned to be included, fully supported and
 integrated together out of the box inside Atmosphere.  This is a priority-ordered
 list of services that are planned to be included in the future.
 
-- [Octavia](https://docs.openstack.org/octavia/latest/)
 - [Magnum](https://docs.openstack.org/magnum/latest/)
-- [Designate](https://docs.openstack.org/designate/latest/)
 - [Swift](https://docs.openstack.org/swift/latest/) via RADOS Gateway
 - [Manila](https://docs.openstack.org/manila/latest/)
 - [Ironic](https://docs.openstack.org/ironic/latest/)
