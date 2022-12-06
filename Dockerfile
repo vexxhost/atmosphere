@@ -8,7 +8,7 @@ EOF
 FROM poetry AS builder
 RUN <<EOF
   apt-get update
-  apt-get install -y gcc
+  apt-get install -y build-essential
 EOF
 WORKDIR /app
 ADD poetry.lock /app
@@ -21,4 +21,4 @@ RUN poetry install --only main --no-interaction
 FROM python:3.10-slim AS runtime
 ENV PATH="/app/.venv/bin:$PATH"
 COPY --from=builder --link /app /app
-CMD ["atmosphere-operator"]
+CMD ["kopf", "run", "/app/atmosphere/cmd/operator.py"]

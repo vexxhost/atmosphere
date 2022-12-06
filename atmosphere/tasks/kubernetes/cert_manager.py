@@ -1,5 +1,4 @@
 import pykube
-from oslo_serialization import base64
 
 from atmosphere.models import config
 from atmosphere.tasks import constants
@@ -42,19 +41,19 @@ class ApplyCertificateTask(base.ApplyKubernetesObjectTask):
         )
 
 
-class Issuer(pykube.objects.NamespacedAPIObject):
+class ClusterIssuer(pykube.objects.APIObject):
     version = "cert-manager.io/v1"
-    endpoint = "issuers"
-    kind = "Issuer"
+    endpoint = "clusterissuers"
+    kind = "ClusterIssuer"
 
 
-class ApplyIssuerTask(base.ApplyKubernetesObjectTask):
-    def __init__(self, namespace: str, name: str, spec: dict):
+class ApplyClusterIssuerTask(base.ApplyKubernetesObjectTask):
+    def __init__(self, name: str, spec: dict):
         self._spec = spec
 
         super().__init__(
-            kind=Issuer,
-            namespace=namespace,
+            kind=ClusterIssuer,
+            namespace=None,
             name=name,
             requires=set(
                 [
@@ -63,15 +62,14 @@ class ApplyIssuerTask(base.ApplyKubernetesObjectTask):
             ),
         )
 
-    def generate_object(self) -> Issuer:
-        return Issuer(
+    def generate_object(self) -> ClusterIssuer:
+        return ClusterIssuer(
             self.api,
             {
                 "apiVersion": self._obj_kind.version,
                 "kind": self._obj_kind.kind,
                 "metadata": {
                     "name": self._obj_name,
-                    "namespace": self._obj_namespace,
                 },
                 "spec": self._spec,
             },
@@ -79,7 +77,14 @@ class ApplyIssuerTask(base.ApplyKubernetesObjectTask):
 
 
 def issuer_tasks_from_config(config: config.Issuer) -> list:
-    objects = []
+    objects = [
+        ApplyClusterIssuerTask(
+            name="self-signed",
+            spec={
+                "selfSigned": {},
+            },
+        )
+    ]
 
     if config.type == "acme":
         spec = {
@@ -107,12 +112,10 @@ def issuer_tasks_from_config(config: config.Issuer) -> list:
             #               credentials in this case.
             objects.append(
                 v1.ApplySecretTask(
-                    constants.NAMESPACE_OPENSTACK,
+                    constants.NAMESPACE_CERT_MANAGER,
                     "cert-manager-issuer-tsig-secret-key",
                     data={
-                        "tsig-secret-key": base64.encode_as_text(
-                            config.solver.tsig_secret
-                        ),
+                        "tsig-secret-key": config.solver.tsig_secret,
                     },
                 )
             )
@@ -137,13 +140,9 @@ def issuer_tasks_from_config(config: config.Issuer) -> list:
             #               credentials in this case.
             objects.append(
                 v1.ApplySecretTask(
-                    constants.NAMESPACE_OPENSTACK,
+                    constants.NAMESPACE_CERT_MANAGER,
                     "cert-manager-issuer-route53-credentials",
-                    data={
-                        "secret-access-key": base64.encode_as_text(
-                            config.solver.secret_access_key
-                        ),
-                    },
+                    data={"secret-access-key": config.solver.secret_access_key},
                 )
             )
 
@@ -167,11 +166,11 @@ def issuer_tasks_from_config(config: config.Issuer) -> list:
         #               certificate and key in this case.
         objects.append(
             v1.ApplySecretTask(
-                constants.NAMESPACE_OPENSTACK,
+                constants.NAMESPACE_CERT_MANAGER,
                 "cert-manager-issuer-ca",
                 data={
-                    "tls.crt": base64.encode_as_text(config.certificate),
-                    "tls.key": base64.encode_as_text(config.private_key),
+                    "tls.crt": config.certificate,
+                    "tls.key": config.private_key,
                 },
             )
         )
@@ -184,15 +183,8 @@ def issuer_tasks_from_config(config: config.Issuer) -> list:
     elif config.type == "self-signed":
         # NOTE(mnaser): We have to setup the self-signed CA in this case
         objects += [
-            ApplyIssuerTask(
-                namespace=constants.NAMESPACE_OPENSTACK,
-                name="self-signed",
-                spec={
-                    "selfSigned": {},
-                },
-            ),
             ApplyCertificateTask(
-                namespace=constants.NAMESPACE_OPENSTACK,
+                namespace=constants.NAMESPACE_CERT_MANAGER,
                 name="self-signed-ca",
                 spec={
                     "isCA": True,
@@ -202,7 +194,7 @@ def issuer_tasks_from_config(config: config.Issuer) -> list:
                     "renewBefore": "360h",
                     "privateKey": {"algorithm": "ECDSA", "size": 256},
                     "issuerRef": {
-                        "kind": "Issuer",
+                        "kind": "ClusterIssuer",
                         "name": "self-signed",
                     },
                 },
@@ -215,8 +207,4 @@ def issuer_tasks_from_config(config: config.Issuer) -> list:
             }
         }
 
-    return objects + [
-        ApplyIssuerTask(
-            namespace=constants.NAMESPACE_OPENSTACK, name="openstack", spec=spec
-        )
-    ]
+    return objects + [ApplyClusterIssuerTask(name="atmosphere", spec=spec)]

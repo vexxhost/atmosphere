@@ -27,15 +27,6 @@
     src: /etc/kubernetes/pki/etcd/healthcheck-client.key
   register: _etcd_healthcheck_client_key
 
-- name: Create namespace
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: v1
-      kind: Namespace
-      metadata:
-        name: monitoring
-
 - name: Create Secret with "etcd" TLS certificates
   kubernetes.core.k8s:
     state: present
@@ -49,27 +40,10 @@
         ca.crt: "{{ _etcd_ca_crt.content }}"
         healthcheck-client.crt: "{{ _etcd_healthcheck_client_crt.content }}"
         healthcheck-client.key: "{{ _etcd_healthcheck_client_key.content }}"
-
-- name: Deploy Helm chart
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      - apiVersion: helm.toolkit.fluxcd.io/v2beta1
-        kind: HelmRelease
-        metadata:
-          name: kube-prometheus-stack
-          namespace: monitoring
-        spec:
-          interval: 60s
-          chart:
-            spec:
-              chart: kube-prometheus-stack
-              version: 36.2.0
-              sourceRef:
-                kind: HelmRepository
-                name: prometheus-community
-          install:
-            crds: CreateReplace
-          upgrade:
-            crds: CreateReplace
-          values: "{{ _kube_prometheus_stack_values | combine(kube_prometheus_stack_values, recursive=True) }}"
+  # NOTE(mnaser): Since we haven't moved to the operator pattern yet, we need to
+  #               keep retrying a few times as the namespace might not be
+  #               created yet.
+  retries: 60
+  delay: 5
+  register: _result
+  until: _result is not failed

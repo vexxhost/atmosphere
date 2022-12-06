@@ -1,0 +1,257 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Generate OpenStack-Helm endpoints
+  ansible.builtin.include_role:
+    name: openstack_helm_endpoints
+  vars:
+    openstack_helm_endpoints_repo_name: openstack-helm
+    openstack_helm_endpoints_repo_url: https://tarballs.opendev.org/openstack/openstack-helm/
+    openstack_helm_endpoints_chart: octavia
+
+- name: Create management network
+  openstack.cloud.network:
+    cloud: atmosphere
+    # Network settings
+    name: lb-mgmt-net
+  register: _openstack_helm_octavia_management_network
+
+- name: Create management subnet
+  openstack.cloud.subnet:
+    cloud: atmosphere
+    # Subnet settings
+    network_name: lb-mgmt-net
+    name: lb-mgmt-subnet
+    cidr: "{{ openstack_helm_octavia_management_subnet_cidr }}"
+
+- name: Create health manager security group
+  openstack.cloud.security_group:
+    cloud: atmosphere
+    name: lb-health-mgr-sec-grp
+  register: _openstack_helm_octavia_health_manager_sg
+
+- name: Create health manager security group rules
+  openstack.cloud.security_group_rule:
+    cloud: atmosphere
+    security_group: "{{ _openstack_helm_octavia_health_manager_sg.id }}"
+    direction: ingress
+    ethertype: IPv4
+    protocol: tcp
+    port_range_min: "{{ item }}"
+    port_range_max: "{{ item }}"
+  loop:
+    - 5555
+    - 10514
+    - 20514
+
+- name: Create health manager networking ports
+  openstack.cloud.port:
+    cloud: atmosphere
+    name: "octavia-health-manager-port-{{ hostvars[item]['inventory_hostname_short'] }}"
+    device_owner: octavia:health-mgr
+    network: "{{ _openstack_helm_octavia_management_network.id }}"
+    security_groups:
+      - "{{ _openstack_helm_octavia_health_manager_sg.id }}"
+  loop: "{{ groups['controllers'] }}"
+
+- name: Set binding for ports
+  changed_when: false
+  ansible.builtin.shell: |
+    openstack port set \
+      --host {{ hostvars[item]['ansible_fqdn'] }} \
+      octavia-health-manager-port-{{ hostvars[item]['inventory_hostname_short'] }}
+  environment:
+    OS_CLOUD: atmosphere
+  loop: "{{ groups['controllers'] }}"
+
+- name: Get health manager networking ports
+  openstack.cloud.port_info:
+    cloud: atmosphere
+    port: "octavia-health-manager-port-{{ hostvars[item]['ansible_fqdn'] | split('.') | first }}"
+  loop: "{{ groups['controllers'] }}"
+  register: _openstack_helm_octavia_health_manager_ports
+
+- name: Set controller_ip_port_list
+  ansible.builtin.set_fact:
+    _openstack_helm_octavia_controller_ip_port_list: "{{ _openstack_helm_octavia_controller_ip_port_list | d([]) + [item.openstack_ports[0].fixed_ips[0].ip_address + ':5555'] }}"
+  loop: "{{ _openstack_helm_octavia_health_manager_ports.results }}"
+  loop_control:
+    label: "{{ item.openstack_ports[0].name }}"
+
+- name: Create amphora security group
+  openstack.cloud.security_group:
+    cloud: atmosphere
+    name: lb-mgmt-sec-grp
+  register: _openstack_helm_octavia_amphora_sg
+
+- name: Create amphora security group rules
+  openstack.cloud.security_group_rule:
+    cloud: atmosphere
+    security_group: "{{ _openstack_helm_octavia_amphora_sg.id }}"
+    direction: ingress
+    ethertype: IPv4
+    protocol: tcp
+    port_range_min: "{{ item.0 }}"
+    port_range_max: "{{ item.0 }}"
+    remote_ip_prefix: "{{ item.1.openstack_ports[0].fixed_ips[0].ip_address }}/32"
+  with_nested:
+    - [22, 9443]
+    - "{{ _openstack_helm_octavia_health_manager_ports.results }}"
+
+- name: Create amphora flavor
+  openstack.cloud.compute_flavor:
+    cloud: atmosphere
+    name: "m1.amphora"
+    vcpus: "1"
+    ram: "1024"
+    disk: "2"
+    is_public: false
+  register: _openstack_helm_octavia_amphora_flavor
+
+- name: Download amphora image
+  ansible.builtin.get_url:
+    url: "{{ openstack_helm_octavia_amphora_image_url }}"
+    dest: "/tmp/{{ openstack_helm_octavia_amphora_image_url | basename }}"
+    mode: 0644
+
+- name: Upload images
+  openstack.cloud.image:
+    cloud: atmosphere
+    name: "amphora-x64-haproxy"
+    filename: "/tmp/{{ openstack_helm_octavia_amphora_image_url | basename }}"
+    container_format: "bare"
+    disk_format: "qcow2"
+    tags:
+      - "amphora"
+  register: _openstack_helm_octavia_amphora_image
+
+- name: Create CAs & Issuers
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      - apiVersion: cert-manager.io/v1
+        kind: Certificate
+        metadata:
+          name: "{{ item }}-ca"
+          namespace: openstack
+        spec:
+          isCA: true
+          commonName: "{{ item }}"
+          secretName: "{{ item }}-ca"
+          duration: 87600h
+          renewBefore: 720h
+          privateKey:
+            algorithm: ECDSA
+            size: 256
+          issuerRef:
+            name: self-signed
+            kind: ClusterIssuer
+            group: cert-manager.io
+
+      - apiVersion: cert-manager.io/v1
+        kind: Issuer
+        metadata:
+          name: "{{ item }}"
+          namespace: openstack
+        spec:
+          ca:
+            secretName: "{{ item }}-ca"
+  loop:
+    - octavia-client
+    - octavia-server
+
+- name: Create certificate for Octavia clients
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: cert-manager.io/v1
+      kind: Certificate
+      metadata:
+        name: octavia-client-certs
+        namespace: openstack
+      spec:
+        commonName: octavia-client
+        secretName: octavia-client-certs
+        additionalOutputFormats:
+          - type: CombinedPEM
+        duration: 87600h
+        renewBefore: 720h
+        issuerRef:
+          name: octavia-client
+          kind: Issuer
+          group: cert-manager.io
+
+- name: Create admin compute quotaset
+  openstack.cloud.quota:
+    cloud: atmosphere
+    # NOTE(okozachenko): It uses project name instead of id.
+    name: admin
+    instances: -1
+    cores: -1
+    ram: -1
+
+- name: Deploy Helm chart
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      - apiVersion: v1
+        kind: Secret
+        metadata:
+          name: atmosphere-octavia
+          namespace: openstack
+        stringData:
+          values.yaml: "{{ _openstack_helm_octavia_values | combine(openstack_helm_octavia_values, recursive=True) | to_nice_yaml }}"
+
+      - apiVersion: helm.toolkit.fluxcd.io/v2beta1
+        kind: HelmRelease
+        metadata:
+          name: octavia
+          namespace: openstack
+        spec:
+          interval: 60s
+          chart:
+            spec:
+              chart: octavia
+              version: 0.2.5
+              sourceRef:
+                kind: HelmRepository
+                name: openstack-helm
+          install:
+            disableWait: true
+          upgrade:
+            disableWait: true
+          valuesFrom:
+            - kind: Secret
+              name: atmosphere-octavia
+            - kind: Secret
+              name: percona-xtradb
+              valuesKey: root
+              targetPath: endpoints.oslo_db.auth.admin.password
+            - kind: Secret
+              name: rabbitmq-octavia-default-user
+              valuesKey: username
+              targetPath: endpoints.oslo_messaging.auth.admin.username
+            - kind: Secret
+              name: rabbitmq-octavia-default-user
+              valuesKey: password
+              targetPath: endpoints.oslo_messaging.auth.admin.password
+
+- name: Create Ingress
+  ansible.builtin.include_role:
+    name: openstack_helm_ingress
+  vars:
+    openstack_helm_ingress_endpoint: load_balancer
+    openstack_helm_ingress_service_name: octavia-api
+    openstack_helm_ingress_service_port: 9876
+    openstack_helm_ingress_annotations: "{{ openstack_helm_octavia_ingress_annotations }}"

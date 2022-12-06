@@ -1,5 +1,93 @@
 # Changelog
 
+## [0.9.0](https://github.com/vexxhost/atmosphere/compare/v0.8.1...v0.9.0) (2022-11-29)
+
+
+### Features
+
+* allow for custom clusterissuer and certificate secretName when atmosphere is not responsible for cert-manager. ([fa960d4](https://github.com/vexxhost/atmosphere/commit/fa960d40c93bfcd17d5af2b6f5405ce174b193a2))
+
+
+### Bug Fixes
+
+* **monitoring:** enable openstack exporter ([b77cea1](https://github.com/vexxhost/atmosphere/commit/b77cea160393211c65df7afa5db564ba2b1666c7))
+* **openstack-exporter:** solve containerPort issues ([c90235e](https://github.com/vexxhost/atmosphere/commit/c90235ea57bd01b1f833315397b0fdd8157296fb))
+* **opsgenie:** adjust severity levels ([b26524f](https://github.com/vexxhost/atmosphere/commit/b26524fbefe1fe9829614cb35c21cf8e0acbf7bb))
+
+
+### Documentation
+
+* basic etcdDatabaseHighFragmentationRatio response ([5af93c0](https://github.com/vexxhost/atmosphere/commit/5af93c07716972c9039bc9158aaf6c02f808f80d))
+
+## [0.8.1](https://github.com/vexxhost/atmosphere/compare/v0.8.0...v0.8.1) (2022-11-28)
+
+
+### Bug Fixes
+
+* switch opsgenie config variable ([377a81b](https://github.com/vexxhost/atmosphere/commit/377a81b812c6c19b5af19753960f696165bd079e))
+
+## [0.8.0](https://github.com/vexxhost/atmosphere/compare/v0.7.0...v0.8.0) (2022-11-28)
+
+
+### Features
+
+* **opsgenie:** add integration ([ad5e265](https://github.com/vexxhost/atmosphere/commit/ad5e265891d7ed06aa2f68e8448a7b4e4d3a2994))
+
+
+### Bug Fixes
+
+* bump to ovs 2.17.3 ([d2f69ef](https://github.com/vexxhost/atmosphere/commit/d2f69ef203a3dc654f249fccd01ca15d355e4133))
+
+## [0.7.0](https://github.com/vexxhost/atmosphere/compare/v0.6.1...v0.7.0) (2022-11-15)
+
+
+### Features
+
+* **octavia:** add role ([d8d2aa1](https://github.com/vexxhost/atmosphere/commit/d8d2aa1eb40cad5028ff2c5a8224ffd1234e0e56))
+
+
+### Bug Fixes
+
+* bump osh for ovs fixes ([1ceda87](https://github.com/vexxhost/atmosphere/commit/1ceda87baa1e5fa3099d78b3d9a7b637f8fc20ef))
+* bump ovs to 2.17.0 ([dc07e23](https://github.com/vexxhost/atmosphere/commit/dc07e23e9e1c10a71e1d7bd9b7bf6d261539d9c7))
+* **containerd:** bump DefaultLimitMEMLOCK to inf ([ff1980a](https://github.com/vexxhost/atmosphere/commit/ff1980a9ba5a792ef04b754de383b85769c03752)), closes [#169](https://github.com/vexxhost/atmosphere/issues/169)
+* **octavia:** resolve unit tests ([d945774](https://github.com/vexxhost/atmosphere/commit/d945774c6e63c9424dc32e26c7d881a704dd8fae))
+* **octavia:** switch to cert-manager issuer certs ([c582420](https://github.com/vexxhost/atmosphere/commit/c58242052e49d30d01e0beb3d4c97f6d731180b6))
+* unit tests + cluster role ([4a402ab](https://github.com/vexxhost/atmosphere/commit/4a402ab35aaffee3a86c1356bf84ddd018f5b8a6))
+* use correct issuer name ([e7f470a](https://github.com/vexxhost/atmosphere/commit/e7f470af16a754a7078fab9aead05d6c5253aa0a))
+
+## [0.6.1](https://github.com/vexxhost/atmosphere/compare/v0.6.0...v0.6.1) (2022-11-10)
+
+
+### Bug Fixes
+
+* **monitoring:** correct CoreDNS selector ([92df86a](https://github.com/vexxhost/atmosphere/commit/92df86a232c8f351bee2572443b15cb7478d9841))
+* **monitoring:** fix NodeLowEntropy alerts ([5d41d7f](https://github.com/vexxhost/atmosphere/commit/5d41d7f3a201f12d8d9144396a5402aef3c1575d))
+* **monitoring:** resolve etcd monitoring ([ba92607](https://github.com/vexxhost/atmosphere/commit/ba9260717d2547d74f92e37130c0cff2017f81d7))
+
+## [0.6.0](https://github.com/vexxhost/atmosphere/compare/v0.5.0...v0.6.0) (2022-11-10)
+
+
+### Features
+
+* allow for a custom cluster IP address for the neutron coredns service, with a default of '10.96.0.20' ([662866f](https://github.com/vexxhost/atmosphere/commit/662866fb56b6601bf0348428641f445604b2b3fd))
+* allow for a custom ingressClassName on OpenStack component ingress objects, with a default of 'openstack' ([d8d1fde](https://github.com/vexxhost/atmosphere/commit/d8d1fde11eeb7e36eb10ec01d318af4d2a1cee71))
+* **ingress:** allow overriding ingress namespace ([31e528b](https://github.com/vexxhost/atmosphere/commit/31e528b39822db1513623e3db0cc8e4fe388ebc1))
+* **memcached:** allow overriding namespace ([661b0b0](https://github.com/vexxhost/atmosphere/commit/661b0b0ee56361806f3d425e047705c5c76f6be0))
+* **monitoring:** add to operator ([7d3c797](https://github.com/vexxhost/atmosphere/commit/7d3c797689f60c904a7a2bc3dd923af2fe3ef379))
+
+
+### Bug Fixes
+
+* bump magnum-capi ([aeb2081](https://github.com/vexxhost/atmosphere/commit/aeb208142574a289bab4044559437fa74d1b5b4e))
+* bump magnum-capi ([3d9509a](https://github.com/vexxhost/atmosphere/commit/3d9509a8a50ff1bcfe214f8584d28da6b395dfae))
+* use release specific dashboard addons ([7f45988](https://github.com/vexxhost/atmosphere/commit/7f45988ebf9db38463b9e91808b498cc9072e86f))
+
+
+### Documentation
+
+* add initial ([c45b71c](https://github.com/vexxhost/atmosphere/commit/c45b71ccd350207d1486bc534607b756c654a82f))
+
 ## [0.5.0](https://github.com/vexxhost/atmosphere/compare/v0.4.1...v0.5.0) (2022-10-06)
 
 

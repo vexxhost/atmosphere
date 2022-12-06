@@ -29,12 +29,13 @@ var DIST_PACAKGES map[string]string = map[string]string{
 	"ironic":        "ethtool lshw iproute2",
 	"monasca-agent": "iproute2 libvirt-clients lshw",
 	"neutron":       "jq ethtool lshw",
-	"nova":          "ovmf qemu-efi-aarch64 lsscsi nvme-cli sysfsutils udev util-linux",
+	"nova":          "ovmf qemu-efi-aarch64 lsscsi nvme-cli sysfsutils udev util-linux ndctl",
 }
 var PIP_PACKAGES map[string]string = map[string]string{
 	"glance":        "glance_store[cinder]",
-	"horizon":       "designate-dashboard heat-dashboard ironic-ui magnum-ui neutron-vpnaas-dashboard octavia-dashboard senlin-dashboard monasca-ui",
+	"horizon":       "git+https://github.com/openstack/designate-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/heat-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/ironic-ui.git@stable/${{ matrix.release }} git+https://github.com/openstack/magnum-ui.git@stable/${{ matrix.release }} git+https://github.com/openstack/neutron-vpnaas-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/octavia-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/senlin-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/monasca-ui.git@stable/${{ matrix.release }}",
 	"ironic":        "python-dracclient sushy",
+	"magnum":        "magnum-cluster-api==0.1.2",
 	"monasca-agent": "libvirt-python python-glanceclient python-neutronclient python-novaclient py3nvml",
 	"neutron":       "neutron-vpnaas",
 	"placement":     "httplib2",
@@ -60,9 +61,9 @@ func NewBuildWorkflow(project string) *GithubWorkflow {
 		distPackages = val
 	}
 
-	pipPackages := ""
+	pipPackages := "cryptography"
 	if val, ok := PIP_PACKAGES[project]; ok {
-		pipPackages = val
+		pipPackages += fmt.Sprintf(" %s", val)
 	}
 
 	platforms := "linux/amd64"
@@ -76,6 +77,8 @@ func NewBuildWorkflow(project string) *GithubWorkflow {
 	}
 
 	buildArgs := []string{
+		"BUILDER_IMAGE=quay.io/vexxhost/openstack-builder-${{ matrix.from }}",
+		"RUNTIME_IMAGE=quay.io/vexxhost/openstack-runtime-${{ matrix.from }}",
 		"RELEASE=${{ matrix.release }}",
 		fmt.Sprintf("PROJECT=%s", project),
 		fmt.Sprintf("PROJECT_REPO=%s", gitRepo),
@@ -104,8 +107,23 @@ func NewBuildWorkflow(project string) *GithubWorkflow {
 			"image": {
 				RunsOn: "ubuntu-latest",
 				Strategy: GithubWorkflowStrategy{
-					Matrix: map[string][]string{
-						"release": {"wallaby", "xena", "yoga", "zed"},
+					Matrix: map[string]interface{}{
+						"from":    []string{"focal", "jammy"},
+						"release": []string{"wallaby", "xena", "yoga", "zed"},
+						"exclude": []map[string]string{
+							{
+								"from":    "focal",
+								"release": "zed",
+							},
+							{
+								"from":    "jammy",
+								"release": "wallaby",
+							},
+							{
+								"from":    "jammy",
+								"release": "xena",
+							},
+						},
 					},
 				},
 				Steps: []GithubWorkflowStep{
@@ -140,20 +158,20 @@ func NewBuildWorkflow(project string) *GithubWorkflow {
 						Uses: "docker/build-push-action@v3",
 						With: map[string]string{
 							"context":    ".",
-							"cache-from": "type=gha,scope=${{ matrix.release }}",
-							"cache-to":   "type=gha,mode=max,scope=${{ matrix.release }}",
+							"cache-from": "type=gha,scope=${{ matrix.from }}-${{ matrix.release }}",
+							"cache-to":   "type=gha,mode=max,scope=${{ matrix.from }}-${{ matrix.release }}",
 							"platforms":  platforms,
 							"push":       "${{ github.event_name == 'push' }}",
 							"build-args": strings.Join(buildArgs, "\n"),
-							"tags":       fmt.Sprintf("quay.io/vexxhost/%s:${{ env.PROJECT_REF }}", project),
+							"tags":       fmt.Sprintf("quay.io/vexxhost/%s:${{ env.PROJECT_REF }}-${{ matrix.from }}", project),
 						},
 					},
 					{
 						Name: "Promote image",
 						Uses: "akhilerm/tag-push-action@v2.0.0",
-						If:   "github.ref == 'refs/heads/main'",
+						If:   `github.event_name == 'push' && ((matrix.from == 'focal') || (matrix.from == 'jammy' && matrix.release != 'yoga'))`,
 						With: map[string]string{
-							"src": fmt.Sprintf("quay.io/vexxhost/%s:${{ env.PROJECT_REF }}", project),
+							"src": fmt.Sprintf("quay.io/vexxhost/%s:${{ env.PROJECT_REF }}-${{ matrix.from }}", project),
 							"dst": fmt.Sprintf("quay.io/vexxhost/%s:${{ matrix.release }}", project),
 						},
 					},

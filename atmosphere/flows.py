@@ -42,10 +42,9 @@ def get_deployment_flow(config):
         *cert_manager.issuer_tasks_from_config(config.issuer),
         # monitoring
         v1.ApplyNamespaceTask(name=constants.NAMESPACE_MONITORING),
-        flux.ApplyHelmRepositoryTask(
-            namespace=constants.NAMESPACE_MONITORING,
-            name=constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY,
-            url="https://prometheus-community.github.io/helm-charts",
+        *openstack_helm.kube_prometheus_stack_tasks_from_config(
+            config.kube_prometheus_stack,
+            opsgenie=config.opsgenie,
         ),
         flux.ApplyHelmRepositoryTask(
             namespace=constants.NAMESPACE_MONITORING,
@@ -123,6 +122,9 @@ def get_deployment_flow(config):
         ),
         openstack_helm.ApplyRabbitmqClusterTask(
             name=constants.HELM_RELEASE_NOVA_NAME,
+        ),
+        openstack_helm.ApplyRabbitmqClusterTask(
+            name=constants.HELM_RELEASE_OCTAVIA_NAME,
         ),
         openstack_helm.ApplyRabbitmqClusterTask(
             name=constants.HELM_RELEASE_SENLIN_NAME,
