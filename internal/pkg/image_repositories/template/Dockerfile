@@ -16,20 +16,15 @@ COPY --from=builder --link /var/lib/openstack /var/lib/openstack
 ADD https://github.com/novnc/novnc.git#v1.3.0 /usr/share/novnc
 {{- else if eq .Project "keystone" }}
 RUN <<EOF /bin/bash
-  set -e
-  source /etc/lsb-release
+  set -xe
   apt-get update
-  apt-get install -y --no-install-recommends wget apache2
+  apt-get install -y --no-install-recommends wget
   wget --no-check-certificate \
-    https://github.com/zmartzone/mod_oauth2/releases/download/v3.2.2/libapache2-mod-oauth2_3.2.2-1.${DISTRIB_CODENAME}+1_amd64.deb \
-    https://github.com/zmartzone/liboauth2/releases/download/v1.4.3/liboauth2_1.4.3-1.${DISTRIB_CODENAME}+1_amd64.deb
+    https://github.com/zmartzone/mod_auth_openidc/releases/download/v2.4.12.1/libapache2-mod-auth-openidc_2.4.12.1-1.$(lsb_release -sc)_amd64.deb
   apt-get -y --no-install-recommends install \
-    ./libapache2-mod-oauth2_3.2.2-1.${DISTRIB_CODENAME}+1_amd64.deb \
-    ./liboauth2_1.4.3-1.${DISTRIB_CODENAME}+1_amd64.deb
-  a2enmod oauth2
+    ./libapache2-mod-auth-openidc_2.4.12.1-1.$(lsb_release -sc)_amd64.deb
   rm -rfv \
-    ./libapache2-mod-oauth2_3.2.2-1.${DISTRIB_CODENAME}+1_amd64.deb \
-    ./liboauth2_1.4.3-1.${DISTRIB_CODENAME}+1_amd64.deb
+    ./libapache2-mod-auth-openidc_2.4.12.1-1.$(lsb_release -sc)_amd64.deb
   apt-get purge -y wget
   apt-get clean
   rm -rf /var/lib/apt/lists/*
