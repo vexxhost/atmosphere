@@ -128,10 +128,10 @@ def get_deployment_flow(config):
             name=constants.HELM_RELEASE_SENLIN_NAME,
         ),
         openstack_helm.ApplyRabbitmqClusterTask(
-            name=constants.HELM_RELEASE_HEAT_NAME,
+            name=constants.HELM_RELEASE_DESIGNATE_NAME,
         ),
         openstack_helm.ApplyRabbitmqClusterTask(
-            name=constants.HELM_RELEASE_DESIGNATE_NAME,
+            name=constants.HELM_RELEASE_HEAT_NAME,
         ),
     )
 
