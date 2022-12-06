@@ -1,40 +1,57 @@
 # DNS
 
 ## PowerDNS
+
 ### Pre-requisites
-You have to instal a PowerDNS server first. PowerDNS server installation is out of the scope.
-### Deploy Designate
-You have to configure your PowerDNS information as designate pools by using the variable `openstack_helm_designate_pools`.
-In this example, `165.231.78.211`, `53` and `8081` are the IP, DNS port and API port of the PowerDNS server. Please use your exact information.
+
+You have to install a PowerDNS server first, this is outside the scope of this
+document.  You can review instructions on how to prepare the PowerDNS server
+through the [Designate](https://docs.openstack.org/designate/latest/admin/backends/pdns4.html)
+documentation.
+
+### Configuration
+
+You will need to configure your PowerDNS server to allow the Designate API to
+talk to it.  This is done by adding the following to your PowerDNS configuration
+into your inventory file.
+
+In this example, PowerDNS will be configured to validate if the DNS changes have
+been propagated to all DNS servers by hitting the PowerDNS backend.  It will
+use the virtual IP address of the cloud to request AXFRs.
+
+In this example, it's assumed that the PowerDNS server is running at `192.168.1.10`
+and reachable by the Kubernetes cluster using `secret123` as the token.
+
+!!! note
+
+    You will need to make sure you configure your Glue DNS records with your
+    registrar to point towards your PowerDNS instances (also frequently called
+    "registering nameservers").  This is out of the scope of this document.
+
 ```yaml
 openstack_helm_designate_pools: |
   - name: default
-    attributes: {}
+    description: Default PowerDNS Pool
+
     ns_records:
-    - "hostname": "ns1.example.com."
-      "priority": 1
-    # List out the nameservers for this pool. These are the actual DNS servers.
-    # We use these to verify changes have propagated to all nameservers.
+      - hostname: ns1.example.com.
+        priority: 1
+      - hostname: ns2.example.com.
+        priority: 2
+
     nameservers:
-      - host: 165.231.78.211
+      - host: 192.168.1.10
         port: 53
-    # List out the targets for this pool. For BIND there will be one
-    # entry for each BIND server, as we have to run rndc command on each server
+
     targets:
       - type: pdns4
-        description: PowerDNS Server
-        # MiniDNS Configuration options
+        description: PowerDNS4 DNS Server
         masters:
-          - host: {{ hostvars['ctl1']['ansible_host'] }}
+          - host: "{{ keepalived_vip }}"
             port: 5354
-          - host: {{ hostvars['ctl2']['ansible_host'] }}
-            port: 5354
-          - host: {{ hostvars['ctl3']['ansible_host'] }}
-            port: 5354
-        # PowerDNS Configuration options
         options:
-          host: 165.231.78.211
+          host: 192.168.1.10
           port: 53
-          api_endpoint: http://165.231.78.211:8081
-          api_token: REPLACE_ME_WITH_API_TOKEN
+          api_endpoint: http://192.168.1.10:8081
+          api_token: secret123
 ```
