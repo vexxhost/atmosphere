@@ -10,10 +10,14 @@ NAMESPACE_CERT_MANAGER = "cert-manager"
 NAMESPACE_KUBE_SYSTEM = "kube-system"
 NAMESPACE_MONITORING = "monitoring"
 NAMESPACE_OPENSTACK = "openstack"
+NAMESPACE_ROOK_CEPH = "rook-ceph"
 
 HELM_REPOSITORY_BITNAMI = "bitnami"
 HELM_REPOSITORY_CEPH = "ceph"
 HELM_REPOSITORY_COREDNS = "coredns"
+
+HELM_REPOSITORY_ROOK_CEPH = "rook-ceph"
+HELM_REPOSITORY_ROOK_CEPH_URL = "https://charts.rook.io/release"
 
 HELM_REPOSITORY_INGRESS_NGINX = "ingress-nginx"
 HELM_REPOSITORY_INGRESS_NGINX_URL = "https://kubernetes.github.io/ingress-nginx"
@@ -55,6 +59,18 @@ PROMETHEUS_MONITOR_RELABELINGS_KUBELET = [
     {"sourceLabels": ["node"], "targetLabel": "instance"},
     PROMETHEUS_MONITOR_RELABELING_DROP_ALL_KUBERNETES_LABELS,
 ]
+
+HELM_RELEASE_ROOK_CEPH_NAME = "rook-ceph"
+HELM_RELEASE_ROOK_CEPH_VERSION = "1.10.3"
+HELM_RELEASE_ROOK_CEPH_VALUES = {
+    "nodeSelector": NODE_SELECTOR_CONTROL_PLANE,
+    # NOTE(mnaser): Once we implement storage inside Atmosphere, we can rely on
+    #               Rook to manage this.
+    "csi": {
+        "enableRbdDriver": False,
+        "enableCephfsDriver": False,
+    },
+}
 
 HELM_RELEASE_KUBE_PROMETHEUS_STACK_NAME = "kube-prometheus-stack"
 HELM_RELEASE_KUBE_PROMETHEUS_STACK_VERSION = "41.7.3"

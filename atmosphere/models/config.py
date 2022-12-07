@@ -87,6 +87,44 @@ class KubePrometheusStackChartConfig(ChartConfig):
     namespace = types.StringType(default="monitoring", required=True)
 
 
+class MonitorRookCephChartConfig(base.Model):
+    name = types.StringType(required=True)
+    address = types.StringType(required=True)
+
+
+class RookCephChartConfig(ChartConfig):
+    fsid = types.StringType()
+    admin_secret = types.StringType()
+    monitors = types.ListType(types.ModelType(MonitorRookCephChartConfig), min_size=1)
+    monitor_secret = types.StringType()
+    keystone_password = types.StringType()
+
+    def validate_fsid(self, data, value):
+        if data["enabled"] and not value:
+            raise ValidationError(types.BaseType.MESSAGES["required"])
+        return value
+
+    def validate_admin_secret(self, data, value):
+        if data["enabled"] and not value:
+            raise ValidationError(types.BaseType.MESSAGES["required"])
+        return value
+
+    def validate_monitors(self, data, value):
+        if data["enabled"] and not value:
+            raise ValidationError(types.BaseType.MESSAGES["required"])
+        return value
+
+    def validate_monitor_secret(self, data, value):
+        if data["enabled"] and not value:
+            raise ValidationError(types.BaseType.MESSAGES["required"])
+        return value
+
+    def validate_keystone_password(self, data, value):
+        if data["enabled"] and not value:
+            raise ValidationError(types.BaseType.MESSAGES["required"])
+        return value
+
+
 class MemcachedImagesConfig(base.Model):
     memcached = types.StringType(default="docker.io/library/memcached:1.6.17")
     exporter = types.StringType(default="quay.io/prometheus/memcached-exporter:v0.10.0")
@@ -119,6 +157,8 @@ class OpsGenieConfig(base.Model):
 
 
 class Config(base.Model):
+    domain = types.StringType(required=True)
+    rook = types.ModelType(RookCephChartConfig, default=RookCephChartConfig())
     kube_prometheus_stack = types.ModelType(
         KubePrometheusStackChartConfig, default=KubePrometheusStackChartConfig()
     )

@@ -3,7 +3,7 @@ from taskflow.patterns import graph_flow
 
 from atmosphere.tasks import constants
 from atmosphere.tasks.composite import openstack_helm
-from atmosphere.tasks.kubernetes import cert_manager, flux, v1
+from atmosphere.tasks.kubernetes import cert_manager, flux, rook, v1
 
 
 def get_engine(config):
@@ -24,6 +24,7 @@ def get_deployment_flow(config):
             name=constants.HELM_REPOSITORY_CEPH,
             url="https://ceph.github.io/csi-charts",
         ),
+        *rook.tasks_from_config(config),
         # cert-manager
         v1.ApplyNamespaceTask(name=constants.NAMESPACE_CERT_MANAGER),
         flux.ApplyHelmRepositoryTask(

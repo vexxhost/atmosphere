@@ -17,7 +17,7 @@ def docker_image():
     return image
 
 
-def test_e2e_for_operator(tmp_path, flux_cluster, docker_image):
+def test_e2e_for_operator(tmp_path, flux_cluster, docker_image, sample_config):
     flux_cluster.load_docker_image(docker_image)
     flux_cluster.kubectl(
         "label", "node", "pytest-kind-control-plane", "openstack-control-plane=enabled"
@@ -31,14 +31,7 @@ def test_e2e_for_operator(tmp_path, flux_cluster, docker_image):
 
     args = {
         "atmosphere_image": docker_image,
-        "atmosphere_config": {
-            "memcached": {
-                "secret_key": "foobar",
-            },
-            "issuer": {
-                "email": "test@example.com",
-            },
-        },
+        "atmosphere_config": sample_config,
     }
 
     # Parse the Ansible task to get order of manifests

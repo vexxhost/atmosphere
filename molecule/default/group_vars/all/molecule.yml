@@ -1,7 +1,8 @@
 atmosphere_image: "{{ lookup('file', lookup('env', 'MOLECULE_EPHEMERAL_DIRECTORY') + '/image') }}"
-
+atmosphere_domain: "{{ hostvars['ctl1']['ansible_host'].replace('.', '-') }}.{{ lookup('env', 'ATMOSPHERE_DNS_SUFFIX_NAME') | default('nip.io', True) }}"
 atmosphere_issuer_config:
   type: self-signed
+atmosphere_object_storage_service_user_password: secret123
 
 openstack_helm_glance_images:
   - name: cirros
