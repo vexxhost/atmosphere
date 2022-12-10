@@ -12,6 +12,95 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+# NOTE(mnaser): We're using this playbook to capture logs for the run since
+#               there is no Molecule phase that runs after the converge phase.
+- hosts: controllers[0]
+  gather_facts: false
+  vars:
+    logs_dir: /tmp/logs
+  tasks:
+    - name: End the play if the infrastructure is not deployed
+      ansible.builtin.meta: end_host
+      when:
+        - ansible_host is not defined
+
+    - name: Retrieve all container logs, current and previous (if they exist)
+      become: true
+      shell: |-
+        set -e
+        PARALLELISM_FACTOR=4
+        function get_namespaces () {
+          kubectl get namespaces -o name | awk -F '/' '{ print $NF }'
+        }
+        function get_pods () {
+          NAMESPACE=$1
+          kubectl get pods -n ${NAMESPACE} -o name | awk -F '/' '{ print $NF }' | xargs -L1 -P 1 -I {} echo ${NAMESPACE} {}
+        }
+        export -f get_pods
+        function get_pod_logs () {
+          NAMESPACE=${1% *}
+          POD=${1#* }
+          INIT_CONTAINERS=$(kubectl get pod $POD -n ${NAMESPACE} -o jsonpath="{.spec.initContainers[*].name}")
+          CONTAINERS=$(kubectl get pod $POD -n ${NAMESPACE} -o jsonpath="{.spec.containers[*].name}")
+          for CONTAINER in ${INIT_CONTAINERS} ${CONTAINERS}; do
+            echo "${NAMESPACE}/${POD}/${CONTAINER}"
+            mkdir -p "{{ logs_dir }}/pod-logs/${NAMESPACE}/${POD}"
+            mkdir -p "{{ logs_dir }}/pod-logs/failed-pods/${NAMESPACE}/${POD}"
+            kubectl logs ${POD} -n ${NAMESPACE} -c ${CONTAINER} > "{{ logs_dir }}/pod-logs/${NAMESPACE}/${POD}/${CONTAINER}.txt"
+            kubectl logs --previous ${POD} -n ${NAMESPACE} -c ${CONTAINER} > "{{ logs_dir }}/pod-logs/failed-pods/${NAMESPACE}/${POD}/${CONTAINER}.txt"
+          done
+          find {{ logs_dir }} -type f -empty -print -delete
+          find {{ logs_dir }} -empty -type d -delete
+        }
+        export -f get_pod_logs
+        get_namespaces | \
+          xargs -r -n 1 -P ${PARALLELISM_FACTOR} -I {} bash -c 'get_pods "$@"' _ {} | \
+          xargs -r -n 2 -P ${PARALLELISM_FACTOR} -I {} bash -c 'get_pod_logs "$@"' _ {}
+      args:
+        executable: /bin/bash
+      ignore_errors: True
+
+    - name: Upload logs to object storage
+      ignore_errors: True
+      when:
+        - lookup('env', 'GITHUB_RUN_ID') is defined
+        - lookup('env', 'GITHUB_RUN_NUMBER') is defined
+      vars:
+        build_id: "{{ lookup('env', 'GITHUB_RUN_ID') }}-{{ lookup('env', 'GITHUB_RUN_NUMBER') }}"
+        container_name: atmosphere-ci-logs
+      block:
+        - name: Authenticate to cloud to get token to use in Swift client
+          delegate_to: localhost
+          openstack.cloud.auth:
+          register: _auth
+
+        - name: Generate storage URL
+          set_fact:
+            storage_url: "{{ ((service_catalog | selectattr('name', 'equalto', 'swift') | first).endpoints | selectattr('interface', 'equalto', 'public') | first).url }}"
+
+        - name: Install Swift client
+          become: true
+          ansible.builtin.apt:
+            name: ['python3-swiftclient', 'tree']
+            state: present
+
+        - name: Generate listing for all files
+          become: true
+          shell: tree -H '.' --charset utf-8 -o {{ logs_dir }}/index.html {{ logs_dir }}
+
+        - name: Upload logs to swift
+          shell: |-
+            set -e
+            swift post -H "X-Container-Read: .r:*,.rlistings" {{ container_name }}
+            swift upload -H "X-Delete-After: 604800" -m 'web-index:index.html' --object-name {{ build_id }} {{ container_name }} {{ logs_dir }}
+          environment:
+            OS_STORAGE_URL: "{{ storage_url }}"
+            OS_AUTH_TOKEN: "{{ auth_token }}"
+
+        - name: Print logs URL
+          debug:
+            msg: "Logs are available at {{ storage_url }}/{{ container_name }}/{{ build_id }}/index.html"
+
 - hosts: localhost
   connection: local
   gather_facts: false
