@@ -15,6 +15,28 @@
 _openstack_helm_senlin_values: "{{ __openstack_helm_senlin_values | combine(openstack_helm_senlin_values, recursive=True) }}"
 __openstack_helm_senlin_values:
   endpoints: "{{ openstack_helm_endpoints }}"
+  dependencies:
+    static:
+      api:
+        jobs:
+          - senlin-db-sync
+          - senlin-ks-user
+          - senlin-rabbit-init
+      engine:
+        jobs:
+          - senlin-db-sync
+          - senlin-ks-user
+          - senlin-rabbit-init
+      conductor:
+        jobs:
+          - senlin-db-sync
+          - senlin-ks-user
+          - senlin-rabbit-init
+      health_manager:
+        jobs:
+          - senlin-db-sync
+          - senlin-ks-user
+          - senlin-rabbit-init
   images:
     pull_policy: Always
     tags:
@@ -45,5 +67,7 @@ __openstack_helm_senlin_values:
       oslo_messaging_notifications:
         driver: noop
   manifests:
+    job_ks_endpoints: false
+    job_ks_service: false
     ingress_api: false
     service_ingress_api: false

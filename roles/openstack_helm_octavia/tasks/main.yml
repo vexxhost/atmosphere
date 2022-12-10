@@ -205,6 +205,54 @@
   kubernetes.core.k8s:
     state: present
     definition:
+      - apiVersion: identity.openstack.atmosphere.vexxhost.com/v1alpha1
+        kind: Service
+        metadata:
+          name: octavia
+          namespace: openstack
+        spec:
+          type: load-balancer
+          description: Load Balancer Service
+
+      - apiVersion: identity.openstack.atmosphere.vexxhost.com/v1alpha1
+        kind: Endpoint
+        metadata:
+          name: octavia-internal
+          namespace: openstack
+        spec:
+          region: "{{ openstack_helm_endpoints_region_name }}"
+          serviceRef:
+            name: octavia
+            namespace: openstack
+          interface: internal
+          url: http://octavia-api.openstack.svc.cluster.local:9876/
+
+      - apiVersion: identity.openstack.atmosphere.vexxhost.com/v1alpha1
+        kind: Endpoint
+        metadata:
+          name: octavia-admin
+          namespace: openstack
+        spec:
+          region: "{{ openstack_helm_endpoints_region_name }}"
+          serviceRef:
+            name: octavia
+            namespace: openstack
+          interface: admin
+          url: http://octavia-api.openstack.svc.cluster.local:9876/
+
+      - apiVersion: identity.openstack.atmosphere.vexxhost.com/v1alpha1
+        kind: Endpoint
+        metadata:
+          name: octavia-public
+          namespace: openstack
+        spec:
+          region: "{{ openstack_helm_endpoints_region_name }}"
+          serviceRef:
+            name: octavia
+            namespace: openstack
+          interface: public
+          url: "https://{{ openstack_helm_endpoints_octavia_api_host }}/"
+
       - apiVersion: v1
         kind: Secret
         metadata:

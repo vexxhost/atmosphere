@@ -15,6 +15,51 @@
 _openstack_helm_heat_values: "{{ __openstack_helm_heat_values | combine(openstack_helm_heat_values, recursive=True) }}"
 __openstack_helm_heat_values:
   endpoints: "{{ openstack_helm_endpoints }}"
+  dependencies:
+    static:
+      api:
+        jobs:
+          - heat-db-sync
+          - heat-rabbit-init
+          - heat-ks-user
+          - heat-trustee-ks-user
+          - heat-domain-ks-user
+          - heat-bootstrap
+      cfn:
+        jobs:
+          - heat-db-sync
+          - heat-rabbit-init
+          - heat-ks-user
+          - heat-trustee-ks-user
+          - heat-domain-ks-user
+          - heat-bootstrap
+      cloudwatch:
+        jobs:
+          - heat-db-sync
+          - heat-rabbit-init
+          - heat-ks-user
+          - heat-trustee-ks-user
+          - heat-domain-ks-user
+          - heat-bootstrap
+      engine:
+        jobs:
+          - heat-db-sync
+          - heat-rabbit-init
+          - heat-ks-user
+          - heat-trustee-ks-user
+          - heat-domain-ks-user
+      engine_cleaner:
+        jobs:
+          - heat-db-sync
+          - heat-ks-user
+          - heat-trustee-ks-user
+          - heat-domain-ks-user
+      purge_deleted:
+        jobs:
+          - heat-db-sync
+          - heat-ks-user
+          - heat-trustee-ks-user
+          - heat-domain-ks-user
   images:
     pull_policy: Always
     tags:
@@ -51,6 +96,8 @@ __openstack_helm_heat_values:
       oslo_messaging_notifications:
         driver: noop
   manifests:
+    job_ks_endpoints: false
+    job_ks_service: false
     ingress_api: false
     ingress_cfn: false
     service_ingress_api: false

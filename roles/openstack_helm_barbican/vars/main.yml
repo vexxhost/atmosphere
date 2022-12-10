@@ -14,6 +14,13 @@
 
 _openstack_helm_barbican_values:
   endpoints: "{{ openstack_helm_endpoints }}"
+  dependencies:
+    static:
+      api:
+        jobs:
+          - barbican-db-sync
+          - barbican-ks-user
+          - barbican-rabbit-init
   images:
     pull_policy: Always
     tags:
@@ -40,7 +47,8 @@ _openstack_helm_barbican_values:
         kek: "{{ openstack_helm_barbican_kek }}"
     simple_crypto_kek_rewrap:
       old_kek: "{{ openstack_helm_barbican_kek }}"
-
   manifests:
+    job_ks_endpoints: false
+    job_ks_service: false
     ingress_api: false
     service_ingress_api: false

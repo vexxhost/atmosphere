@@ -6,7 +6,7 @@ class OpenStackNamespacedAPIObject(pykube.objects.NamespacedAPIObject):
     @classmethod
     def get(cls, api, namespace, name):
         resource = cls.objects(api, namespace=namespace).get_or_none(name=name)
-        if resource is None or resource.obj["status"].get("id") is None:
+        if resource is None or resource.obj.get("status", {}).get("id") is None:
             raise kopf.TemporaryError(f"{cls.kind}/{name} is not yet ready.", delay=5)
         return resource
 

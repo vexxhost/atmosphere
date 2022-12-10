@@ -24,6 +24,54 @@
   kubernetes.core.k8s:
     state: present
     definition:
+      - apiVersion: identity.openstack.atmosphere.vexxhost.com/v1alpha1
+        kind: Service
+        metadata:
+          name: neutron
+          namespace: openstack
+        spec:
+          type: network
+          description: Networking Service
+
+      - apiVersion: identity.openstack.atmosphere.vexxhost.com/v1alpha1
+        kind: Endpoint
+        metadata:
+          name: neutron-internal
+          namespace: openstack
+        spec:
+          region: "{{ openstack_helm_endpoints_region_name }}"
+          serviceRef:
+            name: neutron
+            namespace: openstack
+          interface: internal
+          url: http://neutron-server.openstack.svc.cluster.local:9696/
+
+      - apiVersion: identity.openstack.atmosphere.vexxhost.com/v1alpha1
+        kind: Endpoint
+        metadata:
+          name: neutron-admin
+          namespace: openstack
+        spec:
+          region: "{{ openstack_helm_endpoints_region_name }}"
+          serviceRef:
+            name: neutron
+            namespace: openstack
+          interface: admin
+          url: http://neutron-server.openstack.svc.cluster.local:9696/
+
+      - apiVersion: identity.openstack.atmosphere.vexxhost.com/v1alpha1
+        kind: Endpoint
+        metadata:
+          name: neutron-public
+          namespace: openstack
+        spec:
+          region: "{{ openstack_helm_endpoints_region_name }}"
+          serviceRef:
+            name: neutron
+            namespace: openstack
+          interface: public
+          url: "https://{{ openstack_helm_endpoints_neutron_api_host }}/"
+
       - apiVersion: source.toolkit.fluxcd.io/v1beta2
         kind: GitRepository
         metadata:

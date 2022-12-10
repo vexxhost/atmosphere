@@ -14,6 +14,18 @@
 
 _openstack_helm_neutron_values:
   endpoints: "{{ openstack_helm_endpoints }}"
+  dependencies:
+    static:
+      server:
+        jobs:
+          - neutron-db-sync
+          - neutron-ks-user
+          - neutron-rabbit-init
+      ironic_agent:
+        jobs:
+          - neutron-db-sync
+          - neutron-ks-user
+          - neutron-rabbit-init
   images:
     pull_policy: Always
     tags:
@@ -84,5 +96,7 @@ _openstack_helm_neutron_values:
         ml2_type_vlan:
           network_vlan_ranges: external:1:4094
   manifests:
+    job_ks_endpoints: false
+    job_ks_service: false
     ingress_server: false
     service_ingress_server: false

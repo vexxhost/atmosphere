@@ -15,6 +15,18 @@
 _openstack_helm_nova_values: "{{ __openstack_helm_nova_values | combine(openstack_helm_nova_values, recursive=True) }}"
 __openstack_helm_nova_values:
   endpoints: "{{ openstack_helm_endpoints }}"
+  dependencies:
+    static:
+      api:
+        jobs:
+          - nova-db-sync
+          - nova-ks-user
+          - nova-rabbit-init
+      api_metadata:
+        jobs:
+          - nova-db-sync
+          - nova-ks-user
+          - nova-rabbit-init
   labels:
     agent:
       compute_ironic:
@@ -39,7 +51,6 @@ __openstack_helm_nova_values:
       nova_compute_ssh: "{{ openstack_helm_nova_image_repository }}/nova-ssh:{{ openstack_helm_nova_ssh_image_tag }}"
       nova_compute: "{{ openstack_helm_nova_image_repository }}/nova:{{ openstack_helm_nova_image_tag }}"
       nova_conductor: "{{ openstack_helm_nova_image_repository }}/nova:{{ openstack_helm_nova_image_tag }}"
-      nova_consoleauth: "{{ openstack_helm_nova_image_repository }}/nova:{{ openstack_helm_nova_image_tag }}"
       nova_db_sync: "{{ openstack_helm_nova_image_repository }}/nova:{{ openstack_helm_nova_image_tag }}"
       nova_novncproxy_assets: "{{ openstack_helm_nova_image_repository }}/nova:{{ openstack_helm_nova_image_tag }}"
       nova_novncproxy: "{{ openstack_helm_nova_image_repository }}/nova:{{ openstack_helm_nova_image_tag }}"
@@ -119,21 +130,15 @@ __openstack_helm_nova_values:
         log_config_append: null
         force_config_drive: true
   manifests:
-    deployment_consoleauth: false
-    deployment_placement: false
     ingress_metadata: false
     ingress_novncproxy: false
     ingress_osapi: false
-    ingress_placement: false
     job_db_init_placement: false
-    job_ks_placement_endpoints: false
-    job_ks_placement_service: false
-    job_ks_placement_user: false
+    job_ks_endpoints: false
+    job_ks_service: false
     secret_keystone_placement: false
     service_ingress_metadata: false
     service_ingress_novncproxy: false
     service_ingress_osapi: false
-    service_ingress_placement: false
-    service_placement: false
     # NOTE(mnaser): Enable this once we've got Ironic deployed.
     statefulset_compute_ironic: false

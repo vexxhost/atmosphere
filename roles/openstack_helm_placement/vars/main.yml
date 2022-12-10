@@ -14,6 +14,12 @@
 
 _openstack_helm_placement_values:
   endpoints: "{{ openstack_helm_endpoints }}"
+  dependencies:
+    static:
+      api:
+        jobs:
+          - placement-db-sync
+          - placement-ks-user
   images:
     pull_policy: Always
     tags:
@@ -37,5 +43,7 @@ _openstack_helm_placement_values:
       oslo_messaging_notifications:
         driver: noop
   manifests:
+    job_ks_endpoints: false
+    job_ks_service: false
     ingress: false
     service_ingress: false

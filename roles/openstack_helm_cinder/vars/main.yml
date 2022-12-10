@@ -14,6 +14,39 @@
 
 _openstack_helm_cinder_values:
   endpoints: "{{ openstack_helm_endpoints }}"
+  dependencies:
+    static:
+      api:
+        jobs:
+          - cinder-db-sync
+          - cinder-ks-user
+          - cinder-rabbit-init
+          - cinder-storage-init
+      backup:
+        jobs:
+          - cinder-db-sync
+          - cinder-ks-user
+          - cinder-rabbit-init
+          - cinder-storage-init
+          - cinder-backup-storage-init
+      scheduler:
+        jobs:
+          - cinder-db-sync
+          - cinder-ks-user
+          - cinder-rabbit-init
+          - cinder-storage-init
+      volume:
+        jobs:
+          - cinder-db-sync
+          - cinder-ks-user
+          - cinder-rabbit-init
+          - cinder-storage-init
+      volume_usage_audit:
+        jobs:
+          - cinder-db-sync
+          - cinder-ks-user
+          - cinder-rabbit-init
+          - cinder-storage-init
   images:
     pull_policy: Always
     tags:
@@ -60,6 +93,8 @@ _openstack_helm_cinder_values:
       oslo_messaging_notifications:
         driver: noop
   manifests:
+    job_ks_endpoints: false
+    job_ks_service: false
     ingress_api: false
     job_clean: false
     service_ingress_api: false

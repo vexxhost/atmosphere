@@ -24,6 +24,54 @@
   kubernetes.core.k8s:
     state: present
     definition:
+      - apiVersion: identity.openstack.atmosphere.vexxhost.com/v1alpha1
+        kind: Service
+        metadata:
+          name: barbican
+          namespace: openstack
+        spec:
+          type: key-manager
+          description: Key and Secret Management Service
+
+      - apiVersion: identity.openstack.atmosphere.vexxhost.com/v1alpha1
+        kind: Endpoint
+        metadata:
+          name: barbican-internal
+          namespace: openstack
+        spec:
+          region: "{{ openstack_helm_endpoints_region_name }}"
+          serviceRef:
+            name: barbican
+            namespace: openstack
+          interface: internal
+          url: http://barbican-api.openstack.svc.cluster.local:9311/
+
+      - apiVersion: identity.openstack.atmosphere.vexxhost.com/v1alpha1
+        kind: Endpoint
+        metadata:
+          name: barbican-admin
+          namespace: openstack
+        spec:
+          region: "{{ openstack_helm_endpoints_region_name }}"
+          serviceRef:
+            name: barbican
+            namespace: openstack
+          interface: admin
+          url: http://barbican-api.openstack.svc.cluster.local:9311/
+
+      - apiVersion: identity.openstack.atmosphere.vexxhost.com/v1alpha1
+        kind: Endpoint
+        metadata:
+          name: barbican-public
+          namespace: openstack
+        spec:
+          region: "{{ openstack_helm_endpoints_region_name }}"
+          serviceRef:
+            name: barbican
+            namespace: openstack
+          interface: public
+          url: "https://{{ openstack_helm_endpoints_barbican_api_host }}/"
+
       - apiVersion: v1
         kind: Secret
         metadata:

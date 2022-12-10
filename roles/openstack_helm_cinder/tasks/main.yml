@@ -24,6 +24,54 @@
   kubernetes.core.k8s:
     state: present
     definition:
+      - apiVersion: identity.openstack.atmosphere.vexxhost.com/v1alpha1
+        kind: Service
+        metadata:
+          name: cinder
+          namespace: openstack
+        spec:
+          type: volumev3
+          description: Block Storage Service
+
+      - apiVersion: identity.openstack.atmosphere.vexxhost.com/v1alpha1
+        kind: Endpoint
+        metadata:
+          name: cinder-internal
+          namespace: openstack
+        spec:
+          region: "{{ openstack_helm_endpoints_region_name }}"
+          serviceRef:
+            name: cinder
+            namespace: openstack
+          interface: internal
+          url: http://cinder-api.openstack.svc.cluster.local:8776/v3/%(tenant_id)s
+
+      - apiVersion: identity.openstack.atmosphere.vexxhost.com/v1alpha1
+        kind: Endpoint
+        metadata:
+          name: cinder-admin
+          namespace: openstack
+        spec:
+          region: "{{ openstack_helm_endpoints_region_name }}"
+          serviceRef:
+            name: cinder
+            namespace: openstack
+          interface: admin
+          url: http://cinder-api.openstack.svc.cluster.local:8776/v3/%(tenant_id)s
+
+      - apiVersion: identity.openstack.atmosphere.vexxhost.com/v1alpha1
+        kind: Endpoint
+        metadata:
+          name: cinder-public
+          namespace: openstack
+        spec:
+          region: "{{ openstack_helm_endpoints_region_name }}"
+          serviceRef:
+            name: cinder
+            namespace: openstack
+          interface: public
+          url: "https://{{ openstack_helm_endpoints_cinder_api_host }}/v3/%(tenant_id)s"
+
       - apiVersion: v1
         kind: Secret
         metadata:

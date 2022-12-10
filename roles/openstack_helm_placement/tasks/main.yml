@@ -24,6 +24,54 @@
   kubernetes.core.k8s:
     state: present
     definition:
+      - apiVersion: identity.openstack.atmosphere.vexxhost.com/v1alpha1
+        kind: Service
+        metadata:
+          name: placement
+          namespace: openstack
+        spec:
+          type: placement
+          description: Placement Service
+
+      - apiVersion: identity.openstack.atmosphere.vexxhost.com/v1alpha1
+        kind: Endpoint
+        metadata:
+          name: placement-internal
+          namespace: openstack
+        spec:
+          region: "{{ openstack_helm_endpoints_region_name }}"
+          serviceRef:
+            name: placement
+            namespace: openstack
+          interface: internal
+          url: http://placement-api.openstack.svc.cluster.local:8778/
+
+      - apiVersion: identity.openstack.atmosphere.vexxhost.com/v1alpha1
+        kind: Endpoint
+        metadata:
+          name: placement-admin
+          namespace: openstack
+        spec:
+          region: "{{ openstack_helm_endpoints_region_name }}"
+          serviceRef:
+            name: placement
+            namespace: openstack
+          interface: admin
+          url: http://placement-api.openstack.svc.cluster.local:8778/
+
+      - apiVersion: identity.openstack.atmosphere.vexxhost.com/v1alpha1
+        kind: Endpoint
+        metadata:
+          name: placement-public
+          namespace: openstack
+        spec:
+          region: "{{ openstack_helm_endpoints_region_name }}"
+          serviceRef:
+            name: placement
+            namespace: openstack
+          interface: public
+          url: "https://{{ openstack_helm_endpoints_placement_api_host }}/"
+
       - apiVersion: v1
         kind: Secret
         metadata:
