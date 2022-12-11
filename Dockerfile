@@ -18,7 +18,13 @@ RUN poetry install --only main --no-root --no-interaction
 ADD . /app
 RUN poetry install --only main --no-interaction
 
+FROM python:3.10-slim AS helm
+ADD https://get.helm.sh/helm-v3.10.2-linux-amd64.tar.gz /helm.tar.gz
+RUN tar -xvzf /helm.tar.gz
+RUN /linux-amd64/helm version
+
 FROM python:3.10-slim AS runtime
 ENV PATH="/app/.venv/bin:$PATH"
 COPY --from=builder --link /app /app
+COPY --from=helm --link /linux-amd64/helm /usr/local/bin/helm
 CMD ["kopf", "run", "/app/atmosphere/cmd/operator.py"]
