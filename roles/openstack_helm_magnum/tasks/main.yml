@@ -25,48 +25,6 @@
     state: present
     definition:
       - apiVersion: v1
-        kind: Secret
-        metadata:
-          name: atmosphere-magnum
-          namespace: openstack
-        stringData:
-          values.yaml: "{{ _openstack_helm_magnum_values | combine(openstack_helm_magnum_values, recursive=True) | to_nice_yaml }}"
-
-      - apiVersion: helm.toolkit.fluxcd.io/v2beta1
-        kind: HelmRelease
-        metadata:
-          name: magnum
-          namespace: openstack
-        spec:
-          interval: 60s
-          chart:
-            spec:
-              chart: magnum
-              version: 0.2.8
-              sourceRef:
-                kind: HelmRepository
-                name: openstack-helm
-          install:
-            disableWait: true
-          upgrade:
-            disableWait: true
-          valuesFrom:
-            - kind: Secret
-              name: atmosphere-magnum
-            - kind: Secret
-              name: percona-xtradb
-              valuesKey: root
-              targetPath: endpoints.oslo_db.auth.admin.password
-            - kind: Secret
-              name: rabbitmq-magnum-default-user
-              valuesKey: username
-              targetPath: endpoints.oslo_messaging.auth.admin.username
-            - kind: Secret
-              name: rabbitmq-magnum-default-user
-              valuesKey: password
-              targetPath: endpoints.oslo_messaging.auth.admin.password
-
-      - apiVersion: v1
         kind: PersistentVolumeClaim
         metadata:
           labels:
@@ -363,15 +321,6 @@
                   name: magnum-csi-snapshotter-v1-2-2
               nodeSelector:
                 openstack-control-plane: enabled
-
-- name: Create magnum api Ingress
-  ansible.builtin.include_role:
-    name: openstack_helm_ingress
-  vars:
-    openstack_helm_ingress_endpoint: container_infra
-    openstack_helm_ingress_service_name: magnum-api
-    openstack_helm_ingress_service_port: 9511
-    openstack_helm_ingress_annotations: "{{ openstack_helm_magnum_ingress_annotations }}"
 
 - name: Create magnum registry Ingress
   ansible.builtin.include_role:
