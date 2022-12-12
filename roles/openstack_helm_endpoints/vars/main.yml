@@ -301,6 +301,25 @@ _openstack_helm_endpoints_dns:
       designate:
         password: "{{ openstack_helm_endpoints_designate_rabbitmq_password }}"
 
+_openstack_helm_endpoints_mdns:
+  mdns:
+    name: minidns
+    hosts:
+      default: minidns
+      public: designate-mdns
+    host_fqdn_override:
+      default: "{{ openstack_helm_endpoints_designate_api_host }}"
+    path:
+      default: /
+    scheme:
+      default: 'tcp'
+    port:
+      ipc:
+        default: 5354
+
+# NOTE(oleks): Once we deploy powerdns using osh chart, we will define this.
+_openstack_helm_endpoints_powerdns: {}
+
 _openstack_helm_endpoints_load_balancer:
   identity:
     auth:

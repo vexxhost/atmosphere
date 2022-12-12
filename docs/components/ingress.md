@@ -16,8 +16,8 @@ You can customize the deployment of the ingress controller by editing the
 
 !!! warning
 
-    This can result in unsupported behaviour, and is not recommended unless you
-    know what you're doing.
+   This can result in unsupported behaviour, and is not recommended unless you
+   know what you're doing.
 
 ### Disabling
 

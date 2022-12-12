@@ -17,6 +17,10 @@ dependency:
   command: "${MOLECULE_SCENARIO_DIRECTORY}/tools/install-dependencies"
 driver:
   name: delegated
+  ssh_connection_options:
+    - -o ControlMaster=auto
+    - -o ControlPersist=270s
+    - -o ServerAliveInterval=15
 platforms:
   - name: ctl1
     groups: &controller_groups
@@ -42,9 +46,8 @@ provisioner:
   options:
     inventory: "${MOLECULE_EPHEMERAL_DIRECTORY}/workspace"
   config_options:
-    ssh_connection:
+    connection:
       pipelining: true
-      ssh_args: -o ControlMaster=auto -o ControlPersist=270s -o ServerAliveInterval=15
   inventory:
     links:
       host_vars: "${MOLECULE_SCENARIO_DIRECTORY}/host_vars"

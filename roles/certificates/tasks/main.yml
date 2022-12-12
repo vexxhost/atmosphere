@@ -13,13 +13,16 @@
 # under the License.
 
 - name: Bootstrap PKI
+  when:
+    - atmosphere_issuer_config.type is defined
+    - atmosphere_issuer_config.type in ("self-signed", "ca")
   block:
     - name: Wait till the secret is created
       kubernetes.core.k8s_info:
         api_version: v1
         kind: Secret
         name: "{{ (atmosphere_issuer_config.type == 'self-signed') | ternary('cert-manager-selfsigned-ca', 'cert-manager-issuer-ca') }}"
-        namespace: openstack
+        namespace: cert-manager
         wait: true
         wait_sleep: 1
         wait_timeout: 300
@@ -35,6 +38,3 @@
       ansible.builtin.command:
         cmd: update-ca-certificates
       changed_when: false
-  when:
-    - atmosphere_issuer_config.type is defined
-    - atmosphere_issuer_config.type in ("self-signed", "ca")

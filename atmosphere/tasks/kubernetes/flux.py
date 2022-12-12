@@ -103,9 +103,11 @@ class ApplyHelmReleaseTask(base.ApplyKubernetesObjectTask):
                         }
                     },
                     "install": {
+                        "crds": "CreateReplace",
                         "disableWait": True,
                     },
                     "upgrade": {
+                        "crds": "CreateReplace",
                         "disableWait": True,
                     },
                     "values": self._values,

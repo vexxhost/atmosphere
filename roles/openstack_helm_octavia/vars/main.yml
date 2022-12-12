@@ -14,7 +14,6 @@
 
 _openstack_helm_octavia_values:
   endpoints: "{{ openstack_helm_endpoints }}"
-  storage: rbd
   images:
     tags:
       bootstrap: "{{ openstack_helm_octavia_image_repository }}/heat:{{ openstack_helm_octavia_heat_image_tag }}"
@@ -37,67 +36,59 @@ _openstack_helm_octavia_values:
       octavia_api:
         octavia_api:
           volumeMounts:
-            - name: octavia-certs
-              mountPath: "/etc/octavia/certs/private/cakey.pem"
-              subPath: "cakey.pem"
-            - name: octavia-certs
-              mountPath: "/etc/octavia/certs/ca_01.pem"
-              subPath: "ca_01.pem"
-            - name: octavia-certs
-              mountPath: "/etc/octavia/certs/client.pem"
-              subPath: "client.pem"
+            - name: octavia-server-ca
+              mountPath: /etc/octavia/certs/server
+            - name: octavia-client-certs
+              mountPath: /etc/octavia/certs/client
           volumes:
-            - name: octavia-certs
+            - name: octavia-server-ca
               secret:
-                secretName: octavia-certs
+                secretName: octavia-server-ca
+            - name: octavia-client-certs
+              secret:
+                secretName: octavia-client-certs
       octavia_worker:
         octavia_worker:
           volumeMounts:
-            - name: octavia-certs
-              mountPath: "/etc/octavia/certs/private/cakey.pem"
-              subPath: "cakey.pem"
-            - name: octavia-certs
-              mountPath: "/etc/octavia/certs/ca_01.pem"
-              subPath: "ca_01.pem"
-            - name: octavia-certs
-              mountPath: "/etc/octavia/certs/client.pem"
-              subPath: "client.pem"
+            - name: octavia-server-ca
+              mountPath: /etc/octavia/certs/server
+            - name: octavia-client-certs
+              mountPath: /etc/octavia/certs/client
           volumes:
-            - name: octavia-certs
+            - name: octavia-server-ca
               secret:
-                secretName: octavia-certs
+                secretName: octavia-server-ca
+            - name: octavia-client-certs
+              secret:
+                secretName: octavia-client-certs
       octavia_housekeeping:
         octavia_housekeeping:
           volumeMounts:
-            - name: octavia-certs
-              mountPath: "/etc/octavia/certs/private/cakey.pem"
-              subPath: "cakey.pem"
-            - name: octavia-certs
-              mountPath: "/etc/octavia/certs/ca_01.pem"
-              subPath: "ca_01.pem"
-            - name: octavia-certs
-              mountPath: "/etc/octavia/certs/client.pem"
-              subPath: "client.pem"
+            - name: octavia-server-ca
+              mountPath: /etc/octavia/certs/server
+            - name: octavia-client-certs
+              mountPath: /etc/octavia/certs/client
           volumes:
-            - name: octavia-certs
+            - name: octavia-server-ca
               secret:
-                secretName: octavia-certs
+                secretName: octavia-server-ca
+            - name: octavia-client-certs
+              secret:
+                secretName: octavia-client-certs
       octavia_health_manager:
         octavia_health_manager:
           volumeMounts:
-            - name: octavia-certs
-              mountPath: "/etc/octavia/certs/private/cakey.pem"
-              subPath: "cakey.pem"
-            - name: octavia-certs
-              mountPath: "/etc/octavia/certs/ca_01.pem"
-              subPath: "ca_01.pem"
-            - name: octavia-certs
-              mountPath: "/etc/octavia/certs/client.pem"
-              subPath: "client.pem"
+            - name: octavia-server-ca
+              mountPath: /etc/octavia/certs/server
+            - name: octavia-client-certs
+              mountPath: /etc/octavia/certs/client
           volumes:
-            - name: octavia-certs
+            - name: octavia-server-ca
               secret:
-                secretName: octavia-certs
+                secretName: octavia-server-ca
+            - name: octavia-client-certs
+              secret:
+                secretName: octavia-client-certs
     replicas:
       api: 3
       worker: 3
@@ -107,6 +98,8 @@ _openstack_helm_octavia_values:
       DEFAULT:
         log_config_append: null
       certificates:
+        ca_certificate: /etc/octavia/certs/server/ca.crt
+        ca_private_key: /etc/octavia/certs/server/tls.key
         ca_private_key_passphrase: null
         endpoint_type: internalURL
       cinder:
@@ -116,14 +109,17 @@ _openstack_helm_octavia_values:
         amp_flavor_id: "{{ _openstack_helm_octavia_amphora_flavor.id }}"
         amp_image_owner_id: "{{ _openstack_helm_octavia_amphora_image.image.owner }}"
         amp_secgroup_list: "{{ _openstack_helm_octavia_amphora_sg.id }}"
+        amp_ssh_key_name: null
+        client_ca: /etc/octavia/certs/client/ca.crt
         workers: 4
       glance:
         endpoint_type: internalURL
+      haproxy_amphora:
+        client_cert: /etc/octavia/certs/client/tls-combined.pem
+        server_ca: /etc/octavia/certs/server/ca.crt
       health_manager:
-        controller_ip_port_list: "{{ _controller_ip_port_list | join(',') }}"
+        controller_ip_port_list: "{{ _openstack_helm_octavia_controller_ip_port_list | join(',') }}"
         heartbeat_key: "{{ openstack_helm_octavia_heartbeat_key }}"
-      house_keeping:
-        spare_amphora_pool_size: 5
       oslo_messaging_notifications:
         driver: noop
       neutron:
