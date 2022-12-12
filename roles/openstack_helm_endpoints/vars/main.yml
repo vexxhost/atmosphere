@@ -438,3 +438,28 @@ _openstack_helm_endpoints_tempest:
         region_name: "{{ openstack_helm_endpoints_tempest_region_name }}"
         username: "tempest-{{ openstack_helm_endpoints_tempest_region_name }}"
         password: "{{ openstack_helm_endpoints_tempest_keystone_password }}"
+
+_openstack_helm_endpoints_container_infra:
+  identity:
+    auth:
+      magnum:
+        region_name: "{{ openstack_helm_endpoints_magnum_region_name }}"
+        username: "magnum-{{ openstack_helm_endpoints_magnum_region_name }}"
+        password: "{{ openstack_helm_endpoints_magnum_keystone_password }}"
+  container_infra:
+    scheme:
+      public: https
+    host_fqdn_override:
+      public:
+        host: "{{ openstack_helm_endpoints_magnum_api_host }}"
+    port:
+      api:
+        public: 443
+  oslo_db:
+    auth:
+      magnum:
+        password: "{{ openstack_helm_endpoints_magnum_mariadb_password }}"
+  oslo_messaging:
+    auth:
+      magnum:
+        password: "{{ openstack_helm_endpoints_magnum_rabbitmq_password }}"
