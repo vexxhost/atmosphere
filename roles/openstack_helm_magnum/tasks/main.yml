@@ -380,3 +380,38 @@
     openstack_helm_ingress_endpoint: container_infra_registry
     openstack_helm_ingress_service_name: magnum-registry
     openstack_helm_ingress_service_port: 5000
+
+- name: Create k8s images
+  when: openstack_helm_magnum_images | length > 0
+  block:
+    - name: Wait until image service ready
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: Deployment
+        name: glance-api
+        namespace: openstack
+        wait_sleep: 10
+        wait_timeout: 600
+        wait: true
+        wait_condition:
+          type: Available
+          status: true
+
+    - name: Download images
+      ansible.builtin.get_url:
+        url: "{{ item.source_url | regex_replace('\\/$', '') }}/{{ item.image_file }}"
+        dest: "/tmp/{{ item.image_file }}"
+        mode: "0600"
+      loop: "{{ openstack_helm_magnum_images }}"
+
+    - name: Upload images
+      openstack.cloud.image:
+        cloud: atmosphere
+        name: "{{ item.name }}"
+        state: present
+        filename: "/tmp/{{ item.image_file }}"
+        container_format: "{{ item.container_format | default(omit) }}"
+        disk_format: "{{ item.disk_format | default(omit) }}"
+        properties:
+          os_distro: ubuntu-focal
+      loop: "{{ openstack_helm_magnum_images }}"
