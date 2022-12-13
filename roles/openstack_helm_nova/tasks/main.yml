@@ -55,6 +55,54 @@
   kubernetes.core.k8s:
     state: present
     definition:
+      - apiVersion: identity.openstack.atmosphere.vexxhost.com/v1alpha1
+        kind: Service
+        metadata:
+          name: nova
+          namespace: openstack
+        spec:
+          type: compute
+          description: Compute Service
+
+      - apiVersion: identity.openstack.atmosphere.vexxhost.com/v1alpha1
+        kind: Endpoint
+        metadata:
+          name: nova-internal
+          namespace: openstack
+        spec:
+          region: "{{ openstack_helm_endpoints_region_name }}"
+          serviceRef:
+            name: nova
+            namespace: openstack
+          interface: internal
+          url: http://nova-api.openstack.svc.cluster.local:8774/v2.1/%(tenant_id)s
+
+      - apiVersion: identity.openstack.atmosphere.vexxhost.com/v1alpha1
+        kind: Endpoint
+        metadata:
+          name: nova-admin
+          namespace: openstack
+        spec:
+          region: "{{ openstack_helm_endpoints_region_name }}"
+          serviceRef:
+            name: nova
+            namespace: openstack
+          interface: admin
+          url: http://nova-api.openstack.svc.cluster.local:8774/v2.1/%(tenant_id)s
+
+      - apiVersion: identity.openstack.atmosphere.vexxhost.com/v1alpha1
+        kind: Endpoint
+        metadata:
+          name: nova-public
+          namespace: openstack
+        spec:
+          region: "{{ openstack_helm_endpoints_region_name }}"
+          serviceRef:
+            name: nova
+            namespace: openstack
+          interface: public
+          url: "https://{{ openstack_helm_endpoints_nova_api_host }}/v2.1/%(tenant_id)s"
+
       - apiVersion: v1
         kind: Secret
         metadata:
@@ -73,7 +121,7 @@
           chart:
             spec:
               chart: nova
-              version: 0.2.32
+              version: 0.2.37
               sourceRef:
                 kind: HelmRepository
                 name: openstack-helm

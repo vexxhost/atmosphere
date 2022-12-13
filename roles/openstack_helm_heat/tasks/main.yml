@@ -24,6 +24,102 @@
   kubernetes.core.k8s:
     state: present
     definition:
+      - apiVersion: identity.openstack.atmosphere.vexxhost.com/v1alpha1
+        kind: Service
+        metadata:
+          name: heat
+          namespace: openstack
+        spec:
+          type: orchestration
+          description: Orchestration Service
+
+      - apiVersion: identity.openstack.atmosphere.vexxhost.com/v1alpha1
+        kind: Endpoint
+        metadata:
+          name: heat-internal
+          namespace: openstack
+        spec:
+          region: "{{ openstack_helm_endpoints_region_name }}"
+          serviceRef:
+            name: heat
+            namespace: openstack
+          interface: internal
+          url: http://heat-api.openstack.svc.cluster.local:8004/v1/%(project_id)s
+
+      - apiVersion: identity.openstack.atmosphere.vexxhost.com/v1alpha1
+        kind: Endpoint
+        metadata:
+          name: heat-admin
+          namespace: openstack
+        spec:
+          region: "{{ openstack_helm_endpoints_region_name }}"
+          serviceRef:
+            name: heat
+            namespace: openstack
+          interface: admin
+          url: http://heat-api.openstack.svc.cluster.local:8004/v1/%(project_id)s
+
+      - apiVersion: identity.openstack.atmosphere.vexxhost.com/v1alpha1
+        kind: Endpoint
+        metadata:
+          name: heat-public
+          namespace: openstack
+        spec:
+          region: "{{ openstack_helm_endpoints_region_name }}"
+          serviceRef:
+            name: heat
+            namespace: openstack
+          interface: public
+          url: "https://{{ openstack_helm_endpoints_heat_api_host }}/v1/%(project_id)s"
+
+      - apiVersion: identity.openstack.atmosphere.vexxhost.com/v1alpha1
+        kind: Service
+        metadata:
+          name: heat-cfn
+          namespace: openstack
+        spec:
+          type: cloudformation
+          description: CloudFormation Service
+
+      - apiVersion: identity.openstack.atmosphere.vexxhost.com/v1alpha1
+        kind: Endpoint
+        metadata:
+          name: heat-cfn-internal
+          namespace: openstack
+        spec:
+          region: "{{ openstack_helm_endpoints_region_name }}"
+          serviceRef:
+            name: heat-cfn
+            namespace: openstack
+          interface: internal
+          url: http://heat-cfn.openstack.svc.cluster.local:8000/v1
+
+      - apiVersion: identity.openstack.atmosphere.vexxhost.com/v1alpha1
+        kind: Endpoint
+        metadata:
+          name: heat-cfn-admin
+          namespace: openstack
+        spec:
+          region: "{{ openstack_helm_endpoints_region_name }}"
+          serviceRef:
+            name: heat-cfn
+            namespace: openstack
+          interface: admin
+          url: http://heat-cfn.openstack.svc.cluster.local:8000/v1
+
+      - apiVersion: identity.openstack.atmosphere.vexxhost.com/v1alpha1
+        kind: Endpoint
+        metadata:
+          name: heat-cfn-public
+          namespace: openstack
+        spec:
+          region: "{{ openstack_helm_endpoints_region_name }}"
+          serviceRef:
+            name: heat-cfn
+            namespace: openstack
+          interface: public
+          url: "https://{{ openstack_helm_endpoints_heat_cfn_api_host }}/v1"
+
       - apiVersion: v1
         kind: Secret
         metadata:

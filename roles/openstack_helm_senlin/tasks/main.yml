@@ -24,6 +24,54 @@
   kubernetes.core.k8s:
     state: present
     definition:
+      - apiVersion: identity.openstack.atmosphere.vexxhost.com/v1alpha1
+        kind: Service
+        metadata:
+          name: senlin
+          namespace: openstack
+        spec:
+          type: clustering
+          description: Clustering Service
+
+      - apiVersion: identity.openstack.atmosphere.vexxhost.com/v1alpha1
+        kind: Endpoint
+        metadata:
+          name: senlin-internal
+          namespace: openstack
+        spec:
+          region: "{{ openstack_helm_endpoints_region_name }}"
+          serviceRef:
+            name: senlin
+            namespace: openstack
+          interface: internal
+          url: http://senlin-api.openstack.svc.cluster.local:8778/
+
+      - apiVersion: identity.openstack.atmosphere.vexxhost.com/v1alpha1
+        kind: Endpoint
+        metadata:
+          name: senlin-admin
+          namespace: openstack
+        spec:
+          region: "{{ openstack_helm_endpoints_region_name }}"
+          serviceRef:
+            name: senlin
+            namespace: openstack
+          interface: admin
+          url: http://senlin-api.openstack.svc.cluster.local:8778/
+
+      - apiVersion: identity.openstack.atmosphere.vexxhost.com/v1alpha1
+        kind: Endpoint
+        metadata:
+          name: senlin-public
+          namespace: openstack
+        spec:
+          region: "{{ openstack_helm_endpoints_region_name }}"
+          serviceRef:
+            name: senlin
+            namespace: openstack
+          interface: public
+          url: "https://{{ openstack_helm_endpoints_senlin_api_host }}/"
+
       - apiVersion: v1
         kind: Secret
         metadata:

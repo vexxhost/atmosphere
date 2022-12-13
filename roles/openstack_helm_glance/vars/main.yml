@@ -14,6 +14,14 @@
 
 _openstack_helm_glance_values:
   endpoints: "{{ openstack_helm_endpoints }}"
+  dependencies:
+    static:
+      api:
+        jobs:
+          - glance-storage-init
+          - glance-db-sync
+          - glance-rabbit-init
+          - glance-ks-user
   storage: rbd
   images:
     pull_policy: Always
@@ -62,6 +70,8 @@ _openstack_helm_glance_values:
       oslo_messaging_notifications:
         driver: noop
   manifests:
+    job_ks_endpoints: false
+    job_ks_service: false
     ingress_api: false
     service_ingress_api: false
 

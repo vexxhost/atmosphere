@@ -24,6 +24,54 @@
   kubernetes.core.k8s:
     state: present
     definition:
+      - apiVersion: identity.openstack.atmosphere.vexxhost.com/v1alpha1
+        kind: Service
+        metadata:
+          name: glance
+          namespace: openstack
+        spec:
+          type: image
+          description: Image Service
+
+      - apiVersion: identity.openstack.atmosphere.vexxhost.com/v1alpha1
+        kind: Endpoint
+        metadata:
+          name: glance-internal
+          namespace: openstack
+        spec:
+          region: "{{ openstack_helm_endpoints_region_name }}"
+          serviceRef:
+            name: glance
+            namespace: openstack
+          interface: internal
+          url: http://glance-api.openstack.svc.cluster.local:9292/
+
+      - apiVersion: identity.openstack.atmosphere.vexxhost.com/v1alpha1
+        kind: Endpoint
+        metadata:
+          name: glance-admin
+          namespace: openstack
+        spec:
+          region: "{{ openstack_helm_endpoints_region_name }}"
+          serviceRef:
+            name: glance
+            namespace: openstack
+          interface: admin
+          url: http://glance-api.openstack.svc.cluster.local:9292/
+
+      - apiVersion: identity.openstack.atmosphere.vexxhost.com/v1alpha1
+        kind: Endpoint
+        metadata:
+          name: glance-public
+          namespace: openstack
+        spec:
+          region: "{{ openstack_helm_endpoints_region_name }}"
+          serviceRef:
+            name: glance
+            namespace: openstack
+          interface: public
+          url: "https://{{ openstack_helm_endpoints_glance_api_host }}/"
+
       - apiVersion: source.toolkit.fluxcd.io/v1beta2
         kind: GitRepository
         metadata:

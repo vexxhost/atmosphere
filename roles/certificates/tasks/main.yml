@@ -27,6 +27,7 @@
         wait_sleep: 1
         wait_timeout: 300
       register: _openstack_helm_root_secret
+      failed_when: _openstack_helm_root_secret.resources | length == 0
 
     - name: Copy CA certificate on host
       ansible.builtin.copy:
