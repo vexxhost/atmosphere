@@ -24,6 +24,9 @@
   tasks:
     - name: Set masquerade rule
       become: yes
-      ansible.builtin.shell: |
-        iptables -t nat -A POSTROUTING -s  10.96.250.0/24  -o ens3 -j MASQUERADE
-        iptables -t nat -A POSTROUTING -s  10.96.250.0/24  -o ens4 -j MASQUERADE
+      ansible.builtin.iptables:
+        table: nat
+        chain: POSTROUTING
+        source: 10.96.250.0/24
+        out_interface: "{{ ansible_default_ipv4.interface }}"
+        jump: MASQUERADE
