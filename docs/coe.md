@@ -1,9 +1,7 @@
 # Coe
 
-Create COE cluster template.
+Create COE k8s cluster templates.
 ```shell
-# Replace using openstack_helm_endpoints_magnum_registry_host
-magnum_registry_host=REPLACE_IT
 
 for version in v1.23.13 v1.24.7 v1.25.3; do \
   openstack coe cluster template create \
@@ -17,7 +15,8 @@ for version in v1.23.13 v1.24.7 v1.25.3; do \
         --docker-storage-driver overlay2 \
         --coe kubernetes \
         --label kube_tag=${version} \
-        --label container_infra_prefix="${magnum_registry_host}/magnum/"
         k8s-${version};
 done;
 ```
+
+A container registry which includes all container images required for COE k8s clusters is installed along side with Magnum. Instead of using external container registries, you can use this internal one. Append `--label container_infra_prefix="${magnum_registry_host}/magnum/"` in cluster create command. Replace `magnum_registry_host` with `openstack_helm_endpoints_magnum_registry_host` ansible variable. 
