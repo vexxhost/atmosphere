@@ -232,9 +232,9 @@ class GenerateImageTagsConfigMap(ApplyKubernetesObjectTask):
                                     "ks_endpoints": f"{image_repository}/heat:zed",
                                     "ks_service": f"{image_repository}/heat:zed",
                                     "ks_user": f"{image_repository}/heat:zed",
-                                    "magnum_api": f"{image_repository}/magnum@sha256:0d5be95bd1fd2a2fd9545d6aacb361700e37c679ef7797ad1eb87fda6c03cedc",  # noqa
-                                    "magnum_conductor": f"{image_repository}/magnum@sha256:0d5be95bd1fd2a2fd9545d6aacb361700e37c679ef7797ad1eb87fda6c03cedc",  # noqa
-                                    "magnum_db_sync": f"{image_repository}/magnum@sha256:0d5be95bd1fd2a2fd9545d6aacb361700e37c679ef7797ad1eb87fda6c03cedc",  # noqa
+                                    "magnum_api": f"{image_repository}/magnum@sha256:53f817187975103c7a7e39ebc4418d6946177cef7d1351e58e3540915fafbce1",  # noqa
+                                    "magnum_conductor": f"{image_repository}/magnum@sha256:53f817187975103c7a7e39ebc4418d6946177cef7d1351e58e3540915fafbce1",  # noqa
+                                    "magnum_db_sync": f"{image_repository}/magnum@sha256:53f817187975103c7a7e39ebc4418d6946177cef7d1351e58e3540915fafbce1",  # noqa
                                     "rabbit_init": f"{image_repository}/rabbitmq:3.8.23-management",
                                 }
                             }
