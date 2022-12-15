@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/vexxhost/atmosphere/compare/v0.10.0...v0.11.0) (2022-12-15)
+
+
+### Features
+
+* add cloud resource + magnum ([#217](https://github.com/vexxhost/atmosphere/issues/217)) ([096ade0](https://github.com/vexxhost/atmosphere/commit/096ade0076a386aa64b5f3c0884be8f4643216ad))
+
 ## [0.10.0](https://github.com/vexxhost/atmosphere/compare/v0.9.0...v0.10.0) (2022-12-13)
 
 
