@@ -63,8 +63,8 @@
     - name: Upload logs to object storage
       ignore_errors: True
       when:
-        - lookup('env', 'GITHUB_RUN_ID') is defined
-        - lookup('env', 'GITHUB_RUN_NUMBER') is defined
+        - not lookup('env', 'GITHUB_RUN_ID') == ""
+        - not lookup('env', 'GITHUB_RUN_NUMBER') == ""
       vars:
         build_id: "{{ lookup('env', 'GITHUB_RUN_ID') }}-{{ lookup('env', 'GITHUB_RUN_NUMBER') }}"
         container_name: atmosphere-ci-logs
