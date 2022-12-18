@@ -24,33 +24,6 @@ NODE_SELECTOR_CONTROL_PLANE = {
 NAMESPACE_CERT_MANAGER = "cert-manager"
 NAMESPACE_MONITORING = "monitoring"
 
-PROMETHEUS_MONITOR_RELABELING_SET_NODE_NAME_TO_INSTANCE = {
-    "sourceLabels": ["__meta_kubernetes_pod_node_name"],
-    "targetLabel": "instance",
-}
-PROMETHEUS_MONITOR_RELABELING_SET_POD_NAME_TO_INSTANCE = {
-    "sourceLabels": ["__meta_kubernetes_pod_name"],
-    "targetLabel": "instance",
-}
-PROMETHEUS_MONITOR_RELABELING_DROP_ALL_KUBERNETES_LABELS = {
-    "action": "labeldrop",
-    "regex": "^(container|endpoint|namespace|pod|node|service)$",
-}
-
-PROMETHEUS_MONITOR_RELABELINGS_INSTANCE_TO_POD_NAME = [
-    PROMETHEUS_MONITOR_RELABELING_SET_POD_NAME_TO_INSTANCE,
-    PROMETHEUS_MONITOR_RELABELING_DROP_ALL_KUBERNETES_LABELS,
-]
-PROMETHEUS_MONITOR_RELABELINGS_INSTANCE_TO_NODE_NAME = [
-    PROMETHEUS_MONITOR_RELABELING_SET_NODE_NAME_TO_INSTANCE,
-    PROMETHEUS_MONITOR_RELABELING_DROP_ALL_KUBERNETES_LABELS,
-]
-PROMETHEUS_MONITOR_RELABELINGS_KUBELET = [
-    {"sourceLabels": ["__metrics_path__"], "targetLabel": "metrics_path"},
-    {"sourceLabels": ["node"], "targetLabel": "instance"},
-    PROMETHEUS_MONITOR_RELABELING_DROP_ALL_KUBERNETES_LABELS,
-]
-
 HELM_RELEASE_CERT_MANAGER = {
     "chart_name": "cert-manager",
     "chart_version": "v1.7.1",
@@ -110,7 +83,7 @@ HELM_RELEASE_PXC_OPERATOR = {
 
 HELM_RELEASE_RABBITMQ_CLUSTER_OPERATOR = {
     "chart_name": "rabbitmq-cluster-operator",
-    "chart_version": "2.5.2",
+    "chart_version": "2.6.6",
     "release_name": "rabbitmq-cluster-operator",
     "values": {
         "rabbitmqImage": {"repository": "library/rabbitmq", "tag": "3.10.2-management"},

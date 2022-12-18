@@ -91,11 +91,13 @@ def create_fn(namespace: str, name: str, spec: dict, **_):
             ),
         )
 
-    flow.add(
-        tasks.ApplyHelmReleaseTask(
-            config=constants.HELM_RELEASE_INGRESS_NGINX,
-        ),
-    )
+    if spec["ingressNginx"]["enabled"]:
+        flow.add(
+            tasks.ApplyHelmReleaseTask(
+                config=constants.HELM_RELEASE_INGRESS_NGINX,
+            ),
+        )
+
     flow.add(
         # TODO(mnaser): We need to find a way to create a dependency on
         #               cert-manager being enabled.
@@ -182,7 +184,6 @@ def create_fn(namespace: str, name: str, spec: dict, **_):
         flow.add(tasks.ApplyRabbitmqClusterTask("heat"))
 
     if spec["monitoring"]["enabled"]:
-        # TODO(oleks): Enable opsgenie
         flow.add(
             tasks.ApplyNamespaceTask(
                 name=constants.NAMESPACE_MONITORING,
