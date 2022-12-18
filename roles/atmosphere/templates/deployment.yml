@@ -19,14 +19,44 @@ spec:
       containers:
         - name: operator
           image: "{{ atmosphere_image }}"
-          env:
-            - name: POD_IP
-              valueFrom:
-                fieldRef:
-                  fieldPath: status.podIP
+          command: ["kopf"]
+          args: ["run", "/app/atmosphere/cmd/operator.py"]
           volumeMounts:
             - name: config
               mountPath: /etc/atmosphere
+        - name: http
+          image: "{{ atmosphere_image }}"
+          command: ["nginx"]
+          ports:
+            - name: http
+              containerPort: 80
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+              scheme: HTTP
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+              scheme: HTTP
+        - name: registry
+          image: "{{ atmosphere_image }}"
+          command: ["docker-registry"]
+          args: ["serve", "/etc/docker-registry/config.yml"]
+          ports:
+            - name: registry
+              containerPort: 5000
+          livenessProbe:
+            httpGet:
+              path: /v2/
+              port: 5000
+              scheme: HTTP
+          readinessProbe:
+            httpGet:
+              path: /v2/
+              port: 5000
+              scheme: HTTP
       nodeSelector:
         openstack-control-plane: enabled
       volumes:

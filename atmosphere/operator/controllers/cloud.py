@@ -1,11 +1,13 @@
 import logging
 
 import kopf
-from taskflow import engines
+from taskflow import engines, exceptions
 from taskflow.listeners import logging as logging_listener
 from taskflow.patterns import graph_flow
 
-from atmosphere.operator import tasks
+from atmosphere import flows
+from atmosphere.models import config
+from atmosphere.operator import constants, tasks
 from atmosphere.operator.api import Cloud
 
 
@@ -14,37 +16,139 @@ from atmosphere.operator.api import Cloud
 def create_fn(namespace: str, name: str, spec: dict, **_):
     flow = graph_flow.Flow("deploy").add(
         tasks.BuildApiClient(),
+        tasks.ApplyNamespaceTask(namespace),
+        tasks.ApplyHelmRepositoryTask(
+            inject={
+                "repository_name": "atmosphere",
+                "url": "http://atmosphere.openstack/charts/",
+            },
+            provides="helm_repository",
+        ),
         tasks.GenerateImageTagsConfigMap(provides="image_tags"),
         tasks.GenerateSecrets(provides="secrets"),
     )
 
-    if spec["magnum"].get("enabled", True):
+    if spec["certManager"]["enabled"]:
+        flow.add(
+            tasks.ApplyNamespaceTask(
+                name=constants.NAMESPACE_CERT_MANAGER,
+                provides="cert_manager_namespace",
+            ),
+            tasks.ApplyHelmReleaseTask(
+                config=constants.HELM_RELEASE_CERT_MANAGER,
+                rebind={"namespace": "cert_manager_namespace"},
+            ),
+            tasks.ApplyClusterIssuerTask(provides="cluster_issuer"),
+        )
+    else:
+        flow.add(
+            tasks.GetClusterIssuerTask(provides="cluster_issuer"),
+        )
+
+    if spec["memcached"]["enabled"]:
+        flow.add(
+            tasks.GetChartValues(
+                chart_name="memcached",
+                chart_version="0.1.12",
+            ),
+            tasks.GenerateOpenStackHelmReleaseValues(
+                inject={"chart_name": "memcached"},
+                provides="memcached_release_values",
+            ),
+            tasks.GenerateOpenStackHelmValuesFrom(
+                inject={"chart_name": "memcached"},
+                rebind={
+                    "chart_values": "memcached_chart_values",
+                },
+                provides="memcached_values_from",
+            ),
+            tasks.ApplyHelmReleaseTask(
+                config={
+                    "chart_name": "memcached",
+                    "chart_version": "0.1.12",
+                    "release_name": "memcached",
+                },
+                rebind={
+                    "values": "memcached_release_values",
+                    "values_from": "memcached_values_from",
+                },
+            ),
+            tasks.ApplyServiceTask(
+                name="memcached-metrics",
+                inject={
+                    "labels": {
+                        "application": "memcached",
+                        "component": "server",
+                    },
+                    "ports": [
+                        {
+                            "name": "metrics",
+                            "port": 9150,
+                            "targetPort": 9150,
+                        },
+                    ],
+                },
+            ),
+        )
+
+    flow.add(
+        # TODO(mnaser): We need to find a way to create a dependency on
+        #               cert-manager being enabled.
+        tasks.ApplyHelmReleaseTask(
+            config=constants.HELM_RELEASE_RABBITMQ_CLUSTER_OPERATOR,
+        ),
+        tasks.ApplyHelmReleaseTask(
+            config=constants.HELM_RELEASE_PXC_OPERATOR,
+        ),
+        tasks.ApplyPerconaXtraDBClusterTask(
+            provides="percona_xtradb_cluster",
+        ),
+    )
+
+    if spec["keystone"]["enabled"]:
+        flow.add(tasks.ApplyRabbitmqClusterTask("keystone"))
+
+    if spec["barbican"]["enabled"]:
+        flow.add(tasks.ApplyRabbitmqClusterTask("barbican"))
+
+    if spec["glance"]["enabled"]:
+        flow.add(tasks.ApplyRabbitmqClusterTask("glance"))
+
+    if spec["cinder"]["enabled"]:
+        flow.add(tasks.ApplyRabbitmqClusterTask("cinder"))
+
+    if spec["neutron"]["enabled"]:
+        flow.add(tasks.ApplyRabbitmqClusterTask("neutron"))
+
+    if spec["nova"]["enabled"]:
+        flow.add(tasks.ApplyRabbitmqClusterTask("nova"))
+
+    if spec["octavia"]["enabled"]:
+        flow.add(tasks.ApplyRabbitmqClusterTask("octavia"))
+
+    if spec["magnum"]["enabled"]:
         flow.add(
             tasks.InstallClusterApiTask(),
-            tasks.ApplyRabbitmqClusterTask(
-                inject={"chart_name": "magnum"}, provides="magnum_rabbitmq"
-            ),
+            tasks.ApplyRabbitmqClusterTask("magnum"),
             tasks.GetChartValues(
-                inject={
-                    "helm_repository": "openstack-helm",
-                    "helm_repository_url": "https://tarballs.opendev.org/openstack/openstack-helm/",
-                    "chart_name": "magnum",
-                    "chart_version": "0.2.8",
-                },
-                provides="magnum_chart_values",
+                chart_name="magnum",
+                chart_version="0.2.8",
             ),
-            tasks.GenerateReleaseValues(
+            tasks.GenerateOpenStackHelmWithInfraReleaseValues(
                 inject={"chart_name": "magnum"},
-                rebind={"rabbitmq": "magnum_rabbitmq"},
+                rebind={"rabbitmq": "magnum_rabbitmq_cluster"},
                 provides="magnum_release_values",
             ),
-            tasks.GenerateMagnumChartValuesFrom(
-                rebind={"rabbitmq": "magnum_rabbitmq"},
+            tasks.GenerateOpenStackHelmWithInfraValuesFrom(
+                inject={"chart_name": "magnum"},
+                rebind={
+                    "chart_values": "magnum_chart_values",
+                    "rabbitmq": "magnum_rabbitmq_cluster",
+                },
                 provides="magnum_values_from",
             ),
             tasks.ApplyHelmReleaseTask(
-                inject={
-                    "helm_repository": "openstack-helm",
+                config={
                     "chart_name": "magnum",
                     "chart_version": "0.2.8",
                     "release_name": "magnum",
@@ -58,15 +162,39 @@ def create_fn(namespace: str, name: str, spec: dict, **_):
                 inject={"endpoint": "container_infra"},
                 rebind={
                     "chart_values": "magnum_chart_values",
-                    "release_values": "magnum_release_values",
+                    "helm_release": "magnum_helm_release",
                 },
             ),
         )
 
+    if spec["senlin"]["enabled"]:
+        flow.add(tasks.ApplyRabbitmqClusterTask("senlin"))
+
+    if spec["designate"]["enabled"]:
+        flow.add(tasks.ApplyRabbitmqClusterTask("designate"))
+
+    if spec["heat"]["enabled"]:
+        flow.add(tasks.ApplyRabbitmqClusterTask("heat"))
+
+    if spec["monitoring"]["enabled"]:
+        flow.add(
+            tasks.ApplyNamespaceTask(
+                name=constants.NAMESPACE_MONITORING,
+                provides="monitoring_namespace",
+            ),
+        )
+
+        if spec["monitoring"]["nodeFeatureDiscovery"]["enabled"]:
+            flow.add(
+                tasks.ApplyHelmReleaseTask(
+                    config=constants.HELM_RELEASE_NODE_FEATURE_DISCOVERY,
+                    rebind={"namespace": "monitoring_namespace"},
+                ),
+            )
+
     engine = engines.load(
         flow,
         store={
-            "namespace": namespace,
             "name": name,
             "spec": spec,
         },
@@ -76,4 +204,12 @@ def create_fn(namespace: str, name: str, spec: dict, **_):
     )
 
     with logging_listener.DynamicLoggingListener(engine, level=logging.INFO):
-        engine.run()
+        try:
+            engine.run()
+        except exceptions.WrappedFailure as ex:
+            raise ex[0]
+
+    # TODO(mmaser): Get rid of this and move it to the main taskflow engine
+    cfg = config.Config.from_file()
+    engine = flows.get_engine(cfg)
+    engine.run()

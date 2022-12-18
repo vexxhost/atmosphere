@@ -18,18 +18,6 @@ from atmosphere.tasks.composite import openstack_helm
             ),
             [
                 {
-                    "apiVersion": "source.toolkit.fluxcd.io/v1beta2",
-                    "kind": "HelmRepository",
-                    "metadata": {
-                        "name": constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY,
-                        "namespace": constants.NAMESPACE_MONITORING,
-                    },
-                    "spec": {
-                        "interval": "1m",
-                        "url": constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY_URL,
-                    },
-                },
-                {
                     "apiVersion": "helm.toolkit.fluxcd.io/v2beta1",
                     "kind": "HelmRelease",
                     "metadata": {
@@ -42,7 +30,8 @@ from atmosphere.tasks.composite import openstack_helm
                                 "chart": constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_NAME,
                                 "sourceRef": {
                                     "kind": "HelmRepository",
-                                    "name": constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY,
+                                    "name": "atmosphere",
+                                    "namespace": "openstack",
                                 },
                                 "version": constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_VERSION,
                             }
@@ -66,18 +55,6 @@ from atmosphere.tasks.composite import openstack_helm
             ),
             [
                 {
-                    "apiVersion": "source.toolkit.fluxcd.io/v1beta2",
-                    "kind": "HelmRepository",
-                    "metadata": {
-                        "name": constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY,
-                        "namespace": constants.NAMESPACE_MONITORING,
-                    },
-                    "spec": {
-                        "interval": "1m",
-                        "url": constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY_URL,
-                    },
-                },
-                {
                     "apiVersion": "helm.toolkit.fluxcd.io/v2beta1",
                     "kind": "HelmRelease",
                     "metadata": {
@@ -90,7 +67,8 @@ from atmosphere.tasks.composite import openstack_helm
                                 "chart": constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_NAME,
                                 "sourceRef": {
                                     "kind": "HelmRepository",
-                                    "name": constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY,
+                                    "name": "atmosphere",
+                                    "namespace": "openstack",
                                 },
                                 "version": constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_VERSION,
                             }
@@ -120,18 +98,6 @@ from atmosphere.tasks.composite import openstack_helm
             ),
             [
                 {
-                    "apiVersion": "source.toolkit.fluxcd.io/v1beta2",
-                    "kind": "HelmRepository",
-                    "metadata": {
-                        "name": constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY,
-                        "namespace": constants.NAMESPACE_MONITORING,
-                    },
-                    "spec": {
-                        "interval": "1m",
-                        "url": constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY_URL,
-                    },
-                },
-                {
                     "apiVersion": "helm.toolkit.fluxcd.io/v2beta1",
                     "kind": "HelmRelease",
                     "metadata": {
@@ -144,7 +110,8 @@ from atmosphere.tasks.composite import openstack_helm
                                 "chart": constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_NAME,
                                 "sourceRef": {
                                     "kind": "HelmRepository",
-                                    "name": constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY,
+                                    "name": "atmosphere",
+                                    "namespace": "openstack",
                                 },
                                 "version": constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_VERSION,
                             }
@@ -205,18 +172,6 @@ def test_kube_prometheus_stack_tasks_from_config(pykube, cfg_data, expected):
             ),
             [
                 {
-                    "apiVersion": "source.toolkit.fluxcd.io/v1beta2",
-                    "kind": "HelmRepository",
-                    "metadata": {
-                        "name": constants.HELM_RELEASE_INGRESS_NGINX_NAME,
-                        "namespace": constants.NAMESPACE_OPENSTACK,
-                    },
-                    "spec": {
-                        "interval": "1m",
-                        "url": constants.HELM_REPOSITORY_INGRESS_NGINX_URL,
-                    },
-                },
-                {
                     "apiVersion": "helm.toolkit.fluxcd.io/v2beta1",
                     "kind": "HelmRelease",
                     "metadata": {
@@ -229,7 +184,8 @@ def test_kube_prometheus_stack_tasks_from_config(pykube, cfg_data, expected):
                                 "chart": constants.HELM_RELEASE_INGRESS_NGINX_NAME,
                                 "sourceRef": {
                                     "kind": "HelmRepository",
-                                    "name": constants.HELM_REPOSITORY_INGRESS_NGINX,
+                                    "name": "atmosphere",
+                                    "namespace": "openstack",
                                 },
                                 "version": constants.HELM_RELEASE_INGRESS_NGINX_VERSION,
                             }
@@ -253,18 +209,6 @@ def test_kube_prometheus_stack_tasks_from_config(pykube, cfg_data, expected):
             ),
             [
                 {
-                    "apiVersion": "source.toolkit.fluxcd.io/v1beta2",
-                    "kind": "HelmRepository",
-                    "metadata": {
-                        "name": constants.HELM_RELEASE_INGRESS_NGINX_NAME,
-                        "namespace": constants.NAMESPACE_OPENSTACK,
-                    },
-                    "spec": {
-                        "interval": "1m",
-                        "url": constants.HELM_REPOSITORY_INGRESS_NGINX_URL,
-                    },
-                },
-                {
                     "apiVersion": "helm.toolkit.fluxcd.io/v2beta1",
                     "kind": "HelmRelease",
                     "metadata": {
@@ -277,7 +221,8 @@ def test_kube_prometheus_stack_tasks_from_config(pykube, cfg_data, expected):
                                 "chart": constants.HELM_RELEASE_INGRESS_NGINX_NAME,
                                 "sourceRef": {
                                     "kind": "HelmRepository",
-                                    "name": constants.HELM_REPOSITORY_INGRESS_NGINX,
+                                    "name": "atmosphere",
+                                    "namespace": "openstack",
                                 },
                                 "version": constants.HELM_RELEASE_INGRESS_NGINX_VERSION,
                             }
