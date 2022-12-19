@@ -92,10 +92,6 @@ def create_fn(namespace: str, name: str, spec: dict, **_):
         )
 
     flow.add(
-        tasks.ApplyNamespaceTask(
-            name=constants.NAMESPACE_OPENSTACK,
-            provides="openstack_namespace",
-        ),
         tasks.ApplyHelmReleaseTask(
             config=constants.HELM_RELEASE_INGRESS_NGINX,
         ),
