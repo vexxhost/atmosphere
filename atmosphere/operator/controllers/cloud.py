@@ -192,10 +192,6 @@ def create_fn(namespace: str, name: str, spec: dict, **_):
                 name=constants.NAMESPACE_MONITORING,
                 provides="monitoring_namespace",
             ),
-            tasks.ApplyHelmReleaseTask(
-                config=constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK,
-                rebind={"namespace": "monitoring_namespace"},
-            ),
         )
 
         if spec["monitoring"]["nodeFeatureDiscovery"]["enabled"]:
