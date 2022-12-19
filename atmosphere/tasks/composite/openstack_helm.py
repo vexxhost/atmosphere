@@ -115,24 +115,3 @@ def kube_prometheus_stack_tasks_from_config(
             values=values,
         ),
     ]
-
-
-def ingress_nginx_tasks_from_config(config: config.IngressNginxChartConfig):
-    if not config.enabled:
-        return []
-
-    values = mergedeep.merge(
-        {},
-        constants.HELM_RELEASE_INGRESS_NGINX_VALUES,
-        config.overrides,
-    )
-
-    return [
-        flux.ApplyHelmReleaseTask(
-            namespace=config.namespace,
-            name=constants.HELM_RELEASE_INGRESS_NGINX_NAME,
-            chart=constants.HELM_RELEASE_INGRESS_NGINX_NAME,
-            version=constants.HELM_RELEASE_INGRESS_NGINX_VERSION,
-            values=values,
-        ),
-    ]

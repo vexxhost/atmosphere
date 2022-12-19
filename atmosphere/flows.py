@@ -23,9 +23,6 @@ def get_deployment_flow(config):
             config.kube_prometheus_stack,
             opsgenie=config.opsgenie,
         ),
-        # openstack
-        v1.ApplyNamespaceTask(name=constants.NAMESPACE_OPENSTACK),
-        *openstack_helm.ingress_nginx_tasks_from_config(config.ingress_nginx),
     )
 
     return flow
