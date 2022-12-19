@@ -1,6 +1,6 @@
 import pkg_resources
 
-from atmosphere import utils
+from atmosphere.operator import utils
 
 IMAGE_LIST = {
     "bootstrap": "quay.io/vexxhost/heat:zed",
