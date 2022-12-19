@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.12.0](https://github.com/vexxhost/atmosphere/compare/v0.11.0...v0.12.0) (2022-12-19)
+
+
+### Features
+
+* allow cloud spec overrides ([d469eb6](https://github.com/vexxhost/atmosphere/commit/d469eb63f6a95c7dea204799c4e693ec4ab24bb0)), closes [#231](https://github.com/vexxhost/atmosphere/issues/231)
+
+
+### Bug Fixes
+
+* bump rabbitmq operator version ([a0874ad](https://github.com/vexxhost/atmosphere/commit/a0874ada6ccdc4e5967b0e11d72d52c7a0ff230e))
+* Correct task "Upload logs to object storage" ([7d40bf2](https://github.com/vexxhost/atmosphere/commit/7d40bf291cb82f8981156dd6d0ef3f45bed439ea))
+* solve typo in atmosphere_cloud_spec ([0aecdae](https://github.com/vexxhost/atmosphere/commit/0aecdaee1102b4e6d18f2019ada512019a1368ad))
+
 ## [0.11.0](https://github.com/vexxhost/atmosphere/compare/v0.10.0...v0.11.0) (2022-12-15)
 
 
