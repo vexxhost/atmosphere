@@ -384,7 +384,7 @@ HELM_RELEASE_NODE_FEATURE_DISCOVERY_VALUES = {
 }
 
 HELM_RELEASE_RABBITMQ_OPERATOR_NAME = "rabbitmq-cluster-operator"
-HELM_RELEASE_RABBITMQ_OPERATOR_VERSION = "2.5.2"
+HELM_RELEASE_RABBITMQ_OPERATOR_VERSION = "2.6.6"
 HELM_RELEASE_RABBITMQ_OPERATOR_VALUES = {
     "rabbitmqImage": {"repository": "library/rabbitmq", "tag": "3.10.2-management"},
     "credentialUpdaterImage": {
