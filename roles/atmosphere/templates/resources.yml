@@ -34,6 +34,7 @@ stringData:
   magnum-database-password: "{{ openstack_helm_endpoints_magnum_mariadb_password }}"
   magnum-keystone-password: "{{ openstack_helm_endpoints_magnum_keystone_password }}"
   magnum-rabbitmq-password: "{{ openstack_helm_endpoints_magnum_rabbitmq_password }}"
+  magnum-stack-user-keystone-password: "{{ openstack_helm_endpoints_magnum_keystone_password }}"
   memcache-secret-key: "{{ openstack_helm_endpoints_memcached_secret_key }}"
 ---
 apiVersion: atmosphere.vexxhost.com/v1alpha1
@@ -41,10 +42,4 @@ kind: Cloud
 metadata:
   name: atmosphere
   namespace: openstack
-spec:
-  imageRepository: "{{ atmosphere_image_repository | default('quay.io/vexxhost') }}"
-  ingressClassName: "{{ openstack_helm_ingress_class_name | default('openstack') }}"
-  certManagerClusterIssuer: "{{ openstack_helm_ingress_cluster_issuer | default('atmosphere') }}"
-  regionName: "{{ openstack_helm_endpoints_region_name }}"
-  magnum:
-    endpoint: "{{ openstack_helm_endpoints_magnum_api_host }}"
+spec: {{ _atmosphere_cloud_spec | combine(atmosphere_cloud_spec, recursive=True) | to_json }}

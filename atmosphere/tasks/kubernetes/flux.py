@@ -1,46 +1,12 @@
+import logging
+
 import pykube
 from oslo_utils import strutils
 from tenacity import retry, retry_if_result, stop_after_delay, wait_fixed
 
-from atmosphere import logger
 from atmosphere.tasks.kubernetes import base
 
-LOG = logger.get_logger()
-
-
-class HelmRepository(pykube.objects.NamespacedAPIObject):
-    version = "source.toolkit.fluxcd.io/v1beta2"
-    endpoint = "helmrepositories"
-    kind = "HelmRepository"
-
-
-class ApplyHelmRepositoryTask(base.ApplyKubernetesObjectTask):
-    def __init__(self, namespace: str, name: str, url: str):
-        self._url = url
-
-        super().__init__(
-            kind=HelmRepository,
-            namespace=namespace,
-            name=name,
-            requires=set(["namespace"]),
-        )
-
-    def generate_object(self) -> HelmRepository:
-        return HelmRepository(
-            self.api,
-            {
-                "apiVersion": self._obj_kind.version,
-                "kind": self._obj_kind.kind,
-                "metadata": {
-                    "name": self._obj_name,
-                    "namespace": self._obj_namespace,
-                },
-                "spec": {
-                    "interval": "1m",
-                    "url": self._url,
-                },
-            },
-        )
+LOG = logging.getLogger(__name__)
 
 
 class HelmRelease(pykube.objects.NamespacedAPIObject):
@@ -54,7 +20,6 @@ class ApplyHelmReleaseTask(base.ApplyKubernetesObjectTask):
         self,
         namespace: str,
         name: str,
-        repository: str,
         chart: str,
         version: str,
         values: dict = {},
@@ -62,20 +27,15 @@ class ApplyHelmReleaseTask(base.ApplyKubernetesObjectTask):
         *args,
         **kwargs,
     ):
-        self._repository = repository
         self._chart = chart
         self._version = version
         self._values = values
         self._values_from = values_from
 
-        kwargs.setdefault("requires", set())
-        kwargs["requires"] = kwargs["requires"].union(set(["repository"]))
-
         super().__init__(
             kind=HelmRelease,
             namespace=namespace,
             name=name,
-            rebind={"repository": f"helm-repository-{namespace}-{repository}"},
             *args,
             **kwargs,
         )
@@ -98,7 +58,8 @@ class ApplyHelmReleaseTask(base.ApplyKubernetesObjectTask):
                             "version": self._version,
                             "sourceRef": {
                                 "kind": "HelmRepository",
-                                "name": self._repository,
+                                "name": "atmosphere",
+                                "namespace": "openstack",
                             },
                         }
                     },

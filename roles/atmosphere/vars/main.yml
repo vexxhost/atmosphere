@@ -1,0 +1,38 @@
+_atmosphere_cloud_spec:
+  imageRepository: "{{ atmosphere_image_repository | default('localhost:30000') }}"
+  ingressClassName: "{{ openstack_helm_ingress_class_name | default('openstack') }}"
+  regionName: "{{ openstack_helm_endpoints_region_name }}"
+  certManager:
+    enabled: true
+    issuer:
+      existing: "{{ openstack_helm_ingress_cluster_issuer | default(None) }}"
+      config: "{{ atmosphere_issuer_config }}"
+  memcached:
+    enabled: true
+  keystone:
+    enabled: true
+  barbican:
+    enabled: true
+  glance:
+    enabled: true
+  cinder:
+    enabled: true
+  neutron:
+    enabled: true
+  nova:
+    enabled: true
+  octavia:
+    enabled: true
+  magnum:
+    enabled: true
+    endpoint: "{{ openstack_helm_endpoints_magnum_api_host }}"
+  senlin:
+    enabled: true
+  designate:
+    enabled: true
+  heat:
+    enabled: true
+  monitoring:
+    enabled: true
+    nodeFeatureDiscovery:
+      enabled: true

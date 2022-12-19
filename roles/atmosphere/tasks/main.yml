@@ -13,4 +13,54 @@
       - service_account.yml
       - secret.yml
       - deployment.yml
+      - service.yml
       - resources.yml
+
+# - name: Verify if a certificate exists for registry
+#   kubernetes.core.k8s_info:
+#     api_version: v1
+#     kind: Secret
+#     name: atmosphere-registry-tls
+#     namespace: openstack
+#   register: _atmosphere_registry_tls
+
+# - name: Generate certificate for registry
+#   when: _atmosphere_registry_tls.resources | length == 0
+#   block:
+#     - name: Create private key (RSA, 4096 bits)
+#       community.crypto.openssl_privatekey_pipe:
+#       register: _atmosphere_registry_tls_private_key
+
+#     - name: Generate an OpenSSL Certificate Signing Request
+#       community.crypto.openssl_csr_pipe:
+#         privatekey_content: "{{ _atmosphere_registry_tls_private_key.privatekey }}"
+#         common_name: atmosphere.openstack
+#       register: _atmosphere_registry_tls_certificate_request
+
+#     - name: Create simple self-signed certificate
+#       community.crypto.x509_certificate_pipe:
+#         provider: selfsigned
+#         privatekey_content: "{{ _atmosphere_registry_tls_private_key.privatekey }}"
+#         csr_content: "{{ _atmosphere_registry_tls_certificate_request.csr }}"
+#       register: _atmosphere_registry_tls_certificate
+
+#     - name: Create secret with TLS certificates
+#       kubernetes.core.k8s:
+#         state: present
+#         definition:
+#           apiVersion: v1
+#           kind: Secret
+#           metadata:
+#             name: atmosphere-registry-tls
+#             namespace: openstack
+#             labels:
+#               application: atmosphere
+#           type: kubernetes.io/tls
+#           stringData:
+#             caFile: "{{ _atmosphere_registry_tls_certificate.certificate }}"
+#             tls.crt: "{{ _atmosphere_registry_tls_certificate.certificate }}"
+#             tls.key: "{{ _atmosphere_registry_tls_private_key.privatekey }}"
+#             # NOTE(mnaser): This is a work-around since Flux crashes if those
+#             #               keys are missing.
+#             username: ""
+#             password: ""

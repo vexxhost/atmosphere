@@ -1,33 +1,10 @@
 import pkg_resources
 
 from atmosphere import utils
+from atmosphere.operator import constants
 
-NODE_SELECTOR_CONTROL_PLANE = {
-    "openstack-control-plane": "enabled",
-}
-
-NAMESPACE_CERT_MANAGER = "cert-manager"
-NAMESPACE_KUBE_SYSTEM = "kube-system"
 NAMESPACE_MONITORING = "monitoring"
 NAMESPACE_OPENSTACK = "openstack"
-
-HELM_REPOSITORY_BITNAMI = "bitnami"
-HELM_REPOSITORY_CEPH = "ceph"
-HELM_REPOSITORY_COREDNS = "coredns"
-
-HELM_REPOSITORY_INGRESS_NGINX = "ingress-nginx"
-HELM_REPOSITORY_INGRESS_NGINX_URL = "https://kubernetes.github.io/ingress-nginx"
-
-HELM_REPOSITORY_JETSTACK = "jetstack"
-HELM_REPOSITORY_NODE_FEATURE_DISCOVERY = "node-feature-discovery"
-HELM_REPOSITORY_OPENSTACK_HELM = "openstack-helm"
-HELM_REPOSITORY_OPENSTACK_HELM_INFRA = "openstack-helm-infra"
-HELM_REPOSITORY_PERCONA = "percona"
-
-HELM_REPOSITORY_PROMETHEUS_COMMUINTY = "prometheus-community"
-HELM_REPOSITORY_PROMETHEUS_COMMUINTY_URL = (
-    "https://prometheus-community.github.io/helm-charts"
-)
 
 PROMETHEUS_MONITOR_RELABELING_SET_NODE_NAME_TO_INSTANCE = {
     "sourceLabels": ["__meta_kubernetes_pod_node_name"],
@@ -80,14 +57,14 @@ HELM_RELEASE_KUBE_PROMETHEUS_STACK_VALUES = {
                     }
                 }
             },
-            "nodeSelector": NODE_SELECTOR_CONTROL_PLANE,
+            "nodeSelector": constants.NODE_SELECTOR_CONTROL_PLANE,
         },
     },
     "grafana": {
         "serviceMonitor": {
             "relabelings": PROMETHEUS_MONITOR_RELABELINGS_INSTANCE_TO_POD_NAME
         },
-        "nodeSelector": NODE_SELECTOR_CONTROL_PLANE,
+        "nodeSelector": constants.NODE_SELECTOR_CONTROL_PLANE,
     },
     "kubeApiServer": {
         "serviceMonitor": {
@@ -145,14 +122,14 @@ HELM_RELEASE_KUBE_PROMETHEUS_STACK_VALUES = {
                 "relabelings": PROMETHEUS_MONITOR_RELABELINGS_INSTANCE_TO_POD_NAME
             }
         },
-        "nodeSelector": NODE_SELECTOR_CONTROL_PLANE,
+        "nodeSelector": constants.NODE_SELECTOR_CONTROL_PLANE,
     },
     "prometheus": {
         "serviceMonitor": {
             "relabelings": PROMETHEUS_MONITOR_RELABELINGS_INSTANCE_TO_POD_NAME
         },
         "prometheusSpec": {
-            "nodeSelector": NODE_SELECTOR_CONTROL_PLANE,
+            "nodeSelector": constants.NODE_SELECTOR_CONTROL_PLANE,
             "secrets": ["kube-prometheus-stack-etcd-client-cert"],
         },
         "additionalServiceMonitors": [
@@ -296,11 +273,11 @@ HELM_RELEASE_KUBE_PROMETHEUS_STACK_VALUES = {
         ],
     },
     "prometheusOperator": {
-        "admissionWebhooks": {"patch": NODE_SELECTOR_CONTROL_PLANE},
+        "admissionWebhooks": {"patch": constants.NODE_SELECTOR_CONTROL_PLANE},
         "serviceMonitor": {
             "relabelings": PROMETHEUS_MONITOR_RELABELINGS_INSTANCE_TO_POD_NAME
         },
-        "nodeSelector": NODE_SELECTOR_CONTROL_PLANE,
+        "nodeSelector": constants.NODE_SELECTOR_CONTROL_PLANE,
     },
     "prometheus-node-exporter": {
         "extraArgs": [
@@ -331,7 +308,7 @@ HELM_RELEASE_INGRESS_NGINX_VALUES = {
         "ingressClassResource": {"name": "openstack"},
         "ingressClass": "openstack",
         "kind": "DaemonSet",
-        "nodeSelector": NODE_SELECTOR_CONTROL_PLANE,
+        "nodeSelector": constants.NODE_SELECTOR_CONTROL_PLANE,
         "service": {"type": "ClusterIP"},
         "admissionWebhooks": {"port": 7443},
     },
@@ -342,83 +319,6 @@ HELM_RELEASE_INGRESS_NGINX_VALUES = {
     "udp": {
         "5354": "openstack/minidns:5354",
     },
-}
-
-HELM_RELEASE_CERT_MANAGER_NAME = "cert-manager"
-HELM_RELEASE_CERT_MANAGER_VERSION = "v1.7.1"
-HELM_RELEASE_CERT_MANAGER_VALUES = {
-    "installCRDs": True,
-    "featureGates": "AdditionalCertificateOutputFormats=true",
-    "volumes": [
-        {
-            "name": "etc-ssl-certs",
-            "hostPath": {
-                "path": "/etc/ssl/certs",
-            },
-        }
-    ],
-    "volumeMounts": [
-        {
-            "name": "etc-ssl-certs",
-            "mountPath": "/etc/ssl/certs",
-            "readOnly": True,
-        }
-    ],
-    "nodeSelector": NODE_SELECTOR_CONTROL_PLANE,
-    "webhook": {
-        "extraArgs": [
-            "--feature-gates=AdditionalCertificateOutputFormats=true",
-        ],
-        "nodeSelector": NODE_SELECTOR_CONTROL_PLANE,
-    },
-    "cainjector": {
-        "nodeSelector": NODE_SELECTOR_CONTROL_PLANE,
-    },
-    "startupapicheck": {
-        "nodeSelector": NODE_SELECTOR_CONTROL_PLANE,
-    },
-}
-
-HELM_RELEASE_NODE_FEATURE_DISCOVERY_VALUES = {
-    "master": {"nodeSelector": NODE_SELECTOR_CONTROL_PLANE}
-}
-
-HELM_RELEASE_RABBITMQ_OPERATOR_NAME = "rabbitmq-cluster-operator"
-HELM_RELEASE_RABBITMQ_OPERATOR_VERSION = "2.5.2"
-HELM_RELEASE_RABBITMQ_OPERATOR_VALUES = {
-    "rabbitmqImage": {"repository": "library/rabbitmq", "tag": "3.10.2-management"},
-    "credentialUpdaterImage": {
-        "repository": "rabbitmqoperator/default-user-credential-updater",
-        "tag": "1.0.2",
-    },
-    "clusterOperator": {
-        "fullnameOverride": "rabbitmq-cluster-operator",
-        "nodeSelector": NODE_SELECTOR_CONTROL_PLANE,
-        "image": {
-            "repository": "rabbitmqoperator/cluster-operator",
-            "tag": "1.13.1",
-        },
-    },
-    "msgTopologyOperator": {
-        "fullnameOverride": "rabbitmq-messaging-topology-operator",
-        "nodeSelector": NODE_SELECTOR_CONTROL_PLANE,
-        "image": {
-            "repository": "rabbitmqoperator/messaging-topology-operator",
-            "tag": "1.6.0",
-        },
-    },
-    "useCertManager": True,
-}
-HELM_RELEASE_RABBITMQ_OPERATOR_REQUIRES = set(
-    [
-        f"helm-release-{NAMESPACE_CERT_MANAGER}-{HELM_RELEASE_CERT_MANAGER_NAME}",
-    ]
-)
-
-HELM_RELEASE_PXC_OPERATOR_NAME = "pxc-operator"
-HELM_RELEASE_PXC_OPERATOR_VERSION = "1.10.0"
-HELM_RELEASE_PXC_OPERATOR_VALUES = {
-    "nodeSelector": NODE_SELECTOR_CONTROL_PLANE,
 }
 
 HELM_RELEASE_KEYSTONE_NAME = "keystone"

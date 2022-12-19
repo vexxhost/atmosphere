@@ -1,0 +1,30 @@
+#!/bin/bash -xe
+
+REPOSITORY_LIST="$1"
+CHART_LIST="$2"
+
+for REPOSITORY in $(cat ${REPOSITORY_LIST}); do
+  helm repo add ${REPOSITORY%%,*} ${REPOSITORY##*,}
+done;
+
+# TODO: openstack-helm (git)
+# TODO: openstack-helm-infra (git)
+
+helm repo update
+
+mkdir -p /charts
+pushd /charts
+for CHART in $(cat ${CHART_LIST}); do
+  helm pull ${CHART%%,*} --version ${CHART##*,}
+done;
+popd
+
+# TODO: glance
+# TODO: neutron
+# TODO: ovs
+
+# Create Helm chart index
+helm repo index /charts
+
+# Print out generated file
+cat /charts/index.yaml

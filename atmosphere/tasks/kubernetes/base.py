@@ -1,13 +1,14 @@
 import json
+import logging
 import re
 
 import pykube
 from taskflow import task
 
-from atmosphere import clients, logger
+from atmosphere import clients
 
 CAMEL_CASE_PATTERN = re.compile(r"(?<!^)(?=[A-Z])")
-LOG = logger.get_logger()
+LOG = logging.getLogger(__name__)
 
 
 class ApplyKubernetesObjectTask(task.Task):
@@ -38,17 +39,18 @@ class ApplyKubernetesObjectTask(task.Task):
     def api(self):
         return clients.get_pykube_api()
 
-    @property
-    def logger(self):
-        log = LOG.bind(
-            kind=self._obj_kind.__name__,
-            name=self._obj_name,
-        )
-        if self._obj_namespace:
-            log = log.bind(namespace=self._obj_namespace)
-        if self.requires:
-            log = log.bind(requires=list(self.requires))
-        return log
+    def _log(self, resource: pykube.objects.APIObject, message: str):
+        resource_info = {
+            "kind": resource.kind,
+        }
+
+        resource_info["name"] = resource.name
+        if resource.namespace:
+            resource_info["namespace"] = resource.namespace
+
+        # Generate user friendly string from resource info
+        resource_info_str = ", ".join([f"{k}={v}" for k, v in resource_info.items()])
+        LOG.info(f"[{resource_info_str}] {message}")
 
     def generate_object(self, *args, **kwargs) -> pykube.objects.APIObject:
         raise NotImplementedError
@@ -57,9 +59,9 @@ class ApplyKubernetesObjectTask(task.Task):
         pass
 
     def execute(self, *args, **kwargs):
-        self.logger.debug("Ensuring resource")
-
         resource = self.generate_object()
+        self._log(resource, "Ensuring resource")
+
         resp = resource.api.patch(
             **resource.api_kwargs(
                 headers={
@@ -78,7 +80,7 @@ class ApplyKubernetesObjectTask(task.Task):
 
         self.wait_for_resource(resource)
 
-        self.logger.info("Ensured resource")
+        self._log(resource, "Ensured resource")
 
         return {
             self.name: resource,

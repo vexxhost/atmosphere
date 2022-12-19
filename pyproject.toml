@@ -6,39 +6,40 @@ authors = ["Mohammed Naser <mnaser@vexxhost.com>"]
 readme = "README.md"
 
 [tool.poetry.scripts]
+atmosphere = "atmosphere.cmd.cli:main"
 atmosphere-operator = "atmosphere.cmd.operator:main"
 
 [tool.poetry.dependencies]
 python = "^3.10"
-schematics = "^2.1.1"
-pykube-ng = "^22.7.0"
-structlog = "^22.1.0"
-rich = "^12.5.1"
-better-exceptions = "^0.3.3"
-mergedeep = "^1.3.4"
-taskflow = "^5.0.0"
+click = "^8.1.3"
+# TODO(mnaser): We should move all of the operator dependencies as extras and
+#               install them only when running the operator.
+
+[tool.poetry.group.operator.dependencies]
 eventlet = "^0.33.1"
-tomli = "^2.0.1"
-tomli-w = "^1.0.0"
-jmespath = "^1.0.1"
 jsonnet = "^0.18.0"
 kopf = {extras = ["uvloop"], version = "^1.36.0"}
+mergedeep = "^1.3.4"
 openstacksdk = "^0.103.0"
-certbuilder = "^0.14.2"
+pykube-ng = "^22.7.0"
+schematics = "^2.1.1"
+taskflow = "^5.0.0"
+tomli = "^2.0.1"
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^7.1.3"
-pytest-mock = "^3.8.2"
-pytest-cov = "^3.0.0"
-pytest-kind = "^22.9.0"
+ansible-core = "^2.13.4"
 flake8 = "^5.0.4"
 flake8-isort = "^4.2.0"
-python-on-whales = "^0.52.0"
 Jinja2 = "^3.1.2"
 jinja2-base64-filters = "^0.1.4"
+jmespath = "^1.0.1"
 molecule = "^4.0.1"
-ansible-core = "^2.13.4"
-
+pytest = "^7.1.3"
+pytest-cov = "^3.0.0"
+pytest-kind = "^22.9.0"
+pytest-mock = "^3.8.2"
+python-on-whales = "^0.52.0"
+tomli-w = "^1.0.0"
 
 [tool.poetry.group.docs.dependencies]
 mkdocs-material = "^8.5.7"
