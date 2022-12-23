@@ -194,6 +194,7 @@ class ApplyHelmReleaseTask(ApplyKubernetesObjectTask):
         chart_version: str,
         values: dict,
         values_from: list,
+        spec: dict,
     ) -> HelmRelease:
         resource = HelmRelease(
             api,
@@ -225,7 +226,11 @@ class ApplyHelmReleaseTask(ApplyKubernetesObjectTask):
                         "crds": "CreateReplace",
                         "disableWait": True,
                     },
-                    "values": values,
+                    "values": mergedeep.merge(
+                        {},
+                        spec[chart_name].get("overrides", {}),
+                        values,
+                    ),
                     "valuesFrom": values_from,
                 },
             },
