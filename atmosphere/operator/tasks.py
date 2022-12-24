@@ -195,7 +195,14 @@ class ApplyHelmReleaseTask(ApplyKubernetesObjectTask):
         values: dict,
         values_from: list,
         spec: dict,
+        alias: str = "",
     ) -> HelmRelease:
+        config_key = chart_name if not alias else alias
+        if config_key in spec:
+            values = mergedeep.merge(
+                spec[config_key].get("overrides", {}),
+                values,
+            )
         resource = HelmRelease(
             api,
             {
@@ -226,11 +233,7 @@ class ApplyHelmReleaseTask(ApplyKubernetesObjectTask):
                         "crds": "CreateReplace",
                         "disableWait": True,
                     },
-                    "values": mergedeep.merge(
-                        {},
-                        spec[chart_name].get("overrides", {}),
-                        values,
-                    ),
+                    "values": values,
                     "valuesFrom": values_from,
                 },
             },

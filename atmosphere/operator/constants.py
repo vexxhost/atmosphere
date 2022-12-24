@@ -25,6 +25,7 @@ NAMESPACE_CERT_MANAGER = "cert-manager"
 NAMESPACE_MONITORING = "monitoring"
 
 HELM_RELEASE_CERT_MANAGER = {
+    "alias": "certManager",
     "chart_name": "cert-manager",
     "chart_version": "v1.7.1",
     "release_name": "cert-manager",
@@ -113,6 +114,7 @@ HELM_RELEASE_RABBITMQ_CLUSTER_OPERATOR = {
 }
 
 HELM_RELEASE_INGRESS_NGINX = {
+    "alias": "ingressNginx",
     "chart_name": "ingress-nginx",
     "chart_version": "4.0.17",
     "release_name": "ingress-nginx",
