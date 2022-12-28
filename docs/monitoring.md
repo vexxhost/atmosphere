@@ -44,6 +44,7 @@ kube_prometheus_stack_values:
   alertmanager:
     ingress:
       enabled: true
+      ingressClassName: openstack
       annotations:
         cert-manager.io/cluster-issuer: atmosphere
       hosts:
@@ -80,6 +81,7 @@ kube_prometheus_stack_values:
   alertmanager:
     ingress:
       enabled: true
+      ingressClassName: openstack
       annotations:
         cert-manager.io/cluster-issuer: atmosphere
         nginx.ingress.kubernetes.io/auth-type: basic
