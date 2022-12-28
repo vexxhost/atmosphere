@@ -77,7 +77,6 @@ class ApplyHelmReleaseTask(base.ApplyKubernetesObjectTask):
             kind=HelmRelease,
             namespace=namespace,
             name=name,
-            rebind={"repository": f"helm-repository-{namespace}-{repository}"},
             *args,
             **kwargs,
         )
