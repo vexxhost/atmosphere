@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.13.0](https://github.com/vexxhost/atmosphere/compare/v0.12.0...v0.13.0) (2022-12-28)
+
+
+### Features
+
+* allow for custom registry ([71ebfe8](https://github.com/vexxhost/atmosphere/commit/71ebfe89536fad3f6aabaf83309499298449c373))
+
+
+### Bug Fixes
+
+* Ignore unrechable hosts error in log capture playbook of molecule destroy ([76e81f8](https://github.com/vexxhost/atmosphere/commit/76e81f83f6a958653fe7794e88fedaebac2ae646))
+
 ## [0.12.0](https://github.com/vexxhost/atmosphere/compare/v0.11.0...v0.12.0) (2022-12-19)
 
 

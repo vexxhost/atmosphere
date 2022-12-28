@@ -1,6 +1,6 @@
 IMAGE_LIST = {
     "alertmanager": "quay.io/prometheus/alertmanager:v0.24.0",
-    "atmosphere": "quay.io/vexxhost/atmosphere:0.12.0",  # x-release-please-version
+    "atmosphere": "quay.io/vexxhost/atmosphere:0.13.0",  # x-release-please-version
     "barbican_api": "quay.io/vexxhost/barbican:wallaby",
     "barbican_db_sync": "quay.io/vexxhost/barbican:wallaby",
     "bootstrap": "quay.io/vexxhost/heat:zed",
