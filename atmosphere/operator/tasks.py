@@ -182,7 +182,7 @@ class ApplyHelmReleaseTask(ApplyKubernetesObjectTask):
                             "sourceRef": {
                                 "kind": "HelmRepository",
                                 "name": helm_repository,
-                                "name": helm_repository_namespace,
+                                "namespace": helm_repository_namespace,
                             },
                         }
                     },
