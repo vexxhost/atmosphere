@@ -1,3 +1,4 @@
+import json
 import uuid
 
 import pykube
@@ -28,6 +29,7 @@ def test_e2e_for_operator(tmp_path, flux_cluster, docker_image):
         extensions=["jinja2_base64_filters.Base64Filters"],
     )
     env.filters["vexxhost.atmosphere.to_toml"] = tomli_w.dumps
+    env.filters["to_json"] = json.dumps
 
     args = {
         "atmosphere_image": docker_image,
