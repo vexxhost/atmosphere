@@ -26,8 +26,8 @@ def create_fn(namespace: str, name: str, spec: dict, **_):
             ),
             tasks.GetChartValues(
                 inject={
-                    "helm_repository": "openstack-helm",
-                    "helm_repository_url": "https://tarballs.opendev.org/openstack/openstack-helm/",
+                    "helm_repository": "atmosphere",
+                    "helm_repository_url": "http://atmosphere.openstack/charts/",
                     "chart_name": "magnum",
                     "chart_version": "0.2.8",
                 },
@@ -44,7 +44,7 @@ def create_fn(namespace: str, name: str, spec: dict, **_):
             ),
             tasks.ApplyHelmReleaseTask(
                 inject={
-                    "helm_repository": "openstack-helm",
+                    "helm_repository": "atmosphere",
                     "chart_name": "magnum",
                     "chart_version": "0.2.8",
                     "release_name": "magnum",

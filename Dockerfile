@@ -1,5 +1,19 @@
 # syntax=docker/dockerfile-upstream:master-labs
 
+ARG BASE_IMAGE=docker.io/alpine:3.17
+
+# Build the internal Helm repository server
+FROM ${BASE_IMAGE} AS helm-repository
+RUN --mount=type=cache,target=/var/cache/apk <<EOF /bin/sh -e
+  apk add \
+    bash \
+    helm
+EOF
+ADD images/atmosphere/helm-repository/repository-list /var/lib/atmosphere/repository-list
+ADD images/atmosphere/helm-repository/chart-list /var/lib/atmosphere/chart-list
+ADD images/atmosphere/helm-repository/mirror-charts /usr/local/bin/mirror-charts
+RUN /usr/local/bin/mirror-charts /var/lib/atmosphere/repository-list /var/lib/atmosphere/chart-list
+
 FROM python:3.10-slim AS poetry
 RUN --mount=type=cache,target=/root/.cache <<EOF
   pip install poetry
@@ -33,4 +47,5 @@ ENV PATH="/app/.venv/bin:$PATH"
 COPY --from=builder --link /app /app
 COPY --from=kubectl --link /kubectl /usr/local/bin/kubectl
 COPY --from=helm --link /linux-amd64/helm /usr/local/bin/helm
-CMD ["kopf", "run", "/app/atmosphere/cmd/operator.py"]
+COPY --from=helm-repository --link /charts /charts
+ADD images/atmosphere/helm-repository/nginx.conf /etc/nginx/nginx.conf

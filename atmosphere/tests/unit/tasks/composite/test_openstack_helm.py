@@ -21,12 +21,12 @@ from atmosphere.tasks.composite import openstack_helm
                     "apiVersion": "source.toolkit.fluxcd.io/v1beta2",
                     "kind": "HelmRepository",
                     "metadata": {
-                        "name": constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY,
+                        "name": "atmosphere",
                         "namespace": constants.NAMESPACE_MONITORING,
                     },
                     "spec": {
                         "interval": "1m",
-                        "url": constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY_URL,
+                        "url": "http://atmosphere.openstack/charts/",
                     },
                 },
                 {
@@ -42,7 +42,7 @@ from atmosphere.tasks.composite import openstack_helm
                                 "chart": constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_NAME,
                                 "sourceRef": {
                                     "kind": "HelmRepository",
-                                    "name": constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY,
+                                    "name": "atmosphere",
                                 },
                                 "version": constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_VERSION,
                             }
@@ -69,12 +69,12 @@ from atmosphere.tasks.composite import openstack_helm
                     "apiVersion": "source.toolkit.fluxcd.io/v1beta2",
                     "kind": "HelmRepository",
                     "metadata": {
-                        "name": constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY,
+                        "name": "atmosphere",
                         "namespace": constants.NAMESPACE_MONITORING,
                     },
                     "spec": {
                         "interval": "1m",
-                        "url": constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY_URL,
+                        "url": "http://atmosphere.openstack/charts/",
                     },
                 },
                 {
@@ -90,7 +90,7 @@ from atmosphere.tasks.composite import openstack_helm
                                 "chart": constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_NAME,
                                 "sourceRef": {
                                     "kind": "HelmRepository",
-                                    "name": constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY,
+                                    "name": "atmosphere",
                                 },
                                 "version": constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_VERSION,
                             }
@@ -123,12 +123,12 @@ from atmosphere.tasks.composite import openstack_helm
                     "apiVersion": "source.toolkit.fluxcd.io/v1beta2",
                     "kind": "HelmRepository",
                     "metadata": {
-                        "name": constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY,
+                        "name": "atmosphere",
                         "namespace": constants.NAMESPACE_MONITORING,
                     },
                     "spec": {
                         "interval": "1m",
-                        "url": constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY_URL,
+                        "url": "http://atmosphere.openstack/charts/",
                     },
                 },
                 {
@@ -144,7 +144,7 @@ from atmosphere.tasks.composite import openstack_helm
                                 "chart": constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_NAME,
                                 "sourceRef": {
                                     "kind": "HelmRepository",
-                                    "name": constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY,
+                                    "name": "atmosphere",
                                 },
                                 "version": constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_VERSION,
                             }
@@ -208,12 +208,12 @@ def test_kube_prometheus_stack_tasks_from_config(pykube, cfg_data, expected):
                     "apiVersion": "source.toolkit.fluxcd.io/v1beta2",
                     "kind": "HelmRepository",
                     "metadata": {
-                        "name": constants.HELM_RELEASE_INGRESS_NGINX_NAME,
+                        "name": "atmosphere",
                         "namespace": constants.NAMESPACE_OPENSTACK,
                     },
                     "spec": {
                         "interval": "1m",
-                        "url": constants.HELM_REPOSITORY_INGRESS_NGINX_URL,
+                        "url": "http://atmosphere.openstack/charts/",
                     },
                 },
                 {
@@ -229,7 +229,7 @@ def test_kube_prometheus_stack_tasks_from_config(pykube, cfg_data, expected):
                                 "chart": constants.HELM_RELEASE_INGRESS_NGINX_NAME,
                                 "sourceRef": {
                                     "kind": "HelmRepository",
-                                    "name": constants.HELM_REPOSITORY_INGRESS_NGINX,
+                                    "name": "atmosphere",
                                 },
                                 "version": constants.HELM_RELEASE_INGRESS_NGINX_VERSION,
                             }
@@ -256,12 +256,12 @@ def test_kube_prometheus_stack_tasks_from_config(pykube, cfg_data, expected):
                     "apiVersion": "source.toolkit.fluxcd.io/v1beta2",
                     "kind": "HelmRepository",
                     "metadata": {
-                        "name": constants.HELM_RELEASE_INGRESS_NGINX_NAME,
+                        "name": "atmosphere",
                         "namespace": constants.NAMESPACE_OPENSTACK,
                     },
                     "spec": {
                         "interval": "1m",
-                        "url": constants.HELM_REPOSITORY_INGRESS_NGINX_URL,
+                        "url": "http://atmosphere.openstack/charts/",
                     },
                 },
                 {
@@ -277,7 +277,7 @@ def test_kube_prometheus_stack_tasks_from_config(pykube, cfg_data, expected):
                                 "chart": constants.HELM_RELEASE_INGRESS_NGINX_NAME,
                                 "sourceRef": {
                                     "kind": "HelmRepository",
-                                    "name": constants.HELM_REPOSITORY_INGRESS_NGINX,
+                                    "name": "atmosphere",
                                 },
                                 "version": constants.HELM_RELEASE_INGRESS_NGINX_VERSION,
                             }

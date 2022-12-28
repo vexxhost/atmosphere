@@ -153,13 +153,13 @@ def kube_prometheus_stack_tasks_from_config(
     return [
         flux.ApplyHelmRepositoryTask(
             namespace=constants.NAMESPACE_MONITORING,
-            name=constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY,
-            url=constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY_URL,
+            name="atmosphere",
+            url="http://atmosphere.openstack/charts/",
         ),
         flux.ApplyHelmReleaseTask(
             namespace=config.namespace,
             name=constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_NAME,
-            repository=constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY,
+            repository="atmosphere",
             chart=constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_NAME,
             version=constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_VERSION,
             values=values,
@@ -180,13 +180,13 @@ def ingress_nginx_tasks_from_config(config: config.IngressNginxChartConfig):
     return [
         flux.ApplyHelmRepositoryTask(
             namespace=config.namespace,
-            name=constants.HELM_REPOSITORY_INGRESS_NGINX,
-            url=constants.HELM_REPOSITORY_INGRESS_NGINX_URL,
+            name="atmosphere",
+            url="http://atmosphere.openstack/charts/",
         ),
         flux.ApplyHelmReleaseTask(
             namespace=config.namespace,
             name=constants.HELM_RELEASE_INGRESS_NGINX_NAME,
-            repository=constants.HELM_REPOSITORY_INGRESS_NGINX,
+            repository="atmosphere",
             chart=constants.HELM_RELEASE_INGRESS_NGINX_NAME,
             version=constants.HELM_RELEASE_INGRESS_NGINX_VERSION,
             values=values,
