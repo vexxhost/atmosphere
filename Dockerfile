@@ -12,8 +12,8 @@ EOF
 ADD images/atmosphere/helm-repository/repository-list /var/lib/atmosphere/repository-list
 ADD images/atmosphere/helm-repository/chart-list /var/lib/atmosphere/chart-list
 ADD images/atmosphere/helm-repository/mirror-charts /usr/local/bin/mirror-charts
-RUN chmod +x /usr/local/bin/mirror-charts && \
-    /usr/local/bin/mirror-charts /var/lib/atmosphere/repository-list /var/lib/atmosphere/chart-list
+RUN chmod +x /usr/local/bin/mirror-charts
+RUN /usr/local/bin/mirror-charts /var/lib/atmosphere/repository-list /var/lib/atmosphere/chart-list
 
 FROM python:3.10-slim AS poetry
 RUN --mount=type=cache,target=/root/.cache <<EOF
