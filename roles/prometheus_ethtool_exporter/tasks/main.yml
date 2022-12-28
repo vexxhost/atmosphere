@@ -31,7 +31,7 @@
                       valueFrom:
                         fieldRef:
                           fieldPath: status.podIP
-                  image: quay.io/vexxhost/ethtool-exporter:{{ prometheus_ethtool_exporter_image_tag }}
+                  image: "{{ lookup('vexxhost.atmosphere.image_ref', 'prometheus_ethtool_exporter', output='ref') }}"
                   args:
                     - "-L"
                     - "$(IP)"

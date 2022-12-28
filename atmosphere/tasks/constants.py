@@ -71,6 +71,14 @@ HELM_RELEASE_KUBE_PROMETHEUS_STACK_VALUES = {
             "relabelings": PROMETHEUS_MONITOR_RELABELINGS_INSTANCE_TO_POD_NAME
         },
         "alertmanagerSpec": {
+            "image": {
+                "repository": utils.get_image_ref_using_legacy_image_repository(
+                    "alertmanager"
+                )["name"],
+                "tag": utils.get_image_ref_using_legacy_image_repository(
+                    "alertmanager"
+                )["tag"],
+            },
             "storage": {
                 "volumeClaimTemplate": {
                     "spec": {
@@ -84,6 +92,22 @@ HELM_RELEASE_KUBE_PROMETHEUS_STACK_VALUES = {
         },
     },
     "grafana": {
+        "image": {
+            "repository": utils.get_image_ref_using_legacy_image_repository("grafana")[
+                "name"
+            ],
+            "tag": utils.get_image_ref_using_legacy_image_repository("grafana")["tag"],
+        },
+        "sidecar": {
+            "image": {
+                "repository": utils.get_image_ref_using_legacy_image_repository(
+                    "grafana_sidecar"
+                )["name"],
+                "tag": utils.get_image_ref_using_legacy_image_repository(
+                    "grafana_sidecar"
+                )["tag"],
+            }
+        },
         "serviceMonitor": {
             "relabelings": PROMETHEUS_MONITOR_RELABELINGS_INSTANCE_TO_POD_NAME
         },
@@ -140,6 +164,14 @@ HELM_RELEASE_KUBE_PROMETHEUS_STACK_VALUES = {
         }
     },
     "kube-state-metrics": {
+        "image": {
+            "repository": utils.get_image_ref_using_legacy_image_repository(
+                "kube_state_metrics"
+            )["name"],
+            "tag": utils.get_image_ref_using_legacy_image_repository(
+                "kube_state_metrics"
+            )["tag"],
+        },
         "prometheus": {
             "monitor": {
                 "relabelings": PROMETHEUS_MONITOR_RELABELINGS_INSTANCE_TO_POD_NAME
@@ -152,6 +184,14 @@ HELM_RELEASE_KUBE_PROMETHEUS_STACK_VALUES = {
             "relabelings": PROMETHEUS_MONITOR_RELABELINGS_INSTANCE_TO_POD_NAME
         },
         "prometheusSpec": {
+            "image": {
+                "repository": utils.get_image_ref_using_legacy_image_repository(
+                    "prometheus"
+                )["name"],
+                "tag": utils.get_image_ref_using_legacy_image_repository("prometheus")[
+                    "tag"
+                ],
+            },
             "nodeSelector": NODE_SELECTOR_CONTROL_PLANE,
             "secrets": ["kube-prometheus-stack-etcd-client-cert"],
         },
@@ -296,13 +336,51 @@ HELM_RELEASE_KUBE_PROMETHEUS_STACK_VALUES = {
         ],
     },
     "prometheusOperator": {
-        "admissionWebhooks": {"patch": NODE_SELECTOR_CONTROL_PLANE},
+        "admissionWebhooks": {
+            "patch": {
+                "image": {
+                    "repository": utils.get_image_ref_using_legacy_image_repository(
+                        "prometheus_operator_kube_webhook_certgen"
+                    )["name"],
+                    "tag": utils.get_image_ref_using_legacy_image_repository(
+                        "prometheus_operator_kube_webhook_certgen"
+                    )["tag"],
+                },
+                "nodeSelector": NODE_SELECTOR_CONTROL_PLANE,
+            }
+        },
         "serviceMonitor": {
             "relabelings": PROMETHEUS_MONITOR_RELABELINGS_INSTANCE_TO_POD_NAME
         },
         "nodeSelector": NODE_SELECTOR_CONTROL_PLANE,
+        "image": {
+            "repository": utils.get_image_ref_using_legacy_image_repository(
+                "prometheus_operator"
+            )["name"],
+            "tag": utils.get_image_ref_using_legacy_image_repository(
+                "prometheus_operator"
+            )["tag"],
+        },
+        "prometheusConfigReloader": {
+            "image": {
+                "repository": utils.get_image_ref_using_legacy_image_repository(
+                    "prometheus_config_reloader"
+                )["name"],
+                "tag": utils.get_image_ref_using_legacy_image_repository(
+                    "prometheus_config_reloader"
+                )["tag"],
+            }
+        },
     },
     "prometheus-node-exporter": {
+        "image": {
+            "repository": utils.get_image_ref_using_legacy_image_repository(
+                "prometheus_node_exporter"
+            )["name"],
+            "tag": utils.get_image_ref_using_legacy_image_repository(
+                "prometheus_node_exporter"
+            )["tag"],
+        },
         "extraArgs": [
             "--collector.diskstats.ignored-devices=^(ram|loop|nbd|fd|(h|s|v|xv)d[a-z]|nvme\\d+n\\d+p)\\d+$",
             "--collector.filesystem.fs-types-exclude=^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|fusectl|fuse.squashfuse_ll|hugetlbfs|iso9660|mqueue|nsfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|sysfs|tracefs)$",  # noqa: E501
@@ -325,6 +403,20 @@ HELM_RELEASE_INGRESS_NGINX_NAME = "ingress-nginx"
 HELM_RELEASE_INGRESS_NGINX_VERSION = "4.0.17"
 HELM_RELEASE_INGRESS_NGINX_VALUES = {
     "controller": {
+        "image": {
+            "registry": utils.get_image_ref_using_legacy_image_repository(
+                "ingress_nginx_controller"
+            ).repository["domain"],
+            "image": utils.get_image_ref_using_legacy_image_repository(
+                "ingress_nginx_controller"
+            ).repository["path"],
+            "tag": utils.get_image_ref_using_legacy_image_repository(
+                "ingress_nginx_controller"
+            )["tag"],
+            "digest": utils.get_image_ref_using_legacy_image_repository(
+                "ingress_nginx_controller"
+            )["digest"],
+        },
         "config": {"proxy-buffer-size": "16k"},
         "dnsPolicy": "ClusterFirstWithHostNet",
         "hostNetwork": True,
@@ -333,9 +425,40 @@ HELM_RELEASE_INGRESS_NGINX_VALUES = {
         "kind": "DaemonSet",
         "nodeSelector": NODE_SELECTOR_CONTROL_PLANE,
         "service": {"type": "ClusterIP"},
-        "admissionWebhooks": {"port": 7443},
+        "admissionWebhooks": {
+            "port": 7443,
+            "patch": {
+                "image": {
+                    "registry": utils.get_image_ref_using_legacy_image_repository(
+                        "ingress_nginx_kube_webhook_certgen"
+                    ).repository["domain"],
+                    "image": utils.get_image_ref_using_legacy_image_repository(
+                        "ingress_nginx_kube_webhook_certgen"
+                    ).repository["path"],
+                    "tag": utils.get_image_ref_using_legacy_image_repository(
+                        "ingress_nginx_kube_webhook_certgen"
+                    )["tag"],
+                    "digest": utils.get_image_ref_using_legacy_image_repository(
+                        "ingress_nginx_kube_webhook_certgen"
+                    )["digest"],
+                }
+            },
+        },
     },
-    "defaultBackend": {"enabled": True},
+    "defaultBackend": {
+        "enabled": True,
+        "image": {
+            "registry": utils.get_image_ref_using_legacy_image_repository(
+                "ingress_nginx_default_backend"
+            ).repository["domain"],
+            "image": utils.get_image_ref_using_legacy_image_repository(
+                "ingress_nginx_default_backend"
+            ).repository["path"],
+            "tag": utils.get_image_ref_using_legacy_image_repository(
+                "ingress_nginx_default_backend"
+            )["tag"],
+        },
+    },
     "tcp": {
         "5354": "openstack/minidns:5354",
     },
@@ -349,6 +472,14 @@ HELM_RELEASE_CERT_MANAGER_VERSION = "v1.7.1"
 HELM_RELEASE_CERT_MANAGER_VALUES = {
     "installCRDs": True,
     "featureGates": "AdditionalCertificateOutputFormats=true",
+    "image": {
+        "repository": utils.get_image_ref_using_legacy_image_repository(
+            "cert_manager_controller"
+        )["name"],
+        "tag": utils.get_image_ref_using_legacy_image_repository(
+            "cert_manager_controller"
+        )["tag"],
+    },
     "volumes": [
         {
             "name": "etc-ssl-certs",
@@ -370,41 +501,94 @@ HELM_RELEASE_CERT_MANAGER_VALUES = {
             "--feature-gates=AdditionalCertificateOutputFormats=true",
         ],
         "nodeSelector": NODE_SELECTOR_CONTROL_PLANE,
+        "image": {
+            "repository": utils.get_image_ref_using_legacy_image_repository(
+                "cert_manager_webhook"
+            )["name"],
+            "tag": utils.get_image_ref_using_legacy_image_repository(
+                "cert_manager_webhook"
+            )["tag"],
+        },
     },
     "cainjector": {
         "nodeSelector": NODE_SELECTOR_CONTROL_PLANE,
+        "image": {
+            "repository": utils.get_image_ref_using_legacy_image_repository(
+                "cert_manager_cainjector"
+            )["name"],
+            "tag": utils.get_image_ref_using_legacy_image_repository(
+                "cert_manager_cainjector"
+            )["tag"],
+        },
     },
     "startupapicheck": {
         "nodeSelector": NODE_SELECTOR_CONTROL_PLANE,
+        "image": {
+            "repository": utils.get_image_ref_using_legacy_image_repository(
+                "cert_manager_cli"
+            )["name"],
+            "tag": utils.get_image_ref_using_legacy_image_repository(
+                "cert_manager_cli"
+            )["tag"],
+        },
     },
 }
 
 HELM_RELEASE_NODE_FEATURE_DISCOVERY_VALUES = {
-    "master": {"nodeSelector": NODE_SELECTOR_CONTROL_PLANE}
+    "image": {
+        "repository": utils.get_image_ref_using_legacy_image_repository(
+            "node_feature_discovery"
+        )["name"]
+    },
+    "master": {"nodeSelector": NODE_SELECTOR_CONTROL_PLANE},
 }
 
 HELM_RELEASE_RABBITMQ_OPERATOR_NAME = "rabbitmq-cluster-operator"
 HELM_RELEASE_RABBITMQ_OPERATOR_VERSION = "2.6.6"
 HELM_RELEASE_RABBITMQ_OPERATOR_VALUES = {
-    "rabbitmqImage": {"repository": "library/rabbitmq", "tag": "3.10.2-management"},
+    "global": {
+        "imageRegistry": utils.get_image_ref_using_legacy_image_repository(
+            "rabbitmq_cluster_operator"
+        ).repository["domain"],
+    },
+    "rabbitmqImage": {
+        "repository": utils.get_image_ref_using_legacy_image_repository(
+            "rabbitmq_server"
+        ).repository["path"],
+        "tag": utils.get_image_ref_using_legacy_image_repository("rabbitmq_server")[
+            "tag"
+        ],
+    },
     "credentialUpdaterImage": {
-        "repository": "rabbitmqoperator/default-user-credential-updater",
-        "tag": "1.0.2",
+        "repository": utils.get_image_ref_using_legacy_image_repository(
+            "rabbitmq_credential_updater"
+        ).repository["path"],
+        "tag": utils.get_image_ref_using_legacy_image_repository(
+            "rabbitmq_credential_updater"
+        )["tag"],
     },
     "clusterOperator": {
         "fullnameOverride": "rabbitmq-cluster-operator",
         "nodeSelector": NODE_SELECTOR_CONTROL_PLANE,
         "image": {
-            "repository": "rabbitmqoperator/cluster-operator",
-            "tag": "1.13.1",
+            "repository": utils.get_image_ref_using_legacy_image_repository(
+                "rabbitmq_cluster_operator"
+            ).repository["path"],
+            "tag": utils.get_image_ref_using_legacy_image_repository(
+                "rabbitmq_cluster_operator"
+            )["tag"],
         },
     },
     "msgTopologyOperator": {
         "fullnameOverride": "rabbitmq-messaging-topology-operator",
         "nodeSelector": NODE_SELECTOR_CONTROL_PLANE,
         "image": {
-            "repository": "rabbitmqoperator/messaging-topology-operator",
-            "tag": "1.6.0",
+            "repository": utils.get_image_ref_using_legacy_image_repository(
+                "rabbitmq_topology_operator"
+            ).repository["path"],
+            "tag": utils.get_image_ref_using_legacy_image_repository(
+                "rabbitmq_topology_operator"
+            )["tag"],
         },
     },
     "useCertManager": True,
@@ -418,6 +602,9 @@ HELM_RELEASE_RABBITMQ_OPERATOR_REQUIRES = set(
 HELM_RELEASE_PXC_OPERATOR_NAME = "pxc-operator"
 HELM_RELEASE_PXC_OPERATOR_VERSION = "1.10.0"
 HELM_RELEASE_PXC_OPERATOR_VALUES = {
+    "image": utils.get_image_ref_using_legacy_image_repository(
+        "percona_xtradb_cluster_operator"
+    ).string(),
     "nodeSelector": NODE_SELECTOR_CONTROL_PLANE,
 }
 

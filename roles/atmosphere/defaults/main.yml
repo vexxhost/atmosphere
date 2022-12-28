@@ -1,6 +1,7 @@
-atmosphere_image: quay.io/vexxhost/atmosphere:0.12.0 # x-release-please-version
+atmosphere_image: "{{ lookup('vexxhost.atmosphere.image_ref', 'atmosphere', output='ref') }}"
 
 atmosphere_config:
+  image_repository: "{{ atmosphere_image_repository | default('') }}"
   kube_prometheus_stack:
     overrides: "{{ kube_prometheus_stack_values | default({}) }}"
   memcached:

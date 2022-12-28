@@ -17,22 +17,22 @@ _openstack_helm_cinder_values:
   images:
     pull_policy: Always
     tags:
-      bootstrap: "{{ openstack_helm_cinder_image_repository }}/heat:{{ openstack_helm_cinder_heat_image_tag }}"
-      cinder_api: "{{ openstack_helm_cinder_image_repository }}/cinder:{{ openstack_helm_cinder_image_tag }}"
-      cinder_backup_storage_init: "{{ openstack_helm_cinder_image_repository }}/cinder:{{ openstack_helm_cinder_image_tag }}"
-      cinder_backup: "{{ openstack_helm_cinder_image_repository }}/cinder:{{ openstack_helm_cinder_image_tag }}"
-      cinder_db_sync: "{{ openstack_helm_cinder_image_repository }}/cinder:{{ openstack_helm_cinder_image_tag }}"
-      cinder_scheduler: "{{ openstack_helm_cinder_image_repository }}/cinder:{{ openstack_helm_cinder_image_tag }}"
-      cinder_storage_init: "{{ openstack_helm_cinder_image_repository }}/cinder:{{ openstack_helm_cinder_image_tag }}"
-      cinder_volume_usage_audit: "{{ openstack_helm_cinder_image_repository }}/cinder:{{ openstack_helm_cinder_image_tag }}"
-      cinder_volume: "{{ openstack_helm_cinder_image_repository }}/cinder:{{ openstack_helm_cinder_image_tag }}"
-      db_drop: "{{ openstack_helm_cinder_image_repository }}/heat:{{ openstack_helm_cinder_heat_image_tag }}"
-      db_init: "{{ openstack_helm_cinder_image_repository }}/heat:{{ openstack_helm_cinder_heat_image_tag }}"
-      dep_check: "{{ openstack_helm_cinder_image_repository }}/kubernetes-entrypoint:latest"
-      ks_endpoints: "{{ openstack_helm_cinder_image_repository }}/heat:{{ openstack_helm_cinder_heat_image_tag }}"
-      ks_service: "{{ openstack_helm_cinder_image_repository }}/heat:{{ openstack_helm_cinder_heat_image_tag }}"
-      ks_user: "{{ openstack_helm_cinder_image_repository }}/heat:{{ openstack_helm_cinder_heat_image_tag }}"
-      rabbit_init: "{{ openstack_helm_cinder_image_repository }}/rabbitmq:3.8.23-management"
+      bootstrap: "{{ lookup('vexxhost.atmosphere.image_ref', 'bootstrap', output='ref') }}"
+      cinder_api: "{{ lookup('vexxhost.atmosphere.image_ref', 'cinder_api', output='ref') }}"
+      cinder_backup_storage_init: "{{ lookup('vexxhost.atmosphere.image_ref', 'cinder_backup_storage_init', output='ref') }}"
+      cinder_backup: "{{ lookup('vexxhost.atmosphere.image_ref', 'cinder_backup', output='ref') }}"
+      cinder_db_sync: "{{ lookup('vexxhost.atmosphere.image_ref', 'cinder_db_sync', output='ref') }}"
+      cinder_scheduler: "{{ lookup('vexxhost.atmosphere.image_ref', 'cinder_scheduler', output='ref') }}"
+      cinder_storage_init: "{{ lookup('vexxhost.atmosphere.image_ref', 'cinder_storage_init', output='ref') }}"
+      cinder_volume_usage_audit: "{{ lookup('vexxhost.atmosphere.image_ref', 'cinder_volume_usage_audit', output='ref') }}"
+      cinder_volume: "{{ lookup('vexxhost.atmosphere.image_ref', 'cinder_volume', output='ref') }}"
+      db_drop: "{{ lookup('vexxhost.atmosphere.image_ref', 'db_drop', output='ref') }}"
+      db_init: "{{ lookup('vexxhost.atmosphere.image_ref', 'db_init', output='ref') }}"
+      dep_check: "{{ lookup('vexxhost.atmosphere.image_ref', 'dep_check', output='ref') }}"
+      ks_endpoints: "{{ lookup('vexxhost.atmosphere.image_ref', 'ks_endpoints', output='ref') }}"
+      ks_service: "{{ lookup('vexxhost.atmosphere.image_ref', 'ks_service', output='ref') }}"
+      ks_user: "{{ lookup('vexxhost.atmosphere.image_ref', 'ks_user', output='ref') }}"
+      rabbit_init: "{{ lookup('vexxhost.atmosphere.image_ref', 'rabbit_init', output='ref') }}"
   pod:
     replicas:
       api: 3

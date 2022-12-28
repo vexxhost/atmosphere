@@ -18,20 +18,20 @@ __openstack_helm_senlin_values:
   images:
     pull_policy: Always
     tags:
-      bootstrap: "{{ openstack_helm_senlin_image_repository }}/heat:{{ openstack_helm_senlin_heat_image_tag }}"
-      db_drop: "{{ openstack_helm_senlin_image_repository }}/heat:{{ openstack_helm_senlin_heat_image_tag }}"
-      db_init: "{{ openstack_helm_senlin_image_repository }}/heat:{{ openstack_helm_senlin_heat_image_tag }}"
-      dep_check: "{{ openstack_helm_senlin_image_repository }}/kubernetes-entrypoint:latest"
-      ks_endpoints: "{{ openstack_helm_senlin_image_repository }}/heat:{{ openstack_helm_senlin_heat_image_tag }}"
-      ks_service: "{{ openstack_helm_senlin_image_repository }}/heat:{{ openstack_helm_senlin_heat_image_tag }}"
-      ks_user: "{{ openstack_helm_senlin_image_repository }}/heat:{{ openstack_helm_senlin_heat_image_tag }}"
-      rabbit_init: "{{ openstack_helm_senlin_image_repository }}/rabbitmq:3.8.23-management"
-      senlin_api: "{{ openstack_helm_senlin_image_repository }}/senlin:{{ openstack_helm_senlin_image_tag }}"
-      senlin_conductor: "{{ openstack_helm_senlin_image_repository }}/senlin:{{ openstack_helm_senlin_image_tag }}"
-      senlin_db_sync: "{{ openstack_helm_senlin_image_repository }}/senlin:{{ openstack_helm_senlin_image_tag }}"
-      senlin_engine_cleaner: "{{ openstack_helm_senlin_image_repository }}/senlin:{{ openstack_helm_senlin_image_tag }}"
-      senlin_engine: "{{ openstack_helm_senlin_image_repository }}/senlin:{{ openstack_helm_senlin_image_tag }}"
-      senlin_health_manager: "{{ openstack_helm_senlin_image_repository }}/senlin:{{ openstack_helm_senlin_image_tag }}"
+      bootstrap: "{{ lookup('vexxhost.atmosphere.image_ref', 'bootstrap', output='ref') }}"
+      db_drop: "{{ lookup('vexxhost.atmosphere.image_ref', 'db_drop', output='ref') }}"
+      db_init: "{{ lookup('vexxhost.atmosphere.image_ref', 'db_init', output='ref') }}"
+      dep_check: "{{ lookup('vexxhost.atmosphere.image_ref', 'dep_check', output='ref') }}"
+      ks_endpoints: "{{ lookup('vexxhost.atmosphere.image_ref', 'ks_endpoints', output='ref') }}"
+      ks_service: "{{ lookup('vexxhost.atmosphere.image_ref', 'ks_service', output='ref') }}"
+      ks_user: "{{ lookup('vexxhost.atmosphere.image_ref', 'ks_user', output='ref') }}"
+      rabbit_init: "{{ lookup('vexxhost.atmosphere.image_ref', 'rabbit_init', output='ref') }}"
+      senlin_api: "{{ lookup('vexxhost.atmosphere.image_ref', 'senlin_api', output='ref') }}"
+      senlin_conductor: "{{ lookup('vexxhost.atmosphere.image_ref', 'senlin_conductor', output='ref') }}"
+      senlin_db_sync: "{{ lookup('vexxhost.atmosphere.image_ref', 'senlin_db_sync', output='ref') }}"
+      senlin_engine_cleaner: "{{ lookup('vexxhost.atmosphere.image_ref', 'senlin_engine_cleaner', output='ref') }}"
+      senlin_engine: "{{ lookup('vexxhost.atmosphere.image_ref', 'senlin_engine', output='ref') }}"
+      senlin_health_manager: "{{ lookup('vexxhost.atmosphere.image_ref', 'senlin_health_manager', output='ref') }}"
   pod:
     replicas:
       api: 3

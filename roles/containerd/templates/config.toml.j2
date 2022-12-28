@@ -3,3 +3,14 @@ version = 2
 [plugins]
   [plugins."io.containerd.grpc.v1.cri"]
     sandbox_image = "{{ containerd_pause_image }}"
+  [plugins."io.containerd.grpc.v1.cri".registry]
+    [plugins."io.containerd.grpc.v1.cri".registry.mirrors]
+      {% for registry in containerd_insecure_registries %}
+      [plugins."io.containerd.grpc.v1.cri".registry.mirrors."{{ registry }}"]
+        endpoint = ["http://{{ registry }}"]
+      {% endfor %}
+    [plugins."io.containerd.grpc.v1.cri".registry.configs]
+      {% for registry in containerd_insecure_registries %}
+      [plugins."io.containerd.grpc.v1.cri".registry.configs."{{ registry }}".tls]
+        insecure_skip_verify = true
+      {% endfor %}

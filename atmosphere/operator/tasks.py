@@ -13,6 +13,7 @@ from taskflow import task
 from tenacity import retry, retry_if_result, stop_after_delay, wait_fixed
 
 from atmosphere import clients
+from atmosphere.operator import constants, utils
 
 LOG = logging.getLogger(__name__)
 
@@ -56,20 +57,37 @@ class ApplyKubernetesObjectTask(task.Task):
 
 
 class InstallClusterApiTask(task.Task):
-    def execute(self):
+    def execute(self, spec: dict):
+        cluster_api_images = [
+            i for i in constants.IMAGE_LIST if i.startswith("cluster_api")
+        ]
+
         # TODO(mnaser): Move CAPI and CAPO to run on control plane
         manifests_path = pkg_resources.resource_filename(__name__, "manifests")
         manifest_files = glob.glob(os.path.join(manifests_path, "capi-*.yml"))
 
         for manifest in manifest_files:
             with open(manifest) as fd:
-                subprocess.check_call(
-                    "kubectl apply -f -",
-                    shell=True,
-                    stdin=fd,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
+                data = fd.read()
+
+            # NOTE(mnaser): Replace all the images for Cluster API
+            for image in cluster_api_images:
+                data = data.replace(
+                    utils.get_image_ref(image).string(),
+                    utils.get_image_ref(
+                        image, override_registry=spec["imageRepository"]
+                    ).string(),
                 )
+
+            subprocess.run(
+                "kubectl apply -f -",
+                shell=True,
+                check=True,
+                input=data,
+                text=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
 
 
 class RabbitmqCluster(pykube.objects.NamespacedAPIObject):
@@ -79,7 +97,9 @@ class RabbitmqCluster(pykube.objects.NamespacedAPIObject):
 
 
 class ApplyRabbitmqClusterTask(ApplyKubernetesObjectTask):
-    def execute(self, api: pykube.HTTPClient, namespace: str, chart_name: str) -> dict:
+    def execute(
+        self, api: pykube.HTTPClient, namespace: str, chart_name: str, spec: dict
+    ) -> dict:
         resource = RabbitmqCluster(
             api,
             {
@@ -90,6 +110,9 @@ class ApplyRabbitmqClusterTask(ApplyKubernetesObjectTask):
                     "namespace": namespace,
                 },
                 "spec": {
+                    "image": utils.get_image_ref(
+                        "rabbitmq_server", override_registry=spec["imageRepository"]
+                    ).string(),
                     "affinity": {
                         "nodeAffinity": {
                             "requiredDuringSchedulingIgnoredDuringExecution": {
@@ -210,7 +233,6 @@ class GenerateImageTagsConfigMap(ApplyKubernetesObjectTask):
     def execute(
         self, api: pykube.HTTPClient, namespace: str, name: str, spec: dict
     ) -> pykube.ConfigMap:
-        image_repository = spec["imageRepository"]
         resource = pykube.ConfigMap(
             api,
             {
@@ -225,17 +247,11 @@ class GenerateImageTagsConfigMap(ApplyKubernetesObjectTask):
                         {
                             "images": {
                                 "tags": {
-                                    "bootstrap": f"{image_repository}/heat:zed",
-                                    "db_drop": f"{image_repository}/heat:zed",
-                                    "db_init": f"{image_repository}/heat:zed",
-                                    "dep_check": f"{image_repository}/kubernetes-entrypoint:latest",
-                                    "ks_endpoints": f"{image_repository}/heat:zed",
-                                    "ks_service": f"{image_repository}/heat:zed",
-                                    "ks_user": f"{image_repository}/heat:zed",
-                                    "magnum_api": f"{image_repository}/magnum@sha256:46e7c910780864f4532ecc85574f159a36794f37aac6be65e4b48c46040ced17",  # noqa
-                                    "magnum_conductor": f"{image_repository}/magnum@sha256:46e7c910780864f4532ecc85574f159a36794f37aac6be65e4b48c46040ced17",  # noqa
-                                    "magnum_db_sync": f"{image_repository}/magnum@sha256:46e7c910780864f4532ecc85574f159a36794f37aac6be65e4b48c46040ced17",  # noqa
-                                    "rabbit_init": f"{image_repository}/rabbitmq:3.8.23-management",
+                                    image_name: utils.get_image_ref(
+                                        image_name,
+                                        override_registry=spec["imageRepository"],
+                                    ).string()
+                                    for image_name in constants.IMAGE_LIST.keys()
                                 }
                             }
                         }

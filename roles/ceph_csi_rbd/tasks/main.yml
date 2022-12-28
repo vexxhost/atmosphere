@@ -78,9 +78,27 @@
             nodeplugin:
               httpMetrics:
                 containerPort: 8081
+              registrar:
+                image:
+                  repository: "{{ lookup('vexxhost.atmosphere.image_ref', 'csi_node_driver_registrar', output='name') }}"
+              plugin:
+                image:
+                  repository: "{{ lookup('vexxhost.atmosphere.image_ref', 'csi_rbd_plugin', output='name') }}"
             provisioner:
               nodeSelector:
                 openstack-control-plane: enabled
+              provisioner:
+                image:
+                  repository: "{{ lookup('vexxhost.atmosphere.image_ref', 'csi_rbd_provisioner', output='name') }}"
+              attacher:
+                image:
+                  repository: "{{ lookup('vexxhost.atmosphere.image_ref', 'csi_rbd_attacher', output='name') }}"
+              resizer:
+                image:
+                  repository: "{{ lookup('vexxhost.atmosphere.image_ref', 'csi_rbd_resizer', output='name') }}"
+              snapshotter:
+                image:
+                  repository: "{{ lookup('vexxhost.atmosphere.image_ref', 'csi_rbd_snapshotter', output='name') }}"
             storageClass:
               create: true
               name: general

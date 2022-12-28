@@ -65,7 +65,7 @@
                       mountPath: /etc/openstack
               containers:
                 - name: openstack-exporter
-                  image: "{{ openstack_exporter_image_repository }}/openstack-exporter:{{ openstack_exporter_image_tag }}"
+                  image: "{{ lookup('vexxhost.atmosphere.image_ref', 'prometheus_openstack_exporter', output='ref') }}"
                   args:
                     - --endpoint-type
                     - internal

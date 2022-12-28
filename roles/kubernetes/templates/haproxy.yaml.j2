@@ -5,8 +5,8 @@ metadata:
   namespace: kube-system
 spec:
   containers:
-    - image: haproxy:2.5
-      name: haproxy
+    - name: haproxy
+      image: "{{ lookup('vexxhost.atmosphere.image_ref', 'haproxy', output='ref') }}"
       livenessProbe:
         failureThreshold: 8
         httpGet:

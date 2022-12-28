@@ -14,9 +14,9 @@ WORKDIR /app
 ADD poetry.lock /app
 ADD pyproject.toml /app
 ENV POETRY_VIRTUALENVS_IN_PROJECT=true
-RUN poetry install --only main --no-root --no-interaction
+RUN poetry install --only main --extras operator --no-root --no-interaction
 ADD . /app
-RUN poetry install --only main --no-interaction
+RUN poetry install --only main --extras operator --no-interaction
 
 FROM python:3.10-slim AS kubectl
 ADD https://dl.k8s.io/release/v1.26.0/bin/linux/amd64/kubectl /kubectl

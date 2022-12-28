@@ -31,6 +31,8 @@
                 kind: HelmRepository
                 name: prometheus-community
           values:
+            image:
+              repository: "{{ lookup('vexxhost.atmosphere.image_ref', 'prometheus_pushgateway', output='name') }}"
             nodeSelector:
               openstack-control-plane: enabled
             serviceMonitor:

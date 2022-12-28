@@ -118,7 +118,7 @@
               automountServiceAccountToken: true
               initContainers:
                 - name: init
-                  image: "{{ keepalived_image_repository }}/kubernetes-entrypoint:latest"
+                  image: "{{ lookup('vexxhost.atmosphere.image_ref', 'dep_check', output='ref') }}"
                   env:
                     - name: NAMESPACE
                       valueFrom:
@@ -133,7 +133,7 @@
                     - name: DEPENDENCY_POD_JSON
                       value: '[{"labels":{"application":"neutron","component":"neutron-ovs-agent"},"requireSameNode":true}]'
                 - name: wait-for-ip
-                  image: "{{ keepalived_image_repository }}/keepalived:{{ keepalived_image_tag }}"
+                  image: "{{ lookup('vexxhost.atmosphere.image_ref', 'keepalived', output='ref') }}"
                   command:
                     - /bin/wait-for-ip.sh
                   volumeMounts:
@@ -144,7 +144,7 @@
                       subPath: wait-for-ip.sh
               containers:
                 - name: keepalived
-                  image: "{{ keepalived_image_repository }}/keepalived:{{ keepalived_image_tag }}"
+                  image: "{{ lookup('vexxhost.atmosphere.image_ref', 'keepalived', output='ref') }}"
                   command:
                     - keepalived
                     - -f

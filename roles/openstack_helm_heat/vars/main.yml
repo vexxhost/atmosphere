@@ -18,21 +18,21 @@ __openstack_helm_heat_values:
   images:
     pull_policy: Always
     tags:
-      bootstrap: "{{ openstack_helm_heat_image_repository }}/heat:{{ openstack_helm_heat_image_tag }}"
-      db_drop: "{{ openstack_helm_heat_image_repository }}/heat:{{ openstack_helm_heat_image_tag }}"
-      db_init: "{{ openstack_helm_heat_image_repository }}/heat:{{ openstack_helm_heat_image_tag }}"
-      dep_check: "{{ openstack_helm_heat_image_repository }}/kubernetes-entrypoint:latest"
-      heat_api: "{{ openstack_helm_heat_image_repository }}/heat:{{ openstack_helm_heat_image_tag }}"
-      heat_cfn: "{{ openstack_helm_heat_image_repository }}/heat:{{ openstack_helm_heat_image_tag }}"
-      heat_cloudwatch: "{{ openstack_helm_heat_image_repository }}/heat:{{ openstack_helm_heat_image_tag }}"
-      heat_db_sync: "{{ openstack_helm_heat_image_repository }}/heat:{{ openstack_helm_heat_image_tag }}"
-      heat_engine_cleaner: "{{ openstack_helm_heat_image_repository }}/heat:{{ openstack_helm_heat_image_tag }}"
-      heat_engine: "{{ openstack_helm_heat_image_repository }}/heat:{{ openstack_helm_heat_image_tag }}"
-      heat_purge_deleted: "{{ openstack_helm_heat_image_repository }}/heat:{{ openstack_helm_heat_image_tag }}"
-      ks_endpoints: "{{ openstack_helm_heat_image_repository }}/heat:{{ openstack_helm_heat_image_tag }}"
-      ks_service: "{{ openstack_helm_heat_image_repository }}/heat:{{ openstack_helm_heat_image_tag }}"
-      ks_user: "{{ openstack_helm_heat_image_repository }}/heat:{{ openstack_helm_heat_image_tag }}"
-      rabbit_init: "{{ openstack_helm_heat_image_repository }}/rabbitmq:3.8.23-management"
+      bootstrap: "{{ lookup('vexxhost.atmosphere.image_ref', 'bootstrap', output='ref') }}"
+      db_drop: "{{ lookup('vexxhost.atmosphere.image_ref', 'db_drop', output='ref') }}"
+      db_init: "{{ lookup('vexxhost.atmosphere.image_ref', 'db_init', output='ref') }}"
+      dep_check: "{{ lookup('vexxhost.atmosphere.image_ref', 'dep_check', output='ref') }}"
+      heat_api: "{{ lookup('vexxhost.atmosphere.image_ref', 'heat_api', output='ref') }}"
+      heat_cfn: "{{ lookup('vexxhost.atmosphere.image_ref', 'heat_cfn', output='ref') }}"
+      heat_cloudwatch: "{{ lookup('vexxhost.atmosphere.image_ref', 'heat_cloudwatch', output='ref') }}"
+      heat_db_sync: "{{ lookup('vexxhost.atmosphere.image_ref', 'heat_db_sync', output='ref') }}"
+      heat_engine_cleaner: "{{ lookup('vexxhost.atmosphere.image_ref', 'heat_engine_cleaner', output='ref') }}"
+      heat_engine: "{{ lookup('vexxhost.atmosphere.image_ref', 'heat_engine', output='ref') }}"
+      heat_purge_deleted: "{{ lookup('vexxhost.atmosphere.image_ref', 'heat_purge_deleted', output='ref') }}"
+      ks_endpoints: "{{ lookup('vexxhost.atmosphere.image_ref', 'ks_endpoints', output='ref') }}"
+      ks_service: "{{ lookup('vexxhost.atmosphere.image_ref', 'ks_service', output='ref') }}"
+      ks_user: "{{ lookup('vexxhost.atmosphere.image_ref', 'ks_user', output='ref') }}"
+      rabbit_init: "{{ lookup('vexxhost.atmosphere.image_ref', 'rabbit_init', output='ref') }}"
   pod:
     replicas:
       api: 3

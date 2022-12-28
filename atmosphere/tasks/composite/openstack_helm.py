@@ -4,6 +4,7 @@ import mergedeep
 import pykube
 import yaml
 
+from atmosphere import utils
 from atmosphere.models import config
 from atmosphere.models.openstack_helm import values
 from atmosphere.tasks import constants
@@ -225,13 +226,17 @@ class ApplyPerconaXtraDBClusterTask(base.ApplyKubernetesObjectTask):
                     "secretsName": "percona-xtradb",
                     "pxc": {
                         "size": 3,
-                        "image": "percona/percona-xtradb-cluster:5.7.39-31.61",
+                        "image": utils.get_image_ref_using_legacy_image_repository(
+                            "percona_xtradb_cluster"
+                        ).string(),
                         "autoRecovery": True,
                         "configuration": "[mysqld]\nmax_connections=8192\n",
                         "sidecars": [
                             {
                                 "name": "exporter",
-                                "image": "quay.io/prometheus/mysqld-exporter:v0.14.0",
+                                "image": utils.get_image_ref_using_legacy_image_repository(
+                                    "prometheus_mysqld_exporter"
+                                ).string(),
                                 "ports": [{"name": "metrics", "containerPort": 9104}],
                                 "livenessProbe": {
                                     "httpGet": {"path": "/", "port": 9104}
@@ -263,7 +268,9 @@ class ApplyPerconaXtraDBClusterTask(base.ApplyKubernetesObjectTask):
                     "haproxy": {
                         "enabled": True,
                         "size": 3,
-                        "image": "percona/percona-xtradb-cluster-operator:1.10.0-haproxy",
+                        "image": utils.get_image_ref_using_legacy_image_repository(
+                            "percona_xtradb_cluster_haproxy"
+                        ).string(),
                         "nodeSelector": {"openstack-control-plane": "enabled"},
                     },
                 },
@@ -299,6 +306,9 @@ class ApplyRabbitmqClusterTask(base.ApplyKubernetesObjectTask):
                     "namespace": self._obj_namespace,
                 },
                 "spec": {
+                    "image": utils.get_image_ref_using_legacy_image_repository(
+                        "rabbitmq_server"
+                    ).string(),
                     "affinity": {
                         "nodeAffinity": {
                             "requiredDuringSchedulingIgnoredDuringExecution": {

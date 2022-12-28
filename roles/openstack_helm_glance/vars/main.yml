@@ -18,19 +18,19 @@ _openstack_helm_glance_values:
   images:
     pull_policy: Always
     tags:
-      bootstrap: "{{ openstack_helm_glance_image_repository }}/heat:{{ openstack_helm_glance_heat_image_tag }}"
-      db_drop: "{{ openstack_helm_glance_image_repository }}/heat:{{ openstack_helm_glance_heat_image_tag }}"
-      db_init: "{{ openstack_helm_glance_image_repository }}/heat:{{ openstack_helm_glance_heat_image_tag }}"
-      dep_check: "{{ openstack_helm_glance_image_repository }}/kubernetes-entrypoint:latest"
-      glance_api: "{{ openstack_helm_glance_image_repository }}/glance:{{ openstack_helm_glance_image_tag }}"
-      glance_db_sync: "{{ openstack_helm_glance_image_repository }}/glance:{{ openstack_helm_glance_image_tag }}"
-      glance_metadefs_load: "{{ openstack_helm_glance_image_repository }}/glance:{{ openstack_helm_glance_image_tag }}"
-      glance_registry: "{{ openstack_helm_glance_image_repository }}/glance:{{ openstack_helm_glance_image_tag }}"
-      glance_storage_init: "{{ openstack_helm_glance_image_repository }}/glance:{{ openstack_helm_glance_image_tag }}"
-      ks_endpoints: "{{ openstack_helm_glance_image_repository }}/heat:{{ openstack_helm_glance_heat_image_tag }}"
-      ks_service: "{{ openstack_helm_glance_image_repository }}/heat:{{ openstack_helm_glance_heat_image_tag }}"
-      ks_user: "{{ openstack_helm_glance_image_repository }}/heat:{{ openstack_helm_glance_heat_image_tag }}"
-      rabbit_init: "{{ openstack_helm_glance_image_repository }}/rabbitmq:3.8.23-management"
+      bootstrap: "{{ lookup('vexxhost.atmosphere.image_ref', 'bootstrap', output='ref') }}"
+      db_drop: "{{ lookup('vexxhost.atmosphere.image_ref', 'db_drop', output='ref') }}"
+      db_init: "{{ lookup('vexxhost.atmosphere.image_ref', 'db_init', output='ref') }}"
+      dep_check: "{{ lookup('vexxhost.atmosphere.image_ref', 'dep_check', output='ref') }}"
+      glance_api: "{{ lookup('vexxhost.atmosphere.image_ref', 'glance_api', output='ref') }}"
+      glance_db_sync: "{{ lookup('vexxhost.atmosphere.image_ref', 'glance_db_sync', output='ref') }}"
+      glance_metadefs_load: "{{ lookup('vexxhost.atmosphere.image_ref', 'glance_metadefs_load', output='ref') }}"
+      glance_registry: "{{ lookup('vexxhost.atmosphere.image_ref', 'glance_registry', output='ref') }}"
+      glance_storage_init: "{{ lookup('vexxhost.atmosphere.image_ref', 'glance_storage_init', output='ref') }}"
+      ks_endpoints: "{{ lookup('vexxhost.atmosphere.image_ref', 'ks_endpoints', output='ref') }}"
+      ks_service: "{{ lookup('vexxhost.atmosphere.image_ref', 'ks_service', output='ref') }}"
+      ks_user: "{{ lookup('vexxhost.atmosphere.image_ref', 'ks_user', output='ref') }}"
+      rabbit_init: "{{ lookup('vexxhost.atmosphere.image_ref', 'rabbit_init', output='ref') }}"
   bootstrap:
     enabled: false
   pod:
