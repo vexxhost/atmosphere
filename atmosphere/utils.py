@@ -15,8 +15,11 @@ def load_jsonnet_from_path(path: str) -> any:
 
 
 def get_legacy_image_repository(config_path: str = CONFIG_FILE) -> str or None:
-    with open(config_path, "rb") as fd:
-        data = tomli.load(fd)
+    try:
+        with open(config_path, "rb") as fd:
+            data = tomli.load(fd)
+    except FileNotFoundError:
+        return None
 
     if data.get("image_repository", ""):
         return data["image_repository"]
