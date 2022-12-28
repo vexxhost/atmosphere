@@ -17,24 +17,21 @@ def get_engine(config):
 
 def get_deployment_flow(config):
     flow = graph_flow.Flow("deploy").add(
+        # openstack
+        v1.ApplyNamespaceTask(name=constants.NAMESPACE_OPENSTACK),
+        flux.ApplyHelmRepositoryTask(
+            namespace=constants.NAMESPACE_OPENSTACK,
+            name="atmosphere",
+            url="http://atmosphere.openstack/charts/",
+        ),
         # kube-system
         v1.ApplyNamespaceTask(name=constants.NAMESPACE_KUBE_SYSTEM),
-        flux.ApplyHelmRepositoryTask(
-            namespace=constants.NAMESPACE_KUBE_SYSTEM,
-            name="atmosphere",
-            url="http://atmosphere.openstack/charts/",
-        ),
         # cert-manager
         v1.ApplyNamespaceTask(name=constants.NAMESPACE_CERT_MANAGER),
-        flux.ApplyHelmRepositoryTask(
-            namespace=constants.NAMESPACE_CERT_MANAGER,
-            name="atmosphere",
-            url="http://atmosphere.openstack/charts/",
-        ),
         flux.ApplyHelmReleaseTask(
             namespace=constants.NAMESPACE_CERT_MANAGER,
             name=constants.HELM_RELEASE_CERT_MANAGER_NAME,
-            repository="atmosphere",
+            repository_namespace=constants.NAMESPACE_OPENSTACK,
             chart=constants.HELM_RELEASE_CERT_MANAGER_NAME,
             version=constants.HELM_RELEASE_CERT_MANAGER_VERSION,
             values=constants.HELM_RELEASE_CERT_MANAGER_VALUES,
@@ -46,30 +43,18 @@ def get_deployment_flow(config):
             config.kube_prometheus_stack,
             opsgenie=config.opsgenie,
         ),
-        flux.ApplyHelmRepositoryTask(
-            namespace=constants.NAMESPACE_MONITORING,
-            name="atmosphere",
-            url="http://atmosphere.openstack/charts/",
-        ),
         flux.ApplyHelmReleaseTask(
             namespace=constants.NAMESPACE_MONITORING,
             name="node-feature-discovery",
-            repository="atmosphere",
+            repository_namespace=constants.NAMESPACE_OPENSTACK,
             chart="node-feature-discovery",
             version="0.11.2",
             values=constants.HELM_RELEASE_NODE_FEATURE_DISCOVERY_VALUES,
         ),
-        # openstack
-        v1.ApplyNamespaceTask(name=constants.NAMESPACE_OPENSTACK),
-        flux.ApplyHelmRepositoryTask(
-            namespace=constants.NAMESPACE_OPENSTACK,
-            name="atmosphere",
-            url="http://atmosphere.openstack/charts/",
-        ),
         flux.ApplyHelmReleaseTask(
             namespace=constants.NAMESPACE_OPENSTACK,
             name=constants.HELM_RELEASE_RABBITMQ_OPERATOR_NAME,
-            repository="atmosphere",
+            repository_namespace=constants.NAMESPACE_OPENSTACK,
             chart=constants.HELM_RELEASE_RABBITMQ_OPERATOR_NAME,
             version=constants.HELM_RELEASE_RABBITMQ_OPERATOR_VERSION,
             values=constants.HELM_RELEASE_RABBITMQ_OPERATOR_VALUES,
@@ -78,7 +63,7 @@ def get_deployment_flow(config):
         flux.ApplyHelmReleaseTask(
             namespace=constants.NAMESPACE_OPENSTACK,
             name=constants.HELM_RELEASE_PXC_OPERATOR_NAME,
-            repository="atmosphere",
+            repository_namespace=constants.NAMESPACE_OPENSTACK,
             chart=constants.HELM_RELEASE_PXC_OPERATOR_NAME,
             version=constants.HELM_RELEASE_PXC_OPERATOR_VERSION,
             values=constants.HELM_RELEASE_PXC_OPERATOR_VALUES,

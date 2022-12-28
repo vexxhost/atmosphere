@@ -157,11 +157,12 @@ class ApplyHelmReleaseTask(ApplyKubernetesObjectTask):
         api: pykube.HTTPClient,
         namespace: str,
         release_name: str,
-        helm_repository: str,
         chart_name: str,
         chart_version: str,
         values: dict,
         values_from: list,
+        helm_repository: str = "atmosphere",
+        helm_repository_namespace: str = "openstack",
     ) -> HelmRelease:
         resource = HelmRelease(
             api,
@@ -181,6 +182,7 @@ class ApplyHelmReleaseTask(ApplyKubernetesObjectTask):
                             "sourceRef": {
                                 "kind": "HelmRepository",
                                 "name": helm_repository,
+                                "name": helm_repository_namespace,
                             },
                         }
                     },

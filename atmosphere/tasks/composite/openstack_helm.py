@@ -39,6 +39,7 @@ class ApplyHelmReleaseTask(flux.ApplyHelmReleaseTask):
             namespace=namespace,
             name=name,
             repository=repository,
+            repository_namespace=constants.NAMESPACE_OPENSTACK,
             chart=name,
             version=version,
             values_from=[
@@ -151,11 +152,6 @@ def kube_prometheus_stack_tasks_from_config(
         )
 
     return [
-        flux.ApplyHelmRepositoryTask(
-            namespace=constants.NAMESPACE_MONITORING,
-            name="atmosphere",
-            url="http://atmosphere.openstack/charts/",
-        ),
         flux.ApplyHelmReleaseTask(
             namespace=config.namespace,
             name=constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_NAME,
@@ -178,11 +174,6 @@ def ingress_nginx_tasks_from_config(config: config.IngressNginxChartConfig):
     )
 
     return [
-        flux.ApplyHelmRepositoryTask(
-            namespace=config.namespace,
-            name="atmosphere",
-            url="http://atmosphere.openstack/charts/",
-        ),
         flux.ApplyHelmReleaseTask(
             namespace=config.namespace,
             name=constants.HELM_RELEASE_INGRESS_NGINX_NAME,

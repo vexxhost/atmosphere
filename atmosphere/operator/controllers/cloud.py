@@ -44,7 +44,6 @@ def create_fn(namespace: str, name: str, spec: dict, **_):
             ),
             tasks.ApplyHelmReleaseTask(
                 inject={
-                    "helm_repository": "atmosphere",
                     "chart_name": "magnum",
                     "chart_version": "0.2.8",
                     "release_name": "magnum",
