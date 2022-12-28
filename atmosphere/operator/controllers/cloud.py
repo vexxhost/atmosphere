@@ -14,6 +14,14 @@ from atmosphere.operator.api import Cloud
 def create_fn(namespace: str, name: str, spec: dict, **_):
     flow = graph_flow.Flow("deploy").add(
         tasks.BuildApiClient(),
+        tasks.ApplyNamespaceTask(namespace),
+        tasks.ApplyHelmRepositoryTask(
+            inject={
+                "repository_name": "atmosphere",
+                "url": "http://atmosphere.openstack/charts/",
+            },
+            provides="helm_repository",
+        ),
         tasks.GenerateImageTagsConfigMap(provides="image_tags"),
         tasks.GenerateSecrets(provides="secrets"),
     )
@@ -21,9 +29,7 @@ def create_fn(namespace: str, name: str, spec: dict, **_):
     if spec["magnum"].get("enabled", True):
         flow.add(
             tasks.InstallClusterApiTask(),
-            tasks.ApplyRabbitmqClusterTask(
-                inject={"chart_name": "magnum"}, provides="magnum_rabbitmq"
-            ),
+            tasks.ApplyRabbitmqClusterTask("magnum"),
             tasks.GetChartValues(
                 inject={
                     "helm_repository": "atmosphere",
@@ -35,15 +41,15 @@ def create_fn(namespace: str, name: str, spec: dict, **_):
             ),
             tasks.GenerateReleaseValues(
                 inject={"chart_name": "magnum"},
-                rebind={"rabbitmq": "magnum_rabbitmq"},
+                rebind={"rabbitmq": "magnum_rabbitmq_cluster"},
                 provides="magnum_release_values",
             ),
             tasks.GenerateMagnumChartValuesFrom(
-                rebind={"rabbitmq": "magnum_rabbitmq"},
+                rebind={"rabbitmq": "magnum_rabbitmq_cluster"},
                 provides="magnum_values_from",
             ),
             tasks.ApplyHelmReleaseTask(
-                inject={
+                config={
                     "chart_name": "magnum",
                     "chart_version": "0.2.8",
                     "release_name": "magnum",

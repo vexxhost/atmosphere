@@ -4,6 +4,7 @@ import logging
 import os
 import subprocess
 
+import kopf
 import mergedeep
 import pkg_resources
 import pykube
@@ -26,14 +27,26 @@ class BuildApiClient(task.Task):
 
 
 class ApplyKubernetesObjectTask(task.Task):
-    @property
-    def api(self):
-        return clients.get_pykube_api()
-
     def generate_object(self, *args, **kwargs) -> pykube.objects.APIObject:
         raise NotImplementedError
 
-    def wait_for_resource(self, resource: pykube.objects.APIObject):
+    def _log(self, resource: pykube.objects.APIObject, message: str):
+        resource_info = {
+            "kind": resource.kind,
+        }
+
+        resource_info["name"] = resource.name
+        if resource.namespace:
+            resource_info["namespace"] = resource.namespace
+
+        # Generate user friendly string from resource info
+        resource_info_str = ", ".join([f"{k}={v}" for k, v in resource_info.items()])
+        LOG.info(f"[{resource_info_str}] {message}")
+
+    def wait_for_resource(
+        self, resource: pykube.objects.APIObject
+    ) -> pykube.objects.APIObject:
+        self._log(resource, f"{resource.kind} is ready")
         return resource
 
     def _apply(self, resource: pykube.objects.APIObject) -> pykube.objects.APIObject:
@@ -53,7 +66,251 @@ class ApplyKubernetesObjectTask(task.Task):
         resource.api.raise_for_status(resp)
         resource.set_obj(resp.json())
 
+        self._log(
+            resource,
+            "Server-side apply completed, starting to wait for resource to be ready...",
+        )
+
         return self.wait_for_resource(resource)
+
+
+class ApplyNamespaceTask(ApplyKubernetesObjectTask):
+    def __init__(self, name: str, provides: str = "namespace"):
+        super().__init__(
+            name=f"ApplyNamespaceTask(name={name})",
+            inject={"name": name},
+            provides=provides,
+        )
+
+    def execute(self, api: pykube.HTTPClient, name: str) -> pykube.Namespace:
+        resource = pykube.Namespace(
+            api,
+            {
+                "apiVersion": pykube.Namespace.version,
+                "kind": pykube.Namespace.kind,
+                "metadata": {
+                    "name": name,
+                },
+            },
+        )
+
+        return self._apply(resource)
+
+
+class ApplySecretTask(ApplyKubernetesObjectTask):
+    def __init__(self, name: str, inject: dict, **kwargs):
+        super().__init__(
+            name=f"ApplySecretTask(name={name})",
+            inject={"name": name, **inject},
+            **kwargs,
+        )
+
+    def execute(
+        self, api: pykube.HTTPClient, namespace: pykube.Namespace, name: str, data: dict
+    ) -> pykube.Secret:
+        resource = pykube.Secret(
+            api,
+            {
+                "apiVersion": pykube.Secret.version,
+                "kind": pykube.Secret.kind,
+                "metadata": {
+                    "name": name,
+                    "namespace": namespace.name,
+                },
+                "stringData": data,
+            },
+        )
+
+        return self._apply(resource)
+
+
+class ApplyServiceTask(ApplyKubernetesObjectTask):
+    def __init__(self, name: str, inject: dict, **kwargs):
+        super().__init__(
+            name=f"ApplyServiceTask(name={name})",
+            inject={"name": name, **inject},
+            **kwargs,
+        )
+
+    def execute(
+        self,
+        api: pykube.HTTPClient,
+        namespace: pykube.Namespace,
+        name: str,
+        labels: dict,
+        ports: list,
+    ) -> pykube.Service:
+        resource = pykube.Service(
+            api,
+            {
+                "apiVersion": pykube.Service.version,
+                "kind": pykube.Service.kind,
+                "metadata": {
+                    "name": name,
+                    "namespace": namespace.name,
+                    "labels": labels,
+                },
+                "spec": {
+                    "selector": labels,
+                    "ports": ports,
+                },
+            },
+        )
+
+        return self._apply(resource)
+
+
+class HelmRepository(pykube.objects.NamespacedAPIObject):
+    version = "source.toolkit.fluxcd.io/v1beta2"
+    endpoint = "helmrepositories"
+    kind = "HelmRepository"
+
+
+class ApplyHelmRepositoryTask(ApplyKubernetesObjectTask):
+    def execute(
+        self,
+        api: pykube.HTTPClient,
+        namespace: pykube.Namespace,
+        repository_name: str,
+        url: str,
+    ) -> HelmRepository:
+        resource = HelmRepository(
+            api,
+            {
+                "apiVersion": HelmRepository.version,
+                "kind": HelmRepository.kind,
+                "metadata": {
+                    "name": repository_name,
+                    "namespace": namespace.name,
+                },
+                "spec": {
+                    "interval": "1m",
+                    "url": url,
+                },
+            },
+        )
+
+        return self._apply(resource)
+
+
+class HelmRelease(pykube.objects.NamespacedAPIObject):
+    version = "helm.toolkit.fluxcd.io/v2beta1"
+    endpoint = "helmreleases"
+    kind = "HelmRelease"
+
+
+class ApplyHelmReleaseTask(ApplyKubernetesObjectTask):
+    def __init__(self, config: dict, rebind: dict = {}):
+        super().__init__(
+            name=f"ApplyHelmReleaseTask(release_name={config['release_name']})",
+            inject=config,
+            rebind=rebind,
+            provides=f"{config['release_name'].replace('-', '_')}_helm_release",
+        )
+
+    def execute(
+        self,
+        api: pykube.HTTPClient,
+        namespace: pykube.objects.Namespace,
+        release_name: str,
+        helm_repository: HelmRepository,
+        chart_name: str,
+        chart_version: str,
+        values: dict,
+        values_from: list,
+        spec: dict,
+        alias: str = "",
+    ) -> HelmRelease:
+        config_key = chart_name if not alias else alias
+        if config_key in spec:
+            values = mergedeep.merge(
+                spec[config_key].get("overrides", {}),
+                values,
+            )
+        resource = HelmRelease(
+            api,
+            {
+                "apiVersion": HelmRelease.version,
+                "kind": HelmRelease.kind,
+                "metadata": {
+                    "name": release_name,
+                    "namespace": namespace.name,
+                },
+                "spec": {
+                    "interval": "60s",
+                    "chart": {
+                        "spec": {
+                            "chart": chart_name,
+                            "version": chart_version,
+                            "sourceRef": {
+                                "kind": helm_repository.kind,
+                                "name": helm_repository.name,
+                                "namespace": helm_repository.namespace,
+                            },
+                        }
+                    },
+                    "install": {
+                        "crds": "CreateReplace",
+                        "disableWait": True,
+                    },
+                    "upgrade": {
+                        "crds": "CreateReplace",
+                        "disableWait": True,
+                    },
+                    "values": values,
+                    "valuesFrom": values_from,
+                },
+            },
+        )
+
+        return self._apply(resource)
+
+    @retry(
+        retry=retry_if_result(lambda f: f is False),
+        stop=stop_after_delay(300),
+        wait=wait_fixed(1),
+    )
+    def wait_for_resource(self, resource: HelmRelease) -> HelmRelease:
+        resource.reload()
+
+        # TODO(mnaser): detect potential changes and wait
+
+        # Generate map with list of conditions
+        conditions = {
+            condition["type"]: {
+                "status": strutils.bool_from_string(condition["status"]),
+                "reason": condition.get("reason"),
+                "message": condition.get("message"),
+            }
+            for condition in resource.obj["status"].get("conditions", [])
+        }
+
+        # Generate user-friendly string with conditions and their status
+        conditions_str = ", ".join(
+            f"{condition}={info['status']} ({info['reason']})"
+            for condition, info in conditions.items()
+        )
+
+        # Log current conditions
+        self._log(
+            resource,
+            f"Waiting for HelmRelease to be ready, current conditions: {conditions_str}",
+        )
+
+        # Unless we're not ready and released, we're not ready
+        if conditions.get("Ready", {}).get("status") and conditions.get(
+            "Released", {}
+        ).get("status"):
+            self._log(resource, "HelmRelease is ready")
+            return resource
+
+        # If the installation has failed, let's raise an exception
+        if conditions.get("Ready", {}).get("reason") == "InstallFailed":
+            raise kopf.TemporaryError(
+                f"HelmRelease installation failed: {conditions.get('Ready', {}).get('message')}"
+            )
+
+        return False
 
 
 class InstallClusterApiTask(task.Task):
@@ -97,22 +354,33 @@ class RabbitmqCluster(pykube.objects.NamespacedAPIObject):
 
 
 class ApplyRabbitmqClusterTask(ApplyKubernetesObjectTask):
+    def __init__(self, cluster_name: str):
+        super().__init__(
+            name=f"ApplyRabbitmqClusterTask(cluster_name={cluster_name})",
+            inject={"cluster_name": cluster_name},
+            provides=f"{cluster_name}_rabbitmq_cluster",
+        )
+
     def execute(
-        self, api: pykube.HTTPClient, namespace: str, chart_name: str, spec: dict
+        self,
+        api: pykube.HTTPClient,
+        namespace: pykube.Namespace,
+        rabbitmq_cluster_operator_helm_release: HelmRelease,
+        cluster_name: str,
     ) -> dict:
+        # NOTE(mnaser): This is a workaround to make sure the CRD is installed
+        assert rabbitmq_cluster_operator_helm_release.exists()
+
         resource = RabbitmqCluster(
             api,
             {
                 "apiVersion": RabbitmqCluster.version,
                 "kind": RabbitmqCluster.kind,
                 "metadata": {
-                    "name": f"rabbitmq-{chart_name}",
-                    "namespace": namespace,
+                    "name": f"rabbitmq-{cluster_name}",
+                    "namespace": namespace.name,
                 },
                 "spec": {
-                    "image": utils.get_image_ref(
-                        "rabbitmq_server", override_registry=spec["imageRepository"]
-                    ).string(),
                     "affinity": {
                         "nodeAffinity": {
                             "requiredDuringSchedulingIgnoredDuringExecution": {
@@ -145,57 +413,83 @@ class ApplyRabbitmqClusterTask(ApplyKubernetesObjectTask):
         return self._apply(resource)
 
 
-class HelmRelease(pykube.objects.NamespacedAPIObject):
-    version = "helm.toolkit.fluxcd.io/v2beta1"
-    endpoint = "helmreleases"
-    kind = "HelmRelease"
+class PerconaXtraDBCluster(pykube.objects.NamespacedAPIObject):
+    version = "pxc.percona.com/v1-10-0"
+    endpoint = "perconaxtradbclusters"
+    kind = "PerconaXtraDBCluster"
 
 
-class ApplyHelmReleaseTask(ApplyKubernetesObjectTask):
+class ApplyPerconaXtraDBClusterTask(ApplyKubernetesObjectTask):
     def execute(
         self,
-        api: pykube.HTTPClient,
-        namespace: str,
-        release_name: str,
-        chart_name: str,
-        chart_version: str,
-        values: dict,
-        values_from: list,
-        helm_repository: str = "atmosphere",
-        helm_repository_namespace: str = "openstack",
-    ) -> HelmRelease:
-        resource = HelmRelease(
-            api,
+        namespace: pykube.Namespace,
+        spec: dict,
+        pxc_operator_helm_release: HelmRelease,
+    ) -> PerconaXtraDBCluster:
+        # NOTE(mnaser): This is a workaround to make sure the CRD is installed
+        assert pxc_operator_helm_release.exists()
+
+        resource = PerconaXtraDBCluster(
+            self.api,
             {
-                "apiVersion": HelmRelease.version,
-                "kind": HelmRelease.kind,
+                "apiVersion": PerconaXtraDBCluster.version,
+                "kind": PerconaXtraDBCluster.kind,
                 "metadata": {
-                    "name": release_name,
-                    "namespace": namespace,
+                    "name": "percona-xtradb",
+                    "namespace": namespace.name,
                 },
                 "spec": {
-                    "interval": "60s",
-                    "chart": {
-                        "spec": {
-                            "chart": chart_name,
-                            "version": chart_version,
-                            "sourceRef": {
-                                "kind": "HelmRepository",
-                                "name": helm_repository,
-                                "namespace": helm_repository_namespace,
-                            },
-                        }
+                    "crVersion": "1.10.0",
+                    "secretsName": "percona-xtradb",
+                    "pxc": {
+                        "size": 3,
+                        "image": utils.get_image_ref(
+                            spec["imageRepository"], "percona_xtradb_cluster"
+                        ),
+                        "autoRecovery": True,
+                        "configuration": "[mysqld]\nmax_connections=8192\n",
+                        "sidecars": [
+                            {
+                                "name": "exporter",
+                                "image": utils.get_image_ref(
+                                    spec["imageRepository"], "mysqld_exporter"
+                                ),
+                                "ports": [{"name": "metrics", "containerPort": 9104}],
+                                "livenessProbe": {
+                                    "httpGet": {"path": "/", "port": 9104}
+                                },
+                                "env": [
+                                    {
+                                        "name": "MONITOR_PASSWORD",
+                                        "valueFrom": {
+                                            "secretKeyRef": {
+                                                "name": "percona-xtradb",
+                                                "key": "monitor",
+                                            }
+                                        },
+                                    },
+                                    {
+                                        "name": "DATA_SOURCE_NAME",
+                                        "value": "monitor:$(MONITOR_PASSWORD)@(localhost:3306)/",
+                                    },
+                                ],
+                            }
+                        ],
+                        "nodeSelector": constants.NODE_SELECTOR_CONTROL_PLANE,
+                        "volumeSpec": {
+                            "persistentVolumeClaim": {
+                                "resources": {"requests": {"storage": "160Gi"}}
+                            }
+                        },
                     },
-                    "install": {
-                        "crds": "CreateReplace",
-                        "disableWait": True,
+                    "haproxy": {
+                        "enabled": True,
+                        "size": 3,
+                        "image": utils.get_image_ref(
+                            spec["imageRepository"], "percona_xtradb_cluster_haproxy"
+                        ),
+                        "nodeSelector": constants.NODE_SELECTOR_CONTROL_PLANE,
                     },
-                    "upgrade": {
-                        "crds": "CreateReplace",
-                        "disableWait": True,
-                    },
-                    "values": values,
-                    "valuesFrom": values_from,
                 },
             },
         )
@@ -207,18 +501,19 @@ class ApplyHelmReleaseTask(ApplyKubernetesObjectTask):
         stop=stop_after_delay(300),
         wait=wait_fixed(1),
     )
-    def wait_for_resource(self, resource: HelmRelease, *args, **kwargs) -> bool:
-        # TODO(mnaser): detect potential changes and wait
+    def wait_for_resource(self, resource: HelmRelease) -> HelmRelease:
         resource.reload()
 
-        conditions = {
-            condition["type"]: strutils.bool_from_string(condition["status"])
-            for condition in resource.obj["status"].get("conditions", [])
-        }
+        self._log(
+            resource,
+            f"Waiting for PerconaXtraDBCluster to be ready, current status: {resource.obj['status']['state']}",
+        )
 
-        if not conditions.get("Ready", False) and conditions.get("Released", False):
-            return False
-        return resource
+        if resource.obj["status"]["state"] == "ready":
+            self._log(resource, "PerconaXtraDBCluster is ready")
+            return resource
+
+        return False
 
 
 class GenerateSecrets(ApplyKubernetesObjectTask):

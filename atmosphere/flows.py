@@ -1,9 +1,11 @@
 from taskflow import engines
 from taskflow.patterns import graph_flow
 
+from atmosphere import utils
+from atmosphere.operator import tasks
 from atmosphere.tasks import constants
 from atmosphere.tasks.composite import openstack_helm
-from atmosphere.tasks.kubernetes import cert_manager, flux, v1
+from atmosphere.tasks.kubernetes import cert_manager
 
 
 def get_engine(config):
@@ -17,123 +19,132 @@ def get_engine(config):
 
 def get_deployment_flow(config):
     flow = graph_flow.Flow("deploy").add(
+        tasks.BuildApiClient(),
         # openstack
-        v1.ApplyNamespaceTask(name=constants.NAMESPACE_OPENSTACK),
-        flux.ApplyHelmRepositoryTask(
-            namespace=constants.NAMESPACE_OPENSTACK,
-            name="atmosphere",
-            url="http://atmosphere.openstack/charts/",
+        tasks.ApplyNamespaceTask(constants.NAMESPACE_OPENSTACK),
+        tasks.ApplyHelmRepositoryTask(
+            inject={
+                "repository_name": "atmosphere",
+                "url": "http://atmosphere.openstack/charts/",
+            },
+            provides="helm_repository",
         ),
         # kube-system
-        v1.ApplyNamespaceTask(name=constants.NAMESPACE_KUBE_SYSTEM),
+        tasks.ApplyNamespaceTask(
+            constants.NAMESPACE_KUBE_SYSTEM, provides="kube_system_namespace"
+        ),
         # cert-manager
-        v1.ApplyNamespaceTask(name=constants.NAMESPACE_CERT_MANAGER),
-        flux.ApplyHelmReleaseTask(
-            namespace=constants.NAMESPACE_CERT_MANAGER,
-            name=constants.HELM_RELEASE_CERT_MANAGER_NAME,
-            repository_namespace=constants.NAMESPACE_OPENSTACK,
-            chart=constants.HELM_RELEASE_CERT_MANAGER_NAME,
-            version=constants.HELM_RELEASE_CERT_MANAGER_VERSION,
-            values=constants.HELM_RELEASE_CERT_MANAGER_VALUES,
+        tasks.ApplyNamespaceTask(
+            constants.NAMESPACE_CERT_MANAGER, provides="cert_manager_namespace"
+        ),
+        tasks.ApplyHelmReleaseTask(
+            config={
+                "chart_name": constants.HELM_RELEASE_CERT_MANAGER_NAME,
+                "chart_version": constants.HELM_RELEASE_CERT_MANAGER_VERSION,
+                "release_name": constants.HELM_RELEASE_CERT_MANAGER_NAME,
+                "values": constants.HELM_RELEASE_CERT_MANAGER_VALUES,
+                "spec": {},
+                "values_from": [],
+            },
+            rebind={
+                "namespace": "cert_manager_namespace",
+            },
         ),
         *cert_manager.issuer_tasks_from_config(config.issuer),
         # monitoring
-        v1.ApplyNamespaceTask(name=constants.NAMESPACE_MONITORING),
+        tasks.ApplyNamespaceTask(
+            constants.NAMESPACE_MONITORING, provides="monitoring_namespace"
+        ),
         *openstack_helm.kube_prometheus_stack_tasks_from_config(
             config.kube_prometheus_stack,
             opsgenie=config.opsgenie,
         ),
-        flux.ApplyHelmReleaseTask(
-            namespace=constants.NAMESPACE_MONITORING,
-            name="node-feature-discovery",
-            repository_namespace=constants.NAMESPACE_OPENSTACK,
-            chart="node-feature-discovery",
-            version="0.11.2",
-            values=constants.HELM_RELEASE_NODE_FEATURE_DISCOVERY_VALUES,
+        tasks.ApplyHelmReleaseTask(
+            config={
+                "chart_name": "node-feature-discovery",
+                "chart_version": "0.11.2",
+                "release_name": "node-feature-discovery",
+                "values": constants.HELM_RELEASE_NODE_FEATURE_DISCOVERY_VALUES,
+                "spec": {},
+                "values_from": [],
+            },
+            rebind={
+                "namespace": "monitoring_namespace",
+            },
         ),
-        flux.ApplyHelmReleaseTask(
-            namespace=constants.NAMESPACE_OPENSTACK,
-            name=constants.HELM_RELEASE_RABBITMQ_OPERATOR_NAME,
-            repository_namespace=constants.NAMESPACE_OPENSTACK,
-            chart=constants.HELM_RELEASE_RABBITMQ_OPERATOR_NAME,
-            version=constants.HELM_RELEASE_RABBITMQ_OPERATOR_VERSION,
-            values=constants.HELM_RELEASE_RABBITMQ_OPERATOR_VALUES,
-            requires=constants.HELM_RELEASE_RABBITMQ_OPERATOR_REQUIRES,
+        tasks.ApplyHelmReleaseTask(
+            config={
+                "chart_name": constants.HELM_RELEASE_RABBITMQ_OPERATOR_NAME,
+                "chart_version": constants.HELM_RELEASE_RABBITMQ_OPERATOR_VERSION,
+                "release_name": constants.HELM_RELEASE_RABBITMQ_OPERATOR_NAME,
+                "values": constants.HELM_RELEASE_RABBITMQ_OPERATOR_VALUES,
+                "spec": {},
+                "values_from": [],
+            },
         ),
-        flux.ApplyHelmReleaseTask(
-            namespace=constants.NAMESPACE_OPENSTACK,
-            name=constants.HELM_RELEASE_PXC_OPERATOR_NAME,
-            repository_namespace=constants.NAMESPACE_OPENSTACK,
-            chart=constants.HELM_RELEASE_PXC_OPERATOR_NAME,
-            version=constants.HELM_RELEASE_PXC_OPERATOR_VERSION,
-            values=constants.HELM_RELEASE_PXC_OPERATOR_VALUES,
+        tasks.ApplyHelmReleaseTask(
+            config={
+                "chart_name": constants.HELM_RELEASE_PXC_OPERATOR_NAME,
+                "chart_version": constants.HELM_RELEASE_PXC_OPERATOR_VERSION,
+                "release_name": constants.HELM_RELEASE_PXC_OPERATOR_NAME,
+                "values": constants.HELM_RELEASE_PXC_OPERATOR_VALUES,
+                "spec": {},
+                "values_from": [],
+            },
         ),
-        openstack_helm.ApplyPerconaXtraDBClusterTask(),
+        tasks.ApplyPerconaXtraDBClusterTask(
+            inject={
+                "spec": {
+                    "imageRepository": utils.get_legacy_image_repository(),
+                },
+            },
+        ),
         *openstack_helm.ingress_nginx_tasks_from_config(config.ingress_nginx),
-        openstack_helm.ApplyRabbitmqClusterTask(
-            name=constants.HELM_RELEASE_KEYSTONE_NAME,
-        ),
-        openstack_helm.ApplyRabbitmqClusterTask(
-            name=constants.HELM_RELEASE_BARBICAN_NAME,
-        ),
-        openstack_helm.ApplyRabbitmqClusterTask(
-            name=constants.HELM_RELEASE_GLANCE_NAME,
-        ),
-        openstack_helm.ApplyRabbitmqClusterTask(
-            name=constants.HELM_RELEASE_CINDER_NAME,
-        ),
-        openstack_helm.ApplyRabbitmqClusterTask(
-            name=constants.HELM_RELEASE_NEUTRON_NAME,
-        ),
-        openstack_helm.ApplyRabbitmqClusterTask(
-            name=constants.HELM_RELEASE_NOVA_NAME,
-        ),
-        openstack_helm.ApplyRabbitmqClusterTask(
-            name=constants.HELM_RELEASE_OCTAVIA_NAME,
-        ),
-        openstack_helm.ApplyRabbitmqClusterTask(
-            name=constants.HELM_RELEASE_SENLIN_NAME,
-        ),
-        openstack_helm.ApplyRabbitmqClusterTask(
-            name=constants.HELM_RELEASE_DESIGNATE_NAME,
-        ),
-        openstack_helm.ApplyRabbitmqClusterTask(
-            name=constants.HELM_RELEASE_HEAT_NAME,
-        ),
+        tasks.ApplyRabbitmqClusterTask(constants.HELM_RELEASE_KEYSTONE_NAME),
+        tasks.ApplyRabbitmqClusterTask(constants.HELM_RELEASE_BARBICAN_NAME),
+        tasks.ApplyRabbitmqClusterTask(constants.HELM_RELEASE_GLANCE_NAME),
+        tasks.ApplyRabbitmqClusterTask(constants.HELM_RELEASE_CINDER_NAME),
+        tasks.ApplyRabbitmqClusterTask(constants.HELM_RELEASE_NEUTRON_NAME),
+        tasks.ApplyRabbitmqClusterTask(constants.HELM_RELEASE_NOVA_NAME),
+        tasks.ApplyRabbitmqClusterTask(constants.HELM_RELEASE_OCTAVIA_NAME),
+        tasks.ApplyRabbitmqClusterTask(constants.HELM_RELEASE_SENLIN_NAME),
+        tasks.ApplyRabbitmqClusterTask(constants.HELM_RELEASE_HEAT_NAME),
     )
 
     if config.memcached.enabled:
         flow.add(
             openstack_helm.ApplyReleaseSecretTask(
                 config=config,
-                namespace=config.memcached.namespace,
                 chart="memcached",
             ),
-            openstack_helm.ApplyHelmReleaseTask(
-                namespace=config.memcached.namespace,
-                repository="atmosphere",
-                name="memcached",
-                version="0.1.12",
-            ),
-            v1.ApplyServiceTask(
-                namespace=config.memcached.namespace,
-                name="memcached-metrics",
-                labels={
-                    "application": "memcached",
-                    "component": "server",
+            tasks.ApplyHelmReleaseTask(
+                config={
+                    "chart_name": "memcached",
+                    "chart_version": "0.1.12",
+                    "release_name": "memcached",
+                    "values": constants.HELM_RELEASE_PXC_OPERATOR_VALUES,
+                    "values_from": [
+                        {
+                            "kind": "Secret",
+                            "name": "atmosphere-memcached",
+                        }
+                    ],
+                    "spec": {},
                 },
-                spec={
-                    "selector": {
+            ),
+            tasks.ApplyServiceTask(
+                name="memcached-metrics",
+                inject={
+                    "labels": {
                         "application": "memcached",
                         "component": "server",
                     },
                     "ports": [
                         {
                             "name": "metrics",
-                            "protocol": "TCP",
                             "port": 9150,
                             "targetPort": 9150,
-                        }
+                        },
                     ],
                 },
             ),

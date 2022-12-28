@@ -12,41 +12,45 @@ EOF
 ADD images/atmosphere/helm-repository/repository-list /var/lib/atmosphere/repository-list
 ADD images/atmosphere/helm-repository/chart-list /var/lib/atmosphere/chart-list
 ADD images/atmosphere/helm-repository/mirror-charts /usr/local/bin/mirror-charts
-RUN chmod +x /usr/local/bin/mirror-charts
 RUN /usr/local/bin/mirror-charts /var/lib/atmosphere/repository-list /var/lib/atmosphere/chart-list
 
-FROM python:3.10-slim AS poetry
-RUN --mount=type=cache,target=/root/.cache <<EOF
-  pip install poetry
-EOF
-
-FROM poetry AS builder
-RUN <<EOF
-  apt-get update
-  apt-get install -y build-essential
+# Create image for Python builder
+FROM ${BASE_IMAGE} AS python-builder
+ENV POETRY_VIRTUALENVS_IN_PROJECT=true
+RUN --mount=type=cache,target=/var/cache/apk <<EOF /bin/sh -e
+  apk add \
+    poetry
 EOF
 WORKDIR /app
-ADD poetry.lock /app
-ADD pyproject.toml /app
-ENV POETRY_VIRTUALENVS_IN_PROJECT=true
-RUN poetry install --only main --extras operator --no-root --no-interaction
+ADD poetry.lock /app/poetry.lock
+ADD pyproject.toml /app/pyproject.toml
+
+# Build operator virtual environment
+FROM python-builder AS operator-builder
+RUN --mount=type=cache,target=/var/cache/apk <<EOF /bin/sh -e
+  apk add \
+    g++ \
+    gcc \
+    linux-headers \
+    make \
+    musl-dev \
+    python3-dev
+EOF
+RUN poetry install --extras operator --no-root --no-interaction
 ADD . /app
-RUN poetry install --only main --extras operator --no-interaction
+RUN poetry install --extras operator --no-interaction
 
-FROM python:3.10-slim AS kubectl
-ADD https://dl.k8s.io/release/v1.26.0/bin/linux/amd64/kubectl /kubectl
-RUN chmod +x /kubectl
-RUN /kubectl version --client
-
-FROM python:3.10-slim AS helm
-ADD https://get.helm.sh/helm-v3.10.2-linux-amd64.tar.gz /helm.tar.gz
-RUN tar -xvzf /helm.tar.gz
-RUN /linux-amd64/helm version
-
-FROM python:3.10-slim AS runtime
+# Build run-time image
+FROM ${BASE_IMAGE} AS operator
 ENV PATH="/app/.venv/bin:$PATH"
-COPY --from=builder --link /app /app
-COPY --from=kubectl --link /kubectl /usr/local/bin/kubectl
-COPY --from=helm --link /linux-amd64/helm /usr/local/bin/helm
+RUN --mount=type=cache,target=/var/cache/apk <<EOF /bin/sh -e
+  apk add \
+    helm \
+    libstdc++ \
+    nginx \
+    python3
+EOF
+COPY --from=docker.io/alpine/k8s:1.26.0 /usr/bin/kubectl /usr/bin/kubectl
 COPY --from=helm-repository --link /charts /charts
+COPY --from=operator-builder --link /app /app
 ADD images/atmosphere/helm-repository/nginx.conf /etc/nginx/nginx.conf

@@ -1,8 +1,9 @@
 import pykube
 
 from atmosphere.models import config
+from atmosphere.operator import tasks
 from atmosphere.tasks import constants
-from atmosphere.tasks.kubernetes import base, v1
+from atmosphere.tasks.kubernetes import base
 
 
 class Certificate(pykube.objects.NamespacedAPIObject):
@@ -55,11 +56,7 @@ class ApplyClusterIssuerTask(base.ApplyKubernetesObjectTask):
             kind=ClusterIssuer,
             namespace=None,
             name=name,
-            requires=set(
-                [
-                    f"helm-release-{constants.NAMESPACE_CERT_MANAGER}-{constants.HELM_RELEASE_CERT_MANAGER_NAME}",
-                ]
-            ),
+            requires=set(["cert_manager_helm_release"]),
         )
 
     def generate_object(self) -> ClusterIssuer:
@@ -111,11 +108,15 @@ def issuer_tasks_from_config(config: config.Issuer) -> list:
             # NOTE(mnaser): We have to create a secret containing the AWS
             #               credentials in this case.
             objects.append(
-                v1.ApplySecretTask(
-                    constants.NAMESPACE_CERT_MANAGER,
+                tasks.ApplySecretTask(
                     "cert-manager-issuer-tsig-secret-key",
-                    data={
-                        "tsig-secret-key": config.solver.tsig_secret,
+                    inject={
+                        "data": {
+                            "tsig-secret-key": config.solver.tsig_secret,
+                        },
+                    },
+                    rebind={
+                        "namespace": "cert_manager_namespace",
                     },
                 )
             )
@@ -139,10 +140,14 @@ def issuer_tasks_from_config(config: config.Issuer) -> list:
             # NOTE(mnaser): We have to create a secret containing the AWS
             #               credentials in this case.
             objects.append(
-                v1.ApplySecretTask(
-                    constants.NAMESPACE_CERT_MANAGER,
+                tasks.ApplySecretTask(
                     "cert-manager-issuer-route53-credentials",
-                    data={"secret-access-key": config.solver.secret_access_key},
+                    inject={
+                        "data": {"secret-access-key": config.solver.secret_access_key},
+                    },
+                    rebind={
+                        "namespace": "cert_manager_namespace",
+                    },
                 )
             )
 
@@ -165,12 +170,16 @@ def issuer_tasks_from_config(config: config.Issuer) -> list:
         # NOTE(mnaser): We have to create a secret containing the CA
         #               certificate and key in this case.
         objects.append(
-            v1.ApplySecretTask(
-                constants.NAMESPACE_CERT_MANAGER,
+            tasks.ApplySecretTask(
                 "cert-manager-issuer-ca",
-                data={
-                    "tls.crt": config.certificate,
-                    "tls.key": config.private_key,
+                inject={
+                    "data": {
+                        "tls.crt": config.certificate,
+                        "tls.key": config.private_key,
+                    },
+                },
+                rebind={
+                    "namespace": "cert_manager_namespace",
                 },
             )
         )
