@@ -18,18 +18,6 @@ from atmosphere.tasks.composite import openstack_helm
             ),
             [
                 {
-                    "apiVersion": "source.toolkit.fluxcd.io/v1beta2",
-                    "kind": "HelmRepository",
-                    "metadata": {
-                        "name": "atmosphere",
-                        "namespace": constants.NAMESPACE_MONITORING,
-                    },
-                    "spec": {
-                        "interval": "1m",
-                        "url": "http://atmosphere.openstack/charts/",
-                    },
-                },
-                {
                     "apiVersion": "helm.toolkit.fluxcd.io/v2beta1",
                     "kind": "HelmRelease",
                     "metadata": {
@@ -43,6 +31,7 @@ from atmosphere.tasks.composite import openstack_helm
                                 "sourceRef": {
                                     "kind": "HelmRepository",
                                     "name": "atmosphere",
+                                    "namespace": constants.NAMESPACE_OPENSTACK,
                                 },
                                 "version": constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_VERSION,
                             }
@@ -66,18 +55,6 @@ from atmosphere.tasks.composite import openstack_helm
             ),
             [
                 {
-                    "apiVersion": "source.toolkit.fluxcd.io/v1beta2",
-                    "kind": "HelmRepository",
-                    "metadata": {
-                        "name": "atmosphere",
-                        "namespace": constants.NAMESPACE_MONITORING,
-                    },
-                    "spec": {
-                        "interval": "1m",
-                        "url": "http://atmosphere.openstack/charts/",
-                    },
-                },
-                {
                     "apiVersion": "helm.toolkit.fluxcd.io/v2beta1",
                     "kind": "HelmRelease",
                     "metadata": {
@@ -91,6 +68,7 @@ from atmosphere.tasks.composite import openstack_helm
                                 "sourceRef": {
                                     "kind": "HelmRepository",
                                     "name": "atmosphere",
+                                    "namespace": constants.NAMESPACE_OPENSTACK,
                                 },
                                 "version": constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_VERSION,
                             }
@@ -120,18 +98,6 @@ from atmosphere.tasks.composite import openstack_helm
             ),
             [
                 {
-                    "apiVersion": "source.toolkit.fluxcd.io/v1beta2",
-                    "kind": "HelmRepository",
-                    "metadata": {
-                        "name": "atmosphere",
-                        "namespace": constants.NAMESPACE_MONITORING,
-                    },
-                    "spec": {
-                        "interval": "1m",
-                        "url": "http://atmosphere.openstack/charts/",
-                    },
-                },
-                {
                     "apiVersion": "helm.toolkit.fluxcd.io/v2beta1",
                     "kind": "HelmRelease",
                     "metadata": {
@@ -145,6 +111,7 @@ from atmosphere.tasks.composite import openstack_helm
                                 "sourceRef": {
                                     "kind": "HelmRepository",
                                     "name": "atmosphere",
+                                    "namespace": constants.NAMESPACE_OPENSTACK,
                                 },
                                 "version": constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_VERSION,
                             }
@@ -205,18 +172,6 @@ def test_kube_prometheus_stack_tasks_from_config(pykube, cfg_data, expected):
             ),
             [
                 {
-                    "apiVersion": "source.toolkit.fluxcd.io/v1beta2",
-                    "kind": "HelmRepository",
-                    "metadata": {
-                        "name": "atmosphere",
-                        "namespace": constants.NAMESPACE_OPENSTACK,
-                    },
-                    "spec": {
-                        "interval": "1m",
-                        "url": "http://atmosphere.openstack/charts/",
-                    },
-                },
-                {
                     "apiVersion": "helm.toolkit.fluxcd.io/v2beta1",
                     "kind": "HelmRelease",
                     "metadata": {
@@ -230,6 +185,7 @@ def test_kube_prometheus_stack_tasks_from_config(pykube, cfg_data, expected):
                                 "sourceRef": {
                                     "kind": "HelmRepository",
                                     "name": "atmosphere",
+                                    "namespace": constants.NAMESPACE_OPENSTACK,
                                 },
                                 "version": constants.HELM_RELEASE_INGRESS_NGINX_VERSION,
                             }
@@ -253,18 +209,6 @@ def test_kube_prometheus_stack_tasks_from_config(pykube, cfg_data, expected):
             ),
             [
                 {
-                    "apiVersion": "source.toolkit.fluxcd.io/v1beta2",
-                    "kind": "HelmRepository",
-                    "metadata": {
-                        "name": "atmosphere",
-                        "namespace": constants.NAMESPACE_OPENSTACK,
-                    },
-                    "spec": {
-                        "interval": "1m",
-                        "url": "http://atmosphere.openstack/charts/",
-                    },
-                },
-                {
                     "apiVersion": "helm.toolkit.fluxcd.io/v2beta1",
                     "kind": "HelmRelease",
                     "metadata": {
@@ -278,6 +222,7 @@ def test_kube_prometheus_stack_tasks_from_config(pykube, cfg_data, expected):
                                 "sourceRef": {
                                     "kind": "HelmRepository",
                                     "name": "atmosphere",
+                                    "namespace": constants.NAMESPACE_OPENSTACK,
                                 },
                                 "version": constants.HELM_RELEASE_INGRESS_NGINX_VERSION,
                             }
