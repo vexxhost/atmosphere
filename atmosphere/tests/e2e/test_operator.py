@@ -26,15 +26,14 @@ def test_e2e_for_operator(tmp_path, flux_cluster, docker_image):
 
     env = Environment(
         loader=FileSystemLoader("roles/atmosphere/templates"),
-        extensions=[
-            "jinja2_base64_filters.Base64Filters",
-            "jinja2_ansible_filters.AnsibleCoreFiltersExtension",
-        ],
+        extensions=["jinja2_ansible_filters.AnsibleCoreFiltersExtension"],
     )
     env.filters["vexxhost.atmosphere.to_toml"] = tomli_w.dumps
     env.filters["combine"] = core.combine
 
     args = {
+        "atmosphere_cloud_spec": {},
+        "_atmosphere_cloud_spec": {},
         "atmosphere_image": docker_image,
         "atmosphere_config": {
             "memcached": {
