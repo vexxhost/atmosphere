@@ -284,7 +284,6 @@ class ApplyHelmReleaseTask(ApplyKubernetesObjectTask):
             },
         )
 
-
     @retry(
         retry=retry_if_result(lambda f: f is False),
         stop=stop_after_delay(300),

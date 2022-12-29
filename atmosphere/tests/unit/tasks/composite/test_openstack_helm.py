@@ -160,7 +160,9 @@ def test_kube_prometheus_stack_tasks_from_config(pykube, cfg_data, expected):
     namespace_task = tasks.ApplyNamespaceTask(constants.NAMESPACE_MONITORING)
     namespace = namespace_task.generate_object(api, constants.NAMESPACE_MONITORING)
     helm_repo_namespace_task = tasks.ApplyNamespaceTask(constants.NAMESPACE_OPENSTACK)
-    helm_repo_namespace = helm_repo_namespace_task.generate_object(api, constants.NAMESPACE_OPENSTACK)
+    helm_repo_namespace = helm_repo_namespace_task.generate_object(
+        api, constants.NAMESPACE_OPENSTACK
+    )
     helm_repository = tasks.ApplyHelmRepositoryTask(
         inject={
             "repository_name": "atmosphere",
