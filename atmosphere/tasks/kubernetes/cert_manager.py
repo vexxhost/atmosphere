@@ -20,11 +20,7 @@ class ApplyCertificateTask(base.ApplyKubernetesObjectTask):
             kind=Certificate,
             namespace=namespace,
             name=name,
-            requires=set(
-                [
-                    f"helm-release-{constants.NAMESPACE_CERT_MANAGER}-{constants.HELM_RELEASE_CERT_MANAGER_NAME}",
-                ]
-            ),
+            requires=set(["helm_repository"]),
         )
 
     def generate_object(self) -> Certificate:
