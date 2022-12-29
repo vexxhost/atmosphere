@@ -170,5 +170,8 @@ def ingress_nginx_tasks_from_config(config: config.IngressNginxChartConfig):
                 "spec": {},
                 "values_from": [],
             },
+            rebind={
+                "namespace": "openstack_namespace",
+            },
         ),
     ]

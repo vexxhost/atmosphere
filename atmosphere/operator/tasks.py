@@ -110,7 +110,7 @@ class ApplyKubernetesObjectTask(task.Task):
 
 
 class ApplyNamespaceTask(ApplyKubernetesObjectTask):
-    def __init__(self, name: str, inject: dict, provides: str = "namespace", **kwargs):
+    def __init__(self, name: str, inject: dict = {}, provides: str = "namespace", **kwargs):
         super().__init__(
             name=f"ApplyNamespaceTask(name={name})",
             inject={"name": name, **inject},

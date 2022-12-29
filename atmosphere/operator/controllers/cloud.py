@@ -56,6 +56,7 @@ def create_fn(namespace: str, name: str, spec: dict, **_):
                     "chart_name": "magnum",
                     "chart_version": "0.2.8",
                     "release_name": "magnum",
+                    "spec": {},
                 },
                 rebind={
                     "values": "magnum_release_values",
