@@ -14,13 +14,16 @@ from atmosphere.operator.api import Cloud
 def create_fn(namespace: str, name: str, spec: dict, **_):
     flow = graph_flow.Flow("deploy").add(
         tasks.BuildApiClient(),
-        tasks.ApplyNamespaceTask(namespace),
+        tasks.ApplyNamespaceTask(namespace, provides="openstack_namespace"),
         tasks.ApplyHelmRepositoryTask(
             inject={
                 "repository_name": "atmosphere",
                 "url": "http://atmosphere.openstack/charts/",
             },
             provides="helm_repository",
+            rebind={
+                "namespace": "openstack_namespace",
+            },
         ),
         tasks.GenerateImageTagsConfigMap(provides="image_tags"),
         tasks.GenerateSecrets(provides="secrets"),

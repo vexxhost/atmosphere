@@ -28,9 +28,8 @@ class BuildApiClient(task.Task):
 
 class ApplyKubernetesObjectTask(task.Task):
     def __init__(self, rebind={}, **kwargs):
-        rebind["api"] = "api"
         super().__init__(
-            rebind=rebind,
+            rebind={"api": "api", **rebind},
             **kwargs,
         )
 
@@ -111,10 +110,10 @@ class ApplyKubernetesObjectTask(task.Task):
 
 
 class ApplyNamespaceTask(ApplyKubernetesObjectTask):
-    def __init__(self, name: str, provides: str = "namespace"):
+    def __init__(self, name: str, inject: dict, provides: str = "namespace", **kwargs):
         super().__init__(
             name=f"ApplyNamespaceTask(name={name})",
-            inject={"name": name},
+            inject={"name": name, **inject},
             provides=provides,
         )
 

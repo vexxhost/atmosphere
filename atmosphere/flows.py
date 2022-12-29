@@ -30,6 +30,9 @@ def get_deployment_flow(config):
                 "url": "http://atmosphere.openstack/charts/",
             },
             provides="helm_repository",
+            rebind={
+                "namespace": "openstack_namespace",
+            },
         ),
         # kube-system
         tasks.ApplyNamespaceTask(
