@@ -23,12 +23,6 @@ class ApplyKubernetesObjectTask(task.Task):
             kwargs["name"] += f"-{namespace}"
         kwargs["name"] += f"-{name}"
 
-        if namespace:
-            # kwargs.setdefault("requires", [])
-            # kwargs["requires"] += [f"namespace-{namespace}"]
-            kwargs.setdefault("rebind", {})
-            kwargs["rebind"]["namespace"] = f"namespace-{namespace}"
-
         kwargs.setdefault("provides", set())
         kwargs["provides"] = kwargs["provides"].union(set([kwargs["name"]]))
 

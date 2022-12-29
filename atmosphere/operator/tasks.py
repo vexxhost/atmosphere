@@ -30,6 +30,10 @@ class ApplyKubernetesObjectTask(task.Task):
     def generate_object(self, *args, **kwargs) -> pykube.objects.APIObject:
         raise NotImplementedError
 
+    @property
+    def api(self):
+        return clients.get_pykube_api()
+
     def _log(self, resource: pykube.objects.APIObject, message: str):
         resource_info = {
             "kind": resource.kind,
@@ -49,7 +53,8 @@ class ApplyKubernetesObjectTask(task.Task):
         self._log(resource, f"{resource.kind} is ready")
         return resource
 
-    def _apply(self, resource: pykube.objects.APIObject) -> pykube.objects.APIObject:
+    def execute(self, *args, **kwargs):
+        resource = self.generate_object(*args, **kwargs)
         resp = resource.api.patch(
             **resource.api_kwargs(
                 headers={
@@ -71,7 +76,11 @@ class ApplyKubernetesObjectTask(task.Task):
             "Server-side apply completed, starting to wait for resource to be ready...",
         )
 
-        return self.wait_for_resource(resource)
+        self.wait_for_resource(resource)
+
+        return {
+            self.name: resource,
+        }
 
 
 class ApplyNamespaceTask(ApplyKubernetesObjectTask):
@@ -82,9 +91,9 @@ class ApplyNamespaceTask(ApplyKubernetesObjectTask):
             provides=provides,
         )
 
-    def execute(self, api: pykube.HTTPClient, name: str) -> pykube.Namespace:
-        resource = pykube.Namespace(
-            api,
+    def generate_object(self, name: str) -> pykube.Namespace:
+        return pykube.Namespace(
+            self.api,
             {
                 "apiVersion": pykube.Namespace.version,
                 "kind": pykube.Namespace.kind,
@@ -93,8 +102,6 @@ class ApplyNamespaceTask(ApplyKubernetesObjectTask):
                 },
             },
         )
-
-        return self._apply(resource)
 
 
 class ApplySecretTask(ApplyKubernetesObjectTask):
@@ -105,11 +112,11 @@ class ApplySecretTask(ApplyKubernetesObjectTask):
             **kwargs,
         )
 
-    def execute(
-        self, api: pykube.HTTPClient, namespace: pykube.Namespace, name: str, data: dict
+    def generate_object(
+        self, namespace: pykube.Namespace, name: str, data: dict
     ) -> pykube.Secret:
-        resource = pykube.Secret(
-            api,
+        return pykube.Secret(
+            self.api,
             {
                 "apiVersion": pykube.Secret.version,
                 "kind": pykube.Secret.kind,
@@ -121,8 +128,6 @@ class ApplySecretTask(ApplyKubernetesObjectTask):
             },
         )
 
-        return self._apply(resource)
-
 
 class ApplyServiceTask(ApplyKubernetesObjectTask):
     def __init__(self, name: str, inject: dict, **kwargs):
@@ -132,16 +137,15 @@ class ApplyServiceTask(ApplyKubernetesObjectTask):
             **kwargs,
         )
 
-    def execute(
+    def generate_object(
         self,
-        api: pykube.HTTPClient,
         namespace: pykube.Namespace,
         name: str,
         labels: dict,
         ports: list,
     ) -> pykube.Service:
-        resource = pykube.Service(
-            api,
+        return pykube.Service(
+            self.api,
             {
                 "apiVersion": pykube.Service.version,
                 "kind": pykube.Service.kind,
@@ -157,8 +161,6 @@ class ApplyServiceTask(ApplyKubernetesObjectTask):
             },
         )
 
-        return self._apply(resource)
-
 
 class HelmRepository(pykube.objects.NamespacedAPIObject):
     version = "source.toolkit.fluxcd.io/v1beta2"
@@ -167,15 +169,14 @@ class HelmRepository(pykube.objects.NamespacedAPIObject):
 
 
 class ApplyHelmRepositoryTask(ApplyKubernetesObjectTask):
-    def execute(
+    def generate_object(
         self,
-        api: pykube.HTTPClient,
         namespace: pykube.Namespace,
         repository_name: str,
         url: str,
     ) -> HelmRepository:
-        resource = HelmRepository(
-            api,
+        return HelmRepository(
+            self.api,
             {
                 "apiVersion": HelmRepository.version,
                 "kind": HelmRepository.kind,
@@ -208,9 +209,8 @@ class ApplyHelmReleaseTask(ApplyKubernetesObjectTask):
             provides=f"{config['release_name'].replace('-', '_')}_helm_release",
         )
 
-    def execute(
+    def generate_object(
         self,
-        api: pykube.HTTPClient,
         namespace: pykube.objects.Namespace,
         release_name: str,
         helm_repository: HelmRepository,
@@ -227,8 +227,8 @@ class ApplyHelmReleaseTask(ApplyKubernetesObjectTask):
                 spec[config_key].get("overrides", {}),
                 values,
             )
-        resource = HelmRelease(
-            api,
+        return HelmRelease(
+            self.api,
             {
                 "apiVersion": HelmRelease.version,
                 "kind": HelmRelease.kind,
@@ -263,7 +263,6 @@ class ApplyHelmReleaseTask(ApplyKubernetesObjectTask):
             },
         )
 
-        return self._apply(resource)
 
     @retry(
         retry=retry_if_result(lambda f: f is False),
@@ -361,9 +360,8 @@ class ApplyRabbitmqClusterTask(ApplyKubernetesObjectTask):
             provides=f"{cluster_name}_rabbitmq_cluster",
         )
 
-    def execute(
+    def generate_object(
         self,
-        api: pykube.HTTPClient,
         namespace: pykube.Namespace,
         rabbitmq_cluster_operator_helm_release: HelmRelease,
         cluster_name: str,
@@ -371,8 +369,8 @@ class ApplyRabbitmqClusterTask(ApplyKubernetesObjectTask):
         # NOTE(mnaser): This is a workaround to make sure the CRD is installed
         assert rabbitmq_cluster_operator_helm_release.exists()
 
-        resource = RabbitmqCluster(
-            api,
+        return RabbitmqCluster(
+            self.api,
             {
                 "apiVersion": RabbitmqCluster.version,
                 "kind": RabbitmqCluster.kind,
@@ -410,8 +408,6 @@ class ApplyRabbitmqClusterTask(ApplyKubernetesObjectTask):
             },
         )
 
-        return self._apply(resource)
-
 
 class PerconaXtraDBCluster(pykube.objects.NamespacedAPIObject):
     version = "pxc.percona.com/v1-10-0"
@@ -420,7 +416,7 @@ class PerconaXtraDBCluster(pykube.objects.NamespacedAPIObject):
 
 
 class ApplyPerconaXtraDBClusterTask(ApplyKubernetesObjectTask):
-    def execute(
+    def generate_object(
         self,
         namespace: pykube.Namespace,
         spec: dict,
@@ -429,7 +425,7 @@ class ApplyPerconaXtraDBClusterTask(ApplyKubernetesObjectTask):
         # NOTE(mnaser): This is a workaround to make sure the CRD is installed
         assert pxc_operator_helm_release.exists()
 
-        resource = PerconaXtraDBCluster(
+        return PerconaXtraDBCluster(
             self.api,
             {
                 "apiVersion": PerconaXtraDBCluster.version,
@@ -494,7 +490,6 @@ class ApplyPerconaXtraDBClusterTask(ApplyKubernetesObjectTask):
             },
         )
 
-        return self._apply(resource)
 
     @retry(
         retry=retry_if_result(lambda f: f is False),
@@ -517,21 +512,21 @@ class ApplyPerconaXtraDBClusterTask(ApplyKubernetesObjectTask):
 
 
 class GenerateSecrets(ApplyKubernetesObjectTask):
-    def execute(
-        self, api: pykube.HTTPClient, namespace: str, name: str
+    def generate_object(
+        self, namespace: str, name: str
     ) -> pykube.Secret:
         # TODO(mnaser): We should generate this if it's missing, but for now
         #               assume that it exists.
         secret_name = f"{name}-secrets"
-        return pykube.Secret.objects(api, namespace=namespace).get(name=secret_name)
+        return pykube.Secret.objects(self.api, namespace=namespace).get(name=secret_name)
 
 
 class GenerateImageTagsConfigMap(ApplyKubernetesObjectTask):
-    def execute(
-        self, api: pykube.HTTPClient, namespace: str, name: str, spec: dict
+    def generate_object(
+        self, namespace: str, name: str, spec: dict
     ) -> pykube.ConfigMap:
-        resource = pykube.ConfigMap(
-            api,
+        return pykube.ConfigMap(
+            self.api,
             {
                 "apiVersion": pykube.ConfigMap.version,
                 "kind": pykube.ConfigMap.kind,
@@ -556,8 +551,6 @@ class GenerateImageTagsConfigMap(ApplyKubernetesObjectTask):
                 },
             },
         )
-
-        return self._apply(resource)
 
 
 class GetChartValues(task.Task):
@@ -792,9 +785,8 @@ class GenerateMagnumChartValuesFrom(task.Task):
 
 
 class ApplyIngressTask(ApplyKubernetesObjectTask):
-    def execute(
+    def generate_object(
         self,
-        api: pykube.HTTPClient,
         namespace: str,
         endpoint: str,
         spec: dict,
@@ -807,8 +799,8 @@ class ApplyIngressTask(ApplyKubernetesObjectTask):
         service_name = chart_values["endpoints"][endpoint]["hosts"]["default"]
         service_port = chart_values["endpoints"][endpoint]["port"]["api"]["default"]
 
-        resource = pykube.Ingress(
-            api,
+        return pykube.Ingress(
+            self.api,
             {
                 "apiVersion": pykube.Ingress.version,
                 "kind": pykube.Ingress.kind,
@@ -848,8 +840,6 @@ class ApplyIngressTask(ApplyKubernetesObjectTask):
                 },
             },
         )
-
-        return self._apply(resource)
 
 
 class GenerateOpenStackHelmEndpoints(task.Task):
