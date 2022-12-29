@@ -118,7 +118,9 @@ class ApplyNamespaceTask(ApplyKubernetesObjectTask):
             provides=provides,
         )
 
-    def generate_object(self, api: pykube.HTTPClient, name: str) -> pykube.Namespace:
+    def generate_object(
+        self, api: pykube.HTTPClient, name: str, *args, **kwargs
+    ) -> pykube.Namespace:
         return pykube.Namespace(
             api,
             {
@@ -140,7 +142,13 @@ class ApplySecretTask(ApplyKubernetesObjectTask):
         )
 
     def generate_object(
-        self, api: pykube.HTTPClient, namespace: pykube.Namespace, name: str, data: dict
+        self,
+        api: pykube.HTTPClient,
+        namespace: pykube.Namespace,
+        name: str,
+        data: dict,
+        *args,
+        **kwargs,
     ) -> pykube.Secret:
         return pykube.Secret(
             api,
@@ -171,6 +179,8 @@ class ApplyServiceTask(ApplyKubernetesObjectTask):
         name: str,
         labels: dict,
         ports: list,
+        *args,
+        **kwargs,
     ) -> pykube.Service:
         return pykube.Service(
             api,
@@ -203,6 +213,8 @@ class ApplyHelmRepositoryTask(ApplyKubernetesObjectTask):
         namespace: pykube.Namespace,
         repository_name: str,
         url: str,
+        *args,
+        **kwargs,
     ) -> HelmRepository:
         return HelmRepository(
             api,
@@ -248,6 +260,8 @@ class ApplyHelmReleaseTask(ApplyKubernetesObjectTask):
         values_from: list,
         spec: dict,
         alias: str = "",
+        *args,
+        **kwargs,
     ) -> HelmRelease:
         config_key = chart_name if not alias else alias
         if config_key in spec:
@@ -393,6 +407,8 @@ class ApplyRabbitmqClusterTask(ApplyKubernetesObjectTask):
         namespace: pykube.Namespace,
         rabbitmq_cluster_operator_helm_release: HelmRelease,
         cluster_name: str,
+        *args,
+        **kwargs,
     ) -> dict:
         # NOTE(mnaser): This is a workaround to make sure the CRD is installed
         assert rabbitmq_cluster_operator_helm_release.exists()
@@ -446,15 +462,18 @@ class PerconaXtraDBCluster(pykube.objects.NamespacedAPIObject):
 class ApplyPerconaXtraDBClusterTask(ApplyKubernetesObjectTask):
     def generate_object(
         self,
+        api: pykube.HTTPClient,
         namespace: pykube.Namespace,
         spec: dict,
         pxc_operator_helm_release: HelmRelease,
+        *args,
+        **kwargs,
     ) -> PerconaXtraDBCluster:
         # NOTE(mnaser): This is a workaround to make sure the CRD is installed
         assert pxc_operator_helm_release.exists()
 
         return PerconaXtraDBCluster(
-            self.api,
+            api,
             {
                 "apiVersion": PerconaXtraDBCluster.version,
                 "kind": PerconaXtraDBCluster.kind,
@@ -540,7 +559,7 @@ class ApplyPerconaXtraDBClusterTask(ApplyKubernetesObjectTask):
 
 class GenerateSecrets(ApplyKubernetesObjectTask):
     def generate_object(
-        self, api: pykube.HTTPClient, namespace: str, name: str
+        self, api: pykube.HTTPClient, namespace: str, name: str, *args, **kwargs
     ) -> pykube.Secret:
         # TODO(mnaser): We should generate this if it's missing, but for now
         #               assume that it exists.
@@ -550,7 +569,13 @@ class GenerateSecrets(ApplyKubernetesObjectTask):
 
 class GenerateImageTagsConfigMap(ApplyKubernetesObjectTask):
     def generate_object(
-        self, api: pykube.HTTPClient, namespace: str, name: str, spec: dict
+        self,
+        api: pykube.HTTPClient,
+        namespace: str,
+        name: str,
+        spec: dict,
+        *args,
+        **kwargs,
     ) -> pykube.ConfigMap:
         return pykube.ConfigMap(
             api,
@@ -820,6 +845,8 @@ class ApplyIngressTask(ApplyKubernetesObjectTask):
         spec: dict,
         chart_values: dict,
         release_values: dict,
+        *args,
+        **kwargs,
     ) -> pykube.Ingress:
         host = release_values["endpoints"][endpoint]["host_fqdn_override"]["public"][
             "host"

@@ -23,7 +23,7 @@ class ApplyCertificateTask(base.ApplyKubernetesObjectTask):
             requires=set(["helm_repository"]),
         )
 
-    def generate_object(self) -> Certificate:
+    def generate_object(self, *args, **kwargs) -> Certificate:
         return Certificate(
             self.api,
             {
@@ -55,7 +55,7 @@ class ApplyClusterIssuerTask(base.ApplyKubernetesObjectTask):
             requires=set(["cert_manager_helm_release"]),
         )
 
-    def generate_object(self) -> ClusterIssuer:
+    def generate_object(self, *args, **kwargs) -> ClusterIssuer:
         return ClusterIssuer(
             self.api,
             {
