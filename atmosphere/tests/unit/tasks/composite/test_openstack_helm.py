@@ -4,6 +4,7 @@ import mergedeep
 import pytest
 
 from atmosphere.models import config
+from atmosphere.operator import tasks
 from atmosphere.tasks import constants
 from atmosphere.tasks.composite import openstack_helm
 
@@ -255,8 +256,30 @@ def test_kube_prometheus_stack_tasks_from_config(pykube, cfg_data, expected):
 def test_ingress_nginx_tasks_from_config(pykube, cfg_data, expected):
     cfg = config.Config.from_string(cfg_data, validate=False)
     cfg.ingress_nginx.validate()
-
+    api = tasks.BuildApiClient()
+    namespace = tasks.ApplyNamespaceTask(constants.NAMESPACE_OPENSTACK)
+    helm_repository = tasks.ApplyHelmRepositoryTask(
+        repository_name="atmosphere",
+        url="http://atmosphere.openstack/charts/",
+    )
     assert [
-        t.generate_object().obj
+        t.execute(
+            api=api.execute(),
+            namespace=namespace.execute(api, constants.NAMESPACE_OPENSTACK),
+            release_name=constants.HELM_RELEASE_INGRESS_NGINX_NAME,
+            helm_repository=helm_repository.execute(
+                api,
+                repository_name="atmosphere",
+                url="http://atmosphere.openstack/charts/",
+            ),
+            chart_name=constants.HELM_RELEASE_INGRESS_NGINX_NAME,
+            chart_version=constants.HELM_RELEASE_INGRESS_NGINX_VERSION,
+            values={
+                **constants.HELM_RELEASE_INGRESS_NGINX_VALUES,
+                "foo": "bar",
+            },
+            spec={},
+            values_from=[],
+        ).obj
         for t in openstack_helm.ingress_nginx_tasks_from_config(cfg.ingress_nginx)
     ] == expected
