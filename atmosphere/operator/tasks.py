@@ -27,6 +27,13 @@ class BuildApiClient(task.Task):
 
 
 class ApplyKubernetesObjectTask(task.Task):
+    def __init__(self, rebind={}, **kwargs):
+        rebind["api"] = "api"
+        super().__init__(
+            rebind=rebind,
+            **kwargs,
+        )
+
     def generate_object(self, *args, **kwargs) -> pykube.objects.APIObject:
         raise NotImplementedError
 
