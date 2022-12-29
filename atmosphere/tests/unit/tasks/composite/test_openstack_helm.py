@@ -155,8 +155,38 @@ def test_kube_prometheus_stack_tasks_from_config(pykube, cfg_data, expected):
     cfg = config.Config.from_string(cfg_data, validate=False)
     cfg.kube_prometheus_stack.validate()
 
+    api_task = tasks.BuildApiClient()
+    api = api_task.execute()
+    namespace_task = tasks.ApplyNamespaceTask(constants.NAMESPACE_MONITORING)
+    namespace = namespace_task.generate_object(api, constants.NAMESPACE_MONITORING)
+    helm_repo_namespace_task = tasks.ApplyNamespaceTask(constants.NAMESPACE_OPENSTACK)
+    helm_repo_namespace = helm_repo_namespace_task.generate_object(api, constants.NAMESPACE_OPENSTACK)
+    helm_repository = tasks.ApplyHelmRepositoryTask(
+        inject={
+            "repository_name": "atmosphere",
+            "url": "http://atmosphere.openstack/charts/",
+            "namespace": helm_repo_namespace,
+        },
+    )
     assert [
-        t.generate_object().obj
+        t.generate_object(
+            api=api,
+            namespace=namespace,
+            release_name=constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_NAME,
+            helm_repository=helm_repository.generate_object(
+                api,
+                repository_name="atmosphere",
+                url="http://atmosphere.openstack/charts/",
+                namespace=helm_repo_namespace,
+            ),
+            chart_name=constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_NAME,
+            chart_version=constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_VERSION,
+            values=openstack_helm._kube_prometheus_stack_values_from_config(
+                cfg.kube_prometheus_stack, opsgenie=cfg.opsgenie
+            ),
+            spec={},
+            values_from=[],
+        ).obj
         for t in openstack_helm.kube_prometheus_stack_tasks_from_config(
             cfg.kube_prometheus_stack, opsgenie=cfg.opsgenie
         )
@@ -256,28 +286,34 @@ def test_kube_prometheus_stack_tasks_from_config(pykube, cfg_data, expected):
 def test_ingress_nginx_tasks_from_config(pykube, cfg_data, expected):
     cfg = config.Config.from_string(cfg_data, validate=False)
     cfg.ingress_nginx.validate()
-    api = tasks.BuildApiClient()
-    namespace = tasks.ApplyNamespaceTask(constants.NAMESPACE_OPENSTACK)
+    api_task = tasks.BuildApiClient()
+    api = api_task.execute()
+    namespace_task = tasks.ApplyNamespaceTask(constants.NAMESPACE_OPENSTACK)
+    namespace = namespace_task.generate_object(api, constants.NAMESPACE_OPENSTACK)
     helm_repository = tasks.ApplyHelmRepositoryTask(
-        repository_name="atmosphere",
-        url="http://atmosphere.openstack/charts/",
+        inject={
+            "repository_name": "atmosphere",
+            "url": "http://atmosphere.openstack/charts/",
+            "namespace": namespace,
+        },
     )
     assert [
-        t.execute(
-            api=api.execute(),
-            namespace=namespace.execute(api, constants.NAMESPACE_OPENSTACK),
+        t.generate_object(
+            api=api,
+            namespace=namespace,
             release_name=constants.HELM_RELEASE_INGRESS_NGINX_NAME,
-            helm_repository=helm_repository.execute(
+            helm_repository=helm_repository.generate_object(
                 api,
                 repository_name="atmosphere",
                 url="http://atmosphere.openstack/charts/",
+                namespace=namespace,
             ),
             chart_name=constants.HELM_RELEASE_INGRESS_NGINX_NAME,
             chart_version=constants.HELM_RELEASE_INGRESS_NGINX_VERSION,
-            values={
-                **constants.HELM_RELEASE_INGRESS_NGINX_VALUES,
-                "foo": "bar",
-            },
+            values=mergedeep.merge(
+                constants.HELM_RELEASE_INGRESS_NGINX_VALUES,
+                cfg.ingress_nginx.overrides,
+            ),
             spec={},
             values_from=[],
         ).obj

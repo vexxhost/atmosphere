@@ -108,12 +108,9 @@ def generate_alertmanager_config_for_opsgenie(
     }
 
 
-def kube_prometheus_stack_tasks_from_config(
+def _kube_prometheus_stack_values_from_config(
     config: config.KubePrometheusStackChartConfig, opsgenie: config.OpsGenieConfig
 ):
-    if not config.enabled:
-        return []
-
     values = mergedeep.merge(
         {},
         constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_VALUES,
@@ -124,6 +121,16 @@ def kube_prometheus_stack_tasks_from_config(
         values["alertmanager"]["config"] = generate_alertmanager_config_for_opsgenie(
             opsgenie
         )
+    return values
+
+
+def kube_prometheus_stack_tasks_from_config(
+    config: config.KubePrometheusStackChartConfig, opsgenie: config.OpsGenieConfig
+):
+    if not config.enabled:
+        return []
+
+    values = _kube_prometheus_stack_values_from_config(config, opsgenie)
 
     return [
         tasks.ApplyHelmReleaseTask(
