@@ -10,7 +10,7 @@ from atmosphere.tasks import constants
 
 
 class ApplyReleaseSecretTask(tasks.ApplySecretTask):
-    def __init__(self, config: config.Config, chart: str):
+    def __init__(self, config: config.Config, chart: str, rebind: dict = {}):
         vals = mergedeep.merge(
             {},
             values.Values.for_chart(chart, config).to_native(),
@@ -23,6 +23,7 @@ class ApplyReleaseSecretTask(tasks.ApplySecretTask):
             inject={
                 "data": {"values.yaml": values_yaml},
             },
+            rebind=rebind,
         )
 
 

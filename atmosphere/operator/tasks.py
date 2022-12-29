@@ -398,6 +398,10 @@ class ApplyRabbitmqClusterTask(ApplyKubernetesObjectTask):
         super().__init__(
             name=f"ApplyRabbitmqClusterTask(cluster_name={cluster_name})",
             inject={"cluster_name": cluster_name},
+            rebind={
+                "rabbitmq_cluster_operator_helm_release": "rabbitmq_cluster_operator_helm_release",
+                "namespace": "openstack_namespace",
+            },
             provides=f"{cluster_name}_rabbitmq_cluster",
         )
 

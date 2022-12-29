@@ -57,6 +57,7 @@ def create_fn(namespace: str, name: str, spec: dict, **_):
                 rebind={
                     "values": "magnum_release_values",
                     "values_from": "magnum_values_from",
+                    "namespace": "openstack_namespace",
                 },
             ),
             tasks.ApplyIngressTask(

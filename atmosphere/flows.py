@@ -21,7 +21,9 @@ def get_deployment_flow(config):
     flow = graph_flow.Flow("deploy").add(
         tasks.BuildApiClient(),
         # openstack
-        tasks.ApplyNamespaceTask(constants.NAMESPACE_OPENSTACK),
+        tasks.ApplyNamespaceTask(
+            constants.NAMESPACE_OPENSTACK, provides="openstack_namespace"
+        ),
         tasks.ApplyHelmRepositoryTask(
             inject={
                 "repository_name": "atmosphere",
@@ -81,6 +83,9 @@ def get_deployment_flow(config):
                 "spec": {},
                 "values_from": [],
             },
+            rebind={
+                "namespace": "openstack_namespace",
+            },
         ),
         tasks.ApplyHelmReleaseTask(
             config={
@@ -91,12 +96,19 @@ def get_deployment_flow(config):
                 "spec": {},
                 "values_from": [],
             },
+            rebind={
+                "namespace": "openstack_namespace",
+            },
         ),
         tasks.ApplyPerconaXtraDBClusterTask(
             inject={
                 "spec": {
                     "imageRepository": utils.get_legacy_image_repository(),
                 },
+            },
+            rebind={
+                "namespace": "openstack_namespace",
+                "pxc_operator_helm_release": "pxc_operator_helm_release",
             },
         ),
         *openstack_helm.ingress_nginx_tasks_from_config(config.ingress_nginx),
@@ -116,6 +128,9 @@ def get_deployment_flow(config):
             openstack_helm.ApplyReleaseSecretTask(
                 config=config,
                 chart="memcached",
+                rebind={
+                    "namespace": "openstack_namespace",
+                },
             ),
             tasks.ApplyHelmReleaseTask(
                 config={
@@ -130,6 +145,9 @@ def get_deployment_flow(config):
                         }
                     ],
                     "spec": {},
+                },
+                rebind={
+                    "namespace": "openstack_namespace",
                 },
             ),
             tasks.ApplyServiceTask(
@@ -146,6 +164,9 @@ def get_deployment_flow(config):
                             "targetPort": 9150,
                         },
                     ],
+                },
+                rebind={
+                    "namespace": "openstack_namespace",
                 },
             ),
         )
