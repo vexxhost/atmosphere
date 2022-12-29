@@ -155,7 +155,7 @@ def test_kube_prometheus_stack_tasks_from_config(pykube, cfg_data, expected):
     cfg.kube_prometheus_stack.validate()
 
     assert [
-        t.generate_object().obj
+        t.execute().obj
         for t in openstack_helm.kube_prometheus_stack_tasks_from_config(
             cfg.kube_prometheus_stack, opsgenie=cfg.opsgenie
         )
@@ -257,6 +257,6 @@ def test_ingress_nginx_tasks_from_config(pykube, cfg_data, expected):
     cfg.ingress_nginx.validate()
 
     assert [
-        t.generate_object().obj
+        t.execute().obj
         for t in openstack_helm.ingress_nginx_tasks_from_config(cfg.ingress_nginx)
     ] == expected
