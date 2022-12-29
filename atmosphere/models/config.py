@@ -43,6 +43,7 @@ class Route53AcmeIssuerSolverConfig(AcmeIssuerSolverConfig):
 
 
 class Issuer(base.Model):
+    enabled = types.BooleanType(default=True, required=True)
     type = types.StringType(
         choices=("acme", "ca", "self-signed"), default="acme", required=True
     )
