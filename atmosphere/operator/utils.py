@@ -7,7 +7,7 @@ def get_image_ref(
     image_name: str, override_registry: str = None
 ) -> reference.Reference:
     ref = reference.Reference.parse(constants.IMAGE_LIST[image_name])
-    if override_registry is None:
+    if not override_registry:
         return ref
 
     # NOTE(mnaser): We re-write the name of a few images to make sense of them
