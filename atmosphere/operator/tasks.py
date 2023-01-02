@@ -12,24 +12,12 @@ from oslo_utils import strutils
 from taskflow import task
 from tenacity import retry, retry_if_result, stop_after_delay, wait_fixed
 
-from atmosphere import clients
 from atmosphere.operator import constants, utils
 
 LOG = logging.getLogger(__name__)
 
 
-class BuildApiClient(task.Task):
-    default_provides = "api"
-
-    def execute(self) -> pykube.HTTPClient:
-        return clients.get_pykube_api()
-
-
 class ApplyKubernetesObjectTask(task.Task):
-    @property
-    def api(self):
-        return clients.get_pykube_api()
-
     def generate_object(self, *args, **kwargs) -> pykube.objects.APIObject:
         raise NotImplementedError
 
@@ -492,67 +480,6 @@ class GenerateMagnumChartValuesFrom(task.Task):
                 "valuesKey": "magnum-rabbitmq-password",
             },
         ]
-
-
-class ApplyIngressTask(ApplyKubernetesObjectTask):
-    def execute(
-        self,
-        api: pykube.HTTPClient,
-        namespace: str,
-        endpoint: str,
-        spec: dict,
-        chart_values: dict,
-        release_values: dict,
-    ) -> pykube.Ingress:
-        host = release_values["endpoints"][endpoint]["host_fqdn_override"]["public"][
-            "host"
-        ]
-        service_name = chart_values["endpoints"][endpoint]["hosts"]["default"]
-        service_port = chart_values["endpoints"][endpoint]["port"]["api"]["default"]
-
-        resource = pykube.Ingress(
-            api,
-            {
-                "apiVersion": pykube.Ingress.version,
-                "kind": pykube.Ingress.kind,
-                "metadata": {
-                    "name": endpoint.replace("_", "-"),
-                    "namespace": namespace,
-                    "annotations": {
-                        "cert-manager.io/cluster-issuer": spec[
-                            "certManagerClusterIssuer"
-                        ],
-                    },
-                },
-                "spec": {
-                    "ingressClassName": spec["ingressClassName"],
-                    "rules": [
-                        {
-                            "host": host,
-                            "http": {
-                                "paths": [
-                                    {
-                                        "path": "/",
-                                        "pathType": "Prefix",
-                                        "backend": {
-                                            "service": {
-                                                "name": service_name,
-                                                "port": {
-                                                    "number": service_port,
-                                                },
-                                            },
-                                        },
-                                    },
-                                ],
-                            },
-                        },
-                    ],
-                    "tls": [{"secretName": f"{service_name}-certs", "hosts": [host]}],
-                },
-            },
-        )
-
-        return self._apply(resource)
 
 
 class GenerateOpenStackHelmEndpoints(task.Task):

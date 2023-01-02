@@ -5,15 +5,17 @@ from taskflow import engines
 from taskflow.listeners import logging as logging_listener
 from taskflow.patterns import graph_flow
 
+from atmosphere import clients
 from atmosphere.operator import tasks
-from atmosphere.operator.api import Cloud
+from atmosphere.operator.api import Cloud, objects, types
+
+API = clients.get_pykube_api()
 
 
 @kopf.on.resume(Cloud.version, Cloud.kind)
 @kopf.on.create(Cloud.version, Cloud.kind)
 def create_fn(namespace: str, name: str, spec: dict, **_):
     flow = graph_flow.Flow("deploy").add(
-        tasks.BuildApiClient(),
         tasks.GenerateImageTagsConfigMap(provides="image_tags"),
         tasks.GenerateSecrets(provides="secrets"),
     )
@@ -54,18 +56,24 @@ def create_fn(namespace: str, name: str, spec: dict, **_):
                     "values_from": "magnum_values_from",
                 },
             ),
-            tasks.ApplyIngressTask(
-                inject={"endpoint": "container_infra"},
-                rebind={
-                    "chart_values": "magnum_chart_values",
-                    "release_values": "magnum_release_values",
-                },
-            ),
         )
+        objects.OpenstackHelmIngress(
+            api=API,
+            metadata=types.OpenstackHelmIngressObjectMeta(
+                name="container-infra",
+                namespace=namespace,
+            ),
+            spec=types.OpenstackHelmIngressSpec(
+                clusterIssuer=spec["certManagerClusterIssuer"],
+                ingressClassName=spec["ingressClassName"],
+                host=spec["magnum"]["endpoint"],
+            ),
+        ).apply()
 
     engine = engines.load(
         flow,
         store={
+            "api": API,
             "namespace": namespace,
             "name": name,
             "spec": spec,

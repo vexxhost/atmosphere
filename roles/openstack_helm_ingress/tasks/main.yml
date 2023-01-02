@@ -16,26 +16,13 @@
   kubernetes.core.k8s:
     state: present
     definition:
-      apiVersion: v1
-      kind: Ingress
+      apiVersion: atmosphere.vexxhost.com/v1alpha1
+      kind: OpenstackHelmIngress
       metadata:
         name: "{{ openstack_helm_ingress_endpoint | replace('_', '-') }}"
         namespace: openstack
-        annotations: "{{ _openstack_helm_ingress_annotations | combine(openstack_helm_ingress_annotations, recursive=True) }}"
+        annotations: "{{ openstack_helm_ingress_annotations }}"
       spec:
+        clusterIssuer: "{{ openstack_helm_ingress_cluster_issuer | default('atmosphere') }}"
         ingressClassName: "{{ openstack_helm_ingress_class_name | default('openstack') }}"
-        rules:
-          - host: "{{ openstack_helm_endpoints[openstack_helm_ingress_endpoint]['host_fqdn_override']['public']['host'] }}"
-            http:
-              paths: "{{ _openstack_helm_ingress_paths }}"
-        tls:
-          - secretName: "{{ openstack_helm_ingress_secret_name | default(openstack_helm_ingress_service_name + '-certs') }}"
-            hosts:
-              - "{{ openstack_helm_endpoints[openstack_helm_ingress_endpoint]['host_fqdn_override']['public']['host'] }}"
-  # NOTE(mnaser): The Atmosphere operator is so fast that the Ingress webhook
-  #               is not up yet by the time we run this for the first time, so
-  #               we retry until we let the operator handle creating the ingress.
-  retries: 60
-  delay: 5
-  register: _result
-  until: _result is not failed
+        host: "{{ openstack_helm_endpoints[openstack_helm_ingress_endpoint]['host_fqdn_override']['public']['host'] }}"
