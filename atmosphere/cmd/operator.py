@@ -1,5 +1,3 @@
-import os
-
 import kopf
 
 from atmosphere import clients, flows
@@ -8,12 +6,6 @@ from atmosphere.operator import controllers  # noqa: F401
 from atmosphere.operator.api import objects, types
 
 API = clients.get_pykube_api()
-
-
-@kopf.on.startup()
-def configure(settings: kopf.OperatorSettings, **_):
-    settings.admission.server = kopf.WebhookServer(host=os.environ["POD_IP"])
-    settings.admission.managed = "auto.atmosphere.vexxhost.com"
 
 
 @kopf.on.startup()
