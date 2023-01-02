@@ -1,37 +1,27 @@
 from taskflow import engines
 from taskflow.patterns import graph_flow
 
-from atmosphere import clients, utils
+from atmosphere import clients
 from atmosphere.operator.api import objects, types
 from atmosphere.tasks import constants
 from atmosphere.tasks.composite import openstack_helm
 from atmosphere.tasks.kubernetes import cert_manager, flux, v1
 
-API = clients.get_pykube_api()
-
 
 def get_engine(config):
-    return engines.load(
-        get_deployment_flow(config),
-        executor="greenthreaded",
-        engine="parallel",
-        max_workers=4,
-    )
+    api = clients.get_pykube_api()
 
-
-# TODO(mnaser): Move this into the Cloud CRD
-def get_deployment_flow(config):
     # NOTE(mnaser): We're running this first since we do get often timeouts
     #               when waiting for the self-signed certificate authority to
     #               be ready.
     objects.Namespace(
-        api=API,
+        api=api,
         metadata=types.ObjectMeta(
             name=constants.NAMESPACE_CERT_MANAGER,
         ),
     ).apply()
     objects.HelmRepository(
-        api=API,
+        api=api,
         metadata=types.NamespacedObjectMeta(
             name=constants.HELM_REPOSITORY_JETSTACK,
             namespace=constants.NAMESPACE_CERT_MANAGER,
@@ -41,7 +31,7 @@ def get_deployment_flow(config):
         ),
     ).apply()
     objects.HelmRelease(
-        api=API,
+        api=api,
         metadata=types.NamespacedObjectMeta(
             name=constants.HELM_RELEASE_CERT_MANAGER_NAME,
             namespace=constants.NAMESPACE_CERT_MANAGER,
@@ -63,12 +53,22 @@ def get_deployment_flow(config):
     ).apply()
 
     objects.Namespace(
-        api=API,
+        api=api,
         metadata=types.ObjectMeta(
             name=constants.NAMESPACE_MONITORING,
         ),
     ).apply()
 
+    return engines.load(
+        get_deployment_flow(config),
+        executor="greenthreaded",
+        engine="parallel",
+        max_workers=4,
+    )
+
+
+# TODO(mnaser): Move this into the Cloud CRD
+def get_deployment_flow(config):
     flow = graph_flow.Flow("deploy").add(
         # kube-system
         flux.ApplyHelmRepositoryTask(
@@ -141,127 +141,6 @@ def get_deployment_flow(config):
             url="https://tarballs.opendev.org/openstack/openstack-helm/",
         ),
     )
-
-    objects.OpenstackHelmRabbitmqCluster(
-        api=API,
-        metadata=types.NamespacedObjectMeta(
-            name=constants.HELM_RELEASE_KEYSTONE_NAME,
-            namespace=constants.NAMESPACE_OPENSTACK,
-        ),
-        spec=types.OpenstackHelmRabbitmqClusterSpec(
-            image=utils.get_image_ref_using_legacy_image_repository(
-                "rabbitmq_server"
-            ).string()
-        ),
-    ).apply()
-    objects.OpenstackHelmRabbitmqCluster(
-        api=API,
-        metadata=types.NamespacedObjectMeta(
-            name=constants.HELM_RELEASE_BARBICAN_NAME,
-            namespace=constants.NAMESPACE_OPENSTACK,
-        ),
-        spec=types.OpenstackHelmRabbitmqClusterSpec(
-            image=utils.get_image_ref_using_legacy_image_repository(
-                "rabbitmq_server"
-            ).string()
-        ),
-    ).apply()
-    objects.OpenstackHelmRabbitmqCluster(
-        api=API,
-        metadata=types.NamespacedObjectMeta(
-            name=constants.HELM_RELEASE_GLANCE_NAME,
-            namespace=constants.NAMESPACE_OPENSTACK,
-        ),
-        spec=types.OpenstackHelmRabbitmqClusterSpec(
-            image=utils.get_image_ref_using_legacy_image_repository(
-                "rabbitmq_server"
-            ).string()
-        ),
-    ).apply()
-    objects.OpenstackHelmRabbitmqCluster(
-        api=API,
-        metadata=types.NamespacedObjectMeta(
-            name=constants.HELM_RELEASE_CINDER_NAME,
-            namespace=constants.NAMESPACE_OPENSTACK,
-        ),
-        spec=types.OpenstackHelmRabbitmqClusterSpec(
-            image=utils.get_image_ref_using_legacy_image_repository(
-                "rabbitmq_server"
-            ).string()
-        ),
-    ).apply()
-    objects.OpenstackHelmRabbitmqCluster(
-        api=API,
-        metadata=types.NamespacedObjectMeta(
-            name=constants.HELM_RELEASE_NEUTRON_NAME,
-            namespace=constants.NAMESPACE_OPENSTACK,
-        ),
-        spec=types.OpenstackHelmRabbitmqClusterSpec(
-            image=utils.get_image_ref_using_legacy_image_repository(
-                "rabbitmq_server"
-            ).string()
-        ),
-    ).apply()
-    objects.OpenstackHelmRabbitmqCluster(
-        api=API,
-        metadata=types.NamespacedObjectMeta(
-            name=constants.HELM_RELEASE_NOVA_NAME,
-            namespace=constants.NAMESPACE_OPENSTACK,
-        ),
-        spec=types.OpenstackHelmRabbitmqClusterSpec(
-            image=utils.get_image_ref_using_legacy_image_repository(
-                "rabbitmq_server"
-            ).string()
-        ),
-    ).apply()
-    objects.OpenstackHelmRabbitmqCluster(
-        api=API,
-        metadata=types.NamespacedObjectMeta(
-            name=constants.HELM_RELEASE_OCTAVIA_NAME,
-            namespace=constants.NAMESPACE_OPENSTACK,
-        ),
-        spec=types.OpenstackHelmRabbitmqClusterSpec(
-            image=utils.get_image_ref_using_legacy_image_repository(
-                "rabbitmq_server"
-            ).string()
-        ),
-    ).apply()
-    objects.OpenstackHelmRabbitmqCluster(
-        api=API,
-        metadata=types.NamespacedObjectMeta(
-            name=constants.HELM_RELEASE_SENLIN_NAME,
-            namespace=constants.NAMESPACE_OPENSTACK,
-        ),
-        spec=types.OpenstackHelmRabbitmqClusterSpec(
-            image=utils.get_image_ref_using_legacy_image_repository(
-                "rabbitmq_server"
-            ).string()
-        ),
-    ).apply()
-    objects.OpenstackHelmRabbitmqCluster(
-        api=API,
-        metadata=types.NamespacedObjectMeta(
-            name=constants.HELM_RELEASE_DESIGNATE_NAME,
-            namespace=constants.NAMESPACE_OPENSTACK,
-        ),
-        spec=types.OpenstackHelmRabbitmqClusterSpec(
-            image=utils.get_image_ref_using_legacy_image_repository(
-                "rabbitmq_server"
-            ).string()
-        ),
-    ).apply()
-    objects.OpenstackHelmRabbitmqCluster(
-        api=API,
-        metadata=types.NamespacedObjectMeta(
-            name=constants.HELM_RELEASE_HEAT_NAME,
-            namespace=constants.NAMESPACE_OPENSTACK,
-        ),
-        spec=types.OpenstackHelmRabbitmqClusterSpec(
-            image=utils.get_image_ref_using_legacy_image_repository(
-                "rabbitmq_server"
-            ).string()
-        ),
-    ).apply()
 
     if config.memcached.enabled:
         flow.add(

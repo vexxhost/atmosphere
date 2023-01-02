@@ -4,8 +4,6 @@ from atmosphere import clients
 from atmosphere.operator import constants, controllers  # noqa: F401
 from atmosphere.operator.api import objects, types
 
-API = clients.get_pykube_api()
-
 
 @kopf.on.create(
     constants.API_VERSION_ATMOSPHERE,
@@ -16,8 +14,9 @@ API = clients.get_pykube_api()
     constants.KIND_OPENSTACK_HELM_RABBITMQ_CLUSTER,
 )
 def create_openstack_helm_rabbitmq_cluster(namespace: str, name: str, spec: dict, **_):
+    api = clients.get_pykube_api()
     objects.OpenstackHelmRabbitmqCluster(
-        api=API,
+        api=api,
         metadata=types.NamespacedObjectMeta(
             name=name,
             namespace=namespace,
@@ -31,8 +30,9 @@ def create_openstack_helm_rabbitmq_cluster(namespace: str, name: str, spec: dict
     constants.KIND_OPENSTACK_HELM_RABBITMQ_CLUSTER,
 )
 def delete_openstack_helm_rabbitmq_cluster(namespace: str, name: str, spec: dict, **_):
+    api = clients.get_pykube_api()
     objects.OpenstackHelmRabbitmqCluster(
-        api=API,
+        api=api,
         metadata=types.NamespacedObjectMeta(
             name=name,
             namespace=namespace,
@@ -44,8 +44,9 @@ def delete_openstack_helm_rabbitmq_cluster(namespace: str, name: str, spec: dict
 @kopf.on.create(constants.API_VERSION_ATMOSPHERE, constants.KIND_OPENSTACK_HELM_INGRESS)
 @kopf.on.resume(constants.API_VERSION_ATMOSPHERE, constants.KIND_OPENSTACK_HELM_INGRESS)
 def create_openstack_helm_ingress(namespace: str, name: str, spec: dict, **_):
+    api = clients.get_pykube_api()
     objects.OpenstackHelmIngress(
-        api=API,
+        api=api,
         metadata=types.OpenstackHelmIngressObjectMeta(
             name=name,
             namespace=namespace,
@@ -56,8 +57,9 @@ def create_openstack_helm_ingress(namespace: str, name: str, spec: dict, **_):
 
 @kopf.on.delete(constants.API_VERSION_ATMOSPHERE, constants.KIND_OPENSTACK_HELM_INGRESS)
 def delete_openstack_helm_ingress(namespace: str, name: str, spec: dict, **_):
+    api = clients.get_pykube_api()
     objects.OpenstackHelmIngress(
-        api=API,
+        api=api,
         metadata=types.OpenstackHelmIngressObjectMeta(
             name=name,
             namespace=namespace,

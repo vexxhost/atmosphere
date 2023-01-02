@@ -3,6 +3,7 @@ import re
 
 import pykube
 from taskflow import task
+from tenacity import retry, stop_after_delay, wait_fixed
 
 from atmosphere import clients, logger
 
@@ -50,6 +51,7 @@ class ApplyKubernetesObjectTask(task.Task):
     def wait_for_resource(self, resource: pykube.objects.APIObject):
         pass
 
+    @retry(wait=wait_fixed(2), stop=stop_after_delay(120))
     def execute(self, *args, **kwargs):
         self.logger.debug("Ensuring resource")
 
