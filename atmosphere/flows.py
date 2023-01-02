@@ -19,33 +19,66 @@ def get_engine(config):
     )
 
 
+# TODO(mnaser): Move this into the Cloud CRD
 def get_deployment_flow(config):
+    # NOTE(mnaser): We're running this first since we do get often timeouts
+    #               when waiting for the self-signed certificate authority to
+    #               be ready.
+    objects.Namespace(
+        api=API,
+        metadata=types.ObjectMeta(
+            name=constants.NAMESPACE_CERT_MANAGER,
+        ),
+    ).apply()
+    objects.HelmRepository(
+        api=API,
+        metadata=types.NamespacedObjectMeta(
+            name=constants.HELM_REPOSITORY_JETSTACK,
+            namespace=constants.NAMESPACE_CERT_MANAGER,
+        ),
+        spec=types.HelmRepositorySpec(
+            url="https://charts.jetstack.io",
+        ),
+    ).apply()
+    objects.HelmRelease(
+        api=API,
+        metadata=types.NamespacedObjectMeta(
+            name=constants.HELM_RELEASE_CERT_MANAGER_NAME,
+            namespace=constants.NAMESPACE_CERT_MANAGER,
+        ),
+        spec=types.HelmReleaseSpec(
+            chart=types.HelmChartTemplate(
+                spec=types.HelmChartTemplateSpec(
+                    chart=constants.HELM_RELEASE_CERT_MANAGER_NAME,
+                    version=constants.HELM_RELEASE_CERT_MANAGER_VERSION,
+                    source_ref=types.CrossNamespaceObjectReference(
+                        kind="HelmRepository",
+                        name=constants.HELM_REPOSITORY_JETSTACK,
+                        namespace=constants.NAMESPACE_CERT_MANAGER,
+                    ),
+                )
+            ),
+            values=constants.HELM_RELEASE_CERT_MANAGER_VALUES,
+        ),
+    ).apply()
+
+    objects.Namespace(
+        api=API,
+        metadata=types.ObjectMeta(
+            name=constants.NAMESPACE_MONITORING,
+        ),
+    ).apply()
+
     flow = graph_flow.Flow("deploy").add(
         # kube-system
-        v1.ApplyNamespaceTask(name=constants.NAMESPACE_KUBE_SYSTEM),
         flux.ApplyHelmRepositoryTask(
             namespace=constants.NAMESPACE_KUBE_SYSTEM,
             name=constants.HELM_REPOSITORY_CEPH,
             url="https://ceph.github.io/csi-charts",
         ),
         # cert-manager
-        v1.ApplyNamespaceTask(name=constants.NAMESPACE_CERT_MANAGER),
-        flux.ApplyHelmRepositoryTask(
-            namespace=constants.NAMESPACE_CERT_MANAGER,
-            name=constants.HELM_REPOSITORY_JETSTACK,
-            url="https://charts.jetstack.io",
-        ),
-        flux.ApplyHelmReleaseTask(
-            namespace=constants.NAMESPACE_CERT_MANAGER,
-            name=constants.HELM_RELEASE_CERT_MANAGER_NAME,
-            repository=constants.HELM_REPOSITORY_JETSTACK,
-            chart=constants.HELM_RELEASE_CERT_MANAGER_NAME,
-            version=constants.HELM_RELEASE_CERT_MANAGER_VERSION,
-            values=constants.HELM_RELEASE_CERT_MANAGER_VALUES,
-        ),
         *cert_manager.issuer_tasks_from_config(config.issuer),
         # monitoring
-        v1.ApplyNamespaceTask(name=constants.NAMESPACE_MONITORING),
         *openstack_helm.kube_prometheus_stack_tasks_from_config(
             config.kube_prometheus_stack,
             opsgenie=config.opsgenie,
@@ -64,7 +97,6 @@ def get_deployment_flow(config):
             values=constants.HELM_RELEASE_NODE_FEATURE_DISCOVERY_VALUES,
         ),
         # openstack
-        v1.ApplyNamespaceTask(name=constants.NAMESPACE_OPENSTACK),
         flux.ApplyHelmRepositoryTask(
             namespace=constants.NAMESPACE_OPENSTACK,
             name=constants.HELM_REPOSITORY_BITNAMI,
@@ -77,7 +109,6 @@ def get_deployment_flow(config):
             chart=constants.HELM_RELEASE_RABBITMQ_OPERATOR_NAME,
             version=constants.HELM_RELEASE_RABBITMQ_OPERATOR_VERSION,
             values=constants.HELM_RELEASE_RABBITMQ_OPERATOR_VALUES,
-            requires=constants.HELM_RELEASE_RABBITMQ_OPERATOR_REQUIRES,
         ),
         flux.ApplyHelmRepositoryTask(
             namespace=constants.NAMESPACE_OPENSTACK,
@@ -113,7 +144,7 @@ def get_deployment_flow(config):
 
     objects.OpenstackHelmRabbitmqCluster(
         api=API,
-        metadata=types.ObjectMeta(
+        metadata=types.NamespacedObjectMeta(
             name=constants.HELM_RELEASE_KEYSTONE_NAME,
             namespace=constants.NAMESPACE_OPENSTACK,
         ),
@@ -125,7 +156,7 @@ def get_deployment_flow(config):
     ).apply()
     objects.OpenstackHelmRabbitmqCluster(
         api=API,
-        metadata=types.ObjectMeta(
+        metadata=types.NamespacedObjectMeta(
             name=constants.HELM_RELEASE_BARBICAN_NAME,
             namespace=constants.NAMESPACE_OPENSTACK,
         ),
@@ -137,7 +168,7 @@ def get_deployment_flow(config):
     ).apply()
     objects.OpenstackHelmRabbitmqCluster(
         api=API,
-        metadata=types.ObjectMeta(
+        metadata=types.NamespacedObjectMeta(
             name=constants.HELM_RELEASE_GLANCE_NAME,
             namespace=constants.NAMESPACE_OPENSTACK,
         ),
@@ -149,7 +180,7 @@ def get_deployment_flow(config):
     ).apply()
     objects.OpenstackHelmRabbitmqCluster(
         api=API,
-        metadata=types.ObjectMeta(
+        metadata=types.NamespacedObjectMeta(
             name=constants.HELM_RELEASE_CINDER_NAME,
             namespace=constants.NAMESPACE_OPENSTACK,
         ),
@@ -161,7 +192,7 @@ def get_deployment_flow(config):
     ).apply()
     objects.OpenstackHelmRabbitmqCluster(
         api=API,
-        metadata=types.ObjectMeta(
+        metadata=types.NamespacedObjectMeta(
             name=constants.HELM_RELEASE_NEUTRON_NAME,
             namespace=constants.NAMESPACE_OPENSTACK,
         ),
@@ -173,7 +204,7 @@ def get_deployment_flow(config):
     ).apply()
     objects.OpenstackHelmRabbitmqCluster(
         api=API,
-        metadata=types.ObjectMeta(
+        metadata=types.NamespacedObjectMeta(
             name=constants.HELM_RELEASE_NOVA_NAME,
             namespace=constants.NAMESPACE_OPENSTACK,
         ),
@@ -185,7 +216,7 @@ def get_deployment_flow(config):
     ).apply()
     objects.OpenstackHelmRabbitmqCluster(
         api=API,
-        metadata=types.ObjectMeta(
+        metadata=types.NamespacedObjectMeta(
             name=constants.HELM_RELEASE_OCTAVIA_NAME,
             namespace=constants.NAMESPACE_OPENSTACK,
         ),
@@ -197,7 +228,7 @@ def get_deployment_flow(config):
     ).apply()
     objects.OpenstackHelmRabbitmqCluster(
         api=API,
-        metadata=types.ObjectMeta(
+        metadata=types.NamespacedObjectMeta(
             name=constants.HELM_RELEASE_SENLIN_NAME,
             namespace=constants.NAMESPACE_OPENSTACK,
         ),
@@ -209,7 +240,7 @@ def get_deployment_flow(config):
     ).apply()
     objects.OpenstackHelmRabbitmqCluster(
         api=API,
-        metadata=types.ObjectMeta(
+        metadata=types.NamespacedObjectMeta(
             name=constants.HELM_RELEASE_DESIGNATE_NAME,
             namespace=constants.NAMESPACE_OPENSTACK,
         ),
@@ -221,7 +252,7 @@ def get_deployment_flow(config):
     ).apply()
     objects.OpenstackHelmRabbitmqCluster(
         api=API,
-        metadata=types.ObjectMeta(
+        metadata=types.NamespacedObjectMeta(
             name=constants.HELM_RELEASE_HEAT_NAME,
             namespace=constants.NAMESPACE_OPENSTACK,
         ),

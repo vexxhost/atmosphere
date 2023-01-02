@@ -22,7 +22,6 @@ class ApplyHelmRepositoryTask(base.ApplyKubernetesObjectTask):
             kind=HelmRepository,
             namespace=namespace,
             name=name,
-            requires=set(["namespace"]),
         )
 
     def generate_object(self) -> HelmRepository:

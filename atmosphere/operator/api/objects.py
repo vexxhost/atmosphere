@@ -1,14 +1,43 @@
 from typing import ClassVar
 
 import pykube
+from pydantic import Field
 
+from atmosphere.operator import constants
 from atmosphere.operator.api import mixins, types
 
 # Kubernetes API
 
 
+class Namespace(types.KubernetesObject):
+    endpoint: ClassVar[str] = "namespaces"
+
+    version: str = Field("v1", alias="apiVersion", const=True)
+    kind: str = Field("Namespace", const=True)
+
+
 class Ingress(pykube.objects.Ingress, mixins.ServerSideApplyMixin):
     pass
+
+
+class HelmRepository(types.NamespacedKubernetesObject):
+    endpoint: ClassVar[str] = "helmrepositories"
+
+    version: str = Field(
+        "source.toolkit.fluxcd.io/v1beta2", alias="apiVersion", const=True
+    )
+    kind: str = Field("HelmRepository", const=True)
+    spec: types.HelmRepositorySpec
+
+
+class HelmRelease(types.NamespacedKubernetesObject):
+    endpoint: ClassVar[str] = "helmreleases"
+
+    version: str = Field(
+        "helm.toolkit.fluxcd.io/v2beta1", alias="apiVersion", const=True
+    )
+    kind: str = Field("HelmRelease", const=True)
+    spec: types.HelmReleaseSpec
 
 
 class RabbitmqCluster(pykube.objects.NamespacedAPIObject, mixins.ServerSideApplyMixin):
@@ -20,11 +49,10 @@ class RabbitmqCluster(pykube.objects.NamespacedAPIObject, mixins.ServerSideApply
 # Atmosphere
 
 
-class OpenstackHelmRabbitmqCluster(types.KubernetesObject):
-    version: ClassVar[str] = "atmosphere.vexxhost.com/v1alpha1"
+class OpenstackHelmRabbitmqCluster(types.NamespacedKubernetesObject):
     endpoint: ClassVar[str] = "openstackhelmrabbitmqclusters"
-    kind: ClassVar[str] = "OpenstackHelmRabbitmqCluster"
 
+    kind: str = Field(constants.KIND_OPENSTACK_HELM_RABBITMQ_CLUSTER, const=True)
     spec: types.OpenstackHelmRabbitmqClusterSpec
 
     def apply_rabbitmq_cluster(self):
@@ -36,6 +64,8 @@ class OpenstackHelmRabbitmqCluster(types.KubernetesObject):
                 "metadata": {
                     "name": f"rabbitmq-{self.metadata.name}",
                     "namespace": self.metadata.namespace,
+                    "annotations": self.metadata.annotations,
+                    "labels": self.metadata.labels,
                 },
                 "spec": {
                     "image": self.spec.image,
@@ -76,11 +106,10 @@ class OpenstackHelmRabbitmqCluster(types.KubernetesObject):
             rabbitmq_cluster.delete()
 
 
-class OpenstackHelmIngress(types.KubernetesObject):
-    version: ClassVar[str] = "atmosphere.vexxhost.com/v1alpha1"
+class OpenstackHelmIngress(types.NamespacedKubernetesObject):
     endpoint: ClassVar[str] = "openstackhelmingresses"
-    kind: ClassVar[str] = "OpenstackHelmIngress"
 
+    kind: str = Field(constants.KIND_OPENSTACK_HELM_INGRESS, const=True)
     metadata: types.OpenstackHelmIngressObjectMeta
     spec: types.OpenstackHelmIngressSpec
 

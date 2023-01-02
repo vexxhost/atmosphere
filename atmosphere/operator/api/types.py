@@ -5,6 +5,7 @@ import pydantic
 import pykube
 import validators.domain
 
+from atmosphere.operator import constants
 from atmosphere.operator.api import mixins
 
 # Generic
@@ -35,34 +36,37 @@ class Hostname(str):
 
 class ObjectMeta(pydantic.BaseModel):
     name: pydantic.constr(min_length=1)
-    namespace: pydantic.constr(min_length=1)
     annotations: dict[str, str] = {}
     labels: dict[str, str] = {}
 
 
+class NamespacedObjectMeta(ObjectMeta):
+    namespace: pydantic.constr(min_length=1)
+
+
 class KubernetesObject(pydantic.BaseModel, mixins.ServerSideApplyMixin):
     api: pykube.http.HTTPClient = None
+
+    version: str = pydantic.Field(
+        constants.API_VERSION_ATMOSPHERE, alias="apiVersion", const=True
+    )
     metadata: ObjectMeta
 
     class Config:
+        allow_population_by_field_name = True
         arbitrary_types_allowed = True
+        fields = {"api": {"exclude": True}}
 
     @property
     def obj(self) -> dict:
-        return {
-            **{
-                "apiVersion": self.version,
-                "kind": self.kind,
-            },
-            **self.dict(exclude={"api"}),
-        }
+        return self.dict(by_alias=True)
 
     def set_obj(self, *_):
         pass
 
     @property
     def namespace(self) -> str:
-        return self.metadata.namespace
+        return None
 
     @property
     def name(self) -> str:
@@ -76,6 +80,14 @@ class KubernetesObject(pydantic.BaseModel, mixins.ServerSideApplyMixin):
         return pykube.objects.APIObject.api_kwargs(self, **kwargs)
 
 
+class NamespacedKubernetesObject(KubernetesObject):
+    metadata: NamespacedObjectMeta
+
+    @property
+    def namespace(self) -> str:
+        return self.metadata.namespace
+
+
 class ServiceBackendPort(pydantic.BaseModel):
     number: pydantic.conint(ge=1, le=65535)
 
@@ -83,6 +95,70 @@ class ServiceBackendPort(pydantic.BaseModel):
 class IngressServiceBackend(pydantic.BaseModel):
     name: pydantic.constr(min_length=1)
     port: ServiceBackendPort
+
+
+class CrossNamespaceObjectReference(pydantic.BaseModel):
+    kind: pydantic.constr(min_length=1)
+    name: pydantic.constr(min_length=1)
+    namespace: pydantic.constr(min_length=1) = None
+
+
+class HelmRepositorySpec(pydantic.BaseModel):
+    url: pydantic.HttpUrl
+    interval: str = "60s"
+
+
+class HelmChartTemplateSpec(pydantic.BaseModel):
+    chart: pydantic.constr(min_length=1)
+    version: pydantic.constr(min_length=1) = None
+    source_ref: CrossNamespaceObjectReference = pydantic.Field(alias="sourceRef")
+
+    class Config:
+        allow_population_by_field_name = True
+
+
+class HelmChartTemplate(pydantic.BaseModel):
+    spec: HelmChartTemplateSpec
+
+
+class HelmReleaseActionSpecCRDsPolicy(str, Enum):
+    SKIP = "Skip"
+    CREATE = "Create"
+    CREATE_REPLACE = "CreateReplace"
+
+
+class HelmReleaseActionSpec(pydantic.BaseModel):
+    crds: HelmReleaseActionSpecCRDsPolicy = (
+        HelmReleaseActionSpecCRDsPolicy.CREATE_REPLACE
+    )
+    disable_wait: bool = pydantic.Field(default=True, alias="disableWait")
+
+    class Config:
+        allow_population_by_field_name = True
+
+
+class HelmReleaseValuesReference(pydantic.BaseModel):
+    kind: pydantic.constr(min_length=1)
+    name: pydantic.constr(min_length=1)
+    values_key: str = pydantic.Field(default=None, alias="valuesKey")
+    target_path: str = pydantic.Field(default=None, alias="targetPath")
+
+    class Config:
+        allow_population_by_field_name = True
+
+
+class HelmReleaseSpec(pydantic.BaseModel):
+    interval: str = "60s"
+    chart: HelmChartTemplate
+    install: HelmReleaseActionSpec = HelmReleaseActionSpec()
+    upgrade: HelmReleaseActionSpec = HelmReleaseActionSpec()
+    values: dict = {}
+    values_from: list[HelmReleaseValuesReference] = pydantic.Field(
+        default=[], alias="valuesFrom"
+    )
+
+    class Config:
+        allow_population_by_field_name = True
 
 
 # Atmosphere
@@ -110,7 +186,7 @@ class OpenstackHelmIngressObjectMetaName(str, Enum):
     volumev3 = "volumev3"
 
 
-class OpenstackHelmIngressObjectMeta(ObjectMeta):
+class OpenstackHelmIngressObjectMeta(NamespacedObjectMeta):
     name: OpenstackHelmIngressObjectMetaName
 
 

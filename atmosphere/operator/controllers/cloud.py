@@ -29,7 +29,7 @@ def create_fn(namespace: str, name: str, spec: dict, **_):
     if spec["magnum"].get("enabled", True):
         objects.OpenstackHelmRabbitmqCluster(
             api=API,
-            metadata=types.ObjectMeta(
+            metadata=types.NamespacedObjectMeta(
                 name="magnum",
                 namespace=namespace,
             ),

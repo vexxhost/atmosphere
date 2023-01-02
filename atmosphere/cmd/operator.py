@@ -1,24 +1,24 @@
 import kopf
 
 from atmosphere import clients
-from atmosphere.operator import controllers  # noqa: F401
+from atmosphere.operator import constants, controllers  # noqa: F401
 from atmosphere.operator.api import objects, types
 
 API = clients.get_pykube_api()
 
 
 @kopf.on.create(
-    objects.OpenstackHelmRabbitmqCluster.version,
-    objects.OpenstackHelmRabbitmqCluster.kind,
+    constants.API_VERSION_ATMOSPHERE,
+    constants.KIND_OPENSTACK_HELM_RABBITMQ_CLUSTER,
 )
 @kopf.on.resume(
-    objects.OpenstackHelmRabbitmqCluster.version,
-    objects.OpenstackHelmRabbitmqCluster.kind,
+    constants.API_VERSION_ATMOSPHERE,
+    constants.KIND_OPENSTACK_HELM_RABBITMQ_CLUSTER,
 )
 def create_openstack_helm_rabbitmq_cluster(namespace: str, name: str, spec: dict, **_):
     objects.OpenstackHelmRabbitmqCluster(
         api=API,
-        metadata=types.ObjectMeta(
+        metadata=types.NamespacedObjectMeta(
             name=name,
             namespace=namespace,
         ),
@@ -27,13 +27,13 @@ def create_openstack_helm_rabbitmq_cluster(namespace: str, name: str, spec: dict
 
 
 @kopf.on.delete(
-    objects.OpenstackHelmRabbitmqCluster.version,
-    objects.OpenstackHelmRabbitmqCluster.kind,
+    constants.API_VERSION_ATMOSPHERE,
+    constants.KIND_OPENSTACK_HELM_RABBITMQ_CLUSTER,
 )
 def delete_openstack_helm_rabbitmq_cluster(namespace: str, name: str, spec: dict, **_):
     objects.OpenstackHelmRabbitmqCluster(
         api=API,
-        metadata=types.ObjectMeta(
+        metadata=types.NamespacedObjectMeta(
             name=name,
             namespace=namespace,
         ),
@@ -41,8 +41,8 @@ def delete_openstack_helm_rabbitmq_cluster(namespace: str, name: str, spec: dict
     ).delete_rabbitmq_cluster()
 
 
-@kopf.on.create(objects.OpenstackHelmIngress.version, objects.OpenstackHelmIngress.kind)
-@kopf.on.resume(objects.OpenstackHelmIngress.version, objects.OpenstackHelmIngress.kind)
+@kopf.on.create(constants.API_VERSION_ATMOSPHERE, constants.KIND_OPENSTACK_HELM_INGRESS)
+@kopf.on.resume(constants.API_VERSION_ATMOSPHERE, constants.KIND_OPENSTACK_HELM_INGRESS)
 def create_openstack_helm_ingress(namespace: str, name: str, spec: dict, **_):
     objects.OpenstackHelmIngress(
         api=API,
@@ -54,7 +54,7 @@ def create_openstack_helm_ingress(namespace: str, name: str, spec: dict, **_):
     ).apply_ingress()
 
 
-@kopf.on.delete(objects.OpenstackHelmIngress.version, objects.OpenstackHelmIngress.kind)
+@kopf.on.delete(constants.API_VERSION_ATMOSPHERE, constants.KIND_OPENSTACK_HELM_INGRESS)
 def delete_openstack_helm_ingress(namespace: str, name: str, spec: dict, **_):
     objects.OpenstackHelmIngress(
         api=API,
