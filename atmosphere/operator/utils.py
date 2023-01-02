@@ -23,3 +23,11 @@ def get_image_ref(
     ref = reference.Reference.parse(ref.string())
 
     return ref
+
+
+def filter_annotations(annotations: dict) -> dict:
+    return {
+        key: value
+        for key, value in annotations.items()
+        if key == "kopf.zalando.org/last-handled-configuration"
+    }
