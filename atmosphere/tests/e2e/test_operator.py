@@ -67,7 +67,7 @@ def test_e2e_for_operator(tmp_path, flux_cluster, docker_image):
             wait=wait_fixed(1),
         ):
             with attempt:
-                assert "Initial authentication has finished." in pod.logs()
+                assert "kind=Secret name=atmosphere-memcached" in pod.logs()
 
     for secret_name in ["atmosphere-config", "atmosphere-memcached"]:
         secret = pykube.Secret.objects(
