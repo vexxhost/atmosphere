@@ -1,9 +1,11 @@
 import json
 
+import kopf
+import requests
+
 
 class ServerSideApplyMixin:
     def apply(self):
-        print(self.obj)
         resp = self.api.patch(
             **self.api_kwargs(
                 headers={
@@ -17,6 +19,12 @@ class ServerSideApplyMixin:
             )
         )
 
-        self.api.raise_for_status(resp)
+        try:
+            self.api.raise_for_status(resp)
+        except requests.exceptions.HTTPError:
+            if resp.status_code == 404:
+                raise kopf.TemporaryError("CRD is not yet installed", delay=1)
+            raise
+
         self.set_obj(resp.json())
         return self

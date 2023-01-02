@@ -78,61 +78,6 @@ class InstallClusterApiTask(task.Task):
             )
 
 
-class RabbitmqCluster(pykube.objects.NamespacedAPIObject):
-    version = "rabbitmq.com/v1beta1"
-    endpoint = "rabbitmqclusters"
-    kind = "RabbitmqCluster"
-
-
-class ApplyRabbitmqClusterTask(ApplyKubernetesObjectTask):
-    def execute(
-        self, api: pykube.HTTPClient, namespace: str, chart_name: str, spec: dict
-    ) -> dict:
-        resource = RabbitmqCluster(
-            api,
-            {
-                "apiVersion": RabbitmqCluster.version,
-                "kind": RabbitmqCluster.kind,
-                "metadata": {
-                    "name": f"rabbitmq-{chart_name}",
-                    "namespace": namespace,
-                },
-                "spec": {
-                    "image": utils.get_image_ref(
-                        "rabbitmq_server", override_registry=spec["imageRepository"]
-                    ).string(),
-                    "affinity": {
-                        "nodeAffinity": {
-                            "requiredDuringSchedulingIgnoredDuringExecution": {
-                                "nodeSelectorTerms": [
-                                    {
-                                        "matchExpressions": [
-                                            {
-                                                "key": "openstack-control-plane",
-                                                "operator": "In",
-                                                "values": ["enabled"],
-                                            }
-                                        ]
-                                    }
-                                ]
-                            }
-                        }
-                    },
-                    "rabbitmq": {
-                        "additionalConfig": "vm_memory_high_watermark.relative = 0.9\n"
-                    },
-                    "resources": {
-                        "requests": {"cpu": "500m", "memory": "1Gi"},
-                        "limits": {"cpu": "1", "memory": "2Gi"},
-                    },
-                    "terminationGracePeriodSeconds": 15,
-                },
-            },
-        )
-
-        return self._apply(resource)
-
-
 class HelmRelease(pykube.objects.NamespacedAPIObject):
     version = "helm.toolkit.fluxcd.io/v2beta1"
     endpoint = "helmreleases"
@@ -281,7 +226,7 @@ class GetChartValues(task.Task):
 
 
 class GenerateReleaseValues(task.Task):
-    def _generate_base(self, rabbitmq: RabbitmqCluster, spec: dict) -> dict:
+    def _generate_base(self, rabbitmq: str, spec: dict) -> dict:
         return {
             "endpoints": {
                 "identity": {
@@ -302,7 +247,7 @@ class GenerateReleaseValues(task.Task):
                     "statefulset": None,
                     "hosts": {
                         # TODO(mnaser): handle scenario when those don't exist
-                        "default": rabbitmq.name,
+                        "default": rabbitmq,
                     },
                 },
             },
@@ -398,10 +343,10 @@ class GenerateReleaseValues(task.Task):
             },
         }
 
-    def execute(self, chart_name: str, rabbitmq: RabbitmqCluster, spec: dict) -> dict:
+    def execute(self, chart_name: str, spec: dict) -> dict:
         return mergedeep.merge(
             {},
-            self._generate_base(rabbitmq, spec),
+            self._generate_base(f"rabbitmq-{chart_name}", spec),
             getattr(self, f"_generate_{chart_name}")(spec),
             spec[chart_name].get("overrides", {}),
         )
@@ -410,9 +355,9 @@ class GenerateReleaseValues(task.Task):
 class GenerateMagnumChartValuesFrom(task.Task):
     def execute(
         self,
+        chart_name: str,
         image_tags: pykube.ConfigMap,
         secrets: pykube.Secret,
-        rabbitmq: RabbitmqCluster,
     ) -> dict:
         return [
             {
@@ -463,13 +408,13 @@ class GenerateMagnumChartValuesFrom(task.Task):
             },
             {
                 "kind": pykube.Secret.kind,
-                "name": f"{rabbitmq.name}-default-user",
+                "name": f"neutron-{chart_name}-default-user",
                 "targetPath": "endpoints.oslo_messaging.auth.admin.username",
                 "valuesKey": "username",
             },
             {
                 "kind": pykube.Secret.kind,
-                "name": f"{rabbitmq.name}-default-user",
+                "name": f"neutron-{chart_name}-default-user",
                 "targetPath": "endpoints.oslo_messaging.auth.admin.password",
                 "valuesKey": "password",
             },

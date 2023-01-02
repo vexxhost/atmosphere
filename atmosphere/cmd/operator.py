@@ -1,18 +1,44 @@
 import kopf
 
-from atmosphere import clients, flows
-from atmosphere.models import config
+from atmosphere import clients
 from atmosphere.operator import controllers  # noqa: F401
 from atmosphere.operator.api import objects, types
 
 API = clients.get_pykube_api()
 
 
-@kopf.on.startup()
-def startup(**_):
-    cfg = config.Config.from_file()
-    engine = flows.get_engine(cfg)
-    engine.run()
+@kopf.on.create(
+    objects.OpenstackHelmRabbitmqCluster.version,
+    objects.OpenstackHelmRabbitmqCluster.kind,
+)
+@kopf.on.resume(
+    objects.OpenstackHelmRabbitmqCluster.version,
+    objects.OpenstackHelmRabbitmqCluster.kind,
+)
+def create_openstack_helm_rabbitmq_cluster(namespace: str, name: str, spec: dict, **_):
+    objects.OpenstackHelmRabbitmqCluster(
+        api=API,
+        metadata=types.ObjectMeta(
+            name=name,
+            namespace=namespace,
+        ),
+        spec=types.OpenstackHelmRabbitmqClusterSpec(**spec),
+    ).apply_rabbitmq_cluster()
+
+
+@kopf.on.delete(
+    objects.OpenstackHelmRabbitmqCluster.version,
+    objects.OpenstackHelmRabbitmqCluster.kind,
+)
+def delete_openstack_helm_rabbitmq_cluster(namespace: str, name: str, spec: dict, **_):
+    objects.OpenstackHelmRabbitmqCluster(
+        api=API,
+        metadata=types.ObjectMeta(
+            name=name,
+            namespace=namespace,
+        ),
+        spec=types.OpenstackHelmRabbitmqClusterSpec(**spec),
+    ).delete_rabbitmq_cluster()
 
 
 @kopf.on.create(objects.OpenstackHelmIngress.version, objects.OpenstackHelmIngress.kind)

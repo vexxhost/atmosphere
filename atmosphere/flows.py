@@ -1,9 +1,13 @@
 from taskflow import engines
 from taskflow.patterns import graph_flow
 
+from atmosphere import clients, utils
+from atmosphere.operator.api import objects, types
 from atmosphere.tasks import constants
 from atmosphere.tasks.composite import openstack_helm
 from atmosphere.tasks.kubernetes import cert_manager, flux, v1
+
+API = clients.get_pykube_api()
 
 
 def get_engine(config):
@@ -105,37 +109,128 @@ def get_deployment_flow(config):
             name=constants.HELM_REPOSITORY_OPENSTACK_HELM,
             url="https://tarballs.opendev.org/openstack/openstack-helm/",
         ),
-        openstack_helm.ApplyRabbitmqClusterTask(
-            name=constants.HELM_RELEASE_KEYSTONE_NAME,
-        ),
-        openstack_helm.ApplyRabbitmqClusterTask(
-            name=constants.HELM_RELEASE_BARBICAN_NAME,
-        ),
-        openstack_helm.ApplyRabbitmqClusterTask(
-            name=constants.HELM_RELEASE_GLANCE_NAME,
-        ),
-        openstack_helm.ApplyRabbitmqClusterTask(
-            name=constants.HELM_RELEASE_CINDER_NAME,
-        ),
-        openstack_helm.ApplyRabbitmqClusterTask(
-            name=constants.HELM_RELEASE_NEUTRON_NAME,
-        ),
-        openstack_helm.ApplyRabbitmqClusterTask(
-            name=constants.HELM_RELEASE_NOVA_NAME,
-        ),
-        openstack_helm.ApplyRabbitmqClusterTask(
-            name=constants.HELM_RELEASE_OCTAVIA_NAME,
-        ),
-        openstack_helm.ApplyRabbitmqClusterTask(
-            name=constants.HELM_RELEASE_SENLIN_NAME,
-        ),
-        openstack_helm.ApplyRabbitmqClusterTask(
-            name=constants.HELM_RELEASE_DESIGNATE_NAME,
-        ),
-        openstack_helm.ApplyRabbitmqClusterTask(
-            name=constants.HELM_RELEASE_HEAT_NAME,
-        ),
     )
+
+    objects.OpenstackHelmRabbitmqCluster(
+        api=API,
+        metadata=types.ObjectMeta(
+            name=constants.HELM_RELEASE_KEYSTONE_NAME,
+            namespace=constants.NAMESPACE_OPENSTACK,
+        ),
+        spec=types.OpenstackHelmRabbitmqClusterSpec(
+            image=utils.get_image_ref_using_legacy_image_repository(
+                "rabbitmq_server"
+            ).string()
+        ),
+    ).apply()
+    objects.OpenstackHelmRabbitmqCluster(
+        api=API,
+        metadata=types.ObjectMeta(
+            name=constants.HELM_RELEASE_BARBICAN_NAME,
+            namespace=constants.NAMESPACE_OPENSTACK,
+        ),
+        spec=types.OpenstackHelmRabbitmqClusterSpec(
+            image=utils.get_image_ref_using_legacy_image_repository(
+                "rabbitmq_server"
+            ).string()
+        ),
+    ).apply()
+    objects.OpenstackHelmRabbitmqCluster(
+        api=API,
+        metadata=types.ObjectMeta(
+            name=constants.HELM_RELEASE_GLANCE_NAME,
+            namespace=constants.NAMESPACE_OPENSTACK,
+        ),
+        spec=types.OpenstackHelmRabbitmqClusterSpec(
+            image=utils.get_image_ref_using_legacy_image_repository(
+                "rabbitmq_server"
+            ).string()
+        ),
+    ).apply()
+    objects.OpenstackHelmRabbitmqCluster(
+        api=API,
+        metadata=types.ObjectMeta(
+            name=constants.HELM_RELEASE_CINDER_NAME,
+            namespace=constants.NAMESPACE_OPENSTACK,
+        ),
+        spec=types.OpenstackHelmRabbitmqClusterSpec(
+            image=utils.get_image_ref_using_legacy_image_repository(
+                "rabbitmq_server"
+            ).string()
+        ),
+    ).apply()
+    objects.OpenstackHelmRabbitmqCluster(
+        api=API,
+        metadata=types.ObjectMeta(
+            name=constants.HELM_RELEASE_NEUTRON_NAME,
+            namespace=constants.NAMESPACE_OPENSTACK,
+        ),
+        spec=types.OpenstackHelmRabbitmqClusterSpec(
+            image=utils.get_image_ref_using_legacy_image_repository(
+                "rabbitmq_server"
+            ).string()
+        ),
+    ).apply()
+    objects.OpenstackHelmRabbitmqCluster(
+        api=API,
+        metadata=types.ObjectMeta(
+            name=constants.HELM_RELEASE_NOVA_NAME,
+            namespace=constants.NAMESPACE_OPENSTACK,
+        ),
+        spec=types.OpenstackHelmRabbitmqClusterSpec(
+            image=utils.get_image_ref_using_legacy_image_repository(
+                "rabbitmq_server"
+            ).string()
+        ),
+    ).apply()
+    objects.OpenstackHelmRabbitmqCluster(
+        api=API,
+        metadata=types.ObjectMeta(
+            name=constants.HELM_RELEASE_OCTAVIA_NAME,
+            namespace=constants.NAMESPACE_OPENSTACK,
+        ),
+        spec=types.OpenstackHelmRabbitmqClusterSpec(
+            image=utils.get_image_ref_using_legacy_image_repository(
+                "rabbitmq_server"
+            ).string()
+        ),
+    ).apply()
+    objects.OpenstackHelmRabbitmqCluster(
+        api=API,
+        metadata=types.ObjectMeta(
+            name=constants.HELM_RELEASE_SENLIN_NAME,
+            namespace=constants.NAMESPACE_OPENSTACK,
+        ),
+        spec=types.OpenstackHelmRabbitmqClusterSpec(
+            image=utils.get_image_ref_using_legacy_image_repository(
+                "rabbitmq_server"
+            ).string()
+        ),
+    ).apply()
+    objects.OpenstackHelmRabbitmqCluster(
+        api=API,
+        metadata=types.ObjectMeta(
+            name=constants.HELM_RELEASE_DESIGNATE_NAME,
+            namespace=constants.NAMESPACE_OPENSTACK,
+        ),
+        spec=types.OpenstackHelmRabbitmqClusterSpec(
+            image=utils.get_image_ref_using_legacy_image_repository(
+                "rabbitmq_server"
+            ).string()
+        ),
+    ).apply()
+    objects.OpenstackHelmRabbitmqCluster(
+        api=API,
+        metadata=types.ObjectMeta(
+            name=constants.HELM_RELEASE_HEAT_NAME,
+            namespace=constants.NAMESPACE_OPENSTACK,
+        ),
+        spec=types.OpenstackHelmRabbitmqClusterSpec(
+            image=utils.get_image_ref_using_legacy_image_repository(
+                "rabbitmq_server"
+            ).string()
+        ),
+    ).apply()
 
     if config.memcached.enabled:
         flow.add(

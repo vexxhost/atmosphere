@@ -11,7 +11,69 @@ class Ingress(pykube.objects.Ingress, mixins.ServerSideApplyMixin):
     pass
 
 
+class RabbitmqCluster(pykube.objects.NamespacedAPIObject, mixins.ServerSideApplyMixin):
+    version = "rabbitmq.com/v1beta1"
+    endpoint = "rabbitmqclusters"
+    kind = "RabbitmqCluster"
+
+
 # Atmosphere
+
+
+class OpenstackHelmRabbitmqCluster(types.KubernetesObject):
+    version: ClassVar[str] = "atmosphere.vexxhost.com/v1alpha1"
+    endpoint: ClassVar[str] = "openstackhelmrabbitmqclusters"
+    kind: ClassVar[str] = "OpenstackHelmRabbitmqCluster"
+
+    spec: types.OpenstackHelmRabbitmqClusterSpec
+
+    def apply_rabbitmq_cluster(self):
+        return RabbitmqCluster(
+            self.api,
+            {
+                "apiVersion": RabbitmqCluster.version,
+                "kind": RabbitmqCluster.kind,
+                "metadata": {
+                    "name": f"rabbitmq-{self.metadata.name}",
+                    "namespace": self.metadata.namespace,
+                },
+                "spec": {
+                    "image": self.spec.image,
+                    "affinity": {
+                        "nodeAffinity": {
+                            "requiredDuringSchedulingIgnoredDuringExecution": {
+                                "nodeSelectorTerms": [
+                                    {
+                                        "matchExpressions": [
+                                            {
+                                                "key": "openstack-control-plane",
+                                                "operator": "In",
+                                                "values": ["enabled"],
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    "rabbitmq": {
+                        "additionalConfig": "vm_memory_high_watermark.relative = 0.9\n"
+                    },
+                    "resources": {
+                        "requests": {"cpu": "500m", "memory": "1Gi"},
+                        "limits": {"cpu": "1", "memory": "2Gi"},
+                    },
+                    "terminationGracePeriodSeconds": 15,
+                },
+            },
+        ).apply()
+
+    def delete_rabbitmq_cluster(self):
+        rabbitmq_cluster = RabbitmqCluster.objects(
+            self.api, namespace=self.metadata.namespace
+        ).get_or_none(name=f"rabbitmq-{self.metadata.name}")
+        if rabbitmq_cluster:
+            rabbitmq_cluster.delete()
 
 
 class OpenstackHelmIngress(types.KubernetesObject):

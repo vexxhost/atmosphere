@@ -88,6 +88,10 @@ class IngressServiceBackend(pydantic.BaseModel):
 # Atmosphere
 
 
+class OpenstackHelmRabbitmqClusterSpec(pydantic.BaseModel):
+    image: pydantic.constr(min_length=1)
+
+
 class OpenstackHelmIngressObjectMetaName(str, Enum):
     cloudformation = "cloudformation"
     clustering = "clustering"
