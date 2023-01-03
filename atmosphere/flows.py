@@ -11,6 +11,17 @@ from atmosphere.tasks.kubernetes import cert_manager, flux, v1
 def get_engine(config):
     api = clients.get_pykube_api()
 
+    objects.HelmRepository(
+        api=api,
+        metadata=types.NamespacedObjectMeta(
+            name=constants.HELM_REPOSITORY_CEPH,
+            namespace=constants.NAMESPACE_KUBE_SYSTEM,
+        ),
+        spec=types.HelmRepositorySpec(
+            url="https://ceph.github.io/csi-charts",
+        ),
+    ).apply()
+
     # NOTE(mnaser): We're running this first since we do get often timeouts
     #               when waiting for the self-signed certificate authority to
     #               be ready.
@@ -58,6 +69,122 @@ def get_engine(config):
             name=constants.NAMESPACE_MONITORING,
         ),
     ).apply()
+    objects.HelmRepository(
+        api=api,
+        metadata=types.NamespacedObjectMeta(
+            name=constants.HELM_REPOSITORY_NODE_FEATURE_DISCOVERY,
+            namespace=constants.NAMESPACE_MONITORING,
+        ),
+        spec=types.HelmRepositorySpec(
+            url="https://kubernetes-sigs.github.io/node-feature-discovery/charts",
+        ),
+    ).apply()
+
+    if config.ingress_nginx.enabled:
+        objects.HelmRepository(
+            api=api,
+            metadata=types.NamespacedObjectMeta(
+                name=constants.HELM_REPOSITORY_INGRESS_NGINX,
+                namespace=config.ingress_nginx.namespace,
+            ),
+            spec=types.HelmRepositorySpec(
+                url=constants.HELM_REPOSITORY_INGRESS_NGINX_URL,
+            ),
+        ).apply()
+        objects.HelmRelease(
+            api=api,
+            metadata=types.NamespacedObjectMeta(
+                name=constants.HELM_RELEASE_INGRESS_NGINX_NAME,
+                namespace=config.ingress_nginx.namespace,
+            ),
+            spec=types.HelmReleaseSpec(
+                chart=types.HelmChartTemplate(
+                    spec=types.HelmChartTemplateSpec(
+                        chart=constants.HELM_RELEASE_INGRESS_NGINX_NAME,
+                        version=constants.HELM_RELEASE_INGRESS_NGINX_VERSION,
+                        source_ref=types.CrossNamespaceObjectReference(
+                            kind="HelmRepository",
+                            name=constants.HELM_REPOSITORY_INGRESS_NGINX,
+                            namespace=config.ingress_nginx.namespace,
+                        ),
+                    )
+                ),
+                values={
+                    **constants.HELM_RELEASE_INGRESS_NGINX_VALUES,
+                    **config.ingress_nginx.overrides,
+                },
+            ),
+        ).apply()
+
+    objects.HelmRepository(
+        api=api,
+        metadata=types.NamespacedObjectMeta(
+            name=constants.HELM_REPOSITORY_BITNAMI,
+            namespace=constants.NAMESPACE_OPENSTACK,
+        ),
+        spec=types.HelmRepositorySpec(
+            url="https://charts.bitnami.com/bitnami",
+        ),
+    ).apply()
+    objects.HelmRelease(
+        api=api,
+        metadata=types.NamespacedObjectMeta(
+            name=constants.HELM_RELEASE_RABBITMQ_OPERATOR_NAME,
+            namespace=constants.NAMESPACE_OPENSTACK,
+        ),
+        spec=types.HelmReleaseSpec(
+            chart=types.HelmChartTemplate(
+                spec=types.HelmChartTemplateSpec(
+                    chart=constants.HELM_RELEASE_RABBITMQ_OPERATOR_NAME,
+                    version=constants.HELM_RELEASE_RABBITMQ_OPERATOR_VERSION,
+                    source_ref=types.CrossNamespaceObjectReference(
+                        kind="HelmRepository",
+                        name=constants.HELM_REPOSITORY_BITNAMI,
+                        namespace=constants.NAMESPACE_OPENSTACK,
+                    ),
+                )
+            ),
+            values=constants.HELM_RELEASE_RABBITMQ_OPERATOR_VALUES,
+        ),
+    ).apply()
+    objects.HelmRepository(
+        api=api,
+        metadata=types.NamespacedObjectMeta(
+            name=constants.HELM_REPOSITORY_PERCONA,
+            namespace=constants.NAMESPACE_OPENSTACK,
+        ),
+        spec=types.HelmRepositorySpec(
+            url="https://percona.github.io/percona-helm-charts/",
+        ),
+    ).apply()
+    objects.HelmRepository(
+        api=api,
+        metadata=types.NamespacedObjectMeta(
+            name=constants.HELM_REPOSITORY_OPENSTACK_HELM_INFRA,
+            namespace=constants.NAMESPACE_OPENSTACK,
+        ),
+        spec=types.HelmRepositorySpec(
+            url="https://tarballs.opendev.org/openstack/openstack-helm-infra/",
+        ),
+    ).apply()
+    objects.HelmRepository(
+        api=api,
+        metadata=types.NamespacedObjectMeta(
+            name=constants.HELM_REPOSITORY_COREDNS,
+            namespace=constants.NAMESPACE_OPENSTACK,
+        ),
+        spec=types.HelmRepositorySpec(url="https://coredns.github.io/helm"),
+    ).apply()
+    objects.HelmRepository(
+        api=api,
+        metadata=types.NamespacedObjectMeta(
+            name=constants.HELM_REPOSITORY_OPENSTACK_HELM,
+            namespace=constants.NAMESPACE_OPENSTACK,
+        ),
+        spec=types.HelmRepositorySpec(
+            url="https://tarballs.opendev.org/openstack/openstack-helm/",
+        ),
+    ).apply()
 
     return engines.load(
         get_deployment_flow(config),
@@ -70,23 +197,12 @@ def get_engine(config):
 # TODO(mnaser): Move this into the Cloud CRD
 def get_deployment_flow(config):
     flow = graph_flow.Flow("deploy").add(
-        # kube-system
-        flux.ApplyHelmRepositoryTask(
-            namespace=constants.NAMESPACE_KUBE_SYSTEM,
-            name=constants.HELM_REPOSITORY_CEPH,
-            url="https://ceph.github.io/csi-charts",
-        ),
         # cert-manager
         *cert_manager.issuer_tasks_from_config(config.issuer),
         # monitoring
         *openstack_helm.kube_prometheus_stack_tasks_from_config(
             config.kube_prometheus_stack,
             opsgenie=config.opsgenie,
-        ),
-        flux.ApplyHelmRepositoryTask(
-            namespace=constants.NAMESPACE_MONITORING,
-            name=constants.HELM_REPOSITORY_NODE_FEATURE_DISCOVERY,
-            url="https://kubernetes-sigs.github.io/node-feature-discovery/charts",
         ),
         flux.ApplyHelmReleaseTask(
             namespace=constants.NAMESPACE_MONITORING,
@@ -97,24 +213,6 @@ def get_deployment_flow(config):
             values=constants.HELM_RELEASE_NODE_FEATURE_DISCOVERY_VALUES,
         ),
         # openstack
-        flux.ApplyHelmRepositoryTask(
-            namespace=constants.NAMESPACE_OPENSTACK,
-            name=constants.HELM_REPOSITORY_BITNAMI,
-            url="https://charts.bitnami.com/bitnami",
-        ),
-        flux.ApplyHelmReleaseTask(
-            namespace=constants.NAMESPACE_OPENSTACK,
-            name=constants.HELM_RELEASE_RABBITMQ_OPERATOR_NAME,
-            repository=constants.HELM_REPOSITORY_BITNAMI,
-            chart=constants.HELM_RELEASE_RABBITMQ_OPERATOR_NAME,
-            version=constants.HELM_RELEASE_RABBITMQ_OPERATOR_VERSION,
-            values=constants.HELM_RELEASE_RABBITMQ_OPERATOR_VALUES,
-        ),
-        flux.ApplyHelmRepositoryTask(
-            namespace=constants.NAMESPACE_OPENSTACK,
-            name=constants.HELM_REPOSITORY_PERCONA,
-            url="https://percona.github.io/percona-helm-charts/",
-        ),
         flux.ApplyHelmReleaseTask(
             namespace=constants.NAMESPACE_OPENSTACK,
             name=constants.HELM_RELEASE_PXC_OPERATOR_NAME,
@@ -124,22 +222,6 @@ def get_deployment_flow(config):
             values=constants.HELM_RELEASE_PXC_OPERATOR_VALUES,
         ),
         openstack_helm.ApplyPerconaXtraDBClusterTask(),
-        *openstack_helm.ingress_nginx_tasks_from_config(config.ingress_nginx),
-        flux.ApplyHelmRepositoryTask(
-            namespace=constants.NAMESPACE_OPENSTACK,
-            name=constants.HELM_REPOSITORY_OPENSTACK_HELM_INFRA,
-            url="https://tarballs.opendev.org/openstack/openstack-helm-infra/",
-        ),
-        flux.ApplyHelmRepositoryTask(
-            namespace=constants.NAMESPACE_OPENSTACK,
-            name=constants.HELM_REPOSITORY_COREDNS,
-            url="https://coredns.github.io/helm",
-        ),
-        flux.ApplyHelmRepositoryTask(
-            namespace=constants.NAMESPACE_OPENSTACK,
-            name=constants.HELM_REPOSITORY_OPENSTACK_HELM,
-            url="https://tarballs.opendev.org/openstack/openstack-helm/",
-        ),
     )
 
     if config.memcached.enabled:

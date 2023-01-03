@@ -124,6 +124,8 @@
             kubectl logs ${POD} -n ${NAMESPACE} -c ${CONTAINER} > "{{ logs_dir }}/pod-logs/${NAMESPACE}/${POD}/${CONTAINER}.txt"
             kubectl logs --previous ${POD} -n ${NAMESPACE} -c ${CONTAINER} > "{{ logs_dir }}/pod-logs/failed-pods/${NAMESPACE}/${POD}/${CONTAINER}.txt"
           done
+          find {{ logs_dir }} -type f -empty -print -delete
+          find {{ logs_dir }} -empty -type d -delete
         }
         export -f get_pod_logs
         get_namespaces | \

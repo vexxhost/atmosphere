@@ -67,14 +67,10 @@ class ApplyHelmReleaseTask(base.ApplyKubernetesObjectTask):
         self._values = values
         self._values_from = values_from
 
-        kwargs.setdefault("requires", set())
-        kwargs["requires"] = kwargs["requires"].union(set(["repository"]))
-
         super().__init__(
             kind=HelmRelease,
             namespace=namespace,
             name=name,
-            rebind={"repository": f"helm-repository-{namespace}-{repository}"},
             *args,
             **kwargs,
         )

@@ -167,33 +167,6 @@ def kube_prometheus_stack_tasks_from_config(
     ]
 
 
-def ingress_nginx_tasks_from_config(config: config.IngressNginxChartConfig):
-    if not config.enabled:
-        return []
-
-    values = mergedeep.merge(
-        {},
-        constants.HELM_RELEASE_INGRESS_NGINX_VALUES,
-        config.overrides,
-    )
-
-    return [
-        flux.ApplyHelmRepositoryTask(
-            namespace=config.namespace,
-            name=constants.HELM_REPOSITORY_INGRESS_NGINX,
-            url=constants.HELM_REPOSITORY_INGRESS_NGINX_URL,
-        ),
-        flux.ApplyHelmReleaseTask(
-            namespace=config.namespace,
-            name=constants.HELM_RELEASE_INGRESS_NGINX_NAME,
-            repository=constants.HELM_REPOSITORY_INGRESS_NGINX,
-            chart=constants.HELM_RELEASE_INGRESS_NGINX_NAME,
-            version=constants.HELM_RELEASE_INGRESS_NGINX_VERSION,
-            values=values,
-        ),
-    ]
-
-
 class PerconaXtraDBCluster(pykube.objects.NamespacedAPIObject):
     version = "pxc.percona.com/v1-10-0"
     endpoint = "perconaxtradbclusters"
