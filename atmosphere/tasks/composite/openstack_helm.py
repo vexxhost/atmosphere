@@ -48,7 +48,7 @@ class ApplyHelmReleaseTask(flux.ApplyHelmReleaseTask):
                     "name": f"atmosphere-{name}",
                 }
             ],
-            requires=set([f"secret-{namespace}-atmosphere-{name}"]),
+            requires=set([f"atmosphere-{name}"]),
         )
 
 
