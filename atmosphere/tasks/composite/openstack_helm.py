@@ -39,6 +39,7 @@ class ApplyHelmReleaseTask(flux.ApplyHelmReleaseTask):
             namespace=namespace,
             name=name,
             repository=repository,
+            repository_namespace=constants.HELM_REPOSITORY_ATMOSPHERE,
             chart=name,
             version=version,
             values_from=[

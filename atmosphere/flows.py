@@ -11,28 +11,19 @@ from atmosphere.tasks.kubernetes import cert_manager, v1
 def get_engine(config):
     api = clients.get_pykube_api()
 
+    # Create atmosphere helm repository
     objects.HelmRepository(
         api=api,
         metadata=types.NamespacedObjectMeta(
-            name=constants.HELM_REPOSITORY_CEPH,
-            namespace=constants.NAMESPACE_KUBE_SYSTEM,
+            name=constants.HELM_REPOSITORY_ATMOSPHERE,
+            namespace=constants.NAMESPACE_OPENSTACK,
         ),
         spec=types.HelmRepositorySpec(
-            url="https://ceph.github.io/csi-charts",
+            url=constants.HELM_REPOSITORY_ATMOSPHERE_URL,
         ),
     ).apply()
 
     if config.ingress_nginx.enabled:
-        objects.HelmRepository(
-            api=api,
-            metadata=types.NamespacedObjectMeta(
-                name=constants.HELM_REPOSITORY_INGRESS_NGINX,
-                namespace=config.ingress_nginx.namespace,
-            ),
-            spec=types.HelmRepositorySpec(
-                url=constants.HELM_REPOSITORY_INGRESS_NGINX_URL,
-            ),
-        ).apply()
         objects.HelmRelease(
             api=api,
             metadata=types.NamespacedObjectMeta(
@@ -46,8 +37,8 @@ def get_engine(config):
                         version=constants.HELM_RELEASE_INGRESS_NGINX_VERSION,
                         source_ref=types.CrossNamespaceObjectReference(
                             kind="HelmRepository",
-                            name=constants.HELM_REPOSITORY_INGRESS_NGINX,
-                            namespace=config.ingress_nginx.namespace,
+                            name=constants.HELM_REPOSITORY_ATMOSPHERE,
+                            namespace=constants.NAMESPACE_OPENSTACK,
                         ),
                     )
                 ),
@@ -67,16 +58,7 @@ def get_engine(config):
             name=constants.NAMESPACE_CERT_MANAGER,
         ),
     ).apply()
-    objects.HelmRepository(
-        api=api,
-        metadata=types.NamespacedObjectMeta(
-            name=constants.HELM_REPOSITORY_JETSTACK,
-            namespace=constants.NAMESPACE_CERT_MANAGER,
-        ),
-        spec=types.HelmRepositorySpec(
-            url="https://charts.jetstack.io",
-        ),
-    ).apply()
+
     objects.HelmRelease(
         api=api,
         metadata=types.NamespacedObjectMeta(
@@ -90,8 +72,8 @@ def get_engine(config):
                     version=constants.HELM_RELEASE_CERT_MANAGER_VERSION,
                     source_ref=types.CrossNamespaceObjectReference(
                         kind="HelmRepository",
-                        name=constants.HELM_REPOSITORY_JETSTACK,
-                        namespace=constants.NAMESPACE_CERT_MANAGER,
+                        name=constants.HELM_REPOSITORY_ATMOSPHERE,
+                        namespace=constants.NAMESPACE_OPENSTACK,
                     ),
                 )
             ),
@@ -111,16 +93,7 @@ def get_engine(config):
             name=constants.NAMESPACE_MONITORING,
         ),
     ).apply()
-    objects.HelmRepository(
-        api=api,
-        metadata=types.NamespacedObjectMeta(
-            name=constants.HELM_REPOSITORY_NODE_FEATURE_DISCOVERY,
-            namespace=constants.NAMESPACE_MONITORING,
-        ),
-        spec=types.HelmRepositorySpec(
-            url="https://kubernetes-sigs.github.io/node-feature-discovery/charts",
-        ),
-    ).apply()
+
     objects.HelmRelease(
         api=api,
         metadata=types.NamespacedObjectMeta(
@@ -134,8 +107,8 @@ def get_engine(config):
                     version="0.11.2",
                     source_ref=types.CrossNamespaceObjectReference(
                         kind="HelmRepository",
-                        name=constants.HELM_REPOSITORY_NODE_FEATURE_DISCOVERY,
-                        namespace=constants.NAMESPACE_MONITORING,
+                        name=constants.HELM_REPOSITORY_ATMOSPHERE,
+                        namespace=constants.NAMESPACE_OPENSTACK,
                     ),
                 )
             ),
@@ -143,16 +116,6 @@ def get_engine(config):
         ),
     ).apply()
 
-    objects.HelmRepository(
-        api=api,
-        metadata=types.NamespacedObjectMeta(
-            name=constants.HELM_REPOSITORY_BITNAMI,
-            namespace=constants.NAMESPACE_OPENSTACK,
-        ),
-        spec=types.HelmRepositorySpec(
-            url="https://charts.bitnami.com/bitnami",
-        ),
-    ).apply()
     objects.HelmRelease(
         api=api,
         metadata=types.NamespacedObjectMeta(
@@ -166,7 +129,7 @@ def get_engine(config):
                     version=constants.HELM_RELEASE_RABBITMQ_OPERATOR_VERSION,
                     source_ref=types.CrossNamespaceObjectReference(
                         kind="HelmRepository",
-                        name=constants.HELM_REPOSITORY_BITNAMI,
+                        name=constants.HELM_REPOSITORY_ATMOSPHERE,
                         namespace=constants.NAMESPACE_OPENSTACK,
                     ),
                 )
@@ -180,16 +143,7 @@ def get_engine(config):
             values=constants.HELM_RELEASE_RABBITMQ_OPERATOR_VALUES,
         ),
     ).apply()
-    objects.HelmRepository(
-        api=api,
-        metadata=types.NamespacedObjectMeta(
-            name=constants.HELM_REPOSITORY_PERCONA,
-            namespace=constants.NAMESPACE_OPENSTACK,
-        ),
-        spec=types.HelmRepositorySpec(
-            url="https://percona.github.io/percona-helm-charts/",
-        ),
-    ).apply()
+
     objects.HelmRelease(
         api=api,
         metadata=types.NamespacedObjectMeta(
@@ -203,7 +157,7 @@ def get_engine(config):
                     version=constants.HELM_RELEASE_PXC_OPERATOR_VERSION,
                     source_ref=types.CrossNamespaceObjectReference(
                         kind="HelmRepository",
-                        name=constants.HELM_REPOSITORY_PERCONA,
+                        name=constants.HELM_REPOSITORY_ATMOSPHERE,
                         namespace=constants.NAMESPACE_OPENSTACK,
                     ),
                 )
@@ -217,46 +171,8 @@ def get_engine(config):
             values=constants.HELM_RELEASE_PXC_OPERATOR_VALUES,
         ),
     ).apply()
-    objects.HelmRepository(
-        api=api,
-        metadata=types.NamespacedObjectMeta(
-            name=constants.HELM_REPOSITORY_OPENSTACK_HELM_INFRA,
-            namespace=constants.NAMESPACE_OPENSTACK,
-        ),
-        spec=types.HelmRepositorySpec(
-            url="https://tarballs.opendev.org/openstack/openstack-helm-infra/",
-        ),
-    ).apply()
-    objects.HelmRepository(
-        api=api,
-        metadata=types.NamespacedObjectMeta(
-            name=constants.HELM_REPOSITORY_COREDNS,
-            namespace=constants.NAMESPACE_OPENSTACK,
-        ),
-        spec=types.HelmRepositorySpec(url="https://coredns.github.io/helm"),
-    ).apply()
-    objects.HelmRepository(
-        api=api,
-        metadata=types.NamespacedObjectMeta(
-            name=constants.HELM_REPOSITORY_OPENSTACK_HELM,
-            namespace=constants.NAMESPACE_OPENSTACK,
-        ),
-        spec=types.HelmRepositorySpec(
-            url="https://tarballs.opendev.org/openstack/openstack-helm/",
-        ),
-    ).apply()
 
     if config.kube_prometheus_stack.enabled:
-        objects.HelmRepository(
-            api=api,
-            metadata=types.NamespacedObjectMeta(
-                name=constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY,
-                namespace=config.kube_prometheus_stack.namespace,
-            ),
-            spec=types.HelmRepositorySpec(
-                url=constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY_URL,
-            ),
-        ).apply()
         objects.HelmRelease(
             api=api,
             metadata=types.NamespacedObjectMeta(
@@ -270,8 +186,8 @@ def get_engine(config):
                         version=constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_VERSION,
                         source_ref=types.CrossNamespaceObjectReference(
                             kind="HelmRepository",
-                            name=constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY,
-                            namespace=config.kube_prometheus_stack.namespace,
+                            name=constants.HELM_REPOSITORY_ATMOSPHERE,
+                            namespace=constants.NAMESPACE_OPENSTACK,
                         ),
                     )
                 ),
@@ -328,7 +244,7 @@ def get_deployment_flow(config):
             ),
             openstack_helm.ApplyHelmReleaseTask(
                 namespace=config.memcached.namespace,
-                repository=constants.HELM_REPOSITORY_OPENSTACK_HELM_INFRA,
+                repository=constants.HELM_REPOSITORY_ATMOSPHERE,
                 name="memcached",
                 version="0.1.12",
             ),

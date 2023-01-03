@@ -91,6 +91,7 @@ class ApplyHelmReleaseTask(ApplyKubernetesObjectTask):
         namespace: str,
         release_name: str,
         helm_repository: str,
+        helm_repository_namespace: str,
         chart_name: str,
         chart_version: str,
         values: dict,
@@ -114,6 +115,7 @@ class ApplyHelmReleaseTask(ApplyKubernetesObjectTask):
                             "sourceRef": {
                                 "kind": "HelmRepository",
                                 "name": helm_repository,
+                                "namespace": helm_repository_namespace,
                             },
                         }
                     },

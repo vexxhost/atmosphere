@@ -9,6 +9,7 @@ from atmosphere import clients, flows
 from atmosphere.models import config
 from atmosphere.operator import tasks, utils
 from atmosphere.operator.api import Cloud, objects, types
+from atmosphere.tasks import constants
 
 
 @kopf.on.resume(Cloud.version, Cloud.kind)
@@ -43,8 +44,8 @@ def create_fn(namespace: str, name: str, spec: dict, **_):
             tasks.InstallClusterApiTask(),
             tasks.GetChartValues(
                 inject={
-                    "helm_repository": "openstack-helm",
-                    "helm_repository_url": "https://tarballs.opendev.org/openstack/openstack-helm/",
+                    "helm_repository": constants.HELM_REPOSITORY_ATMOSPHERE,
+                    "helm_repository_url": constants.HELM_REPOSITORY_ATMOSPHERE_URL,
                     "chart_name": "magnum",
                     "chart_version": "0.2.8",
                 },
@@ -60,7 +61,8 @@ def create_fn(namespace: str, name: str, spec: dict, **_):
             ),
             tasks.ApplyHelmReleaseTask(
                 inject={
-                    "helm_repository": "openstack-helm",
+                    "helm_repository": constants.HELM_REPOSITORY_ATMOSPHERE,
+                    "helm_repository_namespace": constants.NAMESPACE_OPENSTACK,
                     "chart_name": "magnum",
                     "chart_version": "0.2.8",
                     "release_name": "magnum",
