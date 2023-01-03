@@ -145,9 +145,6 @@ class ApplyPerconaXtraDBClusterTask(base.ApplyKubernetesObjectTask):
             kind=PerconaXtraDBCluster,
             namespace=constants.NAMESPACE_OPENSTACK,
             name="percona-xtradb",
-            requires=[
-                f"helm-release-{constants.NAMESPACE_OPENSTACK}-{constants.HELM_RELEASE_PXC_OPERATOR_NAME}",
-            ],
         )
 
     def generate_object(self) -> PerconaXtraDBCluster:
