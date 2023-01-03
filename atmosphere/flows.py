@@ -22,6 +22,42 @@ def get_engine(config):
         ),
     ).apply()
 
+    if config.ingress_nginx.enabled:
+        objects.HelmRepository(
+            api=api,
+            metadata=types.NamespacedObjectMeta(
+                name=constants.HELM_REPOSITORY_INGRESS_NGINX,
+                namespace=config.ingress_nginx.namespace,
+            ),
+            spec=types.HelmRepositorySpec(
+                url=constants.HELM_REPOSITORY_INGRESS_NGINX_URL,
+            ),
+        ).apply()
+        objects.HelmRelease(
+            api=api,
+            metadata=types.NamespacedObjectMeta(
+                name=constants.HELM_RELEASE_INGRESS_NGINX_NAME,
+                namespace=config.ingress_nginx.namespace,
+            ),
+            spec=types.HelmReleaseSpec(
+                chart=types.HelmChartTemplate(
+                    spec=types.HelmChartTemplateSpec(
+                        chart=constants.HELM_RELEASE_INGRESS_NGINX_NAME,
+                        version=constants.HELM_RELEASE_INGRESS_NGINX_VERSION,
+                        source_ref=types.CrossNamespaceObjectReference(
+                            kind="HelmRepository",
+                            name=constants.HELM_REPOSITORY_INGRESS_NGINX,
+                            namespace=config.ingress_nginx.namespace,
+                        ),
+                    )
+                ),
+                values={
+                    **constants.HELM_RELEASE_INGRESS_NGINX_VALUES,
+                    **config.ingress_nginx.overrides,
+                },
+            ),
+        ).apply()
+
     # NOTE(mnaser): We're running this first since we do get often timeouts
     #               when waiting for the self-signed certificate authority to
     #               be ready.
@@ -59,6 +95,12 @@ def get_engine(config):
                     ),
                 )
             ),
+            depends_on=[
+                types.NamespacedObjectReference(
+                    name=constants.HELM_RELEASE_INGRESS_NGINX_NAME,
+                    namespace=config.ingress_nginx.namespace,
+                )
+            ],
             values=constants.HELM_RELEASE_CERT_MANAGER_VALUES,
         ),
     ).apply()
@@ -69,50 +111,6 @@ def get_engine(config):
             name=constants.NAMESPACE_MONITORING,
         ),
     ).apply()
-
-    if config.kube_prometheus_stack.enabled:
-        objects.HelmRepository(
-            api=api,
-            metadata=types.NamespacedObjectMeta(
-                name=constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY,
-                namespace=config.kube_prometheus_stack.namespace,
-            ),
-            spec=types.HelmRepositorySpec(
-                url=constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY_URL,
-            ),
-        ).apply()
-        objects.HelmRelease(
-            api=api,
-            metadata=types.NamespacedObjectMeta(
-                name=constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_NAME,
-                namespace=config.kube_prometheus_stack.namespace,
-            ),
-            spec=types.HelmReleaseSpec(
-                chart=types.HelmChartTemplate(
-                    spec=types.HelmChartTemplateSpec(
-                        chart=constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_NAME,
-                        version=constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_VERSION,
-                        source_ref=types.CrossNamespaceObjectReference(
-                            kind="HelmRepository",
-                            name=constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY,
-                            namespace=config.kube_prometheus_stack.namespace,
-                        ),
-                    )
-                ),
-                values={
-                    **constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_VALUES,
-                    **config.kube_prometheus_stack.overrides,
-                    **{
-                        "alertmanager": {
-                            "config": openstack_helm.generate_alertmanager_config_for_opsgenie(
-                                config.opsgenie
-                            )
-                        }
-                    },
-                },
-            ),
-        ).apply()
-
     objects.HelmRepository(
         api=api,
         metadata=types.NamespacedObjectMeta(
@@ -144,42 +142,6 @@ def get_engine(config):
             values=constants.HELM_RELEASE_NODE_FEATURE_DISCOVERY_VALUES,
         ),
     ).apply()
-
-    if config.ingress_nginx.enabled:
-        objects.HelmRepository(
-            api=api,
-            metadata=types.NamespacedObjectMeta(
-                name=constants.HELM_REPOSITORY_INGRESS_NGINX,
-                namespace=config.ingress_nginx.namespace,
-            ),
-            spec=types.HelmRepositorySpec(
-                url=constants.HELM_REPOSITORY_INGRESS_NGINX_URL,
-            ),
-        ).apply()
-        objects.HelmRelease(
-            api=api,
-            metadata=types.NamespacedObjectMeta(
-                name=constants.HELM_RELEASE_INGRESS_NGINX_NAME,
-                namespace=config.ingress_nginx.namespace,
-            ),
-            spec=types.HelmReleaseSpec(
-                chart=types.HelmChartTemplate(
-                    spec=types.HelmChartTemplateSpec(
-                        chart=constants.HELM_RELEASE_INGRESS_NGINX_NAME,
-                        version=constants.HELM_RELEASE_INGRESS_NGINX_VERSION,
-                        source_ref=types.CrossNamespaceObjectReference(
-                            kind="HelmRepository",
-                            name=constants.HELM_REPOSITORY_INGRESS_NGINX,
-                            namespace=config.ingress_nginx.namespace,
-                        ),
-                    )
-                ),
-                values={
-                    **constants.HELM_RELEASE_INGRESS_NGINX_VALUES,
-                    **config.ingress_nginx.overrides,
-                },
-            ),
-        ).apply()
 
     objects.HelmRepository(
         api=api,
@@ -283,6 +245,63 @@ def get_engine(config):
             url="https://tarballs.opendev.org/openstack/openstack-helm/",
         ),
     ).apply()
+
+    if config.kube_prometheus_stack.enabled:
+        objects.HelmRepository(
+            api=api,
+            metadata=types.NamespacedObjectMeta(
+                name=constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY,
+                namespace=config.kube_prometheus_stack.namespace,
+            ),
+            spec=types.HelmRepositorySpec(
+                url=constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY_URL,
+            ),
+        ).apply()
+        objects.HelmRelease(
+            api=api,
+            metadata=types.NamespacedObjectMeta(
+                name=constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_NAME,
+                namespace=config.kube_prometheus_stack.namespace,
+            ),
+            spec=types.HelmReleaseSpec(
+                chart=types.HelmChartTemplate(
+                    spec=types.HelmChartTemplateSpec(
+                        chart=constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_NAME,
+                        version=constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_VERSION,
+                        source_ref=types.CrossNamespaceObjectReference(
+                            kind="HelmRepository",
+                            name=constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY,
+                            namespace=config.kube_prometheus_stack.namespace,
+                        ),
+                    )
+                ),
+                depends_on=[
+                    types.NamespacedObjectReference(
+                        name=constants.HELM_RELEASE_RABBITMQ_OPERATOR_NAME,
+                        namespace=constants.NAMESPACE_OPENSTACK,
+                    ),
+                    types.NamespacedObjectReference(
+                        name=constants.HELM_RELEASE_PXC_OPERATOR_NAME,
+                        namespace=constants.NAMESPACE_OPENSTACK,
+                    ),
+                    types.NamespacedObjectReference(
+                        name="node-feature-discovery",
+                        namespace=constants.NAMESPACE_MONITORING,
+                    ),
+                ],
+                values={
+                    **constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_VALUES,
+                    **config.kube_prometheus_stack.overrides,
+                    **{
+                        "alertmanager": {
+                            "config": openstack_helm.generate_alertmanager_config_for_opsgenie(
+                                config.opsgenie
+                            )
+                        }
+                    },
+                },
+            ),
+        ).apply()
 
     return engines.load(
         get_deployment_flow(config),
