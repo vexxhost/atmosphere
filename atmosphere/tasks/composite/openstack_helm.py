@@ -133,35 +133,6 @@ def generate_alertmanager_config_for_opsgenie(
     }
 
 
-def kube_prometheus_stack_tasks_from_config(
-    config: config.KubePrometheusStackChartConfig, opsgenie: config.OpsGenieConfig
-):
-    if not config.enabled:
-        return []
-
-    values = mergedeep.merge(
-        {},
-        constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_VALUES,
-        config.overrides,
-    )
-
-    if opsgenie.enabled:
-        values["alertmanager"]["config"] = generate_alertmanager_config_for_opsgenie(
-            opsgenie
-        )
-
-    return [
-        flux.ApplyHelmReleaseTask(
-            namespace=config.namespace,
-            name=constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_NAME,
-            repository=constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY,
-            chart=constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_NAME,
-            version=constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_VERSION,
-            values=values,
-        ),
-    ]
-
-
 class PerconaXtraDBCluster(pykube.objects.NamespacedAPIObject):
     version = "pxc.percona.com/v1-10-0"
     endpoint = "perconaxtradbclusters"

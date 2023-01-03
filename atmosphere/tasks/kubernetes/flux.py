@@ -8,40 +8,6 @@ from atmosphere.tasks.kubernetes import base
 LOG = logger.get_logger()
 
 
-class HelmRepository(pykube.objects.NamespacedAPIObject):
-    version = "source.toolkit.fluxcd.io/v1beta2"
-    endpoint = "helmrepositories"
-    kind = "HelmRepository"
-
-
-class ApplyHelmRepositoryTask(base.ApplyKubernetesObjectTask):
-    def __init__(self, namespace: str, name: str, url: str):
-        self._url = url
-
-        super().__init__(
-            kind=HelmRepository,
-            namespace=namespace,
-            name=name,
-        )
-
-    def generate_object(self) -> HelmRepository:
-        return HelmRepository(
-            self.api,
-            {
-                "apiVersion": self._obj_kind.version,
-                "kind": self._obj_kind.kind,
-                "metadata": {
-                    "name": self._obj_name,
-                    "namespace": self._obj_namespace,
-                },
-                "spec": {
-                    "interval": "1m",
-                    "url": self._url,
-                },
-            },
-        )
-
-
 class HelmRelease(pykube.objects.NamespacedAPIObject):
     version = "helm.toolkit.fluxcd.io/v2beta1"
     endpoint = "helmreleases"

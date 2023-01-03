@@ -5,7 +5,7 @@ from atmosphere import clients
 from atmosphere.operator.api import objects, types
 from atmosphere.tasks import constants
 from atmosphere.tasks.composite import openstack_helm
-from atmosphere.tasks.kubernetes import cert_manager, flux, v1
+from atmosphere.tasks.kubernetes import cert_manager, v1
 
 
 def get_engine(config):
@@ -69,16 +69,50 @@ def get_engine(config):
             name=constants.NAMESPACE_MONITORING,
         ),
     ).apply()
-    objects.HelmRepository(
-        api=api,
-        metadata=types.NamespacedObjectMeta(
-            name=constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY,
-            namespace=constants.NAMESPACE_MONITORING,
-        ),
-        spec=types.HelmRepositorySpec(
-            url=constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY_URL,
-        ),
-    ).apply()
+
+    if config.kube_prometheus_stack.enabled:
+        objects.HelmRepository(
+            api=api,
+            metadata=types.NamespacedObjectMeta(
+                name=constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY,
+                namespace=config.kube_prometheus_stack.namespace,
+            ),
+            spec=types.HelmRepositorySpec(
+                url=constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY_URL,
+            ),
+        ).apply()
+        objects.HelmRelease(
+            api=api,
+            metadata=types.NamespacedObjectMeta(
+                name=constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_NAME,
+                namespace=config.kube_prometheus_stack.namespace,
+            ),
+            spec=types.HelmReleaseSpec(
+                chart=types.HelmChartTemplate(
+                    spec=types.HelmChartTemplateSpec(
+                        chart=constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_NAME,
+                        version=constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_VERSION,
+                        source_ref=types.CrossNamespaceObjectReference(
+                            kind="HelmRepository",
+                            name=constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY,
+                            namespace=config.kube_prometheus_stack.namespace,
+                        ),
+                    )
+                ),
+                values={
+                    **constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_VALUES,
+                    **config.kube_prometheus_stack.overrides,
+                    **{
+                        "alertmanager": {
+                            "config": openstack_helm.generate_alertmanager_config_for_opsgenie(
+                                config.opsgenie
+                            )
+                        }
+                    },
+                },
+            ),
+        ).apply()
+
     objects.HelmRepository(
         api=api,
         metadata=types.NamespacedObjectMeta(
@@ -87,6 +121,27 @@ def get_engine(config):
         ),
         spec=types.HelmRepositorySpec(
             url="https://kubernetes-sigs.github.io/node-feature-discovery/charts",
+        ),
+    ).apply()
+    objects.HelmRelease(
+        api=api,
+        metadata=types.NamespacedObjectMeta(
+            name="node-feature-discovery",
+            namespace=constants.NAMESPACE_MONITORING,
+        ),
+        spec=types.HelmReleaseSpec(
+            chart=types.HelmChartTemplate(
+                spec=types.HelmChartTemplateSpec(
+                    chart="node-feature-discovery",
+                    version="0.11.2",
+                    source_ref=types.CrossNamespaceObjectReference(
+                        kind="HelmRepository",
+                        name=constants.HELM_REPOSITORY_NODE_FEATURE_DISCOVERY,
+                        namespace=constants.NAMESPACE_MONITORING,
+                    ),
+                )
+            ),
+            values=constants.HELM_RELEASE_NODE_FEATURE_DISCOVERY_VALUES,
         ),
     ).apply()
 
@@ -173,6 +228,33 @@ def get_engine(config):
             url="https://percona.github.io/percona-helm-charts/",
         ),
     ).apply()
+    objects.HelmRelease(
+        api=api,
+        metadata=types.NamespacedObjectMeta(
+            name=constants.HELM_RELEASE_PXC_OPERATOR_NAME,
+            namespace=constants.NAMESPACE_OPENSTACK,
+        ),
+        spec=types.HelmReleaseSpec(
+            chart=types.HelmChartTemplate(
+                spec=types.HelmChartTemplateSpec(
+                    chart=constants.HELM_RELEASE_PXC_OPERATOR_NAME,
+                    version=constants.HELM_RELEASE_PXC_OPERATOR_VERSION,
+                    source_ref=types.CrossNamespaceObjectReference(
+                        kind="HelmRepository",
+                        name=constants.HELM_REPOSITORY_PERCONA,
+                        namespace=constants.NAMESPACE_OPENSTACK,
+                    ),
+                )
+            ),
+            depends_on=[
+                types.NamespacedObjectReference(
+                    name=constants.HELM_RELEASE_CERT_MANAGER_NAME,
+                    namespace=constants.NAMESPACE_CERT_MANAGER,
+                )
+            ],
+            values=constants.HELM_RELEASE_PXC_OPERATOR_VALUES,
+        ),
+    ).apply()
     objects.HelmRepository(
         api=api,
         metadata=types.NamespacedObjectMeta(
@@ -215,28 +297,6 @@ def get_deployment_flow(config):
     flow = graph_flow.Flow("deploy").add(
         # cert-manager
         *cert_manager.issuer_tasks_from_config(config.issuer),
-        # monitoring
-        *openstack_helm.kube_prometheus_stack_tasks_from_config(
-            config.kube_prometheus_stack,
-            opsgenie=config.opsgenie,
-        ),
-        flux.ApplyHelmReleaseTask(
-            namespace=constants.NAMESPACE_MONITORING,
-            name="node-feature-discovery",
-            repository=constants.HELM_REPOSITORY_NODE_FEATURE_DISCOVERY,
-            chart="node-feature-discovery",
-            version="0.11.2",
-            values=constants.HELM_RELEASE_NODE_FEATURE_DISCOVERY_VALUES,
-        ),
-        # openstack
-        flux.ApplyHelmReleaseTask(
-            namespace=constants.NAMESPACE_OPENSTACK,
-            name=constants.HELM_RELEASE_PXC_OPERATOR_NAME,
-            repository=constants.HELM_REPOSITORY_PERCONA,
-            chart=constants.HELM_RELEASE_PXC_OPERATOR_NAME,
-            version=constants.HELM_RELEASE_PXC_OPERATOR_VERSION,
-            values=constants.HELM_RELEASE_PXC_OPERATOR_VALUES,
-        ),
         openstack_helm.ApplyPerconaXtraDBClusterTask(),
     )
 
