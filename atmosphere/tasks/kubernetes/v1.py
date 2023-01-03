@@ -6,47 +6,6 @@ from atmosphere.tasks.kubernetes import base
 LOG = logger.get_logger()
 
 
-class ApplyNamespaceTask(base.ApplyKubernetesObjectTask):
-    def __init__(self, name: str):
-        super().__init__(kind=pykube.Namespace, namespace=None, name=name)
-
-    def generate_object(self) -> pykube.Namespace:
-        return pykube.Namespace(
-            self.api,
-            {
-                "apiVersion": self._obj_kind.version,
-                "kind": self._obj_kind.kind,
-                "metadata": {"name": self._obj_name},
-            },
-        )
-
-
-class ApplyConfigMapTask(base.ApplyKubernetesObjectTask):
-    def __init__(self, namespace: str, name: str, data: str):
-        self._data = data
-
-        super().__init__(
-            kind=pykube.ConfigMap,
-            namespace=namespace,
-            name=name,
-            requires=set(["namespace"]),
-        )
-
-    def generate_object(self) -> pykube.ConfigMap:
-        return pykube.ConfigMap(
-            self.api,
-            {
-                "apiVersion": self._obj_kind.version,
-                "kind": self._obj_kind.kind,
-                "metadata": {
-                    "name": self._obj_name,
-                    "namespace": self._obj_namespace,
-                },
-                "data": self._data,
-            },
-        )
-
-
 class ApplyServiceTask(base.ApplyKubernetesObjectTask):
     def __init__(self, namespace: str, name: str, labels: dict, spec: dict):
         self._labels = labels
@@ -56,7 +15,6 @@ class ApplyServiceTask(base.ApplyKubernetesObjectTask):
             kind=pykube.Service,
             namespace=namespace,
             name=name,
-            requires=set(["namespace"]),
         )
 
     def generate_object(self) -> pykube.Service:
@@ -83,7 +41,6 @@ class ApplySecretTask(base.ApplyKubernetesObjectTask):
             kind=pykube.Secret,
             namespace=namespace,
             name=name,
-            requires=set(["namespace"]),
         )
 
     def generate_object(self) -> pykube.Secret:
@@ -97,42 +54,5 @@ class ApplySecretTask(base.ApplyKubernetesObjectTask):
                     "namespace": self._obj_namespace,
                 },
                 "stringData": self._data,
-            },
-        )
-
-
-class ApplyIngressTask(base.ApplyKubernetesObjectTask):
-    def __init__(
-        self,
-        namespace: str,
-        name: str,
-        spec: dict,
-        annotations: dict = {},
-        labels: dict = {},
-    ):
-        self._annotations = annotations
-        self._labels = labels
-        self._spec = spec
-
-        super().__init__(
-            kind=pykube.Ingress,
-            namespace=namespace,
-            name=name,
-            requires=set(["namespace"]),
-        )
-
-    def generate_object(self) -> pykube.Ingress:
-        return pykube.Ingress(
-            self.api,
-            {
-                "apiVersion": self._obj_kind.version,
-                "kind": self._obj_kind.kind,
-                "metadata": {
-                    "name": self._obj_name,
-                    "namespace": self._obj_namespace,
-                    "annotations": self._annotations,
-                    "labels": self._labels,
-                },
-                "spec": self._spec,
             },
         )

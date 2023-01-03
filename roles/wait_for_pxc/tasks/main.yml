@@ -1,0 +1,12 @@
+- name: Wait until Percona XtraDB Cluster is ready
+  kubernetes.core.k8s_info:
+    api_version: pxc.percona.com/v1
+    kind: PerconaXtraDBCluster
+    name: percona-xtradb
+    namespace: openstack
+    wait_sleep: 1
+    wait_timeout: 600
+    wait: true
+    wait_condition:
+      type: ready
+      status: true

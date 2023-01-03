@@ -7,7 +7,7 @@ def get_image_ref(
     image_name: str, override_registry: str = None
 ) -> reference.Reference:
     ref = reference.Reference.parse(constants.IMAGE_LIST[image_name])
-    if override_registry is None:
+    if not override_registry:
         return ref
 
     # NOTE(mnaser): We re-write the name of a few images to make sense of them
@@ -23,3 +23,11 @@ def get_image_ref(
     ref = reference.Reference.parse(ref.string())
 
     return ref
+
+
+def filter_annotations(annotations: dict) -> dict:
+    return {
+        key: value
+        for key, value in annotations.items()
+        if key != "kopf.zalando.org/last-handled-configuration"
+    }

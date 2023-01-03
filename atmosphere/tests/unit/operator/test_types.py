@@ -1,0 +1,174 @@
+import pydantic
+from hypothesis import given
+from hypothesis import provisional as prov
+from hypothesis import strategies as st
+
+from atmosphere.operator.api import types
+
+
+class TestHostname:
+    def test_modify_schema(self):
+        class FakeObj(pydantic.BaseModel):
+            hostname: types.Hostname
+
+        assert FakeObj.schema().get("properties").get("hostname").get("examples") == [
+            "example.com"
+        ]
+
+    def test_repr(self):
+        assert repr(types.Hostname("example.com")) == "Hostname('example.com')"
+
+
+class TestObjectMeta:
+    @given(st.builds(types.ObjectMeta))
+    def test_property(self, instance):
+        assert isinstance(instance, types.ObjectMeta)
+        assert isinstance(instance.name, str)
+        assert instance.name != ""
+
+
+class TestNamespacedObjectMeta:
+    @given(st.builds(types.NamespacedObjectMeta))
+    def test_property(self, instance):
+        assert isinstance(instance, types.NamespacedObjectMeta)
+        assert isinstance(instance.name, str)
+        assert instance.name != ""
+        assert isinstance(instance.namespace, str)
+        assert instance.namespace != ""
+
+
+class TestKubernetesObject:
+    @given(st.builds(types.KubernetesObject))
+    def test_property(self, instance):
+        assert isinstance(instance, types.KubernetesObject)
+        assert isinstance(instance.metadata, types.ObjectMeta)
+
+
+class TestNamespacedKubernetesObject:
+    @given(st.builds(types.NamespacedKubernetesObject))
+    def test_property(self, instance):
+        assert isinstance(instance, types.NamespacedKubernetesObject)
+        assert isinstance(instance.metadata, types.NamespacedObjectMeta)
+
+
+class TestServiceBackendPort:
+    @given(st.builds(types.ServiceBackendPort))
+    def test_property(self, instance):
+        assert isinstance(instance, types.ServiceBackendPort)
+        assert isinstance(instance.number, int)
+        assert 1 <= instance.number <= 65535
+
+
+class TestIngressServiceBackend:
+    @given(st.builds(types.IngressServiceBackend))
+    def test_property(self, instance):
+        assert isinstance(instance, types.IngressServiceBackend)
+        assert isinstance(instance.name, str)
+        assert instance.name != ""
+        assert isinstance(instance.port, types.ServiceBackendPort)
+
+
+class TestCrossNamespaceObjectReference:
+    @given(st.builds(types.CrossNamespaceObjectReference))
+    def test_property(self, instance):
+        assert isinstance(instance, types.CrossNamespaceObjectReference)
+        assert isinstance(instance.kind, str)
+        assert instance.kind != ""
+        assert isinstance(instance.name, str)
+        assert instance.name != ""
+        assert isinstance(instance.namespace, str) or instance.namespace is None
+        assert instance.namespace != ""
+
+
+class TestHelmRepositorySpec:
+    @given(st.builds(types.HelmRepositorySpec, url=prov.urls()))
+    def test_property(self, instance):
+        assert isinstance(instance, types.HelmRepositorySpec)
+        assert isinstance(instance.url, str)
+        assert instance.url != ""
+        assert isinstance(instance.interval, str)
+        assert instance.interval != ""
+
+
+class TestHelmChartTemplateSpec:
+    @given(st.builds(types.HelmChartTemplateSpec))
+    def test_property(self, instance):
+        assert isinstance(instance, types.HelmChartTemplateSpec)
+        assert isinstance(instance.chart, str)
+        assert instance.chart != ""
+        assert isinstance(instance.version, str) or instance.version is None
+        assert instance.version != ""
+
+
+class TestHelmChartTemplate:
+    @given(st.builds(types.HelmChartTemplate))
+    def test_property(self, instance):
+        assert isinstance(instance, types.HelmChartTemplate)
+        assert isinstance(instance.spec, types.HelmChartTemplateSpec)
+
+
+class TestHelmReleaseActionSpec:
+    @given(st.builds(types.HelmReleaseActionSpec))
+    def test_property(self, instance):
+        assert isinstance(instance, types.HelmReleaseActionSpec)
+        assert isinstance(instance.crds, types.HelmReleaseActionSpecCRDsPolicy)
+        assert isinstance(instance.disable_wait, bool)
+        assert instance.disable_wait in [True, False]
+
+
+class TestHelmReleaseValuesReference:
+    @given(st.builds(types.HelmReleaseValuesReference))
+    def test_property(self, instance):
+        assert isinstance(instance, types.HelmReleaseValuesReference)
+        assert isinstance(instance.kind, str)
+        assert instance.kind != ""
+        assert isinstance(instance.name, str)
+        assert instance.name != ""
+        assert isinstance(instance.values_key, str) or instance.values_key is None
+        assert instance.values_key != ""
+        assert isinstance(instance.target_path, str) or instance.target_path is None
+        assert instance.target_path != ""
+
+
+class TestHelmReleaseSpec:
+    @given(st.builds(types.HelmReleaseSpec))
+    def test_property(self, instance):
+        assert isinstance(instance, types.HelmReleaseSpec)
+        assert isinstance(instance.interval, str)
+        assert instance.interval != ""
+        assert isinstance(instance.chart, types.HelmChartTemplate)
+        assert isinstance(instance.install, types.HelmReleaseActionSpec)
+        assert isinstance(instance.upgrade, types.HelmReleaseActionSpec)
+        assert isinstance(instance.values, dict)
+        assert isinstance(instance.values_from, list)
+
+
+class TestOpenstackHelmRabbitmqClusterSpec:
+    @given(st.builds(types.OpenstackHelmRabbitmqClusterSpec))
+    def test_property(self, instance):
+        assert isinstance(instance, types.OpenstackHelmRabbitmqClusterSpec)
+        assert isinstance(instance.image, str)
+        assert instance.image != ""
+
+
+class TestOpenstackHelmIngressObjectMetaName:
+    def test_name_order(self):
+        assert [*types.OpenstackHelmIngressObjectMetaName] == sorted(
+            [*types.OpenstackHelmIngressObjectMetaName]
+        )
+
+
+class TestOpenstackHelmIngressObjectMeta:
+    @given(st.builds(types.OpenstackHelmIngressObjectMeta))
+    def test_property(self, instance):
+        assert isinstance(instance, types.OpenstackHelmIngressObjectMeta)
+        assert isinstance(instance.name, types.OpenstackHelmIngressObjectMetaName)
+
+
+class TestOpenstackHelmIngressSpec:
+    @given(st.builds(types.OpenstackHelmIngressSpec))
+    def test_property(self, instance):
+        assert isinstance(instance, types.OpenstackHelmIngressSpec)
+        assert instance.clusterIssuer != ""
+        assert instance.ingressClassName != ""
+        assert instance.host != ""

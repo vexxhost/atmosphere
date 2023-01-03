@@ -12,24 +12,12 @@ from oslo_utils import strutils
 from taskflow import task
 from tenacity import retry, retry_if_result, stop_after_delay, wait_fixed
 
-from atmosphere import clients
 from atmosphere.operator import constants, utils
 
 LOG = logging.getLogger(__name__)
 
 
-class BuildApiClient(task.Task):
-    default_provides = "api"
-
-    def execute(self) -> pykube.HTTPClient:
-        return clients.get_pykube_api()
-
-
 class ApplyKubernetesObjectTask(task.Task):
-    @property
-    def api(self):
-        return clients.get_pykube_api()
-
     def generate_object(self, *args, **kwargs) -> pykube.objects.APIObject:
         raise NotImplementedError
 
@@ -88,61 +76,6 @@ class InstallClusterApiTask(task.Task):
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
-
-
-class RabbitmqCluster(pykube.objects.NamespacedAPIObject):
-    version = "rabbitmq.com/v1beta1"
-    endpoint = "rabbitmqclusters"
-    kind = "RabbitmqCluster"
-
-
-class ApplyRabbitmqClusterTask(ApplyKubernetesObjectTask):
-    def execute(
-        self, api: pykube.HTTPClient, namespace: str, chart_name: str, spec: dict
-    ) -> dict:
-        resource = RabbitmqCluster(
-            api,
-            {
-                "apiVersion": RabbitmqCluster.version,
-                "kind": RabbitmqCluster.kind,
-                "metadata": {
-                    "name": f"rabbitmq-{chart_name}",
-                    "namespace": namespace,
-                },
-                "spec": {
-                    "image": utils.get_image_ref(
-                        "rabbitmq_server", override_registry=spec["imageRepository"]
-                    ).string(),
-                    "affinity": {
-                        "nodeAffinity": {
-                            "requiredDuringSchedulingIgnoredDuringExecution": {
-                                "nodeSelectorTerms": [
-                                    {
-                                        "matchExpressions": [
-                                            {
-                                                "key": "openstack-control-plane",
-                                                "operator": "In",
-                                                "values": ["enabled"],
-                                            }
-                                        ]
-                                    }
-                                ]
-                            }
-                        }
-                    },
-                    "rabbitmq": {
-                        "additionalConfig": "vm_memory_high_watermark.relative = 0.9\n"
-                    },
-                    "resources": {
-                        "requests": {"cpu": "500m", "memory": "1Gi"},
-                        "limits": {"cpu": "1", "memory": "2Gi"},
-                    },
-                    "terminationGracePeriodSeconds": 15,
-                },
-            },
-        )
-
-        return self._apply(resource)
 
 
 class HelmRelease(pykube.objects.NamespacedAPIObject):
@@ -293,7 +226,7 @@ class GetChartValues(task.Task):
 
 
 class GenerateReleaseValues(task.Task):
-    def _generate_base(self, rabbitmq: RabbitmqCluster, spec: dict) -> dict:
+    def _generate_base(self, rabbitmq: str, spec: dict) -> dict:
         return {
             "endpoints": {
                 "identity": {
@@ -314,7 +247,7 @@ class GenerateReleaseValues(task.Task):
                     "statefulset": None,
                     "hosts": {
                         # TODO(mnaser): handle scenario when those don't exist
-                        "default": rabbitmq.name,
+                        "default": rabbitmq,
                     },
                 },
             },
@@ -410,10 +343,10 @@ class GenerateReleaseValues(task.Task):
             },
         }
 
-    def execute(self, chart_name: str, rabbitmq: RabbitmqCluster, spec: dict) -> dict:
+    def execute(self, chart_name: str, spec: dict) -> dict:
         return mergedeep.merge(
             {},
-            self._generate_base(rabbitmq, spec),
+            self._generate_base(f"rabbitmq-{chart_name}", spec),
             getattr(self, f"_generate_{chart_name}")(spec),
             spec[chart_name].get("overrides", {}),
         )
@@ -422,9 +355,9 @@ class GenerateReleaseValues(task.Task):
 class GenerateMagnumChartValuesFrom(task.Task):
     def execute(
         self,
+        chart_name: str,
         image_tags: pykube.ConfigMap,
         secrets: pykube.Secret,
-        rabbitmq: RabbitmqCluster,
     ) -> dict:
         return [
             {
@@ -475,13 +408,13 @@ class GenerateMagnumChartValuesFrom(task.Task):
             },
             {
                 "kind": pykube.Secret.kind,
-                "name": f"{rabbitmq.name}-default-user",
+                "name": f"rabbitmq-{chart_name}-default-user",
                 "targetPath": "endpoints.oslo_messaging.auth.admin.username",
                 "valuesKey": "username",
             },
             {
                 "kind": pykube.Secret.kind,
-                "name": f"{rabbitmq.name}-default-user",
+                "name": f"rabbitmq-{chart_name}-default-user",
                 "targetPath": "endpoints.oslo_messaging.auth.admin.password",
                 "valuesKey": "password",
             },
@@ -492,67 +425,6 @@ class GenerateMagnumChartValuesFrom(task.Task):
                 "valuesKey": "magnum-rabbitmq-password",
             },
         ]
-
-
-class ApplyIngressTask(ApplyKubernetesObjectTask):
-    def execute(
-        self,
-        api: pykube.HTTPClient,
-        namespace: str,
-        endpoint: str,
-        spec: dict,
-        chart_values: dict,
-        release_values: dict,
-    ) -> pykube.Ingress:
-        host = release_values["endpoints"][endpoint]["host_fqdn_override"]["public"][
-            "host"
-        ]
-        service_name = chart_values["endpoints"][endpoint]["hosts"]["default"]
-        service_port = chart_values["endpoints"][endpoint]["port"]["api"]["default"]
-
-        resource = pykube.Ingress(
-            api,
-            {
-                "apiVersion": pykube.Ingress.version,
-                "kind": pykube.Ingress.kind,
-                "metadata": {
-                    "name": endpoint.replace("_", "-"),
-                    "namespace": namespace,
-                    "annotations": {
-                        "cert-manager.io/cluster-issuer": spec[
-                            "certManagerClusterIssuer"
-                        ],
-                    },
-                },
-                "spec": {
-                    "ingressClassName": spec["ingressClassName"],
-                    "rules": [
-                        {
-                            "host": host,
-                            "http": {
-                                "paths": [
-                                    {
-                                        "path": "/",
-                                        "pathType": "Prefix",
-                                        "backend": {
-                                            "service": {
-                                                "name": service_name,
-                                                "port": {
-                                                    "number": service_port,
-                                                },
-                                            },
-                                        },
-                                    },
-                                ],
-                            },
-                        },
-                    ],
-                    "tls": [{"secretName": f"{service_name}-certs", "hosts": [host]}],
-                },
-            },
-        )
-
-        return self._apply(resource)
 
 
 class GenerateOpenStackHelmEndpoints(task.Task):

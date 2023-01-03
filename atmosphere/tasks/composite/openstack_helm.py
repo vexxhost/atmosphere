@@ -133,67 +133,6 @@ def generate_alertmanager_config_for_opsgenie(
     }
 
 
-def kube_prometheus_stack_tasks_from_config(
-    config: config.KubePrometheusStackChartConfig, opsgenie: config.OpsGenieConfig
-):
-    if not config.enabled:
-        return []
-
-    values = mergedeep.merge(
-        {},
-        constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_VALUES,
-        config.overrides,
-    )
-
-    if opsgenie.enabled:
-        values["alertmanager"]["config"] = generate_alertmanager_config_for_opsgenie(
-            opsgenie
-        )
-
-    return [
-        flux.ApplyHelmRepositoryTask(
-            namespace=constants.NAMESPACE_MONITORING,
-            name=constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY,
-            url=constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY_URL,
-        ),
-        flux.ApplyHelmReleaseTask(
-            namespace=config.namespace,
-            name=constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_NAME,
-            repository=constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY,
-            chart=constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_NAME,
-            version=constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_VERSION,
-            values=values,
-        ),
-    ]
-
-
-def ingress_nginx_tasks_from_config(config: config.IngressNginxChartConfig):
-    if not config.enabled:
-        return []
-
-    values = mergedeep.merge(
-        {},
-        constants.HELM_RELEASE_INGRESS_NGINX_VALUES,
-        config.overrides,
-    )
-
-    return [
-        flux.ApplyHelmRepositoryTask(
-            namespace=config.namespace,
-            name=constants.HELM_REPOSITORY_INGRESS_NGINX,
-            url=constants.HELM_REPOSITORY_INGRESS_NGINX_URL,
-        ),
-        flux.ApplyHelmReleaseTask(
-            namespace=config.namespace,
-            name=constants.HELM_RELEASE_INGRESS_NGINX_NAME,
-            repository=constants.HELM_REPOSITORY_INGRESS_NGINX,
-            chart=constants.HELM_RELEASE_INGRESS_NGINX_NAME,
-            version=constants.HELM_RELEASE_INGRESS_NGINX_VERSION,
-            values=values,
-        ),
-    ]
-
-
 class PerconaXtraDBCluster(pykube.objects.NamespacedAPIObject):
     version = "pxc.percona.com/v1-10-0"
     endpoint = "perconaxtradbclusters"
@@ -206,9 +145,6 @@ class ApplyPerconaXtraDBClusterTask(base.ApplyKubernetesObjectTask):
             kind=PerconaXtraDBCluster,
             namespace=constants.NAMESPACE_OPENSTACK,
             name="percona-xtradb",
-            requires=[
-                f"helm-release-{constants.NAMESPACE_OPENSTACK}-{constants.HELM_RELEASE_PXC_OPERATOR_NAME}",
-            ],
         )
 
     def generate_object(self) -> PerconaXtraDBCluster:
@@ -273,67 +209,6 @@ class ApplyPerconaXtraDBClusterTask(base.ApplyKubernetesObjectTask):
                         ).string(),
                         "nodeSelector": {"openstack-control-plane": "enabled"},
                     },
-                },
-            },
-        )
-
-
-class RabbitmqCluster(pykube.objects.NamespacedAPIObject):
-    version = "rabbitmq.com/v1beta1"
-    endpoint = "rabbitmqclusters"
-    kind = "RabbitmqCluster"
-
-
-class ApplyRabbitmqClusterTask(base.ApplyKubernetesObjectTask):
-    def __init__(self, name: str):
-        super().__init__(
-            kind=RabbitmqCluster,
-            namespace=constants.NAMESPACE_OPENSTACK,
-            name=name,
-            requires=[
-                f"helm-release-{constants.NAMESPACE_OPENSTACK}-{constants.HELM_RELEASE_RABBITMQ_OPERATOR_NAME}",
-            ],
-        )
-
-    def generate_object(self) -> RabbitmqCluster:
-        return RabbitmqCluster(
-            self.api,
-            {
-                "apiVersion": self._obj_kind.version,
-                "kind": self._obj_kind.kind,
-                "metadata": {
-                    "name": f"rabbitmq-{self._obj_name}",
-                    "namespace": self._obj_namespace,
-                },
-                "spec": {
-                    "image": utils.get_image_ref_using_legacy_image_repository(
-                        "rabbitmq_server"
-                    ).string(),
-                    "affinity": {
-                        "nodeAffinity": {
-                            "requiredDuringSchedulingIgnoredDuringExecution": {
-                                "nodeSelectorTerms": [
-                                    {
-                                        "matchExpressions": [
-                                            {
-                                                "key": "openstack-control-plane",
-                                                "operator": "In",
-                                                "values": ["enabled"],
-                                            }
-                                        ]
-                                    }
-                                ]
-                            }
-                        }
-                    },
-                    "rabbitmq": {
-                        "additionalConfig": "vm_memory_high_watermark.relative = 0.9\n"
-                    },
-                    "resources": {
-                        "requests": {"cpu": "500m", "memory": "1Gi"},
-                        "limits": {"cpu": "1", "memory": "2Gi"},
-                    },
-                    "terminationGracePeriodSeconds": 15,
                 },
             },
         )
