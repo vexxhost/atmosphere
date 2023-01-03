@@ -151,11 +151,6 @@ def kube_prometheus_stack_tasks_from_config(
         )
 
     return [
-        flux.ApplyHelmRepositoryTask(
-            namespace=constants.NAMESPACE_MONITORING,
-            name=constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY,
-            url=constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY_URL,
-        ),
         flux.ApplyHelmReleaseTask(
             namespace=config.namespace,
             name=constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_NAME,

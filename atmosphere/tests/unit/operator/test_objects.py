@@ -189,6 +189,7 @@ class TestHelmRelease:
                             },
                         },
                     },
+                    "dependsOn": [],
                     "install": {
                         "crds": "CreateReplace",
                         "disableWait": True,

@@ -97,10 +97,13 @@ class IngressServiceBackend(pydantic.BaseModel):
     port: ServiceBackendPort
 
 
-class CrossNamespaceObjectReference(pydantic.BaseModel):
-    kind: pydantic.constr(min_length=1)
+class NamespacedObjectReference(pydantic.BaseModel):
     name: pydantic.constr(min_length=1)
     namespace: pydantic.constr(min_length=1) = None
+
+
+class CrossNamespaceObjectReference(NamespacedObjectReference):
+    kind: pydantic.constr(min_length=1)
 
 
 class HelmRepositorySpec(pydantic.BaseModel):
@@ -148,8 +151,11 @@ class HelmReleaseValuesReference(pydantic.BaseModel):
 
 
 class HelmReleaseSpec(pydantic.BaseModel):
-    interval: str = "60s"
     chart: HelmChartTemplate
+    interval: str = "60s"
+    depends_on: list[NamespacedObjectReference] = pydantic.Field(
+        default=[], alias="dependsOn"
+    )
     install: HelmReleaseActionSpec = HelmReleaseActionSpec()
     upgrade: HelmReleaseActionSpec = HelmReleaseActionSpec()
     values: dict = {}

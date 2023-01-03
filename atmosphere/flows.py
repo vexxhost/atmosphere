@@ -72,6 +72,16 @@ def get_engine(config):
     objects.HelmRepository(
         api=api,
         metadata=types.NamespacedObjectMeta(
+            name=constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY,
+            namespace=constants.NAMESPACE_MONITORING,
+        ),
+        spec=types.HelmRepositorySpec(
+            url=constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY_URL,
+        ),
+    ).apply()
+    objects.HelmRepository(
+        api=api,
+        metadata=types.NamespacedObjectMeta(
             name=constants.HELM_REPOSITORY_NODE_FEATURE_DISCOVERY,
             namespace=constants.NAMESPACE_MONITORING,
         ),
@@ -144,6 +154,12 @@ def get_engine(config):
                     ),
                 )
             ),
+            depends_on=[
+                types.NamespacedObjectReference(
+                    name=constants.HELM_RELEASE_CERT_MANAGER_NAME,
+                    namespace=constants.NAMESPACE_CERT_MANAGER,
+                )
+            ],
             values=constants.HELM_RELEASE_RABBITMQ_OPERATOR_VALUES,
         ),
     ).apply()

@@ -18,18 +18,6 @@ from atmosphere.tasks.composite import openstack_helm
             ),
             [
                 {
-                    "apiVersion": "source.toolkit.fluxcd.io/v1beta2",
-                    "kind": "HelmRepository",
-                    "metadata": {
-                        "name": constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY,
-                        "namespace": constants.NAMESPACE_MONITORING,
-                    },
-                    "spec": {
-                        "interval": "1m",
-                        "url": constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY_URL,
-                    },
-                },
-                {
                     "apiVersion": "helm.toolkit.fluxcd.io/v2beta1",
                     "kind": "HelmRelease",
                     "metadata": {
@@ -65,18 +53,6 @@ from atmosphere.tasks.composite import openstack_helm
                 """
             ),
             [
-                {
-                    "apiVersion": "source.toolkit.fluxcd.io/v1beta2",
-                    "kind": "HelmRepository",
-                    "metadata": {
-                        "name": constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY,
-                        "namespace": constants.NAMESPACE_MONITORING,
-                    },
-                    "spec": {
-                        "interval": "1m",
-                        "url": constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY_URL,
-                    },
-                },
                 {
                     "apiVersion": "helm.toolkit.fluxcd.io/v2beta1",
                     "kind": "HelmRelease",
@@ -119,18 +95,6 @@ from atmosphere.tasks.composite import openstack_helm
                 """
             ),
             [
-                {
-                    "apiVersion": "source.toolkit.fluxcd.io/v1beta2",
-                    "kind": "HelmRepository",
-                    "metadata": {
-                        "name": constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY,
-                        "namespace": constants.NAMESPACE_MONITORING,
-                    },
-                    "spec": {
-                        "interval": "1m",
-                        "url": constants.HELM_REPOSITORY_PROMETHEUS_COMMUINTY_URL,
-                    },
-                },
                 {
                     "apiVersion": "helm.toolkit.fluxcd.io/v2beta1",
                     "kind": "HelmRelease",
