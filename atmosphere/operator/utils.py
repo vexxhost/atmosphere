@@ -29,5 +29,5 @@ def filter_annotations(annotations: dict) -> dict:
     return {
         key: value
         for key, value in annotations.items()
-        if key == "kopf.zalando.org/last-handled-configuration"
+        if key != "kopf.zalando.org/last-handled-configuration"
     }
