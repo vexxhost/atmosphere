@@ -32,7 +32,6 @@ class ApplyHelmReleaseTask(flux.ApplyHelmReleaseTask):
         self,
         namespace: str,
         name: str,
-        repository: str,
         version: str,
     ):
         super().__init__(
