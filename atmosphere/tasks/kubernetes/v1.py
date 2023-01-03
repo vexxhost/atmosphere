@@ -34,13 +34,15 @@ class ApplyServiceTask(base.ApplyKubernetesObjectTask):
 
 
 class ApplySecretTask(base.ApplyKubernetesObjectTask):
-    def __init__(self, namespace: str, name: str, data: str):
+    def __init__(self, namespace: str, name: str, data: str, *args, **kwargs):
         self._data = data
 
         super().__init__(
             kind=pykube.Secret,
             namespace=namespace,
             name=name,
+            *args,
+            **kwargs,
         )
 
     def generate_object(self) -> pykube.Secret:

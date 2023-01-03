@@ -24,6 +24,7 @@ class ApplyReleaseSecretTask(v1.ApplySecretTask):
             namespace=namespace,
             name=f"atmosphere-{chart}",
             data={"values.yaml": values_yaml},
+            provides=f"atmosphere-{chart}",
         )
 
 
