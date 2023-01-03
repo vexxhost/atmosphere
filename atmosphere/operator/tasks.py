@@ -408,13 +408,13 @@ class GenerateMagnumChartValuesFrom(task.Task):
             },
             {
                 "kind": pykube.Secret.kind,
-                "name": f"neutron-{chart_name}-default-user",
+                "name": f"rabbitmq-{chart_name}-default-user",
                 "targetPath": "endpoints.oslo_messaging.auth.admin.username",
                 "valuesKey": "username",
             },
             {
                 "kind": pykube.Secret.kind,
-                "name": f"neutron-{chart_name}-default-user",
+                "name": f"rabbitmq-{chart_name}-default-user",
                 "targetPath": "endpoints.oslo_messaging.auth.admin.password",
                 "valuesKey": "password",
             },
