@@ -244,7 +244,6 @@ def get_deployment_flow(config):
             ),
             openstack_helm.ApplyHelmReleaseTask(
                 namespace=config.memcached.namespace,
-                repository=constants.HELM_REPOSITORY_ATMOSPHERE,
                 name="memcached",
                 version="0.1.12",
             ),
