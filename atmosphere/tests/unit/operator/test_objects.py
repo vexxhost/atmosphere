@@ -193,11 +193,17 @@ class TestHelmRelease:
                     "install": {
                         "crds": "CreateReplace",
                         "disableWait": True,
+                        "remediation": {
+                            "retries": 3,
+                        },
                     },
                     "interval": "60s",
                     "upgrade": {
                         "crds": "CreateReplace",
                         "disableWait": True,
+                        "remediation": {
+                            "retries": 3,
+                        },
                     },
                     "values": {
                         "foo": "bar",

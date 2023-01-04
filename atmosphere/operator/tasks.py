@@ -120,10 +120,16 @@ class ApplyHelmReleaseTask(ApplyKubernetesObjectTask):
                     "install": {
                         "crds": "CreateReplace",
                         "disableWait": True,
+                        "remediation": {
+                            "retries": 3,
+                        },
                     },
                     "upgrade": {
                         "crds": "CreateReplace",
                         "disableWait": True,
+                        "remediation": {
+                            "retries": 3,
+                        },
                     },
                     "values": values,
                     "valuesFrom": values_from,
