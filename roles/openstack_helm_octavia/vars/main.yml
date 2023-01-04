@@ -118,7 +118,7 @@ _openstack_helm_octavia_values:
         client_cert: /etc/octavia/certs/client/tls-combined.pem
         server_ca: /etc/octavia/certs/server/ca.crt
       health_manager:
-        controller_ip_port_list: "{{ _openstack_helm_octavia_controller_ip_port_list | join(',') }}"
+        controller_ip_port_list: "{{ _openstack_helm_octavia_controller_ip_port_list | sort | join(',') }}"
         heartbeat_key: "{{ openstack_helm_octavia_heartbeat_key }}"
       oslo_messaging_notifications:
         driver: noop
