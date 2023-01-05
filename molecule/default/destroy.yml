@@ -25,116 +25,6 @@
       when:
         - ansible_host is not defined
 
-    - name: Describe all cluster-scoped objects
-      become: true
-      shell: |-
-        set -e
-        export OBJECT_TYPE=node,clusterrole,clusterrolebinding,storageclass,namespace
-        export PARALLELISM_FACTOR=4
-        function list_objects () {
-          printf ${OBJECT_TYPE} | xargs -d ',' -I {} -P1 -n1 bash -c 'echo "$@"' _ {}
-        }
-        export -f list_objects
-        function name_objects () {
-          export OBJECT=$1
-          kubectl get ${OBJECT} -o name | xargs -L1 -I {} -P1 -n1 bash -c 'echo "${OBJECT} ${1#*/}"' _ {}
-        }
-        export -f name_objects
-        function get_objects () {
-          input=($1)
-          export OBJECT=${input[0]}
-          export NAME=${input[1]#*/}
-          echo "${OBJECT}/${NAME}"
-          DIR="{{ logs_dir }}/objects/cluster/${OBJECT}"
-          mkdir -p ${DIR}
-          kubectl get ${OBJECT} ${NAME} -o yaml > "${DIR}/${NAME}.yaml"
-          kubectl describe ${OBJECT} ${NAME} > "${DIR}/${NAME}.txt"
-        }
-        export -f get_objects
-        list_objects | \
-          xargs -r -n 1 -P ${PARALLELISM_FACTOR} -I {} bash -c 'name_objects "$@"' _ {} | \
-          xargs -r -n 1 -P ${PARALLELISM_FACTOR} -I {} bash -c 'get_objects "$@"' _ {}
-      args:
-        executable: /bin/bash
-      ignore_errors: True
-
-    - name: Describe all namespace-scoped objects
-      become: true
-      shell: |-
-        set -e
-        export OBJECT_TYPE=configmaps,cronjobs,daemonsets,deployment,endpoints,ingresses,jobs,networkpolicies,pods,podsecuritypolicies,persistentvolumeclaims,rolebindings,roles,secrets,serviceaccounts,services,statefulsets
-        export PARALLELISM_FACTOR=4
-        function get_namespaces () {
-          kubectl get namespaces -o name | awk -F '/' '{ print $NF }'
-        }
-        function list_namespaced_objects () {
-          export NAMESPACE=$1
-          printf ${OBJECT_TYPE} | xargs -d ',' -I {} -P1 -n1 bash -c 'echo "${NAMESPACE} $@"' _ {}
-        }
-        export -f list_namespaced_objects
-        function name_objects () {
-          input=($1)
-          export NAMESPACE=${input[0]}
-          export OBJECT=${input[1]}
-          kubectl get -n ${NAMESPACE} ${OBJECT} -o name | xargs -L1 -I {} -P1 -n1 bash -c 'echo "${NAMESPACE} ${OBJECT} $@"' _ {}
-        }
-        export -f name_objects
-        function get_objects () {
-          input=($1)
-          export NAMESPACE=${input[0]}
-          export OBJECT=${input[1]}
-          export NAME=${input[2]#*/}
-          echo "${NAMESPACE}/${OBJECT}/${NAME}"
-          DIR="{{ logs_dir }}/objects/namespaced/${NAMESPACE}/${OBJECT}"
-          mkdir -p ${DIR}
-          kubectl get -n ${NAMESPACE} ${OBJECT} ${NAME} -o yaml > "${DIR}/${NAME}.yaml"
-          kubectl describe -n ${NAMESPACE} ${OBJECT} ${NAME} > "${DIR}/${NAME}.txt"
-        }
-        export -f get_objects
-        get_namespaces | \
-          xargs -r -n 1 -P ${PARALLELISM_FACTOR} -I {} bash -c 'list_namespaced_objects "$@"' _ {} | \
-          xargs -r -n 1 -P ${PARALLELISM_FACTOR} -I {} bash -c 'name_objects "$@"' _ {} | \
-          xargs -r -n 1 -P ${PARALLELISM_FACTOR} -I {} bash -c 'get_objects "$@"' _ {}
-      args:
-        executable: /bin/bash
-      ignore_errors: True
-
-    - name: Retrieve all container logs, current and previous (if they exist)
-      become: true
-      shell: |-
-        set -e
-        PARALLELISM_FACTOR=4
-        function get_namespaces () {
-          kubectl get namespaces -o name | awk -F '/' '{ print $NF }'
-        }
-        function get_pods () {
-          NAMESPACE=$1
-          kubectl get pods -n ${NAMESPACE} -o name | awk -F '/' '{ print $NF }' | xargs -L1 -P 1 -I {} echo ${NAMESPACE} {}
-        }
-        export -f get_pods
-        function get_pod_logs () {
-          NAMESPACE=${1% *}
-          POD=${1#* }
-          INIT_CONTAINERS=$(kubectl get pod $POD -n ${NAMESPACE} -o jsonpath="{.spec.initContainers[*].name}")
-          CONTAINERS=$(kubectl get pod $POD -n ${NAMESPACE} -o jsonpath="{.spec.containers[*].name}")
-          for CONTAINER in ${INIT_CONTAINERS} ${CONTAINERS}; do
-            echo "${NAMESPACE}/${POD}/${CONTAINER}"
-            mkdir -p "{{ logs_dir }}/pod-logs/${NAMESPACE}/${POD}"
-            mkdir -p "{{ logs_dir }}/pod-logs/failed-pods/${NAMESPACE}/${POD}"
-            kubectl logs ${POD} -n ${NAMESPACE} -c ${CONTAINER} > "{{ logs_dir }}/pod-logs/${NAMESPACE}/${POD}/${CONTAINER}.txt"
-            kubectl logs --previous ${POD} -n ${NAMESPACE} -c ${CONTAINER} > "{{ logs_dir }}/pod-logs/failed-pods/${NAMESPACE}/${POD}/${CONTAINER}.txt"
-          done
-          find {{ logs_dir }} -type f -empty -print -delete
-          find {{ logs_dir }} -empty -type d -delete
-        }
-        export -f get_pod_logs
-        get_namespaces | \
-          xargs -r -n 1 -P ${PARALLELISM_FACTOR} -I {} bash -c 'get_pods "$@"' _ {} | \
-          xargs -r -n 2 -P ${PARALLELISM_FACTOR} -I {} bash -c 'get_pod_logs "$@"' _ {}
-      args:
-        executable: /bin/bash
-      ignore_errors: True
-
     - name: Upload logs to object storage
       ignore_errors: True
       when:
@@ -144,6 +34,113 @@
         build_id: "{{ lookup('env', 'GITHUB_RUN_ID') }}-{{ lookup('env', 'GITHUB_RUN_NUMBER') }}"
         container_name: atmosphere-ci-logs
       block:
+        - name: Describe all cluster-scoped objects
+          become: true
+          shell: |-
+            set -e
+            export OBJECT_TYPE=node,clusterrole,clusterrolebinding,storageclass,namespace
+            export PARALLELISM_FACTOR=4
+            function list_objects () {
+              printf ${OBJECT_TYPE} | xargs -d ',' -I {} -P1 -n1 bash -c 'echo "$@"' _ {}
+            }
+            export -f list_objects
+            function name_objects () {
+              export OBJECT=$1
+              kubectl get ${OBJECT} -o name | xargs -L1 -I {} -P1 -n1 bash -c 'echo "${OBJECT} ${1#*/}"' _ {}
+            }
+            export -f name_objects
+            function get_objects () {
+              input=($1)
+              export OBJECT=${input[0]}
+              export NAME=${input[1]#*/}
+              echo "${OBJECT}/${NAME}"
+              DIR="{{ logs_dir }}/objects/cluster/${OBJECT}"
+              mkdir -p ${DIR}
+              kubectl get ${OBJECT} ${NAME} -o yaml > "${DIR}/${NAME}.yaml"
+              kubectl describe ${OBJECT} ${NAME} > "${DIR}/${NAME}.txt"
+            }
+            export -f get_objects
+            list_objects | \
+              xargs -r -n 1 -P ${PARALLELISM_FACTOR} -I {} bash -c 'name_objects "$@"' _ {} | \
+              xargs -r -n 1 -P ${PARALLELISM_FACTOR} -I {} bash -c 'get_objects "$@"' _ {}
+          args:
+            executable: /bin/bash
+
+        - name: Describe all namespace-scoped objects
+          become: true
+          shell: |-
+            set -e
+            export OBJECT_TYPE=configmaps,cronjobs,daemonsets,deployment,endpoints,ingresses,jobs,networkpolicies,pods,podsecuritypolicies,persistentvolumeclaims,rolebindings,roles,secrets,serviceaccounts,services,statefulsets
+            export PARALLELISM_FACTOR=4
+            function get_namespaces () {
+              kubectl get namespaces -o name | awk -F '/' '{ print $NF }'
+            }
+            function list_namespaced_objects () {
+              export NAMESPACE=$1
+              printf ${OBJECT_TYPE} | xargs -d ',' -I {} -P1 -n1 bash -c 'echo "${NAMESPACE} $@"' _ {}
+            }
+            export -f list_namespaced_objects
+            function name_objects () {
+              input=($1)
+              export NAMESPACE=${input[0]}
+              export OBJECT=${input[1]}
+              kubectl get -n ${NAMESPACE} ${OBJECT} -o name | xargs -L1 -I {} -P1 -n1 bash -c 'echo "${NAMESPACE} ${OBJECT} $@"' _ {}
+            }
+            export -f name_objects
+            function get_objects () {
+              input=($1)
+              export NAMESPACE=${input[0]}
+              export OBJECT=${input[1]}
+              export NAME=${input[2]#*/}
+              echo "${NAMESPACE}/${OBJECT}/${NAME}"
+              DIR="{{ logs_dir }}/objects/namespaced/${NAMESPACE}/${OBJECT}"
+              mkdir -p ${DIR}
+              kubectl get -n ${NAMESPACE} ${OBJECT} ${NAME} -o yaml > "${DIR}/${NAME}.yaml"
+              kubectl describe -n ${NAMESPACE} ${OBJECT} ${NAME} > "${DIR}/${NAME}.txt"
+            }
+            export -f get_objects
+            get_namespaces | \
+              xargs -r -n 1 -P ${PARALLELISM_FACTOR} -I {} bash -c 'list_namespaced_objects "$@"' _ {} | \
+              xargs -r -n 1 -P ${PARALLELISM_FACTOR} -I {} bash -c 'name_objects "$@"' _ {} | \
+              xargs -r -n 1 -P ${PARALLELISM_FACTOR} -I {} bash -c 'get_objects "$@"' _ {}
+          args:
+            executable: /bin/bash
+
+        - name: Retrieve all container logs, current and previous (if they exist)
+          become: true
+          shell: |-
+            set -e
+            PARALLELISM_FACTOR=4
+            function get_namespaces () {
+              kubectl get namespaces -o name | awk -F '/' '{ print $NF }'
+            }
+            function get_pods () {
+              NAMESPACE=$1
+              kubectl get pods -n ${NAMESPACE} -o name | awk -F '/' '{ print $NF }' | xargs -L1 -P 1 -I {} echo ${NAMESPACE} {}
+            }
+            export -f get_pods
+            function get_pod_logs () {
+              NAMESPACE=${1% *}
+              POD=${1#* }
+              INIT_CONTAINERS=$(kubectl get pod $POD -n ${NAMESPACE} -o jsonpath="{.spec.initContainers[*].name}")
+              CONTAINERS=$(kubectl get pod $POD -n ${NAMESPACE} -o jsonpath="{.spec.containers[*].name}")
+              for CONTAINER in ${INIT_CONTAINERS} ${CONTAINERS}; do
+                echo "${NAMESPACE}/${POD}/${CONTAINER}"
+                mkdir -p "{{ logs_dir }}/pod-logs/${NAMESPACE}/${POD}"
+                mkdir -p "{{ logs_dir }}/pod-logs/failed-pods/${NAMESPACE}/${POD}"
+                kubectl logs ${POD} -n ${NAMESPACE} -c ${CONTAINER} > "{{ logs_dir }}/pod-logs/${NAMESPACE}/${POD}/${CONTAINER}.txt"
+                kubectl logs --previous ${POD} -n ${NAMESPACE} -c ${CONTAINER} > "{{ logs_dir }}/pod-logs/failed-pods/${NAMESPACE}/${POD}/${CONTAINER}.txt"
+              done
+              find {{ logs_dir }} -type f -empty -print -delete
+              find {{ logs_dir }} -empty -type d -delete
+            }
+            export -f get_pod_logs
+            get_namespaces | \
+              xargs -r -n 1 -P ${PARALLELISM_FACTOR} -I {} bash -c 'get_pods "$@"' _ {} | \
+              xargs -r -n 2 -P ${PARALLELISM_FACTOR} -I {} bash -c 'get_pod_logs "$@"' _ {}
+          args:
+            executable: /bin/bash
+
         - name: Authenticate to cloud to get token to use in Swift client
           delegate_to: localhost
           openstack.cloud.auth:
