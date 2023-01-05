@@ -201,6 +201,10 @@
     cores: -1
     ram: -1
 
+- name: Debug octavia helm values
+  debug:
+    msg: "{{ _openstack_helm_octavia_values | combine(openstack_helm_octavia_values, recursive=True) | to_nice_yaml }}"
+
 - name: Deploy Helm chart
   kubernetes.core.k8s:
     state: present
