@@ -24,17 +24,6 @@
   kubernetes.core.k8s:
     state: present
     definition:
-      - apiVersion: source.toolkit.fluxcd.io/v1beta2
-        kind: GitRepository
-        metadata:
-          name: openstack-helm-infra
-          namespace: openstack
-        spec:
-          interval: 60s
-          url: https://github.com/vexxhost/openstack-helm-infra
-          ref:
-            commit: 24726dffd6f1e5ac91620e92e04a782cb94340e8
-
       - apiVersion: v1
         kind: Secret
         metadata:
@@ -53,10 +42,12 @@
           timeout: 60m
           chart:
             spec:
-              chart: ./openvswitch
+              chart: openvswitch
+              version: 0.1.10
               sourceRef:
-                kind: GitRepository
-                name: openstack-helm-infra
+                kind: HelmRepository
+                name: atmosphere
+                namespace: openstack
           install:
             disableWait: true
           upgrade:
