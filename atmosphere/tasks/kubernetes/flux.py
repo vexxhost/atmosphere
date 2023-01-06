@@ -20,6 +20,7 @@ class ApplyHelmReleaseTask(base.ApplyKubernetesObjectTask):
         namespace: str,
         name: str,
         repository: str,
+        repository_namespace: str,
         chart: str,
         version: str,
         values: dict = {},
@@ -28,6 +29,7 @@ class ApplyHelmReleaseTask(base.ApplyKubernetesObjectTask):
         **kwargs,
     ):
         self._repository = repository
+        self._repository_namespace = repository_namespace
         self._chart = chart
         self._version = version
         self._values = values
@@ -60,6 +62,7 @@ class ApplyHelmReleaseTask(base.ApplyKubernetesObjectTask):
                             "sourceRef": {
                                 "kind": "HelmRepository",
                                 "name": self._repository,
+                                "namespace": self._repository_namespace,
                             },
                         }
                     },

@@ -32,13 +32,13 @@ class ApplyHelmReleaseTask(flux.ApplyHelmReleaseTask):
         self,
         namespace: str,
         name: str,
-        repository: str,
         version: str,
     ):
         super().__init__(
             namespace=namespace,
             name=name,
-            repository=repository,
+            repository=constants.HELM_REPOSITORY_ATMOSPHERE,
+            repository_namespace=constants.NAMESPACE_OPENSTACK,
             chart=name,
             version=version,
             values_from=[
