@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.14.0](https://github.com/vexxhost/atmosphere/compare/v0.13.0...v0.14.0) (2023-01-06)
+
+
+### Features
+
+* Set retries of helmreleases ([#253](https://github.com/vexxhost/atmosphere/issues/253)) ([9bcc2a0](https://github.com/vexxhost/atmosphere/commit/9bcc2a04102b5bd86e67ceafbf7596c149b3fa37))
+
+
+### Bug Fixes
+
+* Fix test failures ([6ffcda5](https://github.com/vexxhost/atmosphere/commit/6ffcda54d92b6237cfe3c8df486edd1a0ea2bc37))
+* Fix the condition if atmosphere_image_repository is defined in flux role ([81cf6ab](https://github.com/vexxhost/atmosphere/commit/81cf6ab8541633272cdac0d48ba456482f9969ed))
+
 ## [0.13.0](https://github.com/vexxhost/atmosphere/compare/v0.12.0...v0.13.0) (2022-12-28)
 
 
