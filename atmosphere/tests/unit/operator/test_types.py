@@ -107,6 +107,13 @@ class TestHelmChartTemplate:
         assert isinstance(instance.spec, types.HelmChartTemplateSpec)
 
 
+class HelmReleaseActionRemediation:
+    @given(st.builds(types.HelmReleaseActionRemediation))
+    def test_property(self, instance):
+        assert isinstance(instance, types.HelmReleaseActionRemediation)
+        assert isinstance(instance.retries, int)
+
+
 class TestHelmReleaseActionSpec:
     @given(st.builds(types.HelmReleaseActionSpec))
     def test_property(self, instance):
@@ -114,6 +121,7 @@ class TestHelmReleaseActionSpec:
         assert isinstance(instance.crds, types.HelmReleaseActionSpecCRDsPolicy)
         assert isinstance(instance.disable_wait, bool)
         assert instance.disable_wait in [True, False]
+        assert isinstance(instance.remediation, types.HelmReleaseActionRemediation)
 
 
 class TestHelmReleaseValuesReference:

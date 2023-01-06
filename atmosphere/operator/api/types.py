@@ -124,6 +124,10 @@ class HelmChartTemplate(pydantic.BaseModel):
     spec: HelmChartTemplateSpec
 
 
+class HelmReleaseActionRemediation(pydantic.BaseModel):
+    retries: int = 3
+
+
 class HelmReleaseActionSpecCRDsPolicy(str, Enum):
     SKIP = "Skip"
     CREATE = "Create"
@@ -135,6 +139,7 @@ class HelmReleaseActionSpec(pydantic.BaseModel):
         HelmReleaseActionSpecCRDsPolicy.CREATE_REPLACE
     )
     disable_wait: bool = pydantic.Field(default=True, alias="disableWait")
+    remediation: HelmReleaseActionRemediation = HelmReleaseActionRemediation()
 
     class Config:
         allow_population_by_field_name = True
