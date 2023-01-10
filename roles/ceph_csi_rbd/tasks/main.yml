@@ -13,8 +13,8 @@
 # under the License.
 
 - name: Collect "ceph mon dump" output from a monitor
-  delegate_to: "{{ groups[ceph_csi_rbd_mons_group][0] }}"
   run_once: true
+  delegate_to: "{{ groups[ceph_csi_rbd_mons_group][0] }}"
   ansible.builtin.command: ceph mon dump -f json
   changed_when: false
   register: _ceph_mon_dump
@@ -25,6 +25,7 @@
     ceph_monitors: "{{ _ceph_mon_dump.stdout | from_json | community.general.json_query('mons[*].addr') | map('regex_replace', '(.*):(.*)', '\\1') }}"
 
 - name: Create Ceph pool
+  run_once: true
   delegate_to: "{{ groups[ceph_csi_rbd_mons_group][0] }}"
   vexxhost.atmosphere.ceph_pool:
     name: "{{ ceph_csi_rbd_pool }}"
@@ -33,6 +34,7 @@
     pg_autoscale_mode: "on"
 
 - name: Create user {{ ceph_csi_rbd_user }}
+  run_once: true
   delegate_to: "{{ groups[ceph_csi_rbd_mons_group][0] }}"
   vexxhost.atmosphere.ceph_key:
     name: "{{ ceph_csi_rbd_user }}"
@@ -42,6 +44,7 @@
       osd: profile rbd pool={{ ceph_csi_rbd_pool }}
 
 - name: Retrieve keyring for {{ ceph_csi_rbd_user }}
+  run_once: true
   delegate_to: "{{ groups[ceph_csi_rbd_mons_group][0] }}"
   vexxhost.atmosphere.ceph_key:
     name: "{{ ceph_csi_rbd_user }}"
@@ -50,65 +53,61 @@
   register: _ceph_key
 
 - name: Store keyring inside fact
+  run_once: true
   ansible.builtin.set_fact:
     _ceph_rbd_csi_ceph_keyring: "{{ _ceph_key.stdout | from_json | first }}"
 
+- name: Configure Helm repository
+  kubernetes.core.helm_repository:
+    name: ceph
+    repo_url: https://ceph.github.io/csi-charts
+
 - name: Deploy Helm chart
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      - apiVersion: helm.toolkit.fluxcd.io/v2beta1
-        kind: HelmRelease
-        metadata:
-          name: ceph-csi-rbd
-          namespace: kube-system
-        spec:
-          interval: 60s
-          chart:
-            spec:
-              chart: ceph-csi-rbd
-              version: 3.5.1
-              sourceRef:
-                kind: HelmRepository
-                name: ceph
-          values:
-            csiConfig:
-              - clusterID: "{{ ceph_csi_rbd_ceph_fsid }}"
-                monitors: "{{ ceph_monitors }}"
-            nodeplugin:
-              httpMetrics:
-                containerPort: 8081
-              registrar:
-                image:
-                  repository: "{{ lookup('vexxhost.atmosphere.image_ref', 'csi_node_driver_registrar', output='name') }}"
-              plugin:
-                image:
-                  repository: "{{ lookup('vexxhost.atmosphere.image_ref', 'csi_rbd_plugin', output='name') }}"
-            provisioner:
-              nodeSelector:
-                openstack-control-plane: enabled
-              provisioner:
-                image:
-                  repository: "{{ lookup('vexxhost.atmosphere.image_ref', 'csi_rbd_provisioner', output='name') }}"
-              attacher:
-                image:
-                  repository: "{{ lookup('vexxhost.atmosphere.image_ref', 'csi_rbd_attacher', output='name') }}"
-              resizer:
-                image:
-                  repository: "{{ lookup('vexxhost.atmosphere.image_ref', 'csi_rbd_resizer', output='name') }}"
-              snapshotter:
-                image:
-                  repository: "{{ lookup('vexxhost.atmosphere.image_ref', 'csi_rbd_snapshotter', output='name') }}"
-            storageClass:
-              create: true
-              name: general
-              annotations:
-                storageclass.kubernetes.io/is-default-class: "true"
-              clusterID: "{{ ceph_csi_rbd_ceph_fsid }}"
-              pool: "{{ ceph_csi_rbd_pool }}"
-              mountOptions:
-                - discard
-            secret:
-              create: true
-              userID: "{{ ceph_csi_rbd_id }}"
-              userKey: "{{ _ceph_rbd_csi_ceph_keyring.key }}"
+  run_once: true
+  kubernetes.core.helm:
+    name: ceph-csi-rbd
+    chart_ref: ceph/ceph-csi-rbd
+    chart_version: 3.5.1
+    release_namespace: kube-system
+    kubeconfig: /etc/kubernetes/admin.conf
+    values:
+      csiConfig:
+        - clusterID: "{{ ceph_csi_rbd_ceph_fsid }}"
+          monitors: "{{ ceph_monitors }}"
+      nodeplugin:
+        httpMetrics:
+          containerPort: 8081
+        registrar:
+          image:
+            repository: "{{ lookup('vexxhost.atmosphere.image_ref', 'csi_node_driver_registrar', output='name') }}"
+        plugin:
+          image:
+            repository: "{{ lookup('vexxhost.atmosphere.image_ref', 'csi_rbd_plugin', output='name') }}"
+      provisioner:
+        nodeSelector:
+          openstack-control-plane: enabled
+        provisioner:
+          image:
+            repository: "{{ lookup('vexxhost.atmosphere.image_ref', 'csi_rbd_provisioner', output='name') }}"
+        attacher:
+          image:
+            repository: "{{ lookup('vexxhost.atmosphere.image_ref', 'csi_rbd_attacher', output='name') }}"
+        resizer:
+          image:
+            repository: "{{ lookup('vexxhost.atmosphere.image_ref', 'csi_rbd_resizer', output='name') }}"
+        snapshotter:
+          image:
+            repository: "{{ lookup('vexxhost.atmosphere.image_ref', 'csi_rbd_snapshotter', output='name') }}"
+      storageClass:
+        create: true
+        name: general
+        annotations:
+          storageclass.kubernetes.io/is-default-class: "true"
+        clusterID: "{{ ceph_csi_rbd_ceph_fsid }}"
+        pool: "{{ ceph_csi_rbd_pool }}"
+        mountOptions:
+          - discard
+      secret:
+        create: true
+        userID: "{{ ceph_csi_rbd_id }}"
+        userKey: "{{ _ceph_rbd_csi_ceph_keyring.key }}"
