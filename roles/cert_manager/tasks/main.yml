@@ -1,0 +1,16 @@
+- name: Configure Helm repository
+  run_once: true
+  kubernetes.core.helm_repository:
+    name: "{{ cert_manager_helm_repository_name }}"
+    repo_url: "{{ cert_manager_helm_repository_url }}"
+
+- name: Deploy Helm chart
+  run_once: true
+  kubernetes.core.helm:
+    name: "{{ cert_manager_helm_release_name }}"
+    chart_ref: "{{ cert_manager_helm_repository_name }}/{{ cert_manager_helm_chart_name }}"
+    chart_version: "{{ cert_manager_helm_chart_version }}"
+    release_namespace: "{{ cert_manager_helm_release_namespace }}"
+    create_namespace: true
+    kubeconfig: /etc/kubernetes/admin.conf
+    values: "{{ _cert_manager_helm_values | combine(cert_manager_helm_values, recursive=True) }}"
