@@ -1,0 +1,16 @@
+- name: Configure Helm repository
+  run_once: true
+  kubernetes.core.helm_repository:
+    name: "{{ node_feature_discovery_helm_repository_name }}"
+    repo_url: "{{ node_feature_discovery_helm_repository_url }}"
+
+- name: Deploy Helm chart
+  run_once: true
+  kubernetes.core.helm:
+    name: "{{ node_feature_discovery_helm_release_name }}"
+    chart_ref: "{{ node_feature_discovery_helm_repository_name }}/{{ node_feature_discovery_helm_chart_name }}"
+    chart_version: "{{ node_feature_discovery_helm_chart_version }}"
+    release_namespace: "{{ node_feature_discovery_helm_release_namespace }}"
+    create_namespace: true
+    kubeconfig: /etc/kubernetes/admin.conf
+    values: "{{ _node_feature_discovery_helm_values | combine(node_feature_discovery_helm_values, recursive=True) }}"
