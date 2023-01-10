@@ -1,0 +1,24 @@
+_rabbitmq_operator_helm_values:
+  global:
+    imageRegistry: "{{ lookup('vexxhost.atmosphere.image_ref', 'rabbitmq_cluster_operator', output='domain') }}"
+  rabbitmqImage:
+    repository: "{{ lookup('vexxhost.atmosphere.image_ref', 'rabbitmq_server', output='path') }}"
+    tag: "{{ lookup('vexxhost.atmosphere.image_ref', 'rabbitmq_server', output='tag') }}"
+  credentialUpdaterImage:
+    repository: "{{ lookup('vexxhost.atmosphere.image_ref', 'rabbitmq_credential_updater', output='path') }}"
+    tag: "{{ lookup('vexxhost.atmosphere.image_ref', 'rabbitmq_credential_updater', output='tag') }}"
+  clusterOperator:
+    fullnameOverride: rabbitmq-cluster-operator
+    nodeSelector:
+      openstack-control-plane: enabled
+    image:
+      repository: "{{ lookup('vexxhost.atmosphere.image_ref', 'rabbitmq_cluster_operator', output='path') }}"
+      tag: "{{ lookup('vexxhost.atmosphere.image_ref', 'rabbitmq_cluster_operator', output='tag') }}"
+  msgTopologyOperator:
+    fullnameOverride: rabbitmq-messaging-topology-operator
+    nodeSelector:
+      openstack-control-plane: enabled
+    image:
+      repository: "{{ lookup('vexxhost.atmosphere.image_ref', 'rabbitmq_topology_operator', output='path') }}"
+      tag: "{{ lookup('vexxhost.atmosphere.image_ref', 'rabbitmq_topology_operator', output='tag') }}"
+  useCertManager: true

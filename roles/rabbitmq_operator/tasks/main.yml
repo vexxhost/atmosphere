@@ -1,0 +1,16 @@
+- name: Configure Helm repository
+  run_once: true
+  kubernetes.core.helm_repository:
+    name: "{{ rabbitmq_operator_helm_repository_name }}"
+    repo_url: "{{ rabbitmq_operator_helm_repository_url }}"
+
+- name: Deploy Helm chart
+  run_once: true
+  kubernetes.core.helm:
+    name: "{{ rabbitmq_operator_helm_release_name }}"
+    chart_ref: "{{ rabbitmq_operator_helm_repository_name }}/{{ rabbitmq_operator_helm_chart_name }}"
+    chart_version: "{{ rabbitmq_operator_helm_chart_version }}"
+    release_namespace: "{{ rabbitmq_operator_helm_release_namespace }}"
+    create_namespace: true
+    kubeconfig: /etc/kubernetes/admin.conf
+    values: "{{ _rabbitmq_operator_helm_values | combine(rabbitmq_operator_helm_values, recursive=True) }}"
