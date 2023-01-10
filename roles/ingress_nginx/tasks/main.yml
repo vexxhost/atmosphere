@@ -1,0 +1,16 @@
+- name: Configure Helm repository
+  run_once: true
+  kubernetes.core.helm_repository:
+    name: "{{ ingress_nginx_helm_repository_name }}"
+    repo_url: "{{ ingress_nginx_helm_repository_url }}"
+
+- name: Deploy Helm chart
+  run_once: true
+  kubernetes.core.helm:
+    name: "{{ ingress_nginx_helm_release_name }}"
+    chart_ref: "{{ ingress_nginx_helm_repository_name }}/{{ ingress_nginx_helm_chart_name }}"
+    chart_version: "{{ ingress_nginx_helm_chart_version }}"
+    release_namespace: "{{ ingress_nginx_helm_release_namespace }}"
+    create_namespace: true
+    kubeconfig: /etc/kubernetes/admin.conf
+    values: "{{ _ingress_nginx_helm_values | combine(ingress_nginx_helm_values, recursive=True) }}"

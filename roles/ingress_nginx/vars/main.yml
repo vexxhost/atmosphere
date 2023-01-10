@@ -1,0 +1,37 @@
+_ingress_nginx_values:
+  controller:
+    image:
+      registry: "{{ lookup('vexxhost.atmosphere.image_ref', 'ingress_nginx_controller', output='domain') }}"
+      image: "{{ lookup('vexxhost.atmosphere.image_ref', 'ingress_nginx_controller', output='path') }}"
+      tag: "{{ lookup('vexxhost.atmosphere.image_ref', 'ingress_nginx_controller', output='tag') }}"
+      digest: "{{ lookup('vexxhost.atmosphere.image_ref', 'ingress_nginx_controller', output='digest') }}"
+    config:
+      proxy-buffer-size: "16k"
+    dnsPolicy: ClusterFirstWithHostNet
+    hostNetwork: true
+    ingressClassResource:
+      name: openstack
+    ingressClass: openstack
+    kind: DaemonSet
+    nodeSelector:
+      openstack-control-plane: enabled
+    service:
+      type: ClusterIP
+    admissionWebhooks:
+      port: 7443
+      patch:
+        image:
+          registry: "{{ lookup('vexxhost.atmosphere.image_ref', 'ingress_nginx_kube_webhook_certgen', output='domain') }}"
+          image: "{{ lookup('vexxhost.atmosphere.image_ref', 'ingress_nginx_kube_webhook_certgen', output='path') }}"
+          tag: "{{ lookup('vexxhost.atmosphere.image_ref', 'ingress_nginx_kube_webhook_certgen', output='tag') }}"
+          digest: "{{ lookup('vexxhost.atmosphere.image_ref', 'ingress_nginx_kube_webhook_certgen', output='digest') }}"
+  defaultBackend:
+    enabled: true
+    image:
+      registry: "{{ lookup('vexxhost.atmosphere.image_ref', 'ingress_nginx_default_backend', output='domain') }}"
+      image: "{{ lookup('vexxhost.atmosphere.image_ref', 'ingress_nginx_default_backend', output='path') }}"
+      tag: "{{ lookup('vexxhost.atmosphere.image_ref', 'ingress_nginx_default_backend', output='tag') }}"
+  tcp:
+    "5354": "openstack/minidns:5354"
+  udp:
+    "5354": "openstack/minidns:5354"
