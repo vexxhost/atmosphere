@@ -32,6 +32,13 @@
         stringData:
           values.yaml: "{{ _openstack_helm_designate_values | combine(openstack_helm_designate_values, recursive=True) | to_nice_yaml }}"
 
+      - apiVersion: infra.atmosphere.vexxhost.com/v1alpha1
+        kind: RabbitmqCluster
+        metadata:
+          name: designate
+          namespace: openstack
+        spec: {}
+
       - apiVersion: helm.toolkit.fluxcd.io/v2beta1
         kind: HelmRelease
         metadata:

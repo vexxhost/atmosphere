@@ -12,65 +12,48 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Generate OpenStack-Helm endpoints
-  ansible.builtin.include_role:
-    name: openstack_helm_endpoints
-  vars:
-    openstack_helm_endpoints_repo_name: openstack-helm
-    openstack_helm_endpoints_repo_url: https://tarballs.opendev.org/openstack/openstack-helm/
-    openstack_helm_endpoints_chart: keystone
-
-- name: Deploy Helm chart
+- name: Deploy Service
+  run_once: true
   kubernetes.core.k8s:
     state: present
     definition:
-      - apiVersion: v1
-        kind: Secret
-        metadata:
-          name: atmosphere-keystone
-          namespace: openstack
-        stringData:
-          values.yaml: "{{ _openstack_helm_keystone_values | combine(openstack_helm_keystone_values, recursive=True) | to_nice_yaml }}"
-
-      - apiVersion: helm.toolkit.fluxcd.io/v2beta1
-        kind: HelmRelease
+      - apiVersion: infra.atmosphere.vexxhost.com/v1alpha1
+        kind: RabbitmqCluster
         metadata:
           name: keystone
           namespace: openstack
         spec:
-          interval: 60s
-          chart:
-            spec:
-              chart: keystone
-              version: 0.2.19
-              sourceRef:
-                kind: HelmRepository
-                name: openstack-helm
-          install:
-            disableWait: true
-          upgrade:
-            disableWait: true
-          valuesFrom:
-            - kind: Secret
-              name: atmosphere-keystone
-            - kind: Secret
-              name: percona-xtradb
-              valuesKey: root
-              targetPath: endpoints.oslo_db.auth.admin.password
-            - kind: Secret
-              name: rabbitmq-keystone-default-user
-              valuesKey: username
-              targetPath: endpoints.oslo_messaging.auth.admin.username
-            - kind: Secret
-              name: rabbitmq-keystone-default-user
-              valuesKey: password
-              targetPath: endpoints.oslo_messaging.auth.admin.password
+          imageRepository: "{{ atmosphere_image_repository | default(None) }}"
 
-- name: Create Ingress
-  ansible.builtin.include_role:
-    name: openstack_helm_ingress
-  vars:
-    openstack_helm_ingress_endpoint: identity
-    openstack_helm_ingress_service_name: keystone-api
-    openstack_helm_ingress_service_port: 5000
-    openstack_helm_ingress_annotations: "{{ openstack_helm_keystone_ingress_annotations }}"
+      - apiVersion: v1
+        kind: Secret
+        metadata:
+          name: keystone
+          namespace: openstack
+        type: Opaque
+        stringData:
+          memcache: "{{ openstack_helm_endpoints_memcached_secret_key }}"
+          rabbitmq: "{{ openstack_helm_endpoints_keystone_rabbitmq_password }}"
+          database: "{{ openstack_helm_endpoints_keystone_mariadb_password }}"
+          admin: "{{ openstack_helm_endpoints_keystone_admin_password }}"
+
+      - apiVersion: openstack.atmosphere.vexxhost.com/v1alpha1
+        kind: Keystone
+        metadata:
+          name: keystone
+          namespace: openstack
+        spec:
+          replicas: 3
+          regionName: "{{ openstack_helm_endpoints_keystone_region_name | default(openstack_helm_endpoints_region_name) }}"
+          imageRepository: "{{ atmosphere_image_repository | default(None) }}"
+          ingress:
+            host: "{{ openstack_helm_endpoints_keystone_api_host }}"
+            className: "{{ openstack_helm_ingress_class_name | default('openstack') }}"
+            annotations: "{{ openstack_helm_keystone_ingress_annotations }}"
+          secretsRef:
+            name: keystone
+          databaseRef:
+            name: percona-xtradb
+          rabbitmqRef:
+            name: keystone
+          overrides: "{{ openstack_helm_keystone_values }}"

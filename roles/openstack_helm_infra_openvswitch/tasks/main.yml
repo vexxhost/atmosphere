@@ -12,55 +12,16 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Generate OpenStack-Helm endpoints
-  ansible.builtin.include_role:
-    name: openstack_helm_endpoints
-  vars:
-    openstack_helm_endpoints_repo_name: openstack-helm-infra
-    openstack_helm_endpoints_repo_url: https://tarballs.opendev.org/openstack/openstack-helm-infra/
-    openstack_helm_endpoints_chart: openvswitch
-
-- name: Deploy Helm chart
+- name: Deploy Service
+  run_once: true
   kubernetes.core.k8s:
     state: present
     definition:
-      - apiVersion: source.toolkit.fluxcd.io/v1beta2
-        kind: GitRepository
-        metadata:
-          name: openstack-helm-infra
-          namespace: openstack
-        spec:
-          interval: 60s
-          url: https://github.com/vexxhost/openstack-helm-infra
-          ref:
-            commit: 24726dffd6f1e5ac91620e92e04a782cb94340e8
-
-      - apiVersion: v1
-        kind: Secret
-        metadata:
-          name: atmosphere-openvswitch
-          namespace: openstack
-        stringData:
-          values.yaml: "{{ _openstack_helm_infra_openvswitch_values | combine(openstack_helm_infra_openvswitch_values, recursive=True) | to_nice_yaml }}"
-
-      - apiVersion: helm.toolkit.fluxcd.io/v2beta1
-        kind: HelmRelease
+      - apiVersion: infra.atmosphere.vexxhost.com/v1alpha1
+        kind: Openvswitch
         metadata:
           name: openvswitch
           namespace: openstack
         spec:
-          interval: 60s
-          timeout: 60m
-          chart:
-            spec:
-              chart: ./openvswitch
-              sourceRef:
-                kind: GitRepository
-                name: openstack-helm-infra
-          install:
-            disableWait: true
-          upgrade:
-            disableWait: true
-          valuesFrom:
-            - kind: Secret
-              name: atmosphere-openvswitch
+          imageRepository: "{{ atmosphere_image_repository | default(None) }}"
+          overrides: "{{ openstack_helm_infra_openvswitch_values }}"

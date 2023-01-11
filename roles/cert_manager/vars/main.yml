@@ -1,0 +1,36 @@
+_cert_manager_helm_values:
+  installCRDs: true
+  featureGates: AdditionalCertificateOutputFormats=true
+  image:
+    repository: "{{ lookup('vexxhost.atmosphere.image_ref', 'cert_manager_controller', output='name') }}"
+    tag: "{{ lookup('vexxhost.atmosphere.image_ref', 'cert_manager_controller', output='tag') }}"
+  volumes:
+    - name: etc-ssl-certs
+      hostPath:
+        path: /etc/ssl/certs
+  volumeMounts:
+    - name: etc-ssl-certs
+      mountPath: /etc/ssl/certs
+      readOnly: true
+  nodeSelector:
+    openstack-control-plane: enabled
+  webhook:
+    extraArgs:
+      - --feature-gates=AdditionalCertificateOutputFormats=true
+    nodeSelector:
+      openstack-control-plane: enabled
+    image:
+      repository: "{{ lookup('vexxhost.atmosphere.image_ref', 'cert_manager_webhook', output='name') }}"
+      tag: "{{ lookup('vexxhost.atmosphere.image_ref', 'cert_manager_webhook', output='tag') }}"
+  cainjector:
+    nodeSelector:
+      openstack-control-plane: enabled
+    image:
+      repository: "{{ lookup('vexxhost.atmosphere.image_ref', 'cert_manager_cainjector', output='name') }}"
+      tag: "{{ lookup('vexxhost.atmosphere.image_ref', 'cert_manager_cainjector', output='tag') }}"
+  startupapicheck:
+    nodeSelector:
+      openstack-control-plane: enabled
+    image:
+      repository: "{{ lookup('vexxhost.atmosphere.image_ref', 'cert_manager_cli', output='name') }}"
+      tag: "{{ lookup('vexxhost.atmosphere.image_ref', 'cert_manager_cli', output='tag') }}"

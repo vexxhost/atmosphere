@@ -88,27 +88,6 @@ class KubePrometheusStackChartConfig(ChartConfig):
     namespace = types.StringType(default="monitoring", required=True)
 
 
-class MemcachedImagesConfig(base.Model):
-    memcached = types.StringType(
-        default=utils.get_image_ref_using_legacy_image_repository("memcached").string()
-    )
-    exporter = types.StringType(
-        default=utils.get_image_ref_using_legacy_image_repository(
-            "prometheus_memcached_exporter"
-        ).string()
-    )
-
-
-class MemcachedChartConfig(ChartConfig):
-    namespace = types.StringType(default="openstack", required=True)
-    secret_key = types.StringType(required=True)
-    images = types.ModelType(MemcachedImagesConfig, default=MemcachedImagesConfig())
-
-
-class IngressNginxChartConfig(ChartConfig):
-    namespace = types.StringType(default="openstack", required=True)
-
-
 class OpsGenieConfig(base.Model):
     enabled = types.BooleanType(default=False, required=True)
     api_key = types.StringType()
@@ -129,12 +108,6 @@ class Config(base.Model):
     image_repository = types.StringType()
     kube_prometheus_stack = types.ModelType(
         KubePrometheusStackChartConfig, default=KubePrometheusStackChartConfig()
-    )
-    ingress_nginx = types.ModelType(
-        IngressNginxChartConfig, default=IngressNginxChartConfig()
-    )
-    memcached = types.ModelType(
-        MemcachedChartConfig, default=MemcachedChartConfig(), required=True
     )
     issuer = types.PolyModelType(
         [AcmeIssuerConfig, CaIssuerConfig, SelfSignedIssuerConfig],

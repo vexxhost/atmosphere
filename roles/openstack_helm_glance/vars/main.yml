@@ -1,38 +1,5 @@
-# Copyright (c) 2022 VEXXHOST, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"); you may
-# not use this file except in compliance with the License. You may obtain
-# a copy of the License at
-#
-#      http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-# License for the specific language governing permissions and limitations
-# under the License.
-
+# TODO(mnaser): Move this logic to the operator once we native-ify the concept of storages
 _openstack_helm_glance_values:
-  endpoints: "{{ openstack_helm_endpoints }}"
-  storage: rbd
-  images:
-    pull_policy: Always
-    tags:
-      bootstrap: "{{ lookup('vexxhost.atmosphere.image_ref', 'bootstrap', output='ref') }}"
-      db_drop: "{{ lookup('vexxhost.atmosphere.image_ref', 'db_drop', output='ref') }}"
-      db_init: "{{ lookup('vexxhost.atmosphere.image_ref', 'db_init', output='ref') }}"
-      dep_check: "{{ lookup('vexxhost.atmosphere.image_ref', 'dep_check', output='ref') }}"
-      glance_api: "{{ lookup('vexxhost.atmosphere.image_ref', 'glance_api', output='ref') }}"
-      glance_db_sync: "{{ lookup('vexxhost.atmosphere.image_ref', 'glance_db_sync', output='ref') }}"
-      glance_metadefs_load: "{{ lookup('vexxhost.atmosphere.image_ref', 'glance_metadefs_load', output='ref') }}"
-      glance_registry: "{{ lookup('vexxhost.atmosphere.image_ref', 'glance_registry', output='ref') }}"
-      glance_storage_init: "{{ lookup('vexxhost.atmosphere.image_ref', 'glance_storage_init', output='ref') }}"
-      ks_endpoints: "{{ lookup('vexxhost.atmosphere.image_ref', 'ks_endpoints', output='ref') }}"
-      ks_service: "{{ lookup('vexxhost.atmosphere.image_ref', 'ks_service', output='ref') }}"
-      ks_user: "{{ lookup('vexxhost.atmosphere.image_ref', 'ks_user', output='ref') }}"
-      rabbit_init: "{{ lookup('vexxhost.atmosphere.image_ref', 'rabbit_init', output='ref') }}"
-  bootstrap:
-    enabled: false
   pod:
     security_context:
       glance:
@@ -45,26 +12,3 @@ _openstack_helm_glance_values:
               add: "{{ ('cinder' in openstack_helm_glance_values.get('conf', {}).get('glance', {}).get('glance_store', {}).get('stores', '')) | ternary(['SYS_ADMIN'], []) }}"
     useHostNetwork:
       api: "{{ ('cinder' in openstack_helm_glance_values.get('conf', {}).get('glance', {}).get('glance_store', {}).get('stores', '')) | bool }}"
-    replicas:
-      api: 3
-  conf:
-    glance:
-      DEFAULT:
-        log_config_append: null
-        show_image_direct_url: true
-        show_multiple_locations: true
-        enable_import_methods: "[]"
-        workers: 8
-      cors:
-        allowed_origins: "*"
-      image_formats:
-        disk_formats: "qcow2,raw"
-      oslo_messaging_notifications:
-        driver: noop
-  manifests:
-    ingress_api: false
-    service_ingress_api: false
-
-_openstack_helm_glance_ingress_annotations:
-  nginx.ingress.kubernetes.io/proxy-body-size: "0"
-  nginx.ingress.kubernetes.io/proxy-request-buffering: "off"

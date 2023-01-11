@@ -12,131 +12,110 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- hosts: controllers[0]
-  gather_facts: false
-  become: true
-  roles:
-    - role: cilium
-      tags:
-        - cilium
-
 - hosts: controllers
   gather_facts: false
   become: true
   roles:
-    - role: flux
-      tags:
-        - flux
-
-- hosts: controllers[0]
-  gather_facts: false
-  become: true
-  roles:
-    - role: csi
-      tags:
-        - csi
-
-    - role: kube_prometheus_stack
-      tags:
-        - kube-prometheus-stack
-
-    - role: prometheus_ethtool_exporter
-      tags:
-        - prometheus-ethtool-exporter
-
-    - role: ipmi_exporter
-      tags:
-        - ipmi-exporter
-
-    - role: prometheus_pushgateway
-      tags:
-        - prometheus-pushgateway
-
-    - role: keepalived
-      tags:
-        - keepalived
-
-    - role: openstack_helm_keystone
-      tags:
-        - openstack-helm-keystone
-
-    - role: openstack_helm_barbican
-      tags:
-        - openstack-helm-barbican
-
-    - role: openstack_helm_infra_ceph_provisioners
-      when: atmosphere_ceph_enabled | default(true)
-      tags:
-        - openstack-helm-infra-ceph-provisioners
-
-    - role: openstack_helm_glance
-      tags:
-        - openstack-helm-glance
-
-    - role: openstack_helm_cinder
-      tags:
-        - openstack-helm-cinder
-
-    - role: openstack_helm_placement
-      tags:
-        - openstack-helm-placement
 
 
-    - role: openstack_helm_infra_openvswitch
-      tags:
-        - openstack-helm-infra-openvswitch
 
-    - role: openstack_helm_infra_libvirt
-      tags:
-        - openstack-helm-infra-libvirt
 
-    - role: coredns
-      tags:
-        - coredns
 
-    - role: openstack_helm_neutron
-      tags:
-        - openstack-helm-neutron
+# - hosts: controllers
+#   gather_facts: false
+#   become: true
+#   roles:
+#     - role: flux
+#       tags:
+#         - flux
 
-    - role: openstack_helm_nova
-      tags:
-        - openstack-helm-nova
+# - hosts: controllers[0]
+#   gather_facts: false
+#   become: true
+#   roles:
 
-    - role: openstack_helm_senlin
-      tags:
-        - openstack-helm-senlin
+#     - role: kube_prometheus_stack
+#       tags:
+#         - kube-prometheus-stack
 
-    # NOTE(mnaser): This is disabled out of the box until we have a native way
-    #               of configuring it with a pre-configured backend out of the
-    #               box.
-    # - role: openstack_helm_designate
-    #   tags:
-    #     - openstack-helm-designate
+#     - role: prometheus_ethtool_exporter
+#       tags:
+#         - prometheus-ethtool-exporter
 
-    - role: openstack_helm_heat
-      tags:
-        - openstack-helm-heat
+#     - role: ipmi_exporter
+#       tags:
+#         - ipmi-exporter
 
-    - role: openstack_helm_octavia
-      tags:
-        - openstack-helm-octavia
+#     - role: prometheus_pushgateway
+#       tags:
+#         - prometheus-pushgateway
 
-    - role: openstack_helm_magnum
-      tags:
-        - openstack-helm-magnum
+#     - role: keepalived
+#       tags:
+#         - keepalived
 
-    - role: openstack_helm_horizon
-      tags:
-        - openstack-helm-horizon
+    - ingress_nginx
+    - cert_manager
+    - rabbitmq_operator
+    - percona_xtradb_cluster_operator
+    - percona_xtradb_cluster
+    - memcached
+    - openstack_helm_keystone
+    - openstack_helm_barbican
 
-    - role: openstack_exporter
-      tags:
-        - openstack-exporter
+#     - role: openstack_helm_infra_ceph_provisioners
+#       when: atmosphere_ceph_enabled | default(true)
+#       tags:
+#         - openstack-helm-infra-ceph-provisioners
 
-- hosts: controllers
-  become: true
-  gather_facts: false
-  roles:
-    - role: openstack_cli
-      tags:
-        - openstack-cli
+#     - role: openstack_helm_glance
+#       tags:
+#         - openstack-helm-glance
+
+#     - role: openstack_helm_cinder
+#       tags:
+#         - openstack-helm-cinder
+
+    - openstack_helm_placement
+    - openstack_helm_infra_openvswitch
+    - openstack_helm_infra_libvirt
+    - coredns
+    - openstack_helm_neutron
+    - openstack_helm_nova
+
+#     - role: openstack_helm_senlin
+#       tags:
+#         - openstack-helm-senlin
+
+#     # NOTE(mnaser): This is disabled out of the box until we have a native way
+#     #               of configuring it with a pre-configured backend out of the
+#     #               box.
+#     # - role: openstack_helm_designate
+#     #   tags:
+#     #     - openstack-helm-designate
+
+#     - role: openstack_helm_heat
+#       tags:
+#         - openstack-helm-heat
+
+    - openstack_helm_octavia
+
+#     - role: openstack_helm_magnum
+#       tags:
+#         - openstack-helm-magnum
+
+#     - role: openstack_helm_horizon
+#       tags:
+#         - openstack-helm-horizon
+
+#     - role: openstack_exporter
+#       tags:
+#         - openstack-exporter
+
+# - hosts: controllers
+#   become: true
+#   gather_facts: false
+#   roles:
+#     - role: openstack_cli
+#       tags:
+#         - openstack-cli

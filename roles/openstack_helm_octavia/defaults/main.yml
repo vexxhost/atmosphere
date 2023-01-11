@@ -1,43 +1,6 @@
----
-# .. vim: foldmarker=[[[,]]]:foldmethod=marker
-
-# .. Copyright (C) 2022 VEXXHOST, Inc.
-# .. SPDX-License-Identifier: Apache-2.0
-
-# Default variables
-# =================
-
-# .. contents:: Sections
-#    :local:
-
-
-# .. envvar:: openstack_helm_octavia_values [[[
-#
-# Overrides for Helm chart values
 openstack_helm_octavia_values: {}
-
-                                                                   # ]]]
-# .. envvar:: openstack_helm_octavia_ingress_annotations [[[
-#
-# Ingress annotations
-openstack_helm_octavia_ingress_annotations: {}
-
-                                                                   # ]]]
-# .. envvar:: openstack_helm_octavia_heartbeat_key [[[
-#
-# Heartbeat key
 openstack_helm_octavia_heartbeat_key: "{{ undef(hint='You must specify a Octavia heartbeat key') }}"
-
-                                                                   # ]]]
-# .. envvar:: openstack_helm_octavia_management_subnet_cidr [[[
-#
-# Octavia management subnet (CIDR)
 openstack_helm_octavia_management_subnet_cidr: "172.24.0.0/22"
-
-                                                                   # ]]]
-# .. envvar:: openstack_helm_octavia_amphora_image_url [[[
-#
-# Octavia amphora image url
 openstack_helm_octavia_amphora_image_url: "https://tarballs.opendev.org/openstack/octavia/test-images/test-only-amphora-x64-haproxy-ubuntu-focal.qcow2"
-
-                                                                   # ]]]
+openstack_helm_octavia_ingress_annotations:
+  cert-manager.io/cluster-issuer: "{{ openstack_helm_ingress_cluster_issuer | default('atmosphere') }}"

@@ -1,31 +1,4 @@
----
-# .. vim: foldmarker=[[[,]]]:foldmethod=marker
-
-# .. Copyright (C) 2022 VEXXHOST, Inc.
-# .. SPDX-License-Identifier: Apache-2.0
-
-# Default variables
-# =================
-
-# .. contents:: Sections
-#    :local:
-
-
-# .. envvar:: openstack_helm_barbican_values [[[
-#
-# Overrides for Helm chart values
 openstack_helm_barbican_values: {}
-
-                                                                   # ]]]
-# .. envvar:: openstack_helm_barbican_kek [[[
-#
-# Barbican key encryption key
 openstack_helm_barbican_kek: "{{ undef(hint='You must specify a Barbican key encryption key') }}"
-
-                                                                   # ]]]
-# .. envvar:: openstack_helm_barbican_ingress_annotations [[[
-#
-# Ingress annotations
-openstack_helm_barbican_ingress_annotations: {}
-
-                                                                   # ]]]
+openstack_helm_barbican_ingress_annotations:
+  cert-manager.io/cluster-issuer: "{{ openstack_helm_ingress_cluster_issuer | default('atmosphere') }}"

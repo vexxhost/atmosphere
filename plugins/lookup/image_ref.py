@@ -17,8 +17,12 @@ DOCUMENTATION = """
       type: string
       required: True
       choices:
+        - domain
         - name
+        - path
+        - tag
         - ref
+        - digest
 """
 
 
@@ -36,9 +40,17 @@ class LookupModule(LookupBase):
 
         for term in terms:
             ref = utils.get_image_ref(term, override_registry=registry)
+            if output == "domain":
+                ret.append(ref.repository["domain"])
             if output == "name":
                 ret.append(ref["name"])
+            if output == "path":
+                ret.append(ref.repository["path"])
             if output == "ref":
                 ret.append(ref.string())
+            if output == "tag":
+                ret.append(ref["tag"])
+            if output == "digest":
+                ret.append(ref["digest"])
 
         return ret

@@ -12,74 +12,69 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+- name: Configure Helm repository
+  kubernetes.core.helm_repository:
+    name: coredns
+    repo_url: https://coredns.github.io/helm
+
 - name: Deploy Helm chart
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      - apiVersion: helm.toolkit.fluxcd.io/v2beta1
-        kind: HelmRelease
-        metadata:
-          name: neutron-coredns
-          namespace: openstack
-        spec:
-          interval: 60s
-          chart:
-            spec:
-              chart: coredns
-              version: 1.19.4
-              sourceRef:
-                kind: HelmRepository
-                name: coredns
-          values:
-            image:
-              repository: "{{ lookup('vexxhost.atmosphere.image_ref', 'neutron_coredns', output='name') }}"
-            replicaCount: 3
-            prometheus:
-              service:
-                enabled: true
-            service:
-              name: neutron-coredns
-              clusterIP: "{{ neutron_coredns_cluster_ip | default('10.96.0.20') }}"
-            isClusterService: false
-            servers:
-              - port: 53
-                zones:
-                  - zone: .
-                plugins:
-                  - name: errors
-                  - name: ready
-                  - name: health
-                    configBlock: |-
-                      lameduck 5s
-                  - name: prometheus
-                    parameters: 0.0.0.0:9153
-                  - name: cache
-                  - name: reload
-                  - name: loadbalance
-                  - name: forward
-                    parameters: . 127.0.0.1:5301 127.0.0.1:5302
-              - port: 5301
-                zones:
-                  - zone: .
-                plugins:
-                  - name: forward
-                    parameters: . tls://1.1.1.1 tls://1.0.0.1
-                    configBlock: |-
-                      tls_servername cloudflare-dns.com
-                      health_check 5s
-              - port: 5302
-                zones:
-                  - zone: .
-                plugins:
-                  - name: forward
-                    parameters: . tls://8.8.8.8 tls://8.8.4.4
-                    configBlock: |-
-                      tls_servername dns.google
-                      health_check 5s
-            nodeSelector:
-              openstack-control-plane: enabled
-            customLabels:
-              application: neutron
-              component: coredns
-            deployment:
-              name: neutron-coredns
+  run_once: true
+  kubernetes.core.helm:
+    name: neutron-coredns
+    chart_ref: coredns/coredns
+    chart_version: 1.19.4
+    release_namespace: openstack
+    kubeconfig: /etc/kubernetes/admin.conf
+    values:
+      image:
+        repository: "{{ lookup('vexxhost.atmosphere.image_ref', 'neutron_coredns', output='name') }}"
+      replicaCount: 3
+      prometheus:
+        service:
+          enabled: true
+      service:
+        name: neutron-coredns
+        clusterIP: "{{ neutron_coredns_cluster_ip | default('10.96.0.20') }}"
+      isClusterService: false
+      servers:
+        - port: 53
+          zones:
+            - zone: .
+          plugins:
+            - name: errors
+            - name: ready
+            - name: health
+              configBlock: |-
+                lameduck 5s
+            - name: prometheus
+              parameters: 0.0.0.0:9153
+            - name: cache
+            - name: reload
+            - name: loadbalance
+            - name: forward
+              parameters: . 127.0.0.1:5301 127.0.0.1:5302
+        - port: 5301
+          zones:
+            - zone: .
+          plugins:
+            - name: forward
+              parameters: . tls://1.1.1.1 tls://1.0.0.1
+              configBlock: |-
+                tls_servername cloudflare-dns.com
+                health_check 5s
+        - port: 5302
+          zones:
+            - zone: .
+          plugins:
+            - name: forward
+              parameters: . tls://8.8.8.8 tls://8.8.4.4
+              configBlock: |-
+                tls_servername dns.google
+                health_check 5s
+      nodeSelector:
+        openstack-control-plane: enabled
+      customLabels:
+        application: neutron
+        component: coredns
+      deployment:
+        name: neutron-coredns

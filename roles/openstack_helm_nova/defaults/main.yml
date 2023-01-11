@@ -1,37 +1,5 @@
----
-# .. vim: foldmarker=[[[,]]]:foldmethod=marker
-
-# .. Copyright (C) 2022 VEXXHOST, Inc.
-# .. SPDX-License-Identifier: Apache-2.0
-
-# Default variables
-# =================
-
-# .. contents:: Sections
-#    :local:
-
-
-# .. envvar:: openstack_helm_nova_values [[[
-#
-# Overrides for Helm chart values
 openstack_helm_nova_values: {}
-
-                                                                   # ]]]
-# .. envvar:: openstack_helm_nova_ssh_key [[[
-#
-# Private SSH key used for cold & live migration
 openstack_helm_nova_ssh_key: "{{ undef(hint='You must specifiy an SSH key for Nova.') }}"
-
-                                                                   # ]]]
-# .. envvar:: openstack_helm_nova_flavors [[[
-#
-# List of flavors to provision inside Nova
 openstack_helm_nova_flavors: []
-
-                                                                   # ]]]
-# .. envvar:: openstack_helm_nova_ingress_annotations [[[
-#
-# Ingress annotations
-openstack_helm_nova_ingress_annotations: {}
-
-                                                                   # ]]]
+openstack_helm_nova_ingress_annotations:
+  cert-manager.io/cluster-issuer: "{{ openstack_helm_ingress_cluster_issuer | default('atmosphere') }}"

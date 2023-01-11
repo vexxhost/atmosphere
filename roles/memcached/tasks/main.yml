@@ -1,0 +1,12 @@
+- name: Deploy Service
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      - apiVersion: infra.atmosphere.vexxhost.com/v1alpha1
+        kind: Memcached
+        metadata:
+          name: memcached
+          namespace: openstack
+        spec:
+          imageRepository: "{{ atmosphere_image_repository | default(None) }}"

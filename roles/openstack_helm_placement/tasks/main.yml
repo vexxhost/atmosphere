@@ -12,57 +12,39 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Generate OpenStack-Helm endpoints
-  ansible.builtin.include_role:
-    name: openstack_helm_endpoints
-  vars:
-    openstack_helm_endpoints_repo_name: openstack-helm
-    openstack_helm_endpoints_repo_url: https://tarballs.opendev.org/openstack/openstack-helm/
-    openstack_helm_endpoints_chart: placement
-
-- name: Deploy Helm chart
+- name: Deploy Service
+  run_once: true
   kubernetes.core.k8s:
     state: present
     definition:
       - apiVersion: v1
         kind: Secret
         metadata:
-          name: atmosphere-placement
+          name: placement
           namespace: openstack
+        type: Opaque
         stringData:
-          values.yaml: "{{ _openstack_helm_placement_values | combine(openstack_helm_placement_values, recursive=True) | to_nice_yaml }}"
+          memcache: "{{ openstack_helm_endpoints_memcached_secret_key }}"
+          database: "{{ openstack_helm_endpoints_placement_mariadb_password }}"
+          keystone: "{{ openstack_helm_endpoints_placement_keystone_password }}"
 
-      - apiVersion: helm.toolkit.fluxcd.io/v2beta1
-        kind: HelmRelease
+      - apiVersion: openstack.atmosphere.vexxhost.com/v1alpha1
+        kind: Placement
         metadata:
           name: placement
           namespace: openstack
         spec:
-          interval: 60s
-          chart:
-            spec:
-              chart: placement
-              version: 0.2.10
-              sourceRef:
-                kind: HelmRepository
-                name: openstack-helm
-          install:
-            disableWait: true
-          upgrade:
-            disableWait: true
-          valuesFrom:
-            - kind: Secret
-              name: atmosphere-placement
-            - kind: Secret
-              name: percona-xtradb
-              valuesKey: root
-              targetPath: endpoints.oslo_db.auth.admin.password
-
-- name: Create Ingress
-  ansible.builtin.include_role:
-    name: openstack_helm_ingress
-  vars:
-    openstack_helm_ingress_endpoint: placement
-    openstack_helm_ingress_service_name: placement-api
-    openstack_helm_ingress_service_port: 8778
-    openstack_helm_ingress_annotations: "{{ openstack_helm_placement_ingress_annotations }}"
+          replicas: 3
+          regionName: "{{ openstack_helm_endpoints_placement_region_name | default(openstack_helm_endpoints_region_name) }}"
+          imageRepository: "{{ atmosphere_image_repository | default(None) }}"
+          ingress:
+            host: "{{ openstack_helm_endpoints_placement_api_host }}"
+            className: "{{ openstack_helm_ingress_class_name | default('openstack') }}"
+            annotations: "{{ openstack_helm_placement_ingress_annotations }}"
+          keystoneRef:
+            name: keystone
+          secretsRef:
+            name: placement
+          databaseRef:
+            name: percona-xtradb
+          overrides: "{{ openstack_helm_placement_values }}"

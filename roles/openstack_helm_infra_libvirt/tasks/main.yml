@@ -20,36 +20,15 @@
     openstack_helm_endpoints_repo_url: https://tarballs.opendev.org/openstack/openstack-helm-infra/
     openstack_helm_endpoints_chart: libvirt
 
-- name: Deploy Helm chart
+- name: Deploy Service
+  run_once: true
   kubernetes.core.k8s:
     state: present
     definition:
-      - apiVersion: v1
-        kind: Secret
-        metadata:
-          name: atmosphere-libvirt
-          namespace: openstack
-        stringData:
-          values.yaml: "{{ _openstack_helm_infra_libvirt_values | combine(openstack_helm_infra_libvirt_values, recursive=True) | to_nice_yaml }}"
-
-      - apiVersion: helm.toolkit.fluxcd.io/v2beta1
-        kind: HelmRelease
+      - apiVersion: infra.atmosphere.vexxhost.com/v1alpha1
+        kind: Libvirt
         metadata:
           name: libvirt
-          namespace: openstack
         spec:
-          interval: 60s
-          chart:
-            spec:
-              chart: libvirt
-              version: 0.1.8
-              sourceRef:
-                kind: HelmRepository
-                name: openstack-helm-infra
-          install:
-            disableWait: true
-          upgrade:
-            disableWait: true
-          valuesFrom:
-            - kind: Secret
-              name: atmosphere-libvirt
+          imageRepository: "{{ atmosphere_image_repository | default(None) }}"
+          overrides: "{{ _openstack_helm_infra_libvirt_values | combine(openstack_helm_infra_libvirt_values, recursive=True) }}"
