@@ -1,31 +1,4 @@
----
-# .. vim: foldmarker=[[[,]]]:foldmethod=marker
-
-# .. Copyright (C) 2022 VEXXHOST, Inc.
-# .. SPDX-License-Identifier: Apache-2.0
-
-# Default variables
-# =================
-
-# .. contents:: Sections
-#    :local:
-
-
-# .. envvar:: openstack_helm_glance_values [[[
-#
-# Overrides for Helm chart values
 openstack_helm_glance_values: {}
-
-                                                                   # ]]]
-# .. envvar:: openstack_helm_glance_images [[[
-#
-# List of images to provision inside OpenStack
 openstack_helm_glance_images: []
-
-                                                                   # ]]]
-# .. envvar:: openstack_helm_glance_ingress_annotations [[[
-#
-# Ingress annotations
-openstack_helm_glance_ingress_annotations: {}
-
-                                                                   # ]]]
+openstack_helm_glance_ingress_annotations:
+  cert-manager.io/cluster-issuer: "{{ openstack_helm_ingress_cluster_issuer | default('atmosphere') }}"

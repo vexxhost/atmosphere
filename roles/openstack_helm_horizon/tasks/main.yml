@@ -12,66 +12,36 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Generate OpenStack-Helm endpoints
-  ansible.builtin.include_role:
-    name: openstack_helm_endpoints
-  vars:
-    openstack_helm_endpoints_repo_name: openstack-helm
-    openstack_helm_endpoints_repo_url: https://tarballs.opendev.org/openstack/openstack-helm/
-    openstack_helm_endpoints_chart: horizon
-
 - name: Deploy Helm chart
+  run_once: true
   kubernetes.core.k8s:
     state: present
     definition:
       - apiVersion: v1
         kind: Secret
         metadata:
-          name: atmosphere-horizon
+          name: horizon
           namespace: openstack
+        type: Opaque
         stringData:
-          values.yaml: "{{ _openstack_helm_horizon_values | combine(openstack_helm_horizon_values, recursive=True) | to_nice_yaml }}"
+          database: "{{ openstack_helm_endpoints_horizon_mariadb_password }}"
 
-      - apiVersion: helm.toolkit.fluxcd.io/v2beta1
-        kind: HelmRelease
+      - apiVersion: openstack.atmosphere.vexxhost.com/v1alpha1
+        kind: Horizon
         metadata:
           name: horizon
           namespace: openstack
         spec:
-          interval: 60s
-          chart:
-            spec:
-              chart: horizon
-              version: 0.2.24
-              sourceRef:
-                kind: HelmRepository
-                name: openstack-helm
-          install:
-            disableWait: true
-          upgrade:
-            disableWait: true
-          valuesFrom:
-            - kind: Secret
-              name: atmosphere-horizon
-            - kind: Secret
-              name: percona-xtradb
-              valuesKey: root
-              targetPath: endpoints.oslo_db.auth.admin.password
-
-- name: Create Ingress
-  ansible.builtin.include_role:
-    name: openstack_helm_ingress
-  vars:
-    openstack_helm_ingress_endpoint: dashboard
-    openstack_helm_ingress_service_name: horizon-int
-    openstack_helm_ingress_service_port: 80
-    openstack_helm_ingress_annotations: "{{ openstack_helm_horizon_ingress_annotations }}"
-    # NOTE: Remove grafana path from horizon ingress till monasca realized
-    # openstack_helm_ingress_paths:
-    #   - path: /grafana
-    #     pathType: Prefix
-    #     backend:
-    #       service:
-    #         name: grafana
-    #         port:
-    #           number: 80
+          replicas: 3
+          imageRepository: "{{ atmosphere_image_repository | default(None) }}"
+          ingress:
+            host: "{{ openstack_helm_endpoints_horizon_api_host }}"
+            className: "{{ openstack_helm_ingress_class_name | default('openstack') }}"
+            annotations: "{{ openstack_helm_horizon_ingress_annotations }}"
+          keystoneRef:
+            name: keystone
+          secretsRef:
+            name: horizon
+          databaseRef:
+            name: percona-xtradb
+          overrides: "{{ openstack_helm_horizon_values }}"

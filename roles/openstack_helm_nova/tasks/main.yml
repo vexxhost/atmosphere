@@ -12,119 +12,71 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Generate OpenStack-Helm endpoints
-  ansible.builtin.include_role:
-    name: openstack_helm_endpoints
-  vars:
-    openstack_helm_endpoints_repo_name: openstack-helm
-    openstack_helm_endpoints_repo_url: https://tarballs.opendev.org/openstack/openstack-helm/
-    openstack_helm_endpoints_chart: nova
-
-- name: Generate public key for SSH private key
-  become: false
-  delegate_to: localhost
-  block:
-    - name: Generate temporary file for SSH public key
-      changed_when: false
-      ansible.builtin.tempfile:
-        state: file
-        prefix: nova_ssh_key_
-      register: _nova_ssh_key_tempfile
-    # NOTE(mnaser): It's important to add a trailing newline at the end of this
-    #               string or else `ssh-keygen` will not be happy.`
-    - name: Write contents of current private SSH key
-      changed_when: false
-      ansible.builtin.copy:
-        dest: "{{ _nova_ssh_key_tempfile.path }}"
-        content: "{{ openstack_helm_nova_ssh_key }}\n"
-        mode: "0600"
-    - name: Generate public key for SSH private key
-      changed_when: false
-      community.crypto.openssh_keypair:
-        path: "{{ _nova_ssh_key_tempfile.path }}"
-        regenerate: never
-      register: _nova_ssh_publickey
-  always:
-    - name: Delete temporary file for public SSH key
-      changed_when: false
-      ansible.builtin.file:
-        path: "{{ _nova_ssh_key_tempfile.path }}"
-        state: absent
-
-- name: Deploy Helm chart
+- name: Deploy Service
+  run_once: true
   kubernetes.core.k8s:
     state: present
     definition:
-      - apiVersion: v1
-        kind: Secret
-        metadata:
-          name: atmosphere-nova
-          namespace: openstack
-        stringData:
-          values.yaml: "{{ _openstack_helm_nova_values | to_nice_yaml }}"
-
-      - apiVersion: helm.toolkit.fluxcd.io/v2beta1
-        kind: HelmRelease
+      - apiVersion: infra.atmosphere.vexxhost.com/v1alpha1
+        kind: RabbitmqCluster
         metadata:
           name: nova
           namespace: openstack
         spec:
-          interval: 60s
-          chart:
-            spec:
-              chart: nova
-              version: 0.2.32
-              sourceRef:
-                kind: HelmRepository
-                name: openstack-helm
-          install:
-            disableWait: true
-          upgrade:
-            disableWait: true
-          valuesFrom:
-            - kind: Secret
-              name: atmosphere-nova
-            - kind: Secret
-              name: percona-xtradb
-              valuesKey: root
-              targetPath: endpoints.oslo_db.auth.admin.password
-            - kind: Secret
-              name: percona-xtradb
-              valuesKey: root
-              targetPath: endpoints.oslo_db_api.auth.admin.password
-            - kind: Secret
-              name: percona-xtradb
-              valuesKey: root
-              targetPath: endpoints.oslo_db_cell0.auth.admin.password
-            - kind: Secret
-              name: rabbitmq-nova-default-user
-              valuesKey: username
-              targetPath: endpoints.oslo_messaging.auth.admin.username
-            - kind: Secret
-              name: rabbitmq-nova-default-user
-              valuesKey: password
-              targetPath: endpoints.oslo_messaging.auth.admin.password
+          imageRepository: "{{ atmosphere_image_repository | default(None) }}"
 
-- name: Create Ingress
-  ansible.builtin.include_role:
-    name: openstack_helm_ingress
-  vars:
-    openstack_helm_ingress_endpoint: compute
-    openstack_helm_ingress_service_name: nova-api
-    openstack_helm_ingress_service_port: 8774
-    openstack_helm_ingress_annotations: "{{ openstack_helm_nova_ingress_annotations }}"
+      - apiVersion: v1
+        kind: Secret
+        metadata:
+          name: nova
+          namespace: openstack
+        type: Opaque
+        stringData:
+          memcache: "{{ openstack_helm_endpoints_memcached_secret_key }}"
+          rabbitmq: "{{ openstack_helm_endpoints_nova_rabbitmq_password }}"
+          database: "{{ openstack_helm_endpoints_nova_mariadb_password }}"
+          keystone: "{{ openstack_helm_endpoints_nova_keystone_password }}"
+          metadata: "{{ openstack_helm_endpoints_neutron_metadata_secret }}"
+          ssh: "{{ openstack_helm_nova_ssh_key }}"
 
-- name: Create Ingress
-  ansible.builtin.include_role:
-    name: openstack_helm_ingress
-  vars:
-    openstack_helm_ingress_endpoint: compute_novnc_proxy
-    openstack_helm_ingress_service_name: nova-novncproxy
-    openstack_helm_ingress_service_port: 6080
-    openstack_helm_ingress_annotations: "{{ openstack_helm_nova_ingress_annotations }}"
+      - apiVersion: openstack.atmosphere.vexxhost.com/v1alpha1
+        kind: Nova
+        metadata:
+          name: nova
+          namespace: openstack
+        spec:
+          replicas: 3
+          regionName: "{{ openstack_helm_endpoints_nova_region_name | default(openstack_helm_endpoints_region_name) }}"
+          imageRepository: "{{ atmosphere_image_repository | default(None) }}"
+          ingress:
+            host: "{{ openstack_helm_endpoints_nova_api_host }}"
+            className: "{{ openstack_helm_ingress_class_name | default('openstack') }}"
+            annotations: "{{ openstack_helm_nova_ingress_annotations }}"
+          vncIngress:
+            host: "{{ openstack_helm_endpoints_nova_novnc_host }}"
+            className: "{{ openstack_helm_ingress_class_name | default('openstack') }}"
+            annotations: "{{ openstack_helm_nova_ingress_annotations }}"
+          keystoneRef:
+            name: keystone
+          placementRef:
+            name: placement
+          glanceRef:
+            name: glance
+          neutronRef:
+            name: neutron
+          ironicRef:
+            name: ironic
+          secretsRef:
+            name: nova
+          databaseRef:
+            name: percona-xtradb
+          rabbitmqRef:
+            name: nova
+          overrides: "{{ _openstack_helm_nova_values | combine(openstack_helm_nova_values, recursive=True) }}"
 
 - name: Create flavors
   when: openstack_helm_nova_flavors | length > 0
+  run_once: true
   block:
     - name: Wait until compute api service ready
       kubernetes.core.k8s_info:

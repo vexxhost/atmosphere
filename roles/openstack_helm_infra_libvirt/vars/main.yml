@@ -13,14 +13,6 @@
 # under the License.
 
 _openstack_helm_infra_libvirt_values:
-  endpoints: "{{ openstack_helm_endpoints }}"
-  images:
-    tags:
-      ceph_config_helper: "{{ lookup('vexxhost.atmosphere.image_ref', 'ceph_config_helper', output='ref') }}"
-      dep_check: "{{ lookup('vexxhost.atmosphere.image_ref', 'dep_check', output='ref') }}"
-      libvirt: "{{ lookup('vexxhost.atmosphere.image_ref', 'libvirt', output='ref') }}"
   conf:
     ceph:
       enabled: "{{ atmosphere_ceph_enabled | default(true) | bool }}"
-    libvirt:
-      listen_addr: 0.0.0.0

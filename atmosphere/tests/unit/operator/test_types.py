@@ -151,14 +151,6 @@ class TestHelmReleaseSpec:
         assert isinstance(instance.values_from, list)
 
 
-class TestOpenstackHelmRabbitmqClusterSpec:
-    @given(st.builds(types.OpenstackHelmRabbitmqClusterSpec))
-    def test_property(self, instance):
-        assert isinstance(instance, types.OpenstackHelmRabbitmqClusterSpec)
-        assert isinstance(instance.image, str)
-        assert instance.image != ""
-
-
 class TestOpenstackHelmIngressObjectMetaName:
     def test_name_order(self):
         assert [*types.OpenstackHelmIngressObjectMetaName] == sorted(

@@ -12,96 +12,67 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Generate OpenStack-Helm endpoints
-  ansible.builtin.include_role:
-    name: openstack_helm_endpoints
-  vars:
-    openstack_helm_endpoints_repo_name: openstack-helm
-    openstack_helm_endpoints_repo_url: https://tarballs.opendev.org/openstack/openstack-helm/
-    openstack_helm_endpoints_chart: neutron
-
-- name: Deploy Helm chart
+- name: Deploy Service
+  run_once: true
   kubernetes.core.k8s:
     state: present
     definition:
-      - apiVersion: source.toolkit.fluxcd.io/v1beta2
-        kind: GitRepository
+      - apiVersion: infra.atmosphere.vexxhost.com/v1alpha1
+        kind: RabbitmqCluster
         metadata:
-          name: openstack-helm-infra
+          name: barbican
           namespace: openstack
         spec:
-          interval: 60s
-          url: https://github.com/vexxhost/openstack-helm-infra
-          ref:
-            commit: 24726dffd6f1e5ac91620e92e04a782cb94340e8
-
-      - apiVersion: source.toolkit.fluxcd.io/v1beta2
-        kind: GitRepository
-        metadata:
-          name: openstack-helm
-          namespace: openstack
-        spec:
-          interval: 60s
-          url: https://github.com/vexxhost/openstack-helm
-          ref:
-            commit: 340c5840434d510d5c977618fea236403ca1bbfb
-          include:
-            - repository:
-                name: openstack-helm-infra
-              toPath: ../openstack-helm-infra
+          imageRepository: "{{ atmosphere_image_repository | default(None) }}"
 
       - apiVersion: v1
         kind: Secret
         metadata:
-          name: atmosphere-neutron
+          name: neutron
           namespace: openstack
+        type: Opaque
         stringData:
-          values.yaml: "{{ _openstack_helm_neutron_values | combine(openstack_helm_neutron_values, recursive=True) | to_nice_yaml }}"
+          memcache: "{{ openstack_helm_endpoints_memcached_secret_key }}"
+          database: "{{ openstack_helm_endpoints_neutron_mariadb_password }}"
+          rabbitmq: "{{ openstack_helm_endpoints_neutron_rabbitmq_password }}"
+          keystone: "{{ openstack_helm_endpoints_neutron_keystone_password }}"
 
-      - apiVersion: helm.toolkit.fluxcd.io/v2beta1
-        kind: HelmRelease
+      - apiVersion: openstack.atmosphere.vexxhost.com/v1alpha1
+        kind: Neutron
         metadata:
           name: neutron
           namespace: openstack
         spec:
-          interval: 60s
-          chart:
-            spec:
-              chart: ./neutron
-              sourceRef:
-                kind: GitRepository
-                name: openstack-helm
-          install:
-            disableWait: true
-          upgrade:
-            disableWait: true
-          valuesFrom:
-            - kind: Secret
-              name: atmosphere-neutron
-            - kind: Secret
-              name: percona-xtradb
-              valuesKey: root
-              targetPath: endpoints.oslo_db.auth.admin.password
-            - kind: Secret
-              name: rabbitmq-neutron-default-user
-              valuesKey: username
-              targetPath: endpoints.oslo_messaging.auth.admin.username
-            - kind: Secret
-              name: rabbitmq-neutron-default-user
-              valuesKey: password
-              targetPath: endpoints.oslo_messaging.auth.admin.password
-
-- name: Create Ingress
-  ansible.builtin.include_role:
-    name: openstack_helm_ingress
-  vars:
-    openstack_helm_ingress_endpoint: network
-    openstack_helm_ingress_service_name: neutron-server
-    openstack_helm_ingress_service_port: 9696
-    openstack_helm_ingress_annotations: "{{ openstack_helm_neutron_ingress_annotations }}"
+          replicas: 3
+          regionName: "{{ openstack_helm_endpoints_neutron_region_name | default(openstack_helm_endpoints_region_name) }}"
+          imageRepository: "{{ atmosphere_image_repository | default(None) }}"
+          ingress:
+            host: "{{ openstack_helm_endpoints_neutron_api_host }}"
+            className: "{{ openstack_helm_ingress_class_name | default('openstack') }}"
+            annotations: "{{ openstack_helm_neutron_ingress_annotations }}"
+          keystoneRef:
+            name: keystone
+          novaRef:
+            name: nova
+          octaviaRef:
+            name: octavia
+          designateRef:
+            name: designate
+          ironicRef:
+            name: ironic
+          coreDnsRef:
+            name: neutron-coredns
+          secretsRef:
+            name: neutron
+          databaseRef:
+            name: percona-xtradb
+          rabbitmqRef:
+            name: neutron
+          overrides: "{{ openstack_helm_neutron_values }}"
 
 - name: Create networks
   when: openstack_helm_neutron_networks | length > 0
+  run_once: true
   block:
     - name: Wait until network service ready
       kubernetes.core.k8s_info:

@@ -12,65 +12,51 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Generate OpenStack-Helm endpoints
-  ansible.builtin.include_role:
-    name: openstack_helm_endpoints
-  vars:
-    openstack_helm_endpoints_repo_name: openstack-helm
-    openstack_helm_endpoints_repo_url: https://tarballs.opendev.org/openstack/openstack-helm/
-    openstack_helm_endpoints_chart: barbican
-
-- name: Deploy Helm chart
+- name: Deploy Service
+  run_once: true
   kubernetes.core.k8s:
     state: present
     definition:
-      - apiVersion: v1
-        kind: Secret
-        metadata:
-          name: atmosphere-barbican
-          namespace: openstack
-        stringData:
-          values.yaml: "{{ _openstack_helm_barbican_values | combine(openstack_helm_barbican_values, recursive=True) | to_nice_yaml }}"
-
-      - apiVersion: helm.toolkit.fluxcd.io/v2beta1
-        kind: HelmRelease
+      - apiVersion: infra.atmosphere.vexxhost.com/v1alpha1
+        kind: RabbitmqCluster
         metadata:
           name: barbican
           namespace: openstack
         spec:
-          interval: 60s
-          chart:
-            spec:
-              chart: barbican
-              version: 0.2.12
-              sourceRef:
-                kind: HelmRepository
-                name: openstack-helm
-          install:
-            disableWait: true
-          upgrade:
-            disableWait: true
-          valuesFrom:
-            - kind: Secret
-              name: atmosphere-barbican
-            - kind: Secret
-              name: percona-xtradb
-              valuesKey: root
-              targetPath: endpoints.oslo_db.auth.admin.password
-            - kind: Secret
-              name: rabbitmq-barbican-default-user
-              valuesKey: username
-              targetPath: endpoints.oslo_messaging.auth.admin.username
-            - kind: Secret
-              name: rabbitmq-barbican-default-user
-              valuesKey: password
-              targetPath: endpoints.oslo_messaging.auth.admin.password
+          imageRepository: "{{ atmosphere_image_repository | default(None) }}"
 
-- name: Create Ingress
-  ansible.builtin.include_role:
-    name: openstack_helm_ingress
-  vars:
-    openstack_helm_ingress_endpoint: key_manager
-    openstack_helm_ingress_service_name: barbican-api
-    openstack_helm_ingress_service_port: 9311
-    openstack_helm_ingress_annotations: "{{ openstack_helm_barbican_ingress_annotations }}"
+      - apiVersion: v1
+        kind: Secret
+        metadata:
+          name: barbican
+          namespace: openstack
+        type: Opaque
+        stringData:
+          memcache: "{{ openstack_helm_endpoints_memcached_secret_key }}"
+          rabbitmq: "{{ openstack_helm_endpoints_barbican_rabbitmq_password }}"
+          database: "{{ openstack_helm_endpoints_barbican_mariadb_password }}"
+          keystone: "{{ openstack_helm_endpoints_barbican_keystone_password }}"
+          kek: "{{ openstack_helm_barbican_kek }}"
+
+      - apiVersion: openstack.atmosphere.vexxhost.com/v1alpha1
+        kind: Barbican
+        metadata:
+          name: barbican
+          namespace: openstack
+        spec:
+          replicas: 3
+          regionName: "{{ openstack_helm_endpoints_barbican_region_name | default(openstack_helm_endpoints_region_name) }}"
+          imageRepository: "{{ atmosphere_image_repository | default(None) }}"
+          ingress:
+            host: "{{ openstack_helm_endpoints_barbican_api_host }}"
+            className: "{{ openstack_helm_ingress_class_name | default('openstack') }}"
+            annotations: "{{ openstack_helm_barbican_ingress_annotations }}"
+          keystoneRef:
+            name: keystone
+          secretsRef:
+            name: barbican
+          databaseRef:
+            name: percona-xtradb
+          rabbitmqRef:
+            name: barbican
+          overrides: "{{ openstack_helm_barbican_values }}"
