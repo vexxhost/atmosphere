@@ -4,7 +4,8 @@ You can use your own local registry to store the Atmosphere images.  The scope
 of this document does not include how to setup a local registry.
 
 0. You have to install crane first.
-   Follow this [instruction](https://github.com/google/go-containerregistry/blob/main/cmd/crane/README.md) to install crane.
+   Follow this [instruction](https://github.com/google/go-containerregistry/blob/main/cmd/crane/README.md)
+   to install crane.
 
 1. Mirror all images to your own registry
 
