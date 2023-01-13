@@ -16,6 +16,6 @@ _openstack_helm_infra_openvswitch_values:
   endpoints: "{{ openstack_helm_endpoints }}"
   images:
     tags:
-      dep_check: "{{ openstack_helm_infra_openvswitch_image_repository }}/kubernetes-entrypoint:latest"
-      openvswitch_db_server: "{{ openstack_helm_infra_openvswitch_image_repository }}/openvswitch:{{ openstack_helm_infra_openvswitch_image_tag }}"
-      openvswitch_vswitchd: "{{ openstack_helm_infra_openvswitch_image_repository }}/openvswitch:{{ openstack_helm_infra_openvswitch_image_tag }}"
+      dep_check: "{{ lookup('vexxhost.atmosphere.image_ref', 'dep_check', output='ref') }}"
+      openvswitch_db_server: "{{ lookup('vexxhost.atmosphere.image_ref', 'openvswitch_db_server', output='ref') }}"
+      openvswitch_vswitchd: "{{ lookup('vexxhost.atmosphere.image_ref', 'openvswitch_vswitchd', output='ref') }}"

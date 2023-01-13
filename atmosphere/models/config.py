@@ -4,6 +4,7 @@ import tomli
 from schematics import types
 from schematics.exceptions import ValidationError
 
+from atmosphere import utils
 from atmosphere.models import base
 
 CONFIG_FILE = os.environ.get("ATMOSPHERE_CONFIG", "/etc/atmosphere/config.toml")
@@ -126,8 +127,14 @@ class RookCephChartConfig(ChartConfig):
 
 
 class MemcachedImagesConfig(base.Model):
-    memcached = types.StringType(default="docker.io/library/memcached:1.6.17")
-    exporter = types.StringType(default="quay.io/prometheus/memcached-exporter:v0.10.0")
+    memcached = types.StringType(
+        default=utils.get_image_ref_using_legacy_image_repository("memcached").string()
+    )
+    exporter = types.StringType(
+        default=utils.get_image_ref_using_legacy_image_repository(
+            "prometheus_memcached_exporter"
+        ).string()
+    )
 
 
 class MemcachedChartConfig(ChartConfig):
@@ -159,6 +166,7 @@ class OpsGenieConfig(base.Model):
 class Config(base.Model):
     domain = types.StringType(required=True)
     rook = types.ModelType(RookCephChartConfig, default=RookCephChartConfig())
+    image_repository = types.StringType()
     kube_prometheus_stack = types.ModelType(
         KubePrometheusStackChartConfig, default=KubePrometheusStackChartConfig()
     )

@@ -56,7 +56,7 @@ type GithubWorkflowJob struct {
 }
 
 type GithubWorkflowStrategy struct {
-	Matrix map[string][]string `yaml:"matrix"`
+	Matrix map[string]interface{} `yaml:"matrix"`
 }
 
 type GithubWorkflowStep struct {

@@ -84,7 +84,7 @@
 
 - name: Set controller_ip_port_list
   ansible.builtin.set_fact:
-    _openstack_helm_octavia_controller_ip_port_list: "{{ _openstack_helm_octavia_controller_ip_port_list | d([]) + [item.openstack_ports[0].fixed_ips[0].ip_address + ':5555'] }}"
+    _openstack_helm_octavia_controller_ip_port_list: "{{ (_openstack_helm_octavia_controller_ip_port_list | d([]) + [item.openstack_ports[0].fixed_ips[0].ip_address + ':5555']) | unique }}"
   loop: "{{ _openstack_helm_octavia_health_manager_ports.results }}"
   loop_control:
     label: "{{ item.openstack_ports[0].name }}"

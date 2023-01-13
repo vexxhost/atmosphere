@@ -13,14 +13,4 @@
 # under the License.
 
 _openstack_helm_ingress_annotations:
-  cert-manager.io/cluster-issuer: "{{ openstack_helm_ingress_cluster_issuer | default('atmosphere') }}"
-
-_openstack_helm_ingress_paths: "{{ openstack_helm_ingress_paths + __openstack_helm_ingress_paths }}"
-__openstack_helm_ingress_paths:
-  - path: /
-    pathType: Prefix
-    backend:
-      service:
-        name: "{{ openstack_helm_ingress_service_name }}"
-        port:
-          number: "{{ openstack_helm_ingress_service_port }}"
+  cert-manager.io/cluster-issuer: "{{ openstack_helm_ingress_cluster_issuer }}"

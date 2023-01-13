@@ -1,20 +1,45 @@
-import os
-
 import kopf
 
-from atmosphere import flows
-from atmosphere.models import config
-from atmosphere.operator import controllers  # noqa: F401
+from atmosphere import clients
+from atmosphere.operator import constants, controllers, utils  # noqa: F401
+from atmosphere.operator.api import objects, types
 
 
-@kopf.on.startup()
-def configure(settings: kopf.OperatorSettings, **_):
-    settings.admission.server = kopf.WebhookServer(host=os.environ["POD_IP"])
-    settings.admission.managed = "auto.atmosphere.vexxhost.com"
+@kopf.on.create(
+    constants.API_VERSION_ATMOSPHERE,
+    constants.KIND_OPENSTACK_HELM_RABBITMQ_CLUSTER,
+)
+@kopf.on.resume(
+    constants.API_VERSION_ATMOSPHERE,
+    constants.KIND_OPENSTACK_HELM_RABBITMQ_CLUSTER,
+)
+def create_openstack_helm_rabbitmq_cluster(
+    namespace: str, name: str, annotations: dict, labels: dict, spec: dict, **_
+):
+    api = clients.get_pykube_api()
+    objects.OpenstackHelmRabbitmqCluster(
+        api=api,
+        metadata=types.NamespacedObjectMeta(
+            name=name,
+            namespace=namespace,
+            annotations=utils.filter_annotations(annotations),
+            labels=labels,
+        ),
+        spec=types.OpenstackHelmRabbitmqClusterSpec(**spec),
+    ).apply_rabbitmq_cluster()
 
 
-@kopf.on.startup()
-def startup(**_):
-    cfg = config.Config.from_file()
-    engine = flows.get_engine(cfg)
-    engine.run()
+@kopf.on.delete(
+    constants.API_VERSION_ATMOSPHERE,
+    constants.KIND_OPENSTACK_HELM_RABBITMQ_CLUSTER,
+)
+def delete_openstack_helm_rabbitmq_cluster(namespace: str, name: str, spec: dict, **_):
+    api = clients.get_pykube_api()
+    objects.OpenstackHelmRabbitmqCluster(
+        api=api,
+        metadata=types.NamespacedObjectMeta(
+            name=name,
+            namespace=namespace,
+        ),
+        spec=types.OpenstackHelmRabbitmqClusterSpec(**spec),
+    ).delete_rabbitmq_cluster()

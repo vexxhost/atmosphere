@@ -37,6 +37,9 @@ controlPlane:
 apiVersion: kubeadm.k8s.io/v1beta3
 kind: ClusterConfiguration
 controlPlaneEndpoint: "{{ kubernetes_hostname }}:6443"
+{% if atmosphere_image_repository is defined %}
+imageRepository: "{{ atmosphere_image_repository }}"
+{% endif %}
 apiServer:
   extraArgs:
     oidc-username-claim: email

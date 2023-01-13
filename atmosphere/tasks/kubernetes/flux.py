@@ -8,41 +8,6 @@ from atmosphere.tasks.kubernetes import base
 LOG = logger.get_logger()
 
 
-class HelmRepository(pykube.objects.NamespacedAPIObject):
-    version = "source.toolkit.fluxcd.io/v1beta2"
-    endpoint = "helmrepositories"
-    kind = "HelmRepository"
-
-
-class ApplyHelmRepositoryTask(base.ApplyKubernetesObjectTask):
-    def __init__(self, namespace: str, name: str, url: str):
-        self._url = url
-
-        super().__init__(
-            kind=HelmRepository,
-            namespace=namespace,
-            name=name,
-            requires=set(["namespace"]),
-        )
-
-    def generate_object(self) -> HelmRepository:
-        return HelmRepository(
-            self.api,
-            {
-                "apiVersion": self._obj_kind.version,
-                "kind": self._obj_kind.kind,
-                "metadata": {
-                    "name": self._obj_name,
-                    "namespace": self._obj_namespace,
-                },
-                "spec": {
-                    "interval": "1m",
-                    "url": self._url,
-                },
-            },
-        )
-
-
 class HelmRelease(pykube.objects.NamespacedAPIObject):
     version = "helm.toolkit.fluxcd.io/v2beta1"
     endpoint = "helmreleases"
@@ -68,14 +33,10 @@ class ApplyHelmReleaseTask(base.ApplyKubernetesObjectTask):
         self._values = values
         self._values_from = values_from
 
-        kwargs.setdefault("requires", set())
-        kwargs["requires"] = kwargs["requires"].union(set(["repository"]))
-
         super().__init__(
             kind=HelmRelease,
             namespace=namespace,
             name=name,
-            rebind={"repository": f"helm-repository-{namespace}-{repository}"},
             *args,
             **kwargs,
         )
@@ -105,10 +66,16 @@ class ApplyHelmReleaseTask(base.ApplyKubernetesObjectTask):
                     "install": {
                         "crds": "CreateReplace",
                         "disableWait": True,
+                        "remediation": {
+                            "retries": 3,
+                        },
                     },
                     "upgrade": {
                         "crds": "CreateReplace",
                         "disableWait": True,
+                        "remediation": {
+                            "retries": 3,
+                        },
                     },
                     "values": self._values,
                     "valuesFrom": self._values_from,

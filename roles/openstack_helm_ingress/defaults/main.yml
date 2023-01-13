@@ -1,25 +1,21 @@
----
-# .. vim: foldmarker=[[[,]]]:foldmethod=marker
+# Name of the OpenStack-Helm Ingress to create
+openstack_helm_ingress_name: "{{ openstack_helm_ingress_endpoint | replace('_', '-') }}"
 
-# .. Copyright (C) 2022 VEXXHOST, Inc.
-# .. SPDX-License-Identifier: Apache-2.0
-
-# Default variables
-# =================
-
-# .. contents:: Sections
-#    :local:
-
-
-# .. envvar:: openstack_helm_ingress_annotations [[[
-#
-# Additional annotations to include for Kubernetes ingress
+# List of annotations to apply to the Ingress
 openstack_helm_ingress_annotations: {}
 
-                                                                   # ]]]
-# .. envvar:: openstack_helm_ingress_paths [[[
-#
-# Additional paths to include for Kubernetes ingress
-openstack_helm_ingress_paths: []
+# Hostname to expose for the Ingress
+openstack_helm_ingress_host: "{{ openstack_helm_endpoints[openstack_helm_ingress_endpoint]['host_fqdn_override']['public']['host'] }}"
 
-                                                                   # ]]]
+# Name of the "cert-manager" ClusterIssuer to use for TLS certificates
+openstack_helm_ingress_cluster_issuer: atmosphere
+
+# Name of the Ingress class to use for exposing the service.
+openstack_helm_ingress_class_name: openstack
+
+# Secret containing the TLS certificate to use for the Ingress, overriding this
+# value globally should allow to point towards a secret containing the custom
+# certificate.
+#
+# See: https://kubernetes.io/docs/concepts/services-networking/ingress/#tls
+openstack_helm_ingress_secret_name: "{{ openstack_helm_ingress_service_name }}-certs"

@@ -31,6 +31,8 @@
                 kind: HelmRepository
                 name: coredns
           values:
+            image:
+              repository: "{{ lookup('vexxhost.atmosphere.image_ref', 'neutron_coredns', output='name') }}"
             replicaCount: 3
             prometheus:
               service:

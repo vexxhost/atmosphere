@@ -16,9 +16,9 @@ _openstack_helm_tempest_values:
   endpoints: "{{ openstack_helm_endpoints }}"
   images:
     tags:
-      dep_check: "{{ openstack_helm_tempest_image_repository }}/kubernetes-entrypoint:latest"
-      tempest_run_tests: "{{ openstack_helm_tempest_image_repository }}/tempest:{{ openstack_helm_tempest_image_tag }}"
-      ks_user: "{{ openstack_helm_tempest_image_repository }}/heat:{{ openstack_helm_tempest_heat_image_tag }}"
+      dep_check: "{{ lookup('vexxhost.atmosphere.image_ref', 'dep_check', output='ref') }}"
+      ks_user: "{{ lookup('vexxhost.atmosphere.image_ref', 'ks_user', output='ref') }}"
+      tempest_run_tests: "{{ lookup('vexxhost.atmosphere.image_ref', 'tempest_run_tests', output='ref') }}"
   jobs:
     run_tests:
       restartPolicy: Never

@@ -69,7 +69,7 @@ jobs:
           cache: poetry
 
       - name: Install dependencies
-        run: poetry install --no-interaction
+        run: poetry install --no-interaction --all-extras
 
       - name: Run test suite
         run: poetry run pytest atmosphere/tests/${{ matrix.type }}
@@ -91,11 +91,11 @@ jobs:
           cache: poetry
 
       - name: Install dependencies
-        run: poetry install --no-interaction
+        run: poetry install --no-interaction --all-extras
 
       # TODO(mnaser): Move this out to "cleanup" stage
       - name: Set up Go
-        uses: actions/setup-go@v3.3.1
+        uses: actions/setup-go@v3.4.0
         with:
           go-version-file: go.mod
           cache: true

@@ -1,12 +1,12 @@
 import json
+import os
 
 import _jsonnet
-import kopf
-import openstack
-import pykube
-from oslo_serialization import base64
+import tomli
 
-from atmosphere import clients
+from atmosphere.operator import utils
+
+CONFIG_FILE = os.environ.get("ATMOSPHERE_CONFIG", "/etc/atmosphere/config.toml")
 
 
 def load_jsonnet_from_path(path: str) -> any:
@@ -14,33 +14,21 @@ def load_jsonnet_from_path(path: str) -> any:
     return json.loads(raw)
 
 
-def get_or_wait_for_secret(
-    api: pykube.HTTPClient, namespace: str, name: str, delay: int = 5
-) -> pykube.Secret:
-    secret = pykube.Secret.objects(api, namespace=namespace).get_or_none(name=name)
-    if secret is None:
-        raise kopf.TemporaryError(
-            f"secret/{name} in {namespace} is not yet ready.", delay=delay
-        )
-    return {k: base64.decode_as_text(v) for k, v in secret.obj["data"].items()}
+def get_legacy_image_repository(config_path: str = CONFIG_FILE) -> str or None:
+    try:
+        with open(config_path, "rb") as fd:
+            data = tomli.load(fd)
+    except FileNotFoundError:
+        return None
+
+    if data.get("image_repository", ""):
+        return data["image_repository"]
+
+    return None
 
 
-def get_openstack_client(
-    namespace: str, api: pykube.HTTPClient = None
-) -> openstack.connection.Connection:
-    if api is None:
-        api = clients.get_pykube_api()
-
-    secret = get_or_wait_for_secret(api, namespace, "keystone-keystone-admin")
-    return openstack.connect(
-        auth_url=secret["OS_AUTH_URL"],
-        interface="internal",
-        project_name=secret["OS_PROJECT_NAME"],
-        username=secret["OS_USERNAME"],
-        password=secret["OS_PASSWORD"],
-        region_name=secret["OS_REGION_NAME"],
-        user_domain_name=secret["OS_USER_DOMAIN_NAME"],
-        project_domain_name=secret["OS_PROJECT_DOMAIN_NAME"],
-        app_name="atmosphere",
-        app_version="TODO",
+def get_image_ref_using_legacy_image_repository(image_name: str) -> str:
+    return utils.get_image_ref(
+        image_name,
+        override_registry=get_legacy_image_repository(),
     )

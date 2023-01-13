@@ -4,6 +4,7 @@ import pykube
 import pytest
 import tomli_w
 import yaml
+from ansible.plugins.filter import core
 from jinja2 import Environment, FileSystemLoader
 from python_on_whales import docker
 from tenacity import Retrying, retry_if_exception_type, stop_after_delay, wait_fixed
@@ -25,11 +26,14 @@ def test_e2e_for_operator(tmp_path, flux_cluster, docker_image, sample_config):
 
     env = Environment(
         loader=FileSystemLoader("roles/atmosphere/templates"),
-        extensions=["jinja2_base64_filters.Base64Filters"],
+        extensions=["jinja2_ansible_filters.AnsibleCoreFiltersExtension"],
     )
     env.filters["vexxhost.atmosphere.to_toml"] = tomli_w.dumps
+    env.filters["combine"] = core.combine
 
     args = {
+        "atmosphere_cloud_spec": {},
+        "_atmosphere_cloud_spec": {},
         "atmosphere_image": docker_image,
         "atmosphere_config": sample_config,
     }
@@ -56,7 +60,7 @@ def test_e2e_for_operator(tmp_path, flux_cluster, docker_image, sample_config):
             wait=wait_fixed(1),
         ):
             with attempt:
-                assert "Initial authentication has finished." in pod.logs()
+                assert "kind=Secret name=atmosphere-memcached" in pod.logs()
 
     for secret_name in ["atmosphere-config", "atmosphere-memcached"]:
         secret = pykube.Secret.objects(

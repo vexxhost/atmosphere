@@ -1,5 +1,67 @@
 # Changelog
 
+## [0.13.0](https://github.com/vexxhost/atmosphere/compare/v0.12.0...v0.13.0) (2022-12-28)
+
+
+### Features
+
+* allow for custom registry ([71ebfe8](https://github.com/vexxhost/atmosphere/commit/71ebfe89536fad3f6aabaf83309499298449c373))
+
+
+### Bug Fixes
+
+* Ignore unrechable hosts error in log capture playbook of molecule destroy ([76e81f8](https://github.com/vexxhost/atmosphere/commit/76e81f83f6a958653fe7794e88fedaebac2ae646))
+
+## [0.12.0](https://github.com/vexxhost/atmosphere/compare/v0.11.0...v0.12.0) (2022-12-19)
+
+
+### Features
+
+* allow cloud spec overrides ([d469eb6](https://github.com/vexxhost/atmosphere/commit/d469eb63f6a95c7dea204799c4e693ec4ab24bb0)), closes [#231](https://github.com/vexxhost/atmosphere/issues/231)
+
+
+### Bug Fixes
+
+* bump rabbitmq operator version ([a0874ad](https://github.com/vexxhost/atmosphere/commit/a0874ada6ccdc4e5967b0e11d72d52c7a0ff230e))
+* Correct task "Upload logs to object storage" ([7d40bf2](https://github.com/vexxhost/atmosphere/commit/7d40bf291cb82f8981156dd6d0ef3f45bed439ea))
+* solve typo in atmosphere_cloud_spec ([0aecdae](https://github.com/vexxhost/atmosphere/commit/0aecdaee1102b4e6d18f2019ada512019a1368ad))
+
+## [0.11.0](https://github.com/vexxhost/atmosphere/compare/v0.10.0...v0.11.0) (2022-12-15)
+
+
+### Features
+
+* add cloud resource + magnum ([#217](https://github.com/vexxhost/atmosphere/issues/217)) ([096ade0](https://github.com/vexxhost/atmosphere/commit/096ade0076a386aa64b5f3c0884be8f4643216ad))
+
+## [0.10.0](https://github.com/vexxhost/atmosphere/compare/v0.9.0...v0.10.0) (2022-12-13)
+
+
+### Features
+
+* add endpoint, implied_role, role & service ([84ba2ec](https://github.com/vexxhost/atmosphere/commit/84ba2ec5a37957d9501e18491f5c0c6900fa2125))
+* enable rbd write-back cache ([1e3180b](https://github.com/vexxhost/atmosphere/commit/1e3180b0ccadb5bdcb71d5a5f5da2056791a22a3))
+
+
+### Bug Fixes
+
+* Add masquerade rule in molecule env ([50bbcf0](https://github.com/vexxhost/atmosphere/commit/50bbcf0bbfc1864176f1979c2e9f7ccc94c0c0ed))
+* install crds before resources ([d886654](https://github.com/vexxhost/atmosphere/commit/d886654aea06bc23262eada9368f9b075699f068))
+* **keystone:** add updated libapache-mod-oauth2 ([a99d799](https://github.com/vexxhost/atmosphere/commit/a99d7997ecd590ba1bafe2f8411dd2d490405b9c))
+* **keystone:** clean up after ourselves in images ([19b2032](https://github.com/vexxhost/atmosphere/commit/19b20324ffbe69f59fa6d8de234552e62cd9bb1a))
+* **keystone:** install openidc only ([8fd074e](https://github.com/vexxhost/atmosphere/commit/8fd074ef873f7996e4806e9cf1a17099c1da6a70))
+* move arg up ([8856fb1](https://github.com/vexxhost/atmosphere/commit/8856fb196293aa90deb315561c7268c76c95e649))
+* **operator:** stop validating resources ([90e2c2a](https://github.com/vexxhost/atmosphere/commit/90e2c2acb0434fbc3123a7178f92ab0c6da1b60b))
+* resolve if statement ([686e5c4](https://github.com/vexxhost/atmosphere/commit/686e5c4b4067915521a308e8358a271c35e59065))
+* use correct base image ([67abe6a](https://github.com/vexxhost/atmosphere/commit/67abe6a22b9998ddfc9bda10286b94f8b6d15f7e))
+* use correct builder image ([19c4e4e](https://github.com/vexxhost/atmosphere/commit/19c4e4e5716c1b7f4d08e122760bb03a725cdf09))
+* use runtime image ([1ff73d7](https://github.com/vexxhost/atmosphere/commit/1ff73d766d72a868c8ac86db9b2d69345738a73e))
+
+
+### Documentation
+
+* clean-up rbd persistent cache ([90afb1d](https://github.com/vexxhost/atmosphere/commit/90afb1dd42ab5fa77b8decb31e46e3772b4f6465))
+* **monitoring:** add info how to expose ([431ab87](https://github.com/vexxhost/atmosphere/commit/431ab87e61a2029952d22e0151b309b3c2e5ef00))
+
 ## [0.9.0](https://github.com/vexxhost/atmosphere/compare/v0.8.1...v0.9.0) (2022-11-29)
 
 

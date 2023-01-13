@@ -1,5 +1,7 @@
 # Storage
 
+## Built-in Ceph cluster
+
 ## External storage
 
 When using an external storage platform, it's important to create to disable Ceph
@@ -16,7 +18,7 @@ setup the hosts inside of your storage array. You'll also need to make sure
 that they are not inside a host group or otherwise individual attachments will
 not work.
 
-### CSI
+#### CSI
 
 You'll need to enable the Kubernetes cluster to use the PowerStore driver by
 using adding the following YAML to your Ansible inventory:
@@ -34,7 +36,7 @@ powerstore_csi_config:
       blockProtocol: <FILL IN> # FC or iSCSI
 ```
 
-### Glance
+#### Glance
 
 Since Glance does not have a native PowerStore driver, you'll need to enable
 the use of the Cinder driver by adding the following to your Ansible inventory:
@@ -56,7 +58,7 @@ deployed. In addition, we're forcing all images to be `raw` format in order to
 avoid any issues with the PowerStore driver having to constantly download and
 upload the images.
 
-### Cinder
+#### Cinder
 
 You can enable the native PowerStore driver for Cinder with the following
 configuration inside your Ansible inventory:
@@ -114,7 +116,7 @@ It's important to note that the configuration above will disable the Cinder
 backup service. In the future, we'll update this sample configuration to use
 the Cinder backup service.
 
-### Nova
+#### Nova
 
 You can enable the native PowerStore driver for Cinder with the following
 configuration inside your Ansible inventory:
@@ -125,7 +127,7 @@ openstack_helm_nova_values:
     enable_iscsi: true
 ```
 
-> **Note**
->
-> The PowerStore driver will use the storage protocol specified inside Cinder,
-> even if the above mentions `iscsi`.
+!!! note
+
+    The PowerStore driver will use the storage protocol specified inside Cinder,
+    even if the above mentions `iscsi`.

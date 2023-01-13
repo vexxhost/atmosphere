@@ -1,0 +1,375 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Generate OpenStack-Helm endpoints
+  ansible.builtin.include_role:
+    name: openstack_helm_endpoints
+  vars:
+    openstack_helm_endpoints_repo_name: openstack-helm
+    openstack_helm_endpoints_repo_url: https://tarballs.opendev.org/openstack/openstack-helm/
+    openstack_helm_endpoints_chart: magnum
+
+- name: Deploy Helm chart
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      - apiVersion: v1
+        kind: PersistentVolumeClaim
+        metadata:
+          labels:
+            application: magnum
+            component: registry
+          name: magnum-registry
+          namespace: openstack
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 50Gi
+          storageClassName: general
+
+      - apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          labels:
+            application: magnum
+            component: registry
+          name: magnum-registry
+          namespace: openstack
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              application: magnum
+              component: registry
+          strategy:
+            type: Recreate
+          template:
+            metadata:
+              labels:
+                application: magnum
+                component: registry
+            spec:
+              containers:
+                - name: registry
+                  env:
+                    - name: REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY
+                      value: /var/lib/registry
+                    - name: REGISTRY_COMPATIBILITY_SCHEMA1_ENABLED
+                      value: "true"
+                  image: "{{ lookup('vexxhost.atmosphere.image_ref', 'magnum_registry', output='ref') }}"
+                  ports:
+                    - containerPort: 5000
+                      name: registry
+                      protocol: TCP
+                  livenessProbe:
+                    httpGet:
+                      path: /
+                      port: 5000
+                      scheme: HTTP
+                  readinessProbe:
+                    httpGet:
+                      path: /
+                      port: 5000
+                      scheme: HTTP
+                  volumeMounts:
+                    - mountPath: /var/lib/registry
+                      name: magnum-registry
+              nodeSelector:
+                openstack-control-plane: enabled
+              volumes:
+                - name: magnum-registry
+                  persistentVolumeClaim:
+                    claimName: magnum-registry
+
+      - apiVersion: v1
+        kind: Service
+        metadata:
+          labels:
+            application: magnum
+            component: registry
+          name: magnum-registry
+          namespace: openstack
+        spec:
+          ports:
+            - name: magnum
+              port: 5000
+              protocol: TCP
+              targetPort: 5000
+          selector:
+            application: magnum
+            component: registry
+          type: ClusterIP
+
+      - apiVersion: batch/v1
+        kind: Job
+        metadata:
+          labels:
+            application: magnum
+            component: registry
+          name: magnum-registry-init
+          namespace: openstack
+        spec:
+          backoffLimit: 5
+          template:
+            metadata:
+              labels:
+                application: magnum
+            spec:
+              restartPolicy: OnFailure
+              containers:
+                - args:
+                    - copy
+                    - --dest-tls-verify=false
+                    - docker://docker.io/calico/cni:v3.13.1
+                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/cni:v3.13.1
+                  image: "{{ lookup('vexxhost.atmosphere.image_ref', 'skopeo', output='ref') }}"
+                  name: magnum-cni-v3-13-1
+                - args:
+                    - copy
+                    - --dest-tls-verify=false
+                    - docker://docker.io/calico/kube-controllers:v3.13.1
+                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/kube-controllers:v3.13.1
+                  image: "{{ lookup('vexxhost.atmosphere.image_ref', 'skopeo', output='ref') }}"
+                  name: magnum-kube-controllers-v3-13-1
+                - args:
+                    - copy
+                    - --dest-tls-verify=false
+                    - docker://docker.io/calico/node:v3.13.1
+                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/node:v3.13.1
+                  image: "{{ lookup('vexxhost.atmosphere.image_ref', 'skopeo', output='ref') }}"
+                  name: magnum-node-v3-13-1
+                - args:
+                    - copy
+                    - --dest-tls-verify=false
+                    - docker://docker.io/calico/pod2daemon-flexvol:v3.13.1
+                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/pod2daemon-flexvol:v3.13.1
+                  image: "{{ lookup('vexxhost.atmosphere.image_ref', 'skopeo', output='ref') }}"
+                  name: magnum-pod2daemon-flexvol-v3-13-1
+                - args:
+                    - copy
+                    - --dest-tls-verify=false
+                    - docker://docker.io/coredns/coredns:1.6.6
+                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/coredns:1.6.6
+                  image: "{{ lookup('vexxhost.atmosphere.image_ref', 'skopeo', output='ref') }}"
+                  name: magnum-coredns-1-6-6
+                - args:
+                    - copy
+                    - --dest-tls-verify=false
+                    - docker://docker.io/k8scloudprovider/cinder-csi-plugin:v1.18.0
+                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/cinder-csi-plugin:v1.18.0
+                  image: "{{ lookup('vexxhost.atmosphere.image_ref', 'skopeo', output='ref') }}"
+                  name: magnum-cinder-csi-plugin-v1-18-0
+                - args:
+                    - copy
+                    - --dest-tls-verify=false
+                    - docker://docker.io/k8scloudprovider/k8s-keystone-auth:v1.18.0
+                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/k8s-keystone-auth:v1.18.0
+                  image: "{{ lookup('vexxhost.atmosphere.image_ref', 'skopeo', output='ref') }}"
+                  name: magnum-k8s-keystone-auth-v1-18-0
+                - args:
+                    - copy
+                    - --dest-tls-verify=false
+                    - docker://docker.io/k8scloudprovider/magnum-auto-healer:v1.18.0
+                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/magnum-auto-healer:v1.18.0
+                  image: "{{ lookup('vexxhost.atmosphere.image_ref', 'skopeo', output='ref') }}"
+                  name: magnum-magnum-auto-healer-v1-18-0
+                - args:
+                    - copy
+                    - --dest-tls-verify=false
+                    - docker://docker.io/k8scloudprovider/openstack-cloud-controller-manager:v1.18.0
+                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/openstack-cloud-controller-manager:v1.18.0
+                  image: "{{ lookup('vexxhost.atmosphere.image_ref', 'skopeo', output='ref') }}"
+                  name: magnum-openstack-cloud-controller-manager-v1-18-0
+                - args:
+                    - copy
+                    - --dest-tls-verify=false
+                    - docker://docker.io/kubernetesui/dashboard:v2.0.0
+                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/dashboard:v2.0.0
+                  image: "{{ lookup('vexxhost.atmosphere.image_ref', 'skopeo', output='ref') }}"
+                  name: magnum-dashboard-v2-0-0
+                - args:
+                    - copy
+                    - --dest-tls-verify=false
+                    - docker://docker.io/kubernetesui/metrics-scraper:v1.0.4
+                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/metrics-scraper:v1.0.4
+                  image: "{{ lookup('vexxhost.atmosphere.image_ref', 'skopeo', output='ref') }}"
+                  name: magnum-metrics-scraper-v1-0-4
+                - args:
+                    - copy
+                    - --dest-tls-verify=false
+                    - docker://docker.io/openstackmagnum/cluster-autoscaler:v1.22.0
+                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/cluster-autoscaler:v1.22.0
+                  image: "{{ lookup('vexxhost.atmosphere.image_ref', 'skopeo', output='ref') }}"
+                  name: magnum-cluster-autoscaler-v1-22-0
+                - args:
+                    - copy
+                    - --dest-tls-verify=false
+                    - docker://docker.io/openstackmagnum/heat-container-agent:wallaby-stable-1
+                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/heat-container-agent:wallaby-stable-1
+                  image: "{{ lookup('vexxhost.atmosphere.image_ref', 'skopeo', output='ref') }}"
+                  name: magnum-heat-container-agent-wallaby-stable-1
+                - args:
+                    - copy
+                    - --dest-tls-verify=false
+                    - docker://docker.io/planetlabs/draino:abf028a
+                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/draino:abf028a
+                  image: "{{ lookup('vexxhost.atmosphere.image_ref', 'skopeo', output='ref') }}"
+                  name: magnum-draino-abf028a
+                - args:
+                    - copy
+                    - --dest-tls-verify=false
+                    - docker://docker.io/rancher/hyperkube:v1.19.11-rancher1
+                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/hyperkube:v1.19.11
+                  image: "{{ lookup('vexxhost.atmosphere.image_ref', 'skopeo', output='ref') }}"
+                  name: magnum-hyperkube-v1-19-11
+                - args:
+                    - copy
+                    - --dest-tls-verify=false
+                    - docker://docker.io/rancher/hyperkube:v1.20.7-rancher1
+                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/hyperkube:v1.20.7
+                  image: "{{ lookup('vexxhost.atmosphere.image_ref', 'skopeo', output='ref') }}"
+                  name: magnum-hyperkube-v1-20-7
+                - args:
+                    - copy
+                    - --dest-tls-verify=false
+                    - docker://docker.io/rancher/hyperkube:v1.21.1-rancher1
+                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/hyperkube:v1.21.1
+                  image: "{{ lookup('vexxhost.atmosphere.image_ref', 'skopeo', output='ref') }}"
+                  name: magnum-hyperkube-v1-21-1
+                - args:
+                    - copy
+                    - --dest-tls-verify=false
+                    - docker://gcr.io/google_containers/cluster-proportional-autoscaler-amd64:1.1.2
+                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/cluster-proportional-autoscaler-amd64:1.1.2
+                  image: "{{ lookup('vexxhost.atmosphere.image_ref', 'skopeo', output='ref') }}"
+                  name: magnum-cluster-proportional-autoscaler-amd64-1-1-2
+                - args:
+                    - copy
+                    - --dest-tls-verify=false
+                    - docker://gcr.io/google_containers/metrics-server-amd64:v0.3.5
+                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/metrics-server-amd64:v0.3.5
+                  image: "{{ lookup('vexxhost.atmosphere.image_ref', 'skopeo', output='ref') }}"
+                  name: magnum-metrics-server-amd64-v0-3-5
+                - args:
+                    - copy
+                    - --dest-tls-verify=false
+                    - docker://gcr.io/google_containers/node-problem-detector:v0.6.2
+                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/node-problem-detector:v0.6.2
+                  image: "{{ lookup('vexxhost.atmosphere.image_ref', 'skopeo', output='ref') }}"
+                  name: magnum-node-problem-detector-v0-6-2
+                - args:
+                    - copy
+                    - --dest-tls-verify=false
+                    - docker://gcr.io/google_containers/pause:3.1
+                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/pause:3.1
+                  image: "{{ lookup('vexxhost.atmosphere.image_ref', 'skopeo', output='ref') }}"
+                  name: magnum-pause-3-1
+                - args:
+                    - copy
+                    - --dest-tls-verify=false
+                    - docker://quay.io/coreos/etcd:v3.4.6
+                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/etcd:v3.4.6
+                  image: "{{ lookup('vexxhost.atmosphere.image_ref', 'skopeo', output='ref') }}"
+                  name: magnum-etcd-v3-4-6
+                - args:
+                    - copy
+                    - --dest-tls-verify=false
+                    - docker://quay.io/k8scsi/csi-attacher:v2.0.0
+                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/csi-attacher:v2.0.0
+                  image: "{{ lookup('vexxhost.atmosphere.image_ref', 'skopeo', output='ref') }}"
+                  name: magnum-csi-attacher-v2-0-0
+                - args:
+                    - copy
+                    - --dest-tls-verify=false
+                    - docker://quay.io/k8scsi/csi-node-driver-registrar:v1.1.0
+                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/csi-node-driver-registrar:v1.1.0
+                  image: "{{ lookup('vexxhost.atmosphere.image_ref', 'skopeo', output='ref') }}"
+                  name: magnum-csi-node-driver-registrar-v1-1-0
+                - args:
+                    - copy
+                    - --dest-tls-verify=false
+                    - docker://quay.io/k8scsi/csi-provisioner:v1.4.0
+                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/csi-provisioner:v1.4.0
+                  image: "{{ lookup('vexxhost.atmosphere.image_ref', 'skopeo', output='ref') }}"
+                  name: magnum-csi-provisioner-v1-4-0
+                - args:
+                    - copy
+                    - --dest-tls-verify=false
+                    - docker://quay.io/k8scsi/csi-resizer:v0.3.0
+                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/csi-resizer:v0.3.0
+                  image: "{{ lookup('vexxhost.atmosphere.image_ref', 'skopeo', output='ref') }}"
+                  name: magnum-csi-resizer-v0-3-0
+                - args:
+                    - copy
+                    - --dest-tls-verify=false
+                    - docker://quay.io/k8scsi/csi-snapshotter:v1.2.2
+                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/csi-snapshotter:v1.2.2
+                  image: "{{ lookup('vexxhost.atmosphere.image_ref', 'skopeo', output='ref') }}"
+                  name: magnum-csi-snapshotter-v1-2-2
+              nodeSelector:
+                openstack-control-plane: enabled
+
+- name: Create Ingress
+  ansible.builtin.include_role:
+    name: openstack_helm_ingress
+  vars:
+    openstack_helm_ingress_endpoint: container_infra
+    openstack_helm_ingress_service_name: magnum-api
+    openstack_helm_ingress_service_port: 9511
+    openstack_helm_ingress_annotations: "{{ openstack_helm_magnum_ingress_annotations }}"
+
+- name: Create magnum registry Ingress
+  ansible.builtin.include_role:
+    name: openstack_helm_ingress
+  vars:
+    openstack_helm_ingress_endpoint: container_infra_registry
+    openstack_helm_ingress_service_name: magnum-registry
+    openstack_helm_ingress_service_port: 5000
+
+- name: Create k8s images
+  when: openstack_helm_magnum_images | length > 0
+  block:
+    - name: Wait until image service ready
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: Deployment
+        name: glance-api
+        namespace: openstack
+        wait_sleep: 10
+        wait_timeout: 600
+        wait: true
+        wait_condition:
+          type: Available
+          status: true
+
+    - name: Download images
+      ansible.builtin.get_url:
+        url: "{{ item.source_url | regex_replace('\\/$', '') }}/{{ item.image_file }}"
+        dest: "/tmp/{{ item.image_file }}"
+        mode: "0600"
+      loop: "{{ openstack_helm_magnum_images }}"
+
+    - name: Upload images
+      openstack.cloud.image:
+        cloud: atmosphere
+        name: "{{ item.name }}"
+        state: present
+        filename: "/tmp/{{ item.image_file }}"
+        container_format: "{{ item.container_format | default(omit) }}"
+        disk_format: "{{ item.disk_format | default(omit) }}"
+        properties:
+          os_distro: ubuntu-focal
+      loop: "{{ openstack_helm_magnum_images }}"

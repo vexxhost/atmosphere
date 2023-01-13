@@ -19,3 +19,14 @@
     - name: Update apt cache
       become: yes
       command: apt-get update
+
+- hosts: controllers
+  tasks:
+    - name: Set masquerade rule
+      become: yes
+      ansible.builtin.iptables:
+        table: nat
+        chain: POSTROUTING
+        source: 10.96.250.0/24
+        out_interface: "{{ ansible_default_ipv4.interface }}"
+        jump: MASQUERADE

@@ -19,11 +19,6 @@ class ApplyCertificateTask(base.ApplyKubernetesObjectTask):
             kind=Certificate,
             namespace=namespace,
             name=name,
-            requires=set(
-                [
-                    f"helm-release-{constants.NAMESPACE_CERT_MANAGER}-{constants.HELM_RELEASE_CERT_MANAGER_NAME}",
-                ]
-            ),
         )
 
     def generate_object(self) -> Certificate:
@@ -55,11 +50,6 @@ class ApplyClusterIssuerTask(base.ApplyKubernetesObjectTask):
             kind=ClusterIssuer,
             namespace=None,
             name=name,
-            requires=set(
-                [
-                    f"helm-release-{constants.NAMESPACE_CERT_MANAGER}-{constants.HELM_RELEASE_CERT_MANAGER_NAME}",
-                ]
-            ),
         )
 
     def generate_object(self) -> ClusterIssuer:

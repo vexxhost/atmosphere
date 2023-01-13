@@ -7,7 +7,7 @@ metadata:
 spec:
   containers:
     - name: keepalived
-      image: us-docker.pkg.dev/vexxhost-infra/openstack/keepalived:2.0.19
+      image: "{{ lookup('vexxhost.atmosphere.image_ref', 'keepalived', output='ref') }}"
       command: ["keepalived", "-f", "/etc/keepalived/keepalived.conf", "--dont-fork", "--log-console", "--log-detail", "--dump-conf"]
       resources: {}
       securityContext:

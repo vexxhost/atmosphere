@@ -3,6 +3,8 @@ import textwrap
 import mergedeep
 import pykube
 
+from atmosphere import clients
+from atmosphere.operator.api import objects, types
 from atmosphere.models import config
 from atmosphere.tasks import constants
 from atmosphere.tasks.kubernetes import base, flux, v1
@@ -20,11 +22,6 @@ class ApplyCephClusterTask(base.ApplyKubernetesObjectTask):
             kind=CephCluster,
             namespace=namespace,
             name=name,
-            requires=set(
-                [
-                    f"helm-release-{namespace}-{constants.HELM_RELEASE_ROOK_CEPH_NAME}",
-                ]
-            ),
         )
 
     def generate_object(self) -> CephCluster:
@@ -129,13 +126,26 @@ def tasks_from_config(config: config.Config) -> list:
         config.rook.overrides,
     )
 
-    return [
-        v1.ApplyNamespaceTask(name=constants.NAMESPACE_ROOK_CEPH),
-        flux.ApplyHelmRepositoryTask(
-            namespace=constants.NAMESPACE_ROOK_CEPH,
+    api = clients.get_pykube_api()
+
+    objects.Namespace(
+        api=api,
+        metadata=types.ObjectMeta(
+            name=constants.NAMESPACE_ROOK_CEPH,
+        ),
+    ).apply()
+    objects.HelmRepository(
+        api=api,
+        metadata=types.NamespacedObjectMeta(
             name=constants.HELM_REPOSITORY_ROOK_CEPH,
+            namespace=constants.NAMESPACE_ROOK_CEPH,
+        ),
+        spec=types.HelmRepositorySpec(
             url=constants.HELM_REPOSITORY_ROOK_CEPH_URL,
         ),
+    ).apply()
+
+    return [
         flux.ApplyHelmReleaseTask(
             namespace=constants.NAMESPACE_ROOK_CEPH,
             name=constants.HELM_REPOSITORY_ROOK_CEPH,

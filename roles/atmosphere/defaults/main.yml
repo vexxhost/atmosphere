@@ -1,8 +1,8 @@
-atmosphere_image: quay.io/vexxhost/atmosphere:0.9.0 # x-release-please-version
+atmosphere_image: "{{ lookup('vexxhost.atmosphere.image_ref', 'atmosphere', output='ref') }}"
 
 atmosphere_config:
   domain: "{{ atmosphere_domain }}"
-  issuer: "{{ atmosphere_issuer_config }}"
+  image_repository: "{{ atmosphere_image_repository | default('') }}"
   kube_prometheus_stack:
     overrides: "{{ kube_prometheus_stack_values | default({}) }}"
   memcached:
@@ -14,4 +14,7 @@ atmosphere_config:
     monitor_secret: "{{ _atmosphere_rook_mon_key }}"
     monitors: "{{ _atmosphere_ceph_monitors }}"
     keystone_password: "{{ atmosphere_object_storage_service_user_password }}"
+  issuer: "{{ atmosphere_issuer_config }}"
   opsgenie: "{{ atmosphere_opsgenie_config | default({}) }}"
+
+atmosphere_cloud_spec: {}

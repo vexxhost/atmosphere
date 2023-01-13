@@ -7,4 +7,4 @@
 - name: Install Flux to cluster
   run_once: true
   changed_when: false
-  ansible.builtin.command: flux install
+  ansible.builtin.command: flux install {% if atmosphere_image_repository is defined %}--registry={{ atmosphere_image_repository }}{% endif %}

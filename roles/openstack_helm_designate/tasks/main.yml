@@ -1,0 +1,76 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Generate OpenStack-Helm endpoints
+  ansible.builtin.include_role:
+    name: openstack_helm_endpoints
+  vars:
+    openstack_helm_endpoints_repo_name: openstack-helm
+    openstack_helm_endpoints_repo_url: https://tarballs.opendev.org/openstack/openstack-helm/
+    openstack_helm_endpoints_chart: designate
+
+- name: Deploy Helm chart
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      - apiVersion: v1
+        kind: Secret
+        metadata:
+          name: atmosphere-designate
+          namespace: openstack
+        stringData:
+          values.yaml: "{{ _openstack_helm_designate_values | combine(openstack_helm_designate_values, recursive=True) | to_nice_yaml }}"
+
+      - apiVersion: helm.toolkit.fluxcd.io/v2beta1
+        kind: HelmRelease
+        metadata:
+          name: designate
+          namespace: openstack
+        spec:
+          interval: 60s
+          chart:
+            spec:
+              chart: designate
+              version: 0.2.7
+              sourceRef:
+                kind: HelmRepository
+                name: openstack-helm
+          install:
+            disableWait: true
+          upgrade:
+            disableWait: true
+          valuesFrom:
+            - kind: Secret
+              name: atmosphere-designate
+            - kind: Secret
+              name: percona-xtradb
+              valuesKey: root
+              targetPath: endpoints.oslo_db.auth.admin.password
+            - kind: Secret
+              name: rabbitmq-designate-default-user
+              valuesKey: username
+              targetPath: endpoints.oslo_messaging.auth.admin.username
+            - kind: Secret
+              name: rabbitmq-designate-default-user
+              valuesKey: password
+              targetPath: endpoints.oslo_messaging.auth.admin.password
+
+- name: Create Ingress
+  ansible.builtin.include_role:
+    name: openstack_helm_ingress
+  vars:
+    openstack_helm_ingress_endpoint: dns
+    openstack_helm_ingress_service_name: designate-api
+    openstack_helm_ingress_service_port: 8778
+    openstack_helm_ingress_annotations: "{{ openstack_helm_designate_ingress_annotations }}"
