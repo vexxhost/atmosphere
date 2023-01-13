@@ -71,18 +71,6 @@ def create_fn(namespace: str, name: str, spec: dict, **_):
                 },
             ),
         )
-        objects.OpenstackHelmIngress(
-            api=api,
-            metadata=types.OpenstackHelmIngressObjectMeta(
-                name="container-infra",
-                namespace=namespace,
-            ),
-            spec=types.OpenstackHelmIngressSpec(
-                clusterIssuer=spec["certManagerClusterIssuer"],
-                ingressClassName=spec["ingressClassName"],
-                host=spec["magnum"]["endpoint"],
-            ),
-        ).apply()
 
         objects.OpenstackHelmRabbitmqCluster(
             api=api,

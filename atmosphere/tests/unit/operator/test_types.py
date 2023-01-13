@@ -157,26 +157,3 @@ class TestOpenstackHelmRabbitmqClusterSpec:
         assert isinstance(instance, types.OpenstackHelmRabbitmqClusterSpec)
         assert isinstance(instance.image, str)
         assert instance.image != ""
-
-
-class TestOpenstackHelmIngressObjectMetaName:
-    def test_name_order(self):
-        assert [*types.OpenstackHelmIngressObjectMetaName] == sorted(
-            [*types.OpenstackHelmIngressObjectMetaName]
-        )
-
-
-class TestOpenstackHelmIngressObjectMeta:
-    @given(st.builds(types.OpenstackHelmIngressObjectMeta))
-    def test_property(self, instance):
-        assert isinstance(instance, types.OpenstackHelmIngressObjectMeta)
-        assert isinstance(instance.name, types.OpenstackHelmIngressObjectMetaName)
-
-
-class TestOpenstackHelmIngressSpec:
-    @given(st.builds(types.OpenstackHelmIngressSpec))
-    def test_property(self, instance):
-        assert isinstance(instance, types.OpenstackHelmIngressSpec)
-        assert instance.clusterIssuer != ""
-        assert instance.ingressClassName != ""
-        assert instance.host != ""

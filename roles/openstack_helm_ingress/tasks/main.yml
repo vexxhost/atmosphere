@@ -12,17 +12,37 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Create Ingress {{ openstack_helm_ingress_endpoint }}
+- name: Create Ingress {{ openstack_helm_ingress_name }}
   kubernetes.core.k8s:
     state: present
     definition:
-      apiVersion: atmosphere.vexxhost.com/v1alpha1
-      kind: OpenstackHelmIngress
+      apiVersion: v1
+      kind: Ingress
       metadata:
-        name: "{{ openstack_helm_ingress_endpoint | replace('_', '-') }}"
+        name: "{{ openstack_helm_ingress_name }}"
         namespace: openstack
-        annotations: "{{ openstack_helm_ingress_annotations }}"
+        annotations: "{{ _openstack_helm_ingress_annotations | combine(openstack_helm_ingress_annotations, recursive=True) }}"
       spec:
-        clusterIssuer: "{{ openstack_helm_ingress_cluster_issuer | default('atmosphere') }}"
-        ingressClassName: "{{ openstack_helm_ingress_class_name | default('openstack') }}"
-        host: "{{ openstack_helm_endpoints[openstack_helm_ingress_endpoint]['host_fqdn_override']['public']['host'] }}"
+        ingressClassName: "{{ openstack_helm_ingress_class_name }}"
+        rules:
+          - host: "{{ openstack_helm_ingress_host }}"
+            http:
+              paths:
+                - path: /
+                  pathType: Prefix
+                  backend:
+                    service:
+                      name: "{{ openstack_helm_ingress_service_name }}"
+                      port:
+                        number: "{{ openstack_helm_ingress_service_port }}"
+        tls:
+          - secretName: "{{ openstack_helm_ingress_secret_name }}"
+            hosts:
+              - "{{ openstack_helm_ingress_host }}"
+  # NOTE(mnaser): The Atmosphere operator is so fast that the Ingress webhook
+  #               is not up yet by the time we run this for the first time, so
+  #               we retry until we let the operator handle creating the ingress.
+  retries: 60
+  delay: 5
+  register: _result
+  until: _result is not failed

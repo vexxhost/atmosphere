@@ -322,6 +322,15 @@
               nodeSelector:
                 openstack-control-plane: enabled
 
+- name: Create Ingress
+  ansible.builtin.include_role:
+    name: openstack_helm_ingress
+  vars:
+    openstack_helm_ingress_endpoint: container_infra
+    openstack_helm_ingress_service_name: magnum-api
+    openstack_helm_ingress_service_port: 9511
+    openstack_helm_ingress_annotations: "{{ openstack_helm_magnum_ingress_annotations }}"
+
 - name: Create magnum registry Ingress
   ansible.builtin.include_role:
     name: openstack_helm_ingress

@@ -177,31 +177,3 @@ class HelmReleaseSpec(pydantic.BaseModel):
 
 class OpenstackHelmRabbitmqClusterSpec(pydantic.BaseModel):
     image: pydantic.constr(min_length=1)
-
-
-class OpenstackHelmIngressObjectMetaName(str, Enum):
-    cloudformation = "cloudformation"
-    clustering = "clustering"
-    compute = "compute"
-    compute_novnc_proxy = "compute-novnc-proxy"
-    container_infra = "container-infra"
-    container_infra_registry = "container-infra-registry"
-    dashboard = "dashboard"
-    identity = "identity"
-    image = "image"
-    key_manager = "key-manager"
-    load_balancer = "load-balancer"
-    network = "network"
-    orchestration = "orchestration"
-    placement = "placement"
-    volumev3 = "volumev3"
-
-
-class OpenstackHelmIngressObjectMeta(NamespacedObjectMeta):
-    name: OpenstackHelmIngressObjectMetaName
-
-
-class OpenstackHelmIngressSpec(pydantic.BaseModel):
-    clusterIssuer: pydantic.constr(min_length=1) = "atmosphere"
-    ingressClassName: pydantic.constr(min_length=1) = "atmosphere"
-    host: Hostname
