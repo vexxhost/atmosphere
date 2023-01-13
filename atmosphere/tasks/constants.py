@@ -594,15 +594,6 @@ HELM_RELEASE_RABBITMQ_OPERATOR_VALUES = {
     "useCertManager": True,
 }
 
-HELM_RELEASE_PXC_OPERATOR_NAME = "pxc-operator"
-HELM_RELEASE_PXC_OPERATOR_VERSION = "1.10.0"
-HELM_RELEASE_PXC_OPERATOR_VALUES = {
-    "image": utils.get_image_ref_using_legacy_image_repository(
-        "percona_xtradb_cluster_operator"
-    ).string(),
-    "nodeSelector": NODE_SELECTOR_CONTROL_PLANE,
-}
-
 HELM_RELEASE_KEYSTONE_NAME = "keystone"
 
 HELM_RELEASE_BARBICAN_NAME = "barbican"
