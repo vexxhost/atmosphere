@@ -275,7 +275,6 @@ def get_deployment_flow(config):
     flow = graph_flow.Flow("deploy").add(
         # cert-manager
         *cert_manager.issuer_tasks_from_config(config.issuer),
-        openstack_helm.ApplyPerconaXtraDBClusterTask(),
     )
 
     if config.memcached.enabled:

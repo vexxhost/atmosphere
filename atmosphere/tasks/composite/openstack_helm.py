@@ -1,14 +1,11 @@
 import textwrap
 
 import mergedeep
-import pykube
 import yaml
 
-from atmosphere import utils
 from atmosphere.models import config
 from atmosphere.models.openstack_helm import values
-from atmosphere.tasks import constants
-from atmosphere.tasks.kubernetes import base, flux, v1
+from atmosphere.tasks.kubernetes import flux, v1
 
 
 class ApplyReleaseSecretTask(v1.ApplySecretTask):
@@ -131,84 +128,3 @@ def generate_alertmanager_config_for_opsgenie(
             },
         ],
     }
-
-
-class PerconaXtraDBCluster(pykube.objects.NamespacedAPIObject):
-    version = "pxc.percona.com/v1-10-0"
-    endpoint = "perconaxtradbclusters"
-    kind = "PerconaXtraDBCluster"
-
-
-class ApplyPerconaXtraDBClusterTask(base.ApplyKubernetesObjectTask):
-    def __init__(self):
-        super().__init__(
-            kind=PerconaXtraDBCluster,
-            namespace=constants.NAMESPACE_OPENSTACK,
-            name="percona-xtradb",
-        )
-
-    def generate_object(self) -> PerconaXtraDBCluster:
-        return PerconaXtraDBCluster(
-            self.api,
-            {
-                "apiVersion": self._obj_kind.version,
-                "kind": self._obj_kind.kind,
-                "metadata": {
-                    "name": self._obj_name,
-                    "namespace": self._obj_namespace,
-                },
-                "spec": {
-                    "crVersion": "1.10.0",
-                    "secretsName": "percona-xtradb",
-                    "pxc": {
-                        "size": 3,
-                        "image": utils.get_image_ref_using_legacy_image_repository(
-                            "percona_xtradb_cluster"
-                        ).string(),
-                        "autoRecovery": True,
-                        "configuration": "[mysqld]\nmax_connections=8192\n",
-                        "sidecars": [
-                            {
-                                "name": "exporter",
-                                "image": utils.get_image_ref_using_legacy_image_repository(
-                                    "prometheus_mysqld_exporter"
-                                ).string(),
-                                "ports": [{"name": "metrics", "containerPort": 9104}],
-                                "livenessProbe": {
-                                    "httpGet": {"path": "/", "port": 9104}
-                                },
-                                "env": [
-                                    {
-                                        "name": "MONITOR_PASSWORD",
-                                        "valueFrom": {
-                                            "secretKeyRef": {
-                                                "name": "percona-xtradb",
-                                                "key": "monitor",
-                                            }
-                                        },
-                                    },
-                                    {
-                                        "name": "DATA_SOURCE_NAME",
-                                        "value": "monitor:$(MONITOR_PASSWORD)@(localhost:3306)/",
-                                    },
-                                ],
-                            }
-                        ],
-                        "nodeSelector": constants.NODE_SELECTOR_CONTROL_PLANE,
-                        "volumeSpec": {
-                            "persistentVolumeClaim": {
-                                "resources": {"requests": {"storage": "160Gi"}}
-                            }
-                        },
-                    },
-                    "haproxy": {
-                        "enabled": True,
-                        "size": 3,
-                        "image": utils.get_image_ref_using_legacy_image_repository(
-                            "percona_xtradb_cluster_haproxy"
-                        ).string(),
-                        "nodeSelector": {"openstack-control-plane": "enabled"},
-                    },
-                },
-            },
-        )

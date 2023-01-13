@@ -1,0 +1,17 @@
+- name: Create Percona XtraDB cluster
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: pxc.percona.com/v1-10-0
+      kind: PerconaXtraDBCluster
+      metadata:
+        name: percona-xtradb
+        namespace: openstack
+      spec: "{{ _percona_xtradb_cluster_spec | combine(percona_xtradb_cluster_spec, recursive=True) }}"
+    wait_sleep: 1
+    wait_timeout: 600
+    wait: true
+    wait_condition:
+      type: ready
+      status: true

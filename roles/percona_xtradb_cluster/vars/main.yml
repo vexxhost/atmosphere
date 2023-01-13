@@ -1,0 +1,41 @@
+_percona_xtradb_cluster_spec:
+  crVersion: "1.10.0"
+  secretsName: percona-xtradb
+  pxc:
+    size: 3
+    image: "{{ lookup('vexxhost.atmosphere.image_ref', 'percona_xtradb_cluster', output='ref') }}"
+    autoRecovery: true
+    configuration: |
+      [mysqld]
+      max_connections=8192
+    sidecars:
+      - name: exporter
+        image: "{{ lookup('vexxhost.atmosphere.image_ref', 'prometheus_mysqld_exporter', output='ref') }}"
+        env:
+          - name: MONITOR_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: percona-xtradb
+                key: monitor
+          - name: DATA_SOURCE_NAME
+            value: "monitor:$(MONITOR_PASSWORD)@(localhost:3306)/"
+        ports:
+          - name: metrics
+            containerPort: 9104
+        livenessProbe:
+          httpGet:
+            port: metrics
+            path: /
+    nodeSelector:
+      openstack-control-plane: enabled
+    volumeSpec:
+      persistentVolumeClaim:
+        resources:
+          requests:
+            storage: 160Gi
+  haproxy:
+    enabled: true
+    size: 3
+    image: "{{ lookup('vexxhost.atmosphere.image_ref', 'percona_xtradb_cluster_haproxy', output='ref') }}"
+    nodeSelector:
+      openstack-control-plane: enabled
