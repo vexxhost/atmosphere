@@ -37,6 +37,10 @@ _openstack_helm_horizon_values:
           secure_proxy_ssl_header: "True"
           horizon_images_upload_mode: direct
           openstack_enable_password_retrieve: "True"
+          # TODO(mnaser): We should drop `openstack_api_versions` once we fix the upstream change which
+          #               broke it by hard-coding to "1.19" which is not a valid microversion.
+          openstack_api_versions:
+            container_infra: "1.10"
           raw:
             WEBSSO_KEYSTONE_URL: https://{{ openstack_helm_endpoints['identity']['host_fqdn_override']['public']['host'] }}/v3
       local_settings_d:
