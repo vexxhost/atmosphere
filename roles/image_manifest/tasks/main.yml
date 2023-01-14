@@ -1,0 +1,29 @@
+- name: Check if file already exists
+  when: image_manifest_force is false
+  block:
+    - name: Get details about file
+      ansible.builtin.stat:
+        path: "{{ image_manifest_path }}"
+      register: _stat
+
+    - name: Stop if file already exists
+      ansible.builtin.fail:
+        msg: "File {{ image_manifest_path }} already exists, use -e image_manifest_force=true to overwrite"
+      when: _stat.stat.exists
+
+- name: Mirror images
+  when: image_manifest_mirror
+  ansible.builtin.command:
+    crane copy {{ atmosphere_images[item] }} {{ image_manifest_data['atmosphere_images'][item] }}
+  loop: |
+    {%- if image_manifest_images is string -%}
+    {{ image_manifest_images | split(',') }}
+    {%- else -%}
+    {{ image_manifest_images }}
+    {%- endif -%}
+
+- name: Write file with image list
+  ansible.builtin.copy:
+    dest: "{{ image_manifest_path }}"
+    content: "{{ image_manifest_data | to_nice_yaml(indent=2) }}"
+    mode: 0644

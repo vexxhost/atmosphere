@@ -47,6 +47,11 @@ DOCUMENTATION = """
       required: true
       description:
         - Part of the Docker image reference to return
+    registry:
+      type: string
+      required: false
+      description:
+        - Override the registry in the Docker image reference
   author:
     - Mohammed Naser <mnaser@vexxhost.com>
 """
@@ -64,7 +69,7 @@ RETURN = """
 """
 
 
-def docker_image(value, part="ref"):
+def docker_image(value, part="ref", registry=None):
     if not is_string(value):
         raise AnsibleFilterError(
             "Invalid value type (%s) for docker_image (%r)" % (type(value), value)
@@ -75,12 +80,29 @@ def docker_image(value, part="ref"):
             "Failed to import docker-image-py module, ensure it is installed on the controller"
         )
 
-    ref = reference.Reference.parse(value)
+    def _lookup_part(ref, part):
+        if part == "ref":
+            return ref.string()
+        if part == "name":
+            return ref["name"]
 
-    if part == "ref":
-        return ref.string()
-    if part == "name":
-        return ref["name"]
+    ref = reference.Reference.parse(value)
+    if not registry:
+        return _lookup_part(ref, part)
+
+    # NOTE(mnaser): We re-write the name of a few images to make sense of them
+    #               in the context of the override registry.
+    ref_name = ref.repository["path"].split("/")[-1]
+    if value == "skopeo":
+        ref_name = "skopeo-stable"
+
+    # NOTE(mnaser): Since the attributes inside of reference.Reference are not
+    #               determined during parse time, we need to re-parse the
+    #               string to get the correct attributes.
+    ref["name"] = "{}/{}".format(registry, ref_name)
+    ref = reference.Reference.parse(ref.string())
+
+    return _lookup_part(ref, part)
 
 
 class FilterModule(object):
