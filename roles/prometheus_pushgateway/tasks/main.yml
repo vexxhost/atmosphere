@@ -32,7 +32,7 @@
                 name: prometheus-community
           values:
             image:
-              repository: "{{ lookup('vexxhost.atmosphere.image_ref', 'prometheus_pushgateway', output='name') }}"
+              repository: "{{ atmosphere_images['prometheus_pushgateway'] | docker_image('name') }}"
             nodeSelector:
               openstack-control-plane: enabled
             serviceMonitor:

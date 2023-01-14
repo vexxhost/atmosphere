@@ -81,3 +81,8 @@ def docker_image(value, part="ref"):
         return ref.string()
     if part == "name":
         return ref["name"]
+
+
+class FilterModule(object):
+    def filters(self):
+        return {"docker_image": docker_image}

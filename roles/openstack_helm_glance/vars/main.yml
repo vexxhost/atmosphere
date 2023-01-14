@@ -18,19 +18,19 @@ _openstack_helm_glance_values:
   images:
     pull_policy: Always
     tags:
-      bootstrap: "{{ lookup('vexxhost.atmosphere.image_ref', 'bootstrap', output='ref') }}"
-      db_drop: "{{ lookup('vexxhost.atmosphere.image_ref', 'db_drop', output='ref') }}"
-      db_init: "{{ lookup('vexxhost.atmosphere.image_ref', 'db_init', output='ref') }}"
-      dep_check: "{{ lookup('vexxhost.atmosphere.image_ref', 'dep_check', output='ref') }}"
-      glance_api: "{{ lookup('vexxhost.atmosphere.image_ref', 'glance_api', output='ref') }}"
-      glance_db_sync: "{{ lookup('vexxhost.atmosphere.image_ref', 'glance_db_sync', output='ref') }}"
-      glance_metadefs_load: "{{ lookup('vexxhost.atmosphere.image_ref', 'glance_metadefs_load', output='ref') }}"
-      glance_registry: "{{ lookup('vexxhost.atmosphere.image_ref', 'glance_registry', output='ref') }}"
-      glance_storage_init: "{{ lookup('vexxhost.atmosphere.image_ref', 'glance_storage_init', output='ref') }}"
-      ks_endpoints: "{{ lookup('vexxhost.atmosphere.image_ref', 'ks_endpoints', output='ref') }}"
-      ks_service: "{{ lookup('vexxhost.atmosphere.image_ref', 'ks_service', output='ref') }}"
-      ks_user: "{{ lookup('vexxhost.atmosphere.image_ref', 'ks_user', output='ref') }}"
-      rabbit_init: "{{ lookup('vexxhost.atmosphere.image_ref', 'rabbit_init', output='ref') }}"
+      bootstrap: "{{ atmosphere_images['bootstrap'] | docker_image('ref') }}"
+      db_drop: "{{ atmosphere_images['db_drop'] | docker_image('ref') }}"
+      db_init: "{{ atmosphere_images['db_init'] | docker_image('ref') }}"
+      dep_check: "{{ atmosphere_images['dep_check'] | docker_image('ref') }}"
+      glance_api: "{{ atmosphere_images['glance_api'] | docker_image('ref') }}"
+      glance_db_sync: "{{ atmosphere_images['glance_db_sync'] | docker_image('ref') }}"
+      glance_metadefs_load: "{{ atmosphere_images['glance_metadefs_load'] | docker_image('ref') }}"
+      glance_registry: "{{ atmosphere_images['glance_registry'] | docker_image('ref') }}"
+      glance_storage_init: "{{ atmosphere_images['glance_storage_init'] | docker_image('ref') }}"
+      ks_endpoints: "{{ atmosphere_images['ks_endpoints'] | docker_image('ref') }}"
+      ks_service: "{{ atmosphere_images['ks_service'] | docker_image('ref') }}"
+      ks_user: "{{ atmosphere_images['ks_user'] | docker_image('ref') }}"
+      rabbit_init: "{{ atmosphere_images['rabbit_init'] | docker_image('ref') }}"
   bootstrap:
     enabled: false
   pod:

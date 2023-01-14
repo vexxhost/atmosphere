@@ -6,7 +6,7 @@ metadata:
 spec:
   containers:
     - name: haproxy
-      image: "{{ lookup('vexxhost.atmosphere.image_ref', 'haproxy', output='ref') }}"
+      image: "{{ atmosphere_images['haproxy'] | docker_image('ref') }}"
       livenessProbe:
         failureThreshold: 8
         httpGet:

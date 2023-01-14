@@ -26,11 +26,11 @@
     kubeconfig: /etc/kubernetes/admin.conf
     values:
       image:
-        repository: "{{ lookup('vexxhost.atmosphere.image_ref', 'cilium_node', output='name') }}"
+        repository: "{{ atmosphere_images['cilium_node'] | docker_image('name') }}"
       tunnel: geneve
       operator:
         image:
-          repository: "{{ lookup('vexxhost.atmosphere.image_ref', 'cilium_operator', output='name') | replace('-generic', '') }}"
+          repository: "{{ atmosphere_images['cilium_operator'] | docker_image('name') | replace('-generic', '') }}"
         nodeSelector:
           openstack-control-plane: enabled
       ipam:

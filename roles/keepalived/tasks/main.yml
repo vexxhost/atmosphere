@@ -118,7 +118,7 @@
               automountServiceAccountToken: true
               initContainers:
                 - name: init
-                  image: "{{ lookup('vexxhost.atmosphere.image_ref', 'dep_check', output='ref') }}"
+                  image: "{{ atmosphere_images['dep_check'] | docker_image('ref') }}"
                   env:
                     - name: NAMESPACE
                       valueFrom:
@@ -133,7 +133,7 @@
                     - name: DEPENDENCY_POD_JSON
                       value: '[{"labels":{"application":"neutron","component":"neutron-ovs-agent"},"requireSameNode":true}]'
                 - name: wait-for-ip
-                  image: "{{ lookup('vexxhost.atmosphere.image_ref', 'keepalived', output='ref') }}"
+                  image: "{{ atmosphere_images['keepalived'] | docker_image('ref') }}"
                   command:
                     - /bin/wait-for-ip.sh
                   volumeMounts:
@@ -144,7 +144,7 @@
                       subPath: wait-for-ip.sh
               containers:
                 - name: keepalived
-                  image: "{{ lookup('vexxhost.atmosphere.image_ref', 'keepalived', output='ref') }}"
+                  image: "{{ atmosphere_images['keepalived'] | docker_image('ref') }}"
                   command:
                     - keepalived
                     - -f

@@ -17,20 +17,20 @@ _openstack_helm_keystone_values:
   images:
     pull_policy: Always
     tags:
-      bootstrap: "{{ lookup('vexxhost.atmosphere.image_ref', 'bootstrap', output='ref') }}"
-      db_drop: "{{ lookup('vexxhost.atmosphere.image_ref', 'db_drop', output='ref') }}"
-      db_init: "{{ lookup('vexxhost.atmosphere.image_ref', 'db_init', output='ref') }}"
-      dep_check: "{{ lookup('vexxhost.atmosphere.image_ref', 'dep_check', output='ref') }}"
-      keystone_api: "{{ lookup('vexxhost.atmosphere.image_ref', 'keystone_api', output='ref') }}"
-      keystone_credential_cleanup: "{{ lookup('vexxhost.atmosphere.image_ref', 'keystone_credential_cleanup', output='ref') }}"
-      keystone_credential_rotate: "{{ lookup('vexxhost.atmosphere.image_ref', 'keystone_credential_rotate', output='ref') }}"
-      keystone_credential_setup: "{{ lookup('vexxhost.atmosphere.image_ref', 'keystone_credential_setup', output='ref') }}"
-      keystone_db_sync: "{{ lookup('vexxhost.atmosphere.image_ref', 'keystone_db_sync', output='ref') }}"
-      keystone_domain_manage: "{{ lookup('vexxhost.atmosphere.image_ref', 'keystone_domain_manage', output='ref') }}"
-      keystone_fernet_rotate: "{{ lookup('vexxhost.atmosphere.image_ref', 'keystone_fernet_rotate', output='ref') }}"
-      keystone_fernet_setup: "{{ lookup('vexxhost.atmosphere.image_ref', 'keystone_fernet_setup', output='ref') }}"
-      ks_user: "{{ lookup('vexxhost.atmosphere.image_ref', 'ks_user', output='ref') }}"
-      rabbit_init: "{{ lookup('vexxhost.atmosphere.image_ref', 'rabbit_init', output='ref') }}"
+      bootstrap: "{{ atmosphere_images['bootstrap'] | docker_image('ref') }}"
+      db_drop: "{{ atmosphere_images['db_drop'] | docker_image('ref') }}"
+      db_init: "{{ atmosphere_images['db_init'] | docker_image('ref') }}"
+      dep_check: "{{ atmosphere_images['dep_check'] | docker_image('ref') }}"
+      keystone_api: "{{ atmosphere_images['keystone_api'] | docker_image('ref') }}"
+      keystone_credential_cleanup: "{{ atmosphere_images['keystone_credential_cleanup'] | docker_image('ref') }}"
+      keystone_credential_rotate: "{{ atmosphere_images['keystone_credential_rotate'] | docker_image('ref') }}"
+      keystone_credential_setup: "{{ atmosphere_images['keystone_credential_setup'] | docker_image('ref') }}"
+      keystone_db_sync: "{{ atmosphere_images['keystone_db_sync'] | docker_image('ref') }}"
+      keystone_domain_manage: "{{ atmosphere_images['keystone_domain_manage'] | docker_image('ref') }}"
+      keystone_fernet_rotate: "{{ atmosphere_images['keystone_fernet_rotate'] | docker_image('ref') }}"
+      keystone_fernet_setup: "{{ atmosphere_images['keystone_fernet_setup'] | docker_image('ref') }}"
+      ks_user: "{{ atmosphere_images['ks_user'] | docker_image('ref') }}"
+      rabbit_init: "{{ atmosphere_images['rabbit_init'] | docker_image('ref') }}"
   pod:
     #     mounts = {
     #       keystone_api = {

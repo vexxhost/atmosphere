@@ -47,7 +47,7 @@
             spec:
               containers:
                 - name: exporter
-                  image: "{{ lookup('vexxhost.atmosphere.image_ref', 'prometheus_ipmi_exporter', output='ref') }}"
+                  image: "{{ atmosphere_images['prometheus_ipmi_exporter'] | docker_image('ref') }}"
                   ports:
                     - name: metrics
                       containerPort: 9290

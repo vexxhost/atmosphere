@@ -17,16 +17,16 @@ _openstack_helm_placement_values:
   images:
     pull_policy: Always
     tags:
-      bootstrap: "{{ lookup('vexxhost.atmosphere.image_ref', 'bootstrap', output='ref') }}"
-      db_drop: "{{ lookup('vexxhost.atmosphere.image_ref', 'db_drop', output='ref') }}"
-      db_init: "{{ lookup('vexxhost.atmosphere.image_ref', 'db_init', output='ref') }}"
-      dep_check: "{{ lookup('vexxhost.atmosphere.image_ref', 'dep_check', output='ref') }}"
-      ks_endpoints: "{{ lookup('vexxhost.atmosphere.image_ref', 'ks_endpoints', output='ref') }}"
-      ks_service: "{{ lookup('vexxhost.atmosphere.image_ref', 'ks_service', output='ref') }}"
-      ks_user: "{{ lookup('vexxhost.atmosphere.image_ref', 'ks_user', output='ref') }}"
-      placement_db_sync: "{{ lookup('vexxhost.atmosphere.image_ref', 'placement_db_sync', output='ref') }}"
-      placement: "{{ lookup('vexxhost.atmosphere.image_ref', 'placement', output='ref') }}"
-      rabbit_init: "{{ lookup('vexxhost.atmosphere.image_ref', 'rabbit_init', output='ref') }}"
+      bootstrap: "{{ atmosphere_images['bootstrap'] | docker_image('ref') }}"
+      db_drop: "{{ atmosphere_images['db_drop'] | docker_image('ref') }}"
+      db_init: "{{ atmosphere_images['db_init'] | docker_image('ref') }}"
+      dep_check: "{{ atmosphere_images['dep_check'] | docker_image('ref') }}"
+      ks_endpoints: "{{ atmosphere_images['ks_endpoints'] | docker_image('ref') }}"
+      ks_service: "{{ atmosphere_images['ks_service'] | docker_image('ref') }}"
+      ks_user: "{{ atmosphere_images['ks_user'] | docker_image('ref') }}"
+      placement_db_sync: "{{ atmosphere_images['placement_db_sync'] | docker_image('ref') }}"
+      placement: "{{ atmosphere_images['placement'] | docker_image('ref') }}"
+      rabbit_init: "{{ atmosphere_images['rabbit_init'] | docker_image('ref') }}"
   pod:
     replicas:
       api: 3
