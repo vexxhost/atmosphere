@@ -10,6 +10,10 @@ variable, which by default will pull all of the different images from the
 internet.  You can override this variable to use your own local registry or to
 override a specific image.
 
+With `atmosphere_images_overide` you can override specific images,
+image_manifest will then copy to the local registry and merge this into
+`atmosphere_images`.
+
 Atmosphere can help you to generate this list of images (named "image manifest")
 as well as mirror them to your own registry.
 

@@ -2,10 +2,11 @@ image_manifest_force: false
 image_manifest_registry: null
 image_manifest_mirror: false
 image_manifest_images: "{{ atmosphere_images.keys() }}"
+atmosphere_images_overide:
 image_manifest_data:
   atmosphere_images: "{{ dict(
     atmosphere_images.keys() |
       zip(
         atmosphere_images.values() | map('vexxhost.atmosphere.docker_image', 'ref', registry=image_manifest_registry)
       )
-    ) }}"
+    ) | combine(atmosphere_images_overide) }}"
