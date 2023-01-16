@@ -1,7 +1,8 @@
 - name: Upload Helm chart
-  ansible.builtin.copy:
+  ansible.posix.synchronize:
     src: "{{ upload_helm_chart_src }}"
     dest: "{{ upload_helm_chart_dest }}"
-    owner: root
-    group: root
-    mode: 0644
+    archive: false
+    recursive: true
+    times: true
+    delete: true
