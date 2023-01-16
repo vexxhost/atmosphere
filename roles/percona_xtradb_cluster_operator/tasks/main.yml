@@ -23,8 +23,8 @@
         state: patched
         api_version: helm.toolkit.fluxcd.io/v2beta1
         kind: HelmRelease
-        name: pxc-operator
-        namespace: openstack
+        name: "{{ percona_xtradb_cluster_operator_helm_release_name }}"
+        namespace: "{{ percona_xtradb_cluster_operator_helm_release_namespace }}"
         definition:
           spec:
             suspend: true
@@ -34,8 +34,8 @@
         state: absent
         api_version: helm.toolkit.fluxcd.io/v2beta1
         kind: HelmRelease
-        name: pxc-operator
-        namespace: openstack
+        name: "{{ percona_xtradb_cluster_operator_helm_release_name }}"
+        namespace: "{{ percona_xtradb_cluster_operator_helm_release_namespace }}"
 
 - name: Deploy Helm chart
   run_once: true
