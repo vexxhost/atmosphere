@@ -87,9 +87,9 @@ IMAGE_LIST = {
     "kube_scheduler": "k8s.gcr.io/kube-scheduler:v1.22.17",
     "kube_state_metrics": "registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.6.0",
     "libvirt": "quay.io/vexxhost/libvirtd:yoga-focal",
-    "magnum_api": "quay.io/vexxhost/magnum@sha256:46e7c910780864f4532ecc85574f159a36794f37aac6be65e4b48c46040ced17",  # noqa
-    "magnum_conductor": "quay.io/vexxhost/magnum@sha256:46e7c910780864f4532ecc85574f159a36794f37aac6be65e4b48c46040ced17",  # noqa
-    "magnum_db_sync": "quay.io/vexxhost/magnum@sha256:46e7c910780864f4532ecc85574f159a36794f37aac6be65e4b48c46040ced17",  # noqa
+    "magnum_api": "quay.io/vexxhost/magnum:zed",
+    "magnum_conductor": "quay.io/vexxhost/magnum:zed",
+    "magnum_db_sync": "quay.io/vexxhost/magnum:zed",
     "magnum_registry": "docker.io/library/registry:2.7.1",
     "memcached": "docker.io/library/memcached:1.6.17",
     "neutron_bagpipe_bgp": "us-docker.pkg.dev/vexxhost-infra/openstack/neutron:wallaby",
