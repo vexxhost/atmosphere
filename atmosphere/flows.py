@@ -11,17 +11,6 @@ from atmosphere.tasks.kubernetes import cert_manager, v1
 def get_engine(config):
     api = clients.get_pykube_api()
 
-    objects.HelmRepository(
-        api=api,
-        metadata=types.NamespacedObjectMeta(
-            name=constants.HELM_REPOSITORY_CEPH,
-            namespace=constants.NAMESPACE_KUBE_SYSTEM,
-        ),
-        spec=types.HelmRepositorySpec(
-            url="https://ceph.github.io/csi-charts",
-        ),
-    ).apply()
-
     if config.ingress_nginx.enabled:
         objects.HelmRepository(
             api=api,

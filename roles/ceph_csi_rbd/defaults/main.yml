@@ -1,43 +1,26 @@
----
-# .. vim: foldmarker=[[[,]]]:foldmethod=marker
-
-# .. Copyright (C) 2022 VEXXHOST, Inc.
-# .. SPDX-License-Identifier: Apache-2.0
-
-# Default variables
-# =================
-
-# .. contents:: Sections
-#    :local:
-
-
-# .. envvar:: ceph_csi_rbd_ceph_fsid [[[
+# Copyright (c) 2023 VEXXHOST, Inc.
 #
-# Filesystem ID for Ceph cluster
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
 ceph_csi_rbd_ceph_fsid: "{{ ceph_mon_fsid }}"
-
-                                                                   # ]]]
-# .. envvar:: ceph_csi_rbd_mons_group [[[
-#
-# Ansible group that contains all Ceph monitors
 ceph_csi_rbd_mons_group: controllers
-
-                                                                   # ]]]
-# .. envvar:: ceph_csi_rbd_id [[[
-#
-# ID of the Ceph CSI RBD user
 ceph_csi_rbd_id: kube
-
-                                                                   # ]]]
-# .. envvar:: ceph_csi_rbd_user [[[
-#
-# Name of Ceph user to use for Ceph CSI RBD
 ceph_csi_rbd_user: "client.{{ ceph_csi_rbd_id }}"
-
-                                                                   # ]]]
-# .. envvar:: ceph_csi_rbd_pool [[[
-#
-# Name of Ceph pool to use for Ceph CSI RBD
 ceph_csi_rbd_pool: kube
 
-                                                                   # ]]]
+ceph_csi_rbd_helm_release_name: ceph-csi-rbd
+ceph_csi_rbd_helm_chart_path: "{{ role_path }}/../../charts/ceph-csi-rbd/"
+ceph_csi_rbd_helm_chart_ref: /usr/local/src/ceph-csi-rbd
+
+ceph_csi_rbd_helm_release_namespace: kube-system
+ceph_csi_rbd_helm_values: {}

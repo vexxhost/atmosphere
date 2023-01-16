@@ -1,4 +1,4 @@
-# Copyright (c) 2022 VEXXHOST, Inc.
+# Copyright (c) 2023 VEXXHOST, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -26,6 +26,7 @@
 
 - name: Create Ceph pool
   delegate_to: "{{ groups[ceph_csi_rbd_mons_group][0] }}"
+  run_once: true
   vexxhost.atmosphere.ceph_pool:
     name: "{{ ceph_csi_rbd_pool }}"
     rule_name: "{{ ceph_csi_rbd_rule_name | default(omit) }}"
@@ -34,6 +35,7 @@
 
 - name: Create user {{ ceph_csi_rbd_user }}
   delegate_to: "{{ groups[ceph_csi_rbd_mons_group][0] }}"
+  run_once: true
   vexxhost.atmosphere.ceph_key:
     name: "{{ ceph_csi_rbd_user }}"
     caps:
@@ -43,6 +45,7 @@
 
 - name: Retrieve keyring for {{ ceph_csi_rbd_user }}
   delegate_to: "{{ groups[ceph_csi_rbd_mons_group][0] }}"
+  run_once: true
   vexxhost.atmosphere.ceph_key:
     name: "{{ ceph_csi_rbd_user }}"
     state: info
@@ -50,65 +53,41 @@
   register: _ceph_key
 
 - name: Store keyring inside fact
+  run_once: true
   ansible.builtin.set_fact:
     _ceph_rbd_csi_ceph_keyring: "{{ _ceph_key.stdout | from_json | first }}"
 
-- name: Deploy Helm chart
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      - apiVersion: helm.toolkit.fluxcd.io/v2beta1
+# NOTE(mnaser): We should get rid of this task eventually as it is suspending
+#               the old HelmRelease and removing it to avoid uninstalling the
+#               Helm chart.
+- name: Uninstall the legacy HelmRelease
+  run_once: true
+  block:
+    - name: Suspend the existing HelmRelease
+      kubernetes.core.k8s:
+        state: patched
+        api_version: helm.toolkit.fluxcd.io/v2beta1
         kind: HelmRelease
-        metadata:
-          name: ceph-csi-rbd
-          namespace: kube-system
-        spec:
-          interval: 60s
-          chart:
-            spec:
-              chart: ceph-csi-rbd
-              version: 3.5.1
-              sourceRef:
-                kind: HelmRepository
-                name: ceph
-          values:
-            csiConfig:
-              - clusterID: "{{ ceph_csi_rbd_ceph_fsid }}"
-                monitors: "{{ ceph_monitors }}"
-            nodeplugin:
-              httpMetrics:
-                containerPort: 8081
-              registrar:
-                image:
-                  repository: "{{ atmosphere_images['csi_node_driver_registrar'] | docker_image('name') }}"
-              plugin:
-                image:
-                  repository: "{{ atmosphere_images['csi_rbd_plugin'] | docker_image('name') }}"
-            provisioner:
-              nodeSelector:
-                openstack-control-plane: enabled
-              provisioner:
-                image:
-                  repository: "{{ atmosphere_images['csi_rbd_provisioner'] | docker_image('name') }}"
-              attacher:
-                image:
-                  repository: "{{ atmosphere_images['csi_rbd_attacher'] | docker_image('name') }}"
-              resizer:
-                image:
-                  repository: "{{ atmosphere_images['csi_rbd_resizer'] | docker_image('name') }}"
-              snapshotter:
-                image:
-                  repository: "{{ atmosphere_images['csi_rbd_snapshotter'] | docker_image('name') }}"
-            storageClass:
-              create: true
-              name: general
-              annotations:
-                storageclass.kubernetes.io/is-default-class: "true"
-              clusterID: "{{ ceph_csi_rbd_ceph_fsid }}"
-              pool: "{{ ceph_csi_rbd_pool }}"
-              mountOptions:
-                - discard
-            secret:
-              create: true
-              userID: "{{ ceph_csi_rbd_id }}"
-              userKey: "{{ _ceph_rbd_csi_ceph_keyring.key }}"
+        name: "{{ ceph_csi_rbd_helm_release_name }}"
+        namespace: "{{ ceph_csi_rbd_helm_release_namespace }}"
+        definition:
+          spec:
+            suspend: true
+
+    - name: Remove the existing HelmRelease
+      kubernetes.core.k8s:
+        state: absent
+        api_version: helm.toolkit.fluxcd.io/v2beta1
+        kind: HelmRelease
+        name: "{{ ceph_csi_rbd_helm_release_name }}"
+        namespace: "{{ ceph_csi_rbd_helm_release_namespace }}"
+
+- name: Deploy Helm chart
+  run_once: true
+  kubernetes.core.helm:
+    name: "{{ ceph_csi_rbd_helm_release_name }}"
+    chart_ref: "{{ ceph_csi_rbd_helm_chart_ref }}"
+    release_namespace: "{{ ceph_csi_rbd_helm_release_namespace }}"
+    create_namespace: true
+    kubeconfig: /etc/kubernetes/admin.conf
+    values: "{{ _ceph_csi_rbd_helm_values | combine(ceph_csi_rbd_helm_values, recursive=True) }}"
