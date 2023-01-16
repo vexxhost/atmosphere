@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "pxc-operator.fullname" . }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: percona-xtradb-cluster-operator
+---
+{{- if or .Values.watchNamespace .Values.watchAllNamespaces }}
+kind: ClusterRoleBinding
+{{- else }}
+kind: RoleBinding
+{{- end }}
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: {{ include "pxc-operator.fullname" . }}
+  {{- if .Values.watchNamespace }}
+  namespace: {{ .Values.watchNamespace }}
+  {{- end }}
+  labels:
+{{ include "pxc-operator.labels" . | indent 4 }}
+subjects:
+- kind: ServiceAccount
+  name: {{ include "pxc-operator.fullname" . }}
+  {{- if or .Values.watchNamespace .Values.watchAllNamespaces }}
+  namespace: {{ .Release.Namespace }}
+  {{- end }}
+roleRef:
+  {{- if or .Values.watchNamespace .Values.watchAllNamespaces }}
+  kind: ClusterRole
+  {{- else }}
+  kind: Role
+  {{- end }}
+  name: {{ include "pxc-operator.fullname" . }}
+  apiGroup: rbac.authorization.k8s.io

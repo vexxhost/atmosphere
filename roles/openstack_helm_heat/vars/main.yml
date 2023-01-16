@@ -18,21 +18,21 @@ __openstack_helm_heat_values:
   images:
     pull_policy: Always
     tags:
-      bootstrap: "{{ lookup('vexxhost.atmosphere.image_ref', 'bootstrap', output='ref') }}"
-      db_drop: "{{ lookup('vexxhost.atmosphere.image_ref', 'db_drop', output='ref') }}"
-      db_init: "{{ lookup('vexxhost.atmosphere.image_ref', 'db_init', output='ref') }}"
-      dep_check: "{{ lookup('vexxhost.atmosphere.image_ref', 'dep_check', output='ref') }}"
-      heat_api: "{{ lookup('vexxhost.atmosphere.image_ref', 'heat_api', output='ref') }}"
-      heat_cfn: "{{ lookup('vexxhost.atmosphere.image_ref', 'heat_cfn', output='ref') }}"
-      heat_cloudwatch: "{{ lookup('vexxhost.atmosphere.image_ref', 'heat_cloudwatch', output='ref') }}"
-      heat_db_sync: "{{ lookup('vexxhost.atmosphere.image_ref', 'heat_db_sync', output='ref') }}"
-      heat_engine_cleaner: "{{ lookup('vexxhost.atmosphere.image_ref', 'heat_engine_cleaner', output='ref') }}"
-      heat_engine: "{{ lookup('vexxhost.atmosphere.image_ref', 'heat_engine', output='ref') }}"
-      heat_purge_deleted: "{{ lookup('vexxhost.atmosphere.image_ref', 'heat_purge_deleted', output='ref') }}"
-      ks_endpoints: "{{ lookup('vexxhost.atmosphere.image_ref', 'ks_endpoints', output='ref') }}"
-      ks_service: "{{ lookup('vexxhost.atmosphere.image_ref', 'ks_service', output='ref') }}"
-      ks_user: "{{ lookup('vexxhost.atmosphere.image_ref', 'ks_user', output='ref') }}"
-      rabbit_init: "{{ lookup('vexxhost.atmosphere.image_ref', 'rabbit_init', output='ref') }}"
+      bootstrap: "{{ atmosphere_images['bootstrap'] | docker_image('ref') }}"
+      db_drop: "{{ atmosphere_images['db_drop'] | docker_image('ref') }}"
+      db_init: "{{ atmosphere_images['db_init'] | docker_image('ref') }}"
+      dep_check: "{{ atmosphere_images['dep_check'] | docker_image('ref') }}"
+      heat_api: "{{ atmosphere_images['heat_api'] | docker_image('ref') }}"
+      heat_cfn: "{{ atmosphere_images['heat_cfn'] | docker_image('ref') }}"
+      heat_cloudwatch: "{{ atmosphere_images['heat_cloudwatch'] | docker_image('ref') }}"
+      heat_db_sync: "{{ atmosphere_images['heat_db_sync'] | docker_image('ref') }}"
+      heat_engine_cleaner: "{{ atmosphere_images['heat_engine_cleaner'] | docker_image('ref') }}"
+      heat_engine: "{{ atmosphere_images['heat_engine'] | docker_image('ref') }}"
+      heat_purge_deleted: "{{ atmosphere_images['heat_purge_deleted'] | docker_image('ref') }}"
+      ks_endpoints: "{{ atmosphere_images['ks_endpoints'] | docker_image('ref') }}"
+      ks_service: "{{ atmosphere_images['ks_service'] | docker_image('ref') }}"
+      ks_user: "{{ atmosphere_images['ks_user'] | docker_image('ref') }}"
+      rabbit_init: "{{ atmosphere_images['rabbit_init'] | docker_image('ref') }}"
   pod:
     replicas:
       api: 3

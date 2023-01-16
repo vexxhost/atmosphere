@@ -1,0 +1,165 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- define "novaNovncproxyLivenessProbeTemplate" }}
+tcpSocket:
+  port: {{ tuple "compute_novnc_proxy" "internal" "novnc_proxy" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+{{- end }}
+
+{{- define "novaNovncproxyReadinessProbeTemplate" }}
+tcpSocket:
+  port: {{ tuple "compute_novnc_proxy" "internal" "novnc_proxy" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+{{- end }}
+
+{{- if and .Values.manifests.deployment_novncproxy ( eq .Values.console.console_kind "novnc" )}}
+{{- $envAll := . }}
+
+{{- $mounts_nova_novncproxy := .Values.pod.mounts.nova_novncproxy.nova_novncproxy }}
+{{- $mounts_nova_novncproxy_init := .Values.pod.mounts.nova_novncproxy.init_novncproxy }}
+
+{{- $serviceAccountName := "nova-novncproxy" }}
+{{ tuple $envAll "novncproxy" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nova-novncproxy
+  annotations:
+    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
+  labels:
+{{ tuple $envAll "nova" "novnc-proxy" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+spec:
+  replicas: {{ .Values.pod.replicas.novncproxy }}
+  selector:
+    matchLabels:
+{{ tuple $envAll "nova" "novnc-proxy" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 6 }}
+{{ tuple $envAll | include "helm-toolkit.snippets.kubernetes_upgrades_deployment" | indent 2 }}
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll "nova" "novnc-proxy" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+      annotations:
+{{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
+        configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
+        configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
+{{ dict "envAll" $envAll "podName" "nova-novncproxy" "containerNames" (list "nova-novncproxy" "nova-novncproxy-init-assets" "nova-novncproxy-init" "init") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+    spec:
+      serviceAccountName: {{ $serviceAccountName }}
+{{ dict "envAll" $envAll "application" "nova" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+      affinity:
+{{ tuple $envAll "nova" "novnc-proxy" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
+      nodeSelector:
+        {{ .Values.labels.novncproxy.node_selector_key }}: {{ .Values.labels.novncproxy.node_selector_value }}
+{{- if .Values.pod.useHostNetwork.novncproxy }}
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+{{- end }}
+      initContainers:
+{{ tuple $envAll "novncproxy" $mounts_nova_novncproxy_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+        - name: nova-novncproxy-init
+{{ tuple $envAll "nova_novncproxy" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.novncproxy | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "nova" "container" "nova_novncproxy_init" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - /tmp/nova-console-proxy-init.sh
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: nova-bin
+              mountPath: /tmp/nova-console-proxy-init.sh
+              subPath: nova-console-proxy-init.sh
+              readOnly: true
+            - name: nova-etc
+              mountPath: /etc/nova/nova.conf
+              subPath: nova.conf
+              readOnly: true
+            {{- if .Values.conf.nova.DEFAULT.log_config_append }}
+            - name: nova-etc
+              mountPath: {{ .Values.conf.nova.DEFAULT.log_config_append }}
+              subPath: {{ base .Values.conf.nova.DEFAULT.log_config_append }}
+              readOnly: true
+            {{- end }}
+            - name: pod-shared
+              mountPath: /tmp/pod-shared
+        - name: nova-novncproxy-init-assets
+{{ tuple $envAll "nova_novncproxy_assets" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.novncproxy | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "nova" "container" "nova_novncproxy_init_assests" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - /tmp/nova-console-proxy-init-assets.sh
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: nova-bin
+              mountPath: /tmp/nova-console-proxy-init-assets.sh
+              subPath: nova-console-proxy-init-assets.sh
+              readOnly: true
+            - name: pod-usr-share-novnc
+              mountPath: /tmp/usr/share/novnc
+      containers:
+        - name: nova-novncproxy
+{{ tuple $envAll "nova_novncproxy" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.novncproxy | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "nova" "container" "nova_novncproxy" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+{{ dict "envAll" $envAll "component" "novncproxy" "container" "default" "type" "liveness" "probeTemplate" (include "novaNovncproxyLivenessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ dict "envAll" $envAll "component" "novncproxy" "container" "default" "type" "readiness" "probeTemplate" (include "novaNovncproxyReadinessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+          command:
+            - /tmp/nova-console-proxy.sh
+          ports:
+            - name: n-novnc
+              containerPort: {{ tuple "compute_novnc_proxy" "internal" "novnc_proxy" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: nova-bin
+              mountPath: /tmp/nova-console-proxy.sh
+              subPath: nova-console-proxy.sh
+              readOnly: true
+            - name: nova-etc
+              mountPath: /etc/nova/nova.conf
+              subPath: nova.conf
+              readOnly: true
+            - name: nova-etc
+              mountPath: /etc/nova/logging.conf
+              subPath: logging.conf
+              readOnly: true
+            - name: pod-usr-share-novnc
+              mountPath: /usr/share/novnc
+              readOnly: true
+            - name: pod-shared
+              mountPath: /tmp/pod-shared
+{{- dict "enabled" .Values.manifests.certificates "name" .Values.endpoints.oslo_db.auth.admin.secret.tls.internal "path" "/etc/mysql/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
+{{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.compute_novnc_proxy.novncproxy.internal "path" "/etc/nova/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
+{{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_messaging.auth.admin.secret.tls.internal "path" "/etc/rabbitmq/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
+{{ if $mounts_nova_novncproxy.volumeMounts }}{{ toYaml $mounts_nova_novncproxy.volumeMounts | indent 12 }}{{ end }}
+      volumes:
+        - name: pod-tmp
+          emptyDir: {}
+        - name: nova-bin
+          configMap:
+            name: nova-bin
+            defaultMode: 0555
+        - name: nova-etc
+          secret:
+            secretName: nova-etc
+            defaultMode: 0444
+        - name: pod-usr-share-novnc
+          emptyDir: {}
+        - name: pod-shared
+          emptyDir: {}
+{{- dict "enabled" .Values.manifests.certificates "name" .Values.endpoints.oslo_db.auth.admin.secret.tls.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
+{{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.compute_novnc_proxy.novncproxy.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
+{{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_messaging.auth.admin.secret.tls.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
+{{ if $mounts_nova_novncproxy.volumes }}{{ toYaml $mounts_nova_novncproxy.volumes | indent 8 }}{{ end }}
+{{- end }}

@@ -12,27 +12,11 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Configure Helm repository
-  kubernetes.core.helm_repository:
-    name: cilium
-    repo_url: https://helm.cilium.io/
-
 - name: Deploy Helm chart
+  run_once: true
   kubernetes.core.helm:
-    name: cilium
-    chart_ref: cilium/cilium
-    chart_version: 1.10.7
-    release_namespace: kube-system
+    name: "{{ cilium_helm_release_name }}"
+    chart_ref: "{{ cilium_helm_chart_ref }}"
+    release_namespace: "{{ cilium_helm_release_namespace }}"
     kubeconfig: /etc/kubernetes/admin.conf
-    values:
-      image:
-        repository: "{{ lookup('vexxhost.atmosphere.image_ref', 'cilium_node', output='name') }}"
-      tunnel: geneve
-      operator:
-        image:
-          repository: "{{ lookup('vexxhost.atmosphere.image_ref', 'cilium_operator', output='name') | replace('-generic', '') }}"
-        nodeSelector:
-          openstack-control-plane: enabled
-      ipam:
-        operator:
-          clusterPoolIPv4PodCIDR: "{{ cilium_ipv4_cidr | default('10.0.0.0/8') }}"
+    values: "{{ _cilium_helm_values | combine(cilium_helm_values, recursive=True) }}"

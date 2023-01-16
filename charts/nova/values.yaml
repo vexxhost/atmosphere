@@ -1,0 +1,2619 @@
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Default values for nova.
+# This is a YAML-formatted file.
+# Declare name/value pairs to be passed into your templates.
+# name: value
+
+---
+release_group: null
+
+labels:
+  agent:
+    compute:
+      node_selector_key: openstack-compute-node
+      node_selector_value: enabled
+    compute_ironic:
+      node_selector_key: openstack-compute-node
+      node_selector_value: enabled
+  api_metadata:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
+  conductor:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
+  consoleauth:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
+  job:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
+  novncproxy:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
+  osapi:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
+  placement:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
+  scheduler:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
+  spiceproxy:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
+  test:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
+
+images:
+  pull_policy: IfNotPresent
+  tags:
+    bootstrap: docker.io/openstackhelm/heat:stein-ubuntu_bionic
+    db_drop: docker.io/openstackhelm/heat:stein-ubuntu_bionic
+    db_init: docker.io/openstackhelm/heat:stein-ubuntu_bionic
+    dep_check: 'quay.io/airshipit/kubernetes-entrypoint:v1.0.0'
+    rabbit_init: docker.io/rabbitmq:3.7-management
+    ks_user: docker.io/openstackhelm/heat:stein-ubuntu_bionic
+    ks_service: docker.io/openstackhelm/heat:stein-ubuntu_bionic
+    nova_archive_deleted_rows: docker.io/openstackhelm/nova:stein-ubuntu_bionic
+    ks_endpoints: docker.io/openstackhelm/heat:stein-ubuntu_bionic
+    nova_api: docker.io/openstackhelm/nova:stein-ubuntu_bionic
+    nova_cell_setup: docker.io/openstackhelm/nova:stein-ubuntu_bionic
+    nova_cell_setup_init: docker.io/openstackhelm/heat:stein-ubuntu_bionic
+    nova_compute: docker.io/openstackhelm/nova:stein-ubuntu_bionic
+    nova_compute_ironic: 'docker.io/kolla/ubuntu-source-nova-compute-ironic:ocata'
+    nova_compute_ssh: docker.io/openstackhelm/nova:stein-ubuntu_bionic
+    nova_conductor: docker.io/openstackhelm/nova:stein-ubuntu_bionic
+    nova_consoleauth: docker.io/openstackhelm/nova:stein-ubuntu_bionic
+    nova_db_sync: docker.io/openstackhelm/nova:stein-ubuntu_bionic
+    nova_novncproxy: docker.io/openstackhelm/nova:stein-ubuntu_bionic
+    nova_novncproxy_assets: 'docker.io/kolla/ubuntu-source-nova-novncproxy:ocata'
+    nova_placement: docker.io/openstackhelm/nova:stein-ubuntu_bionic
+    nova_scheduler: docker.io/openstackhelm/nova:stein-ubuntu_bionic
+    # NOTE(portdirect): we simply use the ceph config helper here,
+    # as it has both oscli and jq.
+    nova_service_cleaner: 'docker.io/openstackhelm/ceph-config-helper:latest-ubuntu_xenial'
+    nova_spiceproxy: docker.io/openstackhelm/nova:stein-ubuntu_bionic
+    nova_spiceproxy_assets: docker.io/openstackhelm/nova:stein-ubuntu_bionic
+    test: docker.io/xrally/xrally-openstack:2.0.0
+    image_repo_sync: docker.io/docker:17.07.0
+    nova_wait_for_computes_init: gcr.io/google_containers/hyperkube-amd64:v1.11.6
+  local_registry:
+    active: false
+    exclude:
+      - dep_check
+      - image_repo_sync
+
+jobs:
+  # NOTE(portdirect): When using cells new nodes will be added to the cell on the hour by default.
+  # TODO(portdirect): Add a post-start action to nova compute pods that registers themselves.
+  cell_setup:
+    cron: "0 */1 * * *"
+    starting_deadline: 600
+    history:
+      success: 3
+      failed: 1
+    extended_wait:
+      enabled: false
+      iteration: 3
+      duration: 5
+  service_cleaner:
+    cron: "0 */1 * * *"
+    starting_deadline: 600
+    history:
+      success: 3
+      failed: 1
+    sleep_time: 60
+  archive_deleted_rows:
+    cron: "0 */1 * * *"
+    starting_deadline: 600
+    history:
+      success: 3
+      failed: 1
+
+bootstrap:
+  enabled: true
+  ks_user: admin
+  script: null
+  structured:
+    flavors:
+      enabled: true
+      options:
+        m1_tiny:
+          name: "m1.tiny"
+          ram: 512
+          disk: 1
+          vcpus: 1
+        m1_small:
+          name: "m1.small"
+          ram: 2048
+          disk: 20
+          vcpus: 1
+        m1_medium:
+          name: "m1.medium"
+          ram: 4096
+          disk: 40
+          vcpus: 2
+        m1_large:
+          name: "m1.large"
+          ram: 8192
+          disk: 80
+          vcpus: 4
+        m1_xlarge:
+          name: "m1.xlarge"
+          ram: 16384
+          disk: 160
+          vcpus: 8
+  wait_for_computes:
+    enabled: false
+    # Wait percentage is the minimum percentage of compute hypervisors which
+    # must be available before the remainder of the bootstrap script can be run.
+    wait_percentage: 70
+    # Once the wait_percentage above is achieved, the remaining_wait is the
+    # amount of time in seconds to wait before executing the remainder of the
+    # boostrap script.
+    remaining_wait: 300
+    scripts:
+      init_script: |
+        # This runs in a bootstrap init container. It counts the number of compute nodes.
+        COMPUTE_NODES=$(kubectl get nodes -o custom-columns=NAME:.metadata.name -l openstack-compute-node=enabled --no-headers | sort)
+        /bin/echo $COMPUTE_NODES > /tmp/compute_nodes.txt
+      wait_script: |
+        # This script runs in the main bootstrap container just before the
+        # bootstrap.script is called.
+        COMPUTE_HOSTS=`cat /tmp/compute_nodes.txt | wc -w`
+        if [[ $COMPUTE_HOSTS == 0 ]]; then
+          echo "There are no compute hosts found!"
+          exit 1
+        fi
+
+        # Wait for all hypervisors to come up before moving on with the deployment
+        HYPERVISOR_WAIT=true
+        WAIT_AFTER_READY=0
+        SLEEP=5
+        while [[ $HYPERVISOR_WAIT == true ]]; do
+          # Its possible that openstack command may fail due to not being able to
+          # reach the compute service
+          set +e
+          HYPERVISORS=$(openstack hypervisor list -f value -c 'Hypervisor Hostname' | wc -w)
+          set -e
+
+          PERCENT_READY=$(( $HYPERVISORS * 100 / $COMPUTE_HOSTS ))
+          if [[ $PERCENT_READY -ge $WAIT_PERCENTAGE ]]; then
+            echo "Hypervisor ready percentage is $PERCENT_READY"
+            if [[ $PERCENT_READY == 100 ]]; then
+              HYPERVISOR_WAIT=false
+              echo "All hypervisors are ready."
+            elif [[ WAIT_AFTER_READY -ge $REMAINING_WAIT ]]; then
+              HYPERVISOR_WAIT=false
+              echo "Waited the configured time -- $HYPERVISORS out of $COMPUTE_HOSTS hypervisor(s) ready -- proceeding with the bootstrap."
+            else
+              sleep $SLEEP
+              WAIT_AFTER_READY=$(( $WAIT_AFTER_READY + $SLEEP ))
+            fi
+          else
+            echo "Waiting $SLEEP seconds for enough hypervisors to be discovered..."
+            sleep $SLEEP
+          fi
+        done
+
+network:
+  # provide what type of network wiring will be used
+  # possible options: openvswitch, linuxbridge, sriov
+  backend:
+    - openvswitch
+  osapi:
+    port: 8774
+    ingress:
+      public: true
+      classes:
+        namespace: "nginx"
+        cluster: "nginx-cluster"
+      annotations:
+        nginx.ingress.kubernetes.io/rewrite-target: /
+    external_policy_local: false
+    node_port:
+      enabled: false
+      port: 30774
+  metadata:
+    port: 8775
+    ingress:
+      public: true
+      classes:
+        namespace: "nginx"
+        cluster: "nginx-cluster"
+      annotations:
+        nginx.ingress.kubernetes.io/rewrite-target: /
+    external_policy_local: false
+    node_port:
+      enabled: false
+      port: 30775
+  placement:
+    port: 8778
+    ingress:
+      public: true
+      classes:
+        namespace: "nginx"
+        cluster: "nginx-cluster"
+      annotations:
+        nginx.ingress.kubernetes.io/rewrite-target: /
+    node_port:
+      enabled: false
+      port: 30778
+  novncproxy:
+    ingress:
+      public: true
+      classes:
+        namespace: "nginx"
+        cluster: "nginx-cluster"
+      annotations:
+        nginx.ingress.kubernetes.io/rewrite-target: /
+    node_port:
+      enabled: false
+      port: 30680
+  spiceproxy:
+    node_port:
+      enabled: false
+      port: 30682
+  ssh:
+    enabled: false
+    port: 8022
+    from_subnet: 0.0.0.0/0
+    key_types:
+      - rsa
+      - dsa
+      - ecdsa
+      - ed25519
+    private_key: 'null'
+    public_key: 'null'
+
+dependencies:
+  dynamic:
+    common:
+      local_image_registry:
+        jobs:
+          - nova-image-repo-sync
+        services:
+          - endpoint: node
+            service: local_image_registry
+    targeted:
+      openvswitch:
+        compute:
+          pod:
+            - requireSameNode: true
+              labels:
+                application: neutron
+                component: neutron-ovs-agent
+      linuxbridge:
+        compute:
+          pod:
+            - requireSameNode: true
+              labels:
+                application: neutron
+                component: neutron-lb-agent
+      sriov:
+        compute:
+          pod:
+            - requireSameNode: true
+              labels:
+                application: neutron
+                component: neutron-sriov-agent
+  static:
+    api:
+      jobs:
+        - nova-db-sync
+        - nova-ks-user
+        - nova-ks-endpoints
+        - nova-rabbit-init
+      services:
+        - endpoint: internal
+          service: oslo_messaging
+        - endpoint: internal
+          service: oslo_db
+        - endpoint: internal
+          service: identity
+    api_metadata:
+      jobs:
+        - nova-db-sync
+        - nova-ks-user
+        - nova-ks-endpoints
+        - nova-rabbit-init
+      services:
+        - endpoint: internal
+          service: oslo_messaging
+        - endpoint: internal
+          service: oslo_db
+        - endpoint: internal
+          service: identity
+    bootstrap:
+      services:
+        - endpoint: internal
+          service: identity
+        - endpoint: internal
+          service: compute
+    cell_setup:
+      jobs:
+        - nova-db-sync
+        - nova-rabbit-init
+      services:
+        - endpoint: internal
+          service: oslo_messaging
+        - endpoint: internal
+          service: oslo_db
+        - endpoint: internal
+          service: identity
+        - endpoint: internal
+          service: compute
+      pod:
+        - requireSameNode: false
+          labels:
+            application: nova
+            component: compute
+    service_cleaner:
+      jobs:
+        - nova-db-sync
+        - nova-rabbit-init
+      services:
+        - endpoint: internal
+          service: oslo_messaging
+        - endpoint: internal
+          service: oslo_db
+        - endpoint: internal
+          service: identity
+        - endpoint: internal
+          service: compute
+    compute:
+      pod:
+        - requireSameNode: true
+          labels:
+            application: libvirt
+            component: libvirt
+      jobs:
+        - nova-db-sync
+        - nova-rabbit-init
+        - placement-ks-endpoints
+      services:
+        - endpoint: internal
+          service: oslo_messaging
+        - endpoint: internal
+          service: image
+        - endpoint: internal
+          service: compute
+        - endpoint: internal
+          service: network
+        - endpoint: internal
+          service: compute_metadata
+    compute_ironic:
+      jobs:
+        - nova-db-sync
+        - nova-rabbit-init
+      services:
+        - endpoint: internal
+          service: oslo_messaging
+        - endpoint: internal
+          service: image
+        - endpoint: internal
+          service: compute
+        - endpoint: internal
+          service: network
+        - endpoint: internal
+          service: baremetal
+    conductor:
+      jobs:
+        - nova-db-sync
+        - nova-rabbit-init
+        - placement-ks-endpoints
+      services:
+        - endpoint: internal
+          service: oslo_messaging
+        - endpoint: internal
+          service: oslo_db
+        - endpoint: internal
+          service: identity
+        - endpoint: internal
+          service: compute
+    consoleauth:
+      jobs:
+        - nova-db-sync
+        - nova-rabbit-init
+      services:
+        - endpoint: internal
+          service: oslo_messaging
+        - endpoint: internal
+          service: oslo_db
+        - endpoint: internal
+          service: identity
+        - endpoint: internal
+          service: compute
+    db_drop:
+      services:
+        - endpoint: internal
+          service: oslo_db
+    archive_deleted_rows:
+      jobs:
+        - nova-db-init
+        - nova-db-sync
+    db_init:
+      services:
+        - endpoint: internal
+          service: oslo_db
+    db_sync:
+      jobs:
+        - nova-db-init
+      services:
+        - endpoint: internal
+          service: oslo_db
+    ks_endpoints:
+      jobs:
+        - nova-ks-service
+      services:
+        - endpoint: internal
+          service: identity
+    ks_service:
+      services:
+        - endpoint: internal
+          service: identity
+    ks_user:
+      services:
+        - endpoint: internal
+          service: identity
+    rabbit_init:
+      services:
+        - service: oslo_messaging
+          endpoint: internal
+    novncproxy:
+      jobs:
+        - nova-db-sync
+      services:
+        - endpoint: internal
+          service: oslo_db
+    spiceproxy:
+      jobs:
+        - nova-db-sync
+      services:
+        - endpoint: internal
+          service: oslo_db
+    scheduler:
+      jobs:
+        - nova-db-sync
+        - nova-rabbit-init
+        - placement-ks-endpoints
+      services:
+        - endpoint: internal
+          service: oslo_messaging
+        - endpoint: internal
+          service: oslo_db
+        - endpoint: internal
+          service: identity
+        - endpoint: internal
+          service: compute
+    tests:
+      services:
+        - endpoint: internal
+          service: image
+        - endpoint: internal
+          service: compute
+        - endpoint: internal
+          service: network
+        - endpoint: internal
+          service: compute_metadata
+    image_repo_sync:
+      services:
+        - endpoint: internal
+          service: local_image_registry
+
+console:
+  # serial | spice | novnc | none
+  console_kind: novnc
+  serial:
+  spice:
+    compute:
+      # IF blank, search default routing interface
+      server_proxyclient_interface:
+    proxy:
+      # IF blank, search default routing interface
+      server_proxyclient_interface:
+  novnc:
+    compute:
+      # IF blank, search default routing interface
+      vncserver_proxyclient_interface:
+    vncproxy:
+      # IF blank, search default routing interface
+      vncserver_proxyclient_interface:
+
+ceph_client:
+  configmap: ceph-etc
+  user_secret_name: pvc-ceph-client-key
+
+conf:
+  security: |
+    #
+    # Disable access to the entire file system except for the directories that
+    # are explicitly allowed later.
+    #
+    # This currently breaks the configurations that come with some web application
+    # Debian packages.
+    #
+    #<Directory />
+    #   AllowOverride None
+    #   Require all denied
+    #</Directory>
+
+    # Changing the following options will not really affect the security of the
+    # server, but might make attacks slightly more difficult in some cases.
+
+    #
+    # ServerTokens
+    # This directive configures what you return as the Server HTTP response
+    # Header. The default is 'Full' which sends information about the OS-Type
+    # and compiled in modules.
+    # Set to one of:  Full | OS | Minimal | Minor | Major | Prod
+    # where Full conveys the most information, and Prod the least.
+    ServerTokens Prod
+
+    #
+    # Optionally add a line containing the server version and virtual host
+    # name to server-generated pages (internal error documents, FTP directory
+    # listings, mod_status and mod_info output etc., but not CGI generated
+    # documents or custom error documents).
+    # Set to "EMail" to also include a mailto: link to the ServerAdmin.
+    # Set to one of:  On | Off | EMail
+    ServerSignature Off
+
+    #
+    # Allow TRACE method
+    #
+    # Set to "extended" to also reflect the request body (only for testing and
+    # diagnostic purposes).
+    #
+    # Set to one of:  On | Off | extended
+    TraceEnable Off
+
+    #
+    # Forbid access to version control directories
+    #
+    # If you use version control systems in your document root, you should
+    # probably deny access to their directories. For example, for subversion:
+    #
+    #<DirectoryMatch "/\.svn">
+    #   Require all denied
+    #</DirectoryMatch>
+
+    #
+    # Setting this header will prevent MSIE from interpreting files as something
+    # else than declared by the content type in the HTTP headers.
+    # Requires mod_headers to be enabled.
+    #
+    #Header set X-Content-Type-Options: "nosniff"
+
+    #
+    # Setting this header will prevent other sites from embedding pages from this
+    # site as frames. This defends against clickjacking attacks.
+    # Requires mod_headers to be enabled.
+    #
+    #Header set X-Frame-Options: "sameorigin"
+  software:
+    apache2:
+      binary: apache2
+      start_parameters: -DFOREGROUND
+      conf_dir: /etc/apache2/conf-enabled
+      site_dir: /etc/apache2/sites-enable
+      mods_dir: /etc/apache2/mods-available
+      a2enmod: null
+      a2dismod: null
+  ceph:
+    enabled: true
+    admin_keyring: null
+    cinder:
+      user: "cinder"
+      keyring: null
+      secret_uuid: 457eb676-33da-42ec-9a8c-9293d545c337
+  rally_tests:
+    run_tempest: false
+    clean_up: |
+      FLAVORS=$(openstack flavor list -f value --all | awk '$2 ~ /^s_rally_/ { print $1 }')
+      if [ -n "$FLAVORS" ]; then
+        echo $FLAVORS | xargs openstack flavor delete
+      fi
+      SERVERS=$(openstack server list -f value --all | awk '$2 ~ /^s_rally_/ { print $1 }')
+      if [ -n "$SERVERS" ]; then
+        echo $SERVERS | xargs openstack server delete
+      fi
+      IMAGES=$(openstack image list -f value | awk '$2 ~ /^c_rally_/ { print $1 }')
+      if [ -n "$IMAGES" ]; then
+        echo $IMAGES | xargs openstack image delete
+      fi
+    tests:
+      NovaAgents.list_agents:
+        - runner:
+            concurrency: 1
+            times: 1
+            type: constant
+          sla:
+            failure_rate:
+              max: 0
+      NovaAggregates.create_and_get_aggregate_details:
+        - args:
+            availability_zone: nova
+          runner:
+            concurrency: 1
+            times: 1
+            type: constant
+          sla:
+            failure_rate:
+              max: 0
+      NovaAggregates.create_and_update_aggregate:
+        - args:
+            availability_zone: nova
+          runner:
+            concurrency: 1
+            times: 1
+            type: constant
+          sla:
+            failure_rate:
+              max: 0
+      NovaAggregates.list_aggregates:
+        - runner:
+            concurrency: 1
+            times: 1
+            type: constant
+          sla:
+            failure_rate:
+              max: 0
+      NovaAvailabilityZones.list_availability_zones:
+        - args:
+            detailed: true
+          runner:
+            concurrency: 1
+            times: 1
+            type: constant
+          sla:
+            failure_rate:
+              max: 0
+      NovaFlavors.create_and_delete_flavor:
+        - args:
+            disk: 1
+            ram: 500
+            vcpus: 1
+          runner:
+            concurrency: 1
+            times: 1
+            type: constant
+          sla:
+            failure_rate:
+              max: 0
+      NovaFlavors.create_and_list_flavor_access:
+        - args:
+            disk: 1
+            ram: 500
+            vcpus: 1
+          runner:
+            concurrency: 1
+            times: 1
+            type: constant
+          sla:
+            failure_rate:
+              max: 0
+      NovaFlavors.create_flavor:
+        - args:
+            disk: 1
+            ram: 500
+            vcpus: 1
+          runner:
+            concurrency: 1
+            times: 1
+            type: constant
+          sla:
+            failure_rate:
+              max: 0
+      NovaFlavors.create_flavor_and_add_tenant_access:
+        - args:
+            disk: 1
+            ram: 500
+            vcpus: 1
+          runner:
+            concurrency: 1
+            times: 1
+            type: constant
+          sla:
+            failure_rate:
+              max: 0
+      NovaFlavors.create_flavor_and_set_keys:
+        - args:
+            disk: 1
+            extra_specs:
+              'quota:disk_read_bytes_sec': 10240
+            ram: 500
+            vcpus: 1
+          runner:
+            concurrency: 1
+            times: 1
+            type: constant
+          sla:
+            failure_rate:
+              max: 0
+      NovaFlavors.list_flavors:
+        - args:
+            detailed: true
+          runner:
+            concurrency: 1
+            times: 1
+            type: constant
+          sla:
+            failure_rate:
+              max: 0
+      NovaHypervisors.list_and_get_hypervisors:
+        - args:
+            detailed: true
+          runner:
+            concurrency: 1
+            times: 1
+            type: constant
+          sla:
+            failure_rate:
+              max: 0
+      NovaHypervisors.list_and_get_uptime_hypervisors:
+        - args:
+            detailed: true
+          runner:
+            concurrency: 1
+            times: 1
+            type: constant
+          sla:
+            failure_rate:
+              max: 0
+      NovaHypervisors.list_and_search_hypervisors:
+        - args:
+            detailed: true
+          runner:
+            concurrency: 1
+            times: 1
+            type: constant
+          sla:
+            failure_rate:
+              max: 0
+      NovaHypervisors.list_hypervisors:
+        - args:
+            detailed: true
+          runner:
+            concurrency: 1
+            times: 1
+            type: constant
+          sla:
+            failure_rate:
+              max: 0
+      NovaHypervisors.statistics_hypervisors:
+        - args: {}
+          runner:
+            concurrency: 1
+            times: 1
+            type: constant
+          sla:
+            failure_rate:
+              max: 0
+      NovaKeypair.create_and_delete_keypair:
+        - runner:
+            concurrency: 1
+            times: 1
+            type: constant
+          sla:
+            failure_rate:
+              max: 0
+      NovaKeypair.create_and_list_keypairs:
+        - runner:
+            concurrency: 1
+            times: 1
+            type: constant
+          sla:
+            failure_rate:
+              max: 0
+      NovaServerGroups.create_and_list_server_groups:
+        - args:
+            all_projects: false
+            kwargs:
+              policies:
+                - affinity
+          runner:
+            concurrency: 1
+            times: 1
+            type: constant
+          sla:
+            failure_rate:
+              max: 0
+      NovaServices.list_services:
+        - runner:
+            concurrency: 1
+            times: 1
+            type: constant
+          sla:
+            failure_rate:
+              max: 0
+  paste:
+    composite:metadata:
+      use: egg:Paste#urlmap
+      /: meta
+    pipeline:meta:
+      pipeline: cors metaapp
+    app:metaapp:
+      paste.app_factory: nova.api.metadata.handler:MetadataRequestHandler.factory
+    composite:osapi_compute:
+      use: call:nova.api.openstack.urlmap:urlmap_factory
+      /: oscomputeversions
+      /v2: openstack_compute_api_v21_legacy_v2_compatible
+      /v2.1: openstack_compute_api_v21
+    composite:openstack_compute_api_v21:
+      use: call:nova.api.auth:pipeline_factory_v21
+      noauth2: cors http_proxy_to_wsgi compute_req_id faultwrap sizelimit noauth2 osapi_compute_app_v21
+      keystone: cors http_proxy_to_wsgi compute_req_id faultwrap sizelimit authtoken audit keystonecontext osapi_compute_app_v21
+    composite:openstack_compute_api_v21_legacy_v2_compatible:
+      use: call:nova.api.auth:pipeline_factory_v21
+      noauth2: cors http_proxy_to_wsgi compute_req_id faultwrap sizelimit noauth2 legacy_v2_compatible osapi_compute_app_v21
+      keystone: cors http_proxy_to_wsgi compute_req_id faultwrap sizelimit authtoken audit keystonecontext legacy_v2_compatible osapi_compute_app_v21
+    filter:request_id:
+      paste.filter_factory: oslo_middleware:RequestId.factory
+    filter:compute_req_id:
+      paste.filter_factory: nova.api.compute_req_id:ComputeReqIdMiddleware.factory
+    filter:faultwrap:
+      paste.filter_factory: nova.api.openstack:FaultWrapper.factory
+    filter:noauth2:
+      paste.filter_factory: nova.api.openstack.auth:NoAuthMiddleware.factory
+    filter:sizelimit:
+      paste.filter_factory: oslo_middleware:RequestBodySizeLimiter.factory
+    filter:http_proxy_to_wsgi:
+      paste.filter_factory: oslo_middleware.http_proxy_to_wsgi:HTTPProxyToWSGI.factory
+    filter:legacy_v2_compatible:
+      paste.filter_factory: nova.api.openstack:LegacyV2CompatibleWrapper.factory
+    app:osapi_compute_app_v21:
+      paste.app_factory: nova.api.openstack.compute:APIRouterV21.factory
+    pipeline:oscomputeversions:
+      pipeline: faultwrap http_proxy_to_wsgi oscomputeversionapp
+    app:oscomputeversionapp:
+      paste.app_factory: nova.api.openstack.compute.versions:Versions.factory
+    filter:cors:
+      paste.filter_factory: oslo_middleware.cors:filter_factory
+      oslo_config_project: nova
+    filter:keystonecontext:
+      paste.filter_factory: nova.api.auth:NovaKeystoneContext.factory
+    filter:authtoken:
+      paste.filter_factory: keystonemiddleware.auth_token:filter_factory
+    filter:audit:
+      paste.filter_factory: keystonemiddleware.audit:filter_factory
+      audit_map_file: /etc/nova/api_audit_map.conf
+  policy: {}
+  nova_sudoers: |
+    # This sudoers file supports rootwrap for both Kolla and LOCI Images.
+    Defaults !requiretty
+    Defaults secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin:/var/lib/openstack/bin:/var/lib/kolla/venv/bin"
+    nova ALL = (root) NOPASSWD: /var/lib/kolla/venv/bin/nova-rootwrap /etc/nova/rootwrap.conf *, /var/lib/openstack/bin/nova-rootwrap /etc/nova/rootwrap.conf *
+  api_audit_map:
+    DEFAULT:
+      target_endpoint_type: None
+    custom_actions:
+      enable: enable
+      disable: disable
+      delete: delete
+      startup: start/startup
+      shutdown: stop/shutdown
+      reboot: start/reboot
+      os-migrations/get: read
+      os-server-password/post: update
+    path_keywords:
+      add: None
+      action: None
+      enable: None
+      disable: None
+      configure-project: None
+      defaults: None
+      delete: None
+      detail: None
+      diagnostics: None
+      entries: entry
+      extensions: alias
+      flavors: flavor
+      images: image
+      ips: label
+      limits: None
+      metadata: key
+      os-agents: os-agent
+      os-aggregates: os-aggregate
+      os-availability-zone: None
+      os-certificates: None
+      os-cloudpipe: None
+      os-fixed-ips: ip
+      os-extra_specs: key
+      os-flavor-access: None
+      os-floating-ip-dns: domain
+      os-floating-ips-bulk: host
+      os-floating-ip-pools: None
+      os-floating-ips: floating-ip
+      os-hosts: host
+      os-hypervisors: hypervisor
+      os-instance-actions: instance-action
+      os-keypairs: keypair
+      os-migrations: None
+      os-networks: network
+      os-quota-sets: tenant
+      os-security-groups: security_group
+      os-security-group-rules: rule
+      os-server-password: None
+      os-services: None
+      os-simple-tenant-usage: tenant
+      os-virtual-interfaces: None
+      os-volume_attachments: attachment
+      os-volumes_boot: None
+      os-volumes: volume
+      os-volume-types: volume-type
+      os-snapshots: snapshot
+      reboot: None
+      servers: server
+      shutdown: None
+      startup: None
+      statistics: None
+    service_endpoints:
+      compute: service/compute
+  rootwrap: |
+    # Configuration for nova-rootwrap
+    # This file should be owned by (and only-writeable by) the root user
+
+    [DEFAULT]
+    # List of directories to load filter definitions from (separated by ',').
+    # These directories MUST all be only writeable by root !
+    filters_path=/etc/nova/rootwrap.d,/usr/share/nova/rootwrap
+
+    # List of directories to search executables in, in case filters do not
+    # explicitely specify a full path (separated by ',')
+    # If not specified, defaults to system PATH environment variable.
+    # These directories MUST all be only writeable by root !
+    exec_dirs=/sbin,/usr/sbin,/bin,/usr/bin,/usr/local/bin,/usr/local/sbin,/var/lib/openstack/bin,/var/lib/kolla/venv/bin
+
+    # Enable logging to syslog
+    # Default value is False
+    use_syslog=False
+
+    # Which syslog facility to use.
+    # Valid values include auth, authpriv, syslog, local0, local1...
+    # Default value is 'syslog'
+    syslog_log_facility=syslog
+
+    # Which messages to log.
+    # INFO means log all usage
+    # ERROR means only log unsuccessful attempts
+    syslog_log_level=ERROR
+  wsgi_placement: |
+    Listen 0.0.0.0:{{ tuple "placement" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+
+    LogFormat "%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\"" combined
+    LogFormat "%{X-Forwarded-For}i %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\"" proxy
+
+    SetEnvIf X-Forwarded-For "^.*\..*\..*\..*" forwarded
+    CustomLog /dev/stdout combined env=!forwarded
+    CustomLog /dev/stdout proxy env=forwarded
+
+    <VirtualHost *:{{ tuple "placement" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}>
+        WSGIDaemonProcess placement-api processes=4 threads=1 user=nova group=nova display-name=%{GROUP}
+        WSGIProcessGroup placement-api
+        WSGIScriptAlias / /var/www/cgi-bin/nova/nova-placement-api
+        WSGIApplicationGroup %{GLOBAL}
+        WSGIPassAuthorization On
+        <IfVersion >= 2.4>
+          ErrorLogFormat "%{cu}t %M"
+        </IfVersion>
+        ErrorLog /dev/stdout
+
+        SetEnvIf X-Forwarded-For "^.*\..*\..*\..*" forwarded
+        CustomLog /dev/stdout combined env=!forwarded
+        CustomLog /dev/stdout proxy env=forwarded
+    </VirtualHost>
+
+    Alias /placement /var/www/cgi-bin/nova/nova-placement-api
+    <Location /placement>
+        SetHandler wsgi-script
+        Options +ExecCGI
+
+        WSGIProcessGroup placement-api
+        WSGIApplicationGroup %{GLOBAL}
+        WSGIPassAuthorization On
+    </Location>
+  rootwrap_filters:
+    api_metadata:
+      pods:
+        - metadata
+      content: |
+        # nova-rootwrap command filters for api-metadata nodes
+        # This is needed on nova-api hosts running with "metadata" in enabled_apis
+        # or when running nova-api-metadata
+        # This file should be owned by (and only-writeable by) the root user
+
+        [Filters]
+        # nova/network/linux_net.py: 'ip[6]tables-save' % (cmd, '-t', ...
+        iptables-save: CommandFilter, iptables-save, root
+        ip6tables-save: CommandFilter, ip6tables-save, root
+
+        # nova/network/linux_net.py: 'ip[6]tables-restore' % (cmd,)
+        iptables-restore: CommandFilter, iptables-restore, root
+        ip6tables-restore: CommandFilter, ip6tables-restore, root
+    compute:
+      pods:
+        - compute
+      content: |
+        # nova-rootwrap command filters for compute nodes
+        # This file should be owned by (and only-writeable by) the root user
+
+        [Filters]
+        # nova/virt/disk/mount/api.py: 'kpartx', '-a', device
+        # nova/virt/disk/mount/api.py: 'kpartx', '-d', device
+        kpartx: CommandFilter, kpartx, root
+
+        # nova/virt/xenapi/vm_utils.py: tune2fs, -O ^has_journal, part_path
+        # nova/virt/xenapi/vm_utils.py: tune2fs, -j, partition_path
+        tune2fs: CommandFilter, tune2fs, root
+
+        # nova/virt/disk/mount/api.py: 'mount', mapped_device
+        # nova/virt/disk/api.py: 'mount', '-o', 'bind', src, target
+        # nova/virt/xenapi/vm_utils.py: 'mount', '-t', 'ext2,ext3,ext4,reiserfs'..
+        # nova/virt/configdrive.py: 'mount', device, mountdir
+        # nova/virt/libvirt/volume.py: 'mount', '-t', 'sofs' ...
+        mount: CommandFilter, mount, root
+
+        # nova/virt/disk/mount/api.py: 'umount', mapped_device
+        # nova/virt/disk/api.py: 'umount' target
+        # nova/virt/xenapi/vm_utils.py: 'umount', dev_path
+        # nova/virt/configdrive.py: 'umount', mountdir
+        umount: CommandFilter, umount, root
+
+        # nova/virt/disk/mount/nbd.py: 'qemu-nbd', '-c', device, image
+        # nova/virt/disk/mount/nbd.py: 'qemu-nbd', '-d', device
+        qemu-nbd: CommandFilter, qemu-nbd, root
+
+        # nova/virt/disk/mount/loop.py: 'losetup', '--find', '--show', image
+        # nova/virt/disk/mount/loop.py: 'losetup', '--detach', device
+        losetup: CommandFilter, losetup, root
+
+        # nova/virt/disk/vfs/localfs.py: 'blkid', '-o', 'value', '-s', 'TYPE', device
+        blkid: CommandFilter, blkid, root
+
+        # nova/virt/libvirt/utils.py: 'blockdev', '--getsize64', path
+        # nova/virt/disk/mount/nbd.py: 'blockdev', '--flushbufs', device
+        blockdev: RegExpFilter, blockdev, root, blockdev, (--getsize64|--flushbufs), /dev/.*
+
+        # nova/virt/disk/vfs/localfs.py: 'tee', canonpath
+        tee: CommandFilter, tee, root
+
+        # nova/virt/disk/vfs/localfs.py: 'mkdir', canonpath
+        mkdir: CommandFilter, mkdir, root
+
+        # nova/virt/disk/vfs/localfs.py: 'chown'
+        # nova/virt/libvirt/connection.py: 'chown', os.getuid( console_log
+        # nova/virt/libvirt/connection.py: 'chown', os.getuid( console_log
+        # nova/virt/libvirt/connection.py: 'chown', 'root', basepath('disk')
+        chown: CommandFilter, chown, root
+
+        # nova/virt/disk/vfs/localfs.py: 'chmod'
+        chmod: CommandFilter, chmod, root
+
+        # nova/virt/libvirt/vif.py: 'ip', 'tuntap', 'add', dev, 'mode', 'tap'
+        # nova/virt/libvirt/vif.py: 'ip', 'link', 'set', dev, 'up'
+        # nova/virt/libvirt/vif.py: 'ip', 'link', 'delete', dev
+        # nova/network/linux_net.py: 'ip', 'addr', 'add', str(floating_ip)+'/32'i..
+        # nova/network/linux_net.py: 'ip', 'addr', 'del', str(floating_ip)+'/32'..
+        # nova/network/linux_net.py: 'ip', 'addr', 'add', '169.254.169.254/32',..
+        # nova/network/linux_net.py: 'ip', 'addr', 'show', 'dev', dev, 'scope',..
+        # nova/network/linux_net.py: 'ip', 'addr', 'del/add', ip_params, dev)
+        # nova/network/linux_net.py: 'ip', 'addr', 'del', params, fields[-1]
+        # nova/network/linux_net.py: 'ip', 'addr', 'add', params, bridge
+        # nova/network/linux_net.py: 'ip', '-f', 'inet6', 'addr', 'change', ..
+        # nova/network/linux_net.py: 'ip', 'link', 'set', 'dev', dev, 'promisc',..
+        # nova/network/linux_net.py: 'ip', 'link', 'add', 'link', bridge_if ...
+        # nova/network/linux_net.py: 'ip', 'link', 'set', interface, address,..
+        # nova/network/linux_net.py: 'ip', 'link', 'set', interface, 'up'
+        # nova/network/linux_net.py: 'ip', 'link', 'set', bridge, 'up'
+        # nova/network/linux_net.py: 'ip', 'addr', 'show', 'dev', interface, ..
+        # nova/network/linux_net.py: 'ip', 'link', 'set', dev, address, ..
+        # nova/network/linux_net.py: 'ip', 'link', 'set', dev, 'up'
+        # nova/network/linux_net.py: 'ip', 'route', 'add', ..
+        # nova/network/linux_net.py: 'ip', 'route', 'del', .
+        # nova/network/linux_net.py: 'ip', 'route', 'show', 'dev', dev
+        ip: CommandFilter, ip, root
+
+        # nova/virt/libvirt/vif.py: 'tunctl', '-b', '-t', dev
+        # nova/network/linux_net.py: 'tunctl', '-b', '-t', dev
+        tunctl: CommandFilter, tunctl, root
+
+        # nova/virt/libvirt/vif.py: 'ovs-vsctl', ...
+        # nova/virt/libvirt/vif.py: 'ovs-vsctl', 'del-port', ...
+        # nova/network/linux_net.py: 'ovs-vsctl', ....
+        ovs-vsctl: CommandFilter, ovs-vsctl, root
+
+        # nova/virt/libvirt/vif.py: 'vrouter-port-control', ...
+        vrouter-port-control: CommandFilter, vrouter-port-control, root
+
+        # nova/virt/libvirt/vif.py: 'ebrctl', ...
+        ebrctl: CommandFilter, ebrctl, root
+
+        # nova/virt/libvirt/vif.py: 'mm-ctl', ...
+        mm-ctl: CommandFilter, mm-ctl, root
+
+        # nova/network/linux_net.py: 'ovs-ofctl', ....
+        ovs-ofctl: CommandFilter, ovs-ofctl, root
+
+        # nova/virt/libvirt/connection.py: 'dd', if=%s % virsh_output, ...
+        dd: CommandFilter, dd, root
+
+        # nova/virt/xenapi/volume_utils.py: 'iscsiadm', '-m', ...
+        iscsiadm: CommandFilter, iscsiadm, root
+
+        # nova/virt/libvirt/volume/aoe.py: 'aoe-revalidate', aoedev
+        # nova/virt/libvirt/volume/aoe.py: 'aoe-discover'
+        aoe-revalidate: CommandFilter, aoe-revalidate, root
+        aoe-discover: CommandFilter, aoe-discover, root
+
+        # nova/virt/xenapi/vm_utils.py: parted, --script, ...
+        # nova/virt/xenapi/vm_utils.py: 'parted', '--script', dev_path, ..*.
+        parted: CommandFilter, parted, root
+
+        # nova/virt/xenapi/vm_utils.py: 'pygrub', '-qn', dev_path
+        pygrub: CommandFilter, pygrub, root
+
+        # nova/virt/xenapi/vm_utils.py: fdisk %(dev_path)s
+        fdisk: CommandFilter, fdisk, root
+
+        # nova/virt/xenapi/vm_utils.py: e2fsck, -f, -p, partition_path
+        # nova/virt/disk/api.py: e2fsck, -f, -p, image
+        e2fsck: CommandFilter, e2fsck, root
+
+        # nova/virt/xenapi/vm_utils.py: resize2fs, partition_path
+        # nova/virt/disk/api.py: resize2fs, image
+        resize2fs: CommandFilter, resize2fs, root
+
+        # nova/network/linux_net.py: 'ip[6]tables-save' % (cmd, '-t', ...
+        iptables-save: CommandFilter, iptables-save, root
+        ip6tables-save: CommandFilter, ip6tables-save, root
+
+        # nova/network/linux_net.py: 'ip[6]tables-restore' % (cmd,)
+        iptables-restore: CommandFilter, iptables-restore, root
+        ip6tables-restore: CommandFilter, ip6tables-restore, root
+
+        # nova/network/linux_net.py: 'arping', '-U', floating_ip, '-A', '-I', ...
+        # nova/network/linux_net.py: 'arping', '-U', network_ref['dhcp_server'],..
+        arping: CommandFilter, arping, root
+
+        # nova/network/linux_net.py: 'dhcp_release', dev, address, mac_address
+        dhcp_release: CommandFilter, dhcp_release, root
+
+        # nova/network/linux_net.py: 'kill', '-9', pid
+        # nova/network/linux_net.py: 'kill', '-HUP', pid
+        kill_dnsmasq: KillFilter, root, /usr/sbin/dnsmasq, -9, -HUP
+
+        # nova/network/linux_net.py: 'kill', pid
+        kill_radvd: KillFilter, root, /usr/sbin/radvd
+
+        # nova/network/linux_net.py: dnsmasq call
+        dnsmasq: EnvFilter, env, root, CONFIG_FILE=, NETWORK_ID=, dnsmasq
+
+        # nova/network/linux_net.py: 'radvd', '-C', '%s' % _ra_file(dev, 'conf'..
+        radvd: CommandFilter, radvd, root
+
+        # nova/network/linux_net.py: 'brctl', 'addbr', bridge
+        # nova/network/linux_net.py: 'brctl', 'setfd', bridge, 0
+        # nova/network/linux_net.py: 'brctl', 'stp', bridge, 'off'
+        # nova/network/linux_net.py: 'brctl', 'addif', bridge, interface
+        brctl: CommandFilter, brctl, root
+
+        # nova/virt/libvirt/utils.py: 'mkswap'
+        # nova/virt/xenapi/vm_utils.py: 'mkswap'
+        mkswap: CommandFilter, mkswap, root
+
+        # nova/virt/libvirt/utils.py: 'nova-idmapshift'
+        nova-idmapshift: CommandFilter, nova-idmapshift, root
+
+        # nova/virt/xenapi/vm_utils.py: 'mkfs'
+        # nova/utils.py: 'mkfs', fs, path, label
+        mkfs: CommandFilter, mkfs, root
+
+        # nova/virt/libvirt/utils.py: 'qemu-img'
+        qemu-img: CommandFilter, qemu-img, root
+
+        # nova/virt/disk/vfs/localfs.py: 'readlink', '-e'
+        readlink: CommandFilter, readlink, root
+
+        # nova/virt/disk/api.py:
+        mkfs.ext3: CommandFilter, mkfs.ext3, root
+        mkfs.ext4: CommandFilter, mkfs.ext4, root
+        mkfs.ntfs: CommandFilter, mkfs.ntfs, root
+
+        # nova/virt/libvirt/connection.py:
+        lvremove: CommandFilter, lvremove, root
+
+        # nova/virt/libvirt/utils.py:
+        lvcreate: CommandFilter, lvcreate, root
+
+        # nova/virt/libvirt/utils.py:
+        lvs: CommandFilter, lvs, root
+
+        # nova/virt/libvirt/utils.py:
+        vgs: CommandFilter, vgs, root
+
+        # nova/utils.py:read_file_as_root: 'cat', file_path
+        # (called from nova/virt/disk/vfs/localfs.py:VFSLocalFS.read_file)
+        read_passwd: RegExpFilter, cat, root, cat, (/var|/usr)?/tmp/openstack-vfs-localfs[^/]+/etc/passwd
+        read_shadow: RegExpFilter, cat, root, cat, (/var|/usr)?/tmp/openstack-vfs-localfs[^/]+/etc/shadow
+
+        # os-brick needed commands
+        read_initiator: ReadFileFilter, /etc/iscsi/initiatorname.iscsi
+        multipath: CommandFilter, multipath, root
+        # multipathd show status
+        multipathd: CommandFilter, multipathd, root
+        systool: CommandFilter, systool, root
+        vgc-cluster: CommandFilter, vgc-cluster, root
+        # os_brick/initiator/connector.py
+        drv_cfg: CommandFilter, /opt/emc/scaleio/sdc/bin/drv_cfg, root, /opt/emc/scaleio/sdc/bin/drv_cfg, --query_guid
+
+        # TODO(smcginnis) Temporary fix.
+        # Need to pull in os-brick os-brick.filters file instead and clean
+        # out stale brick values from this file.
+        scsi_id: CommandFilter, /lib/udev/scsi_id, root
+        # os_brick.privileged.default oslo.privsep context
+        # This line ties the superuser privs with the config files, context name,
+        # and (implicitly) the actual python code invoked.
+        privsep-rootwrap: RegExpFilter, privsep-helper, root, privsep-helper, --config-file, /etc/(?!\.\.).*, --privsep_context, os_brick.privileged.default, --privsep_sock_path, /tmp/.*
+
+        # nova/storage/linuxscsi.py: sg_scan device
+        sg_scan: CommandFilter, sg_scan, root
+
+        # nova/volume/encryptors/cryptsetup.py:
+        # nova/volume/encryptors/luks.py:
+        ln: RegExpFilter, ln, root, ln, --symbolic, --force, /dev/mapper/crypt-.+, .+
+
+        # nova/volume/encryptors.py:
+        # nova/virt/libvirt/dmcrypt.py:
+        cryptsetup: CommandFilter, cryptsetup, root
+
+        # nova/virt/xenapi/vm_utils.py:
+        xenstore-read: CommandFilter, xenstore-read, root
+
+        # nova/virt/libvirt/utils.py:
+        rbd: CommandFilter, rbd, root
+
+        # nova/virt/libvirt/utils.py: 'shred', '-n3', '-s%d' % volume_size, path
+        shred: CommandFilter, shred, root
+
+        # nova/virt/libvirt/volume.py: 'cp', '/dev/stdin', delete_control..
+        cp: CommandFilter, cp, root
+
+        # nova/virt/xenapi/vm_utils.py:
+        sync: CommandFilter, sync, root
+
+        # nova/virt/libvirt/imagebackend.py:
+        ploop: RegExpFilter, ploop, root, ploop, restore-descriptor, .*
+        prl_disk_tool: RegExpFilter, prl_disk_tool, root, prl_disk_tool, resize, --size, .*M$, --resize_partition, --hdd, .*
+
+        # nova/virt/libvirt/utils.py: 'xend', 'status'
+        xend: CommandFilter, xend, root
+
+        # nova/virt/libvirt/utils.py:
+        touch: CommandFilter, touch, root
+
+        # nova/virt/libvirt/volume/vzstorage.py
+        pstorage-mount: CommandFilter, pstorage-mount, root
+    network:
+      pods:
+        - compute
+      content: |
+        # nova-rootwrap command filters for network nodes
+        # This file should be owned by (and only-writeable by) the root user
+
+        [Filters]
+        # nova/virt/libvirt/vif.py: 'ip', 'tuntap', 'add', dev, 'mode', 'tap'
+        # nova/virt/libvirt/vif.py: 'ip', 'link', 'set', dev, 'up'
+        # nova/virt/libvirt/vif.py: 'ip', 'link', 'delete', dev
+        # nova/network/linux_net.py: 'ip', 'addr', 'add', str(floating_ip)+'/32'i..
+        # nova/network/linux_net.py: 'ip', 'addr', 'del', str(floating_ip)+'/32'..
+        # nova/network/linux_net.py: 'ip', 'addr', 'add', '169.254.169.254/32',..
+        # nova/network/linux_net.py: 'ip', 'addr', 'show', 'dev', dev, 'scope',..
+        # nova/network/linux_net.py: 'ip', 'addr', 'del/add', ip_params, dev)
+        # nova/network/linux_net.py: 'ip', 'addr', 'del', params, fields[-1]
+        # nova/network/linux_net.py: 'ip', 'addr', 'add', params, bridge
+        # nova/network/linux_net.py: 'ip', '-f', 'inet6', 'addr', 'change', ..
+        # nova/network/linux_net.py: 'ip', 'link', 'set', 'dev', dev, 'promisc',..
+        # nova/network/linux_net.py: 'ip', 'link', 'add', 'link', bridge_if ...
+        # nova/network/linux_net.py: 'ip', 'link', 'set', interface, address,..
+        # nova/network/linux_net.py: 'ip', 'link', 'set', interface, 'up'
+        # nova/network/linux_net.py: 'ip', 'link', 'set', bridge, 'up'
+        # nova/network/linux_net.py: 'ip', 'addr', 'show', 'dev', interface, ..
+        # nova/network/linux_net.py: 'ip', 'link', 'set', dev, address, ..
+        # nova/network/linux_net.py: 'ip', 'link', 'set', dev, 'up'
+        # nova/network/linux_net.py: 'ip', 'route', 'add', ..
+        # nova/network/linux_net.py: 'ip', 'route', 'del', .
+        # nova/network/linux_net.py: 'ip', 'route', 'show', 'dev', dev
+        ip: CommandFilter, ip, root
+
+        # nova/virt/libvirt/vif.py: 'ovs-vsctl', ...
+        # nova/virt/libvirt/vif.py: 'ovs-vsctl', 'del-port', ...
+        # nova/network/linux_net.py: 'ovs-vsctl', ....
+        ovs-vsctl: CommandFilter, ovs-vsctl, root
+
+        # nova/network/linux_net.py: 'ovs-ofctl', ....
+        ovs-ofctl: CommandFilter, ovs-ofctl, root
+
+        # nova/virt/libvirt/vif.py: 'ivs-ctl', ...
+        # nova/virt/libvirt/vif.py: 'ivs-ctl', 'del-port', ...
+        # nova/network/linux_net.py: 'ivs-ctl', ....
+        ivs-ctl: CommandFilter, ivs-ctl, root
+
+        # nova/virt/libvirt/vif.py: 'ifc_ctl', ...
+        ifc_ctl: CommandFilter, /opt/pg/bin/ifc_ctl, root
+
+        # nova/network/linux_net.py: 'ebtables', '-D' ...
+        # nova/network/linux_net.py: 'ebtables', '-I' ...
+        ebtables: CommandFilter, ebtables, root
+        ebtables_usr: CommandFilter, ebtables, root
+
+        # nova/network/linux_net.py: 'ip[6]tables-save' % (cmd, '-t', ...
+        iptables-save: CommandFilter, iptables-save, root
+        ip6tables-save: CommandFilter, ip6tables-save, root
+
+        # nova/network/linux_net.py: 'ip[6]tables-restore' % (cmd,)
+        iptables-restore: CommandFilter, iptables-restore, root
+        ip6tables-restore: CommandFilter, ip6tables-restore, root
+
+        # nova/network/linux_net.py: 'arping', '-U', floating_ip, '-A', '-I', ...
+        # nova/network/linux_net.py: 'arping', '-U', network_ref['dhcp_server'],..
+        arping: CommandFilter, arping, root
+
+        # nova/network/linux_net.py: 'dhcp_release', dev, address, mac_address
+        dhcp_release: CommandFilter, dhcp_release, root
+
+        # nova/network/linux_net.py: 'kill', '-9', pid
+        # nova/network/linux_net.py: 'kill', '-HUP', pid
+        kill_dnsmasq: KillFilter, root, /usr/sbin/dnsmasq, -9, -HUP
+
+        # nova/network/linux_net.py: 'kill', pid
+        kill_radvd: KillFilter, root, /usr/sbin/radvd
+
+        # nova/network/linux_net.py: dnsmasq call
+        dnsmasq: EnvFilter, env, root, CONFIG_FILE=, NETWORK_ID=, dnsmasq
+
+        # nova/network/linux_net.py: 'radvd', '-C', '%s' % _ra_file(dev, 'conf'..
+        radvd: CommandFilter, radvd, root
+
+        # nova/network/linux_net.py: 'brctl', 'addbr', bridge
+        # nova/network/linux_net.py: 'brctl', 'setfd', bridge, 0
+        # nova/network/linux_net.py: 'brctl', 'stp', bridge, 'off'
+        # nova/network/linux_net.py: 'brctl', 'addif', bridge, interface
+        brctl: CommandFilter, brctl, root
+
+        # nova/network/linux_net.py: 'sysctl', ....
+        sysctl: CommandFilter, sysctl, root
+
+        # nova/network/linux_net.py: 'conntrack'
+        conntrack: CommandFilter, conntrack, root
+
+        # nova/network/linux_net.py: 'fp-vdev'
+        fp-vdev: CommandFilter, fp-vdev, root
+  nova_ironic:
+    DEFAULT:
+      scheduler_host_manager: ironic_host_manager
+      compute_driver: ironic.IronicDriver
+      ram_allocation_ratio: 1.0
+      cpu_allocation_ratio: 1.0
+      reserved_host_memory_mb: 0
+  libvirt:
+    # Get the IP address to be used as the target for live migration traffic using interface name.
+    # If this option is set to None, the hostname of the migration target compute node will be used.
+    live_migration_interface:
+  hypervisor:
+    # my_ip can be set automatically through this interface name.
+    host_interface:
+  # This list is the keys to exclude from the config file ingested by nova-compute
+  nova_compute_redactions:
+    - database
+    - api_database
+    - cell0_database
+  nova:
+    DEFAULT:
+      log_config_append: /etc/nova/logging.conf
+      default_ephemeral_format: ext4
+      ram_allocation_ratio: 1.0
+      disk_allocation_ratio: 1.0
+      cpu_allocation_ratio: 3.0
+      state_path: /var/lib/nova
+      osapi_compute_listen: 0.0.0.0
+      # NOTE(portdirect): the bind port should not be defined, and is manipulated
+      # via the endpoints section.
+      osapi_compute_listen_port: null
+      osapi_compute_workers: 1
+      metadata_workers: 1
+      use_neutron: true
+      firewall_driver: nova.virt.firewall.NoopFirewallDriver
+      linuxnet_interface_driver: openvswitch
+      compute_driver: libvirt.LibvirtDriver
+      my_ip: 0.0.0.0
+      instance_usage_audit: True
+      instance_usage_audit_period: hour
+      notify_on_state_change: vm_and_task_state
+      resume_guests_state_on_host_boot: True
+    vnc:
+      novncproxy_host: 0.0.0.0
+      vncserver_listen: 0.0.0.0
+      # This would be set by each compute nodes's ip
+      # server_proxyclient_address: 127.0.0.1
+    spice:
+      html5proxy_host: 0.0.0.0
+      server_listen: 0.0.0.0
+      # This would be set by each compute nodes's ip
+      # server_proxyclient_address: 127.0.0.1
+    conductor:
+      workers: 1
+    oslo_policy:
+      policy_file: /etc/nova/policy.yaml
+    oslo_concurrency:
+      lock_path: /var/lib/nova/tmp
+    oslo_middleware:
+      enable_proxy_headers_parsing: true
+    glance:
+      num_retries: 3
+    ironic:
+      api_endpoint: null
+      auth_url: null
+    neutron:
+      metadata_proxy_shared_secret: "password"
+      service_metadata_proxy: True
+      auth_type: password
+      auth_version: v3
+    database:
+      max_retries: -1
+    api_database:
+      max_retries: -1
+    cell0_database:
+      max_retries: -1
+    keystone_authtoken:
+      auth_type: password
+      auth_version: v3
+      memcache_security_strategy: ENCRYPT
+    service_user:
+      auth_type: password
+      send_service_user_token: false
+    libvirt:
+      connection_uri: "qemu+unix:///system?socket=/run/libvirt/libvirt-sock"
+      images_type: qcow2
+      images_rbd_pool: vms
+      images_rbd_ceph_conf: /etc/ceph/ceph.conf
+      rbd_user: cinder
+      rbd_secret_uuid: 457eb676-33da-42ec-9a8c-9293d545c337
+      disk_cachemodes: "network=writeback"
+      hw_disk_discard: unmap
+    upgrade_levels:
+      compute: auto
+    cache:
+      enabled: true
+      backend: dogpile.cache.memcached
+    wsgi:
+      api_paste_config: /etc/nova/api-paste.ini
+    oslo_messaging_notifications:
+      driver: messagingv2
+    oslo_messaging_rabbit:
+      rabbit_ha_queues: true
+    placement:
+      auth_type: password
+      auth_version: v3
+  logging:
+    loggers:
+      keys:
+        - root
+        - nova
+        - os.brick
+    handlers:
+      keys:
+        - stdout
+        - stderr
+        - "null"
+    formatters:
+      keys:
+        - context
+        - default
+    logger_root:
+      level: WARNING
+      handlers: 'null'
+    logger_nova:
+      level: INFO
+      handlers:
+        - stdout
+      qualname: nova
+    logger_os.brick:
+      level: INFO
+      handlers:
+        - stdout
+      qualname: os.brick
+    logger_amqp:
+      level: WARNING
+      handlers: stderr
+      qualname: amqp
+    logger_amqplib:
+      level: WARNING
+      handlers: stderr
+      qualname: amqplib
+    logger_eventletwsgi:
+      level: WARNING
+      handlers: stderr
+      qualname: eventlet.wsgi.server
+    logger_sqlalchemy:
+      level: WARNING
+      handlers: stderr
+      qualname: sqlalchemy
+    logger_boto:
+      level: WARNING
+      handlers: stderr
+      qualname: boto
+    handler_null:
+      class: logging.NullHandler
+      formatter: default
+      args: ()
+    handler_stdout:
+      class: StreamHandler
+      args: (sys.stdout,)
+      formatter: context
+    handler_stderr:
+      class: StreamHandler
+      args: (sys.stderr,)
+      formatter: context
+    formatter_context:
+      class: oslo_log.formatters.ContextFormatter
+      datefmt: "%Y-%m-%d %H:%M:%S"
+    formatter_default:
+      format: "%(message)s"
+      datefmt: "%Y-%m-%d %H:%M:%S"
+  rabbitmq:
+    # NOTE(rk760n): adding rmq policy to mirror messages from notification queues and set expiration time for the ones
+    policies:
+      - vhost: "nova"
+        name: "ha_ttl_nova"
+        definition:
+          # mirror messges to other nodes in rmq cluster
+          ha-mode: "all"
+          ha-sync-mode: "automatic"
+          # 70s
+          message-ttl: 70000
+        priority: 0
+        apply-to: all
+        pattern: '^(?!(amq\.|reply_)).*'
+  enable_iscsi: false
+  archive_deleted_rows:
+    purge_deleted_rows: false
+    until_completion: true
+    all_cells: false
+    max_rows:
+      enabled: False
+      rows: 1000
+    before:
+      enabled: false
+      date: 'nil'
+
+# Names of secrets used by bootstrap and environmental checks
+secrets:
+  identity:
+    admin: nova-keystone-admin
+    nova: nova-keystone-user
+    placement: nova-keystone-placement
+    test: nova-keystone-test
+  oslo_db:
+    admin: nova-db-admin
+    nova: nova-db-user
+  oslo_db_api:
+    admin: nova-db-api-admin
+    nova: nova-db-api-user
+  oslo_db_cell0:
+    admin: nova-db-cell0-admin
+    nova: nova-db-cell0-user
+  oslo_messaging:
+    admin: nova-rabbitmq-admin
+    nova: nova-rabbitmq-user
+  tls:
+    compute:
+      osapi:
+        public: nova-tls-public
+        internal: nova-tls-api
+    compute_novnc_proxy:
+      novncproxy:
+        public: nova-novncproxy-tls-public
+        internal: nova-novncproxy-tls-proxy
+    placement:
+      placement:
+        public: placement-tls-public
+        internal: placement-tls-api
+    compute_metadata:
+      metadata:
+        public: metadata-tls-public
+        internal: metadata-tls-metadata
+    compute_spice_proxy:
+      spiceproxy:
+        internal: nova-tls-spiceproxy
+
+# typically overridden by environmental
+# values, but should include all endpoints
+# required by this chart
+endpoints:
+  cluster_domain_suffix: cluster.local
+  local_image_registry:
+    name: docker-registry
+    namespace: docker-registry
+    hosts:
+      default: localhost
+      internal: docker-registry
+      node: localhost
+    host_fqdn_override:
+      default: null
+    port:
+      registry:
+        node: 5000
+  oslo_db:
+    auth:
+      admin:
+        username: root
+        password: password
+        secret:
+          tls:
+            internal: mariadb-tls-direct
+      nova:
+        username: nova
+        password: password
+    hosts:
+      default: mariadb
+    host_fqdn_override:
+      default: null
+    path: /nova
+    scheme: mysql+pymysql
+    port:
+      mysql:
+        default: 3306
+  oslo_db_api:
+    auth:
+      admin:
+        username: root
+        password: password
+      nova:
+        username: nova
+        password: password
+    hosts:
+      default: mariadb
+    host_fqdn_override:
+      default: null
+    path: /nova_api
+    scheme: mysql+pymysql
+    port:
+      mysql:
+        default: 3306
+  oslo_db_cell0:
+    auth:
+      admin:
+        username: root
+        password: password
+      nova:
+        username: nova
+        password: password
+    hosts:
+      default: mariadb
+    host_fqdn_override:
+      default: null
+    path: /nova_cell0
+    scheme: mysql+pymysql
+    port:
+      mysql:
+        default: 3306
+  oslo_messaging:
+    auth:
+      admin:
+        username: rabbitmq
+        password: password
+        secret:
+          tls:
+            internal: rabbitmq-tls-direct
+      nova:
+        username: nova
+        password: password
+    statefulset:
+      replicas: 2
+      name: rabbitmq-rabbitmq
+    hosts:
+      default: rabbitmq
+    host_fqdn_override:
+      default: null
+    path: /nova
+    scheme: rabbit
+    port:
+      amqp:
+        default: 5672
+      http:
+        default: 15672
+  oslo_cache:
+    auth:
+      # NOTE(portdirect): this is used to define the value for keystone
+      # authtoken cache encryption key, if not set it will be populated
+      # automatically with a random value, but to take advantage of
+      # this feature all services should be set to use the same key,
+      # and memcache service.
+      memcache_secret_key: null
+    hosts:
+      default: memcached
+    host_fqdn_override:
+      default: null
+    port:
+      memcache:
+        default: 11211
+  identity:
+    name: keystone
+    auth:
+      admin:
+        region_name: RegionOne
+        username: admin
+        password: password
+        project_name: admin
+        user_domain_name: default
+        project_domain_name: default
+      nova:
+        role: admin
+        region_name: RegionOne
+        username: nova
+        password: password
+        project_name: service
+        user_domain_name: service
+        project_domain_name: service
+      # NOTE(portdirect): the neutron user is not managed by the nova chart
+      # these values should match those set in the neutron chart.
+      neutron:
+        region_name: RegionOne
+        project_name: service
+        user_domain_name: service
+        project_domain_name: service
+        username: neutron
+        password: password
+      # NOTE(portdirect): the ironic user is not managed by the nova chart
+      # these values should match those set in the ironic chart.
+      ironic:
+        auth_type: password
+        auth_version: v3
+        region_name: RegionOne
+        project_name: service
+        user_domain_name: service
+        project_domain_name: service
+        username: ironic
+        password: password
+      placement:
+        role: admin
+        region_name: RegionOne
+        username: placement
+        password: password
+        project_name: service
+        user_domain_name: service
+        project_domain_name: service
+      test:
+        role: admin
+        region_name: RegionOne
+        username: nova-test
+        password: password
+        project_name: test
+        user_domain_name: service
+        project_domain_name: service
+    hosts:
+      default: keystone
+      internal: keystone-api
+    host_fqdn_override:
+      default: null
+    path:
+      default: /v3
+    scheme:
+      default: http
+    port:
+      api:
+        default: 80
+        internal: 5000
+  image:
+    name: glance
+    hosts:
+      default: glance-api
+      public: glance
+    host_fqdn_override:
+      default: null
+    path:
+      default: null
+    scheme:
+      default: http
+    port:
+      api:
+        default: 9292
+        public: 80
+  compute:
+    name: nova
+    hosts:
+      default: nova-api
+      public: nova
+    host_fqdn_override:
+      default: null
+      # NOTE(portdirect): this chart supports TLS for fqdn over-ridden public
+      # endpoints using the following format:
+      # public:
+      #   host: null
+      #   tls:
+      #     crt: null
+      #     key: null
+    path:
+      default: "/v2.1/%(tenant_id)s"
+    scheme:
+      default: 'http'
+    port:
+      api:
+        default: 8774
+        public: 80
+      novncproxy:
+        default: 6080
+  compute_metadata:
+    name: nova
+    ip:
+      # IF blank, set clusterIP and metadata_host dynamically
+      ingress: null
+    hosts:
+      default: nova-metadata
+      public: metadata
+    host_fqdn_override:
+      default: null
+    path:
+      default: /
+    scheme:
+      default: 'http'
+    port:
+      metadata:
+        default: 8775
+        public: 80
+  compute_novnc_proxy:
+    name: nova
+    hosts:
+      default: nova-novncproxy
+      public: novncproxy
+    host_fqdn_override:
+      default: null
+      # NOTE(portdirect): this chart supports TLS for fqdn over-ridden public
+      # endpoints using the following format:
+      # public:
+      #   host: null
+      #   tls:
+      #     crt: null
+      #     key: null
+    path:
+      default: /vnc_auto.html
+    scheme:
+      default: 'http'
+    port:
+      novnc_proxy:
+        default: 6080
+        public: 80
+  compute_spice_proxy:
+    name: nova
+    hosts:
+      default: nova-spiceproxy
+      public: placement
+    host_fqdn_override:
+      default: null
+    path:
+      default: /spice_auto.html
+    scheme:
+      default: 'http'
+    port:
+      spice_proxy:
+        default: 6082
+  placement:
+    name: placement
+    hosts:
+      default: placement-api
+      public: placement
+    host_fqdn_override:
+      default: null
+    path:
+      default: /
+    scheme:
+      default: 'http'
+    port:
+      api:
+        default: 8778
+        public: 80
+  network:
+    name: neutron
+    hosts:
+      default: neutron-server
+      public: neutron
+    host_fqdn_override:
+      default: null
+    path:
+      default: null
+    scheme:
+      default: 'http'
+    port:
+      api:
+        default: 9696
+        public: 80
+  baremetal:
+    name: ironic
+    hosts:
+      default: ironic-api
+      public: ironic
+    host_fqdn_override:
+      default: null
+    path:
+      default: null
+    scheme:
+      default: http
+    port:
+      api:
+        default: 6385
+        public: 80
+  fluentd:
+    namespace: null
+    name: fluentd
+    hosts:
+      default: fluentd-logging
+    host_fqdn_override:
+      default: null
+    path:
+      default: null
+    scheme: 'http'
+    port:
+      service:
+        default: 24224
+      metrics:
+        default: 24220
+  # NOTE(tp6510): these endpoints allow for things like DNS lookups and ingress
+  # They are using to enable the Egress K8s network policy.
+  kube_dns:
+    namespace: kube-system
+    name: kubernetes-dns
+    hosts:
+      default: kube-dns
+    host_fqdn_override:
+      default: null
+    path:
+      default: null
+    scheme: http
+    port:
+      dns:
+        default: 53
+        protocol: UDP
+  ingress:
+    namespace: null
+    name: ingress
+    hosts:
+      default: ingress
+    port:
+      ingress:
+        default: 80
+
+pod:
+  probes:
+    rpc_timeout: 60
+    rpc_retries: 2
+    compute:
+      default:
+        liveness:
+          enabled: True
+          params:
+            initialDelaySeconds: 120
+            periodSeconds: 90
+            timeoutSeconds: 70
+        readiness:
+          enabled: True
+          params:
+            initialDelaySeconds: 80
+            periodSeconds: 90
+            timeoutSeconds: 70
+    api-metadata:
+      default:
+        liveness:
+          enabled: True
+          params:
+            initialDelaySeconds: 30
+            periodSeconds: 60
+            timeoutSeconds: 15
+        readiness:
+          enabled: True
+          params:
+            initialDelaySeconds: 30
+            periodSeconds: 60
+            timeoutSeconds: 15
+    api-osapi:
+      default:
+        liveness:
+          enabled: True
+          params:
+            initialDelaySeconds: 30
+            periodSeconds: 60
+            timeoutSeconds: 15
+        readiness:
+          enabled: True
+          params:
+            initialDelaySeconds: 30
+            periodSeconds: 60
+            timeoutSeconds: 15
+    conductor:
+      default:
+        liveness:
+          enabled: True
+          params:
+            initialDelaySeconds: 120
+            periodSeconds: 90
+            timeoutSeconds: 70
+        readiness:
+          enabled: True
+          params:
+            initialDelaySeconds: 80
+            periodSeconds: 90
+            timeoutSeconds: 70
+    consoleauth:
+      default:
+        liveness:
+          enabled: True
+          params:
+            initialDelaySeconds: 120
+            periodSeconds: 90
+            timeoutSeconds: 70
+        readiness:
+          enabled: True
+          params:
+            initialDelaySeconds: 80
+            periodSeconds: 90
+            timeoutSeconds: 70
+    novncproxy:
+      default:
+        liveness:
+          enabled: True
+          params:
+            initialDelaySeconds: 30
+            periodSeconds: 60
+            timeoutSeconds: 15
+        readiness:
+          enabled: True
+          params:
+            initialDelaySeconds: 30
+            periodSeconds: 60
+            timeoutSeconds: 15
+    placement:
+      default:
+        liveness:
+          enabled: True
+          params:
+            initialDelaySeconds: 50
+            periodSeconds: 30
+            timeoutSeconds: 10
+        readiness:
+          enabled: True
+          params:
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            timeoutSeconds: 10
+    scheduler:
+      default:
+        liveness:
+          enabled: True
+          params:
+            initialDelaySeconds: 120
+            periodSeconds: 90
+            timeoutSeconds: 70
+        readiness:
+          enabled: True
+          params:
+            initialDelaySeconds: 80
+            periodSeconds: 90
+            timeoutSeconds: 70
+    compute-spice-proxy:
+      default:
+        liveness:
+          enabled: True
+          params:
+            initialDelaySeconds: 30
+            periodSeconds: 60
+            timeoutSeconds: 15
+        readiness:
+          enabled: True
+          params:
+            initialDelaySeconds: 30
+            periodSeconds: 60
+            timeoutSeconds: 15
+  security_context:
+    nova:
+      pod:
+        runAsUser: 42424
+      container:
+        nova_compute_init:
+          readOnlyRootFilesystem: true
+          runAsUser: 0
+        tungstenfabric_compute_init:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+        ceph_perms:
+          readOnlyRootFilesystem: true
+          runAsUser: 0
+        ceph_admin_keyring_placement:
+          readOnlyRootFilesystem: true
+        ceph_keyring_placement:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+        nova_compute_vnc_init:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+        nova_compute_spice_init:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+        nova_compute:
+          readOnlyRootFilesystem: true
+          privileged: true
+        nova_compute_ssh:
+          privileged: true
+          runAsUser: 0
+        nova_compute_ssh_init:
+          runAsUser: 0
+        nova_api_metadata_init:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+        nova_api:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+        nova_osapi:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+        nova_conductor:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+        nova_consoleauth:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+        nova_novncproxy_init:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+        nova_novncproxy_init_assests:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+        nova_novncproxy:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+        nova_placement_api:
+          readOnlyRootFilesystem: false
+          allowPrivilegeEscalation: false
+        nova_scheduler:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+        nova_spiceproxy_init:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+        nova_spiceproxy_init_assets:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+        nova_spiceproxy:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+    bootstrap:
+      pod:
+        runAsUser: 42424
+      container:
+        nova_wait_for_computes_init:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+        bootstrap:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+    nova_cell_setup:
+      pod:
+        runAsUser: 42424
+      container:
+        nova_wait_for_computes_init:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+        nova_cell_setup_init:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+        nova_cell_setup:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+    archive_deleted_rows:
+      pod:
+        runAsUser: 42424
+      container:
+        nova_archive_deleted_rows_init:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+        nova_archive_deleted_rows:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+    cell_setup:
+      pod:
+        runAsUser: 42424
+      container:
+        nova_cell_setup:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+    service_cleaner:
+      pod:
+        runAsUser: 42424
+      container:
+        nova_service_cleaner:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+  use_fqdn:
+    # NOTE: If the option "host" is not specified in nova.conf, the host name
+    # shown in the hypervisor host is defaulted to the short name of the host.
+    # Setting the option here to true will cause use $(hostname --fqdn) as the
+    # host name by default. If the short name is desired $(hostname --short),
+    # set the option to false. Specifying a host in the nova.conf via the conf:
+    # section will supersede the value of this option.
+    compute: true
+  affinity:
+    anti:
+      type:
+        default: preferredDuringSchedulingIgnoredDuringExecution
+      topologyKey:
+        default: kubernetes.io/hostname
+      weight:
+        default: 10
+  mounts:
+    nova_compute:
+      init_container: null
+      nova_compute:
+        volumeMounts:
+        volumes:
+    nova_compute_ironic:
+      init_container: null
+      nova_compute_ironic:
+        volumeMounts:
+        volumes:
+    nova_api_metadata:
+      init_container: null
+      nova_api_metadata:
+        volumeMounts:
+        volumes:
+    nova_placement:
+      init_container: null
+      nova_placement:
+        volumeMounts:
+        volumes:
+    nova_api_osapi:
+      init_container: null
+      nova_api_osapi:
+        volumeMounts:
+        volumes:
+    nova_consoleauth:
+      init_container: null
+      nova_consoleauth:
+        volumeMounts:
+        volumes:
+    nova_conductor:
+      init_container: null
+      nova_conductor:
+        volumeMounts:
+        volumes:
+    nova_scheduler:
+      init_container: null
+      nova_scheduler:
+        volumeMounts:
+        volumes:
+    nova_bootstrap:
+      init_container: null
+      nova_bootstrap:
+        volumeMounts:
+        volumes:
+    nova_tests:
+      init_container: null
+      nova_tests:
+        volumeMounts:
+        volumes:
+    nova_novncproxy:
+      init_novncproxy: null
+      nova_novncproxy:
+        volumeMounts:
+        volumes:
+    nova_spiceproxy:
+      init_spiceproxy: null
+      nova_spiceproxy:
+        volumeMounts:
+        volumes:
+    nova_db_sync:
+      nova_db_sync:
+        volumeMounts:
+        volumes:
+  useHostNetwork:
+    novncproxy: true
+  replicas:
+    api_metadata: 1
+    compute_ironic: 1
+    placement: 1
+    osapi: 1
+    conductor: 1
+    consoleauth: 1
+    scheduler: 1
+    novncproxy: 1
+    spiceproxy: 1
+  lifecycle:
+    upgrades:
+      deployments:
+        revision_history: 3
+        pod_replacement_strategy: RollingUpdate
+        rolling_update:
+          max_unavailable: 1
+          max_surge: 3
+      daemonsets:
+        pod_replacement_strategy: RollingUpdate
+        compute:
+          enabled: true
+          min_ready_seconds: 0
+          max_unavailable: 1
+    disruption_budget:
+      metadata:
+        min_available: 0
+      placement:
+        min_available: 0
+      osapi:
+        min_available: 0
+    termination_grace_period:
+      metadata:
+        timeout: 30
+      placement:
+        timeout: 30
+      osapi:
+        timeout: 30
+  resources:
+    enabled: false
+    compute:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "1024Mi"
+        cpu: "2000m"
+    compute_ironic:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "1024Mi"
+        cpu: "2000m"
+    api_metadata:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "1024Mi"
+        cpu: "2000m"
+    placement:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "1024Mi"
+        cpu: "2000m"
+    api:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "1024Mi"
+        cpu: "2000m"
+    conductor:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "1024Mi"
+        cpu: "2000m"
+    consoleauth:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "1024Mi"
+        cpu: "2000m"
+    scheduler:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "1024Mi"
+        cpu: "2000m"
+    ssh:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "1024Mi"
+        cpu: "2000m"
+    novncproxy:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "1024Mi"
+        cpu: "2000m"
+    spiceproxy:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "1024Mi"
+        cpu: "2000m"
+    jobs:
+      bootstrap:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      db_init:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      rabbit_init:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      db_sync:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      archive_deleted_rows:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      db_drop:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      ks_endpoints:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      ks_service:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      ks_user:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      tests:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      cell_setup:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      service_cleaner:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      image_repo_sync:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+
+network_policy:
+  nova:
+    # TODO(lamt): Need to tighten this ingress for security.
+    ingress:
+      - {}
+    egress:
+      - {}
+  placement:
+    # TODO(lamt): Need to tighten this ingress for security.
+    ingress:
+      - {}
+    egress:
+      - {}
+
+# NOTE(helm_hook): helm_hook might break for helm2 binary.
+# set helm3_hook: false when using the helm2 binary.
+helm3_hook: true
+
+health_probe:
+  logging:
+    level: ERROR
+
+manifests:
+  certificates: false
+  configmap_bin: true
+  configmap_etc: true
+  cron_job_cell_setup: true
+  cron_job_service_cleaner: true
+  cron_job_archive_deleted_rows: false
+  daemonset_compute: true
+  deployment_api_metadata: true
+  deployment_api_osapi: true
+  deployment_placement: true
+  deployment_conductor: true
+  deployment_consoleauth: true
+  deployment_novncproxy: true
+  deployment_spiceproxy: true
+  deployment_scheduler: true
+  ingress_metadata: true
+  ingress_novncproxy: true
+  ingress_placement: true
+  ingress_osapi: true
+  job_bootstrap: true
+  job_db_init: true
+  job_db_init_placement: true
+  job_db_sync: true
+  job_db_drop: false
+  job_image_repo_sync: true
+  job_rabbit_init: true
+  job_ks_endpoints: true
+  job_ks_service: true
+  job_ks_user: true
+  job_ks_placement_endpoints: true
+  job_ks_placement_service: true
+  job_ks_placement_user: true
+  job_cell_setup: true
+  pdb_metadata: true
+  pdb_placement: true
+  pdb_osapi: true
+  pod_rally_test: true
+  network_policy: false
+  secret_db_api: true
+  secret_db_cell0: true
+  secret_db: true
+  secret_ingress_tls: true
+  secret_keystone: true
+  secret_keystone_placement: true
+  secret_rabbitmq: true
+  service_ingress_metadata: true
+  service_ingress_novncproxy: true
+  service_ingress_placement: true
+  service_ingress_osapi: true
+  service_metadata: true
+  service_placement: true
+  service_novncproxy: true
+  service_spiceproxy: true
+  service_osapi: true
+  statefulset_compute_ironic: false
+...

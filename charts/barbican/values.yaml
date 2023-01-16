@@ -1,0 +1,681 @@
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Default values for barbican.
+# This is a YAML-formatted file.
+# Declare name/value pairs to be passed into your templates.
+# name: value
+
+---
+labels:
+  api:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
+  job:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
+  test:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
+
+release_group: null
+
+# NOTE(philsphicas): the pre-install hook breaks upgrade for helm2
+# Set to false to upgrade using helm2
+helm3_hook: true
+
+images:
+  tags:
+    bootstrap: docker.io/openstackhelm/heat:ussuri-ubuntu_bionic
+    dep_check: quay.io/airshipit/kubernetes-entrypoint:v1.0.0
+    scripted_test: docker.io/openstackhelm/heat:ussuri-ubuntu_bionic
+    db_init: docker.io/openstackhelm/heat:ussuri-ubuntu_bionic
+    barbican_db_sync: docker.io/openstackhelm/barbican:ussuri-ubuntu_bionic
+    db_drop: docker.io/openstackhelm/heat:ussuri-ubuntu_bionic
+    ks_user: docker.io/openstackhelm/heat:ussuri-ubuntu_bionic
+    ks_service: docker.io/openstackhelm/heat:ussuri-ubuntu_bionic
+    ks_endpoints: docker.io/openstackhelm/heat:ussuri-ubuntu_bionic
+    barbican_api: docker.io/openstackhelm/barbican:ussuri-ubuntu_bionic
+    rabbit_init: docker.io/rabbitmq:3.7-management
+    image_repo_sync: docker.io/docker:17.07.0
+  pull_policy: "IfNotPresent"
+  local_registry:
+    active: false
+    exclude:
+      - dep_check
+      - image_repo_sync
+
+pod:
+  security_context:
+    barbican:
+      pod:
+        runAsUser: 42424
+      container:
+        barbican_api:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+    test:
+      pod:
+        runAsUser: 42424
+      container:
+        barbican_test:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+  affinity:
+    anti:
+      type:
+        default: preferredDuringSchedulingIgnoredDuringExecution
+      topologyKey:
+        default: kubernetes.io/hostname
+      weight:
+        default: 10
+  tolerations:
+    barbican:
+      enabled: false
+      tolerations:
+        - key: node-role.kubernetes.io/master
+          operator: Exists
+          effect: NoSchedule
+  mounts:
+    barbican_api:
+      init_container: null
+      barbican_api:
+        volumeMounts:
+        volumes:
+    barbican_bootstrap:
+      init_container: null
+      barbican_bootstrap:
+        volumeMounts:
+        volumes:
+    barbican_tests:
+      init_container: null
+      barbican_tests:
+        volumeMounts:
+        volumes:
+    barbican_db_sync:
+      barbican_db_sync:
+        volumeMounts:
+        volumes:
+  replicas:
+    api: 1
+  lifecycle:
+    upgrades:
+      deployments:
+        revision_history: 3
+        pod_replacement_strategy: RollingUpdate
+        rolling_update:
+          max_unavailable: 1
+          max_surge: 3
+    disruption_budget:
+      api:
+        min_available: 0
+  resources:
+    enabled: false
+    api:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "1024Mi"
+        cpu: "2000m"
+    jobs:
+      bootstrap:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      db_init:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      db_sync:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      db_drop:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      rabbit_init:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      ks_endpoints:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      ks_service:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      ks_user:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      tests:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      image_repo_sync:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+
+network:
+  api:
+    ingress:
+      public: true
+      classes:
+        namespace: "nginx"
+        cluster: "nginx-cluster"
+      annotations:
+        nginx.ingress.kubernetes.io/rewrite-target: /
+    external_policy_local: false
+    node_port:
+      enabled: false
+      port: 30486
+
+network_policy:
+  barbican:
+    ingress:
+      - {}
+    egress:
+      - {}
+
+bootstrap:
+  enabled: false
+  ks_user: barbican
+  script: |
+    openstack token issue
+
+dependencies:
+  dynamic:
+    common:
+      local_image_registry:
+        jobs:
+          - barbican-image-repo-sync
+        services:
+          - endpoint: node
+            service: local_image_registry
+  static:
+    api:
+      jobs:
+        - barbican-db-sync
+        - barbican-ks-user
+        - barbican-ks-endpoints
+        - barbican-rabbit-init
+      services:
+        - endpoint: internal
+          service: oslo_db
+        - endpoint: internal
+          service: identity
+        - endpoint: internal
+          service: oslo_messaging
+    db_drop:
+      services:
+        - endpoint: internal
+          service: oslo_db
+    db_init:
+      services:
+        - endpoint: internal
+          service: oslo_db
+    db_sync:
+      jobs:
+        - barbican-db-init
+      services:
+        - endpoint: internal
+          service: oslo_db
+    image_repo_sync:
+      services:
+        - endpoint: internal
+          service: local_image_registry
+    ks_endpoints:
+      jobs:
+        - barbican-ks-service
+      services:
+        - endpoint: internal
+          service: identity
+    ks_service:
+      services:
+        - endpoint: internal
+          service: identity
+    ks_user:
+      services:
+        - endpoint: internal
+          service: identity
+    rabbit_init:
+      services:
+        - endpoint: internal
+          service: oslo_messaging
+
+conf:
+  paste:
+    composite:main:
+      use: egg:Paste#urlmap
+      /: barbican_version
+      /v1: barbican-api-keystone
+    pipeline:barbican_version:
+      pipeline: cors http_proxy_to_wsgi versionapp
+    pipeline:barbican_api:
+      pipeline: cors http_proxy_to_wsgi unauthenticated-context apiapp
+    pipeline:barbican-profile:
+      pipeline: cors http_proxy_to_wsgi unauthenticated-context egg:Paste#cgitb egg:Paste#httpexceptions profile apiapp
+    pipeline:barbican-api-keystone:
+      pipeline: cors http_proxy_to_wsgi authtoken context apiapp
+    pipeline:barbican-api-keystone-audit:
+      pipeline: http_proxy_to_wsgi authtoken context audit apiapp
+    app:apiapp:
+      paste.app_factory: barbican.api.app:create_main_app
+    app:versionapp:
+      paste.app_factory: barbican.api.app:create_version_app
+    filter:simple:
+      paste.filter_factory: barbican.api.middleware.simple:SimpleFilter.factory
+    filter:unauthenticated-context:
+      paste.filter_factory: barbican.api.middleware.context:UnauthenticatedContextMiddleware.factory
+    filter:context:
+      paste.filter_factory: barbican.api.middleware.context:ContextMiddleware.factory
+    filter:audit:
+      paste.filter_factory: keystonemiddleware.audit:filter_factory
+      audit_map_file: /etc/barbican/api_audit_map.conf
+    filter:authtoken:
+      paste.filter_factory: keystonemiddleware.auth_token:filter_factory
+    filter:profile:
+      use: egg:repoze.profile
+      log_filename: myapp.profile
+      cachegrind_filename: cachegrind.out.myapp
+      discard_first_request: true
+      path: /__profile__
+      flush_at_shutdown: true
+      unwind: false
+    filter:cors:
+      paste.filter_factory: oslo_middleware.cors:filter_factory
+      oslo_config_project: barbican
+    filter:http_proxy_to_wsgi:
+      paste.filter_factory: oslo_middleware:HTTPProxyToWSGI.factory
+  policy: {}
+  audit_map:
+    DEFAULT:
+      # default target endpoint type
+      # should match the endpoint type defined in service catalog
+      target_endpoint_type: key-manager
+    custom_actions:
+      # map urls ending with specific text to a unique action
+      # Don't need custom mapping for other resource operations
+      # Note: action should match action names defined in CADF taxonomy
+      acl/get: read
+    path_keywords:
+      # path of api requests for CADF target typeURI
+      # Just need to include top resource path to identify class of resources
+      secrets: null
+      containers: null
+      orders: null
+      cas: "None"
+      quotas: null
+      project-quotas: null
+    service_endpoints:
+      # map endpoint type defined in service catalog to CADF typeURI
+      key-manager: service/security/keymanager
+  barbican_api:
+    uwsgi:
+      socket: null
+      protocol: http
+      processes: 1
+      lazy: true
+      vacuum: true
+      no-default-app: true
+      memory-report: true
+      plugins: python
+      paste: "config:/etc/barbican/barbican-api-paste.ini"
+      add-header: "Connection: close"
+  barbican:
+    DEFAULT:
+      transport_url: null
+      log_config_append: /etc/barbican/logging.conf
+    keystone_authtoken:
+      auth_type: password
+      auth_version: v3
+      memcache_security_strategy: ENCRYPT
+      memcache_secret_key: null
+    database:
+      max_retries: -1
+    barbican_api:
+      # NOTE(portdirect): the bind port should not be defined, and is manipulated
+      # via the endpoints section.
+      bind_port: null
+    oslo_policy:
+      policy_file: /etc/barbican/policy.yaml
+    # When using the simple_crypto_plugin, a kek must be provided as:
+    #   .conf.barbican.simple_crypto_plugin.kek
+    # If no kek is provided, barbican will use a well-known default.
+    # If upgrading the chart with a new kek, the old kek must be provided as:
+    #   .conf.simple_crypto_plugin_rewrap.old_kek
+    # Please refer to the .conf.simple_crypto_key_rewrap section below.
+    # The barbican defaults are included here as a reference:
+    #   secretstore:
+    #     enabled_secretstore_plugins:
+    #       - store_crypto
+    #   crypto:
+    #     enabled_crypto_plugins:
+    #       - simple_crypto
+    #   simple_crypto_plugin:
+    #     # The kek should be a 32-byte value which is base64 encoded.
+    #     kek: "dGhpcnR5X3R3b19ieXRlX2tleWJsYWhibGFoYmxhaGg="
+  # KEK rotation for the simple_crypto plugin
+  simple_crypto_kek_rewrap:
+
+    # To allow for chart upgrades when modifying the Key Encryption Key, the
+    # db-sync job can rewrap the existing project keys with the new kek, leaving
+    # each secret’s encrypted data unchanged.
+
+    # This feature is enabled automatically, if a kek is specified at:
+    #   .conf.barbican.simple_crypto_plugin.kek
+    # and the previous kek is also specified at:
+    #   .conf.simple_crypto_kek_rewrap.old_kek
+
+    # The project keys are decrypted with 'old_kek' and re-encrypted with the
+    # target kek (as defined in barbican.conf).
+    # This resembles the lightweight rotation described here, which was never
+    # implemented for the simple crypto plugin:
+    # https://specs.openstack.org/openstack/barbican-specs/specs/liberty/add-crypto-mkek-rotation-support-lightweight.html
+
+    # The KEK value "dGhpcnR5X3R3b19ieXRlX2tleWJsYWhibGFoYmxhaGg=" matches the
+    # plugin default, and is retained here for convenience, in case the chart was
+    # previously installed without explicitly specifying a kek.
+    old_kek: "dGhpcnR5X3R3b19ieXRlX2tleWJsYWhibGFoYmxhaGg="
+  logging:
+    loggers:
+      keys:
+        - root
+        - barbican
+    handlers:
+      keys:
+        - stdout
+        - stderr
+        - "null"
+    formatters:
+      keys:
+        - context
+        - default
+    logger_root:
+      level: WARNING
+      handlers: 'null'
+    logger_barbican:
+      level: INFO
+      handlers:
+        - stdout
+      qualname: barbican
+    logger_amqp:
+      level: WARNING
+      handlers: stderr
+      qualname: amqp
+    logger_amqplib:
+      level: WARNING
+      handlers: stderr
+      qualname: amqplib
+    logger_eventletwsgi:
+      level: WARNING
+      handlers: stderr
+      qualname: eventlet.wsgi.server
+    logger_sqlalchemy:
+      level: WARNING
+      handlers: stderr
+      qualname: sqlalchemy
+    logger_boto:
+      level: WARNING
+      handlers: stderr
+      qualname: boto
+    handler_null:
+      class: logging.NullHandler
+      formatter: default
+      args: ()
+    handler_stdout:
+      class: StreamHandler
+      args: (sys.stdout,)
+      formatter: context
+    handler_stderr:
+      class: StreamHandler
+      args: (sys.stderr,)
+      formatter: context
+    formatter_context:
+      class: oslo_log.formatters.ContextFormatter
+      datefmt: "%Y-%m-%d %H:%M:%S"
+    formatter_default:
+      format: "%(message)s"
+      datefmt: "%Y-%m-%d %H:%M:%S"
+
+# Names of secrets used by bootstrap and environmental checks
+secrets:
+  identity:
+    admin: barbican-keystone-admin
+    barbican: barbican-keystone-user
+  oslo_db:
+    admin: barbican-db-admin
+    barbican: barbican-db-user
+  oslo_messaging:
+    admin: barbican-rabbitmq-admin
+    barbican: barbican-rabbitmq-user
+  tls:
+    key_manager:
+      api:
+        public: barbican-tls-public
+
+endpoints:
+  cluster_domain_suffix: cluster.local
+  local_image_registry:
+    name: docker-registry
+    namespace: docker-registry
+    hosts:
+      default: localhost
+      internal: docker-registry
+      node: localhost
+    host_fqdn_override:
+      default: null
+    port:
+      registry:
+        node: 5000
+  identity:
+    name: keystone
+    auth:
+      admin:
+        region_name: RegionOne
+        username: admin
+        password: password
+        project_name: admin
+        user_domain_name: default
+        project_domain_name: default
+      barbican:
+        role: admin
+        region_name: RegionOne
+        username: barbican
+        password: password
+        project_name: service
+        user_domain_name: service
+        project_domain_name: service
+    hosts:
+      default: keystone
+      internal: keystone-api
+    host_fqdn_override:
+      default: null
+    path:
+      default: /v3
+    scheme:
+      default: http
+    port:
+      api:
+        default: 80
+        internal: 5000
+  key_manager:
+    name: barbican
+    hosts:
+      default: barbican-api
+      public: barbican
+    host_fqdn_override:
+      default: null
+    path:
+      default: /
+    scheme:
+      default: http
+    port:
+      api:
+        default: 9311
+        public: 80
+  oslo_db:
+    auth:
+      admin:
+        username: root
+        password: password
+        secret:
+          tls:
+            internal: mariadb-tls-direct
+      barbican:
+        username: barbican
+        password: password
+    hosts:
+      default: mariadb
+    host_fqdn_override:
+      default: null
+    path: /barbican
+    scheme: mysql+pymysql
+    port:
+      mysql:
+        default: 3306
+  oslo_messaging:
+    auth:
+      admin:
+        username: rabbitmq
+        password: password
+      barbican:
+        username: barbican
+        password: password
+    statefulset:
+      replicas: 2
+      name: rabbitmq-rabbitmq
+    hosts:
+      default: rabbitmq
+    host_fqdn_override:
+      default: null
+    path: /barbican
+    scheme: rabbit
+    port:
+      amqp:
+        default: 5672
+      http:
+        default: 15672
+  oslo_cache:
+    auth:
+      # NOTE(portdirect): this is used to define the value for keystone
+      # authtoken cache encryption key, if not set it will be populated
+      # automatically with a random value, but to take advantage of
+      # this feature all services should be set to use the same key,
+      # and memcache service.
+      memcache_secret_key: null
+    hosts:
+      default: memcached
+    host_fqdn_override:
+      default: null
+    port:
+      memcache:
+        default: 11211
+  fluentd:
+    namespace: null
+    name: fluentd
+    hosts:
+      default: fluentd-logging
+    host_fqdn_override:
+      default: null
+    path:
+      default: null
+    scheme: 'http'
+    port:
+      service:
+        default: 24224
+      metrics:
+        default: 24220
+  # NOTE(tp6510): these endpoints allow for things like DNS lookups and ingress
+  # They are using to enable the Egress K8s network policy.
+  kube_dns:
+    namespace: kube-system
+    name: kubernetes-dns
+    hosts:
+      default: kube-dns
+    host_fqdn_override:
+      default: null
+    path:
+      default: null
+    scheme: http
+    port:
+      dns:
+        default: 53
+        protocol: UDP
+  ingress:
+    namespace: null
+    name: ingress
+    hosts:
+      default: ingress
+    port:
+      ingress:
+        default: 80
+
+manifests:
+  certificates: false
+  configmap_bin: true
+  configmap_etc: true
+  deployment_api: true
+  ingress_api: true
+  job_bootstrap: true
+  job_db_init: true
+  job_db_sync: true
+  job_db_drop: false
+  job_image_repo_sync: true
+  job_rabbit_init: true
+  job_ks_endpoints: true
+  job_ks_service: true
+  job_ks_user: true
+  pdb_api: true
+  pod_test: true
+  secret_db: true
+  network_policy: false
+  secret_ingress_tls: true
+  secret_keystone: true
+  secret_rabbitmq: true
+  service_ingress_api: true
+  service_api: true
+...

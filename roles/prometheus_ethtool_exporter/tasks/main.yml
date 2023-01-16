@@ -31,7 +31,7 @@
                       valueFrom:
                         fieldRef:
                           fieldPath: status.podIP
-                  image: "{{ lookup('vexxhost.atmosphere.image_ref', 'prometheus_ethtool_exporter', output='ref') }}"
+                  image: "{{ atmosphere_images['prometheus_ethtool_exporter'] | docker_image('ref') }}"
                   args:
                     - "-L"
                     - "$(IP)"

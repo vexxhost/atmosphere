@@ -16,9 +16,9 @@ _openstack_helm_tempest_values:
   endpoints: "{{ openstack_helm_endpoints }}"
   images:
     tags:
-      dep_check: "{{ lookup('vexxhost.atmosphere.image_ref', 'dep_check', output='ref') }}"
-      ks_user: "{{ lookup('vexxhost.atmosphere.image_ref', 'ks_user', output='ref') }}"
-      tempest_run_tests: "{{ lookup('vexxhost.atmosphere.image_ref', 'tempest_run_tests', output='ref') }}"
+      dep_check: "{{ atmosphere_images['dep_check'] | docker_image('ref') }}"
+      ks_user: "{{ atmosphere_images['ks_user'] | docker_image('ref') }}"
+      tempest_run_tests: "{{ atmosphere_images['tempest_run_tests'] | docker_image('ref') }}"
   jobs:
     run_tests:
       restartPolicy: Never

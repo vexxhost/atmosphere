@@ -1,0 +1,145 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- if .Values.manifests.deployment_api }}
+{{- $envAll := . }}
+
+{{- $mounts_heat_api := .Values.pod.mounts.heat_api.heat_api }}
+{{- $mounts_heat_api_init := .Values.pod.mounts.heat_api.init_container }}
+
+{{- $serviceAccountName := "heat-api" }}
+{{ tuple $envAll "api" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: heat-api
+  annotations:
+    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
+  labels:
+{{ tuple $envAll "heat" "api" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+spec:
+  replicas: {{ .Values.pod.replicas.api }}
+  selector:
+    matchLabels:
+{{ tuple $envAll "heat" "api" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 6 }}
+{{ tuple $envAll | include "helm-toolkit.snippets.kubernetes_upgrades_deployment" | indent 2 }}
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll "heat" "api" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+      annotations:
+{{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
+        configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
+        configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
+{{ dict "envAll" $envAll "podName" "heat-api" "containerNames" (list "heat-api" "init" ) | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+    spec:
+      serviceAccountName: {{ $serviceAccountName }}
+{{ dict "envAll" $envAll "application" "heat" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+      affinity:
+{{ tuple $envAll "heat" "api" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
+      nodeSelector:
+        {{ .Values.labels.api.node_selector_key }}: {{ .Values.labels.api.node_selector_value }}
+      terminationGracePeriodSeconds: {{ .Values.pod.lifecycle.termination_grace_period.api.timeout | default "30" }}
+      initContainers:
+{{ tuple $envAll "api" $mounts_heat_api_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+      containers:
+        - name: heat-api
+{{ tuple $envAll "heat_api" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.api | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "heat" "container" "heat_api" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - /tmp/heat-api.sh
+            - start
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - /tmp/heat-api.sh
+                  - stop
+          ports:
+            - name: h-api
+              containerPort: {{ tuple "orchestration" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+          readinessProbe:
+            tcpSocket:
+              port: {{ tuple "orchestration" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+          livenessProbe:
+            tcpSocket:
+              port: {{ tuple "orchestration" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+            initialDelaySeconds: 30
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: pod-etc-heat
+              mountPath: /etc/heat
+            - name: wsgi-heat
+              mountPath: /var/www/cgi-bin/heat
+            - name: heat-bin
+              mountPath: /tmp/heat-api.sh
+              subPath: heat-api.sh
+              readOnly: true
+            - name: heat-etc
+              mountPath: /etc/heat/heat.conf
+              subPath: heat.conf
+              readOnly: true
+            {{ if .Values.conf.heat.DEFAULT.log_config_append }}
+            - name: heat-etc
+              mountPath: {{ .Values.conf.heat.DEFAULT.log_config_append }}
+              subPath: {{ base .Values.conf.heat.DEFAULT.log_config_append }}
+              readOnly: true
+            {{ end }}
+            - name: heat-etc
+              mountPath: /etc/heat/api-paste.ini
+              subPath: api-paste.ini
+              readOnly: true
+            - name: heat-etc
+              mountPath: /etc/heat/policy.yaml
+              subPath: policy.yaml
+              readOnly: true
+            - name: heat-etc
+              mountPath: /etc/heat/api_audit_map.conf
+              subPath: api_audit_map.conf
+              readOnly: true
+            {{- if .Values.manifests.certificates }}
+            - name: heat-etc
+              mountPath: {{ .Values.conf.software.apache2.site_dir }}/heat-api.conf
+              subPath: wsgi-heat.conf
+              readOnly: true
+            - name: heat-etc
+              mountPath: {{ .Values.conf.software.apache2.mods_dir }}/mpm_event.conf
+              subPath: mpm_event.conf
+              readOnly: true
+            {{- end }}
+{{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.orchestration.api.internal "path" "/etc/heat/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
+{{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_messaging.auth.admin.secret.tls.internal "path" "/etc/rabbitmq/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
+{{ if $mounts_heat_api.volumeMounts }}{{ toYaml $mounts_heat_api.volumeMounts | indent 12 }}{{ end }}
+      volumes:
+        - name: pod-tmp
+          emptyDir: {}
+        - name: pod-etc-heat
+          emptyDir: {}
+        - name: wsgi-heat
+          emptyDir: {}
+        - name: heat-bin
+          configMap:
+            name: heat-bin
+            defaultMode: 0555
+        - name: heat-etc
+          secret:
+            secretName: heat-etc
+            defaultMode: 0444
+{{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.orchestration.api.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
+{{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_messaging.auth.admin.secret.tls.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
+{{ if $mounts_heat_api.volumes }}{{ toYaml $mounts_heat_api.volumes | indent 8 }}{{ end }}
+{{- end }}

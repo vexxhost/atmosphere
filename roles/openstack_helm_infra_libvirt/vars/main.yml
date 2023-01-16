@@ -16,9 +16,9 @@ _openstack_helm_infra_libvirt_values:
   endpoints: "{{ openstack_helm_endpoints }}"
   images:
     tags:
-      ceph_config_helper: "{{ lookup('vexxhost.atmosphere.image_ref', 'ceph_config_helper', output='ref') }}"
-      dep_check: "{{ lookup('vexxhost.atmosphere.image_ref', 'dep_check', output='ref') }}"
-      libvirt: "{{ lookup('vexxhost.atmosphere.image_ref', 'libvirt', output='ref') }}"
+      ceph_config_helper: "{{ atmosphere_images['ceph_config_helper'] | docker_image('ref') }}"
+      dep_check: "{{ atmosphere_images['dep_check'] | docker_image('ref') }}"
+      libvirt: "{{ atmosphere_images['libvirt'] | docker_image('ref') }}"
   conf:
     ceph:
       enabled: "{{ atmosphere_ceph_enabled | default(true) | bool }}"

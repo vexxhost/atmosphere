@@ -1,0 +1,156 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- if (.Values.global).subchart_release_name }}
+{{- $_ := set . "deployment_name" .Chart.Name }}
+{{- else }}
+{{- $_ := set . "deployment_name" .Release.Name }}
+{{- end }}
+
+{{- if .Values.manifests.configmap_etc }}
+{{- $envAll := . }}
+
+{{- if empty .Values.conf.glance.keystone_authtoken.auth_uri -}}
+{{- $_ := tuple "identity" "internal" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup"| set .Values.conf.glance.keystone_authtoken "auth_uri" -}}
+{{- end -}}
+
+{{- if empty .Values.conf.glance.keystone_authtoken.auth_url -}}
+{{- $_ := tuple "identity" "internal" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup"| set .Values.conf.glance.keystone_authtoken "auth_url" -}}
+{{- end -}}
+
+{{- if empty .Values.conf.glance.keystone_authtoken.region_name -}}
+{{- $_ := set .Values.conf.glance.keystone_authtoken "region_name" .Values.endpoints.identity.auth.glance.region_name -}}
+{{- end -}}
+{{- if empty .Values.conf.glance.keystone_authtoken.project_name -}}
+{{- $_ := set .Values.conf.glance.keystone_authtoken "project_name" .Values.endpoints.identity.auth.glance.project_name -}}
+{{- end -}}
+{{- if empty .Values.conf.glance.keystone_authtoken.project_domain_name -}}
+{{- $_ := set .Values.conf.glance.keystone_authtoken "project_domain_name" .Values.endpoints.identity.auth.glance.project_domain_name -}}
+{{- end -}}
+{{- if empty .Values.conf.glance.keystone_authtoken.user_domain_name -}}
+{{- $_ := set .Values.conf.glance.keystone_authtoken "user_domain_name" .Values.endpoints.identity.auth.glance.user_domain_name -}}
+{{- end -}}
+{{- if empty .Values.conf.glance.keystone_authtoken.username -}}
+{{- $_ := set .Values.conf.glance.keystone_authtoken "username" .Values.endpoints.identity.auth.glance.username -}}
+{{- end -}}
+{{- if empty .Values.conf.glance.keystone_authtoken.password -}}
+{{- $_ := set .Values.conf.glance.keystone_authtoken "password" .Values.endpoints.identity.auth.glance.password -}}
+{{- end -}}
+
+{{- if empty .Values.conf.glance.keystone_authtoken.memcached_servers -}}
+{{- $_ := tuple "oslo_cache" "internal" "memcache" . | include "helm-toolkit.endpoints.host_and_port_endpoint_uri_lookup" | set .Values.conf.glance.keystone_authtoken "memcached_servers" -}}
+{{- end -}}
+{{- if empty .Values.conf.glance.keystone_authtoken.memcache_secret_key -}}
+{{- $_ := set .Values.conf.glance.keystone_authtoken "memcache_secret_key" ( default ( randAlphaNum 64 ) .Values.endpoints.oslo_cache.auth.memcache_secret_key ) -}}
+{{- end -}}
+
+{{- if empty .Values.conf.glance.database.connection -}}
+{{- $connection := tuple "oslo_db" "internal" "glance" "mysql" . | include "helm-toolkit.endpoints.authenticated_endpoint_uri_lookup" -}}
+{{- if .Values.manifests.certificates -}}
+{{- $_ := (printf "%s?charset=utf8&ssl_ca=/etc/mysql/certs/ca.crt&ssl_key=/etc/mysql/certs/tls.key&ssl_cert=/etc/mysql/certs/tls.crt&ssl_verify_cert" $connection ) | set .Values.conf.glance.database "connection" -}}
+{{- else -}}
+{{- $_ := set .Values.conf.glance.database "connection" $connection -}}
+{{- end -}}
+{{- end -}}
+
+{{- if empty .Values.conf.glance.DEFAULT.transport_url -}}
+{{- $_ := tuple "oslo_messaging" "internal" "glance" "amqp" . | include "helm-toolkit.endpoints.authenticated_transport_endpoint_uri_lookup" | set .Values.conf.glance.DEFAULT "transport_url" -}}
+{{- end -}}
+
+{{- if empty .Values.conf.glance.DEFAULT.public_endpoint -}}
+{{- $_ := tuple "image" "public" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup" | set .Values.conf.glance.DEFAULT "public_endpoint" -}}
+{{- end -}}
+
+{{- if empty .Values.conf.glance.glance_store.stores -}}
+{{- if eq .Values.storage "rbd" }}
+{{- $_ := "file, http, rbd" | set .Values.conf.glance.glance_store "stores" -}}
+{{- end -}}
+{{- if eq .Values.storage "pvc" }}
+{{- $_ := "file, http" | set .Values.conf.glance.glance_store "stores" -}}
+{{- end -}}
+{{ if or (eq .Values.storage "radosgw") (eq .Values.storage "swift") }}
+{{- $_ := "file, http, swift" | set .Values.conf.glance.glance_store "stores" -}}
+{{- end -}}
+{{- end -}}
+
+{{- if empty .Values.conf.glance.glance_store.default_store -}}
+{{- if eq .Values.storage "rbd" }}
+{{- $_ := "rbd" | set .Values.conf.glance.glance_store "default_store" -}}
+{{- end -}}
+{{- if eq .Values.storage "pvc" }}
+{{- $_ := "file" | set .Values.conf.glance.glance_store "default_store" -}}
+{{- end -}}
+{{ if or (eq .Values.storage "radosgw") (eq .Values.storage "swift") }}
+{{- $_ := "swift" | set .Values.conf.glance.glance_store "default_store" -}}
+{{- end -}}
+{{- end -}}
+
+{{- if empty .Values.conf.glance.DEFAULT.bind_port -}}
+{{- $_ := tuple "image" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" | set .Values.conf.glance.DEFAULT "bind_port" -}}
+{{- end -}}
+
+{{- if and (empty .Values.conf.logging.handler_fluent) (has "fluent" .Values.conf.logging.handlers.keys) -}}
+{{- $fluentd_host := tuple "fluentd" "internal" $envAll | include "helm-toolkit.endpoints.hostname_namespaced_endpoint_lookup" }}
+{{- $fluentd_port := tuple "fluentd" "internal" "service" $envAll | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+{{- $fluent_args := printf "('%s.%s', '%s', %s)" .Release.Namespace .deployment_name $fluentd_host $fluentd_port }}
+{{- $handler_fluent := dict "class" "fluent.handler.FluentHandler" "formatter" "fluent" "args" $fluent_args -}}
+{{- $_ := set .Values.conf.logging "handler_fluent" $handler_fluent -}}
+{{- end -}}
+
+{{- if and (empty .Values.conf.logging.formatter_fluent) (has "fluent" .Values.conf.logging.formatters.keys) -}}
+{{- $formatter_fluent := dict "class" "oslo_log.formatters.FluentFormatter" -}}
+{{- $_ := set .Values.conf.logging "formatter_fluent" $formatter_fluent -}}
+{{- end -}}
+
+{{- if empty .Values.conf.glance.cors.allowed_origin -}}
+{{- $endpointScheme := tuple "dashboard" "public" "web" . | include "helm-toolkit.endpoints.keystone_endpoint_scheme_lookup" }}
+{{- $endpointHost := tuple "dashboard" "public" . | include "helm-toolkit.endpoints.endpoint_host_lookup" }}
+{{- $endpointPort := tuple "dashboard" "public" "web" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+    {{- if eq $endpointPort "80" "443" -}}
+        {{/*
+          Common browsers don't add default ports like 80 and 443 to the headers
+          and URLs therefore CORS should allow to use URLs both with 80,443 and
+          without it in the URL.
+        */}}
+        {{- $_ := set $envAll.Values.conf.glance.cors "allowed_origin" ( list ) }}
+        {{- $__allowed_origin := append $envAll.Values.conf.glance.cors.allowed_origin (printf "%s://%s" $endpointScheme $endpointHost) }}
+        {{- $_ := set $envAll.Values.conf.glance.cors "allowed_origin" $__allowed_origin }}
+        {{- $__allowed_origin := append $envAll.Values.conf.glance.cors.allowed_origin (printf "%s://%s:%s" $endpointScheme $endpointHost $endpointPort) }}
+        {{- $_ := set $envAll.Values.conf.glance.cors "allowed_origin" $__allowed_origin }}
+    {{- else }}
+        {{- printf "%s://%s:%s" $endpointScheme $endpointHost $endpointPort | set .Values.conf.glance.cors "allowed_origin" }}
+    {{- end }}
+{{- end -}}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: glance-etc
+type: Opaque
+data:
+  rally_tests.yaml: {{ toYaml .Values.conf.rally_tests.tests | b64enc }}
+  glance-api.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.glance | b64enc }}
+  logging.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.logging | b64enc }}
+  glance-api-paste.ini: {{ include "helm-toolkit.utils.to_ini" .Values.conf.paste | b64enc }}
+  policy.yaml: {{ toYaml .Values.conf.policy | b64enc }}
+  api_audit_map.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.api_audit_map | b64enc }}
+  glance_sudoers: {{ $envAll.Values.conf.glance_sudoers | b64enc }}
+  rootwrap.conf: {{ $envAll.Values.conf.rootwrap | b64enc }}
+{{- range $key, $value := $envAll.Values.conf.rootwrap_filters }}
+{{- $filePrefix := replace "_" "-"  $key }}
+  {{ printf "%s.filters" $filePrefix }}: {{ $value.content | b64enc }}
+{{- end }}
+{{- include "helm-toolkit.snippets.values_template_renderer" ( dict "envAll" $envAll "template" .Values.conf.swift_store "key" "swift-store.conf" "format" "Secret" ) | indent 2 }}
+{{- include "helm-toolkit.snippets.values_template_renderer" ( dict "envAll" $envAll "template" .Values.conf.nginx "key" "nginx.conf" "format" "Secret" ) | indent 2 }}
+{{- end }}

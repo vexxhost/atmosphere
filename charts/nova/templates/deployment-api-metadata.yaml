@@ -1,0 +1,204 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- define "novaApiMetadataLivenessProbeTemplate" }}
+tcpSocket:
+  port: {{ .Values.network.metadata.port }}
+{{- end }}
+
+{{- define "novaApiMetadataReadinessProbeTemplate" }}
+tcpSocket:
+  port: {{ .Values.network.metadata.port }}
+{{- end }}
+
+{{- if .Values.manifests.deployment_api_metadata }}
+{{- $envAll := . }}
+
+{{- $mounts_nova_api_metadata := .Values.pod.mounts.nova_api_metadata.nova_api_metadata }}
+{{- $mounts_nova_api_metadata_init := .Values.pod.mounts.nova_api_metadata.init_container }}
+
+{{- $serviceAccountName := "nova-api-metadata" }}
+{{ tuple $envAll "api_metadata" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nova-api-metadata
+  annotations:
+    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
+  labels:
+{{ tuple $envAll "nova" "metadata" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+spec:
+  replicas: {{ .Values.pod.replicas.api_metadata }}
+  selector:
+    matchLabels:
+{{ tuple $envAll "nova" "metadata" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 6 }}
+{{ tuple $envAll | include "helm-toolkit.snippets.kubernetes_upgrades_deployment" | indent 2 }}
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll "nova" "metadata" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+      annotations:
+{{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
+        configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
+        configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
+{{ dict "envAll" $envAll "podName" "nova-api-metadata" "containerNames" (list "nova-api-metadata-init" "nova-api" "init") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+    spec:
+      serviceAccountName: {{ $serviceAccountName }}
+{{ dict "envAll" $envAll "application" "nova" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+      affinity:
+{{ tuple $envAll "nova" "metadata" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
+      nodeSelector:
+        {{ .Values.labels.api_metadata.node_selector_key }}: {{ .Values.labels.api_metadata.node_selector_value }}
+      terminationGracePeriodSeconds: {{ .Values.pod.lifecycle.termination_grace_period.metadata.timeout | default "30" }}
+      initContainers:
+{{ tuple $envAll "api_metadata" $mounts_nova_api_metadata_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+        - name: nova-api-metadata-init
+{{ tuple $envAll "nova_api" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.api_metadata | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "nova" "container" "nova_api_metadata_init" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - /tmp/nova-api-metadata-init.sh
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: nova-bin
+              mountPath: /tmp/nova-api-metadata-init.sh
+              subPath: nova-api-metadata-init.sh
+              readOnly: true
+            - name: nova-etc
+              mountPath: /etc/nova/nova.conf
+              subPath: nova.conf
+              readOnly: true
+            - name: pod-shared
+              mountPath: /tmp/pod-shared
+      containers:
+        - name: nova-api
+{{ tuple $envAll "nova_api" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.api_metadata | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "nova" "container" "nova_api" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - /tmp/nova-api-metadata.sh
+            - start
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - /tmp/nova-api-metadata.sh
+                  - stop
+          ports:
+            - containerPort: {{ .Values.network.metadata.port }}
+{{ dict "envAll" $envAll "component" "api-metadata" "container" "default" "type" "liveness" "probeTemplate" (include "novaApiMetadataLivenessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ dict "envAll" $envAll "component" "api-metadata" "container" "default" "type" "readiness" "probeTemplate" (include "novaApiMetadataReadinessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: nova-bin
+              mountPath: /tmp/nova-api-metadata.sh
+              subPath: nova-api-metadata.sh
+              readOnly: true
+            - name: nova-bin
+              mountPath: /sbin/iptables
+              subPath: fake-iptables.sh
+              readOnly: true
+            - name: nova-bin
+              mountPath: /sbin/iptables-restore
+              subPath: fake-iptables.sh
+              readOnly: true
+            - name: nova-bin
+              mountPath: /sbin/iptables-save
+              subPath: fake-iptables.sh
+              readOnly: true
+            - name: nova-etc
+              mountPath: /etc/nova/nova.conf
+              subPath: nova.conf
+              readOnly: true
+            {{- if .Values.conf.nova.DEFAULT.log_config_append }}
+            - name: nova-etc
+              mountPath: {{ .Values.conf.nova.DEFAULT.log_config_append }}
+              subPath: {{ base .Values.conf.nova.DEFAULT.log_config_append }}
+              readOnly: true
+            {{- end }}
+            - name: nova-etc
+              mountPath: /etc/nova/api-paste.ini
+              subPath: api-paste.ini
+              readOnly: true
+            - name: nova-etc
+              mountPath: /etc/nova/policy.yaml
+              subPath: policy.yaml
+              readOnly: true
+            - name: nova-etc
+              mountPath: /etc/nova/api_audit_map.conf
+              subPath: api_audit_map.conf
+              readOnly: true
+            - name: nova-etc
+              # NOTE (Portdirect): We mount here to override Kollas
+              # custom sudoers file when using Kolla images, this
+              # location will also work fine for other images.
+              mountPath: /etc/sudoers.d/kolla_nova_sudoers
+              subPath: nova_sudoers
+              readOnly: true
+            - name: nova-etc
+              mountPath: /etc/nova/rootwrap.conf
+              subPath: rootwrap.conf
+              readOnly: true
+            {{- range $key, $value := $envAll.Values.conf.rootwrap_filters }}
+            {{- if ( has "metadata" $value.pods ) }}
+            {{- $filePrefix := replace "_" "-"  $key }}
+            {{- $rootwrapFile := printf "/etc/nova/rootwrap.d/%s.filters" $filePrefix }}
+            - name: nova-etc
+              mountPath: {{ $rootwrapFile }}
+              subPath: {{ base $rootwrapFile }}
+              readOnly: true
+            {{- end }}
+            {{- end }}
+            - name: pod-shared
+              mountPath: /tmp/pod-shared
+              readOnly: true
+            {{- if .Values.manifests.certificates }}
+            - name: wsgi-nova
+              mountPath: /var/www/cgi-bin/nova
+            - name: nova-etc
+              mountPath: {{ .Values.conf.software.apache2.conf_dir }}/wsgi-metadata.conf
+              subPath: wsgi-metadata.conf
+              readOnly: true
+            - name: nova-etc
+              mountPath: {{ .Values.conf.software.apache2.mods_dir }}/mpm_event.conf
+              subPath: mpm_event.conf
+              readOnly: true
+            {{- end }}
+{{- dict "enabled" .Values.manifests.certificates "name" .Values.endpoints.oslo_db.auth.admin.secret.tls.internal "path" "/etc/mysql/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
+{{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.compute_metadata.metadata.internal "path" "/etc/nova/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
+{{ if $mounts_nova_api_metadata.volumeMounts }}{{ toYaml $mounts_nova_api_metadata.volumeMounts | indent 12 }}{{ end }}
+      volumes:
+        - name: pod-tmp
+          emptyDir: {}
+        {{- if .Values.manifests.certificates }}
+        - name: wsgi-nova
+          emptyDir: {}
+        {{- end }}
+        - name: nova-bin
+          configMap:
+            name: nova-bin
+            defaultMode: 0555
+        - name: nova-etc
+          secret:
+            secretName: nova-etc
+            defaultMode: 0444
+        - name: pod-shared
+          emptyDir: {}
+{{- dict "enabled" .Values.manifests.certificates "name" .Values.endpoints.oslo_db.auth.admin.secret.tls.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
+{{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.compute_metadata.metadata.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
+{{ if $mounts_nova_api_metadata.volumes }}{{ toYaml $mounts_nova_api_metadata.volumes | indent 8 }}{{ end }}
+{{- end }}

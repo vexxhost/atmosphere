@@ -82,14 +82,14 @@ IMAGE_LIST = {
     "kube_apiserver": "k8s.gcr.io/kube-apiserver:v1.22.17",
     "kube_controller_manager": "k8s.gcr.io/kube-controller-manager:v1.22.17",
     "kube_coredns": "k8s.gcr.io/coredns/coredns:v1.8.4",
-    "kube_etcd": "k8s.gcr.io/etcd:3.5.0-0",
+    "kube_etcd": "k8s.gcr.io/etcd:3.5.6-0",
     "kube_proxy": "k8s.gcr.io/kube-proxy:v1.22.17",
     "kube_scheduler": "k8s.gcr.io/kube-scheduler:v1.22.17",
     "kube_state_metrics": "registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.6.0",
     "libvirt": "quay.io/vexxhost/libvirtd:yoga-focal",
-    "magnum_api": "quay.io/vexxhost/magnum@sha256:46e7c910780864f4532ecc85574f159a36794f37aac6be65e4b48c46040ced17",  # noqa
-    "magnum_conductor": "quay.io/vexxhost/magnum@sha256:46e7c910780864f4532ecc85574f159a36794f37aac6be65e4b48c46040ced17",  # noqa
-    "magnum_db_sync": "quay.io/vexxhost/magnum@sha256:46e7c910780864f4532ecc85574f159a36794f37aac6be65e4b48c46040ced17",  # noqa
+    "magnum_api": "quay.io/vexxhost/magnum:zed",
+    "magnum_conductor": "quay.io/vexxhost/magnum:zed",
+    "magnum_db_sync": "quay.io/vexxhost/magnum:zed",
     "magnum_registry": "docker.io/library/registry:2.7.1",
     "memcached": "docker.io/library/memcached:1.6.17",
     "neutron_bagpipe_bgp": "us-docker.pkg.dev/vexxhost-infra/openstack/neutron:wallaby",
@@ -132,6 +132,7 @@ IMAGE_LIST = {
     "octavia_worker": "quay.io/vexxhost/octavia:zed",
     "openvswitch_db_server": "quay.io/vexxhost/openvswitch:2.17.3",
     "openvswitch_vswitchd": "quay.io/vexxhost/openvswitch:2.17.3",
+    "pause": "k8s.gcr.io/pause:3.5",
     "percona_xtradb_cluster_haproxy": "docker.io/percona/percona-xtradb-cluster-operator:1.10.0-haproxy",
     "percona_xtradb_cluster_operator": "docker.io/percona/percona-xtradb-cluster-operator:1.10.0",
     "percona_xtradb_cluster": "docker.io/percona/percona-xtradb-cluster:5.7.39-31.61",

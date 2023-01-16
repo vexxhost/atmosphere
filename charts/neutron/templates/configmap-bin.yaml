@@ -1,0 +1,102 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- if .Values.manifests.configmap_bin }}
+{{- $envAll := . }}
+{{- $rallyTests := .Values.conf.rally_tests }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: neutron-bin
+data:
+{{- if .Values.images.local_registry.active }}
+  image-repo-sync.sh: |
+{{- include "helm-toolkit.scripts.image_repo_sync" . | indent 4 }}
+{{- end }}
+{{- if .Values.bootstrap.enabled }}
+  bootstrap.sh: |
+{{ tuple "bin/_bootstrap.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+{{- end }}
+  rally-test.sh: |
+{{ tuple $rallyTests | include "helm-toolkit.scripts.rally_test" | indent 4 }}
+  db-init.py: |
+{{- include "helm-toolkit.scripts.db_init" . | indent 4 }}
+  db-sync.sh: |
+{{ tuple "bin/_db-sync.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  db-drop.py: |
+{{- include "helm-toolkit.scripts.db_drop" . | indent 4 }}
+  ks-service.sh: |
+{{- include "helm-toolkit.scripts.keystone_service" . | indent 4 }}
+  ks-endpoints.sh: |
+{{- include "helm-toolkit.scripts.keystone_endpoints" . | indent 4 }}
+  ks-user.sh: |
+{{- include "helm-toolkit.scripts.keystone_user" . | indent 4 }}
+  health-probe.py: |
+{{ tuple "bin/_health-probe.py.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  neutron-dhcp-agent.sh: |
+{{ tuple "bin/_neutron-dhcp-agent.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  neutron-dhcp-agent-init.sh: |
+{{ tuple "bin/_neutron-dhcp-agent-init.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  neutron-l3-agent.sh: |
+{{ tuple "bin/_neutron-l3-agent.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  neutron-l3-agent-init.sh: |
+{{ tuple "bin/_neutron-l3-agent-init.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  neutron-linuxbridge-agent.sh: |
+{{ tuple "bin/_neutron-linuxbridge-agent.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  neutron-linuxbridge-agent-init.sh: |
+{{ tuple "bin/_neutron-linuxbridge-agent-init.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  neutron-linuxbridge-agent-init-modules.sh: |
+{{ tuple "bin/_neutron-linuxbridge-agent-init-modules.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  neutron-metadata-agent.sh: |
+{{ tuple "bin/_neutron-metadata-agent.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  neutron-metadata-agent-init.sh: |
+{{ tuple "bin/_neutron-metadata-agent-init.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  neutron-openvswitch-agent.sh: |
+{{ tuple "bin/_neutron-openvswitch-agent.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  neutron-openvswitch-agent-init.sh: |
+{{ tuple "bin/_neutron-openvswitch-agent-init.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  neutron-openvswitch-agent-init-modules.sh: |
+{{ tuple "bin/_neutron-openvswitch-agent-init-modules.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  neutron-openvswitch-agent-readiness.sh: |
+{{ tuple "bin/_neutron-openvswitch-agent-readiness.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  neutron-sriov-agent.sh: |
+{{ tuple "bin/_neutron-sriov-agent.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  neutron-sriov-agent-init.sh: |
+{{ tuple "bin/_neutron-sriov-agent-init.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  neutron-l2gw-agent.sh: |
+{{ tuple "bin/_neutron-l2gw-agent.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  neutron-bagpipe-bgp.sh: |
+{{ tuple "bin/_neutron-bagpipe-bgp.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  neutron-bagpipe-bgp-init.sh: |
+{{ tuple "bin/_neutron-bagpipe-bgp-init.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+{{- if .Values.manifests.certificates }}
+  nginx.sh: |
+{{ tuple "bin/_nginx.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+{{- end }}
+  neutron-server.sh: |
+{{ tuple "bin/_neutron-server.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  neutron-ironic-agent.sh: |
+{{ tuple "bin/_neutron-ironic-agent.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  neutron-netns-cleanup-cron.py: |
+{{ tuple "bin/_neutron-netns-cleanup-cron.py.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  rabbit-init.sh: |
+{{- include "helm-toolkit.scripts.rabbit_init" . | indent 4 }}
+  neutron-test-force-cleanup.sh: |
+{{ tuple "bin/_neutron-test-force-cleanup.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+{{- if ( has "tungstenfabric" .Values.network.backend ) }}
+  tf-plugin.pth: |
+    /opt/plugin/site-packages
+{{- end }}
+{{- end }}

@@ -1,0 +1,35 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- define "metadata.annotations.job.db_sync" }}
+{{- if .Values.helm3_hook }}
+helm.sh/hook: post-install,post-upgrade
+helm.sh/hook-weight: "-4"
+{{- end }}
+{{- end }}
+
+{{- $podVolMounts := .Values.pod.mounts.barbican_db_sync.barbican_db_sync.volumeMounts | default list }}
+{{- $podVolMounts = append $podVolMounts (dict "name" "db-sync-sh" "mountPath" "/tmp/simple_crypto_kek_rewrap.py" "subPath" "simple_crypto_kek_rewrap.py" "readOnly" true) }}
+{{- $podVolMounts = append $podVolMounts (dict "name" "db-sync-conf" "mountPath" "/tmp/old_kek" "subPath" "old_kek" "readOnly" true) }}
+
+{{- if .Values.manifests.job_db_sync }}
+{{- $dbSyncJob := dict "envAll" . "serviceName" "barbican" "podVolMounts" $podVolMounts "podVols" .Values.pod.mounts.barbican_db_sync.barbican_db_sync.volumes "jobAnnotations" (include "metadata.annotations.job.db_sync" . | fromYaml) -}}
+{{- if .Values.manifests.certificates -}}
+{{- $_ := set $dbSyncJob "dbAdminTlsSecret" .Values.endpoints.oslo_db.auth.admin.secret.tls.internal -}}
+{{- end -}}
+{{- if .Values.pod.tolerations.barbican.enabled -}}
+{{- $_ := set $dbSyncJob "tolerationsEnabled" true -}}
+{{- end -}}
+{{ $dbSyncJob | include "helm-toolkit.manifests.job_db_sync" }}
+{{- end }}
