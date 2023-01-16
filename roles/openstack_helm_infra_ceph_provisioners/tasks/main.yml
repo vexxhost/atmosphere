@@ -13,12 +13,10 @@
 # under the License.
 
 - name: Retrieve Helm values for "ceph-csi-rbd"
-  kubernetes.core.k8s_info:
-    api_version: helm.toolkit.fluxcd.io/v2beta1
-    kind: HelmRelease
+  kubernetes.core.helm_info:
     name: ceph-csi-rbd
-    namespace: kube-system
-  register: _ceph_csi_rbd_k8s_info
+    release_namespace: kube-system
+  register: _ceph_csi_rbd_helm_info
 
 - name: Create Ceph service
   kubernetes.core.k8s:
