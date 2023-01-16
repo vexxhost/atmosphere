@@ -1,0 +1,202 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- define "apiProbeTemplate" }}
+httpGet:
+  scheme: {{ tuple "identity" "internal" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_scheme_lookup" | upper }}
+  path: /v3/
+  port: {{ tuple "identity" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+{{- end }}
+
+{{- if .Values.manifests.deployment_api }}
+{{- $envAll := . }}
+
+{{- $mounts_keystone_api := .Values.pod.mounts.keystone_api.keystone_api }}
+{{- $mounts_keystone_api_init := .Values.pod.mounts.keystone_api.init_container }}
+
+{{- $serviceAccountName := "keystone-api" }}
+{{ tuple $envAll "api" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keystone-api
+  annotations:
+    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
+  labels:
+{{ tuple $envAll "keystone" "api" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+spec:
+  replicas: {{ .Values.pod.replicas.api }}
+  selector:
+    matchLabels:
+{{ tuple $envAll "keystone" "api" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 6 }}
+{{ tuple $envAll | include "helm-toolkit.snippets.kubernetes_upgrades_deployment" | indent 2 }}
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll "keystone" "api" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+      annotations:
+{{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
+        configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
+        configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
+{{ dict "envAll" $envAll "podName" "keystone-api" "containerNames" (list "keystone-api") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+    spec:
+{{ dict "envAll" $envAll "application" "keystone" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+      serviceAccountName: {{ $serviceAccountName }}
+      affinity:
+{{ tuple $envAll "keystone" "api" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
+      nodeSelector:
+        {{ .Values.labels.api.node_selector_key }}: {{ .Values.labels.api.node_selector_value }}
+      terminationGracePeriodSeconds: {{ .Values.pod.lifecycle.termination_grace_period.api.timeout | default "30" }}
+      initContainers:
+{{ tuple $envAll "api" $mounts_keystone_api_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+      containers:
+        - name: keystone-api
+{{ tuple $envAll "keystone_api" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.api | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "keystone" "container" "keystone_api" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - /tmp/keystone-api.sh
+            - start
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - /tmp/keystone-api.sh
+                  - stop
+          ports:
+            - name: ks-pub
+              containerPort: {{ tuple "identity" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+{{ dict "envAll" $envAll "component" "api" "container" "api" "type" "readiness" "probeTemplate" (include "apiProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | trim | indent 10 }}
+{{ dict "envAll" $envAll "component" "api" "container" "api" "type" "liveness" "probeTemplate" (include "apiProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | trim | indent 10 }}
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: etckeystone
+              mountPath: /etc/keystone
+            - name: logs-apache
+              mountPath: /var/log/apache2
+            - name: run-apache
+              mountPath: /var/run/apache2
+            - name: wsgi-keystone
+              mountPath: /var/www/cgi-bin/keystone
+            - name: keystone-etc
+              mountPath: /etc/keystone/keystone.conf
+              subPath: keystone.conf
+              readOnly: true
+            - name: keystone-etc
+              mountPath: /etc/apache2/ports.conf
+              subPath: ports.conf
+              readOnly: true
+            {{- if .Values.conf.keystone.DEFAULT.log_config_append }}
+            - name: keystone-etc
+              mountPath: {{ .Values.conf.keystone.DEFAULT.log_config_append }}
+              subPath: {{ base .Values.conf.keystone.DEFAULT.log_config_append }}
+              readOnly: true
+            {{- end }}
+            - name: keystone-etc
+              mountPath: /etc/keystone/policy.yaml
+              subPath: policy.yaml
+              readOnly: true
+            - name: keystone-etc
+              mountPath: /etc/keystone/access_rules.json
+              subPath: access_rules.json
+              readOnly: true
+            - name: keystone-etc
+              mountPath: /etc/keystone/sso_callback_template.html
+              subPath: sso_callback_template.html
+              readOnly: true
+            - name: keystone-etc
+              mountPath: {{ .Values.conf.software.apache2.conf_dir }}/wsgi-keystone.conf
+              subPath: wsgi-keystone.conf
+              readOnly: true
+            - name: keystone-etc
+              mountPath: {{ .Values.conf.software.apache2.mods_dir }}/mpm_event.conf
+              subPath: mpm_event.conf
+              readOnly: true
+{{- if .Values.conf.security }}
+            - name: keystone-etc
+              mountPath: {{ .Values.conf.software.apache2.conf_dir }}/security.conf
+              subPath: security.conf
+              readOnly: true
+{{- end }}
+            - name: keystone-bin
+              mountPath: /tmp/keystone-api.sh
+              subPath: keystone-api.sh
+              readOnly: true
+{{- if .Values.endpoints.ldap.auth.client.tls.ca }}
+            - name: keystone-ldap-tls
+              mountPath: /etc/keystone/ldap/tls.ca
+              subPath: tls.ca
+              readOnly: true
+{{- end }}
+{{- if eq .Values.conf.keystone.token.provider "fernet" }}
+            - name: keystone-fernet-keys
+              mountPath: {{ .Values.conf.keystone.fernet_tokens.key_repository }}
+{{- end }}
+            - name: keystone-credential-keys
+              mountPath: {{ .Values.conf.keystone.credential.key_repository }}
+{{- if and $envAll.Values.manifests.certificates $envAll.Values.endpoints.oslo_db.auth.admin.secret.tls.internal }}
+{{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_db.auth.admin.secret.tls.internal "path" "/etc/mysql/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
+{{- end }}
+{{- if and $envAll.Values.manifests.certificates .Values.secrets.tls.identity.api.internal }}
+{{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.identity.api.internal "path" "/etc/keystone/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
+{{- end  }}
+{{- if and $envAll.Values.manifests.certificates  $envAll.Values.endpoints.oslo_messaging.auth.admin.secret.tls.internal }}
+{{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_messaging.auth.admin.secret.tls.internal "path" "/etc/rabbitmq/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
+{{- end }}
+{{ if $mounts_keystone_api.volumeMounts }}{{ toYaml $mounts_keystone_api.volumeMounts | indent 12 }}{{ end }}
+      volumes:
+        - name: pod-tmp
+          emptyDir: {}
+        - name: etckeystone
+          emptyDir: {}
+        - name: wsgi-keystone
+          emptyDir: {}
+        - name: logs-apache
+          emptyDir: {}
+        - name: run-apache
+          emptyDir: {}
+        - name: keystone-etc
+          secret:
+            secretName: keystone-etc
+            defaultMode: 0444
+        - name: keystone-bin
+          configMap:
+            name: keystone-bin
+            defaultMode: 0555
+{{- if .Values.endpoints.ldap.auth.client.tls.ca }}
+        - name: keystone-ldap-tls
+          secret:
+            secretName: keystone-ldap-tls
+{{- end }}
+{{- if eq .Values.conf.keystone.token.provider "fernet" }}
+        - name: keystone-fernet-keys
+          secret:
+            secretName: keystone-fernet-keys
+{{- end }}
+        - name: keystone-credential-keys
+          secret:
+            secretName: keystone-credential-keys
+{{- if and $envAll.Values.manifests.certificates $envAll.Values.endpoints.oslo_db.auth.admin.secret.tls.internal }}
+{{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_db.auth.admin.secret.tls.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
+{{- end }}
+{{- if and $envAll.Values.manifests.certificates .Values.secrets.tls.identity.api.internal }}
+{{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.identity.api.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
+{{- end }}
+{{- if and $envAll.Values.manifests.certificates  $envAll.Values.endpoints.oslo_messaging.auth.admin.secret.tls.internal }}
+{{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_messaging.auth.admin.secret.tls.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
+{{- end }}
+{{ if $mounts_keystone_api.volumes }}{{ toYaml $mounts_keystone_api.volumes | indent 8 }}{{ end }}
+{{- end }}

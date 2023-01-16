@@ -1,0 +1,154 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- if (.Values.global).subchart_release_name }}
+{{- $_ := set . "deployment_name" .Chart.Name }}
+{{- else }}
+{{- $_ := set . "deployment_name" .Release.Name }}
+{{- end }}
+
+{{- if .Values.manifests.pod_rally_test }}
+{{- $envAll := . }}
+
+{{- $mounts_tests := .Values.pod.mounts.neutron_tests.neutron_tests }}
+{{- $mounts_tests_init := .Values.pod.mounts.neutron_tests.init_container }}
+
+{{- $serviceAccountName := print .deployment_name "-test" }}
+{{ tuple $envAll "tests" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ print .deployment_name "-test" }}
+  annotations:
+    "helm.sh/hook": test-success
+    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
+  labels:
+{{ tuple $envAll "neutron" "test" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+{{ dict "envAll" $envAll "podName" "neutron-test" "containerNames" (list "init" "neutron-test" "neutron-test-ks-user") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 4 }}
+spec:
+  nodeSelector:
+    {{ .Values.labels.test.node_selector_key }}: {{ .Values.labels.test.node_selector_value }}
+{{ if $envAll.Values.pod.tolerations.neutron.enabled }}
+{{ tuple $envAll "neutron" | include "helm-toolkit.snippets.kubernetes_tolerations" | indent 2 }}
+{{ end }}
+  restartPolicy: Never
+  serviceAccountName: {{ $serviceAccountName }}
+  initContainers:
+{{ tuple $envAll "tests" $mounts_tests_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 4 }}
+    - name: neutron-test-ks-user
+{{ tuple $envAll "ks_user" | include "helm-toolkit.snippets.image" | indent 6 }}
+{{ tuple $envAll $envAll.Values.pod.resources.jobs.ks_user | include "helm-toolkit.snippets.kubernetes_resources" | indent 6 }}
+      command:
+        - /tmp/ks-user.sh
+      volumeMounts:
+        - name: pod-tmp
+          mountPath: /tmp
+        - name: neutron-bin
+          mountPath: /tmp/ks-user.sh
+          subPath: ks-user.sh
+          readOnly: true
+{{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.network.server.internal | include "helm-toolkit.snippets.tls_volume_mount" | indent 8 }}
+      env:
+{{- with $env := dict "ksUserSecret" .Values.secrets.identity.admin "useCA" .Values.manifests.certificates }}
+{{- include "helm-toolkit.snippets.keystone_openrc_env_vars" $env | indent 8 }}
+{{- end }}
+        - name: SERVICE_OS_SERVICE_NAME
+          value: "test"
+{{- with $env := dict "ksUserSecret" .Values.secrets.identity.test }}
+{{- include "helm-toolkit.snippets.keystone_user_create_env_vars" $env | indent 8 }}
+{{- end }}
+        - name: SERVICE_OS_ROLE
+          value: {{ .Values.endpoints.identity.auth.test.role | quote }}
+{{ if $envAll.Values.conf.rally_tests.force_project_purge }}
+    - name: {{ .deployment_name }}-reset
+{{ tuple $envAll "purge_test" | include "helm-toolkit.snippets.image" | indent 6 }}
+      env:
+{{- with $env := dict "ksUserSecret" .Values.secrets.identity.admin "useCA" .Values.manifests.certificates }}
+{{- include "helm-toolkit.snippets.keystone_openrc_env_vars" $env | indent 8 }}
+{{- end }}
+{{- with $env := dict "ksUserSecret" .Values.secrets.identity.test }}
+{{- include "helm-toolkit.snippets.keystone_user_create_env_vars" $env | indent 8 }}
+{{- end }}
+        - name: OS_TEST_PROJECT_NAME
+          value: {{ .Values.endpoints.identity.auth.test.project_name }}
+        - name: OS_TEST_PROJECT_DOMAIN_NAME
+          value: {{ .Values.endpoints.identity.auth.test.domain_name }}
+        - name: NETWORK_QUOTA
+          value: {{ (first (index .Values.conf.rally_tests.tests "NeutronNetworks.create_and_delete_networks")).context.quotas.neutron.network | quote }}
+        - name: PORT_QUOTA
+          value: {{ (first (index .Values.conf.rally_tests.tests "NeutronNetworks.create_and_delete_ports")).context.quotas.neutron.port | quote }}
+        - name: ROUTER_QUOTA
+          value: {{ (first (index .Values.conf.rally_tests.tests "NeutronNetworks.create_and_delete_routers")).context.quotas.neutron.router | quote }}
+        - name: SUBNET_QUOTA
+          value: {{ (first (index .Values.conf.rally_tests.tests "NeutronNetworks.create_and_delete_subnets")).context.quotas.neutron.subnet | quote }}
+        - name: SEC_GROUP_QUOTA
+          value: {{ (first (index .Values.conf.rally_tests.tests "NeutronSecurityGroup.create_and_list_security_groups")).context.quotas.neutron.security_group | quote }}
+      command:
+        - /tmp/neutron-test-force-cleanup.sh
+      volumeMounts:
+        - name: neutron-bin
+          mountPath: /tmp/neutron-test-force-cleanup.sh
+          subPath: neutron-test-force-cleanup.sh
+          readOnly: true
+        - name: pod-tmp
+          mountPath: /tmp/pod-tmp
+{{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.network.server.internal | include "helm-toolkit.snippets.tls_volume_mount" | indent 8 }}
+{{ end }}
+  containers:
+    - name: neutron-test
+{{ tuple $envAll "test" | include "helm-toolkit.snippets.image" | indent 6 }}
+{{ tuple $envAll $envAll.Values.pod.resources.jobs.tests | include "helm-toolkit.snippets.kubernetes_resources" | indent 6 }}
+      env:
+{{- with $env := dict "ksUserSecret" .Values.secrets.identity.admin "useCA" .Values.manifests.certificates }}
+{{- include "helm-toolkit.snippets.keystone_openrc_env_vars" $env | indent 8 }}
+{{- end }}
+{{- with $env := dict "ksUserSecret" .Values.secrets.identity.test }}
+{{- include "helm-toolkit.snippets.keystone_user_create_env_vars" $env | indent 8 }}
+{{- end }}
+        - name: RALLY_ENV_NAME
+          value: {{.Release.Name}}
+      command:
+        - /tmp/rally-test.sh
+      volumeMounts:
+        - name: pod-tmp
+          mountPath: /tmp
+        - name: neutron-etc
+          mountPath: /etc/rally/rally_tests.yaml
+          subPath: rally_tests.yaml
+          readOnly: true
+        - name: neutron-bin
+          mountPath: /tmp/rally-test.sh
+          subPath: rally-test.sh
+          readOnly: true
+        - name: rally-db
+          mountPath: /var/lib/rally
+{{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.network.server.internal | include "helm-toolkit.snippets.tls_volume_mount" | indent 8 }}
+{{ if $mounts_tests.volumeMounts }}{{ toYaml $mounts_tests.volumeMounts | indent 8 }}{{ end }}
+  volumes:
+    - name: pod-tmp
+      emptyDir: {}
+    - name: neutron-etc
+      secret:
+        secretName: neutron-etc
+        defaultMode: 0444
+    - name: neutron-bin
+      configMap:
+        name: neutron-bin
+        defaultMode: 0555
+    - name: rally-db
+      emptyDir: {}
+{{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.network.server.internal | include "helm-toolkit.snippets.tls_volume"  | indent 4 }}
+{{ if $mounts_tests.volumes }}{{ toYaml $mounts_tests.volumes | indent 4 }}{{ end }}
+{{- end }}

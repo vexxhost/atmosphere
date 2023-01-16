@@ -1,0 +1,150 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- if .Values.manifests.job_domain_manage }}
+{{- $envAll := . }}
+
+{{- $mounts_keystone_domain_manage := .Values.pod.mounts.keystone_domain_manage.keystone_domain_manage }}
+{{- $mounts_keystone_domain_manage_init := .Values.pod.mounts.keystone_domain_manage.init_container }}
+
+{{- $serviceAccountName := "keystone-domain-manage" }}
+{{ tuple $envAll "domain_manage" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: keystone-domain-manage
+  labels:
+{{ tuple $envAll "keystone" "domain-manage" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll "keystone" "domain-manage" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+      annotations:
+{{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
+        configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
+        configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
+{{ dict "envAll" $envAll "podName" "keystone-domain-manage" "containerNames" (list "keystone-domain-manage" "keystone-domain-manage-init") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+    spec:
+      serviceAccountName: {{ $serviceAccountName }}
+{{ dict "envAll" $envAll "application" "domain_manage" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+      restartPolicy: OnFailure
+      nodeSelector:
+        {{ .Values.labels.job.node_selector_key }}: {{ .Values.labels.job.node_selector_value }}
+      initContainers:
+{{ tuple $envAll "domain_manage" $mounts_keystone_domain_manage_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container"  | indent 8 }}
+        - name: keystone-domain-manage-init
+{{ tuple $envAll "bootstrap" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.jobs.domain_manage | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "domain_manage" "container" "keystone_domain_manage_init" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          env:
+{{- with $env := dict "ksUserSecret" .Values.secrets.identity.admin "useCA" (and .Values.manifests.certificates .Values.secrets.tls.identity.api.internal) }}
+{{- include "helm-toolkit.snippets.keystone_openrc_env_vars" $env | indent 12 }}
+{{- end }}
+          command:
+            - /tmp/domain-manage-init.sh
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: keystone-bin
+              mountPath: /tmp/domain-manage-init.sh
+              subPath: domain-manage-init.sh
+              readOnly: true
+{{- if and .Values.manifests.certificates .Values.secrets.tls.identity.api.internal }}
+{{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.identity.api.internal | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
+{{- end }}
+      containers:
+        - name: keystone-domain-manage
+{{ tuple $envAll "keystone_domain_manage" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.jobs.domain_manage | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "domain_manage" "container" "keystone_domain_manage" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          env:
+{{- with $env := dict "ksUserSecret" .Values.secrets.identity.admin "useCA" (and .Values.manifests.certificates .Values.secrets.tls.identity.api.internal) }}
+{{- include "helm-toolkit.snippets.keystone_openrc_env_vars" $env | indent 12 }}
+{{- end }}
+          command:
+            - /tmp/domain-manage.sh
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: etckeystonedomains
+              mountPath: {{ .Values.conf.keystone.identity.domain_config_dir | default "/etc/keystone/domains" }}
+            - name: etckeystone
+              mountPath: /etc/keystone
+            - name: keystone-bin
+              mountPath: /tmp/domain-manage.sh
+              subPath: domain-manage.sh
+              readOnly: true
+            - name: keystone-bin
+              mountPath: /tmp/domain-manage.py
+              subPath: domain-manage.py
+              readOnly: true
+            - name: keystone-etc
+              mountPath: /etc/keystone/keystone.conf
+              subPath: keystone.conf
+              readOnly: true
+            {{- if .Values.conf.keystone.DEFAULT.log_config_append }}
+            - name: keystone-etc
+              mountPath: {{ .Values.conf.keystone.DEFAULT.log_config_append }}
+              subPath: {{ base .Values.conf.keystone.DEFAULT.log_config_append }}
+              readOnly: true
+            {{- end }}
+{{- range $k, $v := .Values.conf.ks_domains }}
+            - name: keystone-etc
+              mountPath: {{ $envAll.Values.conf.keystone.identity.domain_config_dir | default "/etc/keystone/domains" }}/keystone.{{ $k }}.json
+              subPath: keystone.{{ $k }}.json
+              readOnly: true
+{{- end }}
+{{- if eq .Values.conf.keystone.token.provider "fernet" }}
+            - name: keystone-fernet-keys
+              mountPath: {{ .Values.conf.keystone.fernet_tokens.key_repository }}
+{{- end }}
+            - name: keystone-credential-keys
+              mountPath: {{ .Values.conf.keystone.credential.key_repository }}
+{{- if and .Values.manifests.certificates .Values.secrets.tls.identity.api.internal }}
+{{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.identity.api.internal | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
+{{- end }}
+{{ if $mounts_keystone_domain_manage.volumeMounts }}{{ toYaml $mounts_keystone_domain_manage.volumeMounts | indent 12 }}{{ end }}
+      volumes:
+        - name: pod-tmp
+          emptyDir: {}
+        - name: etckeystone
+          emptyDir: {}
+        - name: etckeystonedomains
+          emptyDir: {}
+        - name: keystone-etc
+          secret:
+            secretName: keystone-etc
+            defaultMode: 0444
+        - name: keystone-bin
+          configMap:
+            name: keystone-bin
+            defaultMode: 0555
+{{- if eq .Values.conf.keystone.token.provider "fernet" }}
+        - name: keystone-fernet-keys
+          secret:
+            secretName: keystone-fernet-keys
+{{- end }}
+        - name: keystone-credential-keys
+          secret:
+            secretName: keystone-credential-keys
+{{- if and .Values.manifests.certificates .Values.secrets.tls.identity.api.internal }}
+{{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.identity.api.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
+{{- end }}
+{{ if $mounts_keystone_domain_manage.volumes }}{{ toYaml $mounts_keystone_domain_manage.volumes | indent 9 }}{{ end }}
+{{- end }}

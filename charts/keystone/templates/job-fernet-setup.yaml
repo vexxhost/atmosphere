@@ -1,0 +1,140 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- if .Values.manifests.job_fernet_setup }}
+{{- if eq .Values.conf.keystone.token.provider "fernet" }}
+{{- $envAll := . }}
+
+{{- $mounts_keystone_fernet_setup := .Values.pod.mounts.keystone_fernet_setup.keystone_fernet_setup }}
+{{- $mounts_keystone_fernet_setup_init := .Values.pod.mounts.keystone_fernet_setup.init_container }}
+
+{{- $serviceAccountName := "keystone-fernet-setup" }}
+{{ tuple $envAll "fernet_setup" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ $serviceAccountName }}
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - get
+      - list
+      - create
+      - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $serviceAccountName }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ $serviceAccountName }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ $serviceAccountName }}
+    namespace: {{ $envAll.Release.Namespace }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: keystone-fernet-setup
+  labels:
+{{ tuple $envAll "keystone" "fernet-setup" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+{{- if .Values.helm3_hook }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": before-hook-creation
+{{- end }}
+spec:
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll "keystone" "fernet-setup" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+      annotations:
+{{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
+        configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
+        configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
+{{ dict "envAll" $envAll "podName" "keystone-fernet-setup" "containerNames" (list "keystone-fernet-setup") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+    spec:
+      serviceAccountName: {{ $serviceAccountName }}
+{{ dict "envAll" $envAll "application" "fernet_setup" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+      initContainers:
+{{ tuple $envAll "fernet_setup" $mounts_keystone_fernet_setup_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+      restartPolicy: OnFailure
+      nodeSelector:
+        {{ .Values.labels.job.node_selector_key }}: {{ .Values.labels.job.node_selector_value }}
+      containers:
+        - name: keystone-fernet-setup
+{{ tuple $envAll "keystone_fernet_setup" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.jobs.fernet_setup | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "fernet_setup" "container" "keystone_fernet_setup" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          env:
+            - name: KEYSTONE_USER
+              value: {{ .Values.jobs.fernet_setup.user | quote }}
+            - name: KEYSTONE_GROUP
+              value: {{ .Values.jobs.fernet_setup.group | quote }}
+            - name: KUBERNETES_NAMESPACE
+              value: {{ .Release.Namespace | quote }}
+            - name: KEYSTONE_KEYS_REPOSITORY
+              value: {{ .Values.conf.keystone.fernet_tokens.key_repository | quote }}
+          command:
+            - python
+            - /tmp/fernet-manage.py
+            - fernet_setup
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: etckeystone
+              mountPath: /etc/keystone
+            - name: fernet-keys
+              mountPath: {{ .Values.conf.keystone.fernet_tokens.key_repository | quote }}
+            - name: keystone-etc
+              mountPath: /etc/keystone/keystone.conf
+              subPath: keystone.conf
+              readOnly: true
+            {{- if .Values.conf.keystone.DEFAULT.log_config_append }}
+            - name: keystone-etc
+              mountPath: {{ .Values.conf.keystone.DEFAULT.log_config_append }}
+              subPath: {{ base .Values.conf.keystone.DEFAULT.log_config_append }}
+              readOnly: true
+            {{- end }}
+            - name: keystone-bin
+              mountPath: /tmp/fernet-manage.py
+              subPath: fernet-manage.py
+              readOnly: true
+{{ if $mounts_keystone_fernet_setup.volumeMounts }}{{ toYaml $mounts_keystone_fernet_setup.volumeMounts | indent 12 }}{{ end }}
+      volumes:
+        - name: pod-tmp
+          emptyDir: {}
+        - name: etckeystone
+          emptyDir: {}
+        - name: fernet-keys
+          emptyDir: {}
+        - name: keystone-etc
+          secret:
+            secretName: keystone-etc
+            defaultMode: 0444
+        - name: keystone-bin
+          configMap:
+            name: keystone-bin
+            defaultMode: 0555
+{{ if $mounts_keystone_fernet_setup.volumes }}{{ toYaml $mounts_keystone_fernet_setup.volumes | indent 8 }}{{ end }}
+{{- end }}
+{{- end }}

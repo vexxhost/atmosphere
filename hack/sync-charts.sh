@@ -23,18 +23,8 @@ set -xe
 # Determine the root path for Atmosphere
 ATMOSPHERE="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." >/dev/null 2>&1 && pwd )"
 
-# Create work directory to avoid cluttering up workspace
-WORKDIR=$(mktemp -d)
-function cleanup {
-  rm -rfv ${WORKDIR}
-}
-trap cleanup EXIT
-
 # Clean-up all of the existing charts
 rm -rfv ${ATMOSPHERE}/charts/*
-
-# Switch to folder where we will be syncing charts
-pushd ${WORKDIR}
 
 CILIUM_VERSION=1.10.7
 curl -sL https://helm.cilium.io/cilium-${CILIUM_VERSION}.tgz \
@@ -76,5 +66,70 @@ COREDNS_VERSION=1.19.4
 curl -sL https://github.com/coredns/helm/releases/download/coredns-${COREDNS_VERSION}/coredns-${COREDNS_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-# Switch back to original directory
-popd
+MEMCACHED_VERSION=0.1.12
+curl -sL https://tarballs.opendev.org/openstack/openstack-helm-infra/memcached-${MEMCACHED_VERSION}.tgz \
+  | tar -xz -C ${ATMOSPHERE}/charts
+
+KEYSTONE_VERSION=0.2.19
+curl -sL https://tarballs.opendev.org/openstack/openstack-helm/keystone-${KEYSTONE_VERSION}.tgz \
+  | tar -xz -C ${ATMOSPHERE}/charts
+
+BARBICAN_VERSION=0.2.12
+curl -sL https://tarballs.opendev.org/openstack/openstack-helm/barbican-${BARBICAN_VERSION}.tgz \
+  | tar -xz -C ${ATMOSPHERE}/charts
+
+CEPH_PROVISIONERS_VERSION=0.1.8
+curl -sL https://tarballs.opendev.org/openstack/openstack-helm-infra/ceph-provisioners-${CEPH_PROVISIONERS_VERSION}.tgz \
+  | tar -xz -C ${ATMOSPHERE}/charts
+
+GLANCE_VERSION=0.4.1
+curl -sL https://tarballs.opendev.org/openstack/openstack-helm/glance-${GLANCE_VERSION}.tgz \
+  | tar -xz -C ${ATMOSPHERE}/charts
+
+CINDER_VERSION=0.2.25
+curl -sL https://tarballs.opendev.org/openstack/openstack-helm/cinder-${CINDER_VERSION}.tgz \
+  | tar -xz -C ${ATMOSPHERE}/charts
+
+PLACEMENT_VERSION=0.2.10
+curl -sL https://tarballs.opendev.org/openstack/openstack-helm/placement-${PLACEMENT_VERSION}.tgz \
+  | tar -xz -C ${ATMOSPHERE}/charts
+
+OPEN_VSWITCH_VERSION=0.1.10
+curl -sL https://tarballs.opendev.org/openstack/openstack-helm-infra/openvswitch-${OPEN_VSWITCH_VERSION}.tgz \
+  | tar -xz -C ${ATMOSPHERE}/charts
+
+LIBVIRT_VERSION=0.1.8
+curl -sL https://tarballs.opendev.org/openstack/openstack-helm-infra/libvirt-${LIBVIRT_VERSION}.tgz \
+  | tar -xz -C ${ATMOSPHERE}/charts
+
+NEUTRON_VERSION=0.3.2
+curl -sL https://tarballs.opendev.org/openstack/openstack-helm/neutron-${NEUTRON_VERSION}.tgz \
+  | tar -xz -C ${ATMOSPHERE}/charts
+
+NOVA_VERISON=0.2.32
+curl -sL https://tarballs.opendev.org/openstack/openstack-helm/nova-${NOVA_VERISON}.tgz \
+  | tar -xz -C ${ATMOSPHERE}/charts
+
+SENLIN_VERSION=0.2.6
+curl -sL https://tarballs.opendev.org/openstack/openstack-helm/senlin-${SENLIN_VERSION}.tgz \
+  | tar -xz -C ${ATMOSPHERE}/charts
+
+DESIGNATE_VERSION=0.2.7
+curl -sL https://tarballs.opendev.org/openstack/openstack-helm/designate-${DESIGNATE_VERSION}.tgz \
+  | tar -xz -C ${ATMOSPHERE}/charts
+
+HEAT_VERSION=0.2.8
+curl -sL https://tarballs.opendev.org/openstack/openstack-helm/heat-${HEAT_VERSION}.tgz \
+  | tar -xz -C ${ATMOSPHERE}/charts
+
+OCTAVIA_VERSION=0.2.5
+curl -sL https://tarballs.opendev.org/openstack/openstack-helm/octavia-${OCTAVIA_VERSION}.tgz \
+  | tar -xz -C ${ATMOSPHERE}/charts
+
+MAGNUM_VERSION=0.2.8
+curl -sL https://tarballs.opendev.org/openstack/openstack-helm/magnum-${MAGNUM_VERSION}.tgz \
+  | tar -xz -C ${ATMOSPHERE}/charts
+
+HORIZON_VERSION=0.2.24
+curl -sL https://tarballs.opendev.org/openstack/openstack-helm/horizon-${HORIZON_VERSION}.tgz \
+  | tar -xz -C ${ATMOSPHERE}/charts

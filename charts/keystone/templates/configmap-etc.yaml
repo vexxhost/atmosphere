@@ -1,0 +1,69 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- if .Values.manifests.configmap_etc }}
+{{- $envAll := . }}
+
+{{- if empty .Values.conf.keystone.database.connection -}}
+{{- $connection := tuple "oslo_db" "internal" "keystone" "mysql" . | include "helm-toolkit.endpoints.authenticated_endpoint_uri_lookup" -}}
+{{- if and .Values.manifests.certificates .Values.endpoints.oslo_db.auth.admin.secret.tls.internal -}}
+{{- $_ := (printf "%s?charset=utf8&ssl_ca=/etc/mysql/certs/ca.crt&ssl_key=/etc/mysql/certs/tls.key&ssl_cert=/etc/mysql/certs/tls.crt&ssl_verify_cert" $connection ) | set .Values.conf.keystone.database "connection" -}}
+{{- else -}}
+{{- $_ := set .Values.conf.keystone.database "connection" $connection -}}
+{{- end -}}
+{{- end -}}
+
+{{- if empty .Values.conf.keystone.DEFAULT.transport_url -}}
+{{- $_ := tuple "oslo_messaging" "internal" "keystone" "amqp" . | include "helm-toolkit.endpoints.authenticated_transport_endpoint_uri_lookup" | set .Values.conf.keystone.DEFAULT "transport_url" -}}
+{{- end -}}
+
+{{- if empty .Values.conf.keystone.cache.memcache_servers -}}
+{{- $_ := tuple "oslo_cache" "internal" "memcache" . | include "helm-toolkit.endpoints.host_and_port_endpoint_uri_lookup" | set .Values.conf.keystone.cache "memcache_servers" -}}
+{{- end -}}
+
+{{- if and (empty .Values.conf.logging.handler_fluent) (has "fluent" .Values.conf.logging.handlers.keys) -}}
+{{- $fluentd_host := tuple "fluentd" "internal" $envAll | include "helm-toolkit.endpoints.hostname_namespaced_endpoint_lookup" }}
+{{- $fluentd_port := tuple "fluentd" "internal" "service" $envAll | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+{{- $fluent_args := printf "('%s.%s', '%s', %s)" .Release.Namespace .Release.Name $fluentd_host $fluentd_port }}
+{{- $handler_fluent := dict "class" "fluent.handler.FluentHandler" "formatter" "fluent" "args" $fluent_args -}}
+{{- $_ := set .Values.conf.logging "handler_fluent" $handler_fluent -}}
+{{- end -}}
+
+{{- if and (empty .Values.conf.logging.formatter_fluent) (has "fluent" .Values.conf.logging.formatters.keys) -}}
+{{- $formatter_fluent := dict "class" "oslo_log.formatters.FluentFormatter" -}}
+{{- $_ := set .Values.conf.logging "formatter_fluent" $formatter_fluent -}}
+{{- end -}}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: keystone-etc
+type: Opaque
+data:
+  rally_tests.yaml: {{ toYaml .Values.conf.rally_tests.tests | b64enc }}
+  keystone.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.keystone | b64enc }}
+  logging.conf: {{ include "helm-toolkit.utils.to_oslo_conf" $envAll.Values.conf.logging | b64enc }}
+  policy.yaml: {{ toYaml .Values.conf.policy | b64enc }}
+  access_rules.json: {{ toJson .Values.conf.access_rules | b64enc }}
+  ports.conf: ''
+{{- range $k, $v := .Values.conf.ks_domains }}
+  keystone.{{ $k }}.json: {{ toJson $v | b64enc }}
+{{- end }}
+{{- if .Values.conf.security }}
+{{- include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conf.security "key" "security.conf" "format" "Secret" ) | indent 2 }}
+{{- end}}
+{{- include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conf.mpm_event "key" "mpm_event.conf" "format" "Secret" ) | indent 2 }}
+{{- include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conf.wsgi_keystone "key" "wsgi-keystone.conf" "format" "Secret" ) | indent 2 }}
+{{- include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conf.sso_callback_template "key" "sso_callback_template.html" "format" "Secret" ) | indent 2 }}
+{{- end }}

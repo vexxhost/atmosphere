@@ -1,0 +1,104 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- if .Values.manifests.configmap_etc }}
+{{- $envAll := . }}
+
+{{- if empty .Values.conf.barbican.keystone_authtoken.auth_uri -}}
+{{- $_ := tuple "identity" "internal" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup"| set .Values.conf.barbican.keystone_authtoken "auth_uri" -}}
+{{- end -}}
+
+{{- if empty .Values.conf.barbican.keystone_authtoken.auth_url -}}
+{{- $_ := tuple "identity" "internal" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup"| set .Values.conf.barbican.keystone_authtoken "auth_url" -}}
+{{- end -}}
+
+{{- if empty .Values.conf.barbican.keystone_authtoken.region_name -}}
+{{- $_ := set .Values.conf.barbican.keystone_authtoken "region_name" .Values.endpoints.identity.auth.barbican.region_name -}}
+{{- end -}}
+{{- if empty .Values.conf.barbican.keystone_authtoken.project_name -}}
+{{- $_ := set .Values.conf.barbican.keystone_authtoken "project_name" .Values.endpoints.identity.auth.barbican.project_name -}}
+{{- end -}}
+{{- if empty .Values.conf.barbican.keystone_authtoken.project_domain_name -}}
+{{- $_ := set .Values.conf.barbican.keystone_authtoken "project_domain_name" .Values.endpoints.identity.auth.barbican.project_domain_name -}}
+{{- end -}}
+{{- if empty .Values.conf.barbican.keystone_authtoken.user_domain_name -}}
+{{- $_ := set .Values.conf.barbican.keystone_authtoken "user_domain_name" .Values.endpoints.identity.auth.barbican.user_domain_name -}}
+{{- end -}}
+{{- if empty .Values.conf.barbican.keystone_authtoken.username -}}
+{{- $_ := set .Values.conf.barbican.keystone_authtoken "username" .Values.endpoints.identity.auth.barbican.username -}}
+{{- end -}}
+{{- if empty .Values.conf.barbican.keystone_authtoken.password -}}
+{{- $_ := set .Values.conf.barbican.keystone_authtoken "password" .Values.endpoints.identity.auth.barbican.password -}}
+{{- end -}}
+
+{{- if empty .Values.conf.barbican.keystone_authtoken.memcached_servers -}}
+{{- $_ := tuple "oslo_cache" "internal" "memcache" . | include "helm-toolkit.endpoints.host_and_port_endpoint_uri_lookup" | set .Values.conf.barbican.keystone_authtoken "memcached_servers" -}}
+{{- end -}}
+{{- if empty .Values.conf.barbican.keystone_authtoken.memcache_secret_key -}}
+{{- $_ := set .Values.conf.barbican.keystone_authtoken "memcache_secret_key" ( default ( randAlphaNum 64 ) .Values.endpoints.oslo_cache.auth.memcache_secret_key ) -}}
+{{- end -}}
+
+{{- if empty .Values.conf.barbican.DEFAULT.sql_connection -}}
+{{- $connection := tuple "oslo_db" "internal" "barbican" "mysql" . | include "helm-toolkit.endpoints.authenticated_endpoint_uri_lookup" -}}
+{{- if .Values.manifests.certificates -}}
+{{- $_ := (printf "%s?charset=utf8&ssl_ca=/etc/mysql/certs/ca.crt&ssl_key=/etc/mysql/certs/tls.key&ssl_cert=/etc/mysql/certs/tls.crt&ssl_verify_cert" $connection ) | set .Values.conf.barbican.DEFAULT "sql_connection" -}}
+{{- else -}}
+{{- $_ := set .Values.conf.barbican.DEFAULT "sql_connection" $connection -}}
+{{- end -}}
+{{- end -}}
+
+{{- if empty .Values.conf.barbican.DEFAULT.transport_url -}}
+{{- $_ := tuple "oslo_messaging" "internal" "barbican" "amqp" . | include "helm-toolkit.endpoints.authenticated_transport_endpoint_uri_lookup" | set .Values.conf.barbican.DEFAULT "transport_url" -}}
+{{- end -}}
+
+{{- $barbicanPath := index .Values "endpoints" "key_manager" "path" "default" }}
+{{- if empty .Values.conf.barbican.DEFAULT.host_href -}}
+{{- $_ := tuple "key_manager" "public" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup" | trimSuffix $barbicanPath | set .Values.conf.barbican.DEFAULT "host_href" -}}
+{{- end -}}
+
+{{- if empty .Values.conf.barbican.barbican_api.bind_port -}}
+{{- $_ := tuple "key_manager" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" | set .Values.conf.barbican.barbican_api "bind_port" -}}
+{{- end -}}
+
+{{- if empty .Values.conf.barbican_api.uwsgi.socket -}}
+{{- $_ := printf ":%s" ( tuple "key_manager" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" ) | set .Values.conf.barbican_api.uwsgi "socket" -}}
+{{- end -}}
+
+{{- if and (empty .Values.conf.logging.handler_fluent) (has "fluent" .Values.conf.logging.handlers.keys) -}}
+{{- $fluentd_host := tuple "fluentd" "internal" $envAll | include "helm-toolkit.endpoints.hostname_namespaced_endpoint_lookup" }}
+{{- $fluentd_port := tuple "fluentd" "internal" "service" $envAll | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+{{- $fluent_args := printf "('%s.%s', '%s', %s)" .Release.Namespace .Release.Name $fluentd_host $fluentd_port }}
+{{- $handler_fluent := dict "class" "fluent.handler.FluentHandler" "formatter" "fluent" "args" $fluent_args -}}
+{{- $_ := set .Values.conf.logging "handler_fluent" $handler_fluent -}}
+{{- end -}}
+
+{{- if and (empty .Values.conf.logging.formatter_fluent) (has "fluent" .Values.conf.logging.formatters.keys) -}}
+{{- $formatter_fluent := dict "class" "oslo_log.formatters.FluentFormatter" -}}
+{{- $_ := set .Values.conf.logging "formatter_fluent" $formatter_fluent -}}
+{{- end -}}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: barbican-etc
+type: Opaque
+data:
+  barbican.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.barbican | b64enc }}
+  logging.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.logging | b64enc }}
+  barbican-api-paste.ini: {{ include "helm-toolkit.utils.to_ini" .Values.conf.paste | b64enc }}
+  api_audit_map.conf: {{ include "helm-toolkit.utils.to_ini" .Values.conf.audit_map | b64enc }}
+  policy.yaml: {{ toYaml .Values.conf.policy | b64enc }}
+  barbican-api.ini: {{ include "helm-toolkit.utils.to_ini" .Values.conf.barbican_api | b64enc }}
+  old_kek: {{ index .Values.conf.simple_crypto_kek_rewrap "old_kek" | default "" | b64enc | quote }}
+{{- end }}

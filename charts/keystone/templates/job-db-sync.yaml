@@ -1,0 +1,83 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- define "metadata.annotations.job.db_sync" }}
+{{- if .Values.helm3_hook -}}
+helm.sh/hook: post-install,post-upgrade
+helm.sh/hook-weight: "-4"
+{{- end -}}
+{{- end }}
+
+{{- define "keystone.templates._job_db_sync.env_vars" -}}
+{{- $envAll := index . 0 -}}
+env:
+  - name: OS_BOOTSTRAP_ADMIN_URL
+    value: {{ tuple "identity" "admin" "api" $envAll | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup" }}
+  - name: OS_BOOTSTRAP_INTERNAL_URL
+    value: {{ tuple "identity" "internal" "api" $envAll | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup" }}
+  - name: OS_BOOTSTRAP_PUBLIC_URL
+    value: {{ tuple "identity" "public" "api" $envAll | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup" }}
+  - name: OPENSTACK_CONFIG_FILE
+    value: "/etc/keystone/keystone.conf"
+  - name: OPENSTACK_CONFIG_DB_SECTION
+    value: "database"
+  - name: OPENSTACK_CONFIG_DB_KEY
+    value: "connection"
+{{- with $env := dict "ksUserSecret" $envAll.Values.secrets.identity.admin }}
+{{- include "helm-toolkit.snippets.keystone_openrc_env_vars" $env | indent 2}}
+{{- end }}
+{{- end }}
+
+{{- define "keystone.templates._job_db_sync.pod_vol_mounts" -}}
+{{- $envAll := index . 0 -}}
+volumeMounts:
+  - name: db-sync-sh
+    mountPath: /tmp/endpoint-update.py
+    subPath: endpoint-update.py
+    readOnly: true
+  - name: keystone-fernet-keys
+    mountPath: {{ $envAll.Values.conf.keystone.fernet_tokens.key_repository }}
+    readOnly: true
+{{- if and $envAll.Values.manifests.certificates $envAll.Values.endpoints.oslo_db.auth.admin.secret.tls.internal }}
+{{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_db.auth.admin.secret.tls.internal "path" "/etc/mysql/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 2 }}
+{{- end }}
+{{- if and $envAll.Values.manifests.certificates $envAll.Values.endpoints.oslo_messaging.auth.admin.secret.tls.internal }}
+{{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_messaging.auth.admin.secret.tls.internal "path" "/etc/rabbitmq/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 2 }}
+{{- end }}
+{{- end }}
+
+{{- define "keystone.templates._job_db_sync.pod_vols" -}}
+{{- $envAll := index . 0 -}}
+volumes:
+  - name: keystone-fernet-keys
+    secret:
+      secretName: keystone-fernet-keys
+{{- if and $envAll.Values.manifests.certificates $envAll.Values.endpoints.oslo_db.auth.admin.secret.tls.internal }}
+{{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_db.auth.admin.secret.tls.internal | include "helm-toolkit.snippets.tls_volume" | indent 2 }}
+{{- end }}
+{{- if and $envAll.Values.manifests.certificates $envAll.Values.endpoints.oslo_messaging.auth.admin.secret.tls.internal }}
+{{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_messaging.auth.admin.secret.tls.internal | include "helm-toolkit.snippets.tls_volume" | indent 2 }}
+{{- end }}
+{{- end }}
+
+{{- if .Values.manifests.job_db_sync }}
+{{- $local := dict "podVolMounts" false "podVols" false -}}
+{{- if eq .Values.conf.keystone.token.provider "fernet" }}
+{{- $_ := set $local "podVolMounts" ( index ( tuple . | include "keystone.templates._job_db_sync.pod_vol_mounts" | toString | fromYaml ) "volumeMounts" ) }}
+{{- $_ := set $local "podVols" ( index ( tuple . | include "keystone.templates._job_db_sync.pod_vols" | toString | fromYaml ) "volumes" ) }}
+{{- end }}
+{{- $podEnvVars := tuple . | include "keystone.templates._job_db_sync.env_vars" | toString | fromYaml }}
+{{- $dbSyncJob := dict "envAll" . "serviceName" "keystone" "podVolMounts" $local.podVolMounts "podVols" $local.podVols "podEnvVars" $podEnvVars.env "jobAnnotations" (include "metadata.annotations.job.db_sync" . | fromYaml) -}}
+{{ $dbSyncJob | include "helm-toolkit.manifests.job_db_sync" }}
+{{- end }}

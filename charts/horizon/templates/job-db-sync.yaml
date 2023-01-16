@@ -1,0 +1,87 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- if .Values.manifests.job_db_sync }}
+{{- $envAll := . }}
+
+{{- $mounts_horizon_db_sync := .Values.pod.mounts.horizon_db_sync.horizon_db_sync }}
+{{- $mounts_horizon_db_sync_init := .Values.pod.mounts.horizon_db_sync.init_container }}
+
+{{- $serviceAccountName := "horizon-db-sync" }}
+{{ tuple $envAll "db_sync" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: horizon-db-sync
+  labels:
+{{ tuple $envAll "horizon" "db-sync" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+  annotations:
+{{- if .Values.helm3_hook }}
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-weight: "-4"
+{{- end }}
+    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
+spec:
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll "horizon" "db-sync" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+      annotations:
+{{ dict "envAll" $envAll "podName" "horizon-db-sync" "containerNames" (list "horizon-db-sync" "init" ) | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+    spec:
+      serviceAccountName: {{ $serviceAccountName }}
+{{ dict "envAll" $envAll "application" "db_sync" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+      restartPolicy: OnFailure
+      nodeSelector:
+        {{ .Values.labels.job.node_selector_key }}: {{ .Values.labels.job.node_selector_value }}
+{{ if $envAll.Values.pod.tolerations.horizon.enabled }}
+{{ tuple $envAll "horizon" | include "helm-toolkit.snippets.kubernetes_tolerations" | indent 6 }}
+{{ end }}
+      initContainers:
+{{ tuple $envAll "db_sync" $mounts_horizon_db_sync_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+      containers:
+        - name: horizon-db-sync
+{{ tuple $envAll "horizon_db_sync" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.jobs.db_sync | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "db_sync" "container" "horizon_db_sync" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - /tmp/db-sync.sh
+          volumeMounts:
+          - name: horizon-etc
+            mountPath: /etc/openstack-dashboard/local_settings
+            subPath: local_settings
+            readOnly: true
+          - name: horizon-bin
+            mountPath: /tmp/db-sync.sh
+            subPath: db-sync.sh
+            readOnly: true
+          - name: horizon-bin
+            mountPath: /tmp/manage.py
+            subPath: manage.py
+            readOnly: true
+{{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_db.auth.admin.secret.tls.internal "path" "/etc/mysql/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 10 }}
+{{ if $mounts_horizon_db_sync.volumeMounts }}{{ toYaml $mounts_horizon_db_sync.volumeMounts | indent 10 }}{{ end }}
+      volumes:
+      - name: horizon-etc
+        secret:
+          secretName: horizon-etc
+          defaultMode: 0444
+      - name: horizon-bin
+        configMap:
+          name: horizon-bin
+          defaultMode: 0555
+{{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_db.auth.admin.secret.tls.internal | include "helm-toolkit.snippets.tls_volume" | indent 6 }}
+{{ if $mounts_horizon_db_sync.volumes }}{{ toYaml $mounts_horizon_db_sync.volumes | indent 6 }}{{ end }}
+{{- end }}
