@@ -1,0 +1,46 @@
+# Default values for pxc-operator.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+operatorImageRepository: percona/percona-xtradb-cluster-operator
+imagePullPolicy: IfNotPresent
+image: ""
+
+# set if you want to specify a namespace to watch
+# defaults to `.Release.namespace` if left blank
+# watchNamespace:
+
+# set if operator should be deployed in cluster wide mode. defaults to false
+watchAllNamespaces: false
+
+# set if you want to use a different operator name
+# defaults to `percona-xtradb-cluster-operator`
+# operatorName:
+
+# set to false if you don't want the helm chart to
+# automatically create the CRD.
+createCRD: true
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+resources:
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you don't want to specify resources, comment the following
+  # lines and add the curly braces after 'resources:'.
+  limits:
+    cpu: 200m
+    memory: 500Mi
+  requests:
+    cpu: 100m
+    memory: 20Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

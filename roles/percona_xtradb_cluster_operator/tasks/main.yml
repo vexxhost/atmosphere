@@ -1,9 +1,3 @@
-- name: Configure Helm repository
-  run_once: true
-  kubernetes.core.helm_repository:
-    name: "{{ percona_xtradb_cluster_operator_helm_repository_name }}"
-    repo_url: "{{ percona_xtradb_cluster_operator_helm_repository_url }}"
-
 # NOTE(mnaser): We should get rid of this task eventually as it is suspending
 #               the old HelmRelease and removing it to avoid uninstalling the
 #               Helm chart.
@@ -33,8 +27,7 @@
   run_once: true
   kubernetes.core.helm:
     name: "{{ percona_xtradb_cluster_operator_helm_release_name }}"
-    chart_ref: "{{ percona_xtradb_cluster_operator_helm_repository_name }}/{{ percona_xtradb_cluster_operator_helm_chart_name }}"
-    chart_version: "{{ percona_xtradb_cluster_operator_helm_chart_version }}"
+    chart_ref: "{{ percona_xtradb_cluster_operator_helm_chart_ref }}"
     release_namespace: "{{ percona_xtradb_cluster_operator_helm_release_namespace }}"
     create_namespace: true
     kubeconfig: /etc/kubernetes/admin.conf
