@@ -6,26 +6,26 @@ jobs:
   build-prometheus-ethtool-exporter:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3.1.0
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - uses: tj-actions/changed-files@v34.4.4
+      - uses: tj-actions/changed-files@v34
         id: changed-files
         with:
           files: images/prometheus-ethtool-exporter/*
-      - uses: docker/setup-qemu-action@v2.1.0
+      - uses: docker/setup-qemu-action@v2
         if: steps.changed-files.outputs.any_changed == 'true'
-      - uses: docker/setup-buildx-action@v2.2.1
+      - uses: docker/setup-buildx-action@v2
         if: steps.changed-files.outputs.any_changed == 'true'
       - run: echo PROJECT_REF=$(cat images/prometheus-ethtool-exporter/ref) >> $GITHUB_ENV
         if: steps.changed-files.outputs.any_changed == 'true'
-      - uses: docker/login-action@v2.1.0
+      - uses: docker/login-action@v2
         if: steps.changed-files.outputs.any_changed == 'true'
         with:
           registry: quay.io
           username: ${{ secrets.QUAY_USERNAME }}
           password: ${{ secrets.QUAY_ROBOT_TOKEN }}
-      - uses: docker/build-push-action@v3.2.0
+      - uses: docker/build-push-action@v3
         if: steps.changed-files.outputs.any_changed == 'true'
         with:
           context: images/prometheus-ethtool-exporter
@@ -42,13 +42,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout project
-        uses: actions/checkout@v3.1.0
+        uses: actions/checkout@v3
 
       - name: Setup Python
-        uses: actions/setup-python@v4.3.0
+        uses: actions/setup-python@v4
 
       - name: Setup pre-commit
-        uses: pre-commit/action@v3.0.0
+        uses: pre-commit/action@v3
 
   pytest:
     runs-on: ubuntu-latest
@@ -58,13 +58,13 @@ jobs:
         type: [e2e, integration, unit]
     steps:
       - name: Checkout project
-        uses: actions/checkout@v3.1.0
+        uses: actions/checkout@v3
 
       - name: Install Poetry
         run: pipx install poetry
 
       - name: Setup Python
-        uses: actions/setup-python@v4.3.0
+        uses: actions/setup-python@v4
         with:
           cache: poetry
 
@@ -80,13 +80,13 @@ jobs:
       - pytest
     steps:
       - name: Checkout project
-        uses: actions/checkout@v3.1.0
+        uses: actions/checkout@v3
 
       - name: Install Poetry
         run: pipx install poetry
 
       - name: Setup Python
-        uses: actions/setup-python@v4.2.0
+        uses: actions/setup-python@v4
         with:
           cache: poetry
 
@@ -95,7 +95,7 @@ jobs:
 
       # TODO(mnaser): Move this out to "cleanup" stage
       - name: Set up Go
-        uses: actions/setup-go@v3.4.0
+        uses: actions/setup-go@v3
         with:
           go-version-file: go.mod
           cache: true
