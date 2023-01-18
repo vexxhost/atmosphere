@@ -15,10 +15,7 @@
 _openstack_helm_tempest_values:
   endpoints: "{{ openstack_helm_endpoints }}"
   images:
-    tags:
-      dep_check: "{{ atmosphere_images['dep_check'] | docker_image('ref') }}"
-      ks_user: "{{ atmosphere_images['ks_user'] | docker_image('ref') }}"
-      tempest_run_tests: "{{ atmosphere_images['tempest_run_tests'] | docker_image('ref') }}"
+    tags: "{{ atmosphere_images | openstack_helm_image_tags('tempest') }}"
   jobs:
     run_tests:
       restartPolicy: Never

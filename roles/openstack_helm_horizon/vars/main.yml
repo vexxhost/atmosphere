@@ -16,17 +16,7 @@ _openstack_helm_horizon_values:
   endpoints: "{{ openstack_helm_endpoints }}"
   images:
     pull_policy: Always
-    tags:
-      bootstrap: "{{ atmosphere_images['bootstrap'] | docker_image('ref') }}"
-      db_drop: "{{ atmosphere_images['db_drop'] | docker_image('ref') }}"
-      db_init: "{{ atmosphere_images['db_init'] | docker_image('ref') }}"
-      dep_check: "{{ atmosphere_images['dep_check'] | docker_image('ref') }}"
-      ks_endpoints: "{{ atmosphere_images['ks_endpoints'] | docker_image('ref') }}"
-      ks_service: "{{ atmosphere_images['ks_service'] | docker_image('ref') }}"
-      ks_user: "{{ atmosphere_images['ks_user'] | docker_image('ref') }}"
-      horizon_db_sync: "{{ atmosphere_images['horizon_db_sync'] | docker_image('ref') }}"
-      horizon: "{{ atmosphere_images['horizon'] | docker_image('ref') }}"
-      rabbit_init: "{{ atmosphere_images['rabbit_init'] | docker_image('ref') }}"
+    tags: "{{ atmosphere_images | openstack_helm_image_tags('horizon') }}"
   pod:
     replicas:
       server: 3

@@ -17,22 +17,7 @@ _openstack_helm_designate_values:
     pools: "{{ openstack_helm_designate_pools }}"
   endpoints: "{{ openstack_helm_endpoints }}"
   images:
-    tags:
-      bootstrap: "{{ atmosphere_images['bootstrap'] | docker_image('ref') }}"
-      db_drop: "{{ atmosphere_images['db_drop'] | docker_image('ref') }}"
-      db_init: "{{ atmosphere_images['db_init'] | docker_image('ref') }}"
-      rabbit_init: "{{ atmosphere_images['rabbit_init'] | docker_image('ref') }}"
-      ks_endpoints: "{{ atmosphere_images['ks_endpoints'] | docker_image('ref') }}"
-      ks_service: "{{ atmosphere_images['ks_service'] | docker_image('ref') }}"
-      ks_user: "{{ atmosphere_images['ks_user'] | docker_image('ref') }}"
-      dep_check: "{{ atmosphere_images['dep_check'] | docker_image('ref') }}"
-      designate_db_sync: "{{ atmosphere_images['designate_db_sync'] | docker_image('ref') }}"
-      designate_api: "{{ atmosphere_images['designate_api'] | docker_image('ref') }}"
-      designate_central: "{{ atmosphere_images['designate_central'] | docker_image('ref') }}"
-      designate_mdns: "{{ atmosphere_images['designate_mdns'] | docker_image('ref') }}"
-      designate_worker: "{{ atmosphere_images['designate_worker'] | docker_image('ref') }}"
-      designate_producer: "{{ atmosphere_images['designate_producer'] | docker_image('ref') }}"
-      designate_sink: "{{ atmosphere_images['designate_sink'] | docker_image('ref') }}"
+    tags: "{{ atmosphere_images | openstack_helm_image_tags('designate') }}"
   pod:
     replicas:
       api: 3

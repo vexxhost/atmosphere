@@ -15,7 +15,4 @@
 _openstack_helm_infra_openvswitch_values:
   endpoints: "{{ openstack_helm_endpoints }}"
   images:
-    tags:
-      dep_check: "{{ atmosphere_images['dep_check'] | docker_image('ref') }}"
-      openvswitch_db_server: "{{ atmosphere_images['openvswitch_db_server'] | docker_image('ref') }}"
-      openvswitch_vswitchd: "{{ atmosphere_images['openvswitch_vswitchd'] | docker_image('ref') }}"
+    tags: "{{ atmosphere_images | openstack_helm_image_tags('openvswitch') }}"

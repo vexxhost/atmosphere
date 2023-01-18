@@ -15,22 +15,7 @@
 _openstack_helm_octavia_values:
   endpoints: "{{ openstack_helm_endpoints }}"
   images:
-    tags:
-      bootstrap: "{{ atmosphere_images['bootstrap'] | docker_image('ref') }}"
-      db_drop: "{{ atmosphere_images['db_drop'] | docker_image('ref') }}"
-      db_init: "{{ atmosphere_images['db_init'] | docker_image('ref') }}"
-      dep_check: "{{ atmosphere_images['dep_check'] | docker_image('ref') }}"
-      ks_endpoints: "{{ atmosphere_images['ks_endpoints'] | docker_image('ref') }}"
-      ks_service: "{{ atmosphere_images['ks_service'] | docker_image('ref') }}"
-      ks_user: "{{ atmosphere_images['ks_user'] | docker_image('ref') }}"
-      rabbit_init: "{{ atmosphere_images['rabbit_init'] | docker_image('ref') }}"
-      octavia_api: "{{ atmosphere_images['octavia_api'] | docker_image('ref') }}"
-      octavia_db_sync: "{{ atmosphere_images['octavia_db_sync'] | docker_image('ref') }}"
-      octavia_health_manager: "{{ atmosphere_images['octavia_health_manager'] | docker_image('ref') }}"
-      octavia_health_manager_init: "{{ atmosphere_images['octavia_health_manager_init'] | docker_image('ref') }}"
-      octavia_housekeeping: "{{ atmosphere_images['octavia_housekeeping'] | docker_image('ref') }}"
-      octavia_worker: "{{ atmosphere_images['octavia_worker'] | docker_image('ref') }}"
-      openvswitch_vswitchd: "{{ atmosphere_images['openvswitch_vswitchd'] | docker_image('ref') }}"
+    tags: "{{ atmosphere_images | openstack_helm_image_tags('octavia') }}"
   pod:
     mounts:
       octavia_api:

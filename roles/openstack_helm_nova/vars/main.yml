@@ -22,32 +22,7 @@ __openstack_helm_nova_values:
         node_selector_value: enabled
   images:
     pull_policy: Always
-    tags:
-      bootstrap: "{{ atmosphere_images['bootstrap'] | docker_image('ref') }}"
-      db_drop: "{{ atmosphere_images['db_drop'] | docker_image('ref') }}"
-      db_init: "{{ atmosphere_images['db_init'] | docker_image('ref') }}"
-      dep_check: "{{ atmosphere_images['dep_check'] | docker_image('ref') }}"
-      ks_endpoints: "{{ atmosphere_images['ks_endpoints'] | docker_image('ref') }}"
-      ks_service: "{{ atmosphere_images['ks_service'] | docker_image('ref') }}"
-      ks_user: "{{ atmosphere_images['ks_user'] | docker_image('ref') }}"
-      nova_api: "{{ atmosphere_images['nova_api'] | docker_image('ref') }}"
-      nova_archive_deleted_rows: "{{ atmosphere_images['nova_archive_deleted_rows'] | docker_image('ref') }}"
-      nova_cell_setup_init: "{{ atmosphere_images['nova_cell_setup_init'] | docker_image('ref') }}"
-      nova_cell_setup: "{{ atmosphere_images['nova_cell_setup'] | docker_image('ref') }}"
-      nova_compute_ironic: "{{ atmosphere_images['nova_compute_ironic'] | docker_image('ref') }}"
-      nova_compute_ssh: "{{ atmosphere_images['nova_compute_ssh'] | docker_image('ref') }}"
-      nova_compute: "{{ atmosphere_images['nova_compute'] | docker_image('ref') }}"
-      nova_conductor: "{{ atmosphere_images['nova_conductor'] | docker_image('ref') }}"
-      nova_consoleauth: "{{ atmosphere_images['nova_consoleauth'] | docker_image('ref') }}"
-      nova_db_sync: "{{ atmosphere_images['nova_db_sync'] | docker_image('ref') }}"
-      nova_novncproxy_assets: "{{ atmosphere_images['nova_novncproxy_assets'] | docker_image('ref') }}"
-      nova_novncproxy: "{{ atmosphere_images['nova_novncproxy'] | docker_image('ref') }}"
-      nova_placement: "{{ atmosphere_images['nova_placement'] | docker_image('ref') }}"
-      nova_scheduler: "{{ atmosphere_images['nova_scheduler'] | docker_image('ref') }}"
-      nova_service_cleaner: "{{ atmosphere_images['nova_service_cleaner'] | docker_image('ref') }}"
-      nova_spiceproxy_assets: "{{ atmosphere_images['nova_spiceproxy_assets'] | docker_image('ref') }}"
-      nova_spiceproxy: "{{ atmosphere_images['nova_spiceproxy'] | docker_image('ref') }}"
-      rabbit_init: "{{ atmosphere_images['rabbit_init'] | docker_image('ref') }}"
+    tags: "{{ atmosphere_images | openstack_helm_image_tags('nova') }}"
   network:
     ssh:
       enabled: true

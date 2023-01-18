@@ -17,20 +17,7 @@ _openstack_helm_glance_values:
   storage: rbd
   images:
     pull_policy: Always
-    tags:
-      bootstrap: "{{ atmosphere_images['bootstrap'] | docker_image('ref') }}"
-      db_drop: "{{ atmosphere_images['db_drop'] | docker_image('ref') }}"
-      db_init: "{{ atmosphere_images['db_init'] | docker_image('ref') }}"
-      dep_check: "{{ atmosphere_images['dep_check'] | docker_image('ref') }}"
-      glance_api: "{{ atmosphere_images['glance_api'] | docker_image('ref') }}"
-      glance_db_sync: "{{ atmosphere_images['glance_db_sync'] | docker_image('ref') }}"
-      glance_metadefs_load: "{{ atmosphere_images['glance_metadefs_load'] | docker_image('ref') }}"
-      glance_registry: "{{ atmosphere_images['glance_registry'] | docker_image('ref') }}"
-      glance_storage_init: "{{ atmosphere_images['glance_storage_init'] | docker_image('ref') }}"
-      ks_endpoints: "{{ atmosphere_images['ks_endpoints'] | docker_image('ref') }}"
-      ks_service: "{{ atmosphere_images['ks_service'] | docker_image('ref') }}"
-      ks_user: "{{ atmosphere_images['ks_user'] | docker_image('ref') }}"
-      rabbit_init: "{{ atmosphere_images['rabbit_init'] | docker_image('ref') }}"
+    tags: "{{ atmosphere_images | openstack_helm_image_tags('glance') }}"
   bootstrap:
     enabled: false
   pod:

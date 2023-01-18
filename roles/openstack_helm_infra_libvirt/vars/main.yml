@@ -15,10 +15,7 @@
 _openstack_helm_infra_libvirt_values:
   endpoints: "{{ openstack_helm_endpoints }}"
   images:
-    tags:
-      ceph_config_helper: "{{ atmosphere_images['ceph_config_helper'] | docker_image('ref') }}"
-      dep_check: "{{ atmosphere_images['dep_check'] | docker_image('ref') }}"
-      libvirt: "{{ atmosphere_images['libvirt'] | docker_image('ref') }}"
+    tags: "{{ atmosphere_images | openstack_helm_image_tags('libvirt') }}"
   conf:
     ceph:
       enabled: "{{ atmosphere_ceph_enabled | default(true) | bool }}"
