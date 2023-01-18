@@ -78,22 +78,17 @@
         - openstack_helm_tempest_values.conf.tempest.network.public_network_id is not defined
         - _openstack_helm_tempest_test_network.openstack_networks[0].id is defined
 
-- name: Configure Helm repository
-  kubernetes.core.helm_repository:
-    name: openstack-helm
-    repo_url: https://tarballs.opendev.org/openstack/openstack-helm/
-
 - name: Deploy Helm chart
   failed_when: false
+  run_once: true
   kubernetes.core.helm:
-    name: tempest
-    chart_ref: openstack-helm/tempest
-    chart_version: 0.2.3
-    release_namespace: openstack
+    name: "{{ openstack_helm_tempest_helm_release_name }}"
+    chart_ref: "{{ openstack_helm_tempest_helm_chart_ref }}"
+    release_namespace: "{{ openstack_helm_tempest_helm_release_namespace }}"
     kubeconfig: /etc/kubernetes/admin.conf
+    values: "{{ _openstack_helm_tempest_helm_values | combine(openstack_helm_tempest_helm_values, recursive=True) }}"
     wait: true
     wait_timeout: 20m
-    values: "{{ _openstack_helm_tempest_values | combine(openstack_helm_tempest_values, recursive=True) }}"
 
 - name: Get tempest job object
   kubernetes.core.k8s_info:
