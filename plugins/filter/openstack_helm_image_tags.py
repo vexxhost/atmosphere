@@ -56,6 +56,10 @@ RETURN = """
 
 SKIP_LIST = [
     "image_repo_sync",
+    "nova_wait_for_computes_init",
+    "purge_test",
+    "scripted_test",
+    "test",
 ]
 
 
