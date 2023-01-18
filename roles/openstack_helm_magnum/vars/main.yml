@@ -1,0 +1,73 @@
+# Copyright (c) 2023 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+_openstack_helm_magnum_helm_values:
+  endpoints: "{{ openstack_helm_endpoints }}"
+  images:
+    pull_policy: Always
+    tags: "{{ atmosphere_images | openstack_helm_image_tags('magnum') }}"
+  conf:
+    magnum:
+      DEFAULT:
+        log_config_append: null
+      barbican_client:
+        endpoint_type: internalURL
+        region_name: "{{ openstack_helm_endpoints_barbican_region_name }}"
+      cinder_client:
+        endpoint_type: internalURL
+        region_name: "{{ openstack_helm_endpoints_cinder_region_name }}"
+      cluster_template:
+        kubernetes_allowed_network_drivers: calico
+        kubernetes_default_network_driver: calico
+      conductor:
+        workers: 4
+      drivers:
+        verify_ca: false
+      glance_client:
+        endpoint_type: internalURL
+        region_name: "{{ openstack_helm_endpoints_glance_region_name }}"
+      heat_client:
+        endpoint_type: internalURL
+        region_name: "{{ openstack_helm_endpoints_heat_region_name }}"
+      keystone_auth:
+        auth_url: http://keystone-api.openstack.svc.cluster.local:5000/v3
+        user_domain_name: service
+        username: "magnum-{{ openstack_helm_endpoints_magnum_region_name }}"
+        password: "{{ openstack_helm_endpoints_magnum_keystone_password }}"
+        # NOTE(mnaser): Magnum does not allow changing the interface to internal
+        #               so we workaround with this for now.
+        insecure: true
+      keystone_authtoken:
+        # NOTE(mnaser): Magnum does not allow changing the interface to internal
+        #               so we workaround with this for now.
+        insecure: true
+      magnum_client:
+        endpoint_type: internalURL
+        region_name: "{{ openstack_helm_endpoints_magnum_region_name }}"
+      neutron_client:
+        endpoint_type: internalURL
+        region_name: "{{ openstack_helm_endpoints_neutron_region_name }}"
+      nova_client:
+        endpoint_type: internalURL
+        region_name: "{{ openstack_helm_endpoints_nova_region_name }}"
+      octavia_client:
+        endpoint_type: internalURL
+        region_name: "{{ openstack_helm_endpoints_octavia_region_name }}"
+  pod:
+    replicas:
+      api: 3
+      conductor: 3
+  manifests:
+    ingress_api: false
+    service_ingress_api: false

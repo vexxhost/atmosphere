@@ -7,8 +7,8 @@ from taskflow.patterns import graph_flow
 
 from atmosphere import clients, flows
 from atmosphere.models import config
-from atmosphere.operator import tasks, utils
-from atmosphere.operator.api import Cloud, objects, types
+from atmosphere.operator import tasks
+from atmosphere.operator.api import Cloud
 
 
 @kopf.on.resume(Cloud.version, Cloud.kind)
@@ -21,177 +21,12 @@ def create_fn(namespace: str, name: str, spec: dict, **_):
     engine = flows.get_engine(cfg)
     engine.run()
 
-    flow = graph_flow.Flow("deploy").add(
-        tasks.GenerateImageTagsConfigMap(provides="image_tags"),
-        tasks.GenerateSecrets(provides="secrets"),
-    )
+    flow = graph_flow.Flow("deploy")
 
     if spec["magnum"].get("enabled", True):
-        objects.OpenstackHelmRabbitmqCluster(
-            api=api,
-            metadata=types.NamespacedObjectMeta(
-                name="magnum",
-                namespace=namespace,
-            ),
-            spec=types.OpenstackHelmRabbitmqClusterSpec(
-                image=utils.get_image_ref(
-                    "rabbitmq_server", override_registry=spec["imageRepository"]
-                ).string()
-            ),
-        ).apply()
         flow.add(
             tasks.InstallClusterApiTask(),
-            tasks.GetChartValues(
-                inject={
-                    "helm_repository": "openstack-helm",
-                    "helm_repository_url": "https://tarballs.opendev.org/openstack/openstack-helm/",
-                    "chart_name": "magnum",
-                    "chart_version": "0.2.8",
-                },
-                provides="magnum_chart_values",
-            ),
-            tasks.GenerateReleaseValues(
-                inject={"chart_name": "magnum"},
-                provides="magnum_release_values",
-            ),
-            tasks.GenerateMagnumChartValuesFrom(
-                inject={"chart_name": "magnum"},
-                provides="magnum_values_from",
-            ),
-            tasks.ApplyHelmReleaseTask(
-                inject={
-                    "helm_repository": "openstack-helm",
-                    "chart_name": "magnum",
-                    "chart_version": "0.2.8",
-                    "release_name": "magnum",
-                },
-                rebind={
-                    "values": "magnum_release_values",
-                    "values_from": "magnum_values_from",
-                },
-            ),
         )
-
-        objects.OpenstackHelmRabbitmqCluster(
-            api=api,
-            metadata=types.NamespacedObjectMeta(
-                name="keystone",
-                namespace=namespace,
-            ),
-            spec=types.OpenstackHelmRabbitmqClusterSpec(
-                image=utils.get_image_ref(
-                    "rabbitmq_server", override_registry=spec["imageRepository"]
-                ).string()
-            ),
-        ).apply()
-        objects.OpenstackHelmRabbitmqCluster(
-            api=api,
-            metadata=types.NamespacedObjectMeta(
-                name="barbican",
-                namespace=namespace,
-            ),
-            spec=types.OpenstackHelmRabbitmqClusterSpec(
-                image=utils.get_image_ref(
-                    "rabbitmq_server", override_registry=spec["imageRepository"]
-                ).string()
-            ),
-        ).apply()
-        objects.OpenstackHelmRabbitmqCluster(
-            api=api,
-            metadata=types.NamespacedObjectMeta(
-                name="glance",
-                namespace=namespace,
-            ),
-            spec=types.OpenstackHelmRabbitmqClusterSpec(
-                image=utils.get_image_ref(
-                    "rabbitmq_server", override_registry=spec["imageRepository"]
-                ).string()
-            ),
-        ).apply()
-        objects.OpenstackHelmRabbitmqCluster(
-            api=api,
-            metadata=types.NamespacedObjectMeta(
-                name="cinder",
-                namespace=namespace,
-            ),
-            spec=types.OpenstackHelmRabbitmqClusterSpec(
-                image=utils.get_image_ref(
-                    "rabbitmq_server", override_registry=spec["imageRepository"]
-                ).string()
-            ),
-        ).apply()
-        objects.OpenstackHelmRabbitmqCluster(
-            api=api,
-            metadata=types.NamespacedObjectMeta(
-                name="neutron",
-                namespace=namespace,
-            ),
-            spec=types.OpenstackHelmRabbitmqClusterSpec(
-                image=utils.get_image_ref(
-                    "rabbitmq_server", override_registry=spec["imageRepository"]
-                ).string()
-            ),
-        ).apply()
-        objects.OpenstackHelmRabbitmqCluster(
-            api=api,
-            metadata=types.NamespacedObjectMeta(
-                name="nova",
-                namespace=namespace,
-            ),
-            spec=types.OpenstackHelmRabbitmqClusterSpec(
-                image=utils.get_image_ref(
-                    "rabbitmq_server", override_registry=spec["imageRepository"]
-                ).string()
-            ),
-        ).apply()
-        objects.OpenstackHelmRabbitmqCluster(
-            api=api,
-            metadata=types.NamespacedObjectMeta(
-                name="octavia",
-                namespace=namespace,
-            ),
-            spec=types.OpenstackHelmRabbitmqClusterSpec(
-                image=utils.get_image_ref(
-                    "rabbitmq_server", override_registry=spec["imageRepository"]
-                ).string()
-            ),
-        ).apply()
-        objects.OpenstackHelmRabbitmqCluster(
-            api=api,
-            metadata=types.NamespacedObjectMeta(
-                name="senlin",
-                namespace=namespace,
-            ),
-            spec=types.OpenstackHelmRabbitmqClusterSpec(
-                image=utils.get_image_ref(
-                    "rabbitmq_server", override_registry=spec["imageRepository"]
-                ).string()
-            ),
-        ).apply()
-        objects.OpenstackHelmRabbitmqCluster(
-            api=api,
-            metadata=types.NamespacedObjectMeta(
-                name="designate",
-                namespace=namespace,
-            ),
-            spec=types.OpenstackHelmRabbitmqClusterSpec(
-                image=utils.get_image_ref(
-                    "rabbitmq_server", override_registry=spec["imageRepository"]
-                ).string()
-            ),
-        ).apply()
-        objects.OpenstackHelmRabbitmqCluster(
-            api=api,
-            metadata=types.NamespacedObjectMeta(
-                name="heat",
-                namespace=namespace,
-            ),
-            spec=types.OpenstackHelmRabbitmqClusterSpec(
-                image=utils.get_image_ref(
-                    "rabbitmq_server", override_registry=spec["imageRepository"]
-                ).string()
-            ),
-        ).apply()
 
     engine = engines.load(
         flow,
