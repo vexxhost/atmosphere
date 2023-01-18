@@ -49,6 +49,9 @@ spec:
 {{ dict "envAll" $envAll "application" "heat" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
       affinity:
 {{ tuple $envAll "heat" "api" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
+{{ if $envAll.Values.pod.tolerations.heat.enabled }}
+{{ tuple $envAll "heat" | include "helm-toolkit.snippets.kubernetes_tolerations" | indent 6 }}
+{{ end }}
       nodeSelector:
         {{ .Values.labels.api.node_selector_key }}: {{ .Values.labels.api.node_selector_value }}
       terminationGracePeriodSeconds: {{ .Values.pod.lifecycle.termination_grace_period.api.timeout | default "30" }}
@@ -59,6 +62,11 @@ spec:
 {{ tuple $envAll "heat_api" | include "helm-toolkit.snippets.image" | indent 10 }}
 {{ tuple $envAll $envAll.Values.pod.resources.api | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
 {{ dict "envAll" $envAll "application" "heat" "container" "heat_api" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+{{- if or .Values.manifests.certificates .Values.tls.identity }}
+          env:
+            - name: REQUESTS_CA_BUNDLE
+              value: "/etc/heat/certs/ca.crt"
+{{- end }}
           command:
             - /tmp/heat-api.sh
             - start
@@ -70,13 +78,17 @@ spec:
                   - stop
           ports:
             - name: h-api
-              containerPort: {{ tuple "orchestration" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+              containerPort: {{ tuple "orchestration" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
           readinessProbe:
-            tcpSocket:
-              port: {{ tuple "orchestration" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+            httpGet:
+              scheme: {{ tuple "orchestration" "service" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_scheme_lookup" | upper }}
+              path: /
+              port: {{ tuple "orchestration" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
           livenessProbe:
-            tcpSocket:
-              port: {{ tuple "orchestration" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+            httpGet:
+              scheme: {{ tuple "orchestration" "service" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_scheme_lookup" | upper }}
+              path: /
+              port: {{ tuple "orchestration" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
             initialDelaySeconds: 30
           volumeMounts:
             - name: pod-tmp
@@ -121,7 +133,7 @@ spec:
               subPath: mpm_event.conf
               readOnly: true
             {{- end }}
-{{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.orchestration.api.internal "path" "/etc/heat/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
+{{- dict "enabled" (or .Values.manifests.certificates .Values.tls.identity) "name" .Values.secrets.tls.orchestration.api.internal "path" "/etc/heat/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
 {{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_messaging.auth.admin.secret.tls.internal "path" "/etc/rabbitmq/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
 {{ if $mounts_heat_api.volumeMounts }}{{ toYaml $mounts_heat_api.volumeMounts | indent 12 }}{{ end }}
       volumes:
@@ -139,7 +151,7 @@ spec:
           secret:
             secretName: heat-etc
             defaultMode: 0444
-{{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.orchestration.api.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
+{{- dict "enabled" (or .Values.manifests.certificates .Values.tls.identity) "name" .Values.secrets.tls.orchestration.api.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
 {{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_messaging.auth.admin.secret.tls.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
 {{ if $mounts_heat_api.volumes }}{{ toYaml $mounts_heat_api.volumes | indent 8 }}{{ end }}
 {{- end }}

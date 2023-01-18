@@ -21,7 +21,7 @@ limitations under the License.
 {{- $serviceAccountName := "heat-engine-cleaner" }}
 {{ tuple $envAll "engine_cleaner" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
 ---
-apiVersion: batch/v1beta1
+apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: heat-engine-cleaner
@@ -55,6 +55,9 @@ spec:
           serviceAccountName: {{ $serviceAccountName }}
 {{ dict "envAll" $envAll "application" "engine_cleaner" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 10 }}
           restartPolicy: OnFailure
+{{ if $envAll.Values.pod.tolerations.heat.enabled }}
+{{ tuple $envAll "heat" | include "helm-toolkit.snippets.kubernetes_tolerations" | indent 10 }}
+{{ end }}
           nodeSelector:
             {{ .Values.labels.job.node_selector_key }}: {{ .Values.labels.job.node_selector_value }}
           initContainers:
@@ -64,6 +67,11 @@ spec:
 {{ tuple $envAll "heat_engine_cleaner" | include "helm-toolkit.snippets.image" | indent 14 }}
 {{ tuple $envAll $envAll.Values.pod.resources.jobs.engine_cleaner | include "helm-toolkit.snippets.kubernetes_resources" | indent 14 }}
 {{ dict "envAll" $envAll "application" "engine_cleaner" "container" "heat_engine_cleaner" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 14 }}
+{{- if or .Values.manifests.certificates .Values.tls.identity }}
+              env:
+                - name: REQUESTS_CA_BUNDLE
+                  value: "/etc/heat/certs/ca.crt"
+{{- end }}
               command:
                 - /tmp/heat-engine-cleaner.sh
               volumeMounts:
@@ -85,6 +93,7 @@ spec:
                 subPath: {{ base .Values.conf.heat.DEFAULT.log_config_append }}
                 readOnly: true
               {{ end }}
+{{- dict "enabled" (or .Values.manifests.certificates .Values.tls.identity) "name" .Values.secrets.tls.orchestration.api.internal "path" "/etc/heat/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 14 }}
 {{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_db.auth.admin.secret.tls.internal "path" "/etc/mysql/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 14 }}
 {{ if $mounts_heat_engine_cleaner.volumeMounts }}{{ toYaml $mounts_heat_engine_cleaner.volumeMounts | indent 14 }}{{ end }}
           volumes:
@@ -96,6 +105,7 @@ spec:
               secret:
                 secretName: heat-etc
                 defaultMode: 0444
+{{- dict "enabled" (or .Values.manifests.certificates .Values.tls.identity) "name" .Values.secrets.tls.orchestration.api.internal | include "helm-toolkit.snippets.tls_volume" | indent 12 }}
 {{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_db.auth.admin.secret.tls.internal | include "helm-toolkit.snippets.tls_volume" | indent 12 }}
             - name: heat-bin
               configMap:

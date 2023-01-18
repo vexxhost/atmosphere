@@ -36,7 +36,6 @@ images:
     ks_endpoints: docker.io/openstackhelm/heat:stein-ubuntu_bionic
     db_init: docker.io/openstackhelm/heat:stein-ubuntu_bionic
     db_drop: docker.io/openstackhelm/heat:stein-ubuntu_bionic
-    db_migrate: quay.io/airshipit/porthole-mysqlclient-utility:latest-ubuntu_bionic
     placement_db_sync: docker.io/openstackhelm/placement:stein-ubuntu_bionic
     dep_check: quay.io/airshipit/kubernetes-entrypoint:v1.0.0
     image_repo_sync: docker.io/docker:17.07.0
@@ -74,44 +73,7 @@ conf:
       #   - status
       a2enmod: null
       a2dismod: null
-  policy:
-    "context_is_admin": "role:admin"
-    "admin_or_owner": "rule:context_is_admin or project_id:%(project_id)s"
-    "default": "rule:admin_or_owner"
-    "admin_api": "role:admin"
-    "placement:resource_providers:list": "rule:admin_api"
-    "placement:resource_providers:create": "rule:admin_api"
-    "placement:resource_providers:show": "rule:admin_api"
-    "placement:resource_providers:update": "rule:admin_api"
-    "placement:resource_providers:delete": "rule:admin_api"
-    "placement:resource_classes:list": "rule:admin_api"
-    "placement:resource_classes:create": "rule:admin_api"
-    "placement:resource_classes:show": "rule:admin_api"
-    "placement:resource_classes:update": "rule:admin_api"
-    "placement:resource_classes:delete": "rule:admin_api"
-    "placement:resource_providers:inventories:list": "rule:admin_api"
-    "placement:resource_providers:inventories:create": "rule:admin_api"
-    "placement:resource_providers:inventories:show": "rule:admin_api"
-    "placement:resource_providers:inventories:update": "rule:admin_api"
-    "placement:resource_providers:inventories:delete": "rule:admin_api"
-    "placement:resource_providers:aggregates:list": "rule:admin_api"
-    "placement:resource_providers:aggregates:update": "rule:admin_api"
-    "placement:resource_providers:usages": "rule:admin_api"
-    "placement:usages": "rule:admin_api"
-    "placement:traits:list": "rule:admin_api"
-    "placement:traits:show": "rule:admin_api"
-    "placement:traits:update": "rule:admin_api"
-    "placement:traits:delete": "rule:admin_api"
-    "placement:resource_providers:traits:list": "rule:admin_api"
-    "placement:resource_providers:traits:update": "rule:admin_api"
-    "placement:resource_providers:traits:delete": "rule:admin_api"
-    "placement:allocations:manage": "rule:admin_api"
-    "placement:allocations:list": "rule:admin_api"
-    "placement:allocations:update": "rule:admin_api"
-    "placement:allocations:delete": "rule:admin_api"
-    "placement:resource_providers:allocations:list": "rule:admin_api"
-    "placement:allocation_candidates:list": "rule:admin_api"
-    "placement:reshaper:reshape": "rule:admin_api"
+  policy: {}
   placement:
     DEFAULT:
       debug: false
@@ -184,13 +146,13 @@ conf:
       format: "%(message)s"
       datefmt: "%Y-%m-%d %H:%M:%S"
   wsgi_placement: |
-    Listen 0.0.0.0:{{ tuple "placement" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+    Listen 0.0.0.0:{{ tuple "placement" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
     LogFormat "%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\"" combined
     LogFormat "%{X-Forwarded-For}i %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\"" proxy
     SetEnvIf X-Forwarded-For "^.*\..*\..*\..*" forwarded
     CustomLog /dev/stdout combined env=!forwarded
     CustomLog /dev/stdout proxy env=forwarded
-    <VirtualHost *:{{ tuple "placement" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}>
+    <VirtualHost *:{{ tuple "placement" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}>
         WSGIDaemonProcess placement-api processes=4 threads=1 user=placement group=placement display-name=%{GROUP}
         WSGIProcessGroup placement-api
         WSGIScriptAlias / /var/www/cgi-bin/placement/placement-api
@@ -325,10 +287,12 @@ endpoints:
       default: /
     scheme:
       default: 'http'
+      service: 'http'
     port:
       api:
         default: 8778
         public: 80
+        service: 8778
 
 pod:
   security_context:
@@ -402,13 +366,6 @@ pod:
           memory: "1024Mi"
           cpu: "2000m"
       db_drop:
-        requests:
-          memory: "128Mi"
-          cpu: "100m"
-        limits:
-          memory: "1024Mi"
-          cpu: "2000m"
-      db_migrate:
         requests:
           memory: "128Mi"
           cpu: "100m"
@@ -491,18 +448,9 @@ dependencies:
       services:
         - endpoint: internal
           service: oslo_db
-    db_migrate:
-      jobs:
-        - placement-db-init
-        - nova-db-sync
-      services:
-        - endpoint: internal
-          service: oslo_db
     db_sync:
       jobs:
         - placement-db-init
-        # NOTE: This needs to be enabled if placement migration is required.
-        # - placement-db-migrate
       services:
         - endpoint: internal
           service: oslo_db
@@ -510,6 +458,11 @@ dependencies:
 # NOTE(helm_hook): helm_hook might break for helm2 binary.
 # set helm3_hook: false when using the helm2 binary.
 helm3_hook: true
+
+tls:
+  identity: false
+  oslo_messaging: false
+  oslo_db: false
 
 manifests:
   certificates: false
@@ -520,7 +473,6 @@ manifests:
   job_db_init: true
   job_db_sync: true
   job_db_drop: false
-  job_db_migrate: false
   job_ks_endpoints: true
   job_ks_service: true
   job_ks_user: true

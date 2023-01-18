@@ -12,6 +12,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */}}
 
+{{- if (.Values.global).subchart_release_name }}
+{{- $_ := set . "deployment_name" .Chart.Name }}
+{{- else }}
+{{- $_ := set . "deployment_name" .Release.Name }}
+{{- end }}
+
 {{- if .Values.manifests.configmap_etc }}
 {{- $envAll := . }}
 
@@ -106,21 +112,21 @@ limitations under the License.
 {{- end -}}
 
 {{- if empty .Values.conf.heat.heat_api.bind_port -}}
-{{- $_ := tuple "orchestration" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" | set .Values.conf.heat.heat_api "bind_port" -}}
+{{- $_ := tuple "orchestration" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" | set .Values.conf.heat.heat_api "bind_port" -}}
 {{- end -}}
 
 {{- if empty .Values.conf.heat.heat_api_cloudwatch.bind_port -}}
-{{- $_ := tuple "cloudwatch" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" | set .Values.conf.heat.heat_api_cloudwatch "bind_port" -}}
+{{- $_ := tuple "cloudwatch" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" | set .Values.conf.heat.heat_api_cloudwatch "bind_port" -}}
 {{- end -}}
 
 {{- if empty .Values.conf.heat.heat_api_cfn.bind_port -}}
-{{- $_ := tuple "cloudformation" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" | set .Values.conf.heat.heat_api_cfn "bind_port" -}}
+{{- $_ := tuple "cloudformation" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" | set .Values.conf.heat.heat_api_cfn "bind_port" -}}
 {{- end -}}
 
 {{- if and (empty .Values.conf.logging.handler_fluent) (has "fluent" .Values.conf.logging.handlers.keys) -}}
 {{- $fluentd_host := tuple "fluentd" "internal" $envAll | include "helm-toolkit.endpoints.hostname_namespaced_endpoint_lookup" }}
 {{- $fluentd_port := tuple "fluentd" "internal" "service" $envAll | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
-{{- $fluent_args := printf "('%s.%s', '%s', %s)" .Release.Namespace .Release.Name $fluentd_host $fluentd_port }}
+{{- $fluent_args := printf "('%s.%s', '%s', %s)" .Release.Namespace .deployment_name $fluentd_host $fluentd_port }}
 {{- $handler_fluent := dict "class" "fluent.handler.FluentHandler" "formatter" "fluent" "args" $fluent_args -}}
 {{- $_ := set .Values.conf.logging "handler_fluent" $handler_fluent -}}
 {{- end -}}

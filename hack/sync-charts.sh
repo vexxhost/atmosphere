@@ -86,11 +86,11 @@ GLANCE_VERSION=0.4.1
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/glance-${GLANCE_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-CINDER_VERSION=0.2.25
+CINDER_VERSION=0.3.2
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/cinder-${CINDER_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-PLACEMENT_VERSION=0.2.10
+PLACEMENT_VERSION=0.3.2
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/placement-${PLACEMENT_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
@@ -110,15 +110,15 @@ NOVA_VERISON=0.2.32
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/nova-${NOVA_VERISON}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-SENLIN_VERSION=0.2.6
+SENLIN_VERSION=0.2.8
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/senlin-${SENLIN_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-DESIGNATE_VERSION=0.2.7
+DESIGNATE_VERSION=0.2.8
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/designate-${DESIGNATE_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-HEAT_VERSION=0.2.8
+HEAT_VERSION=0.3.1
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/heat-${HEAT_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
@@ -130,7 +130,7 @@ MAGNUM_VERSION=0.2.8
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/magnum-${MAGNUM_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-HORIZON_VERSION=0.2.24
+HORIZON_VERSION=0.3.1
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/horizon-${HORIZON_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
