@@ -47,6 +47,15 @@
     kubeconfig: /etc/kubernetes/admin.conf
     values: "{{ _openstack_helm_magnum_helm_values | combine(openstack_helm_magnum_helm_values, recursive=True) }}"
 
+- name: Create Ingress
+  ansible.builtin.include_role:
+    name: openstack_helm_ingress
+  vars:
+    openstack_helm_ingress_endpoint: container_infra
+    openstack_helm_ingress_service_name: magnum-api
+    openstack_helm_ingress_service_port: 9511
+    openstack_helm_ingress_annotations: "{{ openstack_helm_magnum_ingress_annotations }}"
+
 - name: Deploy Helm chart
   kubernetes.core.k8s:
     state: present
