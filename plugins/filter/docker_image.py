@@ -59,7 +59,7 @@ DOCUMENTATION = """
 EXAMPLES = """
   - name: Generate a Docker image reference
     ansible.builtin.debug:
-      msg: "{{ 'docker.io/library/memcached:1.6.3' | community.general.docker_image('name') }}"
+      msg: "{{ 'docker.io/library/memcached:1.6.3' | vexxhost.atmosphere.docker_image('name') }}"
 """
 
 RETURN = """
