@@ -104,7 +104,6 @@ IMAGE_LIST = {
     "neutron_server": "us-docker.pkg.dev/vexxhost-infra/openstack/neutron:wallaby",
     "neutron_sriov_agent_init": "us-docker.pkg.dev/vexxhost-infra/openstack/neutron:wallaby",
     "neutron_sriov_agent": "us-docker.pkg.dev/vexxhost-infra/openstack/neutron:wallaby",
-    "node_feature_discovery": "k8s.gcr.io/nfd/node-feature-discovery:v0.11.2",
     "nova_api": "quay.io/vexxhost/nova:wallaby",
     "nova_archive_deleted_rows": "quay.io/vexxhost/nova:wallaby",
     "nova_cell_setup_init": "quay.io/vexxhost/heat:zed",

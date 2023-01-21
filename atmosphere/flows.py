@@ -100,37 +100,6 @@ def get_engine(config):
             name=constants.NAMESPACE_MONITORING,
         ),
     ).apply()
-    objects.HelmRepository(
-        api=api,
-        metadata=types.NamespacedObjectMeta(
-            name=constants.HELM_REPOSITORY_NODE_FEATURE_DISCOVERY,
-            namespace=constants.NAMESPACE_MONITORING,
-        ),
-        spec=types.HelmRepositorySpec(
-            url="https://kubernetes-sigs.github.io/node-feature-discovery/charts",
-        ),
-    ).apply()
-    objects.HelmRelease(
-        api=api,
-        metadata=types.NamespacedObjectMeta(
-            name="node-feature-discovery",
-            namespace=constants.NAMESPACE_MONITORING,
-        ),
-        spec=types.HelmReleaseSpec(
-            chart=types.HelmChartTemplate(
-                spec=types.HelmChartTemplateSpec(
-                    chart="node-feature-discovery",
-                    version="0.11.2",
-                    source_ref=types.CrossNamespaceObjectReference(
-                        kind="HelmRepository",
-                        name=constants.HELM_REPOSITORY_NODE_FEATURE_DISCOVERY,
-                        namespace=constants.NAMESPACE_MONITORING,
-                    ),
-                )
-            ),
-            values=constants.HELM_RELEASE_NODE_FEATURE_DISCOVERY_VALUES,
-        ),
-    ).apply()
 
     objects.HelmRepository(
         api=api,

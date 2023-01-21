@@ -18,7 +18,6 @@ HELM_REPOSITORY_INGRESS_NGINX = "ingress-nginx"
 HELM_REPOSITORY_INGRESS_NGINX_URL = "https://kubernetes.github.io/ingress-nginx"
 
 HELM_REPOSITORY_JETSTACK = "jetstack"
-HELM_REPOSITORY_NODE_FEATURE_DISCOVERY = "node-feature-discovery"
 HELM_REPOSITORY_OPENSTACK_HELM = "openstack-helm"
 HELM_REPOSITORY_OPENSTACK_HELM_INFRA = "openstack-helm-infra"
 HELM_REPOSITORY_PERCONA = "percona"
@@ -531,15 +530,6 @@ HELM_RELEASE_CERT_MANAGER_VALUES = {
             )["tag"],
         },
     },
-}
-
-HELM_RELEASE_NODE_FEATURE_DISCOVERY_VALUES = {
-    "image": {
-        "repository": utils.get_image_ref_using_legacy_image_repository(
-            "node_feature_discovery"
-        )["name"]
-    },
-    "master": {"nodeSelector": NODE_SELECTOR_CONTROL_PLANE},
 }
 
 HELM_RELEASE_RABBITMQ_OPERATOR_NAME = "rabbitmq-cluster-operator"
