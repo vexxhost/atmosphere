@@ -13,6 +13,8 @@
 # under the License.
 
 _node_feature_discovery_helm_values:
-  image: "{{ atmosphere_images['node_feature_discovery'] | vexxhost.atmosphere.docker_image('ref') }}"
-  nodeSelector:
-    openstack-control-plane: enabled
+  image:
+    repository: "{{ atmosphere_images['node_feature_discovery'] | vexxhost.atmosphere.docker_image('name') }}"
+  master:
+    nodeSelector:
+      openstack-control-plane: enabled
