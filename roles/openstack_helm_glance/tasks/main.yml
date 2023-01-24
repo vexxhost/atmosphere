@@ -12,70 +12,37 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Generate OpenStack-Helm endpoints
-  ansible.builtin.include_role:
-    name: openstack_helm_endpoints
-  vars:
-    openstack_helm_endpoints_chart: glance
+- name: Uninstall the legacy HelmRelease
+  run_once: true
+  block:
+    - name: Suspend the existing HelmRelease
+      kubernetes.core.k8s:
+        state: patched
+        api_version: helm.toolkit.fluxcd.io/v2beta1
+        kind: HelmRelease
+        name: "{{ openstack_helm_glance_helm_release_name }}"
+        namespace: "{{ openstack_helm_glance_helm_release_namespace }}"
+        definition:
+          spec:
+            suspend: true
+
+    - name: Remove the existing HelmRelease
+      kubernetes.core.k8s:
+        state: absent
+        api_version: helm.toolkit.fluxcd.io/v2beta1
+        kind: HelmRelease
+        name: "{{ openstack_helm_glance_helm_release_name }}"
+        namespace: "{{ openstack_helm_glance_helm_release_namespace }}"
 
 - name: Deploy Helm chart
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      - apiVersion: source.toolkit.fluxcd.io/v1beta2
-        kind: GitRepository
-        metadata:
-          name: openstack-helm-infra
-          namespace: openstack
-        spec:
-          interval: 60s
-          url: https://github.com/vexxhost/openstack-helm-infra
-          ref:
-            commit: 24726dffd6f1e5ac91620e92e04a782cb94340e8
-
-      - apiVersion: source.toolkit.fluxcd.io/v1beta2
-        kind: GitRepository
-        metadata:
-          name: openstack-helm
-          namespace: openstack
-        spec:
-          interval: 60s
-          url: https://github.com/vexxhost/openstack-helm
-          ref:
-            commit: 340c5840434d510d5c977618fea236403ca1bbfb
-          include:
-            - repository:
-                name: openstack-helm-infra
-              toPath: ../openstack-helm-infra
-
-      - apiVersion: v1
-        kind: Secret
-        metadata:
-          name: atmosphere-glance
-          namespace: openstack
-        stringData:
-          values.yaml: "{{ _openstack_helm_glance_values | combine(openstack_helm_glance_values, recursive=True) | to_nice_yaml }}"
-
-      - apiVersion: helm.toolkit.fluxcd.io/v2beta1
-        kind: HelmRelease
-        metadata:
-          name: glance
-          namespace: openstack
-        spec:
-          interval: 60s
-          chart:
-            spec:
-              chart: ./glance
-              sourceRef:
-                kind: GitRepository
-                name: openstack-helm
-          install:
-            disableWait: true
-          upgrade:
-            disableWait: true
-          valuesFrom:
-            - kind: Secret
-              name: atmosphere-glance
+  run_once: true
+  kubernetes.core.helm:
+    name: "{{ openstack_helm_glance_helm_release_name }}"
+    chart_ref: "{{ openstack_helm_glance_helm_chart_ref }}"
+    release_namespace: "{{ openstack_helm_glance_helm_release_namespace }}"
+    create_namespace: true
+    kubeconfig: /etc/kubernetes/admin.conf
+    values: "{{ _openstack_helm_glance_helm_values | combine(openstack_helm_glance_helm_values, recursive=True) }}"
 
 - name: Create Ingress
   ansible.builtin.include_role:
