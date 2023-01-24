@@ -1,0 +1,38 @@
+# Copyright (c) 2023 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+_rabbitmq_cluster_operator_helm_values:
+  global:
+    imageRegistry: "{{ atmosphere_images['rabbitmq_cluster_operator'] | vexxhost.atmosphere.docker_image('domain') }}"
+  rabbitmqImage:
+    repository: "{{ atmosphere_images['rabbitmq_server'] | vexxhost.atmosphere.docker_image('path') }}"
+    tag: "{{ atmosphere_images['rabbitmq_server'] | vexxhost.atmosphere.docker_image('tag') }}"
+  credentialUpdaterImage:
+    repository: "{{ atmosphere_images['rabbitmq_credential_updater'] | vexxhost.atmosphere.docker_image('path') }}"
+    tag: "{{ atmosphere_images['rabbitmq_credential_updater'] | vexxhost.atmosphere.docker_image('tag') }}"
+  clusterOperator:
+    fullnameOverride: rabbitmq-cluster-operator
+    nodeSelector:
+      openstack-control-plane: enabled
+    image:
+      repository: "{{ atmosphere_images['rabbitmq_cluster_operator'] | vexxhost.atmosphere.docker_image('path') }}"
+      tag: "{{ atmosphere_images['rabbitmq_cluster_operator'] | vexxhost.atmosphere.docker_image('tag') }}"
+  msgTopologyOperator:
+    fullnameOverride: rabbitmq-messaging-topology-operator
+    nodeSelector:
+      openstack-control-plane: enabled
+    image:
+      repository: "{{ atmosphere_images['rabbitmq_topology_operator'] | vexxhost.atmosphere.docker_image('path') }}"
+      tag: "{{ atmosphere_images['rabbitmq_topology_operator'] | vexxhost.atmosphere.docker_image('tag') }}"
+  useCertManager: true

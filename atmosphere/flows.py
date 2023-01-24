@@ -57,37 +57,6 @@ def get_engine(config):
     objects.HelmRepository(
         api=api,
         metadata=types.NamespacedObjectMeta(
-            name=constants.HELM_REPOSITORY_BITNAMI,
-            namespace=constants.NAMESPACE_OPENSTACK,
-        ),
-        spec=types.HelmRepositorySpec(
-            url="https://charts.bitnami.com/bitnami",
-        ),
-    ).apply()
-    objects.HelmRelease(
-        api=api,
-        metadata=types.NamespacedObjectMeta(
-            name=constants.HELM_RELEASE_RABBITMQ_OPERATOR_NAME,
-            namespace=constants.NAMESPACE_OPENSTACK,
-        ),
-        spec=types.HelmReleaseSpec(
-            chart=types.HelmChartTemplate(
-                spec=types.HelmChartTemplateSpec(
-                    chart=constants.HELM_RELEASE_RABBITMQ_OPERATOR_NAME,
-                    version=constants.HELM_RELEASE_RABBITMQ_OPERATOR_VERSION,
-                    source_ref=types.CrossNamespaceObjectReference(
-                        kind="HelmRepository",
-                        name=constants.HELM_REPOSITORY_BITNAMI,
-                        namespace=constants.NAMESPACE_OPENSTACK,
-                    ),
-                )
-            ),
-            values=constants.HELM_RELEASE_RABBITMQ_OPERATOR_VALUES,
-        ),
-    ).apply()
-    objects.HelmRepository(
-        api=api,
-        metadata=types.NamespacedObjectMeta(
             name=constants.HELM_REPOSITORY_OPENSTACK_HELM_INFRA,
             namespace=constants.NAMESPACE_OPENSTACK,
         ),
@@ -143,16 +112,6 @@ def get_engine(config):
                         ),
                     )
                 ),
-                depends_on=[
-                    types.NamespacedObjectReference(
-                        name=constants.HELM_RELEASE_RABBITMQ_OPERATOR_NAME,
-                        namespace=constants.NAMESPACE_OPENSTACK,
-                    ),
-                    types.NamespacedObjectReference(
-                        name="node-feature-discovery",
-                        namespace=constants.NAMESPACE_MONITORING,
-                    ),
-                ],
                 values={
                     **constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_VALUES,
                     **config.kube_prometheus_stack.overrides,

@@ -43,7 +43,7 @@ DOCUMENTATION = """
     part:
       type: string
       default: 'ref'
-      options: [name, ref]
+      options: [name, ref, tag, domain, path]
       required: true
       description:
         - Part of the Docker image reference to return
@@ -85,6 +85,12 @@ def docker_image(value, part="ref", registry=None):
             return ref.string()
         if part == "name":
             return ref["name"]
+        if part == "tag":
+            return ref["tag"]
+        if part == "domain":
+            return ref.repository["domain"]
+        if part == "path":
+            return ref.repository["path"]
 
     ref = reference.Reference.parse(value)
     if not registry:

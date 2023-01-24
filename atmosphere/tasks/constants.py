@@ -11,16 +11,13 @@ NAMESPACE_KUBE_SYSTEM = "kube-system"
 NAMESPACE_MONITORING = "monitoring"
 NAMESPACE_OPENSTACK = "openstack"
 
-HELM_REPOSITORY_BITNAMI = "bitnami"
 HELM_REPOSITORY_COREDNS = "coredns"
 
 HELM_REPOSITORY_INGRESS_NGINX = "ingress-nginx"
 HELM_REPOSITORY_INGRESS_NGINX_URL = "https://kubernetes.github.io/ingress-nginx"
 
-HELM_REPOSITORY_JETSTACK = "jetstack"
 HELM_REPOSITORY_OPENSTACK_HELM = "openstack-helm"
 HELM_REPOSITORY_OPENSTACK_HELM_INFRA = "openstack-helm-infra"
-HELM_REPOSITORY_PERCONA = "percona"
 
 HELM_REPOSITORY_PROMETHEUS_COMMUINTY = "prometheus-community"
 HELM_REPOSITORY_PROMETHEUS_COMMUINTY_URL = (
@@ -464,74 +461,3 @@ HELM_RELEASE_INGRESS_NGINX_VALUES = {
         "5354": "openstack/minidns:5354",
     },
 }
-
-HELM_RELEASE_RABBITMQ_OPERATOR_NAME = "rabbitmq-cluster-operator"
-HELM_RELEASE_RABBITMQ_OPERATOR_VERSION = "2.6.6"
-HELM_RELEASE_RABBITMQ_OPERATOR_VALUES = {
-    "global": {
-        "imageRegistry": utils.get_image_ref_using_legacy_image_repository(
-            "rabbitmq_cluster_operator"
-        ).repository["domain"],
-    },
-    "rabbitmqImage": {
-        "repository": utils.get_image_ref_using_legacy_image_repository(
-            "rabbitmq_server"
-        ).repository["path"],
-        "tag": utils.get_image_ref_using_legacy_image_repository("rabbitmq_server")[
-            "tag"
-        ],
-    },
-    "credentialUpdaterImage": {
-        "repository": utils.get_image_ref_using_legacy_image_repository(
-            "rabbitmq_credential_updater"
-        ).repository["path"],
-        "tag": utils.get_image_ref_using_legacy_image_repository(
-            "rabbitmq_credential_updater"
-        )["tag"],
-    },
-    "clusterOperator": {
-        "fullnameOverride": "rabbitmq-cluster-operator",
-        "nodeSelector": NODE_SELECTOR_CONTROL_PLANE,
-        "image": {
-            "repository": utils.get_image_ref_using_legacy_image_repository(
-                "rabbitmq_cluster_operator"
-            ).repository["path"],
-            "tag": utils.get_image_ref_using_legacy_image_repository(
-                "rabbitmq_cluster_operator"
-            )["tag"],
-        },
-    },
-    "msgTopologyOperator": {
-        "fullnameOverride": "rabbitmq-messaging-topology-operator",
-        "nodeSelector": NODE_SELECTOR_CONTROL_PLANE,
-        "image": {
-            "repository": utils.get_image_ref_using_legacy_image_repository(
-                "rabbitmq_topology_operator"
-            ).repository["path"],
-            "tag": utils.get_image_ref_using_legacy_image_repository(
-                "rabbitmq_topology_operator"
-            )["tag"],
-        },
-    },
-    "useCertManager": True,
-}
-
-HELM_RELEASE_KEYSTONE_NAME = "keystone"
-
-HELM_RELEASE_BARBICAN_NAME = "barbican"
-
-HELM_RELEASE_GLANCE_NAME = "glance"
-
-HELM_RELEASE_CINDER_NAME = "cinder"
-
-HELM_RELEASE_NEUTRON_NAME = "neutron"
-
-HELM_RELEASE_NOVA_NAME = "nova"
-
-HELM_RELEASE_OCTAVIA_NAME = "octavia"
-
-HELM_RELEASE_SENLIN_NAME = "senlin"
-
-HELM_RELEASE_DESIGNATE_NAME = "designate"
-
-HELM_RELEASE_HEAT_NAME = "heat"
