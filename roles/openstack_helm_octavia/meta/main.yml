@@ -24,5 +24,12 @@ galaxy_info:
 
 dependencies:
   - role: defaults
+  - role: openstack_helm_endpoints
+    vars:
+      openstack_helm_endpoints_chart: octavia
+  - role: upload_helm_chart
+    vars:
+      upload_helm_chart_src: "{{ openstack_helm_octavia_helm_chart_path }}"
+      upload_helm_chart_dest: "{{ openstack_helm_octavia_helm_chart_ref }}"
   - role: openstacksdk
   - role: openstack_cli
