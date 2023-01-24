@@ -7,10 +7,6 @@ IMAGE_LIST = {
     "barbican_db_sync": "quay.io/vexxhost/barbican:wallaby",
     "bootstrap": "quay.io/vexxhost/heat:zed",
     "ceph_config_helper": "quay.io/vexxhost/libvirtd:yoga-focal",
-    "cert_manager_cainjector": "quay.io/jetstack/cert-manager-cainjector:v1.7.1",
-    "cert_manager_cli": "quay.io/jetstack/cert-manager-ctl:v1.7.1",
-    "cert_manager_controller": "quay.io/jetstack/cert-manager-controller:v1.7.1",
-    "cert_manager_webhook": "quay.io/jetstack/cert-manager-webhook:v1.7.1",
     "cilium_node": "quay.io/cilium/cilium:v1.10.7@sha256:e23f55e80e1988db083397987a89967aa204ad6fc32da243b9160fbcea29b0ca",  # noqa
     "cilium_operator": "quay.io/cilium/operator-generic:v1.10.7@sha256:d0b491d8d8cb45862ed7f0410f65e7c141832f0f95262643fa5ff1edfcddcafe",  # noqa
     "cinder_api": "quay.io/vexxhost/cinder:zed",

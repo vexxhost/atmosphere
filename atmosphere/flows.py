@@ -47,53 +47,6 @@ def get_engine(config):
             ),
         ).apply()
 
-    # NOTE(mnaser): We're running this first since we do get often timeouts
-    #               when waiting for the self-signed certificate authority to
-    #               be ready.
-    objects.Namespace(
-        api=api,
-        metadata=types.ObjectMeta(
-            name=constants.NAMESPACE_CERT_MANAGER,
-        ),
-    ).apply()
-    objects.HelmRepository(
-        api=api,
-        metadata=types.NamespacedObjectMeta(
-            name=constants.HELM_REPOSITORY_JETSTACK,
-            namespace=constants.NAMESPACE_CERT_MANAGER,
-        ),
-        spec=types.HelmRepositorySpec(
-            url="https://charts.jetstack.io",
-        ),
-    ).apply()
-    objects.HelmRelease(
-        api=api,
-        metadata=types.NamespacedObjectMeta(
-            name=constants.HELM_RELEASE_CERT_MANAGER_NAME,
-            namespace=constants.NAMESPACE_CERT_MANAGER,
-        ),
-        spec=types.HelmReleaseSpec(
-            chart=types.HelmChartTemplate(
-                spec=types.HelmChartTemplateSpec(
-                    chart=constants.HELM_RELEASE_CERT_MANAGER_NAME,
-                    version=constants.HELM_RELEASE_CERT_MANAGER_VERSION,
-                    source_ref=types.CrossNamespaceObjectReference(
-                        kind="HelmRepository",
-                        name=constants.HELM_REPOSITORY_JETSTACK,
-                        namespace=constants.NAMESPACE_CERT_MANAGER,
-                    ),
-                )
-            ),
-            depends_on=[
-                types.NamespacedObjectReference(
-                    name=constants.HELM_RELEASE_INGRESS_NGINX_NAME,
-                    namespace=config.ingress_nginx.namespace,
-                )
-            ],
-            values=constants.HELM_RELEASE_CERT_MANAGER_VALUES,
-        ),
-    ).apply()
-
     objects.Namespace(
         api=api,
         metadata=types.ObjectMeta(
@@ -129,12 +82,6 @@ def get_engine(config):
                     ),
                 )
             ),
-            depends_on=[
-                types.NamespacedObjectReference(
-                    name=constants.HELM_RELEASE_CERT_MANAGER_NAME,
-                    namespace=constants.NAMESPACE_CERT_MANAGER,
-                )
-            ],
             values=constants.HELM_RELEASE_RABBITMQ_OPERATOR_VALUES,
         ),
     ).apply()
