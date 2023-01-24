@@ -12,45 +12,37 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Generate OpenStack-Helm endpoints
-  ansible.builtin.include_role:
-    name: openstack_helm_endpoints
-  vars:
-    openstack_helm_endpoints_chart: heat
+- name: Uninstall the legacy HelmRelease
+  run_once: true
+  block:
+    - name: Suspend the existing HelmRelease
+      kubernetes.core.k8s:
+        state: patched
+        api_version: helm.toolkit.fluxcd.io/v2beta1
+        kind: HelmRelease
+        name: "{{ openstack_helm_heat_helm_release_name }}"
+        namespace: "{{ openstack_helm_heat_helm_release_namespace }}"
+        definition:
+          spec:
+            suspend: true
+
+    - name: Remove the existing HelmRelease
+      kubernetes.core.k8s:
+        state: absent
+        api_version: helm.toolkit.fluxcd.io/v2beta1
+        kind: HelmRelease
+        name: "{{ openstack_helm_heat_helm_release_name }}"
+        namespace: "{{ openstack_helm_heat_helm_release_namespace }}"
 
 - name: Deploy Helm chart
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      - apiVersion: v1
-        kind: Secret
-        metadata:
-          name: atmosphere-heat
-          namespace: openstack
-        stringData:
-          values.yaml: "{{ _openstack_helm_heat_values | to_nice_yaml }}"
-
-      - apiVersion: helm.toolkit.fluxcd.io/v2beta1
-        kind: HelmRelease
-        metadata:
-          name: heat
-          namespace: openstack
-        spec:
-          interval: 60s
-          chart:
-            spec:
-              chart: heat
-              version: 0.2.8
-              sourceRef:
-                kind: HelmRepository
-                name: openstack-helm
-          install:
-            disableWait: true
-          upgrade:
-            disableWait: true
-          valuesFrom:
-            - kind: Secret
-              name: atmosphere-heat
+  run_once: true
+  kubernetes.core.helm:
+    name: "{{ openstack_helm_heat_helm_release_name }}"
+    chart_ref: "{{ openstack_helm_heat_helm_chart_ref }}"
+    release_namespace: "{{ openstack_helm_heat_helm_release_namespace }}"
+    create_namespace: true
+    kubeconfig: /etc/kubernetes/admin.conf
+    values: "{{ _openstack_helm_heat_helm_values | combine(openstack_helm_heat_helm_values, recursive=True) }}"
 
 - name: Create Ingress
   ansible.builtin.include_role:
