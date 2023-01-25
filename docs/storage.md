@@ -42,7 +42,7 @@ Since Glance does not have a native PowerStore driver, you'll need to enable
 the use of the Cinder driver by adding the following to your Ansible inventory:
 
 ```yaml
-openstack_helm_glance_values:
+openstack_helm_glance_helm_values:
   storage: cinder
   conf:
     glance:
