@@ -1,51 +1,6 @@
 import textwrap
 
-import mergedeep
-import yaml
-
 from atmosphere.models import config
-from atmosphere.models.openstack_helm import values
-from atmosphere.tasks.kubernetes import flux, v1
-
-
-class ApplyReleaseSecretTask(v1.ApplySecretTask):
-    def __init__(self, config: config.Config, namespace: str, chart: str):
-        vals = mergedeep.merge(
-            {},
-            values.Values.for_chart(chart, config).to_native(),
-            getattr(config, chart).overrides,
-        )
-        values_yaml = yaml.dump(vals, default_flow_style=False)
-
-        super().__init__(
-            namespace=namespace,
-            name=f"atmosphere-{chart}",
-            data={"values.yaml": values_yaml},
-        )
-
-
-class ApplyHelmReleaseTask(flux.ApplyHelmReleaseTask):
-    def __init__(
-        self,
-        namespace: str,
-        name: str,
-        repository: str,
-        version: str,
-    ):
-        super().__init__(
-            namespace=namespace,
-            name=name,
-            repository=repository,
-            chart=name,
-            version=version,
-            values_from=[
-                {
-                    "kind": "Secret",
-                    "name": f"atmosphere-{name}",
-                }
-            ],
-            requires=set([f"secret-{namespace}-atmosphere-{name}"]),
-        )
 
 
 def generate_alertmanager_config_for_opsgenie(

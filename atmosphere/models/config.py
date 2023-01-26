@@ -4,7 +4,6 @@ import tomli
 from schematics import types
 from schematics.exceptions import ValidationError
 
-from atmosphere import utils
 from atmosphere.models import base
 
 CONFIG_FILE = os.environ.get("ATMOSPHERE_CONFIG", "/etc/atmosphere/config.toml")
@@ -88,23 +87,6 @@ class KubePrometheusStackChartConfig(ChartConfig):
     namespace = types.StringType(default="monitoring", required=True)
 
 
-class MemcachedImagesConfig(base.Model):
-    memcached = types.StringType(
-        default=utils.get_image_ref_using_legacy_image_repository("memcached").string()
-    )
-    exporter = types.StringType(
-        default=utils.get_image_ref_using_legacy_image_repository(
-            "prometheus_memcached_exporter"
-        ).string()
-    )
-
-
-class MemcachedChartConfig(ChartConfig):
-    namespace = types.StringType(default="openstack", required=True)
-    secret_key = types.StringType(required=True)
-    images = types.ModelType(MemcachedImagesConfig, default=MemcachedImagesConfig())
-
-
 class IngressNginxChartConfig(ChartConfig):
     namespace = types.StringType(default="openstack", required=True)
 
@@ -132,9 +114,6 @@ class Config(base.Model):
     )
     ingress_nginx = types.ModelType(
         IngressNginxChartConfig, default=IngressNginxChartConfig()
-    )
-    memcached = types.ModelType(
-        MemcachedChartConfig, default=MemcachedChartConfig(), required=True
     )
     issuer = types.PolyModelType(
         [AcmeIssuerConfig, CaIssuerConfig, SelfSignedIssuerConfig],

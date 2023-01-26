@@ -5,7 +5,7 @@ from atmosphere import clients
 from atmosphere.operator.api import objects, types
 from atmosphere.tasks import constants
 from atmosphere.tasks.composite import openstack_helm
-from atmosphere.tasks.kubernetes import cert_manager, v1
+from atmosphere.tasks.kubernetes import cert_manager
 
 
 def get_engine(config):
@@ -140,42 +140,5 @@ def get_deployment_flow(config):
         # cert-manager
         *cert_manager.issuer_tasks_from_config(config.issuer),
     )
-
-    if config.memcached.enabled:
-        flow.add(
-            openstack_helm.ApplyReleaseSecretTask(
-                config=config,
-                namespace=config.memcached.namespace,
-                chart="memcached",
-            ),
-            openstack_helm.ApplyHelmReleaseTask(
-                namespace=config.memcached.namespace,
-                repository=constants.HELM_REPOSITORY_OPENSTACK_HELM_INFRA,
-                name="memcached",
-                version="0.1.12",
-            ),
-            v1.ApplyServiceTask(
-                namespace=config.memcached.namespace,
-                name="memcached-metrics",
-                labels={
-                    "application": "memcached",
-                    "component": "server",
-                },
-                spec={
-                    "selector": {
-                        "application": "memcached",
-                        "component": "server",
-                    },
-                    "ports": [
-                        {
-                            "name": "metrics",
-                            "protocol": "TCP",
-                            "port": 9150,
-                            "targetPort": 9150,
-                        }
-                    ],
-                },
-            ),
-        )
 
     return flow

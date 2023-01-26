@@ -2,13 +2,14 @@ import json
 import re
 
 import pykube
+import structlog
 from taskflow import task
 from tenacity import retry, stop_after_delay, wait_fixed
 
-from atmosphere import clients, logger
+from atmosphere import clients
 
 CAMEL_CASE_PATTERN = re.compile(r"(?<!^)(?=[A-Z])")
-LOG = logger.get_logger()
+LOG = structlog.get_logger()
 
 
 class ApplyKubernetesObjectTask(task.Task):
