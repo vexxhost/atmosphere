@@ -1,9 +1,6 @@
 import pykube
-import structlog
 
 from atmosphere.tasks.kubernetes import base
-
-LOG = structlog.get_logger()
 
 
 class ApplySecretTask(base.ApplyKubernetesObjectTask):
