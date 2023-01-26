@@ -64,7 +64,7 @@ You can enable the native PowerStore driver for Cinder with the following
 configuration inside your Ansible inventory:
 
 ```yaml
-openstack_helm_cinder_values:
+openstack_helm_cinder_helm_values:
   storage: powerstore
   dependencies:
     static:
@@ -122,7 +122,7 @@ You can enable the native PowerStore driver for Cinder with the following
 configuration inside your Ansible inventory:
 
 ```yaml
-openstack_helm_nova_values:
+openstack_helm_nova_helm_values:
   conf:
     enable_iscsi: true
 ```
