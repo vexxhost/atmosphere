@@ -12,74 +12,86 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Deploy Helm chart
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      - apiVersion: helm.toolkit.fluxcd.io/v2beta1
+- name: Uninstall the legacy HelmRelease
+  run_once: true
+  block:
+    - name: Suspend the existing HelmRelease
+      kubernetes.core.k8s:
+        state: patched
+        api_version: helm.toolkit.fluxcd.io/v2beta1
         kind: HelmRelease
-        metadata:
-          name: neutron-coredns
-          namespace: openstack
-        spec:
-          interval: 60s
-          chart:
-            spec:
-              chart: coredns
-              version: 1.19.4
-              sourceRef:
-                kind: HelmRepository
-                name: coredns
-          values:
-            image:
-              repository: "{{ atmosphere_images['neutron_coredns'] | vexxhost.atmosphere.docker_image('name') }}"
-            replicaCount: 3
-            prometheus:
-              service:
-                enabled: true
-            service:
-              name: neutron-coredns
-              clusterIP: "{{ neutron_coredns_cluster_ip | default('10.96.0.20') }}"
-            isClusterService: false
-            servers:
-              - port: 53
-                zones:
-                  - zone: .
-                plugins:
-                  - name: errors
-                  - name: ready
-                  - name: health
-                    configBlock: |-
-                      lameduck 5s
-                  - name: prometheus
-                    parameters: 0.0.0.0:9153
-                  - name: cache
-                  - name: reload
-                  - name: loadbalance
-                  - name: forward
-                    parameters: . 127.0.0.1:5301 127.0.0.1:5302
-              - port: 5301
-                zones:
-                  - zone: .
-                plugins:
-                  - name: forward
-                    parameters: . tls://1.1.1.1 tls://1.0.0.1
-                    configBlock: |-
-                      tls_servername cloudflare-dns.com
-                      health_check 5s
-              - port: 5302
-                zones:
-                  - zone: .
-                plugins:
-                  - name: forward
-                    parameters: . tls://8.8.8.8 tls://8.8.4.4
-                    configBlock: |-
-                      tls_servername dns.google
-                      health_check 5s
-            nodeSelector:
-              openstack-control-plane: enabled
-            customLabels:
-              application: neutron
-              component: coredns
-            deployment:
-              name: neutron-coredns
+        name: "{{ coredns_helm_release_name }}"
+        namespace: "{{ coredns_helm_release_namespace }}"
+        definition:
+          spec:
+            suspend: true
+
+    - name: Remove the existing HelmRelease
+      kubernetes.core.k8s:
+        state: absent
+        api_version: helm.toolkit.fluxcd.io/v2beta1
+        kind: HelmRelease
+        name: "{{ coredns_helm_release_name }}"
+        namespace: "{{ coredns_helm_release_namespace }}"
+
+- name: Deploy Helm chart
+  run_once: true
+  kubernetes.core.helm:
+    name: "{{ coredns_helm_release_name }}"
+    chart_ref: "{{ coredns_helm_chart_ref }}"
+    release_namespace: "{{ coredns_helm_release_namespace }}"
+    create_namespace: true
+    kubeconfig: /etc/kubernetes/admin.conf
+    values:
+      image:
+        repository: "{{ atmosphere_images['neutron_coredns'] | vexxhost.atmosphere.docker_image('name') }}"
+      replicaCount: 3
+      prometheus:
+        service:
+          enabled: true
+      service:
+        name: neutron-coredns
+        clusterIP: "{{ neutron_coredns_cluster_ip | default('10.96.0.20') }}"
+      isClusterService: false
+      servers:
+        - port: 53
+          zones:
+            - zone: .
+          plugins:
+            - name: errors
+            - name: ready
+            - name: health
+              configBlock: |-
+                lameduck 5s
+            - name: prometheus
+              parameters: 0.0.0.0:9153
+            - name: cache
+            - name: reload
+            - name: loadbalance
+            - name: forward
+              parameters: . 127.0.0.1:5301 127.0.0.1:5302
+        - port: 5301
+          zones:
+            - zone: .
+          plugins:
+            - name: forward
+              parameters: . tls://1.1.1.1 tls://1.0.0.1
+              configBlock: |-
+                tls_servername cloudflare-dns.com
+                health_check 5s
+        - port: 5302
+          zones:
+            - zone: .
+          plugins:
+            - name: forward
+              parameters: . tls://8.8.8.8 tls://8.8.4.4
+              configBlock: |-
+                tls_servername dns.google
+                health_check 5s
+      nodeSelector:
+        openstack-control-plane: enabled
+      customLabels:
+        application: neutron
+        component: coredns
+      deployment:
+        name: neutron-coredns
