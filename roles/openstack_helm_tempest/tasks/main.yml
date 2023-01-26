@@ -25,18 +25,18 @@
         cloud: atmosphere
         image: cirros
       register: _openstack_helm_tempest_test_image
-      when: openstack_helm_tempest_values.conf.tempest.compute.image_ref is not defined
+      when: openstack_helm_tempest_helm_values.conf.tempest.compute.image_ref is not defined
 
     - name: Configure test image ref
       ansible.builtin.set_fact:
-        openstack_helm_tempest_values: "{{ openstack_helm_tempest_values | default({}) | combine({item.key: item.value}, recursive=True) }}"
+        openstack_helm_tempest_helm_values: "{{ openstack_helm_tempest_helm_values | default({}) | combine({item.key: item.value}, recursive=True) }}"
       with_dict:
         conf:
           tempest:
             compute:
               image_ref: "{{ _openstack_helm_tempest_test_image.openstack_image.id }}"
       when:
-        - openstack_helm_tempest_values.conf.tempest.compute.image_ref is not defined
+        - openstack_helm_tempest_helm_values.conf.tempest.compute.image_ref is not defined
         - _openstack_helm_tempest_test_image.openstack_image.id is defined
 
     - name: Get test flavor object
@@ -44,18 +44,18 @@
         cloud: atmosphere
         name: m1.tiny
       register: _openstack_helm_tempest_test_flavor
-      when: openstack_helm_tempest_values.conf.tempest.compute.flavor_ref is not defined
+      when: openstack_helm_tempest_helm_values.conf.tempest.compute.flavor_ref is not defined
 
     - name: Set test flavor ref
       ansible.builtin.set_fact:
-        openstack_helm_tempest_values: "{{ openstack_helm_tempest_values | default({}) | combine({item.key: item.value}, recursive=True) }}"
+        openstack_helm_tempest_helm_values: "{{ openstack_helm_tempest_helm_values | default({}) | combine({item.key: item.value}, recursive=True) }}"
       with_dict:
         conf:
           tempest:
             compute:
               flavor_ref: "{{ _openstack_helm_tempest_test_flavor.openstack_flavors[0].id }}"
       when:
-        - openstack_helm_tempest_values.conf.tempest.compute.flavor_ref is not defined
+        - openstack_helm_tempest_helm_values.conf.tempest.compute.flavor_ref is not defined
         - _openstack_helm_tempest_test_flavor.openstack_flavors[0].id is defined
 
     - name: Get test network object
@@ -63,18 +63,18 @@
         cloud: atmosphere
         name: public
       register: _openstack_helm_tempest_test_network
-      when: openstack_helm_tempest_values.conf.tempest.network.public_network_id is not defined
+      when: openstack_helm_tempest_helm_values.conf.tempest.network.public_network_id is not defined
 
     - name: Set test network ref
       ansible.builtin.set_fact:
-        openstack_helm_tempest_values: "{{ openstack_helm_tempest_values | default({}) | combine({item.key: item.value}, recursive=True) }}"
+        openstack_helm_tempest_helm_values: "{{ openstack_helm_tempest_helm_values | default({}) | combine({item.key: item.value}, recursive=True) }}"
       with_dict:
         conf:
           tempest:
             network:
               public_network_id: "{{ _openstack_helm_tempest_test_network.openstack_networks[0].id }}"
       when:
-        - openstack_helm_tempest_values.conf.tempest.network.public_network_id is not defined
+        - openstack_helm_tempest_helm_values.conf.tempest.network.public_network_id is not defined
         - _openstack_helm_tempest_test_network.openstack_networks[0].id is defined
 
 - name: Deploy Helm chart
