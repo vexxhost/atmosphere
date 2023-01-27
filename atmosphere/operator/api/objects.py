@@ -1,9 +1,8 @@
 from typing import ClassVar
 
-import pykube
 from pydantic import Field
 
-from atmosphere.operator.api import mixins, types
+from atmosphere.operator.api import types
 
 # Kubernetes API
 
