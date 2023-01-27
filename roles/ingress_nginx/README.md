@@ -1,1 +1,1 @@
-# `coredns`
+# `ingress-nginx`
