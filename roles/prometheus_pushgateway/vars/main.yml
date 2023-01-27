@@ -12,20 +12,18 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-galaxy_info:
-  author: VEXXHOST, Inc.
-  description: Ansible role for Prometheus Pushgateway
-  license: Apache-2.0
-  min_ansible_version: 5.5.0
-  standalone: false
-  platforms:
-    - name: Ubuntu
-      versions:
-        - focal
-
-dependencies:
-  - role: defaults
-  - role: upload_helm_chart
-    vars:
-      upload_helm_chart_src: "{{ pushgateway_helm_chart_path }}"
-      upload_helm_chart_dest: "{{ pushgateway_helm_chart_ref }}"
+_pushgateway_helm_values:
+  image:
+    repository: "{{ atmosphere_images['prometheus_pushgateway'] | vexxhost.atmosphere.docker_image('name') }}"
+  nodeSelector:
+    openstack-control-plane: enabled
+  serviceMonitor:
+    enabled: true
+    namespace: monitoring
+    additionalLabels:
+      release: kube-prometheus-stack
+    relabelings:
+      - sourceLabels: ["__meta_kubernetes_pod_name"]
+        targetLabel: "instance"
+      - regex: "^(container|endpoint|namespace|pod|service)$"
+        action: "labeldrop"
