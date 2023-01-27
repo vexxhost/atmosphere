@@ -7,7 +7,6 @@ from taskflow.patterns import graph_flow
 
 from atmosphere import clients, flows
 from atmosphere.models import config
-from atmosphere.operator import tasks
 from atmosphere.operator.api import Cloud
 
 
