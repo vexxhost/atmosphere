@@ -18,4 +18,4 @@ openstack_helm_ingress_class_name: "{{ atmosphere_ingress_class_name }}"
 # certificate.
 #
 # See: https://kubernetes.io/docs/concepts/services-networking/ingress/#tls
-openstack_helm_ingress_secret_name: "{{ openstack_helm_ingress_service_name }}-certs"
+openstack_helm_ingress_secret_name: "{{ ingress_wildcard_secret_name | default(openstack_helm_ingress_service_name + '-certs') }}"

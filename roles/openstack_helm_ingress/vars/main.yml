@@ -12,5 +12,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-_openstack_helm_ingress_annotations:
+_ingress_issuer_annotations:
   cert-manager.io/cluster-issuer: "{{ openstack_helm_ingress_cluster_issuer }}"
+
+_openstack_helm_ingress_annotations: "{% if ingress_wildcard_secret_name is defined %}_ingress_issuer_annotations{% else %}{}{% endif %}"
