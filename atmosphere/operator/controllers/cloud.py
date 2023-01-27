@@ -23,11 +23,6 @@ def create_fn(namespace: str, name: str, spec: dict, **_):
 
     flow = graph_flow.Flow("deploy")
 
-    if spec["magnum"].get("enabled", True):
-        flow.add(
-            tasks.InstallClusterApiTask(),
-        )
-
     engine = engines.load(
         flow,
         store={
