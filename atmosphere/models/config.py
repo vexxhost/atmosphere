@@ -112,9 +112,6 @@ class Config(base.Model):
     kube_prometheus_stack = types.ModelType(
         KubePrometheusStackChartConfig, default=KubePrometheusStackChartConfig()
     )
-    ingress_nginx = types.ModelType(
-        IngressNginxChartConfig, default=IngressNginxChartConfig()
-    )
     issuer = types.PolyModelType(
         [AcmeIssuerConfig, CaIssuerConfig, SelfSignedIssuerConfig],
         default=AcmeIssuerConfig(),

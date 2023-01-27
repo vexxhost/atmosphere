@@ -1,0 +1,51 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+_ingress_nginx_helm_values:
+  controller:
+    image:
+      registry: "{{ atmosphere_images['ingress_nginx_controller'] | vexxhost.atmosphere.docker_image('domain') }}"
+      image: "{{ atmosphere_images['ingress_nginx_controller'] | vexxhost.atmosphere.docker_image('path') }}"
+      tag: "{{ atmosphere_images['ingress_nginx_controller'] | vexxhost.atmosphere.docker_image('tag') }}"
+      digest: "{{ atmosphere_images['ingress_nginx_controller'] | vexxhost.atmosphere.docker_image('digest') }}"
+    config:
+      proxy-buffer-size: 16k
+    dnsPolicy: ClusterFirstWithHostNet
+    hostNetwork: true
+    ingressClassResource:
+      name: openstack
+    ingressClass: openstack
+    kind: DaemonSet
+    nodeSelector:
+      openstack-control-plane: enabled
+    service:
+      type: ClusterIP
+    admissionWebhooks:
+      port: 7443
+      patch:
+        image:
+          registry: "{{ atmosphere_images['ingress_nginx_kube_webhook_certgen'] | vexxhost.atmosphere.docker_image('domain') }}"
+          image: "{{ atmosphere_images['ingress_nginx_kube_webhook_certgen'] | vexxhost.atmosphere.docker_image('path') }}"
+          tag: "{{ atmosphere_images['ingress_nginx_kube_webhook_certgen'] | vexxhost.atmosphere.docker_image('tag') }}"
+          digest: "{{ atmosphere_images['ingress_nginx_kube_webhook_certgen'] | vexxhost.atmosphere.docker_image('digest') }}"
+  defaultBackend:
+    enabled: true
+    image:
+      registry: "{{ atmosphere_images['ingress_nginx_default_backend'] | vexxhost.atmosphere.docker_image('domain') }}"
+      image: "{{ atmosphere_images['ingress_nginx_default_backend'] | vexxhost.atmosphere.docker_image('path') }}"
+      tag: "{{ atmosphere_images['ingress_nginx_default_backend'] | vexxhost.atmosphere.docker_image('tag') }}"
+  tcp:
+    '5354': openstack/minidns:5354
+  udp:
+    '5354': openstack/minidns:5354
