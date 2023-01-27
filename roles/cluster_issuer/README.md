@@ -96,12 +96,16 @@ cluster_issuer_ca_private_key: |
 If you have an existing wildcard certificate for all endpoints with Atmosphere,
 you can simply configure it as follows;
 
-1. Create a Kubernetes TLS secret using your wildcard certificate. Details on how to
-create a TLS secret can be found [here](https://kubernetes.io/docs/concepts/configuration/secret/#tls-secrets).
+1) Create a Kubernetes TLS secret using your wildcard certificate.
+
+Details on how to create a TLS secret can be found[here](https://kubernetes.io/docs/concepts/configuration/secret/#tls-secrets)
+
 ```shell
 kubectl -n openstack create secret tls wildcard-cert --key=./tls.key --cert=./tls.crt
 ```
-2. Set the above secret name as `ingress_wildcard_secret_name` ansible variable.
+
+2) Set the above secret name as `ingress_wildcard_secret_name` ansible variable.
+
 ```yaml
 ingress_wildcard_secret_name: wildcard-cert
 ```
