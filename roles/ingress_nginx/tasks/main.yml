@@ -15,17 +15,6 @@
 - name: Uninstall the legacy HelmRelease
   run_once: true
   block:
-    - name: Suspend the existing HelmRelease
-      kubernetes.core.k8s:
-        state: patched
-        api_version: helm.toolkit.fluxcd.io/v2beta1
-        kind: HelmRelease
-        name: "{{ ingress_nginx_helm_release_name }}"
-        namespace: "openstack"
-        definition:
-          spec:
-            suspend: true
-
     - name: Remove the existing HelmRelease
       kubernetes.core.k8s:
         state: absent
