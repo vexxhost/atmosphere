@@ -91,6 +91,8 @@ def docker_image(value, part="ref", registry=None):
             return ref.repository["domain"]
         if part == "path":
             return ref.repository["path"]
+        if part == "digest":
+            return ref["digest"]
 
     ref = reference.Reference.parse(value)
     if not registry:

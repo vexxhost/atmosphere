@@ -58,9 +58,6 @@ IMAGE_LIST = {
     "heat_purge_deleted": "us-docker.pkg.dev/vexxhost-infra/openstack/heat:wallaby",
     "horizon_db_sync": "us-docker.pkg.dev/vexxhost-infra/openstack/horizon:wallaby",
     "horizon": "us-docker.pkg.dev/vexxhost-infra/openstack/horizon:wallaby",
-    "ingress_nginx_controller": "k8s.gcr.io/ingress-nginx/controller:v1.1.1@sha256:0bc88eb15f9e7f84e8e56c14fa5735aaa488b840983f87bd79b1054190e660de",  # noqa
-    "ingress_nginx_default_backend": "k8s.gcr.io/defaultbackend-amd64:1.5",
-    "ingress_nginx_kube_webhook_certgen": "k8s.gcr.io/ingress-nginx/kube-webhook-certgen:v1.1.1@sha256:64d8c73dca984af206adf9d6d7e46aa550362b1d7a01f3a0a91b20cc67868660",  # noqa
     "keepalived": "us-docker.pkg.dev/vexxhost-infra/openstack/keepalived:2.0.19",
     "keystone_api": "quay.io/vexxhost/keystone:wallaby",
     "keystone_credential_cleanup": "quay.io/vexxhost/heat:zed",

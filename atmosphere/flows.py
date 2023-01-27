@@ -11,42 +11,6 @@ from atmosphere.tasks.kubernetes import cert_manager
 def get_engine(config):
     api = clients.get_pykube_api()
 
-    if config.ingress_nginx.enabled:
-        objects.HelmRepository(
-            api=api,
-            metadata=types.NamespacedObjectMeta(
-                name=constants.HELM_REPOSITORY_INGRESS_NGINX,
-                namespace=config.ingress_nginx.namespace,
-            ),
-            spec=types.HelmRepositorySpec(
-                url=constants.HELM_REPOSITORY_INGRESS_NGINX_URL,
-            ),
-        ).apply()
-        objects.HelmRelease(
-            api=api,
-            metadata=types.NamespacedObjectMeta(
-                name=constants.HELM_RELEASE_INGRESS_NGINX_NAME,
-                namespace=config.ingress_nginx.namespace,
-            ),
-            spec=types.HelmReleaseSpec(
-                chart=types.HelmChartTemplate(
-                    spec=types.HelmChartTemplateSpec(
-                        chart=constants.HELM_RELEASE_INGRESS_NGINX_NAME,
-                        version=constants.HELM_RELEASE_INGRESS_NGINX_VERSION,
-                        source_ref=types.CrossNamespaceObjectReference(
-                            kind="HelmRepository",
-                            name=constants.HELM_REPOSITORY_INGRESS_NGINX,
-                            namespace=config.ingress_nginx.namespace,
-                        ),
-                    )
-                ),
-                values={
-                    **constants.HELM_RELEASE_INGRESS_NGINX_VALUES,
-                    **config.ingress_nginx.overrides,
-                },
-            ),
-        ).apply()
-
     objects.Namespace(
         api=api,
         metadata=types.ObjectMeta(

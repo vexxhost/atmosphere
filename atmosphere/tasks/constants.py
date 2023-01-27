@@ -13,9 +13,6 @@ NAMESPACE_OPENSTACK = "openstack"
 
 HELM_REPOSITORY_COREDNS = "coredns"
 
-HELM_REPOSITORY_INGRESS_NGINX = "ingress-nginx"
-HELM_REPOSITORY_INGRESS_NGINX_URL = "https://kubernetes.github.io/ingress-nginx"
-
 HELM_REPOSITORY_OPENSTACK_HELM = "openstack-helm"
 HELM_REPOSITORY_OPENSTACK_HELM_INFRA = "openstack-helm-infra"
 
@@ -392,72 +389,4 @@ HELM_RELEASE_KUBE_PROMETHEUS_STACK_VALUES = {
     "additionalPrometheusRulesMap": utils.load_jsonnet_from_path(
         pkg_resources.resource_filename("atmosphere.jsonnet", "rules.jsonnet")
     ),
-}
-
-HELM_RELEASE_INGRESS_NGINX_NAME = "ingress-nginx"
-HELM_RELEASE_INGRESS_NGINX_VERSION = "4.0.17"
-HELM_RELEASE_INGRESS_NGINX_VALUES = {
-    "controller": {
-        "image": {
-            "registry": utils.get_image_ref_using_legacy_image_repository(
-                "ingress_nginx_controller"
-            ).repository["domain"],
-            "image": utils.get_image_ref_using_legacy_image_repository(
-                "ingress_nginx_controller"
-            ).repository["path"],
-            "tag": utils.get_image_ref_using_legacy_image_repository(
-                "ingress_nginx_controller"
-            )["tag"],
-            "digest": utils.get_image_ref_using_legacy_image_repository(
-                "ingress_nginx_controller"
-            )["digest"],
-        },
-        "config": {"proxy-buffer-size": "16k"},
-        "dnsPolicy": "ClusterFirstWithHostNet",
-        "hostNetwork": True,
-        "ingressClassResource": {"name": "openstack"},
-        "ingressClass": "openstack",
-        "kind": "DaemonSet",
-        "nodeSelector": NODE_SELECTOR_CONTROL_PLANE,
-        "service": {"type": "ClusterIP"},
-        "admissionWebhooks": {
-            "port": 7443,
-            "patch": {
-                "image": {
-                    "registry": utils.get_image_ref_using_legacy_image_repository(
-                        "ingress_nginx_kube_webhook_certgen"
-                    ).repository["domain"],
-                    "image": utils.get_image_ref_using_legacy_image_repository(
-                        "ingress_nginx_kube_webhook_certgen"
-                    ).repository["path"],
-                    "tag": utils.get_image_ref_using_legacy_image_repository(
-                        "ingress_nginx_kube_webhook_certgen"
-                    )["tag"],
-                    "digest": utils.get_image_ref_using_legacy_image_repository(
-                        "ingress_nginx_kube_webhook_certgen"
-                    )["digest"],
-                }
-            },
-        },
-    },
-    "defaultBackend": {
-        "enabled": True,
-        "image": {
-            "registry": utils.get_image_ref_using_legacy_image_repository(
-                "ingress_nginx_default_backend"
-            ).repository["domain"],
-            "image": utils.get_image_ref_using_legacy_image_repository(
-                "ingress_nginx_default_backend"
-            ).repository["path"],
-            "tag": utils.get_image_ref_using_legacy_image_repository(
-                "ingress_nginx_default_backend"
-            )["tag"],
-        },
-    },
-    "tcp": {
-        "5354": "openstack/minidns:5354",
-    },
-    "udp": {
-        "5354": "openstack/minidns:5354",
-    },
 }
