@@ -15,10 +15,6 @@ class Namespace(types.KubernetesObject):
     kind: str = Field("Namespace", const=True)
 
 
-class Ingress(pykube.objects.Ingress, mixins.ServerSideApplyMixin):
-    pass
-
-
 class HelmRepository(types.NamespacedKubernetesObject):
     endpoint: ClassVar[str] = "helmrepositories"
 
