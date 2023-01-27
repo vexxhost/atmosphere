@@ -18,35 +18,6 @@ def get_engine(config):
         ),
     ).apply()
 
-    objects.HelmRepository(
-        api=api,
-        metadata=types.NamespacedObjectMeta(
-            name=constants.HELM_REPOSITORY_OPENSTACK_HELM_INFRA,
-            namespace=constants.NAMESPACE_OPENSTACK,
-        ),
-        spec=types.HelmRepositorySpec(
-            url="https://tarballs.opendev.org/openstack/openstack-helm-infra/",
-        ),
-    ).apply()
-    objects.HelmRepository(
-        api=api,
-        metadata=types.NamespacedObjectMeta(
-            name=constants.HELM_REPOSITORY_COREDNS,
-            namespace=constants.NAMESPACE_OPENSTACK,
-        ),
-        spec=types.HelmRepositorySpec(url="https://coredns.github.io/helm"),
-    ).apply()
-    objects.HelmRepository(
-        api=api,
-        metadata=types.NamespacedObjectMeta(
-            name=constants.HELM_REPOSITORY_OPENSTACK_HELM,
-            namespace=constants.NAMESPACE_OPENSTACK,
-        ),
-        spec=types.HelmRepositorySpec(
-            url="https://tarballs.opendev.org/openstack/openstack-helm/",
-        ),
-    ).apply()
-
     if config.kube_prometheus_stack.enabled:
         objects.HelmRepository(
             api=api,
@@ -90,19 +61,7 @@ def get_engine(config):
             ),
         ).apply()
 
-    return engines.load(
-        get_deployment_flow(config),
-        executor="greenthreaded",
-        engine="parallel",
-        max_workers=4,
-    )
-
-
-# TODO(mnaser): Move this into the Cloud CRD
-def get_deployment_flow(config):
     flow = graph_flow.Flow("deploy").add(
-        # cert-manager
         *cert_manager.issuer_tasks_from_config(config.issuer),
     )
-
-    return flow
+    return engines.load(flow)

@@ -1,22 +1,8 @@
-import pydantic
 from hypothesis import given
 from hypothesis import provisional as prov
 from hypothesis import strategies as st
 
 from atmosphere.operator.api import types
-
-
-class TestHostname:
-    def test_modify_schema(self):
-        class FakeObj(pydantic.BaseModel):
-            hostname: types.Hostname
-
-        assert FakeObj.schema().get("properties").get("hostname").get("examples") == [
-            "example.com"
-        ]
-
-    def test_repr(self):
-        assert repr(types.Hostname("example.com")) == "Hostname('example.com')"
 
 
 class TestObjectMeta:
@@ -49,14 +35,6 @@ class TestNamespacedKubernetesObject:
     def test_property(self, instance):
         assert isinstance(instance, types.NamespacedKubernetesObject)
         assert isinstance(instance.metadata, types.NamespacedObjectMeta)
-
-
-class TestServiceBackendPort:
-    @given(st.builds(types.ServiceBackendPort))
-    def test_property(self, instance):
-        assert isinstance(instance, types.ServiceBackendPort)
-        assert isinstance(instance.number, int)
-        assert 1 <= instance.number <= 65535
 
 
 class TestCrossNamespaceObjectReference:

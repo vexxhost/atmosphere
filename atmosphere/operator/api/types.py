@@ -1,35 +1,12 @@
+import json
 from enum import Enum
-from typing import Any
 
+import kopf
 import pydantic
 import pykube
-import validators.domain
+import requests
 
 from atmosphere.operator import constants
-from atmosphere.operator.api import mixins
-
-# Generic
-
-
-class Hostname(str):
-    @classmethod
-    def __get_validators__(cls):
-        yield cls.validate
-
-    @classmethod
-    def __modify_schema__(cls, field_schema: dict[str, Any]) -> None:
-        field_schema.update(
-            examples=["example.com"],
-        )
-
-    @classmethod
-    def validate(cls, v):
-        if validators.domain(v):
-            return cls(v)
-
-    def __repr__(self):
-        return f"Hostname({super().__repr__()})"
-
 
 # Kubernetes API
 
@@ -44,7 +21,7 @@ class NamespacedObjectMeta(ObjectMeta):
     namespace: pydantic.constr(min_length=1)
 
 
-class KubernetesObject(pydantic.BaseModel, mixins.ServerSideApplyMixin):
+class KubernetesObject(pydantic.BaseModel):
     api: pykube.http.HTTPClient = None
 
     version: str = pydantic.Field(
@@ -79,6 +56,30 @@ class KubernetesObject(pydantic.BaseModel, mixins.ServerSideApplyMixin):
     def api_kwargs(self, **kwargs):
         return pykube.objects.APIObject.api_kwargs(self, **kwargs)
 
+    def apply(self):
+        resp = self.api.patch(
+            **self.api_kwargs(
+                headers={
+                    "Content-Type": "application/apply-patch+yaml",
+                },
+                params={
+                    "fieldManager": "atmosphere-operator",
+                    "force": True,
+                },
+                data=json.dumps(self.obj),
+            )
+        )
+
+        try:
+            self.api.raise_for_status(resp)
+        except requests.exceptions.HTTPError:
+            if resp.status_code == 404:
+                raise kopf.TemporaryError("CRD is not yet installed", delay=1)
+            raise
+
+        self.set_obj(resp.json())
+        return self
+
 
 class NamespacedKubernetesObject(KubernetesObject):
     metadata: NamespacedObjectMeta
@@ -86,10 +87,6 @@ class NamespacedKubernetesObject(KubernetesObject):
     @property
     def namespace(self) -> str:
         return self.metadata.namespace
-
-
-class ServiceBackendPort(pydantic.BaseModel):
-    number: pydantic.conint(ge=1, le=65535)
 
 
 class NamespacedObjectReference(pydantic.BaseModel):
