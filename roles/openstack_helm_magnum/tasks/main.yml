@@ -37,6 +37,18 @@
         name: "{{ openstack_helm_magnum_helm_release_name }}"
         namespace: "{{ openstack_helm_magnum_helm_release_namespace }}"
 
+- name: Deploy cluster api
+  kubernetes.core.k8s:
+    kubeconfig: /etc/kubernetes/admin.conf
+    state: present
+    template:
+      - path: 'templates/capi-bootstrap.yml.j2'
+      - path: 'templates/capi-control-plane.yml.j2'
+      - path: 'templates/capi-core.yml.j2'
+      - path: 'templates/capi-provider.yml.j2'
+      - path: 'templates/capi-rbac.yml.j2'
+  run_once: true
+
 - name: Deploy Helm chart
   run_once: true
   kubernetes.core.helm:
@@ -56,7 +68,7 @@
     openstack_helm_ingress_service_port: 9511
     openstack_helm_ingress_annotations: "{{ openstack_helm_magnum_ingress_annotations }}"
 
-- name: Deploy Helm chart
+- name: Deploy magnum registry
   kubernetes.core.k8s:
     state: present
     definition:
@@ -357,15 +369,6 @@
                   name: magnum-csi-snapshotter-v1-2-2
               nodeSelector:
                 openstack-control-plane: enabled
-
-- name: Create Ingress
-  ansible.builtin.include_role:
-    name: openstack_helm_ingress
-  vars:
-    openstack_helm_ingress_endpoint: container_infra
-    openstack_helm_ingress_service_name: magnum-api
-    openstack_helm_ingress_service_port: 9511
-    openstack_helm_ingress_annotations: "{{ openstack_helm_magnum_ingress_annotations }}"
 
 - name: Create magnum registry Ingress
   ansible.builtin.include_role:

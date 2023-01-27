@@ -17,10 +17,6 @@ IMAGE_LIST = {
     "cinder_storage_init": "quay.io/vexxhost/cinder:zed",
     "cinder_volume_usage_audit": "quay.io/vexxhost/cinder:zed",
     "cinder_volume": "quay.io/vexxhost/cinder:zed",
-    "cluster_api_controller": "registry.k8s.io/cluster-api/cluster-api-controller:v1.3.0",
-    "cluster_api_kubeadm_bootstrap_controller": "registry.k8s.io/cluster-api/kubeadm-bootstrap-controller:v1.3.0",
-    "cluster_api_kubeadm_control_plane_controller": "registry.k8s.io/cluster-api/kubeadm-control-plane-controller:v1.3.0",  # noqa
-    "cluster_api_openstack_controller": "gcr.io/k8s-staging-capi-openstack/capi-openstack-controller:nightly_main_20221109",  # noqa
     "csi_node_driver_registrar": "k8s.gcr.io/sig-storage/csi-node-driver-registrar:v2.4.0",
     "csi_rbd_attacher": "k8s.gcr.io/sig-storage/csi-attacher:v3.4.0",
     "csi_rbd_plugin": "quay.io/cephcsi/cephcsi:v3.5.1",
