@@ -87,10 +87,6 @@ class KubePrometheusStackChartConfig(ChartConfig):
     namespace = types.StringType(default="monitoring", required=True)
 
 
-class IngressNginxChartConfig(ChartConfig):
-    namespace = types.StringType(default="openstack", required=True)
-
-
 class OpsGenieConfig(base.Model):
     enabled = types.BooleanType(default=False, required=True)
     api_key = types.StringType()

@@ -9,10 +9,11 @@ out of the box and should require no changes
    If you make any changes to the ingress configuration, you may see a small
    outage as the ingress controller is restarted.
 
-### Overriding chart values
+## Customization
 
-If you're looking to make changes to the Helm chart values used for the deployment
-of the Ingress, you can define `ingress_nginx_helm_values` ansible variable:
+You can customize `ingress-nginx`controller deployment by making changes to the
+Helm chart values used for the deployment.
+Define `ingress_nginx_helm_values` ansible variable to override values:
 
 ```yaml
 ingress_nginx_helm_values:

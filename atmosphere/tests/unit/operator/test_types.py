@@ -59,15 +59,6 @@ class TestServiceBackendPort:
         assert 1 <= instance.number <= 65535
 
 
-class TestIngressServiceBackend:
-    @given(st.builds(types.IngressServiceBackend))
-    def test_property(self, instance):
-        assert isinstance(instance, types.IngressServiceBackend)
-        assert isinstance(instance.name, str)
-        assert instance.name != ""
-        assert isinstance(instance.port, types.ServiceBackendPort)
-
-
 class TestCrossNamespaceObjectReference:
     @given(st.builds(types.CrossNamespaceObjectReference))
     def test_property(self, instance):

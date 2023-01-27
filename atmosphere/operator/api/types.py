@@ -92,11 +92,6 @@ class ServiceBackendPort(pydantic.BaseModel):
     number: pydantic.conint(ge=1, le=65535)
 
 
-class IngressServiceBackend(pydantic.BaseModel):
-    name: pydantic.constr(min_length=1)
-    port: ServiceBackendPort
-
-
 class NamespacedObjectReference(pydantic.BaseModel):
     name: pydantic.constr(min_length=1)
     namespace: pydantic.constr(min_length=1) = None
