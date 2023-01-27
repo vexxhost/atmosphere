@@ -1,0 +1,125 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rook-ceph-operator
+  labels:
+    operator: rook
+    storage-backend: ceph
+    {{- include "library.rook-ceph.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rook-ceph-operator
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: rook-ceph-operator
+        helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}"
+{{- if .Values.annotations }}
+      annotations:
+{{ toYaml .Values.annotations | indent 8 }}
+{{- end }}
+    spec:
+{{- if .Values.priorityClassName }}
+      priorityClassName: {{ .Values.priorityClassName }}
+{{- end }}
+      containers:
+      - name: rook-ceph-operator
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        args: ["ceph", "operator"]
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 2016
+          runAsGroup: 2016
+        volumeMounts:
+        - mountPath: /var/lib/rook
+          name: rook-config
+        - mountPath: /etc/ceph
+          name: default-config-dir
+        - mountPath: /etc/webhook
+          name: webhook-cert
+        ports:
+          - containerPort: 9443
+            name: https-webhook
+            protocol: TCP
+        env:
+        - name: ROOK_CURRENT_NAMESPACE_ONLY
+          value: {{ .Values.currentNamespaceOnly | quote }}
+{{- if .Values.discover }}
+{{- if .Values.discover.toleration }}
+        - name: DISCOVER_TOLERATION
+          value: {{ .Values.discover.toleration }}
+{{- end }}
+{{- if .Values.discover.tolerationKey }}
+        - name: DISCOVER_TOLERATION_KEY
+          value: {{ .Values.discover.tolerationKey }}
+{{- end }}
+{{- if .Values.discover.tolerations }}
+        - name: DISCOVER_TOLERATIONS
+          value: {{ toYaml .Values.discover.tolerations | quote }}
+{{- end }}
+{{- if .Values.discover.priorityClassName }}
+        - name: DISCOVER_PRIORITY_CLASS_NAME
+          value: {{ .Values.discover.priorityClassName }}
+{{- end }}
+{{- if .Values.discover.nodeAffinity }}
+        - name: DISCOVER_AGENT_NODE_AFFINITY
+          value: {{ .Values.discover.nodeAffinity }}
+{{- end }}
+{{- if .Values.discover.podLabels }}
+        - name: DISCOVER_AGENT_POD_LABELS
+          value: {{ .Values.discover.podLabels }}
+{{- end }}
+{{- end }}
+        - name: ROOK_HOSTPATH_REQUIRES_PRIVILEGED
+          value: "{{ .Values.hostpathRequiresPrivileged }}"
+        - name: ROOK_ENABLE_SELINUX_RELABELING
+          value: "{{ .Values.enableSelinuxRelabeling }}"
+        - name: ROOK_DISABLE_DEVICE_HOTPLUG
+          value: "{{ .Values.disableDeviceHotplug }}"
+        - name: ROOK_ENABLE_DISCOVERY_DAEMON
+          value: "{{ .Values.enableDiscoveryDaemon }}"
+        - name: ROOK_DISABLE_ADMISSION_CONTROLLER
+          value: "{{ .Values.disableAdmissionController }}"
+
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+{{- if .Values.resources }}
+        resources:
+{{ toYaml .Values.resources | indent 10 }}
+{{- end }}
+{{- if .Values.useOperatorHostNetwork }}
+      hostNetwork: true
+{{- end }}
+{{- if .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.nodeSelector | indent 8 }}
+{{- end }}
+{{- if .Values.tolerations }}
+      tolerations:
+{{ toYaml .Values.tolerations | indent 8 }}
+{{- end }}
+{{- if .Values.rbacEnable }}
+      serviceAccountName: rook-ceph-system
+{{- end }}
+      volumes:
+      - name: rook-config
+        emptyDir: {}
+      - name: default-config-dir
+        emptyDir: {}
+      - name: webhook-cert
+        emptyDir: {}
