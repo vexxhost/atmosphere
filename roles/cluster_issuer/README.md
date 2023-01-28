@@ -1,4 +1,4 @@
-# Certificates
+# `cluster_issuer`
 
 Atmosphere simplifies all the management of your SSL certificates for all of
 your API endpoints by automatically issuing and renewing certificates for you.
@@ -12,17 +12,15 @@ This is configured to work out of the box if your APIs are publicly accessible,
 you just need to configure an email address.
 
 ```yaml
-atmosphere_issuer_config:
-  email: foo@bar.com
+cluster_issuer_acme_email: user@example.com
 ```
 
 If you're running your own internal ACME server, you can configure Atmosphere to
-point towards it by setting the `server` field.
+point towards it by setting the `cluster_issuer_acme_server` variable.
 
 ```yaml
-atmosphere_issuer_config:
-  email: foo@bar.com
-  server: https://acme.example.com
+cluster_issuer_acme_server: https://acme.example.com
+cluster_issuer_acme_email: user@example.com
 ```
 
 ### DNS-01 challenges
@@ -39,14 +37,12 @@ If you have DNS server that supports RFC2136, you can use it to solve the DNS
 challenges, you can use the following configuration:
 
 ```yaml
-atmosphere_issuer_config:
-  email: foo@bar.com
-  solver:
-    type: rfc2136
-    nameserver: <NAMESERVER>:<PORT>
-    tsig_algorithm: <ALGORITHM>
-    tsig_key_name: <NAME>
-    tsig_secret: <SECRET>
+cluster_issuer_acme_email: user@example.com
+cluster_issuer_acme_solver: rfc2136
+cluster_issuer_acme_rfc2136_nameserver: <NAMESERVER>:<PORT>
+cluster_issuer_acme_rfc2136_tsig_algorithm: <ALGORITHM>
+cluster_issuer_acme_rfc2136_tsig_key_name: <KEY_NAME>
+cluster_issuer_acme_rfc2136_tsig_secret_key: <SECRET_KEY>
 ```
 
 #### Route53
@@ -55,13 +51,12 @@ If you are using Route53 to host the DNS for your domains, you can use the
 following configuration:
 
 ```yaml
-atmosphere_issuer_config:
-  email: foo@bar.com
-  solver:
-    type: route53
-    hosted_zone_id: <HOSTED_ZONE_ID>
-    access_key_id: <AWS_ACCESS_KEY_ID>
-    secret_access_key: <AWS_SECRET_ACCESS_KEY>
+cluster_issuer_acme_email: user@example.com
+cluster_issuer_acme_solver: route53
+cluster_issuer_acme_route53_region: <REGION>
+cluster_issuer_acme_route53_hosted_zone_id: <HOSTED_ZONE_ID>
+cluster_issuer_acme_route53_access_key_id: <AWS_ACCESS_KEY_ID>
+cluster_issuer_acme_route53_secret_access_key: <AWS_SECRET_ACCESS_KEY>
 ```
 
 !!! note
@@ -75,20 +70,19 @@ If you have an existing CA that you'd like to use with Atmosphere, you can
 simply configure it by including the certificate and private key:
 
 ```yaml
-atmosphere_issuer_config:
-  type: ca
-  certificate: |
-    -----BEGIN CERTIFICATE-----
-    MIIDBjCCAe4CCQDQ3Z0Z2Z0Z0jANBgkqhkiG9w0BAQsFADCBhTELMAkGA1UEBhMC
-    VVMxEzARBgNVBAgTCkNhbGlmb3JuaWExFjAUBgNVBAcTDVNhbiBGcmFuY2lzY28x
-    ...
-    -----END CERTIFICATE-----
-  private_key: |
-    -----BEGIN RSA PRIVATE KEY-----
-    MIIEpAIBAAKCAQEAw3Z0Z2Z0Z0jANBgkqhkiG9w0BAQsFADCBhTELMAkGA1UEBhMC
-    VVMxEzARBgNVBAgTCkNhbGlmb3JuaWExFjAUBgNVBAcTDVNhbiBGcmFuY2lzY28x
-    ...
-    -----END RSA PRIVATE KEY-----
+cluster_issuer_type: ca
+cluster_issuer_ca_certificate: |
+  -----BEGIN CERTIFICATE-----
+  MIIDBjCCAe4CCQDQ3Z0Z2Z0Z0jANBgkqhkiG9w0BAQsFADCBhTELMAkGA1UEBhMC
+  VVMxEzARBgNVBAgTCkNhbGlmb3JuaWExFjAUBgNVBAcTDVNhbiBGcmFuY2lzY28x
+  ...
+  -----END CERTIFICATE-----
+cluster_issuer_ca_private_key: |
+  -----BEGIN RSA PRIVATE KEY-----
+  MIIEpAIBAAKCAQEAw3Z0Z2Z0Z0jANBgkqhkiG9w0BAQsFADCBhTELMAkGA1UEBhMC
+  VVMxEzARBgNVBAgTCkNhbGlmb3JuaWExFjAUBgNVBAcTDVNhbiBGcmFuY2lzY28x
+  ...
+  -----END RSA PRIVATE KEY-----
 ```
 
 !!! note
@@ -104,8 +98,7 @@ and it does not have access to the internet to be able to use LetsEncrypt, you
 can use self-signed certificates by adding the following to your inventory:
 
 ```yaml
-atmosphere_issuer_config:
-  type: self-signed
+cluster_issuer_type: self-signed
 ```
 
 !!! warning

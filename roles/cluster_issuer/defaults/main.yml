@@ -1,0 +1,53 @@
+# Copyright (c) 2023 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+cluster_issuer_name: "{{ atmosphere_ingress_cluster_issuer }}"
+cluster_issuer_type: acme
+
+cluster_issuer_acme_server: https://acme-v02.api.letsencrypt.org/directory
+# cluster_issuer_acme_email:
+cluster_issuer_acme_private_key_secret_name: cert-manager-issuer-account-key
+
+cluster_issuer_acme_solver: http01
+
+cluster_issuer_acme_http01_ingress_class: "{{ atmosphere_ingress_class_name }}"
+
+cluster_issuer_acme_rfc2136_secret_name: cert-manager-issuer-tsig-secret-key
+# cluster_issuer_acme_rfc2136_nameserver: <NAMESERVER>:<PORT>
+# cluster_issuer_acme_rfc2136_tsig_algorithm: <ALGORITHM>
+# cluster_issuer_acme_rfc2136_tsig_key_name: <KEY_NAME>
+# cluster_issuer_acme_rfc2136_tsig_secret_key: <SECRET_KEY>
+
+cluster_issuer_acme_route53_secret_name: cert-manager-issuer-route53-credentials
+# cluster_issuer_acme_route53_region: <REGION>
+# cluster_issuer_acme_route53_hosted_zone_id: <HOSTED_ZONE_ID>
+# cluster_issuer_acme_route53_access_key_id: <AWS_ACCESS_KEY_ID>
+# cluster_issuer_acme_route53_secret_access_key: <AWS_SECRET_ACCESS_KEY>
+
+cluster_issuer_ca_secret_name: cert-manager-issuer-ca
+# cluster_issuer_ca_certificate: |
+#   -----BEGIN CERTIFICATE-----
+#   MIIDBjCCAe4CCQDQ3Z0Z2Z0Z0jANBgkqhkiG9w0BAQsFADCBhTELMAkGA1UEBhMC
+#   VVMxEzARBgNVBAgTCkNhbGlmb3JuaWExFjAUBgNVBAcTDVNhbiBGcmFuY2lzY28x
+#   ...
+#   -----END CERTIFICATE-----
+# cluster_issuer_ca_private_key: |
+#   -----BEGIN RSA PRIVATE KEY-----
+#   MIIEpAIBAAKCAQEAw3Z0Z2Z0Z0jANBgkqhkiG9w0BAQsFADCBhTELMAkGA1UEBhMC
+#   VVMxEzARBgNVBAgTCkNhbGlmb3JuaWExFjAUBgNVBAcTDVNhbiBGcmFuY2lzY28x
+#   ...
+#   -----END RSA PRIVATE KEY-----
+
+cluster_issuer_self_signed_certificate_name: self-signed-ca
+cluster_issuer_self_signed_secret_name: cert-manager-selfsigned-ca
