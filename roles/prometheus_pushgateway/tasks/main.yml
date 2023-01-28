@@ -43,3 +43,10 @@
     create_namespace: true
     kubeconfig: /etc/kubernetes/admin.conf
     values: "{{ _prometheus_pushgateway_helm_values | combine(prometheus_pushgateway_helm_values, recursive=True) }}"
+  # NOTE(mnaser): The Atmosphere operator is so fast that the CRDs for ServiceMonitor
+  #               are not installed yet by the time we run this for the first
+  #               time, so we retry until we let the operator handle deploy.
+  retries: 60
+  delay: 5
+  register: _result
+  until: _result is not failed
