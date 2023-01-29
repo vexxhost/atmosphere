@@ -1,0 +1,244 @@
+_kube_prometheus_stack_helm_values:
+  defaultRules:
+    disabled:
+      # NOTE(mnaser): https://github.com/prometheus-community/helm-charts/issues/144
+      #               https://github.com/openshift/cluster-monitoring-operator/issues/248
+      etcdHighNumberOfFailedGRPCRequests: true
+  alertmanager:
+    serviceMonitor:
+      relabelings: &relabelings_instance_to_pod_name
+        - &relabeling_set_pod_name_to_instance
+          sourceLabels:
+            - __meta_kubernetes_pod_name
+          targetLabel: instance
+        - &relabeling_drop_all_kubernetes_labels
+          action: labeldrop
+          regex: ^(container|endpoint|namespace|pod|node|service)$
+    alertmanagerSpec:
+      image:
+        repository: "{{ atmosphere_images['alertmanager'] | vexxhost.atmosphere.docker_image('name') }}"
+        tag: "{{ atmosphere_images['alertmanager'] | vexxhost.atmosphere.docker_image('tag') }}"
+      storage:
+        volumeClaimTemplate:
+          spec:
+            storageClassName: general
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 40Gi
+      nodeSelector: &node_selector
+        openstack-control-plane: enabled
+  grafana:
+    image:
+      repository: "{{ atmosphere_images['grafana'] | vexxhost.atmosphere.docker_image('name') }}"
+      tag: "{{ atmosphere_images['grafana'] | vexxhost.atmosphere.docker_image('tag') }}"
+    sidecar:
+      image:
+        repository: "{{ atmosphere_images['grafana_sidecar'] | vexxhost.atmosphere.docker_image('name') }}"
+        tag: "{{ atmosphere_images['grafana_sidecar'] | vexxhost.atmosphere.docker_image('tag') }}"
+    serviceMonitor:
+      relabelings: *relabelings_instance_to_pod_name
+    nodeSelector: *node_selector
+  kubeApiServer:
+    serviceMonitor:
+      relabelings: &relabelings_instance_to_node_name
+        - sourceLabels:
+            - __meta_kubernetes_pod_node_name
+          targetLabel: instance
+        - *relabeling_drop_all_kubernetes_labels
+  kubelet:
+    serviceMonitor:
+      cAdvisorRelabelings: &relabelings_kubelet
+        - sourceLabels:
+            - __metrics_path__
+          targetLabel: metrics_path
+        - sourceLabels:
+            - node
+          targetLabel: instance
+        - *relabeling_drop_all_kubernetes_labels
+      probesRelabelings: *relabelings_kubelet
+      relabelings: *relabelings_kubelet
+  kubeControllerManager:
+    serviceMonitor:
+      relabelings: *relabelings_instance_to_node_name
+  coreDns:
+    serviceMonitor:
+      relabelings: *relabelings_instance_to_pod_name
+  kubeEtcd:
+    service:
+      port: 2379
+      targetPort: 2379
+    serviceMonitor:
+      scheme: https
+      serverName: localhost
+      insecureSkipVerify: false
+      caFile: /etc/prometheus/secrets/kube-prometheus-stack-etcd-client-cert/ca.crt
+      certFile: /etc/prometheus/secrets/kube-prometheus-stack-etcd-client-cert/healthcheck-client.crt
+      keyFile: /etc/prometheus/secrets/kube-prometheus-stack-etcd-client-cert/healthcheck-client.key
+      relabelings: *relabelings_instance_to_node_name
+  kubeScheduler:
+    service:
+      port: 10259
+      targetPort: 10259
+    serviceMonitor:
+      https: true
+      insecureSkipVerify: true
+      relabelings: *relabelings_instance_to_node_name
+  kubeProxy:
+    serviceMonitor:
+      relabelings: *relabelings_instance_to_node_name
+  kube-state-metrics:
+    image:
+      repository: "{{ atmosphere_images['kube_state_metrics'] | vexxhost.atmosphere.docker_image('name') }}"
+      tag: "{{ atmosphere_images['kube_state_metrics'] | vexxhost.atmosphere.docker_image('tag') }}"
+    prometheus:
+      monitor:
+        relabelings: *relabelings_instance_to_pod_name
+    nodeSelector: *node_selector
+  prometheus:
+    serviceMonitor:
+      relabelings: *relabelings_instance_to_pod_name
+    prometheusSpec:
+      image:
+        repository: "{{ atmosphere_images['prometheus'] | vexxhost.atmosphere.docker_image('name') }}"
+        tag: "{{ atmosphere_images['prometheus'] | vexxhost.atmosphere.docker_image('tag') }}"
+      nodeSelector: *node_selector
+      secrets:
+        - kube-prometheus-stack-etcd-client-cert
+    additionalServiceMonitors:
+      - name: ceph
+        jobLabel: application
+        namespaceSelector:
+          matchNames:
+            - openstack
+        selector:
+          matchLabels:
+            application: ceph
+        endpoints:
+          - port: metrics
+            honorLabels: true
+            relabelings:
+              - action: replace
+                regex: (.*)
+                replacement: ceph
+                targetLabel: cluster
+              - *relabeling_drop_all_kubernetes_labels
+      - name: coredns
+        jobLabel: app.kubernetes.io/name
+        namespaceSelector:
+          matchNames:
+            - openstack
+        selector:
+          matchLabels:
+            app.kubernetes.io/component: metrics
+            app.kubernetes.io/name: coredns
+        endpoints:
+          - port: metrics
+            relabelings:
+              - sourceLabels:
+                  - __meta_kubernetes_pod_label_application
+                targetLabel: application
+              - *relabeling_set_pod_name_to_instance
+              - *relabeling_drop_all_kubernetes_labels
+      - name: memcached
+        jobLabel: application
+        namespaceSelector:
+          matchNames:
+            - openstack
+        selector:
+          matchLabels:
+            application: memcached
+            component: server
+        endpoints:
+          - port: metrics
+            relabelings: *relabelings_instance_to_pod_name
+      - name: openstack-exporter
+        jobLabel: jobLabel
+        namespaceSelector:
+          matchNames:
+            - openstack
+        selector:
+          matchLabels:
+            application: openstack-exporter
+        endpoints:
+          - port: metrics
+            interval: 1m
+            relabelings:
+              - action: replace
+                regex: (.*)
+                replacement: default
+                targetLabel: instance
+            scrapeTimeout: 30s
+    additionalPodMonitors:
+      - name: ethtool-exporter
+        jobLabel: job
+        selector:
+          matchLabels:
+            application: ethtool-exporter
+        podMetricsEndpoints:
+          - port: metrics
+            relabelings: *relabelings_instance_to_node_name
+      - name: ipmi-exporter
+        jobLabel: job
+        selector:
+          matchLabels:
+            application: ipmi-exporter
+        podMetricsEndpoints:
+          - interval: 60s
+            port: metrics
+            relabelings: *relabelings_instance_to_node_name
+      - name: percona-xtradb-pxc
+        jobLabel: app.kubernetes.io/component
+        namespaceSelector:
+          matchNames:
+            - openstack
+        selector:
+          matchLabels:
+            app.kubernetes.io/component: pxc
+            app.kubernetes.io/instance: percona-xtradb
+        podMetricsEndpoints:
+          - port: metrics
+            relabelings: *relabelings_instance_to_pod_name
+      - name: rabbitmq
+        jobLabel: app.kubernetes.io/component
+        namespaceSelector:
+          matchNames:
+            - openstack
+        selector:
+          matchLabels:
+            app.kubernetes.io/component: rabbitmq
+        podMetricsEndpoints:
+          - port: prometheus
+            relabelings: *relabelings_instance_to_pod_name
+  prometheusOperator:
+    admissionWebhooks:
+      patch:
+        image:
+          repository: "{{ atmosphere_images['prometheus_operator_kube_webhook_certgen'] | vexxhost.atmosphere.docker_image('name') }}"
+          tag: "{{ atmosphere_images['prometheus_operator_kube_webhook_certgen'] | vexxhost.atmosphere.docker_image('tag') }}"
+        nodeSelector: *node_selector
+    serviceMonitor:
+      relabelings: *relabelings_instance_to_pod_name
+    nodeSelector: *node_selector
+    image:
+      repository: "{{ atmosphere_images['prometheus_operator'] | vexxhost.atmosphere.docker_image('name') }}"
+      tag: "{{ atmosphere_images['prometheus_operator'] | vexxhost.atmosphere.docker_image('tag') }}"
+    prometheusConfigReloader:
+      image:
+        repository: "{{ atmosphere_images['prometheus_config_reloader'] | vexxhost.atmosphere.docker_image('name') }}"
+        tag: "{{ atmosphere_images['prometheus_config_reloader'] | vexxhost.atmosphere.docker_image('tag') }}"
+  prometheus-node-exporter:
+    image:
+      repository: "{{ atmosphere_images['prometheus_node_exporter'] | vexxhost.atmosphere.docker_image('name') }}"
+      tag: "{{ atmosphere_images['prometheus_node_exporter'] | vexxhost.atmosphere.docker_image('tag') }}"
+    extraArgs:
+      - --collector.diskstats.ignored-devices=^(ram|loop|nbd|fd|(h|s|v|xv)d[a-z]|nvme\\d+n\\d+p)\\d+$
+      - --collector.filesystem.fs-types-exclude=^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|fusectl|fuse.squashfuse_ll|hugetlbfs|iso9660|mqueue|nsfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|sysfs|tracefs)$
+      - --collector.filesystem.mount-points-exclude=^/(dev|proc|run/credentials/.+|sys|var/lib/docker/.+|var/lib/kubelet/pods/.+|var/lib/kubelet/plugins/kubernetes.io/csi/.+|run/containerd/.+)($|/)
+      - --collector.netclass.ignored-devices=^(lxc|cilium_|qbr|qvb|qvo|tap|ovs-system|br|tbr|gre_sys).*$
+      - --collector.netdev.device-exclude=^(lxc|cilium_|qbr|qvb|qvo|tap|ovs-system|br|tbr|gre_sys).*$
+    prometheus:
+      monitor:
+        relabelings: *relabelings_instance_to_node_name
+  additionalPrometheusRulesMap: "{{ lookup('vexxhost.atmosphere.jsonnet', 'jsonnet/rules.jsonnet') }}"

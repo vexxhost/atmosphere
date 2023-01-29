@@ -3,6 +3,17 @@ import textwrap
 from atmosphere.models import config
 
 
+# values={
+#     **constants.HELM_RELEASE_KUBE_PROMETHEUS_STACK_VALUES,
+#     **cfg.kube_prometheus_stack.overrides,
+#     **{
+#         "alertmanager": {
+#             "config": openstack_helm.generate_alertmanager_config_for_opsgenie(
+#                 cfg.opsgenie
+#             )
+#         }
+#     },
+# },
 def generate_alertmanager_config_for_opsgenie(
     opsgenie: config.OpsGenieConfig,
 ) -> dict:

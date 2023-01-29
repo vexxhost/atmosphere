@@ -1,4 +1,4 @@
-# Copyright (c) 2022 VEXXHOST, Inc.
+# Copyright (c) 2023 VEXXHOST, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -12,20 +12,9 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-galaxy_info:
-  author: VEXXHOST, Inc.
-  description: Ansible role for kube-prometheus-stack
-  license: Apache-2.0
-  min_ansible_version: 5.5.0
-  standalone: false
-  platforms:
-    - name: Ubuntu
-      versions:
-        - focal
+kube_prometheus_stack_helm_release_name: kube-prometheus-stack
+kube_prometheus_stack_helm_chart_path: "{{ role_path }}/../../charts/kube-prometheus-stack/"
+kube_prometheus_stack_helm_chart_ref: /usr/local/src/kube-prometheus-stack
 
-dependencies:
-  - role: defaults
-  - role: upload_helm_chart
-    vars:
-      upload_helm_chart_src: "{{ kube_prometheus_stack_helm_chart_path }}"
-      upload_helm_chart_dest: "{{ kube_prometheus_stack_helm_chart_ref }}"
+kube_prometheus_stack_helm_release_namespace: monitoring
+kube_prometheus_stack_helm_values: {}

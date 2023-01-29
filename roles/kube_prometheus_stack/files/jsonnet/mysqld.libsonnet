@@ -46,9 +46,9 @@ local addAlerts = {
   prometheusAlerts: {
     groups:
       (
-        std.parseYaml(importstr 'vendor/mysqld-mixin/alerts/general.yaml').groups +
-        std.parseYaml(importstr 'vendor/mysqld-mixin/alerts/galera.yaml').groups +
-        std.parseYaml(importstr 'vendor/mysqld-mixin/rules/rules.yaml').groups
+        std.parseYaml(importstr 'vendor/github.com/prometheus/mysqld_exporter/mysqld-mixin/alerts/general.yaml').groups +
+        std.parseYaml(importstr 'vendor/github.com/prometheus/mysqld_exporter/mysqld-mixin/alerts/galera.yaml').groups +
+        std.parseYaml(importstr 'vendor/github.com/prometheus/mysqld_exporter/mysqld-mixin/rules/rules.yaml').groups
       ),
   },
 } + addAlerts

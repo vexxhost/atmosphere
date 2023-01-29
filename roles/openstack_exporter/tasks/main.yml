@@ -129,10 +129,3 @@
               targetPort: metrics
           selector:
             application: openstack-exporter
-  # NOTE(mnaser): Since we haven't moved to the operator pattern yet, we need to
-  #               keep retrying a few times as the CRDs might not be installed
-  #               yet.
-  retries: 60
-  delay: 5
-  register: _result
-  until: _result is not failed

@@ -1,4 +1,4 @@
-local ceph = import 'vendor/ceph-mixin/mixin.libsonnet';
+local ceph = import 'vendor/github.com/ceph/ceph/monitoring/ceph-mixin/mixin.libsonnet';
 
 local DISABLED_NODE_ALERTS = [
   // * Dropped `CephNodeDiskspaceWarning` because we already have a
