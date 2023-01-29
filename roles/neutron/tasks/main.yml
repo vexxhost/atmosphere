@@ -1,0 +1,105 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Uninstall the legacy HelmRelease
+  run_once: true
+  block:
+    - name: Suspend the existing HelmRelease
+      kubernetes.core.k8s:
+        state: patched
+        api_version: helm.toolkit.fluxcd.io/v2beta1
+        kind: HelmRelease
+        name: "{{ neutron_helm_release_name }}"
+        namespace: "{{ neutron_helm_release_namespace }}"
+        definition:
+          spec:
+            suspend: true
+
+    - name: Remove the existing HelmRelease
+      kubernetes.core.k8s:
+        state: absent
+        api_version: helm.toolkit.fluxcd.io/v2beta1
+        kind: HelmRelease
+        name: "{{ neutron_helm_release_name }}"
+        namespace: "{{ neutron_helm_release_namespace }}"
+
+- name: Deploy Helm chart
+  run_once: true
+  kubernetes.core.helm:
+    name: "{{ neutron_helm_release_name }}"
+    chart_ref: "{{ neutron_helm_chart_ref }}"
+    release_namespace: "{{ neutron_helm_release_namespace }}"
+    create_namespace: true
+    kubeconfig: /etc/kubernetes/admin.conf
+    values: "{{ _neutron_helm_values | combine(neutron_helm_values, recursive=True) }}"
+
+- name: Create Ingress
+  ansible.builtin.include_role:
+    name: openstack_helm_ingress
+  vars:
+    openstack_helm_ingress_endpoint: network
+    openstack_helm_ingress_service_name: neutron-server
+    openstack_helm_ingress_service_port: 9696
+    openstack_helm_ingress_annotations: "{{ neutron_ingress_annotations }}"
+
+- name: Create networks
+  when: neutron_networks | length > 0
+  block:
+    - name: Wait until network service ready
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: Deployment
+        name: neutron-server
+        namespace: openstack
+        wait_sleep: 10
+        wait_timeout: 600
+        wait: true
+        wait_condition:
+          type: Available
+          status: true
+
+    - name: Create networks
+      openstack.cloud.network:
+        cloud: atmosphere
+        # Network settings
+        name: "{{ item.name }}"
+        external: "{{ item.external | default(omit) }}"
+        shared: "{{ item.shared | default(omit) }}"
+        mtu_size: "{{ item.mtu_size | default(omit) }}"
+        port_security_enabled: "{{ item.port_security_enabled | default(omit) }}"
+        provider_network_type: "{{ item.provider_network_type | default(omit) }}"
+        provider_physical_network: "{{ item.provider_physical_network | default(omit) }}"
+        provider_segmentation_id: "{{ item.provider_segmentation_id | default(omit) }}"
+      loop: "{{ neutron_networks }}"
+
+    - name: Create subnets
+      openstack.cloud.subnet:
+        cloud: atmosphere
+        # Subnet settings
+        network_name: "{{ item.0.name }}"
+        name: "{{ item.1.name }}"
+        ip_version: "{{ item.1.ip_version | default(omit) }}"
+        cidr: "{{ item.1.cidr | default(omit) }}"
+        gateway_ip: "{{ item.1.gateway_ip | default(omit) }}"
+        no_gateway_ip: "{{ item.1.no_gateway_ip | default(omit) }}"
+        allocation_pool_start: "{{ item.1.allocation_pool_start | default(omit) }}"
+        allocation_pool_end: "{{ item.1.allocation_pool_end | default(omit) }}"
+        dns_nameservers: "{{ item.1.dns_nameservers | default(omit) }}"
+        enable_dhcp: "{{ item.1.enable_dhcp | default(omit) }}"
+        host_routes: "{{ item.1.host_routes | default(omit) }}"
+        ipv6_address_mode: "{{ item.1.ipv6_address_mode | default(omit) }}"
+        ipv6_ra_mode: "{{ item.1.ipv6_ra_mode | default(omit) }}"
+      with_subelements:
+        - "{{ neutron_networks }}"
+        - subnets

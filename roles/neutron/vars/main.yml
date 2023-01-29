@@ -1,0 +1,66 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+_neutron_helm_values:
+  endpoints: "{{ openstack_helm_endpoints }}"
+  images:
+    tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('neutron') }}"
+  pod:
+    replicas:
+      server: 3
+  conf:
+    paste:
+      composite:neutronapi_v2_0:
+        keystone: cors http_proxy_to_wsgi request_id catch_errors authtoken keystonecontext extensions neutronapiapp_v2_0
+    neutron:
+      DEFAULT:
+        api_workers: 8
+        dhcp_agents_per_network: 3
+        log_config_append: null
+        rpc_workers: 8
+        service_plugins: qos,router,segments,trunk,vpnaas
+        external_dns_driver: designate
+      cors:
+        allowed_origin: "*"
+      nova:
+        live_migration_events: true
+      oslo_messaging_notifications:
+        driver: noop
+      service_providers:
+        service_provider: VPN:strongswan:neutron_vpnaas.services.vpn.service_drivers.ipsec.IPsecVPNDriver:default
+    dhcp_agent:
+      DEFAULT:
+        dnsmasq_dns_servers: "{{ neutron_coredns_cluster_ip | default('10.96.0.20') }}"
+        enable_isolated_metadata: true
+    l3_agent:
+      AGENT:
+        extensions: vpnaas
+      vpnagent:
+        vpn_device_driver: neutron_vpnaas.services.vpn.device_drivers.strongswan_ipsec.StrongSwanDriver
+    metadata_agent:
+      DEFAULT:
+        nova_metadata_port: 8775
+        metadata_proxy_shared_secret: "{{ openstack_helm_endpoints['compute_metadata']['secret'] }}"
+    plugins:
+      ml2_conf:
+        ml2:
+          extension_drivers: dns_domain_ports,port_security,qos
+          type_drivers: flat,gre,vlan,vxlan
+        ml2_type_gre:
+          tunnel_id_ranges: 1:1000
+        ml2_type_vlan:
+          network_vlan_ranges: external:1:4094
+  manifests:
+    ingress_server: false
+    service_ingress_server: false

@@ -29,7 +29,7 @@ and reachable by the Kubernetes cluster using `secret123` as the token.
     "registering nameservers").  This is out of the scope of this document.
 
 ```yaml
-openstack_helm_designate_pools: |
+designate_pools: |
   - name: default
     description: Default PowerDNS Pool
 
