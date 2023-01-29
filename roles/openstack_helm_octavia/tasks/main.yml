@@ -225,6 +225,18 @@
     kubeconfig: /etc/kubernetes/admin.conf
     values: "{{ _openstack_helm_octavia_helm_values | combine(openstack_helm_octavia_helm_values, recursive=True) }}"
 
+- name: Add implied role of load-balancer_member to member
+  run_once: true
+  ansible.builtin.shell: |
+    openstack implied role create \
+      --implied-role load-balancer_member \
+      member
+  environment:
+    OS_CLOUD: atmosphere
+  register: _openstack_helm_octavia_implied_role_create
+  changed_when: _openstack_helm_octavia_implied_role_create.rc == 0
+  failed_when: _openstack_helm_octavia_implied_role_create.rc != 0 and 'Duplicate entry.' not in _openstack_helm_octavia_implied_role_create.stderr
+
 - name: Create Ingress
   ansible.builtin.include_role:
     name: openstack_helm_ingress
