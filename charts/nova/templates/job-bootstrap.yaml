@@ -16,6 +16,7 @@ limitations under the License.
 {{- if and $envAll.Values.manifests.job_bootstrap $envAll.Values.bootstrap.enabled }}
 {{- $serviceName := "nova" -}}
 {{- $keystoneUser := $envAll.Values.bootstrap.ks_user -}}
+{{- $backoffLimit := index . "backoffLimit" | default "1000" -}}
 {{- $configMapBin := printf "%s-%s" $serviceName "bin" -}}
 {{- $configMapEtc := printf "%s-%s" $serviceName "etc" -}}
 {{- $configFile := printf "/etc/%s/%s.conf" $serviceName $serviceName -}}
@@ -31,6 +32,7 @@ metadata:
   labels:
 {{ tuple $envAll "nova" "bootstrap" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
 spec:
+  backoffLimit: {{ $backoffLimit }}
   template:
     metadata:
       labels:
@@ -43,6 +45,9 @@ spec:
       restartPolicy: OnFailure
       nodeSelector:
 {{ toYaml $nodeSelector | indent 8 }}
+{{ if $envAll.Values.pod.tolerations.nova.enabled }}
+{{ tuple $envAll "nova" | include "helm-toolkit.snippets.kubernetes_tolerations" | indent 6 }}
+{{ end }}
       initContainers:
 {{ tuple $envAll "bootstrap" list | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container"  | indent 8 }}
 {{- if $envAll.Values.bootstrap.wait_for_computes.enabled }}
@@ -68,7 +73,7 @@ spec:
 {{ tuple $envAll $envAll.Values.pod.resources.jobs.bootstrap | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
 {{ dict "envAll" $envAll "application" "bootstrap" "container" "bootstrap" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
           env:
-{{- with $env := dict "ksUserSecret" ( index $envAll.Values.secrets.identity $keystoneUser ) "useCA" .Values.manifests.certificates }}
+{{- with $env := dict "ksUserSecret" ( index $envAll.Values.secrets.identity $keystoneUser ) "useCA" (or .Values.manifests.certificates .Values.tls.identity) }}
 {{- include "helm-toolkit.snippets.keystone_openrc_env_vars" $env | indent 12 }}
 {{- end }}
             - name: WAIT_PERCENTAGE
@@ -96,7 +101,7 @@ spec:
               mountPath: {{ $logConfigFile | quote }}
               subPath: {{ base $logConfigFile | quote }}
               readOnly: true
-{{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.compute.osapi.internal | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
+{{- dict "enabled" (or .Values.manifests.certificates .Values.tls.identity) "name" .Values.secrets.tls.compute.osapi.internal | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
       volumes:
         - name: pod-tmp
           emptyDir: {}
@@ -110,7 +115,7 @@ spec:
           secret:
             secretName: {{ $configMapEtc | quote }}
             defaultMode: 0444
-{{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.compute.osapi.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
+{{- dict "enabled" (or .Values.manifests.certificates .Values.tls.identity) "name" .Values.secrets.tls.compute.osapi.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1

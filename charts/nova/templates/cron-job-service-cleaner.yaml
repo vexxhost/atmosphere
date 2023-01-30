@@ -18,7 +18,7 @@ limitations under the License.
 {{- $serviceAccountName := "nova-service-cleaner" }}
 {{ tuple $envAll "service_cleaner" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
 ---
-apiVersion: batch/v1beta1
+apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: nova-service-cleaner
@@ -47,6 +47,9 @@ spec:
           restartPolicy: OnFailure
           nodeSelector:
             {{ .Values.labels.job.node_selector_key }}: {{ .Values.labels.job.node_selector_value }}
+{{ if $envAll.Values.pod.tolerations.nova.enabled }}
+{{ tuple $envAll "nova" | include "helm-toolkit.snippets.kubernetes_tolerations" | indent 10 }}
+{{ end }}
           initContainers:
 {{ tuple $envAll "service_cleaner" list | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 12 }}
           containers:
@@ -55,7 +58,7 @@ spec:
 {{ tuple $envAll $envAll.Values.pod.resources.jobs.service_cleaner | include "helm-toolkit.snippets.kubernetes_resources" | indent 14 }}
 {{ dict "envAll" $envAll "application" "service_cleaner" "container" "nova_service_cleaner" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 14 }}
               env:
-{{- with $env := dict "ksUserSecret" $envAll.Values.secrets.identity.nova "useCA" .Values.manifests.certificates}}
+{{- with $env := dict "ksUserSecret" $envAll.Values.secrets.identity.nova "useCA" (or .Values.manifests.certificates .Values.tls.identity) }}
 {{- include "helm-toolkit.snippets.keystone_openrc_env_vars" $env | indent 14 }}
 {{- end }}
               command:
@@ -69,7 +72,7 @@ spec:
                   readOnly: true
                 - name: etcnova
                   mountPath: /etc/nova
-{{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.compute.osapi.internal | include "helm-toolkit.snippets.tls_volume_mount" | indent 16 }}
+{{- dict "enabled" (or .Values.manifests.certificates .Values.tls.identity) "name" .Values.secrets.tls.compute.osapi.internal | include "helm-toolkit.snippets.tls_volume_mount" | indent 16 }}
           volumes:
             - name: pod-tmp
               emptyDir: {}
@@ -83,5 +86,5 @@ spec:
               configMap:
                 name: nova-bin
                 defaultMode: 0555
-{{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.compute.osapi.internal | include "helm-toolkit.snippets.tls_volume" | indent 12 }}
+{{- dict "enabled" (or .Values.manifests.certificates .Values.tls.identity) "name" .Values.secrets.tls.compute.osapi.internal | include "helm-toolkit.snippets.tls_volume" | indent 12 }}
 {{- end }}

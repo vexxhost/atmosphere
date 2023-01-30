@@ -68,7 +68,6 @@ bootstrap:
           --domain="${OS_DEFAULT_DOMAIN}" \
           "admin"
 
-
 network:
   api:
     ingress:
@@ -217,6 +216,13 @@ pod:
         default: kubernetes.io/hostname
       weight:
         default: 10
+  tolerations:
+    keystone:
+      enabled: false
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        operator: Exists
+        effect: NoSchedule
   mounts:
     keystone_db_init:
       init_container: null
@@ -766,7 +772,7 @@ conf:
       ThreadLimit         720
     </IfModule>
   wsgi_keystone: |
-    {{- $portInt := tuple "identity" "internal" "api" $ | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+    {{- $portInt := tuple "identity" "service" "api" $ | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
 
     Listen 0.0.0.0:{{ $portInt }}
 
@@ -894,6 +900,8 @@ secrets:
       api:
         public: keystone-tls-public
         internal: keystone-tls-api
+  oci_image_registry:
+    keystone: keystone-oci-image-registry
 
 # typically overridden by environmental
 # values, but should include all endpoints
@@ -912,6 +920,21 @@ endpoints:
     port:
       registry:
         node: 5000
+  oci_image_registry:
+    name: oci-image-registry
+    namespace: oci-image-registry
+    auth:
+      enabled: false
+      keystone:
+        username: keystone
+        password: password
+    hosts:
+      default: localhost
+    host_fqdn_override:
+      default: null
+    port:
+      registry:
+        default: null
   identity:
     namespace: null
     name: keystone
@@ -949,12 +972,14 @@ endpoints:
       default: /v3
     scheme:
       default: http
+      service: http
     port:
       api:
         default: 80
         # NOTE(portdirect): to retain portability across images, and allow
         # running under a unprivileged user simply, we default to a port > 1000.
         internal: 5000
+        service: 5000
   oslo_db:
     namespace: null
     auth:
@@ -1064,6 +1089,11 @@ endpoints:
       ingress:
         default: 80
 
+tls:
+  identity: false
+  oslo_messaging: false
+  oslo_db: false
+
 manifests:
   certificates: false
   configmap_bin: true
@@ -1091,6 +1121,7 @@ manifests:
   secret_ingress_tls: true
   secret_keystone: true
   secret_rabbitmq: true
+  secret_registry: true
   service_ingress_api: true
   service_api: true
 ...

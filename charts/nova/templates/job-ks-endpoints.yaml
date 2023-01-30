@@ -19,11 +19,14 @@ helm.sh/hook-weight: "-2"
 
 {{- if .Values.manifests.job_ks_endpoints }}
 {{- $ksServiceJob := dict "envAll" . "serviceName" "nova" "serviceTypes" ( tuple "compute" ) -}}
-{{- if .Values.manifests.certificates -}}
+{{- if or .Values.manifests.certificates .Values.tls.identity -}}
 {{- $_ := set $ksServiceJob "tlsSecret" .Values.secrets.tls.compute.osapi.internal -}}
 {{- end -}}
 {{- if .Values.helm3_hook }}
 {{- $_ := set $ksServiceJob "jobAnnotations" (include "metadata.annotations.job.ks_endpoints" . | fromYaml) }}
 {{- end }}
+{{- if .Values.pod.tolerations.nova.enabled -}}
+{{- $_ := set $ksServiceJob "tolerationsEnabled" true -}}
+{{- end -}}
 {{ $ksServiceJob | include "helm-toolkit.manifests.job_ks_endpoints" }}
 {{- end }}
