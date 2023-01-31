@@ -13,8 +13,16 @@ following examples as a starting point.
 ## Local storage
 
 The following example shows a backup that runs daily at 6AM to a persistent
-volume with 3 backups kept.  The size of the persistent volume is 500Gi in the
+volume with 3 backups kept.  The size of the persistent volume is 50Gi in the
 example below.
+
+> **Note**
+>
+> The Percona Operator for MySQL creates a persistent volume claim for every
+> single backup.  This means that if you have 3 backups kept, you will have 3
+> persistent volume claims.  It's best to set the storage in that case to the
+> size of a single backup (or perhaps match your backup size to the size of the
+> cluster storage, which defaults to `160Gi`).
 
 ```yaml
 percona_xtradb_cluster_spec:
@@ -29,7 +37,7 @@ percona_xtradb_cluster_spec:
               - ReadWriteOnce
             resources:
               requests:
-                storage: 500Gi
+                storage: 50Gi
     schedule:
       - name: daily
         schedule: 0 6 * * *
