@@ -1,4 +1,4 @@
-# Copyright (c) 2022 VEXXHOST, Inc.
+# Copyright (c) 2023 VEXXHOST, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -12,10 +12,10 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- import_playbook: vexxhost.atmosphere.ceph
-- import_playbook: vexxhost.atmosphere.kubernetes
-- import_playbook: vexxhost.atmosphere.helm
-- import_playbook: vexxhost.atmosphere.cni
-- import_playbook: vexxhost.atmosphere.csi
-- import_playbook: vexxhost.atmosphere.flux
-- import_playbook: vexxhost.atmosphere.openstack
+- hosts: controllers
+  gather_facts: false
+  become: true
+  roles:
+    - role: flux
+      tags:
+        - flux
