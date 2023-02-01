@@ -138,6 +138,11 @@ curl -sL https://tarballs.opendev.org/openstack/openstack-helm/magnum-${MAGNUM_V
 HORIZON_VERSION=0.3.1
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/horizon-${HORIZON_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
+curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~872415/revisions/1/patch?download' \
+  | base64 --decode \
+  | filterdiff -p1 -x 'releasenotes/*' \
+  | filterdiff -p2 -x 'Chart.yaml' \
+  | patch -p2 -d ${ATMOSPHERE}/charts/horizon
 
 TEMPEST_VERSION=0.2.7
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/tempest-${TEMPEST_VERSION}.tgz \
