@@ -24,7 +24,7 @@ cinder_helm_values:
         backup_driver: cinder.backup.drivers.ceph.CephBackupDriver
 ```
 
-> **Warnings**
+> **Warning**
 >
 > It's not recommended to use same backend for volumes and backups. If you are
 > using Atmosphere's Ceph for volumes, you should use a different Ceph cluster
