@@ -82,6 +82,12 @@
         provider_physical_network: "{{ item.provider_physical_network | default(omit) }}"
         provider_segmentation_id: "{{ item.provider_segmentation_id | default(omit) }}"
       loop: "{{ neutron_networks }}"
+      # NOTE(mnaser): This often fails since the SSL certificates are not
+      #               ready yet. We need to wait for them to be ready.
+      retries: 60
+      delay: 5
+      register: _result
+      until: _result is not failed
 
     - name: Create subnets
       openstack.cloud.subnet:
@@ -103,3 +109,9 @@
       with_subelements:
         - "{{ neutron_networks }}"
         - subnets
+      # NOTE(mnaser): This often fails since the SSL certificates are not
+      #               ready yet. We need to wait for them to be ready.
+      retries: 60
+      delay: 5
+      register: _result
+      until: _result is not failed
