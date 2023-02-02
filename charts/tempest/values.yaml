@@ -24,8 +24,8 @@ labels:
 images:
   tags:
     dep_check: quay.io/airshipit/kubernetes-entrypoint:v1.0.0
-    tempest_run_tests: docker.io/openstackhelm/tempest:latest-ubuntu_xenial
-    ks_user: docker.io/openstackhelm/heat:ocata-ubuntu_xenial
+    tempest_run_tests: docker.io/openstackhelm/tempest:latest-ubuntu_focal
+    ks_user: docker.io/openstackhelm/heat:wallaby-ubuntu_focal
     image_repo_sync: docker.io/docker:17.07.0
   pull_policy: "IfNotPresent"
   local_registry:
@@ -137,6 +137,23 @@ conf:
       admin_domain_name: null
       use_dynamic_credentials: true
     dashboard: {}
+    heat_plugin:
+      # Username to use for non admin API requests
+      username: null
+      # Non admin API key to use when authenticating.
+      password: null
+      project_name: null
+      # Username to use for admin API requests
+      admin_username: null
+      # Admin API key to use when authentication
+      admin_password: null
+      # Admin project name to use for admin API requests
+      admin_project_name: null
+      auth_version: 3
+      auth_url: null
+      user_domain_name: null
+      project_domain_name: null
+      region: null
     identity:
       admin_domain_scope: false
       auth_version: v3
@@ -203,6 +220,7 @@ conf:
       # tempest image used includes a bug resulting in failed network tests that
       # wasn't fixed in newton. Swift is disabled by default as the swift chart
       # isn't complete
+      heat: false
       neutron: false
       nova: false
       swift: false
@@ -267,6 +285,13 @@ secrets:
   identity:
     admin: tempest-keystone-admin
     tempest: tempest-keystone-user
+  oci_image_registry:
+    tempest: tempest-oci-image-registry
+  tls:
+    identity:
+      api:
+        public: keystone-tls-public
+        internal: keystone-tls-api
 
 endpoints:
   cluster_domain_suffix: cluster.local
@@ -282,6 +307,21 @@ endpoints:
     port:
       registry:
         node: 5000
+  oci_image_registry:
+    name: oci-image-registry
+    namespace: oci-image-registry
+    auth:
+      enabled: false
+      tempest:
+        username: tempest
+        password: password
+    hosts:
+      default: localhost
+    host_fqdn_override:
+      default: null
+    port:
+      registry:
+        default: null
   identity:
     name: keystone
     auth:
@@ -334,6 +374,8 @@ endpoints:
     port:
       web:
         default: 80
+tls:
+  identity: false
 
 manifests:
   configmap_bin: true
@@ -342,4 +384,5 @@ manifests:
   job_ks_user: true
   job_run_tests: true
   secret_keystone: true
+  secret_registry: true
 ...

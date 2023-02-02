@@ -70,11 +70,11 @@ MEMCACHED_VERSION=0.1.12
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm-infra/memcached-${MEMCACHED_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-KEYSTONE_VERSION=0.2.19
+KEYSTONE_VERSION=0.3.0
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/keystone-${KEYSTONE_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-BARBICAN_VERSION=0.2.12
+BARBICAN_VERSION=0.3.0
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/barbican-${BARBICAN_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
@@ -86,7 +86,7 @@ GLANCE_VERSION=0.4.1
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/glance-${GLANCE_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-CINDER_VERSION=0.3.2
+CINDER_VERSION=0.3.3
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/cinder-${CINDER_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~872359/revisions/1/patch?download' \
@@ -110,8 +110,13 @@ curl -sL https://tarballs.opendev.org/openstack/openstack-helm-infra/libvirt-${L
 NEUTRON_VERSION=0.3.2
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/neutron-${NEUTRON_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
+curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~872436/revisions/1/patch?download' \
+  | base64 --decode \
+  | filterdiff -p1 -x 'releasenotes/*' \
+  | filterdiff -p2 -x 'Chart.yaml' \
+  | patch -p2 -d ${ATMOSPHERE}/charts/neutron
 
-NOVA_VERISON=0.2.32
+NOVA_VERISON=0.3.1
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/nova-${NOVA_VERISON}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
@@ -127,7 +132,7 @@ HEAT_VERSION=0.3.1
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/heat-${HEAT_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-OCTAVIA_VERSION=0.2.5
+OCTAVIA_VERSION=0.2.7
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/octavia-${OCTAVIA_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
@@ -135,10 +140,15 @@ MAGNUM_VERSION=0.2.8
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/magnum-${MAGNUM_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-HORIZON_VERSION=0.3.1
+HORIZON_VERSION=0.3.2
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/horizon-${HORIZON_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
+curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~872524/revisions/1/patch?download' \
+  | base64 --decode \
+  | filterdiff -p1 -x 'releasenotes/*' \
+  | filterdiff -p2 -x 'Chart.yaml' \
+  | patch -p2 -d ${ATMOSPHERE}/charts/horizon
 
-TEMPEST_VERSION=0.2.3
+TEMPEST_VERSION=0.2.7
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/tempest-${TEMPEST_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
