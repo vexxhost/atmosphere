@@ -10,3 +10,7 @@ export OS_USERNAME="{{ openstack_helm_endpoints['identity']['auth']['admin']['us
 export OS_PASSWORD="{{ openstack_helm_endpoints['identity']['auth']['admin']['password'] }}"
 export OS_PROJECT_DOMAIN_NAME=Default
 export OS_PROJECT_NAME=admin
+
+{% if cluster_issuer_type is defined and cluster_issuer_type in ('self-signed', 'ca') %}
+export OS_CACERT=/usr/local/share/ca-certificates/atmosphere.crt
+{% endif %}
