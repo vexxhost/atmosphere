@@ -1,0 +1,24 @@
+name: aio
+on:
+  pull_request: {}
+
+jobs:
+  kind:
+    runs-on: ubuntu-focal-16c
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v3
+
+      - name: Install Poetry
+        run: pipx install poetry
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          cache: poetry
+
+      - name: Install dependencies
+        run: poetry install --no-interaction --all-extras
+
+      - name: Run Molecule
+        run: poetry run molecule test -s kind

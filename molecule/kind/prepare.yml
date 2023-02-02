@@ -1,0 +1,48 @@
+# Copyright (c) 2023 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- hosts: controllers
+  tasks:
+    - name: Install dependent packages
+      ansible.builtin.apt:
+        name:
+          - gnupg
+          - python3-netifaces
+          - python3-pip
+          - python3-yaml
+        install_recommends: false
+        state: present
+
+    - name: Install Kubernetes Python package
+      ansible.builtin.pip:
+        name: kubernetes
+
+    - name: Create interface for networking
+      ansible.builtin.command: ip link add eth1 type dummy
+
+    - name: Enable dummy interface
+      ansible.builtin.command: ip link set eth1 up
+
+    - name: Add IP address for eth1 interface
+      ansible.builtin.command: ip addr add 10.96.250.10/24 dev eth1
+
+    - name: Set masquerade rule
+      become: yes
+      ansible.builtin.iptables:
+        action: insert
+        table: nat
+        chain: POSTROUTING
+        source: 10.96.250.0/24
+        out_interface: "{{ ansible_default_ipv4.interface }}"
+        jump: MASQUERADE
