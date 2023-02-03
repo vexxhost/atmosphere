@@ -177,23 +177,23 @@ kube_prometheus_stack_helm_values:
           opsgenie_configs:
             - api_key: API_KEY
               message: >-
-                {% raw %}
+                {% raw -%}
                 {{ .GroupLabels.alertname }}
-                {% endraw %}
+                {%- endraw %}
               priority: >-
-                {% raw %}
-                {{ if eq .GroupLabels.severity "critical" }}
+                {% raw -%}
+                {{ if eq .GroupLabels.severity "critical" -}}
                 P1
-                {{ else if eq .GroupLabels.severity "warning" }}
+                {{- else if eq .GroupLabels.severity "warning" -}}
                 P3
-                {{ else if eq .GroupLabels.severity "info" }}
+                {{- else if eq .GroupLabels.severity "info" -}}
                 P5
-                {{ else }}
+                {{- else -}}
                 P3
-                {{ end }}
-                {% endraw %}
+                {{- end -}}
+                {%- endraw %}
               description: |-
-                {% raw %}
+                {% raw -%}
                 {{ if gt (len .Alerts.Firing) 0 -}}
                 Alerts Firing:
                 {{ range .Alerts.Firing }}
@@ -216,7 +216,7 @@ kube_prometheus_stack_helm_values:
                 {{ end }}   Source: {{ .GeneratorURL }}
                 {{ end }}
                 {{- end }}
-                {% endraw %}
+                {%- endraw %}
         - name: heartbeat
           webhook_configs:
             - url: https://api.opsgenie.com/v2/heartbeats/HEARTBEAT_NAME/ping
