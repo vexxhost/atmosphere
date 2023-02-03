@@ -117,8 +117,10 @@
     - name: Print ospurge output
       run_once: true
       ansible.builtin.debug:
-        var: item.stderr_lines
+        msg: "{{ item.stderr_lines }}"
       loop: "{{ job_result.results }}"
+      loop_control:
+        label: "{{ item.item.item }}"
 
     - name: Delete the OpenStack project
       run_once: true
