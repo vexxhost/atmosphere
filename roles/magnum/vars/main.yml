@@ -70,3 +70,11 @@ _magnum_helm_values:
   manifests:
     ingress_api: false
     service_ingress_api: false
+
+_magnum_registry_ingress_annotations:
+  # NOTE(mnaser): We only want to allow GET/HEAD requests to the registry
+  #               to make sure it's read-only.
+  nginx.ingress.kubernetes.io/configuration-snippet: |
+    if ($request_method !~* "^(GET|HEAD)$") {
+      return 403;
+    }

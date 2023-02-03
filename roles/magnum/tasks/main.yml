@@ -80,7 +80,7 @@
             application: magnum
             component: registry
           name: magnum-registry
-          namespace: openstack
+          namespace: "{{ magnum_helm_release_namespace }}"
         spec:
           accessModes:
             - ReadWriteOnce
@@ -95,7 +95,7 @@
             application: magnum
             component: registry
           name: magnum-registry
-          namespace: openstack
+          namespace: "{{ magnum_helm_release_namespace }}"
         spec:
           replicas: 1
           selector:
@@ -149,7 +149,7 @@
             application: magnum
             component: registry
           name: magnum-registry
-          namespace: openstack
+          namespace: "{{ magnum_helm_release_namespace }}"
         spec:
           ports:
             - name: magnum
@@ -164,11 +164,11 @@
       - apiVersion: batch/v1
         kind: Job
         metadata:
+          name: magnum-registry-init
+          namespace: "{{ magnum_helm_release_namespace }}"
           labels:
             application: magnum
             component: registry
-          name: magnum-registry-init
-          namespace: openstack
         spec:
           backoffLimit: 5
           template:
@@ -178,195 +178,13 @@
             spec:
               restartPolicy: OnFailure
               containers:
-                - args:
-                    - copy
-                    - --dest-tls-verify=false
-                    - docker://docker.io/calico/cni:v3.13.1
-                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/cni:v3.13.1
-                  image: "{{ atmosphere_images['skopeo'] | vexxhost.atmosphere.docker_image('ref') }}"
-                  name: magnum-cni-v3-13-1
-                - args:
-                    - copy
-                    - --dest-tls-verify=false
-                    - docker://docker.io/calico/kube-controllers:v3.13.1
-                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/kube-controllers:v3.13.1
-                  image: "{{ atmosphere_images['skopeo'] | vexxhost.atmosphere.docker_image('ref') }}"
-                  name: magnum-kube-controllers-v3-13-1
-                - args:
-                    - copy
-                    - --dest-tls-verify=false
-                    - docker://docker.io/calico/node:v3.13.1
-                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/node:v3.13.1
-                  image: "{{ atmosphere_images['skopeo'] | vexxhost.atmosphere.docker_image('ref') }}"
-                  name: magnum-node-v3-13-1
-                - args:
-                    - copy
-                    - --dest-tls-verify=false
-                    - docker://docker.io/calico/pod2daemon-flexvol:v3.13.1
-                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/pod2daemon-flexvol:v3.13.1
-                  image: "{{ atmosphere_images['skopeo'] | vexxhost.atmosphere.docker_image('ref') }}"
-                  name: magnum-pod2daemon-flexvol-v3-13-1
-                - args:
-                    - copy
-                    - --dest-tls-verify=false
-                    - docker://docker.io/coredns/coredns:1.6.6
-                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/coredns:1.6.6
-                  image: "{{ atmosphere_images['skopeo'] | vexxhost.atmosphere.docker_image('ref') }}"
-                  name: magnum-coredns-1-6-6
-                - args:
-                    - copy
-                    - --dest-tls-verify=false
-                    - docker://docker.io/k8scloudprovider/cinder-csi-plugin:v1.18.0
-                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/cinder-csi-plugin:v1.18.0
-                  image: "{{ atmosphere_images['skopeo'] | vexxhost.atmosphere.docker_image('ref') }}"
-                  name: magnum-cinder-csi-plugin-v1-18-0
-                - args:
-                    - copy
-                    - --dest-tls-verify=false
-                    - docker://docker.io/k8scloudprovider/k8s-keystone-auth:v1.18.0
-                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/k8s-keystone-auth:v1.18.0
-                  image: "{{ atmosphere_images['skopeo'] | vexxhost.atmosphere.docker_image('ref') }}"
-                  name: magnum-k8s-keystone-auth-v1-18-0
-                - args:
-                    - copy
-                    - --dest-tls-verify=false
-                    - docker://docker.io/k8scloudprovider/magnum-auto-healer:v1.18.0
-                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/magnum-auto-healer:v1.18.0
-                  image: "{{ atmosphere_images['skopeo'] | vexxhost.atmosphere.docker_image('ref') }}"
-                  name: magnum-magnum-auto-healer-v1-18-0
-                - args:
-                    - copy
-                    - --dest-tls-verify=false
-                    - docker://docker.io/k8scloudprovider/openstack-cloud-controller-manager:v1.18.0
-                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/openstack-cloud-controller-manager:v1.18.0
-                  image: "{{ atmosphere_images['skopeo'] | vexxhost.atmosphere.docker_image('ref') }}"
-                  name: magnum-openstack-cloud-controller-manager-v1-18-0
-                - args:
-                    - copy
-                    - --dest-tls-verify=false
-                    - docker://docker.io/kubernetesui/dashboard:v2.0.0
-                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/dashboard:v2.0.0
-                  image: "{{ atmosphere_images['skopeo'] | vexxhost.atmosphere.docker_image('ref') }}"
-                  name: magnum-dashboard-v2-0-0
-                - args:
-                    - copy
-                    - --dest-tls-verify=false
-                    - docker://docker.io/kubernetesui/metrics-scraper:v1.0.4
-                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/metrics-scraper:v1.0.4
-                  image: "{{ atmosphere_images['skopeo'] | vexxhost.atmosphere.docker_image('ref') }}"
-                  name: magnum-metrics-scraper-v1-0-4
-                - args:
-                    - copy
-                    - --dest-tls-verify=false
-                    - docker://docker.io/openstackmagnum/cluster-autoscaler:v1.22.0
-                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/cluster-autoscaler:v1.22.0
-                  image: "{{ atmosphere_images['skopeo'] | vexxhost.atmosphere.docker_image('ref') }}"
-                  name: magnum-cluster-autoscaler-v1-22-0
-                - args:
-                    - copy
-                    - --dest-tls-verify=false
-                    - docker://docker.io/openstackmagnum/heat-container-agent:wallaby-stable-1
-                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/heat-container-agent:wallaby-stable-1
-                  image: "{{ atmosphere_images['skopeo'] | vexxhost.atmosphere.docker_image('ref') }}"
-                  name: magnum-heat-container-agent-wallaby-stable-1
-                - args:
-                    - copy
-                    - --dest-tls-verify=false
-                    - docker://docker.io/planetlabs/draino:abf028a
-                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/draino:abf028a
-                  image: "{{ atmosphere_images['skopeo'] | vexxhost.atmosphere.docker_image('ref') }}"
-                  name: magnum-draino-abf028a
-                - args:
-                    - copy
-                    - --dest-tls-verify=false
-                    - docker://docker.io/rancher/hyperkube:v1.19.11-rancher1
-                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/hyperkube:v1.19.11
-                  image: "{{ atmosphere_images['skopeo'] | vexxhost.atmosphere.docker_image('ref') }}"
-                  name: magnum-hyperkube-v1-19-11
-                - args:
-                    - copy
-                    - --dest-tls-verify=false
-                    - docker://docker.io/rancher/hyperkube:v1.20.7-rancher1
-                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/hyperkube:v1.20.7
-                  image: "{{ atmosphere_images['skopeo'] | vexxhost.atmosphere.docker_image('ref') }}"
-                  name: magnum-hyperkube-v1-20-7
-                - args:
-                    - copy
-                    - --dest-tls-verify=false
-                    - docker://docker.io/rancher/hyperkube:v1.21.1-rancher1
-                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/hyperkube:v1.21.1
-                  image: "{{ atmosphere_images['skopeo'] | vexxhost.atmosphere.docker_image('ref') }}"
-                  name: magnum-hyperkube-v1-21-1
-                - args:
-                    - copy
-                    - --dest-tls-verify=false
-                    - docker://gcr.io/google_containers/cluster-proportional-autoscaler-amd64:1.1.2
-                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/cluster-proportional-autoscaler-amd64:1.1.2
-                  image: "{{ atmosphere_images['skopeo'] | vexxhost.atmosphere.docker_image('ref') }}"
-                  name: magnum-cluster-proportional-autoscaler-amd64-1-1-2
-                - args:
-                    - copy
-                    - --dest-tls-verify=false
-                    - docker://gcr.io/google_containers/metrics-server-amd64:v0.3.5
-                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/metrics-server-amd64:v0.3.5
-                  image: "{{ atmosphere_images['skopeo'] | vexxhost.atmosphere.docker_image('ref') }}"
-                  name: magnum-metrics-server-amd64-v0-3-5
-                - args:
-                    - copy
-                    - --dest-tls-verify=false
-                    - docker://gcr.io/google_containers/node-problem-detector:v0.6.2
-                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/node-problem-detector:v0.6.2
-                  image: "{{ atmosphere_images['skopeo'] | vexxhost.atmosphere.docker_image('ref') }}"
-                  name: magnum-node-problem-detector-v0-6-2
-                - args:
-                    - copy
-                    - --dest-tls-verify=false
-                    - docker://gcr.io/google_containers/pause:3.1
-                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/pause:3.1
-                  image: "{{ atmosphere_images['skopeo'] | vexxhost.atmosphere.docker_image('ref') }}"
-                  name: magnum-pause-3-1
-                - args:
-                    - copy
-                    - --dest-tls-verify=false
-                    - docker://quay.io/coreos/etcd:v3.4.6
-                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/etcd:v3.4.6
-                  image: "{{ atmosphere_images['skopeo'] | vexxhost.atmosphere.docker_image('ref') }}"
-                  name: magnum-etcd-v3-4-6
-                - args:
-                    - copy
-                    - --dest-tls-verify=false
-                    - docker://quay.io/k8scsi/csi-attacher:v2.0.0
-                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/csi-attacher:v2.0.0
-                  image: "{{ atmosphere_images['skopeo'] | vexxhost.atmosphere.docker_image('ref') }}"
-                  name: magnum-csi-attacher-v2-0-0
-                - args:
-                    - copy
-                    - --dest-tls-verify=false
-                    - docker://quay.io/k8scsi/csi-node-driver-registrar:v1.1.0
-                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/csi-node-driver-registrar:v1.1.0
-                  image: "{{ atmosphere_images['skopeo'] | vexxhost.atmosphere.docker_image('ref') }}"
-                  name: magnum-csi-node-driver-registrar-v1-1-0
-                - args:
-                    - copy
-                    - --dest-tls-verify=false
-                    - docker://quay.io/k8scsi/csi-provisioner:v1.4.0
-                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/csi-provisioner:v1.4.0
-                  image: "{{ atmosphere_images['skopeo'] | vexxhost.atmosphere.docker_image('ref') }}"
-                  name: magnum-csi-provisioner-v1-4-0
-                - args:
-                    - copy
-                    - --dest-tls-verify=false
-                    - docker://quay.io/k8scsi/csi-resizer:v0.3.0
-                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/csi-resizer:v0.3.0
-                  image: "{{ atmosphere_images['skopeo'] | vexxhost.atmosphere.docker_image('ref') }}"
-                  name: magnum-csi-resizer-v0-3-0
-                - args:
-                    - copy
-                    - --dest-tls-verify=false
-                    - docker://quay.io/k8scsi/csi-snapshotter:v1.2.2
-                    - docker://magnum-registry.openstack.svc.cluster.local:5000/magnum/csi-snapshotter:v1.2.2
-                  image: "{{ atmosphere_images['skopeo'] | vexxhost.atmosphere.docker_image('ref') }}"
-                  name: magnum-csi-snapshotter-v1-2-2
+                - name: loader
+                  image: "{{ atmosphere_images['magnum_api'] | vexxhost.atmosphere.docker_image('ref') }}"
+                  command:
+                    - magnum-cluster-api-image-loader
+                    - --insecure
+                    - --repository
+                    - magnum-registry.openstack.svc.cluster.local:5000
               nodeSelector:
                 openstack-control-plane: enabled
 
@@ -377,6 +195,7 @@
     openstack_helm_ingress_endpoint: container_infra_registry
     openstack_helm_ingress_service_name: magnum-registry
     openstack_helm_ingress_service_port: 5000
+    openstack_helm_ingress_annotations: "{{ _magnum_registry_ingress_annotations | combine(magnum_registry_ingress_annotations) }}"
 
 - name: Create k8s images
   when: magnum_images | length > 0
