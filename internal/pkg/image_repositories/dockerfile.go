@@ -92,7 +92,6 @@ func getImageTag(ctx context.Context, client *github.Client, repository string, 
 	// Decode the response
 	var quayResponse quayTagList
 	decoder := json.NewDecoder(resp.Body)
-	decoder.DisallowUnknownFields()
 	err = decoder.Decode(&quayResponse)
 	if err != nil {
 		return "", err
