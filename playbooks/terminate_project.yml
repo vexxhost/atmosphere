@@ -1,0 +1,127 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Terminate project
+  hosts: controllers
+  become: true
+  gather_facts: false
+  vars_prompt:
+    - name: project_id
+      prompt: "Project name"
+      private: false
+  pre_tasks:
+    - name: Ensure that `ospurge` is installed
+      run_once: true
+      ansible.builtin.pip:
+        # https://review.opendev.org/c/x/ospurge/+/872665
+        name: git+https://opendev.org/x/ospurge.git@fef70ecd8b51694d28a16d56fe95139043d972c1#egg=ospurge
+        state: present
+  tasks:
+    - name: Get list of regions with compute service
+      changed_when: false
+      run_once: true
+      ansible.builtin.shell:
+        openstack endpoint list \
+          --service compute \
+          --interface public \
+          --column Region \
+          --format value
+      environment:
+        OS_CLOUD: atmosphere
+      register: _regions
+
+    - name: Run a dry run of ospurge
+      run_once: true
+      ansible.builtin.command:
+        ospurge \
+          --admin-role-name member \
+          --verbose \
+          --purge-project {{ project_id }} \
+          --dry-run
+      environment:
+        OS_AUTH_URL: "https://{{ openstack_helm_endpoints_keystone_api_host }}"
+        OS_USERNAME: "admin-{{ openstack_helm_endpoints_region_name }}"
+        OS_PASSWORD: "{{ openstack_helm_endpoints_keystone_admin_password }}"
+        OS_PROJECT_NAME: admin
+        OS_USER_DOMAIN_NAME: Default
+        OS_PROJECT_DOMAIN_NAME: Default
+        OS_REGION_NAME: "{{ item }}"
+      loop: "{{ _regions.stdout_lines }}"
+      async: 60
+      poll: 0
+      register: _ospurge_dryrun
+
+    - name: Wait for the async task to finish
+      run_once: true
+      ansible.builtin.async_status:
+        jid: "{{ item.ansible_job_id }}"
+      loop: "{{ _ospurge_dryrun.results }}"
+      register: job_result
+      until: job_result.finished
+      retries: 60
+      delay: 1
+
+    - name: Confirm purge, press enter to continue
+      ansible.builtin.pause:
+        prompt: |-
+          {% for region in job_result.results %}
+          {{ region.item.item }}:
+          {{ region.stderr }}
+
+          {% endfor %}
+          Press enter to continue or CTRL+C to cancel
+
+    - name: Run ospurge
+      run_once: true
+      ansible.builtin.command:
+        ospurge \
+          --admin-role-name member \
+          --verbose \
+          --purge-project {{ project_id }} \
+      environment:
+        OS_AUTH_URL: "https://{{ openstack_helm_endpoints_keystone_api_host }}"
+        OS_USERNAME: "admin-{{ openstack_helm_endpoints_region_name }}"
+        OS_PASSWORD: "{{ openstack_helm_endpoints_keystone_admin_password }}"
+        OS_PROJECT_NAME: admin
+        OS_USER_DOMAIN_NAME: Default
+        OS_PROJECT_DOMAIN_NAME: Default
+        OS_REGION_NAME: "{{ item }}"
+      loop: "{{ _regions.stdout_lines }}"
+      async: 600
+      poll: 0
+      register: _ospurge
+
+    - name: Wait for the async task to finish
+      run_once: true
+      ansible.builtin.async_status:
+        jid: "{{ item.ansible_job_id }}"
+      loop: "{{ _ospurge.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+      register: job_result
+      until: job_result.finished
+      retries: 600
+      delay: 1
+
+    - name: Print ospurge output
+      run_once: true
+      ansible.builtin.debug:
+        var: item.stderr_lines
+      loop: "{{ job_result.results }}"
+
+    - name: Delete the OpenStack project
+      run_once: true
+      openstack.cloud.project:
+        name: "{{ project_id }}"
+        state: absent
