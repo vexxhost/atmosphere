@@ -4,7 +4,7 @@ on:
 
 jobs:
   kind:
-    runs-on: ubuntu-focal-16c
+    runs-on: ubuntu-20.04
     steps:
       - name: Checkout project
         uses: actions/checkout@v3
@@ -21,10 +21,8 @@ jobs:
         run: poetry install --no-interaction --all-extras
 
       - name: Run Molecule converge
-        run: poetry run molecule converge -s kind
+        run: poetry run molecule converge -s aio
 
       - name: Setup tmate session
         if: ${{ failure() }}
         uses: mxschmitt/action-tmate@v3
-        timeout-minutes: 60
-
