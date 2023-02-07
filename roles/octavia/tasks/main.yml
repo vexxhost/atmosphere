@@ -126,10 +126,10 @@
 - name: Create amphora flavor
   openstack.cloud.compute_flavor:
     cloud: atmosphere
-    name: "m1.amphora"
-    vcpus: "1"
-    ram: "1024"
-    disk: "2"
+    name: "{{ octavia_amphora_flavor_name }}"
+    vcpus: "{{ octavia_amphora_flavor_vcpus }}"
+    ram: "{{ octavia_amphora_flavor_ram }}"
+    disk: "{{ octavia_amphora_flavor_disk }}"
     is_public: false
   register: _octavia_amphora_flavor
 
@@ -213,6 +213,8 @@
     instances: -1
     cores: -1
     ram: -1
+    volumes: -1
+    gigabytes: -1
 
 - name: Deploy Helm chart
   run_once: true
