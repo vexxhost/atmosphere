@@ -40,6 +40,17 @@
     - option: cluster network
       value: "{{ ceph_mon_cluster_network }}"
 
+- name: Add configuration overrides
+  community.general.ini_file:
+    path: /etc/ceph/ceph.conf
+    section: "{{ item.section | default('global') }}"
+    option: "{{ item.option }}"
+    value: "{{ item.value }}"
+    owner: ceph
+    group: ceph
+    mode: 0640
+  loop: "{{ ceph_mon_config_overrides }}"
+
 - name: check if any node is bootstrapped
   ansible.builtin.stat:
     path: "/var/lib/ceph/mon/ceph-{{ hostvars[item]['inventory_hostname_short'] }}/store.db"
