@@ -54,11 +54,11 @@
     - name: Start loopback devices for unmapped images
       ansible.builtin.command: losetup -fP /opt/{{ item }}.img
       with_items: "{{ ceph_osds }}"
-      when: _losetup_l.stdout | from_json | json_query('loopdevices[?back-file==`/opt/' + item + '.img`].back-file') | length == 0
+      when: _losetup_l.stdout | from_json | json_query('loopdevices[?"back-file"==`/opt/' + item + '.img`]."back-file"') | length == 0
 
     - name: Set permissions on loopback devices
       ansible.builtin.file:
-        path: "{{ item }}"
+        path: /opt/{{ item }}.img
         mode: 0777
       with_items: "{{ ceph_osds }}"
 
@@ -66,12 +66,28 @@
       ansible.builtin.shell: losetup -J
       register: _losetup_l
 
-    - name: Generate 'ceph_osd_devices' using loopback devices
-      ansible.builtin.set_fact:
-        ceph_osd_devices: "{{ ceph_osd_devices | default([]) + [item] }}"
-      with_items: "{{ _losetup_l.stdout | from_json | json_query('loopdevices[?back-file==`/opt/' + item + '.img`].name') }}"
+    - name: Create a volume group for each loop device
+      community.general.lvg:
+        vg: ceph-{{ item['back-file'].split('/')[-1].split('.')[0] }}
+        pvs: "{{ item.name }}"
+      loop: "{{ _losetup_l.stdout | from_json | json_query('loopdevices[?starts_with(\"back-file\", `/opt/osd`)].{name: name, \"back-file\": \"back-file\"}') }}"
+      register: _lvg
 
-    - name: Write out osds.yml file
+    - name: Create a logical volume for each loop device
+      community.general.lvol:
+        vg: "{{ item.invocation.module_args.vg }}"
+        lv: data
+        size: 100%FREE
+        shrink: false
+      loop: "{{ _lvg.results }}"
+      loop_control:
+        label: "{{ item.invocation.module_args.vg }}"
+
+    - name: Overwrite existing osds.yml file
       ansible.builtin.copy:
-        content: "{{ ceph_osd_devices | to_nice_yaml }}"
+        content: |
+          ceph_osd_devices:
+            {% for item in _lvg.results %}
+            - /dev/{{ item.invocation.module_args.vg }}/data
+            {% endfor %}
         dest: "{{ lookup('env', 'MOLECULE_SCENARIO_DIRECTORY') }}/group_vars/cephs/osds.yml"
