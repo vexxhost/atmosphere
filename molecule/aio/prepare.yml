@@ -91,3 +91,26 @@
             - /dev/{{ item.invocation.module_args.vg }}/data
             {% endfor %}
         dest: "{{ lookup('env', 'MOLECULE_SCENARIO_DIRECTORY') }}/group_vars/cephs/osds.yml"
+
+- name: Create devices for networking
+  hosts: all
+  become: true
+  tasks:
+    - name: Create interface for networking
+      ansible.builtin.command: ip link add eth1 type dummy
+
+    - name: Enable dummy interface
+      ansible.builtin.command: ip link set eth1 up
+
+    - name: Add IP address for eth1 interface
+      ansible.builtin.command: ip addr add 10.96.250.10/24 dev eth1
+
+    - name: Set masquerade rule
+      become: yes
+      ansible.builtin.iptables:
+        action: insert
+        table: nat
+        chain: POSTROUTING
+        source: 10.96.250.0/24
+        out_interface: "{{ ansible_default_ipv4.interface }}"
+        jump: MASQUERADE
