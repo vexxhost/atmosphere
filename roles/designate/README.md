@@ -55,4 +55,3 @@ designate_pools: |
           api_endpoint: http://192.168.1.10:8081
           api_token: secret123
 ```
-
