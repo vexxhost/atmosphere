@@ -1,9 +1,5 @@
 - name: Generate image list
-  hosts: localhost
+  hosts: "{{ localhost | default(target) }}"
   gather_facts: false
-  vars_prompt:
-    - name: image_manifest_path
-      prompt: Image manifest path
-      private: false
   roles:
     - image_manifest
