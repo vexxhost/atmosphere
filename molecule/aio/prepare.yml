@@ -18,7 +18,8 @@
     domain_name: "{{ '{{' }} ansible_default_ipv4['address'].replace('.', '-') {{ '}}' }}.{{ lookup('env', 'ATMOSPHERE_DNS_SUFFIX_NAME') | default('nip.io', True) }}"
     ceph_public_network: 10.0.0.0/8
 
-- hosts: all
+- name: Clean-up system from GitHub Actions
+  hosts: all
   become: true
   tasks:
     - name: Remove conflicting packages
@@ -33,3 +34,44 @@
       ansible.builtin.file:
         path: /var/run/docker.sock
         state: absent
+
+- name: Create devices for Ceph
+  hosts: all
+  become: true
+  vars:
+    ceph_osds: ["osd0", "osd1", "osd2"]
+  tasks:
+    - name: Create devices for Ceph
+      ansible.builtin.command: truncate -s 1024G /opt/{{ item }}.img
+      args:
+        creates: /opt/{{ item }}.img
+      with_items: "{{ ceph_osds }}"
+
+    - name: Get list of all loopback devices
+      ansible.builtin.shell: losetup -J
+      register: _losetup_l
+
+    - name: Start loopback devices for unmapped images
+      ansible.builtin.command: losetup -fP /opt/{{ item }}.img
+      with_items: "{{ ceph_osds }}"
+      when: _losetup_l.stdout | from_json | json_query('loopdevices[?back-file==`/opt/' + item + '.img`].back-file') | length == 0
+
+    - name: Set permissions on loopback devices
+      ansible.builtin.file:
+        path: "{{ item }}"
+        mode: 0777
+      with_items: "{{ ceph_osds }}"
+
+    - name: Get list of all loopback devices
+      ansible.builtin.shell: losetup -J
+      register: _losetup_l
+
+    - name: Generate 'ceph_osd_devices' using loopback devices
+      ansible.builtin.set_fact:
+        ceph_osd_devices: "{{ ceph_osd_devices | default([]) + [item] }}"
+      with_items: "{{ _losetup_l.stdout | from_json | json_query('loopdevices[?back-file==`/opt/' + item + '.img`].name') }}"
+
+    - name: Write out osds.yml file
+      ansible.builtin.copy:
+        content: "{{ ceph_osd_devices | to_nice_yaml }}"
+        dest: "{{ lookup('env', 'MOLECULE_SCENARIO_DIRECTORY') }}/group_vars/cephs/osds.yml"
