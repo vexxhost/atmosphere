@@ -54,46 +54,17 @@
     openstack_helm_ingress_annotations: "{{ _glance_ingress_annotations | combine(glance_ingress_annotations) }}"
 
 - name: Create images
-  when: glance_images | length > 0
-  block:
-    - name: Wait until image service ready
-      kubernetes.core.k8s_info:
-        api_version: apps/v1
-        kind: Deployment
-        name: glance-api
-        namespace: openstack
-        wait_sleep: 10
-        wait_timeout: 600
-        wait: true
-        wait_condition:
-          type: Available
-          status: true
-
-    - name: Download images
-      ansible.builtin.get_url:
-        url: "{{ item.source_url | regex_replace('\\/$', '') }}/{{ item.image_file }}"
-        dest: "/tmp/{{ item.image_file }}"
-        mode: "0600"
-      loop: "{{ glance_images }}"
-
-    - name: Upload images
-      openstack.cloud.image:
-        cloud: atmosphere
-        name: "{{ item.name }}"
-        state: present
-        filename: "/tmp/{{ item.image_file }}"
-        min_disk: "{{ item.min_disk | default(omit) }}"
-        min_ram: "{{ item.min_ram | default(omit) }}"
-        container_format: "{{ item.container_format | default(omit) }}"
-        disk_format: "{{ item.disk_format | default(omit) }}"
-        properties: "{{ item.properties | default(omit) }}"
-        kernel: "{{ item.kernel | default(omit) }}"
-        ramdisk: "{{ item.ramdisk | default(omit) }}"
-        is_public: "{{ item.is_public | default(omit) }}"
-      loop: "{{ glance_images }}"
-      # NOTE(mnaser): This often fails since the SSL certificates are not
-      #               ready yet. We need to wait for them to be ready.
-      retries: 60
-      delay: 5
-      register: _result
-      until: _result is not failed
+  ansible.builtin.include_role:
+    name: glance_image
+  loop: "{{ glance_images }}"
+  vars:
+    glance_image_name: "{{ item.name }}"
+    glance_image_url: "{{ item.url }}"
+    glance_image_min_disk: "{{ item.min_disk | default(omit) }}"
+    glance_image_min_ram: "{{ item.min_ram | default(omit) }}"
+    glance_image_container_format: "{{ item.container_format | default(omit) }}"
+    glance_image_disk_format: "{{ item.disk_format | default(omit) }}"
+    glance_image_properties: "{{ item.properties | default(omit) }}"
+    glance_image_kernel: "{{ item.kernel | default(omit) }}"
+    glance_image_ramdisk: "{{ item.ramdisk | default(omit) }}"
+    glance_image_is_public: "{{ item.is_public | default(omit) }}"

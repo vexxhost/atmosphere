@@ -1,0 +1,91 @@
+# Copyright (c) 2023 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Check if image exists
+  run_once: true
+  openstack.cloud.image_info:
+    cloud: atmosphere
+    image: "{{ glance_image_name }}"
+  register: _image_info
+
+- name: Download image and upload into Glance
+  run_once: true
+  when: _image_info.openstack_image == None
+  block:
+    - name: Generate temporary work directory
+      ansible.builtin.tempfile:
+        state: directory
+      register: _workdir
+
+    - name: Download image
+      ansible.builtin.get_url:
+        url: "{{ glance_image_url }}"
+        dest: "{{ _workdir.path }}/{{ glance_image_url | basename }}"
+        mode: 0600
+      register: _get_url
+
+    - name: Get image format
+      changed_when: false
+      ansible.builtin.shell: |
+        set -o pipefail
+        qemu-img info {{ _get_url.dest }} | grep -i "file format" | awk '{ print $3 }'
+      args:
+        executable: /bin/bash
+      register: _image_format
+
+    - name: Convert file to target disk format
+      when: _image_format.stdout != glance_image_disk_format
+      ansible.builtin.command:
+        qemu-img convert -O {{ glance_image_disk_format }} {{ _get_url.dest }} {{ _get_url.dest }}.converted
+
+    - name: Wait until image service ready
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: Deployment
+        name: glance-api
+        namespace: openstack
+        wait_sleep: 1
+        wait_timeout: 600
+        wait: true
+        wait_condition:
+          type: Available
+          status: true
+
+    - name: Upload image into Glance
+      openstack.cloud.image:
+        cloud: atmosphere
+        name: "{{ glance_image_name }}"
+        filename: "{{ _get_url.dest }}{% if _image_format.stdout != glance_image_disk_format %}.converted{% endif %}"
+        min_disk: "{{ glance_image_min_disk | default(omit) }}"
+        min_ram: "{{ glance_image_min_ram | default(omit) }}"
+        container_format: "{{ glance_image_container_format | default(omit) }}"
+        disk_format: "{{ glance_image_disk_format | default(omit) }}"
+        properties: "{{ glance_image_properties | default(omit) }}"
+        kernel: "{{ glance_image_kernel | default(omit) }}"
+        ramdisk: "{{ glance_image_ramdisk | default(omit) }}"
+        is_public: "{{ glance_image_is_public | default(omit) }}"
+        tags: "{{ glance_image_tags | default(omit) }}"
+        wait: true
+        timeout: 600
+      # NOTE(mnaser): This often fails since the SSL certificates are not
+      #               ready yet. We need to wait for them to be ready.
+      retries: 60
+      delay: 5
+      register: _result
+      until: _result is not failed
+  always:
+    - name: Remove work directory
+      ansible.builtin.file:
+        path: "{{ _workdir.path }}"
+        state: absent

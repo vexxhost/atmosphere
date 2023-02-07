@@ -133,21 +133,20 @@
     is_public: false
   register: _octavia_amphora_flavor
 
-- name: Download amphora image
-  ansible.builtin.get_url:
-    url: "{{ octavia_amphora_image_url }}"
-    dest: "/tmp/{{ octavia_amphora_image_url | basename }}"
-    mode: 0644
+- name: Upload Amphora image
+  ansible.builtin.include_role:
+    name: glance_image
+  vars:
+    glance_image_name: "{{ octavia_amphora_image_name }}"
+    glance_image_url: "{{ octavia_amphora_image_url }}"
+    glance_image_container_format: "{{ octavia_amphora_image_container_format }}"
+    glance_image_disk_format: "{{ octavia_amphora_image_disk_format }}"
+    glance_image_tags: "{{ octavia_amphora_image_tags }}"
 
-- name: Upload images
-  openstack.cloud.image:
+- name: Get Amphora image information
+  openstack.cloud.image_info:
     cloud: atmosphere
-    name: "amphora-x64-haproxy"
-    filename: "/tmp/{{ octavia_amphora_image_url | basename }}"
-    container_format: "bare"
-    disk_format: "qcow2"
-    tags:
-      - "amphora"
+    image: "{{ octavia_amphora_image_name }}"
   register: _octavia_amphora_image
 
 - name: Create CAs & Issuers
