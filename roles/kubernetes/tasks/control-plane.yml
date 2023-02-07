@@ -85,6 +85,12 @@
     state: link
     force: true
 
+- name: Allow all users to access KUBECONFIG if using local connection
+  when: ansible_connection == "local"
+  ansible.builtin.file:
+    path: /etc/kubernetes/admin.conf
+    mode: 0755
+
 - name: add bash autocomplete for kubectl
   ansible.builtin.lineinfile:
     path: /root/.bashrc
