@@ -30,6 +30,25 @@ from ansible_collections.vexxhost.atmosphere.plugins.filter.from_ini import (
             ),
             {}
         ),
+        (
+            textwrap.dedent(
+                """
+                [DEFAULT]
+                foo = bar
+
+                [oslo_messaging]
+                transport_url = rabbit://guest:guest@localhost:5672/
+                """
+            ),
+            {
+                "DEFAULT": {
+                    "foo": "bar",
+                },
+                "oslo_messaging": {
+                    "transport_url": "rabbit://guest:guest@localhost:5672/",
+                },
+            }
+        ),
     ],
 )
 def test_from_ini(test_input, expected):

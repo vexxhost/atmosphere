@@ -21,7 +21,7 @@ from functools import partial
 from ansible.errors import AnsibleFilterError
 from ansible.module_utils._text import to_text
 from ansible.module_utils.common.collections import is_string
-from ansible.module_utils.six import configparser
+from ansible.module_utils.six.moves import configparser
 
 DOCUMENTATION = """
   name: from_ini
@@ -64,10 +64,10 @@ def from_ini(value):
 
     data = {}
 
-    for section in parser.sections():
-        data[section] = {}
-        for opt in parser.options(section):
-            val = parser.get(section, opt)
+    def _parse_section(section):
+        data = dict(section)
+        data.pop('__name__', None)
+        for opt, val in data.items():
             if val.isdigit():
                 val = int(val)
             elif val.lower() in ("true", "false"):
@@ -79,8 +79,15 @@ def from_ini(value):
                     val = float(val)
                 except ValueError:
                     pass
+            data[opt] = val
 
-            data[section][opt] = val
+        return data
+
+    data = dict(parser._sections)
+    for k in data:
+        data[k] = _parse_section(data[k])
+    if parser._defaults:
+        data["DEFAULT"] = _parse_section(parser._defaults)
 
     return data
 

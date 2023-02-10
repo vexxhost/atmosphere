@@ -12,15 +12,21 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Migrate service from OpenStack Ansible
-  hosts: "{{ target }}"
+- name: Migrate Nova from OpenStack Ansible
+  hosts: nova_conductor
   gather_facts: false
-  vars_prompt:
   tasks:
     - name: Slurp the configuration file for the service
       ansible.builtin.slurp:
-        path: "{{ paths[service] }}"
-      vars:
-        paths:
-          nova: /etc/nova/nova.conf
+        path: /etc/nova/nova.conf
       register: _config_file
+
+    - name: Generate fact with the existing configuration
+      ansible.builtin.set_fact:
+        _osa_config:
+          conf:
+            nova: "{{ _config_file['content'] | b64decode | from_ini }}"
+
+    - name: Print the existing configuration
+      ansible.builtin.debug:
+        var: _osa_config
