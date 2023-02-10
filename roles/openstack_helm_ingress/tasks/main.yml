@@ -12,6 +12,14 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+- name: Add ClusterIssuer annotations
+  ansible.builtin.set_fact:
+    _openstack_helm_ingress_annotations: "{{ _openstack_helm_ingress_annotations | combine(annotations, recursive=True) }}"
+  vars:
+    annotations:
+      cert-manager.io/cluster-issuer: "{{ openstack_helm_ingress_cluster_issuer }}"
+  when: openstack_helm_ingress_secret_name is not defined
+
 - name: Create Ingress {{ openstack_helm_ingress_name }}
   kubernetes.core.k8s:
     state: present
@@ -36,6 +44,6 @@
                       port:
                         number: "{{ openstack_helm_ingress_service_port }}"
         tls:
-          - secretName: "{{ openstack_helm_ingress_secret_name }}"
+          - secretName: "{{ openstack_helm_ingress_secret_name | default(openstack_helm_ingress_service_name ~ '-certs') }}"
             hosts:
               - "{{ openstack_helm_ingress_host }}"
