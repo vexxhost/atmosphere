@@ -1,0 +1,119 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+_octavia_helm_values:
+  endpoints: "{{ openstack_helm_endpoints }}"
+  images:
+    tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('octavia') }}"
+  pod:
+    mounts:
+      octavia_api:
+        octavia_api:
+          volumeMounts:
+            - name: octavia-server-ca
+              mountPath: /etc/octavia/certs/server
+            - name: octavia-client-certs
+              mountPath: /etc/octavia/certs/client
+          volumes:
+            - name: octavia-server-ca
+              secret:
+                secretName: octavia-server-ca
+            - name: octavia-client-certs
+              secret:
+                secretName: octavia-client-certs
+      octavia_worker:
+        octavia_worker:
+          volumeMounts:
+            - name: octavia-server-ca
+              mountPath: /etc/octavia/certs/server
+            - name: octavia-client-certs
+              mountPath: /etc/octavia/certs/client
+          volumes:
+            - name: octavia-server-ca
+              secret:
+                secretName: octavia-server-ca
+            - name: octavia-client-certs
+              secret:
+                secretName: octavia-client-certs
+      octavia_housekeeping:
+        octavia_housekeeping:
+          volumeMounts:
+            - name: octavia-server-ca
+              mountPath: /etc/octavia/certs/server
+            - name: octavia-client-certs
+              mountPath: /etc/octavia/certs/client
+          volumes:
+            - name: octavia-server-ca
+              secret:
+                secretName: octavia-server-ca
+            - name: octavia-client-certs
+              secret:
+                secretName: octavia-client-certs
+      octavia_health_manager:
+        octavia_health_manager:
+          volumeMounts:
+            - name: octavia-server-ca
+              mountPath: /etc/octavia/certs/server
+            - name: octavia-client-certs
+              mountPath: /etc/octavia/certs/client
+          volumes:
+            - name: octavia-server-ca
+              secret:
+                secretName: octavia-server-ca
+            - name: octavia-client-certs
+              secret:
+                secretName: octavia-client-certs
+    replicas:
+      api: 3
+      worker: 3
+      housekeeping: 3
+  conf:
+    octavia:
+      DEFAULT:
+        log_config_append: null
+      certificates:
+        ca_certificate: /etc/octavia/certs/server/ca.crt
+        ca_private_key: /etc/octavia/certs/server/tls.key
+        ca_private_key_passphrase: null
+        endpoint_type: internalURL
+      cinder:
+        endpoint_type: internalURL
+      controller_worker:
+        amp_boot_network_list: "{{ _octavia_management_network.id }}"
+        amp_flavor_id: "{{ _octavia_amphora_flavor.id }}"
+        amp_image_owner_id: "{{ _octavia_amphora_image.openstack_image.owner }}"
+        amp_secgroup_list: "{{ _octavia_amphora_sg.id }}"
+        amp_ssh_key_name: null
+        client_ca: /etc/octavia/certs/client/ca.crt
+        volume_driver: volume_cinder_driver
+        workers: 4
+      glance:
+        endpoint_type: internalURL
+      haproxy_amphora:
+        client_cert: /etc/octavia/certs/client/tls-combined.pem
+        server_ca: /etc/octavia/certs/server/ca.crt
+      health_manager:
+        controller_ip_port_list: "{{ _octavia_controller_ip_port_list | sort | join(',') }}"
+        heartbeat_key: "{{ octavia_heartbeat_key }}"
+      oslo_messaging_notifications:
+        driver: noop
+      neutron:
+        endpoint_type: internalURL
+      nova:
+        endpoint_type: internalURL
+      service_auth:
+        endpoint_type: internalURL
+  manifests:
+    ingress_api: false
+    service_ingress_api: false

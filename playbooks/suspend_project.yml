@@ -1,0 +1,82 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Suspend project
+  hosts: controllers
+  become: true
+  gather_facts: false
+  vars_prompt:
+    - name: project_name
+      prompt: "Project name"
+      private: false
+  tasks:
+    - name: Disable the project
+      run_once: true
+      openstack.cloud.project:
+        cloud: atmosphere
+        name: "{{ project_name }}"
+        enabled: false
+      register: _project
+
+    - name: Get list of regions with compute service
+      changed_when: false
+      run_once: true
+      ansible.builtin.shell:
+        openstack endpoint list \
+          --service compute \
+          --interface public \
+          --column Region \
+          --format value
+      environment:
+        OS_CLOUD: atmosphere
+      register: _regions
+
+    - name: Get list of VMs in the project in each region
+      changed_when: false
+      run_once: true
+      ansible.builtin.shell:
+        openstack server list \
+          --no-name-lookup \
+          --project "{{ project_name }}" \
+          --status ACTIVE \
+          --column ID \
+          --format value
+      environment:
+        OS_AUTH_URL: "https://{{ openstack_helm_endpoints_keystone_api_host }}"
+        OS_USERNAME: "admin-{{ openstack_helm_endpoints_region_name }}"
+        OS_PASSWORD: "{{ openstack_helm_endpoints_keystone_admin_password }}"
+        OS_PROJECT_NAME: admin
+        OS_USER_DOMAIN_NAME: Default
+        OS_PROJECT_DOMAIN_NAME: Default
+        OS_REGION_NAME: "{{ item }}"
+      register: _servers
+      loop: "{{ _regions.stdout_lines }}"
+
+    - name: Suspend VMs in each region
+      run_once: true
+      ansible.builtin.shell:
+        openstack server suspend {{ item.1 }}
+      environment:
+        OS_AUTH_URL: "https://{{ openstack_helm_endpoints_keystone_api_host }}"
+        OS_USERNAME: "admin-{{ openstack_helm_endpoints_region_name }}"
+        OS_PASSWORD: "{{ openstack_helm_endpoints_keystone_admin_password }}"
+        OS_PROJECT_NAME: admin
+        OS_USER_DOMAIN_NAME: Default
+        OS_PROJECT_DOMAIN_NAME: Default
+        OS_REGION_NAME: "{{ item.0.item }}"
+      with_subelements:
+        - "{{ _servers.results }}"
+        - stdout_lines
+      loop_control:
+        label: "{{ item.0.item }}/{{ item.1 }}"

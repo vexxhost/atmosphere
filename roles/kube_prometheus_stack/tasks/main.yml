@@ -40,10 +40,35 @@
         ca.crt: "{{ _etcd_ca_crt.content }}"
         healthcheck-client.crt: "{{ _etcd_healthcheck_client_crt.content }}"
         healthcheck-client.key: "{{ _etcd_healthcheck_client_key.content }}"
-  # NOTE(mnaser): Since we haven't moved to the operator pattern yet, we need to
-  #               keep retrying a few times as the namespace might not be
-  #               created yet.
-  retries: 60
-  delay: 5
-  register: _result
-  until: _result is not failed
+
+- name: Uninstall the legacy HelmRelease
+  run_once: true
+  block:
+    - name: Suspend the existing HelmRelease
+      kubernetes.core.k8s:
+        state: patched
+        api_version: helm.toolkit.fluxcd.io/v2beta1
+        kind: HelmRelease
+        name: "{{ kube_prometheus_stack_helm_release_name }}"
+        namespace: "{{ kube_prometheus_stack_helm_release_namespace }}"
+        definition:
+          spec:
+            suspend: true
+
+    - name: Remove the existing HelmRelease
+      kubernetes.core.k8s:
+        state: absent
+        api_version: helm.toolkit.fluxcd.io/v2beta1
+        kind: HelmRelease
+        name: "{{ kube_prometheus_stack_helm_release_name }}"
+        namespace: "{{ kube_prometheus_stack_helm_release_namespace }}"
+
+- name: Deploy Helm chart
+  run_once: true
+  kubernetes.core.helm:
+    name: "{{ kube_prometheus_stack_helm_release_name }}"
+    chart_ref: "{{ kube_prometheus_stack_helm_chart_ref }}"
+    release_namespace: "{{ kube_prometheus_stack_helm_release_namespace }}"
+    create_namespace: true
+    kubeconfig: /etc/kubernetes/admin.conf
+    values: "{{ _kube_prometheus_stack_helm_values | combine(kube_prometheus_stack_helm_values, recursive=True) }}"

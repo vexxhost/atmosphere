@@ -32,9 +32,6 @@ labels:
   conductor:
     node_selector_key: openstack-control-plane
     node_selector_value: enabled
-  consoleauth:
-    node_selector_key: openstack-control-plane
-    node_selector_value: enabled
   job:
     node_selector_key: openstack-control-plane
     node_selector_value: enabled
@@ -42,9 +39,6 @@ labels:
     node_selector_key: openstack-control-plane
     node_selector_value: enabled
   osapi:
-    node_selector_key: openstack-control-plane
-    node_selector_value: enabled
-  placement:
     node_selector_key: openstack-control-plane
     node_selector_value: enabled
   scheduler:
@@ -60,33 +54,31 @@ labels:
 images:
   pull_policy: IfNotPresent
   tags:
-    bootstrap: docker.io/openstackhelm/heat:stein-ubuntu_bionic
-    db_drop: docker.io/openstackhelm/heat:stein-ubuntu_bionic
-    db_init: docker.io/openstackhelm/heat:stein-ubuntu_bionic
+    bootstrap: docker.io/openstackhelm/heat:wallaby-ubuntu_focal
+    db_drop: docker.io/openstackhelm/heat:wallaby-ubuntu_focal
+    db_init: docker.io/openstackhelm/heat:wallaby-ubuntu_focal
     dep_check: 'quay.io/airshipit/kubernetes-entrypoint:v1.0.0'
     rabbit_init: docker.io/rabbitmq:3.7-management
-    ks_user: docker.io/openstackhelm/heat:stein-ubuntu_bionic
-    ks_service: docker.io/openstackhelm/heat:stein-ubuntu_bionic
-    nova_archive_deleted_rows: docker.io/openstackhelm/nova:stein-ubuntu_bionic
-    ks_endpoints: docker.io/openstackhelm/heat:stein-ubuntu_bionic
-    nova_api: docker.io/openstackhelm/nova:stein-ubuntu_bionic
-    nova_cell_setup: docker.io/openstackhelm/nova:stein-ubuntu_bionic
-    nova_cell_setup_init: docker.io/openstackhelm/heat:stein-ubuntu_bionic
-    nova_compute: docker.io/openstackhelm/nova:stein-ubuntu_bionic
-    nova_compute_ironic: 'docker.io/kolla/ubuntu-source-nova-compute-ironic:ocata'
-    nova_compute_ssh: docker.io/openstackhelm/nova:stein-ubuntu_bionic
-    nova_conductor: docker.io/openstackhelm/nova:stein-ubuntu_bionic
-    nova_consoleauth: docker.io/openstackhelm/nova:stein-ubuntu_bionic
-    nova_db_sync: docker.io/openstackhelm/nova:stein-ubuntu_bionic
-    nova_novncproxy: docker.io/openstackhelm/nova:stein-ubuntu_bionic
-    nova_novncproxy_assets: 'docker.io/kolla/ubuntu-source-nova-novncproxy:ocata'
-    nova_placement: docker.io/openstackhelm/nova:stein-ubuntu_bionic
-    nova_scheduler: docker.io/openstackhelm/nova:stein-ubuntu_bionic
+    ks_user: docker.io/openstackhelm/heat:wallaby-ubuntu_focal
+    ks_service: docker.io/openstackhelm/heat:wallaby-ubuntu_focal
+    nova_archive_deleted_rows: docker.io/openstackhelm/nova:wallaby-ubuntu_focal
+    ks_endpoints: docker.io/openstackhelm/heat:wallaby-ubuntu_focal
+    nova_api: docker.io/openstackhelm/nova:wallaby-ubuntu_focal
+    nova_cell_setup: docker.io/openstackhelm/nova:wallaby-ubuntu_focal
+    nova_cell_setup_init: docker.io/openstackhelm/heat:wallaby-ubuntu_focal
+    nova_compute: docker.io/openstackhelm/nova:wallaby-ubuntu_focal
+    nova_compute_ironic: 'docker.io/kolla/ubuntu-source-nova-compute-ironic:wallaby'
+    nova_compute_ssh: docker.io/openstackhelm/nova:wallaby-ubuntu_focal
+    nova_conductor: docker.io/openstackhelm/nova:wallaby-ubuntu_focal
+    nova_db_sync: docker.io/openstackhelm/nova:wallaby-ubuntu_focal
+    nova_novncproxy: docker.io/openstackhelm/nova:wallaby-ubuntu_focal
+    nova_novncproxy_assets: 'docker.io/kolla/ubuntu-source-nova-novncproxy:wallaby'
+    nova_scheduler: docker.io/openstackhelm/nova:wallaby-ubuntu_focal
     # NOTE(portdirect): we simply use the ceph config helper here,
     # as it has both oscli and jq.
-    nova_service_cleaner: 'docker.io/openstackhelm/ceph-config-helper:latest-ubuntu_xenial'
-    nova_spiceproxy: docker.io/openstackhelm/nova:stein-ubuntu_bionic
-    nova_spiceproxy_assets: docker.io/openstackhelm/nova:stein-ubuntu_bionic
+    nova_service_cleaner: 'docker.io/openstackhelm/ceph-config-helper:latest-ubuntu_focal'
+    nova_spiceproxy: docker.io/openstackhelm/nova:wallaby-ubuntu_focal
+    nova_spiceproxy_assets: docker.io/openstackhelm/nova:wallaby-ubuntu_focal
     test: docker.io/xrally/xrally-openstack:2.0.0
     image_repo_sync: docker.io/docker:17.07.0
     nova_wait_for_computes_init: gcr.io/google_containers/hyperkube-amd64:v1.11.6
@@ -240,18 +232,6 @@ network:
     node_port:
       enabled: false
       port: 30775
-  placement:
-    port: 8778
-    ingress:
-      public: true
-      classes:
-        namespace: "nginx"
-        cluster: "nginx-cluster"
-      annotations:
-        nginx.ingress.kubernetes.io/rewrite-target: /
-    node_port:
-      enabled: false
-      port: 30778
   novncproxy:
     ingress:
       public: true
@@ -383,7 +363,6 @@ dependencies:
       jobs:
         - nova-db-sync
         - nova-rabbit-init
-        - placement-ks-endpoints
       services:
         - endpoint: internal
           service: oslo_messaging
@@ -411,20 +390,6 @@ dependencies:
         - endpoint: internal
           service: baremetal
     conductor:
-      jobs:
-        - nova-db-sync
-        - nova-rabbit-init
-        - placement-ks-endpoints
-      services:
-        - endpoint: internal
-          service: oslo_messaging
-        - endpoint: internal
-          service: oslo_db
-        - endpoint: internal
-          service: identity
-        - endpoint: internal
-          service: compute
-    consoleauth:
       jobs:
         - nova-db-sync
         - nova-rabbit-init
@@ -489,7 +454,6 @@ dependencies:
       jobs:
         - nova-db-sync
         - nova-rabbit-init
-        - placement-ks-endpoints
       services:
         - endpoint: internal
           service: oslo_messaging
@@ -636,14 +600,6 @@ conf:
         echo $IMAGES | xargs openstack image delete
       fi
     tests:
-      NovaAgents.list_agents:
-        - runner:
-            concurrency: 1
-            times: 1
-            type: constant
-          sla:
-            failure_rate:
-              max: 0
       NovaAggregates.create_and_get_aggregate_details:
         - args:
             availability_zone: nova
@@ -991,41 +947,6 @@ conf:
     # INFO means log all usage
     # ERROR means only log unsuccessful attempts
     syslog_log_level=ERROR
-  wsgi_placement: |
-    Listen 0.0.0.0:{{ tuple "placement" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
-
-    LogFormat "%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\"" combined
-    LogFormat "%{X-Forwarded-For}i %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\"" proxy
-
-    SetEnvIf X-Forwarded-For "^.*\..*\..*\..*" forwarded
-    CustomLog /dev/stdout combined env=!forwarded
-    CustomLog /dev/stdout proxy env=forwarded
-
-    <VirtualHost *:{{ tuple "placement" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}>
-        WSGIDaemonProcess placement-api processes=4 threads=1 user=nova group=nova display-name=%{GROUP}
-        WSGIProcessGroup placement-api
-        WSGIScriptAlias / /var/www/cgi-bin/nova/nova-placement-api
-        WSGIApplicationGroup %{GLOBAL}
-        WSGIPassAuthorization On
-        <IfVersion >= 2.4>
-          ErrorLogFormat "%{cu}t %M"
-        </IfVersion>
-        ErrorLog /dev/stdout
-
-        SetEnvIf X-Forwarded-For "^.*\..*\..*\..*" forwarded
-        CustomLog /dev/stdout combined env=!forwarded
-        CustomLog /dev/stdout proxy env=forwarded
-    </VirtualHost>
-
-    Alias /placement /var/www/cgi-bin/nova/nova-placement-api
-    <Location /placement>
-        SetHandler wsgi-script
-        Options +ExecCGI
-
-        WSGIProcessGroup placement-api
-        WSGIApplicationGroup %{GLOBAL}
-        WSGIPassAuthorization On
-    </Location>
   rootwrap_filters:
     api_metadata:
       pods:
@@ -1605,7 +1526,6 @@ secrets:
   identity:
     admin: nova-keystone-admin
     nova: nova-keystone-user
-    placement: nova-keystone-placement
     test: nova-keystone-test
   oslo_db:
     admin: nova-db-admin
@@ -1628,10 +1548,6 @@ secrets:
       novncproxy:
         public: nova-novncproxy-tls-public
         internal: nova-novncproxy-tls-proxy
-    placement:
-      placement:
-        public: placement-tls-public
-        internal: placement-tls-api
     compute_metadata:
       metadata:
         public: metadata-tls-public
@@ -1639,6 +1555,8 @@ secrets:
     compute_spice_proxy:
       spiceproxy:
         internal: nova-tls-spiceproxy
+  oci_image_registry:
+    nova: nova-oci-image-registry
 
 # typically overridden by environmental
 # values, but should include all endpoints
@@ -1657,6 +1575,21 @@ endpoints:
     port:
       registry:
         node: 5000
+  oci_image_registry:
+    name: oci-image-registry
+    namespace: oci-image-registry
+    auth:
+      enabled: false
+      nova:
+        username: nova
+        password: password
+    hosts:
+      default: localhost
+    host_fqdn_override:
+      default: null
+    port:
+      registry:
+        default: null
   oslo_db:
     auth:
       admin:
@@ -1851,10 +1784,12 @@ endpoints:
       default: "/v2.1/%(tenant_id)s"
     scheme:
       default: 'http'
+      service: 'http'
     port:
       api:
         default: 8774
         public: 80
+        service: 8774
       novncproxy:
         default: 6080
   compute_metadata:
@@ -1922,10 +1857,12 @@ endpoints:
       default: /
     scheme:
       default: 'http'
+      service: 'http'
     port:
       api:
         default: 8778
         public: 80
+        service: 8778
   network:
     name: neutron
     hosts:
@@ -2056,20 +1993,6 @@ pod:
             initialDelaySeconds: 80
             periodSeconds: 90
             timeoutSeconds: 70
-    consoleauth:
-      default:
-        liveness:
-          enabled: True
-          params:
-            initialDelaySeconds: 120
-            periodSeconds: 90
-            timeoutSeconds: 70
-        readiness:
-          enabled: True
-          params:
-            initialDelaySeconds: 80
-            periodSeconds: 90
-            timeoutSeconds: 70
     novncproxy:
       default:
         liveness:
@@ -2084,20 +2007,6 @@ pod:
             initialDelaySeconds: 30
             periodSeconds: 60
             timeoutSeconds: 15
-    placement:
-      default:
-        liveness:
-          enabled: True
-          params:
-            initialDelaySeconds: 50
-            periodSeconds: 30
-            timeoutSeconds: 10
-        readiness:
-          enabled: True
-          params:
-            initialDelaySeconds: 15
-            periodSeconds: 30
-            timeoutSeconds: 10
     scheduler:
       default:
         liveness:
@@ -2140,11 +2049,6 @@ pod:
         ceph_perms:
           readOnlyRootFilesystem: true
           runAsUser: 0
-        ceph_admin_keyring_placement:
-          readOnlyRootFilesystem: true
-        ceph_keyring_placement:
-          readOnlyRootFilesystem: true
-          allowPrivilegeEscalation: false
         nova_compute_vnc_init:
           readOnlyRootFilesystem: true
           allowPrivilegeEscalation: false
@@ -2171,9 +2075,6 @@ pod:
         nova_conductor:
           readOnlyRootFilesystem: true
           allowPrivilegeEscalation: false
-        nova_consoleauth:
-          readOnlyRootFilesystem: true
-          allowPrivilegeEscalation: false
         nova_novncproxy_init:
           readOnlyRootFilesystem: true
           allowPrivilegeEscalation: false
@@ -2182,9 +2083,6 @@ pod:
           allowPrivilegeEscalation: false
         nova_novncproxy:
           readOnlyRootFilesystem: true
-          allowPrivilegeEscalation: false
-        nova_placement_api:
-          readOnlyRootFilesystem: false
           allowPrivilegeEscalation: false
         nova_scheduler:
           readOnlyRootFilesystem: true
@@ -2261,6 +2159,13 @@ pod:
         default: kubernetes.io/hostname
       weight:
         default: 10
+  tolerations:
+    nova:
+      enabled: false
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        operator: Exists
+        effect: NoSchedule
   mounts:
     nova_compute:
       init_container: null
@@ -2277,19 +2182,9 @@ pod:
       nova_api_metadata:
         volumeMounts:
         volumes:
-    nova_placement:
-      init_container: null
-      nova_placement:
-        volumeMounts:
-        volumes:
     nova_api_osapi:
       init_container: null
       nova_api_osapi:
-        volumeMounts:
-        volumes:
-    nova_consoleauth:
-      init_container: null
-      nova_consoleauth:
         volumeMounts:
         volumes:
     nova_conductor:
@@ -2331,10 +2226,8 @@ pod:
   replicas:
     api_metadata: 1
     compute_ironic: 1
-    placement: 1
     osapi: 1
     conductor: 1
-    consoleauth: 1
     scheduler: 1
     novncproxy: 1
     spiceproxy: 1
@@ -2355,14 +2248,10 @@ pod:
     disruption_budget:
       metadata:
         min_available: 0
-      placement:
-        min_available: 0
       osapi:
         min_available: 0
     termination_grace_period:
       metadata:
-        timeout: 30
-      placement:
         timeout: 30
       osapi:
         timeout: 30
@@ -2389,13 +2278,6 @@ pod:
       limits:
         memory: "1024Mi"
         cpu: "2000m"
-    placement:
-      requests:
-        memory: "128Mi"
-        cpu: "100m"
-      limits:
-        memory: "1024Mi"
-        cpu: "2000m"
     api:
       requests:
         memory: "128Mi"
@@ -2404,13 +2286,6 @@ pod:
         memory: "1024Mi"
         cpu: "2000m"
     conductor:
-      requests:
-        memory: "128Mi"
-        cpu: "100m"
-      limits:
-        memory: "1024Mi"
-        cpu: "2000m"
-    consoleauth:
       requests:
         memory: "128Mi"
         cpu: "100m"
@@ -2545,12 +2420,6 @@ network_policy:
       - {}
     egress:
       - {}
-  placement:
-    # TODO(lamt): Need to tighten this ingress for security.
-    ingress:
-      - {}
-    egress:
-      - {}
 
 # NOTE(helm_hook): helm_hook might break for helm2 binary.
 # set helm3_hook: false when using the helm2 binary.
@@ -2559,6 +2428,11 @@ helm3_hook: true
 health_probe:
   logging:
     level: ERROR
+
+tls:
+  identity: false
+  oslo_messaging: false
+  oslo_db: false
 
 manifests:
   certificates: false
@@ -2570,19 +2444,15 @@ manifests:
   daemonset_compute: true
   deployment_api_metadata: true
   deployment_api_osapi: true
-  deployment_placement: true
   deployment_conductor: true
-  deployment_consoleauth: true
   deployment_novncproxy: true
   deployment_spiceproxy: true
   deployment_scheduler: true
   ingress_metadata: true
   ingress_novncproxy: true
-  ingress_placement: true
   ingress_osapi: true
   job_bootstrap: true
   job_db_init: true
-  job_db_init_placement: true
   job_db_sync: true
   job_db_drop: false
   job_image_repo_sync: true
@@ -2590,12 +2460,8 @@ manifests:
   job_ks_endpoints: true
   job_ks_service: true
   job_ks_user: true
-  job_ks_placement_endpoints: true
-  job_ks_placement_service: true
-  job_ks_placement_user: true
   job_cell_setup: true
   pdb_metadata: true
-  pdb_placement: true
   pdb_osapi: true
   pod_rally_test: true
   network_policy: false
@@ -2604,14 +2470,12 @@ manifests:
   secret_db: true
   secret_ingress_tls: true
   secret_keystone: true
-  secret_keystone_placement: true
   secret_rabbitmq: true
+  secret_registry: true
   service_ingress_metadata: true
   service_ingress_novncproxy: true
-  service_ingress_placement: true
   service_ingress_osapi: true
   service_metadata: true
-  service_placement: true
   service_novncproxy: true
   service_spiceproxy: true
   service_osapi: true

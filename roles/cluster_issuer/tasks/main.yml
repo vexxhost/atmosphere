@@ -1,0 +1,52 @@
+# Copyright (c) 2023 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Create self-signed cluster issuer
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: cert-manager.io/v1
+      kind: ClusterIssuer
+      metadata:
+        name: self-signed
+      spec:
+        selfSigned: {}
+
+- name: Import tasks for ClusterIssuer type
+  ansible.builtin.include_tasks: "type/{{ cluster_issuer_type }}/main.yml"
+
+- name: Bootstrap PKI
+  when: cluster_issuer_type in ("self-signed", "ca")
+  block:
+    - name: Wait till the secret is created
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Secret
+        name: "{{ (cluster_issuer_type == 'self-signed') | ternary(cluster_issuer_self_signed_secret_name, cluster_issuer_ca_secret_name) }}"
+        namespace: cert-manager
+        wait: true
+        wait_sleep: 1
+        wait_timeout: 600
+      register: _cluster_issuer_ca_secret
+
+    - name: Copy CA certificate on host
+      ansible.builtin.copy:
+        content: "{{ _cluster_issuer_ca_secret.resources[0].data['tls.crt'] | b64decode }}"
+        dest: /usr/local/share/ca-certificates/atmosphere.crt
+        mode: 0644
+      notify:
+        - Update CA certificates on host
+
+- name: Flush all handlers
+  ansible.builtin.meta: flush_handlers

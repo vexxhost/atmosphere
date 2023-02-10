@@ -13,32 +13,15 @@
 # under the License.
 
 - hosts: controllers[0]
-  gather_facts: false
   become: true
   roles:
-    - role: cilium
-      tags:
-        - cilium
-
-- hosts: controllers
-  gather_facts: false
-  become: true
-  roles:
-    - role: flux
-      tags:
-        - flux
-
-- hosts: controllers[0]
-  gather_facts: false
-  become: true
-  roles:
-    - role: csi
-      tags:
-        - csi
-
     - role: cert_manager
       tags:
         - cert-manager
+
+    - role: cluster_issuer
+      tags:
+        - cluster-issuer
 
     - role: ingress_nginx
       tags:
@@ -84,78 +67,77 @@
       tags:
         - memcached
 
-    - role: openstack_helm_keystone
+    - role: keystone
       tags:
-        - openstack-helm-keystone
+        - keystone
 
-    - role: openstack_helm_barbican
+    - role: barbican
       tags:
-        - openstack-helm-barbican
+        - barbican
 
-    - role: openstack_helm_infra_ceph_provisioners
+    - role: ceph_provisioners
       when: atmosphere_ceph_enabled | default(true)
       tags:
-        - openstack-helm-infra-ceph-provisioners
+        - ceph-provisioners
 
-    - role: openstack_helm_glance
+    - role: glance
       tags:
-        - openstack-helm-glance
+        - glance
 
-    - role: openstack_helm_cinder
+    - role: cinder
       tags:
-        - openstack-helm-cinder
+        - cinder
 
-    - role: openstack_helm_placement
+    - role: placement
       tags:
-        - openstack-helm-placement
+        - placement
 
-
-    - role: openstack_helm_infra_openvswitch
+    - role: openvswitch
       tags:
-        - openstack-helm-infra-openvswitch
+        - openvswitch
 
-    - role: openstack_helm_infra_libvirt
+    - role: libvirt
       tags:
-        - openstack-helm-infra-libvirt
+        - libvirt
 
     - role: coredns
       tags:
         - coredns
 
-    - role: openstack_helm_neutron
+    - role: nova
       tags:
-        - openstack-helm-neutron
+        - nova
 
-    - role: openstack_helm_nova
+    - role: neutron
       tags:
-        - openstack-helm-nova
+        - neutron
 
-    - role: openstack_helm_senlin
+    - role: senlin
       tags:
-        - openstack-helm-senlin
+        - senlin
 
     # NOTE(mnaser): This is disabled out of the box until we have a native way
     #               of configuring it with a pre-configured backend out of the
     #               box.
-    # - role: openstack_helm_designate
+    # - role: designate
     #   tags:
-    #     - openstack-helm-designate
+    #     - designate
 
-    - role: openstack_helm_heat
+    - role: heat
       tags:
-        - openstack-helm-heat
+        - heat
 
-    - role: openstack_helm_octavia
+    - role: octavia
       tags:
-        - openstack-helm-octavia
+        - octavia
 
-    - role: openstack_helm_magnum
+    - role: magnum
       tags:
-        - openstack-helm-magnum
+        - magnum
 
-    - role: openstack_helm_horizon
+    - role: horizon
       tags:
-        - openstack-helm-horizon
+        - horizon
 
     - role: openstack_exporter
       tags:

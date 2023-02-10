@@ -28,14 +28,6 @@ You can generate an image manifest for Atmosphere by using the following
 playbook:
 
 ```bash
-ansible-playbook vexxhost.atmosphere.image_manifest
-```
-
-The playbook will prompt you for the location of the file that you want to
-write the image manifest to.  You can also provide it as a command line
-argument:
-
-```bash
 ansible-playbook vexxhost.atmosphere.image_manifest \
     -e image_manifest_path=/tmp/atmosphere_images.yml
 ```
@@ -79,10 +71,11 @@ file that you want to write the image manifest to.
 ```bash
 ansible-playbook vexxhost.atmosphere.image_manifest \
     -e image_manifest_mirror=true \
+    -e image_manifest_path=/tmp/atmosphere_images.yml
 ```
 
-If you want to provide the registry and the path as command line arguments, you
-can use the `image_manifest_registry` and `image_manifest_path` variables:
+If you want to provide the registry as a command line argument, you
+can use the `image_manifest_registry` variable:
 
 ```bash
 ansible-playbook vexxhost.atmosphere.image_manifest \

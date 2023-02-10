@@ -1,0 +1,52 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+_cinder_helm_values:
+  endpoints: "{{ openstack_helm_endpoints }}"
+  images:
+    tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('cinder') }}"
+  pod:
+    replicas:
+      api: 3
+      scheduler: 3
+  conf:
+    paste:
+      composite:openstack_volume_api_v3:
+        use: call:cinder.api.middleware.auth:pipeline_factory
+        noauth: cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler noauth apiv3
+        keystone: cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler authtoken keystonecontext apiv3
+        keystone_nolimit: cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler authtoken keystonecontext apiv3
+    cinder:
+      DEFAULT:
+        allowed_direct_url_schemes: cinder
+        backup_driver: cinder.backup.drivers.ceph.CephBackupDriver
+        log_config_append: null
+        os_region_name: "{{ openstack_helm_endpoints['identity']['auth']['cinder']['region_name'] }}"
+        volume_usage_audit_period: hour
+        volume_name_template: volume-%s
+        image_conversion_disable: true
+      barbican:
+        barbican_endpoint_type: internal
+      cors:
+        allowed_origins: "*"
+      oslo_messaging_notifications:
+        driver: noop
+  manifests:
+    ingress_api: false
+    job_clean: false
+    service_ingress_api: false
+
+_cinder_ingress_annotations:
+  nginx.ingress.kubernetes.io/proxy-body-size: "0"
+  nginx.ingress.kubernetes.io/proxy-request-buffering: "off"

@@ -13,13 +13,17 @@ limitations under the License.
 */}}
 
 {{- define "novaApiOsapiLivenessProbeTemplate" }}
-tcpSocket:
-  port: {{ tuple "compute" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+httpGet:
+  scheme: {{ tuple "compute" "service" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_scheme_lookup" | upper }}
+  path: /
+  port: {{ tuple "compute" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
 {{- end }}
 
 {{- define "novaApiOsapiReadinessProbeTemplate" }}
-tcpSocket:
-  port: {{ tuple "compute" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+httpGet:
+  scheme: {{ tuple "compute" "service" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_scheme_lookup" | upper }}
+  path: /
+  port: {{ tuple "compute" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
 {{- end }}
 
 {{- if .Values.manifests.deployment_api_osapi }}
@@ -61,6 +65,9 @@ spec:
 {{ tuple $envAll "nova" "os-api" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
       nodeSelector:
         {{ .Values.labels.osapi.node_selector_key }}: {{ .Values.labels.osapi.node_selector_value }}
+{{ if $envAll.Values.pod.tolerations.nova.enabled }}
+{{ tuple $envAll "nova" | include "helm-toolkit.snippets.kubernetes_tolerations" | indent 6 }}
+{{ end }}
       terminationGracePeriodSeconds: {{ .Values.pod.lifecycle.termination_grace_period.osapi.timeout | default "30" }}
       initContainers:
 {{ tuple $envAll "api" $mounts_nova_api_osapi_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
@@ -69,6 +76,11 @@ spec:
 {{ tuple $envAll "nova_api" | include "helm-toolkit.snippets.image" | indent 10 }}
 {{ tuple $envAll $envAll.Values.pod.resources.api | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
 {{ dict "envAll" $envAll "application" "nova" "container" "nova_osapi" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+{{- if or .Values.manifests.certificates .Values.tls.identity }}
+          env:
+            - name: REQUESTS_CA_BUNDLE
+              value: "/etc/nova/certs/ca.crt"
+{{- end }}
           command:
             - /tmp/nova-api.sh
             - start
@@ -80,7 +92,7 @@ spec:
                   - stop
           ports:
             - name: n-api
-              containerPort: {{ tuple "compute" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+              containerPort: {{ tuple "compute" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
 {{ dict "envAll" $envAll "component" "api-osapi" "container" "default" "type" "liveness" "probeTemplate" (include "novaApiOsapiLivenessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
 {{ dict "envAll" $envAll "component" "api-osapi" "container" "default" "type" "readiness" "probeTemplate" (include "novaApiOsapiReadinessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
           volumeMounts:
@@ -127,7 +139,7 @@ spec:
               readOnly: true
             {{- end }}
 {{- dict "enabled" .Values.manifests.certificates "name" .Values.endpoints.oslo_db.auth.admin.secret.tls.internal "path" "/etc/mysql/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
-{{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.compute.osapi.internal "path" "/etc/nova/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
+{{- dict "enabled" (or .Values.manifests.certificates .Values.tls.identity) "name" .Values.secrets.tls.compute.osapi.internal "path" "/etc/nova/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
 {{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_messaging.auth.admin.secret.tls.internal "path" "/etc/rabbitmq/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
 {{ if $mounts_nova_api_osapi.volumeMounts }}{{ toYaml $mounts_nova_api_osapi.volumeMounts | indent 12 }}{{ end }}
       volumes:
@@ -148,7 +160,7 @@ spec:
             secretName: nova-etc
             defaultMode: 0444
 {{- dict "enabled" .Values.manifests.certificates "name" .Values.endpoints.oslo_db.auth.admin.secret.tls.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
-{{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.compute.osapi.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
+{{- dict "enabled" (or .Values.manifests.certificates .Values.tls.identity) "name" .Values.secrets.tls.compute.osapi.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
 {{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_messaging.auth.admin.secret.tls.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
 {{ if $mounts_nova_api_osapi.volumes}}{{ toYaml $mounts_nova_api_osapi.volumes | indent 8 }}{{ end }}
 {{- end }}

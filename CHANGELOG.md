@@ -1,5 +1,70 @@
 # Changelog
 
+## [1.0.0-rc.1](https://github.com/vexxhost/atmosphere/compare/v0.13.0...v1.0.0-rc.1) (2023-02-03)
+
+
+### Features
+
+* add ability to sync charts + use offline install for pxc-operator ([e04accd](https://github.com/vexxhost/atmosphere/commit/e04accd8b0c2a1e860f2735ebb77596eb84f83b7))
+* add openstack_helm_image_tags filter ([427f6aa](https://github.com/vexxhost/atmosphere/commit/427f6aa474cda7fe677c94d315e79a377eaccb34))
+* added docker_image filter + image_list in ansible ([21d5581](https://github.com/vexxhost/atmosphere/commit/21d55818dd6200202f35aec792d52e2f756bcbdd))
+* added playbook to suspend project ([707e65b](https://github.com/vexxhost/atmosphere/commit/707e65b2596ca525809e96068492013d874f069e))
+* Install Magnum client ([#268](https://github.com/vexxhost/atmosphere/issues/268)) ([5908fb8](https://github.com/vexxhost/atmosphere/commit/5908fb80453b203aadc5ab0dad6f92f3e0f2ec66))
+* move cilium to offline install ([c397259](https://github.com/vexxhost/atmosphere/commit/c397259113609aa3cd833ab3510027acc6ec5c04))
+* move to image_manifest ([fef44b1](https://github.com/vexxhost/atmosphere/commit/fef44b129da22d3c4153a28dd4620dbb463fcba7))
+* Set retries of helmreleases ([#253](https://github.com/vexxhost/atmosphere/issues/253)) ([9bcc2a0](https://github.com/vexxhost/atmosphere/commit/9bcc2a04102b5bd86e67ceafbf7596c149b3fa37))
+* Support coredns offline-install ([ceff992](https://github.com/vexxhost/atmosphere/commit/ceff99247ed2deb3fd58bb61c62ca2003b562796))
+
+
+### Bug Fixes
+
+* add ansible-based ingress ([b07e905](https://github.com/vexxhost/atmosphere/commit/b07e9058c2bce9c3026d96d114354380de4c5eea))
+* Add bmemcached ([98aedb6](https://github.com/vexxhost/atmosphere/commit/98aedb67971be355a2d28c67c9c547afea8934b9))
+* add ingress for magnum ([4c33bb5](https://github.com/vexxhost/atmosphere/commit/4c33bb5b75a752805ca970084cc40d2f49d2ac13))
+* Add missing images for mirroring ([#265](https://github.com/vexxhost/atmosphere/issues/265)) ([271d9de](https://github.com/vexxhost/atmosphere/commit/271d9de70ceeec5477e66d460c34bd63aed47eb4))
+* Deploy cni before flux ([16e0492](https://github.com/vexxhost/atmosphere/commit/16e0492bd8439a91a37003ebfdad64cd24209af5))
+* drop un-used openstack_helm_endpoints_repo_url ([1fe6c6c](https://github.com/vexxhost/atmosphere/commit/1fe6c6cd0ced627711a7b41cfea143beb6ad0d7b))
+* enforce cri-tools version ([b19a631](https://github.com/vexxhost/atmosphere/commit/b19a631bb79c62d7f49473bdb3c191401c3b0bff))
+* Fix ansible var names for helm value overrides ([789b174](https://github.com/vexxhost/atmosphere/commit/789b174643a6bc61978492148ed320b0ef87528f))
+* fix correct value for container_infra in horizon ([2b8a46f](https://github.com/vexxhost/atmosphere/commit/2b8a46f5642dc5f71112665427af0036b781fd96))
+* Fix pre-commit error because of deps conflict ([5298740](https://github.com/vexxhost/atmosphere/commit/5298740ac45cb1b2dcda32e4bc9f8c86baba69e9))
+* Fix tempest helm values var name ([495bf00](https://github.com/vexxhost/atmosphere/commit/495bf004cc51e23fe0188c0d07198fdc3fef4c59))
+* Fix test failures ([6ffcda5](https://github.com/vexxhost/atmosphere/commit/6ffcda54d92b6237cfe3c8df486edd1a0ea2bc37))
+* Fix the condition if atmosphere_image_repository is defined in flux role ([81cf6ab](https://github.com/vexxhost/atmosphere/commit/81cf6ab8541633272cdac0d48ba456482f9969ed))
+* flush handlers after installing ca certs ([cf8424d](https://github.com/vexxhost/atmosphere/commit/cf8424d7fef7246f6e4c23be52b02e10c1d01659))
+* install flux early ([81ea080](https://github.com/vexxhost/atmosphere/commit/81ea08087980d629c319d7d42220da19d9f1b51c))
+* **magnum:** drop hard-coded storage class ([885b53f](https://github.com/vexxhost/atmosphere/commit/885b53f0a7b1035e3d4efbeb8bc02db20f4900f5))
+* **magnum:** load registry correctly ([756b717](https://github.com/vexxhost/atmosphere/commit/756b71700918ca69b652279a0e3253b418799e30))
+* move ceph_csi_rbd to offline-install ([90f91b3](https://github.com/vexxhost/atmosphere/commit/90f91b3dda9fed24bad292cf232cce9259d70635))
+* move pxc to role and allow overriding ([6aa0b91](https://github.com/vexxhost/atmosphere/commit/6aa0b91db2416120784a2225c94449873f404bcf))
+* **nfd:** use correct vars ([512c173](https://github.com/vexxhost/atmosphere/commit/512c173b672b6b3ba9a29d162ff529446b396bf8))
+* resolve json parsing ([69868be](https://github.com/vexxhost/atmosphere/commit/69868bec5d84b7e5214f442ee8ee5c8d45f5ec61))
+* restore openstacksdk ([34db5a4](https://github.com/vexxhost/atmosphere/commit/34db5a49faf7e6c760f8a28da23b9de4ec609213))
+* Revert issuer config for molecule deployment ([168b177](https://github.com/vexxhost/atmosphere/commit/168b1775516f106f379322954cf5d97f2e23f742))
+* Revert openstack_helm_barbican_kek var in barbican role ([5d7f71f](https://github.com/vexxhost/atmosphere/commit/5d7f71f004dc24fe5e93deb22769a6adf76ffd3c))
+* Specify the gallaxy collection for the filter. ([#270](https://github.com/vexxhost/atmosphere/issues/270)) ([60d09f9](https://github.com/vexxhost/atmosphere/commit/60d09f9b02141f486cd362a3d9c49159d8edfae4))
+* sync charts + add hooks for cinder ([feec995](https://github.com/vexxhost/atmosphere/commit/feec9959d6f4c8c8cc6b681f074f640d502638f7))
+* Synchronize files based on checksum in upload_helm_chart role ([8974d07](https://github.com/vexxhost/atmosphere/commit/8974d079d1843a24c330d13aa40a5747dd79cf7c))
+* update k8s gpg key ([65eb66e](https://github.com/vexxhost/atmosphere/commit/65eb66ec6ec279f2320aeb67dc9ad7cd56a75a27))
+* use atmosphere_images for an image manifest ([8b5c306](https://github.com/vexxhost/atmosphere/commit/8b5c30614acfc0d58150a90e89d73d6ddfceb47c))
+* use cacert for self-signed or custom ca ([0148f7b](https://github.com/vexxhost/atmosphere/commit/0148f7b65cef5fdb17f38d481993054eb5eb6046))
+* Use default imagePullPolicy in openstack-helm, i.e. IfNotPresent ([03b4120](https://github.com/vexxhost/atmosphere/commit/03b412013578fecc8d81dd4cf024f4e24ff107f2))
+* use offline deploy for magnum ([fef6942](https://github.com/vexxhost/atmosphere/commit/fef6942b8a3e2053e9f144b15ddf700e1f2dbe6b))
+
+
+### Documentation
+
+* add details for backups ([58c23fd](https://github.com/vexxhost/atmosphere/commit/58c23fd591ac42d4b1ca3c81c323f707b1321e21))
+* add external ceph backup docs ([0c9c70e](https://github.com/vexxhost/atmosphere/commit/0c9c70e5f119f6797ff9a086d97487190e9223c3))
+* added ref to backups ([4c29e55](https://github.com/vexxhost/atmosphere/commit/4c29e559485b77bf8a2894b13194d25ecbdbbef1))
+* fix typo in cinder docs ([278bc71](https://github.com/vexxhost/atmosphere/commit/278bc7119f499bbea6c6038e2b63c18b50213362))
+* refactor pxc backup docs ([e48be3a](https://github.com/vexxhost/atmosphere/commit/e48be3a2beaa194aedc1e05b085dbc6ff365bbe8))
+
+
+### Miscellaneous Chores
+
+* release 1.0.0-rc.1 ([d4cbf73](https://github.com/vexxhost/atmosphere/commit/d4cbf733ab1b6c28c10211e36968307647543ee8))
+
 ## [0.13.0](https://github.com/vexxhost/atmosphere/compare/v0.12.0...v0.13.0) (2022-12-28)
 
 

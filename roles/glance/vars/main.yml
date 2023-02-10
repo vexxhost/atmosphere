@@ -1,0 +1,56 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+_glance_helm_values:
+  endpoints: "{{ openstack_helm_endpoints }}"
+  storage: rbd
+  images:
+    tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('glance') }}"
+  bootstrap:
+    enabled: false
+  pod:
+    security_context:
+      glance:
+        container:
+          glance_api:
+            allowPrivilegeEscalation: "{{ ('cinder' in glance_helm_values.get('conf', {}).get('glance', {}).get('glance_store', {}).get('stores', '')) | bool }}"
+            readOnlyRootFilesystem: "{{ ('cinder' not in glance_helm_values.get('conf', {}).get('glance', {}).get('glance_store', {}).get('stores', '')) | bool }}"
+            privileged: "{{ ('cinder' in glance_helm_values.get('conf', {}).get('glance', {}).get('glance_store', {}).get('stores', '')) | bool }}"
+            capabilities:
+              add: "{{ ('cinder' in glance_helm_values.get('conf', {}).get('glance', {}).get('glance_store', {}).get('stores', '')) | ternary(['SYS_ADMIN'], []) }}"
+    useHostNetwork:
+      api: "{{ ('cinder' in glance_helm_values.get('conf', {}).get('glance', {}).get('glance_store', {}).get('stores', '')) | bool }}"
+    replicas:
+      api: 3
+  conf:
+    glance:
+      DEFAULT:
+        log_config_append: null
+        show_image_direct_url: true
+        show_multiple_locations: true
+        enable_import_methods: "[]"
+        workers: 8
+      cors:
+        allowed_origins: "*"
+      image_formats:
+        disk_formats: "qcow2,raw"
+      oslo_messaging_notifications:
+        driver: noop
+  manifests:
+    ingress_api: false
+    service_ingress_api: false
+
+_glance_ingress_annotations:
+  nginx.ingress.kubernetes.io/proxy-body-size: "0"
+  nginx.ingress.kubernetes.io/proxy-request-buffering: "off"

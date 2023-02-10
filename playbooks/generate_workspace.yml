@@ -261,11 +261,7 @@
       #               so we generate a stub one if and only if it doesn't exist
       when: item.key not in neutron
       with_dict:
-        openstack_helm_neutron_helm_values:
-          conf:
-            auto_bridge_add:
-              br-ex: ens4
-        openstack_helm_neutron_networks:
+        neutron_networks:
           - name: public
             external: true
             shared: true
@@ -310,7 +306,7 @@
       #               so we generate a stub one if and only if it doesn't exist
       when: item.key not in nova
       with_dict:
-        openstack_helm_nova_flavors:
+        nova_flavors:
           - name: m1.tiny
             ram: 512
             disk: 1

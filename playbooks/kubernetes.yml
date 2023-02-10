@@ -12,7 +12,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- hosts: all
+- hosts: "{{ target | default('all') }}"
   become: true
   roles:
     - role: sysctl
@@ -21,8 +21,3 @@
         - ethtool
     - role: containerd
     - role: kubernetes
-
-- hosts: controllers
-  become: true
-  roles:
-    - helm

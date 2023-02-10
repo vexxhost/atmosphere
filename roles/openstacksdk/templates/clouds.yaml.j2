@@ -8,3 +8,6 @@ clouds:
       user_domain_name: Default
       project_domain_name: Default
     region_name: "{{ openstack_helm_endpoints['identity']['auth']['admin']['region_name'] }}"
+{% if cluster_issuer_type is defined and cluster_issuer_type in ('self-signed', 'ca') %}
+    cacert: /usr/local/share/ca-certificates/atmosphere.crt
+{% endif %}

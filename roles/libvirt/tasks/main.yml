@@ -1,0 +1,45 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Uninstall the legacy HelmRelease
+  run_once: true
+  block:
+    - name: Suspend the existing HelmRelease
+      kubernetes.core.k8s:
+        state: patched
+        api_version: helm.toolkit.fluxcd.io/v2beta1
+        kind: HelmRelease
+        name: "{{ libvirt_helm_release_name }}"
+        namespace: "{{ libvirt_helm_release_namespace }}"
+        definition:
+          spec:
+            suspend: true
+
+    - name: Remove the existing HelmRelease
+      kubernetes.core.k8s:
+        state: absent
+        api_version: helm.toolkit.fluxcd.io/v2beta1
+        kind: HelmRelease
+        name: "{{ libvirt_helm_release_name }}"
+        namespace: "{{ libvirt_helm_release_namespace }}"
+
+- name: Deploy Helm chart
+  run_once: true
+  kubernetes.core.helm:
+    name: "{{ libvirt_helm_release_name }}"
+    chart_ref: "{{ libvirt_helm_chart_ref }}"
+    release_namespace: "{{ libvirt_helm_release_namespace }}"
+    create_namespace: true
+    kubeconfig: /etc/kubernetes/admin.conf
+    values: "{{ _libvirt_helm_values | combine(libvirt_helm_values, recursive=True) }}"
