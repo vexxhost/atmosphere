@@ -496,21 +496,3 @@ _openstack_helm_endpoints_container_infra:
     auth:
       magnum:
         password: "{{ openstack_helm_endpoints_magnum_rabbitmq_password }}"
-
-_openstack_helm_endpoints_ceph_object_store:
-  identity:
-    auth:
-      rgw:
-        region_name: "{{ openstack_helm_endpoints_rgw_region_name }}"
-        username: "rgw-{{ openstack_helm_endpoints_rgw_region_name }}"
-        password: "{{ openstack_helm_endpoints_rgw_keystone_password }}"
-  ceph_object_store:
-    name: radosgw
-    scheme:
-      public: https
-    host_fqdn_override:
-      public:
-        host: "{{ openstack_helm_endpoints_rgw_host }}"
-    port:
-      api:
-        public: 443
