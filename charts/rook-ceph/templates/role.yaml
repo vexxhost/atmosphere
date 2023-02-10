@@ -1,0 +1,93 @@
+{{- if .Values.rbacEnable }}
+# Allow the operator to manage resources in its own namespace
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: rook-ceph-system
+  namespace: {{ .Release.Namespace }} # namespace:operator
+  labels:
+    operator: rook
+    storage-backend: ceph
+    {{- include "library.rook-ceph.labels" . | nindent 4 }}
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - configmaps
+  - services
+  verbs:
+  - get
+  - list
+  - watch
+  - patch
+  - create
+  - update
+  - delete
+- apiGroups:
+  - apps
+  - extensions
+  resources:
+  - daemonsets
+  - statefulsets
+  - deployments
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - delete
+- apiGroups:
+  - batch
+  resources:
+  - cronjobs
+  verbs:
+  - delete
+- apiGroups:
+  - cert-manager.io
+  resources:
+  - certificates
+  - issuers
+  verbs:
+  - get
+  - create
+  - delete
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: cephfs-external-provisioner-cfg
+  namespace: {{ .Release.Namespace }} # namespace:operator
+rules:
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "watch", "list", "delete", "update", "create"]
+---
+{{- if and .Values.csi.csiAddons .Values.csi.csiAddons.enabled }}
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: rbd-csi-nodeplugin
+  namespace: {{ .Release.Namespace }} # namespace:operator
+rules:
+  - apiGroups: ["csiaddons.openshift.io"]
+    resources: ["csiaddonsnodes"]
+    verbs: ["create"]
+---
+{{- end }}
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: rbd-external-provisioner-cfg
+  namespace: {{ .Release.Namespace }} # namespace:operator
+rules:
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "watch", "list", "delete", "update", "create"]
+  {{- if and .Values.csi.csiAddons .Values.csi.csiAddons.enabled }}
+  - apiGroups: ["csiaddons.openshift.io"]
+    resources: ["csiaddonsnodes"]
+    verbs: ["create"]
+  {{- end }}
+{{- end }}

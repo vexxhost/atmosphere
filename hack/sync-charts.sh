@@ -152,3 +152,7 @@ curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~872524/revis
 TEMPEST_VERSION=0.2.7
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/tempest-${TEMPEST_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
+
+ROOK_CEPH_VERSION=1.10.3
+curl -sL https://charts.rook.io/release/rook-ceph-v${ROOK_CEPH_VERSION}.tgz \
+  | tar -xz -C ${ATMOSPHERE}/charts
