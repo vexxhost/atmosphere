@@ -20,46 +20,13 @@
 #   -i /opt/openstack-ansible/inventory/dynamic_inventory.py \
 #   vexxhost.atmosphere.migrate_from_osa
 
-- name: Generate configurations from Atmosphere
+- name: Migrate from OpenStack Ansible
   hosts: controllers[0]
   gather_facts: false
   tasks:
-    - name: Generate configuration for Nova
+    - name: Migrate Nova
       ansible.builtin.include_role:
         name: nova
-        tasks_from: generate_config
+        tasks_from: migrate_from_osa
       tags:
         - nova
-
-- name: Generate configurations from OpenStack Ansible
-  hosts: nova_conductor[0]
-  gather_facts: false
-  tasks:
-    - name: Slurp the configuration file for the service
-      run_once: true
-      ansible.builtin.slurp:
-        path: /etc/nova/nova.conf
-      register: _config_file
-      tags:
-        - nova
-
-    - name: Save fact with OpenStack Ansible generated Nova configuration
-      delegate_to: localhost
-      delegate_facts: true
-      ansible.builtin.set_fact:
-        _osa_nova_config: "{{ _config_file['content'] | b64decode | vexxhost.atmosphere.from_ini }}"
-      tags:
-        - nova
-
-
-- name: Print difference between Atmosphere and OpenStack Ansible
-  hosts: localhost
-  gather_facts: false
-  tasks:
-    - name: Display changed values for Nova
-      ansible.utils.fact_diff:
-        before: "{{ _osa_nova_config }}"
-        after: "{{ _atmosphere_nova_config }}"
-      tags:
-        - nova
-
