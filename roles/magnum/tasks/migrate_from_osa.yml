@@ -35,4 +35,11 @@
   ansible.builtin.import_tasks:
     file: main.yml
 
-# TODO: fix haproxy configs for api and cfn
+- name: Migrate HAproxy
+  ansible.builtin.include_role:
+    name: migrate_haproxy_from_osa
+  vars:
+    migrate_haproxy_from_osa_group: magnum_all
+    migrate_haproxy_from_osa_service_namespace: "{{ magnum_helm_release_namespace }}"
+    migrate_haproxy_from_osa_service_name: magnum-api
+    migrate_haproxy_from_osa_haproxy_backend: magnum

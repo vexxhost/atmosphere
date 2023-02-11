@@ -35,4 +35,22 @@
   ansible.builtin.import_tasks:
     file: main.yml
 
+- name: Migrate HAproxy (API)
+  ansible.builtin.include_role:
+    name: migrate_haproxy_from_osa
+  vars:
+    migrate_haproxy_from_osa_group: heat_all
+    migrate_haproxy_from_osa_service_namespace: "{{ heat_helm_release_namespace }}"
+    migrate_haproxy_from_osa_service_name: heat-api
+    migrate_haproxy_from_osa_haproxy_backend: heat_api
+
+- name: Migrate HAproxy (CloudFormation)
+  ansible.builtin.include_role:
+    name: migrate_haproxy_from_osa
+  vars:
+    migrate_haproxy_from_osa_group: heat_all
+    migrate_haproxy_from_osa_service_namespace: "{{ heat_helm_release_namespace }}"
+    migrate_haproxy_from_osa_service_name: heat-cfn
+    migrate_haproxy_from_osa_haproxy_backend: heat_api_cfn
+
 # TODO: fix haproxy configs for api and cfn
