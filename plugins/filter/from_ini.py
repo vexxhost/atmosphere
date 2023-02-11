@@ -71,9 +71,11 @@ def from_ini(value):
             if val.isdigit():
                 val = int(val)
             elif val.lower() in ("true", "false"):
-                val = parser.getboolean(section, opt)
+                val = True if val.lower() == "true" else False
             elif val.lower() in ("none", "null"):
                 val = None
+            elif isinstance(val, str):
+                val = val.strip('"')
             else:
                 try:
                     val = float(val)
