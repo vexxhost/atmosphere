@@ -42,8 +42,78 @@
     before: "{{ _osa_nova_config }}"
     after: "{{ _atmosphere_nova_config }}"
 
-# TODO: shut off all nova api containers
-# TODO: dump heat databases
-# TODO: restore heat databases
-# TODO: include helm deploy task
-# TODO: fix haproxy configs
+- name: Pause to verify the configuration
+  ansible.builtin.pause:
+
+- name: Get the Kuberentes service for Percona XtraDB Cluster
+  run_once: true
+  kubernetes.core.k8s_info:
+    kind: Service
+    name: "{{ openstack_helm_endpoints.oslo_db.hosts.default }}"
+    namespace: "{{ heat_helm_release_namespace }}"
+  register: _pxc_service
+
+- name: Fail if the databases already exist
+  run_once: true
+  check_mode: true
+  delegate_to: "{{ groups['galera_all'][0] }}"
+  community.mysql.mysql_db:
+    login_host: "{{ _pxc_service.resources[0].spec.clusterIP }}"
+    login_user: root
+    login_password: "{{ openstack_helm_endpoints.oslo_db.auth.admin.password }}"
+    name: "{{ item }}"
+  register: _pxc_db_check
+  failed_when: _pxc_db_check is not changed
+  loop:
+    - heat
+
+- name: Shut off all the containers
+  run_once: true
+  delegate_to: "{{ hostvars[item]['physical_host'] }}"
+  ansible.builtin.command: "lxc-stop -n {{ item }}"
+  loop: "{{ groups[containers] }}"
+  register: _lxc_stop
+  failed_when: _lxc_stop.rc != 0 and 'is not running' not in _lxc_stop.stderr
+  vars:
+    containers: heat_all
+
+- name: Wait for the containers to stop
+  run_once: true
+  delegate_to: "{{ hostvars[item]['physical_host'] }}"
+  ansible.builtin.wait_for:
+    path: "/var/lib/lxc/{{ item }}/state"
+    state: absent
+  loop: "{{ groups[containers] }}"
+  vars:
+    containers: heat_all
+
+- name: Dump the database
+  run_once: true
+  delegate_to: "{{ groups['galera_all'][0] }}"
+  community.mysql.mysql_db:
+    state: dump
+    name: "{{ item }}"
+    dump_extra_args: --skip_add_locks
+    skip_lock_tables: true
+    target: "/root/{{ item }}-{{ ansible_date_time.epoch }}.sql"
+  loop:
+    - heat
+
+- name: Restore the database
+  run_once: true
+  delegate_to: "{{ groups['galera_all'][0] }}"
+  community.mysql.mysql_db:
+    login_host: "{{ _pxc_service.resources[0].spec.clusterIP }}"
+    login_user: root
+    login_password: "{{ openstack_helm_endpoints.oslo_db.auth.admin.password }}"
+    state: import
+    name: "{{ item }}"
+    target: "/root/{{ item }}-{{ ansible_date_time.epoch }}.sql"
+  loop:
+    - heat
+
+- name: Run deployment flow
+  ansible.builtin.import_tasks:
+    file: main.yml
+
+# TODO: fix haproxy configs for api and cfn
