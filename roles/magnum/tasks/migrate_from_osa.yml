@@ -16,20 +16,20 @@
   ansible.builtin.include_role:
     name: osa_config_diff
   vars:
-    osa_config_diff_containers_group: heat_all
-    osa_config_diff_config_file: /etc/heat/heat.conf
-    osa_config_diff_chart_ref: "{{ heat_helm_chart_ref }}"
-    osa_config_diff_release_namespace: "{{ heat_helm_release_namespace }}"
-    osa_config_diff_release_values: "{{ _heat_helm_values | combine(heat_helm_values, recursive=True) }}"
+    osa_config_diff_containers_group: magnum_all
+    osa_config_diff_config_file: /etc/magnum/magnum.conf
+    osa_config_diff_chart_ref: "{{ magnum_helm_chart_ref }}"
+    osa_config_diff_release_namespace: "{{ magnum_helm_release_namespace }}"
+    osa_config_diff_release_values: "{{ _magnum_helm_values | combine(magnum_helm_values, recursive=True) }}"
 
 - name: Migrate the database
   ansible.builtin.include_role:
     name: migrate_db_from_osa
   vars:
-    migrate_db_from_osa_pxc_namespace: "{{ heat_helm_release_namespace }}"
-    migrate_db_from_osa_containers_group: heat_all
+    migrate_db_from_osa_pxc_namespace: "{{ magnum_helm_release_namespace }}"
+    migrate_db_from_osa_containers_group: magnum_all
     migrate_db_from_osa_databases:
-      heat: heat
+      magnum_service: magnum
 
 - name: Run deployment flow
   ansible.builtin.import_tasks:
