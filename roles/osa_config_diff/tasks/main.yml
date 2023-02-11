@@ -14,10 +14,12 @@
 
 - name: Slurp the configuration file for the service
   run_once: true
-  delegate_to: "{{ groups[osa_config_diff_containers_group][0] }}"
+  delegate_to: "{{ hostvars[container]['physical_host'] }}"
   ansible.builtin.slurp:
-    path: "{{ osa_config_diff_osa_config_file }}"
+    path: "/var/lib/lxc/{{ container }}/rootfs{{ osa_config_diff_osa_config_file }}"
   register: _osa_config_diff_file
+  vars:
+    container: "{{ groups[osa_config_diff_containers_group][0] }}"
 
 - name: Generate configuration using Atmosphere
   run_once: true
