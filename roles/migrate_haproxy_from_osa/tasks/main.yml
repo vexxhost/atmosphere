@@ -46,3 +46,16 @@
     port: "{{ _migrate_haproxy_from_osa_service.resources[0].spec.ports[0].port }}"
   notify:
     - Reload HAproxy
+
+- name: Update expected HTTP code
+  run_once: true
+  delegate_to: "{{ item }}"
+  ansible.builtin.lineinfile:
+    path: /etc/haproxy/haproxy.cfg
+    line: '    http-check expect status {{ migrate_haproxy_from_osa_expected_http_code }}'
+    insertafter: 'backend {{ migrate_haproxy_from_osa_haproxy_backend }}-back'
+    state: present
+  loop: "{{ groups[migrate_haproxy_from_osa_haproxy_group] }}"
+  when: migrate_haproxy_from_osa_expected_http_code is defined
+  notify:
+    - Reload HAproxy
