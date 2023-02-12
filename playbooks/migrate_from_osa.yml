@@ -23,6 +23,43 @@
 - name: Migrate from OpenStack Ansible
   hosts: controllers[0]
   tasks:
+    - name: Migrate Keystone
+      ansible.builtin.import_role:
+        name: keystone
+        tasks_from: migrate_from_osa
+      tags:
+        - keystone
+
+    - name: Migrate Barbican
+      ansible.builtin.import_role:
+        name: barbican
+        tasks_from: migrate_from_osa
+      tags:
+        - barbican
+
+    - name: Migrate Glance
+      ansible.builtin.import_role:
+        name: glance
+        tasks_from: migrate_from_osa
+      tags:
+        - glance
+
+    # TODO(mnaser): Migrate Cinder
+
+    - name: Migrate Placement
+      ansible.builtin.import_role:
+        name: placement
+        tasks_from: migrate_from_osa
+      tags:
+        - placement
+
+    - name: Migrate Nova
+      ansible.builtin.import_role:
+        name: nova
+        tasks_from: migrate_from_osa
+      tags:
+        - nova
+
     - name: Migrate Heat
       ansible.builtin.import_role:
         name: heat

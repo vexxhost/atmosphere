@@ -12,67 +12,83 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Slurp the configuration file for the service
-  run_once: true
-  delegate_to: "{{ groups['nova_conductor'][0] }}"
-  ansible.builtin.slurp:
-    path: /etc/nova/nova.conf
-  register: _config_file
-
-- name: Generate configuration using Atmosphere
-  run_once: true
-  changed_when: false
-  kubernetes.core.helm_template:
-    chart_ref: "{{ nova_helm_chart_ref }}"
-    release_namespace: "{{ nova_helm_release_namespace }}"
-    release_values: "{{ _nova_helm_values | combine(nova_helm_values, recursive=True) }}"
-    show_only:
-      - templates/configmap-etc.yaml
-  register: _nova_helm_template
+- name: Generate configuration difference
+  ansible.builtin.include_role:
+    name: osa_config_diff
   vars:
-    # NOTE(mnaser): This is stub to allow the values to be generated.
-    nova_ssh_key: ""
-    _nova_ssh_publickey:
-      public_key: ""
+    osa_config_diff_containers_group: nova_conductor
+    osa_config_diff_osa_config_file: /etc/nova/nova.conf
+    osa_config_diff_config_file: nova.conf
+    osa_config_diff_chart_ref: "{{ nova_helm_chart_ref }}"
+    osa_config_diff_release_namespace: "{{ nova_helm_release_namespace }}"
+    osa_config_diff_release_values: "{{ _nova_helm_values | combine(nova_helm_values, recursive=True) }}"
 
-- name: Save fact with generated configurations
-  run_once: true
-  ansible.builtin.set_fact:
-    _osa_nova_config: "{{ _config_file['content'] | b64decode | vexxhost.atmosphere.from_ini }}"
-    _atmosphere_nova_config: "{{ (_nova_helm_template.stdout | from_yaml).data['nova.conf'] | b64decode | vexxhost.atmosphere.from_ini }}"
+- name: Migrate the databases
+  ansible.builtin.include_role:
+    name: migrate_db_from_osa
+  vars:
+    migrate_db_from_osa_pxc_namespace: "{{ nova_helm_release_namespace }}"
+    migrate_db_from_osa_containers_group: nova_conductor
+    migrate_db_from_osa_databases:
+      nova: nova
+      nova_api: nova_api
+      nova_cell0: nova_cell0
 
 - name: Get the Kuberentes service for Percona XtraDB Cluster
   run_once: true
   kubernetes.core.k8s_info:
     kind: Service
     name: "{{ openstack_helm_endpoints.oslo_db.hosts.default }}"
-    namespace: "{{ nova_helm_release_namespace }}"
+    namespace: "{{ migrate_db_from_osa_pxc_namespace }}"
   register: _nova_pxc_service
 
-- name: Fail if the databases already exist
+- name: Update cell mappings
   run_once: true
-  check_mode: true
-  delegate_to: "{{ groups['galera_all'][0] }}"
+  delegate_to: "{{ groups[migrate_db_from_osa_galera_group][0] }}"
   community.mysql.mysql_db:
     login_host: "{{ _nova_pxc_service.resources[0].spec.clusterIP }}"
     login_user: root
     login_password: "{{ openstack_helm_endpoints.oslo_db.auth.admin.password }}"
-    name: "{{ item }}"
-  register: _nova_db_check
-  failed_when: _nova_db_check is not changed
+    login_db: nova_api
+    query: UPDATE cell_mappings SET transport_url = %(transport_url)s, database_connection = %(database_connection)s WHERE name = %(name)s
+    query_params: "{{ item }}"
   loop:
-    - nova
-    - nova_api
-    - nova_cell0
+    - name: cell0
+      transport_url: none:/
+      database_connection: "mysql+pymysql://nova:{{ openstack_helm_endpoints.oslo_db_cell0.auth.nova.password }}@percona-xtradb-haproxy.openstack.svc.cluster.local:3306/nova_cell0"
+    - name: cell1
+      transport_url: "rabbit://nova:{{ openstack_helm_endpoints.oslo_messaging.auth.nova.password }}@rabbitmq-nova.openstack.svc.cluster.local:5672/nova"
+      database_connection: "mysql+pymysql://nova:{{ openstack_helm_endpoints.oslo_db.auth.nova.password }}@percona-xtradb-haproxy.openstack.svc.cluster.local:3306/nova"
+  loop_control:
+    label: "{{ item.name }}"
 
-- name: Print difference between Atmosphere and OpenStack Ansible
-  run_once: true
-  ansible.utils.fact_diff:
-    before: "{{ _osa_nova_config }}"
-    after: "{{ _atmosphere_nova_config }}"
+- name: Run deployment flow
+  ansible.builtin.import_tasks:
+    file: main.yml
 
-# TODO: shut off all nova api containers
-# TODO: dump nova databases
-# TODO: restore nova databases
-# TODO: fix cell configuration
-# TODO: include helm deploy task
+- name: Migrate HAproxy (API)
+  ansible.builtin.include_role:
+    name: migrate_haproxy_from_osa
+  vars:
+    migrate_haproxy_from_osa_group: nova_conductor
+    migrate_haproxy_from_osa_service_namespace: "{{ nova_helm_release_namespace }}"
+    migrate_haproxy_from_osa_service_name: nova-api
+    migrate_haproxy_from_osa_haproxy_backend: nova_api_os_compute
+
+- name: Migrate HAproxy (Metadata)
+  ansible.builtin.include_role:
+    name: migrate_haproxy_from_osa
+  vars:
+    migrate_haproxy_from_osa_group: nova_conductor
+    migrate_haproxy_from_osa_service_namespace: "{{ nova_helm_release_namespace }}"
+    migrate_haproxy_from_osa_service_name: nova-metadata
+    migrate_haproxy_from_osa_haproxy_backend: nova_api_metadata
+
+- name: Migrate HAproxy (VNC)
+  ansible.builtin.include_role:
+    name: migrate_haproxy_from_osa
+  vars:
+    migrate_haproxy_from_osa_group: nova_conductor
+    migrate_haproxy_from_osa_service_namespace: "{{ nova_helm_release_namespace }}"
+    migrate_haproxy_from_osa_service_name: nova-novncproxy
+    migrate_haproxy_from_osa_haproxy_backend: nova_console
