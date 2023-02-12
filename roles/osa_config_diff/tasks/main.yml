@@ -31,8 +31,10 @@
 - name: Generate dictionary with all OpenStack Ansible configuration files
   run_once: true
   ansible.builtin.set_fact:
-    _osa_config_diff_osa: "{{ _osa_config_diff_osa | combine({ item.key: item.value['content'] | b64decode | vexxhost.atmosphere.from_ini }) }}"
+    _osa_config_diff_osa: "{{ _osa_config_diff_osa | combine({ item.item.key: item.content | b64decode | vexxhost.atmosphere.from_ini }) }}"
   loop: "{{ _osa_config_diff_file.results }}"
+  loop_control:
+    label: "{{ item.item.key }}"
 
 - name: Generate configuration using Atmosphere
   run_once: true
