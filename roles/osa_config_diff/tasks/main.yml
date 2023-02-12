@@ -22,11 +22,12 @@
   run_once: true
   delegate_to: "{{ hostvars[container]['physical_host'] }}"
   ansible.builtin.slurp:
-    path: "/var/lib/lxc/{{ container }}/rootfs{{ item.value }}"
+    path: "{{ prefix }}{{ item.value }}"
   register: _osa_config_diff_file
   loop: "{{ osa_config_diff_config_files | dict2items }}"
   vars:
     container: "{{ groups[osa_config_diff_containers_group][0] }}"
+    prefix: "{% if hostvars[container].get('is_metal') == False %}/var/lib/lxc/{{ container }}/rootfs{% endif %}"
 
 - name: Generate dictionary with all OpenStack Ansible configuration files
   run_once: true
