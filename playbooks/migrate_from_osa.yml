@@ -22,6 +22,7 @@
 
 - name: Migrate from OpenStack Ansible
   hosts: controllers[0]
+  become: true
   tasks:
     - name: Migrate Keystone
       ansible.builtin.import_role:
@@ -67,6 +68,9 @@
       tags:
         - neutron
 
+    # TODO(mnaser): Senlin
+    # TODO(mnaser): Designate
+
     - name: Migrate Heat
       ansible.builtin.import_role:
         name: heat
@@ -74,9 +78,18 @@
       tags:
         - heat
 
+    # TODO(mnaser): Octavia
+
     - name: Migrate Magnum
       ansible.builtin.import_role:
         name: magnum
         tasks_from: migrate_from_osa
       tags:
         - magnum
+
+    - name: Migrate Horizon
+      ansible.builtin.import_role:
+        name: horizon
+        tasks_from: migrate_from_osa
+      tags:
+        - horizon
