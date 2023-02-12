@@ -43,19 +43,19 @@
   kubernetes.core.k8s_info:
     kind: Service
     name: "{{ openstack_helm_endpoints.oslo_db.hosts.default }}"
-    namespace: "{{ migrate_db_from_osa_pxc_namespace }}"
+    namespace: "{{ nova_helm_release_namespace }}"
   register: _nova_pxc_service
 
 - name: Update cell mappings
   run_once: true
-  delegate_to: "{{ groups[migrate_db_from_osa_galera_group][0] }}"
-  community.mysql.mysql_db:
+  delegate_to: "{{ groups['galera_all'][0] }}"
+  community.mysql.mysql_query:
     login_host: "{{ _nova_pxc_service.resources[0].spec.clusterIP }}"
     login_user: root
     login_password: "{{ openstack_helm_endpoints.oslo_db.auth.admin.password }}"
     login_db: nova_api
     query: UPDATE cell_mappings SET transport_url = %(transport_url)s, database_connection = %(database_connection)s WHERE name = %(name)s
-    query_params: "{{ item }}"
+    named_args: "{{ item }}"
   loop:
     - name: cell0
       transport_url: none:/
@@ -69,6 +69,43 @@
 - name: Run deployment flow
   ansible.builtin.import_tasks:
     file: main.yml
+
+- name: Get the Kuberentes service for RabbitMQ
+  run_once: true
+  kubernetes.core.k8s_info:
+    kind: Service
+    name: "{{ openstack_helm_endpoints.oslo_messaging.hosts.default }}"
+    namespace: "{{ nova_helm_release_namespace }}"
+  register: _nova_rabbitmq_service
+
+- name: Update RabbitMQ configuration for compute nodes
+  delegate_to: "{{ item.0 }}"
+  community.general.ini_file:
+    path: /etc/nova/nova.conf
+    section: "{{ item.1.section }}"
+    option: "{{ item.1.option }}"
+    value: "{{ item.1.value }}"
+    mode: 0644
+  with_nested:
+    - "{{ groups['nova_compute'] }}"
+    - - section: DEFAULT
+        option: transport_url
+        value: "rabbit://nova:{{ openstack_helm_endpoints.oslo_messaging.auth.nova.password }}@{{ cluster_ip }}:5672/nova"
+      - section: oslo_messaging_notifications
+        option: transport_url
+        value: "rabbit://nova:{{ openstack_helm_endpoints.oslo_messaging.auth.nova.password }}@{{ cluster_ip }}:5672/nova"
+      - section: oslo_messaging_rabbit
+        option: ssl
+        value: false
+  vars:
+    cluster_ip: "{{ _nova_rabbitmq_service.resources[0].spec.clusterIP }}"
+
+- name: Restart all compute services
+  delegate_to: "{{ item }}"
+  ansible.builtin.service:
+    name: nova-compute
+    state: restarted
+  with_items: "{{ groups['nova_compute'] }}"
 
 - name: Migrate HAproxy (API)
   ansible.builtin.include_role:
