@@ -1,0 +1,101 @@
+# Copyright (c) 2023 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Generate configuration difference (control plane)
+  ansible.builtin.include_role:
+    name: osa_config_diff
+  vars:
+    osa_config_diff_containers_group: neutron_server
+    osa_config_diff_chart_ref: "{{ neutron_helm_chart_ref }}"
+    osa_config_diff_release_namespace: "{{ neutron_helm_release_namespace }}"
+    osa_config_diff_release_values: "{{ _neutron_helm_values | combine(neutron_helm_values, recursive=True) }}"
+    osa_config_diff_config_files:
+      neutron.conf: /etc/neutron/neutron.conf
+      ml2_conf.ini: /etc/neutron/plugins/ml2/ml2_conf.ini
+
+- name: Generate configuration difference (control plane agents)
+  ansible.builtin.include_role:
+    name: osa_config_diff
+  vars:
+    osa_config_diff_containers_group: network_hosts
+    osa_config_diff_chart_ref: "{{ neutron_helm_chart_ref }}"
+    osa_config_diff_release_namespace: "{{ neutron_helm_release_namespace }}"
+    osa_config_diff_release_values: "{{ _neutron_helm_values | combine(neutron_helm_values, recursive=True) }}"
+    osa_config_diff_config_files:
+      dhcp_agent.ini: /etc/neutron/dhcp_agent.ini
+      l3_agent.ini: /etc/neutron/l3_agent.ini
+      linuxbridge_agent.ini: /etc/neutron/plugins/ml2/linuxbridge_agent.ini
+      metadata_agent.ini: /etc/neutron/metadata_agent.ini
+      metering_agent.ini: /etc/neutron/metering_agent.ini
+      ml2_conf.ini: /etc/neutron/plugins/ml2/ml2_conf.ini
+      neutron.conf: /etc/neutron/neutron.conf
+
+- name: Migrate the databases
+  ansible.builtin.include_role:
+    name: migrate_db_from_osa
+  vars:
+    migrate_db_from_osa_pxc_namespace: "{{ neutron_helm_release_namespace }}"
+    migrate_db_from_osa_containers_group: neutron_server
+    migrate_db_from_osa_databases:
+      neutron: neutron
+
+- name: Run deployment flow
+  ansible.builtin.import_tasks:
+    file: main.yml
+
+- name: Get the Kuberentes service for RabbitMQ
+  run_once: true
+  kubernetes.core.k8s_info:
+    kind: Service
+    name: "{{ openstack_helm_endpoints.oslo_messaging.hosts.default }}"
+    namespace: "{{ neutron_helm_release_namespace }}"
+  register: _neutron_rabbitmq_service
+
+- name: Update RabbitMQ configuration for Neutron agents
+  delegate_to: "{{ item.0 }}"
+  community.general.ini_file:
+    path: /etc/neutron/neutron.conf
+    section: "{{ item.1.section }}"
+    option: "{{ item.1.option }}"
+    value: "{{ item.1.value }}"
+    mode: 0644
+  with_nested:
+    - "{{ groups['neutron_linuxbridge_agent'] }}"
+    - - section: DEFAULT
+        option: transport_url
+        value: "rabbit://neutron:{{ openstack_helm_endpoints.oslo_messaging.auth.neutron.password }}@{{ cluster_ip }}:5672/neutron"
+      - section: oslo_messaging_notifications
+        option: transport_url
+        value: "rabbit://nova:{{ openstack_helm_endpoints.oslo_messaging.auth.neutron.password }}@{{ cluster_ip }}:5672/neutron"
+      - section: oslo_messaging_rabbit
+        option: ssl
+        value: false
+  vars:
+    cluster_ip: "{{ _neutron_rabbitmq_service.resources[0].spec.clusterIP }}"
+
+- name: Restart all Neutron agents
+  delegate_to: "{{ item }}"
+  ansible.builtin.service:
+    name: neutron.slice
+    state: restarted
+  with_items: "{{ groups['neutron_linuxbridge_agent'] }}"
+
+- name: Migrate HAproxy
+  ansible.builtin.include_role:
+    name: migrate_haproxy_from_osa
+  vars:
+    migrate_haproxy_from_osa_group: neutron_server
+    migrate_haproxy_from_osa_service_namespace: "{{ neutron_helm_release_namespace }}"
+    migrate_haproxy_from_osa_service_name: neutron-server
+    migrate_haproxy_from_osa_haproxy_backend: neutron_server
