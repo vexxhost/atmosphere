@@ -17,11 +17,11 @@
     name: osa_config_diff
   vars:
     osa_config_diff_containers_group: placement_all
-    osa_config_diff_osa_config_file: /etc/placement/placement.conf
-    osa_config_diff_config_file: placement.conf
     osa_config_diff_chart_ref: "{{ placement_helm_chart_ref }}"
     osa_config_diff_release_namespace: "{{ placement_helm_release_namespace }}"
     osa_config_diff_release_values: "{{ _placement_helm_values | combine(placement_helm_values, recursive=True) }}"
+    osa_config_diff_config_files:
+      placement.conf: /etc/placement/placement.conf
 
 - name: Migrate the database
   ansible.builtin.include_role:

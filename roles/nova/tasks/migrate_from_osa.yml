@@ -21,11 +21,11 @@
     name: osa_config_diff
   vars:
     osa_config_diff_containers_group: nova_conductor
-    osa_config_diff_osa_config_file: /etc/nova/nova.conf
-    osa_config_diff_config_file: nova.conf
     osa_config_diff_chart_ref: "{{ nova_helm_chart_ref }}"
     osa_config_diff_release_namespace: "{{ nova_helm_release_namespace }}"
     osa_config_diff_release_values: "{{ _nova_helm_values | combine(nova_helm_values, recursive=True) }}"
+    osa_config_diff_config_files:
+      nova.conf: /etc/nova/nova.conf
 
 - name: Migrate the databases
   ansible.builtin.include_role:

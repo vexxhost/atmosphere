@@ -17,10 +17,11 @@
     name: osa_config_diff
   vars:
     osa_config_diff_containers_group: heat_all
-    osa_config_diff_config_file: /etc/heat/heat.conf
     osa_config_diff_chart_ref: "{{ heat_helm_chart_ref }}"
     osa_config_diff_release_namespace: "{{ heat_helm_release_namespace }}"
     osa_config_diff_release_values: "{{ _heat_helm_values | combine(heat_helm_values, recursive=True) }}"
+    osa_config_diff_config_files:
+      heat.conf: /etc/heat/heat.conf
 
 - name: Migrate the database
   ansible.builtin.include_role:

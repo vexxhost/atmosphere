@@ -17,11 +17,11 @@
     name: osa_config_diff
   vars:
     osa_config_diff_containers_group: keystone_all
-    osa_config_diff_osa_config_file: /etc/keystone/keystone.conf
-    osa_config_diff_config_file: keystone.conf
     osa_config_diff_chart_ref: "{{ keystone_helm_chart_ref }}"
     osa_config_diff_release_namespace: "{{ keystone_helm_release_namespace }}"
     osa_config_diff_release_values: "{{ _keystone_helm_values | combine(keystone_helm_values, recursive=True) }}"
+    osa_config_diff_config_files:
+      keystone.conf: /etc/keystone/keystone.conf
 
 - name: Migrate the database
   ansible.builtin.include_role:

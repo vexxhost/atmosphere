@@ -17,11 +17,11 @@
     name: osa_config_diff
   vars:
     osa_config_diff_containers_group: glance_all
-    osa_config_diff_osa_config_file: /etc/glance/glance.conf
-    osa_config_diff_config_file: glance.conf
     osa_config_diff_chart_ref: "{{ glance_helm_chart_ref }}"
     osa_config_diff_release_namespace: "{{ glance_helm_release_namespace }}"
     osa_config_diff_release_values: "{{ _glance_helm_values | combine(glance_helm_values, recursive=True) }}"
+    osa_config_diff_config_files:
+      glance.conf: /etc/glance/glance.conf
 
 - name: Migrate the database
   ansible.builtin.include_role:
