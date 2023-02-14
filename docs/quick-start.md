@@ -60,8 +60,14 @@ environment variables to tweak the behaviour of the Heat stack that is created:
   with StepCA from SmallStep it is possible to run a internal ACME server.
   The CA of that ACME server should be present in the instance image.
 
-Once you're ready to get started, you can run the following command to build
-the Heat stack and :
+Once you're ready to get started, you can run the following command to install 
+poetry dependencies:
+
+```shell
+poetry install
+```
+
+Then you can run the following command to build the Heat stack :
 
 ```shell
 poetry run molecule converge
