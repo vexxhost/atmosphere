@@ -89,6 +89,15 @@
     - swap
     - none
 
+- name: Create noswap systemd service config file
+  ansible.builtin.copy:
+    src: noswap.service
+    dest: /etc/systemd/system/noswap.service
+    owner: root
+    group: root
+    mode: 0644
+  notify: Enable noswap service
+
 - name: Configure short hostname
   ansible.builtin.hostname:
     name: "{{ inventory_hostname_short }}"
