@@ -102,10 +102,18 @@
       tags:
         - placement
 
+- name: Deploy Open vSwitch
+  hosts: controllers:computes
+  become: true
+  gather_facts: false
+  roles:
     - role: openvswitch
       tags:
         - openvswitch
 
+- hosts: controllers[0]
+  become: true
+  roles:
     - role: libvirt
       tags:
         - libvirt
