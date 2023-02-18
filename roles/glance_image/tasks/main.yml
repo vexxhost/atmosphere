@@ -18,6 +18,11 @@
     cloud: atmosphere
     image: "{{ glance_image_name }}"
   register: _image_info
+  # NOTE(mnaser): This often fails since the SSL certificates are not
+  #               ready yet. We need to wait for them to be ready.
+  retries: 120
+  delay: 1
+  until: _image_info is not failed
 
 - name: Download image and upload into Glance
   run_once: true
