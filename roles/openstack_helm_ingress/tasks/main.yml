@@ -12,6 +12,30 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+- name: Create wildcard certificate
+  run_once: true
+  when: openstack_helm_ingress_wildcard_domain is defined
+  block:
+    - name: Create certificate
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: cert-manager.io/v1
+          kind: Certificate
+          metadata:
+            name: atmosphere-wildcard
+            namespace: openstack
+          spec:
+            secretName: atmosphere-wildcard
+            issuerRef:
+              kind: ClusterIssuer
+              name: "{{ openstack_helm_ingress_cluster_issuer }}"
+            dnsNames:
+              - "*.{{ openstack_helm_ingress_wildcard_domain }}"
+    - name: Set fact with wildcard certificate
+      ansible.builtin.set_fact:
+        openstack_helm_ingress_secret_name: atmosphere-wildcard
+
 - name: Add ClusterIssuer annotations
   ansible.builtin.set_fact:
     _openstack_helm_ingress_annotations: "{{ _openstack_helm_ingress_annotations | combine(annotations, recursive=True) }}"
