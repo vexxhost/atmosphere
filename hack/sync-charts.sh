@@ -42,6 +42,14 @@ KUBE_PROMETHEUS_STACK_VERSION=41.7.3
 curl -sL https://github.com/prometheus-community/helm-charts/releases/download/kube-prometheus-stack-${KUBE_PROMETHEUS_STACK_VERSION}/kube-prometheus-stack-${KUBE_PROMETHEUS_STACK_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
+LOKI_VERSION=4.6.1
+curl -sL https://github.com/grafana/helm-charts/releases/download/helm-loki-${LOKI_VERSION}/loki-${LOKI_VERSION}.tgz \
+  | tar -xz -C ${ATMOSPHERE}/charts
+
+VECTOR_VERSION=0.19.0
+curl -sL https://github.com/vectordotdev/helm-charts/releases/download/vector-${VECTOR_VERSION}/vector-${VECTOR_VERSION}.tgz \
+  | tar -xz -C ${ATMOSPHERE}/charts
+
 PROMETHEUS_PUSHGATEWAY_VERSION=1.16.0
 curl -sL https://github.com/prometheus-community/helm-charts/releases/download/prometheus-pushgateway-${PROMETHEUS_PUSHGATEWAY_VERSION}/prometheus-pushgateway-${PROMETHEUS_PUSHGATEWAY_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts

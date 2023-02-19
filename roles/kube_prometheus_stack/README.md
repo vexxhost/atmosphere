@@ -3,12 +3,22 @@
 ## Exposing data
 
 There are a few ways to expose both the monitoring services to view the health
-and the metrics of the cluster.
+and the metrics and logs of the cluster.
 
 ### Port forwarding
 
 The easiest way to expose the monitoring services is to use port forwarding
 using the built-in `kubectl` command.
+
+#### Grafana
+
+```bash
+kubectl -n monitoring port-forward svc/kube-prometheus-stack-grafana 3000
+```
+
+Once you run the command above, you'll be able to open `http://localhost:3000`
+on your local system and view the Grafana UI.  The default login is `admin` and
+the password is `prom-operator`.
 
 #### Prometheus
 
