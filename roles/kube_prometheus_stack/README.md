@@ -13,7 +13,7 @@ using the built-in `kubectl` command.
 #### Grafana
 
 ```bash
-kubectl -n monitoring port-forward svc/kube-prometheus-stack-grafana 3000
+kubectl -n monitoring port-forward svc/kube-prometheus-stack-grafana 3000:80
 ```
 
 Once you run the command above, you'll be able to open `http://localhost:3000`
