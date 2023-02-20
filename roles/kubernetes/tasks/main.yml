@@ -41,12 +41,18 @@
 - name: Install packages
   ansible.builtin.apt:
     name:
-      - "containerd"
       - "cri-tools={{ kubernetes_cri_tools_version }}-00"
       - "kubeadm={{ kubernetes_version }}-00"
       - "kubectl={{ kubernetes_version }}-00"
       - "kubelet={{ kubernetes_version }}-00"
     state: present
+
+- name: Create crictl config
+  ansible.builtin.template:
+    src: crictl.yaml.j2
+    dest: /etc/crictl.yaml
+    owner: root
+    mode: 0644
 
 - name: Enable kernel modules on-boot
   ansible.builtin.template:
