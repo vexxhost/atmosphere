@@ -1,5 +1,48 @@
 # Changelog
 
+## [1.0.0-rc.2](https://github.com/vexxhost/atmosphere/compare/v1.0.0-rc.1...v1.0.0-rc.2) (2023-02-20)
+
+
+### Features
+
+* add crictl.yaml config ([#330](https://github.com/vexxhost/atmosphere/issues/330)) ([0615925](https://github.com/vexxhost/atmosphere/commit/0615925a1dd6155687da69b08c5b1e3fa456d640))
+* add logging via vector + loki ([8a2c8fb](https://github.com/vexxhost/atmosphere/commit/8a2c8fbbcaee6cd29cb957fb369be24f314a5236))
+* allow adding dns01 clusterissuers ([2db0a22](https://github.com/vexxhost/atmosphere/commit/2db0a22d4b31b188995741cc06a9abdfd2584769))
+* allow using wildcard certs ([a5902dd](https://github.com/vexxhost/atmosphere/commit/a5902dd42117b273cec41ef1be2e12d0279ff817))
+* always disable swap on node startup ([#328](https://github.com/vexxhost/atmosphere/issues/328)) ([4770f55](https://github.com/vexxhost/atmosphere/commit/4770f55edff2dcc1bc3c4efcabb59d0a9cf1afa6))
+
+
+### Bug Fixes
+
+* add asseriton for ovs upgrade ([179bf0d](https://github.com/vexxhost/atmosphere/commit/179bf0d8b0d2ee41415be4da634e9c3019770cbe))
+* add dependency for openstacksdk ([b5c9242](https://github.com/vexxhost/atmosphere/commit/b5c9242781936c090324709f84ee46ea2eac6e8c))
+* add image conversion ([4b63004](https://github.com/vexxhost/atmosphere/commit/4b63004bfefe70c669c2d5788a21580f6fa2ad25))
+* add os_distro to images ([38a7438](https://github.com/vexxhost/atmosphere/commit/38a74385cf3336b8899989076583941f97ba5027))
+* add retries for glance_image ([41f239c](https://github.com/vexxhost/atmosphere/commit/41f239c9a413bf58fba7236f53243fa7c3f4a215))
+* add terminate project playbook ([388aaaa](https://github.com/vexxhost/atmosphere/commit/388aaaa30e9d099bae80daf09693a5e13435ea9c))
+* allow overriding target for k8s playbook ([8eafb7e](https://github.com/vexxhost/atmosphere/commit/8eafb7ed36ea55398ca178538fd87980d3d2faa3))
+* clean-up terminate project output ([c14fd11](https://github.com/vexxhost/atmosphere/commit/c14fd1103c6680debe065f09d91bcc9dd55a0105))
+* enable magnum resizes ([1402ed0](https://github.com/vexxhost/atmosphere/commit/1402ed0baa43f0a9041047a6e6c736a27d5ac22d))
+* gather facts always ([e8ad9a7](https://github.com/vexxhost/atmosphere/commit/e8ad9a7565a33133f6205eaf3c34744edb5a7742))
+* **octavia:** add observer role to reader ([f641f86](https://github.com/vexxhost/atmosphere/commit/f641f86ace30791cc06c3eca602bd9bc605808c0))
+* solve endpoints list generation ([a827aeb](https://github.com/vexxhost/atmosphere/commit/a827aebde882dd99d6cd57b78a147cb81fc6d691))
+* use bfv for octavia ([9c8115d](https://github.com/vexxhost/atmosphere/commit/9c8115d60903157b33b1cf5f40b320666607ad2b))
+* use correct fallback ([8f1faa4](https://github.com/vexxhost/atmosphere/commit/8f1faa4ea59d78972af57f20ac08eb19329b09a6))
+* use latest clients on focal ([d939b31](https://github.com/vexxhost/atmosphere/commit/d939b31c3d21a8ee1676af6addd90e7114096ae9))
+* use magnum-ui fork to fix resize ([20593cb](https://github.com/vexxhost/atmosphere/commit/20593cb88fdc76e4ddddba61eef565fee14bacf0))
+
+
+### Documentation
+
+* clean-up opsgenie integration ([36f1de2](https://github.com/vexxhost/atmosphere/commit/36f1de2ad52e9a2fde46fdfb38b141de453a23d7))
+* **monitoring:** fix opsgenie ([e119d8b](https://github.com/vexxhost/atmosphere/commit/e119d8b0ced2baaa17fb9d32e2e2b3a1d50ea9b8))
+* refactor designate docs ([d916b5c](https://github.com/vexxhost/atmosphere/commit/d916b5cd7d11e8cb282281654010942ea3e54283))
+
+
+### Miscellaneous Chores
+
+* release 1.0.0-rc.2 ([cb9a798](https://github.com/vexxhost/atmosphere/commit/cb9a7987a9fec1f3f030f89e7cb275702040dde8))
+
 ## [1.0.0-rc.1](https://github.com/vexxhost/atmosphere/compare/v0.13.0...v1.0.0-rc.1) (2023-02-03)
 
 
