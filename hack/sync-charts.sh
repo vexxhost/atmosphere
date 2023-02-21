@@ -62,6 +62,10 @@ CERT_MANAGER_VERSION=v1.7.1
 curl -sL https://charts.jetstack.io/charts/cert-manager-${CERT_MANAGER_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
+CERT_MANAGER_WEBHOOK_INFOBLOX_WAPI_VERSION=1.5.2
+curl -sL https://github.com/luisico/cert-manager-webhook-infoblox-wapi/releases/download/helm-chart-${CERT_MANAGER_WEBHOOK_INFOBLOX_WAPI_VERSION}/cert-manager-webhook-infoblox-wapi-${CERT_MANAGER_WEBHOOK_INFOBLOX_WAPI_VERSION}.tgz \
+  | tar -xz -C ${ATMOSPHERE}/charts
+
 RABBITMQ_CLUSTER_OPERATOR_VERSION=2.6.6
 curl -sL https://charts.bitnami.com/bitnami/rabbitmq-cluster-operator-${RABBITMQ_CLUSTER_OPERATOR_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
