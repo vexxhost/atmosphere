@@ -45,7 +45,7 @@ the patch, and applying it to the repository.  Once the patch has been applied,
 it will push it in a new branch to the forked repository and create a pull
 request.
 
-> *Note**
+> **Note**
 >
 > If the process fails because of a merge conflict, you'll need to resolve the
 > conflict and then run the command again.

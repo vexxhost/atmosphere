@@ -20,7 +20,7 @@ following prerequisites:
 * Project Name
 * Domain Name (if you're not sure, this is usually `Default`)
 
-> *Note*
+> **Note**
 >
 > If you're not sure what your authentication URL is, you can find it by logging
 > into your OpenStack dashboard and clicking on *API Access* in the left-hand
@@ -35,7 +35,7 @@ the Swift API by launching Cyberduck and following these steps:
 4. Enter your password
 5. Click *Connect*
 
-> *Note*
+> **Note**
 >
 > While you're connecting, if your cloud is setup with a self-signed
 > certificate, you may see a warning about the certificate being invalid.  You
@@ -44,7 +44,7 @@ the Swift API by launching Cyberduck and following these steps:
 At that point, you should be able to create buckets and upload files by simply
 dragging and dropping them into the Cyberduck window.
 
-> *Note*
+> **Note**
 >
 > Cyberduck is free software with no feature limits.  However, if you find value
 > in it, please consider making a [donation](https://cyberduck.io/donate/)
