@@ -12,24 +12,13 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-galaxy_info:
-  author: VEXXHOST, Inc.
-  description: Ansible role for "containerd"
-  license: Apache-2.0
-  min_ansible_version: 5.5.0
-  standalone: false
-  platforms:
-    - name: EL
-      versions:
-        - "8"
-        - "9"
-    - name: Ubuntu
-      versions:
-        - focal
-
-dependencies:
-  - role: defaults
-  - role: runc
-  - role: binary_download
-    vars:
-      binary_download: "{{ binary_download_defaults | combine(containerd_download) }}"
+- name: Unpacking archive
+  ansible.builtin.unarchive:
+    src: "{{ binary_download.dest }}"
+    dest: "{{ binary_download.dest | dirname }}"
+    owner: "{{ binary_download.owner | default(omit) }}"
+    mode: "{{ binary_download.mode | default(omit) }}"
+    copy: false
+    extra_opts: "{{ binary_download.unarchive_extra_opts | default(omit) }}"
+  when:
+    - binary_download.unarchive | default(false)

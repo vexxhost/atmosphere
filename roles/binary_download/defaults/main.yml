@@ -1,0 +1,45 @@
+# Copyright (c) 2023 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+binary_download_local_release_dir: /tmp/releases
+binary_download_cache_dir: /tmp/atmosphere_cache
+
+# If this is true, debug information will be displayed but
+# may contain some private data, so it is recommended to set it to false
+# in the production environment.
+binary_download_show_logs: false
+
+# Only useful when binary_download_run_once is false: Localy cached files are
+# uploaded to atmosphere nodes.
+binary_download_force_cache: false
+
+# If this is set to true will only download files once.
+binary_download_run_once: false
+
+# If this is set to true, uses the localhost for binary_download_run_once mode.
+# Otherwise, uses the first node in the controllers group to store files
+# in the binary_download_run_once mode.
+binary_download_localhost: false
+
+binary_download_validate_certs: true
+
+# Use the first controller if binary_download_localhost is not set
+binary_download_delegate: "{% if binary_download_localhost %}localhost{% else %}{{ groups['controllers'][0] }}{% endif %}"
+
+binary_download_arch: "{{ _binary_download_host_architecture | default('amd64') }}"
+
+binary_download_defaults:
+  unarchive: false
+  owner: "root"
+  mode: "0755"

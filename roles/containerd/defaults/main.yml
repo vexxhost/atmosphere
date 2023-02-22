@@ -1,21 +1,55 @@
----
-# .. vim: foldmarker=[[[,]]]:foldmethod=marker
-
-# .. Copyright (C) 2022 VEXXHOST, Inc.
-# .. SPDX-License-Identifier: Apache-2.0
-
-# Default variables
-# =================
-
-# .. contents:: Sections
-#    :local:
-
-
-# .. envvar:: containerd_pause_image [[[
+# Copyright (c) 2023 VEXXHOST, Inc.
 #
-# Image to use for ``containerd`` pause container
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+containerd_version: 1.6.15
+
+containerd_archive_checksums:
+  arm64:
+    1.6.15: d63e4d27c51e33cd10f8b5621c559f09ece8a65fec66d80551b36cac9e61a07d
+  amd64:
+    1.6.15: 191bb4f6e4afc237efc5c85b5866b6fdfed731bde12cceaa6017a9c7f8aeda02
+
 containerd_pause_image: k8s.gcr.io/pause:3.5
 
-                                                                   # ]]]
-
 containerd_insecure_registries: []
+
+containerd_bin_dir: /usr/bin
+
+containerd_package_name:
+  - containerd
+  - containerd.io
+
+containerd_download_url: "https://github.com/containerd/containerd/releases/download/v{{ containerd_version }}/containerd-{{ containerd_version }}-linux-{{ binary_download_arch }}.tar.gz"
+
+containerd_archive_checksum: "{{ containerd_archive_checksums[binary_download_arch][containerd_version] }}"
+
+containerd_download:
+  version: "{{ containerd_version }}"
+  dest: "{{ binary_download_local_release_dir }}/containerd-{{ containerd_version }}-linux-{{ binary_download_arch }}.tar.gz"
+  sha256: "{{ containerd_archive_checksum }}"
+  url: "{{ containerd_download_url }}"
+  owner: "root"
+  mode: "0755"
+
+containerd_cfg_dir: /etc/containerd
+containerd_storage_dir: /var/lib/containerd
+containerd_state_dir: /run/containerd
+
+containerd_debug_level: "info"
+containerd_max_container_log_line_size: -1
+
+containerd_limit_proc_num: "infinity"
+containerd_limit_core: "infinity"
+containerd_limit_open_file_num: "infinity"
+containerd_limit_mem_lock: "infinity"

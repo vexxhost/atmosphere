@@ -12,24 +12,14 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-galaxy_info:
-  author: VEXXHOST, Inc.
-  description: Ansible role for "containerd"
-  license: Apache-2.0
-  min_ansible_version: 5.5.0
-  standalone: false
-  platforms:
-    - name: EL
-      versions:
-        - "8"
-        - "9"
-    - name: Ubuntu
-      versions:
-        - focal
+_binary_download_host_architecture_groups:
+  x86_64: amd64
+  aarch64: arm64
+  armv7l: arm
 
-dependencies:
-  - role: defaults
-  - role: runc
-  - role: binary_download
-    vars:
-      binary_download: "{{ binary_download_defaults | combine(containerd_download) }}"
+_binary_download_host_architecture: >-
+  {%- if ansible_architecture in _binary_download_host_architecture_groups -%}
+  {{ _binary_download_host_architecture_groups[ansible_architecture] }}
+  {%- else -%}
+  {{ ansible_architecture }}
+  {%- endif -%}
