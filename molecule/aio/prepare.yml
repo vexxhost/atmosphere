@@ -16,7 +16,7 @@
   vars:
     workspace_path: "{{ lookup('env', 'MOLECULE_SCENARIO_DIRECTORY') }}"
     domain_name: "{{ '{{' }} ansible_default_ipv4['address'].replace('.', '-') {{ '}}' }}.{{ lookup('env', 'ATMOSPHERE_DNS_SUFFIX_NAME') | default('nip.io', True) }}"
-    ceph_public_network: 10.0.0.0/22
+    ceph_public_network: 10.96.230.0/24
 
 - name: Clean-up system from GitHub Actions
   hosts: all
@@ -104,6 +104,9 @@
 
     - name: Add IP address for eth1 interface
       ansible.builtin.command: ip addr add 10.96.250.20/24 dev eth1
+
+    - name: Add IP address for eth1 interface
+      ansible.builtin.command: ip addr add 10.96.230.20/24 dev eth1
 
     - name: Set masquerade rule
       become: yes
