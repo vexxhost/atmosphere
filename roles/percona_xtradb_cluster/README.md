@@ -27,7 +27,7 @@ example below.
 ```yaml
 percona_xtradb_cluster_spec:
   backup:
-    image: perconalab/percona-xtradb-cluster-operator:main-pxc8.0-backup
+    image: percona/percona-xtradb-cluster-operator:1.12.0-pxc5.7-backup
     storages:
       fs-pvc:
         type: filesystem
