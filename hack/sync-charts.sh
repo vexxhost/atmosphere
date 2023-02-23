@@ -106,6 +106,11 @@ curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~872359/revis
   | filterdiff -p1 -x 'releasenotes/*' \
   | filterdiff -p2 -x 'Chart.yaml' \
   | patch -p2 -d ${ATMOSPHERE}/charts/cinder
+curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~874933/revisions/3/patch?download' \
+  | base64 --decode \
+  | filterdiff -p1 -x 'releasenotes/*' \
+  | filterdiff -p2 -x 'Chart.yaml' \
+  | patch -p2 -d ${ATMOSPHERE}/charts/cinder
 
 PLACEMENT_VERSION=0.3.2
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/placement-${PLACEMENT_VERSION}.tgz \
