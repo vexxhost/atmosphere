@@ -16,11 +16,12 @@
   ansible.builtin.include_role:
     name: osa_config_diff
   vars:
-    osa_config_diff_containers_group: cinder_all
+    osa_config_diff_containers_group: cinder_volume
     osa_config_diff_chart_ref: "{{ cinder_helm_chart_ref }}"
     osa_config_diff_release_namespace: "{{ cinder_helm_release_namespace }}"
     osa_config_diff_release_values: "{{ _cinder_helm_values | combine(cinder_helm_values, recursive=True) }}"
     osa_config_diff_config_files:
+      backends.conf: /etc/cinder/cinder.conf
       cinder.conf: /etc/cinder/cinder.conf
 
 - name: Migrate the database
