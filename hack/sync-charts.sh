@@ -98,15 +98,15 @@ GLANCE_VERSION=0.4.1
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/glance-${GLANCE_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-CINDER_VERSION=0.3.3
+CINDER_VERSION=0.3.4
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/cinder-${CINDER_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
-curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~872359/revisions/1/patch?download' \
+curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~874933/revisions/4/patch?download' \
   | base64 --decode \
   | filterdiff -p1 -x 'releasenotes/*' \
   | filterdiff -p2 -x 'Chart.yaml' \
   | patch -p2 -d ${ATMOSPHERE}/charts/cinder
-curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~874933/revisions/3/patch?download' \
+curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~874952/revisions/2/patch?download' \
   | base64 --decode \
   | filterdiff -p1 -x 'releasenotes/*' \
   | filterdiff -p2 -x 'Chart.yaml' \
