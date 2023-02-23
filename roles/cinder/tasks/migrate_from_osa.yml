@@ -24,6 +24,24 @@
       backends.conf: /etc/cinder/cinder.conf
       cinder.conf: /etc/cinder/cinder.conf
 
+- name: Turn off the "cinder-volume" service
+  run_once: true
+  delegate_to: "{{ item }}"
+  ansible.builtin.service:
+    name: cinder-volume
+    state: stopped
+    enabled: false
+  loop: "{{ groups['cinder_volume'] }}"
+
+- name: Turn off the "cinder-backup" service
+  run_once: true
+  delegate_to: "{{ item }}"
+  ansible.builtin.service:
+    name: cinder-backup
+    state: stopped
+    enabled: false
+  loop: "{{ groups['cinder_backup'] }}"
+
 - name: Migrate the database
   ansible.builtin.include_role:
     name: migrate_db_from_osa
