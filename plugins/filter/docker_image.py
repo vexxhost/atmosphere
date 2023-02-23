@@ -93,6 +93,10 @@ def docker_image(value, part="ref", registry=None):
             return ref.repository["path"]
         if part == "digest":
             return ref["digest"]
+        if part == "prefix":
+            path_parts = ref.repository["path"].split("/")[:-1]
+            path = "/".join(path_parts)
+            return "%s/%s" % (ref.repository["domain"], path)
 
     ref = reference.Reference.parse(value)
     if not registry:
