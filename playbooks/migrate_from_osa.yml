@@ -45,7 +45,12 @@
       tags:
         - glance
 
-    # TODO(mnaser): Migrate Cinder
+    - name: Migrate Cinder
+      ansible.builtin.import_role:
+        name: cinder
+        tasks_from: migrate_from_osa
+      tags:
+        - cinder
 
     - name: Migrate Placement
       ansible.builtin.import_role:
