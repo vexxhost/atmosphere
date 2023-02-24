@@ -1,5 +1,3 @@
-# Copyright 2019 Samsung Electronics Co., Ltd.
-#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -12,52 +10,56 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Default values for manila.
+# Default values for cinder.
 # This is a YAML-formatted file.
 # Declare name/value pairs to be passed into your templates.
 # name: value
 
 ---
-release_group: null
+storage: ceph
 
 labels:
   api:
     node_selector_key: openstack-control-plane
     node_selector_value: enabled
-  data:
+  backup:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
+  job:
     node_selector_key: openstack-control-plane
     node_selector_value: enabled
   scheduler:
     node_selector_key: openstack-control-plane
     node_selector_value: enabled
-  share:
+  test:
     node_selector_key: openstack-control-plane
     node_selector_value: enabled
-  queue:
+  volume:
     node_selector_key: openstack-control-plane
     node_selector_value: enabled
 
-#images used in the chart for running jobs 
-# have to add
+release_group: null
+
 images:
   tags:
     test: docker.io/xrally/xrally-openstack:2.0.0
-    bootstrap: docker.io/openstackhelm/heat:ocata
-    db_init: docker.io/openstackhelm/heat:ocata
-    manila_db_sync: docker.io/loci/manila:master-ubuntu
-    db_drop: docker.io/openstackhelm/heat:ocata
+    db_init: docker.io/openstackhelm/heat:wallaby-ubuntu_focal
+    cinder_db_sync: docker.io/openstackhelm/cinder:wallaby-ubuntu_focal
+    db_drop: docker.io/openstackhelm/heat:wallaby-ubuntu_focal
     rabbit_init: docker.io/rabbitmq:3.7-management
-    ks_user: docker.io/openstackhelm/heat:ocata
-    ks_service: docker.io/openstackhelm/heat:ocata
-    ks_endpoints: docker.io/openstackhelm/heat:ocata
+    ks_user: docker.io/openstackhelm/heat:wallaby-ubuntu_focal
+    ks_service: docker.io/openstackhelm/heat:wallaby-ubuntu_focal
+    ks_endpoints: docker.io/openstackhelm/heat:wallaby-ubuntu_focal
+    cinder_api: docker.io/openstackhelm/cinder:wallaby-ubuntu_focal
+    bootstrap: docker.io/openstackhelm/heat:wallaby-ubuntu_focal
+    cinder_scheduler: docker.io/openstackhelm/cinder:wallaby-ubuntu_focal
+    cinder_volume: docker.io/openstackhelm/cinder:wallaby-ubuntu_focal
+    cinder_volume_usage_audit: docker.io/openstackhelm/cinder:wallaby-ubuntu_focal
+    cinder_storage_init: docker.io/openstackhelm/ceph-config-helper:latest-ubuntu_bionic
+    cinder_backup: docker.io/openstackhelm/cinder:wallaby-ubuntu_focal
+    cinder_backup_storage_init: docker.io/openstackhelm/ceph-config-helper:latest-ubuntu_bionic
     dep_check: quay.io/airshipit/kubernetes-entrypoint:v1.0.0
     image_repo_sync: docker.io/docker:17.07.0
-    manila_api: docker.io/loci/manila:master-ubuntu
-    manila_worker: docker.io/loci/manila:master-ubuntu
-    manila_housekeeping: docker.io/loci/manila:master-ubuntu
-    manila_health_manager: docker.io/loci/manila:master-ubuntu
-    manila_health_manager_init: docker.io/kolla/ubuntu-source-manila-health-manager:rocky
-    openvswitch_vswitchd: docker.io/kolla/centos-source-openvswitch-vswitchd:rocky
   pull_policy: "IfNotPresent"
   local_registry:
     active: false
@@ -65,487 +67,165 @@ images:
       - dep_check
       - image_repo_sync
 
-# roles creaeted for manila in keystone
-bootstrap:
-  enabled: true
-  ks_user: admin
-  script: |
-    openstack role create --or-show load-balancer_admin
-    openstack role create --or-show load-balancer_observer
-    openstack role create --or-show load-balancer_global_observer
-    openstack role create --or-show load-balancer_quota_admin
-    openstack role create --or-show load-balancer_member
+jobs:
+  volume_usage_audit:
+    cron: "5 * * * *"
+    starting_deadline: 600
+    history:
+      success: 3
+      failed: 1
 
-
-
-#how to expose the service for manila-api etc
-network:
-  api:
-    ingress:
-      public: true
-      classes:
-        namespace: "nginx-ingress"
-        cluster: "nginx-cluster"
-      annotations:
-        nginx.ingress.kubernetes.io/rewrite-target: /
-    external_policy_local: false
-    node_port:
-      enabled: false
-      port: 30850
-
-
-# dependencies including completion of jobs 
-# have to add 
-dependencies:
-  dynamic:
-    common:
-      local_image_registry:
-        jobs:
-          - heat-image-repo-sync
-        services:
-          - endpoint: node
-            service: local_image_registry
-  static:
-    api:
-      jobs:
-        - manila-db-sync
-        - manila-ks-user
-        - manila-ks-endpoints
-        - manila-rabbit-init
-      services:
-        - endpoint: internal
-          service: oslo_db
-        - endpoint: internal
-          service: identity
-        - endpoint: internal
-          service: oslo_messaging
-        - endpoint: internal
-          service: oslo_cache
-        - endpoint: internal
-          service: network
-    worker:
-      jobs:
-        - manila-db-sync
-        - manila-ks-user
-        - manila-ks-endpoints
-        - manila-rabbit-init
-      services:
-        - endpoint: internal
-          service: oslo_db
-        - endpoint: internal
-          service: identity
-        - endpoint: internal
-          service: oslo_messaging
-        - endpoint: internal
-          service: oslo_cache
-        - endpoint: internal
-          service: network
-        - endpoint: internal
-          service: load_balancer
-    housekeeping:
-      jobs:
-        - manila-db-sync
-        - manila-ks-user
-        - manila-ks-endpoints
-        - manila-rabbit-init
-      services:
-        - endpoint: internal
-          service: oslo_db
-        - endpoint: internal
-          service: identity
-        - endpoint: internal
-          service: oslo_messaging
-        - endpoint: internal
-          service: oslo_cache
-        - endpoint: internal
-          service: network
-        - endpoint: internal
-          service: load_balancer
-    health_manager:
-      jobs:
-        - manila-db-sync
-        - manila-ks-user
-        - manila-ks-endpoints
-        - manila-rabbit-init
-      services:
-        - endpoint: internal
-          service: oslo_db
-        - endpoint: internal
-          service: identity
-        - endpoint: internal
-          service: oslo_messaging
-        - endpoint: internal
-          service: oslo_cache
-        - endpoint: internal
-          service: network
-        - endpoint: internal
-          service: load_balancer
-    db_init:
-      services:
-        - endpoint: internal
-          service: oslo_db
-    db_sync:
-      jobs:
-        - manila-db-init
-      services:
-        - endpoint: internal
-          service: oslo_db
-    ks_endpoints:
-      jobs:
-        - manila-ks-service
-      services:
-        - endpoint: internal
-          service: identity
-    ks_service:
-      services:
-        - endpoint: internal
-          service: identity
-    ks_user:
-      services:
-        - endpoint: internal
-          service: identity
-    rabbit_init:
-      services:
-      - endpoint: internal
-        service: oslo_messaging
-    image_repo_sync:
-      services:
-        - endpoint: internal
-          service: local_image_registry
-
-
-
-#used to create configuration files with oslo helper function
-conf:
-  manila:
-    DEFAULT:
-      state_path : /var/lib/manila
-      deafult_share_type: 
-    cinder:
-      
-    cors:
-    database:
-    glance:
-    healthcheck:  
-    keystone_authtoken:
-    neutron:
-    nova:
-    oslo_concurrency:
-    oslo_messaging_amqp:
-    oslo_messaging_kafka:
-    oslo_messaging_notifications:
-    oslo_messaging_rabbit:
-    oslo_middleware:
-    oslo_policy:
-    oslo_reports:
-    quota:
-    sql:
-    ssl:
-
-#logging specific vconfig need to update
-  logging:
-    loggers:
-      keys:
-        - root
-        - manila
-    handlers:
-      keys:
-        - stdout
-        - stderr
-        - "null"
-    formatters:
-      keys:
-        - context
-        - default
-    logger_root:
-      level: WARNING
-      handlers: 'null'
-    logger_manila:
-      level: WARNING
-      handlers:
-        - stdout
-      qualname: manila
-    logger_amqp:
-      level: WARNING
-      handlers: stderr
-      qualname: amqp
-    logger_amqplib:
-      level: WARNING
-      handlers: stderr
-      qualname: amqplib
-    logger_eventletwsgi:
-      level: WARNING
-      handlers: stderr
-      qualname: eventlet.wsgi.server
-    logger_sqlalchemy:
-      level: WARNING
-      handlers: stderr
-      qualname: sqlalchemy
-    logger_boto:
-      level: WARNING
-      handlers: stderr
-      qualname: boto
-    handler_null:
-      class: logging.NullHandler
-      formatter: default
-      args: ()
-    handler_stdout:
-      class: StreamHandler
-      args: (sys.stdout,)
-      formatter: context
-    handler_stderr:
-      class: StreamHandler
-      args: (sys.stderr,)
-      formatter: context
-    formatter_context:
-      class: oslo_log.formatters.ContextFormatter
-    formatter_default:
-      format: "%(message)s"
-  rabbitmq:
-    # NOTE(rk760n): adding rmq policy to mirror messages from notification queues and set expiration time for the ones
-    policies:
-      - vhost: "manila"
-        name: "ha_ttl_manila"
-        definition:
-          # mirror messges to other nodes in rmq cluster
-          ha-mode: "all"
-          ha-sync-mode: "automatic"
-          # 70s
-          message-ttl: 70000
-        priority: 0
-        apply-to: all
-        pattern: '(notifications)\.'
-
-
-# secrets used with charts need to update 
-secrets:
-  identity:
-    admin: manila-keystone-admin
-    manila: manila-keystone-user
-    test: manila-keystone-test
-  oslo_db:
-    admin: manila-db-admin
-    manila: manila-db-user
-  oslo_messaging:
-    admin: manila-rabbitmq-admin
-    manila: manila-rabbitmq-user
-  tls:
-    load_balancer:
-      api:
-        public: manila-tls-public
-  oci_image_registry:
-    manila: manila-oci-image-registry
-
-
-# used by endpoint helper funcs to create image reg endpoints(fqdn)
-endpoints:
-  cluster_domain_suffix: cluster.local
-  local_image_registry:
-    name: docker-registry
-    namespace: docker-registry
-    hosts:
-      default: localhost
-      internal: docker-registry
-      node: localhost
-    host_fqdn_override:
-      default: null
-    port:
-      registry:
-        node: 5000
-  oci_image_registry:
-    name: oci-image-registry
-    namespace: oci-image-registry
-    auth:
-      enabled: false
-      manila:
-        username: manila
-        password: password
-    hosts:
-      default: localhost
-    host_fqdn_override:
-      default: null
-    port:
-      registry:
-        default: null
-
-
-  #identity specific config for chart, used in creating keystone auth enpoints that eventually goes in configuration if required
-  identity:
-    name: keystone  
-    auth:
-      admin:
-        region_name: RegionOne
-        username: admin
-        password: password
-        project_name: admin
-        user_domain_name: default
-        project_domain_name: default
-      manila:
-        role: admin
-        region_name: RegionOne
-        username: manila
-        password: password
-        project_name: service
-        user_domain_name: service
-        project_domain_name: service
-      test:
-        role: admin
-        region_name: RegionOne
-        username: test
-        password: password
-        project_name: test
-        user_domain_name: service
-        project_domain_name: service
-    hosts:
-      default: keystone
-      internal: keystone-api
-    host_fqdn_override:
-      default: null
-    path:
-      default: /v3
-    scheme:
-      default: 'http'
-    port:
-      api:
-        default: 80
-        internal: 5000
-
-
-
-# used in exposing containerPort , service ports, ingress backend ports 
-  load_balancer:
-    name: manila
-    hosts:
-      default: manila-api
-      public: manila
-    host_fqdn_override:
-      default: null
-    path:
-      default: null
-    scheme:
-      default: http
-    port:
-      api:
-        default: 9876
-        public: 80
-
-
-  #oslo db dependency for openstack services, creates endpoints with helper funcs
-
-  oslo_db:
-    auth:
-      admin:
-        username: root
-        password: password
-      manila:
-        username: manila
-        password: password
-    hosts:
-      default: mariadb
-    host_fqdn_override:
-      default: null
-    path: /manila
-    scheme: mysql+pymysql
-    port:
-      mysql:
-        default: 3306
-  oslo_cache:
-    auth:
-      # NOTE(portdirect): this is used to define the value for keystone
-      # authtoken cache encryption key, if not set it will be populated
-      # automatically with a random value, but to take advantage of
-      # this feature all services should be set to use the same key,
-      # and memcache service.
-      memcache_secret_key: null
-    hosts:
-      default: memcached
-    host_fqdn_override:
-      default: null
-    port:
-      memcache:
-        default: 11211
-  oslo_messaging:
-    auth:
-      admin:
-        username: rabbitmq
-        password: password
-      manila:
-        username: manila
-        password: password
-    statefulset:
-      replicas: 2
-      name: rabbitmq-rabbitmq
-    hosts:
-      default: rabbitmq
-    host_fqdn_override:
-      default: null
-    path: /manila
-    scheme: rabbit
-    port:
-      amqp:
-        default: 5672
-      http:
-        default: 15672
-# network conf , creates endpoints
-  network:
-    name: neutron
-    hosts:
-      default: neutron-server
-      public: neutron
-    host_fqdn_override:
-      default: null
-    path:
-      default: null
-    scheme:
-      default: 'http'
-    port:
-      api:
-        default: 9696
-        public: 80
-
-
-
-# pod configuration
 pod:
-  user:
-    manila:
-      uid: 42424
+  security_context:
+    volume_usage_audit:
+      pod:
+        runAsUser: 42424
+      container:
+        cinder_volume_usage_audit:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+    cinder_api:
+      pod:
+        runAsUser: 42424
+      container:
+        ceph_coordination_volume_perms:
+          runAsUser: 0
+          readOnlyRootFilesystem: true
+        cinder_api:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+    cinder_backup:
+      pod:
+        runAsUser: 42424
+      container:
+        ceph_backup_keyring_placement:
+          runAsUser: 0
+          readOnlyRootFilesystem: true
+        ceph_keyring_placement:
+          runAsUser: 0
+          readOnlyRootFilesystem: true
+        ceph_backup_volume_perms:
+          runAsUser: 0
+          readOnlyRootFilesystem: true
+        ceph_coordination_volume_perms:
+          runAsUser: 0
+          readOnlyRootFilesystem: true
+        cinder_backup:
+          capabilities:
+            add:
+              - SYS_ADMIN
+          readOnlyRootFilesystem: true
+          runAsUser: 0
+    cinder_scheduler:
+      pod:
+        runAsUser: 42424
+      container:
+        ceph_coordination_volume_perms:
+          runAsUser: 0
+          readOnlyRootFilesystem: true
+        cinder_scheduler:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+    cinder_volume:
+      pod:
+        runAsUser: 42424
+      container:
+        ceph_keyring_placement:
+          runAsUser: 0
+          readOnlyRootFilesystem: true
+        ceph_coordination_volume_perms:
+          runAsUser: 0
+          readOnlyRootFilesystem: true
+        init_cinder_conf:
+          runAsUser: 0
+          readOnlyRootFilesystem: true
+        cinder_volume:
+          capabilities:
+            add:
+              - SYS_ADMIN
+          readOnlyRootFilesystem: true
+    storage_init:
+      pod:
+        runAsUser: 42424
+      container:
+        ceph_keyring_placement:
+          runAsUser: 0
+          readOnlyRootFilesystem: true
+        cinder_backup_storage_init:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+    clean:
+      pod:
+        runAsUser: 42424
+      container:
+        cinder_volume_rbd_secret_clean:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+    create_internal_tenant:
+      pod:
+        runAsUser: 42424
+      container:
+        create_internal_tenant:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
   affinity:
     anti:
       type:
         default: preferredDuringSchedulingIgnoredDuringExecution
       topologyKey:
         default: kubernetes.io/hostname
+      weight:
+        default: 10
+  tolerations:
+    cinder:
+      enabled: false
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        operator: Exists
+        effect: NoSchedule
+  useHostNetwork:
+    volume: false
+    backup: false
   mounts:
-    manila_api:
+    cinder_api:
       init_container: null
-      manila_api:
+      cinder_api:
         volumeMounts:
         volumes:
-    manila_worker:
+    cinder_scheduler:
       init_container: null
-      manila_worker:
+      cinder_scheduler:
         volumeMounts:
         volumes:
-    manila_housekeeping:
+    cinder_volume:
       init_container: null
-      manila_housekeeping:
+      cinder_volume:
         volumeMounts:
         volumes:
-    manila_health_manager:
+    cinder_volume_usage_audit:
       init_container: null
-      manila_health_manager:
+      cinder_volume_usage_audit:
         volumeMounts:
         volumes:
-    manila_bootstrap:
+    cinder_backup:
       init_container: null
-      manila_bootstrap:
+      cinder_backup:
+        volumeMounts:
+        volumes:
+    cinder_tests:
+      init_container: null
+      cinder_tests:
+        volumeMounts:
+        volumes:
+    cinder_db_sync:
+      cinder_db_sync:
         volumeMounts:
         volumes:
   replicas:
     api: 1
-    worker: 1
-    housekeeping: 1
+    volume: 1
+    scheduler: 1
+    backup: 1
   lifecycle:
     upgrades:
       deployments:
@@ -554,12 +234,6 @@ pod:
         rolling_update:
           max_unavailable: 1
           max_surge: 3
-      daemonsets:
-        pod_replacement_strategy: RollingUpdate
-        health_manager:
-          enabled: true
-          min_ready_seconds: 0
-          max_unavailable: 1
     disruption_budget:
       api:
         min_available: 0
@@ -575,21 +249,14 @@ pod:
       limits:
         memory: "1024Mi"
         cpu: "2000m"
-    worker:
+    scheduler:
       requests:
         memory: "128Mi"
         cpu: "100m"
       limits:
         memory: "1024Mi"
         cpu: "2000m"
-    housekeeping:
-      requests:
-        memory: "128Mi"
-        cpu: "100m"
-      limits:
-        memory: "1024Mi"
-        cpu: "2000m"
-    health_manager:
+    volume:
       requests:
         memory: "128Mi"
         cpu: "100m"
@@ -597,6 +264,13 @@ pod:
         memory: "1024Mi"
         cpu: "2000m"
     jobs:
+      volume_usage_audit:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
       bootstrap:
         requests:
           memory: "128Mi"
@@ -626,6 +300,27 @@ pod:
           memory: "1024Mi"
           cpu: "2000m"
       db_drop:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      clean:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      backup_storage_init:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      storage_init:
         requests:
           memory: "128Mi"
           cpu: "100m"
@@ -668,39 +363,1114 @@ pod:
           memory: "1024Mi"
           cpu: "2000m"
 
-# network_policy:
-#   manila:
-#     ingress:
-#       - {}
+bootstrap:
+  enabled: true
+  ks_user: admin
+  bootstrap_conf_backends: true
+  volume_types:
+    name:
+      group:
+      volume_backend_name:
+      # access_type: "private"
+      # If you set up access_type to private, only the creator
+      # will get an access to the volume type. You can extend
+      # the access to your volume type by providing a list of
+      # domain names and projects as shown below
+      # grant_access:
+      #   <domain name 1>:
+      #     - <project name 1>
+      #     - <project name 2>
+      #     <...>
+      #   <domain name 2>:
+      #     - <project name 1>
+      #     <...>
+  # Volume QoS if any. By default, None QoS is created.
+  # Below values with a number at the end need to be replaced
+  # with real names.
+  # volume_qos:
+  #   qos_name_1:
+  #     consumer: front-end
+  #     properties:
+  #       key_1: value_1
+  #       key_2: value_2
+  #     associates:
+  #       - volume_type_1
+  #       - volume_type_2
+
+network:
+  api:
+    ingress:
+      public: true
+      classes:
+        namespace: "nginx"
+        cluster: "nginx-cluster"
+      annotations:
+        nginx.ingress.kubernetes.io/rewrite-target: /
+    external_policy_local: false
+    node_port:
+      enabled: false
+      port: 30877
+
+ceph_client:
+  # enable this when there is a need to create second ceph backed pointing
+  # to external ceph cluster
+  enable_external_ceph_backend: false
+  # change this in case of first ceph backend name pointing to internal ceph cluster
+  # is diffrent
+  internal_ceph_backend: rbd1
+  configmap: ceph-etc
+  user_secret_name: pvc-ceph-client-key
+  external_ceph:
+    # Only when enable_external_ceph_backend is true and rbd_user is NOT null
+    # secret for external ceph keyring will be created.
+    rbd_user: null
+    rbd_user_keyring: null
+    configmap: null
+    conf:
+      global: null
+      osd: null
+conf:
+  paste:
+    composite:osapi_volume:
+      use: call:cinder.api:root_app_factory
+      /: apiversions
+      /v1: openstack_volume_api_v1
+      /v2: openstack_volume_api_v2
+      /v3: openstack_volume_api_v3
+    composite:openstack_volume_api_v1:
+      use: call:cinder.api.middleware.auth:pipeline_factory
+      noauth: cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler noauth apiv1
+      keystone: cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler authtoken audit keystonecontext apiv1
+      keystone_nolimit: cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler authtoken audit keystonecontext apiv1
+    composite:openstack_volume_api_v2:
+      use: call:cinder.api.middleware.auth:pipeline_factory
+      noauth: cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler noauth apiv2
+      keystone: cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler authtoken audit keystonecontext apiv2
+      keystone_nolimit: cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler authtoken audit keystonecontext apiv2
+    composite:openstack_volume_api_v3:
+      use: call:cinder.api.middleware.auth:pipeline_factory
+      noauth: cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler noauth apiv3
+      keystone: cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler authtoken audit keystonecontext apiv3
+      keystone_nolimit: cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler authtoken audit keystonecontext apiv3
+    filter:request_id:
+      paste.filter_factory: oslo_middleware.request_id:RequestId.factory
+    filter:http_proxy_to_wsgi:
+      paste.filter_factory: oslo_middleware.http_proxy_to_wsgi:HTTPProxyToWSGI.factory
+    filter:cors:
+      paste.filter_factory: oslo_middleware.cors:filter_factory
+      oslo_config_project: cinder
+    filter:faultwrap:
+      paste.filter_factory: cinder.api.middleware.fault:FaultWrapper.factory
+    filter:osprofiler:
+      paste.filter_factory: osprofiler.web:WsgiMiddleware.factory
+    filter:noauth:
+      paste.filter_factory: cinder.api.middleware.auth:NoAuthMiddleware.factory
+    filter:sizelimit:
+      paste.filter_factory: oslo_middleware.sizelimit:RequestBodySizeLimiter.factory
+    app:apiv1:
+      paste.app_factory: cinder.api.v1.router:APIRouter.factory
+    app:apiv2:
+      paste.app_factory: cinder.api.v2.router:APIRouter.factory
+    app:apiv3:
+      paste.app_factory: cinder.api.v3.router:APIRouter.factory
+    pipeline:apiversions:
+      pipeline: cors http_proxy_to_wsgi faultwrap osvolumeversionapp
+    app:osvolumeversionapp:
+      paste.app_factory: cinder.api.versions:Versions.factory
+    filter:keystonecontext:
+      paste.filter_factory: cinder.api.middleware.auth:CinderKeystoneContext.factory
+    filter:authtoken:
+      paste.filter_factory: keystonemiddleware.auth_token:filter_factory
+    filter:audit:
+      paste.filter_factory: keystonemiddleware.audit:filter_factory
+      audit_map_file: /etc/cinder/api_audit_map.conf
+  policy: {}
+  api_audit_map:
+    DEFAULT:
+      target_endpoint_type: None
+    custom_actions:
+      associate: update/associate
+      disassociate: update/disassociate_all
+      disassociate_all: update/disassociate_all
+      associations: read/list/associations
+    path_keywords:
+      defaults: None
+      detail: None
+      limits: None
+      os-quota-specs: project
+      qos-specs: qos-spec
+      snapshots: snapshot
+      types: type
+      volumes: volume
+    service_endpoints:
+      volume: service/storage/block
+      volumev2: service/storage/block
+      volumev3: service/storage/block
+  cinder_sudoers: |
+    # This sudoers file supports rootwrap for both Kolla and LOCI Images.
+    Defaults !requiretty
+    Defaults secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin:/var/lib/openstack/bin:/var/lib/kolla/venv/bin"
+    cinder ALL = (root) NOPASSWD: /var/lib/kolla/venv/bin/cinder-rootwrap /etc/cinder/rootwrap.conf *, /var/lib/openstack/bin/cinder-rootwrap /etc/cinder/rootwrap.conf *
+  rootwrap: |
+    # Configuration for cinder-rootwrap
+    # This file should be owned by (and only-writeable by) the root user
+
+    [DEFAULT]
+    # List of directories to load filter definitions from (separated by ',').
+    # These directories MUST all be only writeable by root !
+    filters_path=/etc/cinder/rootwrap.d
+
+    # List of directories to search executables in, in case filters do not
+    # explicitely specify a full path (separated by ',')
+    # If not specified, defaults to system PATH environment variable.
+    # These directories MUST all be only writeable by root !
+    exec_dirs=/sbin,/usr/sbin,/bin,/usr/bin,/usr/local/bin,/usr/local/sbin,/var/lib/openstack/bin,/var/lib/kolla/venv/bin
+
+    # Enable logging to syslog
+    # Default value is False
+    use_syslog=False
+
+    # Which syslog facility to use.
+    # Valid values include auth, authpriv, syslog, local0, local1...
+    # Default value is 'syslog'
+    syslog_log_facility=syslog
+
+    # Which messages to log.
+    # INFO means log all usage
+    # ERROR means only log unsuccessful attempts
+    syslog_log_level=ERROR
+  rootwrap_filters:
+    volume:
+      pods:
+        - volume
+      content: |
+        # cinder-rootwrap command filters for volume nodes
+        # This file should be owned by (and only-writeable by) the root user
+
+        [Filters]
+        # cinder/volume/iscsi.py: iscsi_helper '--op' ...
+        ietadm: CommandFilter, ietadm, root
+        tgtadm: CommandFilter, tgtadm, root
+        iscsictl: CommandFilter, iscsictl, root
+        tgt-admin: CommandFilter, tgt-admin, root
+        cinder-rtstool: CommandFilter, cinder-rtstool, root
+        scstadmin: CommandFilter, scstadmin, root
+
+        # LVM related show commands
+        pvs: EnvFilter, env, root, LC_ALL=C, pvs
+        vgs: EnvFilter, env, root, LC_ALL=C, vgs
+        lvs: EnvFilter, env, root, LC_ALL=C, lvs
+        lvdisplay: EnvFilter, env, root, LC_ALL=C, lvdisplay
+
+        # -LVM related show commands with suppress fd warnings
+        pvs_fdwarn: EnvFilter, env, root, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, pvs
+        vgs_fdwarn: EnvFilter, env, root, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, vgs
+        lvs_fdwarn: EnvFilter, env, root, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, lvs
+        lvdisplay_fdwarn: EnvFilter, env, root, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, lvdisplay
 
 
+        # -LVM related show commands conf var
+        pvs_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, pvs
+        vgs_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, vgs
+        lvs_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, lvs
+        lvdisplay_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, lvdisplay
 
-# handles  manifests creation
+        # -LVM conf var with suppress fd_warnings
+        pvs_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, pvs
+        vgs_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, vgs
+        lvs_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, lvs
+        lvdisplay_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, lvdisplay
+
+        # os-brick library commands
+        # os_brick.privileged.run_as_root oslo.privsep context
+        # This line ties the superuser privs with the config files, context name,
+        # and (implicitly) the actual python code invoked.
+        privsep-rootwrap: RegExpFilter, privsep-helper, root, privsep-helper, --config-file, /etc/(?!\.\.).*, --privsep_context, os_brick.privileged.default, --privsep_sock_path, /tmp/.*
+        # The following and any cinder/brick/* entries should all be obsoleted
+        # by privsep, and may be removed once the os-brick version requirement
+        # is updated appropriately.
+        scsi_id: CommandFilter, /lib/udev/scsi_id, root
+        drbdadm: CommandFilter, drbdadm, root
+
+        # cinder/brick/local_dev/lvm.py: 'vgcreate', vg_name, pv_list
+        vgcreate: CommandFilter, vgcreate, root
+
+        # cinder/brick/local_dev/lvm.py: 'lvcreate', '-L', sizestr, '-n', volume_name,..
+        # cinder/brick/local_dev/lvm.py: 'lvcreate', '-L', ...
+        lvcreate: EnvFilter, env, root, LC_ALL=C, lvcreate
+        lvcreate_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, lvcreate
+        lvcreate_fdwarn: EnvFilter, env, root, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, lvcreate
+        lvcreate_lvmconf_fdwarn: EnvFilter, env, root, LVM_SYSTEM_DIR=, LVM_SUPPRESS_FD_WARNINGS=, LC_ALL=C, lvcreate
+
+        # cinder/volume/driver.py: 'dd', 'if=%s' % srcstr, 'of=%s' % deststr,...
+        dd: CommandFilter, dd, root
+
+        # cinder/volume/driver.py: 'lvremove', '-f', %s/%s % ...
+        lvremove: CommandFilter, lvremove, root
+
+        # cinder/volume/driver.py: 'lvrename', '%(vg)s', '%(orig)s' '(new)s'...
+        lvrename: CommandFilter, lvrename, root
+
+        # cinder/brick/local_dev/lvm.py: 'lvextend', '-L' '%(new_size)s', '%(lv_name)s' ...
+        # cinder/brick/local_dev/lvm.py: 'lvextend', '-L' '%(new_size)s', '%(thin_pool)s' ...
+        lvextend: EnvFilter, env, root, LC_ALL=C, lvextend
+        lvextend_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, lvextend
+        lvextend_fdwarn: EnvFilter, env, root, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, lvextend
+        lvextend_lvmconf_fdwarn: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, lvextend
+
+        # cinder/brick/local_dev/lvm.py: 'lvchange -a y -K <lv>'
+        lvchange: CommandFilter, lvchange, root
+
+        # cinder/brick/local_dev/lvm.py: 'lvconvert', '--merge', snapshot_name
+        lvconvert: CommandFilter, lvconvert, root
+
+        # cinder/volume/driver.py: 'iscsiadm', '-m', 'discovery', '-t',...
+        # cinder/volume/driver.py: 'iscsiadm', '-m', 'node', '-T', ...
+        iscsiadm: CommandFilter, iscsiadm, root
+
+        # cinder/volume/utils.py: utils.temporary_chown(path, 0)
+        chown: CommandFilter, chown, root
+
+        # cinder/volume/utils.py: copy_volume(..., ionice='...')
+        ionice_1: ChainingRegExpFilter, ionice, root, ionice, -c[0-3], -n[0-7]
+        ionice_2: ChainingRegExpFilter, ionice, root, ionice, -c[0-3]
+
+        # cinder/volume/utils.py: setup_blkio_cgroup()
+        cgcreate: CommandFilter, cgcreate, root
+        cgset: CommandFilter, cgset, root
+        cgexec: ChainingRegExpFilter, cgexec, root, cgexec, -g, blkio:\S+
+
+        # cinder/volume/driver.py
+        dmsetup: CommandFilter, dmsetup, root
+        ln: CommandFilter, ln, root
+
+        # cinder/image/image_utils.py
+        qemu-img: EnvFilter, env, root, LC_ALL=C, qemu-img
+        qemu-img_convert: CommandFilter, qemu-img, root
+
+        udevadm: CommandFilter, udevadm, root
+
+        # cinder/volume/driver.py: utils.read_file_as_root()
+        cat: CommandFilter, cat, root
+
+        # cinder/volume/nfs.py
+        stat: CommandFilter, stat, root
+        mount: CommandFilter, mount, root
+        df: CommandFilter, df, root
+        du: CommandFilter, du, root
+        truncate: CommandFilter, truncate, root
+        chmod: CommandFilter, chmod, root
+        rm: CommandFilter, rm, root
+
+        # cinder/volume/drivers/remotefs.py
+        mkdir: CommandFilter, mkdir, root
+
+        # cinder/volume/drivers/netapp/nfs.py:
+        netapp_nfs_find: RegExpFilter, find, root, find, ^[/]*([^/\0]+(/+)?)*$, -maxdepth, \d+, -name, img-cache.*, -amin, \+\d+
+
+        # cinder/volume/drivers/glusterfs.py
+        chgrp: CommandFilter, chgrp, root
+        umount: CommandFilter, umount, root
+        fallocate: CommandFilter, fallocate, root
+
+        # cinder/volumes/drivers/hds/hds.py:
+        hus-cmd: CommandFilter, hus-cmd, root
+        hus-cmd_local: CommandFilter, /usr/local/bin/hus-cmd, root
+
+        # cinder/volumes/drivers/hds/hnas_backend.py
+        ssc: CommandFilter, ssc, root
+
+        # cinder/brick/initiator/connector.py:
+        ls: CommandFilter, ls, root
+        tee: CommandFilter, tee, root
+        multipath: CommandFilter, multipath, root
+        multipathd: CommandFilter, multipathd, root
+        systool: CommandFilter, systool, root
+
+        # cinder/volume/drivers/block_device.py
+        blockdev: CommandFilter, blockdev, root
+
+        # cinder/volume/drivers/ibm/gpfs.py
+        # cinder/volume/drivers/tintri.py
+        mv: CommandFilter, mv, root
+
+        # cinder/volume/drivers/ibm/gpfs.py
+        cp: CommandFilter, cp, root
+        mmgetstate: CommandFilter, /usr/lpp/mmfs/bin/mmgetstate, root
+        mmclone: CommandFilter, /usr/lpp/mmfs/bin/mmclone, root
+        mmlsattr: CommandFilter, /usr/lpp/mmfs/bin/mmlsattr, root
+        mmchattr: CommandFilter, /usr/lpp/mmfs/bin/mmchattr, root
+        mmlsconfig: CommandFilter, /usr/lpp/mmfs/bin/mmlsconfig, root
+        mmlsfs: CommandFilter, /usr/lpp/mmfs/bin/mmlsfs, root
+        mmlspool: CommandFilter, /usr/lpp/mmfs/bin/mmlspool, root
+        mkfs: CommandFilter, mkfs, root
+        mmcrfileset: CommandFilter, /usr/lpp/mmfs/bin/mmcrfileset, root
+        mmlinkfileset: CommandFilter, /usr/lpp/mmfs/bin/mmlinkfileset, root
+        mmunlinkfileset: CommandFilter, /usr/lpp/mmfs/bin/mmunlinkfileset, root
+        mmdelfileset: CommandFilter, /usr/lpp/mmfs/bin/mmdelfileset, root
+        mmcrsnapshot: CommandFilter, /usr/lpp/mmfs/bin/mmcrsnapshot, root
+        mmdelsnapshot: CommandFilter, /usr/lpp/mmfs/bin/mmdelsnapshot, root
+
+        # cinder/volume/drivers/ibm/gpfs.py
+        # cinder/volume/drivers/ibm/ibmnas.py
+        find_maxdepth_inum: RegExpFilter, find, root, find, ^[/]*([^/\0]+(/+)?)*$, -maxdepth, \d+, -ignore_readdir_race, -inum, \d+, -print0, -quit
+
+        # cinder/brick/initiator/connector.py:
+        aoe-revalidate: CommandFilter, aoe-revalidate, root
+        aoe-discover: CommandFilter, aoe-discover, root
+        aoe-flush: CommandFilter, aoe-flush, root
+
+        # cinder/brick/initiator/linuxscsi.py:
+        sg_scan: CommandFilter, sg_scan, root
+
+        #cinder/backup/services/tsm.py
+        dsmc:CommandFilter,/usr/bin/dsmc,root
+
+        # cinder/volume/drivers/hitachi/hbsd_horcm.py
+        raidqry: CommandFilter, raidqry, root
+        raidcom: CommandFilter, raidcom, root
+        pairsplit: CommandFilter, pairsplit, root
+        paircreate: CommandFilter, paircreate, root
+        pairdisplay: CommandFilter, pairdisplay, root
+        pairevtwait: CommandFilter, pairevtwait, root
+        horcmstart.sh: CommandFilter, horcmstart.sh, root
+        horcmshutdown.sh: CommandFilter, horcmshutdown.sh, root
+        horcmgr: EnvFilter, env, root, HORCMINST=, /etc/horcmgr
+
+        # cinder/volume/drivers/hitachi/hbsd_snm2.py
+        auman: EnvFilter, env, root, LANG=, STONAVM_HOME=, LD_LIBRARY_PATH=, STONAVM_RSP_PASS=, STONAVM_ACT=, /usr/stonavm/auman
+        auluref: EnvFilter, env, root, LANG=, STONAVM_HOME=, LD_LIBRARY_PATH=, STONAVM_RSP_PASS=, STONAVM_ACT=, /usr/stonavm/auluref
+        auhgdef: EnvFilter, env, root, LANG=, STONAVM_HOME=, LD_LIBRARY_PATH=, STONAVM_RSP_PASS=, STONAVM_ACT=, /usr/stonavm/auhgdef
+        aufibre1: EnvFilter, env, root, LANG=, STONAVM_HOME=, LD_LIBRARY_PATH=, STONAVM_RSP_PASS=, STONAVM_ACT=, /usr/stonavm/aufibre1
+        auhgwwn: EnvFilter, env, root, LANG=, STONAVM_HOME=, LD_LIBRARY_PATH=, STONAVM_RSP_PASS=, STONAVM_ACT=, /usr/stonavm/auhgwwn
+        auhgmap: EnvFilter, env, root, LANG=, STONAVM_HOME=, LD_LIBRARY_PATH=, STONAVM_RSP_PASS=, STONAVM_ACT=, /usr/stonavm/auhgmap
+        autargetmap: EnvFilter, env, root, LANG=, STONAVM_HOME=, LD_LIBRARY_PATH=, STONAVM_RSP_PASS=, STONAVM_ACT=, /usr/stonavm/autargetmap
+        aureplicationvvol: EnvFilter, env, root, LANG=, STONAVM_HOME=, LD_LIBRARY_PATH=, STONAVM_RSP_PASS=, STONAVM_ACT=, /usr/stonavm/aureplicationvvol
+        auluadd: EnvFilter, env, root, LANG=, STONAVM_HOME=, LD_LIBRARY_PATH=, STONAVM_RSP_PASS=, STONAVM_ACT=, /usr/stonavm/auluadd
+        auludel: EnvFilter, env, root, LANG=, STONAVM_HOME=, LD_LIBRARY_PATH=, STONAVM_RSP_PASS=, STONAVM_ACT=, /usr/stonavm/auludel
+        auluchgsize: EnvFilter, env, root, LANG=, STONAVM_HOME=, LD_LIBRARY_PATH=, STONAVM_RSP_PASS=, STONAVM_ACT=, /usr/stonavm/auluchgsize
+        auchapuser: EnvFilter, env, root, LANG=, STONAVM_HOME=, LD_LIBRARY_PATH=, STONAVM_RSP_PASS=, STONAVM_ACT=, /usr/stonavm/auchapuser
+        autargetdef: EnvFilter, env, root, LANG=, STONAVM_HOME=, LD_LIBRARY_PATH=, STONAVM_RSP_PASS=, STONAVM_ACT=, /usr/stonavm/autargetdef
+        autargetopt: EnvFilter, env, root, LANG=, STONAVM_HOME=, LD_LIBRARY_PATH=, STONAVM_RSP_PASS=, STONAVM_ACT=, /usr/stonavm/autargetopt
+        autargetini: EnvFilter, env, root, LANG=, STONAVM_HOME=, LD_LIBRARY_PATH=, STONAVM_RSP_PASS=, STONAVM_ACT=, /usr/stonavm/autargetini
+        auiscsi: EnvFilter, env, root, LANG=, STONAVM_HOME=, LD_LIBRARY_PATH=, STONAVM_RSP_PASS=, STONAVM_ACT=, /usr/stonavm/auiscsi
+        audppool: EnvFilter, env, root, LANG=, STONAVM_HOME=, LD_LIBRARY_PATH=, STONAVM_RSP_PASS=, STONAVM_ACT=, /usr/stonavm/audppool
+        aureplicationlocal: EnvFilter, env, root, LANG=, STONAVM_HOME=, LD_LIBRARY_PATH=, STONAVM_RSP_PASS=, STONAVM_ACT=, /usr/stonavm/aureplicationlocal
+        aureplicationmon: EnvFilter, env, root, LANG=, STONAVM_HOME=, LD_LIBRARY_PATH=, STONAVM_RSP_PASS=, STONAVM_ACT=, /usr/stonavm/aureplicationmon
+
+        # cinder/volume/drivers/hgst.py
+        vgc-cluster: CommandFilter, vgc-cluster, root
+
+        # cinder/volume/drivers/vzstorage.py
+        pstorage-mount: CommandFilter, pstorage-mount, root
+        pstorage: CommandFilter, pstorage, root
+        ploop: CommandFilter, ploop, root
+
+        # initiator/connector.py:
+        drv_cfg: CommandFilter, /opt/emc/scaleio/sdc/bin/drv_cfg, root, /opt/emc/scaleio/sdc/bin/drv_cfg, --query_guid
+  ceph:
+    override:
+    append:
+    monitors: []
+    admin_keyring: null
+    pools:
+      backup:
+        replication: 3
+        crush_rule: replicated_rule
+        chunk_size: 8
+        app_name: cinder-backup
+      cinder.volumes:
+        replication: 3
+        crush_rule: replicated_rule
+        chunk_size: 8
+        app_name: cinder-volume
+  cinder:
+    DEFAULT:
+      volume_usage_audit_period: hour
+      resource_query_filters_file: /etc/cinder/resource_filters.json
+      log_config_append: /etc/cinder/logging.conf
+      use_syslog: false
+      use_stderr: true
+      enable_v1_api: false
+      enable_v2_api: false
+      volume_name_template: "%s"
+      osapi_volume_workers: 1
+      glance_api_version: 2
+      os_region_name: RegionOne
+      host: cinder-volume-worker
+      # NOTE(portdirect): the bind port should not be defined, and is manipulated
+      # via the endpoints section.
+      osapi_volume_listen_port: null
+      enabled_backends: "rbd1"
+      default_volume_type: "rbd1"
+      # NOTE(portdirect): "cinder.backup.drivers.ceph"  and
+      # "cinder.backup.drivers.posix" also supported
+      # NOTE(rchurch): As of Stein, drivers by class name are required
+      # - cinder.backup.drivers.swift.SwiftBackupDriver
+      # - cinder.backup.drivers.ceph.CephBackupDriver
+      # - cinder.backup.drivers.posix.PosixBackupDriver
+      backup_driver: "cinder.backup.drivers.swift.SwiftBackupDriver"
+      # Backup: Ceph RBD options
+      backup_ceph_conf: "/etc/ceph/ceph.conf"
+      backup_ceph_user: cinderbackup
+      backup_ceph_pool: cinder.backups
+      # Backup: Posix options
+      backup_posix_path: /var/lib/cinder/backup
+      auth_strategy: keystone
+      # Internal tenant id
+      internal_project_name: internal_cinder
+      internal_user_name: internal_cinder
+    database:
+      max_retries: -1
+    keystone_authtoken:
+      auth_version: v3
+      auth_type: password
+      memcache_security_strategy: ENCRYPT
+    oslo_policy:
+      policy_file: /etc/cinder/policy.yaml
+    oslo_concurrency:
+      lock_path: "/var/lib/cinder/tmp"
+    oslo_messaging_notifications:
+      driver: messagingv2
+    oslo_middleware:
+      enable_proxy_headers_parsing: true
+    oslo_messaging_rabbit:
+      rabbit_ha_queues: true
+    coordination:
+      backend_url: file:///var/lib/cinder/coordination
+    service_user:
+      auth_type: password
+      send_service_user_token: false
+  logging:
+    loggers:
+      keys:
+        - root
+        - cinder
+    handlers:
+      keys:
+        - stdout
+        - stderr
+        - "null"
+    formatters:
+      keys:
+        - context
+        - default
+    logger_root:
+      level: WARNING
+      handlers: 'null'
+    logger_cinder:
+      level: INFO
+      handlers:
+        - stdout
+      qualname: cinder
+    logger_amqp:
+      level: WARNING
+      handlers: stderr
+      qualname: amqp
+    logger_amqplib:
+      level: WARNING
+      handlers: stderr
+      qualname: amqplib
+    logger_eventletwsgi:
+      level: WARNING
+      handlers: stderr
+      qualname: eventlet.wsgi.server
+    logger_sqlalchemy:
+      level: WARNING
+      handlers: stderr
+      qualname: sqlalchemy
+    logger_boto:
+      level: WARNING
+      handlers: stderr
+      qualname: boto
+    handler_null:
+      class: logging.NullHandler
+      formatter: default
+      args: ()
+    handler_stdout:
+      class: StreamHandler
+      args: (sys.stdout,)
+      formatter: context
+    handler_stderr:
+      class: StreamHandler
+      args: (sys.stderr,)
+      formatter: context
+    formatter_context:
+      class: oslo_log.formatters.ContextFormatter
+      datefmt: "%Y-%m-%d %H:%M:%S"
+    formatter_default:
+      format: "%(message)s"
+      datefmt: "%Y-%m-%d %H:%M:%S"
+  rabbitmq:
+    # NOTE(rk760n): adding rmq policy to mirror messages from notification queues and set expiration time for the ones
+    policies:
+      - vhost: "cinder"
+        name: "ha_ttl_cinder"
+        definition:
+          # mirror messges to other nodes in rmq cluster
+          ha-mode: "all"
+          ha-sync-mode: "automatic"
+          # 70s
+          message-ttl: 70000
+        priority: 0
+        apply-to: all
+        pattern: '^(?!(amq\.|reply_)).*'
+
+  backends:
+    # Those options will be written to backends.conf as-is.
+    rbd1:
+      volume_driver: cinder.volume.drivers.rbd.RBDDriver
+      volume_backend_name: rbd1
+      rbd_pool: cinder.volumes
+      rbd_ceph_conf: "/etc/ceph/ceph.conf"
+      rbd_flatten_volume_from_snapshot: false
+      report_discard_supported: true
+      rbd_max_clone_depth: 5
+      rbd_store_chunk_size: 4
+      rados_connect_timeout: -1
+      rbd_user: cinder
+      rbd_secret_uuid: 457eb676-33da-42ec-9a8c-9293d545c337
+      image_volume_cache_enabled: true
+      image_volume_cache_max_size_gb: 200
+      image_volume_cache_max_count: 50
+  rally_tests:
+    run_tempest: false
+    clean_up: |
+      VOLUMES=$(openstack volume list -f value | grep -e "^s_rally_" | awk '{ print $1 }')
+      if [ -n "$VOLUMES" ]; then
+        echo $VOLUMES | xargs openstack volume delete
+      fi
+    tests:
+      CinderVolumes.create_and_delete_volume:
+        - args:
+            size: 1
+          runner:
+            concurrency: 1
+            times: 1
+            type: constant
+          sla:
+            failure_rate:
+              max: 0
+        - args:
+            size:
+              max: 5
+              min: 1
+          runner:
+            concurrency: 1
+            times: 1
+            type: constant
+          sla:
+            failure_rate:
+              max: 0
+  resource_filters:
+    volume:
+      - name
+      - status
+      - metadata
+      - bootable
+      - migration_status
+      - availability_zone
+      - group_id
+    backup:
+      - name
+      - status
+      - volume_id
+    snapshot:
+      - name
+      - status
+      - volume_id
+      - metadata
+      - availability_zone
+    group: []
+    group_snapshot:
+      - status
+      - group_id
+    attachment:
+      - volume_id
+      - status
+      - instance_id
+      - attach_status
+    message:
+      - resource_uuid
+      - resource_type
+      - event_id
+      - request_id
+      - message_level
+    pool:
+      - name
+      - volume_type
+    volume_type: []
+  enable_iscsi: false
+backup:
+  external_ceph_rbd:
+    enabled: false
+    admin_keyring: null
+    configmap: null
+    conf:
+      global: null
+      osd: null
+  posix:
+    volume:
+      class_name: general
+      size: 10Gi
+
+dependencies:
+  dynamic:
+    common:
+      local_image_registry:
+        jobs:
+          - cinder-image-repo-sync
+        services:
+          - endpoint: node
+            service: local_image_registry
+  static:
+    api:
+      jobs:
+        - cinder-db-sync
+        - cinder-ks-user
+        - cinder-ks-endpoints
+        - cinder-rabbit-init
+        - cinder-storage-init
+      services:
+        - endpoint: internal
+          service: oslo_db
+        - endpoint: internal
+          service: identity
+    backup:
+      jobs:
+        - cinder-db-sync
+        - cinder-ks-user
+        - cinder-ks-endpoints
+        - cinder-rabbit-init
+        - cinder-storage-init
+        - cinder-backup-storage-init
+      services:
+        - endpoint: internal
+          service: identity
+        - endpoint: internal
+          service: volume
+    backup_storage_init:
+      jobs: null
+    bootstrap:
+      services:
+        - endpoint: internal
+          service: identity
+        - endpoint: internal
+          service: volume
+      pod:
+        - requireSameNode: false
+          labels:
+            application: cinder
+            component: volume
+    clean:
+      jobs: null
+    db_drop:
+      services:
+        - endpoint: internal
+          service: oslo_db
+    db_init:
+      services:
+        - endpoint: internal
+          service: oslo_db
+    db_sync:
+      jobs:
+        - cinder-db-init
+      services:
+        - endpoint: internal
+          service: oslo_db
+    ks_endpoints:
+      jobs:
+        - cinder-ks-service
+      services:
+        - endpoint: internal
+          service: identity
+    ks_service:
+      services:
+        - endpoint: internal
+          service: identity
+    ks_user:
+      services:
+        - endpoint: internal
+          service: identity
+    rabbit_init:
+      services:
+        - service: oslo_messaging
+          endpoint: internal
+    scheduler:
+      jobs:
+        - cinder-db-sync
+        - cinder-ks-user
+        - cinder-ks-endpoints
+        - cinder-rabbit-init
+        - cinder-storage-init
+      services:
+        - endpoint: internal
+          service: identity
+        - endpoint: internal
+          service: volume
+    storage_init:
+      jobs: null
+    tests:
+      services:
+        - endpoint: internal
+          service: identity
+        - endpoint: internal
+          service: volume
+    volume:
+      jobs:
+        - cinder-db-sync
+        - cinder-ks-user
+        - cinder-ks-endpoints
+        - cinder-rabbit-init
+        - cinder-storage-init
+      services:
+        - endpoint: internal
+          service: identity
+        - endpoint: internal
+          service: volume
+    volume_usage_audit:
+      jobs:
+        - cinder-db-sync
+        - cinder-ks-user
+        - cinder-ks-endpoints
+        - cinder-rabbit-init
+        - cinder-storage-init
+      services:
+        - endpoint: internal
+          service: identity
+        - endpoint: internal
+          service: volume
+    image_repo_sync:
+      services:
+        - endpoint: internal
+          service: local_image_registry
+    create_internal_tenant:
+      services:
+        - endpoint: internal
+          service: identity
+
+# Names of secrets used by bootstrap and environmental checks
+secrets:
+  identity:
+    admin: cinder-keystone-admin
+    cinder: cinder-keystone-user
+    test: cinder-keystone-test
+  oslo_db:
+    admin: cinder-db-admin
+    cinder: cinder-db-user
+  rbd:
+    backup: cinder-backup-rbd-keyring
+    volume: cinder-volume-rbd-keyring
+    volume_external: cinder-volume-external-rbd-keyring
+  oslo_messaging:
+    admin: cinder-rabbitmq-admin
+    cinder: cinder-rabbitmq-user
+  tls:
+    volume:
+      api:
+        public: cinder-tls-public
+        internal: cinder-tls-api
+  oci_image_registry:
+    cinder: cinder-oci-image-registry
+
+# We use a different layout of the endpoints here to account for versioning
+# this swaps the service name and type, and should be rolled out to other
+# services.
+endpoints:
+  cluster_domain_suffix: cluster.local
+  local_image_registry:
+    name: docker-registry
+    namespace: docker-registry
+    hosts:
+      default: localhost
+      internal: docker-registry
+      node: localhost
+    host_fqdn_override:
+      default: null
+    port:
+      registry:
+        node: 5000
+  oci_image_registry:
+    name: oci-image-registry
+    namespace: oci-image-registry
+    auth:
+      enabled: false
+      cinder:
+        username: cinder
+        password: password
+    hosts:
+      default: localhost
+    host_fqdn_override:
+      default: null
+    port:
+      registry:
+        default: null
+  identity:
+    name: keystone
+    auth:
+      admin:
+        region_name: RegionOne
+        username: admin
+        password: password
+        project_name: admin
+        user_domain_name: default
+        project_domain_name: default
+      cinder:
+        role: admin
+        region_name: RegionOne
+        username: cinder
+        password: password
+        project_name: service
+        user_domain_name: service
+        project_domain_name: service
+      test:
+        role: admin
+        region_name: RegionOne
+        username: cinder-test
+        password: password
+        project_name: test
+        user_domain_name: service
+        project_domain_name: service
+    hosts:
+      default: keystone
+      internal: keystone-api
+    host_fqdn_override:
+      default: null
+    path:
+      default: /v3
+    scheme:
+      default: http
+    port:
+      api:
+        default: 80
+        internal: 5000
+  image:
+    name: glance
+    hosts:
+      default: glance-api
+      public: glance
+    host_fqdn_override:
+      default: null
+    path:
+      default: null
+    scheme:
+      default: http
+    port:
+      api:
+        default: 9292
+        public: 80
+  volume:
+    name: cinder
+    hosts:
+      default: cinder-api
+      public: cinder
+    host_fqdn_override:
+      default: null
+      # NOTE(portdirect): this chart supports TLS for fqdn over-ridden public
+      # endpoints using the following format:
+      # public:
+      #   host: null
+      #   tls:
+      #     crt: null
+      #     key: null
+    path:
+      default: '/v1/%(tenant_id)s'
+    scheme:
+      default: 'http'
+    port:
+      api:
+        default: 8776
+        public: 80
+  volumev2:
+    name: cinderv2
+    hosts:
+      default: cinder-api
+      public: cinder
+    host_fqdn_override:
+      default: null
+      # NOTE(portdirect): this chart supports TLS for fqdn over-ridden public
+      # endpoints using the following format:
+      # public:
+      #   host: null
+      #   tls:
+      #     crt: null
+      #     key: null
+    path:
+      default: '/v2/%(tenant_id)s'
+    scheme:
+      default: 'http'
+    port:
+      api:
+        default: 8776
+        public: 80
+  volumev3:
+    name: cinderv3
+    hosts:
+      default: cinder-api
+      public: cinder
+    host_fqdn_override:
+      default: null
+      # NOTE(portdirect): this chart supports TLS for fqdn over-ridden public
+      # endpoints using the following format:
+      # public:
+      #   host: null
+      #   tls:
+      #     crt: null
+      #     key: null
+    path:
+      default: '/v3/%(tenant_id)s'
+    scheme:
+      default: 'http'
+    port:
+      api:
+        default: 8776
+        public: 80
+  oslo_db:
+    auth:
+      admin:
+        username: root
+        password: password
+        secret:
+          tls:
+            internal: mariadb-tls-direct
+      cinder:
+        username: cinder
+        password: password
+    hosts:
+      default: mariadb
+    host_fqdn_override:
+      default: null
+    path: /cinder
+    scheme: mysql+pymysql
+    port:
+      mysql:
+        default: 3306
+  oslo_messaging:
+    auth:
+      admin:
+        username: rabbitmq
+        password: password
+        secret:
+          tls:
+            internal: rabbitmq-tls-direct
+      cinder:
+        username: cinder
+        password: password
+    statefulset:
+      replicas: 2
+      name: rabbitmq-rabbitmq
+    hosts:
+      default: rabbitmq
+    host_fqdn_override:
+      default: null
+    path: /cinder
+    scheme: rabbit
+    port:
+      amqp:
+        default: 5672
+      http:
+        default: 15672
+  oslo_cache:
+    auth:
+      # NOTE(portdirect): this is used to define the value for keystone
+      # authtoken cache encryption key, if not set it will be populated
+      # automatically with a random value, but to take advantage of
+      # this feature all services should be set to use the same key,
+      # and memcache service.
+      memcache_secret_key: null
+    hosts:
+      default: memcached
+    host_fqdn_override:
+      default: null
+    port:
+      memcache:
+        default: 11211
+  fluentd:
+    namespace: null
+    name: fluentd
+    hosts:
+      default: fluentd-logging
+    host_fqdn_override:
+      default: null
+    path:
+      default: null
+    scheme: 'http'
+    port:
+      service:
+        default: 24224
+      metrics:
+        default: 24220
+  kube_dns:
+    namespace: kube-system
+    name: kubernetes-dns
+    hosts:
+      default: kube-dns
+    host_fqdn_override:
+      default: null
+    path:
+      default: null
+    scheme: http
+    port:
+      dns:
+        default: 53
+        protocol: UDP
+  ingress:
+    namespace: null
+    name: ingress
+    hosts:
+      default: ingress
+    port:
+      ingress:
+        default: 80
+
+network_policy:
+  cinder:
+    ingress:
+      - {}
+    egress:
+      - {}
+
+# NOTE(helm_hook): helm_hook might break for helm2 binary.
+# set helm3_hook: false when using the helm2 binary.
+helm3_hook: true
+
+tls:
+  identity: false
+  oslo_messaging: false
+  oslo_db: false
+
 manifests:
+  certificates: false
   configmap_bin: true
   configmap_etc: true
-  daemonset_health_manager: true
+  cron_volume_usage_audit: true
   deployment_api: true
-  deployment_worker: true
-  deployment_housekeeping: true
+  deployment_backup: true
+  deployment_scheduler: true
+  deployment_volume: true
   ingress_api: true
+  job_backup_storage_init: true
   job_bootstrap: true
+  job_clean: true
+  job_create_internal_tenant: true
   job_db_init: true
-  job_db_sync: true
-  job_db_drop: false
   job_image_repo_sync: true
   job_rabbit_init: true
+  job_db_sync: true
+  job_db_drop: false
   job_ks_endpoints: true
   job_ks_service: true
   job_ks_user: true
+  job_storage_init: true
   pdb_api: true
-  pod_rally_test: false
+  pod_rally_test: true
+  pvc_backup: true
   network_policy: false
-  secret_credential_keys: true
   secret_db: true
   secret_ingress_tls: true
   secret_keystone: true
   secret_rabbitmq: true
   secret_registry: true
-  service_ingress_api: true
   service_api: true
+  service_ingress_api: true
+...
