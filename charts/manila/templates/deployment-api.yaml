@@ -73,12 +73,12 @@ spec:
                   - stop
           ports:
             - name: o-api
-              containerPort: {{ tuple "load_balancer" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+              containerPort: {{ tuple "manila-api" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
           readinessProbe:
             httpGet:
-              scheme: {{ tuple "load_balancer" "internal" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_scheme_lookup" | upper }}
+              scheme: {{ tuple "manila-api" "internal" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_scheme_lookup" | upper }}
               path: /
-              port: {{ tuple "load_balancer" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+              port: {{ tuple "manila-api" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
           volumeMounts:
             - name: pod-etc-manila
               mountPath: /etc/manila
