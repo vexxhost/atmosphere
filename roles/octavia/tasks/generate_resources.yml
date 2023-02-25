@@ -53,9 +53,20 @@
     name: "octavia-health-manager-port-{{ hostvars[item]['inventory_hostname_short'] }}"
     device_owner: octavia:health-mgr
     network: "{{ _octavia_management_network.id }}"
+    fixed_ips: >-
+      {{
+        [
+          {
+            "ip_address": hostvars[item]['octavia_health_manager_ip']
+          }
+        ]
+        if hostvars[item]['octavia_health_manager_ip'] is defined else omit
+      }}
     security_groups:
       - "{{ _octavia_health_manager_sg.id }}"
   loop: "{{ groups['controllers'] }}"
+  loop_control:
+    index_var: _octavia_health_manager_port_index
 
 - name: Set binding for ports
   changed_when: false
@@ -126,4 +137,3 @@
     cloud: atmosphere
     image: "{{ octavia_amphora_image_name }}"
   register: _octavia_amphora_image
-

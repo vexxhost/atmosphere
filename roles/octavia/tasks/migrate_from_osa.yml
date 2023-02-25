@@ -12,6 +12,15 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+- name: Map existing health manager IP addresses to existing controllers
+  delegate_to: "{{ groups[controllers][_octavia_health_manager_ip] }}"
+  delegate_facts: true
+  ansible.builtin.set_fact:
+    octavia_health_manager_ip: "{{ item }}"
+  loop: "{{ groups['octavia-health-manager'] | map('extract', hostvars, ['container_networks', 'lbaas_address', 'address']) | list }}"
+  loop_control:
+    index_var: _octavia_health_manager_ip
+
 - name: Generate resources
   ansible.builtin.import_tasks:
     file: generate_resources.yml
