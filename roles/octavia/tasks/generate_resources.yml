@@ -68,6 +68,16 @@
   loop_control:
     index_var: _octavia_health_manager_port_index
 
+# NOTE(mnaser): Since we're running the playbook targeted at the first
+#               controller only, we need to manually discover the facts for the
+#               other controllers.
+- name: Discover facts for other controllers
+  delegate_to: "{{ item }}"
+  delegate_facts: true
+  ansible.builtin.setup:
+    gather_subset: network
+  loop: "{{ groups['controllers'] }}"
+
 - name: Set binding for ports
   changed_when: false
   ansible.builtin.shell: |
