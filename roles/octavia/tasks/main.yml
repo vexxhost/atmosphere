@@ -38,15 +38,15 @@
   openstack.cloud.network:
     cloud: atmosphere
     # Network settings
-    name: lb-mgmt-net
+    name: "{{ octavia_management_network_name }}"
   register: _octavia_management_network
 
 - name: Create management subnet
   openstack.cloud.subnet:
     cloud: atmosphere
     # Subnet settings
-    network_name: lb-mgmt-net
-    name: lb-mgmt-subnet
+    network_name: "{{ octavia_management_network_name }}"
+    name: "{{ octavia_management_subnet_name }}"
     cidr: "{{ octavia_management_subnet_cidr }}"
 
 - name: Create health manager security group
@@ -106,7 +106,7 @@
 - name: Create amphora security group
   openstack.cloud.security_group:
     cloud: atmosphere
-    name: lb-mgmt-sec-grp
+    name: "{{ octavia_amphora_security_group_name }}"
   register: _octavia_amphora_sg
 
 - name: Create amphora security group rules

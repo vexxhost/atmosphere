@@ -83,7 +83,12 @@
       tags:
         - heat
 
-    # TODO(mnaser): Octavia
+    - name: Migrate Octavia
+      ansible.builtin.import_role:
+        name: octavia
+        tasks_from: migrate_from_osa
+      tags:
+        - octavia
 
     - name: Migrate Magnum
       ansible.builtin.import_role:
