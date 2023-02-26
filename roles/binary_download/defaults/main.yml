@@ -13,29 +13,13 @@
 # under the License.
 
 binary_download_local_release_dir: /tmp/releases
-binary_download_cache_dir: /tmp/atmosphere_cache
 
 # If this is true, debug information will be displayed but
 # may contain some private data, so it is recommended to set it to false
 # in the production environment.
 binary_download_show_logs: false
 
-# Only useful when binary_download_run_once is false: Localy cached files are
-# uploaded to atmosphere nodes.
-binary_download_force_cache: false
-
-# If this is set to true will only download files once.
-binary_download_run_once: false
-
-# If this is set to true, uses the localhost for binary_download_run_once mode.
-# Otherwise, uses the first node in the controllers group to store files
-# in the binary_download_run_once mode.
-binary_download_localhost: false
-
 binary_download_validate_certs: true
-
-# Use the first controller if binary_download_localhost is not set
-binary_download_delegate: "{% if binary_download_localhost %}localhost{% else %}{{ groups['controllers'][0] }}{% endif %}"
 
 binary_download_arch: "{{ _binary_download_host_architecture | default('amd64') }}"
 
