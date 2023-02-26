@@ -12,17 +12,32 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-name: binary-download
+name: containerd
 
 on:
-  pull_request: {}
+  pull_request:
+    paths: &paths
+      - molecule/containerd/**
+      - roles/defaults/**
+      - roles/runc/**
+      - roles/binary_download/**
+      - roles/containerd/**
+      - roles/crictl/**
   push:
     branches:
       - main
+    paths: *paths
 
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        distro:
+          - ubuntu2004
+          - ubuntu2204
+          - rockylinux8
+          - rockylinux9
     steps:
       - name: Checkout project
         uses: actions/checkout@v3
@@ -39,4 +54,6 @@ jobs:
         run: poetry install --no-interaction --with dev
 
       - name: Run Molecule
-        run: poetry run molecule test -s binary-download
+        run: poetry run molecule test -s containerd
+        env:
+          MOLECULE_DISTRO: ${{ matrix.distro }}
