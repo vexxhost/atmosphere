@@ -13,11 +13,11 @@
 # under the License.
 
 _designate_helm_values:
-  conf:
-    pools: "{{ designate_pools }}"
   endpoints: "{{ openstack_helm_endpoints }}"
   images:
     tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('designate') }}"
+  conf:
+    pools: "{{ designate_pools | to_yaml }}"
   pod:
     replicas:
       api: 3

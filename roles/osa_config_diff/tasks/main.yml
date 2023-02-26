@@ -58,10 +58,20 @@
       - templates/configmap-etc.yaml
   register: _osa_config_diff_helm
 
-- name: Generate dictionary with all Atmosphere configuration files
+- name: Generate dictionary with all Atmosphere configuration files (INI)
   run_once: true
+  when: item.key.endswith('.conf')
   ansible.builtin.set_fact:
     _osa_config_diff_atmosphere: "{{ _osa_config_diff_atmosphere | combine({item.key: _file_contents | vexxhost.atmosphere.from_ini }) }}"
+  loop: "{{ osa_config_diff_config_files | dict2items }}"
+  vars:
+    _file_contents: "{{ (_osa_config_diff_helm.stdout | from_yaml).data[item.key] | b64decode }}"
+
+- name: Generate dictionary with all Atmosphere configuration files (YAML)
+  run_once: true
+  when: item.key.endswith('.yaml')
+  ansible.builtin.set_fact:
+    _osa_config_diff_atmosphere: "{{ _osa_config_diff_atmosphere | combine({item.key: _file_contents | from_yaml }) }}"
   loop: "{{ osa_config_diff_config_files | dict2items }}"
   vars:
     _file_contents: "{{ (_osa_config_diff_helm.stdout | from_yaml).data[item.key] | b64decode }}"
