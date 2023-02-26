@@ -53,9 +53,7 @@
           secretName: "{{ item }}-ca"
           duration: 87600h
           renewBefore: 720h
-          privateKey:
-            algorithm: "{{ octavia_tls_server_private_key_algorithm if item == 'octavia-server' else octavia_tls_client_private_key_algorithm }}"
-            size: "{{ octavia_tls_server_private_key_size if item == 'octavia-server' else octavia_tls_client_private_key_size }}"
+          privateKey: "{{ private_key | from_yaml }}"
           issuerRef:
             name: self-signed
             kind: ClusterIssuer
@@ -69,6 +67,12 @@
         spec:
           ca:
             secretName: "{{ item }}-ca"
+  vars:
+    # NOTE(mnaser): Unfortuantely, Ansible renders all variables as strings so
+    #               we do this workaround to make sure the size is an integer.
+    private_key: |
+      algorithm: "{{ octavia_tls_server_private_key_algorithm if item == 'octavia-server' else octavia_tls_client_private_key_algorithm }}"
+      size: {{ octavia_tls_server_private_key_size if item == 'octavia-server' else octavia_tls_client_private_key_size }}
   loop:
     - octavia-client
     - octavia-server
@@ -89,13 +93,17 @@
           - type: CombinedPEM
         duration: 87600h
         renewBefore: 720h
-        privateKey:
-          algorithm: "{{ octavia_tls_client_private_key_algorithm }}"
-          size: "{{ octavia_tls_client_private_key_size }}"
+        privateKey: "{{ private_key | from_yaml }}"
         issuerRef:
           name: octavia-client
           kind: Issuer
           group: cert-manager.io
+  vars:
+    # NOTE(mnaser): Unfortuantely, Ansible renders all variables as strings so
+    #               we do this workaround to make sure the size is an integer.
+    private_key: |
+      algorithm: "{{ octavia_tls_client_private_key_algorithm }}"
+      size: {{ octavia_tls_client_private_key_size }}
 
 - name: Create admin compute quotaset
   openstack.cloud.quota:
