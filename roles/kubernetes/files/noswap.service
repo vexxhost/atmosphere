@@ -1,0 +1,12 @@
+[Unit]
+Description=Disable swap
+Before=kubelet.service
+After=local-fs.target
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/sbin/swapoff -a
+
+[Install]
+WantedBy=default.target

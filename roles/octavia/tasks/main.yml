@@ -126,12 +126,17 @@
     kubeconfig: /etc/kubernetes/admin.conf
     values: "{{ _octavia_helm_values | combine(octavia_helm_values, recursive=True) }}"
 
-- name: Add implied role of load-balancer_member to member
+- name: Add implied roles
   run_once: true
   ansible.builtin.shell: |
     openstack implied role create \
-      --implied-role load-balancer_member \
-      member
+      --implied-role {{ item.implies }} \
+      {{ item.role }}
+  loop:
+    - role: member
+      implies: load-balancer_member
+    - role: reader
+      implies: load-balancer_observer
   environment:
     OS_CLOUD: atmosphere
   register: _octavia_implied_role_create

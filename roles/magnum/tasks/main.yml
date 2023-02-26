@@ -37,18 +37,101 @@
         name: "{{ magnum_helm_release_name }}"
         namespace: "{{ magnum_helm_release_namespace }}"
 
-- name: Deploy cluster api
-  kubernetes.core.k8s:
-    kubeconfig: /etc/kubernetes/admin.conf
-    state: present
-    template:
-      - path: 'templates/capi-bootstrap.yml.j2'
-      - path: 'templates/capi-control-plane.yml.j2'
-      - path: 'templates/capi-core.yml.j2'
-      - path: 'templates/capi-provider.yml.j2'
-      - path: 'templates/capi-rbac.yml.j2'
+- name: Install "clusterctl"
+  ansible.builtin.get_url:
+    url: "{{ magnum_clusterctl_url }}"
+    dest: /usr/local/bin/clusterctl
+    mode: 0755
+    owner: root
+    group: root
+
+- name: Create a configuration file
+  ansible.builtin.copy:
+    content: "{{ magnum_clusterctl_config | to_nice_yaml }}"
+    dest: "{{ magnum_clusterctl_config_file }}"
+    mode: 0644
+    owner: root
+    group: root
+
+- name: Initialize the management cluster
   run_once: true
   changed_when: false
+  ansible.builtin.command: |
+    clusterctl init \
+      --config {{ magnum_clusterctl_config_file }} \
+      --core cluster-api:v1.3.3 \
+      --bootstrap kubeadm:v1.3.3 \
+      --control-plane kubeadm:v1.3.3 \
+      --infrastructure openstack:v0.7.0
+  environment:
+    CLUSTER_TOPOLOGY: "true"
+    EXP_CLUSTER_RESOURCE_SET: "true"
+
+- name: Deploy Cluster API for Magnum RBAC
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      - apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: magnum-system
+
+      - apiVersion: rbac.authorization.k8s.io/v1
+        kind: Role
+        metadata:
+          name: magnum-cluster-api
+          namespace: magnum-system
+        rules:
+          - apiGroups: [""]
+            resources: [namespaces]
+            verbs: [patch]
+          - apiGroups: [""]
+            resources: [configmaps, secrets]
+            verbs: [create, update, patch, get, delete]
+          - apiGroups: [cluster.x-k8s.io]
+            resources: [clusters]
+            verbs: [create, update, patch, get, delete]
+          - apiGroups: [cluster.x-k8s.io]
+            resources: [clusterclasses]
+            verbs: [create, update, patch]
+          - apiGroups: [cluster.x-k8s.io]
+            resources: [machinedeployments]
+            verbs: [list, patch]
+          - apiGroups: [bootstrap.cluster.x-k8s.io]
+            resources: [kubeadmconfigtemplates]
+            verbs: [create, update, patch]
+          - apiGroups: [controlplane.cluster.x-k8s.io]
+            resources: [kubeadmcontrolplanes]
+            verbs: [list]
+          - apiGroups: [controlplane.cluster.x-k8s.io]
+            resources: [kubeadmcontrolplanetemplates]
+            verbs: [create, update, patch]
+          - apiGroups: [infrastructure.cluster.x-k8s.io]
+            resources: [openstackclustertemplates, openstackmachinetemplates]
+            verbs: [create, update, patch]
+          - apiGroups: [addons.cluster.x-k8s.io]
+            resources: [clusterresourcesets]
+            verbs: [create, update, patch, delete]
+          - apiGroups: [source.toolkit.fluxcd.io]
+            resources: [helmrepositories]
+            verbs: [create, update, patch, delete]
+          - apiGroups: [helm.toolkit.fluxcd.io]
+            resources: [helmreleases]
+            verbs: [create, update, patch, delete]
+
+      - apiVersion: rbac.authorization.k8s.io/v1
+        kind: RoleBinding
+        metadata:
+          name: magnum-cluster-api
+          namespace: magnum-system
+        roleRef:
+          apiGroup: rbac.authorization.k8s.io
+          kind: Role
+          name: magnum-cluster-api
+        subjects:
+          - kind: ServiceAccount
+            name: magnum-conductor
+            namespace: "{{ magnum_helm_release_namespace }}"
 
 - name: Deploy Helm chart
   run_once: true
@@ -70,6 +153,7 @@
     openstack_helm_ingress_annotations: "{{ magnum_ingress_annotations }}"
 
 - name: Deploy magnum registry
+  run_once: true
   kubernetes.core.k8s:
     state: present
     definition:

@@ -7,6 +7,7 @@ import (
 
 var FORKED_PROJECTS map[string]bool = map[string]bool{
 	"keystone": true,
+	"horizon":  true,
 }
 var EXTRAS map[string]string = map[string]string{}
 var PROFILES map[string]string = map[string]string{
@@ -34,11 +35,11 @@ var DIST_PACAKGES map[string]string = map[string]string{
 var PIP_PACKAGES map[string]string = map[string]string{
 	"cinder":        "purestorage",
 	"glance":        "glance_store[cinder]",
-	"horizon":       "git+https://github.com/openstack/designate-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/heat-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/ironic-ui.git@stable/${{ matrix.release }} git+https://github.com/openstack/magnum-ui.git@stable/${{ matrix.release }} git+https://github.com/openstack/neutron-vpnaas-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/octavia-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/senlin-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/monasca-ui.git@stable/${{ matrix.release }}",
+	"horizon":       "git+https://github.com/openstack/designate-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/heat-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/ironic-ui.git@stable/${{ matrix.release }} git+https://github.com/vexxhost/magnum-ui.git@stable/${{ matrix.release }} git+https://github.com/openstack/neutron-vpnaas-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/octavia-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/senlin-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/monasca-ui.git@stable/${{ matrix.release }}",
 	"ironic":        "python-dracclient sushy",
-	"magnum":        "magnum-cluster-api==0.3.1",
+	"magnum":        "magnum-cluster-api==0.3.2",
 	"monasca-agent": "libvirt-python python-glanceclient python-neutronclient python-novaclient py3nvml",
-	"neutron":       "neutron-vpnaas",
+	"neutron":       "git+https://github.com/openstack/neutron-lib.git@stable/${{ matrix.release }} neutron-vpnaas",
 	"placement":     "httplib2",
 }
 var PLATFORMS map[string]string = map[string]string{

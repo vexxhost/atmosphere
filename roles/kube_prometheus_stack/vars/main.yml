@@ -37,6 +37,13 @@ _kube_prometheus_stack_helm_values:
       image:
         repository: "{{ atmosphere_images['grafana_sidecar'] | vexxhost.atmosphere.docker_image('name') }}"
         tag: "{{ atmosphere_images['grafana_sidecar'] | vexxhost.atmosphere.docker_image('tag') }}"
+    additionalDataSources:
+      - name: Loki
+        type: loki
+        access: proxy
+        url: http://loki-gateway
+        version: 1
+        editable: false
     serviceMonitor:
       relabelings: *relabelings_instance_to_pod_name
     nodeSelector: *node_selector

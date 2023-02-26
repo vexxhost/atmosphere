@@ -1,5 +1,35 @@
 # `cinder`
 
+## Operations
+
+### Auditing orphan attachments
+
+It's possible that over time, there are some volumes that have attachments which
+are no longer valid.  This can happen when a server is being deleted via Nova
+but the request to delete the volume and the attachment fails.  You can get
+a list of volumes which have attachments that are no longer valid by running
+the following command:
+
+```bash
+for volume in $(openstack volume list --all-projects --status in-use -c ID -f value | tac); do
+  for server in $(openstack volume show $volume -f json| jq -r '.attachments[0].server_id'); do
+    name=$(openstack server show $server -c name -f value 2>&1)
+
+    if [ "$name" = "No server with a name or ID of '$server' exists." ]; then
+      echo openstack volume set --detached $volume
+      echo openstack volume delete $volume
+    else
+      echo "Volume $volume is attached to $name"
+    fi
+  done
+done
+```
+
+> **Note**
+>
+> You can optionally replace `--all-projects` by `--project <project_id>` in the
+> `openstack volume list` command to filter the volumes by project.
+
 ## Configuring backup storage
 
 Cinder supports a wide variety of storage backends to store volume backups. They

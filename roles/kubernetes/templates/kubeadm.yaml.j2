@@ -9,7 +9,7 @@ nodeRegistration:
     enforce-node-allocatable: ""
     node-ip: "{{ ansible_default_ipv4.address }}"
     container-runtime: "remote"
-    container-runtime-endpoint: "/run/containerd/containerd.sock"
+    container-runtime-endpoint: "{{ kubernetes_cri_socket }}"
 ---
 apiVersion: kubeadm.k8s.io/v1beta2
 kind: JoinConfiguration
@@ -19,7 +19,7 @@ nodeRegistration:
     enforce-node-allocatable: ""
     node-ip: "{{ ansible_default_ipv4.address }}"
     container-runtime: "remote"
-    container-runtime-endpoint: "/run/containerd/containerd.sock"
+    container-runtime-endpoint: "{{ kubernetes_cri_socket }}"
 {% if (_kubernetes_bootstrap_node is not defined) or (_kubernetes_bootstrap_node is defined and inventory_hostname != _kubernetes_bootstrap_node) %}
 discovery:
   bootstrapToken:

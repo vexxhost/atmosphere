@@ -12,6 +12,18 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+- name: Install Ubuntu Cloud Archive keyring
+  ansible.builtin.apt:
+    name: ubuntu-cloud-keyring
+    state: present
+
+- name: Add latest Ubuntu Cloud Archive repository
+  ansible.builtin.apt_repository:
+    filename: ubuntu-cloud-archive
+    repo: "deb http://ubuntu-cloud.archive.canonical.com/ubuntu {{ ansible_distribution_release }}-updates/yoga main"
+    state: present
+  when: ansible_distribution_release == "focal"
+
 - name: Install OpenStack client
   become: true
   ansible.builtin.apt:

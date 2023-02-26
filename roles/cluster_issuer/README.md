@@ -64,6 +64,21 @@ cluster_issuer_acme_route53_secret_access_key: <AWS_SECRET_ACCESS_KEY>
    You'll need to make sure that your AWS credentials have the correct
    permissions to update the Route53 zone.
 
+#### Infoblox
+
+If you're using Infoblox for the DNS of your domain, you can use the following
+configuration which depends on
+`cert-manager-webhook-infoblox-wapi`[https://github.com/luisico/cert-manager-webhook-infoblox-wapi].
+
+```yaml
+cluster_issuer_acme_email: user@example.com
+cluster_issuer_acme_solver: infoblox
+cluster_issuer_acme_infoblox_view: <VIEW>
+cluster_issuer_acme_infoblox_host: <HOST>
+cluster_issuer_acme_infoblox_username: <USERNAME>
+cluster_issuer_acme_infoblox_password: <PASSWORD>
+```
+
 ## Using pre-existing CA
 
 If you have an existing CA that you'd like to use with Atmosphere, you can

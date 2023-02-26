@@ -23,6 +23,7 @@ _horizon_helm_values:
     horizon:
       local_settings:
         config:
+          disallow_iframe_embed: "True"
           secure_proxy_ssl_header: "True"
           horizon_images_upload_mode: direct
           openstack_enable_password_retrieve: "True"
@@ -48,3 +49,7 @@ _horizon_helm_values:
   manifests:
     ingress_api: false
     service_ingress_api: false
+
+_horizon_ingress_annotations:
+  nginx.ingress.kubernetes.io/proxy-body-size: "5000m"
+  nginx.ingress.kubernetes.io/proxy-request-buffering: "off"

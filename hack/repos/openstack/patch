@@ -1,0 +1,28 @@
+#!/bin/bash
+
+# Clone the repository in a temporary directory
+mkdir -p /tmp/openstack-${1}-${2}
+gh repo clone vexxhost/${1} /tmp/openstack-${1}-${2}
+
+# Switch to the repository
+cd /tmp/openstack-${1}-${2}
+
+# Create a new branch
+git checkout -b opendev/${2}
+
+# Detect the most recent revision of the change
+LATEST_REV=$(git ls-remote https://opendev.org/openstack/${1} | grep -E "refs/changes/[[:digit:]]+/${2}/" | sort -t / -k 5 -g | tail -n1 | awk '{print $2}')
+
+# Cherry-pick the change
+git fetch https://review.opendev.org/openstack/${1} ${LATEST_REV} && git cherry-pick FETCH_HEAD
+
+# Push this branch to the remote
+git push -u origin opendev/${2}
+
+# Create a PR for this change
+gh repo set-default vexxhost/${1}
+gh pr create \
+  --title "$(git show -s --format=%s)" \
+  --body "$(git show -s --format=%B)" \
+  --base master \
+  --head opendev/${2}

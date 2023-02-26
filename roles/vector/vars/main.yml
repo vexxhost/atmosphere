@@ -1,0 +1,66 @@
+# Copyright (c) 2023 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+_vector_helm_values:
+  role: Agent
+  image:
+    repository: "{{ atmosphere_images['vector'] | vexxhost.atmosphere.docker_image('path') }}"
+    tag: "{{ atmosphere_images['vector'] | vexxhost.atmosphere.docker_image('tag') }}"
+  service:
+    enabled: false
+  customConfig:
+    data_dir: /vector-data-dir
+    sources:
+      journald:
+        type: journald
+      kubernetes_logs:
+        type: kubernetes_logs
+    sinks:
+      loki_kubernetes_logs:
+        type: loki
+        endpoint: http://loki-gateway
+        inputs: [kubernetes_logs]
+        encoding:
+          codec: text
+        labels:
+          source_type: '{% raw %}{{ print "{{ source_type }}" }}{% endraw %}'
+          node: '{% raw %}{{ print "{{ kubernetes.pod_node_name }}" }}{% endraw %}'
+          pod_namespace: '{% raw %}{{ print "{{ kubernetes.pod_namespace }}" }}{% endraw %}'
+          pod_uid: '{% raw %}{{ print "{{ kubernetes.pod_uid }}" }}{% endraw %}'
+          pod_name: '{% raw %}{{ print "{{ kubernetes.pod_name }}" }}{% endraw %}'
+          pod_ip: '{% raw %}{{ print "{{ kubernetes.pod_ip }}" }}{% endraw %}'
+          pod_label_*: '{% raw %}{{ print "{{ kubernetes.pod_labels }}" }}{% endraw %}'
+          container_name: '{% raw %}{{ print "{{ kubernetes.container_name }}" }}{% endraw %}'
+          container_image: '{% raw %}{{ print "{{ kubernetes.container_image }}" }}{% endraw %}'
+          stream: '{% raw %}{{ print "{{ kubernetes.stream }}" }}{% endraw %}'
+      loki_journald:
+        type: loki
+        endpoint: http://loki-gateway
+        inputs: [journald]
+        encoding:
+          codec: text
+        labels:
+          source_type: '{% raw %}{{ print "{{ source_type }}" }}{% endraw %}'
+          node: '{% raw %}{{ print "{{ host }}" }}{% endraw %}'
+          unit: '{% raw %}{{ print "{{ _SYSTEMD_UNIT }}" }}{% endraw %}'
+          stream: '{% raw %}{{ print "{{ _TRANSPORT }}" }}{% endraw %}'
+  extraVolumes:
+    - name: etc-machineid
+      hostPath:
+        path: /etc/machine-id
+        type: File
+  extraVolumeMounts:
+    - name: etc-machineid
+      mountPath: /etc/machine-id
+      readOnly: true

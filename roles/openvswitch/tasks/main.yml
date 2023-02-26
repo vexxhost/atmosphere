@@ -12,8 +12,24 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+# NOTE(mnaser): Open vSwitch will refuse to start if `DefaultLimitMEMLOCK` is
+#               not set to `infinity` in `/etc/systemd/system.conf`, so we run
+#               this task to ensure that it is set.
+- name: Verify that DefaultLimitMEMLOCK is configured
+  block:
+    - name: Get the current status of all systemd values
+      changed_when: false
+      ansible.builtin.command: systemctl show --property DefaultLimitMEMLOCK # noqa: command-instead-of-module
+      register: _openvswitch_memlock_value
+
+    - name: Assert that DefaultLimitMEMLOCK is set to infinity
+      ansible.builtin.assert:
+        that:
+          - "'DefaultLimitMEMLOCK=infinity' in _openvswitch_memlock_value.stdout"
+
 - name: Uninstall the legacy HelmRelease
   run_once: true
+  delegate_to: "{{ groups['controllers'][0] }}"
   block:
     - name: Suspend the existing HelmRelease
       kubernetes.core.k8s:
@@ -36,6 +52,7 @@
 
 - name: Deploy Helm chart
   run_once: true
+  delegate_to: "{{ groups['controllers'][0] }}"
   kubernetes.core.helm:
     name: "{{ openvswitch_helm_release_name }}"
     chart_ref: "{{ openvswitch_helm_chart_ref }}"

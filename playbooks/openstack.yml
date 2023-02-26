@@ -47,6 +47,14 @@
       tags:
         - kube-prometheus-stack
 
+    - role: loki
+      tags:
+        - loki
+
+    - role: vector
+      tags:
+        - vector
+
     - role: prometheus_ethtool_exporter
       tags:
         - prometheus-ethtool-exporter
@@ -102,10 +110,18 @@
       tags:
         - placement
 
+- name: Deploy Open vSwitch
+  hosts: controllers:computes
+  become: true
+  gather_facts: false
+  roles:
     - role: openvswitch
       tags:
         - openvswitch
 
+- hosts: controllers[0]
+  become: true
+  roles:
     - role: libvirt
       tags:
         - libvirt

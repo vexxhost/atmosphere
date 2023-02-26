@@ -42,6 +42,14 @@ KUBE_PROMETHEUS_STACK_VERSION=41.7.3
 curl -sL https://github.com/prometheus-community/helm-charts/releases/download/kube-prometheus-stack-${KUBE_PROMETHEUS_STACK_VERSION}/kube-prometheus-stack-${KUBE_PROMETHEUS_STACK_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
+LOKI_VERSION=4.6.1
+curl -sL https://github.com/grafana/helm-charts/releases/download/helm-loki-${LOKI_VERSION}/loki-${LOKI_VERSION}.tgz \
+  | tar -xz -C ${ATMOSPHERE}/charts
+
+VECTOR_VERSION=0.19.0
+curl -sL https://github.com/vectordotdev/helm-charts/releases/download/vector-${VECTOR_VERSION}/vector-${VECTOR_VERSION}.tgz \
+  | tar -xz -C ${ATMOSPHERE}/charts
+
 PROMETHEUS_PUSHGATEWAY_VERSION=1.16.0
 curl -sL https://github.com/prometheus-community/helm-charts/releases/download/prometheus-pushgateway-${PROMETHEUS_PUSHGATEWAY_VERSION}/prometheus-pushgateway-${PROMETHEUS_PUSHGATEWAY_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
@@ -52,6 +60,10 @@ curl -sL https://github.com/kubernetes/ingress-nginx/releases/download/helm-char
 
 CERT_MANAGER_VERSION=v1.7.1
 curl -sL https://charts.jetstack.io/charts/cert-manager-${CERT_MANAGER_VERSION}.tgz \
+  | tar -xz -C ${ATMOSPHERE}/charts
+
+CERT_MANAGER_WEBHOOK_INFOBLOX_WAPI_VERSION=1.5.2
+curl -sL https://github.com/luisico/cert-manager-webhook-infoblox-wapi/releases/download/helm-chart-${CERT_MANAGER_WEBHOOK_INFOBLOX_WAPI_VERSION}/cert-manager-webhook-infoblox-wapi-${CERT_MANAGER_WEBHOOK_INFOBLOX_WAPI_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
 RABBITMQ_CLUSTER_OPERATOR_VERSION=2.6.6
@@ -154,6 +166,11 @@ HORIZON_VERSION=0.3.2
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/horizon-${HORIZON_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~872524/revisions/1/patch?download' \
+  | base64 --decode \
+  | filterdiff -p1 -x 'releasenotes/*' \
+  | filterdiff -p2 -x 'Chart.yaml' \
+  | patch -p2 -d ${ATMOSPHERE}/charts/horizon
+curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~874354/revisions/1/patch?download' \
   | base64 --decode \
   | filterdiff -p1 -x 'releasenotes/*' \
   | filterdiff -p2 -x 'Chart.yaml' \

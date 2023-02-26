@@ -41,12 +41,18 @@
 - name: Install packages
   ansible.builtin.apt:
     name:
-      - "containerd"
       - "cri-tools={{ kubernetes_cri_tools_version }}-00"
       - "kubeadm={{ kubernetes_version }}-00"
       - "kubectl={{ kubernetes_version }}-00"
       - "kubelet={{ kubernetes_version }}-00"
     state: present
+
+- name: Create crictl config
+  ansible.builtin.template:
+    src: crictl.yaml.j2
+    dest: /etc/crictl.yaml
+    owner: root
+    mode: 0644
 
 - name: Enable kernel modules on-boot
   ansible.builtin.template:
@@ -88,6 +94,15 @@
   with_items:
     - swap
     - none
+
+- name: Create noswap systemd service config file
+  ansible.builtin.copy:
+    src: noswap.service
+    dest: /etc/systemd/system/noswap.service
+    owner: root
+    group: root
+    mode: 0644
+  notify: Enable noswap service
 
 - name: Configure short hostname
   ansible.builtin.hostname:
