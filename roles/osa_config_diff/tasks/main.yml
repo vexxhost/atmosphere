@@ -29,10 +29,20 @@
     container: "{{ groups[osa_config_diff_containers_group][0] }}"
     prefix: "{% if hostvars[container].get('is_metal') == False %}/var/lib/lxc/{{ container }}/rootfs{% endif %}"
 
-- name: Generate dictionary with all OpenStack Ansible configuration files
+- name: Generate dictionary with all OpenStack Ansible configuration files (INI)
   run_once: true
+  when: item.item.key.endswith('.conf')
   ansible.builtin.set_fact:
     _osa_config_diff_osa: "{{ _osa_config_diff_osa | combine({ item.item.key: item.content | b64decode | vexxhost.atmosphere.from_ini }) }}"
+  loop: "{{ _osa_config_diff_file.results }}"
+  loop_control:
+    label: "{{ item.item.key }}"
+
+- name: Generate dictionary with all OpenStack Ansible configuration files (YAML)
+  run_once: true
+  when: item.item.key.endswith('.yaml')
+  ansible.builtin.set_fact:
+    _osa_config_diff_osa: "{{ _osa_config_diff_osa | combine({ item.item.key: item.content | b64decode | from_yaml }) }}"
   loop: "{{ _osa_config_diff_file.results }}"
   loop_control:
     label: "{{ item.item.key }}"

@@ -74,7 +74,13 @@
         - neutron
 
     # TODO(mnaser): Senlin
-    # TODO(mnaser): Designate
+
+    - name: Migrate Designate
+      ansible.builtin.import_role:
+        name: designate
+        tasks_from: migrate_from_osa
+      tags:
+        - designate
 
     - name: Migrate Heat
       ansible.builtin.import_role:
