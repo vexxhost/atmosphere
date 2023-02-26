@@ -1,0 +1,40 @@
+# Copyright (c) 2023 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Verify
+  hosts: all
+  become: true
+
+  pre_tasks:
+    - name: Gather service facts
+      service_facts:
+
+  tasks:
+    - name: Make sure containerd service is running
+      ansible.builtin.assert:
+        that:
+          - ansible_facts.services['containerd.service'].state in ['active', 'running']
+
+    - name: Make sure containerd service is enabled
+      ansible.builtin.assert:
+        that:
+          - ansible_facts.services['containerd.service'].status == 'enabled'
+
+    - name: Pull image from registry
+      ansible.builtin.command: crictl pull docker.io/library/alpine:latest
+
+    - name: List images
+      ansible.builtin.command: crictl images
+      register: images
+      failed_when: not(images.stdout.find('alpine') != -1)
