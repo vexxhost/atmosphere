@@ -21,26 +21,26 @@
         state: directory
         owner: root
         group: root
-        mode: 0755
+        mode: "0755"
     - name: Upload configuration
       ansible.builtin.template:
         src: keepalived.conf.j2
         dest: /etc/keepalived/keepalived.conf
         owner: root
         group: root
-        mode: 0644
+        mode: "0644"
     - name: Upload health check
       ansible.builtin.template:
         src: check_apiserver.sh.j2
         dest: /etc/keepalived/check_apiserver.sh
-        mode: 0755
+        mode: "0755"
     - name: Upload Kubernetes manifest
       ansible.builtin.template:
         src: keepalived.yaml.j2
         dest: /etc/kubernetes/manifests/keepalived.yaml
         owner: root
         group: root
-        mode: 0644
+        mode: "0644"
 
 - name: Upload configuration for HAproxy
   when: kubernetes_keepalived_interface is defined
@@ -51,32 +51,32 @@
         state: directory
         owner: root
         group: root
-        mode: 0755
+        mode: "0755"
     - name: Upload configuration
       ansible.builtin.template:
         src: haproxy.cfg.j2
         dest: /etc/haproxy/haproxy.cfg
         owner: root
         group: root
-        mode: 0644
+        mode: "0644"
     - name: Upload Kubernetes manifest
       ansible.builtin.template:
         src: haproxy.yaml.j2
         dest: /etc/kubernetes/manifests/haproxy.yaml
         owner: root
         group: root
-        mode: 0644
+        mode: "0644"
 
 - name: Bootstrap cluster
   ansible.builtin.include_tasks: bootstrap-cluster.yml
 
-- name: create folder for admin configuration
+- name: Create folder for admin configuration
   ansible.builtin.file:
     path: /root/.kube
     state: directory
     owner: root
     group: root
-    mode: 0750
+    mode: "0750"
 
 - name: Creating a symlink for admin configuration file
   ansible.builtin.file:
@@ -85,18 +85,18 @@
     state: link
     force: true
 
-- name: add bash autocomplete for kubectl
+- name: Add bash autocomplete for kubectl
   ansible.builtin.lineinfile:
     path: /root/.bashrc
     line: 'source <(kubectl completion bash)'
     insertbefore: EOF
 
-- name: install pip
+- name: Install PIP
   ansible.builtin.apt:
     name: python3-pip
     install_recommends: false
 
-- name: install kubernetes python package
+- name: Install Kubernetes python package
   ansible.builtin.pip:
     name: kubernetes
 

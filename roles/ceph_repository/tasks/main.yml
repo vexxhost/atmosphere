@@ -12,23 +12,23 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: install packages
+- name: Install packages
   ansible.builtin.apt:
     name: ["gnupg"]
     install_recommends: false
 
-- name: add apt key
+- name: Add apt key
   ansible.builtin.apt_key:
     url: "{{ ceph_repository_apt_key }}"
     state: present
 
-- name: configure version pinning
+- name: Configure version pinning
   ansible.builtin.template:
     src: apt-preferences.j2
     dest: /etc/apt/preferences.d/ceph
-    mode: 0644
+    mode: "0644"
 
-- name: add apt repository
+- name: Add apt repository
   ansible.builtin.apt_repository:
     repo: "deb {{ ceph_repository_url }} {{ ansible_distribution_release }} main"
     state: present

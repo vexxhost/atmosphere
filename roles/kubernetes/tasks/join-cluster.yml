@@ -39,6 +39,7 @@
 - name: Generate token for joining cluster
   run_once: true
   delegate_to: "{{ _kubernetes_bootstrap_node | default(groups[kubernetes_control_plane_group][0]) }}"
+  changed_when: true
   ansible.builtin.shell: |
     kubeadm token create
   register: _kubeadm_token_create
@@ -51,7 +52,7 @@
     dest: /etc/kubernetes/kubeadm.yaml
     owner: root
     group: root
-    mode: 0640
+    mode: "0640"
   when:
     - not _stat_etc_kubernetes_kubelet_conf.stat.exists
 

@@ -12,16 +12,16 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: add apt key
+- name: Add apt key
   ansible.builtin.apt_key:
     url: "{{ helm_repository_apt_key }}"
     state: present
 
-- name: configure version pinning
+- name: Configure version pinning
   ansible.builtin.template:
     src: apt-preferences.j2
     dest: /etc/apt/preferences.d/helm
-    mode: 0644
+    mode: "0644"
 
 - name: Add package repository
   ansible.builtin.apt_repository:
@@ -33,7 +33,7 @@
     name: ["git", "helm"]
     install_recommends: false
 
-- name: add bash autocomplete for helm
+- name: Add bash autocomplete for helm
   ansible.builtin.lineinfile:
     path: /root/.bashrc
     line: 'source <(helm completion bash)'
