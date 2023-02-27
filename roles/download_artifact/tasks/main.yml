@@ -51,6 +51,11 @@
 - name: Extract archive
   when: download_artifact_unarchive
   block:
+    - name: Ensure that 'tar' command is available
+      ansible.builtin.package:
+        name: tar
+        state: present
+
     - name: Create new folder for unarchiving
       ansible.builtin.file:
         path: "{{ download_artifact_unarchive_dest }}"
