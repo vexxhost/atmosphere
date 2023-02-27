@@ -21,7 +21,7 @@
   ansible.builtin.copy:
     src: "{{ download_artifact_dest }}"
     dest: "{{ crictl_bin_dir }}/crictl"
-    mode: 0755
+    mode: "0755"
     remote_src: true
 
 - name: Create crictl config
@@ -29,7 +29,7 @@
     src: crictl.yaml.j2
     dest: /etc/crictl.yaml
     owner: root
-    mode: 0644
+    mode: "0644"
 
 - name: Remove crictl orphaned binary
   ansible.builtin.file:

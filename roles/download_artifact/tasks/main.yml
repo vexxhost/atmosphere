@@ -20,13 +20,13 @@
   ansible.builtin.file:
     path: "{{ download_artifact_work_directory }}"
     state: directory
-    mode: 0755
+    mode: "0755"
 
 - name: Create destination directory on node
   ansible.builtin.file:
     path: "{{ download_artifact_dest | dirname }}"
     owner: "{{ download_artifact_owner | default(omit) }}"
-    mode: 0755
+    mode: "0755"
     state: directory
     recurse: true
 
@@ -55,7 +55,7 @@
       ansible.builtin.file:
         path: "{{ download_artifact_unarchive_dest }}"
         state: directory
-        mode: 0755
+        mode: "0755"
         recurse: true
 
     - name: Extract archive

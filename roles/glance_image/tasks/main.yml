@@ -37,7 +37,7 @@
       ansible.builtin.get_url:
         url: "{{ glance_image_url }}"
         dest: "{{ _workdir.path }}/{{ glance_image_url | basename }}"
-        mode: 0600
+        mode: "0600"
       register: _get_url
 
     - name: Get image format
@@ -51,6 +51,7 @@
 
     - name: Convert file to target disk format
       when: _image_format.stdout != glance_image_disk_format
+      changed_when: true
       ansible.builtin.command:
         qemu-img convert -O {{ glance_image_disk_format }} {{ _get_url.dest }} {{ _get_url.dest }}.converted
 

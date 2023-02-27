@@ -67,7 +67,7 @@
     _rook_ceph_cluster_admin_auth: "{{ _rook_ceph_cluster_admin_auth_data.stdout | from_json | first }}"
     _rook_ceph_cluster_mon_auth: "{{ _rook_ceph_cluster_mon_auth_data.stdout | from_json | first }}"
     _rook_ceph_cluster_leader_name: "{{ _rook_ceph_cluster_quorum_status.quorum_leader_name }}"
-    _rook_ceph_cluster_leader_mon: "{{ (_rook_ceph_cluster_quorum_status.monmap.mons | selectattr('name', 'equalto', _rook_ceph_cluster_leader_name) | list | first) }}"
+    _rook_ceph_cluster_leader_mon: "{{ (_rook_ceph_cluster_quorum_status.monmap.mons | selectattr('name', 'equalto', _rook_ceph_cluster_leader_name) | list | first) }}" # noqa: yaml[line-length]
     _rook_ceph_cluster_leader_addr: "{{ _rook_ceph_cluster_leader_mon.public_addr.split('/')[0] }}"
 
 - name: Deploy Helm chart

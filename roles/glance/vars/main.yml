@@ -24,11 +24,11 @@ _glance_helm_values:
       glance:
         container:
           glance_api:
-            allowPrivilegeEscalation: "{{ ('cinder' in glance_helm_values.get('conf', {}).get('glance', {}).get('glance_store', {}).get('stores', '')) | bool }}"
-            readOnlyRootFilesystem: "{{ ('cinder' not in glance_helm_values.get('conf', {}).get('glance', {}).get('glance_store', {}).get('stores', '')) | bool }}"
+            allowPrivilegeEscalation: "{{ ('cinder' in glance_helm_values.get('conf', {}).get('glance', {}).get('glance_store', {}).get('stores', '')) | bool }}" # noqa: yaml[line-length]
+            readOnlyRootFilesystem: "{{ ('cinder' not in glance_helm_values.get('conf', {}).get('glance', {}).get('glance_store', {}).get('stores', '')) | bool }}" # noqa: yaml[line-length]
             privileged: "{{ ('cinder' in glance_helm_values.get('conf', {}).get('glance', {}).get('glance_store', {}).get('stores', '')) | bool }}"
             capabilities:
-              add: "{{ ('cinder' in glance_helm_values.get('conf', {}).get('glance', {}).get('glance_store', {}).get('stores', '')) | ternary(['SYS_ADMIN'], []) }}"
+              add: "{{ ('cinder' in glance_helm_values.get('conf', {}).get('glance', {}).get('glance_store', {}).get('stores', '')) | ternary(['SYS_ADMIN'], []) }}" # noqa: yaml[line-length]
     useHostNetwork:
       api: "{{ ('cinder' in glance_helm_values.get('conf', {}).get('glance', {}).get('glance_store', {}).get('stores', '')) | bool }}"
     replicas:
