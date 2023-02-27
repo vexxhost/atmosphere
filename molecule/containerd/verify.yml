@@ -32,9 +32,9 @@
           - ansible_facts.services['containerd.service'].status == 'enabled'
 
     - name: Pull image from registry
-      ansible.builtin.command: crictl pull docker.io/library/alpine:latest
+      ansible.builtin.command: ctr image pull docker.io/library/alpine:latest
 
     - name: List images
-      ansible.builtin.command: crictl images
+      ansible.builtin.command: ctr images ls
       register: images
       failed_when: not(images.stdout.find('alpine') != -1)

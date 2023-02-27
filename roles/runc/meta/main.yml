@@ -28,6 +28,10 @@ galaxy_info:
         - focal
 
 dependencies:
-  - role: binary_download
+  - role: download_artifact
     vars:
-      binary_download: "{{ binary_download_defaults | combine(runc_download) }}"
+      download_artifact_url: "{{ runc_download_url }}"
+      download_artifact_dest: "{{ runc_download_dest }}"
+      download_artifact_checksum: "sha256:{{ runc_binary_checksum }}"
+      download_artifact_owner: root
+      download_artifact_mode: "0755"

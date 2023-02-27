@@ -12,13 +12,14 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Unpacking archive
-  ansible.builtin.unarchive:
-    src: "{{ binary_download.dest }}"
-    dest: "{{ binary_download.dest | dirname }}"
-    owner: "{{ binary_download.owner | default(omit) }}"
-    mode: "{{ binary_download.mode | default(omit) }}"
-    copy: false
-    extra_opts: "{{ binary_download.unarchive_extra_opts | default(omit) }}"
-  when:
-    - binary_download.unarchive | default(false)
+_download_artifact_goarch_groups:
+  x86_64: amd64
+  aarch64: arm64
+  armv7l: arm
+
+download_artifact_goarch: >-
+  {%- if ansible_architecture in _download_artifact_goarch_groups -%}
+  {{ _download_artifact_goarch_groups[ansible_architecture] }}
+  {%- else -%}
+  {{ ansible_architecture }}
+  {%- endif -%}

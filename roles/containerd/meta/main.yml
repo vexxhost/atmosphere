@@ -30,6 +30,13 @@ galaxy_info:
 dependencies:
   - role: defaults
   - role: runc
-  - role: binary_download
-    vars:
-      binary_download: "{{ binary_download_defaults | combine(containerd_download) }}"
+  - role: download_artifact
+    download_artifact_url: "{{ containerd_download_url }}"
+    download_artifact_dest: "{{ containerd_download_dest }}"
+    download_artifact_checksum: "sha256:{{ containerd_archive_checksum }}"
+    download_artifact_owner: root
+    download_artifact_mode: "0755"
+    download_artifact_unarchive: true
+    download_artifact_unarchive_dest: "{{ containerd_download_unarchive_dest }}"
+    download_artifact_unarchive_extra_opts:
+      - --strip-components=1

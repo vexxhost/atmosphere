@@ -12,35 +12,36 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-containerd_version: 1.6.15
+containerd_bin_dir: /usr/bin
 
+containerd_version: 1.6.15
 containerd_archive_checksums:
   arm64:
     1.6.15: d63e4d27c51e33cd10f8b5621c559f09ece8a65fec66d80551b36cac9e61a07d
   amd64:
     1.6.15: 191bb4f6e4afc237efc5c85b5866b6fdfed731bde12cceaa6017a9c7f8aeda02
 
-containerd_pause_image: k8s.gcr.io/pause:3.5
+containerd_download_url: "https://github.com/containerd/containerd/releases/download/v{{ containerd_version }}/containerd-{{ containerd_version }}-{{ ansible_system | lower }}-{{ download_artifact_goarch }}.tar.gz"
+containerd_download_dest: "{{ containerd_download_unarchive_dest }}.tar.gz"
+containerd_download_unarchive_dest: "{{ download_artifact_work_directory }}/containerd-{{ containerd_version }}-{{ ansible_system | lower }}-{{ download_artifact_goarch }}"
+containerd_archive_checksum: "{{ containerd_archive_checksums[download_artifact_goarch][containerd_version] }}"
 
+containerd_pause_image: k8s.gcr.io/pause:3.5
 containerd_insecure_registries: []
 
-containerd_bin_dir: /usr/bin
-
+# NOTE(mnaser): This is to accomodate for the uninstallation of the old packages
+#               that shipped with the operating system
 containerd_package_name:
   - containerd
   - containerd.io
 
-containerd_download_url: "https://github.com/containerd/containerd/releases/download/v{{ containerd_version }}/containerd-{{ containerd_version }}-linux-{{ binary_download_arch }}.tar.gz"
-
-containerd_archive_checksum: "{{ containerd_archive_checksums[binary_download_arch][containerd_version] }}"
-
-containerd_download:
-  version: "{{ containerd_version }}"
-  dest: "{{ binary_download_local_release_dir }}/containerd-{{ containerd_version }}-linux-{{ binary_download_arch }}.tar.gz"
-  sha256: "{{ containerd_archive_checksum }}"
-  url: "{{ containerd_download_url }}"
-  owner: "root"
-  mode: "0755"
+containerd_binaries:
+  - containerd
+  - containerd-shim
+  - containerd-shim-runc-v1
+  - containerd-shim-runc-v2
+  - containerd-stress
+  - ctr
 
 containerd_cfg_dir: /etc/containerd
 containerd_storage_dir: /var/lib/containerd
