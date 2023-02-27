@@ -15,7 +15,7 @@ limitations under the License.
 */}}
 
 set -ex
-exec cinder-volume \
-     --config-file /etc/cinder/cinder.conf \
-     --config-file /etc/cinder/conf/backends.conf \
+exec manila-volume \
+     --config-file /etc/manila/manila.conf \
+     --config-file /etc/manila/conf/backends.conf \
      --config-file /tmp/pod-shared/internal_tenant.conf

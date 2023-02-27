@@ -16,4 +16,4 @@ limitations under the License.
 
 set -ex
 
-exec cinder-manage db sync
+exec manila-manage db sync

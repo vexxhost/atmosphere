@@ -12,13 +12,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */}}
 
-{{- if .Values.manifests.job_db_drop }}
-{{- $dbDropJob := dict "envAll" . "serviceName" "cinder" -}}
-{{- if .Values.manifests.certificates -}}
-{{- $_ := set $dbDropJob "dbAdminTlsSecret" .Values.endpoints.oslo_db.auth.admin.secret.tls.internal -}}
+{{- define "manila.utils.has_ceph_backend" -}}
+  {{- $has_ceph := false -}}
+  {{- range $_, $backend := .Values.conf.backends -}}
+    {{- if kindIs "map" $backend -}}
+      {{- $has_ceph = or $has_ceph (eq $backend.volume_driver "manila.volume.drivers.rbd.RBDDriver") -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $has_ceph -}}
 {{- end -}}
-{{- if .Values.pod.tolerations.cinder.enabled -}}
-{{- $_ := set $dbDropJob "tolerationsEnabled" true -}}
-{{- end -}}
-{{ $dbDropJob | include "helm-toolkit.manifests.job_db_drop_mysql" }}
-{{- end }}

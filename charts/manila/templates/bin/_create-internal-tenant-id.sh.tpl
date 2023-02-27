@@ -27,3 +27,5 @@ USER_ID=$(openstack user create --or-show --enable -f value -c id \
     --project="${USER_PROJECT_ID}" \
     "${INTERNAL_USER_NAME}");
 
+
+

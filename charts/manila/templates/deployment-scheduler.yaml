@@ -15,121 +15,121 @@ limitations under the License.
 {{- if .Values.manifests.deployment_scheduler }}
 {{- $envAll := . }}
 
-{{- $mounts_cinder_scheduler := .Values.pod.mounts.cinder_scheduler.cinder_scheduler }}
-{{- $mounts_cinder_scheduler_init := .Values.pod.mounts.cinder_scheduler.init_container }}
+{{- $mounts_manila_scheduler := .Values.pod.mounts.manila_scheduler.manila_scheduler }}
+{{- $mounts_manila_scheduler_init := .Values.pod.mounts.manila_scheduler.init_container }}
 
-{{- $serviceAccountName := "cinder-scheduler" }}
+{{- $serviceAccountName := "manila-scheduler" }}
 {{ tuple $envAll "scheduler" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: cinder-scheduler
+  name: manila-scheduler
   annotations:
     {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
   labels:
-{{ tuple $envAll "cinder" "scheduler" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+{{ tuple $envAll "manila" "scheduler" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
 spec:
   replicas: {{ .Values.pod.replicas.scheduler }}
   selector:
     matchLabels:
-{{ tuple $envAll "cinder" "scheduler" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 6 }}
+{{ tuple $envAll "manila" "scheduler" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 6 }}
 {{ tuple $envAll | include "helm-toolkit.snippets.kubernetes_upgrades_deployment" | indent 2 }}
   template:
     metadata:
       labels:
-{{ tuple $envAll "cinder" "scheduler" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+{{ tuple $envAll "manila" "scheduler" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
       annotations:
 {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
         configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
         configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
-{{ dict "envAll" $envAll "podName" "cinder-scheduler" "containerNames" (list "cinder-scheduler" "ceph-coordination-volume-perms" "init") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+{{ dict "envAll" $envAll "podName" "manila-scheduler" "containerNames" (list "manila-scheduler" "ceph-coordination-volume-perms" "init") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
     spec:
       serviceAccountName: {{ $serviceAccountName }}
-{{ dict "envAll" $envAll "application" "cinder_scheduler" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+{{ dict "envAll" $envAll "application" "manila_scheduler" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
       affinity:
-{{ tuple $envAll "cinder" "scheduler" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
-{{ if $envAll.Values.pod.tolerations.cinder.enabled }}
-{{ tuple $envAll "cinder" | include "helm-toolkit.snippets.kubernetes_tolerations" | indent 6 }}
+{{ tuple $envAll "manila" "scheduler" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
+{{ if $envAll.Values.pod.tolerations.manila.enabled }}
+{{ tuple $envAll "manila" | include "helm-toolkit.snippets.kubernetes_tolerations" | indent 6 }}
 {{ end }}
       nodeSelector:
         {{ .Values.labels.scheduler.node_selector_key }}: {{ .Values.labels.scheduler.node_selector_value }}
       initContainers:
-{{ tuple $envAll "scheduler" $mounts_cinder_scheduler_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
-        {{- if eq ( split "://" .Values.conf.cinder.coordination.backend_url )._0 "file" }}
+{{ tuple $envAll "scheduler" $mounts_manila_scheduler_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+        {{- if eq ( split "://" .Values.conf.manila.coordination.backend_url )._0 "file" }}
         - name: ceph-coordination-volume-perms
-{{ tuple $envAll "cinder_scheduler" | include "helm-toolkit.snippets.image" | indent 10 }}
-{{ dict "envAll" $envAll "application" "cinder_scheduler" "container" "ceph_coordination_volume_perms" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+{{ tuple $envAll "manila_scheduler" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ dict "envAll" $envAll "application" "manila_scheduler" "container" "ceph_coordination_volume_perms" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
           command:
             - chown
             - -R
-            - "cinder:"
-            - {{ ( split "://" .Values.conf.cinder.coordination.backend_url )._1 }}
+            - "manila:"
+            - {{ ( split "://" .Values.conf.manila.coordination.backend_url )._1 }}
           volumeMounts:
             - name: pod-tmp
               mountPath: /tmp
-            - name: cinder-coordination
-              mountPath: {{ ( split "://" .Values.conf.cinder.coordination.backend_url )._1 }}
+            - name: manila-coordination
+              mountPath: {{ ( split "://" .Values.conf.manila.coordination.backend_url )._1 }}
         {{ end }}
       containers:
-        - name: cinder-scheduler
-{{ tuple $envAll "cinder_scheduler" | include "helm-toolkit.snippets.image" | indent 10 }}
+        - name: manila-scheduler
+{{ tuple $envAll "manila_scheduler" | include "helm-toolkit.snippets.image" | indent 10 }}
 {{ tuple $envAll $envAll.Values.pod.resources.scheduler | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
-{{ dict "envAll" $envAll "application" "cinder_scheduler" "container" "cinder_scheduler" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+{{ dict "envAll" $envAll "application" "manila_scheduler" "container" "manila_scheduler" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
           command:
-            - /tmp/cinder-scheduler.sh
+            - /tmp/manila-scheduler.sh
           volumeMounts:
             - name: pod-tmp
               mountPath: /tmp
-            - name: cinder-bin
-              mountPath: /tmp/cinder-scheduler.sh
-              subPath: cinder-scheduler.sh
+            - name: manila-bin
+              mountPath: /tmp/manila-scheduler.sh
+              subPath: manila-scheduler.sh
               readOnly: true
-            - name: cinder-etc
-              mountPath: /etc/cinder/cinder.conf
-              subPath: cinder.conf
+            - name: manila-etc
+              mountPath: /etc/manila/manila.conf
+              subPath: manila.conf
               readOnly: true
-            {{- if .Values.conf.cinder.DEFAULT.log_config_append }}
-            - name: cinder-etc
-              mountPath: {{ .Values.conf.cinder.DEFAULT.log_config_append }}
-              subPath: {{ base .Values.conf.cinder.DEFAULT.log_config_append }}
+            {{- if .Values.conf.manila.DEFAULT.log_config_append }}
+            - name: manila-etc
+              mountPath: {{ .Values.conf.manila.DEFAULT.log_config_append }}
+              subPath: {{ base .Values.conf.manila.DEFAULT.log_config_append }}
               readOnly: true
             {{- end }}
-            - name: cinder-etc
-              mountPath: /etc/cinder/api-paste.ini
+            - name: manila-etc
+              mountPath: /etc/manila/api-paste.ini
               subPath: api-paste.ini
               readOnly: true
-            - name: cinder-etc
-              mountPath: /etc/cinder/policy.yaml
+            - name: manila-etc
+              mountPath: /etc/manila/policy.yaml
               subPath: policy.yaml
               readOnly: true
-            {{- if eq ( split "://" .Values.conf.cinder.coordination.backend_url )._0 "file" }}
-            - name: cinder-coordination
-              mountPath: {{ ( split "://" .Values.conf.cinder.coordination.backend_url )._1 }}
+            {{- if eq ( split "://" .Values.conf.manila.coordination.backend_url )._0 "file" }}
+            - name: manila-coordination
+              mountPath: {{ ( split "://" .Values.conf.manila.coordination.backend_url )._1 }}
             {{- end }}
-{{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.volume.api.internal "path" "/etc/cinder/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
+{{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.volume.api.internal "path" "/etc/manila/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
 {{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_db.auth.admin.secret.tls.internal "path" "/etc/mysql/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
 {{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_messaging.auth.admin.secret.tls.internal "path" "/etc/rabbitmq/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
-{{ if $mounts_cinder_scheduler.volumeMounts }}{{ toYaml $mounts_cinder_scheduler.volumeMounts | indent 12 }}{{ end }}
+{{ if $mounts_manila_scheduler.volumeMounts }}{{ toYaml $mounts_manila_scheduler.volumeMounts | indent 12 }}{{ end }}
       volumes:
         - name: pod-tmp
           emptyDir: {}
-        - name: cinder-bin
+        - name: manila-bin
           configMap:
-            name: cinder-bin
+            name: manila-bin
             defaultMode: 0555
-        - name: cinder-etc
+        - name: manila-etc
           secret:
-            secretName: cinder-etc
+            secretName: manila-etc
             defaultMode: 0444
-        {{- if eq ( split "://" .Values.conf.cinder.coordination.backend_url )._0 "file" }}
-        # NOTE (portdirect): this will need to be set to a shared mount amongst all cinder
+        {{- if eq ( split "://" .Values.conf.manila.coordination.backend_url )._0 "file" }}
+        # NOTE (portdirect): this will need to be set to a shared mount amongst all manila
         # pods for the coordination backend to be fully functional.
-        - name: cinder-coordination
+        - name: manila-coordination
           emptyDir: {}
         {{- end }}
  {{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.volume.api.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
 {{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_db.auth.admin.secret.tls.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
 {{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_messaging.auth.admin.secret.tls.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
-{{ if $mounts_cinder_scheduler.volumes }}{{ toYaml $mounts_cinder_scheduler.volumes | indent 8 }}{{ end }}
+{{ if $mounts_manila_scheduler.volumes }}{{ toYaml $mounts_manila_scheduler.volumes | indent 8 }}{{ end }}
 {{- end }}

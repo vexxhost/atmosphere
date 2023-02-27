@@ -16,4 +16,4 @@ limitations under the License.
 
 set -ex
 
-exec cinder-volume-usage-audit --send_actions
+exec manila-volume-usage-audit --send_actions

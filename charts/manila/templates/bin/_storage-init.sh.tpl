@@ -15,7 +15,7 @@ limitations under the License.
 */}}
 
 set -x
-if [ "x$STORAGE_BACKEND" == "xcinder.volume.drivers.rbd.RBDDriver" ]; then
+if [ "x$STORAGE_BACKEND" == "xmanila.volume.drivers.rbd.RBDDriver" ]; then
   SECRET=$(mktemp --suffix .yaml)
   KEYRING=$(mktemp --suffix .keyring)
   function cleanup {
@@ -25,7 +25,7 @@ if [ "x$STORAGE_BACKEND" == "xcinder.volume.drivers.rbd.RBDDriver" ]; then
 fi
 
 set -ex
-if [ "x$STORAGE_BACKEND" == "xcinder.volume.drivers.rbd.RBDDriver" ]; then
+if [ "x$STORAGE_BACKEND" == "xmanila.volume.drivers.rbd.RBDDriver" ]; then
   ceph -s
   function ensure_pool () {
     ceph osd pool stats $1 || ceph osd pool create $1 $2
@@ -48,7 +48,7 @@ if [ "x$STORAGE_BACKEND" == "xcinder.volume.drivers.rbd.RBDDriver" ]; then
       osd "profile rbd"
     ceph auth get client.${RBD_POOL_USER} -o ${KEYRING}
   else
-    #NOTE(JCL): Restrict Cinder permissions to what is needed. MON Read only and RBD access to Cinder pool only.
+    #NOTE(JCL): Restrict manila permissions to what is needed. MON Read only and RBD access to manila pool only.
     ceph auth get-or-create client.${RBD_POOL_USER} \
       mon "profile rbd" \
       osd "profile rbd" \

@@ -49,7 +49,7 @@ export HOME=/tmp
       if [[ -z ${is_in_use} ]]; then
         {{- if (eq $access_type "private") }}
         volumeTypeID=$(openstack volume type show {{ $name }} -f value -c id)
-        cinder type-update --is-public false ${volumeTypeID}
+        manila type-update --is-public false ${volumeTypeID}
         {{- end }}
 
         {{- if and $properties.grant_access (eq $access_type "private") }}

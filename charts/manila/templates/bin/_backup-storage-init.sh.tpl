@@ -15,7 +15,7 @@ limitations under the License.
 */}}
 
 set -x
-if [[ $STORAGE_BACKEND =~ 'cinder.backup.drivers.ceph' ]]; then
+if [[ $STORAGE_BACKEND =~ 'manila.backup.drivers.ceph' ]]; then
   SECRET=$(mktemp --suffix .yaml)
   KEYRING=$(mktemp --suffix .keyring)
   function cleanup {
@@ -25,10 +25,10 @@ if [[ $STORAGE_BACKEND =~ 'cinder.backup.drivers.ceph' ]]; then
 fi
 
 set -ex
-if [[ $STORAGE_BACKEND =~ 'cinder.backup.drivers.swift' ]] || \
-     [[ $STORAGE_BACKEND =~ 'cinder.backup.drivers.posix' ]]; then
+if [[ $STORAGE_BACKEND =~ 'manila.backup.drivers.swift' ]] || \
+     [[ $STORAGE_BACKEND =~ 'manila.backup.drivers.posix' ]]; then
   echo "INFO: no action required to use $STORAGE_BACKEND"
-elif [[ $STORAGE_BACKEND =~ 'cinder.backup.drivers.ceph' ]]; then
+elif [[ $STORAGE_BACKEND =~ 'manila.backup.drivers.ceph' ]]; then
   ceph -s
   function ensure_pool () {
     ceph osd pool stats $1 || ceph osd pool create $1 $2

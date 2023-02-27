@@ -19,7 +19,7 @@ limitations under the License.
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: cinder-bin
+  name: manila-bin
 data:
 {{- if .Values.conf.enable_iscsi }}
   iscsiadm: |
@@ -50,35 +50,9 @@ data:
   create-internal-tenant.sh: |
 {{ tuple "bin/_create-internal-tenant-id.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
   retrieve-internal-tenant.sh: |
-{{ tuple "bin/_retrieve-internal-tenant-id.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
-  cinder-api.sh: |
-{{ tuple "bin/_cinder-api.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
-  cinder-backup.sh: |
-{{ tuple "bin/_cinder-backup.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
-  cinder-scheduler.sh: |
-{{ tuple "bin/_cinder-scheduler.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
-  cinder-volume.sh: |
-{{ tuple "bin/_cinder-volume.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
-  ceph-keyring.sh: |
-{{ tuple "bin/_ceph-keyring.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
-  ceph-admin-keyring.sh: |
-{{ tuple "bin/_ceph-admin-keyring.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
-  volume-usage-audit.sh: |
-{{ tuple "bin/_volume-usage-audit.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
-  backup-storage-init.sh: |
-{{ tuple "bin/_backup-storage-init.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
-  storage-init.sh: |
-{{ tuple "bin/_storage-init.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
-  clean-secrets.sh: |
-{{ tuple "bin/_clean-secrets.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
-{{- if .Values.bootstrap.enabled }}
+{{ tuple "bin/_retrieve-internal-tenant-id.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}s
+  manila-api.sh: |
+{{ tuple "bin/_manila-api.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
   bootstrap.sh: |
 {{ tuple "bin/_bootstrap.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
-{{- end }}
-  rabbit-init.sh: |
-{{- include "helm-toolkit.scripts.rabbit_init" . | indent 4 }}
-{{- end }}
-{{- if .Values.backup.external_ceph_rbd.enabled }}
-  external-ceph-rbd-admin-keyring.sh: |
-{{ tuple "bin/_external-ceph-rbd-admin-keyring.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
 {{- end }}

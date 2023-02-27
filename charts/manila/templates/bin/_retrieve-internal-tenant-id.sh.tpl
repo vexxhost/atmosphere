@@ -25,6 +25,6 @@ USER_ID=$(openstack user show -f value -c id \
 
 tee /tmp/pod-shared/internal_tenant.conf <<EOF
 [DEFAULT]
-cinder_internal_tenant_project_id = ${USER_PROJECT_ID}
-cinder_internal_tenant_user_id = ${USER_ID}
+manila_internal_tenant_project_id = ${USER_PROJECT_ID}
+manila_internal_tenant_user_id = ${USER_ID}
 EOF

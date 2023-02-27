@@ -22,8 +22,8 @@ examples:
         cluster_domain_suffix: cluster.local
         oslo_messaging:
           auth:
-            cinder:
-              username: cinder
+            manila:
+              username: manila
               password: password
           statefulset:
             replicas: 2
@@ -32,44 +32,44 @@ examples:
             default: rabbitmq
           host_fqdn_override:
             default: null
-          path: /cinder
+          path: /manila
           scheme: rabbit
           port:
             amqp:
               default: 5672
     usage: |
-      {{ tuple "oslo_messaging" "internal" "cinder" "amqp" . | include "helm-toolkit.endpoints.authenticated_transport_endpoint_uri_lookup" }}
+      {{ tuple "oslo_messaging" "internal" "manila" "amqp" . | include "helm-toolkit.endpoints.authenticated_transport_endpoint_uri_lookup" }}
     return: |
-      rabbit://cinder:password@rabbitmq-rabbitmq-0.rabbitmq.default.svc.cluster.local:5672,cinder:password@rabbitmq-rabbitmq-1.rabbitmq.default.svc.cluster.local:5672/cinder
+      rabbit://manila:password@rabbitmq-rabbitmq-0.rabbitmq.default.svc.cluster.local:5672,manila:password@rabbitmq-rabbitmq-1.rabbitmq.default.svc.cluster.local:5672/manila
   - values: |
       endpoints:
         cluster_domain_suffix: cluster.local
         oslo_messaging:
           auth:
-            cinder:
-              username: cinder
+            manila:
+              username: manila
               password: password
           statefulset: null
           hosts:
             default: rabbitmq
           host_fqdn_override:
             default: null
-          path: /cinder
+          path: /manila
           scheme: rabbit
           port:
             amqp:
               default: 5672
     usage: |
-      {{ tuple "oslo_messaging" "internal" "cinder" "amqp" . | include "helm-toolkit.endpoints.authenticated_transport_endpoint_uri_lookup" }}
+      {{ tuple "oslo_messaging" "internal" "manila" "amqp" . | include "helm-toolkit.endpoints.authenticated_transport_endpoint_uri_lookup" }}
     return: |
-      rabbit://cinder:password@rabbitmq.default.svc.cluster.local:5672/cinder
+      rabbit://manila:password@rabbitmq.default.svc.cluster.local:5672/manila
   - values: |
       endpoints:
         cluster_domain_suffix: cluster.local
         oslo_messaging:
           auth:
-            cinder:
-              username: cinder
+            manila:
+              username: manila
               password: password
           statefulset:
             replicas: 2
@@ -78,15 +78,15 @@ examples:
             default: rabbitmq
           host_fqdn_override:
             default: rabbitmq.openstackhelm.org
-          path: /cinder
+          path: /manila
           scheme: rabbit
           port:
             amqp:
               default: 5672
     usage: |
-      {{ tuple "oslo_messaging" "internal" "cinder" "amqp" . | include "helm-toolkit.endpoints.authenticated_transport_endpoint_uri_lookup" }}
+      {{ tuple "oslo_messaging" "internal" "manila" "amqp" . | include "helm-toolkit.endpoints.authenticated_transport_endpoint_uri_lookup" }}
     return: |
-      rabbit://cinder:password@rabbitmq.openstackhelm.org:5672/cinder
+      rabbit://manila:password@rabbitmq.openstackhelm.org:5672/manila
 */}}
 
 {{- define "helm-toolkit.endpoints.authenticated_transport_endpoint_uri_lookup" -}}

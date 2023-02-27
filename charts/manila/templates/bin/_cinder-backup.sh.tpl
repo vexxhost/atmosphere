@@ -15,5 +15,5 @@ limitations under the License.
 */}}
 
 set -ex
-exec cinder-backup \
-     --config-file /etc/cinder/cinder.conf
+exec manila-backup \
+     --config-file /etc/manila/manila.conf

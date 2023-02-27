@@ -15,5 +15,5 @@ limitations under the License.
 */}}
 
 set -ex
-exec cinder-scheduler \
-      --config-file /etc/cinder/cinder.conf
+exec manila-scheduler \
+      --config-file /etc/manila/manila.conf

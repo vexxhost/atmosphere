@@ -16,11 +16,12 @@ limitations under the License.
 
 set -ex
 COMMAND="${@:-start}"
+#echo COMMAND gives OP : start
 
 function start () {
 {{- if .Values.manifests.certificates }}
-  for WSGI_SCRIPT in cinder-wsgi; do
-    cp -a $(type -p ${WSGI_SCRIPT}) /var/www/cgi-bin/f  /
+  for WSGI_SCRIPT in manila-wsgi; do
+    cp -a $(type -p ${WSGI_SCRIPT}) /var/www/cgi-bin/manila/
   done
 
   if [ -f /etc/apache2/envvars ]; then
@@ -48,8 +49,8 @@ function start () {
   # Starts Apache2
   exec {{ .Values.conf.software.apache2.binary }} {{ .Values.conf.software.apache2.start_parameters }}
 {{- else }}
-  exec cinder-api \
-        --config-file /etc/cinder/cinder.conf
+  exec manila-api \
+        --config-file /etc/manila/manila.conf
 {{- end }}
 }
 

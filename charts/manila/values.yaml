@@ -10,7 +10,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Default values for cinder.
+# Default values for manila.
 # This is a YAML-formatted file.
 # Declare name/value pairs to be passed into your templates.
 # name: value
@@ -44,20 +44,20 @@ images:
   tags:
     test: docker.io/xrally/xrally-openstack:2.0.0
     db_init: docker.io/openstackhelm/heat:wallaby-ubuntu_focal
-    cinder_db_sync: docker.io/openstackhelm/cinder:wallaby-ubuntu_focal
+    manila_db_sync: docker.io/openstackhelm/manila:wallaby-ubuntu_focal
     db_drop: docker.io/openstackhelm/heat:wallaby-ubuntu_focal
     rabbit_init: docker.io/rabbitmq:3.7-management
     ks_user: docker.io/openstackhelm/heat:wallaby-ubuntu_focal
     ks_service: docker.io/openstackhelm/heat:wallaby-ubuntu_focal
     ks_endpoints: docker.io/openstackhelm/heat:wallaby-ubuntu_focal
-    cinder_api: docker.io/openstackhelm/cinder:wallaby-ubuntu_focal
+    manila_api: docker.io/openstackhelm/manila:wallaby-ubuntu_focal
     bootstrap: docker.io/openstackhelm/heat:wallaby-ubuntu_focal
-    cinder_scheduler: docker.io/openstackhelm/cinder:wallaby-ubuntu_focal
-    cinder_volume: docker.io/openstackhelm/cinder:wallaby-ubuntu_focal
-    cinder_volume_usage_audit: docker.io/openstackhelm/cinder:wallaby-ubuntu_focal
-    cinder_storage_init: docker.io/openstackhelm/ceph-config-helper:latest-ubuntu_bionic
-    cinder_backup: docker.io/openstackhelm/cinder:wallaby-ubuntu_focal
-    cinder_backup_storage_init: docker.io/openstackhelm/ceph-config-helper:latest-ubuntu_bionic
+    manila_scheduler: docker.io/openstackhelm/manila:wallaby-ubuntu_focal
+    manila_volume: docker.io/openstackhelm/manila:wallaby-ubuntu_focal
+    manila_volume_usage_audit: docker.io/openstackhelm/manila:wallaby-ubuntu_focal
+    manila_storage_init: docker.io/openstackhelm/ceph-config-helper:latest-ubuntu_bionic
+    manila_backup: docker.io/openstackhelm/manila:wallaby-ubuntu_focal
+    manila_backup_storage_init: docker.io/openstackhelm/ceph-config-helper:latest-ubuntu_bionic
     dep_check: quay.io/airshipit/kubernetes-entrypoint:v1.0.0
     image_repo_sync: docker.io/docker:17.07.0
   pull_policy: "IfNotPresent"
@@ -81,20 +81,20 @@ pod:
       pod:
         runAsUser: 42424
       container:
-        cinder_volume_usage_audit:
+        manila_volume_usage_audit:
           readOnlyRootFilesystem: true
           allowPrivilegeEscalation: false
-    cinder_api:
+    manila_api:
       pod:
         runAsUser: 42424
       container:
         ceph_coordination_volume_perms:
           runAsUser: 0
           readOnlyRootFilesystem: true
-        cinder_api:
+        manila_api:
           readOnlyRootFilesystem: true
           allowPrivilegeEscalation: false
-    cinder_backup:
+    manila_backup:
       pod:
         runAsUser: 42424
       container:
@@ -110,23 +110,23 @@ pod:
         ceph_coordination_volume_perms:
           runAsUser: 0
           readOnlyRootFilesystem: true
-        cinder_backup:
+        manila_backup:
           capabilities:
             add:
               - SYS_ADMIN
           readOnlyRootFilesystem: true
           runAsUser: 0
-    cinder_scheduler:
+    manila_scheduler:
       pod:
         runAsUser: 42424
       container:
         ceph_coordination_volume_perms:
           runAsUser: 0
           readOnlyRootFilesystem: true
-        cinder_scheduler:
+        manila_scheduler:
           readOnlyRootFilesystem: true
           allowPrivilegeEscalation: false
-    cinder_volume:
+    manila_volume:
       pod:
         runAsUser: 42424
       container:
@@ -136,10 +136,10 @@ pod:
         ceph_coordination_volume_perms:
           runAsUser: 0
           readOnlyRootFilesystem: true
-        init_cinder_conf:
+        init_manila_conf:
           runAsUser: 0
           readOnlyRootFilesystem: true
-        cinder_volume:
+        manila_volume:
           capabilities:
             add:
               - SYS_ADMIN
@@ -151,14 +151,14 @@ pod:
         ceph_keyring_placement:
           runAsUser: 0
           readOnlyRootFilesystem: true
-        cinder_backup_storage_init:
+        manila_backup_storage_init:
           readOnlyRootFilesystem: true
           allowPrivilegeEscalation: false
     clean:
       pod:
         runAsUser: 42424
       container:
-        cinder_volume_rbd_secret_clean:
+        manila_volume_rbd_secret_clean:
           readOnlyRootFilesystem: true
           allowPrivilegeEscalation: false
     create_internal_tenant:
@@ -177,7 +177,7 @@ pod:
       weight:
         default: 10
   tolerations:
-    cinder:
+    manila:
       enabled: false
       tolerations:
       - key: node-role.kubernetes.io/master
@@ -187,38 +187,38 @@ pod:
     volume: false
     backup: false
   mounts:
-    cinder_api:
+    manila_api:
       init_container: null
-      cinder_api:
+      manila_api:
         volumeMounts:
         volumes:
-    cinder_scheduler:
+    manila_scheduler:
       init_container: null
-      cinder_scheduler:
+      manila_scheduler:
         volumeMounts:
         volumes:
-    cinder_volume:
+    manila_volume:
       init_container: null
-      cinder_volume:
+      manila_volume:
         volumeMounts:
         volumes:
-    cinder_volume_usage_audit:
+    manila_volume_usage_audit:
       init_container: null
-      cinder_volume_usage_audit:
+      manila_volume_usage_audit:
         volumeMounts:
         volumes:
-    cinder_backup:
+    manila_backup:
       init_container: null
-      cinder_backup:
+      manila_backup:
         volumeMounts:
         volumes:
-    cinder_tests:
+    manila_tests:
       init_container: null
-      cinder_tests:
+      manila_tests:
         volumeMounts:
         volumes:
-    cinder_db_sync:
-      cinder_db_sync:
+    manila_db_sync:
+      manila_db_sync:
         volumeMounts:
         volumes:
   replicas:
@@ -432,23 +432,23 @@ ceph_client:
 conf:
   paste:
     composite:osapi_volume:
-      use: call:cinder.api:root_app_factory
+      use: call:manila.api:root_app_factory
       /: apiversions
       /v1: openstack_volume_api_v1
       /v2: openstack_volume_api_v2
       /v3: openstack_volume_api_v3
     composite:openstack_volume_api_v1:
-      use: call:cinder.api.middleware.auth:pipeline_factory
+      use: call:manila.api.middleware.auth:pipeline_factory
       noauth: cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler noauth apiv1
       keystone: cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler authtoken audit keystonecontext apiv1
       keystone_nolimit: cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler authtoken audit keystonecontext apiv1
     composite:openstack_volume_api_v2:
-      use: call:cinder.api.middleware.auth:pipeline_factory
+      use: call:manila.api.middleware.auth:pipeline_factory
       noauth: cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler noauth apiv2
       keystone: cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler authtoken audit keystonecontext apiv2
       keystone_nolimit: cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler authtoken audit keystonecontext apiv2
     composite:openstack_volume_api_v3:
-      use: call:cinder.api.middleware.auth:pipeline_factory
+      use: call:manila.api.middleware.auth:pipeline_factory
       noauth: cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler noauth apiv3
       keystone: cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler authtoken audit keystonecontext apiv3
       keystone_nolimit: cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler authtoken audit keystonecontext apiv3
@@ -458,32 +458,32 @@ conf:
       paste.filter_factory: oslo_middleware.http_proxy_to_wsgi:HTTPProxyToWSGI.factory
     filter:cors:
       paste.filter_factory: oslo_middleware.cors:filter_factory
-      oslo_config_project: cinder
+      oslo_config_project: manila
     filter:faultwrap:
-      paste.filter_factory: cinder.api.middleware.fault:FaultWrapper.factory
+      paste.filter_factory: manila.api.middleware.fault:FaultWrapper.factory
     filter:osprofiler:
       paste.filter_factory: osprofiler.web:WsgiMiddleware.factory
     filter:noauth:
-      paste.filter_factory: cinder.api.middleware.auth:NoAuthMiddleware.factory
+      paste.filter_factory: manila.api.middleware.auth:NoAuthMiddleware.factory
     filter:sizelimit:
       paste.filter_factory: oslo_middleware.sizelimit:RequestBodySizeLimiter.factory
     app:apiv1:
-      paste.app_factory: cinder.api.v1.router:APIRouter.factory
+      paste.app_factory: manila.api.v1.router:APIRouter.factory
     app:apiv2:
-      paste.app_factory: cinder.api.v2.router:APIRouter.factory
+      paste.app_factory: manila.api.v2.router:APIRouter.factory
     app:apiv3:
-      paste.app_factory: cinder.api.v3.router:APIRouter.factory
+      paste.app_factory: manila.api.v3.router:APIRouter.factory
     pipeline:apiversions:
       pipeline: cors http_proxy_to_wsgi faultwrap osvolumeversionapp
     app:osvolumeversionapp:
-      paste.app_factory: cinder.api.versions:Versions.factory
+      paste.app_factory: manila.api.versions:Versions.factory
     filter:keystonecontext:
-      paste.filter_factory: cinder.api.middleware.auth:CinderKeystoneContext.factory
+      paste.filter_factory: manila.api.middleware.auth:manilaKeystoneContext.factory
     filter:authtoken:
       paste.filter_factory: keystonemiddleware.auth_token:filter_factory
     filter:audit:
       paste.filter_factory: keystonemiddleware.audit:filter_factory
-      audit_map_file: /etc/cinder/api_audit_map.conf
+      audit_map_file: /etc/manila/api_audit_map.conf
   policy: {}
   api_audit_map:
     DEFAULT:
@@ -506,19 +506,19 @@ conf:
       volume: service/storage/block
       volumev2: service/storage/block
       volumev3: service/storage/block
-  cinder_sudoers: |
+  manila_sudoers: |
     # This sudoers file supports rootwrap for both Kolla and LOCI Images.
     Defaults !requiretty
     Defaults secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin:/var/lib/openstack/bin:/var/lib/kolla/venv/bin"
-    cinder ALL = (root) NOPASSWD: /var/lib/kolla/venv/bin/cinder-rootwrap /etc/cinder/rootwrap.conf *, /var/lib/openstack/bin/cinder-rootwrap /etc/cinder/rootwrap.conf *
+    manila ALL = (root) NOPASSWD: /var/lib/kolla/venv/bin/manila-rootwrap /etc/manila/rootwrap.conf *, /var/lib/openstack/bin/manila-rootwrap /etc/manila/rootwrap.conf *
   rootwrap: |
-    # Configuration for cinder-rootwrap
+    # Configuration for manila-rootwrap
     # This file should be owned by (and only-writeable by) the root user
 
     [DEFAULT]
     # List of directories to load filter definitions from (separated by ',').
     # These directories MUST all be only writeable by root !
-    filters_path=/etc/cinder/rootwrap.d
+    filters_path=/etc/manila/rootwrap.d
 
     # List of directories to search executables in, in case filters do not
     # explicitely specify a full path (separated by ',')
@@ -544,16 +544,16 @@ conf:
       pods:
         - volume
       content: |
-        # cinder-rootwrap command filters for volume nodes
+        # manila-rootwrap command filters for volume nodes
         # This file should be owned by (and only-writeable by) the root user
 
         [Filters]
-        # cinder/volume/iscsi.py: iscsi_helper '--op' ...
+        # manila/volume/iscsi.py: iscsi_helper '--op' ...
         ietadm: CommandFilter, ietadm, root
         tgtadm: CommandFilter, tgtadm, root
         iscsictl: CommandFilter, iscsictl, root
         tgt-admin: CommandFilter, tgt-admin, root
-        cinder-rtstool: CommandFilter, cinder-rtstool, root
+        manila-rtstool: CommandFilter, manila-rtstool, root
         scstadmin: CommandFilter, scstadmin, root
 
         # LVM related show commands
@@ -586,74 +586,74 @@ conf:
         # This line ties the superuser privs with the config files, context name,
         # and (implicitly) the actual python code invoked.
         privsep-rootwrap: RegExpFilter, privsep-helper, root, privsep-helper, --config-file, /etc/(?!\.\.).*, --privsep_context, os_brick.privileged.default, --privsep_sock_path, /tmp/.*
-        # The following and any cinder/brick/* entries should all be obsoleted
+        # The following and any manila/brick/* entries should all be obsoleted
         # by privsep, and may be removed once the os-brick version requirement
         # is updated appropriately.
         scsi_id: CommandFilter, /lib/udev/scsi_id, root
         drbdadm: CommandFilter, drbdadm, root
 
-        # cinder/brick/local_dev/lvm.py: 'vgcreate', vg_name, pv_list
+        # manila/brick/local_dev/lvm.py: 'vgcreate', vg_name, pv_list
         vgcreate: CommandFilter, vgcreate, root
 
-        # cinder/brick/local_dev/lvm.py: 'lvcreate', '-L', sizestr, '-n', volume_name,..
-        # cinder/brick/local_dev/lvm.py: 'lvcreate', '-L', ...
+        # manila/brick/local_dev/lvm.py: 'lvcreate', '-L', sizestr, '-n', volume_name,..
+        # manila/brick/local_dev/lvm.py: 'lvcreate', '-L', ...
         lvcreate: EnvFilter, env, root, LC_ALL=C, lvcreate
         lvcreate_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, lvcreate
         lvcreate_fdwarn: EnvFilter, env, root, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, lvcreate
         lvcreate_lvmconf_fdwarn: EnvFilter, env, root, LVM_SYSTEM_DIR=, LVM_SUPPRESS_FD_WARNINGS=, LC_ALL=C, lvcreate
 
-        # cinder/volume/driver.py: 'dd', 'if=%s' % srcstr, 'of=%s' % deststr,...
+        # manila/volume/driver.py: 'dd', 'if=%s' % srcstr, 'of=%s' % deststr,...
         dd: CommandFilter, dd, root
 
-        # cinder/volume/driver.py: 'lvremove', '-f', %s/%s % ...
+        # manila/volume/driver.py: 'lvremove', '-f', %s/%s % ...
         lvremove: CommandFilter, lvremove, root
 
-        # cinder/volume/driver.py: 'lvrename', '%(vg)s', '%(orig)s' '(new)s'...
+        # manila/volume/driver.py: 'lvrename', '%(vg)s', '%(orig)s' '(new)s'...
         lvrename: CommandFilter, lvrename, root
 
-        # cinder/brick/local_dev/lvm.py: 'lvextend', '-L' '%(new_size)s', '%(lv_name)s' ...
-        # cinder/brick/local_dev/lvm.py: 'lvextend', '-L' '%(new_size)s', '%(thin_pool)s' ...
+        # manila/brick/local_dev/lvm.py: 'lvextend', '-L' '%(new_size)s', '%(lv_name)s' ...
+        # manila/brick/local_dev/lvm.py: 'lvextend', '-L' '%(new_size)s', '%(thin_pool)s' ...
         lvextend: EnvFilter, env, root, LC_ALL=C, lvextend
         lvextend_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, lvextend
         lvextend_fdwarn: EnvFilter, env, root, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, lvextend
         lvextend_lvmconf_fdwarn: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, lvextend
 
-        # cinder/brick/local_dev/lvm.py: 'lvchange -a y -K <lv>'
+        # manila/brick/local_dev/lvm.py: 'lvchange -a y -K <lv>'
         lvchange: CommandFilter, lvchange, root
 
-        # cinder/brick/local_dev/lvm.py: 'lvconvert', '--merge', snapshot_name
+        # manila/brick/local_dev/lvm.py: 'lvconvert', '--merge', snapshot_name
         lvconvert: CommandFilter, lvconvert, root
 
-        # cinder/volume/driver.py: 'iscsiadm', '-m', 'discovery', '-t',...
-        # cinder/volume/driver.py: 'iscsiadm', '-m', 'node', '-T', ...
+        # manila/volume/driver.py: 'iscsiadm', '-m', 'discovery', '-t',...
+        # manila/volume/driver.py: 'iscsiadm', '-m', 'node', '-T', ...
         iscsiadm: CommandFilter, iscsiadm, root
 
-        # cinder/volume/utils.py: utils.temporary_chown(path, 0)
+        # manila/volume/utils.py: utils.temporary_chown(path, 0)
         chown: CommandFilter, chown, root
 
-        # cinder/volume/utils.py: copy_volume(..., ionice='...')
+        # manila/volume/utils.py: copy_volume(..., ionice='...')
         ionice_1: ChainingRegExpFilter, ionice, root, ionice, -c[0-3], -n[0-7]
         ionice_2: ChainingRegExpFilter, ionice, root, ionice, -c[0-3]
 
-        # cinder/volume/utils.py: setup_blkio_cgroup()
+        # manila/volume/utils.py: setup_blkio_cgroup()
         cgcreate: CommandFilter, cgcreate, root
         cgset: CommandFilter, cgset, root
         cgexec: ChainingRegExpFilter, cgexec, root, cgexec, -g, blkio:\S+
 
-        # cinder/volume/driver.py
+        # manila/volume/driver.py
         dmsetup: CommandFilter, dmsetup, root
         ln: CommandFilter, ln, root
 
-        # cinder/image/image_utils.py
+        # manila/image/image_utils.py
         qemu-img: EnvFilter, env, root, LC_ALL=C, qemu-img
         qemu-img_convert: CommandFilter, qemu-img, root
 
         udevadm: CommandFilter, udevadm, root
 
-        # cinder/volume/driver.py: utils.read_file_as_root()
+        # manila/volume/driver.py: utils.read_file_as_root()
         cat: CommandFilter, cat, root
 
-        # cinder/volume/nfs.py
+        # manila/volume/nfs.py
         stat: CommandFilter, stat, root
         mount: CommandFilter, mount, root
         df: CommandFilter, df, root
@@ -662,39 +662,39 @@ conf:
         chmod: CommandFilter, chmod, root
         rm: CommandFilter, rm, root
 
-        # cinder/volume/drivers/remotefs.py
+        # manila/volume/drivers/remotefs.py
         mkdir: CommandFilter, mkdir, root
 
-        # cinder/volume/drivers/netapp/nfs.py:
+        # manila/volume/drivers/netapp/nfs.py:
         netapp_nfs_find: RegExpFilter, find, root, find, ^[/]*([^/\0]+(/+)?)*$, -maxdepth, \d+, -name, img-cache.*, -amin, \+\d+
 
-        # cinder/volume/drivers/glusterfs.py
+        # manila/volume/drivers/glusterfs.py
         chgrp: CommandFilter, chgrp, root
         umount: CommandFilter, umount, root
         fallocate: CommandFilter, fallocate, root
 
-        # cinder/volumes/drivers/hds/hds.py:
+        # manila/volumes/drivers/hds/hds.py:
         hus-cmd: CommandFilter, hus-cmd, root
         hus-cmd_local: CommandFilter, /usr/local/bin/hus-cmd, root
 
-        # cinder/volumes/drivers/hds/hnas_backend.py
+        # manila/volumes/drivers/hds/hnas_backend.py
         ssc: CommandFilter, ssc, root
 
-        # cinder/brick/initiator/connector.py:
+        # manila/brick/initiator/connector.py:
         ls: CommandFilter, ls, root
         tee: CommandFilter, tee, root
         multipath: CommandFilter, multipath, root
         multipathd: CommandFilter, multipathd, root
         systool: CommandFilter, systool, root
 
-        # cinder/volume/drivers/block_device.py
+        # manila/volume/drivers/block_device.py
         blockdev: CommandFilter, blockdev, root
 
-        # cinder/volume/drivers/ibm/gpfs.py
-        # cinder/volume/drivers/tintri.py
+        # manila/volume/drivers/ibm/gpfs.py
+        # manila/volume/drivers/tintri.py
         mv: CommandFilter, mv, root
 
-        # cinder/volume/drivers/ibm/gpfs.py
+        # manila/volume/drivers/ibm/gpfs.py
         cp: CommandFilter, cp, root
         mmgetstate: CommandFilter, /usr/lpp/mmfs/bin/mmgetstate, root
         mmclone: CommandFilter, /usr/lpp/mmfs/bin/mmclone, root
@@ -711,22 +711,22 @@ conf:
         mmcrsnapshot: CommandFilter, /usr/lpp/mmfs/bin/mmcrsnapshot, root
         mmdelsnapshot: CommandFilter, /usr/lpp/mmfs/bin/mmdelsnapshot, root
 
-        # cinder/volume/drivers/ibm/gpfs.py
-        # cinder/volume/drivers/ibm/ibmnas.py
+        # manila/volume/drivers/ibm/gpfs.py
+        # manila/volume/drivers/ibm/ibmnas.py
         find_maxdepth_inum: RegExpFilter, find, root, find, ^[/]*([^/\0]+(/+)?)*$, -maxdepth, \d+, -ignore_readdir_race, -inum, \d+, -print0, -quit
 
-        # cinder/brick/initiator/connector.py:
+        # manila/brick/initiator/connector.py:
         aoe-revalidate: CommandFilter, aoe-revalidate, root
         aoe-discover: CommandFilter, aoe-discover, root
         aoe-flush: CommandFilter, aoe-flush, root
 
-        # cinder/brick/initiator/linuxscsi.py:
+        # manila/brick/initiator/linuxscsi.py:
         sg_scan: CommandFilter, sg_scan, root
 
-        #cinder/backup/services/tsm.py
+        #manila/backup/services/tsm.py
         dsmc:CommandFilter,/usr/bin/dsmc,root
 
-        # cinder/volume/drivers/hitachi/hbsd_horcm.py
+        # manila/volume/drivers/hitachi/hbsd_horcm.py
         raidqry: CommandFilter, raidqry, root
         raidcom: CommandFilter, raidcom, root
         pairsplit: CommandFilter, pairsplit, root
@@ -737,7 +737,7 @@ conf:
         horcmshutdown.sh: CommandFilter, horcmshutdown.sh, root
         horcmgr: EnvFilter, env, root, HORCMINST=, /etc/horcmgr
 
-        # cinder/volume/drivers/hitachi/hbsd_snm2.py
+        # manila/volume/drivers/hitachi/hbsd_snm2.py
         auman: EnvFilter, env, root, LANG=, STONAVM_HOME=, LD_LIBRARY_PATH=, STONAVM_RSP_PASS=, STONAVM_ACT=, /usr/stonavm/auman
         auluref: EnvFilter, env, root, LANG=, STONAVM_HOME=, LD_LIBRARY_PATH=, STONAVM_RSP_PASS=, STONAVM_ACT=, /usr/stonavm/auluref
         auhgdef: EnvFilter, env, root, LANG=, STONAVM_HOME=, LD_LIBRARY_PATH=, STONAVM_RSP_PASS=, STONAVM_ACT=, /usr/stonavm/auhgdef
@@ -758,10 +758,10 @@ conf:
         aureplicationlocal: EnvFilter, env, root, LANG=, STONAVM_HOME=, LD_LIBRARY_PATH=, STONAVM_RSP_PASS=, STONAVM_ACT=, /usr/stonavm/aureplicationlocal
         aureplicationmon: EnvFilter, env, root, LANG=, STONAVM_HOME=, LD_LIBRARY_PATH=, STONAVM_RSP_PASS=, STONAVM_ACT=, /usr/stonavm/aureplicationmon
 
-        # cinder/volume/drivers/hgst.py
+        # manila/volume/drivers/hgst.py
         vgc-cluster: CommandFilter, vgc-cluster, root
 
-        # cinder/volume/drivers/vzstorage.py
+        # manila/volume/drivers/vzstorage.py
         pstorage-mount: CommandFilter, pstorage-mount, root
         pstorage: CommandFilter, pstorage, root
         ploop: CommandFilter, ploop, root
@@ -778,74 +778,56 @@ conf:
         replication: 3
         crush_rule: replicated_rule
         chunk_size: 8
-        app_name: cinder-backup
-      cinder.volumes:
+        app_name: manila-backup
+      manila.volumes:
         replication: 3
         crush_rule: replicated_rule
         chunk_size: 8
-        app_name: cinder-volume
-  cinder:
+        app_name: manila-volume
+  
+  
+  manila:
     DEFAULT:
-      volume_usage_audit_period: hour
-      resource_query_filters_file: /etc/cinder/resource_filters.json
-      log_config_append: /etc/cinder/logging.conf
-      use_syslog: false
-      use_stderr: true
-      enable_v1_api: false
-      enable_v2_api: false
-      volume_name_template: "%s"
-      osapi_volume_workers: 1
-      glance_api_version: 2
-      os_region_name: RegionOne
-      host: cinder-volume-worker
-      # NOTE(portdirect): the bind port should not be defined, and is manipulated
-      # via the endpoints section.
-      osapi_volume_listen_port: null
-      enabled_backends: "rbd1"
-      default_volume_type: "rbd1"
-      # NOTE(portdirect): "cinder.backup.drivers.ceph"  and
-      # "cinder.backup.drivers.posix" also supported
-      # NOTE(rchurch): As of Stein, drivers by class name are required
-      # - cinder.backup.drivers.swift.SwiftBackupDriver
-      # - cinder.backup.drivers.ceph.CephBackupDriver
-      # - cinder.backup.drivers.posix.PosixBackupDriver
-      backup_driver: "cinder.backup.drivers.swift.SwiftBackupDriver"
-      # Backup: Ceph RBD options
-      backup_ceph_conf: "/etc/ceph/ceph.conf"
-      backup_ceph_user: cinderbackup
-      backup_ceph_pool: cinder.backups
-      # Backup: Posix options
-      backup_posix_path: /var/lib/cinder/backup
-      auth_strategy: keystone
-      # Internal tenant id
-      internal_project_name: internal_cinder
-      internal_user_name: internal_cinder
+      transport_url:
+      backend_url:
+    cinder:
     database:
-      max_retries: -1
-    keystone_authtoken:
-      auth_version: v3
-      auth_type: password
-      memcache_security_strategy: ENCRYPT
-    oslo_policy:
-      policy_file: /etc/cinder/policy.yaml
-    oslo_concurrency:
-      lock_path: "/var/lib/cinder/tmp"
-    oslo_messaging_notifications:
-      driver: messagingv2
-    oslo_middleware:
-      enable_proxy_headers_parsing: true
-    oslo_messaging_rabbit:
-      rabbit_ha_queues: true
+      connection:
+    cors:
     coordination:
-      backend_url: file:///var/lib/cinder/coordination
-    service_user:
+      backend_url:
+    keystone_authtoken:
+      auth_uri:
+      auth_url:
+      region_name:
+      project_name:
+      project_domain_name:
+      user_domain_name:
+      username:
+      password:
+      memcached_servers:
+      memcache_secret_key:
+      memcache_security_strategy: ENCRYPT
       auth_type: password
-      send_service_user_token: false
+      auth_version: v3
+    matchmaker_redis:
+    neutron:
+    nova:
+    oslo_concurrency:
+    oslo_messaging_amqp:
+    oslo_messaging_notifications:
+    oslo_messaging_rabbit:
+    oslo_messaging_zmq:
+    oslo_middleware:
+    oslo_policy:    
+    rpc_notifier2:
+    sql:
+  
   logging:
     loggers:
       keys:
         - root
-        - cinder
+        - manila
     handlers:
       keys:
         - stdout
@@ -858,11 +840,11 @@ conf:
     logger_root:
       level: WARNING
       handlers: 'null'
-    logger_cinder:
+    logger_manila:
       level: INFO
       handlers:
         - stdout
-      qualname: cinder
+      qualname: manila
     logger_amqp:
       level: WARNING
       handlers: stderr
@@ -904,8 +886,8 @@ conf:
   rabbitmq:
     # NOTE(rk760n): adding rmq policy to mirror messages from notification queues and set expiration time for the ones
     policies:
-      - vhost: "cinder"
-        name: "ha_ttl_cinder"
+      - vhost: "manila"
+        name: "ha_ttl_manila"
         definition:
           # mirror messges to other nodes in rmq cluster
           ha-mode: "all"
@@ -919,16 +901,16 @@ conf:
   backends:
     # Those options will be written to backends.conf as-is.
     rbd1:
-      volume_driver: cinder.volume.drivers.rbd.RBDDriver
+      volume_driver: manila.volume.drivers.rbd.RBDDriver
       volume_backend_name: rbd1
-      rbd_pool: cinder.volumes
+      rbd_pool: manila.volumes
       rbd_ceph_conf: "/etc/ceph/ceph.conf"
       rbd_flatten_volume_from_snapshot: false
       report_discard_supported: true
       rbd_max_clone_depth: 5
       rbd_store_chunk_size: 4
       rados_connect_timeout: -1
-      rbd_user: cinder
+      rbd_user: manila
       rbd_secret_uuid: 457eb676-33da-42ec-9a8c-9293d545c337
       image_volume_cache_enabled: true
       image_volume_cache_max_size_gb: 200
@@ -941,7 +923,7 @@ conf:
         echo $VOLUMES | xargs openstack volume delete
       fi
     tests:
-      CinderVolumes.create_and_delete_volume:
+      manilaVolumes.create_and_delete_volume:
         - args:
             size: 1
           runner:
@@ -1019,18 +1001,18 @@ dependencies:
     common:
       local_image_registry:
         jobs:
-          - cinder-image-repo-sync
+          - manila-image-repo-sync
         services:
           - endpoint: node
             service: local_image_registry
   static:
     api:
       jobs:
-        - cinder-db-sync
-        - cinder-ks-user
-        - cinder-ks-endpoints
-        - cinder-rabbit-init
-        - cinder-storage-init
+        - manila-db-sync
+        - manila-ks-user
+        - manila-ks-endpoints
+        - manila-rabbit-init
+        - manila-storage-init
       services:
         - endpoint: internal
           service: oslo_db
@@ -1038,12 +1020,12 @@ dependencies:
           service: identity
     backup:
       jobs:
-        - cinder-db-sync
-        - cinder-ks-user
-        - cinder-ks-endpoints
-        - cinder-rabbit-init
-        - cinder-storage-init
-        - cinder-backup-storage-init
+        - manila-db-sync
+        - manila-ks-user
+        - manila-ks-endpoints
+        - manila-rabbit-init
+        - manila-storage-init
+        - manila-backup-storage-init
       services:
         - endpoint: internal
           service: identity
@@ -1060,7 +1042,7 @@ dependencies:
       pod:
         - requireSameNode: false
           labels:
-            application: cinder
+            application: manila
             component: volume
     clean:
       jobs: null
@@ -1074,13 +1056,13 @@ dependencies:
           service: oslo_db
     db_sync:
       jobs:
-        - cinder-db-init
+        - manila-db-init
       services:
         - endpoint: internal
           service: oslo_db
     ks_endpoints:
       jobs:
-        - cinder-ks-service
+        - manila-ks-service
       services:
         - endpoint: internal
           service: identity
@@ -1098,11 +1080,11 @@ dependencies:
           endpoint: internal
     scheduler:
       jobs:
-        - cinder-db-sync
-        - cinder-ks-user
-        - cinder-ks-endpoints
-        - cinder-rabbit-init
-        - cinder-storage-init
+        - manila-db-sync
+        - manila-ks-user
+        - manila-ks-endpoints
+        - manila-rabbit-init
+        - manila-storage-init
       services:
         - endpoint: internal
           service: identity
@@ -1118,11 +1100,11 @@ dependencies:
           service: volume
     volume:
       jobs:
-        - cinder-db-sync
-        - cinder-ks-user
-        - cinder-ks-endpoints
-        - cinder-rabbit-init
-        - cinder-storage-init
+        - manila-db-sync
+        - manila-ks-user
+        - manila-ks-endpoints
+        - manila-rabbit-init
+        - manila-storage-init
       services:
         - endpoint: internal
           service: identity
@@ -1130,11 +1112,11 @@ dependencies:
           service: volume
     volume_usage_audit:
       jobs:
-        - cinder-db-sync
-        - cinder-ks-user
-        - cinder-ks-endpoints
-        - cinder-rabbit-init
-        - cinder-storage-init
+        - manila-db-sync
+        - manila-ks-user
+        - manila-ks-endpoints
+        - manila-rabbit-init
+        - manila-storage-init
       services:
         - endpoint: internal
           service: identity
@@ -1152,26 +1134,26 @@ dependencies:
 # Names of secrets used by bootstrap and environmental checks
 secrets:
   identity:
-    admin: cinder-keystone-admin
-    cinder: cinder-keystone-user
-    test: cinder-keystone-test
+    admin: manila-keystone-admin
+    manila: manila-keystone-user
+    test: manila-keystone-test
   oslo_db:
-    admin: cinder-db-admin
-    cinder: cinder-db-user
+    admin: manila-db-admin
+    manila: manila-db-user
   rbd:
-    backup: cinder-backup-rbd-keyring
-    volume: cinder-volume-rbd-keyring
-    volume_external: cinder-volume-external-rbd-keyring
+    backup: manila-backup-rbd-keyring
+    volume: manila-volume-rbd-keyring
+    volume_external: manila-volume-external-rbd-keyring
   oslo_messaging:
-    admin: cinder-rabbitmq-admin
-    cinder: cinder-rabbitmq-user
+    admin: manila-rabbitmq-admin
+    manila: manila-rabbitmq-user
   tls:
     volume:
       api:
-        public: cinder-tls-public
-        internal: cinder-tls-api
+        public: manila-tls-public
+        internal: manila-tls-api
   oci_image_registry:
-    cinder: cinder-oci-image-registry
+    manila: manila-oci-image-registry
 
 # We use a different layout of the endpoints here to account for versioning
 # this swaps the service name and type, and should be rolled out to other
@@ -1195,8 +1177,8 @@ endpoints:
     namespace: oci-image-registry
     auth:
       enabled: false
-      cinder:
-        username: cinder
+      manila:
+        username: manila
         password: password
     hosts:
       default: localhost
@@ -1215,10 +1197,10 @@ endpoints:
         project_name: admin
         user_domain_name: default
         project_domain_name: default
-      cinder:
+      manila:
         role: admin
         region_name: RegionOne
-        username: cinder
+        username: manila
         password: password
         project_name: service
         user_domain_name: service
@@ -1226,7 +1208,7 @@ endpoints:
       test:
         role: admin
         region_name: RegionOne
-        username: cinder-test
+        username: manila-test
         password: password
         project_name: test
         user_domain_name: service
@@ -1260,10 +1242,10 @@ endpoints:
         default: 9292
         public: 80
   volume:
-    name: cinder
+    name: manila
     hosts:
-      default: cinder-api
-      public: cinder
+      default: manila-api
+      public: manila
     host_fqdn_override:
       default: null
       # NOTE(portdirect): this chart supports TLS for fqdn over-ridden public
@@ -1282,10 +1264,10 @@ endpoints:
         default: 8776
         public: 80
   volumev2:
-    name: cinderv2
+    name: manilav2
     hosts:
-      default: cinder-api
-      public: cinder
+      default: manila-api
+      public: manila
     host_fqdn_override:
       default: null
       # NOTE(portdirect): this chart supports TLS for fqdn over-ridden public
@@ -1304,10 +1286,10 @@ endpoints:
         default: 8776
         public: 80
   volumev3:
-    name: cinderv3
+    name: manilav3
     hosts:
-      default: cinder-api
-      public: cinder
+      default: manila-api
+      public: manila
     host_fqdn_override:
       default: null
       # NOTE(portdirect): this chart supports TLS for fqdn over-ridden public
@@ -1333,14 +1315,14 @@ endpoints:
         secret:
           tls:
             internal: mariadb-tls-direct
-      cinder:
-        username: cinder
+      manila:
+        username: manila
         password: password
     hosts:
       default: mariadb
     host_fqdn_override:
       default: null
-    path: /cinder
+    path: /manila
     scheme: mysql+pymysql
     port:
       mysql:
@@ -1353,8 +1335,8 @@ endpoints:
         secret:
           tls:
             internal: rabbitmq-tls-direct
-      cinder:
-        username: cinder
+      manila:
+        username: manila
         password: password
     statefulset:
       replicas: 2
@@ -1363,7 +1345,7 @@ endpoints:
       default: rabbitmq
     host_fqdn_override:
       default: null
-    path: /cinder
+    path: /manila
     scheme: rabbit
     port:
       amqp:
@@ -1424,7 +1406,7 @@ endpoints:
         default: 80
 
 network_policy:
-  cinder:
+  manila:
     ingress:
       - {}
     egress:

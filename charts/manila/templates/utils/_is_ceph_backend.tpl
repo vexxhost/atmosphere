@@ -12,6 +12,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */}}
 
-{{- if .Values.manifests.secret_ingress_tls }}
-{{- include "helm-toolkit.manifests.secret_ingress_tls" ( dict "envAll" . "backendServiceType" "volume" ) }}
-{{- end }}
+{{- define "manila.utils.is_ceph_backend" -}}
+{{- $backend := index . "backend" -}}
+{{- printf "%v" (and ( kindIs "map" $backend ) ( eq $backend.volume_driver "manila.volume.drivers.rbd.RBDDriver" )) -}}
+{{- end -}}
