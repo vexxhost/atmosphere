@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/vexxhost/atmosphere/compare/v1.0.0...v1.0.1) (2023-03-01)
+
+
+### Bug Fixes
+
+* **ovs:** Fix LimitMEMLOCK assertion ([#344](https://github.com/vexxhost/atmosphere/issues/344)) ([316f6a7](https://github.com/vexxhost/atmosphere/commit/316f6a72f425148d96fe07d03d92b82f0de55589))
+
 ## [1.0.0](https://github.com/vexxhost/atmosphere/compare/v1.0.0-rc.2...v1.0.0) (2023-03-01)
 
 
