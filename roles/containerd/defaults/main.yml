@@ -26,7 +26,7 @@ containerd_download_dest: "{{ containerd_download_unarchive_dest }}.tar.gz"
 containerd_download_unarchive_dest: "{{ download_artifact_work_directory }}/containerd-{{ containerd_version }}-{{ ansible_system | lower }}-{{ download_artifact_goarch }}" # noqa: yaml[line-length]
 containerd_archive_checksum: "{{ containerd_archive_checksums[download_artifact_goarch][containerd_version] }}"
 
-containerd_pause_image: k8s.gcr.io/pause:3.5
+containerd_pause_image: "{{ atmosphere_images['pause'] | vexxhost.atmosphere.docker_image('ref') }}"
 containerd_insecure_registries: []
 
 # NOTE(mnaser): This is to accomodate for the uninstallation of the old packages
