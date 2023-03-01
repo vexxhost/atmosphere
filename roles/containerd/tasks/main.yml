@@ -66,6 +66,16 @@
   notify:
     - Restart containerd
 
+- name: Bump DefaultLimitMEMLOCK for system
+  ansible.builtin.lineinfile:
+    path: /etc/systemd/system.conf
+    regexp: '^DefaultLimitMEMLOCK='
+    line: 'DefaultLimitMEMLOCK=infinity'
+    state: present
+  notify:
+    - Reload systemd
+    - Restart containerd
+
 - name: Force any restarts if necessary
   ansible.builtin.meta: flush_handlers
 
