@@ -7,7 +7,7 @@ nodeRegistration:
   kubeletExtraArgs:
     cgroups-per-qos: "false"
     enforce-node-allocatable: ""
-    node-ip: "{{ ansible_default_ipv4.address }}"
+    node-ip: "{{ kubernetes_node_ip }}"
     container-runtime: "remote"
     container-runtime-endpoint: "{{ kubernetes_cri_socket }}"
 ---
@@ -17,7 +17,7 @@ nodeRegistration:
   kubeletExtraArgs:
     cgroups-per-qos: "false"
     enforce-node-allocatable: ""
-    node-ip: "{{ ansible_default_ipv4.address }}"
+    node-ip: "{{ kubernetes_node_ip }}"
     container-runtime: "remote"
     container-runtime-endpoint: "{{ kubernetes_cri_socket }}"
 {% if (_kubernetes_bootstrap_node is not defined) or (_kubernetes_bootstrap_node is defined and inventory_hostname != _kubernetes_bootstrap_node) %}
