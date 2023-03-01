@@ -24,23 +24,15 @@ assumes that you have the `gh` command line tool installed:
 > `internal/pkg/image_repositories/build_workflow.go` file to include the newly
 > forked project.
 
-## OpenStack
-
-Atmosphere has a few forks of the OpenStack repositories.  These are used to
-apply patches to the upstream code that contain fixes which have not yet been
-merged upstream.  The list of forked repositories is as follows:
-
-* [openstack/horizon](https://github.com/vexxhost/horizon)
-
-### Applying patches
+## Applying patches
 
 The only time that it is necessary to apply patches to the forked repositories
 is when there is a fix that has not yet been merged upstream.  In order to
 apply a patch, you can use the following command which includes the project
-name and the Gerrit patch number:
+name and either a Gerrit URL or a GitHub pull request URL:
 
 ```bash
-./hack/repos/openstack/patch horizon 874351
+./hack/repos/patch horizon https://review.opendev.org/c/openstack/horizon/+/874351/
 ```
 
 This command will take care of automatically cloning the project, downloading
@@ -52,3 +44,11 @@ request.
 >
 > If the process fails because of a merge conflict, you'll need to resolve the
 > conflict and then run the command again.
+
+## OpenStack
+
+Atmosphere has a few forks of the OpenStack repositories.  These are used to
+apply patches to the upstream code that contain fixes which have not yet been
+merged upstream.  The list of forked repositories is as follows:
+
+* [openstack/horizon](https://github.com/vexxhost/horizon)

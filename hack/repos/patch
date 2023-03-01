@@ -1,0 +1,50 @@
+#!/bin/bash
+
+PROJECT=${1}
+PATCH=${2}
+BRANCH=${3:-master}
+
+if [[ ${PATCH} =~ ^https://review.opendev.org ]]; then
+  FORMAT=gerrit
+  PATCH_ID=$(echo ${PATCH} | awk -F/ '{print $NF}')
+elif [[ ${PATCH} =~ ^https://github.com ]]; then
+  FORMAT=github
+  PATCH_ID=$(echo ${PATCH} | awk -F/ '{print $NF}')
+else
+  # Exit if we don't know how to handle this patch
+  echo "Unknown patch format: ${PATCH}"
+  exit 1
+fi
+
+# Clone the repository in a temporary directory if it doesn't exist
+if [ ! -d "/tmp/vexxhost-${PROJECT}" ]; then
+  gh repo clone vexxhost/${PROJECT} /tmp/vexxhost-${PROJECT}
+fi
+
+# Switch to the repository
+cd /tmp/vexxhost-${PROJECT}
+
+# Update the repository
+git fetch origin
+
+# Switch to the branch that we're cherry-picking into
+git checkout -B patch/${BRANCH}/${PATCH_ID} origin/${BRANCH}
+
+# Cherry-pick the change
+if [[ ${FORMAT} == "gerrit" ]]; then
+  LATEST_REV=$(git ls-remote https://opendev.org/openstack/${PROJECT} | grep -E "refs/changes/[[:digit:]]+/${PATCH_ID}/" | sort -t / -k 5 -g | tail -n1 | awk '{print $2}')
+  git fetch https://review.opendev.org/openstack/${PROJECT} ${LATEST_REV} && git cherry-pick FETCH_HEAD
+elif [[ ${FORMAT} == "github" ]]; then
+  gh pr checkout --branch patch/${BRANCH}/${PATCH_ID} -f ${PATCH}
+fi
+
+# Push this branch to the remote
+git push -u origin patch/${BRANCH}/${PATCH_ID}
+
+# Create a PR for this change
+gh repo set-default vexxhost/${1}
+gh pr create \
+  --title "$(git show -s --format=%s)" \
+  --body "$(git show -s --format=%B)" \
+  --base ${BRANCH} \
+  --head patch/${BRANCH}/${PATCH_ID}
