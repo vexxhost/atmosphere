@@ -2,6 +2,7 @@
 apiVersion: kubeadm.k8s.io/v1beta3
 kind: InitConfiguration
 localAPIEndpoint:
+  advertiseAddress: "{{ kubernetes_node_ip }}"
   bindPort: 16443
 nodeRegistration:
   kubeletExtraArgs:
@@ -29,6 +30,7 @@ discovery:
 {% if inventory_hostname in groups[kubernetes_control_plane_group] %}
 controlPlane:
   localAPIEndpoint:
+    advertiseAddress: "{{ kubernetes_node_ip }}"
     bindPort: 16443
   certificateKey: {{ _kubeadm_init_upload_certs.stdout_lines[-1] | trim }}
 {% endif %}
