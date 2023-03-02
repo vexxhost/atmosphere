@@ -17,8 +17,8 @@
   delegate_to: "{{ item.0 }}"
   ansible.builtin.replace:
     path: /etc/haproxy/haproxy.cfg
-    regexp: '(\s+)server {{ item.1 }}'
-    replace: '\1#server {{ item.1 }}'
+    regexp: '(\s+)server {{ item.1 }} '
+    replace: '\1#server {{ item.1 }} '
   with_nested:
     - "{{ groups[migrate_haproxy_from_osa_haproxy_group] }}"
     - "{{ groups[migrate_haproxy_from_osa_group] }}"
