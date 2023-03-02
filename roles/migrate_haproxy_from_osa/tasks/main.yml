@@ -1,0 +1,61 @@
+# Copyright (c) 2023 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Comment out all of the old containers in HAproxy
+  run_once: true
+  delegate_to: "{{ item.0 }}"
+  ansible.builtin.replace:
+    path: /etc/haproxy/haproxy.cfg
+    regexp: '(\s+)server {{ item.1 }}'
+    replace: '\1#server {{ item.1 }}'
+  with_nested:
+    - "{{ groups[migrate_haproxy_from_osa_haproxy_group] }}"
+    - "{{ groups[migrate_haproxy_from_osa_group] }}"
+
+- name: Get the Cluster IP for the service
+  run_once: true
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Service
+    name: "{{ migrate_haproxy_from_osa_service_name }}"
+    namespace: "{{ migrate_haproxy_from_osa_service_namespace }}"
+  register: _migrate_haproxy_from_osa_service
+
+- name: Add a record to HAproxy for the new service
+  run_once: true
+  delegate_to: "{{ item }}"
+  ansible.builtin.lineinfile:
+    path: /etc/haproxy/haproxy.cfg
+    line: '    server k8s {{ cluster_ip }}:{{ port }} check port {{ port }} inter 1000 rise 3 fall 3'
+    insertafter: 'backend {{ migrate_haproxy_from_osa_haproxy_backend }}-back'
+    state: present
+  loop: "{{ groups[migrate_haproxy_from_osa_haproxy_group] }}"
+  vars:
+    cluster_ip: "{{ _migrate_haproxy_from_osa_service.resources[0].spec.clusterIP }}"
+    port: "{{ _migrate_haproxy_from_osa_service.resources[0].spec.ports[0].port }}"
+  notify:
+    - Reload HAproxy
+
+- name: Update expected HTTP code
+  run_once: true
+  delegate_to: "{{ item }}"
+  ansible.builtin.lineinfile:
+    path: /etc/haproxy/haproxy.cfg
+    line: '    http-check expect status {{ migrate_haproxy_from_osa_expected_http_code }}'
+    insertafter: 'backend {{ migrate_haproxy_from_osa_haproxy_backend }}-back'
+    state: present
+  loop: "{{ groups[migrate_haproxy_from_osa_haproxy_group] }}"
+  when: migrate_haproxy_from_osa_expected_http_code is defined
+  notify:
+    - Reload HAproxy

@@ -1,0 +1,135 @@
+# Copyright (c) 2023 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Generate public key for SSH private key
+  ansible.builtin.import_tasks:
+    file: generate_public_key.yml
+
+- name: Generate configuration difference
+  ansible.builtin.include_role:
+    name: osa_config_diff
+  vars:
+    osa_config_diff_containers_group: nova_conductor
+    osa_config_diff_chart_ref: "{{ nova_helm_chart_ref }}"
+    osa_config_diff_release_namespace: "{{ nova_helm_release_namespace }}"
+    osa_config_diff_release_values: "{{ _nova_helm_values | combine(nova_helm_values, recursive=True) }}"
+    osa_config_diff_config_files:
+      nova.conf: /etc/nova/nova.conf
+
+- name: Migrate the databases
+  ansible.builtin.include_role:
+    name: migrate_db_from_osa
+  vars:
+    migrate_db_from_osa_pxc_namespace: "{{ nova_helm_release_namespace }}"
+    migrate_db_from_osa_containers_group: nova_conductor
+    migrate_db_from_osa_databases:
+      nova: nova
+      nova_api: nova_api
+      nova_cell0: nova_cell0
+
+- name: Get the Kuberentes service for Percona XtraDB Cluster
+  run_once: true
+  kubernetes.core.k8s_info:
+    kind: Service
+    name: "{{ openstack_helm_endpoints.oslo_db.hosts.default }}"
+    namespace: "{{ nova_helm_release_namespace }}"
+  register: _nova_pxc_service
+
+- name: Update cell mappings
+  run_once: true
+  delegate_to: "{{ groups['galera_all'][0] }}"
+  community.mysql.mysql_query:
+    login_host: "{{ _nova_pxc_service.resources[0].spec.clusterIP }}"
+    login_user: root
+    login_password: "{{ openstack_helm_endpoints.oslo_db.auth.admin.password }}"
+    login_db: nova_api
+    query: UPDATE cell_mappings SET transport_url = %(transport_url)s, database_connection = %(database_connection)s WHERE name = %(name)s
+    named_args: "{{ item }}"
+  loop:
+    - name: cell0
+      transport_url: none:/
+      database_connection: "mysql+pymysql://nova:{{ openstack_helm_endpoints.oslo_db_cell0.auth.nova.password }}@percona-xtradb-haproxy.openstack.svc.cluster.local:3306/nova_cell0"
+    - name: cell1
+      transport_url: "rabbit://nova:{{ openstack_helm_endpoints.oslo_messaging.auth.nova.password }}@rabbitmq-nova.openstack.svc.cluster.local:5672/nova"
+      database_connection: "mysql+pymysql://nova:{{ openstack_helm_endpoints.oslo_db.auth.nova.password }}@percona-xtradb-haproxy.openstack.svc.cluster.local:3306/nova"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Run deployment flow
+  ansible.builtin.import_tasks:
+    file: main.yml
+
+- name: Get the Kuberentes service for RabbitMQ
+  run_once: true
+  kubernetes.core.k8s_info:
+    kind: Service
+    name: "{{ openstack_helm_endpoints.oslo_messaging.hosts.default }}"
+    namespace: "{{ nova_helm_release_namespace }}"
+  register: _nova_rabbitmq_service
+
+- name: Update RabbitMQ configuration for compute nodes
+  delegate_to: "{{ item.0 }}"
+  community.general.ini_file:
+    path: /etc/nova/nova.conf
+    section: "{{ item.1.section }}"
+    option: "{{ item.1.option }}"
+    value: "{{ item.1.value }}"
+    mode: 0644
+  with_nested:
+    - "{{ groups['nova_compute'] }}"
+    - - section: DEFAULT
+        option: transport_url
+        value: "rabbit://nova:{{ openstack_helm_endpoints.oslo_messaging.auth.nova.password }}@{{ cluster_ip }}:5672/nova"
+      - section: oslo_messaging_notifications
+        option: transport_url
+        value: "rabbit://nova:{{ openstack_helm_endpoints.oslo_messaging.auth.nova.password }}@{{ cluster_ip }}:5672/nova"
+      - section: oslo_messaging_rabbit
+        option: ssl
+        value: false
+  vars:
+    cluster_ip: "{{ _nova_rabbitmq_service.resources[0].spec.clusterIP }}"
+
+- name: Restart all compute services
+  delegate_to: "{{ item }}"
+  ansible.builtin.service:
+    name: nova-compute
+    state: restarted
+  with_items: "{{ groups['nova_compute'] }}"
+
+- name: Migrate HAproxy (API)
+  ansible.builtin.include_role:
+    name: migrate_haproxy_from_osa
+  vars:
+    migrate_haproxy_from_osa_group: nova_conductor
+    migrate_haproxy_from_osa_service_namespace: "{{ nova_helm_release_namespace }}"
+    migrate_haproxy_from_osa_service_name: nova-api
+    migrate_haproxy_from_osa_haproxy_backend: nova_api_os_compute
+
+- name: Migrate HAproxy (Metadata)
+  ansible.builtin.include_role:
+    name: migrate_haproxy_from_osa
+  vars:
+    migrate_haproxy_from_osa_group: nova_conductor
+    migrate_haproxy_from_osa_service_namespace: "{{ nova_helm_release_namespace }}"
+    migrate_haproxy_from_osa_service_name: nova-metadata
+    migrate_haproxy_from_osa_haproxy_backend: nova_api_metadata
+
+- name: Migrate HAproxy (VNC)
+  ansible.builtin.include_role:
+    name: migrate_haproxy_from_osa
+  vars:
+    migrate_haproxy_from_osa_group: nova_conductor
+    migrate_haproxy_from_osa_service_namespace: "{{ nova_helm_release_namespace }}"
+    migrate_haproxy_from_osa_service_name: nova-novncproxy
+    migrate_haproxy_from_osa_haproxy_backend: nova_console

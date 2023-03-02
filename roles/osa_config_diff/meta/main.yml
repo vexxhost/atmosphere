@@ -12,23 +12,13 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-_designate_helm_values:
-  endpoints: "{{ openstack_helm_endpoints }}"
-  images:
-    tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('designate') }}"
-  conf:
-    designate:
-      service:central:
-        managed_resource_tenant_id: "{{ _designate_project_info.openstack_projects[0].id }}"
-    pools: "{{ designate_pools | to_yaml }}"
-  pod:
-    replicas:
-      api: 3
-      central: 3
-      mdns: 3
-      producer: 3
-      sink: 3
-      worker: 3
-  manifests:
-    ingress_api: false
-    service_ingress_api: false
+galaxy_info:
+  author: VEXXHOST, Inc.
+  description: Ansible role for OSA config diff
+  license: Apache-2.0
+  min_ansible_version: 5.5.0
+  standalone: false
+  platforms:
+    - name: Ubuntu
+      versions:
+        - focal

@@ -22,10 +22,20 @@ octavia_helm_values: {}
 # List of annotations to apply to the Ingress
 octavia_ingress_annotations: {}
 
+# TLS settings
+octavia_tls_server_common_name: octavia-server
+octavia_tls_server_private_key_algorithm: ECDSA
+octavia_tls_server_private_key_size: 256
+octavia_tls_client_common_name: octavia-client
+octavia_tls_client_private_key_algorithm: ECDSA
+octavia_tls_client_private_key_size: 256
+
 # Heartbeat key
 octavia_heartbeat_key: "{{ undef(hint='You must specify a Octavia heartbeat key') }}"
 
 # Octavia management subnet (CIDR)
+octavia_management_network_name: lb-mgmt-net
+octavia_management_subnet_name: lb-mgmt-subnet
 octavia_management_subnet_cidr: "172.24.0.0/22"
 
 # Octavia Amphora flavor
@@ -33,6 +43,9 @@ octavia_amphora_flavor_name: m1.amphora
 octavia_amphora_flavor_vcpus: 2
 octavia_amphora_flavor_ram: 2048
 octavia_amphora_flavor_disk: 0
+
+# Octavia Amphora security group
+octavia_amphora_security_group_name: lb-mgmt-sec-grp
 
 # Octavia Amphora Image
 octavia_amphora_image_name: amphora-x64-haproxy
