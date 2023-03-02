@@ -6,6 +6,9 @@ localAPIEndpoint:
   bindPort: 16443
 nodeRegistration:
   kubeletExtraArgs:
+{% if kubernetes_allow_unsafe_swap %}
+    fail-swap-on: "false"
+{% endif %}
     cgroups-per-qos: "false"
     enforce-node-allocatable: ""
     node-ip: "{{ kubernetes_node_ip }}"
@@ -16,6 +19,9 @@ apiVersion: kubeadm.k8s.io/v1beta2
 kind: JoinConfiguration
 nodeRegistration:
   kubeletExtraArgs:
+{% if kubernetes_allow_unsafe_swap %}
+    fail-swap-on: "false"
+{% endif %}
     cgroups-per-qos: "false"
     enforce-node-allocatable: ""
     node-ip: "{{ kubernetes_node_ip }}"

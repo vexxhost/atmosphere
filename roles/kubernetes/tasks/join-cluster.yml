@@ -59,7 +59,7 @@
 - name: Join cluster
   ansible.builtin.shell: |
     kubeadm join --config /etc/kubernetes/kubeadm.yaml \
-                 --ignore-preflight-errors=DirAvailable--etc-kubernetes-manifests
+                 --ignore-preflight-errors=DirAvailable--etc-kubernetes-manifests{% if kubernetes_allow_unsafe_swap %},Swap{% endif %}
   environment:
     PATH: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
   args:

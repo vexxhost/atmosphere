@@ -75,35 +75,38 @@
     state: present
   loop: "{{ kubernetes_sysctls }}"
 
-- name: Check swap status
-  ansible.builtin.command: /sbin/swapon -s
-  changed_when: false
-  register: _swapon
+- name: Disable swap on the host
+  when: kubernetes_allow_unsafe_swap == false
+  block:
+    - name: Check swap status
+      ansible.builtin.command: /sbin/swapon -s
+      changed_when: false
+      register: _swapon
 
-- name: Disable swap
-  ansible.builtin.command: /sbin/swapoff -a
-  changed_when: true
-  ignore_errors: "{{ ansible_check_mode }}"
-  when:
-    - _swapon.stdout
+    - name: Disable swap
+      ansible.builtin.command: /sbin/swapoff -a
+      changed_when: true
+      ignore_errors: "{{ ansible_check_mode }}"
+      when:
+        - _swapon.stdout
 
-- name: Remove swapfile from /etc/fstab
-  ansible.posix.mount:
-    name: "{{ item }}"
-    fstype: swap
-    state: absent
-  with_items:
-    - swap
-    - none
+    - name: Remove swapfile from /etc/fstab
+      ansible.posix.mount:
+        name: "{{ item }}"
+        fstype: swap
+        state: absent
+      with_items:
+        - swap
+        - none
 
-- name: Create noswap systemd service config file
-  ansible.builtin.copy:
-    src: noswap.service
-    dest: /etc/systemd/system/noswap.service
-    owner: root
-    group: root
-    mode: "0644"
-  notify: Enable noswap service
+    - name: Create noswap systemd service config file
+      ansible.builtin.copy:
+        src: noswap.service
+        dest: /etc/systemd/system/noswap.service
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Enable noswap service
 
 - name: Configure short hostname
   ansible.builtin.hostname:
