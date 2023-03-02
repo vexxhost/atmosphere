@@ -1,31 +1,32 @@
----
-# .. vim: foldmarker=[[[,]]]:foldmethod=marker
-
-# .. Copyright (C) 2022 VEXXHOST, Inc.
-# .. SPDX-License-Identifier: Apache-2.0
-
-# Default variables
-# =================
-
-# .. contents:: Sections
-#    :local:
-
-
-# .. envvar:: helm_repository_apt_key [[[
+# Copyright (c) 2023 VEXXHOST, Inc.
 #
-# Helm APT repository GPG key
-helm_repository_apt_key: https://baltocdn.com/helm/signing.asc
-
-                                                                   # ]]]
-# .. envvar:: helm_repository_url [[[
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
 #
-# Helm APT repository URL
-helm_repository_url: https://baltocdn.com/helm/stable/debian/
-
-                                                                   # ]]]
-# .. envvar:: helm_version [[[
+#      http://www.apache.org/licenses/LICENSE-2.0
 #
-# Helm version to use
-helm_version: 3.8.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
 
-                                                                   # ]]]
+helm_bin_dir: /usr/bin
+
+helm_version: v3.8.0
+helm_checksums:
+  arm64:
+    v3.8.0: 23e08035dc0106fe4e0bd85800fd795b2b9ecd9f32187aa16c49b0a917105161
+  amd64:
+    v3.8.0: 8408c91e846c5b9ba15eb6b1a5a79fc22dd4d33ac6ea63388e5698d1b2320c8b
+
+helm_download_url: "https://get.helm.sh/helm-{{ helm_version }}-linux-{{ download_artifact_goarch }}.tar.gz"
+helm_download_dest: "{{ helm_download_unarchive_dest }}.tar.gz"
+helm_download_unarchive_dest: "{{ download_artifact_work_directory }}/helm-{{ helm_version }}-linux-{{ download_artifact_goarch }}"
+helm_binary_checksum: "{{ helm_checksums[download_artifact_goarch][helm_version] }}"
+
+# NOTE(fitbeard): This is to accomodate for the uninstallation of the old packages
+#               that shipped with the operating system
+helm_package_name: helm
+helm_repository_apt: "deb https://baltocdn.com/helm/stable/debian/ all main"

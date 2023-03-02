@@ -1,4 +1,4 @@
-# Copyright (c) 2022 VEXXHOST, Inc.
+# Copyright (c) 2023 VEXXHOST, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -12,15 +12,43 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Gather operating system facts
-  ansible.builtin.setup:
-    gather_subset:
-      - min
+- name: Install additional packages
+  ansible.builtin.package:
+    name:
+      - git
 
-- name: Install packages using operating system specific process
-  ansible.builtin.include_tasks: "{{ ansible_os_family | lower }}.yml"
+- name: Uninstall helm package
+  ansible.builtin.package:
+    name: "{{ helm_package_name }}"
+    state: absent
 
-- name: Install helm diff
-  kubernetes.core.helm_plugin:
-    plugin_path: https://github.com/databus23/helm-diff
-    state: present
+- name: Remove helm repository
+  ansible.builtin.package:
+    path: harbottle-main-release
+    state: absent
+  when: ansible_os_family in ['RedHat']
+
+- name: Remove helm repository
+  ansible.builtin.apt_repository:
+    repo: "{{ helm_repository_apt }}"
+    state: absent
+  when: ansible_os_family in ['Debian']
+
+- name: Copy helm binary from download dir
+  ansible.builtin.copy:
+    src: "{{ helm_download_unarchive_dest }}/linux-{{ download_artifact_goarch }}/helm"
+    dest: "{{ helm_bin_dir }}/helm"
+    mode: "0755"
+    remote_src: true
+
+- name: Remove helm orphaned binary
+  ansible.builtin.file:
+    path: /usr/bin/helm
+    state: absent
+  when: helm_bin_dir != "/usr/bin"
+
+- name: Add bash autocomplete for helm
+  ansible.builtin.lineinfile:
+    path: /root/.bashrc
+    line: 'source <(helm completion bash)'
+    insertbefore: EOF

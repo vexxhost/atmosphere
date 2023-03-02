@@ -1,0 +1,77 @@
+---
+- name: Download cni plugins
+  ansible.builtin.include_role:
+    name: download_artifact
+  vars:
+    download_artifact_url: "{{ kubernetes_cni_download_url }}"
+    download_artifact_dest: "{{ kubernetes_cni_download_dest }}"
+    download_artifact_checksum: "sha256:{{ kubernetes_cni_archive_checksum }}"
+    download_artifact_owner: root
+    download_artifact_mode: "0755"
+
+- name: Create folder for cni plugins
+  ansible.builtin.file:
+    path: /opt/cni/bin
+    state: directory
+    mode: "0755"
+    owner: root
+    recurse: true
+
+- name: Unarchive cni plugins
+  ansible.builtin.unarchive:
+    src: "{{ kubernetes_cni_download_dest }}"
+    dest: /opt/cni/bin
+    mode: "0755"
+    remote_src: true
+
+- name: Download kubectl binary
+  ansible.builtin.include_role:
+    name: download_artifact
+  vars:
+    download_artifact_url: "{{ kubernetes_kubectl_download_url }}"
+    download_artifact_dest: "{{ kubernetes_kubectl_download_dest }}"
+    download_artifact_checksum: "sha256:{{ kubernetes_kubectl_binary_checksum }}"
+    download_artifact_owner: root
+    download_artifact_mode: "0755"
+
+- name: Copy kubectl binary from download dir
+  ansible.builtin.copy:
+    src: "{{ kubernetes_kubectl_download_dest }}"
+    dest: "{{ kubernetes_bin_dir }}/kubectl"
+    mode: "0755"
+    remote_src: true
+
+- name: Download kubeadm binary
+  ansible.builtin.include_role:
+    name: download_artifact
+  vars:
+    download_artifact_url: "{{ kubernetes_kubeadm_download_url }}"
+    download_artifact_dest: "{{ kubernetes_kubeadm_download_dest }}"
+    download_artifact_checksum: "sha256:{{ kubernetes_kubeadm_binary_checksum }}"
+    download_artifact_owner: root
+    download_artifact_mode: "0755"
+
+- name: Copy kubeadm binary from download dir
+  ansible.builtin.copy:
+    src: "{{ kubernetes_kubectl_download_dest }}"
+    dest: "{{ kubernetes_bin_dir }}/kubeadm"
+    mode: "0755"
+    remote_src: true
+
+- name: Download kubelet binary
+  ansible.builtin.include_role:
+    name: download_artifact
+  vars:
+    download_artifact_url: "{{ kubernetes_kubelet_download_url }}"
+    download_artifact_dest: "{{ kubernetes_kubelet_download_dest }}"
+    download_artifact_checksum: "sha256:{{ kubernetes_kubelet_binary_checksum }}"
+    download_artifact_owner: root
+    download_artifact_mode: "0755"
+
+- name: Copy kubelet binary from download dir
+  ansible.builtin.copy:
+    src: "{{ kubernetes_kubectl_download_dest }}"
+    dest: "{{ kubernetes_bin_dir }}/kubelet"
+    mode: "0755"
+    remote_src: true
+#  notify: Restart kubelet

@@ -1,8 +1,15 @@
-- name: Install Flux CLI
-  ansible.builtin.unarchive:
-    src: https://github.com/fluxcd/flux2/releases/download/v0.32.0/flux_0.32.0_linux_amd64.tar.gz
-    dest: /usr/local/bin
+- name: Copy Flux CLI binary from download dir
+  ansible.builtin.copy:
+    src: "{{ flux_download_unarchive_dest }}/flux"
+    dest: "{{ flux_bin_dir }}/flux"
+    mode: "0755"
     remote_src: true
+
+- name: Remove Flux CLI orphaned binary
+  ansible.builtin.file:
+    path: /usr/bin/flux
+    state: absent
+  when: flux_bin_dir != "/usr/bin"
 
 - name: Install Flux to cluster
   run_once: true
