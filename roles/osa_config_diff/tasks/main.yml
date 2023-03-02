@@ -27,7 +27,7 @@
   loop: "{{ osa_config_diff_config_files | dict2items }}"
   vars:
     container: "{{ groups[osa_config_diff_containers_group][0] }}"
-    prefix: "{% if hostvars[container].get('is_metal') == False %}/var/lib/lxc/{{ container }}/rootfs{% endif %}"
+    prefix: "{% if hostvars[container].get('is_metal', False) == False %}/var/lib/lxc/{{ container }}/rootfs{% endif %}"
 
 - name: Generate dictionary with all OpenStack Ansible configuration files (INI)
   run_once: true
