@@ -1,0 +1,46 @@
+# Copyright (c) 2023 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+galaxy_info:
+  author: VEXXHOST, Inc.
+  description: Ansible role for "runc"
+  license: Apache-2.0
+  min_ansible_version: 5.5.0
+  standalone: false
+  platforms:
+    - name: Debian
+      versions:
+        - buster
+        - bullseye
+    - name: Fedora
+      versions:
+        - "36"
+        - "37"
+    - name: EL
+      versions:
+        - "8"
+        - "9"
+    - name: Ubuntu
+      versions:
+        - focal
+        - jammy
+
+dependencies:
+  - role: download_artifact
+    vars:
+      download_artifact_url: "{{ runc_download_url }}"
+      download_artifact_dest: "{{ runc_download_dest }}"
+      download_artifact_checksum: "sha256:{{ runc_binary_checksum }}"
+      download_artifact_owner: root
+      download_artifact_mode: "0755"

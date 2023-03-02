@@ -12,12 +12,12 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: install packages
+- name: Install packages
   ansible.builtin.apt:
     name: ["udev", "ceph-osd"]
     install_recommends: false
 
-- name: grab ceph fsid from monitors
+- name: Grab ceph fsid from monitors
   delegate_to: "{{ groups[ceph_osd_mons_group][0] }}"
   register: _ceph_fsid
   changed_when: false
@@ -35,7 +35,7 @@
   ansible.builtin.set_fact:
     ceph_monitors: "{{ _ceph_mon_dump.stdout | from_json | community.general.json_query('mons[*].addr') | map('regex_replace', '(.*):(.*)', '\\1') }}"
 
-- name: generate basic configuration file
+- name: Generate basic configuration file
   community.general.ini_file:
     path: /etc/ceph/ceph.conf
     section: global
@@ -43,39 +43,39 @@
     value: "{{ item.value }}"
     owner: ceph
     group: ceph
-    mode: 0640
+    mode: "0640"
   loop:
     - option: fsid
       value: "{{ _ceph_fsid.stdout | trim }}"
     - option: mon host
       value: "{{ ceph_monitors | join(',') }}"
 
-- name: grab bootstrap-osd from monitors
+- name: Grab bootstrap-osd from monitors
   delegate_to: "{{ groups[ceph_osd_mons_group][0] }}"
   register: _ceph_bootstrap_osd_keyring
   changed_when: false
   ansible.builtin.command: ceph auth get client.bootstrap-osd
 
-- name: install bootstrap-osd keyring
+- name: Install bootstrap-osd keyring
   ansible.builtin.copy:
     content: "{{ _ceph_bootstrap_osd_keyring.stdout }}\n"
     dest: /var/lib/ceph/bootstrap-osd/ceph.keyring
     owner: ceph
     group: ceph
-    mode: 0640
+    mode: "0640"
 
-- name: workaround to allow usage of loop devices
+- name: Workaround to allow usage of loop devices
   ansible.builtin.replace:
     path: /usr/lib/python3/dist-packages/ceph_volume/util/disk.py
     regexp: "'mpath']"
     replace: "'mpath', 'loop']"
     owner: ceph
     group: ceph
-    mode: 0640
+    mode: "0640"
   when: molecule | default(false)
 
 # NOTE(mnaser): https://bugs.launchpad.net/ubuntu/+source/ceph/+bug/1917414/comments/30
-- name: workaround for aarch64 systems
+- name: Workaround for aarch64 systems
   community.general.ini_file:
     path: /lib/systemd/system/ceph-osd@.service
     section: Service
@@ -83,22 +83,22 @@
     value: false
     owner: ceph
     group: ceph
-    mode: 0644
+    mode: "0644"
   register: _ceph_aarch64_fix
   when: ansible_architecture == 'aarch64'
 
-- name: reload systemd
+- name: Reload systemd
   ansible.builtin.service:
     daemon_reload: "{{ _ceph_aarch64_fix.changed }}"
 
-- name: get which devices don't contain osds
+- name: Get which devices don't contain osds
   register: _ceph_osd_check
   failed_when: false
   changed_when: false
   ansible.builtin.command: /usr/sbin/ceph-volume lvm list {{ item }}
   loop: "{{ ceph_osd_devices }}"
 
-- name: create osds for volumes which are not setup
+- name: Create osds for volumes which are not setup
   changed_when: true
   ansible.builtin.command: /usr/sbin/ceph-volume lvm create --data {{ item }}
   loop: "{{ _ceph_osd_check.results | selectattr('rc', 'equalto', 1) | map(attribute='item') }}"

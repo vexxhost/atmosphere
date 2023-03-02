@@ -1,5 +1,38 @@
 # Changelog
 
+## [1.0.1](https://github.com/vexxhost/atmosphere/compare/v1.0.0...v1.0.1) (2023-03-01)
+
+
+### Bug Fixes
+
+* **ovs:** Fix LimitMEMLOCK assertion ([#344](https://github.com/vexxhost/atmosphere/issues/344)) ([316f6a7](https://github.com/vexxhost/atmosphere/commit/316f6a72f425148d96fe07d03d92b82f0de55589))
+
+## [1.0.0](https://github.com/vexxhost/atmosphere/compare/v1.0.0-rc.2...v1.0.0) (2023-03-01)
+
+
+### Features
+
+* add infoblox cert-manager validation ([7c211b7](https://github.com/vexxhost/atmosphere/commit/7c211b792688cc5e7bc7c03210cf69d876961d47))
+* switch to binary runc and containerd install ([#333](https://github.com/vexxhost/atmosphere/issues/333)) ([4ace418](https://github.com/vexxhost/atmosphere/commit/4ace418dddae41023dd51fa88d86abfdac0aff61))
+
+
+### Bug Fixes
+
+* add rbac for magnum ([7943cf8](https://github.com/vexxhost/atmosphere/commit/7943cf88a8e967d7c6cafdfd42a58b9fcb7b2bf7))
+* allow storage init with uppercase ([c50c946](https://github.com/vexxhost/atmosphere/commit/c50c946c1bad4348a75434fce39fff31bcd0684f))
+* allow uppercase backends ([6a7426e](https://github.com/vexxhost/atmosphere/commit/6a7426ef5354555aa3070d0e18d83846416161ed))
+* disallow embedded of horizon in iframe ([#338](https://github.com/vexxhost/atmosphere/issues/338)) ([876cb21](https://github.com/vexxhost/atmosphere/commit/876cb21687cca2790c12bcb913073592371c10c3))
+* enable cinder to do online volume resizes ([3213710](https://github.com/vexxhost/atmosphere/commit/3213710ceb61fd9e29de0f770b355e95ba5c16bd))
+* **horizon:** bump body size to 5G ([66a446c](https://github.com/vexxhost/atmosphere/commit/66a446c82e9922dba5eab5999d2a3ca9271225f9))
+* **ovs:** correct the assertion for memlock setting of containerd ([#343](https://github.com/vexxhost/atmosphere/issues/343)) ([e558895](https://github.com/vexxhost/atmosphere/commit/e558895c2ff40ba8414d0a06707e13d28594217a))
+* **ovs:** delegate tasks to controller ([1cec107](https://github.com/vexxhost/atmosphere/commit/1cec107d80a66407870a5eb93b5f957f21ac889c))
+* use clusterctl for capi ([65850fd](https://github.com/vexxhost/atmosphere/commit/65850fdf23d8a41807aa94a923b4d00241520b10))
+
+
+### Miscellaneous Chores
+
+* release 1.0.0 ([f1ca529](https://github.com/vexxhost/atmosphere/commit/f1ca5296d378162089973be496d7cb41cd5aa097))
+
 ## [1.0.0-rc.2](https://github.com/vexxhost/atmosphere/compare/v1.0.0-rc.1...v1.0.0-rc.2) (2023-02-20)
 
 

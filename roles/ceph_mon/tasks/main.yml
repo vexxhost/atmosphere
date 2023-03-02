@@ -12,16 +12,16 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: install packages
+- name: Install packages
   ansible.builtin.apt:
     name: ["ceph-mon"]
     install_recommends: false
 
-- name: set ceph monitor ip address
+- name: Set ceph monitor ip address
   ansible.builtin.set_fact:
     ceph_mon_ip_address: "{{ ansible_all_ipv4_addresses | ansible.netcommon.ipaddr(ceph_mon_public_network) | first }}"
 
-- name: generate basic configuration file
+- name: Generate basic configuration file
   community.general.ini_file:
     path: /etc/ceph/ceph.conf
     section: global
@@ -29,7 +29,7 @@
     value: "{{ item.value }}"
     owner: ceph
     group: ceph
-    mode: 0640
+    mode: "0640"
   loop:
     - option: fsid
       value: "{{ ceph_mon_fsid }}"
@@ -40,53 +40,53 @@
     - option: cluster network
       value: "{{ ceph_mon_cluster_network }}"
 
-- name: check if any node is bootstrapped
+- name: Check if any node is bootstrapped
   ansible.builtin.stat:
     path: "/var/lib/ceph/mon/ceph-{{ hostvars[item]['inventory_hostname_short'] }}/store.db"
   register: _ceph_mon_stat
   loop: "{{ groups[ceph_mon_group] }}"
   delegate_to: "{{ item }}"
 
-- name: select pre-existing bootstrap node if exists
+- name: Select pre-existing bootstrap node if exists
   ansible.builtin.set_fact:
     _ceph_mon_bootstrap_node: "{{ _ceph_mon_stat.results | selectattr('stat.exists', 'equalto', true) | map(attribute='item') | first }}"
   when:
     - _ceph_mon_stat.results | selectattr('stat.exists', 'equalto', true) | length > 0
 
-- name: bootstrap cluster
+- name: Bootstrap cluster
   ansible.builtin.include_tasks: bootstrap-ceph.yml
   when:
     - _ceph_mon_stat.results | selectattr('stat.exists', 'equalto', true) | length == 0
 
-- name: grab admin keyring
+- name: Grab admin keyring
   delegate_to: "{{ _ceph_mon_bootstrap_node }}"
   ansible.builtin.slurp:
     src: /etc/ceph/ceph.client.admin.keyring
   register: _ceph_mon_admin_keyring
   when: inventory_hostname != _ceph_mon_bootstrap_node
 
-- name: upload client.admin keyring
+- name: Upload client.admin keyring
   ansible.builtin.copy:
     content: "{{ _ceph_mon_admin_keyring['content'] | b64decode }}"
     dest: /etc/ceph/ceph.client.admin.keyring
-    mode: 0600
+    mode: "0600"
   when: inventory_hostname != _ceph_mon_bootstrap_node
 
-- name: get monitor keyring
+- name: Get monitor keyring
   ansible.builtin.command: ceph auth get mon. -o /tmp/ceph.mon.keyring
   changed_when: false
   when: inventory_hostname != _ceph_mon_bootstrap_node
 
-- name: get monmap keyring
+- name: Get monmap keyring
   ansible.builtin.command: ceph mon getmap -o /tmp/monmap
   changed_when: false
   when: inventory_hostname != _ceph_mon_bootstrap_node
 
-- name: start monitor
+- name: Start monitor
   ansible.builtin.include_tasks: start-monitor.yml
   when: inventory_hostname != _ceph_mon_bootstrap_node
 
-- name: enable msgr2
+- name: Enable "msgr2"
   ansible.builtin.command: ceph mon enable-msgr2
   changed_when: false
   when: inventory_hostname == _ceph_mon_bootstrap_node

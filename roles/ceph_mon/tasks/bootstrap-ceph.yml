@@ -13,7 +13,7 @@
 # under the License.
 
 # TODO(mnaser): Move to using vexxhost.atmosphere.ceph_key
-- name: create monitor keyring
+- name: Create monitor keyring
   ansible.builtin.command:
     ceph-authtool --gen-key --create-keyring
                   --name mon.
@@ -25,7 +25,7 @@
     - inventory_hostname == groups[ceph_mon_group][0]
 
 # TODO(mnaser): Move to using vexxhost.atmosphere.ceph_key
-- name: create admin keyring
+- name: Create admin keyring
   ansible.builtin.command:
     ceph-authtool --gen-key --create-keyring
                   --name client.admin
@@ -40,7 +40,7 @@
     - inventory_hostname == groups[ceph_mon_group][0]
 
 # TODO(mnaser): Move to using vexxhost.atmosphere.ceph_key
-- name: create bootstrap-osd keyring
+- name: Create bootstrap-osd keyring
   ansible.builtin.command:
     ceph-authtool --gen-key --create-keyring
                   --name client.bootstrap-osd
@@ -53,7 +53,8 @@
     - inventory_hostname == groups[ceph_mon_group][0]
 
 # TODO(mnaser): Move to using vexxhost.atmosphere.ceph_key
-- name: add admin keyring to monitor
+- name: Add admin keyring to monitor
+  changed_when: true
   ansible.builtin.command:
     ceph-authtool --import-keyring /etc/ceph/ceph.client.admin.keyring
                   /tmp/ceph.mon.keyring
@@ -61,14 +62,15 @@
     - inventory_hostname == groups[ceph_mon_group][0]
 
 # TODO(mnaser): Move to using vexxhost.atmosphere.ceph_key
-- name: add bootstrap-osd keyring to monitor
+- name: Add bootstrap-osd keyring to monitor
+  changed_when: true
   ansible.builtin.command:
     ceph-authtool --import-keyring /var/lib/ceph/bootstrap-osd/ceph.keyring
                   /tmp/ceph.mon.keyring
   when:
     - inventory_hostname == groups[ceph_mon_group][0]
 
-- name: create monmap
+- name: Create monmap
   ansible.builtin.command:
     monmaptool --create
                --fsid {{ ceph_mon_fsid }}
@@ -79,17 +81,17 @@
   when:
     - inventory_hostname == groups[ceph_mon_group][0]
 
-- name: create monitor folder
+- name: Create monitor folder
   ansible.builtin.file:
     path: "/var/lib/ceph/mon/ceph-{{ inventory_hostname_short }}"
     state: directory
     owner: ceph
     group: ceph
-    mode: 0700
+    mode: "0700"
   when:
     - inventory_hostname == groups[ceph_mon_group][0]
 
-- name: configure mon initial members
+- name: Configure mon initial members
   community.general.ini_file:
     path: /etc/ceph/ceph.conf
     section: global
@@ -97,13 +99,13 @@
     value: "{{ inventory_hostname_short }}"
     owner: ceph
     group: ceph
-    mode: 0640
+    mode: "0640"
 
-- name: start monitor
+- name: Start monitor
   ansible.builtin.include_tasks: start-monitor.yml
   when:
     - inventory_hostname == groups[ceph_mon_group][0]
 
-- name: set bootstrap node
+- name: Set bootstrap node
   ansible.builtin.set_fact:
     _ceph_mon_bootstrap_node: "{{ groups[ceph_mon_group][0] }}"

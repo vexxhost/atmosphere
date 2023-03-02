@@ -12,18 +12,18 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: install packages
+- name: Install packages
   ansible.builtin.apt:
     name: ["ceph-mgr"]
     install_recommends: false
 
-- name: create manager folder
+- name: Create manager folder
   ansible.builtin.file:
     path: "/var/lib/ceph/mgr/ceph-{{ inventory_hostname_short }}"
     state: directory
     owner: ceph
     group: ceph
-    mode: 0700
+    mode: "0700"
 
 - name: Create Ceph manager keyring
   vexxhost.atmosphere.ceph_key:
@@ -36,14 +36,14 @@
     owner: ceph
     group: ceph
 
-- name: ensure permissions are fixed
+- name: Ensure permissions are fixed
   ansible.builtin.file:
     path: "/var/lib/ceph/mon/ceph-{{ inventory_hostname_short }}"
     owner: ceph
     group: ceph
     recurse: true
 
-- name: enable and start service
+- name: Enable and start service
   ansible.builtin.service:
     name: "ceph-mgr@{{ inventory_hostname_short }}"
     state: started

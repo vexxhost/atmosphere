@@ -1,4 +1,4 @@
-# Copyright (c) 2022 VEXXHOST, Inc.
+# Copyright (c) 2023 VEXXHOST, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -19,9 +19,33 @@ galaxy_info:
   min_ansible_version: 5.5.0
   standalone: false
   platforms:
+    - name: Debian
+      versions:
+        - buster
+        - bullseye
+    - name: Fedora
+      versions:
+        - "36"
+        - "37"
+    - name: EL
+      versions:
+        - "8"
+        - "9"
     - name: Ubuntu
       versions:
         - focal
+        - jammy
 
 dependencies:
   - role: defaults
+  - role: runc
+  - role: download_artifact
+    download_artifact_url: "{{ containerd_download_url }}"
+    download_artifact_dest: "{{ containerd_download_dest }}"
+    download_artifact_checksum: "sha256:{{ containerd_archive_checksum }}"
+    download_artifact_owner: root
+    download_artifact_mode: "0755"
+    download_artifact_unarchive: true
+    download_artifact_unarchive_dest: "{{ containerd_download_unarchive_dest }}"
+    download_artifact_unarchive_extra_opts:
+      - --strip-components=1

@@ -12,13 +12,13 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: mkfs monitor
+- name: Create monitor filesystem
   ansible.builtin.shell: |
     ceph-mon --mkfs -i {{ inventory_hostname_short }} --monmap /tmp/monmap --keyring /tmp/ceph.mon.keyring
   args:
     creates: "/var/lib/ceph/mon/ceph-{{ inventory_hostname_short }}/store.db"
 
-- name: ensure permissions are fixed
+- name: Ensure permissions are fixed
   ansible.builtin.file:
     path: "/var/lib/ceph/mon/ceph-{{ inventory_hostname_short }}"
     owner: ceph
@@ -26,7 +26,7 @@
     recurse: true
 
 # NOTE(mnaser): https://bugs.launchpad.net/ubuntu/+source/ceph/+bug/1917414/comments/30
-- name: workaround for aarch64 systems
+- name: Workaround for aarch64 systems
   community.general.ini_file:
     path: /lib/systemd/system/ceph-mon@.service
     section: Service
@@ -34,11 +34,11 @@
     value: false
     owner: ceph
     group: ceph
-    mode: 0644
+    mode: "0644"
   register: _ceph_aarch64_fix
   when: ansible_architecture == 'aarch64'
 
-- name: enable and start service
+- name: Enable and start service
   ansible.builtin.service:
     name: "ceph-mon@{{ inventory_hostname_short }}"
     state: started

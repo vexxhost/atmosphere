@@ -18,7 +18,7 @@
     dest: /usr/share/keyrings/kubernetes-archive-keyring.gpg
     owner: root
     group: root
-    mode: 0644
+    mode: "0644"
   when:
     - kubernetes_repo_url == _kubernetes_upstream_apt_repository
 
@@ -36,7 +36,7 @@
   ansible.builtin.template:
     src: apt-preferences.j2
     dest: /etc/apt/preferences.d/kubernetes
-    mode: 0644
+    mode: "0644"
 
 - name: Install packages
   ansible.builtin.apt:
@@ -52,7 +52,7 @@
     src: crictl.yaml.j2
     dest: /etc/crictl.yaml
     owner: root
-    mode: 0644
+    mode: "0644"
 
 - name: Enable kernel modules on-boot
   ansible.builtin.template:
@@ -60,7 +60,7 @@
     dest: /etc/modules-load.d/k8s.conf
     owner: root
     group: root
-    mode: 0644
+    mode: "0644"
 
 - name: Enable kernel modules in runtime
   community.general.modprobe:
@@ -82,6 +82,7 @@
 
 - name: Disable swap
   ansible.builtin.command: /sbin/swapoff -a
+  changed_when: true
   ignore_errors: "{{ ansible_check_mode }}"
   when:
     - _swapon.stdout
@@ -101,7 +102,7 @@
     dest: /etc/systemd/system/noswap.service
     owner: root
     group: root
-    mode: 0644
+    mode: "0644"
   notify: Enable noswap service
 
 - name: Configure short hostname

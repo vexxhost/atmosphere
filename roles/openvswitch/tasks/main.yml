@@ -12,20 +12,20 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-# NOTE(mnaser): Open vSwitch will refuse to start if `DefaultLimitMEMLOCK` is
+# NOTE(mnaser): Open vSwitch will refuse to start if `LimitMEMLOCK` is
 #               not set to `infinity` in `/etc/systemd/system.conf`, so we run
 #               this task to ensure that it is set.
-- name: Verify that DefaultLimitMEMLOCK is configured
+- name: Verify that LimitMEMLOCK is configured for containerd
   block:
-    - name: Get the current status of all systemd values
+    - name: Get the current status of all systemd values for containerd
       changed_when: false
-      ansible.builtin.command: systemctl show --property DefaultLimitMEMLOCK # noqa: command-instead-of-module
+      ansible.builtin.command: systemctl show containerd --property LimitMEMLOCK # noqa: command-instead-of-module
       register: _openvswitch_memlock_value
 
-    - name: Assert that DefaultLimitMEMLOCK is set to infinity
+    - name: Assert that LimitMEMLOCK is set to infinity
       ansible.builtin.assert:
         that:
-          - "'DefaultLimitMEMLOCK=infinity' in _openvswitch_memlock_value.stdout"
+          - "'LimitMEMLOCK=infinity' in _openvswitch_memlock_value.stdout"
 
 - name: Uninstall the legacy HelmRelease
   run_once: true

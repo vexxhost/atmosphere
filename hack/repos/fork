@@ -1,8 +1,8 @@
 #!/bin/bash -xe
 
-gh repo fork openstack/${1} --org vexxhost
+gh repo fork ${1} --org vexxhost
 
-REPOSITORY_ID_QUERY="{repository(owner: \"vexxhost\", name: \"${1}\"){id}}"
+REPOSITORY_ID_QUERY="{repository(owner: \"vexxhost\", name: \"${1##*/}\"){id}}"
 REPOSITORY_ID=$(gh api graphql -f query="${REPOSITORY_ID_QUERY}" -q .data.repository.id)
 
 gh api graphql -f query='
