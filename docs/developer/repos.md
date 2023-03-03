@@ -51,4 +51,5 @@ Atmosphere has a few forks of the OpenStack repositories.  These are used to
 apply patches to the upstream code that contain fixes which have not yet been
 merged upstream.  The list of forked repositories is as follows:
 
+* [openstack/cinder](https://github.com/vexxhost/cinder)
 * [openstack/horizon](https://github.com/vexxhost/horizon)

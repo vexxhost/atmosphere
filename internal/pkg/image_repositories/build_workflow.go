@@ -6,8 +6,9 @@ import (
 )
 
 var FORKED_PROJECTS map[string]bool = map[string]bool{
-	"keystone": true,
+	"cinder":   true,
 	"horizon":  true,
+	"keystone": true,
 }
 var EXTRAS map[string]string = map[string]string{}
 var PROFILES map[string]string = map[string]string{
