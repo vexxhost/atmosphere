@@ -1,10 +1,14 @@
 _cilium_helm_values:
   image:
     repository: "{{ atmosphere_images['cilium_node'] | vexxhost.atmosphere.docker_image('name') }}"
+    tag: "{{ atmosphere_images['cilium_node'] | vexxhost.atmosphere.docker_image('tag') }}"
+    useDigest: false
   tunnel: geneve
   operator:
     image:
       repository: "{{ atmosphere_images['cilium_operator'] | vexxhost.atmosphere.docker_image('name') | replace('-generic', '') }}"
+      tag: "{{ atmosphere_images['cilium_operator'] | vexxhost.atmosphere.docker_image('tag') }}"
+      useDigest: false
     nodeSelector:
       openstack-control-plane: enabled
   ipam:
