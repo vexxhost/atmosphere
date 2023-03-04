@@ -60,7 +60,7 @@
 
 - name: Generate dictionary with all Atmosphere configuration files (INI)
   run_once: true
-  when: item.key.endswith('.conf') or item.item.key.endswith('.ini')
+  when: item.key.endswith('.conf') or item.key.endswith('.ini')
   ansible.builtin.set_fact:
     _osa_config_diff_atmosphere: "{{ _osa_config_diff_atmosphere | combine({item.key: _file_contents | vexxhost.atmosphere.from_ini }) }}"
   loop: "{{ osa_config_diff_config_files | dict2items }}"
