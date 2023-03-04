@@ -1,4 +1,4 @@
-# Copyright (c) 2022 VEXXHOST, Inc.
+# Copyright (c) 2023 VEXXHOST, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -12,40 +12,125 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Add repository keys
+# TODO(fitbeard): Move common system packages from all roles to dedicated role.
+- name: Install additional packages
+  ansible.builtin.package:
+    name:
+      - conntrack
+      - socat
+
+- name: Download cni plugins
+  ansible.builtin.include_role:
+    name: download_artifact
+  vars:
+    download_artifact_url: "{{ kubernetes_cni_download_url }}"
+    download_artifact_dest: "{{ kubernetes_cni_download_dest }}"
+    download_artifact_checksum: "sha256:{{ kubernetes_cni_archive_checksum }}"
+    download_artifact_owner: root
+    download_artifact_mode: "0755"
+
+- name: Create folder for cni plugins
+  ansible.builtin.file:
+    path: /opt/cni/bin
+    state: directory
+    mode: "0755"
+    owner: root
+    recurse: true
+
+- name: Unarchive cni plugins
+  ansible.builtin.unarchive:
+    src: "{{ kubernetes_cni_download_dest }}"
+    dest: /opt/cni/bin
+    mode: "0755"
+    remote_src: true
+
+- name: Download kubectl binary
+  ansible.builtin.include_role:
+    name: download_artifact
+  vars:
+    download_artifact_url: "{{ kubernetes_kubectl_download_url }}"
+    download_artifact_dest: "{{ kubernetes_kubectl_download_dest }}"
+    download_artifact_checksum: "sha256:{{ kubernetes_kubectl_binary_checksum }}"
+    download_artifact_owner: root
+    download_artifact_mode: "0755"
+
+- name: Copy kubectl binary from download dir
   ansible.builtin.copy:
-    src: apt-key.gpg
-    dest: /usr/share/keyrings/kubernetes-archive-keyring.gpg
+    src: "{{ kubernetes_kubectl_download_dest }}"
+    dest: "{{ kubernetes_bin_dir }}/kubectl"
+    mode: "0755"
+    remote_src: true
+
+- name: Download kubeadm binary
+  ansible.builtin.include_role:
+    name: download_artifact
+  vars:
+    download_artifact_url: "{{ kubernetes_kubeadm_download_url }}"
+    download_artifact_dest: "{{ kubernetes_kubeadm_download_dest }}"
+    download_artifact_checksum: "sha256:{{ kubernetes_kubeadm_binary_checksum }}"
+    download_artifact_owner: root
+    download_artifact_mode: "0755"
+
+- name: Copy kubeadm binary from download dir
+  ansible.builtin.copy:
+    src: "{{ kubernetes_kubeadm_download_dest }}"
+    dest: "{{ kubernetes_bin_dir }}/kubeadm"
+    mode: "0755"
+    remote_src: true
+
+- name: Download kubelet binary
+  ansible.builtin.include_role:
+    name: download_artifact
+  vars:
+    download_artifact_url: "{{ kubernetes_kubelet_download_url }}"
+    download_artifact_dest: "{{ kubernetes_kubelet_download_dest }}"
+    download_artifact_checksum: "sha256:{{ kubernetes_kubelet_binary_checksum }}"
+    download_artifact_owner: root
+    download_artifact_mode: "0755"
+
+- name: Copy kubelet binary from download dir
+  ansible.builtin.copy:
+    src: "{{ kubernetes_kubelet_download_dest }}"
+    dest: "{{ kubernetes_bin_dir }}/kubelet"
+    mode: "0755"
+    remote_src: true
+  notify: Restart kubelet
+
+- name: Create folders for kubernetes configuration
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+    owner: root
+  with_items:
+    - /etc/systemd/system/kubelet.service.d
+    - /etc/kubernetes
+    - /etc/kubernetes/manifests
+  notify:
+    - Reload systemd
+    - Restart kubelet
+
+- name: Add kubeadm dropin for kubelet systemd service config
+  ansible.builtin.copy:
+    src: 10-kubeadm.conf
+    dest: /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
     owner: root
     group: root
     mode: "0644"
-  when:
-    - kubernetes_repo_url == _kubernetes_upstream_apt_repository
+  notify:
+    - Reload systemd
+    - Restart kubelet
 
-- name: Add repository
-  ansible.builtin.apt_repository:
-    repo:
-      deb
-      {% if kubernetes_repo_url == _kubernetes_upstream_apt_repository %}[signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg]{% endif %}
-      {{ kubernetes_repo_url }}
-      kubernetes-xenial
-      main
-    state: present
-
-- name: Setup version pins
-  ansible.builtin.template:
-    src: apt-preferences.j2
-    dest: /etc/apt/preferences.d/kubernetes
+- name: Add kubelet systemd service config
+  ansible.builtin.copy:
+    src: kubelet.service
+    dest: /etc/systemd/system/kubelet.service
+    owner: root
+    group: root
     mode: "0644"
-
-- name: Install packages
-  ansible.builtin.apt:
-    name:
-      - "cri-tools={{ kubernetes_cri_tools_version }}-00"
-      - "kubeadm={{ kubernetes_version }}-00"
-      - "kubectl={{ kubernetes_version }}-00"
-      - "kubelet={{ kubernetes_version }}-00"
-    state: present
+  notify:
+    - Reload systemd
+    - Restart kubelet
 
 - name: Create crictl config
   ansible.builtin.template:
@@ -117,6 +202,15 @@
     path: /etc/hosts
     regexp: '^127\.0\.1\.1'
     line: 127.0.1.1 {{ inventory_hostname }} {{ inventory_hostname_short }}
+
+- name: Force any restarts if necessary
+  ansible.builtin.meta: flush_handlers
+
+- name: Enable and start kubelet service
+  ansible.builtin.service:
+    name: kubelet
+    enabled: true
+    state: started
 
 - name: Setup control plane
   when: inventory_hostname in groups[kubernetes_control_plane_group]

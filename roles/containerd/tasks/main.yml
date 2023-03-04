@@ -44,15 +44,17 @@
 
 - name: Create folders for configuration
   ansible.builtin.file:
-    dest: "{{ item }}"
+    dest: "{{ containerd_directory.path }}"
     state: directory
-    mode: "0755"
+    mode: "{{ containerd_directory.mode | default('0o755') }}"
     owner: root
     group: root
   with_items:
-    - "{{ containerd_cfg_dir }}"
-    - "{{ containerd_storage_dir }}"
-    - "{{ containerd_state_dir }}"
+    - {path: "{{ containerd_cfg_dir }}"}
+    - {path: "{{ containerd_storage_dir }}"}
+    - {path: "{{ containerd_state_dir }}", mode: "0o711"}
+  loop_control:
+    loop_var: containerd_directory
   notify:
     - Restart containerd
 
