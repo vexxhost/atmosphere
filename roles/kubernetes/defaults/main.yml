@@ -14,8 +14,6 @@
 
 kubernetes_bin_dir: /usr/bin
 
-kubernetes_repo_url: "{{ _kubernetes_upstream_apt_repository }}"
-
 # Kubernetes version
 kubernetes_version: v1.22.17
 kubernetes_cni_version: v1.2.0
@@ -98,3 +96,13 @@ kubernetes_kubelet_checksums:
 kubernetes_kubelet_download_url: "https://storage.googleapis.com/kubernetes-release/release/{{ kubernetes_version }}/bin/linux/{{ download_artifact_goarch }}/kubelet"  # noqa: yaml[line-length]
 kubernetes_kubelet_download_dest: "{{ download_artifact_work_directory }}/kubernetes-kubelet-{{ kubernetes_version }}-linux-{{ download_artifact_goarch }}" # noqa: yaml[line-length]
 kubernetes_kubelet_binary_checksum: "{{ kubernetes_kubelet_checksums[download_artifact_goarch][kubernetes_version] }}"
+
+# NOTE(fitbeard): This is to accomodate for the uninstallation of the old packages
+#               that shipped with the operating system
+kubernetes_package_names:
+  - kubectl
+  - kubeadm
+  - kubelet
+  - kubernetes-cni
+
+kubernetes_repository_apt: "deb https://apt.kubernetes.io/ kubernetes-xenial main"

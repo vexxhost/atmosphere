@@ -19,6 +19,17 @@
       - conntrack
       - socat
 
+- name: Uninstall kubernetes packages
+  ansible.builtin.package:
+    name: "{{ kubernete_package_names }}"
+    state: absent
+
+- name: Remove kubernetes repository
+  ansible.builtin.apt_repository:
+    repo: "{{ kubernetes_repository_apt }}"
+    state: absent
+  when: ansible_os_family in ['Debian']
+
 - name: Download cni plugins
   ansible.builtin.include_role:
     name: download_artifact
