@@ -76,7 +76,7 @@
   loop: "{{ kubernetes_sysctls }}"
 
 - name: Disable swap on the host
-  when: kubernetes_allow_unsafe_swap == false
+  when: not kubernetes_allow_unsafe_swap | bool
   block:
     - name: Check swap status
       ansible.builtin.command: /sbin/swapon -s
