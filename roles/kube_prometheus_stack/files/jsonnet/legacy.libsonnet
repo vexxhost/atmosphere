@@ -99,7 +99,7 @@
           },
           {
             alert: 'IpmiSensor',
-            expr: 'ipmi_sensor_state == 2',
+            expr: 'ipmi_sensor_state{name!="TPM Presence"} == 2',
             labels: {
               severity: 'critical',
             },

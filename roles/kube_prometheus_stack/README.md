@@ -54,7 +54,7 @@ kube_prometheus_stack_helm_values:
   alertmanager:
     ingress:
       enabled: true
-      ingressClassName: openstack
+      ingressClassName: atmosphere
       annotations:
         cert-manager.io/cluster-issuer: atmosphere
       hosts:
@@ -68,7 +68,7 @@ kube_prometheus_stack_helm_values:
   prometheus:
     ingress:
       enabled: true
-      ingressClassName: openstack
+      ingressClassName: atmosphere
       annotations:
         cert-manager.io/cluster-issuer: atmosphere
       hosts:
@@ -79,6 +79,18 @@ kube_prometheus_stack_helm_values:
             - prometheus.example.com
     prometheusSpec:
       externalUrl: https://prometheus.example.com
+  grafana:
+    ingress:
+      enabled: true
+      ingressClassName: atmosphere
+      annotations:
+        cert-manager.io/cluster-issuer: atmosphere
+      hosts:
+        - grafana.example.com
+      tls:
+        - secretName: grafana-certs
+          hosts:
+            - grafana.example.com
 ```
 
 ### Protected access
