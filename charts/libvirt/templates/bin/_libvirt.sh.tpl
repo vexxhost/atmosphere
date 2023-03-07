@@ -102,7 +102,7 @@ if [ 0"$hp_count" -gt 0 ]; then
   fi
 fi
 
-if [ -n "${LIBVIRT_CEPH_CINDER_SECRET_UUID}" ] ; then
+if [ -n "${LIBVIRT_CEPH_CINDER_SECRET_UUID}" ] || [ -n "${LIBVIRT_EXTERNAL_CEPH_CINDER_SECRET_UUID}" ] ; then
   #NOTE(portdirect): run libvirtd as a transient unit on the host with the osh-libvirt cgroups applied.
   cgexec -g ${CGROUPS%,}:/osh-libvirt systemd-run --scope --slice=system libvirtd --listen &
 
@@ -159,19 +159,26 @@ EOF
     virsh secret-set-value --secret "${sec_uuid}" --base64 "${sec_ceph_keyring}"
   }
 
-  if [ -z "${CEPH_CINDER_KEYRING}" ] ; then
+  if [ -z "${CEPH_CINDER_KEYRING}" ] && [ -n "${CEPH_CINDER_USER}" ] ; then
     CEPH_CINDER_KEYRING=$(awk '/key/{print $3}' /etc/ceph/ceph.client.${CEPH_CINDER_USER}.keyring)
   fi
-  create_virsh_libvirt_secret ${CEPH_CINDER_USER} ${LIBVIRT_CEPH_CINDER_SECRET_UUID} ${CEPH_CINDER_KEYRING}
+  if [ -n "${CEPH_CINDER_USER}" ] ; then
+    create_virsh_libvirt_secret ${CEPH_CINDER_USER} ${LIBVIRT_CEPH_CINDER_SECRET_UUID} ${CEPH_CINDER_KEYRING}
+  fi
 
   if [ -n "${LIBVIRT_EXTERNAL_CEPH_CINDER_SECRET_UUID}" ] ; then
     EXTERNAL_CEPH_CINDER_KEYRING=$(cat /tmp/external-ceph-client-keyring)
     create_virsh_libvirt_secret ${EXTERNAL_CEPH_CINDER_USER} ${LIBVIRT_EXTERNAL_CEPH_CINDER_SECRET_UUID} ${EXTERNAL_CEPH_CINDER_KEYRING}
   fi
 
-  # rejoin libvirtd
-  wait
-else
-  #NOTE(portdirect): run libvirtd as a transient unit on the host with the osh-libvirt cgroups applied.
-  exec cgexec -g ${CGROUPS%,}:/osh-libvirt systemd-run --scope --slice=system libvirtd --listen
+  cleanup
+
+  # stop libvirtd; we needed it up to create secrets
+  LIBVIRTD_PID=$(cat /var/run/libvirtd.pid)
+  kill $LIBVIRTD_PID
+  tail --pid=$LIBVIRTD_PID -f /dev/null
+
 fi
+
+#NOTE(portdirect): run libvirtd as a transient unit on the host with the osh-libvirt cgroups applied.
+cgexec -g ${CGROUPS%,}:/osh-libvirt systemd-run --scope --slice=system libvirtd --listen

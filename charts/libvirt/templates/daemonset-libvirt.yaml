@@ -69,6 +69,9 @@ spec:
       serviceAccountName: {{ $serviceAccountName }}
       nodeSelector:
         {{ .Values.labels.agent.libvirt.node_selector_key }}: {{ .Values.labels.agent.libvirt.node_selector_value }}
+{{ if $envAll.Values.pod.tolerations.libvirt.enabled }}
+{{ tuple $envAll "libvirt" | include "helm-toolkit.snippets.kubernetes_tolerations" | indent 6 }}
+{{ end }}
       hostNetwork: true
       hostPID: true
       hostIPC: true
@@ -132,8 +135,8 @@ spec:
 {{ tuple $envAll "libvirt" | include "helm-toolkit.snippets.image" | indent 10 }}
 {{ tuple $envAll $envAll.Values.pod.resources.libvirt | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
 {{ dict "envAll" $envAll "application" "libvirt" "container" "libvirt" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
-          {{- if .Values.conf.ceph.enabled }}
           env:
+          {{- if .Values.conf.ceph.enabled }}
             - name: CEPH_CINDER_USER
               value: "{{ .Values.conf.ceph.cinder.user }}"
             {{- if .Values.conf.ceph.cinder.keyring }}
@@ -142,13 +145,13 @@ spec:
             {{ end }}
             - name: LIBVIRT_CEPH_CINDER_SECRET_UUID
               value: "{{ .Values.conf.ceph.cinder.secret_uuid }}"
-            {{- if .Values.conf.ceph.cinder.external_ceph.enabled }}
+          {{ end }}
+          {{- if .Values.conf.ceph.cinder.external_ceph.enabled }}
             - name: EXTERNAL_CEPH_CINDER_USER
               value: "{{ .Values.conf.ceph.cinder.external_ceph.user }}"
             - name: LIBVIRT_EXTERNAL_CEPH_CINDER_SECRET_UUID
               value: "{{ .Values.conf.ceph.cinder.external_ceph.secret_uuid }}"
             {{ end }}
-          {{ end }}
 {{ dict "envAll" . "component" "libvirt" "container" "libvirt" "type" "readiness" "probeTemplate" (include "libvirtReadinessProbeTemplate" . | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
 {{ dict "envAll" . "component" "libvirt" "container" "libvirt" "type" "liveness" "probeTemplate" (include "libvirtLivenessProbeTemplate" . | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
           command:
@@ -218,14 +221,38 @@ spec:
               subPath: key
               readOnly: true
             {{- end }}
+            {{- end }}
             {{- if .Values.conf.ceph.cinder.external_ceph.enabled }}
             - name: external-ceph-keyring
               mountPath: /tmp/external-ceph-client-keyring
               subPath: key
               readOnly: true
             {{- end }}
-            {{- end }}
 {{ if $mounts_libvirt.volumeMounts }}{{ toYaml $mounts_libvirt.volumeMounts | indent 12 }}{{ end }}
+        {{- if .Values.pod.sidecars.libvirt_exporter }}
+        - name: libvirt-exporter
+{{ tuple $envAll "libvirt_exporter" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.libvirt_exporter | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "libvirt" "container" "libvirt_exporter" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          ports:
+            - name: metrics
+              protocol: TCP
+              containerPort: {{ tuple "libvirt_exporter" "direct" "metrics" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+          livenessProbe:
+            httpGet:
+              path: /
+              port: metrics
+          readinessProbe:
+            httpGet:
+              path: /
+              port: metrics
+          volumeMounts:
+            - name: run
+              mountPath: /run
+              {{- if or ( gt .Capabilities.KubeVersion.Major "1" ) ( ge .Capabilities.KubeVersion.Minor "10" ) }}
+              mountPropagation: Bidirectional
+              {{- end }}
+        {{- end }}
       volumes:
         {{ dict "enabled" $ssl_enabled "secretName" $envAll.Values.secrets.tls.client "name" "ssl-client" "path" "/etc/pki/libvirt" "certs" (tuple "clientcert.pem" "clientkey.pem" ) | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
         {{ dict "enabled" $ssl_enabled "secretName" $envAll.Values.secrets.tls.server "name" "ssl-server-cert" "path" "/etc/pki/libvirt" "certs" (tuple "servercert.pem" ) | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
@@ -254,11 +281,11 @@ spec:
           secret:
             secretName: {{ .Values.ceph_client.user_secret_name }}
         {{ end }}
+        {{ end }}
         {{- if .Values.conf.ceph.cinder.external_ceph.enabled }}
         - name: external-ceph-keyring
           secret:
             secretName: {{ .Values.conf.ceph.cinder.external_ceph.user_secret_name }}
-        {{ end }}
         {{ end }}
         - name: libmodules
           hostPath:

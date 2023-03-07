@@ -124,7 +124,7 @@ OPEN_VSWITCH_VERSION=0.1.10
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm-infra/openvswitch-${OPEN_VSWITCH_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-LIBVIRT_VERSION=0.1.8
+LIBVIRT_VERSION=0.1.15
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm-infra/libvirt-${LIBVIRT_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 

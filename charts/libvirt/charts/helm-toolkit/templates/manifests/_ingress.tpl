@@ -685,7 +685,9 @@ spec:
 {{ $hostRules | include "helm-toolkit.manifests.ingress._host_rules" | indent 4 }}
 {{- end }}
 {{- if not ( hasSuffix ( printf ".%s.svc.%s" $envAll.Release.Namespace $envAll.Values.endpoints.cluster_domain_suffix) $hostNameFull) }}
-{{- range $key2, $ingressController := tuple "namespace" "cluster" }}
+{{- $ingressConf := $envAll.Values.network -}}
+{{- $ingressClasses := ternary (tuple "namespace") (tuple "namespace" "cluster") (and (hasKey $ingressConf "use_external_ingress_controller") $ingressConf.use_external_ingress_controller) }}
+{{- range $key2, $ingressController := $ingressClasses }}
 {{- $vHosts := list $hostNameFull }}
 ---
 apiVersion: networking.k8s.io/v1
@@ -704,7 +706,6 @@ spec:
 {{- range $v := without (index $endpointHost.tls "dnsNames" | default list) $hostNameFull }}
 {{- $vHosts = append $vHosts $v }}
 {{- end }}
-{{- if and ( not ( empty $endpointHost.tls.key ) ) ( not ( empty $endpointHost.tls.crt ) ) }}
 {{- $secretName := index $envAll.Values.secrets "tls" ( $backendServiceType | replace "-" "_" ) $backendService $endpoint }}
 {{- $_ := required "You need to specify a secret in your values for the endpoint" $secretName }}
   tls:
@@ -712,7 +713,6 @@ spec:
       hosts:
 {{- range $vHost := $vHosts }}
         - {{ $vHost }}
-{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}
