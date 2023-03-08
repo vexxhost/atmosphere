@@ -74,6 +74,10 @@ _openstack_helm_endpoints_identity:
     host_fqdn_override:
       public:
         host: "{{ openstack_helm_endpoints_keystone_api_host }}"
+    path:
+      # NOTE(mnaser): Heat uses the catalog and blindly adds a /v3 to the end of
+      #               the endpoint.  This is a workaround to make it work.
+      default: /
     port:
       api:
         default: 5000
