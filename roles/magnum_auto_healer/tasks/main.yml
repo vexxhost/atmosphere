@@ -7,6 +7,8 @@
       kubectl patch daemonset/magnum-auto-healer \
         -n kube-system  \
         -p '{{ patch | to_json }}'
+  register: _magnum_auto_healer_patch
+  changed_when: _magnum_auto_healer_patch.rc == 0 and 'no change' not in _magnum_auto_healer_patch.stdout
   environment:
     KUBECONFIG: "{{ magnum_auto_healer_cluster_kubeconfig }}"
   vars:
