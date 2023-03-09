@@ -42,10 +42,46 @@
       set_fact:
         cluster: "{{ _cluster.stdout | from_json }}"
 
+    - name: Detect the network ID from "fixed_network"
+      run_once: true
+      when: cluster.fixed_network != None
+      ansible.builtin.set_fact:
+        magnum_auto_healer_cluster_network_id: "{{ cluster.fixed_network }}"
+
+    - name: Detect the network ID from the Heat stack
+      run_once: true
+      when: cluster.fixed_network == None
+      block:
+        - name: Get the network resource from the stack
+          ansible.builtin.command: |
+            openstack stack resource show {{ cluster.stack_id }} network \
+              --format json
+          environment:
+            OS_CLOUD: atmosphere
+          register: _magnum_network_resource
+
+        - name: Grab the "fixed_network" attribute from the stack
+          ansible.builtin.set_fact:
+            magnum_auto_healer_cluster_network_id: "{{ _magnum_network_resource.stdout | from_json | json_query('attributes.fixed_network') }}"
+
+    - name: Retrieve DHCP agent hosting the cluster network
+      run_once: true
+      ansible.builtin.command:
+        openstack network agent list \
+          --network {{ magnum_auto_healer_cluster_network_id }} \
+          --column Host \
+          --format value
+      environment:
+        OS_CLOUD: atmosphere
+      register: _magnum_network_dhcp_agents
+
     - name: Update the state of auto-healer
+      vars:
+        magnum_auto_healer_cluster_network_host: "{{ _magnum_network_dhcp_agents.stdout_lines[0] }}"
       block:
         - name: Create temporary file for KUBECONFIG
           run_once: true
+          delegate_to: "{{ magnum_auto_healer_cluster_network_host }}"
           ansible.builtin.tempfile:
             state: file
             prefix: "{{ cluster.uuid }}"
@@ -59,40 +95,8 @@
           vars:
             magnum_kubeconfig_cluster_project_id: "{{ cluster.project_id }}"
             magnum_kubeconfig_cluster_id: "{{ cluster.uuid }}"
+            magnum_kubeconfig_host: "{{ magnum_auto_healer_cluster_network_host }}"
             magnum_kubeconfig_path: "{{ _kubeconfig.path }}"
-
-        - name: Detect the network ID from "fixed_network"
-          run_once: true
-          when: cluster.fixed_network != None
-          ansible.builtin.set_fact:
-            magnum_auto_healer_cluster_network_id: "{{ cluster.fixed_network }}"
-
-        - name: Detect the network ID from the Heat stack
-          run_once: true
-          when: cluster.fixed_network == None
-          block:
-            - name: Get the network resource from the stack
-              ansible.builtin.command: |
-                openstack stack resource show {{ cluster.stack_id }} network \
-                  --format json
-              environment:
-                OS_CLOUD: atmosphere
-              register: _magnum_network_resource
-
-            - name: Grab the "fixed_network" attribute from the stack
-              ansible.builtin.set_fact:
-                magnum_auto_healer_cluster_network_id: "{{ _magnum_network_resource.stdout | from_json | json_query('attributes.fixed_network') }}"
-
-        - name: Retrieve DHCP agent hosting the cluster network
-          run_once: true
-          ansible.builtin.command:
-            openstack network agent list \
-              --network {{ magnum_auto_healer_cluster_network_id }} \
-              --column Host \
-              --format value
-          environment:
-            OS_CLOUD: atmosphere
-          register: _magnum_network_dhcp_agents
 
         - name: Toggle auto-healer
           ansible.builtin.include_role:
@@ -104,10 +108,11 @@
           vars:
             magnum_auto_healer_state: "{{ state }}"
             magnum_auto_healer_cluster_kubeconfig: "{{ _kubeconfig.path }}"
-            magnum_auto_healer_cluster_network_host: "{{ _magnum_network_dhcp_agents.stdout_lines[0] }}"
+            magnum_auto_healer_cluster_network_host: "{{ magnum_auto_healer_cluster_network_host }}"
       always:
         - name: Remove temporary file for KUBECONFIG
           run_once: true
+          delegate_to: "{{ magnum_auto_healer_cluster_network_host }}"
           ansible.builtin.file:
             path: "{{ _kubeconfig.path }}"
             state: absent
