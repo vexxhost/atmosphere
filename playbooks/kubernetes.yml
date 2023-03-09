@@ -21,3 +21,14 @@
         - ethtool
     - role: containerd
     - role: kubernetes
+
+# NOTE(mnaser): Add task to uninstall "unattended-upgrades" to avoid system
+#               upgrades during the deployment
+- hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Uninstall unattended-upgrades
+      ansible.builtin.apt:
+        name: unattended-upgrades
+        state: absent
