@@ -9,6 +9,7 @@ var FORKED_PROJECTS map[string]bool = map[string]bool{
 	"cinder":   true,
 	"horizon":  true,
 	"keystone": true,
+	"magnum":   true,
 }
 var EXTRAS map[string]string = map[string]string{}
 var PROFILES map[string]string = map[string]string{
