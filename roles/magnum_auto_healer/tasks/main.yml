@@ -3,8 +3,10 @@
   run_once: true
   delegate_to: "{{ magnum_auto_healer_cluster_network_host }}"
   ansible.builtin.command:
-    kubectl -n kube-system patch daemonset/magnum-auto-healer \
-      -p '{{ patch | to_json }}'
+    ip netns exec qdhcp-{{ magnum_auto_healer_cluster_network_id }} \
+      kubectl patch daemonset/magnum-auto-healer \
+        -n kube-system  \
+        -p '{{ patch | to_json }}'
   environment:
     KUBECONFIG: "{{ magnum_auto_healer_cluster_kubeconfig }}"
   vars:
