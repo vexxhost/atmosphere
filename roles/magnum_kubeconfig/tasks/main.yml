@@ -40,11 +40,12 @@
         - name: Slurp the KUBECONFIG
           ansible.builtin.slurp:
             src: "{{ _magnum_kubeconfig_tempdir.path }}/config"
+          register: _magnum_kubeconfig_slurp
 
         - name: Write the KUBECONFIG file on the target node
           delegate_to: "{{ magnum_kubeconfig_host }}"
           ansible.builtin.copy:
-            content: "{{ _magnum_kubeconfig_tempdir.content | b64decode }}"
+            content: "{{ _magnum_kubeconfig_slurp.content | b64decode }}"
             dest: "{{ magnum_kubeconfig_path }}"
       always:
         - name: Remove temporary folder
