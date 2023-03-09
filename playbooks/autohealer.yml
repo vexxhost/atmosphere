@@ -71,14 +71,17 @@
           run_once: true
           when: cluster.fixed_network == None
           block:
-            - name: Get information for the Heat stack
-              openstack.cloud.stack_info:
-                cloud: atmosphere
-                name: "{{ cluster.stack_id }}"
-                project_id: "{{ cluster.project_id }}"
-              register: stack_info
+            - name: Get the network resource from the stack
+              ansible.builtin.command: |
+                openstack stack resource show {{ cluster.uuid }} network \
+                  --format json
+              environment:
+                OS_CLOUD: atmosphere
+              register: _magnum_network_resource
 
-            - debug: var=stack_info
+            - name: Grab the "fixed_network" attribute from the stack
+              ansible.builtin.set_fact:
+                magnum_auto_healer_cluster_network_id: "{{ _magnum_network_resource.stdout | from_json | json_query('attributes.fixed_network') }}"
 
         - name: Retrieve DHCP agent hosting the cluster network
           run_once: true
