@@ -35,6 +35,7 @@
           ansible.builtin.command: openstack coe cluster config {{ magnum_kubeconfig_cluster_id }} --dir {{ _magnum_kubeconfig_tempdir.path }}
           environment:
             OS_CLOUD: atmosphere
+            OS_PROJECT_ID: "{{ magnum_kubeconfig_cluster_project_id }}"
 
         - name: Copy the KUBECONFIG file to the requested path
           ansible.builtin.copy:
