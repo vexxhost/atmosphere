@@ -28,23 +28,6 @@
       prompt:
         Enter the state to set for auto-healer (present/absent)
   tasks:
-    # TODO(mnaser): This should be moved off to a role that OpenStack SDK
-    #               depends on.
-    - name: Install PIP
-      ansible.builtin.package:
-        name: python3-pip
-        state: present
-
-    - name: Ensure that the OpenStack SDK is installed
-      run_once: true
-      ansible.builtin.include_role:
-        name: openstacksdk
-
-    - name: Ensure that the OpenStack CLI is installed
-      run_once: true
-      ansible.builtin.include_role:
-        name: openstack_cli
-
     - name: Get details for the cluster
       changed_when: false
       run_once: true
