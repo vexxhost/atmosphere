@@ -2,6 +2,7 @@
   become: true
   become_method: sudo
   become_flags: "ip netns exec qdhcp-{{ magnum_auto_healer_cluster_network_id }}"
+  run_once: true
   delegate_to: "{{ magnum_auto_healer_cluster_network_host }}"
   kubernetes.core.k8s:
     state: patched

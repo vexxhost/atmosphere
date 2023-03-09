@@ -61,6 +61,25 @@
             magnum_kubeconfig_cluster_id: "{{ cluster.uuid }}"
             magnum_kubeconfig_path: "{{ _kubeconfig.path }}"
 
+        - name: Detect the network ID from "fixed_network"
+          run_once: true
+          when: cluster.fixed_network is not None
+          ansible.builtin.set_fact:
+            magnum_auto_healer_cluster_network_id: "{{ cluster.fixed_network }}"
+
+        - name: Detect the network ID from the Heat stack
+          run_once: true
+          when: cluster.fixed_network is None
+          block:
+            - name: Get information for the Heat stack
+              openstack.cloud.stack_info:
+                cloud: atmosphere
+                name: "{{ cluster.stack_id }}"
+                project_id: "{{ cluster.project_id }}"
+              register: stack_info
+
+            - debug: var=stack_info
+
         - name: Retrieve DHCP agent hosting the cluster network
           run_once: true
           ansible.builtin.command:
@@ -73,7 +92,6 @@
           register: _magnum_network_dhcp_agents
 
         - name: Toggle auto-healer
-          run_once: true
           ansible.builtin.include_role:
             name: magnum_auto_healer
           when:
