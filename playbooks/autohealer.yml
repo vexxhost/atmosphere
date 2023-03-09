@@ -1,0 +1,86 @@
+# Copyright (c) 2023 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+# This is an operational playbook that can be used to disable autohealing and
+# autoscaling across the entire fleet of Magnum clusters.
+
+- name: Toggle auto-healer
+  hosts: "{{ target | default('controllers') }}"
+  vars_prompt:
+    - name: cluster_id
+      private: false
+      prompt:
+        Enter the cluster ID to toggle auto-healer for
+    - name: state
+      private: false
+      prompt:
+        Enter the state to set for auto-healer (true/false)
+  tasks:
+    - name: Get details for the cluster
+      changed_when: false
+      run_once: true
+      ansible.builtin.command:
+        openstack coe cluster show {{ cluster_id }} --format json
+      environment:
+        OS_CLOUD: atmosphere
+      register: _cluster
+
+    - name: Save fact with the cluster details
+      set_fact:
+        cluster: "{{ _cluster.stdout | from_json }}"
+
+    - name: Update the state of auto-healer
+      block:
+        - name: Create temporary file for KUBECONFIG
+          ansible.builtin.tempfile:
+            state: file
+            prefix: "{{ cluster.id }}"
+            suffix: .kubeconfig
+          register: _kubeconfig
+
+        - name: Retrieve KUBECONFIG
+          ansible.builtin.import_role:
+            name: magnum_kubeconfig
+          vars:
+            magnum_kubeconfig_cluster_project_id: "{{ cluster.project_id }}"
+            magnum_kubeconfig_cluster_id: "{{ cluster.id }}"
+            magnum_kubeconfig_path: "{{ _kubeconfig.path }}"
+
+        - name: Retrieve DHCP agent hosting the cluster network
+          ansible.builtin.command:
+            openstack network agent list \
+              --network {{ cluster.fixed_network }} \
+              --column Host \
+              --format value
+          environment:
+            OS_CLOUD: atmosphere
+          register: _magnum_network_dhcp_agents
+
+        - name: Toggle auto-healer
+          ansible.builtin.include_role:
+            name: magnum_auto_healer
+          when:
+            - "'auto_healing_enabled' in cluster.labels"
+            - "'auto_healing_controller' in cluster.labels"
+            - cluster.labels.auto_healing_controller == 'magnum-auto-healer'
+          vars:
+            magnum_auto_healer_state: "{{ state }}"
+            magnum_auto_healer_cluster_kubeconfig: "{{ _kubeconfig.path }}"
+            magnum_auto_healer_cluster_network_id: "{{ cluster.fixed_network }}"
+            magnum_auto_healer_cluster_network_host: "{{ _magnum_network_dhcp_agents.stdout_lines[0] }}"
+      always:
+        - name: Remove temporary file for KUBECONFIG
+          ansible.builtin.file:
+            path: "{{ _kubeconfig.path }}"
+            state: absent

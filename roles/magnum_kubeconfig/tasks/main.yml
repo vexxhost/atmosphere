@@ -1,0 +1,54 @@
+# Copyright (c) 2023 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Add "admin" role to cluster's project
+  block:
+    - name: Add role assignment to project
+      openstack.cloud.role_assignment:
+        cloud: atmosphere
+        state: present
+        user: "{{ magnum_kubeconfig_openstack_username }}"
+        project: "{{ magnum_kubeconfig_cluster_project_id }}"
+        role: admin
+
+    - name: Retrieve the KUBECONFIG
+      block:
+        - name: Create temporary folder to store configuration inside
+          ansible.builtin.tempfile:
+            state: directory
+            prefix: magnum_kubeconfig_
+          register: _magnum_kubeconfig_tempdir
+
+        - name: Retrieve the KUBECONFIG
+          changed_when: false
+          ansible.builtin.command: openstack coe cluster config {{ magnum_kubeconfig_cluster_id }} --dir {{ _magnum_kubeconfig_tempdir.path }}
+
+        - name: Copy the KUBECONFIG file to the requested path
+          ansible.builtin.copy:
+            src: "{{ _magnum_kubeconfig_tempdir.path }}/config"
+            dest: "{{ magnum_kubeconfig_path }}"
+            mode: "0600"
+      always:
+        - name: Remove temporary folder
+          ansible.builtin.file:
+            path: "{{ _magnum_kubeconfig_tempdir.path }}"
+            state: absent
+  always:
+    - name: Remove role assignment from project
+      openstack.cloud.role_assignment:
+        cloud: atmosphere
+        state: absent
+        user: "{{ magnum_kubeconfig_openstack_username }}"
+        project: "{{ magnum_kubeconfig_cluster_project_id }}"
+        role: admin
