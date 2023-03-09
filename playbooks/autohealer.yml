@@ -63,13 +63,13 @@
 
         - name: Detect the network ID from "fixed_network"
           run_once: true
-          when: cluster.fixed_network is not None
+          when: cluster.fixed_network != None
           ansible.builtin.set_fact:
             magnum_auto_healer_cluster_network_id: "{{ cluster.fixed_network }}"
 
         - name: Detect the network ID from the Heat stack
           run_once: true
-          when: cluster.fixed_network is None
+          when: cluster.fixed_network == None
           block:
             - name: Get information for the Heat stack
               openstack.cloud.stack_info:
