@@ -1,19 +1,16 @@
 - name: Update "magnum-auto-healer" DaemonSet
   become: true
-  become_method: vexxhost.atmosphere.sudo_netns
-  become_netns: "{{ magnum_auto_healer_cluster_network_id }}"
   run_once: true
   delegate_to: "{{ magnum_auto_healer_cluster_network_host }}"
-  kubernetes.core.k8s:
-    state: patched
-    kind: DaemonSet
-    namespace: kube-system
-    name: magnum-auto-healer
-    definition:
+  ansible.builtin.command:
+    kubectl -n kube-system patch daemonset/magnum-auto-healer \
+      -p '{{ patch | to_json }}'
+  environment:
+    KUBECONFIG: "{{ magnum_auto_healer_cluster_kubeconfig }}"
+  vars:
+    patch:
       spec:
         template:
           spec:
             nodeSelector:
               node-role.kubernetes.io/master: "{% if magnum_auto_healer_state == 'absent' %}maintenance{% endif %}"
-  environment:
-    KUBECONFIG: "{{ magnum_auto_healer_cluster_kubeconfig }}"
