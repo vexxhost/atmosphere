@@ -17,6 +17,7 @@
 
 - name: Toggle auto-healer
   hosts: "{{ target | default('controllers') }}"
+  gather_facts: false
   vars_prompt:
     - name: cluster_id
       private: false
@@ -25,8 +26,16 @@
     - name: state
       private: false
       prompt:
-        Enter the state to set for auto-healer (true/false)
+        Enter the state to set for auto-healer (present/absent)
   tasks:
+    - name: Ensure that the OpenStack SDK is installed
+      ansible.builtin.include_role:
+        name: openstacksdk
+
+    - name: Ensure that the OpenStack CLI is installed
+      ansible.builtin.include_role:
+        name: openstack_cli
+
     - name: Get details for the cluster
       changed_when: false
       run_once: true
