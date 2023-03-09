@@ -38,6 +38,7 @@
       register: _cluster
 
     - name: Save fact with the cluster details
+      run_once: true
       set_fact:
         cluster: "{{ _cluster.stdout | from_json }}"
 
@@ -46,7 +47,7 @@
         - name: Create temporary file for KUBECONFIG
           ansible.builtin.tempfile:
             state: file
-            prefix: "{{ cluster.id }}"
+            prefix: "{{ cluster.uuid }}"
             suffix: .kubeconfig
           register: _kubeconfig
 
@@ -55,7 +56,7 @@
             name: magnum_kubeconfig
           vars:
             magnum_kubeconfig_cluster_project_id: "{{ cluster.project_id }}"
-            magnum_kubeconfig_cluster_id: "{{ cluster.id }}"
+            magnum_kubeconfig_cluster_id: "{{ cluster.uuid }}"
             magnum_kubeconfig_path: "{{ _kubeconfig.path }}"
 
         - name: Retrieve DHCP agent hosting the cluster network
