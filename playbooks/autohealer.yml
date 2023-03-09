@@ -45,6 +45,7 @@
     - name: Update the state of auto-healer
       block:
         - name: Create temporary file for KUBECONFIG
+          run_once: true
           ansible.builtin.tempfile:
             state: file
             prefix: "{{ cluster.uuid }}"
@@ -52,6 +53,7 @@
           register: _kubeconfig
 
         - name: Retrieve KUBECONFIG
+          run_once: true
           ansible.builtin.import_role:
             name: magnum_kubeconfig
           vars:
@@ -60,6 +62,7 @@
             magnum_kubeconfig_path: "{{ _kubeconfig.path }}"
 
         - name: Retrieve DHCP agent hosting the cluster network
+          run_once: true
           ansible.builtin.command:
             openstack network agent list \
               --network {{ cluster.fixed_network }} \
@@ -70,6 +73,7 @@
           register: _magnum_network_dhcp_agents
 
         - name: Toggle auto-healer
+          run_once: true
           ansible.builtin.include_role:
             name: magnum_auto_healer
           when:
@@ -83,6 +87,7 @@
             magnum_auto_healer_cluster_network_host: "{{ _magnum_network_dhcp_agents.stdout_lines[0] }}"
       always:
         - name: Remove temporary file for KUBECONFIG
+          run_once: true
           ansible.builtin.file:
             path: "{{ _kubeconfig.path }}"
             state: absent
