@@ -36,6 +36,28 @@
         name: "{{ libvirt_helm_release_name }}"
         namespace: "{{ libvirt_helm_release_namespace }}"
 
+- name: Create a Podmonitor for libvirt exporter
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      - apiVersion: monitoring.coreos.com/v1
+        kind: PodMonitor
+        metadata:
+          labels:
+            application: libvirt
+            component: exporter
+          name: libvirt-exporter
+          namespace: "{{ libvirt_helm_release_namespace }}"
+        spec:
+          podMetricsEndpoints:
+          - path: /metrics
+            port: metrics
+          selector:
+            matchLabels:
+              application: libvirt
+              component: libvirt
+
 - name: Deploy Helm chart
   run_once: true
   kubernetes.core.helm:
