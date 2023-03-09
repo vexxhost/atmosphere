@@ -37,12 +37,15 @@
             OS_CLOUD: atmosphere
             OS_PROJECT_ID: "{{ magnum_kubeconfig_cluster_project_id }}"
 
-        - name: Copy the KUBECONFIG file to the requested path
-          ansible.builtin.copy:
+        - name: Slurp the KUBECONFIG
+          ansible.builtin.slurp:
             src: "{{ _magnum_kubeconfig_tempdir.path }}/config"
+
+        - name: Write the KUBECONFIG file on the target node
+          delegate_to: "{{ magnum_kubeconfig_host }}"
+          ansible.builtin.copy:
+            content: "{{ _magnum_kubeconfig_tempdir.content | b64decode }}"
             dest: "{{ magnum_kubeconfig_path }}"
-            remote_src: true
-            mode: "0600"
       always:
         - name: Remove temporary folder
           ansible.builtin.file:
