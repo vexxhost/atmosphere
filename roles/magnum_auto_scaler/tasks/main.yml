@@ -1,0 +1,12 @@
+- name: Update "cluster-autoscaler" Deployment
+  become: true
+  run_once: true
+  delegate_to: "{{ magnum_auto_scaler_cluster_network_host }}"
+  ansible.builtin.command:
+    ip netns exec qdhcp-{{ magnum_auto_scaler_cluster_network_id }} \
+      kubectl scale deploy/cluster-autoscaler \
+        --namespace kube-system \
+        --replicas={% if magnum_auto_scaler_state == 'absent' %}0{% else %}1{% endif %}
+  register: _magnum_auto_scaler_scale
+  environment:
+    KUBECONFIG: "{{ magnum_auto_scaler_cluster_kubeconfig }}"
