@@ -50,6 +50,16 @@ RETURN = """
 """
 
 
+def _format_uuid_string(string):
+    return (
+        string.replace("urn:", "")
+        .replace("uuid:", "")
+        .strip("{}")
+        .replace("-", "")
+        .lower()
+    )
+
+
 def is_uuid_like(val):
     if not is_string(val):
         raise AnsibleFilterError(
@@ -57,7 +67,7 @@ def is_uuid_like(val):
         )
 
     try:
-        return str(uuid.UUID(val)).replace('-', '') == _format_uuid_string(val)
+        return str(uuid.UUID(val)).replace("-", "") == _format_uuid_string(val)
     except (TypeError, ValueError, AttributeError):
         return False
 
