@@ -26,6 +26,12 @@
   set_fact:
     _magnum_maintenance_cluster: "{{ _magnum_maintenance_cluster_details.stdout | from_json }}"
 
+- name: Skip if the cluster is in invalid satte
+  run_once: true
+  when: _magnum_maintenance_cluster.status in ['DELETE_IN_PROGRESS', 'DELETE_FAILED']
+  ansible.builtin.meta:
+    end_play: true
+
 - name: Detect the network ID from "fixed_network"
   run_once: true
   when: _magnum_maintenance_cluster.fixed_network != None
