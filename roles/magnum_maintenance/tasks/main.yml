@@ -52,7 +52,7 @@
   run_once: true
   ansible.builtin.assert:
     that:
-      - _magnum_maintenance_cluster.status in ['DELETE_IN_PROGRESS', 'DELETE_FAILED']
+      - _magnum_maintenance_cluster.status not in ['DELETE_IN_PROGRESS', 'DELETE_FAILED']
     fail_msg: "The cluster is not in a state that can be modified (status: {{ _magnum_maintenance_cluster.status }})"
 
 - name: Assert the cluster network ID is detected
