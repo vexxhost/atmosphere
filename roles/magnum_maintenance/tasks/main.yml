@@ -26,12 +26,6 @@
   set_fact:
     _magnum_maintenance_cluster: "{{ _magnum_maintenance_cluster_details.stdout | from_json }}"
 
-- name: Skip if the cluster is in invalid satte
-  run_once: true
-  when: _magnum_maintenance_cluster.status in ['DELETE_IN_PROGRESS', 'DELETE_FAILED']
-  ansible.builtin.meta:
-    end_play: true
-
 - name: Detect the network ID from "fixed_network"
   run_once: true
   when: _magnum_maintenance_cluster.fixed_network != None
@@ -53,6 +47,21 @@
     - name: Grab the "fixed_network" attribute from the stack
       ansible.builtin.set_fact:
         _magnum_maintenance_cluster_network_id: "{{ _magnum_maintenance_heat_network_resource.stdout | from_json | json_query('attributes.fixed_network') }}"
+
+- name: Assert the cluster is ready to be modified
+  run_once: true
+  ansible.builtin.assert:
+    that:
+      - _magnum_maintenance_cluster.status in ['DELETE_IN_PROGRESS', 'DELETE_FAILED']
+    fail_msg: "The cluster is not in a state that can be modified (status: {{ _magnum_maintenance_cluster.status }})"
+
+- name: Assert the cluster network ID is detected
+  run_once: true
+  ansible.builtin.assert:
+    that:
+      - _magnum_maintenance_cluster_network_id is not defined
+      - _magnum_maintenance_cluster_network_id != None
+    fail_msg: "The cluster network ID could not be detected"
 
 - name: Retrieve DHCP agent hosting the cluster network
   run_once: true
