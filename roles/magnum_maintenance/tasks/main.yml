@@ -32,6 +32,24 @@
   ansible.builtin.set_fact:
     _magnum_maintenance_cluster_network_id: "{{ _magnum_maintenance_cluster.fixed_network }}"
 
+- name: Detect the network ID if a network name was provided
+  run_once: true
+  when:
+    - _magnum_maintenance_cluster_network_id != None
+    - not (_magnum_maintenance_cluster_network_id | vexxhost.atmosphere.is_uuid_like)
+  block:
+    - name: Get the network ID
+      openstack.cloud.networks_info:
+        cloud: atmosphere
+        name: "{{ _magnum_maintenance_cluster_network_id }}"
+        filters:
+          tenant_id: "{{ _magnum_maintenance_cluster.project_id }}"
+      register: _magnum_maintenance_cluster_network
+
+    - name: Set a fact with the network ID
+      ansible.builtin.set_fact:
+        _magnum_maintenance_cluster_network_id: "{{ _magnum_maintenance_cluster_network.networks[0].id }}"
+
 - name: Detect the network ID from the Heat stack
   run_once: true
   when: _magnum_maintenance_cluster.fixed_network == None
