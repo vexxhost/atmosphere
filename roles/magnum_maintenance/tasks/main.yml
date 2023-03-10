@@ -88,11 +88,25 @@
       when:
         - "'auto_healing_enabled' in _magnum_maintenance_cluster.labels"
         - "'auto_healing_controller' in _magnum_maintenance_cluster.labels"
+        - _magnum_maintenance_cluster.labels.auto_healing_enabled | bool
         - _magnum_maintenance_cluster.labels.auto_healing_controller == 'magnum-auto-healer'
       vars:
         magnum_auto_healer_state: "{% if magnum_maintenance_state == 'present' %}absent{% else %}present{% endif %}"
         magnum_auto_healer_cluster_kubeconfig: "{{ _magnum_maintenance_kubeconfig.path }}"
+        magnum_auto_healer_cluster_network_id: "{{ _magnum_maintenance_cluster_network_id }}"
         magnum_auto_healer_cluster_network_host: "{{ _magnum_maintenance_network_host }}"
+
+    - name: Toggle auto-scaler
+      ansible.builtin.include_role:
+        name: magnum_auto_scaler
+      when:
+        - "'auto_scaling_enabled' in _magnum_maintenance_cluster.labels"
+        - _magnum_maintenance_cluster.labels.auto_scaling_enabled | bool
+      vars:
+        magnum_auto_scaler_state: "{% if magnum_maintenance_state == 'present' %}absent{% else %}present{% endif %}"
+        magnum_auto_scaler_cluster_kubeconfig: "{{ _magnum_maintenance_kubeconfig.path }}"
+        magnum_auto_scaler_cluster_network_id: "{{ _magnum_maintenance_cluster_network_id }}"
+        magnum_auto_scaler_cluster_network_host: "{{ _magnum_maintenance_network_host }}"
 
     # TODO(mnaser): Toggle auto-scaler
   always:
