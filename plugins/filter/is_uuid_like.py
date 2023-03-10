@@ -51,9 +51,9 @@ RETURN = """
 
 
 def is_uuid_like(val):
-    if not is_string(value):
+    if not is_string(val):
         raise AnsibleFilterError(
-            "Invalid value type (%s) for docker_image (%r)" % (type(value), value)
+            "Invalid value type (%s) for is_uuid_like (%r)" % (type(val), val)
         )
 
     try:
