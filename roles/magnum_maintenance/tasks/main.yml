@@ -63,6 +63,13 @@
       - _magnum_maintenance_cluster_network_id != None
     fail_msg: "The cluster network ID could not be detected"
 
+- name: Assert that the cluster network ID is a UUID
+  run_once: true
+  ansible.builtin.assert:
+    that:
+      - _magnum_maintenance_cluster_network_id | vexxhost.atmosphere.is_uuid_like
+    fail_msg: "The cluster network ID is not a valid UUID ({{ _magnum_maintenance_cluster_network_id }})"
+
 - name: Retrieve DHCP agent hosting the cluster network
   run_once: true
   ansible.builtin.command:
