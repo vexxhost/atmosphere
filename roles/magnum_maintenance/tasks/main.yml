@@ -35,6 +35,7 @@
 - name: Detect the network ID if a network name was provided
   run_once: true
   when:
+    - _magnum_maintenance_cluster_network_id is defined
     - _magnum_maintenance_cluster_network_id != None
     - not (_magnum_maintenance_cluster_network_id | vexxhost.atmosphere.is_uuid_like)
   block:
