@@ -41,7 +41,7 @@ var PIP_PACKAGES map[string]string = map[string]string{
 	"ironic":        "python-dracclient sushy",
 	"magnum":        "magnum-cluster-api==0.3.2",
 	"monasca-agent": "libvirt-python python-glanceclient python-neutronclient python-novaclient py3nvml",
-	"neutron":       "neutron-vpnaas py-spy",
+	"neutron":       "neutron-vpnaas",
 	"placement":     "httplib2",
 }
 var PLATFORMS map[string]string = map[string]string{
