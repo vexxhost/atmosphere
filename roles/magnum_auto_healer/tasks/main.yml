@@ -17,6 +17,10 @@
 
       {{ _magnum_auto_healer_get_nodes.stdout_lines | join('\n') }}
 
+      You can troubleshoot this cluster on {{ magnum_auto_healer_cluster_network_host }}:
+      ip netns exec qdhcp-{{ magnum_auto_healer_cluster_network_id }} bash
+      export KUBECONFIG={{ magnum_auto_healer_cluster_kubeconfig }}
+
       Are you sure you want to continue?
   when: "'NotReady' in _magnum_auto_healer_get_nodes.stdout"
 
