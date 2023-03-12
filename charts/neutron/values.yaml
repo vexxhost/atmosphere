@@ -364,15 +364,19 @@ pod:
         liveness:
           enabled: true
           params:
-            initialDelaySeconds: 120
+            initialDelaySeconds: 30
             periodSeconds: 600
             timeoutSeconds: 580
         startup:
           enabled: true
           params:
             initialDelaySeconds: 30
-            periodSeconds: 15
-            timeoutSeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            successThreshold: 1
+            # NOTE(mnaser): The L3 agent can take a really long time to start
+            #               up in some cases, so we are giving it 120 minutes.
+            failureThreshold: 720
     lb_agent:
       lb_agent:
         readiness:
