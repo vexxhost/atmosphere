@@ -367,6 +367,12 @@ pod:
             initialDelaySeconds: 120
             periodSeconds: 600
             timeoutSeconds: 580
+        startup:
+          enabled: true
+          params:
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 10
     lb_agent:
       lb_agent:
         readiness:
@@ -1897,7 +1903,7 @@ conf:
       interface_driver: null
       agent_mode: legacy
       # NOTE(mnaser): This is used for the startupProbe
-      backdoor_socket: /var/run/neutron/l3-agent-{pid}-backdoor
+      backdoor_socket: /tmp/neutron-l3-agent-{pid}-backdoor
   metering_agent: null
   metadata_agent:
     DEFAULT:
