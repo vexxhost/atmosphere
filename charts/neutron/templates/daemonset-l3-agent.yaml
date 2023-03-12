@@ -12,6 +12,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */}}
 
+{{- define "l3AgentStartupProbeTemplate" }}
+exec:
+  command:
+    - python
+    - /tmp/neutron-l3-agent-startup-probe.py
+{{- end }}
 {{- define "l3AgentReadinessProbeTemplate" }}
 exec:
   command:
@@ -164,6 +170,7 @@ spec:
               value: "{{ .Values.pod.probes.rpc_timeout }}"
             - name: RPC_PROBE_RETRIES
               value: "{{ .Values.pod.probes.rpc_retries }}"
+{{ dict "envAll" $envAll "component" "l3_agent" "container" "l3_agent" "type" "startup" "probeTemplate" (include "l3AgentStartupProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
 {{ dict "envAll" $envAll "component" "l3_agent" "container" "l3_agent" "type" "readiness" "probeTemplate" (include "l3AgentReadinessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
 {{ dict "envAll" $envAll "component" "l3_agent" "container" "l3_agent" "type" "liveness" "probeTemplate" (include "l3AgentLivenessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
           command:
@@ -178,6 +185,10 @@ spec:
             - name: neutron-bin
               mountPath: /tmp/neutron-l3-agent.sh
               subPath: neutron-l3-agent.sh
+              readOnly: true
+            - name: neutron-bin
+              mountPath: /tmp/neutron-l3-agent-startup-probe.py
+              subPath: neutron-l3-agent-startup-probe.py
               readOnly: true
             - name: neutron-bin
               mountPath: /tmp/health-probe.py
