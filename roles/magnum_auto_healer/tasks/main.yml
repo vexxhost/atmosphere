@@ -1,3 +1,25 @@
+- name: Get the list of all nodes to check no nodes are "NotReady"
+  become: true
+  run_once: true
+  delegate_to: "{{ magnum_auto_healer_cluster_network_host }}"
+  ansible.builtin.command:
+    ip netns exec qdhcp-{{ magnum_auto_healer_cluster_network_id }} \
+      kubectl get nodes
+  register: _magnum_auto_healer_get_nodes
+  changed_when: false
+  environment:
+    KUBECONFIG: "{{ magnum_auto_healer_cluster_kubeconfig }}"
+
+- name: Ask for user to confirm if any nodes are "NotReady"
+  ansible.builtin.pause:
+    prompt: |
+      There is at least a node which is "NotReady":
+
+      {{ _magnum_auto_healer_get_nodes.stdout_lines | join('\n') }}
+
+      Are you sure you want to continue?
+  when: "'NotReady' in _magnum_auto_healer_get_nodes.stdout"
+
 - name: Update "magnum-auto-healer" DaemonSet
   become: true
   run_once: true
