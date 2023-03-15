@@ -21,22 +21,23 @@
       service_facts:
 
   tasks:
-    - fail:
-        msg: "todo"
-    # - name: Make sure containerd service is running
-    #   ansible.builtin.assert:
-    #     that:
-    #       - ansible_facts.services['containerd.service'].state in ['active', 'running']
+    - name: Make sure kubelet service is running
+      ansible.builtin.assert:
+        that:
+          - ansible_facts.services['kubelet.service'].state in ['active', 'running']
 
-    # - name: Make sure containerd service is enabled
-    #   ansible.builtin.assert:
-    #     that:
-    #       - ansible_facts.services['containerd.service'].status == 'enabled'
+    - name: Make sure kubelet service is enabled
+      ansible.builtin.assert:
+        that:
+          - ansible_facts.services['kubelet.service'].status == 'enabled'
+    
+    - name: Get all nodes
+      ansible.builtin.command: kubectl get nodes
+      register: nodes
+      failed_when:
+        - nodes.rc != 0
+        - not(nodes.stdout.find('instance') != -1)
 
-    # - name: Pull image from registry
-    #   ansible.builtin.command: crictl pull docker.io/library/alpine:latest
-
-    # - name: List images
-    #   ansible.builtin.command: crictl images
-    #   register: images
-    #   failed_when: not(images.stdout.find('alpine') != -1)
+    - name: Print node list
+      ansible.builtin.debug:
+        msg: "{{ nodes.stdout_lines }}"
