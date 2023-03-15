@@ -1,4 +1,4 @@
-# Copyright (c) 2022 VEXXHOST, Inc.
+# Copyright (c) 2023 VEXXHOST, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -14,7 +14,7 @@
 
 galaxy_info:
   author: VEXXHOST, Inc.
-  description: Ansible role for Kubernetes
+  description: Ansible role for "kubectl"
   license: Apache-2.0
   min_ansible_version: 5.5.0
   standalone: false
@@ -37,9 +37,9 @@ galaxy_info:
         - jammy
 
 dependencies:
-  - role: defaults
-  - role: kubeadm
-  - role: kubectl
-  - role: kubelet
-    vars:
-      kubelet_allow_unsafe_swap: "{{ kubernetes_allow_unsafe_swap }}"
+  - role: download_artifact
+    download_artifact_url: "{{ kubectl_download_url }}"
+    download_artifact_dest: "{{ kubectl_download_dest }}"
+    download_artifact_checksum: "sha256:{{ kubectl_binary_checksum }}"
+    download_artifact_owner: root
+    download_artifact_mode: "0755"

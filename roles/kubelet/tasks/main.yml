@@ -1,0 +1,155 @@
+# Copyright (c) 2023 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Uninstall kubelet package
+  ansible.builtin.package:
+    name: "{{ kubelet_package_name }}"
+    state: absent
+
+- name: Remove kubelet orphaned binary
+  ansible.builtin.file:
+    path: /usr/bin/kubelet
+    state: absent
+  when: kubelet_bin_dir != "/usr/bin"
+
+- name: Enable kernel modules on-boot
+  ansible.builtin.template:
+    src: modules-load.conf.j2
+    dest: /etc/modules-load.d/k8s.conf
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Enable kernel modules in runtime
+  community.general.modprobe:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ kubelet_kernel_modules }}"
+
+- name: Configure sysctl values
+  ansible.posix.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    state: present
+  loop: "{{ kubelet_sysctls }}"
+
+# NOTE(mnaser): This is a list of packages that are needed for `kubeadm`
+#               validation.
+#
+# https://github.com/kubernetes/kubernetes/blob/v1.26.2/cmd/kubeadm/app/preflight/checks.go#L1027-L1040
+- name: Install additional packages
+  ansible.builtin.package:
+    name:
+      - conntrack
+      - coreutils
+      - ebtables
+      - ethtool
+      - iproute2
+      - iptables
+      - mount
+      - socat
+      - util-linux
+
+- name: Create folders for kubernetes configuration
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+    owner: root
+  with_items:
+    - /etc/systemd/system/kubelet.service.d
+    - /etc/kubernetes
+    - /etc/kubernetes/manifests
+
+- name: Add kubelet systemd service config
+  ansible.builtin.template:
+    src: kubelet.service.j2
+    dest: /etc/systemd/system/kubelet.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd
+
+- name: Add kubeadm dropin for kubelet systemd service config
+  ansible.builtin.template:
+    src: 10-kubeadm.conf.j2
+    dest: /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd
+
+- name: Disable swap on the host
+  when: not kubelet_allow_unsafe_swap | bool
+  block:
+    - name: Check swap status
+      ansible.builtin.command: /sbin/swapon -s
+      changed_when: false
+      register: _swapon
+
+    - name: Disable swap
+      ansible.builtin.command: /sbin/swapoff -a
+      changed_when: true
+      ignore_errors: "{{ ansible_check_mode }}"
+      when:
+        - _swapon.stdout
+
+    - name: Remove swapfile from /etc/fstab
+      ansible.posix.mount:
+        name: "{{ item }}"
+        fstype: swap
+        state: absent
+      with_items:
+        - swap
+        - none
+
+    - name: Create noswap systemd service config file
+      ansible.builtin.copy:
+        src: noswap.service
+        dest: /etc/systemd/system/noswap.service
+        owner: root
+        group: root
+        mode: "0644"
+      notify:
+        - Reload systemd
+
+    - name: Enable noswap service
+      ansible.builtin.service:
+        name: noswap
+        enabled: true
+
+- name: Force any restarts if necessary
+  ansible.builtin.meta: flush_handlers
+
+- name: Enable and start kubelet service
+  ansible.builtin.service:
+    name: kubelet
+    enabled: true
+    state: started
+
+- name: Configure short hostname
+  ansible.builtin.hostname:
+    name: "{{ inventory_hostname_short }}"
+
+- name: Ensure hostname inside hosts file
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    regexp: '^127\.0\.1\.1'
+    line: 127.0.1.1 {{ inventory_hostname }} {{ inventory_hostname_short }}
+  # NOTE(mnaser): This is to allow our tests to run on Docker containers since
+  #               you cannot edit the `/etc/hosts` file.
+  when:
+    - ansible_connection != "community.docker.docker"

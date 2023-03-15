@@ -12,19 +12,13 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Enable noswap service
-  ansible.builtin.systemd:
-    name: noswap
-    state: started
-    enabled: true
-    daemon_reload: true
+- name: Uninstall kubectl package
+  ansible.builtin.package:
+    name: "{{ kubectl_package_name }}"
+    state: absent
 
-- name: Reload systemd
-  ansible.builtin.systemd:
-    daemon_reload: true
-    daemon_reexec: true
-
-- name: Restart kubelet
-  ansible.builtin.service:
-    name: kubelet
-    state: restarted
+- name: Remove kubectl orphaned binary
+  ansible.builtin.file:
+    path: /usr/bin/kubectl
+    state: absent
+  when: kubectl_bin_dir != "/usr/bin"

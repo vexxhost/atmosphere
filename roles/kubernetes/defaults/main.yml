@@ -12,31 +12,6 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-kubernetes_bin_dir: /usr/bin
-
-# Kubernetes version
-kubernetes_version: v1.22.17
-kubernetes_cni_version: v1.2.0
-kubernetes_cri_tools_version: 1.25.0
-
-# CRI socket path
-kubernetes_cri_socket: /run/containerd/containerd.sock
-
-# List of kernel modules to be automatically loaded
-kubernetes_kernel_modules:
-  - br_netfilter
-
-# List of sysctl parameters to set
-kubernetes_sysctls:
-  - name: net.ipv4.ip_forward
-    value: 1
-  - name: net.bridge.bridge-nf-call-iptables
-    value: 1
-  - name: net.bridge.bridge-nf-call-ip6tables
-    value: 1
-  - name: net.ipv4.conf.all.rp_filter
-    value: 0
-
 # Name of Ansible group containing all control-plane nodes
 kubernetes_control_plane_group: controllers
 
@@ -50,59 +25,14 @@ kubernetes_compute_node_labels:
   openstack-compute-node: enabled
   openvswitch: enabled
 
-# Node IP address
-kubernetes_node_ip: "{{ ansible_default_ipv4.address }}"
-
-# Allow usage of swap memory for the Kubelet (Do not enable this unless you
-# know what you are doing).
-kubernetes_allow_unsafe_swap: false
-
-kubernetes_cni_checksums:
-  arm64:
-    v1.2.0: 525e2b62ba92a1b6f3dc9612449a84aa61652e680f7ebf4eff579795fe464b57
-  amd64:
-    v1.2.0: f3a841324845ca6bf0d4091b4fc7f97e18a623172158b72fc3fdcdb9d42d2d37
-
-kubernetes_cni_download_url: "https://github.com/containernetworking/plugins/releases/download/{{ kubernetes_cni_version }}/cni-plugins-linux-{{ download_artifact_goarch }}-{{ kubernetes_cni_version }}.tgz" # noqa: yaml[line-length]
-kubernetes_cni_download_dest: "{{ download_artifact_work_directory }}/kubernetes-cni-{{ kubernetes_cni_version }}-linux-{{ download_artifact_goarch }}.tgz" # noqa: yaml[line-length]
-kubernetes_cni_archive_checksum: "{{ kubernetes_cni_checksums[download_artifact_goarch][kubernetes_cni_version] }}"
-
-kubernetes_kubectl_checksums:
-  arm64:
-    v1.22.17: 8fc2f8d5c80a6bf60be06f8cf28679a05ce565ce0bc81e70aaac38e0f7da6259
-  amd64:
-    v1.22.17: 7506a0ae7a59b35089853e1da2b0b9ac0258c5309ea3d165c3412904a9051d48
-
-kubernetes_kubectl_download_url: "https://storage.googleapis.com/kubernetes-release/release/{{ kubernetes_version }}/bin/linux/{{ download_artifact_goarch }}/kubectl"  # noqa: yaml[line-length]
-kubernetes_kubectl_download_dest: "{{ download_artifact_work_directory }}/kubernetes-kubectl-{{ kubernetes_version }}-linux-{{ download_artifact_goarch }}" # noqa: yaml[line-length]
-kubernetes_kubectl_binary_checksum: "{{ kubernetes_kubectl_checksums[download_artifact_goarch][kubernetes_version] }}"
-
-kubernetes_kubeadm_checksums:
-  arm64:
-    v1.22.17: 90a1e3c98fabaf4c6dfca5cef4d33a3212a9d624ec2e6249e7ac747f10dcad67
-  amd64:
-    v1.22.17: 75244faf5726baf432ff2a76d5f188772173adb5ca1c33634d56ba13dbd6e4dc
-
-kubernetes_kubeadm_download_url: "https://storage.googleapis.com/kubernetes-release/release/{{ kubernetes_version }}/bin/linux/{{ download_artifact_goarch }}/kubeadm"  # noqa: yaml[line-length]
-kubernetes_kubeadm_download_dest: "{{ download_artifact_work_directory }}/kubernetes-kubeadm-{{ kubernetes_version }}-linux-{{ download_artifact_goarch }}" # noqa: yaml[line-length]
-kubernetes_kubeadm_binary_checksum: "{{ kubernetes_kubeadm_checksums[download_artifact_goarch][kubernetes_version] }}"
-
-kubernetes_kubelet_checksums:
-  arm64:
-    v1.22.17: dd76d33b2a72693b9a88614cef72367dd737d74433fd9e65129684086719d632
-  amd64:
-    v1.22.17: 48d200775000567256a8c114cf4f5d389468b175c3add6b232ec3b26f03e8564
-
-kubernetes_kubelet_download_url: "https://storage.googleapis.com/kubernetes-release/release/{{ kubernetes_version }}/bin/linux/{{ download_artifact_goarch }}/kubelet"  # noqa: yaml[line-length]
-kubernetes_kubelet_download_dest: "{{ download_artifact_work_directory }}/kubernetes-kubelet-{{ kubernetes_version }}-linux-{{ download_artifact_goarch }}" # noqa: yaml[line-length]
-kubernetes_kubelet_binary_checksum: "{{ kubernetes_kubelet_checksums[download_artifact_goarch][kubernetes_version] }}"
-
-# NOTE(fitbeard): This is to accomodate for the uninstallation of the old packages
-#               that shipped with the operating system
-kubernetes_package_names:
-  - kubectl
-  - kubeadm
-  - kubelet
-  - kubernetes-cni
-
+# TODO(mnaser): We should remove this at some point.
 kubernetes_repository_apt: "deb https://apt.kubernetes.io/ kubernetes-xenial main"
+
+# Deprecated: Please use "kubelet_node_ip" instead.
+kubernetes_node_ip: "{{ kubelet_node_ip }}"
+
+# Deprecated: Please use "kubelet_cri_socket" instead.
+kubernetes_cri_socket: "{{ kubelet_cri_socket }}"
+
+# Deprecated: Please use "kubelet_allow_unsafe_swap" instead.
+kubernetes_allow_unsafe_swap: false

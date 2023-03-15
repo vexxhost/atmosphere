@@ -13,7 +13,7 @@ nodeRegistration:
     enforce-node-allocatable: ""
     node-ip: "{{ kubernetes_node_ip }}"
     container-runtime: "remote"
-    container-runtime-endpoint: "{{ kubernetes_cri_socket }}"
+    container-runtime-endpoint: "{{ kubelet_cri_socket }}"
 ---
 apiVersion: kubeadm.k8s.io/v1beta2
 kind: JoinConfiguration
@@ -26,7 +26,7 @@ nodeRegistration:
     enforce-node-allocatable: ""
     node-ip: "{{ kubernetes_node_ip }}"
     container-runtime: "remote"
-    container-runtime-endpoint: "{{ kubernetes_cri_socket }}"
+    container-runtime-endpoint: "{{ kubelet_cri_socket }}"
 {% if (_kubernetes_bootstrap_node is not defined) or (_kubernetes_bootstrap_node is defined and inventory_hostname != _kubernetes_bootstrap_node) %}
 discovery:
   bootstrapToken:
@@ -50,18 +50,11 @@ imageRepository: "{{ atmosphere_image_repository }}"
 {% endif %}
 apiServer:
   extraArgs:
-    bind-address: "{{ kubernetes_node_ip }}"
     oidc-username-claim: email
 {% if kubernetes_oidc_issuer_url is defined %}
     oidc-issuer-url: {{ kubernetes_oidc_issuer_url }}
     oidc-client-id: {{ kubernetes_oidc_client_id }}
 {% endif %}
-controllerManager:
-  extraArgs:
-    bind-address: "{{ kubernetes_node_ip }}"
-scheduler:
-  extraArgs:
-    bind-address: "{{ kubernetes_node_ip }}"
 ---
 apiVersion: kubelet.config.k8s.io/v1beta1
 kind: KubeletConfiguration
