@@ -44,24 +44,23 @@
 
 - name: Create folders for configuration
   ansible.builtin.file:
-    dest: "{{ containerd_directory.path }}"
+    dest: "{{ item.path }}"
     state: directory
-    mode: "{{ containerd_directory.mode | default('0o755') }}"
+    mode: "{{ item.mode | default('0o755') }}"
     owner: root
     group: root
   with_items:
-    - {path: "{{ containerd_cfg_dir }}"}
-    - {path: "{{ containerd_storage_dir }}"}
-    - {path: "{{ containerd_state_dir }}", mode: "0o711"}
-  loop_control:
-    loop_var: containerd_directory
+    - path: "{{ containerd_cfg_dir }}"
+    - path: "{{ containerd_storage_dir }}"
+    - path: "{{ containerd_state_dir }}"
+      mode: "0o711"
   notify:
     - Restart containerd
 
 - name: Create containerd config file
   ansible.builtin.template:
     src: config.toml.j2
-    dest: /etc/containerd/config.toml
+    dest: "{{ containerd_cfg_file }}"
     owner: root
     group: root
     mode: "0644"

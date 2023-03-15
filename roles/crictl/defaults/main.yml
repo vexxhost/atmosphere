@@ -21,9 +21,9 @@ crictl_checksums:
   amd64:
     v1.25.0: 86ab210c007f521ac4cdcbcf0ae3fb2e10923e65f16de83e0e1db191a07f0235
 
-crictl_download_url: "https://github.com/kubernetes-sigs/cri-tools/releases/download/{{ crictl_version }}/crictl-{{ crictl_version }}-linux-{{ download_artifact_goarch }}.tar.gz" # noqa: yaml[line-length]
+crictl_download_url: "https://github.com/kubernetes-sigs/cri-tools/releases/download/{{ crictl_version }}/crictl-{{ crictl_version }}-{{ ansible_system | lower }}-{{ download_artifact_goarch }}.tar.gz" # noqa: yaml[line-length]
 crictl_download_dest: "{{ crictl_download_unarchive_dest }}.tar.gz"
-crictl_download_unarchive_dest: "{{ download_artifact_work_directory }}/crictl-{{ crictl_version }}-linux-{{ download_artifact_goarch }}"
+crictl_download_unarchive_dest: "{{ download_artifact_work_directory }}/crictl-{{ crictl_version }}-{{ ansible_system | lower }}-{{ download_artifact_goarch }}"
 crictl_binary_checksum: "{{ crictl_checksums[download_artifact_goarch][crictl_version] }}"
 
 # NOTE(mnaser): This is to accomodate for the uninstallation of the old packages
