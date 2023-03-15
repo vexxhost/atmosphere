@@ -19,15 +19,17 @@
     - name: Test role
       block:
         - name: Run role under test
-          include_role:
+          ansible.builtin.include_role:
             name: vexxhost.atmosphere.kubernetes
       always:
         - name: Grab logs from the "kubelet" systemd service
-          shell: journalctl -u kubelet
+          changed_when: false
+          ansible.builtin.command: journalctl -u kubelet
           register: kubelet_logs
           ignore_errors: true
         
         - name: Print logs from the "kubelet" systemd service
-          debug:
+          changed_when: false
+          ansible.builtin.debug:
             var: kubelet_logs.stdout_lines
           ignore_errors: true
