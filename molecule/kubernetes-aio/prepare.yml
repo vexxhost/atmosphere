@@ -48,6 +48,11 @@
           - xfsprogs
         update_cache: true
 
+    - name: Start-up "dbus.socket" service
+      ansible.builtin.systemd:
+        name: dbus.socket
+        state: started
+
     - name: Workaround for "/var/lib/containerd" inside "overlayfs"
       block:
         - name: Generate a 20G file for "/var/lib/containers"
