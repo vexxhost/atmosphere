@@ -26,6 +26,19 @@
       delay: 5
       changed_when: false
       failed_when: systemctl_status.rc > 1
+
+    - name: Detect if swap is enabled
+      block:
+        - name: Check swap status
+          ansible.builtin.command: /sbin/swapon -s
+          changed_when: false
+          register: _swapon
+
+        - name: Fail if swap is enabled
+          ansible.builtin.fail:
+            msg: Swap is enabled, please disable on host before proceeding
+          when:
+            - _swapon.stdout
   tasks:
     - name: Install packages
       ansible.builtin.package:
