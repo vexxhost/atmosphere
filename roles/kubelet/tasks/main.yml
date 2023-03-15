@@ -32,6 +32,14 @@
     - "{{ ansible_facts['distribution'] | lower }}.yml"
     - "{{ ansible_facts['os_family'] | lower }}.yml"
 
+# NOTE(mnaser): This is a list of packages that are needed for `kubeadm`
+#               validation.
+#
+# https://github.com/kubernetes/kubernetes/blob/v1.26.2/cmd/kubeadm/app/preflight/checks.go#L1027-L1040
+- name: Install additional packages
+  ansible.builtin.package:
+    name: "{{ kubelet_package_dependencies }}"
+
 - name: Enable kernel modules on-boot
   ansible.builtin.template:
     src: modules-load.conf.j2
@@ -52,14 +60,6 @@
     value: "{{ item.value }}"
     state: present
   loop: "{{ kubelet_sysctls }}"
-
-# NOTE(mnaser): This is a list of packages that are needed for `kubeadm`
-#               validation.
-#
-# https://github.com/kubernetes/kubernetes/blob/v1.26.2/cmd/kubeadm/app/preflight/checks.go#L1027-L1040
-- name: Install additional packages
-  ansible.builtin.package:
-    name: "{{ kubelet_package_dependencies }}"
 
 - name: Create folders for kubernetes configuration
   ansible.builtin.file:
