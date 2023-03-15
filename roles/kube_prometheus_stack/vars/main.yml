@@ -160,6 +160,19 @@ _kube_prometheus_stack_helm_values:
         endpoints:
           - port: metrics
             relabelings: *relabelings_instance_to_pod_name
+      - name: ingress-nginx-controller
+        jobLabel: app.kubernetes.io/instance
+        namespaceSelector:
+          matchNames:
+            - ingress-nginx
+        selector:
+          matchLabels:
+            app.kubernetes.io/component: controller
+            app.kubernetes.io/instance: ingress-nginx
+            app.kubernetes.io/name: ingress-nginx
+        endpoints:
+          - port: metrics
+            relabelings: *relabelings_instance_to_node_name
       - name: openstack-exporter
         jobLabel: jobLabel
         namespaceSelector:
