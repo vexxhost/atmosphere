@@ -12,13 +12,13 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-name: kubernetes-aio
+name: kubernetes-ha
 
 on:
   pull_request:
     paths:
       - molecule/kubernetes/**
-      - molecule/kubernetes-aio/**
+      - molecule/kubernetes-ha/**
       - roles/containerd/**
       - roles/crictl/**
       - roles/download_artifact/**
@@ -32,7 +32,7 @@ on:
       - main
     paths:
       - molecule/kubernetes/**
-      - molecule/kubernetes-aio/**
+      - molecule/kubernetes-ha/**
       - roles/containerd/**
       - roles/crictl/**
       - roles/download_artifact/**
@@ -76,6 +76,6 @@ jobs:
         run: sudo swapoff -a
 
       - name: Run Molecule
-        run: poetry run molecule test -s kubernetes-aio
+        run: poetry run molecule test -s kubernetes-ha
         env:
           MOLECULE_DISTRO: ${{ matrix.distro }}

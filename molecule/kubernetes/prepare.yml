@@ -1,0 +1,90 @@
+# Copyright (c) 2023 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Prepare
+  hosts: all
+  become: true
+  pre_tasks:
+    - name: Wait for systemd to complete initialization
+      ansible.builtin.command: systemctl is-system-running
+      register: systemctl_status
+      until: >
+        'running' in systemctl_status.stdout or
+        'degraded' in systemctl_status.stdout
+      retries: 30
+      delay: 5
+      changed_when: false
+      failed_when: systemctl_status.rc > 1
+
+    - name: Detect if swap is enabled
+      block:
+        - name: Check swap status
+          ansible.builtin.command: /sbin/swapon -s
+          changed_when: false
+          register: _swapon
+
+        - name: Fail if swap is enabled
+          ansible.builtin.fail:
+            msg: Swap is enabled, please disable on host before proceeding
+          when:
+            - _swapon.stdout
+  tasks:
+    - name: Install common packages
+      ansible.builtin.package:
+        name:
+          - dbus
+          - kmod
+          - udev
+          - xfsprogs
+        update_cache: true
+
+    - name: Install RHEL packages
+      ansible.builtin.package:
+        name:
+          # NOTE(mnaser): In order to get "ansible_default_ipv4"
+          - iproute
+      when: ansible_os_family == "RedHat"
+
+    - name: Uninstall RHEL packages
+      ansible.builtin.package:
+        name:
+          # NOTE(fitbeard): Image geerlingguy/docker-rockylinux8-ansible comes with installed PyYAML
+          # rpm package which is too old as dependency for newest python Kubernetes package.
+          # It is safe to remove for both 8 and 9 Rocky Linux releases.
+          # TODO(fitbeard): Use pip everywhere instead of OS package manager if possible.
+          - python3-pyyaml
+        state: absent
+      when: ansible_distribution == "Rocky"
+
+    - name: Start-up "dbus.socket" service
+      ansible.builtin.systemd:
+        name: dbus.socket
+        state: started
+
+    - name: Workaround for "/var/lib/containerd" inside "overlayfs"
+      block:
+        - name: Generate a 20G file for "/var/lib/containers"
+          ansible.builtin.command: truncate -s 20G /var/lib/containerd.img
+          args:
+            creates: /var/lib/containerd.img
+
+        - name: Create an "xfs" filesystem on "/var/lib/containerd.img"
+          ansible.builtin.command: mkfs.xfs -m reflink=1 /var/lib/containerd.img
+
+        - name: Mount the "xfs" filesystem
+          ansible.builtin.mount:
+            path: /var/lib/containerd
+            src: /var/lib/containerd.img
+            fstype: xfs
+            state: mounted
