@@ -37,7 +37,6 @@ backend apiserver
     option log-health-checks
     option httpchk GET /healthz
     http-check expect status 200
-    default-server inter 10s fall 2
 {% for host in groups[kubernetes_control_plane_group] %}
     server {{ host }} {{ hostvars[host]['kubernetes_node_ip'] | default(hostvars[host]['ansible_default_ipv4']['address']) }}:16443 check
 {% endfor %}
