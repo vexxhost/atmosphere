@@ -17,7 +17,8 @@ dependency:
 driver:
   name: docker
 platforms:
-  - name: instance
+  - &instance_config
+    name: instance-1
     image: geerlingguy/docker-${MOLECULE_DISTRO:-ubuntu2004}-ansible:latest
     command: ${MOLECULE_DOCKER_COMMAND:-""}
     privileged: true
@@ -32,6 +33,10 @@ platforms:
     groups:
       - controllers
       - computes
+  - <<: *instance_config
+    name: instance-2
+  - <<: *instance_config
+    name: instance-3
 provisioner:
   name: ansible
   inventory:
