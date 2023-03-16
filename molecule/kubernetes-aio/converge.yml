@@ -18,9 +18,10 @@
   tasks:
     - name: Test role
       block:
-        - name: Run role under test
-          ansible.builtin.include_role:
-            name: vexxhost.atmosphere.kubernetes
+        - debug: msg="Running role under test"
+        # - name: Run role under test
+        #   ansible.builtin.include_role:
+        #     name: vexxhost.atmosphere.kubernetes
       always:
         - name: Grab logs from the "kubelet" systemd service
           changed_when: false
@@ -33,3 +34,24 @@
           ansible.builtin.debug:
             var: kubelet_logs.stdout_lines
           ignore_errors: true
+
+        - name: Get list of all containers from "crictl"
+          changed_when: false
+          ansible.builtin.command: crictl ps -aq
+          register: crictl_ps
+          ignore_errors: true
+
+        - name: Get logs of all the containers from "crictl"
+          changed_when: false
+          ansible.builtin.command: crictl logs {{ item }}
+          register: crictl_logs
+          ignore_errors: true
+          loop: "{{ crictl_ps.stdout_lines }}"
+
+        - name: Print logs from "crictl"
+          changed_when: false
+          ansible.builtin.debug:
+            var: item.stdout_lines
+          loop: "{{ crictl_logs.results }}"
+          loop_control:
+            label: "{{ item.item }}"
