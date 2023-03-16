@@ -40,13 +40,20 @@
           when:
             - _swapon.stdout
   tasks:
-    - name: Install packages
+    - name: Install common packages
       ansible.builtin.package:
         name:
           - kmod
           - udev
           - xfsprogs
         update_cache: true
+    
+    - name: Install RHEL packages
+      ansible.builtin.package:
+        name:
+          # NOTE(mnaser): In order to get "ansible_default_ipv4"
+          - iproute
+      when: ansible_os_family == "RedHat"
 
     - name: Start-up "dbus.socket" service
       ansible.builtin.systemd:
