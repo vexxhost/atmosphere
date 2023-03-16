@@ -6,6 +6,9 @@ global
     log /dev/log local0
     log /dev/log local1 notice
     daemon
+    # NOTE(mnaser): This is to prevent HAproxy from eating up all memory.
+    #               https://github.com/docker-library/haproxy/issues/194
+    maxconn 4000
 
 #---------------------------------------------------------------------
 # common defaults that all the 'listen' and 'backend' sections will
@@ -47,5 +50,5 @@ backend apiserver
     option ssl-hello-chk
     balance     roundrobin
 {% for host in groups[kubernetes_control_plane_group] %}
-        server {{ host }} {{ hostvars[host]['kubernetes_node_ip'] | default(hostvars[host]['ansible_default_ipv4']['address']) }}:16443 check
+    server {{ host }} {{ hostvars[host]['kubernetes_node_ip'] | default(hostvars[host]['ansible_default_ipv4']['address']) }}:16443 check
 {% endfor %}
