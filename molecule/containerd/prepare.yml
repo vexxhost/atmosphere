@@ -26,3 +26,8 @@
       delay: 5
       changed_when: false
       failed_when: systemctl_status.rc > 1
+  tasks:
+    - name: Run APT update
+      ansible.builtin.apt:
+        update_cache: yes
+      when: ansible_pkg_mgr == "apt"
