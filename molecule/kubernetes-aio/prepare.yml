@@ -48,13 +48,24 @@
           - udev
           - xfsprogs
         update_cache: true
-    
+
     - name: Install RHEL packages
       ansible.builtin.package:
         name:
           # NOTE(mnaser): In order to get "ansible_default_ipv4"
           - iproute
       when: ansible_os_family == "RedHat"
+
+    - name: Uninstall RHEL packages
+      ansible.builtin.package:
+        name:
+          # NOTE(fitbeard): Image geerlingguy/docker-rockylinux8-ansible comes with installed PyYAML
+          # rpm package which is too old as dependency for newest python Kubernetes package.
+          # It is safe to remove for both 8 and 9 Rocky Linux releases.
+          # TODO(fitbeard): Use pip everywhere instead of OS package manager if possible.
+          - python3-pyyaml
+        state: absent
+      when: ansible_distribution == "Rocky"
 
     - name: Start-up "dbus.socket" service
       ansible.builtin.systemd:
