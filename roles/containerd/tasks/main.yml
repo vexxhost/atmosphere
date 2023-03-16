@@ -17,6 +17,14 @@
     name: "{{ containerd_package_name }}"
     state: absent
 
+- name: Install AppArmor packages
+  ansible.builtin.package:
+    state: present
+    name:
+      - apparmor
+      - apparmor-utils
+  when: ansible_facts['os_family'] == "Debian"
+
 - name: Install containerd binaries
   ansible.builtin.copy:
     src: "{{ containerd_download_unarchive_dest }}/{{ item }}"
