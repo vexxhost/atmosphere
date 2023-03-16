@@ -31,7 +31,7 @@
         - name: Print logs from the "kubelet" systemd service
           changed_when: false
           ansible.builtin.debug:
-            var: kubelet_logs.stdout_lines
+            msg: "{{ kubelet_logs.stdout_lines }}"
           ignore_errors: true
 
         - name: Get list of all containers from "crictl"
@@ -50,7 +50,7 @@
         - name: Print logs from "crictl"
           changed_when: false
           ansible.builtin.debug:
-            var: item.stdout_lines
+            msg: "{{ item.stdout_lines }}"
           loop: "{{ crictl_logs.results }}"
           loop_control:
             label: "{{ item.item }}"
