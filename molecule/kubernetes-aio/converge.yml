@@ -18,10 +18,9 @@
   tasks:
     - name: Test role
       block:
-        - debug: msg="Running role under test"
-        # - name: Run role under test
-        #   ansible.builtin.include_role:
-        #     name: vexxhost.atmosphere.kubernetes
+        - name: Run role under test
+          ansible.builtin.include_role:
+            name: vexxhost.atmosphere.kubernetes
       always:
         - name: Grab logs from the "kubelet" systemd service
           changed_when: false
