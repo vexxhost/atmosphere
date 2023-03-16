@@ -22,11 +22,10 @@
     state: directory
     mode: "0755"
 
-- name: Create destination directory on node
+- name: Create destination directory on node # noqa risky-file-permissions
   ansible.builtin.file:
     path: "{{ download_artifact_dest | dirname }}"
     owner: "{{ download_artifact_owner | default(omit) }}"
-    mode: "0755"
     state: directory
     recurse: true
 

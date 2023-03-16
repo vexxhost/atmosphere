@@ -1,7 +1,5 @@
-# /etc/haproxy/haproxy.cfg
-#---------------------------------------------------------------------
-# Global settings
-#---------------------------------------------------------------------
+# {{ ansible_managed }}
+
 global
     log stdout format raw local0
     daemon
@@ -9,45 +7,37 @@ global
     #               https://github.com/docker-library/haproxy/issues/194
     maxconn 4000
 
-#---------------------------------------------------------------------
-# common defaults that all the 'listen' and 'backend' sections will
-# use if not designated in their block
-#---------------------------------------------------------------------
 defaults
     mode                    http
     log                     global
     option                  httplog
     option                  dontlognull
-    option http-server-close
-    option forwardfor       except 127.0.0.0/8
+    option                  http-server-close
     option                  redispatch
     retries                 1
     timeout http-request    10s
     timeout queue           20s
     timeout connect         5s
-    timeout client          20s
-    timeout server          20s
+    timeout client          4h
+    timeout server          4h
     timeout http-keep-alive 10s
     timeout check           10s
 
-#---------------------------------------------------------------------
-# apiserver frontend which proxys to the masters
-#---------------------------------------------------------------------
 frontend apiserver
     bind *:6443
     mode tcp
     option tcplog
     default_backend apiserver
 
-#---------------------------------------------------------------------
-# round robin balancing for apiserver
-#---------------------------------------------------------------------
 backend apiserver
+    mode tcp
+    balance roundrobin
+    option tcplog
+    option ssl-hello-chk
+    option log-health-checks
     option httpchk GET /healthz
     http-check expect status 200
-    mode tcp
-    option ssl-hello-chk
-    balance     roundrobin
+    default-server inter 10s fall 2
 {% for host in groups[kubernetes_control_plane_group] %}
     server {{ host }} {{ hostvars[host]['kubernetes_node_ip'] | default(hostvars[host]['ansible_default_ipv4']['address']) }}:16443 check
 {% endfor %}
