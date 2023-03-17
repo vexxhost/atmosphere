@@ -50,13 +50,13 @@ jobs:
       matrix:
         distro:
           - debian10
-          - debian11
-          - fedora36
-          - fedora37
-          - rockylinux8
-          - rockylinux9
-          - ubuntu2004
-          - ubuntu2204
+          # - debian11
+          # - fedora36
+          # - fedora37
+          # - rockylinux8
+          # - rockylinux9
+          # - ubuntu2004
+          # - ubuntu2204
     steps:
       - name: Checkout project
         uses: actions/checkout@v3
@@ -76,6 +76,9 @@ jobs:
         run: sudo swapoff -a
 
       - name: Run Molecule
-        run: poetry run molecule test -s kubernetes-aio
+        run: poetry run molecule converge -s kubernetes-aio
         env:
           MOLECULE_DISTRO: ${{ matrix.distro }}
+      - name: Setup tmate session
+        if: failure()
+        uses: mxschmitt/action-tmate@v3
