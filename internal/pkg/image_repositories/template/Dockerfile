@@ -30,5 +30,6 @@ RUN <<EOF /bin/bash
   rm -rf /var/lib/apt/lists/*
 EOF
 {{- else if eq .Project "magnum" }}
+COPY --from=docker.io/alpine/helm:3.11.2 /usr/bin/helm /usr/local/bin/helm
 COPY --from=gcr.io/go-containerregistry/crane /ko-app/crane /usr/local/bin/crane
 {{- end }}
