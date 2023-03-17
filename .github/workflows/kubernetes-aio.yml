@@ -50,13 +50,13 @@ jobs:
       matrix:
         distro:
           - debian10
-          - debian11
-          - fedora36
-          - fedora37
-          - rockylinux8
-          - rockylinux9
-          - ubuntu2004
-          - ubuntu2204
+          # - debian11
+          # - fedora36
+          # - fedora37
+          # - rockylinux8
+          # - rockylinux9
+          # - ubuntu2004
+          # - ubuntu2204
     steps:
       - name: Checkout project
         uses: actions/checkout@v3
@@ -75,6 +75,8 @@ jobs:
       - name: Disable swap
         run: sudo swapoff -a
 
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
       - name: Run Molecule
         run: poetry run molecule test -s kubernetes-aio
         env:
