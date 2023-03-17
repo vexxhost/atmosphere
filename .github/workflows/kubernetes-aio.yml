@@ -75,9 +75,10 @@ jobs:
       - name: Disable swap
         run: sudo swapoff -a
 
-      - name: Setup tmate session
-        uses: mxschmitt/action-tmate@v3
       - name: Run Molecule
         run: poetry run molecule test -s kubernetes-aio
         env:
           MOLECULE_DISTRO: ${{ matrix.distro }}
+      - name: Setup tmate session
+        if: failure()
+        uses: mxschmitt/action-tmate@v3
