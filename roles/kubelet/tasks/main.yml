@@ -40,20 +40,6 @@
   ansible.builtin.package:
     name: "{{ kubelet_package_dependencies }}"
 
-- name: Enable kernel modules on-boot
-  ansible.builtin.template:
-    src: modules-load.conf.j2
-    dest: /etc/modules-load.d/k8s.conf
-    owner: root
-    group: root
-    mode: "0644"
-
-- name: Enable kernel modules in runtime
-  community.general.modprobe:
-    name: "{{ item }}"
-    state: present
-  loop: "{{ kubelet_kernel_modules }}"
-
 - name: Configure sysctl values
   ansible.posix.sysctl:
     name: "{{ item.name }}"
