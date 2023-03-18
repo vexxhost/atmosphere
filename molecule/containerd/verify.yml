@@ -58,6 +58,11 @@
       notify:
         - Restart "containerd"
 
+    - name: Restart "containerd"
+      ansible.builtin.service:
+        name: containerd
+        state: restarted
+
     - name: Run test suite
       block:
         - name: Run "critest" 
@@ -67,8 +72,3 @@
         - name: Print out "critest" output
           ansible.builtin.debug:
             msg: "{{ _critest.stdout_lines }}"
-  handlers:
-    - name: Restart "containerd"
-      ansible.builtin.service:
-        name: containerd
-        state: restarted
