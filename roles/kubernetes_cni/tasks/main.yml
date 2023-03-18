@@ -12,11 +12,24 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+- name: Gather variables for each operating system
+  ansible.builtin.include_vars: "{{ item }}"
+  with_first_found:
+    - "{{ ansible_facts['distribution'] | lower }}-{{ ansible_facts['distribution_version'] | lower }}.yml"
+    - "{{ ansible_facts['distribution'] | lower }}-{{ ansible_facts['distribution_major_version'] | lower }}.yml"
+    - "{{ ansible_facts['os_family'] | lower }}-{{ ansible_facts['distribution_major_version'] | lower }}.yml"
+    - "{{ ansible_facts['distribution'] | lower }}.yml"
+    - "{{ ansible_facts['os_family'] | lower }}.yml"
+
 - name: Install additional packages
   ansible.builtin.package:
-    name:
-      - iptables
-      - kmod
+    name: "{{ kubernetes_cni_package_dependencies }}"
+
+- name: Ensure IPv6 is enabled
+  ansible.posix.sysctl:
+    name: net.ipv6.conf.all.disable_ipv6
+    value: 0
+    sysctl_set: true
 
 - name: Enable kernel modules on-boot
   ansible.builtin.template:
