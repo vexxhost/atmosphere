@@ -80,7 +80,7 @@
     - name: Create an "xfs" filesystem on "/var/lib/containerd.img"
       ansible.builtin.command: mkfs.xfs -m reflink=1 /var/lib/containerd.img
       register: _mkfs_xfs
-      changed_when: "'contain an existing filesystem' not in _mkfs_xfs.stdout"
+      changed_when: "'contain an existing filesystem' not in _mkfs_xfs.stderr"
       failed_when: false
 
     - name: Mount the "xfs" filesystem
