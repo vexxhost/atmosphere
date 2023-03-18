@@ -15,9 +15,12 @@
 - hosts: "{{ target | default('all') }}"
   become: true
   roles:
+    - role: defaults
     - role: sysctl
     - role: ethtool
       tags:
         - ethtool
-    - role: containerd
+    - role: vexxhost.kubernetes.containerd
+      vars:
+        containerd_pause_image: "{{ atmosphere_images['pause'] | vexxhost.atmosphere.docker_image('ref') }}"
     - role: kubernetes
