@@ -12,8 +12,20 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Converge
-  hosts: all
-  become: true
-  roles:
-    - vexxhost.atmosphere.containerd
+- name: Uninstall crictl package
+  ansible.builtin.package:
+    name: "{{ cri_tools_package_name }}"
+    state: absent
+
+- name: Create crictl config
+  ansible.builtin.template:
+    src: crictl.yaml.j2
+    dest: /etc/crictl.yaml
+    owner: root
+    mode: "0644"
+
+- name: Remove crictl orphaned binary
+  ansible.builtin.file:
+    path: /usr/bin/crictl
+    state: absent
+  when: cri_tools_bin_dir != "/usr/bin"

@@ -15,26 +15,60 @@
 - name: Verify
   hosts: all
   become: true
+  roles:
+    - vexxhost.atmosphere.kubernetes_cni
+    - vexxhost.atmosphere.cri_tools
+  post_tasks:
+    - name: Install the 10-containerd-net.conflist file
+      ansible.builtin.copy:
+        dest: /etc/cni/net.d/10-containerd-net.conflist
+        content: |
+          {
+            "cniVersion": "1.0.0",
+            "name": "containerd-net",
+            "plugins": [
+              {
+                "type": "bridge",
+                "bridge": "cni0",
+                "isGateway": true,
+                "ipMasq": true,
+                "promiscMode": true,
+                "ipam": {
+                  "type": "host-local",
+                  "ranges": [
+                    [{
+                      "subnet": "10.88.0.0/16"
+                    }],
+                    [{
+                      "subnet": "2001:4860:4860::/64"
+                    }]
+                  ],
+                  "routes": [
+                    { "dst": "0.0.0.0/0" },
+                    { "dst": "::/0" }
+                  ]
+                }
+              },
+              {
+                "type": "portmap",
+                "capabilities": {"portMappings": true}
+              }
+            ]
+          }
+      notify:
+        - Restart "containerd"
 
-  pre_tasks:
-    - name: Gather service facts
-      service_facts:
-
-  tasks:
-    - name: Make sure containerd service is running
-      ansible.builtin.assert:
-        that:
-          - ansible_facts.services['containerd.service'].state in ['active', 'running']
-
-    - name: Make sure containerd service is enabled
-      ansible.builtin.assert:
-        that:
-          - ansible_facts.services['containerd.service'].status == 'enabled'
-
-    - name: Pull image from registry
-      ansible.builtin.command: crictl pull docker.io/library/alpine:latest
-
-    - name: List images
-      ansible.builtin.command: crictl images
-      register: images
-      failed_when: not(images.stdout.find('alpine') != -1)
+    - name: Run test suite
+      block:
+        - name: Run "critest" 
+          ansible.builtin.command: critest
+          register: _critest
+      always:
+        - name: Print out "critest" output
+          ansible.builtin.debug:
+            msg: "{{ _critest.stdout_lines }}"
+  handlers:
+    - name: Restart "containerd"
+      ansible.builtin.service:
+        name: containerd
+        state: restarted

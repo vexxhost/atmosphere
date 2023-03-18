@@ -71,20 +71,3 @@
       ansible.builtin.systemd:
         name: dbus.socket
         state: started
-
-    - name: Workaround for "/var/lib/containerd" inside "overlayfs"
-      block:
-        - name: Generate a 20G file for "/var/lib/containers"
-          ansible.builtin.command: truncate -s 20G /var/lib/containerd.img
-          args:
-            creates: /var/lib/containerd.img
-
-        - name: Create an "xfs" filesystem on "/var/lib/containerd.img"
-          ansible.builtin.command: mkfs.xfs -m reflink=1 /var/lib/containerd.img
-
-        - name: Mount the "xfs" filesystem
-          ansible.builtin.mount:
-            path: /var/lib/containerd
-            src: /var/lib/containerd.img
-            fstype: xfs
-            state: mounted

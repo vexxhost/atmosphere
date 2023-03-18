@@ -38,10 +38,18 @@ galaxy_info:
 
 dependencies:
   - role: download_artifact
-    download_artifact_url: "{{ crictl_download_url }}"
-    download_artifact_dest: "{{ crictl_download_dest }}"
-    download_artifact_checksum: "sha256:{{ crictl_binary_checksum }}"
+    download_artifact_url: "{{ cri_tools_crictl_download_url }}"
+    download_artifact_dest: "{{ cri_tools_crictl_download_dest }}"
+    download_artifact_checksum: "sha256:{{ cri_tools_crictl_archive_checksum }}"
     download_artifact_owner: root
     download_artifact_mode: "0755"
     download_artifact_unarchive: true
-    download_artifact_unarchive_dest: "{{ crictl_download_unarchive_dest }}"
+    download_artifact_unarchive_dest: "{{ cri_tools_bin_dir }}"
+  - role: download_artifact
+    download_artifact_url: "{{ cri_tools_critest_download_url }}"
+    download_artifact_dest: "{{ cri_tools_critest_download_dest }}"
+    download_artifact_checksum: "sha256:{{ cri_tools_critest_archive_checksum }}"
+    download_artifact_owner: root
+    download_artifact_mode: "0755"
+    download_artifact_unarchive: true
+    download_artifact_unarchive_dest: "{{ cri_tools_bin_dir }}"

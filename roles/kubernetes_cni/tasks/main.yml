@@ -12,27 +12,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Uninstall crictl package
+- name: Install additional packages
   ansible.builtin.package:
-    name: "{{ crictl_package_name }}"
-    state: absent
-
-- name: Copy crictl binary from download dir
-  ansible.builtin.copy:
-    src: "{{ crictl_download_unarchive_dest }}/crictl"
-    dest: "{{ crictl_bin_dir }}/crictl"
-    mode: "0755"
-    remote_src: true
-
-- name: Create crictl config
-  ansible.builtin.template:
-    src: crictl.yaml.j2
-    dest: /etc/crictl.yaml
-    owner: root
-    mode: "0644"
-
-- name: Remove crictl orphaned binary
-  ansible.builtin.file:
-    path: /usr/bin/crictl
-    state: absent
-  when: crictl_bin_dir != "/usr/bin"
+    name:
+      - iptables
