@@ -16,6 +16,8 @@
   gather_facts: false
   become: true
   roles:
-    - role: flux
+    - role: vexxhost.kubernetes.flux
+      vars:
+        flux_image_registry: "{{ atmosphere_images['flux_helm_controller'] | vexxhost.kubernetes.docker_image('prefix') }}"
       tags:
         - flux
