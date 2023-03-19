@@ -16,8 +16,8 @@ _kube_prometheus_stack_helm_values:
           regex: ^(container|endpoint|namespace|pod|node|service)$
     alertmanagerSpec:
       image:
-        repository: "{{ atmosphere_images['alertmanager'] | vexxhost.atmosphere.docker_image('name') }}"
-        tag: "{{ atmosphere_images['alertmanager'] | vexxhost.atmosphere.docker_image('tag') }}"
+        repository: "{{ atmosphere_images['alertmanager'] | vexxhost.kubernetes.docker_image('name') }}"
+        tag: "{{ atmosphere_images['alertmanager'] | vexxhost.kubernetes.docker_image('tag') }}"
       storage:
         volumeClaimTemplate:
           spec:
@@ -31,12 +31,12 @@ _kube_prometheus_stack_helm_values:
         openstack-control-plane: enabled
   grafana:
     image:
-      repository: "{{ atmosphere_images['grafana'] | vexxhost.atmosphere.docker_image('name') }}"
-      tag: "{{ atmosphere_images['grafana'] | vexxhost.atmosphere.docker_image('tag') }}"
+      repository: "{{ atmosphere_images['grafana'] | vexxhost.kubernetes.docker_image('name') }}"
+      tag: "{{ atmosphere_images['grafana'] | vexxhost.kubernetes.docker_image('tag') }}"
     sidecar:
       image:
-        repository: "{{ atmosphere_images['grafana_sidecar'] | vexxhost.atmosphere.docker_image('name') }}"
-        tag: "{{ atmosphere_images['grafana_sidecar'] | vexxhost.atmosphere.docker_image('tag') }}"
+        repository: "{{ atmosphere_images['grafana_sidecar'] | vexxhost.kubernetes.docker_image('name') }}"
+        tag: "{{ atmosphere_images['grafana_sidecar'] | vexxhost.kubernetes.docker_image('tag') }}"
     additionalDataSources:
       - name: Loki
         type: loki
@@ -97,8 +97,8 @@ _kube_prometheus_stack_helm_values:
       relabelings: *relabelings_instance_to_node_name
   kube-state-metrics:
     image:
-      repository: "{{ atmosphere_images['kube_state_metrics'] | vexxhost.atmosphere.docker_image('name') }}"
-      tag: "{{ atmosphere_images['kube_state_metrics'] | vexxhost.atmosphere.docker_image('tag') }}"
+      repository: "{{ atmosphere_images['kube_state_metrics'] | vexxhost.kubernetes.docker_image('name') }}"
+      tag: "{{ atmosphere_images['kube_state_metrics'] | vexxhost.kubernetes.docker_image('tag') }}"
     prometheus:
       monitor:
         relabelings: *relabelings_instance_to_pod_name
@@ -108,8 +108,8 @@ _kube_prometheus_stack_helm_values:
       relabelings: *relabelings_instance_to_pod_name
     prometheusSpec:
       image:
-        repository: "{{ atmosphere_images['prometheus'] | vexxhost.atmosphere.docker_image('name') }}"
-        tag: "{{ atmosphere_images['prometheus'] | vexxhost.atmosphere.docker_image('tag') }}"
+        repository: "{{ atmosphere_images['prometheus'] | vexxhost.kubernetes.docker_image('name') }}"
+        tag: "{{ atmosphere_images['prometheus'] | vexxhost.kubernetes.docker_image('tag') }}"
       nodeSelector: *node_selector
       secrets:
         - kube-prometheus-stack-etcd-client-cert
@@ -222,23 +222,23 @@ _kube_prometheus_stack_helm_values:
     admissionWebhooks:
       patch:
         image:
-          repository: "{{ atmosphere_images['prometheus_operator_kube_webhook_certgen'] | vexxhost.atmosphere.docker_image('name') }}"
-          tag: "{{ atmosphere_images['prometheus_operator_kube_webhook_certgen'] | vexxhost.atmosphere.docker_image('tag') }}"
+          repository: "{{ atmosphere_images['prometheus_operator_kube_webhook_certgen'] | vexxhost.kubernetes.docker_image('name') }}"
+          tag: "{{ atmosphere_images['prometheus_operator_kube_webhook_certgen'] | vexxhost.kubernetes.docker_image('tag') }}"
         nodeSelector: *node_selector
     serviceMonitor:
       relabelings: *relabelings_instance_to_pod_name
     nodeSelector: *node_selector
     image:
-      repository: "{{ atmosphere_images['prometheus_operator'] | vexxhost.atmosphere.docker_image('name') }}"
-      tag: "{{ atmosphere_images['prometheus_operator'] | vexxhost.atmosphere.docker_image('tag') }}"
+      repository: "{{ atmosphere_images['prometheus_operator'] | vexxhost.kubernetes.docker_image('name') }}"
+      tag: "{{ atmosphere_images['prometheus_operator'] | vexxhost.kubernetes.docker_image('tag') }}"
     prometheusConfigReloader:
       image:
-        repository: "{{ atmosphere_images['prometheus_config_reloader'] | vexxhost.atmosphere.docker_image('name') }}"
-        tag: "{{ atmosphere_images['prometheus_config_reloader'] | vexxhost.atmosphere.docker_image('tag') }}"
+        repository: "{{ atmosphere_images['prometheus_config_reloader'] | vexxhost.kubernetes.docker_image('name') }}"
+        tag: "{{ atmosphere_images['prometheus_config_reloader'] | vexxhost.kubernetes.docker_image('tag') }}"
   prometheus-node-exporter:
     image:
-      repository: "{{ atmosphere_images['prometheus_node_exporter'] | vexxhost.atmosphere.docker_image('name') }}"
-      tag: "{{ atmosphere_images['prometheus_node_exporter'] | vexxhost.atmosphere.docker_image('tag') }}"
+      repository: "{{ atmosphere_images['prometheus_node_exporter'] | vexxhost.kubernetes.docker_image('name') }}"
+      tag: "{{ atmosphere_images['prometheus_node_exporter'] | vexxhost.kubernetes.docker_image('tag') }}"
     extraArgs:
       - --collector.diskstats.ignored-devices=^(ram|loop|nbd|fd|(h|s|v|xv)d[a-z]|nvme\\d+n\\d+p)\\d+$
       - --collector.filesystem.fs-types-exclude=^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|fusectl|fuse.squashfuse_ll|hugetlbfs|iso9660|mqueue|nsfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|sysfs|tracefs)$
