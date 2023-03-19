@@ -26,10 +26,6 @@ ATMOSPHERE="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." >/dev/null 2>&1 && pwd )
 # Clean-up all of the existing charts
 rm -rfv ${ATMOSPHERE}/charts/*
 
-CILIUM_VERSION=1.10.7
-curl -sL https://helm.cilium.io/cilium-${CILIUM_VERSION}.tgz \
-  | tar -xz -C ${ATMOSPHERE}/charts
-
 CEPH_CSI_RBD_VERSION=3.5.1
 curl -sL https://ceph.github.io/csi-charts/rbd/ceph-csi-rbd-${CEPH_CSI_RBD_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
