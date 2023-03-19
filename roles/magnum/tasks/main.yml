@@ -201,7 +201,7 @@
                       value: /var/lib/registry
                     - name: REGISTRY_COMPATIBILITY_SCHEMA1_ENABLED
                       value: "true"
-                  image: "{{ atmosphere_images['magnum_registry'] | vexxhost.atmosphere.docker_image('ref') }}"
+                  image: "{{ atmosphere_images['magnum_registry'] | vexxhost.kubernetes.docker_image('ref') }}"
                   ports:
                     - containerPort: 5000
                       name: registry
@@ -263,7 +263,7 @@
               restartPolicy: OnFailure
               containers:
                 - name: loader
-                  image: "{{ atmosphere_images['magnum_api'] | vexxhost.atmosphere.docker_image('ref') }}"
+                  image: "{{ atmosphere_images['magnum_api'] | vexxhost.kubernetes.docker_image('ref') }}"
                   command:
                     - magnum-cluster-api-image-loader
                     - --insecure

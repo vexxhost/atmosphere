@@ -14,25 +14,25 @@
 
 _rabbitmq_cluster_operator_helm_values:
   global:
-    imageRegistry: "{{ atmosphere_images['rabbitmq_cluster_operator'] | vexxhost.atmosphere.docker_image('domain') }}"
+    imageRegistry: "{{ atmosphere_images['rabbitmq_cluster_operator'] | vexxhost.kubernetes.docker_image('domain') }}"
   rabbitmqImage:
-    repository: "{{ atmosphere_images['rabbitmq_server'] | vexxhost.atmosphere.docker_image('path') }}"
-    tag: "{{ atmosphere_images['rabbitmq_server'] | vexxhost.atmosphere.docker_image('tag') }}"
+    repository: "{{ atmosphere_images['rabbitmq_server'] | vexxhost.kubernetes.docker_image('path') }}"
+    tag: "{{ atmosphere_images['rabbitmq_server'] | vexxhost.kubernetes.docker_image('tag') }}"
   credentialUpdaterImage:
-    repository: "{{ atmosphere_images['rabbitmq_credential_updater'] | vexxhost.atmosphere.docker_image('path') }}"
-    tag: "{{ atmosphere_images['rabbitmq_credential_updater'] | vexxhost.atmosphere.docker_image('tag') }}"
+    repository: "{{ atmosphere_images['rabbitmq_credential_updater'] | vexxhost.kubernetes.docker_image('path') }}"
+    tag: "{{ atmosphere_images['rabbitmq_credential_updater'] | vexxhost.kubernetes.docker_image('tag') }}"
   clusterOperator:
     fullnameOverride: rabbitmq-cluster-operator
     nodeSelector:
       openstack-control-plane: enabled
     image:
-      repository: "{{ atmosphere_images['rabbitmq_cluster_operator'] | vexxhost.atmosphere.docker_image('path') }}"
-      tag: "{{ atmosphere_images['rabbitmq_cluster_operator'] | vexxhost.atmosphere.docker_image('tag') }}"
+      repository: "{{ atmosphere_images['rabbitmq_cluster_operator'] | vexxhost.kubernetes.docker_image('path') }}"
+      tag: "{{ atmosphere_images['rabbitmq_cluster_operator'] | vexxhost.kubernetes.docker_image('tag') }}"
   msgTopologyOperator:
     fullnameOverride: rabbitmq-messaging-topology-operator
     nodeSelector:
       openstack-control-plane: enabled
     image:
-      repository: "{{ atmosphere_images['rabbitmq_topology_operator'] | vexxhost.atmosphere.docker_image('path') }}"
-      tag: "{{ atmosphere_images['rabbitmq_topology_operator'] | vexxhost.atmosphere.docker_image('tag') }}"
+      repository: "{{ atmosphere_images['rabbitmq_topology_operator'] | vexxhost.kubernetes.docker_image('path') }}"
+      tag: "{{ atmosphere_images['rabbitmq_topology_operator'] | vexxhost.kubernetes.docker_image('tag') }}"
   useCertManager: true

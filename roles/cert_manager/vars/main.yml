@@ -16,8 +16,8 @@ _cert_manager_helm_values:
   installCRDs: true
   featureGates: AdditionalCertificateOutputFormats=true
   image:
-    repository: "{{ atmosphere_images['cert_manager_controller'] | vexxhost.atmosphere.docker_image('name') }}"
-    tag: "{{ atmosphere_images['cert_manager_controller'] | vexxhost.atmosphere.docker_image('tag') }}"
+    repository: "{{ atmosphere_images['cert_manager_controller'] | vexxhost.kubernetes.docker_image('name') }}"
+    tag: "{{ atmosphere_images['cert_manager_controller'] | vexxhost.kubernetes.docker_image('tag') }}"
   volumes:
     - name: etc-ssl-certs
       hostPath:
@@ -34,17 +34,17 @@ _cert_manager_helm_values:
     nodeSelector:
       openstack-control-plane: enabled
     image:
-      repository: "{{ atmosphere_images['cert_manager_webhook'] | vexxhost.atmosphere.docker_image('name') }}"
-      tag: "{{ atmosphere_images['cert_manager_webhook'] | vexxhost.atmosphere.docker_image('tag') }}"
+      repository: "{{ atmosphere_images['cert_manager_webhook'] | vexxhost.kubernetes.docker_image('name') }}"
+      tag: "{{ atmosphere_images['cert_manager_webhook'] | vexxhost.kubernetes.docker_image('tag') }}"
   cainjector:
     nodeSelector:
       openstack-control-plane: enabled
     image:
-      repository: "{{ atmosphere_images['cert_manager_cainjector'] | vexxhost.atmosphere.docker_image('name') }}"
-      tag: "{{ atmosphere_images['cert_manager_cainjector'] | vexxhost.atmosphere.docker_image('tag') }}"
+      repository: "{{ atmosphere_images['cert_manager_cainjector'] | vexxhost.kubernetes.docker_image('name') }}"
+      tag: "{{ atmosphere_images['cert_manager_cainjector'] | vexxhost.kubernetes.docker_image('tag') }}"
   startupapicheck:
     nodeSelector:
       openstack-control-plane: enabled
     image:
-      repository: "{{ atmosphere_images['cert_manager_cli'] | vexxhost.atmosphere.docker_image('name') }}"
-      tag: "{{ atmosphere_images['cert_manager_cli'] | vexxhost.atmosphere.docker_image('tag') }}"
+      repository: "{{ atmosphere_images['cert_manager_cli'] | vexxhost.kubernetes.docker_image('name') }}"
+      tag: "{{ atmosphere_images['cert_manager_cli'] | vexxhost.kubernetes.docker_image('tag') }}"
