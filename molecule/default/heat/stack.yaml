@@ -44,10 +44,20 @@ parameters:
     type: boolean
     default: false
 
+  create_bastion_host:
+    type: boolean
+    default: false
+
   instance_type:
     type: string
     constraints:
       - custom_constraint: nova.flavor
+
+conditions:
+  create_bastion_host:
+    equals:
+      - get_param: create_bastion_host
+      - true
 
 resources:
   router:
@@ -109,6 +119,21 @@ resources:
     properties:
       name: { get_param: OS::stack_id }
       save_private_key: true
+
+  bastion_host:
+    type: server.yaml
+    condition: create_bastion_host
+    properties:
+      name: bastion
+      index: -1
+      image: { get_param: image }
+      instance_type: { get_param: instance_type }
+      key_name: { get_resource: key_pair }
+      internal_network: { get_resource: internal_network }
+      public_network: { get_param: public_network }
+      external_network: { get_resource: external_network }
+      boot_volumes_size: 40
+      boot_from_volume: { get_param: boot_from_volume  }
 
   controller:
     type: OS::Heat::ResourceGroup
