@@ -31,6 +31,7 @@
     instance_type: "{{ lookup('env', 'ATMOSPHERE_INSTANCE_TYPE') | default('v3-standard-4', True) }}"
     nameservers: "{{ lookup('env', 'ATMOSPHERE_NAMESERVERS') | default('1.1.1.1', True) }}"
     boot_from_volume: "{{ lookup('env', 'ATMOSPHERE_BOOT_FROM_VOLUME') | bool }}"
+    create_bastion_host: "{{ lookup('env', 'ATMOSPHERE_CREATE_BASTION_HOST') | bool }}"
   tasks:
     - name: create stack
       openstack.cloud.stack:
@@ -42,6 +43,7 @@
           instance_type: "{{ instance_type }}"
           nameservers: "{{ nameservers }}"
           boot_from_volume: "{{  boot_from_volume }}"
+          create_bastion_host: "{{ create_bastion_host }}"
       register: _os_stack
     - debug:
         msg: "{{ _os_stack.stack }}"

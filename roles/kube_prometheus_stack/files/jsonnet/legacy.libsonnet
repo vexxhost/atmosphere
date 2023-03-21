@@ -165,14 +165,6 @@
         name: 'softnet',
         rules: [
           {
-            alert: 'NodeSoftNetTimesSqueezed',
-            expr: 'sum(rate(node_softnet_times_squeezed_total[1m])) by (instance) > 10',
-            'for': '10m',
-            labels: {
-              severity: 'warning',
-            },
-          },
-          {
             alert: 'NodeSoftNetDrops',
             expr: 'sum(rate(node_softnet_dropped_total[1m])) by (instance) != 0',
             'for': '1m',
