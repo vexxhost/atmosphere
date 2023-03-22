@@ -1,5 +1,62 @@
 # Changelog
 
+## [1.1.0](https://github.com/vexxhost/atmosphere/compare/v1.0.1...v1.1.0) (2023-03-22)
+
+
+### Features
+
+* Add iproute2 for manila image ([62694c7](https://github.com/vexxhost/atmosphere/commit/62694c78a1b967995c4d0c6c92dc47aba8603474))
+* Add openvswitch-switch for manila image ([e284e49](https://github.com/vexxhost/atmosphere/commit/e284e496756171e417898c014762af8f2666e5c0))
+* add OSA migration toolkit ([#324](https://github.com/vexxhost/atmosphere/issues/324)) ([0a13cee](https://github.com/vexxhost/atmosphere/commit/0a13ceeacd4a2114ac41793551e497ae7482e422))
+* Disable unattended upgrade ([dcf6a8b](https://github.com/vexxhost/atmosphere/commit/dcf6a8b4b4daae0ad81fb2ed847f94f862739311))
+* **monitoring:** add metrics for ingress-nginx ([9118f67](https://github.com/vexxhost/atmosphere/commit/9118f6723a798746abcc3b6962000984aaf492cc))
+* override CAPO ([#347](https://github.com/vexxhost/atmosphere/issues/347)) ([5f23a0d](https://github.com/vexxhost/atmosphere/commit/5f23a0d5d0cb3e1a3509e4c32db71ca45f626c19))
+
+
+### Bug Fixes
+
+* add defaults to flux ([347128b](https://github.com/vexxhost/atmosphere/commit/347128b18859ca2f43502f9ce07d7fcad2f03fb8))
+* allow overriding node-ip ([1b54126](https://github.com/vexxhost/atmosphere/commit/1b54126a2f632f6d803d663f2c3e451011474f49))
+* assume is_metal=false ([88b79f9](https://github.com/vexxhost/atmosphere/commit/88b79f9411b3998a8637dae382f42a4ab12dd236))
+* bump buffer size ([a8950ec](https://github.com/vexxhost/atmosphere/commit/a8950ec5163263b0c887a2befd7a606663e72a06))
+* **designate:** use correct ingress port ([f622bbe](https://github.com/vexxhost/atmosphere/commit/f622bbe77ad9ac07da1752c66afac305e7183469))
+* **ethtool:** add skip method ([ebb19d5](https://github.com/vexxhost/atmosphere/commit/ebb19d56f0d530e0e3982f3621da7c250018a1ce))
+* **glance:** fix image format types ([124afbb](https://github.com/vexxhost/atmosphere/commit/124afbb4597aedf48ef36e0868f413f8a358a31d))
+* **glance:** use correct file for diff ([5b14c15](https://github.com/vexxhost/atmosphere/commit/5b14c15ffdc49867dc2c893ad9b028a4a54388e1))
+* **k8s:** allow disabling swap checks ([ad999a7](https://github.com/vexxhost/atmosphere/commit/ad999a7e8f8130106158f4949de36ecfee89e0e4))
+* **k8s:** bind api to node ip too ([bcd1ec0](https://github.com/vexxhost/atmosphere/commit/bcd1ec0fbad9e0b36779ac838c07ef948ae434c9))
+* **k8s:** bind to k8s_node_ip for cm and sched ([973b864](https://github.com/vexxhost/atmosphere/commit/973b8644afe194986970b62c988785203883a1f3))
+* **magnum:** use public endpoint ([d48f4f7](https://github.com/vexxhost/atmosphere/commit/d48f4f770242c5eca0663ffffbdbe262abf89d5f))
+* **migrate:** enable ini file migration ([20da681](https://github.com/vexxhost/atmosphere/commit/20da6810e726015c73de4e4c774bdcb9580404c9))
+* **migrate:** improve matching ([d561693](https://github.com/vexxhost/atmosphere/commit/d56169301f5f7173e8d07d4963199e9546770c08))
+* misc monitoring updates ([7500421](https://github.com/vexxhost/atmosphere/commit/7500421f65615d1d2befe4848b4225c328a38e26))
+* **neutron:** add py-spy to image ([974e067](https://github.com/vexxhost/atmosphere/commit/974e0670c1c683f2628e71d9e7b6c913ba392659))
+* **neutron:** drop py-spy ([f511397](https://github.com/vexxhost/atmosphere/commit/f511397fd02efffc61a0cce76142be4985d62004))
+* **octavia:** add missing quota ([e7d6624](https://github.com/vexxhost/atmosphere/commit/e7d6624bda0d2d3c11b44c8b867185f9aae0bd4d))
+* **openstack_cli:** enable overriding mirror ([558a229](https://github.com/vexxhost/atmosphere/commit/558a229e3a30ffc29d527a786c1fcded3ac3b5d1))
+* **rabbitmq:** drop resource limits ([6a487f1](https://github.com/vexxhost/atmosphere/commit/6a487f1a22467041ae50c6f8e86a8e2b067d9b68))
+* **rabbitmq:** stop/warn if spec is changed ([3595fdd](https://github.com/vexxhost/atmosphere/commit/3595fdde876b78cb05f039be93bbdb4c1fcdfed7))
+* remove extra args ([d16be49](https://github.com/vexxhost/atmosphere/commit/d16be49354496d9a6522d58079d3730541921eb0))
+* resolve bind-address ([3ddaa05](https://github.com/vexxhost/atmosphere/commit/3ddaa05e6acb877c5790f82702635e9a3653b4d6))
+* solve cni commit ([9b15c0d](https://github.com/vexxhost/atmosphere/commit/9b15c0da4671767063549f1eaa1d33a96b8515e3))
+* solve osa_config_diff details ([5f18691](https://github.com/vexxhost/atmosphere/commit/5f186917e36283fcf10d326074a3c5c1b448b611))
+* tune net.core.netdev_budget ([6b7acca](https://github.com/vexxhost/atmosphere/commit/6b7accacd089c740ae2ba92405d32e0e9f64b4dc))
+* update keyston endpoint ([c129e5d](https://github.com/vexxhost/atmosphere/commit/c129e5d76dabcb282597d6a62dcd3515cd8c0561))
+* use cilium image tag ([760afae](https://github.com/vexxhost/atmosphere/commit/760afaecf77130410850ecb0ca56c7363c57fc34))
+* use correct api address ([96933d0](https://github.com/vexxhost/atmosphere/commit/96933d0819d8be981b8917676b0d8fa4f1859298))
+* use correct image for pause ([252dcc2](https://github.com/vexxhost/atmosphere/commit/252dcc26db4cfdbfccbc47ec4ed89b535e52422a))
+* use correct ip for haproxy.cfg ([1557c31](https://github.com/vexxhost/atmosphere/commit/1557c3192858ed159282e7f05440b41c1567e604))
+* use correct openstack-exporter metrics ([4cfce72](https://github.com/vexxhost/atmosphere/commit/4cfce7210ebdb9d015bc62ad585461ff41e36b5b))
+* use correct tempest values ([2860a7c](https://github.com/vexxhost/atmosphere/commit/2860a7c0244e691da37abeeedd504109e44c3dbf))
+* use updated vexxhost.k8s ([574d650](https://github.com/vexxhost/atmosphere/commit/574d6509d5bda3d10ec14e12c5787d997058cca9))
+* vector+loki images ([1193774](https://github.com/vexxhost/atmosphere/commit/1193774e7427e163bac8c0af583d83ce5a979b40))
+* **vector:** use correct image name ([ec97655](https://github.com/vexxhost/atmosphere/commit/ec976556f03260ba7334a8a1a356082d2249d5a0))
+
+
+### Documentation
+
+* add freeipa config ([e2ce310](https://github.com/vexxhost/atmosphere/commit/e2ce31067f7d2d5a77f0b6a916f2ebe86a4959ba))
+
 ## [1.0.1](https://github.com/vexxhost/atmosphere/compare/v1.0.0...v1.0.1) (2023-03-01)
 
 
