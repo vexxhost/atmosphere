@@ -30,6 +30,7 @@ var DIST_PACAKGES map[string]string = map[string]string{
 	"glance":        "kubectl lsscsi nvme-cli sysfsutils udev util-linux",
 	"heat":          "curl",
 	"ironic":        "ethtool lshw iproute2",
+	"manila":        "iproute2",
 	"monasca-agent": "iproute2 libvirt-clients lshw",
 	"neutron":       "jq ethtool lshw",
 	"nova":          "ovmf qemu-efi-aarch64 lsscsi nvme-cli sysfsutils udev util-linux ndctl",
