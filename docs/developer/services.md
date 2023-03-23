@@ -28,6 +28,7 @@ together out of the box inside Atmosphere.
 - [Horizon](https://docs.openstack.org/horizon/latest/)
 - [Octavia](https://docs.openstack.org/octavia/latest/)
 - [Designate](https://docs.openstack.org/designate/latest/)
+- [Manila](https://docs.openstack.org/manila/latest/)
 
 ### Planned Supported Services
 
@@ -37,7 +38,6 @@ list of services that are planned to be included in the future.
 
 - [Magnum](https://docs.openstack.org/magnum/latest/)
 - [Swift](https://docs.openstack.org/swift/latest/) via RADOS Gateway
-- [Manila](https://docs.openstack.org/manila/latest/)
 - [Ironic](https://docs.openstack.org/ironic/latest/)
 - [Masakari](https://docs.openstack.org/masakari/latest/)
 - [Trove](https://docs.openstack.org/trove/latest/)
