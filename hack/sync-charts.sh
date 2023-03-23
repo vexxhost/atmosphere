@@ -188,3 +188,7 @@ curl -sL https://charts.rook.io/release/rook-ceph-v${ROOK_CEPH_VERSION}.tgz \
 ROOK_CEPH_CLUSTER_VERSION=1.10.10
 curl -sL https://charts.rook.io/release/rook-ceph-cluster-v${ROOK_CEPH_CLUSTER_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
+
+MANILA_VERSION=0.1.0
+curl -sL https://tarballs.opendev.org/openstack/openstack-helm/manila-${MANILA_VERSION}.tgz \
+  | tar -xz -C ${ATMOSPHERE}/charts
