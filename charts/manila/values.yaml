@@ -20,6 +20,9 @@ labels:
   api:
     node_selector_key: openstack-control-plane
     node_selector_value: enabled
+  data:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
   scheduler:
     node_selector_key: openstack-control-plane
     node_selector_value: enabled
@@ -50,6 +53,7 @@ images:
     ks_service: docker.io/openstackhelm/heat:wallaby-ubuntu_focal
     ks_endpoints: docker.io/openstackhelm/heat:wallaby-ubuntu_focal
     manila_api: docker.io/openstackhelm/manila:wallaby-ubuntu_focal
+    manila_data: docker.io/openstackhelm/manila:wallaby-ubuntu_focal
     manila_scheduler: docker.io/openstackhelm/manila:wallaby-ubuntu_focal
     manila_share: docker.io/openstackhelm/manila:wallaby-ubuntu_focal
     rabbit_init: docker.io/rabbitmq:3.7-management
@@ -68,6 +72,9 @@ pod:
         runAsUser: 42424
       container:
         manila_api:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+        manila_data:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
         manila_scheduler:
@@ -109,6 +116,11 @@ pod:
       manila_scheduler:
         volumeMounts:
         volumes:
+    manila_data:
+      init_container: null
+      manila_data:
+        volumeMounts:
+        volumes:
     manila_share:
       init_container: null
       manila_share:
@@ -130,6 +142,7 @@ pod:
         volumes:
   replicas:
     api: 1
+    data: 1
     scheduler: 1
     share: 1
   lifecycle:
@@ -150,6 +163,13 @@ pod:
   resources:
     enabled: false
     api:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "1024Mi"
+        cpu: "2000m"
+    data:
       requests:
         memory: "128Mi"
         cpu: "100m"
@@ -268,6 +288,15 @@ bootstrap:
   ks_user: admin
   script: null
   structured:
+    flavors:
+      manila-service-flavor:
+        id: 100
+        name: "manila-service-flavor"
+        ram: 512
+        vcpus: 1
+        disk: 5
+        ephemeral: 0
+        public: true
     images:
       manila-service-image:
         id: null
@@ -301,6 +330,12 @@ dependencies:
           service: identity
         - endpoint: internal
           service: oslo_messaging
+    data:
+      jobs:
+        - manila-db-sync
+        - manila-ks-user
+        - manila-ks-endpoints
+        - manila-rabbit-init
     scheduler:
       jobs:
         - manila-db-sync
@@ -693,8 +728,8 @@ conf:
       share_backend_name: GENERIC
       share_driver: manila.share.drivers.generic.GenericShareDriver
       driver_handles_share_servers: true
-      # m1.small
-      service_instance_flavor_id: 2
+      # manila-service-flavor
+      service_instance_flavor_id: 100
       service_image_name: manila-service-image
       service_instance_user: manila
       service_instance_password: manila
@@ -1016,6 +1051,7 @@ manifests:
   configmap_etc: true
   deployment_api: true
   deployment_scheduler: true
+  deployment_data: true
   deployment_share: true
   ingress_api: true
   job_bootstrap: true

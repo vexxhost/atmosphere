@@ -15,5 +15,5 @@ limitations under the License.
 */}}
 
 set -ex
-exec manila-scheduler \
+exec manila-data \
      --config-file /etc/manila/manila.conf

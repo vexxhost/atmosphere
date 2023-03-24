@@ -35,6 +35,21 @@ openstack image show {{ .name  | quote }} || \
   {{- end -}}; }
 {{ end }}
 
+{{ range .Values.bootstrap.structured.flavors }}
+openstack flavor show {{ .name  | quote }} || \
+  openstack flavor create {{ .name | quote }} \
+  {{ if .id -}} --id {{ .id }} {{ end -}} \
+  --ram {{ .ram }} \
+  --vcpus {{ .vcpus }} \
+  --disk {{ .disk }} \
+  --ephemeral {{ .ephemeral }} \
+  {{ if .public -}}
+  --public
+  {{- else -}}
+  --private
+  {{- end -}}; }
+{{ end }}
+
 openstack share type show default || \
   openstack share type create default true \
   --public true --description "default generic share type"
