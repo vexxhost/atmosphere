@@ -21,7 +21,7 @@ cd $HOME
 
 {{ range .Values.bootstrap.structured.images }}
 openstack image show {{ .name  | quote }} || \
-  { curl --fail -sSL -O {{ .source_url }}{{ .image_file }}; \
+  (curl --fail -sSL -O {{ .source_url }}{{ .image_file }}; \
   openstack image create {{ .name | quote }} \
   {{ if .id -}} --id {{ .id }} {{ end -}} \
   --disk-format {{ .image_type }} \
@@ -32,7 +32,7 @@ openstack image show {{ .name  | quote }} || \
   --private
   {{- else -}}
   --public
-  {{- end -}}; }
+  {{- end -}};)
 {{ end }}
 
 {{ range .Values.bootstrap.structured.flavors }}
@@ -47,7 +47,7 @@ openstack flavor show {{ .name  | quote }} || \
   --public
   {{- else -}}
   --private
-  {{- end -}}; }
+  {{- end -}};
 {{ end }}
 
 openstack share type show default || \
