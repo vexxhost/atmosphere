@@ -1,0 +1,74 @@
+# Copyright (c) 2023 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+name: manila
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/manila.yml
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/manila.yml
+  workflow_dispatch:
+
+jobs:
+  build-image:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get install -y debootstrap qemu-utils
+          pipx install diskimage-builder==3.28.0
+          pipx install python-swiftclient
+          pipx install poetry
+          poetry self add "poetry-dynamic-versioning[plugin]"
+
+      - name: Clone openstack/manila-image-elements
+        uses: actions/checkout@v3
+        with:
+          repository: openstack/manila-image-elements
+          path: manila-image-elements
+
+      - name: Cache DIB_IMAGE_CACHE
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/image-create
+          key: dib-image-cache
+
+      - name: Build image
+        run: disk-image-create -o manila-$(poetry version --short).qcow2 vm ubuntu-minimal dhcp-all-interfaces manila-ssh ubuntu-nfs ubuntu-cifs
+        env:
+          ELEMENTS_PATH: manila-image-elements/elements
+
+      - name: Publish image
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        run: |
+          swift post -r '.r:*,.rlistings' atmosphere-images
+          swift upload atmosphere-images manila-$(poetry version --short).qcow2
+        env:
+          OS_AUTH_URL: https://auth.vexxhost.net/v3
+          OS_REGION_NAME: ca-ymq-1
+          OS_USER_DOMAIN_NAME: Default
+          OS_USERNAME: ${{ secrets.OS_USERNAME }}
+          OS_PASSWORD: ${{ secrets.OS_PASSWORD }}
+          OS_PROJECT_DOMAIN_NAME: Default
+          OS_PROJECT_NAME: ${{ secrets.OS_PROJECT_NAME }}
