@@ -19,14 +19,9 @@ _manila_helm_values:
   pod:
     replicas:
       api: 3
-      data: 3
       scheduler: 3
-      share: 3
-  conf:
-    manila:
-      oslo_messaging_notifications:
-        driver: noop
-
+  bootstrap:
+    enabled: false
   dependencies:
     static:
       share:
@@ -35,7 +30,17 @@ _manila_helm_values:
             labels:
               application: openvswitch
               component: server
-
+  conf:
+    manila:
+      DEFAULT:
+        host: manila-share-worker
+      generic:
+        connect_share_server_to_tenant_network: true
+        limit_ssh_access: true
+        service_image_name: "{{ manila_image_name }}"
+        service_instance_flavor_id: "{{ _manila_flavor.id }}"
+      oslo_messaging_no tifications:
+        driver: noop
   manifests:
     ingress_api: false
     service_ingress_api: false
