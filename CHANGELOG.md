@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.2.0](https://github.com/vexxhost/atmosphere/compare/v1.1.0...v1.2.0) (2023-03-28)
+
+
+### Features
+
+* Add manila role ([f916c0c](https://github.com/vexxhost/atmosphere/commit/f916c0c8738515c9ce9246536bdeabd2a012ddd4))
+
+
+### Bug Fixes
+
+* **manila:** switch to pubkey auth ([7b44730](https://github.com/vexxhost/atmosphere/commit/7b44730dd18596ba68484c8e48b57c4cb7406245))
+* **manila:** use ansible to create resources ([85fc1bf](https://github.com/vexxhost/atmosphere/commit/85fc1bf82aa72efe2d647dfb42cca97b23afc409))
+* solve vnc for proxy ([e4c14ad](https://github.com/vexxhost/atmosphere/commit/e4c14ad61cfb7c5dfda481e10ed8119098779e6d))
+* use manila-ubuntu-minimal ([d88e831](https://github.com/vexxhost/atmosphere/commit/d88e83146761cb088862c5ed590f406eaf8f23fd))
+
 ## [1.1.0](https://github.com/vexxhost/atmosphere/compare/v1.0.1...v1.1.0) (2023-03-22)
 
 
