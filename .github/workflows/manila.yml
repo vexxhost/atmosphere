@@ -23,8 +23,9 @@ on:
       - main
     paths:
       - .github/workflows/manila.yml
-    tags:
-      - v*
+  release:
+    types:
+      - published
   workflow_dispatch:
 
 jobs:
@@ -63,7 +64,7 @@ jobs:
           ELEMENTS_PATH: manila-image-elements/elements
 
       - name: Publish image
-        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event_name == 'release'
         run: |
           swift post -r '.r:*,.rlistings' atmosphere-images
           swift upload atmosphere-images manila-$(poetry version --short).qcow2
