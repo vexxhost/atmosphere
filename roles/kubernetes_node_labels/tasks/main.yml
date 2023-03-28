@@ -12,26 +12,12 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Add labels to control plane nodes
-  delegate_to: "{{ groups[kubernetes_control_plane_group][0] }}"
+- name: Add labels to node
+  delegate_to: "{{ groups[kubernetes_node_labels_control_plane_group][0] }}"
   kubernetes.core.k8s:
     state: patched
     kind: Node
     name: "{{ inventory_hostname_short }}"
     definition:
       metadata:
-        labels: "{{ kubernetes_control_plane_labels }}"
-  when:
-    - inventory_hostname in groups['controllers']
-
-- name: Add labels to compute nodes
-  delegate_to: "{{ groups[kubernetes_control_plane_group][0] }}"
-  kubernetes.core.k8s:
-    state: patched
-    kind: Node
-    name: "{{ inventory_hostname_short }}"
-    definition:
-      metadata:
-        labels: "{{ kubernetes_compute_node_labels }}"
-  when:
-    - inventory_hostname in groups['computes']
+        labels: "{{ kubernetes_node_labels }}"

@@ -15,19 +15,29 @@
 - hosts: "{{ target | default('all') }}"
   become: true
   roles:
+    - role: defaults
     - role: sysctl
     - role: ethtool
       tags:
         - ethtool
+  post_tasks:
+    - name: Set a fact with the "atmosphere_images" for other plays
+      ansible.builtin.set_fact:
+        atmosphere_images: "{{ atmosphere_images }}"
 
 - import_playbook: vexxhost.kubernetes.site
   vars:
     keepalived_image: "{{ atmosphere_images['keepalived'] }}"
     haproxy_image: "{{ atmosphere_images['haproxy'] }}"
     containerd_pause_image: "{{ atmosphere_images['pause'] }}"
-    # TODO: k8s images
+    kubernetes_image_repository: "{{ atmosphere_images['kube_apiserver'] | vexxhost.kubernetes.docker_image('prefix') }}"
     cilium_node_image: "{{ atmosphere_images['cilium_node'] }}"
     cilium_operator_image: "{{ atmosphere_images['cilium_operator'] }}"
     flux_image_registry: "{{ atmosphere_images['flux_helm_controller'] | vexxhost.kubernetes.docker_image('prefix') }}"
 
-# TOOD: labels
+- hosts: "{{ target | default('all') }}"
+  become: true
+  roles:
+    - role: vexxhost.atmosphere.kubernetes_node_labels
+      tags:
+        - kubernetes-node-labels
