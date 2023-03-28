@@ -1,0 +1,58 @@
+# Copyright (c) 2023 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Generate public key for SSH private key
+  become: false
+  delegate_to: localhost
+  block:
+    - name: Generate temporary file for SSH public key
+      changed_when: false
+      ansible.builtin.tempfile:
+        state: file
+        prefix: manila_ssh_key_
+      register: _manila_ssh_key_tempfile
+    # NOTE(mnaser): It's important to add a trailing newline at the end of this
+    #               string or else `ssh-keygen` will not be happy.
+    - name: Write contents of current private SSH key
+      changed_when: false
+      ansible.builtin.copy:
+        dest: "{{ _manila_ssh_key_tempfile.path }}"
+        content: "{{ manila_ssh_key }}\n"
+        mode: "0600"
+    - name: Generate public key for SSH private key
+      changed_when: false
+      community.crypto.openssh_keypair:
+        path: "{{ _manila_ssh_key_tempfile.path }}"
+        regenerate: never
+      register: _manila_ssh_publickey
+  always:
+    - name: Delete temporary file for public SSH key
+      changed_when: false
+      ansible.builtin.file:
+        path: "{{ _manila_ssh_key_tempfile.path }}"
+        state: absent
+
+- name: Create secret with the SSH keys
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: "{{ manila_helm_release_name }}-ssh-keys"
+        namespace: "{{ manila_helm_release_namespace }}"
+      type: Opaque
+      data:
+        id_rsa: "{{ manila_ssh_key | b64encode }}"
+        id_rsa.pub: "{{ _manila_ssh_publickey.public_key | b64encode }}"

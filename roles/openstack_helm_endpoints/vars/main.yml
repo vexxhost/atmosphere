@@ -30,6 +30,7 @@ _openstack_helm_endpoints_ignore:
   - prometheus_rabbitmq_exporter
   - volume
   - volumev2
+  - share
 
 _openstack_helm_endpoints_oslo_db:
   oslo_db:
@@ -455,14 +456,6 @@ _openstack_helm_endpoints_dashboard:
       horizon:
         password: "{{ openstack_helm_endpoints_horizon_mariadb_password }}"
 
-_openstack_helm_endpoints_tempest:
-  identity:
-    auth:
-      tempest:
-        region_name: "{{ openstack_helm_endpoints_tempest_region_name }}"
-        username: "tempest-{{ openstack_helm_endpoints_tempest_region_name }}"
-        password: "{{ openstack_helm_endpoints_tempest_keystone_password }}"
-
 _openstack_helm_endpoints_container_infra:
   identity:
     auth:
@@ -514,6 +507,27 @@ _openstack_helm_endpoints_rook_ceph_cluster:
     host_fqdn_override:
       public:
         host: "{{ openstack_helm_endpoints_rgw_host }}"
+    port:
+      api:
+        public: 443
+
+_openstack_helm_endpoints_sharev2:
+  identity:
+    auth:
+      manila:
+        region_name: "{{ openstack_helm_endpoints_manila_region_name }}"
+        username: "manila-{{ openstack_helm_endpoints_manila_region_name }}"
+        password: "{{ openstack_helm_endpoints_manila_keystone_password }}"
+  oslo_db:
+    auth:
+      manila:
+        password: "{{ openstack_helm_endpoints_manila_mariadb_password }}"
+  sharev2:
+    scheme:
+      public: https
+    host_fqdn_override:
+      public:
+        host: "{{ openstack_helm_endpoints_manila_api_host }}"
     port:
       api:
         public: 443

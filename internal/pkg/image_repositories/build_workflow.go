@@ -30,6 +30,7 @@ var DIST_PACAKGES map[string]string = map[string]string{
 	"glance":        "kubectl lsscsi nvme-cli sysfsutils udev util-linux",
 	"heat":          "curl",
 	"ironic":        "ethtool lshw iproute2",
+	"manila":        "iproute2 openvswitch-switch",
 	"monasca-agent": "iproute2 libvirt-clients lshw",
 	"neutron":       "jq ethtool lshw",
 	"nova":          "ovmf qemu-efi-aarch64 lsscsi nvme-cli sysfsutils udev util-linux ndctl",
@@ -37,9 +38,9 @@ var DIST_PACAKGES map[string]string = map[string]string{
 var PIP_PACKAGES map[string]string = map[string]string{
 	"cinder":        "purestorage",
 	"glance":        "glance_store[cinder]",
-	"horizon":       "git+https://github.com/openstack/designate-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/heat-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/ironic-ui.git@stable/${{ matrix.release }} git+https://github.com/vexxhost/magnum-ui.git@stable/${{ matrix.release }} git+https://github.com/openstack/neutron-vpnaas-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/octavia-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/senlin-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/monasca-ui.git@stable/${{ matrix.release }}",
+	"horizon":       "git+https://github.com/openstack/designate-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/heat-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/ironic-ui.git@stable/${{ matrix.release }} git+https://github.com/vexxhost/magnum-ui.git@stable/${{ matrix.release }} git+https://github.com/openstack/neutron-vpnaas-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/octavia-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/senlin-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/monasca-ui.git@stable/${{ matrix.release }} git+https://github.com/openstack/manila-ui.git@stable/${{ matrix.release }}",
 	"ironic":        "python-dracclient sushy",
-	"magnum":        "magnum-cluster-api==0.3.2",
+	"magnum":        "magnum-cluster-api==0.3.4",
 	"monasca-agent": "libvirt-python python-glanceclient python-neutronclient python-novaclient py3nvml",
 	"neutron":       "neutron-vpnaas",
 	"placement":     "httplib2",
@@ -113,11 +114,15 @@ func NewBuildWorkflow(project string) *GithubWorkflow {
 				Strategy: GithubWorkflowStrategy{
 					Matrix: map[string]interface{}{
 						"from":    []string{"focal", "jammy"},
-						"release": []string{"wallaby", "xena", "yoga", "zed"},
+						"release": []string{"wallaby", "xena", "yoga", "zed", "2023.1"},
 						"exclude": []map[string]string{
 							{
 								"from":    "focal",
 								"release": "zed",
+							},
+							{
+								"from":    "focal",
+								"release": "2023.1",
 							},
 							{
 								"from":    "jammy",
@@ -145,7 +150,7 @@ func NewBuildWorkflow(project string) *GithubWorkflow {
 					},
 					{
 						Name: "Setup environment variables",
-						Run:  "echo PROJECT_REF=$(cat manifest.yml | yq \".${{ matrix.release }}.sha\") >> $GITHUB_ENV",
+						Run:  "echo PROJECT_REF=$(cat manifest.yml | yq '.\"${{ matrix.release }}\".sha') >> $GITHUB_ENV",
 					},
 					{
 						Name: "Authenticate with Quay.io",
