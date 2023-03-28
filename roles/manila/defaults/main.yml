@@ -26,10 +26,13 @@ manila_ingress_annotations: {}
 manila_flavor_name: m1.manila
 manila_flavor_vcpus: 2
 manila_flavor_ram: 2048
-manila_flavor_disk: 0
+manila_flavor_disk: 20
 
-# Service instance Image
+# Service instance image
 manila_image_name: manila-service-image
-manila_image_url: https://tarballs.opendev.org/openstack/manila-image-elements/images/manila-service-image-master.qcow2
+manila_image_url: "https://object-storage.public.mtl1.vexxhost.net/swift/v1/b98c5fdfb9be4e39a34b93d0b425ac2b/atmosphere-images/manila-{{ atmosphere_version }}.qcow2" # noqa yaml[line-length]
 manila_image_container_format: bare
-manila_image_disk_format: raw
+manila_image_disk_format: qcow2
+
+# Service instance authentication
+manila_ssh_key: "{{ undef('You must provide a private SSH key using manila_ssh_key') }}"

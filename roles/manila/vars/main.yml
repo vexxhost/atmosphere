@@ -17,11 +17,23 @@ _manila_helm_values:
   images:
     tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('manila') }}"
   pod:
+    mounts:
+      manila_share:
+        manila_share:
+          volumeMounts:
+            - name: ssh-keys
+              mountPath: /etc/manila/ssh-keys
+          volumes:
+            - name: ssh-keys
+              secret:
+                secretName: "{{ manila_helm_release_name }}-ssh-keys"
     replicas:
       api: 3
       scheduler: 3
   bootstrap:
-    enabled: false
+    structured:
+      flavors: null
+      images: null
   dependencies:
     static:
       share:
@@ -37,6 +49,8 @@ _manila_helm_values:
       generic:
         connect_share_server_to_tenant_network: true
         limit_ssh_access: true
+        path_to_private_key: /etc/manila/ssh-keys/id_rsa
+        path_to_public_key: /etc/manila/ssh-keys/id_rsa.pub
         service_image_name: "{{ manila_image_name }}"
         service_instance_flavor_id: "{{ _manila_flavor.id }}"
       oslo_messaging_no tifications:
