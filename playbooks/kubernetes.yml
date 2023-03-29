@@ -15,14 +15,35 @@
 - hosts: "{{ target | default('all') }}"
   become: true
   roles:
+    - role: defaults
     - role: sysctl
     - role: ethtool
       tags:
         - ethtool
-    - role: vexxhost.kubernetes.containerd
-      vars:
-        containerd_pause_image: "{{ atmosphere_images['pause'] }}"
-    - role: kubernetes
+  post_tasks:
+    - name: Set a fact with the "atmosphere_images" for other plays
+      ansible.builtin.set_fact:
+        atmosphere_images: "{{ atmosphere_images }}"
+
+- import_playbook: vexxhost.kubernetes.site
+  vars:
+    keepalived_image: "{{ atmosphere_images['keepalived'] }}"
+    keepalived_vrid: "{{ kubernetes_keepalived_vrid }}"
+    keepalived_interface: "{{ kubernetes_keepalived_interface }}"
+    keepalived_vip: "{{ kubernetes_keepalived_vip }}"
+    haproxy_image: "{{ atmosphere_images['haproxy'] }}"
+    containerd_pause_image: "{{ atmosphere_images['pause'] }}"
+    kubernetes_image_repository: "{{ atmosphere_images['kube_apiserver'] | vexxhost.kubernetes.docker_image('prefix') }}"
+    cilium_node_image: "{{ atmosphere_images['cilium_node'] }}"
+    cilium_operator_image: "{{ atmosphere_images['cilium_operator'] }}"
+    flux_image_registry: "{{ atmosphere_images['flux_helm_controller'] | vexxhost.kubernetes.docker_image('prefix') }}"
+
+- hosts: "{{ target | default('all') }}"
+  become: true
+  roles:
+    - role: vexxhost.atmosphere.kubernetes_node_labels
+      tags:
+        - kubernetes-node-labels
 
 # NOTE(mnaser): Add task to uninstall "unattended-upgrades" to avoid system
 #               upgrades during the deployment

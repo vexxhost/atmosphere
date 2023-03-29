@@ -66,7 +66,7 @@ def from_ini(value):
 
     def _parse_section(section):
         data = dict(section)
-        data.pop('__name__', None)
+        data.pop("__name__", None)
         for opt, val in data.items():
             if val.isdigit():
                 val = int(val)

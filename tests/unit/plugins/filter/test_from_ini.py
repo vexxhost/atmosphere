@@ -15,9 +15,7 @@
 import textwrap
 
 import pytest
-from ansible_collections.vexxhost.atmosphere.plugins.filter.from_ini import (
-    from_ini,
-)
+from ansible_collections.vexxhost.atmosphere.plugins.filter.from_ini import from_ini
 
 
 @pytest.mark.parametrize(
@@ -28,7 +26,7 @@ from ansible_collections.vexxhost.atmosphere.plugins.filter.from_ini import (
                 """
                 """
             ),
-            {}
+            {},
         ),
         (
             textwrap.dedent(
@@ -47,10 +45,9 @@ from ansible_collections.vexxhost.atmosphere.plugins.filter.from_ini import (
                 "oslo_messaging": {
                     "transport_url": "rabbit://guest:guest@localhost:5672/",
                 },
-            }
+            },
         ),
     ],
 )
 def test_from_ini(test_input, expected):
     assert from_ini(test_input) == expected
-
