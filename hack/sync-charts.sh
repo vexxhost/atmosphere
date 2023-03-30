@@ -142,6 +142,11 @@ curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~878555/revis
   | filterdiff -p1 -x 'releasenotes/*' \
   | filterdiff -p2 -x 'Chart.yaml' \
   | patch -p2 -d ${ATMOSPHERE}/charts/nova
+curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~879066/revisions/2/patch?download' \
+  | base64 --decode \
+  | filterdiff -p1 -x 'releasenotes/*' \
+  | filterdiff -p2 -x 'Chart.yaml' \
+  | patch -p2 -d ${ATMOSPHERE}/charts/nova
 
 SENLIN_VERSION=0.2.8
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/senlin-${SENLIN_VERSION}.tgz \
