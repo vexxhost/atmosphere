@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.3.0](https://github.com/vexxhost/atmosphere/compare/v1.2.0...v1.3.0) (2023-03-31)
+
+
+### Features
+
+* switch to binary kubernetes, fluxcd and helm install ([#351](https://github.com/vexxhost/atmosphere/issues/351)) ([c4f0ded](https://github.com/vexxhost/atmosphere/commit/c4f0dedab356b66bfd78e66d936ff3ab214b8bf8))
+
+
+### Bug Fixes
+
+* **heat:** raise rpc_response_timeout ([576f04d](https://github.com/vexxhost/atmosphere/commit/576f04d728995624e1e71744dfe2b6864d6926a1))
+* **nova:** backport live migration patch ([733635e](https://github.com/vexxhost/atmosphere/commit/733635e5dd549fe76f177eb8b9ce198be4925f1c))
+
 ## [1.2.0](https://github.com/vexxhost/atmosphere/compare/v1.1.0...v1.2.0) (2023-03-28)
 
 
