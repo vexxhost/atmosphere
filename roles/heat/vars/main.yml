@@ -31,6 +31,7 @@ _heat_helm_values:
         log_config_append: null
         num_engine_workers: 8
         region_name_for_services: "{{ openstack_helm_endpoints['identity']['auth']['heat']['region_name'] }}"
+        rpc_response_timeout: 600
         server_keystone_endpoint_type: public
       clients_keystone:
         endpoint_type: publicURL
@@ -49,3 +50,6 @@ _heat_helm_values:
     ingress_cfn: false
     service_ingress_api: false
     service_ingress_cfn: false
+
+_heat_ingress_annotations:
+  nginx.ingress.kubernetes.io/proxy-read-timeout: "630"
