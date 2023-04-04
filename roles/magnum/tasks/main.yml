@@ -77,17 +77,35 @@
           name: magnum-system
 
       - apiVersion: rbac.authorization.k8s.io/v1
+        kind: ClusterRole
+        metadata:
+          name: magnum-cluster-api
+        rules:
+          - apiGroups: ["rbac.authorization.k8s.io"]
+            resources: [clusterroles, clusterrolebindings]
+            verbs: [create, update, patch, get, list, delete]
+
+      - apiVersion: rbac.authorization.k8s.io/v1
         kind: Role
         metadata:
           name: magnum-cluster-api
           namespace: magnum-system
         rules:
+          - apiGroups: ["apps"]
+            resources: [deployments]
+            verbs: [create, update, patch, get, list, delete]
+          - apiGroups: ["policy"]
+            resources: [poddisruptionbudgets]
+            verbs: [create, update, patch, get, list, delete]
+          - apiGroups: ["rbac.authorization.k8s.io"]
+            resources: [roles, rolebindings]
+            verbs: [create, update, patch, get, list, delete]
           - apiGroups: [""]
             resources: [namespaces]
             verbs: [patch]
           - apiGroups: [""]
-            resources: [configmaps, secrets]
-            verbs: [create, update, patch, get, delete]
+            resources: [configmaps, secrets, services, serviceaccounts]
+            verbs: [create, update, patch, get, list, delete]
           - apiGroups: [cluster.x-k8s.io]
             resources: [clusters]
             verbs: [create, update, patch, get, delete]
