@@ -76,58 +76,16 @@
         metadata:
           name: magnum-system
 
+      # TODO(mnaser): This should be removed once we have a proper Helm chart
+      #               for Cluster API for Magnum.
       - apiVersion: rbac.authorization.k8s.io/v1
-        kind: Role
+        kind: ClusterRoleBinding
         metadata:
           name: magnum-cluster-api
-          namespace: magnum-system
-        rules:
-          - apiGroups: [""]
-            resources: [namespaces]
-            verbs: [patch]
-          - apiGroups: [""]
-            resources: [configmaps, secrets]
-            verbs: [create, update, patch, get, delete]
-          - apiGroups: [cluster.x-k8s.io]
-            resources: [clusters]
-            verbs: [create, update, patch, get, delete]
-          - apiGroups: [cluster.x-k8s.io]
-            resources: [clusterclasses]
-            verbs: [create, update, patch]
-          - apiGroups: [cluster.x-k8s.io]
-            resources: [machinedeployments]
-            verbs: [list, patch]
-          - apiGroups: [bootstrap.cluster.x-k8s.io]
-            resources: [kubeadmconfigtemplates]
-            verbs: [create, update, patch]
-          - apiGroups: [controlplane.cluster.x-k8s.io]
-            resources: [kubeadmcontrolplanes]
-            verbs: [list]
-          - apiGroups: [controlplane.cluster.x-k8s.io]
-            resources: [kubeadmcontrolplanetemplates]
-            verbs: [create, update, patch]
-          - apiGroups: [infrastructure.cluster.x-k8s.io]
-            resources: [openstackclustertemplates, openstackmachinetemplates]
-            verbs: [create, update, patch]
-          - apiGroups: [addons.cluster.x-k8s.io]
-            resources: [clusterresourcesets]
-            verbs: [create, update, patch, delete]
-          - apiGroups: [source.toolkit.fluxcd.io]
-            resources: [helmrepositories]
-            verbs: [create, update, patch, delete]
-          - apiGroups: [helm.toolkit.fluxcd.io]
-            resources: [helmreleases]
-            verbs: [create, update, patch, delete]
-
-      - apiVersion: rbac.authorization.k8s.io/v1
-        kind: RoleBinding
-        metadata:
-          name: magnum-cluster-api
-          namespace: magnum-system
         roleRef:
           apiGroup: rbac.authorization.k8s.io
-          kind: Role
-          name: magnum-cluster-api
+          kind: ClusterRole
+          name: cluster-admin
         subjects:
           - kind: ServiceAccount
             name: magnum-conductor
