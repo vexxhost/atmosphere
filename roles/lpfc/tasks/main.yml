@@ -39,7 +39,7 @@
         - lpfc_max_luns
         - lpfc_enable_fc4_type
 
-    - name: Reboot the system if the module parameters are not set correctly
+    - name: Detect if the run-time module parameters are set correctly
       ansible.builtin.assert:
         quiet: true
         that:
@@ -53,6 +53,12 @@
       register: _lpfc_module_parameters_assert
       failed_when: false
       changed_when: _lpfc_module_parameters_assert.failed
+
+    - name: Update "initramfs" if the configuration file has changed
+      ansible.builtin.command:
+        cmd: update-initramfs -k all -u
+      changed_when: _lpfc_module_conf.changed or _lpfc_module_parameters_assert.changed
+      when: _lpfc_module_conf.changed or _lpfc_module_parameters_assert.changed
 
     - name: Reboot the system if the configuration file has changed
       ansible.builtin.include_role:
