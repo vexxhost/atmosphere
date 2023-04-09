@@ -1,0 +1,53 @@
+# Copyright (c) 2023 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Install package for "community.general.pids"
+  ansible.builtin.package:
+    name: python3-psutil
+
+# NOTE(mnaser): These are all processes that we do not currently have a way to
+#               safely evacuate *yet*.  We should remove these as we add ways
+#               to evacuate them.
+- name: Get process IDs for critical services
+  community.general.pids:
+    pattern: "{{ item }}"
+  loop:
+    - ceph-mgr
+    - ceph-mon
+    - ceph-osd
+    - mysqld
+    - neutron-l3-agent
+    - qemu
+    - rabbitmq-server
+    - radosgw
+  register: _reboots_pids
+
+- name: Assert that none of these processes are running
+  ansible.builtin.assert:
+    quiet: true
+    that:
+      - item.pids | length == 0
+    fail_msg: >-
+      The following processes are running: {{ item.item }} ({{ item.pids | join(', ') }})
+  loop: "{{ _reboots_pids.results }}"
+  loop_control:
+    label: "{{ item.item }}"
+
+- name: Create a silence and reboot the host
+  block:
+    # TODO(mnaser): Create a silence inside AlertManager
+    - name: Reboot the host
+      ansible.builtin.reboot:
+  always: []
+    # TODO(mnaser): Remove the silence from AlertManager
