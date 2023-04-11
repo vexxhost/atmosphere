@@ -119,7 +119,7 @@ func NewBuildWorkflow(project string) *GithubWorkflow {
 				Strategy: GithubWorkflowStrategy{
 					Matrix: map[string]interface{}{
 						"from":    []string{"focal", "jammy"},
-						"release": []string{"wallaby", "xena", "yoga", "zed", "2023.1"},
+						"release": releases,
 						"exclude": []map[string]string{
 							{
 								"from":    "focal",
