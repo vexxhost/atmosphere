@@ -94,6 +94,11 @@ func NewBuildWorkflow(project string) *GithubWorkflow {
 		fmt.Sprintf("PIP_PACKAGES=%s", pipPackages),
 	}
 
+	releases := []string{"wallaby", "xena", "yoga", "zed", "2023.1"}
+	if project == "magnum" {
+		releases = []string{"yoga", "zed", "2023.1"}
+	}
+
 	return &GithubWorkflow{
 		Name: "build",
 		Concurrency: GithubWorkflowConcurrency{
