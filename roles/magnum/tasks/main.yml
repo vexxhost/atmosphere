@@ -19,6 +19,7 @@
   run_once: true
   block:
     - name: Suspend the existing HelmRelease
+      failed_when: false
       kubernetes.core.k8s:
         state: patched
         api_version: helm.toolkit.fluxcd.io/v2beta1
@@ -30,6 +31,7 @@
             suspend: true
 
     - name: Remove the existing HelmRelease
+      failed_when: false
       kubernetes.core.k8s:
         state: absent
         api_version: helm.toolkit.fluxcd.io/v2beta1
@@ -100,6 +102,81 @@
     create_namespace: true
     kubeconfig: /etc/kubernetes/admin.conf
     values: "{{ _magnum_helm_values | combine(magnum_helm_values, recursive=True) }}"
+
+- name: Deploy "magnum-cluster-api-proxy"
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      - apiVerison: v1
+        kind: ConfigMap
+        metadata:
+          name: magnum-cluster-api-proxy-config
+          namespace: "{{ magnum_helm_release_namespace }}"
+        data:
+          magnum_capi_sudoers: |
+            Defaults !requiretty
+            Defaults secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin:/var/lib/openstack/bin:/var/lib/kolla/venv/bin"
+            magnum ALL = (root) NOPASSWD: /var/lib/openstack/bin/privsep-helper
+
+      - apiVersion: apps/v1
+        kind: DaemonSet
+        metadata:
+          name: magnum-cluster-api-proxy
+          namespace: openstack
+          labels:
+            application: magnum
+            component: cluster-api-proxy
+        spec:
+          selector:
+            matchLabels:
+              application: magnum
+              component: cluster-api-proxy
+          template:
+            metadata:
+              labels:
+                application: magnum
+                component: cluster-api-proxy
+            spec:
+              containers:
+                - name: magnum-cluster-api-proxy
+                  command: ["magnum-cluster-api-proxy"]
+                  image: "{{ atmosphere_images['magnum_cluster_api_proxy'] | vexxhost.kubernetes.docker_image('ref') }}"
+                  securityContext:
+                    privileged: true
+                    readOnlyRootFilesystem: true
+                  volumeMounts:
+                    - name: pod-tmp
+                      mountPath: /tmp
+                    - name: pod-run
+                      mountPath: /run
+                    - name: config
+                      mountPath: /etc/sudoers.d/magnum_capi_sudoers
+                      subPath: magnum_capi_sudoers
+                      readOnly: true
+                    - name: haproxy-state
+                      mountPath: /var/lib/magnum/.magnum-cluster-api-proxy
+                    - name: host-run-netns
+                      mountPath: /run/netns
+                      mountPropagation: Bidirectional
+              nodeSelector:
+                openstack-control-plane: enabled
+              securityContext:
+                runAsUser: 42424
+              serviceAccountName: magnum-conductor
+              volumes:
+                - name: pod-tmp
+                  emptyDir: {}
+                - name: pod-run
+                  emptyDir: {}
+                - name: config
+                  configMap:
+                    name: magnum-cluster-api-proxy-config
+                - name: haproxy-state
+                  emptyDir: {}
+                - name: host-run-netns
+                  hostPath:
+                    path: /run/netns
 
 - name: Create Ingress
   ansible.builtin.include_role:
