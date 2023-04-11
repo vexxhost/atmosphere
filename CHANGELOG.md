@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.3.1](https://github.com/vexxhost/atmosphere/compare/v1.3.0...v1.3.1) (2023-04-11)
+
+
+### Bug Fixes
+
+* add lpfc role ([#381](https://github.com/vexxhost/atmosphere/issues/381)) ([ab3d88b](https://github.com/vexxhost/atmosphere/commit/ab3d88b9e7c1ed5346445f9e0c0b1e7e31605876))
+* implement isolated clusters ([f0314a8](https://github.com/vexxhost/atmosphere/commit/f0314a8482135fa3bedcc7d54bf89978d4b2cb5a))
+* openstack_cli requires ansible facts ([3e70190](https://github.com/vexxhost/atmosphere/commit/3e70190fc442d8a716851753c27fc2e705c89000))
+* rbac for capi ([1588236](https://github.com/vexxhost/atmosphere/commit/158823643ded6811eba712e293c104d798b7e599))
+* update initramfs ([09570b8](https://github.com/vexxhost/atmosphere/commit/09570b8a01c2d2cd106c7e4bdfe527798ebc607d))
+
 ## [1.3.0](https://github.com/vexxhost/atmosphere/compare/v1.2.0...v1.3.0) (2023-03-31)
 
 

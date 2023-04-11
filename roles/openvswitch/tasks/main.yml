@@ -32,6 +32,7 @@
   delegate_to: "{{ groups['controllers'][0] }}"
   block:
     - name: Suspend the existing HelmRelease
+      failed_when: false
       kubernetes.core.k8s:
         state: patched
         api_version: helm.toolkit.fluxcd.io/v2beta1
@@ -43,6 +44,7 @@
             suspend: true
 
     - name: Remove the existing HelmRelease
+      failed_when: false
       kubernetes.core.k8s:
         state: absent
         api_version: helm.toolkit.fluxcd.io/v2beta1
