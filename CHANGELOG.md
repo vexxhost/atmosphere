@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.2](https://github.com/vexxhost/atmosphere/compare/v1.3.1...v1.3.2) (2023-04-13)
+
+
+### Bug Fixes
+
+* use pre-built registry ([e97c6a5](https://github.com/vexxhost/atmosphere/commit/e97c6a5b79972d600ab56a2af97f52b9c0fe32c3))
+
 ## [1.3.1](https://github.com/vexxhost/atmosphere/compare/v1.3.0...v1.3.1) (2023-04-11)
 
 
