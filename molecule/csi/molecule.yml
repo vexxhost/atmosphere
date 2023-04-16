@@ -1,0 +1,76 @@
+# Copyright (c) 2023 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+  - name: instance
+    image: geerlingguy/docker-${MOLECULE_DISTRO:-ubuntu2004}-ansible:latest
+    command: ${MOLECULE_DOCKER_COMMAND:-""}
+    privileged: true
+    cgroupns_mode: host
+    pre_build_image: true
+    etc_hosts:
+      k8s: 172.17.0.100
+    environment:
+      container: docker
+    security_opts:
+      - apparmor=unconfined
+    volumes:
+      - /dev:/dev
+      - /lib/modules:/lib/modules:ro
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+      - /usr/src:/usr/src:ro
+    groups:
+      - controllers
+      - cephs
+provisioner:
+  name: ansible
+  config_options:
+    connection:
+      pipelining: true
+    tags:
+      skip: sysctl,ethtool
+  inventory:
+    group_vars:
+      all:
+        ceph_fsid: ${MOLECULE_CEPH_FSID:-"1dff0e0f-3c44-48da-81cd-4f3c6e8722b2"}
+        ceph_conf_overrides:
+          - section: global
+            option: osd crush chooseleaf type
+            value: 0
+          - section: mon
+            option: auth allow insecure global id reclaim
+            value: false
+        cilium_helm_values:
+          operator:
+            replicas: 1
+        csi_driver: ${MOLECULE_CSI_DRIVER:-"rbd"}
+        ceph_csi_rbd_helm_values:
+          provisioner:
+            replicaCount: 1
+      controllers:
+        kubernetes_keepalived_interface: "{{ ansible_default_ipv4.interface }}"
+        kubernetes_keepalived_vip: 172.17.0.100
+        kubernetes_keepalived_vrid: 42
+        kubernetes_hostname: k8s
+      cephs:
+        ceph_osd_devices:
+          - "/dev/ceph-{{ inventory_hostname_short }}-osd0/data"
+          - "/dev/ceph-{{ inventory_hostname_short }}-osd1/data"
+          - "/dev/ceph-{{ inventory_hostname_short }}-osd2/data"
+verifier:
+  name: ansible
