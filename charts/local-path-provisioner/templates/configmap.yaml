@@ -1,0 +1,34 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.configmap.name }}
+  labels:
+{{ include "local-path-provisioner.labels" . | indent 4 }}
+data:
+  config.json: |-
+    {{- $config := dict }}
+    {{- with .Values.nodePathMap }}
+    {{- $config = set $config "nodePathMap" . }}
+    {{- end }}
+    {{- with .Values.sharedFileSystemPath }}
+    {{- $config = set $config "sharedFileSystemPath" . }}
+    {{- end }}
+    {{- $config | toPrettyJson | nindent 4 }}
+  setup: |-
+    {{ .Values.configmap.setup | nindent 4 }}
+  teardown: |-
+    {{ .Values.configmap.teardown | nindent 4 }}
+  helperPod.yaml: |-
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: helper-pod
+    spec:
+      containers:
+        - name: helper-pod
+          {{- if .Values.privateRegistry.registryUrl }}
+          image: {{ .Values.privateRegistry.registryUrl }}/{{ .Values.helperImage.repository }}:{{ .Values.helperImage.tag }}
+          {{- else }}
+          image: {{ .Values.helperImage.repository }}:{{ .Values.helperImage.tag }}
+          {{- end }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}

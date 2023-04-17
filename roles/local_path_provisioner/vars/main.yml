@@ -12,22 +12,13 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-galaxy_info:
-  author: VEXXHOST, Inc.
-  description: Meta role for managing CSI
-  license: Apache-2.0
-  min_ansible_version: 5.5.0
-  standalone: false
-  platforms:
-    - name: Ubuntu
-      versions:
-        - focal
-
-dependencies:
-  - role: defaults
-  - role: local_path_provisioner
-    when: csi_driver == "local-path-provisioner"
-  - role: ceph_csi_rbd
-    when: csi_driver == "rbd"
-  - role: powerstore_csi
-    when: csi_driver == "powerstore"
+_local_path_provisioner_helm_values:
+  image:
+    repository: "{{ atmosphere_images['local_path_provisioner'] | vexxhost.kubernetes.docker_image('name') }}"
+    tag: "{{ atmosphere_images['local_path_provisioner'] | vexxhost.kubernetes.docker_image('tag') }}"
+  helperImage:
+    repository: "{{ atmosphere_images['local_path_provisioner_helper'] | vexxhost.kubernetes.docker_image('name') }}"
+    tag: "{{ atmosphere_images['local_path_provisioner_helper'] | vexxhost.kubernetes.docker_image('tag') }}"
+  storageClass:
+    defaultClass: true
+    name: general
