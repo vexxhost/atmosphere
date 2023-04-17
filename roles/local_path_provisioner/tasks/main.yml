@@ -1,4 +1,4 @@
-# Copyright (c) 2023 VEXXHOST, Inc.
+# Copyright (c) 2022 VEXXHOST, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -12,8 +12,12 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- ansible.builtin.import_playbook: vexxhost.ceph.site
-  when: csi_driver == "rbd"
-
-- ansible.builtin.import_playbook: vexxhost.atmosphere.kubernetes
-- ansible.builtin.import_playbook: vexxhost.atmosphere.csi
+- name: Deploy Helm chart
+  run_once: true
+  kubernetes.core.helm:
+    name: "{{ local_path_provisioner_helm_release_name }}"
+    chart_ref: "{{ local_path_provisioner_helm_chart_ref }}"
+    release_namespace: "{{ local_path_provisioner_helm_release_namespace }}"
+    create_namespace: true
+    kubeconfig: /etc/kubernetes/admin.conf
+    values: "{{ _local_path_provisioner_helm_values | combine(local_path_provisioner_helm_values, recursive=True) }}"

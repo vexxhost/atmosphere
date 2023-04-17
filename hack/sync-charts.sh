@@ -120,6 +120,10 @@ LIBVIRT_VERSION=0.1.8
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm-infra/libvirt-${LIBVIRT_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
+LOCAL_PATH_PROVISIONER_VERSION=0.0.24
+curl -sL https://github.com/rancher/local-path-provisioner/archive/refs/tags/v${LOCAL_PATH_PROVISIONER_VERSION}.tar.gz \
+  | tar -xz -C charts --strip-components=3 ${ATMOSPHERE}/local-path-provisioner-${LOCAL_PATH_PROVISIONER_VERSION}/deploy/chart/
+
 NEUTRON_VERSION=0.3.2
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/neutron-${NEUTRON_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
