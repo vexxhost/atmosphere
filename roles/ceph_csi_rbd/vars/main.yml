@@ -21,25 +21,25 @@ _ceph_csi_rbd_helm_values:
       containerPort: 8081
     registrar:
       image:
-        repository: "{{ atmosphere_images['csi_node_driver_registrar'] | vexxhost.atmosphere.docker_image('name') }}"
+        repository: "{{ atmosphere_images['csi_node_driver_registrar'] | vexxhost.kubernetes.docker_image('name') }}"
     plugin:
       image:
-        repository: "{{ atmosphere_images['csi_rbd_plugin'] | vexxhost.atmosphere.docker_image('name') }}"
+        repository: "{{ atmosphere_images['csi_rbd_plugin'] | vexxhost.kubernetes.docker_image('name') }}"
   provisioner:
     nodeSelector:
       openstack-control-plane: enabled
     provisioner:
       image:
-        repository: "{{ atmosphere_images['csi_rbd_provisioner'] | vexxhost.atmosphere.docker_image('name') }}"
+        repository: "{{ atmosphere_images['csi_rbd_provisioner'] | vexxhost.kubernetes.docker_image('name') }}"
     attacher:
       image:
-        repository: "{{ atmosphere_images['csi_rbd_attacher'] | vexxhost.atmosphere.docker_image('name') }}"
+        repository: "{{ atmosphere_images['csi_rbd_attacher'] | vexxhost.kubernetes.docker_image('name') }}"
     resizer:
       image:
-        repository: "{{ atmosphere_images['csi_rbd_resizer'] | vexxhost.atmosphere.docker_image('name') }}"
+        repository: "{{ atmosphere_images['csi_rbd_resizer'] | vexxhost.kubernetes.docker_image('name') }}"
     snapshotter:
       image:
-        repository: "{{ atmosphere_images['csi_rbd_snapshotter'] | vexxhost.atmosphere.docker_image('name') }}"
+        repository: "{{ atmosphere_images['csi_rbd_snapshotter'] | vexxhost.kubernetes.docker_image('name') }}"
   storageClass:
     create: true
     name: general

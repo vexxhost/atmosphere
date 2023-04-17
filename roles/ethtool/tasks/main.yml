@@ -2,7 +2,7 @@
   ansible.builtin.file:
     path: /etc/networkd-dispatcher/configuring.d
     state: directory
-    mode: 0755
+    mode: "0755"
     owner: root
     group: root
 
@@ -10,11 +10,12 @@
   ansible.builtin.copy:
     src: ethtool
     dest: /etc/networkd-dispatcher/configuring.d/01-ethtool
-    mode: 0755
+    mode: "0755"
     owner: root
     group: root
 
 - name: Run "ethtool" tuning
+  when: ethtool_apply | bool
   ansible.builtin.command:
     /etc/networkd-dispatcher/configuring.d/01-ethtool
   changed_when: false

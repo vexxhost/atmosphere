@@ -1,0 +1,141 @@
+# Copyright (c) 2023 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Map existing health manager IP addresses to existing controllers
+  run_once: true
+  delegate_to: "{{ groups['controllers'][_octavia_health_manager_ip] }}"
+  delegate_facts: true
+  ansible.builtin.set_fact:
+    octavia_health_manager_ip: "{{ item }}"
+  loop: "{{ groups['octavia-health-manager'] | map('extract', hostvars, ['container_networks', 'lbaas_address', 'address']) | list }}"
+  loop_control:
+    index_var: _octavia_health_manager_ip
+
+- name: Slurp configuration file for Octavia
+  run_once: true
+  delegate_to: "{{ groups['octavia_all'][0] }}"
+  ansible.builtin.slurp:
+    src: /etc/octavia/octavia.conf
+  register: _octavia_conf
+
+- name: Generate fact with Octavia configuration file
+  run_once: true
+  ansible.builtin.set_fact:
+    _octavia_conf: "{{ _octavia_conf['content'] | b64decode | vexxhost.atmosphere.from_ini }}"
+
+- name: Create secrets for server CA, client CA and client certificates
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      - apiVersion: v1
+        kind: Secret
+        metadata:
+          name: octavia-server-ca
+          namespace: "{{ octavia_helm_release_namespace }}"
+          annotations:
+            cert-manager.io/alt-names: ""
+            cert-manager.io/certificate-name: octavia-server-ca
+            cert-manager.io/common-name: octavia-server
+            cert-manager.io/ip-sans: ""
+            cert-manager.io/issuer-group: cert-manager.io
+            cert-manager.io/issuer-kind: ClusterIssuer
+            cert-manager.io/issuer-name: self-signed
+            cert-manager.io/uri-sans: ""
+        type: kuberenetes.io/tls
+        stringData:
+          ca.crt: "{{ lookup('file', _octavia_cert_dir ~ '/ca_server_01.pem') }}"
+          tls.crt: "{{ lookup('file', _octavia_cert_dir ~ '/ca_server_01.pem') }}"
+          tls.key: "{{ lookup('pipe', 'openssl rsa -in ' ~ _octavia_cert_dir ~ '/private/cakey.pem -passin pass:' ~ _octavia_cert_passphrase) }}"
+
+      - apiVersion: v1
+        kind: Secret
+        metadata:
+          name: octavia-client-ca
+          namespace: "{{ octavia_helm_release_namespace }}"
+          annotations:
+            cert-manager.io/alt-names: ""
+            cert-manager.io/certificate-name: octavia-client-ca
+            cert-manager.io/common-name: octavia-client
+            cert-manager.io/ip-sans: ""
+            cert-manager.io/issuer-group: cert-manager.io
+            cert-manager.io/issuer-kind: ClusterIssuer
+            cert-manager.io/issuer-name: self-signed
+            cert-manager.io/uri-sans: ""
+        type: kuberenetes.io/tls
+        stringData:
+          ca.crt: "{{ lookup('file', _octavia_cert_dir ~ '/ca_01.pem') }}"
+          tls.crt: "{{ lookup('file', _octavia_cert_dir ~ '/ca_01.pem') }}"
+          tls.key: "{{ lookup('pipe', 'openssl rsa -in ' ~ _octavia_cert_dir ~ '/ca_01.key -passin pass:' ~ _octavia_cert_passphrase) }}"
+
+      - apiVersion: v1
+        kind: Secret
+        metadata:
+          name: octavia-client-certs
+          namespace: "{{ octavia_helm_release_namespace }}"
+          annotations:
+            cert-manager.io/alt-names: ""
+            cert-manager.io/certificate-name: octavia-client-certs
+            cert-manager.io/common-name: octavia-client
+            cert-manager.io/ip-sans: ""
+            cert-manager.io/issuer-group: cert-manager.io
+            cert-manager.io/issuer-kind: Issuer
+            cert-manager.io/issuer-name: octavia-client
+            cert-manager.io/uri-sans: ""
+        type: kuberenetes.io/tls
+        stringData:
+          ca.crt: "{{ lookup('file', _octavia_cert_dir ~ '/ca_01.pem') }}"
+          tls-combined.pem: "{{ lookup('file', _octavia_cert_dir ~ '/client.pem') }}"
+          tls.crt: "{{ lookup('file', _octavia_cert_dir ~ '/client-.pem') }}"
+          tls.key: "{{ lookup('file', _octavia_cert_dir ~ '/client.key') }}"
+  vars:
+    _octavia_cert_dir: "{{ lookup('env', 'HOME') }}/openstack-ansible/octavia"
+    _octavia_cert_passphrase: "{{ _octavia_conf.certificates.ca_private_key_passphrase }}"
+
+- name: Generate resources
+  ansible.builtin.import_tasks:
+    file: generate_resources.yml
+
+- name: Generate configuration difference
+  ansible.builtin.include_role:
+    name: osa_config_diff
+  vars:
+    osa_config_diff_containers_group: octavia_all
+    osa_config_diff_chart_ref: "{{ octavia_helm_chart_ref }}"
+    osa_config_diff_release_namespace: "{{ octavia_helm_release_namespace }}"
+    osa_config_diff_release_values: "{{ _octavia_helm_values | combine(octavia_helm_values, recursive=True) }}"
+    osa_config_diff_config_files:
+      octavia.conf: /etc/octavia/octavia.conf
+
+- name: Migrate the database
+  ansible.builtin.include_role:
+    name: migrate_db_from_osa
+  vars:
+    migrate_db_from_osa_pxc_namespace: "{{ octavia_helm_release_namespace }}"
+    migrate_db_from_osa_containers_group: octavia_all
+    migrate_db_from_osa_databases:
+      octavia: octavia
+
+- name: Run deployment flow
+  ansible.builtin.import_tasks:
+    file: main.yml
+
+- name: Migrate HAproxy
+  ansible.builtin.include_role:
+    name: migrate_haproxy_from_osa
+  vars:
+    migrate_haproxy_from_osa_group: octavia_all
+    migrate_haproxy_from_osa_service_namespace: "{{ octavia_helm_release_namespace }}"
+    migrate_haproxy_from_osa_service_name: octavia-api
+    migrate_haproxy_from_osa_haproxy_backend: octavia

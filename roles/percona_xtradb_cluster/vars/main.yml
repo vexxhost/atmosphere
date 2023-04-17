@@ -3,14 +3,15 @@ _percona_xtradb_cluster_spec:
   secretsName: percona-xtradb
   pxc:
     size: 3
-    image: "{{ atmosphere_images['percona_xtradb_cluster'] | vexxhost.atmosphere.docker_image('ref') }}"
+    image: "{{ atmosphere_images['percona_xtradb_cluster'] | vexxhost.kubernetes.docker_image('ref') }}"
     autoRecovery: true
     configuration: |
       [mysqld]
       max_connections=8192
+      innodb_buffer_pool_size=4096M
     sidecars:
       - name: exporter
-        image: "{{ atmosphere_images['prometheus_mysqld_exporter'] | vexxhost.atmosphere.docker_image('ref') }}"
+        image: "{{ atmosphere_images['prometheus_mysqld_exporter'] | vexxhost.kubernetes.docker_image('ref') }}"
         env:
           - name: MONITOR_PASSWORD
             valueFrom:
@@ -36,6 +37,6 @@ _percona_xtradb_cluster_spec:
   haproxy:
     enabled: true
     size: 3
-    image: "{{ atmosphere_images['percona_xtradb_cluster_haproxy'] | vexxhost.atmosphere.docker_image('ref') }}"
+    image: "{{ atmosphere_images['percona_xtradb_cluster_haproxy'] | vexxhost.kubernetes.docker_image('ref') }}"
     nodeSelector:
       openstack-control-plane: enabled

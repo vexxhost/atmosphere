@@ -1,0 +1,118 @@
+# Copyright (c) 2023 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+# This playbook is used to migrate from OpenStack Ansible to Atmosphere, you
+# should run it with the following manner:
+#
+# ansible-playbook \
+#   -i inventory/hosts.ini \
+#   -i /opt/openstack-ansible/inventory/dynamic_inventory.py \
+#   vexxhost.atmosphere.migrate_from_osa
+
+- name: Migrate from OpenStack Ansible
+  hosts: controllers[0]
+  become: true
+  tasks:
+    - name: Migrate Keystone
+      ansible.builtin.import_role:
+        name: keystone
+        tasks_from: migrate_from_osa
+      tags:
+        - keystone
+
+    - name: Migrate Barbican
+      ansible.builtin.import_role:
+        name: barbican
+        tasks_from: migrate_from_osa
+      tags:
+        - barbican
+
+    - name: Migrate Glance
+      ansible.builtin.import_role:
+        name: glance
+        tasks_from: migrate_from_osa
+      tags:
+        - glance
+
+    - name: Migrate Cinder
+      ansible.builtin.import_role:
+        name: cinder
+        tasks_from: migrate_from_osa
+      tags:
+        - cinder
+
+    - name: Migrate Placement
+      ansible.builtin.import_role:
+        name: placement
+        tasks_from: migrate_from_osa
+      tags:
+        - placement
+
+    - name: Migrate Nova
+      ansible.builtin.import_role:
+        name: nova
+        tasks_from: migrate_from_osa
+      tags:
+        - nova
+
+    - name: Migrate Neutron
+      ansible.builtin.import_role:
+        name: neutron
+        tasks_from: migrate_from_osa
+      tags:
+        - neutron
+
+    # TODO(mnaser): Senlin
+
+    - name: Migrate Designate
+      ansible.builtin.import_role:
+        name: designate
+        tasks_from: migrate_from_osa
+      tags:
+        - designate
+
+    - name: Migrate Heat
+      ansible.builtin.import_role:
+        name: heat
+        tasks_from: migrate_from_osa
+      tags:
+        - heat
+
+    - name: Migrate Octavia
+      ansible.builtin.import_role:
+        name: octavia
+        tasks_from: migrate_from_osa
+      tags:
+        - octavia
+
+    - name: Migrate Magnum
+      ansible.builtin.import_role:
+        name: magnum
+        tasks_from: migrate_from_osa
+      tags:
+        - magnum
+
+    - name: Migrate Manila
+      ansible.builtin.import_role:
+        name: manila
+        tasks_from: migrate_from_osa
+      tags:
+        - manila
+
+    - name: Migrate Horizon
+      ansible.builtin.import_role:
+        name: horizon
+        tasks_from: migrate_from_osa
+      tags:
+        - horizon

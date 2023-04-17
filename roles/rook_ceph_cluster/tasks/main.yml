@@ -22,7 +22,7 @@
 - name: Retrieve keyring for client.admin
   run_once: true
   delegate_to: "{{ groups[rook_ceph_cluster_mon_group][0] }}"
-  vexxhost.atmosphere.ceph_key:
+  vexxhost.ceph.key:
     name: client.admin
     state: info
     output_format: json
@@ -31,7 +31,7 @@
 - name: Retrieve keyring for monitors
   run_once: true
   delegate_to: "{{ groups[rook_ceph_cluster_mon_group][0] }}"
-  vexxhost.atmosphere.ceph_key:
+  vexxhost.ceph.key:
     name: mon.
     state: info
     output_format: json
@@ -67,7 +67,7 @@
     _rook_ceph_cluster_admin_auth: "{{ _rook_ceph_cluster_admin_auth_data.stdout | from_json | first }}"
     _rook_ceph_cluster_mon_auth: "{{ _rook_ceph_cluster_mon_auth_data.stdout | from_json | first }}"
     _rook_ceph_cluster_leader_name: "{{ _rook_ceph_cluster_quorum_status.quorum_leader_name }}"
-    _rook_ceph_cluster_leader_mon: "{{ (_rook_ceph_cluster_quorum_status.monmap.mons | selectattr('name', 'equalto', _rook_ceph_cluster_leader_name) | list | first) }}"
+    _rook_ceph_cluster_leader_mon: "{{ (_rook_ceph_cluster_quorum_status.monmap.mons | selectattr('name', 'equalto', _rook_ceph_cluster_leader_name) | list | first) }}" # noqa: yaml[line-length]
     _rook_ceph_cluster_leader_addr: "{{ _rook_ceph_cluster_leader_mon.public_addr.split('/')[0] }}"
 
 - name: Deploy Helm chart

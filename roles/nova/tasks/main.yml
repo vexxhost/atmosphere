@@ -16,6 +16,7 @@
   run_once: true
   block:
     - name: Suspend the existing HelmRelease
+      failed_when: false
       kubernetes.core.k8s:
         state: patched
         api_version: helm.toolkit.fluxcd.io/v2beta1
@@ -27,6 +28,7 @@
             suspend: true
 
     - name: Remove the existing HelmRelease
+      failed_when: false
       kubernetes.core.k8s:
         state: absent
         api_version: helm.toolkit.fluxcd.io/v2beta1
@@ -35,35 +37,8 @@
         namespace: "{{ nova_helm_release_namespace }}"
 
 - name: Generate public key for SSH private key
-  become: false
-  delegate_to: localhost
-  block:
-    - name: Generate temporary file for SSH public key
-      changed_when: false
-      ansible.builtin.tempfile:
-        state: file
-        prefix: nova_ssh_key_
-      register: _nova_ssh_key_tempfile
-    # NOTE(mnaser): It's important to add a trailing newline at the end of this
-    #               string or else `ssh-keygen` will not be happy.`
-    - name: Write contents of current private SSH key
-      changed_when: false
-      ansible.builtin.copy:
-        dest: "{{ _nova_ssh_key_tempfile.path }}"
-        content: "{{ nova_ssh_key }}\n"
-        mode: "0600"
-    - name: Generate public key for SSH private key
-      changed_when: false
-      community.crypto.openssh_keypair:
-        path: "{{ _nova_ssh_key_tempfile.path }}"
-        regenerate: never
-      register: _nova_ssh_publickey
-  always:
-    - name: Delete temporary file for public SSH key
-      changed_when: false
-      ansible.builtin.file:
-        path: "{{ _nova_ssh_key_tempfile.path }}"
-        state: absent
+  ansible.builtin.import_tasks:
+    file: generate_public_key.yml
 
 - name: Deploy Helm chart
   run_once: true

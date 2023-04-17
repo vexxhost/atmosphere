@@ -1,147 +1,19 @@
 # `kube_prometheus_stack`
 
-## Exposing data
+There is a Grafana deployemnt with a few dashboards that are created by default
+and a Prometheus deployment that is used to collect metrics from the cluster
+which sends alerts to AlertManager.  In addition, Loki is deployed to collect
+logs from the cluster using Vector.
 
-There are a few ways to expose both the monitoring services to view the health
-and the metrics and logs of the cluster.
+## Viewing data
 
-### Port forwarding
+By default, an `Ingress` is created for Grafana using the `kube_prometheus_stack_grafana_host`
+variable.  The default login is `admin` and the password is the value of
+`kube_prometheus_stack_grafana_admin_password`.
 
-The easiest way to expose the monitoring services is to use port forwarding
-using the built-in `kubectl` command.
-
-#### Grafana
-
-```bash
-kubectl -n monitoring port-forward svc/kube-prometheus-stack-grafana 3000:80
-```
-
-Once you run the command above, you'll be able to open `http://localhost:3000`
-on your local system and view the Grafana UI.  The default login is `admin` and
-the password is `prom-operator`.
-
-#### Prometheus
-
-```bash
-kubectl -n monitoring port-forward svc/kube-prometheus-stack-prometheus 9090
-```
-
-Once you run the command above, you'll be able to open `http://localhost:9090`
-on your local system and view the Prometheus UI.
-
-#### AlertManager
-
-```bash
-kubectl -n monitoring port-forward svc/kube-prometheus-stack-alertmanager 9093
-```
-
-Once you run the command above, you'll be able to open `http://localhost:9093`
-on your local system and view the AlertManager UI.
-
-### Unprotected access
-
-If you want to expose the monitoring services, you can use the following
-overrides which will create an `Ingress` for all the services.
-
-!!! danger
-
-    This will expose the monitoring services without any authentication or
-    authorization. This is not recommended for production environments or any
-    environment where the monitoring services are exposed to the public internet.
-
-```yaml
-kube_prometheus_stack_helm_values:
-  alertmanager:
-    ingress:
-      enabled: true
-      ingressClassName: openstack
-      annotations:
-        cert-manager.io/cluster-issuer: atmosphere
-      hosts:
-        - alertmanager.example.com
-      tls:
-        - secretName: alertmanager-tls
-          hosts:
-            - alertmanager.example.com
-    alertmanagerSpec:
-      externalUrl: https://alertmanager.example.com
-  prometheus:
-    ingress:
-      enabled: true
-      ingressClassName: openstack
-      annotations:
-        cert-manager.io/cluster-issuer: atmosphere
-      hosts:
-        - prometheus.example.com
-      tls:
-        - secretName: prometheus-certs
-          hosts:
-            - prometheus.example.com
-    prometheusSpec:
-      externalUrl: https://prometheus.example.com
-```
-
-### Protected access
-
-If you want to expose the monitoring services, you can use the following
-overrides which will create an `Ingress` for all the services.
-
-```yaml
-kube_prometheus_stack_helm_values:
-  alertmanager:
-    ingress:
-      enabled: true
-      ingressClassName: openstack
-      annotations:
-        cert-manager.io/cluster-issuer: atmosphere
-        nginx.ingress.kubernetes.io/auth-type: basic
-        nginx.ingress.kubernetes.io/auth-secret: prometheus-auth
-        nginx.ingress.kubernetes.io/auth-realm: Prometheus
-      hosts:
-        - alertmanager.example.com
-      tls:
-        - secretName: alertmanager-tls
-          hosts:
-            - alertmanager.example.com
-    alertmanagerSpec:
-      externalUrl: https://alertmanager.example.com
-  prometheus:
-    ingress:
-      enabled: true
-      ingressClassName: openstack
-      annotations:
-        cert-manager.io/cluster-issuer: atmosphere
-        nginx.ingress.kubernetes.io/auth-type: basic
-        nginx.ingress.kubernetes.io/auth-secret: prometheus-auth
-        nginx.ingress.kubernetes.io/auth-realm: Prometheus
-      hosts:
-        - prometheus.example.com
-      tls:
-        - secretName: prometheus-certs
-          hosts:
-            - prometheus.example.com
-    prometheusSpec:
-      externalUrl: https://prometheus.example.com
-```
-
-Once you've deployed with the overrides above, you'll need to create a secret
-with the username and password you want to use to access the monitoring
-services.
-
-```bash
-htpasswd -c auth monitoring
-```
-
-The above will generate a file called `auth` with the username and password,
-in this case the username is `monitoring`. You'll need to create a secret with
-the contents of the file.
-
-```bash
-kubectl -n monitoring create secret generic prometheus-auth --from-file=auth
-```
-
-Once you're done, you'll be able to access the monitoring services using the
-username and password you created.
+You can view the existing dashboards by going to _Manage_ > _Dashboards_.  You
+can also check any alerts that are currently firing by going to _Alerting_ >
+_Alerts_.
 
 ## Integrations
 

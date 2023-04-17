@@ -99,7 +99,7 @@
           },
           {
             alert: 'IpmiSensor',
-            expr: 'ipmi_sensor_state == 2',
+            expr: 'ipmi_sensor_state{name!="TPM Presence"} == 2',
             labels: {
               severity: 'critical',
             },
@@ -164,14 +164,6 @@
       {
         name: 'softnet',
         rules: [
-          {
-            alert: 'NodeSoftNetTimesSqueezed',
-            expr: 'sum(rate(node_softnet_times_squeezed_total[1m])) by (instance) > 10',
-            'for': '10m',
-            labels: {
-              severity: 'warning',
-            },
-          },
           {
             alert: 'NodeSoftNetDrops',
             expr: 'sum(rate(node_softnet_dropped_total[1m])) by (instance) != 0',

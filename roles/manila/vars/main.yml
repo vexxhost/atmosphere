@@ -1,0 +1,60 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+_manila_helm_values:
+  endpoints: "{{ openstack_helm_endpoints }}"
+  images:
+    tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('manila') }}"
+  pod:
+    mounts:
+      manila_share:
+        manila_share:
+          volumeMounts:
+            - name: ssh-keys
+              mountPath: /etc/manila/ssh-keys
+          volumes:
+            - name: ssh-keys
+              secret:
+                secretName: "{{ manila_helm_release_name }}-ssh-keys"
+    replicas:
+      api: 3
+      scheduler: 3
+  bootstrap:
+    structured:
+      flavors: null
+      images: null
+  dependencies:
+    static:
+      share:
+        pod:
+          - requireSameNode: true
+            labels:
+              application: openvswitch
+              component: server
+  conf:
+    manila:
+      DEFAULT:
+        host: manila-share-worker
+      generic:
+        connect_share_server_to_tenant_network: true
+        limit_ssh_access: true
+        path_to_private_key: /etc/manila/ssh-keys/id_rsa
+        path_to_public_key: /etc/manila/ssh-keys/id_rsa.pub
+        service_image_name: "{{ manila_image_name }}"
+        service_instance_flavor_id: "{{ _manila_flavor.id }}"
+      oslo_messaging_no tifications:
+        driver: noop
+  manifests:
+    ingress_api: false
+    service_ingress_api: false

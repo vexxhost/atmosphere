@@ -26,11 +26,23 @@ _heat_helm_values:
     heat:
       DEFAULT:
         auth_encryption_key: "{{ heat_auth_encryption_key }}"
+        default_deployment_signal_transport: HEAT_SIGNAL
+        default_software_config_transport: POLL_SERVER_HEAT
         log_config_append: null
+        num_engine_workers: 8
         region_name_for_services: "{{ openstack_helm_endpoints['identity']['auth']['heat']['region_name'] }}"
+        rpc_response_timeout: 600
         server_keystone_endpoint_type: public
       clients_keystone:
         endpoint_type: publicURL
+      ec2authtoken:
+        auth_uri: http://keystone-api.openstack.svc.cluster.local:5000
+      heat_api:
+        workers: 8
+      heat_api_cfn:
+        workers: 8
+      heat_api_cloudwatch:
+        workers: 8
       oslo_messaging_notifications:
         driver: noop
   manifests:
@@ -38,3 +50,6 @@ _heat_helm_values:
     ingress_cfn: false
     service_ingress_api: false
     service_ingress_cfn: false
+
+_heat_ingress_annotations:
+  nginx.ingress.kubernetes.io/proxy-read-timeout: "630"

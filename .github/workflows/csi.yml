@@ -1,0 +1,74 @@
+# Copyright (c) 2023 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+name: csi
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/csi.yml
+      - molecule/csi/**
+      - playbooks/csi.yml
+      - playbooks/kubernetes.yml
+      - roles/ceph_csi_rbd/**
+      - roles/csi/**
+      - galaxy.yml
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/csi.yml
+      - molecule/csi/**
+      - playbooks/csi.yml
+      - playbooks/kubernetes.yml
+      - roles/ceph_csi_rbd/**
+      - roles/csi/**
+      - galaxy.yml
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        driver:
+          - local-path-provisioner
+          - rbd
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v3
+
+      - name: Install Poetry
+        run: pipx install poetry
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          cache: poetry
+
+      - name: Install dependencies
+        run: poetry install --no-interaction --with dev
+
+      # NOTE(mnaser): LVM commands take a long time if there are any existing
+      #               loop devices created by "snapd", so we uninstall it.
+      - name: Uninstall "snapd"
+        run: sudo apt-get purge -y snapd
+
+      - name: Turn off swap
+        run: sudo swapoff -a
+
+      - name: Run Molecule
+        run: poetry run molecule test -s csi
+        env:
+          MOLECULE_CSI_DRIVER: ${{ matrix.driver }}

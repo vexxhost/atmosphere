@@ -13,7 +13,7 @@
 # under the License.
 
 _tempest_helm_values:
-  endpoints: "{{ openstack_helm_endpoints }}"
+  endpoints: "{{ openstack_helm_endpoints | combine(_tempest_endpoint_values, recursive=True) }}"
   images:
     tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('tempest') }}"
   jobs:
@@ -51,3 +51,15 @@ _tempest_helm_values:
         reseller_admin_role: admin
   pvc:
     enabled: false
+
+_tempest_endpoint_values:
+  identity:
+    auth:
+      tempest:
+        region_name: "{{ openstack_helm_endpoints_tempest_region_name }}"
+        username: "tempest-{{ openstack_helm_endpoints_tempest_region_name }}"
+        password: "{{ openstack_helm_endpoints_tempest_keystone_password }}"
+    path:
+      # NOTE(mnaser): Heat uses the catalog and blindly adds a /v3 to the end of
+      #               the endpoint.  This is a workaround to make it work.
+      default: /v3

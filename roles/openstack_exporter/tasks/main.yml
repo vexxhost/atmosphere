@@ -37,7 +37,7 @@
                 openstack-control-plane: enabled
               initContainers:
                 - name: build-config
-                  image: quay.io/vexxhost/openstack-runtime-focal:latest
+                  image: "{{ atmosphere_images['bootstrap'] | vexxhost.kubernetes.docker_image('ref') }}"
                   command: ["bash", "-ec"]
                   args:
                     - |
@@ -65,7 +65,7 @@
                       mountPath: /etc/openstack
               containers:
                 - name: openstack-exporter
-                  image: "{{ atmosphere_images['prometheus_openstack_exporter'] | vexxhost.atmosphere.docker_image('ref') }}"
+                  image: "{{ atmosphere_images['prometheus_openstack_exporter'] | vexxhost.kubernetes.docker_image('ref') }}"
                   args:
                     - --endpoint-type
                     - internal

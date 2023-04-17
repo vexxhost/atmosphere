@@ -22,12 +22,13 @@
 - name: Generate fact with list of Ceph monitors
   run_once: true
   ansible.builtin.set_fact:
+    ceph_csi_rbd_ceph_fsid: "{{ _ceph_mon_dump.stdout | from_json | community.general.json_query('fsid') }}"
     ceph_monitors: "{{ _ceph_mon_dump.stdout | from_json | community.general.json_query('mons[*].addr') | map('regex_replace', '(.*):(.*)', '\\1') }}"
 
 - name: Create Ceph pool
   delegate_to: "{{ groups[ceph_csi_rbd_mons_group][0] }}"
   run_once: true
-  vexxhost.atmosphere.ceph_pool:
+  vexxhost.ceph.pool:
     name: "{{ ceph_csi_rbd_pool }}"
     rule_name: "{{ ceph_csi_rbd_rule_name | default(omit) }}"
     application: rbd
@@ -36,7 +37,7 @@
 - name: Create user {{ ceph_csi_rbd_user }}
   delegate_to: "{{ groups[ceph_csi_rbd_mons_group][0] }}"
   run_once: true
-  vexxhost.atmosphere.ceph_key:
+  vexxhost.ceph.key:
     name: "{{ ceph_csi_rbd_user }}"
     caps:
       mon: profile rbd
@@ -46,7 +47,7 @@
 - name: Retrieve keyring for {{ ceph_csi_rbd_user }}
   delegate_to: "{{ groups[ceph_csi_rbd_mons_group][0] }}"
   run_once: true
-  vexxhost.atmosphere.ceph_key:
+  vexxhost.ceph.key:
     name: "{{ ceph_csi_rbd_user }}"
     state: info
     output_format: json
@@ -64,6 +65,7 @@
   run_once: true
   block:
     - name: Suspend the existing HelmRelease
+      failed_when: false
       kubernetes.core.k8s:
         state: patched
         api_version: helm.toolkit.fluxcd.io/v2beta1
@@ -75,6 +77,7 @@
             suspend: true
 
     - name: Remove the existing HelmRelease
+      failed_when: false
       kubernetes.core.k8s:
         state: absent
         api_version: helm.toolkit.fluxcd.io/v2beta1

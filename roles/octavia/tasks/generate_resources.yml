@@ -1,0 +1,150 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Create management network
+  openstack.cloud.network:
+    cloud: atmosphere
+    # Network settings
+    name: "{{ octavia_management_network_name }}"
+  register: _octavia_management_network
+
+- name: Create management subnet
+  openstack.cloud.subnet:
+    cloud: atmosphere
+    # Subnet settings
+    network_name: "{{ octavia_management_network_name }}"
+    name: "{{ octavia_management_subnet_name }}"
+    cidr: "{{ octavia_management_subnet_cidr }}"
+
+- name: Create health manager security group
+  openstack.cloud.security_group:
+    cloud: atmosphere
+    name: lb-health-mgr-sec-grp
+  register: _octavia_health_manager_sg
+
+- name: Create health manager security group rules
+  openstack.cloud.security_group_rule:
+    cloud: atmosphere
+    security_group: "{{ _octavia_health_manager_sg.id }}"
+    direction: ingress
+    ethertype: IPv4
+    protocol: tcp
+    port_range_min: "{{ item }}"
+    port_range_max: "{{ item }}"
+  loop:
+    - 5555
+    - 10514
+    - 20514
+
+- name: Create health manager networking ports
+  # noqa: args[module]
+  openstack.cloud.port:
+    cloud: atmosphere
+    name: "octavia-health-manager-port-{{ hostvars[item]['inventory_hostname_short'] }}"
+    device_owner: octavia:health-mgr
+    network: "{{ _octavia_management_network.id }}"
+    fixed_ips: >-
+      {{
+        [
+          {
+            "ip_address": hostvars[item]['octavia_health_manager_ip']
+          }
+        ]
+        if hostvars[item]['octavia_health_manager_ip'] is defined else omit
+      }}
+    security_groups:
+      - "{{ _octavia_health_manager_sg.id }}"
+  loop: "{{ groups['controllers'] }}"
+  loop_control:
+    index_var: _octavia_health_manager_port_index
+
+# NOTE(mnaser): Since we're running the playbook targeted at the first
+#               controller only, we need to manually discover the facts for the
+#               other controllers.
+- name: Discover facts for other controllers
+  delegate_to: "{{ item }}"
+  delegate_facts: true
+  ansible.builtin.setup:
+    gather_subset: network
+  loop: "{{ groups['controllers'] }}"
+
+- name: Set binding for ports
+  changed_when: false
+  ansible.builtin.shell: |
+    openstack port set \
+      --host {{ hostvars[item]['ansible_fqdn'] }} \
+      octavia-health-manager-port-{{ hostvars[item]['inventory_hostname_short'] }}
+  environment:
+    OS_CLOUD: atmosphere
+  loop: "{{ groups['controllers'] }}"
+
+- name: Get health manager networking ports
+  openstack.cloud.port_info:
+    cloud: atmosphere
+    port: "octavia-health-manager-port-{{ hostvars[item]['ansible_fqdn'] | split('.') | first }}"
+  loop: "{{ groups['controllers'] }}"
+  register: _octavia_health_manager_ports
+
+- name: Set controller_ip_port_list
+  ansible.builtin.set_fact:
+    _octavia_controller_ip_port_list: "{{ (_octavia_controller_ip_port_list | d([]) + [item.openstack_ports[0].fixed_ips[0].ip_address + ':5555']) | unique }}"
+  loop: "{{ _octavia_health_manager_ports.results }}"
+  loop_control:
+    label: "{{ item.openstack_ports[0].name }}"
+
+- name: Create amphora security group
+  openstack.cloud.security_group:
+    cloud: atmosphere
+    name: "{{ octavia_amphora_security_group_name }}"
+  register: _octavia_amphora_sg
+
+- name: Create amphora security group rules
+  openstack.cloud.security_group_rule:
+    cloud: atmosphere
+    security_group: "{{ _octavia_amphora_sg.id }}"
+    direction: ingress
+    ethertype: IPv4
+    protocol: tcp
+    port_range_min: "{{ item.0 }}"
+    port_range_max: "{{ item.0 }}"
+    remote_ip_prefix: "{{ item.1.openstack_ports[0].fixed_ips[0].ip_address }}/32"
+  with_nested:
+    - [22, 9443]
+    - "{{ _octavia_health_manager_ports.results }}"
+
+- name: Create amphora flavor
+  openstack.cloud.compute_flavor:
+    cloud: atmosphere
+    name: "{{ octavia_amphora_flavor_name }}"
+    vcpus: "{{ octavia_amphora_flavor_vcpus }}"
+    ram: "{{ octavia_amphora_flavor_ram }}"
+    disk: "{{ octavia_amphora_flavor_disk }}"
+    is_public: false
+  register: _octavia_amphora_flavor
+
+- name: Upload Amphora image
+  ansible.builtin.include_role:
+    name: glance_image
+  vars:
+    glance_image_name: "{{ octavia_amphora_image_name }}"
+    glance_image_url: "{{ octavia_amphora_image_url }}"
+    glance_image_container_format: "{{ octavia_amphora_image_container_format }}"
+    glance_image_disk_format: "{{ octavia_amphora_image_disk_format }}"
+    glance_image_tags: "{{ octavia_amphora_image_tags }}"
+
+- name: Get Amphora image information
+  openstack.cloud.image_info:
+    cloud: atmosphere
+    image: "{{ octavia_amphora_image_name }}"
+  register: _octavia_amphora_image

@@ -14,6 +14,7 @@
 
 - name: Retrieve list of all the needed endpoints
   ansible.builtin.set_fact:
+    # noqa: yaml[line-length]
     openstack_helm_endpoints_list: |-
       {{ lookup('ansible.builtin.file', '../../../charts/' ~ openstack_helm_endpoints_chart ~ '/values.yaml', split_lines=False) | from_yaml | community.general.json_query('keys(endpoints)') | difference(_openstack_helm_endpoints_ignore) }}
   when:

@@ -16,6 +16,7 @@
   run_once: true
   block:
     - name: Suspend the existing HelmRelease
+      failed_when: false
       kubernetes.core.k8s:
         state: patched
         api_version: helm.toolkit.fluxcd.io/v2beta1
@@ -27,12 +28,17 @@
             suspend: true
 
     - name: Remove the existing HelmRelease
+      failed_when: false
       kubernetes.core.k8s:
         state: absent
         api_version: helm.toolkit.fluxcd.io/v2beta1
         kind: HelmRelease
         name: "{{ designate_helm_release_name }}"
         namespace: "{{ designate_helm_release_namespace }}"
+
+- name: Lookup resources
+  ansible.builtin.import_tasks:
+    file: lookups.yml
 
 - name: Deploy Helm chart
   run_once: true
@@ -50,5 +56,5 @@
   vars:
     openstack_helm_ingress_endpoint: dns
     openstack_helm_ingress_service_name: designate-api
-    openstack_helm_ingress_service_port: 8778
+    openstack_helm_ingress_service_port: 9001
     openstack_helm_ingress_annotations: "{{ designate_ingress_annotations }}"
