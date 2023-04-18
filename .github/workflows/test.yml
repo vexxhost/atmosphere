@@ -38,31 +38,6 @@ jobs:
           tags: |
             quay.io/vexxhost/ethtool-exporter:${{ env.PROJECT_REF }}
 
-  aio:
-    runs-on: ubuntu-20.04-8-cores
-    steps:
-      - name: Checkout project
-        uses: actions/checkout@v3
-
-      - name: Install Poetry
-        run: pipx install poetry
-
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          cache: poetry
-
-      - name: Install dependencies
-        run: poetry install --no-interaction --all-extras
-
-      - name: Run Molecule converge
-        run: poetry run molecule test -s aio
-
-      - name: Setup tmate session
-        if: ${{ failure() }}
-        uses: mxschmitt/action-tmate@v3
-        timeout-minutes: 60
-
   # molecule:
   #   runs-on: ubuntu-latest
   #   steps:
