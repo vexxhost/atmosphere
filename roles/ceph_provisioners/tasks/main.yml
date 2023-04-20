@@ -12,11 +12,23 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Retrieve Helm values for "ceph-csi-rbd"
-  kubernetes.core.helm_info:
-    name: ceph-csi-rbd
-    release_namespace: kube-system
-  register: _ceph_csi_rbd_helm_info
+- name: Collect "ceph mon dump" output from a monitor
+  delegate_to: "{{ groups[ceph_provisioners_ceph_mon_group][0] }}"
+  run_once: true
+  ansible.builtin.command: ceph mon dump -f json
+  changed_when: false
+  register: _ceph_mon_dump
+
+- name: Generate fact with list of Ceph monitors
+  run_once: true
+  ansible.builtin.set_fact:
+    _ceph_provisioners_ceph_fsid: "{{ _ceph_mon_dump.stdout | from_json | community.general.json_query('fsid') }}"
+    _ceph_provisioners_ceph_monitors: |
+      {{
+        _ceph_provisioners_ceph_monitors | default([]) +
+          [{'ip': item}]
+      }}
+  loop: "{{ _ceph_mon_dump.stdout | from_json | community.general.json_query('mons[*].addr') | map('regex_replace', '(.*):(.*)', '\\1') }}"
 
 - name: Create Ceph service
   kubernetes.core.k8s:
@@ -41,15 +53,6 @@
           - name: metrics
             port: 9283
             targetPort: 9283
-
-- name: Generate Ceph endpoint list
-  ansible.builtin.set_fact:
-    _ceph_provisioners_ceph_monitors: |
-      {{
-        _ceph_provisioners_ceph_monitors | default([]) +
-          [{'ip': item}]
-      }}
-  loop: "{{ ceph_provisioners_ceph_monitors }}"
 
 - name: Create Ceph endpoints
   kubernetes.core.k8s:
