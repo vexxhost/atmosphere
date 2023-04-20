@@ -187,42 +187,41 @@
     openstack_helm_ingress_service_port: 9511
     openstack_helm_ingress_annotations: "{{ magnum_ingress_annotations }}"
 
+- name: Delete un-used job and PVC
+  run_once: true
+  kubernetes.core.k8s:
+    state: absent
+    definition:
+      - apiVersion: batch/v1
+        kind: Job
+        metadata:
+          name: magnum-registry-init
+          namespace: "{{ magnum_helm_release_namespace }}"
+      - apiVersion: v1
+        kind: PersistentVolumeClaim
+        metadata:
+          name: magnum-registry
+          namespace: "{{ magnum_helm_release_namespace }}"
+
 - name: Deploy magnum registry
   run_once: true
   kubernetes.core.k8s:
     state: present
     definition:
-      - apiVersion: v1
-        kind: PersistentVolumeClaim
-        metadata:
-          labels:
-            application: magnum
-            component: registry
-          name: magnum-registry
-          namespace: "{{ magnum_helm_release_namespace }}"
-        spec:
-          accessModes:
-            - ReadWriteOnce
-          resources:
-            requests:
-              storage: 50Gi
-
       - apiVersion: apps/v1
         kind: Deployment
         metadata:
+          name: magnum-registry
+          namespace: "{{ magnum_helm_release_namespace }}"
           labels:
             application: magnum
             component: registry
-          name: magnum-registry
-          namespace: "{{ magnum_helm_release_namespace }}"
         spec:
-          replicas: 1
+          replicas: 3
           selector:
             matchLabels:
               application: magnum
               component: registry
-          strategy:
-            type: Recreate
           template:
             metadata:
               labels:
@@ -231,15 +230,10 @@
             spec:
               containers:
                 - name: registry
-                  env:
-                    - name: REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY
-                      value: /var/lib/registry
-                    - name: REGISTRY_COMPATIBILITY_SCHEMA1_ENABLED
-                      value: "true"
                   image: "{{ atmosphere_images['magnum_registry'] | vexxhost.kubernetes.docker_image('ref') }}"
                   ports:
-                    - containerPort: 5000
-                      name: registry
+                    - name: registry
+                      containerPort: 5000
                       protocol: TCP
                   livenessProbe:
                     httpGet:
@@ -251,25 +245,19 @@
                       path: /
                       port: 5000
                       scheme: HTTP
-                  volumeMounts:
-                    - mountPath: /var/lib/registry
-                      name: magnum-registry
               nodeSelector:
                 openstack-control-plane: enabled
-              volumes:
-                - name: magnum-registry
-                  persistentVolumeClaim:
-                    claimName: magnum-registry
 
       - apiVersion: v1
         kind: Service
         metadata:
+          name: magnum-registry
+          namespace: "{{ magnum_helm_release_namespace }}"
           labels:
             application: magnum
             component: registry
-          name: magnum-registry
-          namespace: "{{ magnum_helm_release_namespace }}"
         spec:
+          type: ClusterIP
           ports:
             - name: magnum
               port: 5000
@@ -278,34 +266,6 @@
           selector:
             application: magnum
             component: registry
-          type: ClusterIP
-
-      - apiVersion: batch/v1
-        kind: Job
-        metadata:
-          name: magnum-registry-init
-          namespace: "{{ magnum_helm_release_namespace }}"
-          labels:
-            application: magnum
-            component: registry
-        spec:
-          backoffLimit: 5
-          template:
-            metadata:
-              labels:
-                application: magnum
-            spec:
-              restartPolicy: OnFailure
-              containers:
-                - name: loader
-                  image: "{{ atmosphere_images['magnum_api'] | vexxhost.kubernetes.docker_image('ref') }}"
-                  command:
-                    - magnum-cluster-api-image-loader
-                    - --insecure
-                    - --repository
-                    - magnum-registry.openstack.svc.cluster.local:5000
-              nodeSelector:
-                openstack-control-plane: enabled
 
 - name: Create magnum registry Ingress
   ansible.builtin.include_role:

@@ -126,7 +126,6 @@
       with_dict:
         kubernetes_hostname: 10.96.240.10
         kubernetes_keepalived_vrid: 42
-        kubernetes_keepalived_interface: ens3
         kubernetes_keepalived_vip: 10.96.240.10
 
     - name: Write new Kubernetes configuration file to disk
@@ -208,6 +207,7 @@
       #               service type in order to generate the URLs
       vars:
         default_map:
+          kube_prometheus_stack_grafana_host: "grafana.{{ domain_name }}"
           openstack_helm_endpoints_region_name: "{{ region_name }}"
           openstack_helm_endpoints_barbican_api_host: "key-manager.{{ domain_name }}"
           openstack_helm_endpoints_cinder_api_host: "volume.{{ domain_name }}"

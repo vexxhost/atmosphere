@@ -30,20 +30,56 @@ _kube_prometheus_stack_helm_values:
       nodeSelector: &node_selector
         openstack-control-plane: enabled
   grafana:
+    adminPassword: "{{ kube_prometheus_stack_grafana_admin_password }}"
     image:
       repository: "{{ atmosphere_images['grafana'] | vexxhost.kubernetes.docker_image('name') }}"
       tag: "{{ atmosphere_images['grafana'] | vexxhost.kubernetes.docker_image('tag') }}"
+    ingress:
+      enabled: true
+      ingressClassName: "{{ kube_prometheus_stack_grafana_ingress_class_name }}"
+      annotations:
+        cert-manager.io/cluster-issuer: atmosphere
+      hosts:
+        - "{{ kube_prometheus_stack_grafana_host }}"
+      tls:
+        - secretName: grafana-tls
+          hosts:
+            - "{{ kube_prometheus_stack_grafana_host }}"
     sidecar:
       image:
         repository: "{{ atmosphere_images['grafana_sidecar'] | vexxhost.kubernetes.docker_image('name') }}"
         tag: "{{ atmosphere_images['grafana_sidecar'] | vexxhost.kubernetes.docker_image('tag') }}"
+      datasources:
+        defaultDatasourceEnabled: false
     additionalDataSources:
+      - name: AlertManager
+        type: alertmanager
+        uid: alertmanager
+        url: '{% raw %}http://{{ printf "%s-alertmanager.%s" .Release.Name .Release.Namespace }}:9093{% endraw %}'
+        access: proxy
+        editable: false
+        jsonData:
+          implementation: prometheus
+          handleGrafanaManagedAlerts: true
+      - name: Prometheus
+        type: prometheus
+        uid: prometheus
+        url: '{% raw %}http://{{ printf "%s-prometheus.%s" .Release.Name .Release.Namespace }}:9090{% endraw %}'
+        access: proxy
+        isDefault: true
+        editable: false
+        jsonData:
+          timeInterval: 30s
+          alertmanagerUid: alertmanager
       - name: Loki
         type: loki
+        uid: loki
         access: proxy
         url: http://loki-gateway
         version: 1
         editable: false
+        jsonData:
+          alertmanagerUid: alertmanager
     serviceMonitor:
       relabelings: *relabelings_instance_to_pod_name
     nodeSelector: *node_selector
