@@ -16,25 +16,9 @@ name: ceph
 
 on:
   pull_request:
-    # paths:
-    #   - .github/workflows/csi.yml
-    #   - molecule/csi/**
-    #   - playbooks/csi.yml
-    #   - playbooks/kubernetes.yml
-    #   - roles/ceph_csi_rbd/**
-    #   - roles/csi/**
-    #   - galaxy.yml
   push:
     branches:
       - main
-    # paths:
-    #   - .github/workflows/csi.yml
-    #   - molecule/csi/**
-    #   - playbooks/csi.yml
-    #   - playbooks/kubernetes.yml
-    #   - roles/ceph_csi_rbd/**
-    #   - roles/csi/**
-    #   - galaxy.yml
 
 jobs:
   test:
@@ -64,8 +48,3 @@ jobs:
 
       - name: Run Molecule
         run: poetry run molecule test -s ceph
-
-      - name: Setup tmate session
-        if: ${{ failure() }}
-        uses: mxschmitt/action-tmate@v3
-        timeout-minutes: 120
