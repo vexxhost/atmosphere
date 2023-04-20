@@ -12,16 +12,4 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-kubernetes_node_labels_control_plane_group: controllers
-
-kubernetes_node_labels: |
-  {% set res = {} -%}
-  {% if inventory_hostname in groups['controllers'] %}
-  {%   set _ = res.update({'openstack-control-plane': 'enabled'}) %}
-  {%   set _ = res.update({'openvswitch': 'enabled'}) %}
-  {% endif %}
-  {% if inventory_hostname in groups['computes'] %}
-  {%   set _ = res.update({'openstack-compute-node': 'enabled'}) %}
-  {%   set _ = res.update({'openvswitch': 'enabled'}) %}
-  {% endif %}
-  {{ res }}
+- import_playbook: vexxhost.atmosphere.tempest
