@@ -16,11 +16,11 @@ kubernetes_node_labels_control_plane_group: controllers
 
 kubernetes_node_labels: |
   {% set res = {} -%}
-  {% if inventory_hostname in groups['controllers'] %}
+  {% if inventory_hostname in groups.get('controllers', []) %}
   {%   set _ = res.update({'openstack-control-plane': 'enabled'}) %}
   {%   set _ = res.update({'openvswitch': 'enabled'}) %}
   {% endif %}
-  {% if inventory_hostname in groups['computes'] %}
+  {% if inventory_hostname in groups.get('computes', []) %}
   {%   set _ = res.update({'openstack-compute-node': 'enabled'}) %}
   {%   set _ = res.update({'openvswitch': 'enabled'}) %}
   {% endif %}
