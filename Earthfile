@@ -29,3 +29,12 @@ pin-images:
   COPY build/pin-images.py /usr/local/bin/pin-images
   RUN /usr/local/bin/pin-images /defaults.yml /pinned.yml
   SAVE ARTIFACT /pinned.yml AS LOCAL roles/defaults/defaults/main.yml
+
+gh:
+  FROM alpine:3
+  RUN apk add --no-cache github-cli
+
+trigger-image-sync:
+  FROM +gh
+  ARG --required project
+  RUN --secret GITHUB_TOKEN gh workflow run --repo vexxhost/docker-openstack-${project} sync.yml
