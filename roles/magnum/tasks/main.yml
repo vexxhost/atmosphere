@@ -39,36 +39,6 @@
         name: "{{ magnum_helm_release_name }}"
         namespace: "{{ magnum_helm_release_namespace }}"
 
-- name: Install "clusterctl"
-  ansible.builtin.get_url:
-    url: "{{ magnum_clusterctl_url }}"
-    dest: /usr/local/bin/clusterctl
-    mode: "0755"
-    owner: root
-    group: root
-
-- name: Create a configuration file
-  ansible.builtin.copy:
-    content: "{{ magnum_clusterctl_config | to_nice_yaml }}"
-    dest: "{{ magnum_clusterctl_config_file }}"
-    mode: "0644"
-    owner: root
-    group: root
-
-- name: Initialize the management cluster
-  run_once: true
-  changed_when: false
-  ansible.builtin.command: |
-    clusterctl init \
-      --config {{ magnum_clusterctl_config_file }} \
-      --core cluster-api:v1.3.3 \
-      --bootstrap kubeadm:v1.3.3 \
-      --control-plane kubeadm:v1.3.3 \
-      --infrastructure openstack:v0.7.1
-  environment:
-    CLUSTER_TOPOLOGY: "true"
-    EXP_CLUSTER_RESOURCE_SET: "true"
-
 - name: Deploy Cluster API for Magnum RBAC
   kubernetes.core.k8s:
     state: present
