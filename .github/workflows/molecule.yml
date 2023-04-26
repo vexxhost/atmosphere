@@ -12,7 +12,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-name: ceph
+name: molecule
 
 on:
   pull_request:
@@ -23,6 +23,10 @@ on:
 jobs:
   test:
     runs-on: ubuntu-20.04-16-cores
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario: [ceph, magnum]
     steps:
       - name: Checkout project
         uses: actions/checkout@v3
@@ -47,4 +51,4 @@ jobs:
         run: sudo swapoff -a
 
       - name: Run Molecule
-        run: poetry run molecule test -s ceph
+        run: poetry run molecule test -s ${{ matrix.scenario }}
