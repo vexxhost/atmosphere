@@ -2,7 +2,8 @@ VERSION --use-copy-link 0.7
 FROM python:3.10
 
 poetry:
-  RUN pip3 install poetry
+  RUN pip3 install poetry==1.4.2
+  SAVE IMAGE --cache-hint
 
 build.wheels:
   FROM +poetry
