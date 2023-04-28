@@ -31,7 +31,9 @@ jobs:
       - name: Build image
         run: earthly +image --tag ${{ github.sha }}
         env:
+          EARTHLY_CI: true
           EARTHLY_PUSH: "${{ github.event_name == 'push' }}"
+          EARTHLY_REMOTE_CACHE: quay.io/vexxhost/atmosphere:cache
 
   publish:
     runs-on: ubuntu-latest
