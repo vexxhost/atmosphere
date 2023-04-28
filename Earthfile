@@ -51,7 +51,7 @@ image:
   ENV PATH=/venv/bin:$PATH
   ENTRYPOINT ["bash"]
   ARG tag=latest
-  SAVE IMAGE --push quay.io/vexxhost/atmosphere:${tag}
+  SAVE IMAGE --push ghcr.io/vexxhost/atmosphere:${tag}
 
 pin-images:
   FROM +build.venv.dev
