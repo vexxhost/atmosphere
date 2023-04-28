@@ -9,6 +9,10 @@ on:
     types:
       - published
 
+permissions:
+  packages: write
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -21,12 +25,12 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Authenticate to Quay.io
+      - name: Login to GitHub Container Registry
         uses: docker/login-action@v2
         with:
-          registry: quay.io
-          username: ${{ secrets.QUAY_USERNAME }}
-          password: ${{ secrets.QUAY_ROBOT_TOKEN }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build image
         run: earthly +image --tag ${{ github.sha }}
@@ -41,12 +45,12 @@ jobs:
     needs:
       - build
     steps:
-      - name: Authenticate to Quay.io
+      - name: Login to GitHub Container Registry
         uses: docker/login-action@v2
         with:
-          registry: quay.io
-          username: ${{ secrets.QUAY_USERNAME }}
-          password: ${{ secrets.QUAY_ROBOT_TOKEN }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Promote image
         uses: akhilerm/tag-push-action@v2.1.0
