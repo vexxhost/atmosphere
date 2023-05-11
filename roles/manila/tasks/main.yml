@@ -39,8 +39,15 @@
     openstack_helm_ingress_service_port: 8786
     openstack_helm_ingress_annotations: "{{ manila_ingress_annotations }}"
 
-- name: Remove volume quota limitations for service project
+- name: Update service tenant quotas
   openstack.cloud.quota:
+    cloud: atmosphere
+    # NOTE(okozachenko): It uses project name instead of id.
     name: service
+    instances: -1
+    cores: -1
+    ram: -1
     volumes: -1
     gigabytes: -1
+    security_group: -1
+    security_group_rule: -1
