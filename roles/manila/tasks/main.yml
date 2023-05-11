@@ -38,3 +38,9 @@
     openstack_helm_ingress_service_name: manila-api
     openstack_helm_ingress_service_port: 8786
     openstack_helm_ingress_annotations: "{{ manila_ingress_annotations }}"
+
+- name: Remove volume quota limitations for service project
+  openstack.cloud.quota:
+    name: service
+    volumes: -1
+    gigabytes: -1
