@@ -69,6 +69,30 @@
     CLUSTER_TOPOLOGY: "true"
     EXP_CLUSTER_RESOURCE_SET: "true"
 
+
+# NOTE(okozachenko1203): We should get rid of this task eventually as it is removing
+#               the old RBAC resources.
+- name: Remove the legacy mcapi RBAC resources
+  run_once: true
+  block:
+    - name: Remove the Role
+      failed_when: false
+      kubernetes.core.k8s:
+        state: absent
+        api_version: rbac.authorization.k8s.io/v1
+        kind: Role
+        name: magnum-cluster-api
+        namespace: magnum-system
+
+    - name: Remove the RoleBinding
+      failed_when: false
+      kubernetes.core.k8s:
+        state: absent
+        api_version: rbac.authorization.k8s.io/v1
+        kind: RoleBinding
+        name: magnum-cluster-api
+        namespace: magnum-system
+
 - name: Deploy Cluster API for Magnum RBAC
   kubernetes.core.k8s:
     state: present
