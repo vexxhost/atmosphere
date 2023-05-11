@@ -159,6 +159,13 @@
               severity: 'warning',
             },
           },
+          {
+            alert: 'NodeNonLTSKernel',
+            expr: 'node_uname_info{release!~"^5.(4|15).*"}',
+            labels: {
+              severity: 'warning',
+            },
+          },
         ],
       },
       {
