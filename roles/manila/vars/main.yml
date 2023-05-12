@@ -55,6 +55,10 @@ _manila_helm_values:
         service_instance_flavor_id: "{{ _manila_flavor.id }}"
       oslo_messaging_no tifications:
         driver: noop
+      # NOTE(okozachenko1203): We can remove it once
+      # https://review.opendev.org/c/openstack/openstack-helm/+/883066 is merged
+      keystone_authtoken:
+        service_type: sharev2
   manifests:
     ingress_api: false
     service_ingress_api: false

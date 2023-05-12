@@ -39,6 +39,10 @@ _neutron_helm_values:
         driver: noop
       service_providers:
         service_provider: VPN:strongswan:neutron_vpnaas.services.vpn.service_drivers.ipsec.IPsecVPNDriver:default
+      # NOTE(okozachenko1203): We can remove it once
+      # https://review.opendev.org/c/openstack/openstack-helm/+/883066 is merged
+      keystone_authtoken:
+        service_type: network
     dhcp_agent:
       DEFAULT:
         dnsmasq_dns_servers: "{{ neutron_coredns_cluster_ip | default('10.96.0.20') }}"
