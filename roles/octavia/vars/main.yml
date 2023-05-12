@@ -106,6 +106,10 @@ _octavia_helm_values:
       health_manager:
         controller_ip_port_list: "{{ _octavia_controller_ip_port_list | sort | join(',') }}"
         heartbeat_key: "{{ octavia_heartbeat_key }}"
+      keystone_authtoken:
+        # NOTE(okozachenko1203): We can remove it once the following is merged:
+        #                        https://review.opendev.org/883066
+        service_type: load-balancer
       oslo_messaging_notifications:
         driver: noop
       neutron:
@@ -114,10 +118,6 @@ _octavia_helm_values:
         endpoint_type: internalURL
       service_auth:
         endpoint_type: internalURL
-      # NOTE(okozachenko1203): We can remove it once
-      # https://review.opendev.org/c/openstack/openstack-helm/+/883066 is merged
-      keystone_authtoken:
-        service_type: load-balancer
   manifests:
     ingress_api: false
     service_ingress_api: false

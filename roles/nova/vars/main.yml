@@ -80,16 +80,16 @@ _nova_helm_values:
         max_instances_per_host: 200
       glance:
         enable_rbd_download: true
+      keystone_authtoken:
+        # NOTE(okozachenko1203): We can remove it once the following is merged:
+        #                        https://review.opendev.org/883066
+        service_type: compute
       neutron:
         metadata_proxy_shared_secret: "{{ openstack_helm_endpoints['compute_metadata']['secret'] }}"
       oslo_messaging_notifications:
         driver: noop
       scheduler:
         workers: 8
-      # NOTE(okozachenko1203): We can remove it once
-      # https://review.opendev.org/c/openstack/openstack-helm/+/883066 is merged
-      keystone_authtoken:
-        service_type: compute
     nova_ironic:
       DEFAULT:
         log_config_append: null

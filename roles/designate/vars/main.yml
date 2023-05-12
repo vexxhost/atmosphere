@@ -18,12 +18,12 @@ _designate_helm_values:
     tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('designate') }}"
   conf:
     designate:
+      keystone_authtoken:
+        # NOTE(okozachenko1203): We can remove it once the following is merged:
+        #                        https://review.opendev.org/883066
+        service_type: dns
       service:central:
         managed_resource_tenant_id: "{{ _designate_project_info.openstack_projects[0].id }}"
-      # NOTE(okozachenko1203): We can remove it once
-      # https://review.opendev.org/c/openstack/openstack-helm/+/883066 is merged
-      keystone_authtoken:
-        service_type: dns
     pools: "{{ designate_pools | to_yaml }}"
   pod:
     replicas:
