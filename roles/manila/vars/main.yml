@@ -53,6 +53,10 @@ _manila_helm_values:
         path_to_public_key: /etc/manila/ssh-keys/id_rsa.pub
         service_image_name: "{{ manila_image_name }}"
         service_instance_flavor_id: "{{ _manila_flavor.id }}"
+      keystone_authtoken:
+        # NOTE(okozachenko1203): We can remove it once the following is merged:
+        #                        https://review.opendev.org/883066
+        service_type: sharev2
       oslo_messaging_no tifications:
         driver: noop
   manifests:

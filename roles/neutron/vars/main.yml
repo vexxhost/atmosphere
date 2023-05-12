@@ -37,6 +37,10 @@ _neutron_helm_values:
         live_migration_events: true
       oslo_messaging_notifications:
         driver: noop
+      keystone_authtoken:
+        # NOTE(okozachenko1203): We can remove it once the following is merged:
+        #                        https://review.opendev.org/883066
+        service_type: network
       service_providers:
         service_provider: VPN:strongswan:neutron_vpnaas.services.vpn.service_drivers.ipsec.IPsecVPNDriver:default
     dhcp_agent:
