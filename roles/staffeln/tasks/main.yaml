@@ -21,3 +21,11 @@
     create_namespace: true
     kubeconfig: /etc/kubernetes/admin.conf
     values: "{{ _staffeln_helm_values | combine(staffeln_helm_values, recursive=True) }}"
+
+- name: Create Ingress
+  ansible.builtin.include_role:
+    name: openstack_helm_ingress
+  vars:
+    openstack_helm_ingress_endpoint: staffeln
+    openstack_helm_ingress_service_name: staffeln-api
+    openstack_helm_ingress_service_port: 8808

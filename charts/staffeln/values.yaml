@@ -17,6 +17,9 @@
 
 ---
 labels:
+  api:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
   conductor:
     node_selector_key: openstack-control-plane
     node_selector_value: enabled
@@ -41,6 +44,7 @@ images:
     #staffeln_db_sync: docker.io/openstackhelm/staffeln:wallaby-ubuntu_focal
     staffeln_db_sync: docker.io/rico/staffeln:latest
     db_drop: docker.io/openstackhelm/heat:wallaby-ubuntu_focal
+    staffeln_api: docker.io/rico/staffeln-api:latest
     staffeln_conductor: docker.io/rico/staffeln:latest
     image_repo_sync: docker.io/docker:17.07.0
   pull_policy: "IfNotPresent"
@@ -56,6 +60,9 @@ pod:
       pod:
         runAsUser: 42424
       container:
+        staffeln_api:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
         staffeln_conductor:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -82,6 +89,11 @@ pod:
           operator: Exists
           effect: NoSchedule
   mounts:
+    staffeln_api:
+      init_container: null
+      staffeln_api:
+        volumeMounts:
+        volumes:
     staffeln_conductor:
       init_container: null
       staffeln_conductor:
@@ -102,6 +114,7 @@ pod:
         volumeMounts:
         volumes:
   replicas:
+    api: 1
     conductor: 1
   lifecycle:
     upgrades:
@@ -112,10 +125,19 @@ pod:
           max_unavailable: 1
           max_surge: 3
     disruption_budget:
+      api:
+        min_available: 0
       conductor:
         min_available: 0
   resources:
     enabled: false
+    api:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "1024Mi"
+        cpu: "2000m"
     conductor:
       requests:
         memory: "128Mi"
@@ -167,6 +189,20 @@ pod:
           memory: "1024Mi"
           cpu: "2000m"
 
+network:
+  api:
+    ingress:
+      public: false
+      classes:
+        namespace: "nginx"
+        cluster: "nginx-cluster"
+      annotations:
+        nginx.ingress.kubernetes.io/rewrite-target: /
+    external_policy_local: false
+    node_port:
+      enabled: false
+      port: 8808
+
 network_policy:
   staffeln:
     ingress:
@@ -188,6 +224,14 @@ dependencies:
           - endpoint: node
             service: local_image_registry
   static:
+    api:
+      jobs:
+        - staffeln-db-sync
+      services:
+        - endpoint: internal
+          service: oslo_db
+        - endpoint: internal
+          service: identity
     conductor:
       jobs:
         - staffeln-db-sync
@@ -350,6 +394,23 @@ endpoints:
       api:
         default: 80
         internal: 5000
+  staffeln:
+    name: staffeln
+    hosts:
+      default: staffeln-api
+      public: staffeln
+    host_fqdn_override:
+      default: null
+    path:
+      default: '/v1'
+    scheme:
+      default: http
+      service: http
+    port:
+      api:
+        default: 8808
+        public: 80
+        service: 8808
   oslo_db:
     auth:
       admin:
@@ -433,13 +494,17 @@ manifests:
   certificates: false
   configmap_bin: true
   configmap_etc: true
+  deployment_api: true
   deployment_conductor: true
   job_bootstrap: true
   job_db_init: true
   job_db_sync: true
   job_db_drop: false
   job_image_repo_sync: true
+  pdb_api: true
   secret_db: true
   network_policy: false
   secret_registry: true
+  service_ingress_api: true
+  service_api: true
 ...
