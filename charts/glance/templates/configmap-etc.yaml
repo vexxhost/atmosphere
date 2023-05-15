@@ -55,6 +55,10 @@ limitations under the License.
 {{- $_ := set .Values.conf.glance.keystone_authtoken "memcache_secret_key" ( default ( randAlphaNum 64 ) .Values.endpoints.oslo_cache.auth.memcache_secret_key ) -}}
 {{- end -}}
 
+{{- if not .Values.conf.paste }}
+{{- $_ := set $envAll.Values.conf.glance.paste_deploy "config_file" "/var/lib/openstack/etc/glance/glance-api-paste.ini" -}}
+{{- end }}
+
 {{- if empty .Values.conf.glance.database.connection -}}
 {{- $connection := tuple "oslo_db" "internal" "glance" "mysql" . | include "helm-toolkit.endpoints.authenticated_endpoint_uri_lookup" -}}
 {{- if .Values.manifests.certificates -}}
@@ -142,7 +146,9 @@ data:
   rally_tests.yaml: {{ toYaml .Values.conf.rally_tests.tests | b64enc }}
   glance-api.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.glance | b64enc }}
   logging.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.logging | b64enc }}
+  {{- if .Values.conf.paste }}
   glance-api-paste.ini: {{ include "helm-toolkit.utils.to_ini" .Values.conf.paste | b64enc }}
+  {{- end }}
   policy.yaml: {{ toYaml .Values.conf.policy | b64enc }}
   api_audit_map.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.api_audit_map | b64enc }}
   glance_sudoers: {{ $envAll.Values.conf.glance_sudoers | b64enc }}

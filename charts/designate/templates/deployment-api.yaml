@@ -84,10 +84,12 @@ spec:
               mountPath: /etc/designate/designate.conf
               subPath: designate.conf
               readOnly: true
+            {{- if .Values.conf.paste }}
             - name: designate-etc
               mountPath: /etc/designate/api-paste.ini
               subPath: api-paste.ini
               readOnly: true
+            {{- end }}
             - name: designate-etc
               mountPath: /etc/designate/policy.yaml
               subPath: policy.yaml
