@@ -31,3 +31,34 @@
     glance_image_url: "{{ manila_image_url }}"
     glance_image_container_format: "{{ manila_image_container_format }}"
     glance_image_disk_format: "{{ manila_image_disk_format }}"
+
+- name: Create generic share driver security group
+  openstack.cloud.security_group:
+    cloud: atmosphere
+    name: manila-service-security-group
+    project: service
+  register: _manila_service_security_group
+
+- name: Create generic share driver security group tcp rules
+  openstack.cloud.security_group_rule:
+    cloud: atmosphere
+    security_group: "{{ _manila_service_security_group.id }}"
+    direction: ingress
+    ethertype: IPv4
+    protocol: tcp
+    project: service
+    port_range_min: "{{ item }}"
+    port_range_max: "{{ item }}"
+  loop:
+    - 22
+    - 111
+    - 2049
+
+- name: Create generic share driver security group icmp rules
+  openstack.cloud.security_group_rule:
+    cloud: atmosphere
+    security_group: "{{ _manila_service_security_group.id }}"
+    direction: ingress
+    ethertype: IPv4
+    protocol: icmp
+    project: service
