@@ -66,10 +66,6 @@ limitations under the License.
 {{- end -}}
 {{- end }}
 
-{{- if not .Values.conf.paste }}
-{{- $_ := set $envAll.Values.conf.neutron.DEFAULT "api_paste_config" "/var/lib/openstack/etc/neutron/api-paste.ini" -}}
-{{- end }}
-
 {{- if empty $envAll.Values.conf.neutron.DEFAULT.transport_url -}}
 {{- $_ := tuple "oslo_messaging" "internal" "neutron" "amqp" . | include "helm-toolkit.endpoints.authenticated_transport_endpoint_uri_lookup" | set $envAll.Values.conf.neutron.DEFAULT "transport_url" -}}
 {{- end }}
@@ -283,9 +279,7 @@ metadata:
 type: Opaque
 data:
   rally_tests.yaml: {{ toYaml $envAll.Values.conf.rally_tests.tests | b64enc }}
-  {{- if .Values.conf.paste }}
   api-paste.ini: {{ include "helm-toolkit.utils.to_ini" $envAll.Values.conf.paste | b64enc }}
-  {{- end }}
   policy.yaml: {{ toYaml $envAll.Values.conf.policy | b64enc }}
   neutron.conf: {{ include "helm-toolkit.utils.to_oslo_conf" $envAll.Values.conf.neutron | b64enc }}
   logging.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.logging | b64enc }}

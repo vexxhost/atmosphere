@@ -71,6 +71,10 @@ limitations under the License.
 {{- $_ := set .Values.conf.magnum.trust "trustee_domain_admin_password" .Values.endpoints.identity.auth.magnum_stack_user.password -}}
 {{- end -}}
 
+{{- if not .Values.conf.paste }}
+{{- $_ := set $envAll.Values.conf.magnum.api "api_paste_config" "/var/lib/openstack/etc/magnum/api-paste.ini" -}}
+{{- end }}
+
 {{- if and (empty .Values.conf.logging.handler_fluent) (has "fluent" .Values.conf.logging.handlers.keys) -}}
 {{- $fluentd_host := tuple "fluentd" "internal" $envAll | include "helm-toolkit.endpoints.hostname_namespaced_endpoint_lookup" }}
 {{- $fluentd_port := tuple "fluentd" "internal" "service" $envAll | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
@@ -92,6 +96,8 @@ type: Opaque
 data:
   magnum.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.magnum | b64enc }}
   logging.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.logging | b64enc }}
+  {{- if .Values.conf.paste }}
   api-paste.ini: {{ include "helm-toolkit.utils.to_ini" .Values.conf.paste | b64enc }}
+  {{- end }}
   policy.yaml: {{ toYaml .Values.conf.policy | b64enc }}
 {{- end }}

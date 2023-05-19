@@ -210,10 +210,12 @@ spec:
               subPath: {{ base .Values.conf.glance.DEFAULT.log_config_append }}
               readOnly: true
             {{- end }}
+            {{- if .Values.conf.paste }}
             - name: glance-etc
               mountPath: /etc/glance/glance-api-paste.ini
               subPath: glance-api-paste.ini
               readOnly: true
+            {{- end }}
             - name: glance-etc
               mountPath: /etc/glance/policy.yaml
               subPath: policy.yaml
