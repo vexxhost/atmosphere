@@ -16,25 +16,12 @@ limitations under the License.
 
 set -ex
 
-IFS=','
-for KEY_TYPE in $KEY_TYPES; do
-    KEY_PATH=/etc/ssh/ssh_host_${KEY_TYPE}_key
-    if [[ ! -f "${KEY_PATH}" ]]; then
-        ssh-keygen -q -t ${KEY_TYPE} -f ${KEY_PATH} -N ""
-    fi
-done
-IFS=''
+chown ${NEUTRON_USER_UID} /var/lib/neutron/openstack-helm
 
-subnet_address="{{- .Values.network.ssh.from_subnet -}}"
-cat > /tmp/sshd_config_extend <<EOF
-PasswordAuthentication no
-Match Address $subnet_address
-    PermitRootLogin without-password
+{{- if and ( empty .Values.conf.neutron.DEFAULT.host ) ( .Values.pod.use_fqdn.neutron_agent ) }}
+mkdir -p /tmp/pod-shared
+tee > /tmp/pod-shared/neutron-agent.ini << EOF
+[DEFAULT]
+host = $(hostname --fqdn)
 EOF
-cat /tmp/sshd_config_extend >> /etc/ssh/sshd_config
-
-rm /tmp/sshd_config_extend
-
-mkdir -p /run/sshd
-
-exec /usr/sbin/sshd -D -e -o Port=$SSH_PORT
+{{- end }}

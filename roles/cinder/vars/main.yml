@@ -21,12 +21,6 @@ _cinder_helm_values:
       api: 3
       scheduler: 3
   conf:
-    paste:
-      composite:openstack_volume_api_v3:
-        use: call:cinder.api.middleware.auth:pipeline_factory
-        noauth: cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler noauth apiv3
-        keystone: cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler authtoken keystonecontext apiv3
-        keystone_nolimit: cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler authtoken keystonecontext apiv3
     cinder:
       DEFAULT:
         allowed_direct_url_schemes: cinder

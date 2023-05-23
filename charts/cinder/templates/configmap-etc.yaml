@@ -72,6 +72,10 @@ limitations under the License.
 {{- $_ := set $envAll.Values.conf.cinder.nova "password" $envAll.Values.endpoints.identity.auth.cinder.password -}}
 {{- end -}}
 
+{{- if not .Values.conf.paste }}
+{{- $_ := set $envAll.Values.conf.cinder.DEFAULT "api_paste_config" "/var/lib/openstack/etc/cinder/api-paste.ini" -}}
+{{- end }}
+
 {{- if empty .Values.conf.cinder.database.connection -}}
 {{- $connection := tuple "oslo_db" "internal" "cinder" "mysql" . | include "helm-toolkit.endpoints.authenticated_endpoint_uri_lookup" -}}
 {{- if .Values.manifests.certificates -}}
@@ -167,7 +171,9 @@ data:
   cinder.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.cinder | b64enc }}
   logging.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.logging | b64enc }}
   backends.conf: {{ include "helm-toolkit.utils.to_ini" .Values.conf.backends | b64enc }}
+  {{- if .Values.conf.paste }}
   api-paste.ini: {{ include "helm-toolkit.utils.to_ini" .Values.conf.paste | b64enc }}
+  {{- end }}
   policy.yaml: {{ toYaml .Values.conf.policy | b64enc }}
 {{- if .Values.manifests.certificates }}
 {{- include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conf.mpm_event "key" "mpm_event.conf" "format" "Secret" ) | indent 2 }}

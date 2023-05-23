@@ -55,9 +55,9 @@ images:
     cinder_scheduler: docker.io/openstackhelm/cinder:wallaby-ubuntu_focal
     cinder_volume: docker.io/openstackhelm/cinder:wallaby-ubuntu_focal
     cinder_volume_usage_audit: docker.io/openstackhelm/cinder:wallaby-ubuntu_focal
-    cinder_storage_init: docker.io/openstackhelm/ceph-config-helper:latest-ubuntu_bionic
+    cinder_storage_init: docker.io/openstackhelm/ceph-config-helper:latest-ubuntu_focal
     cinder_backup: docker.io/openstackhelm/cinder:wallaby-ubuntu_focal
-    cinder_backup_storage_init: docker.io/openstackhelm/ceph-config-helper:latest-ubuntu_bionic
+    cinder_backup_storage_init: docker.io/openstackhelm/ceph-config-helper:latest-ubuntu_focal
     dep_check: quay.io/airshipit/kubernetes-entrypoint:v1.0.0
     image_repo_sync: docker.io/docker:17.07.0
   pull_policy: "IfNotPresent"
@@ -181,6 +181,9 @@ pod:
       enabled: false
       tolerations:
       - key: node-role.kubernetes.io/master
+        operator: Exists
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/control-plane
         operator: Exists
         effect: NoSchedule
   useHostNetwork:
@@ -430,60 +433,7 @@ ceph_client:
       global: null
       osd: null
 conf:
-  paste:
-    composite:osapi_volume:
-      use: call:cinder.api:root_app_factory
-      /: apiversions
-      /v1: openstack_volume_api_v1
-      /v2: openstack_volume_api_v2
-      /v3: openstack_volume_api_v3
-    composite:openstack_volume_api_v1:
-      use: call:cinder.api.middleware.auth:pipeline_factory
-      noauth: cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler noauth apiv1
-      keystone: cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler authtoken audit keystonecontext apiv1
-      keystone_nolimit: cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler authtoken audit keystonecontext apiv1
-    composite:openstack_volume_api_v2:
-      use: call:cinder.api.middleware.auth:pipeline_factory
-      noauth: cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler noauth apiv2
-      keystone: cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler authtoken audit keystonecontext apiv2
-      keystone_nolimit: cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler authtoken audit keystonecontext apiv2
-    composite:openstack_volume_api_v3:
-      use: call:cinder.api.middleware.auth:pipeline_factory
-      noauth: cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler noauth apiv3
-      keystone: cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler authtoken audit keystonecontext apiv3
-      keystone_nolimit: cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler authtoken audit keystonecontext apiv3
-    filter:request_id:
-      paste.filter_factory: oslo_middleware.request_id:RequestId.factory
-    filter:http_proxy_to_wsgi:
-      paste.filter_factory: oslo_middleware.http_proxy_to_wsgi:HTTPProxyToWSGI.factory
-    filter:cors:
-      paste.filter_factory: oslo_middleware.cors:filter_factory
-      oslo_config_project: cinder
-    filter:faultwrap:
-      paste.filter_factory: cinder.api.middleware.fault:FaultWrapper.factory
-    filter:osprofiler:
-      paste.filter_factory: osprofiler.web:WsgiMiddleware.factory
-    filter:noauth:
-      paste.filter_factory: cinder.api.middleware.auth:NoAuthMiddleware.factory
-    filter:sizelimit:
-      paste.filter_factory: oslo_middleware.sizelimit:RequestBodySizeLimiter.factory
-    app:apiv1:
-      paste.app_factory: cinder.api.v1.router:APIRouter.factory
-    app:apiv2:
-      paste.app_factory: cinder.api.v2.router:APIRouter.factory
-    app:apiv3:
-      paste.app_factory: cinder.api.v3.router:APIRouter.factory
-    pipeline:apiversions:
-      pipeline: cors http_proxy_to_wsgi faultwrap osvolumeversionapp
-    app:osvolumeversionapp:
-      paste.app_factory: cinder.api.versions:Versions.factory
-    filter:keystonecontext:
-      paste.filter_factory: cinder.api.middleware.auth:CinderKeystoneContext.factory
-    filter:authtoken:
-      paste.filter_factory: keystonemiddleware.auth_token:filter_factory
-    filter:audit:
-      paste.filter_factory: keystonemiddleware.audit:filter_factory
-      audit_map_file: /etc/cinder/api_audit_map.conf
+  paste: {}
   policy: {}
   api_audit_map:
     DEFAULT:
@@ -826,6 +776,7 @@ conf:
       auth_version: v3
       auth_type: password
       memcache_security_strategy: ENCRYPT
+      service_type: volumev3
     nova:
       auth_type: password
       auth_version: v3

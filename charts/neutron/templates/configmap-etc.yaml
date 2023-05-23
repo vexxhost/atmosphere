@@ -66,6 +66,10 @@ limitations under the License.
 {{- end -}}
 {{- end }}
 
+{{- if not .Values.conf.paste }}
+{{- $_ := set $envAll.Values.conf.neutron.DEFAULT "api_paste_config" "/var/lib/openstack/etc/neutron/api-paste.ini" -}}
+{{- end }}
+
 {{- if empty $envAll.Values.conf.neutron.DEFAULT.transport_url -}}
 {{- $_ := tuple "oslo_messaging" "internal" "neutron" "amqp" . | include "helm-toolkit.endpoints.authenticated_transport_endpoint_uri_lookup" | set $envAll.Values.conf.neutron.DEFAULT "transport_url" -}}
 {{- end }}
@@ -279,14 +283,15 @@ metadata:
 type: Opaque
 data:
   rally_tests.yaml: {{ toYaml $envAll.Values.conf.rally_tests.tests | b64enc }}
+  {{- if .Values.conf.paste }}
   api-paste.ini: {{ include "helm-toolkit.utils.to_ini" $envAll.Values.conf.paste | b64enc }}
+  {{- end }}
   policy.yaml: {{ toYaml $envAll.Values.conf.policy | b64enc }}
   neutron.conf: {{ include "helm-toolkit.utils.to_oslo_conf" $envAll.Values.conf.neutron | b64enc }}
   logging.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.logging | b64enc }}
   api_audit_map.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.api_audit_map | b64enc }}
   dhcp_agent.ini: {{ include "helm-toolkit.utils.to_oslo_conf" $envAll.Values.conf.dhcp_agent | b64enc }}
   l3_agent.ini: {{ include "helm-toolkit.utils.to_oslo_conf" $envAll.Values.conf.l3_agent | b64enc }}
-  metadata_agent.ini: {{ include "helm-toolkit.utils.to_oslo_conf" $envAll.Values.conf.metadata_agent | b64enc }}
   metering_agent.ini: {{ default "\"\"" (include "helm-toolkit.utils.to_oslo_conf" $envAll.Values.conf.metering_agent | b64enc) }}
   taas_plugin.ini: {{ default "\"\"" (include "helm-toolkit.utils.to_oslo_conf" $envAll.Values.conf.taas_plugin | b64enc) }}
   ml2_conf.ini: {{ include "helm-toolkit.utils.to_oslo_conf" $envAll.Values.conf.plugins.ml2_conf | b64enc }}
@@ -307,6 +312,12 @@ data:
   auto_bridge_add: {{ toJson $envAll.Values.conf.auto_bridge_add | b64enc }}
   dpdk.conf: {{ toJson $envAll.Values.conf.ovs_dpdk | b64enc }}
   update_dpdk_bond_config: {{ $envAll.Values.conf.ovs_dpdk.update_dpdk_bond_config | toString | b64enc }}
+{{- if ( has "ovn" .Values.network.backend ) }}
+  ovn_metadata_agent.ini: {{ include "helm-toolkit.utils.to_oslo_conf" $envAll.Values.conf.ovn_metadata_agent | b64enc }}
+{{- else }}
+  metadata_agent.ini: {{ include "helm-toolkit.utils.to_oslo_conf" $envAll.Values.conf.metadata_agent | b64enc }}
+{{- end }}
+
 {{-  if .Values.manifests.certificates }}
 {{- include "helm-toolkit.snippets.values_template_renderer" ( dict "envAll" $envAll "template" .Values.conf.nginx "key" "nginx.conf" "format" "Secret" ) | indent 2 }}
 {{- end }}

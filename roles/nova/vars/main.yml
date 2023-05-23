@@ -41,11 +41,6 @@ _nova_helm_values:
   conf:
     ceph:
       enabled: "{{ atmosphere_ceph_enabled | default(true) | bool }}"
-    paste:
-      composite:openstack_compute_api_v21:
-        keystone: cors http_proxy_to_wsgi compute_req_id faultwrap sizelimit authtoken keystonecontext osapi_compute_app_v21
-      composite:openstack_compute_api_v21_legacy_v2_compatible:
-        keystone: cors http_proxy_to_wsgi compute_req_id faultwrap sizelimit authtoken keystonecontext legacy_v2_compatible osapi_compute_app_v21
     nova:
       DEFAULT:
         allow_resize_to_same_host: true
