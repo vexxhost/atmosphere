@@ -51,7 +51,7 @@ image:
   ENV PATH=/venv/bin:$PATH
   RUN \
     apt-get update && \
-    apt-get install --no-install-recommends -y openssh-client && \
+    apt-get install --no-install-recommends -y rsync openssh-client && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
   ENTRYPOINT ["/bin/bash"]
