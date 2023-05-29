@@ -48,7 +48,23 @@ parameters:
     type: boolean
     default: false
 
-  instance_type:
+  bastion_instance_type:
+    type: string
+    constraints:
+      - custom_constraint: nova.flavor
+
+  controller_instance_type:
+    default: v3-standard-16
+    type: string
+    constraints:
+      - custom_constraint: nova.flavor
+
+  compute_instance_type:
+    type: string
+    constraints:
+      - custom_constraint: nova.flavor
+
+  storage_instance_type:
     type: string
     constraints:
       - custom_constraint: nova.flavor
@@ -129,7 +145,7 @@ resources:
       name: bastion
       index: -1
       image: { get_param: image }
-      instance_type: { get_param: instance_type }
+      instance_type: { get_param: bastion_instance_type }
       key_name: { get_resource: key_pair }
       internal_network: { get_resource: internal_network }
       public_network: { get_param: public_network }
@@ -149,7 +165,7 @@ resources:
           name: ctl
           index: "%index%"
           image: { get_param: image }
-          instance_type: { get_param: instance_type }
+          instance_type: { get_param: controller_instance_type }
           key_name: { get_resource: key_pair }
           internal_network: { get_resource: internal_network }
           public_network: { get_param: public_network }
@@ -169,7 +185,7 @@ resources:
           name: nvme
           index: "%index%"
           image: { get_param: image }
-          instance_type: { get_param: instance_type }
+          instance_type: { get_param: storage_instance_type }
           key_name: { get_resource: key_pair }
           internal_network: { get_resource: internal_network }
           public_network: { get_param: public_network }
@@ -191,7 +207,7 @@ resources:
           name: kvm
           index: "%index%"
           image: { get_param: image }
-          instance_type: { get_param: instance_type }
+          instance_type: { get_param: compute_instance_type }
           key_name: { get_resource: key_pair }
           internal_network: { get_resource: internal_network }
           public_network: { get_param: public_network }
