@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.4.0](https://github.com/vexxhost/atmosphere/compare/v1.3.2...v1.4.0) (2023-05-30)
+
+
+### Features
+
+* unify all monitoring via grafana ([cc14968](https://github.com/vexxhost/atmosphere/commit/cc149687e96e3487f10d4eae59fdebc2192ac988))
+
+
+### Bug Fixes
+
+* Add NodeNonLTSKernel alert ([#404](https://github.com/vexxhost/atmosphere/issues/404)) ([403a42a](https://github.com/vexxhost/atmosphere/commit/403a42a7d64c6960001144c563cd7c6f4d259222))
+* add reader as accepted rgw role ([#390](https://github.com/vexxhost/atmosphere/issues/390)) ([733ec32](https://github.com/vexxhost/atmosphere/commit/733ec32ef7b2edaaa665edb60f8226be6aa732d1))
+* **auth:** Define service_type in keystone_authtoken ([#411](https://github.com/vexxhost/atmosphere/issues/411)) ([72f64dc](https://github.com/vexxhost/atmosphere/commit/72f64dc7f1c32b2fc21bf76563d87cd57137de60))
+* **manila:** Remove volume quota limitations for service project ([#407](https://github.com/vexxhost/atmosphere/issues/407)) ([b32ceda](https://github.com/vexxhost/atmosphere/commit/b32cedaf172faac125671f2c8eca6c8d32d3d99c))
+* **neutron:** sync paste config ([c0022be](https://github.com/vexxhost/atmosphere/commit/c0022be5bef9f12f829e222c52f68b92eb905afd))
+* **nova:** Remove nova bootstrap job ([#422](https://github.com/vexxhost/atmosphere/issues/422)) ([f5adeb5](https://github.com/vexxhost/atmosphere/commit/f5adeb5c7c33cbd715d02b34ed1b72c98b7cd1f2))
+* Remove vsphere_csi role ([ae673a9](https://github.com/vexxhost/atmosphere/commit/ae673a93efb49b017cb8e116b826575842874928))
+
 ## [1.3.2](https://github.com/vexxhost/atmosphere/compare/v1.3.1...v1.3.2) (2023-04-13)
 
 
