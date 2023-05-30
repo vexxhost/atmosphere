@@ -46,8 +46,23 @@ environment variables to tweak the behaviour of the Heat stack that is created:
 * `ATMOSPHERE_IMAGE`: The name or UUID of the image to be used for deploying the
   instances (defaults to `Ubuntu 20.04.3 LTS (x86_64) [2021-10-04]`).
 
-* `ATMOSPHERE_INSTANCE_TYPE`: The instance type used to deploy all of the
-  different instances (defaults to `v3-standard-4`).
+* `ATMOSPHERE_INSTANCE_TYPE`(Deprecated): The instance type used to deploy all of the
+  different instances.(It doesn't have its own default value.)
+  This has been deprecated from v1.4.0. You can configure the instance type per a
+  machine role using `ATMOSPHERE_CONTROLLER_INSTANCE_TYPE`,
+  `ATMOSPHERE_COMPUTE_INSTANCE_TYPE`, and `ATMOSPHERE_STORAGE_INSTANCE_TYPE`
+  variables. For backwards compatibility, if variables specific to the machine roles
+  are not set and `ATMOSPHERE_INSTANCE_TYPE` is set, `ATMOSPHERE_INSTANCE_TYPE` value
+  is used.
+
+* `ATMOSPHERE_CONTROLLER_INSTANCE_TYPE`: The instance type used to deploy controller
+  instances (defaults to `v3-standard-16`).
+
+* `ATMOSPHERE_COMPUTE_INSTANCE_TYPE`: The instance type used to deploy compute
+  instances (defaults to `v3-standard-4`).
+
+* `ATMOSPHERE_STORAGE_INSTANCE_TYPE`: The instance type used to deploy storage
+  instances (defaults to `v3-standard-4`).
 
 * `ATMOSPHERE_NAMESERVERS`: A comma-separated list of nameservers to be used for
   the instances (defaults to `1.1.1.1`).
