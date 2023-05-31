@@ -54,7 +54,7 @@ image:
     apt-get install --no-install-recommends -y rsync openssh-client && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
-  ENTRYPOINT ["/bin/bash"]
+  ENTRYPOINT ["/bin/bash", "-l", "-c"]
   ARG tag=latest
   SAVE IMAGE --push ghcr.io/vexxhost/atmosphere:${tag}
 
