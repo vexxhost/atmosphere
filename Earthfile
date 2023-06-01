@@ -60,10 +60,10 @@ image:
 
 pin-images:
   FROM +build.venv.dev
-  COPY roles/defaults/defaults/main.yml /defaults.yml
+  COPY roles/defaults/vars/main.yml /defaults.yml
   COPY build/pin-images.py /usr/local/bin/pin-images
   RUN /usr/local/bin/pin-images /defaults.yml /pinned.yml
-  SAVE ARTIFACT /pinned.yml AS LOCAL roles/defaults/defaults/main.yml
+  SAVE ARTIFACT /pinned.yml AS LOCAL roles/defaults/vars/main.yml
 
 gh:
   FROM alpine:3
