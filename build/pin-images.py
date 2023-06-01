@@ -43,8 +43,8 @@ def main():
     yaml = YAML(typ="rt")
     data = yaml.load(args.src)
 
-    for image in data["atmosphere_images"].ca.items:
-        token = data["atmosphere_images"].ca.get(image, 2).value
+    for image in data["_atmosphere_images"].ca.items:
+        token = data["_atmosphere_images"].ca.get(image, 2).value
         if not token.startswith("# image-source: "):
             LOG.info("Skipping image %s", image)
             continue
@@ -53,7 +53,7 @@ def main():
         pinned_image = get_pinned_image(image_src)
 
         LOG.info("Pinning image %s from %s to %s", image, image_src, pinned_image)
-        data["atmosphere_images"][image] = pinned_image
+        data["_atmosphere_images"][image] = pinned_image
 
     yaml.dump(data, args.dst)
 
