@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.5.0](https://github.com/vexxhost/atmosphere/compare/v1.4.0...v1.5.0) (2023-06-02)
+
+
+### Features
+
+* Bump magnum-capi version to support manila CSI ([65556a0](https://github.com/vexxhost/atmosphere/commit/65556a0c0f81ac437ca95fa5a15a1bd6d3b7e293))
+
+
+### Bug Fixes
+
+* drop entrypoint for images ([ebc3afb](https://github.com/vexxhost/atmosphere/commit/ebc3afb4a0fc7946cc1b98db84458995aedffd77))
+* Fix barbican the paste api paste config path for uwsgi ([acb2604](https://github.com/vexxhost/atmosphere/commit/acb2604e14f39fb5ff9bd4c0cb9038e6bf4ee04c))
+* **manila:** update before install dependencies ([a586ec5](https://github.com/vexxhost/atmosphere/commit/a586ec52673a0cf0dba85ccf8e22aa8927cfd1ec))
+* **molecule:** Fix double lookup in pipe ([d50c2a8](https://github.com/vexxhost/atmosphere/commit/d50c2a8f381e3c92408e7c829af68757c9e419f6))
+* **nova:** Set barbican_endpoint_type as internal ([6120249](https://github.com/vexxhost/atmosphere/commit/612024966a263558854c3f4658c69968d99c6094))
+* solve entrypoint for images ([51d72dc](https://github.com/vexxhost/atmosphere/commit/51d72dc9d9fc76af473bd1fdca1f997a96a11687))
+
 ## [1.4.0](https://github.com/vexxhost/atmosphere/compare/v1.3.2...v1.4.0) (2023-05-30)
 
 
