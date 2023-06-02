@@ -45,6 +45,7 @@ var PIP_PACKAGES map[string]string = map[string]string{
 	"monasca-agent": "libvirt-python python-glanceclient python-neutronclient python-novaclient py3nvml",
 	"neutron":       "neutron-vpnaas",
 	"placement":     "httplib2",
+	"tempest":       "git+https://github.com/openstack/barbican-tempest-plugin.git git+https://github.com/openstack/cinder-tempest-plugin.git git+https://github.com/openstack/heat-tempest-plugin.git git+https://github.com/openstack/keystone-tempest-plugin.git git+https://github.com/openstack/neutron-tempest-plugin.git",
 }
 var PLATFORMS map[string]string = map[string]string{
 	"nova":    "linux/amd64,linux/arm64",
