@@ -30,7 +30,7 @@ __neutron_helm_values:
         log_config_append: null
         rpc_workers: 8
         service_plugins: qos,router,segments,trunk,vpnaas
-        external_dns_driver: designate
+        external_dns_driver: "{{ _neutron_external_dns_driver | default(omit) }}"
       cors:
         allowed_origin: "*"
       nova:
