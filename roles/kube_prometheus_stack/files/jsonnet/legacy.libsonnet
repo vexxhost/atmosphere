@@ -169,6 +169,24 @@
         ],
       },
       {
+        name: 'network',
+        rules: [
+          {
+            alert: 'NodeNetworkMulticast',
+            expr: 'rate(node_network_receive_multicast_total[1m]) > 1000',
+            'for': '5m',
+            labels: {
+              severity: 'critical',
+            },
+            annotations: {
+              summary: 'High multicast traffic on node {{ $labels.instance }}: {{ $value }} packets/sec',
+              description: 'This can result in high software interrupt load on the node which can bring network performance down.',
+              runbook_url: 'https://github.com/vexxhost/atmosphere/tree/main/roles/kube_prometheus_stack#NodeNetworkMulticast'
+            },
+          },
+        ],
+      },
+      {
         name: 'softnet',
         rules: [
           {

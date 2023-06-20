@@ -113,7 +113,35 @@ you can also verify that the heartbeat is listed as _ACTIVE_.
 
 ## Alerts
 
-### `etcdDatabaseHighFragmentationRatio`
+### Network
+
+#### `NodeNetworkMulticast`
+
+This alert is triggered when a node is receiving large volumes of multicast
+traffic which can be a sign of a misconfigured network or a malicious actor.
+
+This can result in high CPU usage on the node and can cause the node to become
+unresponsive.  Also, it can be the cause of a very high amount of software
+interrupts on the node.
+
+In order to find the root cause of this issue, you can use the following
+commands:
+
+```console
+iftop -ni $DEV -f 'multicast and not broadcast'
+```
+
+With the command above, you're able to see which IP addresses are sending the
+multicast traffic.  Once you have the IP address, you can use the following
+command to find the server behind it:
+
+```console
+openstack server list --all-projects --long -n --ip $IP
+```
+
+### etcd
+
+#### `etcdDatabaseHighFragmentationRatio`
 
 ```console
 kubectl -n kube-system exec svc/kube-prometheus-stack-kube-etcd -- \
