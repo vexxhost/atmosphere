@@ -172,11 +172,27 @@
         name: 'softnet',
         rules: [
           {
+            alert: 'NodeSoftNetBacklogLength',
+            expr: 'sum(node_softnet_backlog_len) by (instance) > 5000',
+            'for': '1m',
+            labels: {
+              severity: 'critical',
+            },
+          },
+          {
             alert: 'NodeSoftNetDrops',
             expr: 'sum(rate(node_softnet_dropped_total[1m])) by (instance) != 0',
             'for': '1m',
             labels: {
               severity: 'critical',
+            },
+          },
+          {
+            alert: 'NodeSoftNetTimesSqueezed',
+            expr: 'sum(rate(node_softnet_times_squeezed_total[1m])) by (instance) > 10',
+            'for': '10m',
+            labels: {
+              severity: 'warning',
             },
           },
         ],
