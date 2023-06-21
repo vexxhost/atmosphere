@@ -59,7 +59,9 @@ jobs:
 
       # Enable tmate debugging of manually-triggered workflows if the input option was provided
       - name: Setup tmate session
+        if: ${{ failure() }}
         uses: mxschmitt/action-tmate@v3
+        timeout-minutes: 60
 
       - name: Run Molecule Destroy
         run: poetry run molecule destroy -s ceph
