@@ -27,6 +27,15 @@ This will be merged with the default values for the chart.
 To provide the most secure baseline configuration possible, `ingress-nginx`
 defaults to using TLS 1.2 and 1.3 only, with a [secure set of TLS ciphers](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#ssl-ciphers).
 
+### Checking TLS Version and Ciphers
+
+In order to check the TLS version and ciphers used by the ingress controller,
+you can use the [sslscan](https://github.com/rbsec/sslscan) tool:
+
+```console
+$ sslscan dashboard.cloud.example.com
+```
+
 ### Legacy TLS
 
 The default configuration, though secure, does not support some older browsers
