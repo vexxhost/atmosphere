@@ -1,5 +1,13 @@
 # Atmosphere
 
+## Community
+
+If you have any questions and discussions about Atmosphere, you can join the
+community:
+
+* [`#atmosphere`](https://kubernetes.slack.com/archives/C056YSPJB7U) channel
+  on the Kubernetes Slack.
+
 ## Quick Start
 
 The quick start intends to provide the most near-production experience possible,
