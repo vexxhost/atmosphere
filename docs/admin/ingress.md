@@ -32,8 +32,8 @@ defaults to using TLS 1.2 and 1.3 only, with a [secure set of TLS ciphers](https
 In order to check the TLS version and ciphers used by the ingress controller,
 you can use the [sslscan](https://github.com/rbsec/sslscan) tool:
 
-```console
-$ sslscan dashboard.cloud.example.com
+```sh
+sslscan dashboard.cloud.example.com
 ```
 
 ### Legacy TLS
