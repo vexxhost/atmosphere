@@ -120,7 +120,7 @@ PLACEMENT_VERSION=0.3.2
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/placement-${PLACEMENT_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-OPEN_VSWITCH_VERSION=0.1.10
+OPEN_VSWITCH_VERSION=0.1.14
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm-infra/openvswitch-${OPEN_VSWITCH_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
