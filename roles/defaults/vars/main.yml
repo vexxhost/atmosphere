@@ -97,10 +97,10 @@ _atmosphere_images:
   local_path_provisioner: docker.io/rancher/local-path-provisioner:v0.0.24
   loki: docker.io/grafana/loki:2.7.3
   loki_gateway: docker.io/nginxinc/nginx-unprivileged:1.19-alpine
-  magnum_api: quay.io/vexxhost/magnum@sha256:c3900fd5845d3ac6e95a8c8f48cdeaac880152482b80deff41be2bb4718670cd # image-source: quay.io/vexxhost/magnum:zed
-  magnum_cluster_api_proxy: quay.io/vexxhost/magnum@sha256:c3900fd5845d3ac6e95a8c8f48cdeaac880152482b80deff41be2bb4718670cd # image-source: quay.io/vexxhost/magnum:zed
-  magnum_conductor: quay.io/vexxhost/magnum@sha256:c3900fd5845d3ac6e95a8c8f48cdeaac880152482b80deff41be2bb4718670cd # image-source: quay.io/vexxhost/magnum:zed
-  magnum_db_sync: quay.io/vexxhost/magnum@sha256:c3900fd5845d3ac6e95a8c8f48cdeaac880152482b80deff41be2bb4718670cd # image-source: quay.io/vexxhost/magnum:zed
+  magnum_api: quay.io/vexxhost/magnum-cluster-api@sha256:c452dad4d6ffb04e0fd40a8a77b2d4f542d5ed110cdebb9aec191cdc3dd067e4 # image-source: quay.io/vexxhost/magnum-cluster-api:zed
+  magnum_cluster_api_proxy: quay.io/vexxhost/magnum-cluster-api@sha256:c452dad4d6ffb04e0fd40a8a77b2d4f542d5ed110cdebb9aec191cdc3dd067e4 # image-source: quay.io/vexxhost/magnum-cluster-api:zed
+  magnum_conductor: quay.io/vexxhost/magnum-cluster-api@sha256:c452dad4d6ffb04e0fd40a8a77b2d4f542d5ed110cdebb9aec191cdc3dd067e4 # image-source: quay.io/vexxhost/magnum-cluster-api:zed
+  magnum_db_sync: quay.io/vexxhost/magnum-cluster-api@sha256:c452dad4d6ffb04e0fd40a8a77b2d4f542d5ed110cdebb9aec191cdc3dd067e4 # image-source: quay.io/vexxhost/magnum-cluster-api:zed
   magnum_registry: docker.io/library/registry:2.7.1
   manila_api: quay.io/vexxhost/manila@sha256:78a258f0a632b0778d91767c4ec7b6f84e6ef1de7cf1e51e726374caa295b8f6 # image-source: quay.io/vexxhost/manila:zed
   manila_data: quay.io/vexxhost/manila@sha256:78a258f0a632b0778d91767c4ec7b6f84e6ef1de7cf1e51e726374caa295b8f6 # image-source: quay.io/vexxhost/manila:zed
@@ -183,4 +183,5 @@ _atmosphere_images:
   tempest_run_tests: us-docker.pkg.dev/vexxhost-infra/openstack/tempest:30.1.0-4
   vector: docker.io/timberio/vector:0.27.0-debian
 
-atmosphere_images: "{{ _atmosphere_images | combine(atmosphere_image_overrides, recursive=True) }}"
+atmosphere_images: '{{ _atmosphere_images | combine(atmosphere_image_overrides, recursive=True)
+  }}'
