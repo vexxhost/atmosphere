@@ -20,18 +20,7 @@ exec:
 {{- define "ovsAgentLivenessProbeTemplate" }}
 exec:
   command:
-    - python
-    - /tmp/health-probe.py
-    - --config-file
-    - /etc/neutron/neutron.conf
-    - --config-file
-    - /etc/neutron/plugins/ml2/openvswitch_agent.ini
-    - --agent-queue-name
-    - q-agent-notifier-tunnel-update
-    - --liveness-probe
-{{- if .Values.pod.use_fqdn.neutron_agent }}
-    - --use-fqdn
-{{- end }}
+    - /tmp/neutron-openvswitch-agent-liveness.sh
 {{- end }}
 
 {{- define "neutron.ovs_agent.daemonset" }}
@@ -104,6 +93,24 @@ spec:
             - name: pci-devices
               mountPath: /sys/bus/pci/devices
 {{- end }}
+        - name: netoffload
+{{ tuple $envAll "netoffload" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ dict "envAll" $envAll "application" "neutron_ovs_agent" "container" "netoffload" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - /tmp/neutron-openvswitch-agent-init-netoffload.sh
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: neutron-bin
+              mountPath: /tmp/neutron-openvswitch-agent-init-netoffload.sh
+              subPath: neutron-openvswitch-agent-init-netoffload.sh
+              readOnly: true
+            - name: neutron-etc
+              mountPath: /tmp/netoffload
+              subPath: netoffload
+              readOnly: true
+            - name: run
+              mountPath: /run
         - name: neutron-ovs-agent-init
 {{ tuple $envAll "neutron_openvswitch_agent" | include "helm-toolkit.snippets.image" | indent 10 }}
 {{ tuple $envAll $envAll.Values.pod.resources.agent.ovs | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
@@ -211,6 +218,10 @@ spec:
             - name: neutron-bin
               mountPath: /tmp/neutron-openvswitch-agent-readiness.sh
               subPath: neutron-openvswitch-agent-readiness.sh
+              readOnly: true
+            - name: neutron-bin
+              mountPath: /tmp/neutron-openvswitch-agent-liveness.sh
+              subPath: neutron-openvswitch-agent-liveness.sh
               readOnly: true
             - name: neutron-bin
               mountPath: /tmp/health-probe.py
