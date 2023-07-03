@@ -16,18 +16,7 @@ limitations under the License.
 
 set -ex
 
-if [ "x" == "x${PROVISIONER_INTERFACE}" ]; then
-  echo "Provisioner interface is not set"
-  exit 1
-fi
-
-function net_pxe_addr {
- ip addr | awk "/inet / && /${PROVISIONER_INTERFACE}/{print \$2; exit }"
-}
-function net_pxe_ip {
- echo $(net_pxe_addr) | awk -F '/' '{ print $1; exit }'
-}
-PXE_IP=$(net_pxe_ip)
+PXE_IP=$(cat /tmp/pod-shared/IRONIC_PORT_IP)
 
 if [ "x" == "x${PXE_IP}" ]; then
   echo "Could not find IP for pxe to bind to"

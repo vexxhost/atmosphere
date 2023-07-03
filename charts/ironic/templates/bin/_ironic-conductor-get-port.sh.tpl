@@ -1,6 +1,8 @@
 #!/bin/bash
 
 {{/*
+Copyright 2023 VEXXHOST, Inc.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -16,17 +18,13 @@ limitations under the License.
 
 set -ex
 
-PXE_IP=$(cat /tmp/pod-shared/IRONIC_PORT_IP)
+HOSTNAME=$(hostname -s)
+PORTNAME=ironic-$HOSTNAME
 
-if [ "x" == "x${PXE_IP}" ]; then
-  echo "Could not find IP for pxe to bind to"
-  exit 1
-fi
+IRONIC_PORT_ID=$(openstack port show $PORTNAME -c id -f value)
+IRONIC_PORT_IP=$(openstack port show $PORTNAME -c fixed_ips -f value | sed -n "s/.*'ip_address': '\([^']*\)'.*/\1/p")
+IRONIC_PORT_MAC=$(openstack port show $PORTNAME -c mac_address -f value)
 
-ln -s /var/lib/openstack-helm/tftpboot /tftpboot
-exec /usr/sbin/in.tftpd \
-  --verbose \
-  --foreground \
-  --user root \
-  --address ${PXE_IP}:69 \
-  --map-file /tftp-map-file /tftpboot
+echo $IRONIC_PORT_ID > /tmp/pod-shared/IRONIC_PORT_ID
+echo $IRONIC_PORT_IP > /tmp/pod-shared/IRONIC_PORT_IP
+echo $IRONIC_PORT_MAC > /tmp/pod-shared/IRONIC_PORT_MAC

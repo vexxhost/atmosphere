@@ -46,6 +46,36 @@
   environment:
     OS_CLOUD: atmosphere
 
+- name: Upload images
+  ansible.builtin.include_role:
+    name: glance_image
+  loop:
+    - name: "{{ ironic_python_agent_deploy_kernel_name }}"
+      url: "{{ ironic_python_agent_deploy_kernel_url }}"
+      format: aki
+    - name: "{{ ironic_python_agent_deploy_ramdisk_name }}"
+      url: "{{ ironic_python_agent_deploy_ramdisk_url }}"
+      format: ari
+  vars:
+    glance_image_name: "{{ item.name }}"
+    glance_image_url: "{{ item.url }}"
+    glance_image_container_format: "{{ item.format }}"
+    glance_image_disk_format: "{{ item.format }}"
+
+- name: Get details on the kernel image
+  run_once: true
+  openstack.cloud.image_info:
+    cloud: atmosphere
+    image: "{{ ironic_python_agent_deploy_kernel_name }}"
+  register: ironic_python_agent_deploy_kernel
+
+- name: Get details on the ramdisk image
+  run_once: true
+  openstack.cloud.image_info:
+    cloud: atmosphere
+    image: "{{ ironic_python_agent_deploy_ramdisk_name }}"
+  register: ironic_python_agent_deploy_ramdisk
+
 - name: Deploy Helm chart
   run_once: true
   kubernetes.core.helm:

@@ -46,12 +46,14 @@ images:
     ks_endpoints: docker.io/openstackhelm/heat:wallaby-ubuntu_focal
     rabbit_init: docker.io/rabbitmq:3.7-management
     ironic_api: docker.io/openstackhelm/ironic:wallaby-ubuntu_focal
+    ironic_dhclient: ghcr.io/vexxhost/dhclient:latest
     ironic_conductor: docker.io/openstackhelm/ironic:wallaby-ubuntu_focal
     ironic_pxe: docker.io/openstackhelm/ironic:wallaby-ubuntu_focal
     ironic_pxe_init: docker.io/openstackhelm/ironic:wallaby-ubuntu_focal
     ironic_pxe_http: docker.io/nginx:1.13.3
     dep_check: quay.io/airshipit/kubernetes-entrypoint:v1.0.0
     image_repo_sync: docker.io/docker:17.07.0
+    openvswitch_vswitchd: docker.io/openstackhelm/openvswitch:latest-ubuntu_focal
   pull_policy: "IfNotPresent"
   local_registry:
     active: false
@@ -64,6 +66,9 @@ conf:
     override:
     append:
   policy: {}
+  dhclient: |
+    request subnet-mask,broadcast-address,interface-mtu;
+    do-forward-updates false;
   tftp_map_file: |
     re ^(/tftpboot/) /tftpboot/\2
     re ^/tftpboot/ /tftpboot/
@@ -124,7 +129,7 @@ conf:
     neutron:
       auth_type: password
     pxe:
-      pxe_append_params: "nofb nomodeset vga=normal ipa-debug=1"
+      kernel_append_params: "nofb nomodeset vga=normal ipa-insecure=1 systemd.journald.forward_to_console=yes"
       images_path: /var/lib/openstack-helm/ironic/images
       instance_master_path: /var/lib/openstack-helm/ironic/master_images
       pxe_config_template: $pybasedir/drivers/modules/ipxe_config.template
@@ -136,6 +141,7 @@ conf:
       ipxe_enabled: true
     service_catalog:
       auth_type: password
+      valid_interfaces: public
     swift:
       auth_url: null
     oslo_policy:
@@ -203,7 +209,7 @@ conf:
 
 network:
   pxe:
-    device: ironic-pxe
+    device: ironic0
     neutron_network_name: baremetal
     neutron_subnet_name: baremetal
     neutron_provider_network: ironic

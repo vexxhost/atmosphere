@@ -59,6 +59,41 @@ spec:
       dnsPolicy: ClusterFirstWithHostNet
       initContainers:
 {{ tuple $envAll "conductor" $mounts_ironic_conductor_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+        - name: ironic-conductor-get-port
+{{ tuple $envAll "bootstrap" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.conductor | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+          env:
+{{- with $env := dict "ksUserSecret" ( index $envAll.Values.secrets.identity "admin" ) }}
+{{- include "helm-toolkit.snippets.keystone_openrc_env_vars" $env | indent 12 }}
+{{- end }}
+          command:
+            - /tmp/ironic-conductor-get-port.sh
+          volumeMounts:
+            - name: pod-shared
+              mountPath: /tmp/pod-shared
+            - name: ironic-bin
+              mountPath: /tmp/ironic-conductor-get-port.sh
+              subPath: ironic-conductor-get-port.sh
+              readOnly: true
+        - name: ironic-conductor-nic-init
+{{ tuple $envAll "openvswitch_vswitchd" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.conductor | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+          securityContext:
+            runAsUser: 0
+            capabilities:
+              add:
+                - NET_ADMIN
+          command:
+            - /tmp/ironic-conductor-nic-init.sh
+          volumeMounts:
+            - name: pod-shared
+              mountPath: /tmp/pod-shared
+            - name: ironic-bin
+              mountPath: /tmp/ironic-conductor-nic-init.sh
+              subPath: ironic-conductor-nic-init.sh
+              readOnly: true
+            - name: host-run
+              mountPath: /run
         - name: ironic-conductor-pxe-init
 {{ tuple $envAll "ironic_pxe_init" | include "helm-toolkit.snippets.image" | indent 10 }}
 {{ tuple $envAll $envAll.Values.pod.resources.conductor | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
@@ -76,9 +111,6 @@ spec:
         - name: ironic-conductor-init
 {{ tuple $envAll "ironic_conductor" | include "helm-toolkit.snippets.image" | indent 10 }}
 {{ tuple $envAll $envAll.Values.pod.resources.conductor | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
-          env:
-            - name: PROVISIONER_INTERFACE
-              value: {{ .Values.network.pxe.device }}
           command:
             - /tmp/ironic-conductor-init.sh
           volumeMounts:
@@ -93,9 +125,6 @@ spec:
         - name: ironic-conductor-http-init
 {{ tuple $envAll "ironic_conductor" | include "helm-toolkit.snippets.image" | indent 10 }}
 {{ tuple $envAll $envAll.Values.pod.resources.conductor | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
-          env:
-            - name: PROVISIONER_INTERFACE
-              value: {{ .Values.network.pxe.device }}
           command:
             - /tmp/ironic-conductor-http-init.sh
           volumeMounts:
@@ -155,6 +184,23 @@ spec:
               mountPath: /tmp/pod-shared
 {{- end }}
       containers:
+        - name: dhclient
+{{ tuple $envAll "ironic_dhclient" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.dhclient | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+          securityContext:
+            privileged: true
+          command:
+            - dhclient
+            - -d
+            - -v
+            - -cf
+            - /tmp/dhclient.conf
+            - {{ .Values.network.pxe.device }}
+          volumeMounts:
+            - name: ironic-etc
+              mountPath: /etc/dhclient.conf
+              subPath: dhclient.conf
+              readOnly: true
         - name: ironic-conductor
 {{ tuple $envAll "ironic_conductor" | include "helm-toolkit.snippets.image" | indent 10 }}
 {{ tuple $envAll $envAll.Values.pod.resources.conductor | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
@@ -203,14 +249,13 @@ spec:
 {{ tuple $envAll $envAll.Values.pod.resources.conductor | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
           securityContext:
             privileged: true
-          env:
-            - name: PROVISIONER_INTERFACE
-              value: {{ .Values.network.pxe.device }}
           command:
             - /tmp/ironic-conductor-pxe.sh
           volumeMounts:
             - name: pod-tmp
               mountPath: /tmp
+            - name: pod-shared
+              mountPath: /tmp/pod-shared
             - name: ironic-bin
               mountPath: /tmp/ironic-conductor-pxe.sh
               subPath: ironic-conductor-pxe.sh

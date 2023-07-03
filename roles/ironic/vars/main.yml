@@ -45,6 +45,11 @@ _ironic_helm_values:
     ironic:
       DEFAULT:
         log_config_append: null
+        enabled_network_interfaces: flat,neutron
+        default_network_interface: flat
+      conductor:
+        deploy_kernel: "{{ ironic_python_agent_deploy_kernel.openstack_image.id }}"
+        deploy_ramdisk: "{{ ironic_python_agent_deploy_ramdisk.openstack_image.id }}"
       neutron:
         cleaning_network: "{{ ironic_bare_metal_network.name }}"
         inspection_network: "{{ ironic_bare_metal_network.name }}"
