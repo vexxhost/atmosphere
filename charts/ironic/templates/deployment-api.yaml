@@ -1,0 +1,159 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- if .Values.manifests.deployment_api }}
+{{- $envAll := . }}
+
+{{- $mounts_ironic_api := .Values.pod.mounts.ironic_api.ironic_api }}
+{{- $mounts_ironic_api_init := .Values.pod.mounts.ironic_api.init_container }}
+
+{{- $serviceAccountName := "ironic-api" }}
+{{ tuple $envAll "api" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ironic-api
+  annotations:
+    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
+  labels:
+{{ tuple $envAll "ironic" "api" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+spec:
+  replicas: {{ .Values.pod.replicas.api }}
+  selector:
+    matchLabels:
+{{ tuple $envAll "ironic" "api" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 6 }}
+{{ tuple $envAll | include "helm-toolkit.snippets.kubernetes_upgrades_deployment" | indent 2 }}
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll "ironic" "api" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+      annotations:
+{{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
+        configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
+        configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
+    spec:
+      serviceAccountName: {{ $serviceAccountName }}
+      affinity:
+{{ tuple $envAll "ironic" "api" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
+      nodeSelector:
+        {{ .Values.labels.api.node_selector_key }}: {{ .Values.labels.api.node_selector_value }}
+{{ if $envAll.Values.pod.tolerations.ironic.enabled }}
+{{ tuple $envAll "ironic" | include "helm-toolkit.snippets.kubernetes_tolerations" | indent 10 }}
+{{ end }}
+      terminationGracePeriodSeconds: {{ .Values.pod.lifecycle.termination_grace_period.api.timeout | default "30" }}
+      initContainers:
+{{ tuple $envAll "api" $mounts_ironic_api_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+{{- if and (.Values.bootstrap.object_store.enabled) (.Values.bootstrap.object_store.openstack.enabled) }}
+        - name: ironic-retrive-swift-config
+{{ tuple $envAll "ironic_retrive_swift_config" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.conductor | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+          env:
+            - name: OS_SWIFT_API_VERSION
+              value: {{ .Values.conf.ironic.glance.swift_api_version | quote }}
+{{- with $env := dict "ksUserSecret" .Values.secrets.identity.glance }}
+{{- include "helm-toolkit.snippets.keystone_openrc_env_vars" $env | indent 12 }}
+{{- end }}
+          command:
+            - /tmp/retreive-swift-config.sh
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: ironic-bin
+              mountPath: /tmp/retreive-swift-config.sh
+              subPath: retreive-swift-config.sh
+              readOnly: true
+            - name: pod-shared
+              mountPath: /tmp/pod-shared
+{{- end }}
+{{- if and (.Values.bootstrap.network.enabled) (.Values.bootstrap.network.openstack.enabled) }}
+        - name: ironic-retrive-cleaning-net
+{{ tuple $envAll "ironic_retrive_cleaning_network" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.conductor | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+          env:
+{{- with $env := dict "ksUserSecret" .Values.secrets.identity.ironic }}
+{{- include "helm-toolkit.snippets.keystone_openrc_env_vars" $env | indent 12 }}
+{{- end }}
+{{ include "helm-toolkit.utils.to_k8s_env_vars" $envAll.Values.network.pxe | indent 12 }}
+          command:
+            - /tmp/retreive-cleaning-network.sh
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: ironic-bin
+              mountPath: /tmp/retreive-cleaning-network.sh
+              subPath: retreive-cleaning-network.sh
+              readOnly: true
+            - name: pod-shared
+              mountPath: /tmp/pod-shared
+{{- end }}
+      containers:
+        - name: ironic-api
+{{ tuple $envAll "ironic_api" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.api | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+          command:
+            - /tmp/ironic-api.sh
+            - start
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - /tmp/ironic-api.sh
+                  - stop
+          ports:
+            - containerPort: {{ tuple "baremetal" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+          readinessProbe:
+            httpGet:
+              scheme: {{ tuple "baremetal" "internal" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_scheme_lookup" | upper }}
+              path: /
+              port: {{ tuple "baremetal" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: ironic-bin
+              mountPath: /tmp/ironic-api.sh
+              subPath: ironic-api.sh
+              readOnly: true
+            - name: ironic-etc
+              mountPath: /etc/ironic/ironic.conf
+              subPath: ironic.conf
+              readOnly: true
+            {{- if .Values.conf.ironic.DEFAULT.log_config_append }}
+            - name: ironic-etc
+              mountPath: {{ .Values.conf.ironic.DEFAULT.log_config_append }}
+              subPath: {{ base .Values.conf.ironic.DEFAULT.log_config_append }}
+              readOnly: true
+            {{- end }}
+            - name: ironic-etc
+              mountPath: /etc/ironic/policy.yaml
+              subPath: policy.yaml
+              readOnly: true
+            - name: pod-shared
+              mountPath: /tmp/pod-shared
+{{ if $mounts_ironic_api.volumeMounts }}{{ toYaml $mounts_ironic_api.volumeMounts | indent 12 }}{{ end }}
+      volumes:
+        - name: pod-tmp
+          emptyDir: {}
+        - name: ironic-bin
+          configMap:
+            name: ironic-bin
+            defaultMode: 0555
+        - name: ironic-etc
+          secret:
+            secretName: ironic-etc
+            defaultMode: 0444
+        - name: pod-shared
+          emptyDir: {}
+{{ if $mounts_ironic_api.volumes }}{{ toYaml $mounts_ironic_api.volumes | indent 8 }}{{ end }}
+{{- end }}

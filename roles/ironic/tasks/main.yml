@@ -1,0 +1,66 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Create bare metal network
+  when: ironic_bare_metal_network_manage | bool
+  ansible.builtin.import_tasks: network/create.yml
+
+- name: Lookup existing bare metal network
+  when: not (ironic_bare_metal_network_manage | bool)
+  ansible.builtin.import_tasks: network/lookup.yml
+
+- name: Create bare metal network ports
+  # noqa: args[module]
+  openstack.cloud.port:
+    cloud: atmosphere
+    name: "ironic-{{ inventory_hostname_short }}"
+    device_owner: ironic:conductor
+    network: "{{ ironic_bare_metal_network.id }}"
+    fixed_ips: >-
+      {{
+        [
+          {
+            "ip_address": ironic_bare_metal_network_ip
+          }
+        ]
+        if ironic_bare_metal_network_ip is defined else omit
+      }}
+
+- name: Set binding for ports
+  changed_when: false
+  ansible.builtin.shell: |
+    openstack port set \
+      --host {{ ansible_fqdn }} \
+      ironic-{{ inventory_hostname_short }}
+  environment:
+    OS_CLOUD: atmosphere
+
+- name: Deploy Helm chart
+  run_once: true
+  kubernetes.core.helm:
+    name: "{{ ironic_helm_release_name }}"
+    chart_ref: "{{ ironic_helm_chart_ref }}"
+    release_namespace: "{{ ironic_helm_release_namespace }}"
+    create_namespace: true
+    kubeconfig: /etc/kubernetes/admin.conf
+    values: "{{ _ironic_helm_values | combine(ironic_helm_values, recursive=True) }}"
+
+- name: Create Ingress
+  ansible.builtin.include_role:
+    name: openstack_helm_ingress
+  vars:
+    openstack_helm_ingress_endpoint: baremetal
+    openstack_helm_ingress_service_name: ironic-api
+    openstack_helm_ingress_service_port: 6385
+    openstack_helm_ingress_annotations: "{{ ironic_ingress_annotations }}"

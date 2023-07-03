@@ -1,0 +1,65 @@
+# Copyright (c) 2023 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+_ironic_helm_values:
+  endpoints: "{{ openstack_helm_endpoints }}"
+  images:
+    tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('ironic') }}"
+  bootstrap:
+    image:
+      enabled: false
+    network:
+      enabled: false
+    object_store:
+      enabled: false
+  dependencies:
+    static:
+      api:
+        jobs:
+          - ironic-db-sync
+          - ironic-ks-user
+          - ironic-ks-endpoints
+          - ironic-rabbit-init
+          # NOTE(mnaser): We're managing all the networks via Ansible.
+          # - ironic-manage-cleaning-network
+      conductor:
+        jobs:
+          - ironic-db-sync
+          - ironic-ks-user
+          - ironic-ks-endpoints
+          - ironic-rabbit-init
+          # NOTE(mnaser): We're managing all the networks via Ansible.
+          # - ironic-manage-cleaning-network
+  conf:
+    ironic:
+      DEFAULT:
+        log_config_append: null
+      neutron:
+        cleaning_network: "{{ ironic_bare_metal_network.name }}"
+        inspection_network: "{{ ironic_bare_metal_network.name }}"
+        provisioning_network: "{{ ironic_bare_metal_network.name }}"
+        rescuing_network: "{{ ironic_bare_metal_network.name }}"
+  pod:
+    affinity:
+      anti:
+        type:
+          conductor: requiredDuringSchedulingIgnoredDuringExecution
+    replicas:
+      api: 3
+      conductor: 3
+  manifests:
+    ingress_api: false
+    service_ingress_api: false
+    # NOTE(mnaser): We're managing all the networks via Ansible.
+    job_manage_cleaning_network: false
