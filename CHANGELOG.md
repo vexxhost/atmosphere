@@ -1,5 +1,35 @@
 # Changelog
 
+## [1.6.0](https://github.com/vexxhost/atmosphere/compare/v1.5.0...v1.6.0) (2023-07-03)
+
+
+### Features
+
+* **ci:** Add a debug job for molecule ceph workflow ([4371e49](https://github.com/vexxhost/atmosphere/commit/4371e49bb5d48892843b3e4acc7113ba570e76fc))
+* native asap2 integration ([#458](https://github.com/vexxhost/atmosphere/issues/458)) ([a720f88](https://github.com/vexxhost/atmosphere/commit/a720f88e1ad0ef616f47524be00b758902ec1f6d))
+
+
+### Bug Fixes
+
+* actually bump mcapi to 0.7.2 ([dfa3766](https://github.com/vexxhost/atmosphere/commit/dfa3766ef022db58e089f6215e151d301d474529))
+* added NodeNetworkMulticast ([4a761bb](https://github.com/vexxhost/atmosphere/commit/4a761bb547197144bc7d0844f18fe491fdbb1808))
+* always set atmosphere_images fact ([5c7bf2b](https://github.com/vexxhost/atmosphere/commit/5c7bf2b092d7d713478f72cb8879715af89897ba))
+* bump capi to enable smoother autoscaling ([abd630d](https://github.com/vexxhost/atmosphere/commit/abd630db8c43440c1ef0ddbcf4d8d34d06bb1c6f))
+* bump mcapi to 0.7.2 ([5bc7c34](https://github.com/vexxhost/atmosphere/commit/5bc7c34a1638a0534ce2028932a58dc74930240d))
+* **ci:** Run tmate session onlyl starts if a previous step failed ([8f95990](https://github.com/vexxhost/atmosphere/commit/8f9599034b996ef36dd4ede30459efcf998afa7c))
+* ignore osa interfaces ([dce06d4](https://github.com/vexxhost/atmosphere/commit/dce06d479dee3f6b6897f55eacaf93b4e09aa84a))
+* ignore vxlan- in node exporter ([7ae2b65](https://github.com/vexxhost/atmosphere/commit/7ae2b65a5012fddbf5a776c0a3f4be62173bf083))
+* **manila:** Improve service_instance_security_group ([#445](https://github.com/vexxhost/atmosphere/issues/445)) ([e4290c5](https://github.com/vexxhost/atmosphere/commit/e4290c52572e8b529ac9df6481f89b9f16fd2d3c))
+* **manila:** use sg name for manila ([2edead0](https://github.com/vexxhost/atmosphere/commit/2edead000c19ea7d7bcd5afaab21ba5c64d67b72))
+* **mcapi:** bump version ([#468](https://github.com/vexxhost/atmosphere/issues/468)) ([c2567e7](https://github.com/vexxhost/atmosphere/commit/c2567e75d5f8da178d227fe822d65a6aa67f2134))
+* **ovs:** bump ovs chart version to 0.1.14 ([24b9a2d](https://github.com/vexxhost/atmosphere/commit/24b9a2d61a4ac0331a295f433b59c7214296866f))
+
+
+### Documentation
+
+* add info about legacy tls ([1385974](https://github.com/vexxhost/atmosphere/commit/13859742a57ab90e66585294b10d9ae49e5a5fe8))
+* add way to explain how to check tls versions ([62417f7](https://github.com/vexxhost/atmosphere/commit/62417f7c7a0e8554cd98dbeeac09a7421d932f31))
+
 ## [1.5.0](https://github.com/vexxhost/atmosphere/compare/v1.4.0...v1.5.0) (2023-06-02)
 
 
