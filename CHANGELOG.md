@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.0](https://github.com/vexxhost/atmosphere/compare/v1.6.0...v1.7.0) (2023-07-05)
+
+
+### Features
+
+* Update magnum images to the latest versions supported by mcapi ([5238aec](https://github.com/vexxhost/atmosphere/commit/5238aec6e79584fb8648130bb63ee62b453dcc30))
+
 ## [1.6.0](https://github.com/vexxhost/atmosphere/compare/v1.5.0...v1.6.0) (2023-07-03)
 
 
