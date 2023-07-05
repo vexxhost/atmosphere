@@ -34,7 +34,7 @@ NODE_FEATURE_DISCOVERY_VERSION=0.11.2
 curl -sL https://github.com/kubernetes-sigs/node-feature-discovery/releases/download/v${NODE_FEATURE_DISCOVERY_VERSION}/node-feature-discovery-chart-${NODE_FEATURE_DISCOVERY_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-KUBE_PROMETHEUS_STACK_VERSION=41.7.3
+KUBE_PROMETHEUS_STACK_VERSION=45.1.0
 curl -sL https://github.com/prometheus-community/helm-charts/releases/download/kube-prometheus-stack-${KUBE_PROMETHEUS_STACK_VERSION}/kube-prometheus-stack-${KUBE_PROMETHEUS_STACK_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
