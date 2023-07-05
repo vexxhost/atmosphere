@@ -158,6 +158,10 @@ curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~883168/revis
   | filterdiff -p1 -i 'nova/*' \
   | patch -p2 -d ${ATMOSPHERE}/charts/nova
 
+IRONIC_VERSION=0.2.9
+curl -sL https://tarballs.opendev.org/openstack/openstack-helm/ironic-${IRONIC_VERSION}.tgz \
+  | tar -xz -C ${ATMOSPHERE}/charts
+
 SENLIN_VERSION=0.2.9
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/senlin-${SENLIN_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts

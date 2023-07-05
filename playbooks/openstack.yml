@@ -19,10 +19,17 @@
       tags:
         - cert-manager
 
+- name: Setup TLS certificates
+  become: true
+  hosts: controllers
+  roles:
     - role: cluster_issuer
       tags:
         - cluster-issuer
 
+- hosts: controllers[0]
+  become: true
+  roles:
     - role: ingress_nginx
       tags:
         - ingress-nginx
@@ -151,6 +158,11 @@
       tags:
         - neutron
 
+- import_playbook: vexxhost.atmosphere.ironic
+
+- hosts: controllers[0]
+  become: true
+  roles:
     - role: senlin
       tags:
         - senlin
