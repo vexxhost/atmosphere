@@ -281,6 +281,10 @@ spec:
             {{- end }}
 {{ if $mounts_libvirt.volumeMounts }}{{ toYaml $mounts_libvirt.volumeMounts | indent 12 }}{{ end }}
       volumes:
+        {{ dict "enabled" $ssl_enabled "secretName" $envAll.Values.secrets.tls.client "name" "ssl-client" "path" "/etc/pki/libvirt" "certs" (tuple "clientcert.pem" "clientkey.pem" ) | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
+        {{ dict "enabled" $ssl_enabled "secretName" $envAll.Values.secrets.tls.server "name" "ssl-server-cert" "path" "/etc/pki/libvirt" "certs" (tuple "servercert.pem" ) | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
+        {{ dict "enabled" $ssl_enabled "secretName" $envAll.Values.secrets.tls.server "name" "ssl-server-key" "path" "/etc/pki/libvirt/private" "certs" (tuple "serverkey.pem" ) | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
+        {{ dict "enabled" $ssl_enabled "secretName" $envAll.Values.secrets.tls.server "name" "ssl-ca-cert" "path" "/etc/pki/CA" "certs" (tuple "cacert.pem" ) | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
         - name: pod-tmp
           emptyDir: {}
         - name: libvirt-bin
