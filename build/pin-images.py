@@ -25,6 +25,22 @@ def get_pinned_image(image_src):
         r.raise_for_status()
         digest = r.json()["tags"][0]["manifest_digest"]
 
+    if image_ref.domain() == "docker.io":
+        # Get token for docker.io
+        r = requests.get(
+            "https://auth.docker.io/token",
+            params={"service": "registry.docker.io", "scope": f"repository:{image_ref.path()}:pull"},
+        )
+        r.raise_for_status()
+        token = r.json()["token"]
+
+        r = requests.get(
+            f"https://registry-1.docker.io/v2/{image_ref.path()}/manifests/{image_ref['tag']}",
+            headers={"Accept": "application/vnd.docker.distribution.manifest.v2+json", "Authorization": f"Bearer {token}"},
+        )
+        r.raise_for_status()
+        digest = r.headers["Docker-Content-Digest"]
+
     return f"{image_ref.domain()}/{image_ref.path()}@{digest}"
 
 
