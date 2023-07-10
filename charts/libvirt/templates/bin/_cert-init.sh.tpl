@@ -43,6 +43,12 @@ EOF
 kubectl -n ${POD_NAMESPACE} wait --for=condition=Ready --timeout=300s \
   certificate/${POD_NAME}-${TYPE}
 
+# NOTE(mnaser): cert-manager does not clean-up the secrets when the certificate
+#               is deleted, so we should add an owner reference to the secret
+#               to ensure that it is cleaned up when the pod is deleted.
+kubectl -n ${POD_NAMESPACE} patch secret ${POD_NAME}-${TYPE} \
+  --type=json -p='[{"op": "add", "path": "/metadata/ownerReferences", "value": [{"apiVersion": "v1", "kind": "Pod", "name": "'${POD_NAME}'", "uid": "'${POD_UID}'"}]}]'
+
 kubectl -n ${POD_NAMESPACE} get secret ${POD_NAME}-${TYPE} -o jsonpath='{.data.tls\.crt}' | base64 -d > /tmp/${TYPE}.crt
 kubectl -n ${POD_NAMESPACE} get secret ${POD_NAME}-${TYPE} -o jsonpath='{.data.tls\.key}' | base64 -d > /tmp/${TYPE}.key
 kubectl -n ${POD_NAMESPACE} get secret ${POD_NAME}-${TYPE} -o jsonpath='{.data.ca\.crt}' | base64 -d > /tmp/${TYPE}-ca.crt
