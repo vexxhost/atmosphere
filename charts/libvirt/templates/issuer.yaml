@@ -14,34 +14,25 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */}}
 
-{{- if or (eq .Values.conf.libvirt.listen_tls "1") (eq .Values.conf.qemu.vnc_tls "1") }}
+{{- if eq .Values.conf.libvirt.listen_tls "1" }}
 ---
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
+apiVersion: cert-manager.io/v1
+kind: Issuer
 metadata:
-  name: {{ .Release.Name }}-cert-manager
+  name: {{ .Release.Name }}-api-ca
   namespace: {{ .Release.Namespace }}
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: {{ .Release.Name }}-cert-manager
-subjects:
-  - kind: ServiceAccount
-    name: {{ .Release.Name }}
-    namespace: {{ .Release.Namespace }}
+spec:
+  ca:
+    secretName: {{ .Release.Name }}-api-ca
+{{- end -}}
+{{- if eq .Values.conf.qemu.vnc_tls "1" }}
 ---
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
+apiVersion: cert-manager.io/v1
+kind: Issuer
 metadata:
-  name: {{ .Release.Name }}-cert-manager
+  name: {{ .Release.Name }}-vnc-ca
   namespace: {{ .Release.Namespace }}
-rules:
-  - apiGroups:
-      - cert-manager.io
-    verbs:
-      - get
-      - list
-      - create
-    resources:
-      - certificates
+spec:
+  ca:
+    secretName: {{ .Release.Name }}-vnc-ca
 {{- end -}}

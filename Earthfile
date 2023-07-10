@@ -45,16 +45,16 @@ build.collections:
 
 image:
   FROM python:3.10-slim
-  COPY +build.venv.runtime/venv /venv
-  COPY +build.collections/ /usr/share/ansible
   ENV ANSIBLE_PIPELINING=True
-  ENV PATH=/venv/bin:$PATH
   RUN \
     apt-get update && \
     apt-get install --no-install-recommends -y rsync openssh-client && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
   CMD ["/bin/bash"]
+  COPY +build.venv.runtime/venv /venv
+  ENV PATH=/venv/bin:$PATH
+  COPY +build.collections/ /usr/share/ansible
   ARG tag=latest
   SAVE IMAGE --push ghcr.io/vexxhost/atmosphere:${tag}
 
