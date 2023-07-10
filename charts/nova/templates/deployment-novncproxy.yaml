@@ -133,7 +133,7 @@ spec:
               mountPath: /etc/nova/nova.conf
               subPath: nova.conf
               readOnly: true
-{{- if (contains "vencrypt" .Values.conf.nova.vnc.auth_schemes) -}}
+{{- if (contains "vencrypt" .Values.conf.nova.vnc.auth_schemes) }}
             - name: vencrypt-certs
               mountPath: /etc/pki/nova-novncproxy
               readOnly: true
@@ -166,7 +166,7 @@ spec:
           emptyDir: {}
         - name: pod-shared
           emptyDir: {}
-{{- if (contains "vencrypt" .Values.conf.nova.vnc.auth_schemes) -}}
+{{- if (contains "vencrypt" .Values.conf.nova.vnc.auth_schemes) }}
         - name: vencrypt-certs
           secret:
             secretName: nova-novncproxy-vencrypt
