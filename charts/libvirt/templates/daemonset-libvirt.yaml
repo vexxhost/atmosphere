@@ -76,6 +76,60 @@ spec:
       initContainers:
 {{ tuple $envAll "pod_dependency" $mounts_libvirt_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
 {{ dict "envAll" $envAll | include "helm-toolkit.snippets.kubernetes_apparmor_loader_init_container" | indent 8 }}
+{{- if eq .Values.conf.libvirt.listen_tls "1" }}
+        - name: cert-init-api
+{{ tuple $envAll "kubectl" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ dict "envAll" $envAll "application" "libvirt" "container" "cert_init" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - /tmp/cert-init.sh
+          env:
+            - name: TYPE
+              value: api
+            - name: POD_UID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.uid
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE:
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          volumeMounts:
+            - name: libvirt-bin
+              mountPath: /tmp/cert-init.sh
+              subPath: cert-init.sh
+              readOnly: true
+{{- end }}
+{{- if eq .Values.conf.qemu.vnc_tls "1" }}
+        - name: cert-init-vnc
+{{ tuple $envAll "kubectl" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ dict "envAll" $envAll "application" "libvirt" "container" "cert_init" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - /tmp/cert-init.sh
+          env:
+            - name: TYPE
+              value: vnc
+            - name: POD_UID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.uid
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE:
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          volumeMounts:
+            - name: libvirt-bin
+              mountPath: /tmp/cert-init.sh
+              subPath: cert-init.sh
+              readOnly: true
+{{- end }}
 {{- if .Values.conf.ceph.enabled }}
         {{- if empty .Values.conf.ceph.cinder.keyring }}
         - name: ceph-admin-keyring-placement
@@ -227,10 +281,6 @@ spec:
             {{- end }}
 {{ if $mounts_libvirt.volumeMounts }}{{ toYaml $mounts_libvirt.volumeMounts | indent 12 }}{{ end }}
       volumes:
-        {{ dict "enabled" $ssl_enabled "secretName" $envAll.Values.secrets.tls.client "name" "ssl-client" "path" "/etc/pki/libvirt" "certs" (tuple "clientcert.pem" "clientkey.pem" ) | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
-        {{ dict "enabled" $ssl_enabled "secretName" $envAll.Values.secrets.tls.server "name" "ssl-server-cert" "path" "/etc/pki/libvirt" "certs" (tuple "servercert.pem" ) | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
-        {{ dict "enabled" $ssl_enabled "secretName" $envAll.Values.secrets.tls.server "name" "ssl-server-key" "path" "/etc/pki/libvirt/private" "certs" (tuple "serverkey.pem" ) | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
-        {{ dict "enabled" $ssl_enabled "secretName" $envAll.Values.secrets.tls.server "name" "ssl-ca-cert" "path" "/etc/pki/CA" "certs" (tuple "cacert.pem" ) | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
         - name: pod-tmp
           emptyDir: {}
         - name: libvirt-bin
