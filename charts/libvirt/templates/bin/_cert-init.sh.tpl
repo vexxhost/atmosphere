@@ -30,6 +30,7 @@ metadata:
 spec:
   secretName: ${POD_NAME}-${TYPE}
   usages:
+  - client auth
   - server auth
   dnsNames:
   - ${HOSTNAME}
