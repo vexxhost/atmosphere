@@ -18,19 +18,19 @@ set -ex
 
 # NOTE(mnaser): This will move the API certificates into the expected location.
 if [ -f /tmp/api.crt ]; then
-  mkdir -p /etc/pki/libvirt/private
+  mkdir -p /etc/pki/CA /etc/pki/libvirt/private
   mv /tmp/api.key {{ .Values.conf.libvirt.key_file }}
   mv /tmp/api.crt {{ .Values.conf.libvirt.cert_file }}
   mv /tmp/api-ca.crt {{ .Values.conf.libvirt.ca_file }}
 fi
 
-# TODO(mnaser): This will move the VNC certificates into the expected location.
-# if [ -f /tmp/vnc.crt ]; then
-#   mkdir -p /etc/pki/libvirt/private
-#   mv /tmp/vnc.key {{ .Values.conf.libvirt.vnc_key_file }}
-#   mv /tmp/vnc.crt {{ .Values.conf.libvirt.vnc_cert_file }}
-#   mv /tmp/vnc-ca.crt {{ .Values.conf.libvirt.vnc_ca_file }}
-# fi
+# NOTE(mnaser): This will move the VNC certificates into the expected location.
+if [ -f /tmp/vnc.crt ]; then
+  mkdir -p /etc/pki/libvirt-vnc
+  mv /tmp/vnc.key /etc/pki/libvirt-vnc/server-key.pem
+  mv /tmp/vnc.crt /etc/pki/libvirt-vnc/server-cert.pem
+  mv /tmp/vnc-ca.crt /etc/pki/libvirt-vnc/ca-cert.pem
+fi
 
 if [ -n "$(cat /proc/*/comm 2>/dev/null | grep -w libvirtd)" ]; then
   set +x
