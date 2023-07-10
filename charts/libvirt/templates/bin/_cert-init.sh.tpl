@@ -42,3 +42,7 @@ EOF
 
 kubectl -n ${POD_NAMESPACE} wait --for=condition=Ready --timeout=300s \
   certificate/${POD_NAME}-${TYPE}
+
+kubectl -n ${POD_NAMESPACE} get secret ${POD_NAME}-${TYPE} -o jsonpath='{.data.tls\.crt}' | base64 -d > /tmp/${POD_NAME}-${TYPE}.crt
+kubectl -n ${POD_NAMESPACE} get secret ${POD_NAME}-${TYPE} -o jsonpath='{.data.tls\.key}' | base64 -d > /tmp/${POD_NAME}-${TYPE}.key
+kubectl -n ${POD_NAMESPACE} get secret ${POD_NAME}-${TYPE} -o jsonpath='{.data.ca\.crt}' | base64 -d > /tmp/${POD_NAME}-${TYPE}.ca.crt
