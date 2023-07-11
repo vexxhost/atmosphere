@@ -240,6 +240,10 @@ spec:
               readOnly: true
             - name: etc-libvirt-qemu
               mountPath: /etc/libvirt/qemu
+{{- if eq .Values.conf.libvirt.listen_tls "1" }}
+            - name: etc-pki-qemu
+              mountPath: /etc/pki/qemu
+{{- end }}
             - mountPath: /lib/modules
               name: libmodules
               readOnly: true
@@ -341,6 +345,11 @@ spec:
         - name: etc-libvirt-qemu
           hostPath:
             path: /etc/libvirt/qemu
+{{- if eq .Values.conf.libvirt.listen_tls "1" }}
+        - name: etc-pki-qemu
+          hostPath:
+            path: /etc/pki/qemu
+{{- end }}
 {{ dict "envAll" $envAll "component" "libvirt" "requireSys" true | include "helm-toolkit.snippets.kubernetes_apparmor_volumes" | indent 8 }}
 {{ if $mounts_libvirt.volumes }}{{ toYaml $mounts_libvirt.volumes | indent 8 }}{{ end }}
 {{- end }}
