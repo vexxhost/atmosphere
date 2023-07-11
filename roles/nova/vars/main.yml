@@ -82,8 +82,10 @@ _nova_helm_values:
         #                        https://review.opendev.org/883066
         service_type: compute
       libvirt:
-        live_migration_with_native_tls: true
         live_migration_scheme: tls
+        # TODO(mnaser): We should enable this once we figure out how to "inject"
+        #               the certificates into the existing "qemu-kvm" processes.
+        # live_migration_with_native_tls: true
       neutron:
         metadata_proxy_shared_secret: "{{ openstack_helm_endpoints['compute_metadata']['secret'] }}"
       oslo_messaging_notifications:

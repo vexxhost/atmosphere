@@ -18,7 +18,7 @@ set -ex
 
 # NOTE(mnaser): This will move the API certificates into the expected location.
 if [ -f /tmp/api.crt ]; then
-  mkdir -p /etc/pki/CA /etc/pki/qemu /etc/pki/libvirt/private
+  mkdir -p /etc/pki/CA /etc/pki/libvirt/private
 
   cp /tmp/api-ca.crt {{ .Values.conf.libvirt.ca_file }}
   cp /tmp/api-ca.crt /etc/pki/qemu/ca-cert.pem

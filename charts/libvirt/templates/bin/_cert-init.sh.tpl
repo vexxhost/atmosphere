@@ -29,6 +29,7 @@ metadata:
       uid: ${POD_UID}
 spec:
   secretName: ${POD_NAME}-${TYPE}
+  commonName: ${POD_IP}
   usages:
   - client auth
   - server auth
