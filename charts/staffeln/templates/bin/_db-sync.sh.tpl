@@ -16,4 +16,10 @@ limitations under the License.
 
 set -ex
 
-exec staffeln-db-manage create_schema || exec staffeln-db-manage upgrade
+echo 'Start Staffeln DB sync'
+
+# Currently Staffeln can't simply use `sync` to do this part,
+# we should update this script once db sync function is impleted.
+staffeln-db-manage upgrade || staffeln-db-manage create_schema
+
+echo 'Finished Staffeln DB sync'
