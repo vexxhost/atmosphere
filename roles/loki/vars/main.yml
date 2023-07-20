@@ -39,6 +39,23 @@ _loki_helm_values:
             period: 24h
   test:
     enabled: false
+  monitoring:
+    selfMonitoring:
+      enabled: false
+      grafanaAgent:
+        installOperator: false
+    lokiCanary:
+      enabled: false
+    rules:
+      additionalGroups:
+        - name: additional-loki-rules
+          rules:
+            - alert: NovaCellNotResponding
+              expr: 'kubernetes.labels.component="compute" and log =~ "not responding and hence is being omitted from the results"'
+              labels:
+                severity: critical
+              annotations:
+                summary: Nova Cell is not responding. It can cause port deletion in CAPI.
   singleBinary:
     replicas: 1
     nodeSelector:
