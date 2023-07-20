@@ -66,7 +66,7 @@ RABBITMQ_CLUSTER_OPERATOR_VERSION=2.6.6
 curl -sL https://charts.bitnami.com/bitnami/rabbitmq-cluster-operator-${RABBITMQ_CLUSTER_OPERATOR_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-PXC_OPERATOR_VERSION=1.10.0
+PXC_OPERATOR_VERSION=1.12.0
 curl -sL https://github.com/Percona-Lab/percona-helm-charts/releases/download/pxc-operator-${PXC_OPERATOR_VERSION}/pxc-operator-${PXC_OPERATOR_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
