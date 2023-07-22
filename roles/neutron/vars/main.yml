@@ -79,8 +79,8 @@ __neutron_ovn_helm_values:
         dns_servers: "{{ neutron_coredns_cluster_ip | default('10.96.0.20') }}"
         enable_distributed_floating_ip: true
         ovn_metadata_enabled: true
-        ovn_nb_connection: "{% for n in range(ovn_helm_values.get('pod', {}).get('replicas', {}).get('ovn_ovsdb_nb', 3)) %}tcp:ovn-ovsdb-nb-{{ n }}.{{ neutron_helm_release_namespace }}.svc.cluster.local:6643{% if not loop.last %},{% endif %}{% endfor %}"
-        ovn_sb_connection: "{% for n in range(ovn_helm_values.get('pod', {}).get('replicas', {}).get('ovn_ovsdb_sb', 3)) %}tcp:ovn-ovsdb-sb-{{ n }}.{{ neutron_helm_release_namespace }}.svc.cluster.local:6642{% if not loop.last %},{% endif %}{% endfor %}"
+        ovn_nb_connection: "tcp:{{ neutron_ovn_nb_svc.resources[0].spec.clusterIP }}:{{ neutron_ovn_nb_svc.resources[0].spec.ports[0].port }}"
+        ovn_sb_connection: "tcp:{{ neutron_ovn_sb_svc.resources[0].spec.clusterIP }}:{{ neutron_ovn_sb_svc.resources[0].spec.ports[0].port }}"
     ovn_metadata_agent:
       DEFAULT:
         nova_metadata_host: nova-metadata.openstack.svc.cluster.local

@@ -53,9 +53,12 @@ spec:
 {{ tuple $envAll $envAll.Values.pod.resources.server | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
           ports:
             - containerPort: {{ tuple "ovn-ovsdb-nb" "internal" "ovsdb" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+            - containerPort: {{ tuple "ovn-ovsdb-nb" "internal" "raft" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
           env:
             - name: OVS_DATABASE
               value: nb
+            - name: OVS_PORT
+              value: "{{ tuple "ovn-ovsdb-nb" "internal" "ovsdb" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}"
           command:
             - /tmp/ovsdb-server.sh
             - start

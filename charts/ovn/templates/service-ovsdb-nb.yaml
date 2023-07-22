@@ -23,6 +23,8 @@ spec:
   ports:
     - name: ovsdb
       port: {{ tuple "ovn-ovsdb-nb" "internal" "ovsdb" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+    - name: raft
+      port: {{ tuple "ovn-ovsdb-nb" "internal" "raft" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
   selector:
 {{ tuple $envAll "ovn" "ovn-ovsdb-nb" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
 {{- end }}
