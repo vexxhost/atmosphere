@@ -81,6 +81,16 @@ __neutron_ovn_helm_values:
         ovn_metadata_enabled: true
         ovn_nb_connection: "{% for n in range(ovn_helm_values.get('pod', {}).get('replicas', {}).get('ovn_ovsdb_nb', 3)) %}tcp:ovn-ovsdb-nb-{{ n }}.{{ neutron_helm_release_namespace }}.svc.cluster.local:6643{% if not loop.last %},{% endif %}{% endfor %}"
         ovn_sb_connection: "{% for n in range(ovn_helm_values.get('pod', {}).get('replicas', {}).get('ovn_ovsdb_sb', 3)) %}tcp:ovn-ovsdb-sb-{{ n }}.{{ neutron_helm_release_namespace }}.svc.cluster.local:6642{% if not loop.last %},{% endif %}{% endfor %}"
+    ovn_metadata_agent:
+      DEFAULT:
+        nova_metadata_host: nova-metadata.openstack.svc.cluster.local
+        metadata_proxy_shared_secret: "{{ openstack_helm_endpoints['compute_metadata']['secret'] }}"
+        metadata_workers: 2
+      cache:
+        enabled: true
+        backend: dogpile.cache.memcached
+      ovs:
+        ovsdb_connection: unix:/run/openvswitch/db.sock
     plugins:
       ml2_conf:
         ml2:
@@ -95,26 +105,3 @@ __neutron_ovn_helm_values:
     daemonset_metadata_agent: false
     daemonset_ovn_metadata_agent: true
     daemonset_ovs_agent: false
-
-  # conf:
-  #   plugins:
-  #     ml2_conf:
-  #       ml2:
-  #         extension_drivers: port_security
-  #         mechanism_drivers: ovn
-  #   ovn_metadata_agent:
-  #     DEFAULT:
-  #       nova_metadata_port: 8775
-  #       metadata_proxy_shared_secret: "{{ openstack_helm_endpoints['compute_metadata']['secret'] }}"
-  #       metadata_workers: 8
-  #       nova_metadata_host: __NOVA_METADATA_SERVICE_HOST__
-  #     cache:
-  #       enabled: true
-  #       backend: dogpile.cache.memcached
-  #     ovs:
-  #       ovsdb_connection: tcp:127.0.0.1:6640
-  #       ovsdb_timeout: 180
-  #     ovn:
-  #       ovn_metadata_enabled: true
-  #       ovn_nb_connection: tcp:__OVN_NB_DB_SERVICE_HOST__:__OVN_NB_DB_SERVICE_PORT__
-  #       ovn_sb_connection: tcp:__OVN_SB_DB_SERVICE_HOST__:__OVN_SB_DB_SERVICE_PORT__
