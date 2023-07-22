@@ -135,7 +135,7 @@ curl -sL https://github.com/rancher/local-path-provisioner/archive/refs/tags/v${
 OVN_VERSION=0.1.2
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm-infra/ovn-${OVN_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
-curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm-infra~889187/revisions/4/patch?download' \
+curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm-infra~889187/revisions/5/patch?download' \
   | base64 --decode \
   | filterdiff -p1 -x 'releasenotes/*' \
   | filterdiff -p2 -x 'Chart.yaml' \
