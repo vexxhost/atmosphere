@@ -36,6 +36,15 @@
         name: "{{ neutron_helm_release_name }}"
         namespace: "{{ neutron_helm_release_namespace }}"
 
+- name: Generate Helm values
+  ansible.builtin.set_fact:
+    _neutron_helm_values: "{{ __neutron_helm_values }}"
+
+- name: Add OVN configuration
+  when: neutron_ovn_enabled | bool
+  ansible.builtin.set_fact:
+    _neutron_helm_values: "{{ _neutron_helm_values | combine(__neutron_ovn_helm_values, recursive=True) }}"
+
 - name: Deploy Helm chart
   run_once: true
   kubernetes.core.helm:
