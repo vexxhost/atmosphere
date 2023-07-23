@@ -23,5 +23,4 @@ exec neutron-ovn-metadata-agent \
   --config-file /tmp/pod-shared/neutron-agent.ini \
 {{- end }}
       --config-file /tmp/pod-shared/ovn.ini
-      --config-file /tmp/ovn_metadata_agent.ini
 

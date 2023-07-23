@@ -151,7 +151,7 @@ curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~883168/revis
   | filterdiff -p2 -x 'Chart.yaml' \
   | filterdiff -p1 -i 'neutron/*' \
   | patch -p2 -d ${ATMOSPHERE}/charts/neutron
-curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~889258/revisions/3/patch?download' \
+curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~889258/revisions/5/patch?download' \
   | base64 --decode \
   | filterdiff -p1 -x 'releasenotes/*' \
   | filterdiff -p2 -x 'Chart.yaml' \
