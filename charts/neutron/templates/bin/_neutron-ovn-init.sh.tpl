@@ -14,14 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */}}
 
-set -x
+set -ex
 
-exec neutron-ovn-metadata-agent \
-      --config-file /etc/neutron/neutron.conf \
-      --config-file /etc/neutron/ovn_metadata_agent.ini \
-{{- if and ( empty .Values.conf.neutron.DEFAULT.host ) ( .Values.pod.use_fqdn.neutron_agent ) }}
-  --config-file /tmp/pod-shared/neutron-agent.ini \
-{{- end }}
-      --config-file /tmp/pod-shared/ovn.ini
-      --config-file /tmp/ovn_metadata_agent.ini
-
+# See: https://bugs.launchpad.net/neutron/+bug/2028442
+mkdir -p /tmp/pod-shared
+tee > /tmp/pod-shared/ovn.ini << EOF
+[ovn]
+ovn_nb_connection=tcp:$OVN_OVSDB_NB_SERVICE_HOST:$OVN_OVSDB_NB_SERVICE_PORT_OVSDB
+ovn_sb_connection=tcp:$OVN_OVSDB_SB_SERVICE_HOST:$OVN_OVSDB_SB_SERVICE_PORT_OVSDB
+EOF

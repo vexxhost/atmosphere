@@ -69,7 +69,6 @@ __neutron_helm_values:
 __neutron_ovn_helm_values:
   network:
     backend:
-      # - openvswitch
       - ovn
   conf:
     neutron:
@@ -77,28 +76,14 @@ __neutron_ovn_helm_values:
         service_plugins: qos,ovn-router,segments,trunk
       ovn:
         dns_servers: "{{ neutron_coredns_cluster_ip | default('10.96.0.20') }}"
-        enable_distributed_floating_ip: true
-        ovn_metadata_enabled: true
-        ovn_nb_connection: "tcp:{{ neutron_ovn_nb_svc.resources[0].spec.clusterIP }}:{{ neutron_ovn_nb_svc.resources[0].spec.ports[0].port }}"
-        ovn_sb_connection: "tcp:{{ neutron_ovn_sb_svc.resources[0].spec.clusterIP }}:{{ neutron_ovn_sb_svc.resources[0].spec.ports[0].port }}"
     ovn_metadata_agent:
       DEFAULT:
-        nova_metadata_host: nova-metadata.openstack.svc.cluster.local
         metadata_proxy_shared_secret: "{{ openstack_helm_endpoints['compute_metadata']['secret'] }}"
-        metadata_workers: 2
-      cache:
-        enabled: true
-        backend: dogpile.cache.memcached
-      ovs:
-        ovsdb_connection: unix:/run/openvswitch/db.sock
     plugins:
       ml2_conf:
         ml2:
-          type_drivers: flat,vlan,vxlan,geneve
+          type_drivers: flat,vlan,geneve
           tenant_network_types: geneve
-        ml2_type_geneve:
-          vni_ranges: 1:65536
-          max_header_size: 38
   manifests:
     daemonset_dhcp_agent: false
     daemonset_l3_agent: false
