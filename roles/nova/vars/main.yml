@@ -22,6 +22,8 @@ _nova_helm_values:
   images:
     tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('nova') }}"
   network:
+    backend:
+      - "{{ atmosphere_network_backend | default('openvswitch') }}"
     ssh:
       enabled: true
       public_key: "{{ _nova_ssh_publickey.public_key }}"
@@ -92,6 +94,8 @@ _nova_helm_values:
         metadata_proxy_shared_secret: "{{ openstack_helm_endpoints['compute_metadata']['secret'] }}"
       oslo_messaging_notifications:
         driver: noop
+      os_vif_ovs:
+        ovsdb_connection: unix:/run/openvswitch/db.sock
       scheduler:
         workers: 8
       vnc:
