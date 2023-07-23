@@ -14,6 +14,9 @@
 
 _libvirt_helm_values:
   endpoints: "{{ openstack_helm_endpoints }}"
+  network:
+    backend:
+      - "{{ atmosphere_network_backend | default('openvswitch') }}"
   images:
     tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('libvirt') }}"
   conf:
