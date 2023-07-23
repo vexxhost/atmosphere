@@ -28,76 +28,15 @@ on:
         default: false
 
 jobs:
-  # ovs-debug:
-  #   runs-on: ubuntu-20.04-16-cores
-  #   if: github.event_name == 'workflow_dispatch' && inputs.debug_enabled
-  #   steps:
-  #     - name: Checkout project
-  #       uses: actions/checkout@v3
-
-  #     - name: Install Poetry
-  #       run: pipx install poetry
-
-  #     - name: Setup Python
-  #       uses: actions/setup-python@v4
-  #       with:
-  #         cache: poetry
-
-  #     - name: Install dependencies
-  #       run: poetry install --no-interaction --with dev
-
-  #     # NOTE(mnaser): LVM commands take a long time if there are any existing
-  #     #               loop devices created by "snapd", so we uninstall it.
-  #     - name: Uninstall "snapd"
-  #       run: sudo apt-get purge -y snapd
-
-  #     - name: Turn off swap
-  #       run: sudo swapoff -a
-
-  #     - name: Run Molecule Converge
-  #       run: poetry run molecule converge -s ceph
-
-  #     # Enable tmate debugging of manually-triggered workflows if the input option was provided
-  #     - name: Setup tmate session
-  #       if: ${{ failure() }}
-  #       uses: mxschmitt/action-tmate@v3
-  #       timeout-minutes: 60
-
-  #     - name: Run Molecule Destroy
-  #       run: poetry run molecule destroy -s ceph
-
-  # ovs:
-  #   runs-on: ubuntu-20.04-16-cores
-  #   if: github.event_name != 'workflow_dispatch' || !inputs.debug_enabled
-  #   steps:
-  #     - name: Checkout project
-  #       uses: actions/checkout@v3
-
-  #     - name: Install Poetry
-  #       run: pipx install poetry
-
-  #     - name: Setup Python
-  #       uses: actions/setup-python@v4
-  #       with:
-  #         cache: poetry
-
-  #     - name: Install dependencies
-  #       run: poetry install --no-interaction --with dev
-
-  #     # NOTE(mnaser): LVM commands take a long time if there are any existing
-  #     #               loop devices created by "snapd", so we uninstall it.
-  #     - name: Uninstall "snapd"
-  #       run: sudo apt-get purge -y snapd
-
-  #     - name: Turn off swap
-  #       run: sudo swapoff -a
-
-  #     - name: Run Molecule
-  #       run: poetry run molecule test -s ceph
-
-  ovn-debug:
+  debug:
     runs-on: ubuntu-20.04-16-cores
-    # if: github.event_name == 'workflow_dispatch' && inputs.debug_enabled
+    if: github.event_name == 'workflow_dispatch' && inputs.debug_enabled
+    strategy:
+      fail-fast: false
+      matrix:
+        network_backend:
+          - openvswitch
+          - ovn
     steps:
       - name: Checkout project
         uses: actions/checkout@v3
@@ -123,45 +62,49 @@ jobs:
 
       - name: Run Molecule Converge
         run: poetry run molecule converge -s ceph
-        env:
-          OVN_ENABLED: true
 
       # Enable tmate debugging of manually-triggered workflows if the input option was provided
       - name: Setup tmate session
         if: ${{ failure() }}
         uses: mxschmitt/action-tmate@v3
-        timeout-minutes: 180
+        timeout-minutes: 60
 
       - name: Run Molecule Destroy
         run: poetry run molecule destroy -s ceph
 
-  # ovn:
-  #   runs-on: ubuntu-20.04-16-cores
-  #   if: github.event_name != 'workflow_dispatch' || !inputs.debug_enabled
-  #   steps:
-  #     - name: Checkout project
-  #       uses: actions/checkout@v3
+  test:
+    runs-on: ubuntu-20.04-16-cores
+    if: github.event_name != 'workflow_dispatch' || !inputs.debug_enabled
+    strategy:
+      fail-fast: false
+      matrix:
+        network_backend:
+          - openvswitch
+          - ovn
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v3
 
-  #     - name: Install Poetry
-  #       run: pipx install poetry
+      - name: Install Poetry
+        run: pipx install poetry
 
-  #     - name: Setup Python
-  #       uses: actions/setup-python@v4
-  #       with:
-  #         cache: poetry
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          cache: poetry
 
-  #     - name: Install dependencies
-  #       run: poetry install --no-interaction --with dev
+      - name: Install dependencies
+        run: poetry install --no-interaction --with dev
 
-  #     # NOTE(mnaser): LVM commands take a long time if there are any existing
-  #     #               loop devices created by "snapd", so we uninstall it.
-  #     - name: Uninstall "snapd"
-  #       run: sudo apt-get purge -y snapd
+      # NOTE(mnaser): LVM commands take a long time if there are any existing
+      #               loop devices created by "snapd", so we uninstall it.
+      - name: Uninstall "snapd"
+        run: sudo apt-get purge -y snapd
 
-  #     - name: Turn off swap
-  #       run: sudo swapoff -a
+      - name: Turn off swap
+        run: sudo swapoff -a
 
-  #     - name: Run Molecule
-  #       run: poetry run molecule test -s ceph
-  #       env:
-  #         OVN_ENABLED: true
+      - name: Run Molecule
+        run: poetry run molecule test -s ceph
+        env:
+          ATMOSPHERE_NETWORK_BACKEND: ${{ matrix.network_backend }}

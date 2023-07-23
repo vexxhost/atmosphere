@@ -40,30 +40,10 @@
   ansible.builtin.set_fact:
     _neutron_helm_values: "{{ __neutron_helm_values }}"
 
-- name: Add OVN configuration
-  when: neutron_ovn_enabled | bool
-  block:
-    - name: Retrieve OVN Northbound service IP
-      kubernetes.core.k8s_info:
-        api_version: v1
-        kind: Service
-        name: ovn-ovsdb-nb
-        namespace: "{{ neutron_helm_release_namespace }}"
-      register: neutron_ovn_nb_svc
-      failed_when: neutron_ovn_nb_svc.resources | length == 0
-
-    - name: Retrieve OVN Southbound service IP
-      kubernetes.core.k8s_info:
-        api_version: v1
-        kind: Service
-        name: ovn-ovsdb-sb
-        namespace: "{{ neutron_helm_release_namespace }}"
-      register: neutron_ovn_sb_svc
-      failed_when: neutron_ovn_sb_svc.resources | length == 0
-
-    - name: Append Helm values
-      ansible.builtin.set_fact:
-        _neutron_helm_values: "{{ _neutron_helm_values | combine(__neutron_ovn_helm_values, recursive=True) }}"
+- name: Append Helm values
+  when: atmosphere_network_backend == 'ovn'
+  ansible.builtin.set_fact:
+    _neutron_helm_values: "{{ _neutron_helm_values | combine(__neutron_ovn_helm_values, recursive=True) }}"
 
 - name: Deploy Helm chart
   run_once: true

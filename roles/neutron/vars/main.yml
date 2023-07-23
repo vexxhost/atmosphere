@@ -16,6 +16,9 @@ __neutron_helm_values:
   endpoints: "{{ openstack_helm_endpoints }}"
   images:
     tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('neutron') }}"
+  network:
+    backend:
+      - "{{ atmosphere_network_backend }}"
   pod:
     replicas:
       server: 3
@@ -67,9 +70,6 @@ __neutron_helm_values:
     service_ingress_server: false
 
 __neutron_ovn_helm_values:
-  network:
-    backend:
-      - ovn
   conf:
     neutron:
       DEFAULT:

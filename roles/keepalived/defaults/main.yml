@@ -42,3 +42,15 @@ keepalived_interface: "{{ undef(hint='You must specify a Keepalived virtual IP i
 keepalived_vrid: 51
 
                                                                    # ]]]
+
+keepalived_pod_dependency:
+  openvswitch:
+    - requireSameNode: true
+      labels:
+        application: neutron
+        component: neutron-ovs-agent
+  ovn:
+    - requireSameNode: true
+      labels:
+        application: ovn
+        component: ovn-controller

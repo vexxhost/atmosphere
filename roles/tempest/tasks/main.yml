@@ -85,7 +85,7 @@
     chart_ref: "{{ tempest_helm_chart_ref }}"
     release_namespace: "{{ tempest_helm_release_namespace }}"
     kubeconfig: /etc/kubernetes/admin.conf
-    values: "{{ _tempest_helm_values | combine(tempest_helm_values, recursive=True) }}"
+    values: "{{ _tempest_helm_values | combine(_tempest_network_backend_settings[atmosphere_network_backend], recursive=True) | combine(tempest_helm_values, recursive=True) }}"
     wait: true
     wait_timeout: 20m
 
