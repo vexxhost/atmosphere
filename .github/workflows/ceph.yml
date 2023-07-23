@@ -37,6 +37,9 @@ jobs:
         network_backend:
           - openvswitch
           - ovn
+    concurrency:
+      group: ${{ github.ref }}-${{ matrix.network_backend }}
+      cancel-in-progress: true
     steps:
       - name: Checkout project
         uses: actions/checkout@v3
@@ -81,6 +84,9 @@ jobs:
         network_backend:
           - openvswitch
           - ovn
+    concurrency:
+      group: ${{ github.ref }}-${{ matrix.network_backend }}
+      cancel-in-progress: true
     steps:
       - name: Checkout project
         uses: actions/checkout@v3
