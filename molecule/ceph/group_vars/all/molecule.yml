@@ -76,7 +76,7 @@ placement_helm_values:
 coredns_helm_values:
   replicaCount: 1
 
-ovn_enabled: "{{ lookup('env', 'OVN_ENABLED') | default('false') | bool }}"
+atmosphere_network_backend: "{{ lookup('env', 'OVN_ENABLED') | default('false') | bool | ternary('ovn', 'openvswitch') }}"
 ovn_helm_values:
   conf:
     auto_bridge_add:

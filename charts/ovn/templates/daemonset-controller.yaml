@@ -50,6 +50,7 @@ spec:
 {{- tuple $envAll "ovn_controller" list | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
         - name: controller-init
 {{ tuple $envAll "ovn_controller" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ dict "envAll" $envAll "application" "ovn_controller" "container" "controller_init" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
           command:
             - /tmp/ovn-controller-init.sh
           volumeMounts:

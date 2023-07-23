@@ -131,7 +131,7 @@
                           apiVersion: v1
                           fieldPath: metadata.name
                     - name: DEPENDENCY_POD_JSON
-                      value: '[{"labels":{"application":"neutron","component":"neutron-ovs-agent"},"requireSameNode":true}]'
+                      value: "{{ keepalived_pod_dependency[atmosphere_network_backend] | to_json }}"
                 - name: wait-for-ip
                   image: "{{ atmosphere_images['keepalived'] | vexxhost.kubernetes.docker_image('ref') }}"
                   command:
