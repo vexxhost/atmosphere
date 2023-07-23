@@ -10,6 +10,12 @@ glance_images:
     container_format: bare
     is_public: true
 
+ovn_enabled: "{{ lookup('env', 'OVN_ENABLED') | default('false') | bool }}"
+ovn_helm_values:
+  conf:
+    auto_bridge_add:
+      br-ex: ens4
+
 neutron_helm_values:
   conf:
     auto_bridge_add:
