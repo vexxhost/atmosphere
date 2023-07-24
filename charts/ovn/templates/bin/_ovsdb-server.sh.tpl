@@ -34,7 +34,6 @@ fi
 
 function start () {
   /usr/share/ovn/scripts/ovn-ctl start_${OVS_DATABASE}_ovsdb ${ARGS[@]}
-  /usr/bin/ovn-${OVS_DATABASE}ctl set-connection ptcp:${OVS_PORT}:0.0.0.0 -- set connection . inactivity_probe=60000
 
   tail --follow=name /var/log/ovn/ovsdb-server-${OVS_DATABASE}.log
 }
