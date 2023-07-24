@@ -6,7 +6,7 @@ If you have any questions and discussions about Atmosphere, you can join the
 community:
 
 * [`#atmosphere`](https://kubernetes.slack.com/archives/C056YSPJB7U) channel
-  on the Kubernetes Slack.
+  on the Kubernetes Slack. If you are new to Kubernetes Slack workspace, [Join the Kubernetes Slack workspace](https://slack.kubernetes.io/) first.
 
 ## Quick Start
 
