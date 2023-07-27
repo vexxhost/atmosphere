@@ -52,11 +52,14 @@ spec:
 {{ tuple $envAll "ovn_controller_gw" | include "helm-toolkit.snippets.image" | indent 10 }}
 {{ dict "envAll" $envAll "application" "ovn_controller_gw" "container" "controller_init" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
           command:
-            - /tmp/ovn-controller-gw-init.sh
+            - /tmp/ovn-controller-init.sh
+          env:
+            - name: OVN_CMS_OPTIONS
+              value: {{ .Values.conf.gw_ovn_cms_options | quote }}
           volumeMounts:
             - name: ovn-bin
-              mountPath: /tmp/ovn-controller-gw-init.sh
-              subPath: ovn-controller-gw-init.sh
+              mountPath: /tmp/ovn-controller-init.sh
+              subPath: ovn-controller-init.sh
               readOnly: true
             - name: run-openvswitch
               mountPath: /run/openvswitch

@@ -117,7 +117,7 @@ ovs-vsctl set open . external-ids:rundir="/var/run/openvswitch"
 ovs-vsctl set open . external-ids:ovn-encap-type="{{ .Values.conf.ovn_encap_type }}"
 ovs-vsctl set open . external-ids:ovn-bridge="{{ .Values.conf.ovn_bridge }}"
 ovs-vsctl set open . external-ids:ovn-bridge-mappings="{{ .Values.conf.ovn_bridge_mappings }}"
-ovs-vsctl set open . external-ids:ovn-cms-options="{{ .Values.conf.ovn_cms_options }}"
+ovs-vsctl set open . external-ids:ovn-cms-options="${OVN_CMS_OPTIONS}"
 
 # Configure hostname
 {{- if .Values.conf.use_fqdn.compute }}
