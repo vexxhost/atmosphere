@@ -24,6 +24,7 @@ images:
     ovn_ovsdb_sb: docker.io/openstackhelm/ovn:latest-ubuntu_focal
     ovn_northd: docker.io/openstackhelm/ovn:latest-ubuntu_focal
     ovn_controller: docker.io/openstackhelm/ovn:latest-ubuntu_focal
+    ovn_controller_gw: docker.io/openstackhelm/ovn:latest-ubuntu_focal
     dep_check: quay.io/airshipit/kubernetes-entrypoint:v1.0.0
     image_repo_sync: docker.io/library/docker:17.07.0
   pull_policy: "IfNotPresent"
@@ -44,7 +45,10 @@ labels:
     node_selector_key: openstack-network-node
     node_selector_value: enabled
   ovn_controller:
-    node_selector_key: openvswitch
+    node_selector_key: openstack-network-node
+    node_selector_value: enabled
+  ovn_controller_gw:
+    node_selector_key: openstack-control-plane
     node_selector_value: enabled
 
 volume:
@@ -66,7 +70,8 @@ network:
     tunnel_network_cidr: "0/0"
 
 conf:
-  ovn_cms_options: "enable-chassis-as-gw,availability-zones=nova"
+  ovn_cms_options: "availability-zones=nova"
+  gw_ovn_cms_options: "enable-chassis-as-gw,availability-zones=nova"
   ovn_encap_type: geneve
   ovn_bridge: br-int
   ovn_bridge_mappings: external:br-ex
@@ -97,6 +102,15 @@ pod:
           capabilities:
             add:
               - SYS_NICE
+    ovn_controller_gw:
+      container:
+        controller_init:
+          privileged: true
+          runAsUser: 0
+        controller:
+          capabilities:
+            add:
+              - SYS_NICE
   tolerations:
     ovn_ovsdb_nb:
       enabled: false
@@ -105,6 +119,8 @@ pod:
     ovn_northd:
       enabled: false
     ovn_controller:
+      enabled: false
+    ovn_controller_gw:
       enabled: false
   affinity:
     anti:
@@ -153,6 +169,10 @@ pod:
           enabled: true
           min_ready_seconds: 0
           max_unavailable: 1
+        ovn_controller_gw:
+          enabled: true
+          min_ready_seconds: 0
+          max_unavailable: 1
   resources:
     enabled: false
     ovs:
@@ -184,6 +204,13 @@ pod:
         limits:
           memory: "1024Mi"
           cpu: "2000m"
+      ovn_controller_gw:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
     jobs:
       image_repo_sync:
         requests:
@@ -199,6 +226,7 @@ secrets:
     ovn_ovsdb_sb: ovn-ovsdb-sb-oci-image-registry-key
     ovn_northd: ovn-northd-oci-image-registry-key
     ovn_controller: ovn-controller-oci-image-registry-key
+    ovn_controller_gw: ovn-controller-gw-oci-image-registry-key
 
 # TODO: Check these endpoints?!
 endpoints:
@@ -274,6 +302,9 @@ network_policy:
   ovn_controller:
     ingress:
       - {}
+  ovn_controller_gw:
+    ingress:
+      - {}
     egress:
       - {}
 
@@ -299,6 +330,10 @@ dependencies:
       services:
         - endpoint: internal
           service: ovn-ovsdb-sb
+    ovn_controller_gw:
+      services:
+        - endpoint: internal
+          service: ovn-ovsdb-sb
       pod:
         - requireSameNode: true
           labels:
@@ -320,5 +355,6 @@ manifests:
   statefulset_ovn_ovsdb_sb: true
   deployment_ovn_northd: true
   daemonset_ovn_controller: true
+  daemonset_ovn_controller_gw: true
   job_image_repo_sync: true
 ...
