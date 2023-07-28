@@ -49,7 +49,6 @@ spec:
       dnsPolicy: {{ .Values.pod.dns_policy }}
       nodeSelector:
         {{ .Values.labels.ovn_controller.node_selector_key }}: {{ .Values.labels.ovn_controller.node_selector_value }}
-        {{ .Values.labels.ovn.node_selector_key }}: {{ .Values.labels.ovn.node_selector_value }}
       initContainers:
 {{- tuple $envAll "ovn_controller" list | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
         - name: controller-init

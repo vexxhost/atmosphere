@@ -56,7 +56,6 @@ spec:
       serviceAccountName: {{ $serviceAccountName }}
       nodeSelector:
         {{ .Values.labels.ovn_northd.node_selector_key }}: {{ .Values.labels.ovn_northd.node_selector_value }}
-        {{ .Values.labels.ovn.node_selector_key }}: {{ .Values.labels.ovn.node_selector_value }}
       initContainers:
 {{- tuple $envAll "ovn_northd" list | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
       containers:
