@@ -18,10 +18,21 @@ kubernetes_node_labels: |
   {% set res = {} -%}
   {% if inventory_hostname in groups.get('controllers', []) %}
   {%   set _ = res.update({'openstack-control-plane': 'enabled'}) %}
+  {% if atmosphere_network_backend == 'openvswitch' %}
   {%   set _ = res.update({'openvswitch': 'enabled'}) %}
   {% endif %}
+  {% if atmosphere_network_backend == 'ovn' %}
+  {%   set _ = res.update({'ovn': 'enabled'}) %}
+  {% endif %}
+  {% endif %}
+  atmosphere_network_backend
   {% if inventory_hostname in groups.get('computes', []) %}
   {%   set _ = res.update({'openstack-compute-node': 'enabled'}) %}
+  {% if atmosphere_network_backend == 'openvswitch' %}
   {%   set _ = res.update({'openvswitch': 'enabled'}) %}
+  {% endif %}
+  {% if atmosphere_network_backend == 'ovn' %}
+  {%   set _ = res.update({'ovn': 'enabled'}) %}
+  {% endif %}
   {% endif %}
   {{ res }}

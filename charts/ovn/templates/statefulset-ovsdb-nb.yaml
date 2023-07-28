@@ -45,6 +45,7 @@ spec:
 {{- tuple $envAll "ovn" "ovn-ovsdb-nb" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
       nodeSelector:
         {{ .Values.labels.ovn_ovsdb_nb.node_selector_key }}: {{ .Values.labels.ovn_ovsdb_nb.node_selector_value }}
+        {{ .Values.labels.ovn.node_selector_key }}: {{ .Values.labels.ovn.node_selector_value }}
       initContainers:
 {{- tuple $envAll "ovn_ovsdb_nb" list | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
       containers:
