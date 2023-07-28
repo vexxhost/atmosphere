@@ -28,14 +28,17 @@ metadata:
     configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
   labels:
 {{ tuple $envAll "ovn" "ovn-controller" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+    type: hv
 spec:
   selector:
     matchLabels:
 {{ tuple $envAll "ovn" "ovn-controller" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 6 }}
+      type: hv
   template:
     metadata:
       labels:
 {{ tuple $envAll "ovn" "ovn-controller" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+        type: hv
       annotations:
 {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
         configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
@@ -46,6 +49,7 @@ spec:
       dnsPolicy: {{ .Values.pod.dns_policy }}
       nodeSelector:
         {{ .Values.labels.ovn_controller.node_selector_key }}: {{ .Values.labels.ovn_controller.node_selector_value }}
+        {{ .Values.labels.ovn.node_selector_key }}: {{ .Values.labels.ovn.node_selector_value }}
       initContainers:
 {{- tuple $envAll "ovn_controller" list | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
         - name: controller-init
