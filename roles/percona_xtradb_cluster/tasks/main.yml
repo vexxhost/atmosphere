@@ -1,3 +1,23 @@
+- name: Create a secret for Percona XtraDB cluster passwords
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      data:
+        clustercheck: "{{ lookup('password', '/dev/null chars=ascii_lowercase,ascii_uppercase,digits length=32') }}"
+        monitor: "{{ lookup('password', '/dev/null chars=ascii_lowercase,ascii_uppercase,digits length=32') }}"
+        operator: "{{ lookup('password', '/dev/null chars=ascii_lowercase,ascii_uppercase,digits length=32') }}"
+        proxyadmin: "{{ lookup('password', '/dev/null chars=ascii_lowercase,ascii_uppercase,digits length=32') }}"
+        replication: "{{ lookup('password', '/dev/null chars=ascii_lowercase,ascii_uppercase,digits length=32') }}"
+        root: "{{ lookup('password', '/dev/null chars=ascii_lowercase,ascii_uppercase,digits length=32') }}"
+        xtrabackup: "{{ lookup('password', '/dev/null chars=ascii_lowercase,ascii_uppercase,digits length=32') }}"
+      kind: Secret
+      metadata:
+        name: percona-xtradb
+        namespace: openstack
+      type: Opaque
+
 - name: Create Percona XtraDB cluster
   run_once: true
   kubernetes.core.k8s:
