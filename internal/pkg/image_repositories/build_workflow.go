@@ -11,9 +11,6 @@ var FORKED_PROJECTS map[string]bool = map[string]bool{
 	"keystone": true,
 	"magnum":   true,
 }
-var VEXXHOST_PROJECTS map[string]bool = map[string]bool{
-	"staffeln": true,
-}
 var EXTRAS map[string]string = map[string]string{}
 var PROFILES map[string]string = map[string]string{
 	"cinder":            "ceph qemu",
@@ -84,9 +81,6 @@ func NewBuildWorkflow(project string) *GithubWorkflow {
 	if _, ok := FORKED_PROJECTS[project]; ok {
 		gitRepo = fmt.Sprintf("https://github.com/vexxhost/%s", project)
 	}
-	if _, ok := VEXXHOST_PROJECTS[project]; ok {
-		gitRepo = fmt.Sprintf("https://github.com/vexxhost/%s", project)
-	}
 
 	buildArgs := []string{
 		"BUILDER_IMAGE=quay.io/vexxhost/openstack-builder-${{ matrix.from }}",
@@ -104,9 +98,6 @@ func NewBuildWorkflow(project string) *GithubWorkflow {
 	releases := []string{"wallaby", "xena", "yoga", "zed", "2023.1"}
 	if project == "magnum" {
 		releases = []string{"yoga", "zed", "2023.1"}
-	}
-	if project == "staffeln" {
-		releases = []string{"2023.1"}
 	}
 
 	return &GithubWorkflow{
