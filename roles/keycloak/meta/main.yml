@@ -29,8 +29,11 @@ dependencies:
     vars:
       upload_helm_chart_src: "{{ keycloak_helm_chart_path }}"
       upload_helm_chart_dest: "{{ keycloak_helm_chart_ref }}"
-  - role: zalando_postgres_cluster
+  - role: zalando_postgresql_cluster
     vars:
-      zalando_postgresql_cluster_database: keycloak
-      zalando_postgresql_cluster_user: keycloak
       zalando_postgresql_cluster_name: "{{ keycloak_db_host }}"
+      zalando_postgresql_cluster_spec:
+        databases:
+          keycloak: keycloak
+        users:
+          keycloak: []
