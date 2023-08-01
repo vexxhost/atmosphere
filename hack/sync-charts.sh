@@ -244,3 +244,11 @@ curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~883168/revis
   | filterdiff -p2 -x 'Chart.yaml' \
   | filterdiff -p1 -i 'manila/*' \
   | patch -p2 -d ${ATMOSPHERE}/charts/manila
+
+POSTGRES_OPERATOR_VERSION=1.10.0
+curl -sL https://opensource.zalando.com/postgres-operator/charts/postgres-operator/postgres-operator-${POSTGRES_OPERATOR_VERSION}.tgz \
+  | tar -xz -C ${ATMOSPHERE}/charts
+
+KEYCLOAK_VERSION=16.0.0
+curl -sL https://charts.bitnami.com/bitnami/keycloak-${KEYCLOAK_VERSION}.tgz \
+  | tar -xz -C ${ATMOSPHERE}/charts

@@ -1,0 +1,17 @@
+- name: Create Postgresql cluster
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: "acid.zalan.do/v1"
+      kind: postgresql
+      metadata:
+        name: "{{ zalando_postgresql_cluster_name }}"
+        namespace: "{{ zalando_postgresql_cluster_namespace }}"
+      spec: "{{ _zalando_postgresql_cluster_spec | combine(zalando_postgresql_cluster_spec, recursive=True) }}"
+    wait_sleep: 1
+    wait_timeout: 600
+    wait: true
+    wait_condition:
+      type: ready
+      status: true
