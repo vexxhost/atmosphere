@@ -12,6 +12,15 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+- name: Create a Keycloak namespace
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ keycloak_helm_release_namespace }}"
+
 - name: Get the Kuberentes service for Percona XtraDB Cluster
   run_once: true
   kubernetes.core.k8s_info:
@@ -20,10 +29,12 @@
     namespace: openstack
   register: _pxc_service
 
+- name: Install Kubernetes python package
+  ansible.builtin.pip:
+    name: PyMySQL
+
 - name: Create Keycloak database
   run_once: true
-  check_mode: true
-  delegate_to: "{{ groups[migrate_db_from_osa_galera_group][0] }}"
   community.mysql.mysql_db:
     login_host: "{{ _pxc_service.resources[0].spec.clusterIP }}"
     login_user: root
@@ -64,7 +75,9 @@
 
 - name: Create a Keycloak user
   community.mysql.mysql_user:
-    state: present
+    login_host: "{{ _pxc_service.resources[0].spec.clusterIP }}"
+    login_user: root
+    login_password: "{{ openstack_helm_endpoints.oslo_db.auth.admin.password }}"
     name: "{{ _keycloak_db_secret.resources[0]['data']['username'] | b64decode }}"
     password: "{{ _keycloak_db_secret.resources[0]['data']['password'] | b64decode }}"
     priv:
@@ -79,3 +92,66 @@
     create_namespace: true
     kubeconfig: /etc/kubernetes/admin.conf
     values: "{{ _keycloak_helm_values | combine(keycloak_helm_values, recursive=True) }}"
+
+- name: Create realm and clients
+  when: keycloak_realms | length > 0
+  block:
+    - name: Wait until Keycloak ready
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: StatefulSet
+        name: keycloak
+        namespace: "{{ keycloak_helm_release_namespace }}"
+        wait_sleep: 10
+        wait_timeout: 600
+        wait: true
+        wait_condition:
+          type: Available
+          status: true
+
+    - name: Create realms
+      community.general.keycloak_realm:
+        auth_client_id: admin-cli
+        auth_keycloak_url: "https://{{ keycloak_host }}"
+        auth_realm: master
+        auth_username: "{{ keycloak_admin_username }}"
+        auth_password: "{{ keycloak_admin_password }}"
+        id: "{{ item.id }}"
+        realm: "{{ item.id }}"
+        state: present
+      loop: "{{ _keycloak_realms | combine(keycloak_realms, recursive=True) }}"
+      retries: 60
+      delay: 5
+      register: _result
+      until: _result is not failed
+
+    - name: Create clients
+      community.general.keycloak_realm:
+        auth_client_id: admin-cli
+        auth_keycloak_url: "https://{{ keycloak_host }}"
+        auth_realm: master
+        auth_username: "{{ keycloak_admin_username }}"
+        auth_password: "{{ keycloak_admin_password }}"
+        state: present
+        realm: "{{ item.0.id }}"
+        client_id: "{{ item.1.id }}"
+        name: "{{ item.1.id }}"
+        root_url: "{{ item.1.root_url }}"
+        admin_url: "{{ item.1.admin_url }}"
+        base_url: "{{ item.1.base_url }}"
+        enabled: true
+        client_authenticator_type: client-secret
+        secret: "{{ item.1.secret }}"
+        redirect_uris: "{{ item.1.redirect_uris }}"
+        web_origins:  "{{ item.1.web_origins }}"
+        default_client_scopes:  "{{ item.1.default_client_scopes }}"
+        standard_flow_enabled: "{{ item.1.standard_flow_enabled }}"
+        direct_access_grants_enabled: "{{ item.1.direct_access_grants_enabled }}"
+        protocol: "{{ item.1.protocol }}"
+      with_subelements:
+        - "{{ _keycloak_realms | combine(keycloak_realms, recursive=True) }}"
+        - clients
+      retries: 60
+      delay: 5
+      register: _result
+      until: _result is not failed

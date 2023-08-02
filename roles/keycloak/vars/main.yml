@@ -15,10 +15,10 @@
 _keycloak_helm_values:
   auth:
     adminPassword: "{{ keycloak_admin_password }}"
-    adminUser: admin
+    adminUser: "{{ keycloak_admin_username }}"
   externalDatabase:
-    host: "{{ openstack_helm_endpoints.oslo_db.hosts.default }}"
-    port: 5432
+    host: "{{ openstack_helm_endpoints.oslo_db.hosts.default }}.openstack.svc"
+    port: 3306
     database: keycloak
     existingSecret: "keycloak-db-credentials"
     existingSecretUserKey: username
@@ -34,43 +34,28 @@ _keycloak_helm_values:
       cert-manager.io/cluster-issuer: atmosphere
     hostname: "{{ keycloak_host }}"
     tls: true
-  keycloakConfigCli:
-    enabled: true
-    configuration:
-      realm1.yaml: |
-        realm: "{{ atmosphere_keycloak_realm | default("Atmosphere") }}"
-        clients: [
-          {
-            "clientId": "{{ atmosphere_grafana_oauth_client_id }}",
-            "name": "grafana",
-            "rootUrl": "https://{{ kube_prometheus_stack_grafana_host }}",
-            "adminUrl": "https://{{ kube_prometheus_stack_grafana_host }}",
-            "baseUrl": "https://{{ kube_prometheus_stack_grafana_host }}",
-            "enabled": true,
-            "clientAuthenticatorType": "client-secret",
-            "secret": "{{ atmosphere_grafana_oauth_client_secret }}",
-            "redirectUris": [
-              "https://{{ kube_prometheus_stack_grafana_host }}/*"
-            ],
-            "webOrigins": [
-              "https://{{ kube_prometheus_stack_grafana_host }}"
-            ],
-            "standardFlowEnabled": true,
-            "directAccessGrantsEnabled": true,
-            "protocol": "openid-connect",
-            "defaultClientScopes": [
-              "email",
-              "offline_access",
-              "profile",
-              "roles"
-            ]
-          }
-        ]
-    image:
-      registry: "{{ atmosphere_images['keycloak_config_cli'] | vexxhost.kubernetes.docker_image('domain') }}"
-      repository: "{{ atmosphere_images['keycloak_config_cli'] | vexxhost.kubernetes.docker_image('path') }}"
-      tag: "{{ atmosphere_images['keycloak_config_cli'] | vexxhost.kubernetes.docker_image('tag') }}"
   postgresql:
     enabled: false
   production: true
   proxy: edge
+
+_keycloak_realms:
+  - id: Atmosphere
+    clients:
+      - id: "{{ atmosphere_grafana_oauth_client_id | default('grafana') }}"
+        secret: "{{ atmosphere_grafana_oauth_client_secret }}"
+        admin_url: "https://{{ kube_prometheus_stack_grafana_host }}"
+        base_url: "https://{{ kube_prometheus_stack_grafana_host }}"
+        default_client_scopes:
+          - email
+          - offline_access
+          - profile
+          - roles
+        redirect_uris:
+          - "https://{{ kube_prometheus_stack_grafana_host }}/*"
+        root_url: "https://{{ kube_prometheus_stack_grafana_host }}"
+        web_origins:
+          - "https://{{ kube_prometheus_stack_grafana_host }}"
+        standard_flow_enabled: true
+        direct_access_grants_enabled: true
+        protocol: openid-connect
