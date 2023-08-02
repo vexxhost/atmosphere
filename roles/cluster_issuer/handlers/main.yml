@@ -14,4 +14,4 @@
 
 - name: Update CA certificates on host
   ansible.builtin.command:
-    cmd: update-ca-certificates
+    cmd: "{{ 'update-ca-certificates' if ansible_facts['os_family'] in ['Debian'] else 'update-ca-trust' }}"

@@ -1,19 +1,18 @@
----
-# .. vim: foldmarker=[[[,]]]:foldmethod=marker
-
-# .. Copyright (C) 2022 VEXXHOST, Inc.
-# .. SPDX-License-Identifier: Apache-2.0
-
-# Default variables
-# =================
-
-# .. contents:: Sections
-#    :local:
-
-
-# .. envvar:: openstack_cli_packages [[[
+# Copyright (c) 2023 VEXXHOST, Inc.
 #
-# List of packages to install for OpenStack CLI
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+# List of system packages to uninstall for OpenStack CLI
 openstack_cli_packages:
   - python3-barbicanclient
   - python3-designateclient
@@ -28,7 +27,37 @@ openstack_cli_packages:
   - python3-senlinclient
   - python3-swiftclient
 
-                                                                   # ]]]
+# List of python packages to install for OpenStack CLI
+# min-max version pinning based on https://releases.openstack.org/yoga/index.html vs https://releases.openstack.org/zed/index.html
+openstack_cli_pip_packages:
+  - name: osc-placement
+    version: ">=3.2.0,<4.0.0"
+  - name: python-barbicanclient
+    version: ">=5.3.0,<5.4.0"
+  - name: python-designateclient
+    version: ">=4.4.0,<5.5.0"
+  - name: python-glanceclient
+    version: ">=3.6.0,<4.0.0"
+  - name: python-heatclient
+    version: ">=2.5.0,<3.0.0"
+  - name: python-magnumclient
+    version: ">=3.6.0,<3.7.0"
+  - name: python-manilaclient
+    version: ">=3.1.0,<3.4.0"
+  - name: python-neutronclient
+    version: ">=7.7.0,<8.0.0"
+  - name: python-novaclient
+    version: ">=17.7.0,<18.0.0"
+  - name: python-octaviaclient
+    version: ">=2.5.0,<3.0.0"
+  - name: python-openstackclient
+    version: ">=5.7.0,<6.0.0"
+  - name: python-senlinclient
+    version: ">=2.4.0,<2.5.0"
+  - name: python-swiftclient
+    version: ">=3.13.0,<4.0.0"
 
 # URL for the Ubuntu Cloud Archive repository
 openstack_cli_cloud_archive_repo: deb http://ubuntu-cloud.archive.canonical.com/ubuntu {{ ansible_distribution_release }}-updates/yoga main
+
+openstack_cli_certificate_path: "{{ '/usr/local/share/ca-certificates' if ansible_facts['os_family'] in ['Debian'] else '/etc/pki/ca-trust/source/anchors' }}"

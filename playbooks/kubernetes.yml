@@ -22,6 +22,7 @@
     - role: ethtool
       tags:
         - ethtool
+      when: ansible_facts['os_family'] in ['Debian']
   post_tasks:
     - name: Set a fact with the "atmosphere_images" for other plays
       ansible.builtin.set_fact:
@@ -55,6 +56,6 @@
   gather_facts: false
   tasks:
     - name: Uninstall unattended-upgrades
-      ansible.builtin.apt:
+      ansible.builtin.package:
         name: unattended-upgrades
         state: absent
