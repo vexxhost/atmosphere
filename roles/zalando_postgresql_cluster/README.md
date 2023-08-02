@@ -1,1 +1,0 @@
-# zalando_postgresql_cluster
