@@ -1,4 +1,4 @@
-_kube_prometheus_stack_helm_values:
+__kube_prometheus_stack_helm_values:
   defaultRules:
     disabled:
       # NOTE(mnaser): https://github.com/prometheus-community/helm-charts/issues/144
@@ -298,3 +298,21 @@ _kube_prometheus_stack_helm_values:
       monitor:
         relabelings: *relabelings_instance_to_node_name
   additionalPrometheusRulesMap: "{{ lookup('vexxhost.atmosphere.jsonnet', 'jsonnet/rules.jsonnet') }}"
+
+__kube_prometheus_stack_oauth_helm_values:
+  grafana:
+    grafana.ini:
+      auth.generic_oauth:
+        enabled: true
+        name: Keycloak-OAuth
+        allow_sign_up: false
+        client_id: "{{ atmosphere_grafana_oauth_client_id | default('grafana') }}"
+        client_secret: "{{ atmosphere_grafana_oauth_client_secret }}"
+        scopes: openid email profile offline_access roles
+        email_attribute_path: email
+        login_attribute_path: username
+        name_attribute_path: full_name
+        auth_url: "https://{{ keycloak_host }}/realms/{{ atmosphere_keycloak_realm | default('Atmosphere') }}/protocol/openid-connect/auth"
+        token_url: "https://{{ keycloak_host }}/realms/{{ atmosphere_keycloak_realm | default('Atmosphere') }}/protocol/openid-connect/token"
+        api_url: "https://{{ keycloak_host }}/realms/{{ atmosphere_keycloak_realm | default('Atmosphere') }}/protocol/openid-connect/userinfo"
+        # role_attribute_path: contains(roles[*], 'admin') && 'Admin' || contains(roles[*], 'editor') && 'Editor' || 'Viewer'

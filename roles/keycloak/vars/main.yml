@@ -37,10 +37,35 @@ _keycloak_helm_values:
   keycloakConfigCli:
     enabled: true
     configuration:
-      # TODO(okozachenko1203): Add clients
       realm1.yaml: |
-        realm: Atmosphere
-        clients: []
+        realm: "{{ atmosphere_keycloak_realm | default("Atmosphere") }}"
+        clients: [
+          {
+            "clientId": "{{ atmosphere_grafana_oauth_client_id }}",
+            "name": "grafana",
+            "rootUrl": "https://{{ kube_prometheus_stack_grafana_host }}",
+            "adminUrl": "https://{{ kube_prometheus_stack_grafana_host }}",
+            "baseUrl": "https://{{ kube_prometheus_stack_grafana_host }}",
+            "enabled": true,
+            "clientAuthenticatorType": "client-secret",
+            "secret": "{{ atmosphere_grafana_oauth_client_secret }}",
+            "redirectUris": [
+              "https://{{ kube_prometheus_stack_grafana_host }}/*"
+            ],
+            "webOrigins": [
+              "https://{{ kube_prometheus_stack_grafana_host }}"
+            ],
+            "standardFlowEnabled": true,
+            "directAccessGrantsEnabled": true,
+            "protocol": "openid-connect",
+            "defaultClientScopes": [
+              "email",
+              "offline_access",
+              "profile",
+              "roles"
+            ]
+          }
+        ]
     image:
       registry: "{{ atmosphere_images['keycloak_config_cli'] | vexxhost.kubernetes.docker_image('domain') }}"
       repository: "{{ atmosphere_images['keycloak_config_cli'] | vexxhost.kubernetes.docker_image('path') }}"
