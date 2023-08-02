@@ -101,12 +101,23 @@
         _keycloak_db_username: "{{ _keycloak_db_secret.resources[0]['data']['username'] | b64decode }}"
 
     - name: Create a Keycloak database and a user
+      run_once: true
+      changed_when: false
       kubernetes.core.k8s_exec:
         namespace: openstack
         pod: percona-xtradb-pxc-0
         container: pxc
         command: |
-          mysql -u root -p{{ _pxc_root_password }} -e "CREATE DATABASE IF NOT EXISTS keycloak"
-          mysql -u root -p{{ _pxc_root_password }} -e "CREATE USER IF NOT EXISTS '{{ _keycloak_db_username }}'@'%'"
-          mysql -u root -p{{ _pxc_root_password }} -e "ALTER USER '{{ _keycloak_db_username }}'@'%' IDENTIFIED BY '{{ _keycloak_db_password }}'"
-          mysql -u root -p{{ _pxc_root_password }} -e "GRANT ALL ON keycloak.* TO '{{ _keycloak_db_username }}'@'%'"
+          mysql -u root -p{{ _pxc_root_password }} -e "CREATE DATABASE IF NOT EXISTS keycloak";
+          mysql -u root -p{{ _pxc_root_password }} -e "CREATE USER IF NOT EXISTS '{{ _keycloak_db_username }}'@'%'";
+
+    - name: Set password for keycloak database user
+      run_once: true
+      changed_when: false
+      kubernetes.core.k8s_exec:
+        namespace: openstack
+        pod: percona-xtradb-pxc-0
+        container: pxc
+        command: |
+          mysql -u root -p{{ _pxc_root_password }} -e "ALTER USER '{{ _keycloak_db_username }}'@'%' IDENTIFIED BY '{{ _keycloak_db_password }}'";
+          mysql -u root -p{{ _pxc_root_password }} -e "GRANT ALL ON keycloak.* TO '{{ _keycloak_db_username }}'@'%'";
