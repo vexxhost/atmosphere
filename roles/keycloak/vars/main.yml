@@ -13,6 +13,16 @@
 # under the License.
 
 _keycloak_helm_values:
+  auth:
+    adminPassword: "{{ keycloak_admin_password }}"
+    adminUser: admin
+  externalDatabase:
+    host: "{{ keycloak_db_host }}"
+    port: 5432
+    database: keycloak
+    existingSecret: "keycloak.{{ keycloak_db_host }}.credentials.postgresql.acid.zalan.do"
+    existingSecretUserKey: username
+    existingSecretPasswordKey: password
   image:
     registry: "{{ atmosphere_images['keycloak'] | vexxhost.kubernetes.docker_image('domain') }}"
     repository: "{{ atmosphere_images['keycloak'] | vexxhost.kubernetes.docker_image('path') }}"
@@ -26,23 +36,16 @@ _keycloak_helm_values:
     tls: true
   keycloakConfigCli:
     enabled: true
-    image:
-      registry: "{{ atmosphere_images['keycloak_config_cli'] | vexxhost.kubernetes.docker_image('domain') }}"
-      repository: "{{ atmosphere_images['keycloak_config_cli'] | vexxhost.kubernetes.docker_image('path') }}"
-      tag: "{{ atmosphere_images['keycloak_config_cli'] | vexxhost.kubernetes.docker_image('tag') }}"
     configuration:
       # TODO(okozachenko1203): Add clients
       realm1.yaml: |
         realm: Atmosphere
         clients: []
+    image:
+      registry: "{{ atmosphere_images['keycloak_config_cli'] | vexxhost.kubernetes.docker_image('domain') }}"
+      repository: "{{ atmosphere_images['keycloak_config_cli'] | vexxhost.kubernetes.docker_image('path') }}"
+      tag: "{{ atmosphere_images['keycloak_config_cli'] | vexxhost.kubernetes.docker_image('tag') }}"
   postgresql:
     enabled: false
-  externalDatabase:
-    host: "{{ keycloak_db_host }}"
-    port: 5432
-    database: keycloak
-    existingSecret: "keycloak.{{ keycloak_db_host }}.credentials.postgresql.acid.zalan.do"
-    existingSecretUserKey: username
-    existingSecretPasswordKey: password
   production: true
   proxy: edge
