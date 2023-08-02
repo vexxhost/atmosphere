@@ -65,15 +65,6 @@
         name: "{{ kube_prometheus_stack_helm_release_name }}"
         namespace: "{{ kube_prometheus_stack_helm_release_namespace }}"
 
-- name: Generate Helm values
-  ansible.builtin.set_fact:
-    _kube_prometheus_stack_helm_values: "{{ __kube_prometheus_stack_helm_values }}"
-
-- name: Append Helm values
-  when: atmosphere_keycloak_enabled | default(true)
-  ansible.builtin.set_fact:
-    _kube_prometheus_stack_helm_values: "{{ _kube_prometheus_stack_helm_values | combine(__kube_prometheus_stack_oauth_helm_values, recursive=True) }}"
-
 - name: Deploy Helm chart
   run_once: true
   kubernetes.core.helm:
