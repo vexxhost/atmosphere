@@ -49,7 +49,7 @@
       status: true
 
 - name: Create Keycloak database and user
-  when: atmosphere_keycloak_enabled
+  when: atmosphere_keycloak_enabled | default(true)
   block:
     - name: Grab Percona XtraDB cluster secret
       kubernetes.core.k8s_info:
