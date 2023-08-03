@@ -80,8 +80,8 @@
     login_password: "{{ openstack_helm_endpoints.oslo_db.auth.admin.password }}"
     name: "{{ _keycloak_db_secret.resources[0]['data']['username'] | b64decode }}"
     password: "{{ _keycloak_db_secret.resources[0]['data']['password'] | b64decode }}"
-    priv:
-      'keycloak.*': 'ALL'
+    host: "%"
+    priv: 'keycloak.*:ALL'
 
 - name: Deploy Helm chart
   run_once: true
@@ -91,6 +91,7 @@
     release_namespace: "{{ keycloak_helm_release_namespace }}"
     create_namespace: true
     kubeconfig: /etc/kubernetes/admin.conf
+    wait: true
     values: "{{ _keycloak_helm_values | combine(keycloak_helm_values, recursive=True) }}"
 
 - name: Create realm and clients

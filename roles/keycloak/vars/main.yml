@@ -13,13 +13,17 @@
 # under the License.
 
 _keycloak_helm_values:
+  extraEnvVars:
+    - name: KC_TRANSACTION_XA_ENABLED
+      value: "false"
+    - name: KC_DB
+      value: mysql
+    - name: KC_DB_URL
+      value: "jdbc:mysql://{{ openstack_helm_endpoints.oslo_db.hosts.default }}.openstack:3306/keycloak"
   auth:
     adminPassword: "{{ keycloak_admin_password }}"
     adminUser: "{{ keycloak_admin_username }}"
   externalDatabase:
-    host: "{{ openstack_helm_endpoints.oslo_db.hosts.default }}.openstack.svc"
-    port: 3306
-    database: keycloak
     existingSecret: "keycloak-db-credentials"
     existingSecretUserKey: username
     existingSecretPasswordKey: password
@@ -38,6 +42,13 @@ _keycloak_helm_values:
     enabled: false
   production: true
   proxy: edge
+  # Note(okozachenko1203): It takes a bit long time for db migration with mysql vendor.
+  readinessProbe:
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    timeoutSeconds: 1
+    failureThreshold: 6
+    successThreshold: 1
 
 _keycloak_realms:
   - id: Atmosphere
