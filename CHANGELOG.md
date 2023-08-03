@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.8.0](https://github.com/vexxhost/atmosphere/compare/v1.7.0...v1.8.0) (2023-08-03)
+
+
+### Features
+
+* Deploy CAPI components in controlplane ([344f28a](https://github.com/vexxhost/atmosphere/commit/344f28a79eb9765adacd533fceb69732b29cbb5d))
+* update magnum to latest mcapi images ([#497](https://github.com/vexxhost/atmosphere/issues/497)) ([db73f12](https://github.com/vexxhost/atmosphere/commit/db73f12a50196799e2994b4771864209c55aab17))
+
+
+### Bug Fixes
+
+* Generate passwords for PXC ([d883bc3](https://github.com/vexxhost/atmosphere/commit/d883bc37f0e598f71c2953b77465a868e0e790e7))
+* **magnum:** bump capi version ([da59fe9](https://github.com/vexxhost/atmosphere/commit/da59fe99b59a0ed7f8c3132608c01674feabd108))
+* **neutron:** run native netns cleanup instead ([43677f6](https://github.com/vexxhost/atmosphere/commit/43677f6f3b8745179039ad0dee3f684c8413e9c1))
+* **neutron:** solve ipv6 dhcp issues ([d3df2d1](https://github.com/vexxhost/atmosphere/commit/d3df2d1364a67da797d3067f78f4b960103cc7f9))
+* **nova:** drop tenant_id from url ([65d5450](https://github.com/vexxhost/atmosphere/commit/65d54506c4ae9b26ac39576c1414ffb41a18a684))
+* **nova:** set list_records_by_skipping_down_cells to false ([e936b49](https://github.com/vexxhost/atmosphere/commit/e936b49e203c5392c773508e5d623d22d7710ec2))
+* **ovs:** Make sure ovs ctl file exist before chow ([254721f](https://github.com/vexxhost/atmosphere/commit/254721f842913498bc9c16c46fc8c62e2b45ab20))
+* use correct issuer name ([9741007](https://github.com/vexxhost/atmosphere/commit/974100767c488c97be1422c66741c6d65447a7de))
+
+
+### Documentation
+
+* added basic deploy guide ([1efc3a2](https://github.com/vexxhost/atmosphere/commit/1efc3a2530b8103617416edf94ef9bf22a93aabf))
+
 ## [1.7.0](https://github.com/vexxhost/atmosphere/compare/v1.6.0...v1.7.0) (2023-07-05)
 
 
