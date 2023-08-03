@@ -40,17 +40,20 @@
   ansible.builtin.import_tasks:
     file: generate_public_key.yml
 
-# NOTE(okozachenko1203): We cannot set helm hook for this bootstrap job.
-# As a workaround, remove this job before upgrade nova helm release.
-- name: Remove nova-bootstrap job
+# NOTE(okozachenko1203): We cannot set helm hook for jobs.
+# As a workaround, remove them before upgrade nova helm release.
+- name: Remove nova-bootstrap and nova-cell-setup job
   changed_when: false
   failed_when: false
   kubernetes.core.k8s:
     state: absent
     api_version: batch/v1
     kind: Job
-    name: nova-bootstrap
+    name: "{{ item }}"
     namespace: "{{ nova_helm_release_namespace }}"
+  loop:
+    - nova-bootstrap
+    - nova-cell-setup
 
 - name: Deploy Helm chart
   run_once: true
