@@ -84,6 +84,13 @@
     host: "%"
     priv: "{{ keycloak_database_name }}.*:ALL"
 
+- name: Disable pxc strict mode
+  community.mysql.mysql_query:
+    login_host: "{{ _pxc_service.resources[0].spec.clusterIP }}"
+    login_user: root
+    login_password: "{{ openstack_helm_endpoints.oslo_db.auth.admin.password }}"
+    query: "set global pxc_strict_mode='PERMISSIVE'"
+
 - name: Deploy Helm chart
   run_once: true
   kubernetes.core.helm:
@@ -94,6 +101,13 @@
     kubeconfig: /etc/kubernetes/admin.conf
     wait: true
     values: "{{ _keycloak_helm_values | combine(keycloak_helm_values, recursive=True) }}"
+
+- name: Disable pxc strict mode
+  community.mysql.mysql_query:
+    login_host: "{{ _pxc_service.resources[0].spec.clusterIP }}"
+    login_user: root
+    login_password: "{{ openstack_helm_endpoints.oslo_db.auth.admin.password }}"
+    query: "set global pxc_strict_mode='ENFORCING'"
 
 - name: Create realm and clients
   when: (_keycloak_realms + keycloak_realms) | length > 0
