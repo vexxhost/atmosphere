@@ -125,7 +125,7 @@
       until: _result is not failed
 
     - name: Create clients
-      community.general.keycloak_realm:
+      community.general.keycloak_client:
         auth_client_id: admin-cli
         auth_keycloak_url: "https://{{ keycloak_host }}"
         auth_realm: master
@@ -143,7 +143,6 @@
         secret: "{{ item.1.secret }}"
         redirect_uris: "{{ item.1.redirect_uris }}"
         web_origins:  "{{ item.1.web_origins }}"
-        default_client_scopes:  "{{ item.1.default_client_scopes }}"
         standard_flow_enabled: "{{ item.1.standard_flow_enabled }}"
         direct_access_grants_enabled: "{{ item.1.direct_access_grants_enabled }}"
         protocol: "{{ item.1.protocol }}"
