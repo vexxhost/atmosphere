@@ -39,9 +39,10 @@
     login_host: "{{ _pxc_service.resources[0].spec.clusterIP }}"
     login_user: root
     login_password: "{{ openstack_helm_endpoints.oslo_db.auth.admin.password }}"
-    name: keycloak
+    name: "{{ keycloak_database_name }}"
 
 - name: Check if the Keycloak database secret exists
+  run_once: true
   kubernetes.core.k8s_info:
     api_version: v1
     kind: Secret
@@ -81,7 +82,7 @@
     name: "{{ _keycloak_db_secret.resources[0]['data']['username'] | b64decode }}"
     password: "{{ _keycloak_db_secret.resources[0]['data']['password'] | b64decode }}"
     host: "%"
-    priv: 'keycloak.*:ALL'
+    priv: "{{ keycloak_database_name }}.*:ALL"
 
 - name: Deploy Helm chart
   run_once: true
