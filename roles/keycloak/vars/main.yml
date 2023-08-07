@@ -17,6 +17,8 @@ _keycloak_helm_values:
   #                        we have to define jdbc connection string explicitly along side
   #                        `externalDatabase` helm values.
   extraEnvVars:
+    - name: KC_PROXY
+      value: edge
     - name: KC_DB
       value: mysql
     - name: KC_DB_URL
@@ -36,7 +38,6 @@ _keycloak_helm_values:
     - --http-enabled=true
     - --http-port=8080
     - --hostname-strict=false
-    - --hostname-strict-https=false
     - --spi-events-listener-jboss-logging-success-level=info
     - --spi-events-listener-jboss-logging-error-level=warn
     - --transaction-xa-enabled=false
@@ -47,7 +48,6 @@ _keycloak_helm_values:
     host: "{{ openstack_helm_endpoints.oslo_db.hosts.default }}.openstack"
     port: 3306
     database: "{{ keycloak_database_name }}"
-    # existingSecret: "keycloak-db-credentials"
     user: "{{ keycloak_database_username }}"
     password: "{{ keycloak_database_password }}"
   image:
