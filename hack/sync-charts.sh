@@ -245,6 +245,6 @@ curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~883168/revis
   | filterdiff -p1 -i 'manila/*' \
   | patch -p2 -d ${ATMOSPHERE}/charts/manila
 
-KEYCLOAK_VERSION=16.0.0
+KEYCLOAK_VERSION=16.0.3
 curl -sL https://charts.bitnami.com/bitnami/keycloak-${KEYCLOAK_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts

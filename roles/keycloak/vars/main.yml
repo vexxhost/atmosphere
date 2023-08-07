@@ -25,14 +25,14 @@ _keycloak_helm_values:
       value: "jdbc:mysql://{{ openstack_helm_endpoints.oslo_db.hosts.default }}.openstack:3306/{{ keycloak_database_name }}"
   auth:
     adminPassword: "{{ keycloak_admin_password }}"
-    adminUser: "{{ keycloak_admin_username }}"
+    adminUser: "{{ keycloak_admin_username | default('admin') }}"
   externalDatabase:
     host: "{{ openstack_helm_endpoints.oslo_db.hosts.default }}.openstack"
     port: 3306
     database: "{{ keycloak_database_name }}"
-    existingSecret: "keycloak-db-credentials"
-    existingSecretUserKey: username
-    existingSecretPasswordKey: password
+    # existingSecret: "keycloak-db-credentials"
+    user: "{{ keycloak_database_username }}"
+    password: "{{ keycloak_database_password }}"
   image:
     registry: "{{ atmosphere_images['keycloak'] | vexxhost.kubernetes.docker_image('domain') }}"
     repository: "{{ atmosphere_images['keycloak'] | vexxhost.kubernetes.docker_image('path') }}"
@@ -55,24 +55,3 @@ _keycloak_helm_values:
     timeoutSeconds: 1
     failureThreshold: 6
     successThreshold: 1
-
-_keycloak_realms:
-  - id: Atmosphere
-    clients:
-      - id: "{{ atmosphere_grafana_oauth_client_id | default('grafana') }}"
-        secret: "{{ atmosphere_grafana_oauth_client_secret }}"
-        admin_url: "https://{{ kube_prometheus_stack_grafana_host }}"
-        base_url: "https://{{ kube_prometheus_stack_grafana_host }}"
-        default_client_scopes:
-          - email
-          - offline_access
-          - profile
-          - roles
-        redirect_uris:
-          - "https://{{ kube_prometheus_stack_grafana_host }}/*"
-        root_url: "https://{{ kube_prometheus_stack_grafana_host }}"
-        web_origins:
-          - "https://{{ kube_prometheus_stack_grafana_host }}"
-        standard_flow_enabled: true
-        direct_access_grants_enabled: true
-        protocol: openid-connect

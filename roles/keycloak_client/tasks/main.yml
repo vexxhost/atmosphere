@@ -1,0 +1,41 @@
+# Copyright (c) 2023 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Create clients
+  community.general.keycloak_client:
+    auth_client_id: admin-cli
+    auth_keycloak_url: "https://{{ keycloak_host }}"
+    auth_realm: master
+    auth_username: "{{ keycloak_client_admin_username }}"
+    auth_password: "{{ keycloak_client_admin_password }}"
+    state: present
+    realm: "{{ keycloak_client_realm_id }}"
+    client_id: "{{ keycloak_client_id }}"
+    name: "{{ keycloak_client_name | keycloak_client_id }}"
+    root_url: "{{ keycloak_client_root_url }}"
+    admin_url: "{{ keycloak_client_admin_url }}"
+    base_url: "{{ keycloak_client_base_url }}"
+    enabled: true
+    client_authenticator_type: client-secret
+    public_client: false
+    secret: "{{ keycloak_client_secret }}"
+    redirect_uris: "{{ keycloak_client_redirect_uris }}"
+    web_origins: "{{ keycloak_client_web_origins }}"
+    standard_flow_enabled: "{{ keycloak_client_standard_flow_enabled }}"
+    direct_access_grants_enabled: "{{ keycloak_client_direct_access_grants_enabled }}"
+    protocol: "{{ keycloak_client_protocol }}"
+  retries: 60
+  delay: 5
+  register: keycloak_client_result
+  until: keycloak_client_result is not failed

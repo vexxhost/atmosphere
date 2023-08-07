@@ -380,13 +380,6 @@
             egrep '(_kek)' |
               cut -d':' -f2
 
-    - name: Generate global/common secrets
-      ansible.builtin.set_fact:
-        secrets: "{{ secrets | default({}) | combine({item: lookup('password', '/dev/null chars=ascii_lowercase,ascii_uppercase,digits length=32')}) }}"
-      when: item not in secrets
-      loop:
-        - atmosphere_grafana_oauth_client_secret
-
     - name: Generate temporary files for generating keys for missing variables
       ansible.builtin.tempfile:
         state: file

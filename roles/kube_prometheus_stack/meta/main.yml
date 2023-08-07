@@ -29,3 +29,17 @@ dependencies:
     vars:
       upload_helm_chart_src: "{{ kube_prometheus_stack_helm_chart_path }}"
       upload_helm_chart_dest: "{{ kube_prometheus_stack_helm_chart_ref }}"
+  - role: keycloak_atmosphere_realm
+  - role: keycloak_client
+    vars:
+      keycloak_client_realm_id: "{{ keycloak_realm_result.proposed.id }}"
+      keycloak_client_id: "{{ kube_prometheus_stack_grafana_oauth_client_id | default('grafana') }}"
+      keycloak_client_secret: "{{ kube_prometheus_stack_grafana_oauth_client_secret }}"
+      keycloak_client_admin_url: "https://{{ kube_prometheus_stack_grafana_host }}"
+      keycloak_client_base_url: "https://{{ kube_prometheus_stack_grafana_host }}"
+      keycloak_client_redirect_uris: ["https://{{ kube_prometheus_stack_grafana_host }}/*"]
+      keycloak_client_root_url: "https://{{ kube_prometheus_stack_grafana_host }}"
+      keycloak_client_web_origins: ["https://{{ kube_prometheus_stack_grafana_host }}"]
+      keycloak_client_standard_flow_enabled: true
+      keycloak_client_direct_access_grants_enabled: true
+      keycloak_client_protocol: openid-connect
