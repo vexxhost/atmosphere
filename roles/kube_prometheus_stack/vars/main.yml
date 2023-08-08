@@ -54,6 +54,7 @@ _kube_prometheus_stack_helm_values:
         token_url: "https://{{ keycloak_host }}/realms/{{ keycloak_realm_result.proposed.id }}/protocol/openid-connect/token"
         api_url: "https://{{ keycloak_host }}/realms/{{ keycloak_realm_result.proposed.id }}/protocol/openid-connect/userinfo"
         tls_skip_verify_insecure: true
+        # yamllint disable-line rule:line-length
         role_attribute_path: "contains(resource_access.grafana.roles[*], 'admin') && 'Admin' || contains(resource_access.grafana.roles[*], 'editor') && 'Editor' || contains(resource_access.grafana.roles[*], 'viewer') && 'Viewer' || ''"
     image:
       repository: "{{ atmosphere_images['grafana'] | vexxhost.kubernetes.docker_image('name') }}"
