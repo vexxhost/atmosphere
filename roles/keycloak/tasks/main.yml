@@ -33,6 +33,7 @@
     name: "{{ keycloak_database_name }}"
 
 - name: Create a Keycloak user
+  run_once: true
   community.mysql.mysql_user:
     login_host: "{{ _pxc_service.resources[0].spec.clusterIP }}"
     login_user: root
@@ -59,6 +60,21 @@
     kubeconfig: /etc/kubernetes/admin.conf
     wait: true
     values: "{{ _keycloak_helm_values | combine(keycloak_helm_values, recursive=True) }}"
+
+- name: Create Keycloak Ingress
+  ansible.builtin.include_role:
+    name: ingress
+  vars:
+    ingress_annotations: "{{ _openstack_helm_ingress_annotations | combine(openstack_helm_ingress_annotations, recursive=True) }}"
+    ingress_name: keycloak
+    ingress_namespace: "{{ keycloak_helm_release_namespace }}"
+    ingress_class_name: "{{ keycloak_ingress_class_name }}"
+    ingress_host: "{{ keycloak_host }}"
+    ingress_service_name: "{{ keycloak_helm_release_name }}"
+    ingress_service_port: 80
+    ingress_secret_name: "{{ keycloak_host }}-tls"
+    ingress_annotations:
+      cert-manager.io/cluster-issuer: atmosphere
 
 - name: Disable pxc strict mode
   community.mysql.mysql_query:

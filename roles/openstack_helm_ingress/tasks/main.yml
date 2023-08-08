@@ -46,30 +46,13 @@
   when: openstack_helm_ingress_secret_name is not defined
 
 - name: Create Ingress {{ openstack_helm_ingress_name }}
-  run_once: true
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: v1
-      kind: Ingress
-      metadata:
-        name: "{{ openstack_helm_ingress_name }}"
-        namespace: openstack
-        annotations: "{{ _openstack_helm_ingress_annotations | combine(openstack_helm_ingress_annotations, recursive=True) }}"
-      spec:
-        ingressClassName: "{{ openstack_helm_ingress_class_name }}"
-        rules:
-          - host: "{{ openstack_helm_ingress_host }}"
-            http:
-              paths:
-                - path: /
-                  pathType: Prefix
-                  backend:
-                    service:
-                      name: "{{ openstack_helm_ingress_service_name }}"
-                      port:
-                        number: "{{ openstack_helm_ingress_service_port }}"
-        tls:
-          - secretName: "{{ openstack_helm_ingress_secret_name | default(openstack_helm_ingress_service_name ~ '-certs') }}"
-            hosts:
-              - "{{ openstack_helm_ingress_host }}"
+  ansible.builtin.include_role:
+    name: ingress
+  vars:
+    ingress_annotations: "{{ _openstack_helm_ingress_annotations | combine(openstack_helm_ingress_annotations, recursive=True) }}"
+    ingress_name: "{{ openstack_helm_ingress_name }}"
+    ingress_namespace: openstack
+    ingress_host: "{{ openstack_helm_ingress_host }}"
+    ingress_service_name: "{{ openstack_helm_ingress_service_name }}"
+    ingress_service_port: "{{ openstack_helm_ingress_service_port }}"
+    ingress_secret_name: "{{ openstack_helm_ingress_secret_name | default(openstack_helm_ingress_service_name ~ '-certs') }}"

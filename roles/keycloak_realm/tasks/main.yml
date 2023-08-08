@@ -30,3 +30,21 @@
   delay: 5
   register: keycloak_realm_result
   until: keycloak_realm_result is not failed
+
+- name: Include client roles in id token
+  community.general.keycloak_clientscope:
+    auth_client_id: admin-cli
+    auth_keycloak_url: "https://{{ keycloak_host }}"
+    auth_realm: master
+    auth_username: "{{ keycloak_realm_admin_username }}"
+    auth_password: "{{ keycloak_realm_admin_password }}"
+    realm: "{{ keycloak_realm_id }}"
+    name: roles
+    protocol_mappers:
+      - name: client roles
+        protocol: openid-connect
+        protocolMapper: oidc-usermodel-client-role-mapper
+        config:
+          id.token.claim: true
+          access.token.claim: true
+          claim.name: "resource_access.${client_id}.roles"

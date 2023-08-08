@@ -43,7 +43,7 @@ _keycloak_helm_values:
     - --transaction-xa-enabled=false
   auth:
     adminPassword: "{{ keycloak_admin_password }}"
-    adminUser: "{{ keycloak_admin_username | default('admin') }}"
+    adminUser: "{{ keycloak_admin_username }}"
   externalDatabase:
     host: "{{ openstack_helm_endpoints.oslo_db.hosts.default }}.openstack"
     port: 3306
@@ -54,13 +54,6 @@ _keycloak_helm_values:
     registry: "{{ atmosphere_images['keycloak'] | vexxhost.kubernetes.docker_image('domain') }}"
     repository: "{{ atmosphere_images['keycloak'] | vexxhost.kubernetes.docker_image('path') }}"
     tag: "{{ atmosphere_images['keycloak'] | vexxhost.kubernetes.docker_image('tag') }}"
-  ingress:
-    enabled: true
-    ingressClassName: "{{ keycloak_ingress_class_name }}"
-    annotations:
-      cert-manager.io/cluster-issuer: atmosphere
-    hostname: "{{ keycloak_host }}"
-    tls: true
   postgresql:
     enabled: false
   production: true

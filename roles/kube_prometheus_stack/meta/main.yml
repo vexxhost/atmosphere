@@ -29,7 +29,6 @@ dependencies:
     vars:
       upload_helm_chart_src: "{{ kube_prometheus_stack_helm_chart_path }}"
       upload_helm_chart_dest: "{{ kube_prometheus_stack_helm_chart_ref }}"
-  - role: keycloak_atmosphere_realm
   - role: keycloak_client
     vars:
       keycloak_client_realm_id: "{{ keycloak_realm_result.proposed.id }}"
@@ -42,4 +41,4 @@ dependencies:
       keycloak_client_web_origins: ["https://{{ kube_prometheus_stack_grafana_host }}"]
       keycloak_client_standard_flow_enabled: true
       keycloak_client_direct_access_grants_enabled: true
-      keycloak_client_protocol: openid-connect
+      keycloak_client_default_roles: ["admin", "editor", "viewer"]

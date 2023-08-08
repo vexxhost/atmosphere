@@ -23,18 +23,19 @@
     realm: "{{ keycloak_client_realm_id }}"
     client_id: "{{ keycloak_client_id }}"
     name: "{{ keycloak_client_name | default(keycloak_client_id) }}"
-    root_url: "{{ keycloak_client_root_url }}"
-    admin_url: "{{ keycloak_client_admin_url }}"
-    base_url: "{{ keycloak_client_base_url }}"
+    root_url: "{{ keycloak_client_root_url | default(omit) }}"
+    admin_url: "{{ keycloak_client_admin_url | default(omit) }}"
+    base_url: "{{ keycloak_client_base_url | default(omit) }}"
     enabled: true
     client_authenticator_type: client-secret
     public_client: false
-    secret: "{{ keycloak_client_secret }}"
-    redirect_uris: "{{ keycloak_client_redirect_uris }}"
-    web_origins: "{{ keycloak_client_web_origins }}"
-    standard_flow_enabled: "{{ keycloak_client_standard_flow_enabled }}"
-    direct_access_grants_enabled: "{{ keycloak_client_direct_access_grants_enabled }}"
-    protocol: "{{ keycloak_client_protocol }}"
+    secret: "{{ keycloak_client_secret | default(omit) }}"
+    redirect_uris: "{{ keycloak_client_redirect_uris | default(omit) }}"
+    web_origins: "{{ keycloak_client_web_origins | default(omit) }}"
+    standard_flow_enabled: "{{ keycloak_client_standard_flow_enabled | default(omit) }}"
+    direct_access_grants_enabled: "{{ keycloak_client_direct_access_grants_enabled | default(omit) }}"
+    protocol: "{{ keycloak_client_protocol | default('openid-connect') }}"
+    default_roles: "{{ keycloak_client_default_roles | default(omit) }}"
   retries: 60
   delay: 5
   register: keycloak_client_result

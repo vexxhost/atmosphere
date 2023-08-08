@@ -1,0 +1,42 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Create Ingress {{ ingress_name }}
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Ingress
+      metadata:
+        name: "{{ ingress_name }}"
+        namespace: "{{ ingress_namespace | default('default') }}"
+        annotations: "{{ ingress_annotations }}"
+      spec:
+        ingressClassName: "{{ ingress_class_name }}"
+        rules:
+          - host: "{{ ingress_host }}"
+            http:
+              paths:
+                - path: /
+                  pathType: Prefix
+                  backend:
+                    service:
+                      name: "{{ ingress_service_name }}"
+                      port:
+                        number: "{{ ingress_service_port }}"
+        tls:
+          - secretName: "{{ ingress_secret_name | default(ingress_service_name ~ '-certs') }}"
+            hosts:
+              - "{{ ingress_host }}"
