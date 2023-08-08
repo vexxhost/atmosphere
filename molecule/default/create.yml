@@ -28,6 +28,7 @@
     stack_name: "{{ lookup('env', 'ATMOSPHERE_STACK_NAME') | default('atmosphere', True) }}"
     public_network: "{{ lookup('env', 'ATMOSPHERE_PUBLIC_NETWORK') | default('public', True) }}"
     image: "{{ lookup('env', 'ATMOSPHERE_IMAGE') | default('Ubuntu 20.04.3 LTS (x86_64) [2021-10-04]', True) }}"
+    bastion_instance_type: "{{ lookup('env', 'ATMOSPHERE_BASTION_INSTANCE_TYPE', default=lookup('env', 'ATMOSPHERE_INSTANCE_TYPE', default='v3-standard-4')) }}"
     controller_instance_type: "{{ lookup('env', 'ATMOSPHERE_CONTROLLER_INSTANCE_TYPE', default=lookup('env', 'ATMOSPHERE_INSTANCE_TYPE', default='v3-standard-16')) }}"
     compute_instance_type: "{{ lookup('env', 'ATMOSPHERE_COMPUTE_INSTANCE_TYPE', default=lookup('env', 'ATMOSPHERE_INSTANCE_TYPE', default='v3-standard-4')) }}"
     storage_instance_type: "{{ lookup('env', 'ATMOSPHERE_STORAGE_INSTANCE_TYPE', default=lookup('env', 'ATMOSPHERE_INSTANCE_TYPE', default='v3-standard-4')) }}"
@@ -42,6 +43,7 @@
         parameters:
           public_network: "{{ public_network }}"
           image: "{{ image }}"
+          bastion_instance_type: "{{ bastion_instance_type }}"
           controller_instance_type: "{{ controller_instance_type }}"
           compute_instance_type: "{{ compute_instance_type }}"
           storage_instance_type: "{{ storage_instance_type }}"
