@@ -31,6 +31,12 @@ _kube_prometheus_stack_helm_values:
         openstack-control-plane: enabled
   grafana:
     adminPassword: "{{ kube_prometheus_stack_grafana_admin_password }}"
+    extraSecretMounts:
+      - name: auth-generic-oauth-secret-mount
+        secretName: grafana-auth-generic-oauth-secret
+        defaultMode: 0440
+        mountPath: /etc/secrets/auth_generic_oauth
+        readOnly: true
     grafana.ini:
       server:
         root_url: https://{{ kube_prometheus_stack_grafana_host }}
@@ -38,8 +44,8 @@ _kube_prometheus_stack_helm_values:
         enabled: true
         name: Atmosphere
         allow_sign_up: true
-        client_id: "{{ kube_prometheus_stack_grafana_oauth_client_id }}"
-        client_secret: "{{ kube_prometheus_stack_grafana_oauth_client_secret }}"
+        client_id: "$__file{/etc/secrets/auth_generic_oauth/client_id}"
+        client_secret: "$__file{/etc/secrets/auth_generic_oauth/client_secret}"
         scopes: openid email profile offline_access roles
         email_attribute_path: email
         login_attribute_path: username

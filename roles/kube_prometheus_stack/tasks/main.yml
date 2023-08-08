@@ -65,6 +65,25 @@
         name: "{{ kube_prometheus_stack_helm_release_name }}"
         namespace: "{{ kube_prometheus_stack_helm_release_namespace }}"
 
+- name: Create a K8s secret for Grafana Oauth client secret
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      - apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: "{{ kube_prometheus_stack_helm_release_namespace }}"
+
+      - apiVersion: v1
+        stringData:
+          client_id: "{{ grafana_oauth_client_id }}"
+          client_secret: "{{ grafana_oauth_client_secret }}"
+        kind: Secret
+        metadata:
+          name: grafana-auth-generic-oauth-secret
+          namespace: "{{ kube_prometheus_stack_helm_release_namespace }}"
+        type: Opaque
+
 - name: Deploy Helm chart
   run_once: true
   kubernetes.core.helm:
