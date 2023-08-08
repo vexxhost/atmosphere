@@ -16,27 +16,4 @@
   run_once: true
   kubernetes.core.k8s:
     state: present
-    definition:
-      apiVersion: v1
-      kind: Ingress
-      metadata:
-        name: "{{ ingress_name }}"
-        namespace: "{{ ingress_namespace | default('default') }}"
-        annotations: "{{ ingress_annotations }}"
-      spec:
-        ingressClassName: "{{ ingress_class_name }}"
-        rules:
-          - host: "{{ ingress_host }}"
-            http:
-              paths:
-                - path: /
-                  pathType: Prefix
-                  backend:
-                    service:
-                      name: "{{ ingress_service_name }}"
-                      port:
-                        number: "{{ ingress_service_port }}"
-        tls:
-          - secretName: "{{ ingress_secret_name | default(ingress_service_name ~ '-certs') }}"
-            hosts:
-              - "{{ ingress_host }}"
+    template: ingress.yml.j2
