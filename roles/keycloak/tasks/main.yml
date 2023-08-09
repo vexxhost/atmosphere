@@ -81,14 +81,3 @@
     login_user: root
     login_password: "{{ openstack_helm_endpoints.oslo_db.auth.admin.password }}"
     query: "set global pxc_strict_mode='ENFORCING'"
-
-- name: Wait until Keycloak ready
-  kubernetes.core.k8s_info:
-    api_version: apps/v1
-    kind: StatefulSet
-    name: keycloak
-    namespace: "{{ keycloak_helm_release_namespace }}"
-  register: _keycloak_statefulest_info
-  until: _keycloak_statefulest_info.resources[0].status.readyReplicas >= 1
-  retries: 60
-  delay: 10

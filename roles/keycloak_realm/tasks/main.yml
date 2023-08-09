@@ -12,6 +12,15 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+- name: Keycloak server health check
+  ansible.builtin.uri:
+    url: "https://{{ keycloak_host }}/health/ready"
+    return_content: true
+    validate_certs: false
+  register: this
+  retries: 60
+  delay: 5
+  until: this is not failed and "'UP' in this.content"
 
 - name: Create realms
   # Note(okozachenko1203): Ignoring changes in this task until the upstream issue
