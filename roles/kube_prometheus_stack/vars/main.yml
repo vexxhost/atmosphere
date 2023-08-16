@@ -43,6 +43,11 @@ _kube_prometheus_stack_helm_values:
       auth:
         oauth_skip_org_role_update_sync: false
         disable_login_form: true
+        # NOTE(mnaser): We're not able to redirect instantly to Grafana due to the fact that it doesn't support sending
+        #               the `id_token_hint`.
+        #
+        #               See: https://github.com/grafana/grafana/issues/24643
+        signout_redirect_url: "https://{{ keycloak_host }}/realms/{{ keycloak_realm_result.proposed.id }}/protocol/openid-connect/logout"
       auth.generic_oauth:
         enabled: true
         name: Atmosphere
