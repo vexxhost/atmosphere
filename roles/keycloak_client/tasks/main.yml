@@ -44,6 +44,7 @@
     web_origins: "{{ keycloak_client_web_origins | default(omit) }}"
     standard_flow_enabled: "{{ keycloak_client_standard_flow_enabled | default(omit) }}"
     direct_access_grants_enabled: "{{ keycloak_client_direct_access_grants_enabled | default(omit) }}"
+    implicit_flow_enabled: "{{ keycloak_client_implicit_flow_enabled | default(omit) }}"
     protocol: "{{ keycloak_client_protocol | default('openid-connect') }}"
   retries: 60
   delay: 5
@@ -58,7 +59,7 @@
     auth_username: "{{ keycloak_client_admin_username }}"
     auth_password: "{{ keycloak_client_admin_password }}"
     state: present
-    realm: "{{ keycloak_client_realm_id }}"
+    realm: "{{ keycloak_client_realm_id | default(keycloak_realm_result.proposed.id) }}"
     client_id: "{{ keycloak_client_id }}"
     name: "{{ item }}"
   loop: "{{ keycloak_client_roles }}"

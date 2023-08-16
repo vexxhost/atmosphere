@@ -54,3 +54,50 @@
     openstack_helm_ingress_service_name: keystone-api
     openstack_helm_ingress_service_port: 5000
     openstack_helm_ingress_annotations: "{{ keystone_ingress_annotations }}"
+
+- name: Get the ID of the Atmosphere domain
+  openstack.cloud.identity_domain_info:
+    cloud: atmosphere
+    name: atmosphere
+  register: _keystone_atmosphere_domain_info
+  until: _keystone_atmosphere_domain_info is not failed
+  retries: 60
+  delay: 5
+  tags:
+    - keystone-identity-provider
+
+- name: Create identity provider
+  openstack.cloud.federation_idp:
+    cloud: atmosphere
+    name: atmosphere
+    description: Atmosphere
+    domain_id: "{{ _keystone_atmosphere_domain_info.openstack_domains[0].id }}"
+    remote_ids:
+      - "https://{{ keycloak_host }}/realms/{{ keycloak_realm_result.proposed.id }}"
+  tags:
+    - keystone-identity-provider
+
+- name: Create federation mapping
+  openstack.cloud.federation_mapping:
+    cloud: atmosphere
+    name: atmosphere-openid
+    rules:
+      - local:
+          - user:
+              type: local
+              id: "{0}"
+              domain:
+                name: atmosphere
+        remote:
+          - type: OIDC-sub
+  tags:
+    - keystone-federation-mapping
+
+- name: Create a federation protocol
+  openstack.cloud.keystone_federation_protocol:
+    cloud: atmosphere
+    name: openid
+    idp_id: atmosphere
+    mapping_id: atmosphere-openid
+  tags:
+    - keystone-federation-protocol

@@ -22,10 +22,25 @@ keystone_helm_values: {}
 # List of annotations to apply to the Ingress
 keystone_ingress_annotations: {}
 
-# Keycloak settings
+# Keystone OpenID Connect settings (defaults to Keycloak for Atmosphere)
+keystone_oidc_scopes: "openid email profile"
+keystone_oidc_ssl_validate_server: "{{ (cluster_issuer_type == 'self-signed') | ternary('Off', 'On') }}"
+keystone_oidc_provider_metadata_url: "https://{{ keycloak_host }}/realms/{{ keycloak_realm_result.proposed.id }}/.well-known/openid-configuration"
+keystone_oidc_oauth_verify_jwks_uri: "https://{{ keycloak_host }}/realms/{{ keycloak_realm_result.proposed.id }}/protocol/openid-connect/certs"
+keystone_oidc_client_id: "{{ keystone_keycloak_client_id }}"
+keystone_oidc_client_secret: "{{ keystone_keycloak_client_secret }}"
+keystone_oidc_crypto_passphrase: "{{ undef('You must specify a Keystone OIDC client secret using keystone_oidc_crypto_passphrase') }}"
+keystone_oidc_redirect_uri: "{{ keystone_keycloak_redirect_uri }}"
+
+# Keycloak settings for client
+keystone_keycloak_client_id: keystone
+keystone_keycloak_client_secret: "{{ undef('You must specify a Keystone Keycloak client secret using keystone_keycloak_client_secret') }}"
+keystone_keycloak_redirect_uri: "https://{{ openstack_helm_endpoints_keystone_api_host }}/v3/OS-FEDERATION/identity_providers/atmosphere/protocols/openid/auth"
+
+# Keycloak settings for backend
 keystone_keycloak_server_url: http://keycloak.auth-system.svc/
 keystone_keycloak_user_realm_name: master
-keystone_keycloak_client_id: admin-cli
+keystone_keycloak_admin_client_id: admin-cli
 keystone_keycloak_admin_user: admin
 keystone_keycloak_admin_password: "{{ keycloak_admin_password }}"
 keystone_keycloak_realm: atmosphere

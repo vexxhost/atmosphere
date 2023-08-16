@@ -27,13 +27,53 @@ _keystone_helm_values:
         methods: password,token,openid,application_credential
       cors:
         allowed_origins: "*"
+      openid:
+        remote_id_attribute: HTTP_OIDC_ISS
       federation:
-        assertion_prefix: OIDC-
-        remote_id_attribute: OIDC-iss
         # TODO(mnaser): Lookup using openstack_helm_endpoints
         trusted_dashboard: "https://{{ openstack_helm_endpoints_horizon_api_host }}/auth/websso/"
       oslo_messaging_notifications:
         driver: noop
+    wsgi_keystone: |
+      LoadModule headers_module /usr/lib/apache2/modules/mod_headers.so
+      Listen 0.0.0.0:5000
+      TransferLog /dev/stdout
+      ErrorLog /dev/stderr
+      <VirtualHost *:5000>
+        # WSGI
+        WSGIDaemonProcess keystone-public processes=4 threads=1 user=keystone group=keystone display-name=%{GROUP}
+        WSGIProcessGroup keystone-public
+        WSGIScriptAlias / /var/www/cgi-bin/keystone/keystone-wsgi-public
+        WSGIApplicationGroup %{GLOBAL}
+        WSGIPassAuthorization On
+        # OIDC
+        OIDCClaimPrefix "OIDC-"
+        OIDCResponseType "id_token"
+        OIDCScope "{{ keystone_oidc_scopes }}"
+        OIDCSSLValidateServer "{{ keystone_oidc_ssl_validate_server }}"
+        OIDCProviderMetadataURL {{ keystone_oidc_provider_metadata_url }}
+        OIDCOAuthVerifyJwksUri {{ keystone_oidc_oauth_verify_jwks_uri }}
+        OIDCClientID {{ keystone_oidc_client_id }}
+        OIDCClientSecret {{ keystone_oidc_client_secret }}
+        OIDCCryptoPassphrase {{ keystone_oidc_crypto_passphrase }}
+        OIDCRedirectURI {{ keystone_keycloak_redirect_uri }}
+        OIDCRedirectURLsAllowed ^https://{{ openstack_helm_endpoints_horizon_api_host }}/auth/logout/$
+        <Location /v3/OS-FEDERATION/identity_providers/atmosphere/protocols/openid/auth>
+          Require valid-user
+          AuthType openid-connect
+        </Location>
+        <Location /v3/auth/OS-FEDERATION/identity_providers/atmosphere/protocols/openid/websso>
+          Require valid-user
+          AuthType openid-connect
+        </Location>
+        <Location /v3/auth/OS-FEDERATION/websso/openid>
+          Require valid-user
+          AuthType openid-connect
+        </Location>
+        # NOTE(mnaser): These are Atmosphere specific settings.
+        OIDCSessionType client-cookie:store_id_token
+        OIDCXForwardedHeaders X-Forwarded-Host X-Forwarded-Port X-Forwarded-Proto
+      </VirtualHost>
     ks_domains:
       atmosphere:
         identity:
@@ -41,7 +81,7 @@ _keystone_helm_values:
         keycloak:
           server_url: "{{ keystone_keycloak_server_url }}"
           user_realm_name: "{{ keystone_keycloak_user_realm_name }}"
-          client_id: "{{ keystone_keycloak_client_id }}"
+          client_id: "{{ keystone_keycloak_admin_client_id }}"
           username: "{{ keystone_keycloak_admin_user }}"
           password: "{{ keystone_keycloak_admin_password }}"
           realm_name: "{{ keystone_keycloak_realm }}"

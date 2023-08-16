@@ -25,6 +25,7 @@ galaxy_info:
 
 dependencies:
   - role: defaults
+  - role: openstacksdk
   - role: openstack_helm_endpoints
     vars:
       openstack_helm_endpoints_chart: keystone
@@ -32,3 +33,16 @@ dependencies:
     vars:
       upload_helm_chart_src: "{{ keystone_helm_chart_path }}"
       upload_helm_chart_dest: "{{ keystone_helm_chart_ref }}"
+  - role: keycloak_client
+    vars:
+      keycloak_client_id: "{{ keystone_keycloak_client_id }}"
+      keycloak_client_secret: "{{ keystone_keycloak_client_secret }}"
+      keycloak_client_admin_url: "https://{{ openstack_helm_endpoints_keystone_api_host }}"
+      keycloak_client_base_url: "https://{{ openstack_helm_endpoints_keystone_api_host }}"
+      keycloak_client_redirect_uris:
+        - "{{ keystone_keycloak_redirect_uri }}"
+        - "https://{{ openstack_helm_endpoints_horizon_api_host }}/auth/logout/"
+      keycloak_client_root_url: "https://{{ openstack_helm_endpoints_keystone_api_host }}"
+      keycloak_client_web_origins: ["https://{{ openstack_helm_endpoints_keystone_api_host }}"]
+      keycloak_client_standard_flow_enabled: true
+      keycloak_client_implicit_flow_enabled: true
