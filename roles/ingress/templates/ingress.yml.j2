@@ -3,7 +3,10 @@ kind: Ingress
 metadata:
   name: {{ ingress_name }}
   namespace: {{ ingress_namespace | default('default') }}
-  annotations: {{ ingress_annotations }}
+{% if ingress_annotations %}
+  annotations:
+    {{ ingress_annotations | to_nice_yaml | indent(4) }}
+{% endif %}
 spec:
   ingressClassName: {{ ingress_class_name }}
   rules:
