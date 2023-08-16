@@ -17,36 +17,6 @@ _keystone_helm_values:
   images:
     tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('keystone') }}"
   pod:
-    #     mounts = {
-    #       keystone_api = {
-    #         keystone_api = {
-    #           volumeMounts = [
-    #             {
-    #               name      = kubernetes_config_map.keystone_ldap_ca.metadata[0].name
-    #               mountPath = "/etc/keystone/ldap"
-    #             },
-    #             {
-    #               name      = kubernetes_config_map.keystone_openid_connect_metadata.metadata[0].name
-    #               mountPath = "/var/lib/apache2/oidc"
-    #             }
-    #           ],
-    #           volumes = [
-    #             {
-    #               name = kubernetes_config_map.keystone_ldap_ca.metadata[0].name
-    #               configMap = {
-    #                 name = kubernetes_config_map.keystone_ldap_ca.metadata[0].name
-    #               }
-    #             },
-    #             {
-    #               name = kubernetes_config_map.keystone_openid_connect_metadata.metadata[0].name
-    #               configMap = {
-    #                 name = kubernetes_config_map.keystone_openid_connect_metadata.metadata[0].name
-    #               }
-    #             }
-    #           ]
-    #         }
-    #       }
-    #     },
     replicas:
       api: 3
   conf:
@@ -62,10 +32,19 @@ _keystone_helm_values:
         remote_id_attribute: OIDC-iss
         # TODO(mnaser): Lookup using openstack_helm_endpoints
         trusted_dashboard: "https://{{ openstack_helm_endpoints_horizon_api_host }}/auth/websso/"
-      identity:
-        domain_configurations_from_database: true
       oslo_messaging_notifications:
         driver: noop
+    ks_domains:
+      atmosphere:
+        identity:
+          driver: keycloak
+        keycloak:
+          server_url: "{{ keystone_keycloak_server_url }}"
+          user_realm_name: "{{ keystone_keycloak_user_realm_name }}"
+          client_id: "{{ keystone_keycloak_client_id }}"
+          username: "{{ keystone_keycloak_admin_user }}"
+          password: "{{ keystone_keycloak_admin_password }}"
+          realm_name: "{{ keystone_keycloak_realm }}"
   manifests:
     job_credential_cleanup: false
     ingress_api: false
