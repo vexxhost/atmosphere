@@ -6,7 +6,6 @@ import (
 )
 
 var FORKED_PROJECTS map[string]bool = map[string]bool{
-	"cinder":   true,
 	"horizon":  true,
 	"keystone": true,
 	"magnum":   true,
