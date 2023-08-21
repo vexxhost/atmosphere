@@ -270,7 +270,7 @@ dependencies:
             service: local_image_registry
     targeted:
       ovn:
-        libvirt:
+        compute:
           pod:
             - requireSameNode: true
               labels:
@@ -1347,6 +1347,10 @@ conf:
       service_metadata_proxy: True
       auth_type: password
       auth_version: v3
+    cinder:
+      catalog_info: volumev3::internalURL
+      auth_url: null
+      auth_type: password
     database:
       max_retries: -1
     api_database:
@@ -1354,6 +1358,8 @@ conf:
     cell0_database:
       max_retries: -1
     keystone_authtoken:
+      service_token_roles: service
+      service_token_roles_required: true
       auth_type: password
       auth_version: v3
       memcache_security_strategy: ENCRYPT
@@ -1362,7 +1368,7 @@ conf:
       notify_on_state_change: vm_and_task_state
     service_user:
       auth_type: password
-      send_service_user_token: false
+      send_service_user_token: true
     libvirt:
       connection_uri: "qemu+unix:///system?socket=/run/libvirt/libvirt-sock"
       images_type: qcow2
@@ -1652,7 +1658,7 @@ endpoints:
         user_domain_name: default
         project_domain_name: default
       nova:
-        role: admin
+        role: admin,service
         region_name: RegionOne
         username: nova
         password: password
@@ -1683,6 +1689,14 @@ endpoints:
         role: admin
         region_name: RegionOne
         username: placement
+        password: password
+        project_name: service
+        user_domain_name: service
+        project_domain_name: service
+      cinder:
+        role: admin,service
+        region_name: RegionOne
+        username: cinder
         password: password
         project_name: service
         user_domain_name: service
