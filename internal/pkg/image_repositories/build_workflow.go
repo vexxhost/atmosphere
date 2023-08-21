@@ -156,7 +156,7 @@ func NewBuildWorkflow(project string) *GithubWorkflow {
 					},
 					{
 						Name: "Setup environment variables",
-						Run:  "echo PROJECT_REF=$(cat manifest.yml | yq '.\"${{ matrix.release }}\".sha') >> $GITHUB_ENV",
+						Run:  "echo PROJECT_REF=$(cat manifest.yml | yq '.\"${{ matrix.release }}\".sha') >> $GITHUB_ENV\necho BUILD_PROJECT_REF=$(git rev-parse --short HEAD) >> $GITHUB_ENV",
 					},
 					{
 						Name: "Authenticate with Quay.io",
@@ -178,7 +178,7 @@ func NewBuildWorkflow(project string) *GithubWorkflow {
 							"platforms":  platforms,
 							"push":       "${{ github.event_name == 'push' }}",
 							"build-args": strings.Join(buildArgs, "\n"),
-							"tags":       fmt.Sprintf("quay.io/vexxhost/%s:${{ env.PROJECT_REF }}-${{ matrix.from }}", project),
+							"tags":       fmt.Sprintf("quay.io/vexxhost/%s:${{ env.PROJECT_REF }}-${{ env.BUILD_PROJECT_REF }}-${{ matrix.from }}", project),
 						},
 					},
 					{
@@ -186,7 +186,7 @@ func NewBuildWorkflow(project string) *GithubWorkflow {
 						Uses: "akhilerm/tag-push-action@v2.0.0",
 						If:   `github.event_name == 'push' && ((matrix.from == 'focal') || (matrix.from == 'jammy' && matrix.release != 'yoga'))`,
 						With: map[string]string{
-							"src": fmt.Sprintf("quay.io/vexxhost/%s:${{ env.PROJECT_REF }}-${{ matrix.from }}", project),
+							"src": fmt.Sprintf("quay.io/vexxhost/%s:${{ env.PROJECT_REF }}-${{ env.BUILD_PROJECT_REF }}-${{ matrix.from }}", project),
 							"dst": fmt.Sprintf("quay.io/vexxhost/%s:${{ matrix.release }}", project),
 						},
 					},
