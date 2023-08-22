@@ -35,6 +35,7 @@ dependencies:
       upload_helm_chart_dest: "{{ keystone_helm_chart_ref }}"
   - role: keycloak_client
     vars:
+      keycloak_client_realm_id: "{{ keycloak_realm_result.proposed.id }}"
       keycloak_client_id: "{{ keystone_keycloak_client_id }}"
       keycloak_client_secret: "{{ keystone_keycloak_client_secret }}"
       keycloak_client_admin_url: "https://{{ openstack_helm_endpoints_keystone_api_host }}"
@@ -46,3 +47,4 @@ dependencies:
       keycloak_client_web_origins: ["https://{{ openstack_helm_endpoints_keystone_api_host }}"]
       keycloak_client_standard_flow_enabled: true
       keycloak_client_implicit_flow_enabled: true
+      keycloak_client_roles: []
