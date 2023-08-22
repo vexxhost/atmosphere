@@ -39,6 +39,7 @@ _horizon_helm_values:
           raw:
             OPENSTACK_SSL_NO_VERIFY: "{{ (cluster_issuer_type == 'self-signed') | ternary('True', 'False') | string }}"
             WEBSSO_KEYSTONE_URL: https://{{ openstack_helm_endpoints['identity']['host_fqdn_override']['public']['host'] }}/v3
+            # yamllint disable-line rule:line-length
             LOGOUT_URL: https://{{ openstack_helm_endpoints['identity']['host_fqdn_override']['public']['host'] }}/v3/OS-FEDERATION/identity_providers/atmosphere/protocols/openid/auth?logout=https://{{ openstack_helm_endpoints_horizon_api_host }}/auth/logout/
       local_settings_d:
         _50_monasca_ui_settings: "{{ lookup('file', '50-monasca-ui-settings.py') }}"
