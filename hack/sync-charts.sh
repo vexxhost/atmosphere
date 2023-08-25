@@ -105,6 +105,12 @@ curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~883168/revis
   | filterdiff -p2 -x 'Chart.yaml' \
   | filterdiff -p1 -i 'glance/*' \
   | patch -p2 -d ${ATMOSPHERE}/charts/glance
+curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~892704/revisions/1/patch?download' \
+  | base64 --decode \
+  | filterdiff -p1 -x 'releasenotes/*' \
+  | filterdiff -p2 -x 'Chart.yaml' \
+  | filterdiff -p1 -i 'glance/*' \
+  | patch -p2 -d ${ATMOSPHERE}/charts/glance
 
 CINDER_VERSION=0.3.10
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/cinder-${CINDER_VERSION}.tgz \
