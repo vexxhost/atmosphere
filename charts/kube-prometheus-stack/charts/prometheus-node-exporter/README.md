@@ -41,6 +41,10 @@ helm upgrade [RELEASE_NAME] [CHART] --install
 
 _See [helm upgrade](https://helm.sh/docs/helm/helm_upgrade/) for command documentation._
 
+### 4.16 to 4.17+
+
+`containerSecurityContext.readOnlyRootFilesystem` is set to `true` by default.
+
 ### 3.x to 4.x
 
 Starting from version 4.0.0, the `node exporter` chart is using the [Kubernetes recommended labels](https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/). Therefore you have to delete the daemonset before you upgrade.
@@ -75,3 +79,22 @@ See [Customizing the Chart Before Installing](https://helm.sh/docs/intro/using_h
 ```console
 helm show values prometheus-community/prometheus-node-exporter
 ```
+
+### kube-rbac-proxy
+
+You can enable `prometheus-node-exporter` endpoint protection using `kube-rbac-proxy`. By setting `kubeRBACProxy.enabled: true`, this chart will deploy a RBAC proxy container protecting the node-exporter endpoint.
+To authorize access, authenticate your requests (via a `ServiceAccount` for example) with a `ClusterRole` attached such as:
+
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prometheus-node-exporter-read
+rules:
+  - apiGroups: [ "" ]
+    resources: ["services/node-exporter-prometheus-node-exporter"]
+    verbs:
+      - get
+```
+
+See [kube-rbac-proxy examples](https://github.com/brancz/kube-rbac-proxy/tree/master/examples/resource-attributes) for more details.
