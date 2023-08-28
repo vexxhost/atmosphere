@@ -200,7 +200,7 @@
               '0.5': 'MultipleNodesSoftNet' + capitalize(metric),
               '0.75': 'MajorityNodesSoftNet' + capitalize(metric),
             }[nodesAffected],
-            expr: 'count(node:softnet:' + metric + ':1m > %s) > (count(node:softnet:' + metric + ':1m) * %s)' % [threshold, nodesAffected],
+            expr: 'count(node:softnet:%s:1m > %s) > (count(node:softnet:%s:1m) * %s)' % [metric, threshold, metric, nodesAffected],
             'for': '1m',
             labels: {
               severity: {
@@ -211,7 +211,7 @@
             },
           };
           [
-            recordingRule('backlog', 'sum(node_softnet_backlog_len[1m]) by (instance)'),
+            recordingRule('backlog', 'sum(node_softnet_backlog_len) by (instance)'),
             alertRule('backlog', '5000', '0'),
             alertRule('backlog', '5000', '0.5'),
             alertRule('backlog', '5000', '0.75'),

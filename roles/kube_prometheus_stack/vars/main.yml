@@ -1,5 +1,7 @@
 _kube_prometheus_stack_helm_values:
   defaultRules:
+    rules:
+      nodeExporterAlerting: false
     disabled:
       # NOTE(mnaser): https://github.com/prometheus-community/helm-charts/issues/144
       #               https://github.com/openshift/cluster-monitoring-operator/issues/248
@@ -152,13 +154,6 @@ _kube_prometheus_stack_helm_values:
       nodeSelector: *node_selector
       secrets:
         - kube-prometheus-stack-etcd-client-cert
-      additionalAlertRelabelConfigs:
-        # NOTE(mnaser): KubeJobFailed are not critical in the scope of an
-        #               Atmosphere deployment.  We can safely ignore them.
-        - source_labels: [alertname]
-          regex: KubeJobFailed
-          target_label: severity
-          replacement: SEV-3
     additionalServiceMonitors:
       - name: ceph
         jobLabel: application
