@@ -156,14 +156,14 @@
             expr: 'node_entropy_available_bits / node_entropy_pool_size_bits < 0.20',
             'for': '5m',
             labels: {
-              severity: 'warning',
+              severity: 'SEV-3',
             },
           },
           {
             alert: 'NodeNonLTSKernel',
             expr: 'node_uname_info{release!~"^5.(4|15).*"}',
             labels: {
-              severity: 'warning',
+              severity: 'SEV-3',
             },
           },
         ],
@@ -181,39 +181,49 @@
             annotations: {
               summary: 'High multicast traffic on node {{ $labels.instance }}: {{ $value }} packets/sec',
               description: 'This can result in high software interrupt load on the node which can bring network performance down.',
-              runbook_url: 'https://github.com/vexxhost/atmosphere/tree/main/roles/kube_prometheus_stack#NodeNetworkMulticast'
+              runbook_url: 'https://github.com/vexxhost/atmosphere/tree/main/roles/kube_prometheus_stack#NodeNetworkMulticast',
             },
           },
         ],
       },
       {
         name: 'softnet',
-        rules: [
-          {
-            alert: 'NodeSoftNetBacklogLength',
-            expr: 'sum(node_softnet_backlog_len) by (instance) > 5000',
+        rules:
+          local capitalize(s) = std.asciiUpper(std.substr(s, 0, 1)) + std.substr(s, 1, std.length(s) - 1);
+          local recordingRule(metric, expr) = {
+            record: 'node:softnet:' + metric + ':1m',
+            expr: expr,
+          };
+          local alertRule(metric, threshold, nodesAffected) = {
+            alert: {
+              '0': 'SingleNodeSoftNet' + capitalize(metric),
+              '0.5': 'MultipleNodesSoftNet' + capitalize(metric),
+              '0.75': 'MajorityNodesSoftNet' + capitalize(metric),
+            }[nodesAffected],
+            expr: 'count(node:softnet:' + metric + ':1m > %s) > (count(node:softnet:' + metric + ':1m) * %s)' % [threshold, nodesAffected],
             'for': '1m',
             labels: {
-              severity: 'critical',
+              severity: {
+                '0': 'SEV-3',
+                '0.5': 'SEV-2',
+                '0.75': 'SEV-1',
+              }[nodesAffected],
             },
-          },
-          {
-            alert: 'NodeSoftNetDrops',
-            expr: 'sum(rate(node_softnet_dropped_total[1m])) by (instance) != 0',
-            'for': '1m',
-            labels: {
-              severity: 'critical',
-            },
-          },
-          {
-            alert: 'NodeSoftNetTimesSqueezed',
-            expr: 'sum(rate(node_softnet_times_squeezed_total[1m])) by (instance) > 10',
-            'for': '10m',
-            labels: {
-              severity: 'warning',
-            },
-          },
-        ],
+          };
+          [
+            recordingRule('backlog', 'sum(node_softnet_backlog_len[1m]) by (instance)'),
+            alertRule('backlog', '5000', '0'),
+            alertRule('backlog', '5000', '0.5'),
+            alertRule('backlog', '5000', '0.75'),
+
+            recordingRule('squeezed', 'sum(rate(node_softnet_times_squeezed_total[1m])) by (instance)'),
+            alertRule('squeezed', '0', '0'),
+
+            recordingRule('dropped', 'sum(rate(node_softnet_dropped_total[1m])) by (instance)'),
+            alertRule('dropped', '0', '0'),
+            alertRule('dropped', '0', '0.5'),
+            alertRule('dropped', '0', '0.75'),
+          ],
       },
     ],
   },
