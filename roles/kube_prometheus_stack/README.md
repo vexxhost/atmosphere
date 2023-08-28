@@ -2,16 +2,63 @@
 
 There is a Grafana deployemnt with a few dashboards that are created by default
 and a Prometheus deployment that is used to collect metrics from the cluster
-which sends alerts to AlertManager.  In addition, Loki is deployed to collect
+which sends alerts to AlertManager. In addition, Loki is deployed to collect
 logs from the cluster using Vector.
+
+## Philosophy
+
+Atmosphere's monitoring philosophy is strongly aligned with the principles
+outlined in the Google Site Reliability Engineering (SRE) book. Our approach
+focuses on alerting on conditions that are symptomatic of issues which directly
+impact the service or system health, rather than simply monitoring the state of
+individual components.
+
+### Severity Levels
+
+Our alerting system classifies incidents into different severity levels based on
+their impact on the system and users.
+
+- **SEV-1**: This is the highest level of severity, used for incidents that
+  cause a total service outage or significant functionality loss across the
+  entire Atmosphere platform. Immediate attention and action are required to
+  restore the service.
+
+- **SEV-2**: Used for incidents that cause a major impact on a large number of
+  users or critical system components. This could include issues affecting the
+  entire control plane of a specific service. While not a total outage, SEV-2
+  incidents still require prompt attention.
+
+- **SEV-3**: This level is used for incidents that impact a smaller subset of
+  users or a single system. These incidents require attention but do not
+  typically require immediate action outside of normal business hours.
+
+- **SEV-4**: The lowest level of severity, used for minor issues that do not
+  significantly impact users or the system's operation. These incidents are
+  typically addressed during normal business hours.
+
+### Alerting Philosophy
+
+Our alerting philosophy is to ensure that the right people are alerted at the
+right time. Most alerts, if they are affecting a single system, would trigger a
+lower severity level (SEV-3 or SEV-4). However, if an issue is affecting the
+entire control plane of a specific service, it might escalate to a SEV-2. And
+if the whole service is unavailable, it becomes a SEV-1.
+
+We believe in minimizing alert noise to ensure that alerts are meaningful and
+actionable. Our goal is to have every alert provide enough information to
+initiate an immediate and effective response.
+
+We continue to refine our monitoring and alerting strategies to ensure that we
+are effectively identifying and responding to incidents, with the ultimate goal
+of providing a reliable and high-quality service to all our users.
 
 ## Viewing data
 
 By default, an `Ingress` is created for Grafana using the `kube_prometheus_stack_grafana_host`
-variable.  The default login is `admin` and the password is the value of
+variable. The default login is `admin` and the password is the value of
 `kube_prometheus_stack_grafana_admin_password`.
 
-You can view the existing dashboards by going to _Manage_ > _Dashboards_.  You
+You can view the existing dashboards by going to _Manage_ > _Dashboards_. You
 can also check any alerts that are currently firing by going to _Alerting_ >
 _Alerts_.
 
@@ -30,7 +77,7 @@ OpsGenie:
 2. Copy the API key that is generated for you and setup correct assignment
    rules inside OpsGenie.
 3. Create a new heartbeat inside OpsGenie, you can do this by going to
-   _Settings_ > _Heartbeats_ > _Create Heartbeat_.  Set the interval to 1 minute.
+   _Settings_ > _Heartbeats_ > _Create Heartbeat_. Set the interval to 1 minute.
 
 Afterwards, you can configure the following options for the Atmosphere config:
 
@@ -121,7 +168,7 @@ This alert is triggered when a node is receiving large volumes of multicast
 traffic which can be a sign of a misconfigured network or a malicious actor.
 
 This can result in high CPU usage on the node and can cause the node to become
-unresponsive.  Also, it can be the cause of a very high amount of software
+unresponsive. Also, it can be the cause of a very high amount of software
 interrupts on the node.
 
 In order to find the root cause of this issue, you can use the following
@@ -132,7 +179,7 @@ iftop -ni $DEV -f 'multicast and not broadcast'
 ```
 
 With the command above, you're able to see which IP addresses are sending the
-multicast traffic.  Once you have the IP address, you can use the following
+multicast traffic. Once you have the IP address, you can use the following
 command to find the server behind it:
 
 ```console
