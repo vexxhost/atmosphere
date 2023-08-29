@@ -18,34 +18,45 @@ individual components.
 Our alerting system classifies incidents into different severity levels based on
 their impact on the system and users.
 
-- **SEV-1** (high): This is the highest level of severity, used for incidents 
-  causing a complete service disruption or significant loss of functionality 
-  across the entire Atmosphere platform. Immediate response and action are 
-  necessary to restore the service.
+- **P1** (Critical): This level is used for incidents causing a complete 
+  service disruption or significant loss of functionality across the entire 
+  Atmosphere platform. Immediate response, attention, and action are necessary 
+  regardless of business hours.
 
-- **SEV-2** (medium): This level is for incidents that affect a smaller group 
-  of users or a single system. While these incidents require attention, they do 
-  not generally necessitate immediate action outside of standard business hours.
+- **P2** (High): This level is for incidents that affect a large group of users 
+  or critical system components. These incidents require swift attention and 
+  action, regardless of business hours, but do not cause a total disruption.
 
-- **SEV-3** (low): This level is used for minor issues that have a minimal 
-  impact on users or the system's operation. These incidents are typically 
-  addressed during standard business hours.
+- **P3** (Moderate): This level is for incidents that affect a smaller group of 
+  users or a single system. These incidents require attention and may necessitate 
+  action during business hours.
+
+- **P4** (Low): This level is used for minor issues that have a limited impact 
+  on a small subset of users or system functionality. These incidents require 
+  attention and action, if necessary, during standard business hours.
+
+- **P5** (Informational): This is the lowest level of severity, used for 
+  providing information about normal system activities or minor issues that 
+  don't significantly impact users or system functionality. These incidents 
+  typically do not require immediate attention or action and are addressed 
+  during standard business hours.
 
 ### Alerting Philosophy
 
-Our alerting philosophy is to ensure that the right people are alerted at the
-right time. Most alerts, if they are affecting a single system, would trigger a
-lower severity level (SEV-3 or SEV-4). However, if an issue is affecting the
-entire control plane of a specific service, it might escalate to a SEV-2. And
-if the whole service is unavailable, it becomes a SEV-1.
+Our alerting philosophy aims to alert the right people at the right time. Most 
+alerts, if they are affecting a single system, would trigger a lower priority 
+level (P4 or P5). However, if an issue is affecting the entire control plane of 
+a specific service, it might escalate to a P3 or P2. And if the whole service 
+is unavailable, it becomes a P1.
 
-We believe in minimizing alert noise to ensure that alerts are meaningful and
-actionable. Our goal is to have every alert provide enough information to
-initiate an immediate and effective response.
+We believe in minimizing alert noise to ensure that alerts are meaningful and 
+actionable. Our goal is to have every alert provide enough information to 
+initiate an immediate and effective response, regardless of business hours for 
+high priority alerts.
 
-We continue to refine our monitoring and alerting strategies to ensure that we
-are effectively identifying and responding to incidents, with the ultimate goal
-of providing a reliable and high-quality service to all our users.
+We continue to refine our monitoring and alerting strategies to ensure that we 
+are effectively identifying and responding to incidents. The ultimate goal is 
+to provide a reliable and high-quality service to all our users.
 
 ## Viewing data
 
@@ -91,16 +102,14 @@ kube_prometheus_stack_helm_values:
                 {%- endraw %}
               priority: >-
                 {% raw -%}
-                {{ if hasPrefix .GroupLabels.severity "SEV-" -}}
-                {{ replace .GroupLabels.severity "SEV-" "P" -1 }}
-                {{ else if eq .GroupLabels.severity "critical" -}}
+                {{- if eq .GroupLabels.severity "critical" -}}
                 P1
                 {{- else if eq .GroupLabels.severity "warning" -}}
-                P2
+                P3
                 {{- else if eq .GroupLabels.severity "info" -}}
-                P3
+                P5
                 {{- else -}}
-                P3
+                {{ .GroupLabels.severity }}
                 {{- end -}}
                 {%- endraw %}
               description: |-

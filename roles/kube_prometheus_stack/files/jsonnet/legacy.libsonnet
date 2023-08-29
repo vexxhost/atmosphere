@@ -181,14 +181,14 @@
               expr: 'node_entropy_available_bits / node_entropy_pool_size_bits < 0.20',
               'for': '5m',
               labels: {
-                severity: 'SEV-3',
+                severity: 'P5',
               },
             },
             {
               alert: 'NodeNonLTSKernel',
               expr: 'node_uname_info{release!~"^5.(4|15).*"}',
               labels: {
-                severity: 'SEV-3',
+                severity: 'P5',
               },
             },
           ],
@@ -225,9 +225,9 @@
               'for': '1m',
               labels: {
                 severity: {
-                  '0': 'SEV-3',
-                  '0.5': 'SEV-2',
-                  '0.75': 'SEV-1',
+                  '0': 'P3',
+                  '0.5': 'P2',
+                  '0.75': 'P1',
                 }[nodesAffected],
               },
             };

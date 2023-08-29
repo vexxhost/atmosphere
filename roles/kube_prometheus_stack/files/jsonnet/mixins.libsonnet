@@ -10,19 +10,21 @@ local disabledAlerts = [
   'CephNodeNetworkPacketDrops',
 ];
 
-// NOTE(mnaser): This is the default mapping for severities, the summary is:
-//               - SEV-1: Highest level of severity, indicating an outage
-//                        affecting all users. Requires immediate and constant
-//                        attention until resolved.
-//               - SEV-2: Represents a major functionality broken but not causing
-//                        a full outage. Requires prompt attention.
-//               - SEV-3: Lowest severity level, indicating minor issues or
-//                        functionality impairments that affect some users but
-//                        the system is still largely operational.
+// NOTE(mnaser): This is the default mapping for severities:
+//               - P1: Full service disruption or significant loss of
+//                     functionality. Requires immediate action.
+//               - P2: Major functionality broken, affecting large group of
+//                     users or critical components. Prompt attention needed.
+//               - P3: Issues affecting smaller group of users or a single
+//                     system. Attention required during business hours.
+//               - P4: Minor issues with limited impact. Attention and potential
+//                     action needed during standard business hours.
+//               - P5: Normal activities or minor issues. Typically no immediate
+//                     attention or action required.
 local defaultSeverityMapping = {
-  critical: 'SEV-1',
-  warning: 'SEV-2',
-  info: 'SEV-3',
+  critical: 'P1',
+  warning: 'P3',
+  info: 'P5',
 };
 
 // NOTE(mnaser): The mapping here follows the format 'AlertName:Severity'. The
@@ -30,12 +32,12 @@ local defaultSeverityMapping = {
 //               it maps to one of the severity levels defined in
 //               defaultSeverityMapping.
 local customSeverityMapping = {
-  'KubeJobFailed:warning': 'SEV-3',
+  'KubeJobFailed:warning': 'P4',
 };
 
 local getSeverity(rule) =
-  // Return immediately if the string starts with "SEV-"
-  if std.startsWith(rule.labels.severity, 'SEV-') then rule.labels.severity
+  // Return immediately if the string starts with "P"
+  if std.startsWith(rule.labels.severity, 'P') then rule.labels.severity
   else
     local key = rule.alert + ':' + rule.labels.severity;
     if key in customSeverityMapping then customSeverityMapping[key]

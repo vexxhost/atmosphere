@@ -51,7 +51,7 @@
             expr: 'cinder:agent:state{adminState!="enabled"} > 0',
             'for': '24h',
             labels: {
-              severity: 'SEV-3',
+              severity: 'P5',
             },
             annotations: {
               summary: 'Cinder agent disabled',
@@ -63,7 +63,7 @@
             expr: 'cinder:agent:state != 1',
             'for': '15m',
             labels: {
-              severity: 'SEV-2',
+              severity: 'P3',
             },
             annotations: {
               summary: 'Cinder agent down',
@@ -75,7 +75,7 @@
             expr: 'min by (exported_service) (cinder:agent:state) == 0',
             'for': '5m',
             labels: {
-              severity: 'SEV-1',
+              severity: 'P2',
             },
             annotations: {
               summary: 'Cinder agent group down',
@@ -87,7 +87,7 @@
             expr: 'cinder:volume:error > 0',
             'for': '24h',
             labels: {
-              severity: 'SEV-3',
+              severity: 'P4',
             },
             annotations: {
               summary: 'Cinder volume error',
@@ -104,7 +104,7 @@
             expr: 'neutron:agent:state{adminState!="enabled"} > 0',
             'for': '24h',
             labels: {
-              severity: 'SEV-3',
+              severity: 'P5',
             },
             annotations: {
               summary: 'Neutron agent disabled',
@@ -116,7 +116,7 @@
             expr: 'neutron:agent:state != 1',
             'for': '15m',
             labels: {
-              severity: 'SEV-2',
+              severity: 'P3',
             },
             annotations: {
               summary: 'Neutron agent down',
@@ -128,7 +128,7 @@
             expr: 'min by (exported_service) (neutron:agent:state) == 0',
             'for': '5m',
             labels: {
-              severity: 'SEV-1',
+              severity: 'P2',
             },
             annotations: {
               summary: 'Neutron agent group down',
@@ -168,7 +168,7 @@
             expr: 'nova:service:state{adminState!="enabled"} > 0',
             'for': '24h',
             labels: {
-              severity: 'SEV-3',
+              severity: 'P5',
             },
             annotations: {
               summary: 'Nova service disabled',
@@ -180,7 +180,7 @@
             expr: 'nova:service:state != 1',
             'for': '15m',
             labels: {
-              severity: 'SEV-2',
+              severity: 'P3',
             },
             annotations: {
               summary: 'Nova service down',
@@ -192,7 +192,7 @@
             expr: 'min by (exported_service) (nova:service:state) == 0',
             'for': '5m',
             labels: {
-              severity: 'SEV-1',
+              severity: 'P2',
             },
             annotations: {
               summary: 'Nova service group down',
@@ -204,7 +204,7 @@
             expr: 'nova:server:error > 0',
             'for': '24h',
             labels: {
-              severity: 'SEV-3',
+              severity: 'P4',
             },
             annotations: {
               summary: 'Nova server error',
