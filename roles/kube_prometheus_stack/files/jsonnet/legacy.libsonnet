@@ -133,7 +133,7 @@
     prometheusRules+:: {
       groups: [
         {
-          name: 'softnet',
+          name: 'softnet.rules',
           rules:
             local recordingRule(metric, expr) = {
               record: 'node:softnet:' + metric + ':1m',

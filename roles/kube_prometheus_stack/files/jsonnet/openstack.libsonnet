@@ -1,8 +1,8 @@
 {
-  prometheusRules+:: {
-    groups: [
+  prometheusRules+: {
+    groups+: [
       {
-        name: 'neutron',
+        name: 'neutron.rules',
         rules:
           [
             {
@@ -12,7 +12,7 @@
           ],
       },
       {
-        name: 'cinder',
+        name: 'cinder.rules',
         rules:
           [
             {
@@ -26,7 +26,7 @@
           ],
       },
       {
-        name: 'nova',
+        name: 'nova.rules',
         rules:
           [
             {
@@ -41,8 +41,8 @@
       },
     ],
   },
-  prometheusAlerts+:: {
-    groups: [
+  prometheusAlerts+: {
+    groups+: [
       {
         name: 'cinder',
         rules: [
