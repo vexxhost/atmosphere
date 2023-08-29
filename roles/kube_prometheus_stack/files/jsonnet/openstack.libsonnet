@@ -1,55 +1,4 @@
 {
-  prometheusRules+: {
-    groups+: [
-      {
-        name: 'neutron.rules',
-        rules:
-          [
-            {
-              record: 'neutron:agent:state',
-              expr: 'max_over_time(openstack_neutron_agent_state[30m:5m])',
-            },
-          ],
-      },
-      {
-        name: 'neutron-port-bindings.rules',
-        rules: [
-          {
-            record: 'neutron:port:binding_vif_type',
-            expr: 'avg_over_time(count(neutron_port) by (binding_vif_type)[5m])',
-          },
-        ],
-      }
-      {
-        name: 'cinder.rules',
-        rules:
-          [
-            {
-              record: 'cinder:agent:state',
-              expr: 'max_over_time(openstack_cinder_agent_state[30m:5m])',
-            },
-            {
-              record: 'cinder:volume:error',
-              expr: 'openstack_cinder_volume_status{status=~"error.*"}',
-            },
-          ],
-      },
-      {
-        name: 'nova.rules',
-        rules:
-          [
-            {
-              record: 'nova:service:state',
-              expr: 'max_over_time(openstack_nova_agent_state[30m:5m])',
-            },
-            {
-              record: 'nova:instance:error',
-              expr: 'openstack_nova_server_status{status="ERROR"}',
-            },
-          ],
-      },
-    ],
-  },
   prometheusAlerts+: {
     groups+: [
       {
@@ -57,7 +6,7 @@
         rules: [
           {
             alert: 'CinderAgentDisabled',
-            expr: 'cinder:agent:state{adminState!="enabled"} > 0',
+            expr: 'openstack_cinder_agent_state{adminState!="enabled"} > 0',
             'for': '24h',
             labels: {
               severity: 'P5',
@@ -69,7 +18,7 @@
           },
           {
             alert: 'CinderAgentDown',
-            expr: 'cinder:agent:state != 1',
+            expr: 'openstack_cinder_agent_state != 1',
             'for': '15m',
             labels: {
               severity: 'P3',
@@ -81,7 +30,7 @@
           },
           {
             alert: 'CinderAgentGroupDown',
-            expr: 'min by (exported_service) (cinder:agent:state) == 0',
+            expr: 'min by (exported_service) (openstack_cinder_agent_state) == 0',
             'for': '5m',
             labels: {
               severity: 'P2',
@@ -93,7 +42,7 @@
           },
           {
             alert: 'CinderVolumeError',
-            expr: 'cinder:volume:error > 0',
+            expr: 'openstack_cinder_volume_status{status=~"error.*"} > 0',
             'for': '24h',
             labels: {
               severity: 'P4',
@@ -111,7 +60,7 @@
           [
             {
               alert: 'NeutronAgentDisabled',
-              expr: 'neutron:agent:state{adminState!="up"} > 0',
+              expr: 'openstack_neutron_agent_state{adminState!="up"} > 0',
               'for': '24h',
               labels: {
                 severity: 'P5',
@@ -123,7 +72,7 @@
             },
             {
               alert: 'NeutronAgentDown',
-              expr: 'neutron:agent:state != 1',
+              expr: 'openstack_neutron_agent_state != 1',
               'for': '15m',
               labels: {
                 severity: 'P3',
@@ -135,7 +84,7 @@
             },
             {
               alert: 'NeutronAgentGroupDown',
-              expr: 'min by (exported_service) (neutron:agent:state) == 0',
+              expr: 'min by (exported_service) (openstack_neutron_agent_state) == 0',
               'for': '5m',
               labels: {
                 severity: 'P2',
@@ -152,6 +101,7 @@
                 summary: '[{{ $labels.network_name }}] {{ $labels.subnet_name }} running out of IPs',
               },
               expr: 'sum by (network_id) (openstack_neutron_network_ip_availabilities_used{project_id!=""}) / sum by (network_id) (openstack_neutron_network_ip_availabilities_total{project_id!=""}) * 100 > 80',
+              'for': '6h',
               labels: {
                 severity: 'warning',
               },
@@ -174,17 +124,17 @@
             },
           };
           [
-            alert('P4', 'neutron:port:binding_vif_type{binding_vif_type="binding_failed"} > 0', 'At least one Neutron port has failed to bind.'),
-            alert('P3', '(neutron:port:binding_vif_type{binding_vif_type="binding_failed"} / sum(neutron:port:binding_vif_type)) > 0.05', 'More than 5% of Neutron ports have failed to bind.'),
-            alert('P2', '(neutron:port:binding_vif_type{binding_vif_type="binding_failed"} / sum(neutron:port:binding_vif_type)) > 0.5', 'More than 50% of Neutron ports have failed to bind.'),
+            alert('P4', 'count(neutron_port{binding_vif_type="binding_failed"}) > 0', 'At least one Neutron port has failed to bind.'),
+            alert('P3', '(count(neutron_port{binding_vif_type="binding_failed"}) / count(neutron_port)) > 0.05', 'More than 5% of Neutron ports have failed to bind.'),
+            alert('P2', '(count(neutron_port{binding_vif_type="binding_failed"}) / count(neutron_port)) > 0.5', 'More than 50% of Neutron ports have failed to bind.'),
           ],
-      }
+      },
       {
         name: 'nova',
         rules: [
           {
             alert: 'NovaServiceDisabled',
-            expr: 'nova:service:state{adminState!="enabled"} > 0',
+            expr: 'openstack_nova_agent_state{adminState!="enabled"} > 0',
             'for': '24h',
             labels: {
               severity: 'P5',
@@ -196,7 +146,7 @@
           },
           {
             alert: 'NovaServiceDown',
-            expr: 'nova:service:state != 1',
+            expr: 'openstack_nova_agent_state != 1',
             'for': '15m',
             labels: {
               severity: 'P3',
@@ -208,7 +158,7 @@
           },
           {
             alert: 'NovaServiceGroupDown',
-            expr: 'min by (exported_service) (nova:service:state) == 0',
+            expr: 'min by (exported_service) (openstack_nova_agent_state) == 0',
             'for': '5m',
             labels: {
               severity: 'P2',
@@ -220,7 +170,7 @@
           },
           {
             alert: 'NovaInstanceError',
-            expr: 'nova:server:error > 0',
+            expr: 'openstack_nova_server_status{status="ERROR"} > 0',
             'for': '24h',
             labels: {
               severity: 'P4',
