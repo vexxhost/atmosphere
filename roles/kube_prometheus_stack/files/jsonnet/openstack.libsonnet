@@ -111,7 +111,7 @@
           [
             {
               alert: 'NeutronAgentDisabled',
-              expr: 'neutron:agent:state{adminState!="enabled"} > 0',
+              expr: 'neutron:agent:state{adminState!="up"} > 0',
               'for': '24h',
               labels: {
                 severity: 'P5',
