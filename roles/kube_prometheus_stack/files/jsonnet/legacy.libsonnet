@@ -23,6 +23,9 @@
           {
             alert: 'IpmiCollectorDown',
             expr: 'ipmi_up == 0',
+            labels: {
+              severity: 'warning',
+            },
           },
         ],
       },
@@ -347,50 +350,59 @@
         name: 'nova',
         rules: [
           {
-            alert: 'NovaAgentDown',
-            annotations: {
-              description: 'The service {{ $labels.exported_service }} running on {{ $labels.hostname }} is being reported as down.',
-              summary: '[{{ $labels.hostname }}] {{ $labels.exported_service }} down',
-            },
-            expr: 'openstack_nova_agent_state != 1',
-            labels: {
-              severity: 'warning',
-            },
+            record: 'nova:service:state',
+            expr: 'max_over_time(openstack_nova_agent_state[30m:5m])',
           },
           {
-            alert: 'NovaAgentDown',
-            annotations: {
-              description: 'The service {{ $labels.exported_service }} running on {{ $labels.hostname }} is being reported as down.  This can affect compute operations so it must be resolved as quickly as possible.',
-              summary: '[{{ $labels.hostname }}] {{ $labels.exported_service }} down',
-            },
-            expr: 'openstack_nova_agent_state != 1',
-            'for': '5m',
-            labels: {
-              severity: 'critical',
-            },
-          },
-          {
-            alert: 'NovaAgentDisabled',
-            annotations: {
-              description: 'The service {{ $labels.exported_service }} running on {{ $labels.hostname }} has been disabled for 60 minutes.  This can affect compute operations so it must be resolved as quickly as possible.',
-              summary: '[{{ $labels.hostname }}] {{ $labels.exported_service }} disabled',
-            },
-            expr: 'openstack_nova_agent_state{adminState!="enabled"}',
-            'for': '1h',
-            labels: {
-              severity: 'warning',
-            },
-          },
-          {
-            alert: 'NovaInstanceInError',
-            annotations: {
-              description: 'The instance {{ $labels.id }} has been in ERROR state for over 24 hours. It must be cleaned up or removed in order to provide a consistent customer experience.',
-              summary: '[{{ $labels.id }}] Instance in ERROR state',
-            },
-            expr: 'openstack_nova_server_status{status="ERROR"}',
+            alert: 'NovaServiceDisabled',
+            expr: 'nova:service:state{adminState!="enabled"} > 0',
             'for': '24h',
             labels: {
-              severity: 'warning',
+              severity: 'SEV-3',
+            },
+            annotations: {
+              summary: 'Nova service disabled',
+              description: 'A Nova service has been administratively disabled for more than 24 hours.',
+            },
+          },
+          {
+            alert: 'NovaServiceDown',
+            expr: 'nova:service:state != 1',
+            'for': '15m',
+            labels: {
+              severity: 'SEV-2',
+            },
+            annotations: {
+              summary: 'Nova service down',
+              description: 'A Nova service has been down for more than 15 minutes.',
+            },
+          },
+          {
+            alert: 'NovaServiceGroupDown',
+            expr: 'min by (exported_service) (nova:service:state) == 0',
+            'for': '5m',
+            labels: {
+              severity: 'SEV-1',
+            },
+            annotations: {
+              summary: 'Nova service group down',
+              description: 'All instances of a specific Nova service have been down for more than 5 minutes.',
+            },
+          },
+          {
+            record: 'nova:instance:error',
+            expr: 'openstack_nova_server_status{status="ERROR"}',
+          },
+          {
+            alert: 'NovaInstanceError',
+            expr: 'nova:server:error > 0',
+            'for': '24m',
+            labels: {
+              severity: 'SEV-3',
+            },
+            annotations: {
+              summary: 'Nova server error',
+              description: 'A Nova server is in an error state.',
             },
           },
           {
