@@ -26,7 +26,7 @@
           [
             {
               record: 'cinder:agent:state',
-              expr: 'max_over_time(openstack_cinder_agent_state without (uuid)[30m:5m])',
+              expr: 'max_over_time(openstack_cinder_agent_state[30m:5m])',
             },
             {
               record: 'cinder:volume:error',
