@@ -12,6 +12,15 @@
           ],
       },
       {
+        name: 'neutron-port-bindings.rules',
+        rules: [
+          {
+            record: 'neutron:port:binding_vif_type',
+            expr: 'avg_over_time(count(neutron_port) by (binding_vif_type)[5m])',
+          },
+        ],
+      }
+      {
         name: 'cinder.rules',
         rules:
           [
@@ -98,68 +107,78 @@
       },
       {
         name: 'neutron',
-        rules: [
-          {
-            alert: 'NeutronAgentDisabled',
-            expr: 'neutron:agent:state{adminState!="enabled"} > 0',
-            'for': '24h',
-            labels: {
-              severity: 'P5',
+        rules:
+          [
+            {
+              alert: 'NeutronAgentDisabled',
+              expr: 'neutron:agent:state{adminState!="enabled"} > 0',
+              'for': '24h',
+              labels: {
+                severity: 'P5',
+              },
+              annotations: {
+                summary: 'Neutron agent disabled',
+                description: 'A Neutron agent has been administratively disabled for more than 24 hours.',
+              },
             },
-            annotations: {
-              summary: 'Neutron agent disabled',
-              description: 'A Neutron agent has been administratively disabled for more than 24 hours.',
+            {
+              alert: 'NeutronAgentDown',
+              expr: 'neutron:agent:state != 1',
+              'for': '15m',
+              labels: {
+                severity: 'P3',
+              },
+              annotations: {
+                summary: 'Neutron agent down',
+                description: 'A Neutron agent has been down for more than 15 minutes.',
+              },
             },
-          },
-          {
-            alert: 'NeutronAgentDown',
-            expr: 'neutron:agent:state != 1',
-            'for': '15m',
-            labels: {
-              severity: 'P3',
+            {
+              alert: 'NeutronAgentGroupDown',
+              expr: 'min by (exported_service) (neutron:agent:state) == 0',
+              'for': '5m',
+              labels: {
+                severity: 'P2',
+              },
+              annotations: {
+                summary: 'Neutron agent group down',
+                description: 'All instances of a specific Neutron agent have been down for more than 5 minutes.',
+              },
+            }
+            {
+              alert: 'NeutronNetworkOutOfIPs',
+              annotations: {
+                description: 'The subnet {{ $labels.subnet_name }} within {{ $labels.network_name }} is currently at {{ $value }}% utilization.  If the IP addresses run out, it will impact the provisioning of new ports.',
+                summary: '[{{ $labels.network_name }}] {{ $labels.subnet_name }} running out of IPs',
+              },
+              expr: 'sum by (network_id) (openstack_neutron_network_ip_availabilities_used{project_id!=""}) / sum by (network_id) (openstack_neutron_network_ip_availabilities_total{project_id!=""}) * 100 > 80',
+              labels: {
+                severity: 'warning',
+              },
             },
-            annotations: {
-              summary: 'Neutron agent down',
-              description: 'A Neutron agent has been down for more than 15 minutes.',
-            },
-          },
-          {
-            alert: 'NeutronAgentGroupDown',
-            expr: 'min by (exported_service) (neutron:agent:state) == 0',
+          ],
+      },
+      {
+        name: 'neutron-port-bindings',
+        rules:
+          local alert(severity, expr, description) = {
+            alert: 'NeutronPortBindingFailed',
+            expr: expr,
             'for': '5m',
             labels: {
-              severity: 'P2',
+              severity: severity,
             },
             annotations: {
-              summary: 'Neutron agent group down',
-              description: 'All instances of a specific Neutron agent have been down for more than 5 minutes.',
+              summary: 'Neutron Port Binding Failed',
+              description: description,
             },
-          }
-
-          {
-            alert: 'NeutronBindingFailedPorts',
-            annotations: {
-              description: 'The NIC {{ $labels.mac_address }} of {{ $labels.device_owner }} has binding failed port now.',
-              summary: '[{{ $labels.device_owner }}] {{ $labels.mac_address }} binding failed',
-            },
-            expr: 'openstack_neutron_port{binding_vif_type="binding_failed"} != 0',
-            labels: {
-              severity: 'warning',
-            },
-          },
-          {
-            alert: 'NeutronNetworkOutOfIPs',
-            annotations: {
-              description: 'The subnet {{ $labels.subnet_name }} within {{ $labels.network_name }} is currently at {{ $value }}% utilization.  If the IP addresses run out, it will impact the provisioning of new ports.',
-              summary: '[{{ $labels.network_name }}] {{ $labels.subnet_name }} running out of IPs',
-            },
-            expr: 'sum by (network_id) (openstack_neutron_network_ip_availabilities_used{project_id!=""}) / sum by (network_id) (openstack_neutron_network_ip_availabilities_total{project_id!=""}) * 100 > 80',
-            labels: {
-              severity: 'warning',
-            },
-          },
-        ],
-      },
+          };
+          [
+            alert('P4', 'neutron:port:binding_vif_type{binding_vif_type="binding_failed"} > 0', 'At least one Neutron port has failed to bind.'),
+            alert('P3', '(neutron:port:binding_vif_type{binding_vif_type="binding_failed"} / sum(neutron:port:binding_vif_type)) > 0.05', 'More than 5% of Neutron ports have failed to bind.'),
+            alert('P2', '(neutron:port:binding_vif_type{binding_vif_type="binding_failed"} / sum(neutron:port:binding_vif_type)) > 0.5', 'More than 50% of Neutron ports have failed to bind.'),
+          ],
+      }
       {
         name: 'nova',
         rules: [
