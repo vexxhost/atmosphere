@@ -48,7 +48,11 @@ local mixins = {
       corednsSelector: 'job="coredns"',
     },
   },
-  kube: (import 'vendor/github.com/kubernetes-monitoring/kubernetes-mixin/mixin.libsonnet'),
+  kube: (import 'vendor/github.com/kubernetes-monitoring/kubernetes-mixin/mixin.libsonnet') + {
+    _config+:: {
+      kubeApiserverSelector: 'job="apiserver"',
+    },
+  },
   memcached: (import 'vendor/github.com/grafana/jsonnet-libs/memcached-mixin/mixin.libsonnet'),
   mysqld: (import 'vendor/github.com/prometheus/mysqld_exporter/mysqld-mixin/mixin.libsonnet') + {
     prometheusAlerts+:: {
