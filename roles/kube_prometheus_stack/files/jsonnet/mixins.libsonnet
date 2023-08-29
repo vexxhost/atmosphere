@@ -20,9 +20,9 @@ local disabledAlerts = [
 //                        functionality impairments that affect some users but
 //                        the system is still largely operational.
 local defaultSeverityMapping = {
-  info: 'SEV-3',
-  warning: 'SEV-2',
   critical: 'SEV-1',
+  warning: 'SEV-2',
+  info: 'SEV-3',
 };
 
 // NOTE(mnaser): The mapping here follows the format 'AlertName:Severity'. The

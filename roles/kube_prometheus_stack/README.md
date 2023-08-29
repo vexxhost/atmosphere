@@ -18,23 +18,18 @@ individual components.
 Our alerting system classifies incidents into different severity levels based on
 their impact on the system and users.
 
-- **SEV-1**: This is the highest level of severity, used for incidents that
-  cause a total service outage or significant functionality loss across the
-  entire Atmosphere platform. Immediate attention and action are required to
-  restore the service.
+- **SEV-1** (high): This is the highest level of severity, used for incidents 
+  causing a complete service disruption or significant loss of functionality 
+  across the entire Atmosphere platform. Immediate response and action are 
+  necessary to restore the service.
 
-- **SEV-2**: Used for incidents that cause a major impact on a large number of
-  users or critical system components. This could include issues affecting the
-  entire control plane of a specific service. While not a total outage, SEV-2
-  incidents still require prompt attention.
+- **SEV-2** (medium): This level is for incidents that affect a smaller group 
+  of users or a single system. While these incidents require attention, they do 
+  not generally necessitate immediate action outside of standard business hours.
 
-- **SEV-3**: This level is used for incidents that impact a smaller subset of
-  users or a single system. These incidents require attention but do not
-  typically require immediate action outside of normal business hours.
-
-- **SEV-4**: The lowest level of severity, used for minor issues that do not
-  significantly impact users or the system's operation. These incidents are
-  typically addressed during normal business hours.
+- **SEV-3** (low): This level is used for minor issues that have a minimal 
+  impact on users or the system's operation. These incidents are typically 
+  addressed during standard business hours.
 
 ### Alerting Philosophy
 
@@ -85,24 +80,9 @@ Afterwards, you can configure the following options for the Atmosphere config:
 kube_prometheus_stack_helm_values:
   alertmanager:
     config:
-      route:
-        group_by:
-          - alertname
-          - severity
-        receiver: opsgenie
-        routes:
-          - receiver: "null"
-            matchers:
-              - alertname = "InfoInhibitor"
-          - receiver: heartbeat
-            group_wait: 0s
-            group_interval: 30s
-            repeat_interval: 15s
-            matchers:
-              - alertname = "Watchdog"
       receivers:
         - name: "null"
-        - name: opsgenie
+        - name: notifier
           opsgenie_configs:
             - api_key: API_KEY
               message: >-
@@ -111,12 +91,14 @@ kube_prometheus_stack_helm_values:
                 {%- endraw %}
               priority: >-
                 {% raw -%}
-                {{ if eq .GroupLabels.severity "critical" -}}
+                {{ if hasPrefix .GroupLabels.severity "SEV-" -}}
+                {{ replace .GroupLabels.severity "SEV-" "P" -1 }}
+                {{ else if eq .GroupLabels.severity "critical" -}}
                 P1
                 {{- else if eq .GroupLabels.severity "warning" -}}
-                P3
+                P2
                 {{- else if eq .GroupLabels.severity "info" -}}
-                P5
+                P3
                 {{- else -}}
                 P3
                 {{- end -}}

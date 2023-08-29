@@ -34,6 +34,26 @@ _kube_prometheus_stack_helm_values:
       #               https://github.com/openshift/cluster-monitoring-operator/issues/248
       etcdHighNumberOfFailedGRPCRequests: true
   alertmanager:
+    config:
+      route:
+        group_by:
+          - alertname
+          - severity
+        receiver: notifier
+        routes:
+          - receiver: "null"
+            matchers:
+              - alertname = "InfoInhibitor"
+          - receiver: heartbeat
+            group_wait: 0s
+            group_interval: 30s
+            repeat_interval: 15s
+            matchers:
+              - alertname = "Watchdog"
+      receivers:
+        - name: "null"
+        - name: notifier
+        - name: heartbeat
     serviceMonitor:
       relabelings: &relabelings_instance_to_pod_name
         - &relabeling_set_pod_name_to_instance
