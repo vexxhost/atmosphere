@@ -32,6 +32,9 @@ local defaultSeverityMapping = {
 //               it maps to one of the severity levels defined in
 //               defaultSeverityMapping.
 local customSeverityMapping = {
+  'CephMgrPrometheusModuleInactive:critical': 'P4',
+  'CephMonDown:warning': 'P4',
+  'CephMonDownQuorumAtRisk:critical': 'P3',
   'KubeJobFailed:warning': 'P4',
 };
 
