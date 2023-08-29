@@ -43,7 +43,7 @@
     - name: Copy CA certificate on host
       ansible.builtin.copy:
         content: "{{ _cluster_issuer_ca_secret.resources[0].data['tls.crt'] | b64decode }}"
-        dest: "{{ cluster_issuer_certificate_path }}/atmosphere.crt"
+        dest: "{{ '/usr/local/share/ca-certificates' if ansible_facts['os_family'] in ['Debian'] else '/etc/pki/ca-trust/source/anchors' }}/atmosphere.crt"
         mode: "0644"
       notify:
         - Update CA certificates on host
