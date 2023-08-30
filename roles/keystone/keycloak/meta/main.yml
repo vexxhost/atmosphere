@@ -14,7 +14,7 @@
 
 galaxy_info:
   author: VEXXHOST, Inc.
-  description: Ansible role for managing Keycloak Clients
+  description: Ansible role for Keycloak
   license: Apache-2.0
   min_ansible_version: 5.5.0
   standalone: false
@@ -22,3 +22,13 @@ galaxy_info:
     - name: Ubuntu
       versions:
         - focal
+
+dependencies:
+  - role: defaults
+  - role: openstack_helm_endpoints
+    vars:
+      openstack_helm_endpoints_list: ["oslo_db"]
+  - role: vexxhost.kubernetes.upload_helm_chart
+    vars:
+      upload_helm_chart_src: "{{ keycloak_helm_chart_path }}"
+      upload_helm_chart_dest: "{{ keycloak_helm_chart_ref }}"

@@ -1,0 +1,44 @@
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+- block:
+
+  - ansible.builtin.include_role:
+      name: keycloak_client
+    vars:
+      keycloak_client_id: "{{ keystone_keycloak_client_id }}"
+      keycloak_client_secret: "{{ keystone_keycloak_client_secret }}"
+      keycloak_client_admin_url: "https://{{ openstack_helm_endpoints_keystone_api_host }}"
+      keycloak_client_base_url: "https://{{ openstack_helm_endpoints_keystone_api_host }}"
+      keycloak_client_root_url: "https://{{ openstack_helm_endpoints_keystone_api_host }}"
+      keycloak_client_web_origins: ["https://{{ openstack_helm_endpoints_keystone_api_host }}"]
+      keycloak_client_standard_flow_enabled: true
+      keycloak_client_implicit_flow_enabled: true
+
+  - name: Get .well-known/openid-configuration from realm
+    ansible.builtin.uri:
+      method: GET
+      url: " {{ _ks_domain.value.keycloak.server_url }}/realms/{{ _ks_domain.value.keycloak.realm_name }}/.well-known/openid-configuration"
+    register: well_known_oidc_config
+
+  - set_fact:
+      idp_config:
+        realm_name: "{{ _ks_domain.value.keycloak.realm_name }}"
+        server_url: "{{ _ks_domain.value.keycloak.server_url }}"
+        well_known_oidc_config: "{{ well_known_oidc_config }}"
+        remote_id: "{{ _ks_domain.value.keycloak.server_url }}/realms/{{ _ks_domain.value.keycloak.realm_name }}"
+
+  - set_fact:
+      _oidc_configs: "{{ _oidc_configs + [idp_config] }}"
+
+  when: _ks_domain.value.keycloak is defined
+
+

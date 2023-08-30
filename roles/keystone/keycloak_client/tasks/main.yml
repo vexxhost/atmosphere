@@ -11,8 +11,10 @@
 # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 # License for the specific language governing permissions and limitations
 # under the License.
+- name: Check if realm is setup
+  include_tasks: precheck.yml
+  tags:
+      - keystone-federation-mapping
 
-keycloak_client_admin_username: "{{ keycloak_admin_username | default('admin') }}"
-keycloak_client_admin_password: "{{ keycloak_admin_password }}"
-keycloak_client_roles: []
-keycloak_client_realm_id: atmosphere
+- name: Create clients for each ks_domains
+  include_tasks: client_setup.yml
