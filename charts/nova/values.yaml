@@ -1511,6 +1511,8 @@ secrets:
       novncproxy:
         public: nova-novncproxy-tls-public
         internal: nova-novncproxy-tls-proxy
+      vencrypt:
+        internal: nova-novncproxy-vencrypt
     compute_metadata:
       metadata:
         public: metadata-tls-public
@@ -1803,6 +1805,17 @@ endpoints:
       novnc_proxy:
         default: 6080
         public: 80
+  # This endpoint is only to allow configuring the cert used specifically for
+  # vencrypt.  Specifically, the same CA/issuer needs to be used to sign both
+  # this cert, and the libvirt/qemu certs.
+  compute_novnc_vencrypt:
+    hosts:
+      default: nova-novncproxy
+    host_fqdn_override:
+      default:
+        commonName: nova-novncproxy
+        usages:
+          - client auth
   compute_spice_proxy:
     name: nova
     hosts:

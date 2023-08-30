@@ -135,7 +135,7 @@ curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~889258/revis
   | filterdiff -p1 -i 'neutron/*' \
   | patch -p2 -d ${ATMOSPHERE}/charts/neutron
 
-NOVA_VERISON=0.3.16
+NOVA_VERISON=0.3.22
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/nova-${NOVA_VERISON}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~893563/revisions/1/patch?download' \
