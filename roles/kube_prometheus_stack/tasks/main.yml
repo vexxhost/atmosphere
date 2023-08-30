@@ -70,7 +70,7 @@
   changed_when: false
   kubernetes.core.k8s:
     state: present
-    definition: "{{ lookup('pipe', 'cat ' + playbook_dir + '/../charts/kube-prometheus-stack/charts/crds/crds/crd-*.yaml') | regex_replace('- =$', '- \"=\"', multiline=True) | from_yaml_all }}"
+    definition: "{{ lookup('pipe', 'cat ' + playbook_dir + '/../charts/kube-prometheus-stack/charts/crds/crds/crd-*.yaml') | regex_replace('- =$', '- \"=\"', multiline=True) | from_yaml_all }}" # noqa: yaml[line-length]
     apply: true
     server_side_apply:
       field_manager: atmosphere
