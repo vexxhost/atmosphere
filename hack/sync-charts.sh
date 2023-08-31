@@ -106,9 +106,15 @@ OPEN_VSWITCH_VERSION=0.1.15
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm-infra/openvswitch-${OPEN_VSWITCH_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-LIBVIRT_VERSION=0.1.8
+LIBVIRT_VERSION=0.1.23
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm-infra/libvirt-${LIBVIRT_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
+curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm-infra~893406/revisions/3/patch?download' \
+  | base64 --decode \
+  | filterdiff -p1 -x 'releasenotes/*' \
+  | filterdiff -p2 -x 'Chart.yaml' \
+  | filterdiff -p1 -i 'libvirt/*' \
+  | patch -p2 -d ${ATMOSPHERE}/charts/libvirt
 
 LOCAL_PATH_PROVISIONER_VERSION=0.0.24
 curl -sL https://github.com/rancher/local-path-provisioner/archive/refs/tags/v${LOCAL_PATH_PROVISIONER_VERSION}.tar.gz \
