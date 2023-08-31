@@ -90,6 +90,17 @@ ceph_client:
   configmap: ceph-etc
   user_secret_name: pvc-ceph-client-key
 
+# Issuers for TLS certificates
+issuers:
+  # Issuer to issue a certificate for libvirt api when listen_tls is enabled
+  libvirt:
+    kind: ClusterIssuer
+    name: ca-clusterissuer
+  # Issuer to issue a certificate for vencrypt
+  vencrypt:
+    kind: ClusterIssuer
+    name: ca-clusterissuer
+
 conf:
   ceph:
     enabled: true
@@ -105,10 +116,6 @@ conf:
         secret_uuid: null
         user_secret_name: null
   libvirt:
-    # Issuer to issue a certificate for libvirt api when listen_tls is enabled.
-    issuer:
-      kind: ClusterIssuer
-      name: ca-clusterissuer
     listen_tcp: "1"
     listen_tls: "0"
     auth_tcp: "none"
@@ -125,13 +132,9 @@ conf:
     stdio_handler: "file"
     user: "nova"
     group: "kvm"
+    default_tls_x509_cert_dir: /etc/pki/qemu
   kubernetes:
     cgroup: "kubepods.slice"
-  vencrypt:
-    # Issuer to use for the vencrypt certs.
-    issuer:
-      kind: ClusterIssuer
-      name: ca-clusterissuer
 
 pod:
   probes:
