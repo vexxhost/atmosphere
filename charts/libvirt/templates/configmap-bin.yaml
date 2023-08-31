@@ -26,7 +26,7 @@ data:
 {{- end }}
   libvirt.sh: |
 {{ tuple "bin/_libvirt.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
-{{- if eq .Values.conf.qemu.vnc_tls "1" }}
+{{- if or (eq .Values.conf.libvirt.listen_tls "1") (eq .Values.conf.qemu.vnc_tls "1") }}
   cert-init.sh: |
 {{ tpl .Values.scripts.cert_init_sh . | indent 4 }}
 {{- end }}
