@@ -36,6 +36,22 @@
         name: "{{ libvirt_helm_release_name }}"
         namespace: "{{ libvirt_helm_release_namespace }}"
 
+- name: Create Issuers
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      - apiVersion: cert-manager.io/v1
+        kind: Issuer
+        metadata:
+          name: "{{ item }}"
+          namespace: openstack
+        spec:
+          ca:
+            secretName: "{{ item }}-ca"
+  loop:
+    - libvirt-vnc
+    - libvirt-api
+
 - name: Deploy Helm chart
   run_once: true
   kubernetes.core.helm:

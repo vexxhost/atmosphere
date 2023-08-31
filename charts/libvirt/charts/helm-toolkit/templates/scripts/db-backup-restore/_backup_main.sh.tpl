@@ -66,6 +66,14 @@
 #       framework will automatically tar/zip the files in that directory and
 #       name the tarball appropriately according to the proper conventions.
 #
+#   verify_databases_backup_archives [scope]
+#       returns: 0 if no errors; 1 if any errors occurred
+#
+#       This function is expected to verify the database backup archives. If this function
+#        completes successfully (returns 0), the
+#       framework will automatically starts remote backup upload.
+#
+#
 # The functions in this file will take care of:
 #   1) Calling "dump_databases_to_directory" and then compressing the files,
 #      naming the tarball properly, and then storing it locally at the specified
@@ -89,6 +97,16 @@ log_backup_error_exit() {
   rm -rf $TMP_DIR
   exit $ERRCODE
 }
+
+log_verify_backup_exit() {
+  MSG=$1
+  ERRCODE=${2:-0}
+  log ERROR "${DB_NAME}_verify_backup" "${DB_NAMESPACE} namespace: ${MSG}"
+  rm -f $ERR_LOG_FILE
+  # rm -rf $TMP_DIR
+  exit $ERRCODE
+}
+
 
 log() {
   #Log message to a file or stdout
@@ -195,17 +213,37 @@ send_to_remote_server() {
     fi
   fi
 
+  # load balance delay
+  DELAY=$((1 + ${RANDOM} % 30))
+  echo "Sleeping for ${DELAY} seconds to spread the load in time..."
+  sleep ${DELAY}
+
   # Create an object to store the file
   openstack object create --name $FILE $CONTAINER_NAME $FILEPATH/$FILE
   if [[ $? -ne 0 ]]; then
     log WARN "${DB_NAME}_backup" "Cannot create container object ${FILE}!"
     return 2
   fi
+
   openstack object show $CONTAINER_NAME $FILE
   if [[ $? -ne 0 ]]; then
     log WARN "${DB_NAME}_backup" "Unable to retrieve container object $FILE after creation."
     return 2
   fi
+
+  # Remote backup verification
+  MD5_REMOTE=$(openstack object show $CONTAINER_NAME $FILE -f json | jq -r ".etag")
+  MD5_LOCAL=$(cat ${FILEPATH}/${FILE} | md5sum | awk '{print $1}')
+  log INFO "${DB_NAME}_backup" "Obtained MD5 hash for the file $FILE in container $CONTAINER_NAME."
+  log INFO "${DB_NAME}_backup" "Local MD5 hash is ${MD5_LOCAL}."
+  log INFO "${DB_NAME}_backup" "Remote MD5 hash is ${MD5_REMOTE}."
+  if [[ "${MD5_LOCAL}" == "${MD5_REMOTE}" ]]; then
+      log INFO "${DB_NAME}_backup" "The local backup & remote backup MD5 hash values are matching for file $FILE in container $CONTAINER_NAME."
+  else
+      log ERROR "${DB_NAME}_backup" "Mismatch between the local backup & remote backup MD5 hash values"
+      return 2
+  fi
+  rm -rf ${REMOTE_FILE}
 
   log INFO "${DB_NAME}_backup" "Created file $FILE in container $CONTAINER_NAME successfully."
   return 0
@@ -253,6 +291,16 @@ store_backup_remotely() {
   return 1
 }
 
+
+function get_archive_date(){
+# get_archive_date function returns correct archive date
+# for different formats of archives' names
+# the old one: <database name>.<namespace>.<table name | all>.<date-time>.tar.gz
+# the new one: <database name>.<namespace>.<table name | all>.<backup mode>.<date-time>.tar.gz
+  local A_FILE="$1"
+  awk -F. '{print $(NF-2)}' <<< ${A_FILE} | tr -d "Z"
+}
+
 # This function takes a list of archives' names as an input
 # and creates a hash table where keys are number of seconds
 # between current date and archive date (see seconds_difference),
@@ -271,40 +319,63 @@ store_backup_remotely() {
 # possible case, when we have several backups of the same date. E.g.
 # one manual, and one automatic.
 
-declare -A FILETABLE
+declare -A fileTable
 create_hash_table() {
-unset FILETABLE
+unset fileTable
 fileList=$@
   for ARCHIVE_FILE in ${fileList}; do
-    ARCHIVE_DATE=$( echo $ARCHIVE_FILE | awk -F/ '{print $NF}' | cut -d'.' -f 4)
     # Creating index, we will round given ARCHIVE_DATE to the midnight (00:00:00)
     # to take in account a possibility, that we can have more than one scheduled
     # backup per day.
-    INDEX=$(seconds_difference $(date --date $ARCHIVE_DATE +"%D"))
-    if [[ -z FILETABLE[${INDEX}] ]]; then
-      FILETABLE[${INDEX}]=${ARCHIVE_FILE}
+    ARCHIVE_DATE=$(get_archive_date ${ARCHIVE_FILE})
+    ARCHIVE_DATE=$(date --date=${ARCHIVE_DATE} +%D)
+    log INFO "${DB_NAME}_backup" "Archive date to build index: ${ARCHIVE_DATE}"
+    INDEX=$(seconds_difference ${ARCHIVE_DATE})
+    if [[ -z fileTable[${INDEX}] ]]; then
+      fileTable[${INDEX}]=${ARCHIVE_FILE}
     else
-      FILETABLE[${INDEX}]="${FILETABLE[${INDEX}]} ${ARCHIVE_FILE}"
+      fileTable[${INDEX}]="${fileTable[${INDEX}]} ${ARCHIVE_FILE}"
     fi
-    echo "INDEX: ${INDEX} VALUE:  ${FILETABLE[${INDEX}]}"
+    echo "INDEX: ${INDEX} VALUE:  ${fileTable[${INDEX}]}"
  done
 }
 
+function get_backup_prefix() {
+# Create list of all possible prefixes in a format:
+# <db_name>.<namespace> to cover a possible situation
+# when different backups of different databases and/or
+# namespaces share the same local or remote storage.
+  ALL_FILES=($@)
+  PREFIXES=()
+  for fname in ${ALL_FILES[@]}; do
+    prefix=$(basename ${fname} | cut -d'.' -f1,2 )
+    for ((i=0; i<${#PREFIXES[@]}; i++)) do
+      if [[ ${PREFIXES[${i}]} == ${prefix} ]]; then
+        prefix=""
+        break
+      fi
+    done
+    if [[ ! -z ${prefix} ]]; then
+        PREFIXES+=(${prefix})
+    fi
+  done
+}
+
 remove_old_local_archives() {
+  SECONDS_TO_KEEP=$(( $((${LOCAL_DAYS_TO_KEEP}))*86400))
+  log INFO "${DB_NAME}_backup" "Deleting backups older than ${LOCAL_DAYS_TO_KEEP} days (${SECONDS_TO_KEEP} seconds)"
   if [[ -d $ARCHIVE_DIR ]]; then
     count=0
-    SECONDS_TO_KEEP=$((${LOCAL_DAYS_TO_KEEP}*86400))
-    log INFO "${DB_NAME}_backup" "Deleting backups older than ${LOCAL_DAYS_TO_KEEP} days"
     # We iterate over the hash table, checking the delta in seconds (hash keys),
     # and minimum number of backups we must have in place. List of keys has to be sorted.
-    for INDEX in $(tr " " "\n" <<< ${!FILETABLE[@]} | sort -n -); do
-      ARCHIVE_FILE=${FILETABLE[${INDEX}]}
-      if [[ ${INDEX} -le ${SECONDS_TO_KEEP} || ${count} -lt ${LOCAL_DAYS_TO_KEEP} ]]; then
+    for INDEX in $(tr " " "\n" <<< ${!fileTable[@]} | sort -n -); do
+      ARCHIVE_FILE=${fileTable[${INDEX}]}
+      if [[ ${INDEX} -lt ${SECONDS_TO_KEEP} || ${count} -lt ${LOCAL_DAYS_TO_KEEP} ]]; then
         ((count++))
         log INFO "${DB_NAME}_backup" "Keeping file(s) ${ARCHIVE_FILE}."
       else
         log INFO "${DB_NAME}_backup" "Deleting file(s) ${ARCHIVE_FILE}."
-          rm -rf $ARCHIVE_FILE
+          rm -f ${ARCHIVE_FILE}
           if [[ $? -ne 0 ]]; then
             # Log error but don't exit so we can finish the script
             # because at this point we haven't sent backup to RGW yet
@@ -332,27 +403,29 @@ prepare_list_of_remote_backups() {
 # The logic implemented with this function is absolutely similar
 # to the function remove_old_local_archives (see above)
 remove_old_remote_archives() {
-  log INFO "${DB_NAME}_backup" "Deleting backups older than ${REMOTE_DAYS_TO_KEEP} days"
   count=0
   SECONDS_TO_KEEP=$((${REMOTE_DAYS_TO_KEEP}*86400))
-  for INDEX in $(tr " " "\n" <<< ${!FILETABLE[@]} | sort -n -); do
-    ARCHIVE_FILE=${FILETABLE[${INDEX}]}
-    if [[ ${INDEX} -le ${SECONDS_TO_KEEP} || ${count} -lt ${REMOTE_DAYS_TO_KEEP} ]]; then
+  log INFO "${DB_NAME}_backup" "Deleting backups older than ${REMOTE_DAYS_TO_KEEP} days (${SECONDS_TO_KEEP} seconds)"
+  for INDEX in $(tr " " "\n" <<< ${!fileTable[@]} | sort -n -); do
+    ARCHIVE_FILE=${fileTable[${INDEX}]}
+    if [[ ${INDEX} -lt ${SECONDS_TO_KEEP} || ${count} -lt ${REMOTE_DAYS_TO_KEEP} ]]; then
       ((count++))
       log INFO "${DB_NAME}_backup" "Keeping remote backup(s) ${ARCHIVE_FILE}."
     else
       log INFO "${DB_NAME}_backup" "Deleting remote backup(s) ${ARCHIVE_FILE} from the RGW"
-      openstack object delete ${CONTAINER_NAME} ${ARCHIVE_FILE} || log_backup_error_exit \
-        "Failed to cleanup remote backup. Cannot delete container object ${ARCHIVE_FILE}!"
+      openstack object delete ${CONTAINER_NAME} ${ARCHIVE_FILE} ||  log WARN "${DB_NAME}_backup" \
+        "Failed to cleanup remote backup. Cannot delete container object ${ARCHIVE_FILE}"
     fi
   done
 
   # Cleanup now that we're done.
   for fd in ${BACKUP_FILES} ${DB_BACKUP_FILES}; do
-  if [[ -f fd ]]; then
-    rm -f fd
-  else
-    log WARN "${DB_NAME}_backup" "Can not delete a temporary file ${fd}"
+    if [[ -f ${fd} ]]; then
+      rm -f ${fd}
+    else
+      log WARN "${DB_NAME}_backup" "Can not delete a temporary file ${fd}"
+    fi
+  done
 }
 
 # Main function to backup the databases. Calling functions need to supply:
@@ -409,17 +482,36 @@ backup_databases() {
 
   cd $ARCHIVE_DIR
 
+  #Only delete the old archive after a successful archive
+  export LOCAL_DAYS_TO_KEEP=$(echo $LOCAL_DAYS_TO_KEEP | sed 's/"//g')
+  if [[ "$LOCAL_DAYS_TO_KEEP" -gt 0 ]]; then
+    get_backup_prefix $(ls -1 ${ARCHIVE_DIR}/*.gz)
+    for ((i=0; i<${#PREFIXES[@]}; i++)); do
+      echo "Working with prefix: ${PREFIXES[i]}"
+      create_hash_table $(ls -1 ${ARCHIVE_DIR}/${PREFIXES[i]}*.gz)
+      remove_old_local_archives
+    done
+  fi
+
+  # Local backup verification process
+
+  # It is expected that this function will verify the database backup files
+  if verify_databases_backup_archives ${SCOPE}; then
+    log INFO "${DB_NAME}_backup_verify" "Databases backup verified successfully. Uploading verified backups to remote location..."
+  else
+    # If successful, there should be at least one file in the TMP_DIR
+    if [[ $(ls $TMP_DIR | wc -w) -eq 0 ]]; then
+      cat $ERR_LOG_FILE
+    fi
+    log_verify_backup_exit "Verify of the ${DB_NAME} database backup failed and needs attention."
+    exit 1
+  fi
+
   # Remove the temporary directory and files as they are no longer needed.
   rm -rf $TMP_DIR
   rm -f $ERR_LOG_FILE
 
-  #Only delete the old archive after a successful archive
-  export LOCAL_DAYS_TO_KEEP=$(echo $LOCAL_DAYS_TO_KEEP | sed 's/"//g')
-  if [[ "$LOCAL_DAYS_TO_KEEP" -gt 0 ]]; then
-    create_hash_table $(ls -1 $ARCHIVE_DIR/*.gz)
-    remove_old_local_archives
-  fi
-
+  # Remote backup
   REMOTE_BACKUP=$(echo $REMOTE_BACKUP_ENABLED | sed 's/"//g')
   if $REMOTE_BACKUP; then
     # Remove Quotes from the constants which were added due to reading
@@ -448,8 +540,12 @@ backup_databases() {
     #Only delete the old archive after a successful archive
     if [[ "$REMOTE_DAYS_TO_KEEP" -gt 0 ]]; then
       prepare_list_of_remote_backups
-      create_hash_table $(cat $DB_BACKUP_FILES)
-      remove_old_remote_archives
+      get_backup_prefix $(cat $DB_BACKUP_FILES)
+      for ((i=0; i<${#PREFIXES[@]}; i++)); do
+        echo "Working with prefix: ${PREFIXES[i]}"
+        create_hash_table $(cat ${DB_BACKUP_FILES} | grep ${PREFIXES[i]})
+        remove_old_remote_archives
+      done
     fi
 
     echo "=================================================================="
