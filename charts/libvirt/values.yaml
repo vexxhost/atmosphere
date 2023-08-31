@@ -26,11 +26,12 @@ labels:
 
 images:
   tags:
-    kubectl: docker.io/bitnami/kubectl:latest
-    libvirt: docker.io/openstackhelm/libvirt:latest-ubuntu_bionic
-    ceph_config_helper: 'docker.io/openstackhelm/ceph-config-helper:ubuntu_bionic-20200217'
+    libvirt: docker.io/openstackhelm/libvirt:latest-ubuntu_focal
+    libvirt_exporter: vexxhost/libvirtd-exporter:latest
+    ceph_config_helper: 'docker.io/openstackhelm/ceph-config-helper:ubuntu_focal_17.2.6-1-20230508'
     dep_check: quay.io/airshipit/kubernetes-entrypoint:v1.0.0
     image_repo_sync: docker.io/library/docker:17.07.0
+    kubectl: docker.io/bitnami/kubectl:latest
   pull_policy: "IfNotPresent"
   local_registry:
     active: false
@@ -58,6 +59,25 @@ endpoints:
     port:
       registry:
         node: 5000
+  oci_image_registry:
+    name: oci-image-registry
+    namespace: oci-image-registry
+    auth:
+      enabled: false
+      libvirt:
+        username: libvirt
+        password: password
+    hosts:
+      default: localhost
+    host_fqdn_override:
+      default: null
+    port:
+      registry:
+        default: null
+  libvirt_exporter:
+    port:
+      metrics:
+        default: 9474
 
 network_policy:
   libvirt:
@@ -96,11 +116,64 @@ conf:
     log_level: "3"
     log_outputs: "1:file:/var/log/libvirt/libvirtd.log"
   qemu:
+    vnc_tls: "0"
+    vnc_tls_x509_verify: "0"
     stdio_handler: "file"
     user: "nova"
     group: "kvm"
   kubernetes:
-    cgroup: "kubepods"
+    cgroup: "kubepods.slice"
+  vencrypt:
+    # Issuer to use for the vencrypt certs.
+    issuer:
+      kind: ClusterIssuer
+      name: ca-clusterissuer
+    # Script is included here (vs in bin/) to allow overriding, in the case that
+    # communication happens over an IP other than the pod IP for some reason.
+    cert_init_sh: |
+      #!/bin/bash
+      set -x
+
+      # Script to create certs for each libvirt pod based on pod IP (by default).
+
+      cat <<EOF | kubectl apply -f -
+      apiVersion: cert-manager.io/v1
+      kind: Certificate
+      metadata:
+        name: ${POD_NAME}-${TYPE}
+        namespace: ${POD_NAMESPACE}
+        ownerReferences:
+          - apiVersion: v1
+            kind: Pod
+            name: ${POD_NAME}
+            uid: ${POD_UID}
+      spec:
+        secretName: ${POD_NAME}-${TYPE}
+        commonName: ${POD_IP}
+        usages:
+        - client auth
+        - server auth
+        dnsNames:
+        - ${HOSTNAME}
+        ipAddresses:
+        - ${POD_IP}
+        issuerRef:
+          kind: ${ISSUER_KIND}
+          name: ${ISSUER_NAME}
+      EOF
+
+      kubectl -n ${POD_NAMESPACE} wait --for=condition=Ready --timeout=300s \
+        certificate/${POD_NAME}-${TYPE}
+
+      # NOTE(mnaser): cert-manager does not clean-up the secrets when the certificate
+      #               is deleted, so we should add an owner reference to the secret
+      #               to ensure that it is cleaned up when the pod is deleted.
+      kubectl -n ${POD_NAMESPACE} patch secret ${POD_NAME}-${TYPE} \
+        --type=json -p='[{"op": "add", "path": "/metadata/ownerReferences", "value": [{"apiVersion": "v1", "kind": "Pod", "name": "'${POD_NAME}'", "uid": "'${POD_UID}'"}]}]'
+
+      kubectl -n ${POD_NAMESPACE} get secret ${POD_NAME}-${TYPE} -o jsonpath='{.data.tls\.crt}' | base64 -d > /tmp/${TYPE}.crt
+      kubectl -n ${POD_NAMESPACE} get secret ${POD_NAME}-${TYPE} -o jsonpath='{.data.tls\.key}' | base64 -d > /tmp/${TYPE}.key
+      kubectl -n ${POD_NAMESPACE} get secret ${POD_NAME}-${TYPE} -o jsonpath='{.data.ca\.crt}' | base64 -d > /tmp/${TYPE}-ca.crt
 
 pod:
   probes:
@@ -130,6 +203,11 @@ pod:
         libvirt:
           privileged: true
           readOnlyRootFilesystem: false
+        libvirt_exporter:
+          privileged: true
+  sidecars:
+    libvirt_exporter: false
+
   affinity:
     anti:
       type:
@@ -138,6 +216,16 @@ pod:
         default: kubernetes.io/hostname
       weight:
         default: 10
+  tolerations:
+    libvirt:
+      enabled: false
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        operator: Exists
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
   dns_policy: "ClusterFirstWithHostNet"
   mounts:
     libvirt:
@@ -168,6 +256,13 @@ pod:
         limits:
           memory: "1024Mi"
           cpu: "2000m"
+    libvirt_exporter:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "256Mi"
+        cpu: "500m"
 
 dependencies:
   dynamic:
@@ -215,13 +310,19 @@ dependencies:
         - endpoint: internal
           service: local_image_registry
 
-tls:
-  enabled: false
-
 manifests:
   configmap_bin: true
   configmap_etc: true
   daemonset_libvirt: true
   job_image_repo_sync: true
   network_policy: false
+  role_cert_manager: false
+  secret_registry: true
+
+secrets:
+  oci_image_registry:
+    libvirt: libvirt-oci-image-registry-key
+  tls:
+    server: libvirt-tls-server
+    client: libvirt-tls-client
 ...

@@ -16,30 +16,19 @@ limitations under the License.
 
 set -ex
 
-# NOTE(mnaser): This will move the API certificates into the expected location.
-if [ -f /tmp/api.crt ]; then
-  mkdir -p /etc/pki/CA /etc/pki/libvirt/private
-
-  cp /tmp/api-ca.crt {{ .Values.conf.libvirt.ca_file }}
-  cp /tmp/api-ca.crt /etc/pki/qemu/ca-cert.pem
-
-  cp /tmp/api.crt {{ .Values.conf.libvirt.cert_file }}
-  cp /tmp/api.crt /etc/pki/libvirt/clientcert.pem
-  cp /tmp/api.crt /etc/pki/qemu/server-cert.pem
-  cp /tmp/api.crt /etc/pki/qemu/client-cert.pem
-
-  cp /tmp/api.key {{ .Values.conf.libvirt.key_file }}
-  cp /tmp/api.key /etc/pki/libvirt/private/clientkey.pem
-  cp /tmp/api.key /etc/pki/qemu/server-key.pem
-  cp /tmp/api.key /etc/pki/qemu/client-key.pem
-fi
-
 # NOTE(mnaser): This will move the VNC certificates into the expected location.
 if [ -f /tmp/vnc.crt ]; then
   mkdir -p /etc/pki/libvirt-vnc
   mv /tmp/vnc.key /etc/pki/libvirt-vnc/server-key.pem
   mv /tmp/vnc.crt /etc/pki/libvirt-vnc/server-cert.pem
   mv /tmp/vnc-ca.crt /etc/pki/libvirt-vnc/ca-cert.pem
+fi
+
+# TODO: We disable cgroup functionality for cgroup v2, we should fix this in the future
+if $(stat -fc %T /sys/fs/cgroup/ | grep -q cgroup2fs); then
+  CGROUP_VERSION=v2
+else
+  CGROUP_VERSION=v1
 fi
 
 if [ -n "$(cat /proc/*/comm 2>/dev/null | grep -w libvirtd)" ]; then
@@ -64,14 +53,16 @@ if [[ -c /dev/kvm ]]; then
     chown root:kvm /dev/kvm
 fi
 
-#Setup Cgroups to use when breaking out of Kubernetes defined groups
-CGROUPS=""
-for CGROUP in cpu rdma hugetlb; do
-  if [ -d /sys/fs/cgroup/${CGROUP} ]; then
-    CGROUPS+="${CGROUP},"
-  fi
-done
-cgcreate -g ${CGROUPS%,}:/osh-libvirt
+if [ $CGROUP_VERSION != "v2" ]; then
+  #Setup Cgroups to use when breaking out of Kubernetes defined groups
+  CGROUPS=""
+  for CGROUP in cpu rdma hugetlb; do
+    if [ -d /sys/fs/cgroup/${CGROUP} ]; then
+      CGROUPS+="${CGROUP},"
+    fi
+  done
+  cgcreate -g ${CGROUPS%,}:/osh-libvirt
+fi
 
 # We assume that if hugepage count > 0, then hugepages should be exposed to libvirt/qemu
 hp_count="$(cat /proc/meminfo | grep HugePages_Total | tr -cd '[:digit:]')"
@@ -94,43 +85,49 @@ if [ 0"$hp_count" -gt 0 ]; then
     exit 1
   fi
 
-  # Kubernetes 1.10.x introduced cgroup changes that caused the container's
-  # hugepage byte limit quota to zero out. This workaround sets that pod limit
-  # back to the total number of hugepage bytes available to the baremetal host.
-  if [ -d /sys/fs/cgroup/hugetlb ]; then
-    limits="$(ls /sys/fs/cgroup/hugetlb/{{ .Values.conf.kubernetes.cgroup }}/hugetlb.*.limit_in_bytes)" || \
-      (echo "ERROR: Failed to locate any hugetable limits. Did you set the correct cgroup in your values used for this chart?"
-       exit 1)
-    for limit in $limits; do
-      target="/sys/fs/cgroup/hugetlb/$(dirname $(awk -F: '($2~/hugetlb/){print $3}' /proc/self/cgroup))/$(basename $limit)"
-      # Ensure the write target for the hugepage limit for the pod exists
-      if [ ! -f "$target" ]; then
-        echo "ERROR: Could not find write target for hugepage limit: $target"
-      fi
+  if [ $CGROUP_VERSION != "v2" ]; then
+    # Kubernetes 1.10.x introduced cgroup changes that caused the container's
+    # hugepage byte limit quota to zero out. This workaround sets that pod limit
+    # back to the total number of hugepage bytes available to the baremetal host.
+    if [ -d /sys/fs/cgroup/hugetlb ]; then
+      limits="$(ls /sys/fs/cgroup/hugetlb/{{ .Values.conf.kubernetes.cgroup }}/hugetlb.*.limit_in_bytes)" || \
+        (echo "ERROR: Failed to locate any hugetable limits. Did you set the correct cgroup in your values used for this chart?"
+         exit 1)
+      for limit in $limits; do
+        target="/sys/fs/cgroup/hugetlb/$(dirname $(awk -F: '($2~/hugetlb/){print $3}' /proc/self/cgroup))/$(basename $limit)"
+        # Ensure the write target for the hugepage limit for the pod exists
+        if [ ! -f "$target" ]; then
+          echo "ERROR: Could not find write target for hugepage limit: $target"
+        fi
 
-      # Write hugetable limit for pod
-      echo "$(cat $limit)" > "$target"
-    done
-  fi
+        # Write hugetable limit for pod
+        echo "$(cat $limit)" > "$target"
+      done
+    fi
 
-  # Determine OS default hugepage size to use for the hugepage write test
-  default_hp_kb="$(cat /proc/meminfo | grep Hugepagesize | tr -cd '[:digit:]')"
+    # Determine OS default hugepage size to use for the hugepage write test
+    default_hp_kb="$(cat /proc/meminfo | grep Hugepagesize | tr -cd '[:digit:]')"
 
-  # Attempt to write to the hugepage mount to ensure it is operational, but only
-  # if we have at least 1 free page.
-  num_free_pages="$(cat /sys/kernel/mm/hugepages/hugepages-${default_hp_kb}kB/free_hugepages | tr -cd '[:digit:]')"
-  echo "INFO: '$num_free_pages' free hugepages of size ${default_hp_kb}kB"
-  if [ 0"$num_free_pages" -gt 0 ]; then
-    (fallocate -o0 -l "$default_hp_kb" /dev/hugepages/foo && rm /dev/hugepages/foo) || \
-      (echo "ERROR: fallocate failed test at /dev/hugepages with size ${default_hp_kb}kB"
-       rm /dev/hugepages/foo
-       exit 1)
+    # Attempt to write to the hugepage mount to ensure it is operational, but only
+    # if we have at least 1 free page.
+    num_free_pages="$(cat /sys/kernel/mm/hugepages/hugepages-${default_hp_kb}kB/free_hugepages | tr -cd '[:digit:]')"
+    echo "INFO: '$num_free_pages' free hugepages of size ${default_hp_kb}kB"
+    if [ 0"$num_free_pages" -gt 0 ]; then
+      (fallocate -o0 -l "$default_hp_kb" /dev/hugepages/foo && rm /dev/hugepages/foo) || \
+        (echo "ERROR: fallocate failed test at /dev/hugepages with size ${default_hp_kb}kB"
+         rm /dev/hugepages/foo
+         exit 1)
+    fi
   fi
 fi
 
-if [ -n "${LIBVIRT_CEPH_CINDER_SECRET_UUID}" ] ; then
-  #NOTE(portdirect): run libvirtd as a transient unit on the host with the osh-libvirt cgroups applied.
-  cgexec -g ${CGROUPS%,}:/osh-libvirt systemd-run --scope --slice=system libvirtd --listen &
+if [ -n "${LIBVIRT_CEPH_CINDER_SECRET_UUID}" ] || [ -n "${LIBVIRT_EXTERNAL_CEPH_CINDER_SECRET_UUID}" ] ; then
+  if [ $CGROUP_VERSION != "v2" ]; then
+    #NOTE(portdirect): run libvirtd as a transient unit on the host with the osh-libvirt cgroups applied.
+    cgexec -g ${CGROUPS%,}:/osh-libvirt systemd-run --scope --slice=system libvirtd --listen &
+  else
+    systemd-run --scope --slice=system libvirtd --listen &
+  fi
 
   tmpsecret=$(mktemp --suffix .xml)
   if [ -n "${LIBVIRT_EXTERNAL_CEPH_CINDER_SECRET_UUID}" ] ; then
@@ -185,19 +182,30 @@ EOF
     virsh secret-set-value --secret "${sec_uuid}" --base64 "${sec_ceph_keyring}"
   }
 
-  if [ -z "${CEPH_CINDER_KEYRING}" ] ; then
+  if [ -z "${CEPH_CINDER_KEYRING}" ] && [ -n "${CEPH_CINDER_USER}" ] ; then
     CEPH_CINDER_KEYRING=$(awk '/key/{print $3}' /etc/ceph/ceph.client.${CEPH_CINDER_USER}.keyring)
   fi
-  create_virsh_libvirt_secret ${CEPH_CINDER_USER} ${LIBVIRT_CEPH_CINDER_SECRET_UUID} ${CEPH_CINDER_KEYRING}
+  if [ -n "${CEPH_CINDER_USER}" ] ; then
+    create_virsh_libvirt_secret ${CEPH_CINDER_USER} ${LIBVIRT_CEPH_CINDER_SECRET_UUID} ${CEPH_CINDER_KEYRING}
+  fi
 
   if [ -n "${LIBVIRT_EXTERNAL_CEPH_CINDER_SECRET_UUID}" ] ; then
     EXTERNAL_CEPH_CINDER_KEYRING=$(cat /tmp/external-ceph-client-keyring)
     create_virsh_libvirt_secret ${EXTERNAL_CEPH_CINDER_USER} ${LIBVIRT_EXTERNAL_CEPH_CINDER_SECRET_UUID} ${EXTERNAL_CEPH_CINDER_KEYRING}
   fi
 
-  # rejoin libvirtd
-  wait
-else
+  cleanup
+
+  # stop libvirtd; we needed it up to create secrets
+  LIBVIRTD_PID=$(cat /var/run/libvirtd.pid)
+  kill $LIBVIRTD_PID
+  tail --pid=$LIBVIRTD_PID -f /dev/null
+
+fi
+
+if [ $CGROUP_VERSION != "v2" ]; then
   #NOTE(portdirect): run libvirtd as a transient unit on the host with the osh-libvirt cgroups applied.
-  exec cgexec -g ${CGROUPS%,}:/osh-libvirt systemd-run --scope --slice=system libvirtd --listen
+  cgexec -g ${CGROUPS%,}:/osh-libvirt systemd-run --scope --slice=system libvirtd --listen
+else
+  systemd-run --scope --slice=system libvirtd --listen
 fi
