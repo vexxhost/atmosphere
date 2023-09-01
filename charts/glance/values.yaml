@@ -196,6 +196,8 @@ conf:
     oslo_middleware:
       enable_proxy_headers_parsing: true
     keystone_authtoken:
+      service_token_roles: service
+      service_token_roles_required: true
       auth_type: password
       auth_version: v3
       memcache_security_strategy: ENCRYPT
@@ -818,6 +820,20 @@ pod:
     termination_grace_period:
       api:
         timeout: 30
+  probes:
+    api:
+      glance-api:
+        readiness:
+          enabled: true
+          params:
+            periodSeconds: 15
+            timeoutSeconds: 10
+        liveness:
+          enabled: true
+          params:
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 10
   resources:
     enabled: false
     api:
@@ -951,4 +967,11 @@ manifests:
   secret_registry: true
   service_ingress_api: true
   service_api: true
+
+# NOTE: This is for enable helm resource-policy to keep glance-images PVC.
+# set keep_pvc: true when allow helm resource-policy to keep for PVC.
+# This will requires mannual delete for PVC.
+# set keep_pvc: false when disallow helm resource-policy to keep for PVC.
+# This will allow helm to delete the PVC.
+keep_pvc: true
 ...
