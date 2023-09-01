@@ -29,6 +29,20 @@ dependencies:
   - role: openstack_helm_endpoints
     vars:
       openstack_helm_endpoints_chart: nova
+      openstack_helm_endpoints_config:
+        compute_novnc_vencrypt:
+          hosts:
+            default: nova-novncproxy
+          host_fqdn_override:
+            default:
+              tls:
+                secretName: nova-novncproxy-vencrypt
+                commonName: nova-novncproxy
+                usages:
+                - client auth
+                issuerRef:
+                  kind: Issuer
+                  name: libvirt-vnc
   - role: vexxhost.kubernetes.upload_helm_chart
     vars:
       upload_helm_chart_src: "{{ nova_helm_chart_path }}"
