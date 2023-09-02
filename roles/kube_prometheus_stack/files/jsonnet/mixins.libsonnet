@@ -49,24 +49,24 @@ local getSeverity(rule) =
     else defaultSeverityMapping[rule.labels.severity];
 
 local mixins = {
-  alertmanager: (import 'alertmanager-mixin/mixin.libsonnet') + {
+  alertmanager: (import 'github.com/prometheus/alertmanager/doc/alertmanager-mixin/mixin.libsonnet') + {
     _config+:: {
       alertmanagerSelector: 'job="kube-prometheus-stack-alertmanager"',
     },
   },
-  ceph: (import 'ceph-mixin/mixin.libsonnet'),
-  coredns: (import 'coredns-mixin/mixin.libsonnet') + {
+  ceph: (import 'github.com/ceph/ceph/monitoring/ceph-mixin/mixin.libsonnet'),
+  coredns: (import 'github.com/povilasv/coredns-mixin/mixin.libsonnet') + {
     _config+:: {
       corednsSelector: 'job="coredns"',
     },
   },
-  kube: (import 'kubernetes-mixin/mixin.libsonnet') + {
+  kube: (import 'github.com/kubernetes-monitoring/kubernetes-mixin/mixin.libsonnet') + {
     _config+:: {
       kubeApiserverSelector: 'job="apiserver"',
     },
   },
-  memcached: (import 'memcached-mixin/mixin.libsonnet'),
-  mysqld: (import 'mysqld-mixin/mixin.libsonnet') + {
+  memcached: (import 'github.com/grafana/jsonnet-libs/memcached-mixin/mixin.libsonnet'),
+  mysqld: (import 'github.com/prometheus/mysqld_exporter/mysqld-mixin/mixin.libsonnet') + {
     prometheusAlerts+:: {
       groups+: [
         {
@@ -107,7 +107,7 @@ local mixins = {
       ],
     },
   },
-  node: (import 'node-mixin/mixin.libsonnet'),
+  node: (import 'github.com/prometheus/node_exporter/docs/node-mixin/mixin.libsonnet'),
   openstack: (import 'openstack.libsonnet'),
 } + (import 'legacy.libsonnet');
 
