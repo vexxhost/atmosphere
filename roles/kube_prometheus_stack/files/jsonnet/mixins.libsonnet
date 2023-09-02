@@ -52,6 +52,7 @@ local mixins = {
   alertmanager: (import 'vendor/github.com/prometheus/alertmanager/doc/alertmanager-mixin/mixin.libsonnet') + {
     _config+:: {
       alertmanagerSelector: 'job="kube-prometheus-stack-alertmanager"',
+      alertmanagerClusterLabels: 'namespace,service,cluster',
     },
   },
   ceph: (import 'vendor/github.com/ceph/ceph/monitoring/ceph-mixin/mixin.libsonnet'),
