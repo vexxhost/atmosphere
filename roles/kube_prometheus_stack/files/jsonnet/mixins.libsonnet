@@ -35,6 +35,8 @@ local customSeverityMapping = {
   'CephMgrPrometheusModuleInactive:critical': 'P4',
   'CephMonDown:warning': 'P4',
   'CephMonDownQuorumAtRisk:critical': 'P3',
+  'CephOSDTimeoutsClusterNetwork:warning': 'P4',
+  'CephOSDTimeoutsPublicNetwork:warning': 'P4',
   'KubeJobFailed:warning': 'P4',
 };
 
