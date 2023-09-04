@@ -12,12 +12,10 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- hosts: controllers
-  become: true
-  roles:
-    - vexxhost.atmosphere.keycloak
-    # - vexxhost.atmosphere.keystone
-    # TODO: kube-prom-stack
-    # TODO: horizon
-    # - vexxhost.atmosphere.openstack_cli
-    # TODO: openstack-cli
+- ansible.builtin.import_playbook: vexxhost.ceph.create_fake_devices
+- ansible.builtin.import_playbook: vexxhost.ceph.site
+  vars:
+    ceph_osd_devices:
+      - "/dev/ceph-{{ inventory_hostname_short }}-osd0/data"
+      - "/dev/ceph-{{ inventory_hostname_short }}-osd1/data"
+      - "/dev/ceph-{{ inventory_hostname_short }}-osd2/data"

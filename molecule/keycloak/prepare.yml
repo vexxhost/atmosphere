@@ -12,7 +12,11 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- hosts: all
+- import_playbook: ../shared/prepare/base.yml
+- import_playbook: ../shared/prepare/kubernetes.yml
+
+- hosts: controllers
+  become: true
   roles:
     - vexxhost.atmosphere.cert_manager
     - vexxhost.atmosphere.rabbitmq_cluster_operator

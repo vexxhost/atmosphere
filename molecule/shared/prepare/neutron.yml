@@ -12,9 +12,14 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- hosts: localhost
-  vars:
-    molecule_scenario_name: "{{ lookup('env', 'MOLECULE_SCENARIO_NAME') }}"
+- hosts: controllers
+  become: true
   tasks:
-    - name: Destroy the "kind" cluster
-      command: kind delete cluster --name {{ molecule_scenario_name }}
+    - name: Set masquerade rule
+      become: yes
+      ansible.builtin.iptables:
+        table: nat
+        chain: POSTROUTING
+        source: 10.96.250.0/24
+        out_interface: "{{ ansible_default_ipv4.interface }}"
+        jump: MASQUERADE
