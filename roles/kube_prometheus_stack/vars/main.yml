@@ -1,10 +1,59 @@
 _kube_prometheus_stack_helm_values:
   defaultRules:
+    rules:
+      alertmanager: false
+      etcd: true
+      configReloaders: true
+      general: true
+      k8s: false
+      kubeApiserverAvailability: false
+      kubeApiserverBurnrate: false
+      kubeApiserverHistogram: false
+      kubeApiserverSlos: false
+      kubeControllerManager: false
+      kubelet: false
+      kubeProxy: false
+      kubePrometheusGeneral: true
+      kubePrometheusNodeRecording: true
+      kubernetesApps: false
+      kubernetesResources: false
+      kubernetesStorage: false
+      kubernetesSystem: false
+      kubeSchedulerAlerting: false
+      kubeSchedulerRecording: false
+      kubeStateMetrics: true
+      network: true
+      node: false
+      nodeExporterAlerting: false
+      nodeExporterRecording: false
+      prometheus: true
+      prometheusOperator: true
+      windows: false
     disabled:
       # NOTE(mnaser): https://github.com/prometheus-community/helm-charts/issues/144
       #               https://github.com/openshift/cluster-monitoring-operator/issues/248
       etcdHighNumberOfFailedGRPCRequests: true
   alertmanager:
+    config:
+      route:
+        group_by:
+          - alertname
+          - severity
+        receiver: notifier
+        routes:
+          - receiver: "null"
+            matchers:
+              - alertname = "InfoInhibitor"
+          - receiver: heartbeat
+            group_wait: 0s
+            group_interval: 30s
+            repeat_interval: 15s
+            matchers:
+              - alertname = "Watchdog"
+      receivers:
+        - name: "null"
+        - name: notifier
+        - name: heartbeat
     serviceMonitor:
       relabelings: &relabelings_instance_to_pod_name
         - &relabeling_set_pod_name_to_instance
@@ -16,7 +65,8 @@ _kube_prometheus_stack_helm_values:
           regex: ^(container|endpoint|namespace|pod|node|service)$
     alertmanagerSpec:
       image:
-        repository: "{{ atmosphere_images['alertmanager'] | vexxhost.kubernetes.docker_image('name') }}"
+        registry: "{{ atmosphere_images['alertmanager'] | vexxhost.kubernetes.docker_image('domain') }}"
+        repository: "{{ atmosphere_images['alertmanager'] | vexxhost.kubernetes.docker_image('path') }}"
         tag: "{{ atmosphere_images['alertmanager'] | vexxhost.kubernetes.docker_image('tag') }}"
       storage:
         volumeClaimTemplate:
@@ -168,7 +218,8 @@ _kube_prometheus_stack_helm_values:
       relabelings: *relabelings_instance_to_node_name
   kube-state-metrics:
     image:
-      repository: "{{ atmosphere_images['kube_state_metrics'] | vexxhost.kubernetes.docker_image('name') }}"
+      registry: "{{ atmosphere_images['kube_state_metrics'] | vexxhost.kubernetes.docker_image('domain') }}"
+      repository: "{{ atmosphere_images['kube_state_metrics'] | vexxhost.kubernetes.docker_image('path') }}"
       tag: "{{ atmosphere_images['kube_state_metrics'] | vexxhost.kubernetes.docker_image('tag') }}"
     prometheus:
       monitor:
@@ -179,7 +230,8 @@ _kube_prometheus_stack_helm_values:
       relabelings: *relabelings_instance_to_pod_name
     prometheusSpec:
       image:
-        repository: "{{ atmosphere_images['prometheus'] | vexxhost.kubernetes.docker_image('name') }}"
+        registry: "{{ atmosphere_images['prometheus'] | vexxhost.kubernetes.docker_image('domain') }}"
+        repository: "{{ atmosphere_images['prometheus'] | vexxhost.kubernetes.docker_image('path') }}"
         tag: "{{ atmosphere_images['prometheus'] | vexxhost.kubernetes.docker_image('tag') }}"
       nodeSelector: *node_selector
       secrets:
@@ -306,22 +358,26 @@ _kube_prometheus_stack_helm_values:
     admissionWebhooks:
       patch:
         image:
-          repository: "{{ atmosphere_images['prometheus_operator_kube_webhook_certgen'] | vexxhost.kubernetes.docker_image('name') }}"
+          registry: "{{ atmosphere_images['prometheus_operator_kube_webhook_certgen'] | vexxhost.kubernetes.docker_image('domain') }}"
+          repository: "{{ atmosphere_images['prometheus_operator_kube_webhook_certgen'] | vexxhost.kubernetes.docker_image('path') }}"
           tag: "{{ atmosphere_images['prometheus_operator_kube_webhook_certgen'] | vexxhost.kubernetes.docker_image('tag') }}"
         nodeSelector: *node_selector
     serviceMonitor:
       relabelings: *relabelings_instance_to_pod_name
     nodeSelector: *node_selector
     image:
-      repository: "{{ atmosphere_images['prometheus_operator'] | vexxhost.kubernetes.docker_image('name') }}"
+      registry: "{{ atmosphere_images['prometheus_operator'] | vexxhost.kubernetes.docker_image('domain') }}"
+      repository: "{{ atmosphere_images['prometheus_operator'] | vexxhost.kubernetes.docker_image('path') }}"
       tag: "{{ atmosphere_images['prometheus_operator'] | vexxhost.kubernetes.docker_image('tag') }}"
     prometheusConfigReloader:
       image:
-        repository: "{{ atmosphere_images['prometheus_config_reloader'] | vexxhost.kubernetes.docker_image('name') }}"
+        registry: "{{ atmosphere_images['prometheus_config_reloader'] | vexxhost.kubernetes.docker_image('domain') }}"
+        repository: "{{ atmosphere_images['prometheus_config_reloader'] | vexxhost.kubernetes.docker_image('path') }}"
         tag: "{{ atmosphere_images['prometheus_config_reloader'] | vexxhost.kubernetes.docker_image('tag') }}"
   prometheus-node-exporter:
     image:
-      repository: "{{ atmosphere_images['prometheus_node_exporter'] | vexxhost.kubernetes.docker_image('name') }}"
+      registry: "{{ atmosphere_images['prometheus_node_exporter'] | vexxhost.kubernetes.docker_image('domain') }}"
+      repository: "{{ atmosphere_images['prometheus_node_exporter'] | vexxhost.kubernetes.docker_image('path') }}"
       tag: "{{ atmosphere_images['prometheus_node_exporter'] | vexxhost.kubernetes.docker_image('tag') }}"
     extraArgs:
       - --collector.diskstats.ignored-devices=^(ram|loop|nbd|fd|(h|s|v|xv)d[a-z]|nvme\\d+n\\d+p)\\d+$
