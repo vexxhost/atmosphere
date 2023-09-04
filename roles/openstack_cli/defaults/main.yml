@@ -29,7 +29,10 @@ openstack_cli_packages:
 
 # List of python packages to install for OpenStack CLI
 # min-max version pinning based on https://releases.openstack.org/yoga/index.html vs https://releases.openstack.org/zed/index.html
+# start list from python-openstackclient - this helps with idempotence later
 openstack_cli_pip_packages:
+  - name: python-openstackclient
+    version: ">=5.7.0,<6.0.0"
   - name: osc-placement
     version: ">=3.2.0,<4.0.0"
   - name: python-barbicanclient
@@ -50,12 +53,11 @@ openstack_cli_pip_packages:
     version: ">=17.7.0,<18.0.0"
   - name: python-octaviaclient
     version: ">=2.5.0,<3.0.0"
-  - name: python-openstackclient
-    version: ">=5.7.0,<6.0.0"
   - name: python-senlinclient
     version: ">=2.4.0,<2.5.0"
   - name: python-swiftclient
     version: ">=3.13.0,<4.0.0"
+  - name: munch
 
 # URL for the Ubuntu Cloud Archive repository
 openstack_cli_cloud_archive_repo: deb http://ubuntu-cloud.archive.canonical.com/ubuntu {{ ansible_distribution_release }}-updates/yoga main

@@ -35,6 +35,7 @@
   ansible.builtin.pip:
     name: "{{ item.name | default(item) }}"
     version: "{{ item.version | default(omit) }}"
+    virtualenv: "{{ atmosphere_virtualenv }}"
   loop: "{{ openstack_cli_pip_packages }}"
 
 - name: Generate OpenStack-Helm endpoints
