@@ -135,10 +135,6 @@ limitations under the License.
 {{- $formatter_fluent := dict "class" "oslo_log.formatters.FluentFormatter" -}}
 {{- $_ := set .Values.conf.logging "formatter_fluent" $formatter_fluent -}}
 {{- end -}}
-
-{{- if not .Values.conf.paste }}
-{{- $_ := set $envAll.Values.conf.heat.paste_deploy "api_paste_config" "/var/lib/openstack/etc/heat/api-paste.ini" -}}
-{{- end }}
 ---
 apiVersion: v1
 kind: Secret
@@ -149,9 +145,7 @@ data:
   rally_tests.yaml: {{ toYaml .Values.conf.rally_tests.tests | b64enc }}
   heat.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.heat | b64enc }}
   logging.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.logging | b64enc }}
-  {{- if .Values.conf.paste }}
   api-paste.ini: {{ include "helm-toolkit.utils.to_ini" .Values.conf.paste | b64enc }}
-  {{- end }}
   policy.yaml: {{ toYaml .Values.conf.policy | b64enc }}
 {{- if .Values.manifests.certificates }}
 {{- include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conf.mpm_event "key" "mpm_event.conf" "format" "Secret" ) | indent 2 }}
