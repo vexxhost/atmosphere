@@ -12,6 +12,52 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+- set_fact:
+    _oidc_configs: []
+    _mountPoints: []
+
+- name: Check prerequisite for federation setup
+  include_tasks: precheck.yml
+  loop: "{{ keystone_helm_values.conf.ks_domains | combine(keystone_helm_values.conf.ks_domains) | dict2items }}"
+  loop_control:
+    loop_var: _ks_domain
+  tags:
+      - keystone-federation-mapping
+
+- name: Create config map manifest
+  ansible.builtin.template:
+    src: openid-metadata.j2
+    dest: /tmp/keystone-openidc-metadata.yml
+
+- name: Apply k8s manifest for OIDC metadata config map
+  kubernetes.core.k8s:
+    state: present
+    src: /tmp/keystone-openidc-metadata.yml
+
+- name: Setup helm value override to mount metadata files
+  include_tasks: setup.yml
+  loop: "{{ _oidc_configs }}"
+  loop_control:
+    loop_var: _idp
+
+- name: Create temporary helm overrides
+  set_fact:
+    _keystone_keycloak_helm_overrides:
+      pod:
+        mounts:
+          keystone_api:
+            keystone_api:
+              volumeMounts: "{{ _mountPoints }}"
+              volumes:
+                - name: keystone-openidc-metadata
+                  configMap:
+                    name: keystone-openidc-metadata
+
+
+- name: Combine pod overrides
+  set_fact:
+    keystone_helm_values: "{{ keystone_helm_values | combine(_keystone_keycloak_helm_overrides, recursive=True) }}"
+
 - name: Uninstall the legacy HelmRelease
   run_once: true
   block:

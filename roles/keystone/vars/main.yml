@@ -19,6 +19,7 @@ _keystone_helm_values:
   pod:
     replicas:
       api: 3
+    mounts:
   conf:
     keystone:
       DEFAULT:
@@ -48,24 +49,21 @@ _keystone_helm_values:
         WSGIPassAuthorization On
         # OIDC
         OIDCClaimPrefix "OIDC-"
-        OIDCResponseType "id_token"
-        OIDCScope "{{ keystone_oidc_scopes }}"
+        OIDCMetadataDir /var/lib/apache2/oidc
         OIDCSSLValidateServer "{{ keystone_oidc_ssl_validate_server }}"
-        OIDCProviderMetadataURL {{ keystone_oidc_provider_metadata_url }}
-        OIDCOAuthVerifyJwksUri {{ keystone_oidc_oauth_verify_jwks_uri }}
-        OIDCClientID {{ keystone_oidc_client_id }}
-        OIDCClientSecret {{ keystone_oidc_client_secret }}
         OIDCCryptoPassphrase {{ keystone_oidc_crypto_passphrase }}
         OIDCRedirectURI {{ keystone_keycloak_redirect_uri }}
         OIDCRedirectURLsAllowed ^https://{{ openstack_helm_endpoints_horizon_api_host }}/auth/logout/$
-        <Location /v3/OS-FEDERATION/identity_providers/atmosphere/protocols/openid/auth>
+        {% for i in _oidc_configs %}
+        <Location /v3/OS-FEDERATION/identity_providers/{{ i.realm_name }}/protocols/openid/auth>
           Require valid-user
           AuthType openid-connect
         </Location>
-        <Location /v3/auth/OS-FEDERATION/identity_providers/atmosphere/protocols/openid/websso>
+        <Location /v3/auth/OS-FEDERATION/identity_providers/{{ i.realm_name }}/protocols/openid/websso>
           Require valid-user
           AuthType openid-connect
         </Location>
+        {% endfor %}
         <Location /v3/auth/OS-FEDERATION/websso/openid>
           Require valid-user
           AuthType openid-connect
