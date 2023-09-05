@@ -61,3 +61,8 @@
       command: kubectl -n kube-system rollout status deploy/coredns
 
 - ansible.builtin.import_playbook: vexxhost.atmosphere.csi
+
+- hosts: controllers
+  become: true
+  roles:
+    - vexxhost.atmosphere.ingress_nginx

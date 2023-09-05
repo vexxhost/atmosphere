@@ -12,12 +12,8 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- hosts: controllers
-  become: true
-  roles:
-    - vexxhost.atmosphere.keycloak
-    - vexxhost.atmosphere.memcached
-    - vexxhost.atmosphere.keystone
-    # TODO: kube-prom-stack
-    # - vexxhost.atmosphere.horizon
+from ansible_collections.vexxhost.atmosphere.plugins.module_utils import openstack
 
+
+class ActionModule(openstack.OpenStackActionBase):
+    pass

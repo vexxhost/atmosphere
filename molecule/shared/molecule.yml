@@ -38,6 +38,9 @@ platforms:
     networks:
       - name: mgmt
       - name: public
+    published_ports:
+      - 80:80
+      - 443:443
     security_opts:
       - apparmor=unconfined
     volumes:
@@ -83,6 +86,11 @@ provisioner:
         csi_driver: local-path-provisioner
         # Certificates
         cluster_issuer_type: self-signed
+        # Ingress
+        ingress_nginx_helm_values:
+          controller:
+            config:
+              worker-processes: 2
         # Percona XtraDB Cluster
         percona_xtradb_cluster_spec:
           allowUnsafeConfigurations: true
@@ -91,7 +99,7 @@ provisioner:
           haproxy:
             size: 1
         # Common
-        domain_name: "{{ ansible_default_ipv4.address.replace('.', '-') }}.nip.io"
+        domain_name: "{{ (lookup('env', 'HOST_IP') | default(ansible_default_ipv4.address, true)).replace('.', '-') }}.nip.io"
         openstack_helm_endpoints_region_name: RegionOne
         # Keycloak
         keycloak_host: "keycloak.{{ domain_name }}"
