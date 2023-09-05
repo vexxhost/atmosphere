@@ -120,24 +120,23 @@ LOCAL_PATH_PROVISIONER_VERSION=0.0.24
 curl -sL https://github.com/rancher/local-path-provisioner/archive/refs/tags/v${LOCAL_PATH_PROVISIONER_VERSION}.tar.gz \
   | tar -xz -C ${ATMOSPHERE}/charts --strip-components=3 local-path-provisioner-${LOCAL_PATH_PROVISIONER_VERSION}/deploy/chart/
 
-OVN_VERSION=0.1.2
+OVN_VERSION=0.1.4
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm-infra/ovn-${OVN_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
-curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm-infra~889187/revisions/5/patch?download' \
+curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm-infra~893739/revisions/2/patch?download' \
   | base64 --decode \
   | filterdiff -p1 -x 'releasenotes/*' \
   | filterdiff -p2 -x 'Chart.yaml' \
   | filterdiff -p1 -i 'ovn/*' \
   | patch -p2 -d ${ATMOSPHERE}/charts/ovn
 
-NEUTRON_VERSION=0.3.15
+NEUTRON_VERSION=0.3.19
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/neutron-${NEUTRON_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
-curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~889258/revisions/6/patch?download' \
+curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~893733/revisions/2/patch?download' \
   | base64 --decode \
   | filterdiff -p1 -x 'releasenotes/*' \
   | filterdiff -p2 -x 'Chart.yaml' \
-  | filterdiff -p2 -x 'values_overrides/*' \
   | filterdiff -p1 -i 'neutron/*' \
   | patch -p2 -d ${ATMOSPHERE}/charts/neutron
 
