@@ -81,10 +81,6 @@ limitations under the License.
 
 {{- end -}}
 
-{{- if not .Values.conf.paste }}
-{{- $_ := set $envAll.Values.conf.nova.wsgi "api_paste_config" "/var/lib/openstack/etc/nova/api-paste.ini" -}}
-{{- end }}
-
 {{- if empty .Values.conf.nova.database.connection -}}
 {{- $connection := tuple "oslo_db" "internal" "nova" "mysql" . | include "helm-toolkit.endpoints.authenticated_endpoint_uri_lookup" -}}
 {{- if .Values.manifests.certificates -}}
@@ -309,9 +305,7 @@ metadata:
 type: Opaque
 data:
   rally_tests.yaml: {{ toYaml .Values.conf.rally_tests.tests | b64enc }}
-  {{- if .Values.conf.paste }}
   api-paste.ini: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.paste | b64enc }}
-  {{- end }}
   policy.yaml: {{ toYaml .Values.conf.policy | b64enc }}
   nova_sudoers: {{ $envAll.Values.conf.nova_sudoers | b64enc }}
   rootwrap.conf: {{ .Values.conf.rootwrap | b64enc }}
