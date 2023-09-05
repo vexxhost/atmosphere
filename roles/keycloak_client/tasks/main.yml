@@ -12,25 +12,65 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Keycloak server health check
-  ansible.builtin.uri:
-    url: "https://{{ keycloak_host }}/health/ready"
-    return_content: true
-    validate_certs: false
-  register: this
-  retries: 60
-  delay: 5
-  until: this is not failed and "'UP' in this.content"
+- name: Lookup Cluster IP for Keycloak
+  when: keycloak_client_auth_keycloak_url is not defined
+  block:
+    - name: Get the Keycloak service
+      run_once: true
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Service
+        name: "{{ keycloak_client_service_name }}"
+        namespace: "{{ keycloak_client_service_namespace }}"
+      register: _keycloak_client_service
 
-- name: Create clients
+    - name: Set fact with the Keycloak Cluster IP
+      ansible.builtin.set_fact:
+        keycloak_client_auth_keycloak_url: "http://{{ _keycloak_client_service.resources[0].spec.clusterIP }}"
+
+- name: Lookup admin username for Keycloak
+  when: keycloak_client_auth_username is not defined
+  block:
+    - name: Get the Keycloak ConfigMap
+      run_once: true
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: ConfigMap
+        name: "{{ keycloak_client_configmap_name }}"
+        namespace: "{{ keycloak_client_configmap_namespace }}"
+      register: _keycloak_client_configmap
+
+    - name: Set fact with the Keycloak admin username
+      ansible.builtin.set_fact:
+        keycloak_client_auth_username: "{{ _keycloak_client_configmap.resources[0].data[keycloak_client_configmap_key] }}"
+
+- name: Lookup admin password for Keycloak
+  when: keycloak_client_auth_password is not defined
+  block:
+    - name: Get the Keycloak secret
+      run_once: true
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Secret
+        name: "{{ keycloak_client_secret_name }}"
+        namespace: "{{ keycloak_client_secret_namespace }}"
+      register: _keycloak_client_secret
+
+    - name: Set fact with the Keycloak admin password
+      ansible.builtin.set_fact:
+        keycloak_client_auth_password: "{{ _keycloak_client_secret.resources[0].data[keycloak_client_secret_key] | b64decode }}"
+
+- name: Create client
   community.general.keycloak_client:
-    auth_client_id: admin-cli
-    auth_keycloak_url: "https://{{ keycloak_host }}"
-    auth_realm: master
-    auth_username: "{{ keycloak_client_admin_username }}"
-    auth_password: "{{ keycloak_client_admin_password }}"
+    # Keycloak settings
+    auth_client_id: "{{ keycloak_client_auth_client_id }}"
+    auth_keycloak_url: "{{ keycloak_client_auth_keycloak_url }}"
+    auth_realm: "{{ keycloak_client_auth_realm }}"
+    auth_username: "{{ keycloak_client_auth_username }}"
+    auth_password: "{{ keycloak_client_auth_password }}"
+    # Client settings
     state: present
-    realm: "{{ keycloak_client_realm_id }}"
+    realm: "{{ keycloak_client_realm }}"
     client_id: "{{ keycloak_client_id }}"
     name: "{{ keycloak_client_name | default(keycloak_client_id) }}"
     root_url: "{{ keycloak_client_root_url | default(omit) }}"
@@ -46,20 +86,18 @@
     direct_access_grants_enabled: "{{ keycloak_client_direct_access_grants_enabled | default(omit) }}"
     implicit_flow_enabled: "{{ keycloak_client_implicit_flow_enabled | default(omit) }}"
     protocol: "{{ keycloak_client_protocol | default('openid-connect') }}"
-  retries: 60
-  delay: 5
-  register: keycloak_client_result
-  until: keycloak_client_result is not failed
 
-- name: Create client role
+- name: Create role
   community.general.keycloak_role:
-    auth_client_id: admin-cli
-    auth_keycloak_url: "https://{{ keycloak_host }}"
-    auth_realm: master
-    auth_username: "{{ keycloak_client_admin_username }}"
-    auth_password: "{{ keycloak_client_admin_password }}"
+    # Keycloak settings
+    auth_client_id: "{{ keycloak_client_auth_client_id }}"
+    auth_keycloak_url: "{{ keycloak_client_auth_keycloak_url }}"
+    auth_realm: "{{ keycloak_client_auth_realm }}"
+    auth_username: "{{ keycloak_client_auth_username }}"
+    auth_password: "{{ keycloak_client_auth_password }}"
+    # Role settings
     state: present
-    realm: "{{ keycloak_client_realm_id }}"
+    realm: "{{ keycloak_client_realm }}"
     client_id: "{{ keycloak_client_id }}"
     name: "{{ item }}"
   loop: "{{ keycloak_client_roles }}"

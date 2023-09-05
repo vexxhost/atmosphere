@@ -81,6 +81,8 @@ provisioner:
             replicas: 1
         # CSI
         csi_driver: local-path-provisioner
+        # Certificates
+        cluster_issuer_type: self-signed
         # Percona XtraDB Cluster
         percona_xtradb_cluster_spec:
           allowUnsafeConfigurations: true
@@ -88,11 +90,28 @@ provisioner:
             size: 1
           haproxy:
             size: 1
+        # Common
+        domain_name: "{{ ansible_default_ipv4.address.replace('.', '-') }}.nip.io"
+        openstack_helm_endpoints_region_name: RegionOne
+        # Keycloak
+        keycloak_host: "keycloak.{{ domain_name }}"
+        keycloak_database_password: secrete123
+        keycloak_admin_password: secrete123
+        # Memcached
+        openstack_helm_endpoints_memcached_secret_key: secrete123
         # Keystone
+        openstack_helm_endpoints_keystone_api_host: "identity.{{ domain_name }}"
+        openstack_helm_endpoints_keystone_admin_password: secrete123
+        openstack_helm_endpoints_keystone_mariadb_password: secrete123
+        openstack_helm_endpoints_keystone_rabbitmq_password: secrete123
+        keystone_keycloak_client_secret: secrete123
+        keystone_oidc_crypto_passphrase: secrete123
         keystone_helm_values:
           pod:
             replicas:
               api: 1
+        # Horizon
+        openstack_helm_endpoints_horizon_api_host: "dashboard.{{ domain_name }}"
   # options:
   #   inventory: "${MOLECULE_EPHEMERAL_DIRECTORY}/workspace"
   # inventory:

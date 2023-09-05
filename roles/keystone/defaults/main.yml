@@ -25,8 +25,10 @@ keystone_ingress_annotations: {}
 # Keystone OpenID Connect settings (defaults to Keycloak for Atmosphere)
 keystone_oidc_scopes: "openid email profile"
 keystone_oidc_ssl_validate_server: "{{ (cluster_issuer_type == 'self-signed') | ternary('Off', 'On') }}"
-keystone_oidc_provider_metadata_url: "https://{{ keycloak_host }}/realms/{{ keycloak_realm_result.proposed.id }}/.well-known/openid-configuration"
-keystone_oidc_oauth_verify_jwks_uri: "https://{{ keycloak_host }}/realms/{{ keycloak_realm_result.proposed.id }}/protocol/openid-connect/certs"
+# keystone_oidc_provider_metadata_url: "https://{{ keycloak_host }}/realms/{{ keycloak_realm_result.proposed.id }}/.well-known/openid-configuration"
+keystone_oidc_provider_metadata_url: "https://{{ keycloak_host }}/realms/atmosphere/.well-known/openid-configuration"
+# keystone_oidc_oauth_verify_jwks_uri: "https://{{ keycloak_host }}/realms/{{ keycloak_realm_result.proposed.id }}/protocol/openid-connect/certs"
+keystone_oidc_oauth_verify_jwks_uri: "https://{{ keycloak_host }}/realms/atmosphere/protocol/openid-connect/certs"
 keystone_oidc_client_id: "{{ keystone_keycloak_client_id }}"
 keystone_oidc_client_secret: "{{ keystone_keycloak_client_secret }}"
 keystone_oidc_crypto_passphrase: "{{ undef('You must specify a Keystone OIDC client secret using keystone_oidc_crypto_passphrase') }}"

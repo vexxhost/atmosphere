@@ -12,50 +12,88 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Keycloak server health check
-  ansible.builtin.uri:
-    url: "https://{{ keycloak_host }}/health/ready"
-    return_content: true
-    validate_certs: false
-  register: this
-  retries: 60
-  delay: 5
-  until: this is not failed and "'UP' in this.content"
+- name: Lookup Cluster IP for Keycloak
+  when: keycloak_realm_auth_keycloak_url is not defined
+  block:
+    - name: Get the Keycloak service
+      run_once: true
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Service
+        name: "{{ keycloak_realm_service_name }}"
+        namespace: "{{ keycloak_realm_service_namespace }}"
+      register: _keycloak_realm_service
 
-- name: Create realms
+    - name: Set fact with the Keycloak Cluster IP
+      ansible.builtin.set_fact:
+        keycloak_realm_auth_keycloak_url: "http://{{ _keycloak_realm_service.resources[0].spec.clusterIP }}"
+
+- name: Lookup admin username for Keycloak
+  when: keycloak_realm_auth_username is not defined
+  block:
+    - name: Get the Keycloak ConfigMap
+      run_once: true
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: ConfigMap
+        name: "{{ keycloak_realm_configmap_name }}"
+        namespace: "{{ keycloak_realm_configmap_namespace }}"
+      register: _keycloak_realm_configmap
+
+    - name: Set fact with the Keycloak admin username
+      ansible.builtin.set_fact:
+        keycloak_realm_auth_username: "{{ _keycloak_realm_configmap.resources[0].data[keycloak_realm_configmap_key] }}"
+
+- name: Lookup admin password for Keycloak
+  when: keycloak_realm_auth_password is not defined
+  block:
+    - name: Get the Keycloak secret
+      run_once: true
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Secret
+        name: "{{ keycloak_realm_secret_name }}"
+        namespace: "{{ keycloak_realm_secret_namespace }}"
+      register: _keycloak_realm_secret
+
+    - name: Set fact with the Keycloak admin password
+      ansible.builtin.set_fact:
+        keycloak_realm_auth_password: "{{ _keycloak_realm_secret.resources[0].data[keycloak_realm_secret_key] | b64decode }}"
+
+- name: Create realm
   # Note(okozachenko1203): Ignoring changes in this task until the upstream issue
   #                        https://github.com/keycloak/keycloak/issues/20970 is resolved.
   changed_when: false
   community.general.keycloak_realm:
-    auth_client_id: admin-cli
-    auth_keycloak_url: "https://{{ keycloak_host }}"
-    auth_realm: master
-    auth_username: "{{ keycloak_realm_admin_username }}"
-    auth_password: "{{ keycloak_realm_admin_password }}"
+    # Keycloak settings
+    auth_client_id: "{{ keycloak_realm_auth_client_id }}"
+    auth_keycloak_url: "{{ keycloak_realm_auth_keycloak_url }}"
+    auth_realm: "{{ keycloak_realm_auth_realm }}"
+    auth_username: "{{ keycloak_realm_auth_username }}"
+    auth_password: "{{ keycloak_realm_auth_password }}"
+    # Realm settings
     id: "{{ keycloak_realm_id }}"
     realm: "{{ keycloak_realm_name | default(keycloak_realm_id) }}"
     enabled: true
-  retries: 60
-  delay: 5
-  register: keycloak_realm_result
-  until: keycloak_realm_result is not failed
 
-- name: Include client roles in id token
+- name: Include client roles in id_token
   changed_when: false
   community.general.keycloak_clientscope:
-    auth_client_id: admin-cli
-    auth_keycloak_url: "https://{{ keycloak_host }}"
-    auth_realm: master
-    auth_username: "{{ keycloak_realm_admin_username }}"
-    auth_password: "{{ keycloak_realm_admin_password }}"
-    realm: "{{ keycloak_realm_id }}"
+    # Keycloak settings
+    auth_client_id: "{{ keycloak_realm_auth_client_id }}"
+    auth_keycloak_url: "{{ keycloak_realm_auth_keycloak_url }}"
+    auth_realm: "{{ keycloak_realm_auth_realm }}"
+    auth_username: "{{ keycloak_realm_auth_username }}"
+    auth_password: "{{ keycloak_realm_auth_password }}"
+    # Client scope settings
     name: roles
+    realm: "{{ keycloak_realm_id }}"
     protocol_mappers:
       - name: client roles
         protocol: openid-connect
         protocolMapper: oidc-usermodel-client-role-mapper
         config:
-          id.token.claim: true
           access.token.claim: true
+          id.token.claim: true
           claim.name: "resource_access.${client_id}.roles"
           multivalued: true
