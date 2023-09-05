@@ -72,17 +72,7 @@ _keystone_helm_values:
         OIDCSessionType client-cookie:store_id_token
         OIDCXForwardedHeaders X-Forwarded-Host X-Forwarded-Port X-Forwarded-Proto
       </VirtualHost>
-    ks_domains:
-      atmosphere:
-        identity:
-          driver: keycloak
-        keycloak:
-          server_url: "{{ keystone_keycloak_server_url }}"
-          user_realm_name: "{{ keystone_keycloak_user_realm_name }}"
-          client_id: "{{ keystone_keycloak_admin_client_id }}"
-          username: "{{ keystone_keycloak_admin_user }}"
-          password: "{{ keystone_keycloak_admin_password }}"
-          realm_name: "{{ keystone_keycloak_realm }}"
+    ks_domains: "{{ keystone_domains | to_ks_domains }}"
   manifests:
     job_credential_cleanup: false
     ingress_api: false

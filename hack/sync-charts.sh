@@ -34,7 +34,7 @@ NODE_FEATURE_DISCOVERY_VERSION=0.11.2
 curl -sL https://github.com/kubernetes-sigs/node-feature-discovery/releases/download/v${NODE_FEATURE_DISCOVERY_VERSION}/node-feature-discovery-chart-${NODE_FEATURE_DISCOVERY_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-KUBE_PROMETHEUS_STACK_VERSION=41.7.3
+KUBE_PROMETHEUS_STACK_VERSION=49.0.0
 curl -sL https://github.com/prometheus-community/helm-charts/releases/download/kube-prometheus-stack-${KUBE_PROMETHEUS_STACK_VERSION}/kube-prometheus-stack-${KUBE_PROMETHEUS_STACK_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
@@ -100,6 +100,12 @@ GLANCE_VERSION=0.4.6
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/glance-${GLANCE_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~883168/revisions/11/patch?download' \
+  | base64 --decode \
+  | filterdiff -p1 -x 'releasenotes/*' \
+  | filterdiff -p2 -x 'Chart.yaml' \
+  | filterdiff -p1 -i 'glance/*' \
+  | patch -p2 -d ${ATMOSPHERE}/charts/glance
+curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~892704/revisions/1/patch?download' \
   | base64 --decode \
   | filterdiff -p1 -x 'releasenotes/*' \
   | filterdiff -p2 -x 'Chart.yaml' \

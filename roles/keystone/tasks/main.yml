@@ -82,6 +82,43 @@
         name: "{{ keystone_helm_release_name }}"
         namespace: "{{ keystone_helm_release_namespace }}"
 
+- name: Create Keycloak realms
+  run_once: true
+  delegate_to: localhost
+  community.general.keycloak_realm:
+    # Keycloak settings
+    auth_keycloak_url: "{{ item.keycloak_server_url }}"
+    auth_realm: "{{ item.keycloak_user_realm_name }}"
+    auth_client_id: "{{ item.keycloak_admin_client_id }}"
+    auth_username: "{{ item.keycloak_admin_user }}"
+    auth_password: "{{ item.keycloak_admin_password }}"
+    validate_certs: "{{ cluster_issuer_type != 'self-signed' }}"
+    # Realm settings
+    id: "{{ item.keycloak_realm }}"
+    realm: "{{ item.keycloak_realm }}"
+  loop: "{{ keystone_domains }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Create Keycloak clients
+  run_once: true
+  delegate_to: localhost
+  community.general.keycloak_client:
+    # Keycloak settings
+    auth_keycloak_url: "{{ item.keycloak_server_url }}"
+    auth_realm: "{{ item.keycloak_user_realm_name }}"
+    auth_client_id: "{{ item.keycloak_admin_client_id }}"
+    auth_username: "{{ item.keycloak_admin_user }}"
+    auth_password: "{{ item.keycloak_admin_password }}"
+    validate_certs: "{{ cluster_issuer_type != 'self-signed' }}"
+    # Realm settings
+    realm: "{{ item.keycloak_realm }}"
+    client_id: "{{ item.keycloak_client_id }}"
+    secret: "{{ item.keycloak_client_secret }}"
+  loop: "{{ keystone_domains }}"
+  loop_control:
+    label: "{{ item.name }}"
+
 - name: Deploy Helm chart
   run_once: true
   kubernetes.core.helm:
@@ -101,57 +138,53 @@
     openstack_helm_ingress_service_port: 5000
     openstack_helm_ingress_annotations: "{{ keystone_ingress_annotations }}"
 
-- name: Get the ID of the Atmosphere domain
-  openstack.cloud.identity_domain_info:
-    cloud: atmosphere
-    name: atmosphere
-  register: _keystone_atmosphere_domain_info
-  until: _keystone_atmosphere_domain_info is not failed
-  retries: 60
-  delay: 5
-  tags:
-    - keystone-identity-provider
+- name: Create Keystone domains
+  run_once: true
+  delegate_to: localhost
+  vexxhost.atmosphere.identity_domain:
+    name: "{{ item.name }}"
+  register: keystone_domains_result
+  loop: "{{ keystone_domains }}"
+  loop_control:
+    label: "{{ item.name }}"
 
-- name: Create identity provider
-  openstack.cloud.federation_idp:
-    cloud: atmosphere
-    name: atmosphere
-    description: Atmosphere
-    domain_id: "{{ _keystone_atmosphere_domain_info.openstack_domains[0].id }}"
+- name: Create Keystone identity providers
+  run_once: true
+  delegate_to: localhost
+  vexxhost.atmosphere.federation_idp:
+    name: "{{ item.domain.name }}"
+    domain_id: "{{ item.domain.id }}"
     remote_ids:
-      - "https://{{ keycloak_host }}/realms/{{ keycloak_realm_result.proposed.id }}"
-  tags:
-    - keystone-identity-provider
+      - "{{ item.item.keycloak_server_url }}/realms/{{ item.item.keycloak_realm }}"
+  loop: "{{ keystone_domains_result.results }}"
+  loop_control:
+    label: "{{ item.domain.name }}"
 
-- name: Create federation mapping
-  openstack.cloud.federation_mapping:
-    cloud: atmosphere
-    name: atmosphere-openid
+- name: Create Keystone federation mappings
+  run_once: true
+  delegate_to: localhost
+  vexxhost.atmosphere.federation_mapping:
+    name: "{{ item.name }}-openid"
     rules:
       - local:
           - user:
               type: local
               id: "{0}"
               domain:
-                name: atmosphere
+                name: "{{ item.name }}"
         remote:
           - type: OIDC-sub
-  tags:
-    - keystone-federation-mapping
-
-- name: Create a federation protocol
-  openstack.cloud.keystone_federation_protocol:
-    cloud: atmosphere
-    name: openid
-    idp_id: atmosphere
-    mapping_id: atmosphere-openid
-  tags:
-    - keystone-federation-protocol
-
-- name: Setup external identity provider using keystone
-  include_tasks: idp.yml
-  loop: "{{ keystone_helm_values.conf.ks_domains | combine(keystone_helm_values.conf.ks_domains) | dict2items }}"
+  loop: "{{ keystone_domains }}"
   loop_control:
-    loop_var: _ks_domain
-  tags:
-      - keystone-federation-mapping
+    label: "{{ item.name }}"
+
+- name: Create Keystone federation protocols
+  run_once: true
+  delegate_to: localhost
+  vexxhost.atmosphere.keystone_federation_protocol:
+    name: "{{ item.name }}-openid"
+    idp_id: "{{ item.name }}"
+    mapping_id: "{{ item.name }}-openid"
+  loop: "{{ keystone_domains }}"
+  loop_control:
+    label: "{{ item.name }}"

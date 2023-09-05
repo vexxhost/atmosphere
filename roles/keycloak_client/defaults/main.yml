@@ -12,7 +12,29 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-keycloak_client_admin_username: "{{ keycloak_admin_username | default('admin') }}"
-keycloak_client_admin_password: "{{ keycloak_admin_password }}"
+# Service pointing to Keycloak
+keycloak_client_service_namespace: "{{ keycloak_helm_release_namespace | default('auth-system') }}"
+keycloak_client_service_name: "{{ keycloak_helm_release_name | default('keycloak') }}"
+
+# ConfigMap containing the user configuration
+keycloak_client_configmap_namespace: "{{ keycloak_helm_release_namespace | default('auth-system') }}"
+keycloak_client_configmap_name: "{{ keycloak_helm_release_name | default('keycloak') }}-env-vars"
+keycloak_client_configmap_key: KEYCLOAK_ADMIN
+
+# Secret containing the admin password
+keycloak_client_secret_namespace: "{{ keycloak_helm_release_namespace | default('auth-system') }}"
+keycloak_client_secret_name: "{{ keycloak_helm_release_name | default('keycloak') }}"
+keycloak_client_secret_key: admin-password
+
+# You can use some of the commented out overrides to avoid doing a lookup using
+# the Kubernetes API.  This is useful if you are running Keycloak outside of
+# Kubernetes.
+keycloak_client_auth_client_id: admin-cli
+# keycloak_client_auth_keycloak_url:
+keycloak_client_auth_realm: master
+# keycloak_client_auth_username:
+# keycloak_client_auth_password:
+
+# keycloak_client_realm:
 keycloak_client_roles: []
 keycloak_client_realm_id: atmosphere

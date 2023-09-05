@@ -13,14 +13,15 @@ metadata:
 {{- end }}
 spec:
 {{- if .Values.alertmanager.alertmanagerSpec.image }}
+  {{- $registry := .Values.global.imageRegistry | default .Values.alertmanager.alertmanagerSpec.image.registry -}}
   {{- if and .Values.alertmanager.alertmanagerSpec.image.tag .Values.alertmanager.alertmanagerSpec.image.sha }}
-  image: "{{ .Values.alertmanager.alertmanagerSpec.image.repository }}:{{ .Values.alertmanager.alertmanagerSpec.image.tag }}@sha256:{{ .Values.alertmanager.alertmanagerSpec.image.sha }}"
+  image: "{{ $registry }}/{{ .Values.alertmanager.alertmanagerSpec.image.repository }}:{{ .Values.alertmanager.alertmanagerSpec.image.tag }}@sha256:{{ .Values.alertmanager.alertmanagerSpec.image.sha }}"
   {{- else if .Values.alertmanager.alertmanagerSpec.image.sha }}
-  image: "{{ .Values.alertmanager.alertmanagerSpec.image.repository }}@sha256:{{ .Values.alertmanager.alertmanagerSpec.image.sha }}"
+  image: "{{ $registry }}/{{ .Values.alertmanager.alertmanagerSpec.image.repository }}@sha256:{{ .Values.alertmanager.alertmanagerSpec.image.sha }}"
   {{- else if .Values.alertmanager.alertmanagerSpec.image.tag }}
-  image: "{{ .Values.alertmanager.alertmanagerSpec.image.repository }}:{{ .Values.alertmanager.alertmanagerSpec.image.tag }}"
+  image: "{{ $registry }}/{{ .Values.alertmanager.alertmanagerSpec.image.repository }}:{{ .Values.alertmanager.alertmanagerSpec.image.tag }}"
   {{- else }}
-  image: "{{ .Values.alertmanager.alertmanagerSpec.image.repository }}"
+  image: "{{ $registry }}/{{ .Values.alertmanager.alertmanagerSpec.image.repository }}"
   {{- end }}
   version: {{ .Values.alertmanager.alertmanagerSpec.image.tag }}
   {{- if .Values.alertmanager.alertmanagerSpec.image.sha }}
@@ -58,13 +59,13 @@ spec:
 {{- end }}
 {{- if .Values.alertmanager.alertmanagerSpec.alertmanagerConfigSelector }}
   alertmanagerConfigSelector:
-{{ toYaml .Values.alertmanager.alertmanagerSpec.alertmanagerConfigSelector | indent 4}}
+{{ tpl (toYaml .Values.alertmanager.alertmanagerSpec.alertmanagerConfigSelector | indent 4) . }}
 {{ else }}
   alertmanagerConfigSelector: {}
 {{- end }}
 {{- if .Values.alertmanager.alertmanagerSpec.alertmanagerConfigNamespaceSelector }}
   alertmanagerConfigNamespaceSelector:
-{{ toYaml .Values.alertmanager.alertmanagerSpec.alertmanagerConfigNamespaceSelector | indent 4}}
+{{ tpl (toYaml .Values.alertmanager.alertmanagerSpec.alertmanagerConfigNamespaceSelector | indent 4) . }}
 {{ else }}
   alertmanagerConfigNamespaceSelector: {}
 {{- end }}
@@ -75,6 +76,10 @@ spec:
 {{- if .Values.alertmanager.alertmanagerSpec.alertmanagerConfiguration }}
   alertmanagerConfiguration:
 {{ toYaml .Values.alertmanager.alertmanagerSpec.alertmanagerConfiguration | indent 4 }}
+{{- end }}
+{{- if .Values.alertmanager.alertmanagerSpec.alertmanagerConfigMatcherStrategy }}
+  alertmanagerConfigMatcherStrategy:
+{{ toYaml .Values.alertmanager.alertmanagerSpec.alertmanagerConfigMatcherStrategy | indent 4 }}
 {{- end }}
 {{- if .Values.alertmanager.alertmanagerSpec.resources }}
   resources:
@@ -158,6 +163,15 @@ spec:
   portName: {{ .Values.alertmanager.alertmanagerSpec.portName }}
 {{- if .Values.alertmanager.alertmanagerSpec.clusterAdvertiseAddress }}
   clusterAdvertiseAddress: {{ .Values.alertmanager.alertmanagerSpec.clusterAdvertiseAddress }}
+{{- end }}
+{{- if .Values.alertmanager.alertmanagerSpec.clusterGossipInterval }}
+  clusterGossipInterval: {{ .Values.alertmanager.alertmanagerSpec.clusterGossipInterval }}
+{{- end }}
+{{- if .Values.alertmanager.alertmanagerSpec.clusterPeerTimeout }}
+  clusterPeerTimeout: {{ .Values.alertmanager.alertmanagerSpec.clusterPeerTimeout }}
+{{- end }}
+{{- if .Values.alertmanager.alertmanagerSpec.clusterPushpullInterval }}
+  clusterPushpullInterval: {{ .Values.alertmanager.alertmanagerSpec.clusterPushpullInterval }}
 {{- end }}
 {{- if .Values.alertmanager.alertmanagerSpec.forceEnableClusterMode }}
   forceEnableClusterMode: {{ .Values.alertmanager.alertmanagerSpec.forceEnableClusterMode }}

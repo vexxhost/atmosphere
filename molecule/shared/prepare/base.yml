@@ -1,0 +1,46 @@
+# Copyright (c) 2023 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- hosts: all
+  become: true
+  pre_tasks:
+    - name: Wait for systemd to complete initialization
+      ansible.builtin.command: systemctl is-system-running
+      register: systemctl_status
+      until: >
+        'running' in systemctl_status.stdout or
+        'degraded' in systemctl_status.stdout
+      retries: 30
+      delay: 5
+      changed_when: false
+      failed_when: systemctl_status.rc > 1
+
+    # TODO(mnaser): We should really just build our own image, since the base
+    #               images we use are missing a whole bunch of dependencies
+    #               and need to download a lot of things online.
+    - name: Fix Python installation
+      block:
+        - name: Get all Python packages
+          ansible.builtin.command: pip freeze
+          register: pip_freeze
+
+        - name: Uninstall all Python packages
+          ansible.builtin.pip:
+            name: "{{ pip_freeze.stdout_lines }}"
+            state: absent
+  tasks:
+    - name: Refresh cache & install "iptables"
+      ansible.builtin.package:
+        name: iptables
+        update_cache: true
