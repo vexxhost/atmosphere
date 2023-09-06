@@ -34,9 +34,7 @@
     - name: Set a fact with user information using "end_state" or "existing"
       run_once: true
       ansible.builtin.set_fact:
-        keycloak_user_info: "{{ keycloak_user_result.existing | ternary(keycloak_user_result.existing., keycloak_user_result.end_state) }}"
-
-    - debug: var=keycloak_user_result
+        keycloak_user_info: "{{ keycloak_user_result.existing | ternary(keycloak_user_result.existing, keycloak_user_result.end_state) }}"
 
     - name: Get list of all users in "atmosphere" domain
       run_once: true
