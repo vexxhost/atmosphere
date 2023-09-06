@@ -20,6 +20,13 @@ _keystone_helm_values:
     replicas:
       api: 3
     mounts:
+      keystone_api:
+        keystone_api:
+          volumeMounts: "{{ keystone_domains | vexxhost.atmosphere.keystone_domains_to_mounts }}"
+          volumes:
+            - name: keystone-openid-metadata
+              configMap:
+                name: keystone-openid-metadata
   conf:
     keystone:
       DEFAULT:
@@ -47,32 +54,39 @@ _keystone_helm_values:
         WSGIScriptAlias / /var/www/cgi-bin/keystone/keystone-wsgi-public
         WSGIApplicationGroup %{GLOBAL}
         WSGIPassAuthorization On
+        # NOTE(mnaser): This is to by-pass large header limits for large tokens
+        LimitRequestFieldSize 16384
         # OIDC
         OIDCClaimPrefix "OIDC-"
         OIDCMetadataDir /var/lib/apache2/oidc
         OIDCSSLValidateServer "{{ keystone_oidc_ssl_validate_server }}"
         OIDCCryptoPassphrase {{ keystone_oidc_crypto_passphrase }}
-        OIDCRedirectURI {{ keystone_keycloak_redirect_uri }}
-        OIDCRedirectURLsAllowed ^https://{{ openstack_helm_endpoints_horizon_api_host }}/auth/logout/$
-        {% for i in _oidc_configs %}
-        <Location /v3/OS-FEDERATION/identity_providers/{{ i.realm_name }}/protocols/openid/auth>
-          Require valid-user
+        OIDCRedirectURI {{ keystone_oidc_redirect_uri }}
+        OIDCRedirectURLsAllowed ^https://{{ openstack_helm_endpoints_keystone_api_host }}/v3/auth/OS-FEDERATION/identity_providers/({{ keystone_domains | map(attribute='name') | join('|') }})/protocols/openid/websso ^https://{{ openstack_helm_endpoints_horizon_api_host }}/auth/logout/$
+        # NOTE(mnaser): These are Atmosphere specific settings.
+        OIDCSessionType client-cookie:store_id_token
+        OIDCXForwardedHeaders X-Forwarded-Host X-Forwarded-Proto
+        <Location /v3/auth/OS-FEDERATION/identity_providers/redirect>
           AuthType openid-connect
-        </Location>
-        <Location /v3/auth/OS-FEDERATION/identity_providers/{{ i.realm_name }}/protocols/openid/websso>
           Require valid-user
-          AuthType openid-connect
         </Location>
-        {% endfor %}
         <Location /v3/auth/OS-FEDERATION/websso/openid>
           Require valid-user
           AuthType openid-connect
         </Location>
-        # NOTE(mnaser): These are Atmosphere specific settings.
-        OIDCSessionType client-cookie:store_id_token
-        OIDCXForwardedHeaders X-Forwarded-Host X-Forwarded-Port X-Forwarded-Proto
+        {% for domain in keystone_domains %}
+        <Location /v3/OS-FEDERATION/identity_providers/{{ domain.name }}/protocols/openid/auth>
+          Require valid-user
+          AuthType oauth20
+        </Location>
+        <Location /v3/auth/OS-FEDERATION/identity_providers/{{ domain.name }}/protocols/openid/websso>
+          Require valid-user
+          AuthType openid-connect
+          OIDCDiscoverURL {{ keystone_oidc_redirect_uri }}?iss={{ domain | urlencoded_issuer_from_domain }}
+        </Location>
+        {% endfor %}
       </VirtualHost>
-    ks_domains: "{{ keystone_domains | to_ks_domains }}"
+    ks_domains: "{{ keystone_domains | vexxhost.atmosphere.to_ks_domains }}"
   manifests:
     job_credential_cleanup: false
     ingress_api: false

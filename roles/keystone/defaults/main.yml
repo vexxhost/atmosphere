@@ -17,6 +17,7 @@ keystone_helm_chart_path: "../../charts/keystone/"
 keystone_helm_chart_ref: /usr/local/src/keystone
 
 keystone_helm_release_namespace: openstack
+keystone_helm_values: {}
 
 # List of annotations to apply to the Ingress
 keystone_ingress_annotations: {}
@@ -31,15 +32,17 @@ keystone_keycloak_admin_client_id: admin-cli
 keystone_keycloak_admin_user: admin
 keystone_keycloak_admin_password: "{{ keycloak_admin_password }}"
 keystone_keycloak_realm: atmosphere
+keystone_keycloak_realm_name: Atmosphere
 keystone_keycloak_client_id: keystone
 # keystone_keycloak_client_secret:
-keystone_keycloak_redirect_uri: "https://{{ openstack_helm_endpoints_keystone_api_host }}/v3/OS-FEDERATION/identity_providers/{{ keystone_keycloak_realm }}/protocols/openid/auth"
+keystone_keycloak_scopes: "openid email profile"
 
 # This variable can be used for more complex setups that require multiple
 # domains that are mapped to multiple realms.  If you are looking to use a
 # single domain and realm, you can skip this section.
 keystone_domains:
   - name: "{{ keystone_keycloak_realm }}"                                       # Domain name
+    label: "{{ keystone_keycloak_realm_name }}"                                 # Realm display name + Horizon label
     keycloak_server_url: "{{ keystone_keycloak_server_url }}"                   # Public Keycloak URL
     keycloak_server_internal_url: "{{ keystone_keycloak_server_internal_url }}" # Internal Keycloak URL
     keycloak_user_realm_name: "{{ keystone_keycloak_user_realm_name }}"         # Keycloak realm name
@@ -49,30 +52,9 @@ keystone_domains:
     keycloak_realm: "{{ keystone_keycloak_realm }}"                             # Keycloak realm name
     keycloak_client_id: "{{ keystone_keycloak_client_id }}"                     # Keycloak client ID
     keycloak_client_secret: "{{ keystone_keycloak_client_secret }}"             # Keycloak client secret
-    keycloak_client_redirect_uri: "{{ keystone_keycloak_redirect_uri }}"        # TODO: get rid of this
+    keycloak_scopes: "{{ keystone_keycloak_scopes }}"                           # Keycloak scopes
 
 # Keystone OpenID Connect settings (defaults to Keycloak for Atmosphere)
-keystone_oidc_scopes: "openid email profile"
 keystone_oidc_ssl_validate_server: "{{ (cluster_issuer_type == 'self-signed') | ternary('Off', 'On') }}"
-# keystone_oidc_provider_metadata_url: "https://{{ keycloak_host }}/realms/{{ keycloak_realm_result.proposed.id }}/.well-known/openid-configuration"
-keystone_oidc_provider_metadata_url: "https://{{ keycloak_host }}/realms/atmosphere/.well-known/openid-configuration"
-# keystone_oidc_oauth_verify_jwks_uri: "https://{{ keycloak_host }}/realms/{{ keycloak_realm_result.proposed.id }}/protocol/openid-connect/certs"
-keystone_oidc_oauth_verify_jwks_uri: "https://{{ keycloak_host }}/realms/atmosphere/protocol/openid-connect/certs"
-keystone_oidc_client_id: "{{ keystone_keycloak_client_id }}"
-keystone_oidc_client_secret: "{{ keystone_keycloak_client_secret }}"
 keystone_oidc_crypto_passphrase: "{{ undef('You must specify a Keystone OIDC client secret using keystone_oidc_crypto_passphrase') }}"
-keystone_oidc_redirect_uri: "{{ keystone_keycloak_redirect_uri }}"
-
-# Keycloak settings for client
-keystone_keycloak_client_id: keystone
-keystone_keycloak_client_secret: "{{ undef('You must specify a Keystone Keycloak client secret using keystone_keycloak_client_secret') }}"
-keystone_keycloak_redirect_uri: "https://{{ openstack_helm_endpoints_keystone_api_host }}/v3/OS-FEDERATION/identity_providers/redirect"
-
-# Keycloak settings for backend
-keystone_keycloak_server_url: http://keycloak.{{ keycloak_helm_release_namespace }}.svc/
-keystone_keycloak_user_realm_name: master
-keystone_keycloak_admin_client_id: admin-cli
-keystone_keycloak_admin_user: admin
-keystone_keycloak_admin_password: "{{ keycloak_admin_password }}"
-keystone_keycloak_realm: atmosphere
-keystone_helm_values: {}
+keystone_oidc_redirect_uri: "https://{{ openstack_helm_endpoints_keystone_api_host }}/v3/auth/OS-FEDERATION/identity_providers/redirect"

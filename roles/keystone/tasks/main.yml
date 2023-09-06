@@ -12,52 +12,6 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- set_fact:
-    _oidc_configs: []
-    _mountPoints: []
-
-- name: Check prerequisite for federation setup
-  include_tasks: precheck.yml
-  loop: "{{ keystone_helm_values.conf.ks_domains | combine(keystone_helm_values.conf.ks_domains) | dict2items }}"
-  loop_control:
-    loop_var: _ks_domain
-  tags:
-      - keystone-federation-mapping
-
-- name: Create config map manifest
-  ansible.builtin.template:
-    src: openid-metadata.j2
-    dest: /tmp/keystone-openidc-metadata.yml
-
-- name: Apply k8s manifest for OIDC metadata config map
-  kubernetes.core.k8s:
-    state: present
-    src: /tmp/keystone-openidc-metadata.yml
-
-- name: Setup helm value override to mount metadata files
-  include_tasks: setup.yml
-  loop: "{{ _oidc_configs }}"
-  loop_control:
-    loop_var: _idp
-
-- name: Create temporary helm overrides
-  set_fact:
-    _keystone_keycloak_helm_overrides:
-      pod:
-        mounts:
-          keystone_api:
-            keystone_api:
-              volumeMounts: "{{ _mountPoints }}"
-              volumes:
-                - name: keystone-openidc-metadata
-                  configMap:
-                    name: keystone-openidc-metadata
-
-
-- name: Combine pod overrides
-  set_fact:
-    keystone_helm_values: "{{ keystone_helm_values | combine(_keystone_keycloak_helm_overrides, recursive=True) }}"
-
 - name: Uninstall the legacy HelmRelease
   run_once: true
   block:
@@ -85,6 +39,7 @@
 - name: Create Keycloak realms
   run_once: true
   delegate_to: localhost
+  changed_when: false
   community.general.keycloak_realm:
     # Keycloak settings
     auth_keycloak_url: "{{ item.keycloak_server_url }}"
@@ -96,9 +51,16 @@
     # Realm settings
     id: "{{ item.keycloak_realm }}"
     realm: "{{ item.keycloak_realm }}"
+    display_name: "{{ item.label }}"
+    enabled: true
   loop: "{{ keystone_domains }}"
   loop_control:
     label: "{{ item.name }}"
+
+- name: Create ConfigMap with all OpenID connect configurations
+  run_once: true
+  kubernetes.core.k8s:
+    template: configmap-openid-metadata.yml.j2
 
 - name: Create Keycloak clients
   run_once: true
@@ -115,6 +77,9 @@
     realm: "{{ item.keycloak_realm }}"
     client_id: "{{ item.keycloak_client_id }}"
     secret: "{{ item.keycloak_client_secret }}"
+    redirect_uris:
+      - "{{ keystone_oidc_redirect_uri }}"
+      - "https://{{ openstack_helm_endpoints_horizon_api_host }}/auth/logout/"
   loop: "{{ keystone_domains }}"
   loop_control:
     label: "{{ item.name }}"
@@ -155,7 +120,7 @@
     name: "{{ item.domain.name }}"
     domain_id: "{{ item.domain.id }}"
     remote_ids:
-      - "{{ item.item.keycloak_server_url }}/realms/{{ item.item.keycloak_realm }}"
+      - "{{ item.item | vexxhost.atmosphere.issuer_from_domain }}"
   loop: "{{ keystone_domains_result.results }}"
   loop_control:
     label: "{{ item.domain.name }}"
@@ -182,7 +147,7 @@
   run_once: true
   delegate_to: localhost
   vexxhost.atmosphere.keystone_federation_protocol:
-    name: "{{ item.name }}-openid"
+    name: openid
     idp_id: "{{ item.name }}"
     mapping_id: "{{ item.name }}-openid"
   loop: "{{ keystone_domains }}"
