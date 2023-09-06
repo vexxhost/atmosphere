@@ -36,8 +36,6 @@
       ansible.builtin.set_fact:
         keycloak_user_info: "{{ keycloak_user_result.existing | ternary(keycloak_user_result.existing, keycloak_user_result.end_state) }}"
 
-    - debug: var=keycloak_user_info
-
     - name: Get list of all users in "atmosphere" domain
       run_once: true
       delegate_to: localhost
@@ -45,8 +43,12 @@
         domain: atmosphere
         name: "{{ keycloak_user_info.username }}"
       register: identity_user_info_result
-
-    - debug: var=identity_user_info_result
+      # XXX(mnaser): GHA seems to be slow so the user doesn't show up right
+      #              away, it could also be a Keystone caching issue, for now
+      #              we try a few more times.
+      retries: 30
+      delay: 1
+      until: identity_user_info_result.openstack_users | length > 0
 
     - name: Assert that the user exists
       run_once: true
