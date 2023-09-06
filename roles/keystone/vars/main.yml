@@ -62,7 +62,7 @@ _keystone_helm_values:
         OIDCSSLValidateServer "{{ keystone_oidc_ssl_validate_server }}"
         OIDCCryptoPassphrase {{ keystone_oidc_crypto_passphrase }}
         OIDCRedirectURI {{ keystone_oidc_redirect_uri }}
-        OIDCRedirectURLsAllowed ^https://{{ openstack_helm_endpoints_keystone_api_host }}/v3/auth/OS-FEDERATION/identity_providers/({{ keystone_domains | map(attribute='name') | join('|') }})/protocols/openid/websso ^https://{{ openstack_helm_endpoints_horizon_api_host }}/auth/logout/$ # noqa: yaml[line-length]
+        OIDCRedirectURLsAllowed {{ keystone_oidc_redirect_urls_allowed | join(' ') }}
         # NOTE(mnaser): These are Atmosphere specific settings.
         OIDCSessionType client-cookie:store_id_token
         OIDCXForwardedHeaders X-Forwarded-Host X-Forwarded-Proto

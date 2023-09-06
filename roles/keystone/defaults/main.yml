@@ -58,3 +58,6 @@ keystone_domains:
 keystone_oidc_ssl_validate_server: "{{ (cluster_issuer_type == 'self-signed') | ternary('Off', 'On') }}"
 keystone_oidc_crypto_passphrase: "{{ undef('You must specify a Keystone OIDC client secret using keystone_oidc_crypto_passphrase') }}"
 keystone_oidc_redirect_uri: "https://{{ openstack_helm_endpoints_keystone_api_host }}/v3/auth/OS-FEDERATION/identity_providers/redirect"
+keystone_oidc_redirect_urls_allowed:
+  - "^https://{{ openstack_helm_endpoints_keystone_api_host }}/v3/auth/OS-FEDERATION/identity_providers/({{ keystone_domains | map(attribute='name') | join('|') }})/protocols/openid/websso" # noqa: yaml[line-length]
+  - "^https://{{ openstack_helm_endpoints_horizon_api_host }}/auth/logout/$"

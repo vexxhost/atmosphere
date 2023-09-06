@@ -65,7 +65,7 @@ provisioner:
     group_vars:
       all:
         # Ceph
-        ceph_fsid: d1f9e453-f13a-4d30-9ab1-e5ae1d87b67f
+        ceph_fsid: ${MOLECULE_CEPH_FSID:-"d1f9e453-f13a-4d30-9ab1-e5ae1d87b67f"}
         ceph_conf_overrides:
           - section: global
             option: osd crush chooseleaf type
@@ -83,7 +83,10 @@ provisioner:
           operator:
             replicas: 1
         # CSI
-        csi_driver: local-path-provisioner
+        csi_driver: ${MOLECULE_CSI_DRIVER:-"local-path-provisioner"}
+        ceph_csi_rbd_helm_values:
+          provisioner:
+            replicaCount: 1
         # Certificates
         cluster_issuer_type: self-signed
         # Ingress
@@ -135,6 +138,11 @@ provisioner:
           pod:
             replicas:
               server: 1
+      cephs:
+        ceph_osd_devices:
+          - "/dev/ceph-{{ inventory_hostname_short }}-osd0/data"
+          - "/dev/ceph-{{ inventory_hostname_short }}-osd1/data"
+          - "/dev/ceph-{{ inventory_hostname_short }}-osd2/data"
   # options:
   #   inventory: "${MOLECULE_EPHEMERAL_DIRECTORY}/workspace"
   # inventory:
