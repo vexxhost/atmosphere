@@ -49,11 +49,6 @@ limitations under the License.
 {{- $_ := set .Values.conf.barbican.keystone_authtoken "memcache_secret_key" ( default ( randAlphaNum 64 ) .Values.endpoints.oslo_cache.auth.memcache_secret_key ) -}}
 {{- end -}}
 
-{{- if not .Values.conf.paste }}
-{{- $_ := set $envAll.Values.conf.barbican.DEFAULT "api_paste_config" "/var/lib/openstack/etc/barbican/barbican-api-paste.ini" -}}
-{{- $_ := set $envAll.Values.conf.barbican_api.uwsgi "paste" "config:/var/lib/openstack/etc/barbican/barbican-api-paste.ini" -}}
-{{- end }}
-
 {{- if empty .Values.conf.barbican.DEFAULT.sql_connection -}}
 {{- $connection := tuple "oslo_db" "internal" "barbican" "mysql" . | include "helm-toolkit.endpoints.authenticated_endpoint_uri_lookup" -}}
 {{- if .Values.manifests.certificates -}}
@@ -101,9 +96,7 @@ type: Opaque
 data:
   barbican.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.barbican | b64enc }}
   logging.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.logging | b64enc }}
-  {{- if .Values.conf.paste }}
   barbican-api-paste.ini: {{ include "helm-toolkit.utils.to_ini" .Values.conf.paste | b64enc }}
-  {{- end }}
   api_audit_map.conf: {{ include "helm-toolkit.utils.to_ini" .Values.conf.audit_map | b64enc }}
   policy.yaml: {{ toYaml .Values.conf.policy | b64enc }}
   barbican-api.ini: {{ include "helm-toolkit.utils.to_ini" .Values.conf.barbican_api | b64enc }}

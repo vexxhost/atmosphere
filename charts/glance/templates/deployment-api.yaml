@@ -12,6 +12,36 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */}}
 
+{{- define "readinessProbeTemplate" }}
+{{- if .Values.manifests.certificates }}
+exec:
+  command:
+    - python
+    - -c
+    - "import requests; requests.get('http://127.0.0.1:{{ tuple "image" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}')"
+{{- else }}
+httpGet:
+  scheme: {{ tuple "image" "service" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_scheme_lookup" | upper }}
+  path: /
+  port: {{ tuple "image" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+{{- end }}
+{{- end }}
+
+{{- define "livenessProbeTemplate" }}
+{{- if .Values.manifests.certificates }}
+exec:
+  command:
+    - python
+    - -c
+    - "import requests; requests.get('http://127.0.0.1:{{ tuple "image" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}')"
+{{- else }}
+httpGet:
+  scheme: {{ tuple "image" "service" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_scheme_lookup" | upper }}
+  path: /
+  port: {{ tuple "image" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+{{- end }}
+{{- end }}
+
 {{- if .Values.manifests.deployment_api }}
 {{- $envAll := . }}
 
@@ -146,6 +176,8 @@ spec:
 {{ tuple $envAll "glance_api" | include "helm-toolkit.snippets.image" | indent 10 }}
 {{ tuple $envAll $envAll.Values.pod.resources.api | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
 {{ dict "envAll" $envAll "application" "glance" "container" "glance_api" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+{{ dict "envAll" $envAll "component" "api" "container" "glance-api" "type" "readiness" "probeTemplate" (include "readinessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ dict "envAll" $envAll "component" "api" "container" "glance-api" "type" "liveness" "probeTemplate" (include "livenessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
           command:
             - /tmp/glance-api.sh
             - start
@@ -160,34 +192,10 @@ spec:
                 command:
                   - /tmp/glance-api.sh
                   - stop
-          {{- if $envAll.Values.manifests.certificates }}
-          readinessProbe:
-            exec:
-              command:
-                - python
-                - -c
-                - "import requests; requests.get('http://127.0.0.1:{{ tuple "image" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}')"
-          livenessProbe:
-            exec:
-              command:
-                - python
-                - -c
-                - "import requests; requests.get('http://127.0.0.1:{{ tuple "image" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}')"
-            initialDelaySeconds: 30
-          {{- else }}
+          {{- if not $envAll.Values.manifests.certificates }}
           ports:
             - name: g-api
               containerPort: {{ tuple "image" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
-          readinessProbe:
-            httpGet:
-              scheme: HTTP
-              path: /
-              port: {{ tuple "image" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
-          livenessProbe:
-            httpGet:
-              scheme: HTTP
-              path: /
-              port: {{ tuple "image" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
           {{- end }}
           volumeMounts:
             - name: pod-tmp
@@ -210,12 +218,10 @@ spec:
               subPath: {{ base .Values.conf.glance.DEFAULT.log_config_append }}
               readOnly: true
             {{- end }}
-            {{- if .Values.conf.paste }}
             - name: glance-etc
               mountPath: /etc/glance/glance-api-paste.ini
               subPath: glance-api-paste.ini
               readOnly: true
-            {{- end }}
             - name: glance-etc
               mountPath: /etc/glance/policy.yaml
               subPath: policy.yaml
