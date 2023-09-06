@@ -94,11 +94,11 @@ GLANCE_VERSION=0.4.12
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/glance-${GLANCE_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-CINDER_VERSION=0.3.10
+CINDER_VERSION=0.3.13
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/cinder-${CINDER_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-PLACEMENT_VERSION=0.3.2
+PLACEMENT_VERSION=0.3.7
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/placement-${PLACEMENT_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
