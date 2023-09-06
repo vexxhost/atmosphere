@@ -12,6 +12,82 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+- name: Create Keycloak realm
+  run_once: true
+  delegate_to: localhost
+  changed_when: false
+  community.general.keycloak_realm:
+    # Keycloak settings
+    auth_keycloak_url: "{{ grafana_keycloak_server_url }}"
+    auth_realm: "{{ grafana_keycloak_user_realm_name }}"
+    auth_client_id: "{{ grafana_keycloak_admin_client_id }}"
+    auth_username: "{{ grafana_keycloak_admin_user }}"
+    auth_password: "{{ grafana_keycloak_admin_password }}"
+    validate_certs: "{{ cluster_issuer_type != 'self-signed' }}"
+    # Realm settings
+    id: "{{ grafana_keycloak_realm }}"
+    realm: "{{ grafana_keycloak_realm }}"
+    display_name: "{{ grafana_keycloak_realm_name }}"
+    enabled: true
+
+- name: Add client roles in "id_token"
+  changed_when: false
+  community.general.keycloak_clientscope:
+    # Keycloak settings
+    auth_keycloak_url: "{{ grafana_keycloak_server_url }}"
+    auth_realm: "{{ grafana_keycloak_user_realm_name }}"
+    auth_client_id: "{{ grafana_keycloak_admin_client_id }}"
+    auth_username: "{{ grafana_keycloak_admin_user }}"
+    auth_password: "{{ grafana_keycloak_admin_password }}"
+    validate_certs: "{{ cluster_issuer_type != 'self-signed' }}"
+    # Client scope settings
+    name: roles
+    realm: "{{ grafana_keycloak_realm }}"
+    protocol_mappers:
+      - name: client roles
+        protocol: openid-connect
+        protocolMapper: oidc-usermodel-client-role-mapper
+        config:
+          claim.name: "resource_access.${client_id}.roles"
+          access.token.claim: true
+          id.token.claim: true
+          multivalued: true
+
+- name: Create Keycloak client
+  run_once: true
+  delegate_to: localhost
+  community.general.keycloak_client:
+    # Keycloak settings
+    auth_keycloak_url: "{{ grafana_keycloak_server_url }}"
+    auth_realm: "{{ grafana_keycloak_user_realm_name }}"
+    auth_client_id: "{{ grafana_keycloak_admin_client_id }}"
+    auth_username: "{{ grafana_keycloak_admin_user }}"
+    auth_password: "{{ grafana_keycloak_admin_password }}"
+    validate_certs: "{{ cluster_issuer_type != 'self-signed' }}"
+    # Realm settings
+    realm: "{{ grafana_keycloak_realm }}"
+    client_id: "{{ grafana_keycloak_client_id }}"
+    secret: "{{ grafana_keycloak_client_secret }}"
+    redirect_uris:
+      - "https://{{ kube_prometheus_stack_grafana_host }}/login/generic_oauth"
+
+- name: Create Keycloak roles
+  run_once: true
+  delegate_to: localhost
+  community.general.keycloak_role:
+    # Keycloak settings
+    auth_keycloak_url: "{{ grafana_keycloak_server_url }}"
+    auth_realm: "{{ grafana_keycloak_user_realm_name }}"
+    auth_client_id: "{{ grafana_keycloak_admin_client_id }}"
+    auth_username: "{{ grafana_keycloak_admin_user }}"
+    auth_password: "{{ grafana_keycloak_admin_password }}"
+    validate_certs: "{{ cluster_issuer_type != 'self-signed' }}"
+    # Realm settings
+    realm: "{{ grafana_keycloak_realm }}"
+    client_id: "{{ grafana_keycloak_client_id }}"
+    name: "{{ item }}"
+  loop: ["admin", "editor", "viewer"]
+
 - name: Retrieve "etcd" CA certificate
   ansible.builtin.slurp:
     src: /etc/kubernetes/pki/etcd/ca.crt
@@ -26,20 +102,6 @@
   ansible.builtin.slurp:
     src: /etc/kubernetes/pki/etcd/healthcheck-client.key
   register: _etcd_healthcheck_client_key
-
-- name: Create Secret with "etcd" TLS certificates
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: v1
-      kind: Secret
-      metadata:
-        name: kube-prometheus-stack-etcd-client-cert
-        namespace: monitoring
-      data:
-        ca.crt: "{{ _etcd_ca_crt.content }}"
-        healthcheck-client.crt: "{{ _etcd_healthcheck_client_crt.content }}"
-        healthcheck-client.key: "{{ _etcd_healthcheck_client_key.content }}"
 
 - name: Uninstall the legacy HelmRelease
   run_once: true
@@ -65,7 +127,7 @@
         name: "{{ kube_prometheus_stack_helm_release_name }}"
         namespace: "{{ kube_prometheus_stack_helm_release_namespace }}"
 
-- name: Create a K8s secret for Grafana Oauth client secret
+- name: Create secrets for monitoring
   kubernetes.core.k8s:
     state: present
     definition:
@@ -75,21 +137,30 @@
           name: "{{ kube_prometheus_stack_helm_release_namespace }}"
 
       - apiVersion: v1
-        stringData:
-          client_id: "{{ grafana_oauth_client_id }}"
-          client_secret: "{{ grafana_oauth_client_secret }}"
         kind: Secret
         metadata:
           name: grafana-auth-generic-oauth-secret
           namespace: "{{ kube_prometheus_stack_helm_release_namespace }}"
-        type: Opaque
+        stringData:
+          client_id: "{{ grafana_keycloak_client_id }}"
+          client_secret: "{{ grafana_keycloak_client_secret }}"
+
+      - apiVersion: v1
+        kind: Secret
+        metadata:
+          name: kube-prometheus-stack-etcd-client-cert
+          namespace: monitoring
+        data:
+          ca.crt: "{{ _etcd_ca_crt.content }}"
+          healthcheck-client.crt: "{{ _etcd_healthcheck_client_crt.content }}"
+          healthcheck-client.key: "{{ _etcd_healthcheck_client_key.content }}"
 
 - name: Install all CRDs
   run_once: true
   changed_when: false
   kubernetes.core.k8s:
     state: present
-    definition: "{{ lookup('pipe', 'cat ' + playbook_dir + '/../charts/kube-prometheus-stack/charts/crds/crds/crd-*.yaml') | regex_replace('- =$', '- \"=\"', multiline=True) | from_yaml_all }}" # noqa: yaml[line-length]
+    definition: "{{ lookup('pipe', 'cat ' + role_path + '/../../charts/kube-prometheus-stack/charts/crds/crds/crd-*.yaml') | regex_replace('- =$', '- \"=\"', multiline=True) | from_yaml_all }}" # noqa: yaml[line-length]
     apply: true
     server_side_apply:
       field_manager: atmosphere

@@ -97,7 +97,7 @@ _kube_prometheus_stack_helm_values:
         #               the `id_token_hint`.
         #
         #               See: https://github.com/grafana/grafana/issues/24643
-        signout_redirect_url: "https://{{ keycloak_host }}/realms/{{ keycloak_realm_result.proposed.id }}/protocol/openid-connect/logout"
+        signout_redirect_url: "{{ grafana_keycloak_server_url }}/realms/{{ grafana_keycloak_realm }}/protocol/openid-connect/logout"
       auth.generic_oauth:
         enabled: true
         name: Atmosphere
@@ -108,9 +108,9 @@ _kube_prometheus_stack_helm_values:
         email_attribute_path: email
         login_attribute_path: username
         name_attribute_path: full_name
-        auth_url: "https://{{ keycloak_host }}/realms/{{ keycloak_realm_result.proposed.id }}/protocol/openid-connect/auth"
-        token_url: "https://{{ keycloak_host }}/realms/{{ keycloak_realm_result.proposed.id }}/protocol/openid-connect/token"
-        api_url: "https://{{ keycloak_host }}/realms/{{ keycloak_realm_result.proposed.id }}/protocol/openid-connect/userinfo"
+        auth_url: "{{ grafana_keycloak_server_url }}/realms/{{ grafana_keycloak_realm }}/protocol/openid-connect/auth"
+        token_url: "{{ grafana_keycloak_server_url }}/realms/{{ grafana_keycloak_realm }}/protocol/openid-connect/token"
+        api_url: "{{ grafana_keycloak_server_url }}/realms/{{ grafana_keycloak_realm }}/protocol/openid-connect/userinfo"
         tls_skip_verify_insecure: true
         # yamllint disable-line rule:line-length
         role_attribute_path: "contains(resource_access.grafana.roles[*], 'admin') && 'Admin' || contains(resource_access.grafana.roles[*], 'editor') && 'Editor' || contains(resource_access.grafana.roles[*], 'viewer') && 'Viewer'"
