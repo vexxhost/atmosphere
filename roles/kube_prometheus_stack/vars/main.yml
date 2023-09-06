@@ -81,6 +81,41 @@ _kube_prometheus_stack_helm_values:
         openstack-control-plane: enabled
   grafana:
     adminPassword: "{{ kube_prometheus_stack_grafana_admin_password }}"
+    extraSecretMounts:
+      - name: auth-generic-oauth-secret-mount
+        secretName: grafana-auth-generic-oauth-secret
+        defaultMode: "0440"
+        mountPath: /etc/secrets/auth_generic_oauth
+        readOnly: true
+    grafana.ini:
+      server:
+        root_url: https://{{ kube_prometheus_stack_grafana_host }}
+      auth:
+        oauth_skip_org_role_update_sync: false
+        disable_login_form: true
+        # NOTE(mnaser): We're not able to redirect instantly to Grafana due to the fact that it doesn't support sending
+        #               the `id_token_hint`.
+        #
+        #               See: https://github.com/grafana/grafana/issues/24643
+        signout_redirect_url: "{{ grafana_keycloak_server_url }}/realms/{{ grafana_keycloak_realm }}/protocol/openid-connect/logout"
+      auth.generic_oauth:
+        enabled: true
+        name: Atmosphere
+        allow_sign_up: true
+        client_id: "$__file{/etc/secrets/auth_generic_oauth/client_id}"
+        client_secret: "$__file{/etc/secrets/auth_generic_oauth/client_secret}"
+        scopes: openid email profile offline_access roles
+        email_attribute_path: email
+        login_attribute_path: username
+        name_attribute_path: full_name
+        auth_url: "{{ grafana_keycloak_server_url }}/realms/{{ grafana_keycloak_realm }}/protocol/openid-connect/auth"
+        token_url: "{{ grafana_keycloak_server_url }}/realms/{{ grafana_keycloak_realm }}/protocol/openid-connect/token"
+        api_url: "{{ grafana_keycloak_server_url }}/realms/{{ grafana_keycloak_realm }}/protocol/openid-connect/userinfo"
+        tls_skip_verify_insecure: true
+        # yamllint disable-line rule:line-length
+        role_attribute_path: "contains(resource_access.grafana.roles[*], 'admin') && 'Admin' || contains(resource_access.grafana.roles[*], 'editor') && 'Editor' || contains(resource_access.grafana.roles[*], 'viewer') && 'Viewer'"
+        role_attribute_strict: true
+        skip_org_role_sync: false
     image:
       repository: "{{ atmosphere_images['grafana'] | vexxhost.kubernetes.docker_image('name') }}"
       tag: "{{ atmosphere_images['grafana'] | vexxhost.kubernetes.docker_image('tag') }}"

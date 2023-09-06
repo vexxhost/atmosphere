@@ -24,3 +24,15 @@ kube_prometheus_stack_ingress_class_name: "{{ atmosphere_ingress_class_name }}"
 kube_prometheus_stack_grafana_ingress_class_name: "{{ kube_prometheus_stack_ingress_class_name }}"
 kube_prometheus_stack_grafana_host: "{{ undef('You must specify a Grafana host using kube_prometheus_stack_grafana_host') }}"
 kube_prometheus_stack_grafana_admin_password: "{{ undef('You must specify a Grafana password using kube_prometheus_stack_grafana_admin_password') }}"
+
+grafana_keycloak_server_url: "https://{{ keycloak_host }}"
+grafana_keycloak_user_realm_name: master
+grafana_keycloak_admin_client_id: admin-cli
+grafana_keycloak_admin_user: admin
+grafana_keycloak_admin_password: "{{ keycloak_admin_password }}"
+grafana_keycloak_realm: atmosphere
+grafana_keycloak_realm_name: Atmosphere
+
+grafana_keycloak_client_id: grafana
+# grafana_keycloak_client_secret:
+grafana_keycloak_scopes: "openid email profile"

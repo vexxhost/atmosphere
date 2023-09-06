@@ -40,6 +40,7 @@ var PIP_PACKAGES map[string]string = map[string]string{
 	"glance":        "glance_store[cinder]",
 	"horizon":       "git+https://github.com/openstack/designate-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/heat-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/ironic-ui.git@stable/${{ matrix.release }} git+https://github.com/vexxhost/magnum-ui.git@stable/${{ matrix.release }} git+https://github.com/openstack/neutron-vpnaas-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/octavia-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/senlin-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/monasca-ui.git@stable/${{ matrix.release }} git+https://github.com/openstack/manila-ui.git@stable/${{ matrix.release }}",
 	"ironic":        "python-dracclient sushy",
+	"keystone":      "keystone-keycloak-backend==0.1.5",
 	"magnum":        "magnum-cluster-api==0.6.0",
 	"monasca-agent": "libvirt-python python-glanceclient python-neutronclient python-novaclient py3nvml",
 	"neutron":       "neutron-vpnaas",
@@ -95,6 +96,9 @@ func NewBuildWorkflow(project string) *GithubWorkflow {
 	}
 
 	releases := []string{"wallaby", "xena", "yoga", "zed", "2023.1"}
+	if project == "keystone" {
+		releases = []string{"zed", "2023.1"}
+	}
 	if project == "magnum" {
 		releases = []string{"yoga", "zed", "2023.1"}
 	}

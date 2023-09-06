@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Ingress
+metadata:
+  name: {{ ingress_name }}
+  namespace: {{ ingress_namespace | default('default') }}
+{% if ingress_annotations %}
+  annotations:
+    {{ ingress_annotations | to_nice_yaml | indent(4) }}
+{% endif %}
+spec:
+  ingressClassName: {{ ingress_class_name }}
+  rules:
+    - host: {{ ingress_host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ ingress_service_name }}
+                port:
+                  number: {{ ingress_service_port }}
+  tls:
+    - secretName: {{ ingress_secret_name | default(ingress_service_name ~ '-certs') }}
+      hosts:
+        - {{ ingress_host }}

@@ -88,6 +88,12 @@ spec:
               mountPath: /tmp
             - name: etckeystone
               mountPath: /etc/keystone
+            {{- range $k, $v := .Values.conf.ks_domains }}
+            - name: keystone-etc
+              mountPath: /etc/keystone/domains/keystone.{{ $k }}.conf
+              subPath: keystone.{{ $k }}.conf
+              readOnly: true
+            {{- end }}
             - name: logs-apache
               mountPath: /var/log/apache2
             - name: run-apache

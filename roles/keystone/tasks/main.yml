@@ -36,6 +36,54 @@
         name: "{{ keystone_helm_release_name }}"
         namespace: "{{ keystone_helm_release_namespace }}"
 
+- name: Create Keycloak realms
+  run_once: true
+  delegate_to: localhost
+  changed_when: false
+  community.general.keycloak_realm:
+    # Keycloak settings
+    auth_keycloak_url: "{{ item.keycloak_server_url }}"
+    auth_realm: "{{ item.keycloak_user_realm_name }}"
+    auth_client_id: "{{ item.keycloak_admin_client_id }}"
+    auth_username: "{{ item.keycloak_admin_user }}"
+    auth_password: "{{ item.keycloak_admin_password }}"
+    validate_certs: "{{ cluster_issuer_type != 'self-signed' }}"
+    # Realm settings
+    id: "{{ item.keycloak_realm }}"
+    realm: "{{ item.keycloak_realm }}"
+    display_name: "{{ item.label }}"
+    enabled: true
+  loop: "{{ keystone_domains }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Create ConfigMap with all OpenID connect configurations
+  run_once: true
+  kubernetes.core.k8s:
+    template: configmap-openid-metadata.yml.j2
+
+- name: Create Keycloak clients
+  run_once: true
+  delegate_to: localhost
+  community.general.keycloak_client:
+    # Keycloak settings
+    auth_keycloak_url: "{{ item.keycloak_server_url }}"
+    auth_realm: "{{ item.keycloak_user_realm_name }}"
+    auth_client_id: "{{ item.keycloak_admin_client_id }}"
+    auth_username: "{{ item.keycloak_admin_user }}"
+    auth_password: "{{ item.keycloak_admin_password }}"
+    validate_certs: "{{ cluster_issuer_type != 'self-signed' }}"
+    # Realm settings
+    realm: "{{ item.keycloak_realm }}"
+    client_id: "{{ item.keycloak_client_id }}"
+    secret: "{{ item.keycloak_client_secret }}"
+    redirect_uris:
+      - "{{ keystone_oidc_redirect_uri }}"
+      - "https://{{ openstack_helm_endpoints_horizon_api_host }}/auth/logout/"
+  loop: "{{ keystone_domains }}"
+  loop_control:
+    label: "{{ item.name }}"
+
 - name: Deploy Helm chart
   run_once: true
   kubernetes.core.helm:
@@ -54,3 +102,54 @@
     openstack_helm_ingress_service_name: keystone-api
     openstack_helm_ingress_service_port: 5000
     openstack_helm_ingress_annotations: "{{ keystone_ingress_annotations }}"
+
+- name: Create Keystone domains
+  run_once: true
+  delegate_to: localhost
+  vexxhost.atmosphere.identity_domain:
+    name: "{{ item.name }}"
+  register: keystone_domains_result
+  loop: "{{ keystone_domains }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Create Keystone identity providers
+  run_once: true
+  delegate_to: localhost
+  vexxhost.atmosphere.federation_idp:
+    name: "{{ item.domain.name }}"
+    domain_id: "{{ item.domain.id }}"
+    remote_ids:
+      - "{{ item.item | vexxhost.atmosphere.issuer_from_domain }}"
+  loop: "{{ keystone_domains_result.results }}"
+  loop_control:
+    label: "{{ item.domain.name }}"
+
+- name: Create Keystone federation mappings
+  run_once: true
+  delegate_to: localhost
+  vexxhost.atmosphere.federation_mapping:
+    name: "{{ item.name }}-openid"
+    rules:
+      - local:
+          - user:
+              type: local
+              id: "{0}"
+              domain:
+                name: "{{ item.name }}"
+        remote:
+          - type: OIDC-sub
+  loop: "{{ keystone_domains }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Create Keystone federation protocols
+  run_once: true
+  delegate_to: localhost
+  vexxhost.atmosphere.keystone_federation_protocol:
+    name: openid
+    idp_id: "{{ item.name }}"
+    mapping_id: "{{ item.name }}-openid"
+  loop: "{{ keystone_domains }}"
+  loop_control:
+    label: "{{ item.name }}"
