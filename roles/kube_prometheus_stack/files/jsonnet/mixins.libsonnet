@@ -35,6 +35,8 @@ local customSeverityMapping = {
   'CephMgrPrometheusModuleInactive:critical': 'P4',
   'CephMonDown:warning': 'P4',
   'CephMonDownQuorumAtRisk:critical': 'P3',
+  'CephOSDTimeoutsClusterNetwork:warning': 'P4',
+  'CephOSDTimeoutsPublicNetwork:warning': 'P4',
   'KubeJobFailed:warning': 'P4',
 };
 
@@ -47,24 +49,25 @@ local getSeverity(rule) =
     else defaultSeverityMapping[rule.labels.severity];
 
 local mixins = {
-  alertmanager: (import 'alertmanager-mixin/mixin.libsonnet') + {
+  alertmanager: (import 'vendor/github.com/prometheus/alertmanager/doc/alertmanager-mixin/mixin.libsonnet') + {
     _config+:: {
-      alertmanagerSelector: 'job="kube-prometheus-stack-alertmanager"',
+      alertmanagerSelector: 'job="kube-prometheus-stack-alertmanager",namespace="monitoring"',
+      alertmanagerClusterLabels: 'namespace,service,cluster',
     },
   },
-  ceph: (import 'ceph-mixin/mixin.libsonnet'),
-  coredns: (import 'coredns-mixin/mixin.libsonnet') + {
+  ceph: (import 'vendor/github.com/ceph/ceph/monitoring/ceph-mixin/mixin.libsonnet'),
+  coredns: (import 'vendor/github.com/povilasv/coredns-mixin/mixin.libsonnet') + {
     _config+:: {
       corednsSelector: 'job="coredns"',
     },
   },
-  kube: (import 'kubernetes-mixin/mixin.libsonnet') + {
+  kube: (import 'vendor/github.com/kubernetes-monitoring/kubernetes-mixin/mixin.libsonnet') + {
     _config+:: {
       kubeApiserverSelector: 'job="apiserver"',
     },
   },
-  memcached: (import 'memcached-mixin/mixin.libsonnet'),
-  mysqld: (import 'mysqld-mixin/mixin.libsonnet') + {
+  memcached: (import 'vendor/github.com/grafana/jsonnet-libs/memcached-mixin/mixin.libsonnet'),
+  mysqld: (import 'vendor/github.com/prometheus/mysqld_exporter/mysqld-mixin/mixin.libsonnet') + {
     prometheusAlerts+:: {
       groups+: [
         {
@@ -105,7 +108,7 @@ local mixins = {
       ],
     },
   },
-  node: (import 'node-mixin/mixin.libsonnet'),
+  node: (import 'vendor/github.com/prometheus/node_exporter/docs/node-mixin/mixin.libsonnet'),
   openstack: (import 'openstack.libsonnet'),
 } + (import 'legacy.libsonnet');
 
