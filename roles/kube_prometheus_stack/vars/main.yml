@@ -314,14 +314,6 @@ _kube_prometheus_stack_helm_values:
                 targetLabel: instance
             scrapeTimeout: 30s
     additionalPodMonitors:
-      - name: ethtool-exporter
-        jobLabel: job
-        selector:
-          matchLabels:
-            application: ethtool-exporter
-        podMetricsEndpoints:
-          - port: metrics
-            relabelings: *relabelings_instance_to_node_name
       - name: ipmi-exporter
         jobLabel: job
         selector:

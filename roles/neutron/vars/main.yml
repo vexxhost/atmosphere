@@ -76,6 +76,7 @@ __neutron_ovn_helm_values:
         service_plugins: qos,ovn-router,segments,trunk
       ovn:
         dns_servers: "{{ neutron_coredns_cluster_ip | default('10.96.0.20') }}"
+        ovn_emit_need_to_frag: true
     ovn_metadata_agent:
       DEFAULT:
         metadata_proxy_shared_secret: "{{ openstack_helm_endpoints['compute_metadata']['secret'] }}"
