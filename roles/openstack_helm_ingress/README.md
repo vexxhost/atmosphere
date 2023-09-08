@@ -24,8 +24,13 @@ with Atmosphere, you can simply configure it as follows;
 
    ```yaml
    openstack_helm_ingress_secret_name: wildcard-certs
-   cluster_issuer_type: none
+   ```
 
+3. Set cluster_issuer_type to none, this is required for other roles
+   like for example Horizon.
+
+   ```yaml
+   cluster_issuer_type: none
    ```
 
 > **Note**
