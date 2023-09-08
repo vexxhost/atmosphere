@@ -103,6 +103,14 @@
     src: /etc/kubernetes/pki/etcd/healthcheck-client.key
   register: _etcd_healthcheck_client_key
 
+- name: Uninstall the legacy "ethtool-exporter"
+  kubernetes.core.k8s:
+    state: absent
+    api_version: v1
+    kind: DaemonSet
+    name: ethtool-exporter
+    namespace: "{{ kube_prometheus_stack_helm_release_namespace }}"
+
 - name: Uninstall the legacy HelmRelease
   run_once: true
   block:

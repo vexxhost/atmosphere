@@ -1,22 +1,4 @@
 {
-  'ethtool-exporter': {
-    prometheusAlerts+:: {
-      groups: [
-        {
-          name: 'rules',
-          rules: [
-            {
-              alert: 'EthernetReceiveDiscards',
-              expr: 'rate(node_net_ethtool{type="rx_discards"}[1m]) > 0',
-              labels: {
-                severity: 'warning',
-              },
-            },
-          ],
-        },
-      ],
-    },
-  },
   'ipmi-exporter': {
     prometheusAlerts+:: {
       groups: [
