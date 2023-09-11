@@ -6,9 +6,10 @@ import (
 )
 
 var FORKED_PROJECTS map[string]bool = map[string]bool{
-	"horizon":  true,
-	"keystone": true,
-	"magnum":   true,
+	"horizon":   true,
+	"keystone":  true,
+	"magnum":    true,
+	"magnum-ui": true,
 }
 var EXTRAS map[string]string = map[string]string{}
 var PROFILES map[string]string = map[string]string{
