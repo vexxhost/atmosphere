@@ -87,27 +87,3 @@
     create_namespace: true
     kubeconfig: /etc/kubernetes/admin.conf
     values: "{{ _libvirt_helm_values | combine(libvirt_helm_values, recursive=True) }}"
-
-- name: Create a Podmonitor for libvirt exporter
-  run_once: true
-  tags:
-    - kube-prometheus-stack
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      - apiVersion: monitoring.coreos.com/v1
-        kind: PodMonitor
-        metadata:
-          labels:
-            application: libvirt
-            component: exporter
-          name: libvirt-exporter
-          namespace: "{{ libvirt_helm_release_namespace }}"
-        spec:
-          podMetricsEndpoints:
-            - path: /metrics
-              port: metrics
-          selector:
-            matchLabels:
-              application: libvirt
-              component: libvirt
