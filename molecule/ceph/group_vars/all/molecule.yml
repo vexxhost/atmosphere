@@ -86,6 +86,11 @@ ovn_helm_values:
       ovn_ovsdb_nb: 1
       ovn_ovsdb_sb: 1
       ovn_northd: 1
+  manifests:
+    # NOTE(mnaser): Since the controller is running on the same node as
+    #               the Kubernetes control plane, we need to disable
+    #               the daemonset.
+    daemonset_ovn_controller: false
 
 nova_helm_values:
   conf:

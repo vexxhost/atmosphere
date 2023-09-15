@@ -131,6 +131,13 @@ provisioner:
           pod:
             replicas:
               api: 1
+        # OVN
+        ovn_helm_values:
+          manifests:
+            # NOTE(mnaser): Since the controller is running on the same node as
+            #               the Kubernetes control plane, we need to disable
+            #               the daemonset.
+            daemonset_ovn_controller: false
         # Horizon
         openstack_helm_endpoints_horizon_api_host: "dashboard.{{ domain_name }}"
         openstack_helm_endpoints_horizon_mariadb_password: secrete123
