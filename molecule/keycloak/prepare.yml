@@ -12,10 +12,14 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- ansible.builtin.import_playbook: ../shared/prepare/base.yml
-- ansible.builtin.import_playbook: ../shared/prepare/kubernetes.yml
+- name: Prepare the environment
+  ansible.builtin.import_playbook: ../shared/prepare/base.yml
 
-- hosts: controllers
+- name: Install Kubernetes
+  ansible.builtin.import_playbook: ../shared/prepare/kubernetes.yml
+
+- name: Install Infrastructure
+  hosts: controllers
   become: true
   roles:
     - vexxhost.atmosphere.cert_manager
