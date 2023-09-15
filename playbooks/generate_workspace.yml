@@ -402,14 +402,14 @@
         path: "{{ item.path }}"
         regenerate: full_idempotence
       register: _openssh_keypair
-      loop: "{{ _ssh_key_file.results }}"
+      loop: "{{ _ssh_key_file.results | selectattr('changed', 'equalto', true) | list }}"
       loop_control:
         label: "{{ item.item }}"
 
     - name: Set values for SSH keys
       ansible.builtin.set_fact:
         secrets: "{{ secrets | default({}) | combine({item.item: lookup('file', item.path)}) }}"
-      loop: "{{ _ssh_key_file.results }}"
+      loop: "{{ _ssh_key_file.results | selectattr('changed', 'equalto', true) | list }}"
       loop_control:
         label: "{{ item.item }}"
 
@@ -417,7 +417,7 @@
       ansible.builtin.file:
         path: "{{ item.path }}"
         state: absent
-      loop: "{{ _ssh_key_file.results }}"
+      loop: "{{ _ssh_key_file.results | selectattr('changed', 'equalto', true) | list }}"
       loop_control:
         label: "{{ item.item }}"
 
