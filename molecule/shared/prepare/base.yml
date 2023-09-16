@@ -13,10 +13,16 @@
 # under the License.
 
 - name: Create workspace
-  import_playbook: vexxhost.atmosphere.generate_workspace
+  ansible.builtin.import_playbook: vexxhost.atmosphere.generate_workspace
   vars:
     workspace_path: "{{ lookup('env', 'MOLECULE_SCENARIO_DIRECTORY') }}"
     domain_name: "{{ (lookup('env', 'HOST_IP') | default(ansible_default_ipv4.address, true)).replace('.', '-') }}.{{ lookup('env', 'ATMOSPHERE_DNS_SUFFIX_NAME') | default('nip.io', True) }}" # noqa: yaml[line-length]
+
+- name: Refresh inventory
+  hosts: localhost
+  tasks:
+    - name: Refresh inventory to ensure workspace is updated
+      ansible.builtin.meta: refresh_inventory
 
 - name: Prepare systems for test
   hosts: all
