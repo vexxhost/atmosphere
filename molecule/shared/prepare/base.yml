@@ -24,12 +24,11 @@
 #               use `include_vars` to load them.
 - name: Workaround for https://github.com/ansible/ansible/issues/24987
   hosts: all
+  gather_facts: false
   tasks:
     - name: Load group_vars
       ansible.builtin.include_vars:
-        file: "{{ item }}"
-      with_fileglob:
-        - "{{ lookup('env', 'MOLECULE_SCENARIO_DIRECTORY') }}/group_vars/**/*.yml"
+        dir: group_vars
 
 - name: Prepare systems for test
   hosts: all
