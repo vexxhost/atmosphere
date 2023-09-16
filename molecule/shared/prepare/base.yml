@@ -18,18 +18,6 @@
     workspace_path: "{{ lookup('env', 'MOLECULE_SCENARIO_DIRECTORY') }}"
     domain_name: "{{ (lookup('env', 'HOST_IP') | default(ansible_default_ipv4.address, true)).replace('.', '-') }}.{{ lookup('env', 'ATMOSPHERE_DNS_SUFFIX_NAME') | default('nip.io', True) }}" # noqa: yaml[line-length]
 
-# NOTE(mnaser): Since we create the workspace in the same playbook, we need to
-#               load all of the variables (howver Ansible won't see them in
-#               this playbook), so we will loop over all the `group_vars` and
-#               use `include_vars` to load them.
-- name: Workaround for https://github.com/ansible/ansible/issues/24987
-  hosts: all
-  gather_facts: false
-  tasks:
-    - name: Load group_vars
-      ansible.builtin.include_vars:
-        dir: "{{ lookup('env', 'MOLECULE_SCENARIO_DIRECTORY') }}/group_vars"
-
 - name: Prepare systems for test
   hosts: all
   become: true
