@@ -52,3 +52,27 @@
       ansible.builtin.package:
         name: iptables
         update_cache: true
+
+    - name: Set masquerade rule
+      ansible.builtin.iptables:
+        table: nat
+        chain: POSTROUTING
+        source: 10.96.250.0/24
+        out_interface: "{{ ansible_default_ipv4.interface }}"
+        jump: MASQUERADE
+
+- ansible.builtin.import_playbook: vexxhost.ceph.create_fake_devices
+
+- name: Prepare Ceph for CI
+  hosts: cephs
+  become: true
+  tasks:
+    - name: Overwrite existing osds.yml file
+      delegate_to: localhost
+      ansible.builtin.copy:
+        dest: "{{ lookup('env', 'MOLECULE_SCENARIO_DIRECTORY') }}/group_vars/cephs/osds.yml"
+        content: |
+          ceph_osd_devices:
+            - "/dev/ceph-{{ inventory_hostname_short }}-osd0/data"
+            - "/dev/ceph-{{ inventory_hostname_short }}-osd1/data"
+            - "/dev/ceph-{{ inventory_hostname_short }}-osd2/data"

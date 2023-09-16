@@ -12,7 +12,23 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- hosts: controllers
+- name: Install Kubernetes
+  ansible.builtin.import_playbook: ../shared/converge/kubernetes.yml
+
+- name: Install Infrastructure
+  hosts: controllers
+  become: true
+  roles:
+    - vexxhost.atmosphere.cert_manager
+    - vexxhost.atmosphere.cluster_issuer
+    - vexxhost.atmosphere.ingress_nginx
+    - vexxhost.atmosphere.rabbitmq_cluster_operator
+    - vexxhost.atmosphere.percona_xtradb_cluster_operator
+    - vexxhost.atmosphere.percona_xtradb_cluster
+    - vexxhost.atmosphere.memcached
+
+- name: Install OpenStack
+  hosts: controllers
   become: true
   roles:
     - vexxhost.atmosphere.keycloak
