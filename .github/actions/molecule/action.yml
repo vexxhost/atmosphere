@@ -1,0 +1,57 @@
+name: Molecule
+description: |
+  Run an Atmosphere Molecule test.
+
+inputs:
+  scenario:
+    required: true
+    description: Scenario to run.
+  network_backend:
+    required: false
+    description: Network backend type.
+    default: ovn
+  csi_driver:
+    required: false
+    description: CSI driver to test.
+    default: local-path-provisioner
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout project
+      uses: actions/checkout@v4
+
+    - name: Install Poetry
+      shell: bash
+      run: pipx install poetry
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        cache: poetry
+
+    - name: Install dependencies
+      shell: bash
+      run: poetry install --no-interaction --with dev
+
+    # NOTE(mnaser): LVM commands take a long time if there are any existing
+    #               loop devices created by "snapd", so we uninstall it.
+    - name: Uninstall "snapd"
+      shell: bash
+      run: sudo apt-get purge -y snapd
+
+    - name: Turn off swap
+      shell: bash
+      run: sudo swapoff -a
+
+    - name: Set environment variables
+      shell: bash
+      run: |
+        echo "HOST_IP=$(hostname -I | awk '{print $1}')" >> $GITHUB_ENV
+
+    - name: Run Molecule
+      shell: bash
+      run: poetry run molecule test -s ${{ inputs.scenario }}
+      env:
+        ATMOSPHERE_NETWORK_BACKEND: ${{ inputs.network_backend }}
+        MOLECULE_CSI_DRIVER: ${{ inputs.csi_driver }}

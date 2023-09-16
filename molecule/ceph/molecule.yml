@@ -17,7 +17,7 @@ dependency:
 driver:
   name: docker
 platforms:
-  - name: instance
+  - name: ${MOLECULE_SCENARIO_NAME}
     image: geerlingguy/docker-${MOLECULE_DISTRO:-ubuntu2004}-ansible:latest
     command: ${MOLECULE_DOCKER_COMMAND:-""}
     privileged: true
@@ -38,6 +38,9 @@ platforms:
     networks:
       - name: mgmt
       - name: public
+    published_ports:
+      - 80:80
+      - 443:443
     security_opts:
       - apparmor=unconfined
     volumes:

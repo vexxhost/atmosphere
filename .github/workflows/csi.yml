@@ -46,33 +46,9 @@ jobs:
           - local-path-provisioner
           - rbd
     steps:
-      - name: Checkout project
-        uses: actions/checkout@v4
-
-      - name: Install Poetry
-        run: pipx install poetry
-
-      - name: Setup Python
-        uses: actions/setup-python@v4
+      - name: Run tests
+        uses: ./.github/actions/molecule
         with:
-          cache: poetry
-
-      - name: Install dependencies
-        run: poetry install --no-interaction --with dev
-
-      # NOTE(mnaser): LVM commands take a long time if there are any existing
-      #               loop devices created by "snapd", so we uninstall it.
-      - name: Uninstall "snapd"
-        run: sudo apt-get purge -y snapd
-
-      - name: Turn off swap
-        run: sudo swapoff -a
-
-      - name: Set environment variables
-        run: |
-          echo "HOST_IP=$(hostname -I | awk '{print $1}')" >> $GITHUB_ENV
-
-      - name: Run Molecule
-        run: poetry run molecule test -s csi
-        env:
-          MOLECULE_CSI_DRIVER: ${{ matrix.driver }}
+          scenario: ceph
+          network_backend: ${{ matrix.network_backend }}
+          csi_driver: ${{ matrix.driver }}
