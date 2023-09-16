@@ -12,10 +12,17 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- hosts: all
+- name: Create workspace
+  import_playbook: vexxhost.atmosphere.generate_workspace
+  vars:
+    workspace_path: "{{ lookup('env', 'MOLECULE_SCENARIO_DIRECTORY') }}"
+    domain_name: "{{ (lookup('env', 'HOST_IP') | default(ansible_default_ipv4.address, true)).replace('.', '-') }}.{{ lookup('env', 'ATMOSPHERE_DNS_SUFFIX_NAME') | default('nip.io', True) }}" # noqa: yaml[line-length]
+
+- name: Prepare systems for test
+  hosts: all
   become: true
   pre_tasks:
-    - name: Wait for systemd to complete initialization
+    - name: Wait for systemd to complete initialization # noqa: command-instead-of-module
       ansible.builtin.command: systemctl is-system-running
       register: systemctl_status
       until: >
@@ -32,6 +39,7 @@
     - name: Fix Python installation
       block:
         - name: Get all Python packages
+          changed_when: false
           ansible.builtin.command: pip freeze
           register: pip_freeze
 

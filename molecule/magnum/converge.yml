@@ -12,14 +12,8 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Configure host for Neutron
+- name: Install Magnum
   hosts: controllers
   become: true
-  tasks:
-    - name: Set masquerade rule
-      ansible.builtin.iptables:
-        table: nat
-        chain: POSTROUTING
-        source: 10.96.250.0/24
-        out_interface: "{{ ansible_default_ipv4.interface }}"
-        jump: MASQUERADE
+  roles:
+    - vexxhost.atmosphere.keepalived

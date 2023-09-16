@@ -1,0 +1,55 @@
+# Copyright (c) 2023 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Create a test cluster
+  hosts: all
+  tasks:
+    # NOTE(mnaser): Since we don't deploy Cinder as part of this, it is useful
+    #               to create a fake endpointk
+    - name: Grab the image for the cluster
+      openstack.cloud.image_info:
+        image: "{{ magnum_images[0].name }}"
+      register: _image
+
+    - name: Create a cluster template
+      openstack.cloud.coe_cluster_template:
+        name: "{{ magnum_images[0].name }}"
+        coe: kubernetes
+        dns_nameserver: 1.1.1.1
+        docker_storage_driver: overlay2
+        external_network_id: public
+        flavor_id: m1.medium
+        image_id: "{{ _image.openstack_image.id }}"
+        master_flavor_id: m1.medium
+        master_lb_enabled: true
+        network_driver: calico
+        labels:
+          kube_tag: "{{ magnum_images[0].name.split('-')[-1] }}"
+      register: _cluster_template
+
+    - name: Create a cluster
+      openstack.cloud.coe_cluster:
+        name: k8s-cluster
+        cluster_template_id: "{{ _cluster_template.cluster_template.id }}"
+      register: _cluster
+
+    - name: Wait for cluster to complete
+      openstack.cloud.coe_cluster:
+        name: k8s-cluster
+        cluster_template_id: "{{ _cluster_template.cluster_template.id }}"
+      register: _cluster
+      until: _cluster.cluster.status != 'CREATE_IN_PROGRESS'
+      failed_when: _cluster.cluster.status == 'CREATE_FAILED'
+      retries: 120
+      delay: 5
