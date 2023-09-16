@@ -13,9 +13,19 @@
 # under the License.
 
 - ansible.builtin.import_playbook: vexxhost.ceph.create_fake_devices
+
+- name: Prepare Ceph for CI
+  hosts: controllers
+  become: true
+  tasks:
+    - name: Overwrite existing osds.yml file
+      delegate_to: localhost
+      ansible.builtin.copy:
+        dest: "{{ lookup('env', 'MOLECULE_SCENARIO_DIRECTORY') }}/group_vars/cephs/osds.yml"
+        content: |
+          ceph_osd_devices:
+            - "/dev/ceph-{{ inventory_hostname_short }}-osd0/data"
+            - "/dev/ceph-{{ inventory_hostname_short }}-osd1/data"
+            - "/dev/ceph-{{ inventory_hostname_short }}-osd2/data"
+
 - ansible.builtin.import_playbook: vexxhost.ceph.site
-  vars:
-    ceph_osd_devices:
-      - "/dev/ceph-{{ inventory_hostname_short }}-osd0/data"
-      - "/dev/ceph-{{ inventory_hostname_short }}-osd1/data"
-      - "/dev/ceph-{{ inventory_hostname_short }}-osd2/data"
