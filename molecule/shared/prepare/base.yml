@@ -28,7 +28,7 @@
   tasks:
     - name: Load group_vars
       ansible.builtin.include_vars:
-        dir: group_vars
+        dir: "{{ lookup('env', 'MOLECULE_SCENARIO_DIRECTORY') }}/group_vars"
 
 - name: Prepare systems for test
   hosts: all
