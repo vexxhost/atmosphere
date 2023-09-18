@@ -6,6 +6,10 @@ inputs:
   scenario:
     required: true
     description: Scenario to run.
+  storage_backend:
+    required: false
+    description: Storage backend type.
+    default: none
   network_backend:
     required: false
     description: Network backend type.
@@ -51,4 +55,5 @@ runs:
       run: poetry run molecule test -s ${{ inputs.scenario }}
       env:
         ATMOSPHERE_NETWORK_BACKEND: ${{ inputs.network_backend }}
+        ATMOSHPERE_STORAGE_BACKEND: ${{ inputs.storage_backend }}
         MOLECULE_CSI_DRIVER: ${{ inputs.csi_driver }}

@@ -57,7 +57,7 @@ rook_ceph_cluster_radosgw_spec:
     instances: 1
 
 glance_helm_values:
-  storage: pvc
+  storage: "{{ lookup('env', 'ATMOSPHERE_STORAGE_BACKEND') == 'ceph' | ternary('rbd', 'pvc') }}"
   conf:
     glance:
       DEFAULT:
@@ -71,36 +71,42 @@ glance_images:
   - name: cirros
     url: http://download.cirros-cloud.net/0.6.1/cirros-0.6.1-x86_64-disk.img
     min_disk: 1
-    disk_format: qcow2
+    disk_format: "{{ lookup('env', 'ATMOSPHERE_STORAGE_BACKEND') == 'ceph' | ternary('raw', 'qcow2') }}"
     container_format: bare
     is_public: true
 
-cinder_helm_values:
-  dependencies:
-    static:
-      api:
-        jobs:
-          - cinder-db-sync
-          - cinder-ks-user
-          - cinder-ks-endpoints
-          - cinder-rabbit-init
-      scheduler:
-        jobs:
-          - cinder-db-sync
-          - cinder-ks-user
-          - cinder-ks-endpoints
-          - cinder-rabbit-init
-      bootstrap:
-        pod: []
+_cinder_base_config:
   pod:
     replicas:
       api: 1
       scheduler: 1
-  manifests:
-    deployment_backup: false
-    deployment_volume: false
-    job_storage_init: false
-    job_backup_storage_init: false
+
+_cinder_backend_config:
+  none:
+    dependencies:
+      static:
+        api:
+          jobs:
+            - cinder-db-sync
+            - cinder-ks-user
+            - cinder-ks-endpoints
+            - cinder-rabbit-init
+        scheduler:
+          jobs:
+            - cinder-db-sync
+            - cinder-ks-user
+            - cinder-ks-endpoints
+            - cinder-rabbit-init
+        bootstrap:
+          pod: []
+    manifests:
+      deployment_backup: false
+      deployment_volume: false
+      job_storage_init: false
+      job_backup_storage_init: false
+  ceph: {}
+
+cinder_helm_values: "{{ _cinder_base_config | combine(_cinder_backend_config[lookup('env', 'ATMOSPHERE_STORAGE_BACKEND', default='none')], recursive=True) }}"
 
 placement_helm_values:
   pod:
@@ -129,12 +135,12 @@ ovn_helm_values:
 libvirt_helm_values:
   conf:
     ceph:
-      enabled: false
+      enabled: "{{ lookup('env', 'ATMOSPHERE_STORAGE_BACKEND') == 'ceph' | ternary('true', 'false') }}"
 
 nova_helm_values:
   conf:
     ceph:
-      enabled: false
+      enabled: "{{ lookup('env', 'ATMOSPHERE_STORAGE_BACKEND') == 'ceph' | ternary('true', 'false') }}"
     nova:
       DEFAULT:
         osapi_compute_workers: 2
@@ -165,19 +171,19 @@ neutron_helm_values:
     replicas:
       server: 1
 
-octavia_amphora_image_disk_format: qcow2
+octavia_amphora_image_disk_format: "{{ lookup('env', 'ATMOSPHERE_STORAGE_BACKEND') == 'ceph' | ternary('raw', 'qcow2') }}"
 octavia_helm_values:
   conf:
     octavia:
       controller_worker:
-        volume_driver: volume_noop_driver
+        volume_driver: "{{ lookup('env', 'ATMOSPHERE_STORAGE_BACKEND') == 'none' | ternary('volume_noop_driver', 'volume_cinder_driver') }}"
   pod:
     replicas:
       api: 1
       worker: 1
       housekeeping: 1
 
-magnum_image_disk_format: qcow2
+magnum_image_disk_format: "{{ lookup('env', 'ATMOSPHERE_STORAGE_BACKEND') == 'ceph' | ternary('raw', 'qcow2') }}"
 magnum_helm_values:
   pod:
     replicas:
