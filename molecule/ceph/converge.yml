@@ -18,7 +18,7 @@
 - name: Install Kubernetes
   ansible.builtin.import_playbook: ../shared/converge/kubernetes.yml
 
-- name: Install OpenStack
+- name: Install Infrastructure
   hosts: controllers
   become: true
   roles:
@@ -28,9 +28,14 @@
     - vexxhost.atmosphere.rabbitmq_cluster_operator
     - vexxhost.atmosphere.percona_xtradb_cluster_operator
     - vexxhost.atmosphere.percona_xtradb_cluster
+    - vexxhost.atmosphere.memcached
+
+- name: Install OpenStack
+  hosts: controllers
+  become: true
+  roles:
     - vexxhost.atmosphere.keycloak
     - vexxhost.atmosphere.keepalived
-    - vexxhost.atmosphere.memcached
     - vexxhost.atmosphere.keystone
     - vexxhost.atmosphere.ceph_provisioners
     - vexxhost.atmosphere.glance

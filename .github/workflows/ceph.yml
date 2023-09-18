@@ -23,14 +23,14 @@ on:
     inputs:
       debug_enabled:
         type: boolean
-        description: 'Run the build with tmate debugging enabled (https://github.com/marketplace/actions/debugging-with-tmate)'
+        description: "Run the build with tmate debugging enabled (https://github.com/marketplace/actions/debugging-with-tmate)"
         required: false
         default: false
       network_backend:
         type: choice
-        description: 'Network backend type'
+        description: "Network backend type"
         required: true
-        default: 'ovn'
+        default: "ovn"
         options:
           - openvswitch
           - ovn
@@ -50,16 +50,14 @@ jobs:
         uses: ./.github/actions/molecule
         with:
           scenario: ceph
-          network_backend: ${{ matrix.network_backend }}
+          storage_backend: ceph
+          network_backend: ${{ inputs.network_backend }}
 
       # Enable tmate debugging of manually-triggered workflows if the input option was provided
       - name: Setup tmate session
         if: ${{ failure() }}
         uses: mxschmitt/action-tmate@v3
         timeout-minutes: 60
-
-      - name: Run Molecule Destroy
-        run: poetry run molecule destroy -s ceph
 
   test:
     runs-on: ubuntu-latest-16-cores
@@ -81,5 +79,5 @@ jobs:
         uses: ./.github/actions/molecule
         with:
           scenario: ceph
-          network_backend: ${{ matrix.network_backend }}
           storage_backend: ceph
+          network_backend: ${{ matrix.network_backend }}
