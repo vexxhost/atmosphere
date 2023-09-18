@@ -86,6 +86,10 @@ spec:
               mountPath: /tmp/staffeln-conductor.sh
               subPath: staffeln-conductor.sh
               readOnly: true
+            {{- if eq ( split "://" .Values.conf.staffeln.coordination.backend_url )._0 "file" }}
+            - name: staffeln-coordination
+              mountPath: {{ ( split "://" .Values.conf.staffeln.coordination.backend_url )._1 }}
+            {{- end }}
 {{- dict "enabled" .Values.manifests.certificates "name" .Values.endpoints.oslo_db.auth.admin.secret.tls.internal "path" "/etc/mysql/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
 
 {{ if $mounts_staffeln_conductor.volumeMounts }}{{ toYaml $mounts_staffeln_conductor.volumeMounts | indent 12 }}{{ end }}
@@ -104,6 +108,10 @@ spec:
           configMap:
             name: staffeln-bin
             defaultMode: 0555
+        {{- if eq ( split "://" .Values.conf.staffeln.coordination.backend_url )._0 "file" }}
+        - name: staffeln-coordination
+          emptyDir: {}
+        {{- end }}
 {{- dict "enabled" .Values.manifests.certificates "name" .Values.endpoints.oslo_db.auth.admin.secret.tls.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
 
 {{ if $mounts_staffeln_conductor.volumes }}{{ toYaml $mounts_staffeln_conductor.volumes | indent 8 }}{{ end }}
