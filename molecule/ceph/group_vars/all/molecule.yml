@@ -14,6 +14,10 @@ cilium_helm_values:
 
 csi_driver: local-path-provisioner
 
+ceph_csi_rbd_helm_values:
+  provisioner:
+    replicaCount: 1
+
 cluster_issuer_type: self-signed
 
 ingress_nginx_helm_values:
@@ -27,6 +31,12 @@ percona_xtradb_cluster_spec:
     size: 1
   haproxy:
     size: 1
+
+rabbitmq_spec:
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
 
 keystone_helm_values:
   pod:
@@ -120,6 +130,11 @@ neutron_helm_values:
         api_workers: 2
         rpc_workers: 2
         metadata_workers: 2
+  pod:
+    replicas:
+      server: 1
+
+horizon_helm_values:
   pod:
     replicas:
       server: 1

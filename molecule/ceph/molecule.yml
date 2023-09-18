@@ -82,9 +82,10 @@ provisioner:
         openstack-exporter
   options:
     inventory: "${MOLECULE_EPHEMERAL_DIRECTORY}/workspace"
+  extra_vars:
+    csi_driver: ${MOLECULE_CSI_DRIVER:-"local-path-provisioner"}
   inventory:
     links:
-      host_vars: "${MOLECULE_SCENARIO_DIRECTORY}/host_vars"
       group_vars: "${MOLECULE_SCENARIO_DIRECTORY}/group_vars"
 verifier:
   name: ansible
