@@ -73,3 +73,10 @@ trigger-image-sync:
   FROM +gh
   ARG --required project
   RUN --secret GITHUB_TOKEN gh workflow run --repo vexxhost/docker-openstack-${project} sync.yml
+
+image-sync:
+  FROM golang:1.19
+  ARG --required project
+  WORKDIR /src
+  COPY . /src
+  RUN --secret GITHUB_TOKEN go run ./cmd/atmosphere-ci image repo sync ${project}

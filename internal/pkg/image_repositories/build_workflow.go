@@ -36,20 +36,67 @@ var DIST_PACAKGES map[string]string = map[string]string{
 	"neutron":       "jq ethtool lshw",
 	"nova":          "ovmf qemu-efi-aarch64 lsscsi nvme-cli sysfsutils udev util-linux ndctl",
 }
-var PIP_PACKAGES map[string]string = map[string]string{
-	"cinder":        "purestorage",
-	"glance":        "glance_store[cinder]",
-	"horizon":       "git+https://github.com/openstack/designate-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/heat-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/ironic-ui.git@stable/${{ matrix.release }} git+https://github.com/vexxhost/magnum-ui.git@stable/${{ matrix.release }} git+https://github.com/openstack/neutron-vpnaas-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/octavia-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/senlin-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/monasca-ui.git@stable/${{ matrix.release }} git+https://github.com/openstack/manila-ui.git@stable/${{ matrix.release }}",
-	"ironic":        "python-dracclient sushy",
-	"keystone":      "keystone-keycloak-backend==0.1.5",
-	"magnum":        "magnum-cluster-api==0.6.0",
-	"monasca-agent": "libvirt-python python-glanceclient python-neutronclient python-novaclient py3nvml",
-	"neutron":       "neutron-vpnaas",
-	"placement":     "httplib2",
+var PIP_PACKAGES map[string][]string = map[string][]string{
+	"cinder":        {"purestorage"},
+	"glance":        {"glance_store[cinder]"},
+	"horizon":       {"git+https://github.com/openstack/designate-dashboard.git@stable/${{ matrix.release }}", "git+https://github.com/openstack/heat-dashboard.git@stable/${{ matrix.release }}", "git+https://github.com/openstack/ironic-ui.git@stable/${{ matrix.release }}", "git+https://github.com/vexxhost/magnum-ui.git@stable/${{ matrix.release }} git+https://github.com/openstack/neutron-vpnaas-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/octavia-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/senlin-dashboard.git@stable/${{ matrix.release }}", "git+https://github.com/openstack/monasca-ui.git@stable/${{ matrix.release }}", "git+https://github.com/openstack/manila-ui.git@stable/${{ matrix.release }}"},
+	"ironic":        {"python-dracclient", "sushy"},
+	"keystone":      {"keystone-keycloak-backend==0.1.5"},
+	"magnum":        {"magnum-cluster-api==0.6.0"},
+	"monasca-agent": {"libvirt-python", "python-glanceclient", "python-neutronclient", "python-novaclient", "py3nvml"},
+	"neutron":       {"neutron-vpnaas"},
+	"placement":     {"httplib2"},
 }
 var PLATFORMS map[string]string = map[string]string{
 	"nova":    "linux/amd64,linux/arm64",
 	"neutron": "linux/amd64,linux/arm64",
+}
+
+type ImageBuildArgs struct {
+	BuilderImage string
+	RuntimeImage string
+	Release      string
+	Project      string
+	ProjectRepo  string
+	ProjectRef   string
+	Extras       string
+	Profiles     string
+	DistPackages string
+	PipPackages  []string
+}
+
+func (args *ImageBuildArgs) DeepCopy() *ImageBuildArgs {
+	return &ImageBuildArgs{
+		BuilderImage: args.BuilderImage,
+		RuntimeImage: args.RuntimeImage,
+		Release:      args.Release,
+		Project:      args.Project,
+		ProjectRepo:  args.ProjectRepo,
+		ProjectRef:   args.ProjectRef,
+		Extras:       args.Extras,
+		Profiles:     args.Profiles,
+		DistPackages: args.DistPackages,
+		PipPackages:  args.PipPackages,
+	}
+}
+
+func (args *ImageBuildArgs) ToBuildArgs() []string {
+	return []string{
+		fmt.Sprintf("BUILDER_IMAGE=%s", args.BuilderImage),
+		fmt.Sprintf("RUNTIME_IMAGE=%s", args.RuntimeImage),
+		fmt.Sprintf("RELEASE=%s", args.Release),
+		fmt.Sprintf("PROJECT=%s", args.Project),
+		fmt.Sprintf("PROJECT_REPO=%s", args.ProjectRepo),
+		fmt.Sprintf("PROJECT_REF=%s", args.ProjectRef),
+		fmt.Sprintf("EXTRAS=%s", args.Extras),
+		fmt.Sprintf("PROFILES=%s", args.Profiles),
+		fmt.Sprintf("DIST_PACKAGES=%s", args.DistPackages),
+		fmt.Sprintf("PIP_PACKAGES=%s", strings.Join(args.PipPackages, " ")),
+	}
+}
+
+func (args *ImageBuildArgs) ToBuildArgsString() string {
+	return strings.Join(args.ToBuildArgs(), "\n")
 }
 
 func NewBuildWorkflow(project string) *GithubWorkflow {
@@ -68,9 +115,9 @@ func NewBuildWorkflow(project string) *GithubWorkflow {
 		distPackages = val
 	}
 
-	pipPackages := "cryptography python-binary-memcached"
+	pipPackages := []string{"cryptography", "python-binary-memcached"}
 	if val, ok := PIP_PACKAGES[project]; ok {
-		pipPackages += fmt.Sprintf(" %s", val)
+		pipPackages = append(pipPackages, val...)
 	}
 
 	platforms := "linux/amd64"
@@ -83,17 +130,17 @@ func NewBuildWorkflow(project string) *GithubWorkflow {
 		gitRepo = fmt.Sprintf("https://github.com/vexxhost/%s", project)
 	}
 
-	buildArgs := []string{
-		"BUILDER_IMAGE=quay.io/vexxhost/openstack-builder-${{ matrix.from }}",
-		"RUNTIME_IMAGE=quay.io/vexxhost/openstack-runtime-${{ matrix.from }}",
-		"RELEASE=${{ matrix.release }}",
-		fmt.Sprintf("PROJECT=%s", project),
-		fmt.Sprintf("PROJECT_REPO=%s", gitRepo),
-		"PROJECT_REF=${{ env.PROJECT_REF }}",
-		fmt.Sprintf("EXTRAS=%s", extras),
-		fmt.Sprintf("PROFILES=%s", profiles),
-		fmt.Sprintf("DIST_PACKAGES=%s", distPackages),
-		fmt.Sprintf("PIP_PACKAGES=%s", pipPackages),
+	imageBuildArgs := ImageBuildArgs{
+		BuilderImage: "quay.io/vexxhost/openstack-builder-${{ matrix.from }}",
+		RuntimeImage: "quay.io/vexxhost/openstack-runtime-${{ matrix.from }}",
+		Release:      "${{ matrix.release }}",
+		Project:      project,
+		ProjectRepo:  gitRepo,
+		ProjectRef:   "${{ env.PROJECT_REF }}",
+		Extras:       extras,
+		Profiles:     profiles,
+		DistPackages: distPackages,
+		PipPackages:  pipPackages,
 	}
 
 	releases := []string{"wallaby", "xena", "yoga", "zed", "2023.1"}
@@ -104,7 +151,7 @@ func NewBuildWorkflow(project string) *GithubWorkflow {
 		releases = []string{"yoga", "zed", "2023.1"}
 	}
 
-	return &GithubWorkflow{
+	workflow := &GithubWorkflow{
 		Name: "build",
 		Concurrency: GithubWorkflowConcurrency{
 			Group:            "${{ github.head_ref || github.run_id }}",
@@ -181,7 +228,7 @@ func NewBuildWorkflow(project string) *GithubWorkflow {
 							"cache-to":   "type=gha,mode=max,scope=${{ matrix.from }}-${{ matrix.release }}",
 							"platforms":  platforms,
 							"push":       "${{ github.event_name == 'push' }}",
-							"build-args": strings.Join(buildArgs, "\n"),
+							"build-args": imageBuildArgs.ToBuildArgsString(),
 							"tags":       fmt.Sprintf("quay.io/vexxhost/%s:${{ env.PROJECT_REF }}-${{ matrix.from }}", project),
 						},
 					},
@@ -198,4 +245,19 @@ func NewBuildWorkflow(project string) *GithubWorkflow {
 			},
 		},
 	}
+
+	if project == "neutron" {
+		infobloxImageBuildArgs := imageBuildArgs.DeepCopy()
+		infobloxImageBuildArgs.PipPackages = append(infobloxImageBuildArgs.PipPackages, "networking-infoblox")
+
+		workflow.Jobs["infoblox"] = workflow.Jobs["image"].DeepCopy()
+		workflow.Jobs["infoblox"].Steps[5].With["cache-from"] += "-infoblox"
+		workflow.Jobs["infoblox"].Steps[5].With["cache-to"] += "-infoblox"
+		workflow.Jobs["infoblox"].Steps[5].With["tags"] = strings.ReplaceAll(workflow.Jobs["infoblox"].Steps[5].With["tags"], project, "neutron-infoblox")
+		workflow.Jobs["infoblox"].Steps[5].With["build-args"] = infobloxImageBuildArgs.ToBuildArgsString()
+		workflow.Jobs["infoblox"].Steps[6].With["src"] = strings.ReplaceAll(workflow.Jobs["infoblox"].Steps[6].With["src"], project, "neutron-infoblox")
+		workflow.Jobs["infoblox"].Steps[6].With["dst"] = strings.ReplaceAll(workflow.Jobs["infoblox"].Steps[6].With["dst"], project, "neutron-infoblox")
+	}
+
+	return workflow
 }
