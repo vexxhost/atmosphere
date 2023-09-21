@@ -1,5 +1,36 @@
 # Changelog
 
+## [1.9.0](https://github.com/vexxhost/atmosphere/compare/v1.8.0...v1.9.0) (2023-09-21)
+
+
+### Features
+
+* add cluster_issuer_type none ([#570](https://github.com/vexxhost/atmosphere/issues/570)) ([330a520](https://github.com/vexxhost/atmosphere/commit/330a5207713499bcab7bd1cc9bb5eb3892abe5cf))
+* Add keycloak ([#510](https://github.com/vexxhost/atmosphere/issues/510)) ([b009349](https://github.com/vexxhost/atmosphere/commit/b0093493f46409e3a168412e57ba66913813dd87))
+* allow offline installs for atmosphere ([#590](https://github.com/vexxhost/atmosphere/issues/590)) ([c4499c1](https://github.com/vexxhost/atmosphere/commit/c4499c1945cf09f10685c9eb2b1c5799b4c4adfb))
+* introduce aarch64 support for libvirt pod ([#554](https://github.com/vexxhost/atmosphere/issues/554)) ([a33244e](https://github.com/vexxhost/atmosphere/commit/a33244e7aa47e959398dab43b2becbccd1c657a2))
+* **monitoring:** refactor ([#555](https://github.com/vexxhost/atmosphere/issues/555)) ([5b49cbb](https://github.com/vexxhost/atmosphere/commit/5b49cbbeeb1d1336e0b1707c4ad04635bf34c731))
+* Rollout horizon deployment whenever logo changed ([187edfa](https://github.com/vexxhost/atmosphere/commit/187edfa5122e7960ab963e27af433b9830a6c27d))
+
+
+### Bug Fixes
+
+* add vexxhost.atmosphere when using urlencoded_issuer_from_domain. ([1f65085](https://github.com/vexxhost/atmosphere/commit/1f65085d101934c9cf16ad8a0ecc6025f3f8929d))
+* correct keycloak TLS secret when openstack_helm_ingress_secret_name is used. ([#575](https://github.com/vexxhost/atmosphere/issues/575)) ([4ea5220](https://github.com/vexxhost/atmosphere/commit/4ea52201b9288bc6e815a52ccd5c9078fe384ace))
+* **monitoring:** drop ethtool exporter ([#572](https://github.com/vexxhost/atmosphere/issues/572)) ([6589394](https://github.com/vexxhost/atmosphere/commit/65893945884e3a345a9db2cd16bc31f6e9b8a26f))
+* **ovn:** enable dependency to handle slow envs ([fd8edcc](https://github.com/vexxhost/atmosphere/commit/fd8edcc3f775a1ada976a6327416648d080294a7))
+* rook_ceph k8s image ([#553](https://github.com/vexxhost/atmosphere/issues/553)) ([2a2a92e](https://github.com/vexxhost/atmosphere/commit/2a2a92e7c341c4be92fdd251deafea23e31f2810))
+* Set cinder auth in nova ([567fc08](https://github.com/vexxhost/atmosphere/commit/567fc08901f9c21a2ede8b9b7e647eef7e462121))
+* update images using earthly ([#565](https://github.com/vexxhost/atmosphere/issues/565)) ([9169689](https://github.com/vexxhost/atmosphere/commit/916968938eed5d542f3c8dc04fcb544e82c9706f))
+* urlencoded_issuer_from_domain ([#576](https://github.com/vexxhost/atmosphere/issues/576)) ([1f65085](https://github.com/vexxhost/atmosphere/commit/1f65085d101934c9cf16ad8a0ecc6025f3f8929d))
+* use 2.87 nova api for openstack_exporter ([#544](https://github.com/vexxhost/atmosphere/issues/544)) ([17b6411](https://github.com/vexxhost/atmosphere/commit/17b6411a0b2ed58228e6bae099abb0977efed8b6))
+
+
+### Documentation
+
+* add failed to boot docs ([51f0221](https://github.com/vexxhost/atmosphere/commit/51f0221e77a7019449635489f0dc55194161274c))
+* add info about cherry-picking ([ba7c535](https://github.com/vexxhost/atmosphere/commit/ba7c535d8aab8c44b650ccaf1a976a2df4be0a1b))
+
 ## [1.8.0](https://github.com/vexxhost/atmosphere/compare/v1.7.0...v1.8.0) (2023-08-03)
 
 
