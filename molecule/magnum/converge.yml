@@ -12,10 +12,11 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- import_playbook: ../shared/prepare/base.yml
-- import_playbook: ../shared/prepare/kubernetes.yml
+- name: Install Kubernetes
+  ansible.builtin.import_playbook: ../shared/converge/kubernetes.yml
 
-- hosts: controllers
+- name: Install OpenStack
+  hosts: controllers
   become: true
   roles:
     - vexxhost.atmosphere.cert_manager
@@ -24,4 +25,25 @@
     - vexxhost.atmosphere.rabbitmq_cluster_operator
     - vexxhost.atmosphere.percona_xtradb_cluster_operator
     - vexxhost.atmosphere.percona_xtradb_cluster
+    - vexxhost.atmosphere.keycloak
+    - vexxhost.atmosphere.keepalived
     - vexxhost.atmosphere.memcached
+    - vexxhost.atmosphere.keystone
+    - vexxhost.atmosphere.barbican
+    - vexxhost.atmosphere.glance
+    - vexxhost.atmosphere.cinder
+    - vexxhost.atmosphere.placement
+    - vexxhost.atmosphere.openvswitch
+    - vexxhost.atmosphere.ovn
+    - vexxhost.atmosphere.libvirt
+    - vexxhost.atmosphere.coredns
+    - vexxhost.atmosphere.nova
+    - vexxhost.atmosphere.neutron
+    - vexxhost.atmosphere.octavia
+    - vexxhost.atmosphere.openstack_cli
+
+- name: Install Magnum
+  hosts: controllers
+  become: true
+  roles:
+    - vexxhost.atmosphere.magnum

@@ -12,4 +12,22 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- ansible.builtin.import_playbook: ../shared/cleanup/ceph.yml
+name: magnum
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  molecule:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v4
+
+      - name: Run tests
+        uses: ./.github/actions/molecule
+        with:
+          scenario: magnum

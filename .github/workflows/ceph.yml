@@ -23,24 +23,22 @@ on:
     inputs:
       debug_enabled:
         type: boolean
-        description: 'Run the build with tmate debugging enabled (https://github.com/marketplace/actions/debugging-with-tmate)'
+        description: "Run the build with tmate debugging enabled (https://github.com/marketplace/actions/debugging-with-tmate)"
         required: false
         default: false
       network_backend:
         type: choice
-        description: 'Network backend type'
+        description: "Network backend type"
         required: true
-        default: 'ovn'
+        default: "ovn"
         options:
           - openvswitch
           - ovn
 
 jobs:
   debug:
-    runs-on: ubuntu-20.04-16-cores
+    runs-on: ubuntu-latest-16-cores
     if: github.event_name == 'workflow_dispatch' && inputs.debug_enabled
-    strategy:
-      fail-fast: false
     concurrency:
       group: ${{ github.ref }}-${{ inputs.network_backend }}
       cancel-in-progress: true
@@ -48,29 +46,12 @@ jobs:
       - name: Checkout project
         uses: actions/checkout@v4
 
-      - name: Install Poetry
-        run: pipx install poetry
-
-      - name: Setup Python
-        uses: actions/setup-python@v4
+      - name: Run tests
+        uses: ./.github/actions/molecule
         with:
-          cache: poetry
-
-      - name: Install dependencies
-        run: poetry install --no-interaction --with dev
-
-      # NOTE(mnaser): LVM commands take a long time if there are any existing
-      #               loop devices created by "snapd", so we uninstall it.
-      - name: Uninstall "snapd"
-        run: sudo apt-get purge -y snapd
-
-      - name: Turn off swap
-        run: sudo swapoff -a
-
-      - name: Run Molecule Converge
-        run: poetry run molecule converge -s ceph
-        env:
-          ATMOSPHERE_NETWORK_BACKEND: ${{ inputs.network_backend }}
+          scenario: ceph
+          storage_backend: ceph
+          network_backend: ${{ inputs.network_backend }}
 
       # Enable tmate debugging of manually-triggered workflows if the input option was provided
       - name: Setup tmate session
@@ -78,11 +59,8 @@ jobs:
         uses: mxschmitt/action-tmate@v3
         timeout-minutes: 60
 
-      - name: Run Molecule Destroy
-        run: poetry run molecule destroy -s ceph
-
   test:
-    runs-on: ubuntu-20.04-16-cores
+    runs-on: ubuntu-latest-16-cores
     if: github.event_name != 'workflow_dispatch' || !inputs.debug_enabled
     strategy:
       fail-fast: false
@@ -97,26 +75,9 @@ jobs:
       - name: Checkout project
         uses: actions/checkout@v4
 
-      - name: Install Poetry
-        run: pipx install poetry
-
-      - name: Setup Python
-        uses: actions/setup-python@v4
+      - name: Run tests
+        uses: ./.github/actions/molecule
         with:
-          cache: poetry
-
-      - name: Install dependencies
-        run: poetry install --no-interaction --with dev
-
-      # NOTE(mnaser): LVM commands take a long time if there are any existing
-      #               loop devices created by "snapd", so we uninstall it.
-      - name: Uninstall "snapd"
-        run: sudo apt-get purge -y snapd
-
-      - name: Turn off swap
-        run: sudo swapoff -a
-
-      - name: Run Molecule
-        run: poetry run molecule test -s ceph
-        env:
-          ATMOSPHERE_NETWORK_BACKEND: ${{ matrix.network_backend }}
+          scenario: ceph
+          storage_backend: ceph
+          network_backend: ${{ matrix.network_backend }}

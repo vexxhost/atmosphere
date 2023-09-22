@@ -12,4 +12,9 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- ansible.builtin.import_playbook: vexxhost.atmosphere.csi
+- name: Install Ceph
+  ansible.builtin.import_playbook: vexxhost.ceph.site
+  when: csi_driver == "rbd"
+
+- name: Install Kubernetes
+  ansible.builtin.import_playbook: ../shared/converge/kubernetes.yml

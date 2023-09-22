@@ -16,6 +16,28 @@ _magnum_helm_values:
   endpoints: "{{ openstack_helm_endpoints }}"
   images:
     tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('magnum') }}"
+  dependencies:
+    static:
+      api:
+        services:
+          - endpoint: internal
+            service: oslo_db
+          - endpoint: internal
+            service: identity
+          - endpoint: internal
+            service: oslo_messaging
+          - endpoint: internal
+            service: key_manager
+      conductor:
+        services:
+          - endpoint: internal
+            service: oslo_db
+          - endpoint: internal
+            service: identity
+          - endpoint: internal
+            service: oslo_messaging
+          - endpoint: internal
+            service: key_manager
   conf:
     magnum:
       DEFAULT:

@@ -12,7 +12,8 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- ansible.builtin.import_playbook: vexxhost.atmosphere.kubernetes
+- name: Install Kubernetes
+  ansible.builtin.import_playbook: vexxhost.atmosphere.kubernetes
 
 # NOTE(mnaser): When using Docker with custom networks, it will use 127.0.0.11
 #               as the DNS server which trips up the CoreDNS "loop" plugin.
@@ -56,13 +57,9 @@
         - Wait for CoreDNS to be ready
   handlers:
     - name: Rollout CoreDNS
-      command: kubectl -n kube-system rollout restart deploy/coredns
+      ansible.builtin.command: kubectl -n kube-system rollout restart deploy/coredns
     - name: Wait for CoreDNS to be ready
-      command: kubectl -n kube-system rollout status deploy/coredns
+      ansible.builtin.command: kubectl -n kube-system rollout status deploy/coredns
 
-- ansible.builtin.import_playbook: vexxhost.atmosphere.csi
-
-- hosts: controllers
-  become: true
-  roles:
-    - vexxhost.atmosphere.ingress_nginx
+- name: Install CSI
+  ansible.builtin.import_playbook: vexxhost.atmosphere.csi
