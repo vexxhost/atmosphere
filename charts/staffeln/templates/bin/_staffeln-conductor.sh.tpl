@@ -14,7 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */}}
 
-set -ex
 source /etc/staffeln/openrc
+
+set -ex
 exec staffeln-conductor \
      --config-file /etc/staffeln/staffeln.conf
