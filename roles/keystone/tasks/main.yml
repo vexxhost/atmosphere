@@ -56,6 +56,9 @@
   loop: "{{ keystone_domains }}"
   loop_control:
     label: "{{ item.name }}"
+  until: keystone_domains_result.finished # wait till Ingress has been created
+  retries: 5
+  delay: 1
 
 - name: Create ConfigMap with all OpenID connect configurations
   run_once: true
