@@ -11,6 +11,12 @@
 # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 # License for the specific language governing permissions and limitations
 # under the License.
+#
+- name: Set Staffeln Backup Delete Policey Rule
+  ansible.builtin.set_fact:
+    staffeln_backup_delete_policy:
+      backup:delete: "rule:admin_api or (project_id:%(project_id)s and {{ openstack_helm_endpoints_staffeln_api_host }}/v1/backup?backup_id=%(id)s)"
+  when: atmosphere_staffeln_enabled is defined
 
 - name: Uninstall the legacy HelmRelease
   run_once: true
