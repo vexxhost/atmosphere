@@ -17,14 +17,16 @@
   delegate_to: localhost
   block:
     - name: Generate temporary file for SSH public key
+      check_mode: false
       changed_when: false
       ansible.builtin.tempfile:
         state: file
         prefix: nova_ssh_key_
       register: _nova_ssh_key_tempfile
     # NOTE(mnaser): It's important to add a trailing newline at the end of this
-    #               string or else `ssh-keygen` will not be happy.`
+    #               string or else `ssh-keygen` will not be happy.
     - name: Write contents of current private SSH key
+      check_mode: false
       changed_when: false
       ansible.builtin.copy:
         dest: "{{ _nova_ssh_key_tempfile.path }}"
@@ -38,6 +40,7 @@
       register: _nova_ssh_publickey
   always:
     - name: Delete temporary file for public SSH key
+      check_mode: false
       changed_when: false
       ansible.builtin.file:
         path: "{{ _nova_ssh_key_tempfile.path }}"
