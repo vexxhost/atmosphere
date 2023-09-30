@@ -18,12 +18,14 @@
   ansible.builtin.command: cephadm shell -- ceph mon dump -f json
   changed_when: false
   register: _ceph_mon_dump
+  check_mode: false
 
 - name: Generate fact with list of Ceph monitors
   run_once: true
   ansible.builtin.set_fact:
     ceph_csi_rbd_ceph_fsid: "{{ _ceph_mon_dump.stdout | from_json | community.general.json_query('fsid') }}"
     ceph_monitors: "{{ _ceph_mon_dump.stdout | from_json | community.general.json_query('mons[*].addr') | map('regex_replace', '(.*):(.*)', '\\1') }}"
+  check_mode: false
 
 - name: Create Ceph pool
   delegate_to: "{{ groups[ceph_csi_rbd_mons_group][0] }}"

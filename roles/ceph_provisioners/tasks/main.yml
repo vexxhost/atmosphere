@@ -18,6 +18,7 @@
   ansible.builtin.command: cephadm shell -- ceph mon dump -f json
   changed_when: false
   register: _ceph_mon_dump
+  check_mode: false
 
 - name: Generate fact with list of Ceph monitors
   run_once: true
@@ -85,10 +86,12 @@
     state: info
     output_format: json
   register: _ceph_provisioners_ceph_key
+  check_mode: false
 
 - name: Parse client.admin keyring
   ansible.builtin.set_fact:
     _ceph_provisioners_keyring: "{{ _ceph_provisioners_ceph_key.stdout | from_json | first }}"
+  check_mode: false
 
 - name: Create "pvc-ceph-client-key" secret
   kubernetes.core.k8s:
