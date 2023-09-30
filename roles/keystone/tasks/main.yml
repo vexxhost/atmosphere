@@ -148,6 +148,7 @@
   loop: "{{ keystone_domains_result.results }}"
   loop_control:
     label: "{{ item.domain.name }}"
+  when: not ansible_check_mode
 
 - name: Create Keystone federation mappings
   run_once: true
