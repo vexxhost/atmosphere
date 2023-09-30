@@ -120,6 +120,18 @@
     security_group: -1
     security_group_rule: -1
 
+- name: _octavia_amphora_flavor
+  debug:
+    msg: "{{ _octavia_amphora_flavor }}"
+
+- name: _octavia_management_network
+  debug:
+    msg: "{{ _octavia_management_network }}"
+
+- name: _octavia_amphora_image
+  debug:
+    msg: "{{ _octavia_amphora_image }}"
+
 - name: Deploy Helm chart
   run_once: true
   kubernetes.core.helm:
@@ -129,6 +141,7 @@
     create_namespace: true
     kubeconfig: /etc/kubernetes/admin.conf
     values: "{{ _octavia_helm_values | combine(octavia_helm_values, recursive=True) }}"
+  when: _octavia_health_manager_sg.security_group is defined # in dry run security_group does not exists
 
 - name: Add implied roles
   run_once: true
