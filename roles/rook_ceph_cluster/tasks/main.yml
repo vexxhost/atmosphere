@@ -27,6 +27,7 @@
   ansible.builtin.command: cephadm shell -- ceph quorum_status -f json
   changed_when: false
   register: _rook_ceph_cluster_quorum_status_data
+  check_mode: false
 
 - name: Retrieve keyring for client.admin
   run_once: true
@@ -36,6 +37,7 @@
     state: info
     output_format: json
   register: _rook_ceph_cluster_admin_auth_data
+  check_mode: false
 
 - name: Retrieve keyring for monitors
   run_once: true
@@ -45,6 +47,7 @@
     state: info
     output_format: json
   register: _rook_ceph_cluster_mon_auth_data
+  check_mode: false
 
 - name: Create Ceph cluster resource
   run_once: true
