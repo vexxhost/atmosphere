@@ -18,7 +18,8 @@ set -ex
 COMMAND="${@:-start}"
 
 function start () {
-  exec uwsgi --ini /etc/heat/heat-api-cloudwatch-uwsgi.ini
+  exec heat-api-cloudwatch \
+        --config-file /etc/heat/heat.conf
 }
 
 function stop () {

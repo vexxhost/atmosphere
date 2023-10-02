@@ -141,15 +141,6 @@ limitations under the License.
 {{- $_ := set .Values.conf.heat_api_cfn_uwsgi.uwsgi "http-socket" $http_socket -}}
 {{- end -}}
 
-{{- if empty .Values.conf.heat_api_cloudwatch_uwsgi.uwsgi.processes -}}
-{{- $_ := set .Values.conf.heat_api_cloudwatch_uwsgi.uwsgi "processes" .Values.conf.heat.heat_api_cloudwatch.workers -}}
-{{- end -}}
-{{- if empty (index .Values.conf.heat_api_cloudwatch_uwsgi.uwsgi "http-socket") -}}
-{{- $http_socket_port := tuple "cloudwatch" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" | toString }}
-{{- $http_socket := printf "0.0.0.0:%s" $http_socket_port }}
-{{- $_ := set .Values.conf.heat_api_cloudwatch_uwsgi.uwsgi "http-socket" $http_socket -}}
-{{- end -}}
-
 {{- if and (empty .Values.conf.logging.handler_fluent) (has "fluent" .Values.conf.logging.handlers.keys) -}}
 {{- $fluentd_host := tuple "fluentd" "internal" $envAll | include "helm-toolkit.endpoints.hostname_namespaced_endpoint_lookup" }}
 {{- $fluentd_port := tuple "fluentd" "internal" "service" $envAll | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
