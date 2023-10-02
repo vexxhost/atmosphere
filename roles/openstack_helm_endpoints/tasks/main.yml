@@ -44,9 +44,19 @@
     - name: Cache fact with RabbitMQ cluster credentials
       ansible.builtin.set_fact:
         _openstack_helm_endpoints_rabbitmq_cluster_username: |-
-          {{ _openstack_helm_endpoints_rabbitmq_cluster_secret.resources[0]['data']['username'] | b64decode }}
+          {{ data['username'] | b64decode }}
         _openstack_helm_endpoints_rabbitmq_cluster_password: |-
-          {{ _openstack_helm_endpoints_rabbitmq_cluster_secret.resources[0]['data']['password'] | b64decode }}
+          {{ data['password'] | b64decode }}
+      vars:
+        data: |-
+          {% if _openstack_helm_endpoints_rabbitmq_cluster_secret.resources | length > 0 %}
+          {{ _openstack_helm_endpoints_rabbitmq_cluster_secret.resources[0]['data'] }}
+          {% else if ansible_check_mode %}
+          {{ fake_data }}
+          {% endif %}
+        fake_data:
+          username: "{{ 'check' | b64encode }}"
+          password: "{{ 'mode' | b64encode }}"
 
 # NOTE(mnaser): Since we deploy the database using the operator and we let it
 #               generate the root password, we look it up if the fact has not
