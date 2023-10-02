@@ -407,6 +407,7 @@
       loop: "{{ _ssh_key_file.results }}"
       loop_control:
         label: "{{ item.item }}"
+      when: _ssh_key_file.results[0].path is defined
 
     - name: Set values for SSH keys
       when: item.path is defined
@@ -415,6 +416,7 @@
       loop: "{{ _ssh_key_file.results }}"
       loop_control:
         label: "{{ item.item }}"
+      when: _ssh_key_file.results[0].path is defined
 
     - name: Delete the temporary files generated for SSH keys
       when: item.path is defined
@@ -424,6 +426,7 @@
       loop: "{{ _ssh_key_file.results }}"
       loop_control:
         label: "{{ item.item }}"
+      when: _ssh_key_file.results[0].path is defined
 
     - name: Write new secrets file to disk
       ansible.builtin.copy:
