@@ -68,7 +68,7 @@ jobs:
         run: sudo swapoff -a
 
       - name: Run Molecule Converge
-        run: poetry run molecule converge -s ceph
+        run: poetry run molecule -vvvvv converge -s ceph
         env:
           ATMOSPHERE_NETWORK_BACKEND: ${{ inputs.network_backend }}
 
@@ -117,6 +117,6 @@ jobs:
         run: sudo swapoff -a
 
       - name: Run Molecule
-        run: poetry run molecule test -s ceph
+        run: poetry run molecule -vvvvv test -s ceph
         env:
           ATMOSPHERE_NETWORK_BACKEND: ${{ matrix.network_backend }}
