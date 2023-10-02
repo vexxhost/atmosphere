@@ -21,7 +21,7 @@ limitations under the License.
 {{- $serviceAccountName := "staffeln-conductor" }}
 {{ tuple $envAll "conductor" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
 ---
-kind: ClusterRole
+kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: {{ $serviceAccountName }}
@@ -42,7 +42,7 @@ rules:
       - deletecollection
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
+kind: RoleBinding
 metadata:
   name: {{ $serviceAccountName }}-leases
 subjects:
@@ -50,7 +50,7 @@ subjects:
     name: {{ $serviceAccountName }}
     namespace: {{ $envAll.Release.Namespace }}
 roleRef:
-  kind: ClusterRole
+  kind: Role
   name: {{ $serviceAccountName }}
   apiGroup: rbac.authorization.k8s.io
 ---
