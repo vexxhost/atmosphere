@@ -104,10 +104,12 @@ spec:
               subPath: {{ base .Values.conf.manila.DEFAULT.log_config_append }}
               readOnly: true
             {{- end }}
+            {{- if .Values.conf.paste }}
             - name: manila-etc
               mountPath: /etc/manila/api-paste.ini
               subPath: api-paste.ini
               readOnly: true
+            {{- end }}
             - name: manila-etc
               mountPath: /etc/manila/policy.yaml
               subPath: policy.yaml

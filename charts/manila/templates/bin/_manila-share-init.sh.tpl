@@ -15,14 +15,10 @@ limitations under the License.
 */}}
 
 set -ex
-COMMAND="${@:-start}"
 
-function start () {
-  exec uwsgi --ini /etc/magnum/magnum-api-uwsgi.ini
-}
-
-function stop () {
-  kill -TERM 1
-}
-
-$COMMAND
+{{- if and ( empty .Values.conf.manila.generic.service_network_host ) ( .Values.pod.use_fqdn.share ) }}
+tee > /tmp/pod-shared/manila-share-fqdn.conf << EOF
+[generic]
+service_network_host = $(hostname --fqdn)
+EOF
+{{- end }}
