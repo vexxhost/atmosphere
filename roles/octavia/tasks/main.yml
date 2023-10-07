@@ -39,6 +39,7 @@
 - name: Generate resources
   ansible.builtin.import_tasks:
     file: generate_resources.yml
+  when: not ansible_check_mode
 
 - name: Create CAs & Issuers
   kubernetes.core.k8s:
@@ -119,6 +120,22 @@
     gigabytes: -1
     security_group: -1
     security_group_rule: -1
+
+- name: Generate diff for Helm values
+  when: ansible_diff_mode
+  run_once: true
+  block:
+    - name: Get current Helm release values
+      kubernetes.core.helm_info:
+        name: "{{ octavia_helm_release_name }}"
+        release_namespace: "{{ octavia_helm_release_namespace }}"
+      register: _octavia_helm_info
+
+    - name: Display difference between values
+      ansible.utils.fact_diff:
+        before: "{{ _octavia_helm_info.status['values']|to_nice_yaml }}"
+        after: "{{ _octavia_helm_values | combine(octavia_helm_values, recursive=True)|to_nice_yaml }}"
+      when: _octavia_helm_info.status is defined # when another operation is in progress, status is then not defined.
 
 - name: Deploy Helm chart
   run_once: true

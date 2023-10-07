@@ -20,6 +20,22 @@
     upload_helm_chart_src: "{{ cluster_issuer_acme_infoblox_helm_chart_path }}"
     upload_helm_chart_dest: "{{ cluster_issuer_acme_infoblox_helm_chart_ref }}"
 
+- name: Generate diff for Helm values
+  when: ansible_diff_mode
+  run_once: true
+  block:
+    - name: Get current Helm release values
+      kubernetes.core.helm_info:
+        name: "{{ cluster_issuer_acme_infoblox_helm_release_name }}"
+        release_namespace: "{{ cluster_issuer_acme_infoblox_helm_release_namespace }}"
+      register: _cluster_issuer_acme_infoblox_helm_info
+
+    - name: Display difference between values
+      ansible.utils.fact_diff:
+        before: "{{ _cluster_issuer_acme_infoblox_helm_info.status['values'] }}"
+        after: "{{ _cluster_issuer_acme_infoblox_helm_values | combine(cluster_issuer_acme_infoblox_helm_values, recursive=True) }}"
+      when: _cluster_issuer_acme_infoblox_helm_info.status is defined # when another operation is in progress, status is then not defined.
+
 - name: Deploy Helm chart
   run_once: true
   kubernetes.core.helm:

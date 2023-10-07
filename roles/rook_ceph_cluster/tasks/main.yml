@@ -82,6 +82,22 @@
     _rook_ceph_cluster_leader_mon: "{{ (_rook_ceph_cluster_quorum_status.monmap.mons | selectattr('name', 'equalto', _rook_ceph_cluster_leader_name) | list | first) }}" # noqa: yaml[line-length]
     _rook_ceph_cluster_leader_addr: "{{ _rook_ceph_cluster_leader_mon.public_addr.split('/')[0] }}"
 
+- name: Generate diff for Helm values
+  when: ansible_diff_mode
+  run_once: true
+  block:
+    - name: Get current Helm release values
+      kubernetes.core.helm_info:
+        name: "{{ rook_ceph_cluster_helm_release_name }}"
+        release_namespace: "{{ rook_ceph_cluster_helm_release_namespace }}"
+      register: _rook_ceph_cluster_helm_info
+
+    - name: Display difference between values
+      ansible.utils.fact_diff:
+        before: "{{ _rook_ceph_cluster_helm_info.status['values']|to_nice_yaml }}"
+        after: "{{ _rook_ceph_cluster_helm_values | combine(rook_ceph_cluster_helm_values, recursive=True)|to_nice_yaml }}"
+      when: _rook_ceph_cluster_helm_info.status is defined # when another operation is in progress, status is then not defined.
+
 - name: Deploy Helm chart
   run_once: true
   kubernetes.core.helm:

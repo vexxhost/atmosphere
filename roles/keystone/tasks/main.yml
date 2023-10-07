@@ -85,7 +85,7 @@
     label: "{{ item.name }}"
 
 - name: Generate diff for Helm values
-  when: ansible_check_mode
+  when: ansible_diff_mode
   run_once: true
   block:
     - name: Get current Helm release values
@@ -98,6 +98,7 @@
       ansible.utils.fact_diff:
         before: "{{ _keystone_helm_info.status['values'] }}"
         after: "{{ _keystone_helm_values | combine(keystone_helm_values, recursive=True) }}"
+      when: _keystone_helm_info.status is defined # when another operation is in progress, status is then not defined.
 
 - name: Deploy Helm chart
   run_once: true

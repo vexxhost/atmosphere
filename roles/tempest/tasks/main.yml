@@ -77,6 +77,22 @@
         - tempest_helm_values.conf.tempest.network.public_network_id is not defined
         - _tempest_test_network.openstack_networks[0].id is defined
 
+- name: Generate diff for Helm values
+  when: ansible_diff_mode
+  run_once: true
+  block:
+    - name: Get current Helm release values
+      kubernetes.core.helm_info:
+        name: "{{ tempest_helm_release_name }}"
+        release_namespace: "{{ tempest_helm_release_namespace }}"
+      register: _tempest_helm_info
+
+    - name: Display difference between values
+      ansible.utils.fact_diff:
+        before: "{{ _tempest_helm_info.status['values']|to_nice_yaml }}"
+        after: "{{ _tempest_helm_values | combine(tempest_helm_values, recursive=True)|to_nice_yaml }}"
+      when: _tempest_helm_info.status is defined # when another operation is in progress, status is then not defined.
+
 - name: Deploy Helm chart
   failed_when: false
   run_once: true
