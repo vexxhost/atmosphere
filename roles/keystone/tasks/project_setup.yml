@@ -10,11 +10,25 @@
 
 - name: Create parent group for openstack projects
   community.general.keycloak_group:
+    # Keycloak settings
+    auth_keycloak_url: "{{ _ks_domain.keycloak_server_url }}"
+    auth_realm: "{{ _ks_domain.keycloak_user_realm_name }}"
+    auth_client_id: "{{ _ks_domain.keycloak_admin_client_id }}"
+    auth_username: "{{ _ks_domain.keycloak_admin_user }}"
+    auth_password: "{{ _ks_domain.keycloak_admin_password }}"
+    # Group settings
     realm: "{{ _ks_domain.name }}"
     name: openstack-projects
 
 - name: Create keycloak group for each project
   community.general.keycloak_group:
+    # Keycloak settings
+    auth_keycloak_url: "{{ _ks_domain.keycloak_server_url }}"
+    auth_realm: "{{ _ks_domain.keycloak_user_realm_name }}"
+    auth_client_id: "{{ _ks_domain.keycloak_admin_client_id }}"
+    auth_username: "{{ _ks_domain.keycloak_admin_user }}"
+    auth_password: "{{ _ks_domain.keycloak_admin_password }}"
+    # Group settings
     realm: "{{ _ks_domain.name }}"
     name: "{{ _project.name }}"
     parents:
