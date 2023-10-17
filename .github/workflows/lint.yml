@@ -3,6 +3,35 @@ on:
   pull_request:
 
 jobs:
+  commitlint-pr-title:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Install Commitlint
+        run: |
+          npm i -g @commitlint/cli @commitlint/config-conventional
+
+      - name: Lint PR Title
+        id: pr-title-lint
+        run: |
+          echo "${{ github.event.pull_request.title }}" | npx commitlint ./LINT_ERRORS
+
+      - name: Add/Update Help Comment
+        if: failure() && steps.pr-title-lint.outcome == 'failure'
+        uses: marocchino/sticky-pull-request-comment@v2.8.0
+        with:
+          header: commitlint-pr-title
+          path: ./LINT_ERRORS
+          recreate: true
+
+      - name: Remove Help Comment
+        if: success() && steps.pr-title-lint.outcome == 'success'
+        uses: marocchino/sticky-pull-request-comment@v2.8.0
+        with:
+          header: commitlint-pr-title
+          delete: true
+
   Pre-commit:
     runs-on: ubuntu-latest
     steps:
