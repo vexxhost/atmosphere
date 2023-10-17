@@ -1,0 +1,32 @@
+name: Check PR title
+on:
+  pull_request_target:
+    types:
+      - opened
+      - reopened
+      - edited
+      - synchronize
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    permissions:
+      statuses: write
+    steps:
+      - uses: aslafy-z/conventional-pr-title-action@v3
+        id: pr-title-lint
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: marocchino/sticky-pull-request-comment@v2.8.0
+        if: failure() && steps.pr-title-lint.outputs.success == false
+        with:
+          header: commitlint-pr-title
+          message: ${{ steps.pr-title-lint.outputs.error }}
+          recreate: true
+
+      - uses: marocchino/sticky-pull-request-comment@v2.8.0
+        if: success() && steps.pr-title-lint.outputs.success == true
+        with:
+          header: commitlint-pr-title
+          delete: true
