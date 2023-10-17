@@ -55,7 +55,7 @@
     host: "%"
     priv: "{{ keycloak_database_name }}.*:ALL"
 
-- name: Enable pxc strict mode
+- name: Disable pxc strict mode
   community.mysql.mysql_query:
     login_host: "{{ _pxc_service.resources[0].spec.clusterIP }}"
     login_user: root
@@ -87,7 +87,7 @@
     ingress_annotations:
       cert-manager.io/cluster-issuer: atmosphere
 
-- name: Disable pxc strict mode
+- name: Eable pxc strict mode
   community.mysql.mysql_query:
     login_host: "{{ _pxc_service.resources[0].spec.clusterIP }}"
     login_user: root
