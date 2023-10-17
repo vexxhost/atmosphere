@@ -19,14 +19,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: marocchino/sticky-pull-request-comment@v2.8.0
-        if: failure() && steps.pr-title-lint.outputs.success == false
+        if: failure()
         with:
           header: commitlint-pr-title
           message: ${{ steps.pr-title-lint.outputs.error }}
           recreate: true
 
       - uses: marocchino/sticky-pull-request-comment@v2.8.0
-        if: success() && steps.pr-title-lint.outputs.success == true
+        if: success()
         with:
           header: commitlint-pr-title
           delete: true
