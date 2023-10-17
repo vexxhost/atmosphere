@@ -35,6 +35,10 @@ __neutron_helm_values:
         allowed_origin: "*"
       nova:
         live_migration_events: true
+      placement:
+        region_name: "{{ openstack_helm_endpoints_neutron_region_name }}"
+        username: "neutron-{{ openstack_helm_endpoints_neutron_region_name }}"
+        password: "{{ openstack_helm_endpoints_neutron_keystone_password }}"
       oslo_messaging_notifications:
         driver: noop
       service_providers:
