@@ -1,4 +1,4 @@
-name: Check PR title
+name: check-pr-title
 on:
   pull_request:
     types:
@@ -8,10 +8,11 @@ on:
       - synchronize
 
 jobs:
-  lint:
+  conventional-commit:
     runs-on: ubuntu-latest
     permissions:
       statuses: write
+      pull-requests: write
     steps:
       - uses: aslafy-z/conventional-pr-title-action@v3
         id: pr-title-lint
