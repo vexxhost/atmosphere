@@ -20,9 +20,21 @@
     namespace: openstack
   register: _pxc_service
 
-- name: Install Kubernetes python package
+- name: Install MySQL python package
   ansible.builtin.pip:
     name: PyMySQL
+
+- name: Check mysql ready
+  community.mysql.mysql_info:
+    login_host: "{{ _pxc_service.resources[0].spec.clusterIP }}"
+    login_user: root
+    login_password: "{{ openstack_helm_endpoints.oslo_db.auth.admin.password }}"
+    filter:
+      - version
+  register: mysql_ready
+  until: mysql_ready is not failed
+  retries: 10
+  delay: 5
 
 - name: Create Keycloak database
   run_once: true
