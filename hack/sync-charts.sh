@@ -109,7 +109,7 @@ curl -sL https://tarballs.opendev.org/openstack/openstack-helm-infra/openvswitch
 LIBVIRT_VERSION=0.1.23
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm-infra/libvirt-${LIBVIRT_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
-curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm-infra~893406/revisions/5/patch?download' \
+curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm-infra~893406/revisions/6/patch?download' \
   | base64 --decode \
   | filterdiff -p1 -x 'releasenotes/*' \
   | filterdiff -p2 -x 'Chart.yaml' \
@@ -186,10 +186,16 @@ ROOK_CEPH_CLUSTER_VERSION=1.10.10
 curl -sL https://charts.rook.io/release/rook-ceph-cluster-v${ROOK_CEPH_CLUSTER_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-MANILA_VERSION=0.1.1
+MANILA_VERSION=0.1.5
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/manila-${MANILA_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~883168/revisions/11/patch?download' \
+  | base64 --decode \
+  | filterdiff -p1 -x 'releasenotes/*' \
+  | filterdiff -p2 -x 'Chart.yaml' \
+  | filterdiff -p1 -i 'manila/*' \
+  | patch -p2 -d ${ATMOSPHERE}/charts/manila
+curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~896819/revisions/2/patch?download' \
   | base64 --decode \
   | filterdiff -p1 -x 'releasenotes/*' \
   | filterdiff -p2 -x 'Chart.yaml' \

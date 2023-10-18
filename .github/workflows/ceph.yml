@@ -37,7 +37,7 @@ on:
 
 jobs:
   debug:
-    runs-on: ubuntu-20.04-16-cores
+    runs-on: v3-standard-16
     if: github.event_name == 'workflow_dispatch' && inputs.debug_enabled
     strategy:
       fail-fast: false
@@ -82,7 +82,7 @@ jobs:
         run: poetry run molecule destroy -s ceph
 
   test:
-    runs-on: ubuntu-20.04-16-cores
+    runs-on: v3-standard-16
     if: github.event_name != 'workflow_dispatch' || !inputs.debug_enabled
     strategy:
       fail-fast: false

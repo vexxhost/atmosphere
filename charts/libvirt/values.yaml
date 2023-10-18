@@ -277,8 +277,9 @@ scripts:
     #!/bin/bash
     set -x
 
-    # Script to create certs for each libvirt pod based on pod IP (by default).
+    HOSTNAME_FQDN=$(hostname --fqdn)
 
+    # Script to create certs for each libvirt pod based on pod IP (by default).
     cat <<EOF | kubectl apply -f -
     apiVersion: cert-manager.io/v1
     kind: Certificate
@@ -298,6 +299,7 @@ scripts:
       - server auth
       dnsNames:
       - ${HOSTNAME}
+      - ${HOSTNAME_FQDN}
       ipAddresses:
       - ${POD_IP}
       issuerRef:

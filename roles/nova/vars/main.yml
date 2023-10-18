@@ -60,6 +60,9 @@ _nova_helm_values:
         backend: oslo_cache.memcache_pool
       cinder:
         catalog_info: volumev3::internalURL
+        os_region_name: "{{ openstack_helm_endpoints_nova_region_name }}"
+        username: "nova-{{ openstack_helm_endpoints_nova_region_name }}"
+        password: "{{ openstack_helm_endpoints_nova_keystone_password }}"
       conductor:
         workers: 8
       compute:
@@ -119,3 +122,7 @@ _nova_helm_values:
     service_placement: false
     # NOTE(mnaser): Enable this once we've got Ironic deployed.
     statefulset_compute_ironic: false
+
+_nova_novnc_ingress_annotations:
+  nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+  nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
