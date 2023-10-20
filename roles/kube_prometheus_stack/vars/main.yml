@@ -1,10 +1,59 @@
 _kube_prometheus_stack_helm_values:
   defaultRules:
+    rules:
+      alertmanager: false
+      etcd: true
+      configReloaders: true
+      general: true
+      k8s: false
+      kubeApiserverAvailability: false
+      kubeApiserverBurnrate: false
+      kubeApiserverHistogram: false
+      kubeApiserverSlos: false
+      kubeControllerManager: false
+      kubelet: false
+      kubeProxy: false
+      kubePrometheusGeneral: true
+      kubePrometheusNodeRecording: true
+      kubernetesApps: false
+      kubernetesResources: false
+      kubernetesStorage: false
+      kubernetesSystem: false
+      kubeSchedulerAlerting: false
+      kubeSchedulerRecording: false
+      kubeStateMetrics: true
+      network: true
+      node: false
+      nodeExporterAlerting: false
+      nodeExporterRecording: false
+      prometheus: true
+      prometheusOperator: true
+      windows: false
     disabled:
       # NOTE(mnaser): https://github.com/prometheus-community/helm-charts/issues/144
       #               https://github.com/openshift/cluster-monitoring-operator/issues/248
       etcdHighNumberOfFailedGRPCRequests: true
   alertmanager:
+    config:
+      route:
+        group_by:
+          - alertname
+          - severity
+        receiver: notifier
+        routes:
+          - receiver: "null"
+            matchers:
+              - alertname = "InfoInhibitor"
+          - receiver: heartbeat
+            group_wait: 0s
+            group_interval: 30s
+            repeat_interval: 15s
+            matchers:
+              - alertname = "Watchdog"
+      receivers:
+        - name: "null"
+        - name: notifier
+        - name: heartbeat
     serviceMonitor:
       relabelings: &relabelings_instance_to_pod_name
         - &relabeling_set_pod_name_to_instance
@@ -16,7 +65,8 @@ _kube_prometheus_stack_helm_values:
           regex: ^(container|endpoint|namespace|pod|node|service)$
     alertmanagerSpec:
       image:
-        repository: "{{ atmosphere_images['alertmanager'] | vexxhost.kubernetes.docker_image('name') }}"
+        registry: "{{ atmosphere_images['alertmanager'] | vexxhost.kubernetes.docker_image('domain') }}"
+        repository: "{{ atmosphere_images['alertmanager'] | vexxhost.kubernetes.docker_image('path') }}"
         tag: "{{ atmosphere_images['alertmanager'] | vexxhost.kubernetes.docker_image('tag') }}"
       storage:
         volumeClaimTemplate:
@@ -31,6 +81,41 @@ _kube_prometheus_stack_helm_values:
         openstack-control-plane: enabled
   grafana:
     adminPassword: "{{ kube_prometheus_stack_grafana_admin_password }}"
+    extraSecretMounts:
+      - name: auth-generic-oauth-secret-mount
+        secretName: grafana-auth-generic-oauth-secret
+        defaultMode: "0440"
+        mountPath: /etc/secrets/auth_generic_oauth
+        readOnly: true
+    grafana.ini:
+      server:
+        root_url: https://{{ kube_prometheus_stack_grafana_host }}
+      auth:
+        oauth_skip_org_role_update_sync: false
+        disable_login_form: true
+        # NOTE(mnaser): We're not able to redirect instantly to Grafana due to the fact that it doesn't support sending
+        #               the `id_token_hint`.
+        #
+        #               See: https://github.com/grafana/grafana/issues/24643
+        signout_redirect_url: "{{ grafana_keycloak_server_url }}/realms/{{ grafana_keycloak_realm }}/protocol/openid-connect/logout"
+      auth.generic_oauth:
+        enabled: true
+        name: Atmosphere
+        allow_sign_up: true
+        client_id: "$__file{/etc/secrets/auth_generic_oauth/client_id}"
+        client_secret: "$__file{/etc/secrets/auth_generic_oauth/client_secret}"
+        scopes: openid email profile offline_access roles
+        email_attribute_path: email
+        login_attribute_path: username
+        name_attribute_path: full_name
+        auth_url: "{{ grafana_keycloak_server_url }}/realms/{{ grafana_keycloak_realm }}/protocol/openid-connect/auth"
+        token_url: "{{ grafana_keycloak_server_url }}/realms/{{ grafana_keycloak_realm }}/protocol/openid-connect/token"
+        api_url: "{{ grafana_keycloak_server_url }}/realms/{{ grafana_keycloak_realm }}/protocol/openid-connect/userinfo"
+        tls_skip_verify_insecure: true
+        # yamllint disable-line rule:line-length
+        role_attribute_path: "contains(resource_access.grafana.roles[*], 'admin') && 'Admin' || contains(resource_access.grafana.roles[*], 'editor') && 'Editor' || contains(resource_access.grafana.roles[*], 'viewer') && 'Viewer'"
+        role_attribute_strict: true
+        skip_org_role_sync: false
     image:
       repository: "{{ atmosphere_images['grafana'] | vexxhost.kubernetes.docker_image('name') }}"
       tag: "{{ atmosphere_images['grafana'] | vexxhost.kubernetes.docker_image('tag') }}"
@@ -133,7 +218,8 @@ _kube_prometheus_stack_helm_values:
       relabelings: *relabelings_instance_to_node_name
   kube-state-metrics:
     image:
-      repository: "{{ atmosphere_images['kube_state_metrics'] | vexxhost.kubernetes.docker_image('name') }}"
+      registry: "{{ atmosphere_images['kube_state_metrics'] | vexxhost.kubernetes.docker_image('domain') }}"
+      repository: "{{ atmosphere_images['kube_state_metrics'] | vexxhost.kubernetes.docker_image('path') }}"
       tag: "{{ atmosphere_images['kube_state_metrics'] | vexxhost.kubernetes.docker_image('tag') }}"
     prometheus:
       monitor:
@@ -144,7 +230,8 @@ _kube_prometheus_stack_helm_values:
       relabelings: *relabelings_instance_to_pod_name
     prometheusSpec:
       image:
-        repository: "{{ atmosphere_images['prometheus'] | vexxhost.kubernetes.docker_image('name') }}"
+        registry: "{{ atmosphere_images['prometheus'] | vexxhost.kubernetes.docker_image('domain') }}"
+        repository: "{{ atmosphere_images['prometheus'] | vexxhost.kubernetes.docker_image('path') }}"
         tag: "{{ atmosphere_images['prometheus'] | vexxhost.kubernetes.docker_image('tag') }}"
       nodeSelector: *node_selector
       secrets:
@@ -227,14 +314,6 @@ _kube_prometheus_stack_helm_values:
                 targetLabel: instance
             scrapeTimeout: 30s
     additionalPodMonitors:
-      - name: ethtool-exporter
-        jobLabel: job
-        selector:
-          matchLabels:
-            application: ethtool-exporter
-        podMetricsEndpoints:
-          - port: metrics
-            relabelings: *relabelings_instance_to_node_name
       - name: ipmi-exporter
         jobLabel: job
         selector:
@@ -271,22 +350,26 @@ _kube_prometheus_stack_helm_values:
     admissionWebhooks:
       patch:
         image:
-          repository: "{{ atmosphere_images['prometheus_operator_kube_webhook_certgen'] | vexxhost.kubernetes.docker_image('name') }}"
+          registry: "{{ atmosphere_images['prometheus_operator_kube_webhook_certgen'] | vexxhost.kubernetes.docker_image('domain') }}"
+          repository: "{{ atmosphere_images['prometheus_operator_kube_webhook_certgen'] | vexxhost.kubernetes.docker_image('path') }}"
           tag: "{{ atmosphere_images['prometheus_operator_kube_webhook_certgen'] | vexxhost.kubernetes.docker_image('tag') }}"
         nodeSelector: *node_selector
     serviceMonitor:
       relabelings: *relabelings_instance_to_pod_name
     nodeSelector: *node_selector
     image:
-      repository: "{{ atmosphere_images['prometheus_operator'] | vexxhost.kubernetes.docker_image('name') }}"
+      registry: "{{ atmosphere_images['prometheus_operator'] | vexxhost.kubernetes.docker_image('domain') }}"
+      repository: "{{ atmosphere_images['prometheus_operator'] | vexxhost.kubernetes.docker_image('path') }}"
       tag: "{{ atmosphere_images['prometheus_operator'] | vexxhost.kubernetes.docker_image('tag') }}"
     prometheusConfigReloader:
       image:
-        repository: "{{ atmosphere_images['prometheus_config_reloader'] | vexxhost.kubernetes.docker_image('name') }}"
+        registry: "{{ atmosphere_images['prometheus_config_reloader'] | vexxhost.kubernetes.docker_image('domain') }}"
+        repository: "{{ atmosphere_images['prometheus_config_reloader'] | vexxhost.kubernetes.docker_image('path') }}"
         tag: "{{ atmosphere_images['prometheus_config_reloader'] | vexxhost.kubernetes.docker_image('tag') }}"
   prometheus-node-exporter:
     image:
-      repository: "{{ atmosphere_images['prometheus_node_exporter'] | vexxhost.kubernetes.docker_image('name') }}"
+      registry: "{{ atmosphere_images['prometheus_node_exporter'] | vexxhost.kubernetes.docker_image('domain') }}"
+      repository: "{{ atmosphere_images['prometheus_node_exporter'] | vexxhost.kubernetes.docker_image('path') }}"
       tag: "{{ atmosphere_images['prometheus_node_exporter'] | vexxhost.kubernetes.docker_image('tag') }}"
     extraArgs:
       - --collector.diskstats.ignored-devices=^(ram|loop|nbd|fd|(h|s|v|xv)d[a-z]|nvme\\d+n\\d+p)\\d+$

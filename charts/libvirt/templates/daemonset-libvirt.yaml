@@ -32,6 +32,10 @@ exec:
 {{- $configMapName := index . 1 }}
 {{- $serviceAccountName := index . 2 }}
 {{- $envAll := index . 3 }}
+{{- $ssl_enabled := false }}
+{{- if eq $envAll.Values.conf.libvirt.listen_tls "1" }}
+{{- $ssl_enabled = true }}
+{{- end }}
 {{- with $envAll }}
 
 {{- $mounts_libvirt := .Values.pod.mounts.libvirt.libvirt }}
@@ -65,6 +69,9 @@ spec:
       serviceAccountName: {{ $serviceAccountName }}
       nodeSelector:
         {{ .Values.labels.agent.libvirt.node_selector_key }}: {{ .Values.labels.agent.libvirt.node_selector_value }}
+{{ if $envAll.Values.pod.tolerations.libvirt.enabled }}
+{{ tuple $envAll "libvirt" | include "helm-toolkit.snippets.kubernetes_tolerations" | indent 6 }}
+{{ end }}
       hostNetwork: true
       hostPID: true
       hostIPC: true
@@ -72,7 +79,7 @@ spec:
       initContainers:
 {{ tuple $envAll "pod_dependency" $mounts_libvirt_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
 {{ dict "envAll" $envAll | include "helm-toolkit.snippets.kubernetes_apparmor_loader_init_container" | indent 8 }}
-{{- if eq .Values.conf.libvirt.listen_tls "1" }}
+{{- if $ssl_enabled }}
         - name: cert-init-api
 {{ tuple $envAll "kubectl" | include "helm-toolkit.snippets.image" | indent 10 }}
 {{ dict "envAll" $envAll "application" "libvirt" "container" "cert_init" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
@@ -81,6 +88,10 @@ spec:
           env:
             - name: TYPE
               value: api
+            - name: ISSUER_KIND
+              value: {{ .Values.issuers.libvirt.kind }}
+            - name: ISSUER_NAME
+              value: {{ .Values.issuers.libvirt.name }}
             - name: POD_UID
               valueFrom:
                 fieldRef:
@@ -114,6 +125,10 @@ spec:
           env:
             - name: TYPE
               value: vnc
+            - name: ISSUER_KIND
+              value: {{ .Values.issuers.vencrypt.kind }}
+            - name: ISSUER_NAME
+              value: {{ .Values.issuers.vencrypt.name }}
             - name: POD_UID
               valueFrom:
                 fieldRef:
@@ -194,8 +209,8 @@ spec:
 {{ tuple $envAll "libvirt" | include "helm-toolkit.snippets.image" | indent 10 }}
 {{ tuple $envAll $envAll.Values.pod.resources.libvirt | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
 {{ dict "envAll" $envAll "application" "libvirt" "container" "libvirt" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
-          {{- if .Values.conf.ceph.enabled }}
           env:
+          {{- if .Values.conf.ceph.enabled }}
             - name: CEPH_CINDER_USER
               value: "{{ .Values.conf.ceph.cinder.user }}"
             {{- if .Values.conf.ceph.cinder.keyring }}
@@ -204,13 +219,13 @@ spec:
             {{ end }}
             - name: LIBVIRT_CEPH_CINDER_SECRET_UUID
               value: "{{ .Values.conf.ceph.cinder.secret_uuid }}"
-            {{- if .Values.conf.ceph.cinder.external_ceph.enabled }}
+          {{ end }}
+          {{- if .Values.conf.ceph.cinder.external_ceph.enabled }}
             - name: EXTERNAL_CEPH_CINDER_USER
               value: "{{ .Values.conf.ceph.cinder.external_ceph.user }}"
             - name: LIBVIRT_EXTERNAL_CEPH_CINDER_SECRET_UUID
               value: "{{ .Values.conf.ceph.cinder.external_ceph.secret_uuid }}"
             {{ end }}
-          {{ end }}
 {{ dict "envAll" . "component" "libvirt" "container" "libvirt" "type" "readiness" "probeTemplate" (include "libvirtReadinessProbeTemplate" . | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
 {{ dict "envAll" . "component" "libvirt" "container" "libvirt" "type" "liveness" "probeTemplate" (include "libvirtLivenessProbeTemplate" . | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
           command:
@@ -224,6 +239,10 @@ spec:
                   - |-
                     kill $(cat /var/run/libvirtd.pid)
           volumeMounts:
+{{- if $ssl_enabled }}
+            - name: etc-pki-qemu
+              mountPath: /etc/pki/qemu
+{{- end }}
             - name: pod-tmp
               mountPath: /tmp
             - name: libvirt-bin
@@ -240,10 +259,6 @@ spec:
               readOnly: true
             - name: etc-libvirt-qemu
               mountPath: /etc/libvirt/qemu
-{{- if eq .Values.conf.libvirt.listen_tls "1" }}
-            - name: etc-pki-qemu
-              mountPath: /etc/pki/qemu
-{{- end }}
             - mountPath: /lib/modules
               name: libmodules
               readOnly: true
@@ -280,15 +295,44 @@ spec:
               subPath: key
               readOnly: true
             {{- end }}
+            {{- end }}
             {{- if .Values.conf.ceph.cinder.external_ceph.enabled }}
             - name: external-ceph-keyring
               mountPath: /tmp/external-ceph-client-keyring
               subPath: key
               readOnly: true
             {{- end }}
-            {{- end }}
 {{ if $mounts_libvirt.volumeMounts }}{{ toYaml $mounts_libvirt.volumeMounts | indent 12 }}{{ end }}
+        {{- if .Values.pod.sidecars.libvirt_exporter }}
+        - name: libvirt-exporter
+{{ tuple $envAll "libvirt_exporter" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.libvirt_exporter | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "libvirt" "container" "libvirt_exporter" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          ports:
+            - name: metrics
+              protocol: TCP
+              containerPort: {{ tuple "libvirt_exporter" "direct" "metrics" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+          livenessProbe:
+            httpGet:
+              path: /
+              port: metrics
+          readinessProbe:
+            httpGet:
+              path: /
+              port: metrics
+          volumeMounts:
+            - name: run
+              mountPath: /run
+              {{- if or ( gt .Capabilities.KubeVersion.Major "1" ) ( ge .Capabilities.KubeVersion.Minor "10" ) }}
+              mountPropagation: Bidirectional
+              {{- end }}
+        {{- end }}
       volumes:
+{{- if $ssl_enabled }}
+        - name: etc-pki-qemu
+          hostPath:
+            path: /etc/pki/qemu
+{{- end }}
         - name: pod-tmp
           emptyDir: {}
         - name: libvirt-bin
@@ -312,11 +356,11 @@ spec:
           secret:
             secretName: {{ .Values.ceph_client.user_secret_name }}
         {{ end }}
+        {{ end }}
         {{- if .Values.conf.ceph.cinder.external_ceph.enabled }}
         - name: external-ceph-keyring
           secret:
             secretName: {{ .Values.conf.ceph.cinder.external_ceph.user_secret_name }}
-        {{ end }}
         {{ end }}
         - name: libmodules
           hostPath:
@@ -345,11 +389,6 @@ spec:
         - name: etc-libvirt-qemu
           hostPath:
             path: /etc/libvirt/qemu
-{{- if eq .Values.conf.libvirt.listen_tls "1" }}
-        - name: etc-pki-qemu
-          hostPath:
-            path: /etc/pki/qemu
-{{- end }}
 {{ dict "envAll" $envAll "component" "libvirt" "requireSys" true | include "helm-toolkit.snippets.kubernetes_apparmor_volumes" | indent 8 }}
 {{ if $mounts_libvirt.volumes }}{{ toYaml $mounts_libvirt.volumes | indent 8 }}{{ end }}
 {{- end }}

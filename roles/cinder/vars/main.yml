@@ -30,14 +30,11 @@ _cinder_helm_values:
         volume_usage_audit_period: hour
         volume_name_template: volume-%s
         image_conversion_disable: true
+        osapi_volume_workers: 8
       barbican:
         barbican_endpoint_type: internal
       cors:
         allowed_origins: "*"
-      keystone_authtoken:
-        # NOTE(okozachenko1203): We can remove it once the following is merged:
-        #                        https://review.opendev.org/883066
-        service_type: volumev3
       oslo_messaging_notifications:
         driver: noop
   manifests:

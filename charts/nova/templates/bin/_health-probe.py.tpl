@@ -34,6 +34,7 @@ Usage example for Nova Compute:
 import json
 import os
 import psutil
+import re
 import signal
 import socket
 import sys
@@ -65,9 +66,14 @@ def check_service_status(transport):
             server=_get_hostname(service_queue_name, use_fqdn),
             namespace='baseapi',
             version="1.1")
-        client = oslo_messaging.RPCClient(transport, target,
-                                          timeout=rpc_timeout,
-                                          retry=rpc_retries)
+        if hasattr(oslo_messaging, 'get_rpc_client'):
+            client = oslo_messaging.get_rpc_client(transport, target,
+                                                   timeout=rpc_timeout,
+                                                   retry=rpc_retries)
+        else:
+            client = oslo_messaging.RPCClient(transport, target,
+                                              timeout=rpc_timeout,
+                                              retry=rpc_retries)
         client.call(context.RequestContext(),
                     'ping',
                     arg=None)
@@ -137,7 +143,7 @@ def configured_port_in_conf():
     try:
         with open(sys.argv[2]) as conf_file:
             for line in conf_file:
-                if line.startswith("connection ="):
+                if re.match(r'^\s*connection\s*=', line):
                     service = line.split(':', 3)[3].split('/')[1].rstrip('\n')
                     if service == "nova":
                         database_ports.add(
@@ -199,7 +205,7 @@ def test_rpc_liveness():
     log.logging.basicConfig(level=log.{{ .Values.health_probe.logging.level }})
 
     try:
-        transport = oslo_messaging.get_notification_transport(cfg.CONF)
+        transport = oslo_messaging.get_rpc_transport(cfg.CONF)
     except Exception as ex:
         message = getattr(ex, "message", str(ex))
         sys.stderr.write("Message bus driver load error: %s" % message)
@@ -238,16 +244,19 @@ if __name__ == "__main__":
     data = {}
     if os.path.isfile(pidfile):
         with open(pidfile,'r') as f:
-            data = json.load(f)
-        if check_pid_running(data['pid']):
-            if data['exit_count'] > 1:
-                # Third time in, kill the previous process
-                os.kill(int(data['pid']), signal.SIGTERM)
-            else:
-                data['exit_count'] = data['exit_count'] + 1
-                with open(pidfile, 'w') as f:
-                    json.dump(data, f)
-                sys.exit(0)
+            file_content = f.read().strip()
+            if file_content:
+                data = json.loads(file_content)
+
+    if 'pid' in data and check_pid_running(data['pid']):
+        if 'exit_count' in data and data['exit_count'] > 1:
+            # Third time in, kill the previous process
+            os.kill(int(data['pid']), signal.SIGTERM)
+        else:
+            data['exit_count'] = data.get('exit_count', 0) + 1
+            with open(pidfile, 'w') as f:
+                json.dump(data, f)
+            sys.exit(0)
     data['pid'] = os.getpid()
     data['exit_count'] = 0
     with open(pidfile, 'w') as f:

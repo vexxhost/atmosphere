@@ -19,13 +19,14 @@ galaxy_info:
   min_ansible_version: 5.5.0
   standalone: false
   platforms:
+    - name: EL
+      versions:
+        - "8"
+        - "9"
     - name: Ubuntu
       versions:
         - focal
+        - jammy
 
 dependencies:
   - role: defaults
-  - role: vexxhost.kubernetes.upload_helm_chart
-    vars:
-      upload_helm_chart_src: "{{ cert_manager_helm_chart_path }}"
-      upload_helm_chart_dest: "{{ cert_manager_helm_chart_ref }}"

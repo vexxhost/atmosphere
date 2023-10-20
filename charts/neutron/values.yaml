@@ -158,7 +158,9 @@ dependencies:
       sriov: {}
       l2gateway: {}
       bagpipe_bgp: {}
-      ovn: {}
+      ovn:
+        server:
+          pod: null
       openvswitch:
         dhcp:
           pod:
@@ -291,6 +293,8 @@ dependencies:
       services:
         - endpoint: internal
           service: compute_metadata
+        - endpoint: internal
+          service: network
     ovs_agent:
       jobs:
         - neutron-rabbit-init
@@ -416,6 +420,7 @@ pod:
         readiness:
           enabled: true
           params:
+            timeoutSeconds: 10
         liveness:
           enabled: true
           params:
@@ -458,10 +463,14 @@ pod:
         readiness:
           enabled: true
           params:
+            periodSeconds: 15
+            timeoutSeconds: 10
         liveness:
           enabled: true
           params:
             initialDelaySeconds: 60
+            periodSeconds: 15
+            timeoutSeconds: 10
   security_context:
     neutron_dhcp_agent:
       pod:
@@ -1178,7 +1187,43 @@ conf:
           sla:
             failure_rate:
               max: 0
-  paste: {}
+  paste:
+    composite:neutron:
+      use: egg:Paste#urlmap
+      /: neutronversions_composite
+      /v2.0: neutronapi_v2_0
+    composite:neutronapi_v2_0:
+      use: call:neutron.auth:pipeline_factory
+      noauth: cors http_proxy_to_wsgi request_id catch_errors extensions neutronapiapp_v2_0
+      keystone: cors http_proxy_to_wsgi request_id catch_errors authtoken audit keystonecontext extensions neutronapiapp_v2_0
+    composite:neutronversions_composite:
+      use: call:neutron.auth:pipeline_factory
+      noauth: cors http_proxy_to_wsgi neutronversions
+      keystone: cors http_proxy_to_wsgi neutronversions
+    filter:request_id:
+      paste.filter_factory: oslo_middleware:RequestId.factory
+    filter:catch_errors:
+      paste.filter_factory: oslo_middleware:CatchErrors.factory
+    filter:cors:
+      paste.filter_factory: oslo_middleware.cors:filter_factory
+      oslo_config_project: neutron
+    filter:http_proxy_to_wsgi:
+      paste.filter_factory: oslo_middleware.http_proxy_to_wsgi:HTTPProxyToWSGI.factory
+    filter:keystonecontext:
+      paste.filter_factory: neutron.auth:NeutronKeystoneContext.factory
+    filter:authtoken:
+      paste.filter_factory: keystonemiddleware.auth_token:filter_factory
+    filter:audit:
+      paste.filter_factory: keystonemiddleware.audit:filter_factory
+      audit_map_file: /etc/neutron/api_audit_map.conf
+    filter:extensions:
+      paste.filter_factory: neutron.api.extensions:plugin_aware_extension_middleware_factory
+    app:neutronversions:
+      paste.app_factory: neutron.pecan_wsgi.app:versions_factory
+    app:neutronapiapp_v2_0:
+      paste.app_factory: neutron.api.v2.router:APIRouter.factory
+    filter:osprofiler:
+      paste.filter_factory: osprofiler.web:WsgiMiddleware.factory
   policy: {}
   api_audit_map:
     DEFAULT:
@@ -1756,7 +1801,6 @@ conf:
     oslo_policy:
       policy_file: /etc/neutron/policy.yaml
     ovn:
-      enable_distributed_floating_ip: true
       ovn_metadata_enabled: true
     nova:
       auth_type: password
@@ -1774,6 +1818,8 @@ conf:
     ironic:
       endpoint_type: internal
     keystone_authtoken:
+      service_token_roles: service
+      service_token_roles_required: true
       memcache_security_strategy: ENCRYPT
       auth_type: password
       auth_version: v3

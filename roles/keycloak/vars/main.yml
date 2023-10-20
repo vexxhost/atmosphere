@@ -1,0 +1,70 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+_keycloak_helm_values:
+  # Note(okozachenko1203): Mysql vendor is not supported by bitnami helm chart. As a workaround,
+  #                        we have to define jdbc connection string explicitly along side
+  #                        `externalDatabase` helm values.
+  extraEnvVars:
+    - name: KC_PROXY
+      value: edge
+    - name: KC_DB
+      value: mysql
+    - name: KC_DB_URL
+      value: "jdbc:mysql://{{ openstack_helm_endpoints.oslo_db.hosts.default }}.openstack:3306/{{ keycloak_database_name }}"
+    - name: KC_DB_USERNAME
+      value: "{{ keycloak_database_username }}"
+    - name: KC_DB_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          key: db-password
+          name: keycloak-externaldb
+  command:
+    - /opt/keycloak/bin/kc.sh
+    - --verbose
+    - start
+    - --auto-build
+    - --health-enabled=true
+    - --http-enabled=true
+    - --http-port=8080
+    - --hostname-strict=false
+    - --spi-events-listener-jboss-logging-success-level=info
+    - --spi-events-listener-jboss-logging-error-level=warn
+    - --transaction-xa-enabled=false
+  auth:
+    adminPassword: "{{ keycloak_admin_password }}"
+    adminUser: "{{ keycloak_admin_username }}"
+  externalDatabase:
+    host: "{{ openstack_helm_endpoints.oslo_db.hosts.default }}.openstack"
+    port: 3306
+    database: "{{ keycloak_database_name }}"
+    user: "{{ keycloak_database_username }}"
+    password: "{{ keycloak_database_password }}"
+  image:
+    registry: "{{ atmosphere_images['keycloak'] | vexxhost.kubernetes.docker_image('domain') }}"
+    repository: "{{ atmosphere_images['keycloak'] | vexxhost.kubernetes.docker_image('path') }}"
+    tag: "{{ atmosphere_images['keycloak'] | vexxhost.kubernetes.docker_image('tag') }}"
+  postgresql:
+    enabled: false
+  production: true
+  proxy: edge
+  # Note(okozachenko1203): It takes a bit long time for db migration with mysql vendor.
+  readinessProbe:
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    timeoutSeconds: 1
+    failureThreshold: 6
+    successThreshold: 1
+  nodeSelector:
+    openstack-control-plane: enabled

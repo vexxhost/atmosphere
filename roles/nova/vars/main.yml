@@ -60,6 +60,9 @@ _nova_helm_values:
         backend: oslo_cache.memcache_pool
       cinder:
         catalog_info: volumev3::internalURL
+        os_region_name: "{{ openstack_helm_endpoints_nova_region_name }}"
+        username: "nova-{{ openstack_helm_endpoints_nova_region_name }}"
+        password: "{{ openstack_helm_endpoints_nova_keystone_password }}"
       conductor:
         workers: 8
       compute:
@@ -81,10 +84,6 @@ _nova_helm_values:
         max_instances_per_host: 200
       glance:
         enable_rbd_download: true
-      keystone_authtoken:
-        # NOTE(okozachenko1203): We can remove it once the following is merged:
-        #                        https://review.opendev.org/883066
-        service_type: compute
       libvirt:
         live_migration_scheme: tls
         # TODO(mnaser): We should enable this once we figure out how to "inject"
@@ -123,3 +122,7 @@ _nova_helm_values:
     service_placement: false
     # NOTE(mnaser): Enable this once we've got Ironic deployed.
     statefulset_compute_ironic: false
+
+_nova_novnc_ingress_annotations:
+  nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+  nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"

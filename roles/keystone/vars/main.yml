@@ -17,38 +17,16 @@ _keystone_helm_values:
   images:
     tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('keystone') }}"
   pod:
-    #     mounts = {
-    #       keystone_api = {
-    #         keystone_api = {
-    #           volumeMounts = [
-    #             {
-    #               name      = kubernetes_config_map.keystone_ldap_ca.metadata[0].name
-    #               mountPath = "/etc/keystone/ldap"
-    #             },
-    #             {
-    #               name      = kubernetes_config_map.keystone_openid_connect_metadata.metadata[0].name
-    #               mountPath = "/var/lib/apache2/oidc"
-    #             }
-    #           ],
-    #           volumes = [
-    #             {
-    #               name = kubernetes_config_map.keystone_ldap_ca.metadata[0].name
-    #               configMap = {
-    #                 name = kubernetes_config_map.keystone_ldap_ca.metadata[0].name
-    #               }
-    #             },
-    #             {
-    #               name = kubernetes_config_map.keystone_openid_connect_metadata.metadata[0].name
-    #               configMap = {
-    #                 name = kubernetes_config_map.keystone_openid_connect_metadata.metadata[0].name
-    #               }
-    #             }
-    #           ]
-    #         }
-    #       }
-    #     },
     replicas:
       api: 3
+    mounts:
+      keystone_api:
+        keystone_api:
+          volumeMounts: "{{ keystone_domains | vexxhost.atmosphere.keystone_domains_to_mounts }}"
+          volumes:
+            - name: keystone-openid-metadata
+              configMap:
+                name: keystone-openid-metadata
   conf:
     keystone:
       DEFAULT:
@@ -57,15 +35,58 @@ _keystone_helm_values:
         methods: password,token,openid,application_credential
       cors:
         allowed_origins: "*"
+      openid:
+        remote_id_attribute: HTTP_OIDC_ISS
       federation:
-        assertion_prefix: OIDC-
-        remote_id_attribute: OIDC-iss
         # TODO(mnaser): Lookup using openstack_helm_endpoints
         trusted_dashboard: "https://{{ openstack_helm_endpoints_horizon_api_host }}/auth/websso/"
-      identity:
-        domain_configurations_from_database: true
       oslo_messaging_notifications:
         driver: noop
+    wsgi_keystone: |
+      LoadModule headers_module /usr/lib/apache2/modules/mod_headers.so
+      Listen 0.0.0.0:5000
+      TransferLog /dev/stdout
+      ErrorLog /dev/stderr
+      <VirtualHost *:5000>
+        # WSGI
+        WSGIDaemonProcess keystone-public processes=4 threads=1 user=keystone group=keystone display-name=%{GROUP}
+        WSGIProcessGroup keystone-public
+        WSGIScriptAlias / /var/www/cgi-bin/keystone/keystone-wsgi-public
+        WSGIApplicationGroup %{GLOBAL}
+        WSGIPassAuthorization On
+        # NOTE(mnaser): This is to by-pass large header limits for large tokens
+        LimitRequestFieldSize 16384
+        # OIDC
+        OIDCClaimPrefix "OIDC-"
+        OIDCMetadataDir /var/lib/apache2/oidc
+        OIDCSSLValidateServer "{{ keystone_oidc_ssl_validate_server }}"
+        OIDCCryptoPassphrase {{ keystone_oidc_crypto_passphrase }}
+        OIDCRedirectURI {{ keystone_oidc_redirect_uri }}
+        OIDCRedirectURLsAllowed {{ keystone_oidc_redirect_urls_allowed | join(' ') }}
+        # NOTE(mnaser): These are Atmosphere specific settings.
+        OIDCSessionType client-cookie:store_id_token
+        OIDCXForwardedHeaders X-Forwarded-Host X-Forwarded-Proto
+        <Location /v3/auth/OS-FEDERATION/identity_providers/redirect>
+          AuthType openid-connect
+          Require valid-user
+        </Location>
+        <Location /v3/auth/OS-FEDERATION/websso/openid>
+          Require valid-user
+          AuthType openid-connect
+        </Location>
+        {% for domain in keystone_domains %}
+        <Location /v3/OS-FEDERATION/identity_providers/{{ domain.name }}/protocols/openid/auth>
+          Require valid-user
+          AuthType oauth20
+        </Location>
+        <Location /v3/auth/OS-FEDERATION/identity_providers/{{ domain.name }}/protocols/openid/websso>
+          Require valid-user
+          AuthType openid-connect
+          OIDCDiscoverURL {{ keystone_oidc_redirect_uri }}?iss={{ domain | vexxhost.atmosphere.urlencoded_issuer_from_domain }}
+        </Location>
+        {% endfor %}
+      </VirtualHost>
+    ks_domains: "{{ keystone_domains | vexxhost.atmosphere.to_ks_domains }}"
   manifests:
     job_credential_cleanup: false
     ingress_api: false

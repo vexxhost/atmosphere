@@ -28,7 +28,7 @@ data:
 {{ tuple "bin/_libvirt.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
 {{- if or (eq .Values.conf.libvirt.listen_tls "1") (eq .Values.conf.qemu.vnc_tls "1") }}
   cert-init.sh: |
-{{ tuple "bin/_cert-init.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+{{ tpl .Values.scripts.cert_init_sh . | indent 4 }}
 {{- end }}
 {{- if .Values.conf.ceph.enabled }}
   ceph-keyring.sh: |

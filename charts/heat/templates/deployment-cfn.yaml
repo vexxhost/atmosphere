@@ -89,7 +89,7 @@ spec:
               scheme: {{ tuple "cloudformation" "service" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_scheme_lookup" | upper }}
               path: /
               port: {{ tuple "cloudformation" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
-            initialDelaySeconds: 30
+            initialDelaySeconds: 10
           volumeMounts:
             - name: pod-tmp
               mountPath: /tmp
@@ -102,6 +102,10 @@ spec:
               subPath: heat-cfn.sh
               readOnly: true
             - name: heat-etc
+              mountPath: /etc/heat/heat-api-cfn-uwsgi.ini
+              subPath: heat-api-cfn-uwsgi.ini
+              readOnly: true
+            - name: heat-etc
               mountPath: /etc/heat/heat.conf
               subPath: heat.conf
               readOnly: true
@@ -111,12 +115,10 @@ spec:
               subPath: {{ base .Values.conf.heat.DEFAULT.log_config_append }}
               readOnly: true
             {{ end }}
-            {{- if .Values.conf.paste }}
             - name: heat-etc
               mountPath: /etc/heat/api-paste.ini
               subPath: api-paste.ini
               readOnly: true
-            {{- end }}
             - name: heat-etc
               mountPath: /etc/heat/policy.yaml
               subPath: policy.yaml

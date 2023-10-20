@@ -75,7 +75,7 @@ spec:
               scheme: HTTP
               path: /
               port: {{ tuple "container-infra" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
-            initialDelaySeconds: 15
+            initialDelaySeconds: 5
             periodSeconds: 10
           volumeMounts:
             - name: pod-tmp
@@ -92,18 +92,20 @@ spec:
               mountPath: /etc/magnum/magnum.conf
               subPath: magnum.conf
               readOnly: true
+            - name: magnum-etc
+              mountPath: /etc/magnum/magnum-api-uwsgi.ini
+              subPath: magnum-api-uwsgi.ini
+              readOnly: true
             {{- if .Values.conf.magnum.DEFAULT.log_config_append }}
             - name: magnum-etc
               mountPath: {{ .Values.conf.magnum.DEFAULT.log_config_append }}
               subPath: {{ base .Values.conf.magnum.DEFAULT.log_config_append }}
               readOnly: true
             {{- end }}
-            {{- if .Values.conf.paste }}
             - name: magnum-etc
               mountPath: /etc/magnum/api-paste.ini
               subPath: api-paste.ini
               readOnly: true
-            {{- end }}
             - name: magnum-etc
               mountPath: /etc/magnum/policy.yaml
               subPath: policy.yaml

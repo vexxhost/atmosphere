@@ -51,7 +51,23 @@ images:
       - image_repo_sync
 
 conf:
-  paste: {}
+  paste:
+    pipeline:main:
+      pipeline: cors healthcheck request_id authtoken api_v1
+    app:api_v1:
+      paste.app_factory: magnum.api.app:app_factory
+    filter:authtoken:
+      acl_public_routes: /, /v1
+      paste.filter_factory: magnum.api.middleware.auth_token:AuthTokenMiddleware.factory
+    filter:request_id:
+      paste.filter_factory: oslo_middleware:RequestId.factory
+    filter:cors:
+      paste.filter_factory: oslo_middleware.cors:filter_factory
+      oslo_config_project: magnum
+    filter:healthcheck:
+      paste.filter_factory: oslo_middleware:Healthcheck.factory
+      backends: disable_by_file
+      disable_by_file_path: /etc/magnum/healthcheck_disable
   policy: {}
   magnum:
     DEFAULT:
@@ -141,6 +157,22 @@ conf:
     formatter_default:
       format: "%(message)s"
       datefmt: "%Y-%m-%d %H:%M:%S"
+  magnum_api_uwsgi:
+    uwsgi:
+      add-header: "Connection: close"
+      buffer-size: 65535
+      die-on-term: true
+      enable-threads: true
+      exit-on-reload: false
+      hook-master-start: unix_signal:15 gracefully_kill_them_all
+      lazy-apps: true
+      log-x-forwarded-for: true
+      master: true
+      procname-prefix-spaced: "magnum-api:"
+      route-user-agent: '^kube-probe.* donotlog:'
+      thunder-lock: true
+      worker-reload-mercy: 80
+      wsgi-file: /var/lib/openstack/bin/magnum-api-wsgi
 
 network:
   api:

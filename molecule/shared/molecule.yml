@@ -1,0 +1,158 @@
+# Copyright (c) 2023 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+  - name: ${MOLECULE_SCENARIO_NAME}
+    image: geerlingguy/docker-${MOLECULE_DISTRO:-ubuntu2004}-ansible:latest
+    command: ${MOLECULE_DOCKER_COMMAND:-""}
+    privileged: true
+    cgroupns_mode: host
+    pre_build_image: true
+    purge_networks: true
+    dns_servers:
+      - 1.1.1.1
+    docker_networks:
+      - name: mgmt
+        ipam_config:
+          - subnet: 10.96.240.0/24
+            gateway: 10.96.240.1
+      - name: public
+        ipam_config:
+          - subnet: 10.96.250.0/24
+            gateway: 10.96.250.1
+    networks:
+      - name: mgmt
+      - name: public
+    published_ports:
+      - 80:80
+      - 443:443
+    security_opts:
+      - apparmor=unconfined
+    volumes:
+      - /dev:/dev
+      - /lib/modules:/lib/modules:ro
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+      - /usr/src:/usr/src:ro
+    groups:
+      - controllers
+      - cephs
+      - computes
+provisioner:
+  name: ansible
+  config_options:
+    connection:
+      pipelining: true
+    tags:
+      skip: >-
+        sysctl,
+        ethtool
+  inventory:
+    group_vars:
+      all:
+        # Ceph
+        ceph_fsid: ${MOLECULE_CEPH_FSID:-"d1f9e453-f13a-4d30-9ab1-e5ae1d87b67f"}
+        ceph_conf_overrides:
+          - section: global
+            option: osd crush chooseleaf type
+            value: 0
+          - section: mon
+            option: auth allow insecure global id reclaim
+            value: false
+        # Kubernetes
+        kubernetes_keepalived_interface: eth0
+        kubernetes_keepalived_vrid: 42
+        kubernetes_keepalived_vip: 10.96.240.10
+        kubernetes_hostname: 10.96.240.10
+        # CNI
+        cilium_helm_values:
+          operator:
+            replicas: 1
+        # CSI
+        csi_driver: ${MOLECULE_CSI_DRIVER:-"local-path-provisioner"}
+        ceph_csi_rbd_helm_values:
+          provisioner:
+            replicaCount: 1
+        # Certificates
+        cluster_issuer_type: self-signed
+        # Ingress
+        ingress_nginx_helm_values:
+          controller:
+            config:
+              worker-processes: 2
+        # Percona XtraDB Cluster
+        percona_xtradb_cluster_spec:
+          allowUnsafeConfigurations: true
+          pxc:
+            size: 1
+          haproxy:
+            size: 1
+        # Common
+        domain_name: "{{ (lookup('env', 'HOST_IP') | default(ansible_default_ipv4.address, true)).replace('.', '-') }}.nip.io"
+        openstack_helm_endpoints_region_name: RegionOne
+        # Keycloak
+        keycloak_host: "keycloak.{{ domain_name }}"
+        keycloak_database_password: secrete123
+        keycloak_admin_password: secrete123
+        # Monitoring
+        grafana_keycloak_client_secret: secrete123
+        kube_prometheus_stack_grafana_host: "grafana.{{ domain_name }}"
+        kube_prometheus_stack_grafana_admin_password: secrete123
+        # Memcached
+        openstack_helm_endpoints_memcached_secret_key: secrete123
+        # RabbitMQ
+        rabbitmq_spec:
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+        # Keystone
+        openstack_helm_endpoints_keystone_api_host: "identity.{{ domain_name }}"
+        openstack_helm_endpoints_keystone_admin_password: secrete123
+        openstack_helm_endpoints_keystone_mariadb_password: secrete123
+        openstack_helm_endpoints_keystone_rabbitmq_password: secrete123
+        keystone_keycloak_client_secret: secrete123
+        keystone_oidc_crypto_passphrase: secrete123
+        keystone_helm_values:
+          pod:
+            replicas:
+              api: 1
+        # Horizon
+        openstack_helm_endpoints_horizon_api_host: "dashboard.{{ domain_name }}"
+        openstack_helm_endpoints_horizon_mariadb_password: secrete123
+        horizon_helm_values:
+          pod:
+            replicas:
+              server: 1
+        cinder_helm_values:
+          conf:
+            cinder:
+              DEFAULT:
+                osapi_volume_workers: 2
+      cephs:
+        ceph_osd_devices:
+          - "/dev/ceph-{{ inventory_hostname_short }}-osd0/data"
+          - "/dev/ceph-{{ inventory_hostname_short }}-osd1/data"
+          - "/dev/ceph-{{ inventory_hostname_short }}-osd2/data"
+  # options:
+  #   inventory: "${MOLECULE_EPHEMERAL_DIRECTORY}/workspace"
+  # inventory:
+  #   links:
+  #     host_vars: "${MOLECULE_SCENARIO_DIRECTORY}/host_vars"
+  #     group_vars: "${MOLECULE_SCENARIO_DIRECTORY}/group_vars"
+verifier:
+  name: ansible

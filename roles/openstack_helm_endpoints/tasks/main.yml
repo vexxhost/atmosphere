@@ -18,7 +18,7 @@
     openstack_helm_endpoints_list: |-
       {{ lookup('ansible.builtin.file', '../../../charts/' ~ openstack_helm_endpoints_chart ~ '/values.yaml', split_lines=False) | from_yaml | community.general.json_query('keys(endpoints)') | difference(_openstack_helm_endpoints_ignore) }}
   when:
-    - openstack_helm_endpoints_list is not defined or openstack_helm_endpoints_list == None
+    - openstack_helm_endpoints_chart is defined
 
 # NOTE(mnaser): Since we manage one-RabbitMQ per service, we create the RabbitMQ
 #               cluster here and then append the necessary values to be used

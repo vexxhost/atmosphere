@@ -433,7 +433,60 @@ ceph_client:
       global: null
       osd: null
 conf:
-  paste: {}
+  paste:
+    composite:osapi_volume:
+      use: call:cinder.api:root_app_factory
+      /: apiversions
+      /v1: openstack_volume_api_v1
+      /v2: openstack_volume_api_v2
+      /v3: openstack_volume_api_v3
+    composite:openstack_volume_api_v1:
+      use: call:cinder.api.middleware.auth:pipeline_factory
+      noauth: cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler noauth apiv1
+      keystone: cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler authtoken audit keystonecontext apiv1
+      keystone_nolimit: cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler authtoken audit keystonecontext apiv1
+    composite:openstack_volume_api_v2:
+      use: call:cinder.api.middleware.auth:pipeline_factory
+      noauth: cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler noauth apiv2
+      keystone: cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler authtoken audit keystonecontext apiv2
+      keystone_nolimit: cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler authtoken audit keystonecontext apiv2
+    composite:openstack_volume_api_v3:
+      use: call:cinder.api.middleware.auth:pipeline_factory
+      noauth: cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler noauth apiv3
+      keystone: cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler authtoken audit keystonecontext apiv3
+      keystone_nolimit: cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler authtoken audit keystonecontext apiv3
+    filter:request_id:
+      paste.filter_factory: oslo_middleware.request_id:RequestId.factory
+    filter:http_proxy_to_wsgi:
+      paste.filter_factory: oslo_middleware.http_proxy_to_wsgi:HTTPProxyToWSGI.factory
+    filter:cors:
+      paste.filter_factory: oslo_middleware.cors:filter_factory
+      oslo_config_project: cinder
+    filter:faultwrap:
+      paste.filter_factory: cinder.api.middleware.fault:FaultWrapper.factory
+    filter:osprofiler:
+      paste.filter_factory: osprofiler.web:WsgiMiddleware.factory
+    filter:noauth:
+      paste.filter_factory: cinder.api.middleware.auth:NoAuthMiddleware.factory
+    filter:sizelimit:
+      paste.filter_factory: oslo_middleware.sizelimit:RequestBodySizeLimiter.factory
+    app:apiv1:
+      paste.app_factory: cinder.api.v1.router:APIRouter.factory
+    app:apiv2:
+      paste.app_factory: cinder.api.v2.router:APIRouter.factory
+    app:apiv3:
+      paste.app_factory: cinder.api.v3.router:APIRouter.factory
+    pipeline:apiversions:
+      pipeline: cors http_proxy_to_wsgi faultwrap osvolumeversionapp
+    app:osvolumeversionapp:
+      paste.app_factory: cinder.api.versions:Versions.factory
+    filter:keystonecontext:
+      paste.filter_factory: cinder.api.middleware.auth:CinderKeystoneContext.factory
+    filter:authtoken:
+      paste.filter_factory: keystonemiddleware.auth_token:filter_factory
+    filter:audit:
+      paste.filter_factory: keystonemiddleware.audit:filter_factory
+      audit_map_file: /etc/cinder/api_audit_map.conf
   policy: {}
   api_audit_map:
     DEFAULT:
@@ -773,6 +826,8 @@ conf:
     database:
       max_retries: -1
     keystone_authtoken:
+      service_token_roles: service
+      service_token_roles_required: true
       auth_version: v3
       auth_type: password
       memcache_security_strategy: ENCRYPT
@@ -795,7 +850,7 @@ conf:
       backend_url: file:///var/lib/cinder/coordination
     service_user:
       auth_type: password
-      send_service_user_token: false
+      send_service_user_token: true
   logging:
     loggers:
       keys:
@@ -956,6 +1011,23 @@ conf:
       - volume_type
     volume_type: []
   enable_iscsi: false
+  cinder_api_uwsgi:
+    uwsgi:
+      add-header: "Connection: close"
+      buffer-size: 65535
+      die-on-term: true
+      enable-threads: true
+      exit-on-reload: false
+      hook-master-start: unix_signal:15 gracefully_kill_them_all
+      lazy-apps: true
+      log-x-forwarded-for: true
+      master: true
+      procname-prefix-spaced: "cinder-api:"
+      route-user-agent: '^kube-probe.* donotlog:'
+      thunder-lock: true
+      worker-reload-mercy: 80
+      wsgi-file: /var/lib/openstack/bin/cinder-wsgi
+
 backup:
   external_ceph_rbd:
     enabled: false
@@ -1171,7 +1243,7 @@ endpoints:
         user_domain_name: default
         project_domain_name: default
       cinder:
-        role: admin
+        role: admin,service
         region_name: RegionOne
         username: cinder
         password: password

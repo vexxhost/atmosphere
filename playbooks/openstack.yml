@@ -39,6 +39,10 @@
       tags:
         - percona-xtradb-cluster
 
+    - role: keycloak
+      tags:
+        - keycloak
+
     - role: node_feature_discovery
       tags:
         - node-feature-discovery
@@ -54,10 +58,6 @@
     - role: vector
       tags:
         - vector
-
-    - role: prometheus_ethtool_exporter
-      tags:
-        - prometheus-ethtool-exporter
 
     - role: ipmi_exporter
       tags:
@@ -135,6 +135,10 @@
 - hosts: controllers[0]
   become: true
   roles:
+    - role: ovn
+      tags:
+        - ovn
+
     - role: libvirt
       tags:
         - libvirt
@@ -146,10 +150,6 @@
     - role: nova
       tags:
         - nova
-
-    - role: ovn
-      tags:
-        - ovn
 
     - role: neutron
       tags:

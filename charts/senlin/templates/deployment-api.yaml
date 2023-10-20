@@ -75,7 +75,7 @@ spec:
               scheme: HTTP
               path: /
               port: {{ tuple "clustering" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
-            initialDelaySeconds: 15
+            initialDelaySeconds: 5
             periodSeconds: 10
           volumeMounts:
             - name: pod-tmp
@@ -89,6 +89,10 @@ spec:
             - name: pod-var-cache-senlin
               mountPath: /var/cache/senlin
             - name: senlin-etc
+              mountPath: /etc/senlin/senlin-api-uwsgi.ini
+              subPath: senlin-api-uwsgi.ini
+              readOnly: true
+            - name: senlin-etc
               mountPath: /etc/senlin/senlin.conf
               subPath: senlin.conf
               readOnly: true
@@ -98,12 +102,10 @@ spec:
               subPath: {{ base .Values.conf.senlin.DEFAULT.log_config_append }}
               readOnly: true
             {{- end }}
-            {{- if .Values.conf.paste }}
             - name: senlin-etc
               mountPath: /etc/senlin/api-paste.ini
               subPath: api-paste.ini
               readOnly: true
-            {{- end }}
             - name: senlin-etc
               mountPath: /etc/senlin/policy.yaml
               subPath: policy.yaml

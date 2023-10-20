@@ -129,7 +129,66 @@ conf:
   ceph_client:
     override:
     append:
-  paste: {}
+  paste:
+    pipeline:glance-api:
+      pipeline: cors healthcheck http_proxy_to_wsgi versionnegotiation osprofiler unauthenticated-context rootapp
+    pipeline:glance-api-caching:
+      pipeline: cors healthcheck http_proxy_to_wsgi versionnegotiation osprofiler unauthenticated-context cache rootapp
+    pipeline:glance-api-cachemanagement:
+      pipeline: cors healthcheck http_proxy_to_wsgi versionnegotiation osprofiler unauthenticated-context cache cachemanage rootapp
+    pipeline:glance-api-keystone:
+      pipeline: cors healthcheck http_proxy_to_wsgi versionnegotiation osprofiler authtoken audit context  rootapp
+    pipeline:glance-api-keystone+caching:
+      pipeline: cors healthcheck http_proxy_to_wsgi versionnegotiation osprofiler authtoken audit context cache rootapp
+    pipeline:glance-api-keystone+cachemanagement:
+      pipeline: cors healthcheck http_proxy_to_wsgi versionnegotiation osprofiler authtoken audit context cache cachemanage rootapp
+    pipeline:glance-api-trusted-auth:
+      pipeline: cors healthcheck http_proxy_to_wsgi versionnegotiation osprofiler context rootapp
+    pipeline:glance-api-trusted-auth+cachemanagement:
+      pipeline: cors healthcheck http_proxy_to_wsgi versionnegotiation osprofiler context cache cachemanage rootapp
+    composite:rootapp:
+      paste.composite_factory: glance.api:root_app_factory
+      /: apiversions
+      /v1: apiv1app
+      /v2: apiv2app
+    app:apiversions:
+      paste.app_factory: glance.api.versions:create_resource
+    app:apiv1app:
+      paste.app_factory: glance.api.v1.router:API.factory
+    app:apiv2app:
+      paste.app_factory: glance.api.v2.router:API.factory
+    filter:healthcheck:
+      paste.filter_factory: oslo_middleware:Healthcheck.factory
+      backends: disable_by_file
+      disable_by_file_path: /etc/glance/healthcheck_disable
+    filter:versionnegotiation:
+      paste.filter_factory: glance.api.middleware.version_negotiation:VersionNegotiationFilter.factory
+    filter:cache:
+      paste.filter_factory: glance.api.middleware.cache:CacheFilter.factory
+    filter:cachemanage:
+      paste.filter_factory: glance.api.middleware.cache_manage:CacheManageFilter.factory
+    filter:context:
+      paste.filter_factory: glance.api.middleware.context:ContextMiddleware.factory
+    filter:unauthenticated-context:
+      paste.filter_factory: glance.api.middleware.context:UnauthenticatedContextMiddleware.factory
+    filter:authtoken:
+      paste.filter_factory: keystonemiddleware.auth_token:filter_factory
+      delay_auth_decision: true
+    filter:audit:
+      paste.filter_factory: keystonemiddleware.audit:filter_factory
+      audit_map_file: /etc/glance/api_audit_map.conf
+    filter:gzip:
+      paste.filter_factory: glance.api.middleware.gzip:GzipMiddleware.factory
+    filter:osprofiler:
+      paste.filter_factory: osprofiler.web:WsgiMiddleware.factory
+      hmac_keys: SECRET_KEY  # DEPRECATED
+      enabled: yes  # DEPRECATED
+    filter:cors:
+      paste.filter_factory: oslo_middleware.cors:filter_factory
+      oslo_config_project: glance
+      oslo_config_program: glance-api
+    filter:http_proxy_to_wsgi:
+      paste.filter_factory: oslo_middleware:HTTPProxyToWSGI.factory
   policy: {}
   glance_sudoers: |
     # This sudoers file supports rootwrap for both Kolla and LOCI Images.
@@ -196,6 +255,8 @@ conf:
     oslo_middleware:
       enable_proxy_headers_parsing: true
     keystone_authtoken:
+      service_token_roles: service
+      service_token_roles_required: true
       auth_type: password
       auth_version: v3
       memcache_security_strategy: ENCRYPT
@@ -330,6 +391,22 @@ conf:
         priority: 0
         apply-to: all
         pattern: '^(?!(amq\.|reply_)).*'
+  glance_api_uwsgi:
+    uwsgi:
+      add-header: "Connection: close"
+      buffer-size: 65535
+      die-on-term: true
+      enable-threads: true
+      exit-on-reload: false
+      hook-master-start: unix_signal:15 gracefully_kill_them_all
+      lazy-apps: true
+      log-x-forwarded-for: true
+      master: true
+      procname-prefix-spaced: "glance-api:"
+      route-user-agent: '^kube-probe.* donotlog:'
+      thunder-lock: true
+      worker-reload-mercy: 80
+      wsgi-file: /var/lib/openstack/bin/glance-wsgi-api
 
 network:
   api:
@@ -818,6 +895,20 @@ pod:
     termination_grace_period:
       api:
         timeout: 30
+  probes:
+    api:
+      glance-api:
+        readiness:
+          enabled: true
+          params:
+            periodSeconds: 10
+            timeoutSeconds: 5
+        liveness:
+          enabled: true
+          params:
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
   resources:
     enabled: false
     api:
@@ -951,4 +1042,11 @@ manifests:
   secret_registry: true
   service_ingress_api: true
   service_api: true
+
+# NOTE: This is for enable helm resource-policy to keep glance-images PVC.
+# set keep_pvc: true when allow helm resource-policy to keep for PVC.
+# This will requires mannual delete for PVC.
+# set keep_pvc: false when disallow helm resource-policy to keep for PVC.
+# This will allow helm to delete the PVC.
+keep_pvc: true
 ...

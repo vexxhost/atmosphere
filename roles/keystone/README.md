@@ -10,9 +10,6 @@ use FreeIPA for the `contoso` domain inside Keystone.
 ```yaml
 keystone_helm_values:
   conf:
-    keystone:
-      identity:
-        domain_configurations_from_database: true
     ks_domains:
       contoso:
         identity:

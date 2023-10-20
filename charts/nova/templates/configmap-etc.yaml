@@ -81,22 +81,6 @@ limitations under the License.
 
 {{- end -}}
 
-{{- if not .Values.conf.paste }}
-{{- $_ := set $envAll.Values.conf.nova.wsgi "api_paste_config" "/var/lib/openstack/etc/nova/api-paste.ini" -}}
-{{- end }}
-
-{{- if (contains "vencrypt" .Values.conf.nova.vnc.auth_schemes) -}}
-{{- if empty .Values.conf.nova.vnc.vencrypt_client_key }}
-{{- $_ := set $envAll.Values.conf.nova.vnc "vencrypt_client_key" "/etc/pki/nova-novncproxy/tls.key" -}}
-{{- end }}
-{{- if empty .Values.conf.nova.vnc.vencrypt_client_cert }}
-{{- $_ := set $envAll.Values.conf.nova.vnc "vencrypt_client_cert" "/etc/pki/nova-novncproxy/tls.crt" -}}
-{{- end }}
-{{- if empty .Values.conf.nova.vnc.vencrypt_ca_certs }}
-{{- $_ := set $envAll.Values.conf.nova.vnc "vencrypt_ca_certs" "/etc/pki/nova-novncproxy/ca.crt" -}}
-{{- end }}
-{{- end }}
-
 {{- if empty .Values.conf.nova.database.connection -}}
 {{- $connection := tuple "oslo_db" "internal" "nova" "mysql" . | include "helm-toolkit.endpoints.authenticated_endpoint_uri_lookup" -}}
 {{- if .Values.manifests.certificates -}}
@@ -204,6 +188,18 @@ limitations under the License.
 {{- end -}}
 {{- end -}}
 
+{{- if (contains "vencrypt" .Values.conf.nova.vnc.auth_schemes) -}}
+{{- if empty .Values.conf.nova.vnc.vencrypt_client_key }}
+{{- $_ := set $envAll.Values.conf.nova.vnc "vencrypt_client_key" "/etc/pki/nova-novncproxy/tls.key" -}}
+{{- end }}
+{{- if empty .Values.conf.nova.vnc.vencrypt_client_cert }}
+{{- $_ := set $envAll.Values.conf.nova.vnc "vencrypt_client_cert" "/etc/pki/nova-novncproxy/tls.crt" -}}
+{{- end }}
+{{- if empty .Values.conf.nova.vnc.vencrypt_ca_certs }}
+{{- $_ := set $envAll.Values.conf.nova.vnc "vencrypt_ca_certs" "/etc/pki/nova-novncproxy/ca.crt" -}}
+{{- end }}
+{{- end }}
+
 {{- if eq .Values.console.console_kind "spice"}}
 {{- $_ := "false" | set .Values.conf.nova.vnc "enabled" -}}
 {{- $_ := "true" | set .Values.conf.nova.spice "enabled" -}}
@@ -256,8 +252,49 @@ limitations under the License.
 {{- $_ := tuple "oslo_cache" "internal" "memcache" . | include "helm-toolkit.endpoints.host_and_port_endpoint_uri_lookup" | set .Values.conf.nova.ironic "memcache_servers" -}}
 {{- end -}}
 
+{{- if empty .Values.conf.nova.cinder.auth_url -}}
+{{- $_ := tuple "identity" "internal" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup" | set .Values.conf.nova.cinder "auth_url" -}}
+{{- end -}}
+
+{{- if empty .Values.conf.nova.cinder.os_region_name -}}
+{{- $_ := set .Values.conf.nova.cinder "os_region_name" .Values.endpoints.identity.auth.cinder.region_name -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.cinder.project_name -}}
+{{- $_ := set .Values.conf.nova.cinder "project_name" .Values.endpoints.identity.auth.cinder.project_name -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.cinder.project_domain_name -}}
+{{- $_ := set .Values.conf.nova.cinder "project_domain_name" .Values.endpoints.identity.auth.cinder.project_domain_name -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.cinder.user_domain_name -}}
+{{- $_ := set .Values.conf.nova.cinder "user_domain_name" .Values.endpoints.identity.auth.cinder.user_domain_name -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.cinder.username -}}
+{{- $_ := set .Values.conf.nova.cinder "username" .Values.endpoints.identity.auth.cinder.username -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.cinder.password -}}
+{{- $_ := set .Values.conf.nova.cinder "password" .Values.endpoints.identity.auth.cinder.password -}}
+{{- end -}}
+
 {{- if empty .Values.conf.nova.DEFAULT.osapi_compute_listen_port -}}
 {{- $_ := tuple "compute" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" | set .Values.conf.nova.DEFAULT "osapi_compute_listen_port" -}}
+{{- end -}}
+
+{{- if empty .Values.conf.nova_api_uwsgi.uwsgi.processes -}}
+{{- $_ := set .Values.conf.nova_api_uwsgi.uwsgi "processes" .Values.conf.nova.DEFAULT.osapi_compute_workers -}}
+{{- end -}}
+{{- if empty (index .Values.conf.nova_api_uwsgi.uwsgi "http-socket") -}}
+{{- $http_socket_port := tuple "compute" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" | toString }}
+{{- $http_socket := printf "0.0.0.0:%s" $http_socket_port }}
+{{- $_ := set .Values.conf.nova_api_uwsgi.uwsgi "http-socket" $http_socket -}}
+{{- end -}}
+
+{{- if empty .Values.conf.nova_metadata_uwsgi.uwsgi.processes -}}
+{{- $_ := set .Values.conf.nova_metadata_uwsgi.uwsgi "processes" .Values.conf.nova.DEFAULT.metadata_workers -}}
+{{- end -}}
+{{- if empty (index .Values.conf.nova_metadata_uwsgi.uwsgi "http-socket") -}}
+{{- $http_socket_port := .Values.network.metadata.port | toString }}
+{{- $http_socket := printf "0.0.0.0:%s" $http_socket_port }}
+{{- $_ := set .Values.conf.nova_metadata_uwsgi.uwsgi "http-socket" $http_socket -}}
 {{- end -}}
 
 {{- if and (empty .Values.conf.logging.handler_fluent) (has "fluent" .Values.conf.logging.handlers.keys) -}}
@@ -286,9 +323,7 @@ metadata:
 type: Opaque
 data:
   rally_tests.yaml: {{ toYaml .Values.conf.rally_tests.tests | b64enc }}
-  {{- if .Values.conf.paste }}
   api-paste.ini: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.paste | b64enc }}
-  {{- end }}
   policy.yaml: {{ toYaml .Values.conf.policy | b64enc }}
   nova_sudoers: {{ $envAll.Values.conf.nova_sudoers | b64enc }}
   rootwrap.conf: {{ .Values.conf.rootwrap | b64enc }}
@@ -301,6 +336,8 @@ data:
   logging.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.logging | b64enc }}
   api_audit_map.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.api_audit_map | b64enc }}
   nova-ironic.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.nova_ironic | b64enc }}
+  nova-api-uwsgi.ini: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.nova_api_uwsgi | b64enc }}
+  nova-metadata-uwsgi.ini: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.nova_metadata_uwsgi | b64enc }}
 {{- if .Values.manifests.certificates }}
 {{- include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conf.mpm_event "key" "mpm_event.conf" "format" "Secret" ) | indent 2 }}
 {{- include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conf.wsgi_nova_api "key" "wsgi-api.conf" "format" "Secret" ) | indent 2 }}

@@ -12,36 +12,6 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Prepare
-  hosts: all
-  become: true
-  pre_tasks:
-    - name: Wait for systemd to complete initialization
-      ansible.builtin.command: systemctl is-system-running
-      register: systemctl_status
-      until: >
-        'running' in systemctl_status.stdout or
-        'degraded' in systemctl_status.stdout
-      retries: 30
-      delay: 5
-      changed_when: false
-      failed_when: systemctl_status.rc > 1
-  tasks:
-    - name: Refresh cache
-      ansible.builtin.package:
-        update_cache: true
-
-    # NOTE(mnaser): The base image installs Ansible using `pip` which breaks
-    #               the system Python, we uninstall all Python packages.
-    - name: Fix Python installation
-      block:
-        - name: Get all Python packages
-          ansible.builtin.command: pip freeze
-          register: pip_freeze
-
-        - name: Uninstall all Python packages
-          ansible.builtin.pip:
-            name: "{{ pip_freeze.stdout_lines }}"
-            state: absent
-
-- ansible.builtin.import_playbook: vexxhost.ceph.create_fake_devices
+- ansible.builtin.import_playbook: ../shared/prepare/base.yml
+- ansible.builtin.import_playbook: ../shared/prepare/ceph.yml
+- ansible.builtin.import_playbook: ../shared/prepare/kubernetes.yml

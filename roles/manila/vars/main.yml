@@ -46,6 +46,7 @@ _manila_helm_values:
     manila:
       DEFAULT:
         host: manila-share-worker
+        osapi_share_workers: 4
       generic:
         connect_share_server_to_tenant_network: true
         limit_ssh_access: true
@@ -54,10 +55,6 @@ _manila_helm_values:
         service_image_name: "{{ manila_image_name }}"
         service_instance_flavor_id: "{{ _manila_flavor.id }}"
         service_instance_security_group: manila-service-security-group
-      keystone_authtoken:
-        # NOTE(okozachenko1203): We can remove it once the following is merged:
-        #                        https://review.opendev.org/883066
-        service_type: sharev2
       oslo_messaging_notifications:
         driver: noop
   manifests:

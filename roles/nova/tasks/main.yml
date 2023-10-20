@@ -72,7 +72,7 @@
     openstack_helm_ingress_endpoint: compute
     openstack_helm_ingress_service_name: nova-api
     openstack_helm_ingress_service_port: 8774
-    openstack_helm_ingress_annotations: "{{ nova_ingress_annotations }}"
+    openstack_helm_ingress_annotations: "{{ nova_api_ingress_annotations }}"
 
 - name: Create Ingress
   ansible.builtin.include_role:
@@ -81,7 +81,7 @@
     openstack_helm_ingress_endpoint: compute_novnc_proxy
     openstack_helm_ingress_service_name: nova-novncproxy
     openstack_helm_ingress_service_port: 6080
-    openstack_helm_ingress_annotations: "{{ nova_ingress_annotations }}"
+    openstack_helm_ingress_annotations: "{{ _nova_novnc_ingress_annotations | combine(nova_novnc_ingress_annotations) }}"
 
 - name: Create flavors
   when: nova_flavors | length > 0

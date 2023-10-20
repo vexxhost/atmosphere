@@ -55,8 +55,31 @@ type GithubWorkflowJob struct {
 	Steps    []GithubWorkflowStep   `yaml:"steps"`
 }
 
+func (j GithubWorkflowJob) DeepCopy() GithubWorkflowJob {
+	job := GithubWorkflowJob{}
+	job.RunsOn = j.RunsOn
+	job.Strategy = j.Strategy.DeepCopy()
+
+	job.Steps = make([]GithubWorkflowStep, len(j.Steps))
+	for i, step := range j.Steps {
+		job.Steps[i] = step.DeepCopy()
+	}
+
+	return job
+}
+
 type GithubWorkflowStrategy struct {
 	Matrix map[string]interface{} `yaml:"matrix"`
+}
+
+func (s *GithubWorkflowStrategy) DeepCopy() GithubWorkflowStrategy {
+	strategy := *s
+	strategy.Matrix = make(map[string]interface{})
+	for k, v := range s.Matrix {
+		strategy.Matrix[k] = v
+	}
+
+	return strategy
 }
 
 type GithubWorkflowStep struct {
@@ -66,6 +89,21 @@ type GithubWorkflowStep struct {
 	If          string            `yaml:"if,omitempty"`
 	With        map[string]string `yaml:"with,omitempty"`
 	Environment map[string]string `yaml:"env,omitempty"`
+}
+
+func (s *GithubWorkflowStep) DeepCopy() GithubWorkflowStep {
+	step := *s
+	step.With = make(map[string]string)
+	for k, v := range s.With {
+		step.With[k] = v
+	}
+
+	step.Environment = make(map[string]string)
+	for k, v := range s.Environment {
+		step.Environment[k] = v
+	}
+
+	return step
 }
 
 func (g *GithubWorkflow) Write(wr io.Writer) error {

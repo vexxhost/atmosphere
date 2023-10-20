@@ -24,8 +24,8 @@
         state: patched
         api_version: helm.toolkit.fluxcd.io/v2beta1
         kind: HelmRelease
-        name: "{{ cert_manager_helm_release_name }}"
-        namespace: "{{ cert_manager_helm_release_namespace }}"
+        name: cert-manager
+        namespace: cert-manager
         definition:
           spec:
             suspend: true
@@ -36,15 +36,16 @@
         state: absent
         api_version: helm.toolkit.fluxcd.io/v2beta1
         kind: HelmRelease
-        name: "{{ cert_manager_helm_release_name }}"
-        namespace: "{{ cert_manager_helm_release_namespace }}"
+        name: cert-manager
+        namespace: cert-manager
 
 - name: Deploy Helm chart
-  run_once: true
-  kubernetes.core.helm:
-    name: "{{ cert_manager_helm_release_name }}"
-    chart_ref: "{{ cert_manager_helm_chart_ref }}"
-    release_namespace: "{{ cert_manager_helm_release_namespace }}"
-    create_namespace: true
-    kubeconfig: /etc/kubernetes/admin.conf
-    values: "{{ _cert_manager_helm_values | combine(cert_manager_helm_values, recursive=True) }}"
+  ansible.builtin.include_role:
+    name: vexxhost.kubernetes.cert_manager
+  vars:
+    cert_manager_image_cli: "{{ atmosphere_images['cert_manager_cli'] }}"
+    cert_manager_image_controller: "{{ atmosphere_images['cert_manager_controller'] }}"
+    cert_manager_image_cainjector: "{{ atmosphere_images['cert_manager_cainjector'] }}"
+    cert_manager_image_webhook: "{{ atmosphere_images['cert_manager_webhook'] }}"
+    cert_manager_node_selector:
+      openstack-control-plane: enabled

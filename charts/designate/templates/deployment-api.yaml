@@ -84,15 +84,17 @@ spec:
               mountPath: /etc/designate/designate.conf
               subPath: designate.conf
               readOnly: true
-            {{- if .Values.conf.paste }}
             - name: designate-etc
               mountPath: /etc/designate/api-paste.ini
               subPath: api-paste.ini
               readOnly: true
-            {{- end }}
             - name: designate-etc
               mountPath: /etc/designate/policy.yaml
               subPath: policy.yaml
+              readOnly: true
+            - name: designate-etc
+              mountPath: /etc/designate/designate-api-uwsgi.ini
+              subPath: designate-api-uwsgi.ini
               readOnly: true
             {{- if .Values.conf.designate.DEFAULT.log_config_append }}
             - name: designate-etc

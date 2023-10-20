@@ -104,7 +104,7 @@ spec:
               scheme: {{ tuple "volume" "service" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_scheme_lookup" | upper }}
               path: /
               port: {{ tuple "volume" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
-            initialDelaySeconds: 30
+            initialDelaySeconds: 5
             failureThreshold: 3
             periodSeconds: 10
             successThreshold: 1
@@ -119,6 +119,10 @@ spec:
               subPath: cinder-api.sh
               readOnly: true
             - name: cinder-etc
+              mountPath: /etc/cinder/cinder-api-uwsgi.ini
+              subPath: cinder-api-uwsgi.ini
+              readOnly: true
+            - name: cinder-etc
               mountPath: /etc/cinder/cinder.conf
               subPath: cinder.conf
               readOnly: true
@@ -128,12 +132,10 @@ spec:
               subPath: {{ base .Values.conf.cinder.DEFAULT.log_config_append }}
               readOnly: true
             {{- end }}
-            {{- if .Values.conf.paste }}
             - name: cinder-etc
               mountPath: /etc/cinder/api-paste.ini
               subPath: api-paste.ini
               readOnly: true
-            {{- end }}
             - name: cinder-etc
               mountPath: /etc/cinder/policy.yaml
               subPath: policy.yaml

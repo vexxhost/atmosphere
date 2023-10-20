@@ -45,11 +45,26 @@ request.
 > If the process fails because of a merge conflict, you'll need to resolve the
 > conflict and then run the command again.
 
+## Cherry-picking patches
+
+If you need to cherry-pick a patch from one branch of a forked repository to
+another, you can use the following command:
+
+```bash
+./hack/repos/cherry-pick magnum fbfd3ce9a3 stable/zed
+```
+
+In the example above, this will cherry-pick the commit `fbfd3ce9a3` from the
+`master` branch of the `magnum` repository and create a pull request to apply
+it to the `stable/zed` branch.
+
 ## OpenStack
 
 Atmosphere has a few forks of the OpenStack repositories.  These are used to
 apply patches to the upstream code that contain fixes which have not yet been
 merged upstream.  The list of forked repositories is as follows:
 
-* [openstack/cinder](https://github.com/vexxhost/cinder)
 * [openstack/horizon](https://github.com/vexxhost/horizon)
+* [openstack/keystone](https://github.com/vexxhost/keystone)
+* [openstack/magnum](https://github.com/vexxhost/magnum)
+* [openstack/magnum-ui](https://github.com/vexxhost/magnum-ui)
