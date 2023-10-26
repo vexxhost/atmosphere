@@ -42,6 +42,8 @@ _ingress_nginx_helm_values:
     metrics:
       enabled: true
   defaultBackend:
+    nodeSelector:
+      openstack-control-plane: enabled
     enabled: true
     image:
       registry: "{{ atmosphere_images['ingress_nginx_default_backend'] | vexxhost.kubernetes.docker_image('domain') }}"
