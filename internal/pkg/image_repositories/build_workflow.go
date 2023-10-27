@@ -46,6 +46,7 @@ var PIP_PACKAGES map[string][]string = map[string][]string{
 	"magnum":        {"magnum-cluster-api==0.6.0"},
 	"monasca-agent": {"libvirt-python", "python-glanceclient", "python-neutronclient", "python-novaclient", "py3nvml"},
 	"neutron":       {"neutron-vpnaas"},
+	"octavia":       {"ovn-octavia-provider"},
 	"placement":     {"httplib2"},
 }
 var PLATFORMS map[string]string = map[string]string{
