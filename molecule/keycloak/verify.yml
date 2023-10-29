@@ -55,7 +55,7 @@
       ansible.builtin.assert:
         that:
           - identity_user_info_result.openstack_users | length > 0
-          - identity_user_info_result.openstack_users[0].id == keycloak_user_info.id
+          - identity_user_info_result.openstack_users[0].id == keycloak_user_info.id | regex_replace('-', '')
           - identity_user_info_result.openstack_users[0].name == keycloak_user_info.username
 
     # TODO: Simulate Keystone authentication
