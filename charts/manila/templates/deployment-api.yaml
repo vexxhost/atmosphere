@@ -94,16 +94,22 @@ spec:
               mountPath: /etc/manila/manila.conf
               subPath: manila.conf
               readOnly: true
+            - name: manila-etc
+              mountPath: /etc/manila/manila-api-uwsgi.ini
+              subPath: manila-api-uwsgi.ini
+              readOnly: true
             {{- if .Values.conf.manila.DEFAULT.log_config_append }}
             - name: manila-etc
               mountPath: {{ .Values.conf.manila.DEFAULT.log_config_append }}
               subPath: {{ base .Values.conf.manila.DEFAULT.log_config_append }}
               readOnly: true
             {{- end }}
+            {{- if .Values.conf.paste }}
             - name: manila-etc
               mountPath: /etc/manila/api-paste.ini
               subPath: api-paste.ini
               readOnly: true
+            {{- end }}
             - name: manila-etc
               mountPath: /etc/manila/policy.yaml
               subPath: policy.yaml

@@ -7,6 +7,7 @@
           rules: [
             {
               alert: 'IpmiCollectorDown',
+              'for': '15m',
               expr: 'ipmi_up == 0',
               labels: {
                 severity: 'warning',

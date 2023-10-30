@@ -8,8 +8,9 @@ import (
 var FORKED_PROJECTS map[string]bool = map[string]bool{
 	"horizon":   true,
 	"keystone":  true,
-	"magnum":    true,
 	"magnum-ui": true,
+	"magnum":    true,
+	"manila":    true,
 }
 var EXTRAS map[string]string = map[string]string{}
 var PROFILES map[string]string = map[string]string{
@@ -41,10 +42,11 @@ var PIP_PACKAGES map[string][]string = map[string][]string{
 	"glance":        {"glance_store[cinder]"},
 	"horizon":       {"git+https://github.com/openstack/designate-dashboard.git@stable/${{ matrix.release }}", "git+https://github.com/openstack/heat-dashboard.git@stable/${{ matrix.release }}", "git+https://github.com/openstack/ironic-ui.git@stable/${{ matrix.release }}", "git+https://github.com/vexxhost/magnum-ui.git@stable/${{ matrix.release }} git+https://github.com/openstack/neutron-vpnaas-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/octavia-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/senlin-dashboard.git@stable/${{ matrix.release }}", "git+https://github.com/openstack/monasca-ui.git@stable/${{ matrix.release }}", "git+https://github.com/openstack/manila-ui.git@stable/${{ matrix.release }}"},
 	"ironic":        {"python-dracclient", "sushy"},
-	"keystone":      {"keystone-keycloak-backend==0.1.5"},
+	"keystone":      {"keystone-keycloak-backend==0.1.6"},
 	"magnum":        {"magnum-cluster-api==0.6.0"},
 	"monasca-agent": {"libvirt-python", "python-glanceclient", "python-neutronclient", "python-novaclient", "py3nvml"},
 	"neutron":       {"neutron-vpnaas"},
+	"octavia":       {"ovn-octavia-provider"},
 	"placement":     {"httplib2"},
 }
 var PLATFORMS map[string]string = map[string]string{
