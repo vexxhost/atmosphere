@@ -323,6 +323,16 @@ _kube_prometheus_stack_helm_values:
           - interval: 60s
             port: metrics
             relabelings: *relabelings_instance_to_node_name
+      - name: libvirt-exporter
+        jobLabel: job
+        selector:
+          matchLabels:
+            application: libvirt
+            component: libvirt
+        podMetricsEndpoints:
+          - interval: 60s
+            port: metrics
+            relabelings: *relabelings_instance_to_node_name
       - name: percona-xtradb-pxc
         jobLabel: app.kubernetes.io/component
         namespaceSelector:
