@@ -12,11 +12,6 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 #
-- name: Set Staffeln Backup Delete Policey Rule
-  ansible.builtin.set_fact:
-    staffeln_backup_delete_policy:
-      backup:delete: "rule:admin_api or (project_id:%(project_id)s and http://staffeln-api:8808/v1/backup?backup_id=%(id)s)"
-  when: atmosphere_staffeln_enabled is defined
 
 - name: Uninstall the legacy HelmRelease
   run_once: true
@@ -41,6 +36,15 @@
         kind: HelmRelease
         name: "{{ cinder_helm_release_name }}"
         namespace: "{{ cinder_helm_release_namespace }}"
+
+- name: Generate Helm values
+  ansible.builtin.set_fact:
+    _cinder_helm_values: "{{ __cinder_helm_values }}"
+
+- name: Append Helm values (Staffeln)
+  when: atmosphere_staffeln_enabled is defined
+  ansible.builtin.set_fact:
+    _neutron_helm_values: "{{ _cinder_helm_values | combine(__cinder_staffeln_helm_values, recursive=True) }}"
 
 - name: Deploy Helm chart
   run_once: true
