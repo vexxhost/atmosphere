@@ -1,0 +1,115 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- if .Values.manifests.deployment_api }}
+{{- $envAll := . }}
+
+{{- $mounts_staffeln_api := .Values.pod.mounts.staffeln_api.staffeln_api }}
+{{- $mounts_staffeln_api_init := .Values.pod.mounts.staffeln_api.init_container }}
+
+{{- $serviceAccountName := "staffeln-api" }}
+{{ tuple $envAll "api" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: staffeln-api
+  annotations:
+    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
+  labels:
+{{ tuple $envAll "staffeln" "api" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+spec:
+  replicas: {{ .Values.pod.replicas.api }}
+  selector:
+    matchLabels:
+{{ tuple $envAll "staffeln" "api" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 6 }}
+{{ tuple $envAll | include "helm-toolkit.snippets.kubernetes_upgrades_deployment" | indent 2 }}
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll "staffeln" "api" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+      annotations:
+{{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
+        configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
+        configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
+{{ dict "envAll" $envAll "podName" "staffeln-api" "containerNames" (list "init" "staffeln-api") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+    spec:
+{{ dict "envAll" $envAll "application" "staffeln" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+      serviceAccountName: {{ $serviceAccountName }}
+      affinity:
+{{ tuple $envAll "staffeln" "api" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
+      nodeSelector:
+        {{ .Values.labels.api.node_selector_key }}: {{ .Values.labels.api.node_selector_value }}
+{{ if $envAll.Values.pod.tolerations.staffeln.enabled }}
+{{ tuple $envAll "staffeln" | include "helm-toolkit.snippets.kubernetes_tolerations" | indent 6 }}
+{{ end }}
+      initContainers:
+{{ tuple $envAll "api" $mounts_staffeln_api_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+      containers:
+        - name: staffeln-api
+{{ tuple $envAll "staffeln_api" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.api | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "staffeln" "container" "staffeln_api" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - /tmp/staffeln-api.sh
+            - start
+          env:
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - /tmp/staffeln-api.sh
+                  - stop
+          ports:
+            - name: s-api
+              containerPort: {{ tuple "staffeln" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+          readinessProbe:
+            httpGet:
+              scheme: HTTP
+              path: /v1/health
+              port: {{ tuple "staffeln" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: state-tmp
+              mountPath: /var/lib/staffeln
+            - name: etcstaffeln
+              mountPath: /etc/staffeln
+            - name: staffeln-etc
+              mountPath: /etc/staffeln/staffeln.conf
+              subPath: staffeln.conf
+              readOnly: true
+            - name: staffeln-bin
+              mountPath: /tmp/staffeln-api.sh
+              subPath: staffeln-api.sh
+              readOnly: true
+{{ if $mounts_staffeln_api.volumeMounts }}{{ toYaml $mounts_staffeln_api.volumeMounts | indent 12 }}{{ end }}
+      volumes:
+        - name: pod-tmp
+          emptyDir: {}
+        - name: state-tmp
+          emptyDir: {}
+        - name: etcstaffeln
+          emptyDir: {}
+        - name: staffeln-etc
+          secret:
+            secretName: staffeln-etc
+            defaultMode: 0444
+        - name: staffeln-bin
+          configMap:
+            name: staffeln-bin
+            defaultMode: 0555
+
+{{ if $mounts_staffeln_api.volumes }}{{ toYaml $mounts_staffeln_api.volumes | indent 8 }}{{ end }}
+{{- end }}

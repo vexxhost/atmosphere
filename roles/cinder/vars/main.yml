@@ -12,7 +12,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-_cinder_helm_values:
+__cinder_helm_values:
   endpoints: "{{ openstack_helm_endpoints }}"
   images:
     tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('cinder') }}"
@@ -21,6 +21,7 @@ _cinder_helm_values:
       api: 3
       scheduler: 3
   conf:
+    policy: "{{ staffeln_backup_delete_policy if atmosphere_staffeln_enabled is defined else {} }}"
     cinder:
       DEFAULT:
         allowed_direct_url_schemes: cinder
@@ -41,6 +42,11 @@ _cinder_helm_values:
     ingress_api: false
     job_clean: false
     service_ingress_api: false
+
+__cinder_staffeln_helm_values:
+  conf:
+    policy:
+      backup:delete: "rule:admin_api or (project_id:%(project_id)s and http://staffeln-api:8808/v1/backup?backup_id=%(id)s)"
 
 _cinder_ingress_annotations:
   nginx.ingress.kubernetes.io/proxy-body-size: "0"
