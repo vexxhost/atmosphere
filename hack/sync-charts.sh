@@ -130,10 +130,22 @@ curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm-infra~893739
   | filterdiff -p1 -i 'ovn/*' \
   | patch -p2 -d ${ATMOSPHERE}/charts/ovn
 
-NEUTRON_VERSION=0.3.19
+NEUTRON_VERSION=0.3.24
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/neutron-${NEUTRON_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
-curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~893733/revisions/2/patch?download' \
+curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~899711/revisions/2/patch?download' \
+  | base64 --decode \
+  | filterdiff -p1 -x 'releasenotes/*' \
+  | filterdiff -p2 -x 'Chart.yaml' \
+  | filterdiff -p1 -i 'neutron/*' \
+  | patch -p2 -d ${ATMOSPHERE}/charts/neutron
+curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~899684/revisions/4/patch?download' \
+  | base64 --decode \
+  | filterdiff -p1 -x 'releasenotes/*' \
+  | filterdiff -p2 -x 'Chart.yaml' \
+  | filterdiff -p1 -i 'neutron/*' \
+  | patch -p2 -d ${ATMOSPHERE}/charts/neutron
+curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~899716/revisions/1/patch?download' \
   | base64 --decode \
   | filterdiff -p1 -x 'releasenotes/*' \
   | filterdiff -p2 -x 'Chart.yaml' \
