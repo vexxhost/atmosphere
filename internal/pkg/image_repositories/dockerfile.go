@@ -21,10 +21,6 @@ type Dockerfile struct {
 
 	BindepImage     string
 	BindepImageTag  string
-	BuilderImage    string
-	BuilderImageTag string
-	RuntimeImage    string
-	RuntimeImageTag string
 
 	template *template.Template
 }
@@ -35,25 +31,11 @@ func NewDockerfile(ctx context.Context, ir *ImageRepository) (*Dockerfile, error
 		return nil, err
 	}
 
-	builderImageTag, err := getImageTag(ctx, ir.githubClient, "docker-openstack-builder", "openstack-builder-focal")
-	if err != nil {
-		return nil, err
-	}
-
-	runtimeImageTag, err := getImageTag(ctx, ir.githubClient, "docker-openstack-runtime", "openstack-runtime-focal")
-	if err != nil {
-		return nil, err
-	}
-
 	return &Dockerfile{
 		Project: ir.Project,
 
 		BindepImage:     "quay.io/vexxhost/bindep-loci",
 		BindepImageTag:  "latest",
-		BuilderImage:    "quay.io/vexxhost/openstack-builder-focal",
-		BuilderImageTag: builderImageTag,
-		RuntimeImage:    "quay.io/vexxhost/openstack-runtime-focal",
-		RuntimeImageTag: runtimeImageTag,
 
 		template: tmpl,
 	}, nil

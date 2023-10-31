@@ -50,9 +50,10 @@ type GithubWorkflowConcurrency struct {
 }
 
 type GithubWorkflowJob struct {
-	RunsOn   string                 `yaml:"runs-on"`
-	Strategy GithubWorkflowStrategy `yaml:"strategy,omitempty"`
-	Steps    []GithubWorkflowStep   `yaml:"steps"`
+	Permissions map[string]string `yaml:"permissions,omitempty"`
+	RunsOn      string                 `yaml:"runs-on"`
+	Strategy    GithubWorkflowStrategy `yaml:"strategy,omitempty"`
+	Steps       []GithubWorkflowStep   `yaml:"steps"`
 }
 
 func (j GithubWorkflowJob) DeepCopy() GithubWorkflowJob {
