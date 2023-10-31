@@ -1,6 +1,7 @@
 package image_repositories
 
 import (
+	"context"
 	"fmt"
 	"strings"
 )
@@ -101,8 +102,9 @@ func (args *ImageBuildArgs) ToBuildArgsString() string {
 	return strings.Join(args.ToBuildArgs(), "\n")
 }
 
-func NewBuildWorkflow(project string) *GithubWorkflow {
+func NewBuildWorkflow(ctx context.Context, ir *ImageRepository) *GithubWorkflow {
 	extras := ""
+	project := ir.Project
 	if val, ok := EXTRAS[project]; ok {
 		extras = fmt.Sprintf("[%s]", val)
 	}
@@ -134,12 +136,12 @@ func NewBuildWorkflow(project string) *GithubWorkflow {
 
 	builderImageTag, err := getImageTag(ctx, ir.githubClient, "docker-openstack-builder", "openstack-builder-focal")
 	if err != nil {
-		return nil, err
+		builderImageTag = "latest"
 	}
 
 	runtimeImageTag, err := getImageTag(ctx, ir.githubClient, "docker-openstack-runtime", "openstack-runtime-focal")
 	if err != nil {
-		return nil, err
+		runtimeImageTag = "latest"
 	}
 
 	imageBuildArgs := ImageBuildArgs{
@@ -189,7 +191,7 @@ func NewBuildWorkflow(project string) *GithubWorkflow {
 					"contents": "read",
 					"id-token": "write",
 					"security-events": "write",
-				}
+				},
 				Strategy: GithubWorkflowStrategy{
 					Matrix: map[string]interface{}{
 						"from":    []string{"focal", "jammy"},
@@ -247,7 +249,7 @@ func NewBuildWorkflow(project string) *GithubWorkflow {
 					},
 					{
 						Name: "Verify images",
-						Run: strings.Join(imageVerifyCmds, "\n")
+						Run: strings.Join(imageVerifyCmds, "\n"),
 					},
 					{
 						Name: "Build image",
@@ -259,7 +261,7 @@ func NewBuildWorkflow(project string) *GithubWorkflow {
 							"context":    ".",
 							"cache-from": "type=gha,scope=${{ matrix.from }}-${{ matrix.release }}",
 							"cache-to":   "type=gha,mode=max,scope=${{ matrix.from }}-${{ matrix.release }}",
-							"load": true,
+							"load": "true",
 							"build-args": imageBuildArgs.ToBuildArgsString(),
 							"tags":       fmt.Sprintf("quay.io/vexxhost/%s:${{ env.PROJECT_REF }}-${{ matrix.from }}-${{ github.sha }}", project),
 						},
@@ -268,11 +270,11 @@ func NewBuildWorkflow(project string) *GithubWorkflow {
 						Name: "Scan image for vulnerabilities",
 						Uses: "aquasecurity/trivy-action@master",
 						With: map[string]string{
-							"image-ref": fmt.Sprintf("quay.io/vexxhost/%s:${{ env.PROJECT_REF }}-${{ matrix.from }}-${{ github.sha }}", project),}
+							"image-ref": fmt.Sprintf("quay.io/vexxhost/%s:${{ env.PROJECT_REF }}-${{ matrix.from }}-${{ github.sha }}", project),
 							"format": "sarif",
 							"output": "trivy-results.sarif",
-							"ignore-unfixed": true
-						}
+							"ignore-unfixed": "true",
+						},
 					},
 					{
 						Name: "Upload scan result",
@@ -281,7 +283,7 @@ func NewBuildWorkflow(project string) *GithubWorkflow {
 						With: map[string]string{
 							"category": "${{ env.PROJECT_REF }}-${{ matrix.from }}",
 							"sarif_file": "trivy-results.sarif",
-						}
+						},
 					},
 					{
 						Name: "Build image",
@@ -294,7 +296,7 @@ func NewBuildWorkflow(project string) *GithubWorkflow {
 							"cache-from": "type=gha,scope=${{ matrix.from }}-${{ matrix.release }}",
 							"cache-to":   "type=gha,mode=max,scope=${{ matrix.from }}-${{ matrix.release }}",
 							"platforms":  platforms,
-							"sbom": true
+							"sbom": "true",
 							"push":       "${{ github.event_name == 'push' }}",
 							"build-args": imageBuildArgs.ToBuildArgsString(),
 							"tags":       fmt.Sprintf("quay.io/vexxhost/%s:${{ env.PROJECT_REF }}-${{ matrix.from }}-${{ github.sha }}", project),
@@ -312,7 +314,7 @@ func NewBuildWorkflow(project string) *GithubWorkflow {
 					{
 						Name: "Sign the container image",
 						If:   "${{ github.event_name == 'push' }}",
-						Run: "cosign sign --yes quay.io/vexxhost/horizon@${{ steps.push-step.outputs.digest }}"
+						Run: "cosign sign --yes quay.io/vexxhost/horizon@${{ steps.push-step.outputs.digest }}",
 					},
 				},
 			},

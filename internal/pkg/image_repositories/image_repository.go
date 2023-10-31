@@ -51,7 +51,7 @@ func NewImageRepository(project string) *ImageRepository {
 
 func (i *ImageRepository) WriteFiles(ctx context.Context, fs billy.Filesystem) error {
 	// .github/workflows/build.yml
-	build := NewBuildWorkflow(i.Project)
+	build := NewBuildWorkflow(ctx, i)
 	err := build.WriteFile(fs)
 	if err != nil {
 		return err
