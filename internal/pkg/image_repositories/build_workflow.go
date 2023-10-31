@@ -252,6 +252,43 @@ func NewBuildWorkflow(project string) *GithubWorkflow {
 					{
 						Name: "Build image",
 						Uses: "docker/build-push-action@v3",
+						Environment: map[string]string{
+							"DOCKER_CONTENT_TRUST": "1",
+						},
+						With: map[string]string{
+							"context":    ".",
+							"cache-from": "type=gha,scope=${{ matrix.from }}-${{ matrix.release }}",
+							"cache-to":   "type=gha,mode=max,scope=${{ matrix.from }}-${{ matrix.release }}",
+							"load": true,
+							"build-args": imageBuildArgs.ToBuildArgsString(),
+							"tags":       fmt.Sprintf("quay.io/vexxhost/%s:${{ env.PROJECT_REF }}-${{ matrix.from }}-${{ github.sha }}", project),
+						},
+					},
+					{
+						Name: "Scan image for vulnerabilities",
+						Uses: "aquasecurity/trivy-action@master",
+						With: map[string]string{
+							"image-ref": fmt.Sprintf("quay.io/vexxhost/%s:${{ env.PROJECT_REF }}-${{ matrix.from }}-${{ github.sha }}", project),}
+							"format": "sarif",
+							"output": "trivy-results.sarif",
+							"ignore-unfixed": true
+						}
+					},
+					{
+						Name: "Upload scan result",
+						Uses: "github/codeql-action/upload-sarif@v2",
+						If:   "always()",
+						With: map[string]string{
+							"category": "${{ env.PROJECT_REF }}-${{ matrix.from }}",
+							"sarif_file": "trivy-results.sarif",
+						}
+					},
+					{
+						Name: "Build image",
+						Uses: "docker/build-push-action@v3",
+						Environment: map[string]string{
+							"DOCKER_CONTENT_TRUST": "1",
+						},
 						With: map[string]string{
 							"context":    ".",
 							"cache-from": "type=gha,scope=${{ matrix.from }}-${{ matrix.release }}",
@@ -276,25 +313,6 @@ func NewBuildWorkflow(project string) *GithubWorkflow {
 						Name: "Sign the container image",
 						If:   "${{ github.event_name == 'push' }}",
 						Run: "cosign sign --yes quay.io/vexxhost/horizon@${{ steps.push-step.outputs.digest }}"
-					},
-					{
-						Name: "Scan image for vulnerabilities",
-						Uses: "aquasecurity/trivy-action@master",
-						With: map[string]string{
-							"image-ref": fmt.Sprintf("quay.io/vexxhost/%s:${{ env.PROJECT_REF }}-${{ matrix.from }}-${{ github.sha }}", project),}
-							"format": "sarif",
-							"output": "trivy-results.sarif",
-							"ignore-unfixed": true
-						}
-					},
-					{
-						Name: "Upload scan result",
-						Uses: "github/codeql-action/upload-sarif@v2",
-						If:   "always()",
-						With: map[string]string{
-							"category": "${{ env.PROJECT_REF }}-${{ matrix.from }}",
-							"sarif_file": "trivy-results.sarif",
-						}
 					},
 				},
 			},
