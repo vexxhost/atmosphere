@@ -23,8 +23,10 @@ set -xe
 # Determine the root path for Atmosphere
 ATMOSPHERE="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." >/dev/null 2>&1 && pwd )"
 
+mv ${ATMOSPHERE}/charts/staffeln ${ATMOSPHERE}/tmp_staffeln
 # Clean-up all of the existing charts
 rm -rfv ${ATMOSPHERE}/charts/*
+mv ${ATMOSPHERE}/tmp_staffeln ${ATMOSPHERE}/charts/staffeln
 
 CEPH_CSI_RBD_VERSION=3.5.1
 curl -sL https://ceph.github.io/csi-charts/rbd/ceph-csi-rbd-${CEPH_CSI_RBD_VERSION}.tgz \
