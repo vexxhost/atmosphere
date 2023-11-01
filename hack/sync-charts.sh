@@ -194,7 +194,7 @@ HORIZON_VERSION=0.3.15
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/horizon-${HORIZON_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-TEMPEST_VERSION=0.2.7
+TEMPEST_VERSION=0.2.8
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/tempest-${TEMPEST_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
