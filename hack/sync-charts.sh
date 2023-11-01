@@ -84,7 +84,7 @@ KEYSTONE_VERSION=0.3.0
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/keystone-${KEYSTONE_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-BARBICAN_VERSION=0.3.2
+BARBICAN_VERSION=0.3.6
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/barbican-${BARBICAN_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
@@ -190,7 +190,7 @@ MAGNUM_VERSION=0.2.9
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/magnum-${MAGNUM_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-HORIZON_VERSION=0.3.11
+HORIZON_VERSION=0.3.15
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/horizon-${HORIZON_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
