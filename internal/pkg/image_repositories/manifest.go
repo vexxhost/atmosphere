@@ -20,6 +20,7 @@ type ImageManifest struct {
 	Yoga     *ReleaseManifest `yaml:"yoga"`
 	Zed      *ReleaseManifest `yaml:"zed"`
 	Antelope *ReleaseManifest `yaml:"2023.1"`
+	Bobcat   *ReleaseManifest `yaml:"2023.2"`
 }
 
 func NewImageManifest(project string, client *github.Client) (*ImageManifest, error) {
@@ -48,12 +49,18 @@ func NewImageManifest(project string, client *github.Client) (*ImageManifest, er
 		return nil, err
 	}
 
+	bobcat, err := getReleaseManifest(client, project, "2023.2")
+	if err != nil {
+		return nil, err
+	}
+
 	return &ImageManifest{
 		Wallaby:  wallaby,
 		Xena:     xena,
 		Yoga:     yoga,
 		Zed:      zed,
 		Antelope: antelope,
+		Bobcat: bobcat,
 	}, nil
 }
 
