@@ -78,9 +78,15 @@ MEMCACHED_VERSION=0.1.12
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm-infra/memcached-${MEMCACHED_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-KEYSTONE_VERSION=0.3.0
+KEYSTONE_VERSION=0.3.5
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/keystone-${KEYSTONE_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
+curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~899867/revisions/1/patch?download' \
+  | base64 --decode \
+  | filterdiff -p1 -x 'releasenotes/*' \
+  | filterdiff -p2 -x 'Chart.yaml' \
+  | filterdiff -p1 -i 'keystone/*' \
+  | patch -p2 -d ${ATMOSPHERE}/charts/keystone
 
 BARBICAN_VERSION=0.3.2
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/barbican-${BARBICAN_VERSION}.tgz \
