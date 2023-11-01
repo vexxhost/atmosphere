@@ -161,12 +161,12 @@ func NewBuildWorkflow(ctx context.Context, ir *ImageRepository) *GithubWorkflow 
 		fmt.Sprintf("cosign verify --certificate-oidc-issuer=https://token.actions.githubusercontent.com --certificate-identity=https://github.com/vexxhost/docker-openstack-runtime/.github/workflows/build.yml@refs/heads/main quay.io/vexxhost/openstack-runtime-${{ matrix.from }}:%s", runtimeImageTag),
 	}
 
-	releases := []string{"wallaby", "xena", "yoga", "zed", "2023.1"}
+	releases := []string{"wallaby", "xena", "yoga", "zed", "2023.1", "2023.2"}
 	if project == "keystone" {
-		releases = []string{"zed", "2023.1"}
+		releases = []string{"zed", "2023.1", "2023.2"}
 	}
 	if project == "magnum" {
-		releases = []string{"yoga", "zed", "2023.1"}
+		releases = []string{"yoga", "zed", "2023.1", "2023.2"}
 	}
 
 	workflow := &GithubWorkflow{
@@ -204,6 +204,10 @@ func NewBuildWorkflow(ctx context.Context, ir *ImageRepository) *GithubWorkflow 
 							{
 								"from":    "focal",
 								"release": "2023.1",
+							},
+							{
+								"from":    "focal",
+								"release": "2023.2",
 							},
 							{
 								"from":    "jammy",
