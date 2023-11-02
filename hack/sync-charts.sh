@@ -128,7 +128,7 @@ curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~899914/revis
 # Remove extra files before 899914 merged
 rm -r ${ATMOSPHERE}/charts/placement/values_overrides/
 
-OPEN_VSWITCH_VERSION=0.1.15
+OPEN_VSWITCH_VERSION=0.1.19
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm-infra/openvswitch-${OPEN_VSWITCH_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
