@@ -56,10 +56,6 @@ INGRESS_NGINX_VERSION=4.0.17
 curl -sL https://github.com/kubernetes/ingress-nginx/releases/download/helm-chart-${INGRESS_NGINX_VERSION}/ingress-nginx-${INGRESS_NGINX_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-CERT_MANAGER_VERSION=v1.7.1
-curl -sL https://charts.jetstack.io/charts/cert-manager-${CERT_MANAGER_VERSION}.tgz \
-  | tar -xz -C ${ATMOSPHERE}/charts
-
 CERT_MANAGER_WEBHOOK_INFOBLOX_WAPI_VERSION=1.5.2
 curl -sL https://github.com/luisico/cert-manager-webhook-infoblox-wapi/releases/download/helm-chart-${CERT_MANAGER_WEBHOOK_INFOBLOX_WAPI_VERSION}/cert-manager-webhook-infoblox-wapi-${CERT_MANAGER_WEBHOOK_INFOBLOX_WAPI_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
@@ -80,11 +76,19 @@ MEMCACHED_VERSION=0.1.12
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm-infra/memcached-${MEMCACHED_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-KEYSTONE_VERSION=0.3.0
+KEYSTONE_VERSION=0.3.5
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/keystone-${KEYSTONE_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
+curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~899867/revisions/1/patch?download' \
+  | base64 --decode \
+  | filterdiff -p1 -x 'releasenotes/*' \
+  | filterdiff -p2 -x 'Chart.yaml' \
+  | filterdiff -p1 -i 'keystone/*' \
+  | patch -p2 -d ${ATMOSPHERE}/charts/keystone
+# Remove extra files before 899867 merged
+rm ${ATMOSPHERE}/charts/keystone/templates/bin/_domain-manage-init.sh.tpl ${ATMOSPHERE}/charts/keystone/templates/bin/_domain-manage.py.tpl
 
-BARBICAN_VERSION=0.3.2
+BARBICAN_VERSION=0.3.6
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/barbican-${BARBICAN_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
@@ -92,9 +96,15 @@ CEPH_PROVISIONERS_VERSION=0.1.8
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm-infra/ceph-provisioners-${CEPH_PROVISIONERS_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-GLANCE_VERSION=0.4.12
+GLANCE_VERSION=0.4.15
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/glance-${GLANCE_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
+curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~899864/revisions/2/patch?download' \
+  | base64 --decode \
+  | filterdiff -p1 -x 'releasenotes/*' \
+  | filterdiff -p2 -x 'Chart.yaml' \
+  | filterdiff -p1 -i 'glance/*' \
+  | patch -p2 -d ${ATMOSPHERE}/charts/glance
 
 CINDER_VERSION=0.3.15
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/cinder-${CINDER_VERSION}.tgz \
@@ -106,18 +116,26 @@ curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~899814/revis
   | filterdiff -p1 -i 'cinder/*' \
   | patch -p2 -d ${ATMOSPHERE}/charts/cinder
 
-PLACEMENT_VERSION=0.3.7
+PLACEMENT_VERSION=0.3.9
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/placement-${PLACEMENT_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
+curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~899914/revisions/3/patch?download' \
+  | base64 --decode \
+  | filterdiff -p1 -x 'releasenotes/*' \
+  | filterdiff -p2 -x 'Chart.yaml' \
+  | filterdiff -p1 -i 'placement/*' \
+  | patch -p2 -d ${ATMOSPHERE}/charts/placement
+# Remove extra files before 899914 merged
+rm -r ${ATMOSPHERE}/charts/placement/values_overrides/
 
-OPEN_VSWITCH_VERSION=0.1.15
+OPEN_VSWITCH_VERSION=0.1.19
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm-infra/openvswitch-${OPEN_VSWITCH_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-LIBVIRT_VERSION=0.1.23
+LIBVIRT_VERSION=0.1.27
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm-infra/libvirt-${LIBVIRT_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
-curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm-infra~893406/revisions/6/patch?download' \
+curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm-infra~893406/revisions/9/patch?download' \
   | base64 --decode \
   | filterdiff -p1 -x 'releasenotes/*' \
   | filterdiff -p2 -x 'Chart.yaml' \
@@ -159,6 +177,12 @@ curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~899716/revis
   | filterdiff -p2 -x 'Chart.yaml' \
   | filterdiff -p1 -i 'neutron/*' \
   | patch -p2 -d ${ATMOSPHERE}/charts/neutron
+curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~899933/revisions/1/patch?download' \
+  | base64 --decode \
+  | filterdiff -p1 -x 'releasenotes/*' \
+  | filterdiff -p2 -x 'Chart.yaml' \
+  | filterdiff -p1 -i 'neutron/*' \
+  | patch -p2 -d ${ATMOSPHERE}/charts/neutron
 
 NOVA_VERISON=0.3.27
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/nova-${NOVA_VERISON}.tgz \
@@ -173,28 +197,58 @@ curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~899809/revis
 SENLIN_VERSION=0.2.9
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/senlin-${SENLIN_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
+curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~899913/revisions/1/patch?download' \
+  | base64 --decode \
+  | filterdiff -p1 -x 'releasenotes/*' \
+  | filterdiff -p2 -x 'Chart.yaml' \
+  | filterdiff -p1 -i 'senlin/*' \
+  | patch -p2 -d ${ATMOSPHERE}/charts/senlin
 
 DESIGNATE_VERSION=0.2.9
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/designate-${DESIGNATE_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
+curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~899932/revisions/1/patch?download' \
+  | base64 --decode \
+  | filterdiff -p1 -x 'releasenotes/*' \
+  | filterdiff -p2 -x 'Chart.yaml' \
+  | filterdiff -p1 -i 'designate/*' \
+  | patch -p2 -d ${ATMOSPHERE}/charts/designate
 
-HEAT_VERSION=0.3.3
+HEAT_VERSION=0.3.7
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/heat-${HEAT_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
+curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~899931/revisions/1/patch?download' \
+  | base64 --decode \
+  | filterdiff -p1 -x 'releasenotes/*' \
+  | filterdiff -p2 -x 'Chart.yaml' \
+  | filterdiff -p1 -i 'heat/*' \
+  | patch -p2 -d ${ATMOSPHERE}/charts/heat
 
 OCTAVIA_VERSION=0.2.9
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/octavia-${OCTAVIA_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
+curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~899918/revisions/1/patch?download' \
+  | base64 --decode \
+  | filterdiff -p1 -x 'releasenotes/*' \
+  | filterdiff -p2 -x 'Chart.yaml' \
+  | filterdiff -p1 -i 'octavia/*' \
+  | patch -p2 -d ${ATMOSPHERE}/charts/octavia
 
 MAGNUM_VERSION=0.2.9
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/magnum-${MAGNUM_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
+curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~899926/revisions/1/patch?download' \
+  | base64 --decode \
+  | filterdiff -p1 -x 'releasenotes/*' \
+  | filterdiff -p2 -x 'Chart.yaml' \
+  | filterdiff -p1 -i 'magnum/*' \
+  | patch -p2 -d ${ATMOSPHERE}/charts/magnum
 
-HORIZON_VERSION=0.3.11
+HORIZON_VERSION=0.3.15
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/horizon-${HORIZON_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-TEMPEST_VERSION=0.2.7
+TEMPEST_VERSION=0.2.8
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/tempest-${TEMPEST_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
@@ -206,7 +260,7 @@ ROOK_CEPH_CLUSTER_VERSION=1.10.10
 curl -sL https://charts.rook.io/release/rook-ceph-cluster-v${ROOK_CEPH_CLUSTER_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-MANILA_VERSION=0.1.5
+MANILA_VERSION=0.1.7
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/manila-${MANILA_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~883168/revisions/11/patch?download' \
@@ -215,7 +269,7 @@ curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~883168/revis
   | filterdiff -p2 -x 'Chart.yaml' \
   | filterdiff -p1 -i 'manila/*' \
   | patch -p2 -d ${ATMOSPHERE}/charts/manila
-curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~896819/revisions/2/patch?download' \
+curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~899923/revisions/1/patch?download' \
   | base64 --decode \
   | filterdiff -p1 -x 'releasenotes/*' \
   | filterdiff -p2 -x 'Chart.yaml' \
