@@ -202,9 +202,15 @@ DESIGNATE_VERSION=0.2.9
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/designate-${DESIGNATE_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-HEAT_VERSION=0.3.3
+HEAT_VERSION=0.3.7
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/heat-${HEAT_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
+curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~899931/revisions/1/patch?download' \
+  | base64 --decode \
+  | filterdiff -p1 -x 'releasenotes/*' \
+  | filterdiff -p2 -x 'Chart.yaml' \
+  | filterdiff -p1 -i 'heat/*' \
+  | patch -p2 -d ${ATMOSPHERE}/charts/heat
 
 OCTAVIA_VERSION=0.2.9
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/octavia-${OCTAVIA_VERSION}.tgz \
