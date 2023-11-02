@@ -209,6 +209,12 @@ curl -sL https://tarballs.opendev.org/openstack/openstack-helm/heat-${HEAT_VERSI
 OCTAVIA_VERSION=0.2.9
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/octavia-${OCTAVIA_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
+curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~899918/revisions/1/patch?download' \
+  | base64 --decode \
+  | filterdiff -p1 -x 'releasenotes/*' \
+  | filterdiff -p2 -x 'Chart.yaml' \
+  | filterdiff -p1 -i 'octavia/*' \
+  | patch -p2 -d ${ATMOSPHERE}/charts/octavia
 
 MAGNUM_VERSION=0.2.9
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/magnum-${MAGNUM_VERSION}.tgz \
