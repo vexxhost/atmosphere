@@ -1,14 +1,18 @@
-{{- if .Values.msgTopologyOperator.rbac.create }}
+{{- /*
+Copyright VMware, Inc.
+SPDX-License-Identifier: APACHE-2.0
+*/}}
+
+{{- if and .Values.msgTopologyOperator.enabled .Values.msgTopologyOperator.rbac.create }}
 apiVersion: {{ include "common.capabilities.rbac.apiVersion" . }}
 kind: ClusterRole
 metadata:
-  labels: {{- include "common.labels.standard" . | nindent 4 }}
+  {{- $versionLabel := dict "app.kubernetes.io/version" ( include "common.images.version" ( dict "imageRoot" .Values.msgTopologyOperator.image "chart" .Chart ) ) }}
+  {{- $labels := include "common.tplvalues.merge" ( dict "values" ( list .Values.commonLabels $versionLabel ) "context" . ) }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" $labels "context" $ ) | nindent 4 }}
     app.kubernetes.io/component: messaging-topology-operator
     app.kubernetes.io/part-of: rabbitmq
-    {{- if .Values.commonLabels }}
-    {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
-    {{- end }}
-  name: {{ template "rmqco.msgTopologyOperator.fullname" . }}
+  name: {{ template "rmqco.msgTopologyOperator.fullname.namespace" . }}
   {{- if .Values.commonAnnotations }}
   annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
   {{- end }}
@@ -29,6 +33,8 @@ rules:
       - create
       - get
       - list
+      - patch
+      - update
       - watch
   - apiGroups:
       - ""
@@ -268,6 +274,26 @@ rules:
       - rabbitmq.com
     resources:
       - vhosts/status
+    verbs:
+      - get
+      - patch
+      - update
+  - apiGroups:
+      - rabbitmq.com
+    resources:
+      - topicpermissions
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - rabbitmq.com
+    resources:
+      - topicpermissions/status
     verbs:
       - get
       - patch

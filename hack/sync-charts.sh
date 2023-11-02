@@ -28,31 +28,31 @@ mv ${ATMOSPHERE}/charts/staffeln ${ATMOSPHERE}/tmp_staffeln
 rm -rfv ${ATMOSPHERE}/charts/*
 mv ${ATMOSPHERE}/tmp_staffeln ${ATMOSPHERE}/charts/staffeln
 
-CEPH_CSI_RBD_VERSION=3.5.1
+CEPH_CSI_RBD_VERSION=3.9.0
 curl -sL https://ceph.github.io/csi-charts/rbd/ceph-csi-rbd-${CEPH_CSI_RBD_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-NODE_FEATURE_DISCOVERY_VERSION=0.11.2
+NODE_FEATURE_DISCOVERY_VERSION=0.14.3
 curl -sL https://github.com/kubernetes-sigs/node-feature-discovery/releases/download/v${NODE_FEATURE_DISCOVERY_VERSION}/node-feature-discovery-chart-${NODE_FEATURE_DISCOVERY_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-KUBE_PROMETHEUS_STACK_VERSION=49.0.0
+KUBE_PROMETHEUS_STACK_VERSION=52.1.0
 curl -sL https://github.com/prometheus-community/helm-charts/releases/download/kube-prometheus-stack-${KUBE_PROMETHEUS_STACK_VERSION}/kube-prometheus-stack-${KUBE_PROMETHEUS_STACK_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-LOKI_VERSION=4.6.1
+LOKI_VERSION=5.36.1
 curl -sL https://github.com/grafana/helm-charts/releases/download/helm-loki-${LOKI_VERSION}/loki-${LOKI_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-VECTOR_VERSION=0.19.0
+VECTOR_VERSION=0.27.0
 curl -sL https://github.com/vectordotdev/helm-charts/releases/download/vector-${VECTOR_VERSION}/vector-${VECTOR_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-PROMETHEUS_PUSHGATEWAY_VERSION=1.16.0
+PROMETHEUS_PUSHGATEWAY_VERSION=2.4.1
 curl -sL https://github.com/prometheus-community/helm-charts/releases/download/prometheus-pushgateway-${PROMETHEUS_PUSHGATEWAY_VERSION}/prometheus-pushgateway-${PROMETHEUS_PUSHGATEWAY_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-INGRESS_NGINX_VERSION=4.0.17
+INGRESS_NGINX_VERSION=4.8.3
 curl -sL https://github.com/kubernetes/ingress-nginx/releases/download/helm-chart-${INGRESS_NGINX_VERSION}/ingress-nginx-${INGRESS_NGINX_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
@@ -64,19 +64,19 @@ CERT_MANAGER_WEBHOOK_INFOBLOX_WAPI_VERSION=1.5.2
 curl -sL https://github.com/luisico/cert-manager-webhook-infoblox-wapi/releases/download/helm-chart-${CERT_MANAGER_WEBHOOK_INFOBLOX_WAPI_VERSION}/cert-manager-webhook-infoblox-wapi-${CERT_MANAGER_WEBHOOK_INFOBLOX_WAPI_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-RABBITMQ_CLUSTER_OPERATOR_VERSION=2.6.6
+RABBITMQ_CLUSTER_OPERATOR_VERSION=3.10.0
 curl -sL https://charts.bitnami.com/bitnami/rabbitmq-cluster-operator-${RABBITMQ_CLUSTER_OPERATOR_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-PXC_OPERATOR_VERSION=1.12.0
+PXC_OPERATOR_VERSION=1.13.3
 curl -sL https://github.com/Percona-Lab/percona-helm-charts/releases/download/pxc-operator-${PXC_OPERATOR_VERSION}/pxc-operator-${PXC_OPERATOR_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-COREDNS_VERSION=1.19.4
+COREDNS_VERSION=1.28.0
 curl -sL https://github.com/coredns/helm/releases/download/coredns-${COREDNS_VERSION}/coredns-${COREDNS_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-MEMCACHED_VERSION=0.1.12
+MEMCACHED_VERSION=0.1.13
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm-infra/memcached-${MEMCACHED_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
@@ -222,6 +222,6 @@ curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~896819/revis
   | filterdiff -p1 -i 'manila/*' \
   | patch -p2 -d ${ATMOSPHERE}/charts/manila
 
-KEYCLOAK_VERSION=16.0.3
+KEYCLOAK_VERSION=17.2.1
 curl -sL https://charts.bitnami.com/bitnami/keycloak-${KEYCLOAK_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts

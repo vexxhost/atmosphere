@@ -9,6 +9,7 @@ metadata:
     component: {{ .Values.nodeplugin.name }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 rules:
 {{- if .Values.topology.enabled }}
   - apiGroups: [""]
@@ -31,4 +32,7 @@ rules:
   - apiGroups: ["storage.k8s.io"]
     resources: ["volumeattachments"]
     verbs: ["list", "get"]
+  - apiGroups: [""]
+    resources: ["serviceaccounts/token"]
+    verbs: ["create"]
 {{- end -}}
