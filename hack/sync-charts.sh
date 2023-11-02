@@ -56,10 +56,6 @@ INGRESS_NGINX_VERSION=4.0.17
 curl -sL https://github.com/kubernetes/ingress-nginx/releases/download/helm-chart-${INGRESS_NGINX_VERSION}/ingress-nginx-${INGRESS_NGINX_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-CERT_MANAGER_VERSION=v1.7.1
-curl -sL https://charts.jetstack.io/charts/cert-manager-${CERT_MANAGER_VERSION}.tgz \
-  | tar -xz -C ${ATMOSPHERE}/charts
-
 CERT_MANAGER_WEBHOOK_INFOBLOX_WAPI_VERSION=1.5.2
 curl -sL https://github.com/luisico/cert-manager-webhook-infoblox-wapi/releases/download/helm-chart-${CERT_MANAGER_WEBHOOK_INFOBLOX_WAPI_VERSION}/cert-manager-webhook-infoblox-wapi-${CERT_MANAGER_WEBHOOK_INFOBLOX_WAPI_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
