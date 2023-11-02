@@ -219,6 +219,12 @@ curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~899918/revis
 MAGNUM_VERSION=0.2.9
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/magnum-${MAGNUM_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
+curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~899926/revisions/1/patch?download' \
+  | base64 --decode \
+  | filterdiff -p1 -x 'releasenotes/*' \
+  | filterdiff -p2 -x 'Chart.yaml' \
+  | filterdiff -p1 -i 'magnum/*' \
+  | patch -p2 -d ${ATMOSPHERE}/charts/magnum
 
 HORIZON_VERSION=0.3.15
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/horizon-${HORIZON_VERSION}.tgz \
