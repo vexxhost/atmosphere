@@ -37,7 +37,7 @@
 - name: Create health manager security group rules
   openstack.cloud.security_group_rule:
     cloud: atmosphere
-    security_group: "{{ _octavia_health_manager_sg.id }}"
+    security_group: "{{ _octavia_health_manager_sg.security_group.id }}"
     direction: ingress
     ethertype: IPv4
     protocol: tcp
@@ -65,7 +65,7 @@
         if hostvars[item]['octavia_health_manager_ip'] is defined else omit
       }}
     security_groups:
-      - "{{ _octavia_health_manager_sg.id }}"
+      - "{{ _octavia_health_manager_sg.security_group.id }}"
   loop: "{{ groups['controllers'] }}"
   loop_control:
     index_var: _octavia_health_manager_port_index
@@ -99,10 +99,10 @@
 
 - name: Set controller_ip_port_list
   ansible.builtin.set_fact:
-    _octavia_controller_ip_port_list: "{{ (_octavia_controller_ip_port_list | d([]) + [item.openstack_ports[0].fixed_ips[0].ip_address + ':5555']) | unique }}"
+    _octavia_controller_ip_port_list: "{{ (_octavia_controller_ip_port_list | d([]) + [item.ports[0].fixed_ips[0].ip_address + ':5555']) | unique }}"
   loop: "{{ _octavia_health_manager_ports.results }}"
   loop_control:
-    label: "{{ item.openstack_ports[0].name }}"
+    label: "{{ item.ports[0].name }}"
 
 - name: Create amphora security group
   openstack.cloud.security_group:
@@ -113,13 +113,13 @@
 - name: Create amphora security group rules
   openstack.cloud.security_group_rule:
     cloud: atmosphere
-    security_group: "{{ _octavia_amphora_sg.id }}"
+    security_group: "{{ _octavia_amphora_sg.security_group.id }}"
     direction: ingress
     ethertype: IPv4
     protocol: tcp
     port_range_min: "{{ item.0 }}"
     port_range_max: "{{ item.0 }}"
-    remote_ip_prefix: "{{ item.1.openstack_ports[0].fixed_ips[0].ip_address }}/32"
+    remote_ip_prefix: "{{ item.1.ports[0].fixed_ips[0].ip_address }}/32"
   with_nested:
     - [22, 9443]
     - "{{ _octavia_health_manager_ports.results }}"
