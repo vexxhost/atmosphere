@@ -86,7 +86,7 @@ curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~899867/revis
   | filterdiff -p1 -i 'keystone/*' \
   | patch -p2 -d ${ATMOSPHERE}/charts/keystone
 # Remove extra files before 899867 merged
-rm ${ATMOSPHERE}/charts/keystone/templates/bin/_domain-manage-init.sh.tpl ${ATMOSPHERE}/charts/keystone/templates/bin/_domain-manage.py.tpl
+rm -fv ${ATMOSPHERE}/charts/keystone/templates/bin/_domain-manage-init.sh.tpl ${ATMOSPHERE}/charts/keystone/templates/bin/_domain-manage.py.tpl
 
 BARBICAN_VERSION=0.3.6
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/barbican-${BARBICAN_VERSION}.tgz \
@@ -126,7 +126,7 @@ curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~899914/revis
   | filterdiff -p1 -i 'placement/*' \
   | patch -p2 -d ${ATMOSPHERE}/charts/placement
 # Remove extra files before 899914 merged
-rm -r ${ATMOSPHERE}/charts/placement/values_overrides/
+rm -rfv ${ATMOSPHERE}/charts/placement/values_overrides/
 
 OPEN_VSWITCH_VERSION=0.1.19
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm-infra/openvswitch-${OPEN_VSWITCH_VERSION}.tgz \
