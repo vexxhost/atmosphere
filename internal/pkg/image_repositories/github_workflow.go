@@ -85,6 +85,7 @@ func (s *GithubWorkflowStrategy) DeepCopy() GithubWorkflowStrategy {
 
 type GithubWorkflowStep struct {
 	Name        string            `yaml:"name"`
+	Id          string            `yaml:"id,omitempty"`
 	Run         string            `yaml:"run,omitempty"`
 	Uses        string            `yaml:"uses,omitempty"`
 	If          string            `yaml:"if,omitempty"`
