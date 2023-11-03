@@ -292,6 +292,7 @@ func NewBuildWorkflow(ctx context.Context, ir *ImageRepository) *GithubWorkflow 
 					{
 						Name: "Build image",
 						Uses: "docker/build-push-action@v3",
+						Id: "push-step",
 						Environment: map[string]string{
 							"DOCKER_CONTENT_TRUST": "1",
 						},
