@@ -26,7 +26,7 @@
 
 - name: Download image and upload into Glance
   run_once: true
-  when: _image_info.images == None
+  when: (_image_info.images | length) == 0
   block:
     - name: Generate temporary work directory
       ansible.builtin.tempfile:
