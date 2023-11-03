@@ -103,6 +103,15 @@
     openstack_helm_ingress_service_port: 5000
     openstack_helm_ingress_annotations: "{{ keystone_ingress_annotations }}"
 
+- name: Validate if ingress is reachable
+  ansible.builtin.uri:
+    url: "https://{{ openstack_helm_endpoints_keystone_api_host }}"
+    status_code: [300]
+  register: keystone_ingress_validate
+  until: keystone_ingress_validate.status == 300
+  retries: 10
+  delay: 1
+
 - name: Create Keystone domains
   run_once: true
   delegate_to: localhost
