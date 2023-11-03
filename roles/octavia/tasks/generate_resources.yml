@@ -37,16 +37,19 @@
 - name: Create health manager security group rules
   openstack.cloud.security_group_rule:
     cloud: atmosphere
-    security_group: "{{ _octavia_health_manager_sg.id }}"
+    security_group: "{{ _octavia_health_manager_sg.security_group.id }}"
     direction: ingress
     ethertype: IPv4
-    protocol: tcp
-    port_range_min: "{{ item }}"
-    port_range_max: "{{ item }}"
+    protocol: "{{ item.proto }}"
+    port_range_min: "{{ item.port }}"
+    port_range_max: "{{ item.port }}"
   loop:
-    - 5555
-    - 10514
-    - 20514
+    - port: 5555
+      proto: udp
+    - port: 10514
+      proto: tcp
+    - port: 20514
+      proto: tcp
 
 - name: Create health manager networking ports
   # noqa: args[module]
