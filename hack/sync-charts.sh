@@ -52,7 +52,7 @@ PROMETHEUS_PUSHGATEWAY_VERSION=1.16.0
 curl -sL https://github.com/prometheus-community/helm-charts/releases/download/prometheus-pushgateway-${PROMETHEUS_PUSHGATEWAY_VERSION}/prometheus-pushgateway-${PROMETHEUS_PUSHGATEWAY_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-INGRESS_NGINX_VERSION=4.0.17
+INGRESS_NGINX_VERSION=4.8.3
 curl -sL https://github.com/kubernetes/ingress-nginx/releases/download/helm-chart-${INGRESS_NGINX_VERSION}/ingress-nginx-${INGRESS_NGINX_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
