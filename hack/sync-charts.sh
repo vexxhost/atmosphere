@@ -68,11 +68,11 @@ PXC_OPERATOR_VERSION=1.12.0
 curl -sL https://github.com/Percona-Lab/percona-helm-charts/releases/download/pxc-operator-${PXC_OPERATOR_VERSION}/pxc-operator-${PXC_OPERATOR_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-COREDNS_VERSION=1.19.4
+COREDNS_VERSION=1.28.0
 curl -sL https://github.com/coredns/helm/releases/download/coredns-${COREDNS_VERSION}/coredns-${COREDNS_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-MEMCACHED_VERSION=0.1.12
+MEMCACHED_VERSION=0.1.13
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm-infra/memcached-${MEMCACHED_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
@@ -276,6 +276,6 @@ curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~899923/revis
   | filterdiff -p1 -i 'manila/*' \
   | patch -p2 -d ${ATMOSPHERE}/charts/manila
 
-KEYCLOAK_VERSION=16.0.3
+KEYCLOAK_VERSION=17.2.1
 curl -sL https://charts.bitnami.com/bitnami/keycloak-${KEYCLOAK_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
