@@ -131,6 +131,9 @@ podHostNetwork: false
 # for Vector Pods.
 podSecurityContext: {}
 
+# workloadResourceAnnotations -- Set annotations on the Vector DaemonSet, Deployment or StatefulSet.
+workloadResourceAnnotations: {}
+
 # securityContext -- Specify securityContext on Vector containers.
 securityContext: {}
 
@@ -179,6 +182,11 @@ lifecycle: {}
   #     command:
   #     - /bin/sleep
   #     - "10"
+
+
+# minReadySeconds -- Specify the minimum number of seconds a newly spun up DaemonSet pod should wait to
+# pass healthchecks before it is considered available.
+minReadySeconds: 0
 
 # updateStrategy -- Customize the updateStrategy used to replace Vector Pods, this is also used for the
 # DeploymentStrategy for the "Stateless-Aggregators". Valid options depend on the chosen role.
@@ -229,6 +237,8 @@ service:
   ports: []
   # service.externalTrafficPolicy -- Specify the [externalTrafficPolicy](https://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/#preserving-the-client-source-ip).
   externalTrafficPolicy: ""
+  # service.internalTrafficPolicy -- Specify the [internalTrafficPolicy]https://kubernetes.io/docs/concepts/services-networking/service-traffic-policy).
+  internalTrafficPolicy: ""
   # service.loadBalancerIP -- Specify the [loadBalancerIP](https://kubernetes.io/docs/concepts/services-networking/service/#loadbalancer).
   loadBalancerIP: ""
   # service.ipFamilyPolicy -- Configure [IPv4/IPv6 dual-stack](https://kubernetes.io/docs/concepts/services-networking/dual-stack/).
@@ -298,6 +308,39 @@ customConfig: {}
   #     encoding:
   #       codec: json
 
+# defaultVolumes -- Default volumes that are mounted into pods. In most cases, these should not be changed.
+# Use `extraVolumes`/`extraVolumeMounts` for additional custom volumes.
+# @default -- See `values.yaml`
+defaultVolumes:
+  - name: var-log
+    hostPath:
+      path: "/var/log/"
+  - name: var-lib
+    hostPath:
+      path: "/var/lib/"
+  - name: procfs
+    hostPath:
+      path: "/proc"
+  - name: sysfs
+    hostPath:
+      path: "/sys"
+
+# defaultVolumeMounts -- Default volume mounts. Corresponds to `volumes`.
+# @default -- See `values.yaml`
+defaultVolumeMounts:
+  - name: var-log
+    mountPath: "/var/log/"
+    readOnly: true
+  - name: var-lib
+    mountPath: "/var/lib"
+    readOnly: true
+  - name: procfs
+    mountPath: "/host/proc"
+    readOnly: true
+  - name: sysfs
+    mountPath: "/host/sys"
+    readOnly: true
+
 # extraVolumes -- Additional Volumes to use with Vector Pods.
 extraVolumes: []
 
@@ -332,6 +375,9 @@ persistence:
   selectors: {}
 
   hostPath:
+    # persistence.hostPath.enabled -- If true, use hostPath persistence. Valid for the "Agent" role, if it's disabled
+    # the "Agent" role will use emptyDir.
+    enabled: true
     # persistence.hostPath.path -- Override path used for hostPath persistence. Valid for the "Agent" role, persistence
     # is always used for the "Agent" role.
     path: "/var/lib/vector"
@@ -352,6 +398,10 @@ dnsConfig: {}
   #   - name: ndots
   #     value: "2"
   #   - name: edns0
+
+# shareProcessNamespace -- Specify the [shareProcessNamespace](https://kubernetes.io/docs/tasks/configure-pod-container/share-process-namespace/)
+# options for Vector Pods.
+shareProcessNamespace: false
 
 # livenessProbe -- Override default liveness probe settings. If customConfig is used, requires customConfig.api.enabled
 # to be set to true.
@@ -377,12 +427,19 @@ podMonitor:
   port: prom-exporter
   # podMonitor.path -- Override the path to scrape.
   path: /metrics
+  # podMonitor.interval -- Override the interval at which metrics should be scraped.
+  interval:
+  # podMonitor.scrapeTimeout -- Override the timeout after which the scrape is ended.
+  scrapeTimeout:
   # podMonitor.relabelings -- [RelabelConfigs](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config)
   # to apply to samples before scraping.
   relabelings: []
   # podMonitor.metricRelabelings -- [MetricRelabelConfigs](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs)
   # to apply to samples before ingestion.
   metricRelabelings: []
+  # podMonitor.podTargetLabels -- [podTargetLabels](https://prometheus-operator.dev/docs/operator/api/#monitoring.coreos.com/v1.PodMonitorSpec)
+  # transfers labels on the Kubernetes Pod onto the target.
+  podTargetLabels: []
   # podMonitor.additionalLabels -- Adds additional labels to the PodMonitor.
   additionalLabels: {}
   # podMonitor.honorLabels -- If true, honor_labels is set to true in the [scrape config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#scrape_config).
@@ -390,7 +447,10 @@ podMonitor:
   # podMonitor.honorTimestamps -- If true, honor_timestamps is set to true in the [scrape config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#scrape_config).
   honorTimestamps: true
 
-# Optional built-in HAProxy load.
+# Log level for Vector.
+logLevel: "info"
+
+# Optional built-in HAProxy load balancer.
 haproxy:
   # haproxy.enabled -- If true, create a HAProxy load balancer.
   enabled: false
@@ -405,7 +465,7 @@ haproxy:
     # to reference for the HAProxy Pods.
     pullSecrets: []
     # haproxy.image.tag -- The tag to use for HAProxy's image.
-    tag: "2.4.17"
+    tag: "2.6.12"
 
   # haproxy.rollWorkload -- Add a checksum of the generated ConfigMap to the HAProxy Deployment.
   rollWorkload: true
@@ -558,3 +618,15 @@ haproxy:
   # haproxy.affinity -- Configure [affinity](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity)
   # rules for HAProxy Pods.
   affinity: {}
+
+# extraObjects -- Create extra manifests via values. Would be passed through `tpl` for templating.
+extraObjects: []
+  # - apiVersion: v1
+  #   kind: ConfigMap
+  #   metadata:
+  #     name: vector-dashboards
+  #     labels:
+  #       grafana_dashboard: "1"
+  #   data:
+  #     vector.json: |
+  #       {{ .Files.Get "dashboards/vector.json" | fromJson | toJson }}

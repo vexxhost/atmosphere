@@ -32,7 +32,7 @@ CEPH_CSI_RBD_VERSION=3.5.1
 curl -sL https://ceph.github.io/csi-charts/rbd/ceph-csi-rbd-${CEPH_CSI_RBD_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-NODE_FEATURE_DISCOVERY_VERSION=0.11.2
+NODE_FEATURE_DISCOVERY_VERSION=0.14.3
 curl -sL https://github.com/kubernetes-sigs/node-feature-discovery/releases/download/v${NODE_FEATURE_DISCOVERY_VERSION}/node-feature-discovery-chart-${NODE_FEATURE_DISCOVERY_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
@@ -44,7 +44,7 @@ LOKI_VERSION=5.36.1
 curl -sL https://github.com/grafana/helm-charts/releases/download/helm-loki-${LOKI_VERSION}/loki-${LOKI_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-VECTOR_VERSION=0.19.0
+VECTOR_VERSION=0.27.0
 curl -sL https://github.com/vectordotdev/helm-charts/releases/download/vector-${VECTOR_VERSION}/vector-${VECTOR_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
