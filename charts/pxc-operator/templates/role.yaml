@@ -1,3 +1,4 @@
+{{- if .Values.rbac.create }}
 {{- if or .Values.watchNamespace .Values.watchAllNamespaces }}
 kind: ClusterRole
 {{- else }}
@@ -6,6 +7,7 @@ kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: {{ include "pxc-operator.fullname" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
 {{ include "pxc-operator.labels" . | indent 4 }}
 rules:
@@ -131,3 +133,4 @@ rules:
   - patch
   - delete
   - deletecollection
+{{- end }}

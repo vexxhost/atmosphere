@@ -60,11 +60,11 @@ CERT_MANAGER_WEBHOOK_INFOBLOX_WAPI_VERSION=1.5.2
 curl -sL https://github.com/luisico/cert-manager-webhook-infoblox-wapi/releases/download/helm-chart-${CERT_MANAGER_WEBHOOK_INFOBLOX_WAPI_VERSION}/cert-manager-webhook-infoblox-wapi-${CERT_MANAGER_WEBHOOK_INFOBLOX_WAPI_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-RABBITMQ_CLUSTER_OPERATOR_VERSION=2.6.6
+RABBITMQ_CLUSTER_OPERATOR_VERSION=3.10.0
 curl -sL https://charts.bitnami.com/bitnami/rabbitmq-cluster-operator-${RABBITMQ_CLUSTER_OPERATOR_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-PXC_OPERATOR_VERSION=1.12.0
+PXC_OPERATOR_VERSION=1.13.3
 curl -sL https://github.com/Percona-Lab/percona-helm-charts/releases/download/pxc-operator-${PXC_OPERATOR_VERSION}/pxc-operator-${PXC_OPERATOR_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 

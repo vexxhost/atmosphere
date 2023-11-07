@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "pxc-operator.fullname" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
 {{ include "pxc-operator.labels" . | indent 4 }}
 spec:
@@ -40,6 +41,11 @@ spec:
             protocol: TCP
           command:
           - percona-xtradb-cluster-operator
+          {{- if .Values.containerSecurityContext.readOnlyRootFilesystem }}
+          volumeMounts:
+            - name: tmpdir
+              mountPath: /tmp
+          {{- end }}
           env:
             - name: WATCH_NAMESPACE
               {{- if .Values.watchAllNamespaces }}
@@ -67,6 +73,10 @@ spec:
               scheme: HTTP
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+          {{- with .Values.containerSecurityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -78,6 +88,11 @@ spec:
     {{- with .Values.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- if .Values.containerSecurityContext.readOnlyRootFilesystem }}
+      volumes:
+        - name: tmpdir
+          emptyDir: {}
     {{- end }}
 {{- if .Values.watchAllNamespaces }}
 ---
