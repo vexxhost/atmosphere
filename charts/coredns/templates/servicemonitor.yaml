@@ -6,16 +6,7 @@ metadata:
   {{- if .Values.prometheus.monitor.namespace }}
   namespace: {{ .Values.prometheus.monitor.namespace }}
   {{- end }}
-  labels:
-    app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
-    app.kubernetes.io/instance: {{ .Release.Name | quote }}
-    helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}"
-    {{- if .Values.isClusterService }}
-    k8s-app: {{ .Chart.Name | quote }}
-    kubernetes.io/cluster-service: "true"
-    kubernetes.io/name: "CoreDNS"
-    {{- end }}
-    app.kubernetes.io/name: {{ template "coredns.name" . }}
+  labels: {{- include "coredns.labels" . | nindent 4 }}
     {{- if .Values.prometheus.monitor.additionalLabels }}
 {{ toYaml .Values.prometheus.monitor.additionalLabels | indent 4 }}
     {{- end }}
@@ -24,11 +15,16 @@ metadata:
 {{- toYaml . | nindent 4 }}
 {{- end }}
 spec:
+  {{- if ne .Values.prometheus.monitor.namespace .Release.Namespace }}
+  namespaceSelector:
+    matchNames:
+    - {{ .Release.Namespace }}
+  {{- end }}
   selector:
     matchLabels:
       app.kubernetes.io/instance: {{ .Release.Name | quote }}
       {{- if .Values.isClusterService }}
-      k8s-app: {{ .Chart.Name | quote }}
+      k8s-app: {{ template "coredns.k8sapplabel" . }}
       {{- end }}
       app.kubernetes.io/name: {{ template "coredns.name" . }}
       app.kubernetes.io/component: metrics

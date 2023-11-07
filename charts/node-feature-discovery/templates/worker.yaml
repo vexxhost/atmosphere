@@ -2,11 +2,14 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name:  {{ include "node-feature-discovery.fullname" . }}-worker
+  namespace: {{ include "node-feature-discovery.namespace" . }}
   labels:
     {{- include "node-feature-discovery.labels" . | nindent 4 }}
     role: worker
+  {{- with .Values.worker.daemonsetAnnotations }}
   annotations:
-    {{- toYaml .Values.worker.daemonsetAnnotations | nindent 4 }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   selector:
     matchLabels:
@@ -17,8 +20,10 @@ spec:
       labels:
         {{- include "node-feature-discovery.selectorLabels" . | nindent 8 }}
         role: worker
+      {{- with .Values.worker.annotations }}
       annotations:
-        {{- toYaml .Values.worker.annotations | nindent 8 }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
     spec:
       dnsPolicy: ClusterFirstWithHostNet
     {{- with .Values.imagePullSecrets }}
@@ -44,12 +49,19 @@ spec:
         command:
         - "nfd-worker"
         args:
-        - "--server={{ include "node-feature-discovery.fullname" . }}-master:{{ .Values.master.service.port }}"
+        - "-server={{ include "node-feature-discovery.fullname" . }}-master:{{ .Values.master.service.port }}"
+        {{- if not .Values.enableNodeFeatureApi }}
+        - "-enable-nodefeature-api=false"
+        {{- end }}
 {{- if .Values.tls.enable }}
-        - "--ca-file=/etc/kubernetes/node-feature-discovery/certs/ca.crt"
-        - "--key-file=/etc/kubernetes/node-feature-discovery/certs/tls.key"
-        - "--cert-file=/etc/kubernetes/node-feature-discovery/certs/tls.crt"
+        - "-ca-file=/etc/kubernetes/node-feature-discovery/certs/ca.crt"
+        - "-key-file=/etc/kubernetes/node-feature-discovery/certs/tls.key"
+        - "-cert-file=/etc/kubernetes/node-feature-discovery/certs/tls.crt"
 {{- end }}
+        - "-metrics={{ .Values.worker.metricsPort | default "8081"}}"
+        ports:
+          - name: metrics
+            containerPort: {{ .Values.worker.metricsPort | default "8081"}}
         volumeMounts:
         - name: host-boot
           mountPath: "/host-boot"
@@ -62,6 +74,9 @@ spec:
           readOnly: true
         - name: host-usr-lib
           mountPath: "/host-usr/lib"
+          readOnly: true
+        - name: host-lib
+          mountPath: "/host-lib"
           readOnly: true
         {{- if .Values.worker.mountUsrSrc }}
         - name: host-usr-src
@@ -95,6 +110,9 @@ spec:
         - name: host-usr-lib
           hostPath:
             path: "/usr/lib"
+        - name: host-lib
+          hostPath:
+            path: "/lib"
         {{- if .Values.worker.mountUsrSrc }}
         - name: host-usr-src
           hostPath:
@@ -128,4 +146,7 @@ spec:
     {{- with .Values.worker.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.worker.priorityClassName }}
+      priorityClassName: {{ . | quote }}
     {{- end }}

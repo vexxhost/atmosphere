@@ -1,19 +1,14 @@
 {{- if and (.Values.hpa.enabled) (not .Values.autoscaler.enabled) }}
 ---
+{{- if .Capabilities.APIVersions.Has "autoscaling/v2" }}
+apiVersion: autoscaling/v2
+{{- else }}
 apiVersion: autoscaling/v2beta2
+{{- end }}
 kind: HorizontalPodAutoscaler
 metadata:
   name: {{ template "coredns.fullname" . }}
-  labels:
-    app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
-    app.kubernetes.io/instance: {{ .Release.Name | quote }}
-    helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}"
-    {{- if .Values.isClusterService }}
-    k8s-app: {{ .Chart.Name | quote }}
-    kubernetes.io/cluster-service: "true"
-    kubernetes.io/name: "CoreDNS"
-    {{- end }}
-    app.kubernetes.io/name: {{ template "coredns.name" . }}
+  labels: {{- include "coredns.labels" . | nindent 4 }}
 {{- if .Values.customLabels }}
 {{ toYaml .Values.customLabels | indent 4 }}
 {{- end }}

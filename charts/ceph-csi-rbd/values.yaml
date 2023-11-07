@@ -25,6 +25,8 @@ serviceAccounts:
 #     monitors:
 #       - "<MONValue1>"
 #       - "<MONValue2>"
+#     rbd:
+#       netNamespaceFilePath: "{{ .kubeletDir }}/plugins/{{ .driverName }}/net"
 csiConfig: []
 
 # Configuration details of clusterID,PoolID and FscID mapping
@@ -51,10 +53,16 @@ csiMapping: []
 #     vaultCAVerify: "false"
 encryptionKMSConfig: {}
 
+# Labels to apply to all resources
+commonLabels: {}
+
 # Set logging level for csi containers.
 # Supported values from 0 to 5. 0 for general useful logs,
 # 5 for trace level verbosity.
+# logLevel is the variable for CSI driver containers's log level
 logLevel: 5
+# sidecarLogLevel is the variable for Kubernetes sidecar container's log level
+sidecarLogLevel: 1
 
 nodeplugin:
   name: nodeplugin
@@ -95,21 +103,26 @@ nodeplugin:
       loadBalancerIP: ""
       loadBalancerSourceRanges: []
 
+  ## Reference to one or more secrets to be used when pulling images
+  ##
+  imagePullSecrets: []
+  # - name: "image-pull-secret"
+
   profiling:
     # enable profiling to check for memory leaks
     enabled: false
 
   registrar:
     image:
-      repository: k8s.gcr.io/sig-storage/csi-node-driver-registrar
-      tag: v2.4.0
+      repository: registry.k8s.io/sig-storage/csi-node-driver-registrar
+      tag: v2.8.0
       pullPolicy: IfNotPresent
     resources: {}
 
   plugin:
     image:
       repository: quay.io/cephcsi/cephcsi
-      tag: v3.5.1
+      tag: v3.9.0
       pullPolicy: IfNotPresent
     resources: {}
 
@@ -118,11 +131,6 @@ nodeplugin:
   tolerations: []
 
   affinity: {}
-
-  # If true, create & use Pod Security Policy resources
-  # https://kubernetes.io/docs/concepts/policy/pod-security-policy/
-  podSecurityPolicy:
-    enabled: false
 
 provisioner:
   name: provisioner
@@ -142,6 +150,8 @@ provisioner:
   deployController: true
   # Timeout for waiting for creation or deletion of a volume
   timeout: 60s
+  # cluster name to set on the RBD image
+  # clustername: "k8s-cluster-1"
   # Hard limit for maximum number of nested volume clones that are taken before
   # a flatten occurs
   hardMaxCloneDepth: 8
@@ -159,6 +169,10 @@ provisioner:
   # set user created priorityclassName for csi provisioner pods. default is
   # system-cluster-critical which is less priority than system-node-critical
   priorityClassName: system-cluster-critical
+
+  # enable hostnetwork for provisioner pod. default is false
+  # useful for deployments where the podNetwork has no access to ceph
+  enableHostNetwork: false
 
   httpMetrics:
     # Metrics only available for cephcsi/cephcsi => 1.2.0
@@ -191,52 +205,67 @@ provisioner:
       loadBalancerIP: ""
       loadBalancerSourceRanges: []
 
+  ## Reference to one or more secrets to be used when pulling images
+  ##
+  imagePullSecrets: []
+  # - name: "image-pull-secret"
+
   profiling:
     # enable profiling to check for memory leaks
     enabled: false
 
   provisioner:
     image:
-      repository: k8s.gcr.io/sig-storage/csi-provisioner
-      tag: v3.1.0
+      repository: gcr.io/k8s-staging-sig-storage/csi-provisioner
+      tag: v3.5.0
       pullPolicy: IfNotPresent
     resources: {}
+    ## For further options, check
+    ## https://github.com/kubernetes-csi/external-provisioner#command-line-options
+    extraArgs: []
+
+  # set metadata on volume
+  setmetadata: true
 
   attacher:
     name: attacher
     enabled: true
     image:
-      repository: k8s.gcr.io/sig-storage/csi-attacher
-      tag: v3.4.0
+      repository: registry.k8s.io/sig-storage/csi-attacher
+      tag: v4.3.0
       pullPolicy: IfNotPresent
     resources: {}
+    ## For further options, check
+    ## https://github.com/kubernetes-csi/external-attacher#command-line-options
+    extraArgs: []
 
   resizer:
     name: resizer
     enabled: true
     image:
-      repository: k8s.gcr.io/sig-storage/csi-resizer
-      tag: v1.3.0
+      repository: registry.k8s.io/sig-storage/csi-resizer
+      tag: v1.8.0
       pullPolicy: IfNotPresent
     resources: {}
+    ## For further options, check
+    ## https://github.com/kubernetes-csi/external-resizer#recommended-optional-arguments
+    extraArgs: []
 
   snapshotter:
     image:
-      repository: k8s.gcr.io/sig-storage/csi-snapshotter
-      tag: v4.2.0
+      repository: registry.k8s.io/sig-storage/csi-snapshotter
+      tag: v6.2.2
       pullPolicy: IfNotPresent
     resources: {}
+    ## For further options, check
+    ## https://github.com/kubernetes-csi/external-snapshotter#csi-external-snapshotter-sidecar-command-line-options
+    extraArgs: []
 
   nodeSelector: {}
 
   tolerations: []
 
   affinity: {}
-
-  # If true, create & use Pod Security Policy resources
-  # https://kubernetes.io/docs/concepts/policy/pod-security-policy/
-  podSecurityPolicy:
-    enabled: false
 
 topology:
   # Specifies whether topology based provisioning support should
@@ -279,14 +308,11 @@ storageClass:
   # eg: pool: replicapool
   pool: replicapool
 
-  # Set thickProvision to true if you want RBD images to be fully allocated on
-  # creation (thin provisioning is the default).
-  thickProvision: false
-
-  # (required) RBD image features, CSI creates image with image-format 2
-  # CSI RBD currently supports `layering`, `journaling`, `exclusive-lock`,
-  # `object-map`, `fast-diff` features. If `journaling` is enabled, must
-  # enable `exclusive-lock` too.
+  # (optional) RBD image features, CSI creates image with image-format 2 CSI
+  # RBD currently supports `layering`, `journaling`, `exclusive-lock`,
+  # `object-map`, `fast-diff`, `deep-flatten` features.
+  # Refer https://docs.ceph.com/en/latest/rbd/rbd-config-ref/#image-features
+  # for image feature dependencies.
   # imageFeatures: layering,journaling,exclusive-lock,object-map,fast-diff
   imageFeatures: "layering"
 
@@ -403,6 +429,10 @@ storageClass:
   # mountOptions:
   #   - discard
 
+# Mount the host /etc/selinux inside pods to support
+# selinux-enabled filesystems
+selinuxMount: true
+
 secret:
   # Specifies whether the secret should be created
   create: false
@@ -427,14 +457,6 @@ cephconf: |
     auth_service_required = cephx
     auth_client_required = cephx
 
-    # Workaround for http://tracker.ceph.com/issues/23446
-    fuse_set_user_groups = false
-
-    # ceph-fuse which uses libfuse2 by default has write buffer size of 2KiB
-    # adding 'fuse_big_writes = true' option by default to override this limit
-    # see https://github.com/ceph/ceph-csi/issues/1928
-    fuse_big_writes = true
-
 #########################################################
 # Variables for 'internal' use please use with caution! #
 #########################################################
@@ -455,5 +477,7 @@ configMapName: ceph-csi-config
 # configMapKey:
 # Use an externally provided configmap
 externallyManagedConfigmap: false
+# Name of the configmap used for ceph.conf
+cephConfConfigMapName: ceph-config
 # Name of the configmap used for encryption kms configuration
 kmsConfigMapName: ceph-csi-encryption-kms-config

@@ -5,10 +5,13 @@ metadata:
   name: {{ include "vector.fullname" . }}
   labels:
     {{- include "vector.labels" . | nindent 4 }}
+  annotations:
+    {{- toYaml .Values.workloadResourceAnnotations | nindent 4 }}
 spec:
   selector:
     matchLabels:
       {{- include "vector.selectorLabels" . | nindent 6 }}
+  minReadySeconds: {{ .Values.minReadySeconds }}
   {{- with .Values.updateStrategy }}
   updateStrategy:
     {{- toYaml . | nindent 4 }}

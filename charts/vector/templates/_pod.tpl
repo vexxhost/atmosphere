@@ -13,6 +13,9 @@ securityContext:
 {{- with .Values.podPriorityClassName }}
 priorityClassName: {{ . }}
 {{- end }}
+{{- with .Values.shareProcessNamespace }}
+shareProcessNamespace: {{ . }}
+{{- end }}
 {{- with .Values.dnsPolicy }}
 dnsPolicy: {{ . }}
 {{- end }}
@@ -71,6 +74,8 @@ containers:
         value: "/host/proc"
       - name: SYSFS_ROOT
         value: "/host/sys"
+      - name: VECTOR_LOG
+        value: "{{ .Values.logLevel | default "info" }}"
 {{- end }}
 {{- if .Values.envFrom }}
 {{- with .Values.envFrom }}
@@ -140,18 +145,9 @@ containers:
         mountPath: "/etc/vector/"
         readOnly: true
 {{- if (eq .Values.role "Agent") }}
-      - name: var-log
-        mountPath: "/var/log/"
-        readOnly: true
-      - name: var-lib
-        mountPath: "/var/lib"
-        readOnly: true
-      - name: procfs
-        mountPath: "/host/proc"
-        readOnly: true
-      - name: sysfs
-        mountPath: "/host/sys"
-        readOnly: true
+{{- with .Values.defaultVolumeMounts }}
+{{- toYaml . | nindent 6 }}
+{{- end }}
 {{- end }}
 {{- with .Values.extraVolumeMounts }}
 {{- toYaml . | nindent 6 }}
@@ -201,20 +197,15 @@ volumes:
 {{- end }}
 {{- if (eq .Values.role "Agent") }}
   - name: data
+  {{- if .Values.persistence.hostPath.enabled }}
     hostPath:
       path: {{ .Values.persistence.hostPath.path | quote }}
-  - name: var-log
-    hostPath:
-      path: "/var/log/"
-  - name: var-lib
-    hostPath:
-      path: "/var/lib/"
-  - name: procfs
-    hostPath:
-      path: "/proc"
-  - name: sysfs
-    hostPath:
-      path: "/sys"
+  {{- else }}
+    emptyDir: {}
+  {{- end }}
+    {{- with .Values.defaultVolumes }}
+    {{- toYaml . | nindent 2 }}
+    {{- end }}
 {{- end }}
 {{- with .Values.extraVolumes }}
 {{- toYaml . | nindent 2 }}

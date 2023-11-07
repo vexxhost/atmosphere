@@ -1,5 +1,5 @@
 image:
-  repository: k8s.gcr.io/nfd/node-feature-discovery
+  repository: registry.k8s.io/nfd/node-feature-discovery
   # This should be set to 'IfNotPresent' for released version
   pullPolicy: IfNotPresent
   # tag, if defined will use the given image tag, else Chart.AppVersion will be used
@@ -8,15 +8,55 @@ imagePullSecrets: []
 
 nameOverride: ""
 fullnameOverride: ""
+namespaceOverride: ""
 
-nodeFeatureRule:
-  createCRD: true
+enableNodeFeatureApi: true
 
 master:
+  config: ### <NFD-MASTER-CONF-START-DO-NOT-REMOVE>
+    # noPublish: false
+    # extraLabelNs: ["added.ns.io","added.kubernets.io"]
+    # denyLabelNs: ["denied.ns.io","denied.kubernetes.io"]
+    # resourceLabels: ["vendor-1.com/feature-1","vendor-2.io/feature-2"]
+    # enableTaints: false
+    # labelWhiteList: "foo"
+    # resyncPeriod: "2h"
+    # klog:
+    #    addDirHeader: false
+    #    alsologtostderr: false
+    #    logBacktraceAt:
+    #    logtostderr: true
+    #    skipHeaders: false
+    #    stderrthreshold: 2
+    #    v: 0
+    #    vmodule:
+    ##   NOTE: the following options are not dynamically run-time configurable
+    ##         and require a nfd-master restart to take effect after being changed
+    #    logDir:
+    #    logFile:
+    #    logFileMaxSize: 1800
+    #    skipLogHeaders: false
+    # leaderElection:
+    #   leaseDuration: 15s
+    #   # this value has to be lower than leaseDuration and greater than retryPeriod*1.2
+    #   renewDeadline: 10s
+    #   # this value has to be greater than 0
+    #   retryPeriod: 2s
+    # nfdApiParallelism: 10
+  ### <NFD-MASTER-CONF-END-DO-NOT-REMOVE>
+  # The TCP port that nfd-master listens for incoming requests. Default: 8080
+  port: 8080
+  metricsPort: 8081
   instance:
+  featureApi:
+  resyncPeriod:
+  denyLabelNs: []
   extraLabelNs: []
   resourceLabels: []
+  enableTaints: false
+  crdController: null
   featureRulesController: null
+  nfdApiParallelism: null
   deploymentAnnotations: {}
   replicaCount: 1
 
@@ -140,6 +180,7 @@ worker:
     #        - "SSE4"
     #        - "SSE42"
     #        - "SSSE3"
+    #        - "TDX_GUEST"
     #      attributeWhitelist:
     #  kernel:
     #    kconfigFile: "/path/to/kconfig"
@@ -168,6 +209,8 @@ worker:
     #      - "class"
     #      - "vendor"
     #      - "device"
+    #  local:
+    #    hooksEnabled: false
     #  custom:
     #    # The following feature demonstrates the capabilities of the matchFeatures
     #    - name: "my custom rule"
@@ -316,6 +359,7 @@ worker:
     #
 ### <NFD-WORKER-CONF-END-DO-NOT-REMOVE>
 
+  metricsPort: 8081
   daemonsetAnnotations: {}
   podSecurityContext: {}
     # fsGroup: 2000
@@ -337,6 +381,9 @@ worker:
     # The name of the service account to use.
     # If not set and create is true, a name is generated using the fullname template
     name:
+
+  rbac:
+    create: true
 
   # Allow users to mount the hostPath /usr/src, useful for RHCOS on s390x
   # Does not work on systems without /usr/src AND a read-only /usr, such as Talos
@@ -362,21 +409,35 @@ worker:
 
   affinity: {}
 
+  priorityClassName: ""
+
 topologyUpdater:
+  config: ### <NFD-TOPOLOGY-UPDATER-CONF-START-DO-NOT-REMOVE>
+    ## key = node name, value = list of resources to be excluded.
+    ## use * to exclude from all nodes.
+    ## an example for how the exclude list should looks like
+    #excludeList:
+    #  node1: [cpu]
+    #  node2: [memory, example/deviceA]
+    #  *: [hugepages-2Mi]
+### <NFD-TOPOLOGY-UPDATER-CONF-END-DO-NOT-REMOVE>
+
   enable: false
   createCRDs: false
 
   serviceAccount:
-    create: false
+    create: true
     annotations: {}
     name:
   rbac:
-    create: false
+    create: true
 
+  metricsPort: 8081
   kubeletConfigPath:
   kubeletPodResourcesSockPath:
   updateInterval: 60s
   watchNamespace: "*"
+  kubeletStateDir: /var/lib/kubelet
 
   podSecurityContext: {}
   securityContext:
@@ -401,6 +462,41 @@ topologyUpdater:
   nodeSelector: {}
   tolerations: []
   annotations: {}
+  daemonsetAnnotations: {}
+  affinity: {}
+  podSetFingerprint: true
+
+gc:
+  enable: true
+  replicaCount: 1
+
+  serviceAccount:
+    create: true
+    annotations: {}
+    name:
+  rbac:
+    create: true
+
+  interval: 1h
+
+  podSecurityContext: {}
+
+  resources: {}
+    # We usually recommend not to specify default resources and to leave this as a conscious
+    # choice for the user. This also increases chances charts run on environments with little
+    # resources, such as Minikube. If you do want to specify resources, uncomment the following
+    # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+    # limits:
+    #   cpu: 100m
+    #   memory: 128Mi
+    # requests:
+    #   cpu: 100m
+    #   memory: 128Mi
+
+  nodeSelector: {}
+  tolerations: []
+  annotations: {}
+  deploymentAnnotations: {}
   affinity: {}
 
 # Optionally use encryption for worker <--> master comms
@@ -411,3 +507,7 @@ topologyUpdater:
 tls:
   enable: false
   certManager: false
+
+prometheus:
+  enable: false
+  labels: {}

@@ -10,6 +10,7 @@ metadata:
     component: {{ .Values.provisioner.name }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 rules:
   - apiGroups: [""]
     resources: ["configmaps"]
@@ -17,10 +18,4 @@ rules:
   - apiGroups: ["coordination.k8s.io"]
     resources: ["leases"]
     verbs: ["get", "watch", "list", "delete", "update", "create"]
-{{- if .Values.provisioner.podSecurityPolicy.enabled }}
-  - apiGroups: ['policy']
-    resources: ['podsecuritypolicies']
-    verbs: ['use']
-    resourceNames: ['{{ include "ceph-csi-rbd.provisioner.fullname" . }}']
-{{- end -}}
 {{- end -}}

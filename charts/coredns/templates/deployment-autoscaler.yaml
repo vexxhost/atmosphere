@@ -5,16 +5,7 @@ kind: Deployment
 metadata:
   name: {{ template "coredns.fullname" . }}-autoscaler
   namespace: {{ .Release.Namespace }}
-  labels:
-    app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
-    app.kubernetes.io/instance: {{ .Release.Name | quote }}
-    helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}"
-    {{- if .Values.isClusterService }}
-    k8s-app: {{ .Chart.Name }}-autoscaler
-    kubernetes.io/cluster-service: "true"
-    kubernetes.io/name: "CoreDNS"
-    {{- end }}
-    app.kubernetes.io/name: {{ template "coredns.name" . }}-autoscaler
+  labels: {{- include "coredns.labels.autoscaler" . | nindent 4 }}
 {{- if .Values.customLabels }}
 {{ toYaml .Values.customLabels | indent 4 }}
 {{- end }}
@@ -27,14 +18,16 @@ spec:
     matchLabels:
       app.kubernetes.io/instance: {{ .Release.Name | quote }}
       {{- if .Values.isClusterService }}
-      k8s-app: {{ .Chart.Name }}-autoscaler
+      k8s-app: {{ template "coredns.k8sapplabel" . }}-autoscaler
       {{- end }}
       app.kubernetes.io/name: {{ template "coredns.name" . }}-autoscaler
   template:
     metadata:
       labels:
         {{- if .Values.isClusterService }}
-        k8s-app: {{ .Chart.Name }}-autoscaler
+        {{- if not (hasKey .Values.customLabels "k8s-app")}}
+        k8s-app: {{ template "coredns.k8sapplabel" . }}-autoscaler
+        {{- end }}
         {{- end }}
         app.kubernetes.io/name: {{ template "coredns.name" . }}-autoscaler
         app.kubernetes.io/instance: {{ .Release.Name | quote }}
@@ -44,8 +37,10 @@ spec:
       annotations:
         checksum/configmap: {{ include (print $.Template.BasePath "/configmap-autoscaler.yaml") . | sha256sum }}
         {{- if .Values.isClusterService }}
-        scheduler.alpha.kubernetes.io/critical-pod: ''
         scheduler.alpha.kubernetes.io/tolerations: '[{"key":"CriticalAddonsOnly", "operator":"Exists"}]'
+        {{- end }}
+        {{- with .Values.autoscaler.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
       serviceAccountName: {{ template "coredns.fullname" . }}-autoscaler
@@ -64,6 +59,10 @@ spec:
       {{- if .Values.autoscaler.nodeSelector }}
       nodeSelector:
 {{ toYaml .Values.autoscaler.nodeSelector | indent 8 }}
+      {{- end }}
+      {{- if not (empty .Values.autoscaler.image.pullSecrets) }}
+      imagePullSecrets:
+{{ toYaml .Values.autoscaler.image.pullSecrets | indent 8 }}
       {{- end }}
       containers:
       - name: autoscaler
@@ -93,4 +92,7 @@ spec:
         {{- if .Values.autoscaler.customFlags }}
 {{ toYaml .Values.autoscaler.customFlags | indent 10 }}
         {{- end }}
+{{- if .Values.autoscaler.extraContainers }}
+{{ toYaml .Values.autoscaler.extraContainers | indent 6 }}
+{{- end }}
 {{- end }}

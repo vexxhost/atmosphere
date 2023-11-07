@@ -1,11 +1,119 @@
-
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.7.0
-  creationTimestamp: null
+    controller-gen.kubebuilder.io/version: v0.12.1
+  name: nodefeatures.nfd.k8s-sigs.io
+spec:
+  group: nfd.k8s-sigs.io
+  names:
+    kind: NodeFeature
+    listKind: NodeFeatureList
+    plural: nodefeatures
+    singular: nodefeature
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: NodeFeature resource holds the features discovered for one node
+          in the cluster.
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: NodeFeatureSpec describes a NodeFeature object.
+            properties:
+              features:
+                description: Features is the full "raw" features data that has been
+                  discovered.
+                properties:
+                  attributes:
+                    additionalProperties:
+                      description: AttributeFeatureSet is a set of features having
+                        string value.
+                      properties:
+                        elements:
+                          additionalProperties:
+                            type: string
+                          type: object
+                      required:
+                      - elements
+                      type: object
+                    description: Attributes contains all the attribute-type features
+                      of the node.
+                    type: object
+                  flags:
+                    additionalProperties:
+                      description: FlagFeatureSet is a set of simple features only
+                        containing names without values.
+                      properties:
+                        elements:
+                          additionalProperties:
+                            description: Nil is a dummy empty struct for protobuf
+                              compatibility
+                            type: object
+                          type: object
+                      required:
+                      - elements
+                      type: object
+                    description: Flags contains all the flag-type features of the
+                      node.
+                    type: object
+                  instances:
+                    additionalProperties:
+                      description: InstanceFeatureSet is a set of features each of
+                        which is an instance having multiple attributes.
+                      properties:
+                        elements:
+                          items:
+                            description: InstanceFeature represents one instance of
+                              a complex features, e.g. a device.
+                            properties:
+                              attributes:
+                                additionalProperties:
+                                  type: string
+                                type: object
+                            required:
+                            - attributes
+                            type: object
+                          type: array
+                      required:
+                      - elements
+                      type: object
+                    description: Instances contains all the instance-type features
+                      of the node.
+                    type: object
+                type: object
+              labels:
+                additionalProperties:
+                  type: string
+                description: Labels is the set of node labels that are requested to
+                  be created.
+                type: object
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.12.1
   name: nodefeaturerules.nfd.k8s-sigs.io
 spec:
   group: nfd.k8s-sigs.io
@@ -13,6 +121,8 @@ spec:
     kind: NodeFeatureRule
     listKind: NodeFeatureRuleList
     plural: nodefeaturerules
+    shortNames:
+    - nfr
     singular: nodefeaturerule
   scope: Cluster
   versions:
@@ -43,6 +153,11 @@ spec:
                   description: Rule defines a rule for node customization such as
                     labeling.
                   properties:
+                    extendedResources:
+                      additionalProperties:
+                        type: string
+                      description: ExtendedResources to create if the rule matches.
+                      type: object
                     labels:
                       additionalProperties:
                         type: string
@@ -79,9 +194,9 @@ spec:
                                       the input and an array of values that the operator
                                       evaluates the input against. \n NB: CreateMatchExpression
                                       or MustCreateMatchExpression() should be used
-                                      for     creating new instances. NB: Validate()
+                                      for creating new instances. \n NB: Validate()
                                       must be called if Op or Value fields are modified
-                                      or if a new     instance is created from scratch
+                                      or if a new instance is created from scratch
                                       without using the helper functions."
                                     properties:
                                       op:
@@ -144,9 +259,9 @@ spec:
                                 an operator that is applied when matching the input
                                 and an array of values that the operator evaluates
                                 the input against. \n NB: CreateMatchExpression or
-                                MustCreateMatchExpression() should be used for     creating
-                                new instances. NB: Validate() must be called if Op
-                                or Value fields are modified or if a new     instance
+                                MustCreateMatchExpression() should be used for creating
+                                new instances. \n NB: Validate() must be called if
+                                Op or Value fields are modified or if a new instance
                                 is created from scratch without using the helper functions."
                               properties:
                                 op:
@@ -188,6 +303,35 @@ spec:
                     name:
                       description: Name of the rule.
                       type: string
+                    taints:
+                      description: Taints to create if the rule matches.
+                      items:
+                        description: The node this Taint is attached to has the "effect"
+                          on any pod that does not tolerate the Taint.
+                        properties:
+                          effect:
+                            description: Required. The effect of the taint on pods
+                              that do not tolerate the taint. Valid effects are NoSchedule,
+                              PreferNoSchedule and NoExecute.
+                            type: string
+                          key:
+                            description: Required. The taint key to be applied to
+                              a node.
+                            type: string
+                          timeAdded:
+                            description: TimeAdded represents the time at which the
+                              taint was added. It is only written for NoExecute taints.
+                            format: date-time
+                            type: string
+                          value:
+                            description: The taint value corresponding to the taint
+                              key.
+                            type: string
+                        required:
+                        - effect
+                        - key
+                        type: object
+                      type: array
                     vars:
                       additionalProperties:
                         type: string
@@ -215,9 +359,3 @@ spec:
         type: object
     served: true
     storage: true
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []
