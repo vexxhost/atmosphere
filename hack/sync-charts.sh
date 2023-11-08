@@ -28,7 +28,7 @@ mv ${ATMOSPHERE}/charts/staffeln ${ATMOSPHERE}/tmp_staffeln
 rm -rfv ${ATMOSPHERE}/charts/*
 mv ${ATMOSPHERE}/tmp_staffeln ${ATMOSPHERE}/charts/staffeln
 
-CEPH_CSI_RBD_VERSION=3.5.1
+CEPH_CSI_RBD_VERSION=3.9.0
 curl -sL https://ceph.github.io/csi-charts/rbd/ceph-csi-rbd-${CEPH_CSI_RBD_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 

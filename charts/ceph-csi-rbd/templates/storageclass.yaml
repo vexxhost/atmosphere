@@ -3,7 +3,6 @@ apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
   name: {{ .Values.storageClass.name }}
-  namespace: {{ .Release.Namespace }}
 {{- if .Values.storageClass.annotations }}
   annotations:
 {{ toYaml .Values.storageClass.annotations | indent 4 }}
@@ -13,12 +12,12 @@ metadata:
     chart: {{ include "ceph-csi-rbd.chart" . }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 provisioner: {{ .Values.driverName }}
 parameters:
   clusterID: {{ .Values.storageClass.clusterID }}
   pool: {{ .Values.storageClass.pool }}
   imageFeatures: {{ .Values.storageClass.imageFeatures }}
-  thickProvision: {{ .Values.storageClass.thickProvision | quote}}
 {{- if .Values.storageClass.tryOtherMounters }}
   tryOtherMounters: {{ .Values.storageClass.tryOtherMounters | quote}}
 {{- end }}
