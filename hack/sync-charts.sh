@@ -48,7 +48,7 @@ VECTOR_VERSION=0.19.0
 curl -sL https://github.com/vectordotdev/helm-charts/releases/download/vector-${VECTOR_VERSION}/vector-${VECTOR_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-PROMETHEUS_PUSHGATEWAY_VERSION=1.16.0
+PROMETHEUS_PUSHGATEWAY_VERSION=2.4.1
 curl -sL https://github.com/prometheus-community/helm-charts/releases/download/prometheus-pushgateway-${PROMETHEUS_PUSHGATEWAY_VERSION}/prometheus-pushgateway-${PROMETHEUS_PUSHGATEWAY_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
