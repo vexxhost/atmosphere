@@ -6,8 +6,8 @@ image:
   # -- Image
   repository: rook/ceph
   # -- Image tag
-  # @default -- `master`
-  tag: v1.10.10
+  # @default -- `v1.12.7`
+  tag: v1.12.7
   # -- Image pull policy
   pullPolicy: IfNotPresent
 
@@ -54,6 +54,10 @@ logLevel: INFO
 
 # -- If true, create & use RBAC resources
 rbacEnable: true
+
+rbacAggregate:
+  # -- If true, create a ClusterRole aggregated to [user facing roles](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#user-facing-roles) for objectbucketclaims
+  enableOBCs: false
 
 # -- If true, create & use PSP resources
 pspEnable: false
@@ -113,6 +117,10 @@ csi:
   # sidecar with CSI provisioner pod, to enable set it to true.
   enableOMAPGenerator: false
 
+  # -- Set CephFS Kernel mount options to use https://docs.ceph.com/en/latest/man/8/mount.ceph/#options.
+  # Set to "ms_mode=secure" when connections.encrypted is enabled in CephCluster CR
+  cephFSKernelMountOptions:
+
   # -- Enable adding volume metadata on the CephFS subvolumes and RBD images.
   # Not all users might be interested in getting volume/snapshot details as metadata on CephFS subvolume and RBD images.
   # Hence enable metadata is false by default
@@ -145,6 +153,10 @@ csi:
   # -- CSI CephFS plugin daemonset update strategy, supported values are OnDelete and RollingUpdate
   # @default -- `RollingUpdate`
   cephFSPluginUpdateStrategy:
+
+  # -- A maxUnavailable parameter of CSI cephFS plugin daemonset update strategy.
+  # @default -- `1`
+  cephFSPluginUpdateStrategyMaxUnavailable:
 
   # -- CSI NFS plugin daemonset update strategy, supported values are OnDelete and RollingUpdate
   # @default -- `RollingUpdate`
@@ -374,6 +386,14 @@ csi:
         limits:
           memory: 1Gi
           cpu: 500m
+    - name : csi-attacher
+      resource:
+        requests:
+          memory: 512Mi
+          cpu: 250m
+        limits:
+          memory: 1Gi
+          cpu: 500m
 
   # -- CEPH CSI NFS plugin resource requirement list
   # @default -- see values.yaml
@@ -446,38 +466,46 @@ csi:
   # @default -- `8080`
   rbdLivenessMetricsPort:
 
+  serviceMonitor:
+    # -- Enable ServiceMonitor for Ceph CSI drivers
+    enabled: false
+    # -- Service monitor scrape interval
+    interval: 5s
+    # -- ServiceMonitor additional labels
+    labels: {}
+
   # -- Kubelet root directory path (if the Kubelet uses a different path for the `--root-dir` flag)
   # @default -- `/var/lib/kubelet`
   kubeletDirPath:
 
   cephcsi:
     # -- Ceph CSI image
-    # @default -- `quay.io/cephcsi/cephcsi:v3.7.2`
+    # @default -- `quay.io/cephcsi/cephcsi:v3.9.0`
     image:
 
   registrar:
     # -- Kubernetes CSI registrar image
-    # @default -- `registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.7.0`
+    # @default -- `registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.8.0`
     image:
 
   provisioner:
     # -- Kubernetes CSI provisioner image
-    # @default -- `registry.k8s.io/sig-storage/csi-provisioner:v3.4.0`
+    # @default -- `registry.k8s.io/sig-storage/csi-provisioner:v3.5.0`
     image:
 
   snapshotter:
     # -- Kubernetes CSI snapshotter image
-    # @default -- `registry.k8s.io/sig-storage/csi-snapshotter:v6.2.1`
+    # @default -- `registry.k8s.io/sig-storage/csi-snapshotter:v6.2.2`
     image:
 
   attacher:
     # -- Kubernetes CSI Attacher image
-    # @default -- `registry.k8s.io/sig-storage/csi-attacher:v4.1.0`
+    # @default -- `registry.k8s.io/sig-storage/csi-attacher:v4.3.0`
     image:
 
   resizer:
     # -- Kubernetes CSI resizer image
-    # @default -- `registry.k8s.io/sig-storage/csi-resizer:v1.7.0`
+    # @default -- `registry.k8s.io/sig-storage/csi-resizer:v1.8.0`
     image:
 
   # -- Image pull policy
@@ -496,7 +524,7 @@ csi:
     # -- Enable CSIAddons
     enabled: false
     # -- CSIAddons Sidecar image
-    image: "quay.io/csiaddons/k8s-sidecar:v0.5.0"
+    image: "quay.io/csiaddons/k8s-sidecar:v0.7.0"
 
   nfs:
     # -- Enable the nfs csi driver
@@ -514,14 +542,53 @@ csi:
     # - topology.kubernetes.io/zone
     # - topology.rook.io/rack
 
+  readAffinity:
+    # -- Enable read affinity for RBD volumes. Recommended to
+    # set to true if running kernel 5.8 or newer.
+    # @default -- `false`
+    enabled: false
+    # -- Define which node labels to use
+    # as CRUSH location. This should correspond to the values set
+    # in the CRUSH map.
+    # @default -- labels listed [here](../CRDs/Cluster/ceph-cluster-crd.md#osd-topology)
+    crushLocationLabels:
+
+  # -- Whether to skip any attach operation altogether for CephFS PVCs. See more details
+  # [here](https://kubernetes-csi.github.io/docs/skip-attach.html#skip-attach-with-csi-driver-object).
+  # If cephFSAttachRequired is set to false it skips the volume attachments and makes the creation
+  # of pods using the CephFS PVC fast. **WARNING** It's highly discouraged to use this for
+  # CephFS RWO volumes. Refer to this [issue](https://github.com/kubernetes/kubernetes/issues/103305) for more details.
+  cephFSAttachRequired: true
+  # -- Whether to skip any attach operation altogether for RBD PVCs. See more details
+  # [here](https://kubernetes-csi.github.io/docs/skip-attach.html#skip-attach-with-csi-driver-object).
+  # If set to false it skips the volume attachments and makes the creation of pods using the RBD PVC fast.
+  # **WARNING** It's highly discouraged to use this for RWO volumes as it can cause data corruption.
+  # csi-addons operations like Reclaimspace and PVC Keyrotation will also not be supported if set
+  # to false since we'll have no VolumeAttachments to determine which node the PVC is mounted on.
+  # Refer to this [issue](https://github.com/kubernetes/kubernetes/issues/103305) for more details.
+  rbdAttachRequired: true
+  # -- Whether to skip any attach operation altogether for NFS PVCs. See more details
+  # [here](https://kubernetes-csi.github.io/docs/skip-attach.html#skip-attach-with-csi-driver-object).
+  # If cephFSAttachRequired is set to false it skips the volume attachments and makes the creation
+  # of pods using the NFS PVC fast. **WARNING** It's highly discouraged to use this for
+  # NFS RWO volumes. Refer to this [issue](https://github.com/kubernetes/kubernetes/issues/103305) for more details.
+  nfsAttachRequired: true
+
 # -- Enable discovery daemon
 enableDiscoveryDaemon: false
+# -- Set the discovery daemon device discovery interval (default to 60m)
+discoveryDaemonInterval: 60m
 
 # -- The timeout for ceph commands in seconds
 cephCommandsTimeoutSeconds: "15"
 
-# -- if true, run rook operator on the host network
+# -- If true, run rook operator on the host network
 useOperatorHostNetwork:
+
+# -- If true, scale down the rook operator.
+# This is useful for administrative actions where the rook operator must be scaled down, while using gitops style tooling
+# to deploy your helm charts.
+scaleDownOperator: false
 
 ## Rook Discover configuration
 ## toleration: NoSchedule, PreferNoSchedule or NoExecute

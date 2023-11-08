@@ -252,11 +252,11 @@ TEMPEST_VERSION=0.2.8
 curl -sL https://tarballs.opendev.org/openstack/openstack-helm/tempest-${TEMPEST_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-ROOK_CEPH_VERSION=1.10.10
+ROOK_CEPH_VERSION=1.12.7
 curl -sL https://charts.rook.io/release/rook-ceph-v${ROOK_CEPH_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 
-ROOK_CEPH_CLUSTER_VERSION=1.10.10
+ROOK_CEPH_CLUSTER_VERSION=1.12.7
 curl -sL https://charts.rook.io/release/rook-ceph-cluster-v${ROOK_CEPH_CLUSTER_VERSION}.tgz \
   | tar -xz -C ${ATMOSPHERE}/charts
 

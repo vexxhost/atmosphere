@@ -10,6 +10,10 @@ data:
   ROOK_OBC_WATCH_OPERATOR_NAMESPACE: {{ .Values.enableOBCWatchOperatorNamespace | quote }}
   ROOK_CEPH_ALLOW_LOOP_DEVICES: {{ .Values.allowLoopDevices | quote }}
   ROOK_DISABLE_ADMISSION_CONTROLLER: {{ .Values.disableAdmissionController | quote }}
+  ROOK_ENABLE_DISCOVERY_DAEMON: {{ .Values.enableDiscoveryDaemon | quote }}
+{{- if .Values.discoverDaemonUdev }}
+  DISCOVER_DAEMON_UDEV_BLACKLIST: {{ .Values.discoverDaemonUdev | quote }}
+{{- end }}
 {{- if .Values.csi }}
   ROOK_CSI_ENABLE_RBD: {{ .Values.csi.enableRbdDriver | quote }}
   ROOK_CSI_ENABLE_CEPHFS: {{ .Values.csi.enableCephfsDriver | quote }}
@@ -30,6 +34,9 @@ data:
 {{- if .Values.csi.cephFSPluginUpdateStrategy }}
   CSI_CEPHFS_PLUGIN_UPDATE_STRATEGY: {{ .Values.csi.cephFSPluginUpdateStrategy | quote }}
 {{- end }}
+{{- if .Values.csi.cephFSPluginUpdateStrategyMaxUnavailable }}
+  CSI_CEPHFS_PLUGIN_UPDATE_STRATEGY_MAX_UNAVAILABLE: {{ .Values.csi.cephFSPluginUpdateStrategyMaxUnavailable | quote }}
+{{- end }}
 {{- if .Values.csi.nfsPluginUpdateStrategy }}
   CSI_NFS_PLUGIN_UPDATE_STRATEGY: {{ .Values.csi.nfsPluginUpdateStrategy | quote }}
 {{- end }}
@@ -44,6 +51,9 @@ data:
 {{- end }}
 {{- if .Values.csi.rbdPluginUpdateStrategy }}
   CSI_RBD_PLUGIN_UPDATE_STRATEGY: {{ .Values.csi.rbdPluginUpdateStrategy | quote }}
+{{- end }}
+{{- if .Values.csi.cephFSKernelMountOptions }}
+  CSI_CEPHFS_KERNEL_MOUNT_OPTIONS: {{ .Values.csi.cephFSKernelMountOptions | quote }}
 {{- end }}
 {{- if .Values.csi.rbdPluginUpdateStrategyMaxUnavailable }}
   CSI_RBD_PLUGIN_UPDATE_STRATEGY_MAX_UNAVAILABLE: {{ .Values.csi.rbdPluginUpdateStrategyMaxUnavailable | quote }}
@@ -95,6 +105,12 @@ data:
   CSI_ENABLE_TOPOLOGY: {{ .Values.csi.topology.enabled | quote }}
 {{- if .Values.csi.topology.domainLabels }}
   CSI_TOPOLOGY_DOMAIN_LABELS: {{ .Values.csi.topology.domainLabels | join "," }}
+{{- end }}
+{{- end }}
+{{- if .Values.csi.readAffinity }}
+  CSI_ENABLE_READ_AFFINITY : {{ .Values.csi.readAffinity.enabled | quote }}
+{{- if .Values.csi.readAffinity.crushLocationLabels }}
+  CSI_CRUSH_LOCATION_LABELS: {{ .Values.csi.readAffinity.crushLocationLabels | join "," }}
 {{- end }}
 {{- end }}
 {{- if .Values.csi.nfs }}
@@ -223,4 +239,7 @@ data:
 {{- if .Values.csi.csiCephFSPluginVolumeMount }}
   CSI_CEPHFS_PLUGIN_VOLUME_MOUNT: {{ toYaml .Values.csi.csiCephFSPluginVolumeMount | quote }}
 {{- end }}
+  CSI_CEPHFS_ATTACH_REQUIRED: {{ .Values.csi.cephFSAttachRequired | quote }}
+  CSI_RBD_ATTACH_REQUIRED: {{ .Values.csi.rbdAttachRequired | quote }}
+  CSI_NFS_ATTACH_REQUIRED: {{ .Values.csi.nfsAttachRequired | quote }}
 {{- end }}
