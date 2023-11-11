@@ -116,10 +116,11 @@
     domain: service
   register: _rook_ceph_cluster_identity_user
 
-- name: Fetch all projects with a name in a domain
+- name: get project of project service
   openstack.cloud.project_info:
     cloud: atmosphere
     name: service
+    domain: service
   register: _rook_ceph_cluster_project
 
 - name: Retrieve info about role 'admin'
@@ -128,19 +129,16 @@
     name: admin
   register: _rook_ceph_cluster_admin_role
 
-- name: _rook_ceph_cluster_admin_role
-  debug:
-    msg: "{{ _rook_ceph_cluster_admin_role }}"
-
 - name: all
   debug:
-    msg: "user: {{ _rook_ceph_cluster_identity_user.user.id }}, project: {{ _rook_ceph_cluster_project.projects[0].id }}, role: {{ _rook_ceph_cluster_admin_role.roles[0].id }}"
+    msg: "user: {{ _rook_ceph_cluster_identity_user.user.id }}, project: {{ _rook_ceph_cluster_project.projects[0].id }}, domain: {{ _rook_ceph_cluster_project.projects[0].domain_id }}, role: {{ _rook_ceph_cluster_admin_role.roles[0].id }}"
 
 - name: Grant access to "service" project
   openstack.cloud.role_assignment:
     cloud: atmosphere
     user: "{{ _rook_ceph_cluster_identity_user.user.id }}"
     project: "{{ _rook_ceph_cluster_project.projects[0].id }}"
+    domain:  "{{ _rook_ceph_cluster_project.projects[0].domain_id }}"
     role: "{{ _rook_ceph_cluster_admin_role.roles[0].id }}"
   when: not ansible_check_mode
 
