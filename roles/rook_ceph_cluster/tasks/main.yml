@@ -116,21 +116,32 @@
     domain: service
   register: _rook_ceph_cluster_identity_user
 
-- name: _rook_ceph_cluster_identity_user
-  debug:
-    msg: "{{ _rook_ceph_cluster_identity_user }}"
+- name: Fetch all projects with a name in a domain
+  openstack.cloud.project_info:
+    cloud: atmosphere
+    name: service
+  register: _rook_ceph_cluster_project
 
-- name: _rook_ceph_cluster_identity_user.user.id
+- name: Retrieve info about role 'admin'
+  openstack.cloud.identity_role_info:
+    cloud: atmosphere
+    name: admin
+  register: _rook_ceph_cluster_admin_role
+
+- name: _rook_ceph_cluster_admin_role
   debug:
-    msg: "{{ _rook_ceph_cluster_identity_user.user.id }}"
+    msg: "{{ _rook_ceph_cluster_admin_role }}"
+
+- name: all
+  debug:
+    msg: "user: {{ _rook_ceph_cluster_identity_user.user.id }}, project: {{ _rook_ceph_cluster_project.projects[0].id }}, role: {{ _rook_ceph_cluster_admin_role.roles[0].id }}"
 
 - name: Grant access to "service" project
   openstack.cloud.role_assignment:
     cloud: atmosphere
-    domain: service
     user: "{{ _rook_ceph_cluster_identity_user.user.id }}"
-    project: service
-    role: admin
+    project: "{{ _rook_ceph_cluster_project.projects[0].id }}"
+    role: "{{ _rook_ceph_cluster_admin_role.roles[0].id }}"
   when: not ansible_check_mode
 
 - name: Create OpenStack service
