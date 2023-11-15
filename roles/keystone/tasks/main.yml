@@ -105,7 +105,6 @@
 
 - name: Create Keystone domains
   run_once: true
-  delegate_to: localhost
   vexxhost.atmosphere.identity_domain:
     name: "{{ item.name }}"
   register: keystone_domains_result
@@ -115,7 +114,6 @@
 
 - name: Create Keystone identity providers
   run_once: true
-  delegate_to: localhost
   vexxhost.atmosphere.federation_idp:
     name: "{{ item.domain.name }}"
     domain_id: "{{ item.domain.id }}"
@@ -127,7 +125,6 @@
 
 - name: Create Keystone federation mappings
   run_once: true
-  delegate_to: localhost
   vexxhost.atmosphere.federation_mapping:
     name: "{{ item.name }}-openid"
     rules:
@@ -145,7 +142,6 @@
 
 - name: Create Keystone federation protocols
   run_once: true
-  delegate_to: localhost
   vexxhost.atmosphere.keystone_federation_protocol:
     name: openid
     idp_id: "{{ item.name }}"
