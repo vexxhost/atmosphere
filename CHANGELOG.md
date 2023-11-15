@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.1](https://github.com/vexxhost/atmosphere/compare/v1.10.0...v1.10.1) (2023-11-15)
+
+
+### Bug Fixes
+
+* Avoid localhost delegation for openstack.cloud tasks ([#709](https://github.com/vexxhost/atmosphere/issues/709)) ([105304e](https://github.com/vexxhost/atmosphere/commit/105304e81cd596f737294fa3d4170a6303a24828))
+
 ## [1.10.0](https://github.com/vexxhost/atmosphere/compare/v1.9.0...v1.10.0) (2023-11-06)
 
 
