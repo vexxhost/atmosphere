@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.2](https://github.com/vexxhost/atmosphere/compare/v1.10.1...v1.10.2) (2023-11-16)
+
+
+### Bug Fixes
+
+* Update magnum image ([#717](https://github.com/vexxhost/atmosphere/issues/717)) ([e154bd1](https://github.com/vexxhost/atmosphere/commit/e154bd1f25f9c8e7a73002ec4884c8886e15a9e1))
+
 ## [1.10.1](https://github.com/vexxhost/atmosphere/compare/v1.10.0...v1.10.1) (2023-11-15)
 
 
