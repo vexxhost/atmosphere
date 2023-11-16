@@ -112,14 +112,31 @@
   retries: 60
   delay: 1
 
+- name: Wait until identity service ready
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    name: keystone-api
+    namespace: openstack
+    wait_sleep: 10
+    wait_timeout: 600
+    wait: true
+    wait_condition:
+      type: Available
+      status: true
+
 - name: Create Keystone domains
   run_once: true
   vexxhost.atmosphere.identity_domain:
     name: "{{ item.name }}"
-  register: keystone_domains_result
   loop: "{{ keystone_domains }}"
   loop_control:
     label: "{{ item.name }}"
+  # NOTE: This often fails since it takes time for the keystone api ready.
+  retries: 60
+  delay: 5
+  register: keystone_domains_result
+  until: keystone_domains_result is not failed
 
 - name: Create Keystone identity providers
   run_once: true
