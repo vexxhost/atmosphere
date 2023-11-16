@@ -97,7 +97,9 @@ access its dashboard.
 
 You can enable IP whitelisting or basic HTTP authentication by adding proper
 annotations in the above configurations.
+
 - Whitelist source range
+
 ```yaml
 kube_prometheus_stack_helm_values:
   prometheus:
@@ -105,7 +107,9 @@ kube_prometheus_stack_helm_values:
       annotations:
         nginx.ingress.kubernetes.io/whitelist-source-range: "10.0.0.0/24,172.10.0.1"
 ```
+
 - Basic HTTP authentication
+
 ```yaml
 kube_prometheus_stack_helm_values:
   prometheus:
@@ -114,6 +118,7 @@ kube_prometheus_stack_helm_values:
         nginx.ingress.kubernetes.io/auth-type: basic
         nginx.ingress.kubernetes.io/auth-secret: basic-auth-secret-name
 ```
+
 You can find available annotation list [here](https://github.com/kubernetes/ingress-nginx/blob/main/docs/user-guide/nginx-configuration/annotations.md#annotations).
 
 ### Alertmanager dashboard
