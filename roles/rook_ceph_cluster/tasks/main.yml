@@ -116,7 +116,7 @@
     domain: service
   register: _rook_ceph_cluster_identity_user
 
-- name: get project of project service
+- name: Get project of project service
   openstack.cloud.project_info:
     cloud: atmosphere
     name: service
@@ -134,7 +134,7 @@
     cloud: atmosphere
     user: "{{ _rook_ceph_cluster_identity_user.user.id }}"
     project: "{{ _rook_ceph_cluster_project.projects[0].id }}"
-    domain:  "{{ _rook_ceph_cluster_project.projects[0].domain_id }}"
+    domain: "{{ _rook_ceph_cluster_project.projects[0].domain_id }}"
     role: "{{ _rook_ceph_cluster_admin_role.roles[0].id }}"
   when: not ansible_check_mode
 
