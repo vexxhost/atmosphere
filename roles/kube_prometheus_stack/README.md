@@ -60,6 +60,8 @@ to provide a reliable and high-quality service to all our users.
 
 ## Viewing data
 
+### Grafana dashboard
+
 By default, an `Ingress` is created for Grafana using the `kube_prometheus_stack_grafana_host`
 variable. The default login is `admin` and the password is the value of
 `kube_prometheus_stack_grafana_admin_password`.
@@ -67,6 +69,82 @@ variable. The default login is `admin` and the password is the value of
 You can view the existing dashboards by going to _Manage_ > _Dashboards_. You
 can also check any alerts that are currently firing by going to _Alerting_ >
 _Alerts_.
+
+### Prometheus dashboard
+
+By default, Prometheus dashboard is not enabled. In order to enable this, you
+need to configure the following options. `kube_prometheus_stack_prometheus_host`
+variable should be defined also or you can replace that with the hostname directly.
+
+```yaml
+kube_prometheus_stack_helm_values:
+  prometheus:
+    ingress:
+      ingressClassName: "{{ kube_prometheus_stack_grafana_ingress_class_name }}"
+      enabled: true
+      annotations:
+        cert-manager.io/cluster-issuer: atmosphere
+      hosts:
+        - "{{ kube_prometheus_stack_prometheus_host }}"
+      tls:
+        - secretName: prometheus-tls
+          hosts:
+            - "{{ kube_prometheus_stack_prometheus_host }}"
+```
+
+Once this is done and deployed, an `Ingress` is created for Prometheus so you can
+access its dashboard.
+
+You can enable IP whitelisting or basic HTTP authentication by adding proper
+annotations in the above configurations.
+
+- Whitelist source range
+
+```yaml
+kube_prometheus_stack_helm_values:
+  prometheus:
+    ingress:
+      annotations:
+        nginx.ingress.kubernetes.io/whitelist-source-range: "10.0.0.0/24,172.10.0.1"
+```
+
+- Basic HTTP authentication
+
+```yaml
+kube_prometheus_stack_helm_values:
+  prometheus:
+    ingress:
+      annotations:
+        nginx.ingress.kubernetes.io/auth-type: basic
+        nginx.ingress.kubernetes.io/auth-secret: basic-auth-secret-name
+```
+
+You can find available annotation list [here](https://github.com/kubernetes/ingress-nginx/blob/main/docs/user-guide/nginx-configuration/annotations.md#annotations).
+
+### Alertmanager dashboard
+
+By default, Alertmanager dashboard is not enabled. In order to enable this, you
+need to configure the following options. `kube_prometheus_stack_alertmanager_host`
+variable should be defined also or you can replace that with the hostname directly.
+
+```yaml
+kube_prometheus_stack_helm_values:
+  alertmanager:
+    ingress:
+      ingressClassName: "{{ kube_prometheus_stack_grafana_ingress_class_name }}"
+      enabled: true
+      annotations:
+        cert-manager.io/cluster-issuer: atmosphere
+      hosts:
+        - "{{ kube_prometheus_stack_alertmanager_host }}"
+      tls:
+        - secretName: alertmanager-tls
+          hosts:
+            - "{{ kube_prometheus_stack_alertmanager_host }}"
+```
+
+Once this is done and deployed, an `Ingress` is created for Alertmanager so you can
+access its dashboard.
 
 ## Integrations
 
