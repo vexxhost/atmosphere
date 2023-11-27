@@ -63,7 +63,41 @@
         fail_msg: >-
           The Percona XtraDB Cluster is not healthy. Please fix the cluster manually first before upgrade.
 
-    - name: Do smart upgrade
+    - name: Do minor upgrade
+      kubernetes.core.k8s:
+        definition:
+          apiVersion: pxc.percona.com/v1
+          kind: PerconaXtraDBCluster
+          metadata:
+            name: percona-xtradb
+            namespace: openstack
+          spec:
+            crVersion: "1.13.0"
+            updateStrategy: SmartUpdate
+            upgradeOptions:
+              apply: 5.7-latest
+              versionServiceEndpoint: http://percona-version-service:11000
+              schedule: "* * * * *"
+      # Note(oleks): Wait until the upgrade task is queued in the reconcile queue
+      register: _pxc_cluster
+      retries: 60
+      delay: 1
+      until:
+        - _pxc_cluster.resources[0].status.state == 'initializing'
+
+    - name: Wait until minor upgrade is done
+      kubernetes.core.k8s_info:
+        api_version: pxc.percona.com/v1
+        kind: PerconaXtraDBCluster
+        name: percona-xtradb
+        namespace: openstack
+      register: _pxc_cluster
+      retries: 60
+      delay: 5
+      until:
+        - _pxc_cluster.resources[0].status.state == 'ready'
+
+    - name: Do major upgrade
       kubernetes.core.k8s:
         definition:
           apiVersion: pxc.percona.com/v1
@@ -78,6 +112,12 @@
               apply: 8.0.32-24.2
               versionServiceEndpoint: http://percona-version-service:11000
               schedule: "* * * * *"
+      # Note(oleks): Wait until the upgrade task is queued in the reconcile queue
+      register: _pxc_cluster
+      retries: 60
+      delay: 1
+      until:
+        - _pxc_cluster.resources[0].status.state == 'initializing'
 
     - name: Wait until upgrade is done
       kubernetes.core.k8s_info:
