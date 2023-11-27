@@ -1,5 +1,57 @@
 # Changelog
 
+## [1.10.2](https://github.com/vexxhost/atmosphere/compare/v1.10.1...v1.10.2) (2023-11-16)
+
+
+### Bug Fixes
+
+* Update magnum image ([#717](https://github.com/vexxhost/atmosphere/issues/717)) ([e154bd1](https://github.com/vexxhost/atmosphere/commit/e154bd1f25f9c8e7a73002ec4884c8886e15a9e1))
+
+## [1.10.1](https://github.com/vexxhost/atmosphere/compare/v1.10.0...v1.10.1) (2023-11-15)
+
+
+### Bug Fixes
+
+* Avoid localhost delegation for openstack.cloud tasks ([#709](https://github.com/vexxhost/atmosphere/issues/709)) ([105304e](https://github.com/vexxhost/atmosphere/commit/105304e81cd596f737294fa3d4170a6303a24828))
+
+## [1.10.0](https://github.com/vexxhost/atmosphere/compare/v1.9.0...v1.10.0) (2023-11-06)
+
+
+### Features
+
+* **horizon:** Update Horizon to Bobcat ([#695](https://github.com/vexxhost/atmosphere/issues/695)) ([bab75aa](https://github.com/vexxhost/atmosphere/commit/bab75aa204d9b09fb52039fd96e61b30ed413332))
+* **libvirt:** Enable exporter ootb ([#573](https://github.com/vexxhost/atmosphere/issues/573)) ([947a84a](https://github.com/vexxhost/atmosphere/commit/947a84a86981a1a856813c7c1d134900b3822256))
+* Staffeln support ([#588](https://github.com/vexxhost/atmosphere/issues/588)) ([d020bc2](https://github.com/vexxhost/atmosphere/commit/d020bc2910e79a679c1734b0e1d275fa98097284))
+
+
+### Bug Fixes
+
+* add placement client ([#666](https://github.com/vexxhost/atmosphere/issues/666)) ([a396d9d](https://github.com/vexxhost/atmosphere/commit/a396d9d8e2d808f6f2942792e9de7bafbf739cfe))
+* bump capi ([#594](https://github.com/vexxhost/atmosphere/issues/594)) ([c8f6989](https://github.com/vexxhost/atmosphere/commit/c8f6989a8d32d004708d68652d315b204625c710))
+* **CI:** image-manifest and ceph(ovs/ovn) ([#644](https://github.com/vexxhost/atmosphere/issues/644)) ([46bb4f1](https://github.com/vexxhost/atmosphere/commit/46bb4f16121442843e734ecbf1ead2fe9c95126c))
+* Disable in percona name resolution ([#642](https://github.com/vexxhost/atmosphere/issues/642)) ([c865f50](https://github.com/vexxhost/atmosphere/commit/c865f501a9a7dcd960f8d5dee00baae04fe0066e)), closes [#545](https://github.com/vexxhost/atmosphere/issues/545)
+* Fix VNC times out after 60 seconds of idle time ([#654](https://github.com/vexxhost/atmosphere/issues/654)) ([af9972f](https://github.com/vexxhost/atmosphere/commit/af9972f1d9b14dace9cdffae35a9d8663624bf76))
+* **hack:** Avoid remove staffeln charts ([#682](https://github.com/vexxhost/atmosphere/issues/682)) ([f58e180](https://github.com/vexxhost/atmosphere/commit/f58e1803fedd54b12febf939ca13137217c8c1a0))
+* **hack:** Use -f for rm when sync charts ([#692](https://github.com/vexxhost/atmosphere/issues/692)) ([34140a1](https://github.com/vexxhost/atmosphere/commit/34140a19f59e81cf908272dd826c9db2d13665c6))
+* **heat:** solve uwsgi issues ([134eac3](https://github.com/vexxhost/atmosphere/commit/134eac3c554c9faac527441c5879aa3e78986dd4))
+* **horizon:** allow deploy without defined cluster issuer ([a0b1eb8](https://github.com/vexxhost/atmosphere/commit/a0b1eb8bb30bedf10606e47b9e59c03ebd587942))
+* **keycloak:** Run keycloak on control plane ([#630](https://github.com/vexxhost/atmosphere/issues/630)) ([72da012](https://github.com/vexxhost/atmosphere/commit/72da01273e80ac1f4094ebf5f2444f58b6706c8f))
+* **libvirt:** add HOSTNAME_FQDN to certificate ([#627](https://github.com/vexxhost/atmosphere/issues/627)) ([a7a27f8](https://github.com/vexxhost/atmosphere/commit/a7a27f8f3e4ee811efdf6978fc69cb485adc3d4c))
+* **magnum:** bump capi to 1.5.1 ([#645](https://github.com/vexxhost/atmosphere/issues/645)) ([3251ef9](https://github.com/vexxhost/atmosphere/commit/3251ef9b70bc4de5a5813de79b50007271aa3a23))
+* **magnum:** solve uwsgi issues ([200bb66](https://github.com/vexxhost/atmosphere/commit/200bb66ca30f19925693c287c60991ad1641a966))
+* **manila:** solve uwsgi issues ([734d1e4](https://github.com/vexxhost/atmosphere/commit/734d1e407d951f4b0e684b3691971a09b14789a6))
+* **monitoring:** fire IpmiCollectorDown after 15m ([2beb903](https://github.com/vexxhost/atmosphere/commit/2beb90334ef77a6748dc6a8859c32b9f9ea4ca06))
+* **neutron:** fix trunk issue ([196eb2e](https://github.com/vexxhost/atmosphere/commit/196eb2e1983c9dc32195512ea38f36bb0ca3914a))
+* **nova,neutron:** Specify missing region name ([#640](https://github.com/vexxhost/atmosphere/issues/640)) ([ab92061](https://github.com/vexxhost/atmosphere/commit/ab9206143ee104777507cc052df6e12c9371b427))
+* **octavia:** Correct port protocol ([#699](https://github.com/vexxhost/atmosphere/issues/699)) ([7766720](https://github.com/vexxhost/atmosphere/commit/77667204eb3b8b026f8e4eec47b9ded82e83c77a))
+* **ovs:** bump to 3.1.0-55atmosphere1 ([#660](https://github.com/vexxhost/atmosphere/issues/660)) ([3cccb4b](https://github.com/vexxhost/atmosphere/commit/3cccb4bc613d25a5a50998cc587311052297e97d))
+* Set step id for image pushin build_workflow ([#693](https://github.com/vexxhost/atmosphere/issues/693)) ([ca40dce](https://github.com/vexxhost/atmosphere/commit/ca40dce31a26e69254d171996803d34a7f48c9f3))
+
+
+### Documentation
+
+* Allow plain certs for CA cluster issuer inventory ([#678](https://github.com/vexxhost/atmosphere/issues/678)) ([396ca9f](https://github.com/vexxhost/atmosphere/commit/396ca9ff873dfce0a2251a7333c81b3015142f5a))
+
 ## [1.9.0](https://github.com/vexxhost/atmosphere/compare/v1.8.0...v1.9.0) (2023-09-21)
 
 

@@ -77,19 +77,38 @@ function start () {
 
   # No need to create the cgroup if lcore_mask or pmd_cpu_mask is not set.
   if [[ -n ${PMD_CPU_MASK} || -n ${LCORE_MASK} ]]; then
-      # Setup Cgroups to use when breaking out of Kubernetes defined groups
-      mkdir -p /sys/fs/cgroup/cpuset/osh-openvswitch
-      target_mems="/sys/fs/cgroup/cpuset/osh-openvswitch/cpuset.mems"
-      target_cpus="/sys/fs/cgroup/cpuset/osh-openvswitch/cpuset.cpus"
+      if [ "$(stat -fc %T /sys/fs/cgroup/)" = "cgroup2fs" ]; then
+          # Setup Cgroups to use when breaking out of Kubernetes defined groups
+          mkdir -p /sys/fs/cgroup/osh-openvswitch
+          target_mems="/sys/fs/cgroup/osh-openvswitch/cpuset.mems"
+          target_cpus="/sys/fs/cgroup/osh-openvswitch/cpuset.cpus"
+          touch $target_mems
+          touch $target_cpus
 
-      # Ensure the write target for the for cpuset.mem for the pod exists
-      if [[ -f "$target_mems" && -f "$target_cpus" ]]; then
-        # Write cpuset.mem and cpuset.cpus for new cgroup and add current task to new cgroup
-        cat /sys/fs/cgroup/cpuset/cpuset.mems > "$target_mems"
-        cat /sys/fs/cgroup/cpuset/cpuset.cpus > "$target_cpus"
-        echo $$ > /sys/fs/cgroup/cpuset/osh-openvswitch/tasks
+          # Ensure the write target for the for cpuset.mem for the pod exists
+          if [[ -f "$target_mems" && -f "$target_cpus" ]]; then
+            # Write cpuset.mem and cpuset.cpus for new cgroup and add current task to new cgroup
+            cat /sys/fs/cgroup/cpuset.mems.effective > "$target_mems"
+            cat /sys/fs/cgroup/cpuset.cpus.effective > "$target_cpus"
+            echo $$ > /sys/fs/cgroup/osh-openvswitch/cgroup.procs
+          else
+            echo "ERROR: Could not find write target for either cpuset.mems: $target_mems or cpuset.cpus: $target_cpus"
+          fi
       else
-        echo "ERROR: Could not find write target for either cpuset.mems: $target_mems or cpuset.cpus: $target_cpus"
+          # Setup Cgroups to use when breaking out of Kubernetes defined groups
+          mkdir -p /sys/fs/cgroup/cpuset/osh-openvswitch
+          target_mems="/sys/fs/cgroup/cpuset/osh-openvswitch/cpuset.mems"
+          target_cpus="/sys/fs/cgroup/cpuset/osh-openvswitch/cpuset.cpus"
+
+          # Ensure the write target for the for cpuset.mem for the pod exists
+          if [[ -f "$target_mems" && -f "$target_cpus" ]]; then
+            # Write cpuset.mem and cpuset.cpus for new cgroup and add current task to new cgroup
+            cat /sys/fs/cgroup/cpuset/cpuset.mems > "$target_mems"
+            cat /sys/fs/cgroup/cpuset/cpuset.cpus > "$target_cpus"
+            echo $$ > /sys/fs/cgroup/cpuset/osh-openvswitch/tasks
+          else
+            echo "ERROR: Could not find write target for either cpuset.mems: $target_mems or cpuset.cpus: $target_cpus"
+          fi
       fi
   fi
 {{- end }}
@@ -107,13 +126,37 @@ function stop () {
   ovs-appctl -T1 -t /run/openvswitch/ovs-vswitchd.${PID}.ctl exit
 }
 
+find_latest_ctl_file() {
+    latest_file=""
+    latest_file=$(ls -lt /run/openvswitch/*.ctl | awk 'NR==1 {if ($3 == "{{ .Values.conf.poststart.rootUser }}") print $NF}')
+
+    echo "$latest_file"
+}
+
 function poststart () {
   # This enables the usage of 'ovs-appctl' from neutron-ovs-agent pod.
+
+  # Wait for potential new ctl file before continuing
+  timeout={{ .Values.conf.poststart.timeout }}
+  start_time=$(date +%s)
+  while true; do
+      latest_ctl_file=$(find_latest_ctl_file)
+      if [ -n "$latest_ctl_file" ]; then
+          break
+      fi
+      current_time=$(date +%s)
+      if (( current_time - start_time >= timeout )); then
+          break
+      fi
+      sleep 1
+  done
+
   until [ -f $OVS_PID ]
   do
       echo "Waiting for file $OVS_PID"
       sleep 1
   done
+
   PID=$(cat $OVS_PID)
   OVS_CTL=/run/openvswitch/ovs-vswitchd.${PID}.ctl
 
@@ -123,6 +166,11 @@ function poststart () {
       sleep 1
   done
   chown {{ .Values.pod.user.nova.uid }}.{{ .Values.pod.user.nova.uid }} ${OVS_CTL}
+
+{{- if .Values.conf.poststart.extraCommand }}
+{{ .Values.conf.poststart.extraCommand | indent 2 }}
+{{- end }}
+
 }
 
 $COMMAND

@@ -40,13 +40,15 @@
     security_group: "{{ _octavia_health_manager_sg.id }}"
     direction: ingress
     ethertype: IPv4
-    protocol: tcp
-    port_range_min: "{{ item }}"
-    port_range_max: "{{ item }}"
+    protocol: "{{ item.protocol }}"
+    port_range_min: "{{ item.port }}"
+    port_range_max: "{{ item.port }}"
   loop:
-    - 5555
-    - 10514
-    - 20514
+    - { protocol: 'udp', port: 5555 }
+    - { protocol: 'udp', port: 10514 }
+    - { protocol: 'udp', port: 20514 }
+    - { protocol: 'tcp', port: 10514 }
+    - { protocol: 'tcp', port: 20514 }
 
 - name: Create health manager networking ports
   # noqa: args[module]

@@ -103,19 +103,43 @@
     openstack_helm_ingress_service_port: 5000
     openstack_helm_ingress_annotations: "{{ keystone_ingress_annotations }}"
 
+- name: Validate if ingress is reachable
+  ansible.builtin.uri:
+    url: "https://{{ openstack_helm_endpoints_keystone_api_host }}"
+    status_code: [300]
+  register: keystone_ingress_validate
+  until: keystone_ingress_validate.status == 300
+  retries: 60
+  delay: 1
+
+- name: Wait until identity service ready
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    name: keystone-api
+    namespace: openstack
+    wait_sleep: 10
+    wait_timeout: 600
+    wait: true
+    wait_condition:
+      type: Available
+      status: true
+
 - name: Create Keystone domains
   run_once: true
-  delegate_to: localhost
   vexxhost.atmosphere.identity_domain:
     name: "{{ item.name }}"
-  register: keystone_domains_result
   loop: "{{ keystone_domains }}"
   loop_control:
     label: "{{ item.name }}"
+  # NOTE: This often fails since it takes time for the keystone api ready.
+  retries: 60
+  delay: 5
+  register: keystone_domains_result
+  until: keystone_domains_result is not failed
 
 - name: Create Keystone identity providers
   run_once: true
-  delegate_to: localhost
   vexxhost.atmosphere.federation_idp:
     name: "{{ item.domain.name }}"
     domain_id: "{{ item.domain.id }}"
@@ -127,7 +151,6 @@
 
 - name: Create Keystone federation mappings
   run_once: true
-  delegate_to: localhost
   vexxhost.atmosphere.federation_mapping:
     name: "{{ item.name }}-openid"
     rules:
@@ -147,7 +170,6 @@
 
 - name: Create Keystone federation protocols
   run_once: true
-  delegate_to: localhost
   vexxhost.atmosphere.keystone_federation_protocol:
     name: openid
     idp_id: "{{ item.name }}"
