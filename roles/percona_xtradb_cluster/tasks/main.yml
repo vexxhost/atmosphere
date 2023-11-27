@@ -78,9 +78,11 @@
               apply: 5.7-latest
               versionServiceEndpoint: http://percona-version-service:11000
               schedule: "* * * * *"
-      # Note(oleks): Wait until the upgrade task is queued in the reconcile queue
+      # Note(oleks): Wait until the upgrade task is queued in the reconcile queue.
+      #              Ignore errors in case the cluster is already minor upgraded.
+      ignore_errors: true
       register: _pxc_cluster
-      retries: 60
+      retries: 10
       delay: 1
       until:
         - _pxc_cluster.result.status.state == 'initializing'
