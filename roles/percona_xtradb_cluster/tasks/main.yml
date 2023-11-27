@@ -83,7 +83,7 @@
       retries: 60
       delay: 1
       until:
-        - _pxc_cluster.resources[0].status.state == 'initializing'
+        - _pxc_cluster.result.status.state == 'initializing'
 
     - name: Wait until minor upgrade is done
       kubernetes.core.k8s_info:
@@ -117,7 +117,7 @@
       retries: 60
       delay: 1
       until:
-        - _pxc_cluster.resources[0].status.state == 'initializing'
+        - _pxc_cluster.result.status.state == 'initializing'
 
     - name: Wait until upgrade is done
       kubernetes.core.k8s_info:
