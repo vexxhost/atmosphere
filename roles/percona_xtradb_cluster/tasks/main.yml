@@ -30,7 +30,69 @@
             namespace: openstack
           type: Opaque
 
-- name: Create Percona XtraDB cluster
+- name: Check if the Percona XtraDB cluster exists
+  run_once:
+  block:
+    - name: Check if the Percona XtraDB cluster exists
+      kubernetes.core.k8s_info:
+        api_version: pxc.percona.com/v1
+        kind: PerconaXtraDBCluster
+        name: percona-xtradb
+        namespace: openstack
+      register: _pxc_cluster
+      ignore_errors: true
+
+    - name: Get current status of the cluster
+      set_fact:
+        _pxc_version: "{{ _pxc_cluster.resources[0].status.pxc.version }}"
+        _pxc_status: "{{ _pxc_cluster.resources[0].status.state }}"
+      when: ( _pxc_cluster.resources | length==1 )
+
+- name: Do smart upgrade
+  run_once: true
+  when:
+    - _pxc_version is defined
+    - _pxc_status is defined
+    - _pxc_version.startswith('5.7')
+  block:
+    - name: Assert that the cluster is healthy before upgrade
+      run_once: true
+      ansible.builtin.assert:
+        that:
+          - _pxc_status == 'ready'
+        fail_msg: >-
+          The Percona XtraDB Cluster is not healthy. Please fix the cluster manually first before upgrade.
+
+    - name: Do smart upgrade
+      kubernetes.core.k8s:
+        definition:
+          apiVersion: pxc.percona.com/v1
+          kind: PerconaXtraDBCluster
+          metadata:
+            name: percona-xtradb
+            namespace: openstack
+          spec:
+            crVersion: "1.13.0"
+            updateStrategy: SmartUpdate
+            upgradeOptions:
+              apply: 8.0.32-24.2
+              versionServiceEndpoint: http://percona-version-service:11000
+              schedule: "* * * * *"
+
+    - name: Wait until upgrade is done
+      kubernetes.core.k8s_info:
+        api_version: pxc.percona.com/v1
+        kind: PerconaXtraDBCluster
+        name: percona-xtradb
+        namespace: openstack
+      register: _pxc_cluster
+      retries: 60
+      delay: 5
+      until:
+        - _pxc_cluster.resources[0].status.state == 'ready'
+        - _pxc_cluster.resources[0].status.pxc.version.startswith('8.0')
+
+- name: Apply Percona XtraDB cluster
   run_once: true
   kubernetes.core.k8s:
     state: present
