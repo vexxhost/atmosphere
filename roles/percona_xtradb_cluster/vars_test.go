@@ -2,6 +2,7 @@ package percona_xtradb_cluster
 
 import (
 	_ "embed"
+	"fmt"
 	"os"
 	"testing"
 
@@ -88,7 +89,7 @@ func TestPerconaXtraDBClusterPXCSidecarSpec(t *testing.T) {
 		ValueFrom: &v1.EnvVarSource{
 			SecretKeyRef: &v1.SecretKeySelector{
 				LocalObjectReference: v1.LocalObjectReference{
-					Name: "percona-xtradb",
+					Name: vars.PerconaXtraDBClusterSpec.SecretsName,
 				},
 				Key: "monitor",
 			},
@@ -108,7 +109,14 @@ func TestPerconaXtraDBClusterPXCSidecarSpec(t *testing.T) {
 func TestPerconaXtraDBClusterHAProxySpec(t *testing.T) {
 	assert.Equal(t, true, vars.PerconaXtraDBClusterSpec.HAProxy.Enabled)
 	assert.Equal(t, int32(3), vars.PerconaXtraDBClusterSpec.HAProxy.Size)
-	defaults.AssertAtmosphereImage(t, "docker.io/percona/percona-xtradb-cluster-operator:1.12.0-haproxy", vars.PerconaXtraDBClusterSpec.HAProxy.Image)
+
+	chart, err := loader.LoadDir("../../charts/pxc-operator")
+	require.NoError(t, err)
+
+	defaults.AssertAtmosphereImage(t,
+		fmt.Sprintf("docker.io/percona/percona-xtradb-cluster-operator:%s-haproxy", chart.AppVersion()),
+		vars.PerconaXtraDBClusterSpec.HAProxy.Image,
+	)
 
 	assert.Equal(t, map[string]string{
 		"openstack-control-plane": "enabled",
