@@ -3,7 +3,11 @@ package percona_xtradb_cluster
 import (
 	_ "embed"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
+	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/goccy/go-yaml"
@@ -66,11 +70,17 @@ func TestPerconaXtraDBClusterPXCSpec(t *testing.T) {
 	}, vars.PerconaXtraDBClusterSpec.PXC.VolumeSpec)
 }
 
-func TestPerconaXtraDBClusterPXCConfiguration(t *testing.T) {
-	cfg, err := ini.LoadSources(ini.LoadOptions{
+func parsePXCConfiguration(t *testing.T, cfg string) *ini.File {
+	parsed, err := ini.LoadSources(ini.LoadOptions{
 		AllowBooleanKeys: true,
-	}, []byte(vars.PerconaXtraDBClusterSpec.PXC.Configuration))
+	}, []byte(cfg))
 	require.NoError(t, err)
+
+	return parsed
+}
+
+func TestPerconaXtraDBClusterPXCConfiguration(t *testing.T) {
+	cfg := parsePXCConfiguration(t, vars.PerconaXtraDBClusterSpec.PXC.Configuration)
 
 	section := cfg.Section("mysqld")
 	assert.Equal(t, 8192, section.Key("max_connections").MustInt())
@@ -121,4 +131,40 @@ func TestPerconaXtraDBClusterHAProxySpec(t *testing.T) {
 	assert.Equal(t, map[string]string{
 		"openstack-control-plane": "enabled",
 	}, vars.PerconaXtraDBClusterSpec.HAProxy.NodeSelector)
+}
+
+func TestPerconaXtraDBClusterHAProxyConfiguration(t *testing.T) {
+	fmt.Println(vars.PerconaXtraDBClusterSpec.HAProxy.Configuration)
+
+	chart, err := loader.LoadDir("../../charts/pxc-operator")
+	require.NoError(t, err)
+
+	pxcConfig := parsePXCConfiguration(t, vars.PerconaXtraDBClusterSpec.PXC.Configuration)
+	maxConnections := pxcConfig.Section("mysqld").Key("max_connections").MustInt()
+
+	// NOTE(mnaser): Since there is no way of overriding specific values, we pull
+	//               the file from the Docker image, replace the maxconn value and
+	//               then compare it.
+
+	// Get the default HAproxy configuration
+	configFileUrl := fmt.Sprintf("https://raw.githubusercontent.com/percona/percona-docker/pxc-operator-%s/haproxy/dockerdir/etc/haproxy/haproxy-global.cfg", chart.AppVersion())
+	resp, err := http.Get(configFileUrl)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	haproxyConfigData, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	haproxyConfig := string(haproxyConfigData)
+
+	// Replace the 4 spaces at the start of each line
+	regex := regexp.MustCompile("(?m)^    ")
+	haproxyConfig = regex.ReplaceAllString(haproxyConfig, "")
+
+	// Replace the maxconn value
+	haproxyConfig = strings.Replace(haproxyConfig, "maxconn 2048", fmt.Sprintf("maxconn %d", maxConnections), 1)
+	assert.Contains(t, haproxyConfig, fmt.Sprintf("maxconn %d", maxConnections))
+
+	assert.Equal(t,
+		haproxyConfig,
+		vars.PerconaXtraDBClusterSpec.HAProxy.Configuration,
+	)
 }

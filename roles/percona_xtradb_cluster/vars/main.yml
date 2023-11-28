@@ -43,3 +43,48 @@ _percona_xtradb_cluster_spec:
     image: "{{ atmosphere_images['percona_xtradb_cluster_haproxy'] | vexxhost.kubernetes.docker_image('ref') }}"
     nodeSelector:
       openstack-control-plane: enabled
+    configuration: |
+      global
+        maxconn 8192
+        external-check
+        insecure-fork-wanted
+        stats socket /etc/haproxy/pxc/haproxy.sock mode 600 expose-fd listeners level admin
+
+      defaults
+        default-server init-addr last,libc,none
+        log global
+        mode tcp
+        retries 10
+        timeout client 28800s
+        timeout connect 100500
+        timeout server 28800s
+
+      frontend galera-in
+        bind *:3309 accept-proxy
+        bind *:3306
+        mode tcp
+        option clitcpka
+        default_backend galera-nodes
+
+      frontend galera-admin-in
+        bind *:33062
+        mode tcp
+        option clitcpka
+        default_backend galera-admin-nodes
+
+      frontend galera-replica-in
+        bind *:3307
+        mode tcp
+        option clitcpka
+        default_backend galera-replica-nodes
+
+      frontend galera-mysqlx-in
+        bind *:33060
+        mode tcp
+        option clitcpka
+        default_backend galera-mysqlx-nodes
+
+      frontend stats
+        bind *:8404
+        mode http
+        http-request use-service prometheus-exporter if { path /metrics }
