@@ -134,8 +134,6 @@ func TestPerconaXtraDBClusterHAProxySpec(t *testing.T) {
 }
 
 func TestPerconaXtraDBClusterHAProxyConfiguration(t *testing.T) {
-	fmt.Println(vars.PerconaXtraDBClusterSpec.HAProxy.Configuration)
-
 	chart, err := loader.LoadDir("../../charts/pxc-operator")
 	require.NoError(t, err)
 
