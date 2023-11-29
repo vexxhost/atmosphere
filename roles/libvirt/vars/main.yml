@@ -42,3 +42,46 @@ _libvirt_helm_values:
   pod:
     sidecars:
       libvirt_exporter: true
+    # csi-driver mount
+    mounts:
+      libvirt:
+        init_container: null
+        libvirt:
+          volumeMounts:
+            - name: api-tls
+              mountPath: "/etc/pki/qemu/"
+            - name: vnc-tls
+              mountPath: "/etc/pki/libvirt-vnc/"
+          volumes:
+            - name: vnc-tls
+              csi:
+                driver: csi.cert-manager.io
+                volumeAttributes:
+                csi.cert-manager.io/issuer-kind: Issuer
+                  csi.cert-manager.io/issuer-name: libvirt-vnc
+                  csi.cert-manager.io/dns-names: ${POD_NAME},${POD_NAME}.${POD_NAMESPACE}.svc.cluster.local
+                  csi.cert-manager.io/ip-sans: ${POD_IP}
+                  csi.cert-manager.io/key-usages: server auth,client auth
+                  csi.cert-manager.io/common-name: ${POD_IP}
+                  csi.cert-manager.io/ca-file: ca-cert.pem
+                  csi.cert-manager.io/certificate-file: server-cert.pem
+                  csi.cert-manager.io/privatekey-file: server-key.pem
+            - name: api-tls
+              csi:
+                driver: csi.cert-manager.io
+                volumeAttributes:
+                csi.cert-manager.io/issuer-kind: Issuer
+                  csi.cert-manager.io/issuer-name: libvirt-api
+                  csi.cert-manager.io/dns-names: ${POD_NAME},${POD_NAME}.${POD_NAMESPACE}.svc.cluster.local
+                  csi.cert-manager.io/ip-sans: ${POD_IP}
+                  csi.cert-manager.io/key-usages: server auth,client auth
+                  csi.cert-manager.io/common-name: ${POD_IP}
+                  csi.cert-manager.io/ca-file: ca-cert.pem
+                  csi.cert-manager.io/certificate-file: server-cert.pem
+                  csi.cert-manager.io/privatekey-file: server-key.pem
+
+  scripts:
+    # Skip cert-init script when csi driver is used
+    cert_init_sh: |
+      #!/bin/bash
+      set -x

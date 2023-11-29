@@ -12,25 +12,9 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-galaxy_info:
-  author: VEXXHOST, Inc.
-  description: Ansible role for Cert Manager
-  license: Apache-2.0
-  min_ansible_version: 5.5.0
-  standalone: false
-  platforms:
-    - name: EL
-      versions:
-        - "8"
-        - "9"
-    - name: Ubuntu
-      versions:
-        - focal
-        - jammy
+cert_manager_csi_driver_helm_release_name: cert-manager-csi-driver
+cert_manager_csi_driver_helm_chart_path: "../../charts/cert-manager-csi-driver/"
+cert_manager_csi_driver_helm_chart_ref: /usr/local/src/cert-manager-csi-driver
 
-dependencies:
-  - role: defaults
-  - role: vexxhost.kubernetes.upload_helm_chart
-    vars:
-      upload_helm_chart_src: "{{ cert_manager_csi_driver_helm_chart_path }}"
-      upload_helm_chart_dest: "{{ cert_manager_csi_driver_helm_chart_ref }}"
+cert_manager_csi_driver_helm_release_namespace: cert-manager
+cert_manager_csi_driver_helm_values: {}

@@ -20,18 +20,15 @@ set -ex
 if [ -f /tmp/api.crt ]; then
   mkdir -p /etc/pki/CA /etc/pki/libvirt/private
 
-  cp /tmp/api-ca.crt {{ .Values.conf.libvirt.ca_file }}
-  cp /tmp/api-ca.crt /etc/pki/qemu/ca-cert.pem
+  cp /etc/pki/qemu/ca-cert.pem {{ .Values.conf.libvirt.ca_file }}
 
-  cp /tmp/api.crt {{ .Values.conf.libvirt.cert_file }}
-  cp /tmp/api.crt /etc/pki/libvirt/clientcert.pem
-  cp /tmp/api.crt /etc/pki/qemu/server-cert.pem
-  cp /tmp/api.crt /etc/pki/qemu/client-cert.pem
+  cp /etc/pki/qemu/server-cert.pem {{ .Values.conf.libvirt.cert_file }}
+  cp /etc/pki/qemu/server-cert.pem /etc/pki/libvirt/clientcert.pem
+  cp /etc/pki/qemu/server-cert.pem /etc/pki/qemu/client-cert.pem
 
-  cp /tmp/api.key {{ .Values.conf.libvirt.key_file }}
-  cp /tmp/api.key /etc/pki/libvirt/private/clientkey.pem
-  cp /tmp/api.key /etc/pki/qemu/server-key.pem
-  cp /tmp/api.key /etc/pki/qemu/client-key.pem
+  cp /etc/pki/qemu/server-key.pem {{ .Values.conf.libvirt.key_file }}
+  cp /etc/pki/qemu/server-key.pem /etc/pki/libvirt/private/clientkey.pem
+  cp /etc/pki/qemu/server-key.pem /etc/pki/qemu/client-key.pem
 fi
 
 # NOTE(mnaser): This will move the VNC certificates into the expected location.

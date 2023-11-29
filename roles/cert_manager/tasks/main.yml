@@ -39,7 +39,7 @@
         name: cert-manager
         namespace: cert-manager
 
-- name: Deploy Helm chart
+- name: Deploy Cert Manager Helm chart
   ansible.builtin.include_role:
     name: vexxhost.kubernetes.cert_manager
   vars:
@@ -49,3 +49,13 @@
     cert_manager_image_webhook: "{{ atmosphere_images['cert_manager_webhook'] }}"
     cert_manager_node_selector:
       openstack-control-plane: enabled
+
+- name: Deploy csi-driver Helm chart
+  run_once: true
+  kubernetes.core.helm:
+    name: "{{ cert_manager_csi_driver_helm_release_name }}"
+    chart_ref: "{{ cert_manager_csi_driver_helm_chart_ref }}"
+    release_namespace: "{{ cert_manager_csi_driver_helm_release_namespace }}"
+    create_namespace: true
+    kubeconfig: /etc/kubernetes/admin.conf
+    values: "{{ _cert_manager_csi_driver_helm_values | combine(cert_manager_csi_driver_helm_values, recursive=True) }}"
