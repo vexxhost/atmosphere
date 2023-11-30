@@ -159,10 +159,12 @@
           - user:
               type: local
               id: "{0}"
+              name: "{1}"
               domain:
                 name: "{{ item.name }}"
         remote:
           - type: OIDC-sub
+          - type: OIDC-preferred_username
   loop: "{{ keystone_domains }}"
   loop_control:
     label: "{{ item.name }}"
