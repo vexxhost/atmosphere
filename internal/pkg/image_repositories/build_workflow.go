@@ -11,7 +11,6 @@ var FORKED_PROJECTS map[string]bool = map[string]bool{
 	"keystone":  true,
 	"magnum-ui": true,
 	"magnum":    true,
-	"manila":    true,
 }
 var EXTRAS map[string]string = map[string]string{}
 var PROFILES map[string]string = map[string]string{
@@ -146,7 +145,7 @@ func NewBuildWorkflow(ctx context.Context, ir *ImageRepository) *GithubWorkflow 
 	}
 
 	imageBuildArgs := ImageBuildArgs{
-		BuilderImage:  fmt.Sprintf("quay.io/vexxhost/openstack-builder-${{ matrix.from }}:%s", builderImageTag),
+		BuilderImage: fmt.Sprintf("quay.io/vexxhost/openstack-builder-${{ matrix.from }}:%s", builderImageTag),
 		RuntimeImage: fmt.Sprintf("quay.io/vexxhost/openstack-runtime-${{ matrix.from }}:%s", runtimeImageTag),
 		Release:      "${{ matrix.release }}",
 		Project:      project,
@@ -188,9 +187,9 @@ func NewBuildWorkflow(ctx context.Context, ir *ImageRepository) *GithubWorkflow 
 			"image": {
 				RunsOn: "ubuntu-latest",
 				Permissions: map[string]string{
-					"actions": "read",
-					"contents": "read",
-					"id-token": "write",
+					"actions":         "read",
+					"contents":        "read",
+					"id-token":        "write",
 					"security-events": "write",
 				},
 				Strategy: GithubWorkflowStrategy{
@@ -254,7 +253,7 @@ func NewBuildWorkflow(ctx context.Context, ir *ImageRepository) *GithubWorkflow 
 					},
 					{
 						Name: "Verify images",
-						Run: strings.Join(imageVerifyCmds, "\n"),
+						Run:  strings.Join(imageVerifyCmds, "\n"),
 					},
 					{
 						Name: "Build image",
@@ -266,7 +265,7 @@ func NewBuildWorkflow(ctx context.Context, ir *ImageRepository) *GithubWorkflow 
 							"context":    ".",
 							"cache-from": "type=gha,scope=${{ matrix.from }}-${{ matrix.release }}",
 							"cache-to":   "type=gha,mode=max,scope=${{ matrix.from }}-${{ matrix.release }}",
-							"load": "true",
+							"load":       "true",
 							"build-args": imageBuildArgs.ToBuildArgsString(),
 							"tags":       fmt.Sprintf("quay.io/vexxhost/%s:${{ env.PROJECT_REF }}-${{ matrix.from }}-${{ github.sha }}", project),
 						},
@@ -275,9 +274,9 @@ func NewBuildWorkflow(ctx context.Context, ir *ImageRepository) *GithubWorkflow 
 						Name: "Scan image for vulnerabilities",
 						Uses: "aquasecurity/trivy-action@master",
 						With: map[string]string{
-							"image-ref": fmt.Sprintf("quay.io/vexxhost/%s:${{ env.PROJECT_REF }}-${{ matrix.from }}-${{ github.sha }}", project),
-							"format": "sarif",
-							"output": "trivy-results.sarif",
+							"image-ref":      fmt.Sprintf("quay.io/vexxhost/%s:${{ env.PROJECT_REF }}-${{ matrix.from }}-${{ github.sha }}", project),
+							"format":         "sarif",
+							"output":         "trivy-results.sarif",
 							"ignore-unfixed": "true",
 						},
 					},
@@ -286,14 +285,14 @@ func NewBuildWorkflow(ctx context.Context, ir *ImageRepository) *GithubWorkflow 
 						Uses: "github/codeql-action/upload-sarif@v2",
 						If:   "always()",
 						With: map[string]string{
-							"category": "${{ env.PROJECT_REF }}-${{ matrix.from }}",
+							"category":   "${{ env.PROJECT_REF }}-${{ matrix.from }}",
 							"sarif_file": "trivy-results.sarif",
 						},
 					},
 					{
 						Name: "Build image",
 						Uses: "docker/build-push-action@v3",
-						Id: "push-step",
+						Id:   "push-step",
 						Environment: map[string]string{
 							"DOCKER_CONTENT_TRUST": "1",
 						},
@@ -302,7 +301,7 @@ func NewBuildWorkflow(ctx context.Context, ir *ImageRepository) *GithubWorkflow 
 							"cache-from": "type=gha,scope=${{ matrix.from }}-${{ matrix.release }}",
 							"cache-to":   "type=gha,mode=max,scope=${{ matrix.from }}-${{ matrix.release }}",
 							"platforms":  platforms,
-							"sbom": "true",
+							"sbom":       "true",
 							"push":       "${{ github.event_name == 'push' }}",
 							"build-args": imageBuildArgs.ToBuildArgsString(),
 							"tags":       fmt.Sprintf("quay.io/vexxhost/%s:${{ env.PROJECT_REF }}-${{ matrix.from }}-${{ github.sha }}", project),
@@ -320,7 +319,7 @@ func NewBuildWorkflow(ctx context.Context, ir *ImageRepository) *GithubWorkflow 
 					{
 						Name: "Sign the container image",
 						If:   "${{ github.event_name == 'push' }}",
-						Run: "cosign sign --yes quay.io/vexxhost/horizon@${{ steps.push-step.outputs.digest }}",
+						Run:  "cosign sign --yes quay.io/vexxhost/horizon@${{ steps.push-step.outputs.digest }}",
 					},
 				},
 			},
