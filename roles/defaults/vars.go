@@ -9,7 +9,7 @@ import (
 
 var (
 	//go:embed vars/main.yml
-	vars_file []byte
+	varsFile []byte
 )
 
 func GetImageByKey(key string) (string, error) {
@@ -19,7 +19,7 @@ func GetImageByKey(key string) (string, error) {
 	}
 
 	var image string
-	if err := path.Read(bytes.NewReader(vars_file), &image); err != nil {
+	if err := path.Read(bytes.NewReader(varsFile), &image); err != nil {
 		return "", err
 	}
 

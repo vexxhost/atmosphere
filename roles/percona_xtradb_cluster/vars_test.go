@@ -24,8 +24,8 @@ import (
 
 var (
 	//go:embed vars/main.yml
-	vars_file []byte
-	vars      Vars
+	varsFile []byte
+	vars     Vars
 )
 
 type Vars struct {
@@ -35,7 +35,7 @@ type Vars struct {
 func TestMain(m *testing.M) {
 	t := &testing.T{}
 
-	err := yaml.UnmarshalWithOptions(vars_file, &vars, yaml.Strict(), yaml.UseJSONUnmarshaler())
+	err := yaml.UnmarshalWithOptions(varsFile, &vars, yaml.Strict(), yaml.UseJSONUnmarshaler())
 	require.NoError(t, err)
 
 	code := m.Run()
