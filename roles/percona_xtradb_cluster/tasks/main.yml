@@ -48,12 +48,13 @@
         _pxc_status: "{{ _pxc_cluster.resources[0].status.state }}"
       when: ( _pxc_cluster.resources | length==1 )
 
-- name: Do smart upgrade
+- name: Do version upgrade
   run_once: true
   when:
     - _pxc_version is defined
     - _pxc_status is defined
     - _pxc_version.startswith('5.7')
+    - (atmosphere_images['percona_xtradb_cluster'] | vexxhost.kubernetes.docker_image('ref')).startswith('8.')
   block:
     - name: Assert that the cluster is healthy before upgrade
       run_once: true
@@ -63,7 +64,39 @@
         fail_msg: >-
           The Percona XtraDB Cluster is not healthy. Please fix the cluster manually first before upgrade.
 
-    - name: Do minor upgrade
+    - name: Stop PXC-operator
+      kubernetes.core.k8s_scale:
+        api_version: v1
+        kind: Deployment
+        name: pxc-operator
+        namespace: openstack
+        replicas: 0
+        wait_timeout: 60
+
+    - name: Change the cluster Statefulset image to 8.0
+      kubernetes.core.k8s_json_patch:
+        api_version: apps/v1
+        kind: StatefulSet
+        namespace: openstack
+        name: percona-xtradb-pxc
+        patch:
+          - op: replace
+            path: /spec/template/spec/containers/0/image
+            value: "{{ atmosphere_images['percona_xtradb_cluster'] | vexxhost.kubernetes.docker_image('ref') }}"
+
+    - name: Wait until the cluster Statefulset rollout
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: StatefulSet
+        name: percona-xtradb-pxc
+        namespace: openstack
+      register: _pxc_cluster_sts
+      retries: 120
+      delay: 5
+      until:
+        - _pxc_cluster_sts.resources[0].status.replicas == _pxc_cluster_sts.resources[0].status.readyReplicas
+
+    - name: Update pxc cluster spec
       kubernetes.core.k8s:
         definition:
           apiVersion: pxc.percona.com/v1
@@ -72,67 +105,23 @@
             name: percona-xtradb
             namespace: openstack
           spec:
-            crVersion: "1.13.0"
-            updateStrategy: SmartUpdate
-            upgradeOptions:
-              apply: 5.7-latest
-              versionServiceEndpoint: http://percona-version-service:11000
-              schedule: "* * * * *"
-      # Note(oleks): Wait until the upgrade task is queued in the reconcile queue.
-      #              Ignore errors in case the cluster is already minor upgraded.
-      ignore_errors: true
-      register: _pxc_cluster
-      retries: 10
-      delay: 1
-      until:
-        - _pxc_cluster.result.status.state == 'initializing'
+            pxc:
+              image: "{{ atmosphere_images['percona_xtradb_cluster'] | vexxhost.kubernetes.docker_image('ref') }}"
+      wait_sleep: 1
+      wait_timeout: 600
+      wait: true
+      wait_condition:
+        type: ready
+        status: true
 
-    - name: Wait until minor upgrade is done
-      kubernetes.core.k8s_info:
-        api_version: pxc.percona.com/v1
-        kind: PerconaXtraDBCluster
-        name: percona-xtradb
+    - name: Start PXC-operator
+      kubernetes.core.k8s_scale:
+        api_version: v1
+        kind: Deployment
+        name: pxc-operator
         namespace: openstack
-      register: _pxc_cluster
-      retries: 60
-      delay: 5
-      until:
-        - _pxc_cluster.resources[0].status.state == 'ready'
-
-    - name: Do major upgrade
-      kubernetes.core.k8s:
-        definition:
-          apiVersion: pxc.percona.com/v1
-          kind: PerconaXtraDBCluster
-          metadata:
-            name: percona-xtradb
-            namespace: openstack
-          spec:
-            crVersion: "1.13.0"
-            updateStrategy: SmartUpdate
-            upgradeOptions:
-              apply: 8.0.32-24.2
-              versionServiceEndpoint: http://percona-version-service:11000
-              schedule: "* * * * *"
-      # Note(oleks): Wait until the upgrade task is queued in the reconcile queue
-      register: _pxc_cluster
-      retries: 60
-      delay: 1
-      until:
-        - _pxc_cluster.result.status.state == 'initializing'
-
-    - name: Wait until upgrade is done
-      kubernetes.core.k8s_info:
-        api_version: pxc.percona.com/v1
-        kind: PerconaXtraDBCluster
-        name: percona-xtradb
-        namespace: openstack
-      register: _pxc_cluster
-      retries: 60
-      delay: 5
-      until:
-        - _pxc_cluster.resources[0].status.state == 'ready'
-        - _pxc_cluster.resources[0].status.pxc.version.startswith('8.0')
+        replicas: 1
+        wait_timeout: 60
 
 - name: Apply Percona XtraDB cluster
   run_once: true
