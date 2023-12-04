@@ -31,7 +31,7 @@
           type: Opaque
 
 - name: Check if the Percona XtraDB cluster exists
-  run_once:
+  run_once: true
   block:
     - name: Check if the Percona XtraDB cluster exists
       kubernetes.core.k8s_info:
@@ -43,7 +43,7 @@
       ignore_errors: true
 
     - name: Get current status of the cluster
-      set_fact:
+      ansible.builtin.set_fact:
         _pxc_version: "{{ _pxc_cluster.resources[0].status.pxc.version }}"
         _pxc_status: "{{ _pxc_cluster.resources[0].status.state }}"
       when: ( _pxc_cluster.resources | length==1 )
