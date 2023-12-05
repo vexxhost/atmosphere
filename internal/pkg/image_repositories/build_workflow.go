@@ -35,7 +35,7 @@ var DIST_PACAKGES map[string]string = map[string]string{
 	"manila":        "iproute2 openvswitch-switch",
 	"monasca-agent": "iproute2 libvirt-clients lshw",
 	"neutron":       "jq ethtool lshw",
-	"nova":          "ovmf qemu-efi-aarch64 lsscsi nvme-cli sysfsutils udev util-linux ndctl",
+	"nova":          "ovmf qemu-efi-aarch64 lsscsi nvme-cli sysfsutils udev util-linux ndctl python3-libvirt",
 }
 var PIP_PACKAGES map[string][]string = map[string][]string{
 	"barbican":      {"pykmip"},
