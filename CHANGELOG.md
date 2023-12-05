@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.10.3](https://github.com/vexxhost/atmosphere/compare/v1.10.2...v1.10.3) (2023-12-05)
+
+
+### Bug Fixes
+
+* Enable all services and metrics in openstack-exporter ([#721](https://github.com/vexxhost/atmosphere/issues/721)) ([1a03ad9](https://github.com/vexxhost/atmosphere/commit/1a03ad9c21529a8c7ace0bacc441c35be29cc50e))
+* **keystone:** add no_log to create keycloak realm ([59853d4](https://github.com/vexxhost/atmosphere/commit/59853d430ca8d9b999d4ac5a8f204ca05f66fb8c)), closes [#735](https://github.com/vexxhost/atmosphere/issues/735)
+* **keystone:** add OIDC-preferred_username to remote and map to name in user of loca… ([#633](https://github.com/vexxhost/atmosphere/issues/633)) ([4ba25cf](https://github.com/vexxhost/atmosphere/commit/4ba25cfec7a987b1db7971d44a8716030781e5b2))
+* **keystone:** allow bootstrap with missing /v3 ([#509](https://github.com/vexxhost/atmosphere/issues/509)) ([dc88f07](https://github.com/vexxhost/atmosphere/commit/dc88f07ebe17738458648842caf3f379bfbc7f0f))
+* **nova:** use distro supplied libvirt-python ([#742](https://github.com/vexxhost/atmosphere/issues/742)) ([25e5af2](https://github.com/vexxhost/atmosphere/commit/25e5af2e1bde5f7979d7470ac4fd6ad85f1101fd))
+* **pxc:** raise haproxy conn limit ([#732](https://github.com/vexxhost/atmosphere/issues/732)) ([3b3507d](https://github.com/vexxhost/atmosphere/commit/3b3507d932ba3b48de48c2e3b5bc7d622161d716))
+* **senlin:** configure workers ([f5b77ee](https://github.com/vexxhost/atmosphere/commit/f5b77eef9e9ecda9a90940c353780f8ad73b3788)), closes [#731](https://github.com/vexxhost/atmosphere/issues/731)
+* Update magnum image ([#717](https://github.com/vexxhost/atmosphere/issues/717)) ([e154bd1](https://github.com/vexxhost/atmosphere/commit/e154bd1f25f9c8e7a73002ec4884c8886e15a9e1))
+
 ## [1.10.2](https://github.com/vexxhost/atmosphere/compare/v1.10.1...v1.10.2) (2023-11-16)
 
 
