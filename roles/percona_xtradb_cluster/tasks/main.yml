@@ -30,7 +30,100 @@
             namespace: openstack
           type: Opaque
 
-- name: Create Percona XtraDB cluster
+- name: Check if the Percona XtraDB cluster exists
+  run_once: true
+  block:
+    - name: Check if the Percona XtraDB cluster exists
+      kubernetes.core.k8s_info:
+        api_version: pxc.percona.com/v1
+        kind: PerconaXtraDBCluster
+        name: percona-xtradb
+        namespace: openstack
+      register: _pxc_cluster
+      ignore_errors: true
+
+    - name: Get current status of the cluster
+      ansible.builtin.set_fact:
+        _pxc_version: "{{ _pxc_cluster.resources[0].status.pxc.version }}"
+        _pxc_status: "{{ _pxc_cluster.resources[0].status.state }}"
+      when: ( _pxc_cluster.resources | length==1 )
+
+- name: Do version upgrade
+  run_once: true
+  when:
+    - _pxc_version is defined
+    - _pxc_status is defined
+    - _pxc_version.startswith('5.7')
+    - (atmosphere_images['percona_xtradb_cluster'] | vexxhost.kubernetes.docker_image('tag')).startswith('8.')
+  block:
+    - name: Assert that the cluster is healthy before upgrade
+      run_once: true
+      ansible.builtin.assert:
+        that:
+          - _pxc_status == 'ready'
+        fail_msg: >-
+          The Percona XtraDB Cluster is not healthy. Please fix the cluster manually first before upgrade.
+
+    - name: Stop PXC-operator
+      kubernetes.core.k8s_scale:
+        api_version: v1
+        kind: Deployment
+        name: pxc-operator
+        namespace: openstack
+        replicas: 0
+        wait_timeout: 60
+
+    - name: Change the cluster Statefulset image to 8.0
+      kubernetes.core.k8s_json_patch:
+        api_version: apps/v1
+        kind: StatefulSet
+        namespace: openstack
+        name: percona-xtradb-pxc
+        patch:
+          - op: replace
+            path: /spec/template/spec/containers/0/image
+            value: "{{ atmosphere_images['percona_xtradb_cluster'] | vexxhost.kubernetes.docker_image('ref') }}"
+
+    - name: Wait until the cluster Statefulset rollout
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: StatefulSet
+        name: percona-xtradb-pxc
+        namespace: openstack
+      register: _pxc_cluster_sts
+      retries: 120
+      delay: 5
+      until:
+        - _pxc_cluster_sts.resources[0].status.replicas == _pxc_cluster_sts.resources[0].status.readyReplicas
+
+    - name: Update pxc cluster spec
+      kubernetes.core.k8s:
+        definition:
+          apiVersion: pxc.percona.com/v1
+          kind: PerconaXtraDBCluster
+          metadata:
+            name: percona-xtradb
+            namespace: openstack
+          spec:
+            pxc:
+              image: "{{ atmosphere_images['percona_xtradb_cluster'] | vexxhost.kubernetes.docker_image('ref') }}"
+        wait_sleep: 1
+        wait_timeout: 600
+        wait: true
+        wait_condition:
+          type: ready
+          status: true
+
+    - name: Start PXC-operator
+      kubernetes.core.k8s_scale:
+        api_version: v1
+        kind: Deployment
+        name: pxc-operator
+        namespace: openstack
+        replicas: 1
+        wait_timeout: 60
+
+- name: Apply Percona XtraDB cluster
   run_once: true
   kubernetes.core.k8s:
     state: present
