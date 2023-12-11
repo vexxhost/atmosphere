@@ -61,7 +61,7 @@ designate_pools:
 ### Pre-requisites
 
 You have to install a Bind9 server first, this is outside the scope of this
-document.  You can review instructions on how to prepare the PowerDNS server
+document.  You can review instructions on how to prepare the Bind9 server
 through the [Designate](https://docs.openstack.org/designate/latest/admin/backends/bind9.html)
 documentation.
 
