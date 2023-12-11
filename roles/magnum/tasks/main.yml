@@ -96,13 +96,6 @@
     kubeconfig: /etc/kubernetes/admin.conf
     values: "{{ _magnum_helm_values | combine(magnum_helm_values, recursive=True) }}"
 
-- name: Set nodeSelector of magnum-cluster-api-proxy
-  ansible.builtin.set_fact:
-    _magnum_cluster_api_proxy_ovs_node_selector:
-      openstack-control-plane: enabled
-    _magnum_cluster_api_proxy_ovn_node_selector:
-      openvswitch: enabled
-
 - name: Deploy "magnum-cluster-api-proxy"
   run_once: true
   kubernetes.core.k8s:
@@ -159,7 +152,7 @@
                     - name: host-run-netns
                       mountPath: /run/netns
                       mountPropagation: Bidirectional
-              nodeSelector: "{{ _magnum_cluster_api_proxy_ovn_node_selector if atmosphere_network_backend == 'ovn' else _magnum_cluster_api_proxy_ovs_node_selector }}"  # noqa: yaml[line-length]
+              nodeSelector: "{{ magnum_cluster_api_proxy_ovn_node_selector if atmosphere_network_backend == 'ovn' else magnum_cluster_api_proxy_ovs_node_selector }}"  # noqa: yaml[line-length]
               securityContext:
                 runAsUser: 42424
               serviceAccountName: magnum-conductor
