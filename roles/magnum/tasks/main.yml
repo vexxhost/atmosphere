@@ -152,8 +152,7 @@
                     - name: host-run-netns
                       mountPath: /run/netns
                       mountPropagation: Bidirectional
-              nodeSelector:
-                openstack-control-plane: enabled
+              nodeSelector: "{{ magnum_cluster_api_proxy_ovn_node_selector if atmosphere_network_backend == 'ovn' else magnum_cluster_api_proxy_ovs_node_selector }}"  # noqa: yaml[line-length]
               securityContext:
                 runAsUser: 42424
               serviceAccountName: magnum-conductor
