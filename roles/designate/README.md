@@ -68,7 +68,7 @@ documentation.
 ### Configuration
 
 You will need to configure your Bind9 server to allow the Designate API to
-talk to it. 
+talk to it.
 
 In this example, Designate will be configured to validate if the DNS changes have
 been propagated to all DNS servers by hitting the Bind9 backend.  It will
