@@ -78,6 +78,7 @@ In this example, it's assumed that the Bind9 server is running at `192.168.1.10`
 and reachable by the Kubernetes cluster.
 
 You have to create a secret for `rndc.key` file in the Kubernetes cluster first.
+
 ```yaml
 apiVersion: v1
 kind: Secret
