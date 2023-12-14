@@ -12,6 +12,12 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+- name: Alias to ceph command
+  ansible.builtin.lineinfile:
+    path: /etc/bash.bashrc
+    line: alias 'ceph'='cephadm shell -- ceph'
+    state: present
+
 - name: Collect "ceph mon dump" output from a monitor
   delegate_to: "{{ groups[ceph_csi_rbd_mons_group][0] }}"
   run_once: true
