@@ -11,6 +11,7 @@ var FORKED_PROJECTS map[string]bool = map[string]bool{
 	"keystone":  true,
 	"magnum-ui": true,
 	"magnum":    true,
+	"neutron":   true,
 }
 var EXTRAS map[string]string = map[string]string{}
 var PROFILES map[string]string = map[string]string{
