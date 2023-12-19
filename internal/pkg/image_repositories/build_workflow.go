@@ -47,7 +47,7 @@ var PIP_PACKAGES map[string][]string = map[string][]string{
 	"keystone":      {"keystone-keycloak-backend==0.1.6"},
 	"magnum":        {"magnum-cluster-api==0.6.0"},
 	"monasca-agent": {"libvirt-python", "python-glanceclient", "python-neutronclient", "python-novaclient", "py3nvml"},
-	"neutron":       {"neutron-vpnaas"},
+	"neutron":       {"git+https://github.com/vexxhost/neutron-vpnaas.git@stable/${{ matrix.release }}"},
 	"octavia":       {"ovn-octavia-provider"},
 	"placement":     {"httplib2"},
 }
