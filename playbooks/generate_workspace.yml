@@ -398,7 +398,7 @@
               cut -d':' -f2
 
     - name: Generate SSH keys for missing variables
-      when: not item.skipped
+      when: item.path is defined
       community.crypto.openssh_keypair:
         path: "{{ item.path }}"
         regenerate: full_idempotence
@@ -408,7 +408,7 @@
         label: "{{ item.item }}"
 
     - name: Set values for SSH keys
-      when: not item.skipped
+      when: item.path is defined
       ansible.builtin.set_fact:
         secrets: "{{ secrets | default({}) | combine({item.item: lookup('file', item.path)}) }}"
       loop: "{{ _ssh_key_file.results }}"
@@ -416,7 +416,7 @@
         label: "{{ item.item }}"
 
     - name: Delete the temporary files generated for SSH keys
-      when: not item.skipped
+      when: item.path is defined
       ansible.builtin.file:
         path: "{{ item.path }}"
         state: absent

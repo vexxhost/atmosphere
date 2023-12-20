@@ -36,6 +36,12 @@
     boot_from_volume: "{{ lookup('env', 'ATMOSPHERE_BOOT_FROM_VOLUME') | bool }}"
     create_bastion_host: "{{ lookup('env', 'ATMOSPHERE_CREATE_BASTION_HOST') | bool }}"
   tasks:
+    - name: Generate a SSH key for stack
+      community.crypto.openssh_keypair:
+        path: "{{ identity_file }}"
+        regenerate: full_idempotence
+      register: _os_stack_keypair
+
     - name: create stack
       openstack.cloud.stack:
         name: "{{ stack_name }}"
@@ -50,18 +56,17 @@
           nameservers: "{{ nameservers }}"
           boot_from_volume: "{{  boot_from_volume }}"
           create_bastion_host: "{{ create_bastion_host }}"
+          public_key_pair: "{{ _os_stack_keypair.public_key }}"
       register: _os_stack
     - debug:
         msg: "{{ _os_stack.stack }}"
 
     - name: grab list of all ip addresses
       ansible.builtin.set_fact:
-        key_pair: "{{ _os_stack.stack.outputs | json_query(key_query) | first }}"
         controller_ips: "{{ _os_stack.stack.outputs | community.general.json_query(controller_query) | first }}"
         storage_ips: "{{ _os_stack.stack.outputs | community.general.json_query(storage_query) | first }}"
         compute_ips: "{{ _os_stack.stack.outputs | community.general.json_query(compute_query) | first }}"
       vars:
-        key_query: "[?output_key=='key_pair'].output_value"
         controller_query: "[?output_key=='controller_floating_ip_addresses'].output_value"
         storage_query: "[?output_key=='storage_floating_ip_addresses'].output_value"
         compute_query: "[?output_key=='compute_floating_ip_addresses'].output_value"
@@ -75,12 +80,6 @@
       retries: 15
       delay: 10
       loop: "{{ controller_ips + storage_ips + compute_ips }}"
-
-    - name: generate private key file
-      ansible.builtin.copy:
-        dest: "{{ identity_file }}"
-        content: "{{ key_pair }}"
-        mode: 0600
 
     - name: generate instance config file
       copy:

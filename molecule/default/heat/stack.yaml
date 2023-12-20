@@ -35,6 +35,11 @@ parameters:
     constraints:
       - custom_constraint: neutron.network
 
+  public_key_pair:
+    type: string
+    constraints:
+      - custom_constraint: nova.keypair
+
   image:
     type: string
     constraints:
@@ -133,7 +138,7 @@ resources:
     type: OS::Nova::KeyPair
     properties:
       name: { get_param: OS::stack_id }
-      save_private_key: true
+      public_key: { get_param: public_key_pair }
 
   bastion_host:
     type: server.yaml
@@ -221,5 +226,3 @@ outputs:
     value: { get_attr: [storage, floating_ip_address] }
   compute_floating_ip_addresses:
     value: { get_attr: [compute, floating_ip_address] }
-  key_pair:
-    value: { get_attr: [key_pair, private_key] }
