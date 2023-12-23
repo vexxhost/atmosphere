@@ -2,6 +2,29 @@
   prometheusAlerts+: {
     groups+: [
       {
+        name: 'api',
+        rules: [
+          {
+            alert: 'HighInternalServerErrors',
+            expr: |||
+              (
+                  sum(rate(nginx_ingress_controller_requests{status=~"5[0-9]{2}"}[5m])) by (service)
+                  /
+                  sum(rate(nginx_ingress_controller_requests[5m])) by (service)
+              ) > 0.01
+            |||,
+            'for': '2m',
+            labels: {
+              severity: 'P2',
+            },
+            annotations: {
+              summary: 'High percentage of HTTP 500 errors',
+              description: 'The service {{ $labels.service }} is returning HTTP 500 errors above the configured threshold.',
+            },
+          },
+        ],
+      },
+      {
         name: 'cinder',
         rules: [
           {
