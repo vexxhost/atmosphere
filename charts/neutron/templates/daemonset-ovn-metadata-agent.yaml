@@ -89,7 +89,74 @@ spec:
       hostPID: true
       {{- end }}
       initContainers:
-{{ tuple $envAll "pod_dependency" $mounts_neutron_ovn_metadata_agent_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+        - name: neutron-ovn-nic-init
+{{ tuple $envAll "neutron_openvswitch_agent" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.agent.ovs | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "neutron_ovs_agent" "container" "neutron_ovs_agent_init" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          {{- if .Values.conf.ovs_dpdk.enabled }}
+          env:
+            - name: UPDATE_DPDK_BOND_CONFIG
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $configMapName }}
+                  key: update_dpdk_bond_config
+          {{- end }}
+          command:
+            - /tmp/neutron-openvswitch-agent-init.sh
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: neutron-bin
+              mountPath: /tmp/neutron-openvswitch-agent-init.sh
+              subPath: neutron-openvswitch-agent-init.sh
+              readOnly: true
+            - name: pod-shared
+              mountPath: /tmp/pod-shared
+            {{- if .Values.conf.neutron.DEFAULT.log_config_append }}
+            - name: neutron-etc
+              mountPath: {{ .Values.conf.neutron.DEFAULT.log_config_append }}
+              subPath: {{ base .Values.conf.neutron.DEFAULT.log_config_append }}
+              readOnly: true
+            {{- end }}
+            {{- if .Values.conf.plugins.taas.taas.enabled }}
+            - name: neutron-etc
+              mountPath: /etc/neutron/plugins/ml2/taas.ini
+              subPath: taas.ini
+              readOnly: true
+            {{- end }}
+            - name: neutron-etc
+              # NOTE (Portdirect): We mount here to override Kollas
+              # custom sudoers file when using Kolla images, this
+              # location will also work fine for other images.
+              mountPath: /etc/sudoers.d/kolla_neutron_sudoers
+              subPath: neutron_sudoers
+              readOnly: true
+            - name: neutron-etc
+              mountPath: /tmp/auto_bridge_add
+              subPath: auto_bridge_add
+              readOnly: true
+            - name: neutron-etc
+              mountPath: /etc/neutron/rootwrap.conf
+              subPath: rootwrap.conf
+              readOnly: true
+            {{- if .Values.conf.ovs_dpdk.enabled }}
+            - name: neutron-etc
+              mountPath: /tmp/dpdk.conf
+              subPath: dpdk.conf
+              readOnly: true
+            {{- end }}
+            {{- range $key, $value := $envAll.Values.conf.rootwrap_filters }}
+            {{- if ( has "ovs_agent" $value.pods ) }}
+            {{- $filePrefix := replace "_" "-"  $key }}
+            {{- $rootwrapFile := printf "/etc/neutron/rootwrap.d/%s.filters" $filePrefix }}
+            - name: neutron-etc
+              mountPath: {{ $rootwrapFile }}
+              subPath: {{ base $rootwrapFile }}
+              readOnly: true
+            {{- end }}
+            {{- end }}
+            - name: run
+              mountPath: /run
         - name: neutron-metadata-agent-init
 {{ tuple $envAll "neutron_metadata" | include "helm-toolkit.snippets.image" | indent 10 }}
 {{ tuple $envAll $envAll.Values.pod.resources.agent.metadata | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
@@ -107,10 +174,6 @@ spec:
             - name: neutron-bin
               mountPath: /tmp/neutron-metadata-agent-init.sh
               subPath: neutron-metadata-agent-init.sh
-              readOnly: true
-            - name: neutron-etc
-              mountPath: /etc/neutron/neutron.conf
-              subPath: neutron.conf
               readOnly: true
             - name: socket
               mountPath: /var/lib/neutron/openstack-helm
@@ -213,6 +276,10 @@ spec:
 {{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_messaging.auth.admin.secret.tls.internal "path" "/etc/rabbitmq/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
 {{ if $mounts_neutron_ovn_metadata_agent.volumeMounts }}{{ toYaml $mounts_neutron_ovn_metadata_agent.volumeMounts | indent 12 }}{{ end }}
       volumes:
+        - name: varlibopenvswitch
+          emptyDir: {}
+        - name: pod-shared
+          emptyDir: {}
         - name: pod-tmp
           emptyDir: {}
         - name: pod-var-neutron
@@ -238,6 +305,10 @@ spec:
         - name: host-run-netns
           hostPath:
             path: /run/netns
+        - name: host-rootfs
+          hostPath:
+            path: /
+            type: ""
         {{- end }}
 {{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.compute_metadata.metadata.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
 {{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_messaging.auth.admin.secret.tls.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
