@@ -332,12 +332,12 @@ func NewBuildWorkflow(ctx context.Context, ir *ImageRepository) *GithubWorkflow 
 		infobloxImageBuildArgs.PipPackages = append(infobloxImageBuildArgs.PipPackages, "networking-infoblox")
 
 		workflow.Jobs["infoblox"] = workflow.Jobs["image"].DeepCopy()
-		workflow.Jobs["infoblox"].Steps[5].With["cache-from"] += "-infoblox"
-		workflow.Jobs["infoblox"].Steps[5].With["cache-to"] += "-infoblox"
-		workflow.Jobs["infoblox"].Steps[5].With["tags"] = strings.ReplaceAll(workflow.Jobs["infoblox"].Steps[5].With["tags"], project, "neutron-infoblox")
-		workflow.Jobs["infoblox"].Steps[5].With["build-args"] = infobloxImageBuildArgs.ToBuildArgsString()
-		workflow.Jobs["infoblox"].Steps[6].With["src"] = strings.ReplaceAll(workflow.Jobs["infoblox"].Steps[6].With["src"], project, "neutron-infoblox")
-		workflow.Jobs["infoblox"].Steps[6].With["dst"] = strings.ReplaceAll(workflow.Jobs["infoblox"].Steps[6].With["dst"], project, "neutron-infoblox")
+		workflow.Jobs["infoblox"].Steps[10].With["cache-from"] += "-infoblox"
+		workflow.Jobs["infoblox"].Steps[10].With["cache-to"] += "-infoblox"
+		workflow.Jobs["infoblox"].Steps[10].With["tags"] = strings.ReplaceAll(workflow.Jobs["infoblox"].Steps[5].With["tags"], project, "neutron-infoblox")
+		workflow.Jobs["infoblox"].Steps[10].With["build-args"] = infobloxImageBuildArgs.ToBuildArgsString()
+		workflow.Jobs["infoblox"].Steps[11].With["src"] = strings.ReplaceAll(workflow.Jobs["infoblox"].Steps[6].With["src"], project, "neutron-infoblox")
+		workflow.Jobs["infoblox"].Steps[11].With["dst"] = strings.ReplaceAll(workflow.Jobs["infoblox"].Steps[6].With["dst"], project, "neutron-infoblox")
 	}
 
 	return workflow
