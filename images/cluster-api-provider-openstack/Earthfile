@@ -1,0 +1,17 @@
+VERSION 0.7
+
+ARG --global CAPO_VERSION=v0.8.0
+ARG --global EPOCH=1
+
+clone:
+  FROM ../builder+image
+  GIT CLONE --branch ${CAPO_VERSION} https://github.com/kubernetes-sigs/cluster-api-provider-openstack /workspace/src
+  WORKDIR /workspace/src
+  COPY patches /workspace/patches
+  RUN git apply --verbose /workspace/patches/*.patch
+  SAVE ARTIFACT /workspace/src
+
+image:
+  FROM DOCKERFILE -f +clone/src/Dockerfile +clone/src/*
+  LABEL org.opencontainers.image.source=https://github.com/vexxhost/atmosphere
+  SAVE IMAGE --push ghcr.io/vexxhost/atmosphere/cluster-api-provider-openstack:${CAPO_VERSION}-${EPOCH}

@@ -1,12 +1,7 @@
 VERSION --use-copy-link 0.7
-FROM python:3.10
-
-poetry:
-  RUN pip3 install poetry==1.4.2
-  SAVE IMAGE --cache-hint
 
 build.wheels:
-  FROM +poetry
+  FROM ./images/builder+image
   COPY pyproject.toml poetry.lock ./
   ARG --required only
   RUN poetry export --only=${only} -f requirements.txt --without-hashes > requirements.txt
@@ -44,19 +39,17 @@ build.collections:
   SAVE IMAGE --cache-hint
 
 image:
-  FROM python:3.10-slim
+  FROM ./images/base+image
   ENV ANSIBLE_PIPELINING=True
-  RUN \
-    apt-get update && \
-    apt-get install --no-install-recommends -y rsync openssh-client && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
-  CMD ["/bin/bash"]
+  DO ./images+APT_INSTALL --packages "rsync openssh-client"
   COPY +build.venv.runtime/venv /venv
   ENV PATH=/venv/bin:$PATH
   COPY +build.collections/ /usr/share/ansible
   ARG tag=latest
   SAVE IMAGE --push ghcr.io/vexxhost/atmosphere:${tag}
+
+images:
+  BUILD ./images/cluster-api-provider-openstack+image
 
 pin-images:
   FROM +build.venv.dev
