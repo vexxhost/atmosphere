@@ -1,0 +1,10 @@
+VERSION 0.7
+
+APT_INSTALL:
+  COMMAND
+  ARG packages
+  RUN \
+    apt-get update && \
+    apt-get install --no-install-recommends -y ${packages} && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
