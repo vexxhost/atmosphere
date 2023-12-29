@@ -1,0 +1,21 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:best-practices"
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "fileMatch": [
+        "roles/defaults/vars/main\\.yml"
+      ],
+      "datasourceTemplate": "docker",
+      "matchStrings": [
+        "^  \\w+: (?<depName>.*):(?<currentValue>.*?)@(?<currentDigest>sha256:[a-f0-9]+)\\s"
+      ]
+    }
+  ],
+  "ignorePaths": [
+    "charts/**"
+  ]
+}
