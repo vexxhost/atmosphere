@@ -1,0 +1,62 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "inherit": [
+    "docker:pinDigests",
+    "helpers:pinGitHubActionDigests"
+  ],
+  "packageRules": [
+    {
+      "enabled": false,
+      "matchUpdateTypes": ["major", "minor", "patch"],
+      "matchPackagePrefixes": [
+        "docker.io/bitnami",
+        "docker.io/coredns",
+        "docker.io/grafana",
+        "docker.io/library",
+        "docker.io/nginxinc",
+        "docker.io/percona",
+        "docker.io/prom",
+        "docker.io/rabbitmqoperator",
+        "docker.io/rabbitmqoperator",
+        "docker.io/rancher",
+        "docker.io/rook",
+        "docker.io/timberio",
+        "quay.io/ceph",
+        "quay.io/cilium",
+        "quay.io/jetstack",
+        "quay.io/keycloak",
+        "quay.io/kiwigrid",
+        "quay.io/prometheus",
+        "quay.io/skopeo",
+        "registry.k8s.io/"
+      ]
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "fileMatch": [
+        "roles/defaults/vars/main\\.yml"
+      ],
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "docker",
+      "matchStrings": [
+        "  \\w+?: (?<depName>[^:\\s]*):(?<currentValue>[^:@\\s]*)@?(?<currentDigest>sha256:[a-f0-9]+)?"
+      ]
+    }
+  ],
+  "regex": {
+    "pinDigests": true
+  },
+  "ignorePaths": [
+    "charts/**",
+    "molecule/**",
+    ".python-version",
+    "go.mod",
+    "pyproject.toml",
+    "roles/kube_prometheus_stack/files/jsonnet/**",
+    "requirements.txt",
+    "Dockerfile",
+    "galaxy.yml"
+  ]
+}
