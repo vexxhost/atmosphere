@@ -41,7 +41,7 @@ build.collections:
 image:
   FROM ./images/base+image
   ENV ANSIBLE_PIPELINING=True
-  DO ./images+APT_INSTALL --packages "rsync openssh-client"
+  DO ./images+APT_INSTALL --PACKAGES "rsync openssh-client"
   COPY +build.venv.runtime/venv /venv
   ENV PATH=/venv/bin:$PATH
   COPY +build.collections/ /usr/share/ansible

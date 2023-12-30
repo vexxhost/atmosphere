@@ -2,9 +2,18 @@ VERSION 0.7
 
 APT_INSTALL:
   COMMAND
-  ARG packages
+  ARG PACKAGES
   RUN \
     apt-get update && \
-    apt-get install --no-install-recommends -y ${packages} && \
+    apt-get install --no-install-recommends -y ${PACKAGES} && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
+
+CREATE_PROJECT_USER:
+  COMMAND
+  ARG PROJECT
+  RUN \
+    groupadd -g 42424 ${PROJECT} && \
+    useradd -u 42424 -g 42424 -M -d /var/lib/${PROJECT} -s /usr/sbin/nologin -c "${PROJECT} User" ${PROJECT} && \
+    mkdir -p /etc/${PROJECT} /var/log/${PROJECT} /var/lib/${PROJECT} /var/cache/${PROJECT} && \
+    chown -Rv ${PROJECT}:${PROJECT} /etc/${PROJECT} /var/log/${PROJECT} /var/lib/${PROJECT} /var/cache/${PROJECT}
