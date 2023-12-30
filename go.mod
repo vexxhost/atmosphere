@@ -22,11 +22,11 @@ require (
 	gopkg.in/ini.v1 v1.66.6
 	gorm.io/driver/mysql v1.5.2
 	gorm.io/gorm v1.25.5
-	helm.sh/helm/v3 v3.13.2
-	k8s.io/api v0.28.2
-	k8s.io/apimachinery v0.28.2
-	k8s.io/cli-runtime v0.28.2
-	k8s.io/client-go v0.28.2
+	helm.sh/helm/v3 v3.13.3
+	k8s.io/api v0.28.4
+	k8s.io/apimachinery v0.28.4
+	k8s.io/cli-runtime v0.28.4
+	k8s.io/client-go v0.28.4
 )
 
 require (
@@ -116,7 +116,7 @@ require (
 	golang.org/x/tools v0.13.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/protobuf v1.30.0 // indirect
+	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
