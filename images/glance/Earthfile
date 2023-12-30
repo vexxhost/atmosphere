@@ -1,0 +1,13 @@
+VERSION 0.7
+
+image:
+  # TODO: manage via renovate
+  ARG RELEASE=zed
+  ARG REF=06a18202ab52c64803f044b8f848ed1c160905d2
+  ARG PACKAGES="ceph-common lsscsi nvme-cli python3-rados python3-rbd qemu-utils sysfsutils udev util-linux"
+  ARG PIP_PACKAGES="glance_store[cinder]"
+  FROM ../openstack-service+image --RELEASE ${RELEASE} --PROJECT glance --PROJECT_REF ${REF} --PACKAGES "${PACKAGES}" --PIP_PACKAGES "${PIP_PACKAGES}"
+  COPY ../kubernetes+image/kubectl /usr/local/bin/kubectl
+  SAVE IMAGE --push \
+    ghcr.io/vexxhost/atmosphere/glance:${RELEASE} \
+    ghcr.io/vexxhost/atmosphere/glance:${REF}

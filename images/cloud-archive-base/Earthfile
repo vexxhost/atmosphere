@@ -2,20 +2,20 @@ VERSION 0.7
 
 image:
   FROM ../base+image
-  DO ../+APT_INSTALL --PACKAGES "ca-certificates lsb-release ubuntu-cloud-keyring sudo"
-  ARG CLOUD_ARCHIVE_RELEASE
+  DO ../+APT_INSTALL --PACKAGES "ca-certificates lsb-release python3-distutils sudo ubuntu-cloud-keyring"
+  ARG RELEASE
   IF [ "$(lsb_release -sc)" = "jammy" ]
-    IF [ "${CLOUD_ARCHIVE_RELEASE}" = "yoga" ]
+    IF [ "${RELEASE}" = "yoga" ]
       # NOTE: Yoga shipped with 22.04, so no need to add an extra repository.
       RUN echo "" > /etc/apt/sources.list.d/cloudarchive.list
-    ELSE IF [ "${CLOUD_ARCHIVE_RELEASE}" = "zed" ]
-      RUN echo "deb http://ubuntu-cloud.archive.canonical.com/ubuntu $(lsb_release -sc)-updates/${CLOUD_ARCHIVE_RELEASE} main" > /etc/apt/sources.list.d/cloudarchive.list
-    ELSE IF [ "${CLOUD_ARCHIVE_RELEASE}" = "2023.1" ]
+    ELSE IF [ "${RELEASE}" = "zed" ]
+      RUN echo "deb http://ubuntu-cloud.archive.canonical.com/ubuntu $(lsb_release -sc)-updates/${RELEASE} main" > /etc/apt/sources.list.d/cloudarchive.list
+    ELSE IF [ "${RELEASE}" = "2023.1" ]
       RUN echo "deb http://ubuntu-cloud.archive.canonical.com/ubuntu $(lsb_release -sc)-updates/antelope main" > /etc/apt/sources.list.d/cloudarchive.list
-    ELSE IF [ "${CLOUD_ARCHIVE_RELEASE}" = "2023.2" ]
+    ELSE IF [ "${RELEASE}" = "2023.2" ]
       RUN echo "deb http://ubuntu-cloud.archive.canonical.com/ubuntu $(lsb_release -sc)-updates/bobcat main" > /etc/apt/sources.list.d/cloudarchive.list
     ELSE
-      RUN echo "${CLOUD_ARCHIVE_RELEASE} is not supported on $(lsb_release -sc)"
+      RUN echo "${RELEASE} is not supported on $(lsb_release -sc)"
       RUN exit 1
     END
   END

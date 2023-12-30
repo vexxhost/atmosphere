@@ -1,8 +1,8 @@
 VERSION 0.7
 
 image:
-  ARG CLOUD_ARCHIVE_RELEASE
-  FROM ../cloud-archive-base+image --CLOUD_ARCHIVE_RELEASE=${CLOUD_ARCHIVE_RELEASE}
+  ARG RELEASE
+  FROM ../cloud-archive-base+image --RELEASE=${RELEASE}
   ENV DEBIAN_FRONTEND=noninteractive
   DO ../+APT_INSTALL --PACKAGES "\
     build-essential \
@@ -23,3 +23,19 @@ image:
   RUN --mount type=cache,target=/root/.cache \
     mkdir -p /wheels && \
     /var/lib/openstack/bin/pip3 wheel --wheel-dir /wheels uwsgi
+  COPY ${RELEASE}/upper-constraints.txt /upper-constraints.txt
+  ARG PROJECT
+  ARG PROJECT_REF
+  ARG PROJECT_REPO=https://opendev.org/openstack/${PROJECT}
+  GIT CLONE --branch ${PROJECT_REF} ${PROJECT_REPO} /src
+  # TODO(mnaser): patches
+  ARG EXTRAS=""
+  ARG PIP_PACKAGES=""
+  RUN --mount=type=cache,target=/root/.cache \
+    /var/lib/openstack/bin/pip3 install \
+      --constraint /upper-constraints.txt \
+      --find-links /wheels/ \
+      uwsgi \
+      /src${EXTRAS} \
+      ${PIP_PACKAGES}
+  SAVE ARTIFACT /var/lib/openstack venv

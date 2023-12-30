@@ -1,0 +1,18 @@
+VERSION 0.7
+
+image:
+  ARG RELEASE
+  FROM ../cloud-archive-base+image --RELEASE=${RELEASE}
+  ARG PACKAGES
+  DO \
+    ../+APT_INSTALL \
+    --PACKAGES ${PACKAGES}
+  ARG PROJECT
+  ARG PROJECT_REF
+  ARG PIP_PACKAGES
+  DO ../+CREATE_PROJECT_USER --PROJECT=${PROJECT}
+  ENV PATH=/var/lib/openstack/bin:$PATH
+  COPY \
+    (../cloud-archive-builder+image/venv --RELEASE=${RELEASE} --PROJECT=${PROJECT} --PROJECT_REF=${PROJECT_REF} --PIP_PACKAGES=${PIP_PACKAGES}) \
+    /var/lib/openstack
+
