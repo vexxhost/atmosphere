@@ -4,6 +4,22 @@
     "docker:pinDigests",
     "helpers:pinGitHubActionDigests"
   ],
+  "pip_requirements": {
+    "fileMatch": ["upper-constraints.txt"]
+  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "fileMatch": [
+        "roles/defaults/vars/main\\.yml"
+      ],
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "docker",
+      "matchStrings": [
+        "  \\w+?: (?<depName>[^:\\s]*):(?<currentValue>[^:@\\s]*)@?(?<currentDigest>sha256:[a-f0-9]+)?"
+      ]
+    }
+  ],
   "packageRules": [
     {
       "enabled": false,
@@ -29,19 +45,6 @@
         "quay.io/prometheus",
         "quay.io/skopeo",
         "registry.k8s.io/"
-      ]
-    }
-  ],
-  "customManagers": [
-    {
-      "customType": "regex",
-      "fileMatch": [
-        "roles/defaults/vars/main\\.yml"
-      ],
-      "datasourceTemplate": "docker",
-      "versioningTemplate": "docker",
-      "matchStrings": [
-        "  \\w+?: (?<depName>[^:\\s]*):(?<currentValue>[^:@\\s]*)@?(?<currentDigest>sha256:[a-f0-9]+)?"
       ]
     }
   ],
