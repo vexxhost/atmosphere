@@ -7,7 +7,8 @@ require (
 	github.com/go-git/go-billy/v5 v5.5.0
 	github.com/go-git/go-git/v5 v5.11.0
 	github.com/goccy/go-yaml v1.9.5
-	github.com/google/go-github/v47 v47.0.0
+	github.com/google/go-github/v47 v47.1.0
+	github.com/google/go-github/v57 v57.0.0
 	github.com/gophercloud/gophercloud v1.3.0
 	github.com/gophercloud/utils v0.0.0-20231010081019-80377eca5d56
 	github.com/nsf/jsondiff v0.0.0-20230430225905-43f6cf3098c1
