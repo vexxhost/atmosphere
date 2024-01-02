@@ -61,7 +61,7 @@ func TestPerconaXtraDBClusterPXCSpec(t *testing.T) {
 
 	assert.Equal(t, &pxc_v1.VolumeSpec{
 		PersistentVolumeClaim: &v1.PersistentVolumeClaimSpec{
-			Resources: v1.ResourceRequirements{
+			Resources: v1.VolumeResourceRequirements{
 				Requests: v1.ResourceList{
 					"storage": resource.MustParse("160Gi"),
 				},
