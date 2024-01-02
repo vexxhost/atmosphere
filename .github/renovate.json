@@ -13,6 +13,21 @@
   "customManagers": [
     {
       "customType": "regex",
+      "matchStringsStrategy": "combination",
+      "fileMatch": [
+        "images/\\w+/Earthfile"
+      ],
+      "datasourceTemplate": "git-refs",
+      "packageNameTemplate": "https://github.com/openstack/{{{depName}}}",
+      "currentValueTemplate": "stable/{{{version}}}",
+      "matchStrings": [
+        "ARG PROJECT=(?<depName>.*)",
+        "ARG RELEASE=(?<version>.*)",
+        "ARG REF=(?<currentDigest>.*)"
+      ]
+    },
+    {
+      "customType": "regex",
       "fileMatch": [
         "roles/defaults/vars/main\\.yml"
       ],
