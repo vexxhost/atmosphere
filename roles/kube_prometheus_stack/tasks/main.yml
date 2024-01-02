@@ -13,7 +13,8 @@
 # under the License.
 
 - name: Create Keycloak realm
-  run_once: true
+  no_log: true
+  become: false
   delegate_to: localhost
   changed_when: false
   community.general.keycloak_realm:
@@ -31,6 +32,9 @@
     enabled: true
 
 - name: Add client roles in "id_token"
+  no_log: true
+  become: false
+  delegate_to: localhost
   changed_when: false
   community.general.keycloak_clientscope:
     # Keycloak settings
@@ -54,6 +58,8 @@
           multivalued: true
 
 - name: Create Keycloak client
+  no_log: true
+  become: false
   run_once: true
   delegate_to: localhost
   community.general.keycloak_client:
@@ -72,6 +78,8 @@
       - "https://{{ kube_prometheus_stack_grafana_host }}/login/generic_oauth"
 
 - name: Create Keycloak roles
+  no_log: true
+  become: false
   run_once: true
   delegate_to: localhost
   community.general.keycloak_role:

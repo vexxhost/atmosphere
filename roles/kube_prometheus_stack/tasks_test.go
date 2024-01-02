@@ -1,4 +1,4 @@
-package keystone
+package kube_prometheus_stack
 
 import (
 	_ "embed"
@@ -37,8 +37,16 @@ func getTaskByName(name string) map[string]interface{} {
 	return nil
 }
 
-func TestCreateKeycloakRealmsTask(t *testing.T) {
-	task := getTaskByName("Create Keycloak realms")
+func TestCreateKeycloakRealmTask(t *testing.T) {
+	task := getTaskByName("Create Keycloak realm")
+	require.NotNil(t, task)
+
+	assert.Equal(t, true, task["no_log"])
+	assert.Equal(t, false, task["become"])
+}
+
+func TestAddClientRolesInIdTokenTask(t *testing.T) {
+	task := getTaskByName("Add client roles in \"id_token\"")
 	require.NotNil(t, task)
 
 	assert.Equal(t, true, task["no_log"])
@@ -46,7 +54,15 @@ func TestCreateKeycloakRealmsTask(t *testing.T) {
 }
 
 func TestCreateKeycloakClientsTask(t *testing.T) {
-	task := getTaskByName("Create Keycloak clients")
+	task := getTaskByName("Create Keycloak client")
+	require.NotNil(t, task)
+
+	assert.Equal(t, true, task["no_log"])
+	assert.Equal(t, false, task["become"])
+}
+
+func TestCreateKeycloakRolesTask(t *testing.T) {
+	task := getTaskByName("Create Keycloak roles")
 	require.NotNil(t, task)
 
 	assert.Equal(t, true, task["no_log"])
