@@ -55,6 +55,7 @@ images:
   BUILD ./images/heat+image
   BUILD ./images/octavia+image
   BUILD ./images/placement+image
+  BUILD ./images/senlin+image
 
 pin-images:
   FROM +build.venv.dev
