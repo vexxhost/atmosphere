@@ -20,7 +20,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/oauth2 v0.12.0
-	gopkg.in/ini.v1 v1.66.6
+	gopkg.in/ini.v1 v1.67.0
 	gorm.io/driver/mysql v1.5.2
 	gorm.io/gorm v1.25.5
 	helm.sh/helm/v3 v3.13.3
