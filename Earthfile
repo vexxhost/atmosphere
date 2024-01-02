@@ -52,6 +52,7 @@ images:
   BUILD ./images/barbican+image
   BUILD ./images/cinder+image
   BUILD ./images/cluster-api-provider-openstack+image
+  BUILD ./images/designate+image
   BUILD ./images/glance+image
   BUILD ./images/heat+image
   BUILD ./images/octavia+image
