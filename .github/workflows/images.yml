@@ -14,8 +14,7 @@ jobs:
       - uses: earthly/actions-setup@v1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Write Earthly configuration
-        run: |
+      - run: |
           mkdir -p ~/.earthly/certs
           cat << EOF > ~/.earthly/certs/ca_cert.pem
           ${{ secrets.EARTHLY_CA_CERT }}
@@ -35,8 +34,7 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build image
-        run: earthly +images
+      - run: earthly +images
         env:
           EARTHLY_CI: true
           EARTHLY_PUSH: "${{ github.event_name == 'push' }}"
