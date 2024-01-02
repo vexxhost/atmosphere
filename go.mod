@@ -19,7 +19,7 @@ require (
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.4
-	golang.org/x/oauth2 v0.12.0
+	golang.org/x/oauth2 v0.15.0
 	gopkg.in/ini.v1 v1.67.0
 	gorm.io/driver/mysql v1.5.2
 	gorm.io/gorm v1.25.5
