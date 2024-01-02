@@ -10,7 +10,7 @@ import (
 	"text/template"
 
 	"github.com/go-git/go-billy/v5"
-	"github.com/google/go-github/v47/github"
+	"github.com/google/go-github/v57/github"
 )
 
 //go:embed template/Dockerfile

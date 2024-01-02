@@ -15,7 +15,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/object"
 	git_http "github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/go-git/go-git/v5/storage/memory"
-	"github.com/google/go-github/v47/github"
+	"github.com/google/go-github/v57/github"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"
 )
@@ -329,7 +329,7 @@ func (i *ImageRepository) CreatePullRequest(ctx context.Context, repo *github.Re
 		Body:  github.String("This is an automatic pull request from `atmosphere-ci`"),
 	}
 
-	prs, _, err := i.githubClient.PullRequests.ListPullRequestsWithCommit(ctx, *repo.Owner.Login, *repo.Name, commit.String(), &github.PullRequestListOptions{})
+	prs, _, err := i.githubClient.PullRequests.ListPullRequestsWithCommit(ctx, *repo.Owner.Login, *repo.Name, commit.String(), &github.ListOptions{})
 	if err != nil {
 		return err
 	}

@@ -7,7 +7,7 @@ import (
 
 	"github.com/go-git/go-billy/v5"
 	"github.com/goccy/go-yaml"
-	"github.com/google/go-github/v47/github"
+	"github.com/google/go-github/v57/github"
 )
 
 type ReleaseManifest struct {
@@ -60,7 +60,7 @@ func NewImageManifest(project string, client *github.Client) (*ImageManifest, er
 		Yoga:     yoga,
 		Zed:      zed,
 		Antelope: antelope,
-		Bobcat: bobcat,
+		Bobcat:   bobcat,
 	}, nil
 }
 
@@ -92,7 +92,7 @@ func getReleaseManifest(client *github.Client, project, release string) (*Releas
 		gitOrg = "vexxhost"
 	}
 
-	branch, _, err := client.Repositories.GetBranch(context.TODO(), gitOrg, project, branchName, true)
+	branch, _, err := client.Repositories.GetBranch(context.TODO(), gitOrg, project, branchName, 2)
 	if err != nil {
 		return nil, err
 	}
