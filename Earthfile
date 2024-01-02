@@ -49,6 +49,7 @@ image:
   SAVE IMAGE --push ghcr.io/vexxhost/atmosphere:${tag}
 
 images:
+  BUILD ./images/glance+image
   BUILD ./images/cluster-api-provider-openstack+image
 
 pin-images:
