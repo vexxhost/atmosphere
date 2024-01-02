@@ -49,8 +49,12 @@ image:
   SAVE IMAGE --push ghcr.io/vexxhost/atmosphere:${tag}
 
 images:
-  BUILD ./images/glance+image
+  BUILD ./images/barbican+image
   BUILD ./images/cluster-api-provider-openstack+image
+  BUILD ./images/glance+image
+  BUILD ./images/heat+image
+  BUILD ./images/octavia+image
+  BUILD ./images/placement+image
 
 pin-images:
   FROM +build.venv.dev
