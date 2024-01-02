@@ -53,7 +53,7 @@ func TestPerconaXtraDBClusterSpec(t *testing.T) {
 func TestPerconaXtraDBClusterPXCSpec(t *testing.T) {
 	assert.Equal(t, int32(3), vars.PerconaXtraDBClusterSpec.PXC.Size)
 	assert.Equal(t, true, *vars.PerconaXtraDBClusterSpec.PXC.AutoRecovery)
-	defaults.AssertAtmosphereImage(t, "docker.io/percona/percona-xtradb-cluster:8.0.32-24.2", vars.PerconaXtraDBClusterSpec.PXC.Image)
+	defaults.AssertAtmosphereImage(t, "docker.io/percona/percona-xtradb-cluster:8.0.32-24.2@sha256:1f978ab8912e1b5fc66570529cb7e7a4ec6a38adbfce1ece78159b0fcfa7d47a", vars.PerconaXtraDBClusterSpec.PXC.Image)
 
 	assert.Equal(t, map[string]string{
 		"openstack-control-plane": "enabled",
@@ -92,7 +92,7 @@ func TestPerconaXtraDBClusterPXCConfiguration(t *testing.T) {
 func TestPerconaXtraDBClusterPXCSidecarSpec(t *testing.T) {
 	sidecar := vars.PerconaXtraDBClusterSpec.PXC.Sidecars[0]
 	assert.Equal(t, "exporter", sidecar.Name)
-	defaults.AssertAtmosphereImage(t, "quay.io/prometheus/mysqld-exporter:v0.14.0", sidecar.Image)
+	defaults.AssertAtmosphereImage(t, "quay.io/prometheus/mysqld-exporter:v0.14.0@sha256:eb6fe170738bf9181c51f5bc89f93adb26672ec49ffdcb22f55c24834003b45d", sidecar.Image)
 
 	assert.Equal(t, v1.EnvVar{
 		Name: "MONITOR_PASSWORD",
@@ -124,7 +124,7 @@ func TestPerconaXtraDBClusterHAProxySpec(t *testing.T) {
 	require.NoError(t, err)
 
 	defaults.AssertAtmosphereImage(t,
-		fmt.Sprintf("docker.io/percona/percona-xtradb-cluster-operator:%s-haproxy", chart.AppVersion()),
+		fmt.Sprintf("docker.io/percona/percona-xtradb-cluster-operator:%s-haproxy@sha256:f04e4fea548bfc7cb0bfc73c75c7f2c64d299cf04125a07a8101a55f0f734fed", chart.AppVersion()),
 		vars.PerconaXtraDBClusterSpec.HAProxy.Image,
 	)
 
