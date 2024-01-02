@@ -14,6 +14,22 @@ jobs:
       - uses: earthly/actions-setup@v1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Write Earthly configuration
+        run: |
+          mkdir -p ~/.earthly/certs
+          cat << EOF > ~/.earthly/certs/ca_cert.pem
+          ${{ secrets.EARTHLY_CA_CERT }}
+          EOF
+          cat << EOF > ~/.earthly/certs/earthly_cert.pem
+          ${{ secrets.EARTHLY_CERT }}
+          EOF
+          cat << EOF > ~/.earthly/certs/earthly_key.pem
+          ${{ secrets.EARTHLY_CERT_KEY }}
+          EOF
+          cat << EOF > ~/.earthly/config.yml
+          global:
+            buildkit_host: tcp://162.253.55.125:8372
+          EOF
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
