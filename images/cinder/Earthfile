@@ -1,0 +1,15 @@
+VERSION 0.7
+
+image:
+  ARG PROJECT=cinder
+  ARG RELEASE=zed
+  ARG REF=002abc4ba004d0dc4fc8327751afec9cc7e5a326
+  ARG PIP_PACKAGES="purestorage"
+  FROM ../openstack-service+image --PROJECT ${PROJECT} --RELEASE ${RELEASE} --PROJECT_REF ${REF} --PIP_PACKAGES "${PIP_PACKAGES}"
+  DO \
+    ../+APT_INSTALL \
+    --PACKAGES "ceph-common lsscsi nvme-cli python3-rados python3-rbd qemu-utils sysfsutils udev util-linux"
+  COPY ../kubernetes+image/kubectl /usr/local/bin/kubectl
+  SAVE IMAGE --push \
+    ghcr.io/vexxhost/atmosphere/${PROJECT}:${RELEASE} \
+    ghcr.io/vexxhost/atmosphere/${PROJECT}:${REF}
