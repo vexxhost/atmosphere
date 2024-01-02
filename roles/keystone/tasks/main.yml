@@ -38,6 +38,7 @@
 
 - name: Create Keycloak realms
   no_log: true
+  become: false
   run_once: true
   delegate_to: localhost
   changed_when: false
@@ -64,6 +65,8 @@
     template: configmap-openid-metadata.yml.j2
 
 - name: Create Keycloak clients
+  no_log: true
+  become: false
   run_once: true
   delegate_to: localhost
   community.general.keycloak_client:
