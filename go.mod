@@ -6,27 +6,28 @@ require (
 	github.com/erikgeiser/promptkit v0.9.0
 	github.com/go-git/go-billy/v5 v5.5.0
 	github.com/go-git/go-git/v5 v5.11.0
-	github.com/goccy/go-yaml v1.9.5
-	github.com/google/go-github/v47 v47.0.0
-	github.com/gophercloud/gophercloud v1.0.0
-	github.com/gophercloud/utils v0.0.0-20220704184730-55bdbbaec4ba
+	github.com/goccy/go-yaml v1.11.2
+	github.com/google/go-github/v47 v47.1.0
+	github.com/google/go-github/v57 v57.0.0
+	github.com/gophercloud/gophercloud v1.8.0
+	github.com/gophercloud/utils v0.0.0-20231010081019-80377eca5d56
 	github.com/nsf/jsondiff v0.0.0-20230430225905-43f6cf3098c1
-	github.com/percona/percona-xtradb-cluster-operator v1.12.0
-	github.com/prometheus/client_golang v1.16.0
-	github.com/prometheus/common v0.44.0
+	github.com/percona/percona-xtradb-cluster-operator v1.13.0
+	github.com/prometheus/client_golang v1.18.0
+	github.com/prometheus/common v0.45.0
 	github.com/sirupsen/logrus v1.9.3
-	github.com/spf13/cobra v1.7.0
+	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.4
-	golang.org/x/oauth2 v0.8.0
-	gopkg.in/ini.v1 v1.66.6
+	golang.org/x/oauth2 v0.15.0
+	gopkg.in/ini.v1 v1.67.0
 	gorm.io/driver/mysql v1.5.2
 	gorm.io/gorm v1.25.5
-	helm.sh/helm/v3 v3.13.2
-	k8s.io/api v0.28.2
-	k8s.io/apimachinery v0.28.2
-	k8s.io/cli-runtime v0.28.2
-	k8s.io/client-go v0.28.2
+	helm.sh/helm/v3 v3.13.3
+	k8s.io/api v0.28.4
+	k8s.io/apimachinery v0.28.4
+	k8s.io/cli-runtime v0.28.4
+	k8s.io/client-go v0.28.4
 )
 
 require (
@@ -57,7 +58,7 @@ require (
 	github.com/go-openapi/jsonpointer v0.19.6 // indirect
 	github.com/go-openapi/jsonreference v0.20.2 // indirect
 	github.com/go-openapi/swag v0.22.4 // indirect
-	github.com/go-sql-driver/mysql v1.7.0 // indirect
+	github.com/go-sql-driver/mysql v1.7.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
@@ -69,6 +70,7 @@ require (
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/gregjones/httpcache v0.0.0-20180305231024-9cad4c3443a7 // indirect
+	github.com/hashicorp/go-uuid v1.0.3 // indirect
 	github.com/hashicorp/go-version v1.6.0 // indirect
 	github.com/imdario/mergo v0.3.13 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
@@ -116,7 +118,7 @@ require (
 	golang.org/x/tools v0.13.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/protobuf v1.30.0 // indirect
+	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
