@@ -10,11 +10,16 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: earthly/actions-setup@v1
+      - name: Checkout project
+        uses: actions/checkout@v4
+
+      - name: Install Earthly
+        uses: earthly/actions-setup@v1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-      - run: |
+
+      - name: Configure Earthly
+        run: |
           mkdir -p ~/.earthly/certs
           cat << EOF > ~/.earthly/certs/ca_cert.pem
           ${{ secrets.EARTHLY_CA_CERT }}
@@ -29,12 +34,16 @@ jobs:
           global:
             buildkit_host: tcp://162.253.55.125:8372
           EOF
-      - uses: docker/login-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - run: earthly +images
+
+      - name: Build images
+        run: earthly +images
         env:
           EARTHLY_CI: true
           EARTHLY_PUSH: "${{ github.event_name == 'push' }}"
