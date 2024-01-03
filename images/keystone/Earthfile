@@ -1,0 +1,26 @@
+VERSION 0.7
+
+image:
+  ARG PROJECT=keystone
+  ARG RELEASE=zed
+  ARG REF=72a4fc0f3ccf7a5ca9fc40e5364e14f881ec27b2
+  ARG PIP_PACKAGES="keystone-keycloak-backend==0.1.6"
+  ARG EXTRAS="ldap"
+  FROM ../openstack-service+image --PROJECT ${PROJECT} --RELEASE ${RELEASE} --PROJECT_REF ${REF} --EXTRAS "${EXTRAS}" --PIP_PACKAGES "${PIP_PACKAGES}"
+  DO \
+    ../+APT_INSTALL \
+    --PACKAGES "apache2 libapache2-mod-wsgi-py3"
+  ARG MOD_AUTH_OPENIDC_VERSION=2.4.12.1
+  ARG TARGETARCH
+  RUN \
+    apt-get update && \
+    apt-get install -y --no-install-recommends curl && \
+    curl -LO https://github.com/OpenIDC/mod_auth_openidc/releases/download/v${MOD_AUTH_OPENIDC_VERSION}/libapache2-mod-auth-openidc_${MOD_AUTH_OPENIDC_VERSION}-1.$(lsb_release -sc)_${TARGETARCH}.deb && \
+    apt-get install -y --no-install-recommends ./libapache2-mod-auth-openidc_${MOD_AUTH_OPENIDC_VERSION}-1.$(lsb_release -sc)_${TARGETARCH}.deb && \
+    a2enmod auth_openidc && \
+    apt-get purge -y --auto-remove curl && \
+    apt-get clean && \
+    rm -rfv /var/lib/apt/lists/* libapache2-mod-auth-openidc_${MOD_AUTH_OPENIDC_VERSION}-1.$(lsb_release -sc)_${TARGETARCH}.deb
+  SAVE IMAGE --push \
+    ghcr.io/vexxhost/atmosphere/${PROJECT}:${RELEASE} \
+    ghcr.io/vexxhost/atmosphere/${PROJECT}:${REF}

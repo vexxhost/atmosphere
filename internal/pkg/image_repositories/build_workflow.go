@@ -8,18 +8,16 @@ import (
 
 var FORKED_PROJECTS map[string]bool = map[string]bool{
 	"horizon":   true,
-	"keystone":  true,
 	"magnum-ui": true,
 	"magnum":    true,
 	"neutron":   true,
 }
 var EXTRAS map[string]string = map[string]string{}
 var PROFILES map[string]string = map[string]string{
-	"horizon":  "apache",
-	"ironic":   "ipxe ipmi qemu tftp",
-	"keystone": "apache ldap openidc",
-	"neutron":  "openvswitch vpn",
-	"nova":     "ceph openvswitch configdrive qemu migration",
+	"horizon": "apache",
+	"ironic":  "ipxe ipmi qemu tftp",
+	"neutron": "openvswitch vpn",
+	"nova":    "ceph openvswitch configdrive qemu migration",
 }
 var DIST_PACAKGES map[string]string = map[string]string{
 	"ironic":  "ethtool lshw iproute2",
@@ -29,11 +27,10 @@ var DIST_PACAKGES map[string]string = map[string]string{
 	"nova":    "ovmf qemu-efi-aarch64 lsscsi nvme-cli sysfsutils udev util-linux ndctl python3-libvirt",
 }
 var PIP_PACKAGES map[string][]string = map[string][]string{
-	"horizon":  {"git+https://github.com/openstack/designate-dashboard.git@stable/${{ matrix.release }}", "git+https://github.com/openstack/heat-dashboard.git@stable/${{ matrix.release }}", "git+https://github.com/openstack/ironic-ui.git@stable/${{ matrix.release }}", "git+https://github.com/vexxhost/magnum-ui.git@stable/${{ matrix.release }} git+https://github.com/openstack/neutron-vpnaas-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/octavia-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/senlin-dashboard.git@stable/${{ matrix.release }}", "git+https://github.com/openstack/manila-ui.git@stable/${{ matrix.release }}"},
-	"ironic":   {"python-dracclient", "sushy"},
-	"keystone": {"keystone-keycloak-backend==0.1.6"},
-	"magnum":   {"magnum-cluster-api==0.6.0"},
-	"neutron":  {"neutron-vpnaas"},
+	"horizon": {"git+https://github.com/openstack/designate-dashboard.git@stable/${{ matrix.release }}", "git+https://github.com/openstack/heat-dashboard.git@stable/${{ matrix.release }}", "git+https://github.com/openstack/ironic-ui.git@stable/${{ matrix.release }}", "git+https://github.com/vexxhost/magnum-ui.git@stable/${{ matrix.release }} git+https://github.com/openstack/neutron-vpnaas-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/octavia-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/senlin-dashboard.git@stable/${{ matrix.release }}", "git+https://github.com/openstack/manila-ui.git@stable/${{ matrix.release }}"},
+	"ironic":  {"python-dracclient", "sushy"},
+	"magnum":  {"magnum-cluster-api==0.6.0"},
+	"neutron": {"neutron-vpnaas"},
 }
 var PLATFORMS map[string]string = map[string]string{
 	"nova":    "linux/amd64,linux/arm64",
