@@ -22,12 +22,11 @@ var PROFILES map[string]string = map[string]string{
 	"nova":     "ceph openvswitch configdrive qemu migration",
 }
 var DIST_PACAKGES map[string]string = map[string]string{
-	"designate": "bind9utils",
-	"ironic":    "ethtool lshw iproute2",
-	"magnum":    "haproxy",
-	"manila":    "iproute2 openvswitch-switch",
-	"neutron":   "jq ethtool lshw",
-	"nova":      "ovmf qemu-efi-aarch64 lsscsi nvme-cli sysfsutils udev util-linux ndctl python3-libvirt",
+	"ironic":  "ethtool lshw iproute2",
+	"magnum":  "haproxy",
+	"manila":  "iproute2 openvswitch-switch",
+	"neutron": "jq ethtool lshw",
+	"nova":    "ovmf qemu-efi-aarch64 lsscsi nvme-cli sysfsutils udev util-linux ndctl python3-libvirt",
 }
 var PIP_PACKAGES map[string][]string = map[string][]string{
 	"horizon":  {"git+https://github.com/openstack/designate-dashboard.git@stable/${{ matrix.release }}", "git+https://github.com/openstack/heat-dashboard.git@stable/${{ matrix.release }}", "git+https://github.com/openstack/ironic-ui.git@stable/${{ matrix.release }}", "git+https://github.com/vexxhost/magnum-ui.git@stable/${{ matrix.release }} git+https://github.com/openstack/neutron-vpnaas-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/octavia-dashboard.git@stable/${{ matrix.release }} git+https://github.com/openstack/senlin-dashboard.git@stable/${{ matrix.release }}", "git+https://github.com/openstack/manila-ui.git@stable/${{ matrix.release }}"},
