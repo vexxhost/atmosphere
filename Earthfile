@@ -55,6 +55,7 @@ images:
   BUILD ./images/designate+image
   BUILD ./images/glance+image
   BUILD ./images/heat+image
+  BUILD ./images/manila+image
   BUILD ./images/octavia+image
   BUILD ./images/placement+image
   BUILD ./images/senlin+image
