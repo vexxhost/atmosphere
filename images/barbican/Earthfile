@@ -4,8 +4,11 @@ image:
   ARG PROJECT=barbican
   ARG RELEASE=zed
   ARG REF=7d6749fcb1ad16a3350de82cd8e523d5b55306f8
-  ARG PIP_PACKAGES="pykmip"
-  FROM ../openstack-service+image --PROJECT ${PROJECT} --RELEASE ${RELEASE} --PROJECT_REF ${REF} --PIP_PACKAGES "${PIP_PACKAGES}"
+  FROM ../openstack-service+image \
+    --PROJECT ${PROJECT} \
+    --RELEASE ${RELEASE} \
+    --PROJECT_REF ${REF} \
+    --PIP_PACKAGES "pykmip"
   SAVE IMAGE --push \
     ghcr.io/vexxhost/atmosphere/${PROJECT}:${RELEASE} \
     ghcr.io/vexxhost/atmosphere/${PROJECT}:${REF}

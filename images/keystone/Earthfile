@@ -4,9 +4,12 @@ image:
   ARG PROJECT=keystone
   ARG RELEASE=zed
   ARG REF=72a4fc0f3ccf7a5ca9fc40e5364e14f881ec27b2
-  ARG PIP_PACKAGES="keystone-keycloak-backend==0.1.6"
-  ARG EXTRAS="ldap"
-  FROM ../openstack-service+image --PROJECT ${PROJECT} --RELEASE ${RELEASE} --PROJECT_REF ${REF} --EXTRAS "${EXTRAS}" --PIP_PACKAGES "${PIP_PACKAGES}"
+  FROM ../openstack-service+image \
+    --PROJECT ${PROJECT} \
+    --RELEASE ${RELEASE} \
+    --PROJECT_REF ${REF} \
+    --PIP_PACKAGES "keystone-keycloak-backend==0.1.6" \
+    --EXTRAS "ldap"
   DO \
     ../+APT_INSTALL \
     --PACKAGES "apache2 libapache2-mod-wsgi-py3"

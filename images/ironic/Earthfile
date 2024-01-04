@@ -4,8 +4,11 @@ image:
   ARG PROJECT=ironic
   ARG RELEASE=zed
   ARG REF=e38735cb95263b0c54f2fd719ff6b714efbddbb3
-  ARG PIP_PACKAGES="python-dracclient sushy"
-  FROM ../openstack-service+image --PROJECT ${PROJECT} --RELEASE ${RELEASE} --PROJECT_REF ${REF} --PIP_PACKAGES "${PIP_PACKAGES}"
+  FROM ../openstack-service+image \
+    --PROJECT ${PROJECT} \
+    --RELEASE ${RELEASE} \
+    --PROJECT_REF ${REF} \
+    --PIP_PACKAGES "python-dracclient sushy"
   DO \
     ../+APT_INSTALL \
     --PACKAGES "ethtool ipmitool iproute2 ipxe lshw qemu-utils tftpd-hpa"

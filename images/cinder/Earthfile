@@ -4,8 +4,11 @@ image:
   ARG PROJECT=cinder
   ARG RELEASE=zed
   ARG REF=002abc4ba004d0dc4fc8327751afec9cc7e5a326
-  ARG PIP_PACKAGES="purestorage"
-  FROM ../openstack-service+image --PROJECT ${PROJECT} --RELEASE ${RELEASE} --PROJECT_REF ${REF} --PIP_PACKAGES "${PIP_PACKAGES}"
+  FROM ../openstack-service+image \
+    --PROJECT ${PROJECT} \
+    --RELEASE ${RELEASE} \
+    --PROJECT_REF ${REF} \
+    --PIP_PACKAGES "purestorage"
   DO \
     ../+APT_INSTALL \
     --PACKAGES "ceph-common lsscsi nvme-cli python3-rados python3-rbd qemu-utils sysfsutils udev util-linux"
