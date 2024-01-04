@@ -1,0 +1,18 @@
+VERSION 0.7
+
+image:
+  ARG PROJECT=horizon
+  ARG RELEASE=2023.2
+  ARG REF=3c6029cd94846235e25058b71522c13556f41f58
+  FROM ../openstack-service+image \
+    --PROJECT ${PROJECT} \
+    --RELEASE ${RELEASE} \
+    --PROJECT_REF ${REF} \
+    --PIP_PACKAGES "git+https://github.com/openstack/designate-dashboard.git@stable/${RELEASE} git+https://github.com/openstack/heat-dashboard.git@stable/${RELEASE} git+https://github.com/openstack/ironic-ui.git@stable/${RELEASE} git+https://github.com/openstack/magnum-ui.git@stable/${RELEASE} git+https://github.com/openstack/neutron-vpnaas-dashboard.git@stable/${RELEASE} git+https://github.com/openstack/octavia-dashboard.git@stable/${RELEASE} git+https://github.com/openstack/senlin-dashboard.git@stable/${RELEASE} git+https://github.com/openstack/manila-ui.git@stable/${RELEASE}"
+  DO \
+    ../+APT_INSTALL \
+    --PACKAGES "apache2 gettext libapache2-mod-wsgi-py3"
+  DO ../+APPLY_PATCHES
+  SAVE IMAGE --push \
+    ghcr.io/vexxhost/atmosphere/${PROJECT}:${RELEASE} \
+    ghcr.io/vexxhost/atmosphere/${PROJECT}:${REF}

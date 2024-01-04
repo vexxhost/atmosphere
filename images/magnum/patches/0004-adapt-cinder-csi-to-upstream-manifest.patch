@@ -1,0 +1,860 @@
+From b13335fc56d4938346619229bb2c23c128a1d58a Mon Sep 17 00:00:00 2001
+From: Michal Nasiadka <mnasiadka@gmail.com>
+Date: Fri, 11 Mar 2022 13:33:15 +0100
+Subject: [PATCH] Adapt Cinder CSI to upstream manifest
+
+- Bump also components to upstream manifest versions.
+- Add small tool to sync Cinder CSI manifests automatically
+
+Change-Id: Icd19b41d03b7aa200965a3357a8ddf8b4b40794a
+(cherry picked from commit ac5702c40653942634e259788434037e1e8c980a)
+---
+ doc/source/user/index.rst                     |  11 +
+ .../kubernetes/fragments/enable-cinder-csi.sh | 237 +++++++++---------
+ .../fragments/write-heat-params-master.sh     |   1 +
+ .../drivers/heat/k8s_fedora_template_def.py   |   1 +
+ .../templates/kubecluster.yaml                |  19 +-
+ .../templates/kubemaster.yaml                 |   6 +
+ .../unit/drivers/test_template_definition.py  |   6 +
+ tools/sync/cinder-csi                         | 162 ++++++++++++
+ 8 files changed, 322 insertions(+), 121 deletions(-)
+ create mode 100755 tools/sync/cinder-csi
+
+diff --git a/doc/source/user/index.rst b/doc/source/user/index.rst
+index 20c56400f8..9d8d747204 100644
+--- a/doc/source/user/index.rst
++++ b/doc/source/user/index.rst
+@@ -1400,30 +1400,35 @@ _`cinder_csi_plugin_tag`
+   <https://hub.docker.com/r/k8scloudprovider/cinder-csi-plugin/tags>`_.
+   Train default: v1.16.0
+   Ussuri default: v1.18.0
++  Yoga default: v1.23.0
+ 
+ _`csi_attacher_tag`
+   This label allows users to override the default container tag for CSI attacher.
+   For additional tags, `refer to CSI attacher page
+   <https://quay.io/repository/k8scsi/csi-attacher?tab=tags>`_.
+   Ussuri-default: v2.0.0
++  Yoga-default: v3.3.0
+ 
+ _`csi_provisioner_tag`
+   This label allows users to override the default container tag for CSI provisioner.
+   For additional tags, `refer to CSI provisioner page
+   <https://quay.io/repository/k8scsi/csi-provisioner?tab=tags>`_.
+   Ussuri-default: v1.4.0
++  Yoga-default: v3.0.0
+ 
+ _`csi_snapshotter_tag`
+   This label allows users to override the default container tag for CSI snapshotter.
+   For additional tags, `refer to CSI snapshotter page
+   <https://quay.io/repository/k8scsi/csi-snapshotter?tab=tags>`_.
+   Ussuri-default: v1.2.2
++  Yoga-default: v4.2.1
+ 
+ _`csi_resizer_tag`
+   This label allows users to override the default container tag for CSI resizer.
+   For additional tags, `refer to CSI resizer page
+   <https://quay.io/repository/k8scsi/csi-resizer?tab=tags>`_.
+   Ussuri-default: v0.3.0
++  Yoga-default: v1.3.0
+ 
+ _`csi_node_driver_registrar_tag`
+   This label allows users to override the default container tag for CSI node
+@@ -1431,6 +1436,12 @@ _`csi_node_driver_registrar_tag`
+   page
+   <https://quay.io/repository/k8scsi/csi-node-driver-registrar?tab=tags>`_.
+   Ussuri-default: v1.1.0
++  Yoga-default: v2.4.0
++
++-`csi_liveness_probe_tag`
++  This label allows users to override the default container tag for CSI
++  liveness probe.
++  Yoga-default: v2.5.0
+ 
+ _`keystone_auth_enabled`
+   If this label is set to True, Kubernetes will support use Keystone for
+diff --git a/magnum/drivers/common/templates/kubernetes/fragments/enable-cinder-csi.sh b/magnum/drivers/common/templates/kubernetes/fragments/enable-cinder-csi.sh
+index b85258a5f3..524b5e98ed 100644
+--- a/magnum/drivers/common/templates/kubernetes/fragments/enable-cinder-csi.sh
++++ b/magnum/drivers/common/templates/kubernetes/fragments/enable-cinder-csi.sh
+@@ -12,15 +12,15 @@ if [ "${volume_driver}" = "cinder" ] && [ "${cinder_csi_enabled}" = "true" ]; th
+     echo "Writing File: $CINDER_CSI_DEPLOY"
+     mkdir -p $(dirname ${CINDER_CSI_DEPLOY})
+     cat << EOF > ${CINDER_CSI_DEPLOY}
+----
+ # This YAML file contains RBAC API objects,
+ # which are necessary to run csi controller plugin
+----
++
+ apiVersion: v1
+ kind: ServiceAccount
+ metadata:
+   name: csi-cinder-controller-sa
+   namespace: kube-system
++
+ ---
+ # external attacher
+ kind: ClusterRole
+@@ -30,16 +30,20 @@ metadata:
+ rules:
+   - apiGroups: [""]
+     resources: ["persistentvolumes"]
+-    verbs: ["get", "list", "watch", "update", "patch"]
+-  - apiGroups: [""]
+-    resources: ["nodes"]
++    verbs: ["get", "list", "watch", "patch"]
++  - apiGroups: ["storage.k8s.io"]
++    resources: ["csinodes"]
+     verbs: ["get", "list", "watch"]
+   - apiGroups: ["storage.k8s.io"]
+     resources: ["volumeattachments"]
+-    verbs: ["get", "list", "watch", "update", "patch"]
++    verbs: ["get", "list", "watch", "patch"]
+   - apiGroups: ["storage.k8s.io"]
+-    resources: ["csinodes"]
+-    verbs: ["get", "list", "watch"]
++    resources: ["volumeattachments/status"]
++    verbs: ["patch"]
++  - apiGroups: ["coordination.k8s.io"]
++    resources: ["leases"]
++    verbs: ["get", "watch", "list", "delete", "update", "create"]
++
+ ---
+ kind: ClusterRoleBinding
+ apiVersion: rbac.authorization.k8s.io/v1
+@@ -53,6 +57,7 @@ roleRef:
+   kind: ClusterRole
+   name: csi-attacher-role
+   apiGroup: rbac.authorization.k8s.io
++
+ ---
+ # external Provisioner
+ kind: ClusterRole
+@@ -84,6 +89,12 @@ rules:
+   - apiGroups: ["snapshot.storage.k8s.io"]
+     resources: ["volumesnapshotcontents"]
+     verbs: ["get", "list"]
++  - apiGroups: ["storage.k8s.io"]
++    resources: ["volumeattachments"]
++    verbs: ["get", "list", "watch"]
++  - apiGroups: ["coordination.k8s.io"]
++    resources: ["leases"]
++    verbs: ["get", "watch", "list", "delete", "update", "create"]
+ ---
+ kind: ClusterRoleBinding
+ apiVersion: rbac.authorization.k8s.io/v1
+@@ -97,6 +108,7 @@ roleRef:
+   kind: ClusterRole
+   name: csi-provisioner-role
+   apiGroup: rbac.authorization.k8s.io
++
+ ---
+ # external snapshotter
+ kind: ClusterRole
+@@ -104,36 +116,28 @@ apiVersion: rbac.authorization.k8s.io/v1
+ metadata:
+   name: csi-snapshotter-role
+ rules:
+-  - apiGroups: [""]
+-    resources: ["persistentvolumes"]
+-    verbs: ["get", "list", "watch"]
+-  - apiGroups: [""]
+-    resources: ["persistentvolumeclaims"]
+-    verbs: ["get", "list", "watch"]
+-  - apiGroups: ["storage.k8s.io"]
+-    resources: ["storageclasses"]
+-    verbs: ["get", "list", "watch"]
+   - apiGroups: [""]
+     resources: ["events"]
+     verbs: ["list", "watch", "create", "update", "patch"]
+-  - apiGroups: [""]
+-    resources: ["secrets"]
+-    verbs: ["get", "list"]
++  # Secret permission is optional.
++  # Enable it if your driver needs secret.
++  # For example, `csi.storage.k8s.io/snapshotter-secret-name` is set in VolumeSnapshotClass.
++  # See https://kubernetes-csi.github.io/docs/secrets-and-credentials.html for more details.
++  #  - apiGroups: [""]
++  #    resources: ["secrets"]
++  #    verbs: ["get", "list"]
+   - apiGroups: ["snapshot.storage.k8s.io"]
+     resources: ["volumesnapshotclasses"]
+     verbs: ["get", "list", "watch"]
+   - apiGroups: ["snapshot.storage.k8s.io"]
+     resources: ["volumesnapshotcontents"]
+-    verbs: ["create", "get", "list", "watch", "update", "delete"]
++    verbs: ["create", "get", "list", "watch", "update", "delete", "patch"]
+   - apiGroups: ["snapshot.storage.k8s.io"]
+-    resources: ["volumesnapshots"]
+-    verbs: ["get", "list", "watch", "update"]
+-  - apiGroups: ["snapshot.storage.k8s.io"]
+-    resources: ["volumesnapshots/status"]
+-    verbs: ["update"]
+-  - apiGroups: ["apiextensions.k8s.io"]
+-    resources: ["customresourcedefinitions"]
+-    verbs: ["create", "list", "watch", "delete"]
++    resources: ["volumesnapshotcontents/status"]
++    verbs: ["update", "patch"]
++  - apiGroups: ["coordination.k8s.io"]
++    resources: ["leases"]
++    verbs: ["get", "watch", "list", "delete", "update", "create"]
+ ---
+ kind: ClusterRoleBinding
+ apiVersion: rbac.authorization.k8s.io/v1
+@@ -148,6 +152,7 @@ roleRef:
+   name: csi-snapshotter-role
+   apiGroup: rbac.authorization.k8s.io
+ ---
++
+ # External Resizer
+ kind: ClusterRole
+ apiVersion: rbac.authorization.k8s.io/v1
+@@ -161,19 +166,22 @@ rules:
+   #   verbs: ["get", "list", "watch"]
+   - apiGroups: [""]
+     resources: ["persistentvolumes"]
+-    verbs: ["get", "list", "watch", "update", "patch"]
++    verbs: ["get", "list", "watch", "patch"]
+   - apiGroups: [""]
+     resources: ["persistentvolumeclaims"]
+     verbs: ["get", "list", "watch"]
+   - apiGroups: [""]
+-    resources: ["persistentvolumeclaims/status"]
+-    verbs: ["update", "patch"]
+-  - apiGroups: ["storage.k8s.io"]
+-    resources: ["storageclasses"]
++    resources: ["pods"]
+     verbs: ["get", "list", "watch"]
++  - apiGroups: [""]
++    resources: ["persistentvolumeclaims/status"]
++    verbs: ["patch"]
+   - apiGroups: [""]
+     resources: ["events"]
+     verbs: ["list", "watch", "create", "update", "patch"]
++  - apiGroups: ["coordination.k8s.io"]
++    resources: ["leases"]
++    verbs: ["get", "watch", "list", "delete", "update", "create"]
+ ---
+ kind: ClusterRoleBinding
+ apiVersion: rbac.authorization.k8s.io/v1
+@@ -187,56 +195,24 @@ roleRef:
+   kind: ClusterRole
+   name: csi-resizer-role
+   apiGroup: rbac.authorization.k8s.io
+----
+-kind: Role
+-apiVersion: rbac.authorization.k8s.io/v1
+-metadata:
+-  namespace: kube-system
+-  name: external-resizer-cfg
+-rules:
+-- apiGroups: ["coordination.k8s.io"]
+-  resources: ["leases"]
+-  verbs: ["get", "watch", "list", "delete", "update", "create"]
+----
+-kind: RoleBinding
+-apiVersion: rbac.authorization.k8s.io/v1
+-metadata:
+-  name: csi-resizer-role-cfg
+-  namespace: kube-system
+-subjects:
+-  - kind: ServiceAccount
+-    name: csi-cinder-controller-sa
+-    namespace: kube-system
+-roleRef:
+-  kind: Role
+-  name: external-resizer-cfg
+-  apiGroup: rbac.authorization.k8s.io
++
+ ---
+ # This YAML file contains CSI Controller Plugin Sidecars
+ # external-attacher, external-provisioner, external-snapshotter
+----
+-kind: Service
+-apiVersion: v1
+-metadata:
+-  name: csi-cinder-controller-service
+-  namespace: kube-system
+-  labels:
+-    app: csi-cinder-controllerplugin
+-spec:
+-  selector:
+-    app: csi-cinder-controllerplugin
+-  ports:
+-    - name: dummy
+-      port: 12345
+----
+-kind: StatefulSet
++# external-resize, liveness-probe
++
++kind: Deployment
+ apiVersion: apps/v1
+ metadata:
+   name: csi-cinder-controllerplugin
+   namespace: kube-system
+ spec:
+-  serviceName: "csi-cinder-controller-service"
+   replicas: 1
++  strategy:
++    type: RollingUpdate
++    rollingUpdate:
++      maxUnavailable: 0
++      maxSurge: 1
+   selector:
+     matchLabels:
+       app: csi-cinder-controllerplugin
+@@ -246,6 +222,7 @@ spec:
+         app: csi-cinder-controllerplugin
+     spec:
+       serviceAccount: csi-cinder-controller-sa
++      hostNetwork: true
+       tolerations:
+         # Make sure the pod can be scheduled on master kubelet.
+         - effect: NoSchedule
+@@ -257,11 +234,11 @@ spec:
+         node-role.kubernetes.io/master: ""
+       containers:
+         - name: csi-attacher
+-          image: ${CONTAINER_INFRA_PREFIX:-quay.io/k8scsi/}csi-attacher:${CSI_ATTACHER_TAG}
++          image: ${CONTAINER_INFRA_PREFIX:-k8s.gcr.io/sig-storage/}csi-attacher:${CSI_ATTACHER_TAG}
+           args:
+-            - "--v=5"
+             - "--csi-address=\$(ADDRESS)"
+             - "--timeout=3m"
++            - "--leader-election=true"
+           resources:
+             requests:
+               cpu: 20m
+@@ -273,10 +250,14 @@ spec:
+             - name: socket-dir
+               mountPath: /var/lib/csi/sockets/pluginproxy/
+         - name: csi-provisioner
+-          image: ${CONTAINER_INFRA_PREFIX:-quay.io/k8scsi/}csi-provisioner:${CSI_PROVISIONER_TAG}
++          image: ${CONTAINER_INFRA_PREFIX:-k8s.gcr.io/sig-storage/}csi-provisioner:${CSI_PROVISIONER_TAG}
+           args:
+             - "--csi-address=\$(ADDRESS)"
+             - "--timeout=3m"
++            - "--default-fstype=ext4"
++            - "--feature-gates=Topology=true"
++            - "--extra-create-metadata"
++            - "--leader-election=true"
+           resources:
+             requests:
+               cpu: 20m
+@@ -288,9 +269,12 @@ spec:
+             - name: socket-dir
+               mountPath: /var/lib/csi/sockets/pluginproxy/
+         - name: csi-snapshotter
+-          image: ${CONTAINER_INFRA_PREFIX:-quay.io/k8scsi/}csi-snapshotter:${CSI_SNAPSHOTTER_TAG}
++          image: ${CONTAINER_INFRA_PREFIX:-k8s.gcr.io/sig-storage/}csi-snapshotter:${CSI_SNAPSHOTTER_TAG}
+           args:
+             - "--csi-address=\$(ADDRESS)"
++            - "--timeout=3m"
++            - "--extra-create-metadata"
++            - "--leader-election=true"
+           resources:
+             requests:
+               cpu: 20m
+@@ -302,10 +286,12 @@ spec:
+             - mountPath: /var/lib/csi/sockets/pluginproxy/
+               name: socket-dir
+         - name: csi-resizer
+-          image: ${CONTAINER_INFRA_PREFIX:-quay.io/k8scsi/}csi-resizer:${CSI_RESIZER_TAG}
++          image: ${CONTAINER_INFRA_PREFIX:-k8s.gcr.io/sig-storage/}csi-resizer:${CSI_RESIZER_TAG}
+           args:
+-            - "--v=5"
+             - "--csi-address=\$(ADDRESS)"
++            - "--timeout=3m"
++            - "--handle-volume-inuse-error=false"
++            - "--leader-election=true"
+           resources:
+             requests:
+               cpu: 20m
+@@ -316,22 +302,27 @@ spec:
+           volumeMounts:
+             - name: socket-dir
+               mountPath: /var/lib/csi/sockets/pluginproxy/
++        - name: liveness-probe
++          image: ${CONTAINER_INFRA_PREFIX:-k8s.gcr.io/sig-storage/}livenessprobe:${CSI_LIVENESS_PROBE_TAG}
++          args:
++            - "--csi-address=\$(ADDRESS)"
++          resources:
++            requests:
++              cpu: 20m
++          env:
++            - name: ADDRESS
++              value: /var/lib/csi/sockets/pluginproxy/csi.sock
++          volumeMounts:
++            - mountPath: /var/lib/csi/sockets/pluginproxy/
++              name: socket-dir
+         - name: cinder-csi-plugin
+           image: ${CONTAINER_INFRA_PREFIX:-docker.io/k8scloudprovider/}cinder-csi-plugin:${CINDER_CSI_PLUGIN_TAG}
+-          args :
++          args:
+             - /bin/cinder-csi-plugin
+-            - "--nodeid=\$(NODE_ID)"
+             - "--endpoint=\$(CSI_ENDPOINT)"
+             - "--cloud-config=\$(CLOUD_CONFIG)"
+             - "--cluster=\$(CLUSTER_NAME)"
+-          resources:
+-            requests:
+-              cpu: 20m
+           env:
+-            - name: NODE_ID
+-              valueFrom:
+-                fieldRef:
+-                  fieldPath: spec.nodeName
+             - name: CSI_ENDPOINT
+               value: unix://csi/csi.sock
+             - name: CLOUD_CONFIG
+@@ -339,6 +330,19 @@ spec:
+             - name: CLUSTER_NAME
+               value: kubernetes
+           imagePullPolicy: "IfNotPresent"
++          ports:
++            - containerPort: 9808
++              name: healthz
++              protocol: TCP
++          # The probe
++          livenessProbe:
++            failureThreshold: 5
++            httpGet:
++              path: /healthz
++              port: healthz
++            initialDelaySeconds: 10
++            timeoutSeconds: 10
++            periodSeconds: 60
+           volumeMounts:
+             - name: socket-dir
+               mountPath: /csi
+@@ -360,7 +364,7 @@ spec:
+             type: File
+ ---
+ # This YAML defines all API objects to create RBAC roles for csi node plugin.
+----
++
+ apiVersion: v1
+ kind: ServiceAccount
+ metadata:
+@@ -375,6 +379,7 @@ rules:
+   - apiGroups: [""]
+     resources: ["events"]
+     verbs: ["get", "list", "watch", "create", "update", "patch"]
++
+ ---
+ kind: ClusterRoleBinding
+ apiVersion: rbac.authorization.k8s.io/v1
+@@ -391,7 +396,7 @@ roleRef:
+ ---
+ # This YAML file contains driver-registrar & csi driver nodeplugin API objects,
+ # which are necessary to run csi nodeplugin for cinder.
+----
++
+ kind: DaemonSet
+ apiVersion: apps/v1
+ metadata:
+@@ -412,17 +417,10 @@ spec:
+       hostNetwork: true
+       containers:
+         - name: node-driver-registrar
+-          image: ${CONTAINER_INFRA_PREFIX:-quay.io/k8scsi/}csi-node-driver-registrar:${CSI_NODE_DRIVER_REGISTRAR_TAG}
++          image: ${CONTAINER_INFRA_PREFIX:-k8s.gcr.io/sig-storage/}csi-node-driver-registrar:${CSI_NODE_DRIVER_REGISTRAR_TAG}
+           args:
+             - "--csi-address=\$(ADDRESS)"
+             - "--kubelet-registration-path=\$(DRIVER_REG_SOCK_PATH)"
+-          resources:
+-            requests:
+-              cpu: 25m
+-          lifecycle:
+-            preStop:
+-              exec:
+-                command: ["/bin/sh", "-c", "rm -rf /registration/cinder.csi.openstack.org /registration/cinder.csi.openstack.org-reg.sock"]
+           env:
+             - name: ADDRESS
+               value: /csi/csi.sock
+@@ -438,6 +436,16 @@ spec:
+               mountPath: /csi
+             - name: registration-dir
+               mountPath: /registration
++        - name: liveness-probe
++          image: ${CONTAINER_INFRA_PREFIX:-k8s.gcr.io/sig-storage/}livenessprobe:${CSI_LIVENESS_PROBE_TAG}
++          args:
++            - --csi-address=/csi/csi.sock
++          resources:
++            requests:
++              cpu: 20m
++          volumeMounts:
++            - name: socket-dir
++              mountPath: /csi
+         - name: cinder-csi-plugin
+           securityContext:
+             privileged: true
+@@ -445,33 +453,35 @@ spec:
+               add: ["SYS_ADMIN"]
+             allowPrivilegeEscalation: true
+           image: ${CONTAINER_INFRA_PREFIX:-docker.io/k8scloudprovider/}cinder-csi-plugin:${CINDER_CSI_PLUGIN_TAG}
+-          args :
++          args:
+             - /bin/cinder-csi-plugin
+-            - "--nodeid=\$(NODE_ID)"
+             - "--endpoint=\$(CSI_ENDPOINT)"
+             - "--cloud-config=\$(CLOUD_CONFIG)"
+-          resources:
+-            requests:
+-              cpu: 25m
+           env:
+-            - name: NODE_ID
+-              valueFrom:
+-                fieldRef:
+-                  fieldPath: spec.nodeName
+             - name: CSI_ENDPOINT
+               value: unix://csi/csi.sock
+             - name: CLOUD_CONFIG
+               value: /etc/config/cloud-config
+           imagePullPolicy: "IfNotPresent"
++          ports:
++            - containerPort: 9808
++              name: healthz
++              protocol: TCP
++          # The probe
++          livenessProbe:
++            failureThreshold: 5
++            httpGet:
++              path: /healthz
++              port: healthz
++            initialDelaySeconds: 10
++            timeoutSeconds: 3
++            periodSeconds: 10
+           volumeMounts:
+             - name: socket-dir
+               mountPath: /csi
+             - name: kubelet-dir
+               mountPath: /var/lib/kubelet
+               mountPropagation: "Bidirectional"
+-            - name: pods-cloud-data
+-              mountPath: /var/lib/cloud/data
+-              readOnly: true
+             - name: pods-probe-dir
+               mountPath: /dev
+               mountPropagation: "HostToContainer"
+@@ -494,9 +504,6 @@ spec:
+           hostPath:
+             path: /var/lib/kubelet
+             type: Directory
+-        - name: pods-cloud-data
+-          hostPath:
+-            path: /var/lib/cloud/data
+         - name: pods-probe-dir
+           hostPath:
+             path: /dev
+diff --git a/magnum/drivers/common/templates/kubernetes/fragments/write-heat-params-master.sh b/magnum/drivers/common/templates/kubernetes/fragments/write-heat-params-master.sh
+index a50b184558..0cd02bf95b 100644
+--- a/magnum/drivers/common/templates/kubernetes/fragments/write-heat-params-master.sh
++++ b/magnum/drivers/common/templates/kubernetes/fragments/write-heat-params-master.sh
+@@ -143,6 +143,7 @@ CSI_PROVISIONER_TAG="$CSI_PROVISIONER_TAG"
+ CSI_SNAPSHOTTER_TAG="$CSI_SNAPSHOTTER_TAG"
+ CSI_RESIZER_TAG="$CSI_RESIZER_TAG"
+ CSI_NODE_DRIVER_REGISTRAR_TAG="$CSI_NODE_DRIVER_REGISTRAR_TAG"
++CSI_LIVENESS_PROBE_TAG="$CSI_LIVENESS_PROBE_TAG"
+ DRAINO_TAG="$DRAINO_TAG"
+ MAGNUM_AUTO_HEALER_TAG="$MAGNUM_AUTO_HEALER_TAG"
+ AUTOSCALER_TAG="$AUTOSCALER_TAG"
+diff --git a/magnum/drivers/heat/k8s_fedora_template_def.py b/magnum/drivers/heat/k8s_fedora_template_def.py
+index 659069bc28..a4ec6250ab 100644
+--- a/magnum/drivers/heat/k8s_fedora_template_def.py
++++ b/magnum/drivers/heat/k8s_fedora_template_def.py
+@@ -90,6 +90,7 @@ def get_params(self, context, cluster_template, cluster, **kwargs):
+                       'csi_attacher_tag', 'csi_provisioner_tag',
+                       'csi_snapshotter_tag', 'csi_resizer_tag',
+                       'csi_node_driver_registrar_tag',
++                      'csi_liveness_probe_tag',
+                       'etcd_tag', 'flannel_tag', 'flannel_cni_tag',
+                       'cloud_provider_tag',
+                       'prometheus_tag', 'grafana_tag',
+diff --git a/magnum/drivers/k8s_fedora_coreos_v1/templates/kubecluster.yaml b/magnum/drivers/k8s_fedora_coreos_v1/templates/kubecluster.yaml
+index 35ca781d42..15bfd9af25 100644
+--- a/magnum/drivers/k8s_fedora_coreos_v1/templates/kubecluster.yaml
++++ b/magnum/drivers/k8s_fedora_coreos_v1/templates/kubecluster.yaml
+@@ -866,32 +866,38 @@ parameters:
+     description: tag of cinder csi plugin
+       tag of the k8scloudprovider/cinder-csi-plugin container
+       https://hub.docker.com/r/k8scloudprovider/cinder-csi-plugin/tags/
+-    default: v1.18.0
++    default: v1.23.0
+ 
+   csi_attacher_tag:
+     type: string
+     description: tag of csi attacher
+-    default: v2.0.0
++    default: v3.3.0
+ 
+   csi_provisioner_tag:
+     type: string
+     description: tag of csi provisioner
+-    default: v1.4.0
++    default: v3.0.0
+ 
+   csi_snapshotter_tag:
+     type: string
+     description: tag of csi snapshotter
+-    default: v1.2.2
++    default: v4.2.1
+ 
+   csi_resizer_tag:
+     type: string
+     description: tag of csi resizer
+-    default: v0.3.0
++    default: v1.3.0
+ 
+   csi_node_driver_registrar_tag:
+     type: string
+     description: tag of csi node driver registrar
+-    default: v1.1.0
++    default: v2.4.0
++
++  csi_liveness_probe_tag:
++    type: string
++    description: tag of cinder csi liveness probe
++      tag of the k8s.gcr.io/sig-storage/liveness-probe container
++    default: v2.5.0
+ 
+   node_problem_detector_tag:
+     type: string
+@@ -1384,6 +1390,7 @@ resources:
+           csi_snapshotter_tag: {get_param: csi_snapshotter_tag}
+           csi_resizer_tag: {get_param: csi_resizer_tag}
+           csi_node_driver_registrar_tag: {get_param: csi_node_driver_registrar_tag}
++          csi_liveness_probe_tag: {get_param: csi_liveness_probe_tag}
+           draino_tag: {get_param: draino_tag}
+           autoscaler_tag: {get_param: autoscaler_tag}
+           min_node_count: {get_param: min_node_count}
+diff --git a/magnum/drivers/k8s_fedora_coreos_v1/templates/kubemaster.yaml b/magnum/drivers/k8s_fedora_coreos_v1/templates/kubemaster.yaml
+index a038f144d0..917f010db8 100644
+--- a/magnum/drivers/k8s_fedora_coreos_v1/templates/kubemaster.yaml
++++ b/magnum/drivers/k8s_fedora_coreos_v1/templates/kubemaster.yaml
+@@ -621,6 +621,11 @@ parameters:
+     type: string
+     description: tag of csi node driver registrar
+ 
++  csi_liveness_probe_tag:
++    type: string
++    description: >
++      Tag of liveness-probe for cinder csi.
++
+   node_problem_detector_tag:
+     type: string
+     description: tag of the node problem detector container
+@@ -910,6 +915,7 @@ resources:
+                   "$CSI_SNAPSHOTTER_TAG": {get_param: csi_snapshotter_tag}
+                   "$CSI_RESIZER_TAG": {get_param: csi_resizer_tag}
+                   "$CSI_NODE_DRIVER_REGISTRAR_TAG": {get_param: csi_node_driver_registrar_tag}
++                  "$CSI_LIVENESS_PROBE_TAG":  {get_param: csi_liveness_probe_tag}
+                   "$DRAINO_TAG": {get_param: draino_tag}
+                   "$AUTOSCALER_TAG": {get_param: autoscaler_tag}
+                   "$MIN_NODE_COUNT": {get_param: min_node_count}
+diff --git a/magnum/tests/unit/drivers/test_template_definition.py b/magnum/tests/unit/drivers/test_template_definition.py
+index b523744597..7b08196bf1 100644
+--- a/magnum/tests/unit/drivers/test_template_definition.py
++++ b/magnum/tests/unit/drivers/test_template_definition.py
+@@ -600,6 +600,8 @@ def test_k8s_get_params(self, mock_generate_csr_and_key,
+             'csi_resizer_tag')
+         csi_node_driver_registrar_tag = mock_cluster.labels.get(
+             'csi_node_driver_registrar_tag')
++        csi_liveness_probe_tag = mock_cluster.labels.get(
++            'csi_liveness_probe_tag')
+         draino_tag = mock_cluster.labels.get('draino_tag')
+         autoscaler_tag = mock_cluster.labels.get('autoscaler_tag')
+         min_node_count = mock_cluster.labels.get('min_node_count')
+@@ -725,6 +727,7 @@ def test_k8s_get_params(self, mock_generate_csr_and_key,
+             'csi_snapshotter_tag': csi_snapshotter_tag,
+             'csi_resizer_tag': csi_resizer_tag,
+             'csi_node_driver_registrar_tag': csi_node_driver_registrar_tag,
++            'csi_liveness_probe_tag': csi_liveness_probe_tag,
+             'draino_tag': draino_tag,
+             'autoscaler_tag': autoscaler_tag,
+             'min_node_count': min_node_count,
+@@ -1161,6 +1164,8 @@ def test_k8s_get_params_insecure(self, mock_generate_csr_and_key,
+             'csi_resizer_tag')
+         csi_node_driver_registrar_tag = mock_cluster.labels.get(
+             'csi_node_driver_registrar_tag')
++        csi_liveness_probe_tag = mock_cluster.labels.get(
++            'csi_liveness_probe_tag')
+         draino_tag = mock_cluster.labels.get('draino_tag')
+         autoscaler_tag = mock_cluster.labels.get('autoscaler_tag')
+         min_node_count = mock_cluster.labels.get('min_node_count')
+@@ -1290,6 +1295,7 @@ def test_k8s_get_params_insecure(self, mock_generate_csr_and_key,
+             'csi_snapshotter_tag': csi_snapshotter_tag,
+             'csi_resizer_tag': csi_resizer_tag,
+             'csi_node_driver_registrar_tag': csi_node_driver_registrar_tag,
++            'csi_liveness_probe_tag': csi_liveness_probe_tag,
+             'draino_tag': draino_tag,
+             'autoscaler_tag': autoscaler_tag,
+             'min_node_count': min_node_count,
+diff --git a/tools/sync/cinder-csi b/tools/sync/cinder-csi
+new file mode 100755
+index 0000000000..5789631d52
+--- /dev/null
++++ b/tools/sync/cinder-csi
+@@ -0,0 +1,162 @@
++#!/usr/bin/env python3.9
++
++import requests
++
++manifest_data = []
++
++files = requests.get("https://api.github.com/repos/kubernetes/cloud-provider-openstack/contents/manifests/cinder-csi-plugin").json()
++for file in files:
++    if file['name'] == 'csi-secret-cinderplugin.yaml':
++        continue
++
++    r = requests.get(file['download_url'])
++    manifest_data.append(r.text)
++
++manifests = "---\n".join(manifest_data)
++
++# Clean-ups
++manifests = manifests.replace(
++"""
++            # - name: cacert
++            #   mountPath: /etc/cacert
++            #   readOnly: true
++""",
++"""
++            - name: cacert
++              mountPath: /etc/kubernetes/ca-bundle.crt
++              readOnly: true
++""").replace(
++"""
++            secretName: cloud-config
++        # - name: cacert
++        #   hostPath:
++        #     path: /etc/cacert
++""",
++"""
++            secretName: cinder-csi-cloud-config
++        - name: cacert
++          hostPath:
++            path: /etc/kubernetes/ca-bundle.crt
++            type: File
++""").replace(
++"""
++      serviceAccount: csi-cinder-controller-sa
++""",
++"""
++      serviceAccount: csi-cinder-controller-sa
++      hostNetwork: true
++      tolerations:
++        # Make sure the pod can be scheduled on master kubelet.
++        - effect: NoSchedule
++          operator: Exists
++        # Mark the pod as a critical add-on for rescheduling.
++        - key: CriticalAddonsOnly
++          operator: Exists
++      nodeSelector:
++        node-role.kubernetes.io/master: ""
++""").replace(
++"""
++            - --csi-address=/csi/csi.sock
++""",
++"""
++            - --csi-address=/csi/csi.sock
++          resources:
++            requests:
++              cpu: 20m
++""").replace(
++"""
++          env:
++            - name: ADDRESS
++              value: /var/lib/csi/sockets/pluginproxy/csi.sock
++""",
++"""
++          resources:
++            requests:
++              cpu: 20m
++          env:
++            - name: ADDRESS
++              value: /var/lib/csi/sockets/pluginproxy/csi.sock
++""").replace(
++    "$(",
++    "\$("
++).replace(
++    "k8s.gcr.io/sig-storage/",
++    "${CONTAINER_INFRA_PREFIX:-k8s.gcr.io/sig-storage/}"
++).replace(
++    "docker.io/k8scloudprovider/",
++    "${CONTAINER_INFRA_PREFIX:-docker.io/k8scloudprovider/}",
++).replace(
++    "csi-attacher:v3.4.0",
++    "csi-attacher:${CSI_ATTACHER_TAG}",
++).replace(
++    "csi-provisioner:v3.1.0",
++    "csi-provisioner:${CSI_PROVISIONER_TAG}",
++).replace(
++    "csi-snapshotter:v6.0.1",
++    "csi-snapshotter:${CSI_SNAPSHOTTER_TAG}",
++).replace(
++    "csi-resizer:v1.4.0",
++    "csi-resizer:${CSI_RESIZER_TAG}",
++).replace(
++    "livenessprobe:v2.7.0",
++    "livenessprobe:${CSI_LIVENESS_PROBE_TAG}",
++).replace(
++    "cinder-csi-plugin:latest",
++    "cinder-csi-plugin:${CINDER_CSI_PLUGIN_TAG}",
++).replace(
++    "csi-node-driver-registrar:v2.5.1",
++    "csi-node-driver-registrar:${CSI_NODE_DRIVER_REGISTRAR_TAG}",
++).replace(
++    "/etc/config/cloud.conf",
++    "/etc/config/cloud-config"
++)
++
++template = f"""step="enable-cinder-csi"
++printf "Starting to run ${{step}}\\n"
++
++. /etc/sysconfig/heat-params
++
++volume_driver=$(echo "${{VOLUME_DRIVER}}" | tr '[:upper:]' '[:lower:]')
++cinder_csi_enabled=$(echo $CINDER_CSI_ENABLED | tr '[:upper:]' '[:lower:]')
++
++if [ "${{volume_driver}}" = "cinder" ] && [ "${{cinder_csi_enabled}}" = "true" ]; then
++    # Generate Cinder CSI manifest file
++    CINDER_CSI_DEPLOY=/srv/magnum/kubernetes/manifests/cinder-csi.yaml
++    echo "Writing File: $CINDER_CSI_DEPLOY"
++    mkdir -p $(dirname ${{CINDER_CSI_DEPLOY}})
++    cat << EOF > ${{CINDER_CSI_DEPLOY}}
++{manifests.strip()}
++EOF
++
++    echo "Waiting for Kubernetes API..."
++    until  [ "ok" = "$(kubectl get --raw='/healthz')" ]
++    do
++        sleep 5
++    done
++
++    cat <<EOF | kubectl apply -f -
++---
++apiVersion: v1
++kind: Secret
++metadata:
++  name: cinder-csi-cloud-config
++  namespace: kube-system
++type: Opaque
++stringData:
++  cloud-config: |-
++    [Global]
++    auth-url=$AUTH_URL
++    user-id=$TRUSTEE_USER_ID
++    password=$TRUSTEE_PASSWORD
++    trust-id=$TRUST_ID
++    region=$REGION_NAME
++    ca-file=/etc/kubernetes/ca-bundle.crt
++EOF
++
++    kubectl apply -f ${{CINDER_CSI_DEPLOY}}
++fi
++printf "Finished running ${{step}}\\n"
++"""
++
++with open("magnum/drivers/common/templates/kubernetes/fragments/enable-cinder-csi.sh", "w") as fd:
++    fd.write(template)

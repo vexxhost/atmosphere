@@ -9,10 +9,11 @@ image:
     --RELEASE ${RELEASE} \
     --PROJECT_REF ${REF} \
     --PIP_PACKAGES "keystone-keycloak-backend==0.1.6" \
-    --EXTRAS "ldap"
+    --EXTRAS "[ldap]"
   DO \
     ../+APT_INSTALL \
     --PACKAGES "apache2 libapache2-mod-wsgi-py3"
+  DO ../+APPLY_PATCHES
   ARG MOD_AUTH_OPENIDC_VERSION=2.4.12.1
   ARG TARGETARCH
   RUN \
