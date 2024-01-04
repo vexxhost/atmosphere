@@ -1,0 +1,32 @@
+VERSION 0.7
+ARG --global COMMIT=e8c2b17e1261c6a1b0fed1fcd5e1c337fc014219
+
+build:
+  FROM golang:1.21.5-bookworm
+  DO ../+APT_INSTALL --PACKAGES "patch"
+  GIT CLONE --branch ${COMMIT} https://opendev.org/airship/kubernetes-entrypoint /src
+  WORKDIR /src
+  RUN \
+    curl https://review.opendev.org/changes/airship%2Fkubernetes-entrypoint~904537/revisions/1/patch?download | \
+    base64 --decode | \
+    patch -p1
+  ARG GOARCH
+  RUN \
+    --mount=type=cache,mode=0755,target=/go/pkg/mod \
+    CGO_ENABLED=0 GOOS=linux go build -o /main
+  SAVE ARTIFACT /main
+
+platform-image:
+  FROM scratch
+  ARG TARGETARCH
+  COPY \
+    --platform=linux/amd64 \
+    (+build/main --GOARCH=$TARGETARCH) /kubernetes-entrypoint
+  USER 65534
+  ENTRYPOINT ["/kubernetes-entrypoint"]
+  SAVE IMAGE --push \
+    ghcr.io/vexxhost/atmosphere/kubernetes-entrypoint:${COMMIT} \
+    ghcr.io/vexxhost/atmosphere/kubernetes-entrypoint:latest
+
+image:
+  BUILD --platform linux/amd64 --platform linux/arm64 +platform-image

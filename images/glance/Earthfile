@@ -4,11 +4,15 @@ image:
   ARG PROJECT=glance
   ARG RELEASE=zed
   ARG REF=06a18202ab52c64803f044b8f848ed1c160905d2
-  ARG PIP_PACKAGES="glance_store[cinder]"
-  FROM ../openstack-service+image --PROJECT ${PROJECT} --RELEASE ${RELEASE} --PROJECT_REF ${REF} --PIP_PACKAGES "${PIP_PACKAGES}"
+  FROM ../openstack-service+image \
+    --PROJECT ${PROJECT} \
+    --RELEASE ${RELEASE} \
+    --PROJECT_REF ${REF} \
+    --PIP_PACKAGES "glance_store[cinder]"
   DO \
     ../+APT_INSTALL \
     --PACKAGES "ceph-common lsscsi nvme-cli python3-rados python3-rbd qemu-utils sysfsutils udev util-linux"
+  DO ../+APPLY_PATCHES
   COPY ../kubernetes+image/kubectl /usr/local/bin/kubectl
   SAVE IMAGE --push \
     ghcr.io/vexxhost/atmosphere/${PROJECT}:${RELEASE} \

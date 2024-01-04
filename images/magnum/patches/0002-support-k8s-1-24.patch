@@ -1,0 +1,75 @@
+From f25b5c0f89dcc16918d5d8636355831ce0dc4091 Mon Sep 17 00:00:00 2001
+From: Daniel Meyerholt <dxm523@gmail.com>
+Date: Sat, 28 May 2022 12:43:45 +0200
+Subject: [PATCH] Support K8s 1.24+
+
+Only specify dockershim options when container runtime is not containerd.
+Those options were ignored in the past when using containerd but since 1.24
+kubelet refuses to start.
+
+Task: 45282
+Story: 2010028
+
+Signed-off-by: Daniel Meyerholt <dxm523@gmail.com>
+Change-Id: Ib44cc30285c8bd4219d4a45dc956696505ddd570
+(cherry picked from commit f7cd2928d6a84e869c87c333b814de76cae9a920)
+---
+ .../kubernetes/fragments/configure-kubernetes-master.sh      | 3 ++-
+ .../kubernetes/fragments/configure-kubernetes-minion.sh      | 3 ++-
+ .../notes/support-dockershim-removal-cad104d069f1a50b.yaml   | 5 +++++
+ 3 files changed, 9 insertions(+), 2 deletions(-)
+ create mode 100644 releasenotes/notes/support-dockershim-removal-cad104d069f1a50b.yaml
+
+diff --git a/magnum/drivers/common/templates/kubernetes/fragments/configure-kubernetes-master.sh b/magnum/drivers/common/templates/kubernetes/fragments/configure-kubernetes-master.sh
+index 42267404a1..61ca0a7a59 100644
+--- a/magnum/drivers/common/templates/kubernetes/fragments/configure-kubernetes-master.sh
++++ b/magnum/drivers/common/templates/kubernetes/fragments/configure-kubernetes-master.sh
+@@ -454,7 +454,6 @@ if [ -f /etc/sysconfig/docker ] ; then
+     sed -i -E 's/^OPTIONS=("|'"'"')/OPTIONS=\1'"${DOCKER_OPTIONS}"' /' /etc/sysconfig/docker
+ fi
+ 
+-KUBELET_ARGS="${KUBELET_ARGS} --network-plugin=cni --cni-conf-dir=/etc/cni/net.d --cni-bin-dir=/opt/cni/bin"
+ KUBELET_ARGS="${KUBELET_ARGS} --register-with-taints=node-role.kubernetes.io/master=:NoSchedule"
+ KUBELET_ARGS="${KUBELET_ARGS} --node-labels=magnum.openstack.org/role=${NODEGROUP_ROLE}"
+ KUBELET_ARGS="${KUBELET_ARGS} --node-labels=magnum.openstack.org/nodegroup=${NODEGROUP_NAME}"
+@@ -503,6 +502,8 @@ if [ ${CONTAINER_RUNTIME} = "containerd"  ] ; then
+     KUBELET_ARGS="${KUBELET_ARGS} --container-runtime=remote"
+     KUBELET_ARGS="${KUBELET_ARGS} --runtime-request-timeout=15m"
+     KUBELET_ARGS="${KUBELET_ARGS} --container-runtime-endpoint=unix:///run/containerd/containerd.sock"
++else
++    KUBELET_ARGS="${KUBELET_ARGS} --network-plugin=cni --cni-conf-dir=/etc/cni/net.d --cni-bin-dir=/opt/cni/bin"
+ fi
+ 
+ if [ -z "${KUBE_NODE_IP}" ]; then
+diff --git a/magnum/drivers/common/templates/kubernetes/fragments/configure-kubernetes-minion.sh b/magnum/drivers/common/templates/kubernetes/fragments/configure-kubernetes-minion.sh
+index 46055244ac..60fc1918bc 100644
+--- a/magnum/drivers/common/templates/kubernetes/fragments/configure-kubernetes-minion.sh
++++ b/magnum/drivers/common/templates/kubernetes/fragments/configure-kubernetes-minion.sh
+@@ -282,6 +282,8 @@ if [ ${CONTAINER_RUNTIME} = "containerd"  ] ; then
+     KUBELET_ARGS="${KUBELET_ARGS} --container-runtime=remote"
+     KUBELET_ARGS="${KUBELET_ARGS} --runtime-request-timeout=15m"
+     KUBELET_ARGS="${KUBELET_ARGS} --container-runtime-endpoint=unix:///run/containerd/containerd.sock"
++else
++    KUBELET_ARGS="${KUBELET_ARGS} --network-plugin=cni --cni-conf-dir=/etc/cni/net.d --cni-bin-dir=/opt/cni/bin"
+ fi
+ 
+ auto_healing_enabled=$(echo ${AUTO_HEALING_ENABLED} | tr '[:upper:]' '[:lower:]')
+@@ -290,7 +292,6 @@ if [[ "${auto_healing_enabled}" = "true" && "${autohealing_controller}" = "drain
+     KUBELET_ARGS="${KUBELET_ARGS} --node-labels=draino-enabled=true"
+ fi
+ 
+-KUBELET_ARGS="${KUBELET_ARGS} --network-plugin=cni --cni-conf-dir=/etc/cni/net.d --cni-bin-dir=/opt/cni/bin"
+ 
+ sed -i '
+     /^KUBELET_ADDRESS=/ s/=.*/="--address=0.0.0.0"/
+diff --git a/releasenotes/notes/support-dockershim-removal-cad104d069f1a50b.yaml b/releasenotes/notes/support-dockershim-removal-cad104d069f1a50b.yaml
+new file mode 100644
+index 0000000000..f228db6321
+--- /dev/null
++++ b/releasenotes/notes/support-dockershim-removal-cad104d069f1a50b.yaml
+@@ -0,0 +1,5 @@
++---
++fixes:
++  - |
++    Support K8s 1.24 which removed support of dockershim. Needs containerd as
++    container runtime.

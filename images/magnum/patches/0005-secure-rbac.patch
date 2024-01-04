@@ -1,0 +1,1969 @@
+From 7ffb23c87d04ea2c7f5b07a0af98573cb69379e0 Mon Sep 17 00:00:00 2001
+From: Rico Lin <ricolin@ricolky.com>
+Date: Tue, 11 Jul 2023 05:40:01 -0700
+Subject: [PATCH] Secure Rbac (#10)
+
+* Support enables rbac policies new defaults
+
+The Magnum service allow enables policies (RBAC) new defaults and scope by
+default. The Default value of config options ``[oslo_policy] enforce_scope``
+and ``[oslo_policy] oslo_policy.enforce_new_defaults`` are both to
+``False``, but will change to ``True`` in following cycles.
+
+To enable them then modify the below config options value in
+``magnum.conf`` file::
+
+  [oslo_policy]
+  enforce_new_defaults=True
+  enforce_scope=True
+
+reference tc goal for more detail:
+https://governance.openstack.org/tc/goals/selected/consistent-and-secure-rbac.html
+
+Related blueprint secure-rbac
+
+Change-Id: I249942a355577c4f1ef51b3988f0cc4979959d0b
+
+* Allow Admin to perform all API requests
+
+This propose changes is base on same concerns as this bug in neutron
+https://bugs.launchpad.net/neutron/+bug/1997089
+
+This propose to keep and make sure ADMIN can perform all API requests.
+
+Change-Id: I9a3003963bf13a591cc363fa04ec8e5719ae9114
+
+* Add policies unit tests (Part one)
+
+Add plicies unit test base function
+and tests for federation, quotas and stats.
+
+Change-Id: I0eb12bf77e0e786652e674c787b2821415bd4506
+
+* Add policies unit tests (Part two)
+
+Add plicies unit test base function
+and tests for certificate, and magnum service.
+
+Change-Id: Ib4047cb5a84647ff2848f06de71181673cc0627a
+
+* Add policies unit tests (Part three)
+
+Add plicies unit test base function
+and tests for cluster, cluster template, and nodegroup.
+
+Change-Id: I0555e557725b02f3ec9812f0adf84d283f7389b0
+---
+ magnum/api/hooks.py                           |   8 +-
+ magnum/common/context.py                      |  12 +-
+ magnum/common/policies/base.py                | 169 +++++++++++++++++-
+ magnum/common/policies/certificate.py         |  11 +-
+ magnum/common/policies/cluster.py             |  27 ++-
+ magnum/common/policies/cluster_template.py    |  20 ++-
+ magnum/common/policies/federation.py          |  18 +-
+ magnum/common/policies/nodegroup.py           |  15 +-
+ magnum/common/policies/quota.py               |   3 +-
+ magnum/common/policies/stats.py               |   3 +-
+ magnum/common/policy.py                       |  12 +-
+ magnum/tests/fakes.py                         |   2 +-
+ magnum/tests/unit/api/base.py                 |  16 ++
+ .../tests/unit/api/controllers/test_root.py   |   4 +-
+ .../api/controllers/v1/test_certificate.py    |  23 ++-
+ .../unit/api/controllers/v1/test_cluster.py   |  34 ++--
+ .../controllers/v1/test_cluster_actions.py    |  48 +++--
+ .../unit/api/controllers/v1/test_nodegroup.py |  12 +-
+ .../unit/api/controllers/v1/test_quota.py     |   2 +-
+ .../unit/api/controllers/v1/test_stats.py     |  15 +-
+ magnum/tests/unit/api/test_hooks.py           |  10 +-
+ magnum/tests/unit/common/policies/__init__.py |   0
+ magnum/tests/unit/common/policies/base.py     |  37 ++++
+ .../policies/test_certificate_policy.py       |  72 ++++++++
+ .../common/policies/test_cluster_policy.py    |  65 +++++++
+ .../policies/test_cluster_template_policy.py  |  74 ++++++++
+ .../common/policies/test_federation_policy.py |  67 +++++++
+ .../policies/test_magnum_service_policy.py    |  26 +++
+ .../common/policies/test_nodegroup_policy.py  |  74 ++++++++
+ .../unit/common/policies/test_quota_policy.py |  74 ++++++++
+ .../unit/common/policies/test_stats_policy.py |  33 ++++
+ magnum/tests/unit/common/test_context.py      |  43 ++---
+ ...dmin_perform_acitons-cc988655bb72b3f3.yaml |   9 +
+ ...ope-and-new-defaults-7e6e503f74283071.yaml |  13 ++
+ 36 files changed, 943 insertions(+), 124 deletions(-)
+ create mode 100644 magnum/tests/unit/common/policies/__init__.py
+ create mode 100644 magnum/tests/unit/common/policies/base.py
+ create mode 100644 magnum/tests/unit/common/policies/test_certificate_policy.py
+ create mode 100644 magnum/tests/unit/common/policies/test_cluster_policy.py
+ create mode 100644 magnum/tests/unit/common/policies/test_cluster_template_policy.py
+ create mode 100644 magnum/tests/unit/common/policies/test_federation_policy.py
+ create mode 100644 magnum/tests/unit/common/policies/test_magnum_service_policy.py
+ create mode 100644 magnum/tests/unit/common/policies/test_nodegroup_policy.py
+ create mode 100644 magnum/tests/unit/common/policies/test_quota_policy.py
+ create mode 100644 magnum/tests/unit/common/policies/test_stats_policy.py
+ create mode 100644 releasenotes/notes/allow_admin_perform_acitons-cc988655bb72b3f3.yaml
+ create mode 100644 releasenotes/notes/enable-enforce-scope-and-new-defaults-7e6e503f74283071.yaml
+
+diff --git a/magnum/api/hooks.py b/magnum/api/hooks.py
+index e0d36a9a88..f5a9049795 100644
+--- a/magnum/api/hooks.py
++++ b/magnum/api/hooks.py
+@@ -52,8 +52,8 @@ def before(self, state):
+         user_id = headers.get('X-User-Id')
+         project = headers.get('X-Project-Name')
+         project_id = headers.get('X-Project-Id')
+-        domain_id = headers.get('X-User-Domain-Id')
+-        domain_name = headers.get('X-User-Domain-Name')
++        user_domain_id = headers.get('X-User-Domain-Id')
++        user_domain_name = headers.get('X-User-Domain-Name')
+         auth_token = headers.get('X-Auth-Token')
+         roles = headers.get('X-Roles', '').split(',')
+         auth_token_info = state.request.environ.get('keystone.token_info')
+@@ -72,8 +72,8 @@ def before(self, state):
+             user_id=user_id,
+             project_name=project,
+             project_id=project_id,
+-            domain_id=domain_id,
+-            domain_name=domain_name,
++            user_domain_id=user_domain_id,
++            user_domain_name=user_domain_name,
+             roles=roles)
+ 
+ 
+diff --git a/magnum/common/context.py b/magnum/common/context.py
+index 547c9cc9b4..c2c3be1e23 100644
+--- a/magnum/common/context.py
++++ b/magnum/common/context.py
+@@ -42,7 +42,7 @@ def __init__(self, auth_token=None, auth_url=None, domain_id=None,
+         """
+         super(RequestContext, self).__init__(auth_token=auth_token,
+                                              user_id=user_name,
+-                                             project_id=project_name,
++                                             project_id=project_id,
+                                              is_admin=is_admin,
+                                              read_only=read_only,
+                                              show_deleted=show_deleted,
+@@ -53,8 +53,12 @@ def __init__(self, auth_token=None, auth_url=None, domain_id=None,
+         self.user_id = user_id
+         self.project_name = project_name
+         self.project_id = project_id
+-        self.domain_id = domain_id
+-        self.domain_name = domain_name
++        # (ricolin) Rmove domain_id because oslo_policy use this args to
++        # judge if this request is a domain scope or not. We might be consider
++        # bring this back only if that judge in oslo_policy is no longer affect
++        # project scope enforce.
++        # self.domain_id = domain_id
++        # self.domain_name = domain_name
+         self.user_domain_id = user_domain_id
+         self.user_domain_name = user_domain_name
+         self.auth_url = auth_url
+@@ -71,8 +75,6 @@ def to_dict(self):
+         value = super(RequestContext, self).to_dict()
+         value.update({'auth_token': self.auth_token,
+                       'auth_url': self.auth_url,
+-                      'domain_id': self.domain_id,
+-                      'domain_name': self.domain_name,
+                       'user_domain_id': self.user_domain_id,
+                       'user_domain_name': self.user_domain_name,
+                       'user_name': self.user_name,
+diff --git a/magnum/common/policies/base.py b/magnum/common/policies/base.py
+index 44c75b7daf..05ac11728b 100644
+--- a/magnum/common/policies/base.py
++++ b/magnum/common/policies/base.py
+@@ -13,12 +13,79 @@
+ #    under the License.
+ from oslo_policy import policy
+ 
+-ROLE_ADMIN = 'rule:context_is_admin'
++
+ RULE_ADMIN_OR_OWNER = 'rule:admin_or_owner'
+-RULE_ADMIN_API = 'rule:admin_api'
++RULE_ADMIN_API = 'rule:context_is_admin'
+ RULE_ADMIN_OR_USER = 'rule:admin_or_user'
+ RULE_CLUSTER_USER = 'rule:cluster_user'
+ RULE_DENY_CLUSTER_USER = 'rule:deny_cluster_user'
++RULE_USER = "rule:is_user"
++# Generic check string for checking if a user is authorized on a particular
++# project, specifically with the member role.
++RULE_PROJECT_MEMBER = 'rule:project_member'
++# Generic check string for checking if a user is authorized on a particular
++# project but with read-only access. For example, this persona would be able to
++# list private images owned by a project but cannot make any writeable changes
++# to those images.
++RULE_PROJECT_READER = 'rule:project_reader'
++
++RULE_USER_OR_CLUSTER_USER = (
++    'rule:user_or_cluster_user')
++RULE_ADMIN_OR_PROJECT_READER = (
++    'rule:admin_or_project_reader')
++RULE_ADMIN_OR_PROJECT_MEMBER = (
++    'rule:admin_or_project_member')
++RULE_ADMIN_OR_PROJECT_MEMBER_USER = (
++    'rule:admin_or_project_member_user')
++RULE_ADMIN_OR_PROJECT_MEMBER_USER_OR_CLUSTER_USER = (
++    'rule:admin_or_project_member_user_or_cluster_user')
++RULE_PROJECT_MEMBER_DENY_CLUSTER_USER = (
++    'rule:project_member_deny_cluster_user')
++RULE_ADMIN_OR_PROJECT_MEMBER_DENY_CLUSTER_USER = (
++    'rule:admin_or_project_member_deny_cluster_user')
++RULE_PROJECT_READER_DENY_CLUSTER_USER = (
++    'rule:project_reader_deny_cluster_user')
++RULE_ADMIN_OR_PROJECT_READER_DENY_CLUSTER_USER = (
++    'rule:admin_or_project_reader_deny_cluster_user')
++RULE_ADMIN_OR_PROJECT_READER_USER_OR_CLUSTER_USER = (
++    'rule:admin_or_project_reader_user_or_cluster_user')
++
++# ==========================================================
++# Deprecated Since OpenStack 2023.2(Magnum 17.0.0) and should be removed in
++# The following cycle.
++
++DEPRECATED_REASON = """
++The Magnum API now enforces scoped tokens and default reader and member roles.
++"""
++
++DEPRECATED_SINCE = 'OpenStack 2023.2(Magnum 17.0.0)'
++
++
++DEPRECATED_DENY_CLUSTER_USER = policy.DeprecatedRule(
++    name=RULE_DENY_CLUSTER_USER,
++    check_str='not domain_id:%(trustee_domain_id)s',
++    deprecated_reason=DEPRECATED_REASON,
++    deprecated_since=DEPRECATED_SINCE
++)
++
++DEPRECATED_RULE_ADMIN_OR_OWNER = policy.DeprecatedRule(
++    name=RULE_ADMIN_OR_OWNER,
++    check_str='is_admin:True or project_id:%(project_id)s',
++    deprecated_reason=DEPRECATED_REASON,
++    deprecated_since=DEPRECATED_SINCE
++)
++
++# Only used for DEPRECATED_RULE_ADMIN_OR_USER_OR_CLUSTER_USER
++RULE_ADMIN_OR_USER_OR_CLUSTER_USER = (
++    'rule:admin_or_user_or_cluster_user')
++
++DEPRECATED_RULE_ADMIN_OR_USER_OR_CLUSTER_USER = policy.DeprecatedRule(
++    name=RULE_ADMIN_OR_USER_OR_CLUSTER_USER,
++    check_str=f"(({RULE_ADMIN_API}) or ({RULE_USER_OR_CLUSTER_USER}))",
++    deprecated_reason=DEPRECATED_REASON,
++    deprecated_since=DEPRECATED_SINCE
++)
++# ==========================================================
+ 
+ rules = [
+     policy.RuleDefault(
+@@ -29,14 +96,14 @@
+         name='admin_or_owner',
+         check_str='is_admin:True or project_id:%(project_id)s'
+     ),
+-    policy.RuleDefault(
+-        name='admin_api',
+-        check_str='rule:context_is_admin'
+-    ),
+     policy.RuleDefault(
+         name='admin_or_user',
+         check_str='is_admin:True or user_id:%(user_id)s'
+     ),
++    policy.RuleDefault(
++        name='is_user',
++        check_str='user_id:%(user_id)s'
++    ),
+     policy.RuleDefault(
+         name='cluster_user',
+         check_str='user_id:%(trustee_user_id)s'
+@@ -44,7 +111,95 @@
+     policy.RuleDefault(
+         name='deny_cluster_user',
+         check_str='not domain_id:%(trustee_domain_id)s'
+-    )
++    ),
++    policy.RuleDefault(
++        name='project_member',
++        check_str='role:member and project_id:%(project_id)s'
++    ),
++    policy.RuleDefault(
++        name='project_reader',
++        check_str='role:reader and project_id:%(project_id)s'
++    ),
++    policy.RuleDefault(
++        name='admin_or_project_reader',
++        check_str=f"({RULE_ADMIN_API}) or ({RULE_PROJECT_READER})",
++        deprecated_rule=DEPRECATED_RULE_ADMIN_OR_OWNER
++    ),
++    policy.RuleDefault(
++        name='admin_or_project_member',
++        check_str=f"({RULE_ADMIN_API}) or ({RULE_PROJECT_MEMBER})",
++        deprecated_rule=DEPRECATED_RULE_ADMIN_OR_OWNER
++    ),
++    policy.RuleDefault(
++        name='admin_or_project_member_user',
++        check_str=(
++            f"({RULE_ADMIN_API}) or (({RULE_PROJECT_MEMBER}) and "
++            f"({RULE_USER}))"
++        )
++    ),
++    policy.RuleDefault(
++        name='user_or_cluster_user',
++        check_str=(
++            f"(({RULE_USER}) or ({RULE_CLUSTER_USER}))"
++        )
++    ),
++    policy.RuleDefault(
++        name='admin_or_user_or_cluster_user',
++        check_str=(
++            f"(({RULE_ADMIN_API}) or ({RULE_USER_OR_CLUSTER_USER}))"
++        )
++    ),
++    policy.RuleDefault(
++        name='admin_or_project_member_cluster_user',
++        check_str=(
++            f"({RULE_ADMIN_API}) or (({RULE_PROJECT_MEMBER}) "
++            f"and ({RULE_CLUSTER_USER}))"
++        )
++    ),
++    policy.RuleDefault(
++        name='admin_or_project_member_user_or_cluster_user',
++        check_str=(
++            f"({RULE_ADMIN_API}) or (({RULE_PROJECT_MEMBER}) and "
++            f"({RULE_USER_OR_CLUSTER_USER}))"
++        ),
++        deprecated_rule=DEPRECATED_RULE_ADMIN_OR_USER_OR_CLUSTER_USER
++    ),
++    policy.RuleDefault(
++        name='project_member_deny_cluster_user',
++        check_str=(
++            f"(({RULE_PROJECT_MEMBER}) and ({RULE_DENY_CLUSTER_USER}))"
++        ),
++        deprecated_rule=DEPRECATED_DENY_CLUSTER_USER
++    ),
++    policy.RuleDefault(
++        name='admin_or_project_member_deny_cluster_user',
++        check_str=(
++            f"({RULE_ADMIN_API}) or ({RULE_PROJECT_MEMBER_DENY_CLUSTER_USER})"
++        ),
++        deprecated_rule=DEPRECATED_DENY_CLUSTER_USER
++    ),
++    policy.RuleDefault(
++        name='project_reader_deny_cluster_user',
++        check_str=(
++            f"(({RULE_PROJECT_READER}) and ({RULE_DENY_CLUSTER_USER}))"
++        ),
++        deprecated_rule=DEPRECATED_DENY_CLUSTER_USER
++    ),
++    policy.RuleDefault(
++        name='admin_or_project_reader_deny_cluster_user',
++        check_str=(
++            f"({RULE_ADMIN_API}) or ({RULE_PROJECT_READER_DENY_CLUSTER_USER})"
++        ),
++        deprecated_rule=DEPRECATED_DENY_CLUSTER_USER
++    ),
++    policy.RuleDefault(
++        name='admin_or_project_reader_user_or_cluster_user',
++        check_str=(
++            f"({RULE_ADMIN_API}) or (({RULE_PROJECT_READER}) and "
++            f"({RULE_USER_OR_CLUSTER_USER}))"
++        ),
++        deprecated_rule=DEPRECATED_RULE_ADMIN_OR_USER_OR_CLUSTER_USER
++    ),
+ ]
+ 
+ 
+diff --git a/magnum/common/policies/certificate.py b/magnum/common/policies/certificate.py
+index 5e96b64f5b..32a7047a4b 100644
+--- a/magnum/common/policies/certificate.py
++++ b/magnum/common/policies/certificate.py
+@@ -16,13 +16,12 @@
+ from magnum.common.policies import base
+ 
+ CERTIFICATE = 'certificate:%s'
+-RULE_ADMIN_OR_USER_OR_CLUSTER_USER = base.RULE_ADMIN_OR_USER + " or " + \
+-    base.RULE_CLUSTER_USER
+ 
+ rules = [
+     policy.DocumentedRuleDefault(
+         name=CERTIFICATE % 'create',
+-        check_str=RULE_ADMIN_OR_USER_OR_CLUSTER_USER,
++        check_str=base.RULE_ADMIN_OR_PROJECT_MEMBER_USER_OR_CLUSTER_USER,
++        scope_types=["project"],
+         description='Sign a new certificate by the CA.',
+         operations=[
+             {
+@@ -33,7 +32,8 @@
+     ),
+     policy.DocumentedRuleDefault(
+         name=CERTIFICATE % 'get',
+-        check_str=RULE_ADMIN_OR_USER_OR_CLUSTER_USER,
++        check_str=base.RULE_ADMIN_OR_PROJECT_READER_USER_OR_CLUSTER_USER,
++        scope_types=["project"],
+         description='Retrieve CA information about the given bay/cluster.',
+         operations=[
+             {
+@@ -44,7 +44,8 @@
+     ),
+     policy.DocumentedRuleDefault(
+         name=CERTIFICATE % 'rotate_ca',
+-        check_str=base.RULE_ADMIN_OR_OWNER,
++        check_str=base.RULE_ADMIN_OR_PROJECT_MEMBER,
++        scope_types=["project"],
+         description='Rotate the CA certificate on the given bay/cluster.',
+         operations=[
+             {
+diff --git a/magnum/common/policies/cluster.py b/magnum/common/policies/cluster.py
+index 15b63226b2..5e1864c377 100644
+--- a/magnum/common/policies/cluster.py
++++ b/magnum/common/policies/cluster.py
+@@ -20,7 +20,8 @@
+ rules = [
+     policy.DocumentedRuleDefault(
+         name=CLUSTER % 'create',
+-        check_str=base.RULE_DENY_CLUSTER_USER,
++        check_str=base.RULE_ADMIN_OR_PROJECT_MEMBER_DENY_CLUSTER_USER,
++        scope_types=["project"],
+         description='Create a new cluster.',
+         operations=[
+             {
+@@ -31,7 +32,8 @@
+     ),
+     policy.DocumentedRuleDefault(
+         name=CLUSTER % 'delete',
+-        check_str=base.RULE_DENY_CLUSTER_USER,
++        check_str=base.RULE_ADMIN_OR_PROJECT_MEMBER_DENY_CLUSTER_USER,
++        scope_types=["project"],
+         description='Delete a cluster.',
+         operations=[
+             {
+@@ -53,7 +55,8 @@
+     ),
+     policy.DocumentedRuleDefault(
+         name=CLUSTER % 'detail',
+-        check_str=base.RULE_DENY_CLUSTER_USER,
++        check_str=base.RULE_ADMIN_OR_PROJECT_READER_DENY_CLUSTER_USER,
++        scope_types=["project"],
+         description='Retrieve a list of clusters with detail.',
+         operations=[
+             {
+@@ -75,7 +78,8 @@
+     ),
+     policy.DocumentedRuleDefault(
+         name=CLUSTER % 'get',
+-        check_str=base.RULE_DENY_CLUSTER_USER,
++        check_str=base.RULE_ADMIN_OR_PROJECT_READER_DENY_CLUSTER_USER,
++        scope_types=["project"],
+         description='Retrieve information about the given cluster.',
+         operations=[
+             {
+@@ -98,7 +102,8 @@
+     ),
+     policy.DocumentedRuleDefault(
+         name=CLUSTER % 'get_all',
+-        check_str=base.RULE_DENY_CLUSTER_USER,
++        check_str=base.RULE_ADMIN_OR_PROJECT_READER_DENY_CLUSTER_USER,
++        scope_types=["project"],
+         description='Retrieve a list of clusters.',
+         operations=[
+             {
+@@ -120,7 +125,8 @@
+     ),
+     policy.DocumentedRuleDefault(
+         name=CLUSTER % 'update',
+-        check_str=base.RULE_DENY_CLUSTER_USER,
++        check_str=base.RULE_ADMIN_OR_PROJECT_MEMBER_DENY_CLUSTER_USER,
++        scope_types=["project"],
+         description='Update an existing cluster.',
+         operations=[
+             {
+@@ -131,7 +137,8 @@
+     ),
+     policy.DocumentedRuleDefault(
+         name=CLUSTER % 'update_health_status',
+-        check_str=base.RULE_ADMIN_OR_USER + " or " + base.RULE_CLUSTER_USER,
++        check_str=base.RULE_ADMIN_OR_PROJECT_MEMBER_USER_OR_CLUSTER_USER,
++        scope_types=["project"],
+         description='Update the health status of an existing cluster.',
+         operations=[
+             {
+@@ -153,7 +160,8 @@
+     ),
+     policy.DocumentedRuleDefault(
+         name=CLUSTER % 'resize',
+-        check_str=base.RULE_DENY_CLUSTER_USER,
++        check_str=base.RULE_ADMIN_OR_PROJECT_MEMBER_DENY_CLUSTER_USER,
++        scope_types=["project"],
+         description='Resize an existing cluster.',
+         operations=[
+             {
+@@ -164,7 +172,8 @@
+     ),
+     policy.DocumentedRuleDefault(
+         name=CLUSTER % 'upgrade',
+-        check_str=base.RULE_DENY_CLUSTER_USER,
++        check_str=base.RULE_ADMIN_OR_PROJECT_MEMBER_DENY_CLUSTER_USER,
++        scope_types=["project"],
+         description='Upgrade an existing cluster.',
+         operations=[
+             {
+diff --git a/magnum/common/policies/cluster_template.py b/magnum/common/policies/cluster_template.py
+index d9b51737ad..c0d8337051 100644
+--- a/magnum/common/policies/cluster_template.py
++++ b/magnum/common/policies/cluster_template.py
+@@ -20,18 +20,20 @@
+ rules = [
+     policy.DocumentedRuleDefault(
+         name=CLUSTER_TEMPLATE % 'create',
+-        check_str=base.RULE_DENY_CLUSTER_USER,
++        check_str=base.RULE_ADMIN_OR_PROJECT_MEMBER_DENY_CLUSTER_USER,
++        scope_types=["project"],
+         description='Create a new cluster template.',
+         operations=[
+             {
+                 'path': '/v1/clustertemplates',
+                 'method': 'POST'
+             }
+-        ]
++        ],
+     ),
+     policy.DocumentedRuleDefault(
+         name=CLUSTER_TEMPLATE % 'delete',
+-        check_str=base.RULE_ADMIN_OR_OWNER,
++        check_str=base.RULE_ADMIN_OR_PROJECT_MEMBER,
++        scope_types=["project"],
+         description='Delete a cluster template.',
+         operations=[
+             {
+@@ -65,7 +67,8 @@
+     ),
+     policy.DocumentedRuleDefault(
+         name=CLUSTER_TEMPLATE % 'detail',
+-        check_str=base.RULE_DENY_CLUSTER_USER,
++        check_str=base.RULE_ADMIN_OR_PROJECT_READER_DENY_CLUSTER_USER,
++        scope_types=["project"],
+         description='Retrieve a list of cluster templates with detail.',
+         operations=[
+             {
+@@ -76,7 +79,8 @@
+     ),
+     policy.DocumentedRuleDefault(
+         name=CLUSTER_TEMPLATE % 'get',
+-        check_str=base.RULE_DENY_CLUSTER_USER,
++        check_str=base.RULE_ADMIN_OR_PROJECT_READER_DENY_CLUSTER_USER,
++        scope_types=["project"],
+         description='Retrieve information about the given cluster template.',
+         operations=[
+             {
+@@ -99,7 +103,8 @@
+     ),
+     policy.DocumentedRuleDefault(
+         name=CLUSTER_TEMPLATE % 'get_all',
+-        check_str=base.RULE_DENY_CLUSTER_USER,
++        check_str=base.RULE_ADMIN_OR_PROJECT_READER_DENY_CLUSTER_USER,
++        scope_types=["project"],
+         description='Retrieve a list of cluster templates.',
+         operations=[
+             {
+@@ -121,7 +126,8 @@
+     ),
+     policy.DocumentedRuleDefault(
+         name=CLUSTER_TEMPLATE % 'update',
+-        check_str=base.RULE_ADMIN_OR_OWNER,
++        check_str=base.RULE_ADMIN_OR_PROJECT_MEMBER,
++        scope_types=["project"],
+         description='Update an existing cluster template.',
+         operations=[
+             {
+diff --git a/magnum/common/policies/federation.py b/magnum/common/policies/federation.py
+index b78b1a1b1e..4c347993c3 100644
+--- a/magnum/common/policies/federation.py
++++ b/magnum/common/policies/federation.py
+@@ -20,7 +20,8 @@
+ rules = [
+     policy.DocumentedRuleDefault(
+         name=FEDERATION % 'create',
+-        check_str=base.RULE_DENY_CLUSTER_USER,
++        check_str=base.RULE_ADMIN_OR_PROJECT_MEMBER_DENY_CLUSTER_USER,
++        scope_types=["project"],
+         description='Create a new federation.',
+         operations=[
+             {
+@@ -31,7 +32,8 @@
+     ),
+     policy.DocumentedRuleDefault(
+         name=FEDERATION % 'delete',
+-        check_str=base.RULE_DENY_CLUSTER_USER,
++        check_str=base.RULE_ADMIN_OR_PROJECT_MEMBER_DENY_CLUSTER_USER,
++        scope_types=["project"],
+         description='Delete a federation.',
+         operations=[
+             {
+@@ -42,7 +44,8 @@
+     ),
+     policy.DocumentedRuleDefault(
+         name=FEDERATION % 'detail',
+-        check_str=base.RULE_DENY_CLUSTER_USER,
++        check_str=base.RULE_ADMIN_OR_PROJECT_READER_DENY_CLUSTER_USER,
++        scope_types=["project"],
+         description='Retrieve a list of federations with detail.',
+         operations=[
+             {
+@@ -53,7 +56,8 @@
+     ),
+     policy.DocumentedRuleDefault(
+         name=FEDERATION % 'get',
+-        check_str=base.RULE_DENY_CLUSTER_USER,
++        check_str=base.RULE_ADMIN_OR_PROJECT_READER_DENY_CLUSTER_USER,
++        scope_types=["project"],
+         description='Retrieve information about the given federation.',
+         operations=[
+             {
+@@ -64,7 +68,8 @@
+     ),
+     policy.DocumentedRuleDefault(
+         name=FEDERATION % 'get_all',
+-        check_str=base.RULE_DENY_CLUSTER_USER,
++        check_str=base.RULE_ADMIN_OR_PROJECT_READER_DENY_CLUSTER_USER,
++        scope_types=["project"],
+         description='Retrieve a list of federations.',
+         operations=[
+             {
+@@ -75,7 +80,8 @@
+     ),
+     policy.DocumentedRuleDefault(
+         name=FEDERATION % 'update',
+-        check_str=base.RULE_DENY_CLUSTER_USER,
++        check_str=base.RULE_ADMIN_OR_PROJECT_MEMBER_DENY_CLUSTER_USER,
++        scope_types=["project"],
+         description='Update an existing federation.',
+         operations=[
+             {
+diff --git a/magnum/common/policies/nodegroup.py b/magnum/common/policies/nodegroup.py
+index 64b2d670ea..25bad88579 100644
+--- a/magnum/common/policies/nodegroup.py
++++ b/magnum/common/policies/nodegroup.py
+@@ -24,7 +24,8 @@
+ rules = [
+     policy.DocumentedRuleDefault(
+         name=NODEGROUP % 'get',
+-        check_str=base.RULE_ADMIN_OR_OWNER,
++        check_str=base.RULE_ADMIN_OR_PROJECT_READER,
++        scope_types=["project"],
+         description='Retrieve information about the given nodegroup.',
+         operations=[
+             {
+@@ -35,7 +36,8 @@
+     ),
+     policy.DocumentedRuleDefault(
+         name=NODEGROUP % 'get_all',
+-        check_str=base.RULE_ADMIN_OR_OWNER,
++        check_str=base.RULE_ADMIN_OR_PROJECT_READER,
++        scope_types=["project"],
+         description='Retrieve a list of nodegroups that belong to a cluster.',
+         operations=[
+             {
+@@ -68,7 +70,8 @@
+     ),
+     policy.DocumentedRuleDefault(
+         name=NODEGROUP % 'create',
+-        check_str=base.RULE_ADMIN_OR_OWNER,
++        check_str=base.RULE_ADMIN_OR_PROJECT_MEMBER,
++        scope_types=["project"],
+         description='Create a new nodegroup.',
+         operations=[
+             {
+@@ -79,7 +82,8 @@
+     ),
+     policy.DocumentedRuleDefault(
+         name=NODEGROUP % 'delete',
+-        check_str=base.RULE_ADMIN_OR_OWNER,
++        check_str=base.RULE_ADMIN_OR_PROJECT_MEMBER,
++        scope_types=["project"],
+         description='Delete a nodegroup.',
+         operations=[
+             {
+@@ -90,7 +94,8 @@
+     ),
+     policy.DocumentedRuleDefault(
+         name=NODEGROUP % 'update',
+-        check_str=base.RULE_ADMIN_OR_OWNER,
++        check_str=base.RULE_ADMIN_OR_PROJECT_MEMBER,
++        scope_types=["project"],
+         description='Update an existing nodegroup.',
+         operations=[
+             {
+diff --git a/magnum/common/policies/quota.py b/magnum/common/policies/quota.py
+index 4baecf7d84..574857b1a4 100644
+--- a/magnum/common/policies/quota.py
++++ b/magnum/common/policies/quota.py
+@@ -42,7 +42,8 @@
+     ),
+     policy.DocumentedRuleDefault(
+         name=QUOTA % 'get',
+-        check_str=base.RULE_ADMIN_OR_OWNER,
++        check_str=base.RULE_ADMIN_OR_PROJECT_READER,
++        scope_types=["project"],
+         description='Retrieve Quota information for the given project_id.',
+         operations=[
+             {
+diff --git a/magnum/common/policies/stats.py b/magnum/common/policies/stats.py
+index c37164094b..64996443b7 100644
+--- a/magnum/common/policies/stats.py
++++ b/magnum/common/policies/stats.py
+@@ -20,7 +20,8 @@
+ rules = [
+     policy.DocumentedRuleDefault(
+         name=STATS % 'get_all',
+-        check_str=base.RULE_ADMIN_OR_OWNER,
++        check_str=base.RULE_ADMIN_OR_PROJECT_READER,
++        scope_types=["project"],
+         description='Retrieve magnum stats.',
+         operations=[
+             {
+diff --git a/magnum/common/policy.py b/magnum/common/policy.py
+index d4bfff77b5..989676efb1 100644
+--- a/magnum/common/policy.py
++++ b/magnum/common/policy.py
+@@ -17,6 +17,7 @@
+ 
+ import decorator
+ from oslo_config import cfg
++from oslo_log import log as logging
+ from oslo_policy import opts
+ from oslo_policy import policy
+ from oslo_utils import importutils
+@@ -27,6 +28,7 @@
+ from magnum.common import policies
+ 
+ 
++LOG = logging.getLogger(__name__)
+ _ENFORCER = None
+ CONF = cfg.CONF
+ 
+@@ -105,8 +107,14 @@ def enforce(context, rule=None, target=None,
+         target = {'project_id': context.project_id,
+                   'user_id': context.user_id}
+     add_policy_attributes(target)
+-    return enforcer.enforce(rule, target, credentials,
+-                            do_raise=do_raise, exc=exc, *args, **kwargs)
++
++    try:
++        result = enforcer.enforce(rule, target, credentials,
++                                  do_raise=do_raise, exc=exc, *args, **kwargs)
++    except policy.InvalidScope as ex:
++        LOG.debug(f"Invalide scope while enforce policy :{str(ex)}")
++        raise exc(action=rule)
++    return result
+ 
+ 
+ def add_policy_attributes(target):
+diff --git a/magnum/tests/fakes.py b/magnum/tests/fakes.py
+index 4407975306..3a64078ce8 100644
+--- a/magnum/tests/fakes.py
++++ b/magnum/tests/fakes.py
+@@ -25,7 +25,7 @@
+                         'X-Roles': 'role1,role2',
+                         'X-Auth-Url': 'fake_auth_url',
+                         'X-Identity-Status': 'Confirmed',
+-                        'X-User-Domain-Name': 'domain',
++                        'X-User-Domain-Name': 'user_domain_name',
+                         'X-Project-Domain-Id': 'project_domain_id',
+                         'X-User-Domain-Id': 'user_domain_id',
+                         'OpenStack-API-Version': 'container-infra 1.0'
+diff --git a/magnum/tests/unit/api/base.py b/magnum/tests/unit/api/base.py
+index a4dd3fef63..ddf41277e4 100644
+--- a/magnum/tests/unit/api/base.py
++++ b/magnum/tests/unit/api/base.py
+@@ -128,6 +128,9 @@ def put_json(self, path, params, expect_errors=False, headers=None,
+                               with the request
+         :param status: expected status code of response
+         """
++        # Provide member role for put request
++        if not headers:
++            headers = {"X-Roles": "member"}
+         return self._request_json(path=path, params=params,
+                                   expect_errors=expect_errors,
+                                   headers=headers, extra_environ=extra_environ,
+@@ -146,6 +149,9 @@ def post_json(self, path, params, expect_errors=False, headers=None,
+                               with the request
+         :param status: expected status code of response
+         """
++        # Provide member role for post request
++        if not headers:
++            headers = {"X-Roles": "member"}
+         return self._request_json(path=path, params=params,
+                                   expect_errors=expect_errors,
+                                   headers=headers, extra_environ=extra_environ,
+@@ -164,6 +170,9 @@ def patch_json(self, path, params, expect_errors=False, headers=None,
+                               with the request
+         :param status: expected status code of response
+         """
++        # Provide member role for patch request
++        if not headers:
++            headers = {"X-Roles": "member"}
+         return self._request_json(path=path, params=params,
+                                   expect_errors=expect_errors,
+                                   headers=headers, extra_environ=extra_environ,
+@@ -184,6 +193,9 @@ def delete(self, path, expect_errors=False, headers=None,
+         """
+         full_path = path_prefix + path
+         print('DELETE: %s' % (full_path))
++        # Provide member role for delete request
++        if not headers:
++            headers = {"X-Roles": "member"}
+         response = self.app.delete(str(full_path),
+                                    headers=headers,
+                                    status=status,
+@@ -215,6 +227,10 @@ def get_json(self, path, expect_errors=False, headers=None,
+                         'q.value': [],
+                         'q.op': [],
+                         }
++
++        # Provide reader role for get request
++        if not headers:
++            headers = {"X-Roles": "reader"}
+         for query in q:
+             for name in ['field', 'op', 'value']:
+                 query_params['q.%s' % name].append(query.get(name, ''))
+diff --git a/magnum/tests/unit/api/controllers/test_root.py b/magnum/tests/unit/api/controllers/test_root.py
+index e187715016..31700761fd 100644
+--- a/magnum/tests/unit/api/controllers/test_root.py
++++ b/magnum/tests/unit/api/controllers/test_root.py
+@@ -140,7 +140,9 @@ def test_noauth(self):
+         response = app.get('/v1/')
+         self.assertEqual(self.v1_expected, response.json)
+ 
+-        response = app.get('/v1/clustertemplates')
++        response = app.get('/v1/clustertemplates',
++                           headers={"X-Roles": "reader"}
++                           )
+         self.assertEqual(200, response.status_int)
+ 
+     def test_auth_with_no_public_routes(self):
+diff --git a/magnum/tests/unit/api/controllers/v1/test_certificate.py b/magnum/tests/unit/api/controllers/v1/test_certificate.py
+index 02fcfb40a2..ecd14f0187 100644
+--- a/magnum/tests/unit/api/controllers/v1/test_certificate.py
++++ b/magnum/tests/unit/api/controllers/v1/test_certificate.py
+@@ -21,7 +21,14 @@
+ from magnum.tests.unit.objects import utils as obj_utils
+ 
+ 
+-HEADERS = {'OpenStack-API-Version': 'container-infra latest'}
++READER_HEADERS = {
++    'OpenStack-API-Version': 'container-infra latest',
++    "X-Roles": "reader"
++}
++HEADERS = {
++    'OpenStack-API-Version': 'container-infra latest',
++    "X-Roles": "member"
++}
+ 
+ 
+ class TestCertObject(base.TestCase):
+@@ -59,7 +66,7 @@ def test_get_one(self):
+         self.conductor_api.get_ca_certificate.return_value = mock_cert
+ 
+         response = self.get_json('/certificates/%s' % self.cluster.uuid,
+-                                 headers=HEADERS)
++                                 headers=READER_HEADERS)
+ 
+         self.assertEqual(self.cluster.uuid, response['cluster_uuid'])
+         # check that bay is still valid as well
+@@ -74,7 +81,7 @@ def test_get_one_by_name(self):
+         self.conductor_api.get_ca_certificate.return_value = mock_cert
+ 
+         response = self.get_json('/certificates/%s' % self.cluster.name,
+-                                 headers=HEADERS)
++                                 headers=READER_HEADERS)
+ 
+         self.assertEqual(self.cluster.uuid, response['cluster_uuid'])
+         # check that bay is still valid as well
+@@ -84,7 +91,8 @@ def test_get_one_by_name(self):
+ 
+     def test_get_one_by_name_not_found(self):
+         response = self.get_json('/certificates/not_found',
+-                                 expect_errors=True, headers=HEADERS)
++                                 expect_errors=True,
++                                 headers=READER_HEADERS)
+ 
+         self.assertEqual(404, response.status_int)
+         self.assertEqual('application/json', response.content_type)
+@@ -97,7 +105,8 @@ def test_get_one_by_name_multiple_cluster(self):
+                                       uuid=uuidutils.generate_uuid())
+ 
+         response = self.get_json('/certificates/test_cluster',
+-                                 expect_errors=True, headers=HEADERS)
++                                 expect_errors=True,
++                                 headers=READER_HEADERS)
+ 
+         self.assertEqual(409, response.status_int)
+         self.assertEqual('application/json', response.content_type)
+@@ -110,7 +119,7 @@ def test_links(self):
+         self.conductor_api.get_ca_certificate.return_value = mock_cert
+ 
+         response = self.get_json('/certificates/%s' % self.cluster.uuid,
+-                                 headers=HEADERS)
++                                 headers=READER_HEADERS)
+ 
+         self.assertIn('links', response.keys())
+         self.assertEqual(2, len(response['links']))
+@@ -265,7 +274,7 @@ def test_policy_disallow_get_one(self):
+         self._common_policy_check(
+             "certificate:get", self.get_json,
+             '/certificates/%s' % cluster.uuid,
+-            expect_errors=True, headers=HEADERS)
++            expect_errors=True, headers=READER_HEADERS)
+ 
+     def test_policy_disallow_create(self):
+         cluster = obj_utils.create_test_cluster(self.context)
+diff --git a/magnum/tests/unit/api/controllers/v1/test_cluster.py b/magnum/tests/unit/api/controllers/v1/test_cluster.py
+index 016f8cc173..9ff2439f36 100755
+--- a/magnum/tests/unit/api/controllers/v1/test_cluster.py
++++ b/magnum/tests/unit/api/controllers/v1/test_cluster.py
+@@ -494,7 +494,9 @@ def test_update_cluster_with_rollback_enabled(self):
+             '/clusters/%s/?rollback=True' % self.cluster_obj.uuid,
+             [{'path': '/node_count', 'value': node_count,
+               'op': 'replace'}],
+-            headers={'OpenStack-API-Version': 'container-infra 1.3'})
++            headers={'OpenStack-API-Version': 'container-infra 1.3',
++                     "X-Roles": "member"
++                     })
+ 
+         self.mock_cluster_update.assert_called_once_with(
+             mock.ANY, node_count, self.cluster_obj.health_status,
+@@ -507,7 +509,9 @@ def test_update_cluster_with_rollback_disabled(self):
+             '/clusters/%s/?rollback=False' % self.cluster_obj.uuid,
+             [{'path': '/node_count', 'value': node_count,
+               'op': 'replace'}],
+-            headers={'OpenStack-API-Version': 'container-infra 1.3'})
++            headers={'OpenStack-API-Version': 'container-infra 1.3',
++                     "X-Roles": "member"
++                     })
+ 
+         self.mock_cluster_update.assert_called_once_with(
+             mock.ANY, node_count, self.cluster_obj.health_status,
+@@ -520,7 +524,9 @@ def test_update_cluster_with_zero_node_count_fail(self):
+             '/clusters/%s' % self.cluster_obj.uuid,
+             [{'path': '/node_count', 'value': node_count,
+               'op': 'replace'}],
+-            headers={'OpenStack-API-Version': 'container-infra 1.9'},
++            headers={'OpenStack-API-Version': 'container-infra 1.9',
++                     "X-Roles": "member"
++                     },
+             expect_errors=True)
+ 
+         self.assertEqual(400, response.status_code)
+@@ -531,7 +537,9 @@ def test_update_cluster_with_zero_node_count(self):
+             '/clusters/%s' % self.cluster_obj.uuid,
+             [{'path': '/node_count', 'value': node_count,
+               'op': 'replace'}],
+-            headers={'OpenStack-API-Version': 'container-infra 1.10'})
++            headers={'OpenStack-API-Version': 'container-infra 1.10',
++                     "X-Roles": "member"
++                     })
+ 
+         self.mock_cluster_update.assert_called_once_with(
+             mock.ANY, node_count, self.cluster_obj.health_status,
+@@ -708,18 +716,24 @@ def test_create_cluster_with_cluster_template_name(self):
+     def test_create_cluster_with_zero_node_count_fail(self):
+         bdict = apiutils.cluster_post_data()
+         bdict['node_count'] = 0
+-        response = self.post_json('/clusters', bdict, expect_errors=True,
+-                                  headers={"Openstack-Api-Version":
+-                                           "container-infra 1.9"})
++        response = self.post_json(
++            '/clusters', bdict, expect_errors=True,
++            headers={
++                "Openstack-Api-Version": "container-infra 1.9",
++                "X-Roles": "member"
++            })
+         self.assertEqual('application/json', response.content_type)
+         self.assertEqual(400, response.status_int)
+ 
+     def test_create_cluster_with_zero_node_count(self):
+         bdict = apiutils.cluster_post_data()
+         bdict['node_count'] = 0
+-        response = self.post_json('/clusters', bdict,
+-                                  headers={"Openstack-Api-Version":
+-                                           "container-infra 1.10"})
++        response = self.post_json(
++            '/clusters', bdict,
++            headers={
++                "Openstack-Api-Version": "container-infra 1.10",
++                "X-Roles": "member"
++            })
+         self.assertEqual('application/json', response.content_type)
+         self.assertEqual(202, response.status_int)
+ 
+diff --git a/magnum/tests/unit/api/controllers/v1/test_cluster_actions.py b/magnum/tests/unit/api/controllers/v1/test_cluster_actions.py
+index ba9304fe1b..22baf556ce 100644
+--- a/magnum/tests/unit/api/controllers/v1/test_cluster_actions.py
++++ b/magnum/tests/unit/api/controllers/v1/test_cluster_actions.py
+@@ -46,7 +46,8 @@ def test_resize(self):
+                                   self.cluster_obj.uuid,
+                                   {"node_count": new_node_count},
+                                   headers={"Openstack-Api-Version":
+-                                           "container-infra 1.7"})
++                                           "container-infra 1.7",
++                                           "X-Roles": "member"})
+         self.assertEqual(202, response.status_code)
+ 
+         response = self.get_json('/clusters/%s' % self.cluster_obj.uuid)
+@@ -69,7 +70,8 @@ def test_resize_with_nodegroup(self):
+                                   self.cluster_obj.uuid,
+                                   cluster_resize_req,
+                                   headers={"Openstack-Api-Version":
+-                                           "container-infra 1.9"})
++                                           "container-infra 1.9",
++                                           "X-Roles": "member"})
+         self.assertEqual(202, response.status_code)
+ 
+         response = self.get_json('/clusters/%s' % self.cluster_obj.uuid)
+@@ -89,7 +91,8 @@ def test_resize_with_master_nodegroup(self):
+                                   self.cluster_obj.uuid,
+                                   cluster_resize_req,
+                                   headers={"Openstack-Api-Version":
+-                                           "container-infra 1.9"},
++                                           "container-infra 1.9",
++                                           "X-Roles": "member"},
+                                   expect_errors=True)
+         self.assertEqual(400, response.status_code)
+ 
+@@ -106,7 +109,8 @@ def test_resize_with_node_count_greater_than_max(self):
+                                   self.cluster_obj.uuid,
+                                   cluster_resize_req,
+                                   headers={"Openstack-Api-Version":
+-                                           "container-infra 1.9"},
++                                           "container-infra 1.9",
++                                           "X-Roles": "member"},
+                                   expect_errors=True)
+         self.assertEqual(400, response.status_code)
+ 
+@@ -123,7 +127,8 @@ def test_resize_with_node_count_less_than_min(self):
+                                   self.cluster_obj.uuid,
+                                   cluster_resize_req,
+                                   headers={"Openstack-Api-Version":
+-                                           "container-infra 1.9"},
++                                           "container-infra 1.9",
++                                           "X-Roles": "member"},
+                                   expect_errors=True)
+         self.assertEqual(400, response.status_code)
+ 
+@@ -140,7 +145,8 @@ def test_resize_with_zero_node_count_fail(self):
+                                   self.cluster_obj.uuid,
+                                   cluster_resize_req,
+                                   headers={"Openstack-Api-Version":
+-                                           "container-infra 1.9"},
++                                           "container-infra 1.9",
++                                           "X-Roles": "member"},
+                                   expect_errors=True)
+         self.assertEqual(400, response.status_code)
+ 
+@@ -157,7 +163,8 @@ def test_resize_with_zero_node_count(self):
+                                   self.cluster_obj.uuid,
+                                   cluster_resize_req,
+                                   headers={"Openstack-Api-Version":
+-                                           "container-infra 1.10"})
++                                           "container-infra 1.10",
++                                           "X-Roles": "member"})
+         self.assertEqual(202, response.status_code)
+ 
+ 
+@@ -195,7 +202,8 @@ def test_upgrade(self):
+                                   self.cluster_obj.uuid,
+                                   cluster_upgrade_req,
+                                   headers={"Openstack-Api-Version":
+-                                           "container-infra 1.8"})
++                                           "container-infra 1.8",
++                                           "X-Roles": "member"})
+         self.assertEqual(202, response.status_code)
+ 
+     def test_upgrade_cluster_as_admin(self):
+@@ -226,7 +234,8 @@ def test_upgrade_cluster_as_admin(self):
+             '/clusters/%s/actions/upgrade' %
+             cluster_uuid,
+             cluster_upgrade_req,
+-            headers={"Openstack-Api-Version": "container-infra 1.8"})
++            headers={"Openstack-Api-Version": "container-infra 1.8",
++                     "X-Roles": "member"})
+ 
+         self.assertEqual(202, response.status_int)
+ 
+@@ -239,7 +248,8 @@ def test_upgrade_default_worker(self):
+                                   self.cluster_obj.uuid,
+                                   cluster_upgrade_req,
+                                   headers={"Openstack-Api-Version":
+-                                           "container-infra 1.9"})
++                                           "container-infra 1.9",
++                                           "X-Roles": "member"})
+         self.assertEqual(202, response.status_code)
+ 
+     def test_upgrade_default_master(self):
+@@ -251,7 +261,8 @@ def test_upgrade_default_master(self):
+                                   self.cluster_obj.uuid,
+                                   cluster_upgrade_req,
+                                   headers={"Openstack-Api-Version":
+-                                           "container-infra 1.9"})
++                                           "container-infra 1.9",
++                                           "X-Roles": "member"})
+         self.assertEqual(202, response.status_code)
+ 
+     def test_upgrade_non_default_ng(self):
+@@ -263,7 +274,8 @@ def test_upgrade_non_default_ng(self):
+                                   self.cluster_obj.uuid,
+                                   cluster_upgrade_req,
+                                   headers={"Openstack-Api-Version":
+-                                           "container-infra 1.9"})
++                                           "container-infra 1.9",
++                                           "X-Roles": "member"})
+         self.assertEqual(202, response.status_code)
+ 
+     def test_upgrade_cluster_not_found(self):
+@@ -273,7 +285,8 @@ def test_upgrade_cluster_not_found(self):
+         response = self.post_json('/clusters/not_there/actions/upgrade',
+                                   cluster_upgrade_req,
+                                   headers={"Openstack-Api-Version":
+-                                           "container-infra 1.8"},
++                                           "container-infra 1.8",
++                                           "X-Roles": "member"},
+                                   expect_errors=True)
+         self.assertEqual(404, response.status_code)
+ 
+@@ -285,7 +298,8 @@ def test_upgrade_ct_not_found(self):
+                                   self.cluster_obj.uuid,
+                                   cluster_upgrade_req,
+                                   headers={"Openstack-Api-Version":
+-                                           "container-infra 1.8"},
++                                           "container-infra 1.8",
++                                           "X-Roles": "member"},
+                                   expect_errors=True)
+         self.assertEqual(404, response.status_code)
+ 
+@@ -298,7 +312,8 @@ def test_upgrade_ng_not_found(self):
+                                   self.cluster_obj.uuid,
+                                   cluster_upgrade_req,
+                                   headers={"Openstack-Api-Version":
+-                                           "container-infra 1.9"},
++                                           "container-infra 1.9",
++                                           "X-Roles": "member"},
+                                   expect_errors=True)
+         self.assertEqual(404, response.status_code)
+ 
+@@ -311,6 +326,7 @@ def test_upgrade_non_default_ng_invalid_ct(self):
+                                   self.cluster_obj.uuid,
+                                   cluster_upgrade_req,
+                                   headers={"Openstack-Api-Version":
+-                                           "container-infra 1.9"},
++                                           "container-infra 1.9",
++                                           "X-Roles": "member"},
+                                   expect_errors=True)
+         self.assertEqual(409, response.status_code)
+diff --git a/magnum/tests/unit/api/controllers/v1/test_nodegroup.py b/magnum/tests/unit/api/controllers/v1/test_nodegroup.py
+index a6f73d54b2..68304a10f6 100644
+--- a/magnum/tests/unit/api/controllers/v1/test_nodegroup.py
++++ b/magnum/tests/unit/api/controllers/v1/test_nodegroup.py
+@@ -47,24 +47,26 @@ def test_nodegroup_init(self):
+ class NodeGroupControllerTest(api_base.FunctionalTest):
+     headers = {"Openstack-Api-Version": "container-infra latest"}
+ 
+-    def _add_headers(self, kwargs):
++    def _add_headers(self, kwargs, roles=None):
+         if 'headers' not in kwargs:
+             kwargs['headers'] = self.headers
++            if roles:
++                kwargs['headers']['X-Roles'] = ",".join(roles)
+ 
+     def get_json(self, *args, **kwargs):
+-        self._add_headers(kwargs)
++        self._add_headers(kwargs, roles=['reader'])
+         return super(NodeGroupControllerTest, self).get_json(*args, **kwargs)
+ 
+     def post_json(self, *args, **kwargs):
+-        self._add_headers(kwargs)
++        self._add_headers(kwargs, roles=['member'])
+         return super(NodeGroupControllerTest, self).post_json(*args, **kwargs)
+ 
+     def delete(self, *args, **kwargs):
+-        self._add_headers(kwargs)
++        self._add_headers(kwargs, roles=['member'])
+         return super(NodeGroupControllerTest, self).delete(*args, **kwargs)
+ 
+     def patch_json(self, *args, **kwargs):
+-        self._add_headers(kwargs)
++        self._add_headers(kwargs, roles=['member'])
+         return super(NodeGroupControllerTest, self).patch_json(*args, **kwargs)
+ 
+ 
+diff --git a/magnum/tests/unit/api/controllers/v1/test_quota.py b/magnum/tests/unit/api/controllers/v1/test_quota.py
+index b6b47c481a..07e78857ed 100644
+--- a/magnum/tests/unit/api/controllers/v1/test_quota.py
++++ b/magnum/tests/unit/api/controllers/v1/test_quota.py
+@@ -207,7 +207,7 @@ def test_get_all_non_admin(self, mock_policy):
+                                                 project_id="proj-id-"+str(i))
+             quota_list.append(quota)
+ 
+-        headers = {'X-Project-Id': 'proj-id-2'}
++        headers = {'X-Project-Id': 'proj-id-2', "X-Roles": "member"}
+         response = self.get_json('/quotas', headers=headers)
+         self.assertEqual(1, len(response['quotas']))
+         self.assertEqual('proj-id-2', response['quotas'][0]['project_id'])
+diff --git a/magnum/tests/unit/api/controllers/v1/test_stats.py b/magnum/tests/unit/api/controllers/v1/test_stats.py
+index bb7aac28f4..2e41222d34 100644
+--- a/magnum/tests/unit/api/controllers/v1/test_stats.py
++++ b/magnum/tests/unit/api/controllers/v1/test_stats.py
+@@ -21,7 +21,14 @@
+ class TestStatsController(api_base.FunctionalTest):
+ 
+     def setUp(self):
+-        self.base_headers = {'OpenStack-API-Version': 'container-infra 1.4'}
++        self.base_headers = {
++            "X-Roles": "reader",
++            "OpenStack-API-Version": "container-infra 1.4"
++        }
++        self.base_admin_headers = {
++            "X-Roles": "admin",
++            "OpenStack-API-Version": "container-infra 1.4"
++        }
+         super(TestStatsController, self).setUp()
+         obj_utils.create_test_cluster_template(self.context)
+ 
+@@ -39,7 +46,7 @@ def test_admin_get_all_stats(self, mock_context, mock_policy):
+         obj_utils.create_test_cluster(self.context,
+                                       project_id=234,
+                                       uuid='uuid2')
+-        response = self.get_json('/stats', headers=self.base_headers)
++        response = self.get_json('/stats', headers=self.base_admin_headers)
+         expected = {u'clusters': 2, u'nodes': 12}
+         self.assertEqual(expected, response)
+ 
+@@ -54,7 +61,7 @@ def test_admin_get_tenant_stats(self, mock_context, mock_policy):
+                                       uuid='uuid2')
+         self.context.is_admin = True
+         response = self.get_json('/stats?project_id=234',
+-                                 headers=self.base_headers)
++                                 headers=self.base_admin_headers)
+         expected = {u'clusters': 1, u'nodes': 6}
+         self.assertEqual(expected, response)
+ 
+@@ -69,7 +76,7 @@ def test_admin_get_invalid_tenant_stats(self, mock_context, mock_policy):
+                                       uuid='uuid2')
+         self.context.is_admin = True
+         response = self.get_json('/stats?project_id=34',
+-                                 headers=self.base_headers)
++                                 headers=self.base_admin_headers)
+         expected = {u'clusters': 0, u'nodes': 0}
+         self.assertEqual(expected, response)
+ 
+diff --git a/magnum/tests/unit/api/test_hooks.py b/magnum/tests/unit/api/test_hooks.py
+index 9332c93120..3cbfde4363 100644
+--- a/magnum/tests/unit/api/test_hooks.py
++++ b/magnum/tests/unit/api/test_hooks.py
+@@ -34,7 +34,8 @@ def setUp(self):
+         super(TestContextHook, self).setUp()
+         self.app = fakes.FakeApp()
+ 
+-    def test_context_hook_before_method(self):
++    @mock.patch("magnum.common.policy.check_is_admin")
++    def test_context_hook_before_method(self, m_c):
+         state = mock.Mock(request=fakes.FakePecanRequest())
+         hook = hooks.ContextHook()
+         hook.before(state)
+@@ -51,12 +52,13 @@ def test_context_hook_before_method(self):
+         self.assertEqual(fakes.fakeAuthTokenHeaders['X-Roles'],
+                          ','.join(ctx.roles))
+         self.assertEqual(fakes.fakeAuthTokenHeaders['X-User-Domain-Name'],
+-                         ctx.domain_name)
++                         ctx.user_domain_name)
+         self.assertEqual(fakes.fakeAuthTokenHeaders['X-User-Domain-Id'],
+-                         ctx.domain_id)
++                         ctx.user_domain_id)
+         self.assertIsNone(ctx.auth_token_info)
+ 
+-    def test_context_hook_before_method_auth_info(self):
++    @mock.patch("magnum.common.policy.check_is_admin")
++    def test_context_hook_before_method_auth_info(self, c_m):
+         state = mock.Mock(request=fakes.FakePecanRequest())
+         state.request.environ['keystone.token_info'] = 'assert_this'
+         hook = hooks.ContextHook()
+diff --git a/magnum/tests/unit/common/policies/__init__.py b/magnum/tests/unit/common/policies/__init__.py
+new file mode 100644
+index 0000000000..e69de29bb2
+diff --git a/magnum/tests/unit/common/policies/base.py b/magnum/tests/unit/common/policies/base.py
+new file mode 100644
+index 0000000000..22572c0a46
+--- /dev/null
++++ b/magnum/tests/unit/common/policies/base.py
+@@ -0,0 +1,37 @@
++#    Licensed under the Apache License, Version 2.0 (the "License"); you may
++#    not use this file except in compliance with the License. You may obtain
++#    a copy of the License at
++#
++#         http://www.apache.org/licenses/LICENSE-2.0
++#
++#    Unless required by applicable law or agreed to in writing, software
++#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
++#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
++#    License for the specific language governing permissions and limitations
++#    under the License.
++
++from oslo_config import cfg
++
++from magnum.tests.unit.api import base as api_base
++
++
++CONF = cfg.CONF
++
++
++class PolicyFunctionalTest(api_base.FunctionalTest):
++    def setUp(self):
++        super(PolicyFunctionalTest, self).setUp()
++        CONF.set_override('enforce_scope', True, group='oslo_policy')
++        CONF.set_override('enforce_new_defaults', True, group='oslo_policy')
++        self.reader_headers = {
++            "X-Roles": "reader",
++        }
++        self.member_headers = {
++            "X-Roles": "member",
++        }
++        self.admin_headers = {
++            "X-Roles": "admin",
++        }
++        self.foo_headers = {
++            "X-Roles": "foo",
++        }
+diff --git a/magnum/tests/unit/common/policies/test_certificate_policy.py b/magnum/tests/unit/common/policies/test_certificate_policy.py
+new file mode 100644
+index 0000000000..cc53a71645
+--- /dev/null
++++ b/magnum/tests/unit/common/policies/test_certificate_policy.py
+@@ -0,0 +1,72 @@
++#    Licensed under the Apache License, Version 2.0 (the "License"); you may
++#    not use this file except in compliance with the License. You may obtain
++#    a copy of the License at
++#
++#         http://www.apache.org/licenses/LICENSE-2.0
++#
++#    Unless required by applicable law or agreed to in writing, software
++#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
++#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
++#    License for the specific language governing permissions and limitations
++#    under the License.
++
++from unittest import mock
++from webtest.app import AppError
++
++from magnum.tests.unit.api import utils as apiutils
++from magnum.tests.unit.common.policies import base
++from magnum.tests.unit.objects import utils as obj_utils
++
++READER_HEADERS = {
++    'OpenStack-API-Version': 'container-infra latest',
++    "X-Roles": "reader"
++}
++HEADERS = {
++    'OpenStack-API-Version': 'container-infra latest',
++    "X-Roles": "member"
++}
++
++
++class TestCertifiactePolicy(base.PolicyFunctionalTest):
++    def setUp(self):
++        super(TestCertifiactePolicy, self).setUp()
++        self.cluster = obj_utils.create_test_cluster(self.context)
++
++        conductor_api_patcher = mock.patch('magnum.conductor.api.API')
++        self.conductor_api_class = conductor_api_patcher.start()
++        self.conductor_api = mock.MagicMock()
++        self.conductor_api_class.return_value = self.conductor_api
++        self.addCleanup(conductor_api_patcher.stop)
++
++        self.conductor_api.sign_certificate.side_effect = self._fake_sign
++
++    @staticmethod
++    def _fake_sign(cluster, cert):
++        cert.pem = 'fake-pem'
++        return cert
++
++    def test_get_no_permission(self):
++        exc = self.assertRaises(
++            AppError,
++            self.get_json,
++            f"/certificates/{self.cluster.uuid}",
++            headers=HEADERS)
++        self.assertIn("403 Forbidden", str(exc))
++
++    def test_create_no_permission(self):
++        new_cert = apiutils.cert_post_data(cluster_uuid=self.cluster.uuid)
++        del new_cert['pem']
++
++        exc = self.assertRaises(
++            AppError, self.post_json,
++            '/certificates', new_cert,
++            headers=READER_HEADERS)
++        self.assertIn("403 Forbidden", str(exc))
++
++    def test_update_no_permission(self):
++        exc = self.assertRaises(
++            AppError, self.patch_json,
++            f"/certificates/{self.cluster.uuid}", {},
++            headers=READER_HEADERS
++        )
++        self.assertIn("403 Forbidden", str(exc))
+diff --git a/magnum/tests/unit/common/policies/test_cluster_policy.py b/magnum/tests/unit/common/policies/test_cluster_policy.py
+new file mode 100644
+index 0000000000..01cfd25c5c
+--- /dev/null
++++ b/magnum/tests/unit/common/policies/test_cluster_policy.py
+@@ -0,0 +1,65 @@
++#    Licensed under the Apache License, Version 2.0 (the "License"); you may
++#    not use this file except in compliance with the License. You may obtain
++#    a copy of the License at
++#
++#         http://www.apache.org/licenses/LICENSE-2.0
++#
++#    Unless required by applicable law or agreed to in writing, software
++#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
++#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
++#    License for the specific language governing permissions and limitations
++#    under the License.
++
++from webtest.app import AppError
++
++from magnum.tests.unit.api import utils as apiutils
++from magnum.tests.unit.common.policies import base
++from magnum.tests.unit.objects import utils as obj_utils
++
++
++class TestClusterPolicy(base.PolicyFunctionalTest):
++    def setUp(self):
++        super(TestClusterPolicy, self).setUp()
++        self.cluster = obj_utils.create_test_cluster(
++            self.context, name='cluster_example_A', node_count=3
++        )
++
++    def test_get_all_no_permission(self):
++        exc = self.assertRaises(
++            AppError, self.get_json, '/clusters',
++            headers=self.member_headers)
++        self.assertIn("403 Forbidden", str(exc))
++
++    def test_get_no_permission(self):
++        exc = self.assertRaises(
++            AppError,
++            self.get_json,
++            f"/clusters/{self.cluster.uuid}",
++            headers=self.member_headers)
++        self.assertIn("403 Forbidden", str(exc))
++
++    def test_create_no_permission(self):
++        exc = self.assertRaises(
++            AppError, self.post_json,
++            '/clusters', apiutils.cluster_post_data(),
++            headers=self.reader_headers)
++        self.assertIn("403 Forbidden", str(exc))
++
++    def test_update_no_permission(self):
++        cluster_dict = [
++            {'path': '/node_count', 'value': 4, 'op': 'replace'}
++        ]
++        exc = self.assertRaises(
++            AppError, self.patch_json,
++            f"/clusters/{self.cluster.name}", cluster_dict,
++            headers=self.reader_headers
++        )
++        self.assertIn("403 Forbidden", str(exc))
++
++    def test_delete_no_permission(self):
++        # delete cluster
++        exc = self.assertRaises(
++            AppError, self.delete, f"/clusters/{self.cluster.uuid}",
++            headers=self.reader_headers
++        )
++        self.assertIn("403 Forbidden", str(exc))
+diff --git a/magnum/tests/unit/common/policies/test_cluster_template_policy.py b/magnum/tests/unit/common/policies/test_cluster_template_policy.py
+new file mode 100644
+index 0000000000..c6eb9b60a6
+--- /dev/null
++++ b/magnum/tests/unit/common/policies/test_cluster_template_policy.py
+@@ -0,0 +1,74 @@
++#    Licensed under the Apache License, Version 2.0 (the "License"); you may
++#    not use this file except in compliance with the License. You may obtain
++#    a copy of the License at
++#
++#         http://www.apache.org/licenses/LICENSE-2.0
++#
++#    Unless required by applicable law or agreed to in writing, software
++#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
++#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
++#    License for the specific language governing permissions and limitations
++#    under the License.
++
++from webtest.app import AppError
++
++from magnum.tests.unit.api import utils as apiutils
++from magnum.tests.unit.common.policies import base
++from magnum.tests.unit.objects import utils as obj_utils
++
++
++class TestClusterTemplatePolicy(base.PolicyFunctionalTest):
++    def setUp(self):
++        super(TestClusterTemplatePolicy, self).setUp()
++        self.clustertemplate = obj_utils.create_test_cluster_template(
++            self.context
++        )
++
++    def test_get_all_no_permission(self):
++        exc = self.assertRaises(
++            AppError, self.get_json, '/clustertemplates',
++            headers=self.member_headers)
++        self.assertIn("403 Forbidden", str(exc))
++
++    def test_get_detail_no_permission(self):
++        exc = self.assertRaises(
++            AppError, self.get_json,
++            '/clustertemplates/detail',
++            headers=self.member_headers)
++        self.assertIn("403 Forbidden", str(exc))
++
++    def test_get_no_permission(self):
++        exc = self.assertRaises(
++            AppError,
++            self.get_json,
++            f"/clustertemplates/{self.clustertemplate.uuid}",
++            headers=self.member_headers)
++        self.assertIn("403 Forbidden", str(exc))
++
++    def test_create_no_permission(self):
++        exc = self.assertRaises(
++            AppError, self.post_json,
++            '/clustertemplates',
++            apiutils.cluster_template_post_data(),
++            headers=self.reader_headers)
++        self.assertIn("403 Forbidden", str(exc))
++
++    def test_update_no_permission(self):
++        clustertemplate_data = [
++            {'path': '/dns_nameserver', 'op': 'remove'}]
++        exc = self.assertRaises(
++            AppError,
++            self.patch_json,
++            f"/clustertemplates/{self.clustertemplate.uuid}",
++            clustertemplate_data,
++            headers=self.reader_headers
++        )
++        self.assertIn("403 Forbidden", str(exc))
++
++    def test_delete_no_permission(self):
++        # delete clustertemplate
++        exc = self.assertRaises(
++            AppError, self.delete,
++            f"/clustertemplates/{self.clustertemplate.uuid}",
++            headers=self.reader_headers)
++        self.assertIn("403 Forbidden", str(exc))
+diff --git a/magnum/tests/unit/common/policies/test_federation_policy.py b/magnum/tests/unit/common/policies/test_federation_policy.py
+new file mode 100644
+index 0000000000..68eb1d6212
+--- /dev/null
++++ b/magnum/tests/unit/common/policies/test_federation_policy.py
+@@ -0,0 +1,67 @@
++#    Licensed under the Apache License, Version 2.0 (the "License"); you may
++#    not use this file except in compliance with the License. You may obtain
++#    a copy of the License at
++#
++#         http://www.apache.org/licenses/LICENSE-2.0
++#
++#    Unless required by applicable law or agreed to in writing, software
++#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
++#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
++#    License for the specific language governing permissions and limitations
++#    under the License.
++
++from oslo_utils import uuidutils
++from webtest.app import AppError
++
++from magnum.tests.unit.common.policies import base
++from magnum.tests.unit.objects import utils as obj_utils
++
++
++class TestFederationPolicy(base.PolicyFunctionalTest):
++    def setUp(self):
++        super(TestFederationPolicy, self).setUp()
++        self.create_frederation()
++
++    def create_frederation(self):
++        self.fake_uuid = uuidutils.generate_uuid()
++        self.federation = obj_utils.create_test_federation(
++            self.context, uuid=self.fake_uuid)
++
++    def test_get_no_permission(self):
++        exc = self.assertRaises(
++            AppError, self.get_json, '/federations',
++            headers=self.member_headers)
++        self.assertIn("403 Forbidden", str(exc))
++
++    def test_get_reader(self):
++        response = self.get_json('/federations')
++        self.assertEqual(self.fake_uuid, response['federations'][0]['uuid'])
++
++    def test_create_no_permission(self):
++        exc = self.assertRaises(
++            AppError, self.post_json, '/federations', {},
++            headers=self.reader_headers)
++        self.assertIn("403 Forbidden", str(exc))
++
++    def test_update_no_permission(self):
++        new_member = obj_utils.create_test_cluster(self.context)
++        exc = self.assertRaises(
++            AppError, self.patch_json, '/federations/%s' % self.fake_uuid,
++            [{'path': '/member_ids', 'value': new_member.uuid, 'op': 'add'}],
++            headers=self.reader_headers)
++        self.assertIn("403 Forbidden", str(exc))
++
++    def test_delete_no_permission(self):
++        exc = self.assertRaises(
++            AppError, self.delete,
++            '/federations/%s' % self.fake_uuid,
++            headers=self.reader_headers
++        )
++        self.assertIn("403 Forbidden", str(exc))
++
++    def test_detail_list_no_permission(self):
++        exc = self.assertRaises(
++            AppError, self.get_json,
++            '/federations/detail',
++            headers=self.member_headers)
++        self.assertIn("403 Forbidden", str(exc))
+diff --git a/magnum/tests/unit/common/policies/test_magnum_service_policy.py b/magnum/tests/unit/common/policies/test_magnum_service_policy.py
+new file mode 100644
+index 0000000000..9f8153d3a4
+--- /dev/null
++++ b/magnum/tests/unit/common/policies/test_magnum_service_policy.py
+@@ -0,0 +1,26 @@
++#    Licensed under the Apache License, Version 2.0 (the "License"); you may
++#    not use this file except in compliance with the License. You may obtain
++#    a copy of the License at
++#
++#         http://www.apache.org/licenses/LICENSE-2.0
++#
++#    Unless required by applicable law or agreed to in writing, software
++#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
++#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
++#    License for the specific language governing permissions and limitations
++#    under the License.
++
++from webtest.app import AppError
++
++from magnum.tests.unit.common.policies import base
++
++
++class TestMagnumServicePolicy(base.PolicyFunctionalTest):
++    def setUp(self):
++        super(TestMagnumServicePolicy, self).setUp()
++
++    def test_get_all_no_permission(self):
++        exc = self.assertRaises(AppError,
++                                self.get_json, "/mservices",
++                                headers=self.member_headers)
++        self.assertIn("403 Forbidden", str(exc))
+diff --git a/magnum/tests/unit/common/policies/test_nodegroup_policy.py b/magnum/tests/unit/common/policies/test_nodegroup_policy.py
+new file mode 100644
+index 0000000000..73f3e107e4
+--- /dev/null
++++ b/magnum/tests/unit/common/policies/test_nodegroup_policy.py
+@@ -0,0 +1,74 @@
++#    Licensed under the Apache License, Version 2.0 (the "License"); you may
++#    not use this file except in compliance with the License. You may obtain
++#    a copy of the License at
++#
++#         http://www.apache.org/licenses/LICENSE-2.0
++#
++#    Unless required by applicable law or agreed to in writing, software
++#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
++#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
++#    License for the specific language governing permissions and limitations
++#    under the License.
++
++from oslo_utils import uuidutils
++from webtest.app import AppError
++
++from magnum import objects
++from magnum.tests.unit.api import utils as apiutils
++from magnum.tests.unit.common.policies import base
++from magnum.tests.unit.objects import utils as obj_utils
++
++
++class TestNodeGroupPolicy(base.PolicyFunctionalTest):
++    def setUp(self):
++        super(TestNodeGroupPolicy, self).setUp()
++        obj_utils.create_test_cluster_template(self.context)
++        self.cluster_uuid = uuidutils.generate_uuid()
++        obj_utils.create_test_cluster(
++            self.context, uuid=self.cluster_uuid)
++        self.cluster = objects.Cluster.get_by_uuid(self.context,
++                                                   self.cluster_uuid)
++        self.nodegroup = obj_utils.create_test_nodegroup(
++            self.context, cluster_id=self.cluster.uuid, is_default=False)
++        self.url = f"/clusters/{self.cluster.uuid}/nodegroups/"
++        self.member = {"Openstack-Api-Version": "container-infra latest"}
++        self.member.update(self.member_headers)
++        self.reader = {"Openstack-Api-Version": "container-infra latest"}
++        self.reader.update(self.reader_headers)
++
++    def test_get_all_no_permission(self):
++        exc = self.assertRaises(AppError,
++                                self.get_json, self.url,
++                                headers=self.member)
++        self.assertIn("403 Forbidden", str(exc))
++
++    def test_get_no_permission(self):
++        exc = self.assertRaises(
++            AppError,
++            self.get_json,
++            f"{self.url}foo",
++            headers=self.member)
++        self.assertIn("403 Forbidden", str(exc))
++
++    def test_create_no_permission(self):
++        exc = self.assertRaises(AppError,
++                                self.post_json, self.url,
++                                apiutils.nodegroup_post_data(),
++                                headers=self.reader)
++        self.assertIn("403 Forbidden", str(exc))
++
++    def test_update_no_permission(self):
++        ng_dict = [
++            {'path': '/max_node_count', 'value': 4, 'op': 'replace'}]
++        exc = self.assertRaises(
++            AppError, self.patch_json,
++            self.url + self.nodegroup.uuid, ng_dict,
++            headers=self.reader)
++        self.assertIn("403 Forbidden", str(exc))
++
++    def test_delete_no_permission(self):
++        # delete cluster
++        exc = self.assertRaises(
++                  AppError, self.delete, self.url + self.nodegroup.uuid,
++                  headers=self.reader)
++        self.assertIn("403 Forbidden", str(exc))
+diff --git a/magnum/tests/unit/common/policies/test_quota_policy.py b/magnum/tests/unit/common/policies/test_quota_policy.py
+new file mode 100644
+index 0000000000..48d4a09c2c
+--- /dev/null
++++ b/magnum/tests/unit/common/policies/test_quota_policy.py
+@@ -0,0 +1,74 @@
++#    Licensed under the Apache License, Version 2.0 (the "License"); you may
++#    not use this file except in compliance with the License. You may obtain
++#    a copy of the License at
++#
++#         http://www.apache.org/licenses/LICENSE-2.0
++#
++#    Unless required by applicable law or agreed to in writing, software
++#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
++#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
++#    License for the specific language governing permissions and limitations
++#    under the License.
++
++from unittest import mock
++from webtest.app import AppError
++
++from magnum.common import clients
++from magnum.tests.unit.api import utils as apiutils
++from magnum.tests.unit.common.policies import base
++from magnum.tests.unit.objects import utils as obj_utils
++
++
++class TestQuotaPolicy(base.PolicyFunctionalTest):
++    def setUp(self):
++        super(TestQuotaPolicy, self).setUp()
++
++    def test_get_all_no_permission(self):
++        exc = self.assertRaises(
++            AppError, self.get_json, '/quotas',
++            headers=self.reader_headers)
++        self.assertIn("403 Forbidden", str(exc))
++
++    def test_get_no_permission(self):
++        quota = obj_utils.create_test_quota(self.context)
++        exc = self.assertRaises(
++            AppError,
++            self.get_json,
++            f"/quotas/{quota['project_id']}/{quota['resource']}",
++            headers=self.member_headers)
++        self.assertIn("403 Forbidden", str(exc))
++
++    @mock.patch.object(clients.OpenStackClients, 'keystone')
++    def test_create_no_permission(self, mock_keystone):
++        exc = self.assertRaises(
++            AppError, self.post_json,
++            '/quotas', apiutils.quota_post_data(),
++            headers=self.reader_headers)
++        self.assertIn("403 Forbidden", str(exc))
++
++    @mock.patch.object(clients.OpenStackClients, 'keystone')
++    def test_update_no_permission(self, mock_keystone):
++        with mock.patch("magnum.common.policy.enforce"):
++            quota_dict = apiutils.quota_post_data(hard_limit=5)
++            self.post_json('/quotas', quota_dict)
++        quota_dict['hard_limit'] = 20
++        exc = self.assertRaises(
++            AppError, self.patch_json, '/quotas', quota_dict,
++            headers=self.reader_headers)
++        self.assertIn("403 Forbidden", str(exc))
++
++    @mock.patch.object(clients.OpenStackClients, 'keystone')
++    def test_delete_no_permission(self, mock_keystone):
++        with mock.patch("magnum.common.policy.enforce"):
++            quota_dict = apiutils.quota_post_data()
++            response = self.post_json('/quotas', quota_dict)
++        self.assertEqual('application/json', response.content_type)
++        self.assertEqual(201, response.status_int)
++
++        project_id = quota_dict['project_id']
++        resource = quota_dict['resource']
++        # delete quota
++        exc = self.assertRaises(
++            AppError, self.delete, f"/quotas/{project_id}/{resource}",
++            headers=self.reader_headers)
++        self.assertIn("403 Forbidden", str(exc))
+diff --git a/magnum/tests/unit/common/policies/test_stats_policy.py b/magnum/tests/unit/common/policies/test_stats_policy.py
+new file mode 100644
+index 0000000000..20cf1bee5c
+--- /dev/null
++++ b/magnum/tests/unit/common/policies/test_stats_policy.py
+@@ -0,0 +1,33 @@
++#    Licensed under the Apache License, Version 2.0 (the "License"); you may
++#    not use this file except in compliance with the License. You may obtain
++#    a copy of the License at
++#
++#         http://www.apache.org/licenses/LICENSE-2.0
++#
++#    Unless required by applicable law or agreed to in writing, software
++#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
++#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
++#    License for the specific language governing permissions and limitations
++#    under the License.
++
++from webtest.app import AppError
++
++from magnum.tests.unit.common.policies import base
++
++
++class TestStatsPolicy(base.PolicyFunctionalTest):
++    def test_stat_reader(self):
++        response = self.get_json('/stats', headers=self.reader_headers)
++        expected = {u'clusters': 0, u'nodes': 0}
++        self.assertEqual(expected, response)
++
++    def test_stat_admin(self):
++        response = self.get_json('/stats', headers=self.admin_headers)
++        expected = {u'clusters': 0, u'nodes': 0}
++        self.assertEqual(expected, response)
++
++    def test_stat_no_permission(self):
++        exc = self.assertRaises(
++            AppError, self.get_json, '/stats',
++            headers=self.member_headers)
++        self.assertIn("403 Forbidden", str(exc))
+diff --git a/magnum/tests/unit/common/test_context.py b/magnum/tests/unit/common/test_context.py
+index c72c2c763d..aed4d33ebd 100644
+--- a/magnum/tests/unit/common/test_context.py
++++ b/magnum/tests/unit/common/test_context.py
+@@ -19,29 +19,30 @@
+ class ContextTestCase(base.TestCase):
+ 
+     def _create_context(self, roles=None):
+-        return magnum_context.RequestContext(auth_token='auth_token1',
+-                                             auth_url='auth_url1',
+-                                             domain_id='domain_id1',
+-                                             domain_name='domain_name1',
+-                                             user_name='user1',
+-                                             user_id='user-id1',
+-                                             project_name='tenant1',
+-                                             project_id='tenant-id1',
+-                                             roles=roles,
+-                                             is_admin=True,
+-                                             read_only=True,
+-                                             show_deleted=True,
+-                                             request_id='request_id1',
+-                                             trust_id='trust_id1',
+-                                             auth_token_info='token_info1')
++        return magnum_context.RequestContext(
++            auth_token='auth_token1',
++            auth_url='auth_url1',
++            user_domain_id='user_domain_id1',
++            user_domain_name='user_domain_name1',
++            user_name='user1',
++            user_id='user-id1',
++            project_name='tenant1',
++            project_id='tenant-id1',
++            roles=roles,
++            is_admin=True,
++            read_only=True,
++            show_deleted=True,
++            request_id='request_id1',
++            trust_id='trust_id1',
++            auth_token_info='token_info1')
+ 
+     def test_context(self):
+         ctx = self._create_context()
+ 
+         self.assertEqual("auth_token1", ctx.auth_token)
+         self.assertEqual("auth_url1", ctx.auth_url)
+-        self.assertEqual("domain_id1", ctx.domain_id)
+-        self.assertEqual("domain_name1", ctx.domain_name)
++        self.assertEqual("user_domain_id1", ctx.user_domain_id)
++        self.assertEqual("user_domain_name1", ctx.user_domain_name)
+         self.assertEqual("user1", ctx.user_name)
+         self.assertEqual("user-id1", ctx.user_id)
+         self.assertEqual("tenant1", ctx.project_name)
+@@ -59,8 +60,8 @@ def test_context_with_roles(self):
+ 
+         self.assertEqual("auth_token1", ctx.auth_token)
+         self.assertEqual("auth_url1", ctx.auth_url)
+-        self.assertEqual("domain_id1", ctx.domain_id)
+-        self.assertEqual("domain_name1", ctx.domain_name)
++        self.assertEqual("user_domain_id1", ctx.user_domain_id)
++        self.assertEqual("user_domain_name1", ctx.user_domain_name)
+         self.assertEqual("user1", ctx.user_name)
+         self.assertEqual("user-id1", ctx.user_id)
+         self.assertEqual("tenant1", ctx.project_name)
+@@ -80,8 +81,8 @@ def test_to_dict_from_dict(self):
+ 
+         self.assertEqual(ctx.auth_token, ctx2.auth_token)
+         self.assertEqual(ctx.auth_url, ctx2.auth_url)
+-        self.assertEqual(ctx.domain_id, ctx2.domain_id)
+-        self.assertEqual(ctx.domain_name, ctx2.domain_name)
++        self.assertEqual(ctx.user_domain_id, ctx2.user_domain_id)
++        self.assertEqual(ctx.user_domain_name, ctx2.user_domain_name)
+         self.assertEqual(ctx.user_name, ctx2.user_name)
+         self.assertEqual(ctx.user_id, ctx2.user_id)
+         self.assertEqual(ctx.project_id, ctx2.project_id)
+diff --git a/releasenotes/notes/allow_admin_perform_acitons-cc988655bb72b3f3.yaml b/releasenotes/notes/allow_admin_perform_acitons-cc988655bb72b3f3.yaml
+new file mode 100644
+index 0000000000..6cb516451c
+--- /dev/null
++++ b/releasenotes/notes/allow_admin_perform_acitons-cc988655bb72b3f3.yaml
+@@ -0,0 +1,9 @@
++---
++upgrade:
++  - |
++    To make sure better have backward compatibility,
++    we set specific rule to allow admin perform all actions.
++    This will apply on part of APIs in
++    * Cluster
++    * Cluster Template
++    * federation
+diff --git a/releasenotes/notes/enable-enforce-scope-and-new-defaults-7e6e503f74283071.yaml b/releasenotes/notes/enable-enforce-scope-and-new-defaults-7e6e503f74283071.yaml
+new file mode 100644
+index 0000000000..69b9fec5eb
+--- /dev/null
++++ b/releasenotes/notes/enable-enforce-scope-and-new-defaults-7e6e503f74283071.yaml
+@@ -0,0 +1,13 @@
++---
++upgrade:
++  - |
++    The Magnum service now allows enables policies (RBAC) new defaults
++    and scope checks. These are controlled by the following (default) config
++    options in ``magnum.conf`` file::
++
++      [oslo_policy]
++      enforce_new_defaults=False
++      enforce_scope=False
++
++    We will change the default to True in the following cycle.
++    If you want to enable them then modify both values to True.

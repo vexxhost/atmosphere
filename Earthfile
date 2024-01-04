@@ -55,6 +55,14 @@ images:
   BUILD ./images/designate+image
   BUILD ./images/glance+image
   BUILD ./images/heat+image
+  BUILD ./images/horizon+image
+  BUILD ./images/ironic+image
+  BUILD ./images/keystone+image
+  BUILD ./images/magnum+image
+  BUILD ./images/manila+image
+  BUILD ./images/neutron+image
+  BUILD ./images/nova-ssh+image
+  BUILD ./images/nova+image
   BUILD ./images/octavia+image
   BUILD ./images/placement+image
   BUILD ./images/senlin+image
@@ -63,7 +71,7 @@ pin-images:
   FROM +build.venv.dev
   COPY roles/defaults/vars/main.yml /defaults.yml
   COPY build/pin-images.py /usr/local/bin/pin-images
-  RUN /usr/local/bin/pin-images /defaults.yml /pinned.yml
+  RUN --no-cache /usr/local/bin/pin-images /defaults.yml /pinned.yml
   SAVE ARTIFACT /pinned.yml AS LOCAL roles/defaults/vars/main.yml
 
 gh:

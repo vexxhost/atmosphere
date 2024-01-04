@@ -46,13 +46,13 @@ def atmosphere_images(defaults):
 
 def test_openstack_helm_image_tags_for_magnum(atmosphere_images):
     assert openstack_helm_image_tags(atmosphere_images, "magnum") == {
-        "bootstrap": "quay.io/vexxhost/heat:zed",
-        "db_drop": "quay.io/vexxhost/heat:zed",
-        "db_init": "quay.io/vexxhost/heat:zed",
+        "bootstrap": "ghcr.io/vexxhost/atmosphere/heat:zed",
+        "db_drop": "ghcr.io/vexxhost/atmosphere/heat:zed",
+        "db_init": "ghcr.io/vexxhost/atmosphere/heat:zed",
         "dep_check": "quay.io/vexxhost/kubernetes-entrypoint:latest",
-        "ks_endpoints": "quay.io/vexxhost/heat:zed",
-        "ks_service": "quay.io/vexxhost/heat:zed",
-        "ks_user": "quay.io/vexxhost/heat:zed",
+        "ks_endpoints": "ghcr.io/vexxhost/atmosphere/heat:zed",
+        "ks_service": "ghcr.io/vexxhost/atmosphere/heat:zed",
+        "ks_user": "ghcr.io/vexxhost/atmosphere/heat:zed",
         "magnum_api": "quay.io/vexxhost/magnum:zed",
         "magnum_conductor": "quay.io/vexxhost/magnum:zed",
         "magnum_db_sync": "quay.io/vexxhost/magnum:zed",

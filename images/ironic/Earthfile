@@ -1,16 +1,17 @@
 VERSION 0.7
 
 image:
-  ARG PROJECT=designate
+  ARG PROJECT=ironic
   ARG RELEASE=zed
-  ARG REF=4012425843529b02486c39421dc7593fe1803367
+  ARG REF=e38735cb95263b0c54f2fd719ff6b714efbddbb3
   FROM ../openstack-service+image \
     --PROJECT ${PROJECT} \
     --RELEASE ${RELEASE} \
-    --PROJECT_REF ${REF}
+    --PROJECT_REF ${REF} \
+    --PIP_PACKAGES "python-dracclient sushy"
   DO \
     ../+APT_INSTALL \
-    --PACKAGES "bind9utils"
+    --PACKAGES "ethtool ipmitool iproute2 ipxe lshw qemu-utils tftpd-hpa"
   DO ../+APPLY_PATCHES
   SAVE IMAGE --push \
     ghcr.io/vexxhost/atmosphere/${PROJECT}:${RELEASE} \

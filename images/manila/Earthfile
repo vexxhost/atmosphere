@@ -1,16 +1,16 @@
 VERSION 0.7
 
 image:
-  ARG PROJECT=designate
+  ARG PROJECT=manila
   ARG RELEASE=zed
-  ARG REF=4012425843529b02486c39421dc7593fe1803367
+  ARG REF=9ea49e2b9df7da16d5700810eee18710dc90e6a4
   FROM ../openstack-service+image \
     --PROJECT ${PROJECT} \
     --RELEASE ${RELEASE} \
     --PROJECT_REF ${REF}
   DO \
     ../+APT_INSTALL \
-    --PACKAGES "bind9utils"
+    --PACKAGES "iproute2 openvswitch-switch"
   DO ../+APPLY_PATCHES
   SAVE IMAGE --push \
     ghcr.io/vexxhost/atmosphere/${PROJECT}:${RELEASE} \
