@@ -1,0 +1,17 @@
+VERSION 0.7
+
+platform-image:
+  ARG PROJECT=nova
+  ARG RELEASE=zed
+  ARG REF=787839f6637f292fb5656725e5dae12fbe6e3c3e
+  FROM ../openstack-service+image --PROJECT ${PROJECT} --RELEASE ${RELEASE} --PROJECT_REF ${REF}
+  DO \
+    ../+APT_INSTALL \
+    --PACKAGES "ceph-common genisoimage iproute2 libosinfo-bin lsscsi ndctl nvme-cli openssh-client ovmf python3-libvirt python3-rados python3-rbd qemu-efi-aarch64 qemu-utils sysfsutils udev util-linux"
+  GIT CLONE --branch v1.4.0 https://github.com/novnc/noVNC.git /usr/share/novnc
+  SAVE IMAGE --push \
+    ghcr.io/vexxhost/atmosphere/${PROJECT}:${RELEASE} \
+    ghcr.io/vexxhost/atmosphere/${PROJECT}:${REF}
+
+image:
+  BUILD --platform linux/amd64 --platform linux/arm64 +platform-image

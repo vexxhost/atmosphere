@@ -55,7 +55,11 @@ images:
   BUILD ./images/designate+image
   BUILD ./images/glance+image
   BUILD ./images/heat+image
+  BUILD ./images/ironic+image
+  BUILD ./images/keystone+image
   BUILD ./images/manila+image
+  BUILD ./images/nova-ssh+image
+  BUILD ./images/nova+image
   BUILD ./images/octavia+image
   BUILD ./images/placement+image
   BUILD ./images/senlin+image
