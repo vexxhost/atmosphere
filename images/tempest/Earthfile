@@ -1,0 +1,18 @@
+VERSION 0.7
+
+image:
+  ARG PROJECT=tempest
+  ARG RELEASE=master
+  ARG REF=699749ec27897efe9bd7824664237c16c3339c03
+  FROM ../openstack-service+image \
+    --PROJECT ${PROJECT} \
+    --RELEASE ${RELEASE} \
+    --PROJECT_REF ${REF} \
+    --PIP_PACKAGES "git+https://github.com/openstack/barbican-tempest-plugin.git git+https://github.com/openstack/cinder-tempest-plugin.git git+https://github.com/openstack/heat-tempest-plugin.git git+https://github.com/openstack/keystone-tempest-plugin.git git+https://github.com/openstack/neutron-tempest-plugin.git"
+  DO \
+    ../+APT_INSTALL \
+    --PACKAGES "iputils-ping"
+  DO ../+APPLY_PATCHES
+  SAVE IMAGE --push \
+    ghcr.io/vexxhost/atmosphere/${PROJECT}:${RELEASE} \
+    ghcr.io/vexxhost/atmosphere/${PROJECT}:${REF}
