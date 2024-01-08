@@ -39,7 +39,9 @@ build.collections:
   SAVE IMAGE --cache-hint
 
 image:
-  FROM ./images/base+image
+  ARG RELEASE=2023.1
+  FROM ./images/cloud-archive-base+image \
+    --RELEASE ${RELEASE}
   ENV ANSIBLE_PIPELINING=True
   DO ./images+APT_INSTALL --PACKAGES "rsync openssh-client"
   COPY +build.venv.runtime/venv /venv
