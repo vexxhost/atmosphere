@@ -9,6 +9,17 @@ APT_INSTALL:
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
+DNF_INSTALL:
+  COMMAND
+  ARG PACKAGES
+  RUN \
+    dnf -y install \
+      ${PACKAGES} \
+      --setopt=install_weak_deps=False \
+      --setopt=tsflags=nodocs && \
+    dnf -y clean all && \
+    rm -rf /var/cache/dnf
+
 CREATE_PROJECT_USER:
   COMMAND
   ARG PROJECT

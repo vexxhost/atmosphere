@@ -64,6 +64,8 @@ images:
   BUILD ./images/nova-ssh+image
   BUILD ./images/nova+image
   BUILD ./images/octavia+image
+  BUILD ./images/openvswitch+image
+  BUILD ./images/ovn+images
   BUILD ./images/placement+image
   BUILD ./images/senlin+image
   BUILD ./images/tempest+image
