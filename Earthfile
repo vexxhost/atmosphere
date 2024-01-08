@@ -58,6 +58,7 @@ images:
   BUILD ./images/horizon+image
   BUILD ./images/ironic+image
   BUILD ./images/keystone+image
+  BUILD ./images/libvirtd+images
   BUILD ./images/magnum+image
   BUILD ./images/manila+image
   BUILD ./images/neutron+image
