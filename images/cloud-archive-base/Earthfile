@@ -14,6 +14,8 @@ image:
       RUN echo "deb http://ubuntu-cloud.archive.canonical.com/ubuntu $(lsb_release -sc)-updates/antelope main" > /etc/apt/sources.list.d/cloudarchive.list
     ELSE IF [ "${RELEASE}" = "2023.2" ]
       RUN echo "deb http://ubuntu-cloud.archive.canonical.com/ubuntu $(lsb_release -sc)-updates/bobcat main" > /etc/apt/sources.list.d/cloudarchive.list
+    ELSE IF [ "${RELEASE}" = "master" ]
+      RUN echo "deb http://ubuntu-cloud.archive.canonical.com/ubuntu $(lsb_release -sc)-updates/caracal main" > /etc/apt/sources.list.d/cloudarchive.list
     ELSE
       RUN echo "${RELEASE} is not supported on $(lsb_release -sc)"
       RUN exit 1

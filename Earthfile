@@ -66,6 +66,7 @@ images:
   BUILD ./images/octavia+image
   BUILD ./images/placement+image
   BUILD ./images/senlin+image
+  BUILD ./images/tempest+image
 
 pin-images:
   FROM +build.venv.dev
