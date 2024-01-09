@@ -1,5 +1,38 @@
 VERSION --use-copy-link 0.7
 
+go.build:
+  FROM golang:1.21
+  WORKDIR /src
+  ARG GOOS=linux
+  ARG GOARCH=amd64
+  ARG VARIANT
+  COPY --dir go.mod go.sum ./
+  RUN go mod download
+
+libvirt-tls-sidecar.build:
+  FROM +go.build
+  ARG GOOS=linux
+  ARG GOARCH=amd64
+  ARG VARIANT
+  COPY --dir cmd internal ./
+  RUN GOARM=${VARIANT#"v"} go build -o main cmd/libvirt-tls-sidecar/main.go
+  SAVE ARTIFACT ./main
+
+libvirt-tls-sidecar.platform-image:
+  ARG TARGETPLATFORM
+  ARG TARGETARCH
+  ARG TARGETVARIANT
+  FROM --platform=$TARGETPLATFORM ./images/base+image
+  COPY \
+    --platform=linux/amd64 \
+    (+libvirt-tls-sidecar.build/main --GOARCH=$TARGETARCH --VARIANT=$TARGETVARIANT) /usr/bin/libvirt-tls-sidecar
+  ENTRYPOINT ["/usr/bin/libvirt-tls-sidecar"]
+  LABEL org.opencontainers.image.source=https://github.com/vexxhost/atmosphere
+  SAVE IMAGE --push ghcr.io/vexxhost/atmosphere/libvirt-tls-sidecar:latest
+
+libvirt-tls-sidecar.image:
+    BUILD --platform=linux/amd64 --platform=linux/arm64 +libvirt-tls-sidecar.platform-image
+
 build.wheels:
   FROM ./images/builder+image
   COPY pyproject.toml poetry.lock ./
