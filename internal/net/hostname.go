@@ -3,6 +3,7 @@ package net
 import (
 	"os"
 	"os/exec"
+	"strings"
 )
 
 func Hostname() (string, error) {
@@ -16,5 +17,5 @@ func FQDN() (string, error) {
 		return "", err
 	}
 
-	return string(out), nil
+	return strings.TrimSpace(string(out)), nil
 }

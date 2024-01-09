@@ -1,12 +1,20 @@
 VERSION --use-copy-link 0.7
 
-libvirt-tls-sidecar.build:
-  FROM golang:1.21-alpine3.19
+go.build:
+  FROM golang:1.21
   WORKDIR /src
   ARG GOOS=linux
   ARG GOARCH=amd64
   ARG VARIANT
-  COPY --dir cmd internal go.mod go.sum ./
+  COPY --dir go.mod go.sum ./
+  RUN go mod download
+
+libvirt-tls-sidecar.build:
+  FROM +go.build
+  ARG GOOS=linux
+  ARG GOARCH=amd64
+  ARG VARIANT
+  COPY --dir cmd internal ./
   RUN GOARM=${VARIANT#"v"} go build -o main cmd/libvirt-tls-sidecar/main.go
   SAVE ARTIFACT ./main
 
@@ -14,7 +22,7 @@ libvirt-tls-sidecar.platform-image:
   ARG TARGETPLATFORM
   ARG TARGETARCH
   ARG TARGETVARIANT
-  FROM --platform=$TARGETPLATFORM alpine:3.19
+  FROM --platform=$TARGETPLATFORM ./images/base+image
   COPY \
     --platform=linux/amd64 \
     (+libvirt-tls-sidecar.build/main --GOARCH=$TARGETARCH --VARIANT=$TARGETVARIANT) /usr/bin/libvirt-tls-sidecar

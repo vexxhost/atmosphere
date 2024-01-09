@@ -1,6 +1,7 @@
 package tls
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/vexxhost/atmosphere/internal/net"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -70,12 +72,12 @@ func NewLibvirtManager(config *rest.Config, spec *LibvirtCertificateSpec) (*Libv
 
 	hostname, err := net.Hostname()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	fqdn, err := net.FQDN()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	clientset, err := kubernetes.NewForConfig(config)
@@ -142,7 +144,7 @@ func NewLibvirtManager(config *rest.Config, spec *LibvirtCertificateSpec) (*Libv
 func (m *LibvirtManager) Create(ctx context.Context) error {
 	// Create certificate
 	_, err := m.certificateClient.Create(ctx, m.certificate, metav1.CreateOptions{})
-	if err != nil {
+	if err != nil && !errors.IsAlreadyExists(err) {
 		return err
 	}
 
@@ -246,7 +248,18 @@ func (m *LibvirtManager) watch(ctx context.Context) {
 func (m *LibvirtManager) write(secret *v1.Secret) {
 	switch m.spec.Type {
 	case LibvirtCertificateTypeAPI:
-		fmt.Println(secret)
+		m.createDirectory("/etc/pki/libvirt/private")
+		m.writeFile("/etc/pki/CA/cacert.pem", secret.Data["ca.crt"])
+		m.writeFile("/etc/pki/libvirt/servercert.pem", secret.Data["tls.crt"])
+		m.writeFile("/etc/pki/libvirt/private/serverkey.pem", secret.Data["tls.key"])
+		m.writeFile("/etc/pki/libvirt/clientcert.pem", secret.Data["tls.crt"])
+		m.writeFile("/etc/pki/libvirt/private/clientkey.pem", secret.Data["ca.key"])
+		m.createDirectory("/etc/pki/qemu")
+		m.writeFile("/etc/pki/qemu/ca-cert.pem", secret.Data["ca.crt"])
+		m.writeFile("/etc/pki/qemu/server-cert.pem", secret.Data["tls.crt"])
+		m.writeFile("/etc/pki/qemu/server-key.pem", secret.Data["tls.key"])
+		m.writeFile("/etc/pki/qemu/client-cert.pem", secret.Data["tls.crt"])
+		m.writeFile("/etc/pki/qemu/client-key.pem", secret.Data["tls.key"])
 	case LibvirtCertificateTypeVNC:
 		m.createDirectory("/etc/pki/libvirt-vnc")
 		m.writeFile("/etc/pki/libvirt-vnc/ca-cert.pem", secret.Data["ca.crt"])
@@ -256,6 +269,14 @@ func (m *LibvirtManager) write(secret *v1.Secret) {
 }
 
 func (m *LibvirtManager) createDirectory(path string) {
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		return
+	}
+
+	m.logger.WithFields(log.Fields{
+		"path": path,
+	}).Info("creating directory")
+
 	err := os.MkdirAll(path, 0755)
 	if err != nil {
 		m.logger.Fatal(err)
@@ -263,8 +284,34 @@ func (m *LibvirtManager) createDirectory(path string) {
 }
 
 func (m *LibvirtManager) writeFile(path string, data []byte) {
-	err := os.WriteFile(path, data, 0644)
+	log := m.logger.WithFields(log.Fields{
+		"path": path,
+	})
+
+	existingData, err := os.ReadFile(path)
 	if err != nil {
+		if os.IsNotExist(err) {
+			log.Info("file does not exist, creating file")
+
+			err = os.WriteFile(path, data, 0644)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			return
+		}
+
 		m.logger.Fatal(err)
+	}
+
+	if bytes.Equal(existingData, data) {
+		return
+	}
+
+	log.Info("file contents changed, updating file")
+
+	err = os.WriteFile(path, data, 0644)
+	if err != nil {
+		log.Fatal(err)
 	}
 }

@@ -56,6 +56,7 @@ spec:
       labels:
 {{ tuple $envAll .Chart.Name $daemonset | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
       annotations:
+        kubectl.kubernetes.io/default-container: libvirt
 {{- dict "envAll" $envAll "podName" "libvirt-libvirt-default" "containerNames" (list "libvirt") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
 {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
         configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
@@ -159,6 +160,10 @@ spec:
           volumeMounts:
             - name: etc-pki-qemu
               mountPath: /etc/pki/qemu
+            - name: etc-pki-ca
+              mountPath: /etc/pki/CA
+            - name: etc-pki-libvirt
+              mountPath: /etc/pki/libvirt
             - name: etc-pki-libvirt-vnc
               mountPath: /etc/pki/libvirt-vnc
         - name: libvirt
@@ -187,6 +192,10 @@ spec:
           command:
             - /tmp/libvirt.sh
           lifecycle:
+            postStart:
+              exec:
+                command:
+                  - /tmp/wait-for-libvirt.sh
             preStop:
               exec:
                 command:
@@ -197,6 +206,10 @@ spec:
           volumeMounts:
             - name: etc-pki-qemu
               mountPath: /etc/pki/qemu
+            - name: etc-pki-ca
+              mountPath: /etc/pki/CA
+            - name: etc-pki-libvirt
+              mountPath: /etc/pki/libvirt
             - name: etc-pki-libvirt-vnc
               mountPath: /etc/pki/libvirt-vnc
             - name: pod-tmp
@@ -204,6 +217,10 @@ spec:
             - name: libvirt-bin
               mountPath: /tmp/libvirt.sh
               subPath: libvirt.sh
+              readOnly: true
+            - name: libvirt-bin
+              mountPath: /tmp/wait-for-libvirt.sh
+              subPath: wait-for-libvirt.sh
               readOnly: true
             - name: libvirt-etc
               mountPath: /etc/libvirt/libvirtd.conf
@@ -287,9 +304,12 @@ spec:
         - name: etc-pki-qemu
           hostPath:
             path: /etc/pki/qemu
+        - name: etc-pki-ca
+          emptyDir: {}
+        - name: etc-pki-libvirt
+          emptyDir: {}
         - name: etc-pki-libvirt-vnc
-          hostPath:
-            path: /etc/pki/libvirt-vnc
+          emptyDir: {}
         - name: pod-tmp
           emptyDir: {}
         - name: libvirt-bin
