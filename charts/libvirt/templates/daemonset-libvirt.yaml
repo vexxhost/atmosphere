@@ -32,10 +32,6 @@ exec:
 {{- $configMapName := index . 1 }}
 {{- $serviceAccountName := index . 2 }}
 {{- $envAll := index . 3 }}
-{{- $ssl_enabled := false }}
-{{- if eq $envAll.Values.conf.libvirt.listen_tls "1" }}
-{{- $ssl_enabled = true }}
-{{- end }}
 {{- with $envAll }}
 
 {{- $mounts_libvirt := .Values.pod.mounts.libvirt.libvirt }}
@@ -79,80 +75,6 @@ spec:
       initContainers:
 {{ tuple $envAll "pod_dependency" $mounts_libvirt_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
 {{ dict "envAll" $envAll | include "helm-toolkit.snippets.kubernetes_apparmor_loader_init_container" | indent 8 }}
-{{- if $ssl_enabled }}
-        - name: cert-init-api
-{{ tuple $envAll "kubectl" | include "helm-toolkit.snippets.image" | indent 10 }}
-{{ dict "envAll" $envAll "application" "libvirt" "container" "cert_init" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
-          command:
-            - /tmp/cert-init.sh
-          env:
-            - name: TYPE
-              value: api
-            - name: ISSUER_KIND
-              value: {{ .Values.issuers.libvirt.kind }}
-            - name: ISSUER_NAME
-              value: {{ .Values.issuers.libvirt.name }}
-            - name: POD_UID
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.uid
-            - name: POD_NAME
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.name
-            - name: POD_NAMESPACE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.namespace
-            - name: POD_IP
-              valueFrom:
-                fieldRef:
-                  fieldPath: status.podIP
-          volumeMounts:
-            - name: pod-tmp
-              mountPath: /tmp
-            - name: libvirt-bin
-              mountPath: /tmp/cert-init.sh
-              subPath: cert-init.sh
-              readOnly: true
-{{- end }}
-{{- if eq .Values.conf.qemu.vnc_tls "1" }}
-        - name: cert-init-vnc
-{{ tuple $envAll "kubectl" | include "helm-toolkit.snippets.image" | indent 10 }}
-{{ dict "envAll" $envAll "application" "libvirt" "container" "cert_init" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
-          command:
-            - /tmp/cert-init.sh
-          env:
-            - name: TYPE
-              value: vnc
-            - name: ISSUER_KIND
-              value: {{ .Values.issuers.vencrypt.kind }}
-            - name: ISSUER_NAME
-              value: {{ .Values.issuers.vencrypt.name }}
-            - name: POD_UID
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.uid
-            - name: POD_NAME
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.name
-            - name: POD_NAMESPACE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.namespace
-            - name: POD_IP
-              valueFrom:
-                fieldRef:
-                  fieldPath: status.podIP
-          volumeMounts:
-            - name: pod-tmp
-              mountPath: /tmp
-            - name: libvirt-bin
-              mountPath: /tmp/cert-init.sh
-              subPath: cert-init.sh
-              readOnly: true
-{{- end }}
 {{- if .Values.conf.ceph.enabled }}
         {{- if empty .Values.conf.ceph.cinder.keyring }}
         - name: ceph-admin-keyring-placement
@@ -205,6 +127,40 @@ spec:
               readOnly: true
 {{- end }}
       containers:
+        - name: tls-sidecar
+{{ tuple $envAll "libvirt_tls_sidecar" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.libvirt_tls_sidecar | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "libvirt" "container" "libvirt_tls_sidecar" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          env:
+            - name: API_ISSUER_KIND
+              value: {{ .Values.issuers.libvirt.kind }}
+            - name: API_ISSUER_NAME
+              value: {{ .Values.issuers.libvirt.name }}
+            - name: VNC_ISSUER_KIND
+              value: {{ .Values.issuers.vencrypt.kind }}
+            - name: VNC_ISSUER_NAME
+              value: {{ .Values.issuers.vencrypt.name }}
+            - name: POD_UID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.uid
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          volumeMounts:
+            - name: etc-pki-qemu
+              mountPath: /etc/pki/qemu
+            - name: etc-pki-libvirt-vnc
+              mountPath: /etc/pki/libvirt-vnc
         - name: libvirt
 {{ tuple $envAll "libvirt" | include "helm-toolkit.snippets.image" | indent 10 }}
 {{ tuple $envAll $envAll.Values.pod.resources.libvirt | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
@@ -239,10 +195,10 @@ spec:
                   - |-
                     kill $(cat /var/run/libvirtd.pid)
           volumeMounts:
-{{- if $ssl_enabled }}
             - name: etc-pki-qemu
               mountPath: /etc/pki/qemu
-{{- end }}
+            - name: etc-pki-libvirt-vnc
+              mountPath: /etc/pki/libvirt-vnc
             - name: pod-tmp
               mountPath: /tmp
             - name: libvirt-bin
@@ -328,11 +284,12 @@ spec:
               {{- end }}
         {{- end }}
       volumes:
-{{- if $ssl_enabled }}
         - name: etc-pki-qemu
           hostPath:
             path: /etc/pki/qemu
-{{- end }}
+        - name: etc-pki-libvirt-vnc
+          hostPath:
+            path: /etc/pki/libvirt-vnc
         - name: pod-tmp
           emptyDir: {}
         - name: libvirt-bin
