@@ -71,9 +71,14 @@ __neutron_helm_values:
 
 __neutron_ovn_helm_values:
   conf:
+    ovn_vpn_agent:
+      service_providers:
+        service_provider: VPN:strongswan:neutron_vpnaas.services.vpn.service_drivers.ovn_ipsec.IPsecOvnVPNDriver:default
     neutron:
       DEFAULT:
-        service_plugins: qos,ovn-router,segments,trunk
+        service_plugins: qos,ovn-router,segments,trunk,ovn-vpnaas
+      service_providers:
+        service_provider: VPN:strongswan:neutron_vpnaas.services.vpn.service_drivers.ovn_ipsec.IPsecOvnVPNDriver:default
       ovn:
         dns_servers: "{{ neutron_coredns_cluster_ip | default('10.96.0.20') }}"
         ovn_emit_need_to_frag: true
@@ -90,4 +95,5 @@ __neutron_ovn_helm_values:
     daemonset_l3_agent: false
     daemonset_metadata_agent: false
     daemonset_ovn_metadata_agent: true
+    daemonset_ovn_vpn_agent: true
     daemonset_ovs_agent: false
