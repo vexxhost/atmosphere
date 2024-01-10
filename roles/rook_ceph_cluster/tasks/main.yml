@@ -15,7 +15,7 @@
 - name: Collect "ceph quorum_status" output from a monitor
   run_once: true
   delegate_to: "{{ groups[rook_ceph_cluster_mon_group][0] }}"
-  ansible.builtin.command: ceph quorum_status -f json
+  ansible.builtin.command: cephadm shell -- ceph quorum_status -f json
   changed_when: false
   register: _rook_ceph_cluster_quorum_status_data
 
