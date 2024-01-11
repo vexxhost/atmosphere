@@ -170,7 +170,7 @@ spec:
         - name: pod-shared
           emptyDir: {}
         {{- if $vencrypt_enabled }}
-        - name: vencrypt-certs
+        - name: {{ .Values.secrets.tls.compute_novnc_proxy.vencrypt.internal }}
           secret:
             secretName: {{ .Values.secrets.tls.compute_novnc_proxy.vencrypt.internal }}
             defaultMode: 0444
