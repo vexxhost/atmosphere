@@ -29,6 +29,28 @@
       tags:
         - always
 
+- hosts: "{{ target | default('all') }}"
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Install PIP
+      ansible.builtin.package:
+        name: python3-pip
+
+    - name: Upgrade pip
+      ansible.builtin.command:
+        python3 -m pip install --upgrade pip
+      changed_when: false
+
+    - name: Install the package, force upgrade
+      ansible.builtin.pip:
+        name:
+          - pyopenssl>=22.1.0
+          - cryptography
+        extra_args: --upgrade
+        state: forcereinstall
+      changed_when: false
+
 - import_playbook: vexxhost.kubernetes.site
   vars:
     keepalived_image: "{{ atmosphere_images['keepalived'] }}"
