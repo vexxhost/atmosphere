@@ -205,19 +205,19 @@
                     components: amphora-jumpbox
                 spec:
                   containers:
-                  - name: jumpbox
-                    image: "{{ atmosphere_images['octavia_jumpbox'] | vexxhost.kubernetes.docker_image('ref') }}"
-                    volumeMounts:
-                      - name: sshkey
-                        mountPath: /sshkey
-                        readOnly: true
+                    - name: jumpbox
+                      image: "{{ atmosphere_images['octavia_jumpbox'] | vexxhost.kubernetes.docker_image('ref') }}"
+                      volumeMounts:
+                        - name: sshkey
+                          mountPath: /sshkey
+                          readOnly: true
                   nodeSelector:
                     openstack-control-plane: enabled
                   volumes:
                     - name: sshkey
                       secret:
                         secretName: amphora-ssh-key
-                        defaultMode: "0400"
+                        defaultMode: 0400
 
     - name: Grab Amphora jumpbox public key
       kubernetes.core.k8s_info:
