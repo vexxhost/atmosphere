@@ -1,4 +1,4 @@
-# Copyright (c) 2023 VEXXHOST, Inc.
+# Copyright (c) 2024 VEXXHOST, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -12,10 +12,17 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- ansible.builtin.import_playbook: vexxhost.ceph.create_fake_devices
-- ansible.builtin.import_playbook: vexxhost.atmosphere.ceph
+- hosts: "{{ target | default('all') }}"
+  become: true
+  roles:
+    - role: defaults
+  post_tasks:
+    - name: Set a fact with the "atmosphere_images" for other plays
+      ansible.builtin.set_fact:
+        atmosphere_images: "{{ atmosphere_images }}"
+      tags:
+        - always
+
+- import_playbook: vexxhost.ceph.site
   vars:
-    ceph_osd_devices:
-      - "/dev/ceph-{{ inventory_hostname_short }}-osd0/data"
-      - "/dev/ceph-{{ inventory_hostname_short }}-osd1/data"
-      - "/dev/ceph-{{ inventory_hostname_short }}-osd2/data"
+    containerd_pause_image: "{{ atmosphere_images['pause'] }}"
