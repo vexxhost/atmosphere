@@ -165,7 +165,12 @@
           metadata:
             name: octavia-amphora-ssh-key
             namespace: openstack
-          spec: {}
+          spec:
+            secretTemplate:
+              type: Opaque
+              stringData:
+                "id_rsa": $(privateKey)
+                "id_rsa.pub": $(authorizedKey)
         wait: true
         wait_timeout: 60
         wait_condition:

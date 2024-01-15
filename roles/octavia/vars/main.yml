@@ -40,7 +40,7 @@ _octavia_helm_values:
             - name: octavia-client-certs
               mountPath: /etc/octavia/certs/client
             - name: octavia-amphora-ssh-key
-              mountPath: /amphora-sshkey
+              mountPath: ${HOME}/.ssh
               readOnly: true
           volumes:
             - name: octavia-server-ca
@@ -52,7 +52,7 @@ _octavia_helm_values:
             - name: octavia-amphora-ssh-key
               secret:
                 secretName: octavia-amphora-ssh-key
-                defaultMode: 0400 # noqa: yaml[octal-values]
+                defaultMode: 0444 # noqa: yaml[octal-values]
       octavia_housekeeping:
         octavia_housekeeping:
           volumeMounts:
