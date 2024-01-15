@@ -16,31 +16,30 @@ limitations under the License.
 
 set -ex
 
-# NOTE(mnaser): This will move the API certificates into the expected location.
-if [ -f /tmp/api.crt ]; then
-  mkdir -p /etc/pki/CA /etc/pki/libvirt/private
+wait_for_file() {
+  local file=$1
 
-  cp /tmp/api-ca.crt {{ .Values.conf.libvirt.ca_file }}
-  cp /tmp/api-ca.crt /etc/pki/qemu/ca-cert.pem
+  while [ ! -f $file ]; do
+    sleep 1
+  done
+}
 
-  cp /tmp/api.crt {{ .Values.conf.libvirt.cert_file }}
-  cp /tmp/api.crt /etc/pki/libvirt/clientcert.pem
-  cp /tmp/api.crt /etc/pki/qemu/server-cert.pem
-  cp /tmp/api.crt /etc/pki/qemu/client-cert.pem
+wait_for_file {{ .Values.conf.libvirt.ca_file }}
+wait_for_file /etc/pki/qemu/ca-cert.pem
 
-  cp /tmp/api.key {{ .Values.conf.libvirt.key_file }}
-  cp /tmp/api.key /etc/pki/libvirt/private/clientkey.pem
-  cp /tmp/api.key /etc/pki/qemu/server-key.pem
-  cp /tmp/api.key /etc/pki/qemu/client-key.pem
-fi
+wait_for_file {{ .Values.conf.libvirt.cert_file }}
+wait_for_file /etc/pki/libvirt/clientcert.pem
+wait_for_file /etc/pki/qemu/server-cert.pem
+wait_for_file /etc/pki/qemu/client-cert.pem
 
-# NOTE(mnaser): This will move the VNC certificates into the expected location.
-if [ -f /tmp/vnc.crt ]; then
-  mkdir -p /etc/pki/libvirt-vnc
-  mv /tmp/vnc.key /etc/pki/libvirt-vnc/server-key.pem
-  mv /tmp/vnc.crt /etc/pki/libvirt-vnc/server-cert.pem
-  mv /tmp/vnc-ca.crt /etc/pki/libvirt-vnc/ca-cert.pem
-fi
+wait_for_file {{ .Values.conf.libvirt.key_file }}
+wait_for_file /etc/pki/libvirt/private/clientkey.pem
+wait_for_file /etc/pki/qemu/server-key.pem
+wait_for_file /etc/pki/qemu/client-key.pem
+
+wait_for_file /etc/pki/libvirt-vnc/ca-cert.pem
+wait_for_file /etc/pki/libvirt-vnc/server-cert.pem
+wait_for_file /etc/pki/libvirt-vnc/server-key.pem
 
 # TODO: We disable cgroup functionality for cgroup v2, we should fix this in the future
 if $(stat -fc %T /sys/fs/cgroup/ | grep -q cgroup2fs); then

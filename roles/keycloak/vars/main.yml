@@ -59,12 +59,9 @@ _keycloak_helm_values:
     enabled: false
   production: true
   proxy: edge
-  # Note(okozachenko1203): It takes a bit long time for db migration with mysql vendor.
-  readinessProbe:
-    initialDelaySeconds: 60
-    periodSeconds: 10
-    timeoutSeconds: 1
-    failureThreshold: 6
-    successThreshold: 1
+  startupProbe:
+    enabled: true
+    initialDelaySeconds: 5
+    failureThreshold: 120
   nodeSelector:
     openstack-control-plane: enabled

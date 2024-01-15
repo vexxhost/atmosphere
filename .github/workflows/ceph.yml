@@ -16,9 +16,10 @@ name: ceph
 
 on:
   pull_request:
-  push:
-    branches:
-      - main
+    paths-ignore:
+      - images/**
+      - go.mod
+      - go.sum
   workflow_dispatch:
     inputs:
       debug_enabled:
@@ -46,13 +47,13 @@ jobs:
       cancel-in-progress: true
     steps:
       - name: Checkout project
-        uses: actions/checkout@v4
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
       - name: Install Poetry
         run: pipx install poetry
 
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c # v5
         with:
           cache: poetry
 
@@ -75,7 +76,7 @@ jobs:
       # Enable tmate debugging of manually-triggered workflows if the input option was provided
       - name: Setup tmate session
         if: ${{ failure() }}
-        uses: mxschmitt/action-tmate@v3
+        uses: mxschmitt/action-tmate@a283f9441d2d96eb62436dc46d7014f5d357ac22 # v3
         timeout-minutes: 60
 
       - name: Run Molecule Destroy
@@ -95,13 +96,13 @@ jobs:
       cancel-in-progress: true
     steps:
       - name: Checkout project
-        uses: actions/checkout@v4
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
       - name: Install Poetry
         run: pipx install poetry
 
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c # v5
         with:
           cache: poetry
 

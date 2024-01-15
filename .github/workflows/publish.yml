@@ -11,15 +11,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout project
-        uses: actions/checkout@v4
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
       - name: Build and publish collection
-        uses: artis3n/ansible_galaxy_collection@v2
+        uses: artis3n/ansible_galaxy_collection@3368f56529a2ef47ef0ac1ecfcda039f90d0174a # v2
         with:
           api_key: "${{ secrets.GALAXY_API_KEY }}"
 
       - name: Get release
-        uses: bruceadams/get-release@v1.3.2
+        uses: bruceadams/get-release@74c3d60f5a28f358ccf241a00c9021ea16f0569f # v1.3.2
         id: get_release
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -29,7 +29,7 @@ jobs:
         run: echo ::set-output name=filename::$(ls *.tar.gz)
 
       - name: Upload release asset
-        uses: actions/upload-release-asset@v1
+        uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5 # v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:

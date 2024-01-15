@@ -16,22 +16,23 @@ name: PXC
 
 on:
   pull_request:
-  push:
-    branches:
-      - main
+    paths-ignore:
+      - images/**
+      - go.mod
+      - go.sum
 
 jobs:
   molecule:
     runs-on: v3-standard-8
     steps:
       - name: Checkout project
-        uses: actions/checkout@v4
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
       - name: Install Poetry
         run: pipx install poetry
 
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c # v5
         with:
           cache: poetry
 

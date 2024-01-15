@@ -1,0 +1,21 @@
+VERSION 0.7
+
+platform-image:
+  ARG PROJECT=neutron
+  ARG RELEASE=zed
+  ARG REF=4575136fe99f67dc140987601c90493cf62c0330
+  FROM ../openstack-service+image \
+    --PROJECT ${PROJECT} \
+    --RELEASE ${RELEASE} \
+    --PROJECT_REF ${REF} \
+    --PIP_PACKAGES "git+https://github.com/openstack/neutron-vpnaas.git@256464aea691f8b4957ba668a117963353f34e4c"
+  DO \
+    ../+APT_INSTALL \
+    --PACKAGES "conntrack dnsmasq dnsmasq-utils ebtables ethtool haproxy iproute2 ipset iptables iputils-arping jq keepalived lshw openvswitch-switch strongswan uuid-runtime"
+  DO ../+APPLY_PATCHES
+  SAVE IMAGE --push \
+    ghcr.io/vexxhost/atmosphere/${PROJECT}:${RELEASE} \
+    ghcr.io/vexxhost/atmosphere/${PROJECT}:${REF}
+
+image:
+  BUILD --platform linux/amd64 --platform linux/arm64 +platform-image

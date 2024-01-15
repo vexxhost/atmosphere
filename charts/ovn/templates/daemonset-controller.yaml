@@ -59,6 +59,10 @@ spec:
           env:
             - name: OVN_CMS_OPTIONS
               value: {{ .Values.conf.ovn_cms_options | quote }}
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
           volumeMounts:
             - name: ovn-bin
               mountPath: /tmp/ovn-controller-init.sh

@@ -13,13 +13,44 @@ LOG = logging.getLogger(__name__)
 CONF = cfg.CONF
 
 
+def get_digest(image_ref, token=None):
+    headers = {}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+
+    try:
+        headers["Accept"] = "application/vnd.docker.distribution.manifest.v2+json"
+
+        r = requests.get(
+            f"https://{image_ref.domain()}/v2/{image_ref.path()}/manifests/{image_ref['tag']}",
+            timeout=5,
+            headers=headers,
+        )
+        r.raise_for_status()
+        return r.headers["Docker-Content-Digest"]
+    except requests.exceptions.HTTPError:
+        headers["Accept"] = "application/vnd.oci.image.index.v1+json"
+
+        r = requests.get(
+            f"https://{image_ref.domain()}/v2/{image_ref.path()}/manifests/{image_ref['tag']}",
+            timeout=5,
+            headers=headers,
+        )
+        r.raise_for_status()
+        return r.headers["Docker-Content-Digest"]
+
+
 @functools.cache
 def get_pinned_image(image_src):
     image_ref = reference.Reference.parse(image_src)
 
+    if image_ref.domain() in ("registry.k8s.io", "us-docker.pkg.dev"):
+        digest = get_digest(image_ref)
+
     if image_ref.domain() == "quay.io":
         r = requests.get(
             f"https://quay.io/api/v1/repository/{image_ref.path()}/tag/",
+            timeout=5,
             params={"specificTag": image_ref["tag"]},
         )
         r.raise_for_status()
@@ -29,6 +60,7 @@ def get_pinned_image(image_src):
         # Get token for docker.io
         r = requests.get(
             "https://auth.docker.io/token",
+            timeout=5,
             params={
                 "service": "registry.docker.io",
                 "scope": f"repository:{image_ref.path()}:pull",
@@ -39,6 +71,7 @@ def get_pinned_image(image_src):
 
         r = requests.get(
             f"https://registry-1.docker.io/v2/{image_ref.path()}/manifests/{image_ref['tag']}",
+            timeout=5,
             headers={
                 "Accept": "application/vnd.docker.distribution.manifest.v2+json",
                 "Authorization": f"Bearer {token}",
@@ -47,7 +80,22 @@ def get_pinned_image(image_src):
         r.raise_for_status()
         digest = r.headers["Docker-Content-Digest"]
 
-    return f"{image_ref.domain()}/{image_ref.path()}@{digest}"
+    if image_ref.domain() == "ghcr.io":
+        # Get token for docker.io
+        r = requests.get(
+            "https://ghcr.io/token",
+            timeout=5,
+            params={
+                "service": "ghcr.io",
+                "scope": f"repository:{image_ref.path()}:pull",
+            },
+        )
+        r.raise_for_status()
+        token = r.json()["token"]
+
+        digest = get_digest(image_ref, token=token)
+
+    return f"{image_ref.domain()}/{image_ref.path()}:{image_ref['tag']}@{digest}"
 
 
 def main():
@@ -65,13 +113,8 @@ def main():
     yaml = YAML(typ="rt")
     data = yaml.load(args.src)
 
-    for image in data["_atmosphere_images"].ca.items:
-        token = data["_atmosphere_images"].ca.get(image, 2).value
-        if not token.startswith("# image-source: "):
-            LOG.info("Skipping image %s", image)
-            continue
-
-        image_src = token.replace("# image-source: ", "").strip()
+    for image in data["_atmosphere_images"]:
+        image_src = data["_atmosphere_images"][image]
         pinned_image = get_pinned_image(image_src)
 
         LOG.info("Pinning image %s from %s to %s", image, image_src, pinned_image)

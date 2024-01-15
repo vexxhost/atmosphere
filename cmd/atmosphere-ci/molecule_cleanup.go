@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/google/go-github/v47/github"
+	"github.com/google/go-github/v57/github"
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack"
 	"github.com/gophercloud/gophercloud/openstack/orchestration/v1/stacks"

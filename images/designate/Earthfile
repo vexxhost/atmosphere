@@ -1,0 +1,17 @@
+VERSION 0.7
+
+image:
+  ARG PROJECT=designate
+  ARG RELEASE=zed
+  ARG REF=d247267823034c5e656f74e91b50475aa54d3fa6
+  FROM ../openstack-service+image \
+    --PROJECT ${PROJECT} \
+    --RELEASE ${RELEASE} \
+    --PROJECT_REF ${REF}
+  DO \
+    ../+APT_INSTALL \
+    --PACKAGES "bind9utils"
+  DO ../+APPLY_PATCHES
+  SAVE IMAGE --push \
+    ghcr.io/vexxhost/atmosphere/${PROJECT}:${RELEASE} \
+    ghcr.io/vexxhost/atmosphere/${PROJECT}:${REF}

@@ -1,5 +1,39 @@
 # Changelog
 
+## [1.10.4](https://github.com/vexxhost/atmosphere/compare/v1.10.3...v1.10.4) (2024-01-09)
+
+
+### Bug Fixes
+
+* added monitoring for high 500s count ([2e937c9](https://github.com/vexxhost/atmosphere/commit/2e937c9cc264d0da561e729f05b0bce4b5c46ed7))
+* bump nova to fix sqlalchemy timeouts ([e22114e](https://github.com/vexxhost/atmosphere/commit/e22114ed6adfe947e26239f5b384d3bd20ab07cb))
+* configure ovn-bridge with netdev datapath type when dpdk is enabled ([#767](https://github.com/vexxhost/atmosphere/issues/767)) ([e85e0ed](https://github.com/vexxhost/atmosphere/commit/e85e0ed5eb52d2736aa7dad7f66fccd503efce20))
+* **designate:** missing conf in neutron config ([#744](https://github.com/vexxhost/atmosphere/issues/744)) ([de653d1](https://github.com/vexxhost/atmosphere/commit/de653d15948136e93b0db3093fa2aef146902b80))
+* **doc:** correct the docu with the correct image ([#758](https://github.com/vexxhost/atmosphere/issues/758)) ([7388b41](https://github.com/vexxhost/atmosphere/commit/7388b41d28ebbbfbdbfb6b4c0f27c69cee513575))
+* feed pre-existing ssh key to the heat stack tailoring nova api 2.92 for molecule scenario ([#762](https://github.com/vexxhost/atmosphere/issues/762)) ([dc27347](https://github.com/vexxhost/atmosphere/commit/dc273478eacc7c87ebb351880f1a3639a083d8fd))
+* fix build workflow generation for infoblox ([#777](https://github.com/vexxhost/atmosphere/issues/777)) ([873939c](https://github.com/vexxhost/atmosphere/commit/873939cb495fddb2fe70ce6408418287b7164ef4))
+* fix go script for infoblox image build workflow ([#776](https://github.com/vexxhost/atmosphere/issues/776)) ([4da325e](https://github.com/vexxhost/atmosphere/commit/4da325e7b7abb6dba71fc5b7f821138e8a63b4ab))
+* increase the wait timeout for keycloak helm chart deployment ([#770](https://github.com/vexxhost/atmosphere/issues/770)) ([a518383](https://github.com/vexxhost/atmosphere/commit/a518383ea7ef80c55461c64155666846343742d9))
+* increase the wait timeout for keystone ingress ([#771](https://github.com/vexxhost/atmosphere/issues/771)) ([897b78b](https://github.com/vexxhost/atmosphere/commit/897b78bd850e580fd35c19cf100d95d0ff372e9d))
+* **keycloak:** add no_log and disable become ([8dc7add](https://github.com/vexxhost/atmosphere/commit/8dc7add7800ee09cc7408204f8705822c5b14f2c))
+* **keycloak:** use startupProbe ([73dcb9d](https://github.com/vexxhost/atmosphere/commit/73dcb9d11a6bfbf9eb99348fd95c8fc5b4de5055))
+* **libvirt:** create sidecar to rotate creds ([#865](https://github.com/vexxhost/atmosphere/issues/865)) ([168acc3](https://github.com/vexxhost/atmosphere/commit/168acc3dc3a4fbfc712b26fffdcc1cfde7c20c03))
+* **magnum:** bump version ([b59f865](https://github.com/vexxhost/atmosphere/commit/b59f865571a47593abd64476daed6d3b305d8818))
+* **magnum:** set nodeSelector for according to the network backend ([#750](https://github.com/vexxhost/atmosphere/issues/750)) ([c090abb](https://github.com/vexxhost/atmosphere/commit/c090abb5981b8053e02cbece50844c6cce9652ae))
+* **neutron:** Add a flag variable to enable designate integration in neutron ([#449](https://github.com/vexxhost/atmosphere/issues/449)) ([a45c0e7](https://github.com/vexxhost/atmosphere/commit/a45c0e71178daa814273524b652fdd734485033e))
+* octavia and manila flavor extra specs  ([#769](https://github.com/vexxhost/atmosphere/issues/769)) ([bee9ae0](https://github.com/vexxhost/atmosphere/commit/bee9ae0f91689b1c547df9d47d83748f31fa8dcd))
+* **ovn:** pin host names ([#863](https://github.com/vexxhost/atmosphere/issues/863)) ([19d6312](https://github.com/vexxhost/atmosphere/commit/19d63125c1442218a59515b62c9c60f4114d1a7c))
+* pin python-memcached==1.59 in upper-constraints.txt for 2023.2 ([#862](https://github.com/vexxhost/atmosphere/issues/862)) ([746664c](https://github.com/vexxhost/atmosphere/commit/746664c79ccff85c56596c57c91b3ce343a10209))
+* refactor nova-compute probes ([#768](https://github.com/vexxhost/atmosphere/issues/768)) ([177a7ae](https://github.com/vexxhost/atmosphere/commit/177a7aea34367f91688cf7810901039be080268e))
+* skip port deletion when instances have no port ([#779](https://github.com/vexxhost/atmosphere/issues/779)) ([7060df8](https://github.com/vexxhost/atmosphere/commit/7060df8d5a1c6908ba861ab0c75ca5fc30bab2c6))
+* use cloud-archive-base for Atmosphere image ([#860](https://github.com/vexxhost/atmosphere/issues/860)) ([b19c1cf](https://github.com/vexxhost/atmosphere/commit/b19c1cfc7540ba02e06ffc6b1a304ec5bf5817bc))
+* use existing images for octavia ([#753](https://github.com/vexxhost/atmosphere/issues/753)) ([20eac5d](https://github.com/vexxhost/atmosphere/commit/20eac5d8c886e4bc09a69398ed748b9596aa6dbf))
+
+
+### Documentation
+
+* For OVN/DPDK config ([#774](https://github.com/vexxhost/atmosphere/issues/774)) ([69f85c1](https://github.com/vexxhost/atmosphere/commit/69f85c113853d341d21c0cd04df2260f2a58d27a))
+
 ## [1.10.3](https://github.com/vexxhost/atmosphere/compare/v1.10.2...v1.10.3) (2023-12-05)
 
 

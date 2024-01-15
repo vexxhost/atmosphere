@@ -1,0 +1,14 @@
+VERSION 0.7
+
+image:
+  ARG PROJECT=senlin
+  ARG RELEASE=zed
+  ARG REF=b6ef17b0f787fb7a0609ba36dc13097882a6a3ff
+  FROM ../openstack-service+image \
+    --PROJECT ${PROJECT} \
+    --RELEASE ${RELEASE} \
+    --PROJECT_REF ${REF}
+  DO ../+APPLY_PATCHES
+  SAVE IMAGE --push \
+    ghcr.io/vexxhost/atmosphere/${PROJECT}:${RELEASE} \
+    ghcr.io/vexxhost/atmosphere/${PROJECT}:${REF}

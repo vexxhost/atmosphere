@@ -1,0 +1,9 @@
+VERSION 0.7
+
+image:
+  FROM curlimages/curl:7.78.0
+  ARG TARGETOS
+  ARG TARGETARCH
+  RUN curl -L "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/${TARGETOS}/${TARGETARCH}/kubectl" -o /tmp/kubectl
+  RUN chmod +x /tmp/kubectl && /tmp/kubectl version --client=true
+  SAVE ARTIFACT /tmp/kubectl kubectl

@@ -1,0 +1,110 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "docker:pinDigests",
+    "group:kubernetes",
+    "helpers:pinGitHubActionDigests"
+  ],
+  "pip_requirements": {
+    "fileMatch": [
+      "upper-constraints.txt"
+    ]
+  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "matchStringsStrategy": "combination",
+      "fileMatch": [
+        "images/\\w+/Earthfile"
+      ],
+      "datasourceTemplate": "git-refs",
+      "packageNameTemplate": "https://github.com/openstack/{{{depName}}}",
+      "currentValueTemplate": "stable/{{{version}}}",
+      "matchStrings": [
+        "ARG PROJECT=(?<depName>.*)",
+        "ARG RELEASE=(?<version>.*)",
+        "ARG REF=(?<currentDigest>.*)"
+      ]
+    },
+    {
+      "customType": "regex",
+      "fileMatch": [
+        "roles/defaults/vars/main\\.yml"
+      ],
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "docker",
+      "matchStrings": [
+        "  \\w+?: (?<depName>[^:\\s]*):(?<currentValue>[^:@\\s]*)@?(?<currentDigest>sha256:[a-f0-9]+)?"
+      ]
+    }
+  ],
+  "packageRules": [
+    {
+      "enabled": false,
+      "matchUpdateTypes": [
+        "major",
+        "minor",
+        "patch"
+      ],
+      "matchPackagePrefixes": [
+        "docker.io/bitnami",
+        "docker.io/coredns",
+        "docker.io/grafana",
+        "docker.io/library",
+        "docker.io/nginxinc",
+        "docker.io/percona",
+        "docker.io/prom",
+        "docker.io/rabbitmqoperator",
+        "docker.io/rancher",
+        "docker.io/rook",
+        "docker.io/timberio",
+        "quay.io/ceph",
+        "quay.io/cilium",
+        "quay.io/jetstack",
+        "quay.io/keycloak",
+        "quay.io/kiwigrid",
+        "quay.io/prometheus",
+        "registry.k8s.io/"
+      ]
+    },
+    {
+      "enabled": false,
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "excludePackageNames": [
+        "cryptography",
+        "pyOpenSSL"
+      ],
+      "matchFileNames": [
+        "images/openstack-service/**/upper-constraints.txt"
+      ]
+    },
+    {
+      "groupName": "upper-constraints",
+      "matchFileNames": [
+        "images/openstack-service/**/upper-constraints.txt"
+      ]
+    },
+    {
+      "groupName": "images",
+      "matchFileNames": [
+        "roles/defaults/vars/main.yml"
+      ]
+    }
+  ],
+  "regex": {
+    "pinDigests": true
+  },
+  "ignorePaths": [
+    "charts/**",
+    "molecule/**",
+    "roles/kube_prometheus_stack/files/jsonnet/**",
+    "roles/tempest/tasks/main.yml",
+    ".python-version",
+    "Dockerfile",
+    "galaxy.yml",
+    "pyproject.toml",
+    "requirements.txt"
+  ]
+}

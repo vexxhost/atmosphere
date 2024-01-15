@@ -1,0 +1,18 @@
+VERSION 0.7
+
+image:
+  ARG PROJECT=magnum
+  ARG RELEASE=zed
+  ARG REF=c671d8baf9d6f4705a1b832ae2d96980e5a58db6
+  FROM ../openstack-service+image \
+    --PROJECT ${PROJECT} \
+    --RELEASE ${RELEASE} \
+    --PROJECT_REF ${REF} \
+    --PIP_PACKAGES "magnum-cluster-api==0.13.3"
+  DO \
+    ../+APT_INSTALL \
+    --PACKAGES "haproxy"
+  DO ../+APPLY_PATCHES
+  SAVE IMAGE --push \
+    ghcr.io/vexxhost/atmosphere/${PROJECT}:${RELEASE} \
+    ghcr.io/vexxhost/atmosphere/${PROJECT}:${REF}

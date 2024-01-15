@@ -1,12 +1,40 @@
 VERSION --use-copy-link 0.7
-FROM python:3.10
 
-poetry:
-  RUN pip3 install poetry==1.4.2
-  SAVE IMAGE --cache-hint
+go.build:
+  FROM golang:1.21
+  WORKDIR /src
+  ARG GOOS=linux
+  ARG GOARCH=amd64
+  ARG VARIANT
+  COPY --dir go.mod go.sum ./
+  RUN go mod download
+
+libvirt-tls-sidecar.build:
+  FROM +go.build
+  ARG GOOS=linux
+  ARG GOARCH=amd64
+  ARG VARIANT
+  COPY --dir cmd internal ./
+  RUN GOARM=${VARIANT#"v"} go build -o main cmd/libvirt-tls-sidecar/main.go
+  SAVE ARTIFACT ./main
+
+libvirt-tls-sidecar.platform-image:
+  ARG TARGETPLATFORM
+  ARG TARGETARCH
+  ARG TARGETVARIANT
+  FROM --platform=$TARGETPLATFORM ./images/base+image
+  COPY \
+    --platform=linux/amd64 \
+    (+libvirt-tls-sidecar.build/main --GOARCH=$TARGETARCH --VARIANT=$TARGETVARIANT) /usr/bin/libvirt-tls-sidecar
+  ENTRYPOINT ["/usr/bin/libvirt-tls-sidecar"]
+  LABEL org.opencontainers.image.source=https://github.com/vexxhost/atmosphere
+  SAVE IMAGE --push ghcr.io/vexxhost/atmosphere/libvirt-tls-sidecar:latest
+
+libvirt-tls-sidecar.image:
+    BUILD --platform=linux/amd64 --platform=linux/arm64 +libvirt-tls-sidecar.platform-image
 
 build.wheels:
-  FROM +poetry
+  FROM ./images/builder+image
   COPY pyproject.toml poetry.lock ./
   ARG --required only
   RUN poetry export --only=${only} -f requirements.txt --without-hashes > requirements.txt
@@ -44,25 +72,44 @@ build.collections:
   SAVE IMAGE --cache-hint
 
 image:
-  FROM python:3.10-slim
+  ARG RELEASE=2023.1
+  FROM ./images/cloud-archive-base+image --RELEASE ${RELEASE}
   ENV ANSIBLE_PIPELINING=True
-  RUN \
-    apt-get update && \
-    apt-get install --no-install-recommends -y rsync openssh-client && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
-  CMD ["/bin/bash"]
+  DO ./images+APT_INSTALL --PACKAGES "rsync openssh-client"
   COPY +build.venv.runtime/venv /venv
   ENV PATH=/venv/bin:$PATH
   COPY +build.collections/ /usr/share/ansible
   ARG tag=latest
   SAVE IMAGE --push ghcr.io/vexxhost/atmosphere:${tag}
 
+images:
+  BUILD ./images/barbican+image
+  BUILD ./images/cinder+image
+  BUILD ./images/cluster-api-provider-openstack+image
+  BUILD ./images/designate+image
+  BUILD ./images/glance+image
+  BUILD ./images/heat+image
+  BUILD ./images/horizon+image
+  BUILD ./images/ironic+image
+  BUILD ./images/keystone+image
+  BUILD ./images/libvirtd+image
+  BUILD ./images/magnum+image
+  BUILD ./images/manila+image
+  BUILD ./images/neutron+image
+  BUILD ./images/nova-ssh+image
+  BUILD ./images/nova+image
+  BUILD ./images/octavia+image
+  BUILD ./images/openvswitch+image
+  BUILD ./images/ovn+images
+  BUILD ./images/placement+image
+  BUILD ./images/senlin+image
+  BUILD ./images/tempest+image
+
 pin-images:
   FROM +build.venv.dev
   COPY roles/defaults/vars/main.yml /defaults.yml
   COPY build/pin-images.py /usr/local/bin/pin-images
-  RUN /usr/local/bin/pin-images /defaults.yml /pinned.yml
+  RUN --no-cache /usr/local/bin/pin-images /defaults.yml /pinned.yml
   SAVE ARTIFACT /pinned.yml AS LOCAL roles/defaults/vars/main.yml
 
 gh:
