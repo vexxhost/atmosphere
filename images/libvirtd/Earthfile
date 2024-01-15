@@ -3,7 +3,6 @@ VERSION 0.7
 platform-image:
   ARG RELEASE=zed
   FROM ../cloud-archive-base+image --RELEASE=${RELEASE}
-  LABEL org.opencontainers.image.source=https://github.com/vexxhost/atmosphere
   COPY keyrings/ceph.gpg /etc/apt/trusted.gpg.d/
   IF [ "$(lsb_release -sc)" = "focal" ]
     RUN echo "deb http://download.ceph.com/debian-quincy/ $(lsb_release -sc) main" > /etc/apt/sources.list.d/ceph.list

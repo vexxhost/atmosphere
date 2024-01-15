@@ -1,6 +1,20 @@
 VERSION 0.7
 
-build:
+requirements:
+  FROM ../base+image
+  ARG RELEASE
+  COPY ${RELEASE}/upper-constraints.txt /upper-constraints.txt
+  SAVE ARTIFACT /upper-constraints.txt
+
+PIP_INSTALL:
+  COMMAND
+  ARG PACKAGES
+  RUN --mount=type=cache,target=/root/.cache \
+    /var/lib/openstack/bin/pip3 install \
+      --constraint /upper-constraints.txt \
+      ${PACKAGES}
+
+builder:
   ARG RELEASE
   FROM ../cloud-archive-base+image --RELEASE=${RELEASE}
   DO ../+APT_INSTALL --PACKAGES "\
@@ -19,41 +33,51 @@ build:
     python3-venv"
   RUN --mount type=cache,target=/root/.cache \
     python3 -m venv --upgrade --system-site-packages /var/lib/openstack
-  ENV UWSGI_PROFILE_OVERRIDE=ssl=true
-  RUN --mount type=cache,target=/root/.cache \
-    mkdir -p /wheels && \
-    /var/lib/openstack/bin/pip3 wheel --wheel-dir /wheels uwsgi
-  COPY ${RELEASE}/upper-constraints.txt /upper-constraints.txt
+  COPY \
+    (+requirements/upper-constraints.txt --RELEASE=${RELEASE}) \
+    /upper-constraints.txt
+  DO +PIP_INSTALL --PACKAGES "pymysql python-memcached cryptography uwsgi"
+
+BUILD_VENV:
+  COMMAND
   ARG PROJECT
-  ARG PROJECT_REF
   ARG PROJECT_REPO=https://opendev.org/openstack/${PROJECT}
+  ARG PROJECT_REF
   GIT CLONE --branch ${PROJECT_REF} ${PROJECT_REPO} /src
   RUN \
     cd /src && \
     git fetch --unshallow
+  COPY --if-exists patches /patches
+  IF [ -d /patches ]
+    WORKDIR /src
+    RUN git apply --verbose /patches
+  END
   ARG EXTRAS=""
   ARG PIP_PACKAGES=""
-  RUN --mount=type=cache,target=/root/.cache \
-    /var/lib/openstack/bin/pip3 install \
-      --constraint /upper-constraints.txt \
-      --find-links /wheels/ \
-      pymysql \
-      python-memcached \
-      cryptography \
-      uwsgi \
-      /src${EXTRAS} \
-      ${PIP_PACKAGES}
+  DO +PIP_INSTALL --PACKAGES "/src${EXTRAS} ${PIP_PACKAGES}"
   SAVE ARTIFACT /var/lib/openstack venv
+
+build:
+  ARG RELEASE
+  FROM +builder --RELEASE=${RELEASE}
+  ARG PROJECT
+  ARG PROJECT_REF
+  ARG EXTRAS=""
+  ARG PIP_PACKAGES=""
+  DO +BUILD_VENV \
+    --PROJECT=${PROJECT} \
+    --PROJECT_REF=${PROJECT_REF} \
+    --EXTRAS=${EXTRAS} \
+    --PIP_PACKAGES=${PIP_PACKAGES}
 
 image:
   ARG RELEASE
   FROM ../cloud-archive-base+image --RELEASE=${RELEASE}
+  ENV PATH=/var/lib/openstack/bin:$PATH
   ARG PROJECT
+  DO ../+CREATE_PROJECT_USER --PROJECT=${PROJECT}
   ARG PROJECT_REF
   ARG PIP_PACKAGES
-  DO ../+CREATE_PROJECT_USER --PROJECT=${PROJECT}
-  ENV PATH=/var/lib/openstack/bin:$PATH
   COPY \
     (+build/venv --RELEASE=${RELEASE} --PROJECT=${PROJECT} --PROJECT_REF=${PROJECT_REF} --PIP_PACKAGES=${PIP_PACKAGES}) \
     /var/lib/openstack
-  LABEL org.opencontainers.image.source=https://github.com/vexxhost/atmosphere

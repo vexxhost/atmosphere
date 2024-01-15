@@ -27,7 +27,6 @@ libvirt-tls-sidecar.platform-image:
     --platform=linux/amd64 \
     (+libvirt-tls-sidecar.build/main --GOARCH=$TARGETARCH --VARIANT=$TARGETVARIANT) /usr/bin/libvirt-tls-sidecar
   ENTRYPOINT ["/usr/bin/libvirt-tls-sidecar"]
-  LABEL org.opencontainers.image.source=https://github.com/vexxhost/atmosphere
   SAVE IMAGE --push ghcr.io/vexxhost/atmosphere/libvirt-tls-sidecar:latest
 
 libvirt-tls-sidecar.image:
