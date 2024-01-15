@@ -1,15 +1,19 @@
 VERSION 0.7
 
-image:
-  ARG PROJECT=barbican
-  ARG RELEASE=zed
-  ARG REF=7d6749fcb1ad16a3350de82cd8e523d5b55306f8
-  FROM ../openstack-service+image \
-    --PROJECT ${PROJECT} \
-    --RELEASE ${RELEASE} \
-    --PROJECT_REF ${REF} \
+ARG --global RELEASE=zed
+ARG --global PROJECT=barbican
+ARG --global PROJECT_REF=7d6749fcb1ad16a3350de82cd8e523d5b55306f8
+
+build:
+  FROM ../openstack-service+builder --RELEASE=${RELEASE}
+  DO ../openstack-service+BUILD_VENV \
+    --PROJECT=${PROJECT} \
+    --PROJECT_REF=${PROJECT_REF}
     --PIP_PACKAGES "pykmip"
-  DO ../+APPLY_PATCHES
+
+image:
+  FROM ../openstack-service+image --RELEASE ${RELEASE} --PROJECT ${PROJECT}
+  COPY +build/venv /var/lib/openstack
   SAVE IMAGE --push \
     ghcr.io/vexxhost/atmosphere/${PROJECT}:${RELEASE} \
-    ghcr.io/vexxhost/atmosphere/${PROJECT}:${REF}
+    ghcr.io/vexxhost/atmosphere/${PROJECT}:${PROJECT_REF}

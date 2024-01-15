@@ -1,17 +1,20 @@
 VERSION 0.7
 
+ARG --global RELEASE=zed
+ARG --global PROJECT=heat
+ARG --global PROJECT_REF=a2b70a93658ecd2774f22c63a394c5629aefdbe7
+
+build:
+  FROM ../openstack-service+builder --RELEASE=${RELEASE}
+  DO ../openstack-service+BUILD_VENV \
+    --PROJECT=${PROJECT} \
+    --PROJECT_REF=${PROJECT_REF}
+
 image:
-  ARG PROJECT=heat
-  ARG RELEASE=zed
-  ARG REF=a2b70a93658ecd2774f22c63a394c5629aefdbe7
-  FROM ../openstack-service+image \
-    --PROJECT ${PROJECT} \
-    --RELEASE ${RELEASE} \
-    --PROJECT_REF ${REF}
-  DO \
-    ../+APT_INSTALL \
+  FROM ../openstack-service+image --RELEASE ${RELEASE} --PROJECT ${PROJECT}
+  COPY +build/venv /var/lib/openstack
+  DO ../+APT_INSTALL \
     --PACKAGES "curl jq"
-  DO ../+APPLY_PATCHES
   SAVE IMAGE --push \
     ghcr.io/vexxhost/atmosphere/${PROJECT}:${RELEASE} \
-    ghcr.io/vexxhost/atmosphere/${PROJECT}:${REF}
+    ghcr.io/vexxhost/atmosphere/${PROJECT}:${PROJECT_REF}

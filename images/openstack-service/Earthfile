@@ -1,11 +1,5 @@
 VERSION 0.7
 
-requirements:
-  FROM ../base+image
-  ARG RELEASE
-  COPY ${RELEASE}/upper-constraints.txt /upper-constraints.txt
-  SAVE ARTIFACT /upper-constraints.txt
-
 PIP_INSTALL:
   COMMAND
   ARG PACKAGES
@@ -13,6 +7,37 @@ PIP_INSTALL:
     /var/lib/openstack/bin/pip3 install \
       --constraint /upper-constraints.txt \
       ${PACKAGES}
+
+GIT_CHECKOUT:
+  COMMAND
+  ARG PROJECT
+  ARG PROJECT_REPO=https://github.com/openstack/${PROJECT}
+  ARG PROJECT_REF
+  GIT CLONE --branch ${PROJECT_REF} ${PROJECT_REPO} /src
+  WORKDIR /src
+  RUN \
+    git remote set-url origin ${PROJECT_REPO} && \
+    git fetch --unshallow
+  COPY --if-exists patches/${PROJECT} /patches
+  IF [ -d /patches ]
+    RUN git apply --verbose /patches/*.patch
+  END
+
+BUILD_VENV:
+  COMMAND
+  ARG PROJECT
+  ARG PROJECT_REF
+  DO +GIT_CHECKOUT --PROJECT=${PROJECT} --PROJECT_REF=${PROJECT_REF}
+  ARG EXTRAS=""
+  ARG PIP_PACKAGES=""
+  DO +PIP_INSTALL --PACKAGES "/src${EXTRAS} ${PIP_PACKAGES}"
+  SAVE ARTIFACT /var/lib/openstack venv
+
+requirements:
+  FROM ../base+image
+  ARG RELEASE
+  COPY ${RELEASE}/upper-constraints.txt /upper-constraints.txt
+  SAVE ARTIFACT /upper-constraints.txt
 
 builder:
   ARG RELEASE
@@ -38,46 +63,9 @@ builder:
     /upper-constraints.txt
   DO +PIP_INSTALL --PACKAGES "pymysql python-memcached cryptography uwsgi"
 
-BUILD_VENV:
-  COMMAND
-  ARG PROJECT
-  ARG PROJECT_REPO=https://opendev.org/openstack/${PROJECT}
-  ARG PROJECT_REF
-  GIT CLONE --branch ${PROJECT_REF} ${PROJECT_REPO} /src
-  RUN \
-    cd /src && \
-    git fetch --unshallow
-  COPY --if-exists patches /patches
-  IF [ -d /patches ]
-    WORKDIR /src
-    RUN git apply --verbose /patches
-  END
-  ARG EXTRAS=""
-  ARG PIP_PACKAGES=""
-  DO +PIP_INSTALL --PACKAGES "/src${EXTRAS} ${PIP_PACKAGES}"
-  SAVE ARTIFACT /var/lib/openstack venv
-
-build:
-  ARG RELEASE
-  FROM +builder --RELEASE=${RELEASE}
-  ARG PROJECT
-  ARG PROJECT_REF
-  ARG EXTRAS=""
-  ARG PIP_PACKAGES=""
-  DO +BUILD_VENV \
-    --PROJECT=${PROJECT} \
-    --PROJECT_REF=${PROJECT_REF} \
-    --EXTRAS=${EXTRAS} \
-    --PIP_PACKAGES=${PIP_PACKAGES}
-
 image:
-  ARG RELEASE
+  ARG --required RELEASE
   FROM ../cloud-archive-base+image --RELEASE=${RELEASE}
   ENV PATH=/var/lib/openstack/bin:$PATH
-  ARG PROJECT
+  ARG --required PROJECT
   DO ../+CREATE_PROJECT_USER --PROJECT=${PROJECT}
-  ARG PROJECT_REF
-  ARG PIP_PACKAGES
-  COPY \
-    (+build/venv --RELEASE=${RELEASE} --PROJECT=${PROJECT} --PROJECT_REF=${PROJECT_REF} --PIP_PACKAGES=${PIP_PACKAGES}) \
-    /var/lib/openstack
