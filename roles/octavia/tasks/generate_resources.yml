@@ -160,81 +160,30 @@
       kubernetes.core.k8s:
         state: present
         definition:
-          - apiVersion: secretgen.k14s.io/v1alpha1
-            kind: SSHKey
-            metadata:
-              name: amphora-ssh-key
-              namespace: openstack
-            spec: {}
-
-    - name: Wait until ssh key is reconciled
-      kubernetes.core.k8s_info:
-        api_version: apps/v1
-        kind: SSHKey
-        name: amphora-ssh-key
-        namespace: openstack
-        wait_sleep: 1
-        wait_timeout: 60
+          apiVersion: secretgen.k14s.io/v1alpha1
+          kind: SSHKey
+          metadata:
+            name: octavia-amphora-ssh-key
+            namespace: openstack
+          spec: {}
         wait: true
+        wait_timeout: 60
         wait_condition:
           type: ReconcileSucceeded
           status: true
-
-    - name: Create jumpbox deployment
-      kubernetes.core.k8s:
-        state: present
-        definition:
-          - apiVersion: apps/v1
-            kind: Deployment
-            metadata:
-              name: amphora-jumpbox
-              namespace: openstack
-              labels:
-                app: octavia
-                components: amphora-jumpbox
-            spec:
-              replicas: 1
-              selector:
-                matchLabels:
-                  app: octavia
-                  components: amphora-jumpbox
-              template:
-                metadata:
-                  labels:
-                    app: octavia
-                    components: amphora-jumpbox
-                spec:
-                  containers:
-                    - name: jumpbox
-                      image: "{{ atmosphere_images['octavia_jumpbox'] | vexxhost.kubernetes.docker_image('ref') }}"
-                      volumeMounts:
-                        - name: sshkey
-                          mountPath: /sshkey
-                          readOnly: true
-                  nodeSelector:
-                    openstack-control-plane: enabled
-                  volumes:
-                    - name: sshkey
-                      secret:
-                        secretName: amphora-ssh-key
-                        defaultMode: 0400 # noqa: yaml[octal-values]
 
     - name: Grab Amphora jumpbox public key
       kubernetes.core.k8s_info:
         api_version: v1
         kind: Secret
-        name: amphora-ssh-key
+        name: octavia-amphora-ssh-key
         namespace: openstack
       register: _octavia_ssh_key_secret
-
-    - name: Cache fact with Percona XtraDB password
-      ansible.builtin.set_fact:
-        _octavia_amphora_ssh_public_key: "{{ _octavia_ssh_key_secret.resources[0]['data']['ssh-authorizedkey'] | b64decode }}"
 
     - name: Create Amphora ssh key pair in Openstack
       openstack.cloud.keypair:
         cloud: atmosphere
         state: present
-        name: amphora-ssh-key
-        public_key: "{{ _octavia_amphora_ssh_public_key }}"
+        name: octavia-amphora-ssh-key
+        public_key: "{{ _octavia_ssh_key_secret.resources[0]['data']['ssh-authorizedkey'] | b64decode }}"
       register: _octavia_amphora_ssh_keypair
