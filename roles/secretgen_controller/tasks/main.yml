@@ -16,6 +16,7 @@
   kubernetes.core.k8s:
     state: present
     definition:
+      # yamllint disable rule:indentation
       - apiVersion: v1
         kind: Namespace
         metadata:
@@ -851,6 +852,8 @@
                   readOnlyRootFilesystem: true
                   runAsNonRoot: true
               serviceAccount: secretgen-controller-sa
+              nodeSelector:
+                openstack-control-plane: enabled
 
       - apiVersion: v1
         kind: ServiceAccount
@@ -916,3 +919,4 @@
         - kind: ServiceAccount
           name: secretgen-controller-sa
           namespace: secretgen-controller
+# yamllint enable rule:indentation
