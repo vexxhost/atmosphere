@@ -4,12 +4,21 @@ ARG --global RELEASE=zed
 ARG --global PROJECT=glance
 ARG --global PROJECT_REF=06a18202ab52c64803f044b8f848ed1c160905d2
 
+build.plugin:
+  ARG PLUGIN
+  FROM ../openstack-service+builder --RELEASE=${RELEASE}
+  DO ../openstack-service+GIT_CHECKOUT \
+    --PROJECT=${PLUGIN} \
+    --PROJECT_REF=stable/${RELEASE}
+  SAVE ARTIFACT /src
+
 build:
   FROM ../openstack-service+builder --RELEASE=${RELEASE}
+  COPY (+build.plugin/src --PLUGIN=glance_store) /glance_store
   DO ../openstack-service+BUILD_VENV \
     --PROJECT=${PROJECT} \
     --PROJECT_REF=${PROJECT_REF} \
-    --PIP_PACKAGES "glance_store[cinder]"
+    --PIP_PACKAGES="/glance_store[cinder]"
 
 image:
   FROM ../openstack-service+image --RELEASE ${RELEASE} --PROJECT ${PROJECT}
