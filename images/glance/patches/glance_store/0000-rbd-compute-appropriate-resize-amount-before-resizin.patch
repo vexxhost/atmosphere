@@ -1,6 +1,6 @@
 From fa43561078bbee531ccc8acf2e185b3fc6d98b2a Mon Sep 17 00:00:00 2001
 From: Andrew Bogott <abogott@wikimedia.org>
-Date: Thu, 08 Jun 2023 07:54:16 -0500
+Date: Thu, 8 Jun 2023 07:54:16 -0500
 Subject: [PATCH] rbd: compute appropriate resize amount before resizing image
 
 Resolves a bug introduced in
@@ -23,12 +23,15 @@ Thanks to Robert Varjasi for investigating this issue!
 Fixes-Bug: 1916482
 Change-Id: Ie03693c2cb8b096978fb156231c3b1cab695470f
 ---
+ glance_store/_drivers/rbd.py              |  6 ++--
+ glance_store/tests/unit/test_rbd_store.py | 38 ++++++++++++++---------
+ 2 files changed, 26 insertions(+), 18 deletions(-)
 
 diff --git a/glance_store/_drivers/rbd.py b/glance_store/_drivers/rbd.py
 index ba2defa..e53baef 100644
 --- a/glance_store/_drivers/rbd.py
 +++ b/glance_store/_drivers/rbd.py
-@@ -535,12 +535,12 @@
+@@ -535,12 +535,12 @@ class Store(driver.Store):
          """Handle the rbd resize when needed."""
          if image_size != 0 or self.size >= bytes_written + chunk_length:
              return self.size
@@ -48,7 +51,7 @@ diff --git a/glance_store/tests/unit/test_rbd_store.py b/glance_store/tests/unit
 index 4f24c26..fb6522a 100644
 --- a/glance_store/tests/unit/test_rbd_store.py
 +++ b/glance_store/tests/unit/test_rbd_store.py
-@@ -213,10 +213,10 @@
+@@ -213,10 +213,10 @@ class TestReSize(base.StoreBaseTest,
                  data_len_temp = data_len
                  resize_amount = self.store.WRITE_CHUNKSIZE
                  while data_len_temp > 0:
@@ -60,7 +63,7 @@ index 4f24c26..fb6522a 100644
                      expected += 1
                  self.assertEqual(expected, resize.call_count)
                  resize.assert_has_calls([mock.call(call) for call in
-@@ -244,7 +244,7 @@
+@@ -244,7 +244,7 @@ class TestReSize(base.StoreBaseTest,
          # Current size is smaller than we need
          self.store.size = 8
          ret = self.store._resize_on_write(image, 0, 16, 16)
@@ -69,7 +72,7 @@ index 4f24c26..fb6522a 100644
          self.assertEqual(self.store.WRITE_CHUNKSIZE * 2,
                           self.store.resize_amount)
          image.resize.assert_called_once_with(ret)
-@@ -253,47 +253,55 @@
+@@ -253,47 +253,55 @@ class TestReSize(base.StoreBaseTest,
          image.resize.reset_mock()
          self.store.size = ret
          ret = self.store._resize_on_write(image, 0, 64, 16)
@@ -138,3 +141,6 @@ index 4f24c26..fb6522a 100644
  
  
  class TestStore(base.StoreBaseTest,
+-- 
+2.34.1
+
