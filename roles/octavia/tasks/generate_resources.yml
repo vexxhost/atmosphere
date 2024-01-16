@@ -153,42 +153,42 @@
     image: "{{ octavia_amphora_image_name }}"
   register: _octavia_amphora_image
 
-- name: Deploy Amphora jumpbox
+- name: Create amphora ssh key
   run_once: true
-  block:
-    - name: Create amphora ssh key
-      kubernetes.core.k8s:
-        state: present
-        definition:
-          apiVersion: secretgen.k14s.io/v1alpha1
-          kind: SSHKey
-          metadata:
-            name: octavia-amphora-ssh-key
-            namespace: openstack
-          spec:
-            secretTemplate:
-              type: Opaque
-              stringData:
-                "id_rsa": $(privateKey)
-                "id_rsa.pub": $(authorizedKey)
-        wait: true
-        wait_timeout: 60
-        wait_condition:
-          type: ReconcileSucceeded
-          status: true
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: secretgen.k14s.io/v1alpha1
+      kind: SSHKey
+      metadata:
+        name: "{{ octavia_helm_release_name }}-amphora-ssh-key"
+        namespace: "{{ octavia_helm_release_namespace }}"
+      spec:
+        secretTemplate:
+          type: Opaque
+          stringData:
+            "id_rsa": $(privateKey)
+            "id_rsa.pub": $(authorizedKey)
+    wait: true
+    wait_timeout: 60
+    wait_condition:
+      type: ReconcileSucceeded
+      status: true
 
-    - name: Grab Amphora jumpbox public key
-      kubernetes.core.k8s_info:
-        api_version: v1
-        kind: Secret
-        name: octavia-amphora-ssh-key
-        namespace: openstack
-      register: _octavia_ssh_key_secret
+- name: Grab Amphora jumpbox public key
+  run_once: true
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Secret
+    name: "{{ octavia_helm_release_name }}-amphora-ssh-key"
+    namespace: "{{ octavia_helm_release_namespace }}"
+  register: _octavia_ssh_key_secret
 
-    - name: Create Amphora ssh key pair in Openstack
-      openstack.cloud.keypair:
-        cloud: atmosphere
-        state: present
-        name: octavia-amphora-ssh-key
-        public_key: "{{ _octavia_ssh_key_secret.resources[0]['data']['id_rsa.pub'] | b64decode }}"
-      register: _octavia_amphora_ssh_keypair
+- name: Create Amphora ssh key pair in Openstack
+  run_once: true
+  openstack.cloud.keypair:
+    cloud: atmosphere
+    state: present
+    name: "{{ octavia_helm_release_name }}-amphora-ssh-key"
+    public_key: "{{ _octavia_ssh_key_secret.resources[0]['data']['id_rsa.pub'] | b64decode }}"
+  register: _octavia_amphora_ssh_keypair
