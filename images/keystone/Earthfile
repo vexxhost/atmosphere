@@ -1,19 +1,22 @@
 VERSION 0.7
 
+ARG --global RELEASE=2023.2
+ARG --global PROJECT=keystone
+ARG --global PROJECT_REF=653d82b1b4e09b2ff37b56868e57d08c8e3af7dd
+
+build:
+  FROM ../openstack-service+builder --RELEASE=${RELEASE}
+  DO ../openstack-service+BUILD_VENV \
+    --PROJECT=${PROJECT} \
+    --PROJECT_REF=${PROJECT_REF} \
+    --EXTRAS "[ldap]" \
+    --PIP_PACKAGES "keystone-keycloak-backend==0.1.6"
+
 image:
-  ARG PROJECT=keystone
-  ARG RELEASE=zed
-  ARG REF=72a4fc0f3ccf7a5ca9fc40e5364e14f881ec27b2
-  FROM ../openstack-service+image \
-    --PROJECT ${PROJECT} \
-    --RELEASE ${RELEASE} \
-    --PROJECT_REF ${REF} \
-    --PIP_PACKAGES "keystone-keycloak-backend==0.1.6" \
-    --EXTRAS "[ldap]"
-  DO \
-    ../+APT_INSTALL \
+  FROM ../openstack-service+image --RELEASE ${RELEASE} --PROJECT ${PROJECT}
+  COPY +build/venv /var/lib/openstack
+  DO ../+APT_INSTALL \
     --PACKAGES "apache2 libapache2-mod-wsgi-py3"
-  DO ../+APPLY_PATCHES
   ARG MOD_AUTH_OPENIDC_VERSION=2.4.12.1
   ARG TARGETARCH
   RUN \
@@ -27,4 +30,4 @@ image:
     rm -rfv /var/lib/apt/lists/* libapache2-mod-auth-openidc_${MOD_AUTH_OPENIDC_VERSION}-1.$(lsb_release -sc)_${TARGETARCH}.deb
   SAVE IMAGE --push \
     ghcr.io/vexxhost/atmosphere/${PROJECT}:${RELEASE} \
-    ghcr.io/vexxhost/atmosphere/${PROJECT}:${REF}
+    ghcr.io/vexxhost/atmosphere/${PROJECT}:${PROJECT_REF}

@@ -1,19 +1,22 @@
 VERSION 0.7
 
+ARG --global PROJECT=cinder
+ARG --global RELEASE=2023.2
+ARG --global PROJECT_REF=7d158234b72f04e780e307b0375cedf30dd8fb90
+
+build:
+  FROM ../openstack-service+builder --RELEASE=${RELEASE}
+  DO ../openstack-service+BUILD_VENV \
+    --PROJECT=${PROJECT} \
+    --PROJECT_REF=${PROJECT_REF} \
+    --PIP_PACKAGES="purestorage"
+
 image:
-  ARG PROJECT=cinder
-  ARG RELEASE=zed
-  ARG REF=011e6549259c0433ceb594d8083f6c838d964311
-  FROM ../openstack-service+image \
-    --PROJECT ${PROJECT} \
-    --RELEASE ${RELEASE} \
-    --PROJECT_REF ${REF} \
-    --PIP_PACKAGES "purestorage"
-  DO \
-    ../+APT_INSTALL \
-    --PACKAGES "ceph-common lsscsi nvme-cli python3-rados python3-rbd qemu-utils sysfsutils udev util-linux"
-  DO ../+APPLY_PATCHES
+  FROM ../openstack-service+image --RELEASE ${RELEASE} --PROJECT ${PROJECT}
+  COPY +build/venv /var/lib/openstack
   COPY ../kubernetes+image/kubectl /usr/local/bin/kubectl
+  DO ../+APT_INSTALL \
+    --PACKAGES "ceph-common lsscsi nvme-cli python3-rados python3-rbd qemu-utils sysfsutils udev util-linux"
   SAVE IMAGE --push \
     ghcr.io/vexxhost/atmosphere/${PROJECT}:${RELEASE} \
-    ghcr.io/vexxhost/atmosphere/${PROJECT}:${REF}
+    ghcr.io/vexxhost/atmosphere/${PROJECT}:${PROJECT_REF}

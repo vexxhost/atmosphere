@@ -1,6 +1,45 @@
 VERSION 0.7
 
-build:
+PIP_INSTALL:
+  COMMAND
+  ARG PACKAGES
+  RUN --mount=type=cache,target=/root/.cache \
+    /var/lib/openstack/bin/pip3 install \
+      --constraint /upper-constraints.txt \
+      ${PACKAGES}
+
+GIT_CHECKOUT:
+  COMMAND
+  ARG PROJECT
+  ARG PROJECT_REPO=https://github.com/openstack/${PROJECT}
+  ARG PROJECT_REF
+  GIT CLONE --branch ${PROJECT_REF} ${PROJECT_REPO} /src
+  WORKDIR /src
+  RUN \
+    git remote set-url origin ${PROJECT_REPO} && \
+    git fetch --unshallow
+  COPY --if-exists patches/${PROJECT} /patches
+  IF [ -d /patches ]
+    RUN git apply --verbose /patches/*.patch
+  END
+
+BUILD_VENV:
+  COMMAND
+  ARG PROJECT
+  ARG PROJECT_REF
+  DO +GIT_CHECKOUT --PROJECT=${PROJECT} --PROJECT_REF=${PROJECT_REF}
+  ARG EXTRAS=""
+  ARG PIP_PACKAGES=""
+  DO +PIP_INSTALL --PACKAGES "/src${EXTRAS} ${PIP_PACKAGES}"
+  SAVE ARTIFACT /var/lib/openstack venv
+
+requirements:
+  FROM ../base+image
+  ARG RELEASE
+  COPY ${RELEASE}/upper-constraints.txt /upper-constraints.txt
+  SAVE ARTIFACT /upper-constraints.txt
+
+builder:
   ARG RELEASE
   FROM ../cloud-archive-base+image --RELEASE=${RELEASE}
   DO ../+APT_INSTALL --PACKAGES "\
@@ -19,41 +58,14 @@ build:
     python3-venv"
   RUN --mount type=cache,target=/root/.cache \
     python3 -m venv --upgrade --system-site-packages /var/lib/openstack
-  ENV UWSGI_PROFILE_OVERRIDE=ssl=true
-  RUN --mount type=cache,target=/root/.cache \
-    mkdir -p /wheels && \
-    /var/lib/openstack/bin/pip3 wheel --wheel-dir /wheels uwsgi
-  COPY ${RELEASE}/upper-constraints.txt /upper-constraints.txt
-  ARG PROJECT
-  ARG PROJECT_REF
-  ARG PROJECT_REPO=https://opendev.org/openstack/${PROJECT}
-  GIT CLONE --branch ${PROJECT_REF} ${PROJECT_REPO} /src
-  RUN \
-    cd /src && \
-    git fetch --unshallow
-  ARG EXTRAS=""
-  ARG PIP_PACKAGES=""
-  RUN --mount=type=cache,target=/root/.cache \
-    /var/lib/openstack/bin/pip3 install \
-      --constraint /upper-constraints.txt \
-      --find-links /wheels/ \
-      pymysql \
-      python-memcached \
-      cryptography \
-      uwsgi \
-      /src${EXTRAS} \
-      ${PIP_PACKAGES}
-  SAVE ARTIFACT /var/lib/openstack venv
+  COPY \
+    (+requirements/upper-constraints.txt --RELEASE=${RELEASE}) \
+    /upper-constraints.txt
+  DO +PIP_INSTALL --PACKAGES "pymysql python-memcached cryptography uwsgi"
 
 image:
-  ARG RELEASE
+  ARG --required RELEASE
   FROM ../cloud-archive-base+image --RELEASE=${RELEASE}
-  ARG PROJECT
-  ARG PROJECT_REF
-  ARG PIP_PACKAGES
-  DO ../+CREATE_PROJECT_USER --PROJECT=${PROJECT}
   ENV PATH=/var/lib/openstack/bin:$PATH
-  COPY \
-    (+build/venv --RELEASE=${RELEASE} --PROJECT=${PROJECT} --PROJECT_REF=${PROJECT_REF} --PIP_PACKAGES=${PIP_PACKAGES}) \
-    /var/lib/openstack
-  LABEL org.opencontainers.image.source=https://github.com/vexxhost/atmosphere
+  ARG --required PROJECT
+  DO ../+CREATE_PROJECT_USER --PROJECT=${PROJECT}

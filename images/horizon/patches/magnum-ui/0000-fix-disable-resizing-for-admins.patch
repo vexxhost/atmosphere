@@ -1,4 +1,4 @@
-From d3ac70fb12dc363a0fbed39bcfd3642e36f4515d Mon Sep 17 00:00:00 2001
+From a3671cc242adb85f792d1c8c57ccc7692f1ec251 Mon Sep 17 00:00:00 2001
 From: Mohammed Naser <mnaser@vexxhost.com>
 Date: Mon, 20 Feb 2023 00:55:14 +0000
 Subject: [PATCH] fix: disable resizing for admins
@@ -11,14 +11,13 @@ This will hide the resize button for clusters that don't match the
 project ID of the current user.
 
 Change-Id: If09c509abdd21a5a7b9bc374af52a06404fb0ff8
-(cherry picked from commit 345f853567d25f1b163025f0295c742582052748)
 ---
  .../clusters/resize/resize.service.js         |  9 ++++---
- .../clusters/resize/resize.service.spec.js    | 27 ++++++++++++++-----
- 2 files changed, 26 insertions(+), 10 deletions(-)
+ .../clusters/resize/resize.service.spec.js    | 25 +++++++++++++++----
+ 2 files changed, 25 insertions(+), 9 deletions(-)
 
 diff --git a/magnum_ui/static/dashboard/container-infra/clusters/resize/resize.service.js b/magnum_ui/static/dashboard/container-infra/clusters/resize/resize.service.js
-index ebc6a961..b86833a0 100644
+index ebc6a96..b86833a 100644
 --- a/magnum_ui/static/dashboard/container-infra/clusters/resize/resize.service.js
 +++ b/magnum_ui/static/dashboard/container-infra/clusters/resize/resize.service.js
 @@ -32,6 +32,7 @@
@@ -52,10 +51,10 @@ index ebc6a961..b86833a0 100644
  
      function constructModalConfig(workerNodesList) {
 diff --git a/magnum_ui/static/dashboard/container-infra/clusters/resize/resize.service.spec.js b/magnum_ui/static/dashboard/container-infra/clusters/resize/resize.service.spec.js
-index 842df87d..27fa8064 100644
+index 842df87..645b149 100644
 --- a/magnum_ui/static/dashboard/container-infra/clusters/resize/resize.service.spec.js
 +++ b/magnum_ui/static/dashboard/container-infra/clusters/resize/resize.service.spec.js
-@@ -19,16 +19,17 @@
+@@ -19,9 +19,10 @@
  
    describe('horizon.dashboard.container-infra.clusters.resize.service', function() {
  
@@ -68,14 +67,6 @@ index 842df87d..27fa8064 100644
      };
      var modal = {
        open: function(config) {
-         deferred = $q.defer();
-         deferred.resolve(config);
-         modalConfig = config;
--
-+``
-         return deferred.promise;
-       }
-     };
 @@ -50,6 +51,7 @@
          'horizon.dashboard.container-infra.clusters.resize.service');
        magnum = $injector.get('horizon.app.core.openstack-service-api.magnum');
@@ -110,3 +101,6 @@ index 842df87d..27fa8064 100644
      });
  
      it('should open the modal, hide the loading spinner and check the form model',
+-- 
+2.34.1
+

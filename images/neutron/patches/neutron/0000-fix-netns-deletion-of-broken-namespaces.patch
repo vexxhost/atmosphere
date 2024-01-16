@@ -1,4 +1,4 @@
-From f8130f36e3cdb67fd9be64a61ac22b487200e2bc Mon Sep 17 00:00:00 2001
+From 69c49c4ef24648f97d895bfaacd7336917634565 Mon Sep 17 00:00:00 2001
 From: Felix Huettner <felix.huettner@mail.schwarz>
 Date: Fri, 22 Sep 2023 16:25:10 +0200
 Subject: [PATCH] fix netns deletion of broken namespaces
@@ -26,13 +26,19 @@ which is critical for VM startup.
 
 Closes-Bug: #2037102
 Change-Id: I7c43812fed5903f98a2e491076c24a8d926a59b4
+(cherry picked from commit 566fea3fed837b0130023303c770aade391d3d61)
 ---
+ neutron/agent/linux/ip_lib.py                 | 17 ++++++++++++-
+ neutron/agent/ovn/metadata/agent.py           |  5 +++-
+ neutron/tests/unit/agent/linux/test_ip_lib.py | 15 +++++++++++
+ .../unit/agent/ovn/metadata/test_agent.py     | 25 +++++++++++++++++++
+ 4 files changed, 60 insertions(+), 2 deletions(-)
 
 diff --git a/neutron/agent/linux/ip_lib.py b/neutron/agent/linux/ip_lib.py
-index 9953729..196dc17 100644
+index 10bd33d9e1..5d2593da47 100644
 --- a/neutron/agent/linux/ip_lib.py
 +++ b/neutron/agent/linux/ip_lib.py
-@@ -259,7 +259,22 @@
+@@ -259,7 +259,22 @@ class IPWrapper(SubProcessBase):
          return ip
  
      def namespace_is_empty(self):
@@ -57,10 +63,10 @@ index 9953729..196dc17 100644
      def garbage_collect_namespace(self):
          """Conditionally destroy the namespace if it is empty."""
 diff --git a/neutron/agent/ovn/metadata/agent.py b/neutron/agent/ovn/metadata/agent.py
-index 7a09145..888ab15 100644
+index 1745239701..861715d8e1 100644
 --- a/neutron/agent/ovn/metadata/agent.py
 +++ b/neutron/agent/ovn/metadata/agent.py
-@@ -478,7 +478,10 @@
+@@ -430,7 +430,10 @@ class MetadataAgent(object):
                               ns.startswith(NS_PREFIX) and
                               ns not in metadata_namespaces]
          for ns in unused_namespaces:
@@ -73,10 +79,10 @@ index 7a09145..888ab15 100644
          # resync all network namespaces based on the associated datapaths,
          # even those that are already running. This is to make sure
 diff --git a/neutron/tests/unit/agent/linux/test_ip_lib.py b/neutron/tests/unit/agent/linux/test_ip_lib.py
-index c488e90..3956142 100644
+index d1c74fb3f7..159cafdb8e 100644
 --- a/neutron/tests/unit/agent/linux/test_ip_lib.py
 +++ b/neutron/tests/unit/agent/linux/test_ip_lib.py
-@@ -357,6 +357,23 @@
+@@ -357,6 +357,21 @@ class TestIpWrapper(base.BaseTestCase):
                  self.assertNotIn(mock.call().delete('ns'),
                                   ip_ns_cmd_cls.mock_calls)
  
@@ -92,19 +98,17 @@ index c488e90..3956142 100644
 +                self.assertTrue(ip.garbage_collect_namespace())
 +
 +                mock_get_devices.assert_called_once_with()
-+                expected = [mock.call(ip),
-+                            mock.call().exists('ns'),
-+                            mock.call().delete('ns')]
-+                self.assertEqual(ip_ns_cmd_cls.mock_calls, expected)
++                expected = [mock.call().delete('ns')]
++                ip_ns_cmd_cls.assert_has_calls(expected)
 +
      @mock.patch.object(priv_lib, 'create_interface')
      def test_add_vlan(self, create):
          retval = ip_lib.IPWrapper().add_vlan('eth0.1', 'eth0', '1')
 diff --git a/neutron/tests/unit/agent/ovn/metadata/test_agent.py b/neutron/tests/unit/agent/ovn/metadata/test_agent.py
-index 73487e1..cb6ee43 100644
+index 6df7da702d..9bf9f0db52 100644
 --- a/neutron/tests/unit/agent/ovn/metadata/test_agent.py
 +++ b/neutron/tests/unit/agent/ovn/metadata/test_agent.py
-@@ -138,6 +138,31 @@
+@@ -134,6 +134,31 @@ class TestMetadataAgent(base.BaseTestCase):
              lnn.assert_called_once_with()
              tdp.assert_called_once_with('3')
  
@@ -136,3 +140,6 @@ index 73487e1..cb6ee43 100644
      def test_get_networks_datapaths(self):
          """Test get_networks_datapaths returns only datapath objects for the
          networks containing vif ports of type ''(blank) and 'external'.
+-- 
+2.34.1
+

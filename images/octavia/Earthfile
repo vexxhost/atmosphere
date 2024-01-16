@@ -1,18 +1,21 @@
 VERSION 0.7
 
+ARG --global PROJECT=octavia
+ARG --global RELEASE=2023.2
+ARG --global PROJECT_REF=88d7315a60314e44fcce88ad198ceb3c0c107fe6
+
+build:
+  FROM ../openstack-service+builder --RELEASE=${RELEASE}
+  DO ../openstack-service+BUILD_VENV \
+    --PROJECT=${PROJECT} \
+    --PROJECT_REF=${PROJECT_REF} \
+    --PIP_PACKAGES="ovn-octavia-provider"
+
 image:
-  ARG PROJECT=octavia
-  ARG RELEASE=zed
-  ARG REF=07c33fec4578e2529a2a5fc8fad4cde929597849
-  FROM ../openstack-service+image \
-    --PROJECT ${PROJECT} \
-    --RELEASE ${RELEASE} \
-    --PROJECT_REF ${REF} \
-    --PIP_PACKAGES "ovn-octavia-provider"
-  DO \
-    ../+APT_INSTALL \
+  FROM ../openstack-service+image --RELEASE ${RELEASE} --PROJECT ${PROJECT}
+  COPY +build/venv /var/lib/openstack
+  DO ../+APT_INSTALL \
     --PACKAGES "isc-dhcp-client openssh-client"
-  DO ../+APPLY_PATCHES
   SAVE IMAGE --push \
     ghcr.io/vexxhost/atmosphere/${PROJECT}:${RELEASE} \
-    ghcr.io/vexxhost/atmosphere/${PROJECT}:${REF}
+    ghcr.io/vexxhost/atmosphere/${PROJECT}:${PROJECT_REF}

@@ -1,0 +1,40 @@
+From 4aa347fe196b7b18ff0bf5f4d4f076a6c14cf12e Mon Sep 17 00:00:00 2001
+From: jeremy-boyle <jeremyboylet@gmail.com>
+Date: Sat, 24 Jun 2023 16:59:11 +0000
+Subject: [PATCH] Fixing Incorrect URL when browsing Swift containers
+
+This patch fixes a bug identified in the code that generates the URL for
+the Swift container object. The bug caused the forward slashes (/) in the
+folder parameter to be encoded as %2F instead of being included as '/' in the
+resulting URL.
+
+To resolve this issue, the code has been updated by adding a replace() method
+to replace the %2F sequences with forward slashes. The updated code ensures
+that the URL generated for the folder parameter contains the correct forward
+slash (/) representation.
+
+Closes-Bug: #2009724
+Signed-off-by: jeremy-boyle <jeremyboylet@gmail.com>
+
+Change-Id: I5837e74ddcc71cda6b4686e586dbb8b1386a9cd3
+---
+ .../static/dashboard/project/containers/objects.controller.js  | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/openstack_dashboard/dashboards/project/static/dashboard/project/containers/objects.controller.js b/openstack_dashboard/dashboards/project/static/dashboard/project/containers/objects.controller.js
+index 55262a1fa..c14128cbf 100644
+--- a/openstack_dashboard/dashboards/project/static/dashboard/project/containers/objects.controller.js
++++ b/openstack_dashboard/dashboards/project/static/dashboard/project/containers/objects.controller.js
+@@ -60,7 +60,8 @@
+     ctrl.containerURL = containerRoute + encodeURIComponent($routeParams.container) +
+       ctrl.model.DELIMETER;
+     if (angular.isDefined($routeParams.folder)) {
+-      ctrl.currentURL = ctrl.containerURL + encodeURIComponent($routeParams.folder) +
++      ctrl.currentURL = ctrl.containerURL +
++        encodeURIComponent($routeParams.folder).replace(/%2F/g, '/') +
+         ctrl.model.DELIMETER;
+     } else {
+       ctrl.currentURL = ctrl.containerURL;
+-- 
+2.34.1
+
