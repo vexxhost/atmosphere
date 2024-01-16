@@ -56,12 +56,12 @@ _octavia_helm_values:
             - name: octavia-client-certs
               secret:
                 secretName: octavia-client-certs
-            - name: octavia-amphora-ssh-key
-              secret:
-                secretName: "{{ octavia_helm_release_name }}-amphora-ssh-key"
-                defaultMode: 0444 # noqa: yaml[octal-values]
             - name: octavia-amphora-ssh-key-dir
               emptyDir: {}
+            - name: octavia-amphora-ssh-key
+              secret:
+                secretName: "{{ octavia_ssh_key_secret.resources[0]['metadata']['name'] }}"
+                defaultMode: 0444 # noqa: yaml[octal-values]
       octavia_housekeeping:
         octavia_housekeeping:
           volumeMounts:
@@ -110,7 +110,7 @@ _octavia_helm_values:
         amp_flavor_id: "{{ _octavia_amphora_flavor.id }}"
         amp_image_owner_id: "{{ _octavia_amphora_image.openstack_image.owner }}"
         amp_secgroup_list: "{{ _octavia_amphora_sg.id }}"
-        amp_ssh_key_name: "{{ _octavia_amphora_ssh_keypair.key.name }}"
+        amp_ssh_key_name: "{{ octavia_amphora_ssh_keypair.key.name }}"
         client_ca: /etc/octavia/certs/client/ca.crt
         volume_driver: volume_cinder_driver
         workers: 4
