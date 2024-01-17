@@ -36,7 +36,15 @@ BUILD_VENV:
 requirements:
   FROM ../base+image
   ARG RELEASE
-  GIT CLONE --branch stable/${RELEASE} https://github.com/openstack/requirements /src
+  IF [ "${RELEASE}" = "master" ]
+    ARG BRANCH=master
+  ELSE
+    ARG BRANCH=stable/${RELEASE}
+  END
+  GIT CLONE --branch ${BRANCH} https://github.com/openstack/requirements /src
+  RUN \
+    sed -i '/glance-store/d' /src/upper-constraints.txt && \
+    sed -i '/horizon/d' /src/upper-constraints.txt
   SAVE ARTIFACT /src/upper-constraints.txt
 
 builder:
