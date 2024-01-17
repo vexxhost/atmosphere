@@ -108,6 +108,19 @@
   ansible.builtin.debug:
     msg: "{{ _tempest_log.log_lines }}"
 
+- name: Get logs when tempest result is failed
+  changed_when: false
+  ansible.builtin.shell: kubectl -nopenstack get pod |awk '{print $1}'|grep -v '^N'|xargs -I {} sh -c 'echo getLOG:{} && kubectl logs -n openstack {}|grep -E -i "(ERROR|WARN)"'
+  when: _tempest_job_obj.resources[0]['status']['succeeded'] is not defined or
+        _tempest_job_obj.resources[0]['status']['succeeded'] != 1
+  register: _k8s_log
+
+- name: Print tempest log details
+  ansible.builtin.debug:
+    msg: "{{ _k8s_log.stdout }}"
+
+
+
 - name: Fail when tempest result is failed
   ansible.builtin.fail:
     msg: "Tempest failed!"
