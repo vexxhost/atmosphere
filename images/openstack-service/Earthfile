@@ -36,8 +36,8 @@ BUILD_VENV:
 requirements:
   FROM ../base+image
   ARG RELEASE
-  COPY ${RELEASE}/upper-constraints.txt /upper-constraints.txt
-  SAVE ARTIFACT /upper-constraints.txt
+  GIT CLONE --branch stable/${RELEASE} https://github.com/openstack/requirements /src
+  SAVE ARTIFACT /src/upper-constraints.txt
 
 builder:
   ARG RELEASE
