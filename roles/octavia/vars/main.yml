@@ -39,15 +39,8 @@ _octavia_helm_values:
               mountPath: /etc/octavia/certs/server
             - name: octavia-client-certs
               mountPath: /etc/octavia/certs/client
-            - name: octavia-amphora-ssh-key-dir
+            - name: octavia-amphora-ssh-key
               mountPath: /var/lib/octavia/.ssh
-            - name: octavia-amphora-ssh-key
-              mountPath: /var/lib/octavia/.ssh/id_rsa
-              subPath: id_rsa
-              readOnly: true
-            - name: octavia-amphora-ssh-key
-              mountPath: /var/lib/octavia/.ssh/id_rsa.pub
-              subPath: id_rsa.pub
               readOnly: true
           volumes:
             - name: octavia-server-ca
@@ -56,14 +49,10 @@ _octavia_helm_values:
             - name: octavia-client-certs
               secret:
                 secretName: octavia-client-certs
-            - name: octavia-amphora-ssh-key-dir
-              emptyDir: {}
             - name: octavia-amphora-ssh-key
               secret:
                 secretName: "{{ octavia_ssh_key_secret.resources[0]['metadata']['name'] }}"
                 defaultMode: 0444 # noqa: yaml[octal-values]
-            - name: octavia-amphora-ssh-key-dir
-              emptyDir: {}
       octavia_housekeeping:
         octavia_housekeeping:
           volumeMounts:
@@ -128,6 +117,7 @@ _octavia_helm_values:
         driver: noop
       neutron:
         endpoint_type: internalURL
+        valid_interfaces: internal
       nova:
         endpoint_type: internalURL
       service_auth:
