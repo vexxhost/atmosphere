@@ -32,6 +32,15 @@ if [[ ! $HOSTNAME == *-0 && $OVSDB_HOST =~ (.+)-([0-9]+)\. ]]; then
   )
 fi
 
+if [[ $OVS_DATABASE == "nb" ]]; then
+  OVN_DATABASE_NAME="OVN_Northbound"
+elif [[ $OVS_DATABASE == "sb" ]]; then
+  OVN_DATABASE_NAME="OVN_Southbound"
+else
+  echo "OVS_DATABASE must be nb or sb"
+  exit 1
+fi
+
 function start () {
   /usr/share/ovn/scripts/ovn-ctl start_${OVS_DATABASE}_ovsdb ${ARGS[@]}
 
@@ -40,33 +49,16 @@ function start () {
 
 function stop () {
   /usr/share/ovn/scripts/ovn-ctl stop_${OVS_DATABASE}_ovsdb
+
   pkill tail
 }
 
 function liveness () {
-  if [[ $OVS_DATABASE == "nb" ]]; then
-    OVN_DATABASE="Northbound"
-  elif [[ $OVS_DATABASE == "sb" ]]; then
-    OVN_DATABASE="Southbound"
-  else
-    echo "OVS_DATABASE must be nb or sb"
-    exit 1
-  fi
-
-  ovs-appctl -t /var/run/ovn/ovn${OVS_DATABASE}_db.ctl cluster/status OVN_${OVN_DATABASE}
+  ovs-appctl -t /var/run/ovn/ovn${OVS_DATABASE}_db.ctl cluster/status ${OVN_DATABASE_NAME}
 }
 
 function readiness () {
-  if [[ $OVS_DATABASE == "nb" ]]; then
-    OVN_DATABASE="Northbound"
-  elif [[ $OVS_DATABASE == "sb" ]]; then
-    OVN_DATABASE="Southbound"
-  else
-    echo "OVS_DATABASE must be nb or sb"
-    exit 1
-  fi
-
-  ovs-appctl -t /var/run/ovn/ovn${OVS_DATABASE}_db.ctl cluster/status OVN_${OVN_DATABASE}
+  ovs-appctl -t /var/run/ovn/ovn${OVS_DATABASE}_db.ctl cluster/status ${OVN_DATABASE_NAME}
 }
 
 $COMMAND
