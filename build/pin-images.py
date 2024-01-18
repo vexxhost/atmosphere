@@ -12,6 +12,7 @@ import requests
 LOG = logging.getLogger(__name__)
 CONF = cfg.CONF
 
+SKIP_IMAGE_LIST = ["secretgen_controller"]
 
 def get_digest(image_ref, token=None):
     headers = {}
@@ -114,6 +115,8 @@ def main():
     data = yaml.load(args.src)
 
     for image in data["_atmosphere_images"]:
+        if image in SKIP_IMAGE_LIST:
+            continue
         image_src = data["_atmosphere_images"][image]
         pinned_image = get_pinned_image(image_src)
 
