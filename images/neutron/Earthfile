@@ -1,8 +1,8 @@
 VERSION 0.7
 
 ARG --global PROJECT=neutron
-ARG --global RELEASE=zed
-ARG --global PROJECT_REF=222c997022392561c2de2cb493f0f5214eb20dfc
+ARG --global RELEASE=2023.2
+ARG --global PROJECT_REF=db6495c61420565507a19029300ceadc29c09753
 
 build:
   FROM ../openstack-service+builder --RELEASE=${RELEASE}
@@ -16,9 +16,8 @@ platform-image:
   COPY +build/venv /var/lib/openstack
   DO ../+APT_INSTALL \
     --PACKAGES "conntrack dnsmasq dnsmasq-utils ebtables ethtool haproxy iproute2 ipset iptables iputils-arping jq keepalived lshw openvswitch-switch strongswan uuid-runtime"
-  SAVE IMAGE --push \
-    ghcr.io/vexxhost/atmosphere/${PROJECT}:${RELEASE} \
-    ghcr.io/vexxhost/atmosphere/${PROJECT}:${PROJECT_REF}
+  SAVE IMAGE  \
+    rico/${PROJECT}:${PROJECT_REF}
 
 image:
-  BUILD --platform linux/amd64 --platform linux/arm64 +platform-image
+  BUILD --platform linux/amd64 +platform-image

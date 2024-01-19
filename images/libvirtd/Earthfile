@@ -1,7 +1,7 @@
 VERSION 0.7
 
 platform-image:
-  ARG RELEASE=zed
+  ARG RELEASE=2023.2
   FROM ../cloud-archive-base+image --RELEASE=${RELEASE}
   COPY keyrings/ceph.gpg /etc/apt/trusted.gpg.d/
   IF [ "$(lsb_release -sc)" = "focal" ]
@@ -14,7 +14,7 @@ platform-image:
   END
   DO ../+APT_INSTALL --PACKAGES="ceph-common cgroup-tools dmidecode ebtables iproute2 ipxe-qemu kmod libvirt-clients libvirt-daemon-system openssh-client openvswitch-switch ovmf pm-utils qemu-block-extra qemu-efi qemu-kvm seabios"
   DO ../+CREATE_PROJECT_USER --PROJECT=nova
-  SAVE IMAGE --push ghcr.io/vexxhost/atmosphere/libvirtd:${RELEASE}
+  SAVE IMAGE rico/libvirtd:${RELEASE}
 
 image:
-  BUILD --platform linux/amd64 --platform linux/arm64 +platform-image
+  BUILD --platform linux/amd64 +platform-image
