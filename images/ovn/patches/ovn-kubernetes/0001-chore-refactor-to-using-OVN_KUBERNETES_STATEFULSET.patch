@@ -1,0 +1,161 @@
+From 0227559bb404c3d7d5f32737809c38024bbabef0 Mon Sep 17 00:00:00 2001
+From: Mohammed Naser <mnaser@vexxhost.com>
+Date: Thu, 18 Jan 2024 12:42:24 -0500
+Subject: [PATCH 1/2] chore: refactor to using OVN_KUBERNETES_STATEFULSET
+
+---
+ dist/images/ovndb-raft-functions.sh | 32 ++++++++++++++---------------
+ dist/images/ovnkube.sh              |  5 ++++-
+ 2 files changed, 20 insertions(+), 17 deletions(-)
+
+diff --git a/dist/images/ovndb-raft-functions.sh b/dist/images/ovndb-raft-functions.sh
+index dceb4ec2e..65e9b6d9b 100644
+--- a/dist/images/ovndb-raft-functions.sh
++++ b/dist/images/ovndb-raft-functions.sh
+@@ -10,7 +10,7 @@ verify-ovsdb-raft() {
+   fi
+ 
+   replicas=$(kubectl --server=${K8S_APISERVER} --token=${k8s_token} --certificate-authority=${K8S_CACERT} \
+-    get statefulset -n ${ovn_kubernetes_namespace} ovnkube-db -o=jsonpath='{.spec.replicas}')
++    get statefulset -n ${ovn_kubernetes_namespace} ${ovn_kubernetes_statefulset} -o=jsonpath='{.spec.replicas}')
+   if [[ ${replicas} -lt 3 || $((${replicas} % 2)) -eq 0 ]]; then
+     echo "at least 3 nodes need to be configured, and it must be odd number of nodes"
+     exit 1
+@@ -45,14 +45,14 @@ db_part_of_cluster() {
+ }
+ 
+ # Checks if cluster has already been initialized.
+-# If not it returns false and sets init_ip to ovnkube-db-0
++# If not it returns false and sets init_ip to ${ovn_kubernetes_statefulset}-0
+ cluster_exists() {
+   # See if ep is available ...
+   local db=${1}
+   local port=${2}
+ 
+   db_pods=$(kubectl --server=${K8S_APISERVER} --token=${k8s_token} --certificate-authority=${K8S_CACERT} \
+-    get pod -n ${ovn_kubernetes_namespace} -o=jsonpath='{.items[*].metadata.name}' | egrep -o 'ovnkube-db[^ ]+')
++    get pod -n ${ovn_kubernetes_namespace} -o=jsonpath='{.items[*].metadata.name}' | egrep -o "${ovn_kubernetes_statefulset}[^ ]+")
+ 
+   for db_pod in $db_pods; do
+     if db_part_of_cluster $db_pod $db $port; then
+@@ -63,7 +63,7 @@ cluster_exists() {
+ 
+   # if we get here  there is no cluster, set init_ip and get out
+   init_ip="$(kubectl --server=${K8S_APISERVER} --token=${k8s_token} --certificate-authority=${K8S_CACERT} \
+-    get pod -n ${ovn_kubernetes_namespace} ovnkube-db-0 -o=jsonpath='{.status.podIP}')"
++    get pod -n ${ovn_kubernetes_namespace} ${ovn_kubernetes_statefulset}-0 -o=jsonpath='{.status.podIP}')"
+   if [[ $? != 0 ]]; then
+     return 1
+   fi
+@@ -90,17 +90,17 @@ check_and_apply_ovnkube_db_ep() {
+ 
+   # return if ovn db service endpoint already exists
+   result=$(kubectl --server=${K8S_APISERVER} --token=${k8s_token} --certificate-authority=${K8S_CACERT} \
+-      get ep -n ${ovn_kubernetes_namespace} ovnkube-db 2>&1)
++      get ep -n ${ovn_kubernetes_namespace} ${ovn_kubernetes_statefulset} 2>&1)
+   test $? -eq 0 && return
+   if ! echo ${result} | grep -q "NotFound"; then
+-      echo "Failed to find ovnkube-db endpoint: ${result}, Exiting..."
++      echo "Failed to find ${ovn_kubernetes_statefulset} endpoint: ${result}, Exiting..."
+       exit 12
+   fi
+-  # Get IPs of all ovnkube-db PODs
++  # Get IPs of all ${ovn_kubernetes_statefulset} PODs
+   ips=()
+   for ((i = 0; i < ${replicas}; i++)); do
+     ip=$(kubectl --server=${K8S_APISERVER} --token=${k8s_token} --certificate-authority=${K8S_CACERT} \
+-      get pod -n ${ovn_kubernetes_namespace} ovnkube-db-${i} -o=jsonpath='{.status.podIP}')
++      get pod -n ${ovn_kubernetes_namespace} ${ovn_kubernetes_statefulset}-${i} -o=jsonpath='{.status.podIP}')
+     if [[ ${ip} == "" ]]; then
+       break
+     fi
+@@ -108,7 +108,7 @@ check_and_apply_ovnkube_db_ep() {
+   done
+ 
+   if [[ ${i} -eq ${replicas} ]]; then
+-    # Number of POD IPs is same as number of statefulset replicas. Now, if the number of ovnkube-db endpoints
++    # Number of POD IPs is same as number of statefulset replicas. Now, if the number of ${ovn_kubernetes_statefulset} endpoints
+     # is 0, then we are applying the endpoint for the first time. So, we need to make sure that each of the
+     # pod IP responds to the `ovsdb-client list-dbs` call before we set the endpoint. If they don't, retry several
+     # times and then give up.
+@@ -170,7 +170,7 @@ set_election_timer() {
+   return 0
+ }
+ 
+-# set_connection() will be called for ovnkube-db-0 pod when :
++# set_connection() will be called for ${ovn_kubernetes_statefulset}-0 pod when :
+ #    1. it is first started or
+ #    2. it restarts after the initial start has failed or
+ #    3. subsequent restarts during the lifetime of the pod
+@@ -307,7 +307,7 @@ ovsdb-raft() {
+       --ovn-${db}-log="${ovn_loglevel_db}" &
+     else
+       # either we need to initialize a new cluster or wait for db-0 to create it
+-      if [[ "${POD_NAME}" == "ovnkube-db-0" ]]; then
++      if [[ "${POD_NAME}" == "${ovn_kubernetes_statefulset}-0" ]]; then
+         echo "Cluster does not exist for DB: ${db}, creating new raft cluster"
+         run_as_ovs_user_if_needed \
+         ${OVNCTL_PATH} run_${db}_ovsdb --no-monitor \
+@@ -317,7 +317,7 @@ ovsdb-raft() {
+         ${db_ssl_opts} \
+         --ovn-${db}-log="${ovn_loglevel_db}" &
+       else
+-        echo "Cluster does not exist for DB: ${db}, waiting for ovnkube-db-0 pod to create it"
++        echo "Cluster does not exist for DB: ${db}, waiting for ${ovn_kubernetes_statefulset}-0 pod to create it"
+         # all non pod-0 pods will be blocked here till connection is set
+         wait_for_event cluster_exists ${db} ${port}
+         run_as_ovs_user_if_needed \
+@@ -356,8 +356,8 @@ ovsdb-raft() {
+   fi
+   echo "=============== ${db}-ovsdb-raft ========== RUNNING"
+ 
+-  if [[ "${POD_NAME}" == "ovnkube-db-0" ]]; then
+-    # post raft create work has to be done only once and in ovnkube-db-0 while it is still
++  if [[ "${POD_NAME}" == "${ovn_kubernetes_statefulset}-0" ]]; then
++    # post raft create work has to be done only once and in ${ovn_kubernetes_statefulset}-0 while it is still
+     # a single-node cluster, additional protection against the case when pod-0 isn't a leader
+     # is needed in the cases of sudden pod-0 initialization logic restarts
+     current_raft_role=$(ovs-appctl -t ${OVN_RUNDIR}/ovn${db}_db.ctl cluster/status ${database} 2>&1 | grep "^Role")
+@@ -381,9 +381,9 @@ ovsdb-raft() {
+   fi
+ 
+   last_node_index=$(expr ${replicas} - 1)
+-  # Create endpoints only if all ovnkube-db pods have started and are running. We do this
++  # Create endpoints only if all ${ovn_kubernetes_statefulset} pods have started and are running. We do this
+   # from the last pod of the statefulset.
+-  if [[ ${db} == "nb" && "${POD_NAME}" == "ovnkube-db-"${last_node_index} ]]; then
++  if [[ ${db} == "nb" && "${POD_NAME}" == "${ovn_kubernetes_statefulset}-"${last_node_index} ]]; then
+     check_and_apply_ovnkube_db_ep ${port}
+   fi
+ 
+diff --git a/dist/images/ovnkube.sh b/dist/images/ovnkube.sh
+index bf3989e37..720b3e14d 100755
+--- a/dist/images/ovnkube.sh
++++ b/dist/images/ovnkube.sh
+@@ -40,6 +40,7 @@ fi
+ # OVN_NET_CIDR - the network cidr - v3
+ # OVN_SVC_CIDR - the cluster-service-cidr - v3
+ # OVN_KUBERNETES_NAMESPACE - k8s namespace - v3
++# OVN_KUBERNETES_STATEFULSET - k8s statefulset - v3
+ # K8S_NODE - hostname of the node - v3
+ #
+ # OVN_DAEMONSET_VERSION - version match daemonset and image - v3
+@@ -198,12 +199,14 @@ metrics_bind_port=${OVN_METRICS_BIND_PORT:-9476}
+ metrics_exporter_port=${OVN_METRICS_EXPORTER_PORT:-9310}
+ 
+ ovn_kubernetes_namespace=${OVN_KUBERNETES_NAMESPACE:-ovn-kubernetes}
++ovn_kubernetes_statefulset=${OVN_KUBERNETES_STATEFULSET:-ovnkube-db}
++
+ # namespace used for classifying host network traffic
+ ovn_host_network_namespace=${OVN_HOST_NETWORK_NAMESPACE:-ovn-host-network}
+ 
+ # host on which ovnkube-db POD is running and this POD contains both
+ # OVN NB and SB DB running in their own container.
+-ovn_db_host=${K8S_NODE_IP:-""}
++ovn_db_host=${K8S_NODE_IP:-$(hostname -f)}
+ 
+ # OVN_NB_PORT - ovn north db port (default 6641)
+ ovn_nb_port=${OVN_NB_PORT:-6641}
+-- 
+2.42.0
+
