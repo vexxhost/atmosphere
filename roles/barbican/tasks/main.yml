@@ -54,3 +54,24 @@
     openstack_helm_ingress_service_name: barbican-api
     openstack_helm_ingress_service_port: 9311
     openstack_helm_ingress_annotations: "{{ barbican_ingress_annotations }}"
+
+- name: Create creator role
+  openstack.cloud.identity_role:
+    cloud: atmosphere
+    state: present
+    name: creator
+
+- name: Add implied roles
+  run_once: true
+  ansible.builtin.shell: |
+    openstack implied role create \
+      --implied-role {{ item.implies }} \
+      {{ item.role }}
+  loop:
+    - role: member
+      implies: creator
+  environment:
+    OS_CLOUD: atmosphere
+  register: _octavia_implied_role_create
+  changed_when: _octavia_implied_role_create.rc == 0
+  failed_when: _octavia_implied_role_create.rc != 0 and 'Duplicate entry.' not in _octavia_implied_role_create.stderr
