@@ -91,12 +91,13 @@ images:
   BUILD ./images/horizon+image
   BUILD ./images/ironic+image
   BUILD ./images/keystone+image
+  BUILD ./images/kubernetes-entrypoint+image
   BUILD ./images/libvirtd+image
   BUILD ./images/magnum+image
   BUILD ./images/manila+image
   BUILD ./images/neutron+image
-  BUILD ./images/nova-ssh+image
   BUILD ./images/nova+image
+  BUILD ./images/nova-ssh+image
   BUILD ./images/octavia+image
   BUILD ./images/openvswitch+image
   BUILD ./images/ovn+images
