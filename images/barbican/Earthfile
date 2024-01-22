@@ -6,13 +6,10 @@ ARG --global PROJECT_REF=a00fcade4138ffc52cd9c84b5999297966f019b5
 
 build:
   FROM ../openstack-service+builder --RELEASE=${RELEASE}
-  # NOTE(mnaser): pykmip includes some demo certificates which trigger
-  #               security scanners.  We remove them here.
   DO ../openstack-service+BUILD_VENV \
     --PROJECT=${PROJECT} \
     --PROJECT_REF=${PROJECT_REF} \
-    --PIP_PACKAGES="pykmip" \
-    --PURGE_PATHS="kmip/demos"
+    --PIP_PACKAGES="pykmip"
 
 image:
   FROM ../openstack-service+image --RELEASE ${RELEASE} --PROJECT ${PROJECT}
