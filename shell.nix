@@ -2,8 +2,8 @@
 
 pkgs.mkShell {
   packages = with pkgs; [
-    pkgs.go
     pkgs.earthly
+    pkgs.go
     pkgs.poetry
   ];
 }
