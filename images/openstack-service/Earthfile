@@ -31,10 +31,6 @@ BUILD_VENV:
   ARG EXTRAS=""
   ARG PIP_PACKAGES=""
   DO +PIP_INSTALL --PACKAGES "/src${EXTRAS} ${PIP_PACKAGES}"
-  ARG PURGE_PATHS
-  FOR PURGE_PATH IN ${PURGE_PATHS}
-    RUN rm -rfv /var/lib/openstack/lib/python3.10/site-packages/${PURGE_PATH}
-  END
   SAVE ARTIFACT /var/lib/openstack venv
 
 requirements:
