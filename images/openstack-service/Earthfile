@@ -43,6 +43,11 @@ requirements:
   END
   GIT CLONE --branch ${BRANCH} https://github.com/openstack/requirements /src
   RUN \
+    sed -i 's/cryptography===40.0.2/cryptography===41.0.7/' /src/upper-constraints.txt && \
+    sed -i 's/Django===3.2.18/Django===3.2.23/' /src/upper-constraints.txt && \
+    sed -i 's/pyOpenSSL===23.1.1/pyOpenSSL===23.3.0/' /src/upper-constraints.txt && \
+    sed -i 's/requests===2.28.2/requests===2.31.0/' /src/upper-constraints.txt && \
+    sed -i 's/urllib3===1.26.15/urllib3===1.26.18/' /src/upper-constraints.txt && \
     sed -i '/glance-store/d' /src/upper-constraints.txt && \
     sed -i '/horizon/d' /src/upper-constraints.txt
   SAVE ARTIFACT /src/upper-constraints.txt
@@ -65,7 +70,7 @@ builder:
     python3-pip \
     python3-venv"
   RUN --mount type=cache,target=/root/.cache \
-    python3 -m venv --upgrade --system-site-packages /var/lib/openstack
+    python3 -m venv --upgrade-deps --system-site-packages /var/lib/openstack
   COPY \
     (+requirements/upper-constraints.txt --RELEASE=${RELEASE}) \
     /upper-constraints.txt
