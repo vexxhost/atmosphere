@@ -253,7 +253,7 @@ func (m *LibvirtManager) write(secret *v1.Secret) {
 		m.writeFile("/etc/pki/libvirt/servercert.pem", secret.Data["tls.crt"])
 		m.writeFile("/etc/pki/libvirt/private/serverkey.pem", secret.Data["tls.key"])
 		m.writeFile("/etc/pki/libvirt/clientcert.pem", secret.Data["tls.crt"])
-		m.writeFile("/etc/pki/libvirt/private/clientkey.pem", secret.Data["ca.key"])
+		m.writeFile("/etc/pki/libvirt/private/clientkey.pem", secret.Data["tls.key"])
 		m.createDirectory("/etc/pki/qemu")
 		m.writeFile("/etc/pki/qemu/ca-cert.pem", secret.Data["ca.crt"])
 		m.writeFile("/etc/pki/qemu/server-cert.pem", secret.Data["tls.crt"])
