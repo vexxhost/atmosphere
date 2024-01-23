@@ -1,8 +1,6 @@
-# Operator Documentation
+# Octavia
 
-## Octavia
-
-### Accessing Amphorae
+## Accessing Amphorae
 
 Atmosphere configures an SSH keypair which allows you to login to the Amphorae
 for debugging purposes.  The `octavia-worker` containers are fully configured
