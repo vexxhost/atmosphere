@@ -14,6 +14,7 @@ CONF = cfg.CONF
 
 SKIP_IMAGE_LIST = ["secretgen_controller"]
 
+
 def get_digest(image_ref, token=None):
     headers = {}
     if token:
