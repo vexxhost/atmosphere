@@ -51,3 +51,37 @@ jobs:
         env:
           EARTHLY_CI: true
           EARTHLY_PUSH: "${{ github.event_name == 'push' }}"
+
+  scan:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+
+      - name: Install Earthly
+        uses: earthly/actions-setup@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Earthly
+        run: |
+          mkdir -p ~/.earthly/certs
+          cat << EOF > ~/.earthly/certs/ca_cert.pem
+          ${{ secrets.EARTHLY_CA_CERT }}
+          EOF
+          cat << EOF > ~/.earthly/certs/earthly_cert.pem
+          ${{ secrets.EARTHLY_CERT }}
+          EOF
+          cat << EOF > ~/.earthly/certs/earthly_key.pem
+          ${{ secrets.EARTHLY_CERT_KEY }}
+          EOF
+          cat << EOF > ~/.earthly/config.yml
+          global:
+            buildkit_host: tcp://162.253.55.125:8372
+          EOF
+
+      - name: Scan images
+        run: earthly +scan-images
+        env:
+          EARTHLY_CI: true
