@@ -15,15 +15,13 @@
 dependency:
   name: galaxy
 driver:
-  name: default
-  options:
-    managed: false
-    login_cmd_template: docker exec -ti ovn-control-plane bash
-    ansible_connection_options:
-      ansible_host: ovn-control-plane
-      ansible_connection: community.docker.docker
+  name: molecule-kind
 platforms:
-  - name: ovn
+  - name: controller
+    role: control-plane
+    labels:
+      openstack-control-plane: enabled
+      openvswitch: enabled
     groups:
       - controllers
       - computes
