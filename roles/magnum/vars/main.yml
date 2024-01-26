@@ -25,6 +25,8 @@ _magnum_helm_values:
       barbican_client:
         endpoint_type: internalURL
         region_name: "{{ openstack_helm_endpoints_barbican_region_name }}"
+      capi_client:
+        ca_file: /usr/local/share/ca-certificates/atmosphere.crt
       cinder_client:
         endpoint_type: internalURL
         region_name: "{{ openstack_helm_endpoints_cinder_region_name }}"
@@ -71,6 +73,16 @@ _magnum_helm_values:
     replicas:
       api: 3
       conductor: 3
+    mounts:
+      magnum_conductor:
+        magnum_conductor:
+          volumeMounts:
+            - name: atmosphere-ca
+              mountPath: /usr/local/share/ca-certificates
+          volumes:
+            - name: atmosphere-ca
+              hostPath:
+                path: /usr/local/share/ca-certificates
   manifests:
     ingress_api: false
     service_ingress_api: false
