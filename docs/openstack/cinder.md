@@ -1,4 +1,4 @@
-# Storage
+# Cinder
 
 ## Built-in Ceph cluster
 

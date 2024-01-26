@@ -6,8 +6,8 @@ out of the box and should require no changes
 
 !!! warning
 
-   If you make any changes to the ingress configuration, you may see a small
-   outage as the ingress controller is restarted.
+    If you make any changes to the ingress configuration, you may see a small
+    outage as the ingress controller is restarted.
 
 ## Customization
 

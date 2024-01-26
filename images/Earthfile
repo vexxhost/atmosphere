@@ -23,9 +23,10 @@ DNF_INSTALL:
 CREATE_PROJECT_USER:
   COMMAND
   ARG PROJECT
+  ARG SHELL=/usr/sbin/nologin
   RUN \
     groupadd -g 42424 ${PROJECT} && \
-    useradd -u 42424 -g 42424 -M -d /var/lib/${PROJECT} -s /usr/sbin/nologin -c "${PROJECT} User" ${PROJECT} && \
+    useradd -u 42424 -g 42424 -M -d /var/lib/${PROJECT} -s ${SHELL} -c "${PROJECT} User" ${PROJECT} && \
     mkdir -p /etc/${PROJECT} /var/log/${PROJECT} /var/lib/${PROJECT} /var/cache/${PROJECT} && \
     chown -Rv ${PROJECT}:${PROJECT} /etc/${PROJECT} /var/log/${PROJECT} /var/lib/${PROJECT} /var/cache/${PROJECT}
 

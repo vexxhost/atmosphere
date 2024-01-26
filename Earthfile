@@ -82,6 +82,7 @@ image:
   SAVE IMAGE --push ghcr.io/vexxhost/atmosphere:${tag}
 
 images:
+  BUILD +libvirt-tls-sidecar.image
   BUILD ./images/barbican+image
   BUILD ./images/cinder+image
   BUILD ./images/cluster-api-provider-openstack+image
@@ -95,15 +96,44 @@ images:
   BUILD ./images/libvirtd+image
   BUILD ./images/magnum+image
   BUILD ./images/manila+image
+  BUILD ./images/netoffload+image
   BUILD ./images/neutron+image
-  BUILD ./images/nova+image
   BUILD ./images/nova-ssh+image
+  BUILD ./images/nova+image
   BUILD ./images/octavia+image
   BUILD ./images/openvswitch+image
   BUILD ./images/ovn+images
   BUILD ./images/placement+image
   BUILD ./images/senlin+image
+  BUILD ./images/staffln+image
   BUILD ./images/tempest+image
+
+SCAN_IMAGE:
+  COMMAND
+  ARG --required IMAGE
+  # TODO(mnaser): Include secret scanning when it's more reliable.
+  RUN \
+    trivy image \
+      --skip-db-update \
+      --skip-java-db-update \
+      --scanners vuln \
+      --exit-code 1 \
+      --ignore-unfixed \
+      ${IMAGE}
+
+scan-image:
+  FROM ./images/trivy+image
+  ARG --required IMAGE
+  DO +SCAN_IMAGE --IMAGE ${IMAGE}
+
+scan-images:
+  FROM ./images/trivy+image
+  COPY roles/defaults/vars/main.yml /defaults.yml
+  # TODO(mnaser): Scan all images eventually
+  FOR IMAGE IN $(cat /defaults.yml | grep 'ghcr.io/vexxhost' | cut -d' ' -f4 | sort | uniq)
+    BUILD +scan-image --IMAGE ${IMAGE}
+    # DO +SCAN_IMAGE --IMAGE ${IMAGE}
+  END
 
 pin-images:
   FROM +build.venv.dev
@@ -127,3 +157,22 @@ image-sync:
   WORKDIR /src
   COPY . /src
   RUN --secret GITHUB_TOKEN go run ./cmd/atmosphere-ci image repo sync ${project}
+
+mkdocs-image:
+  FROM ghcr.io/squidfunk/mkdocs-material:9.5.4
+  RUN pip install \
+    mkdocs-literate-nav
+  SAVE IMAGE mkdocs
+
+mkdocs-serve:
+  LOCALLY
+  WITH DOCKER --load=+mkdocs-image
+    RUN docker run --rm -p 8000:8000 -v ${PWD}:/docs mkdocs
+  END
+
+mkdocs-build:
+  FROM +mkdocs-image
+  COPY . /docs
+  RUN mkdocs build
+  RUN --push --secret GITHUB_TOKEN git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/vexxhost/atmosphere.git
+  RUN --push mkdocs gh-deploy --force
