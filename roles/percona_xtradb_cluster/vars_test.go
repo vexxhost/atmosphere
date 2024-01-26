@@ -87,6 +87,7 @@ func TestPerconaXtraDBClusterPXCConfiguration(t *testing.T) {
 	assert.Equal(t, "4096M", section.Key("innodb_buffer_pool_size").String())
 	assert.Equal(t, "16M", section.Key("max_allowed_packet").String())
 	assert.Equal(t, true, section.Key("skip-name-resolve").MustBool())
+	assert.Equal(t, "MASTER", section.Key("pxc_strict_mode").String())
 }
 
 func TestPerconaXtraDBClusterPXCSidecarSpec(t *testing.T) {

@@ -1,4 +1,4 @@
-# Copyright (c) 2022 VEXXHOST, Inc.
+# Copyright (c) 2024 VEXXHOST, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -12,22 +12,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-galaxy_info:
-  author: VEXXHOST, Inc.
-  description: Ansible role for Keycloak
-  license: Apache-2.0
-  min_ansible_version: 5.5.0
-  standalone: false
-  platforms:
-    - name: Ubuntu
-      versions:
-        - focal
-
-dependencies:
-  - role: defaults
-  - role: openstack_helm_endpoints
-    openstack_helm_endpoints_list: ["oslo_db"]
-  - role: vexxhost.kubernetes.upload_helm_chart
-    vars:
-      upload_helm_chart_src: "{{ keycloak_helm_chart_path }}"
-      upload_helm_chart_dest: "{{ keycloak_helm_chart_ref }}"
+- name: Deploy Octavia
+  hosts: all
+  roles:
+    - vexxhost.atmosphere.octavia
