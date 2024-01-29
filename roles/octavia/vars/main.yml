@@ -103,6 +103,7 @@ _octavia_helm_values:
         amp_secgroup_list: "{{ _octavia_amphora_sg.id }}"
         amp_ssh_key_name: "{{ octavia_amphora_ssh_keypair.key.name }}"
         client_ca: /etc/octavia/certs/client/ca.crt
+        loadbalancer_topology: ACTIVE_STANDBY
         volume_driver: volume_cinder_driver
         workers: 4
       glance:
@@ -120,6 +121,7 @@ _octavia_helm_values:
         valid_interfaces: internal
       nova:
         endpoint_type: internalURL
+        enable_anti_affinity: True
       service_auth:
         endpoint_type: internalURL
   manifests:
