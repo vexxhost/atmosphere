@@ -32,6 +32,10 @@ image:
   COPY +build/venv /var/lib/openstack
   DO ../+APT_INSTALL \
     --PACKAGES "apache2 gettext libapache2-mod-wsgi-py3"
+  COPY (+build.plugin/src/manage.py --PLUGIN=${PROJECT}) /manage.py
+  COPY --if-exists local_settings.py /etc/openstack-dashboard/local_settings
+  COPY --if-exists hack.sh /tmp/
+  RUN chmod +x /tmp/hack.sh && /tmp/hack.sh
   ARG REGISTRY=ghcr.io/vexxhost/atmosphere
   SAVE IMAGE --push \
     ${REGISTRY}/${PROJECT}:${RELEASE} \

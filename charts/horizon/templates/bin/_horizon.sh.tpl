@@ -92,9 +92,10 @@ function start () {
   cp /tmp/logo-splash.svg ${SITE_PACKAGES_ROOT}/openstack_dashboard/static/dashboard/img/logo-splash.svg
   {{- end }}
 
-  # Compress Horizon's assets.
-  /tmp/manage.py collectstatic --noinput
-  /tmp/manage.py compress --force
+  # Note(Oleks): Run collectistatic and compress inside the image to speed up container up
+  # # Compress Horizon's assets.
+  # /tmp/manage.py collectstatic --noinput
+  # /tmp/manage.py compress --force
   rm -rf /tmp/_tmp_.secret_key_store.lock /tmp/.secret_key_store
   chmod +x ${SITE_PACKAGES_ROOT}/django/core/wsgi.py
   exec {{ .Values.conf.software.apache2.binary }} {{ .Values.conf.software.apache2.start_parameters }}
