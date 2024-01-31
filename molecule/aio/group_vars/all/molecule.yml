@@ -1,0 +1,141 @@
+ceph_conf_overrides:
+  - section: global
+    option: osd crush chooseleaf type
+    value: 0
+  - section: mon
+    option: auth allow insecure global id reclaim
+    value: false
+
+kubernetes_keepalived_interface: "{{ ansible_default_ipv4.interface }}"
+
+cilium_helm_values:
+  operator:
+    replicas: 1
+
+csi_driver: local-path-provisioner
+
+cluster_issuer_type: self-signed
+
+ingress_nginx_helm_values:
+  controller:
+    config:
+      worker-processes: 2
+
+percona_xtradb_cluster_spec:
+  allowUnsafeConfigurations: true
+  pxc:
+    size: 1
+  haproxy:
+    size: 1
+
+keystone_helm_values:
+  pod:
+    replicas:
+      api: 1
+
+barbican_helm_values:
+  pod:
+    replicas:
+      api: 1
+
+rook_ceph_cluster_radosgw_spec:
+  metadataPool:
+    failureDomain: osd
+  dataPool:
+    failureDomain: osd
+  gateway:
+    instances: 1
+
+glance_helm_values:
+  conf:
+    glance:
+      DEFAULT:
+        workers: 2
+  pod:
+    replicas:
+      api: 1
+glance_images:
+  - name: cirros
+    url: http://download.cirros-cloud.net/0.6.2/cirros-0.6.2-x86_64-disk.img
+    min_disk: 1
+    disk_format: raw
+    container_format: bare
+    is_public: true
+
+cinder_helm_values:
+  conf:
+    cinder:
+      DEFAULT:
+        osapi_volume_workers: 2
+  pod:
+    replicas:
+      api: 1
+      scheduler: 1
+
+placement_helm_values:
+  conf:
+    placement_api_uwsgi:
+      uwsgi:
+        processes: 2
+  pod:
+    replicas:
+      api: 1
+
+atmosphere_network_backend: "{{ lookup('env', 'ATMOSPHERE_NETWORK_BACKEND') | default('openvswitch', True) }}"
+ovn_helm_values:
+  conf:
+    auto_bridge_add:
+      br-ex: null
+  pod:
+    replicas:
+      ovn_ovsdb_nb: 1
+      ovn_ovsdb_sb: 1
+      ovn_northd: 1
+
+coredns_helm_values:
+  replicaCount: 1
+
+nova_helm_values:
+  # TODO: reserve memory for host for aio scenario?
+  conf:
+    nova:
+      DEFAULT:
+        osapi_compute_workers: 2
+        metadata_workers: 2
+      conductor:
+        workers: 2
+      scheduler:
+        workers: 2
+  pod:
+    replicas:
+      api_metadata: 1
+      osapi: 1
+      conductor: 1
+      scheduler: 1
+      novncproxy: 1
+      spiceproxy: 1
+
+neutron_helm_values:
+  conf:
+    neutron:
+      DEFAULT:
+        api_workers: 2
+        rpc_workers: 2
+        metadata_workers: 2
+  pod:
+    replicas:
+      server: 1
+
+octavia_helm_values:
+  conf:
+    octavia:
+      controller_worker:
+        workers: 2
+    octavia_api_uwsgi:
+      uwsgi:
+        processes: 2
+  pod:
+    replicas:
+      api: 1
+      worker: 1
+      housekeeping: 1
