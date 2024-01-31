@@ -30,3 +30,16 @@
 
 - name: Deploy OpenStack
   ansible.builtin.import_playbook: vexxhost.atmosphere.openstack
+
+- name: Configure networking
+  hosts: all
+  tasks:
+    - name: Add IP address to "br-ex"
+      changed_when: false
+      ansible.builtin.shell:
+        cmd: ip addr add 10.96.250.10/24 dev br-ex || true
+
+    - name: Set "br-ex" interface to "up"
+      changed_when: false
+      ansible.builtin.shell:
+        cmd: ip link set br-ex up || true
