@@ -25,12 +25,22 @@
         out_interface: "{{ ansible_default_ipv4.interface }}"
         jump: MASQUERADE
 
-    - name: Remove bridges
-      changed_when: false
+    - name: Uninstall Helm chart for Neutron
+      ignore_errors: true
+      kubernetes.core.helm:
+        kubeconfig: /etc/kubernetes/admin.conf
+        name: neutron
+        namespace: openstack
+        state: absent
+
+    - name: Get list of all openvswitch-vswitchd containers
       ignore_errors: true
       ansible.builtin.shell:
-        cmd: ip link del br-ex
-      loop:
-        - br-ex
-        - br-int
-        - br-tun
+        cmd: crictl ps | grep vswitchd | awk '{ print $1 }'
+      register: ovs_containers
+
+    - name: Delete all bridges inside those containers
+      ignore_errors: true
+      ansible.builtin.shell:
+        cmd: crictl exec {{ item }} ovs-vsctl list-br | xargs -n1 crictl exec {{ item }} ovs-vsctl del-br
+      loop: "{{ ovs_containers.stdout_lines }}"
