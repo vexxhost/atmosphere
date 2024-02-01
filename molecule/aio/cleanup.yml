@@ -1,4 +1,4 @@
-# Copyright (c) 2023 VEXXHOST, Inc.
+# Copyright (c) 2024 VEXXHOST, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -12,14 +12,14 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Prepare Neutron configuration
+- name: Remove Neutron configuration
+  ansible.builtin.import_playbook: ../shared/cleanup/neutron.yml
+
+- name: Uninstall OpenStack
   hosts: controllers
-  become: true
   tasks:
-    - name: Set masquerade rule
-      ansible.builtin.iptables:
-        table: nat
-        chain: POSTROUTING
-        source: 10.96.250.0/24
-        out_interface: "{{ ansible_default_ipv4.interface }}"
-        jump: MASQUERADE
+    - name: Uninstall Kubernetes
+      ignore_errors: true
+      ansible.builtin.command:
+        cmd: kubeadm reset -f
+

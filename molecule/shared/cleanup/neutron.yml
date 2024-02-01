@@ -12,14 +12,25 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Prepare Neutron configuration
+- name: Remove Neutron configuration
   hosts: controllers
   become: true
   tasks:
-    - name: Set masquerade rule
+    - name: Remove masquerade rule
       ansible.builtin.iptables:
+        state: absent
         table: nat
         chain: POSTROUTING
         source: 10.96.250.0/24
         out_interface: "{{ ansible_default_ipv4.interface }}"
         jump: MASQUERADE
+
+    - name: Remove bridges
+      changed_when: false
+      ignore_errors: true
+      ansible.builtin.shell:
+        cmd: ip link del br-ex
+      loop:
+        - br-ex
+        - br-int
+        - br-tun
