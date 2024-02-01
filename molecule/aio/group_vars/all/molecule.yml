@@ -5,6 +5,9 @@ ceph_conf_overrides:
   - section: mon
     option: auth allow insecure global id reclaim
     value: false
+  - section: mon
+    option: allow pool size one
+    value: true
 
 kubernetes_keepalived_interface: "{{ ansible_default_ipv4.interface }}"
 
@@ -47,6 +50,7 @@ rook_ceph_cluster_radosgw_spec:
     instances: 1
 
 glance_helm_values:
+  # TODO: single replica pool to speed things up
   conf:
     glance:
       DEFAULT:
@@ -62,7 +66,14 @@ glance_images:
     container_format: bare
     is_public: true
 
+staffeln_helm_values:
+  pod:
+    replicas:
+      api: 1
+      conductor: 1
+
 cinder_helm_values:
+  # TODO: single replica pool to speed things up
   conf:
     cinder:
       DEFAULT:
@@ -126,6 +137,32 @@ neutron_helm_values:
     replicas:
       server: 1
 
+senlin_helm_values:
+  pod:
+    replicas:
+      api: 1
+      conductor: 1
+      engine: 1
+      health_manager: 1
+
+heat_helm_values:
+  conf:
+    heat:
+      DEFAULT:
+        num_engine_workers: 2
+      heat_api:
+        workers: 2
+      heat_api_cfn:
+        workers: 2
+      heat_api_cloudwatch:
+        workers: 2
+  pod:
+    replicas:
+      api: 1
+      cfn: 1
+      cloudwatch: 1
+      engine: 1
+
 octavia_helm_values:
   conf:
     octavia:
@@ -139,3 +176,34 @@ octavia_helm_values:
       api: 1
       worker: 1
       housekeeping: 1
+
+magnum_helm_values:
+  conf:
+    magnum:
+      api:
+        workers: 2
+      conductor:
+        workers: 2
+  pod:
+    replicas:
+      api: 1
+      conductor: 1
+magnum_images:
+  - name: ubuntu-2204-kube-v1.27.8s
+    url: https://object-storage.public.mtl1.vexxhost.net/swift/v1/a91f106f55e64246babde7402c21b87a/magnum-capi/ubuntu-2204-kube-v1.27.8.qcow2
+    distro: ubuntu
+
+manila_helm_values:
+  conf:
+    manila:
+      DEFAULT:
+        osapi_share_workers: 2
+  pod:
+    replicas:
+      api: 1
+      scheduler: 1
+
+horizon_helm_values:
+  pod:
+    replicas:
+      server: 1
