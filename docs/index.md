@@ -19,11 +19,24 @@ and all the OpenStack services inside a single machine.
     changes.  It's recommended to run it inside a virtual machine or a
     physical machine that can be dedicated to this purpose.
 
-You can deploy the all-in-one environment inside the following operating
-systems:
+In order to get started, you'll need a **Ubuntu 22.04** system with the
+following minimum system requirements:
 
-- Ubuntu 20.04
-- Ubuntu 22.04 (recommended)
+- Cores: 8 threads / vCPUs
+- Memory: 32GB
+
+If you're looking to run Kubernetes clusters, you'll need more memory
+for the workloads, it following minimum is recommended (but more memory
+is always better!):
+
+- Cores: 16 threads / vCPUs
+- Memory: 64GB
+
+!!! info
+
+    If you're running this inside a virtual machine, it is **extremely**
+    important that the virtual machines supported nested virtualization,
+    otherwise the performance of the VMs will be un-usable.
 
 You can use the following commands to deploy the all-in-one environment:
 
