@@ -105,7 +105,7 @@ images:
   BUILD ./images/ovn+images
   BUILD ./images/placement+image
   BUILD ./images/senlin+image
-  BUILD ./images/staffln+image
+  BUILD ./images/staffeln+image
   BUILD ./images/tempest+image
 
 SCAN_IMAGE:

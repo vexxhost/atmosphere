@@ -1,4 +1,4 @@
-# Cinder
+# Cinder (Block Storage Service)
 
 ## Built-in Ceph cluster
 
