@@ -41,3 +41,30 @@ cd atmosphere
 sudo poetry install --with dev
 sudo poetry run molecule converge -s aio
 ```
+
+Once the deployment is done, you can either use the CLI to interact with
+the OpenStack environment, or you can access the Horizon dashboard.
+
+For the CLI, you can `source /root/openrc` and then use the `openstack`
+CLI.  For example, if you want to list the networks, you can run the
+following command:
+
+```bash
+source /root/openrc
+openstack network list
+```
+
+For the Horizon dashboard, you can find the URL to access it by running
+the following command:
+
+```bash
+kubectl -n openstack get ingress/dashboard -ojsonpath='{.spec.rules[0].host}'
+```
+
+You can find the credentials to login to the dashboard reading the
+`/root/openrc` file.  You can use the following variables to match
+the credentials:
+
+- Username: `OS_USERNAME`
+- Password: `OS_PASSWORD`
+- Domain: `OS_USER_DOMAIN_NAME`
