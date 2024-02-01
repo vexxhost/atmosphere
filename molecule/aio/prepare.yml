@@ -15,6 +15,9 @@
 - name: Create fake devices for Ceph
   ansible.builtin.import_playbook: vexxhost.ceph.create_fake_devices
 
+- name: Prepare system for Neutron
+  ansible.builtin.import_playbook: ../shared/prepare/neutron.yml
+
 # TODO(mnaser): Drop this once we switch to vexxhost.ceph 3.0.0
 - name: Configure Ceph workarounds
   hosts: cephs
