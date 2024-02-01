@@ -12,11 +12,11 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Prepare Neutron configuration
-  hosts: controllers
+- hosts: controllers
   become: true
   tasks:
     - name: Set masquerade rule
+      become: yes
       ansible.builtin.iptables:
         table: nat
         chain: POSTROUTING
