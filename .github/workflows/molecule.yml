@@ -21,13 +21,17 @@ on:
       - main
 
 jobs:
-  test:
+  aio:
     runs-on: v3-standard-16
     strategy:
       fail-fast: false
       matrix:
-        scenario:
-          - aio
+        network_backend:
+          - openvswitch
+          - ovn
+    concurrency:
+      group: ${{ github.ref }}-${{ matrix.network_backend }}
+      cancel-in-progress: true
     steps:
       - name: Checkout project
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
@@ -45,3 +49,5 @@ jobs:
 
       - name: Run Molecule
         run: sudo poetry run molecule test -s ${{ matrix.scenario }}
+        env:
+          ATMOSPHERE_NETWORK_BACKEND: ${{ matrix.network_backend }}
