@@ -35,6 +35,30 @@
     workspace_path: "{{ lookup('env', 'MOLECULE_SCENARIO_DIRECTORY') }}"
     domain_name: "{{ ansible_default_ipv4['address'].replace('.', '-') }}.{{ lookup('env', 'ATMOSPHERE_DNS_SUFFIX_NAME') | default('nip.io', True) }}"
 
+- name: Setup networking
+  hosts: all
+  become: true
+  vars:
+    management_bridge: "br-mgmt"
+  tasks:
+    - name: Create bridge for management network
+      ignore_errors: true # noqa: ignore-errors
+      changed_when: false
+      ansible.builtin.command:
+        cmd: "ip link add name {{ management_bridge }} type bridge"
+
+    - name: Assign IP address for management bridge
+      ignore_errors: true # noqa: ignore-errors
+      changed_when: false
+      ansible.builtin.command:
+        cmd: "ip addr add 10.96.240.200/24 dev {{ management_bridge }}"
+
+    - name: Bring up management bridge
+      ignore_errors: true # noqa: ignore-errors
+      changed_when: false
+      ansible.builtin.command:
+        cmd: "ip link set {{ management_bridge }} up"
+
 - name: Setup host for deployment
   hosts: all
   become: true
@@ -56,13 +80,3 @@
             - "/dev/ceph-{{ inventory_hostname_short }}-osd0/data"
             - "/dev/ceph-{{ inventory_hostname_short }}-osd1/data"
             - "/dev/ceph-{{ inventory_hostname_short }}-osd2/data"
-
-    # TODO(mnaser): Get rid of this once default workspace uses this.
-    - name: Override existing kubernetes.yml file
-      ansible.builtin.copy:
-        dest: "{{ lookup('env', 'MOLECULE_SCENARIO_DIRECTORY') }}/group_vars/all/kubernetes.yml"
-        mode: '0644'
-        content: |
-          kubernetes_hostname: "{{ ansible_default_ipv4.address }}"
-          kubernetes_keepalived_vip: "{{ ansible_default_ipv4.address }}"
-          kubernetes_keepalived_vrid: 42
