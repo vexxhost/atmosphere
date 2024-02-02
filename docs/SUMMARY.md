@@ -5,6 +5,8 @@
     - [Production](deploy/production.md)
 - [Ingress](ingress.md)
 - [Monitoring](monitoring.md)
+- Kubernetes
+    - [Certificates](kubernetes/certificates.md)
 - OpenStack
     - [Cinder](openstack/cinder.md)
     - [Neutron](openstack/neutron.md)
