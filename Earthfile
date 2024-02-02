@@ -84,31 +84,31 @@ image:
   SAVE IMAGE --push ${REGISTRY}:${tag}
 
 images:
-  BUILD +libvirt-tls-sidecar.image
-  BUILD ./images/barbican+image
-  BUILD ./images/cinder+image
-  BUILD ./images/cluster-api-provider-openstack+image
-  BUILD ./images/designate+image
-  BUILD ./images/glance+image
-  BUILD ./images/heat+image
-  BUILD ./images/horizon+image
-  BUILD ./images/ironic+image
-  BUILD ./images/keystone+image
-  BUILD ./images/kubernetes-entrypoint+image
-  BUILD ./images/libvirtd+image
-  BUILD ./images/magnum+image
-  BUILD ./images/manila+image
-  BUILD ./images/netoffload+image
-  BUILD ./images/neutron+image
-  BUILD ./images/nova-ssh+image
-  BUILD ./images/nova+image
-  BUILD ./images/octavia+image
-  BUILD ./images/openvswitch+image
-  BUILD ./images/ovn+images
-  BUILD ./images/placement+image
-  BUILD ./images/senlin+image
-  BUILD ./images/staffeln+image
-  BUILD ./images/tempest+image
+  BUILD +libvirt-tls-sidecar.image --REGISTRY=${REGISTRY}
+  BUILD ./images/barbican+image --REGISTRY=${REGISTRY}
+  BUILD ./images/cinder+image --REGISTRY=${REGISTRY}
+  BUILD ./images/cluster-api-provider-openstack+image --REGISTRY=${REGISTRY}
+  BUILD ./images/designate+image --REGISTRY=${REGISTRY}
+  BUILD ./images/glance+image --REGISTRY=${REGISTRY}
+  BUILD ./images/heat+image --REGISTRY=${REGISTRY}
+  BUILD ./images/horizon+image --REGISTRY=${REGISTRY}
+  BUILD ./images/ironic+image --REGISTRY=${REGISTRY}
+  BUILD ./images/keystone+image --REGISTRY=${REGISTRY}
+  BUILD ./images/kubernetes-entrypoint+image --REGISTRY=${REGISTRY}
+  BUILD ./images/libvirtd+image --REGISTRY=${REGISTRY}
+  BUILD ./images/magnum+image --REGISTRY=${REGISTRY}
+  BUILD ./images/manila+image --REGISTRY=${REGISTRY}
+  BUILD ./images/netoffload+image --REGISTRY=${REGISTRY}
+  BUILD ./images/neutron+image --REGISTRY=${REGISTRY}
+  BUILD ./images/nova-ssh+image --REGISTRY=${REGISTRY}
+  BUILD ./images/nova+image --REGISTRY=${REGISTRY}
+  BUILD ./images/octavia+image --REGISTRY=${REGISTRY}
+  BUILD ./images/openvswitch+image --REGISTRY=${REGISTRY}
+  BUILD ./images/ovn+images --REGISTRY=${REGISTRY}
+  BUILD ./images/placement+image --REGISTRY=${REGISTRY}
+  BUILD ./images/senlin+image --REGISTRY=${REGISTRY}
+  BUILD ./images/staffeln+image --REGISTRY=${REGISTRY}
+  BUILD ./images/tempest+image --REGISTRY=${REGISTRY}
 
 SCAN_IMAGE:
   COMMAND
