@@ -47,17 +47,34 @@
       ansible.builtin.command:
         cmd: "ip link add name {{ management_bridge }} type bridge"
 
+    - name: Create fake interface for management bridge
+      ignore_errors: true # noqa: ignore-errors
+      changed_when: false
+      ansible.builtin.command:
+        cmd: "ip link add dummy0 type dummy"
+
+    # NOTE(mnaser): The bridge will not go up until it has an interface
+    #             so we need to assign the dummy interface to the bridge
+    - name: Assign dummy interface to management bridge
+      ignore_errors: true # noqa: ignore-errors
+      changed_when: false
+      ansible.builtin.command:
+        cmd: "ip link set dummy0 master {{ management_bridge }}"
+
     - name: Assign IP address for management bridge
       ignore_errors: true # noqa: ignore-errors
       changed_when: false
       ansible.builtin.command:
         cmd: "ip addr add 10.96.240.200/24 dev {{ management_bridge }}"
 
-    - name: Bring up management bridge
+    - name: Bring up interfaces
       ignore_errors: true # noqa: ignore-errors
       changed_when: false
       ansible.builtin.command:
-        cmd: "ip link set {{ management_bridge }} up"
+        cmd: "ip link set {{ item }} up"
+      loop:
+        - br-mgmt
+        - dummy0
 
 - name: Setup host for deployment
   hosts: all
