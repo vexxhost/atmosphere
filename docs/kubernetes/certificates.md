@@ -1,6 +1,7 @@
 # Certificates
 
 ## Manual certificate renewal
+
 To renew certificates manually, run the following commands on all the control-plane nodes.
 
 - Renew your all certificates.
