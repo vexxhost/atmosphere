@@ -26,7 +26,7 @@ pipeline {
 						stage('build') {
 							steps {
 								checkout scm
-								sh 'earthly +images'
+								sh 'earthly --push +images'
 								// TODO: pin using temporary registry
 								stash name: 'src-with-pinned-images', includes: '**'
 							}
