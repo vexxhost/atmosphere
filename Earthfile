@@ -140,7 +140,7 @@ pin-images:
   FROM +build.venv.dev
   COPY roles/defaults/vars/main.yml /defaults.yml
   COPY build/pin-images.py /usr/local/bin/pin-images
-  RUN --no-cache /usr/local/bin/pin-images /defaults.yml /pinned.yml
+  RUN --no-cache /usr/local/bin/pin-images --registry ${REGISTRY} /defaults.yml /pinned.yml
   SAVE ARTIFACT /pinned.yml AS LOCAL roles/defaults/vars/main.yml
 
 gh:
