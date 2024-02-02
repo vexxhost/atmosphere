@@ -27,7 +27,12 @@ pipeline {
 							steps {
 								checkout scm
 								sh 'earthly --push +images'
-								sh 'earthly +pin-images'
+
+								script {
+									env.EARTHLY_OUTPUT = "true"
+									sh 'earthly +pin-images'
+								}
+
 								stash name: 'src-with-pinned-images', includes: '**'
 							}
 						}
