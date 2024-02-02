@@ -46,7 +46,11 @@ def get_digest(image_ref, token=None):
 def get_pinned_image(image_src):
     image_ref = reference.Reference.parse(image_src)
 
-    if image_ref.domain() in ("registry.k8s.io", "us-docker.pkg.dev"):
+    if image_ref.domain() in (
+        "registry.k8s.io",
+        "us-docker.pkg.dev",
+        "registry.atmosphere.dev",
+    ):
         digest = get_digest(image_ref)
 
     if image_ref.domain() == "quay.io":
@@ -118,6 +122,10 @@ def main():
 
     args = parser.parse_args()
 
+    registry = args.registry
+    if registry == "registry.atmosphere.dev:5000":
+        registry = "registry.atmosphere.dev"
+
     yaml = YAML(typ="rt")
     data = yaml.load(args.src)
 
@@ -125,7 +133,7 @@ def main():
         if image in SKIP_IMAGE_LIST:
             continue
         image_src = data["_atmosphere_images"][image].replace(
-            "ghcr.io/vexxhost/atmosphere", args.registry
+            "ghcr.io/vexxhost/atmosphere", registry
         )
         pinned_image = get_pinned_image(image_src)
 
