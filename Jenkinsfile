@@ -7,6 +7,7 @@ pipeline {
 
 	environment {
 		EARTHLY_CI = 'true'
+		EARTHLY_BUILD_ARGS = "REGISTRY=registry:5000"
 	}
 
 	stages {
@@ -22,7 +23,6 @@ pipeline {
 					}
 
 					stages {
-						// TODO: publish to temporary registry
 						stage('build') {
 							steps {
 								checkout scm

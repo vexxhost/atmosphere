@@ -1,5 +1,6 @@
 VERSION 0.7
 
+ARG --global REGISTRY=ghcr.io/vexxhost/atmosphere
 ARG --global PROJECT=ironic
 ARG --global RELEASE=zed
 ARG --global PROJECT_REF=e38735cb95263b0c54f2fd719ff6b714efbddbb3
@@ -17,5 +18,5 @@ image:
   DO ../+APT_INSTALL \
     --PACKAGES "ethtool ipmitool iproute2 ipxe lshw qemu-utils tftpd-hpa"
   SAVE IMAGE --push \
-    ghcr.io/vexxhost/atmosphere/${PROJECT}:${RELEASE} \
-    ghcr.io/vexxhost/atmosphere/${PROJECT}:${PROJECT_REF}
+    ${REGISTRY}/${PROJECT}:${RELEASE} \
+    ${REGISTRY}/${PROJECT}:${PROJECT_REF}

@@ -1,4 +1,6 @@
 VERSION 0.7
+
+ARG --global REGISTRY=ghcr.io/vexxhost/atmosphere
 ARG --global COMMIT=e8c2b17e1261c6a1b0fed1fcd5e1c337fc014219
 
 build:
@@ -26,8 +28,8 @@ platform-image:
   USER 65534
   ENTRYPOINT ["/kubernetes-entrypoint"]
   SAVE IMAGE --push \
-    ghcr.io/vexxhost/atmosphere/kubernetes-entrypoint:${COMMIT} \
-    ghcr.io/vexxhost/atmosphere/kubernetes-entrypoint:latest
+    ${REGISTRY}/kubernetes-entrypoint:${COMMIT} \
+    ${REGISTRY}/kubernetes-entrypoint:latest
 
 image:
   BUILD --platform linux/amd64 --platform linux/arm64 +platform-image

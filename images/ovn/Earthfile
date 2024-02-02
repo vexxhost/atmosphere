@@ -1,5 +1,6 @@
 VERSION 0.7
 
+ARG --global REGISTRY=ghcr.io/vexxhost/atmosphere
 ARG --global SERIES=23.03
 ARG --global VERSION=23.03.0-69
 
@@ -12,8 +13,8 @@ component-image:
     COPY ../kubernetes+image/kubectl /usr/local/bin/kubectl
   END
   SAVE IMAGE --push \
-    ghcr.io/vexxhost/atmosphere/ovn-${NAME}:${SERIES} \
-    ghcr.io/vexxhost/atmosphere/ovn-${NAME}:${VERSION}
+    ${REGISTRY}/ovn-${NAME}:${SERIES} \
+    ${REGISTRY}/ovn-${NAME}:${VERSION}
 
 central:
   BUILD +component-image --NAME central
