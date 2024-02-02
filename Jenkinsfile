@@ -59,7 +59,6 @@ pipeline {
 				unstash 'src-with-pinned-images'
 
 				// Install dependencies
-				sh 'sudo apt-get update'
 				sh 'sudo apt-get install -y git python3-pip'
 				sh 'sudo pip install poetry'
 
