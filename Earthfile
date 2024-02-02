@@ -1,5 +1,7 @@
 VERSION --use-copy-link 0.7
 
+ARG --global REGISTRY=ghcr.io/vexxhost/atmosphere
+
 go.build:
   FROM golang:1.21
   WORKDIR /src
@@ -27,7 +29,7 @@ libvirt-tls-sidecar.platform-image:
     --platform=linux/amd64 \
     (+libvirt-tls-sidecar.build/main --GOARCH=$TARGETARCH --VARIANT=$TARGETVARIANT) /usr/bin/libvirt-tls-sidecar
   ENTRYPOINT ["/usr/bin/libvirt-tls-sidecar"]
-  SAVE IMAGE --push ghcr.io/vexxhost/atmosphere/libvirt-tls-sidecar:latest
+  SAVE IMAGE --push ${REGISTRY}/libvirt-tls-sidecar:latest
 
 libvirt-tls-sidecar.image:
     BUILD --platform=linux/amd64 --platform=linux/arm64 +libvirt-tls-sidecar.platform-image
@@ -79,7 +81,7 @@ image:
   ENV PATH=/venv/bin:$PATH
   COPY +build.collections/ /usr/share/ansible
   ARG tag=latest
-  SAVE IMAGE --push ghcr.io/vexxhost/atmosphere:${tag}
+  SAVE IMAGE --push ${REGISTRY}:${tag}
 
 images:
   BUILD +libvirt-tls-sidecar.image
@@ -130,9 +132,8 @@ scan-images:
   FROM ./images/trivy+image
   COPY roles/defaults/vars/main.yml /defaults.yml
   # TODO(mnaser): Scan all images eventually
-  FOR IMAGE IN $(cat /defaults.yml | grep 'ghcr.io/vexxhost' | cut -d' ' -f4 | sort | uniq)
+  FOR IMAGE IN $(cat /defaults.yml | egrep -E 'ghcr.io/vexxhost|registry.atmosphere.dev' | cut -d' ' -f4 | sort | uniq)
     BUILD +scan-image --IMAGE ${IMAGE}
-    # DO +SCAN_IMAGE --IMAGE ${IMAGE}
   END
 
 pin-images:

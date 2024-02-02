@@ -1,5 +1,6 @@
 VERSION 0.7
 
+ARG --global REGISTRY=ghcr.io/vexxhost/atmosphere
 ARG --global PROJECT=staffeln
 ARG --global RELEASE=master
 ARG --global PROJECT_REF=v2.2.3
@@ -15,5 +16,5 @@ image:
   FROM ../openstack-service+image --RELEASE ${RELEASE} --PROJECT ${PROJECT}
   COPY +build/venv /var/lib/openstack
   SAVE IMAGE --push \
-    ghcr.io/vexxhost/atmosphere/${PROJECT}:${RELEASE} \
-    ghcr.io/vexxhost/atmosphere/${PROJECT}:${PROJECT_REF}
+    ${REGISTRY}/${PROJECT}:${RELEASE} \
+    ${REGISTRY}/${PROJECT}:${PROJECT_REF}

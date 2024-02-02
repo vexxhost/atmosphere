@@ -1,5 +1,6 @@
 VERSION 0.7
 
+ARG --global REGISTRY=ghcr.io/vexxhost/atmosphere
 ARG --global SERIES=3.1
 ARG --global VERSION=3.1.0-65
 
@@ -9,8 +10,8 @@ platform-image:
   DO ../+DNF_INSTALL --PACKAGES "centos-release-nfv-openvswitch.noarch"
   DO ../+DNF_INSTALL --PACKAGES "openvswitch${SERIES}-${VERSION}.el9s iptables"
   SAVE IMAGE --push \
-    ghcr.io/vexxhost/atmosphere/openvswitch:${SERIES} \
-    ghcr.io/vexxhost/atmosphere/openvswitch:${VERSION}
+    ${REGISTRY}/openvswitch:${SERIES} \
+    ${REGISTRY}/openvswitch:${VERSION}
 
 image:
   BUILD --platform linux/amd64 --platform linux/arm64 +platform-image
