@@ -7,7 +7,7 @@ pipeline {
 
 	environment {
 		EARTHLY_CI = 'true'
-		EARTHLY_BUILD_ARGS = "REGISTRY=registry:5000"
+		EARTHLY_BUILD_ARGS = "REGISTRY=localhost:5000"
 	}
 
 	stages {
