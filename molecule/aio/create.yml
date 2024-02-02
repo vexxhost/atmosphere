@@ -39,15 +39,6 @@
   hosts: all
   become: true
   tasks:
-    - name: Set masquerade rule
-      become: true
-      ansible.builtin.iptables:
-        table: nat
-        chain: POSTROUTING
-        source: 10.96.250.0/24
-        out_interface: "{{ ansible_default_ipv4.interface }}"
-        jump: MASQUERADE
-
     - name: Purge "snapd" package
       become: true
       ansible.builtin.apt:
@@ -65,3 +56,13 @@
             - "/dev/ceph-{{ inventory_hostname_short }}-osd0/data"
             - "/dev/ceph-{{ inventory_hostname_short }}-osd1/data"
             - "/dev/ceph-{{ inventory_hostname_short }}-osd2/data"
+
+    # TODO(mnaser): Get rid of this once default workspace uses this.
+    - name: Override existing kubernetes.yml file
+      ansible.builtin.copy:
+        dest: "{{ lookup('env', 'MOLECULE_SCENARIO_DIRECTORY') }}/group_vars/all/kubernetes.yml"
+        mode: '0644'
+        content: |
+          kubernetes_hostname: "{{ ansible_default_ipv4.address }}"
+          kubernetes_keepalived_vip: "{{ ansible_default_ipv4.address }}"
+          kubernetes_keepalived_vrid: 42
