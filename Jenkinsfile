@@ -22,27 +22,17 @@ pipeline {
 						label 'earthly'
 					}
 
-					stages {
-						stage('build') {
-							steps {
-								checkout scm
-								sh 'earthly --push +images'
+					steps {
+						checkout scm
+						sh 'earthly --push +images'
 
-								script {
-									env.EARTHLY_OUTPUT = "true"
-									sh 'earthly +pin-images'
-								}
-
-								stash name: 'src-with-pinned-images', includes: '**'
-							}
+						script {
+							env.EARTHLY_OUTPUT = "true"
+							sh 'earthly +pin-images'
 						}
 
-						stage('scan') {
-							steps {
-								unstash 'src-with-pinned-images'
-								sh 'earthly +scan-images'
-							}
-						}
+						sh 'earthly +scan-images'
+						stash name: 'src-with-pinned-images', includes: '**'
 					}
 				}
 
