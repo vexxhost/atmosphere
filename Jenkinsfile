@@ -50,22 +50,55 @@ pipeline {
 		}
 
 		stage('integration') {
-			agent {
-				label 'jammy-16c-64g'
-			}
+			parallel {
+				stage('openvswitch') {
+					agent {
+						label 'jammy-16c-64g'
+					}
 
-			steps {
-				// Checkout code with built/pinned images
-				unstash 'src-with-pinned-images'
+					steps {
+						// Checkout code with built/pinned images
+						unstash 'src-with-pinned-images'
 
-				// Install dependencies
-				sh 'sudo apt-get install -y git python3-pip'
-				sh 'sudo pip install poetry'
+						// Install dependencies
+						sh 'sudo apt-get install -y git python3-pip'
+						sh 'sudo pip install poetry'
 
-				// Run tests
-				dir("${WORKSPACE}") {
-					sh 'sudo poetry install --with dev'
-					sh 'sudo poetry run molecule test -s aio'
+						// Run tests
+						dir("${WORKSPACE}") {
+							sh 'sudo poetry install --with dev'
+
+							script {
+								env.ATMOSPHERE_NETWORK_BACKEND = 'openvswitch'
+								sh 'sudo poetry run molecule test -s aio'
+							}
+						}
+					}
+				}
+
+				stage('ovn') {
+					agent {
+						label 'jammy-16c-64g'
+					}
+
+					steps {
+						// Checkout code with built/pinned images
+						unstash 'src-with-pinned-images'
+
+						// Install dependencies
+						sh 'sudo apt-get install -y git python3-pip'
+						sh 'sudo pip install poetry'
+
+						// Run tests
+						dir("${WORKSPACE}") {
+							sh 'sudo poetry install --with dev'
+
+							script {
+								env.ATMOSPHERE_NETWORK_BACKEND = 'ovn'
+								sh 'sudo poetry run molecule test -s aio'
+							}
+						}
+					}
 				}
 			}
 		}
