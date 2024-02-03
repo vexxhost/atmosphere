@@ -70,7 +70,7 @@ pipeline {
 
 							script {
 								env.ATMOSPHERE_NETWORK_BACKEND = 'openvswitch'
-								sh 'sudo poetry run molecule test -s aio'
+								sh 'sudo --preserve-env=ATMOSPHERE_NETWORK_BACKEND poetry run molecule test -s aio'
 							}
 						}
 					}
@@ -95,7 +95,7 @@ pipeline {
 
 							script {
 								env.ATMOSPHERE_NETWORK_BACKEND = 'ovn'
-								sh 'sudo poetry run molecule test -s aio'
+								sh 'sudo --preserve-env=ATMOSPHERE_NETWORK_BACKEND poetry run molecule test -s aio'
 							}
 						}
 					}
