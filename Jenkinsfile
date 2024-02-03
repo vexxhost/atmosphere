@@ -7,7 +7,7 @@ pipeline {
 
 	environment {
 		EARTHLY_CI = 'true'
-		EARTHLY_BUILD_ARGS = "REGISTRY=registry.atmosphere.dev:5000"
+		EARTHLY_BUILD_ARGS = "REGISTRY=registry.atmosphere.dev:5000/${env.GIT_BRANCH.toLowerCase()}"
 	}
 
 	stages {

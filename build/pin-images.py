@@ -123,8 +123,10 @@ def main():
     args = parser.parse_args()
 
     registry = args.registry
-    if registry == "registry.atmosphere.dev:5000":
-        registry = "registry.atmosphere.dev"
+    if "registry.atmosphere.dev:5000" in registry:
+        registry = registry.replace(
+            "registry.atmosphere.dev:5000", "registry.atmosphere.dev"
+        )
 
     yaml = YAML(typ="rt")
     data = yaml.load(args.src)
