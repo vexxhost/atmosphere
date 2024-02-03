@@ -16,6 +16,7 @@
 #               not set to `infinity` in `/etc/systemd/system.conf`, so we run
 #               this task to ensure that it is set.
 - name: Verify that LimitMEMLOCK is configured for containerd
+  when: ansible_connection != 'community.docker.docker'
   block:
     - name: Get the current status of all systemd values for containerd
       changed_when: false
