@@ -50,68 +50,43 @@ pipeline {
 		}
 
 		stage('integration') {
-			parallel {
-				stage('openvswitch') {
-					agent {
-						label 'jammy-16c-64g'
+			matrix {
+				axes {
+					axis {
+						name 'NETWORK_BACKEND'
+						values 'openvswitch', 'ovn'
 					}
+				}
 
-					steps {
-						// Checkout code with built/pinned images
-						unstash 'src-with-pinned-images'
+				agent {
+					label 'jammy-16c-64g'
+				}
 
-						// Install dependencies
-						sh 'sudo apt-get install -y git python3-pip'
-						sh 'sudo pip install poetry'
+				environment {
+					ATMOSPHERE_NETWORK_BACKEND = "${NETWORK_BACKEND}"
+				}
 
-						// Run tests
-						dir("${WORKSPACE}") {
+				stages {
+					stage('molecule') {
+						steps {
+							// Checkout code with built/pinned images
+							unstash 'src-with-pinned-images'
+
+							// Install dependencies
+							sh 'sudo apt-get install -y git python3-pip'
+							sh 'sudo pip install poetry'
+
+							// Run tests
 							sh 'sudo poetry install --with dev'
-
-							script {
-								env.ATMOSPHERE_NETWORK_BACKEND = 'openvswitch'
-								sh 'sudo --preserve-env=ATMOSPHERE_NETWORK_BACKEND poetry run molecule test -s aio'
-							}
-						}
-					}
-
-					post {
-						always {
-							sh "sudo ./build/fetch-kubernetes-logs.sh ${env.STAGE_NAME}/kubernetes-logs/ || true"
-							archiveArtifacts artifacts: 'kubernetes-logs/**', allowEmptyArchive: true
+							sh 'sudo --preserve-env=ATMOSPHERE_NETWORK_BACKEND poetry run molecule test -s aio'
 						}
 					}
 				}
 
-				stage('ovn') {
-					agent {
-						label 'jammy-16c-64g'
-					}
-
-					steps {
-						// Checkout code with built/pinned images
-						unstash 'src-with-pinned-images'
-
-						// Install dependencies
-						sh 'sudo apt-get install -y git python3-pip'
-						sh 'sudo pip install poetry'
-
-						// Run tests
-						dir("${WORKSPACE}") {
-							sh 'sudo poetry install --with dev'
-
-							script {
-								env.ATMOSPHERE_NETWORK_BACKEND = 'ovn'
-								sh 'sudo --preserve-env=ATMOSPHERE_NETWORK_BACKEND poetry run molecule test -s aio'
-							}
-						}
-					}
-
-					post {
-						always {
-							sh "sudo ./build/fetch-kubernetes-logs.sh ${env.STAGE_NAME}/kubernetes-logs/ || true"
-							archiveArtifacts artifacts: 'kubernetes-logs/**', allowEmptyArchive: true
-						}
+				post {
+					always {
+						sh "sudo ./build/fetch-kubernetes-logs.sh ${NETWORK_BACKEND}/kubernetes-logs/ || true"
+						archiveArtifacts artifacts: 'kubernetes-logs/**', allowEmptyArchive: true
 					}
 				}
 			}
