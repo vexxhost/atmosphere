@@ -12,6 +12,7 @@ pipeline {
 
 	stages {
 		// run-linters
+		// template all helm charts during lint stage to catch early failure
 
 		stage('build') {
 			parallel {

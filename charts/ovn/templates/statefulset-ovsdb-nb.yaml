@@ -18,7 +18,11 @@ exec:
     - /usr/bin/ovn-kube-util
     - readiness-probe
     - -t
+{{- if gt (int .Values.pod.replicas.ovn_ovsdb_nb) 1 }}
     - ovnnb-db-raft
+{{- else }}
+    - ovnnb-db
+{{- end }}
 {{- end }}
 
 {{- if .Values.manifests.statefulset_ovn_ovsdb_nb }}
@@ -61,7 +65,11 @@ spec:
         - name: ovsdb
           command:
             - /root/ovnkube.sh
+{{- if gt (int .Values.pod.replicas.ovn_ovsdb_nb) 1 }}
             - nb-ovsdb-raft
+{{- else }}
+            - nb-ovsdb
+{{- end }}
 {{ tuple $envAll "ovn_ovsdb_nb" | include "helm-toolkit.snippets.image" | indent 10 }}
 {{ tuple $envAll $envAll.Values.pod.resources.server | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
 {{ dict "envAll" . "component" "ovn_ovsdb_nb" "container" "ovsdb" "type" "readiness" "probeTemplate" (include "ovnnbReadinessProbeTemplate" . | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
