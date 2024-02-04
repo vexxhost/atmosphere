@@ -32,11 +32,19 @@ percona_xtradb_cluster_spec:
     size: 1
 
 keystone_helm_values:
+  conf:
+    keystone:
+      DEFAULT:
+        debug: "{{ lookup('env', 'ATMOSPHERE_DEBUG') | default('false', True) }}"
   pod:
     replicas:
       api: 1
 
 barbican_helm_values:
+  conf:
+    barbican:
+      DEFAULT:
+        debug: "{{ lookup('env', 'ATMOSPHERE_DEBUG') | default('false', True) }}"
   pod:
     replicas:
       api: 1
@@ -54,6 +62,7 @@ glance_helm_values:
   conf:
     glance:
       DEFAULT:
+        debug: "{{ lookup('env', 'ATMOSPHERE_DEBUG') | default('false', True) }}"
         workers: 2
   pod:
     replicas:
@@ -67,6 +76,10 @@ glance_images:
     is_public: true
 
 staffeln_helm_values:
+  conf:
+    staffeln:
+      DEFAULT:
+        debug: "{{ lookup('env', 'ATMOSPHERE_DEBUG') | default('false', True) }}"
   pod:
     replicas:
       api: 1
@@ -77,6 +90,7 @@ cinder_helm_values:
   conf:
     cinder:
       DEFAULT:
+        debug: "{{ lookup('env', 'ATMOSPHERE_DEBUG') | default('false', True) }}"
         osapi_volume_workers: 2
   pod:
     replicas:
@@ -85,6 +99,9 @@ cinder_helm_values:
 
 placement_helm_values:
   conf:
+    placement:
+      DEFAULT:
+        debug: "{{ lookup('env', 'ATMOSPHERE_DEBUG') | default('false', True) }}"
     placement_api_uwsgi:
       uwsgi:
         processes: 2
@@ -111,6 +128,7 @@ nova_helm_values:
   conf:
     nova:
       DEFAULT:
+        debug: "{{ lookup('env', 'ATMOSPHERE_DEBUG') | default('false', True) }}"
         osapi_compute_workers: 2
         metadata_workers: 2
       conductor:
@@ -131,6 +149,7 @@ neutron_helm_values:
     neutron:
       DEFAULT:
         api_workers: 2
+        debug: "{{ lookup('env', 'ATMOSPHERE_DEBUG') | default('false', True) }}"
         rpc_workers: 2
         metadata_workers: 2
   pod:
@@ -138,6 +157,10 @@ neutron_helm_values:
       server: 1
 
 senlin_helm_values:
+  conf:
+    senlin:
+      DEFAULT:
+        debug: "{{ lookup('env', 'ATMOSPHERE_DEBUG') | default('false', True) }}"
   pod:
     replicas:
       api: 1
@@ -149,6 +172,7 @@ heat_helm_values:
   conf:
     heat:
       DEFAULT:
+        debug: "{{ lookup('env', 'ATMOSPHERE_DEBUG') | default('false', True) }}"
         num_engine_workers: 2
       heat_api:
         workers: 2
@@ -166,6 +190,8 @@ heat_helm_values:
 octavia_helm_values:
   conf:
     octavia:
+      DEFAULT:
+        debug: "{{ lookup('env', 'ATMOSPHERE_DEBUG') | default('false', True) }}"
       controller_worker:
         workers: 2
     octavia_api_uwsgi:
@@ -180,6 +206,8 @@ octavia_helm_values:
 magnum_helm_values:
   conf:
     magnum:
+      DEFAULT:
+        debug: "{{ lookup('env', 'ATMOSPHERE_DEBUG') | default('false', True) }}"
       api:
         workers: 2
       conductor:
@@ -197,6 +225,7 @@ manila_helm_values:
   conf:
     manila:
       DEFAULT:
+        debug: "{{ lookup('env', 'ATMOSPHERE_DEBUG') | default('false', True) }}"
         osapi_share_workers: 2
   pod:
     replicas:
@@ -204,6 +233,10 @@ manila_helm_values:
       scheduler: 1
 
 horizon_helm_values:
+  conf:
+    horizon:
+      local_settings:
+        debug: "{{ lookup('env', 'ATMOSPHERE_DEBUG') | default('false', True) }}"
   pod:
     replicas:
       server: 1
