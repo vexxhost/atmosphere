@@ -74,6 +74,13 @@ pipeline {
 							}
 						}
 					}
+
+					post {
+						always {
+							sh 'sudo ./build/fetch-kubernetes-logs.sh kubernetes-logs/ || true'
+							archiveArtifacts artifacts: 'kubernetes-logs/**', allowEmptyArchive: true
+						}
+					}
 				}
 
 				stage('ovn') {
@@ -97,6 +104,13 @@ pipeline {
 								env.ATMOSPHERE_NETWORK_BACKEND = 'ovn'
 								sh 'sudo --preserve-env=ATMOSPHERE_NETWORK_BACKEND poetry run molecule test -s aio'
 							}
+						}
+					}
+
+					post {
+						always {
+							sh 'sudo ./build/fetch-kubernetes-logs.sh kubernetes-logs/ || true'
+							archiveArtifacts artifacts: 'kubernetes-logs/**', allowEmptyArchive: true
 						}
 					}
 				}
