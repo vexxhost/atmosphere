@@ -77,7 +77,7 @@ pipeline {
 
 					post {
 						always {
-							sh 'sudo ./build/fetch-kubernetes-logs.sh kubernetes-logs/ || true'
+							sh "sudo ./build/fetch-kubernetes-logs.sh ${env.STAGE_NAME}/kubernetes-logs/ || true"
 							archiveArtifacts artifacts: 'kubernetes-logs/**', allowEmptyArchive: true
 						}
 					}
@@ -109,7 +109,7 @@ pipeline {
 
 					post {
 						always {
-							sh 'sudo ./build/fetch-kubernetes-logs.sh kubernetes-logs/ || true'
+							sh "sudo ./build/fetch-kubernetes-logs.sh ${env.STAGE_NAME}/kubernetes-logs/ || true"
 							archiveArtifacts artifacts: 'kubernetes-logs/**', allowEmptyArchive: true
 						}
 					}
