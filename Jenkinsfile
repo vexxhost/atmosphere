@@ -85,8 +85,8 @@ pipeline {
 
 				post {
 					always {
-						sh "sudo ./build/fetch-kubernetes-logs.sh ${NETWORK_BACKEND}/kubernetes-logs/ || true"
-						archiveArtifacts artifacts: 'kubernetes-logs/**', allowEmptyArchive: true
+						sh "sudo ./build/fetch-kubernetes-logs.sh logs/${NETWORK_BACKEND}/kubernetes || true"
+						archiveArtifacts artifacts: 'logs/**', allowEmptyArchive: true
 					}
 				}
 			}
