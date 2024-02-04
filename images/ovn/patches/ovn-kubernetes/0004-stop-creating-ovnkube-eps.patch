@@ -1,0 +1,26 @@
+From 71b19667c04fd114e49d3fda957e26e7fa595675 Mon Sep 17 00:00:00 2001
+From: Mohammed Naser <mnaser@vexxhost.com>
+Date: Sun, 4 Feb 2024 14:15:49 -0500
+Subject: [PATCH] stop creating ovnkube eps
+
+---
+ dist/images/ovnkube.sh | 3 ---
+ 1 file changed, 3 deletions(-)
+
+diff --git a/dist/images/ovnkube.sh b/dist/images/ovnkube.sh
+index 1d3059cf8..069d36648 100755
+--- a/dist/images/ovnkube.sh
++++ b/dist/images/ovnkube.sh
+@@ -908,9 +908,6 @@ sb-ovsdb() {
+   }
+   ovn-sbctl --inactivity-probe=0 set-connection p${transport}:${ovn_sb_port}:$(bracketify ${ovn_db_host})
+ 
+-  # create the ovnkube-db endpoints
+-  wait_for_event attempts=10 check_ovnkube_db_ep ${ovn_db_host} ${ovn_nb_port}
+-  set_ovnkube_db_ep ${ovn_db_host}
+   if memory_trim_on_compaction_supported "sbdb"
+   then
+     # Enable SBDB memory trimming on DB compaction, Every 10mins DBs are compacted
+-- 
+2.43.0
+
