@@ -5,6 +5,8 @@ pipeline {
 		disableConcurrentBuilds(abortPrevious: true);
 	}
 
+	// TODO: periodic multi-node jobs
+
 	environment {
 		EARTHLY_CI = 'true'
 		EARTHLY_BUILD_ARGS = "REGISTRY=registry.atmosphere.dev:5000/${env.BRANCH_NAME.toLowerCase()}"
@@ -64,6 +66,7 @@ pipeline {
 				}
 
 				environment {
+					ATMOSPHERE_DEBUG = "true"
 					ATMOSPHERE_NETWORK_BACKEND = "${NETWORK_BACKEND}"
 				}
 
@@ -79,7 +82,7 @@ pipeline {
 
 							// Run tests
 							sh 'sudo poetry install --with dev'
-							sh 'sudo --preserve-env=ATMOSPHERE_NETWORK_BACKEND poetry run molecule test -s aio'
+							sh 'sudo --preserve-env=ATMOSPHERE_DEBUG,ATMOSPHERE_NETWORK_BACKEND poetry run molecule test -s aio'
 						}
 					}
 				}
