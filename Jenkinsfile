@@ -27,9 +27,13 @@ pipeline {
 					}
 
 					steps {
-						checkout scm
 						sh 'earthly +markdownlint'
-						junit 'report.xml'
+					}
+
+					post {
+						always {
+							junit 'report.xml'
+						}
 					}
 				}
 			}
