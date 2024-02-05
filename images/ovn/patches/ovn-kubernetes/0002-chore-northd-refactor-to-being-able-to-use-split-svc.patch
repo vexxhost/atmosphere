@@ -1,0 +1,144 @@
+From 90851bd77718bc834446ebe2ddf34b8e9383dee8 Mon Sep 17 00:00:00 2001
+From: Mohammed Naser <mnaser@vexxhost.com>
+Date: Thu, 18 Jan 2024 16:16:11 -0500
+Subject: [PATCH 2/2] chore(northd): refactor to being able to use split svcs
+
+---
+ dist/images/ovnkube.sh | 75 +++++++++++++++++++++++++++++++++---------
+ 1 file changed, 59 insertions(+), 16 deletions(-)
+
+diff --git a/dist/images/ovnkube.sh b/dist/images/ovnkube.sh
+index 720b3e14d..1d3059cf8 100755
+--- a/dist/images/ovnkube.sh
++++ b/dist/images/ovnkube.sh
+@@ -200,6 +200,8 @@ metrics_exporter_port=${OVN_METRICS_EXPORTER_PORT:-9310}
+ 
+ ovn_kubernetes_namespace=${OVN_KUBERNETES_NAMESPACE:-ovn-kubernetes}
+ ovn_kubernetes_statefulset=${OVN_KUBERNETES_STATEFULSET:-ovnkube-db}
++ovn_kubernetes_nb_statefulset=${OVN_KUBERNETES_NB_STATEFULSET:-ovnkube-db}
++ovn_kubernetes_sb_statefulset=${OVN_KUBERNETES_SB_STATEFULSET:-ovnkube-db}
+ 
+ # namespace used for classifying host network traffic
+ ovn_host_network_namespace=${OVN_HOST_NETWORK_NAMESPACE:-ovn-host-network}
+@@ -374,6 +376,24 @@ wait_for_event() {
+   done
+ }
+ 
++wait_for_db () {
++  local db=$1
++  local ep=$(get_ovnkube_zone_db_ep ${db})
++
++  echo "Getting the ${ep} ep"
++  # See if ep is available ...
++  IFS=" " read -a ep_hosts <<<"$(kubectl --server=${K8S_APISERVER} --token=${k8s_token} --certificate-authority=${K8S_CACERT} \
++    get endpointslice -n ${ovn_kubernetes_namespace} -l kubernetes.io/service-name=${ep} -o=jsonpath='{range .items[0].endpoints[*]}{.addresses[0]} ')"
++  if [[ ${#ep_hosts[@]} == 0 ]]; then
++    return 1
++  fi
++
++  ep_hosts_string="${ep_hosts[*]}"
++  declare -g -a "ovn_${db}db_hosts=($ep_hosts_string)"
++
++  return 0
++}
++
+ # The ovnkube-db kubernetes service must be populated with OVN DB service endpoints
+ # before various OVN K8s containers can come up. This functions checks for that.
+ # If OVN dbs are configured to listen only on unix sockets, then there will not be
+@@ -384,15 +404,18 @@ ready_to_start_node() {
+     return 0
+   fi
+ 
+-  ovnkube_db_ep=$(get_ovnkube_zone_db_ep)
+-  echo "Getting the ${ovnkube_db_ep} ep"
+-  # See if ep is available ...
+-  IFS=" " read -a ovn_db_hosts <<<"$(kubectl --server=${K8S_APISERVER} --token=${k8s_token} --certificate-authority=${K8S_CACERT} \
+-    get ep -n ${ovn_kubernetes_namespace} ${ovnkube_db_ep} -o=jsonpath='{range .subsets[0].addresses[*]}{.ip}{" "}')"
+-  if [[ ${#ovn_db_hosts[@]} == 0 ]]; then
++  wait_for_db nb
++  if [[ $? != 0 ]]; then
++    return 1
++  fi
++
++  wait_for_db sb
++  if [[ $? != 0 ]]; then
+     return 1
+   fi
++
+   get_ovn_db_vars
++
+   return 0
+ }
+ # wait_for_event ready_to_start_node
+@@ -410,17 +433,29 @@ check_ovn_daemonset_version() {
+ }
+ 
+ get_ovn_db_vars() {
++
++  index=0
+   ovn_nbdb_str=""
+-  ovn_sbdb_str=""
+-  for i in "${ovn_db_hosts[@]}"; do
++  for i in "${ovn_nbdb_hosts[@]}"; do
+     if [ -n "$ovn_nbdb_str" ]; then
+       ovn_nbdb_str=${ovn_nbdb_str}","
++    fi
++    host="${ovn_kubernetes_nb_statefulset}-${index}.${ovn_kubernetes_nb_statefulset}.${ovn_kubernetes_namespace}.svc.cluster.local"
++    ovn_nbdb_str=${ovn_nbdb_str}${transport}://${host}:${ovn_nb_port}
++    index=$((index + 1))
++  done
++
++  index=0
++  ovn_sbdb_str=""
++  for i in "${ovn_sbdb_hosts[@]}"; do
++    if [ -n "$ovn_sbdb_str" ]; then
+       ovn_sbdb_str=${ovn_sbdb_str}","
+     fi
+-    ip=$(bracketify $i)
+-    ovn_nbdb_str=${ovn_nbdb_str}${transport}://${ip}:${ovn_nb_port}
+-    ovn_sbdb_str=${ovn_sbdb_str}${transport}://${ip}:${ovn_sb_port}
++    host="${ovn_kubernetes_sb_statefulset}-${index}.${ovn_kubernetes_sb_statefulset}.${ovn_kubernetes_namespace}.svc.cluster.local"
++    ovn_sbdb_str=${ovn_sbdb_str}${transport}://${host}:${ovn_sb_port}
++    index=$((index + 1))
+   done
++
+   # OVN_NORTH and OVN_SOUTH override derived host
+   ovn_nbdb=${OVN_NORTH:-$ovn_nbdb_str}
+   ovn_sbdb=${OVN_SOUTH:-$ovn_sbdb_str}
+@@ -730,7 +765,7 @@ set_ovnkube_db_ep() {
+   ips=("$@")
+ 
+   ovn_zone=$(get_node_zone)
+-  ovnkube_db_ep=$(get_ovnkube_zone_db_ep)
++  ovnkube_db_ep=$(get_ovnkube_zone_db_ep sb)
+   echo "=============== setting ${ovnkube_db_ep} endpoints to ${ips[@]}"
+   # create a new endpoint for the headless onvkube-db service without selectors
+   kubectl --server=${K8S_APISERVER} --token=${k8s_token} --certificate-authority=${K8S_CACERT} apply -f - <<EOF
+@@ -779,12 +814,20 @@ function get_node_zone() {
+ }
+ 
+ function get_ovnkube_zone_db_ep() {
+-  zone=$(get_node_zone)
+-  if [ "$zone" == "global" ]; then
+-      echo "ovnkube-db"
++  local db=$1
++
++  if [ "$db" == "nb" ]; then
++      ep="${ovn_kubernetes_nb_statefulset}"
+   else
+-      echo "ovnkube-db-$zone"
++      ep="${ovn_kubernetes_sb_statefulset}"
+   fi
++
++  zone=$(get_node_zone)
++  if [ "$zone" != "global" ]; then
++      ep="${ep}-${zone}"
++  fi
++
++  echo "${ep}"
+ }
+ 
+ # v3 - run nb_ovsdb in a separate container
+-- 
+2.42.0
+

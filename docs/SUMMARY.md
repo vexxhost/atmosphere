@@ -1,6 +1,8 @@
 # Summary
 
-- [Deployment Guide](deploy.md)
+- Deployment
+    - [Quick start](deploy/quick-start.md)
+    - [Production](deploy/production.md)
 - [Ingress](ingress.md)
 - [Monitoring](monitoring.md)
 - OpenStack

@@ -1,4 +1,91 @@
-VERSION --use-copy-link 0.7
+VERSION --use-copy-link --try 0.8
+
+ARG --global REGISTRY=ghcr.io/vexxhost/atmosphere
+
+lint:
+  BUILD +lint.ansible-lint
+  BUILD +lint.markdownlint
+  BUILD +lint.image-manifest
+
+lint.helm:
+  FROM alpine:3
+  RUN mkdir -p /output
+  COPY --dir charts/ /src
+  FOR CHART IN $(ls /src)
+    FOR VERSION IN $(seq 22 28)
+      COPY (+lint.helm.chart/junit.xml --CHART ${CHART} --VERSION "1.${VERSION}.0") /output/junit-helm-${CHART}-1-${VERSION}-0.xml
+    END
+  END
+  SAVE ARTIFACT /output AS LOCAL output
+
+lint.helm.chart:
+  FROM alpine:3
+  RUN apk add --no-cache git helm python3
+  RUN helm plugin install https://github.com/melmorabity/helm-kubeconform
+  RUN mkdir -p /cache /output
+  ARG --required CHART
+  COPY --dir charts/${CHART} /src
+  ARG --required VERSION
+  RUN \
+    --mount=type=cache,target=/cache \
+    helm kubeconform /src \
+      --cache /cache \
+      --schema-location default \
+      --schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
+      --ignore-missing-schemas \
+      --kube-version ${VERSION} \
+      --output junit 2> /output/junit.xml
+  SAVE ARTIFACT /output/junit.xml
+
+lint.markdownlint:
+  FROM davidanson/markdownlint-cli2
+  COPY --dir docs/ .markdownlint.yaml .markdownlint-cli2.jsonc /src
+  WORKDIR /src
+  TRY
+    RUN markdownlint-cli2 **
+  FINALLY
+    SAVE ARTIFACT /src/junit.xml AS LOCAL junit.xml
+  END
+
+lint.ansible-lint:
+  FROM registry.gitlab.com/pipeline-components/ansible-lint:latest
+  COPY --dir meta/ molecule/ playbooks/ plugins/ roles/ tests/ .ansible-lint CHANGELOG.md galaxy.yml /code
+  TRY
+    RUN ansible-lint -v --show-relpath -f pep8 --nocolor | ansible-lint-junit -o ansible-lint.xml
+  FINALLY
+    SAVE ARTIFACT ansible-lint.xml AS LOCAL ansible-lint.xml
+  END
+
+lint.image-manifest:
+  FROM quay.io/skopeo/stable:latest
+  COPY roles/defaults/vars/main.yml /defaults.yml
+  FOR IMAGE IN $(cat /defaults.yml | grep sha256 | cut -d' ' -f4 | sort | uniq | sed 's/:[^@]*//')
+    BUILD +lint.image-manifest.image --IMAGE ${IMAGE}
+  END
+
+lint.image-manifest.image:
+  FROM quay.io/skopeo/stable:latest
+  ARG --required IMAGE
+  RUN skopeo inspect --no-tags docker://${IMAGE} >/dev/null && echo "Manifest is valid for ${IMAGE}" || echo "Manifest is not valid for ${IMAGE}"
+
+unit.go:
+  FROM golang:1.21
+  RUN go install github.com/jstemmer/go-junit-report/v2@latest
+  COPY --dir go.mod go.sum /src
+  WORKDIR /src
+  RUN go mod download
+  COPY --dir charts/ cmd/ internal/ roles/ tools/ /src
+  TRY
+    RUN go test -v 2>&1 ./... | go-junit-report -set-exit-code > junit-go.xml
+  FINALLY
+    SAVE ARTIFACT /src/junit-go.xml AS LOCAL junit-go.xml
+  END
+
+build.collection:
+  FROM registry.gitlab.com/pipeline-components/ansible-lint:latest
+  COPY . /src
+  RUN ansible-galaxy collection build /src
+  SAVE ARTIFACT /code/*.tar.gz AS LOCAL dist/
 
 go.build:
   FROM golang:1.21
@@ -27,7 +114,7 @@ libvirt-tls-sidecar.platform-image:
     --platform=linux/amd64 \
     (+libvirt-tls-sidecar.build/main --GOARCH=$TARGETARCH --VARIANT=$TARGETVARIANT) /usr/bin/libvirt-tls-sidecar
   ENTRYPOINT ["/usr/bin/libvirt-tls-sidecar"]
-  SAVE IMAGE --push ghcr.io/vexxhost/atmosphere/libvirt-tls-sidecar:latest
+  SAVE IMAGE --push ${REGISTRY}/libvirt-tls-sidecar:latest
 
 libvirt-tls-sidecar.image:
     BUILD --platform=linux/amd64 --platform=linux/arm64 +libvirt-tls-sidecar.platform-image
@@ -79,37 +166,37 @@ image:
   ENV PATH=/venv/bin:$PATH
   COPY +build.collections/ /usr/share/ansible
   ARG tag=latest
-  SAVE IMAGE --push ghcr.io/vexxhost/atmosphere:${tag}
+  SAVE IMAGE --push ${REGISTRY}:${tag}
 
 images:
-  BUILD +libvirt-tls-sidecar.image
-  BUILD ./images/barbican+image
-  BUILD ./images/cinder+image
-  BUILD ./images/cluster-api-provider-openstack+image
-  BUILD ./images/designate+image
-  BUILD ./images/glance+image
-  BUILD ./images/heat+image
-  BUILD ./images/horizon+image
-  BUILD ./images/ironic+image
-  BUILD ./images/keystone+image
-  BUILD ./images/kubernetes-entrypoint+image
-  BUILD ./images/libvirtd+image
-  BUILD ./images/magnum+image
-  BUILD ./images/manila+image
-  BUILD ./images/netoffload+image
-  BUILD ./images/neutron+image
-  BUILD ./images/nova-ssh+image
-  BUILD ./images/nova+image
-  BUILD ./images/octavia+image
-  BUILD ./images/openvswitch+image
-  BUILD ./images/ovn+images
-  BUILD ./images/placement+image
-  BUILD ./images/senlin+image
-  BUILD ./images/staffeln+image
-  BUILD ./images/tempest+image
+  BUILD +libvirt-tls-sidecar.image --REGISTRY=${REGISTRY}
+  BUILD ./images/barbican+image --REGISTRY=${REGISTRY}
+  BUILD ./images/cinder+image --REGISTRY=${REGISTRY}
+  BUILD ./images/cluster-api-provider-openstack+image --REGISTRY=${REGISTRY}
+  BUILD ./images/designate+image --REGISTRY=${REGISTRY}
+  BUILD ./images/glance+image --REGISTRY=${REGISTRY}
+  BUILD ./images/heat+image --REGISTRY=${REGISTRY}
+  BUILD ./images/horizon+image --REGISTRY=${REGISTRY}
+  BUILD ./images/ironic+image --REGISTRY=${REGISTRY}
+  BUILD ./images/keystone+image --REGISTRY=${REGISTRY}
+  BUILD ./images/kubernetes-entrypoint+image --REGISTRY=${REGISTRY}
+  BUILD ./images/libvirtd+image --REGISTRY=${REGISTRY}
+  BUILD ./images/magnum+image --REGISTRY=${REGISTRY}
+  BUILD ./images/manila+image --REGISTRY=${REGISTRY}
+  BUILD ./images/netoffload+image --REGISTRY=${REGISTRY}
+  BUILD ./images/neutron+image --REGISTRY=${REGISTRY}
+  BUILD ./images/nova-ssh+image --REGISTRY=${REGISTRY}
+  BUILD ./images/nova+image --REGISTRY=${REGISTRY}
+  BUILD ./images/octavia+image --REGISTRY=${REGISTRY}
+  BUILD ./images/openvswitch+image --REGISTRY=${REGISTRY}
+  BUILD ./images/ovn+images --REGISTRY=${REGISTRY}
+  BUILD ./images/placement+image --REGISTRY=${REGISTRY}
+  BUILD ./images/senlin+image --REGISTRY=${REGISTRY}
+  BUILD ./images/staffeln+image --REGISTRY=${REGISTRY}
+  BUILD ./images/tempest+image --REGISTRY=${REGISTRY}
 
 SCAN_IMAGE:
-  COMMAND
+  FUNCTION
   ARG --required IMAGE
   # TODO(mnaser): Include secret scanning when it's more reliable.
   RUN \
@@ -130,16 +217,15 @@ scan-images:
   FROM ./images/trivy+image
   COPY roles/defaults/vars/main.yml /defaults.yml
   # TODO(mnaser): Scan all images eventually
-  FOR IMAGE IN $(cat /defaults.yml | grep 'ghcr.io/vexxhost' | cut -d' ' -f4 | sort | uniq)
+  FOR IMAGE IN $(cat /defaults.yml | egrep -E 'ghcr.io/vexxhost|registry.atmosphere.dev' | cut -d' ' -f4 | sort | uniq)
     BUILD +scan-image --IMAGE ${IMAGE}
-    # DO +SCAN_IMAGE --IMAGE ${IMAGE}
   END
 
 pin-images:
   FROM +build.venv.dev
   COPY roles/defaults/vars/main.yml /defaults.yml
   COPY build/pin-images.py /usr/local/bin/pin-images
-  RUN --no-cache /usr/local/bin/pin-images /defaults.yml /pinned.yml
+  RUN --no-cache /usr/local/bin/pin-images --registry ${REGISTRY} /defaults.yml /pinned.yml
   SAVE ARTIFACT /pinned.yml AS LOCAL roles/defaults/vars/main.yml
 
 gh:

@@ -3,11 +3,11 @@
 import argparse
 import functools
 
+import requests
 from docker_image import reference
 from oslo_config import cfg
 from oslo_log import log as logging
 from ruyaml import YAML
-import requests
 
 LOG = logging.getLogger(__name__)
 CONF = cfg.CONF
@@ -46,7 +46,11 @@ def get_digest(image_ref, token=None):
 def get_pinned_image(image_src):
     image_ref = reference.Reference.parse(image_src)
 
-    if image_ref.domain() in ("registry.k8s.io", "us-docker.pkg.dev"):
+    if image_ref.domain() in (
+        "registry.k8s.io",
+        "us-docker.pkg.dev",
+        "registry.atmosphere.dev",
+    ):
         digest = get_digest(image_ref)
 
     if image_ref.domain() == "quay.io":
@@ -109,8 +113,20 @@ def main():
         "src", help="Path for default values file", type=argparse.FileType("r")
     )
     parser.add_argument("dst", help="Path for output file", type=argparse.FileType("w"))
+    parser.add_argument(
+        "-r",
+        "--registry",
+        default="ghcr.io/vexxhost/atmosphere",
+        help="Registry containing Atmosphere images",
+    )
 
     args = parser.parse_args()
+
+    registry = args.registry
+    if "registry.atmosphere.dev:5000" in registry:
+        registry = registry.replace(
+            "registry.atmosphere.dev:5000", "registry.atmosphere.dev"
+        )
 
     yaml = YAML(typ="rt")
     data = yaml.load(args.src)
@@ -118,7 +134,9 @@ def main():
     for image in data["_atmosphere_images"]:
         if image in SKIP_IMAGE_LIST:
             continue
-        image_src = data["_atmosphere_images"][image]
+        image_src = data["_atmosphere_images"][image].replace(
+            "ghcr.io/vexxhost/atmosphere", registry
+        )
         pinned_image = get_pinned_image(image_src)
 
         LOG.info("Pinning image %s from %s to %s", image, image_src, pinned_image)

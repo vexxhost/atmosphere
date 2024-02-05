@@ -13,6 +13,18 @@
 # under the License.
 
 - import_playbook: vexxhost.ceph.site
-- import_playbook: vexxhost.atmosphere.kubernetes
-- import_playbook: vexxhost.atmosphere.csi
-- import_playbook: vexxhost.atmosphere.openstack
+
+- name: Install Kubernetes
+  import_playbook: vexxhost.atmosphere.kubernetes
+
+- name: Install CSI
+  import_playbook: vexxhost.atmosphere.csi
+
+- name: Deploy Infrastructure
+  ansible.builtin.import_playbook: vexxhost.atmosphere.infrastructure
+
+- name: Deploy Monitoring
+  ansible.builtin.import_playbook: vexxhost.atmosphere.monitoring
+
+- name: Deploy OpenStack
+  import_playbook: vexxhost.atmosphere.openstack

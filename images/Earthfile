@@ -1,7 +1,7 @@
-VERSION 0.7
+VERSION 0.8
 
 APT_INSTALL:
-  COMMAND
+  FUNCTION
   ARG PACKAGES
   RUN \
     apt-get update && \
@@ -10,7 +10,7 @@ APT_INSTALL:
     rm -rf /var/lib/apt/lists/*
 
 DNF_INSTALL:
-  COMMAND
+  FUNCTION
   ARG PACKAGES
   RUN \
     dnf -y install \
@@ -21,7 +21,7 @@ DNF_INSTALL:
     rm -rf /var/cache/dnf
 
 CREATE_PROJECT_USER:
-  COMMAND
+  FUNCTION
   ARG PROJECT
   ARG SHELL=/usr/sbin/nologin
   RUN \
