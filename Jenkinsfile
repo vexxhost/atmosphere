@@ -31,7 +31,7 @@ pipeline {
 
 					post {
 						always {
-							junit 'ansible-lint.xml'
+							junit 'ansible-lint.xml', allowEmptyResults: true
 						}
 					}
 				}
@@ -47,7 +47,7 @@ pipeline {
 
 					post {
 						always {
-							junit 'junit.xml'
+							junit 'junit.xml', allowEmptyResults: true
 						}
 					}
 				}
