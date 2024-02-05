@@ -13,12 +13,10 @@ pipeline {
 		REGISTRY = "${env.BRANCH_NAME == 'main' ? PROD_REGISTRY : TEST_REGISTRY}"
 
 		EARTHLY_CI = 'true'
-		EARTHLY_OUTPUT = 'true'
 		EARTHLY_BUILD_ARGS = "REGISTRY=${REGISTRY}"
 	}
 
 	stages {
-		// template all helm charts during lint stage to catch early failure
 		stage('lint') {
 			parallel {
 				stage('ansible-lint') {
@@ -27,7 +25,7 @@ pipeline {
 					}
 
 					steps {
-						sh 'earthly +lint.ansible-lint'
+						sh 'earthly --output +lint.ansible-lint'
 					}
 
 					post {
@@ -43,7 +41,7 @@ pipeline {
 					}
 
 					steps {
-						sh 'earthly +lint.helm'
+						sh 'earthly --output +lint.helm'
 					}
 
 					post {
@@ -59,7 +57,7 @@ pipeline {
 					}
 
 					steps {
-						sh 'earthly +lint.markdownlint'
+						sh 'earthly --output +lint.markdownlint'
 					}
 
 					post {
@@ -82,10 +80,6 @@ pipeline {
 		}
 
 		stage('unit') {
-			environment {
-				EARTHLY_OUTPUT = 'true'
-			}
-
 			parallel {
 				stage('go') {
 					agent {
@@ -93,7 +87,7 @@ pipeline {
 					}
 
 					steps {
-						sh 'earthly +unit.go'
+						sh 'earthly --output +unit.go'
 					}
 
 					post {
@@ -113,7 +107,7 @@ pipeline {
 					}
 
 					steps {
-						sh 'earthly +build.collection'
+						sh 'earthly --output +build.collection'
 						archiveArtifacts artifacts: 'dist/**'
 					}
 				}
@@ -125,8 +119,6 @@ pipeline {
 
 					steps {
 						script {
-							env.EARTHLY_OUTPUT = 'false'
-
 							if (env.BRANCH_NAME == 'main') {
 								docker.withRegistry('https://ghcr.io', 'github-packages-token') {
 									sh 'earthly --push +images'
@@ -136,7 +128,7 @@ pipeline {
 							}
 						}
 
-						sh 'earthly +pin-images'
+						sh 'earthly --output +pin-images'
 						sh 'earthly +scan-images'
 						stash name: 'src-with-pinned-images', includes: '**'
 					}
