@@ -94,7 +94,7 @@ pipeline {
 						archiveArtifacts artifacts: 'logs/**', allowEmptyArchive: true
 
 						// JUnit results for Tempest
-						sh "sudo cp /tmp/stestr/report.xml tempest-${NETWORK_BACKEND}.xml"
+						sh "sudo ./build/fetch-junit-xml.sh tempest-${NETWORK_BACKEND}.xml || true"
 						junit "tempest-${NETWORK_BACKEND}.xml"
 					}
 				}
