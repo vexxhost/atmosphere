@@ -89,8 +89,13 @@ pipeline {
 
 				post {
 					always {
+						// Kubernetes logs
 						sh "sudo ./build/fetch-kubernetes-logs.sh logs/${NETWORK_BACKEND}/kubernetes || true"
 						archiveArtifacts artifacts: 'logs/**', allowEmptyArchive: true
+
+						// JUnit results for Tempest
+						sh "sudo cp /tmp/stestr/report.xml tempest-${NETWORK_BACKEND}.xml"
+						junit 'tempest-${NETWORK_BACKEND}.xml', checksName: "Tempest: ${NETWORK_BACKEND}"
 					}
 				}
 			}
