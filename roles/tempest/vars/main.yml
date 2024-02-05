@@ -21,6 +21,9 @@ _tempest_helm_values:
       restartPolicy: Never
       backoffLimit: 0
   conf:
+    script: |
+      tempest run --config-file /etc/tempest/tempest.conf -w 4 --smoke
+      subunit-1to2 /.stestr/0 | subunit2junitxml > /.stestr/report.xml
     tempest:
       service_available:
         cinder: true
