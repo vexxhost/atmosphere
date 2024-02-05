@@ -14,5 +14,5 @@
 
 REPORT_FILE_NAME="${1:-report.xml}"
 
-sudo apt-get install -y python3-subunit python3-junitxml
+sudo apt-get install -y subunit python3-junitxml
 sudo subunit-1to2 /tmp/stestr/0 | subunit2junitxml > "${REPORT_FILE_NAME}"

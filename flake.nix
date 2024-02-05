@@ -16,6 +16,9 @@
           devShell = pkgs.mkShell {
             buildInputs = with pkgs; [
               earthly
+              go
+              nixpkgs-fmt
+              poetry
               vendir
             ];
           };

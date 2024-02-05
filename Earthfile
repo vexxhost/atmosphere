@@ -1,6 +1,17 @@
-VERSION --use-copy-link 0.7
+VERSION --use-copy-link --try 0.8
 
 ARG --global REGISTRY=ghcr.io/vexxhost/atmosphere
+
+markdownlint:
+  FROM davidanson/markdownlint-cli2
+  RUN npm install markdownlint-cli2-formatter-junit
+  COPY --dir docs/ .markdownlint.yaml .markdownlint-cli2.jsonc /src
+  WORKDIR /src
+  TRY
+    RUN markdownlint-cli2 **
+  FINALLY
+    SAVE ARTIFACT /src/junit.xml AS LOCAL junit.xml
+  END
 
 go.build:
   FROM golang:1.21

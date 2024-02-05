@@ -15,6 +15,26 @@ pipeline {
 	stages {
 		// run-linters
 		// template all helm charts during lint stage to catch early failure
+		stage('lint') {
+			parallel {
+				stage('markdownlint') {
+					agent {
+						label 'earthly'
+					}
+
+					steps {
+						checkout scm
+
+						script {
+							env.EARTHLY_OUTPUT = "true"
+							sh 'earthly +markdownlint'
+						}
+
+						junit 'report.xml'
+					}
+				}
+			}
+		}
 
 		stage('build') {
 			parallel {
