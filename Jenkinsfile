@@ -63,6 +63,9 @@ pipeline {
 
 				agent {
 					label 'jammy-16c-64g'
+                    node {
+                        label 'instance'
+                    }
 				}
 
 				environment {
