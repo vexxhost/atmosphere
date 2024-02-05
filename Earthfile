@@ -159,7 +159,7 @@ images:
   BUILD ./images/tempest+image --REGISTRY=${REGISTRY}
 
 SCAN_IMAGE:
-  COMMAND
+  FUNCTION
   ARG --required IMAGE
   # TODO(mnaser): Include secret scanning when it's more reliable.
   RUN \

@@ -1,7 +1,7 @@
-VERSION 0.7
+VERSION 0.8
 
 PIP_INSTALL:
-  COMMAND
+  FUNCTION
   ARG PACKAGES
   RUN --mount=type=cache,target=/root/.cache \
     /var/lib/openstack/bin/pip3 install \
@@ -9,7 +9,7 @@ PIP_INSTALL:
       ${PACKAGES}
 
 GIT_CHECKOUT:
-  COMMAND
+  FUNCTION
   ARG PROJECT
   ARG PROJECT_REPO=https://github.com/openstack/${PROJECT}
   ARG PROJECT_REF
@@ -24,7 +24,7 @@ GIT_CHECKOUT:
   END
 
 BUILD_VENV:
-  COMMAND
+  FUNCTION
   ARG PROJECT
   ARG PROJECT_REPO=https://github.com/openstack/${PROJECT}
   ARG PROJECT_REF
