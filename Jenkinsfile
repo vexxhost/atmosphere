@@ -16,6 +16,10 @@ pipeline {
 		// run-linters
 		// template all helm charts during lint stage to catch early failure
 		stage('lint') {
+			environment {
+				EARTHLY_OUTPUT = "true"
+			}
+
 			parallel {
 				stage('markdownlint') {
 					agent {
@@ -24,12 +28,7 @@ pipeline {
 
 					steps {
 						checkout scm
-
-						script {
-							env.EARTHLY_OUTPUT = "true"
-							sh 'earthly +markdownlint'
-						}
-
+						sh 'earthly +markdownlint'
 						junit 'report.xml'
 					}
 				}
