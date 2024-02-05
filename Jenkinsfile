@@ -95,7 +95,7 @@ pipeline {
 
 						// JUnit results for Tempest
 						sh "sudo cp /tmp/stestr/report.xml tempest-${NETWORK_BACKEND}.xml"
-						junit 'tempest-${NETWORK_BACKEND}.xml', checksName: "Tempest: ${NETWORK_BACKEND}"
+						junit 'tempest-${NETWORK_BACKEND}.xml'
 					}
 				}
 			}
