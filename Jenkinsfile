@@ -13,7 +13,6 @@ pipeline {
 	}
 
 	stages {
-		// run-linters
 		// template all helm charts during lint stage to catch early failure
 		stage('lint') {
 			environment {
@@ -27,7 +26,7 @@ pipeline {
 					}
 
 					steps {
-						sh 'earthly +ansible-lint'
+						sh 'earthly +lint.ansible-lint'
 					}
 
 					post {
@@ -43,12 +42,46 @@ pipeline {
 					}
 
 					steps {
-						sh 'earthly +markdownlint'
+						sh 'earthly +lint.markdownlint'
 					}
 
 					post {
 						always {
 							junit 'junit.xml'
+						}
+					}
+				}
+
+				stage('image-manifest') {
+					agent {
+						label 'earthly'
+					}
+
+					steps {
+						sh 'earthly +lint.image-manifest'
+					}
+				}
+			}
+		}
+
+		stage('unit') {
+			environment {
+				EARTHLY_OUTPUT = 'true'
+			}
+
+			parallel {
+				stage('go') {
+					agent {
+						label 'earthly'
+					}
+
+					steps {
+						sh 'earthly +unit.go'
+					}
+
+					post {
+						always {
+							junit 'junit-go.xml'
 						}
 					}
 				}

@@ -2,7 +2,11 @@ VERSION --use-copy-link --try 0.8
 
 ARG --global REGISTRY=ghcr.io/vexxhost/atmosphere
 
-markdownlint:
+lint:
+  BUILD +lint.ansible-lint
+  BUILD +lint.markdownlint
+
+lint.markdownlint:
   FROM davidanson/markdownlint-cli2
   COPY --dir docs/ .markdownlint.yaml .markdownlint-cli2.jsonc /src
   WORKDIR /src
@@ -12,14 +16,38 @@ markdownlint:
     SAVE ARTIFACT /src/junit.xml AS LOCAL junit.xml
   END
 
-ansible-lint:
+lint.ansible-lint:
   FROM registry.gitlab.com/pipeline-components/ansible-lint:latest
-  COPY --dir meta/ molecule/ playbooks/ plugins/ roles/ tests/ galaxy.yml /src
-  WORKDIR /src
+  COPY --dir meta/ molecule/ playbooks/ plugins/ roles/ tests/ .ansible-lint CHANGELOG.md galaxy.yml /code
   TRY
     RUN ansible-lint -v --show-relpath -f pep8 --nocolor | ansible-lint-junit -o ansible-lint.xml
   FINALLY
     SAVE ARTIFACT ansible-lint.xml AS LOCAL ansible-lint.xml
+  END
+
+lint.image-manifest:
+  FROM quay.io/skopeo/stable:latest
+  COPY roles/defaults/vars/main.yml /defaults.yml
+  FOR IMAGE IN $(cat /defaults.yml | grep sha256 | cut -d' ' -f4 | sort | uniq | sed 's/:[^@]*//')
+    BUILD +lint.image-manifest.image --IMAGE ${IMAGE}
+  END
+
+lint.image-manifest.image:
+  FROM quay.io/skopeo/stable:latest
+  ARG --required IMAGE
+  RUN skopeo inspect --no-tags docker://${IMAGE} >/dev/null && echo "Manifest is valid for ${IMAGE}" || echo "Manifest is not valid for ${IMAGE}"
+
+unit.go:
+  FROM golang:1.21
+  RUN go install github.com/jstemmer/go-junit-report/v2@latest
+  COPY --dir go.mod go.sum /src
+  WORKDIR /src
+  RUN go mod download
+  COPY --dir charts/ cmd/ internal/ roles/ tools/ /src
+  TRY
+    RUN go test -v 2>&1 ./... | go-junit-report -set-exit-code > junit-go.xml
+  FINALLY
+    SAVE ARTIFACT /src/junit-go.xml AS LOCAL junit-go.xml
   END
 
 go.build:

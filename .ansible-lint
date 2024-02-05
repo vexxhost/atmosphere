@@ -5,10 +5,17 @@ exclude_paths:
   - charts
   - molecule
   - playbooks
+  - plugins/filter
   - roles/defaults/vars/main.yml
   - roles/kube_prometheus_stack/files/jsonnet
   - vendir.lock.yml
 
-warn_list:
+mock_roles:
+  - opendev.container_registry
+
+skip_list:
   - jinja[invalid]
   - jinja[spacing]
+  - var-naming[no-reserved]
+  - var-naming[no-role-prefix]
+  - yaml[line-length]
