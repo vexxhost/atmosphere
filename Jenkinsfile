@@ -8,8 +8,12 @@ pipeline {
 	// TODO: periodic multi-node jobs
 
 	environment {
+		TEST_REGISTRY = "registry.atmosphere.dev:5000/${env.BRANCH_NAME.toLowerCase()}"
+		PROD_REGISTRY = "ghcr.io/vexxhost/atmosphere"
+		REGISTRY = "${env.BRANCH_NAME == 'main' ? PROD_REGISTRY : TEST_REGISTRY}"
+
 		EARTHLY_CI = 'true'
-		EARTHLY_BUILD_ARGS = "REGISTRY=registry.atmosphere.dev:5000/${env.BRANCH_NAME.toLowerCase()}"
+		EARTHLY_BUILD_ARGS = "REGISTRY=${REGISTRY}"
 	}
 
 	stages {
@@ -98,8 +102,15 @@ pipeline {
 					}
 
 					steps {
-						checkout scm
-						sh 'earthly --push +images'
+						script {
+							if (env.BRANCH_NAME == 'main') {
+								docker.withRegistry('https://ghcr.io', 'github-packages-token') {
+									sh 'earthly --push +images'
+								}
+							} else {
+								sh 'earthly --push +images'
+							}
+						}
 
 						script {
 							env.EARTHLY_OUTPUT = 'true'
@@ -117,7 +128,6 @@ pipeline {
 					}
 
 					steps {
-						checkout scm
 						sh 'earthly +mkdocs-build'
 					}
 				}
