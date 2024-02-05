@@ -58,12 +58,13 @@ rook_ceph_cluster_radosgw_spec:
     instances: 1
 
 glance_helm_values:
-  # TODO: single replica pool to speed things up
   conf:
     glance:
       DEFAULT:
         debug: "{{ lookup('env', 'ATMOSPHERE_DEBUG') | default('false', True) }}"
         workers: 2
+      glance_store:
+        rbd_store_replication: 1
   pod:
     replicas:
       api: 1
@@ -86,8 +87,13 @@ staffeln_helm_values:
       conductor: 1
 
 cinder_helm_values:
-  # TODO: single replica pool to speed things up
   conf:
+    ceph:
+      pools:
+        backup:
+          replication: 1
+        cinder.volumes:
+          replication: 1
     cinder:
       DEFAULT:
         debug: "{{ lookup('env', 'ATMOSPHERE_DEBUG') | default('false', True) }}"
@@ -216,6 +222,7 @@ magnum_helm_values:
     replicas:
       api: 1
       conductor: 1
+magnum_image_disk_format: qcow2
 magnum_images:
   - name: ubuntu-2204-kube-v1.27.8s
     url: https://object-storage.public.mtl1.vexxhost.net/swift/v1/a91f106f55e64246babde7402c21b87a/magnum-capi/ubuntu-2204-kube-v1.27.8.qcow2
