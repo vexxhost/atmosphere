@@ -10,17 +10,30 @@ pipeline {
 	environment {
 		EARTHLY_CI = 'true'
 		EARTHLY_BUILD_ARGS = "REGISTRY=registry.atmosphere.dev:5000/${env.BRANCH_NAME.toLowerCase()}"
+		EARTHLY_OUTPUT = 'true'
 	}
 
 	stages {
 		// run-linters
 		// template all helm charts during lint stage to catch early failure
 		stage('lint') {
-			environment {
-				EARTHLY_OUTPUT = "true"
-			}
-
 			parallel {
+				stage('markdownlint') {
+					agent {
+						label 'earthly'
+					}
+
+					steps {
+						sh 'earthly +ansible-lint'
+					}
+
+					post {
+						always {
+							junit 'ansible-lint.xml'
+						}
+					}
+				}
+
 				stage('markdownlint') {
 					agent {
 						label 'earthly'
@@ -50,13 +63,13 @@ pipeline {
 
 					steps {
 						checkout scm
-						sh 'earthly --push +images'
 
 						script {
-							env.EARTHLY_OUTPUT = "true"
-							sh 'earthly +pin-images'
+							env.EARTHLY_OUTPUT = 'false'
+							sh 'earthly --push +images'
 						}
 
+						sh 'earthly +pin-images'
 						sh 'earthly +scan-images'
 						stash name: 'src-with-pinned-images', includes: '**'
 					}

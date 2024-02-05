@@ -4,13 +4,22 @@ ARG --global REGISTRY=ghcr.io/vexxhost/atmosphere
 
 markdownlint:
   FROM davidanson/markdownlint-cli2
-  RUN npm install markdownlint-cli2-formatter-junit
   COPY --dir docs/ .markdownlint.yaml .markdownlint-cli2.jsonc /src
   WORKDIR /src
   TRY
     RUN markdownlint-cli2 **
   FINALLY
     SAVE ARTIFACT /src/junit.xml AS LOCAL junit.xml
+  END
+
+ansible-lint:
+  FROM registry.gitlab.com/pipeline-components/ansible-lint:latest
+  COPY --dir meta/ molecule/ playbooks/ plugins/ roles/ tests/ galaxy.yml /src
+  WORKDIR /src
+  TRY
+    RUN ansible-lint -v --show-relpath -f pep8 --nocolor | ansible-lint-junit -o ansible-lint.xml
+  FINALLY
+    SAVE ARTIFACT ansible-lint.xml AS LOCAL ansible-lint.xml
   END
 
 go.build:
