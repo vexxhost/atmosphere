@@ -18,7 +18,7 @@ pipeline {
 		// template all helm charts during lint stage to catch early failure
 		stage('lint') {
 			parallel {
-				stage('markdownlint') {
+				stage('ansible-lint') {
 					agent {
 						label 'earthly'
 					}
