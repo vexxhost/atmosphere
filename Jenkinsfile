@@ -8,7 +8,7 @@ def installEarthly() {
 
 	sh 'curl -fsSL https://github.com/earthly/earthly/releases/latest/download/earthly-linux-amd64 -o /usr/local/bin/earthly'
 	sh 'chmod +x /usr/local/bin/earthly'
-	sh 'earthly bootstrap --allow-privileged'
+	sh 'earthly bootstrap'
 }
 
 pipeline {
