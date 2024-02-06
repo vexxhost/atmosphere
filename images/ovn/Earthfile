@@ -5,7 +5,7 @@ ARG --global SERIES=23.03
 ARG --global VERSION=23.03.0-69
 
 ovn-kubernetes:
-  FROM golang:1.20
+  FROM --platform=linux/amd64 golang:1.20
   GIT CLONE --branch master https://github.com/ovn-org/ovn-kubernetes /src
   WORKDIR /src
   COPY patches/ovn-kubernetes /patches
@@ -13,6 +13,8 @@ ovn-kubernetes:
   RUN git apply --verbose /patches/*.patch
   SAVE ARTIFACT /src/dist/images/ovndb-raft-functions.sh
   SAVE ARTIFACT /src/dist/images/ovnkube.sh
+  ARG GOOS=linux
+  ARG GOARCH=amd64
   RUN \
     cd /src/go-controller && \
     go build -o /build/ovn-kube-util ./cmd/ovn-kube-util
@@ -26,7 +28,9 @@ component-image:
   COPY ../kubernetes+image/kubectl /usr/local/bin/kubectl
   COPY +ovn-kubernetes/ovndb-raft-functions.sh /root
   COPY +ovn-kubernetes/ovnkube.sh /root
-  COPY +ovn-kubernetes/ovn-kube-util /usr/bin
+  ARG TARGETARCH
+  ARG TARGETVARIANT
+  COPY (+ovn-kubernetes/ovn-kube-util --GOARCH=$TARGETARCH --VARIANT=$TARGETVARIANT) /usr/bin
   SAVE IMAGE --push \
     ${REGISTRY}/ovn-${NAME}:${SERIES} \
     ${REGISTRY}/ovn-${NAME}:${VERSION}
