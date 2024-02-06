@@ -1,6 +1,6 @@
 def installDocker() {
 	sh 'curl -fsSL https://get.docker.com | sh'
-	sh "sudo usermod -aG docker ${env.USER}"
+	sh "sudo usermod -aG docker ubuntu'
 }
 
 def installEarthly() {
