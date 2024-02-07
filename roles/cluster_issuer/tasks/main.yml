@@ -1,4 +1,4 @@
-# Copyright (c) 2023 VEXXHOST, Inc.
+# Copyright (c) 2024 VEXXHOST, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -43,7 +43,7 @@
     - name: Copy CA certificate on host
       ansible.builtin.copy:
         content: "{{ _cluster_issuer_ca_secret.resources[0].data['tls.crt'] | b64decode }}"
-        dest: /usr/local/share/ca-certificates/atmosphere.crt
+        dest: "{{ '/usr/local/share/ca-certificates' if ansible_facts['os_family'] in ['Debian'] else '/etc/pki/ca-trust/source/anchors' }}/atmosphere.crt"
         mode: "0644"
       notify:
         - Update CA certificates on host
