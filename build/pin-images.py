@@ -122,12 +122,6 @@ def main():
 
     args = parser.parse_args()
 
-    registry = args.registry
-    if "registry.atmosphere.dev:5000" in registry:
-        registry = registry.replace(
-            "registry.atmosphere.dev:5000", "registry.atmosphere.dev"
-        )
-
     yaml = YAML(typ="rt")
     data = yaml.load(args.src)
 
@@ -137,13 +131,13 @@ def main():
 
         # NOTE(mnaser): If we're in CI, only pin the Atmosphere images
         if (
-            "registry.atmosphere.dev" in registry
+            "registry.atmosphere.dev" in args.registry
             and "ghcr.io/vexxhost/atmosphere" not in data["_atmosphere_images"][image]
         ):
             continue
 
         image_src = data["_atmosphere_images"][image].replace(
-            "ghcr.io/vexxhost/atmosphere", registry
+            "ghcr.io/vexxhost/atmosphere", args.registry
         )
         pinned_image = get_pinned_image(image_src)
 
