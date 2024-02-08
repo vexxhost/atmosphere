@@ -136,7 +136,10 @@ def main():
             continue
 
         # NOTE(mnaser): If we're in CI, only pin the Atmosphere images
-        if "registry.atmosphere.dev" in registry and "ghcr.io/vexxhost/atmosphere" not in image:
+        if (
+            "registry.atmosphere.dev" in registry
+            and "ghcr.io/vexxhost/atmosphere" not in data["_atmosphere_images"][image]
+        ):
             continue
 
         image_src = data["_atmosphere_images"][image].replace(
