@@ -1,6 +1,5 @@
 VERSION 0.7
 
-ARG --global REGISTRY=ghcr.io/vexxhost/atmosphere
 ARG --global PROJECT=nova
 ARG --global RELEASE=zed
 ARG --global PROJECT_REF=226f3e95c1cdadd1845c7adee55f5c5f29f3a7a8
@@ -17,6 +16,7 @@ platform-image:
   DO ../+APT_INSTALL \
     --PACKAGES "ceph-common genisoimage iproute2 libosinfo-bin lsscsi ndctl nvme-cli openssh-client ovmf python3-libvirt python3-rados python3-rbd qemu-efi-aarch64 qemu-utils sysfsutils udev util-linux"
   GIT CLONE --branch v1.4.0 https://github.com/novnc/noVNC.git /usr/share/novnc
+  ARG REGISTRY=ghcr.io/vexxhost/atmosphere
   SAVE IMAGE --push \
     ${REGISTRY}/${PROJECT}:${RELEASE} \
     ${REGISTRY}/${PROJECT}:${PROJECT_REF}

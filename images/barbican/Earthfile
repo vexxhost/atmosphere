@@ -1,6 +1,5 @@
 VERSION 0.7
 
-ARG --global REGISTRY=ghcr.io/vexxhost/atmosphere
 ARG --global PROJECT=barbican
 ARG --global RELEASE=2023.2
 ARG --global PROJECT_REF=a00fcade4138ffc52cd9c84b5999297966f019b5
@@ -15,6 +14,7 @@ build:
 image:
   FROM ../openstack-service+image --RELEASE ${RELEASE} --PROJECT ${PROJECT}
   COPY +build/venv /var/lib/openstack
+  ARG REGISTRY=ghcr.io/vexxhost/atmosphere
   SAVE IMAGE --push \
     ${REGISTRY}/${PROJECT}:${RELEASE} \
     ${REGISTRY}/${PROJECT}:${PROJECT_REF}

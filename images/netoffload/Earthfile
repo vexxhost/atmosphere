@@ -1,6 +1,5 @@
 VERSION 0.7
 
-ARG --global REGISTRY=ghcr.io/vexxhost/atmosphere
 ARG --global PROJECT=netoffload
 ARG --global RELEASE=main
 ARG --global PROJECT_REF=94b8c0fdb0b83bd1b7e14b9a58077a047c78a800
@@ -20,6 +19,7 @@ platform-image:
   DO ../+APT_INSTALL --PACKAGES="jq mstflint"
   COPY +build/offloadctl /usr/local/bin/offloadctl
   ENTRYPOINT ["/usr/local/bin/offloadctl"]
+  ARG REGISTRY=ghcr.io/vexxhost/atmosphere
   SAVE IMAGE --push \
     ${REGISTRY}/${PROJECT}:${RELEASE} \
     ${REGISTRY}/${PROJECT}:${PROJECT_REF}

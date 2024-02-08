@@ -1,6 +1,5 @@
 VERSION 0.7
 
-ARG --global REGISTRY=ghcr.io/vexxhost/atmosphere
 ARG --global PROJECT=tempest
 ARG --global RELEASE=master
 ARG --global PROJECT_REF=699749ec27897efe9bd7824664237c16c3339c03
@@ -44,6 +43,7 @@ image:
   COPY +build/venv /var/lib/openstack
   DO ../+APT_INSTALL \
     --PACKAGES "iputils-ping openssh-client"
+  ARG REGISTRY=ghcr.io/vexxhost/atmosphere
   SAVE IMAGE --push \
     ${REGISTRY}/${PROJECT}:${RELEASE} \
     ${REGISTRY}/${PROJECT}:${PROJECT_REF}

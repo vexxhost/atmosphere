@@ -1,6 +1,5 @@
 VERSION 0.7
 
-ARG --global REGISTRY=ghcr.io/vexxhost/atmosphere
 ARG --global PROJECT=magnum
 ARG --global RELEASE=2023.2
 ARG --global PROJECT_REF=272fd686d8c8bf5954e9e7d3bc991ff27e46184d
@@ -18,6 +17,7 @@ image:
   DO ../+APT_INSTALL \
     --PACKAGES "haproxy"
   COPY ../helm+binary/helm /usr/local/bin/helm
+  ARG REGISTRY=ghcr.io/vexxhost/atmosphere
   SAVE IMAGE --push \
     ${REGISTRY}/${PROJECT}:${RELEASE} \
     ${REGISTRY}/${PROJECT}:${PROJECT_REF}

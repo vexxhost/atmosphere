@@ -1,7 +1,5 @@
 VERSION 0.7
 
-ARG --global REGISTRY=ghcr.io/vexxhost/atmosphere
-
 platform-image:
   FROM ../base+image
   DO ../+CREATE_PROJECT_USER \
@@ -13,6 +11,7 @@ platform-image:
     chown -R nova: /etc/ssh && \
     mkdir /var/run/sshd && \
     chmod 0755 /var/run/sshd
+  ARG REGISTRY=ghcr.io/vexxhost/atmosphere
   SAVE IMAGE --push ${REGISTRY}/nova-ssh:latest
 
 image:

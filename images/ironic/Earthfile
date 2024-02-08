@@ -1,6 +1,5 @@
 VERSION 0.7
 
-ARG --global REGISTRY=ghcr.io/vexxhost/atmosphere
 ARG --global PROJECT=ironic
 ARG --global RELEASE=zed
 ARG --global PROJECT_REF=e38735cb95263b0c54f2fd719ff6b714efbddbb3
@@ -17,6 +16,7 @@ image:
   COPY +build/venv /var/lib/openstack
   DO ../+APT_INSTALL \
     --PACKAGES "ethtool ipmitool iproute2 ipxe lshw qemu-utils tftpd-hpa"
+  ARG REGISTRY=ghcr.io/vexxhost/atmosphere
   SAVE IMAGE --push \
     ${REGISTRY}/${PROJECT}:${RELEASE} \
     ${REGISTRY}/${PROJECT}:${PROJECT_REF}
