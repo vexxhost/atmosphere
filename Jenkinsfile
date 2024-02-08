@@ -25,8 +25,10 @@ pipeline {
 					}
 
 					steps {
-						docker.withRegistry('https://registry.hub.docker.com', 'docker-token') {
-							sh 'earthly --output +lint.ansible-lint'
+						script {
+							docker.withRegistry('https://registry.hub.docker.com', 'docker-token') {
+								sh 'earthly --output +lint.ansible-lint'
+							}
 						}
 					}
 
@@ -43,8 +45,10 @@ pipeline {
 					}
 
 					steps {
-						docker.withRegistry('https://registry.hub.docker.com', 'docker-token') {
-							sh 'earthly --output +lint.helm'
+						script {
+							docker.withRegistry('https://registry.hub.docker.com', 'docker-token') {
+								sh 'earthly --output +lint.helm'
+							}
 						}
 					}
 
@@ -61,8 +65,10 @@ pipeline {
 					}
 
 					steps {
-						docker.withRegistry('https://registry.hub.docker.com', 'docker-token') {
-							sh 'earthly --output +lint.markdownlint'
+						script {
+							docker.withRegistry('https://registry.hub.docker.com', 'docker-token') {
+								sh 'earthly --output +lint.markdownlint'
+							}
 						}
 					}
 
@@ -79,8 +85,10 @@ pipeline {
 					}
 
 					steps {
-						docker.withRegistry('https://registry.hub.docker.com', 'docker-token') {
-							sh 'earthly +lint.image-manifest'
+						script {
+							docker.withRegistry('https://registry.hub.docker.com', 'docker-token') {
+								sh 'earthly +lint.image-manifest'
+							}
 						}
 					}
 				}
@@ -95,8 +103,10 @@ pipeline {
 					}
 
 					steps {
-						docker.withRegistry('https://registry.hub.docker.com', 'docker-token') {
-							sh 'earthly --output +unit.go'
+						script {
+							docker.withRegistry('https://registry.hub.docker.com', 'docker-token') {
+								sh 'earthly --output +unit.go'
+							}
 						}
 					}
 
@@ -117,8 +127,10 @@ pipeline {
 					}
 
 					steps {
-						docker.withRegistry('https://registry.hub.docker.com', 'docker-token') {
-							sh 'earthly --output +build.collection'
+						script {
+							docker.withRegistry('https://registry.hub.docker.com', 'docker-token') {
+								sh 'earthly --output +build.collection'
+							}
 						}
 					}
 
@@ -159,8 +171,10 @@ pipeline {
 					}
 
 					steps {
-						docker.withRegistry('https://registry.hub.docker.com', 'docker-token') {
-							sh 'earthly +mkdocs-build'
+						script {
+							docker.withRegistry('https://registry.hub.docker.com', 'docker-token') {
+								sh 'earthly +mkdocs-build'
+							}
 						}
 					}
 				}
