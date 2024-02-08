@@ -137,15 +137,15 @@ pipeline {
 					}
 
 					steps {
-						docker.withRegistry('https://registry.hub.docker.com', 'docker-token') {
-							script {
-								if (env.BRANCH_NAME == 'main') {
-									docker.withRegistry('https://ghcr.io', 'github-packages-token') {
+						script {
+							docker.withRegistry('https://registry.hub.docker.com', 'docker-token') {
+									if (env.BRANCH_NAME == 'main') {
+										docker.withRegistry('https://ghcr.io', 'github-packages-token') {
+											sh 'earthly --push +images'
+										}
+									} else {
 										sh 'earthly --push +images'
 									}
-								} else {
-									sh 'earthly --push +images'
-								}
 							}
 						}
 
