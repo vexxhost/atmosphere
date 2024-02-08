@@ -1,16 +1,3 @@
-def installDocker() {
-	sh 'curl -fsSL https://get.docker.com | sh'
-	sh 'sudo usermod -aG docker ubuntu'
-}
-
-def installEarthly() {
-	installDocker()
-
-	sh 'curl -fsSL https://github.com/earthly/earthly/releases/latest/download/earthly-linux-amd64 -o /usr/local/bin/earthly'
-	sh 'chmod +x /usr/local/bin/earthly'
-	sh 'earthly bootstrap'
-}
-
 pipeline {
 	agent none
 
@@ -34,12 +21,15 @@ pipeline {
 			parallel {
 				stage('ansible-lint') {
 					agent {
-						label 'jammy-2c-4g'
+						label 'earthly'
 					}
 
 					steps {
-						installEarthly()
-						sh 'earthly --output +lint.ansible-lint'
+						script {
+							docker.withRegistry('https://registry.hub.docker.com', 'docker-token') {
+								sh 'earthly --output +lint.ansible-lint'
+							}
+						}
 					}
 
 					post {
@@ -51,12 +41,15 @@ pipeline {
 
 				stage('helm') {
 					agent {
-						label 'jammy-2c-4g'
+						label 'earthly'
 					}
 
 					steps {
-						installEarthly()
-						sh 'earthly --output +lint.helm'
+						script {
+							docker.withRegistry('https://registry.hub.docker.com', 'docker-token') {
+								sh 'earthly --output +lint.helm'
+							}
+						}
 					}
 
 					post {
@@ -68,12 +61,15 @@ pipeline {
 
 				stage('markdownlint') {
 					agent {
-						label 'jammy-2c-4g'
+						label 'earthly'
 					}
 
 					steps {
-						installEarthly()
-						sh 'earthly --output +lint.markdownlint'
+						script {
+							docker.withRegistry('https://registry.hub.docker.com', 'docker-token') {
+								sh 'earthly --output +lint.markdownlint'
+							}
+						}
 					}
 
 					post {
@@ -85,12 +81,15 @@ pipeline {
 
 				stage('image-manifest') {
 					agent {
-						label 'jammy-2c-4g'
+						label 'earthly'
 					}
 
 					steps {
-						installEarthly()
-						sh 'earthly +lint.image-manifest'
+						script {
+							docker.withRegistry('https://registry.hub.docker.com', 'docker-token') {
+								sh 'earthly +lint.image-manifest'
+							}
+						}
 					}
 				}
 			}
@@ -100,12 +99,15 @@ pipeline {
 			parallel {
 				stage('go') {
 					agent {
-						label 'jammy-2c-4g'
+						label 'earthly'
 					}
 
 					steps {
-						installEarthly()
-						sh 'earthly --output +unit.go'
+						script {
+							docker.withRegistry('https://registry.hub.docker.com', 'docker-token') {
+								sh 'earthly --output +unit.go'
+							}
+						}
 					}
 
 					post {
@@ -121,13 +123,21 @@ pipeline {
 			parallel {
 				stage('collection') {
 					agent {
-						label 'jammy-2c-4g'
+						label 'earthly'
 					}
 
 					steps {
-						installEarthly()
-						sh 'earthly --output +build.collection'
-						archiveArtifacts artifacts: 'dist/**'
+						script {
+							docker.withRegistry('https://registry.hub.docker.com', 'docker-token') {
+								sh 'earthly --output +build.collection'
+							}
+						}
+					}
+
+					post {
+						success {
+							archiveArtifacts artifacts: 'dist/**'
+						}
 					}
 				}
 
@@ -138,12 +148,14 @@ pipeline {
 
 					steps {
 						script {
-							if (env.BRANCH_NAME == 'main') {
-								docker.withRegistry('https://ghcr.io', 'github-packages-token') {
-									sh 'earthly --push +images'
-								}
-							} else {
-								sh 'earthly --push +images'
+							docker.withRegistry('https://registry.hub.docker.com', 'docker-token') {
+									if (env.BRANCH_NAME == 'main') {
+										docker.withRegistry('https://ghcr.io', 'github-packages-token') {
+											sh 'earthly --push +images'
+										}
+									} else {
+										sh 'earthly --push +images'
+									}
 							}
 						}
 
@@ -155,12 +167,15 @@ pipeline {
 
 				stage('docs') {
 					agent {
-						label 'jammy-2c-4g'
+						label 'earthly'
 					}
 
 					steps {
-						installEarthly()
-						sh 'earthly +mkdocs-build'
+						script {
+							docker.withRegistry('https://registry.hub.docker.com', 'docker-token') {
+								sh 'earthly +mkdocs-build'
+							}
+						}
 					}
 				}
 			}
