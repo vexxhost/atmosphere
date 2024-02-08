@@ -1,4 +1,4 @@
-# Copyright (c) 2023 VEXXHOST, Inc.
+# Copyright (c) 2024 VEXXHOST, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -34,6 +34,22 @@ cluster_issuer_acme_route53_secret_name: cert-manager-issuer-route53-credentials
 # cluster_issuer_acme_route53_hosted_zone_id: <HOSTED_ZONE_ID>
 # cluster_issuer_acme_route53_access_key_id: <AWS_ACCESS_KEY_ID>
 # cluster_issuer_acme_route53_secret_access_key: <AWS_SECRET_ACCESS_KEY>
+
+cluster_issuer_acme_godaddy_helm_release_name: cert-manager-webhook-godaddy
+cluster_issuer_acme_godaddy_helm_chart_path: "../../charts/cert-manager-webhook-godaddy/"
+cluster_issuer_acme_godaddy_helm_chart_ref: /usr/local/src/cert-manager-webhook-godaddy
+cluster_issuer_acme_godaddy_helm_release_namespace: cert-manager
+cluster_issuer_acme_godaddy_helm_values: {}
+
+cluster_issuer_acme_godaddy_group_name: godaddy.cert-manager.atmosphere.dev
+cluster_issuer_acme_godaddy_secret_name: godaddy-api-key
+cluster_issuer_acme_godaddy_role_name: webhook-godaddy:secret-reader
+cluster_issuer_acme_godaddy_role_binding_name: "{{ cluster_issuer_acme_godaddy_role_name }}"
+cluster_issuer_acme_godaddy_service_account_name: "{{ cluster_issuer_acme_godaddy_helm_release_name }}"
+cluster_issuer_acme_godaddy_is_production: true
+cluster_issuer_acme_godaddy_ttl: 600
+# cluster_issuer_acme_godaddy_api_key: <GODADDY_API_KEY>
+# cluster_issuer_acme_godaddy_secret_key: <GODADDY_SECRET_KEY>
 
 cluster_issuer_acme_infoblox_helm_release_name: cert-manager-webhook-infoblox-wapi
 cluster_issuer_acme_infoblox_helm_chart_path: "../../charts/cert-manager-webhook-infoblox-wapi/"

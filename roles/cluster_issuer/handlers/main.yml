@@ -1,4 +1,4 @@
-# Copyright (c) 2023 VEXXHOST, Inc.
+# Copyright (c) 2024 VEXXHOST, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -15,4 +15,4 @@
 - name: Update CA certificates on host
   changed_when: true
   ansible.builtin.command:
-    cmd: update-ca-certificates
+    cmd: "{{ 'update-ca-certificates' if ansible_facts['os_family'] in ['Debian'] else 'update-ca-trust' }}"

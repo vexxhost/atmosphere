@@ -64,6 +64,19 @@ cluster_issuer_acme_route53_secret_access_key: <AWS_SECRET_ACCESS_KEY>
    You'll need to make sure that your AWS credentials have the correct
    permissions to update the Route53 zone.
 
+#### Godaddy
+
+If you're using Godaddy for the DNS of your domain, you can use the following
+configuration which depends on
+`cert-manager-webhook-godaddy`[https://github.com/snowdrop/godaddy-webhook].
+
+```yaml
+cluster_issuer_acme_email: user@example.com
+cluster_issuer_acme_solver: godaddy
+cluster_issuer_acme_godaddy_api_key: <GODADDY_API_KEY>
+cluster_issuer_acme_godaddy_secret_key: <GODADDY_SECRET_KEY>
+```
+
 #### Infoblox
 
 If you're using Infoblox for the DNS of your domain, you can use the following
