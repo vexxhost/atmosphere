@@ -17,8 +17,8 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.4
 	gopkg.in/ini.v1 v1.67.0
-	gorm.io/driver/mysql v1.5.2
-	gorm.io/gorm v1.25.5
+	gorm.io/driver/mysql v1.5.4
+	gorm.io/gorm v1.25.7-0.20240204074919-46816ad31dde
 	helm.sh/helm/v3 v3.14.0
 	k8s.io/api v0.29.1
 	k8s.io/apimachinery v0.29.1
