@@ -1,16 +1,3 @@
-def installDocker() {
-	sh 'curl -fsSL https://get.docker.com | sh'
-	sh 'sudo usermod -aG docker ubuntu'
-}
-
-def installEarthly() {
-	installDocker()
-
-	sh 'curl -fsSL https://github.com/earthly/earthly/releases/latest/download/earthly-linux-amd64 -o /usr/local/bin/earthly'
-	sh 'chmod +x /usr/local/bin/earthly'
-	sh 'earthly bootstrap'
-}
-
 pipeline {
 	agent none
 
@@ -34,11 +21,10 @@ pipeline {
 			parallel {
 				stage('ansible-lint') {
 					agent {
-						label 'jammy-2c-4g'
+						label 'earthly'
 					}
 
 					steps {
-						installEarthly()
 						sh 'earthly --output +lint.ansible-lint'
 					}
 
@@ -51,11 +37,10 @@ pipeline {
 
 				stage('helm') {
 					agent {
-						label 'jammy-2c-4g'
+						label 'earthly'
 					}
 
 					steps {
-						installEarthly()
 						sh 'earthly --output +lint.helm'
 					}
 
@@ -68,11 +53,10 @@ pipeline {
 
 				stage('markdownlint') {
 					agent {
-						label 'jammy-2c-4g'
+						label 'earthly'
 					}
 
 					steps {
-						installEarthly()
 						sh 'earthly --output +lint.markdownlint'
 					}
 
@@ -85,11 +69,10 @@ pipeline {
 
 				stage('image-manifest') {
 					agent {
-						label 'jammy-2c-4g'
+						label 'earthly'
 					}
 
 					steps {
-						installEarthly()
 						sh 'earthly +lint.image-manifest'
 					}
 				}
@@ -100,11 +83,10 @@ pipeline {
 			parallel {
 				stage('go') {
 					agent {
-						label 'jammy-2c-4g'
+						label 'earthly'
 					}
 
 					steps {
-						installEarthly()
 						sh 'earthly --output +unit.go'
 					}
 
@@ -121,11 +103,10 @@ pipeline {
 			parallel {
 				stage('collection') {
 					agent {
-						label 'jammy-2c-4g'
+						label 'earthly'
 					}
 
 					steps {
-						installEarthly()
 						sh 'earthly --output +build.collection'
 						archiveArtifacts artifacts: 'dist/**'
 					}
@@ -157,11 +138,10 @@ pipeline {
 
 				stage('docs') {
 					agent {
-						label 'jammy-2c-4g'
+						label 'eartly'
 					}
 
 					steps {
-						installEarthly()
 						sh 'earthly +mkdocs-build'
 					}
 				}
