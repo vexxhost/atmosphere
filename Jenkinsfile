@@ -167,7 +167,7 @@ pipeline {
 
 				stage('docs') {
 					agent {
-						label 'eartly'
+						label 'earthly'
 					}
 
 					steps {
