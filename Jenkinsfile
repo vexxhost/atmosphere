@@ -25,7 +25,9 @@ pipeline {
 					}
 
 					steps {
-						sh 'earthly --output +lint.ansible-lint'
+						docker.withRegistry('https://registry.hub.docker.com', 'docker-token') {
+							sh 'earthly --output +lint.ansible-lint'
+						}
 					}
 
 					post {
@@ -41,7 +43,9 @@ pipeline {
 					}
 
 					steps {
-						sh 'earthly --output +lint.helm'
+						docker.withRegistry('https://registry.hub.docker.com', 'docker-token') {
+							sh 'earthly --output +lint.helm'
+						}
 					}
 
 					post {
@@ -57,7 +61,9 @@ pipeline {
 					}
 
 					steps {
-						sh 'earthly --output +lint.markdownlint'
+						docker.withRegistry('https://registry.hub.docker.com', 'docker-token') {
+							sh 'earthly --output +lint.markdownlint'
+						}
 					}
 
 					post {
@@ -73,7 +79,9 @@ pipeline {
 					}
 
 					steps {
-						sh 'earthly +lint.image-manifest'
+						docker.withRegistry('https://registry.hub.docker.com', 'docker-token') {
+							sh 'earthly +lint.image-manifest'
+						}
 					}
 				}
 			}
@@ -87,7 +95,9 @@ pipeline {
 					}
 
 					steps {
-						sh 'earthly --output +unit.go'
+						docker.withRegistry('https://registry.hub.docker.com', 'docker-token') {
+							sh 'earthly --output +unit.go'
+						}
 					}
 
 					post {
@@ -107,8 +117,15 @@ pipeline {
 					}
 
 					steps {
-						sh 'earthly --output +build.collection'
-						archiveArtifacts artifacts: 'dist/**'
+						docker.withRegistry('https://registry.hub.docker.com', 'docker-token') {
+							sh 'earthly --output +build.collection'
+						}
+					}
+
+					post {
+						success {
+							archiveArtifacts artifacts: 'dist/**'
+						}
 					}
 				}
 
@@ -142,7 +159,9 @@ pipeline {
 					}
 
 					steps {
-						sh 'earthly +mkdocs-build'
+						docker.withRegistry('https://registry.hub.docker.com', 'docker-token') {
+							sh 'earthly +mkdocs-build'
+						}
 					}
 				}
 			}
