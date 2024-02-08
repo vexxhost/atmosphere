@@ -8,12 +8,7 @@ pipeline {
 	// TODO: periodic multi-node jobs
 
 	environment {
-		TEST_REGISTRY = "registry.atmosphere.dev:5000/${env.BRANCH_NAME.toLowerCase()}"
-		PROD_REGISTRY = "ghcr.io/vexxhost/atmosphere"
-		REGISTRY = "${env.BRANCH_NAME == 'main' ? PROD_REGISTRY : TEST_REGISTRY}"
-
 		EARTHLY_CI = 'true'
-		EARTHLY_BUILD_ARGS = "REGISTRY=${REGISTRY}"
 	}
 
 	stages {
@@ -144,6 +139,14 @@ pipeline {
 				stage('images') {
 					agent {
 						label 'earthly'
+					}
+
+					environment {
+						TEST_REGISTRY = "registry.atmosphere.dev:5000/${env.BRANCH_NAME.toLowerCase()}"
+						PROD_REGISTRY = "ghcr.io/vexxhost/atmosphere"
+						REGISTRY = "${env.BRANCH_NAME == 'main' ? PROD_REGISTRY : TEST_REGISTRY}"
+
+						EARTHLY_BUILD_ARGS = "REGISTRY=${REGISTRY}"
 					}
 
 					steps {
