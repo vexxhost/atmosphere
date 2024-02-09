@@ -49,9 +49,23 @@ def get_pinned_image(image_src):
     if image_ref.domain() in (
         "registry.k8s.io",
         "us-docker.pkg.dev",
-        "registry.atmosphere.dev",
     ):
         digest = get_digest(image_ref)
+
+    if image_ref.domain() == "registry.atmosphere.dev":
+        # Get token for docker.io
+        r = requests.get(
+            "https://registry.atmosphere.dev/service/token",
+            timeout=5,
+            params={
+                "service": "harbor-registry",
+                "scope": f"repository:{image_ref.path()}:pull",
+            },
+        )
+        r.raise_for_status()
+        token = r.json()["token"]
+
+        digest = get_digest(image_ref, token=token)
 
     if image_ref.domain() == "quay.io":
         r = requests.get(
