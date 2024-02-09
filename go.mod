@@ -5,7 +5,7 @@ go 1.21
 toolchain go1.21.4
 
 require (
-	github.com/cert-manager/cert-manager v1.14.1
+	github.com/cert-manager/cert-manager v1.14.2
 	github.com/erikgeiser/promptkit v0.9.0
 	github.com/goccy/go-yaml v1.11.2
 	github.com/nsf/jsondiff v0.0.0-20230430225905-43f6cf3098c1
