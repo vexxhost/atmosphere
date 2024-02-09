@@ -1,6 +1,5 @@
 VERSION 0.7
 
-ARG --global REGISTRY=ghcr.io/vexxhost/atmosphere
 ARG --global RELEASE=2023.2
 ARG --global PROJECT=keystone
 ARG --global PROJECT_REF=7de9f7d49dd4142dccc1968028e12a3ca2b7847f
@@ -29,6 +28,7 @@ image:
     apt-get purge -y --auto-remove curl && \
     apt-get clean && \
     rm -rfv /var/lib/apt/lists/* libapache2-mod-auth-openidc_${MOD_AUTH_OPENIDC_VERSION}-1.$(lsb_release -sc)_${TARGETARCH}.deb
+  ARG REGISTRY=ghcr.io/vexxhost/atmosphere
   SAVE IMAGE --push \
     ${REGISTRY}/${PROJECT}:${RELEASE} \
     ${REGISTRY}/${PROJECT}:${PROJECT_REF}

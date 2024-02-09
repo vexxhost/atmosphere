@@ -1,7 +1,5 @@
 VERSION --use-copy-link --try 0.8
 
-ARG --global REGISTRY=ghcr.io/vexxhost/atmosphere
-
 lint:
   BUILD +lint.ansible-lint
   BUILD +lint.markdownlint
@@ -114,6 +112,7 @@ libvirt-tls-sidecar.platform-image:
     --platform=linux/amd64 \
     (+libvirt-tls-sidecar.build/main --GOARCH=$TARGETARCH --VARIANT=$TARGETVARIANT) /usr/bin/libvirt-tls-sidecar
   ENTRYPOINT ["/usr/bin/libvirt-tls-sidecar"]
+  ARG REGISTRY=ghcr.io/vexxhost/atmosphere
   SAVE IMAGE --push ${REGISTRY}/libvirt-tls-sidecar:latest
 
 libvirt-tls-sidecar.image:
@@ -166,9 +165,11 @@ image:
   ENV PATH=/venv/bin:$PATH
   COPY +build.collections/ /usr/share/ansible
   ARG tag=latest
+  ARG REGISTRY=ghcr.io/vexxhost/atmosphere
   SAVE IMAGE --push ${REGISTRY}:${tag}
 
 images:
+  ARG REGISTRY=ghcr.io/vexxhost/atmosphere
   BUILD +libvirt-tls-sidecar.image --REGISTRY=${REGISTRY}
   BUILD ./images/barbican+image --REGISTRY=${REGISTRY}
   BUILD ./images/cinder+image --REGISTRY=${REGISTRY}
@@ -225,6 +226,7 @@ pin-images:
   FROM +build.venv.dev
   COPY roles/defaults/vars/main.yml /defaults.yml
   COPY build/pin-images.py /usr/local/bin/pin-images
+  ARG REGISTRY=ghcr.io/vexxhost/atmosphere
   RUN --no-cache /usr/local/bin/pin-images --registry ${REGISTRY} /defaults.yml /pinned.yml
   SAVE ARTIFACT /pinned.yml AS LOCAL roles/defaults/vars/main.yml
 

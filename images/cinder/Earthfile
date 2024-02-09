@@ -1,6 +1,5 @@
 VERSION 0.7
 
-ARG --global REGISTRY=ghcr.io/vexxhost/atmosphere
 ARG --global PROJECT=cinder
 ARG --global RELEASE=2023.2
 ARG --global PROJECT_REF=8d453fa7b6daf1c1b6105a71f7c660b9036541f3
@@ -18,6 +17,7 @@ image:
   COPY ../kubernetes+image/kubectl /usr/local/bin/kubectl
   DO ../+APT_INSTALL \
     --PACKAGES "ceph-common lsscsi nvme-cli python3-rados python3-rbd qemu-utils sysfsutils udev util-linux"
+  ARG REGISTRY=ghcr.io/vexxhost/atmosphere
   SAVE IMAGE --push \
     ${REGISTRY}/${PROJECT}:${RELEASE} \
     ${REGISTRY}/${PROJECT}:${PROJECT_REF}

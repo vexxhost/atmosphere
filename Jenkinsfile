@@ -8,12 +8,7 @@ pipeline {
 	// TODO: periodic multi-node jobs
 
 	environment {
-		TEST_REGISTRY = "registry.atmosphere.dev:5000/${env.BRANCH_NAME.toLowerCase()}"
-		PROD_REGISTRY = "ghcr.io/vexxhost/atmosphere"
-		REGISTRY = "${env.BRANCH_NAME == 'main' ? PROD_REGISTRY : TEST_REGISTRY}"
-
 		EARTHLY_CI = 'true'
-		EARTHLY_BUILD_ARGS = "REGISTRY=${REGISTRY}"
 	}
 
 	stages {
@@ -25,11 +20,7 @@ pipeline {
 					}
 
 					steps {
-						script {
-							docker.withRegistry('https://registry.hub.docker.com', 'docker-token') {
-								sh 'earthly --output +lint.ansible-lint'
-							}
-						}
+						sh 'earthly --output +lint.ansible-lint'
 					}
 
 					post {
@@ -45,11 +36,7 @@ pipeline {
 					}
 
 					steps {
-						script {
-							docker.withRegistry('https://registry.hub.docker.com', 'docker-token') {
-								sh 'earthly --output +lint.helm'
-							}
-						}
+						sh 'earthly --output +lint.helm'
 					}
 
 					post {
@@ -65,11 +52,7 @@ pipeline {
 					}
 
 					steps {
-						script {
-							docker.withRegistry('https://registry.hub.docker.com', 'docker-token') {
-								sh 'earthly --output +lint.markdownlint'
-							}
-						}
+						sh 'earthly --output +lint.markdownlint'
 					}
 
 					post {
@@ -85,11 +68,7 @@ pipeline {
 					}
 
 					steps {
-						script {
-							docker.withRegistry('https://registry.hub.docker.com', 'docker-token') {
-								sh 'earthly +lint.image-manifest'
-							}
-						}
+						sh 'earthly +lint.image-manifest'
 					}
 				}
 			}
@@ -103,11 +82,7 @@ pipeline {
 					}
 
 					steps {
-						script {
-							docker.withRegistry('https://registry.hub.docker.com', 'docker-token') {
-								sh 'earthly --output +unit.go'
-							}
-						}
+						sh 'earthly --output +unit.go'
 					}
 
 					post {
@@ -127,11 +102,7 @@ pipeline {
 					}
 
 					steps {
-						script {
-							docker.withRegistry('https://registry.hub.docker.com', 'docker-token') {
-								sh 'earthly --output +build.collection'
-							}
-						}
+						sh 'earthly --output +build.collection'
 					}
 
 					post {
@@ -146,16 +117,25 @@ pipeline {
 						label 'earthly'
 					}
 
+					environment {
+						TEST_REGISTRY = "registry.atmosphere.dev/builds/${env.BRANCH_NAME.toLowerCase()}"
+						PROD_REGISTRY = "ghcr.io/vexxhost/atmosphere"
+						REGISTRY = "${env.BRANCH_NAME == 'main' ? PROD_REGISTRY : TEST_REGISTRY}"
+
+						EARTHLY_BUILD_ARGS = "REGISTRY=${REGISTRY}"
+						EARTHLY_PUSH = "true"
+					}
+
 					steps {
 						script {
-							docker.withRegistry('https://registry.hub.docker.com', 'docker-token') {
-									if (env.BRANCH_NAME == 'main') {
-										docker.withRegistry('https://ghcr.io', 'github-packages-token') {
-											sh 'earthly --push +images'
-										}
-									} else {
-										sh 'earthly --push +images'
-									}
+							if (env.BRANCH_NAME == 'main') {
+								docker.withRegistry('https://ghcr.io', 'github-packages-token') {
+									sh 'earthly --push +images'
+								}
+							} else {
+								docker.withRegistry('https://registry.atmosphere.dev', 'harbor-registry') {
+									sh 'earthly --push +images'
+								}
 							}
 						}
 
@@ -171,11 +151,7 @@ pipeline {
 					}
 
 					steps {
-						script {
-							docker.withRegistry('https://registry.hub.docker.com', 'docker-token') {
-								sh 'earthly +mkdocs-build'
-							}
-						}
+						sh 'earthly +mkdocs-build'
 					}
 				}
 			}

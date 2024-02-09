@@ -1,6 +1,5 @@
 VERSION 0.7
 
-ARG --global REGISTRY=ghcr.io/vexxhost/atmosphere
 ARG --global SERIES=23.03
 ARG --global VERSION=23.03.0-69
 
@@ -31,6 +30,7 @@ component-image:
   ARG TARGETARCH
   ARG TARGETVARIANT
   COPY (+ovn-kubernetes/ovn-kube-util --GOARCH=$TARGETARCH --VARIANT=$TARGETVARIANT) /usr/bin
+  ARG REGISTRY=ghcr.io/vexxhost/atmosphere
   SAVE IMAGE --push \
     ${REGISTRY}/ovn-${NAME}:${SERIES} \
     ${REGISTRY}/ovn-${NAME}:${VERSION}

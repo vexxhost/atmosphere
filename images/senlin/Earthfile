@@ -1,6 +1,5 @@
 VERSION 0.7
 
-ARG --global REGISTRY=ghcr.io/vexxhost/atmosphere
 ARG --global PROJECT=senlin
 ARG --global RELEASE=2023.2
 ARG --global PROJECT_REF=5382259276d6be6807634c58c7b69b03b57ad6f5
@@ -14,6 +13,7 @@ build:
 image:
   FROM ../openstack-service+image --RELEASE ${RELEASE} --PROJECT ${PROJECT}
   COPY +build/venv /var/lib/openstack
+  ARG REGISTRY=ghcr.io/vexxhost/atmosphere
   SAVE IMAGE --push \
     ${REGISTRY}/${PROJECT}:${RELEASE} \
     ${REGISTRY}/${PROJECT}:${PROJECT_REF}

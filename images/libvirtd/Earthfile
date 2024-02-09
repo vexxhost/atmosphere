@@ -1,7 +1,5 @@
 VERSION 0.7
 
-ARG --global REGISTRY=ghcr.io/vexxhost/atmosphere
-
 platform-image:
   ARG RELEASE=zed
   FROM ../cloud-archive-base+image --RELEASE=${RELEASE}
@@ -16,6 +14,7 @@ platform-image:
   END
   DO ../+APT_INSTALL --PACKAGES="ceph-common cgroup-tools dmidecode ebtables iproute2 ipxe-qemu kmod libvirt-clients libvirt-daemon-system openssh-client openvswitch-switch ovmf pm-utils qemu-block-extra qemu-efi qemu-kvm seabios"
   DO ../+CREATE_PROJECT_USER --PROJECT=nova
+  ARG REGISTRY=ghcr.io/vexxhost/atmosphere
   SAVE IMAGE --push ${REGISTRY}/libvirtd:${RELEASE}
 
 image:

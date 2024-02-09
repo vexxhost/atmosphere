@@ -49,9 +49,23 @@ def get_pinned_image(image_src):
     if image_ref.domain() in (
         "registry.k8s.io",
         "us-docker.pkg.dev",
-        "registry.atmosphere.dev",
     ):
         digest = get_digest(image_ref)
+
+    if image_ref.domain() == "registry.atmosphere.dev":
+        # Get token for docker.io
+        r = requests.get(
+            "https://registry.atmosphere.dev/service/token",
+            timeout=5,
+            params={
+                "service": "harbor-registry",
+                "scope": f"repository:{image_ref.path()}:pull",
+            },
+        )
+        r.raise_for_status()
+        token = r.json()["token"]
+
+        digest = get_digest(image_ref, token=token)
 
     if image_ref.domain() == "quay.io":
         r = requests.get(
@@ -122,12 +136,6 @@ def main():
 
     args = parser.parse_args()
 
-    registry = args.registry
-    if "registry.atmosphere.dev:5000" in registry:
-        registry = registry.replace(
-            "registry.atmosphere.dev:5000", "registry.atmosphere.dev"
-        )
-
     yaml = YAML(typ="rt")
     data = yaml.load(args.src)
 
@@ -137,13 +145,13 @@ def main():
 
         # NOTE(mnaser): If we're in CI, only pin the Atmosphere images
         if (
-            "registry.atmosphere.dev" in registry
+            "registry.atmosphere.dev" in args.registry
             and "ghcr.io/vexxhost/atmosphere" not in data["_atmosphere_images"][image]
         ):
             continue
 
         image_src = data["_atmosphere_images"][image].replace(
-            "ghcr.io/vexxhost/atmosphere", registry
+            "ghcr.io/vexxhost/atmosphere", args.registry
         )
         pinned_image = get_pinned_image(image_src)
 
