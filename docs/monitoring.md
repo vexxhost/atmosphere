@@ -69,3 +69,75 @@ This instructs Helm to fetch and configure the specified dashboard from
 
 You can find more examples of how to do this in the Grafana Helm chart
 [Documentation](https://github.com/grafana/helm-charts/tree/main/charts/grafana#import-dashboards).
+
+## Alert receiver integration
+
+To receive monitoring alerts using your preferred notification tools, you'll
+need to integrate them with alertmanager.
+
+### Email
+
+To integrate with email, configure your email server and credentials in
+alertmanager receivers like this.
+
+```yaml
+kube_prometheus_stack_helm_values:
+  alertmanager:
+    config:
+      route:
+        routes:
+          - receiver: "email"
+            matchers: ["severity =~ \"warning|critical\""]
+      receivers:
+        - name: "email"
+          email_configs:
+            - smarthost: 'smtp.gmail.com:587'
+              auth_username: '<your email id here>'
+              auth_password: '<your email password here>'
+              from: '<your email id here>'
+              to: '<receiver's email id here>'
+              headers:
+                subject: 'Prometheus Mail Alerts'
+```
+
+You can find more details about `email_configs` from [this](https://prometheus.io/docs/alerting/latest/configuration/#email_config).
+
+### Pagerduty
+
+- In Pagerduty
+
+To integrate with Pagerduty, first you need to prepare `Integration key` in
+Pagerduty.
+
+There are two ways to integrate with PagerDuty: via [Event Orchestration](https://support.pagerduty.com/docs/event-orchestration)
+or directly through an [Integration on a PagerDuty service](https://support.pagerduty.com/docs/services-and-integrations#section-configuring-services-and-integrations).
+
+Integrating with Event Orchestration may be beneficial if you want to build
+different routing rules based on the events coming from the integrated tool.
+
+Integrating with a PagerDuty service directly can be beneficial if you
+don't need to route alerts from the integrated tool to different responders
+based on the event payload.
+
+You can find how to generate `Integration key` using both ways in this
+[Document](https://www.pagerduty.com/docs/guides/prometheus-integration-guide/).
+
+- In Atmoshpere
+
+Configure your `Integration key` in alertmanager receivers like this.
+
+```yaml
+kube_prometheus_stack_helm_values:
+  alertmanager:
+    config:
+      route:
+        routes:
+          - receiver: "pagerduty"
+            matchers: ["severity =~ \"warning|critical\""]
+      receivers:
+        - name: "pagerduty"
+          pagerduty_configs:
+            - service_key: '<your integration key here>'
+```
+
+You can find more details about `pagerduty_configs` from [this](https://prometheus.io/docs/alerting/latest/configuration/#pagerduty_config).
