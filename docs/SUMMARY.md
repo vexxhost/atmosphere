@@ -8,6 +8,7 @@
 - Kubernetes
     - [Certificates](kubernetes/certificates.md)
 - OpenStack
+    - [Keycloak](openstack/keycloak.md)
     - [Cinder](openstack/cinder.md)
     - [Neutron](openstack/neutron.md)
     - [Nova](openstack/nova.md)
