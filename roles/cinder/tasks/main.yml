@@ -42,7 +42,7 @@
     _cinder_helm_values: "{{ __cinder_helm_values }}"
 
 - name: Append Helm values (Staffeln)
-  when: atmosphere_staffeln_enabled | default(true)
+  when: atmosphere_staffeln_enabled | default(false)
   ansible.builtin.set_fact:
     _neutron_helm_values: "{{ _cinder_helm_values | combine(__cinder_staffeln_helm_values, recursive=True) }}"
 
