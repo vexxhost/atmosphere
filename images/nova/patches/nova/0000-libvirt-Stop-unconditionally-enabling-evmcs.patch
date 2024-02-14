@@ -1,0 +1,66 @@
+From 86a35e97d286cbb6e23f8cc7bec5a05f022da0cb Mon Sep 17 00:00:00 2001
+From: Artom Lifshitz <alifshit@redhat.com>
+Date: Tue, 31 Oct 2023 22:52:50 -0400
+Subject: [PATCH] libvirt: Stop unconditionally enabling evmcs
+
+In I008841988547573878c4e06e82f0fa55084e51b5 we started enabling a
+bunch of libvirt enlightenments for Windows unconditionally. Turns
+out, the `evmcs` enlightenment only works on Intel hosts, and we broke
+the ability to run Windows guests on AMD machines. Until we become
+smarter about conditionally enabling evmcs (with something like traits
+for host CPU features), just stop enabling it at all.
+
+Change-Id: I2ff4fdecd9dc69de283f0e52e07df1aeaf0a9048
+Closes-bug: 2009280
+---
+ nova/tests/unit/virt/libvirt/test_driver.py               | 5 ++++-
+ nova/virt/libvirt/driver.py                               | 1 -
+ ...p-unconditionally-enabling-evmcs-993a825641c4b9f3.yaml | 8 ++++++++
+ 3 files changed, 12 insertions(+), 2 deletions(-)
+ create mode 100644 releasenotes/notes/libvirt-enlightenments-stop-unconditionally-enabling-evmcs-993a825641c4b9f3.yaml
+
+diff --git a/nova/tests/unit/virt/libvirt/test_driver.py b/nova/tests/unit/virt/libvirt/test_driver.py
+index d01b9c2677..ebba604ffa 100644
+--- a/nova/tests/unit/virt/libvirt/test_driver.py
++++ b/nova/tests/unit/virt/libvirt/test_driver.py
+@@ -27972,7 +27972,10 @@ class LibvirtDriverTestCase(test.NoDBTestCase, TraitsComparisonMixin):
+         self.assertTrue(hv.reenlightenment)
+         self.assertTrue(hv.tlbflush)
+         self.assertTrue(hv.ipi)
+-        self.assertTrue(hv.evmcs)
++        # NOTE(artom) evmcs only works on Intel hosts, so we can't enable it
++        # unconditionally. Until we become smarter about it, just don't enable
++        # it at all. See bug 2009280.
++        self.assertFalse(hv.evmcs)
+ 
+ 
+ class LibvirtVolumeUsageTestCase(test.NoDBTestCase):
+diff --git a/nova/virt/libvirt/driver.py b/nova/virt/libvirt/driver.py
+index d03dc5fd67..1b28e50355 100644
+--- a/nova/virt/libvirt/driver.py
++++ b/nova/virt/libvirt/driver.py
+@@ -6234,7 +6234,6 @@ class LibvirtDriver(driver.ComputeDriver):
+             hv.reenlightenment = True
+             hv.tlbflush = True
+             hv.ipi = True
+-            hv.evmcs = True
+ 
+             # NOTE(kosamara): Spoofing the vendor_id aims to allow the nvidia
+             # driver to work on windows VMs. At the moment, the nvidia driver
+diff --git a/releasenotes/notes/libvirt-enlightenments-stop-unconditionally-enabling-evmcs-993a825641c4b9f3.yaml b/releasenotes/notes/libvirt-enlightenments-stop-unconditionally-enabling-evmcs-993a825641c4b9f3.yaml
+new file mode 100644
+index 0000000000..31609f2a2d
+--- /dev/null
++++ b/releasenotes/notes/libvirt-enlightenments-stop-unconditionally-enabling-evmcs-993a825641c4b9f3.yaml
+@@ -0,0 +1,8 @@
++---
++fixes:
++  - |
++    Bug 2009280 has been fixed by no longer enabling the evmcs enlightenment in
++    the libvirt driver. evmcs only works on Intel CPUs, and domains with that
++    enlightenment cannot be started on AMD hosts. There is a possible future
++    feature to enable support for generating this enlightenment only when
++    running on Intel hosts.
+-- 
+2.34.1
+
