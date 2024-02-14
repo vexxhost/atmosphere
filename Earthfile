@@ -190,6 +190,7 @@ images:
   BUILD ./images/nova+image --REGISTRY=${REGISTRY}
   BUILD ./images/octavia+image --REGISTRY=${REGISTRY}
   BUILD ./images/openvswitch+image --REGISTRY=${REGISTRY}
+  BUILD ./images/openstack-cli+image --REGISTRY=${REGISTRY}
   BUILD ./images/ovn+images --REGISTRY=${REGISTRY}
   BUILD ./images/placement+image --REGISTRY=${REGISTRY}
   BUILD ./images/senlin+image --REGISTRY=${REGISTRY}
