@@ -1,4 +1,4 @@
-# Copyright (c) 2022 VEXXHOST, Inc.
+# Copyright (c) 2024 VEXXHOST, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -12,22 +12,24 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Install Ubuntu Cloud Archive keyring
+- name: Uninstall OpenStack client system packages
+  ansible.builtin.package:
+    name: "{{ openstack_cli_packages }}"
+    state: absent
+  when: ansible_facts['os_family'] in ['Debian']
+
+- name: Uninstall Ubuntu Cloud Archive keyring
   ansible.builtin.apt:
     name: ubuntu-cloud-keyring
-    state: present
+    state: absent
+  when: ansible_facts['os_family'] in ['Debian']
 
-- name: Add latest Ubuntu Cloud Archive repository
+- name: Remove Ubuntu Cloud Archive repository
   ansible.builtin.apt_repository:
     filename: ubuntu-cloud-archive
     repo: "{{ openstack_cli_cloud_archive_repo }}"
-    state: present
-  when: ansible_distribution_release == "focal"
-
-- name: Install OpenStack client
-  become: true
-  ansible.builtin.apt:
-    name: "{{ openstack_cli_packages }}"
+    state: absent
+  when: ansible_facts['os_family'] in ['Debian']
 
 - name: Generate OpenStack-Helm endpoints
   ansible.builtin.include_role:
@@ -43,3 +45,12 @@
     owner: root
     group: root
     mode: "0600"
+
+- name: Generate openstack aliases
+  become: true
+  ansible.builtin.template:
+    src: atmosphere.sh.j2
+    dest: /etc/profile.d/atmosphere.sh
+    owner: root
+    group: root
+    mode: "0644"
