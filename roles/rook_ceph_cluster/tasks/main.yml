@@ -18,6 +18,7 @@
   run_once: true
   delegate_to: "{{ groups[rook_ceph_cluster_mon_group][0] }}"
   ansible.builtin.command: cephadm shell -- ceph health mute CEPHADM_STRAY_DAEMON
+  failed_when: false
   changed_when: false
 
 - name: Collect "ceph quorum_status" output from a monitor
