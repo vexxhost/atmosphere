@@ -1,18 +1,38 @@
 VERSION 0.7
 
+ARG --global PROJECT=horizon
+ARG --global RELEASE=2023.2
+ARG --global PROJECT_REF=e650127975265bd398c5ccd0f9fc94456a013e0f
+
+build.plugin:
+  ARG PLUGIN
+  FROM ../openstack-service+builder --RELEASE=${RELEASE}
+  DO ../openstack-service+GIT_CHECKOUT \
+    --PROJECT=${PLUGIN} \
+    --PROJECT_REF=stable/${RELEASE}
+  SAVE ARTIFACT /src
+
+build:
+  FROM ../openstack-service+builder --RELEASE=${RELEASE}
+  COPY (+build.plugin/src --PLUGIN=designate-dashboard) /designate-dashboard
+  COPY (+build.plugin/src --PLUGIN=heat-dashboard) /heat-dashboard
+  COPY (+build.plugin/src --PLUGIN=ironic-ui) /ironic-ui
+  COPY (+build.plugin/src --PLUGIN=magnum-ui) /magnum-ui
+  COPY (+build.plugin/src --PLUGIN=manila-ui) /manila-ui
+  COPY (+build.plugin/src --PLUGIN=neutron-vpnaas-dashboard) /neutron-vpnaas-dashboard
+  COPY (+build.plugin/src --PLUGIN=octavia-dashboard) /octavia-dashboard
+  COPY (+build.plugin/src --PLUGIN=senlin-dashboard) /senlin-dashboard
+  DO ../openstack-service+BUILD_VENV \
+    --PROJECT=${PROJECT} \
+    --PROJECT_REF=${PROJECT_REF} \
+    --PIP_PACKAGES "/designate-dashboard /heat-dashboard /ironic-ui /magnum-ui /neutron-vpnaas-dashboard /octavia-dashboard /senlin-dashboard /manila-ui"
+
 image:
-  ARG PROJECT=horizon
-  ARG RELEASE=2023.2
-  ARG REF=3c6029cd94846235e25058b71522c13556f41f58
-  FROM ../openstack-service+image \
-    --PROJECT ${PROJECT} \
-    --RELEASE ${RELEASE} \
-    --PROJECT_REF ${REF} \
-    --PIP_PACKAGES "git+https://github.com/openstack/designate-dashboard.git@stable/${RELEASE} git+https://github.com/openstack/heat-dashboard.git@stable/${RELEASE} git+https://github.com/openstack/ironic-ui.git@stable/${RELEASE} git+https://github.com/openstack/magnum-ui.git@stable/${RELEASE} git+https://github.com/openstack/neutron-vpnaas-dashboard.git@stable/${RELEASE} git+https://github.com/openstack/octavia-dashboard.git@stable/${RELEASE} git+https://github.com/openstack/senlin-dashboard.git@stable/${RELEASE} git+https://github.com/openstack/manila-ui.git@stable/${RELEASE}"
-  DO \
-    ../+APT_INSTALL \
+  FROM ../openstack-service+image --RELEASE ${RELEASE} --PROJECT ${PROJECT}
+  COPY +build/venv /var/lib/openstack
+  DO ../+APT_INSTALL \
     --PACKAGES "apache2 gettext libapache2-mod-wsgi-py3"
-  DO ../+APPLY_PATCHES
+  ARG REGISTRY=ghcr.io/vexxhost/atmosphere
   SAVE IMAGE --push \
-    ghcr.io/vexxhost/atmosphere/${PROJECT}:${RELEASE} \
-    ghcr.io/vexxhost/atmosphere/${PROJECT}:${REF}
+    ${REGISTRY}/${PROJECT}:${RELEASE} \
+    ${REGISTRY}/${PROJECT}:${PROJECT_REF}

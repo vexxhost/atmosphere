@@ -1,17 +1,21 @@
 VERSION 0.7
 
+ARG --global PROJECT=manila
+ARG --global RELEASE=2023.2
+ARG --global PROJECT_REF=98bc755673fe48a9c67203e4262315b048efe25d
+
+build:
+  FROM ../openstack-service+builder --RELEASE=${RELEASE}
+  DO ../openstack-service+BUILD_VENV \
+    --PROJECT=${PROJECT} \
+    --PROJECT_REF=${PROJECT_REF}
+
 image:
-  ARG PROJECT=manila
-  ARG RELEASE=zed
-  ARG REF=9ea49e2b9df7da16d5700810eee18710dc90e6a4
-  FROM ../openstack-service+image \
-    --PROJECT ${PROJECT} \
-    --RELEASE ${RELEASE} \
-    --PROJECT_REF ${REF}
-  DO \
-    ../+APT_INSTALL \
+  FROM ../openstack-service+image --RELEASE ${RELEASE} --PROJECT ${PROJECT}
+  COPY +build/venv /var/lib/openstack
+  DO ../+APT_INSTALL \
     --PACKAGES "iproute2 openvswitch-switch"
-  DO ../+APPLY_PATCHES
+  ARG REGISTRY=ghcr.io/vexxhost/atmosphere
   SAVE IMAGE --push \
-    ghcr.io/vexxhost/atmosphere/${PROJECT}:${RELEASE} \
-    ghcr.io/vexxhost/atmosphere/${PROJECT}:${REF}
+    ${REGISTRY}/${PROJECT}:${RELEASE} \
+    ${REGISTRY}/${PROJECT}:${PROJECT_REF}

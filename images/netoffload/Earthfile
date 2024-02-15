@@ -1,0 +1,28 @@
+VERSION 0.7
+
+ARG --global PROJECT=netoffload
+ARG --global RELEASE=main
+ARG --global PROJECT_REF=94b8c0fdb0b83bd1b7e14b9a58077a047c78a800
+
+build:
+  FROM golang:1.20
+  WORKDIR /src
+  GIT CLONE --branch ${PROJECT_REF} https://github.com/vexxhost/netoffload /src
+  RUN \
+    --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=cache,target=/go/pkg/mod \
+      go build -v -o offloadctl cmd/offloadctl/main.go
+  SAVE ARTIFACT offloadctl
+
+platform-image:
+  FROM ../base+image
+  DO ../+APT_INSTALL --PACKAGES="jq mstflint"
+  COPY +build/offloadctl /usr/local/bin/offloadctl
+  ENTRYPOINT ["/usr/local/bin/offloadctl"]
+  ARG REGISTRY=ghcr.io/vexxhost/atmosphere
+  SAVE IMAGE --push \
+    ${REGISTRY}/${PROJECT}:${RELEASE} \
+    ${REGISTRY}/${PROJECT}:${PROJECT_REF}
+
+image:
+  BUILD --platform linux/amd64 --platform linux/arm64 +platform-image

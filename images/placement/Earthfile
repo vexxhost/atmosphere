@@ -1,14 +1,19 @@
 VERSION 0.7
 
+ARG --global PROJECT=placement
+ARG --global RELEASE=2023.2
+ARG --global PROJECT_REF=a361622d749d3b24aad638ec1b03a7d7124a87b3
+
+build:
+  FROM ../openstack-service+builder --RELEASE=${RELEASE}
+  DO ../openstack-service+BUILD_VENV \
+    --PROJECT=${PROJECT} \
+    --PROJECT_REF=${PROJECT_REF}
+
 image:
-  ARG PROJECT=placement
-  ARG RELEASE=zed
-  ARG REF=d7ced6bd2fc82caf458f20b5652888164b1bbb70
-  FROM ../openstack-service+image \
-    --PROJECT ${PROJECT} \
-    --RELEASE ${RELEASE} \
-    --PROJECT_REF ${REF}
-  DO ../+APPLY_PATCHES
+  FROM ../openstack-service+image --RELEASE ${RELEASE} --PROJECT ${PROJECT}
+  COPY +build/venv /var/lib/openstack
+  ARG REGISTRY=ghcr.io/vexxhost/atmosphere
   SAVE IMAGE --push \
-    ghcr.io/vexxhost/atmosphere/${PROJECT}:${RELEASE} \
-    ghcr.io/vexxhost/atmosphere/${PROJECT}:${REF}
+    ${REGISTRY}/${PROJECT}:${RELEASE} \
+    ${REGISTRY}/${PROJECT}:${PROJECT_REF}

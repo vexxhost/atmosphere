@@ -1,15 +1,18 @@
 VERSION 0.7
 
-clone:
-  FROM ../builder+image
-  GIT CLONE --branch a2e563b08ae633d75084c1bb40c97dbf1a539950 https://opendev.org/openstack/openstack-helm-images /src
-  WORKDIR /src
-  SAVE ARTIFACT /src
-
 platform-image:
-  FROM DOCKERFILE -f +clone/src/nova-ssh/Dockerfile.ubuntu_focal +clone/src/nova-ssh
-  LABEL org.opencontainers.image.source=https://github.com/vexxhost/atmosphere
-  SAVE IMAGE --push ghcr.io/vexxhost/atmosphere/nova-ssh:latest
+  FROM ../base+image
+  DO ../+CREATE_PROJECT_USER \
+    --PROJECT=nova \
+    --SHELL=/bin/bash
+  DO ../+APT_INSTALL \
+    --PACKAGES "openssh-server openssh-client"
+  RUN \
+    chown -R nova: /etc/ssh && \
+    mkdir /var/run/sshd && \
+    chmod 0755 /var/run/sshd
+  ARG REGISTRY=ghcr.io/vexxhost/atmosphere
+  SAVE IMAGE --push ${REGISTRY}/nova-ssh:latest
 
 image:
   BUILD --platform linux/amd64 --platform linux/arm64 +platform-image

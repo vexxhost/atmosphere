@@ -3,14 +3,16 @@
 import argparse
 import functools
 
+import requests
 from docker_image import reference
 from oslo_config import cfg
 from oslo_log import log as logging
 from ruyaml import YAML
-import requests
 
 LOG = logging.getLogger(__name__)
 CONF = cfg.CONF
+
+SKIP_IMAGE_LIST = ["secretgen_controller"]
 
 
 def get_digest(image_ref, token=None):
@@ -44,8 +46,26 @@ def get_digest(image_ref, token=None):
 def get_pinned_image(image_src):
     image_ref = reference.Reference.parse(image_src)
 
-    if image_ref.domain() in ("registry.k8s.io", "us-docker.pkg.dev"):
+    if image_ref.domain() in (
+        "registry.k8s.io",
+        "us-docker.pkg.dev",
+    ):
         digest = get_digest(image_ref)
+
+    if image_ref.domain() == "registry.atmosphere.dev":
+        # Get token for docker.io
+        r = requests.get(
+            "https://registry.atmosphere.dev/service/token",
+            timeout=5,
+            params={
+                "service": "harbor-registry",
+                "scope": f"repository:{image_ref.path()}:pull",
+            },
+        )
+        r.raise_for_status()
+        token = r.json()["token"]
+
+        digest = get_digest(image_ref, token=token)
 
     if image_ref.domain() == "quay.io":
         r = requests.get(
@@ -107,6 +127,12 @@ def main():
         "src", help="Path for default values file", type=argparse.FileType("r")
     )
     parser.add_argument("dst", help="Path for output file", type=argparse.FileType("w"))
+    parser.add_argument(
+        "-r",
+        "--registry",
+        default="ghcr.io/vexxhost/atmosphere",
+        help="Registry containing Atmosphere images",
+    )
 
     args = parser.parse_args()
 
@@ -114,7 +140,19 @@ def main():
     data = yaml.load(args.src)
 
     for image in data["_atmosphere_images"]:
-        image_src = data["_atmosphere_images"][image]
+        if image in SKIP_IMAGE_LIST:
+            continue
+
+        # NOTE(mnaser): If we're in CI, only pin the Atmosphere images
+        if (
+            "registry.atmosphere.dev" in args.registry
+            and "ghcr.io/vexxhost/atmosphere" not in data["_atmosphere_images"][image]
+        ):
+            continue
+
+        image_src = data["_atmosphere_images"][image].replace(
+            "ghcr.io/vexxhost/atmosphere", args.registry
+        )
         pinned_image = get_pinned_image(image_src)
 
         LOG.info("Pinning image %s from %s to %s", image, image_src, pinned_image)

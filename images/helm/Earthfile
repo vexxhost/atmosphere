@@ -1,0 +1,11 @@
+VERSION 0.7
+
+binary:
+  FROM ../curl+image
+  ARG TARGETOS
+  ARG TARGETARCH
+  ARG VERSION=3.14.0
+  RUN curl -LO https://get.helm.sh/helm-v3.14.0-${TARGETOS}-${TARGETARCH}.tar.gz
+  RUN tar -zxvf /tmp/helm-v3.14.0-${TARGETOS}-${TARGETARCH}.tar.gz
+  RUN ${TARGETOS}-${TARGETARCH}/helm version
+  SAVE ARTIFACT ${TARGETOS}-${TARGETARCH}/helm

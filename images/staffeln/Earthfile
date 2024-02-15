@@ -1,0 +1,20 @@
+VERSION 0.7
+
+ARG --global PROJECT=staffeln
+ARG --global RELEASE=master
+ARG --global PROJECT_REF=v2.2.3
+
+build:
+  FROM ../openstack-service+builder --RELEASE=${RELEASE}
+  DO ../openstack-service+BUILD_VENV \
+    --PROJECT=${PROJECT} \
+    --PROJECT_REPO=https://github.com/vexxhost/${PROJECT} \
+    --PROJECT_REF=${PROJECT_REF}
+
+image:
+  FROM ../openstack-service+image --RELEASE ${RELEASE} --PROJECT ${PROJECT}
+  COPY +build/venv /var/lib/openstack
+  ARG REGISTRY=ghcr.io/vexxhost/atmosphere
+  SAVE IMAGE --push \
+    ${REGISTRY}/${PROJECT}:${RELEASE} \
+    ${REGISTRY}/${PROJECT}:${PROJECT_REF}

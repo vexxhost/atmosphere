@@ -1,0 +1,37 @@
+From efd289b950b32d3e6ad160b7c7f2901bca7c7e55 Mon Sep 17 00:00:00 2001
+From: Mohammed Naser <mnaser@vexxhost.com>
+Date: Tue, 16 Jan 2024 17:13:19 -0500
+Subject: [PATCH] fix: specify endpoint info. for neutron client
+
+Closes bug: #2049551
+
+Change-Id: I80a266e500958415a70d462ddfe57e9e03e6ef13
+---
+ octavia/common/clients.py | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/octavia/common/clients.py b/octavia/common/clients.py
+index b13642bb..2abcc67b 100644
+--- a/octavia/common/clients.py
++++ b/octavia/common/clients.py
+@@ -80,10 +80,16 @@ class NeutronAuth(object):
+         if not cls.neutron_client:
+             sess = ksession.get_session()
+ 
+-            kwargs = {}
++            kwargs = {
++                'region_name': CONF.neutron.region_name,
++                'interface': CONF.neutron.valid_interfaces
++            }
+             if CONF.neutron.endpoint_override:
+                 kwargs['network_endpoint_override'] = (
+                     CONF.neutron.endpoint_override)
++                if CONF.neutron.endpoint_override.startswith("https"):
++                    kwargs['insecure'] = CONF.neutron.insecure
++                    kwargs['cacert'] = CONF.neutron.cafile
+ 
+             conn = openstack.connection.Connection(
+                 session=sess, **kwargs)
+-- 
+2.34.1
+

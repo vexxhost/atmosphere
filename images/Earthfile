@@ -1,7 +1,7 @@
-VERSION 0.7
+VERSION 0.8
 
 APT_INSTALL:
-  COMMAND
+  FUNCTION
   ARG PACKAGES
   RUN \
     apt-get update && \
@@ -10,7 +10,7 @@ APT_INSTALL:
     rm -rf /var/lib/apt/lists/*
 
 DNF_INSTALL:
-  COMMAND
+  FUNCTION
   ARG PACKAGES
   RUN \
     dnf -y install \
@@ -21,25 +21,32 @@ DNF_INSTALL:
     rm -rf /var/cache/dnf
 
 CREATE_PROJECT_USER:
-  COMMAND
+  FUNCTION
   ARG PROJECT
+  ARG SHELL=/usr/sbin/nologin
   RUN \
     groupadd -g 42424 ${PROJECT} && \
-    useradd -u 42424 -g 42424 -M -d /var/lib/${PROJECT} -s /usr/sbin/nologin -c "${PROJECT} User" ${PROJECT} && \
+    useradd -u 42424 -g 42424 -M -d /var/lib/${PROJECT} -s ${SHELL} -c "${PROJECT} User" ${PROJECT} && \
     mkdir -p /etc/${PROJECT} /var/log/${PROJECT} /var/lib/${PROJECT} /var/cache/${PROJECT} && \
     chown -Rv ${PROJECT}:${PROJECT} /etc/${PROJECT} /var/log/${PROJECT} /var/lib/${PROJECT} /var/cache/${PROJECT}
 
-APPLY_PATCHES:
-  COMMAND
-  COPY --if-exists patches /patches
-  IF [ -d /patches ]
-    RUN \
-      apt-get update && \
-      apt-get install -y patch && \
-      for patch in /patches/*.patch; do \
-        patch -d /var/lib/openstack/lib/python3.10/site-packages/ -p1 < $patch; \
-      done && \
-      apt-get purge -y --auto-remove patch && \
-      apt-get clean && \
-      rm -rf /var/lib/apt/lists/*
-  END
+fetch-gerrit-patch:
+  FROM ./base+image
+  DO +APT_INSTALL --PACKAGES "ca-certificates curl git jq"
+  ARG --required IMAGE
+  ARG PROJECT=${IMAGE}
+  ARG --required CHANGE
+  ARG PROJECT_REF=master
+  DO ./openstack-service+GIT_CHECKOUT \
+    --PROJECT=${PROJECT} \
+    --PROJECT_REF=${PROJECT_REF}
+  ARG REF=$(curl "https://review.opendev.org/changes/?q=${CHANGE}&o=CURRENT_REVISION" | tail -1 | jq -r '.[0].revisions[].ref')
+  COPY ${IMAGE}/patches/${PROJECT} /patches
+  RUN \
+    git fetch https://review.opendev.org/openstack/${PROJECT} ${REF} && \
+    git format-patch -1 --output-directory /gerrit FETCH_HEAD
+  ARG PATCH_ID=$(ls -1 /patches | wc -l | xargs printf "%04d")
+  RUN \
+    cp /gerrit/0001-* \
+    /patches/${PATCH_ID}-$(basename /gerrit/*.patch | sed 's/0001-//')
+  SAVE ARTIFACT /patches AS LOCAL ${IMAGE}/patches/${PROJECT}

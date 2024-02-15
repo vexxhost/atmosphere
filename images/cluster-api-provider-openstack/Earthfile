@@ -1,7 +1,7 @@
 VERSION 0.7
 
 ARG --global CAPO_VERSION=v0.8.0
-ARG --global EPOCH=1
+ARG --global EPOCH=2
 
 clone:
   FROM ../builder+image
@@ -14,4 +14,5 @@ clone:
 image:
   FROM DOCKERFILE -f +clone/src/Dockerfile +clone/src/*
   LABEL org.opencontainers.image.source=https://github.com/vexxhost/atmosphere
-  SAVE IMAGE --push ghcr.io/vexxhost/atmosphere/capi-openstack-controller:${CAPO_VERSION}-${EPOCH}
+  ARG REGISTRY=ghcr.io/vexxhost/atmosphere
+  SAVE IMAGE --push ${REGISTRY}/capi-openstack-controller:${CAPO_VERSION}-${EPOCH}

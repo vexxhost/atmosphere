@@ -152,3 +152,48 @@
     cloud: atmosphere
     image: "{{ octavia_amphora_image_name }}"
   register: _octavia_amphora_image
+
+- name: Create Amphora SSH key
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: secretgen.k14s.io/v1alpha1
+      kind: SSHKey
+      metadata:
+        name: "{{ octavia_helm_release_name }}-amphora-ssh-key"
+        namespace: "{{ octavia_helm_release_namespace }}"
+      spec:
+        secretTemplate:
+          type: Opaque
+          stringData:
+            id_rsa: $(privateKey)
+            id_rsa.pub: $(authorizedKey)
+            config: |
+              Host *
+                User ubuntu
+                StrictHostKeyChecking no
+                UserKnownHostsFile /dev/null
+    wait: true
+    wait_timeout: 60
+    wait_condition:
+      type: ReconcileSucceeded
+      status: true
+
+- name: Grab generated Amphora public key
+  run_once: true
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Secret
+    name: "{{ octavia_helm_release_name }}-amphora-ssh-key"
+    namespace: "{{ octavia_helm_release_namespace }}"
+  register: octavia_ssh_key_secret
+
+- name: Import Amphora SSH key-pair in OpenStack
+  run_once: true
+  openstack.cloud.keypair:
+    cloud: atmosphere
+    state: present
+    name: "{{ octavia_helm_release_name }}-amphora-ssh-key"
+    public_key: "{{ octavia_ssh_key_secret.resources[0]['data']['id_rsa.pub'] | b64decode }}"
+  register: octavia_amphora_ssh_keypair

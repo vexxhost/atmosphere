@@ -3,17 +3,37 @@ VERSION 0.7
 ARG --global SERIES=23.03
 ARG --global VERSION=23.03.0-69
 
+ovn-kubernetes:
+  FROM --platform=linux/amd64 golang:1.20
+  GIT CLONE --branch master https://github.com/ovn-org/ovn-kubernetes /src
+  WORKDIR /src
+  COPY patches/ovn-kubernetes /patches
+  DO ../+APT_INSTALL --PACKAGES "git"
+  RUN git apply --verbose /patches/*.patch
+  SAVE ARTIFACT /src/dist/images/ovndb-raft-functions.sh
+  SAVE ARTIFACT /src/dist/images/ovnkube.sh
+  ARG GOOS=linux
+  ARG GOARCH=amd64
+  RUN \
+    cd /src/go-controller && \
+    go build -o /build/ovn-kube-util ./cmd/ovn-kube-util
+  SAVE ARTIFACT /build/ovn-kube-util
+
 component-image:
   FROM ../openvswitch+platform-image
   DO ../+DNF_INSTALL --PACKAGES "firewalld-filesystem hostname ovn${SERIES}-${VERSION}.el9s procps-ng"
   ARG --required NAME
   DO ../+DNF_INSTALL --PACKAGES "ovn${SERIES}-${NAME}-${VERSION}.el9s"
-  IF [ "${NAME}" = "host" ]
-    COPY ../kubernetes+image/kubectl /usr/local/bin/kubectl
-  END
+  COPY ../kubernetes+image/kubectl /usr/local/bin/kubectl
+  COPY +ovn-kubernetes/ovndb-raft-functions.sh /root
+  COPY +ovn-kubernetes/ovnkube.sh /root
+  ARG TARGETARCH
+  ARG TARGETVARIANT
+  COPY (+ovn-kubernetes/ovn-kube-util --GOARCH=$TARGETARCH --VARIANT=$TARGETVARIANT) /usr/bin
+  ARG REGISTRY=ghcr.io/vexxhost/atmosphere
   SAVE IMAGE --push \
-    ghcr.io/vexxhost/atmosphere/ovn-${NAME}:${SERIES} \
-    ghcr.io/vexxhost/atmosphere/ovn-${NAME}:${VERSION}
+    ${REGISTRY}/ovn-${NAME}:${SERIES} \
+    ${REGISTRY}/ovn-${NAME}:${VERSION}
 
 central:
   BUILD +component-image --NAME central

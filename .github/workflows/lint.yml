@@ -17,10 +17,10 @@ jobs:
         run: echo info=$(python -VV | sha256sum | cut -d' ' -f1) >> $GITHUB_OUTPUT
 
       - name: Create pre-commit cache
-        uses: actions/cache@704facf57e6136b1bc63b828d79edcd491f0ee84 # v3
+        uses: actions/cache@13aacd865c20de90d75de3b17ebe84f7a17d57d2 # v4
         with:
           path: ~/.cache/pre-commit
           key: pre-commit|${{ steps.python_info.outputs.info }}|${{ hashFiles('.pre-commit-config.yaml') }}
 
       - name: Setup pre-commit
-        uses: pre-commit/action@646c83fcd040023954eafda54b4db0192ce70507 # v3.0.0
+        uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd # v3.0.1

@@ -1,0 +1,251 @@
+ceph_conf_overrides:
+  - section: global
+    option: mon allow pool size one
+    value: true
+  - section: global
+    option: osd crush chooseleaf type
+    value: 0
+  - section: mon
+    option: auth allow insecure global id reclaim
+    value: false
+
+kubernetes_keepalived_interface: br-mgmt
+
+cilium_helm_values:
+  operator:
+    replicas: 1
+
+csi_driver: local-path-provisioner
+
+cluster_issuer_type: self-signed
+
+ingress_nginx_helm_values:
+  controller:
+    config:
+      worker-processes: 2
+
+percona_xtradb_cluster_spec:
+  allowUnsafeConfigurations: true
+  pxc:
+    size: 1
+  haproxy:
+    size: 1
+
+keystone_helm_values:
+  conf:
+    keystone:
+      DEFAULT:
+        debug: "{{ lookup('env', 'ATMOSPHERE_DEBUG') | default('false', True) }}"
+  pod:
+    replicas:
+      api: 1
+
+barbican_helm_values:
+  conf:
+    barbican:
+      DEFAULT:
+        debug: "{{ lookup('env', 'ATMOSPHERE_DEBUG') | default('false', True) }}"
+  pod:
+    replicas:
+      api: 1
+
+rook_ceph_cluster_radosgw_spec:
+  metadataPool:
+    failureDomain: osd
+  dataPool:
+    failureDomain: osd
+  gateway:
+    instances: 1
+
+glance_helm_values:
+  conf:
+    glance:
+      DEFAULT:
+        debug: "{{ lookup('env', 'ATMOSPHERE_DEBUG') | default('false', True) }}"
+        workers: 2
+      glance_store:
+        rbd_store_replication: 1
+  pod:
+    replicas:
+      api: 1
+glance_images:
+  - name: cirros
+    url: http://download.cirros-cloud.net/0.6.2/cirros-0.6.2-x86_64-disk.img
+    min_disk: 1
+    disk_format: raw
+    container_format: bare
+    is_public: true
+
+staffeln_helm_values:
+  conf:
+    staffeln:
+      DEFAULT:
+        debug: "{{ lookup('env', 'ATMOSPHERE_DEBUG') | default('false', True) }}"
+  pod:
+    replicas:
+      api: 1
+      conductor: 1
+
+cinder_helm_values:
+  conf:
+    ceph:
+      pools:
+        backup:
+          replication: 1
+        cinder.volumes:
+          replication: 1
+    cinder:
+      DEFAULT:
+        debug: "{{ lookup('env', 'ATMOSPHERE_DEBUG') | default('false', True) }}"
+        osapi_volume_workers: 2
+  pod:
+    replicas:
+      api: 1
+      scheduler: 1
+
+placement_helm_values:
+  conf:
+    placement:
+      DEFAULT:
+        debug: "{{ lookup('env', 'ATMOSPHERE_DEBUG') | default('false', True) }}"
+    placement_api_uwsgi:
+      uwsgi:
+        processes: 2
+  pod:
+    replicas:
+      api: 1
+
+atmosphere_network_backend: "{{ lookup('env', 'ATMOSPHERE_NETWORK_BACKEND') | default('openvswitch', True) }}"
+ovn_helm_values:
+  conf:
+    auto_bridge_add:
+      br-ex: null
+  pod:
+    replicas:
+      ovn_ovsdb_nb: 1
+      ovn_ovsdb_sb: 1
+      ovn_northd: 1
+  manifests:
+    daemonset_ovn_controller: false
+
+coredns_helm_values:
+  replicaCount: 1
+
+nova_helm_values:
+  # TODO: reserve memory for host for aio scenario?
+  conf:
+    nova:
+      DEFAULT:
+        debug: "{{ lookup('env', 'ATMOSPHERE_DEBUG') | default('false', True) }}"
+        osapi_compute_workers: 2
+        metadata_workers: 2
+      conductor:
+        workers: 2
+      scheduler:
+        workers: 2
+  pod:
+    replicas:
+      api_metadata: 1
+      osapi: 1
+      conductor: 1
+      scheduler: 1
+      novncproxy: 1
+      spiceproxy: 1
+
+neutron_helm_values:
+  conf:
+    neutron:
+      DEFAULT:
+        api_workers: 2
+        debug: "{{ lookup('env', 'ATMOSPHERE_DEBUG') | default('false', True) }}"
+        rpc_workers: 2
+        metadata_workers: 2
+  pod:
+    replicas:
+      server: 1
+
+senlin_helm_values:
+  conf:
+    senlin:
+      DEFAULT:
+        debug: "{{ lookup('env', 'ATMOSPHERE_DEBUG') | default('false', True) }}"
+  pod:
+    replicas:
+      api: 1
+      conductor: 1
+      engine: 1
+      health_manager: 1
+
+heat_helm_values:
+  conf:
+    heat:
+      DEFAULT:
+        debug: "{{ lookup('env', 'ATMOSPHERE_DEBUG') | default('false', True) }}"
+        num_engine_workers: 2
+      heat_api:
+        workers: 2
+      heat_api_cfn:
+        workers: 2
+      heat_api_cloudwatch:
+        workers: 2
+  pod:
+    replicas:
+      api: 1
+      cfn: 1
+      cloudwatch: 1
+      engine: 1
+
+octavia_helm_values:
+  conf:
+    octavia:
+      DEFAULT:
+        debug: "{{ lookup('env', 'ATMOSPHERE_DEBUG') | default('false', True) }}"
+      controller_worker:
+        workers: 2
+    octavia_api_uwsgi:
+      uwsgi:
+        processes: 2
+  pod:
+    replicas:
+      api: 1
+      worker: 1
+      housekeeping: 1
+
+magnum_helm_values:
+  conf:
+    magnum:
+      DEFAULT:
+        debug: "{{ lookup('env', 'ATMOSPHERE_DEBUG') | default('false', True) }}"
+      api:
+        workers: 2
+      conductor:
+        workers: 2
+  pod:
+    replicas:
+      api: 1
+      conductor: 1
+magnum_image_disk_format: qcow2
+magnum_images:
+  - name: ubuntu-2204-kube-v1.27.8s
+    url: https://object-storage.public.mtl1.vexxhost.net/swift/v1/a91f106f55e64246babde7402c21b87a/magnum-capi/ubuntu-2204-kube-v1.27.8.qcow2
+    distro: ubuntu
+
+manila_helm_values:
+  conf:
+    manila:
+      DEFAULT:
+        debug: "{{ lookup('env', 'ATMOSPHERE_DEBUG') | default('false', True) }}"
+        osapi_share_workers: 2
+  pod:
+    replicas:
+      api: 1
+      scheduler: 1
+
+horizon_helm_values:
+  conf:
+    horizon:
+      local_settings:
+        debug: "{{ lookup('env', 'ATMOSPHERE_DEBUG') | default('false', True) }}"
+  pod:
+    replicas:
+      server: 1
