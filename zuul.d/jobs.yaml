@@ -8,8 +8,6 @@
 - job:
     name: atmosphere-golang-go-test
     parent: atmosphere-golang-go
-    pre-run:
-      - zuul.d/playbooks/common/switch-to-atmosphere-mirror.yml
     vars:
       go_command: test ./... -v
 
@@ -76,6 +74,9 @@
       - ^build/
       - ^doc/
       - ^releasenotes/
+    vars:
+      tox_environment:
+        ATMOSPHERE_IMAGE_PREFIX: "harbor.atmosphere.dev/"
 
 - job:
     name: atmosphere-molecule-csi
