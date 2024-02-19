@@ -1,6 +1,7 @@
 package defaults
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"slices"
@@ -8,8 +9,29 @@ import (
 	"testing"
 
 	"github.com/containers/image/v5/docker"
+	"github.com/goccy/go-yaml"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestImageHasPrefix(t *testing.T) {
+	path, err := yaml.PathString("$._atmosphere_images")
+	require.NoError(t, err)
+
+	var images map[string]string
+	err = path.Read(bytes.NewReader(varsFile), &images)
+	require.NoError(t, err)
+
+	prefix := "{{ atmosphere_image_prefix }}"
+
+	for _, image := range images {
+		testName := strings.ReplaceAll(image, prefix, "")
+
+		t.Run(testName, func(t *testing.T) {
+			assert.True(t, strings.HasPrefix(image, prefix))
+		})
+	}
+}
 
 func TestImageExist(t *testing.T) {
 	images, err := GetImages()
