@@ -16,14 +16,10 @@ var (
 // Define a global variable for the release value.
 var release = "main"
 
-// Function to replace the {{ release }} placeholders
-func replaceReleaseInYAML(yamlContent []byte, release string) []byte {
-	return []byte(strings.ReplaceAll(string(yamlContent), "{{ atmosphere_release }}", release))
-}
-
 func GetImages() (map[string]string, error) {
-	// Replace {{ release }} with the actual release value
-	modifiedVarsFile := replaceReleaseInYAML(varsFile, release)
+	// Replace Jinja values
+	modifiedVarsFile := []byte(strings.ReplaceAll(string(varsFile), "{{ atmosphere_release }}", release))
+	modifiedVarsFile = []byte(strings.ReplaceAll(string(modifiedVarsFile), "{{ atmosphere_image_prefix }}", ""))
 
 	path, err := yaml.PathString("$._atmosphere_images")
 	if err != nil {
