@@ -22,7 +22,7 @@ def get_digest(image_ref, token=None):
     if token:
         headers["Authorization"] = f"Bearer {token}"
     else:
-        r = requests.get(url, timeout=5, verify=False)
+        r = requests.get(url, timeout=5)
         auth_header = r.headers.get("Www-Authenticate")
         if auth_header:
             realm = auth_header.split(",")[0].split("=")[1].strip('"')
@@ -31,7 +31,6 @@ def get_digest(image_ref, token=None):
                 realm,
                 timeout=5,
                 params={"scope": f"repository:{image_ref.path()}:pull"},
-                verify=False,
             )
             r.raise_for_status()
 
@@ -44,7 +43,6 @@ def get_digest(image_ref, token=None):
             f"https://{image_ref.domain()}/v2/{image_ref.path()}/manifests/{image_ref['tag']}",
             timeout=5,
             headers=headers,
-            verify=False,
         )
         r.raise_for_status()
         return r.headers["Docker-Content-Digest"]
@@ -55,7 +53,6 @@ def get_digest(image_ref, token=None):
             f"https://{image_ref.domain()}/v2/{image_ref.path()}/manifests/{image_ref['tag']}",
             timeout=5,
             headers=headers,
-            verify=False,
         )
         r.raise_for_status()
         return r.headers["Docker-Content-Digest"]
@@ -154,13 +151,17 @@ def main():
         if image in SKIP_IMAGE_LIST:
             continue
 
-        image_src = data["_atmosphere_images"][image].replace(
-            "{{ atmosphere_release }}", data["atmosphere_release"]
+        image_src = (
+            data["_atmosphere_images"][image]
+            .replace("{{ atmosphere_release }}", data["atmosphere_release"])
+            .replace("{{ atmosphere_image_prefix }}", "")
         )
         pinned_image = get_pinned_image(image_src)
 
         LOG.info("Pinning image %s from %s to %s", image, image_src, pinned_image)
-        data["_atmosphere_images"][image] = pinned_image
+        data["_atmosphere_images"][image] = "{{ atmosphere_image_prefix }}%s" % (
+            pinned_image,
+        )
 
     yaml.dump(data, args.dst)
 
