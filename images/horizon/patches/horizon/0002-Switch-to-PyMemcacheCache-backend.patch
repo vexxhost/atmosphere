@@ -1,0 +1,77 @@
+From caa99b2010bd914bbe3cb2779940b7c544fe1104 Mon Sep 17 00:00:00 2001
+From: Radomir Dopieralski <openstack@dopieralski.pl>
+Date: Thu, 17 Aug 2023 17:06:14 +0200
+Subject: [PATCH] Switch to PyMemcacheCache backend
+
+The new library is already supported in django 3.2 and gives us better
+support for IPv6 addresses and encrypted connections.
+
+Also, the same library is being used by all other OpenStack projects.
+
+Depends-on: https://review.opendev.org/c/openstack/devstack/+/898302
+Closes-Bug: #2039225
+Change-Id: I964ac4d0d62dff4c1f7c1f1373763fbf23024269
+---
+ openstack_dashboard/local/local_settings.py.example  | 2 +-
+ openstack_dashboard/settings.py                      | 2 +-
+ releasenotes/notes/bug-2039225-39b7060a7e4bff07.yaml | 8 ++++++++
+ test-requirements.txt                                | 2 +-
+ 4 files changed, 11 insertions(+), 3 deletions(-)
+ create mode 100644 releasenotes/notes/bug-2039225-39b7060a7e4bff07.yaml
+
+diff --git a/openstack_dashboard/local/local_settings.py.example b/openstack_dashboard/local/local_settings.py.example
+index ac54f6db0..ade31c50a 100644
+--- a/openstack_dashboard/local/local_settings.py.example
++++ b/openstack_dashboard/local/local_settings.py.example
+@@ -95,7 +95,7 @@ SECRET_KEY = secret_key.generate_or_read_from_file(
+ # https://docs.djangoproject.com/en/1.11/topics/http/sessions/.
+ #CACHES = {
+ #    'default': {
+-#        'BACKEND': 'django.core.cache.backends.memcached.MemcachedCache',
++#        'BACKEND': 'django.core.cache.backends.memcached.PyMemcacheCache',
+ #        'LOCATION': '127.0.0.1:11211',
+ #    },
+ #}
+diff --git a/openstack_dashboard/settings.py b/openstack_dashboard/settings.py
+index 23d52a50b..0f7724eff 100644
+--- a/openstack_dashboard/settings.py
++++ b/openstack_dashboard/settings.py
+@@ -172,7 +172,7 @@ MESSAGE_STORAGE = 'django.contrib.messages.storage.fallback.FallbackStorage'
+ SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
+ CACHES = {
+     'default': {
+-        'BACKEND': 'django.core.cache.backends.memcached.MemcachedCache',
++        'BACKEND': 'django.core.cache.backends.memcached.PyMemcacheCache',
+         'LOCATION': '127.0.0.1:11211',
+     },
+ }
+diff --git a/releasenotes/notes/bug-2039225-39b7060a7e4bff07.yaml b/releasenotes/notes/bug-2039225-39b7060a7e4bff07.yaml
+new file mode 100644
+index 000000000..4fdecdea0
+--- /dev/null
++++ b/releasenotes/notes/bug-2039225-39b7060a7e4bff07.yaml
+@@ -0,0 +1,8 @@
++---
++upgrade:
++  - |
++    Default cache backend has been changed from MemcachedCache backend to
++    PyMemcacheCache backend. MemcachedCache backend was deprecated in django
++    3.2 and was later removed in django 4.1. Note that the LOCATION option
++    needs to be updated in case memcached servers use IPv6, so that inet6
++    prefix is not included.
+diff --git a/test-requirements.txt b/test-requirements.txt
+index 77cf8727c..803fa25fa 100644
+--- a/test-requirements.txt
++++ b/test-requirements.txt
+@@ -12,7 +12,7 @@ nodeenv>=0.9.4 # BSD
+ pytest>=5.3.5 # MIT
+ pytest-django>=3.8.0 # BSD (3 clause)
+ pytest-html>=2.0.1 #MPL-2.0
+-python-memcached>=1.59 # PSF
++pymemcache>=4.0.0  # Apache 2.0 License
+ selenium>=2.50.1 # Apache-2.0
+ testscenarios>=0.4 # Apache-2.0/BSD
+ testtools>=2.2.0 # MIT
+-- 
+2.43.2
+
