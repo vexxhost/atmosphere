@@ -16,14 +16,13 @@ var (
 // Define a global variable for the release value.
 var release = "main"
 
-// Function to replace the {{ release }} placeholders
-func replaceReleaseInYAML(yamlContent []byte, release string) []byte {
-	return []byte(strings.ReplaceAll(string(yamlContent), "{{ atmosphere_release }}", release))
-}
-
 func GetImages() (map[string]string, error) {
 	// Replace {{ release }} with the actual release value
-	modifiedVarsFile := replaceReleaseInYAML(varsFile, release)
+	modifiedVarsFile := []byte(strings.ReplaceAll(string(varsFile), "{{ atmosphere_release }}", release))
+
+	// Fix prefixes for images to allow tests to run
+	modifiedVarsFile = []byte(strings.ReplaceAll(string(modifiedVarsFile), "{{ atmosphere_image_prefix }}registry.atmosphere.dev", "harbor.atmosphere.dev"))
+	modifiedVarsFile = []byte(strings.ReplaceAll(string(modifiedVarsFile), "{{ atmosphere_image_prefix }}", "harbor.atmosphere.dev/"))
 
 	path, err := yaml.PathString("$._atmosphere_images")
 	if err != nil {
