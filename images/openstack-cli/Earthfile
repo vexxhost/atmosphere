@@ -1,52 +1,20 @@
 VERSION 0.8
 
+ARG --global PROJECT=python-openstackclient
+ARG --global RELEASE=2023.2
+ARG --global PROJECT_REF=41381c80b5f3583639a9cd9bab6d208684112fd7
+
 build:
-  FROM python:3.12-alpine
-  RUN apk add \
-    gcc python3-dev libc-dev linux-headers
-  RUN \
-    --mount=type=cache,target=/root/.cache \
-    pip install wheel \
-    python-barbicanclient'>=5.6.1,<5.7.0' \
-    python-cinderclient'>=9.4.0,<9.5.0' \
-    python-designateclient'>=5.3.0,<5.4.0' \
-    python-glanceclient'>=4.4.0,<4.5.0' \
-    python-heatclient'>=3.3.0,<3.4.0' \
-    python-keystoneclient'>=5.2.0,<5.3.0' \
-    python-magnumclient'>=4.2.0,<4.3.0' \
-    python-manilaclient'>=4.6.1,<4.7.0' \
-    python-neutronclient'>=11.0.0,<11.1.0' \
-    python-novaclient'>=18.4.0,<18.5.0' \
-    python-octaviaclient'>=3.5.1,<3.6.0' \
-    python-openstackclient'>=6.3.0,<6.4.0' \
-    osc-placement'>=4.2.0,<4.3.0' \
-    python-senlinclient'>=3.1.0,<3.2.0' \
-    python-swiftclient'>=4.4.0,<4.5.0'
-  RUN pip freeze > requirements.txt
-  RUN --mount=type=cache,target=/root/.cache \
-    pip wheel -r requirements.txt -w /wheels
-  SAVE ARTIFACT /wheels
+  FROM ../openstack-service+builder --RELEASE=${RELEASE}
+  DO ../openstack-service+BUILD_VENV \
+    --PROJECT=${PROJECT} \
+    --PROJECT_REF=${PROJECT_REF} \
+    --PIP_PACKAGES="python-barbicanclient python-designateclient python-glanceclient python-heatclient python-magnumclient python-manilaclient python-neutronclient python-octaviaclient osc-placement python-senlinclient python-swiftclient"
 
 image:
-  ARG RELEASE=2023.2
-  FROM python:3.12-alpine
-  COPY +build/wheels /wheels
-  RUN pip install --no-index --find-links=/wheels \
-      python-barbicanclient \
-      python-cinderclient \
-      python-designateclient \
-      python-glanceclient \
-      python-keystoneclient \
-      python-heatclient \
-      python-magnumclient \
-      python-manilaclient \
-      python-neutronclient \
-      python-novaclient \
-      python-octaviaclient \
-      python-openstackclient \
-      osc-placement \
-      python-senlinclient \
-      python-swiftclient
+  FROM ../openstack-service+image --RELEASE ${RELEASE} --PROJECT ${PROJECT}
+  COPY +build/venv /var/lib/openstack
   ARG REGISTRY=ghcr.io/vexxhost/atmosphere
   SAVE IMAGE --push \
-    ${REGISTRY}/openstack-cli:${RELEASE}
+    ${REGISTRY}/${PROJECT}:${RELEASE} \
+    ${REGISTRY}/${PROJECT}:${PROJECT_REF}
