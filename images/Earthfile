@@ -5,7 +5,7 @@ APT_INSTALL:
   ARG PACKAGES
   RUN \
     apt-get update && \
-    apt-get install --no-install-recommends -y ${PACKAGES} && \
+    DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y ${PACKAGES} && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
