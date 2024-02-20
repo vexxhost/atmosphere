@@ -47,11 +47,6 @@
       tags:
         - glance
 
-    - role: staffeln
-      when: atmosphere_staffeln_enabled | default(false)
-      tags:
-        - staffeln
-
     - role: cinder
       tags:
         - cinder
@@ -142,6 +137,16 @@
     - role: openstack_exporter
       tags:
         - openstack-exporter
+
+- name: Deploy Staffeln
+  hosts: controllers[0]
+  become: true
+  tasks:
+    - ansible.builtin.import_role:
+        name: staffeln
+      when: atmosphere_staffeln_enabled | default(false)
+      tags:
+        - staffeln
 
 - hosts: controllers
   become: true
