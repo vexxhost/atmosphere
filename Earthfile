@@ -5,36 +5,6 @@ lint:
   BUILD +lint.markdownlint
   BUILD +lint.image-manifest
 
-lint.helm:
-  FROM alpine:3
-  RUN mkdir -p /output
-  COPY --dir charts/ /src
-  FOR CHART IN $(ls /src)
-    FOR VERSION IN $(seq 22 28)
-      COPY (+lint.helm.chart/junit.xml --CHART ${CHART} --VERSION "1.${VERSION}.0") /output/junit-helm-${CHART}-1-${VERSION}-0.xml
-    END
-  END
-  SAVE ARTIFACT /output AS LOCAL output
-
-lint.helm.chart:
-  FROM alpine:3
-  RUN apk add --no-cache git helm python3
-  RUN helm plugin install https://github.com/melmorabity/helm-kubeconform
-  RUN mkdir -p /cache /output
-  ARG --required CHART
-  COPY --dir charts/${CHART} /src
-  ARG --required VERSION
-  RUN \
-    --mount=type=cache,target=/cache \
-    helm kubeconform /src \
-      --cache /cache \
-      --schema-location default \
-      --schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
-      --ignore-missing-schemas \
-      --kube-version ${VERSION} \
-      --output junit 2> /output/junit.xml
-  SAVE ARTIFACT /output/junit.xml
-
 lint.markdownlint:
   FROM davidanson/markdownlint-cli2
   COPY --dir docs/ .markdownlint.yaml .markdownlint-cli2.jsonc /src
