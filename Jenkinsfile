@@ -49,19 +49,17 @@ pipeline {
     }
 
     stage('unit') {
-      stage('go') {
-        agent {
-          label 'earthly-2c-4g'
-        }
+      agent {
+        label 'earthly-2c-4g'
+      }
 
-        steps {
-          sh 'earthly --output +unit.go'
-        }
+      steps {
+        sh 'earthly --output +unit.go'
+      }
 
-        post {
-          always {
-            junit 'junit-go.xml'
-          }
+      post {
+        always {
+          junit 'junit-go.xml'
         }
       }
     }
