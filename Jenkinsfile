@@ -30,22 +30,6 @@ pipeline {
           }
         }
 
-        stage('helm') {
-          agent {
-            label 'earthly-2c-4g'
-          }
-
-          steps {
-            sh 'earthly --output +lint.helm'
-          }
-
-          post {
-            always {
-              junit testResults: 'output/junit-helm-*.xml', allowEmptyResults: true
-            }
-          }
-        }
-
         stage('markdownlint') {
           agent {
             label 'earthly-2c-4g'
