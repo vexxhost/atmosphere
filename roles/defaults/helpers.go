@@ -13,7 +13,7 @@ var (
 )
 
 func init() {
-	r, _ = regexp.Compile(`{{ atmosphere_images\['(?P<ImageName>\w+)'] \| vexxhost.kubernetes.docker_image\('ref'\) }}`)
+	r, _ = regexp.Compile(`{{ atmosphere_proxy_cache_prefix }}{{ atmosphere_images\['(?P<ImageName>\w+)'] \| vexxhost.kubernetes.docker_image\('ref'\) }}`)
 }
 
 func AssertAtmosphereImage(t *testing.T, expected string, value string) {
