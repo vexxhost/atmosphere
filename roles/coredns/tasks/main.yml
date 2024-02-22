@@ -38,6 +38,7 @@
 
 - name: Deploy Helm chart
   run_once: true
+  when: atmosphere_network_backend != 'ovn'
   kubernetes.core.helm:
     name: "{{ coredns_helm_release_name }}"
     chart_ref: "{{ coredns_helm_chart_ref }}"

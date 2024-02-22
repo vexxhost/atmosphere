@@ -12,6 +12,20 @@ var (
 	varsFile []byte
 )
 
+func GetImages() (map[string]string, error) {
+	path, err := yaml.PathString("$._atmosphere_images")
+	if err != nil {
+		return nil, err
+	}
+
+	var images map[string]string
+	if err := path.Read(bytes.NewReader(varsFile), &images); err != nil {
+		return nil, err
+	}
+
+	return images, nil
+}
+
 func GetImageByKey(key string) (string, error) {
 	path, err := yaml.PathString("$._atmosphere_images." + key)
 	if err != nil {
