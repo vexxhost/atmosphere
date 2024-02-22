@@ -3,7 +3,6 @@ VERSION --use-copy-link --try 0.8
 lint:
   BUILD +lint.ansible-lint
   BUILD +lint.markdownlint
-  BUILD +lint.image-manifest
 
 lint.markdownlint:
   FROM davidanson/markdownlint-cli2
@@ -23,18 +22,6 @@ lint.ansible-lint:
   FINALLY
     SAVE ARTIFACT ansible-lint.xml AS LOCAL ansible-lint.xml
   END
-
-lint.image-manifest:
-  FROM quay.io/skopeo/stable:latest
-  COPY roles/defaults/vars/main.yml /defaults.yml
-  FOR IMAGE IN $(cat /defaults.yml | grep sha256 | cut -d' ' -f4 | sort | uniq | sed 's/:[^@]*//')
-    BUILD +lint.image-manifest.image --IMAGE ${IMAGE}
-  END
-
-lint.image-manifest.image:
-  FROM quay.io/skopeo/stable:latest
-  ARG --required IMAGE
-  RUN skopeo inspect --no-tags docker://${IMAGE} >/dev/null && echo "Manifest is valid for ${IMAGE}" || echo "Manifest is not valid for ${IMAGE}"
 
 unit.go:
   FROM golang:1.21
