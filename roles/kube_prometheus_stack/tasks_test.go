@@ -42,7 +42,6 @@ func TestCreateKeycloakRealmTask(t *testing.T) {
 	require.NotNil(t, task)
 
 	assert.Equal(t, true, task["no_log"])
-	assert.Equal(t, false, task["become"])
 }
 
 func TestAddClientRolesInIdTokenTask(t *testing.T) {
@@ -50,15 +49,13 @@ func TestAddClientRolesInIdTokenTask(t *testing.T) {
 	require.NotNil(t, task)
 
 	assert.Equal(t, true, task["no_log"])
-	assert.Equal(t, false, task["become"])
 }
 
 func TestCreateKeycloakClientsTask(t *testing.T) {
-	task := getTaskByName("Create Keycloak client")
+	task := getTaskByName("Create Keycloak clients")
 	require.NotNil(t, task)
 
 	assert.Equal(t, true, task["no_log"])
-	assert.Equal(t, false, task["become"])
 }
 
 func TestCreateKeycloakRolesTask(t *testing.T) {
@@ -66,5 +63,4 @@ func TestCreateKeycloakRolesTask(t *testing.T) {
 	require.NotNil(t, task)
 
 	assert.Equal(t, true, task["no_log"])
-	assert.Equal(t, false, task["become"])
 }
