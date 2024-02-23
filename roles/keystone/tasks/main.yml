@@ -38,9 +38,7 @@
 
 - name: Create Keycloak realms
   no_log: true
-  become: false
   run_once: true
-  delegate_to: localhost
   changed_when: false
   community.general.keycloak_realm:
     # Keycloak settings
@@ -66,9 +64,7 @@
 
 - name: Create Keycloak clients
   no_log: true
-  become: false
   run_once: true
-  delegate_to: localhost
   community.general.keycloak_client:
     # Keycloak settings
     auth_keycloak_url: "{{ item.keycloak_server_url }}"

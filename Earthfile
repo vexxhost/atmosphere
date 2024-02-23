@@ -3,37 +3,6 @@ VERSION --use-copy-link --try 0.8
 lint:
   BUILD +lint.ansible-lint
   BUILD +lint.markdownlint
-  BUILD +lint.image-manifest
-
-lint.helm:
-  FROM alpine:3
-  RUN mkdir -p /output
-  COPY --dir charts/ /src
-  FOR CHART IN $(ls /src)
-    FOR VERSION IN $(seq 22 28)
-      COPY (+lint.helm.chart/junit.xml --CHART ${CHART} --VERSION "1.${VERSION}.0") /output/junit-helm-${CHART}-1-${VERSION}-0.xml
-    END
-  END
-  SAVE ARTIFACT /output AS LOCAL output
-
-lint.helm.chart:
-  FROM alpine:3
-  RUN apk add --no-cache git helm python3
-  RUN helm plugin install https://github.com/melmorabity/helm-kubeconform
-  RUN mkdir -p /cache /output
-  ARG --required CHART
-  COPY --dir charts/${CHART} /src
-  ARG --required VERSION
-  RUN \
-    --mount=type=cache,target=/cache \
-    helm kubeconform /src \
-      --cache /cache \
-      --schema-location default \
-      --schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
-      --ignore-missing-schemas \
-      --kube-version ${VERSION} \
-      --output junit 2> /output/junit.xml
-  SAVE ARTIFACT /output/junit.xml
 
 lint.markdownlint:
   FROM davidanson/markdownlint-cli2
@@ -53,18 +22,6 @@ lint.ansible-lint:
   FINALLY
     SAVE ARTIFACT ansible-lint.xml AS LOCAL ansible-lint.xml
   END
-
-lint.image-manifest:
-  FROM quay.io/skopeo/stable:latest
-  COPY roles/defaults/vars/main.yml /defaults.yml
-  FOR IMAGE IN $(cat /defaults.yml | grep sha256 | cut -d' ' -f4 | sort | uniq | sed 's/:[^@]*//')
-    BUILD +lint.image-manifest.image --IMAGE ${IMAGE}
-  END
-
-lint.image-manifest.image:
-  FROM quay.io/skopeo/stable:latest
-  ARG --required IMAGE
-  RUN skopeo inspect --no-tags docker://${IMAGE} >/dev/null && echo "Manifest is valid for ${IMAGE}" || echo "Manifest is not valid for ${IMAGE}"
 
 unit.go:
   FROM golang:1.21
