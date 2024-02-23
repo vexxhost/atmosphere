@@ -27,7 +27,9 @@ func TestImageExist(t *testing.T) {
 	for _, image := range uniqueImages {
 		// NOTE(mnaser): ParseReference does not allow both tag & digest,
 		//               so we strip the tags from the image name.
-		nameWithTag := strings.Split(image, "@")[0]
+		nameWithTagSplit := strings.Split(image, "@")
+		require.Len(t, nameWithTagSplit, 2)
+		nameWithTag := nameWithTagSplit[0]
 		name := strings.Split(nameWithTag, ":")[0]
 		digest := strings.Split(image, "@")[1]
 		image := fmt.Sprintf("%s@%s", name, digest)

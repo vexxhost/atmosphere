@@ -54,6 +54,14 @@ _kube_prometheus_stack_helm_values:
         - name: "null"
         - name: notifier
         - name: heartbeat
+    service:
+      additionalPorts:
+        - name: oauth2-proxy
+          port: 8081
+          targetPort: 8081
+        - name: oauth2-metrics
+          port: 8082
+          targetPort: 8082
     serviceMonitor:
       relabelings: &relabelings_instance_to_pod_name
         - &relabeling_set_pod_name_to_instance
@@ -63,6 +71,18 @@ _kube_prometheus_stack_helm_values:
         - &relabeling_drop_all_kubernetes_labels
           action: labeldrop
           regex: ^(container|endpoint|namespace|pod|node|service)$
+    ingress:
+      enabled: true
+      servicePort: 8081
+      ingressClassName: "{{ kube_prometheus_stack_ingress_class_name }}"
+      annotations:
+        cert-manager.io/cluster-issuer: atmosphere
+      hosts:
+        - "{{ kube_prometheus_stack_alertmanager_host }}"
+      tls:
+        - secretName: alertmanager-tls
+          hosts:
+            - "{{ kube_prometheus_stack_alertmanager_host }}"
     alertmanagerSpec:
       image:
         registry: "{{ atmosphere_images['alertmanager'] | vexxhost.kubernetes.docker_image('domain') }}"
@@ -79,11 +99,45 @@ _kube_prometheus_stack_helm_values:
                 storage: 40Gi
       nodeSelector: &node_selector
         openstack-control-plane: enabled
+      containers:
+        - name: oauth2-proxy
+          image: "{{ atmosphere_images['oauth2_proxy'] }}"
+          envFrom:
+            - secretRef:
+                name: "{{ kube_prometheus_stack_helm_release_name }}-alertmanager-oauth2-proxy"
+          resources:
+            limits:
+              cpu: 100m
+              memory: 300Mi
+            requests:
+              cpu: 100m
+              memory: 300Mi
+          livenessProbe:
+            httpGet:
+              port: oauth2-proxy
+              path: /ping
+            initialDelaySeconds: 0
+            timeoutSeconds: 1
+          readinessProbe:
+            httpGet:
+              port: oauth2-proxy
+              path: /ready
+            initialDelaySeconds: 0
+            timeoutSeconds: 5
+            successThreshold: 1
+            periodSeconds: 10
+          ports:
+            - containerPort: 8081
+              name: oauth2-proxy
+              protocol: TCP
+            - containerPort: 8082
+              name: oauth2-metrics
+              protocol: TCP
   grafana:
     adminPassword: "{{ kube_prometheus_stack_grafana_admin_password }}"
     extraSecretMounts:
       - name: auth-generic-oauth-secret-mount
-        secretName: grafana-auth-generic-oauth-secret
+        secretName: "{{ kube_prometheus_stack_helm_release_name }}-grafana-client-secret"
         defaultMode: "0440"
         mountPath: /etc/secrets/auth_generic_oauth
         readOnly: true
@@ -93,35 +147,32 @@ _kube_prometheus_stack_helm_values:
       auth:
         oauth_skip_org_role_update_sync: false
         disable_login_form: true
-        # NOTE(mnaser): We're not able to redirect instantly to Grafana due to the fact that it doesn't support sending
-        #               the `id_token_hint`.
-        #
-        #               See: https://github.com/grafana/grafana/issues/24643
-        signout_redirect_url: "{{ grafana_keycloak_server_url }}/realms/{{ grafana_keycloak_realm }}/protocol/openid-connect/logout"
+        signout_redirect_url: "{{ kube_prometheus_stack_keycloak_server_url }}/realms/{{ kube_prometheus_stack_keycloak_realm }}/protocol/openid-connect/logout?post_logout_redirect_uri=https://{{ kube_prometheus_stack_grafana_host }}/login"
       auth.generic_oauth:
         enabled: true
         name: Atmosphere
         allow_sign_up: true
-        client_id: "$__file{/etc/secrets/auth_generic_oauth/client_id}"
-        client_secret: "$__file{/etc/secrets/auth_generic_oauth/client_secret}"
+        client_id: grafana
+        client_secret: "$__file{/etc/secrets/auth_generic_oauth/password}"
         scopes: openid email profile offline_access roles
         email_attribute_path: email
         login_attribute_path: username
         name_attribute_path: full_name
-        auth_url: "{{ grafana_keycloak_server_url }}/realms/{{ grafana_keycloak_realm }}/protocol/openid-connect/auth"
-        token_url: "{{ grafana_keycloak_server_url }}/realms/{{ grafana_keycloak_realm }}/protocol/openid-connect/token"
-        api_url: "{{ grafana_keycloak_server_url }}/realms/{{ grafana_keycloak_realm }}/protocol/openid-connect/userinfo"
+        auth_url: "{{ kube_prometheus_stack_keycloak_server_url }}/realms/{{ kube_prometheus_stack_keycloak_realm }}/protocol/openid-connect/auth"
+        token_url: "{{ kube_prometheus_stack_keycloak_server_url }}/realms/{{ kube_prometheus_stack_keycloak_realm }}/protocol/openid-connect/token"
+        api_url: "{{ kube_prometheus_stack_keycloak_server_url }}/realms/{{ kube_prometheus_stack_keycloak_realm }}/protocol/openid-connect/userinfo"
         tls_skip_verify_insecure: true
         # yamllint disable-line rule:line-length
         role_attribute_path: "contains(resource_access.grafana.roles[*], 'admin') && 'Admin' || contains(resource_access.grafana.roles[*], 'editor') && 'Editor' || contains(resource_access.grafana.roles[*], 'viewer') && 'Viewer'"
         role_attribute_strict: true
         skip_org_role_sync: false
     image:
-      repository: "{{ atmosphere_images['grafana'] | vexxhost.kubernetes.docker_image('name') }}"
+      registry: "{{ atmosphere_images['grafana'] | vexxhost.kubernetes.docker_image('domain') }}"
+      repository: "{{ atmosphere_images['grafana'] | vexxhost.kubernetes.docker_image('path') }}"
       tag: "{{ atmosphere_images['grafana'] | vexxhost.kubernetes.docker_image('tag') }}"
     ingress:
       enabled: true
-      ingressClassName: "{{ kube_prometheus_stack_grafana_ingress_class_name }}"
+      ingressClassName: "{{ kube_prometheus_stack_ingress_class_name }}"
       annotations:
         cert-manager.io/cluster-issuer: atmosphere
       hosts:
@@ -132,7 +183,8 @@ _kube_prometheus_stack_helm_values:
             - "{{ kube_prometheus_stack_grafana_host }}"
     sidecar:
       image:
-        repository: "{{ atmosphere_images['grafana_sidecar'] | vexxhost.kubernetes.docker_image('name') }}"
+        registry: "{{ atmosphere_images['grafana_sidecar'] | vexxhost.kubernetes.docker_image('domain') }}"
+        repository: "{{ atmosphere_images['grafana_sidecar'] | vexxhost.kubernetes.docker_image('path') }}"
         tag: "{{ atmosphere_images['grafana_sidecar'] | vexxhost.kubernetes.docker_image('tag') }}"
       datasources:
         defaultDatasourceEnabled: false
@@ -226,8 +278,28 @@ _kube_prometheus_stack_helm_values:
         relabelings: *relabelings_instance_to_pod_name
     nodeSelector: *node_selector
   prometheus:
+    service:
+      additionalPorts:
+        - name: oauth2-proxy
+          port: 8081
+          targetPort: 8081
+        - name: oauth2-metrics
+          port: 8082
+          targetPort: 8082
     serviceMonitor:
       relabelings: *relabelings_instance_to_pod_name
+    ingress:
+      enabled: true
+      servicePort: 8081
+      ingressClassName: "{{ kube_prometheus_stack_ingress_class_name }}"
+      annotations:
+        cert-manager.io/cluster-issuer: atmosphere
+      hosts:
+        - "{{ kube_prometheus_stack_prometheus_host }}"
+      tls:
+        - secretName: prometheus-tls
+          hosts:
+            - "{{ kube_prometheus_stack_prometheus_host }}"
     prometheusSpec:
       image:
         registry: "{{ atmosphere_images['prometheus'] | vexxhost.kubernetes.docker_image('domain') }}"
@@ -236,6 +308,40 @@ _kube_prometheus_stack_helm_values:
       nodeSelector: *node_selector
       secrets:
         - kube-prometheus-stack-etcd-client-cert
+      containers:
+        - name: oauth2-proxy
+          image: "{{ atmosphere_images['oauth2_proxy'] }}"
+          envFrom:
+            - secretRef:
+                name: "{{ kube_prometheus_stack_helm_release_name }}-prometheus-oauth2-proxy"
+          resources:
+            limits:
+              cpu: 100m
+              memory: 300Mi
+            requests:
+              cpu: 100m
+              memory: 300Mi
+          livenessProbe:
+            httpGet:
+              port: oauth2-proxy
+              path: /ping
+            initialDelaySeconds: 0
+            timeoutSeconds: 1
+          readinessProbe:
+            httpGet:
+              port: oauth2-proxy
+              path: /ready
+            initialDelaySeconds: 0
+            timeoutSeconds: 5
+            successThreshold: 1
+            periodSeconds: 10
+          ports:
+            - containerPort: 8081
+              name: oauth2-proxy
+              protocol: TCP
+            - containerPort: 8082
+              name: oauth2-metrics
+              protocol: TCP
     additionalServiceMonitors:
       - name: ceph
         jobLabel: application
