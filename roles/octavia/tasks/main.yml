@@ -53,8 +53,8 @@
           isCA: true
           commonName: "{{ octavia_tls_server_common_name if item == 'octavia-server' else octavia_tls_client_common_name }}"
           secretName: "{{ item }}-ca"
-          duration: 87600h
-          renewBefore: 720h
+          duration: 87600h0m0s
+          renewBefore: 720h0m0s
           privateKey: "{{ private_key | from_yaml }}"
           issuerRef:
             name: self-signed
@@ -93,8 +93,8 @@
         secretName: octavia-client-certs
         additionalOutputFormats:
           - type: CombinedPEM
-        duration: 87600h
-        renewBefore: 720h
+        duration: 87600h0m0s
+        renewBefore: 720h0m0s
         privateKey: "{{ private_key | from_yaml }}"
         issuerRef:
           name: octavia-client
