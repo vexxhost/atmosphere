@@ -1,0 +1,82 @@
+- name: Create projects in openstack
+  vexxhost.atmosphere.project:
+    name: "{{ _project.name }}"
+    domain: "{{ _ks_domain.name }}"
+  when: _project.name is defined
+  loop: "{{ _ks_domain.projects }}"
+  loop_control:
+    loop_var: _project
+  register: _projects
+
+- name: Create parent group for openstack projects
+  community.general.keycloak_group:
+    # Keycloak settings
+    auth_keycloak_url: "{{ _ks_domain.keycloak_server_url }}"
+    auth_realm: "{{ _ks_domain.keycloak_user_realm_name }}"
+    auth_client_id: "{{ _ks_domain.keycloak_admin_client_id }}"
+    auth_username: "{{ _ks_domain.keycloak_admin_user }}"
+    auth_password: "{{ _ks_domain.keycloak_admin_password }}"
+    # Group settings
+    realm: "{{ _ks_domain.name }}"
+    name: openstack-projects
+
+- name: Create keycloak group for each project
+  community.general.keycloak_group:
+    # Keycloak settings
+    auth_keycloak_url: "{{ _ks_domain.keycloak_server_url }}"
+    auth_realm: "{{ _ks_domain.keycloak_user_realm_name }}"
+    auth_client_id: "{{ _ks_domain.keycloak_admin_client_id }}"
+    auth_username: "{{ _ks_domain.keycloak_admin_user }}"
+    auth_password: "{{ _ks_domain.keycloak_admin_password }}"
+    # Group settings
+    realm: "{{ _ks_domain.name }}"
+    name: "{{ _project.name }}"
+    parents:
+      - name: openstack-projects
+  when: _project.name is defined
+  loop: "{{ _ks_domain.projects }}"
+  loop_control:
+    loop_var: _project
+
+- name: Assign member role to domain for openstack-projects keycloak group
+  vexxhost.atmosphere.role_assignment:
+    domain: "{{ _ks_domain.name }}"
+    group: openstack-projects
+    role: member
+
+- name: Assign roles to projects
+  vexxhost.atmosphere.role_assignment:
+    domain: "{{ _ks_domain.name }}"
+    project: "{{ _project.name }}"
+    group: "{{ _project.name }}"
+    role: member
+  when: _project.name is defined
+  loop: "{{ _ks_domain.projects }}"
+  loop_control:
+    loop_var: _project
+
+- name: Set project quotas
+  vexxhost.atmosphere.quota:
+    name: "{{ _projects.results[index].project.id }}"
+    backup_gigabytes: "{{ _project.quota.backup_gigabytes | default(keystone_project_default_quota_backup_gigabytes) }}"
+    backups: "{{ _project.quota.backups | default(keystone_project_default_quota_backups) }}"
+    cores: "{{ _project.quota.cores | default(keystone_project_default_quota_cores) }}"
+    floating_ips: "{{ _project.quota.floating_ips | default(keystone_project_default_quota_floating_ips) }}"
+    gigabytes: "{{ _project.quota.gigabytes | default(keystone_project_default_quota_gigabytes) }}"
+    injected_file_size: "{{ _project.quota.injected_file_size | default(keystone_project_default_quota_injected_file_size) }}"
+    injected_files: "{{ _project.quota.injected_files | default(keystone_project_default_quota_injected_files) }}"
+    injected_path_size: "{{ _project.quota.injected_path_size | default(keystone_project_default_quota_injected_path_size) }}"
+    instances: "{{ _project.quota.instances | default(keystone_project_default_quota_instances) }}"
+    key_pairs: "{{ _project.quota.key_pairs | default(keystone_project_default_quota_key_pairs) }}"
+    metadata_items: "{{ _project.quota.metadata_items | default(keystone_project_default_quota_metadata_items) }}"
+    per_volume_gigabytes: "{{ _project.quota.per_volume_gigabytes | default(keystone_project_default_quota_per_volume_gigabytes) }}"
+    security_group: "{{ _project.quota.security_group | default(keystone_project_default_quota_security_group) }}"
+    server_group_members: "{{ _project.quota.server_group_members | default(keystone_project_default_quota_server_group_members) }}"
+    server_groups: "{{ _project.quota.server_groups | default(keystone_project_default_quota_server_groups) }}"
+    snapshots: "{{ _project.quota.snapshots | default(keystone_project_default_quota_snapshots) }}"
+    volumes: "{{ _project.quota.volumes | default(keystone_project_default_quota_volumes) }}"
+  loop: "{{ _ks_domain.projects }}"
+  when: _project is defined
+  loop_control:
+    loop_var: _project
+    index_var: index

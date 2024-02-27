@@ -1,4 +1,4 @@
-# Copyright (c) 2022 VEXXHOST, Inc.
+# Copyright (c) 2023 VEXXHOST, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -12,24 +12,8 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Install openstacksdk
-  ansible.builtin.pip:
-    name: openstacksdk>=1.0.0
+from ansible_collections.vexxhost.atmosphere.plugins.module_utils import openstack
 
-- name: Create openstack config directory
-  become: true
-  ansible.builtin.file:
-    path: /etc/openstack
-    state: directory
-    owner: root
-    group: root
-    mode: "0600"
 
-- name: Generate cloud config file
-  become: true
-  ansible.builtin.template:
-    src: clouds.yaml.j2
-    dest: /etc/openstack/clouds.yaml
-    owner: root
-    group: root
-    mode: '0600'
+class ActionModule(openstack.OpenStackActionBase):
+    pass
