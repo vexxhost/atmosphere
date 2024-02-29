@@ -54,6 +54,8 @@ platforms:
       - computes
 provisioner:
   name: ansible
+  env:
+    DOCKER_TIMEOUT: 600
   config_options:
     connection:
       pipelining: true
@@ -109,9 +111,10 @@ provisioner:
         keycloak_database_password: secrete123
         keycloak_admin_password: secrete123
         # Monitoring
-        grafana_keycloak_client_secret: secrete123
-        kube_prometheus_stack_grafana_host: "grafana.{{ domain_name }}"
         kube_prometheus_stack_grafana_admin_password: secrete123
+        kube_prometheus_stack_prometheus_host: "prometheus.{{ domain_name }}"
+        kube_prometheus_stack_alertmanager_host: "alertmanager.{{ domain_name }}"
+        kube_prometheus_stack_grafana_host: "grafana.{{ domain_name }}"
         # Memcached
         openstack_helm_endpoints_memcached_secret_key: secrete123
         # RabbitMQ
