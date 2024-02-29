@@ -75,7 +75,7 @@
   ansible.builtin.set_fact:
     openstack_helm_endpoints: |
       {{ openstack_helm_endpoints | combine(lookup('vars', '_openstack_helm_endpoints_' + service), recursive=True) }}
-  loop: "{% if openstack_helm_endpoints_list != None %}{{openstack_helm_endpoints_list}}{% else %}[]{% endif %}"
+  loop: "{{ openstack_helm_endpoints_list | default([], True) }}"
   loop_control:
     loop_var: service
 
