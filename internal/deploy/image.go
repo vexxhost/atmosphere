@@ -7,7 +7,7 @@ import (
 	"slices"
 	"sync"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -21,7 +21,7 @@ import (
 type ImageManager struct {
 	functions  *util.OnceValueMap
 	lock       *sync.Mutex
-	logger     *log.Entry
+	logger     logr.Logger
 	managerSet *ManagerSet
 }
 
@@ -29,15 +29,13 @@ func NewImageManager(managerSet *ManagerSet) *ImageManager {
 	return &ImageManager{
 		functions:  util.NewOnceValueMap(),
 		lock:       &sync.Mutex{},
-		logger:     log.WithField("manager", "image"),
+		logger:     managerSet.logger.WithName("image"),
 		managerSet: managerSet,
 	}
 }
 
 func (m *ImageManager) Pull(ctx context.Context, imageName string, nodeSelector map[string]string) error {
-	logger := m.logger.WithFields(log.Fields{
-		"image": imageName,
-	})
+	logger := m.logger.WithValues("image", imageName)
 
 	return m.functions.Do(imageName, func() error {
 		if err := m.managerSet.Namespace.Create(ctx, "openstack"); err != nil {
@@ -55,7 +53,7 @@ func (m *ImageManager) Pull(ctx context.Context, imageName string, nodeSelector 
 		if len(nodeList.Items) == 0 {
 			err := fmt.Errorf("no matching nodes found with %s", nodeSelector)
 
-			logger.Error(err)
+			logger.Error(err, "No matching nodes found")
 			return err
 		}
 
@@ -122,7 +120,7 @@ func (m *ImageManager) Pull(ctx context.Context, imageName string, nodeSelector 
 
 			err := m.managerSet.Client.Create(ctx, &ds)
 			if err != nil {
-				logger.Error(err)
+				logger.Error(err, "Failed to create image puller")
 				return err
 			}
 			defer m.managerSet.Client.Delete(ctx, &ds)
@@ -131,7 +129,7 @@ func (m *ImageManager) Pull(ctx context.Context, imageName string, nodeSelector 
 				Name:      ds.Name,
 				Namespace: ds.Namespace,
 			}); err != nil {
-				logger.Error(err)
+				logger.Error(err, "Failed to wait for image puller")
 				return err
 			}
 		}

@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/docker/go-units"
+	"github.com/go-logr/logr"
 	rabbitmqv1beta1 "github.com/rabbitmq/cluster-operator/api/v1beta1"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -33,38 +33,34 @@ func RabbitmqOptionsFromViper(name string, config *viper.Viper) *RabbitmqOptions
 
 type RabbitmqManager struct {
 	functions  *util.OnceValueMap
-	logger     *log.Entry
+	logger     logr.Logger
 	managerSet *ManagerSet
 }
 
 func NewRabbitmqManager(managerSet *ManagerSet) *RabbitmqManager {
 	return &RabbitmqManager{
 		functions:  util.NewOnceValueMap(),
-		logger:     managerSet.logger.WithField("manager", "rabbitmq"),
+		logger:     managerSet.logger.WithName("rabbitmq"),
 		managerSet: managerSet,
 	}
 }
 
-func (m *RabbitmqManager) Manifest(opts *RabbitmqOptions) *rabbitmqv1beta1.RabbitmqCluster {
-	return &rabbitmqv1beta1.RabbitmqCluster{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("rabbitmq-%s", opts.Name),
-			Namespace: "openstack",
-		},
-	}
+func (m *RabbitmqManager) deployManager(ctx context.Context) error {
+	return m.managerSet.Helm.Deploy(ctx, &HelmReleaseOptions{})
 }
 
 func (m *RabbitmqManager) Deploy(ctx context.Context, opts *RabbitmqOptions) error {
+	if err := m.deployManager(ctx); err != nil {
+		return err
+	}
+
 	if err := m.managerSet.Image.Pull(ctx, opts.Image, map[string]string{
 		"openstack-control-plane": "enabled",
 	}); err != nil {
 		return err
 	}
 
-	logger := m.logger.WithFields(log.Fields{
-		"name": opts.Name,
-	})
-
+	logger := m.logger.WithValues("name", opts.Name)
 	logger.Info("Reconciling RabbitMQ")
 
 	rabbitmq := &rabbitmqv1beta1.RabbitmqCluster{
@@ -124,13 +120,13 @@ func (m *RabbitmqManager) Deploy(ctx context.Context, opts *RabbitmqOptions) err
 	if m.managerSet.Options.DryRun == false && util.IsCRDNotFoundError(err) {
 		err := errors.New("crd not found, operator not installed")
 
-		logger.Error(err)
+		logger.Error(err, "failed to reconcile RabbitMQ")
 		return err
 	} else if !util.IsCRDNotFoundError(err) {
-		logger.Error(err)
+		logger.Error(err, "failed to reconcile RabbitMQ")
 		return err
 	}
 
-	logger.WithField("operation", op).Info("Reconciled RabbitMQ")
+	logger.Info("Reconciled RabbitMQ", "operation", op)
 	return nil
 }

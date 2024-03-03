@@ -9,6 +9,7 @@ require (
 	github.com/containers/image/v5 v5.29.2
 	github.com/docker/go-units v0.5.0
 	github.com/erikgeiser/promptkit v0.9.0
+	github.com/go-logr/logr v1.4.1
 	github.com/goccy/go-yaml v1.11.3
 	github.com/nsf/jsondiff v0.0.0-20230430225905-43f6cf3098c1
 	github.com/percona/percona-xtradb-cluster-operator v1.13.0
@@ -21,6 +22,7 @@ require (
 	github.com/spf13/viper v1.18.2
 	github.com/stretchr/testify v1.8.4
 	github.com/yannh/kubeconform v0.6.4
+	go.uber.org/zap v1.26.0
 	gopkg.in/ini.v1 v1.67.0
 	gorm.io/driver/mysql v1.5.4
 	gorm.io/gorm v1.25.7
@@ -78,7 +80,6 @@ require (
 	github.com/go-errors/errors v1.4.2 // indirect
 	github.com/go-gorp/gorp/v3 v3.1.0 // indirect
 	github.com/go-ini/ini v1.67.0 // indirect
-	github.com/go-logr/logr v1.4.1 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-openapi/jsonpointer v0.20.2 // indirect
 	github.com/go-openapi/jsonreference v0.20.4 // indirect

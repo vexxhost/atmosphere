@@ -5,9 +5,9 @@ import (
 	"os"
 	"sync"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/vexxhost/atmosphere/internal/deploy"
 )
@@ -19,20 +19,21 @@ var (
 		Use:   "deploy",
 		Short: "Execute a deployment",
 		Run: func(cmd *cobra.Command, args []string) {
-			if dryRun {
-				log.Warn("Running in dry-run mode")
-			}
+			logger := logf.Log.WithName("deploy")
 
 			config, err := kubeconfigArgs.ToRESTConfig()
 			if err != nil {
-				log.Fatal(err)
+				logger.Error(err, "Failed to create Kubernetes client configuration")
+				os.Exit(1)
 			}
 
 			managerSet, err := deploy.NewManagerSet(config, &deploy.ManagerOptions{
 				DryRun: dryRun,
+				Logger: logger,
 			})
 			if err != nil {
-				log.Fatal(err)
+				logger.Error(err, "Failed to create manager set")
+				os.Exit(1)
 			}
 
 			v := viper.New()
