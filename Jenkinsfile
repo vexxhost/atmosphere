@@ -84,7 +84,7 @@ pipeline {
 
         stage('images') {
           agent {
-            label 'earthly'
+            label 'earthly-2c-4g'
           }
 
           environment {
