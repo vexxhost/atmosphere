@@ -1,0 +1,37 @@
+From b807373aacf08470527340024b414afe5819d212 Mon Sep 17 00:00:00 2001
+From: ricolin <rlin@vexxhost.com>
+Date: Tue, 27 Feb 2024 15:42:31 +0800
+Subject: [PATCH] Fix Mysql default character setting (utf8mb4)
+
+Since 8.0 Mysql uses utf8mb4 as default.
+To use utf8, will change the new comming tables in DATABASE to use
+`utf8mb3`. And that makes new comming tables not compatible with rest
+tables within same database or tables from all other database that
+using default setting.
+We should make sure we uses utf8mb4 so no confusion or incompatible
+error will raise.
+
+Closes-bug: #2033635
+Change-Id: I7232b55300c8817a00e73e449e03ea6103f40701
+---
+ .../alembic/versions/15b34ff3ecb8_fix_service_charset.py    | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/designate/storage/sqlalchemy/alembic/versions/15b34ff3ecb8_fix_service_charset.py b/designate/storage/sqlalchemy/alembic/versions/15b34ff3ecb8_fix_service_charset.py
+index 07212b0c..0a6cfef7 100644
+--- a/designate/storage/sqlalchemy/alembic/versions/15b34ff3ecb8_fix_service_charset.py
++++ b/designate/storage/sqlalchemy/alembic/versions/15b34ff3ecb8_fix_service_charset.py
+@@ -43,6 +43,8 @@ def upgrade() -> None:
+         return
+
+     op.execute('SET foreign_key_checks = 0;')
+-    op.execute('ALTER TABLE service_statuses CONVERT TO CHARACTER SET utf8;')
++    op.execute(
++        'ALTER TABLE service_statuses CONVERT TO CHARACTER SET utf8mb4;'
++    )
+     op.execute('SET foreign_key_checks = 1;')
+-    op.execute('ALTER DATABASE DEFAULT CHARACTER SET utf8;')
++    op.execute('ALTER DATABASE DEFAULT CHARACTER SET utf8mb4;')
+--
+2.25.1
+
