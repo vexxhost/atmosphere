@@ -185,7 +185,7 @@ trigger-image-sync:
   RUN --secret GITHUB_TOKEN gh workflow run --repo vexxhost/docker-openstack-${project} sync.yml
 
 image-sync:
-  FROM golang:1.19
+  FROM golang:1.21
   ARG --required project
   WORKDIR /src
   COPY . /src
