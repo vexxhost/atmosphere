@@ -88,7 +88,7 @@ pipeline {
           }
 
           environment {
-            TEST_REGISTRY = "registry.atmosphere.dev/builds/${env.BRANCH_NAME.toLowerCase()}"
+            TEST_REGISTRY = "registry.atmosphere.dev/ci/${env.BRANCH_NAME.toLowerCase()}"
             PROD_REGISTRY = "ghcr.io/vexxhost/atmosphere"
             REGISTRY = "${env.BRANCH_NAME == 'main' ? PROD_REGISTRY : TEST_REGISTRY}"
 
