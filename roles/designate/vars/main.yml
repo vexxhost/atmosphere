@@ -18,6 +18,9 @@ _designate_helm_values:
     tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('designate') }}"
   conf:
     designate:
+      database:
+        connection_recycle_time: 10
+        max_pool_size: 1
       service:central:
         managed_resource_tenant_id: "{{ _designate_project_info.openstack_projects[0].id }}"
     pools: "{{ designate_pools | to_yaml }}"
