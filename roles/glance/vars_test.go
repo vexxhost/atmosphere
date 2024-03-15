@@ -1,4 +1,4 @@
-package senlin
+package glance
 
 import (
 	_ "embed"
@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/goccy/go-yaml"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/vexxhost/atmosphere/internal/openstack_helm"
@@ -20,7 +19,7 @@ var (
 )
 
 type Vars struct {
-	openstack_helm.HelmValues `yaml:"_senlin_helm_values"`
+	openstack_helm.HelmValues `yaml:"_glance_helm_values"`
 }
 
 func TestMain(m *testing.M) {
@@ -33,10 +32,8 @@ func TestMain(m *testing.M) {
 }
 
 func TestHelmValues(t *testing.T) {
-	vals, err := openstack_helm.CoalescedHelmValues("../../charts/senlin", &vars.HelmValues)
+	vals, err := openstack_helm.CoalescedHelmValues("../../charts/glance", &vars.HelmValues)
 	require.NoError(t, err)
 
-	assert.Equal(t, int32(2), vals.Conf.Senlin.API.Workers)
-
-	testutils.TestDatabaseConf(t, vals.Conf.Senlin.Database)
+	testutils.TestDatabaseConf(t, vals.Conf.Glance.Database)
 }
