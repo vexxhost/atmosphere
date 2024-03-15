@@ -1,0 +1,130 @@
+From 23915c1854451618276c63c5bcb2f03a970d36bf Mon Sep 17 00:00:00 2001
+From: ricolin <rlin@vexxhost.com>
+Date: Sat, 16 Mar 2024 00:35:12 +0800
+Subject: [PATCH 1/2] Allow clone encrypted image to encrypted volume
+
+Exactly like what we did in copy-and-import image when create encrypted
+volume from encrypted image. If the image is encrypted, we will copy
+`cinder_encryption_key_id` from image metadata to volume. That means we
+should be safe to try directly clone from encrypted image.
+
+Related-Bug: #2055517
+Change-Id: Id6a1452c2c197a58677bf181470f54565fbd263b
+---
+ .../volume/flows/test_create_volume_flow.py   | 46 +++++++++++++++++++
+ cinder/volume/flows/manager/create_volume.py  |  9 +++-
+ ...clone-encryped-image-6961ca1439825dc4.yaml |  8 ++++
+ 3 files changed, 61 insertions(+), 2 deletions(-)
+ create mode 100644 releasenotes/notes/allow-clone-encryped-image-6961ca1439825dc4.yaml
+
+diff --git a/cinder/tests/unit/volume/flows/test_create_volume_flow.py b/cinder/tests/unit/volume/flows/test_create_volume_flow.py
+index fa629599a..e69453e62 100644
+--- a/cinder/tests/unit/volume/flows/test_create_volume_flow.py
++++ b/cinder/tests/unit/volume/flows/test_create_volume_flow.py
+@@ -1203,6 +1203,7 @@ class CreateVolumeFlowManagerTestCase(test.TestCase):
+             encryption_key_id=fakes.ENCRYPTION_KEY_ID,
+             host='host@backend#pool')
+ 
++        fake_driver.clone_image.return_value = (None, False)
+         fake_image_service = fake_image.FakeImageService()
+         image_meta = {}
+         image_id = fakes.IMAGE_ID
+@@ -1219,6 +1220,7 @@ class CreateVolumeFlowManagerTestCase(test.TestCase):
+                                         image_meta, fake_image_service)
+ 
+         fake_driver.create_volume.assert_called_once_with(volume)
++        fake_driver.clone_image.assert_called_once()
+         fake_driver.copy_image_to_encrypted_volume.assert_not_called()
+         fake_driver.copy_image_to_volume.assert_called_once_with(
+             self.ctxt, volume, fake_image_service, image_id,
+@@ -1228,6 +1230,50 @@ class CreateVolumeFlowManagerTestCase(test.TestCase):
+                                                      image_meta=image_meta)
+         mock_cleanup_cg.assert_called_once_with(volume)
+ 
++    @mock.patch('cinder.volume.flows.manager.create_volume.'
++                'CreateVolumeFromSpecTask.'
++                '_handle_bootable_volume_glance_meta')
++    @mock.patch('cinder.image.image_utils.TemporaryImages.fetch')
++    @mock.patch('cinder.image.image_utils.qemu_img_info')
++    @mock.patch('cinder.image.image_utils.check_virtual_size')
++    def test_create_encrypted_volume_from_enc_image_clone(
++        self, mock_check_size, mock_qemu_img,
++        mock_fetch_img, mock_handle_bootable
++    ):
++        fake_db = mock.MagicMock()
++        fake_driver = mock.MagicMock()
++        fake_volume_manager = mock.MagicMock()
++        fake_manager = create_volume_manager.CreateVolumeFromSpecTask(
++            fake_volume_manager, fake_db, fake_driver)
++        volume = fake_volume.fake_volume_obj(
++            self.ctxt,
++            encryption_key_id=fakes.ENCRYPTION_KEY_ID,
++            host='host@backend#pool')
++
++        fake_driver.clone_image.return_value = (None, True)
++        fake_image_service = fake_image.FakeImageService()
++        image_meta = {}
++        image_id = fakes.IMAGE_ID
++        image_meta['id'] = image_id
++        image_meta['status'] = 'active'
++        image_meta['size'] = 1
++        image_meta['cinder_encryption_key_id'] = \
++            '00000000-0000-0000-0000-000000000000'
++        image_location = 'abc'
++
++        fake_db.volume_update.return_value = volume
++        fake_manager._create_from_image(self.ctxt, volume,
++                                        image_location, image_id,
++                                        image_meta, fake_image_service)
++
++        fake_driver.create_volume.assert_not_called()
++        fake_driver.clone_image.assert_called_once()
++        fake_driver.copy_image_to_encrypted_volume.assert_not_called()
++        fake_driver.copy_image_to_volume.assert_not_called()
++        mock_handle_bootable.assert_called_once_with(self.ctxt, volume,
++                                                     image_id=image_id,
++                                                     image_meta=image_meta)
++
+     @ddt.data({'driver_error': True},
+               {'driver_error': False})
+     @mock.patch('cinder.backup.api.API.get_available_backup_service_host')
+diff --git a/cinder/volume/flows/manager/create_volume.py b/cinder/volume/flows/manager/create_volume.py
+index 1f78b3375..08ae03b87 100644
+--- a/cinder/volume/flows/manager/create_volume.py
++++ b/cinder/volume/flows/manager/create_volume.py
+@@ -1087,11 +1087,16 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
+         # dict containing provider_location for cloned volume
+         # and clone status.
+         # NOTE (lixiaoy1): Currently all images are raw data, we can't
+-        # use clone_image to copy data if new volume is encrypted.
++        # use clone_image to copy data if new volume is encrypted
++        # NOTE (ricolin):  If the image provided an encryption key, we have
++        # already cloned it to the volume's key in
++        # _get_encryption_key_id, so we can do a direct clone.
++        image_encryption_key = image_meta.get('cinder_encryption_key_id')
+         volume_is_encrypted = volume.encryption_key_id is not None
+         cloned = False
+         model_update = None
+-        if not volume_is_encrypted:
++        if not volume_is_encrypted or (
++                volume_is_encrypted and image_encryption_key):
+             model_update, cloned = self.driver.clone_image(context,
+                                                            volume,
+                                                            image_location,
+diff --git a/releasenotes/notes/allow-clone-encryped-image-6961ca1439825dc4.yaml b/releasenotes/notes/allow-clone-encryped-image-6961ca1439825dc4.yaml
+new file mode 100644
+index 000000000..d6c7e8eb8
+--- /dev/null
++++ b/releasenotes/notes/allow-clone-encryped-image-6961ca1439825dc4.yaml
+@@ -0,0 +1,8 @@
++---
++features:
++  - |
++    Allow clone encrypted image when create encrypted volume from image.
++    Exactly like what we did in copy-and-import image when create encrypted
++    volume from encrypted image. If the image is encrypted, we will copy
++    `cinder_encryption_key_id` from image metadata to volume. That means we
++    should be safe to try directly clone from encrypted image.
+-- 
+2.25.1
+
