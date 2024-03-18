@@ -21,6 +21,8 @@
               nixpkgs-fmt
               poetry
               vendir
+              glibcLocales
+              bashInteractive
             ];
           };
         }
