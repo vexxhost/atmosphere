@@ -138,7 +138,7 @@ pipeline {
               unstash 'src-with-pinned-images'
 
               // Install dependencies
-              sh 'sudo apt-get install -y git python3-pip'
+              sh 'sudo apt-get install -y git python3-pip docker.io'
               sh 'sudo pip install poetry'
               sh 'sudo poetry install --with dev'
               sh 'sudo poetry run molecule test -s keycloak'
