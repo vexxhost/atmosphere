@@ -164,6 +164,7 @@ SCAN_IMAGE:
       --scanners vuln \
       --exit-code 1 \
       --ignore-unfixed \
+      --timeout 10m \
       ${IMAGE}
 
 scan-image:
