@@ -127,6 +127,34 @@ pipeline {
       }
     }
 
+    stage('keyclock') {
+        agent {
+          label 'jammy-16c-64g'
+        }
+        stages {
+          stage('molecule') {
+            steps {
+              // Checkout code with built/pinned images
+              unstash 'src-with-pinned-images'
+
+              // Install dependencies
+              sh 'sudo apt-get install -y git python3-pip'
+              sh 'sudo pip install poetry'
+              sh 'sudo poetry install --with dev'
+              sh 'sudo poetry run molecule test -s keycloak'
+            }
+          }
+        }
+
+        post {
+          always {
+            // Kubernetes logs
+            sh "sudo ./build/fetch-kubernetes-logs.sh logs/kubernetes || true"
+            archiveArtifacts artifacts: 'logs/**', allowEmptyArchive: true
+          }
+        }
+      }
+
     stage('integration') {
       matrix {
         axes {
