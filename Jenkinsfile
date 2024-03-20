@@ -127,12 +127,31 @@ pipeline {
       }
     }
 
-    stage('keyclock') {
+    stage('integration') {
+      matrix {
+        axes {
+          axis {
+            name 'SCENARIO'
+            values 'openvswitch', 'ovn', 'keycloak'
+          }
+        }
+
         agent {
           label 'jammy-16c-64g'
         }
+
+        environment {
+          ATMOSPHERE_DEBUG = "true"
+          ATMOSPHERE_NETWORK_BACKEND = "${SCENARIO}"
+
+          // NOTE(mnaser): OVN is currently unstable and we don't want it to mark builds as failed.
+          BUILD_RESULT_ON_FAILURE = "${SCENARIO == 'ovn' ? 'SUCCESS' : 'FAILURE'}"
+          STAGE_RESULT_ON_FAILURE = "${SCENARIO == 'ovn' ? 'UNSTABLE' : 'FAILURE'}"
+        }
+
         stages {
-          stage('molecule') {
+          stage('keycloak') {
+            when { expression { env.SCENARIO == "keycloak" } }
             steps {
               // Checkout code with built/pinned images
               unstash 'src-with-pinned-images'
@@ -143,42 +162,16 @@ pipeline {
               sh 'sudo poetry install --with dev'
               sh 'sudo poetry run molecule test -s keycloak'
             }
+            post {
+              always {
+                // Kubernetes logs
+                sh "sudo ./build/fetch-kubernetes-logs.sh logs/${SCENARIO}/kubernetes || true"
+                archiveArtifacts artifacts: 'logs/**', allowEmptyArchive: true
+              }
+            }
           }
-        }
-
-        post {
-          always {
-            // Kubernetes logs
-            sh "sudo ./build/fetch-kubernetes-logs.sh logs/kubernetes || true"
-            archiveArtifacts artifacts: 'logs/**', allowEmptyArchive: true
-          }
-        }
-      }
-
-    stage('integration') {
-      matrix {
-        axes {
-          axis {
-            name 'NETWORK_BACKEND'
-            values 'openvswitch', 'ovn'
-          }
-        }
-
-        agent {
-          label 'jammy-16c-64g'
-        }
-
-        environment {
-          ATMOSPHERE_DEBUG = "true"
-          ATMOSPHERE_NETWORK_BACKEND = "${NETWORK_BACKEND}"
-
-          // NOTE(mnaser): OVN is currently unstable and we don't want it to mark builds as failed.
-          BUILD_RESULT_ON_FAILURE = "${NETWORK_BACKEND == 'ovn' ? 'SUCCESS' : 'FAILURE'}"
-          STAGE_RESULT_ON_FAILURE = "${NETWORK_BACKEND == 'ovn' ? 'UNSTABLE' : 'FAILURE'}"
-        }
-
-        stages {
           stage('molecule') {
+            when { expression { env.SCENARIO != "keycloak" } }
             steps {
               // Checkout code with built/pinned images
               unstash 'src-with-pinned-images'
@@ -192,18 +185,17 @@ pipeline {
                 sh 'sudo --preserve-env=ATMOSPHERE_DEBUG,ATMOSPHERE_NETWORK_BACKEND poetry run molecule test -s aio'
               }
             }
-          }
-        }
+            post {
+              always {
+                // Kubernetes logs
+                sh "sudo ./build/fetch-kubernetes-logs.sh logs/${SCENARIO}/kubernetes || true"
+                archiveArtifacts artifacts: 'logs/**', allowEmptyArchive: true
 
-        post {
-          always {
-            // Kubernetes logs
-            sh "sudo ./build/fetch-kubernetes-logs.sh logs/${NETWORK_BACKEND}/kubernetes || true"
-            archiveArtifacts artifacts: 'logs/**', allowEmptyArchive: true
-
-            // JUnit results for Tempest
-            sh "sudo ./build/fetch-junit-xml.sh tempest-${NETWORK_BACKEND}.xml || true"
-            junit "tempest-${NETWORK_BACKEND}.xml"
+                // JUnit results for Tempest
+                sh "sudo ./build/fetch-junit-xml.sh tempest-${SCENARIO}.xml || true"
+                junit "tempest-${SCENARIO}.xml"
+              }
+            }
           }
         }
       }
