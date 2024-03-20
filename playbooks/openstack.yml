@@ -12,140 +12,86 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Deploy OpenStack
-  hosts: controllers[0]
-  become: true
-  roles:
-    - role: memcached
-      tags:
-        - memcached
+- name: Deploy Memcached
+  ansible.builtin.import_playbook: vexxhost.atmosphere.memcached
 
-    - role: keystone
-      tags:
-        - keystone
+- name: Deploy Keystone
+  ansible.builtin.import_playbook: vexxhost.atmosphere.keystone
 
-    - role: barbican
-      tags:
-        - barbican
+- name: Deploy Barbican
+  ansible.builtin.import_playbook: vexxhost.atmosphere.barbican
 
-    - role: rook_ceph
-      when: atmosphere_ceph_enabled | default(true)
-      tags:
-        - rook-ceph
+- name: Deploy Rook (Operator)
+  ansible.builtin.import_playbook: vexxhost.atmosphere.rook_ceph
 
-    - role: rook_ceph_cluster
-      when: atmosphere_ceph_enabled | default(true)
-      tags:
-        - rook-ceph-cluster
+- name: Deploy Rook (CephCluster)
+  ansible.builtin.import_playbook: vexxhost.atmosphere.rook_ceph_cluster
 
-    - role: ceph_provisioners
-      when: atmosphere_ceph_enabled | default(true)
-      tags:
-        - ceph-provisioners
+- name: Deploy Ceph Provisioners
+  ansible.builtin.import_playbook: vexxhost.atmosphere.ceph_provisioners
 
-    - role: glance
-      tags:
-        - glance
+- name: Deploy Glance
+  ansible.builtin.import_playbook: vexxhost.atmosphere.glance
 
-    - role: staffeln
-      when: atmosphere_staffeln_enabled | default(true)
-      tags:
-        - staffeln
+- name: Deploy Staffeln
+  ansible.builtin.import_playbook: vexxhost.atmosphere.staffeln
 
-    - role: cinder
-      tags:
-        - cinder
+- name: Deploy Cinder
+  ansible.builtin.import_playbook: vexxhost.atmosphere.cinder
 
-    - role: placement
-      tags:
-        - placement
-  environment:
-    CEPH_CONTAINER_IMAGE: "{{ cephadm_image | default('quay.io/ceph/ceph:v' + (ceph_version | default('18.2.1'))) }}"
-    CEPH_CONTAINER_BINARY: docker
+- name: Deploy Placement
+  ansible.builtin.import_playbook: vexxhost.atmosphere.placement
 
-- name: Configure operating system
-  hosts: controllers:computes
-  become: true
-  gather_facts: false
-  roles:
-    - role: lpfc
-      tags:
-        - lpfc
+- name: Deploy LPFC driver
+  ansible.builtin.import_playbook: vexxhost.atmosphere.lpfc
 
-    - role: multipathd
-      tags:
-        - multipathd
+- name: Deploy "multipathd"
+  ansible.builtin.import_playbook: vexxhost.atmosphere.multipathd
 
 - name: Deploy Open vSwitch
-  hosts: controllers:computes
-  become: true
-  gather_facts: false
-  roles:
-    - role: openvswitch
-      tags:
-        - openvswitch
+  ansible.builtin.import_playbook: vexxhost.atmosphere.openvswitch
 
-- hosts: controllers[0]
-  become: true
-  roles:
-    - role: ovn
-      tags:
-        - ovn
+- name: Deploy OVN
+  ansible.builtin.import_playbook: vexxhost.atmosphere.ovn
 
-    - role: libvirt
-      tags:
-        - libvirt
+- name: Deploy Libvirt
+  ansible.builtin.import_playbook: vexxhost.atmosphere.libvirt
 
-    - role: coredns
-      tags:
-        - coredns
+- name: Deploy CoreDNS
+  ansible.builtin.import_playbook: vexxhost.atmosphere.coredns
 
-    - role: nova
-      tags:
-        - nova
+- name: Deploy Nova
+  ansible.builtin.import_playbook: vexxhost.atmosphere.nova
 
-    - role: neutron
-      tags:
-        - neutron
+- name: Deploy Neutron
+  ansible.builtin.import_playbook: vexxhost.atmosphere.neutron
 
-    - role: senlin
-      tags:
-        - senlin
+- name: Deploy Senlin
+  ansible.builtin.import_playbook: vexxhost.atmosphere.senlin
 
-    # NOTE(mnaser): This is disabled out of the box until we have a native way
-    #               of configuring it with a pre-configured backend out of the
-    #               box.
-    # - role: designate
-    #   tags:
-    #     - designate
+# NOTE(mnaser): This is disabled out of the box until we have a native way
+#               of configuring it with a pre-configured backend out of the
+#               box.
+# - name: Deploy Designate
+#   ansible.builtin.import_playbook: vexxhost.atmosphere.designate
 
-    - role: heat
-      tags:
-        - heat
+- name: Deploy Heat
+  ansible.builtin.import_playbook: vexxhost.atmosphere.heat
 
-    - role: octavia
-      tags:
-        - octavia
+- name: Deploy Octavia
+  ansible.builtin.import_playbook: vexxhost.atmosphere.octavia
 
-    - role: magnum
-      tags:
-        - magnum
+- name: Deploy Magnum
+  ansible.builtin.import_playbook: vexxhost.atmosphere.magnum
 
-    - role: manila
-      tags:
-        - manila
+- name: Deploy Manila
+  ansible.builtin.import_playbook: vexxhost.atmosphere.manila
 
-    - role: horizon
-      tags:
-        - horizon
+- name: Deploy Horizon
+  ansible.builtin.import_playbook: vexxhost.atmosphere.horizon
 
-    - role: openstack_exporter
-      tags:
-        - openstack-exporter
+- name: Deploy OpenStack Exporter
+  ansible.builtin.import_playbook: vexxhost.atmosphere.openstack_exporter
 
-- hosts: controllers
-  become: true
-  roles:
-    - role: openstack_cli
-      tags:
-        - openstack-cli
+- name: Deploy OpenStack CLI
+  ansible.builtin.import_playbook: vexxhost.atmosphere.openstack_cli

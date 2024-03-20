@@ -12,20 +12,11 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Deploy Node Feature Exporter
-  ansible.builtin.import_playbook: vexxhost.atmosphere.node_feature_discovery
-
-- name: Deploy "kube-prometheus-stack"
-  ansible.builtin.import_playbook: vexxhost.atmosphere.kube_prometheus_stack
-
-- name: Deploy Loki
-  ansible.builtin.import_playbook: vexxhost.atmosphere.loki
-
 - name: Deploy Vector
-  ansible.builtin.import_playbook: vexxhost.atmosphere.vector
-
-- name: Deploy IPMI Exporter
-  ansible.builtin.import_playbook: vexxhost.atmosphere.ipmi_exporter
-
-- name: Deploy Prometheus Pushgateway
-  ansible.builtin.import_playbook: vexxhost.atmosphere.prometheus_pushgateway
+  hosts: controllers[0]
+  gather_facts: false
+  become: true
+  roles:
+    - vexxhost.atmosphere.vector
+  tags:
+    - vector

@@ -89,17 +89,31 @@
     kubeconfig: /etc/kubernetes/admin.conf
     values: "{{ _rook_ceph_cluster_helm_values | combine(rook_ceph_cluster_helm_values, recursive=True) }}"
 
+- name: Create OpenStack domain
+  openstack.cloud.identity_domain:
+    cloud: atmosphere
+    name: service
+    description: "Domain for {{ openstack_helm_endpoints.identity.auth.rgw.region_name }}/service"
+  register: rook_ceph_cluster_openstack_domain
+
+- name: Create OpenStack project
+  openstack.cloud.project:
+    cloud: atmosphere
+    name: service
+    description: "Service Project for {{ openstack_helm_endpoints.identity.auth.rgw.region_name }}/service"
+    domain_id: "{{ rook_ceph_cluster_openstack_domain.domain.id }}"
+
 - name: Create OpenStack user
   openstack.cloud.identity_user:
     cloud: atmosphere
     name: "{{ openstack_helm_endpoints.identity.auth.rgw.username }}"
     password: "{{ openstack_helm_endpoints.identity.auth.rgw.password }}"
-    domain: service
+    domain: "{{ rook_ceph_cluster_openstack_domain.domain.name }}"
 
 - name: Grant access to "service" project
   openstack.cloud.role_assignment:
     cloud: atmosphere
-    domain: service
+    domain: "{{ rook_ceph_cluster_openstack_domain.domain.name }}"
     user: "{{ openstack_helm_endpoints.identity.auth.rgw.username }}"
     project: service
     role: admin

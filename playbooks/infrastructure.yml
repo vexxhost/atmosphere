@@ -12,38 +12,26 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Deploy Infrastructure
-  hosts: controllers[0]
-  become: true
-  roles:
-    - role: cert_manager
-      tags:
-        - cert-manager
+- name: Deploy "cert-manager"
+  ansible.builtin.import_playbook: vexxhost.atmosphere.cert_manager
 
-    - role: cluster_issuer
-      tags:
-        - cluster-issuer
+- name: Install ClusterIssuer
+  ansible.builtin.import_playbook: vexxhost.atmosphere.cluster_issuer
 
-    - role: ingress_nginx
-      tags:
-        - ingress-nginx
+- name: Deploy "ingress-nginx"
+  ansible.builtin.import_playbook: vexxhost.atmosphere.ingress_nginx
 
-    - role: rabbitmq_cluster_operator
-      tags:
-        - rabbitmq-cluster-operator
+- name: Deploy RabbitMQ Cluster Operator
+  ansible.builtin.import_playbook: vexxhost.atmosphere.rabbitmq_cluster_operator
 
-    - role: percona_xtradb_cluster_operator
-      tags:
-        - percona-xtradb-cluster-operator
+- name: Deploy Percona XtraDB Cluster Operator
+  ansible.builtin.import_playbook: vexxhost.atmosphere.percona_xtradb_cluster_operator
 
-    - role: percona_xtradb_cluster
-      tags:
-        - percona-xtradb-cluster
+- name: Deploy Percona XtraDB Cluster
+  ansible.builtin.import_playbook: vexxhost.atmosphere.percona_xtradb_cluster
 
-    - role: keycloak
-      tags:
-        - keycloak
+- name: Deploy Keycloak
+  ansible.builtin.import_playbook: vexxhost.atmosphere.keycloak
 
-    - role: keepalived
-      tags:
-        - keepalived
+- name: Deploy Public Virtual IP
+  ansible.builtin.import_playbook: vexxhost.atmosphere.keepalived
