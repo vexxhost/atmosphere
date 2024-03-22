@@ -21,18 +21,36 @@ kube_prometheus_stack_helm_values: {}
 
 kube_prometheus_stack_ingress_class_name: "{{ atmosphere_ingress_class_name }}"
 
-kube_prometheus_stack_grafana_ingress_class_name: "{{ kube_prometheus_stack_ingress_class_name }}"
-kube_prometheus_stack_grafana_host: "{{ undef('You must specify a Grafana host using kube_prometheus_stack_grafana_host') }}"
 kube_prometheus_stack_grafana_admin_password: "{{ undef('You must specify a Grafana password using kube_prometheus_stack_grafana_admin_password') }}"
 
-grafana_keycloak_server_url: "https://{{ keycloak_host }}"
-grafana_keycloak_user_realm_name: master
-grafana_keycloak_admin_client_id: admin-cli
-grafana_keycloak_admin_user: admin
-grafana_keycloak_admin_password: "{{ keycloak_admin_password }}"
-grafana_keycloak_realm: atmosphere
-grafana_keycloak_realm_name: Atmosphere
+kube_prometheus_stack_grafana_host: "{{ undef('You must specify a Grafana host using kube_prometheus_stack_grafana_host') }}"
+kube_prometheus_stack_alertmanager_host: "{{ undef('You must specify a Alertmanager host using kube_prometheus_stack_alertmanager_host') }}"
+kube_prometheus_stack_prometheus_host: "{{ undef('You must specify a Prometheus host using kube_prometheus_stack_prometheus_host') }}"
 
-grafana_keycloak_client_id: grafana
-# grafana_keycloak_client_secret:
-grafana_keycloak_scopes: "openid email profile"
+kube_prometheus_stack_keycloak_server_url: "https://{{ keycloak_host }}"
+kube_prometheus_stack_keycloak_admin_realm_name: master
+kube_prometheus_stack_keycloak_admin_client_id: admin-cli
+kube_prometheus_stack_keycloak_admin_user: admin
+kube_prometheus_stack_keycloak_admin_password: "{{ keycloak_admin_password }}"
+kube_prometheus_stack_keycloak_realm: atmosphere
+kube_prometheus_stack_keycloak_realm_name: Atmosphere
+
+kube_prometheus_stack_keycloak_clients:
+  - id: alertmanager
+    port: 9093
+    roles: ["member"]
+    oauth2_proxy: true
+    redirect_uris:
+      - "https://{{ kube_prometheus_stack_alertmanager_host }}/oauth2/callback"
+  - id: grafana
+    roles: ["admin", "editor", "viewer"]
+    oauth2_proxy: false
+    redirect_uris:
+      - "https://{{ kube_prometheus_stack_grafana_host }}/login"
+      - "https://{{ kube_prometheus_stack_grafana_host }}/login/generic_oauth"
+  - id: prometheus
+    port: 9090
+    roles: ["member"]
+    oauth2_proxy: true
+    redirect_uris:
+      - "https://{{ kube_prometheus_stack_prometheus_host }}/oauth2/callback"

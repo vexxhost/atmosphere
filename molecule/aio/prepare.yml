@@ -12,6 +12,19 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+- name: Configure hostname
+  hosts: all
+  tasks:
+    - name: Configure short hostname
+      ansible.builtin.hostname:
+        name: "{{ inventory_hostname_short }}"
+
+    - name: Ensure hostname inside hosts file
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        regexp: '^127\.0\.1\.1'
+        line: 127.0.1.1 {{ inventory_hostname }} {{ inventory_hostname_short }}
+
 - name: Create fake devices for Ceph
   ansible.builtin.import_playbook: vexxhost.ceph.create_fake_devices
 

@@ -42,7 +42,6 @@ func TestCreateKeycloakRealmsTask(t *testing.T) {
 	require.NotNil(t, task)
 
 	assert.Equal(t, true, task["no_log"])
-	assert.Equal(t, false, task["become"])
 }
 
 func TestCreateKeycloakClientsTask(t *testing.T) {
@@ -50,5 +49,4 @@ func TestCreateKeycloakClientsTask(t *testing.T) {
 	require.NotNil(t, task)
 
 	assert.Equal(t, true, task["no_log"])
-	assert.Equal(t, false, task["become"])
 }

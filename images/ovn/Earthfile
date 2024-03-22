@@ -2,10 +2,11 @@ VERSION 0.7
 
 ARG --global SERIES=23.03
 ARG --global VERSION=23.03.0-69
+ARG --global PROJECT_REF=cbff639b83af00e4887b540fc06b880108662780
 
 ovn-kubernetes:
   FROM --platform=linux/amd64 golang:1.20
-  GIT CLONE --branch master https://github.com/ovn-org/ovn-kubernetes /src
+  GIT CLONE --branch ${PROJECT_REF} https://github.com/ovn-org/ovn-kubernetes /src
   WORKDIR /src
   COPY patches/ovn-kubernetes /patches
   DO ../+APT_INSTALL --PACKAGES "git"

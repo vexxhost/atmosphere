@@ -17,9 +17,12 @@
             buildInputs = with pkgs; [
               earthly
               go
+              kubernetes-helm
               nixpkgs-fmt
               poetry
               vendir
+              glibcLocales
+              bashInteractive
             ];
           };
         }

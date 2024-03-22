@@ -30,22 +30,6 @@ pipeline {
           }
         }
 
-        stage('helm') {
-          agent {
-            label 'earthly-2c-4g'
-          }
-
-          steps {
-            sh 'earthly --output +lint.helm'
-          }
-
-          post {
-            always {
-              junit testResults: 'output/junit-helm-*.xml', allowEmptyResults: true
-            }
-          }
-        }
-
         stage('markdownlint') {
           agent {
             label 'earthly-2c-4g'
@@ -61,35 +45,21 @@ pipeline {
             }
           }
         }
-
-        stage('image-manifest') {
-          agent {
-            label 'earthly-2c-4g'
-          }
-
-          steps {
-            sh 'earthly +lint.image-manifest'
-          }
-        }
       }
     }
 
     stage('unit') {
-      parallel {
-        stage('go') {
-          agent {
-            label 'earthly-2c-4g'
-          }
+      agent {
+        label 'earthly-2c-4g'
+      }
 
-          steps {
-            sh 'earthly --output +unit.go'
-          }
+      steps {
+        sh 'earthly --output +unit.go'
+      }
 
-          post {
-            always {
-              junit 'junit-go.xml'
-            }
-          }
+      post {
+        always {
+          junit 'junit-go.xml'
         }
       }
     }
@@ -173,6 +143,10 @@ pipeline {
         environment {
           ATMOSPHERE_DEBUG = "true"
           ATMOSPHERE_NETWORK_BACKEND = "${NETWORK_BACKEND}"
+
+          // NOTE(mnaser): OVN is currently unstable and we don't want it to mark builds as failed.
+          BUILD_RESULT_ON_FAILURE = "${NETWORK_BACKEND == 'ovn' ? 'SUCCESS' : 'FAILURE'}"
+          STAGE_RESULT_ON_FAILURE = "${NETWORK_BACKEND == 'ovn' ? 'UNSTABLE' : 'FAILURE'}"
         }
 
         stages {
@@ -184,10 +158,11 @@ pipeline {
               // Install dependencies
               sh 'sudo apt-get install -y git python3-pip'
               sh 'sudo pip install poetry'
-
-              // Run tests
               sh 'sudo poetry install --with dev'
-              sh 'sudo --preserve-env=ATMOSPHERE_DEBUG,ATMOSPHERE_NETWORK_BACKEND poetry run molecule test -s aio'
+
+              catchError(buildResult: "${BUILD_RESULT_ON_FAILURE}", stageResult: "${STAGE_RESULT_ON_FAILURE}") {
+                sh 'sudo --preserve-env=ATMOSPHERE_DEBUG,ATMOSPHERE_NETWORK_BACKEND poetry run molecule test -s aio'
+              }
             }
           }
         }

@@ -12,10 +12,19 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+# (rlin) This is because rgw will be managed by rook operator. We need to mute
+# CEPHADM_STRAY_DAEMON until we have all daemon managed by cephadm
+- name: Mute CEPHADM_STRAY_DAEMON warning
+  run_once: true
+  delegate_to: "{{ groups[rook_ceph_cluster_mon_group][0] }}"
+  ansible.builtin.command: cephadm shell -- ceph health mute CEPHADM_STRAY_DAEMON
+  failed_when: false
+  changed_when: false
+
 - name: Collect "ceph quorum_status" output from a monitor
   run_once: true
   delegate_to: "{{ groups[rook_ceph_cluster_mon_group][0] }}"
-  ansible.builtin.command: ceph quorum_status -f json
+  ansible.builtin.command: cephadm shell -- ceph quorum_status -f json
   changed_when: false
   register: _rook_ceph_cluster_quorum_status_data
 

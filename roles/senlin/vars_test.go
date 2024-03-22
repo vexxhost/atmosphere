@@ -8,6 +8,9 @@ import (
 	"github.com/goccy/go-yaml"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/vexxhost/atmosphere/internal/openstack_helm"
+	"github.com/vexxhost/atmosphere/internal/testutils"
 )
 
 var (
@@ -17,23 +20,7 @@ var (
 )
 
 type Vars struct {
-	SenlinHelmValues `yaml:"_senlin_helm_values"`
-}
-
-type SenlinHelmValues struct {
-	Conf `yaml:"conf"`
-}
-
-type Conf struct {
-	Senlin SenlinConf `yaml:"senlin"`
-}
-
-type SenlinConf struct {
-	API SenlinAPIConf `yaml:"senlin_api"`
-}
-
-type SenlinAPIConf struct {
-	Workers int32 `yaml:"workers"`
+	openstack_helm.HelmValues `yaml:"_senlin_helm_values"`
 }
 
 func TestMain(m *testing.M) {
@@ -45,6 +32,11 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func TestSenlinHelmValues(t *testing.T) {
-	assert.Equal(t, int32(2), vars.SenlinHelmValues.Conf.Senlin.API.Workers)
+func TestHelmValues(t *testing.T) {
+	vals, err := openstack_helm.CoalescedHelmValues("../../charts/senlin", &vars.HelmValues)
+	require.NoError(t, err)
+
+	assert.Equal(t, int32(2), vals.Conf.Senlin.API.Workers)
+
+	testutils.TestDatabaseConf(t, vals.Conf.Senlin.Database)
 }

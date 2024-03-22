@@ -223,6 +223,9 @@
               containers:
                 - name: registry
                   image: "{{ atmosphere_images['magnum_registry'] | vexxhost.kubernetes.docker_image('ref') }}"
+                  env:
+                    - name: REGISTRY_STORAGE_MAINTENANCE_READONLY
+                      value: '{"enabled": true}'
                   ports:
                     - name: registry
                       containerPort: 5000
