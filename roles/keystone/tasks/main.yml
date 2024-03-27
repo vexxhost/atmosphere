@@ -84,6 +84,21 @@
   loop_control:
     label: "{{ item.name }}"
 
+- name: Generate diff for Helm values
+  when: ansible_check_mode
+  run_once: true
+  block:
+    - name: Get current Helm release values
+      kubernetes.core.helm_info:
+        name: "{{ keystone_helm_release_name }}"
+        release_namespace: "{{ keystone_helm_release_namespace }}"
+      register: _keystone_helm_info
+
+    - name: Display difference between values
+      ansible.utils.fact_diff:
+        before: "{{ _keystone_helm_info.status['values'] }}"
+        after: "{{ _keystone_helm_values | combine(keystone_helm_values, recursive=True) }}"
+
 - name: Deploy Helm chart
   run_once: true
   kubernetes.core.helm:
