@@ -12,5 +12,5 @@ export OS_PROJECT_DOMAIN_NAME=Default
 export OS_PROJECT_NAME=admin
 
 {% if cluster_issuer_type is defined and cluster_issuer_type in ('self-signed', 'ca') %}
-export OS_CACERT=/usr/local/share/ca-certificates/atmosphere.crt
+export OS_CACERT={{ '/usr/local/share/ca-certificates' if ansible_facts['os_family'] in ['Debian'] else '/etc/pki/ca-trust/source/anchors' }}/atmosphere.crt
 {% endif %}
