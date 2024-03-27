@@ -157,15 +157,15 @@ SCAN_IMAGE:
   FUNCTION
   ARG --required IMAGE
   # TODO(mnaser): Include secret scanning when it's more reliable.
-  RUN \
+  RUN for i in {1..5}; do \
     trivy image \
       --skip-db-update \
       --skip-java-db-update \
       --scanners vuln \
       --exit-code 1 \
       --ignore-unfixed \
-      --timeout 10m \
-      ${IMAGE}
+      ${IMAGE} \
+      && break || sleep 1; done
 
 scan-image:
   FROM ./images/trivy+image
