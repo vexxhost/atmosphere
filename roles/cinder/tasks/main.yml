@@ -46,6 +46,22 @@
   ansible.builtin.set_fact:
     _neutron_helm_values: "{{ _cinder_helm_values | combine(__cinder_staffeln_helm_values, recursive=True) }}"
 
+- name: Generate diff for Helm values
+  when: ansible_diff_mode
+  run_once: true
+  block:
+    - name: Get current Helm release values
+      kubernetes.core.helm_info:
+        name: "{{ cinder_helm_release_name }}"
+        release_namespace: "{{ cinder_helm_release_namespace }}"
+      register: _cinder_helm_info
+
+    - name: Display difference between values
+      ansible.utils.fact_diff:
+        before: "{{ _cinder_helm_info.status['values'] }}"
+        after: "{{ _cinder_helm_values | combine(cinder_helm_values, recursive=True) }}"
+      when: _cinder_helm_info.status is defined # when another operation is in progress, status is then not defined.
+
 - name: Deploy Helm chart
   run_once: true
   kubernetes.core.helm:

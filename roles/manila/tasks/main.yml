@@ -20,6 +20,22 @@
   ansible.builtin.import_tasks:
     file: generate_public_key.yml
 
+- name: Generate diff for Helm values
+  when: ansible_diff_mode
+  run_once: true
+  block:
+    - name: Get current Helm release values
+      kubernetes.core.helm_info:
+        name: "{{ manila_helm_release_name }}"
+        release_namespace: "{{ manila_helm_release_namespace }}"
+      register: _manila_helm_info
+
+    - name: Display difference between values
+      ansible.utils.fact_diff:
+        before: "{{ _manila_helm_info.status['values']|to_nice_yaml }}"
+        after: "{{ _manila_helm_values | combine(manila_helm_values, recursive=True)|to_nice_yaml }}"
+      when: _manila_helm_info.status is defined # when another operation is in progress, status is then not defined.
+
 - name: Deploy Helm chart
   run_once: true
   kubernetes.core.helm:
@@ -29,6 +45,7 @@
     create_namespace: true
     kubeconfig: /etc/kubernetes/admin.conf
     values: "{{ _manila_helm_values | combine(manila_helm_values, recursive=True) }}"
+  when: _manila_flavor.flavor is defined # in dry run flavor does not exists
 
 - name: Create Ingress
   ansible.builtin.include_role:

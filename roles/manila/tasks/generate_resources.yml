@@ -43,7 +43,7 @@
 - name: Create generic share driver security group tcp rules
   openstack.cloud.security_group_rule:
     cloud: atmosphere
-    security_group: "{{ _manila_service_security_group.id }}"
+    security_group: "{{ _manila_service_security_group.security_group.id }}"
     direction: ingress
     ethertype: IPv4
     protocol: tcp
@@ -54,12 +54,14 @@
     - 22
     - 111
     - 2049
+  when: _manila_service_security_group.security_group is defined # in dry run security_group does not exists
 
 - name: Create generic share driver security group icmp rules
   openstack.cloud.security_group_rule:
     cloud: atmosphere
-    security_group: "{{ _manila_service_security_group.id }}"
+    security_group: "{{ _manila_service_security_group.security_group.id }}"
     direction: ingress
     ethertype: IPv4
     protocol: icmp
     project: service
+  when: _manila_service_security_group.security_group is defined # in dry run security_group does not exists

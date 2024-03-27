@@ -97,11 +97,11 @@ _octavia_helm_values:
       cinder:
         endpoint_type: internalURL
       controller_worker:
-        amp_boot_network_list: "{{ _octavia_management_network.id }}"
-        amp_flavor_id: "{{ _octavia_amphora_flavor.id }}"
-        amp_image_owner_id: "{{ _octavia_amphora_image.openstack_image.owner }}"
-        amp_secgroup_list: "{{ _octavia_amphora_sg.id }}"
-        amp_ssh_key_name: "{{ octavia_amphora_ssh_keypair.key.name }}"
+        amp_boot_network_list: "{{ _octavia_management_network.network.id }}"
+        amp_flavor_id: "{{ _octavia_amphora_flavor.flavor.id }}"
+        amp_image_owner_id: "{{ _octavia_amphora_image.images[0].owner }}"
+        amp_secgroup_list: "{{ _octavia_health_manager_sg.security_group.id }}"
+        amp_ssh_key_name: null
         client_ca: /etc/octavia/certs/client/ca.crt
         volume_driver: volume_cinder_driver
         workers: 4

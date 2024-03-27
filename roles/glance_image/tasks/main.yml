@@ -26,12 +26,13 @@
 
 - name: Download image and upload into Glance
   run_once: true
-  when: _image_info.openstack_image == None
+  when: (_image_info.images | length) == 0
   block:
     - name: Generate temporary work directory
       ansible.builtin.tempfile:
         state: directory
       register: _workdir
+      check_mode: false
 
     - name: Download image
       ansible.builtin.get_url:
@@ -39,6 +40,7 @@
         dest: "{{ _workdir.path }}/{{ glance_image_url | basename }}"
         mode: "0600"
       register: _get_url
+      check_mode: false
 
     - name: Get image format
       changed_when: false
@@ -48,12 +50,14 @@
       args:
         executable: /bin/bash
       register: _image_format
+      check_mode: false
 
     - name: Convert file to target disk format
       when: _image_format.stdout != glance_image_disk_format
       changed_when: true
       ansible.builtin.command:
         qemu-img convert -O {{ glance_image_disk_format }} {{ _get_url.dest }} {{ _get_url.dest }}.converted
+      check_mode: false
 
     - name: Wait until image service ready
       kubernetes.core.k8s_info:
@@ -95,3 +99,4 @@
       ansible.builtin.file:
         path: "{{ _workdir.path }}"
         state: absent
+      check_mode: false
