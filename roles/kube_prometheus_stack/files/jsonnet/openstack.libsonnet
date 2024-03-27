@@ -129,6 +129,18 @@
                 severity: 'warning',
               },
             },
+            {
+              alert: 'NeutronMultipleActiveL3AgentForRouter',
+              annotations: {
+                description: '[{{ $labels.router_id }}] Contains multiple active L3 agents.',
+                summary: '[{{ $labels.router_id }}] Contains multiple active L3 agents.',
+              },
+              expr: 'sum by (router_id) (openstack_neutron_l3_agent_of_router{ha_state="active"}) > 1',
+              'for': '5m',
+              labels: {
+                severity: 'P3',
+              },
+            },
           ],
       },
       {
