@@ -53,7 +53,7 @@ class OpenStackActionBase(ActionBase):
             module_name=self._task.action.replace(
                 "vexxhost.atmosphere", "openstack.cloud"
             ),
-            module_args=openstack_args | module_args,
+            module_args={**openstack_args, **module_args},
             task_vars=task_vars,
             tmp=tmp,
         )
