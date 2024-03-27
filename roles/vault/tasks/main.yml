@@ -1,0 +1,90 @@
+# Copyright (c) 2024 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Create Vault Ingress
+  ansible.builtin.include_role:
+    name: ingress
+  vars:
+    ingress_name: vault
+    ingress_namespace: "{{ vault_namespace }}"
+    ingress_class_name: "{{ vault_ingress_class_name }}"
+    ingress_host: "{{ vault_host }}"
+    ingress_service_name: vault
+    ingress_service_port: 8200
+    ingress_secret_name: "{{ vault_host_tls_secret_name }}"
+    ingress_annotations: "{{ _vault_ingress_annotations | combine(vault_ingress_annotations, recursive=True) }}"
+
+- name: Create OpenStack user
+  openstack.cloud.identity_user:
+    cloud: atmosphere
+    name: "{{ vault_keystone_username }}"
+    password: "{{ vault_keystone_password }}"
+    domain: service
+
+- name: Grant access to "service" project
+  openstack.cloud.role_assignment:
+    cloud: atmosphere
+    domain: service
+    user: "{{ vault_keystone_username }}"
+    project: service
+    role: admin
+
+- name: Get "service" project ID for Vault secret plugin
+  run_once: true
+  openstack.cloud.project_info:
+    cloud: atmosphere
+    name: service
+    domain: service
+  register: _vault_project_info
+
+- name: Get "admin" role ID for Vault secret plugin
+  openstack.cloud.identity_role_info:
+    cloud: atmosphere
+    name: admin
+  register: _admin_role_info
+
+- name: Gather vault user ID for Vault secret plugin
+  openstack.cloud.identity_user_info:
+    cloud: atmosphere
+    name: "{{ vault_keystone_username }}"
+    domain: service
+  register: _vault_user_info
+
+- name: Deploy Vault
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: vault.banzaicloud.com/v1alpha1
+      kind: Vault
+      metadata:
+        name: vault
+        namespace: "{{ vault_namespace }}"
+        labels:
+          app.kubernetes.io/name: vault
+          vault_cr: vault
+      spec: "{{ _vault_spec | combine(vault_spec, recursive=True) }}"
+
+- name: Deploy Vault configurator config
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        labels:
+          app.kubernetes.io/name: vault-configurator
+          vault_cr: vault
+        name: atmosphere-vault-configurator
+        namespace: "{{ vault_namespace }}"
+      data: "{{ _vault_configurator_config }}"

@@ -1,0 +1,20 @@
+VERSION 0.7
+
+ARG --global VAULT_VERSION=1.14.9
+ARG --global VAULT_OS_PLUGIN_VERSION=0.1.0
+
+get-plugin:
+  FROM ../curl+image
+  ARG TARGETOS
+  ARG TARGETARCH
+  RUN curl -LO https://github.com/vexxhost/vault-plugin-secrets-openstack/releases/download/v${VAULT_OS_PLUGIN_VERSION}/vault-plugin-secrets-openstack_${VAULT_OS_PLUGIN_VERSION}_${TARGETOS}_${TARGETARCH}.tar.gz
+  RUN tar -zxvf /tmp/vault-plugin-secrets-openstack_${VAULT_OS_PLUGIN_VERSION}_${TARGETOS}_${TARGETARCH}.tar.gz
+  SAVE ARTIFACT vault-plugin-secrets-openstack
+
+image:
+  FROM docker.io/hashicorp/vault:${VAULT_VERSION}
+  RUN mkdir -p /vault/plugins
+  COPY +get-plugin/vault-plugin-secrets-openstack /vault/plugins/vault-plugin-secrets-openstack
+  RUN chown -R vault:vault /vault
+  ARG REGISTRY=ghcr.io/vexxhost/atmosphere
+  SAVE IMAGE --push ${REGISTRY}/vault:${VAULT_VERSION}-${VAULT_OS_PLUGIN_VERSION}

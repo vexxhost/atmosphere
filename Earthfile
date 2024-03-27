@@ -152,6 +152,7 @@ images:
   BUILD ./images/senlin+image --REGISTRY=${REGISTRY}
   BUILD ./images/staffeln+image --REGISTRY=${REGISTRY}
   BUILD ./images/tempest+image --REGISTRY=${REGISTRY}
+  BUILD ./images/vault+image --REGISTRY=${REGISTRY}
 
 SCAN_IMAGE:
   FUNCTION

@@ -1,0 +1,137 @@
+# Copyright (c) 2024 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+_vault_spec:
+  size: 3
+  image: "{{ atmosphere_images['vault'] | vexxhost.kubernetes.docker_image('ref') }}"
+  annotations:
+    common/annotation: "true"
+  vaultAnnotations:
+    type/instance: "vault"
+  vaultConfigurerAnnotations:
+    type/instance: "vaultconfigurer"
+  vaultLabels:
+    example.com/log-format: "json"
+  vaultConfigurerLabels:
+    example.com/log-format: "string"
+  nodeSelector:
+    openstack-control-plane: enabled
+  serviceAccount: vault
+  serviceType: ClusterIP
+  # (fitbeard): We do external ingress configuration
+  ingress: null
+  volumeClaimTemplates:
+    - metadata:
+        name: vault-raft
+      spec:
+        storageClassName: general
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi
+  volumes:
+    - name: vault-raft
+      persistentVolumeClaim:
+        claimName: vault-raft
+  volumeMounts:
+    - name: vault-raft
+      mountPath: /vault/file
+  caNamespaces:
+    - "openstack"
+  unsealConfig:
+    options:
+      preFlightChecks: true
+      storeRootToken: true
+      secretShares: 5
+      secretThreshold: 3
+    # (fitbeard): More unseal examples:
+    # https://github.com/bank-vaults/vault-operator/tree/main/deploy/examples
+    kubernetes:
+      secretNamespace: vault
+  config:
+    storage:
+      raft:
+        path: /vault/file
+    listener:
+      tcp:
+        address: 0.0.0.0:8200
+        tls_cert_file: /vault/tls/server.crt
+        tls_key_file: /vault/tls/server.key
+    api_addr: https://vault.vault:8200
+    cluster_addr: "https://${.Env.POD_NAME}:8201"
+    ui: true
+    plugin_directory: /vault/plugins
+  istioEnabled: false
+  statsdDisabled: true
+  serviceRegistrationEnabled: true
+  veleroEnabled: false
+  # (fitbeard): We use external vault-config.yml config with
+  # labels because sometimes changes are not replaced but merged
+  externalConfig: {}
+  vaultEnvsConfig:
+    - name: VAULT_LOG_LEVEL
+      value: "{{ vault_log_level }}"
+
+_vault_ingress_annotations:
+  cert-manager.io/cluster-issuer: "{{ atmosphere_ingress_cluster_issuer }}"
+  nginx.ingress.kubernetes.io/backend-protocol: https
+
+_vault_configurator_config:
+  vault-config.yml: |
+    purgeUnmanagedConfig:
+      enabled: true
+    policies:
+      - name: allow_secrets
+        rules: path "secret/*" {
+          capabilities = ["create", "read", "update", "delete", "list"]
+          }
+      - name: allow_application_credentials
+        rules: path "openstack/*" {
+          capabilities = ["read"]
+          }
+    auth:
+      - type: kubernetes
+        roles:
+          - name: vault
+            bound_service_account_names: ["*"]
+            bound_service_account_namespaces: ["openstack"]
+            policies: ["allow_secrets", "allow_application_credentials"]
+            ttl: 1h
+    plugins:
+      - plugin_name: vault-plugin-secrets-openstack
+        command: vault-plugin-secrets-openstack
+        sha256: e6e2bd09430f731c33d4678b7f604b4b8361dea9a6e6f63c26b473ac658d273d
+        type: secret
+    secrets:
+      - type: kv
+        path: secret
+        description: general secrets
+        options:
+          version: 2
+      - type: vault-plugin-secrets-openstack
+        path: openstack
+        description: OpenStack Secret Engine
+        configuration:
+          config:
+            - name: lease
+              ttl: 180
+            - name: auth
+              IdentityEndpoint: "https://{{ openstack_helm_endpoints_keystone_api_host }}/v3"
+              UserID: "{{ _vault_user_info.openstack_users[0].id }}"
+              Password: "{{ vault_keystone_password }}"
+              TenantID: "{{ _vault_project_info.openstack_projects[0].id }}"
+          roleset:
+            - name: vault
+              Roles: '[{"ID": "{{ _admin_role_info.openstack_roles[0].id }}"}]'
