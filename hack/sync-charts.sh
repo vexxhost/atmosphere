@@ -76,13 +76,13 @@ curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm-infra~893739
   | patch -p2 -d ${ATMOSPHERE}/charts/ovn
 
 # Nova
-curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~899809/revisions/2/patch?download' \
+curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~899809/revisions/3/patch?download' \
   | base64 --decode \
   | filterdiff -p1 -x 'releasenotes/*' \
   | filterdiff -p2 -x 'Chart.yaml' \
   | filterdiff -p1 -i 'nova/*' \
   | patch -p2 -d ${ATMOSPHERE}/charts/nova
-curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~904250/revisions/3/patch?download' \
+curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~905220/revisions/2/patch?download' \
   | base64 --decode \
   | filterdiff -p1 -x 'releasenotes/*' \
   | filterdiff -p2 -x 'Chart.yaml' \
