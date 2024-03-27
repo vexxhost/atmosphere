@@ -30,16 +30,3 @@
 
 - name: Prepare system for Neutron
   ansible.builtin.import_playbook: ../shared/prepare/neutron.yml
-
-# TODO(mnaser): Drop this once we switch to vexxhost.ceph 3.0.0
-- name: Configure Ceph workarounds
-  hosts: cephs
-  roles:
-    - vexxhost.ceph.repository
-  post_tasks:
-    - name: Install "ceph-volume"
-      ansible.builtin.package:
-        name: ceph-volume
-        state: present
-  vars:
-    ceph_version: 18.2.1

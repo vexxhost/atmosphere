@@ -2,6 +2,7 @@ pipeline {
   agent none
 
   options {
+    ansiColor('xterm')
     disableConcurrentBuilds(abortPrevious: true);
   }
 
@@ -161,7 +162,8 @@ pipeline {
               sh 'sudo poetry install --with dev'
 
               catchError(buildResult: "${BUILD_RESULT_ON_FAILURE}", stageResult: "${STAGE_RESULT_ON_FAILURE}") {
-                sh 'sudo --preserve-env=ATMOSPHERE_DEBUG,ATMOSPHERE_NETWORK_BACKEND poetry run molecule test -s aio'
+                sh 'sudo --preserve-env=ATMOSPHERE_DEBUG,ATMOSPHERE_NETWORK_BACKEND poetry run atmosphere molecule converge -s aio'
+                sh 'sudo --preserve-env=ATMOSPHERE_DEBUG,ATMOSPHERE_NETWORK_BACKEND poetry run molecule verify -s aio'
               }
             }
           }

@@ -50,7 +50,8 @@ git clone https://github.com/vexxhost/atmosphere.git
 # Deploy AIO
 cd atmosphere
 sudo poetry install --with dev
-sudo poetry run molecule converge -s aio
+sudo poetry run molecule create -s aio
+sudo poetry run atmosphere deploy -i ~/.cache/molecule/atmosphere/aio/inventory/
 ```
 
 Once the deployment is done, you can either use the CLI to interact with
