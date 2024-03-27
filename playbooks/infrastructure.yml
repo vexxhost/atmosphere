@@ -12,7 +12,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Deploy Infrastructure
+- name: Deploy cert-manager
   hosts: controllers[0]
   become: true
   roles:
@@ -20,10 +20,17 @@
       tags:
         - cert-manager
 
+- name: Configure CA certificates
+  hosts: controllers
+  become: true
+  roles:
     - role: cluster_issuer
       tags:
         - cluster-issuer
 
+- name: Deploy Infrastructure
+  hosts: controllers[0]
+  become: true
     - role: ingress_nginx
       tags:
         - ingress-nginx
