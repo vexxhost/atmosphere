@@ -114,3 +114,51 @@
               targetPort: metrics
           selector:
             application: openstack-exporter
+
+- name: Deploy service
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      - apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: openstack-database-exporter
+          namespace: openstack
+          labels:
+            application: openstack-database-exporter
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              application: openstack-database-exporter
+          template:
+            metadata:
+              labels:
+                application: openstack-database-exporter
+            spec:
+              nodeSelector:
+                openstack-control-plane: enabled
+              containers:
+                - name: openstack-database-exporter
+                  image: "{{ atmosphere_images['prometheus_openstack_database_exporter'] | vexxhost.kubernetes.docker_image('ref') }}"
+                  args:
+                    - --neutron.dsn
+                    - "root:{{ openstack_helm_endpoints.oslo_db.auth.admin.password }}@tcp(percona-xtradb-haproxy.openstack.svc.cluster.local:3306)/neutron"  # yamllint disable-line rule:line-length
+                  ports:
+                    - name: metrics
+                      containerPort: 9180
+                  readinessProbe:
+                    failureThreshold: 3
+                    httpGet:
+                      path: /
+                      port: 9180
+                      scheme: HTTP
+                  livenessProbe:
+                    failureThreshold: 3
+                    httpGet:
+                      path: /
+                      port: 9180
+                      scheme: HTTP
+                    periodSeconds: 10
+                    successThreshold: 1
+                    timeoutSeconds: 1
