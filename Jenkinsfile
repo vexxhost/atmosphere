@@ -127,60 +127,6 @@ pipeline {
       }
     }
 
-    stage('integration') {
-      matrix {
-        axes {
-          axis {
-            name 'NETWORK_BACKEND'
-            values 'openvswitch', 'ovn'
-          }
-        }
-
-        agent {
-          label 'jammy-16c-64g'
-        }
-
-        environment {
-          ATMOSPHERE_DEBUG = "true"
-          ATMOSPHERE_NETWORK_BACKEND = "${NETWORK_BACKEND}"
-
-          // NOTE(mnaser): OVN is currently unstable and we don't want it to mark builds as failed.
-          BUILD_RESULT_ON_FAILURE = "${NETWORK_BACKEND == 'ovn' ? 'SUCCESS' : 'FAILURE'}"
-          STAGE_RESULT_ON_FAILURE = "${NETWORK_BACKEND == 'ovn' ? 'UNSTABLE' : 'FAILURE'}"
-        }
-
-        stages {
-          stage('molecule') {
-            steps {
-              // Checkout code with built/pinned images
-              unstash 'src-with-pinned-images'
-
-              // Install dependencies
-              sh 'sudo apt-get install -y git python3-pip'
-              sh 'sudo pip install poetry'
-              sh 'sudo poetry install --with dev'
-
-              catchError(buildResult: "${BUILD_RESULT_ON_FAILURE}", stageResult: "${STAGE_RESULT_ON_FAILURE}") {
-                sh 'sudo --preserve-env=ATMOSPHERE_DEBUG,ATMOSPHERE_NETWORK_BACKEND poetry run molecule test -s aio'
-              }
-            }
-          }
-        }
-
-        post {
-          always {
-            // Kubernetes logs
-            sh "sudo ./build/fetch-kubernetes-logs.sh logs/${NETWORK_BACKEND}/kubernetes || true"
-            archiveArtifacts artifacts: 'logs/**', allowEmptyArchive: true
-
-            // JUnit results for Tempest
-            sh "sudo ./build/fetch-junit-xml.sh tempest-${NETWORK_BACKEND}.xml || true"
-            junit "tempest-${NETWORK_BACKEND}.xml"
-          }
-        }
-      }
-    }
-
     // promote images
     // release?
     // todo: manual pin commit to main (avoiding loop)

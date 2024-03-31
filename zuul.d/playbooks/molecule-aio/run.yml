@@ -12,12 +12,9 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Install Ceph
-  ansible.builtin.import_playbook: vexxhost.atmosphere.ceph
-  when: csi_driver == 'rbd'
-
-- name: Install Kubernetes
-  ansible.builtin.import_playbook: vexxhost.atmosphere.kubernetes
-
-- name: Install CSI
-  ansible.builtin.import_playbook: vexxhost.atmosphere.csi
+- hosts: all
+  become: true
+  roles:
+    - tox
+  vars:
+    tox_envlist: "molecule-aio-{{ network_backend }}"

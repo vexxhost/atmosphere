@@ -1,4 +1,4 @@
-# Copyright (c) 2023 VEXXHOST, Inc.
+# Copyright (c) 2024 VEXXHOST, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -12,4 +12,16 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- ansible.builtin.import_playbook: ../shared/cleanup/ceph.yml
+- name: Prepare host for Molecule tests
+  hosts: all
+  tasks:
+    - name: Disable swap
+      ansible.builtin.command: swapoff -a
+      ignore_errors: yes
+
+    # TODO(mnaser): Drop this when we can use https://github.com/vexxhost/atmosphere/pull/977
+    - name: Prefix all images for the job to point to mirror
+      ansible.builtin.shell: |
+        sed -i 's/  \(.*\): \(.*\)$/  \1: registry.atmosphere.dev\/\2/' roles/defaults/vars/main.yml
+      args:
+        chdir: "{{ zuul.project.src_dir }}"
