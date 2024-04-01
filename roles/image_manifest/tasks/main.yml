@@ -15,7 +15,7 @@
   when: image_manifest_mirror
   changed_when: false
   ansible.builtin.command:
-    crane copy {{ atmosphere_images[item] }} {{ image_manifest_data['atmosphere_images'][item] }}
+    crane copy {{ atmosphere_images[item] }} {{ image_manifest_data['atmosphere_images'][item] | regex_replace('@sha256:[a-z0-9]+', '') }}
   loop: |
     {%- if image_manifest_images is string -%}
     {{ image_manifest_images | split(',') }}
