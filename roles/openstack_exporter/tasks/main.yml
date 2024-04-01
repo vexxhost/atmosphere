@@ -115,6 +115,48 @@
           selector:
             application: openstack-exporter
 
+- name: Fetch Octavia DB secret
+  run_once: true
+  no_log: true
+  kubernetes.core.k8s_info:
+    kind: Secret
+    namespace: openstack
+    name: octavia-db-user
+    wait: true
+    wait_sleep: 1
+    wait_timeout: 600
+  register: _octavia_db_user
+
+- name: Fetch Neutron DB secret
+  run_once: true
+  no_log: true
+  kubernetes.core.k8s_info:
+    kind: Secret
+    namespace: openstack
+    name: neutron-db-user
+    wait: true
+    wait_sleep: 1
+    wait_timeout: 600
+  register: _neutron_db_user
+
+- name: Create "openstack-database-exporter-dsn" secret
+  run_once: true
+  no_log: true
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      type: kubernetes.io/rbd
+      metadata:
+        name: openstack-database-exporter-dsn
+        namespace: openstack
+        labels:
+          application: openstack-database-exporter
+      stringData:
+        NEUTRON_DSN: "{{ _neutron_db_user.resources.0.data.DB_CONNECTION | b64decode |  regex_replace('^.*//', '') | regex_replace('@(.*)/', '@tcp(\\1)/') }}"
+        OCTAVIA_DSN: "{{ _octavia_db_user.resources.0.data.DB_CONNECTION | b64decode |  regex_replace('^.*//', '') | regex_replace('@(.*)/', '@tcp(\\1)/') }}"
+
 - name: Deploy service
   kubernetes.core.k8s:
     state: present
@@ -141,9 +183,9 @@
               containers:
                 - name: openstack-database-exporter
                   image: "{{ atmosphere_images['prometheus_openstack_database_exporter'] | vexxhost.kubernetes.docker_image('ref') }}"
-                  args:
-                    - --neutron.dsn
-                    - "root:{{ openstack_helm_endpoints.oslo_db.auth.admin.password }}@tcp(percona-xtradb-haproxy.openstack.svc.cluster.local:3306)/neutron"  # yamllint disable-line rule:line-length
+                  envFrom:
+                    - secretRef:
+                        name: openstack-database-exporter-dsn
                   ports:
                     - name: metrics
                       containerPort: 9180

@@ -130,10 +130,10 @@
               },
             },
             {
-              alert: 'NeutronMultipleActiveL3AgentForRouter',
+              alert: 'NeutronRouterMultipleActiveL3Agents',
               annotations: {
-                description: '[{{ $labels.router_id }}] Contains multiple active L3 agents.',
-                summary: '[{{ $labels.router_id }}] Contains multiple active L3 agents.',
+                summary: 'Neutron HA router has multiple active L3 agents',
+                description: 'The router with ID {{ $labels.router_id }} has {{ $value }} L3 agents in active state which can cause network resets and traffic drops.',
               },
               expr: 'sum by (router_id) (openstack_neutron_l3_agent_of_router{ha_state="active"}) > 1',
               'for': '5m',
