@@ -74,6 +74,12 @@ curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm-infra~893739
   | filterdiff -p2 -x 'Chart.yaml' \
   | filterdiff -p1 -i 'ovn/*' \
   | patch -p2 -d ${ATMOSPHERE}/charts/ovn
+curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm-infra~914807/revisions/1/patch?download' \
+  | base64 --decode \
+  | filterdiff -p1 -x 'releasenotes/*' \
+  | filterdiff -p2 -x 'Chart.yaml' \
+  | filterdiff -p1 -i 'ovn/*' \
+  | patch -p2 -d ${ATMOSPHERE}/charts/ovn
 
 # Nova
 curl 'https://review.opendev.org/changes/openstack%2Fopenstack-helm~899809/revisions/2/patch?download' \
