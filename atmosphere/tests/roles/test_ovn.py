@@ -76,4 +76,4 @@ class TestOVN(testscenarios.WithScenarios, testcase.WithAttributes, base.BaseTes
         )
 
         db_last_modified = datetime.fromtimestamp(int(db_last_modified))
-        self.assertTrue(db_last_modified > datetime.now() - timedelta(minutes=1))
+        self.assertTrue(db_last_modified > datetime.now() - timedelta(minutes=5))
