@@ -124,9 +124,6 @@
     kind: Secret
     namespace: openstack
     name: octavia-db-user
-    wait: true
-    wait_sleep: 1
-    wait_timeout: 600
   register: _octavia_db_user
 
 - name: Fetch Neutron DB secret
@@ -136,9 +133,6 @@
     kind: Secret
     namespace: openstack
     name: neutron-db-user
-    wait: true
-    wait_sleep: 1
-    wait_timeout: 600
   register: _neutron_db_user
 
 - name: Create "openstack-database-exporter-dsn" secret
@@ -149,7 +143,7 @@
     definition:
       apiVersion: v1
       kind: Secret
-      type: kubernetes.io/rbd
+      type: Opaque
       metadata:
         name: openstack-database-exporter-dsn
         namespace: openstack
@@ -160,6 +154,7 @@
         OCTAVIA_DSN: "{{ _octavia_db_user.resources.0.data.DB_CONNECTION | b64decode |  regex_replace('^.*//', '') | regex_replace('@(.*)/', '@tcp(\\1)/') }}"
 
 - name: Deploy service
+  run_once: true
   kubernetes.core.k8s:
     state: present
     definition:
