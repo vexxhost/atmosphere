@@ -128,7 +128,6 @@ image:
 images:
   ARG REGISTRY=ghcr.io/vexxhost/atmosphere
   BUILD +libvirt-tls-sidecar.image --REGISTRY=${REGISTRY}
-  BUILD ./images/barbican+image --REGISTRY=${REGISTRY}
   BUILD ./images/cinder+image --REGISTRY=${REGISTRY}
   BUILD ./images/cluster-api-provider-openstack+image --REGISTRY=${REGISTRY}
   BUILD ./images/designate+image --REGISTRY=${REGISTRY}
