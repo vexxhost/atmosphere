@@ -241,6 +241,24 @@
           },
         ],
       },
+      {
+        name: 'octavia',
+        rules:
+          [
+            {
+              alert: 'OctaviaLoadBalancerNotActive',
+              annotations: {
+                summary: 'Octavia load balancer not active',
+                description: 'Load balancer with ID {{ $labels.id }} stuck in non-active state for more then 15 minutes.',
+              },
+              expr: 'openstack_loadbalancer_loadbalancer_status{provisioning_status!="ACTIVE"} > 0',
+              'for': '15m',
+              labels: {
+                severity: 'P3',
+              },
+            },
+          ],
+      },
     ],
   },
 }
