@@ -12,9 +12,9 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- hosts: all
-  become: true
-  roles:
-    - tox
-  vars:
-    tox_envlist: "molecule-csi-{{ csi_driver }}"
+from oslotest import base  # type: ignore
+
+
+class TestOpenVswitch(base.BaseTestCase):
+    def test_noop(self):
+        pass

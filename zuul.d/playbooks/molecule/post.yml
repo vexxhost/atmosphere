@@ -12,9 +12,18 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- hosts: all
-  become: true
-  roles:
-    - tox
-  vars:
-    tox_envlist: "molecule-aio-{{ network_backend }}"
+- name: Finalize Molecule tests
+  hosts: all
+  tasks:
+    # NOTE(mnaser): Since we need to run Molecule using `sudo` because
+    #               of a bug with the Kubernetes collection, we need to
+    #               restore the permissions of the repository to the
+    #               user that is running the tests.
+    - name: Fix permissions for repository
+      become: true
+      ansible.builtin.file:
+        path: "{{ zuul.project.src_dir }}"
+        state: directory
+        recurse: yes
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
