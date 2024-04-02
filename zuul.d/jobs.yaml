@@ -17,6 +17,8 @@
     parent: tox
     abstract: true
     pre-run: zuul.d/playbooks/molecule/pre.yml
+    run: zuul.d/playbooks/molecule/run.yml
+    post-run: zuul.d/playbooks/molecule/post.yml
 
 - job:
     name: atmosphere-molecule-keycloak
@@ -28,20 +30,19 @@
 - job:
     name: atmosphere-molecule-csi
     parent: atmosphere-molecule
-    run: zuul.d/playbooks/molecule-csi/run.yml
     abstract: true
 
 - job:
     name: atmosphere-molecule-csi-local-path-provisioner
     parent: atmosphere-molecule-csi
     vars:
-      csi_driver: local-path-provisioner
+      tox_envlist: molecule-csi-local-path-provisioner
 
 - job:
     name: atmosphere-molecule-csi-rbd
     parent: atmosphere-molecule-csi
     vars:
-      csi_driver: rbd
+      tox_envlist: molecule-csi-rbd
 
 - job:
     name: atmosphere-molecule-aio
@@ -49,7 +50,6 @@
     abstract: true
     timeout: 7200
     pre-run: zuul.d/playbooks/molecule-aio/pre.yml
-    run: zuul.d/playbooks/molecule-aio/run.yml
     post-run: zuul.d/playbooks/molecule-aio/post.yml
     roles:
       - zuul: openstack/openstack-helm-infra
@@ -62,10 +62,10 @@
     name: atmosphere-molecule-aio-openvswitch
     parent: atmosphere-molecule-aio
     vars:
-      network_backend: openvswitch
+      tox_envlist: molecule-aio-openvswitch
 
 - job:
     name: atmosphere-molecule-aio-ovn
     parent: atmosphere-molecule-aio
     vars:
-      network_backend: ovn
+      tox_envlist: molecule-aio-ovn

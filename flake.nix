@@ -15,14 +15,15 @@
         {
           devShell = pkgs.mkShell {
             buildInputs = with pkgs; [
+              bashInteractive
               earthly
+              glibcLocales
               go
               kubernetes-helm
               nixpkgs-fmt
               poetry
+              python311Packages.tox
               vendir
-              glibcLocales
-              bashInteractive
             ];
           };
         }
