@@ -12,12 +12,15 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Install Ceph
-  ansible.builtin.import_playbook: vexxhost.atmosphere.ceph
-  when: csi_driver == 'rbd'
-
-- name: Install Kubernetes
-  ansible.builtin.import_playbook: vexxhost.atmosphere.kubernetes
-
-- name: Install CSI
-  ansible.builtin.import_playbook: vexxhost.atmosphere.csi
+- hosts: all
+  become: true
+  vars:
+    work_dir: "{{ zuul.project.src_dir }}"
+    logs_dir: "/tmp/logs"
+  roles:
+    - gather-host-logs
+    - helm-release-status
+    - describe-kubernetes-objects
+    - gather-pod-logs
+    - gather-prom-metrics
+    - gather-selenium-data

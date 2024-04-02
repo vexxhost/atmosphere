@@ -1,0 +1,71 @@
+# Copyright (c) 2024 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- job:
+    name: atmosphere-molecule
+    parent: tox
+    abstract: true
+    pre-run: zuul.d/playbooks/molecule/pre.yml
+
+- job:
+    name: atmosphere-molecule-keycloak
+    parent: atmosphere-molecule
+    pre-run: zuul.d/playbooks/molecule-keycloak/pre.yml
+    vars:
+      tox_envlist: molecule-keycloak
+
+- job:
+    name: atmosphere-molecule-csi
+    parent: atmosphere-molecule
+    run: zuul.d/playbooks/molecule-csi/run.yml
+    abstract: true
+
+- job:
+    name: atmosphere-molecule-csi-local-path-provisioner
+    parent: atmosphere-molecule-csi
+    vars:
+      csi_driver: local-path-provisioner
+
+- job:
+    name: atmosphere-molecule-csi-rbd
+    parent: atmosphere-molecule-csi
+    vars:
+      csi_driver: rbd
+
+- job:
+    name: atmosphere-molecule-aio
+    parent: atmosphere-molecule
+    abstract: true
+    timeout: 7200
+    pre-run: zuul.d/playbooks/molecule-aio/pre.yml
+    run: zuul.d/playbooks/molecule-aio/run.yml
+    post-run: zuul.d/playbooks/molecule-aio/post.yml
+    roles:
+      - zuul: openstack/openstack-helm-infra
+    nodeset:
+      nodes:
+        - name: ubuntu-jammy
+          label: jammy-16c-64g
+
+- job:
+    name: atmosphere-molecule-aio-openvswitch
+    parent: atmosphere-molecule-aio
+    vars:
+      network_backend: openvswitch
+
+- job:
+    name: atmosphere-molecule-aio-ovn
+    parent: atmosphere-molecule-aio
+    vars:
+      network_backend: ovn

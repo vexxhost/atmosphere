@@ -12,12 +12,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Install Ceph
-  ansible.builtin.import_playbook: vexxhost.atmosphere.ceph
-  when: csi_driver == 'rbd'
-
-- name: Install Kubernetes
-  ansible.builtin.import_playbook: vexxhost.atmosphere.kubernetes
-
-- name: Install CSI
-  ansible.builtin.import_playbook: vexxhost.atmosphere.csi
+- name: Prepare host for Keycloak tests
+  hosts: all
+  roles:
+    - ensure-docker
