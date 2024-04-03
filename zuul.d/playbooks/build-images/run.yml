@@ -47,6 +47,7 @@
       when: zuul.pipeline == 'post'
       block:
         - name: Download cosign binary
+          become: true
           ansible.builtin.get_url:
             url: https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64
             dest: /usr/local/bin/cosign
