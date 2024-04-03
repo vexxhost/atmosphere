@@ -18,11 +18,12 @@
     - name: Create builder
       ansible.builtin.shell: docker buildx create --name=atmosphere --driver=docker-container
 
-    - name: Login to registry
+    - name: Log into registry
       when: zuul.pipeline == 'post'
-      no_log: true
-      ansible.builtin.shell: |
-        docker login -u '{{ registry_credentials.username }}' -p '{{ registry_credentials.password }}' registry.atmosphere.dev
+      docker_login:
+        registry: registry.atmosphere.dev
+        username: "{{ registry_credentials.username }}"
+        password: "{{ registry_credentials.password }}"
 
     - name: Build images
       ansible.builtin.shell: |
