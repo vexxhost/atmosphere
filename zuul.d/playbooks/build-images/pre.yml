@@ -12,15 +12,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- project:
-    check:
-      jobs:
-        - atmosphere-build-images
-        - atmosphere-molecule-aio-openvswitch
-        - atmosphere-molecule-aio-ovn
-        - atmosphere-molecule-csi-local-path-provisioner
-        - atmosphere-molecule-csi-rbd
-        - atmosphere-molecule-keycloak
-    post:
-      jobs:
-        - atmosphere-upload-images
+- name: Prepare host for Keycloak tests
+  hosts: all
+  roles:
+    - ensure-docker

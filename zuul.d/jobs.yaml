@@ -13,6 +13,17 @@
 # under the License.
 
 - job:
+    name: atmosphere-build-images
+    pre-run: zuul.d/playbooks/build-images/pre.yml
+    run: zuul.d/playbooks/build-images/run.yml
+
+- job:
+    name: atmosphere-upload-images
+    parent: atmosphere-build-images
+    secrets:
+      - registry_credentials
+
+- job:
     name: atmosphere-molecule
     parent: tox
     abstract: true
