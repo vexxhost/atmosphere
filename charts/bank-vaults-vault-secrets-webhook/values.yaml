@@ -1,0 +1,302 @@
+# Default values for vault-secrets-webhook.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+
+# -- Number of replicas
+replicaCount: 2
+
+# -- Enable debug logs for webhook
+debug: false
+
+certificate:
+  # -- Should request cert-manager for getting a new CA and TLS certificate
+  useCertManager: false
+  # -- Should use an already externally defined Certificate by cert-manager
+  servingCertificate: null
+  # -- Should a new CA and TLS certificate be generated for the webhook
+  generate: true
+  server:
+    tls:
+      # -- Base64 encoded TLS certificate signed by the CA
+      crt: ""
+      # -- Base64 encoded private key of TLS certificate signed by the CA
+      key: ""
+  ca:
+    # -- Base64 encoded CA certificate
+    crt: ""
+  # -- Use extra names if you want to use the webhook via an ingress or a loadbalancer
+  extraAltNames: []
+  # -- The number of days from the creation of the CA certificate until it expires
+  caLifespan: 3650
+  # -- The number of days from the creation of the TLS certificate until it expires
+  certLifespan: 365
+
+image:
+  # -- Container image repo that contains the admission server
+  repository: ghcr.io/bank-vaults/vault-secrets-webhook
+  # -- Container image tag
+  tag: ""
+  # -- Container image pull policy
+  pullPolicy: IfNotPresent
+  # -- Container image pull secrets for private repositories
+  imagePullSecrets: []
+
+service:
+  # -- Webhook service name
+  name: vault-secrets-webhook
+  # -- Webhook service type
+  type: ClusterIP
+  # -- Webhook service external port
+  externalPort: 443
+  # -- Webhook service internal port
+  internalPort: 8443
+  # -- Webhook service annotations, e.g. if type is AWS LoadBalancer and you want to add security groups
+  annotations: {}
+
+ingress:
+  # -- Enable Webhook ingress
+  enabled: false
+  # -- Webhook ingress annotations
+  annotations: {}
+  # -- Webhook ingress host
+  host: ""
+
+webhookClientConfig:
+  # -- Use url if webhook should be contacted over loadbalancer or ingress instead of service object.
+  # By default, the mutating webhook uses the service of the webhook directly to contact webhook.
+  useUrl: false
+  # -- Set the url how the webhook should be contacted, including the protocol
+  url: https://example.com
+
+vaultEnv:
+  # -- Container image repo that contains the vault-env container
+  repository: ghcr.io/bank-vaults/vault-env
+  # -- Container image tag for the vault-env container
+  tag: "v1.21.3"
+
+# -- Custom environment variables available to webhook
+env: {}
+  ## -- Vault image
+  # VAULT_IMAGE: hashicorp/vault:1.14.8
+  # VAULT_CAPATH: /vault/tls
+
+  ## -- Used when the pod that should get secret injected does not specify an imagePullSecret
+  # DEFAULT_IMAGE_PULL_SECRET: ""
+  # DEFAULT_IMAGE_PULL_SECRET_NAMESPACE: ""
+  # DEFAULT_IMAGE_PULL_SECRET_SERVICE_ACCOUNT: ""
+
+  ## -- Define the webhook's timeout for Vault communication, if not defined individually in resources by annotations
+  # VAULT_CLIENT_TIMEOUT: "10s"
+
+  ## -- Define the webhook's role in Vault used for authentication, if not defined individually in resources by annotations
+  # VAULT_ROLE: ""
+
+  ## -- Cpu requests and limits for init-containers vault-env and copy-vault-env
+  # VAULT_ENV_CPU_REQUEST: ""
+  # VAULT_ENV_CPU_LIMIT: ""
+
+  ## -- Memory requests and limits for init-containers vault-env and copy-vault-env
+  # VAULT_ENV_MEMORY_REQUEST: ""
+  # VAULT_ENV_MEMORY_LIMIT: ""
+
+  ## -- Define remote log server for vault-env
+  # VAULT_ENV_LOG_SERVER: ""
+
+# -- Containers to run before the webhook containers are started
+initContainers: []
+  # - name: init-myservice
+  #   image: busybox
+  #   command: ['sh', '-c', 'until nslookup myservice; do echo waiting for myservice; sleep 2; done;']
+
+metrics:
+  # -- Enable metrics service for the webhook
+  enabled: false
+  # -- Metrics service port
+  port: 8443
+  serviceMonitor:
+    # -- Enable service monitor
+    enabled: false
+    # -- Service monitor scheme
+    scheme: https
+    tlsConfig:
+      # -- Skip TLS checks for service monitor
+      insecureSkipVerify: true
+
+securityContext:
+  # -- Run containers in webhook deployment as specified user
+  runAsUser: 65534
+  # -- Allow process to gain more privileges than its parent process
+  allowPrivilegeEscalation: false
+
+# -- Pod security context for webhook deployment
+podSecurityContext: {}
+
+# -- Extra volume definitions for webhook deployment
+volumes: []
+  # - name: vault-tls
+  #   secret:
+  #     secretName: vault-tls
+
+# -- Extra volume mounts for webhook deployment
+volumeMounts: []
+  # - name: vault-tls
+  #   mountPath: /vault/tls
+
+# -- Extra annotations to add to pod metadata
+podAnnotations: {}
+
+# -- Extra labels to add to the deployment and pods
+labels: {}
+  # team: banzai
+
+# -- Resources to request for the deployment and pods
+resources: {}
+
+# -- Node labels for pod assignment.
+# Check: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector
+nodeSelector: {}
+
+# -- List of node tolerations for the pods.
+# Check: https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
+tolerations: []
+
+# -- Node affinity settings for the pods.
+# Check: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
+affinity: {}
+
+# -- TopologySpreadConstraints to add for the pods.
+# Check: https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/
+topologySpreadConstraints: {}
+
+# -- Assign a PriorityClassName to pods if set.
+# Check: https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/
+priorityClassName: ""
+
+# -- Liveness and readiness probes for the webhook container
+livenessProbe:
+  initialDelaySeconds: 30
+  failureThreshold: 3
+  periodSeconds: 10
+  successThreshold: 1
+  timeoutSeconds: 1
+readinessProbe:
+  failureThreshold: 3
+  periodSeconds: 10
+  successThreshold: 1
+  timeoutSeconds: 1
+
+rbac:
+  psp:
+    # -- Use pod security policy
+    enabled: false
+  authDelegatorRole:
+    # -- Bind `system:auth-delegator` ClusterRoleBinding to given `serviceAccount`
+    enabled: false
+
+serviceAccount:
+  # -- Specifies whether a service account should be created
+  create: true
+  # -- The name of the service account to use.
+  # If not set and `create` is true, a name is generated using the fullname template.
+  name: ""
+  # -- Labels to add to the service account
+  labels: {}
+  # -- Annotations to add to the service account.
+  # For example, use `iam.gke.io/gcp-service-account: gsa@project.iam.gserviceaccount.com` to enable GKE workload identity.
+  annotations: {}
+
+deployment:
+  # -- Rolling strategy for webhook deployment
+  strategy: {}
+
+# -- List of CustomResources to inject values from Vault, for example: ["ingresses", "servicemonitors"]
+customResourceMutations: []
+
+customResourcesFailurePolicy: Ignore
+
+# -- Enable injecting values from Vault to ConfigMaps.
+# This can cause issues when used with Helm, so it is disabled by default.
+configMapMutation: false
+
+# -- Enable injecting values from Vault to Secrets.
+# Set to `false` in order to prevent secret values from being persisted in Kubernetes.
+secretsMutation: true
+
+configMapFailurePolicy: Ignore
+
+podsFailurePolicy: Ignore
+
+secretsFailurePolicy: Ignore
+
+# -- Webhook sideEffect value
+# Check: https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#side-effects
+apiSideEffectValue: NoneOnDryRun
+
+# -- Namespace selector to use, will limit webhook scope (K8s version 1.15+)
+namespaceSelector:
+  # @ignored
+  matchExpressions:
+    # https://kubernetes.io/docs/reference/labels-annotations-taints/#kubernetes-io-metadata-name
+    - key: kubernetes.io/metadata.name
+      operator: NotIn
+      values:
+        - kube-system
+  # matchLabels:
+  #   vault-injection: enabled
+
+# -- Object selector to use, will limit webhook scope (K8s version 1.15+)
+objectSelector: {}
+  # matchExpressions:
+  # - key: security.banzaicloud.io/mutate
+  #   operator: NotIn
+  #   values:
+  #   - skip
+  # matchLabels:
+  #   vault-injection: enabled
+
+secrets:
+  # -- Object selector for secrets (overrides `objectSelector`); Requires K8s 1.15+
+  objectSelector: {}
+  # -- Namespace selector for secrets (overrides `objectSelector`); Requires K8s 1.15+
+  namespaceSelector: {}
+
+pods:
+  # -- Object selector for secrets (overrides `objectSelector`); Requires K8s 1.15+
+  objectSelector: {}
+  # -- Namespace selector for secrets (overrides `objectSelector`); Requires K8s 1.15+
+  namespaceSelector: {}
+
+configMaps:
+  # -- Object selector for secrets (overrides `objectSelector`); Requires K8s 1.15+
+  objectSelector: {}
+  # -- Namespace selector for secrets (overrides `objectSelector`); Requires K8s 1.15+
+  namespaceSelector: {}
+
+customResources:
+  # -- Object selector for secrets (overrides `objectSelector`); Requires K8s 1.15+
+  objectSelector: {}
+  # -- Namespace selector for secrets (overrides `objectSelector`); Requires K8s 1.15+
+  namespaceSelector: {}
+
+podDisruptionBudget:
+  # -- Enables PodDisruptionBudget
+  enabled: true
+  # -- Represents the number of Pods that must be available (integer or percentage)
+  minAvailable: 1
+  # -- Represents the number of Pods that can be unavailable (integer or percentage)
+  # maxUnavailable: 1
+
+# -- Webhook timeoutSeconds value
+timeoutSeconds: false
+
+# -- Allow pod to use the node network namespace
+hostNetwork: false
+
+# -- The dns policy desired for the deployment.
+# If you're using cilium (CNI) and you are required to set hostNetwork to true,
+# then pods with webhooks must set the dnsPolicy to "ClusterFirstWithHostNet"
+dnsPolicy: ""
+
+# -- Override cluster version
+kubeVersion: ""

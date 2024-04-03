@@ -1,0 +1,149 @@
+{{ template "chart.header" . }}
+
+{{ template "chart.description" . }}
+
+{{ template "chart.homepageLine" . }}
+
+This chart will install a mutating admission webhook, that injects an executable to containers in Pods which than can request secrets from Vault through environment variable definitions.
+It can also inject statically into ConfigMaps, Secrets, and CustomResources.
+
+## Using External Vault Instances
+
+You will need to add the following annotations to the resources that you wish to mutate:
+
+```yaml
+vault.security.banzaicloud.io/vault-addr: https://[URL FOR VAULT]
+vault.security.banzaicloud.io/vault-path: [Auth path]
+vault.security.banzaicloud.io/vault-role: [Auth role]
+vault.security.banzaicloud.io/vault-skip-verify: "true" # Container is missing Trusted Mozilla roots too.
+```
+
+Be mindful how you reference Vault secrets itself. For KV v2 secrets, you will need to add the `/data/` to the path of the secret.
+
+```
+$ vault kv get kv/rax/test
+====== Metadata ======
+Key              Value
+---              -----
+created_time     2019-09-21T16:55:26.479739656Z
+deletion_time    n/a
+destroyed        false
+version          1
+
+=========== Data ===========
+Key                    Value
+---                    -----
+MYSQL_PASSWORD         3xtr3ms3cr3t
+MYSQL_ROOT_PASSWORD    s3cr3t
+```
+
+The secret shown above is referenced like this:
+
+```
+vault:[ENGINE]/data/[SECRET_NAME]#[KEY]
+vault:kv/rax/data/test#MYSQL_PASSWORD
+```
+
+If you want to use a specific key version, you can append it after the key so it becomes like this:
+
+`vault:kv/rax/data/test#MYSQL_PASSWORD#1`
+
+Omitting the version will tell Vault to pull the latest version.
+
+## Installing the Chart
+
+Before you install this chart you must create a namespace for it. This is due to the order in which the resources in the charts are applied (Helm collects all of the resources in a given Chart and its dependencies, groups them by resource type, and then installs them in a predefined order (see [here](https://github.com/helm/helm/blob/3547a4b5bf5edb5478ce352e18858d8a552a4110/pkg/releaseutil/kind_sorter.go#L31)).
+The `MutatingWebhookConfiguration` gets created before the actual backend Pod which serves as the webhook itself, Kubernetes would like to mutate that pod as well, but it is not ready to mutate yet (infinite recursion in logic).
+
+### Prepare Kubernetes namespace
+
+In case of the K8s version is lower than 1.15 the namespace where you install the webhook must have a label of `name` with the namespace name as the label value, so the `namespaceSelector` in the `MutatingWebhookConfiguration` can skip the namespace of the webhook, so no self-mutation takes place.
+If the K8s version is 1.15 at least, the default `objectSelector` will prevent the self-mutation (you don't have to configure anything) and you are free to install to any namespace of your choice.
+
+**You have to do this only in case you are using Helm < 3.2 and Kubernetes < 1.15.**
+
+```bash
+WEBHOOK_NS=${WEBHOOK_NS:-vswh}
+kubectl create namespace "${WEBHOOK_NS}"
+kubectl label namespace "${WEBHOOK_NS}" name="${WEBHOOK_NS}"
+```
+
+### Install the chart
+
+```bash
+$ helm install vswh --namespace vswh --wait oci://ghcr.io/bank-vaults/helm-charts/vault-secrets-webhook --create-namespace
+```
+
+### Openshift 4.3
+
+For security reasons, the `runAsUser` must be in the range between 1000570000 and 1000579999. By setting the value of `securityContext.runAsUser` to `""`, OpenShift chooses a valid User.
+
+```bash
+$ helm upgrade --namespace vswh --install vswh oci://ghcr.io/bank-vaults/helm-charts/vault-secrets-webhook --set-string securityContext.runAsUser="" --create-namespace
+```
+
+### About GKE Private Clusters
+
+When Google configures the control plane for private clusters, they automatically configure VPC peering between your Kubernetes cluster’s network in a separate Google managed project.
+
+The auto-generated rules **only** open ports 10250 and 443 between masters and nodes. This means that to use the webhook component with a GKE private cluster, you must configure an additional firewall rule to allow your masters CIDR to access your webhook pod using the port 8443.
+
+You can read more information on how to add firewall rules for the GKE control plane nodes in the [GKE docs](https://cloud.google.com/kubernetes-engine/docs/how-to/private-clusters#add_firewall_rules).
+
+{{ define "chart.valuesTableHtml" }}
+
+The following table lists the configurable parameters of the Helm chart.
+
+| Parameter | Type | Default | Description |
+| --- | ---- | ------- | ----------- |
+{{- range .Values }}
+| `{{ .Key }}` | {{ .Type }} | {{ .Default }} | {{ if .Description }}{{ .Description }}{{ else }}{{ .AutoDescription }}{{ end }} |
+{{- end }}
+
+Specify each parameter using the `--set key=value[,key=value]` argument to `helm install`.
+
+{{ end }}
+
+{{ template "chart.valuesSectionHtml" . }}
+
+### Certificate options
+
+There are the following options for supplying the webhook with CA and TLS certificates.
+
+#### Generate (default)
+
+The default option is to let helm generate the CA and TLS certificates on deploy time.
+
+This will renew the certificates on each deployment.
+
+```
+certificate:
+    generate: true
+```
+
+#### Manually supplied
+
+Another option is to generate everything manually and specify the TLS `crt` and `key` plus the CA `crt` as values.
+These values need to be base64 encoded x509 certificates.
+
+```yaml
+certificate:
+  generate: false
+  server:
+    tls:
+      crt: LS0tLS1...
+      key: LS0tLS1...
+  ca:
+    crt: LS0tLS1...
+```
+
+#### Using cert-manager
+
+If you use cert-manager in your cluster, you can instruct cert-manager to manage everything.
+The following options will let cert-manager generate TLS `certificate` and `key` plus the CA `certificate`.
+
+```yaml
+certificate:
+  generate: false
+  useCertManager: true
+```
