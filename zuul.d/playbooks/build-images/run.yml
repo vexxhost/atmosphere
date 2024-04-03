@@ -32,3 +32,48 @@
         chdir: "{{ zuul.project.src_dir }}"
       environment:
         PUSH_TO_CACHE: "{{ zuul.pipeline == 'post' }}"
+
+    - name: Get list of images built
+      ansible.builtin.shell: docker buildx bake --print
+      register: images_built_json
+
+    - name: Set fact with list of images
+      set_fact:
+        images_built: "{{ images_built_json.stdout | from_json | json_query('target.*.tags[?@] | []') }}"
+      
+    - name: Sign images
+      when: zuul.pipeline == 'post'
+      block:
+        - name: Download cosign binary
+          ansible.builtin.get_url:
+            url: https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64
+            dest: /usr/local/bin/cosign
+            mode: 0755
+
+        - name: Copy the cosign private key
+          copy:
+            content: "{{ cosign_key.private }}"
+            dest: cosign.key
+
+        - name: Sign images
+          ansible.builtin.shell: |
+            cosign sign -y --recursive --key cosign.key {{ item }}
+          loop: "{{ images_built }}"
+
+        - name: Delete the cosign private key
+          file:
+            path: cosign.key
+            state: absent
+
+    - name: Return Zuul artifacts for images
+      zuul_return:
+        data:
+          zuul:
+            artifacts:
+              - name: "{{ item }}"
+                url: "docker://{{ item }}"
+                metadata:
+                  type: container_image
+                  repository: "{{ item.split(':')[0] }}"
+                  tag: "{{ item.split(':')[1] }}"
+      loop: "{{ images_built }}"
