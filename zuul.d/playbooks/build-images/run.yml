@@ -35,6 +35,8 @@
 
     - name: Get list of images built
       ansible.builtin.shell: docker buildx bake --print
+      args:
+        chdir: "{{ zuul.project.src_dir }}"
       register: images_built_json
 
     - name: Set fact with list of images
