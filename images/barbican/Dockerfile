@@ -5,10 +5,7 @@ RUN git fetch --unshallow
 
 FROM openstack-venv-builder AS build
 COPY --from=barbican --link /src /src/barbican
-ARG TARGETARCH
-ARG TARGETVARIANT
-RUN \
-    --mount=type=cache,id=pip-$TARGETARCH$TARGETVARIANT-$RELEASE-cache,sharing=locked,target=/root/.cache/pip <<EOF bash -xe
+RUN <<EOF bash -xe
 pip3 install \
     --constraint /upper-constraints.txt \
         /src/barbican \

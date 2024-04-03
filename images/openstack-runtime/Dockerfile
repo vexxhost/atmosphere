@@ -1,10 +1,5 @@
 FROM ubuntu-cloud-archive
-ARG TARGETARCH
-ARG TARGETVARIANT
-ARG RELEASE
-RUN \
-    --mount=type=cache,id=apt-$TARGETARCH$TARGETVARIANT-$RELEASE-var-cache-apt,sharing=locked,target=/var/cache/apt \
-    --mount=type=cache,id=apt-$TARGETARCH$TARGETVARIANT-$RELEASE-var-lib-apt-lists,sharing=locked,target=/var/lib/apt/lists <<EOF bash -xe
+RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \
     ca-certificates \
