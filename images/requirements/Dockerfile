@@ -1,9 +1,5 @@
 FROM ubuntu
-ARG TARGETARCH
-ARG TARGETVARIANT
-RUN \
-    --mount=type=cache,id=apt-$TARGETARCH$TARGETVARIANT-var-cache-apt,sharing=locked,target=/var/cache/apt \
-    --mount=type=cache,id=apt-$TARGETARCH$TARGETVARIANT-var-lib-apt-lists,sharing=locked,target=/var/lib/apt/lists <<EOF bash -xe
+RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends ca-certificates git
 EOF
