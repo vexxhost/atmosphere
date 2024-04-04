@@ -103,6 +103,12 @@
             dest: /usr/local/bin/cosign
             mode: 0755
 
+        - name: Determine the digest for the images
+          ansible.builtin.shell: |
+            cosign triangulate --type=digest {{ item }}
+          loop: "{{ images_built }}"
+          register: cosign_digest
+
         - name: Copy the cosign public key
           copy:
             content: "{{ cosign_key.public }}"
@@ -112,7 +118,7 @@
           ignore_errors: true
           ansible.builtin.shell: |
             cosign verify --key cosign.pub --output json {{ item }}
-          loop: "{{ images_built }}"
+          loop: "{{ cosign_digest.results | map(attribute='stdout') | list | unique }}"
           register: cosign_verify
 
         - name: Copy the cosign private key
