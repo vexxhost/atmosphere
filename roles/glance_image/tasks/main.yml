@@ -39,6 +39,9 @@
         dest: "{{ _workdir.path }}/{{ glance_image_url | basename }}"
         mode: "0600"
       register: _get_url
+      retries: 3
+      delay: "{{ 15 | random + 3 }}"
+      until: _get_url is not failed
 
     - name: Get image format
       changed_when: false
