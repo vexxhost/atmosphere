@@ -68,7 +68,7 @@
 
     - name: Log into registry
       docker_login:
-        registry: "{{ buildset_registry.host }}:{{ buildset_registry.port }}"
+        registry: "{{ buildset_registry.host }}{% if buildset_registry.port != 443 %}:{{ buildset_registry.port }}{% endif %}"
         username: "{{ buildset_registry.username }}"
         password: "{{ buildset_registry.password }}"
 
@@ -78,7 +78,7 @@
       args:
         chdir: "{{ zuul.project.src_dir }}"
       environment:
-        REGISTRY: "{{ buildset_registry.host }}:{{ buildset_registry.port }}/library"
+        REGISTRY: "{{ buildset_registry.host }}{% if buildset_registry.port != 443 %}:{{ buildset_registry.port }}{% endif %}/library"
         PUSH_TO_CACHE: "{{ zuul.pipeline == 'post' }}"
 
     - name: Get list of images built
@@ -86,7 +86,7 @@
       args:
         chdir: "{{ zuul.project.src_dir }}"
       environment:
-        REGISTRY: "{{ buildset_registry.host }}:{{ buildset_registry.port }}/library"
+        REGISTRY: "{{ buildset_registry.host }}{% if buildset_registry.port != 443 %}:{{ buildset_registry.port }}{% endif %}/library"
       register: images_built_json
 
     - name: Set fact with list of images
