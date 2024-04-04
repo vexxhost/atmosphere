@@ -103,6 +103,18 @@
             dest: /usr/local/bin/cosign
             mode: 0755
 
+        - name: Copy the cosign public key
+          copy:
+            content: "{{ cosign_key.public }}"
+            dest: cosign.pub
+
+        - name: Verify which images are signed
+          ignore_errors: true
+          ansible.builtin.shell: |
+            cosign verify --key cosign.pub --output json {{ item }}
+          loop: "{{ images_built }}"
+          register: cosign_verify
+
         - name: Copy the cosign private key
           copy:
             content: "{{ cosign_key.private }}"
@@ -111,7 +123,7 @@
         - name: Sign images
           ansible.builtin.shell: |
             cosign sign -y --recursive --key cosign.key {{ item }}
-          loop: "{{ images_built }}"
+          loop: "{{ cosign_verify.results | selectattr('failed', 'equalto', true) | map(attribute='item') | list }}"
 
         - name: Delete the cosign private key
           file:
