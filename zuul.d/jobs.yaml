@@ -13,15 +13,15 @@
 # under the License.
 
 - job:
-    name: atmosphere-build-images
-    pre-run: zuul.d/playbooks/build-images/pre.yml
-    run: zuul.d/playbooks/build-images/run.yml
+    name: atmosphere-buildset-registry
+    pre-run: zuul.d/playbooks/buildset-registry/pre.yml
+    run: zuul.d/playbooks/buildset-registry/run.yml
     ansible-split-streams: true
 
 - job:
     name: atmosphere-upload-images
-    parent: atmosphere-build-images
-    run: zuul.d/playbooks/build-images/run.yml
+    parent: atmosphere-buildset-registry
+    run: zuul.d/playbooks/buildset-registry/run.yml
     secrets:
       - registry_credentials
       - cosign_key
@@ -33,6 +33,8 @@
     pre-run: zuul.d/playbooks/molecule/pre.yml
     run: zuul.d/playbooks/molecule/run.yml
     post-run: zuul.d/playbooks/molecule/post.yml
+    dependencies:
+      - atmosphere-buildset-registry
 
 - job:
     name: atmosphere-molecule-keycloak
