@@ -1,0 +1,100 @@
+From 258fbb75be8a004d2ab092502f58508c95de6e84 Mon Sep 17 00:00:00 2001
+From: ricolin <rlin@vexxhost.com>
+Date: Fri, 21 Jul 2023 10:54:23 +0800
+Subject: [PATCH] Fix Trust token scope for drivers
+
+This fix driver token scope to make sure we use correct token
+scope from Trust.
+
+Change-Id: If5b31951959c7a141dc1cae5fefcabe4ebf438b3
+(cherry picked from commit eca79453c0097b0f63019821d3c2e9ecacebf784)
+---
+
+diff --git a/magnum/drivers/common/templates/kubernetes/fragments/make-cert-client.sh b/magnum/drivers/common/templates/kubernetes/fragments/make-cert-client.sh
+index 1e4cf14..e7debbc 100644
+--- a/magnum/drivers/common/templates/kubernetes/fragments/make-cert-client.sh
++++ b/magnum/drivers/common/templates/kubernetes/fragments/make-cert-client.sh
+@@ -62,6 +62,11 @@
+                     "password": "$TRUSTEE_PASSWORD"
+                 }
+             }
++        },
++        "scope": {
++            "OS-TRUST:trust": {
++                "id": "$TRUST_ID"
++            }
+         }
+     }
+ }
+diff --git a/magnum/drivers/common/templates/kubernetes/fragments/make-cert.sh b/magnum/drivers/common/templates/kubernetes/fragments/make-cert.sh
+index 84bf839..d28149b 100644
+--- a/magnum/drivers/common/templates/kubernetes/fragments/make-cert.sh
++++ b/magnum/drivers/common/templates/kubernetes/fragments/make-cert.sh
+@@ -98,6 +98,11 @@
+                     "password": "$TRUSTEE_PASSWORD"
+                 }
+             }
++        },
++        "scope": {
++            "OS-TRUST:trust": {
++                "id": "$TRUST_ID"
++            }
+         }
+     }
+ }
+diff --git a/magnum/drivers/common/templates/swarm/fragments/make-cert.py b/magnum/drivers/common/templates/swarm/fragments/make-cert.py
+index bd8cbd7..258ae6a 100644
+--- a/magnum/drivers/common/templates/swarm/fragments/make-cert.py
++++ b/magnum/drivers/common/templates/swarm/fragments/make-cert.py
+@@ -161,6 +161,11 @@
+                     "password": "%(trustee_password)s"
+                 }
+             }
++        },
++        "scope": {
++            "OS-TRUST:trust": {
++                "id": "$(trust_id)s"
++            }
+         }
+     }
+ }
+@@ -168,6 +173,7 @@
+     params = {
+         'trustee_user_id': config['TRUSTEE_USER_ID'],
+         'trustee_password': config['TRUSTEE_PASSWORD'],
++        'trust_id': config['TRUST_ID'],
+     }
+     creds = creds_str % params
+     headers = {'Content-Type': 'application/json'}
+diff --git a/magnum/drivers/k8s_coreos_v1/templates/fragments/make-cert-client.yaml b/magnum/drivers/k8s_coreos_v1/templates/fragments/make-cert-client.yaml
+index dc910bf..846f49b 100644
+--- a/magnum/drivers/k8s_coreos_v1/templates/fragments/make-cert-client.yaml
++++ b/magnum/drivers/k8s_coreos_v1/templates/fragments/make-cert-client.yaml
+@@ -73,6 +73,11 @@
+                           "password": "$TRUSTEE_PASSWORD"
+                       }
+                   }
++              },
++              "scope": {
++                  "OS-TRUST:trust": {
++                      "id": "$TRUST_ID"
++                  }
+               }
+           }
+       }
+diff --git a/magnum/drivers/k8s_coreos_v1/templates/fragments/make-cert.yaml b/magnum/drivers/k8s_coreos_v1/templates/fragments/make-cert.yaml
+index 8ef1128..d9191bd 100644
+--- a/magnum/drivers/k8s_coreos_v1/templates/fragments/make-cert.yaml
++++ b/magnum/drivers/k8s_coreos_v1/templates/fragments/make-cert.yaml
+@@ -104,6 +104,11 @@
+                           "password": "$TRUSTEE_PASSWORD"
+                       }
+                   }
++              },
++              "scope": {
++                  "OS-TRUST:trust": {
++                      "id": "$TRUST_ID"
++                  }
+               }
+           }
+       }
