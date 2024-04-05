@@ -1,6 +1,14 @@
 FROM ubuntu:jammy-20240227 AS ubuntu
 LABEL org.opencontainers.image.source=https://github.com/vexxhost/atmosphere
 
+FROM ubuntu AS helm
+ARG TARGETOS
+ARG TARGETARCH
+ARG HELM_VERSION=3.14.0
+ADD https://get.helm.sh/helm-v${HELM_VERSION}-${TARGETOS}-${TARGETARCH}.tar.gz /helm.tar.gz
+RUN tar -xzf /helm.tar.gz
+RUN mv /${TARGETOS}-${TARGETARCH}/helm /usr/bin/helm
+
 FROM ubuntu AS ubuntu-cloud-archive
 ADD --chmod=644 https://git.launchpad.net/ubuntu/+source/ubuntu-keyring/plain/keyrings/ubuntu-cloud-keyring.gpg /etc/apt/trusted.gpg.d/ubuntu-cloud-keyring.gpg
 ARG RELEASE
@@ -123,3 +131,31 @@ EOF
 
 FROM openstack-runtime AS barbican
 COPY --from=barbican-build --link /var/lib/openstack /var/lib/openstack
+
+FROM alpine/git AS magnum-src
+ARG MAGNUM_GIT_REF
+ADD --keep-git-dir=true https://opendev.org/openstack/magnum.git#${MAGNUM_GIT_REF} /src
+RUN git -C /src fetch --unshallow
+ARG RELEASE
+COPY patches/${RELEASE}/magnum /patches
+RUN if [ -n "$(ls -A /patches/*.patch)" ]; then git -C /src apply --verbose /patches/*; fi
+
+FROM openstack-venv-builder AS magnum-build
+COPY --from=magnum-src --link /src /src/magnum
+RUN <<EOF bash -xe
+pip3 install \
+    --constraint /upper-constraints.txt \
+        /src/magnum \
+        magnum-cluster-api==0.16.0
+EOF
+
+FROM openstack-runtime AS magnum
+RUN <<EOF bash -xe
+apt-get update -qq
+apt-get install -qq -y --no-install-recommends \
+    haproxy
+apt-get clean
+rm -rf /var/lib/apt/lists/*
+EOF
+COPY --from=helm --link /usr/bin/helm /usr/local/bin/helm
+COPY --from=magnum-build --link /var/lib/openstack /var/lib/openstack
