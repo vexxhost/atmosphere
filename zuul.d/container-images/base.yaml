@@ -1,0 +1,65 @@
+# Copyright (c) 2024 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- project:
+    check:
+      jobs:
+        - atmosphere-buildset-registry
+    gate:
+      jobs:
+        - atmosphere-buildset-registry
+
+- job:
+    name: atmosphere-buildset-registry
+    parent: ci-buildset-registry
+
+- job:
+    name: atmosphere-build-container-image
+    parent: ci-build-container-image
+    abstract: true
+    dependencies:
+      - name: atmosphere-buildset-registry
+        soft: false
+    vars: &image_vars
+      container_command: docker
+      promote_container_image_method: intermediate-registry
+      buildset_registry_namespaces:
+        - ['docker.io', 'https://registry-1.docker.io']
+        - ['quay.io', 'https://quay.io']
+        - ['gcr.io', 'https://gcr.io']
+        - ['registry.atmosphere.dev', 'https://registry.atmosphere.dev']
+
+- job:
+    name: atmosphere-upload-container-image
+    parent: ci-upload-container-image
+    abstract: true
+    dependencies:
+      - name: atmosphere-buildset-registry
+        soft: false
+    secrets:
+      name: container_registry_credentials
+      secret: atmosphere-registry-credentials
+      pass-to-parent: true
+    vars: *image_vars
+
+- job:
+    name: atmosphere-promote-container-image
+    parent: ci-promote-container-image
+    secrets:
+      name: container_registry_credentials
+      secret: atmosphere-registry-credentials
+      pass-to-parent: true
+    nodeset:
+      nodes: []
+    vars: *image_vars

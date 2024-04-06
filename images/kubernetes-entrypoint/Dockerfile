@@ -12,16 +12,13 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-FROM golang:1.21 AS go-builder
-COPY go.mod go.sum /src/
+FROM golang:1.21 AS build
+ARG KUBERNETES_ENTRYPOINT_GIT_REF=4fbcf7ce324dc66e78480f73035e31434cfea1e8
+ADD https://opendev.org/airship/kubernetes-entrypoint.git#${KUBERNETES_ENTRYPOINT_GIT_REF} /src
 WORKDIR /src
-RUN go mod download
+RUN CGO_ENABLED=0 GOOS=linux go build -o /main
 
-FROM go-builder AS libvirt-tls-sidecar-builder
-COPY cmd/ /src/cmd/
-COPY internal/ /src/internal/
-RUN go build -o main ./cmd/libvirt-tls-sidecar/main.go
-
-FROM registry.atmosphere.dev/library/ubuntu:zed AS libvirt-tls-sidecar
-COPY --from=libvirt-tls-sidecar-builder /src/main /usr/bin/libvirt-tls-sidecar
-ENTRYPOINT ["/usr/bin/libvirt-tls-sidecar"]
+FROM scratch
+COPY --from=build /main /kubernetes-entrypoint
+USER 65534
+ENTRYPOINT ["/kubernetes-entrypoint"]

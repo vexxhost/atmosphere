@@ -12,16 +12,15 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-FROM golang:1.21 AS go-builder
-COPY go.mod go.sum /src/
-WORKDIR /src
-RUN go mod download
+FROM registry.atmosphere.dev/library/openstack-venv-builder:zed AS build
+ARG SENLIN_GIT_REF=b6ef17b0f787fb7a0609ba36dc13097882a6a3ff
+ADD --keep-git-dir=true https://opendev.org/openstack/senlin.git#${SENLIN_GIT_REF} /src/senlin
+RUN git -C /src/senlin fetch --unshallow
+RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
+pip3 install \
+    --constraint /upper-constraints.txt \
+        /src/senlin
+EOF
 
-FROM go-builder AS libvirt-tls-sidecar-builder
-COPY cmd/ /src/cmd/
-COPY internal/ /src/internal/
-RUN go build -o main ./cmd/libvirt-tls-sidecar/main.go
-
-FROM registry.atmosphere.dev/library/ubuntu:zed AS libvirt-tls-sidecar
-COPY --from=libvirt-tls-sidecar-builder /src/main /usr/bin/libvirt-tls-sidecar
-ENTRYPOINT ["/usr/bin/libvirt-tls-sidecar"]
+FROM registry.atmosphere.dev/library/openstack-python-runtime:zed
+COPY --from=build --link /var/lib/openstack /var/lib/openstack

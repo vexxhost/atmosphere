@@ -1,0 +1,38 @@
+From f8ec437329510ef59c81084712dbfe49528ef56d Mon Sep 17 00:00:00 2001
+From: Mohammed Naser <mnaser@vexxhost.com>
+Date: Thu, 28 Mar 2024 14:38:43 -0400
+Subject: [PATCH] fix(ovn): set mtu in external_ids correctly
+
+In the previous patch, we did account for the MTU showing up
+in the external IDs however the code only sets it if it's using
+a remote managed port binding.  This code instead sets the binding
+for all the inerface types instead.
+
+Related-Change-Id: I7ff300e9634e5e3fc68d70540392109fd8b9babc
+Closes-Bug: 2053274
+Change-Id: I0653c83c5fb595847bb61182223db39b2f7e98c6
+---
+ .../plugins/ml2/drivers/ovn/mech_driver/ovsdb/ovn_client.py   | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/neutron/plugins/ml2/drivers/ovn/mech_driver/ovsdb/ovn_client.py b/neutron/plugins/ml2/drivers/ovn/mech_driver/ovsdb/ovn_client.py
+index 3e7bc5c01f..6f9e90afde 100644
+--- a/neutron/plugins/ml2/drivers/ovn/mech_driver/ovsdb/ovn_client.py
++++ b/neutron/plugins/ml2/drivers/ovn/mech_driver/ovsdb/ovn_client.py
+@@ -480,11 +480,13 @@ class OVNClient(object):
+         # HA Chassis Group will bind the port to the highest
+         # priority Chassis
+         if port_type != ovn_const.LSP_TYPE_EXTERNAL:
++            port_net = self._plugin.get_network(
++                context, port['network_id'])
++            mtu = str(port_net['mtu'])
+             if (vnic_type == portbindings.VNIC_REMOTE_MANAGED and
+                     ovn_const.VIF_DETAILS_PF_MAC_ADDRESS in binding_prof):
+                 port_net = self._plugin.get_network(
+                     context, port['network_id'])
+-                mtu = str(port_net['mtu'])
+                 options.update({
+                     ovn_const.LSP_OPTIONS_VIF_PLUG_TYPE_KEY: 'representor',
+                     ovn_const.LSP_OPTIONS_VIF_PLUG_MTU_REQUEST_KEY: mtu,
+-- 
+2.34.1
