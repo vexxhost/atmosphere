@@ -12,16 +12,8 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-FROM golang:1.21 AS go-builder
-COPY go.mod go.sum /src/
-WORKDIR /src
-RUN go mod download
-
-FROM go-builder AS libvirt-tls-sidecar-builder
-COPY cmd/ /src/cmd/
-COPY internal/ /src/internal/
-RUN go build -o main ./cmd/libvirt-tls-sidecar/main.go
-
-FROM registry.atmosphere.dev/library/ubuntu:main AS libvirt-tls-sidecar
-COPY --from=libvirt-tls-sidecar-builder /src/main /usr/bin/libvirt-tls-sidecar
-ENTRYPOINT ["/usr/bin/libvirt-tls-sidecar"]
+FROM registry.atmosphere.dev/library/ubuntu:main
+COPY trusted.gpg.d/ubuntu-cloud-keyring.gpg /etc/apt/trusted.gpg.d/ubuntu-cloud-keyring.gpg
+COPY <<EOF /etc/apt/sources.list.d/cloudarchive.list
+deb http://ubuntu-cloud.archive.canonical.com/ubuntu jammy-updates/caracal main
+EOF

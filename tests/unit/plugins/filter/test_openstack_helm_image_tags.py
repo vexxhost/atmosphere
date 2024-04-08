@@ -46,15 +46,15 @@ def atmosphere_images(defaults):
 
 def test_openstack_helm_image_tags_for_magnum(atmosphere_images):
     assert openstack_helm_image_tags(atmosphere_images, "magnum") == {
-        "bootstrap": "ghcr.io/vexxhost/atmosphere/heat:zed",
-        "db_drop": "ghcr.io/vexxhost/atmosphere/heat:zed",
-        "db_init": "ghcr.io/vexxhost/atmosphere/heat:zed",
+        "bootstrap": "ghcr.io/vexxhost/atmosphere/heat:main",
+        "db_drop": "ghcr.io/vexxhost/atmosphere/heat:main",
+        "db_init": "ghcr.io/vexxhost/atmosphere/heat:main",
         "dep_check": "quay.io/vexxhost/kubernetes-entrypoint:latest",
-        "ks_endpoints": "ghcr.io/vexxhost/atmosphere/heat:zed",
-        "ks_service": "ghcr.io/vexxhost/atmosphere/heat:zed",
-        "ks_user": "ghcr.io/vexxhost/atmosphere/heat:zed",
-        "magnum_api": "quay.io/vexxhost/magnum:zed",
-        "magnum_conductor": "quay.io/vexxhost/magnum:zed",
-        "magnum_db_sync": "quay.io/vexxhost/magnum:zed",
+        "ks_endpoints": "ghcr.io/vexxhost/atmosphere/heat:main",
+        "ks_service": "ghcr.io/vexxhost/atmosphere/heat:main",
+        "ks_user": "ghcr.io/vexxhost/atmosphere/heat:main",
+        "magnum_api": "quay.io/vexxhost/magnum:main",
+        "magnum_conductor": "quay.io/vexxhost/magnum:main",
+        "magnum_db_sync": "quay.io/vexxhost/magnum:main",
         "rabbit_init": "docker.io/library/rabbitmq:3.10.2-management",
     }

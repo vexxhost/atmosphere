@@ -12,16 +12,14 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-FROM golang:1.21 AS go-builder
-COPY go.mod go.sum /src/
-WORKDIR /src
-RUN go mod download
-
-FROM go-builder AS libvirt-tls-sidecar-builder
-COPY cmd/ /src/cmd/
-COPY internal/ /src/internal/
-RUN go build -o main ./cmd/libvirt-tls-sidecar/main.go
-
-FROM registry.atmosphere.dev/library/ubuntu:main AS libvirt-tls-sidecar
-COPY --from=libvirt-tls-sidecar-builder /src/main /usr/bin/libvirt-tls-sidecar
-ENTRYPOINT ["/usr/bin/libvirt-tls-sidecar"]
+FROM quay.io/centos/centos:stream9
+ARG OVS_SERIES=3.1
+ARG OVS_VERSION=${OVS_SERIES}.0-65
+RUN <<EOF sh -xe
+dnf -y --setopt=install_weak_deps=False --setopt=tsflags=nodocs install \
+    centos-release-nfv-openvswitch.noarch
+dnf -y --setopt=install_weak_deps=False --setopt=tsflags=nodocs install \
+    openvswitch${OVS_SERIES}-${OVS_VERSION}.el9s iptables
+dnf -y clean all
+rm -rf /var/cache/dnf
+EOF

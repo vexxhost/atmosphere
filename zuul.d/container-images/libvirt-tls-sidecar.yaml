@@ -1,0 +1,57 @@
+# Copyright (c) 2024 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- project:
+    check:
+      jobs:
+        - atmosphere-build-container-image-libvirt-tls-sidecar
+    gate:
+      jobs:
+        - atmosphere-upload-container-image-libvirt-tls-sidecar
+    promote:
+      jobs:
+        - atmosphere-promote-container-image-libvirt-tls-sidecar
+
+- job:
+    name: atmosphere-build-container-image-libvirt-tls-sidecar
+    parent: atmosphere-build-container-image
+    vars: &container_image_vars
+      promote_container_image_job: atmosphere-upload-container-image-libvirt-tls-sidecar
+      container_images:
+        - context: .
+          target: libvirt-tls-sidecar
+          registry: registry.atmosphere.dev
+          repository: registry.atmosphere.dev/library/libvirt-tls-sidecar
+          arch:
+            - linux/amd64
+          tags:
+            - main
+    files: &container_image_files
+      - go.mod
+      - go.sum
+      - cmd/.*
+      - internal/.*
+      - Dockerfile
+
+- job:
+    name: atmosphere-upload-container-image-libvirt-tls-sidecar
+    parent: atmosphere-upload-container-image
+    vars: *container_image_vars
+    files: *container_image_files
+
+- job:
+    name: atmosphere-promote-container-image-libvirt-tls-sidecar
+    parent: atmosphere-promote-container-image
+    vars: *container_image_vars
+    files: *container_image_files

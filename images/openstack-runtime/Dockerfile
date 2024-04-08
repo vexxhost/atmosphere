@@ -12,16 +12,12 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-FROM golang:1.21 AS go-builder
-COPY go.mod go.sum /src/
-WORKDIR /src
-RUN go mod download
-
-FROM go-builder AS libvirt-tls-sidecar-builder
-COPY cmd/ /src/cmd/
-COPY internal/ /src/internal/
-RUN go build -o main ./cmd/libvirt-tls-sidecar/main.go
-
-FROM registry.atmosphere.dev/library/ubuntu:main AS libvirt-tls-sidecar
-COPY --from=libvirt-tls-sidecar-builder /src/main /usr/bin/libvirt-tls-sidecar
-ENTRYPOINT ["/usr/bin/libvirt-tls-sidecar"]
+ARG FROM=registry.atmosphere.dev/library/ubuntu-cloud-archive:main
+FROM ${FROM}
+ONBUILD ARG PROJECT
+ONBUILD ARG SHELL=/usr/sbin/nologin
+ONBUILD RUN \
+    groupadd -g 42424 ${PROJECT} && \
+    useradd -u 42424 -g 42424 -M -d /var/lib/${PROJECT} -s ${SHELL} -c "${PROJECT} User" ${PROJECT} && \
+    mkdir -p /etc/${PROJECT} /var/log/${PROJECT} /var/lib/${PROJECT} /var/cache/${PROJECT} && \
+    chown -Rv ${PROJECT}:${PROJECT} /etc/${PROJECT} /var/log/${PROJECT} /var/lib/${PROJECT} /var/cache/${PROJECT}

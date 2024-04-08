@@ -12,16 +12,21 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-FROM golang:1.21 AS go-builder
-COPY go.mod go.sum /src/
+FROM alpine/git:2.43.0 AS src
+ARG CAPO_VERSION=v0.9.0
+ADD https://github.com/kubernetes-sigs/cluster-api-provider-openstack.git#${CAPO_VERSION} /src
 WORKDIR /src
-RUN go mod download
+COPY /patches /patches
+RUN git apply /patches/*.patch
 
-FROM go-builder AS libvirt-tls-sidecar-builder
-COPY cmd/ /src/cmd/
-COPY internal/ /src/internal/
-RUN go build -o main ./cmd/libvirt-tls-sidecar/main.go
+FROM golang:1.20 AS builder
+COPY --from=src --link /src /src
+WORKDIR /src
+ARG ARCH
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=${ARCH} \
+    go build -ldflags "-extldflags '-static'" -o manager ${package}
 
-FROM registry.atmosphere.dev/library/ubuntu:main AS libvirt-tls-sidecar
-COPY --from=libvirt-tls-sidecar-builder /src/main /usr/bin/libvirt-tls-sidecar
-ENTRYPOINT ["/usr/bin/libvirt-tls-sidecar"]
+FROM gcr.io/distroless/static:nonroot
+COPY --from=builder /src/manager /manager
+USER 65532
+ENTRYPOINT ["/manager"]
