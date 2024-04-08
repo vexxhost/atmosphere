@@ -16,9 +16,14 @@ podLabels: {}
 # -- Pod security context (runAsUser, etc.)
 podSecurityContext: {}
 
-# -- Toggle to create ClusterRole and ClusterRoleBinding
+# -- Container security context (allowPrivilegeEscalation, etc.)
+containerSecurityContext: {}
+
 rbac:
+  # -- Toggle to create ClusterRole and ClusterRoleBinding
   create: true
+  # -- Name of a PodSecurityPolicy to use in the ClusterRole. If unset, no PodSecurityPolicy is used.
+  podSecurityPolicyName: ''
 
 serviceAccount:
   # -- Toggle to create ServiceAccount
@@ -32,11 +37,17 @@ image:
   # -- Image repo
   repository: grafana/agent-operator
   # -- Image tag
-  tag: v0.25.1
+  tag: v0.39.1
   # -- Image pull policy
   pullPolicy: IfNotPresent
   # -- Image pull secrets
   pullSecrets: []
+
+# -- hostAliases to add
+hostAliases: []
+#  - ip: 1.2.3.4
+#    hostnames:
+#      - domain.tld
 
 # -- If both are set, Agent Operator will create and maintain a service for scraping kubelets
 # https://grafana.com/docs/agent/latest/operator/getting-started/#monitor-kubelets
