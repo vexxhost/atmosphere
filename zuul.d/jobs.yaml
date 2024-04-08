@@ -13,35 +13,12 @@
 # under the License.
 
 - job:
-    name: atmosphere-buildset-registry
-    pre-run: zuul.d/playbooks/buildset-registry/pre.yml
-    run: zuul.d/playbooks/buildset-registry/run.yml
-    ansible-split-streams: true
-
-- job:
-    name: atmosphere-upload-images
-    parent: atmosphere-buildset-registry
-    run: zuul.d/playbooks/buildset-registry/run.yml
-    secrets:
-      - registry_credentials
-      - cosign_key
-
-- job:
     name: atmosphere-molecule
     parent: tox
     abstract: true
     pre-run: zuul.d/playbooks/molecule/pre.yml
     run: zuul.d/playbooks/molecule/run.yml
     post-run: zuul.d/playbooks/molecule/post.yml
-    dependencies:
-      - atmosphere-buildset-registry
-
-- job:
-    name: atmosphere-molecule-keycloak
-    parent: atmosphere-molecule
-    pre-run: zuul.d/playbooks/molecule-keycloak/pre.yml
-    vars:
-      tox_envlist: molecule-keycloak
 
 - job:
     name: atmosphere-molecule-csi
@@ -64,11 +41,22 @@
     name: atmosphere-molecule-aio
     parent: atmosphere-molecule
     abstract: true
-    timeout: 7200
     pre-run: zuul.d/playbooks/molecule-aio/pre.yml
     post-run: zuul.d/playbooks/molecule-aio/post.yml
     roles:
       - zuul: openstack/openstack-helm-infra
+
+- job:
+    name: atmosphere-molecule-aio-keycloak
+    parent: atmosphere-molecule-aio
+    vars:
+      tox_envlist: molecule-keycloak
+
+- job:
+    name: atmosphere-molecule-aio-full
+    parent: atmosphere-molecule-aio
+    abstract: true
+    timeout: 7200
     nodeset:
       nodes:
         - name: ubuntu-jammy
@@ -76,13 +64,13 @@
 
 - job:
     name: atmosphere-molecule-aio-openvswitch
-    parent: atmosphere-molecule-aio
+    parent: atmosphere-molecule-aio-full
     vars:
       tox_envlist: molecule-aio-openvswitch
 
 - job:
     name: atmosphere-molecule-aio-ovn
-    parent: atmosphere-molecule-aio
+    parent: atmosphere-molecule-aio-full
     # NOTE(mnaser): https://github.com/vexxhost/atmosphere/issues/662
     voting: false
     vars:

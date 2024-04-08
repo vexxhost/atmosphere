@@ -1,0 +1,51 @@
+# Copyright (c) 2024 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- project:
+    check:
+      jobs:
+        - atmosphere-build-container-image-openvswitch
+    gate:
+      jobs:
+        - atmosphere-upload-container-image-openvswitch
+    promote:
+      jobs:
+        - atmosphere-promote-container-image-openvswitch
+
+- job:
+    name: atmosphere-build-container-image-openvswitch
+    parent: atmosphere-build-container-image
+    vars: &container_image_vars
+      promote_container_image_job: atmosphere-upload-container-image-openvswitch
+      container_images:
+        - context: images/openvswitch
+          repository: registry.atmosphere.dev/library/openvswitch
+          arch:
+            - linux/amd64
+          tags:
+            - zed
+    files: &container_image_files
+      - images/openvswitch/.*
+
+- job:
+    name: atmosphere-upload-container-image-openvswitch
+    parent: atmosphere-upload-container-image
+    vars: *container_image_vars
+    files: *container_image_files
+
+- job:
+    name: atmosphere-promote-container-image-openvswitch
+    parent: atmosphere-promote-container-image
+    vars: *container_image_vars
+    files: *container_image_files
