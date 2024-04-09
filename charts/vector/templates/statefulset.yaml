@@ -5,6 +5,8 @@ metadata:
   name: {{ include "vector.fullname" . }}
   labels:
     {{- include "vector.labels" . | nindent 4 }}
+  annotations:
+    {{- toYaml .Values.workloadResourceAnnotations | nindent 4 }}
 spec:
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicas }}
@@ -13,6 +15,9 @@ spec:
   selector:
     matchLabels:
       {{- include "vector.selectorLabels" . | nindent 6 }}
+  {{- if semverCompare ">=1.22-0" .Capabilities.KubeVersion.GitVersion }}
+  minReadySeconds: {{ .Values.minReadySeconds }}
+  {{- end }}
   {{- with .Values.updateStrategy }}
   updateStrategy:
     {{- toYaml . | nindent 4 }}
@@ -48,7 +53,9 @@ spec:
       name: data
     spec:
       accessModes: {{ .Values.persistence.accessModes }}
+      {{- if .Values.persistence.storageClassName }}
       storageClassName: {{ .Values.persistence.storageClassName }}
+      {{- end }}
       resources:
         requests:
           storage: {{ .Values.persistence.size }}
