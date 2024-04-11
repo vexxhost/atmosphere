@@ -13,6 +13,18 @@
 # under the License.
 
 - job:
+    name: atmosphere-build-collection
+    pre-run: zuul.d/playbooks/build-collection/pre.yml
+    run: zuul.d/playbooks/build-collection/run.yml
+
+- job:
+    name: atmosphere-publish-collection
+    parent: atmosphere-build-collection
+    post-run: zuul.d/playbooks/build-collection/publish.yml
+    secrets:
+      - ansible_galaxy_info
+
+- job:
     name: atmosphere-molecule
     parent: tox
     abstract: true
