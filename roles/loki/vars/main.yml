@@ -26,6 +26,16 @@ _loki_helm_values:
       replication_factor: 1
     limits_config:
       max_label_names_per_series: 25
+    rulerConfig:
+      alertmanager_url: http://alertmanager-operated.monitoring:9093
+      enable_alertmanager_v2: true
+      ring:
+        kvstore:
+          store: inmemory
+      storage:
+        type: local
+        local:
+          directory: /rules
     storage:
       type: filesystem
     schemaConfig:
@@ -46,16 +56,6 @@ _loki_helm_values:
         installOperator: false
     lokiCanary:
       enabled: false
-    rules:
-      additionalGroups:
-        - name: additional-loki-rules
-          rules:
-            - alert: NovaCellNotResponding
-              expr: 'kubernetes.labels.component="compute" and log =~ "not responding and hence is being omitted from the results"'
-              labels:
-                severity: critical
-              annotations:
-                summary: Nova Cell is not responding. It can cause port deletion in CAPI.
   singleBinary:
     replicas: 1
     nodeSelector:
@@ -77,3 +77,25 @@ _loki_helm_values:
       openstack-control-plane: enabled
   lokiCanary:
     enabled: false
+  sidecar:
+    rules:
+      label: loki_rule
+      labelValue: "atmosphere"
+  extraObjects:
+  - apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: loki-alerting-rules
+      labels:
+        loki_rule: "atmosphere"
+    data:
+      loki-alerting-rules.yaml: |-
+        groups:
+          - name: additional-loki-rules
+            rules:
+              - alert: NovaCellNotResponding
+                expr: 'kubernetes.labels.component="compute" and log =~ "not responding and hence is being omitted from the results"'
+                labels:
+                  severity: critical
+                annotations:
+                  summary: Nova Cell is not responding. It can cause port deletion in CAPI.
