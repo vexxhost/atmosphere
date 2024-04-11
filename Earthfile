@@ -93,10 +93,6 @@ build.venv:
   RUN pip install -r requirements.txt
   SAVE IMAGE --cache-hint
 
-build.venv.dev:
-  FROM +build.venv --only main,dev
-  SAVE ARTIFACT /venv
-
 build.venv.runtime:
   FROM +build.venv --only main
   SAVE ARTIFACT /venv
@@ -178,14 +174,6 @@ scan-images:
   FOR IMAGE IN $(cat /defaults.yml | egrep -E 'ghcr.io/vexxhost|registry.atmosphere.dev' | cut -d' ' -f4 | sort | uniq)
     BUILD +scan-image --IMAGE ${IMAGE}
   END
-
-pin-images:
-  FROM +build.venv.dev
-  COPY roles/defaults/vars/main.yml /defaults.yml
-  COPY build/pin-images.py /usr/local/bin/pin-images
-  ARG REGISTRY=ghcr.io/vexxhost/atmosphere
-  RUN --no-cache /usr/local/bin/pin-images --registry ${REGISTRY} /defaults.yml /pinned.yml
-  SAVE ARTIFACT /pinned.yml AS LOCAL roles/defaults/vars/main.yml
 
 gh:
   FROM alpine:3

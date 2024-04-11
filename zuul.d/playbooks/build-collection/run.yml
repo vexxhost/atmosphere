@@ -12,21 +12,21 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- project:
-    merge-mode: squash-merge
-    check:
-      jobs:
-        - atmosphere-build-collection
-        - atmosphere-buildset-registry
-        - atmosphere-molecule-aio-keycloak
-        - atmosphere-molecule-aio-openvswitch
-        - atmosphere-molecule-aio-ovn
-        - atmosphere-molecule-csi-local-path-provisioner
-        - atmosphere-molecule-csi-rbd
-    gate:
-      jobs:
-        - atmosphere-build-collection
-    post:
-      jobs:
-        - atmosphere-molecule-aio-keycloak
-        - atmosphere-upload-images
+- name: Build collection
+  hosts: all
+  tasks:
+    - name: Pin all image digests
+      ansible.builtin.include_role:
+        name: tox
+      vars:
+        tox_envlist: pin-digests
+
+    - name: Print out the new image manifest file
+      ansible.builtin.command: |
+        cat {{ zuul.project.src_dir }}/roles/defaults/vars/main.yml
+
+    - name: Build Ansible collection
+      ansible.builtin.shell: |
+        {{ ansible_galaxy_executable }} collection build -vvv .
+      args:
+        chdir: '{{ zuul.project.src_dir }}'
