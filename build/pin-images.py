@@ -126,7 +126,9 @@ def main():
     parser.add_argument(
         "src", help="Path for default values file", type=argparse.FileType("r")
     )
-    parser.add_argument("dst", help="Path for output file", type=argparse.FileType("w"))
+    parser.add_argument(
+        "dst", help="Path for output file", type=argparse.FileType("r+")
+    )
     parser.add_argument(
         "-r",
         "--registry",
