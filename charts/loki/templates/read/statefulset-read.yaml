@@ -5,12 +5,24 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: {{ include "loki.readFullname" . }}
+  namespace: {{ $.Release.Namespace }}
   labels:
     app.kubernetes.io/part-of: memberlist
     {{- include "loki.readLabels" . | nindent 4 }}
+  {{- if or (not (empty .Values.loki.annotations)) (not (empty .Values.read.annotations))}}
+  annotations:
+    {{- with .Values.loki.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with .Values.read.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- end }}
 spec:
+{{- if not .Values.read.autoscaling.enabled }}
   replicas: {{ .Values.read.replicas }}
-  podManagementPolicy: Parallel
+{{- end }}
+  podManagementPolicy: {{ .Values.read.podManagementPolicy }}
   updateStrategy:
     rollingUpdate:
       partition: 0
@@ -31,7 +43,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: {{ include (print .Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/config: {{ include (print .Template.BasePath "/config.yaml") . | sha256sum }}
         {{- with .Values.loki.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -74,10 +86,10 @@ spec:
             {{- end }}
           ports:
             - name: http-metrics
-              containerPort: 3100
+              containerPort: {{ .Values.loki.server.http_listen_port }}
               protocol: TCP
             - name: grpc
-              containerPort: 9095
+              containerPort: {{ .Values.loki.server.grpc_listen_port }}
               protocol: TCP
             - name: http-memberlist
               containerPort: 7946
@@ -116,12 +128,23 @@ spec:
             {{- end }}
           resources:
             {{- toYaml .Values.read.resources | nindent 12 }}
+        {{- with .Values.read.extraContainers }}
+        {{- toYaml . | nindent 8}}
+        {{- end }}
       {{- with .Values.read.affinity }}
       affinity:
         {{- tpl . $ | nindent 8 }}
       {{- end }}
+      {{- with .Values.read.dnsConfig }}
+      dnsConfig:
+        {{- tpl . $ | nindent 8 }}
+      {{- end }}
       {{- with .Values.read.nodeSelector }}
       nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.read.topologySpreadConstraints }}
+      topologySpreadConstraints:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       {{- with .Values.read.tolerations }}
@@ -155,7 +178,9 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
   volumeClaimTemplates:
-    - metadata:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
         name: data
       spec:
         accessModes:
