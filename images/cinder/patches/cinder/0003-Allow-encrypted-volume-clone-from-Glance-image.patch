@@ -1,0 +1,319 @@
+From 97953c8bd8c7d61a3f68c3e829ff79290315ec5b Mon Sep 17 00:00:00 2001
+From: ricolin <rlin@vexxhost.com>
+Date: Fri, 15 Mar 2024 23:26:14 +0800
+Subject: [PATCH 3/3] Allow encrypted volume clone from Glance image
+
+Allow clone image when creating encrypted volume from Glance image if both
+stored in RBD.
+Previously, Glance image clone is not supported for encrypted volume
+creation. The old process is to download image to local disk, encrypt the
+local file, and import it back to RBD. This not just slow, but also
+protentially take large amount of local disk space from hosts that runs
+Cinder volume service.
+The new process is to try and clone from Glance image (if it's also stored
+in RBD), flatten it, and encrypting new image in RBD for volume. And If
+Glance image source is not clonable, will continue with copy-and-import
+method as previous flow.
+In above flow, If clone from Glance image is appliable. Even it still
+requires to clone and flatten RBD image might took some time, but should
+still be a lot faster than copy-and-import. And also no local disk will
+be used to store raw image in this case.
+This also introduced driver method `clone_image_and_encrypt` for drivers
+that seperate the clone process from non-encrypted volume so the create
+flow won't be affected.
+
+Related-Bug: #2055517
+Change-Id: Ia023646d8bc9468bf5cc8955f7013299b2a3a460
+---
+ .../volume/flows/test_create_volume_flow.py   | 49 ++++++++++
+ cinder/volume/driver.py                       | 11 +++
+ cinder/volume/drivers/rbd.py                  | 95 ++++++++++++++++---
+ cinder/volume/flows/manager/create_volume.py  |  8 +-
+ ...for-encrypted-volume-de477647e9016b8b.yaml | 21 ++++
+ 5 files changed, 167 insertions(+), 17 deletions(-)
+ create mode 100644 releasenotes/notes/allow-clone-image-for-encrypted-volume-de477647e9016b8b.yaml
+
+diff --git a/cinder/tests/unit/volume/flows/test_create_volume_flow.py b/cinder/tests/unit/volume/flows/test_create_volume_flow.py
+index 6ff97aaa0..a85bf7eec 100644
+--- a/cinder/tests/unit/volume/flows/test_create_volume_flow.py
++++ b/cinder/tests/unit/volume/flows/test_create_volume_flow.py
+@@ -1164,6 +1164,7 @@ class CreateVolumeFlowManagerTestCase(test.TestCase):
+         image_location = 'abc'
+ 
+         fake_db.volume_update.return_value = volume
++        fake_driver.clone_image_and_encrypt.return_value = (None, False)
+         fake_manager._create_from_image(self.ctxt, volume,
+                                         image_location, image_id,
+                                         image_meta, fake_image_service)
+@@ -1178,6 +1179,54 @@ class CreateVolumeFlowManagerTestCase(test.TestCase):
+                                                      image_meta=image_meta)
+         mock_cleanup_cg.assert_called_once_with(volume)
+ 
++    @mock.patch('cinder.volume.flows.manager.create_volume.'
++                'CreateVolumeFromSpecTask.'
++                '_prepare_image_cache_entry')
++    @mock.patch('cinder.volume.flows.manager.create_volume.'
++                'CreateVolumeFromSpecTask.'
++                '_handle_bootable_volume_glance_meta')
++    @mock.patch('cinder.image.image_utils.TemporaryImages.fetch')
++    @mock.patch('cinder.image.image_utils.qemu_img_info')
++    @mock.patch('cinder.image.image_utils.check_virtual_size')
++    def test_create_encrypted_volume_from_image_clone(
++        self, mock_check_size, mock_qemu_img, mock_fetch_img,
++        mock_handle_bootable, mock_prepare_image_cache
++    ):
++        fake_db = mock.MagicMock()
++        fake_driver = mock.MagicMock()
++        fake_volume_manager = mock.MagicMock()
++        fake_cache = mock.MagicMock()
++        fake_manager = create_volume_manager.CreateVolumeFromSpecTask(
++            fake_volume_manager, fake_db, fake_driver, fake_cache)
++        volume = fake_volume.fake_volume_obj(
++            self.ctxt,
++            encryption_key_id=fakes.ENCRYPTION_KEY_ID,
++            host='host@backend#pool')
++
++        fake_image_service = fake_image.FakeImageService()
++        image_meta = {}
++        image_id = fakes.IMAGE_ID
++        image_meta['id'] = image_id
++        image_meta['status'] = 'active'
++        image_meta['size'] = 1
++        image_location = 'abc'
++
++        fake_db.volume_update.return_value = volume
++        fake_driver.clone_image_and_encrypt.return_value = (None, True)
++        fake_manager._create_from_image(self.ctxt, volume,
++                                        image_location, image_id,
++                                        image_meta, fake_image_service)
++
++        mock_prepare_image_cache.assert_not_called()
++        fake_driver.create_volume.assert_not_called()
++        fake_driver.clone_image.assert_not_called()
++        fake_driver.clone_image_and_encrypt.assert_called_once()
++        fake_driver.copy_image_to_encrypted_volume.assert_not_called()
++        fake_driver.copy_image_to_volume.assert_not_called()
++        mock_handle_bootable.assert_called_once_with(self.ctxt, volume,
++                                                     image_id=image_id,
++                                                     image_meta=image_meta)
++
+     @mock.patch('cinder.volume.flows.manager.create_volume.'
+                 'CreateVolumeFromSpecTask.'
+                 '_cleanup_cg_in_volume')
+diff --git a/cinder/volume/driver.py b/cinder/volume/driver.py
+index 2ff27564b..030b4a8dd 100644
+--- a/cinder/volume/driver.py
++++ b/cinder/volume/driver.py
+@@ -1192,6 +1192,17 @@ class BaseVD(object, metaclass=abc.ABCMeta):
+         """
+         return None, False
+ 
++    def clone_image_and_encrypt(
++        self, context, volume, image_location, image_meta, image_service
++    ):
++        """Create and encrypt a volume efficiently from an existing image.
++
++        Refer to
++        :obj:`cinder.interface.volume_driver.VolumeDriverCore.clone_image`
++        for additional information.
++        """
++        return None, False
++
+     def backup_use_temp_snapshot(self):
+         """Get the configured setting for backup from snapshot.
+ 
+diff --git a/cinder/volume/drivers/rbd.py b/cinder/volume/drivers/rbd.py
+index aace801f3..ad0eea9d5 100644
+--- a/cinder/volume/drivers/rbd.py
++++ b/cinder/volume/drivers/rbd.py
+@@ -141,6 +141,13 @@ CONF.register_opts(RBD_OPTS, group=configuration.SHARED_CONF_GROUP)
+ EXTRA_SPECS_REPL_ENABLED = "replication_enabled"
+ EXTRA_SPECS_MULTIATTACH = "multiattach"
+ 
++# Note(ricolin): Reference ceph site for more information:
++# https://github.com/ceph/ceph/blob/main/src/include/rbd/librbd.h
++RBD_ENCRYPTION_ALG = {
++    'aes-128': 0,
++    'aes-256': 1
++}
++
+ QOS_KEY_MAP = {
+     'total_iops_sec': {
+         'ceph_key': 'rbd_qos_iops_limit',
+@@ -1190,6 +1197,20 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
+ 
+         return max(image_stripe_unit, default_stripe_unit)
+ 
++    def _encrypt_volume(self,
++                        context: context.RequestContext,
++                        volume: Volume,
++                        passphrase: str,
++                        cipher_spec: dict
++                        ) -> None:
++        LOG.debug("Encrypting volume $s", volume.name)
++        with RBDVolumeProxy(self, volume.name) as vol:
++            vol.encryption_format(
++                0,
++                passphrase,
++                RBD_ENCRYPTION_ALG[cipher_spec['cipher_alg']]
++            )
++
+     def _clone(self,
+                volume: Volume,
+                src_pool: str,
+@@ -1873,6 +1894,37 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
+                     image_location: Optional[list],
+                     image_meta: dict,
+                     image_service) -> tuple[dict, bool]:
++        return self._clone_image(context, volume, image_location,
++                                 image_meta, image_service)
++
++    def clone_image_and_encrypt(
++        self,
++        context: context.RequestContext,
++        volume: Volume,
++        image_location: Optional[list],
++        image_meta: dict,
++        image_service
++    ) -> tuple[dict, bool]:
++
++        # Note(ricolin): method `encryption_format` added after Ceph Pacific
++        # release (>=16.1.0).
++        if self.rbd and hasattr(
++            self.rbd.Image, 'encryption_format') and callable(
++                self.rbd.Image.encryption_format):
++            return self._clone_image(
++                context, volume, image_location,
++                image_meta, image_service, is_encrypt=True)
++        else:
++            return {}, False
++
++    def _clone_image(self,
++                     context: context.RequestContext,
++                     volume: Volume,
++                     image_location: Optional[list],
++                     image_meta: dict,
++                     image_service,
++                     is_encrypt: Optional[bool] = False
++                     ) -> tuple[dict, bool]:
+         if image_location:
+             # Note: image_location[0] is glance image direct_url.
+             # image_location[1] contains the list of all locations (including
+@@ -1890,12 +1942,41 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
+                         url_location, image_meta):
+                     _prefix, pool, image, snapshot = \
+                         self._parse_location(url_location)
++                    if is_encrypt:
++                        passphrase, cipher_spec = self._fetch_encryption_info(
++                            context, volume)
++                        if cipher_spec['cipher_alg'] not in RBD_ENCRYPTION_ALG:
++                            LOG.debug(
++                                "Skip clone. Cipher spec: %s not supported "
++                                "for encrypt volume directly from RBD.",
++                                cipher_spec)
++                            return ({}, False)
+                     volume_update = self._clone(volume, pool, image, snapshot)
++                    if is_encrypt:
++                        self._flatten(self.configuration.rbd_pool, volume.name)
++                        self._encrypt_volume(
++                            context, volume, passphrase, cipher_spec)
+                     volume_update['provider_location'] = None
+                     self._resize(volume)
+                     return volume_update, True
+         return ({}, False)
+ 
++    def _fetch_encryption_info(self,
++                               context: context.RequestContext,
++                               volume: Volume) -> tuple[str, dict]:
++        encryption = volume_utils.check_encryption_provider(
++            volume,
++            context)
++        # Fetch the key associated with the volume and decode the passphrase
++        keymgr = key_manager.API(CONF)
++        key = keymgr.get(context, encryption['encryption_key_id'])
++        passphrase = binascii.hexlify(key.get_encoded()).decode('utf-8')
++
++        # Decode the dm-crypt style cipher spec into something qemu-img can use
++        cipher_spec = image_utils.decode_cipher(encryption['cipher'],
++                                                encryption['key_size'])
++        return passphrase, cipher_spec
++
+     def copy_image_to_encrypted_volume(self,
+                                        context: context.RequestContext,
+                                        volume: Volume,
+@@ -1920,18 +2001,8 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
+                        volume: Volume,
+                        tmp_dir: str,
+                        src_image_path: Any) -> None:
+-        encryption = volume_utils.check_encryption_provider(
+-            volume,
+-            context)
+-
+-        # Fetch the key associated with the volume and decode the passphrase
+-        keymgr = key_manager.API(CONF)
+-        key = keymgr.get(context, encryption['encryption_key_id'])
+-        passphrase = binascii.hexlify(key.get_encoded()).decode('utf-8')
+-
+-        # Decode the dm-crypt style cipher spec into something qemu-img can use
+-        cipher_spec = image_utils.decode_cipher(encryption['cipher'],
+-                                                encryption['key_size'])
++        passphrase, cipher_spec = self._fetch_encryption_info(
++            context, volume)
+ 
+         tmp_dir = volume_utils.image_conversion_dir()
+ 
+diff --git a/cinder/volume/flows/manager/create_volume.py b/cinder/volume/flows/manager/create_volume.py
+index 549a49b00..8ea4c0fe1 100644
+--- a/cinder/volume/flows/manager/create_volume.py
++++ b/cinder/volume/flows/manager/create_volume.py
+@@ -1086,11 +1086,6 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
+         # NOTE (singn): two params need to be returned
+         # dict containing provider_location for cloned volume
+         # and clone status.
+-        # NOTE (lixiaoy1): Currently all images are raw data, we can't
+-        # use clone_image to copy data if new volume is encrypted
+-        # NOTE (ricolin):  If the image provided an encryption key, we have
+-        # already cloned it to the volume's key in
+-        # _get_encryption_key_id, so we can do a direct clone.
+         image_encryption_key = image_meta.get('cinder_encryption_key_id')
+         volume_is_encrypted = volume.encryption_key_id is not None
+         cloned = False
+@@ -1102,6 +1097,9 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
+                                                            image_location,
+                                                            image_meta,
+                                                            image_service)
++        else:
++            model_update, cloned = self.driver.clone_image_and_encrypt(
++                context, volume, image_location, image_meta, image_service)
+ 
+         # Try and clone the image if we have it set as a glance location.
+         if not cloned and 'cinder' in CONF.allowed_direct_url_schemes:
+diff --git a/releasenotes/notes/allow-clone-image-for-encrypted-volume-de477647e9016b8b.yaml b/releasenotes/notes/allow-clone-image-for-encrypted-volume-de477647e9016b8b.yaml
+new file mode 100644
+index 000000000..63d1f38cd
+--- /dev/null
++++ b/releasenotes/notes/allow-clone-image-for-encrypted-volume-de477647e9016b8b.yaml
+@@ -0,0 +1,21 @@
++---
++features:
++  - |
++    Allow clone image when creating encrypted volume from Glance image if both
++    stored in RBD.
++    Previously, Glance image clone is not supported for encrypted volume
++    creation. The old process is to download image to local disk, encrypt the
++    local file, and import it back to RBD. This not just slow, but also
++    protentially take large amount of local disk space from hosts that runs
++    Cinder volume service.
++    The new process is to try and clone from Glance image (if it's also stored
++    in RBD), flatten it, and encrypting new image in RBD for volume. And If
++    Glance image source is not clonable, will continue with copy-and-import
++    method as previous flow.
++    In above flow, If clone from Glance image is appliable. Even it still
++    requires to clone and flatten RBD image might took some time, but should
++    still be a lot faster than copy-and-import. And also no local disk will
++    be used to store raw image in this case.
++    This also introduced driver method `clone_image_and_encrypt` for drivers
++    that seperate the clone process from non-encrypted volume so the create
++    flow won't be affected.
+-- 
+2.34.1
