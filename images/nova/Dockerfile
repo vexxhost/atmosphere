@@ -23,6 +23,7 @@ pip3 install \
 EOF
 
 FROM registry.atmosphere.dev/library/openstack-python-runtime:main
+ADD https://github.com/novnc/noVNC.git#v1.4.0 /usr/share/novnc
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \
