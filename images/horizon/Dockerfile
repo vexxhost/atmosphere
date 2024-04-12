@@ -45,7 +45,8 @@ pip3 install \
         /src/manila-ui \
         /src/neutron-vpnaas-dashboard \
         /src/octavia-dashboard \
-        /src/senlin-dashboard
+        /src/senlin-dashboard \
+        pymemcache
 EOF
 
 FROM registry.atmosphere.dev/library/openstack-python-runtime:main
