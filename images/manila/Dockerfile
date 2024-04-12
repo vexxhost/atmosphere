@@ -13,7 +13,7 @@
 # under the License.
 
 FROM registry.atmosphere.dev/library/openstack-venv-builder:main AS build
-ARG MANILA_GIT_REF=c0fc23a39f87629b59fae7bbf46f70e3e1b459cd
+ARG MANILA_GIT_REF=d8987589ae88ae9b2769fbe6f26d5b6994098038
 ADD --keep-git-dir=true https://opendev.org/openstack/manila.git#${MANILA_GIT_REF} /src/manila
 RUN git -C /src/manila fetch --unshallow
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe

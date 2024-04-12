@@ -13,7 +13,7 @@
 # under the License.
 
 FROM registry.atmosphere.dev/library/openstack-venv-builder:main AS build
-ARG DESIGNATE_GIT_REF=d247267823034c5e656f74e91b50475aa54d3fa6
+ARG DESIGNATE_GIT_REF=097ffc6df181290eba1bcd7c492b1b505bc15434
 ADD --keep-git-dir=true https://opendev.org/openstack/designate.git#${DESIGNATE_GIT_REF} /src/designate
 RUN git -C /src/designate fetch --unshallow
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe

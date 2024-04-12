@@ -13,7 +13,7 @@
 # under the License.
 
 FROM registry.atmosphere.dev/library/openstack-venv-builder:main AS build
-ARG HORIZON_GIT_REF=5de40f9b222608d35c5a0919117259e966217a86
+ARG HORIZON_GIT_REF=3f1f1d46e6e47a3dbe46fb023fe69ff25d6a601b
 ADD --keep-git-dir=true https://opendev.org/openstack/horizon.git#${HORIZON_GIT_REF} /src/horizon
 RUN git -C /src/horizon fetch --unshallow
 ADD --keep-git-dir=true https://opendev.org/openstack/designate-dashboard.git#master /src/designate-dashboard

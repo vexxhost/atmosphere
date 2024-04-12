@@ -13,7 +13,7 @@
 # under the License.
 
 FROM registry.atmosphere.dev/library/openstack-venv-builder:main AS build
-ARG KEYSTONE_GIT_REF=f63062d47712406a807ce07b4ff3ec6213b0e824
+ARG KEYSTONE_GIT_REF=8ca73f758bb613a57815fbe4ae78e3d2afa4af49
 ADD --keep-git-dir=true https://opendev.org/openstack/keystone.git#${KEYSTONE_GIT_REF} /src/keystone
 RUN git -C /src/keystone fetch --unshallow
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe

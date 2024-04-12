@@ -13,7 +13,7 @@
 # under the License.
 
 FROM registry.atmosphere.dev/library/openstack-venv-builder:main AS build
-ARG BARBICAN_GIT_REF=7d6749fcb1ad16a3350de82cd8e523d5b55306f8
+ARG BARBICAN_GIT_REF=ca57ef5436e20e90cf6cd6853efe3c89a9afd986
 ADD --keep-git-dir=true https://opendev.org/openstack/barbican.git#${BARBICAN_GIT_REF} /src/barbican
 RUN git -C /src/barbican fetch --unshallow
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe

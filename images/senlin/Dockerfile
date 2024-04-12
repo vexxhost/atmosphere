@@ -13,7 +13,7 @@
 # under the License.
 
 FROM registry.atmosphere.dev/library/openstack-venv-builder:main AS build
-ARG SENLIN_GIT_REF=b6ef17b0f787fb7a0609ba36dc13097882a6a3ff
+ARG SENLIN_GIT_REF=ec5fae997686c64c3c1192b231b2434e6a6aeb1c
 ADD --keep-git-dir=true https://opendev.org/openstack/senlin.git#${SENLIN_GIT_REF} /src/senlin
 RUN git -C /src/senlin fetch --unshallow
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe

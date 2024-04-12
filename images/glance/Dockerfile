@@ -13,7 +13,7 @@
 # under the License.
 
 FROM registry.atmosphere.dev/library/openstack-venv-builder:main AS build
-ARG GLANCE_GIT_REF=06a18202ab52c64803f044b8f848ed1c160905d2
+ARG GLANCE_GIT_REF=0bcd6cd71c09917c6734421374fd598d73e8d0cc
 ADD --keep-git-dir=true https://opendev.org/openstack/glance.git#${GLANCE_GIT_REF} /src/glance
 RUN git -C /src/glance fetch --unshallow
 ADD --keep-git-dir=true https://opendev.org/openstack/glance_store.git#master /src/glance_store

@@ -13,7 +13,7 @@
 # under the License.
 
 FROM registry.atmosphere.dev/library/openstack-venv-builder:main AS build
-ARG OCTAVIA_GIT_REF=000b577f3e9c9ff7cb893e9f6e635753017a78c6
+ARG OCTAVIA_GIT_REF=824b51a1dad80292b7a8ad5d61bf3ce706b1fb29
 ADD --keep-git-dir=true https://opendev.org/openstack/octavia.git#${OCTAVIA_GIT_REF} /src/octavia
 RUN git -C /src/octavia fetch --unshallow
 ADD --keep-git-dir=true https://opendev.org/openstack/ovn-octavia-provider.git#master /src/ovn-octavia-provider

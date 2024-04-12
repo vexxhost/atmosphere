@@ -13,7 +13,7 @@
 # under the License.
 
 FROM registry.atmosphere.dev/library/openstack-venv-builder:main AS build
-ARG NEUTRON_GIT_REF=ca25eb96f16dbe5ff1ca4446534f9a1d12fa7035
+ARG NEUTRON_GIT_REF=019294c71d94b788c14b23dc1da3c21f51bcdb0b
 ADD --keep-git-dir=true https://opendev.org/openstack/neutron.git#${NEUTRON_GIT_REF} /src/neutron
 RUN git -C /src/neutron fetch --unshallow
 ADD --keep-git-dir=true https://opendev.org/openstack/neutron-vpnaas.git#master /src/neutron-vpnaas
