@@ -26,6 +26,9 @@
 - job:
     name: atmosphere-build-container-image-libvirt-tls-sidecar
     parent: atmosphere-build-container-image
+    dependencies:
+      - name: atmosphere-build-container-image-ubuntu
+        soft: true
     vars: &container_image_vars
       promote_container_image_job: atmosphere-upload-container-image-libvirt-tls-sidecar
       container_images:
@@ -38,15 +41,19 @@
           tags:
             - main
     files: &container_image_files
-      - go.mod
-      - go.sum
+      - images/ubuntu/.*
       - cmd/.*
       - internal/.*
       - Dockerfile
+      - go.mod
+      - go.sum
 
 - job:
     name: atmosphere-upload-container-image-libvirt-tls-sidecar
     parent: atmosphere-upload-container-image
+    dependencies:
+      - name: atmosphere-upload-container-image-ubuntu
+        soft: true
     vars: *container_image_vars
     files: *container_image_files
 

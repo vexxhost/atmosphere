@@ -26,6 +26,9 @@
 - job:
     name: atmosphere-build-container-image-netoffload
     parent: atmosphere-build-container-image
+    dependencies:
+      - name: atmosphere-build-container-image-ubuntu
+        soft: true
     vars: &container_image_vars
       promote_container_image_job: atmosphere-upload-container-image-netoffload
       container_images:
@@ -37,11 +40,15 @@
           tags:
             - main
     files: &container_image_files
+      - images/ubuntu/.*
       - images/netoffload/.*
 
 - job:
     name: atmosphere-upload-container-image-netoffload
     parent: atmosphere-upload-container-image
+    dependencies:
+      - name: atmosphere-upload-container-image-ubuntu
+        soft: true
     vars: *container_image_vars
     files: *container_image_files
 
