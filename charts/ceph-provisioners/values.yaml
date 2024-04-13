@@ -19,27 +19,26 @@
 deployment:
   ceph: true
   client_secrets: false
-  # Original rbd_provisioner is now DEPRECATED. It will be removed in the
-  # next release; CSI RBD provisioner should be used instead.
-  rbd_provisioner: true
   csi_rbd_provisioner: true
-  cephfs_provisioner: true
+  # Original rbd_provisioner and cephfs_provisioner are now DEPRECATED. They
+  # will be removed in the next release; CSI provisioners should be used
+  # instead.
 
 release_group: null
 
 images:
   pull_policy: IfNotPresent
   tags:
-    ceph_bootstrap: 'docker.io/openstackhelm/ceph-daemon:change_770201_ubuntu_bionic-20210113'
-    ceph_cephfs_provisioner: 'docker.io/openstackhelm/ceph-cephfs-provisioner:ubuntu_bionic-20200521'
-    ceph_config_helper: 'docker.io/openstackhelm/ceph-config-helper:change_770201_ubuntu_bionic-20210113'
+    ceph_bootstrap: 'docker.io/openstackhelm/ceph-daemon:uubuntu_jammy_18.2.2-1-20240312'
+    ceph_cephfs_provisioner: 'docker.io/openstackhelm/ceph-cephfs-provisioner:ubuntu_jammy_18.2.2-1-20240312'
+    ceph_config_helper: 'docker.io/openstackhelm/ceph-config-helper:ubuntu_jammy_18.2.2-1-20240312'
     ceph_rbd_provisioner: 'docker.io/openstackhelm/ceph-rbd-provisioner:change_770201_ubuntu_bionic-20210113'
-    csi_provisioner: 'quay.io/k8scsi/csi-provisioner:v1.6.0'
-    csi_snapshotter: 'quay.io/k8scsi/csi-snapshotter:v2.1.1'
-    csi_attacher: 'quay.io/k8scsi/csi-attacher:v2.1.1'
-    csi_resizer: 'quay.io/k8scsi/csi-resizer:v0.4.0'
-    csi_registrar: 'quay.io/k8scsi/csi-node-driver-registrar:v1.2.0'
-    cephcsi: 'quay.io/cephcsi/cephcsi:v3.1.0'
+    csi_provisioner: 'registry.k8s.io/sig-storage/csi-provisioner:v3.1.0'
+    csi_snapshotter: 'registry.k8s.io/sig-storage/csi-snapshotter:v6.0.0'
+    csi_attacher: 'registry.k8s.io/sig-storage/csi-attacher:v3.4.0'
+    csi_resizer: 'registry.k8s.io/sig-storage/csi-resizer:v1.4.0'
+    csi_registrar: 'registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.5.0'
+    cephcsi: 'quay.io/cephcsi/cephcsi:v3.6.2'
     dep_check: 'quay.io/airshipit/kubernetes-entrypoint:v1.0.0'
     image_repo_sync: 'docker.io/library/docker:17.07.0'
   local_registry:
@@ -86,11 +85,14 @@ pod:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
         ceph_rbd_snapshotter:
-          privileged: true
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
         ceph_rbd_attacher:
-          privileged: true
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
         ceph_rbd_resizer:
-          privileged: true
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
         ceph_rbd_cephcsi:
           privileged: true
           capabilities:
@@ -274,6 +276,8 @@ secrets:
   keyrings:
     admin: ceph-client-admin-keyring
     prov_adminSecretName: pvc-ceph-conf-combined-storageclass
+  oci_image_registry:
+    ceph-provisioners: ceph-provisioners-oci-image-registry-key
 
 network:
   public: 192.168.0.0/16
@@ -298,6 +302,10 @@ conf:
       osd_max_object_name_len: 256
       ms_bind_port_min: 6800
       ms_bind_port_max: 7100
+
+ext_ceph_cluster:
+  rook_ceph:
+    connect: false
 
 dependencies:
   dynamic:
@@ -362,7 +370,7 @@ bootstrap:
 # and derive the manifest.
 storageclass:
   rbd:
-    provision_storage_class: true
+    provision_storage_class: false
     provisioner: ceph.com/rbd
     ceph_configmap_name: ceph-etc
     metadata:
@@ -401,7 +409,7 @@ storageclass:
       userId: admin
       userSecretName: pvc-ceph-client-key
   cephfs:
-    provision_storage_class: true
+    provision_storage_class: false
     provisioner: ceph.com/cephfs
     metadata:
       name: cephfs
@@ -424,6 +432,21 @@ endpoints:
     port:
       registry:
         node: 5000
+  oci_image_registry:
+    name: oci-image-registry
+    namespace: oci-image-registry
+    auth:
+      enabled: false
+      ceph-provisioners:
+        username: ceph-provisioners
+        password: password
+    hosts:
+      default: localhost
+    host_fqdn_override:
+      default: null
+    port:
+      registry:
+        default: null
   ceph_mon:
     namespace: null
     hosts:
@@ -442,11 +465,9 @@ manifests:
   configmap_bin: true
   configmap_bin_common: true
   configmap_etc: true
-  deployment_rbd_provisioner: true
   # Original rbd_provisioner is now DEPRECATED. It will be removed in the
   # next release; CSI RBD provisioner should be used instead.
   deployment_csi_rbd_provisioner: true
-  deployment_cephfs_provisioner: true
   job_bootstrap: false
   job_cephfs_client_key: true
   job_image_repo_sync: true
@@ -455,4 +476,5 @@ manifests:
   job_namespace_client_ceph_config: true
   storageclass: true
   helm_tests: true
+  secret_registry: true
 ...

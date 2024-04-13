@@ -48,7 +48,9 @@ function start () {
   # Starts Apache2
   exec {{ .Values.conf.software.apache2.binary }} {{ .Values.conf.software.apache2.start_parameters }}
 {{- else }}
-  exec uwsgi --ini /etc/nova/nova-metadata-uwsgi.ini
+  exec nova-api-metadata \
+        --config-file /etc/nova/nova.conf \
+        --config-file /tmp/pod-shared/nova-api-metadata.ini
 {{- end }}
 }
 

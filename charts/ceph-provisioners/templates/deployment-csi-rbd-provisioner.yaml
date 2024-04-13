@@ -27,6 +27,9 @@ rules:
     resources: ["nodes"]
     verbs: ["get", "list", "watch"]
   - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["list", "watch"]
+  - apiGroups: [""]
     resources: ["secrets"]
     verbs: ["get", "list"]
   - apiGroups: [""]
@@ -56,6 +59,9 @@ rules:
   - apiGroups: ["storage.k8s.io"]
     resources: ["volumeattachments"]
     verbs: ["get", "list", "watch", "update", "patch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["volumeattachments/status"]
+    verbs: ["update", "patch"]
   - apiGroups: ["storage.k8s.io"]
     resources: ["csinodes"]
     verbs: ["get", "list", "watch"]
@@ -152,8 +158,6 @@ spec:
             - "--v=0"
             - "--timeout=150s"
             - "--retry-interval-start=500ms"
-            - "--enable-leader-election=true"
-            - "--leader-election-type=leases"
             - "--leader-election-namespace=$(DEPLOYMENT_NAMESPACE)"
           volumeMounts:
             - name: socket-dir
@@ -205,7 +209,6 @@ spec:
           args:
             - "--csi-address=$(ADDRESS)"
             - "--v=0"
-            - "--csiTimeout=150s"
             - "--leader-election"
             - "--leader-election-namespace=$(DEPLOYMENT_NAMESPACE)"
           env:
