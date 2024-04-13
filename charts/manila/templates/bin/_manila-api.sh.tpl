@@ -18,7 +18,8 @@ set -ex
 COMMAND="${@:-start}"
 
 function start () {
-  exec uwsgi --ini /etc/manila/manila-api-uwsgi.ini
+  exec manila-api \
+        --config-file /etc/manila/manila.conf
 }
 
 function stop () {

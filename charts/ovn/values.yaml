@@ -35,19 +35,16 @@ images:
 
 labels:
   ovn_ovsdb_nb:
-    node_selector_key: openstack-compute-node
+    node_selector_key: openstack-network-node
     node_selector_value: enabled
   ovn_ovsdb_sb:
-    node_selector_key: openstack-compute-node
+    node_selector_key: openstack-network-node
     node_selector_value: enabled
   ovn_northd:
-    node_selector_key: openstack-compute-node
+    node_selector_key: openstack-network-node
     node_selector_value: enabled
   ovn_controller:
-    node_selector_key: openstack-compute-node
-    node_selector_value: enabled
-  ovn_controller_gw:
-    node_selector_key: openstack-control-plane
+    node_selector_key: openvswitch
     node_selector_value: enabled
 
 volume:
@@ -69,13 +66,10 @@ network:
     tunnel_network_cidr: "0/0"
 
 conf:
-  ovn_cms_options: "availability-zones=nova"
-  gw_ovn_cms_options: "enable-chassis-as-gw,availability-zones=nova"
+  ovn_cms_options: "enable-chassis-as-gw,availability-zones=nova"
   ovn_encap_type: geneve
   ovn_bridge: br-int
   ovn_bridge_mappings: external:br-ex
-  # For DPDK enabled environments, enable netdev datapath type for br-int
-  # ovn_bridge_datapath_type: netdev
 
   # auto_bridge_add:
   #   br-private: eth0
@@ -96,18 +90,6 @@ pod:
               - SYS_NICE
     ovn_controller:
       container:
-        controller_init:
-          privileged: true
-          runAsUser: 0
-        controller:
-          capabilities:
-            add:
-              - SYS_NICE
-    ovn_controller_gw:
-      container:
-        controller_init:
-          privileged: true
-          runAsUser: 0
         controller:
           capabilities:
             add:
@@ -120,8 +102,6 @@ pod:
     ovn_northd:
       enabled: false
     ovn_controller:
-      enabled: false
-    ovn_controller_gw:
       enabled: false
   affinity:
     anti:
@@ -138,41 +118,13 @@ pod:
         readiness:
           enabled: true
           params:
-            initialDelaySeconds: 30
-            timeoutSeconds: 30
-            periodSeconds: 60
-    ovn_ovsdb_nb:
-      ovsdb:
-        readiness:
+            initialDelaySeconds: 5
+            timeoutSeconds: 10
+        liveness:
           enabled: true
           params:
-            initialDelaySeconds: 30
-            timeoutSeconds: 30
-            periodSeconds: 60
-    ovn_ovsdb_sb:
-      ovsdb:
-        readiness:
-          enabled: true
-          params:
-            initialDelaySeconds: 30
-            timeoutSeconds: 30
-            periodSeconds: 60
-    ovn_controller:
-      controller:
-        readiness:
-          enabled: true
-          params:
-            initialDelaySeconds: 30
-            timeoutSeconds: 30
-            periodSeconds: 60
-    ovn_controller_gw:
-      controller:
-        readiness:
-          enabled: true
-          params:
-            initialDelaySeconds: 30
-            timeoutSeconds: 30
-            periodSeconds: 60
+            initialDelaySeconds: 5
+            timeoutSeconds: 10
   dns_policy: "ClusterFirstWithHostNet"
   replicas:
     ovn_ovsdb_nb: 1
@@ -198,27 +150,23 @@ pod:
           enabled: true
           min_ready_seconds: 0
           max_unavailable: 1
-        ovn_controller_gw:
-          enabled: true
-          min_ready_seconds: 0
-          max_unavailable: 1
   resources:
     enabled: false
     ovs:
       ovn_ovsdb_nb:
         requests:
-          memory: "384Mi"
+          memory: "128Mi"
           cpu: "100m"
         limits:
           memory: "1024Mi"
-          cpu: "1000m"
+          cpu: "2000m"
       ovn_ovsdb_sb:
         requests:
-          memory: "384Mi"
+          memory: "128Mi"
           cpu: "100m"
         limits:
           memory: "1024Mi"
-          cpu: "1000m"
+          cpu: "2000m"
       ovn_northd:
         requests:
           memory: "128Mi"
@@ -227,13 +175,6 @@ pod:
           memory: "1024Mi"
           cpu: "2000m"
       ovn_controller:
-        requests:
-          memory: "128Mi"
-          cpu: "100m"
-        limits:
-          memory: "1024Mi"
-          cpu: "2000m"
-      ovn_controller_gw:
         requests:
           memory: "128Mi"
           cpu: "100m"
@@ -255,7 +196,6 @@ secrets:
     ovn_ovsdb_sb: ovn-ovsdb-sb-oci-image-registry-key
     ovn_northd: ovn-northd-oci-image-registry-key
     ovn_controller: ovn-controller-oci-image-registry-key
-    ovn_controller_gw: ovn-controller-gw-oci-image-registry-key
 
 # TODO: Check these endpoints?!
 endpoints:
@@ -331,9 +271,6 @@ network_policy:
   ovn_controller:
     ingress:
       - {}
-  ovn_controller_gw:
-    ingress:
-      - {}
     egress:
       - {}
 
@@ -359,10 +296,6 @@ dependencies:
       services:
         - endpoint: internal
           service: ovn-ovsdb-sb
-    ovn_controller_gw:
-      services:
-        - endpoint: internal
-          service: ovn-ovsdb-sb
       pod:
         - requireSameNode: true
           labels:
@@ -377,12 +310,12 @@ manifests:
   configmap_bin: true
   configmap_etc: true
   deployment_northd: true
+  daemonset_controller: true
   service_ovn_ovsdb_nb: true
   service_ovn_ovsdb_sb: true
   statefulset_ovn_ovsdb_nb: true
   statefulset_ovn_ovsdb_sb: true
   deployment_ovn_northd: true
   daemonset_ovn_controller: true
-  daemonset_ovn_controller_gw: true
   job_image_repo_sync: true
 ...
