@@ -48,7 +48,8 @@ function start () {
   # Starts Apache2
   exec {{ .Values.conf.software.apache2.binary }} {{ .Values.conf.software.apache2.start_parameters }}
 {{- else }}
-  exec uwsgi --ini /etc/cinder/cinder-api-uwsgi.ini
+  exec cinder-api \
+        --config-file /etc/cinder/cinder.conf
 {{- end }}
 }
 
