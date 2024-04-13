@@ -97,8 +97,6 @@ spec:
               subPath: test-whitelist
               readOnly: true
 {{- end }}
-            - name: stestr
-              mountPath: /.stestr
             - name: tempest-reports
               mountPath: /var/lib/tempest/data
 {{- dict "enabled" (or .Values.manifests.certificates .Values.tls.identity) "name" .Values.secrets.tls.identity.api.internal "path" "/etc/tempest/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
@@ -115,9 +113,6 @@ spec:
           configMap:
             name: tempest-bin
             defaultMode: 0555
-        - name: stestr
-          hostPath:
-            path: /tmp/stestr
         - name: tempest-reports
         {{- if not .Values.pvc.enabled }}
           emptyDir: {}
