@@ -1535,48 +1535,6 @@ conf:
     before:
       enabled: false
       date: 'nil'
-  nova_api_uwsgi:
-    uwsgi:
-      add-header: "Connection: close"
-      buffer-size: 65535
-      chunked-input-limit: "4096000"
-      die-on-term: true
-      enable-threads: true
-      exit-on-reload: false
-      hook-master-start: unix_signal:15 gracefully_kill_them_all
-      http-auto-chunked: true
-      http-raw-body: true
-      lazy-apps: true
-      log-x-forwarded-for: true
-      master: true
-      need-app: true
-      procname-prefix-spaced: "nova-api:"
-      route-user-agent: '^kube-probe.* donotlog:'
-      socket-timeout: 10
-      thunder-lock: true
-      worker-reload-mercy: 80
-      wsgi-file: /var/lib/openstack/bin/nova-api-wsgi
-  nova_metadata_uwsgi:
-    uwsgi:
-      add-header: "Connection: close"
-      buffer-size: 65535
-      chunked-input-limit: 4096000
-      die-on-term: true
-      enable-threads: true
-      exit-on-reload: false
-      hook-master-start: unix_signal:15 gracefully_kill_them_all
-      http-auto-chunked: true
-      http-raw-body: true
-      lazy-apps: true
-      log-x-forwarded-for: true
-      master: true
-      need-app: true
-      procname-prefix-spaced: "nova-metadata:"
-      route-user-agent: '^kube-probe.* donotlog:'
-      socket-timeout: 10
-      thunder-lock: true
-      worker-reload-mercy: 80
-      wsgi-file: /var/lib/openstack/bin/nova-metadata-wsgi
 
 # Names of secrets used by bootstrap and environmental checks
 secrets:
@@ -2020,48 +1978,43 @@ pod:
         liveness:
           enabled: True
           params:
+            initialDelaySeconds: 120
             periodSeconds: 90
             timeoutSeconds: 70
         readiness:
           enabled: True
           params:
+            initialDelaySeconds: 80
             periodSeconds: 90
-            timeoutSeconds: 70
-        startup:
-          enabled: True
-          params:
-            failureThreshold: 120
-            periodSeconds: 10
-            successThreshold: 1
             timeoutSeconds: 70
     api-metadata:
       default:
         liveness:
           enabled: True
           params:
-            initialDelaySeconds: 5
-            periodSeconds: 10
-            timeoutSeconds: 5
+            initialDelaySeconds: 30
+            periodSeconds: 60
+            timeoutSeconds: 15
         readiness:
           enabled: True
           params:
-            initialDelaySeconds: 5
-            periodSeconds: 10
-            timeoutSeconds: 5
+            initialDelaySeconds: 30
+            periodSeconds: 60
+            timeoutSeconds: 15
     api-osapi:
       default:
         liveness:
           enabled: True
           params:
-            initialDelaySeconds: 5
-            periodSeconds: 10
-            timeoutSeconds: 5
+            initialDelaySeconds: 30
+            periodSeconds: 60
+            timeoutSeconds: 15
         readiness:
           enabled: True
           params:
-            initialDelaySeconds: 5
-            periodSeconds: 10
-            timeoutSeconds: 5
+            initialDelaySeconds: 30
+            periodSeconds: 60
+            timeoutSeconds: 15
     conductor:
       default:
         liveness:
