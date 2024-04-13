@@ -50,7 +50,8 @@ function start () {
   # Starts Apache2
   exec {{ .Values.conf.software.apache2.binary }} {{ .Values.conf.software.apache2.start_parameters }}
 {{- else }}
-  exec uwsgi --ini /etc/heat/heat-api-cfn-uwsgi.ini
+  exec heat-api-cfn \
+        --config-file /etc/heat/heat.conf
 {{- end }}
 }
 

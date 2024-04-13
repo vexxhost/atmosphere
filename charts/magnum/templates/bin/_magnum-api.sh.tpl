@@ -18,7 +18,8 @@ set -ex
 COMMAND="${@:-start}"
 
 function start () {
-  exec uwsgi --ini /etc/magnum/magnum-api-uwsgi.ini
+  exec magnum-api \
+        --config-file /etc/magnum/magnum.conf
 }
 
 function stop () {

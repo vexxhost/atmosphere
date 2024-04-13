@@ -17,9 +17,6 @@ limitations under the License.
 set -ex
 
 chown ${NEUTRON_USER_UID} /var/lib/neutron/openstack-helm
-{{- if (has "ovn" .Values.network.backend) }}
-chown ${NEUTRON_USER_UID} /run/openvswitch/db.sock
-{{- end }}
 
 {{- if and ( empty .Values.conf.neutron.DEFAULT.host ) ( .Values.pod.use_fqdn.neutron_agent ) }}
 mkdir -p /tmp/pod-shared

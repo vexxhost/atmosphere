@@ -14,8 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ANNOTATION_KEY="atmosphere.cloud/ovn-system-id"
-
 function get_ip_address_from_interface {
   local interface=$1
   local ip=$(ip -4 -o addr s "${interface}" | awk '{ print $4; exit }' | awk -F '/' '{print $1}')
@@ -23,71 +21,6 @@ function get_ip_address_from_interface {
     exit 1
   fi
   echo ${ip}
-}
-
-function get_ip_prefix_from_interface {
-  local interface=$1
-  local prefix=$(ip -4 -o addr s "${interface}" | awk '{ print $4; exit }' | awk -F '/' '{print $2}')
-  if [ -z "${prefix}" ] ; then
-    exit 1
-  fi
-  echo ${prefix}
-}
-
-function migrate_ip_from_nic {
-  src_nic=$1
-  bridge_name=$2
-
-  # Enabling explicit error handling: We must avoid to lose the IP
-  # address in the migration process. Hence, on every error, we
-  # attempt to assign the IP back to the original NIC and exit.
-  set +e
-
-  ip=$(get_ip_address_from_interface ${src_nic})
-  prefix=$(get_ip_prefix_from_interface ${src_nic})
-
-  bridge_ip=$(get_ip_address_from_interface "${bridge_name}")
-  bridge_prefix=$(get_ip_prefix_from_interface "${bridge_name}")
-
-  ip link set ${bridge_name} up
-
-  if [[ -n "${ip}" && -n "${prefix}" ]]; then
-    ip addr flush dev ${src_nic}
-    if [ $? -ne 0 ] ; then
-      ip addr add ${ip}/${prefix} dev ${src_nic}
-      echo "Error while flushing IP from ${src_nic}."
-      exit 1
-    fi
-
-    ip addr add ${ip}/${prefix} dev "${bridge_name}"
-    if [ $? -ne 0 ] ; then
-      echo "Error assigning IP to bridge "${bridge_name}"."
-      ip addr add ${ip}/${prefix} dev ${src_nic}
-      exit 1
-    fi
-  elif [[ -n "${bridge_ip}" && -n "${bridge_prefix}" ]]; then
-    echo "Bridge '${bridge_name}' already has IP assigned. Keeping the same:: IP:[${bridge_ip}]; Prefix:[${bridge_prefix}]..."
-  elif [[ -z "${bridge_ip}" && -z "${ip}" ]]; then
-    echo "Interface and bridge have no ips configured. Leaving as is."
-  else
-    echo "Interface ${name} has invalid IP address. IP:[${ip}]; Prefix:[${prefix}]..."
-    exit 1
-  fi
-
-  set -e
-}
-
-function get_current_system_id {
-  ovs-vsctl --if-exists get Open_vSwitch . external_ids:system-id | tr -d '"'
-}
-
-function get_stored_system_id {
-  kubectl get node "$NODE_NAME" -o "jsonpath={.metadata.annotations.atmosphere\.cloud/ovn-system-id}"
-}
-
-function store_system_id() {
-  local system_id=$1
-  kubectl annotate node "$NODE_NAME" "$ANNOTATION_KEY=$system_id"
 }
 
 # Detect tunnel interface
@@ -104,31 +37,19 @@ if [ -z "${tunnel_interface}" ] ; then
 fi
 ovs-vsctl set open . external_ids:ovn-encap-ip="$(get_ip_address_from_interface ${tunnel_interface})"
 
-# Get the stored system-id from the Kubernetes node annotation
-stored_system_id=$(get_stored_system_id)
-
-# Get the current system-id set in OVS
-current_system_id=$(get_current_system_id)
-
-if [ -n "$stored_system_id" ] && [ "$stored_system_id" != "$current_system_id" ]; then
-  # If the annotation exists and does not match the current system-id, set the system-id to the stored one
-  ovs-vsctl set Open_vSwitch . external_ids:system-id="$stored_system_id"
-elif [ -z "$current_system_id" ]; then
-  # If no current system-id is set, generate a new one
-  current_system_id=$(uuidgen)
-  ovs-vsctl set Open_vSwitch . external_ids:system-id="$current_system_id"
-  # Store the new system-id in the Kubernetes node annotation
-  store_system_id "$current_system_id"
-elif [ -z "$stored_system_id" ]; then
-  # If there is no stored system-id, store the current one
-  store_system_id "$current_system_id"
+# Configure system ID
+set +e
+ovs-vsctl get open . external-ids:system-id
+if [ $? -eq 1 ]; then
+  ovs-vsctl set open . external-ids:system-id="$(uuidgen)"
 fi
+set -e
 
 # Configure OVN remote
 {{- if empty .Values.conf.ovn_remote -}}
 {{- $sb_svc_name := "ovn-ovsdb-sb" -}}
 {{- $sb_svc := (tuple $sb_svc_name "internal" . | include "helm-toolkit.endpoints.hostname_fqdn_endpoint_lookup") -}}
-{{- $sb_port := (tuple "ovn-ovsdb-sb" "internal" "ovsdb" . | include "helm-toolkit.endpoints.endpoint_port_lookup") -}}
+{{- $sb_port := (tuple "ovn-ovsdb-sb" "internal" "raft" . | include "helm-toolkit.endpoints.endpoint_port_lookup") -}}
 {{- $sb_service_list := list -}}
 {{- range $i := until (.Values.pod.replicas.ovn_ovsdb_sb | int) -}}
   {{- $sb_service_list = printf "tcp:%s-%d.%s:%s" $sb_svc_name $i $sb_svc $sb_port | append $sb_service_list -}}
@@ -144,10 +65,7 @@ ovs-vsctl set open . external-ids:rundir="/var/run/openvswitch"
 ovs-vsctl set open . external-ids:ovn-encap-type="{{ .Values.conf.ovn_encap_type }}"
 ovs-vsctl set open . external-ids:ovn-bridge="{{ .Values.conf.ovn_bridge }}"
 ovs-vsctl set open . external-ids:ovn-bridge-mappings="{{ .Values.conf.ovn_bridge_mappings }}"
-ovs-vsctl set open . external-ids:ovn-cms-options="${OVN_CMS_OPTIONS}"
-{{ if .Values.conf.ovn_bridge_datapath_type -}}
-ovs-vsctl set open . external-ids:ovn-bridge-datapath-type="{{ .Values.conf.ovn_bridge_datapath_type }}"
-{{- end }}
+ovs-vsctl set open . external-ids:ovn-cms-options="{{ .Values.conf.ovn_cms_options }}"
 
 # Configure hostname
 {{- if .Values.conf.use_fqdn.compute }}
@@ -167,6 +85,5 @@ do
   if [ -n "$iface" ] && [ "$iface" != "null" ]
   then
     ovs-vsctl --may-exist add-port $bridge $iface
-    migrate_ip_from_nic $iface $bridge
   fi
 done
