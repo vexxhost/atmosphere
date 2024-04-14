@@ -13,14 +13,14 @@
 # under the License.
 
 import asyncio
-import pathlib
 import os
-import platformdirs
-
-from datetime import datetime, timezone
-import aioshutil
+import pathlib
 import textwrap
+from datetime import datetime, timezone
+
 import aiopath
+import aioshutil
+import platformdirs
 from asynctempfile import NamedTemporaryFile
 from gerrit import GerritClient
 from pydantic import BaseModel, HttpUrl, PrivateAttr
@@ -75,7 +75,9 @@ async def patch(input: bytes, path: aiopath.AsyncPath):
                 f"""\
                 {path.name}/*
                 """
-            ).strip().encode()
+            )
+            .strip()
+            .encode()
         )
         await temp_file.flush()
 
@@ -95,7 +97,9 @@ async def patch(input: bytes, path: aiopath.AsyncPath):
                 f"""\
                 {path.name}/Chart.yaml
                 """
-            ).strip().encode()
+            )
+            .strip()
+            .encode()
         )
         await temp_file.flush()
 
@@ -216,7 +220,6 @@ class Config(BaseModel):
                 ]
             )
 
-            # Loop over all the requirements.lock files and set the generated to an empty time string to make things reproducible
             for req in chart.dependencies:
                 lock = parse_yaml_file_as(
                     ChartLock,
