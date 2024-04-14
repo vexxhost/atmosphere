@@ -12,16 +12,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */}}
 
-{{- define "controllerReadinessProbeTemplate" }}
-exec:
-  command:
-    - /usr/bin/ovn-kube-util
-    - readiness-probe
-    - -t
-    - ovn-controller
-{{- end }}
-
-{{- if .Values.manifests.daemonset_ovn_controller }}
+{{- if .Values.manifests.daemonset_controller }}
 {{- $envAll := . }}
 
 {{- $configMapName := "ovn-etc" }}
@@ -37,41 +28,28 @@ metadata:
     configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
   labels:
 {{ tuple $envAll "ovn" "ovn-controller" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
-    type: hv
 spec:
   selector:
     matchLabels:
 {{ tuple $envAll "ovn" "ovn-controller" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 6 }}
-      type: hv
   template:
     metadata:
       labels:
 {{ tuple $envAll "ovn" "ovn-controller" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
-        type: hv
       annotations:
 {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
         configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
         configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
     spec:
       serviceAccountName: {{ $serviceAccountName }}
-      hostNetwork: true
-      dnsPolicy: {{ .Values.pod.dns_policy }}
       nodeSelector:
         {{ .Values.labels.ovn_controller.node_selector_key }}: {{ .Values.labels.ovn_controller.node_selector_value }}
       initContainers:
 {{- tuple $envAll "ovn_controller" list | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
         - name: controller-init
 {{ tuple $envAll "ovn_controller" | include "helm-toolkit.snippets.image" | indent 10 }}
-{{ dict "envAll" $envAll "application" "ovn_controller" "container" "controller_init" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
           command:
             - /tmp/ovn-controller-init.sh
-          env:
-            - name: OVN_CMS_OPTIONS
-              value: {{ .Values.conf.ovn_cms_options | quote }}
-            - name: NODE_NAME
-              valueFrom:
-                fieldRef:
-                  fieldPath: spec.nodeName
           volumeMounts:
             - name: ovn-bin
               mountPath: /tmp/ovn-controller-init.sh
@@ -85,33 +63,25 @@ spec:
               readOnly: true
       containers:
         - name: controller
-          command:
-            - /root/ovnkube.sh
-            - ovn-controller
 {{ tuple $envAll "ovn_controller" | include "helm-toolkit.snippets.image" | indent 10 }}
 {{ tuple $envAll $envAll.Values.pod.resources.server | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
 {{ dict "envAll" $envAll "application" "ovn_controller" "container" "controller" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
-{{ dict "envAll" . "component" "ovn_controller" "container" "controller" "type" "readiness" "probeTemplate" (include "controllerReadinessProbeTemplate" . | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
-          env:
-            - name: OVN_DAEMONSET_VERSION
-              value: "3"
-            - name: OVN_LOGLEVEL_CONTROLLER
-              value: "-vconsole:info -vfile:info"
-            - name: OVN_KUBERNETES_NAMESPACE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.namespace
-            - name: OVN_KUBERNETES_NB_STATEFULSET
-              value: ovn-ovsdb-nb
-            - name: OVN_KUBERNETES_SB_STATEFULSET
-              value: ovn-ovsdb-sb
-            - name: OVN_SSL_ENABLE
-              value: "no"
+          command:
+            - /tmp/ovn-controller.sh
+            - start
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - /tmp/ovn-controller.sh
+                  - stop
           volumeMounts:
+            - name: ovn-bin
+              mountPath: /tmp/ovn-controller.sh
+              subPath: ovn-controller.sh
+              readOnly: true
             - name: run-openvswitch
-              mountPath: /var/run/ovn
-            - name: run-openvswitch
-              mountPath: /var/run/openvswitch
+              mountPath: /run/openvswitch
       volumes:
         - name: ovn-bin
           configMap:

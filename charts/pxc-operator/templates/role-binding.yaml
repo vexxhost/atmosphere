@@ -1,12 +1,13 @@
-{{- if .Values.serviceAccount.create }}
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: {{ include "pxc-operator.fullname" . }}
-  namespace: {{ .Release.Namespace }}
 ---
-{{- end }}
-{{- if .Values.rbac.create }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: percona-xtradb-cluster-operator
+---
 {{- if or .Values.watchNamespace .Values.watchAllNamespaces }}
 kind: ClusterRoleBinding
 {{- else }}
@@ -17,8 +18,6 @@ metadata:
   name: {{ include "pxc-operator.fullname" . }}
   {{- if .Values.watchNamespace }}
   namespace: {{ .Values.watchNamespace }}
-  {{- else if not .Values.watchAllNamespaces }}
-  namespace: {{ .Release.Namespace }}
   {{- end }}
   labels:
 {{ include "pxc-operator.labels" . | indent 4 }}
@@ -36,4 +35,3 @@ roleRef:
   {{- end }}
   name: {{ include "pxc-operator.fullname" . }}
   apiGroup: rbac.authorization.k8s.io
-{{- end }}
