@@ -1,0 +1,25 @@
+diff --git b/glance/values.yaml a/charts/glance/values.yaml
+index d2c3f504..85ddf18b 100644
+--- b/glance/values.yaml
++++ a/glance/values.yaml
+@@ -393,15 +393,20 @@ conf:
+     uwsgi:
+       add-header: "Connection: close"
+       buffer-size: 65535
++      chunked-input-limit: "4096000"
+       die-on-term: true
+       enable-threads: true
+       exit-on-reload: false
+       hook-master-start: unix_signal:15 gracefully_kill_them_all
++      http-auto-chunked: true
++      http-raw-body: true
+       lazy-apps: true
+       log-x-forwarded-for: true
+       master: true
++      need-app: true
+       procname-prefix-spaced: "glance-api:"
+       route-user-agent: '^kube-probe.* donotlog:'
++      socket-timeout: 10
+       thunder-lock: true
+       worker-reload-mercy: 80
+       wsgi-file: /var/lib/openstack/bin/glance-wsgi-api
