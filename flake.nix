@@ -21,9 +21,9 @@
               go
               kubernetes-helm
               nixpkgs-fmt
+              patchutils
               poetry
               python311Packages.tox
-              vendir
             ];
           };
         }
