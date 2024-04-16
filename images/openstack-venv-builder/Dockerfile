@@ -12,14 +12,16 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-FROM registry.atmosphere.dev/library/ubuntu-cloud-archive:main AS requirements
+ARG RELEASE
+
+FROM registry.atmosphere.dev/library/ubuntu-cloud-archive:${RELEASE} AS requirements
 ADD https://releases.openstack.org/constraints/upper/master /upper-constraints.txt
 RUN <<EOF sh -xe
 sed -i '/glance-store/d' /upper-constraints.txt
 sed -i '/horizon/d' /upper-constraints.txt
 EOF
 
-FROM registry.atmosphere.dev/library/python-base:main
+FROM registry.atmosphere.dev/library/python-base:${RELEASE}
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \

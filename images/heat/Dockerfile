@@ -12,7 +12,9 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-FROM registry.atmosphere.dev/library/openstack-venv-builder:main AS build
+ARG RELEASE
+
+FROM registry.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
 ARG HEAT_GIT_REF=80eea85194825773d1b60ecc4386b2d5ba52a066
 ADD --keep-git-dir=true https://opendev.org/openstack/heat.git#${HEAT_GIT_REF} /src/heat
 RUN git -C /src/heat fetch --unshallow
@@ -22,7 +24,7 @@ pip3 install \
         /src/heat
 EOF
 
-FROM registry.atmosphere.dev/library/openstack-python-runtime:main
+FROM registry.atmosphere.dev/library/openstack-python-runtime:${RELEASE}
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \

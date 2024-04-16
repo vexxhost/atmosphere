@@ -38,18 +38,20 @@
           arch:
             - linux/amd64
           build_args:
+            - "RELEASE={{ zuul.branch | replace('stable/', '') }}"
             - OVN_COMPONENT=central
           tags:
-            - main
+            - "{{ zuul.branch | replace('stable/', '') }}"
         - context: images/ovn
           registry: registry.atmosphere.dev
           repository: registry.atmosphere.dev/library/ovn-host
           arch:
             - linux/amd64
           build_args:
+            - "RELEASE={{ zuul.branch | replace('stable/', '') }}"
             - OVN_COMPONENT=host
           tags:
-            - main
+            - "{{ zuul.branch | replace('stable/', '') }}"
     files: &container_image_files
       - images/openvswitch/.*
       - images/ovn/.*

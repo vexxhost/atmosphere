@@ -12,7 +12,9 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-FROM registry.atmosphere.dev/library/openstack-venv-builder:main AS build
+ARG RELEASE
+
+FROM registry.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
 ARG OCTAVIA_GIT_REF=824b51a1dad80292b7a8ad5d61bf3ce706b1fb29
 ADD --keep-git-dir=true https://opendev.org/openstack/octavia.git#${OCTAVIA_GIT_REF} /src/octavia
 RUN git -C /src/octavia fetch --unshallow
@@ -25,7 +27,7 @@ pip3 install \
         /src/ovn-octavia-provider
 EOF
 
-FROM registry.atmosphere.dev/library/openstack-python-runtime:main
+FROM registry.atmosphere.dev/library/openstack-python-runtime:${RELEASE}
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \

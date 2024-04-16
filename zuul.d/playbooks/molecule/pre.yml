@@ -59,15 +59,14 @@
         - name: Replace the registry in image manifest
           ansible.builtin.replace:
             path: "{{ zuul.project.src_dir }}/roles/defaults/vars/main.yml"
-            regexp: "{{ repo }}:{{ tag }}"
-            replace: '{{ buildset_registry.host }}:{{ buildset_registry.port }}/{{ repo }}:{{ tag }}'
+            regexp: "{{ repo }}:"
+            replace: '{{ buildset_registry.host }}:{{ buildset_registry.port }}/{{ repo }}:'
           loop: "{{ zuul.artifacts | default([]) }}"
           loop_control:
             loop_var: zj_zuul_artifact
           when: "'metadata' in zj_zuul_artifact and zj_zuul_artifact.metadata.type | default('') == 'container_image'"
           vars:
             repo: "{{ zj_zuul_artifact.metadata.repository }}"
-            tag: "{{ zj_zuul_artifact.metadata.tag }}"
 
     # TODO(mnaser): Drop this when we move to PBR
     - name: Add current folder to Git's safe directories

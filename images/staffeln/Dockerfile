@@ -12,7 +12,9 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-FROM registry.atmosphere.dev/library/openstack-venv-builder:main AS build
+ARG RELEASE
+
+FROM registry.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
 ARG STAFFELN_GIT_REF=v2.2.3
 ADD --keep-git-dir=true https://github.com/vexxhost/staffeln.git#${STAFFELN_GIT_REF} /src/staffeln
 RUN git -C /src/staffeln fetch --unshallow
@@ -22,5 +24,5 @@ pip3 install \
         /src/staffeln
 EOF
 
-FROM registry.atmosphere.dev/library/openstack-python-runtime:main
+FROM registry.atmosphere.dev/library/openstack-python-runtime:${RELEASE}
 COPY --from=build --link /var/lib/openstack /var/lib/openstack

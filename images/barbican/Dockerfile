@@ -12,7 +12,9 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-FROM registry.atmosphere.dev/library/openstack-venv-builder:main AS build
+ARG RELEASE
+
+FROM registry.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
 ARG BARBICAN_GIT_REF=ca57ef5436e20e90cf6cd6853efe3c89a9afd986
 ADD --keep-git-dir=true https://opendev.org/openstack/barbican.git#${BARBICAN_GIT_REF} /src/barbican
 RUN git -C /src/barbican fetch --unshallow
@@ -23,5 +25,5 @@ pip3 install \
         pykmip
 EOF
 
-FROM registry.atmosphere.dev/library/openstack-python-runtime:main
+FROM registry.atmosphere.dev/library/openstack-python-runtime:${RELEASE}
 COPY --from=build --link /var/lib/openstack /var/lib/openstack
