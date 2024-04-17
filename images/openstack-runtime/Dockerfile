@@ -12,7 +12,9 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-ARG FROM=registry.atmosphere.dev/library/ubuntu-cloud-archive:zed
+ARG RELEASE
+
+ARG FROM=registry.atmosphere.dev/library/ubuntu-cloud-archive:${RELEASE}
 FROM ${FROM}
 ONBUILD ARG PROJECT
 ONBUILD ARG SHELL=/usr/sbin/nologin

@@ -38,8 +38,10 @@
           repository: registry.atmosphere.dev/library/libvirt-tls-sidecar
           arch:
             - linux/amd64
+          build_args:
+            - "RELEASE={{ zuul.branch | replace('stable/', '') }}"
           tags:
-            - zed
+            - "{{ zuul.branch | replace('stable/', '') }}"
     files: &container_image_files
       - images/ubuntu/.*
       - cmd/.*

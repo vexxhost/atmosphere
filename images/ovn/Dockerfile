@@ -12,6 +12,8 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+ARG RELEASE
+
 FROM golang:1.20 AS ovn-kubernetes
 ARG OVN_KUBERNETES_REF=cbff639b83af00e4887b540fc06b880108662780
 ADD https://github.com/ovn-org/ovn-kubernetes.git#${OVN_KUBERNETES_REF} /src
@@ -22,7 +24,7 @@ cd /src/go-controller
 go build -o /usr/bin/ovn-kube-util ./cmd/ovn-kube-util
 EOF
 
-FROM registry.atmosphere.dev/library/openvswitch:zed
+FROM registry.atmosphere.dev/library/openvswitch:${RELEASE}
 ADD --chmod=755 https://dl.k8s.io/release/v1.29.3/bin/linux/amd64/kubectl /usr/local/bin/kubectl
 ARG OVN_SERIES=23.03
 ARG OVN_VERSION=${OVN_SERIES}.0-69

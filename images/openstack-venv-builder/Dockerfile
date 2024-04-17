@@ -12,7 +12,9 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-FROM registry.atmosphere.dev/library/ubuntu-cloud-archive:zed AS requirements
+ARG RELEASE
+
+FROM registry.atmosphere.dev/library/ubuntu-cloud-archive:${RELEASE} AS requirements
 ADD https://releases.openstack.org/constraints/upper/zed /upper-constraints.txt
 RUN <<EOF sh -xe
 sed -i 's/cryptography===36.0.2/cryptography===42.0.4/' /upper-constraints.txt
@@ -32,7 +34,7 @@ sed -i '/glance-store/d' /upper-constraints.txt
 sed -i '/horizon/d' /upper-constraints.txt
 EOF
 
-FROM registry.atmosphere.dev/library/python-base:zed
+FROM registry.atmosphere.dev/library/python-base:${RELEASE}
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \
