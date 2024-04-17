@@ -12,39 +12,6 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Uninstall the legacy "ethtool-exporter"
-  run_once: true
-  kubernetes.core.k8s:
-    state: absent
-    api_version: v1
-    kind: DaemonSet
-    name: ethtool-exporter
-    namespace: "{{ kube_prometheus_stack_helm_release_namespace }}"
-
-- name: Uninstall the legacy HelmRelease
-  run_once: true
-  block:
-    - name: Suspend the existing HelmRelease
-      failed_when: false
-      kubernetes.core.k8s:
-        state: patched
-        api_version: helm.toolkit.fluxcd.io/v2beta1
-        kind: HelmRelease
-        name: "{{ kube_prometheus_stack_helm_release_name }}"
-        namespace: "{{ kube_prometheus_stack_helm_release_namespace }}"
-        definition:
-          spec:
-            suspend: true
-
-    - name: Remove the existing HelmRelease
-      failed_when: false
-      kubernetes.core.k8s:
-        state: absent
-        api_version: helm.toolkit.fluxcd.io/v2beta1
-        kind: HelmRelease
-        name: "{{ kube_prometheus_stack_helm_release_name }}"
-        namespace: "{{ kube_prometheus_stack_helm_release_namespace }}"
-
 - name: Create Keycloak realm
   no_log: true
   run_once: true

@@ -12,18 +12,6 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Uninstall the legacy HelmRelease
-  run_once: true
-  block:
-    - name: Remove the existing HelmRelease
-      failed_when: false
-      kubernetes.core.k8s:
-        state: absent
-        api_version: helm.toolkit.fluxcd.io/v2beta1
-        kind: HelmRelease
-        name: "{{ ingress_nginx_helm_release_name }}"
-        namespace: "openstack"
-
 - name: Deploy Helm chart
   run_once: true
   kubernetes.core.helm:
