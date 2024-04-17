@@ -12,7 +12,9 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-FROM registry.atmosphere.dev/library/ubuntu-cloud-archive:main
+ARG RELEASE
+
+FROM registry.atmosphere.dev/library/ubuntu-cloud-archive:${RELEASE}
 ENV PATH=/var/lib/openstack/bin:$PATH
 RUN \
     apt-get update -qq && \

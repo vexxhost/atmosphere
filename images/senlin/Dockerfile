@@ -12,7 +12,9 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-FROM registry.atmosphere.dev/library/openstack-venv-builder:main AS build
+ARG RELEASE
+
+FROM registry.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
 ARG SENLIN_GIT_REF=ec5fae997686c64c3c1192b231b2434e6a6aeb1c
 ADD --keep-git-dir=true https://opendev.org/openstack/senlin.git#${SENLIN_GIT_REF} /src/senlin
 RUN git -C /src/senlin fetch --unshallow
@@ -22,5 +24,5 @@ pip3 install \
         /src/senlin
 EOF
 
-FROM registry.atmosphere.dev/library/openstack-python-runtime:main
+FROM registry.atmosphere.dev/library/openstack-python-runtime:${RELEASE}
 COPY --from=build --link /var/lib/openstack /var/lib/openstack

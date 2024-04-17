@@ -42,9 +42,10 @@
           arch:
             - linux/amd64
           build_args:
-            - FROM=registry.atmosphere.dev/library/python-base:main
+            - "RELEASE={{ zuul.branch | replace('stable/', '') }}"
+            - "FROM=registry.atmosphere.dev/library/python-base:{{ zuul.branch | replace('stable/', '') }}"
           tags:
-            - main
+            - "{{ zuul.branch | replace('stable/', '') }}"
     files: &container_image_files
       - images/ubuntu/.*
       - images/ubuntu-cloud-archive/.*

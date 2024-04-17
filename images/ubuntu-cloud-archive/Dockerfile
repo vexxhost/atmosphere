@@ -12,7 +12,9 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-FROM registry.atmosphere.dev/library/ubuntu:main
+ARG RELEASE
+
+FROM registry.atmosphere.dev/library/ubuntu:${RELEASE}
 COPY trusted.gpg.d/ubuntu-cloud-keyring.gpg /etc/apt/trusted.gpg.d/ubuntu-cloud-keyring.gpg
 COPY <<EOF /etc/apt/sources.list.d/cloudarchive.list
 deb http://ubuntu-cloud.archive.canonical.com/ubuntu jammy-updates/caracal main

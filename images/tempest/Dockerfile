@@ -12,6 +12,8 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+ARG RELEASE
+
 FROM golang:1.18 AS octavia-test-server
 ADD --keep-git-dir=true https://opendev.org/openstack/octavia-tempest-plugin.git#master /src
 RUN GO111MODULE=off CGO_ENABLED=0 GOOS=linux go build \
@@ -19,7 +21,7 @@ RUN GO111MODULE=off CGO_ENABLED=0 GOOS=linux go build \
     -o /build/test_server.bin \
     /src/octavia_tempest_plugin/contrib/test_server/test_server.go
 
-FROM registry.atmosphere.dev/library/openstack-venv-builder:main AS build
+FROM registry.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
 ARG TEMPEST_GIT_REF=c0da6e843a74c2392c8e87e8ff36d2fea12949c4
 ADD --keep-git-dir=true https://opendev.org/openstack/tempest.git#${TEMPEST_GIT_REF} /src/tempest
 RUN git -C /src/tempest fetch --unshallow
@@ -48,7 +50,7 @@ pip3 install \
         /src/octavia-tempest-plugin
 EOF
 
-FROM registry.atmosphere.dev/library/openstack-python-runtime:main
+FROM registry.atmosphere.dev/library/openstack-python-runtime:${RELEASE}
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \

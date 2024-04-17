@@ -12,13 +12,15 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+ARG RELEASE
+
 FROM golang:1.20 AS build
 ARG NETOFFLOAD_GIT_REF=94b8c0fdb0b83bd1b7e14b9a58077a047c78a800
 ADD https://github.com/vexxhost/netoffload.git#${NETOFFLOAD_GIT_REF} /src
 WORKDIR /src
 RUN go build -v -o offloadctl ./cmd/offloadctl/main.go
 
-FROM registry.atmosphere.dev/library/ubuntu:main
+FROM registry.atmosphere.dev/library/ubuntu:${RELEASE}
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \

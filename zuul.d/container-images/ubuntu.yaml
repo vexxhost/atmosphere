@@ -34,8 +34,10 @@
           repository: registry.atmosphere.dev/library/ubuntu
           arch:
             - linux/amd64
+          build_args:
+            - "RELEASE={{ zuul.branch | replace('stable/', '') }}"
           tags:
-            - main
+            - "{{ zuul.branch | replace('stable/', '') }}"
     files: &container_image_files
       - images/ubuntu/.*
 

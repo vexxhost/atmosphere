@@ -46,9 +46,10 @@
           arch:
             - linux/amd64
           build_args:
+            - "RELEASE={{ zuul.branch | replace('stable/', '') }}"
             - PROJECT=barbican
           tags:
-            - main
+            - "{{ zuul.branch | replace('stable/', '') }}"
     files: &container_image_files
       - images/ubuntu/.*
       - images/ubuntu-cloud-archive/.*
