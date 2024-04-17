@@ -23,6 +23,7 @@ limitations under the License.
 {{- $jobAnnotations := index . "jobAnnotations" -}}
 {{- $jobLabels := index . "jobLabels" -}}
 {{- $nodeSelector := index . "nodeSelector" | default ( dict $envAll.Values.labels.job.node_selector_key $envAll.Values.labels.job.node_selector_value ) -}}
+{{- $tolerationsEnabled := index . "tolerationsEnabled" | default false -}}
 {{- $podVolMounts := index . "podVolMounts" | default false -}}
 {{- $podVols := index . "podVols" | default false -}}
 {{- $configMapBin := index . "configMapBin" | default (printf "%s-%s" $serviceName "bin" ) -}}
@@ -38,6 +39,11 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: {{ printf "%s-%s" $serviceNamePretty "image-repo-sync" | quote }}
+  labels:
+{{ tuple $envAll $serviceName "image-repo-sync" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+{{- if $jobLabels }}
+{{ toYaml $jobLabels | indent 4 }}
+{{- end }}
   annotations:
     "helm.sh/hook-delete-policy": before-hook-creation
 {{- if $jobAnnotations }}
@@ -58,8 +64,12 @@ spec:
     spec:
       serviceAccountName: {{ $serviceAccountName }}
       restartPolicy: OnFailure
+      {{ tuple $envAll "image_repo_sync" | include "helm-toolkit.snippets.kubernetes_image_pull_secrets" | indent 6 }}
       nodeSelector:
 {{ toYaml $nodeSelector | indent 8 }}
+{{- if $tolerationsEnabled }}
+{{ tuple $envAll $serviceName | include "helm-toolkit.snippets.kubernetes_tolerations" | indent 6 }}
+{{- end}}
       initContainers:
 {{ tuple $envAll "image_repo_sync" list | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container"  | indent 8 }}
       containers:
