@@ -129,12 +129,6 @@ def main():
     parser.add_argument(
         "dst", help="Path for output file", type=argparse.FileType("r+")
     )
-    parser.add_argument(
-        "-r",
-        "--registry",
-        default="ghcr.io/vexxhost/atmosphere",
-        help="Registry containing Atmosphere images",
-    )
 
     args = parser.parse_args()
 
@@ -145,15 +139,8 @@ def main():
         if image in SKIP_IMAGE_LIST:
             continue
 
-        # NOTE(mnaser): If we're in CI, only pin the Atmosphere images
-        if (
-            "registry.atmosphere.dev" in args.registry
-            and "ghcr.io/vexxhost/atmosphere" not in data["_atmosphere_images"][image]
-        ):
-            continue
-
         image_src = data["_atmosphere_images"][image].replace(
-            "ghcr.io/vexxhost/atmosphere", args.registry
+            "{{ atmosphere_release }}", data["atmosphere_release"]
         )
         pinned_image = get_pinned_image(image_src)
 

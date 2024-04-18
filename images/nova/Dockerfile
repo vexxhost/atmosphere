@@ -12,7 +12,9 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-FROM registry.atmosphere.dev/library/openstack-venv-builder:zed AS build
+ARG RELEASE
+
+FROM registry.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
 ARG NOVA_GIT_REF=b4a69447e2a176fd3821abc427019339ec700f0c
 ADD --keep-git-dir=true https://opendev.org/openstack/nova.git#${NOVA_GIT_REF} /src/nova
 RUN git -C /src/nova fetch --unshallow
@@ -22,7 +24,7 @@ pip3 install \
         /src/nova
 EOF
 
-FROM registry.atmosphere.dev/library/openstack-python-runtime:zed
+FROM registry.atmosphere.dev/library/openstack-python-runtime:${RELEASE}
 ADD https://github.com/novnc/noVNC.git#v1.4.0 /usr/share/novnc
 RUN <<EOF bash -xe
 apt-get update -qq
