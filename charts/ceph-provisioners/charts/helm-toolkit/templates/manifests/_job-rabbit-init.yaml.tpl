@@ -18,6 +18,7 @@ limitations under the License.
 {{- $jobAnnotations := index . "jobAnnotations" -}}
 {{- $jobLabels := index . "jobLabels" -}}
 {{- $nodeSelector := index . "nodeSelector" | default ( dict $envAll.Values.labels.job.node_selector_key $envAll.Values.labels.job.node_selector_value ) -}}
+{{- $tolerationsEnabled := index . "tolerationsEnabled" | default false -}}
 {{- $configMapBin := index . "configMapBin" | default (printf "%s-%s" $serviceName "bin" ) -}}
 {{- $serviceUser := index . "serviceUser" | default $serviceName -}}
 {{- $secretBin := index . "secretBin" -}}
@@ -35,7 +36,13 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: {{ printf "%s-%s" $serviceUserPretty "rabbit-init" | quote }}
+  labels:
+{{ tuple $envAll $serviceName "rabbit-init" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+{{- if $jobLabels }}
+{{ toYaml $jobLabels | indent 4 }}
+{{- end }}
   annotations:
+{{ tuple $serviceAccountName $envAll | include "helm-toolkit.snippets.custom_job_annotations" | indent 4 -}}
 {{- if $jobAnnotations }}
 {{ toYaml $jobAnnotations | indent 4 }}
 {{- end }}
@@ -56,8 +63,12 @@ spec:
     spec:
       serviceAccountName: {{ $serviceAccountName | quote }}
       restartPolicy: OnFailure
+      {{ tuple $envAll "rabbit_init" | include "helm-toolkit.snippets.kubernetes_image_pull_secrets" | indent 6 }}
       nodeSelector:
 {{ toYaml $nodeSelector | indent 8 }}
+{{- if $tolerationsEnabled }}
+{{ tuple $envAll $serviceName | include "helm-toolkit.snippets.kubernetes_tolerations" | indent 6 }}
+{{- end}}
       initContainers:
 {{ tuple $envAll "rabbit_init" list | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
       containers:
@@ -94,7 +105,7 @@ spec:
           - name: RABBITMQ_AUXILIARY_CONFIGURATION
             value: {{ toJson $envAll.Values.conf.rabbitmq | quote }}
 {{- end }}
-{{- if $envAll.Values.manifests.certificates }}
+{{- if and $envAll.Values.manifests.certificates (ne $tlsSecret "") }}
           - name: RABBITMQ_X509
             value: "REQUIRE X509"
           - name: USER_CERT_PATH

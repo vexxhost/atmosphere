@@ -23,6 +23,7 @@ limitations under the License.
 {{- $jobAnnotations := index . "jobAnnotations" -}}
 {{- $jobLabels := index . "jobLabels" -}}
 {{- $nodeSelector := index . "nodeSelector" | default ( dict $envAll.Values.labels.job.node_selector_key $envAll.Values.labels.job.node_selector_value ) -}}
+{{- $tolerationsEnabled := index . "tolerationsEnabled" | default false -}}
 {{- $configMapBin := index . "configMapBin" | default (printf "%s-%s" $serviceName "bin" ) -}}
 {{- $configMapEtc := index . "configMapEtc" | default (printf "%s-%s" $serviceName "etc" ) -}}
 {{- $podVolMounts := index . "podVolMounts" | default false -}}
@@ -42,7 +43,13 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: {{ printf "%s-%s" $serviceNamePretty "db-sync" | quote }}
+  labels:
+{{ tuple $envAll $serviceName "db-sync" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+{{- if $jobLabels }}
+{{ toYaml $jobLabels | indent 4 }}
+{{- end }}
   annotations:
+{{ tuple $serviceAccountName $envAll | include "helm-toolkit.snippets.custom_job_annotations" | indent 4 -}}
 {{- if $jobAnnotations }}
 {{ toYaml $jobAnnotations | indent 4 }}
 {{- end }}
@@ -63,8 +70,12 @@ spec:
     spec:
       serviceAccountName: {{ $serviceAccountName }}
       restartPolicy: OnFailure
+      {{ tuple $envAll "db_sync" | include "helm-toolkit.snippets.kubernetes_image_pull_secrets" | indent 6 }}
       nodeSelector:
 {{ toYaml $nodeSelector | indent 8 }}
+{{- if $tolerationsEnabled }}
+{{ tuple $envAll $serviceName | include "helm-toolkit.snippets.kubernetes_tolerations" | indent 6 }}
+{{- end}}
       initContainers:
 {{ tuple $envAll "db_sync" list | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
       containers:

@@ -42,6 +42,12 @@ kind: ServiceAccount
 metadata:
   name: {{ $saName }}
   namespace: {{ $saNamespace }}
+{{- if $envAll.Values.manifests.secret_registry }}
+{{- if $envAll.Values.endpoints.oci_image_registry.auth.enabled }}
+imagePullSecrets:
+  - name: {{ index $envAll.Values.secrets.oci_image_registry $envAll.Chart.Name }}
+{{- end -}}
+{{- end -}}
 {{- range $k, $v := $deps -}}
 {{- if eq $k "services" }}
 {{- range $serv := $v }}
@@ -57,6 +63,8 @@ metadata:
 {{- $_ := set $allNamespace $saNamespace  (printf "%s%s" "daemonsets," ((index $allNamespace $saNamespace) | default "")) }}
 {{- else if and (eq $k "pod") $v }}
 {{- $_ := set $allNamespace $saNamespace  (printf "%s%s" "pods," ((index $allNamespace $saNamespace) | default "")) }}
+{{- else if and (eq $k "secret") $v }}
+{{- $_ := set $allNamespace $saNamespace  (printf "%s%s" "secrets," ((index $allNamespace $saNamespace) | default "")) }}
 {{- end -}}
 {{- end -}}
 {{- $_ := unset $allNamespace $randomKey }}
