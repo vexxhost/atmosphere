@@ -16,3 +16,6 @@ _percona_xtradb_cluster_operator_helm_values:
   image: "{{ atmosphere_images['percona_xtradb_cluster_operator'] | vexxhost.kubernetes.docker_image('ref') }}"
   nodeSelector:
     openstack-control-plane: enabled
+  extraEnvVars:
+    - name: VERBOSE # Disable noisy behavior by check_pxc.sh
+      value: "0"
