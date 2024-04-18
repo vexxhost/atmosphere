@@ -96,6 +96,7 @@ async def patch(input: bytes, path: aiopath.AsyncPath):
             textwrap.dedent(
                 f"""\
                 {path.name}/Chart.yaml
+                {path.name}/values_overrides/*
                 """
             )
             .strip()
