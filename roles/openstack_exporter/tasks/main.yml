@@ -117,15 +117,6 @@
           selector:
             application: openstack-exporter
 
-- name: Fetch Octavia DB secret
-  run_once: true
-  no_log: true
-  kubernetes.core.k8s_info:
-    kind: Secret
-    namespace: openstack
-    name: octavia-db-user
-  register: _octavia_db_user
-
 - name: Fetch Neutron DB secret
   run_once: true
   no_log: true
@@ -134,6 +125,24 @@
     namespace: openstack
     name: neutron-db-user
   register: _neutron_db_user
+
+- name: Fetch Nova DB secret
+  run_once: true
+  no_log: true
+  kubernetes.core.k8s_info:
+    kind: Secret
+    namespace: openstack
+    name: nova-db-user
+  register: _nova_db_user
+
+- name: Fetch Octavia DB secret
+  run_once: true
+  no_log: true
+  kubernetes.core.k8s_info:
+    kind: Secret
+    namespace: openstack
+    name: octavia-db-user
+  register: _octavia_db_user
 
 - name: Create "openstack-database-exporter-dsn" secret
   run_once: true
@@ -151,6 +160,7 @@
           application: openstack-database-exporter
       stringData:
         NEUTRON_DSN: "{{ _neutron_db_user.resources.0.data.DB_CONNECTION | b64decode |  regex_replace('^.*//', '') | regex_replace('@(.*)/', '@tcp(\\1)/') }}"
+        NOVA_DSN: "{{ _nova_db_user.resources.0.data.DB_CONNECTION | b64decode |  regex_replace('^.*//', '') | regex_replace('@(.*)/', '@tcp(\\1)/') }}"
         OCTAVIA_DSN: "{{ _octavia_db_user.resources.0.data.DB_CONNECTION | b64decode |  regex_replace('^.*//', '') | regex_replace('@(.*)/', '@tcp(\\1)/') }}"
 
 - name: Deploy service

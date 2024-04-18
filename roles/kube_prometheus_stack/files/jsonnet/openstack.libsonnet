@@ -204,6 +204,18 @@
             },
           },
           {
+            alert: 'NovaServerTaskStateStuck',
+            annotations: {
+              summary: 'Nova server stuck in task state',
+              description: 'Nova server with ID {{ $labels.id }} stuck in {{ $labels.task_state }} state for more than 1 hour',
+            },
+            expr: 'openstack_nova_server_task_state > 0',
+            'for': '1h',
+            labels: {
+              severity: 'P3',
+            },
+          },
+          {
             alert: 'NovaInstanceError',
             expr: 'openstack_nova_server_status{status="ERROR"} > 0',
             'for': '24h',
