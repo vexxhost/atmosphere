@@ -18,6 +18,9 @@ _rook_ceph_helm_values:
     tag: "{{ atmosphere_images['rook_ceph'] | vexxhost.kubernetes.docker_image('tag') }}"
   nodeSelector:
     openstack-control-plane: enabled
+  resources:
+    limits:
+      cpu: 1
   # NOTE(mnaser): Once we implement storage inside Atmosphere, we can rely on
   #               Rook to manage this.
   csi:
