@@ -18,6 +18,8 @@ FROM registry.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
 ARG CINDER_GIT_REF=f74e2729554bee01b0a3e631a8001bb39e540433
 ADD --keep-git-dir=true https://opendev.org/openstack/cinder.git#${CINDER_GIT_REF} /src/cinder
 RUN git -C /src/cinder fetch --unshallow
+COPY patches/cinder /patches/cinder
+RUN git -C /src/cinder apply --verbose /patches/cinder/*
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
 pip3 install \
     --constraint /upper-constraints.txt \

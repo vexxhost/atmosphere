@@ -1,0 +1,146 @@
+From 96cca9076fb95b2fae7dbf254d49f492ce02b69a Mon Sep 17 00:00:00 2001
+From: ricolin <ricolin@ricolky.com>
+Date: Fri, 1 Mar 2024 13:50:13 +0800
+Subject: [PATCH 1/3] Create encrypted volumes directly to RBD
+
+This fix slow on create encrypted volumes with temp file import.
+Encrypted volume create is now directly upload to RBD with qemu-img
+command without temprory image file generated.
+
+Closes-Bug: #2055517
+Change-Id: If7a72a4acd5600de1350289a9d9c38017d42659e
+---
+ cinder/tests/unit/volume/drivers/test_rbd.py  |  9 +--
+ cinder/volume/drivers/rbd.py                  | 62 +++++++++----------
+ ...ate-encrypted-volume-c1bb6b44b85c0242.yaml |  7 +++
+ 3 files changed, 40 insertions(+), 38 deletions(-)
+ create mode 100644 releasenotes/notes/improve-create-encrypted-volume-c1bb6b44b85c0242.yaml
+
+diff --git a/cinder/tests/unit/volume/drivers/test_rbd.py b/cinder/tests/unit/volume/drivers/test_rbd.py
+index 57dae3af1..38ceaf27f 100644
+--- a/cinder/tests/unit/volume/drivers/test_rbd.py
++++ b/cinder/tests/unit/volume/drivers/test_rbd.py
+@@ -3247,7 +3247,6 @@ class RBDTestCase(test.TestCase):
+                 self.__dict__ = d
+ 
+         mock_temp_file.return_value.__enter__.side_effect = [
+-            DictObj({'name': '/imgfile'}),
+             DictObj({'name': '/passfile'})]
+ 
+         key_mgr = fake_keymgr.fake_api()
+@@ -3268,15 +3267,13 @@ class RBDTestCase(test.TestCase):
+                                                  self.context)
+             mock_open.assert_called_with('/passfile', 'w')
+ 
+-            mock_exec.assert_any_call(
++            mock_exec.assert_called_with(
+                 'qemu-img', 'create', '-f', 'luks', '-o',
+                 'cipher-alg=aes-256,cipher-mode=xts,ivgen-alg=essiv',
+                 '--object',
+                 'secret,id=luks_sec,format=raw,file=/passfile',
+-                '-o', 'key-secret=luks_sec', '/imgfile', '12288M')
+-            mock_exec.assert_any_call(
+-                'rbd', 'import', '--dest-pool', 'rbd', '--order', 22,
+-                '/imgfile', self.volume_c.name)
++                '-o', 'key-secret=luks_sec', 'rbd:rbd/%s' % self.volume_c.name,
++                '12288M')
+ 
+     @mock.patch('cinder.objects.Volume.get_by_id')
+     @mock.patch('cinder.db.volume_glance_metadata_get', return_value={})
+diff --git a/cinder/volume/drivers/rbd.py b/cinder/volume/drivers/rbd.py
+index 6cc86c2c5..b883ee47a 100644
+--- a/cinder/volume/drivers/rbd.py
++++ b/cinder/volume/drivers/rbd.py
+@@ -1087,8 +1087,8 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
+                                  context: context.RequestContext) -> None:
+         """Create an encrypted volume.
+ 
+-        This works by creating an encrypted image locally,
+-        and then uploading it to the volume.
++        This works by creating an encrypted image and
++        then uploading it to the volume directly.
+         """
+         encryption = volume_utils.check_encryption_provider(volume, context)
+ 
+@@ -1100,37 +1100,35 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
+         # create a file
+         tmp_dir = volume_utils.image_conversion_dir()
+ 
+-        with tempfile.NamedTemporaryFile(dir=tmp_dir) as tmp_image:
+-            with tempfile.NamedTemporaryFile(dir=tmp_dir) as tmp_key:
+-                with open(tmp_key.name, 'w') as f:
+-                    f.write(passphrase)
+-
+-                cipher_spec = image_utils.decode_cipher(encryption['cipher'],
+-                                                        encryption['key_size'])
+-
+-                create_cmd = (
+-                    'qemu-img', 'create', '-f', 'luks',
+-                    '-o', 'cipher-alg=%(cipher_alg)s,'
+-                    'cipher-mode=%(cipher_mode)s,'
+-                    'ivgen-alg=%(ivgen_alg)s' % cipher_spec,
+-                    '--object', 'secret,id=luks_sec,'
+-                    'format=raw,file=%(passfile)s' % {'passfile':
+-                                                      tmp_key.name},
+-                    '-o', 'key-secret=luks_sec',
+-                    tmp_image.name,
+-                    '%sM' % (volume.size * 1024))
+-                self._execute(*create_cmd)
+-
+-            # Copy image into RBD
+-            chunk_size = self.configuration.rbd_store_chunk_size * units.Mi
+-            order = int(math.log(chunk_size, 2))
++        with tempfile.NamedTemporaryFile(dir=tmp_dir) as tmp_key:
++            with open(tmp_key.name, 'w') as f:
++                f.write(passphrase)
+ 
+-            cmd = ['rbd', 'import',
+-                   '--dest-pool', self.configuration.rbd_pool,
+-                   '--order', order,
+-                   tmp_image.name, volume.name]
+-            cmd.extend(self._ceph_args())
+-            self._execute(*cmd)
++            cipher_spec = image_utils.decode_cipher(encryption['cipher'],
++                                                    encryption['key_size'])
++
++            _, conf, user_id, _ = self._get_config_tuple()
++            rbd_options = ''
++            if user_id:
++                rbd_options += ':id=%(user_id)s' % {'user_id': user_id}
++            if conf:
++                rbd_options += ':conf=%(conf)s' % {'conf': conf}
++            create_cmd = (
++                'qemu-img', 'create', '-f', 'luks',
++                '-o', 'cipher-alg=%(cipher_alg)s,'
++                'cipher-mode=%(cipher_mode)s,'
++                'ivgen-alg=%(ivgen_alg)s' % cipher_spec,
++                '--object', 'secret,id=luks_sec,'
++                'format=raw,file=%(passfile)s' % {'passfile':
++                                                  tmp_key.name},
++                '-o', 'key-secret=luks_sec',
++                'rbd:%(pool_name)s/%(image_name)s%(rbd_options)s' % {
++                    'pool_name': self.configuration.rbd_pool,
++                    'image_name': volume.name,
++                    'rbd_options': rbd_options
++                },
++                '%sM' % (volume.size * 1024))
++            self._execute(*create_cmd)
+ 
+     def create_volume(self, volume: Volume) -> dict[str, Any]:
+         """Creates a logical volume."""
+diff --git a/releasenotes/notes/improve-create-encrypted-volume-c1bb6b44b85c0242.yaml b/releasenotes/notes/improve-create-encrypted-volume-c1bb6b44b85c0242.yaml
+new file mode 100644
+index 000000000..8bdff6746
+--- /dev/null
++++ b/releasenotes/notes/improve-create-encrypted-volume-c1bb6b44b85c0242.yaml
+@@ -0,0 +1,7 @@
++---
++fixes:
++  - |
++    [Bug 255517](https://bugs.launchpad.net/cinder/+bug/2055517): Fix slow
++    on create encrypted volumes with temp file import. Encrypted volume create
++    is now directly upload to rbd with qemu-img command without temprory image
++    file generated.
+-- 
+2.25.1
+
