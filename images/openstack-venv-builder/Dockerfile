@@ -19,6 +19,7 @@ ADD https://releases.openstack.org/constraints/upper/master /upper-constraints.t
 RUN <<EOF sh -xe
 sed -i '/glance-store/d' /upper-constraints.txt
 sed -i '/horizon/d' /upper-constraints.txt
+sed -i '/python-openstackclient/d' /upper-constraints.txt
 EOF
 
 FROM registry.atmosphere.dev/library/python-base:${RELEASE}
