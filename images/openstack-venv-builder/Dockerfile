@@ -32,6 +32,7 @@ sed -i 's/Werkzeug===2.2.2/Werkzeug===2.3.8/' /upper-constraints.txt
 sed -i 's/zstd===1.5.2.5/zstd===1.5.4.0/' /upper-constraints.txt
 sed -i '/glance-store/d' /upper-constraints.txt
 sed -i '/horizon/d' /upper-constraints.txt
+sed -i '/python-openstackclient/d' /upper-constraints.txt
 EOF
 
 FROM registry.atmosphere.dev/library/python-base:${RELEASE}
