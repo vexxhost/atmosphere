@@ -27,31 +27,6 @@
         that:
           - "'LimitMEMLOCK=infinity' in _openvswitch_memlock_value.stdout"
 
-- name: Uninstall the legacy HelmRelease
-  run_once: true
-  delegate_to: "{{ groups['controllers'][0] }}"
-  block:
-    - name: Suspend the existing HelmRelease
-      failed_when: false
-      kubernetes.core.k8s:
-        state: patched
-        api_version: helm.toolkit.fluxcd.io/v2beta1
-        kind: HelmRelease
-        name: "{{ openvswitch_helm_release_name }}"
-        namespace: "{{ openvswitch_helm_release_namespace }}"
-        definition:
-          spec:
-            suspend: true
-
-    - name: Remove the existing HelmRelease
-      failed_when: false
-      kubernetes.core.k8s:
-        state: absent
-        api_version: helm.toolkit.fluxcd.io/v2beta1
-        kind: HelmRelease
-        name: "{{ openvswitch_helm_release_name }}"
-        namespace: "{{ openvswitch_helm_release_namespace }}"
-
 - name: Deploy Helm chart
   run_once: true
   delegate_to: "{{ groups['controllers'][0] }}"
