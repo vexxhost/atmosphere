@@ -1,16 +1,30 @@
+.common:
+  openstack_helm_repository: &openstack_helm_repository
+    url: https://tarballs.openstack.org/openstack-helm
+  openstack_helm_infra_repository: &openstack_helm_infra_repository
+    url: https://tarballs.openstack.org/openstack-helm-infra
+  openstack_helm_dependencies: &openstack_helm_dependencies
+    - name: helm-toolkit
+      repository: https://tarballs.openstack.org/openstack-helm-infra
+      version: 0.2.64
+
 charts:
   - name: barbican
     version: 0.3.6
-    repository:
-      url: https://tarballs.openstack.org/openstack-helm
+    repository: *openstack_helm_repository
+    dependencies: *openstack_helm_dependencies
+    patches:
+      gerrit:
+        review.opendev.org:
+          - 916034
   - name: ceph-csi-rbd
     version: 3.5.1
     repository:
       url: https://ceph.github.io/csi-charts
   - name: ceph-provisioners
     version: 0.1.8
-    repository:
-      url: https://tarballs.openstack.org/openstack-helm-infra
+    repository: *openstack_helm_infra_repository
+    dependencies: *openstack_helm_dependencies
   - name: godaddy-webhook
     version: 0.3.0
     repository:
@@ -21,12 +35,8 @@ charts:
       url: https://luisico.github.io/cert-manager-webhook-infoblox-wapi
   - name: cinder
     version: 0.3.15
-    repository:
-      url: https://tarballs.openstack.org/openstack-helm
-    dependencies:
-      - name: helm-toolkit
-        repository: https://tarballs.openstack.org/openstack-helm-infra
-        version: 0.2.55
+    repository: *openstack_helm_repository
+    dependencies: *openstack_helm_dependencies
     patches:
       gerrit:
         review.opendev.org:
@@ -37,48 +47,32 @@ charts:
       url: https://coredns.github.io/helm
   - name: designate
     version: 0.2.9
-    repository:
-      url: https://tarballs.openstack.org/openstack-helm
-    dependencies:
-      - name: helm-toolkit
-        repository: https://tarballs.openstack.org/openstack-helm-infra
-        version: 0.2.55
+    repository: *openstack_helm_repository
+    dependencies: *openstack_helm_dependencies
     patches:
       gerrit:
         review.opendev.org:
           - 899932
   - name: glance
     version: 0.4.15
-    repository:
-      url: https://tarballs.openstack.org/openstack-helm
-    dependencies:
-      - name: helm-toolkit
-        repository: https://tarballs.openstack.org/openstack-helm-infra
-        version: 0.2.55
+    repository: *openstack_helm_repository
+    dependencies: *openstack_helm_dependencies
     patches:
       gerrit:
         review.opendev.org:
           - 899864
   - name: heat
     version: 0.3.7
-    repository:
-      url: https://tarballs.openstack.org/openstack-helm
-    dependencies:
-      - name: helm-toolkit
-        repository: https://tarballs.openstack.org/openstack-helm-infra
-        version: 0.2.55
+    repository: *openstack_helm_repository
+    dependencies: *openstack_helm_dependencies
     patches:
       gerrit:
         review.opendev.org:
           - 899931
   - name: horizon
     version: 0.3.15
-    repository:
-      url: https://tarballs.openstack.org/openstack-helm
-    dependencies:
-      - name: helm-toolkit
-        repository: https://tarballs.openstack.org/openstack-helm-infra
-        version: 0.2.55
+    repository: *openstack_helm_repository
+    dependencies: *openstack_helm_dependencies
   - name: ingress-nginx
     version: 4.0.17
     repository:
@@ -89,12 +83,8 @@ charts:
       url: https://charts.bitnami.com/bitnami
   - name: keystone
     version: 0.3.5
-    repository:
-      url: https://tarballs.openstack.org/openstack-helm
-    dependencies:
-      - name: helm-toolkit
-        repository: https://tarballs.openstack.org/openstack-helm-infra
-        version: 0.2.55
+    repository: *openstack_helm_repository
+    dependencies: *openstack_helm_dependencies
     patches:
       gerrit:
         review.opendev.org:
@@ -105,12 +95,8 @@ charts:
       url: https://prometheus-community.github.io/helm-charts
   - name: libvirt
     version: 0.1.27
-    repository:
-      url: https://tarballs.openstack.org/openstack-helm-infra
-    dependencies:
-      - name: helm-toolkit
-        repository: https://tarballs.openstack.org/openstack-helm-infra
-        version: 0.2.56
+    repository: *openstack_helm_infra_repository
+    dependencies: *openstack_helm_dependencies
     patches:
       gerrit:
         review.opendev.org:
@@ -121,24 +107,16 @@ charts:
       url: https://grafana.github.io/helm-charts
   - name: magnum
     version: 0.2.9
-    repository:
-      url: https://tarballs.openstack.org/openstack-helm
-    dependencies:
-      - name: helm-toolkit
-        repository: https://tarballs.openstack.org/openstack-helm-infra
-        version: 0.2.55
+    repository: *openstack_helm_repository
+    dependencies: *openstack_helm_dependencies
     patches:
       gerrit:
         review.opendev.org:
           - 899926
   - name: manila
     version: 0.1.7
-    repository:
-      url: https://tarballs.openstack.org/openstack-helm
-    dependencies:
-      - name: helm-toolkit
-        repository: https://tarballs.openstack.org/openstack-helm-infra
-        version: 0.2.55
+    repository: *openstack_helm_repository
+    dependencies: *openstack_helm_dependencies
     patches:
       gerrit:
         review.opendev.org:
@@ -146,16 +124,12 @@ charts:
           - 899923
   - name: memcached
     version: 0.1.12
-    repository:
-      url: https://tarballs.openstack.org/openstack-helm-infra
+    repository: *openstack_helm_infra_repository
+    dependencies: *openstack_helm_dependencies
   - name: neutron
     version: 0.3.29
-    repository:
-      url: https://tarballs.openstack.org/openstack-helm
-    dependencies:
-      - name: helm-toolkit
-        repository: https://tarballs.openstack.org/openstack-helm-infra
-        version: 0.2.55
+    repository: *openstack_helm_repository
+    dependencies: *openstack_helm_dependencies
     patches:
       gerrit:
         review.opendev.org:
@@ -167,12 +141,8 @@ charts:
       url: https://kubernetes-sigs.github.io/node-feature-discovery/charts
   - name: nova
     version: 0.3.27
-    repository:
-      url: https://tarballs.openstack.org/openstack-helm
-    dependencies:
-      - name: helm-toolkit
-        repository: https://tarballs.openstack.org/openstack-helm-infra
-        version: 0.2.55
+    repository: *openstack_helm_repository
+    dependencies: *openstack_helm_dependencies
     patches:
       gerrit:
         review.opendev.org:
@@ -180,32 +150,20 @@ charts:
           - 904250
   - name: octavia
     version: 0.2.9
-    repository:
-      url: https://tarballs.openstack.org/openstack-helm
-    dependencies:
-      - name: helm-toolkit
-        repository: https://tarballs.openstack.org/openstack-helm-infra
-        version: 0.2.55
+    repository: *openstack_helm_repository
+    dependencies: *openstack_helm_dependencies
     patches:
       gerrit:
         review.opendev.org:
           - 899918
   - name: openvswitch
     version: 0.1.19
-    repository:
-      url: https://tarballs.openstack.org/openstack-helm-infra
-    dependencies:
-      - name: helm-toolkit
-        repository: https://tarballs.openstack.org/openstack-helm-infra
-        version: 0.2.56
+    repository: *openstack_helm_infra_repository
+    dependencies: *openstack_helm_dependencies
   - name: ovn
     version: 0.1.4
-    repository:
-      url: https://tarballs.openstack.org/openstack-helm-infra
-    dependencies:
-      - name: helm-toolkit
-        repository: https://tarballs.openstack.org/openstack-helm-infra
-        version: 0.2.56
+    repository: *openstack_helm_infra_repository
+    dependencies: *openstack_helm_dependencies
     patches:
       gerrit:
         review.opendev.org:
@@ -213,12 +171,8 @@ charts:
           - 914807
   - name: placement
     version: 0.3.9
-    repository:
-      url: https://tarballs.openstack.org/openstack-helm
-    dependencies:
-      - name: helm-toolkit
-        repository: https://tarballs.openstack.org/openstack-helm-infra
-        version: 0.2.55
+    repository: *openstack_helm_repository
+    dependencies: *openstack_helm_dependencies
     patches:
       gerrit:
         review.opendev.org:
@@ -245,24 +199,16 @@ charts:
       url: https://charts.rook.io/release
   - name: senlin
     version: 0.2.9
-    repository:
-      url: https://tarballs.openstack.org/openstack-helm
-    dependencies:
-      - name: helm-toolkit
-        repository: https://tarballs.openstack.org/openstack-helm-infra
-        version: 0.2.55
+    repository: *openstack_helm_repository
+    dependencies: *openstack_helm_dependencies
     patches:
       gerrit:
         review.opendev.org:
           - 899913
   - name: tempest
     version: 0.2.8
-    repository:
-      url: https://tarballs.openstack.org/openstack-helm
-    dependencies:
-      - name: helm-toolkit
-        repository: https://tarballs.openstack.org/openstack-helm-infra
-        version: 0.2.55
+    repository: *openstack_helm_repository
+    dependencies: *openstack_helm_dependencies
   - name: vector
     version: 0.32.0
     repository:
