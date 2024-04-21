@@ -7,7 +7,9 @@ kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: {{ include "pxc-operator.fullname" . }}
+  {{- if not (or .Values.watchNamespace .Values.watchAllNamespaces) }}
   namespace: {{ .Release.Namespace }}
+  {{- end }}
   labels:
 {{ include "pxc-operator.labels" . | indent 4 }}
 rules:

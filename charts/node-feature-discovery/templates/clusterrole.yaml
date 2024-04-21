@@ -1,4 +1,4 @@
-{{- if .Values.master.rbac.create }}
+{{- if and .Values.master.enable .Values.master.rbac.create }}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -10,9 +10,7 @@ rules:
   - ""
   resources:
   - nodes
-{{- if .Values.master.resourceLabels | empty | not }}
   - nodes/status
-{{- end }}
   verbs:
   - get
   - patch
@@ -21,25 +19,31 @@ rules:
 - apiGroups:
   - nfd.k8s-sigs.io
   resources:
+  - nodefeatures
   - nodefeaturerules
   verbs:
   - get
   - list
   - watch
-{{- if .Values.topologyUpdater.enable }}
 - apiGroups:
-  - topology.node.k8s.io
+  - coordination.k8s.io
   resources:
-  - noderesourcetopologies
+  - leases
   verbs:
   - create
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  resourceNames:
+  - "nfd-master.nfd.kubernetes.io"
+  verbs:
   - get
   - update
 {{- end }}
-{{- end }}
 
+{{- if and .Values.topologyUpdater.enable .Values.topologyUpdater.rbac.create }}
 ---
-{{- if .Values.topologyUpdater.rbac.create }}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -55,9 +59,61 @@ rules:
   - get
   - list
 - apiGroups:
+    - ""
+  resources:
+    - nodes/proxy
+  verbs:
+    - get
+- apiGroups:
   - ""
   resources:
   - pods
   verbs:
   - get
+- apiGroups:
+  - topology.node.k8s.io
+  resources:
+  - noderesourcetopologies
+  verbs:
+  - create
+  - get
+  - update
+{{- end }}
+
+{{- if and .Values.gc.enable .Values.gc.rbac.create (or .Values.enableNodeFeatureApi .Values.topologyUpdater.enable) }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "node-feature-discovery.fullname" . }}-gc
+  labels:
+    {{- include "node-feature-discovery.labels" . | nindent 4 }}
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - nodes
+  verbs:
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - nodes/proxy
+  verbs:
+  - get
+- apiGroups:
+  - topology.node.k8s.io
+  resources:
+  - noderesourcetopologies
+  verbs:
+  - delete
+  - list
+- apiGroups:
+  - nfd.k8s-sigs.io
+  resources:
+  - nodefeatures
+  verbs:
+  - delete
+  - list
 {{- end }}

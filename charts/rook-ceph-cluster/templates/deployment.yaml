@@ -4,6 +4,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: rook-ceph-tools
+  namespace: {{ .Release.Namespace }} # namespace:cluster
   labels:
     app: rook-ceph-tools
 spec:
@@ -85,7 +86,6 @@ spec:
               # create the keyring file
               cat <<EOF > ${KEYRING_FILE}
               [${ROOK_CEPH_USERNAME}]
-              key = ${ROOK_CEPH_SECRET}
               key = ${ceph_secret}
               EOF
 
@@ -96,6 +96,7 @@ spec:
               watch_endpoints
           imagePullPolicy: IfNotPresent
           tty: true
+          securityContext: {{- .Values.toolbox.containerSecurityContext | toYaml | nindent 12 }}
           env:
             - name: ROOK_CEPH_USERNAME
               valueFrom:
@@ -125,8 +126,8 @@ spec:
           configMap:
             name: rook-ceph-mon-endpoints
             items:
-                - key: data
-                  path: mon-endpoints
+            - key: data
+              path: mon-endpoints
         - name: ceph-config
           emptyDir: {}
       tolerations:

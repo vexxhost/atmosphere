@@ -13,6 +13,7 @@
 # under the License.
 
 _loki_helm_values:
+  deploymentMode: SingleBinary
   loki:
     server:
       log_level: warn
@@ -25,21 +26,29 @@ _loki_helm_values:
       replication_factor: 1
     storage:
       type: filesystem
+    schemaConfig:
+      configs:
+        - from: 2024-04-01
+          store: tsdb
+          object_store: filesystem
+          schema: v13
+          index:
+            prefix: index_
+            period: 24h
   test:
     enabled: false
-  monitoring:
-    selfMonitoring:
-      enabled: false
-      grafanaAgent:
-        installOperator: false
-    lokiCanary:
-      enabled: false
   singleBinary:
     replicas: 1
     nodeSelector:
       openstack-control-plane: enabled
     persistence:
       size: 256Gi
+  write:
+    replicas: 0
+  read:
+    replicas: 0
+  backend:
+    replicas: 0
   gateway:
     image:
       registry: "{{ atmosphere_images['loki_gateway'] | vexxhost.kubernetes.docker_image('domain') }}"
@@ -47,3 +56,5 @@ _loki_helm_values:
       tag: "{{ atmosphere_images['loki_gateway'] | vexxhost.kubernetes.docker_image('tag') }}"
     nodeSelector:
       openstack-control-plane: enabled
+  lokiCanary:
+    enabled: false
