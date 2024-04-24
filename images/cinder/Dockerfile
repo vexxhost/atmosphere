@@ -24,8 +24,16 @@ RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF b
 pip3 install \
     --constraint /upper-constraints.txt \
         /src/cinder \
-        purestorage
+        purestorage \
+        storpool \
+        storpool.spopenstack
 EOF
+ADD --chmod=644 \
+    https://github.com/storpool/storpool-openstack-integration/raw/master/drivers/cinder/openstack/zed/storpool.py \
+    /var/lib/openstack/lib/python3.10/site-packages/cinder/volume/drivers/storpool.py
+ADD --chmod=644 \
+    https://github.com/storpool/storpool-openstack-integration/raw/master/drivers/os_brick/openstack/zed/storpool.py \
+    /var/lib/openstack/lib/python3.10/site-packages/os_brick/initiator/connectors/storpool.py
 
 FROM registry.atmosphere.dev/library/openstack-python-runtime:${RELEASE}
 RUN <<EOF bash -xe
