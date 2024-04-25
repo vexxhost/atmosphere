@@ -32,7 +32,8 @@
     - name: Get list of regions with compute service
       changed_when: false
       run_once: true
-      ansible.builtin.shell:
+      ansible.builtin.shell: |
+        source /etc/profile.d/atmosphere.sh
         openstack endpoint list \
           --service compute \
           --interface public \
@@ -45,7 +46,8 @@
     - name: Get list of VMs in the project in each region
       changed_when: false
       run_once: true
-      ansible.builtin.shell:
+      ansible.builtin.shell: |
+        source /etc/profile.d/atmosphere.sh
         openstack server list \
           --no-name-lookup \
           --project "{{ project_name }}" \
@@ -65,7 +67,8 @@
 
     - name: Suspend VMs in each region
       run_once: true
-      ansible.builtin.shell:
+      ansible.builtin.shell: |
+        source /etc/profile.d/atmosphere.sh
         openstack server suspend {{ item.1 }}
       environment:
         OS_AUTH_URL: "https://{{ openstack_helm_endpoints_keystone_api_host }}"
