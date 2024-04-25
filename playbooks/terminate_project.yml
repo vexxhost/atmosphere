@@ -31,7 +31,8 @@
     - name: Get list of regions with compute service
       changed_when: false
       run_once: true
-      ansible.builtin.shell:
+      ansible.builtin.shell: |
+        source /etc/profile.d/atmosphere.sh
         openstack endpoint list \
           --service compute \
           --interface public \
