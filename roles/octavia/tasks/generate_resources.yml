@@ -85,10 +85,13 @@
 - name: Set binding for ports
   changed_when: false
   ansible.builtin.shell: |
+    set -o posix
     source /etc/profile.d/atmosphere.sh
     openstack port set \
       --host {{ hostvars[item]['ansible_fqdn'] }} \
       octavia-health-manager-port-{{ hostvars[item]['inventory_hostname_short'] }}
+  args:
+    executable: /bin/bash
   environment:
     OS_CLOUD: atmosphere
   loop: "{{ groups['controllers'] }}"
