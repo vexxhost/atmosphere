@@ -32,12 +32,15 @@
       changed_when: false
       run_once: true
       ansible.builtin.shell: |
+        set -o posix
         source /etc/profile.d/atmosphere.sh
         openstack endpoint list \
           --service compute \
           --interface public \
           --column Region \
           --format value
+      args:
+        executable: /bin/bash
       environment:
         OS_CLOUD: atmosphere
       register: _regions
