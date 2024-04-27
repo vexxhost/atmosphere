@@ -23,11 +23,15 @@
 - job:
     name: atmosphere-buildset-registry
     parent: ci-buildset-registry
+    irrelevant-files:
+      - ^doc/
 
 - job:
     name: atmosphere-build-container-image
     parent: ci-build-container-image
     abstract: true
+    irrelevant-files:
+      - ^doc/
     vars: &image_vars
       container_command: docker
       promote_container_image_method: intermediate-registry
@@ -41,6 +45,8 @@
     name: atmosphere-upload-container-image
     parent: ci-upload-container-image
     abstract: true
+    irrelevant-files:
+      - ^doc/
     secrets:
       name: container_registry_credentials
       secret: atmosphere-registry-credentials
@@ -50,6 +56,8 @@
 - job:
     name: atmosphere-promote-container-image
     parent: ci-promote-container-image
+    irrelevant-files:
+      - ^doc/
     secrets:
       name: container_registry_credentials
       secret: atmosphere-registry-credentials
