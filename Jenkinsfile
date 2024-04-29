@@ -81,16 +81,6 @@ pipeline {
             }
           }
         }
-
-        stage('docs') {
-          agent {
-            label 'earthly-2c-4g'
-          }
-
-          steps {
-            sh 'earthly +mkdocs-build'
-          }
-        }
       }
     }
 
