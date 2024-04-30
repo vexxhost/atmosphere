@@ -12,25 +12,4 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Install openstacksdk
-  ansible.builtin.pip:
-    name: openstacksdk
-    version: "{{ openstacksdk_version }}"
-
-- name: Create openstack config directory
-  become: true
-  ansible.builtin.file:
-    path: /etc/openstack
-    state: directory
-    owner: root
-    group: root
-    mode: "0600"
-
-- name: Generate cloud config file
-  become: true
-  ansible.builtin.template:
-    src: clouds.yaml.j2
-    dest: /etc/openstack/clouds.yaml
-    owner: root
-    group: root
-    mode: "0600"
+openstacksdk_version: "0.61.0"
