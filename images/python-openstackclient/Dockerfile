@@ -15,13 +15,10 @@
 ARG RELEASE
 
 FROM registry.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
-ARG PYTHON_OPENSTACKCLIENT_GIT_REF=a79cb608b0b75f1400a21ecc074de1056c50b29a
-ADD --keep-git-dir=true https://opendev.org/openstack/python-openstackclient.git#${PYTHON_OPENSTACKCLIENT_GIT_REF} /src/python-openstackclient
-RUN git -C /src/python-openstackclient fetch --unshallow
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
 pip3 install \
     --constraint /upper-constraints.txt \
-        /src/python-openstackclient \
+        python-openstackclient \
         python-barbicanclient \
         python-designateclient \
         python-glanceclient \
