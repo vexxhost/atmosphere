@@ -89,6 +89,7 @@ spec:
       hostPID: true
       {{- end }}
       initContainers:
+{{ tuple $envAll "pod_dependency" $mounts_neutron_ovn_metadata_agent_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
         - name: neutron-ovn-nic-init
 {{ tuple $envAll "neutron_openvswitch_agent" | include "helm-toolkit.snippets.image" | indent 10 }}
 {{ tuple $envAll $envAll.Values.pod.resources.agent.ovs | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
@@ -175,6 +176,10 @@ spec:
               mountPath: /tmp/neutron-metadata-agent-init.sh
               subPath: neutron-metadata-agent-init.sh
               readOnly: true
+            - name: neutron-etc
+              mountPath: /etc/neutron/neutron.conf
+              subPath: neutron.conf
+              readOnly: true
             - name: socket
               mountPath: /var/lib/neutron/openstack-helm
         - name: ovn-neutron-init
@@ -206,6 +211,8 @@ spec:
           command:
             - /tmp/neutron-ovn-metadata-agent.sh
           volumeMounts:
+            - name: run-openvswitch
+              mountPath: /run/openvswitch
             - name: run
               mountPath: /run
             - name: pod-tmp
