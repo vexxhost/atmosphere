@@ -1,0 +1,77 @@
+# Copyright (c) 2024 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Prepare host for Molecule tests
+  hosts: all
+  tasks:
+    - name: Disable swap
+      ansible.builtin.command: swapoff -a
+      ignore_errors: yes
+
+    # TODO(mnaser): Drop this when we can use https://github.com/vexxhost/atmosphere/pull/977
+    - name: Prefix all images for the job to point to mirror
+      ansible.builtin.shell: |
+        sed -i '/registry.atmosphere.dev/!s/  \(.*\): \(.*\)$/  \1: registry.atmosphere.dev\/\2/' roles/defaults/vars/main.yml
+      args:
+        chdir: "{{ zuul.project.src_dir }}"
+
+    # NOTE(mnaser): This can be removed once the following merges
+    #               https://review.opendev.org/c/zuul/zuul-jobs/+/915025
+    - name: Load "buildset_registry" fact
+      block:
+        - name: Check for results.json
+          stat:
+            path: "{{ zuul.executor.result_data_file }}"
+          register: result_json_stat
+          delegate_to: localhost
+        - name: Load information from zuul_return
+          no_log: true
+          set_fact:
+            buildset_registry: "{{ (lookup('file', zuul.executor.result_data_file) | from_json)['secret_data']['buildset_registry'] }}"
+          when:
+            - buildset_registry is not defined
+            - result_json_stat.stat.exists
+            - result_json_stat.stat.size > 0
+            - "'buildset_registry' in (lookup('file', zuul.executor.result_data_file) | from_json).get('secret_data')"
+
+    - name: Configure buildset registry
+      when: buildset_registry is defined
+      block:
+        - name: Install CA certificate for the registry
+          become: true
+          ansible.builtin.copy:
+            content: "{{ buildset_registry.cert }}"
+            dest: /usr/local/share/ca-certificates/registry.crt
+        - name: Update CA certificates
+          become: true
+          ansible.builtin.shell: update-ca-certificates
+        - name: Replace the registry in image manifest
+          ansible.builtin.replace:
+            path: "{{ zuul.project.src_dir }}/roles/defaults/vars/main.yml"
+            regexp: "{{ repo }}:"
+            replace: '{{ buildset_registry.host }}:{{ buildset_registry.port }}/{{ repo }}:'
+          loop: "{{ zuul.artifacts | default([]) }}"
+          loop_control:
+            loop_var: zj_zuul_artifact
+          when: "'metadata' in zj_zuul_artifact and zj_zuul_artifact.metadata.type | default('') == 'container_image'"
+          vars:
+            repo: "{{ zj_zuul_artifact.metadata.repository }}"
+
+    # TODO(mnaser): Drop this when we move to PBR
+    - name: Add current folder to Git's safe directories
+      become: true
+      ansible.builtin.shell: |
+        git config --global --add safe.directory $(pwd)
+      args:
+        chdir: "{{ zuul.project.src_dir }}"

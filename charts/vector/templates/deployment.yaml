@@ -5,6 +5,8 @@ metadata:
   name: {{ include "vector.fullname" . }}
   labels:
     {{- include "vector.labels" . | nindent 4 }}
+  annotations:
+    {{- toYaml .Values.workloadResourceAnnotations | nindent 4 }}
 spec:
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicas }}
@@ -12,6 +14,7 @@ spec:
   selector:
     matchLabels:
       {{- include "vector.selectorLabels" . | nindent 6 }}
+  minReadySeconds: {{ .Values.minReadySeconds }}
   {{- with .Values.updateStrategy }}
   strategy:
     {{- toYaml . | nindent 4 }}

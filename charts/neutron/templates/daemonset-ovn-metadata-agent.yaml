@@ -100,8 +100,8 @@ spec:
           command:
             - /tmp/neutron-metadata-agent-init.sh
           volumeMounts:
-            - name: run
-              mountPath: /run
+            - name: run-openvswitch
+              mountPath: /run/openvswitch
             - name: pod-tmp
               mountPath: /tmp
             - name: neutron-bin
@@ -220,6 +220,9 @@ spec:
         - name: run
           hostPath:
             path: /run
+        - name: run-openvswitch
+          hostPath:
+            path: /run/openvswitch
         - name: neutron-bin
           configMap:
             name: neutron-bin

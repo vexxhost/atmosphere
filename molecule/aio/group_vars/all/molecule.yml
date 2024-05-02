@@ -15,7 +15,7 @@ cilium_helm_values:
   operator:
     replicas: 1
 
-csi_driver: local-path-provisioner
+csi_driver: "{{ lookup('env', 'MOLECULE_CSI_DRIVER') | default('local-path-provisioner', True) }}"
 
 cluster_issuer_type: self-signed
 

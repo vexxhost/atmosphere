@@ -71,6 +71,8 @@
                     - internal
                     - default
                     - --collect-metric-time
+                    - -d neutron-l3_agent_of_router
+                    - -d loadbalancer-loadbalancer_status
                   ports:
                     - name: metrics
                       containerPort: 9180
@@ -114,3 +116,98 @@
               targetPort: metrics
           selector:
             application: openstack-exporter
+
+- name: Fetch Neutron DB secret
+  run_once: true
+  no_log: true
+  kubernetes.core.k8s_info:
+    kind: Secret
+    namespace: openstack
+    name: neutron-db-user
+  register: _neutron_db_user
+
+- name: Fetch Nova DB secret
+  run_once: true
+  no_log: true
+  kubernetes.core.k8s_info:
+    kind: Secret
+    namespace: openstack
+    name: nova-db-user
+  register: _nova_db_user
+
+- name: Fetch Octavia DB secret
+  run_once: true
+  no_log: true
+  kubernetes.core.k8s_info:
+    kind: Secret
+    namespace: openstack
+    name: octavia-db-user
+  register: _octavia_db_user
+
+- name: Create "openstack-database-exporter-dsn" secret
+  run_once: true
+  no_log: true
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      type: Opaque
+      metadata:
+        name: openstack-database-exporter-dsn
+        namespace: openstack
+        labels:
+          application: openstack-database-exporter
+      stringData:
+        NEUTRON_DSN: "{{ _neutron_db_user.resources.0.data.DB_CONNECTION | b64decode |  regex_replace('^.*//', '') | regex_replace('@(.*)/', '@tcp(\\1)/') }}"
+        NOVA_DSN: "{{ _nova_db_user.resources.0.data.DB_CONNECTION | b64decode |  regex_replace('^.*//', '') | regex_replace('@(.*)/', '@tcp(\\1)/') }}"
+        OCTAVIA_DSN: "{{ _octavia_db_user.resources.0.data.DB_CONNECTION | b64decode |  regex_replace('^.*//', '') | regex_replace('@(.*)/', '@tcp(\\1)/') }}"
+
+- name: Deploy service
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      - apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: openstack-database-exporter
+          namespace: openstack
+          labels:
+            application: openstack-database-exporter
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              application: openstack-database-exporter
+          template:
+            metadata:
+              labels:
+                application: openstack-database-exporter
+            spec:
+              nodeSelector:
+                openstack-control-plane: enabled
+              containers:
+                - name: openstack-database-exporter
+                  image: "{{ atmosphere_images['prometheus_openstack_database_exporter'] | vexxhost.kubernetes.docker_image('ref') }}"
+                  envFrom:
+                    - secretRef:
+                        name: openstack-database-exporter-dsn
+                  ports:
+                    - name: metrics
+                      containerPort: 9180
+                  readinessProbe:
+                    failureThreshold: 3
+                    httpGet:
+                      path: /
+                      port: 9180
+                      scheme: HTTP
+                  livenessProbe:
+                    failureThreshold: 3
+                    httpGet:
+                      path: /
+                      port: 9180
+                      scheme: HTTP
+                    periodSeconds: 10
+                    successThreshold: 1
+                    timeoutSeconds: 1

@@ -12,56 +12,6 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-# NOTE(mnaser): We should get rid of this task eventually as it is suspending
-#               the old HelmRelease and removing it to avoid uninstalling the
-#               Helm chart.
-- name: Uninstall the legacy HelmRelease
-  run_once: true
-  block:
-    - name: Suspend the existing HelmRelease
-      failed_when: false
-      kubernetes.core.k8s:
-        state: patched
-        api_version: helm.toolkit.fluxcd.io/v2beta1
-        kind: HelmRelease
-        name: "{{ magnum_helm_release_name }}"
-        namespace: "{{ magnum_helm_release_namespace }}"
-        definition:
-          spec:
-            suspend: true
-
-    - name: Remove the existing HelmRelease
-      failed_when: false
-      kubernetes.core.k8s:
-        state: absent
-        api_version: helm.toolkit.fluxcd.io/v2beta1
-        kind: HelmRelease
-        name: "{{ magnum_helm_release_name }}"
-        namespace: "{{ magnum_helm_release_namespace }}"
-
-# NOTE(okozachenko1203): We should get rid of this task eventually as it is removing
-#               the old RBAC resources.
-- name: Remove the legacy mcapi RBAC resources
-  run_once: true
-  block:
-    - name: Remove the Role
-      failed_when: false
-      kubernetes.core.k8s:
-        state: absent
-        api_version: rbac.authorization.k8s.io/v1
-        kind: Role
-        name: magnum-cluster-api
-        namespace: magnum-system
-
-    - name: Remove the RoleBinding
-      failed_when: false
-      kubernetes.core.k8s:
-        state: absent
-        api_version: rbac.authorization.k8s.io/v1
-        kind: RoleBinding
-        name: magnum-cluster-api
-        namespace: magnum-system
-
 - name: Deploy Cluster API for Magnum RBAC
   kubernetes.core.k8s:
     state: present
@@ -178,22 +128,6 @@
     openstack_helm_ingress_service_name: magnum-api
     openstack_helm_ingress_service_port: 9511
     openstack_helm_ingress_annotations: "{{ magnum_ingress_annotations }}"
-
-- name: Delete un-used job and PVC
-  run_once: true
-  kubernetes.core.k8s:
-    state: absent
-    definition:
-      - apiVersion: batch/v1
-        kind: Job
-        metadata:
-          name: magnum-registry-init
-          namespace: "{{ magnum_helm_release_namespace }}"
-      - apiVersion: v1
-        kind: PersistentVolumeClaim
-        metadata:
-          name: magnum-registry
-          namespace: "{{ magnum_helm_release_namespace }}"
 
 - name: Deploy magnum registry
   run_once: true

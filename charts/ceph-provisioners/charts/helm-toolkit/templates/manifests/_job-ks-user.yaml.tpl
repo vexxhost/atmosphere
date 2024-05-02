@@ -17,12 +17,35 @@ limitations under the License.
 # {- $ksUserJob := dict "envAll" . "serviceName" "senlin" }
 # { $ksUserJob | include "helm-toolkit.manifests.job_ks_user" }
 
+{{/*
+  # To enable PodSecuritycontext (PodSecurityContext/v1) define the below in values.yaml:
+  # example:
+  #  values: |
+  #    pod:
+  #      security_context:
+  #        ks_user:
+  #          pod:
+  #            runAsUser: 65534
+  # To enable Container SecurityContext(SecurityContext/v1) for ks-user container define the values:
+  # example:
+  #   values: |
+  #     pod:
+  #       security_context:
+  #         ks_user:
+  #           container:
+  #             ks-user:
+  #               runAsUser: 65534
+  #               readOnlyRootFilesystem: true
+  #               allowPrivilegeEscalation: false
+*/}}
+
 {{- define "helm-toolkit.manifests.job_ks_user" -}}
 {{- $envAll := index . "envAll" -}}
 {{- $serviceName := index . "serviceName" -}}
 {{- $jobAnnotations := index . "jobAnnotations" -}}
 {{- $jobLabels := index . "jobLabels" -}}
 {{- $nodeSelector := index . "nodeSelector" | default ( dict $envAll.Values.labels.job.node_selector_key $envAll.Values.labels.job.node_selector_value ) -}}
+{{- $tolerationsEnabled := index . "tolerationsEnabled" | default false -}}
 {{- $configMapBin := index . "configMapBin" | default (printf "%s-%s" $serviceName "bin" ) -}}
 {{- $serviceUser := index . "serviceUser" | default $serviceName -}}
 {{- $secretBin := index . "secretBin" -}}
@@ -45,7 +68,13 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: {{ printf "%s-%s" $serviceUserPretty "ks-user" | quote }}
+  labels:
+{{ tuple $envAll $serviceName "ks-user" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+{{- if $jobLabels }}
+{{ toYaml $jobLabels | indent 4 }}
+{{- end }}
   annotations:
+{{ tuple $serviceAccountName $envAll | include "helm-toolkit.snippets.custom_job_annotations" | indent 4 -}}
 {{- if $jobAnnotations }}
 {{ toYaml $jobAnnotations | indent 4 }}
 {{- end }}
@@ -65,9 +94,14 @@ spec:
 {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
     spec:
       serviceAccountName: {{ $serviceAccountName | quote }}
+{{ dict "envAll" $envAll "application" "ks_user" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
       restartPolicy: {{ $restartPolicy }}
+      {{ tuple $envAll "ks_user" | include "helm-toolkit.snippets.kubernetes_image_pull_secrets" | indent 6 }}
       nodeSelector:
 {{ toYaml $nodeSelector | indent 8 }}
+{{- if $tolerationsEnabled }}
+{{ tuple $envAll $serviceName | include "helm-toolkit.snippets.kubernetes_tolerations" | indent 6 }}
+{{- end}}
       initContainers:
 {{ tuple $envAll "ks_user" list | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
       containers:
@@ -75,6 +109,7 @@ spec:
           image: {{ $envAll.Values.images.tags.ks_user }}
           imagePullPolicy: {{ $envAll.Values.images.pull_policy }}
 {{ tuple $envAll $envAll.Values.pod.resources.jobs.ks_user | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "ks_user" "container" "ks_user" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
           command:
             - /bin/bash
             - -c

@@ -12,33 +12,6 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-# NOTE(mnaser): We should get rid of this task eventually as it is suspending
-#               the old HelmRelease and removing it to avoid uninstalling the
-#               Helm chart.
-- name: Uninstall the legacy HelmRelease
-  run_once: true
-  block:
-    - name: Suspend the existing HelmRelease
-      failed_when: false
-      kubernetes.core.k8s:
-        state: patched
-        api_version: helm.toolkit.fluxcd.io/v2beta1
-        kind: HelmRelease
-        name: "{{ placement_helm_release_name }}"
-        namespace: "{{ placement_helm_release_namespace }}"
-        definition:
-          spec:
-            suspend: true
-
-    - name: Remove the existing HelmRelease
-      failed_when: false
-      kubernetes.core.k8s:
-        state: absent
-        api_version: helm.toolkit.fluxcd.io/v2beta1
-        kind: HelmRelease
-        name: "{{ placement_helm_release_name }}"
-        namespace: "{{ placement_helm_release_namespace }}"
-
 - name: Deploy Helm chart
   run_once: true
   kubernetes.core.helm:

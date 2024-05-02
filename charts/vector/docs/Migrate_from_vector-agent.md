@@ -32,7 +32,7 @@ customConfig:
           excludes: [binfmt_misc]
         filesystems:
           excludes: [binfmt_misc]
-        mountPoints:
+        mountpoints:
           excludes: ["*/proc/sys/fs/binfmt_misc"]
       type: host_metrics
     internal_metrics:

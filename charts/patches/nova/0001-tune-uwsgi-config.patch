@@ -1,0 +1,46 @@
+diff --git b/nova/values.yaml a/charts/nova/values.yaml
+index df2e2ff6..fe02e605 100644
+--- b/nova/values.yaml
++++ a/nova/values.yaml
+@@ -1539,15 +1539,20 @@ conf:
+     uwsgi:
+       add-header: "Connection: close"
+       buffer-size: 65535
++      chunked-input-limit: "4096000"
+       die-on-term: true
+       enable-threads: true
+       exit-on-reload: false
+       hook-master-start: unix_signal:15 gracefully_kill_them_all
++      http-auto-chunked: true
++      http-raw-body: true
+       lazy-apps: true
+       log-x-forwarded-for: true
+       master: true
++      need-app: true
+       procname-prefix-spaced: "nova-api:"
+       route-user-agent: '^kube-probe.* donotlog:'
++      socket-timeout: 10
+       thunder-lock: true
+       worker-reload-mercy: 80
+       wsgi-file: /var/lib/openstack/bin/nova-api-wsgi
+@@ -1555,15 +1560,20 @@ conf:
+     uwsgi:
+       add-header: "Connection: close"
+       buffer-size: 65535
++      chunked-input-limit: 4096000
+       die-on-term: true
+       enable-threads: true
+       exit-on-reload: false
+       hook-master-start: unix_signal:15 gracefully_kill_them_all
++      http-auto-chunked: true
++      http-raw-body: true
+       lazy-apps: true
+       log-x-forwarded-for: true
+       master: true
++      need-app: true
+       procname-prefix-spaced: "nova-metadata:"
+       route-user-agent: '^kube-probe.* donotlog:'
++      socket-timeout: 10
+       thunder-lock: true
+       worker-reload-mercy: 80
+       wsgi-file: /var/lib/openstack/bin/nova-metadata-wsgi

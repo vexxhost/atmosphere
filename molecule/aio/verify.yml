@@ -12,5 +12,17 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+- name: Run tests
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Run "stestr" tests
+      become: true
+      ansible.builtin.shell: stestr run
+      args:
+        chdir: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}"
+      environment:
+        KUBECONFIG: /root/.kube/config
+
 - name: Run Tempest tests
   ansible.builtin.import_playbook: vexxhost.atmosphere.tempest

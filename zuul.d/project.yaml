@@ -1,0 +1,147 @@
+# Copyright (c) 2024 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- project:
+    merge-mode: squash-merge
+    check:
+      jobs:
+        - atmosphere-linters
+        - atmosphere-build-collection
+        - atmosphere-molecule-aio-keycloak:
+            dependencies: &molecule_check_dependencies
+              - name: atmosphere-build-container-image-barbican
+                soft: true
+              - name: atmosphere-build-container-image-cinder
+                soft: true
+              - name: atmosphere-build-container-image-cluster-api-provider-openstack
+                soft: true
+              - name: atmosphere-build-container-image-designate
+                soft: true
+              - name: atmosphere-build-container-image-glance
+                soft: true
+              - name: atmosphere-build-container-image-heat
+                soft: true
+              - name: atmosphere-build-container-image-horizon
+                soft: true
+              - name: atmosphere-build-container-image-ironic
+                soft: true
+              - name: atmosphere-build-container-image-keystone
+                soft: true
+              - name: atmosphere-build-container-image-kubernetes-entrypoint
+                soft: true
+              - name: atmosphere-build-container-image-libvirt-tls-sidecar
+                soft: true
+              - name: atmosphere-build-container-image-libvirtd
+                soft: true
+              - name: atmosphere-build-container-image-magnum
+                soft: true
+              - name: atmosphere-build-container-image-manila
+                soft: true
+              - name: atmosphere-build-container-image-netoffload
+                soft: true
+              - name: atmosphere-build-container-image-neutron
+                soft: true
+              - name: atmosphere-build-container-image-nova
+                soft: true
+              - name: atmosphere-build-container-image-nova-ssh
+                soft: true
+              - name: atmosphere-build-container-image-octavia
+                soft: true
+              - name: atmosphere-build-container-image-openvswitch
+                soft: true
+              - name: atmosphere-build-container-image-ovn
+                soft: true
+              - name: atmosphere-build-container-image-placement
+                soft: true
+              - name: atmosphere-build-container-image-senlin
+                soft: true
+              - name: atmosphere-build-container-image-staffeln
+                soft: true
+              - name: atmosphere-build-container-image-tempest
+                soft: true
+        - atmosphere-molecule-aio-openvswitch:
+            dependencies: *molecule_check_dependencies
+        - atmosphere-molecule-aio-ovn:
+            dependencies: *molecule_check_dependencies
+        - atmosphere-molecule-csi-local-path-provisioner:
+            dependencies: *molecule_check_dependencies
+        - atmosphere-molecule-csi-rbd:
+            dependencies: *molecule_check_dependencies
+    gate:
+      jobs:
+        - atmosphere-linters
+        - atmosphere-build-collection
+        - atmosphere-molecule-aio-keycloak:
+            dependencies: &molecule_gate_dependencies
+              - name: atmosphere-upload-container-image-barbican
+                soft: true
+              - name: atmosphere-upload-container-image-cinder
+                soft: true
+              - name: atmosphere-upload-container-image-cluster-api-provider-openstack
+                soft: true
+              - name: atmosphere-upload-container-image-designate
+                soft: true
+              - name: atmosphere-upload-container-image-glance
+                soft: true
+              - name: atmosphere-upload-container-image-heat
+                soft: true
+              - name: atmosphere-upload-container-image-horizon
+                soft: true
+              - name: atmosphere-upload-container-image-ironic
+                soft: true
+              - name: atmosphere-upload-container-image-keystone
+                soft: true
+              - name: atmosphere-upload-container-image-kubernetes-entrypoint
+                soft: true
+              - name: atmosphere-upload-container-image-libvirt-tls-sidecar
+                soft: true
+              - name: atmosphere-upload-container-image-libvirtd
+                soft: true
+              - name: atmosphere-upload-container-image-magnum
+                soft: true
+              - name: atmosphere-upload-container-image-manila
+                soft: true
+              - name: atmosphere-upload-container-image-netoffload
+                soft: true
+              - name: atmosphere-upload-container-image-neutron
+                soft: true
+              - name: atmosphere-upload-container-image-nova
+                soft: true
+              - name: atmosphere-upload-container-image-nova-ssh
+                soft: true
+              - name: atmosphere-upload-container-image-octavia
+                soft: true
+              - name: atmosphere-upload-container-image-openvswitch
+                soft: true
+              - name: atmosphere-upload-container-image-ovn
+                soft: true
+              - name: atmosphere-upload-container-image-placement
+                soft: true
+              - name: atmosphere-upload-container-image-senlin
+                soft: true
+              - name: atmosphere-upload-container-image-staffeln
+                soft: true
+              - name: atmosphere-upload-container-image-tempest
+                soft: true
+        - atmosphere-molecule-aio-openvswitch:
+            dependencies: *molecule_gate_dependencies
+        - atmosphere-molecule-aio-ovn:
+            dependencies: *molecule_gate_dependencies
+        - atmosphere-molecule-csi-local-path-provisioner:
+            dependencies: *molecule_gate_dependencies
+        - atmosphere-molecule-csi-rbd:
+            dependencies: *molecule_gate_dependencies
+    release:
+      jobs:
+        - atmosphere-publish-collection

@@ -1,0 +1,65 @@
+# Copyright (c) 2024 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- project:
+    check:
+      jobs:
+        - atmosphere-build-container-image-netoffload
+    gate:
+      jobs:
+        - atmosphere-upload-container-image-netoffload
+    promote:
+      jobs:
+        - atmosphere-promote-container-image-netoffload
+
+- job:
+    name: atmosphere-build-container-image-netoffload
+    parent: atmosphere-build-container-image
+    dependencies:
+      - name: atmosphere-buildset-registry
+        soft: false
+      - name: atmosphere-build-container-image-ubuntu
+        soft: true
+    vars: &container_image_vars
+      promote_container_image_job: atmosphere-upload-container-image-netoffload
+      container_images:
+        - context: images/netoffload
+          registry: registry.atmosphere.dev
+          repository: registry.atmosphere.dev/library/netoffload
+          arch:
+            - linux/amd64
+          build_args:
+            - "RELEASE={{ zuul.branch | replace('stable/', '') }}"
+          tags:
+            - "{{ zuul.branch | replace('stable/', '') }}"
+    files: &container_image_files
+      - images/ubuntu/.*
+      - images/netoffload/.*
+
+- job:
+    name: atmosphere-upload-container-image-netoffload
+    parent: atmosphere-upload-container-image
+    dependencies:
+      - name: atmosphere-buildset-registry
+        soft: false
+      - name: atmosphere-upload-container-image-ubuntu
+        soft: true
+    vars: *container_image_vars
+    files: *container_image_files
+
+- job:
+    name: atmosphere-promote-container-image-netoffload
+    parent: atmosphere-promote-container-image
+    vars: *container_image_vars
+    files: *container_image_files

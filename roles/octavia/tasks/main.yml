@@ -12,30 +12,6 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Uninstall the legacy HelmRelease
-  run_once: true
-  block:
-    - name: Suspend the existing HelmRelease
-      failed_when: false
-      kubernetes.core.k8s:
-        state: patched
-        api_version: helm.toolkit.fluxcd.io/v2beta1
-        kind: HelmRelease
-        name: "{{ octavia_helm_release_name }}"
-        namespace: "{{ octavia_helm_release_namespace }}"
-        definition:
-          spec:
-            suspend: true
-
-    - name: Remove the existing HelmRelease
-      failed_when: false
-      kubernetes.core.k8s:
-        state: absent
-        api_version: helm.toolkit.fluxcd.io/v2beta1
-        kind: HelmRelease
-        name: "{{ octavia_helm_release_name }}"
-        namespace: "{{ octavia_helm_release_namespace }}"
-
 - name: Generate resources
   ansible.builtin.import_tasks:
     file: generate_resources.yml
@@ -133,9 +109,13 @@
 - name: Add implied roles
   run_once: true
   ansible.builtin.shell: |
+    set -o posix
+    source /etc/profile.d/atmosphere.sh
     openstack implied role create \
       --implied-role {{ item.implies }} \
       {{ item.role }}
+  args:
+    executable: /bin/bash
   loop:
     - role: member
       implies: load-balancer_member
