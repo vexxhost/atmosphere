@@ -17,7 +17,7 @@
   kubernetes.core.k8s:
     state: patched
     kind: Node
-    name: "{{ inventory_hostname_short }}"
+    name: "{{ kubelet_hostname | default(inventory_hostname_short) }}"
     definition:
       metadata:
         labels: "{{ kubernetes_node_labels }}"
