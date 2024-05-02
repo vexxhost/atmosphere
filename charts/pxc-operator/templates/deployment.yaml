@@ -19,6 +19,10 @@ spec:
     type: RollingUpdate
   template:
     metadata:
+    {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
       labels:
         app.kubernetes.io/component: operator
         app.kubernetes.io/name: {{ include "pxc-operator.name" . }}
@@ -65,6 +69,9 @@ spec:
               value: "{{ .Values.logLevel }}"
             - name: DISABLE_TELEMETRY
               value: "{{ .Values.disableTelemetry }}"
+            {{- if .Values.extraEnvVars }}
+              {{- toYaml .Values.extraEnvVars | nindent 12 }}
+            {{- end }}
           livenessProbe:
             failureThreshold: 3
             httpGet:
@@ -94,14 +101,15 @@ spec:
         - name: tmpdir
           emptyDir: {}
     {{- end }}
-{{- if .Values.watchAllNamespaces }}
+{{- if or .Values.watchNamespace .Values.watchAllNamespaces }}
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "pxc-operator.name" . }}
+  name: percona-xtradb-cluster-operator
+  namespace: {{ .Release.Namespace }}
   labels:
-    name: {{ include "pxc-operator.name" . }}
+    name: percona-xtradb-cluster-operator
 spec:
   ports:
     - port: 443

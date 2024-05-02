@@ -15,9 +15,7 @@ kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: {{ include "pxc-operator.fullname" . }}
-  {{- if .Values.watchNamespace }}
-  namespace: {{ .Values.watchNamespace }}
-  {{- else if not .Values.watchAllNamespaces }}
+  {{- if not (or .Values.watchNamespace .Values.watchAllNamespaces) }}
   namespace: {{ .Release.Namespace }}
   {{- end }}
   labels:

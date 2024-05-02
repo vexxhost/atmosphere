@@ -15,14 +15,14 @@ _percona_xtradb_cluster_spec:
     sidecars:
       - name: exporter
         image: "{{ atmosphere_images['prometheus_mysqld_exporter'] | vexxhost.kubernetes.docker_image('ref') }}"
+        args:
+          - --mysqld.username=monitor
         env:
-          - name: MONITOR_PASSWORD
+          - name: MYSQLD_EXPORTER_PASSWORD
             valueFrom:
               secretKeyRef:
                 name: percona-xtradb
                 key: monitor
-          - name: DATA_SOURCE_NAME
-            value: "monitor:$(MONITOR_PASSWORD)@(localhost:3306)/"
         ports:
           - name: metrics
             containerPort: 9104

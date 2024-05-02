@@ -3,7 +3,6 @@ apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
   name: {{ .Values.storageClass.name }}
-  namespace: {{ .Release.Namespace }}
 {{- if .Values.storageClass.annotations }}
   annotations:
 {{ toYaml .Values.storageClass.annotations | indent 4 }}
@@ -13,14 +12,19 @@ metadata:
     chart: {{ include "ceph-csi-rbd.chart" . }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
+    {{- with .Values.commonLabels }}{{ toYaml . | trim | nindent 4 }}{{- end }}
 provisioner: {{ .Values.driverName }}
 parameters:
   clusterID: {{ .Values.storageClass.clusterID }}
-  pool: {{ .Values.storageClass.pool }}
   imageFeatures: {{ .Values.storageClass.imageFeatures }}
-  thickProvision: {{ .Values.storageClass.thickProvision | quote}}
+{{- if .Values.storageClass.pool }}  
+  pool: {{ .Values.storageClass.pool }}
+{{- end }}  
 {{- if .Values.storageClass.tryOtherMounters }}
   tryOtherMounters: {{ .Values.storageClass.tryOtherMounters | quote}}
+{{- end }}
+{{- if .Values.storageClass.mkfsOptions }}
+  mkfsOptions: {{ .Values.storageClass.mkfsOptions }}
 {{- end }}
 {{- if .Values.storageClass.mounter }}
   mounter: {{ .Values.storageClass.mounter }}
@@ -52,6 +56,15 @@ parameters:
 {{- end }}
 {{- if .Values.storageClass.unmapOptions }}
   unmapOptions: {{ .Values.storageClass.unmapOptions }}
+{{- end }}
+{{- if .Values.storageClass.stripeUnit }}
+  stripeUnit: {{ .Values.storageClass.stripeUnit | quote }}
+{{- end }}
+{{- if .Values.storageClass.stripeCount }}
+  stripeCount: {{ .Values.storageClass.stripeCount | quote }}
+{{- end }}
+{{- if .Values.storageClass.objectSize }}
+  objectSize: {{ .Values.storageClass.objectSize | quote }}
 {{- end }}
   csi.storage.k8s.io/provisioner-secret-name: {{ .Values.storageClass.provisionerSecret }}
 {{- if .Values.storageClass.provisionerSecretNamespace }}

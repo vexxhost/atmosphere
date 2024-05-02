@@ -13,6 +13,7 @@
 # under the License.
 
 _rabbitmq_spec:
+  delayStartSeconds: 0
   image: "{{ atmosphere_images['rabbitmq_server'] | vexxhost.kubernetes.docker_image('ref') }}"
   affinity:
     nodeAffinity:
@@ -34,7 +35,8 @@ _rabbitmq_spec:
     requests:
       cpu: 500m
       memory: 1Gi
-  secretBackend: {}
+  secretBackend:
+    externalSecret: {}
   service:
     type: ClusterIP
   terminationGracePeriodSeconds: 15

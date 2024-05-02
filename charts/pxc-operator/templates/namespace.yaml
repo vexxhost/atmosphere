@@ -1,8 +1,11 @@
-{{ if .Values.watchNamespace }}
+{{ if and .Values.watchNamespace .Values.createNamespace }}
+{{ range ( split "," .Values.watchNamespace ) }}
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: {{ .Values.watchNamespace }}
+  name: {{ trim . }}
   annotations:
     helm.sh/resource-policy: keep
+---
+{{ end }}
 {{ end }}

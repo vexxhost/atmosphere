@@ -1,3 +1,8 @@
+{{/*
+Copyright VMware, Inc.
+SPDX-License-Identifier: APACHE-2.0
+*/}}
+
 {{/* vim: set filetype=mustache: */}}
 {{/*
 Generate secret name.
@@ -8,7 +13,7 @@ Usage:
 Params:
   - existingSecret - ExistingSecret/String - Optional. The path to the existing secrets in the values.yaml given by the user
     to be used instead of the default one. Allows for it to be of type String (just the secret name) for backwards compatibility.
-    +info: https://github.com/bitnami/charts/tree/master/bitnami/common#existingsecret
+    +info: https://github.com/bitnami/charts/tree/main/bitnami/common#existingsecret
   - defaultNameSuffix - String - Optional. It is used only if we have several secrets in the same deployment.
   - context - Dict - Required. The context for the template evaluation.
 */}}
@@ -41,7 +46,7 @@ Usage:
 Params:
   - existingSecret - ExistingSecret/String - Optional. The path to the existing secrets in the values.yaml given by the user
     to be used instead of the default one. Allows for it to be of type String (just the secret name) for backwards compatibility.
-    +info: https://github.com/bitnami/charts/tree/master/bitnami/common#existingsecret
+    +info: https://github.com/bitnami/charts/tree/main/bitnami/common#existingsecret
   - key - String - Required. Name of the key in the secret.
 */}}
 {{- define "common.secrets.key" -}}
@@ -72,7 +77,9 @@ Params:
   - strong - Boolean - Optional - Whether to add symbols to the generated random password.
   - chartName - String - Optional - Name of the chart used when said chart is deployed as a subchart.
   - context - Context - Required - Parent context.
-
+  - failOnNew - Boolean - Optional - Default to true. If set to false, skip errors adding new keys to existing secrets.
+  - skipB64enc - Boolean - Optional - Default to false. If set to true, no the secret will not be base64 encrypted.
+  - skipQuote - Boolean - Optional - Default to false. If set to true, no quotes will be added around the secret.
 The order in which this function returns a secret password:
   1. Already existing 'Secret' resource
      (If a 'Secret' resource is found under the name provided to the 'secret' parameter to this function and that 'Secret' resource contains a key with the name passed as the 'key' parameter to this function then the value of this existing secret password will be returned)
@@ -90,15 +97,17 @@ The order in which this function returns a secret password:
 {{- $passwordLength := default 10 .length }}
 {{- $providedPasswordKey := include "common.utils.getKeyFromList" (dict "keys" .providedValues "context" $.context) }}
 {{- $providedPasswordValue := include "common.utils.getValueFromKey" (dict "key" $providedPasswordKey "context" $.context) }}
-{{- $secretData := (lookup "v1" "Secret" $.context.Release.Namespace .secret).data }}
+{{- $secretData := (lookup "v1" "Secret" (include "common.names.namespace" .context) .secret).data }}
 {{- if $secretData }}
   {{- if hasKey $secretData .key }}
-    {{- $password = index $secretData .key }}
-  {{- else }}
+    {{- $password = index $secretData .key | b64dec }}
+  {{- else if not (eq .failOnNew false) }}
     {{- printf "\nPASSWORDS ERROR: The secret \"%s\" does not contain the key \"%s\"\n" .secret .key | fail -}}
+  {{- else if $providedPasswordValue }}
+    {{- $password = $providedPasswordValue | toString }}
   {{- end -}}
 {{- else if $providedPasswordValue }}
-  {{- $password = $providedPasswordValue | toString | b64enc | quote }}
+  {{- $password = $providedPasswordValue | toString }}
 {{- else }}
 
   {{- if .context.Values.enabled }}
@@ -114,12 +123,45 @@ The order in which this function returns a secret password:
     {{- $subStr := list (lower (randAlpha 1)) (randNumeric 1) (upper (randAlpha 1)) | join "_" }}
     {{- $password = randAscii $passwordLength }}
     {{- $password = regexReplaceAllLiteral "\\W" $password "@" | substr 5 $passwordLength }}
-    {{- $password = printf "%s%s" $subStr $password | toString | shuffle | b64enc | quote }}
+    {{- $password = printf "%s%s" $subStr $password | toString | shuffle }}
   {{- else }}
-    {{- $password = randAlphaNum $passwordLength | b64enc | quote }}
+    {{- $password = randAlphaNum $passwordLength }}
   {{- end }}
 {{- end -}}
+{{- if not .skipB64enc }}
+{{- $password = $password | b64enc }}
+{{- end -}}
+{{- if .skipQuote -}}
 {{- printf "%s" $password -}}
+{{- else -}}
+{{- printf "%s" $password | quote -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Reuses the value from an existing secret, otherwise sets its value to a default value.
+
+Usage:
+{{ include "common.secrets.lookup" (dict "secret" "secret-name" "key" "keyName" "defaultValue" .Values.myValue "context" $) }}
+
+Params:
+  - secret - String - Required - Name of the 'Secret' resource where the password is stored.
+  - key - String - Required - Name of the key in the secret.
+  - defaultValue - String - Required - The path to the validating value in the values.yaml, e.g: "mysql.password". Will pick first parameter with a defined value.
+  - context - Context - Required - Parent context.
+
+*/}}
+{{- define "common.secrets.lookup" -}}
+{{- $value := "" -}}
+{{- $secretData := (lookup "v1" "Secret" (include "common.names.namespace" .context) .secret).data -}}
+{{- if and $secretData (hasKey $secretData .key) -}}
+  {{- $value = index $secretData .key -}}
+{{- else if .defaultValue -}}
+  {{- $value = .defaultValue | toString | b64enc -}}
+{{- end -}}
+{{- if $value -}}
+{{- printf "%s" $value -}}
+{{- end -}}
 {{- end -}}
 
 {{/*
@@ -133,7 +175,7 @@ Params:
   - context - Context - Required - Parent context.
 */}}
 {{- define "common.secrets.exists" -}}
-{{- $secret := (lookup "v1" "Secret" $.context.Release.Namespace .secret) }}
+{{- $secret := (lookup "v1" "Secret" (include "common.names.namespace" .context) .secret) }}
 {{- if $secret }}
   {{- true -}}
 {{- end -}}

@@ -13,6 +13,12 @@
 # under the License.
 
 _keycloak_helm_values:
+  # NOTE(mnaser): These workarounds below are needed to allow the Bitnami Helm chart to work with
+  #               the upstream image.
+  enableDefaultInitContainers: false
+  containerSecurityContext:
+    readOnlyRootFilesystem: false
+    runAsUser: 1000
   # Note(okozachenko1203): Mysql vendor is not supported by bitnami helm chart. As a workaround,
   #                        we have to define jdbc connection string explicitly along side
   #                        `externalDatabase` helm values.
@@ -34,7 +40,6 @@ _keycloak_helm_values:
     - /opt/keycloak/bin/kc.sh
     - --verbose
     - start
-    - --auto-build
     - --health-enabled=true
     - --http-enabled=true
     - --http-port=8080

@@ -15,8 +15,49 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" -}}
 {{- else -}}
 {{- $name := default .Chart.Name .Values.nameOverride -}}
+{{- if contains $name .Release.Name }}
+{{- .Release.Name | trunc 63 | trimSuffix "-" }}
+{{- else }}
 {{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Common labels
+*/}}
+{{- define "coredns.labels" -}}
+app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
+app.kubernetes.io/instance: {{ .Release.Name | quote }}
+helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}"
+{{- if .Values.isClusterService }}
+k8s-app: {{ template "coredns.k8sapplabel" . }}
+kubernetes.io/cluster-service: "true"
+kubernetes.io/name: "CoreDNS"
+{{- end }}
+app.kubernetes.io/name: {{ template "coredns.name" . }}
+{{- end -}}
+
+{{/*
+Common labels with autoscaler
+*/}}
+{{- define "coredns.labels.autoscaler" -}}
+app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
+app.kubernetes.io/instance: {{ .Release.Name | quote }}
+helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}"
+{{- if .Values.isClusterService }}
+k8s-app: {{ template "coredns.k8sapplabel" . }}-autoscaler
+kubernetes.io/cluster-service: "true"
+kubernetes.io/name: "CoreDNS"
+{{- end }}
+app.kubernetes.io/name: {{ template "coredns.name" . }}-autoscaler
+{{- end -}}
+
+{{/*
+Allow k8s-app label to be overridden
+*/}}
+{{- define "coredns.k8sapplabel" -}}
+{{- default .Chart.Name .Values.k8sAppLabelOverride | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
 {{/*
@@ -135,17 +176,40 @@ Generate the list of ports automatically from the server definitions
             {{- $innerdict := set $innerdict "istcp" true -}}
         {{- end -}}
 
+        {{- if .hostPort -}}
+            {{- $innerdict := set $innerdict "hostPort" .hostPort -}}
+        {{- end -}}
+
         {{/* Write the dict back into the outer dict */}}
         {{- $ports := set $ports $port $innerdict -}}
+
+        {{/* Fetch port from the configuration if the prometheus section exists */}}
+        {{- range .plugins -}}
+            {{- if eq .name "prometheus" -}}
+                {{- $prometheus_addr := toString .parameters -}}
+                {{- $prometheus_addr_list := regexSplit ":" $prometheus_addr -1 -}}
+                {{- $prometheus_port := index $prometheus_addr_list 1 -}}
+                {{- $ports := set $ports $prometheus_port (dict "istcp" true "isudp" false) -}}
+            {{- end -}}
+        {{- end -}}
     {{- end -}}
 
     {{/* Write out the ports according to the info collected above */}}
     {{- range $port, $innerdict := $ports -}}
+        {{- $portList := list -}}
         {{- if index $innerdict "isudp" -}}
-            {{- printf "- {containerPort: %v, protocol: UDP, name: udp-%s}\n" $port $port -}}
+            {{- $portList = append $portList (dict "containerPort" ($port | int) "protocol" "UDP" "name" (printf "udp-%s" $port)) -}}
         {{- end -}}
         {{- if index $innerdict "istcp" -}}
-            {{- printf "- {containerPort: %v, protocol: TCP, name: tcp-%s}\n" $port $port -}}
+            {{- $portList = append $portList (dict "containerPort" ($port | int) "protocol" "TCP" "name" (printf "tcp-%s" $port)) -}}
+        {{- end -}}
+
+        {{- range $portDict := $portList -}}
+            {{- if index $innerdict "hostPort" -}}
+                {{- $portDict := set $portDict "hostPort" (get $innerdict "hostPort" | int) -}}
+            {{- end -}}
+
+            {{- printf "- %s\n" (toJson $portDict) -}}
         {{- end -}}
     {{- end -}}
 {{- end -}}
