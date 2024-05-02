@@ -74,9 +74,10 @@ images:
     nova_novncproxy: docker.io/openstackhelm/nova:wallaby-ubuntu_focal
     nova_novncproxy_assets: 'docker.io/kolla/ubuntu-source-nova-novncproxy:wallaby'
     nova_scheduler: docker.io/openstackhelm/nova:wallaby-ubuntu_focal
+    nova_storage_init: 'docker.io/openstackhelm/ceph-config-helper:latest-ubuntu_jammy'
     # NOTE(portdirect): we simply use the ceph config helper here,
     # as it has both oscli and jq.
-    nova_service_cleaner: 'docker.io/openstackhelm/ceph-config-helper:latest-ubuntu_focal'
+    nova_service_cleaner: 'docker.io/openstackhelm/ceph-config-helper:latest-ubuntu_jammy'
     nova_spiceproxy: docker.io/openstackhelm/nova:wallaby-ubuntu_focal
     nova_spiceproxy_assets: docker.io/openstackhelm/nova:wallaby-ubuntu_focal
     test: docker.io/xrally/xrally-openstack:2.0.0
@@ -101,6 +102,7 @@ jobs:
       enabled: false
       iteration: 3
       duration: 5
+    extra_command: null
   service_cleaner:
     cron: "0 */1 * * *"
     starting_deadline: 600
@@ -108,6 +110,7 @@ jobs:
       success: 3
       failed: 1
     sleep_time: 60
+    extra_command: null
   archive_deleted_rows:
     cron: "0 */1 * * *"
     starting_deadline: 600
@@ -244,6 +247,13 @@ network:
       enabled: false
       port: 30680
   spiceproxy:
+    ingress:
+      public: true
+      classes:
+        namespace: "nginx"
+        cluster: "nginx-cluster"
+      annotations:
+        nginx.ingress.kubernetes.io/rewrite-target: /
     node_port:
       enabled: false
       port: 30682
@@ -492,22 +502,36 @@ console:
   spice:
     compute:
       # IF blank, search default routing interface
-      server_proxyclient_interface:
+      server_proxyclient_interface: null
+      # or set network cidr
+      server_proxyclient_network_cidr: 0/0
     proxy:
       # IF blank, search default routing interface
-      server_proxyclient_interface:
+      server_proxyclient_interface: null
+      # or set network cidr
+      server_proxyclient_network_cidr: 0/0
   novnc:
     compute:
       # IF blank, search default routing interface
-      vncserver_proxyclient_interface:
+      vncserver_proxyclient_interface: null
+      # or set network cidr
+      vncserver_proxyclient_network_cidr: 0/0
     vncproxy:
       # IF blank, search default routing interface
-      vncserver_proxyclient_interface:
+      vncserver_proxyclient_interface: null
+      # or set network cidr
+      vncserver_proxyclient_network_cidr: 0/0
   address_search_enabled: true
 
 ceph_client:
   configmap: ceph-etc
   user_secret_name: pvc-ceph-client-key
+
+rbd_pool:
+  app_name: nova-vms
+  replication: 3
+  crush_rule: replicated_rule
+  chunk_size: 8
 
 conf:
   security: |
@@ -1343,11 +1367,16 @@ conf:
     # When "address_search_enabled", get the IP address to be used as the target for live migration
     # traffic using interface name.
     # If this option is set to None, the hostname of the migration target compute node will be used.
-    live_migration_interface:
+    live_migration_interface: null
+    # or set cidr
+    live_migration_network_cidr: 0/0
   hypervisor:
     address_search_enabled: true
     # my_ip can be set automatically through this interface name.
-    host_interface:
+    host_interface: null
+    # If host_interface is null there is a fallback mechanism to search
+    # for interface with routing using host network cidr.
+    host_network_cidr: 0/0
   # This list is the keys to exclude from the config file ingested by nova-compute
   nova_compute_redactions:
     - database
@@ -1613,7 +1642,8 @@ secrets:
         internal: metadata-tls-metadata
     compute_spice_proxy:
       spiceproxy:
-        internal: nova-tls-spiceproxy
+        public: nova-spiceproxy-tls-public
+        internal: nova-spiceproxy-tls-proxy
   oci_image_registry:
     nova: nova-oci-image-registry
 
@@ -1914,7 +1944,7 @@ endpoints:
     name: nova
     hosts:
       default: nova-spiceproxy
-      public: placement
+      public: spiceproxy
     host_fqdn_override:
       default: null
     path:
@@ -1924,6 +1954,7 @@ endpoints:
     port:
       spice_proxy:
         default: 6082
+        public: 80
   placement:
     name: placement
     hosts:
@@ -2414,6 +2445,13 @@ pod:
         limits:
           memory: "1024Mi"
           cpu: "2000m"
+      storage_init:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
       db_init:
         requests:
           memory: "128Mi"
@@ -2536,8 +2574,10 @@ manifests:
   deployment_scheduler: true
   ingress_metadata: true
   ingress_novncproxy: true
+  ingress_spiceproxy: true
   ingress_osapi: true
   job_bootstrap: true
+  job_storage_init: true
   job_db_init: true
   job_db_sync: true
   job_db_drop: false
@@ -2560,6 +2600,7 @@ manifests:
   secret_registry: true
   service_ingress_metadata: true
   service_ingress_novncproxy: true
+  service_ingress_spiceproxy: true
   service_ingress_osapi: true
   service_metadata: true
   service_novncproxy: true
