@@ -13,6 +13,7 @@ and setup.
 .. toctree::
    :maxdepth: 2
 
+   baremetal
    inventory
    csi
    cinder
