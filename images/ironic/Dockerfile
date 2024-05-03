@@ -30,7 +30,7 @@ FROM registry.atmosphere.dev/library/openstack-python-runtime:${RELEASE}
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \
-    ethtool ipmitool iproute2 ipxe lshw qemu-utils tftpd-hpa
+    ethtool ipmitool iproute2 ipxe lshw qemu-block-extra qemu-utils tftpd-hpa
 apt-get clean
 rm -rf /var/lib/apt/lists/*
 EOF
