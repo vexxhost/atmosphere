@@ -168,6 +168,14 @@ It should be handled through lcore and pmd core masks. */}}
           # successfully before its marked as ready
 {{ dict "envAll" $envAll "component" "ovs" "container" "ovs_vswitch" "type" "liveness" "probeTemplate" (include "ovsvswitchlivenessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
 {{ dict "envAll" $envAll "component" "ovs" "container" "ovs_vswitch" "type" "readiness" "probeTemplate" (include "ovsvswitchreadinessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+          {{- if .Values.conf.ovs_dpdk.enabled }}
+          env:
+            - name: UPDATE_DPDK_BOND_CONFIG
+              valueFrom:
+                secretKeyRef:
+                  name: openvswitch-etc
+                  key: update_dpdk_bond_config
+          {{- end }}
           command:
             - /tmp/openvswitch-vswitchd.sh
             - start
@@ -183,6 +191,8 @@ It should be handled through lcore and pmd core masks. */}}
                   - /tmp/openvswitch-vswitchd.sh
                   - stop
           volumeMounts:
+            - name: var-tmp
+              mountPath: /var/tmp
             - name: pod-tmp
               mountPath: /tmp
             - name: openvswitch-bin
@@ -191,7 +201,15 @@ It should be handled through lcore and pmd core masks. */}}
               readOnly: true
             - name: run
               mountPath: /run
+            - name: openvswitch-bin
+              mountPath: /tmp/openvswitch-nic-init.sh
+              subPath: openvswitch-nic-init.sh
+              readOnly: true
 {{- if .Values.conf.ovs_dpdk.enabled }}
+            - name: openvswitch-etc
+              mountPath: /tmp/dpdk.conf
+              subPath: dpdk.conf
+              readOnly: true
             - name: hugepages
               mountPath: {{ .Values.conf.ovs_dpdk.hugepages_mountpath | quote }}
             - name: pci-devices
@@ -210,6 +228,10 @@ It should be handled through lcore and pmd core masks. */}}
               mountPath: /sys/fs/cgroup
 {{- end }}
       volumes:
+        - name: var-tmp
+          hostPath:
+            path: /var/tmp
+            type: DirectoryOrCreate
         - name: pod-tmp
           emptyDir: {}
         - name: openvswitch-bin
@@ -229,6 +251,10 @@ It should be handled through lcore and pmd core masks. */}}
             path: /
             type: Directory
 {{- if .Values.conf.ovs_dpdk.enabled }}
+        - name: openvswitch-etc
+          secret:
+            secretName: openvswitch-etc
+            defaultMode: 0444
         - name: devs
           hostPath:
             path: /dev
