@@ -53,10 +53,13 @@
       register: _image_format
 
     - name: Convert file to target disk format
-      when: _image_format.stdout != glance_image_disk_format
+      when:
+        - glance_image_disk_format not in ['aki', 'ari']
+        - glance_image_disk_format != _image_format.stdout
       changed_when: true
       ansible.builtin.command:
         qemu-img convert -O {{ glance_image_disk_format }} {{ _get_url.dest }} {{ _get_url.dest }}.converted
+      register: glance_image_conversion
 
     - name: Wait until image service ready
       kubernetes.core.k8s_info:
@@ -75,7 +78,7 @@
       openstack.cloud.image:
         cloud: atmosphere
         name: "{{ glance_image_name }}"
-        filename: "{{ _get_url.dest }}{% if _image_format.stdout != glance_image_disk_format %}.converted{% endif %}"
+        filename: "{{ _get_url.dest }}{% if glance_image_conversion is not skipped %}.converted{% endif %}"
         min_disk: "{{ glance_image_min_disk | default(omit) }}"
         min_ram: "{{ glance_image_min_ram | default(omit) }}"
         container_format: "{{ glance_image_container_format | default(omit) }}"
@@ -89,7 +92,7 @@
         timeout: 600
       # NOTE(mnaser): This often fails since the SSL certificates are not
       #               ready yet. We need to wait for them to be ready.
-      retries: 60
+      retries: "{{ glance_image_retries | default(60) }}"
       delay: 5
       register: _result
       until: _result is not failed
