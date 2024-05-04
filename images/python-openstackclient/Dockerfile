@@ -23,6 +23,7 @@ pip3 install \
         python-designateclient \
         python-glanceclient \
         python-heatclient \
+        python-ironicclient \
         python-magnumclient \
         python-manilaclient \
         python-neutronclient \

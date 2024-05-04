@@ -13,7 +13,6 @@
 # under the License.
 
 - name: Verify state of current RabbitMQ cluster
-  run_once: true
   kubernetes.core.k8s_info:
     api_version: rabbitmq.com/v1beta1
     kind: RabbitmqCluster
@@ -22,7 +21,6 @@
   register: _rabbitmq_cluster
 
 - name: Wait for confirmation if RabbitMQ cluster spec doesn't match
-  run_once: true
   when:
     - not rabbitmq_skip_spec_diff | bool
     - _rabbitmq_cluster.resources | length > 0
@@ -39,7 +37,6 @@
       ansible.builtin.pause:
 
 - name: Deploy cluster
-  run_once: true
   kubernetes.core.k8s:
     state: present
     definition:
