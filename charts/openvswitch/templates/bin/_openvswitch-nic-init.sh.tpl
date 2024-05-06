@@ -461,11 +461,6 @@ if [[ -n "${tunnel_types}" ]] ; then
     exit 1
   fi
 
-tee > /tmp/pod-shared/ml2-local-ip.ini << EOF
-[ovs]
-local_ip = "${LOCAL_IP}"
-EOF
-
   if [[ "${DPDK_ENABLED}" == "true" ]]; then
     PREFIX=$(get_ip_prefix_from_interface "${tunnel_interface}")
 
@@ -500,11 +495,3 @@ EOF
     done
   fi
 fi
-
-{{- if and ( empty .Values.conf.neutron.DEFAULT.host ) ( .Values.pod.use_fqdn.neutron_agent ) }}
-mkdir -p /tmp/pod-shared
-tee > /tmp/pod-shared/neutron-agent.ini << EOF
-[DEFAULT]
-host = $(hostname --fqdn)
-EOF
-{{- end }}
