@@ -226,7 +226,7 @@
             OAUTH2_PROXY_EMAIL_DOMAINS: "*"
             OAUTH2_PROXY_REVERSE_PROXY: "true"
             OAUTH2_PROXY_SKIP_PROVIDER_BUTTON: "true"
-            OAUTH2_PROXY_SSL_INSECURE_SKIP_VERIFY: "{{ (cluster_issuer_type == 'self-signed') | string }}"
+            OAUTH2_PROXY_SSL_INSECURE_SKIP_VERIFY: "{{ (cluster_issuer_type == 'self-signed' or (cluster_issuer_acme_private_ca | default(False)) == True) | string }}"
             OAUTH2_PROXY_PROVIDER: "keycloak-oidc"
             OAUTH2_PROXY_CLIENT_ID: "{{ item.id }}"
             OAUTH2_PROXY_REDIRECT_URL: "{{ item.redirect_uris.0 }}"
