@@ -37,12 +37,22 @@ _octavia_helm_values:
           volumeMounts:
             - name: octavia-server-ca
               mountPath: /etc/octavia/certs/server
+            - name: octavia-jobboard-default-ca
+              mountPath: /etc/octavia/certs/jobboard-default
+            - name: octavia-jobboard-sentinel-ca
+              mountPath: /etc/octavia/certs/jobboard-sentinel
             - name: octavia-client-certs
               mountPath: /etc/octavia/certs/client
             - name: octavia-amphora-ssh-key
               mountPath: /var/lib/octavia/.ssh
               readOnly: true
           volumes:
+            - name: octavia-jobboard-default-ca
+              secret:
+                secretName: "{{ octavia_jobboard_default_secret_name }}"
+            - name: octavia-jobboard-sentinel-ca
+              secret:
+                secretName: "{{ octavia_jobboard_sentinel_secret_name }}"
             - name: octavia-server-ca
               secret:
                 secretName: octavia-server-ca
@@ -89,6 +99,9 @@ _octavia_helm_values:
     octavia:
       DEFAULT:
         log_config_append: null
+      api_settings:
+        default_provider_driver: amphorav2
+        enabled_provider_drivers: amphorav2:'The v2 amphora driver.',amphora:'The Octavia Amphora driver.',octavia:'Deprecated name of Amphora driver.'
       certificates:
         ca_certificate: /etc/octavia/certs/server/ca.crt
         ca_private_key: /etc/octavia/certs/server/tls.key
@@ -127,6 +140,11 @@ _octavia_helm_values:
         endpoint_type: internalURL
       service_auth:
         endpoint_type: internalURL
+      task_flow:
+        jobboard_expiration_time: 100
+        jobboard_redis_sentinel: atmosphere
+        jobboard_redis_backend_ssl_options: ssl:True,ssl_keyfile:/etc/octavia/certs/jobboard-default/tls.key,ssl_certfile:/etc/octavia/certs/jobboard-default/tls.crt,ssl_ca_certs:/etc/octavia/certs/jobboard-default/ca.crt,ssl_cert_reqs:required
+        jobboard_redis_sentinel_ssl_options: ssl:True,ssl_keyfile:/etc/octavia/certs/jobboard-sentinel/tls.key,ssl_certfile:/etc/octavia/certs/jobboard-sentinel/tls.crt,ssl_ca_certs:/etc/octavia/certs/jobboard-sentinel/ca.crt,ssl_cert_reqs:required
   manifests:
     ingress_api: false
     service_ingress_api: false
