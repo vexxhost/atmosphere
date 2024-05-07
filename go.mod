@@ -2,7 +2,7 @@ module github.com/vexxhost/atmosphere
 
 go 1.21
 
-toolchain go1.21.4
+toolchain go1.22.3
 
 require (
 	github.com/cert-manager/cert-manager v1.14.5
