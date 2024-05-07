@@ -22,6 +22,7 @@ RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF b
 pip3 install \
     --constraint /upper-constraints.txt \
         /src/nova \
+        python-ironicclient \
         storpool \
         storpool.spopenstack
 EOF
