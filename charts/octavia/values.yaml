@@ -107,6 +107,8 @@ dependencies:
         - endpoint: internal
           service: oslo_db
         - endpoint: internal
+          service: oslo_db_presistence
+        - endpoint: internal
           service: identity
         - endpoint: internal
           service: oslo_messaging
@@ -123,6 +125,8 @@ dependencies:
       services:
         - endpoint: internal
           service: oslo_db
+        - endpoint: internal
+          service: oslo_db_presistence
         - endpoint: internal
           service: identity
         - endpoint: internal
@@ -143,6 +147,8 @@ dependencies:
         - endpoint: internal
           service: oslo_db
         - endpoint: internal
+          service: oslo_db_presistence
+        - endpoint: internal
           service: identity
         - endpoint: internal
           service: oslo_messaging
@@ -162,6 +168,8 @@ dependencies:
         - endpoint: internal
           service: oslo_db
         - endpoint: internal
+          service: oslo_db_presistence
+        - endpoint: internal
           service: identity
         - endpoint: internal
           service: oslo_messaging
@@ -175,12 +183,16 @@ dependencies:
       services:
         - endpoint: internal
           service: oslo_db
+        - endpoint: internal
+          service: oslo_db_presistence
     db_sync:
       jobs:
         - octavia-db-init
       services:
         - endpoint: internal
           service: oslo_db
+        - endpoint: internal
+          service: oslo_db_presistence
     ks_endpoints:
       jobs:
         - octavia-ks-service
@@ -211,6 +223,8 @@ conf:
     api_settings:
       api_handler: queue_producer
       bind_host: 0.0.0.0
+      default_provider_driver: amphorav2
+      enabled_provider_drivers: amphorav2:'The v2 amphora driver.',amphora:'The Octavia Amphora driver.',octavia:'Deprecated name of Amphora driver.'
     database:
       max_retries: -1
     health_manager:
@@ -259,6 +273,11 @@ conf:
       cafile: ""
       auth_version: v3
       memcache_security_strategy: ENCRYPT
+    task_flow:
+      jobboard_enabled: true
+      jobboard_backend_driver: 'redis_taskflow_driver'
+      jobboard_backend_namespace: 'octavia_jobboard'
+      jobboard_expiration_time: 100
   logging:
     loggers:
       keys:
@@ -362,6 +381,9 @@ secrets:
   oslo_db:
     admin: octavia-db-admin
     octavia: octavia-db-user
+  oslo_db_presistence:
+    admin: octavia-presistence-db-admin
+    octavia: octavia-presistence-db-user
   oslo_messaging:
     admin: octavia-rabbitmq-admin
     octavia: octavia-rabbitmq-user
@@ -472,6 +494,23 @@ endpoints:
     port:
       mysql:
         default: 3306
+  oslo_db_presistence:
+    auth:
+      admin:
+        username: root
+        password: password
+      octavia:
+        username: octavia
+        password: password
+    hosts:
+      default: mariadb
+    host_fqdn_override:
+      default: null
+    path: /octavia_persistence
+    scheme: mysql+pymysql
+    port:
+      mysql:
+        default: 3306
   oslo_cache:
     auth:
       # NOTE(portdirect): this is used to define the value for keystone
@@ -524,6 +563,19 @@ endpoints:
       api:
         default: 9696
         public: 80
+  redis:
+    name: redis
+    hosts:
+      default: redis
+    host_fqdn_override:
+      default: null
+    path:
+      default: null
+    scheme:
+      default: 'http'
+    port:
+      server:
+        default: 6379
 
 pod:
   user:
@@ -692,6 +744,10 @@ network_policy:
     ingress:
       - {}
 
+# NOTE(helm_hook): helm_hook might break for helm2 binary.
+# set helm3_hook: false when using the helm2 binary.
+helm3_hook: true
+
 manifests:
   configmap_bin: true
   configmap_etc: true
@@ -714,6 +770,7 @@ manifests:
   network_policy: false
   secret_credential_keys: true
   secret_db: true
+  secret_db_presistence: true
   secret_ingress_tls: true
   secret_keystone: true
   secret_rabbitmq: true

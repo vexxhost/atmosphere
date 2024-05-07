@@ -24,7 +24,8 @@ RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF b
 pip3 install \
     --constraint /upper-constraints.txt \
         /src/octavia \
-        /src/ovn-octavia-provider
+        /src/ovn-octavia-provider \
+        redis[hiredis]
 EOF
 
 FROM registry.atmosphere.dev/library/openstack-python-runtime:${RELEASE}

@@ -84,6 +84,18 @@ limitations under the License.
 {{- $_ := tuple "oslo_db" "internal" "octavia" "mysql" . | include "helm-toolkit.endpoints.authenticated_endpoint_uri_lookup"| set .Values.conf.octavia.database "connection" -}}
 {{- end -}}
 
+{{- if empty .Values.conf.octavia.task_flow.persistence_connection -}}
+{{- $_ := tuple "oslo_db_presistence" "internal" "octavia" "mysql" . | include "helm-toolkit.endpoints.authenticated_endpoint_uri_lookup"| set .Values.conf.octavia.task_flow "persistence_connection" -}}
+{{- end -}}
+
+{{- if empty .Values.conf.octavia.task_flow.jobboard_backend_port -}}
+{{- $_ := tuple "redis" "service" "server" . | include "helm-toolkit.endpoints.endpoint_port_lookup" | set .Values.conf.octavia.task_flow "jobboard_backend_port" -}}
+{{- end -}}
+
+{{- if empty .Values.conf.octavia.task_flow.jobboard_backend_hosts -}}
+{{- $_ := tuple "redis" "internal" . | include "helm-toolkit.endpoints.endpoint_host_lookup" | set .Values.conf.octavia.task_flow "jobboard_backend_hosts" -}}
+{{- end -}}
+
 {{- if empty .Values.conf.octavia.DEFAULT.transport_url -}}
 {{- $_ := tuple "oslo_messaging" "internal" "octavia" "amqp" . | include "helm-toolkit.endpoints.authenticated_transport_endpoint_uri_lookup" | set .Values.conf.octavia.DEFAULT "transport_url" -}}
 {{- end -}}
