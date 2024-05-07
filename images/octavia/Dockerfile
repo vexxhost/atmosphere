@@ -16,7 +16,7 @@ RUN git -C /src/ovn-octavia-provider fetch --unshallow
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
 pip3 install \
     --constraint /upper-constraints.txt \
-        /src/octavia \
+        /src/octavia[redis] \
         /src/ovn-octavia-provider
 EOF
 
