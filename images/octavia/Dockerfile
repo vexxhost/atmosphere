@@ -14,7 +14,7 @@ RUN git -C /src/ovn-octavia-provider fetch --unshallow
 RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe
 uv pip install \
     --constraint /upper-constraints.txt \
-        /src/octavia \
+        /src/octavia[redis] \
         /src/ovn-octavia-provider
 EOF
 
