@@ -431,7 +431,7 @@ do
   fi
 done
 
-tunnel_types="{{- .Values.conf.plugins.openvswitch_agent.agent.tunnel_types -}}"
+tunnel_types="{{- .Values.network.tunnel_types -}}"
 if [[ -n "${tunnel_types}" ]] ; then
     tunnel_interface="{{- .Values.network.interface.tunnel -}}"
     if [ -z "${tunnel_interface}" ] ; then
