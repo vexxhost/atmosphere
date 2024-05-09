@@ -16,6 +16,14 @@ limitations under the License.
 
 set -ex
 
+OVS_SOCKET=/run/openvswitch/db.sock
+chown neutron: ${OVS_SOCKET}
+
+# This enables the usage of 'ovs-appctl' from neutron pod.
+OVS_PID=$(cat /run/openvswitch/ovs-vswitchd.pid)
+OVS_CTL=/run/openvswitch/ovs-vswitchd.${OVS_PID}.ctl
+chown neutron: ${OVS_CTL}
+
 # See: https://bugs.launchpad.net/neutron/+bug/2028442
 mkdir -p /tmp/pod-shared
 tee > /tmp/pod-shared/ovn.ini << EOF
