@@ -20,6 +20,8 @@ dnf -y --setopt=install_weak_deps=False --setopt=tsflags=nodocs install \
     centos-release-nfv-openvswitch.noarch
 dnf -y --setopt=install_weak_deps=False --setopt=tsflags=nodocs install \
     openvswitch${OVS_SERIES}-${OVS_VERSION}.el9s iptables
+dnf -y --setopt=install_weak_deps=False --setopt=tsflags=nodocs install \
+    jq
 dnf -y clean all
 rm -rf /var/cache/dnf
 EOF
