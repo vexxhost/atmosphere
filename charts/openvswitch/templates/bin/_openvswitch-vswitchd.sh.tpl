@@ -167,6 +167,7 @@ function poststart () {
   done
   chown {{ .Values.pod.user.nova.uid }}.{{ .Values.pod.user.nova.uid }} ${OVS_CTL}
 
+  /tmp/openvswitch-nic-init.sh
 {{- if .Values.conf.poststart.extraCommand }}
 {{ .Values.conf.poststart.extraCommand | indent 2 }}
 {{- end }}
