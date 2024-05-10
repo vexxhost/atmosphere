@@ -1,8 +1,8 @@
 module github.com/vexxhost/atmosphere
 
-go 1.21
+go 1.22
 
-toolchain go1.21.4
+toolchain go1.22.3
 
 require (
 	github.com/cert-manager/cert-manager v1.14.5
@@ -17,7 +17,7 @@ require (
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.9.0
-	github.com/yannh/kubeconform v0.6.4
+	github.com/yannh/kubeconform v0.6.6
 	gopkg.in/ini.v1 v1.67.0
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
