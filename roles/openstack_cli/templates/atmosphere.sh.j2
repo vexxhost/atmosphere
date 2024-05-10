@@ -1,7 +1,7 @@
 alias osc='nerdctl run --rm --network host \
       --volume $PWD:/opt --volume /tmp:/tmp \
       --volume /etc/openstack:/etc/openstack:ro \
-{% if (cluster_issuer_type is defined and cluster_issuer_type in ('self-signed', 'ca')) or cluster_issuer_acme_private_ca | bool %}
+{% if (cluster_issuer_type is defined and cluster_issuer_type in ('self-signed', 'ca')) or (cluster_issuer_acme_private_ca is defined and cluster_issuer_acme_private_ca | bool) %}
       --volume {{ '/usr/local/share/ca-certificates/atmosphere.crt:/usr/local/share/ca-certificates/atmosphere.crt:ro' if ansible_facts['os_family']
       in ['Debian'] else '/etc/pki/ca-trust/source/anchors/atmosphere.crt:/etc/pki/ca-trust/source/anchors/atmosphere.crt:ro' }} \
 {% endif %}
