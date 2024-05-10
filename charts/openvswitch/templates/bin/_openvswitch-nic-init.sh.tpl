@@ -16,6 +16,16 @@ limitations under the License.
 
 set -ex
 
+# Wait until OVS is done initializing
+{{- if .Values.conf.ovs_dpdk.enabled }}
+until [ -n "$(ovs-vsctl show)" ] && (ovs-vsctl list Open_vSwitch | grep -q "dpdk_initialized.*true"); do
+{{- else }}
+until [ -n "$(ovs-vsctl show)" ]; do
+{{- end }}
+  sleep 5;
+  echo "Waiting for OVS initialization..."
+done
+
 OVS_SOCKET=/run/openvswitch/db.sock
 
 # This enables the usage of 'ovs-appctl' from neutron pod.
