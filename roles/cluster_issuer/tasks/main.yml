@@ -27,15 +27,13 @@
   ansible.builtin.include_tasks: "type/{{ cluster_issuer_type }}/main.yml"
 
 - name: Bootstrap PKI
-  when: cluster_issuer_type in ("self-signed", "ca") or cluster_issuer_acme_private_ca | bool
+  when: cluster_issuer_type in ("self-signed", "ca")
   block:
     - name: Wait till the secret is created
       kubernetes.core.k8s_info:
         api_version: v1
         kind: Secret
-        name: "{{ (cluster_issuer_self_signed_secret_name if cluster_issuer_type == 'self-signed')
-              or
-              (cluster_issuer_ca_secret_name if cluster_issuer_type == 'ca' else cluster_issuer_name) }}"
+        name: "{{ (cluster_issuer_type == 'self-signed') | ternary(cluster_issuer_self_signed_secret_name, cluster_issuer_ca_secret_name) }}"
         namespace: cert-manager
         wait: true
         wait_sleep: 1
