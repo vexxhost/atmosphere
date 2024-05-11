@@ -33,7 +33,7 @@ managing images as block storage volumes, apply the following configuration:
           glance_store:
             stores: cinder
             default_store: cinder
-          image_formats:
+          image_format:
             disk_formats: raw
 
 This configuration sets Cinder as the default and only storage backend for
