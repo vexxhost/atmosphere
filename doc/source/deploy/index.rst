@@ -18,4 +18,3 @@ and setup.
    cinder
    glance
    neutron
-   horizon
