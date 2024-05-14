@@ -20,31 +20,32 @@ release_group: null
 
 images:
   tags:
-    bootstrap: docker.io/openstackhelm/heat:stein-ubuntu_bionic
+    bootstrap: docker.io/openstackhelm/heat:2024.1-ubuntu_jammy
     test: docker.io/xrally/xrally-openstack:2.0.0
     purge_test: docker.io/openstackhelm/ospurge:latest
-    db_init: docker.io/openstackhelm/heat:stein-ubuntu_bionic
-    neutron_db_sync: docker.io/openstackhelm/neutron:stein-ubuntu_bionic
-    db_drop: docker.io/openstackhelm/heat:stein-ubuntu_bionic
-    rabbit_init: docker.io/rabbitmq:3.7-management
-    ks_user: docker.io/openstackhelm/heat:stein-ubuntu_bionic
-    ks_service: docker.io/openstackhelm/heat:stein-ubuntu_bionic
-    ks_endpoints: docker.io/openstackhelm/heat:stein-ubuntu_bionic
+    db_init: docker.io/openstackhelm/heat:2024.1-ubuntu_jammy
+    neutron_db_sync: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
+    db_drop: docker.io/openstackhelm/heat:2024.1-ubuntu_jammy
+    rabbit_init: docker.io/rabbitmq:3.13-management
+    ks_user: docker.io/openstackhelm/heat:2024.1-ubuntu_jammy
+    ks_service: docker.io/openstackhelm/heat:2024.1-ubuntu_jammy
+    ks_endpoints: docker.io/openstackhelm/heat:2024.1-ubuntu_jammy
     netoffload: ghcr.io/vexxhost/netoffload:v1.0.1
-    neutron_server: docker.io/openstackhelm/neutron:stein-ubuntu_bionic
-    neutron_dhcp: docker.io/openstackhelm/neutron:stein-ubuntu_bionic
-    neutron_metadata: docker.io/openstackhelm/neutron:stein-ubuntu_bionic
-    neutron_ovn_metadata: docker.io/openstackhelm/neutron:stein-ubuntu_bionic
-    neutron_l3: docker.io/openstackhelm/neutron:stein-ubuntu_bionic
-    neutron_l2gw: docker.io/openstackhelm/neutron:stein-ubuntu_bionic
-    neutron_openvswitch_agent: docker.io/openstackhelm/neutron:stein-ubuntu_bionic
-    neutron_linuxbridge_agent: docker.io/openstackhelm/neutron:stein-ubuntu_bionic
+    neutron_server: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
+    neutron_rpc_server: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
+    neutron_dhcp: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
+    neutron_metadata: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
+    neutron_ovn_metadata: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
+    neutron_l3: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
+    neutron_l2gw: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
+    neutron_openvswitch_agent: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
+    neutron_linuxbridge_agent: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
     neutron_sriov_agent: docker.io/openstackhelm/neutron:stein-18.04-sriov
     neutron_sriov_agent_init: docker.io/openstackhelm/neutron:stein-18.04-sriov
-    neutron_bagpipe_bgp: docker.io/openstackhelm/neutron:stein-ubuntu_bionic
-    neutron_bgp_dragent: docker.io/openstackhelm/neutron:stein-ubuntu_bionic
-    neutron_ironic_agent: docker.io/openstackhelm/neutron:stein-ubuntu_bionic
-    neutron_netns_cleanup_cron: docker.io/openstackhelm/neutron:stein-ubuntu_bionic
+    neutron_bagpipe_bgp: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
+    neutron_bgp_dragent: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
+    neutron_ironic_agent: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
+    neutron_netns_cleanup_cron: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
     dep_check: quay.io/airshipit/kubernetes-entrypoint:v1.0.0
     image_repo_sync: docker.io/docker:17.07.0
   pull_policy: "IfNotPresent"
@@ -91,6 +92,9 @@ labels:
     node_selector_key: openstack-compute-node
     node_selector_value: enabled
   server:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
+  rpc_server:
     node_selector_key: openstack-control-plane
     node_selector_value: enabled
   ironic_agent:
@@ -328,6 +332,19 @@ dependencies:
           service: oslo_cache
         - endpoint: internal
           service: identity
+    rpc_server:
+      jobs:
+        - neutron-db-sync
+        - neutron-rabbit-init
+      services:
+        - endpoint: internal
+          service: oslo_db
+        - endpoint: internal
+          service: oslo_messaging
+        - endpoint: internal
+          service: oslo_cache
+        - endpoint: internal
+          service: identity
     ironic_agent:
       jobs:
         - neutron-db-sync
@@ -485,6 +502,19 @@ pod:
             initialDelaySeconds: 60
             periodSeconds: 15
             timeoutSeconds: 10
+    rpc_server:
+      rpc_server:
+        readiness:
+          enabled: true
+          params:
+            periodSeconds: 15
+            timeoutSeconds: 10
+        liveness:
+          enabled: true
+          params:
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            timeoutSeconds: 10
   security_context:
     neutron_dhcp_agent:
       pod:
@@ -585,6 +615,13 @@ pod:
         neutron_server:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
+    neutron_rpc_server:
+      pod:
+        runAsUser: 42424
+      container:
+        neutron_rpc_server:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
     neutron_sriov_agent:
       pod:
         runAsUser: 42424
@@ -632,6 +669,11 @@ pod:
     neutron_server:
       init_container: null
       neutron_server:
+        volumeMounts:
+        volumes:
+    neutron_rpc_server:
+      init_container: null
+      neutron_rpc_server:
         volumeMounts:
         volumes:
     neutron_dhcp_agent:
@@ -714,6 +756,7 @@ pod:
         volumes:
   replicas:
     server: 1
+    rpc_server: 1
     ironic_agent: 1
   lifecycle:
     upgrades:
@@ -762,6 +805,8 @@ pod:
         min_available: 0
     termination_grace_period:
       server:
+        timeout: 30
+      rpc_server:
         timeout: 30
       ironic_agent:
         timeout: 30
@@ -1257,6 +1302,22 @@ conf:
       paste.app_factory: neutron.api.v2.router:APIRouter.factory
     filter:osprofiler:
       paste.filter_factory: osprofiler.web:WsgiMiddleware.factory
+  neutron_api_uwsgi:
+    uwsgi:
+      add-header: "Connection: close"
+      buffer-size: 65535
+      die-on-term: true
+      enable-threads: true
+      exit-on-reload: false
+      hook-master-start: unix_signal:15 gracefully_kill_them_all
+      lazy-apps: true
+      log-x-forwarded-for: true
+      master: true
+      procname-prefix-spaced: "neutron-api:"
+      route-user-agent: '^kube-probe.* donotlog:'
+      thunder-lock: true
+      worker-reload-mercy: 80
+      wsgi-file: /var/lib/openstack/bin/neutron-api
   policy: {}
   api_audit_map:
     DEFAULT:
@@ -2522,6 +2583,7 @@ manifests:
   daemonset_netns_cleanup_cron: true
   deployment_ironic_agent: false
   deployment_server: true
+  deployment_rpc_server: true
   ingress_server: true
   job_bootstrap: true
   job_db_init: true

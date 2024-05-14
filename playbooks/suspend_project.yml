@@ -32,12 +32,16 @@
     - name: Get list of regions with compute service
       changed_when: false
       run_once: true
-      ansible.builtin.shell:
+      ansible.builtin.shell: |
+        set -o posix
+        source /etc/profile.d/atmosphere.sh
         openstack endpoint list \
           --service compute \
           --interface public \
           --column Region \
           --format value
+      args:
+        executable: /bin/bash
       environment:
         OS_CLOUD: atmosphere
       register: _regions
@@ -45,13 +49,17 @@
     - name: Get list of VMs in the project in each region
       changed_when: false
       run_once: true
-      ansible.builtin.shell:
+      ansible.builtin.shell: |
+        set -o posix
+        source /etc/profile.d/atmosphere.sh
         openstack server list \
           --no-name-lookup \
           --project "{{ project_name }}" \
           --status ACTIVE \
           --column ID \
           --format value
+      args:
+        executable: /bin/bash
       environment:
         OS_AUTH_URL: "https://{{ openstack_helm_endpoints_keystone_api_host }}"
         OS_USERNAME: "admin-{{ openstack_helm_endpoints_region_name }}"
@@ -65,8 +73,12 @@
 
     - name: Suspend VMs in each region
       run_once: true
-      ansible.builtin.shell:
+      ansible.builtin.shell: |
+        set -o posix
+        source /etc/profile.d/atmosphere.sh
         openstack server suspend {{ item.1 }}
+      args:
+        executable: /bin/bash
       environment:
         OS_AUTH_URL: "https://{{ openstack_helm_endpoints_keystone_api_host }}"
         OS_USERNAME: "admin-{{ openstack_helm_endpoints_region_name }}"

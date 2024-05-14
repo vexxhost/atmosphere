@@ -1,5 +1,7 @@
 # Atmosphere
 
+- Documentation: https://vexxhost.github.io/atmosphere/
+
 ## Community
 
 If you have any questions and discussions about Atmosphere, you can join the

@@ -1,4 +1,4 @@
-# Copyright (c) 2022 VEXXHOST, Inc.
+# Copyright (c) 2024 VEXXHOST, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -14,7 +14,8 @@
 
 - name: Install openstacksdk
   ansible.builtin.pip:
-    name: openstacksdk==0.61.0
+    name: openstacksdk
+    version: "{{ openstacksdk_version }}"
 
 - name: Create openstack config directory
   become: true
@@ -32,4 +33,4 @@
     dest: /etc/openstack/clouds.yaml
     owner: root
     group: root
-    mode: '0600'
+    mode: "0600"
