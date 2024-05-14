@@ -43,14 +43,21 @@ _percona_xtradb_cluster_spec:
     image: "{{ atmosphere_images['percona_xtradb_cluster_haproxy'] | vexxhost.kubernetes.docker_image('ref') }}"
     nodeSelector:
       openstack-control-plane: enabled
+    # NOTE(fitbeard): The actual default configuration file can be found here:
+    # https://github.com/percona/percona-docker/blob/pxc-operator-1.14.0/haproxy/dockerdir/etc/haproxy/haproxy-global.cfg
+    # Should be aligned with upstream example when bumping chart version
     configuration: |
       global
+        log stdout format raw local0
         maxconn 8192
         external-check
         insecure-fork-wanted
+        hard-stop-after 10s
         stats socket /etc/haproxy/pxc/haproxy.sock mode 600 expose-fd listeners level admin
 
       defaults
+        no option dontlognull
+        log-format '{"time":"%t", "client_ip": "%ci", "client_port":"%cp", "backend_source_ip": "%bi", "backend_source_port": "%bp",  "frontend_name": "%ft", "backend_name": "%b", "server_name":"%s", "tw": "%Tw", "tc": "%Tc", "Tt": "%Tt", "bytes_read": "%B", "termination_state": "%ts", "actconn": "%ac", "feconn" :"%fc", "beconn": "%bc", "srv_conn": "%sc", "retries": "%rc", "srv_queue": "%sq", "backend_queue": "%bq" }'
         default-server init-addr last,libc,none
         log global
         mode tcp
@@ -58,6 +65,9 @@ _percona_xtradb_cluster_spec:
         timeout client 28800s
         timeout connect 100500
         timeout server 28800s
+
+      resolvers kubernetes
+        parse-resolv-conf
 
       frontend galera-in
         bind *:3309 accept-proxy
