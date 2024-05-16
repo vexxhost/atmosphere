@@ -36,6 +36,8 @@ ADD --keep-git-dir=true https://opendev.org/openstack/senlin-dashboard.git#maste
 RUN git -C /src/senlin-dashboard fetch --unshallow
 COPY patches/magnum-ui /patches/magnum-ui
 RUN git -C /src/magnum-ui apply --verbose /patches/magnum-ui/*
+COPY patches/horizon /patches/horizon
+RUN git -C /src/horizon apply --verbose /patches/horizon/*
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
 pip3 install \
     --constraint /upper-constraints.txt \
