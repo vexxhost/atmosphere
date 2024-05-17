@@ -176,6 +176,10 @@ It should be handled through lcore and pmd core masks. */}}
                   name: openvswitch-etc
                   key: update_dpdk_bond_config
           {{- end }}
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
           command:
             - /tmp/openvswitch-vswitchd.sh
             - start
