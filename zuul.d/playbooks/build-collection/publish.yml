@@ -51,8 +51,6 @@
             ANSIBLE_CONFIG: "{{ _ansiblecfg_tmp.path }}"
           ansible.builtin.shell: |
             {{ ansible_galaxy_executable }} collection publish -vvv {{ item.path }}
-          args:
-            chdir: "{{ zuul.project.src_dir }}"
           loop: "{{ result.files }}"
 
       always:
