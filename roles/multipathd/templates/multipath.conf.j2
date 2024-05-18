@@ -2,4 +2,47 @@
 
 defaults {
     user_friendly_names {{ multipathd_user_friendly_names | bool | ternary('yes', 'no') }}
+    find_multipaths yes
+}
+
+devices {
+    device {
+        vendor                      "NVME"
+        product                     "Pure Storage FlashArray"
+        path_selector               "queue-length 0"
+        path_grouping_policy        group_by_prio
+        prio                        ana
+        failback                    immediate
+        fast_io_fail_tmo            10
+        user_friendly_names         no
+        no_path_retry               0
+        features                    0
+        dev_loss_tmo                60
+        find_multipaths             yes
+    }
+    device {
+        vendor                   "PURE"
+        product                  "FlashArray"
+        path_selector            "service-time 0"
+        hardware_handler         "1 alua"
+        path_grouping_policy     group_by_prio
+        prio                     alua
+        failback                 immediate
+        path_checker             tur
+        fast_io_fail_tmo         10
+        user_friendly_names      no
+        no_path_retry            0
+        features                 0
+        dev_loss_tmo             600
+        find_multipaths          yes
+    }
+}
+
+blacklist {
+      devnode "^pxd[0-9]*"
+      devnode "^pxd*"
+      device {
+        vendor "VMware"
+        product "Virtual disk"
+      }
 }

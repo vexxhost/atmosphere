@@ -1,0 +1,63 @@
+# Copyright (c) 2024 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Detect if InitiatorName is set
+  ansible.builtin.slurp:
+    src: /etc/iscsi/initiatorname.iscsi
+  register: portworx_iscsi_initiatorname
+
+- name: Configure InitiatorName
+  when: "'InitiatorName' not in portworx_iscsi_initiatorname.content | b64decode"
+  block:
+    - name: Generate a new InitiatorName
+      ansible.builtin.shell:
+        cmd: iscsi-iname
+      register: portworx_iscsi_iname
+
+    - name: Write the new InitiatorName
+      ansible.builtin.copy:
+        content: "InitiatorName={{ portworx_iscsi_iname.stdout }}"
+        dest: /etc/iscsi/initiatorname.iscsi
+        owner: root
+        group: root
+        mode: "0644"
+
+- name: Install Portworx
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    template:
+      - portworx.yml
+      - config.yml
+
+- name: Wait till the CRDs are created
+  run_once: true
+  kubernetes.core.k8s_info:
+    api_version: apiextensions.k8s.io/v1
+    kind: CustomResourceDefinition
+    name: storageclusters.core.libopenstorage.org
+  # NOTE(mnaser): Portworx operator creates the CRDs for the cluster
+  #               so we need to make sure they're created before we proceed.
+  retries: 60
+  delay: 5
+  register: _result
+  until: _result.resources | length > 0
+
+- name: Create Portworx Storage Cluster
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    template:
+      - storage_cluster.yml
+      - storage_class.yml
