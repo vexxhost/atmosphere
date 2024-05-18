@@ -87,9 +87,30 @@ function start () {
 
   # Copy custom logo images
   {{- if .Values.manifests.configmap_logo }}
-  cp /tmp/favicon.ico ${SITE_PACKAGES_ROOT}/openstack_dashboard/static/dashboard/img/favicon.ico
-  cp /tmp/logo.svg ${SITE_PACKAGES_ROOT}/openstack_dashboard/static/dashboard/img/logo.svg
-  cp /tmp/logo-splash.svg ${SITE_PACKAGES_ROOT}/openstack_dashboard/static/dashboard/img/logo-splash.svg
+  if [ -f /tmp/favicon.ico ]; then
+    favicon=$(cat /tmp/favicon.ico)
+    if [[ "$favicon" =~ ^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$ ]]; then
+      echo $(echo $favicon | base64 --decode) > ${SITE_PACKAGES_ROOT}/openstack_dashboard/static/dashboard/img/favicon.ico
+    else
+      cp /tmp/favicon.ico ${SITE_PACKAGES_ROOT}/openstack_dashboard/static/dashboard/img/favicon.ico
+    fi
+  fi
+  if [ -f /tmp/logo-splash.svg ]; then
+    logo_splash=$(cat /tmp/logo-splash.svg)
+    if [[ "$logo_splash" =~ ^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$ ]]; then
+      echo $(echo $logo_splash | base64 --decode) > ${SITE_PACKAGES_ROOT}/openstack_dashboard/static/dashboard/img/logo-splash.svg
+    else
+      cp /tmp/logo-splash.svg ${SITE_PACKAGES_ROOT}/openstack_dashboard/static/dashboard/img/logo-splash.svg
+    fi
+  fi
+  if [ -f /tmp/logo.svg ]; then
+    logo=$(cat /tmp/logo.svg)
+    if [[ "$logo" =~ ^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$ ]]; then
+      echo $(echo $logo | base64 --decode) > ${SITE_PACKAGES_ROOT}/openstack_dashboard/static/dashboard/img/logo.svg
+    else
+      cp /tmp/logo.svg ${SITE_PACKAGES_ROOT}/openstack_dashboard/static/dashboard/img/logo.svg
+    fi
+  fi
   {{- end }}
 
   # Compress Horizon's assets.

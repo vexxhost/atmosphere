@@ -6,3 +6,4 @@ Configuration Guide
    :maxdepth: 2
 
    ingress
+   horizon
