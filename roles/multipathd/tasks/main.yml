@@ -12,6 +12,18 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+- name: Add backports PPA
+  ansible.builtin.apt_repository:
+    repo: ppa:vexxhost/backports
+
+- name: Install the multipathd package
+  ansible.builtin.package:
+    name: multipath-tools
+    state: latest
+  notify:
+    - Reload "multipathd"
+    - Reconfigure "multipathd"
+
 - name: Install the configuration file
   ansible.builtin.template:
     src: multipath.conf.j2
@@ -21,3 +33,4 @@
     mode: "0644"
   notify:
     - Reload "multipathd"
+    - Reconfigure "multipathd"

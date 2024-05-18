@@ -6,6 +6,14 @@ This section details how to configure Container Storage Interfaces (CSI) for
 your Kubernetes cluster that Atmosphere runs on. You will need to follow the
 steps below to enable specific CSI drivers based on your storage requirements.
 
+.. admonition:: Storing secrets securely
+    :class: tip
+
+    When configuring CSI drivers, it is important to store sensitive
+    information securely. You can use Ansible Vault to encrypt your inventory
+    file and store it in a secure location. For more information on how to
+    use Ansible Vault, refer to the `Ansible documentation <https://docs.ansible.com/ansible/latest/user_guide/vault.html>`_.
+
 ********
 Ceph RBD
 ********
@@ -67,6 +75,30 @@ can set the following variable:
 Ensure that you replace ``<FILL IN>`` with actual values relevant to your IBM
 Block configuration.  You can use the `Creating a StorageClass <https://www.ibm.com/docs/en/stg-block-csi-driver/1.11.3?topic=configuring-creating-storageclass>`_
 documentation to help you determine the values to use.
+
+********
+Portworx
+********
+
+If you are using a Pure Storage array for your block storage, you can use the
+Portworx CSI driver to integrate it with your Kubernetes cluster.  Portworx
+automatically enables a custom license when integrated with Pure Storage
+arrays (FA/FB edition).
+
+To configure the Portworx CSI driver, update your Ansible inventory as follows:
+
+.. code-block:: yaml
+
+    csi_driver: portworx
+    portworx_pure_flasharray_san_type: <FILL IN> # FC or ISCSI
+    portworx_pure_json:
+      FlaskBlades: []
+      FlashArrays:
+        - MgmtEndPoint: <FILL IN>
+          APIToken: <FILL IN>
+
+For more information about how the ``portworx_pure_json`` variable is used,
+you can refer to the `Pure Storage FlashArray and FlashBlade JSON file reference <https://docs.portworx.com/portworx-enterprise/reference/pure-reference/pure-json-reference>`_.
 
 ********
 StorPool
