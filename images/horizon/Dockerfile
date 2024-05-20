@@ -18,21 +18,21 @@ FROM registry.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
 ARG HORIZON_GIT_REF=5de40f9b222608d35c5a0919117259e966217a86
 ADD --keep-git-dir=true https://opendev.org/openstack/horizon.git#${HORIZON_GIT_REF} /src/horizon
 RUN git -C /src/horizon fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/designate-dashboard.git#stable/zed /src/designate-dashboard
+ADD --keep-git-dir=true https://opendev.org/openstack/designate-dashboard.git#unmaintained/zed /src/designate-dashboard
 RUN git -C /src/designate-dashboard fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/heat-dashboard.git#stable/zed /src/heat-dashboard
+ADD --keep-git-dir=true https://opendev.org/openstack/heat-dashboard.git#unmaintained/zed /src/heat-dashboard
 RUN git -C /src/heat-dashboard fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/ironic-ui.git#stable/zed /src/ironic-ui
+ADD --keep-git-dir=true https://opendev.org/openstack/ironic-ui.git#unmaintained/zed /src/ironic-ui
 RUN git -C /src/ironic-ui fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/magnum-ui.git#stable/zed /src/magnum-ui
+ADD --keep-git-dir=true https://opendev.org/openstack/magnum-ui.git#unmaintained/zed /src/magnum-ui
 RUN git -C /src/magnum-ui fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/manila-ui.git#stable/zed /src/manila-ui
+ADD --keep-git-dir=true https://opendev.org/openstack/manila-ui.git#unmaintained/zed /src/manila-ui
 RUN git -C /src/manila-ui fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/neutron-vpnaas-dashboard.git#stable/zed /src/neutron-vpnaas-dashboard
+ADD --keep-git-dir=true https://opendev.org/openstack/neutron-vpnaas-dashboard.git#unmaintained/zed /src/neutron-vpnaas-dashboard
 RUN git -C /src/neutron-vpnaas-dashboard fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/octavia-dashboard.git#stable/zed /src/octavia-dashboard
+ADD --keep-git-dir=true https://opendev.org/openstack/octavia-dashboard.git#unmaintained/zed /src/octavia-dashboard
 RUN git -C /src/octavia-dashboard fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/senlin-dashboard.git#stable/zed /src/senlin-dashboard
+ADD --keep-git-dir=true https://opendev.org/openstack/senlin-dashboard.git#unmaintained/zed /src/senlin-dashboard
 RUN git -C /src/senlin-dashboard fetch --unshallow
 COPY patches/horizon /patches/horizon
 RUN git -C /src/horizon apply --verbose /patches/horizon/*
