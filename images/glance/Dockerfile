@@ -38,7 +38,7 @@ FROM registry.atmosphere.dev/library/openstack-python-runtime:${RELEASE}
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \
-    ceph-common lsscsi nvme-cli python3-rados python3-rbd qemu-utils sysfsutils udev util-linux
+    ceph-common lsscsi nvme-cli python3-rados python3-rbd qemu-block-extra qemu-utils sysfsutils udev util-linux
 apt-get clean
 rm -rf /var/lib/apt/lists/*
 EOF
