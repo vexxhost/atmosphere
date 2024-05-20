@@ -13,7 +13,6 @@ export OS_PROJECT_NAME=admin
 
 {% if cluster_issuer_type is defined and cluster_issuer_type in ('self-signed', 'ca') %}
 export OS_CACERT=/usr/local/share/ca-certificates/atmosphere.crt
-{% endif %}
-{% if cluster_issuer_acme_private_ca is defined and cluster_issuer_acme_private_ca | bool %}
+{% elif cluster_issuer_acme_private_ca is defined and cluster_issuer_acme_private_ca | bool %}
 export OS_CACERT=/etc/ssl/certs/ca-certificates.crt
 {% endif %}
