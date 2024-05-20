@@ -15,7 +15,7 @@
 ARG RELEASE
 
 FROM registry.atmosphere.dev/library/ubuntu-cloud-archive:${RELEASE} AS requirements
-ADD https://releases.openstack.org/constraints/upper/master /upper-constraints.txt
+ADD https://releases.openstack.org/constraints/upper/2023.1 /upper-constraints.txt
 RUN <<EOF sh -xe
 sed -i '/glance-store/d' /upper-constraints.txt
 sed -i '/horizon/d' /upper-constraints.txt
