@@ -171,14 +171,7 @@ It should be handled through lcore and pmd core masks. */}}
           # successfully before its marked as ready
 {{ dict "envAll" $envAll "component" "ovs" "container" "ovs_vswitch" "type" "liveness" "probeTemplate" (include "ovsvswitchlivenessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
 {{ dict "envAll" $envAll "component" "ovs" "container" "ovs_vswitch" "type" "readiness" "probeTemplate" (include "ovsvswitchreadinessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
-          {{- if .Values.conf.ovs_dpdk.enabled }}
           env:
-            - name: UPDATE_DPDK_BOND_CONFIG
-              valueFrom:
-                secretKeyRef:
-                  name: openvswitch-etc
-                  key: update_dpdk_bond_config
-          {{- end }}
             - name: POD_NAME
               valueFrom:
                 fieldRef:
