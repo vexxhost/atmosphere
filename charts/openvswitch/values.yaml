@@ -138,7 +138,7 @@ pod:
         limits:
           memory: "1024Mi"
           cpu: "2000m"
-  user:
+  user: &pod_users
     nova:
       uid: 42424
 
@@ -208,38 +208,30 @@ manifests:
   network_policy: false
   secret_registry: true
 
-network:
-  # NOTE(Portdirect): Share network namespaces with the host,
-  # allowing agents to be restarted without packet loss and simpler
-  # debugging. This feature requires mount propagation support.
-  share_namespaces: true
-  interface:
-    # Tunnel interface will be used for VXLAN tunneling.
-    tunnel: null
-    # If tunnel is null there is a fallback mechanism to search
-    # for interface with routing using tunnel network cidr.
-    tunnel_network_cidr: "0/0"
-  # To perform setup of network interfaces using the SR-IOV init
-  # container you can use a section similar to:
-  # sriov:
-  #   - device: ${DEV}
-  #     num_vfs: 8
-  #     mtu: 9214
-  #     promisc: false
-  #     qos:
-  #       - vf_num: 0
-  #         share: 10
-  #     queues_per_vf:
-  #       - num_queues: 16
-  #         exclude_vf: 0,11,21
-  #
 conf:
   auto_bridge_add:
     br-ex: null
-  poststart:
-    timeout: 5
-    rootUser: "root"
-    extraCommand: null
+  network:
+    interface:
+      # Tunnel interface will be used for VXLAN tunneling.
+      tunnel: null
+      # If tunnel is null there is a fallback mechanism to search
+      # for interface with routing using tunnel network cidr.
+      tunnel_network_cidr: "0/0"
+    # To perform setup of network interfaces using the SR-IOV init
+    # container you can use a section similar to:
+    # sriov:
+    #   - device: ${DEV}
+    #     num_vfs: 8
+    #     mtu: 9214
+    #     promisc: false
+    #     qos:
+    #       - vf_num: 0
+    #         share: 10
+    #     queues_per_vf:
+    #       - num_queues: 16
+    #         exclude_vf: 0,11,21
+    tunnel_types: vxlan
   openvswitch_db_server:
     ptcp_port: null
   ovs_other_config:
@@ -276,25 +268,25 @@ conf:
     driver: uio_pci_generic
     # In case bonds are configured, the nics which are part of those bonds
     # must NOT be provided here.
-    nics: null
-    # nics:
-    #   - name: dpdk0
-    #     pci_id: '0000:05:00.0'
-    #     # Set VF Index in case some particular VF(s) need to be
-    #     # used with ovs-dpdk.
-    #     # vf_index: 0
-    #     bridge: br-phy
-    #     migrate_ip: true
-    #     n_rxq: 2
-    #     n_txq: 2
-    #     pmd_rxq_affinity: "0:3,1:27"
-    #     ofport_request: 1
-    # optional parameters for tuning the OVS DPDK config
-    # in alignment with the available hardware resources
+    # nics: [] # to zero out this attribute for DPDK bonds
+    nics:
+      - name: dpdk0
+        pci_id: '0000:05:00.0'
+        # Set VF Index in case some particular VF(s) need to be
+        # used with ovs-dpdk.
+        # vf_index: 0
+        bridge: br-phy
+        migrate_ip: true
+        n_rxq: 2
+        n_txq: 2
+        pmd_rxq_affinity: "0:3,1:27"
+        ofport_request: 1
+        # optional parameters for tuning the OVS DPDK config
+        # in alignment with the available hardware resources
         # mtu: 2000
         # n_rxq_size: 1024
         # n_txq_size: 1024
-        # vhost-iommu-support: true
+        # vhost_iommu_support: true
     bridges:
       - name: br-ex
       # optional parameter, in case tunnel traffic needs to be transported over a vlan underlay
@@ -341,5 +333,10 @@ conf:
     # modules:
     #   - name: dpdk
     #     log_level: info
+  poststart:
+    timeout: 5
+    rootUser: "root"
+    extraCommand: null
+  user: *pod_users
 
 ...
