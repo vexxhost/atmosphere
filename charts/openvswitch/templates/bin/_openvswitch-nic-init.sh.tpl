@@ -16,21 +16,13 @@ limitations under the License.
 
 set -ex
 
-# Wait until OVS is done initializing
-{{- if .Values.conf.ovs_dpdk.enabled }}
-until [ -n "$(ovs-vsctl show)" ] && (ovs-vsctl list Open_vSwitch | grep -q "dpdk_initialized.*true"); do
-{{- else }}
-until [ -n "$(ovs-vsctl show)" ]; do
-{{- end }}
-  sleep 5;
-  echo "Waiting for OVS initialization..."
-done
-
-OVS_SOCKET=/run/openvswitch/db.sock
-
 # This enables the usage of 'ovs-appctl' from neutron pod.
+OVS_CONFIG=""
+OVS_CONFIG_FILE=/tmp/ovs.conf
 OVS_PID=$(cat /run/openvswitch/ovs-vswitchd.pid)
 OVS_CTL=/run/openvswitch/ovs-vswitchd.${OVS_PID}.ctl
+OVS_SOCKET=/run/openvswitch/db.sock
+DPDK_ENABLED=false
 
 function get_dpdk_config_value {
   values=${@:1:$#-1}
@@ -43,15 +35,24 @@ function get_dpdk_config_value {
   fi
 }
 
-
-DPDK_CONFIG_FILE=/tmp/dpdk.conf
-DPDK_CONFIG=""
-DPDK_ENABLED=false
-if [ -f ${DPDK_CONFIG_FILE} ]; then
-  DPDK_CONFIG=$(cat ${DPDK_CONFIG_FILE})
-  if [[ $(get_dpdk_config_value ${DPDK_CONFIG} '.enabled') == "true" ]]; then
+# Test for OVS config and wait for vswitchd to come up
+if [ -f ${OVS_CONFIG_FILE} ]; then
+  OVS_CONFIG=$(cat ${OVS_CONFIG_FILE})
+  if [[ $(get_dpdk_config_value ${OVS_CONFIG} '.ovs_dpdk.enabled') == "true" ]]; then
     DPDK_ENABLED=true
+    until [ -n "$(ovs-vsctl show)" ] && (ovs-vsctl list Open_vSwitch | grep -q "dpdk_initialized.*true") ; do
+      sleep 5;
+      echo "Waiting for OVS initialization..."
+    done
+  else
+    until [ -n "$(ovs-vsctl show)" ]; do
+      sleep 5;
+      echo "Waiting for OVS initialization..."
+    done
   fi
+else
+  echo "Cannot find ${OVS_CONFIG_FILE}" 1>&2
+  exit
 fi
 
 function bind_nic {
@@ -183,9 +184,9 @@ function bind_dpdk_nic {
 }
 
 function process_dpdk_nics {
-  target_driver=$(get_dpdk_config_value ${DPDK_CONFIG} '.driver')
+  target_driver=$(get_dpdk_config_value ${OVS_CONFIG} '.ovs_dpdk.driver')
   # loop over all nics
-  echo $DPDK_CONFIG | jq -r -c '.nics[]' | \
+  echo $OVS_CONFIG | jq -r -c '.ovs_dpdk.nics[]' | \
   while IFS= read -r nic; do
     local port_name=$(get_dpdk_config_value ${nic} '.name')
     local pci_id=$(get_dpdk_config_value ${nic} '.pci_id')
@@ -251,7 +252,7 @@ function process_dpdk_nics {
     if [ -n "${n_txq_size}" ]; then
       dpdk_options+='options:n_txq_desc=${n_txq_size} '
     fi
-    vhost_iommu_support=$(get_dpdk_config_value ${nic} '.vhost-iommu-support')
+    vhost_iommu_support=$(get_dpdk_config_value ${nic} '.vhost_iommu_support')
     if [ -n "${vhost_iommu_support}" ]; then
       dpdk_options+='options:vhost-iommu-support=${vhost_iommu_support} '
     fi
@@ -263,9 +264,9 @@ function process_dpdk_nics {
 }
 
 function process_dpdk_bonds {
-  target_driver=$(get_dpdk_config_value ${DPDK_CONFIG} '.driver')
+  target_driver=$(get_dpdk_config_value ${OVS_CONFIG} '.ovs_dpdk.driver')
   # loop over all bonds
-  echo $DPDK_CONFIG | jq -r -c '.bonds[]' > /tmp/bonds_array
+  echo $OVS_CONFIG | jq -r -c '.ovs_dpdk.bonds[]' > /tmp/bonds_array
   while IFS= read -r bond; do
     local bond_name=$(get_dpdk_config_value ${bond} '.name')
     local dpdk_bridge=$(get_dpdk_config_value ${bond} '.bridge')
@@ -276,7 +277,7 @@ function process_dpdk_bonds {
     local ofport_request=$(get_dpdk_config_value ${bond} '.ofport_request')
     local n_rxq_size=$(get_dpdk_config_value ${bond} '.n_rxq_size')
     local n_txq_size=$(get_dpdk_config_value ${bond} '.n_txq_size')
-    local vhost_iommu_support=$(get_dpdk_config_value ${bond} '.vhost-iommu-support')
+    local vhost_iommu_support=$(get_dpdk_config_value ${bond} '.vhost_iommu_support')
     local ovs_options=$(get_dpdk_config_value ${bond} '.ovs_options')
 
     local nic_name_str=""
@@ -358,7 +359,7 @@ function process_dpdk_bonds {
       fi
     done < /tmp/nics_array
 
-    if [ "${UPDATE_DPDK_BOND_CONFIG}" == "true" ]; then
+    if [ "$(get_dpdk_config_value ${OVS_CONFIG} '.ovs_dpdk.update_dpdk_bond_config')" == "true" ]; then
       echo -e "NOTE: UPDATE_DPDK_BOND_CONFIG is set to true.\
       \nThis might cause disruptions in ovs traffic.\
       \nTo avoid this disruption set UPDATE_DPDK_BOND_CONFIG to false."
@@ -384,8 +385,8 @@ function process_dpdk_bonds {
 
 function set_dpdk_module_log_level {
   # loop over all target modules
-  if [ -n "$(get_dpdk_config_value ${DPDK_CONFIG} '.modules')" ]; then
-    echo $DPDK_CONFIG | jq -r -c '.modules[]' > /tmp/modules_array
+  if [ -n "$(get_dpdk_config_value ${OVS_CONFIG} '.ovs_dpdk.modules')" ]; then
+    echo $OVS_CONFIG | jq -r -c '.ovs_dpdk.modules[]' > /tmp/modules_array
     while IFS= read -r module; do
       local mod_name=$(get_dpdk_config_value ${module} '.name')
       local mod_level=$(get_dpdk_config_value ${module} '.log_level')
@@ -417,15 +418,14 @@ function init_ovs_dpdk_bridge {
 
 # create all additional bridges defined in the DPDK section
 function init_ovs_dpdk_bridges {
-  for br in $(get_dpdk_config_value ${DPDK_CONFIG} '.bridges[].name'); do
+  for br in $(get_dpdk_config_value ${OVS_CONFIG} '.ovs_dpdk.bridges[].name'); do
     init_ovs_dpdk_bridge ${br}
   done
 }
 
 # handle any bridge mappings
-# /tmp/auto_bridge_add is one line json file: {"br-ex1":"eth1","br-ex2":"eth2"}
-for bmap in `sed 's/[{}"]//g' /tmp/auto_bridge_add | tr "," "\n"`
-do
+echo $OVS_CONFIG | jq -r -c '.auto_bridge_add' | sed 's/[{}"]//g' | tr "," "\n" | \
+while IFS= read -r bmap; do
   bridge=${bmap%:*}
   iface=${bmap#*:}
   ovs-vsctl --no-wait --may-exist add-br $bridge
@@ -433,18 +433,18 @@ do
   then
     ovs-vsctl --no-wait --may-exist add-port $bridge $iface
     migrate_ip_from_nic $iface $bridge
-    if [[ $(get_dpdk_config_value ${DPDK_CONFIG} '.enabled') != "true" ]]; then
+    if [[ "${DPDK_ENABLED}" != "true" ]]; then
       ip link set dev $iface up
     fi
   fi
 done
 
-tunnel_types="{{- .Values.network.tunnel_types -}}"
+tunnel_types="$(get_dpdk_config_value ${OVS_CONFIG} '.network.tunnel_types')"
 if [[ -n "${tunnel_types}" ]] ; then
-    tunnel_interface="{{- .Values.network.interface.tunnel -}}"
+    tunnel_interface="$(get_dpdk_config_value ${OVS_CONFIG} '.network.interface.tunnel')"
     if [ -z "${tunnel_interface}" ] ; then
         # search for interface with tunnel network routing
-        tunnel_network_cidr="{{- .Values.network.interface.tunnel_network_cidr -}}"
+        tunnel_network_cidr="$(get_dpdk_config_value ${OVS_CONFIG} '.network.interface.tunnel')"
         if [ -z "${tunnel_network_cidr}" ] ; then
             tunnel_network_cidr="0/0"
         fi
@@ -473,7 +473,7 @@ if [[ -n "${tunnel_types}" ]] ; then
     PREFIX=$(get_ip_prefix_from_interface "${tunnel_interface}")
 
     # loop over all nics
-    echo $DPDK_CONFIG | jq -r -c '.bridges[]' | \
+    echo $OVS_CONFIG | jq -r -c '.ovs_dpdk.bridges[]' | \
     while IFS= read -r br; do
       bridge_name=$(get_dpdk_config_value ${br} '.name')
       tunnel_underlay_vlan=$(get_dpdk_config_value ${br} '.tunnel_underlay_vlan')
