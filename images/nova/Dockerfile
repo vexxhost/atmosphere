@@ -15,7 +15,7 @@
 ARG RELEASE
 
 FROM registry.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
-ARG NOVA_GIT_REF=c199becf52267ba37c5191f6f82e29bb5232b607
+ARG NOVA_GIT_REF=9cad74c51330ee952fe6c1897902533519739cef
 ADD --keep-git-dir=true https://opendev.org/openstack/nova.git#${NOVA_GIT_REF} /src/nova
 RUN git -C /src/nova fetch --unshallow
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
@@ -27,7 +27,7 @@ pip3 install \
         storpool.spopenstack
 EOF
 ADD --chmod=644 \
-    https://github.com/storpool/storpool-openstack-integration/raw/master/drivers/os_brick/openstack/bobcat/storpool.py \
+    https://github.com/storpool/storpool-openstack-integration/raw/master/drivers/os_brick/openstack/antelope/storpool.py \
     /var/lib/openstack/lib/python3.10/site-packages/os_brick/initiator/connectors/storpool.py
 
 FROM registry.atmosphere.dev/library/openstack-python-runtime:${RELEASE}

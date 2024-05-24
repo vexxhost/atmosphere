@@ -15,7 +15,7 @@
 ARG RELEASE
 
 FROM registry.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
-ARG SENLIN_GIT_REF=ec5fae997686c64c3c1192b231b2434e6a6aeb1c
+ARG SENLIN_GIT_REF=22fd77946723e25e595676e61893c1f645709b2f
 ADD --keep-git-dir=true https://opendev.org/openstack/senlin.git#${SENLIN_GIT_REF} /src/senlin
 RUN git -C /src/senlin fetch --unshallow
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe

@@ -15,11 +15,9 @@
 ARG RELEASE
 
 FROM registry.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
-ARG DESIGNATE_GIT_REF=097ffc6df181290eba1bcd7c492b1b505bc15434
+ARG DESIGNATE_GIT_REF=ff1986cbb755f0d74a7db98623d6d17816d933a6
 ADD --keep-git-dir=true https://opendev.org/openstack/designate.git#${DESIGNATE_GIT_REF} /src/designate
 RUN git -C /src/designate fetch --unshallow
-COPY patches/designate /patches/designate
-RUN git -C /src/designate apply --verbose /patches/designate/*
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
 pip3 install \
     --constraint /upper-constraints.txt \

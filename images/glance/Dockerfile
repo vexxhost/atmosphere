@@ -15,11 +15,13 @@
 ARG RELEASE
 
 FROM registry.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
-ARG GLANCE_GIT_REF=0bcd6cd71c09917c6734421374fd598d73e8d0cc
+ARG GLANCE_GIT_REF=70170d2a99f9d30bddcc55a9183133a16ed14c06
 ADD --keep-git-dir=true https://opendev.org/openstack/glance.git#${GLANCE_GIT_REF} /src/glance
 RUN git -C /src/glance fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/glance_store.git#master /src/glance_store
+ADD --keep-git-dir=true https://opendev.org/openstack/glance_store.git#stable/2023.1 /src/glance_store
 RUN git -C /src/glance_store fetch --unshallow
+COPY patches/glance_store /patches/glance_store
+RUN git -C /src/glance_store apply --verbose /patches/glance_store/*
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
 pip3 install \
     --constraint /upper-constraints.txt \
@@ -29,7 +31,7 @@ pip3 install \
         storpool.spopenstack
 EOF
 ADD --chmod=644 \
-    https://github.com/storpool/storpool-openstack-integration/raw/master/drivers/os_brick/openstack/bobcat/storpool.py \
+    https://github.com/storpool/storpool-openstack-integration/raw/master/drivers/os_brick/openstack/antelope/storpool.py \
     /var/lib/openstack/lib/python3.10/site-packages/os_brick/initiator/connectors/storpool.py
 
 FROM registry.atmosphere.dev/library/openstack-python-runtime:${RELEASE}
