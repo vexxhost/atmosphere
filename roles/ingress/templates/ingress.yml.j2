@@ -3,10 +3,9 @@ kind: Ingress
 metadata:
   name: {{ ingress_name }}
   namespace: {{ ingress_namespace | default('default') }}
-{% if ingress_annotations %}
   annotations:
-    {{ ingress_annotations | to_nice_yaml | indent(4) }}
-{% endif %}
+    cert-manager.io/common-name: {{ ingress_host }}
+    {{ ingress_annotations | combine(ingress_global_annotations, recursive=True) | to_nice_yaml | indent(4) }}
 spec:
   ingressClassName: {{ ingress_class_name }}
   rules:
