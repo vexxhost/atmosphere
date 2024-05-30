@@ -13,6 +13,7 @@
 # under the License.
 
 - name: Create secret (username/password)
+  run_once: true
   when:
     - cluster_issuer_venafi_username is defined
     - cluster_issuer_venafi_password is defined
@@ -30,6 +31,7 @@
           password: "{{ cluster_issuer_venafi_password }}"
 
 - name: Create secret (access token)
+  run_once: true
   when:
     - cluster_issuer_venafi_username is not defined
     - cluster_issuer_venafi_password is not defined
@@ -46,6 +48,7 @@
           access-token: "{{ cluster_issuer_venafi_access_token }}"
 
 - name: Create ClusterIssuer
+  run_once: true
   kubernetes.core.k8s:
     state: present
     definition:
