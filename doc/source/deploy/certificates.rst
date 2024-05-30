@@ -216,6 +216,12 @@ you will need to configure the issuer.
 .. code-block:: yaml
 
   cluster_issuer_type: venafi
+  cluster_issuer_venafi_ca: |
+    -----BEGIN CERTIFICATE-----
+    MIIDBjCCAe4CCQDQ3Z0Z2Z0Z0jANBgkqhkiG9w0BAQsFADCBhTELMAkGA1UEBhMC
+    VVMxEzARBgNVBAgTCkNhbGlmb3JuaWExFjAUBgNVBAcTDVNhbiBGcmFuY2lzY28x
+    ...
+    -----END CERTIFICATE-----
   cluster_issuer_venafi_zone: <ZONE>
   cluster_issuer_venafi_tpp_url: <URL>
   cluster_issuer_venafi_tpp_ca_bundle: |
@@ -224,6 +230,12 @@ you will need to configure the issuer.
     VVMxEzARBgNVBAgTCkNhbGlmb3JuaWExFjAUBgNVBAcTDVNhbiBGcmFuY2lzY28x
     ...
     -----END CERTIFICATE-----
+
+.. note::
+
+   If your issuer is an intermediate certificate, you will need to ensure that
+   the ``certificate`` key includes the full chain in the correct order of issuer,
+   intermediate(s), then root.
 
 Authentication
 ~~~~~~~~~~~~~~
