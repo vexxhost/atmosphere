@@ -8,7 +8,7 @@ clouds:
       user_domain_name: Default
       project_domain_name: Default
     region_name: "{{ openstack_helm_endpoints_keystone_region_name }}"
-{% if cluster_issuer_type is defined and cluster_issuer_type in ('self-signed', 'ca') %}
+{% if cluster_issuer_type is defined and cluster_issuer_type in ('self-signed', 'ca', 'venafi') %}
     cacert: "/usr/local/share/ca-certificates/atmosphere.crt"
 {% elif cluster_issuer_acme_private_ca is defined and cluster_issuer_acme_private_ca | bool %}
     cacert: "/etc/ssl/certs/ca-certificates.crt"
