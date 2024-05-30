@@ -1,0 +1,72 @@
+# Copyright (c) 2024 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- hosts: all
+  become: true
+  tasks:
+    - name: Checkout to old branch
+      become: true
+      ansible.builtin.shell: |
+        git checkout stable/zed
+      args:
+        chdir: "{{ zuul.project.src_dir }}"
+
+- hosts: all
+  become: true
+  roles:
+    - tox
+
+- hosts: all
+  become: true
+  tasks:
+    - name: Uninstall Helm chart rabbitmq-cluster-operator
+      run_once: true
+      kubernetes.core.helm:
+        name: 'rabbitmq-cluster-operator'
+        release_namespace: 'openstack'
+        state: absent
+        wait: true
+
+    - name: Uninstall Helm chart node-feature-discovery
+      run_once: true
+      kubernetes.core.helm:
+        name: 'node-feature-discovery'
+        release_namespace: 'monitoring'
+        state: absent
+        wait: true
+
+    - name: Uninstall Helm chart prometheus-pushgateway
+      run_once: true
+      kubernetes.core.helm:
+        name: 'prometheus-pushgateway'
+        release_namespace: 'monitoring'
+        state: absent
+        wait: true
+
+    - name: Add rabbitmq_skip_spec_diff
+      ansible.builtin.lineinfile:
+        path: "{{ zuul.project.src_dir }}/atmosphere/molecule/aio/group_vars/all/molecule.yml"
+        insertafter: EOF
+        line: 'rabbitmq_skip_spec_diff: true'
+    - name: Checkout to new branch
+      become: true
+      ansible.builtin.shell: |
+        git checkout stable/2023.1
+      args:
+        chdir: "{{ zuul.project.src_dir }}"
+
+- hosts: all
+  become: true
+  roles:
+    - tox

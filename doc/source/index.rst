@@ -26,6 +26,7 @@ curated by years of experience from our team alongside other features such as:
    quick-start
    config/index
    deploy/index
+   upgrade/index
    admin/index
 
 
