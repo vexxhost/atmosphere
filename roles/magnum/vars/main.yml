@@ -25,6 +25,8 @@ _magnum_helm_values:
       barbican_client:
         endpoint_type: internalURL
         region_name: "{{ openstack_helm_endpoints_barbican_region_name }}"
+      capi_client:
+        ca_file: /etc/ssl/certs/ca-certificates.crt
       cinder_client:
         endpoint_type: internalURL
         region_name: "{{ openstack_helm_endpoints_cinder_region_name }}"
@@ -74,6 +76,17 @@ _magnum_helm_values:
     replicas:
       api: 3
       conductor: 3
+    mounts:
+      magnum_conductor:
+        magnum_conductor:
+          volumeMounts:
+            - name: etc-ssl-certs
+              mountPath: /etc/ssl/certs
+              readOnly: true
+          volumes:
+            - name: etc-ssl-certs
+              hostPath:
+                path: "{{ defaults_ca_certificates_path }}"
   manifests:
     ingress_api: false
     service_ingress_api: false
