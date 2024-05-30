@@ -25,6 +25,7 @@
     name: PyMySQL
 
 - name: Check MySQL ready
+  run_once: true
   community.mysql.mysql_info:
     login_host: "{{ _pxc_service.resources[0].spec.clusterIP }}"
     login_user: root
@@ -56,6 +57,7 @@
     priv: "{{ keycloak_database_name }}.*:ALL"
 
 - name: Disable pxc strict mode
+  run_once: true
   community.mysql.mysql_query:
     login_host: "{{ _pxc_service.resources[0].spec.clusterIP }}"
     login_user: root
@@ -89,6 +91,7 @@
       cert-manager.io/cluster-issuer: atmosphere
 
 - name: Enable pxc strict mode
+  run_once: true
   community.mysql.mysql_query:
     login_host: "{{ _pxc_service.resources[0].spec.clusterIP }}"
     login_user: root
