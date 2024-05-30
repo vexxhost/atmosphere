@@ -23,7 +23,6 @@ type Conf struct {
 	Nova      *NovaConf      `yaml:"nova,omitempty"`
 	Octavia   *OctaviaConf   `yaml:"octavia,omitempty"`
 	Placement *PlacementConf `yaml:"placement,omitempty"`
-	Senlin    *SenlinConf    `yaml:"senlin,omitempty"`
 	Staffeln  *StaffelnConf  `yaml:"staffeln,omitempty"`
 }
 

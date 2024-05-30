@@ -32,8 +32,6 @@ ADD --keep-git-dir=true https://opendev.org/openstack/neutron-vpnaas-dashboard.g
 RUN git -C /src/neutron-vpnaas-dashboard fetch --unshallow
 ADD --keep-git-dir=true https://opendev.org/openstack/octavia-dashboard.git#master /src/octavia-dashboard
 RUN git -C /src/octavia-dashboard fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/senlin-dashboard.git#master /src/senlin-dashboard
-RUN git -C /src/senlin-dashboard fetch --unshallow
 COPY patches/magnum-ui /patches/magnum-ui
 RUN git -C /src/magnum-ui apply --verbose /patches/magnum-ui/*
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
@@ -47,7 +45,6 @@ pip3 install \
         /src/manila-ui \
         /src/neutron-vpnaas-dashboard \
         /src/octavia-dashboard \
-        /src/senlin-dashboard \
         pymemcache
 EOF
 

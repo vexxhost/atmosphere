@@ -12,21 +12,46 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Deploy Helm chart
+- name: Remove OpenStack endpoints
+  openstack.cloud.endpoint:
+    cloud: atmosphere
+    service: senlin
+    endpoint_interface: "{{ item }}"
+    url: endpoint
+    region: "{{ openstack_helm_endpoints_region_name }}"
+    state: absent
+  loop:
+    - public
+    - admin
+    - internal
+
+- name: Remove OpenStack service
+  openstack.cloud.catalog_service:
+    cloud: atmosphere
+    name: senlin
+    service_type: clustering
+    state: absent
+
+- name: Remove Ingress
+  kubernetes.core.k8s:
+    state: absent
+    definition:
+      apiVersion: networking.k8s.io/v1
+      kind: Ingress
+      metadata:
+        name: clustering
+        namespace: "{{ senlin_helm_release_namespace }}"
+
+- name: Remove Helm chart
   run_once: true
   kubernetes.core.helm:
     name: "{{ senlin_helm_release_name }}"
-    chart_ref: "{{ senlin_helm_chart_ref }}"
     release_namespace: "{{ senlin_helm_release_namespace }}"
-    create_namespace: true
     kubeconfig: /etc/kubernetes/admin.conf
-    values: "{{ _senlin_helm_values | combine(senlin_helm_values, recursive=True) }}"
+    state: absent
 
-- name: Create Ingress
-  ansible.builtin.include_role:
-    name: openstack_helm_ingress
-  vars:
-    openstack_helm_ingress_endpoint: clustering
-    openstack_helm_ingress_service_name: senlin-api
-    openstack_helm_ingress_service_port: 8778
-    openstack_helm_ingress_annotations: "{{ senlin_ingress_annotations }}"
+- name: Remove OpenStack user
+  openstack.cloud.identity_user:
+    cloud: atmosphere
+    name: "senlin-{{ openstack_helm_endpoints_region_name }}"
+    domain: service
