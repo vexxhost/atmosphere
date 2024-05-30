@@ -13,6 +13,7 @@
 # under the License.
 
 - name: Create self-signed cluster issuer
+  run_once: true
   kubernetes.core.k8s:
     state: present
     definition:
@@ -30,6 +31,7 @@
   when: cluster_issuer_type in ("self-signed", "ca")
   block:
     - name: Wait till the secret is created
+      run_once: true
       kubernetes.core.k8s_info:
         api_version: v1
         kind: Secret
