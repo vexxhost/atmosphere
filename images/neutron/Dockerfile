@@ -15,7 +15,7 @@
 ARG RELEASE
 
 FROM registry.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
-ARG NEUTRON_GIT_REF=0fe6b7cec0e43c3048235ba1c05fd134e3413e1b
+ARG NEUTRON_GIT_REF=ce2560f23f133a550a5d56e784cc9c1eaa0006ca
 ADD --keep-git-dir=true https://opendev.org/openstack/neutron.git#${NEUTRON_GIT_REF} /src/neutron
 RUN git -C /src/neutron fetch --unshallow
 ADD --keep-git-dir=true https://opendev.org/openstack/neutron-vpnaas.git#stable/2023.1 /src/neutron-vpnaas
