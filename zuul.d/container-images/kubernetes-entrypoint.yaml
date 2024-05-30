@@ -26,6 +26,9 @@
 - job:
     name: atmosphere-build-container-image-kubernetes-entrypoint
     parent: atmosphere-build-container-image
+    dependencies:
+      - name: atmosphere-buildset-registry
+        soft: false
     vars: &container_image_vars
       promote_container_image_job: atmosphere-upload-container-image-kubernetes-entrypoint
       container_images:
