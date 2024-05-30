@@ -64,3 +64,11 @@
             caBundle: "{{ cluster_issuer_venafi_tpp_ca_bundle }}"
             credentialsRef:
               name: "{{ cluster_issuer_venafi_secret_name }}"
+
+- name: Copy CA certificate on host
+  ansible.builtin.copy:
+    content: "{{ cluster_issuer_venafi_ca }}"
+    dest: "{{ '/usr/local/share/ca-certificates' if ansible_facts['os_family'] in ['Debian'] else '/etc/pki/ca-trust/source/anchors' }}/atmosphere.crt"
+    mode: "0644"
+  notify:
+    - Update CA certificates on host
