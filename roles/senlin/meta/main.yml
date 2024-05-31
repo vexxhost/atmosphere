@@ -14,7 +14,7 @@
 
 galaxy_info:
   author: VEXXHOST, Inc.
-  description: Ansible role for OpenStack Senlin
+  description: Ansible role for OpenStack Senlin (Deprecated)
   license: Apache-2.0
   min_ansible_version: 5.5.0
   standalone: false
@@ -27,14 +27,3 @@ galaxy_info:
       versions:
         - focal
         - jammy
-
-dependencies:
-  - role: defaults
-  - role: openstack_helm_endpoints
-    vars:
-      openstack_helm_endpoints_repo_name: openstack-helm
-      openstack_helm_endpoints_chart: senlin
-  - role: vexxhost.kubernetes.upload_helm_chart
-    vars:
-      upload_helm_chart_src: "{{ senlin_helm_chart_path }}"
-      upload_helm_chart_dest: "{{ senlin_helm_chart_ref }}"

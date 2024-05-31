@@ -28,7 +28,6 @@ pip3 install \
         python-neutronclient \
         python-octaviaclient \
         osc-placement \
-        python-senlinclient \
         python-swiftclient
 EOF
 
