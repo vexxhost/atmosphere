@@ -1,10 +1,14 @@
 # SPDX-License-Identifier: Apache-2.0
 # Atmosphere-Rebuild-Time: 2024-05-30T20:29:01Z
 
+# Build
+
 ARG RELEASE
 
 FROM registry.atmosphere.dev/library/ubuntu-cloud-archive:${RELEASE} AS requirements
-ADD https://releases.openstack.org/constraints/upper/zed /upper-constraints.txt
+ARG REQUIREMENTS_GIT_REF=b4513973fdd1c3b43159fe0e02fa73d845a9c1ba
+ADD --keep-git-dir=true https://opendev.org/openstack/requirements.git#${REQUIREMENTS_GIT_REF} /src/requirements
+RUN cp /src/requirements/upper-constraints.txt /upper-constraints.txt
 RUN <<EOF sh -xe
 sed -i 's/cryptography===36.0.2/cryptography===42.0.4/' /upper-constraints.txt
 sed -i 's/Django===3.2.15/Django===3.2.24/' /upper-constraints.txt
