@@ -294,3 +294,23 @@ Configure Cinder to use StorPool by implementing the following settings:
     expose volumes by making the `/dev` devices available to the containers,
     not necessarily to use iSCSI as the storage protocol. In this case, the
     StorPool devices will be exposed as block devices to the containers.
+
+*******
+Backups
+*******
+
+¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨
+Disable backups in Horizon
+¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨
+
+To prevent users from creating backups through the Horizon dashboard (if your storage backend doesn't have a supported backup driver for Cinder), use the following settings:
+
+.. code-block:: yaml
+
+    horizon_helm_values:
+      conf:
+        horizon:
+          local_settings:
+            config:
+              openstack_cinder_features:
+                enable_backup: "False"
