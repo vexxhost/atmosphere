@@ -12,10 +12,14 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+# Build
+
 ARG RELEASE
 
 FROM registry.atmosphere.dev/library/ubuntu-cloud-archive:${RELEASE} AS requirements
-ADD https://releases.openstack.org/constraints/upper/master /upper-constraints.txt
+ARG REQUIREMENTS_GIT_REF=18098b9abacbd8d7257bebc1b302294f634441ab
+ADD --keep-git-dir=true https://opendev.org/openstack/requirements.git#${REQUIREMENTS_GIT_REF} /src/requirements
+RUN cp /src/requirements/upper-constraints.txt /upper-constraints.txt
 RUN <<EOF sh -xe
 sed -i '/glance-store/d' /upper-constraints.txt
 sed -i '/horizon/d' /upper-constraints.txt
