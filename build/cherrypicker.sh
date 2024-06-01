@@ -83,6 +83,25 @@ PR_BODY=$(gh pr view $PR_NUMBER --json body --jq .body)
 # Create a new PR with the same title, prefixed with the target branch name
 NEW_PR_TITLE="[$TARGET_BRANCH] $PR_TITLE"
 NEW_PR_BODY="${PR_BODY}\n\nCloses #$ISSUE_NUMBER"
-gh pr create --title "$NEW_PR_TITLE" --body "$NEW_PR_BODY" --head "$NEW_BRANCH_NAME" --base "$TARGET_BRANCH"
+NEW_PR_URL=$(gh pr create --title "$NEW_PR_TITLE" --body "$NEW_PR_BODY" --head "$NEW_BRANCH_NAME" --base "$TARGET_BRANCH" --json url --jq .url)
 
-echo "New pull request created."
+echo "New pull request created: $NEW_PR_URL"
+
+# Extract the new PR node ID
+NEW_PR_NODE_ID=$(gh pr view "$NEW_PR_URL" --json id --jq .id)
+
+# Get the issue node ID
+ISSUE_NODE_ID=$(gh issue view $ISSUE_NUMBER --json id --jq .id)
+
+# Update the new PR to reference the issue using the GitHub GraphQL API
+gh api graphql -f query='
+  mutation($prId: ID!, $issueId: ID!) {
+    updatePullRequest(input: {pullRequestId: $prId, closingIssuesReferences: [$issueId]}) {
+      pullRequest {
+        id
+      }
+    }
+  }
+' -f prId="$NEW_PR_NODE_ID" -f issueId="$ISSUE_NODE_ID"
+
+echo "Pull request updated to reference the issue."
