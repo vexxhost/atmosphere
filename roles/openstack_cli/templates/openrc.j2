@@ -11,7 +11,7 @@ export OS_PASSWORD="{{ openstack_helm_endpoints['identity']['auth']['admin']['pa
 export OS_PROJECT_DOMAIN_NAME=Default
 export OS_PROJECT_NAME=admin
 
-{% if cluster_issuer_type is defined and cluster_issuer_type in ('self-signed', 'ca') %}
+{% if cluster_issuer_type is defined and cluster_issuer_type in ('self-signed', 'ca', 'venafi') %}
 export OS_CACERT=/usr/local/share/ca-certificates/atmosphere.crt
 {% elif cluster_issuer_acme_private_ca is defined and cluster_issuer_acme_private_ca | bool %}
 export OS_CACERT=/etc/ssl/certs/ca-certificates.crt
