@@ -15,6 +15,7 @@ and setup.
 
    inventory
    csi
+   certificates
    cinder
    glance
    neutron

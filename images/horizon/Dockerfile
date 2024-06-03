@@ -1,16 +1,5 @@
-# Copyright (c) 2024 VEXXHOST, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"); you may
-# not use this file except in compliance with the License. You may obtain
-# a copy of the License at
-#
-#      http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-# License for the specific language governing permissions and limitations
-# under the License.
+# SPDX-License-Identifier: Apache-2.0
+# Atmosphere-Rebuild-Time: 2024-05-30T20:29:01Z
 
 ARG RELEASE
 
@@ -32,8 +21,6 @@ ADD --keep-git-dir=true https://opendev.org/openstack/neutron-vpnaas-dashboard.g
 RUN git -C /src/neutron-vpnaas-dashboard fetch --unshallow
 ADD --keep-git-dir=true https://opendev.org/openstack/octavia-dashboard.git#master /src/octavia-dashboard
 RUN git -C /src/octavia-dashboard fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/senlin-dashboard.git#master /src/senlin-dashboard
-RUN git -C /src/senlin-dashboard fetch --unshallow
 COPY patches/magnum-ui /patches/magnum-ui
 RUN git -C /src/magnum-ui apply --verbose /patches/magnum-ui/*
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
@@ -47,7 +34,6 @@ pip3 install \
         /src/manila-ui \
         /src/neutron-vpnaas-dashboard \
         /src/octavia-dashboard \
-        /src/senlin-dashboard \
         pymemcache
 EOF
 

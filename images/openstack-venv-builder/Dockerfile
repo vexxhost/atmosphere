@@ -1,21 +1,14 @@
-# Copyright (c) 2024 VEXXHOST, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"); you may
-# not use this file except in compliance with the License. You may obtain
-# a copy of the License at
-#
-#      http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-# License for the specific language governing permissions and limitations
-# under the License.
+# SPDX-License-Identifier: Apache-2.0
+# Atmosphere-Rebuild-Time: 2024-05-30T20:29:01Z
+
+# Build
 
 ARG RELEASE
 
 FROM registry.atmosphere.dev/library/ubuntu-cloud-archive:${RELEASE} AS requirements
-ADD https://releases.openstack.org/constraints/upper/master /upper-constraints.txt
+ARG REQUIREMENTS_GIT_REF=18098b9abacbd8d7257bebc1b302294f634441ab
+ADD --keep-git-dir=true https://opendev.org/openstack/requirements.git#${REQUIREMENTS_GIT_REF} /src/requirements
+RUN cp /src/requirements/upper-constraints.txt /upper-constraints.txt
 RUN <<EOF sh -xe
 sed -i '/glance-store/d' /upper-constraints.txt
 sed -i '/horizon/d' /upper-constraints.txt
