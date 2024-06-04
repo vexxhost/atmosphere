@@ -24,6 +24,7 @@ curated by years of experience from our team alongside other features such as:
    :caption: Contents:
 
    quick-start
+   arch/index
    config/index
    deploy/index
    admin/index
