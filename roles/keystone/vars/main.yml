@@ -22,12 +22,12 @@ _keystone_helm_values:
     mounts:
       keystone_api:
         keystone_api:
-          volumeMounts: "{{ keystone_domains | vexxhost.atmosphere.keystone_domains_to_mounts + [{'name': 'etc-ssl-certs', 'mountPath': '/etc/ssl/certs', 'readOnly': true}] }}"
+          volumeMounts: "{{ keystone_domains | vexxhost.atmosphere.keystone_domains_to_mounts + [{'name': 'ca-certificates', 'mountPath': '/etc/ssl/certs/ca-certificates.crt', 'readOnly': true}] }}"
           volumes:
             - name: keystone-openid-metadata
               configMap:
                 name: keystone-openid-metadata
-            - name: etc-ssl-certs
+            - name: ca-certificates
               hostPath:
                 path: "{{ defaults_ca_certificates_path }}"
   conf:
