@@ -39,6 +39,19 @@
         name: "{{ rabbitmq_cluster_operator_helm_release_name }}"
         namespace: "{{ rabbitmq_cluster_operator_helm_release_namespace }}"
 
+- name: Install all CRDs
+  run_once: true
+  changed_when: false
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('pipe', 'cat ' + role_path + '/../../charts/rabbitmq-cluster-operator/crds/*.yaml') | regex_replace('- =$', '- \"=\"', multiline=True) | from_yaml_all }}" # noqa: yaml[line-length]
+    apply: true
+    server_side_apply:
+      field_manager: atmosphere
+      force_conflicts: true
+  tags:
+    - rabbitmq-cluster-operator-crds
+
 - name: Deploy Helm chart
   run_once: true
   kubernetes.core.helm:
