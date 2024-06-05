@@ -12,6 +12,22 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+- name: Install all CRDs
+  run_once: true
+  changed_when: false
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('pipe', 'cat ' + role_path + '/../../charts/rabbitmq-cluster-operator/crds/' + item + '/*.yaml') | regex_replace('- =$', '- \"=\"', multiline=True) | from_yaml_all }}" # noqa: yaml[line-length]
+    apply: true
+    server_side_apply:
+      field_manager: atmosphere
+      force_conflicts: true
+  loop:
+    - messaging-topology-operator
+    - rabbitmq-cluster
+  tags:
+    - rabbitmq-cluster-operator-crds
+
 - name: Deploy Helm chart
   run_once: true
   kubernetes.core.helm:
