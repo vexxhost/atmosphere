@@ -12,6 +12,19 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+- name: Install all CRDs
+  run_once: true
+  changed_when: false
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('pipe', 'cat ' + role_path + '/../../charts/node-feature-discovery/crds/*.yaml') | regex_replace('- =$', '- \"=\"', multiline=True) | from_yaml_all }}" # noqa: yaml[line-length]
+    apply: true
+    server_side_apply:
+      field_manager: atmosphere
+      force_conflicts: true
+  tags:
+    - node-feature-discovery-crds
+
 - name: Deploy Helm chart
   run_once: true
   kubernetes.core.helm:
