@@ -7,36 +7,22 @@ metadata:
   name: {{ $ecblockpool.name }}
   namespace: {{ $root.Release.Namespace }} # namespace:cluster
 spec:
-{{ toYaml $ecblockpool.spec.dataPool | indent 2 }}
+{{ toYaml $ecblockpool.spec | indent 2 }}
+{{ end }}
+{{- if .Values.cephECStorageClass }}
+{{ $cephEcStorage :=  .Values.cephECStorageClass}}
 ---
-apiVersion: ceph.rook.io/v1
-kind: CephBlockPool
-metadata:
-  name: {{ $ecblockpool.name }}-metadata
-  namespace: {{ $root.Release.Namespace }} # namespace:cluster
-spec:
-{{ toYaml $ecblockpool.spec.metadataPool | indent 2 }}
----
-{{- if default false $ecblockpool.storageClass.enabled }}
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: {{ $ecblockpool.storageClass.name }}
-  {{- if $ecblockpool.storageClass.isDefault }}
-  annotations:
-    storageclass.kubernetes.io/is-default-class: "true"
-  {{end}}
-{{- if $root.Values.csiDriverNamePrefix }}
-provisioner: {{ $root.Values.csiDriverNamePrefix }}.rbd.csi.ceph.com
-{{- else }}
-provisioner: {{ $root.Values.operatorNamespace }}.rbd.csi.ceph.com
-{{- end }}
+  name: {{ $cephEcStorage.name }}
+provisioner: {{ $cephEcStorage.provisioner }}
 parameters:
-  clusterID: {{ $ecblockpool.parameters.clusterID }}
-  pool: {{ $ecblockpool.name }}-metadata
-  dataPool: {{ $ecblockpool.name }}
-  imageFormat: "{{ $ecblockpool.parameters.imageFormat }}"
-  imageFeatures: {{ $ecblockpool.parameters.imageFeatures }}
+  clusterID: {{ $cephEcStorage.parameters.clusterID }}
+  dataPool: {{ $cephEcStorage.parameters.dataPool }}
+  pool: {{ $cephEcStorage.parameters.pool }}
+  imageFormat: "{{ $cephEcStorage.parameters.imageFormat }}"
+  imageFeatures: {{ $cephEcStorage.parameters.imageFeatures }}
 
   # The secrets contain Ceph admin credentials. These are generated automatically by the operator
   # in the same namespace as the cluster.
@@ -55,7 +41,6 @@ parameters:
 # the PVC to application pod if nodeplugin pod restart.
 # Its still in Alpha support. Therefore, this option is not recommended for production use.
 #mounter: rbd-nbd
-allowVolumeExpansion: {{ $ecblockpool.storageClass.allowVolumeExpansion }}
-reclaimPolicy: {{ $ecblockpool.storageClass.reclaimPolicy }}
-{{ end }}
+allowVolumeExpansion: {{ $cephEcStorage.allowVolumeExpansion }}
+reclaimPolicy: {{ $cephEcStorage.reclaimPolicy }}
 {{ end }}

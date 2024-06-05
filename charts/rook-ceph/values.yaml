@@ -6,8 +6,8 @@ image:
   # -- Image
   repository: rook/ceph
   # -- Image tag
-  # @default -- `v1.14.2`
-  tag: v1.14.2
+  # @default -- `v1.12.11`
+  tag: v1.12.11
   # -- Image pull policy
   pullPolicy: IfNotPresent
 
@@ -23,9 +23,10 @@ crds:
 # -- Pod resource requests & limits
 resources:
   limits:
+    cpu: 500m
     memory: 512Mi
   requests:
-    cpu: 200m
+    cpu: 100m
     memory: 128Mi
 
 # -- Kubernetes [`nodeSelector`](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) to add to the Deployment.
@@ -64,13 +65,6 @@ pspEnable: false
 # -- Set the priority class for the rook operator deployment if desired
 priorityClassName:
 
-# -- Set the container security context for the operator
-containerSecurityContext:
-  runAsNonRoot: true
-  runAsUser: 2016
-  runAsGroup: 2016
-  capabilities:
-    drop: ["ALL"]
 # -- If true, loop devices are allowed to be used for osds in test clusters
 allowLoopDevices: false
 
@@ -81,17 +75,12 @@ csi:
   enableRbdDriver: true
   # -- Enable Ceph CSI CephFS driver
   enableCephfsDriver: true
-  # -- Disable the CSI driver.
-  disableCsiDriver: "false"
-
+  # -- Enable Ceph CSI GRPC Metrics
+  enableGrpcMetrics: false
   # -- Enable host networking for CSI CephFS and RBD nodeplugins. This may be necessary
   # in some network configurations where the SDN does not provide access to an external cluster or
   # there is significant drop in read/write performance
   enableCSIHostNetwork: true
-  # -- Deprecation note: Rook uses "holder" pods to allow CSI to connect to the multus public network
-  # without needing hosts to the network. Holder pods are being removed. See issue for details:
-  # https://github.com/rook/rook/issues/13055. New Rook deployments should set this to "true".
-  disableHolderPods: true
   # -- Enable Snapshotter in CephFS provisioner pod
   enableCephfsSnapshotter: true
   # -- Enable Snapshotter in NFS provisioner pod
@@ -103,9 +92,6 @@ csi:
   # -- Enable Ceph CSI PVC encryption support
   enableCSIEncryption: false
 
-  # -- Enable volume group snapshot feature. This feature is
-  # enabled by default as long as the necessary CRDs are available in the cluster.
-  enableVolumeGroupSnapshot: true
   # -- PriorityClassName to be set on csi driver plugin pods
   pluginPriorityClassName: system-node-critical
 
@@ -155,10 +141,6 @@ csi:
   # Supported values from 0 to 5. 0 for general useful logs (the default), 5 for trace level verbosity.
   # @default -- `0`
   sidecarLogLevel:
-
-  # -- CSI driver name prefix for cephfs, rbd and nfs.
-  # @default -- `namespace name where rook-ceph operator is deployed`
-  csiDriverNamePrefix:
 
   # -- CSI RBD plugin daemonset update strategy, supported values are OnDelete and RollingUpdate
   # @default -- `RollingUpdate`
@@ -227,6 +209,7 @@ csi:
           cpu: 100m
         limits:
           memory: 256Mi
+          cpu: 200m
     - name : csi-resizer
       resource:
         requests:
@@ -234,6 +217,7 @@ csi:
           cpu: 100m
         limits:
           memory: 256Mi
+          cpu: 200m
     - name : csi-attacher
       resource:
         requests:
@@ -241,6 +225,7 @@ csi:
           cpu: 100m
         limits:
           memory: 256Mi
+          cpu: 200m
     - name : csi-snapshotter
       resource:
         requests:
@@ -248,12 +233,15 @@ csi:
           cpu: 100m
         limits:
           memory: 256Mi
+          cpu: 200m
     - name : csi-rbdplugin
       resource:
         requests:
           memory: 512Mi
+          cpu: 250m
         limits:
           memory: 1Gi
+          cpu: 500m
     - name : csi-omap-generator
       resource:
         requests:
@@ -261,6 +249,7 @@ csi:
           cpu: 250m
         limits:
           memory: 1Gi
+          cpu: 500m
     - name : liveness-prometheus
       resource:
         requests:
@@ -268,6 +257,7 @@ csi:
           cpu: 50m
         limits:
           memory: 256Mi
+          cpu: 100m
 
   # -- CEPH CSI RBD plugin resource requirement list
   # @default -- see values.yaml
@@ -279,6 +269,7 @@ csi:
           cpu: 50m
         limits:
           memory: 256Mi
+          cpu: 100m
     - name : csi-rbdplugin
       resource:
         requests:
@@ -286,6 +277,7 @@ csi:
           cpu: 250m
         limits:
           memory: 1Gi
+          cpu: 500m
     - name : liveness-prometheus
       resource:
         requests:
@@ -293,6 +285,7 @@ csi:
           cpu: 50m
         limits:
           memory: 256Mi
+          cpu: 100m
 
   # -- CEPH CSI CephFS provisioner resource requirement list
   # @default -- see values.yaml
@@ -304,6 +297,7 @@ csi:
           cpu: 100m
         limits:
           memory: 256Mi
+          cpu: 200m
     - name : csi-resizer
       resource:
         requests:
@@ -311,6 +305,7 @@ csi:
           cpu: 100m
         limits:
           memory: 256Mi
+          cpu: 200m
     - name : csi-attacher
       resource:
         requests:
@@ -318,6 +313,7 @@ csi:
           cpu: 100m
         limits:
           memory: 256Mi
+          cpu: 200m
     - name : csi-snapshotter
       resource:
         requests:
@@ -325,6 +321,7 @@ csi:
           cpu: 100m
         limits:
           memory: 256Mi
+          cpu: 200m
     - name : csi-cephfsplugin
       resource:
         requests:
@@ -332,6 +329,7 @@ csi:
           cpu: 250m
         limits:
           memory: 1Gi
+          cpu: 500m
     - name : liveness-prometheus
       resource:
         requests:
@@ -339,6 +337,7 @@ csi:
           cpu: 50m
         limits:
           memory: 256Mi
+          cpu: 100m
 
   # -- CEPH CSI CephFS plugin resource requirement list
   # @default -- see values.yaml
@@ -350,6 +349,7 @@ csi:
           cpu: 50m
         limits:
           memory: 256Mi
+          cpu: 100m
     - name : csi-cephfsplugin
       resource:
         requests:
@@ -357,6 +357,7 @@ csi:
           cpu: 250m
         limits:
           memory: 1Gi
+          cpu: 500m
     - name : liveness-prometheus
       resource:
         requests:
@@ -364,6 +365,7 @@ csi:
           cpu: 50m
         limits:
           memory: 256Mi
+          cpu: 100m
 
   # -- CEPH CSI NFS provisioner resource requirement list
   # @default -- see values.yaml
@@ -375,6 +377,7 @@ csi:
           cpu: 100m
         limits:
           memory: 256Mi
+          cpu: 200m
     - name : csi-nfsplugin
       resource:
         requests:
@@ -382,6 +385,7 @@ csi:
           cpu: 250m
         limits:
           memory: 1Gi
+          cpu: 500m
     - name : csi-attacher
       resource:
         requests:
@@ -389,6 +393,7 @@ csi:
           cpu: 250m
         limits:
           memory: 1Gi
+          cpu: 500m
 
   # -- CEPH CSI NFS plugin resource requirement list
   # @default -- see values.yaml
@@ -400,6 +405,7 @@ csi:
           cpu: 50m
         limits:
           memory: 256Mi
+          cpu: 100m
     - name : csi-nfsplugin
       resource:
         requests:
@@ -407,6 +413,7 @@ csi:
           cpu: 250m
         limits:
           memory: 1Gi
+          cpu: 500m
 
   # Set provisionerTolerations and provisionerNodeAffinity for provisioner pod.
   # The CSI provisioner would be best to start on the same nodes as other ceph daemons.
@@ -434,9 +441,17 @@ csi:
   # -- Enable Ceph CSI Liveness sidecar deployment
   enableLiveness: false
 
+  # -- CSI CephFS driver GRPC metrics port
+  # @default -- `9091`
+  cephfsGrpcMetricsPort:
+
   # -- CSI CephFS driver metrics port
   # @default -- `9081`
   cephfsLivenessMetricsPort:
+
+  # -- Ceph CSI RBD driver GRPC metrics port
+  # @default -- `9090`
+  rbdGrpcMetricsPort:
 
   # -- CSI Addons server port
   # @default -- `9070`
@@ -455,63 +470,43 @@ csi:
     # -- Enable ServiceMonitor for Ceph CSI drivers
     enabled: false
     # -- Service monitor scrape interval
-    interval: 10s
+    interval: 5s
     # -- ServiceMonitor additional labels
     labels: {}
-    # -- Use a different namespace for the ServiceMonitor
-    namespace:
 
   # -- Kubelet root directory path (if the Kubelet uses a different path for the `--root-dir` flag)
   # @default -- `/var/lib/kubelet`
   kubeletDirPath:
 
-  # -- Duration in seconds that non-leader candidates will wait to force acquire leadership.
-  # @default -- `137s`
-  csiLeaderElectionLeaseDuration:
-
-  # -- Deadline in seconds that the acting leader will retry refreshing leadership before giving up.
-  # @default -- `107s`
-  csiLeaderElectionRenewDeadline:
-
-  # -- Retry period in seconds the LeaderElector clients should wait between tries of actions.
-  # @default -- `26s`
-  csiLeaderElectionRetryPeriod:
-
   cephcsi:
-    # -- Ceph CSI image repository
-    repository: quay.io/cephcsi/cephcsi
-    # -- Ceph CSI image tag
-    tag: v3.11.0
+    # -- Ceph CSI image
+    # @default -- `quay.io/cephcsi/cephcsi:v3.9.0`
+    image:
 
   registrar:
-    # -- Kubernetes CSI registrar image repository
-    repository: registry.k8s.io/sig-storage/csi-node-driver-registrar
-    # -- Registrar image tag
-    tag: v2.10.0
+    # -- Kubernetes CSI registrar image
+    # @default -- `registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.8.0`
+    image:
 
   provisioner:
-    # -- Kubernetes CSI provisioner image repository
-    repository: registry.k8s.io/sig-storage/csi-provisioner
-    # -- Provisioner image tag
-    tag: v4.0.0
+    # -- Kubernetes CSI provisioner image
+    # @default -- `registry.k8s.io/sig-storage/csi-provisioner:v3.5.0`
+    image:
 
   snapshotter:
-    # -- Kubernetes CSI snapshotter image repository
-    repository: registry.k8s.io/sig-storage/csi-snapshotter
-    # -- Snapshotter image tag
-    tag: v7.0.1
+    # -- Kubernetes CSI snapshotter image
+    # @default -- `registry.k8s.io/sig-storage/csi-snapshotter:v6.2.2`
+    image:
 
   attacher:
-    # -- Kubernetes CSI Attacher image repository
-    repository: registry.k8s.io/sig-storage/csi-attacher
-    # -- Attacher image tag
-    tag: v4.5.0
+    # -- Kubernetes CSI Attacher image
+    # @default -- `registry.k8s.io/sig-storage/csi-attacher:v4.3.0`
+    image:
 
   resizer:
-    # -- Kubernetes CSI resizer image repository
-    repository: registry.k8s.io/sig-storage/csi-resizer
-    # -- Resizer image tag
-    tag: v1.10.0
+    # -- Kubernetes CSI resizer image
+    # @default -- `registry.k8s.io/sig-storage/csi-resizer:v1.8.0`
+    image:
 
   # -- Image pull policy
   imagePullPolicy: IfNotPresent
@@ -528,10 +523,8 @@ csi:
   csiAddons:
     # -- Enable CSIAddons
     enabled: false
-    # -- CSIAddons sidecar image repository
-    repository: quay.io/csiaddons/k8s-sidecar
-    # -- CSIAddons sidecar image tag
-    tag: v0.8.0
+    # -- CSIAddons Sidecar image
+    image: "quay.io/csiaddons/k8s-sidecar:v0.7.0"
 
   nfs:
     # -- Enable the nfs csi driver
@@ -548,6 +541,17 @@ csi:
     # - kubernetes.io/hostname
     # - topology.kubernetes.io/zone
     # - topology.rook.io/rack
+
+  readAffinity:
+    # -- Enable read affinity for RBD volumes. Recommended to
+    # set to true if running kernel 5.8 or newer.
+    # @default -- `false`
+    enabled: false
+    # -- Define which node labels to use
+    # as CRUSH location. This should correspond to the values set
+    # in the CRUSH map.
+    # @default -- labels listed [here](../CRDs/Cluster/ceph-cluster-crd.md#osd-topology)
+    crushLocationLabels:
 
   # -- Whether to skip any attach operation altogether for CephFS PVCs. See more details
   # [here](https://kubernetes-csi.github.io/docs/skip-attach.html#skip-attach-with-csi-driver-object).
@@ -604,25 +608,20 @@ discover:
   #     operator: Exists
   #     effect: NoSchedule
   # -- The node labels for affinity of `discover-agent` [^1]
-  nodeAffinity:
-  #   key1=value1,value2; key2=value3
-  #
-  #   or
-  #
-  #   requiredDuringSchedulingIgnoredDuringExecution:
-  #     nodeSelectorTerms:
-  #       - matchExpressions:
-  #           - key: storage-node
-  #             operator: Exists
+  nodeAffinity: # key1=value1,value2; key2=value3
   # -- Labels to add to the discover pods
   podLabels: # "key1=value1,key2=value2"
   # -- Add resources to discover daemon pods
   resources:
   #   - limits:
+  #       cpu: 500m
   #       memory: 512Mi
   #   - requests:
   #       cpu: 100m
   #       memory: 128Mi
+
+# -- Whether to disable the admission controller
+disableAdmissionController: true
 
 # -- Runs Ceph Pods as privileged to be able to write to `hostPaths` in OpenShift with SELinux restrictions.
 hostpathRequiresPrivileged: false
@@ -640,9 +639,16 @@ imagePullSecrets:
 # -- Whether the OBC provisioner should watch on the operator namespace or not, if not the namespace of the cluster will be used
 enableOBCWatchOperatorNamespace: true
 
-# -- Specify the prefix for the OBC provisioner in place of the cluster namespace
-# @default -- `ceph cluster namespace`
-obcProvisionerNamePrefix:
+# -- Set tolerations and nodeAffinity [^1] for admission controller pod.
+# The admission controller would be best to start on the same nodes as other ceph daemons.
+admissionController:
+  # tolerations:
+  #    - key: key
+  #      operator: Exists
+  #      effect: NoSchedule
+  # nodeAffinity: key1=value1,value2; key2=value3
+
+# [^1]: `nodeAffinity` and `*NodeAffinity` options should have the format `"role=storage,rook; storage=ceph"` or `storage=;role=rook-example` or `storage=;` (_checks only for presence of key_)
 
 monitoring:
   # -- Enable monitoring. Requires Prometheus to be pre-installed.
