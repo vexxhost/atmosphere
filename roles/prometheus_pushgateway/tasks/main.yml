@@ -12,6 +12,22 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+- name: Gather information prometheus_pushgateway
+  run_once: true
+  kubernetes.core.helm_info:
+    name: "{{ prometheus_pushgateway_helm_release_name }}"
+    release_namespace: "{{ prometheus_pushgateway_helm_release_namespace }}"
+  register: result
+
+- name: Uninstall Helm chart
+  run_once: true
+  kubernetes.core.helm:
+    name: "{{ prometheus_pushgateway_helm_release_name }}"
+    release_namespace: "{{ prometheus_pushgateway_helm_release_namespace }}"
+    state: absent
+    wait: true
+  when: "'status' in result and result.status.status is match('deployed') and (result.status.chart | replace(prometheus_pushgateway_helm_release_name + '-','')) is version('2.0.0', operator='lt', strict=True)"  # noqa: yaml[line-length]
+
 - name: Deploy Helm chart
   run_once: true
   kubernetes.core.helm:
