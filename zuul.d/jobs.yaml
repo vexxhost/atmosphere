@@ -5,17 +5,15 @@
 
 - job:
     name: atmosphere-build-collection
+    parent: build-ansible-collection
     pre-run: zuul.d/playbooks/build-collection/pre.yml
-    run: zuul.d/playbooks/build-collection/run.yml
     irrelevant-files:
       - ^doc/
 
 - job:
     name: atmosphere-publish-collection
-    parent: atmosphere-build-collection
-    post-run: zuul.d/playbooks/build-collection/publish.yml
-    secrets:
-      - ansible_galaxy_info
+    parent: publish-ansible-collection-vexxhost
+    pre-run: zuul.d/playbooks/build-collection/pre.yml
 
 - job:
     name: atmosphere-molecule
