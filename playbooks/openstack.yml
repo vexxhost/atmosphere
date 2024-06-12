@@ -47,11 +47,6 @@
       tags:
         - glance
 
-    - role: staffeln
-      when: atmosphere_staffeln_enabled | default(true)
-      tags:
-        - staffeln
-
     - role: cinder
       tags:
         - cinder
@@ -142,6 +137,11 @@
     - role: openstack_exporter
       tags:
         - openstack-exporter
+
+    - role: staffeln
+      when: atmosphere_staffeln_enabled | default(false)
+      tags:
+        - staffeln
 
 - hosts: controllers
   become: true
