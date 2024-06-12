@@ -33,6 +33,7 @@
               labels:
                 application: openstack-exporter
             spec:
+              imagePullSecrets: "{{ openstack_exporter_imagepullsecrets if openstack_exporter_imagepullsecrets is defined else [] }}"
               nodeSelector:
                 openstack-control-plane: enabled
               initContainers:
