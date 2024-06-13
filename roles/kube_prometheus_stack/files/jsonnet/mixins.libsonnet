@@ -55,7 +55,45 @@ local mixins = {
       alertmanagerClusterLabels: 'namespace,service,cluster',
     },
   },
-  ceph: (import 'vendor/github.com/ceph/ceph/monitoring/ceph-mixin/mixin.libsonnet'),
+  ceph: (import 'vendor/github.com/ceph/ceph/monitoring/ceph-mixin/mixin.libsonnet') + {
+    prometheusAlerts+:: {
+      groups+: [
+        {
+          name: 'bluestore-fragmentation-score',
+          rules: [
+            {
+              alert: 'BluestoreFragmentationScoreConsiderable',
+              annotations: {
+                description: 'Bluestore fragmentation score for osd {{ $labels.osd }} on host {{ $labels.instance }} is currently at {{ $value }}. If it continue to goes higher then 0.9, it will impact other running services.',
+                summary: '[{{ $labels.osd }}] reaching a considerable value: {{ $value }}',
+              },
+              'for': '1m',
+              expr: |||
+                bluestore_allocator_score_block > 0.7
+              |||,
+              labels: {
+                severity: 'warning',
+              },
+            },
+            {
+              alert: 'BluestoreFragmentationScoreHigh',
+              annotations: {
+                description: 'Bluestore fragmentation score for osd {{ $labels.osd }} on host {{ $labels.instance }} is currently at {{ $value }}. It might impact other running services.',
+                summary: '[{{ $labels.osd }}] reaching a high value: {{ $value }}',
+              },
+              'for': '1m',
+              expr: |||
+                bluestore_allocator_score_block > 0.9
+              |||,
+              labels: {
+                severity: 'P3',
+              },
+            }
+          ],
+        },
+      ],
+    },
+  },
   coredns: (import 'vendor/github.com/povilasv/coredns-mixin/mixin.libsonnet') + {
     _config+:: {
       corednsSelector: 'job="coredns"',

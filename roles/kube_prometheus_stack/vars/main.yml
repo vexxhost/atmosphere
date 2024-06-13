@@ -515,12 +515,17 @@ _kube_prometheus_stack_helm_values:
       registry: "{{ atmosphere_images['prometheus_node_exporter'] | vexxhost.kubernetes.docker_image('domain') }}"
       repository: "{{ atmosphere_images['prometheus_node_exporter'] | vexxhost.kubernetes.docker_image('path') }}"
       tag: "{{ atmosphere_images['prometheus_node_exporter'] | vexxhost.kubernetes.docker_image('tag') }}"
+    sidecarVolumeMount:
+      - name: collector-textfiles
+        mountPath: /tmp
+        readOnly: true
     extraArgs:
       - --collector.diskstats.ignored-devices=^(ram|loop|nbd|fd|(h|s|v|xv)d[a-z]|nvme\\d+n\\d+p)\\d+$
       - --collector.filesystem.fs-types-exclude=^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|fusectl|fuse.squashfuse_ll|hugetlbfs|iso9660|mqueue|nsfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|sysfs|tracefs)$
       - --collector.filesystem.mount-points-exclude=^/(dev|proc|run/credentials/.+|sys|var/lib/docker/.+|var/lib/kubelet/pods/.+|var/lib/kubelet/plugins/kubernetes.io/csi/.+|run/containerd/.+)($|/)
       - --collector.netclass.ignored-devices=^(lxc|cilium_|qbr|qvb|qvo|tap|ovs-system|br|tbr|gre_sys|[0-9a-f]+_eth|vxlan).*$
       - --collector.netdev.device-exclude=^(lxc|cilium_|qbr|qvb|qvo|tap|ovs-system|br|tbr|gre_sys|[0-9a-f]+_eth|vxlan).*$
+      - --collector.textfile.directory=/host/root/tmp
     prometheus:
       monitor:
         relabelings: *relabelings_instance_to_node_name
