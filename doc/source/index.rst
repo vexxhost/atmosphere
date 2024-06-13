@@ -3,7 +3,7 @@ Atmosphere
 ##########
 
 Atmosphere is an advanced OpenStack distribution that is powered by open source
-technologies & built by `VEXXHOST <https://vexxhost.com>`_ powered by Kuberentes,
+technologies & built by `VEXXHOST <https://vexxhost.com>`_ powered by Kubernetes,
 which allows you to easily deliver virtual machines, Kubernetes and bare-metal
 on your on-premise hardware.
 
