@@ -31,15 +31,10 @@
         export ATMOSPHERE_NETWORK_BACKEND=openvswitch
         pip install --ignore-installed poetry
         poetry install
+        pip install -r test-requirements.txt
         poetry run molecule converge -s aio
       args:
         chdir: "{{ zuul.project.src_dir }}"
-
-    - name: Add rabbitmq_skip_spec_diff
-      ansible.builtin.lineinfile:
-        path: "{{ ansible_user_dir }}/{{ zuul.project.src_dir }}/molecule/aio/group_vars/all/molecule.yml"
-        insertafter: EOF
-        line: 'rabbitmq_skip_spec_diff: true'
 
     - name: Checkout to new branch
       become: true
