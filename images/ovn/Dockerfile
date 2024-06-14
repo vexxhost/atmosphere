@@ -2,6 +2,7 @@
 # Atmosphere-Rebuild-Time: 2024-06-17T13:34:17Z
 
 ARG RELEASE
+ARG TARGETPLATFORM
 
 FROM golang:1.20 AS ovn-kubernetes
 ARG OVN_KUBERNETES_REF=5359e7d7f872058b6e5bf884c9f19d1922451f29
@@ -14,7 +15,7 @@ go build -o /usr/bin/ovn-kube-util ./cmd/ovn-kube-util
 EOF
 
 FROM registry.atmosphere.dev/library/openvswitch:${RELEASE}
-ADD --chmod=755 https://dl.k8s.io/release/v1.29.3/bin/linux/amd64/kubectl /usr/local/bin/kubectl
+ADD --chmod=755 https://dl.k8s.io/release/v1.29.3/bin/${TARGETPLATFORM}/kubectl /usr/local/bin/kubectl
 ARG OVN_SERIES=23.09
 ARG OVN_VERSION=${OVN_SERIES}.0-136
 RUN <<EOF sh -xe
