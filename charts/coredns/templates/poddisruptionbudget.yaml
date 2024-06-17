@@ -13,6 +13,7 @@ metadata:
 {{- toYaml . | nindent 4 }}
 {{- end }}
 spec:
+  {{- if not .Values.podDisruptionBudget.selector }}
   selector:
     matchLabels:
         app.kubernetes.io/instance: {{ .Release.Name | quote }}
@@ -20,5 +21,6 @@ spec:
         k8s-app: {{ template "coredns.k8sapplabel" . }}
         {{- end }}
         app.kubernetes.io/name: {{ template "coredns.name" . }}
+  {{- end }}
 {{ toYaml .Values.podDisruptionBudget | indent 2 }}
 {{- end }}
