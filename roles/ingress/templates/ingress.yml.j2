@@ -5,7 +5,9 @@ metadata:
   namespace: {{ ingress_namespace | default('default') }}
   annotations:
     cert-manager.io/common-name: {{ ingress_host }}
+{% if (ingress_annotations|length) > 0 or (ingress_global_annotations|length) > 0 %}
     {{ ingress_annotations | combine(ingress_global_annotations, recursive=True) | to_nice_yaml | indent(4) }}
+{% endif %}
 spec:
   ingressClassName: {{ ingress_class_name }}
   rules:
