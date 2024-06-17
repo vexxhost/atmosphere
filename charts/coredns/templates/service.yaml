@@ -20,11 +20,15 @@ metadata:
   {{- end }}
 spec:
   selector:
+    {{- if .Values.service.selector }}
+    {{- toYaml .Values.service.selector | nindent 4 }}
+    {{- else }}
     app.kubernetes.io/instance: {{ .Release.Name | quote }}
     {{- if .Values.isClusterService }}
     k8s-app: {{ template "coredns.k8sapplabel" . }}
     {{- end }}
     app.kubernetes.io/name: {{ template "coredns.name" . }}
+    {{- end }}
   {{- if .Values.service.clusterIP }}
   clusterIP: {{ .Values.service.clusterIP }}
   {{- end }}

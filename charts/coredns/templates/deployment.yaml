@@ -29,12 +29,16 @@ spec:
       maxUnavailable: {{ .Values.rollingUpdate.maxUnavailable }}
       maxSurge: {{ .Values.rollingUpdate.maxSurge }}
   selector:
+    {{- if .Values.deployment.selector }}
+    {{- toYaml .Values.deployment.selector | nindent 4 }}
+    {{- else }}
     matchLabels:
       app.kubernetes.io/instance: {{ .Release.Name | quote }}
       {{- if .Values.isClusterService }}
       k8s-app: {{ template "coredns.k8sapplabel" . }}
       {{- end }}
       app.kubernetes.io/name: {{ template "coredns.name" . }}
+    {{- end }}
   template:
     metadata:
       labels:

@@ -275,6 +275,10 @@ alertmanager:
   ##
   apiVersion: v2
 
+  ## @param alertmanager.enableFeatures Enable access to Alertmanager disabled features.
+  ##
+  enableFeatures: []
+
   ## Service account for Alertmanager to use.
   ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/
   ##
@@ -1056,6 +1060,7 @@ grafana:
       defaultDatasourceEnabled: true
       isDefaultDatasource: true
 
+      name: Prometheus
       uid: prometheus
 
       ## URL of prometheus datasource
@@ -1090,6 +1095,7 @@ grafana:
         # traceIdLabelName: trace_id
       alertmanager:
         enabled: true
+        name: Alertmanager
         uid: alertmanager
         handleGrafanaManagedAlerts: false
         implementation: prometheus
@@ -1289,6 +1295,12 @@ kubelet:
     ## https://github.com/prometheus-operator/prometheus-operator/issues/926
     ##
     https: true
+
+    ## Skip TLS certificate validation when scraping.
+    ## This is enabled by default because kubelet serving certificate deployed by kubeadm is by default self-signed
+    ## ref: https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-certs/#kubelet-serving-certs
+    ##
+    insecureSkipVerify: true
 
     ## Enable scraping /metrics/cadvisor from kubelet's service
     ##
@@ -2222,6 +2234,8 @@ prometheusOperator:
     #   argocd.argoproj.io/hook-delete-policy: HookSucceeded
 
     namespaceSelector: {}
+    objectSelector: {}
+
 
     deployment:
       enabled: false
@@ -2453,6 +2467,7 @@ prometheusOperator:
       ## Provide a priority class name to the webhook patching job
       ##
       priorityClassName: ""
+      ttlSecondsAfterFinished: 60
       annotations: {}
       #   argocd.argoproj.io/hook: PreSync
       #   argocd.argoproj.io/hook-delete-policy: HookSucceeded
@@ -2471,6 +2486,12 @@ prometheusOperator:
         runAsUser: 2000
         seccompProfile:
           type: RuntimeDefault
+      ## Service account for Prometheus Operator Webhook Job Patch to use.
+      ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/
+      ##
+      serviceAccount:
+        create: true
+        automountServiceAccountToken: true
 
     # Security context for create job container
     createSecretJob:
@@ -2627,6 +2648,7 @@ prometheusOperator:
     ##
     enabled: true
     namespace: kube-system
+    selector: ""
     ## Use '{{ template "kube-prometheus-stack.fullname" . }}-kubelet' by default
     name: ""
 
@@ -2844,7 +2866,7 @@ prometheusOperator:
   thanosImage:
     registry: quay.io
     repository: thanos/thanos
-    tag: v0.34.1
+    tag: v0.35.1
     sha: ""
 
   ## Set a Label Selector to filter watched prometheus and prometheusAgent
@@ -3347,6 +3369,15 @@ prometheus:
   ## ref: https://github.com/prometheus-operator/prometheus-operator/blob/main/Documentation/api.md#prometheusspec
   ##
   prometheusSpec:
+    ## Statefulset's persistent volume claim retention policy
+    ## pvcDeleteOnStsDelete and pvcDeleteOnStsScale determine whether
+    ## statefulset's PVCs are deleted (true) or retained (false) on scaling down
+    ## and deleting statefulset, respectively. Requires 1.27.0+.
+    ## Ref: https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#persistentvolumeclaim-retention
+    persistentVolumeClaimRetentionPolicy: {}
+    #  whenDeleted: Retain
+    #  whenScaled: Retain
+
     ## If true, pass --storage.tsdb.max-block-duration=2h to prometheus. This is already done if using Thanos
     ##
     disableCompaction: false
@@ -3409,7 +3440,7 @@ prometheus:
     image:
       registry: quay.io
       repository: prometheus/prometheus
-      tag: v2.51.2
+      tag: v2.52.0
       sha: ""
 
     ## Tolerations for use with node taints
@@ -4047,7 +4078,7 @@ prometheus:
     ## Defines the maximum time that the `prometheus` container's startup probe
     ## will wait before being considered failed. The startup probe will return
     ## success after the WAL replay is complete. If set, the value should be
-    ## greater than 60 (seconds). Otherwise it will be equal to 600 seconds (15
+    ## greater than 60 (seconds). Otherwise it will be equal to 900 seconds (15
     ## minutes).
     maximumStartupDurationSeconds: 0
 
@@ -4397,7 +4428,7 @@ thanosRuler:
     image:
       registry: quay.io
       repository: thanos/thanos
-      tag: v0.34.1
+      tag: v0.35.1
       sha: ""
 
     ## Namespaces to be selected for PrometheusRules discovery.

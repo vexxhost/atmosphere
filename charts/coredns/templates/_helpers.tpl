@@ -224,3 +224,14 @@ Create the name of the service account to use
     {{ default "default" .Values.serviceAccount.name }}
 {{- end -}}
 {{- end -}}
+
+{{/*
+Create the name of the service account to use
+*/}}
+{{- define "coredns.clusterRoleName" -}}
+{{- if and .Values.clusterRole .Values.clusterRole.nameOverride -}}
+    {{ .Values.clusterRole.nameOverride }}
+{{- else -}}
+    {{ template "coredns.fullname" . }}
+{{- end -}}
+{{- end -}}

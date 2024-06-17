@@ -8,7 +8,7 @@ metadata:
   annotations:
     {{- toYaml .Values.workloadResourceAnnotations | nindent 4 }}
 spec:
-  {{- if not .Values.autoscaling.enabled }}
+  {{- if not (or .Values.autoscaling.enabled .Values.autoscaling.external) }}
   replicas: {{ .Values.replicas }}
   {{- end }}
   podManagementPolicy: {{ .Values.podManagementPolicy }}

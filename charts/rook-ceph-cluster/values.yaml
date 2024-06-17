@@ -157,7 +157,7 @@ cephClusterSpec:
     # the corresponding "backend protocol" annotation(s) for your ingress controller of choice)
     ssl: true
 
-  # Network configuration, see: https://github.com/rook/rook/blob/v1.14.2/Documentation/CRDs/ceph-cluster-crd.md#network-configuration-settings
+  # Network configuration, see: https://github.com/rook/rook/blob/v1.14.5/Documentation/CRDs/Cluster/ceph-cluster-crd.md#network-configuration-settings
   network:
     connections:
       # Whether to encrypt the data in transit across the wire to prevent eavesdropping the data on the network.
@@ -208,7 +208,7 @@ cephClusterSpec:
     periodicity: daily # one of: hourly, daily, weekly, monthly
     maxLogSize: 500M # SUFFIX may be 'M' or 'G'. Must be at least 1M.
 
-  # automate [data cleanup process](https://github.com/rook/rook/blob/v1.14.2/Documentation/Storage-Configuration/ceph-teardown.md#delete-the-data-on-hosts) in cluster destruction.
+  # automate [data cleanup process](https://github.com/rook/rook/blob/v1.14.5/Documentation/Storage-Configuration/ceph-teardown.md#delete-the-data-on-hosts) in cluster destruction.
   cleanupPolicy:
     # Since cluster cleanup is destructive to data, confirmation is required.
     # To destroy all Rook data on hosts during uninstall, confirmation must be set to "yes-really-destroy-data".
@@ -270,6 +270,7 @@ cephClusterSpec:
   #   prepareosd:
   #   # If no mgr annotations are set, prometheus scrape annotations will be set by default.
   #   mgr:
+  #   dashboard:
 
   # labels:
   #   all:
@@ -281,6 +282,7 @@ cephClusterSpec:
   #   # monitoring is a list of key-value pairs. It is injected into all the monitoring resources created by operator.
   #   # These labels can be passed as LabelSelector to Prometheus
   #   monitoring:
+  #   dashboard:
 
   resources:
     mgr:
@@ -380,7 +382,7 @@ cephClusterSpec:
   # The section for configuring management of daemon disruptions during upgrade or fencing.
   disruptionManagement:
     # If true, the operator will create and manage PodDisruptionBudgets for OSD, Mon, RGW, and MDS daemons. OSD PDBs are managed dynamically
-    # via the strategy outlined in the [design](https://github.com/rook/rook/blob/v1.14.2/design/ceph/ceph-managed-disruptionbudgets.md). The operator will
+    # via the strategy outlined in the [design](https://github.com/rook/rook/blob/v1.14.5/design/ceph/ceph-managed-disruptionbudgets.md). The operator will
     # block eviction of OSDs by default and unblock them safely when drains are detected.
     managePodBudgets: true
     # A duration in minutes that determines how long an entire failureDomain like `region/zone/host` will be held in `noout` (in addition to the
@@ -439,7 +441,7 @@ ingress:
 # @default -- See [below](#ceph-block-pools)
 cephBlockPools:
   - name: ceph-blockpool
-    # see https://github.com/rook/rook/blob/v1.14.2/Documentation/CRDs/Block-Storage/ceph-block-pool-crd.md#spec for available configuration
+    # see https://github.com/rook/rook/blob/v1.14.5/Documentation/CRDs/Block-Storage/ceph-block-pool-crd.md#spec for available configuration
     spec:
       failureDomain: host
       replicated:
@@ -461,7 +463,7 @@ cephBlockPools:
       #            - key: rook-ceph-role
       #              values:
       #                - storage-node
-      # see https://github.com/rook/rook/blob/v1.14.2/Documentation/Storage-Configuration/Block-Storage-RBD/block-storage.md#provision-storage for available configuration
+      # see https://github.com/rook/rook/blob/v1.14.5/Documentation/Storage-Configuration/Block-Storage-RBD/block-storage.md#provision-storage for available configuration
       parameters:
         # (optional) mapOptions is a comma-separated list of map options.
         # For krbd options refer
@@ -502,7 +504,7 @@ cephBlockPools:
 # @default -- See [below](#ceph-file-systems)
 cephFileSystems:
   - name: ceph-filesystem
-    # see https://github.com/rook/rook/blob/v1.14.2/Documentation/CRDs/Shared-Filesystem/ceph-filesystem-crd.md#filesystem-settings for available configuration
+    # see https://github.com/rook/rook/blob/v1.14.5/Documentation/CRDs/Shared-Filesystem/ceph-filesystem-crd.md#filesystem-settings for available configuration
     spec:
       metadataPool:
         replicated:
@@ -511,7 +513,7 @@ cephFileSystems:
         - failureDomain: host
           replicated:
             size: 3
-          # Optional and highly recommended, 'data0' by default, see https://github.com/rook/rook/blob/v1.14.2/Documentation/CRDs/Shared-Filesystem/ceph-filesystem-crd.md#pools
+          # Optional and highly recommended, 'data0' by default, see https://github.com/rook/rook/blob/v1.14.5/Documentation/CRDs/Shared-Filesystem/ceph-filesystem-crd.md#pools
           name: data0
       metadataServer:
         activeCount: 1
@@ -533,7 +535,7 @@ cephFileSystems:
       allowVolumeExpansion: true
       volumeBindingMode: "Immediate"
       mountOptions: []
-      # see https://github.com/rook/rook/blob/v1.14.2/Documentation/Storage-Configuration/Shared-Filesystem-CephFS/filesystem-storage.md#provision-storage for available configuration
+      # see https://github.com/rook/rook/blob/v1.14.5/Documentation/Storage-Configuration/Shared-Filesystem-CephFS/filesystem-storage.md#provision-storage for available configuration
       parameters:
         # The secrets contain Ceph admin credentials.
         csi.storage.k8s.io/provisioner-secret-name: rook-csi-cephfs-provisioner
@@ -575,7 +577,7 @@ cephBlockPoolsVolumeSnapshotClass:
 # @default -- See [below](#ceph-object-stores)
 cephObjectStores:
   - name: ceph-objectstore
-    # see https://github.com/rook/rook/blob/v1.14.2/Documentation/CRDs/Object-Storage/ceph-object-store-crd.md#object-store-settings for available configuration
+    # see https://github.com/rook/rook/blob/v1.14.5/Documentation/CRDs/Object-Storage/ceph-object-store-crd.md#object-store-settings for available configuration
     spec:
       metadataPool:
         failureDomain: host
@@ -604,7 +606,7 @@ cephObjectStores:
       name: ceph-bucket
       reclaimPolicy: Delete
       volumeBindingMode: "Immediate"
-      # see https://github.com/rook/rook/blob/v1.14.2/Documentation/Storage-Configuration/Object-Storage-RGW/ceph-object-bucket-claim.md#storageclass for available configuration
+      # see https://github.com/rook/rook/blob/v1.14.5/Documentation/Storage-Configuration/Object-Storage-RGW/ceph-object-bucket-claim.md#storageclass for available configuration
       parameters:
         # note: objectStoreNamespace and objectStoreName are configured by the chart
         region: us-east-1
