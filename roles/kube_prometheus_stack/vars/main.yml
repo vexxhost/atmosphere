@@ -133,6 +133,14 @@ _kube_prometheus_stack_helm_values:
             - containerPort: 8082
               name: oauth2-metrics
               protocol: TCP
+          volumeMounts:
+            - name: ca-certificates
+              mountPath: /etc/ssl/certs/ca-certificates.crt
+              readOnly: true
+      volumes:
+        - name: ca-certificates
+          hostPath:
+            path: "{{ defaults_ca_certificates_path }}"
   grafana:
     adminPassword: "{{ kube_prometheus_stack_grafana_admin_password }}"
     extraSecretMounts:
@@ -342,6 +350,14 @@ _kube_prometheus_stack_helm_values:
             - containerPort: 8082
               name: oauth2-metrics
               protocol: TCP
+          volumeMounts:
+            - name: ca-certificates
+              mountPath: /etc/ssl/certs/ca-certificates.crt
+              readOnly: true
+      volumes:
+        - name: ca-certificates
+          hostPath:
+            path: "{{ defaults_ca_certificates_path }}"
     additionalServiceMonitors:
       - name: ceph
         jobLabel: application
