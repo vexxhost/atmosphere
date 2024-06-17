@@ -1,12 +1,14 @@
 # SPDX-License-Identifier: Apache-2.0
-# Atmosphere-Rebuild-Time: 2024-05-30T20:29:01Z
+# Atmosphere-Rebuild-Time: 2024-06-17T13:34:17Z
 
 ARG RELEASE
 
 FROM registry.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
-ARG KEYSTONE_GIT_REF=8ca73f758bb613a57815fbe4ae78e3d2afa4af49
+ARG KEYSTONE_GIT_REF=7697140fc23cee66b17050651813ebe902671256
 ADD --keep-git-dir=true https://opendev.org/openstack/keystone.git#${KEYSTONE_GIT_REF} /src/keystone
 RUN git -C /src/keystone fetch --unshallow
+COPY patches/keystone /patches/keystone
+RUN git -C /src/keystone apply --verbose /patches/keystone/*
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
 pip3 install \
     --constraint /upper-constraints.txt \
