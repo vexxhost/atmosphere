@@ -17,8 +17,7 @@
     check:
       jobs:
         - atmosphere-linters
-        - atmosphere-build-collection
-        - atmosphere-molecule-aio-keycloak:
+        - atmosphere-build-collection:
             dependencies: &molecule_check_dependencies
               - name: atmosphere-build-container-image-barbican
                 soft: true
@@ -68,6 +67,8 @@
                 soft: true
               - name: atmosphere-build-container-image-tempest
                 soft: true
+        - atmosphere-molecule-aio-keycloak:
+            dependencies: *molecule_check_dependencies
         - atmosphere-molecule-aio-openvswitch:
             dependencies: *molecule_check_dependencies
         - atmosphere-molecule-aio-ovn:
@@ -79,8 +80,7 @@
     gate:
       jobs:
         - atmosphere-linters
-        - atmosphere-build-collection
-        - atmosphere-molecule-aio-keycloak:
+        - atmosphere-build-collection:
             dependencies: &molecule_gate_dependencies
               - name: atmosphere-upload-container-image-barbican
                 soft: true
@@ -130,6 +130,8 @@
                 soft: true
               - name: atmosphere-upload-container-image-tempest
                 soft: true
+        - atmosphere-molecule-aio-keycloak:
+            dependencies: *molecule_gate_dependencies
         - atmosphere-molecule-aio-openvswitch:
             dependencies: *molecule_gate_dependencies
         - atmosphere-molecule-aio-ovn:
