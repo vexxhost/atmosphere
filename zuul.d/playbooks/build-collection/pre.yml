@@ -12,26 +12,15 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- hosts: all
-  roles:
-    - ensure-python
-    - ensure-pip
-    - ensure-tox
-
-- name: Install Ansible
+- name: Prepare for collection build
   hosts: all
-  vars:
-    ansible_venv_path: '{{ ansible_user_dir }}/.local/ansible'
-    ensure_ansible_version: ''
   tasks:
-    - name: Create local venv
-      command: '{{ ensure_pip_virtualenv_command }} {{ ansible_venv_path }}'
+    - name: Pin all image digests
+      ansible.builtin.include_role:
+        name: tox
+      vars:
+        tox_envlist: pin-digests
 
-    - name: Install Ansible to local venv
-      command: '{{ ansible_venv_path }}/bin/pip install ansible{{ ensure_ansible_version }}'
-
-    - name: Export installed ansible paths
-      set_fact:
-        ansible_executable: '{{ ansible_venv_path }}/bin/ansible'
-        ansible_galaxy_executable: '{{ ansible_venv_path }}/bin/ansible-galaxy'
-        cacheable: true
+    - name: Print out the new image manifest file
+      ansible.builtin.command: |
+        cat {{ zuul.project.src_dir }}/roles/defaults/vars/main.yml
