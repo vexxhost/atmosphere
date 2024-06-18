@@ -1,0 +1,582 @@
+From 7d539bc0b093ceea9082b2526c0d40d519f13d19 Mon Sep 17 00:00:00 2001
+From: Roberto Bartzen Acosta <rbartzen@gmail.com>
+Date: Fri, 15 Sep 2023 08:44:52 -0300
+Subject: [PATCH] [ML2/OVN] Add gateway_port support for FIP
+
+The OVN changed support for NAT rules including a new column and auto discovery logic (which may not work in some cases) [1][2].
+If the OVN backend supports this column in the Northbound DB Schema, set gateway port uuid to any floating IP to prevent North/South traffic issues for floating IPs.
+
+This patch updates the method for creating FIP NAT rules in OVN backend and updates previously created FIP rules to include the gateway_port reference. This NAT rule update task runs only once during the maintenance task, and if all entries are already configured no action is performed.
+
+[1] https://github.com/ovn-org/ovn/commit/15348b7b806f7a9680606c3e9348708980129949
+[2] https://github.com/ovn-org/ovn/commit/2d942be7db1799f2778492331513ae2b5a556b92
+
+Conflicts:
+	neutron/common/ovn/utils.py
+	neutron/tests/functional/plugins/ml2/drivers/ovn/mech_driver/ovsdb/test_maintenance.py
+	neutron/tests/unit/plugins/ml2/drivers/ovn/mech_driver/ovsdb/test_maintenance.py
+
+(cherry picked from commit 78b5fe2ff417e176a3ccc356d9428287a0ee3c64)
+
+Closes-Bug: 2035281
+Change-Id: I802b6bd8c281cb6dacdee2e9c15285f069d4e04c
+---
+
+diff --git a/neutron/common/ovn/utils.py b/neutron/common/ovn/utils.py
+index 9b14b2d..1660c1b 100644
+--- a/neutron/common/ovn/utils.py
++++ b/neutron/common/ovn/utils.py
+@@ -851,3 +851,7 @@
+     if isinstance(requested_chassis, str):
+         return requested_chassis.split(',')
+     return []
++
++
++def is_nat_gateway_port_supported(idl):
++    return idl.is_col_present('NAT', 'gateway_port')
+diff --git a/neutron/plugins/ml2/drivers/ovn/mech_driver/ovsdb/impl_idl_ovn.py b/neutron/plugins/ml2/drivers/ovn/mech_driver/ovsdb/impl_idl_ovn.py
+index e7093fe..4ca912a 100644
+--- a/neutron/plugins/ml2/drivers/ovn/mech_driver/ovsdb/impl_idl_ovn.py
++++ b/neutron/plugins/ml2/drivers/ovn/mech_driver/ovsdb/impl_idl_ovn.py
+@@ -360,6 +360,10 @@
+                         columns['external_mac'] = nat.external_mac[0]
+                     if nat.logical_port:
+                         columns['logical_port'] = nat.logical_port[0]
++                    columns['external_ids'] = nat.external_ids
++                    columns['uuid'] = nat.uuid
++                    if utils.is_nat_gateway_port_supported(self):
++                        columns['gateway_port'] = nat.gateway_port
+                     dnat_and_snats.append(columns)
+                 elif nat.type == 'snat':
+                     snat.append(columns)
+diff --git a/neutron/plugins/ml2/drivers/ovn/mech_driver/ovsdb/maintenance.py b/neutron/plugins/ml2/drivers/ovn/mech_driver/ovsdb/maintenance.py
+index 14a9e7d..28e8434 100644
+--- a/neutron/plugins/ml2/drivers/ovn/mech_driver/ovsdb/maintenance.py
++++ b/neutron/plugins/ml2/drivers/ovn/mech_driver/ovsdb/maintenance.py
+@@ -1062,6 +1062,52 @@
+         context = n_context.get_admin_context()
+         hash_ring_db.cleanup_old_nodes(context, days=5)
+ 
++    @periodics.periodic(spacing=600, run_immediately=True)
++    def update_nat_floating_ip_with_gateway_port_reference(self):
++        """Set NAT rule gateway_port column to any floating IP without
++        router gateway port uuid reference - LP#2035281.
++        """
++
++        if not utils.is_nat_gateway_port_supported(self._nb_idl):
++            raise periodics.NeverAgain()
++
++        context = n_context.get_admin_context()
++        fip_update = []
++        lrouters = self._nb_idl.get_all_logical_routers_with_rports()
++        for router in lrouters:
++            ovn_fips = router['dnat_and_snats']
++            for ovn_fip in ovn_fips:
++                # Skip FIPs that are already configured with gateway_port
++                if ovn_fip['gateway_port']:
++                    continue
++                fip_id = ovn_fip['external_ids'].get(
++                            ovn_const.OVN_FIP_EXT_ID_KEY)
++                if fip_id:
++                    fip_update.append({'uuid': ovn_fip['uuid'],
++                                       'router_id': router['name']})
++
++        # Simple caching mechanism to avoid unnecessary DB calls
++        gw_port_id_cache = {}
++        lrp_cache = {}
++        cmds = []
++        for fip in fip_update:
++            lrouter = utils.ovn_name(fip['router_id'])
++            if lrouter not in gw_port_id_cache.keys():
++                router_db = self._ovn_client._l3_plugin.get_router(context,
++                    fip['router_id'], fields=['gw_port_id'])
++                gw_port_id_cache[lrouter] = router_db.get('gw_port_id')
++                lrp_cache[lrouter] = self._nb_idl.get_lrouter_port(
++                    gw_port_id_cache[lrouter])
++            columns = {'gateway_port': lrp_cache[lrouter].uuid}
++            cmds.append(self._nb_idl.set_nat_rule_in_lrouter(lrouter,
++                fip['uuid'], **columns))
++
++        if cmds:
++            with self._nb_idl.transaction(check_error=True) as txn:
++                for cmd in cmds:
++                    txn.add(cmd)
++        raise periodics.NeverAgain()
++
+ 
+ class HashRingHealthCheckPeriodics(object):
+ 
+diff --git a/neutron/plugins/ml2/drivers/ovn/mech_driver/ovsdb/ovn_client.py b/neutron/plugins/ml2/drivers/ovn/mech_driver/ovsdb/ovn_client.py
+index 266e97f..5e8f73f 100644
+--- a/neutron/plugins/ml2/drivers/ovn/mech_driver/ovsdb/ovn_client.py
++++ b/neutron/plugins/ml2/drivers/ovn/mech_driver/ovsdb/ovn_client.py
+@@ -967,6 +967,14 @@
+                    'logical_port': floatingip['port_id'],
+                    'external_ids': ext_ids}
+ 
++        # If OVN supports gateway_port column for NAT rules set gateway port
++        # uuid to any floating IP without gw port reference - LP#2035281.
++        if utils.is_nat_gateway_port_supported(self._nb_idl):
++            router_db = self._l3_plugin.get_router(admin_context, router_id)
++            gw_port_id = router_db.get('gw_port_id')
++            lrp = self._nb_idl.get_lrouter_port(gw_port_id)
++            columns['gateway_port'] = lrp.uuid
++
+         if ovn_conf.is_ovn_distributed_floating_ip():
+             if self._nb_idl.lsp_get_up(floatingip['port_id']).execute():
+                 columns['external_mac'] = port_db['mac_address']
+diff --git a/neutron/tests/functional/plugins/ml2/drivers/ovn/mech_driver/ovsdb/test_maintenance.py b/neutron/tests/functional/plugins/ml2/drivers/ovn/mech_driver/ovsdb/test_maintenance.py
+index 5abbd43..a1ceb5e 100644
+--- a/neutron/tests/functional/plugins/ml2/drivers/ovn/mech_driver/ovsdb/test_maintenance.py
++++ b/neutron/tests/functional/plugins/ml2/drivers/ovn/mech_driver/ovsdb/test_maintenance.py
+@@ -1014,6 +1014,65 @@
+         # "Chassis_Private" register was missing.
+         self.assertEqual(2, len(chassis_result))
+ 
++    def test_floating_ip_with_gateway_port(self):
++        ext_net = self._create_network('ext_networktest', external=True)
++        ext_subnet = self._create_subnet(
++            'ext_subnettest',
++            ext_net['id'],
++            **{'cidr': '100.0.0.0/24',
++               'gateway_ip': '100.0.0.254',
++               'allocation_pools': [
++                   {'start': '100.0.0.2', 'end': '100.0.0.253'}],
++               'enable_dhcp': False})
++        net1 = self._create_network('network1test', external=False)
++        subnet1 = self._create_subnet('subnet1test', net1['id'])
++        external_gateway_info = {
++            'enable_snat': True,
++            'network_id': ext_net['id'],
++            'external_fixed_ips': [
++                {'ip_address': '100.0.0.2', 'subnet_id': ext_subnet['id']}]}
++        router = self._create_router(
++            'routertest', external_gateway_info=external_gateway_info)
++        self._add_router_interface(router['id'], subnet1['id'])
++
++        p1 = self._create_port('testp1', net1['id'])
++        logical_ip = p1['fixed_ips'][0]['ip_address']
++        fip_info = {'floatingip': {
++            'tenant_id': self._tenant_id,
++            'description': 'test_fip',
++            'floating_network_id': ext_net['id'],
++            'port_id': p1['id'],
++            'fixed_ip_address': logical_ip}}
++
++        # Create floating IP without gateway_port
++        with mock.patch.object(utils,
++                'is_nat_gateway_port_supported', return_value=False):
++            fip = self.l3_plugin.create_floatingip(self.context, fip_info)
++
++        self.assertEqual(router['id'], fip['router_id'])
++        self.assertEqual('testp1', fip['port_details']['name'])
++        self.assertIsNotNone(self.nb_api.get_lswitch_port(fip['port_id']))
++
++        rules = self.nb_api.get_all_logical_routers_with_rports()[0]
++        fip_rule = rules['dnat_and_snats'][0]
++        if utils.is_nat_gateway_port_supported(self.nb_api):
++            self.assertEqual([], fip_rule['gateway_port'])
++        else:
++            self.assertNotIn('gateway_port', fip_rule)
++
++        # Call the maintenance task and check that the value has been
++        # updated in the NAT rule
++        self.assertRaises(periodics.NeverAgain,
++            self.maint.update_nat_floating_ip_with_gateway_port_reference)
++
++        rules = self.nb_api.get_all_logical_routers_with_rports()[0]
++        fip_rule = rules['dnat_and_snats'][0]
++
++        if utils.is_nat_gateway_port_supported(self.nb_api):
++            self.assertNotEqual([], fip_rule['gateway_port'])
++        else:
++            self.assertNotIn('gateway_port', fip_rule)
++
+ 
+ class TestLogMaintenance(_TestMaintenanceHelper,
+                          test_log_driver.LogApiTestCaseBase):
+diff --git a/neutron/tests/functional/plugins/ml2/drivers/ovn/mech_driver/test_mech_driver.py b/neutron/tests/functional/plugins/ml2/drivers/ovn/mech_driver/test_mech_driver.py
+index e1c63d7..d716cbc 100644
+--- a/neutron/tests/functional/plugins/ml2/drivers/ovn/mech_driver/test_mech_driver.py
++++ b/neutron/tests/functional/plugins/ml2/drivers/ovn/mech_driver/test_mech_driver.py
+@@ -1248,3 +1248,103 @@
+         self.plugin.delete_agent(self.context, metadata_id)
+         self.assertRaises(agent_exc.AgentNotFound, self.plugin.get_agent,
+                           self.context, metadata_id)
++
++
++class TestNATRuleGatewayPort(base.TestOVNFunctionalBase):
++
++    def setUp(self):
++        super().setUp()
++        self._ovn_client = self.mech_driver._ovn_client
++
++    def deserialize(self, content_type, response):
++        ctype = 'application/%s' % content_type
++        data = self._deserializers[ctype].deserialize(response.body)['body']
++        return data
++
++    def _create_router(self, name, external_gateway_info=None):
++        data = {'router': {'name': name, 'tenant_id': self._tenant_id,
++                           'external_gateway_info': external_gateway_info}}
++        req = self.new_create_request('routers', data, self.fmt)
++        res = req.get_response(self.api)
++        return self.deserialize(self.fmt, res)['router']
++
++    def _process_router_interface(self, action, router_id, subnet_id):
++        req = self.new_action_request(
++            'routers', {'subnet_id': subnet_id}, router_id,
++            '%s_router_interface' % action)
++        res = req.get_response(self.api)
++        return self.deserialize(self.fmt, res)
++
++    def _add_router_interface(self, router_id, subnet_id):
++        return self._process_router_interface('add', router_id, subnet_id)
++
++    def _create_port(self, name, net_id, security_groups=None,
++                     device_owner=None):
++        data = {'port': {'name': name,
++                         'tenant_id': self._tenant_id,
++                         'network_id': net_id}}
++
++        if security_groups is not None:
++            data['port']['security_groups'] = security_groups
++
++        if device_owner is not None:
++            data['port']['device_owner'] = device_owner
++
++        req = self.new_create_request('ports', data, self.fmt)
++        res = req.get_response(self.api)
++        return self.deserialize(self.fmt, res)['port']
++
++    def test_create_floatingip(self):
++        ext_net = self._make_network(
++            self.fmt, 'ext_networktest', True,
++            arg_list=('router:external',
++                      'provider:network_type',
++                      'provider:physical_network'),
++            **{'router:external': True,
++               'provider:network_type': 'flat',
++               'provider:physical_network': 'public'})['network']
++        res = self._create_subnet(self.fmt, ext_net['id'],
++            '100.0.0.0/24', gateway_ip='100.0.0.254',
++            allocation_pools=[{'start': '100.0.0.2',
++                               'end': '100.0.0.253'}],
++            enable_dhcp=False)
++        ext_subnet = self.deserialize(self.fmt, res)['subnet']
++        net1 = self._make_network(
++            self.fmt, 'network1test', True)['network']
++        res = self._create_subnet(self.fmt, net1['id'],
++            '192.168.0.0/24', gateway_ip='192.168.0.1',
++            allocation_pools=[{'start': '192.168.0.2',
++                               'end': '192.168.0.253'}],
++            enable_dhcp=False)
++        subnet1 = self.deserialize(self.fmt, res)['subnet']
++        external_gateway_info = {
++            'enable_snat': True,
++            'network_id': ext_net['id'],
++            'external_fixed_ips': [
++                {'ip_address': '100.0.0.2', 'subnet_id': ext_subnet['id']}]}
++        router = self._create_router(
++            'routertest', external_gateway_info=external_gateway_info)
++        self._add_router_interface(router['id'], subnet1['id'])
++
++        p1 = self._create_port('testp1', net1['id'])
++        logical_ip = p1['fixed_ips'][0]['ip_address']
++        fip_info = {'floatingip': {
++            'tenant_id': self._tenant_id,
++            'description': 'test_fip',
++            'floating_network_id': ext_net['id'],
++            'port_id': p1['id'],
++            'fixed_ip_address': logical_ip}}
++
++        fip = self.l3_plugin.create_floatingip(self.context, fip_info)
++
++        self.assertEqual(router['id'], fip['router_id'])
++        self.assertEqual('testp1', fip['port_details']['name'])
++        self.assertIsNotNone(self.nb_api.get_lswitch_port(fip['port_id']))
++
++        rules = self.nb_api.get_all_logical_routers_with_rports()[0]
++        fip_rule = rules['dnat_and_snats'][0]
++
++        if utils.is_nat_gateway_port_supported(self.nb_api):
++            self.assertNotEqual([], fip_rule['gateway_port'])
++        else:
++            self.assertNotIn('gateway_port', fip_rule)
+diff --git a/neutron/tests/unit/fake_resources.py b/neutron/tests/unit/fake_resources.py
+index bca73ee..23c5a92 100644
+--- a/neutron/tests/unit/fake_resources.py
++++ b/neutron/tests/unit/fake_resources.py
+@@ -164,6 +164,7 @@
+         self.ha_chassis_group_del_chassis = mock.Mock()
+         self.lrp_get = mock.Mock()
+         self.get_schema_version = mock.Mock(return_value='3.6.0')
++        self.get_lrouter_port = mock.Mock()
+ 
+ 
+ class FakeOvsdbSbOvnIdl(object):
+diff --git a/neutron/tests/unit/plugins/ml2/drivers/ovn/mech_driver/ovsdb/test_impl_idl_ovn.py b/neutron/tests/unit/plugins/ml2/drivers/ovn/mech_driver/ovsdb/test_impl_idl_ovn.py
+index 209a41b..584f13f 100644
+--- a/neutron/tests/unit/plugins/ml2/drivers/ovn/mech_driver/ovsdb/test_impl_idl_ovn.py
++++ b/neutron/tests/unit/plugins/ml2/drivers/ovn/mech_driver/ovsdb/test_impl_idl_ovn.py
+@@ -15,6 +15,7 @@
+ import copy
+ from unittest import mock
+ 
++from oslo_utils import uuidutils
+ from ovsdbapp.backend import ovs_idl
+ 
+ from neutron.common.ovn import constants as ovn_const
+@@ -193,11 +194,15 @@
+                   'type': 'snat'},
+                  {'external_ip': '20.0.2.4', 'logical_ip': '10.0.0.4',
+                   'type': 'dnat_and_snat', 'external_mac': [],
+-                  'logical_port': []},
++                  'logical_port': [],
++                  'external_ids': {ovn_const.OVN_FIP_EXT_ID_KEY: 'fip_id_a'},
++                  'gateway_port': uuidutils.generate_uuid()},
+                  {'external_ip': '20.0.2.5', 'logical_ip': '10.0.0.5',
+                   'type': 'dnat_and_snat',
+                   'external_mac': ['00:01:02:03:04:05'],
+-                  'logical_port': ['lsp-id-001']}],
++                  'logical_port': ['lsp-id-001'],
++                  'external_ids': {ovn_const.OVN_FIP_EXT_ID_KEY: 'fip_id_b'},
++                  'gateway_port': []}],
+         'acls': [
+             {'unit_test_id': 1,
+              'action': 'allow-related', 'direction': 'from-lport',
+@@ -446,13 +451,39 @@
+                      'provnet_ports': []}]
+         self.assertCountEqual(mapping, expected)
+ 
+-    def test_get_all_logical_routers_with_rports(self):
++    def _test_get_all_logical_routers_with_rports(self, is_gw_port):
+         # Test empty
+         mapping = self.nb_ovn_idl.get_all_logical_switches_with_ports()
+         self.assertCountEqual(mapping, {})
+         # Test loaded values
+         self._load_nb_db()
++
++        # Test with gateway_port_support enabled
++        utils.is_nat_gateway_port_supported = mock.Mock()
++        utils.is_nat_gateway_port_supported.return_value = is_gw_port
+         mapping = self.nb_ovn_idl.get_all_logical_routers_with_rports()
++        lra_nat = self._find_ovsdb_fake_row(self.nat_table,
++                                            'external_ip', '20.0.2.4')
++        lrb_nat = self._find_ovsdb_fake_row(self.nat_table,
++                                            'external_ip', '20.0.2.5')
++
++        lra_fip = {'external_ip': '20.0.2.4',
++                   'logical_ip': '10.0.0.4',
++                   'type': 'dnat_and_snat',
++                   'external_ids': {ovn_const.OVN_FIP_EXT_ID_KEY: 'fip_id_a'},
++                   'uuid': lra_nat.uuid}
++        lrb_fip = {'external_ip': '20.0.2.5',
++                   'logical_ip': '10.0.0.5',
++                   'type': 'dnat_and_snat',
++                   'external_mac': '00:01:02:03:04:05',
++                   'logical_port': 'lsp-id-001',
++                   'external_ids': {ovn_const.OVN_FIP_EXT_ID_KEY: 'fip_id_b'},
++                   'uuid': lrb_nat.uuid}
++
++        if is_gw_port:
++            lra_fip['gateway_port'] = lra_nat.gateway_port
++            lrb_fip['gateway_port'] = lrb_nat.gateway_port
++
+         expected = [{'name': 'lr-id-a',
+                      'ports': {'orp-id-a1': ['10.0.1.0/24'],
+                                'orp-id-a2': ['10.0.2.0/24'],
+@@ -471,14 +502,7 @@
+                      'snats': [{'external_ip': '20.0.2.1',
+                                 'logical_ip': '10.0.0.0/24',
+                                 'type': 'snat'}],
+-                     'dnat_and_snats': [{'external_ip': '20.0.2.4',
+-                                         'logical_ip': '10.0.0.4',
+-                                         'type': 'dnat_and_snat'},
+-                                        {'external_ip': '20.0.2.5',
+-                                         'logical_ip': '10.0.0.5',
+-                                         'type': 'dnat_and_snat',
+-                                         'external_mac': '00:01:02:03:04:05',
+-                                         'logical_port': 'lsp-id-001'}]},
++                     'dnat_and_snats': [lra_fip, lrb_fip]},
+                     {'name': 'lr-id-c', 'ports': {}, 'static_routes': [],
+                      'snats': [], 'dnat_and_snats': []},
+                     {'name': 'lr-id-d', 'ports': {}, 'static_routes': [],
+@@ -487,6 +511,12 @@
+                      'snats': [], 'dnat_and_snats': []}]
+         self.assertCountEqual(mapping, expected)
+ 
++    def test_get_all_logical_routers_with_rports(self):
++        self._test_get_all_logical_routers_with_rports(True)
++
++    def test_get_all_logical_routers_with_rports_without_nat_gw_port(self):
++        self._test_get_all_logical_routers_with_rports(False)
++
+     def test_get_acls_for_lswitches(self):
+         self._load_nb_db()
+         # Test neutron switches
+diff --git a/neutron/tests/unit/plugins/ml2/drivers/ovn/mech_driver/ovsdb/test_maintenance.py b/neutron/tests/unit/plugins/ml2/drivers/ovn/mech_driver/ovsdb/test_maintenance.py
+index 24fb3f8..430d230 100644
+--- a/neutron/tests/unit/plugins/ml2/drivers/ovn/mech_driver/ovsdb/test_maintenance.py
++++ b/neutron/tests/unit/plugins/ml2/drivers/ovn/mech_driver/ovsdb/test_maintenance.py
+@@ -915,3 +915,66 @@
+         expected_calls = [mock.call('Logical_Switch_Port', lsp0.uuid,
+                                     ('type', constants.LSP_TYPE_VIRTUAL))]
+         nb_idl.db_set.assert_has_calls(expected_calls)
++
++    def test_update_nat_floating_ip_with_gateway_port(self):
++        _nb_idl = self.fake_ovn_client._nb_idl
++        utils.is_nat_gateway_port_supported.return_value = True
++
++        lrp = fakes.FakeOvsdbRow.create_one_ovsdb_row(attrs={'options': {}})
++        _nb_idl.get_lrouter_port.return_value = lrp
++        self.fake_external_fixed_ips = {
++            'network_id': 'ext-network-id',
++            'external_fixed_ips': [{'ip_address': '20.0.2.1',
++                                    'subnet_id': 'ext-subnet-id'}]}
++        lrouter = {
++            'id': 'lr-id-b',
++            'name': utils.ovn_name('lr-id-b'),
++            'admin_state_up': True,
++            'external_gateway_info': self.fake_external_fixed_ips,
++            'gw_port_id': 'gw-port-id'
++        }
++        _nb_idl._l3_plugin.get_router.return_value = lrouter
++
++        lra_nat = {'external_ip': '20.0.2.4', 'logical_ip': '10.0.0.4',
++                   'type': 'dnat_and_snat', 'external_mac': [],
++                   'logical_port': [],
++                   'external_ids': {constants.OVN_FIP_EXT_ID_KEY: 'fip_id_1'},
++                   'gateway_port': uuidutils.generate_uuid(),
++                   'uuid': uuidutils.generate_uuid()}
++
++        lrb_nat = {'external_ip': '20.0.2.5', 'logical_ip': '10.0.0.5',
++                   'type': 'dnat_and_snat',
++                   'external_mac': ['00:01:02:03:04:05'],
++                   'logical_port': ['lsp-id-001'],
++                   'external_ids': {constants.OVN_FIP_EXT_ID_KEY: 'fip_id_2'},
++                   'gateway_port': [],
++                   'uuid': uuidutils.generate_uuid()}
++
++        expected = [{'name': 'lr-id-a',
++                     'ports': {'orp-id-a1': ['10.0.1.0/24'],
++                               'orp-id-a2': ['10.0.2.0/24'],
++                               'orp-id-a3': ['10.0.3.0/24']},
++                     'static_routes': [{'destination': '20.0.0.0/16',
++                                        'nexthop': '10.0.3.253'}],
++                     'snats': [{'external_ip': '10.0.3.1',
++                                'logical_ip': '20.0.0.0/16',
++                                'type': 'snat'}],
++                     'dnat_and_snats': []},
++                    {'name': 'lr-id-b',
++                     'ports': {'xrp-id-b1': ['20.0.1.0/24'],
++                               'orp-id-b2': ['20.0.2.0/24']},
++                     'static_routes': [{'destination': '10.0.0.0/16',
++                                        'nexthop': '20.0.2.253'}],
++                     'snats': [{'external_ip': '20.0.2.1',
++                                'logical_ip': '10.0.0.0/24',
++                                'type': 'snat'}],
++                     'dnat_and_snats': [lra_nat, lrb_nat]}]
++        _nb_idl.get_all_logical_routers_with_rports.return_value = expected
++
++        self.assertRaises(periodics.NeverAgain,
++            self.periodic.update_nat_floating_ip_with_gateway_port_reference)
++
++        _nb_idl.set_nat_rule_in_lrouter.assert_called_once_with(
++            utils.ovn_name('lr-id-b'),
++            lrb_nat['uuid'],
++            gateway_port=lrp.uuid)
+diff --git a/neutron/tests/unit/services/ovn_l3/test_plugin.py b/neutron/tests/unit/services/ovn_l3/test_plugin.py
+index fb686b3..1388581 100644
+--- a/neutron/tests/unit/services/ovn_l3/test_plugin.py
++++ b/neutron/tests/unit/services/ovn_l3/test_plugin.py
+@@ -299,6 +299,9 @@
+             'neutron.plugins.ml2.drivers.ovn.mech_driver.ovsdb.ovn_client.'
+             'OVNClient.delete_mac_binding_entries_by_mac',
+             return_value=1)
++        self._start_mock(
++            'neutron.common.ovn.utils.is_nat_gateway_port_supported',
++            return_value=False)
+ 
+     def test__plugin_driver(self):
+         # No valid mech drivers should raise an exception.
+@@ -1140,6 +1143,58 @@
+             mock.call('NAT', self.fake_ovn_nat_rule.uuid, 'external_mac'),
+             mock.call('NAT', self.fake_ovn_nat_rule.uuid, 'logical_port')])
+ 
++    def _test_create_floatingip_gateway_port_option(self, is_gw_port):
++        _nb_ovn = self.l3_inst._nb_ovn
++        _nb_ovn.is_col_present.return_value = True
++        self._get_floatingip.return_value = {'floating_port_id': 'fip-port-id'}
++        _nb_ovn.get_lrouter_nat_rules.return_value = [
++            {'external_ip': '192.168.0.10', 'logical_ip': '10.0.0.0/24',
++             'type': 'snat', 'uuid': 'uuid1'}]
++        utils.is_nat_gateway_port_supported.return_value = is_gw_port
++
++        lrp = fake_resources.FakeOvsdbRow.create_one_ovsdb_row(
++            attrs={'options': {}})
++        _nb_ovn.get_lrouter_port.return_value = lrp
++        self.l3_inst.get_router.return_value = self.fake_router_with_ext_gw
++
++        self.l3_inst.create_floatingip(self.context, 'floatingip')
++        _nb_ovn.set_nat_rule_in_lrouter.assert_not_called()
++
++        expected_ext_ids = {
++            ovn_const.OVN_FIP_EXT_ID_KEY: self.fake_floating_ip['id'],
++            ovn_const.OVN_REV_NUM_EXT_ID_KEY: '1',
++            ovn_const.OVN_FIP_PORT_EXT_ID_KEY:
++                self.fake_floating_ip['port_id'],
++            ovn_const.OVN_ROUTER_NAME_EXT_ID_KEY: utils.ovn_name(
++                self.fake_floating_ip['router_id']),
++            ovn_const.OVN_FIP_EXT_MAC_KEY: 'aa:aa:aa:aa:aa:aa',
++            ovn_const.OVN_FIP_NET_ID:
++                self.fake_floating_ip['floating_network_id']}
++
++        if is_gw_port:
++            _nb_ovn.add_nat_rule_in_lrouter.assert_called_once_with(
++                'neutron-router-id',
++                type='dnat_and_snat',
++                logical_ip='10.0.0.10',
++                external_ip='192.168.0.10',
++                logical_port='port_id',
++                external_ids=expected_ext_ids,
++                gateway_port=lrp.uuid)
++        else:
++            _nb_ovn.add_nat_rule_in_lrouter.assert_called_once_with(
++                'neutron-router-id',
++                type='dnat_and_snat',
++                logical_ip='10.0.0.10',
++                external_ip='192.168.0.10',
++                logical_port='port_id',
++                external_ids=expected_ext_ids)
++
++    def test_create_floatingip_with_gateway_port(self):
++        self._test_create_floatingip_gateway_port_option(True)
++
++    def test_create_floatingip_without_gateway_port(self):
++        self._test_create_floatingip_gateway_port_option(False)
++
+     @mock.patch('neutron.db.l3_db.L3_NAT_dbonly_mixin.delete_floatingip')
+     def test_delete_floatingip(self, df):
+         nb_ovn = self.l3_inst._nb_ovn
+diff --git a/releasenotes/notes/add-gw-port-support-for-FIP-fb97b85f5928740b.yaml b/releasenotes/notes/add-gw-port-support-for-FIP-fb97b85f5928740b.yaml
+new file mode 100644
+index 0000000..07544b8
+--- /dev/null
++++ b/releasenotes/notes/add-gw-port-support-for-FIP-fb97b85f5928740b.yaml
+@@ -0,0 +1,15 @@
++---
++prelude: >
++    The OVN changed support for NAT rules including a new column and
++    auto-discovery logic to know about logical router gateway ports for NAT on
++    a Logical Router.
++features:
++  - |
++    A new OVN driver Northbound DB column has been added to allow configuring
++    gateway port for NAT rule. If the OVN backend supports the `gateway_port`
++    column in the Northbound DB NAT table, the gateway port uuid will be
++    configured to any floating IP to prevent North/South traffic issues.
++    Previously created FIP rules will be updated only once during the
++    maintenance task to include the gateway_port reference (if OVN backend
++    supports it). In case all FIP entries are already configured no maintenance
++    action will be performed.
