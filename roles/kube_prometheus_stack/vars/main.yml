@@ -80,7 +80,7 @@ _kube_prometheus_stack_helm_values:
       hosts:
         - "{{ kube_prometheus_stack_alertmanager_host }}"
       tls:
-        - secretName: alertmanager-tls
+        - secretName: "{{ openstack_helm_ingress_secret_name | default('alertmanager-tls')}}"
           hosts:
             - "{{ kube_prometheus_stack_alertmanager_host }}"
     alertmanagerSpec:
@@ -186,7 +186,7 @@ _kube_prometheus_stack_helm_values:
       hosts:
         - "{{ kube_prometheus_stack_grafana_host }}"
       tls:
-        - secretName: grafana-tls
+        - secretName: "{{ openstack_helm_ingress_secret_name | default('grafana-tls')}}"
           hosts:
             - "{{ kube_prometheus_stack_grafana_host }}"
     sidecar:
@@ -305,7 +305,7 @@ _kube_prometheus_stack_helm_values:
       hosts:
         - "{{ kube_prometheus_stack_prometheus_host }}"
       tls:
-        - secretName: prometheus-tls
+        - secretName: "{{ openstack_helm_ingress_secret_name | default('prometheus-tls')}}"
           hosts:
             - "{{ kube_prometheus_stack_prometheus_host }}"
     prometheusSpec:
