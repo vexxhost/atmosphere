@@ -24,4 +24,7 @@ kubernetes_node_labels: |
   {%   set _ = res.update({'openstack-compute-node': 'enabled'}) %}
   {%   set _ = res.update({'openvswitch': 'enabled'}) %}
   {% endif %}
+  {% if atmosphere_rook_ceph_enabled is defined and atmosphere_rook_ceph_enabled | bool and inventory_hostname in groups.get('cephs', []) %}
+  {%   set _ = res.update({'ceph-osd-node': 'enabled'}) %}
+  {% endif %}
   {{ res }}

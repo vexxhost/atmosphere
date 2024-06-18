@@ -20,4 +20,4 @@
     release_namespace: "{{ rook_ceph_helm_release_namespace }}"
     create_namespace: true
     kubeconfig: /etc/kubernetes/admin.conf
-    values: "{{ _rook_ceph_helm_values | combine(rook_ceph_helm_values, recursive=True) }}"
+    values: "{{ lookup('ansible.builtin.template', 'values.yml.j2') | from_yaml | combine(rook_ceph_helm_values, recursive=True) }}"

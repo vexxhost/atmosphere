@@ -12,12 +12,16 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Deploy Ceph provisioners with external Ceph
-  ansible.builtin.import_tasks:
-    file: external_ceph.yml
-  when: not atmosphere_rook_ceph_enabled | default(false) | bool
+- name: Include variables for full Rook deployment
+  ansible.builtin.include_vars:
+    file: "rook_full.yml"
 
-- name: Deploy Ceph provisioners with Rook
-  ansible.builtin.import_tasks:
-    file: rook.yml
-  when: atmosphere_rook_ceph_enabled | default(false) | bool
+- name: Deploy Helm chart
+  run_once: true
+  kubernetes.core.helm:
+    name: "{{ rook_ceph_cluster_helm_release_name }}"
+    chart_ref: "{{ rook_ceph_cluster_helm_chart_ref }}"
+    release_namespace: "{{ rook_ceph_cluster_helm_release_namespace }}"
+    create_namespace: true
+    kubeconfig: /etc/kubernetes/admin.conf
+    values: "{{ _rook_ceph_cluster_helm_values | combine(rook_ceph_cluster_helm_values, recursive=True) }}"

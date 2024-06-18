@@ -18,7 +18,7 @@ rook_ceph_cluster_helm_release_name: "{{ rook_ceph_cluster_name }}"
 rook_ceph_cluster_helm_chart_path: "../../charts/rook-ceph-cluster/"
 rook_ceph_cluster_helm_chart_ref: /usr/local/src/rook-ceph-cluster
 
-rook_ceph_cluster_helm_release_namespace: openstack
+rook_ceph_cluster_helm_release_namespace: "{{ 'rook-ceph' if atmosphere_rook_ceph_enabled is defined and atmosphere_rook_ceph_enabled | bool else 'openstack' }}"
 rook_ceph_cluster_helm_values: {}
 
 # List of annotations to apply to the Ingress
@@ -28,3 +28,8 @@ rook_ceph_cluster_mon_group: controllers
 
 rook_ceph_cluster_spec: {}
 rook_ceph_cluster_radosgw_spec: {}
+
+rook_ceph_public_network: "{{ ceph_public_network }}"
+rook_ceph_cluster_network: "{{ ceph_cluster_network | default(rook_ceph_public_network) }}"
+
+rook_ceph_dashboard_host: "{{ undef('You must specify a Rook Ceph Dashboard host using rook_ceph_dashboard_host') }}"

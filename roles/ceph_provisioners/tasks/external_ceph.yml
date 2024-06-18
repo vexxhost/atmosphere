@@ -1,0 +1,116 @@
+# Copyright (c) 2024 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Collect "ceph mon dump" output from a monitor
+  delegate_to: "{{ groups[ceph_provisioners_ceph_mon_group][0] }}"
+  run_once: true
+  ansible.builtin.command: cephadm shell -- ceph mon dump -f json
+  changed_when: false
+  register: _ceph_mon_dump
+
+- name: Generate fact with list of Ceph monitors
+  run_once: true
+  ansible.builtin.set_fact:
+    _ceph_provisioners_ceph_fsid: "{{ _ceph_mon_dump.stdout | from_json | community.general.json_query('fsid') }}"
+    _ceph_provisioners_ceph_monitors: |
+      {{
+        _ceph_provisioners_ceph_monitors | default([]) +
+          [{'ip': item}]
+      }}
+  loop: "{{ _ceph_mon_dump.stdout | from_json | community.general.json_query('mons[*].addr') | map('regex_replace', '(.*):(.*)', '\\1') }}"
+
+- name: Create Ceph service
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: ceph-mon
+        namespace: openstack
+        labels:
+          application: ceph
+      spec:
+        clusterIP: None
+        ports:
+          - name: mon
+            port: 6789
+            targetPort: 6789
+          - name: mon-msgr2
+            port: 3300
+            targetPort: 3300
+          - name: metrics
+            port: 9283
+            targetPort: 9283
+
+- name: Create Ceph endpoints
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Endpoints
+      metadata:
+        name: ceph-mon
+        namespace: openstack
+        labels:
+          application: ceph
+      subsets:
+        - addresses: "{{ _ceph_provisioners_ceph_monitors }}"
+          ports:
+            - name: mon
+              port: 6789
+              protocol: TCP
+            - name: mon-msgr2
+              port: 3300
+              protocol: TCP
+            - name: metrics
+              port: 9283
+              protocol: TCP
+
+- name: Retrieve client.admin keyring
+  delegate_to: "{{ groups[ceph_provisioners_ceph_mon_group][0] }}"
+  vexxhost.ceph.key:
+    name: client.admin
+    state: info
+    output_format: json
+  register: _ceph_provisioners_ceph_key
+
+- name: Parse client.admin keyring
+  ansible.builtin.set_fact:
+    _ceph_provisioners_keyring: "{{ _ceph_provisioners_ceph_key.stdout | from_json | first }}"
+
+- name: Create "pvc-ceph-client-key" secret
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      type: kubernetes.io/rbd
+      metadata:
+        name: pvc-ceph-client-key
+        namespace: openstack
+        labels:
+          application: ceph
+      stringData:
+        key: "{{ _ceph_provisioners_keyring.key }}"
+
+- name: Deploy Helm chart
+  run_once: true
+  kubernetes.core.helm:
+    name: "{{ ceph_provisioners_helm_release_name }}"
+    chart_ref: "{{ ceph_provisioners_helm_chart_ref }}"
+    release_namespace: "{{ ceph_provisioners_helm_release_namespace }}"
+    create_namespace: true
+    kubeconfig: /etc/kubernetes/admin.conf
+    values: "{{ lookup('ansible.builtin.template', 'values.yml.j2') | from_yaml | combine(ceph_provisioners_helm_values, recursive=True) }}"

@@ -14,15 +14,23 @@
 
 - name: Install Ceph
   import_playbook: vexxhost.atmosphere.ceph
+  when: not atmosphere_rook_ceph_enabled | default(false) | bool
 
 - name: Install Kubernetes
   import_playbook: vexxhost.atmosphere.kubernetes
 
 - name: Install CSI
   import_playbook: vexxhost.atmosphere.csi
+  when: not atmosphere_rook_ceph_enabled | default(false) | bool
 
 - name: Deploy Infrastructure
   ansible.builtin.import_playbook: vexxhost.atmosphere.infrastructure
+
+- name: Install Rook
+  import_playbook: vexxhost.atmosphere.rook
+  when: atmosphere_rook_ceph_enabled | default(false) | bool
+  vars:
+    rook_ceph_cluster_radosgw_config_only: false
 
 - name: Deploy Monitoring
   ansible.builtin.import_playbook: vexxhost.atmosphere.monitoring
