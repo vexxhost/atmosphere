@@ -36,6 +36,11 @@
         name: "{{ neutron_helm_release_name }}"
         namespace: "{{ neutron_helm_release_namespace }}"
 
+- name: Set external_dns_driver
+  ansible.builtin.set_fact:
+    _neutron_external_dns_driver: "designate"
+  when: neutron_designate_integration_enabled | bool
+
 - name: Generate Helm values
   ansible.builtin.set_fact:
     _neutron_helm_values: "{{ __neutron_helm_values }}"
@@ -44,11 +49,6 @@
   when: atmosphere_network_backend == 'ovn'
   ansible.builtin.set_fact:
     _neutron_helm_values: "{{ _neutron_helm_values | combine(__neutron_ovn_helm_values, recursive=True) }}"
-
-- name: Set external_dns_driver
-  ansible.builtin.set_fact:
-    _neutron_external_dns_driver: "designate"
-  when: neutron_designate_integration_enabled | bool
 
 - name: Deploy Helm chart
   run_once: true
