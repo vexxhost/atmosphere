@@ -15,7 +15,10 @@ def main():
                 job = config["job"]
 
                 # Check if build or upload jobs are missing 'atmosphere-buildset-registry' dependency
-                if "build-container-image-" in job["name"] or "upload-container-image-" in job["name"]:
+                if (
+                    "build-container-image-" in job["name"]
+                    or "upload-container-image-" in job["name"]
+                ):
                     deps = job.get("dependencies", [])
                     if not any(
                         dep.get("name") == "atmosphere-buildset-registry"
