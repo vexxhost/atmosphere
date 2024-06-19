@@ -29,7 +29,7 @@ rook_ceph_cluster_mon_group: controllers
 rook_ceph_cluster_spec: {}
 rook_ceph_cluster_radosgw_spec: {}
 
-rook_ceph_public_network: "{{ ceph_public_network }}"
+rook_ceph_public_network: "{{ ceph_public_network | default(ceph_mon_public_network) }}"
 rook_ceph_cluster_network: "{{ ceph_cluster_network | default(rook_ceph_public_network) }}"
 
 rook_ceph_dashboard_host: "{{ undef('You must specify a Rook Ceph Dashboard host using rook_ceph_dashboard_host') }}"

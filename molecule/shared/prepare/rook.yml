@@ -1,0 +1,64 @@
+# Copyright (c) 2024 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+# NOTE(mnaser): This playbook is strictly used for testing purposes, it creates
+#               a few volume groups which can be used to create OSDs.
+
+- name: Create devices for Ceph
+  hosts: "{{ ceph_osd_group | default('cephs') }}"
+  become: true
+  vars:
+    ceph_osds: ["osd0", "osd1", "osd2"]
+  tasks:
+    - name: Install depedencies
+      ansible.builtin.package:
+        name:
+          - dbus
+          - udev
+        state: present
+
+    - name: Start up service
+      ansible.builtin.service:
+        name: systemd-udevd
+        state: started
+        enabled: true
+
+    - name: Get list of all loopback devices
+      ansible.builtin.command: losetup -a
+      changed_when: false
+      register: _loopback_devices
+
+    - name: Fail if there is any existing loopback devices
+      ansible.builtin.fail:
+        msg: There are existing loopback devices, please ensure they are removed
+      when: _loopback_devices.stdout != ""
+
+    - name: Create devices for Ceph
+      ansible.builtin.command: truncate -s 1024G /opt/{{ inventory_hostname_short }}-{{ item }}.img
+      args:
+        creates: /opt/{{ inventory_hostname_short }}-{{ item }}.img
+      with_items: "{{ ceph_osds }}"
+
+    - name: Set permissions on loopback devices
+      ansible.builtin.file:
+        path: /opt/{{ inventory_hostname_short }}-{{ item }}.img
+        mode: "0777"
+      with_items: "{{ ceph_osds }}"
+
+    - name: Start loop devices
+      vexxhost.ceph.loop_device:
+        state: present
+        path: /opt/{{ inventory_hostname_short }}-{{ item }}.img
+      register: _loop_devices
+      with_items: "{{ ceph_osds }}"
