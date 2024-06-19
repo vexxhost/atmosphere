@@ -49,7 +49,7 @@
     _ceph_provisioners_ceph_fsid: "{{ _rook_ceph_mon.resources[0].data['fsid'] | b64decode }}"
     _ceph_provisioners_ceph_monitors_list: "{{ _rook_ceph_config.resources[0].data['mon_host'] | b64decode | regex_replace('\\],\\[', ']|||[') | split('|||') | sort | join(',') }}"
 
-# NOTE(fitbeard): Service and endpoints are unnecessary with Rook 
+# NOTE(fitbeard): Service and endpoints are unnecessary with Rook
 # and are left here only for back compatibility if someone decides
 # to use this data for generated 'ceph-etc' config.
 # Also Rook mgr metrics can be scraped directly from 'rook-ceph-mgr'
