@@ -16,8 +16,24 @@
   hosts: all
   tasks:
     - name: Disable swap
+      become: true
       ansible.builtin.command: swapoff -a
       ignore_errors: yes
+
+    - name: Create /var/lib/etcd directory
+      become: true
+      ansible.builtin.file:
+        path: /var/lib/etcd
+        state: directory
+
+    - name: Mount ramdisk for /var/lib/etcd directory
+      become: true
+      ansible.posix.mount:
+        path: /var/lib/etcd
+        src: tmpfs
+        fstype: tmpfs
+        opts: nodev,nosuid,size=512M
+        state: mounted
 
     # TODO(mnaser): Drop this when we can use https://github.com/vexxhost/atmosphere/pull/977
     - name: Prefix all images for the job to point to mirror
