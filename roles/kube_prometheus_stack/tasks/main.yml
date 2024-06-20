@@ -45,6 +45,18 @@
         name: "{{ kube_prometheus_stack_helm_release_name }}"
         namespace: "{{ kube_prometheus_stack_helm_release_namespace }}"
 
+- name: Wait until Keycloak service is ready
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: StatefulSet
+    name: keycloak
+    namespace: auth-system
+  register: kube_prometheus_stack_keycloak_service
+  retries: 120
+  delay: 5
+  until:
+    - kube_prometheus_stack_keycloak_service.resources[0].status.replicas == kube_prometheus_stack_keycloak_service.resources[0].status.readyReplicas # noqa: yaml[line-length]
+
 - name: Create Keycloak realm
   no_log: true
   run_once: true
