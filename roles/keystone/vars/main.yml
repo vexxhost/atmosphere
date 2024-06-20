@@ -45,7 +45,11 @@ _keystone_helm_values:
         remote_id_attribute: HTTP_OIDC_ISS
       federation:
         # TODO(mnaser): Lookup using openstack_helm_endpoints
-        trusted_dashboard: "https://{{ openstack_helm_endpoints_horizon_api_host }}/auth/websso/"
+        trusted_dashboard:
+          type: multistring
+          values:
+            - "http://localhost:9990/auth/websso/"
+            - "https://{{ openstack_helm_endpoints_horizon_api_host }}/auth/websso/"
       oslo_messaging_notifications:
         driver: noop
     wsgi_keystone: |
