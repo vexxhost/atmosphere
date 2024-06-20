@@ -126,6 +126,9 @@
   register: _octavia_implied_role_create
   changed_when: _octavia_implied_role_create.rc == 0
   failed_when: _octavia_implied_role_create.rc != 0 and 'Duplicate entry.' not in _octavia_implied_role_create.stderr
+  retries: 10
+  delay: 1
+  until: _octavia_implied_role_create.rc == 0 or 'Duplicate entry.' in _octavia_implied_role_create.stderr
 
 - name: Create Ingress
   ansible.builtin.include_role:
