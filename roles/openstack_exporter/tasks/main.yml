@@ -159,9 +159,10 @@
         labels:
           application: openstack-database-exporter
       stringData:
-        NEUTRON_DSN: "{{ _neutron_db_user.resources.0.data.DB_CONNECTION | b64decode |  regex_replace('^.*//', '') | regex_replace('@(.*)/', '@tcp(\\1)/') }}"
-        NOVA_DSN: "{{ _nova_db_user.resources.0.data.DB_CONNECTION | b64decode |  regex_replace('^.*//', '') | regex_replace('@(.*)/', '@tcp(\\1)/') }}"
-        OCTAVIA_DSN: "{{ _octavia_db_user.resources.0.data.DB_CONNECTION | b64decode |  regex_replace('^.*//', '') | regex_replace('@(.*)/', '@tcp(\\1)/') }}"
+        NEUTRON_DSN: "{{ _neutron_db_user.resources.0.data.DB_CONNECTION | b64decode | regex_replace('^.*//', '') | regex_replace('@(.*)/', '@tcp(\\1)/') }}"
+        NOVA_DSN: "{{ _nova_db_user.resources.0.data.DB_CONNECTION | b64decode | regex_replace('^.*//', '') | regex_replace('@(.*)/', '@tcp(\\1)/') }}"
+        NOVA_API_DSN: "{{ _nova_db_user.resources.0.data.DB_CONNECTION | b64decode | regex_replace('^.*//', '') | regex_replace('@(.*)/', '@tcp(\\1)/') }}_api"
+        OCTAVIA_DSN: "{{ _octavia_db_user.resources.0.data.DB_CONNECTION | b64decode | regex_replace('^.*//', '') | regex_replace('@(.*)/', '@tcp(\\1)/') }}"
 
 - name: Deploy service
   run_once: true
