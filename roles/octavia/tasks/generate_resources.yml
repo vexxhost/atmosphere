@@ -95,6 +95,11 @@
   environment:
     OS_CLOUD: atmosphere
   loop: "{{ groups['controllers'] }}"
+  register: _set_binding_for_ports
+  retries: 10
+  delay: 1
+  until: _set_binding_for_ports.rc == 0
+  failed_when: _set_binding_for_ports.rc != 0
 
 - name: Get health manager networking ports
   openstack.cloud.port_info:
