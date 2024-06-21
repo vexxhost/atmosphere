@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
-# Atmosphere-Rebuild-Time: 2024-05-30T20:29:01Z
+# Atmosphere-Rebuild-Time: 2024-06-17T13:34:17Z
 
 ARG RELEASE
 
 FROM registry.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
-ARG CINDER_GIT_REF=b0f0b9015b9dfa228dff98eeee5116d8eca1c3cc
+ARG CINDER_GIT_REF=4e00f1b2c1ebf8c819a90c254f62f2552919da7b
 ADD --keep-git-dir=true https://opendev.org/openstack/cinder.git#${CINDER_GIT_REF} /src/cinder
 RUN git -C /src/cinder fetch --unshallow
 COPY patches/cinder /patches/cinder
@@ -18,10 +18,10 @@ pip3 install \
         storpool.spopenstack
 EOF
 ADD --chmod=644 \
-    https://github.com/storpool/storpool-openstack-integration/raw/master/drivers/cinder/openstack/bobcat/storpool.py \
+    https://github.com/storpool/storpool-openstack-integration/raw/master/drivers/cinder/openstack/antelope/storpool.py \
     /var/lib/openstack/lib/python3.10/site-packages/cinder/volume/drivers/storpool.py
 ADD --chmod=644 \
-    https://github.com/storpool/storpool-openstack-integration/raw/master/drivers/os_brick/openstack/bobcat/storpool.py \
+    https://github.com/storpool/storpool-openstack-integration/raw/master/drivers/os_brick/openstack/antelope/storpool.py \
     /var/lib/openstack/lib/python3.10/site-packages/os_brick/initiator/connectors/storpool.py
 
 FROM registry.atmosphere.dev/library/openstack-python-runtime:${RELEASE}

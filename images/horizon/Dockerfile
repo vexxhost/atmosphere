@@ -1,26 +1,28 @@
 # SPDX-License-Identifier: Apache-2.0
-# Atmosphere-Rebuild-Time: 2024-05-30T20:29:01Z
+# Atmosphere-Rebuild-Time: 2024-06-17T13:34:17Z
 
 ARG RELEASE
 
 FROM registry.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
-ARG HORIZON_GIT_REF=3f1f1d46e6e47a3dbe46fb023fe69ff25d6a601b
+ARG HORIZON_GIT_REF=593ef9b56191676d0a85b55bd152c0c757fad2de
 ADD --keep-git-dir=true https://opendev.org/openstack/horizon.git#${HORIZON_GIT_REF} /src/horizon
 RUN git -C /src/horizon fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/designate-dashboard.git#master /src/designate-dashboard
+ADD --keep-git-dir=true https://opendev.org/openstack/designate-dashboard.git#stable/2023.2 /src/designate-dashboard
 RUN git -C /src/designate-dashboard fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/heat-dashboard.git#master /src/heat-dashboard
+ADD --keep-git-dir=true https://opendev.org/openstack/heat-dashboard.git#stable/2023.2 /src/heat-dashboard
 RUN git -C /src/heat-dashboard fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/ironic-ui.git#master /src/ironic-ui
+ADD --keep-git-dir=true https://opendev.org/openstack/ironic-ui.git#stable/2023.2 /src/ironic-ui
 RUN git -C /src/ironic-ui fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/magnum-ui.git#master /src/magnum-ui
+ADD --keep-git-dir=true https://opendev.org/openstack/magnum-ui.git#stable/2023.2 /src/magnum-ui
 RUN git -C /src/magnum-ui fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/manila-ui.git#master /src/manila-ui
+ADD --keep-git-dir=true https://opendev.org/openstack/manila-ui.git#stable/2023.2 /src/manila-ui
 RUN git -C /src/manila-ui fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/neutron-vpnaas-dashboard.git#master /src/neutron-vpnaas-dashboard
+ADD --keep-git-dir=true https://opendev.org/openstack/neutron-vpnaas-dashboard.git#stable/2023.2 /src/neutron-vpnaas-dashboard
 RUN git -C /src/neutron-vpnaas-dashboard fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/octavia-dashboard.git#master /src/octavia-dashboard
+ADD --keep-git-dir=true https://opendev.org/openstack/octavia-dashboard.git#stable/2023.2 /src/octavia-dashboard
 RUN git -C /src/octavia-dashboard fetch --unshallow
+COPY patches/horizon /patches/horizon
+RUN git -C /src/horizon apply --verbose /patches/horizon/*
 COPY patches/magnum-ui /patches/magnum-ui
 RUN git -C /src/magnum-ui apply --verbose /patches/magnum-ui/*
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
