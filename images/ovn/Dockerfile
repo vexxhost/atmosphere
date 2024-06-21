@@ -14,7 +14,8 @@ go build -o /usr/bin/ovn-kube-util ./cmd/ovn-kube-util
 EOF
 
 FROM registry.atmosphere.dev/library/openvswitch:${RELEASE}
-ADD --chmod=755 https://dl.k8s.io/release/v1.29.3/bin/linux/amd64/kubectl /usr/local/bin/kubectl
+ARG TARGETPLATFORM
+ADD --chmod=755 https://dl.k8s.io/release/v1.29.3/bin/${TARGETPLATFORM}/kubectl /usr/local/bin/kubectl
 ARG OVN_SERIES=23.09
 ARG OVN_VERSION=${OVN_SERIES}.0-136
 RUN <<EOF sh -xe
