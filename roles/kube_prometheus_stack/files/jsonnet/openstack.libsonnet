@@ -1,4 +1,18 @@
 {
+  prometheusRules+:: {
+    groups: [
+      {
+        name: 'recording',
+        rules:
+          [
+            {
+              record: 'nova:build_requests:sum',
+              expr: 'sum(openstack_nova_api_build_request)',
+            },
+          ],
+      },
+    ],
+  },
   prometheusAlerts+: {
     groups+: [
       {
@@ -256,10 +270,6 @@
       {
         name: 'nova-build-requests',
         rules: [
-          {
-            record: 'nova:build_requests:sum',
-            expr: 'sum(openstack_nova_api_build_request)',
-          },
           {
             alert: 'NovaStuckBuildRequest',
             annotations: {
