@@ -1,4 +1,18 @@
 {
+  prometheusRules+:: {
+    groups: [
+      {
+        name: 'recording',
+        rules:
+          [
+            {
+              record: 'nova:build_requests:sum',
+              expr: 'sum(openstack_nova_api_build_request)',
+            },
+          ],
+      },
+    ],
+  },
   prometheusAlerts+: {
     groups+: [
       {
@@ -252,6 +266,35 @@
             },
           },
         ],
+      },
+      {
+        name: 'nova-build-requests',
+        rules: [
+          {
+            alert: 'NovaStuckBuildRequest',
+            annotations: {
+              summary: 'Nova build request stuck in queue for more than 1 hour',
+              description: 'Instance ID {{ $labels.instance_uuid }} (project: {{ $labels.project_id }}) has been stuck in build request state for more than 1 hour.',
+            },
+            expr: 'openstack_nova_api_build_request > 0',
+            'for': '1h',
+            labels: {
+              severity: 'P4',
+            },
+          },
+          {
+            alert: 'NovaStuckBuildRequestIncreasing',
+            annotations: {
+              summary: 'Nova build request is increasing',
+              description: 'Build request count rate is increasing across the cluster.',
+            },
+            expr: 'rate(nova:build_requests:sum[5m]) > 0',
+            'for': '15m',
+            labels: {
+              severity: 'P3',
+            },
+          },
+        ]
       },
       {
         name: 'octavia',
