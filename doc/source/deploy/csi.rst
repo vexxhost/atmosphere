@@ -92,7 +92,7 @@ To configure the Portworx CSI driver, update your Ansible inventory as follows:
     csi_driver: portworx
     portworx_pure_flasharray_san_type: <FILL IN> # FC or ISCSI
     portworx_pure_json:
-      FlaskBlades: []
+      FlashBlades: []
       FlashArrays:
         - MgmtEndPoint: <FILL IN>
           APIToken: <FILL IN>
