@@ -33,6 +33,15 @@
         group: root
         mode: "0644"
 
+- name: Create namespace
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: portworx
+
 - name: Install Portworx
   run_once: true
   kubernetes.core.k8s:
