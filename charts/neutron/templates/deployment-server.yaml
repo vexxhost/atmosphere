@@ -95,9 +95,13 @@ spec:
         {{- if ( has "ovn" .Values.network.backend ) }}
         - name: ovn-neutron-init
 {{ tuple $envAll "neutron_server" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.agent.metadata | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "neutron_ovn_metadata_agent" "container" "ovn_neutron_init" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
           command:
             - /tmp/neutron-ovn-init.sh
           volumeMounts:
+            - name: run-openvswitch
+              mountPath: /run/openvswitch
             - name: pod-shared
               mountPath: /tmp/pod-shared
             - name: neutron-bin
@@ -276,6 +280,9 @@ spec:
 {{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_messaging.auth.admin.secret.tls.internal "path" "/etc/rabbitmq/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
 {{ if $mounts_neutron_server.volumeMounts }}{{ toYaml $mounts_neutron_server.volumeMounts | indent 12 }}{{ end }}
       volumes:
+        - name: run-openvswitch
+          hostPath:
+            path: /run/openvswitch
         - name: pod-tmp
           emptyDir: {}
         - name: pod-shared

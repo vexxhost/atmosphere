@@ -17,15 +17,30 @@ limitations under the License.
 set -ex
 COMMAND="${@:-start}"
 
-OVS_SOCKET=/run/openvswitch/db.sock
+DPDK_ENABLED=false
+OVS_CONFIG=""
+OVS_CONFIG_FILE=/tmp/ovs.conf
 OVS_PID=/run/openvswitch/ovs-vswitchd.pid
+OVS_SOCKET=/run/openvswitch/db.sock
+if [ -f ${OVS_CONFIG_FILE} ]; then
+  OVS_CONFIG=$(cat ${OVS_CONFIG_FILE})
+else
+  echo "Cannot find ${OVS_CONFIG_FILE}" 1>&2
+  exit
+fi
 
-# Create vhostuser directory and grant nova user (default UID 42424) access
-# permissions.
-{{- if .Values.conf.ovs_dpdk.enabled }}
-mkdir -p /run/openvswitch/{{ .Values.conf.ovs_dpdk.vhostuser_socket_dir }}
-chown {{ .Values.pod.user.nova.uid }}.{{ .Values.pod.user.nova.uid }} /run/openvswitch/{{ .Values.conf.ovs_dpdk.vhostuser_socket_dir }}
-{{- end }}
+function get_ovs_config_value {
+  values=${@:1:$#-1}
+  filter=${!#}
+  value=$(echo ${values} | jq -r ${filter})
+  if [[ "${value}" == "null" ]]; then
+    echo ""
+  else
+    echo "${value}"
+  fi
+}
+
+NOVA_UID=$(get_ovs_config_value ${OVS_CONFIG} '.user.nova.uid')
 
 function start () {
   t=0
@@ -39,41 +54,50 @@ function start () {
       fi
   done
 
-  ovs-vsctl --db=unix:${OVS_SOCKET} --no-wait show
-{{- if .Values.conf.ovs_hw_offload.enabled }}
-  ovs-vsctl --db=unix:${OVS_SOCKET} --no-wait set Open_vSwitch . other_config:hw-offload={{ .Values.conf.ovs_hw_offload.enabled }}
-{{- end }}
-{{- if .Values.conf.ovs_other_config.handler_threads }}
-  ovs-vsctl --db=unix:${OVS_SOCKET} --no-wait set Open_vSwitch . other_config:n-handler-threads={{ .Values.conf.ovs_other_config.handler_threads }}
-{{- end }}
-{{- if .Values.conf.ovs_other_config.revalidator_threads }}
-  ovs-vsctl --db=unix:${OVS_SOCKET} --no-wait set Open_vSwitch . other_config:n-revalidator-threads={{ .Values.conf.ovs_other_config.revalidator_threads }}
-{{- end }}
+  # aligning this with neutron init scripts referencing config from file instead of writing
+  # config to script directly
+  if [[ $(get_ovs_config_value ${OVS_CONFIG} '.ovs_dpdk.enabled') == "true" ]]; then
+    DPDK_ENABLED=true
+    HUGEPAGE_DIR=$(get_ovs_config_value ${OVS_CONFIG} '.ovs_dpdk.hugepages_mountpath')
+    SOCKET_MEMORY=$(get_ovs_config_value ${OVS_CONFIG} '.ovs_dpdk.socket_memory')
+    VHOST_SOCK_DIR=$(get_ovs_config_value ${OVS_CONFIG} '.ovs_dpdk.vhostuser_socket_dir')
 
-{{- if .Values.conf.ovs_dpdk.enabled }}
-    ovs-vsctl --db=unix:${OVS_SOCKET} --no-wait set Open_vSwitch . other_config:dpdk-hugepage-dir={{ .Values.conf.ovs_dpdk.hugepages_mountpath | quote }}
-    ovs-vsctl --db=unix:${OVS_SOCKET} --no-wait set Open_vSwitch . other_config:dpdk-socket-mem={{ .Values.conf.ovs_dpdk.socket_memory | quote }}
+    # Create vhostuser directory and grant nova user (default UID 42424) access
+    # permissions.
+    mkdir -p /run/openvswitch/${VHOST_SOCK_DIR}
+    chown ${NOVA_UID}.${NOVA_UID} /run/openvswitch/${VHOST_SOCK_DIR}
 
-{{- if .Values.conf.ovs_dpdk.mem_channels }}
-    ovs-vsctl --db=unix:${OVS_SOCKET} --no-wait set Open_vSwitch . other_config:dpdk-mem-channels={{ .Values.conf.ovs_dpdk.mem_channels | quote }}
-{{- end }}
+    ovs-vsctl --db=unix:${OVS_SOCKET} --no-wait set Open_vSwitch . other_config:dpdk-hugepage-dir=${HUGEPAGE_DIR}
+    ovs-vsctl --db=unix:${OVS_SOCKET} --no-wait set Open_vSwitch . other_config:dpdk-socket-mem=${SOCKET_MEMORY}
+    ovs-vsctl --db=unix:${OVS_SOCKET} --no-wait set Open_vSwitch . other_config:vhost-sock-dir=${VHOST_SOCK_DIR}
 
-{{- if hasKey .Values.conf.ovs_dpdk "pmd_cpu_mask" }}
-    ovs-vsctl --db=unix:${OVS_SOCKET} --no-wait set Open_vSwitch . other_config:pmd-cpu-mask={{ .Values.conf.ovs_dpdk.pmd_cpu_mask | quote }}
-    PMD_CPU_MASK={{ .Values.conf.ovs_dpdk.pmd_cpu_mask | quote }}
-{{- end }}
+    MEM_CHANNELS=$(get_ovs_config_value ${OVS_CONFIG} '.ovs_dpdk.mem_channels')
+    if [[ -n ${MEM_CHANNELS} ]]; then
+      ovs-vsctl --db=unix:${OVS_SOCKET} --no-wait set Open_vSwitch . other_config:dpdk-mem-channels=${MEM_CHANNELS}
+    fi
 
-{{- if hasKey .Values.conf.ovs_dpdk "lcore_mask" }}
-    ovs-vsctl --db=unix:${OVS_SOCKET} --no-wait set Open_vSwitch . other_config:dpdk-lcore-mask={{ .Values.conf.ovs_dpdk.lcore_mask | quote }}
-    LCORE_MASK={{ .Values.conf.ovs_dpdk.lcore_mask | quote }}
-{{- end }}
+    PMD_CPU_MASK=$(get_ovs_config_value ${OVS_CONFIG} '.ovs_dpdk.pmd_cpu_mask')
+    if [[ -n ${PMD_CPU_MASK} ]]; then
+      ovs-vsctl --db=unix:${OVS_SOCKET} --no-wait set Open_vSwitch . other_config:pmd-cpu-mask=${PMD_CPU_MASK}
+    fi
 
-{{- if hasKey .Values.conf.ovs_dpdk "vhost_iommu_support" }}
-    ovs-vsctl --db=unix:${OVS_SOCKET} --no-wait set Open_vSwitch . other_config:vhost-iommu-support={{ .Values.conf.ovs_dpdk.vhost_iommu_support }}
-{{- end }}
+    LCORE_MASK=$(get_ovs_config_value ${OVS_CONFIG} '.ovs_dpdk.lcore_mask')
+    if [[ -n ${LCORE_MASK} ]]; then
+      ovs-vsctl --db=unix:${OVS_SOCKET} --no-wait set Open_vSwitch . other_config:dpdk-lcore-mask=${LCORE_MASK}
+    fi
 
-    ovs-vsctl --db=unix:${OVS_SOCKET} --no-wait set Open_vSwitch . other_config:vhost-sock-dir={{ .Values.conf.ovs_dpdk.vhostuser_socket_dir | quote }}
+    VHOST_IOMMU_SUPPORT=$(get_ovs_config_value ${OVS_CONFIG} '.ovs_dpdk.vhost_iommu_support')
+    if [[ -n ${VHOST_IOMMU_SUPPORT} ]]; then
+      ovs-vsctl --db=unix:${OVS_SOCKET} --no-wait set Open_vSwitch . other_config:vhost-iommu-support=${VHOST_IOMMU_SUPPORT}
+    fi
+
+    USERSPACE_TSO_ENABLE=$(get_ovs_config_value ${OVS_CONFIG} '.ovs_dpdk.userspace_tso_enable')
+    if [[ -n ${USERSPACE_TSO_ENABLE} ]]; then
+      ovs-vsctl --db=unix:${OVS_SOCKET} --no-wait set Open_vSwitch . other_config:userspace-tso-enable=${USERSPACE_TSO_ENABLE}
+    fi
+
     ovs-vsctl --db=unix:${OVS_SOCKET} --no-wait set Open_vSwitch . other_config:dpdk-init=true
+  fi
 
   # No need to create the cgroup if lcore_mask or pmd_cpu_mask is not set.
   if [[ -n ${PMD_CPU_MASK} || -n ${LCORE_MASK} ]]; then
@@ -111,7 +135,6 @@ function start () {
           fi
       fi
   fi
-{{- end }}
 
   exec /usr/sbin/ovs-vswitchd unix:${OVS_SOCKET} \
           -vconsole:emer \
@@ -128,16 +151,16 @@ function stop () {
 
 find_latest_ctl_file() {
     latest_file=""
-    latest_file=$(ls -lt /run/openvswitch/*.ctl | awk 'NR==1 {if ($3 == "{{ .Values.conf.poststart.rootUser }}") print $NF}')
+    latest_file=$(ls -lt /run/openvswitch/*.ctl | awk 'NR==1 {if ($3 == "$(get_ovs_config_value ${OVS_CONFIG} '.poststart.rootUser')") print $NF}')
 
-    echo "$latest_file"
+    echo "${latest_file}"
 }
 
 function poststart () {
   # This enables the usage of 'ovs-appctl' from neutron-ovs-agent pod.
 
   # Wait for potential new ctl file before continuing
-  timeout={{ .Values.conf.poststart.timeout }}
+  timeout=$(get_ovs_config_value ${OVS_CONFIG} '.poststart.timeout')
   start_time=$(date +%s)
   while true; do
       latest_ctl_file=$(find_latest_ctl_file)
@@ -157,19 +180,22 @@ function poststart () {
       sleep 1
   done
 
-  PID=$(cat $OVS_PID)
+  PID=$(cat ${OVS_PID})
   OVS_CTL=/run/openvswitch/ovs-vswitchd.${PID}.ctl
 
-  until [ -S $OVS_CTL ]
+  until [ -S ${OVS_CTL} ]
   do
-      echo "Waiting for file $OVS_CTL"
+      echo "Waiting for file ${OVS_CTL}"
       sleep 1
   done
-  chown {{ .Values.pod.user.nova.uid }}.{{ .Values.pod.user.nova.uid }} ${OVS_CTL}
+  chown ${NOVA_UID}.${NOVA_UID} ${OVS_CTL}
 
-{{- if .Values.conf.poststart.extraCommand }}
-{{ .Values.conf.poststart.extraCommand | indent 2 }}
-{{- end }}
+  /tmp/openvswitch-nic-init.sh > /var/tmp/${POD_NAME}-vswitchd-nic-init.log 2>&1
+
+  POSTSTART=$(get_ovs_config_value ${OVS_CONFIG} '.poststart.extraCommand')
+  if [[ -n ${POSTSTART} ]]; then
+    bash -c ${POSTSTART}
+  fi
 
 }
 
