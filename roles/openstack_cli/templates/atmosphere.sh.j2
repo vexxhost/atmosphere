@@ -8,7 +8,11 @@ alias osc='nerdctl run --rm --network host \
       --volume {{ '/etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro' if ansible_facts['os_family']
       in ['Debian'] else '/etc/pki/ca-trust/extracted/openssl/ca-bundle.trust.crt:/etc/ssl/certs/ca-certificates.crt:ro' }} \
 {% endif %}
+{% if ansible_facts['distribution_version'] | ansible.builtin.version('20.04', '<=') %}
+      --env OS_CLOUD=atmosphere \
+{% else %}
       --env-file <(env | grep OS_) \
+{% endif %}
       {{ atmosphere_images['openstack_cli'] }}'
 alias openstack='osc openstack'
 alias nova='osc nova'
