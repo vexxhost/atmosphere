@@ -91,7 +91,7 @@ image:
   RUN \
     apt-get update -qq && \
     apt-get install -qq -y --no-install-recommends \
-      rsync openssh-client && \
+      python3 rsync openssh-client && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
   COPY +build.venv.runtime/venv /venv
