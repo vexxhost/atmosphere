@@ -41,7 +41,7 @@ jobs:
         run: earthly +image --tag ${{ github.sha }}
         env:
           EARTHLY_CI: true
-          EARTHLY_PUSH: "${{ github.event_name == 'push' }}"
+          EARTHLY_PUSH: "${{ github.event_name == 'push' || github.event_name == 'release' }}"
           EARTHLY_REMOTE_CACHE: ghcr.io/vexxhost/atmosphere:cache
 
   publish:
