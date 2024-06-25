@@ -5,6 +5,7 @@ ARG RELEASE
 
 FROM registry.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
 ARG NEUTRON_GIT_REF=019294c71d94b788c14b23dc1da3c21f51bcdb0b
+ARG POLICY_SERVER_VERSION=0.1.0
 ADD --keep-git-dir=true https://opendev.org/openstack/neutron.git#${NEUTRON_GIT_REF} /src/neutron
 RUN git -C /src/neutron fetch --unshallow
 ARG NEUTRON_VPNAAS_GIT_REF=7bc6d94305d34269d7522a9850c22aa42b50cdab
@@ -14,7 +15,8 @@ RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF b
 pip3 install \
     --constraint /upper-constraints.txt \
         /src/neutron \
-        /src/neutron-vpnaas
+        /src/neutron-vpnaas \
+        neutron-policy-server==${POLICY_SERVER_VERSION}
 EOF
 
 FROM registry.atmosphere.dev/library/openstack-python-runtime:${RELEASE}
