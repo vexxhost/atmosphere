@@ -1,0 +1,53 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: portworx
+---
+kind: StorageCluster
+apiVersion: core.libopenstorage.org/v1
+metadata:
+  name: px-cluster-567cacc6-e39c-49da-9d35-2bafacfcf18c
+  namespace: portworx
+  annotations:
+    portworx.io/install-source: "https://install.portworx.com/?operator=true&mc=false&kbver=1.28.0&ns=portworx&oem=esse&user=2487eaa2-e557-4f68-8e87-9b56c0a4498f&b=true&iop=6&s=%22size%3D150%22&pureSanType=FC&ce=pure&c=px-cluster-567cacc6-e39c-49da-9d35-2bafacfcf18c&stork=true&csi=true&mon=true&tel=true&st=k8s&promop=true"
+    portworx.io/misc-args: "--oem esse"
+    portworx.io/disable-storage-class: "true"
+    portworx.io/pvc-controller-secure-port: "20257"
+spec:
+  image: portworx/oci-monitor:3.1.1
+  imagePullPolicy: Always
+  kvdb:
+    internal: true
+  cloudStorage:
+    deviceSpecs:
+    - size=150
+  secretsProvider: k8s
+  stork:
+    enabled: true
+    args:
+      webhook-controller: "true"
+  autopilot:
+    enabled: true
+  runtimeOptions:
+    default-io-profile: "6"
+  csi:
+    enabled: true
+  monitoring:
+    telemetry:
+      enabled: true
+    prometheus:
+      enabled: false
+      exportMetrics: true
+  env:
+  - name: PURE_FLASHARRAY_SAN_TYPE
+    value: "{{ portworx_pure_flasharray_san_type }}"
+  placement:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: openstack-control-plane
+            operator: In
+            values:
+            - "enabled"
