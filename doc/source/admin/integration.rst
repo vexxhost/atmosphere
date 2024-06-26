@@ -75,3 +75,45 @@ the robust features of Azure AD within the flexible framework of Keycloak.
 
 For a deeper dive into the Azure AD configuration within Keycloak, consult the
 `Keycloak Microsoft Identity Provider documentation <https://www.keycloak.org/docs/latest/server_admin/#_microsoft>`_.
+
+*********************
+Neutron Policy Server
+*********************
+
+Neutron Policy Server is a straightforward service that provide extra policy checks.
+This service running as a sidecar WSGI server which follows olso.policy HttpCheck rules
+so it can be directly added to neutron policy file.
+
+By default policy server is enabled and added to policy file for neutron.
+To remove it from policy file, set ``neutron_policy_server_integration_enabled`` to ``false``
+when deployment.
+
+Neutron Port and address pair check
+===================================
+
+Currently Neutron Policy Server provides two checks:
+
+* Port update check (``POST``, ``/port-update``):
+  It checks if any existing mac address and IP address from this port is binding in address pair from other ports.
+  Fail the check if any match found.
+  This is binding with Neutron policy ``update_port:mac_address`` and ``update_port:fixed_ips``.
+* Port delete check(``POST``, ``/port-delete``):
+  It checks if any mac address and IP address from this port is binding in address pair from other ports.
+  Fail the check if any match found.
+  This is binding with Neutron policy ``delete_port``.
+
+The policy with above two checks will look something like this:
+
+.. code-block:: JSON
+
+  {
+    "delete_port": "((rule:admin_only) or (rule:service_api) or role:member and rule:network_owner or role:member and project_id:%(project_id)s) and http://neutron-api:9697/port-delete"
+    "update_port:mac_address": "((rule:admin_only) or (rule:service_api)) and http://neutron-api:9697/port-update"
+    "update_port:fixed_ips": "((rule:admin_only) or (rule:service_api) or role:member and rule:network_owner) and http://neutron-api:9697/port-update"
+  }
+
+
+Service requirements
+====================
+
+Neutron Policy Server depends on database config from neutron and dose not consume extra configurations to run.
