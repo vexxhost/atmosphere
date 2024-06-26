@@ -2,6 +2,7 @@
 # Atmosphere-Rebuild-Time: 2024-06-25T13:53:44Z
 
 FROM quay.io/centos/centos:stream9
+ADD --chmod=755 https://github.com/krallin/tini/releases/download/v0.19.0/tini /tini
 ARG OVS_SERIES=3.2
 ARG OVS_VERSION=${OVS_SERIES}.0-80
 RUN <<EOF sh -xe
