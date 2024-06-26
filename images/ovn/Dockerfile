@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Atmosphere-Rebuild-Time: 2024-05-30T20:29:01Z
+# Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
 
 ARG RELEASE
 
@@ -16,8 +16,8 @@ EOF
 FROM registry.atmosphere.dev/library/openvswitch:${RELEASE}
 ARG TARGETPLATFORM
 ADD --chmod=755 https://dl.k8s.io/release/v1.29.3/bin/${TARGETPLATFORM}/kubectl /usr/local/bin/kubectl
-ARG OVN_SERIES=23.09
-ARG OVN_VERSION=${OVN_SERIES}.0-136
+ARG OVN_SERIES=24.03
+ARG OVN_VERSION=${OVN_SERIES}.1-44
 RUN <<EOF sh -xe
 dnf -y --setopt=install_weak_deps=False --setopt=tsflags=nodocs install \
     firewalld-filesystem hostname ovn${OVN_SERIES}-${OVN_VERSION}.el9s procps-ng
