@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Atmosphere-Rebuild-Time: 2024-06-17T13:34:17Z
+# Atmosphere-Rebuild-Time: 2024-06-25T13:53:44Z
 
 FROM golang:1.21 AS build
 ARG KUBERNETES_ENTRYPOINT_GIT_REF=4fbcf7ce324dc66e78480f73035e31434cfea1e8
