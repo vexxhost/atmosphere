@@ -4,7 +4,7 @@
 ARG RELEASE
 
 FROM registry.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
-ARG IRONIC_GIT_REF=22aa29b864eecd00bfb7c67cc2075030da1eb1d0
+ARG IRONIC_GIT_REF=84fb43b81b9aab2e579ea961cb692a331ddf2125
 ADD --keep-git-dir=true https://opendev.org/openstack/ironic.git#${IRONIC_GIT_REF} /src/ironic
 RUN git -C /src/ironic fetch --unshallow
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe

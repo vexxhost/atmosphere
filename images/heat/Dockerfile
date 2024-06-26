@@ -4,7 +4,7 @@
 ARG RELEASE
 
 FROM registry.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
-ARG HEAT_GIT_REF=80eea85194825773d1b60ecc4386b2d5ba52a066
+ARG HEAT_GIT_REF=512052a0553cc3661aa850542a13466b07a0c5c6
 ADD --keep-git-dir=true https://opendev.org/openstack/heat.git#${HEAT_GIT_REF} /src/heat
 RUN git -C /src/heat fetch --unshallow
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe

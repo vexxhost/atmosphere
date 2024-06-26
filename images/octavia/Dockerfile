@@ -4,10 +4,10 @@
 ARG RELEASE
 
 FROM registry.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
-ARG OCTAVIA_GIT_REF=824b51a1dad80292b7a8ad5d61bf3ce706b1fb29
+ARG OCTAVIA_GIT_REF=b61c340b096f0a2a90a7db8209639da11e25a4c6
 ADD --keep-git-dir=true https://opendev.org/openstack/octavia.git#${OCTAVIA_GIT_REF} /src/octavia
 RUN git -C /src/octavia fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/ovn-octavia-provider.git#master /src/ovn-octavia-provider
+ADD --keep-git-dir=true https://opendev.org/openstack/ovn-octavia-provider.git#stable/2024.1 /src/ovn-octavia-provider
 RUN git -C /src/ovn-octavia-provider fetch --unshallow
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
 pip3 install \

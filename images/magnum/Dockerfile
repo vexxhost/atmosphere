@@ -12,7 +12,7 @@ RUN tar -xzf /helm.tar.gz
 RUN mv /${TARGETOS}-${TARGETARCH}/helm /usr/bin/helm
 
 FROM registry.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
-ARG MAGNUM_GIT_REF=c613ea4e419edc0086116da07e93cf19206746e1
+ARG MAGNUM_GIT_REF=2045ffb5ccbfb7873228eba9a6cecc1f65f4ab3f
 ADD --keep-git-dir=true https://opendev.org/openstack/magnum.git#${MAGNUM_GIT_REF} /src/magnum
 RUN git -C /src/magnum fetch --unshallow
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe

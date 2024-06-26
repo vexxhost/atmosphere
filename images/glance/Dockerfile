@@ -4,10 +4,10 @@
 ARG RELEASE
 
 FROM registry.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
-ARG GLANCE_GIT_REF=0bcd6cd71c09917c6734421374fd598d73e8d0cc
+ARG GLANCE_GIT_REF=eb3eb4ea269f608a7b534bb205f917309420cd51
 ADD --keep-git-dir=true https://opendev.org/openstack/glance.git#${GLANCE_GIT_REF} /src/glance
 RUN git -C /src/glance fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/glance_store.git#master /src/glance_store
+ADD --keep-git-dir=true https://opendev.org/openstack/glance_store.git#stable/2024.1 /src/glance_store
 RUN git -C /src/glance_store fetch --unshallow
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
 pip3 install \
