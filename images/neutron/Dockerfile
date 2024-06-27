@@ -7,7 +7,8 @@ FROM registry.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
 ARG NEUTRON_GIT_REF=c6d4a3e364b11568dfd36a11551f553c11c48308
 ADD --keep-git-dir=true https://opendev.org/openstack/neutron.git#${NEUTRON_GIT_REF} /src/neutron
 RUN git -C /src/neutron fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/neutron-vpnaas.git#stable/2024.1 /src/neutron-vpnaas
+ARG NEUTRON_VPNAAS_GIT_REF=297855d0c98de29092ef94ce6686c56eb9f6b422
+ADD --keep-git-dir=true https://opendev.org/openstack/neutron-vpnaas.git#${NEUTRON_VPNAAS_GIT_REF} /src/neutron-vpnaas
 RUN git -C /src/neutron-vpnaas fetch --unshallow
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
 pip3 install \
