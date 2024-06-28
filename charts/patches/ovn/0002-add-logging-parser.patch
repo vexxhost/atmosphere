@@ -1,0 +1,206 @@
+diff --git a/ovn/templates/configmap-bin.yaml b/ovn/templates/configmap-bin.yaml
+index 82001f99..77547470 100644
+--- a/ovn/templates/configmap-bin.yaml
++++ b/ovn/templates/configmap-bin.yaml
+@@ -26,4 +26,6 @@ data:
+ {{- end }}
+   ovn-controller-init.sh: |
+ {{ tuple "bin/_ovn-controller-init.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
++  ovn-network-logging-parser.sh: |
++{{ tuple "bin/_ovn-network-logging-parser.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+ {{- end }}
+diff --git a/ovn/templates/configmap-etc.yaml b/ovn/templates/configmap-etc.yaml
+index 47b84be8..0d221f19 100644
+--- a/ovn/templates/configmap-etc.yaml
++++ b/ovn/templates/configmap-etc.yaml
+@@ -17,6 +17,12 @@ limitations under the License.
+ {{- $envAll := index . 1 }}
+ {{- with $envAll }}
+ 
++{{- if empty (index .Values.conf.ovn_network_logging_parser_uwsgi.uwsgi "http-socket") -}}
++{{- $http_socket_port := tuple "ovn_logging_parser" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" | toString }}
++{{- $http_socket := printf "0.0.0.0:%s" $http_socket_port }}
++{{- $_ := set .Values.conf.ovn_network_logging_parser_uwsgi.uwsgi "http-socket" $http_socket -}}
++{{- end -}}
++
+ ---
+ apiVersion: v1
+ kind: Secret
+@@ -25,7 +31,7 @@ metadata:
+ type: Opaque
+ data:
+   auto_bridge_add: {{ toJson $envAll.Values.conf.auto_bridge_add | b64enc }}
+-
++  neutron-ovn-network-logging-parser-uwsgi.ini: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.ovn_network_logging_parser_uwsgi | b64enc }}
+ {{- end }}
+ {{- end }}
+ 
+diff --git a/ovn/templates/daemonset-controller-gw.yaml b/ovn/templates/daemonset-controller-gw.yaml
+index eb309c5e..b667b4f1 100644
+--- a/ovn/templates/daemonset-controller-gw.yaml
++++ b/ovn/templates/daemonset-controller-gw.yaml
+@@ -112,6 +112,40 @@ spec:
+               mountPath: /var/run/ovn
+             - name: run-openvswitch
+               mountPath: /var/run/openvswitch
++            - name: shared
++              mountPath: /var/log/ovn/
++        {{- if .Values.pod.sidecars.vector }}
++        - name: vector
++{{ tuple $envAll "vector" | include "helm-toolkit.snippets.image" | indent 10 }}
++{{ tuple $envAll $envAll.Values.pod.resources.ovn_controller_gw.vector | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
++{{ dict "envAll" $envAll "application" "ovn_controller_gw" "container" "vector" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
++          volumeMounts:
++            - name: vector-config
++              mountPath: /etc/vector
++            - name: shared
++              mountPath: /logs
++        {{- end }}
++        {{- if .Values.pod.sidecars.ovn_logging_parser }}
++        - name: log-parser
++{{ tuple $envAll "ovn_logging_parser" | include "helm-toolkit.snippets.image" | indent 10 }}
++{{ tuple $envAll $envAll.Values.pod.resources.ovn_controller_gw.ovn_logging_parser | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
++{{ dict "envAll" $envAll "application" "ovn_controller_gw" "container" "ovn_logging_parser" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
++          command:
++            - /tmp/ovn-network-logging-parser.sh
++            - start
++          env:
++            - name: VECTOR_HTTP_ENDPOINT
++              value: localhost:5001
++          ports:
++            - name: http
++              containerPort: {{ tuple "ovn_logging_parser" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
++              protocol: TCP
++          volumeMounts:
++            - name: neutron-etc
++              mountPath: /etc/neutron/neutron.conf
++              subPath: neutron.conf
++              readOnly: true
++        {{- end }}
+       volumes:
+         - name: ovn-bin
+           configMap:
+@@ -125,4 +159,17 @@ spec:
+           secret:
+             secretName: {{ $configMapName }}
+             defaultMode: 0444
++        - name: shared
++          emptyDir: {}
++        {{- if .Values.pod.sidecars.vector }}
++        - name: vector-config
++          secret:
++            secretName: ovn-vector-config
++        {{- end }}
++        {{- if .Values.pod.sidecars.ovn_logging_parser }}
++        - name: neutron-etc
++          secret:
++            secretName: neutron-etc
++            defaultMode: 0444
++        {{- end }}
+ {{- end }}
+diff --git a/ovn/values.yaml b/ovn/values.yaml
+index 214dd16f..63baa34e 100644
+--- a/ovn/values.yaml
++++ b/ovn/values.yaml
+@@ -26,6 +26,8 @@ images:
+     ovn_controller: docker.io/openstackhelm/ovn:latest-ubuntu_focal
+     dep_check: quay.io/airshipit/kubernetes-entrypoint:v1.0.0
+     image_repo_sync: docker.io/library/docker:17.07.0
++    vector: docker.io/timberio/vector:0.39.0-debian
++    ovn_logging_parser: docker.io/vexxhost/neutron-ovn-network-logging-parser:latest
+   pull_policy: "IfNotPresent"
+   local_registry:
+     active: false
+@@ -86,6 +88,24 @@ conf:
+   use_fqdn:
+     compute: true
+ 
++  ovn_network_logging_parser_uwsgi:
++    uwsgi:
++      add-header: "Connection: close"
++      buffer-size: 65535
++      die-on-term: true
++      enable-threads: true
++      exit-on-reload: false
++      hook-master-start: unix_signal:15 gracefully_kill_them_all
++      lazy-apps: true
++      log-x-forwarded-for: true
++      master: true
++      processes: 1
++      procname-prefix-spaced: "neutron-policy-server:"
++      route-user-agent: '^kube-probe.* donotlog:'
++      thunder-lock: true
++      worker-reload-mercy: 80
++      wsgi-file: /var/lib/openstack/bin/neutron-policy-server-wsgi
++
+ pod:
+   security_context:
+     ovn_northd:
+@@ -112,6 +132,12 @@ pod:
+           capabilities:
+             add:
+               - SYS_NICE
++        ovn_logging_parser:
++          allowPrivilegeEscalation: false
++          readOnlyRootFilesystem: true
++        vector:
++          allowPrivilegeEscalation: false
++          readOnlyRootFilesystem: true
+   tolerations:
+     ovn_ovsdb_nb:
+       enabled: false
+@@ -240,6 +266,21 @@ pod:
+         limits:
+           memory: "1024Mi"
+           cpu: "2000m"
++    ovn_controller_gw:
++      ovn_logging_parser:
++        requests:
++          memory: "128Mi"
++          cpu: "100m"
++        limits:
++          memory: "256Mi"
++          cpu: "500m"
++      vector:
++        requests:
++          memory: "128Mi"
++          cpu: "100m"
++        limits:
++          memory: "256Mi"
++          cpu: "500m"
+     jobs:
+       image_repo_sync:
+         requests:
+@@ -248,6 +289,9 @@ pod:
+         limits:
+           memory: "1024Mi"
+           cpu: "2000m"
++  sidecars:
++    ovn_logging_parser: false
++    vector: false
+ 
+ secrets:
+   oci_image_registry:
+@@ -311,6 +355,22 @@ endpoints:
+         default: 6642
+       raft:
+         default: 6644
++  ovn_logging_parser:
++    name: ovn-logging-parser
++    namespace: null
++    hosts:
++      default: localhost
++    host_fqdn_override:
++      default: localhost
++    scheme:
++      default: 'http'
++      service: 'http'
++    path:
++      default: "/logs"
++    port:
++      api:
++        default: 9697
++        service: 9697
+ 
+ network_policy:
+   ovn_ovsdb_nb:
