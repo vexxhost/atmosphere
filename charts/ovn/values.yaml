@@ -26,6 +26,8 @@ images:
     ovn_controller: docker.io/openstackhelm/ovn:latest-ubuntu_focal
     dep_check: quay.io/airshipit/kubernetes-entrypoint:v1.0.0
     image_repo_sync: docker.io/library/docker:17.07.0
+    vector: docker.io/timberio/vector:0.39.0-debian
+    ovn_logging_parser: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
   pull_policy: "IfNotPresent"
   local_registry:
     active: false
@@ -86,6 +88,24 @@ conf:
   use_fqdn:
     compute: true
 
+  ovn_network_logging_parser_uwsgi:
+    uwsgi:
+      add-header: "Connection: close"
+      buffer-size: 65535
+      die-on-term: true
+      enable-threads: true
+      exit-on-reload: false
+      hook-master-start: unix_signal:15 gracefully_kill_them_all
+      lazy-apps: true
+      log-x-forwarded-for: true
+      master: true
+      processes: 1
+      procname-prefix-spaced: "neutron-policy-server:"
+      route-user-agent: '^kube-probe.* donotlog:'
+      thunder-lock: true
+      worker-reload-mercy: 80
+      wsgi-file: /var/lib/openstack/bin/neutron-policy-server-wsgi
+
 pod:
   security_context:
     ovn_northd:
@@ -112,6 +132,12 @@ pod:
           capabilities:
             add:
               - SYS_NICE
+        ovn_logging_parser:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+        vector:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
   tolerations:
     ovn_ovsdb_nb:
       enabled: false
@@ -240,6 +266,21 @@ pod:
         limits:
           memory: "1024Mi"
           cpu: "2000m"
+    ovn_controller_gw:
+      ovn_logging_parser:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "256Mi"
+          cpu: "500m"
+      vector:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "256Mi"
+          cpu: "500m"
     jobs:
       image_repo_sync:
         requests:
@@ -248,6 +289,9 @@ pod:
         limits:
           memory: "1024Mi"
           cpu: "2000m"
+  sidecars:
+    ovn_logging_parser: false
+    vector: false
 
 secrets:
   oci_image_registry:
@@ -311,6 +355,22 @@ endpoints:
         default: 6642
       raft:
         default: 6644
+  ovn_logging_parser:
+    name: ovn-logging-parser
+    namespace: null
+    hosts:
+      default: localhost
+    host_fqdn_override:
+      default: localhost
+    scheme:
+      default: 'http'
+      service: 'http'
+    path:
+      default: "/logs"
+    port:
+      api:
+        default: 9697
+        service: 9697
 
 network_policy:
   ovn_ovsdb_nb:
