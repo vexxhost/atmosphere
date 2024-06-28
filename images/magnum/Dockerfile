@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Atmosphere-Rebuild-Time: 2024-05-30T20:29:01Z
+# Atmosphere-Rebuild-Time: 2024-06-28T12:14:26Z
 
 ARG RELEASE
 
@@ -21,7 +21,7 @@ RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF b
 pip3 install \
     --constraint /upper-constraints.txt \
         /src/magnum \
-        magnum-cluster-api==0.19.2
+        magnum-cluster-api==0.20.0
 EOF
 
 FROM registry.atmosphere.dev/library/openstack-python-runtime:${RELEASE}

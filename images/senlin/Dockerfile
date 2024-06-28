@@ -1,4 +1,5 @@
 # Copyright (c) 2024 VEXXHOST, Inc.
+# Atmosphere-Rebuild-Time: 2024-06-28T12:14:26Z
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
