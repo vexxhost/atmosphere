@@ -524,4 +524,4 @@ _kube_prometheus_stack_helm_values:
     prometheus:
       monitor:
         relabelings: *relabelings_instance_to_node_name
-  additionalPrometheusRulesMap: "{{ lookup('vexxhost.atmosphere.jsonnet', 'jsonnet/rules.jsonnet') }}"
+  additionalPrometheusRulesMap: "{{ lookup('vexxhost.atmosphere.jsonnet', 'jsonnet/rules.jsonnet') | combine(kube_prometheus_stack_extend_rules, recursive=true) }}"

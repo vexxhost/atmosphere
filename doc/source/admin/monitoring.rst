@@ -260,6 +260,41 @@ so by making the following changes to your inventory:
 In the example above, we are whitelisting the IP range ``10.0.0.0/24`` and the IP address
 ``172.10.0.1``.
 
+Extend Rules
+~~~~~~~~~~~~
+
+It's possible to extend existing prometheus rules
+by using ``kube_prometheus_stack_extend_rules`` variable to your inventory.
+Here is an example:
+
+.. code-block:: yaml
+
+   kube_prometheus_stack_extend_rules:
+     ipmi-exporter-extends: {
+         groups: [
+             {
+                 name: "rules",
+                 rules: [
+                     {
+                         alert: "IpmiCollectorDown",
+                         expr: "ipmi_up == 0",
+                         for: "45m",
+                         labels: {
+                             severity: "P2"
+                         }
+                     }
+                 ]
+             }
+         ]
+     }
+
+.. warning::
+    Be careful on pick your group name (``ipmi-exporter-extends`` in above example).
+    If you use existing rule group name like, it will overriding existing rule group.
+    For example if you change above group name from ``ipmi-exporter-extends`` to
+    ``ipmi-exporter``. It will override previous defined group ``ipmi-exporter``
+    and use this new groups set.
+
 AlertManager
 ============
 
