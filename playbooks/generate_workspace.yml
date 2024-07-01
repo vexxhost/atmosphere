@@ -58,6 +58,11 @@
       with_dict:
         ceph_mon_fsid: "{{ ceph_fsid }}"
         ceph_mon_public_network: "{{ ceph_public_network }}"
+        ceph_conf_overrides:
+          # Avoid HEALTH_WARN state due to daemons deployed by rook-ceph outside of cephadm (e.g. rgw)
+          - section: mgr
+            option: mgr cephadm warn_on_stray_daemons
+            value: false
 
     - name: Write new Ceph control plane configuration file to disk
       ansible.builtin.copy:
