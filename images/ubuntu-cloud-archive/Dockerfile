@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # Atmosphere-Rebuild-Time: 2024-06-28T12:14:26Z
 
+# Build
+
 ARG RELEASE
 
 FROM registry.atmosphere.dev/library/ubuntu:${RELEASE}
