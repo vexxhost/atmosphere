@@ -75,3 +75,19 @@ the robust features of Azure AD within the flexible framework of Keycloak.
 
 For a deeper dive into the Azure AD configuration within Keycloak, consult the
 `Keycloak Microsoft Identity Provider documentation <https://www.keycloak.org/docs/latest/server_admin/#_microsoft>`_.
+
+*********************
+Neutron Policy Server
+*********************
+
+The `Neutron Policy Server <https://github.com/vexxhost/neutron-policy-server>`_ is a
+straightforward service that provides the ability to manage and enforce policy more
+complex policy rules inside Neutron.
+
+This service runs as a sidecar WSGI server that responds to ``oslo.policy`` ``HttpCheck``
+rules which are configured into the Neutron policy file.
+
+By default, the policy server is enabled and the Neutron policy is updated to include
+the necessary checks.  In order to disable the policy server, set the
+``neutron_policy_server_integration_enabled`` variable to ``false`` in the deployment
+configuration.
