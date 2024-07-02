@@ -80,40 +80,14 @@ For a deeper dive into the Azure AD configuration within Keycloak, consult the
 Neutron Policy Server
 *********************
 
-Neutron Policy Server is a straightforward service that provide extra policy checks.
-This service running as a sidecar WSGI server which follows olso.policy HttpCheck rules
-so it can be directly added to neutron policy file.
+The `Neutron Policy Server <https://github.com/vexxhost/neutron-policy-server>`_ is a
+straightforward service that provides the ability to manage and enforce policy more
+complex policy rules inside Neutron.
 
-By default policy server is enabled and added to policy file for neutron.
-To remove it from policy file, set ``neutron_policy_server_integration_enabled`` to ``false``
-when deployment.
+This service runs as a sidecar WSGI server that responds to ``oslo.policy`` ``HttpCheck``
+rules which are configured into the Neutron policy file.
 
-Neutron Port and address pair check
-===================================
-
-Currently Neutron Policy Server provides two checks:
-
-* Port update check (``POST``, ``/port-update``):
-  It checks if any existing mac address and IP address from this port is binding in address pair from other ports.
-  Fail the check if any match found.
-  This is binding with Neutron policy ``update_port:mac_address`` and ``update_port:fixed_ips``.
-* Port delete check(``POST``, ``/port-delete``):
-  It checks if any mac address and IP address from this port is binding in address pair from other ports.
-  Fail the check if any match found.
-  This is binding with Neutron policy ``delete_port``.
-
-The policy with above two checks will look something like this:
-
-.. code-block:: JSON
-
-  {
-    "delete_port": "((rule:admin_only) or (rule:service_api) or role:member and rule:network_owner or role:member and project_id:%(project_id)s) and http://neutron-api:9697/port-delete"
-    "update_port:mac_address": "((rule:admin_only) or (rule:service_api)) and http://neutron-api:9697/port-update"
-    "update_port:fixed_ips": "((rule:admin_only) or (rule:service_api) or role:member and rule:network_owner) and http://neutron-api:9697/port-update"
-  }
-
-
-Service requirements
-====================
-
-Neutron Policy Server depends on database config from neutron and dose not consume extra configurations to run.
+By default, the policy server is enabled and the Neutron policy is updated to include
+the necessary checks.  In order to disable the policy server, set the
+``neutron_policy_server_integration_enabled`` variable to ``false`` in the deployment
+configuration.
