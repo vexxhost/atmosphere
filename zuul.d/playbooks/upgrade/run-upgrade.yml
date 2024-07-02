@@ -1,0 +1,59 @@
+# Copyright (c) 2024 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Upgrade test
+  hosts: all
+  become: true
+  tasks:
+    - name: Checkout to "{{ from_branch }}" branch
+      become: true
+      ansible.builtin.shell: |
+        sudo apt-get purge -y snapd
+        git stash
+        git checkout "{{ from_branch }}"
+      args:
+        chdir: "{{ zuul.project.src_dir }}"
+
+    - name: Run molecule with exist branch
+      become: true
+      ansible.builtin.shell: |
+        pip install --ignore-installed poetry
+        poetry install
+        pip install -r test-requirements.txt
+        poetry run molecule converge -s aio
+      args:
+        chdir: "{{ zuul.project.src_dir }}"
+      environment:
+        ATMOSPHERE_NETWORK_BACKEND: "{{ network_backend }}"
+
+    - name: Checkout to "{{ zuul.branch }}" branch
+      become: true
+      ansible.builtin.shell: |
+        git restore .
+        git checkout "{{ zuul.branch }}"
+        git stash pop
+      args:
+        chdir: "{{ zuul.project.src_dir }}"
+
+    - name: Run molecule to upgrade
+      become: true
+      ansible.builtin.shell: |
+        poetry install
+        pip install -r test-requirements.txt
+        poetry run molecule converge -s aio
+        poetry run molecule verify -s aio
+      args:
+        chdir: "{{ zuul.project.src_dir }}"
+      environment:
+        ATMOSPHERE_NETWORK_BACKEND: "{{ network_backend }}"
