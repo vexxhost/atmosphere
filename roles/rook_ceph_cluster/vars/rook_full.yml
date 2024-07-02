@@ -1,0 +1,177 @@
+# Copyright (c) 2024 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+_rook_ceph_cluster_spec:
+  cephVersion:
+    image: "{{ atmosphere_images['ceph'] | vexxhost.kubernetes.docker_image('ref') }}"
+  dashboard:
+    enabled: true
+    # NOTE(fitbeard): All services are using host ports.
+    port: 9088
+    ssl: false
+  mon:
+    count: 3
+  mgr:
+    count: 2
+  network:
+    provider: host
+    addressRanges:
+      public:
+        - "{{ rook_ceph_public_network }}"
+      cluster:
+        - "{{ rook_ceph_cluster_network }}"
+  placement:
+    mgr:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: openstack-control-plane
+                  operator: In
+                  values: ["enabled"]
+    mon:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: openstack-control-plane
+                  operator: In
+                  values: ["enabled"]
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: rook-ceph-mon
+              topologyKey: kubernetes.io/hostname
+            weight: 100
+    osd:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: ceph-osd-node
+                  operator: In
+                  values: ["enabled"]
+  storage:
+    useAllNodes: false
+    useAllDevices: false
+  #  nodes:
+  #    - name: "controller1"
+  #      devices:
+  #        - name: "sda"
+  #    - name: "controller2"
+  #      devices:
+  #        - name: "sda"
+  #    - name: "controller3"
+  #      devices:
+  #        - name: "sda"
+  #    - name: "compute1"
+  #      devices:
+  #        - name: "sda"
+  #    - name: "compute2"
+  #      devices:
+  #        - name: "sda"
+
+_rook_ceph_cluster_radosgw_spec:
+  preservePoolsOnDelete: true
+  metadataPool:
+    failureDomain: host
+    replicated:
+      size: 3
+  dataPool:
+    failureDomain: host
+    replicated:
+      size: 3
+  gateway:
+    # NOTE(fitbeard): All services are using host ports.
+    port: 8088
+    instances: 3
+    placement:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: openstack-control-plane
+                  operator: In
+                  values: ["enabled"]
+
+_rook_ceph_cluster_helm_values:
+  clusterName: "{{ rook_ceph_cluster_name }}"
+  configOverride: |
+    [client]
+    rgw keystone api version = 3
+    rgw keystone url =  http://keystone-api.openstack.svc.cluster.local:5000
+    rgw keystone admin user = "{{ openstack_helm_endpoints.identity.auth.rgw.username }}"
+    rgw keystone admin password = "{{ openstack_helm_endpoints.identity.auth.rgw.password }}"
+    rgw_keystone admin domain = service
+    rgw_keystone admin project = service
+    rgw keystone implicit tenants = true
+    rgw keystone accepted roles = member,admin,reader
+    rgw_keystone accepted admin roles = admin
+    rgw keystone token cache size = 0
+    rgw s3 auth use keystone = true
+    rgw swift account in url = true
+    rgw swift versioning enabled = true
+  toolbox:
+    enabled: true
+    image: "{{ atmosphere_images['ceph'] | vexxhost.kubernetes.docker_image('ref') }}"
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: openstack-control-plane
+                  operator: In
+                  values: ["enabled"]
+  cephClusterSpec: "{{ _rook_ceph_cluster_spec | combine(rook_ceph_cluster_spec, recursive=True) }}"
+  cephBlockPools:
+    - name: builtin-mgr
+      spec:
+        name: .mgr
+        failureDomain: host
+        replicated:
+          size: 3
+      storageClass:
+        enabled: false
+    - name: kube
+      spec:
+        failureDomain: host
+        replicated:
+          size: 3
+      storageClass:
+        enabled: true
+        name: general
+        isDefault: true
+        reclaimPolicy: Delete
+        allowVolumeExpansion: true
+        mountOptions:
+          - discard
+        allowedTopologies: []
+        parameters:
+          csi.storage.k8s.io/provisioner-secret-name: rook-csi-rbd-provisioner
+          csi.storage.k8s.io/provisioner-secret-namespace: "{{ rook_ceph_cluster_helm_release_namespace }}"
+          csi.storage.k8s.io/controller-expand-secret-name: rook-csi-rbd-provisioner
+          csi.storage.k8s.io/controller-expand-secret-namespace: "{{ rook_ceph_cluster_helm_release_namespace }}"
+          csi.storage.k8s.io/node-stage-secret-name: rook-csi-rbd-node
+          csi.storage.k8s.io/node-stage-secret-namespace: "{{ rook_ceph_cluster_helm_release_namespace }}"
+          imageFormat: "2"
+          imageFeatures: layering
+          csi.storage.k8s.io/fstype: ext4
+  cephFileSystems: []
+  cephObjectStores:
+    - name: "{{ rook_ceph_cluster_name }}"
+      spec: "{{ _rook_ceph_cluster_radosgw_spec | combine(rook_ceph_cluster_radosgw_spec, recursive=True) }}"
+      storageClass:
+        enabled: false

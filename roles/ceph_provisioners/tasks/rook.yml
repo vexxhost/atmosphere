@@ -1,0 +1,131 @@
+# Copyright (c) 2024 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Retrieve client.admin keyring and cluster fsid
+  run_once: true
+  kubernetes.core.k8s_info:
+    kind: Secret
+    name: rook-ceph-mon
+    namespace: rook-ceph
+  register: _rook_ceph_mon
+
+- name: Retrieve Ceph monitor
+  run_once: true
+  kubernetes.core.k8s_info:
+    kind: Secret
+    name: rook-ceph-config
+    namespace: rook-ceph
+  register: _rook_ceph_config
+
+- name: Create "pvc-ceph-client-key" secret
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      type: kubernetes.io/rbd
+      metadata:
+        name: pvc-ceph-client-key
+        namespace: openstack
+        labels:
+          application: ceph
+      stringData:
+        key: "{{ _rook_ceph_mon.resources[0].data['ceph-secret'] | b64decode }}"
+
+- name: Generate fact with list of Ceph monitors
+  run_once: true
+  ansible.builtin.set_fact:
+    _ceph_provisioners_ceph_fsid: "{{ _rook_ceph_mon.resources[0].data['fsid'] | b64decode }}"
+    _ceph_provisioners_ceph_monitors_list: "{{ _rook_ceph_config.resources[0].data['mon_host'] | b64decode | regex_replace('\\],\\[', ']|||[') | split('|||') | sort | join(',') }}"
+
+# NOTE(fitbeard): Service and endpoints are unnecessary with Rook
+# and are left here only for back compatibility if someone decides
+# to use this data for generated 'ceph-etc' config.
+# Also Rook mgr metrics can be scraped directly from 'rook-ceph-mgr'
+# svc in 'rook-ceph' namespace.
+- name: Retrieve Ceph monitor list for endoints
+  run_once: true
+  kubernetes.core.k8s_info:
+    kind: ConfigMap
+    name: rook-ceph-mon-endpoints
+    namespace: rook-ceph
+  register: _rook_ceph_mon_endpoints
+
+- name: Generate fact with list of Ceph monitors for endpoints
+  run_once: true
+  ansible.builtin.set_fact:
+    _ceph_provisioners_ceph_monitors: |
+      {{
+        _ceph_provisioners_ceph_monitors | default([]) +
+          [{'ip': item}]
+      }}
+  loop: "{{ _rook_ceph_mon_endpoints.resources[0].data['data'] | split(',') | map('regex_replace', '(.*):(.*)', '\\1') | map('regex_replace', '.*=', '') | sort }}"
+
+- name: Create Ceph service
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: ceph-mon
+        namespace: openstack
+        labels:
+          application: ceph
+      spec:
+        clusterIP: None
+        ports:
+          - name: mon
+            port: 6789
+            targetPort: 6789
+          - name: mon-msgr2
+            port: 3300
+            targetPort: 3300
+          - name: metrics
+            port: 9283
+            targetPort: 9283
+
+- name: Create Ceph endpoints
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Endpoints
+      metadata:
+        name: ceph-mon
+        namespace: openstack
+        labels:
+          application: ceph
+      subsets:
+        - addresses: "{{ _ceph_provisioners_ceph_monitors }}"
+          ports:
+            - name: mon
+              port: 6789
+              protocol: TCP
+            - name: mon-msgr2
+              port: 3300
+              protocol: TCP
+            - name: metrics
+              port: 9283
+              protocol: TCP
+
+- name: Deploy Helm chart
+  run_once: true
+  kubernetes.core.helm:
+    name: "{{ ceph_provisioners_helm_release_name }}"
+    chart_ref: "{{ ceph_provisioners_helm_chart_ref }}"
+    release_namespace: "{{ ceph_provisioners_helm_release_namespace }}"
+    create_namespace: true
+    kubeconfig: /etc/kubernetes/admin.conf
+    values: "{{ lookup('ansible.builtin.template', 'values.yml.j2') | from_yaml | combine(ceph_provisioners_helm_values, recursive=True) }}"

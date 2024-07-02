@@ -1,0 +1,70 @@
+# Copyright (c) 2024 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Check if the Rook cluster exists
+  run_once: true
+  kubernetes.core.k8s_info:
+    api_version: ceph.rook.io/v1
+    kind: CephCluster
+    name: ceph
+    namespace: rook-ceph
+  register: _rook_exists
+  ignore_errors: true
+
+- name: Include variables for full Rook deployment
+  ansible.builtin.include_vars:
+    file: "rook_full.yml"
+
+- name: Deploy Helm chart
+  run_once: true
+  kubernetes.core.helm:
+    name: "{{ rook_ceph_cluster_helm_release_name }}"
+    chart_ref: "{{ rook_ceph_cluster_helm_chart_ref }}"
+    release_namespace: "{{ rook_ceph_cluster_helm_release_namespace }}"
+    create_namespace: true
+    kubeconfig: /etc/kubernetes/admin.conf
+    values: "{{ _rook_ceph_cluster_helm_values | combine(rook_ceph_cluster_helm_values, recursive=True) }}"
+
+- name: Check if the Rook cluster is up and healthy
+  run_once: true
+  block:
+    - name: Check if the Rook cluster is up and healthy
+      kubernetes.core.k8s_info:
+        api_version: ceph.rook.io/v1
+        kind: CephCluster
+        name: ceph
+        namespace: rook-ceph
+      register: _rook_cluster
+      until: >
+        _rook_cluster.resources[0].status.ceph.health is defined and
+        _rook_cluster.resources[0].status.ceph.health == 'HEALTH_OK'
+      retries: 20
+      delay: 30
+      # NOTE(fitbeard): For now we are running this check only on a first deployment.
+      # Sometimes during molecule's idempotency tests Ceph status is changed to 'HEALTH_WARN'
+      # TODO: Create better status and upgrade tests
+      when: ( _rook_exists.resources | length==0 )
+
+    - name: Check if kube pool is ready
+      kubernetes.core.k8s_info:
+        api_version: ceph.rook.io/v1
+        kind: CephBlockPool
+        name: kube
+        namespace: rook-ceph
+      register: _kube_pool
+      until: >
+        _kube_pool.resources[0].status.phase is defined and
+        _kube_pool.resources[0].status.phase == 'Ready'
+      retries: 20
+      delay: 30

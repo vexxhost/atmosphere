@@ -1,0 +1,26 @@
+image:
+  repository: "{{ atmosphere_images['rook_ceph'] | vexxhost.kubernetes.docker_image('name') }}"
+  tag: "{{ atmosphere_images['rook_ceph'] | vexxhost.kubernetes.docker_image('tag') }}"
+resources:
+  limits:
+    cpu: 1
+{% if atmosphere_rook_ceph_enabled is defined and atmosphere_rook_ceph_enabled | bool %}
+nodeSelector:
+# NOTE(fitbeard): Put agents required for OSD tasks only on OSD nodes.
+  ceph-osd-node: enabled
+csi:
+  enableRbdDriver: true
+  enableCephfsDriver: false
+  enableCSIHostNetwork: true
+# NOTE(fitbeard): We are using PVC only on control plane nodes.
+  provisionerNodeAffinity: openstack-control-plane=enabled
+  pluginNodeAffinity: openstack-control-plane=enabled
+{% else %}
+nodeSelector:
+  openstack-control-plane: enabled
+csi:
+# NOTE(mnaser): Once we implement storage inside Atmosphere, we can rely on
+#               Rook to manage this.
+  enableRbdDriver: false
+  enableCephfsDriver: false
+{% endif %}

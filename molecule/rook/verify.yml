@@ -1,4 +1,4 @@
-# Copyright (c) 2023 VEXXHOST, Inc.
+# Copyright (c) 2024 VEXXHOST, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -12,17 +12,17 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-_rook_ceph_helm_values:
-  image:
-    repository: "{{ atmosphere_images['rook_ceph'] | vexxhost.kubernetes.docker_image('name') }}"
-    tag: "{{ atmosphere_images['rook_ceph'] | vexxhost.kubernetes.docker_image('tag') }}"
-  nodeSelector:
-    openstack-control-plane: enabled
-  resources:
-    limits:
-      cpu: 1
-  # NOTE(mnaser): Once we implement storage inside Atmosphere, we can rely on
-  #               Rook to manage this.
-  csi:
-    enableRbdDriver: false
-    enableCephfsDriver: false
+- name: Run tests
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Run "stestr" tests
+      become: true
+      ansible.builtin.shell: stestr run
+      args:
+        chdir: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}"
+      environment:
+        KUBECONFIG: /root/.kube/config
+
+- name: Run Tempest tests
+  ansible.builtin.import_playbook: vexxhost.atmosphere.tempest

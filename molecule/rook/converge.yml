@@ -1,4 +1,4 @@
-# Copyright (c) 2022 VEXXHOST, Inc.
+# Copyright (c) 2024 VEXXHOST, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -13,14 +13,14 @@
 # under the License.
 
 - name: Install Ceph
-  import_playbook: vexxhost.atmosphere.ceph
+  ansible.builtin.import_playbook: vexxhost.atmosphere.ceph
   when: not atmosphere_rook_ceph_enabled | default(false) | bool
 
 - name: Install Kubernetes
-  import_playbook: vexxhost.atmosphere.kubernetes
+  ansible.builtin.import_playbook: vexxhost.atmosphere.kubernetes
 
 - name: Install CSI
-  import_playbook: vexxhost.atmosphere.csi
+  ansible.builtin.import_playbook: vexxhost.atmosphere.csi
   when: not atmosphere_rook_ceph_enabled | default(false) | bool
 
 - name: Install Rook
@@ -32,8 +32,21 @@
 - name: Deploy Infrastructure
   ansible.builtin.import_playbook: vexxhost.atmosphere.infrastructure
 
-- name: Deploy Monitoring
+- name: Deploy Monitoring stack
   ansible.builtin.import_playbook: vexxhost.atmosphere.monitoring
 
 - name: Deploy OpenStack
-  import_playbook: vexxhost.atmosphere.openstack
+  ansible.builtin.import_playbook: vexxhost.atmosphere.openstack
+
+- name: Configure networking
+  hosts: all
+  tasks:
+    - name: Add IP address to "br-ex"
+      changed_when: false
+      ansible.builtin.shell:
+        cmd: ip addr add 10.96.250.10/24 dev br-ex || true
+
+    - name: Set "br-ex" interface to "up"
+      changed_when: false
+      ansible.builtin.shell:
+        cmd: ip link set br-ex up || true

@@ -1,0 +1,88 @@
+# Copyright (c) 2024 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Wait for user to read warning
+  hosts: localhost
+  tasks:
+    - name: Wait for user to read warning
+      ignore_errors: true # noqa: ignore-errors
+      ansible.builtin.fail:
+        msg: >-
+          ⚠️
+          This code will make substantial changes to your machine, it is strongly
+          recommended that you run this on a server or virtual machine that you
+          dedicate to this purpose.
+          ⚠️
+
+    - name: Wait for user to read warning
+      ansible.builtin.wait_for:
+        timeout: 15
+
+- name: Generate workspace
+  ansible.builtin.import_playbook: vexxhost.atmosphere.generate_workspace
+  vars:
+    workspace_path: "{{ lookup('env', 'MOLECULE_SCENARIO_DIRECTORY') }}"
+    domain_name: "{{ ansible_default_ipv4['address'].replace('.', '-') }}.{{ lookup('env', 'ATMOSPHERE_DNS_SUFFIX_NAME') | default('nip.io', True) }}"
+
+- name: Setup networking
+  hosts: all
+  become: true
+  vars:
+    management_bridge: "br-mgmt"
+  tasks:
+    - name: Create bridge for management network
+      ignore_errors: true # noqa: ignore-errors
+      changed_when: false
+      ansible.builtin.command:
+        cmd: "ip link add name {{ management_bridge }} type bridge"
+
+    - name: Create fake interface for management bridge
+      ignore_errors: true # noqa: ignore-errors
+      changed_when: false
+      ansible.builtin.command:
+        cmd: "ip link add dummy0 type dummy"
+
+    # NOTE(mnaser): The bridge will not go up until it has an interface
+    #             so we need to assign the dummy interface to the bridge
+    - name: Assign dummy interface to management bridge
+      ignore_errors: true # noqa: ignore-errors
+      changed_when: false
+      ansible.builtin.command:
+        cmd: "ip link set dummy0 master {{ management_bridge }}"
+
+    - name: Assign IP address for management bridge
+      ignore_errors: true # noqa: ignore-errors
+      changed_when: false
+      ansible.builtin.command:
+        cmd: "ip addr add 10.96.240.200/24 dev {{ management_bridge }}"
+
+    - name: Bring up interfaces
+      ignore_errors: true # noqa: ignore-errors
+      changed_when: false
+      ansible.builtin.command:
+        cmd: "ip link set {{ item }} up"
+      loop:
+        - br-mgmt
+        - dummy0
+
+- name: Setup host for deployment
+  hosts: all
+  become: true
+  tasks:
+    - name: Purge "snapd" package
+      become: true
+      ansible.builtin.apt:
+        name: snapd
+        state: absent
+        purge: true

@@ -1,0 +1,23 @@
+network:
+  public: "{{ ceph_provisioners_ceph_public_network }}"
+  cluster: "{{ ceph_provisioners_ceph_cluster_network }}"
+conf:
+  ceph:
+    global:
+      fsid: "{{ _ceph_provisioners_ceph_fsid }}"
+{% if atmosphere_rook_ceph_enabled is defined and atmosphere_rook_ceph_enabled | bool %}
+      mon_host: "{{ _ceph_provisioners_ceph_monitors_list }}"
+{% endif %}
+deployment:
+  # NOTE(fitbear): Get rid of 'ceph-csi-config' configmap
+  csi_rbd_provisioner: false
+manifests:
+  configmap_bin: false
+  configmap_bin_common: false
+  deployment_rbd_provisioner: false
+  deployment_csi_rbd_provisioner: false
+  deployment_cephfs_provisioner: false
+  job_cephfs_client_key: false
+  job_namespace_client_key_cleaner: false
+  job_namespace_client_key: false
+  storageclass: false

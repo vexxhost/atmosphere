@@ -23,10 +23,10 @@ ceph_provisioners_helm_values: {}
 ceph_provisioners_ceph_mon_group: controllers
 
 # Public network used by Ceph
-ceph_provisioners_ceph_public_network: "{{ ceph_mon_public_network }}"
+ceph_provisioners_ceph_public_network: "{{ ceph_public_network | default(ceph_mon_public_network) }}"
 
 # Cluster (replication) network used by Ceph
-ceph_provisioners_ceph_cluster_network: "{{ ceph_provisioners_ceph_public_network }}"
+ceph_provisioners_ceph_cluster_network: "{{ ceph_cluster_network | default(ceph_provisioners_ceph_public_network) }}"
 
 # Overrides for Helm chart values
 ceph_provisioners_values: {}

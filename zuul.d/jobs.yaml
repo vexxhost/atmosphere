@@ -25,22 +25,22 @@
     irrelevant-files:
       - ^doc/
 
-- job:
-    name: atmosphere-molecule-csi
-    parent: atmosphere-molecule
-    abstract: true
+# - job:
+#     name: atmosphere-molecule-csi
+#     parent: atmosphere-molecule
+#     abstract: true
 
-- job:
-    name: atmosphere-molecule-csi-local-path-provisioner
-    parent: atmosphere-molecule-csi
-    vars:
-      tox_envlist: molecule-csi-local-path-provisioner
+# - job:
+#     name: atmosphere-molecule-csi-local-path-provisioner
+#     parent: atmosphere-molecule-csi
+#     vars:
+#       tox_envlist: molecule-csi-local-path-provisioner
 
-- job:
-    name: atmosphere-molecule-csi-rbd
-    parent: atmosphere-molecule-csi
-    vars:
-      tox_envlist: molecule-csi-rbd
+# - job:
+#     name: atmosphere-molecule-csi-rbd
+#     parent: atmosphere-molecule-csi
+#     vars:
+#       tox_envlist: molecule-csi-rbd
 
 - job:
     name: atmosphere-molecule-aio
@@ -51,15 +51,15 @@
     roles:
       - zuul: openstack/openstack-helm-infra
 
-- job:
-    name: atmosphere-molecule-aio-keycloak
-    parent: atmosphere-molecule-aio
-    nodeset:
-      nodes:
-        - name: ubuntu-jammy
-          label: jammy-8c-8g
-    vars:
-      tox_envlist: molecule-keycloak
+# - job:
+#     name: atmosphere-molecule-aio-keycloak
+#     parent: atmosphere-molecule-aio
+#     nodeset:
+#       nodes:
+#         - name: ubuntu-jammy
+#           label: jammy-8c-8g
+#     vars:
+#       tox_envlist: molecule-keycloak
 
 - job:
     name: atmosphere-molecule-aio-full
@@ -71,16 +71,23 @@
         - name: ubuntu-jammy
           label: jammy-16c-64g
 
-- job:
-    name: atmosphere-molecule-aio-openvswitch
-    parent: atmosphere-molecule-aio-full
-    vars:
-      tox_envlist: molecule-aio-openvswitch
+# - job:
+#     name: atmosphere-molecule-aio-openvswitch
+#     parent: atmosphere-molecule-aio-full
+#     vars:
+#       tox_envlist: molecule-aio-openvswitch
+
+# - job:
+#     name: atmosphere-molecule-aio-ovn
+#     parent: atmosphere-molecule-aio-full
+#     # NOTE(mnaser): https://github.com/vexxhost/atmosphere/issues/662
+#     voting: false
+#     vars:
+#       tox_envlist: molecule-aio-ovn
 
 - job:
-    name: atmosphere-molecule-aio-ovn
+    name: atmosphere-molecule-aio-rook
     parent: atmosphere-molecule-aio-full
-    # NOTE(mnaser): https://github.com/vexxhost/atmosphere/issues/662
     voting: false
     vars:
-      tox_envlist: molecule-aio-ovn
+      tox_envlist: molecule-rook
