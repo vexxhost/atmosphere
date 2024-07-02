@@ -10,11 +10,15 @@ RUN git -C /src/neutron fetch --unshallow
 ARG NEUTRON_VPNAAS_GIT_REF=297855d0c98de29092ef94ce6686c56eb9f6b422
 ADD --keep-git-dir=true https://opendev.org/openstack/neutron-vpnaas.git#${NEUTRON_VPNAAS_GIT_REF} /src/neutron-vpnaas
 RUN git -C /src/neutron-vpnaas fetch --unshallow
+ARG POLICY_SERVER_GIT_REF=4a86b140d5510823a8fb8a59137feddf5b111b26
+ADD --keep-git-dir=true https://github.com/vexxhost/neutron-policy-server.git#${POLICY_SERVER_GIT_REF} /src/neutron-policy-server
+RUN git -C /src/neutron-policy-server fetch --unshallow
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
 pip3 install \
     --constraint /upper-constraints.txt \
         /src/neutron \
-        /src/neutron-vpnaas
+        /src/neutron-vpnaas \
+        /src/neutron-policy-server
 EOF
 
 FROM registry.atmosphere.dev/library/openstack-python-runtime:${RELEASE}

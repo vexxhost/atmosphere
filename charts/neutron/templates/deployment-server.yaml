@@ -275,6 +275,64 @@ spec:
 {{- dict "enabled" (or .Values.manifests.certificates .Values.tls.identity) "name" .Values.secrets.tls.network.server.internal "path" "/etc/neutron/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
 {{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_messaging.auth.admin.secret.tls.internal "path" "/etc/rabbitmq/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
 {{ if $mounts_neutron_server.volumeMounts }}{{ toYaml $mounts_neutron_server.volumeMounts | indent 12 }}{{ end }}
+        {{- if .Values.pod.sidecars.neutron_policy_server }}
+        - name: neutron-policy-server
+{{ tuple $envAll "neutron_policy_server" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.neutron_policy_server | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "neutron_server" "container" "neutron_policy_server" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - /tmp/neutron-policy-server.sh
+            - start
+          ports:
+            - name: q-policy
+              containerPort: {{ tuple "network" "service" "policy_server" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: {{ tuple "network" "service" "policy_server" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+          volumeMounts:
+            - name: neutron-bin
+              mountPath: /tmp/neutron-policy-server.sh
+              subPath: neutron-policy-server.sh
+              readOnly: true
+            - name: neutron-etc
+              mountPath: /etc/neutron/neutron-policy-server-uwsgi.ini
+              subPath: neutron-policy-server-uwsgi.ini
+              readOnly: true
+            - name: neutron-etc
+              mountPath: /etc/neutron/neutron.conf
+              subPath: neutron.conf
+              readOnly: true
+            {{- if( has "tungstenfabric" .Values.network.backend ) }}
+            - name: neutron-etc
+              mountPath: /etc/neutron/plugins/tungstenfabric/tf_plugin.ini
+              subPath: tf_plugin.ini
+              readOnly: true
+            - name: neutron-etc
+              mountPath: /etc/contrail/vnc_api_lib.ini
+              subPath: vnc_api_lib.ini
+              readOnly: true
+            - name: neutron-plugin-shared
+              mountPath: /opt/plugin
+            - name: neutron-bin
+              mountPath: /usr/local/lib/python2.7/site-packages/tf-plugin.pth
+              subPath: tf-plugin.pth
+              readOnly: true
+            - name: neutron-bin
+              mountPath: /var/lib/openstack/lib/python2.7/site-packages/tf-plugin.pth
+              subPath: tf-plugin.pth
+              readOnly: true
+            - name: neutron-bin
+              mountPath: /var/lib/openstack/lib/python3.6/site-packages/tf-plugin.pth
+              subPath: tf-plugin.pth
+              readOnly: true
+            {{- else }}
+            - name: neutron-etc
+              mountPath: /etc/neutron/plugins/ml2/ml2_conf.ini
+              subPath: ml2_conf.ini
+              readOnly: true
+            {{- end }}
+        {{- end }}
       volumes:
         - name: pod-tmp
           emptyDir: {}
