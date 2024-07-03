@@ -32,6 +32,7 @@ images:
     ks_endpoints: docker.io/openstackhelm/heat:2024.1-ubuntu_jammy
     netoffload: ghcr.io/vexxhost/netoffload:v1.0.1
     neutron_server: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
+    neutron_policy_server: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
     neutron_rpc_server: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
     neutron_dhcp: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
     neutron_metadata: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
@@ -372,6 +373,8 @@ dependencies:
           service: local_image_registry
 
 pod:
+  sidecars:
+    neutron_policy_server: false
   use_fqdn:
     neutron_agent: true
   probes:
@@ -613,6 +616,9 @@ pod:
           runAsUser: 0
           readOnlyRootFilesystem: false
         neutron_server:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+        neutron_policy_server:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
     neutron_rpc_server:
@@ -890,6 +896,13 @@ pod:
       limits:
         memory: "1024Mi"
         cpu: "2000m"
+    neutron_policy_server:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "256Mi"
+        cpu: "500m"
     ironic_agent:
       requests:
         memory: "128Mi"
@@ -1318,6 +1331,22 @@ conf:
       thunder-lock: true
       worker-reload-mercy: 80
       wsgi-file: /var/lib/openstack/bin/neutron-api
+  neutron_policy_server_uwsgi:
+    uwsgi:
+      add-header: "Connection: close"
+      buffer-size: 65535
+      die-on-term: true
+      enable-threads: true
+      exit-on-reload: false
+      hook-master-start: unix_signal:15 gracefully_kill_them_all
+      lazy-apps: true
+      log-x-forwarded-for: true
+      master: true
+      procname-prefix-spaced: "neutron-policy-server:"
+      route-user-agent: '^kube-probe.* donotlog:'
+      thunder-lock: true
+      worker-reload-mercy: 80
+      wsgi-file: /var/lib/openstack/bin/neutron-policy-server-wsgi
   policy: {}
   api_audit_map:
     DEFAULT:
@@ -2463,6 +2492,10 @@ endpoints:
         default: 9696
         public: 80
         service: 9696
+      policy_server:
+        default: 9697
+        public: 80
+        service: 9697
   load_balancer:
     name: octavia
     hosts:
