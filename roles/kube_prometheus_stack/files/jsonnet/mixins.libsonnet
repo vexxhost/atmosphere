@@ -8,6 +8,10 @@ local disabledAlerts = [
   // * Dropped `CephNodeNetworkPacketDrops` due to noisy alerts with
   //   no actionable items to fix it.
   'CephNodeNetworkPacketDrops',
+
+  // Superseded by CephHealthDetail* alerts
+  'CephHealthWarning',
+  'CephHealthError',
 ];
 
 // NOTE(mnaser): This is the default mapping for severities:
@@ -55,7 +59,37 @@ local mixins = {
       alertmanagerClusterLabels: 'namespace,service,cluster',
     },
   },
-  ceph: (import 'vendor/github.com/ceph/ceph/monitoring/ceph-mixin/mixin.libsonnet'),
+  ceph: (import 'vendor/github.com/ceph/ceph/monitoring/ceph-mixin/mixin.libsonnet') + {
+    prometheusAlerts+:: {
+      groups+: [
+        {
+          name: 'cluster health detail',
+          rules: [
+            {
+              alert: 'CephHealthDetailError',
+              'for': '5m',
+              expr: 'ceph_health_detail{severity="HEALTH_ERROR"} == 1',
+              labels: { severity: 'critical' },
+              annotations: {
+                summary: 'Ceph is in the ERROR state',
+                description: "Health check {{ $labels.name }} has been HEALTH_ERROR for more than 5 minutes. Please check 'ceph health detail' for more information.",
+              },
+            },
+            {
+              alert: 'CephHealthDetailWarning',
+              'for': '15m',
+              expr: 'ceph_health_detail{severity="HEALTH_WARN"} == 1',
+              labels: { severity: 'warning' },
+              annotations: {
+                summary: 'Ceph is in the WARNING state',
+                description: "Health check {{ $labels.name }} has been HEALTH_WARN for more than 15 minutes. Please check 'ceph health detail' for more information.",
+              },
+            },
+          ],
+        },
+      ],
+    }
+  },
   coredns: (import 'vendor/github.com/povilasv/coredns-mixin/mixin.libsonnet') + {
     _config+:: {
       corednsSelector: 'job="coredns"',
