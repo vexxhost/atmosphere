@@ -1,0 +1,239 @@
+diff --git a/neutron/templates/bin/_neutron-policy-server.sh.tpl b/neutron/templates/bin/_neutron-policy-server.sh.tpl
+new file mode 100644
+index 00000000..3ff9c8dd
+--- /dev/null
++++ b/neutron/templates/bin/_neutron-policy-server.sh.tpl
+@@ -0,0 +1,28 @@
++#!/bin/bash
++
++{{/*
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++   http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++*/}}
++
++set -ex
++COMMAND="${@:-start}"
++
++function start () {
++  exec uwsgi --ini /etc/neutron/neutron-policy-server-uwsgi.ini
++}
++
++function stop () {
++  kill -TERM 1
++}
++
++$COMMAND
+diff --git a/neutron/templates/configmap-bin.yaml b/neutron/templates/configmap-bin.yaml
+index 9a934e07..512938b4 100644
+--- a/neutron/templates/configmap-bin.yaml
++++ b/neutron/templates/configmap-bin.yaml
+@@ -91,6 +91,8 @@ data:
+ {{- end }}
+   neutron-server.sh: |
+ {{ tuple "bin/_neutron-server.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
++  neutron-policy-server.sh: |
++{{ tuple "bin/_neutron-policy-server.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+   neutron-ironic-agent.sh: |
+ {{ tuple "bin/_neutron-ironic-agent.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+   neutron-netns-cleanup-cron.sh: |
+diff --git a/neutron/templates/configmap-etc.yaml b/neutron/templates/configmap-etc.yaml
+index 88fea72a..499cdeb9 100644
+--- a/neutron/templates/configmap-etc.yaml
++++ b/neutron/templates/configmap-etc.yaml
+@@ -197,6 +197,15 @@ just set it along with nova_metadata_host.
+ {{- $_ := tuple "network" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" | set .Values.conf.neutron.DEFAULT "bind_port" -}}
+ {{- end -}}
+ 
++{{- if empty .Values.conf.neutron_policy_server_uwsgi.uwsgi.processes -}}
++{{- $_ := set .Values.conf.neutron_policy_server_uwsgi.uwsgi "processes" .Values.conf.neutron.DEFAULT.api_workers -}}
++{{- end -}}
++{{- if empty (index .Values.conf.neutron_policy_server_uwsgi.uwsgi "http-socket") -}}
++{{- $http_socket_port := tuple "network" "service" "policy_server" . | include "helm-toolkit.endpoints.endpoint_port_lookup" | toString }}
++{{- $http_socket := printf "0.0.0.0:%s" $http_socket_port }}
++{{- $_ := set .Values.conf.neutron_policy_server_uwsgi.uwsgi "http-socket" $http_socket -}}
++{{- end -}}
++
+ {{- if and (empty .Values.conf.logging.handler_fluent) (has "fluent" .Values.conf.logging.handlers.keys) -}}
+ {{- $fluentd_host := tuple "fluentd" "internal" $envAll | include "helm-toolkit.endpoints.hostname_namespaced_endpoint_lookup" }}
+ {{- $fluentd_port := tuple "fluentd" "internal" "service" $envAll | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+@@ -291,6 +300,7 @@ data:
+   rally_tests.yaml: {{ toYaml $envAll.Values.conf.rally_tests.tests | b64enc }}
+   api-paste.ini: {{ include "helm-toolkit.utils.to_ini" $envAll.Values.conf.paste | b64enc }}
+   policy.yaml: {{ toYaml $envAll.Values.conf.policy | b64enc }}
++  neutron-policy-server-uwsgi.ini: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.neutron_policy_server_uwsgi | b64enc }}
+   neutron.conf: {{ include "helm-toolkit.utils.to_oslo_conf" $envAll.Values.conf.neutron | b64enc }}
+   logging.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.logging | b64enc }}
+   api_audit_map.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.api_audit_map | b64enc }}
+diff --git a/neutron/templates/deployment-server.yaml b/neutron/templates/deployment-server.yaml
+index 16363573..2d67153f 100644
+--- a/neutron/templates/deployment-server.yaml
++++ b/neutron/templates/deployment-server.yaml
+@@ -270,6 +270,64 @@ spec:
+ {{- dict "enabled" (or .Values.manifests.certificates .Values.tls.identity) "name" .Values.secrets.tls.network.server.internal "path" "/etc/neutron/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
+ {{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_messaging.auth.admin.secret.tls.internal "path" "/etc/rabbitmq/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
+ {{ if $mounts_neutron_server.volumeMounts }}{{ toYaml $mounts_neutron_server.volumeMounts | indent 12 }}{{ end }}
++        {{- if .Values.pod.sidecars.neutron_policy_server }}
++        - name: neutron-policy-server
++{{ tuple $envAll "neutron_policy_server" | include "helm-toolkit.snippets.image" | indent 10 }}
++{{ tuple $envAll $envAll.Values.pod.resources.neutron_policy_server | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
++{{ dict "envAll" $envAll "application" "neutron_server" "container" "neutron_policy_server" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
++          command:
++            - /tmp/neutron-policy-server.sh
++            - start
++          ports:
++            - name: q-policy
++              containerPort: {{ tuple "network" "service" "policy_server" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
++          readinessProbe:
++            httpGet:
++              path: /health
++              port: {{ tuple "network" "service" "policy_server" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
++          volumeMounts:
++            - name: neutron-bin
++              mountPath: /tmp/neutron-policy-server.sh
++              subPath: neutron-policy-server.sh
++              readOnly: true
++            - name: neutron-etc
++              mountPath: /etc/neutron/neutron-policy-server-uwsgi.ini
++              subPath: neutron-policy-server-uwsgi.ini
++              readOnly: true
++            - name: neutron-etc
++              mountPath: /etc/neutron/neutron.conf
++              subPath: neutron.conf
++              readOnly: true
++            {{- if( has "tungstenfabric" .Values.network.backend ) }}
++            - name: neutron-etc
++              mountPath: /etc/neutron/plugins/tungstenfabric/tf_plugin.ini
++              subPath: tf_plugin.ini
++              readOnly: true
++            - name: neutron-etc
++              mountPath: /etc/contrail/vnc_api_lib.ini
++              subPath: vnc_api_lib.ini
++              readOnly: true
++            - name: neutron-plugin-shared
++              mountPath: /opt/plugin
++            - name: neutron-bin
++              mountPath: /usr/local/lib/python2.7/site-packages/tf-plugin.pth
++              subPath: tf-plugin.pth
++              readOnly: true
++            - name: neutron-bin
++              mountPath: /var/lib/openstack/lib/python2.7/site-packages/tf-plugin.pth
++              subPath: tf-plugin.pth
++              readOnly: true
++            - name: neutron-bin
++              mountPath: /var/lib/openstack/lib/python3.6/site-packages/tf-plugin.pth
++              subPath: tf-plugin.pth
++              readOnly: true
++            {{- else }}
++            - name: neutron-etc
++              mountPath: /etc/neutron/plugins/ml2/ml2_conf.ini
++              subPath: ml2_conf.ini
++              readOnly: true
++            {{- end }}
++        {{- end }}
+       volumes:
+         - name: pod-tmp
+           emptyDir: {}
+diff --git a/neutron/templates/service-server.yaml b/neutron/templates/service-server.yaml
+index 8fcee669..c7075b10 100644
+--- a/neutron/templates/service-server.yaml
++++ b/neutron/templates/service-server.yaml
+@@ -26,6 +26,11 @@ spec:
+     {{ if .Values.network.server.node_port.enabled }}
+       nodePort: {{ .Values.network.server.node_port.port }}
+     {{ end }}
++    - name: q-policy
++      port: {{ tuple "network" "service" "policy_server" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
++    {{ if .Values.network.server.node_port.enabled }}
++      nodePort: {{ .Values.network.server.node_port.port }}
++    {{ end }}
+   selector:
+ {{ tuple $envAll "neutron" "server" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+   {{ if .Values.network.server.node_port.enabled }}
+diff --git a/neutron/values.yaml b/neutron/values.yaml
+index 747baa53..17f85415 100644
+--- a/neutron/values.yaml
++++ b/neutron/values.yaml
+@@ -32,6 +32,7 @@ images:
+     ks_endpoints: docker.io/openstackhelm/heat:stein-ubuntu_bionic
+     netoffload: ghcr.io/vexxhost/netoffload:v1.0.1
+     neutron_server: docker.io/openstackhelm/neutron:stein-ubuntu_bionic
++    neutron_policy_server: docker.io/openstackhelm/neutron:stein-ubuntu_bionic
+     neutron_dhcp: docker.io/openstackhelm/neutron:stein-ubuntu_bionic
+     neutron_metadata: docker.io/openstackhelm/neutron:stein-ubuntu_bionic
+     neutron_ovn_metadata: docker.io/openstackhelm/neutron:stein-ubuntu_bionic
+@@ -355,6 +356,8 @@ dependencies:
+           service: local_image_registry
+ 
+ pod:
++  sidecars:
++    neutron_policy_server: false
+   use_fqdn:
+     neutron_agent: true
+   probes:
+@@ -585,6 +588,9 @@ pod:
+         neutron_server:
+           allowPrivilegeEscalation: false
+           readOnlyRootFilesystem: true
++        neutron_policy_server:
++          allowPrivilegeEscalation: false
++          readOnlyRootFilesystem: true
+     neutron_sriov_agent:
+       pod:
+         runAsUser: 42424
+@@ -845,6 +851,13 @@ pod:
+       limits:
+         memory: "1024Mi"
+         cpu: "2000m"
++    neutron_policy_server:
++      requests:
++        memory: "128Mi"
++        cpu: "100m"
++      limits:
++        memory: "256Mi"
++        cpu: "500m"
+     ironic_agent:
+       requests:
+         memory: "128Mi"
+@@ -1257,6 +1270,22 @@ conf:
+       paste.app_factory: neutron.api.v2.router:APIRouter.factory
+     filter:osprofiler:
+       paste.filter_factory: osprofiler.web:WsgiMiddleware.factory
++  neutron_policy_server_uwsgi:
++    uwsgi:
++      add-header: "Connection: close"
++      buffer-size: 65535
++      die-on-term: true
++      enable-threads: true
++      exit-on-reload: false
++      hook-master-start: unix_signal:15 gracefully_kill_them_all
++      lazy-apps: true
++      log-x-forwarded-for: true
++      master: true
++      procname-prefix-spaced: "neutron-policy-server:"
++      route-user-agent: '^kube-probe.* donotlog:'
++      thunder-lock: true
++      worker-reload-mercy: 80
++      wsgi-file: /var/lib/openstack/bin/neutron-policy-server-wsgi
+   policy: {}
+   api_audit_map:
+     DEFAULT:
+@@ -2402,6 +2431,10 @@ endpoints:
+         default: 9696
+         public: 80
+         service: 9696
++      policy_server:
++        default: 9697
++        public: 80
++        service: 9697
+   load_balancer:
+     name: octavia
+     hosts:
