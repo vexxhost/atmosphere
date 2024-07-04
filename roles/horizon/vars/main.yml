@@ -31,7 +31,7 @@ _horizon_helm_values:
             sso:
               enabled: true
               initial_choice: "{{ (keystone_domains is defined) | ternary(keystone_domains[0].name, 'atmosphere') }}"
-            idp_mapping: "{{ keystone_domains | default({'name': (keystone_keycloak_realm | default('atmosphere')), 'label': (keystone_keycloak_realm_name | default('Atmosphere'))}) | vexxhost.atmosphere.keystone_domains_to_idp_mappings }}" # noqa: yaml[line-length]
+            idp_mapping: "{{ keystone_domains | default([{'name': (keystone_keycloak_realm | default('atmosphere')), 'label': (keystone_keycloak_realm_name | default('Atmosphere'))}]) | vexxhost.atmosphere.keystone_domains_to_idp_mappings }}" # noqa: yaml[line-length]
           raw:
             OPENSTACK_SSL_NO_VERIFY: "{{ ((cluster_issuer_type | default('self-signed')) == 'self-signed') | ternary('True', 'False') | string }}"
             WEBSSO_KEYSTONE_URL: https://{{ openstack_helm_endpoints['identity']['host_fqdn_override']['public']['host'] }}/v3
