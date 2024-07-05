@@ -62,3 +62,22 @@ the platform. It is recommended to use the following layout:
       the IP address of the host.  If they do not, you will have failures such
       as agents failing to start, live migration failures and other transient
       and hard to diagnose issues.
+
+**********
+HTTP proxy
+**********
+
+If you nodes can only access the internet through an HTTP proxy, you will need
+to set the following variables within your inventory which will make sure that
+the ``containerd`` and ``dockerd`` services are able to pull images through
+this HTTP proxy, as well as the ``download_artifact`` role which is used to
+download artifacts for deploying the cluster.
+
+.. code-block:: yaml
+
+    http_proxy: http://proxy.example.com:3128
+    https_proxy: http://proxy.example.com:3128
+    no_proxy: localhost,127.0.0.0/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,169.254.0.0/16,.svc,.cluster.local
+
+If you have any other services that need to access the internet without going
+through the proxy, you can add them to the ``no_proxy`` variable.
