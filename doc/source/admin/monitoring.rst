@@ -270,10 +270,10 @@ Here is an example:
 .. code-block:: yaml
 
    kube_prometheus_stack_extend_rules:
-     ipmi-exporter-extends: {
+     ipmi-exporter: {
          groups: [
              {
-                 name: "rules",
+                 name: "new_rules",
                  rules: [
                      {
                          alert: "IpmiCollectorDown",
@@ -288,12 +288,11 @@ Here is an example:
          ]
      }
 
-.. warning::
-    Be careful on pick your group name (``ipmi-exporter-extends`` in above example).
-    If you use existing rule group name like, it will overriding existing rule group.
-    For example if you change above group name from ``ipmi-exporter-extends`` to
-    ``ipmi-exporter``. It will override previous defined group ``ipmi-exporter``
-    and use this new groups set.
+This will add/replace all rules for group  ``new_rules`` for
+``ipmi-exporter``. The default behavior for
+``kube_prometheus_stack_extend_rules`` is  add new rule group and keep existing
+rule groups, and replace entire rule group if rule group have the same name
+(``new_rules`` in this case).
 
 AlertManager
 ============
