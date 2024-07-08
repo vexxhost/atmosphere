@@ -4,7 +4,7 @@
 ARG RELEASE
 
 FROM registry.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
-ARG CINDER_GIT_REF=0ff4262fba803152e94e32e0dc8e4a2e56fcb0f5
+ARG CINDER_GIT_REF=db98dc207060da234c32a563c13cac1edbd62952
 ADD --keep-git-dir=true https://opendev.org/openstack/cinder.git#${CINDER_GIT_REF} /src/cinder
 RUN git -C /src/cinder fetch --unshallow
 COPY patches/cinder /patches/cinder
