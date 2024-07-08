@@ -82,3 +82,24 @@
     parent: atmosphere-molecule-aio-full
     vars:
       tox_envlist: molecule-aio-ovn
+
+- job:
+    name: atmosphere-molecule-aio-upgrade-base
+    run: zuul.d/playbooks/upgrade/run-upgrade.yml
+    abstract: true
+    timeout: 10800
+    parent: atmosphere-molecule-aio-full
+    vars:
+      from_branch: "stable/zed"
+
+- job:
+    name: atmosphere-molecule-aio-upgrade-2023.1-openvswitch
+    parent: atmosphere-molecule-aio-upgrade-base
+    vars:
+      network_backend: "openvswitch"
+
+- job:
+    name: atmosphere-molecule-aio-upgrade-2023.1-ovn
+    parent: atmosphere-molecule-aio-upgrade-base
+    vars:
+      network_backend: "ovn"
