@@ -248,7 +248,10 @@ class Config(BaseModel):
 
         patches_path = charts_path / "patches" / chart.name
         if await patches_path.exists():
-            async for patch_path in patches_path.glob("*.patch"):
+            patch_paths = sorted(
+                [patch_path for patch_path in await patches_path.glob("*.patch")]
+            )
+            for patch_path in patch_paths:
                 async with patch_path.open(mode="rb") as patch_file:
                     patch_data = await patch_file.read()
                     await patch(input=patch_data, path=chart_path)
