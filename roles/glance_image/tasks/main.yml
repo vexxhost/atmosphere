@@ -42,6 +42,10 @@
       retries: 3
       delay: "{{ 15 | random + 3 }}"
       until: _get_url is not failed
+      environment:
+        http_proxy: "{{ glance_image_http_proxy }}"
+        https_proxy: "{{ glance_image_https_proxy }}"
+        no_proxy: "{{ glance_image_no_proxy }}"
 
     - name: Get image format
       changed_when: false
