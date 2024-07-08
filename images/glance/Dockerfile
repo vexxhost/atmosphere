@@ -4,7 +4,7 @@
 ARG RELEASE
 
 FROM registry.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
-ARG GLANCE_GIT_REF=eb3eb4ea269f608a7b534bb205f917309420cd51
+ARG GLANCE_GIT_REF=b5b29a0ae15d44424f04db0686328d0a01a14853
 ADD --keep-git-dir=true https://opendev.org/openstack/glance.git#${GLANCE_GIT_REF} /src/glance
 RUN git -C /src/glance fetch --unshallow
 ADD --keep-git-dir=true https://opendev.org/openstack/glance_store.git#stable/2024.1 /src/glance_store
