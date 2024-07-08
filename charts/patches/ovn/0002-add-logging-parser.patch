@@ -150,10 +150,10 @@ index eb309c5e..3ecd81dc 100644
  {{- end }}
 diff --git a/ovn/templates/secret-vector.yaml b/ovn/templates/secret-vector.yaml
 new file mode 100644
-index 00000000..2d6ab2d1
+index 00000000..028e8a9a
 --- /dev/null
 +++ b/ovn/templates/secret-vector.yaml
-@@ -0,0 +1,46 @@
+@@ -0,0 +1,56 @@
 +{{/*
 +Licensed under the Apache License, Version 2.0 (the "License");
 +you may not use this file except in compliance with the License.
@@ -192,15 +192,24 @@ index 00000000..2d6ab2d1
 +    [sources.ovn_log_parser_out]
 +    type = "http_server"
 +    address = "0.0.0.0:5001"
++    encoding = "json"
++
++    [transforms.parse_log_message]
++    type = "remap"
++    inputs = ["ovn_log_parser_out"]
++    source = '''
++      del(.source_type)
++      del(.path)
++    '''
 +
 +    [sinks.loki_sink]
 +    type = "loki"
-+    labels.job = "ovn-log-parser"
-+    inputs = ["ovn_log_parser_out"]
++    labels.event_source = "network_logs"
++    inputs = ["parse_log_message"]
 +    endpoint = "http://loki.monitoring:3100"
 +    encoding.codec = "json"
++    tenant_id = "{{`{{ project_id }}`}}"
 +{{- end }}
-\ No newline at end of file
 diff --git a/ovn/values.yaml b/ovn/values.yaml
 index 214dd16f..d0f2406b 100644
 --- a/ovn/values.yaml
@@ -307,3 +316,80 @@ index 214dd16f..d0f2406b 100644
  
  network_policy:
    ovn_ovsdb_nb:
+diff --git a/images/neutron/Dockerfile b/images/neutron/Dockerfile
+index 7032319b..992091b6 100644
+--- a/images/neutron/Dockerfile
++++ b/images/neutron/Dockerfile
+@@ -13,12 +13,16 @@ RUN git -C /src/neutron-vpnaas fetch --unshallow
+ ARG POLICY_SERVER_GIT_REF=4a86b140d5510823a8fb8a59137feddf5b111b26
+ ADD --keep-git-dir=true https://github.com/vexxhost/neutron-policy-server.git#${POLICY_SERVER_GIT_REF} /src/neutron-policy-server
+ RUN git -C /src/neutron-policy-server fetch --unshallow
++ARG LOG_PASER_GIT_REF=3bc113d9fc0eb3264feca5900e550f6ed15503c2
++ADD --keep-git-dir=true https://github.com/vexxhost/neutron-ovn-network-logging-parser.git#${LOG_PASER_GIT_REF} /src/neutron-ovn-network-logging-parser
++RUN git -C /src/neutron-ovn-network-logging-parser fetch --unshallow
+ RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
+ pip3 install \
+     --constraint /upper-constraints.txt \
+         /src/neutron \
+         /src/neutron-vpnaas \
+-        /src/neutron-policy-server
++        /src/neutron-policy-server \
++        /src/neutron-ovn-network-logging-parser
+ EOF
+ 
+ FROM registry.atmosphere.dev/library/openstack-python-runtime:${RELEASE}
+diff --git a/roles/defaults/vars/main.yml b/roles/defaults/vars/main.yml
+index ff60d44a..2904e8de 100644
+--- a/roles/defaults/vars/main.yml
++++ b/roles/defaults/vars/main.yml
+@@ -173,6 +173,7 @@ _atmosphere_images:
+   openvswitch_db_server: "registry.atmosphere.dev/library/openvswitch:{{ atmosphere_release }}"
+   openvswitch_vswitchd: "registry.atmosphere.dev/library/openvswitch:{{ atmosphere_release }}"
+   ovn_controller: "registry.atmosphere.dev/library/ovn-host:{{ atmosphere_release }}"
++  ovn_logging_parser: "registry.atmosphere.dev/library/neutron:{{ atmosphere_release }}"
+   ovn_northd: "registry.atmosphere.dev/library/ovn-central:{{ atmosphere_release }}"
+   ovn_ovsdb_nb: "registry.atmosphere.dev/library/ovn-central:{{ atmosphere_release }}"
+   ovn_ovsdb_sb: "registry.atmosphere.dev/library/ovn-central:{{ atmosphere_release }}"
+diff --git a/roles/neutron/vars/main.yml b/roles/neutron/vars/main.yml
+index fc587502..5c814499 100644
+--- a/roles/neutron/vars/main.yml
++++ b/roles/neutron/vars/main.yml
+@@ -70,6 +70,8 @@ __neutron_helm_values:
+         metadata_proxy_shared_secret: "{{ openstack_helm_endpoints['compute_metadata']['secret'] }}"
+     plugins:
+       ml2_conf:
++        agent:
++          extensions: "log"
+         ml2:
+           extension_drivers: dns_domain_ports,port_security,qos
+           type_drivers: flat,gre,vlan,vxlan
+@@ -85,7 +87,7 @@ __neutron_ovn_helm_values:
+   conf:
+     neutron:
+       DEFAULT:
+-        service_plugins: qos,ovn-router,segments,trunk
++        service_plugins: qos,ovn-router,segments,trunk,log
+       ovn:
+         ovn_emit_need_to_frag: true
+     ovn_metadata_agent:
+diff --git a/roles/ovn/defaults/main.yml b/roles/ovn/defaults/main.yml
+index b9045986..a6ebdb96 100644
+--- a/roles/ovn/defaults/main.yml
++++ b/roles/ovn/defaults/main.yml
+@@ -18,3 +18,5 @@ ovn_helm_chart_ref: /usr/local/src/ovn
+ 
+ ovn_helm_release_namespace: openstack
+ ovn_helm_values: {}
++
++ovn_network_logging_parser_enabled: true
+diff --git a/roles/ovn/vars/main.yml b/roles/ovn/vars/main.yml
+index 59d9c209..603b4edf 100644
+--- a/roles/ovn/vars/main.yml
++++ b/roles/ovn/vars/main.yml
+@@ -35,3 +35,6 @@ _ovn_helm_values:
+       ovn_ovsdb_nb: 3
+       ovn_ovsdb_sb: 3
+       ovn_northd: 3
++    sidecars:
++      ovn_logging_parser: "{{ ovn_network_logging_parser_enabled }}"
++      vector: "{{ ovn_network_logging_parser_enabled }}"
