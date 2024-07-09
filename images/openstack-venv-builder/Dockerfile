@@ -1,8 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
 
-# Build
-
 ARG RELEASE
 
 FROM registry.atmosphere.dev/library/ubuntu-cloud-archive:${RELEASE} AS requirements
