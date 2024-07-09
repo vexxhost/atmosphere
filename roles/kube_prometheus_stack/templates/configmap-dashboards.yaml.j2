@@ -1,0 +1,20 @@
+{% set dashboardName = item | basename | regex_replace('\.json$', '') %}
+apiVersion: v1
+kind: ConfigMapList
+items:
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kube-prometheus-stack-{{ dashboardName }}
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+    app: kube-prometheus-stack-grafana
+    app.kubernetes.io/instance: kube-prometheus-stack
+    app.kubernetes.io/part-of: kube-prometheus-stack
+    app.kubernetes.io/managed-by: ansible
+    role: kube_prometheus_stack
+data:
+  {{ dashboardName }}.json: |-
+    {{ lookup('file', item) | indent(width=4) }}
+

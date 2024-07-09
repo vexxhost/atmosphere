@@ -270,6 +270,15 @@
   tags:
     - kube-prometheus-stack-crds
 
+- name: Deploy additional dashboards
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    template:
+      - path: templates/configmap-dashboards.yaml.j2
+  with_fileglob:
+    - "dashboards/*.json"
+
 - name: Deploy Helm chart
   run_once: true
   kubernetes.core.helm:
