@@ -20,6 +20,18 @@
       become: yes
       command: apt-get update
 
+    - name: Update sysctl settings for kubernetes
+      become: yes
+      ansible.builtin.sysctl:
+        name: "{{ item.name }}"
+        value: "{{ item.value }}"
+        state: present
+        reload: yes
+      with_items:
+        - { name: fs.inotify.max_queued_events, value: 1048576}
+        - { name: fs.inotify.max_user_instances, value: 8192 }
+        - { name: fs.inotify.max_user_watches, value: 1048576 }
+
 - hosts: controllers
   tasks:
     - name: Set masquerade rule
