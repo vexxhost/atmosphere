@@ -70,8 +70,6 @@ __neutron_helm_values:
         metadata_proxy_shared_secret: "{{ openstack_helm_endpoints['compute_metadata']['secret'] }}"
     plugins:
       ml2_conf:
-        agent:
-          extensions: "log"
         ml2:
           extension_drivers: dns_domain_ports,port_security,qos
           type_drivers: flat,gre,vlan,vxlan
@@ -95,6 +93,8 @@ __neutron_ovn_helm_values:
         metadata_proxy_shared_secret: "{{ openstack_helm_endpoints['compute_metadata']['secret'] }}"
     plugins:
       ml2_conf:
+        agent:
+          extensions: "log"
         ml2:
           type_drivers: flat,vlan,geneve
           tenant_network_types: geneve
