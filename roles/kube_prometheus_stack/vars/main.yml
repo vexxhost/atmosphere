@@ -394,6 +394,18 @@ _kube_prometheus_stack_helm_values:
                 targetLabel: application
               - *relabeling_set_pod_name_to_instance
               - *relabeling_drop_all_kubernetes_labels
+      - name: keycloak
+        jobLabel: application
+        namespaceSelector:
+          matchNames:
+            - auth-system
+        selector:
+          matchLabels:
+            app.kubernetes.io/component: metrics
+            app.kubernetes.io/name: keycloak
+        endpoints:
+          - port: http
+            relabelings: *relabelings_instance_to_pod_name
       - name: memcached
         jobLabel: application
         namespaceSelector:
