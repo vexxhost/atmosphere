@@ -1,0 +1,13 @@
+diff --git a/kube-prometheus-stack/charts/prometheus-node-exporter/templates/daemonset.yaml b/charts/kube-prometheus-stack/charts/prometheus-node-exporter/templates/daemonset.yaml
+index 23896a23..af3525ff 100644
+--- a/kube-prometheus-stack/charts/prometheus-node-exporter/templates/daemonset.yaml
++++ b/charts/kube-prometheus-stack/charts/prometheus-node-exporter/templates/daemonset.yaml
+@@ -165,7 +165,7 @@ spec:
+             {{- range $_, $mount := .Values.sidecarVolumeMount }}
+             - name: {{ $mount.name }}
+               mountPath: {{ $mount.mountPath }}
+-              readOnly: true
++              readOnly: {{ $mount.readOnly }}
+             {{- end }}
+             {{- range $_, $mount := .Values.configmaps }}
+             - name: {{ $mount.name }}
