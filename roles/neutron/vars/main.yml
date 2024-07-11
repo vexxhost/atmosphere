@@ -84,7 +84,7 @@ __neutron_ovn_helm_values:
   conf:
     neutron:
       DEFAULT:
-        service_plugins: qos,ovn-router,segments,trunk
+        service_plugins: qos,ovn-router,segments,trunk,log
       ovn:
         ovn_emit_need_to_frag: true
     ovn_metadata_agent:
@@ -92,6 +92,8 @@ __neutron_ovn_helm_values:
         metadata_proxy_shared_secret: "{{ openstack_helm_endpoints['compute_metadata']['secret'] }}"
     plugins:
       ml2_conf:
+        agent:
+          extensions: "log"
         ml2:
           type_drivers: flat,vlan,geneve
           tenant_network_types: geneve
