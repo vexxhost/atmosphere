@@ -4,7 +4,7 @@
 ARG RELEASE
 
 FROM registry.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
-ARG NOVA_GIT_REF=b4a69447e2a176fd3821abc427019339ec700f0c
+ARG NOVA_GIT_REF=ba71dc50dbba82bbdecb845afea67ad2275897ec
 ADD --keep-git-dir=true https://opendev.org/openstack/nova.git#${NOVA_GIT_REF} /src/nova
 RUN git -C /src/nova fetch --unshallow
 COPY patches/nova /patches/nova
