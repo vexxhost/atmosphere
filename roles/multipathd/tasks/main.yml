@@ -15,6 +15,10 @@
 - name: Add backports PPA
   ansible.builtin.apt_repository:
     repo: "{{ multipathd_repository }}"
+  register: _add_multipathd_ppa
+  retries: 10
+  delay: 2
+  until: _add_multipathd_ppa is not failed
 
 - name: Install the multipathd package
   ansible.builtin.package:
