@@ -22,3 +22,11 @@ EOF
 
 FROM registry.atmosphere.dev/library/python-base:${RELEASE}
 COPY --from=build --link /var/lib/openstack /var/lib/openstack
+
+# NOTE(mnaser): The Magnum client relies on the SHELL environment variable
+#               to determine the shell to use.
+ENV SHELL=/bin/bash
+
+# NOTE(mnaser): When we call this container, we mount the current directory
+#               into `/opt` and then we can call `openstack` commands.
+WORKDIR /opt
