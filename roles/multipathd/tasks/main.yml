@@ -19,6 +19,7 @@
   retries: 10
   delay: 2
   until: _add_multipathd_ppa is not failed
+  when: ansible_distribution == 'Ubuntu' and ansible_distribution_release == 'jammy'
 
 - name: Install the multipathd package
   ansible.builtin.package:
