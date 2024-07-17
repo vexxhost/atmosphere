@@ -76,6 +76,7 @@ _nova_helm_values:
         connection_recycle_time: 10
         max_pool_size: 1
       filter_scheduler:
+        available_filters: nova_scheduler_filters.FailureDomainFilter
         enabled_filters:
           ComputeFilter,
           AggregateTypeAffinityFilter,
@@ -83,7 +84,8 @@ _nova_helm_values:
           PciPassthroughFilter,
           ImagePropertiesFilter,
           ServerGroupAntiAffinityFilter,
-          ServerGroupAffinityFilter
+          ServerGroupAffinityFilter,
+          FailureDomainFilter
         image_properties_default_architecture: x86_64
         max_instances_per_host: 200
       glance:
