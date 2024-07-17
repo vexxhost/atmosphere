@@ -57,7 +57,7 @@ You'll need to start all of the necessary dependencies first:
 .. code-block:: bash
 
     $ sudo apt-get update
-    $ sudo apt-get install git python3-tox
+    $ sudo apt-get install git tox
 
 Once done, you can clone the repository locally and switch to the
 ``atmosphere`` directory:
