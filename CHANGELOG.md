@@ -1,5 +1,93 @@
 # Changelog
 
+## [1.11.0](https://github.com/vexxhost/atmosphere/compare/v1.10.4...v1.11.0) (2024-07-17)
+
+
+### Features
+
+* add amphora jumpbox on k8s ([#883](https://github.com/vexxhost/atmosphere/issues/883)) ([b9a55a3](https://github.com/vexxhost/atmosphere/commit/b9a55a3d114444ddea439177b7e30480ce5366e3))
+* add Cloudflare ACME solver ([#1217](https://github.com/vexxhost/atmosphere/issues/1217)) ([08f7be6](https://github.com/vexxhost/atmosphere/commit/08f7be68c77534c5e7ee962d4609c3fa34dd2dac))
+* add goddady webhook for cluster_issuer ([#942](https://github.com/vexxhost/atmosphere/issues/942)) ([8d03724](https://github.com/vexxhost/atmosphere/commit/8d03724cb25ddc90ba2a8b3674f834206789d4cd))
+* add neutron_policy_server support ([#1428](https://github.com/vexxhost/atmosphere/issues/1428)) ([7113243](https://github.com/vexxhost/atmosphere/commit/7113243f55d1bc731b388e4df176b876f5c70e3f))
+* add nova failure domain filters ([#1607](https://github.com/vexxhost/atmosphere/issues/1607)) ([66bb947](https://github.com/vexxhost/atmosphere/commit/66bb947c9708526c4c37adf7a351a0a37c5455e2))
+* Add openstack db exporter ([#1039](https://github.com/vexxhost/atmosphere/issues/1039)) ([d206f5d](https://github.com/vexxhost/atmosphere/commit/d206f5d201688ab3ea96c8a4b8331a58e3986769))
+* add ovn_network_logging_parser support ([#1481](https://github.com/vexxhost/atmosphere/issues/1481)) ([df7761d](https://github.com/vexxhost/atmosphere/commit/df7761d5320d6d0cdd897e26ac763760f421c701)), closes [#1541](https://github.com/vexxhost/atmosphere/issues/1541)
+* adopt cephadm ([#752](https://github.com/vexxhost/atmosphere/issues/752)) ([e713267](https://github.com/vexxhost/atmosphere/commit/e7132674f7ad95c86d9b2e4e5a939ac5ced1a189))
+* build arm64 images for computes ([#1350](https://github.com/vexxhost/atmosphere/issues/1350)) ([1bb945e](https://github.com/vexxhost/atmosphere/commit/1bb945e7d8470d59077851fb9a13b44f64b2e415))
+* containerize openstack cli ([#972](https://github.com/vexxhost/atmosphere/issues/972)) ([7a28658](https://github.com/vexxhost/atmosphere/commit/7a28658c733a1e5f4c1a9866102ac960e1e1b9cc)), closes [#964](https://github.com/vexxhost/atmosphere/issues/964)
+* increase EL compatibility ([#963](https://github.com/vexxhost/atmosphere/issues/963)) ([0b59744](https://github.com/vexxhost/atmosphere/commit/0b5974469d08e0609ac6524cc269e446785051d4))
+* **monitoring:** expose prom/am via sso ([#987](https://github.com/vexxhost/atmosphere/issues/987)) ([91e2fa0](https://github.com/vexxhost/atmosphere/commit/91e2fa013c5ca3478bba169c7c611ca5fcd70778))
+* Neutron OVS+uwsgi support ([#1160](https://github.com/vexxhost/atmosphere/issues/1160)) ([0e15348](https://github.com/vexxhost/atmosphere/commit/0e1534803ff73bf56699b8fd65e43f84ea82b6ab))
+* trust private acme CA ([#1216](https://github.com/vexxhost/atmosphere/issues/1216)) ([abb1775](https://github.com/vexxhost/atmosphere/commit/abb177586fda668aea747e54231d5d1630bfb57e))
+* Upgrade monitoring stack ([#1071](https://github.com/vexxhost/atmosphere/issues/1071)) ([59219b6](https://github.com/vexxhost/atmosphere/commit/59219b63899aae9c9d5e6a2df752bd497c671f7f))
+* upgrade to bobcat ([#887](https://github.com/vexxhost/atmosphere/issues/887)) ([403c042](https://github.com/vexxhost/atmosphere/commit/403c0428046dadfb7dc44c958c943fa0d7666c98))
+
+
+### Bug Fixes
+
+* add CA mounts in the Prometheus oauth2 container ([#1329](https://github.com/vexxhost/atmosphere/issues/1329)) ([f0836c2](https://github.com/vexxhost/atmosphere/commit/f0836c24b98cfdbfe675bb17d770b17ea5058985))
+* add fix for designate db ([#1008](https://github.com/vexxhost/atmosphere/issues/1008)) ([54df64a](https://github.com/vexxhost/atmosphere/commit/54df64a13caf78eff10408a7e252af0b68f0ab87)), closes [#985](https://github.com/vexxhost/atmosphere/issues/985)
+* add missing image deps ([a386867](https://github.com/vexxhost/atmosphere/commit/a3868678dd1ddcc2e2b513a06dec6bcc00510993))
+* add missing qemu rbd package ([#1149](https://github.com/vexxhost/atmosphere/issues/1149)) ([3d7dc54](https://github.com/vexxhost/atmosphere/commit/3d7dc54bcfec3b03df354c58683a57807ec3c40c))
+* add more retries to mysql_ready check ([#1342](https://github.com/vexxhost/atmosphere/issues/1342)) ([e655929](https://github.com/vexxhost/atmosphere/commit/e655929e23f659babf9b66f4cff917bce0e8e606))
+* add retry logic for adding multipathd ppa ([#1569](https://github.com/vexxhost/atmosphere/issues/1569)) ([92ac0b6](https://github.com/vexxhost/atmosphere/commit/92ac0b6804bd94dc8c48545df40fbf173bec5b36))
+* allow ssh login for nova user in nova-ssh image ([#1246](https://github.com/vexxhost/atmosphere/issues/1246)) ([5175ff5](https://github.com/vexxhost/atmosphere/commit/5175ff5d6513295a217dad1f63ade78ab693a879)), closes [#1245](https://github.com/vexxhost/atmosphere/issues/1245)
+* Barbican use same uwsgi config as other services. ([#1119](https://github.com/vexxhost/atmosphere/issues/1119)) ([36e65de](https://github.com/vexxhost/atmosphere/commit/36e65de7c5c003cc23dc78f2ad3e8117bf8922c0))
+* **barbican:** create and add implied role creator ([#909](https://github.com/vexxhost/atmosphere/issues/909)) ([8624823](https://github.com/vexxhost/atmosphere/commit/86248233e58bb9dbb363499159b7126f06a32c20))
+* **barbican:** remove cves from image ([b3cefe1](https://github.com/vexxhost/atmosphere/commit/b3cefe1ed5449050d73bff1882ea38f6a51b8415))
+* **capi:** fix cve from image ([161e0df](https://github.com/vexxhost/atmosphere/commit/161e0dffa7ccd26878a9ebd486b607e780948fe5))
+* **cilium:** bump version ([4ebdd2d](https://github.com/vexxhost/atmosphere/commit/4ebdd2d317ff0e85a26297c0ec07c1b03201a181))
+* correct keystone_domains reference from horizon ([#1182](https://github.com/vexxhost/atmosphere/issues/1182)) ([d13b6a6](https://github.com/vexxhost/atmosphere/commit/d13b6a65904d8419c7627c7e3129e237a0ccf671)), closes [#727](https://github.com/vexxhost/atmosphere/issues/727)
+* correct keystone_domains reference from horizon ([#992](https://github.com/vexxhost/atmosphere/issues/992)) ([1fbbb40](https://github.com/vexxhost/atmosphere/commit/1fbbb407a54c2e517a4968a83ce02726f0c941ba))
+* **defaults:** Update sandbox image to pause:3.9 ([#1052](https://github.com/vexxhost/atmosphere/issues/1052)) ([55faf38](https://github.com/vexxhost/atmosphere/commit/55faf387c17b1a1def067cac729c43278f893251))
+* enable faster db recovery ([#1020](https://github.com/vexxhost/atmosphere/issues/1020)) ([c6e431b](https://github.com/vexxhost/atmosphere/commit/c6e431bc1255962ab87b1a13185a26ad0a912788))
+* ensure registry is readonly ([6fd97ab](https://github.com/vexxhost/atmosphere/commit/6fd97ab2020fd20aa9b7cc8f449cbda0c6c58912))
+* fix CI jobs ([#923](https://github.com/vexxhost/atmosphere/issues/923)) ([ef722de](https://github.com/vexxhost/atmosphere/commit/ef722deb89de7cb9e815ae26615a3eaea226667d))
+* fix CI with aritubee not define issue ([#989](https://github.com/vexxhost/atmosphere/issues/989)) ([37ebfde](https://github.com/vexxhost/atmosphere/commit/37ebfdecc7e77c974b4809c5c9426c704ed7ace6))
+* fix ingress annotations format ([#1279](https://github.com/vexxhost/atmosphere/issues/1279)) ([b81e8d5](https://github.com/vexxhost/atmosphere/commit/b81e8d5ecad612384e08a18a9a1b03a379d69c42))
+* fix missing magnum registry image ([#877](https://github.com/vexxhost/atmosphere/issues/877)) ([2f1d34d](https://github.com/vexxhost/atmosphere/commit/2f1d34d87c151de33a13ee086a0b13c398574a45))
+* fix ovn db mount path ([#1044](https://github.com/vexxhost/atmosphere/issues/1044)) ([e192c9e](https://github.com/vexxhost/atmosphere/commit/e192c9edef6de498bd9aa490cf81d6c2e7f57a4c))
+* fix sync-charts CI ([#1181](https://github.com/vexxhost/atmosphere/issues/1181)) ([c49f852](https://github.com/vexxhost/atmosphere/commit/c49f85253b11856f53647ddce86d7e3d1e16cc01))
+* **glance_image:** introduce retries ([#1061](https://github.com/vexxhost/atmosphere/issues/1061)) ([2797116](https://github.com/vexxhost/atmosphere/commit/27971162b1d2667a03a98ac2965855306cdf69fe))
+* Horizon custom logo format error with SVG file ([#1208](https://github.com/vexxhost/atmosphere/issues/1208)) ([5534605](https://github.com/vexxhost/atmosphere/commit/5534605751cfed9486463b5f95459ea7e01b7960))
+* **horizon:** fix cves in image ([2142205](https://github.com/vexxhost/atmosphere/commit/21422051743c65c155f8377dd5666b1373a94600))
+* **images:** address all CVEs in images ([7a848bc](https://github.com/vexxhost/atmosphere/commit/7a848bc8c97f247ada908cfa629518d3e449ddd6))
+* **images:** use noninteractive apt-get frontend ([#975](https://github.com/vexxhost/atmosphere/issues/975)) ([52f5d5d](https://github.com/vexxhost/atmosphere/commit/52f5d5d413d5681398e6b276a1c64100d5bf177b))
+* increase trivy timeout ([#1032](https://github.com/vexxhost/atmosphere/issues/1032)) ([e721510](https://github.com/vexxhost/atmosphere/commit/e72151041f299815203f01aaeca001a052d97d2c))
+* Install qemu-block-extra in nova, cinder, ironic images ([#1184](https://github.com/vexxhost/atmosphere/issues/1184)) ([4aae76e](https://github.com/vexxhost/atmosphere/commit/4aae76ee07ace3dbea39ef9b2ba817462ed0f9d5)), closes [#1181](https://github.com/vexxhost/atmosphere/issues/1181)
+* **ipmi-exporter:** Ignore additional sensor IDs (BP/Entity Presence) ([#1076](https://github.com/vexxhost/atmosphere/issues/1076)) ([b0a6214](https://github.com/vexxhost/atmosphere/commit/b0a6214c816950797f51b3ec940d066139b2cd00))
+* **libvirt-tls-sidecar:** add missing cert file ([3668852](https://github.com/vexxhost/atmosphere/commit/36688529ff52c7744f50ce5a0b408aa859918050))
+* limit aiofiles version for package issue ([#1442](https://github.com/vexxhost/atmosphere/issues/1442)) ([67632a9](https://github.com/vexxhost/atmosphere/commit/67632a9b096db1108f386a10d84c5b31a8a78e88))
+* limit neutron vpnaas ref ([#1458](https://github.com/vexxhost/atmosphere/issues/1458)) ([4df69c0](https://github.com/vexxhost/atmosphere/commit/4df69c0dec521e678db2b59e96db6eb89692e79d))
+* lock commit hash of ovn-kubernetes project for ovn image build ([#1030](https://github.com/vexxhost/atmosphere/issues/1030)) ([c7f5aa5](https://github.com/vexxhost/atmosphere/commit/c7f5aa5e25098b49d49106ab2ae24c6852e44c62))
+* **magnum:** add missing helm image ([142c13e](https://github.com/vexxhost/atmosphere/commit/142c13e9367042884ca11fad282f6a403f3cb16d))
+* **magnum:** improve ovn stability ([1825cef](https://github.com/vexxhost/atmosphere/commit/1825cefecbed92573c352bab0cc319f9a942bdf8))
+* make multipathd repository overridable for offline install ([#1337](https://github.com/vexxhost/atmosphere/issues/1337)) ([39dde0c](https://github.com/vexxhost/atmosphere/commit/39dde0c03042dd800db451d38329099da8f7a867))
+* neutron designate integration ([#1389](https://github.com/vexxhost/atmosphere/issues/1389)) ([e97698c](https://github.com/vexxhost/atmosphere/commit/e97698ca3b3339c2b367bdf824ae534cdb03d6f2))
+* nova capacity alert ([#1306](https://github.com/vexxhost/atmosphere/issues/1306)) ([d05ee41](https://github.com/vexxhost/atmosphere/commit/d05ee419cb1f637a6a00462c673eb61863f9fe2e))
+* **nova:** cherry-pick windows fixes ([#961](https://github.com/vexxhost/atmosphere/issues/961)) ([5c44b2d](https://github.com/vexxhost/atmosphere/commit/5c44b2d0f6128f8008bad2ba1a93951fbf5ba8ae))
+* **octavia:** force internal endpoint usage ([fcc1a6d](https://github.com/vexxhost/atmosphere/commit/fcc1a6d22e9dd3b4228b900fbd5857eaecac2527))
+* poetry shell and run in nix develop ([#1011](https://github.com/vexxhost/atmosphere/issues/1011)) ([8b9822b](https://github.com/vexxhost/atmosphere/commit/8b9822b961947456d4d2266d235192921bf244da))
+* pre-commit job ([#894](https://github.com/vexxhost/atmosphere/issues/894)) ([2a15d92](https://github.com/vexxhost/atmosphere/commit/2a15d92e138ffdf83680e5f75e9b217f552fb607))
+* remove the sha256 at the crane copy, this way it creates a tag ([#1045](https://github.com/vexxhost/atmosphere/issues/1045)) ([03ddc8e](https://github.com/vexxhost/atmosphere/commit/03ddc8e8c9c074dc5292629e35a505c9d22c46fd))
+* remove unrequied dependencies for ceph-provisioners ([#1550](https://github.com/vexxhost/atmosphere/issues/1550)) ([7ab7569](https://github.com/vexxhost/atmosphere/commit/7ab7569304e3f31e9fb1455951af20b646de1fb2))
+* solve requirements ([10ab7ef](https://github.com/vexxhost/atmosphere/commit/10ab7efd4d20fc49ff9198c42462efe1f0dd6a41))
+* sort patch files before apply ([#1541](https://github.com/vexxhost/atmosphere/issues/1541)) ([74acb9a](https://github.com/vexxhost/atmosphere/commit/74acb9accd9a3db8ee78c41bde11bccafe8b19c7))
+* this targets mysql upgrade needs ([#1409](https://github.com/vexxhost/atmosphere/issues/1409)) ([8bedb84](https://github.com/vexxhost/atmosphere/commit/8bedb84656b1764d618e010044767e9b21caa505))
+* update ubuntu package libssl3 ([#994](https://github.com/vexxhost/atmosphere/issues/994)) ([69ca285](https://github.com/vexxhost/atmosphere/commit/69ca2857cf5dea8863a91c87ba1fb37bdfa23e95))
+* update upperconstraint for zed ([#914](https://github.com/vexxhost/atmosphere/issues/914)) ([87af6e0](https://github.com/vexxhost/atmosphere/commit/87af6e0c974350937cee5d1adbcb5f16a04a9077))
+* use kubelet_hostname instead of inventory_hostname_short ([#1177](https://github.com/vexxhost/atmosphere/issues/1177)) ([4606653](https://github.com/vexxhost/atmosphere/commit/46066537fbade8808ca86da653663a935be2fe3e))
+* use openstack_helm_ingress_secret_name when set for monitoring ([#1386](https://github.com/vexxhost/atmosphere/issues/1386)) ([3708ece](https://github.com/vexxhost/atmosphere/commit/3708eceae24ea5eca05a6c3c953cf5095fa96ded))
+* **uwsgi:** tune settings ([#1047](https://github.com/vexxhost/atmosphere/issues/1047)) ([cb5d9c3](https://github.com/vexxhost/atmosphere/commit/cb5d9c3036f50f7c9f03a72160c833fac32cb59b))
+
+
+### Documentation
+
+* add octavia access docs ([9493807](https://github.com/vexxhost/atmosphere/commit/94938074ff7baac15898b77375033dfb967b9adb))
+* add octavia troubleshooting ([2d3e206](https://github.com/vexxhost/atmosphere/commit/2d3e2069c0f5f258c5aeef38d206a3f61cd2eb41))
+* add settings for purestorage ([#635](https://github.com/vexxhost/atmosphere/issues/635)) ([f7d95c5](https://github.com/vexxhost/atmosphere/commit/f7d95c514e9427f92664f7fa975c6322e281dc36))
+* refactor and update ([7f3eb56](https://github.com/vexxhost/atmosphere/commit/7f3eb56b84844491739d503f10a99ee4ad204f51))
+
 ## [1.10.4](https://github.com/vexxhost/atmosphere/compare/v1.10.3...v1.10.4) (2024-01-09)
 
 
