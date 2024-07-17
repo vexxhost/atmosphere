@@ -76,7 +76,11 @@ _nova_helm_values:
         connection_recycle_time: 10
         max_pool_size: 1
       filter_scheduler:
-        available_filters: nova_scheduler_filters.FailureDomainFilter
+        available_filters:
+          type: multistring
+          values:
+            - nova.scheduler.filters.all_filters
+            - nova_scheduler_filters.FailureDomainFilter
         enabled_filters:
           AvailabilityZoneFilter,
           ComputeFilter,
