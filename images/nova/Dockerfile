@@ -9,10 +9,14 @@ ADD --keep-git-dir=true https://opendev.org/openstack/nova.git#${NOVA_GIT_REF} /
 RUN git -C /src/nova fetch --unshallow
 COPY patches/nova /patches/nova
 RUN git -C /src/nova apply --verbose /patches/nova/*
+ARG SCHEDULER_FILTERS_GIT_REF=eb17f39c68606cca7ec68bf3e40d58e0954326ee
+ADD --keep-git-dir=true https://github.com/vexxhost/nova-scheduler-filters.git#${SCHEDULER_FILTERS_GIT_REF} /src/nova-scheduler-filters
+RUN git -C /src/nova-scheduler-filters fetch --unshallow
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
 pip3 install \
     --constraint /upper-constraints.txt \
         /src/nova \
+        /src/nova-scheduler-filters \
         python-ironicclient \
         storpool \
         storpool.spopenstack
