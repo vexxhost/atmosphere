@@ -360,6 +360,15 @@ _kube_prometheus_stack_helm_values:
           hostPath:
             path: "{{ defaults_ca_certificates_path }}"
     additionalServiceMonitors:
+      - name: goldpinger
+        jobLabel: app.kubernetes.io/instance
+        selector:
+          matchLabels:
+            app.kubernetes.io/instance: goldpinger
+            app.kubernetes.io/name: goldpinger
+        endpoints:
+          - port: http
+            relabelings: *relabelings_instance_to_node_name
       - name: ceph
         jobLabel: application
         namespaceSelector:
