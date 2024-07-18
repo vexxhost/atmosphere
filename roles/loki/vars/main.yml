@@ -92,7 +92,7 @@ _loki_helm_values:
           - name: additional-loki-rules
             rules:
               - alert: NovaCellNotResponding
-                expr: 'count_over_time({kubernetes_labels_component="compute"} |= "not responding and hence is being omitted from the results" [1m]) > 0'
+                expr: 'count_over_time({pod_label_component="compute"} |= "not responding and hence is being omitted from the results" [1m]) > 0'
                 labels:
                   severity: critical
                 annotations:
