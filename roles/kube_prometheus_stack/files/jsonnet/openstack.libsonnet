@@ -39,6 +39,25 @@
         ],
       },
       {
+        name: 'goldpinger',
+        rules: [
+          {
+            alert: 'GoldpingerNodesUnhealthy',
+            expr: |||
+              sum(goldpinger_nodes_health_total{status="unhealthy"}) BY (instance, goldpinger_instance) > 0
+            |||,
+            'for': '1m',
+            labels: {
+              severity: 'P2',
+            },
+            annotations: {
+              summary: 'Instance {{ $labels.instance }} down',
+              description: 'Goldpinger instance {{ $labels.goldpinger_instance }} has been reporting unhealthy nodes for at least 5 minutes.',
+            },
+          },
+        ],
+      },
+      {
         name: 'cinder',
         rules: [
           {
