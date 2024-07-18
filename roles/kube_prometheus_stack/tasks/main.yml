@@ -283,10 +283,12 @@
         labels:
           grafana_dashboard: "1"
       data:
-        dashboard.json: "{{ lookup('file', item.name ~ '.json') | to_json }}"
+        dashboard.json: "{{ lookup('file', 'dashboards/' ~ item.name ~ '.json') | to_json }}"
   loop:
     - name: goldpinger
       state: present
+  tags:
+    - kube-prometheus-stack-dashboards
 
 - name: Deploy Helm chart
   run_once: true
