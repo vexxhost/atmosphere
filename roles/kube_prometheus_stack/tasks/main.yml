@@ -273,17 +273,20 @@
 - name: Deploy additional dashboards
   run_once: true
   kubernetes.core.k8s:
-    state: present
+    state: "{{ item.state }}"
     definition:
       apiVersion: v1
       kind: ConfigMap
       metadata:
-        name: "kube-prometheus-stack-dashboard-{{ item | basename | regex_replace('\\.json$', '') }}"
+        name: "kube-prometheus-stack-dashboard-{{ item.name }}"
         namespace: monitoring
+        labels:
+          grafana_dashboard: "1"
       data:
-        dashboard.json: "{{ lookup('file', item) | to_json }}"
-  with_fileglob:
-    - "dashboards/*.json"
+        dashboard.json: "{{ lookup('file', item.name ~ '.json') | to_json }}"
+  loop:
+    - name: goldpinger
+      state: present
 
 - name: Deploy Helm chart
   run_once: true
