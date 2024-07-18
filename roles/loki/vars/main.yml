@@ -29,13 +29,15 @@ _loki_helm_values:
     rulerConfig:
       alertmanager_url: http://alertmanager-operated.monitoring:9093
       enable_alertmanager_v2: true
+      enable_api: true
+      rule_path: /var/loki/rules-temp
       ring:
         kvstore:
           store: inmemory
       storage:
         type: local
         local:
-          directory: /rules
+          directory: /var/loki/rulestorage
     storage:
       type: filesystem
     schemaConfig:
@@ -63,6 +65,13 @@ _loki_helm_values:
       openstack-control-plane: enabled
     persistence:
       size: 256Gi
+    extraVolumeMounts:
+      - name: rules
+        mountPath: /var/loki/rulestorage/fake
+    extraVolumes:
+      - name: rules
+        configMap:
+          name: loki-alerting-rules
   write:
     replicas: 0
   read:
@@ -78,10 +87,6 @@ _loki_helm_values:
       openstack-control-plane: enabled
   lokiCanary:
     enabled: false
-  sidecar:
-    rules:
-      label: loki_rule
-      labelValue: "atmosphere"
   extraObjects:
   - apiVersion: v1
     kind: ConfigMap
@@ -95,7 +100,7 @@ _loki_helm_values:
           - name: additional-loki-rules
             rules:
               - alert: NovaCellNotResponding
-                expr: 'kubernetes.labels.component="compute" and log =~ "not responding and hence is being omitted from the results"'
+                expr: 'count_over_time({kubernetes_labels_component="compute"} |= "not responding and hence is being omitted from the results" [1m]) > 0'
                 labels:
                   severity: critical
                 annotations:
