@@ -21,7 +21,8 @@
   when: "'InitiatorName' not in portworx_iscsi_initiatorname.content | b64decode"
   block:
     - name: Generate a new InitiatorName
-      ansible.builtin.shell:
+      changed_when: true
+      ansible.builtin.command:
         cmd: iscsi-iname
       register: portworx_iscsi_iname
 
