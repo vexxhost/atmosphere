@@ -274,16 +274,7 @@
   run_once: true
   kubernetes.core.k8s:
     state: "{{ item.state }}"
-    definition:
-      apiVersion: v1
-      kind: ConfigMap
-      metadata:
-        name: "kube-prometheus-stack-dashboard-{{ item.name }}"
-        namespace: monitoring
-        labels:
-          grafana_dashboard: "1"
-      data:
-        dashboard.json: "{{ lookup('file', 'dashboards/' ~ item.name ~ '.json') | to_json }}"
+    template: configmap-dashboard.yaml.j2
   loop:
     - name: goldpinger
       state: present
