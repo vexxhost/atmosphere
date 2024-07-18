@@ -105,3 +105,19 @@ index 7bd2b9813..5e28902e5 100644
          {{- with .Values.singleBinary.extraVolumes }}
          {{- toYaml . | nindent 8 }}
          {{- end }}
+diff --git a/loki/templates/backend/clusterrole.yaml b/loki/templates/backend/clusterrole.yaml
+index e8631c35a..1d9481ce0 100644
+--- a/loki/templates/backend/clusterrole.yaml
++++ b/loki/templates/backend/clusterrole.yaml
+@@ -1,5 +1,4 @@
+-{{- $isSimpleScalable := eq (include "loki.deployment.isScalable" .) "true" -}}
+-{{- if and $isSimpleScalable (not .Values.rbac.namespaced) (not .Values.rbac.useExistingRole) }}
++{{- if and (not .Values.rbac.namespaced) (not .Values.rbac.useExistingRole) }}
+ kind: ClusterRole
+ apiVersion: rbac.authorization.k8s.io/v1
+ metadata:
+@@ -18,4 +17,3 @@ rules:
+ {{- else }}
+ rules: []
+ {{- end }}
+-{{- end }}
