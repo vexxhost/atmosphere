@@ -270,6 +270,21 @@
   tags:
     - kube-prometheus-stack-crds
 
+- name: Deploy additional dashboards
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: kube-prometheus-stack-dashboard-{{ item | basename | regex_replace('\\.json$', '') }}
+        namespace: monitoring
+      data:
+        dashboard.json: "{{ lookup('file', item) }}"
+  with_fileglob:
+    - "dashboards/*.json"
+
 - name: Deploy Helm chart
   run_once: true
   kubernetes.core.helm:
