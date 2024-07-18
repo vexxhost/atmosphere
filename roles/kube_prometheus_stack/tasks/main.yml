@@ -278,10 +278,10 @@
       apiVersion: v1
       kind: ConfigMap
       metadata:
-        name: kube-prometheus-stack-dashboard-{{ item | basename | regex_replace('\\.json$', '') }}
+        name: "kube-prometheus-stack-dashboard-{{ item | basename | regex_replace('\\.json$', '') }}"
         namespace: monitoring
       data:
-        dashboard.json: "{{ lookup('file', item) }}"
+        dashboard.json: "{{ lookup('file', item) | to_json }}"
   with_fileglob:
     - "dashboards/*.json"
 
