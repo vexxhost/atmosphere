@@ -303,6 +303,19 @@
   tags:
     - kube-prometheus-stack-crds
 
+- name: Deploy additional dashboards
+  run_once: true
+  kubernetes.core.k8s:
+    state: "{{ item.state }}"
+    template: configmap-dashboard.yaml.j2
+  loop:
+    - name: goldpinger
+      state: present
+    - name: node-exporter-full
+      state: present
+  tags:
+    - kube-prometheus-stack-dashboards
+
 - name: Deploy Helm chart
   run_once: true
   kubernetes.core.helm:
