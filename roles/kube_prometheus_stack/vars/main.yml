@@ -314,6 +314,14 @@ _kube_prometheus_stack_helm_values:
         registry: "{{ atmosphere_images['prometheus'] | vexxhost.kubernetes.docker_image('domain') }}"
         repository: "{{ atmosphere_images['prometheus'] | vexxhost.kubernetes.docker_image('path') }}"
         tag: "{{ atmosphere_images['prometheus'] | vexxhost.kubernetes.docker_image('tag') }}"
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            storageClassName: general
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 100Gi
       nodeSelector: *node_selector
       secrets:
         - kube-prometheus-stack-etcd-client-cert
