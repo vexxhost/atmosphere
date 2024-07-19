@@ -30,7 +30,7 @@ _vector_helm_values:
       loki_kubernetes_logs:
         type: loki
         endpoint: http://loki-gateway
-        inputs: [kubernetes_logs]
+        inputs: [filter_labels]
         encoding:
           codec: text
         labels:
@@ -55,6 +55,24 @@ _vector_helm_values:
           node: '{% raw %}{{ print "{{ host }}" }}{% endraw %}'
           unit: '{% raw %}{{ print "{{ _SYSTEMD_UNIT }}" }}{% endraw %}'
           stream: '{% raw %}{{ print "{{ _TRANSPORT }}" }}{% endraw %}'
+    transforms:
+      filter_labels:
+        type: remap
+        inputs: [kubernetes_logs]
+        source: |
+          # Remove unnecessary labels
+          del(.kubernetes.pod_labels.app_kubernetes_io_created_by)
+          del(.kubernetes.pod_labels.app_kubernetes_io_managed_by)
+          del(.kubernetes.pod_labels.app_kubernetes_io_part_of)
+          del(.kubernetes.pod_labels.apps_kubernetes_io_pod_index)
+          del(.kubernetes.pod_labels.ceph_daemon_id)
+          del(.kubernetes.pod_labels.ceph_daemon_type)
+          del(.kubernetes.pod_labels.operator_prometheus_io_name)
+          del(.kubernetes.pod_labels.operator_prometheus_io_shard)
+          del(.kubernetes.pod_labels.rook_cluster)
+          del(.kubernetes.pod_labels.rook_io_operator_namespace)
+          del(.kubernetes.pod_labels.rook_object_store)
+          del(.kubernetes.pod_labels.statefulset_kubernetes_io_pod_name)
   extraVolumes:
     - name: etc-machineid
       hostPath:
