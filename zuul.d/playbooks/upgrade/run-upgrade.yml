@@ -25,17 +25,16 @@
       args:
         chdir: "{{ zuul.project.src_dir }}"
 
-    - name: Run molecule with exist branch
+    - name: Run molecule with existing branch
       become: true
-      ansible.builtin.shell: |
-        pip install --ignore-installed poetry
-        poetry install
-        pip install -r test-requirements.txt
-        poetry run molecule converge -s aio
-      args:
-        chdir: "{{ zuul.project.src_dir }}"
-      environment:
-        ATMOSPHERE_NETWORK_BACKEND: "{{ network_backend }}"
+      ansible.builtin.include_role:
+        name: tox
+      vars:
+        tox_envlist: molecule-venv
+        tox_extra_args: "-- converge -s aio"
+        tox_environment:
+          ATMOSPHERE_NETWORK_BACKEND: "{{ network_backend }}"
+        zuul_work_dir: "{{ zuul.project.src_dir }}"
 
     - name: Checkout to "{{ zuul.branch }}" branch
       become: true
@@ -46,14 +45,24 @@
       args:
         chdir: "{{ zuul.project.src_dir }}"
 
-    - name: Run molecule to upgrade
+    - name: Upgrade cloud to "{{ zuul.branch }}"
       become: true
-      ansible.builtin.shell: |
-        poetry install
-        pip install -r test-requirements.txt
-        poetry run molecule converge -s aio
-        poetry run molecule verify -s aio
-      args:
-        chdir: "{{ zuul.project.src_dir }}"
-      environment:
-        ATMOSPHERE_NETWORK_BACKEND: "{{ network_backend }}"
+      ansible.builtin.include_role:
+        name: tox
+      vars:
+        tox_envlist: molecule-venv
+        tox_extra_args: "-- converge -s aio"
+        tox_environment:
+          ATMOSPHERE_NETWORK_BACKEND: "{{ network_backend }}"
+        zuul_work_dir: "{{ zuul.project.src_dir }}"
+
+    - name: Verify if upgrade was successful
+      become: true
+      ansible.builtin.include_role:
+        name: tox
+      vars:
+        tox_envlist: molecule-venv
+        tox_extra_args: "-- verify -s aio"
+        tox_environment:
+          ATMOSPHERE_NETWORK_BACKEND: "{{ network_backend }}"
+        zuul_work_dir: "{{ zuul.project.src_dir }}"
