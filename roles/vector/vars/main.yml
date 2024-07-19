@@ -31,6 +31,7 @@ _vector_helm_values:
         type: loki
         endpoint: http://loki-gateway
         inputs: [kubernetes_logs]
+        out_of_order_action: accept
         encoding:
           codec: text
         labels:
@@ -43,7 +44,6 @@ _vector_helm_values:
           pod_label_*: '{% raw %}{{ print "{{ kubernetes.pod_labels }}" }}{% endraw %}'
           container_name: '{% raw %}{{ print "{{ kubernetes.container_name }}" }}{% endraw %}'
           container_image: '{% raw %}{{ print "{{ kubernetes.container_image }}" }}{% endraw %}'
-          stream: '{% raw %}{{ print "{{ kubernetes.stream }}" }}{% endraw %}'
       loki_journald:
         type: loki
         endpoint: http://loki-gateway
