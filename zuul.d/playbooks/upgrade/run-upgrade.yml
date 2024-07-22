@@ -17,7 +17,6 @@
   become: true
   tasks:
     - name: Checkout to "{{ from_branch }}" branch
-      become: true
       ansible.builtin.shell: |
         sudo apt-get purge -y snapd
         git stash
@@ -26,7 +25,6 @@
         chdir: "{{ zuul.project.src_dir }}"
 
     - name: Run molecule with existing branch
-      become: true
       ansible.builtin.include_role:
         name: tox
       vars:
@@ -37,7 +35,6 @@
         zuul_work_dir: "{{ zuul.project.src_dir }}"
 
     - name: Checkout to "{{ zuul.branch }}" branch
-      become: true
       ansible.builtin.shell: |
         git restore .
         git checkout "{{ zuul.branch }}"
@@ -46,7 +43,6 @@
         chdir: "{{ zuul.project.src_dir }}"
 
     - name: Upgrade cloud to "{{ zuul.branch }}"
-      become: true
       ansible.builtin.include_role:
         name: tox
       vars:
@@ -57,7 +53,6 @@
         zuul_work_dir: "{{ zuul.project.src_dir }}"
 
     - name: Verify if upgrade was successful
-      become: true
       ansible.builtin.include_role:
         name: tox
       vars:
