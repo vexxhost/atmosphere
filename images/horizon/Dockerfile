@@ -4,7 +4,7 @@
 ARG RELEASE
 
 FROM registry.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
-ARG HORIZON_GIT_REF=3f1f1d46e6e47a3dbe46fb023fe69ff25d6a601b
+ARG HORIZON_GIT_REF=14212342cf8f7eb987e50de112958af31063e02e
 ADD --keep-git-dir=true https://opendev.org/openstack/horizon.git#${HORIZON_GIT_REF} /src/horizon
 RUN git -C /src/horizon fetch --unshallow
 ADD --keep-git-dir=true https://opendev.org/openstack/designate-dashboard.git#master /src/designate-dashboard
