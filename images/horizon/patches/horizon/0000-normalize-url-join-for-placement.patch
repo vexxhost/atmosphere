@@ -1,4 +1,4 @@
-From a8c3bbdc06216b66ba053bbae192978ce7e3ec17 Mon Sep 17 00:00:00 2001
+From 7bd576495a0d9c1132962794f1b5d2032d66c24c Mon Sep 17 00:00:00 2001
 From: okozachenko <okozachenko1203@gmail.com>
 Date: Tue, 23 Jul 2024 23:28:28 +1000
 Subject: [PATCH] fix: normalize url join for placement uris
@@ -7,18 +7,19 @@ Change-Id: Idcf00a91c1545e9693bb2e73e424958c5bb75e9c
 ---
 
 diff --git a/openstack_dashboard/api/placement.py b/openstack_dashboard/api/placement.py
-index 98b51cd..da95328 100644
+index 98b51cd..643dde4 100644
 --- a/openstack_dashboard/api/placement.py
 +++ b/openstack_dashboard/api/placement.py
-@@ -11,6 +11,7 @@
+@@ -10,6 +10,8 @@
+ #    License for the specific language governing permissions and limitations
  #    under the License.
  
- from django.conf import settings
 +from urllib.parse import urljoin
++
+ from django.conf import settings
  from keystoneauth1 import adapter
  from keystoneauth1 import identity
- from keystoneauth1 import session
-@@ -55,7 +56,11 @@
+@@ -55,7 +57,11 @@
  
  def _get_json(request, path):
      adapter = make_adapter(request)
