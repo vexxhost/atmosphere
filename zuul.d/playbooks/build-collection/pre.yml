@@ -18,6 +18,28 @@
 - name: Prepare for collection build
   hosts: all
   tasks:
+    - name: Find all roles
+      find:
+        paths: "{{ zuul.project.src_dir }}/roles/"
+        file_type: directory
+      register: role_dirs
+
+    - name: Check for README.md in each role
+      stat:
+        path: "{{ item.path }}/README.md"
+      register: readme_check
+      loop: "{{ role_dirs.files }}"
+      loop_control:
+        label: "{{ item.path }}"
+
+    - name: Fail if any role is missing README.md
+      fail:
+        msg: "Missing README.md in role {{ item.item.path }}"
+      when: not item.stat.exists
+      loop: "{{ readme_check.results }}"
+      loop_control:
+        label: "{{ item.item.path }}"
+
     - name: Pin all image digests
       ansible.builtin.include_role:
         name: tox
