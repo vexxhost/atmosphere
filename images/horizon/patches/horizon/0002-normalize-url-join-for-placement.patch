@@ -1,0 +1,43 @@
+From 2c8e80e74d3b19ef0000e37b522dda4df53edb68 Mon Sep 17 00:00:00 2001
+From: okozachenko <okozachenko1203@gmail.com>
+Date: Tue, 23 Jul 2024 23:28:28 +1000
+Subject: [PATCH] fix: normalize url join for placement uris
+
+Change-Id: Idcf00a91c1545e9693bb2e73e424958c5bb75e9c
+---
+
+diff --git a/openstack_dashboard/api/placement.py b/openstack_dashboard/api/placement.py
+index 60c07d4..9ec0794 100644
+--- a/openstack_dashboard/api/placement.py
++++ b/openstack_dashboard/api/placement.py
+@@ -10,6 +10,8 @@
+ #    License for the specific language governing permissions and limitations
+ #    under the License.
+ 
++from urllib.parse import urljoin
++
+ from keystoneauth1 import adapter
+ from keystoneauth1 import identity
+ from keystoneauth1 import session
+@@ -46,7 +48,11 @@
+ 
+ def _get_json(request, path):
+     adapter = make_adapter(request)
+-    uri = base.url_for(request, 'placement') + path
++    base_uri = base.url_for(request, 'placement')
++    if not base_uri.endswith('/'):
++        base_uri += '/'
++    normalized_path = path.lstrip('/')
++    uri = urljoin(base_uri, normalized_path)
+     response, body = adapter.get(uri)
+     return response.json()
+ 
+diff --git a/releasenotes/notes/fix-placement-uri-generation-3b7586c163189608.yaml b/releasenotes/notes/fix-placement-uri-generation-3b7586c163189608.yaml
+new file mode 100644
+index 0000000..1531baa
+--- /dev/null
++++ b/releasenotes/notes/fix-placement-uri-generation-3b7586c163189608.yaml
+@@ -0,0 +1,3 @@
++---
++fixes:
++  - Use urljoin for normalized uri generation for placement apis
