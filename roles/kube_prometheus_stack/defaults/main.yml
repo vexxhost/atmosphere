@@ -21,6 +21,8 @@ kube_prometheus_stack_helm_values: {}
 
 kube_prometheus_stack_ingress_class_name: "{{ atmosphere_ingress_class_name }}"
 kube_prometheus_stack_ingress_cluster_issuer: "{{ atmosphere_ingress_cluster_issuer }}"
+kube_prometheus_stack_ingress_annotations:
+  cert-manager.io/cluster-issuer: "{{ kube_prometheus_stack_ingress_cluster_issuer }}"
 
 kube_prometheus_stack_grafana_admin_password: "{{ undef('You must specify a Grafana password using kube_prometheus_stack_grafana_admin_password') }}"
 
