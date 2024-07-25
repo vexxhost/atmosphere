@@ -43,6 +43,7 @@ spec:
 {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
         configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
         configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
+{{ tuple "horizon" . | include "helm-toolkit.snippets.custom_pod_annotations" | indent 8 }}
 {{- if .Values.manifests.configmap_logo }}
         configmap-logo-hash: {{ tuple "configmap-logo.yaml" . | include "helm-toolkit.utils.hash" }}
 {{- end }}
@@ -133,6 +134,13 @@ spec:
               mountPath: /etc/openstack-dashboard/local_settings
               subPath: local_settings
               readOnly: true
+            {{- range $key, $value := $envAll.Values.conf.horizon.custom_panels }}
+            {{- $customPanelsFile := printf "/etc/openstack-dashboard/custom_panels/%s.py" $key }}
+            - name: horizon-etc
+              mountPath: {{ $customPanelsFile }}
+              subPath: {{ base $customPanelsFile }}
+              readOnly: true
+            {{- end }}
             {{- range $key, $value := $envAll.Values.conf.horizon.policy }}
             {{- $policyYamlFile := printf "/etc/openstack-dashboard/%s_policy.yaml" $key }}
             - name: horizon-etc
