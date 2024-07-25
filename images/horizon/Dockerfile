@@ -21,6 +21,8 @@ ADD --keep-git-dir=true https://opendev.org/openstack/neutron-vpnaas-dashboard.g
 RUN git -C /src/neutron-vpnaas-dashboard fetch --unshallow
 ADD --keep-git-dir=true https://opendev.org/openstack/octavia-dashboard.git#stable/2024.1 /src/octavia-dashboard
 RUN git -C /src/octavia-dashboard fetch --unshallow
+COPY patches/horizon /patches/horizon
+RUN git -C /src/horizon apply --verbose /patches/horizon/*
 COPY patches/magnum-ui /patches/magnum-ui
 RUN git -C /src/magnum-ui apply --verbose /patches/magnum-ui/*
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
