@@ -1,0 +1,12 @@
+# Copyright (c) 2024 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Deploy Helm chart
+  run_once: true
+  kubernetes.core.helm:
+    name: "{{ goldpinger_helm_release_name }}"
+    chart_ref: "{{ goldpinger_helm_chart_ref }}"
+    release_namespace: "{{ goldpinger_helm_release_namespace }}"
+    create_namespace: true
+    kubeconfig: /etc/kubernetes/admin.conf
+    values: "{{ _goldpinger_helm_values | combine(goldpinger_helm_values, recursive=True) }}"
