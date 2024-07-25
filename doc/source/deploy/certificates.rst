@@ -299,12 +299,12 @@ values, you can use the `cert-manager supported annotations <https://cert-manage
 to configure the certificate values.
 
 In order to apply these annotations to all ingresses managed by Atmosphere, you
-can use the ``ingress_global_annotations`` variable in your inventory which will
+can use the ``atmosphere_ingress_annotations`` variable in your inventory which will
 apply the annotations to all ingresses.
 
 .. code-block:: yaml
 
-  ingress_global_annotations:
+  atmosphere_ingress_annotations:
     cert-manager.io/subject-organizations: VEXXHOST, Inc.
     cert-manager.io/subject-organizationalunits: Cloud Infrastructure
     cert-manager.io/subject-localities: Montreal
