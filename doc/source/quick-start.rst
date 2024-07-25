@@ -225,3 +225,29 @@ the credentials:
 - Username: ``OS_USERNAME``
 - Password: ``OS_PASSWORD``
 - Domain: ``OS_USER_DOMAIN_NAME``
+
+OpenStack CLI and SSO
+=====================
+
+To configure the OpenStack CLI to work with users in the `atmosphere` domain using Single-Sign On (SSO), it's necessary
+to install the `keystoneauth-websso <https://github.com/vexxhost/keystoneauth-websso>`_ plugin first.
+
+To install it using pip, run the following command:
+
+.. code-block:: bash
+
+    pip install keystoneauth-websso
+
+Now edit your `clouds.yml` file with the proper values for your cloud. Here's an example:
+
+.. code-block:: yaml
+
+    clouds:
+      my_cloud:
+        auth_type: v3websso
+        auth_url: https://identity.example.com
+        identity_provider: atmosphere
+        protocol: openid
+
+To specify which cloud you would like to use with the OpenStack CLI, either specify the environment variable
+`OS_CLOUD=<cloud_name>` or use the command line option `--os-cloud <cloud_name>`.
