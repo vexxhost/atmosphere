@@ -300,7 +300,8 @@ to configure the certificate values.
 
 In order to apply these annotations to all ingresses managed by Atmosphere, you
 can use the ``atmosphere_ingress_annotations`` variable in your inventory which will
-apply the annotations to all ingresses.
+apply the annotations to all ingresses. ``ingress_global_annotations`` variable is
+deprecated.
 
 .. code-block:: yaml
 
