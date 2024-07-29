@@ -45,6 +45,7 @@
                 application: ipmi-exporter
                 job: ipmi
             spec:
+              imagePullSecrets: "{{ ipmi_exporter_imagepullsecrets if ipmi_exporter_imagepullsecrets is defined else [] }}"
               containers:
                 - name: exporter
                   image: "{{ atmosphere_images['prometheus_ipmi_exporter'] | vexxhost.kubernetes.docker_image('ref') }}"
