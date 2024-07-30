@@ -29,8 +29,6 @@
     dependencies:
       - name: atmosphere-buildset-registry
         soft: false
-      - name: atmosphere-build-container-image-ubuntu
-        soft: true
     vars: &container_image_vars
       promote_container_image_job: atmosphere-upload-container-image-ovs-exporter
       container_images:
@@ -39,13 +37,9 @@
           repository: registry.atmosphere.dev/library/ovs-exporter
           arch:
             - linux/amd64
-            - linux/arm64
-          build_args:
-            - "RELEASE={{ zuul.branch | replace('stable/', '') }}"
           tags:
             - "{{ zuul.branch | replace('stable/', '') }}"
     files: &container_image_files
-      - images/ubuntu/.*
       - images/ovs-exporter/.*
 
 - job:
@@ -54,8 +48,6 @@
     dependencies:
       - name: atmosphere-buildset-registry
         soft: false
-      - name: atmosphere-upload-container-image-ubuntu
-        soft: true
     vars: *container_image_vars
     files: *container_image_files
 

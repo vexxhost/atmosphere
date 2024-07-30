@@ -1,16 +1,21 @@
 # SPDX-License-Identifier: Apache-2.0
 # Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
 
-ARG RELEASE
+FROM alpine/git:2.43.0 AS src
+ARG OVN_EXPORTER_VERSION=v1.0.7
+ADD https://github.com/greenpau/ovn_exporter.git#${OVN_EXPORTER_VERSION} /src
+WORKDIR /src
+# COPY /patches /patches
+# RUN git apply /patches/*.patch
 
-FROM registry.atmosphere.dev/library/ubuntu:${RELEASE} AS helm
-ARG TARGETOS
+FROM golang:1.20 AS builder
+COPY --from=src --link /src /src
+WORKDIR /src
 ARG TARGETARCH
-ARG OVN_EXPORTER_VERSION=1.0.7
-ADD https://github.com/greenpau/ovn_exporter/releases/download/v${OVN_EXPORTER_VERSION}/ovn-exporter_${OVN_EXPORTER_VERSION}_${TARGETOS}_${TARGETARCH}.tar.gz /ovn-exporter.tar.gz
-RUN <<EOF bash -xe
-tar -xzf /ovn-exporter.tar.gz -C /tmp
-mv /tmp/ovn-exporter /usr/bin/ovn-exporter
-rm -rf /ovn-exporter.tar.gz /tmp/LICENSE /tmp/README.md
-EOF
-ENTRYPOINT ["/usr/bin/ovn-exporter"]
+RUN BUILD_ARCH=${TARGETARCH} BUILD_OS=linux make all
+
+FROM gcr.io/distroless/static:nonroot
+ARG TARGETARCH
+COPY --from=builder /src/bin/linux-${TARGETARCH}/ovn-exporter /ovn-exporter
+USER 65532
+ENTRYPOINT ["/ovn-exporter"]

@@ -114,6 +114,17 @@ spec:
               mountPath: /var/run/openvswitch
             - name: shared
               mountPath: /var/log/ovn/
+        {{- if .Values.pod.sidecars.exporter }}
+        - name: exporter
+{{ tuple $envAll "ovs_exporter" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.exporter | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "ovn_controller_gw" "container" "exporter" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          volumeMounts:
+            - name: run-openvswitch
+              mountPath: /var/run/ovn
+            - name: run-openvswitch
+              mountPath: /var/run/openvswitch
+        {{- end }}
         {{- if .Values.pod.sidecars.vector }}
         - name: vector
 {{ tuple $envAll "vector" | include "helm-toolkit.snippets.image" | indent 10 }}
