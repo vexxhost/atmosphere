@@ -7,16 +7,17 @@ FROM registry.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
 pip3 install \
     --constraint /upper-constraints.txt \
-        python-openstackclient \
+        osc-placement \
         python-barbicanclient \
         python-designateclient \
         python-glanceclient \
         python-heatclient \
+        python-ironicclient \
         python-magnumclient \
         python-manilaclient \
         python-neutronclient \
         python-octaviaclient \
-        osc-placement \
+        python-openstackclient \
         python-swiftclient
 EOF
 
