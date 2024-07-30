@@ -1,16 +1,21 @@
 # SPDX-License-Identifier: Apache-2.0
 # Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
 
-ARG RELEASE
+FROM alpine/git:2.43.0 AS src
+ARG OVS_EXPORTER_VERSION=v1.0.7
+ADD https://github.com/greenpau/ovs_exporter.git#${OVS_EXPORTER_VERSION} /src
+WORKDIR /src
+# COPY /patches /patches
+# RUN git apply /patches/*.patch
 
-FROM registry.atmosphere.dev/library/ubuntu:${RELEASE} AS helm
-ARG TARGETOS
+FROM golang:1.20 AS builder
+COPY --from=src --link /src /src
+WORKDIR /src
 ARG TARGETARCH
-ARG OVS_EXPORTER_VERSION=1.0.7
-ADD https://github.com/greenpau/ovs_exporter/releases/download/v${OVS_EXPORTER_VERSION}/ovs-exporter_${OVS_EXPORTER_VERSION}_${TARGETOS}_${TARGETARCH}.tar.gz /ovs-exporter.tar.gz
-RUN <<EOF bash -xe
-tar -xzf /ovs-exporter.tar.gz -C /tmp
-mv /tmp/ovs-exporter /usr/bin/ovs-exporter
-rm -rf /ovs-exporter.tar.gz /tmp/LICENSE /tmp/README.md
-EOF
-ENTRYPOINT ["/usr/bin/ovs-exporter"]
+RUN BUILD_ARCH=${TARGETARCH} BUILD_OS=linux make all
+
+FROM gcr.io/distroless/static:nonroot
+ARG TARGETARCH
+COPY --from=builder /src/bin/linux-${TARGETARCH}/ovs-exporter /ovs-exporter
+USER 65532
+ENTRYPOINT ["/ovs-exporter"]
