@@ -218,6 +218,7 @@ It should be handled through lcore and pmd core masks. */}}
               mountPath: /sys/bus/pci/drivers
             - name: cgroup
               mountPath: /sys/fs/cgroup
+{{- end }}
         {{- if .Values.pod.sidecars.exporter }}
         - name: exporter
 {{ tuple $envAll "openvswitch_exporter" | include "helm-toolkit.snippets.image" | indent 10 }}
@@ -242,7 +243,6 @@ It should be handled through lcore and pmd core masks. */}}
             - name: run-openvswitch
               mountPath: /var/run/openvswitch
         {{- end }}
-{{- end }}
       volumes:
         - name: pod-tmp
           emptyDir: {}
