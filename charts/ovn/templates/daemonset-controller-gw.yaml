@@ -116,9 +116,24 @@ spec:
               mountPath: /var/log/ovn/
         {{- if .Values.pod.sidecars.exporter }}
         - name: exporter
-{{ tuple $envAll "ovs_exporter" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll "openvswitch_exporter" | include "helm-toolkit.snippets.image" | indent 10 }}
 {{ tuple $envAll $envAll.Values.pod.resources.exporter | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
 {{ dict "envAll" $envAll "application" "ovn_controller_gw" "container" "exporter" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          ports:
+            - name: metrics
+              containerPort: 9475
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              port: metrics
+              scheme: HTTP
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              port: metrics
+              scheme: HTTP
           volumeMounts:
             - name: run-openvswitch
               mountPath: /var/run/ovn

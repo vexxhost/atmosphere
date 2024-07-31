@@ -497,6 +497,24 @@ _kube_prometheus_stack_helm_values:
           - interval: 60s
             port: metrics
             relabelings: *relabelings_instance_to_pod_name
+      - name: ovn-exporter
+        jobLabel: job
+        selector:
+          matchLabels:
+            application: ovn
+        podMetricsEndpoints:
+          - interval: 60s
+            port: metrics
+            relabelings: *relabelings_instance_to_node_name
+      - name: ovs-exporter
+        jobLabel: job
+        selector:
+          matchLabels:
+            application: openvswitch
+        podMetricsEndpoints:
+          - interval: 60s
+            port: metrics
+            relabelings: *relabelings_instance_to_node_name
       - name: percona-xtradb-pxc
         jobLabel: app.kubernetes.io/component
         namespaceSelector:
