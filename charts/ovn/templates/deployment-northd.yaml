@@ -77,33 +77,4 @@ spec:
               value: ovn-ovsdb-sb
             - name: OVN_SSL_ENABLE
               value: "no"
-        {{- if .Values.pod.sidecars.exporter }}
-            - name: shared
-              mountPath: /var/run/ovn
-        - name: exporter
-{{ tuple $envAll "ovn_exporter" | include "helm-toolkit.snippets.image" | indent 10 }}
-{{ tuple $envAll $envAll.Values.pod.resources.exporter | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
-{{ dict "envAll" $envAll "application" "ovn_northd" "container" "exporter" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
-          ports:
-            - name: metrics
-              containerPort: 9476
-          readinessProbe:
-            failureThreshold: 3
-            httpGet:
-              path: /
-              port: metrics
-              scheme: HTTP
-          livenessProbe:
-            failureThreshold: 3
-            httpGet:
-              path: /
-              port: metrics
-              scheme: HTTP
-          volumeMounts:
-            - name: shared
-              mountPath: /var/run/ovn
-      volumes:
-        - name: shared
-          emptyDir: {}
-        {{- end }}
 {{- end }}
