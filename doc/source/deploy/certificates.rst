@@ -141,6 +141,22 @@ your ACME server can reach your API, you don't need to do anything else.
 If your ACME server cannot reach your API, you will need to use the ``DNS-01``
 challenges which require you to configure your DNS provider.
 
+Azure DNS
+*********
+
+To configure cert-manager with Azure DNS, create a `Service Principal
+<https://cert-manager.io/docs/configuration/acme/dns01/azuredns/#service-principal>`_ and set the following variables:
+
+.. code-block:: yaml
+
+  cluster_issuer_acme_solver: azuredns
+  cluster_issuer_acme_azuredns_client_id: <CLIENT_ID>
+  cluster_issuer_acme_azuredns_client_secret: <CLIENT_SECRET>
+  cluster_issuer_acme_azuredns_subscription_id: <SUBSCRIPTION_ID>
+  cluster_issuer_acme_azuredns_tenant_id: <TENANT_ID>
+  cluster_issuer_acme_azuredns_resourcegroup_name: <RESOURCEGROUP_NAME>
+  cluster_issuer_acme_azuredns_hostedzone_name: <HOSTEDZONE_NAME>
+
 RFC2136
 *******
 
