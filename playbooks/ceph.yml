@@ -26,3 +26,8 @@
 - import_playbook: vexxhost.ceph.site
   vars:
     containerd_pause_image: "{{ atmosphere_images['pause'] }}"
+    ceph_conf_overrides:
+      # Avoid HEALTH_WARN state due to daemons deployed by rook-ceph outside of cephadm (e.g. rgw)
+      - section: mgr
+        option: mgr cephadm warn_on_stray_daemons
+        value: false
