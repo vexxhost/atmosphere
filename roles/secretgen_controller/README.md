@@ -1,1 +1,1 @@
-# `secretgen_controller`
+# `secretgen-controller`
