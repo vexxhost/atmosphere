@@ -43,7 +43,7 @@ fi
 mkdir -p /var/lib/openstack-helm/tftpboot
 mkdir -p /var/lib/openstack-helm/tftpboot/master_images
 
-for FILE in undionly.kpxe ipxe.efi pxelinux.0 snponly.efi; do
+for FILE in undionly.kpxe ipxe.efi pxelinux.0; do
   if [ -f /usr/lib/ipxe/$FILE ]; then
     cp -v /usr/lib/ipxe/$FILE /var/lib/openstack-helm/tftpboot
   fi
