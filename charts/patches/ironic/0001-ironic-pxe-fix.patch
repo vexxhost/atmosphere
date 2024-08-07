@@ -1,0 +1,26 @@
+diff --git a/charts/ironic/templates/bin/_ironic-conductor-pxe-init.sh.tpl b/charts/ironic/templates/bin/_ironic-conductor-pxe-init.sh.tpl
+index 96f5fcb6..c70a2f04 100644
+--- a/charts/ironic/templates/bin/_ironic-conductor-pxe-init.sh.tpl
++++ b/charts/ironic/templates/bin/_ironic-conductor-pxe-init.sh.tpl
+@@ -43,7 +43,7 @@ fi
+ mkdir -p /var/lib/openstack-helm/tftpboot
+ mkdir -p /var/lib/openstack-helm/tftpboot/master_images
+
+-for FILE in undionly.kpxe ipxe.efi pxelinux.0; do
++for FILE in undionly.kpxe ipxe.efi pxelinux.0 snponly.efi; do
+   if [ -f /usr/lib/ipxe/$FILE ]; then
+     cp -v /usr/lib/ipxe/$FILE /var/lib/openstack-helm/tftpboot
+   fi
+diff --git a/charts/ironic/values.yaml b/charts/ironic/values.yaml
+index 2a78b866..001ba836 100644
+--- a/charts/ironic/values.yaml
++++ b/charts/ironic/values.yaml
+@@ -406,7 +406,7 @@ endpoints:
+         user_domain_name: service
+         project_domain_name: service
+       ironic:
+-        role: admin
++        role: admin, service
+         region_name: RegionOne
+         username: ironic
+         password: password

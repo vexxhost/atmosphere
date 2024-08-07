@@ -1,0 +1,13 @@
+diff --git a/charts/libvirt/templates/daemonset-libvirt.yaml b/charts/libvirt/templates/daemonset-libvirt.yaml
+index 51b3c1f3..4ade2cfc 100644
+--- a/charts/libvirt/templates/daemonset-libvirt.yaml
++++ b/charts/libvirt/templates/daemonset-libvirt.yaml
+@@ -299,6 +299,8 @@ spec:
+               {{- if or ( gt .Capabilities.KubeVersion.Major "1" ) ( ge .Capabilities.KubeVersion.Minor "10" ) }}
+               mountPropagation: Bidirectional
+               {{- end }}
++          args:
++            --libvirt.nova
+         {{- end }}
+       volumes:
+         - name: etc-pki-qemu
