@@ -23,8 +23,28 @@ _loki_helm_values:
     auth_enabled: false
     commonConfig:
       replication_factor: 1
+    compactor:
+      working_directory: /var/loki/compactor
+      compaction_interval: 10m
+      retention_enabled: true
+      delete_request_store: filesystem
+      retention_delete_delay: 2h
+      retention_delete_worker_count: 150
     limits_config:
       max_label_names_per_series: 25
+      retention_period: 30d
+    rulerConfig:
+      alertmanager_url: http://alertmanager-operated.monitoring:9093
+      enable_alertmanager_v2: true
+      enable_api: true
+      rule_path: /var/loki/rules-temp
+      ring:
+        kvstore:
+          store: inmemory
+      storage:
+        type: local
+        local:
+          directory: /var/loki/rulestorage
     storage:
       type: filesystem
   test:
