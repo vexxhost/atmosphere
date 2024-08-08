@@ -73,8 +73,10 @@ _nova_helm_values:
         allowed_origin: "*"
         allow_headers: "X-Auth-Token,X-OpenStack-Nova-API-Version"
       database:
-        connection_recycle_time: 10
-        max_pool_size: 1
+        connection_recycle_time: 600
+        max_overflow: 50
+        max_pool_size: 5
+        pool_timeout: 30
       filter_scheduler:
         available_filters:
           type: multistring

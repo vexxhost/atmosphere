@@ -26,8 +26,10 @@ _staffeln_helm_values:
         backup_metadata_key: "{{ staffeln_backup_metadata_key }}"
         retention_metadata_key: "{{ staffeln_retention_metadata_key }}"
       database:
-        connection_recycle_time: 10
-        max_pool_size: 1
+        connection_recycle_time: 600
+        max_overflow: 50
+        max_pool_size: 5
+        pool_timeout: 30
   manifests:
     ingress_api: false
     service_ingress_api: false

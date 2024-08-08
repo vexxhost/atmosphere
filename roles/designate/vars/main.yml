@@ -19,8 +19,10 @@ _designate_helm_values:
   conf:
     designate:
       database:
-        connection_recycle_time: 10
-        max_pool_size: 1
+        connection_recycle_time: 600
+        max_overflow: 50
+        max_pool_size: 5
+        pool_timeout: 30
       service:central:
         managed_resource_tenant_id: "{{ _designate_project_info.openstack_projects[0].id }}"
     pools: "{{ designate_pools | to_yaml }}"
