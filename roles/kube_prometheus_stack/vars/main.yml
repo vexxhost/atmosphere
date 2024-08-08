@@ -590,7 +590,7 @@ _kube_prometheus_stack_helm_values:
         mountPath: /var/lib/cron
         configMap:
           name: kube-prometheus-stack-node-ceph-bs
-          defaultMode: 0755
+          defaultMode: "0755"
     sidecarHostVolumeMounts:
       - name: ceph-var
         hostPath: /var/lib/ceph
@@ -601,26 +601,26 @@ _kube_prometheus_stack_helm_values:
         mountPath: /var/run
         readOnly: true
     extraManifests:
-       - |
-         apiVersion: v1
-         kind: ConfigMap
-         metadata:
-           name: kube-prometheus-stack-node-ceph-bs
-         data:
-           prom-bs-frag-score-collector.sh: |
-             #!/bin/bash
-             set -ex
-             export ceph_mon_fsid="{{ ceph_mon_fsid }}"
-             export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin"
-             function bs_frag_score () {
-                 ceph-volume --log-path /tmp lvm list | grep "osd id" | grep -o [0-9]*| xargs -i sh -c 'echo bluestore_allocator_score_block{osd=\"osd.{}\"} $(ceph daemon /var/run/ceph/$ceph_mon_fsid/ceph-osd.{}.asok bluestore allocator score block | grep fragmentation_rating|cut -d ':' -f2)'
-             }
-             function collect_bs_frag_score () {
-                 echo "Start collecting Bluestore fragmentation score"
-                 export TMPFILE=/tmp/bluestore_allocator_score_block.prom.$$
-                 echo "# TYPE bluestore_allocator_score_block gauge" > $TMPFILE
-                 bs_frag_score >> $TMPFILE
-                 mv $TMPFILE /tmp/bluestore_allocator_score_block.prom
-             }
-             while true; do collect_bs_frag_score ; sleep 60 ; done
+      - |
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: kube-prometheus-stack-node-ceph-bs
+        data:
+          prom-bs-frag-score-collector.sh: |
+            #!/bin/bash
+            set -ex
+            export ceph_mon_fsid="{{ ceph_mon_fsid }}"
+            export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin"
+            function bs_frag_score () {
+                ceph-volume --log-path /tmp lvm list | grep "osd id" | grep -o [0-9]*| xargs -i sh -c 'echo bluestore_allocator_score_block{osd=\"osd.{}\"} $(ceph daemon /var/run/ceph/$ceph_mon_fsid/ceph-osd.{}.asok bluestore allocator score block | grep fragmentation_rating|cut -d ':' -f2)'
+            }
+            function collect_bs_frag_score () {
+                echo "Start collecting Bluestore fragmentation score"
+                export TMPFILE=/tmp/bluestore_allocator_score_block.prom.$$
+                echo "# TYPE bluestore_allocator_score_block gauge" > $TMPFILE
+                bs_frag_score >> $TMPFILE
+                mv $TMPFILE /tmp/bluestore_allocator_score_block.prom
+            }
+            while true; do collect_bs_frag_score ; sleep 60 ; done
   additionalPrometheusRulesMap: "{{ lookup('vexxhost.atmosphere.jsonnet', 'jsonnet/rules.jsonnet') }}"
