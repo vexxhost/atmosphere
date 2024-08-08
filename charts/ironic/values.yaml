@@ -50,7 +50,7 @@ images:
     ironic_pxe: docker.io/openstackhelm/ironic:2024.1-ubuntu_jammy
     ironic_pxe_init: docker.io/openstackhelm/ironic:2024.1-ubuntu_jammy
     ironic_pxe_http: docker.io/nginx:1.13.3
-    dep_check: quay.io/airshipit/kubernetes-entrypoint:v1.0.0
+    dep_check: quay.io/airshipit/kubernetes-entrypoint:latest-ubuntu_focal
     image_repo_sync: docker.io/docker:17.07.0
   pull_policy: "IfNotPresent"
   local_registry:
@@ -119,6 +119,8 @@ conf:
     inspector:
       auth_type: password
     keystone_authtoken:
+      service_token_roles: service
+      service_token_roles_required: true
       auth_type: password
       auth_version: v3
     neutron:
@@ -136,6 +138,9 @@ conf:
       ipxe_enabled: true
     service_catalog:
       auth_type: password
+    service_user:
+      auth_type: password
+      send_service_user_token: true
     swift:
       auth_url: null
     oslo_policy:
@@ -200,6 +205,79 @@ conf:
     formatter_default:
       format: "%(message)s"
       datefmt: "%Y-%m-%d %H:%M:%S"
+
+conductor:
+  http:
+    enabled: true
+    init_script: |
+      #!/bin/bash
+      set -ex
+      if [ "x" == "x${PROVISIONER_INTERFACE}" ]; then
+        echo "Provisioner interface is not set"
+        exit 1
+      fi
+
+      function net_pxe_addr {
+       ip addr | awk "/inet / && /${PROVISIONER_INTERFACE}/{print \$2; exit }"
+      }
+      function net_pxe_ip {
+       echo $(net_pxe_addr) | awk -F '/' '{ print $1; exit }'
+      }
+      PXE_IP=$(net_pxe_ip)
+
+      if [ "x" == "x${PXE_IP}" ]; then
+        echo "Could not find IP for pxe to bind to"
+        exit 1
+      fi
+
+      sed "s|OSH_PXE_IP|${PXE_IP}|g" /etc/nginx/nginx.conf > /tmp/pod-shared/nginx.conf
+    script: |
+      #!/bin/bash
+      set -ex
+      mkdir -p /var/lib/openstack-helm/httpboot
+      cp -v /tmp/pod-shared/nginx.conf /etc/nginx/nginx.conf
+      exec nginx -g 'daemon off;'
+  pxe:
+    enabled: true
+    init_script: |
+      #!/bin/bash
+      set -ex
+      # default to Ubuntu path
+      FILEPATH=${FILEPATH:-/usr/lib/ipxe}
+
+      mkdir -p /var/lib/openstack-helm/tftpboot
+      mkdir -p /var/lib/openstack-helm/tftpboot/master_images
+
+      for FILE in undionly.kpxe ipxe.efi pxelinux.0 snponly.efi; do
+        # copy in default file
+        if [ -f $FILEPATH/$FILE ]; then
+          cp -v $FILEPATH/$FILE /var/lib/openstack-helm/tftpboot
+        fi
+
+      done
+    script: |
+      #!/bin/bash
+      set -ex
+      function net_pxe_addr {
+       ip addr | awk "/inet / && /${PROVISIONER_INTERFACE}/{print \$2; exit }"
+      }
+      function net_pxe_ip {
+       echo $(net_pxe_addr) | awk -F '/' '{ print $1; exit }'
+      }
+      PXE_IP=$(net_pxe_ip)
+
+      if [ "x" == "x${PXE_IP}" ]; then
+        echo "Could not find IP for pxe to bind to"
+        exit 1
+      fi
+
+      ln -s /var/lib/openstack-helm/tftpboot /tftpboot
+      exec /usr/sbin/in.tftpd \
+        --verbose \
+        --foreground \
+        --user root \
+        --address ${PXE_IP}:69 \
+        --map-file /tftp-map-file /tftpboot
 
 network:
   pxe:
@@ -398,7 +476,7 @@ endpoints:
         user_domain_name: default
         project_domain_name: default
       glance:
-        role: admin
+        role: admin, service
         region_name: RegionOne
         username: glance
         password: password
@@ -406,7 +484,7 @@ endpoints:
         user_domain_name: service
         project_domain_name: service
       ironic:
-        role: admin
+        role: admin, service
         region_name: RegionOne
         username: ironic
         password: password
@@ -703,6 +781,10 @@ pod:
         limits:
           memory: "1024Mi"
           cpu: "2000m"
+  useHostNetwork:
+    conductor: true
+  useHostIPC:
+    conductor: true
 
 network_policy:
   ironic:
