@@ -9,6 +9,10 @@ ADD --keep-git-dir=true https://opendev.org/openstack/octavia.git#${OCTAVIA_GIT_
 RUN git -C /src/octavia fetch --unshallow
 ADD --keep-git-dir=true https://opendev.org/openstack/ovn-octavia-provider.git#master /src/ovn-octavia-provider
 RUN git -C /src/ovn-octavia-provider fetch --unshallow
+# temprory fetch the change until we merge https://review.opendev.org/c/openstack/ovn-octavia-provider/+/925747
+RUN git -C /src/ovn-octavia-provider fetch https://review.opendev.org/openstack/ovn-octavia-provider refs/changes/47/925747/12
+RUN git -C /src/ovn-octavia-provider checkout FETCH_HEAD
+
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
 pip3 install \
     --constraint /upper-constraints.txt \
