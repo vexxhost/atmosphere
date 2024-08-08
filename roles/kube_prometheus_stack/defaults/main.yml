@@ -21,14 +21,23 @@ kube_prometheus_stack_helm_values: {}
 
 kube_prometheus_stack_ingress_class_name: "{{ atmosphere_ingress_class_name }}"
 kube_prometheus_stack_ingress_cluster_issuer: "{{ atmosphere_ingress_cluster_issuer }}"
-kube_prometheus_stack_ingress_annotations:
-  cert-manager.io/cluster-issuer: "{{ kube_prometheus_stack_ingress_cluster_issuer }}"
 
 kube_prometheus_stack_grafana_admin_password: "{{ undef('You must specify a Grafana password using kube_prometheus_stack_grafana_admin_password') }}"
 
 kube_prometheus_stack_grafana_host: "{{ undef('You must specify a Grafana host using kube_prometheus_stack_grafana_host') }}"
+kube_prometheus_stack_grafana_ingress_annotations:
+  cert-manager.io/cluster-issuer: "{{ kube_prometheus_stack_ingress_cluster_issuer }}"
+  cert-manager.io/common-name: "{{ kube_prometheus_stack_grafana_host }}"
+
 kube_prometheus_stack_alertmanager_host: "{{ undef('You must specify a Alertmanager host using kube_prometheus_stack_alertmanager_host') }}"
+kube_prometheus_stack_alertmanager_ingress_annotations:
+  cert-manager.io/cluster-issuer: "{{ kube_prometheus_stack_ingress_cluster_issuer }}"
+  cert-manager.io/common-name: "{{ kube_prometheus_stack_alertmanager_host }}"
+
 kube_prometheus_stack_prometheus_host: "{{ undef('You must specify a Prometheus host using kube_prometheus_stack_prometheus_host') }}"
+kube_prometheus_stack_prometheus_ingress_annotations:
+  cert-manager.io/cluster-issuer: "{{ kube_prometheus_stack_ingress_cluster_issuer }}"
+  cert-manager.io/common-name: "{{ kube_prometheus_stack_prometheus_host }}"
 
 kube_prometheus_stack_keycloak_server_url: "https://{{ keycloak_host }}"
 kube_prometheus_stack_keycloak_admin_realm_name: master
