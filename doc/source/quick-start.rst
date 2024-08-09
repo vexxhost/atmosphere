@@ -72,15 +72,14 @@ by running the following command:
 
 .. code-block:: bash
 
-    $ cd atmosphere
-    $ sudo tox -e molecule-aio-ovn
+    $ tox -e molecule-aio-ovn
 
 If you want to use the ML2/Open vSwitch plugin, you can run the following
 command:
 
 .. code-block:: bash
 
-    $ sudo tox -e molecule-aio-openvswitch
+    $ tox -e molecule-aio-openvswitch
 
 Once the deployment is done, it will have a full deployment of all services
 inside the same host, so you can use the cloud from the same machine by
