@@ -119,9 +119,11 @@ spec:
 {{ tuple $envAll "openvswitch_exporter" | include "helm-toolkit.snippets.image" | indent 10 }}
 {{ tuple $envAll $envAll.Values.pod.resources.exporter | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
 {{ dict "envAll" $envAll "application" "ovn_controller_gw" "container" "exporter" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          args:
+            - --web.listen-address=:9273
           ports:
             - name: metrics
-              containerPort: 9272
+              containerPort: 9273
           readinessProbe:
             failureThreshold: 3
             httpGet:
