@@ -52,12 +52,14 @@ is always better!):
     important that the virtual machines supported nested virtualization,
     otherwise the performance of the VMs will be un-usable.
 
-You'll need to start all of the necessary dependencies first:
+You'll need to start by installing all of the necessary dependencies first,
+**you also need to make sure you run all of these commands as ``root``**:
 
 .. code-block:: bash
 
-    $ sudo apt-get update
-    $ sudo apt-get install git tox
+    $ sudo -i
+    $ apt-get update
+    $ apt-get install git tox
 
 Once done, you can clone the repository locally and switch to the
 ``atmosphere`` directory:
@@ -68,7 +70,7 @@ Once done, you can clone the repository locally and switch to the
     $ cd atmosphere
 
 Once you're in the directory, you can deploy the all-in-one environment
-by running the following command:
+by running the following command as ``root``:
 
 .. code-block:: bash
 
