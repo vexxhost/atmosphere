@@ -652,8 +652,8 @@ _kube_prometheus_stack_helm_values:
       apiVersion: rbac.authorization.k8s.io/v1
       kind: Role
       metadata:
-        name: "{{ '{{ .Release.Name }}' ~ '-cert-manager' }}"
-        namespace: "{{ '{{ .Release.Namespace }}' }}"
+        name: "{{ kube_prometheus_stack_helm_release_name }}-pod-tls-sidecar"
+        namespace: "{{ kube_prometheus_stack_helm_release_namespace }}"
       rules:
         - apiGroups:
             - cert-manager.io
@@ -677,21 +677,21 @@ _kube_prometheus_stack_helm_values:
       apiVersion: rbac.authorization.k8s.io/v1
       kind: RoleBinding
       metadata:
-        name: "{{ '{{ .Release.Name }}' ~ '-cert-manager' }}"
-        namespace: "{{ '{{ .Release.Namespace }}' }}"
+        name: "{{ kube_prometheus_stack_helm_release_name }}-pod-tls-sidecar"
+        namespace: "{{ kube_prometheus_stack_helm_release_namespace }}"
       roleRef:
         apiGroup: rbac.authorization.k8s.io
         kind: Role
-        name: "{{ '{{ .Release.Name }}' ~ '-cert-manager' }}"
+        name: "{{ kube_prometheus_stack_helm_release_name }}-pod-tls-sidecar"
       subjects:
         - kind: ServiceAccount
-          name: "{{ '{{ .Release.Name }}' ~ '-prometheus-node-exporter' }}"
-          namespace: "{{ '{{ .Release.Namespace }}' }}"
+          name: "{{ kube_prometheus_stack_helm_release_name }}-prometheus-node-exporter"
+          namespace: "{{ kube_prometheus_stack_helm_release_namespace }}"
     - |
       apiVersion: v1
       kind: ConfigMap
       metadata:
-        name: kube-prometheus-stack-prometheus-tls
+        name: "{{ kube_prometheus_stack_helm_release_name }}-prometheus-tls"
       data:
         certificate-template.yml: |
           {{ kube_prometheus_stack_prometheus_tls_template | to_nice_yaml | indent(4) }}
