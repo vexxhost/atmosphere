@@ -23,22 +23,22 @@ kube_prometheus_stack_node_exporter_tls_template:
   apiVersion: cert-manager.io/v1
   kind: Certificate
   metadata:
-    name: "{{ '{{ .PodInfo.Name }}-tls' }}"
-    namespace: "{{ '{{ .PodInfo.Namespace }}' }}"
+    name: "{{ '{{`{{ .PodInfo.Name }}`}}' ~ '-tls' }}"
+    namespace: "{{ '{{`{{ .PodInfo.Namespace }}`}}' }}"
   spec:
-    commonName: "{{ '{{ .FQDN }}' }}"
+    commonName: "{{ '{{`{{ .FQDN }}`}}' }}"
     dnsNames:
-      - "{{ '{{ .Hostname }}' }}"
-      - "{{ '{{ .FQDN }}' }}"
+      - "{{ '{{`{{ .Hostname }}`}}' }}"
+      - "{{ '{{`{{ .FQDN }}`}}' }}"
     ipAddresses:
-      - "{{ '{{ .PodInfo.IP }}' }}"
+      - "{{ '{{`{{ .PodInfo.IP }}`}}' }}"
     issuerRef:
-      kind: ClusterIssuer
-      name: atmosphere
+      kind: Issuer
+      name: kube-promethetus-stack
     usages:
       - client auth
       - server auth
-    secretName: "{{ '{{ .PodInfo.Name }}-tls' }}"
+    secretName: "{{ '{{`{{ .PodInfo.Name }}`}}' ~ '-tls' }}"
 
 kube_prometheus_stack_ingress_class_name: "{{ atmosphere_ingress_class_name }}"
 kube_prometheus_stack_ingress_cluster_issuer: "{{ atmosphere_ingress_cluster_issuer }}"
