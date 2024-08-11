@@ -399,6 +399,9 @@ _kube_prometheus_stack_helm_values:
         - name: kube-prometheus-stack-prometheus-tls
           configMap:
             name: kube-prometheus-stack-prometheus-tls
+      volumeMounts:
+        - name: certs
+          mountPath: /certs
     additionalServiceMonitors:
       - name: goldpinger
         jobLabel: app.kubernetes.io/instance
@@ -582,6 +585,11 @@ _kube_prometheus_stack_helm_values:
       tag: "{{ atmosphere_images['prometheus_node_exporter'] | vexxhost.kubernetes.docker_image('tag') }}"
     prometheus:
       monitor:
+        tlsConfig:
+          scheme: https
+          caFile: /certs/ca.crt
+          certFile: /certs/tls.crt
+          keyFile: /certs/tls.key
         relabelings: *relabelings_instance_to_node_name
     serviceAccount:
       automountServiceAccountToken: true
@@ -703,7 +711,7 @@ _kube_prometheus_stack_tls_template:
     name: "{{ '{{`{{ .PodInfo.Name }}`}}' ~ '-tls' }}"
     namespace: "{{ '{{`{{ .PodInfo.Namespace }}`}}' }}"
   spec:
-    commonName: "{{ '{{`{{ .FQDN }}`}}' }}"
+    commonName: "{{ '{{`{{ .Hostname }}`}}' }}"
     dnsNames:
       - "{{ '{{`{{ .Hostname }}`}}' }}"
       - "{{ '{{`{{ .FQDN }}`}}' }}"
