@@ -19,26 +19,7 @@ kube_prometheus_stack_helm_chart_ref: /usr/local/src/kube-prometheus-stack
 kube_prometheus_stack_helm_release_namespace: monitoring
 kube_prometheus_stack_helm_values: {}
 
-kube_prometheus_stack_node_exporter_tls_template:
-  apiVersion: cert-manager.io/v1
-  kind: Certificate
-  metadata:
-    name: "{{ '{{`{{ .PodInfo.Name }}`}}' ~ '-tls' }}"
-    namespace: "{{ '{{`{{ .PodInfo.Namespace }}`}}' }}"
-  spec:
-    commonName: "{{ '{{`{{ .FQDN }}`}}' }}"
-    dnsNames:
-      - "{{ '{{`{{ .Hostname }}`}}' }}"
-      - "{{ '{{`{{ .FQDN }}`}}' }}"
-    ipAddresses:
-      - "{{ '{{`{{ .PodInfo.IP }}`}}' }}"
-    issuerRef:
-      kind: ClusterIssuer
-      name: kube-prometheus-stack
-    usages:
-      - client auth
-      - server auth
-    secretName: "{{ '{{`{{ .PodInfo.Name }}`}}' ~ '-tls' }}"
+kube_prometheus_stack_node_exporter_tls_template: "{{ _kube_prometheus_stack_tls_template }}"
 kube_prometheus_stack_node_exporter_config:
   tls_server_config:
     # NOTE(mnaser): The kubelet doesn't have the ability of sending a client
@@ -67,6 +48,7 @@ kube_prometheus_stack_prometheus_host: "{{ undef('You must specify a Prometheus 
 kube_prometheus_stack_prometheus_ingress_annotations:
   cert-manager.io/cluster-issuer: "{{ kube_prometheus_stack_ingress_cluster_issuer }}"
   cert-manager.io/common-name: "{{ kube_prometheus_stack_prometheus_host }}"
+kube_prometheus_stack_prometheus_tls_template: "{{ _kube_prometheus_stack_tls_template }}"
 
 kube_prometheus_stack_keycloak_server_url: "https://{{ keycloak_host }}"
 kube_prometheus_stack_keycloak_admin_realm_name: master
