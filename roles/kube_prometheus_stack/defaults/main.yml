@@ -19,6 +19,27 @@ kube_prometheus_stack_helm_chart_ref: /usr/local/src/kube-prometheus-stack
 kube_prometheus_stack_helm_release_namespace: monitoring
 kube_prometheus_stack_helm_values: {}
 
+kube_prometheus_stack_node_exporter_tls_template:
+  apiVersion: cert-manager.io/v1
+  kind: Certificate
+  metadata:
+    name: "{{ '{{ .PodInfo.Name }}-tls' }}"
+    namespace: "{{ '{{ .PodInfo.Namespace }}' }}"
+  spec:
+    commonName: "{{ '{{ .FQDN }}' }}"
+    dnsNames:
+      - "{{ '{{ .Hostname }}' }}"
+      - "{{ '{{ .FQDN }}' }}"
+    ipAddresses:
+      - "{{ '{{ .PodInfo.IP }}' }}"
+    issuerRef:
+      kind: ClusterIssuer
+      name: atmosphere
+    usages:
+      - client auth
+      - server auth
+    secretName: "{{ '{{ .PodInfo.Name }}-tls' }}"
+
 kube_prometheus_stack_ingress_class_name: "{{ atmosphere_ingress_class_name }}"
 kube_prometheus_stack_ingress_cluster_issuer: "{{ atmosphere_ingress_cluster_issuer }}"
 
