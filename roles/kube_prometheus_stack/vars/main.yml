@@ -559,6 +559,7 @@ _kube_prometheus_stack_helm_values:
       - --collector.processes
       - --collector.systemd
       - --collector.stat.softirq
+      - --web.config.file=/config/node-exporter.yml
     configmaps:
       - name: kube-prometheus-stack-pod-tls-sidecar
         mountPath: /pod-tls-sidecar-config
@@ -566,7 +567,7 @@ _kube_prometheus_stack_helm_values:
       - name: pod-tls-sidecar
         image: "{{ atmosphere_images['pod_tls_sidecar'] }}"
         args:
-          - --template=/pod-tls-sidecar-config/template
+          - --template=/config/certificate-template.yml
           - --ca-path=/certs/ca.crt
           - --cert-path=/certs/tls.crt
           - --key-path=/certs/tls.key
@@ -588,8 +589,8 @@ _kube_prometheus_stack_helm_values:
               fieldRef:
                 fieldPath: status.podIP
         volumeMounts:
-          - name: kube-prometheus-stack-pod-tls-sidecar
-            mountPath: /pod-tls-sidecar-config
+          - name: kube-prometheus-stack-node-exporter
+            mountPath: /config
     sidecarVolumeMount:
       - name: certs
         mountPath: /certs
@@ -637,8 +638,10 @@ _kube_prometheus_stack_helm_values:
         apiVersion: v1
         kind: ConfigMap
         metadata:
-          name: kube-prometheus-stack-pod-tls-sidecar
+          name: kube-prometheus-stack-node-exporter
         data:
-          template: |
+          node-exporter.yml: |
+            {{ kube_prometheus_stack_node_exporter_config | to_nice_yaml | indent(4) }}
+          certificate-template.yml: |
             {{ kube_prometheus_stack_node_exporter_tls_template | to_nice_yaml | indent(4) }}
   additionalPrometheusRulesMap: "{{ lookup('vexxhost.atmosphere.jsonnet', 'jsonnet/rules.jsonnet') }}"
