@@ -323,6 +323,35 @@ _kube_prometheus_stack_helm_values:
       secrets:
         - kube-prometheus-stack-etcd-client-cert
       containers:
+        - name: pod-tls-sidecar
+          image: "{{ atmosphere_images['pod_tls_sidecar'] }}"
+          args:
+            - --template=/config/certificate-template.yml
+            - --ca-path=/certs/ca.crt
+            - --cert-path=/certs/tls.crt
+            - --key-path=/certs/tls.key
+          env:
+            - name: POD_UID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.uid
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          volumeMounts:
+            - name: kube-prometheus-stack-prometheus-tls
+              mountPath: /config
+            - name: certs
+              mountPath: /certs
         - name: oauth2-proxy
           image: "{{ atmosphere_images['oauth2_proxy'] }}"
           envFrom:
@@ -364,6 +393,12 @@ _kube_prometheus_stack_helm_values:
         - name: ca-certificates
           hostPath:
             path: "{{ defaults_ca_certificates_path }}"
+        - name: certs
+          emptyDir:
+            medium: Memory
+        - name: kube-prometheus-stack-prometheus-tls
+          configMap:
+            name: kube-prometheus-stack-prometheus-tls
     additionalServiceMonitors:
       - name: goldpinger
         jobLabel: app.kubernetes.io/instance
@@ -602,45 +637,6 @@ _kube_prometheus_stack_helm_values:
         scheme: https
     extraManifests:
       - |
-        apiVersion: rbac.authorization.k8s.io/v1
-        kind: Role
-        metadata:
-          name: "{{ '{{ .Release.Name }}' ~ '-cert-manager' }}"
-          namespace: "{{ '{{ .Release.Namespace }}' }}"
-        rules:
-          - apiGroups:
-              - cert-manager.io
-            verbs:
-              - get
-              - list
-              - create
-              - watch
-            resources:
-              - certificates
-          - apiGroups:
-              - ""
-            verbs:
-              - get
-              - list
-              - patch
-              - watch
-            resources:
-              - secrets
-      - |
-        apiVersion: rbac.authorization.k8s.io/v1
-        kind: RoleBinding
-        metadata:
-          name: "{{ '{{ .Release.Name }}' ~ '-cert-manager' }}"
-          namespace: "{{ '{{ .Release.Namespace }}' }}"
-        roleRef:
-          apiGroup: rbac.authorization.k8s.io
-          kind: Role
-          name: "{{ '{{ .Release.Name }}' ~ '-cert-manager' }}"
-        subjects:
-          - kind: ServiceAccount
-            name: "{{ '{{ .Release.Name }}' ~ '-prometheus-node-exporter' }}"
-            namespace: "{{ '{{ .Release.Namespace }}' }}"
-      - |
         apiVersion: v1
         kind: ConfigMap
         metadata:
@@ -651,3 +647,72 @@ _kube_prometheus_stack_helm_values:
           certificate-template.yml: |
             {{ kube_prometheus_stack_node_exporter_tls_template | to_nice_yaml | indent(4) }}
   additionalPrometheusRulesMap: "{{ lookup('vexxhost.atmosphere.jsonnet', 'jsonnet/rules.jsonnet') }}"
+  extraManifests:
+    - |
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: Role
+      metadata:
+        name: "{{ '{{ .Release.Name }}' ~ '-cert-manager' }}"
+        namespace: "{{ '{{ .Release.Namespace }}' }}"
+      rules:
+        - apiGroups:
+            - cert-manager.io
+          verbs:
+            - get
+            - list
+            - create
+            - watch
+          resources:
+            - certificates
+        - apiGroups:
+            - ""
+          verbs:
+            - get
+            - list
+            - patch
+            - watch
+          resources:
+            - secrets
+    - |
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: RoleBinding
+      metadata:
+        name: "{{ '{{ .Release.Name }}' ~ '-cert-manager' }}"
+        namespace: "{{ '{{ .Release.Namespace }}' }}"
+      roleRef:
+        apiGroup: rbac.authorization.k8s.io
+        kind: Role
+        name: "{{ '{{ .Release.Name }}' ~ '-cert-manager' }}"
+      subjects:
+        - kind: ServiceAccount
+          name: "{{ '{{ .Release.Name }}' ~ '-prometheus-node-exporter' }}"
+          namespace: "{{ '{{ .Release.Namespace }}' }}"
+    - |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: kube-prometheus-stack-prometheus-tls
+      data:
+        certificate-template.yml: |
+          {{ kube_prometheus_stack_prometheus_tls_template | to_nice_yaml | indent(4) }}
+
+_kube_prometheus_stack_tls_template:
+  apiVersion: cert-manager.io/v1
+  kind: Certificate
+  metadata:
+    name: "{{ '{{`{{ .PodInfo.Name }}`}}' ~ '-tls' }}"
+    namespace: "{{ '{{`{{ .PodInfo.Namespace }}`}}' }}"
+  spec:
+    commonName: "{{ '{{`{{ .FQDN }}`}}' }}"
+    dnsNames:
+      - "{{ '{{`{{ .Hostname }}`}}' }}"
+      - "{{ '{{`{{ .FQDN }}`}}' }}"
+    ipAddresses:
+      - "{{ '{{`{{ .PodInfo.IP }}`}}' }}"
+    issuerRef:
+      kind: ClusterIssuer
+      name: kube-prometheus-stack
+    usages:
+      - client auth
+      - server auth
+    secretName: "{{ '{{`{{ .PodInfo.Name }}`}}' ~ '-tls' }}"
