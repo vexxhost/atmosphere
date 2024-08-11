@@ -594,6 +594,12 @@ _kube_prometheus_stack_helm_values:
     sidecarVolumeMount:
       - name: certs
         mountPath: /certs
+    livenessProbe:
+      httpGet:
+        scheme: https
+    readinessProbe:
+      httpGet:
+        scheme: https
     extraManifests:
       - |
         apiVersion: rbac.authorization.k8s.io/v1
