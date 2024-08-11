@@ -548,6 +548,8 @@ _kube_prometheus_stack_helm_values:
     prometheus:
       monitor:
         relabelings: *relabelings_instance_to_node_name
+    serviceAccount:
+      automountServiceAccountToken: true
     extraArgs:
       - --collector.diskstats.ignored-devices=^(ram|loop|nbd|fd|(h|s|v|xv)d[a-z]|nvme\\d+n\\d+p)\\d+$
       - --collector.filesystem.fs-types-exclude=^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|fusectl|fuse.squashfuse_ll|hugetlbfs|iso9660|mqueue|nsfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|sysfs|tracefs)$
