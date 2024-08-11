@@ -595,6 +595,45 @@ _kube_prometheus_stack_helm_values:
         mountPath: /certs
     extraManifests:
       - |
+        apiVersion: rbac.authorization.k8s.io/v1
+        kind: Role
+        metadata:
+          name: "{{ '{{ .Release.Name }}' ~ '-cert-manager' }}"
+          namespace: "{{ '{{ .Release.Namespace }}' }}"
+        rules:
+          - apiGroups:
+              - cert-manager.io
+            verbs:
+              - get
+              - list
+              - create
+              - watch
+            resources:
+              - certificates
+          - apiGroups:
+              - ""
+            verbs:
+              - get
+              - list
+              - patch
+              - watch
+            resources:
+              - secrets
+      - |
+        apiVersion: rbac.authorization.k8s.io/v1
+        kind: RoleBinding
+        metadata:
+          name: "{{ '{{ .Release.Name }}' ~ '-cert-manager' }}"
+          namespace: "{{ '{{ .Release.Namespace }}' }}"
+        roleRef:
+          apiGroup: rbac.authorization.k8s.io
+          kind: Role
+          name: "{{ '{{ .Release.Name }}' ~ '-cert-manager' }}"
+        subjects:
+          - kind: ServiceAccount
+            name: "{{ '{{ .Release.Name }}' }}"
+            namespace: "{{ '{{ .Release.Namespace }}' }}"
+      - |
         apiVersion: v1
         kind: ConfigMap
         metadata:
