@@ -545,6 +545,9 @@ _kube_prometheus_stack_helm_values:
       registry: "{{ atmosphere_images['prometheus_node_exporter'] | vexxhost.kubernetes.docker_image('domain') }}"
       repository: "{{ atmosphere_images['prometheus_node_exporter'] | vexxhost.kubernetes.docker_image('path') }}"
       tag: "{{ atmosphere_images['prometheus_node_exporter'] | vexxhost.kubernetes.docker_image('tag') }}"
+    prometheus:
+      monitor:
+        relabelings: *relabelings_instance_to_node_name
     extraArgs:
       - --collector.diskstats.ignored-devices=^(ram|loop|nbd|fd|(h|s|v|xv)d[a-z]|nvme\\d+n\\d+p)\\d+$
       - --collector.filesystem.fs-types-exclude=^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|fusectl|fuse.squashfuse_ll|hugetlbfs|iso9660|mqueue|nsfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|sysfs|tracefs)$
@@ -554,7 +557,24 @@ _kube_prometheus_stack_helm_values:
       - --collector.processes
       - --collector.systemd
       - --collector.stat.softirq
-    prometheus:
-      monitor:
-        relabelings: *relabelings_instance_to_node_name
+    sidecars:
+      - name: node-tls-sidecar
+        image: "{{ atmosphere_images['node_tls_sidecar'] }}"
+        env:
+          - name: POD_UID
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.uid
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
   additionalPrometheusRulesMap: "{{ lookup('vexxhost.atmosphere.jsonnet', 'jsonnet/rules.jsonnet') }}"
