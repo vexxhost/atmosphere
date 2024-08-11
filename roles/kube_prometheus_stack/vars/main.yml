@@ -557,9 +557,16 @@ _kube_prometheus_stack_helm_values:
       - --collector.processes
       - --collector.systemd
       - --collector.stat.softirq
+    configmaps:
+      - kube-prometheus-stack-pod-tls-sidecar
     sidecars:
       - name: pod-tls-sidecar
         image: "{{ atmosphere_images['pod_tls_sidecar'] }}"
+        args:
+          - --template=/config/template
+          - --ca-path=/certs/ca.crt
+          - --cert-path=/certs/tls.crt
+          - --key-path=/certs/tls.key
         env:
           - name: POD_UID
             valueFrom:
@@ -577,4 +584,19 @@ _kube_prometheus_stack_helm_values:
             valueFrom:
               fieldRef:
                 fieldPath: status.podIP
+        volumeMounts:
+          - name: certs
+            mountPath: /certs
+    sidecarVolumeMount:
+      - name: kube-prometheus-stack-pod-tls-sidecar
+        mountPath: /config
+    extraManifests:
+      - |
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: kube-prometheus-stack-pod-tls-sidecar
+        data:
+          template: |
+            {{ kube_prometheus_stack_node_exporter_tls_template | to_nice_yaml | indent(4) }}
   additionalPrometheusRulesMap: "{{ lookup('vexxhost.atmosphere.jsonnet', 'jsonnet/rules.jsonnet') }}"
