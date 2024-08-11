@@ -585,11 +585,12 @@ _kube_prometheus_stack_helm_values:
             valueFrom:
               fieldRef:
                 fieldPath: status.podIP
+        volumeMounts:
+          - name: kube-prometheus-stack-pod-tls-sidecar
+            mountPath: /pod-tls-sidecar-config
     sidecarVolumeMount:
       - name: certs
         mountPath: /certs
-      - name: kube-prometheus-stack-pod-tls-sidecar
-        mountPath: /pod-tls-sidecar-config
     extraManifests:
       - |
         apiVersion: v1
