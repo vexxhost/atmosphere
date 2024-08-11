@@ -559,11 +559,12 @@ _kube_prometheus_stack_helm_values:
       - --collector.stat.softirq
     configmaps:
       - name: kube-prometheus-stack-pod-tls-sidecar
+        mountPath: /pod-tls-sidecar-config
     sidecars:
       - name: pod-tls-sidecar
         image: "{{ atmosphere_images['pod_tls_sidecar'] }}"
         args:
-          - --template=/config/template
+          - --template=/pod-tls-sidecar-config/template
           - --ca-path=/certs/ca.crt
           - --cert-path=/certs/tls.crt
           - --key-path=/certs/tls.key
@@ -584,12 +585,11 @@ _kube_prometheus_stack_helm_values:
             valueFrom:
               fieldRef:
                 fieldPath: status.podIP
-        volumeMounts:
-          - name: certs
-            mountPath: /certs
     sidecarVolumeMount:
+      - name: certs
+        mountPath: /certs
       - name: kube-prometheus-stack-pod-tls-sidecar
-        mountPath: /config
+        mountPath: /pod-tls-sidecar-config
     extraManifests:
       - |
         apiVersion: v1
