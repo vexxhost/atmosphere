@@ -14,15 +14,19 @@
 
 - name: Add backports PPA
   ansible.builtin.apt_repository:
-    repo: ppa:vexxhost/backports
+    repo: "{{ multipathd_repository }}"
+  register: _add_multipathd_ppa
+  retries: 10
+  delay: 2
+  until: _add_multipathd_ppa is not failed
+  when: ansible_distribution == 'Ubuntu' and ansible_distribution_release == 'jammy'
 
 - name: Install the multipathd package
   ansible.builtin.package:
     name: multipath-tools
-    state: latest
+    state: latest # noqa: package-latest
   notify:
-    - Reload "multipathd"
-    - Reconfigure "multipathd"
+    - Restart "multipathd"
 
 - name: Install the configuration file
   ansible.builtin.template:
@@ -32,5 +36,4 @@
     group: root
     mode: "0644"
   notify:
-    - Reload "multipathd"
-    - Reconfigure "multipathd"
+    - Restart "multipathd"

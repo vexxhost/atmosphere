@@ -17,8 +17,8 @@
     check:
       jobs:
         - atmosphere-linters
-        - atmosphere-build-collection
-        - atmosphere-molecule-aio-keycloak:
+        - atmosphere-tox-py3
+        - atmosphere-build-collection:
             dependencies: &molecule_check_dependencies
               - name: atmosphere-build-container-image-barbican
                 soft: true
@@ -35,6 +35,8 @@
               - name: atmosphere-build-container-image-horizon
                 soft: true
               - name: atmosphere-build-container-image-ironic
+                soft: true
+              - name: atmosphere-build-container-image-keepalived
                 soft: true
               - name: atmosphere-build-container-image-keystone
                 soft: true
@@ -64,10 +66,14 @@
                 soft: true
               - name: atmosphere-build-container-image-placement
                 soft: true
+              - name: atmosphere-build-container-image-python-openstackclient
+                soft: true
               - name: atmosphere-build-container-image-staffeln
                 soft: true
               - name: atmosphere-build-container-image-tempest
                 soft: true
+        - atmosphere-molecule-aio-keycloak:
+            dependencies: *molecule_check_dependencies
         - atmosphere-molecule-aio-openvswitch:
             dependencies: *molecule_check_dependencies
         - atmosphere-molecule-aio-ovn:
@@ -79,8 +85,8 @@
     gate:
       jobs:
         - atmosphere-linters
-        - atmosphere-build-collection
-        - atmosphere-molecule-aio-keycloak:
+        - atmosphere-tox-py3
+        - atmosphere-build-collection:
             dependencies: &molecule_gate_dependencies
               - name: atmosphere-upload-container-image-barbican
                 soft: true
@@ -97,6 +103,8 @@
               - name: atmosphere-upload-container-image-horizon
                 soft: true
               - name: atmosphere-upload-container-image-ironic
+                soft: true
+              - name: atmosphere-upload-container-image-keepalived
                 soft: true
               - name: atmosphere-upload-container-image-keystone
                 soft: true
@@ -126,10 +134,14 @@
                 soft: true
               - name: atmosphere-upload-container-image-placement
                 soft: true
+              - name: atmosphere-upload-container-image-python-openstackclient
+                soft: true
               - name: atmosphere-upload-container-image-staffeln
                 soft: true
               - name: atmosphere-upload-container-image-tempest
                 soft: true
+        - atmosphere-molecule-aio-keycloak:
+            dependencies: *molecule_gate_dependencies
         - atmosphere-molecule-aio-openvswitch:
             dependencies: *molecule_gate_dependencies
         - atmosphere-molecule-aio-ovn:
@@ -141,3 +153,9 @@
     release:
       jobs:
         - atmosphere-publish-collection
+    periodic:
+      jobs:
+        - atmosphere-molecule-aio-upgrade-openvswitch:
+            dependencies: *molecule_check_dependencies
+        - atmosphere-molecule-aio-upgrade-ovn:
+            dependencies: *molecule_check_dependencies

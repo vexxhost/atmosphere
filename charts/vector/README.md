@@ -1,6 +1,6 @@
 # Vector
 
-![Version: 0.32.1](https://img.shields.io/badge/Version-0.32.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.37.1-distroless-libc](https://img.shields.io/badge/AppVersion-0.37.1--distroless--libc-informational?style=flat-square)
+![Version: 0.33.0](https://img.shields.io/badge/Version-0.33.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.38.0-distroless-libc](https://img.shields.io/badge/AppVersion-0.38.0--distroless--libc-informational?style=flat-square)
 
 [Vector](https://vector.dev/) is a high-performance, end-to-end observability data pipeline that puts you in control of your observability data. Collect, transform, and route all your logs, metrics, and traces to any vendors you want today and any other vendors you may want tomorrow. Vector enables dramatic cost reduction, novel data enrichment, and data security where you need it, not where is most convenient for your vendors.
 
@@ -129,6 +129,7 @@ helm install --name <RELEASE_NAME> \
 | autoscaling.behavior | object | `{}` | Configure separate scale-up and scale-down behaviors. |
 | autoscaling.customMetric | object | `{}` | Target a custom metric for autoscaling. |
 | autoscaling.enabled | bool | `false` | Create a [HorizontalPodAutoscaler](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/) for Vector. Valid for the "Aggregator" and "Stateless-Aggregator" roles. |
+| autoscaling.external | bool | `false` | Set to `true` if using an external autoscaler like [KEDA](https://keda.sh/). Valid for the "Aggregator and "Stateless-Aggregator" roles. |
 | autoscaling.maxReplicas | int | `10` | Maximum replicas for Vector's HPA. |
 | autoscaling.minReplicas | int | `1` | Minimum replicas for Vector's HPA. |
 | autoscaling.targetCPUUtilizationPercentage | int | `80` | Target CPU utilization for Vector's HPA. |
@@ -234,6 +235,7 @@ helm install --name <RELEASE_NAME> \
 | haproxy.affinity | object | `{}` | Configure [affinity](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity) rules for HAProxy Pods. |
 | haproxy.autoscaling.customMetric | object | `{}` | Target a custom metric for autoscaling. |
 | haproxy.autoscaling.enabled | bool | `false` | Create a HorizontalPodAutoscaler for HAProxy. |
+| haproxy.autoscaling.external | bool | `false` | HAProxy is controlled by an external HorizontalPodAutoscaler. |
 | haproxy.autoscaling.maxReplicas | int | `10` | Maximum replicas for HAProxy's HPA. |
 | haproxy.autoscaling.minReplicas | int | `1` | Minimum replicas for HAProxy's HPA. |
 | haproxy.autoscaling.targetCPUUtilizationPercentage | int | `80` | Target CPU utilization for HAProxy's HPA. |

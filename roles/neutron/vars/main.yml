@@ -23,6 +23,8 @@ __neutron_helm_values:
     replicas:
       server: 3
       rpc_server: 3
+    sidecars:
+      neutron_policy_server: true
   conf:
     neutron:
       DEFAULT:
@@ -35,8 +37,16 @@ __neutron_helm_values:
       cors:
         allowed_origin: "*"
       database:
-        connection_recycle_time: 10
-        max_pool_size: 1
+        connection_recycle_time: 600
+        max_overflow: 50
+        max_pool_size: 5
+        pool_timeout: 30
+      designate:
+        url: http://designate-api.openstack.svc.cluster.local:9001/v2
+        auth_url: http://keystone-api.openstack.svc.cluster.local:5000
+        region_name: "{{ openstack_helm_endpoints_neutron_region_name }}"
+        username: "neutron-{{ openstack_helm_endpoints_neutron_region_name }}"
+        password: "{{ openstack_helm_endpoints_neutron_keystone_password }}"
       nova:
         live_migration_events: true
       placement:
@@ -77,7 +87,7 @@ __neutron_ovn_helm_values:
   conf:
     neutron:
       DEFAULT:
-        service_plugins: qos,ovn-router,segments,trunk
+        service_plugins: qos,ovn-router,segments,trunk,log
       ovn:
         ovn_emit_need_to_frag: true
     ovn_metadata_agent:
@@ -85,6 +95,8 @@ __neutron_ovn_helm_values:
         metadata_proxy_shared_secret: "{{ openstack_helm_endpoints['compute_metadata']['secret'] }}"
     plugins:
       ml2_conf:
+        agent:
+          extensions: "log"
         ml2:
           type_drivers: flat,vlan,geneve
           tenant_network_types: geneve
@@ -95,3 +107,10 @@ __neutron_ovn_helm_values:
     daemonset_ovn_metadata_agent: true
     daemonset_ovs_agent: false
     deployment_rpc_server: false
+
+__neutron_policy_server_helm_values:
+  conf:
+    policy:
+      delete_port: "((rule:admin_only) or (rule:service_api) or role:member and rule:network_owner or role:member and project_id:%(project_id)s) and http://neutron-server:9697/port-delete"
+      update_port:mac_address: "((rule:admin_only) or (rule:service_api)) and http://neutron-server:9697/port-update"
+      update_port:fixed_ips: "((rule:admin_only) or (rule:service_api) or role:member and rule:network_owner) and http://neutron-server:9697/port-update"

@@ -73,9 +73,16 @@ _nova_helm_values:
         allowed_origin: "*"
         allow_headers: "X-Auth-Token,X-OpenStack-Nova-API-Version"
       database:
-        connection_recycle_time: 10
-        max_pool_size: 1
+        connection_recycle_time: 600
+        max_overflow: 50
+        max_pool_size: 5
+        pool_timeout: 30
       filter_scheduler:
+        available_filters:
+          type: multistring
+          values:
+            - nova.scheduler.filters.all_filters
+            - nova_scheduler_filters.failure_domain_filter.FailureDomainFilter
         enabled_filters:
           ComputeFilter,
           AggregateTypeAffinityFilter,
@@ -83,7 +90,8 @@ _nova_helm_values:
           PciPassthroughFilter,
           ImagePropertiesFilter,
           ServerGroupAntiAffinityFilter,
-          ServerGroupAffinityFilter
+          ServerGroupAffinityFilter,
+          FailureDomainFilter
         image_properties_default_architecture: x86_64
         max_instances_per_host: 200
       glance:
@@ -101,11 +109,14 @@ _nova_helm_values:
         ovsdb_connection: unix:/run/openvswitch/db.sock
       scheduler:
         workers: 8
+        discover_hosts_in_cells_interval: 30
       vnc:
         auth_schemes: vencrypt,none
+      # NOTE(yaguang): This is not safe but a workaround before upstream bug 2039803 is fixed.
+      workarounds:
+        skip_cpu_compare_on_dest: true
     nova_ironic:
       DEFAULT:
-        log_config_append: null
         force_config_drive: true
   manifests:
     deployment_consoleauth: false

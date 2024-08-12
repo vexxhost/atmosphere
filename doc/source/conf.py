@@ -12,17 +12,17 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-from dunamai import Version
-
 project = "Atmosphere"
 copyright = "2024, VEXXHOST, Inc."
 author = "VEXXHOST, Inc."
-release = Version.from_git().serialize()
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = ["sphinx_copybutton"]
+extensions = [
+    "sphinx_copybutton",
+    "pbr.sphinxext",
+]
 
 templates_path = ["_templates"]
 exclude_patterns = []

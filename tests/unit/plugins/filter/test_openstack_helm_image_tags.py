@@ -31,7 +31,7 @@ def defaults():
         "..",
         "roles",
         "defaults",
-        "defaults",
+        "vars",
         "main.yml",
     )
 
@@ -41,20 +41,20 @@ def defaults():
 
 @pytest.fixture
 def atmosphere_images(defaults):
-    return defaults["atmosphere_images"]
+    return defaults["_atmosphere_images"]
 
 
 def test_openstack_helm_image_tags_for_magnum(atmosphere_images):
     assert openstack_helm_image_tags(atmosphere_images, "magnum") == {
-        "bootstrap": "ghcr.io/vexxhost/atmosphere/heat:main",
-        "db_drop": "ghcr.io/vexxhost/atmosphere/heat:main",
-        "db_init": "ghcr.io/vexxhost/atmosphere/heat:main",
-        "dep_check": "quay.io/vexxhost/kubernetes-entrypoint:latest",
-        "ks_endpoints": "ghcr.io/vexxhost/atmosphere/heat:main",
-        "ks_service": "ghcr.io/vexxhost/atmosphere/heat:main",
-        "ks_user": "ghcr.io/vexxhost/atmosphere/heat:main",
-        "magnum_api": "quay.io/vexxhost/magnum:main",
-        "magnum_conductor": "quay.io/vexxhost/magnum:main",
-        "magnum_db_sync": "quay.io/vexxhost/magnum:main",
-        "rabbit_init": "docker.io/library/rabbitmq:3.10.2-management",
+        "bootstrap": "registry.atmosphere.dev/library/heat:{{ atmosphere_release }}",
+        "db_drop": "registry.atmosphere.dev/library/heat:{{ atmosphere_release }}",
+        "db_init": "registry.atmosphere.dev/library/heat:{{ atmosphere_release }}",
+        "dep_check": "registry.atmosphere.dev/library/kubernetes-entrypoint:{{ atmosphere_release }}",
+        "ks_endpoints": "registry.atmosphere.dev/library/heat:{{ atmosphere_release }}",
+        "ks_service": "registry.atmosphere.dev/library/heat:{{ atmosphere_release }}",
+        "ks_user": "registry.atmosphere.dev/library/heat:{{ atmosphere_release }}",
+        "magnum_api": "registry.atmosphere.dev/library/magnum:{{ atmosphere_release }}",
+        "magnum_conductor": "registry.atmosphere.dev/library/magnum:{{ atmosphere_release }}",
+        "magnum_db_sync": "registry.atmosphere.dev/library/magnum:{{ atmosphere_release }}",
+        "rabbit_init": "docker.io/library/rabbitmq:3.13.3-management",
     }

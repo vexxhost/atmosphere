@@ -21,7 +21,8 @@
   when: "'InitiatorName' not in portworx_iscsi_initiatorname.content | b64decode"
   block:
     - name: Generate a new InitiatorName
-      ansible.builtin.shell:
+      changed_when: true
+      ansible.builtin.command:
         cmd: iscsi-iname
       register: portworx_iscsi_iname
 
@@ -32,6 +33,15 @@
         owner: root
         group: root
         mode: "0644"
+
+- name: Create namespace
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: portworx
 
 - name: Install Portworx
   run_once: true

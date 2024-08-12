@@ -176,6 +176,25 @@ following configuration:
    You'll need to make sure that your AWS credentials have the correct
    permissions to update the Route53 zone.
 
+Cloudflare
+**********
+
+If you are using Cloudflare to host the DNS for your domains, you can use the
+following configuration:
+
+.. code-block:: yaml
+
+  cluster_issuer_acme_email: user@example.com
+  cluster_issuer_acme_solver: cloudflare
+  cluster_issuer_acme_cloudflare_api_token: <CLOUDFLARE_API_TOKEN>
+
+If Cloudflare's account name is different from ACME Issuer's email address
+then also set:
+
+.. code-block:: yaml
+
+  cluster_issuer_acme_cloudflare_email: my-cloudflare-acc@example.com
+
 GoDaddy
 *******
 
@@ -189,6 +208,12 @@ configuration which depends on
   cluster_issuer_acme_solver: godaddy
   cluster_issuer_acme_godaddy_api_key: <GODADDY_API_KEY>
   cluster_issuer_acme_godaddy_secret_key: <GODADDY_SECRET_KEY>
+
+.. note::
+
+   GoDaddy DNS API has some limitations. To use it you need:
+    - Accounts with 10 or more domains
+    - Accounts with a Discount Domain Club subscription
 
 Infoblox
 ********
@@ -274,12 +299,13 @@ values, you can use the `cert-manager supported annotations <https://cert-manage
 to configure the certificate values.
 
 In order to apply these annotations to all ingresses managed by Atmosphere, you
-can use the ``ingress_global_annotations`` variable in your inventory which will
-apply the annotations to all ingresses.
+can use the ``atmosphere_ingress_annotations`` variable in your inventory which will
+apply the annotations to all ingresses. ``ingress_global_annotations`` variable is
+deprecated.
 
 .. code-block:: yaml
 
-  ingress_global_annotations:
+  atmosphere_ingress_annotations:
     cert-manager.io/subject-organizations: VEXXHOST, Inc.
     cert-manager.io/subject-organizationalunits: Cloud Infrastructure
     cert-manager.io/subject-localities: Montreal

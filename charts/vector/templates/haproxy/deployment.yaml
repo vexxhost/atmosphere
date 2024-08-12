@@ -6,7 +6,7 @@ metadata:
   labels:
     {{- include "haproxy.labels" . | nindent 4 }}
 spec:
-  {{- if not .Values.haproxy.autoscaling.enabled }}
+  {{- if not (or .Values.haproxy.autoscaling.enabled .Values.haproxy.autoscaling.external) }}
   replicas: {{ .Values.haproxy.replicas }}
   {{- end }}
   selector:

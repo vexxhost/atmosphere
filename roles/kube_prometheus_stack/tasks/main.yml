@@ -12,6 +12,18 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+- name: Wait until Keycloak service is ready
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: StatefulSet
+    name: keycloak
+    namespace: auth-system
+  register: kube_prometheus_stack_keycloak_service
+  retries: 120
+  delay: 5
+  until:
+    - kube_prometheus_stack_keycloak_service.resources[0].status.replicas == kube_prometheus_stack_keycloak_service.resources[0].status.readyReplicas # noqa: yaml[line-length]
+
 - name: Create Keycloak realm
   no_log: true
   run_once: true
@@ -245,6 +257,37 @@
   loop_control:
     label: "{{ item.id }}"
 
+- name: Create certificate issuer
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      - apiVersion: cert-manager.io/v1
+        kind: Certificate
+        metadata:
+          name: kube-prometheus-stack-ca
+          namespace: cert-manager
+        spec:
+          commonName: kube-prometheus-stack
+          duration: 87600h0m0s
+          isCA: true
+          issuerRef:
+            group: cert-manager.io
+            kind: ClusterIssuer
+            name: self-signed
+          privateKey:
+            algorithm: ECDSA
+            size: 256
+          renewBefore: 720h0m0s
+          secretName: kube-prometheus-stack-ca
+
+      - apiVersion: cert-manager.io/v1
+        kind: ClusterIssuer
+        metadata:
+          name: kube-prometheus-stack
+        spec:
+          ca:
+            secretName: kube-prometheus-stack-ca
+
 - name: Install all CRDs
   run_once: true
   changed_when: false
@@ -257,6 +300,39 @@
       force_conflicts: true
   tags:
     - kube-prometheus-stack-crds
+
+- name: Deploy additional dashboards
+  run_once: true
+  kubernetes.core.k8s:
+    state: "{{ item.state }}"
+    template: configmap-dashboard.yaml.j2
+  loop:
+    - name: goldpinger
+      state: present
+    - name: node-exporter-full
+      state: present
+    - name: ceph-cluster
+      state: present
+    - name: ceph-cluster-advanced
+      state: present
+    - name: hosts-overview
+      state: present
+    - name: host-details
+      state: present
+    - name: pool-overview
+      state: present
+    - name: pool-detail
+      state: present
+    - name: osds-overview
+      state: present
+    - name: osd-device-details
+      state: present
+    - name: rbd-overview
+      state: present
+    - name: rbd-details
+      state: present
+  tags:
+    - kube-prometheus-stack-dashboards
 
 - name: Deploy Helm chart
   run_once: true

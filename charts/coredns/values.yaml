@@ -42,11 +42,13 @@ prometheus:
     annotations:
       prometheus.io/scrape: "true"
       prometheus.io/port: "9153"
+    selector: {}
   monitor:
     enabled: false
     additionalLabels: {}
     namespace: ""
     interval: ""
+    selector: {}
 
 service:
 # clusterIP: ""
@@ -59,6 +61,8 @@ service:
   # If not set, a name is generated using the fullname template
   name: ""
   annotations: {}
+  # Pod selector
+  selector: {}
 
 serviceAccount:
   create: false
@@ -372,7 +376,10 @@ autoscaler:
   #   imagePullPolicy: Always
 
 deployment:
+  skipConfig: false
   enabled: true
   name: ""
   ## Annotations for the coredns deployment
   annotations: {}
+  ## Pod selector
+  selector: {}

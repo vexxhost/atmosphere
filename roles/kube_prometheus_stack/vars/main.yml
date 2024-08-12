@@ -75,12 +75,11 @@ _kube_prometheus_stack_helm_values:
       enabled: true
       servicePort: 8081
       ingressClassName: "{{ kube_prometheus_stack_ingress_class_name }}"
-      annotations:
-        cert-manager.io/cluster-issuer: atmosphere
+      annotations: "{{ kube_prometheus_stack_alertmanager_ingress_annotations | combine(atmosphere_ingress_annotations, recursive=True) }}"
       hosts:
         - "{{ kube_prometheus_stack_alertmanager_host }}"
       tls:
-        - secretName: alertmanager-tls
+        - secretName: "{{ openstack_helm_ingress_secret_name | default('alertmanager-tls')}}"
           hosts:
             - "{{ kube_prometheus_stack_alertmanager_host }}"
     alertmanagerSpec:
@@ -153,6 +152,7 @@ _kube_prometheus_stack_helm_values:
       server:
         root_url: https://{{ kube_prometheus_stack_grafana_host }}
       auth:
+        oauth_allow_insecure_email_lookup: true
         oauth_skip_org_role_update_sync: false
         disable_login_form: true
         signout_redirect_url: "{{ kube_prometheus_stack_keycloak_server_url }}/realms/{{ kube_prometheus_stack_keycloak_realm }}/protocol/openid-connect/logout?post_logout_redirect_uri=https://{{ kube_prometheus_stack_grafana_host }}/login"
@@ -181,12 +181,11 @@ _kube_prometheus_stack_helm_values:
     ingress:
       enabled: true
       ingressClassName: "{{ kube_prometheus_stack_ingress_class_name }}"
-      annotations:
-        cert-manager.io/cluster-issuer: atmosphere
+      annotations: "{{ kube_prometheus_stack_grafana_ingress_annotations | combine(atmosphere_ingress_annotations, recursive=True) }}"
       hosts:
         - "{{ kube_prometheus_stack_grafana_host }}"
       tls:
-        - secretName: grafana-tls
+        - secretName: "{{ openstack_helm_ingress_secret_name | default('grafana-tls')}}"
           hosts:
             - "{{ kube_prometheus_stack_grafana_host }}"
     sidecar:
@@ -300,12 +299,11 @@ _kube_prometheus_stack_helm_values:
       enabled: true
       servicePort: 8081
       ingressClassName: "{{ kube_prometheus_stack_ingress_class_name }}"
-      annotations:
-        cert-manager.io/cluster-issuer: atmosphere
+      annotations: "{{ kube_prometheus_stack_prometheus_ingress_annotations | combine(atmosphere_ingress_annotations, recursive=True) }}"
       hosts:
         - "{{ kube_prometheus_stack_prometheus_host }}"
       tls:
-        - secretName: prometheus-tls
+        - secretName: "{{ openstack_helm_ingress_secret_name | default('prometheus-tls')}}"
           hosts:
             - "{{ kube_prometheus_stack_prometheus_host }}"
     prometheusSpec:
@@ -313,10 +311,47 @@ _kube_prometheus_stack_helm_values:
         registry: "{{ atmosphere_images['prometheus'] | vexxhost.kubernetes.docker_image('domain') }}"
         repository: "{{ atmosphere_images['prometheus'] | vexxhost.kubernetes.docker_image('path') }}"
         tag: "{{ atmosphere_images['prometheus'] | vexxhost.kubernetes.docker_image('tag') }}"
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            storageClassName: general
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 100Gi
       nodeSelector: *node_selector
       secrets:
         - kube-prometheus-stack-etcd-client-cert
       containers:
+        - name: pod-tls-sidecar
+          image: "{{ atmosphere_images['pod_tls_sidecar'] }}"
+          args:
+            - --template=/config/certificate-template.yml
+            - --ca-path=/certs/ca.crt
+            - --cert-path=/certs/tls.crt
+            - --key-path=/certs/tls.key
+          env:
+            - name: POD_UID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.uid
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          volumeMounts:
+            - name: kube-prometheus-stack-prometheus-tls
+              mountPath: /config
+            - name: certs
+              mountPath: /certs
         - name: oauth2-proxy
           image: "{{ atmosphere_images['oauth2_proxy'] }}"
           envFrom:
@@ -358,7 +393,25 @@ _kube_prometheus_stack_helm_values:
         - name: ca-certificates
           hostPath:
             path: "{{ defaults_ca_certificates_path }}"
+        - name: certs
+          emptyDir:
+            medium: Memory
+        - name: kube-prometheus-stack-prometheus-tls
+          configMap:
+            name: kube-prometheus-stack-prometheus-tls
+      volumeMounts:
+        - name: certs
+          mountPath: /certs
     additionalServiceMonitors:
+      - name: goldpinger
+        jobLabel: app.kubernetes.io/instance
+        selector:
+          matchLabels:
+            app.kubernetes.io/instance: goldpinger
+            app.kubernetes.io/name: goldpinger
+        endpoints:
+          - port: http
+            relabelings: *relabelings_instance_to_node_name
       - name: ceph
         jobLabel: application
         namespaceSelector:
@@ -393,6 +446,18 @@ _kube_prometheus_stack_helm_values:
                 targetLabel: application
               - *relabeling_set_pod_name_to_instance
               - *relabeling_drop_all_kubernetes_labels
+      - name: keycloak
+        jobLabel: application
+        namespaceSelector:
+          matchNames:
+            - auth-system
+        selector:
+          matchLabels:
+            app.kubernetes.io/component: metrics
+            app.kubernetes.io/name: keycloak
+        endpoints:
+          - port: http
+            relabelings: *relabelings_instance_to_pod_name
       - name: memcached
         jobLabel: application
         namespaceSelector:
@@ -447,6 +512,9 @@ _kube_prometheus_stack_helm_values:
             relabelings: *relabelings_instance_to_node_name
       - name: libvirt-exporter
         jobLabel: job
+        namespaceSelector:
+          matchNames:
+            - openstack
         selector:
           matchLabels:
             application: libvirt
@@ -515,13 +583,144 @@ _kube_prometheus_stack_helm_values:
       registry: "{{ atmosphere_images['prometheus_node_exporter'] | vexxhost.kubernetes.docker_image('domain') }}"
       repository: "{{ atmosphere_images['prometheus_node_exporter'] | vexxhost.kubernetes.docker_image('path') }}"
       tag: "{{ atmosphere_images['prometheus_node_exporter'] | vexxhost.kubernetes.docker_image('tag') }}"
+    prometheus:
+      monitor:
+        scheme: https
+        tlsConfig:
+          caFile: /certs/ca.crt
+          certFile: /certs/tls.crt
+          keyFile: /certs/tls.key
+        relabelings: *relabelings_instance_to_node_name
+    serviceAccount:
+      automountServiceAccountToken: true
     extraArgs:
       - --collector.diskstats.ignored-devices=^(ram|loop|nbd|fd|(h|s|v|xv)d[a-z]|nvme\\d+n\\d+p)\\d+$
       - --collector.filesystem.fs-types-exclude=^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|fusectl|fuse.squashfuse_ll|hugetlbfs|iso9660|mqueue|nsfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|sysfs|tracefs)$
       - --collector.filesystem.mount-points-exclude=^/(dev|proc|run/credentials/.+|sys|var/lib/docker/.+|var/lib/kubelet/pods/.+|var/lib/kubelet/plugins/kubernetes.io/csi/.+|run/containerd/.+)($|/)
       - --collector.netclass.ignored-devices=^(lxc|cilium_|qbr|qvb|qvo|tap|ovs-system|br|tbr|gre_sys|[0-9a-f]+_eth|vxlan).*$
       - --collector.netdev.device-exclude=^(lxc|cilium_|qbr|qvb|qvo|tap|ovs-system|br|tbr|gre_sys|[0-9a-f]+_eth|vxlan).*$
-    prometheus:
-      monitor:
-        relabelings: *relabelings_instance_to_node_name
+      - --collector.processes
+      - --collector.systemd
+      - --collector.stat.softirq
+      - --web.config.file=/config/node-exporter.yml
+    configmaps:
+      - name: kube-prometheus-stack-node-exporter
+        mountPath: /config
+    sidecars:
+      - name: pod-tls-sidecar
+        image: "{{ atmosphere_images['pod_tls_sidecar'] }}"
+        args:
+          - --template=/config/certificate-template.yml
+          - --ca-path=/certs/ca.crt
+          - --cert-path=/certs/tls.crt
+          - --key-path=/certs/tls.key
+        env:
+          - name: POD_UID
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.uid
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+        volumeMounts:
+          - name: kube-prometheus-stack-node-exporter
+            mountPath: /config
+    sidecarVolumeMount:
+      - name: certs
+        mountPath: /certs
+    livenessProbe:
+      httpGet:
+        scheme: https
+    readinessProbe:
+      httpGet:
+        scheme: https
+    extraManifests:
+      - |
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: kube-prometheus-stack-node-exporter
+        data:
+          node-exporter.yml: |
+            {{ kube_prometheus_stack_node_exporter_config | to_nice_yaml | indent(4) }}
+          certificate-template.yml: |
+            {{ kube_prometheus_stack_node_exporter_tls_template | to_nice_yaml | indent(4) }}
   additionalPrometheusRulesMap: "{{ lookup('vexxhost.atmosphere.jsonnet', 'jsonnet/rules.jsonnet') }}"
+  extraManifests:
+    - apiVersion: rbac.authorization.k8s.io/v1
+      kind: Role
+      metadata:
+        name: "{{ kube_prometheus_stack_helm_release_name }}-pod-tls-sidecar"
+        namespace: "{{ kube_prometheus_stack_helm_release_namespace }}"
+      rules:
+        - apiGroups:
+            - cert-manager.io
+          verbs:
+            - get
+            - list
+            - create
+            - watch
+          resources:
+            - certificates
+        - apiGroups:
+            - ""
+          verbs:
+            - get
+            - list
+            - patch
+            - watch
+          resources:
+            - secrets
+    - apiVersion: rbac.authorization.k8s.io/v1
+      kind: RoleBinding
+      metadata:
+        name: "{{ kube_prometheus_stack_helm_release_name }}-pod-tls-sidecar"
+        namespace: "{{ kube_prometheus_stack_helm_release_namespace }}"
+      roleRef:
+        apiGroup: rbac.authorization.k8s.io
+        kind: Role
+        name: "{{ kube_prometheus_stack_helm_release_name }}-pod-tls-sidecar"
+      subjects:
+        - kind: ServiceAccount
+          name: "{{ kube_prometheus_stack_helm_release_name }}-prometheus-node-exporter"
+          namespace: "{{ kube_prometheus_stack_helm_release_namespace }}"
+        - kind: ServiceAccount
+          name: "{{ kube_prometheus_stack_helm_release_name }}-prometheus"
+          namespace: "{{ kube_prometheus_stack_helm_release_namespace }}"
+    - apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: "{{ kube_prometheus_stack_helm_release_name }}-prometheus-tls"
+      data:
+        certificate-template.yml: |
+          {{ kube_prometheus_stack_prometheus_tls_template | to_nice_yaml }}
+
+_kube_prometheus_stack_tls_template:
+  apiVersion: cert-manager.io/v1
+  kind: Certificate
+  metadata:
+    name: "{{ '{{`{{ .PodInfo.Name }}`}}' ~ '-tls' }}"
+    namespace: "{{ '{{`{{ .PodInfo.Namespace }}`}}' }}"
+  spec:
+    commonName: "{{ '{{`{{ .Hostname }}`}}' }}"
+    dnsNames:
+      - "{{ '{{`{{ .Hostname }}`}}' }}"
+      - "{{ '{{`{{ .FQDN }}`}}' }}"
+    ipAddresses:
+      - "{{ '{{`{{ .PodInfo.IP }}`}}' }}"
+    issuerRef:
+      kind: ClusterIssuer
+      name: kube-prometheus-stack
+    usages:
+      - client auth
+      - server auth
+    secretName: "{{ '{{`{{ .PodInfo.Name }}`}}' ~ '-tls' }}"

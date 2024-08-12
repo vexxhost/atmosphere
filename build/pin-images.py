@@ -16,9 +16,26 @@ SKIP_IMAGE_LIST = ["secretgen_controller"]
 
 
 def get_digest(image_ref, token=None):
+    url = f"https://{image_ref.domain()}/v2/{image_ref.path()}/manifests/{image_ref['tag']}"
+
     headers = {}
     if token:
         headers["Authorization"] = f"Bearer {token}"
+    else:
+        r = requests.get(url, timeout=5, verify=False)
+        auth_header = r.headers.get("Www-Authenticate")
+        if auth_header:
+            realm = auth_header.split(",")[0].split("=")[1].strip('"')
+
+            r = requests.get(
+                realm,
+                timeout=5,
+                params={"scope": f"repository:{image_ref.path()}:pull"},
+                verify=False,
+            )
+            r.raise_for_status()
+
+            headers["Authorization"] = f"Bearer {r.json()['token']}"
 
     try:
         headers["Accept"] = "application/vnd.docker.distribution.manifest.v2+json"
@@ -27,6 +44,7 @@ def get_digest(image_ref, token=None):
             f"https://{image_ref.domain()}/v2/{image_ref.path()}/manifests/{image_ref['tag']}",
             timeout=5,
             headers=headers,
+            verify=False,
         )
         r.raise_for_status()
         return r.headers["Docker-Content-Digest"]
@@ -37,6 +55,7 @@ def get_digest(image_ref, token=None):
             f"https://{image_ref.domain()}/v2/{image_ref.path()}/manifests/{image_ref['tag']}",
             timeout=5,
             headers=headers,
+            verify=False,
         )
         r.raise_for_status()
         return r.headers["Docker-Content-Digest"]
@@ -45,12 +64,6 @@ def get_digest(image_ref, token=None):
 @functools.cache
 def get_pinned_image(image_src):
     image_ref = reference.Reference.parse(image_src)
-
-    if image_ref.domain() in (
-        "registry.k8s.io",
-        "us-docker.pkg.dev",
-    ):
-        digest = get_digest(image_ref)
 
     if image_ref.domain() == "registry.atmosphere.dev":
         # Get token for docker.io
@@ -66,8 +79,7 @@ def get_pinned_image(image_src):
         token = r.json()["token"]
 
         digest = get_digest(image_ref, token=token)
-
-    if image_ref.domain() == "quay.io":
+    elif image_ref.domain() == "quay.io":
         r = requests.get(
             f"https://quay.io/api/v1/repository/{image_ref.path()}/tag/",
             timeout=5,
@@ -75,8 +87,7 @@ def get_pinned_image(image_src):
         )
         r.raise_for_status()
         digest = r.json()["tags"][0]["manifest_digest"]
-
-    if image_ref.domain() == "docker.io":
+    elif image_ref.domain() == "docker.io":
         # Get token for docker.io
         r = requests.get(
             "https://auth.docker.io/token",
@@ -99,8 +110,7 @@ def get_pinned_image(image_src):
         )
         r.raise_for_status()
         digest = r.headers["Docker-Content-Digest"]
-
-    if image_ref.domain() == "ghcr.io":
+    elif image_ref.domain() == "ghcr.io":
         # Get token for docker.io
         r = requests.get(
             "https://ghcr.io/token",
@@ -114,6 +124,8 @@ def get_pinned_image(image_src):
         token = r.json()["token"]
 
         digest = get_digest(image_ref, token=token)
+    else:
+        digest = get_digest(image_ref)
 
     return f"{image_ref.domain()}/{image_ref.path()}:{image_ref['tag']}@{digest}"
 

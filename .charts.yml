@@ -6,7 +6,7 @@
   openstack_helm_dependencies: &openstack_helm_dependencies
     - name: helm-toolkit
       repository: https://tarballs.openstack.org/openstack-helm-infra
-      version: 0.2.64
+      version: 0.2.69
 
 charts:
   - name: barbican
@@ -42,7 +42,7 @@ charts:
         review.opendev.org:
           - 899814
   - name: coredns
-    version: 1.29.0
+    version: 1.31.0
     repository:
       url: https://coredns.github.io/helm
   - name: designate
@@ -61,6 +61,10 @@ charts:
       gerrit:
         review.opendev.org:
           - 899864
+  - name: goldpinger
+    version: 1.0.0
+    repository:
+      url: https://bloomberg.github.io/goldpinger
   - name: heat
     version: 0.3.7
     repository: *openstack_helm_repository
@@ -78,15 +82,23 @@ charts:
         review.opendev.org:
           - 919480
   - name: ingress-nginx
-    version: 4.10.0
+    version: 4.10.1
     repository:
       url: https://kubernetes.github.io/ingress-nginx
+  - name: ironic
+    version: 0.2.17
+    repository: *openstack_helm_repository
+    dependencies: *openstack_helm_dependencies
+    patches:
+      gerrit:
+        review.opendev.org:
+          - 925931
   - name: keycloak
-    version: 20.0.1
+    version: 21.4.1
     repository:
       url: https://charts.bitnami.com/bitnami
   - name: keystone
-    version: 0.3.5
+    version: 0.3.15
     repository: *openstack_helm_repository
     dependencies: *openstack_helm_dependencies
     patches:
@@ -94,7 +106,7 @@ charts:
         review.opendev.org:
           - 899867
   - name: kube-prometheus-stack
-    version: 58.2.1
+    version: 60.2.0
     repository:
       url: https://prometheus-community.github.io/helm-charts
   - name: libvirt
@@ -106,7 +118,7 @@ charts:
         review.opendev.org:
           - 893406
   - name: loki
-    version: 6.3.3
+    version: 6.6.3
     repository:
       url: https://grafana.github.io/helm-charts
   - name: magnum
@@ -160,7 +172,7 @@ charts:
         review.opendev.org:
           - 899918
   - name: openvswitch
-    version: 0.1.19
+    version: 0.1.24
     repository: *openstack_helm_infra_repository
     dependencies: *openstack_helm_dependencies
   - name: ovn
@@ -181,7 +193,7 @@ charts:
         review.opendev.org:
           - 899914
   - name: prometheus-pushgateway
-    version: 2.12.0
+    version: 2.13.0
     repository:
       url: https://prometheus-community.github.io/helm-charts
   - name: pxc-operator
@@ -189,15 +201,15 @@ charts:
     repository:
       url: https://percona.github.io/percona-helm-charts
   - name: rabbitmq-cluster-operator
-    version: 4.2.4
+    version: 4.3.6
     repository:
       url: https://charts.bitnami.com/bitnami
   - name: rook-ceph
-    version: 1.14.2
+    version: 1.14.5
     repository:
       url: https://charts.rook.io/release
   - name: rook-ceph-cluster
-    version: 1.14.2
+    version: 1.14.5
     repository:
       url: https://charts.rook.io/release
   - name: tempest
@@ -205,6 +217,6 @@ charts:
     repository: *openstack_helm_repository
     dependencies: *openstack_helm_dependencies
   - name: vector
-    version: 0.32.1
+    version: 0.33.0
     repository:
       url: https://vectordotdev.github.io/helm-charts

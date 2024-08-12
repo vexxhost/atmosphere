@@ -36,6 +36,17 @@
     - name: Wait for confirmation of RabbitMQ cluster spec
       ansible.builtin.pause:
 
+- name: Enable all feature flags for upgrade
+  when:
+    - _rabbitmq_cluster.resources | length > 0
+    - _rabbitmq_cluster.resources[0].spec.image != _rabbitmq_merged_spec.image
+  vars:
+    _rabbitmq_merged_spec: "{{ _rabbitmq_spec | combine(rabbitmq_spec, recursive=True) }}"
+  kubernetes.core.k8s_exec:
+    namespace: openstack
+    pod: "rabbitmq-{{ rabbitmq_cluster_name }}-server-0"
+    command: rabbitmqctl enable_feature_flag all
+
 - name: Deploy cluster
   kubernetes.core.k8s:
     state: present

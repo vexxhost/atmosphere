@@ -48,6 +48,34 @@ PowerStore configuration. This includes specifying the block protocol, which
 can either be Fibre Channel (FC) or iSCSI, depending on your network
 infrastructure.
 
+*********
+IBM Block
+*********
+
+If you're using a storage array that is compatible with the IBM Block CSI
+driver, you can configure it by updating your Ansible inventory as follows:
+
+.. code-block:: yaml
+
+    csi_driver: ibm_block
+    ibm_block_csi_driver_management_address: <FILL IN>
+    ibm_block_csi_driver_username: <FILL IN>
+    ibm_block_csi_driver_password: <FILL IN>
+    ibm_block_csi_driver_pool: <FILL IN>
+    ibm_block_csi_driver_io_group: <FILL IN>
+
+Optionally, you can control the ``SpaceEfficiency`` setting which defaults to
+`thin` to enable thin provisioning.  To change it to any other value, you
+can set the following variable:
+
+.. code-block:: yaml
+
+    ibm_block_csi_driver_space_efficiency: <FILL IN>
+
+Ensure that you replace ``<FILL IN>`` with actual values relevant to your IBM
+Block configuration.  You can use the `Creating a StorageClass <https://www.ibm.com/docs/en/stg-block-csi-driver/1.11.3?topic=configuring-creating-storageclass>`_
+documentation to help you determine the values to use.
+
 ********
 Portworx
 ********
@@ -64,7 +92,7 @@ To configure the Portworx CSI driver, update your Ansible inventory as follows:
     csi_driver: portworx
     portworx_pure_flasharray_san_type: <FILL IN> # FC or ISCSI
     portworx_pure_json:
-      FlaskBlades: []
+      FlashBlades: []
       FlashArrays:
         - MgmtEndPoint: <FILL IN>
           APIToken: <FILL IN>

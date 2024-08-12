@@ -12,6 +12,11 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+- name: Set external_dns_driver
+  ansible.builtin.set_fact:
+    _neutron_external_dns_driver: "designate"
+  when: neutron_designate_integration_enabled | bool
+
 - name: Generate Helm values
   ansible.builtin.set_fact:
     _neutron_helm_values: "{{ __neutron_helm_values }}"
@@ -21,10 +26,10 @@
   ansible.builtin.set_fact:
     _neutron_helm_values: "{{ _neutron_helm_values | combine(__neutron_ovn_helm_values, recursive=True) }}"
 
-- name: Set external_dns_driver
+- name: Append Helm values (neutron_policy_server)
+  when: neutron_policy_server_integration_enabled | bool
   ansible.builtin.set_fact:
-    _neutron_external_dns_driver: "designate"
-  when: neutron_designate_integration_enabled | bool
+    _neutron_helm_values: "{{ _neutron_helm_values | combine(__neutron_policy_server_helm_values, recursive=True) }}"
 
 - name: Deploy Helm chart
   run_once: true
