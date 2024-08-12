@@ -19,3 +19,4 @@ and setup.
    cinder
    glance
    neutron
+   airgapped
