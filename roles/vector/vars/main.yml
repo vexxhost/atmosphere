@@ -60,19 +60,32 @@ _vector_helm_values:
         type: remap
         inputs: [kubernetes_logs]
         source: |
-          # Remove unnecessary labels
-          del(.kubernetes.pod_labels.app_kubernetes_io_created_by)
-          del(.kubernetes.pod_labels.app_kubernetes_io_managed_by)
-          del(.kubernetes.pod_labels.app_kubernetes_io_part_of)
-          del(.kubernetes.pod_labels.apps_kubernetes_io_pod_index)
-          del(.kubernetes.pod_labels.ceph_daemon_id)
-          del(.kubernetes.pod_labels.ceph_daemon_type)
-          del(.kubernetes.pod_labels.operator_prometheus_io_name)
-          del(.kubernetes.pod_labels.operator_prometheus_io_shard)
-          del(.kubernetes.pod_labels.rook_cluster)
-          del(.kubernetes.pod_labels.rook_io_operator_namespace)
-          del(.kubernetes.pod_labels.rook_object_store)
-          del(.kubernetes.pod_labels.statefulset_kubernetes_io_pod_name)
+          # Initialize the labels map with the required labels
+          .filtered_labels = {}
+
+          # List of essential labels to always include
+          .essential_labels = ["application", "component", "app.kubernetes.io/component", "app.kubernetes.io/instance", "app"]
+
+          # Ensure essential labels are included if they exist
+          .essential_labels.each |label| {
+            if !is_null(.kubernetes.pod_labels[label]) {
+              .filtered_labels[label] = .kubernetes.pod_labels[label]
+            }
+          }
+
+          # Add other labels up to the desired limit (e.g., 10 total labels)
+          .kubernetes.pod_labels.each |key, value| {
+            if length(.filtered_labels) < 6 && is_null(.filtered_labels[key]) {
+              .filtered_labels[key] = value
+            }
+          }
+
+          # Assign the filtered labels back to .kubernetes.pod_labels
+          .kubernetes.pod_labels = .filtered_labels
+
+          # Clean up intermediate fields
+          del(.filtered_labels)
+          del(.essential_labels)
   extraVolumes:
     - name: etc-machineid
       hostPath:
