@@ -52,12 +52,14 @@ is always better!):
     important that the virtual machines supported nested virtualization,
     otherwise the performance of the VMs will be un-usable.
 
-You'll need to start all of the necessary dependencies first:
+You'll need to start by installing all of the necessary dependencies first,
+**you also need to make sure you run all of these commands as ``root``**:
 
 .. code-block:: bash
 
-    $ sudo apt-get update
-    $ sudo apt-get install git tox
+    $ sudo -i
+    $ apt-get update
+    $ apt-get install git tox
 
 Once done, you can clone the repository locally and switch to the
 ``atmosphere`` directory:
@@ -68,19 +70,18 @@ Once done, you can clone the repository locally and switch to the
     $ cd atmosphere
 
 Once you're in the directory, you can deploy the all-in-one environment
-by running the following command:
+by running the following command as ``root``:
 
 .. code-block:: bash
 
-    $ cd atmosphere
-    $ sudo tox -e molecule-aio-ovn
+    $ tox -e molecule-aio-ovn
 
 If you want to use the ML2/Open vSwitch plugin, you can run the following
 command:
 
 .. code-block:: bash
 
-    $ sudo tox -e molecule-aio-openvswitch
+    $ tox -e molecule-aio-openvswitch
 
 Once the deployment is done, it will have a full deployment of all services
 inside the same host, so you can use the cloud from the same machine by
