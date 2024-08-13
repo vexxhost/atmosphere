@@ -80,20 +80,20 @@ _loki_helm_values:
   lokiCanary:
     enabled: false
   extraObjects:
-  - apiVersion: v1
-    kind: ConfigMap
-    metadata:
-      name: loki-alerting-rules
-      labels:
-        loki_rule: "atmosphere"
-    data:
-      loki-alerting-rules.yaml: |-
-        groups:
-          - name: additional-loki-rules
-            rules:
-              - alert: NovaCellNotResponding
-                expr: 'count_over_time({pod_label_component="compute"} |= "not responding and hence is being omitted from the results" [1m]) > 0'
-                labels:
-                  severity: critical
-                annotations:
-                  summary: Nova Cell is not responding. It can cause port deletion in CAPI.
+    - apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: loki-alerting-rules
+        labels:
+          loki_rule: "atmosphere"
+      data:
+        loki-alerting-rules.yaml: |-
+          groups:
+            - name: additional-loki-rules
+              rules:
+                - alert: NovaCellNotResponding
+                  expr: 'count_over_time({pod_label_component="compute"} |= "not responding and hence is being omitted from the results" [1m]) > 0'
+                  labels:
+                    severity: critical
+                  annotations:
+                    summary: Nova Cell is not responding. It can cause port deletion in CAPI.
