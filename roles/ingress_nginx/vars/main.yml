@@ -21,6 +21,7 @@ _ingress_nginx_helm_values:
       digest: "{{ atmosphere_images['ingress_nginx_controller'] | vexxhost.kubernetes.docker_image('digest') }}"
     config:
       proxy-buffer-size: 16k
+      worker-shutdown-timeout: 5s
     dnsPolicy: ClusterFirstWithHostNet
     allowSnippetAnnotations: true
     hostNetwork: true
@@ -42,6 +43,7 @@ _ingress_nginx_helm_values:
           digest: "{{ atmosphere_images['ingress_nginx_kube_webhook_certgen'] | vexxhost.kubernetes.docker_image('digest') }}"
     metrics:
       enabled: true
+    terminationGracePeriodSeconds: 10
   defaultBackend:
     nodeSelector:
       openstack-control-plane: enabled
