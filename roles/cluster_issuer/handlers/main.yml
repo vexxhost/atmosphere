@@ -12,7 +12,14 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Update CA certificates on host
+- name: Update CA certificates
   changed_when: true
+  listen: Update CA certificates on host
   ansible.builtin.command:
     cmd: "{{ 'update-ca-certificates' if ansible_facts['os_family'] in ['Debian'] else 'update-ca-trust' }}"
+
+- name: Rehash CA certificates
+  changed_when: true
+  listen: Update CA certificates on host
+  ansible.builtin.command:
+    cmd: c_rehash
