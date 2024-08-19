@@ -60,7 +60,7 @@ __cinder_helm_values:
 __cinder_staffeln_helm_values:
   conf:
     policy:
-      backup:delete: "rule:admin_api or (project_id:%(project_id)s and http://staffeln-api:8808/v1/backup?backup_id=%(id)s)"
+      backup:delete: "(role:admin) or ((role:member and project_id:%(project_id)s) and http://staffeln-api:8808/v1/backup?backup_id=%(id)s)"
 
 _cinder_ingress_annotations:
   nginx.ingress.kubernetes.io/proxy-body-size: "0"
