@@ -111,6 +111,6 @@ __neutron_ovn_helm_values:
 __neutron_policy_server_helm_values:
   conf:
     policy:
-      delete_port: "((rule:admin_only) or (rule:service_api) or role:member and rule:network_owner or role:member and project_id:%(project_id)s) and http://neutron-server:9697/port-delete"
-      update_port:mac_address: "((rule:admin_only) or (rule:service_api)) and http://neutron-server:9697/port-update"
-      update_port:fixed_ips: "((rule:admin_only) or (rule:service_api) or role:member and rule:network_owner) and http://neutron-server:9697/port-update"
+      delete_port: "(rule:admin_only or rule:context_is_advsvc or role:member and project_id:%(project_id)s or rule:network_owner) and http://neutron-server:9697/port-delete"
+      update_port:mac_address: "(rule:admin_only or rule:context_is_advsvc) and http://neutron-server:9697/port-update"
+      update_port:fixed_ips: "(rule:context_is_advsvc or rule:network_owner or rule:admin_only) and http://neutron-server:9697/port-update"
