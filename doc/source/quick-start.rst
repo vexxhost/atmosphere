@@ -54,7 +54,7 @@ is always better!):
 
 You'll need to start all of the necessary dependencies first:
 
-.. code-block:: bash
+.. code-block:: console
 
     $ sudo apt-get update
     $ sudo apt-get install git tox
@@ -62,7 +62,7 @@ You'll need to start all of the necessary dependencies first:
 Once done, you can clone the repository locally and switch to the
 ``atmosphere`` directory:
 
-.. code-block:: bash
+.. code-block:: console
 
     $ git clone https://github.com/vexxhost/atmosphere.git
     $ cd atmosphere
@@ -70,7 +70,7 @@ Once done, you can clone the repository locally and switch to the
 Once you're in the directory, you can deploy the all-in-one environment
 by running the following command:
 
-.. code-block:: bash
+.. code-block:: console
 
     $ cd atmosphere
     $ sudo tox -e molecule-aio-ovn
@@ -78,7 +78,7 @@ by running the following command:
 If you want to use the ML2/Open vSwitch plugin, you can run the following
 command:
 
-.. code-block:: bash
+.. code-block:: console
 
     $ sudo tox -e molecule-aio-openvswitch
 
@@ -217,7 +217,7 @@ On any of the control plane node, you can find the credentials in the
 same machine where you deployed the environment.
 
 For example, if you want to list the networks, you can run the following
-command (you only need to source the file once)::
+command (you only need to source the file once):
 
 .. code-block:: console
 
@@ -232,9 +232,9 @@ to install the `keystoneauth-websso <https://github.com/vexxhost/keystoneauth-we
 
 To install it using ``pip``, run the following command:
 
-.. code-block:: bash
+.. code-block:: console
 
-    pip install keystoneauth-websso
+    $ pip install keystoneauth-websso
 
 You can create a ``clouds.yml`` file with the following content inside
 of the ``~/.config/openstack`` directory:
@@ -256,7 +256,7 @@ to list the networks:
 
     $ openstack --os-cloud atmosphere network list
 
-Or, alternatively you can use the environment variable::
+Or, alternatively you can use the environment variable:
 
 .. code-block:: console
 
