@@ -76,6 +76,18 @@
     timeout: 10m
     values: "{{ _keycloak_helm_values | combine(keycloak_helm_values, recursive=True) }}"
 
+- name: Wait until keycloak ready
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: StatefulSet
+    name: "{{ keycloak_helm_release_name }}"
+    namespace: "{{ keycloak_helm_release_namespace }}"
+  register: _keycloak_sts
+  retries: 120
+  delay: 5
+  until:
+    - _keycloak_sts.resources[0].status.replicas == _keycloak_sts.resources[0].status.readyReplicas
+
 - name: Create Keycloak Ingress
   ansible.builtin.include_role:
     name: ingress
