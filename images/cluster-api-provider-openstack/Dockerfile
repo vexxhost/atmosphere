@@ -2,8 +2,8 @@
 # Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
 
 FROM alpine/git:2.43.0 AS src
-ARG CAPO_VERSION=v0.9.0
-ADD https://github.com/kubernetes-sigs/cluster-api-provider-openstack.git#${CAPO_VERSION} /src
+ARG CAPO_GIT_REF=038bb599cf81e3eee46fb08f35c81961b6854cc0
+ADD https://github.com/kubernetes-sigs/cluster-api-provider-openstack.git#${CAPO_GIT_REF} /src
 WORKDIR /src
 COPY /patches /patches
 RUN git apply /patches/*.patch
