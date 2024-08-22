@@ -55,7 +55,7 @@ is always better!):
 You'll need to start by installing all of the necessary dependencies first,
 **you also need to make sure you run all of these commands as ``root``**:
 
-.. code-block:: bash
+.. code-block:: console
 
     $ sudo -i
     $ apt-get update
@@ -64,7 +64,7 @@ You'll need to start by installing all of the necessary dependencies first,
 Once done, you can clone the repository locally and switch to the
 ``atmosphere`` directory:
 
-.. code-block:: bash
+.. code-block:: console
 
     $ git clone https://github.com/vexxhost/atmosphere.git
     $ cd atmosphere
@@ -72,14 +72,14 @@ Once done, you can clone the repository locally and switch to the
 Once you're in the directory, you can deploy the all-in-one environment
 by running the following command as ``root``:
 
-.. code-block:: bash
+.. code-block:: console
 
     $ tox -e molecule-aio-ovn
 
 If you want to use the ML2/Open vSwitch plugin, you can run the following
 command:
 
-.. code-block:: bash
+.. code-block:: console
 
     $ tox -e molecule-aio-openvswitch
 
@@ -203,14 +203,69 @@ Usage
 Once the deployment is done, you can either use the CLI to interact with
 the OpenStack environment, or you can access the Horizon dashboard.
 
-For the CLI, you can ``source /root/openrc`` and then use the ``openstack``
-CLI.  For example, if you want to list the networks, you can run the
-following command:
+Command Line Interface (CLI)
+============================
+
+When using the CLI, there are two different ways of authenticating
+to the OpenStack environment.  You can either use local credentials
+or you can use Single-Sign On (SSO) with the OpenStack CLI.
+
+Local Credentials
+-----------------
+
+On any of the control plane node, you can find the credentials in the
+``/root/openrc`` file.  In an all-in-one environment, this will be the
+same machine where you deployed the environment.
+
+For example, if you want to list the networks, you can run the following
+command (you only need to source the file once):
 
 .. code-block:: console
 
     $ source /root/openrc
     $ openstack network list
+
+Single-Sign On (SSO)
+--------------------
+
+If you want to use the Keycloak SSO with the OpenStack CLI, you will need
+to install the `keystoneauth-websso <https://github.com/vexxhost/keystoneauth-websso>`_ plugin first.
+
+To install it using ``pip``, run the following command:
+
+.. code-block:: console
+
+    $ pip install keystoneauth-websso
+
+You can create a ``clouds.yml`` file with the following content inside
+of the ``~/.config/openstack`` directory:
+
+.. code-block:: yaml
+
+    clouds:
+      atmosphere:
+        auth_type: v3websso
+        auth_url: https://identity.example.com
+        identity_provider: atmosphere
+        protocol: openid
+
+You can then use OpenStack CLI commands by either setting the ``OS_CLOUD``
+environment variable or using the ``--os-cloud`` option, for example
+to list the networks:
+
+.. code-block:: console
+
+    $ openstack --os-cloud atmosphere network list
+
+Or, alternatively you can use the environment variable:
+
+.. code-block:: console
+
+    $ export OS_CLOUD=atmosphere
+    $ openstack network list
+
+Dashboard
+=========
 
 For the Horizon dashboard, you can find the URL to access it by running
 the following command:
@@ -219,10 +274,22 @@ the following command:
 
     $ kubectl -n openstack get ingress/dashboard -ojsonpath='{.spec.rules[0].host}'
 
+You can either login to the dashboard using the local credentials or
+using single-sign on (SSO).
+
+Local Credentials
+-----------------
+
 You can find the credentials to login to the dashboard reading the
-`/root/openrc` file.  You can use the following variables to match
-the credentials:
+`/root/openrc` file on any of the control plane nodes.  You can use
+the following variables to match the credentials:
 
 - Username: ``OS_USERNAME``
 - Password: ``OS_PASSWORD``
 - Domain: ``OS_USER_DOMAIN_NAME``
+
+Single-Sign On (SSO)
+--------------------
+
+You can select the "Atmosphere" option in the login page and you will
+be redirected to the Keycloak login page.
