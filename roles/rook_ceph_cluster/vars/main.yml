@@ -42,6 +42,8 @@ _rook_ceph_cluster_radosgw_spec:
 
 _rook_ceph_cluster_helm_values:
   clusterName: "{{ rook_ceph_cluster_name }}"
+  # NOTE(mnaser): We need to disable the token cache until the the backported
+  #               fix https://tracker.ceph.com/issues/64094 is released.
   configOverride: |
     [client]
     rgw keystone api version = 3
