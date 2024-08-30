@@ -28,6 +28,7 @@ _vector_helm_values:
         type: kubernetes_logs
     sinks:
       loki_kubernetes_logs:
+        out_of_order_action: accept
         type: loki
         endpoint: http://loki-gateway
         inputs: [kubernetes_logs]
@@ -45,6 +46,7 @@ _vector_helm_values:
           container_image: '{% raw %}{{ print "{{ kubernetes.container_image }}" }}{% endraw %}'
           stream: '{% raw %}{{ print "{{ kubernetes.stream }}" }}{% endraw %}'
       loki_journald:
+        out_of_order_action: accept
         type: loki
         endpoint: http://loki-gateway
         inputs: [journald]
