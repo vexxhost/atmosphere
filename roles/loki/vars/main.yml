@@ -26,6 +26,18 @@ _loki_helm_values:
       replication_factor: 1
     limits_config:
       max_label_names_per_series: 25
+    rulerConfig:
+      alertmanager_url: http://alertmanager-operated.monitoring:9093
+      enable_alertmanager_v2: true
+      enable_api: true
+      rule_path: /var/loki/rules-temp
+      ring:
+        kvstore:
+          store: inmemory
+      storage:
+        type: local
+        local:
+          directory: /var/loki/rulestorage
     storage:
       type: filesystem
     schemaConfig:
@@ -45,6 +57,13 @@ _loki_helm_values:
       openstack-control-plane: enabled
     persistence:
       size: 256Gi
+    extraVolumeMounts:
+      - name: rules
+        mountPath: /var/loki/rulestorage/fake
+    extraVolumes:
+      - name: rules
+        configMap:
+          name: loki-alerting-rules
   write:
     replicas: 0
   read:
@@ -60,3 +79,21 @@ _loki_helm_values:
       openstack-control-plane: enabled
   lokiCanary:
     enabled: false
+  extraObjects:
+    - apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: loki-alerting-rules
+        labels:
+          loki_rule: "atmosphere"
+      data:
+        loki-alerting-rules.yaml: |-
+          groups:
+            - name: additional-loki-rules
+              rules:
+                - alert: NovaCellNotResponding
+                  expr: 'count_over_time({pod_label_component="compute"} |= "not responding and hence is being omitted from the results" [1m]) > 0'
+                  labels:
+                    severity: critical
+                  annotations:
+                    summary: Nova Cell is not responding. It can cause port deletion in CAPI.
