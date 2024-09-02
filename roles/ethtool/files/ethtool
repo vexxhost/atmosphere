@@ -19,5 +19,13 @@ for i in $(ls -l /sys/class/net/*/device/driver/module | cut -d/ -f5); do
 
   logger -sp info "atmosphere: ${i} max rx:${MAX_RX}, rxmini:${MAX_RX_MINI}, rxjumbo:${MAX_RX_JUMBO}, tx:${MAX_TX}"
 
-  ethtool -G ${i} rx ${MAX_RX} rx-mini ${MAX_RX_MINI} rx-jumbo ${MAX_RX_JUMBO} tx ${MAX_TX} || :
+  ethtool -G ${i} rx ${MAX_RX} tx ${MAX_TX} || :
+
+  if [ "$MAX_RX_MINI" != "n/a" ]; then
+    ethtool -G ${i} rx-mini ${MAX_RX_MINI} || :
+  fi
+
+  if [ "$MAX_RX_JUMBO" != "n/a" ]; then
+    ethtool -G ${i} rx-jumbo ${MAX_RX_JUMBO} || :
+  fi
 done
