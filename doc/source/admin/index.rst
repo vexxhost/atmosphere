@@ -13,7 +13,8 @@ information to ensure stable and efficient operation of the system.
 .. toctree::
    :maxdepth: 2
 
+   ceph
    integration
-   monitoring
    maintenance
+   monitoring
    troubleshooting
