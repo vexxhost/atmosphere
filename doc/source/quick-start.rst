@@ -35,13 +35,6 @@ and all the OpenStack services inside a single machine.
 In order to get started, you'll need a **Ubuntu 22.04** system with the
 following minimum system requirements:
 
-- Cores: 8 threads (or vCPUs)
-- Memory: 32GB
-
-If you're looking to run Kubernetes clusters, you'll need more memory
-for the workloads, it following minimum is recommended (but more memory
-is always better!):
-
 - Cores: 16 threads (or vCPUs)
 - Memory: 64GB
 
@@ -57,31 +50,30 @@ You'll need to start by installing all of the necessary dependencies first,
 
 .. code-block:: console
 
-    $ sudo -i
-    $ apt-get update
-    $ apt-get install git tox
+    # apt-get update
+    # apt-get install -y git tox
 
 Once done, you can clone the repository locally and switch to the
 ``atmosphere`` directory:
 
 .. code-block:: console
 
-    $ git clone https://github.com/vexxhost/atmosphere.git
-    $ cd atmosphere
+    # git clone https://github.com/vexxhost/atmosphere.git
+    # cd atmosphere
 
 Once you're in the directory, you can deploy the all-in-one environment
 by running the following command as ``root``:
 
 .. code-block:: console
 
-    $ tox -e molecule-aio-ovn
+    # tox -e molecule-aio-ovn
 
 If you want to use the ML2/Open vSwitch plugin, you can run the following
 command:
 
 .. code-block:: console
 
-    $ tox -e molecule-aio-openvswitch
+    # tox -e molecule-aio-openvswitch
 
 Once the deployment is done, it will have a full deployment of all services
 inside the same host, so you can use the cloud from the same machine by
