@@ -46,7 +46,7 @@ following minimum system requirements:
     otherwise the performance of the VMs will be un-usable.
 
 You'll need to start by installing all of the necessary dependencies first,
-**you also need to make sure you run all of these commands as ``root``**:
+**you also need to make sure you run all of these commands as root**:
 
 .. code-block:: console
 
