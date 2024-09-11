@@ -61,3 +61,5 @@ keystone_oidc_redirect_uri: "https://{{ openstack_helm_endpoints_keystone_api_ho
 keystone_oidc_redirect_urls_allowed:
   - "^https://{{ openstack_helm_endpoints_keystone_api_host }}/v3/auth/OS-FEDERATION/identity_providers/({{ keystone_domains | map(attribute='name') | join('|') }})/protocols/openid/websso" # noqa: yaml[line-length]
   - "^https://{{ openstack_helm_endpoints_horizon_api_host }}/auth/logout/$"
+
+keystone_kubeconfig: "{{ kubeconfig_path | default('/etc/kubernetes/admin.conf') }}"
