@@ -37,6 +37,14 @@ _loki_helm_values:
           index:
             prefix: index_
             period: 24h
+  memcached:
+    image:
+      repository: "{{ atmosphere_images['memcached'] | vexxhost.kubernetes.docker_image('name') }}"
+      tag: "{{ atmosphere_images['memcached'] | vexxhost.kubernetes.docker_image('tag') }}"
+  memcachedExporter:
+    image:
+      repository: "{{ atmosphere_images['prometheus_memcached_exporter'] | vexxhost.kubernetes.docker_image('name') }}"
+      tag: "{{ atmosphere_images['prometheus_memcached_exporter'] | vexxhost.kubernetes.docker_image('tag') }}"
   test:
     enabled: false
   singleBinary:
