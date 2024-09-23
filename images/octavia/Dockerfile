@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
-# Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
+# Atmosphere-Rebuild-Time: 2024-09-23T21:18:36Z
 
 ARG RELEASE
 
 FROM registry.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
-ARG OCTAVIA_GIT_REF=824b51a1dad80292b7a8ad5d61bf3ce706b1fb29
+ARG OCTAVIA_GIT_REF=eff69261f45686ec757504fab57a65d46f8881cb
 ADD --keep-git-dir=true https://opendev.org/openstack/octavia.git#${OCTAVIA_GIT_REF} /src/octavia
 RUN git -C /src/octavia fetch --unshallow
 ADD --keep-git-dir=true https://opendev.org/openstack/ovn-octavia-provider.git#master /src/ovn-octavia-provider

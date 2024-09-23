@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
-# Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
+# Atmosphere-Rebuild-Time: 2024-09-23T21:18:36Z
 
 ARG RELEASE
 
 FROM registry.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
-ARG DESIGNATE_GIT_REF=097ffc6df181290eba1bcd7c492b1b505bc15434
+ARG DESIGNATE_GIT_REF=65169cde6f0ef4260b7b0db9a4a1f3d61ad15bc0
 ADD --keep-git-dir=true https://opendev.org/openstack/designate.git#${DESIGNATE_GIT_REF} /src/designate
 RUN git -C /src/designate fetch --unshallow
 COPY patches/designate /patches/designate

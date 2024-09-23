@@ -1,13 +1,14 @@
 # SPDX-License-Identifier: Apache-2.0
-# Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
+# Atmosphere-Rebuild-Time: 2024-09-23T21:18:36Z
 
 ARG RELEASE
 
 FROM registry.atmosphere.dev/library/openstack-runtime:${RELEASE}
-ADD --chmod=644 https://download.ceph.com/keys/release.gpg /etc/apt/trusted.gpg.d/ceph.gpg
-COPY <<EOF /etc/apt/sources.list.d/ceph.list
-deb http://download.ceph.com/debian-reef/ jammy main
-EOF
+# NOTE(mnaser): Noble ships with Ceph Reef, so we don't need to use upstream packages
+# ADD --chmod=644 https://download.ceph.com/keys/release.gpg /etc/apt/trusted.gpg.d/ceph.gpg
+# COPY <<EOF /etc/apt/sources.list.d/ceph.list
+# deb http://download.ceph.com/debian-reef/ jammy main
+# EOF
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \

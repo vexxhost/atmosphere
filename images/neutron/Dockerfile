@@ -1,13 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
-# Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
+# Atmosphere-Rebuild-Time: 2024-09-23T21:18:36Z
 
 ARG RELEASE
 
 FROM registry.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
-ARG NEUTRON_GIT_REF=019294c71d94b788c14b23dc1da3c21f51bcdb0b
+ARG NEUTRON_GIT_REF=3abf7309a1612e4a97dfb4c4b3abd49f01a6b843
 ADD --keep-git-dir=true https://opendev.org/openstack/neutron.git#${NEUTRON_GIT_REF} /src/neutron
 RUN git -C /src/neutron fetch --unshallow
-ARG NEUTRON_VPNAAS_GIT_REF=7bc6d94305d34269d7522a9850c22aa42b50cdab
+ARG NEUTRON_VPNAAS_GIT_REF=6372f73e4cfa9f167d3e335b64686b3f5a8fd62c
 ADD --keep-git-dir=true https://opendev.org/openstack/neutron-vpnaas.git#${NEUTRON_VPNAAS_GIT_REF} /src/neutron-vpnaas
 RUN git -C /src/neutron-vpnaas fetch --unshallow
 ARG POLICY_SERVER_GIT_REF=85f47edbcf66aaf3a289dc3ae76191adce91018f

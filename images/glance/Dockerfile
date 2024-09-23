@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
-# Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
+# Atmosphere-Rebuild-Time: 2024-09-23T21:18:36Z
 
 ARG RELEASE
 
 FROM registry.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
-ARG GLANCE_GIT_REF=0bcd6cd71c09917c6734421374fd598d73e8d0cc
+ARG GLANCE_GIT_REF=66cc74836af94f974d38dc4957d4a6dfd7f3b982
 ADD --keep-git-dir=true https://opendev.org/openstack/glance.git#${GLANCE_GIT_REF} /src/glance
 RUN git -C /src/glance fetch --unshallow
 ADD --keep-git-dir=true https://opendev.org/openstack/glance_store.git#master /src/glance_store

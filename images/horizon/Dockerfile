@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
-# Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
+# Atmosphere-Rebuild-Time: 2024-09-23T21:18:36Z
 
 ARG RELEASE
 
 FROM registry.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
-ARG HORIZON_GIT_REF=14212342cf8f7eb987e50de112958af31063e02e
+ARG HORIZON_GIT_REF=e0d9cd7fbfb1c7d6336c51a6281472b450c6d93c
 ADD --keep-git-dir=true https://opendev.org/openstack/horizon.git#${HORIZON_GIT_REF} /src/horizon
 RUN git -C /src/horizon fetch --unshallow
 ADD --keep-git-dir=true https://opendev.org/openstack/designate-dashboard.git#master /src/designate-dashboard
