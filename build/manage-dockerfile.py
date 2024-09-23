@@ -8,7 +8,7 @@ from datetime import datetime
 import requests
 
 OPENDEV_GIT_PATTERN = re.compile(
-    r"ADD (?:--keep-git-dir=true )?https://opendev.org/(?P<namespace>[^/]+)/(?P<repo>[^/]+)\.git#\$\{(?P<ref>[^}]+)\} /src/(?P<dir>[^ ]+)?"
+    r"ADD (?:--keep-git-dir=true )?https://opendev.org/(?P<namespace>[^/]+)/(?P<repo>[^/]+)\.git#\$\{(?P<ref>[^}]+)\} /src/(?P<dir>[^ ]+)?"  # noqa
 )
 
 
