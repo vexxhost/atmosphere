@@ -21,6 +21,7 @@ apt-get install -qq -y --no-install-recommends \
     apache2 libapache2-mod-wsgi-py3 libapache2-mod-auth-openidc
 apt-get clean
 rm -rf /var/lib/apt/lists/*
+EOF
 RUN <<EOF bash -xe
 a2enmod auth_openidc
 EOF
