@@ -7,6 +7,8 @@ FROM registry.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
 ARG OCTAVIA_GIT_REF=06251e9716719dd8f62144ecd41d26360a539f7d
 ADD --keep-git-dir=true https://opendev.org/openstack/octavia.git#${OCTAVIA_GIT_REF} /src/octavia
 RUN git -C /src/octavia fetch --unshallow
+COPY patches/octavia /patches/octavia
+RUN git -C /src/octavia apply --verbose /patches/octavia/*
 ADD --keep-git-dir=true https://opendev.org/openstack/ovn-octavia-provider.git#stable/2023.1 /src/ovn-octavia-provider
 RUN git -C /src/ovn-octavia-provider fetch --unshallow
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
