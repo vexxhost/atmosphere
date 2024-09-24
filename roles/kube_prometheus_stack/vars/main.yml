@@ -142,6 +142,10 @@ _kube_prometheus_stack_helm_values:
             path: "{{ defaults_ca_certificates_path }}"
   grafana:
     adminPassword: "{{ kube_prometheus_stack_grafana_admin_password }}"
+    downloadDashboardsImage:
+      registry: "{{ atmosphere_images['grafana_curl'] | vexxhost.kubernetes.docker_image('domain') }}"
+      repository: "{{ atmosphere_images['grafana_curl'] | vexxhost.kubernetes.docker_image('path') }}"
+      tag: "{{ atmosphere_images['grafana_curl'] | vexxhost.kubernetes.docker_image('tag') }}"
     extraSecretMounts:
       - name: auth-generic-oauth-secret-mount
         secretName: "{{ kube_prometheus_stack_helm_release_name }}-grafana-client-secret"
