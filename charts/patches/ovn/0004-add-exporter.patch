@@ -1,0 +1,206 @@
+diff --git a/ovn/templates/daemonset-controller-gw.yaml b/ovn/templates/daemonset-controller-gw.yaml
+index 3ecd81dc..25f1a30d 100644
+--- a/ovn/templates/daemonset-controller-gw.yaml
++++ b/ovn/templates/daemonset-controller-gw.yaml
+@@ -114,6 +114,34 @@ spec:
+               mountPath: /var/run/openvswitch
+             - name: shared
+               mountPath: /var/log/ovn/
++        {{- if .Values.pod.sidecars.openvswitch_exporter }}
++        - name: exporter
++{{ tuple $envAll "openvswitch_exporter" | include "helm-toolkit.snippets.image" | indent 10 }}
++{{ tuple $envAll $envAll.Values.pod.resources.exporter | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
++{{ dict "envAll" $envAll "application" "ovn_controller_gw" "container" "exporter" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
++          args:
++            - --web.listen-address=:9273
++          ports:
++            - name: metrics
++              containerPort: 9273
++          readinessProbe:
++            failureThreshold: 3
++            httpGet:
++              path: /
++              port: metrics
++              scheme: HTTP
++          livenessProbe:
++            failureThreshold: 3
++            httpGet:
++              path: /
++              port: metrics
++              scheme: HTTP
++          volumeMounts:
++            - name: run-openvswitch
++              mountPath: /var/run/ovn
++            - name: run-openvswitch
++              mountPath: /var/run/openvswitch
++        {{- end }}
+         {{- if .Values.pod.sidecars.vector }}
+         - name: vector
+ {{ tuple $envAll "vector" | include "helm-toolkit.snippets.image" | indent 10 }}
+diff --git a/ovn/templates/daemonset-controller.yaml b/ovn/templates/daemonset-controller.yaml
+index b6b0b048..949814f5 100644
+--- a/ovn/templates/daemonset-controller.yaml
++++ b/ovn/templates/daemonset-controller.yaml
+@@ -112,6 +112,34 @@ spec:
+               mountPath: /var/run/ovn
+             - name: run-openvswitch
+               mountPath: /var/run/openvswitch
++        {{- if .Values.pod.sidecars.openvswitch_exporter }}
++        - name: exporter
++{{ tuple $envAll "openvswitch_exporter" | include "helm-toolkit.snippets.image" | indent 10 }}
++{{ tuple $envAll $envAll.Values.pod.resources.exporter | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
++{{ dict "envAll" $envAll "application" "ovn_controller" "container" "exporter" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
++          args:
++            - --web.listen-address=:9273
++          ports:
++            - name: metrics
++              containerPort: 9273
++          readinessProbe:
++            failureThreshold: 3
++            httpGet:
++              path: /
++              port: metrics
++              scheme: HTTP
++          livenessProbe:
++            failureThreshold: 3
++            httpGet:
++              path: /
++              port: metrics
++              scheme: HTTP
++          volumeMounts:
++            - name: run-openvswitch
++              mountPath: /var/run/ovn
++            - name: run-openvswitch
++              mountPath: /var/run/openvswitch
++        {{- end }}
+       volumes:
+         - name: ovn-bin
+           configMap:
+diff --git a/ovn/templates/statefulset-ovsdb-nb.yaml b/ovn/templates/statefulset-ovsdb-nb.yaml
+index 4866074e..bbdc0218 100644
+--- a/ovn/templates/statefulset-ovsdb-nb.yaml
++++ b/ovn/templates/statefulset-ovsdb-nb.yaml
+@@ -108,6 +108,31 @@ spec:
+               mountPath: /var/run/ovn
+             - name: data
+               mountPath: /etc/ovn
++        {{- if .Values.pod.sidecars.ovn_exporter }}
++        - name: exporter
++{{ tuple $envAll "ovn_exporter" | include "helm-toolkit.snippets.image" | indent 10 }}
++{{ tuple $envAll $envAll.Values.pod.resources.exporter | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
++          ports:
++            - name: metrics
++              containerPort: 9476
++          readinessProbe:
++            failureThreshold: 3
++            httpGet:
++              path: /
++              port: metrics
++              scheme: HTTP
++          livenessProbe:
++            failureThreshold: 3
++            httpGet:
++              path: /
++              port: metrics
++              scheme: HTTP
++          volumeMounts:
++            - name: run-openvswitch
++              mountPath: /var/run/ovn
++            - name: run-openvswitch
++              mountPath: /var/run/openvswitch
++        {{- end }}
+       volumes:
+         - name: run-openvswitch
+           emptyDir: {}
+diff --git a/ovn/templates/statefulset-ovsdb-sb.yaml b/ovn/templates/statefulset-ovsdb-sb.yaml
+index 92af96de..b8519bf2 100644
+--- a/ovn/templates/statefulset-ovsdb-sb.yaml
++++ b/ovn/templates/statefulset-ovsdb-sb.yaml
+@@ -108,6 +108,31 @@ spec:
+               mountPath: /var/run/ovn
+             - name: data
+               mountPath: /etc/ovn
++        {{- if .Values.pod.sidecars.ovn_exporter }}
++        - name: exporter
++{{ tuple $envAll "ovn_exporter" | include "helm-toolkit.snippets.image" | indent 10 }}
++{{ tuple $envAll $envAll.Values.pod.resources.exporter | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
++          ports:
++            - name: metrics
++              containerPort: 9476
++          readinessProbe:
++            failureThreshold: 3
++            httpGet:
++              path: /
++              port: metrics
++              scheme: HTTP
++          livenessProbe:
++            failureThreshold: 3
++            httpGet:
++              path: /
++              port: metrics
++              scheme: HTTP
++          volumeMounts:
++            - name: run-openvswitch
++              mountPath: /var/run/ovn
++            - name: run-openvswitch
++              mountPath: /var/run/openvswitch
++        {{- end }}
+       volumes:
+         - name: run-openvswitch
+           emptyDir: {}
+diff --git a/ovn/values.yaml b/ovn/values.yaml
+index 5c35a2f5..d173750e 100644
+--- a/ovn/values.yaml
++++ b/ovn/values.yaml
+@@ -28,6 +28,8 @@ images:
+     image_repo_sync: docker.io/library/docker:17.07.0
+     vector: docker.io/timberio/vector:0.39.0-debian
+     ovn_logging_parser: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
++    ovn_exporter: docker.io/openstackhelm/ovn:latest-ubuntu_focal
++    openvswitch_exporter: docker.io/openstackhelm/ovn:latest-ubuntu_focal
+   pull_policy: "IfNotPresent"
+   local_registry:
+     active: false
+@@ -123,6 +125,9 @@ pod:
+           capabilities:
+             add:
+               - SYS_NICE
++        exporter:
++          allowPrivilegeEscalation: false
++          readOnlyRootFilesystem: true
+     ovn_controller_gw:
+       container:
+         controller_init:
+@@ -138,6 +143,9 @@ pod:
+         vector:
+           allowPrivilegeEscalation: false
+           readOnlyRootFilesystem: true
++        exporter:
++          allowPrivilegeEscalation: false
++          readOnlyRootFilesystem: true
+   tolerations:
+     ovn_ovsdb_nb:
+       enabled: false
+@@ -281,6 +289,13 @@ pod:
+         limits:
+           memory: "256Mi"
+           cpu: "500m"
++    exporter:
++      requests:
++        memory: "128Mi"
++        cpu: "100m"
++      limits:
++        memory: "256Mi"
++        cpu: "500m"
+     jobs:
+       image_repo_sync:
+         requests:
+@@ -292,6 +307,8 @@ pod:
+   sidecars:
+     ovn_logging_parser: false
+     vector: false
++    ovn_exporter: false
++    openvswitch_exporter: false
+ 
+ secrets:
+   oci_image_registry:
