@@ -17,6 +17,7 @@ ceph_provisioners_helm_chart_path: "../../charts/ceph-provisioners/"
 ceph_provisioners_helm_chart_ref: /usr/local/src/ceph-provisioners
 
 ceph_provisioners_helm_release_namespace: openstack
+ceph_provisioners_helm_kubeconfig: "{{ kubeconfig_path | default('/etc/kubernetes/admin.conf') }}"
 ceph_provisioners_helm_values: {}
 
 # Ansible inventory group containing Ceph monitors.
@@ -27,6 +28,3 @@ ceph_provisioners_ceph_public_network: "{{ ceph_mon_public_network }}"
 
 # Cluster (replication) network used by Ceph
 ceph_provisioners_ceph_cluster_network: "{{ ceph_provisioners_ceph_public_network }}"
-
-# Overrides for Helm chart values
-ceph_provisioners_values: {}

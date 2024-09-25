@@ -19,7 +19,7 @@
     chart_ref: "{{ glance_helm_chart_ref }}"
     release_namespace: "{{ glance_helm_release_namespace }}"
     create_namespace: true
-    kubeconfig: /etc/kubernetes/admin.conf
+    kubeconfig: "{{ glance_helm_kubeconfig }}"
     values: "{{ _glance_helm_values | combine(glance_helm_values, recursive=True) }}"
 
 - name: Create Ingress

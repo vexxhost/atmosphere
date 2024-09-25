@@ -19,7 +19,7 @@
     chart_ref: "{{ barbican_helm_chart_ref }}"
     release_namespace: "{{ barbican_helm_release_namespace }}"
     create_namespace: true
-    kubeconfig: /etc/kubernetes/admin.conf
+    kubeconfig: "{{ barbican_helm_kubeconfig }}"
     values: "{{ _barbican_helm_values | combine(barbican_helm_values, recursive=True) }}"
 
 - name: Create Ingress
