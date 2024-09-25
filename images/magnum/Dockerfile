@@ -15,7 +15,10 @@ FROM registry.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
 ARG MAGNUM_GIT_REF=2045ffb5ccbfb7873228eba9a6cecc1f65f4ab3f
 ADD --keep-git-dir=true https://opendev.org/openstack/magnum.git#${MAGNUM_GIT_REF} /src/magnum
 RUN git -C /src/magnum fetch --unshallow
+COPY patches/magnum /patches/magnum
+RUN git -C /src/magnum apply --verbose /patches/magnum/*
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
+sed -i s/^oslo.db===.*$/oslo.db==14.1.0/ /upper-constraints.txt
 pip3 install \
     --constraint /upper-constraints.txt \
         /src/magnum \
