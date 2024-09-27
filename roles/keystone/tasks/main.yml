@@ -67,7 +67,7 @@
     chart_ref: "{{ keystone_helm_chart_ref }}"
     release_namespace: "{{ keystone_helm_release_namespace }}"
     create_namespace: true
-    kubeconfig: /etc/kubernetes/admin.conf
+    kubeconfig: "{{ keystone_helm_kubeconfig }}"
     values: "{{ _keystone_helm_values | combine(keystone_helm_values, recursive=True) }}"
 
 - name: Create Ingress
