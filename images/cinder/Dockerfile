@@ -14,6 +14,7 @@ pip3 install \
     --constraint /upper-constraints.txt \
         /src/cinder \
         purestorage \
+        python-3parclient \
         storpool \
         storpool.spopenstack
 EOF
