@@ -1,9 +1,18 @@
 - job:
+    name: atmosphere-sync-charts
+    parent: golang-go
+    required-projects:
+      - vexxhost/chart-vendor
+    vars:
+      zuul_work_dir: {{ ansible_env.HOME }}/{{ zuul.projects['github.com/vexxhost/chart-vendor'].src_dir }}
+      go_version: 1.23.1
+      go_command: |
+        run main.go --charts-root {{ zuul.project.src_dir }}/charts --config-file {{ zuul.project.src_dir }}/.charts.yml
+
+- job:
     name: atmosphere-linters
     parent: tox-linters
     pre-run: zuul.d/playbooks/linters/pre.yml
-    required-projects:
-      - vexxhost/chart-vendor
 
 - job:
     name: atmosphere-tox-py3
