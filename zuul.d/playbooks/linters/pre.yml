@@ -16,9 +16,17 @@
   roles:
     - role: ensure-helm
       helm_version: 3.13.3
+    - role: ensure-go
+      go_version: 1.23.1
   tasks:
     - name: Install patchutils
       become: true
       ansible.builtin.package:
         name: patchutils
         state: present
+
+    - name: Install chart-vendor
+      shell: |
+        cd {{ ansible_env.HOME }}/{{ zuul.projects['github.com/vexxhost/chart-vendor'].src_dir }}
+        go build -o {{ ansible_env.PATH }}/chart-vendor .
+        chart-vendor -h
