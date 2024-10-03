@@ -1,14 +1,6 @@
 - job:
     name: atmosphere-chart-vendor
-    parent: golang-go
-    run: zuul.d/playbooks/chart-vendor/run.yaml
-    required-projects:
-      - vexxhost/chart-vendor
-    vars:
-      go_version: 1.23.1
-      zuul_work_dir: "{{ ansible_env.HOME }}/{{ zuul.projects['github.com/vexxhost/chart-vendor'].src_dir }}"
-      chart_vendor_charts_root: "{{ zuul.project.src_dir }}/charts"
-      chart_vendor_config_file: "{{ zuul.project.src_dir }}/.charts.yml"
+    parent: chart-vendor
 
 - job:
     name: atmosphere-linters
