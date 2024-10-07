@@ -62,6 +62,19 @@ _loki_helm_values:
       openstack-control-plane: enabled
     persistence:
       size: 256Gi
+    extraVolumeMounts:
+      - name: rules
+        mountPath: /var/loki/rulestorage/fake
+    extraVolumes:
+      - name: rules
+        configMap:
+          name: loki-alerting-rules
+  write:
+    replicas: 0
+  read:
+    replicas: 0
+  backend:
+    replicas: 0
   gateway:
     image:
       registry: "{{ atmosphere_images['loki_gateway'] | vexxhost.kubernetes.docker_image('domain') }}"
@@ -69,3 +82,23 @@ _loki_helm_values:
       tag: "{{ atmosphere_images['loki_gateway'] | vexxhost.kubernetes.docker_image('tag') }}"
     nodeSelector:
       openstack-control-plane: enabled
+  lokiCanary:
+    enabled: false
+  extraObjects:
+    - apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: loki-alerting-rules
+        labels:
+          loki_rule: "atmosphere"
+      data:
+        loki-alerting-rules.yaml: |-
+          groups:
+            - name: additional-loki-rules
+              rules:
+                - alert: NovaCellNotResponding
+                  expr: 'count_over_time({pod_label_component="compute"} |= "not responding and hence is being omitted from the results" [1m]) > 0'
+                  labels:
+                    severity: critical
+                  annotations:
+                    summary: Nova Cell is not responding. It can cause port deletion in CAPI.
