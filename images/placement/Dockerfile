@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
-# Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
+# Atmosphere-Rebuild-Time: 2024-09-23T21:18:36Z
 
 ARG RELEASE
 
 FROM registry.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
-ARG PLACEMENT_GIT_REF=96a9aeb3b4a6ffff5bbf247b213409395239fc7a
+ARG PLACEMENT_GIT_REF=9c81005854bfec3440f3f1d659d9d34cdfc3d3cd
 ADD --keep-git-dir=true https://opendev.org/openstack/placement.git#${PLACEMENT_GIT_REF} /src/placement
 RUN git -C /src/placement fetch --unshallow
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
