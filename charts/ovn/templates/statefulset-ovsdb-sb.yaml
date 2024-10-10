@@ -110,7 +110,9 @@ spec:
               mountPath: /etc/ovn
       volumes:
         - name: run-openvswitch
-          emptyDir: {}
+          hostPath:
+            path: /run/openvswitch
+            type: DirectoryOrCreate
 {{- if not .Values.volume.ovn_ovsdb_sb.enabled }}
         - name: data
           emptyDir: {}
