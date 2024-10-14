@@ -15,63 +15,57 @@
 - project:
     check:
       jobs:
-        - atmosphere-build-container-image-openstack-python-runtime
+        - atmosphere-build-container-image-libvirt-tls-sidecar
     gate:
       jobs:
-        - atmosphere-upload-container-image-openstack-python-runtime
+        - atmosphere-upload-container-image-libvirt-tls-sidecar
     promote:
       jobs:
-        - atmosphere-promote-container-image-openstack-python-runtime
+        - atmosphere-promote-container-image-libvirt-tls-sidecar
 
 - job:
-    name: atmosphere-build-container-image-openstack-python-runtime
+    name: atmosphere-build-container-image-libvirt-tls-sidecar
     parent: atmosphere-build-container-image-multiarch
     dependencies:
       - name: atmosphere-buildset-registry
         soft: false
       - name: atmosphere-build-container-image-ubuntu
         soft: true
-      - name: atmosphere-build-container-image-ubuntu-cloud-archive
-        soft: true
-      - name: atmosphere-build-container-image-python-base
-        soft: true
     vars: &container_image_vars
-      promote_container_image_job: atmosphere-upload-container-image-openstack-python-runtime
+      promote_container_image_job: atmosphere-upload-container-image-libvirt-tls-sidecar
       container_images:
-        - context: images/openstack-runtime
-          registry: harbor.atmosphere.dev
-          repository: harbor.atmosphere.dev/library/openstack-python-runtime
+        - context: .
+          target: libvirt-tls-sidecar
+          registry: registry.atmosphere.dev
+          repository: registry.atmosphere.dev/library/libvirt-tls-sidecar
           arch:
             - linux/amd64
             - linux/arm64
           build_args:
             - "RELEASE={{ zuul.branch | replace('stable/', '') }}"
-            - "FROM=harbor.atmosphere.dev/library/python-base:{{ zuul.branch | replace('stable/', '') }}"
           tags:
             - "{{ zuul.branch | replace('stable/', '') }}"
     files: &container_image_files
       - images/ubuntu/.*
-      - images/ubuntu-cloud-archive/.*
-      - images/python-base/.*
-      - images/openstack-runtime/.*
+      - cmd/.*
+      - internal/.*
+      - Dockerfile
+      - go.mod
+      - go.sum
 
 - job:
-    name: atmosphere-upload-container-image-openstack-python-runtime
+    name: atmosphere-upload-container-image-libvirt-tls-sidecar
     parent: atmosphere-upload-container-image-multiarch
     dependencies:
       - name: atmosphere-buildset-registry
         soft: false
       - name: atmosphere-upload-container-image-ubuntu
         soft: true
-      - name: atmosphere-upload-container-image-ubuntu-cloud-archive
-        soft: true
-      - name: atmosphere-upload-container-image-python-base
-        soft: true
     vars: *container_image_vars
     files: *container_image_files
 
 - job:
-    name: atmosphere-promote-container-image-openstack-python-runtime
+    name: atmosphere-promote-container-image-libvirt-tls-sidecar
     parent: atmosphere-promote-container-image
     vars: *container_image_vars
     files: *container_image_files

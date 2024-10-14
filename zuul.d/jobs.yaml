@@ -1,26 +1,9 @@
 - job:
-    name: atmosphere-golang-go
-    parent: golang-go
-    abstract: true
-    vars:
-      go_version: 1.21.13
-
-- job:
-    name: atmosphere-golang-go-test
-    parent: atmosphere-golang-go
-    pre-run:
-      - zuul.d/playbooks/common/switch-to-atmosphere-mirror.yml
-    vars:
-      go_command: test ./... -v
-
-- job:
-    name: atmosphere-chart-vendor
-    parent: chart-vendor
-
-- job:
     name: atmosphere-linters
     parent: tox-linters
     pre-run: zuul.d/playbooks/linters/pre.yml
+    required-projects:
+      - name: vexxhost/chart-vendor
 
 - job:
     name: atmosphere-tox-promtool-test
