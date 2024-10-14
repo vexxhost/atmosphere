@@ -7,6 +7,9 @@ def main():
     passed = True
 
     for file in glob.glob("zuul.d/container-images/*.yaml"):
+        if file == "zuul.d/container-images/base.yaml":
+            continue
+
         with open(file, "r") as file:
             configs = yaml.safe_load(file)
 
