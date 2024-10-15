@@ -32,6 +32,7 @@ __neutron_helm_values:
         dhcp_agents_per_network: 3
         log_config_append: null
         rpc_workers: 8
+        rpc_response_timeout: 600
         service_plugins: qos,router,segments,trunk,vpnaas
         external_dns_driver: "{{ _neutron_external_dns_driver | default(omit) }}"
       cors:
@@ -87,12 +88,22 @@ __neutron_ovn_helm_values:
   conf:
     neutron:
       DEFAULT:
-        service_plugins: qos,ovn-router,segments,trunk,log
+        service_plugins: qos,ovn-router,segments,trunk,log,ovn-vpnaas
       ovn:
         ovn_emit_need_to_frag: true
+      service_providers:
+        service_provider: VPN:strongswan:neutron_vpnaas.services.vpn.service_drivers.ovn_ipsec.IPsecOvnVPNDriver:default
     ovn_metadata_agent:
       DEFAULT:
         metadata_proxy_shared_secret: "{{ openstack_helm_endpoints['compute_metadata']['secret'] }}"
+    ovn_vpn_agent:
+      AGENT:
+        extensions: vpnaas
+      vpnagent:
+        vpn_device_driver: neutron_vpnaas.services.vpn.device_drivers.ovn_ipsec.OvnStrongSwanDriver
+    neutron_vpnaas:
+      service_providers:
+        service_provider: VPN:strongswan:neutron_vpnaas.services.vpn.service_drivers.ovn_ipsec.IPsecOvnVPNDriver:default
     plugins:
       ml2_conf:
         agent:
@@ -105,6 +116,7 @@ __neutron_ovn_helm_values:
     daemonset_l3_agent: false
     daemonset_metadata_agent: false
     daemonset_ovn_metadata_agent: true
+    daemonset_ovn_vpn_agent: true
     daemonset_ovs_agent: false
     deployment_rpc_server: false
 
