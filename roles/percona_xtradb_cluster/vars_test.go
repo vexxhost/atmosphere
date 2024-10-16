@@ -124,7 +124,7 @@ func TestPerconaXtraDBClusterHAProxySpec(t *testing.T) {
 	require.NoError(t, err)
 
 	defaults.AssertAtmosphereImage(t,
-		fmt.Sprintf("docker.io/percona/percona-xtradb-cluster-operator:%s-haproxy@sha256:f04e4fea548bfc7cb0bfc73c75c7f2c64d299cf04125a07a8101a55f0f734fed", chart.AppVersion()),
+		fmt.Sprintf("docker.io/percona/percona-xtradb-cluster-operator:%s-haproxy@sha256:f04e4fea548bfc7cb0bfc73c75c7f2c64d299cf04125a07a8101a55f0f734fed", vars.PerconaXtraDBClusterSpec.CRVersion),
 		vars.PerconaXtraDBClusterSpec.HAProxy.Image,
 	)
 
@@ -145,7 +145,7 @@ func TestPerconaXtraDBClusterHAProxyConfiguration(t *testing.T) {
 	//               then compare it.
 
 	// Get the default HAproxy configuration
-	configFileUrl := fmt.Sprintf("https://raw.githubusercontent.com/percona/percona-docker/pxc-operator-%s/haproxy/dockerdir/etc/haproxy/haproxy-global.cfg", chart.AppVersion())
+	configFileUrl := fmt.Sprintf("https://raw.githubusercontent.com/percona/percona-docker/pxc-operator-%s/haproxy/dockerdir/etc/haproxy/haproxy-global.cfg", vars.PerconaXtraDBClusterSpec.CRVersion)
 	resp, err := http.Get(configFileUrl)
 	require.NoError(t, err)
 	defer resp.Body.Close()
