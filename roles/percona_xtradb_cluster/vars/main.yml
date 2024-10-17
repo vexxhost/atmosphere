@@ -18,6 +18,7 @@ _percona_xtradb_cluster_spec:
         image: "{{ atmosphere_images['prometheus_mysqld_exporter'] | vexxhost.kubernetes.docker_image('ref') }}"
         args:
           - --mysqld.username=monitor
+          - --collect.info_schema.processlist
         env:
           - name: MYSQLD_EXPORTER_PASSWORD
             valueFrom:
