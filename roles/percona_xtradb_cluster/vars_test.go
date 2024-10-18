@@ -116,11 +116,8 @@ func TestPerconaXtraDBClusterHAProxySpec(t *testing.T) {
 	assert.Equal(t, true, vars.PerconaXtraDBClusterSpec.HAProxy.Enabled)
 	assert.Equal(t, int32(3), vars.PerconaXtraDBClusterSpec.HAProxy.Size)
 
-	chart, err := loader.LoadDir("../../charts/pxc-operator")
-	require.NoError(t, err)
-
 	defaults.AssertAtmosphereImage(t,
-		fmt.Sprintf("docker.io/percona/percona-xtradb-cluster-operator:%s-haproxy", chart.AppVersion()),
+		fmt.Sprintf("docker.io/percona/percona-xtradb-cluster-operator:%s-haproxy", vars.PerconaXtraDBClusterSpec.CRVersion),
 		vars.PerconaXtraDBClusterSpec.HAProxy.Image,
 	)
 
@@ -130,9 +127,6 @@ func TestPerconaXtraDBClusterHAProxySpec(t *testing.T) {
 }
 
 func TestPerconaXtraDBClusterHAProxyConfiguration(t *testing.T) {
-	chart, err := loader.LoadDir("../../charts/pxc-operator")
-	require.NoError(t, err)
-
 	pxcConfig := parsePXCConfiguration(t, vars.PerconaXtraDBClusterSpec.PXC.Configuration)
 	maxConnections := pxcConfig.Section("mysqld").Key("max_connections").MustInt()
 
@@ -141,7 +135,7 @@ func TestPerconaXtraDBClusterHAProxyConfiguration(t *testing.T) {
 	//               then compare it.
 
 	// Get the default HAproxy configuration
-	configFileUrl := fmt.Sprintf("https://raw.githubusercontent.com/percona/percona-docker/pxc-operator-%s/haproxy/dockerdir/etc/haproxy/haproxy-global.cfg", chart.AppVersion())
+	configFileUrl := fmt.Sprintf("https://raw.githubusercontent.com/percona/percona-docker/pxc-operator-%s/haproxy/dockerdir/etc/haproxy/haproxy-global.cfg", vars.PerconaXtraDBClusterSpec.CRVersion)
 	resp, err := http.Get(configFileUrl)
 	require.NoError(t, err)
 	defer resp.Body.Close()
