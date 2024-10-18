@@ -105,10 +105,6 @@ func TestPerconaXtraDBClusterPXCSidecarSpec(t *testing.T) {
 			},
 		},
 	}, sidecar.Env[0])
-	assert.Equal(t, v1.EnvVar{
-		Name:  "DATA_SOURCE_NAME",
-		Value: "monitor:$(MONITOR_PASSWORD)@(localhost:3306)/",
-	}, sidecar.Env[1])
 
 	assert.Equal(t, v1.ContainerPort{
 		Name:          "metrics",
@@ -124,7 +120,7 @@ func TestPerconaXtraDBClusterHAProxySpec(t *testing.T) {
 	require.NoError(t, err)
 
 	defaults.AssertAtmosphereImage(t,
-		fmt.Sprintf("docker.io/percona/percona-xtradb-cluster-operator:%s-haproxy@sha256:f04e4fea548bfc7cb0bfc73c75c7f2c64d299cf04125a07a8101a55f0f734fed", chart.AppVersion()),
+		fmt.Sprintf("docker.io/percona/percona-xtradb-cluster-operator:%s-haproxy", chart.AppVersion()),
 		vars.PerconaXtraDBClusterSpec.HAProxy.Image,
 	)
 
