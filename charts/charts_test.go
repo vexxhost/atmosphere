@@ -104,8 +104,8 @@ func TestKubeconform(t *testing.T) {
 										"admin":  "FIXME",
 									},
 								},
+								"useTestSchema": true,
 							},
-							"useTestSchema": true,
 						},
 					)
 					require.NoError(t, err)
