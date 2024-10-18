@@ -105,6 +105,7 @@ func TestKubeconform(t *testing.T) {
 									},
 								},
 							},
+							"useTestSchema": true,
 						},
 					)
 					require.NoError(t, err)
