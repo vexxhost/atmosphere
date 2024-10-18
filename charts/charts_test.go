@@ -78,6 +78,9 @@ func TestKubeconform(t *testing.T) {
 		if !file.IsDir() {
 			continue
 		}
+		if file.Name() == "patches" {
+			continue
+		}
 
 		t.Run(file.Name(), func(t *testing.T) {
 			chart, err := loader.LoadDir(file.Name())
