@@ -9,7 +9,7 @@ import (
 )
 
 func TestDatabaseConf(t *testing.T, config *openstack_helm.DatabaseConf) {
-	assert.Equal(t, 10, config.ConnectionRecycleTime)
-	assert.Equal(t, 1, config.MaxPoolSize)
+	assert.Equal(t, 600, config.ConnectionRecycleTime)
+	assert.Equal(t, 5, config.MaxPoolSize)
 	assert.Equal(t, -1, config.MaxRetries)
 }
