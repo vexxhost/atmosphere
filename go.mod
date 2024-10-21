@@ -22,7 +22,7 @@ require (
 	gopkg.in/ini.v1 v1.67.0
 	gopkg.in/yaml.v2 v2.4.0
 	gorm.io/driver/mysql v1.5.6
-	gorm.io/gorm v1.25.10
+	gorm.io/gorm v1.25.12
 	helm.sh/helm/v3 v3.16.2
 	k8s.io/api v0.31.1
 	k8s.io/apimachinery v0.31.1
