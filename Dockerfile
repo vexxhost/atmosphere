@@ -3,7 +3,7 @@
 
 ARG RELEASE
 
-FROM golang:1.21 AS go-builder
+FROM golang:1.22 AS go-builder
 COPY go.mod go.sum /src/
 WORKDIR /src
 RUN go mod download
