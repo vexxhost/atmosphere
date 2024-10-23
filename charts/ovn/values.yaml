@@ -38,16 +38,16 @@ images:
 
 labels:
   ovn_ovsdb_nb:
-    node_selector_key: openstack-compute-node
+    node_selector_key: openstack-network-node
     node_selector_value: enabled
   ovn_ovsdb_sb:
-    node_selector_key: openstack-compute-node
+    node_selector_key: openstack-network-node
     node_selector_value: enabled
   ovn_northd:
-    node_selector_key: openstack-compute-node
+    node_selector_key: openstack-network-node
     node_selector_value: enabled
   ovn_controller:
-    node_selector_key: openstack-compute-node
+    node_selector_key: openvswitch
     node_selector_value: enabled
   ovn_controller_gw:
     node_selector_key: openstack-control-plane
@@ -287,6 +287,10 @@ pod:
         limits:
           memory: "1024Mi"
           cpu: "2000m"
+  labels:
+    ovn_controller_gw: gw
+    ovn_controller: hv
+
   sidecars:
     ovn_logging_parser: false
     vector: false
