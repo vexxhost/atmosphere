@@ -24,10 +24,10 @@ require (
 	gorm.io/driver/mysql v1.5.6
 	gorm.io/gorm v1.25.10
 	helm.sh/helm/v3 v3.16.2
-	k8s.io/api v0.31.1
-	k8s.io/apimachinery v0.31.1
-	k8s.io/cli-runtime v0.31.1
-	k8s.io/client-go v0.31.1
+	k8s.io/api v0.31.2
+	k8s.io/apimachinery v0.31.2
+	k8s.io/cli-runtime v0.31.2
+	k8s.io/client-go v0.31.2
 )
 
 require (
