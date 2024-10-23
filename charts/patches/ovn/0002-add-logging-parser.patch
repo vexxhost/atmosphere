@@ -214,8 +214,7 @@ diff --git a/ovn/values.yaml b/ovn/values.yaml
 index b07a0f5a..79fde2c2 100644
 --- a/ovn//values.yaml
 +++ b/ovn//values.yaml
-@@ -27,6 +27,8 @@ images:
-     ovn_controller_kubectl: docker.io/openstackhelm/ceph-config-helper:latest-ubuntu_jammy
+@@ -26,5 +26,7 @@ images:
      dep_check: quay.io/airshipit/kubernetes-entrypoint:latest-ubuntu_focal
      image_repo_sync: docker.io/library/docker:17.07.0
 +    vector: docker.io/timberio/vector:0.39.0-debian
@@ -223,7 +222,7 @@ index b07a0f5a..79fde2c2 100644
    pull_policy: "IfNotPresent"
    local_registry:
      active: false
-@@ -83,6 +85,24 @@ conf:
+@@ -82,6 +84,24 @@ conf:
    #   br-public: eth1
    auto_bridge_add: {}
  
@@ -248,7 +247,7 @@ index b07a0f5a..79fde2c2 100644
  pod:
    # NOTE: should be same as nova.pod.use_fqdn.compute
    use_fqdn:
-@@ -110,6 +130,12 @@ pod:
+@@ -109,6 +129,12 @@ pod:
          controller:
            readOnlyRootFilesystem: true
            privileged: true
@@ -261,7 +260,7 @@ index b07a0f5a..79fde2c2 100644
    tolerations:
      ovn_ovsdb_nb:
        enabled: false
-@@ -238,6 +264,21 @@ pod:
+@@ -237,6 +263,21 @@ pod:
          limits:
            memory: "1024Mi"
            cpu: "2000m"
@@ -283,7 +282,7 @@ index b07a0f5a..79fde2c2 100644
      jobs:
        image_repo_sync:
          requests:
-@@ -250,6 +291,10 @@ pod:
+@@ -249,6 +290,10 @@ pod:
      ovn_controller_gw: gw
      ovn_controller: hv
  
@@ -294,7 +293,7 @@ index b07a0f5a..79fde2c2 100644
  secrets:
    oci_image_registry:
      ovn: ovn-oci-image-registry-key
-@@ -308,6 +353,22 @@ endpoints:
+@@ -307,6 +352,22 @@ endpoints:
          default: 6642
        raft:
          default: 6644
