@@ -62,6 +62,7 @@ spec:
 {{ tuple $envAll $envAll.Values.pod.resources.server | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
 {{ dict "envAll" $envAll "application" "ovn_northd" "container" "northd" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
 {{ dict "envAll" . "component" "ovn_northd" "container" "northd" "type" "readiness" "probeTemplate" (include "northdReadinessProbeTemplate" . | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ dict "envAll" . "component" "ovn_northd" "container" "northd" "type" "liveness" "probeTemplate" (include "northdReadinessProbeTemplate" . | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
           env:
             - name: OVN_DAEMONSET_VERSION
               value: "3"
