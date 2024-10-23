@@ -313,7 +313,7 @@ index e3afdd05..ae31b357 100644
  {{- end }}
  
  {{- if .Values.manifests.deployment_northd }}
-@@ -60,28 +55,26 @@ spec:
+@@ -60,28 +55,27 @@ spec:
  {{- tuple $envAll "ovn_northd" list | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
        containers:
          - name: northd
@@ -345,6 +345,7 @@ index e3afdd05..ae31b357 100644
 -            name: ovn-bin
 -            defaultMode: 0555
 +{{ dict "envAll" . "component" "ovn_northd" "container" "northd" "type" "readiness" "probeTemplate" (include "northdReadinessProbeTemplate" . | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
++{{ dict "envAll" . "component" "ovn_northd" "container" "northd" "type" "liveness" "probeTemplate" (include "northdReadinessProbeTemplate" . | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
 +          env:
 +            - name: OVN_DAEMONSET_VERSION
 +              value: "3"
