@@ -36,18 +36,15 @@ metadata:
     {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
     configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
   labels:
-{{ tuple $envAll "ovn" "ovn-controller" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
-    type: hv
+{{ tuple $envAll "ovn" "ovn_controller" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
 spec:
   selector:
     matchLabels:
-{{ tuple $envAll "ovn" "ovn-controller" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 6 }}
-      type: hv
+{{ tuple $envAll "ovn" "ovn_controller" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 6 }}
   template:
     metadata:
       labels:
-{{ tuple $envAll "ovn" "ovn-controller" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
-        type: hv
+{{ tuple $envAll "ovn" "ovn_controller" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
       annotations:
 {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
         configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
@@ -55,12 +52,15 @@ spec:
     spec:
       serviceAccountName: {{ $serviceAccountName }}
       hostNetwork: true
+      hostPID: true
+      hostIPC: true
       dnsPolicy: {{ .Values.pod.dns_policy }}
       nodeSelector:
         {{ .Values.labels.ovn_controller.node_selector_key }}: {{ .Values.labels.ovn_controller.node_selector_value }}
       initContainers:
 {{- tuple $envAll "ovn_controller" list | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
         - name: controller-init
+{{ dict "envAll" $envAll "application" "ovn_controller" "container" "controller_init" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
 {{ tuple $envAll "ovn_controller" | include "helm-toolkit.snippets.image" | indent 10 }}
 {{ dict "envAll" $envAll "application" "ovn_controller" "container" "controller_init" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
           command:
@@ -85,12 +85,12 @@ spec:
               readOnly: true
       containers:
         - name: controller
-          command:
-            - /root/ovnkube.sh
-            - ovn-controller
 {{ tuple $envAll "ovn_controller" | include "helm-toolkit.snippets.image" | indent 10 }}
 {{ tuple $envAll $envAll.Values.pod.resources.server | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
 {{ dict "envAll" $envAll "application" "ovn_controller" "container" "controller" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - /root/ovnkube.sh
+            - ovn-controller
 {{ dict "envAll" . "component" "ovn_controller" "container" "controller" "type" "readiness" "probeTemplate" (include "controllerReadinessProbeTemplate" . | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
           env:
             - name: OVN_DAEMONSET_VERSION
@@ -112,6 +112,10 @@ spec:
               mountPath: /var/run/ovn
             - name: run-openvswitch
               mountPath: /var/run/openvswitch
+            - name: logs
+              mountPath: /var/log/ovn
+            - name: run-ovn
+              mountPath: /run/ovn
       volumes:
         - name: ovn-bin
           configMap:
@@ -125,4 +129,12 @@ spec:
           secret:
             secretName: {{ $configMapName }}
             defaultMode: 0444
+        - name: logs
+          hostPath:
+            path: /var/log/ovn
+            type: DirectoryOrCreate
+        - name: run-ovn
+          hostPath:
+            path: /run/ovn
+            type: DirectoryOrCreate
 {{- end }}
