@@ -30,7 +30,7 @@ __cinder_helm_values:
             - name: cinder-tmp
               emptyDir: {}
   conf:
-    policy: {}
+    policy: "{{ staffeln_backup_delete_policy if (atmosphere_staffeln_enabled | default(false)) else {} }}"
     cinder:
       DEFAULT:
         allowed_direct_url_schemes: cinder
