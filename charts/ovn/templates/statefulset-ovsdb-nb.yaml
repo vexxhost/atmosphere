@@ -73,6 +73,7 @@ spec:
 {{ tuple $envAll "ovn_ovsdb_nb" | include "helm-toolkit.snippets.image" | indent 10 }}
 {{ tuple $envAll $envAll.Values.pod.resources.server | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
 {{ dict "envAll" . "component" "ovn_ovsdb_nb" "container" "ovsdb" "type" "readiness" "probeTemplate" (include "ovnnbReadinessProbeTemplate" . | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+
           ports:
             - containerPort: {{ tuple "ovn-ovsdb-nb" "internal" "ovsdb" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
             - containerPort: {{ tuple "ovn-ovsdb-nb" "internal" "raft" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
@@ -110,7 +111,9 @@ spec:
               mountPath: /etc/ovn
       volumes:
         - name: run-openvswitch
-          emptyDir: {}
+          hostPath:
+            path: /run/openvswitch
+            type: DirectoryOrCreate
 {{- if not .Values.volume.ovn_ovsdb_nb.enabled }}
         - name: data
           emptyDir: {}
