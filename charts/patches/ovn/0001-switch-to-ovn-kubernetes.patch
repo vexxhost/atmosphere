@@ -161,7 +161,7 @@ index 8255f6a4..a0da8b0b 100644
            volumeMounts:
              - name: ovn-bin
                mountPath: /tmp/ovn-controller-init.sh
-@@ -69,25 +83,33 @@ spec:
+@@ -69,29 +82,35 @@ spec:
                readOnly: true
        containers:
          - name: controller
@@ -206,9 +206,22 @@ index 8255f6a4..a0da8b0b 100644
 +              mountPath: /var/run/ovn
 +            - name: run-openvswitch
 +              mountPath: /var/run/openvswitch
+             - name: logs
+               mountPath: /var/log/ovn
+-            - name: run-ovn
+-              mountPath: /run/ovn
        volumes:
          - name: ovn-bin
            configMap:
+@@ -109,8 +128,4 @@ spec:
+           hostPath:
+             path: /var/log/ovn
+             type: DirectoryOrCreate
+-        - name: run-ovn
+-          hostPath:
+-            path: /run/ovn
+-            type: DirectoryOrCreate
+ {{- end }}
 diff --git a/ovn/templates/daemonset-controller.yaml b/ovn/templates/daemonset-controller.yaml
 index 4cd5d9b2..fae94512 100644
 --- a/ovn/templates/daemonset-controller.yaml
