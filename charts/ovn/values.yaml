@@ -24,6 +24,7 @@ images:
     ovn_ovsdb_sb: docker.io/openstackhelm/ovn:ubuntu_focal
     ovn_northd: docker.io/openstackhelm/ovn:ubuntu_focal
     ovn_controller: docker.io/openstackhelm/ovn:ubuntu_focal
+    ovn_controller_kubectl: docker.io/openstackhelm/ceph-config-helper:latest-ubuntu_jammy
     dep_check: quay.io/airshipit/kubernetes-entrypoint:latest-ubuntu_focal
     image_repo_sync: docker.io/library/docker:17.07.0
     vector: docker.io/timberio/vector:0.39.0-debian
@@ -49,7 +50,7 @@ labels:
     node_selector_key: openvswitch
     node_selector_value: enabled
   ovn_controller_gw:
-    node_selector_key: openstack-control-plane
+    node_selector_key: l3-agent
     node_selector_value: enabled
 
 volume:
@@ -121,14 +122,6 @@ pod:
         controller:
           readOnlyRootFilesystem: true
           privileged: true
-    ovn_controller_gw:
-      container:
-        controller_init:
-          readOnlyRootFilesystem: true
-          privileged: true
-        controller:
-          readOnlyRootFilesystem: true
-          privileged: true
         ovn_logging_parser:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -143,8 +136,6 @@ pod:
     ovn_northd:
       enabled: false
     ovn_controller:
-      enabled: false
-    ovn_controller_gw:
       enabled: false
   affinity:
     anti:
@@ -221,10 +212,6 @@ pod:
           enabled: true
           min_ready_seconds: 0
           max_unavailable: 1
-        ovn_controller_gw:
-          enabled: true
-          min_ready_seconds: 0
-          max_unavailable: 1
   resources:
     enabled: false
     ovs:
@@ -256,28 +243,20 @@ pod:
         limits:
           memory: "1024Mi"
           cpu: "2000m"
-      ovn_controller_gw:
-        requests:
-          memory: "128Mi"
-          cpu: "100m"
-        limits:
-          memory: "1024Mi"
-          cpu: "2000m"
-    ovn_controller_gw:
-      ovn_logging_parser:
-        requests:
-          memory: "128Mi"
-          cpu: "100m"
-        limits:
-          memory: "256Mi"
-          cpu: "500m"
-      vector:
-        requests:
-          memory: "128Mi"
-          cpu: "100m"
-        limits:
-          memory: "256Mi"
-          cpu: "500m"
+    ovn_logging_parser:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "256Mi"
+        cpu: "500m"
+    vector:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "256Mi"
+        cpu: "500m"
     jobs:
       image_repo_sync:
         requests:
@@ -385,9 +364,6 @@ network_policy:
   ovn_controller:
     ingress:
       - {}
-  ovn_controller_gw:
-    ingress:
-      - {}
     egress:
       - {}
 
@@ -413,10 +389,6 @@ dependencies:
       services:
         - endpoint: internal
           service: ovn-ovsdb-sb
-    ovn_controller_gw:
-      services:
-        - endpoint: internal
-          service: ovn-ovsdb-sb
       pod:
         - requireSameNode: true
           labels:
@@ -437,6 +409,5 @@ manifests:
   statefulset_ovn_ovsdb_sb: true
   deployment_ovn_northd: true
   daemonset_ovn_controller: true
-  daemonset_ovn_controller_gw: true
   job_image_repo_sync: true
 ...
