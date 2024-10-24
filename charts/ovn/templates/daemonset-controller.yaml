@@ -225,4 +225,17 @@ spec:
             type: DirectoryOrCreate
         - name: gw-enabled
           emptyDir: {}
+        {{- if .Values.pod.sidecars.vector }}
+        - name: vector-config
+          secret:
+            secretName: ovn-vector-config
+        - name: vector-data
+          emptyDir: {}
+        {{- end }}
+        {{- if .Values.pod.sidecars.ovn_logging_parser }}
+        - name: neutron-etc
+          secret:
+            secretName: neutron-etc
+            defaultMode: 0444
+        {{- end }}
 {{- end }}
