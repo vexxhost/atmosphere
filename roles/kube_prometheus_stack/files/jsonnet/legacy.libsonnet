@@ -124,7 +124,6 @@
             };
             [
               recordingRule('backlog', 'sum(node_softnet_backlog_len) by (instance)'),
-              recordingRule('squeezed', 'sum(rate(node_softnet_times_squeezed_total[1m])) by (instance)'),
               recordingRule('dropped', 'sum(rate(node_softnet_dropped_total[1m])) by (instance)'),
             ],
         },
@@ -218,9 +217,6 @@
               alertRule('backlog', '5000', '0'),
               alertRule('backlog', '5000', '0.5'),
               alertRule('backlog', '5000', '0.75'),
-
-              alertRule('squeezed', '0', '0'),
-
               alertRule('dropped', '0', '0'),
               alertRule('dropped', '0', '0.5'),
               alertRule('dropped', '0', '0.75'),
