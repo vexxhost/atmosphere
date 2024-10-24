@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
+# Atmosphere-Rebuild-Time: 2024-10-14T18:43:39Z
 
 ARG RELEASE
 
@@ -9,7 +9,7 @@ ADD --keep-git-dir=true https://opendev.org/openstack/horizon.git#${HORIZON_GIT_
 RUN git -C /src/horizon fetch --unshallow
 ADD --keep-git-dir=true https://opendev.org/openstack/designate-dashboard.git#master /src/designate-dashboard
 RUN git -C /src/designate-dashboard fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/heat-dashboard.git#master /src/heat-dashboard
+ADD --keep-git-dir=true https://opendev.org/openstack/heat-dashboard.git#d5608779e16a96f7eb8ccfedd1fbe9f33d5b8a7b /src/heat-dashboard
 RUN git -C /src/heat-dashboard fetch --unshallow
 ADD --keep-git-dir=true https://opendev.org/openstack/ironic-ui.git#master /src/ironic-ui
 RUN git -C /src/ironic-ui fetch --unshallow
