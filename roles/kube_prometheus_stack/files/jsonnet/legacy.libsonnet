@@ -142,6 +142,14 @@
               labels: {
                 severity: 'warning',
               },
+              },
+            {
+              alert: 'NodeHighLoad',
+              expr: 'node_load1 / count(node_cpu_seconds_total{mode="system"}) without (cpu, mode) > 0.5',
+              'for': '5m',
+              labels: {
+                severity: 'info',
+              },
             },
             {
               alert: 'NodeHighMemoryUsage',
@@ -172,6 +180,14 @@
               expr: 'node_uname_info{release!~"^5.(4|15).*"}',
               labels: {
                 severity: 'P5',
+              },
+            },
+            {
+              alert: 'NodeDown',
+              expr: 'up{job="node-exporter"} == 0',
+              'for': '5m',
+              labels: {
+                severity: 'P1',
               },
             },
           ],
@@ -225,6 +241,23 @@
               alertRule('dropped', '0', '0.5'),
               alertRule('dropped', '0', '0.75'),
             ],
+        },
+        {
+          name: 'softirq',
+          rules: [
+            {
+              alert: 'NodeSoftirqRcu',
+              expr: 'rate(node_softirqs_total{vector="rcu"}[1m]) > 10000',
+              'for': '5m',
+              labels: {
+                severity: 'warning',
+              },
+              annotations: {
+                summary: 'High softirq rcu on node {{ $labels.instance }}: {{ $value }} ',
+                description: 'This can result in high software interrupt load on the node which can bring system performance down.',
+              },
+            },
+          ],
         },
       ],
     },
