@@ -36,18 +36,15 @@ metadata:
     {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
     configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
   labels:
-{{ tuple $envAll "ovn" "ovn-controller" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
-    type: gw
+{{ tuple $envAll "ovn" "ovn_controller_gw" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
 spec:
   selector:
     matchLabels:
-{{ tuple $envAll "ovn" "ovn-controller" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 6 }}
-      type: gw
+{{ tuple $envAll "ovn" "ovn_controller_gw" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 6 }}
   template:
     metadata:
       labels:
-{{ tuple $envAll "ovn" "ovn-controller" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
-        type: gw
+{{ tuple $envAll "ovn" "ovn_controller_gw" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
       annotations:
 {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
         configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
@@ -67,7 +64,7 @@ spec:
             - /tmp/ovn-controller-init.sh
           env:
             - name: OVN_CMS_OPTIONS
-              value: {{ .Values.conf.gw_ovn_cms_options | quote }}
+              value: {{ .Values.conf.ovn_cms_options_gw_enabled | quote }}
             - name: NODE_NAME
               valueFrom:
                 fieldRef:
