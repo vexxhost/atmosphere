@@ -69,19 +69,19 @@ index 47b84be8..0d221f19 100644
  {{- end }}
  {{- end }}
  
-diff --git a/ovn/templates/daemonset-controller-gw.yaml b/ovn/templates/daemonset-controller-gw.yaml
-index eb309c5e..3ecd81dc 100644
---- a/ovn/templates/daemonset-controller-gw.yaml
-+++ b/ovn/templates/daemonset-controller-gw.yaml
-@@ -111,6 +111,52 @@ spec:
-               mountPath: /var/run/openvswitch
-             - name: logs
+diff --git a/ovn/templates/daemonset-controller.yaml b/ovn/templates/daemonset-controller.yaml
+index e421794f..843cbeaa 100644
+--- a/ovn/templates/daemonset-controller.yaml
++++ b/ovn/templates/daemonset-controller.yaml
+@@ -156,6 +156,52 @@ spec:
                mountPath: /var/log/ovn
+             - name: run-ovn
+               mountPath: /run/ovn
 +        {{- if .Values.pod.sidecars.vector }}
 +        - name: vector
 +{{ tuple $envAll "vector" | include "helm-toolkit.snippets.image" | indent 10 }}
-+{{ tuple $envAll $envAll.Values.pod.resources.ovn_controller_gw.vector | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
-+{{ dict "envAll" $envAll "application" "ovn_controller_gw" "container" "vector" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
++{{ tuple $envAll $envAll.Values.pod.resources.vector | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
++{{ dict "envAll" $envAll "application" "ovn_controller" "container" "vector" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
 +          command:
 +            - vector
 +            - --config
@@ -97,8 +97,8 @@ index eb309c5e..3ecd81dc 100644
 +        {{- if .Values.pod.sidecars.ovn_logging_parser }}
 +        - name: log-parser
 +{{ tuple $envAll "ovn_logging_parser" | include "helm-toolkit.snippets.image" | indent 10 }}
-+{{ tuple $envAll $envAll.Values.pod.resources.ovn_controller_gw.ovn_logging_parser | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
-+{{ dict "envAll" $envAll "application" "ovn_controller_gw" "container" "ovn_logging_parser" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
++{{ tuple $envAll $envAll.Values.pod.resources.ovn_logging_parser | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
++{{ dict "envAll" $envAll "application" "ovn_controller" "container" "ovn_logging_parser" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
 +          command:
 +            - /tmp/ovn-network-logging-parser.sh
 +            - start
@@ -126,24 +126,6 @@ index eb309c5e..3ecd81dc 100644
        volumes:
          - name: ovn-bin
            configMap:
-@@ -128,4 +174,17 @@ spec:
-           hostPath:
-             path: /var/log/ovn
-             type: DirectoryOrCreate
-+        {{- if .Values.pod.sidecars.vector }}
-+        - name: vector-config
-+          secret:
-+            secretName: ovn-vector-config
-+        - name: vector-data
-+          emptyDir: {}
-+        {{- end }}
-+        {{- if .Values.pod.sidecars.ovn_logging_parser }}
-+        - name: neutron-etc
-+          secret:
-+            secretName: neutron-etc
-+            defaultMode: 0444
-+        {{- end }}
- {{- end }}
 diff --git a/ovn/templates/secret-vector.yaml b/ovn/templates/secret-vector.yaml
 new file mode 100644
 index 00000000..028e8a9a
@@ -256,25 +238,24 @@ index b07a0f5a..79fde2c2 100644
    tolerations:
      ovn_ovsdb_nb:
        enabled: false
-@@ -237,6 +263,21 @@ pod:
+@@ -237,6 +263,20 @@ pod:
          limits:
            memory: "1024Mi"
            cpu: "2000m"
-+    ovn_controller_gw:
-+      ovn_logging_parser:
-+        requests:
-+          memory: "128Mi"
-+          cpu: "100m"
-+        limits:
-+          memory: "256Mi"
-+          cpu: "500m"
-+      vector:
-+        requests:
-+          memory: "128Mi"
-+          cpu: "100m"
-+        limits:
-+          memory: "256Mi"
-+          cpu: "500m"
++    ovn_logging_parser:
++      requests:
++        memory: "128Mi"
++        cpu: "100m"
++      limits:
++        memory: "256Mi"
++        cpu: "500m"
++    vector:
++      requests:
++        memory: "128Mi"
++        cpu: "100m"
++      limits:
++        memory: "256Mi"
++        cpu: "500m"
      jobs:
        image_repo_sync:
          requests:
