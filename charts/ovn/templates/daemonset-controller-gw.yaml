@@ -109,8 +109,8 @@ spec:
               mountPath: /var/run/ovn
             - name: run-openvswitch
               mountPath: /var/run/openvswitch
-            - name: shared
-              mountPath: /var/log/ovn/
+            - name: logs
+              mountPath: /var/log/ovn
         {{- if .Values.pod.sidecars.vector }}
         - name: vector
 {{ tuple $envAll "vector" | include "helm-toolkit.snippets.image" | indent 10 }}
@@ -123,7 +123,7 @@ spec:
           volumeMounts:
             - name: vector-config
               mountPath: /etc/vector
-            - name: shared
+            - name: logs
               mountPath: /logs
             - name: vector-data
               mountPath: /var/lib/vector
@@ -170,8 +170,10 @@ spec:
           secret:
             secretName: {{ $configMapName }}
             defaultMode: 0444
-        - name: shared
-          emptyDir: {}
+        - name: logs
+          hostPath:
+            path: /var/log/ovn
+            type: DirectoryOrCreate
         {{- if .Values.pod.sidecars.vector }}
         - name: vector-config
           secret:

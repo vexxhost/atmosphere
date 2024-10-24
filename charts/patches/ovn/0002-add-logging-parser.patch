@@ -73,12 +73,10 @@ diff --git a/ovn/templates/daemonset-controller-gw.yaml b/ovn/templates/daemonse
 index eb309c5e..3ecd81dc 100644
 --- a/ovn/templates/daemonset-controller-gw.yaml
 +++ b/ovn/templates/daemonset-controller-gw.yaml
-@@ -112,6 +112,54 @@ spec:
-               mountPath: /var/run/ovn
-             - name: run-openvswitch
+@@ -111,6 +111,52 @@ spec:
                mountPath: /var/run/openvswitch
-+            - name: shared
-+              mountPath: /var/log/ovn/
+             - name: logs
+               mountPath: /var/log/ovn
 +        {{- if .Values.pod.sidecars.vector }}
 +        - name: vector
 +{{ tuple $envAll "vector" | include "helm-toolkit.snippets.image" | indent 10 }}
@@ -91,7 +89,7 @@ index eb309c5e..3ecd81dc 100644
 +          volumeMounts:
 +            - name: vector-config
 +              mountPath: /etc/vector
-+            - name: shared
++            - name: logs
 +              mountPath: /logs
 +            - name: vector-data
 +              mountPath: /var/lib/vector
@@ -128,12 +126,10 @@ index eb309c5e..3ecd81dc 100644
        volumes:
          - name: ovn-bin
            configMap:
-@@ -125,4 +173,19 @@ spec:
-           secret:
-             secretName: {{ $configMapName }}
-             defaultMode: 0444
-+        - name: shared
-+          emptyDir: {}
+@@ -128,4 +174,17 @@ spec:
+           hostPath:
+             path: /var/log/ovn
+             type: DirectoryOrCreate
 +        {{- if .Values.pod.sidecars.vector }}
 +        - name: vector-config
 +          secret:
