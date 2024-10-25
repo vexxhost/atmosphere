@@ -130,98 +130,6 @@ index a849dd8a..82001f99 100644
 -  ovn-controller.sh: |
 -{{ tuple "bin/_ovn-controller.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
  {{- end }}
-diff --git a/ovn/templates/daemonset-controller-gw.yaml b/ovn/templates/daemonset-controller-gw.yaml
-index 8255f6a4..a0da8b0b 100644
---- a/ovn/templates/daemonset-controller-gw.yaml
-+++ b/ovn/templates/daemonset-controller-gw.yaml
-@@ -12,6 +12,15 @@ See the License for the specific language governing permissions and
- limitations under the License.
- */}}
- 
-+{{- define "controllerGatewayReadinessProbeTemplate" }}
-+exec:
-+  command:
-+    - /usr/bin/ovn-kube-util
-+    - readiness-probe
-+    - -t
-+    - ovn-controller
-+{{- end }}
-+
- {{- if .Values.manifests.daemonset_ovn_controller_gw }}
- {{- $envAll := . }}
- 
-@@ -56,6 +65,10 @@ spec:
-           env:
-             - name: OVN_CMS_OPTIONS
-               value: {{ .Values.conf.ovn_cms_options_gw_enabled | quote }}
-+            - name: NODE_NAME
-+              valueFrom:
-+                fieldRef:
-+                  fieldPath: spec.nodeName
-           volumeMounts:
-             - name: ovn-bin
-               mountPath: /tmp/ovn-controller-init.sh
-@@ -69,29 +82,35 @@ spec:
-               readOnly: true
-       containers:
-         - name: controller
-+          command:
-+            - /root/ovnkube.sh
-+            - ovn-controller
- {{ tuple $envAll "ovn_controller" | include "helm-toolkit.snippets.image" | indent 10 }}
- {{ tuple $envAll $envAll.Values.pod.resources.server | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
- {{ dict "envAll" $envAll "application" "ovn_controller_gw" "container" "controller" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
--          command:
--            - /tmp/ovn-controller.sh
--            - start
--          lifecycle:
--            preStop:
--              exec:
--                command:
--                  - /tmp/ovn-controller.sh
--                  - stop
-+{{ dict "envAll" . "component" "ovn_controller_gw" "container" "controller" "type" "readiness" "probeTemplate" (include "controllerGatewayReadinessProbeTemplate" . | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
-+          env:
-+            - name: OVN_DAEMONSET_VERSION
-+              value: "3"
-+            - name: OVN_LOGLEVEL_CONTROLLER
-+              value: "-vconsole:info -vfile:info"
-+            - name: OVN_KUBERNETES_NAMESPACE
-+              valueFrom:
-+                fieldRef:
-+                  fieldPath: metadata.namespace
-+            - name: OVN_KUBERNETES_NB_STATEFULSET
-+              value: ovn-ovsdb-nb
-+            - name: OVN_KUBERNETES_SB_STATEFULSET
-+              value: ovn-ovsdb-sb
-+            - name: OVN_SSL_ENABLE
-+              value: "no"
-           volumeMounts:
--            - name: ovn-bin
--              mountPath: /tmp/ovn-controller.sh
--              subPath: ovn-controller.sh
--              readOnly: true
-             - name: run-openvswitch
--              mountPath: /run/openvswitch
-+              mountPath: /var/run/ovn
-+            - name: run-openvswitch
-+              mountPath: /var/run/openvswitch
-             - name: logs
-               mountPath: /var/log/ovn
--            - name: run-ovn
--              mountPath: /run/ovn
-       volumes:
-         - name: ovn-bin
-           configMap:
-@@ -109,8 +128,4 @@ spec:
-           hostPath:
-             path: /var/log/ovn
-             type: DirectoryOrCreate
--        - name: run-ovn
--          hostPath:
--            path: /run/ovn
--            type: DirectoryOrCreate
- {{- end }}
 diff --git a/ovn/templates/daemonset-controller.yaml b/ovn/templates/daemonset-controller.yaml
 index 4cd5d9b2..fae94512 100644
 --- a/ovn/templates/daemonset-controller.yaml
@@ -242,10 +150,11 @@ index 4cd5d9b2..fae94512 100644
  {{- if .Values.manifests.daemonset_ovn_controller }}
  {{- $envAll := . }}
  
-@@ -59,6 +68,10 @@ spec:
-           env:
-             - name: OVN_CMS_OPTIONS
-               value: {{ .Values.conf.ovn_cms_options | quote }}
+@@ -106,6 +106,11 @@ spec:
+ {{ tuple $envAll "ovn_controller" | include "helm-toolkit.snippets.image" | indent 10 }}
+           command:
+             - /tmp/ovn-controller-init.sh
++          env:
 +            - name: NODE_NAME
 +              valueFrom:
 +                fieldRef:
@@ -253,7 +162,7 @@ index 4cd5d9b2..fae94512 100644
            volumeMounts:
              - name: ovn-bin
                mountPath: /tmp/ovn-controller-init.sh
-@@ -76,21 +89,29 @@ spec:
+@@ -117,17 +122,23 @@ spec:
  {{ tuple $envAll $envAll.Values.pod.resources.server | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
  {{ dict "envAll" $envAll "application" "ovn_controller" "container" "controller" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
            command:
@@ -289,13 +198,15 @@ index 4cd5d9b2..fae94512 100644
 -              subPath: ovn-controller.sh
 -              readOnly: true
              - name: run-openvswitch
--              mountPath: /run/openvswitch
-+              mountPath: /var/run/ovn
-+            - name: run-openvswitch
-+              mountPath: /var/run/openvswitch
+@@ -154,7 +154,7 @@ spec:
+               mountPath: /run/openvswitch
              - name: logs
                mountPath: /var/log/ovn
-             - name: run-ovn
+-            - name: run-ovn
++            - name: run-openvswitch
+               mountPath: /run/ovn
+         {{- if .Values.pod.sidecars.vector }}
+         - name: vector
 diff --git a/ovn/templates/deployment-northd.yaml b/ovn/templates/deployment-northd.yaml
 index e3afdd05..ae31b357 100644
 --- a/ovn/templates/deployment-northd.yaml
