@@ -175,5 +175,8 @@ do
   then
     ovs-vsctl --may-exist add-port $bridge $iface
     migrate_ip_from_nic $iface $bridge
+  # update bridge socket file to non root owner 42424
+  chown 42424:42424 /var/run/openvswitch/*.mgmt
+  chown 42424:42424 /var/run/openvswitch/*.snoop
   fi
 done
