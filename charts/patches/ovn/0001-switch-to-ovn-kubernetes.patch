@@ -1,7 +1,7 @@
-diff --git b/ovn/templates/bin/_ovn-controller-init.sh.tpl a/charts/ovn/templates/bin/_ovn-controller-init.sh.tpl
-index 1e61577d..77e1e687 100644
---- b/ovn/templates/bin/_ovn-controller-init.sh.tpl
-+++ a/ovn/templates/bin/_ovn-controller-init.sh.tpl
+diff --git a/ovn/templates/bin/_ovn-controller-init.sh.tpl b/ovn/templates/bin/_ovn-controller-init.sh.tpl
+index 55cc2ecb..885204a0 100644
+--- a/ovn/templates/bin/_ovn-controller-init.sh.tpl
++++ b/ovn/templates/bin/_ovn-controller-init.sh.tpl
 @@ -14,6 +14,8 @@
  # See the License for the specific language governing permissions and
  # limitations under the License.
@@ -10,7 +10,7 @@ index 1e61577d..77e1e687 100644
 +
  function get_ip_address_from_interface {
    local interface=$1
-   local ip=$(ip -4 -o addr s "${interface}" | awk '{ print $4; exit }' | awk -F '/' '{print $1}')
+   local ip=$(ip -4 -o addr s "${interface}" | awk '{ print $4; exit }' | awk -F '/' 'NR==1 {print $1}')
 @@ -75,6 +77,19 @@ function migrate_ip_from_nic {
    set -e
  }
@@ -63,21 +63,22 @@ index 1e61577d..77e1e687 100644
  
  # Configure OVN remote
  {{- if empty .Values.conf.ovn_remote -}}
-@@ -118,6 +145,9 @@ ovs-vsctl set open . external-ids:ovn-encap-type="{{ .Values.conf.ovn_encap_type
- ovs-vsctl set open . external-ids:ovn-bridge="{{ .Values.conf.ovn_bridge }}"
- ovs-vsctl set open . external-ids:ovn-bridge-mappings="{{ .Values.conf.ovn_bridge_mappings }}"
- ovs-vsctl set open . external-ids:ovn-cms-options="${OVN_CMS_OPTIONS}"
+@@ -125,6 +152,10 @@ else
+   ovs-vsctl set open . external-ids:ovn-cms-options={{ .Values.conf.ovn_cms_options }}
+ fi
+ 
 +{{ if .Values.conf.ovn_bridge_datapath_type -}}
 +ovs-vsctl set open . external-ids:ovn-bridge-datapath-type="{{ .Values.conf.ovn_bridge_datapath_type }}"
 +{{- end }}
- 
++
  # Configure hostname
- {{- if .Values.conf.use_fqdn.compute }}
-diff --git b/ovn/templates/clusterrole-controller.yaml a/charts/ovn/templates/clusterrole-controller.yaml
+ {{- if .Values.pod.use_fqdn.compute }}
+   ovs-vsctl set open . external-ids:hostname="$(hostname -f)"
+diff --git a/ovn/templates/clusterrole-controller.yaml b/ovn/templates/clusterrole-controller.yaml
 new file mode 100644
 index 00000000..8291f65a
 --- /dev/null
-+++ a/ovn/templates/clusterrole-controller.yaml
++++ b/ovn/templates/clusterrole-controller.yaml
 @@ -0,0 +1,12 @@
 +apiVersion: rbac.authorization.k8s.io/v1
 +kind: ClusterRole
@@ -91,11 +92,11 @@ index 00000000..8291f65a
 +  verbs:
 +  - get
 +  - patch
-diff --git b/ovn/templates/clusterrolebinding-controller.yaml a/charts/ovn/templates/clusterrolebinding-controller.yaml
+diff --git a/ovn/templates/clusterrolebinding-controller.yaml b/ovn/templates/clusterrolebinding-controller.yaml
 new file mode 100644
 index 00000000..c95ef5e9
 --- /dev/null
-+++ a/ovn/templates/clusterrolebinding-controller.yaml
++++ b/ovn/templates/clusterrolebinding-controller.yaml
 @@ -0,0 +1,15 @@
 +apiVersion: rbac.authorization.k8s.io/v1
 +kind: ClusterRoleBinding
@@ -112,10 +113,10 @@ index 00000000..c95ef5e9
 +- kind: ServiceAccount
 +  name: ovn-controller-gw
 +  namespace: {{ .Release.Namespace }}
-diff --git b/ovn/templates/configmap-bin.yaml a/charts/ovn/templates/configmap-bin.yaml
+diff --git a/ovn/templates/configmap-bin.yaml b/ovn/templates/configmap-bin.yaml
 index a849dd8a..82001f99 100644
---- b/ovn/templates/configmap-bin.yaml
-+++ a/ovn/templates/configmap-bin.yaml
+--- a/ovn/templates/configmap-bin.yaml
++++ b/ovn/templates/configmap-bin.yaml
 @@ -24,12 +24,6 @@ data:
    image-repo-sync.sh: |
  {{- include "helm-toolkit.scripts.image_repo_sync" . | indent 4 }}
@@ -129,89 +130,10 @@ index a849dd8a..82001f99 100644
 -  ovn-controller.sh: |
 -{{ tuple "bin/_ovn-controller.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
  {{- end }}
-diff --git b/ovn/templates/daemonset-controller-gw.yaml a/charts/ovn/templates/daemonset-controller-gw.yaml
-index 6307bbab..eb309c5e 100644
---- b/ovn/templates/daemonset-controller-gw.yaml
-+++ a/ovn/templates/daemonset-controller-gw.yaml
-@@ -12,6 +12,15 @@ See the License for the specific language governing permissions and
- limitations under the License.
- */}}
- 
-+{{- define "controllerGatewayReadinessProbeTemplate" }}
-+exec:
-+  command:
-+    - /usr/bin/ovn-kube-util
-+    - readiness-probe
-+    - -t
-+    - ovn-controller
-+{{- end }}
-+
- {{- if .Values.manifests.daemonset_ovn_controller_gw }}
- {{- $envAll := . }}
- 
-@@ -59,6 +68,10 @@ spec:
-           env:
-             - name: OVN_CMS_OPTIONS
-               value: {{ .Values.conf.gw_ovn_cms_options | quote }}
-+            - name: NODE_NAME
-+              valueFrom:
-+                fieldRef:
-+                  fieldPath: spec.nodeName
-           volumeMounts:
-             - name: ovn-bin
-               mountPath: /tmp/ovn-controller-init.sh
-@@ -72,25 +85,33 @@ spec:
-               readOnly: true
-       containers:
-         - name: controller
-+          command:
-+            - /root/ovnkube.sh
-+            - ovn-controller
- {{ tuple $envAll "ovn_controller" | include "helm-toolkit.snippets.image" | indent 10 }}
- {{ tuple $envAll $envAll.Values.pod.resources.server | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
- {{ dict "envAll" $envAll "application" "ovn_controller_gw" "container" "controller" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
--          command:
--            - /tmp/ovn-controller.sh
--            - start
--          lifecycle:
--            preStop:
--              exec:
--                command:
--                  - /tmp/ovn-controller.sh
--                  - stop
-+{{ dict "envAll" . "component" "ovn_controller_gw" "container" "controller" "type" "readiness" "probeTemplate" (include "controllerGatewayReadinessProbeTemplate" . | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
-+          env:
-+            - name: OVN_DAEMONSET_VERSION
-+              value: "3"
-+            - name: OVN_LOGLEVEL_CONTROLLER
-+              value: "-vconsole:info -vfile:info"
-+            - name: OVN_KUBERNETES_NAMESPACE
-+              valueFrom:
-+                fieldRef:
-+                  fieldPath: metadata.namespace
-+            - name: OVN_KUBERNETES_NB_STATEFULSET
-+              value: ovn-ovsdb-nb
-+            - name: OVN_KUBERNETES_SB_STATEFULSET
-+              value: ovn-ovsdb-sb
-+            - name: OVN_SSL_ENABLE
-+              value: "no"
-           volumeMounts:
--            - name: ovn-bin
--              mountPath: /tmp/ovn-controller.sh
--              subPath: ovn-controller.sh
--              readOnly: true
-             - name: run-openvswitch
--              mountPath: /run/openvswitch
-+              mountPath: /var/run/ovn
-+            - name: run-openvswitch
-+              mountPath: /var/run/openvswitch
-       volumes:
-         - name: ovn-bin
-           configMap:
-diff --git b/ovn/templates/daemonset-controller.yaml a/charts/ovn/templates/daemonset-controller.yaml
-index 85daf70b..b6b0b048 100644
---- b/ovn/templates/daemonset-controller.yaml
-+++ a/ovn/templates/daemonset-controller.yaml
+diff --git a/ovn/templates/daemonset-controller.yaml b/ovn/templates/daemonset-controller.yaml
+index 4cd5d9b2..fae94512 100644
+--- a/ovn/templates/daemonset-controller.yaml
++++ b/ovn/templates/daemonset-controller.yaml
 @@ -12,6 +12,15 @@ See the License for the specific language governing permissions and
  limitations under the License.
  */}}
@@ -228,10 +150,11 @@ index 85daf70b..b6b0b048 100644
  {{- if .Values.manifests.daemonset_ovn_controller }}
  {{- $envAll := . }}
  
-@@ -59,6 +68,10 @@ spec:
-           env:
-             - name: OVN_CMS_OPTIONS
-               value: {{ .Values.conf.ovn_cms_options | quote }}
+@@ -106,6 +106,11 @@ spec:
+ {{ tuple $envAll "ovn_controller" | include "helm-toolkit.snippets.image" | indent 10 }}
+           command:
+             - /tmp/ovn-controller-init.sh
++          env:
 +            - name: NODE_NAME
 +              valueFrom:
 +                fieldRef:
@@ -239,17 +162,10 @@ index 85daf70b..b6b0b048 100644
            volumeMounts:
              - name: ovn-bin
                mountPath: /tmp/ovn-controller-init.sh
-@@ -72,25 +85,33 @@ spec:
-               readOnly: true
-       containers:
-         - name: controller
-+          command:
-+            - /root/ovnkube.sh
-+            - ovn-controller
- {{ tuple $envAll "ovn_controller" | include "helm-toolkit.snippets.image" | indent 10 }}
+@@ -117,17 +122,23 @@ spec:
  {{ tuple $envAll $envAll.Values.pod.resources.server | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
  {{ dict "envAll" $envAll "application" "ovn_controller" "container" "controller" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
--          command:
+           command:
 -            - /tmp/ovn-controller.sh
 -            - start
 -          lifecycle:
@@ -258,6 +174,8 @@ index 85daf70b..b6b0b048 100644
 -                command:
 -                  - /tmp/ovn-controller.sh
 -                  - stop
++            - /root/ovnkube.sh
++            - ovn-controller
 +{{ dict "envAll" . "component" "ovn_controller" "container" "controller" "type" "readiness" "probeTemplate" (include "controllerReadinessProbeTemplate" . | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
 +          env:
 +            - name: OVN_DAEMONSET_VERSION
@@ -280,17 +198,19 @@ index 85daf70b..b6b0b048 100644
 -              subPath: ovn-controller.sh
 -              readOnly: true
              - name: run-openvswitch
--              mountPath: /run/openvswitch
-+              mountPath: /var/run/ovn
+@@ -154,7 +154,7 @@ spec:
+               mountPath: /run/openvswitch
+             - name: logs
+               mountPath: /var/log/ovn
+-            - name: run-ovn
 +            - name: run-openvswitch
-+              mountPath: /var/run/openvswitch
-       volumes:
-         - name: ovn-bin
-           configMap:
-diff --git b/ovn/templates/deployment-northd.yaml a/charts/ovn/templates/deployment-northd.yaml
+               mountPath: /run/ovn
+         {{- if .Values.pod.sidecars.vector }}
+         - name: vector
+diff --git a/ovn/templates/deployment-northd.yaml b/ovn/templates/deployment-northd.yaml
 index e3afdd05..ae31b357 100644
---- b/ovn/templates/deployment-northd.yaml
-+++ a/ovn/templates/deployment-northd.yaml
+--- a/ovn/templates/deployment-northd.yaml
++++ b/ovn/templates/deployment-northd.yaml
 @@ -12,18 +12,13 @@ See the License for the specific language governing permissions and
  limitations under the License.
  */}}
@@ -315,7 +235,7 @@ index e3afdd05..ae31b357 100644
  {{- end }}
  
  {{- if .Values.manifests.deployment_northd }}
-@@ -60,28 +55,26 @@ spec:
+@@ -60,28 +55,27 @@ spec:
  {{- tuple $envAll "ovn_northd" list | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
        containers:
          - name: northd
@@ -347,6 +267,7 @@ index e3afdd05..ae31b357 100644
 -            name: ovn-bin
 -            defaultMode: 0555
 +{{ dict "envAll" . "component" "ovn_northd" "container" "northd" "type" "readiness" "probeTemplate" (include "northdReadinessProbeTemplate" . | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
++{{ dict "envAll" . "component" "ovn_northd" "container" "northd" "type" "liveness" "probeTemplate" (include "northdReadinessProbeTemplate" . | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
 +          env:
 +            - name: OVN_DAEMONSET_VERSION
 +              value: "3"
@@ -363,11 +284,11 @@ index e3afdd05..ae31b357 100644
 +            - name: OVN_SSL_ENABLE
 +              value: "no"
  {{- end }}
-diff --git b/ovn/templates/role-controller.yaml a/charts/ovn/templates/role-controller.yaml
+diff --git a/ovn/templates/role-controller.yaml b/ovn/templates/role-controller.yaml
 new file mode 100644
 index 00000000..de3cfa6d
 --- /dev/null
-+++ a/ovn/templates/role-controller.yaml
++++ b/ovn/templates/role-controller.yaml
 @@ -0,0 +1,11 @@
 +apiVersion: rbac.authorization.k8s.io/v1
 +kind: Role
@@ -380,11 +301,11 @@ index 00000000..de3cfa6d
 +  - endpointslices
 +  verbs:
 +  - list
-diff --git b/ovn/templates/role-northd.yaml a/charts/ovn/templates/role-northd.yaml
+diff --git a/ovn/templates/role-northd.yaml b/ovn/templates/role-northd.yaml
 new file mode 100644
 index 00000000..ca02fae6
 --- /dev/null
-+++ a/ovn/templates/role-northd.yaml
++++ b/ovn/templates/role-northd.yaml
 @@ -0,0 +1,11 @@
 +apiVersion: rbac.authorization.k8s.io/v1
 +kind: Role
@@ -397,11 +318,11 @@ index 00000000..ca02fae6
 +  - endpointslices
 +  verbs:
 +  - list
-diff --git b/ovn/templates/role-ovsdb.yaml a/charts/ovn/templates/role-ovsdb.yaml
+diff --git a/ovn/templates/role-ovsdb.yaml b/ovn/templates/role-ovsdb.yaml
 new file mode 100644
 index 00000000..10e0e239
 --- /dev/null
-+++ a/ovn/templates/role-ovsdb.yaml
++++ b/ovn/templates/role-ovsdb.yaml
 @@ -0,0 +1,19 @@
 +apiVersion: rbac.authorization.k8s.io/v1
 +kind: Role
@@ -422,11 +343,11 @@ index 00000000..10e0e239
 +  verbs:
 +  - list
 +  - get
-diff --git b/ovn/templates/rolebinding-controller.yaml a/charts/ovn/templates/rolebinding-controller.yaml
+diff --git a/ovn/templates/rolebinding-controller.yaml b/ovn/templates/rolebinding-controller.yaml
 new file mode 100644
 index 00000000..7973c7e2
 --- /dev/null
-+++ a/ovn/templates/rolebinding-controller.yaml
++++ b/ovn/templates/rolebinding-controller.yaml
 @@ -0,0 +1,13 @@
 +apiVersion: rbac.authorization.k8s.io/v1
 +kind: RoleBinding
@@ -441,11 +362,11 @@ index 00000000..7973c7e2
 +  name: ovn-controller
 +- kind: ServiceAccount
 +  name: ovn-controller-gw
-diff --git b/ovn/templates/rolebinding-northd.yaml a/charts/ovn/templates/rolebinding-northd.yaml
+diff --git a/ovn/templates/rolebinding-northd.yaml b/ovn/templates/rolebinding-northd.yaml
 new file mode 100644
 index 00000000..428a4707
 --- /dev/null
-+++ a/ovn/templates/rolebinding-northd.yaml
++++ b/ovn/templates/rolebinding-northd.yaml
 @@ -0,0 +1,11 @@
 +apiVersion: rbac.authorization.k8s.io/v1
 +kind: RoleBinding
@@ -458,11 +379,11 @@ index 00000000..428a4707
 +subjects:
 +- kind: ServiceAccount
 +  name: ovn-northd
-diff --git b/ovn/templates/rolebinding-ovsdb.yaml a/charts/ovn/templates/rolebinding-ovsdb.yaml
+diff --git a/ovn/templates/rolebinding-ovsdb.yaml b/ovn/templates/rolebinding-ovsdb.yaml
 new file mode 100644
 index 00000000..f32382bc
 --- /dev/null
-+++ a/ovn/templates/rolebinding-ovsdb.yaml
++++ b/ovn/templates/rolebinding-ovsdb.yaml
 @@ -0,0 +1,13 @@
 +apiVersion: rbac.authorization.k8s.io/v1
 +kind: RoleBinding
@@ -477,10 +398,10 @@ index 00000000..f32382bc
 +  name: ovn-ovsdb-nb
 +- kind: ServiceAccount
 +  name: ovn-ovsdb-sb
-diff --git b/ovn/templates/service-ovsdb-nb.yaml a/charts/ovn/templates/service-ovsdb-nb.yaml
+diff --git a/ovn/templates/service-ovsdb-nb.yaml b/ovn/templates/service-ovsdb-nb.yaml
 index b93da9b8..56f7cd09 100644
---- b/ovn/templates/service-ovsdb-nb.yaml
-+++ a/ovn/templates/service-ovsdb-nb.yaml
+--- a/ovn/templates/service-ovsdb-nb.yaml
++++ b/ovn/templates/service-ovsdb-nb.yaml
 @@ -20,6 +20,7 @@ kind: Service
  metadata:
    name: {{ tuple "ovn-ovsdb-nb" "direct" . | include "helm-toolkit.endpoints.hostname_short_endpoint_lookup" }}
@@ -489,10 +410,10 @@ index b93da9b8..56f7cd09 100644
    ports:
      - name: ovsdb
        port: {{ tuple "ovn-ovsdb-nb" "internal" "ovsdb" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
-diff --git b/ovn/templates/service-ovsdb-sb.yaml a/charts/ovn/templates/service-ovsdb-sb.yaml
+diff --git a/ovn/templates/service-ovsdb-sb.yaml b/ovn/templates/service-ovsdb-sb.yaml
 index 70f62c6e..4a6b5864 100644
---- b/ovn/templates/service-ovsdb-sb.yaml
-+++ a/ovn/templates/service-ovsdb-sb.yaml
+--- a/ovn/templates/service-ovsdb-sb.yaml
++++ b/ovn/templates/service-ovsdb-sb.yaml
 @@ -20,6 +20,7 @@ kind: Service
  metadata:
    name: {{ tuple "ovn-ovsdb-sb" "direct" . | include "helm-toolkit.endpoints.hostname_short_endpoint_lookup" }}
@@ -501,10 +422,10 @@ index 70f62c6e..4a6b5864 100644
    ports:
      - name: ovsdb
        port: {{ tuple "ovn-ovsdb-sb" "internal" "ovsdb" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
-diff --git b/ovn/templates/statefulset-ovsdb-nb.yaml a/charts/ovn/templates/statefulset-ovsdb-nb.yaml
-index c8198279..4866074e 100644
---- b/ovn/templates/statefulset-ovsdb-nb.yaml
-+++ a/ovn/templates/statefulset-ovsdb-nb.yaml
+diff --git a/ovn/templates/statefulset-ovsdb-nb.yaml b/ovn/templates/statefulset-ovsdb-nb.yaml
+index 04958165..98e70ada 100644
+--- a/ovn/templates/statefulset-ovsdb-nb.yaml
++++ b/ovn/templates/statefulset-ovsdb-nb.yaml
 @@ -12,6 +12,19 @@ See the License for the specific language governing permissions and
  limitations under the License.
  */}}
@@ -533,7 +454,7 @@ index c8198279..4866074e 100644
    replicas: {{ .Values.pod.replicas.ovn_ovsdb_nb }}
    selector:
      matchLabels:
-@@ -49,41 +63,54 @@ spec:
+@@ -49,43 +63,57 @@ spec:
  {{- tuple $envAll "ovn_ovsdb_nb" list | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
        containers:
          - name: ovsdb
@@ -547,6 +468,7 @@ index c8198279..4866074e 100644
  {{ tuple $envAll "ovn_ovsdb_nb" | include "helm-toolkit.snippets.image" | indent 10 }}
  {{ tuple $envAll $envAll.Values.pod.resources.server | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
 +{{ dict "envAll" . "component" "ovn_ovsdb_nb" "container" "ovsdb" "type" "readiness" "probeTemplate" (include "ovnnbReadinessProbeTemplate" . | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
++
            ports:
              - containerPort: {{ tuple "ovn-ovsdb-nb" "internal" "ovsdb" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
              - containerPort: {{ tuple "ovn-ovsdb-nb" "internal" "raft" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
@@ -602,7 +524,9 @@ index c8198279..4866074e 100644
 +              mountPath: /etc/ovn
        volumes:
          - name: run-openvswitch
-           emptyDir: {}
+           hostPath:
+             path: /run/openvswitch
+             type: DirectoryOrCreate
 -        - name: ovn-bin
 -          configMap:
 -            name: ovn-bin
@@ -610,10 +534,10 @@ index c8198279..4866074e 100644
  {{- if not .Values.volume.ovn_ovsdb_nb.enabled }}
          - name: data
            emptyDir: {}
-diff --git b/ovn/templates/statefulset-ovsdb-sb.yaml a/charts/ovn/templates/statefulset-ovsdb-sb.yaml
-index 916ef94d..92af96de 100644
---- b/ovn/templates/statefulset-ovsdb-sb.yaml
-+++ a/ovn/templates/statefulset-ovsdb-sb.yaml
+diff --git a/ovn/templates/statefulset-ovsdb-sb.yaml b/ovn/templates/statefulset-ovsdb-sb.yaml
+index 9e7b6670..694348b2 100644
+--- a/ovn/templates/statefulset-ovsdb-sb.yaml
++++ b/ovn/templates/statefulset-ovsdb-sb.yaml
 @@ -12,6 +12,19 @@ See the License for the specific language governing permissions and
  limitations under the License.
  */}}
@@ -642,7 +566,7 @@ index 916ef94d..92af96de 100644
    replicas: {{ .Values.pod.replicas.ovn_ovsdb_sb }}
    selector:
      matchLabels:
-@@ -49,41 +63,54 @@ spec:
+@@ -49,43 +63,56 @@ spec:
  {{- tuple $envAll "ovn_ovsdb_sb" list | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
        containers:
          - name: ovsdb
@@ -711,7 +635,9 @@ index 916ef94d..92af96de 100644
 +              mountPath: /etc/ovn
        volumes:
          - name: run-openvswitch
-           emptyDir: {}
+           hostPath:
+             path: /run/openvswitch
+             type: DirectoryOrCreate
 -        - name: ovn-bin
 -          configMap:
 -            name: ovn-bin
@@ -719,7 +645,7 @@ index 916ef94d..92af96de 100644
  {{- if not .Values.volume.ovn_ovsdb_sb.enabled }}
          - name: data
            emptyDir: {}
-@@ -93,10 +120,10 @@ spec:
+@@ -95,10 +122,10 @@ spec:
          name: data
        spec:
          accessModes: ["ReadWriteOnce"]
@@ -731,11 +657,11 @@ index 916ef94d..92af96de 100644
  {{- end }}
  
  {{- end }}
-diff --git b/ovn/values.yaml a/charts/ovn/values.yaml
-index 518dd71e..214dd16f 100644
---- b/ovn/values.yaml
-+++ a/ovn/values.yaml
-@@ -52,12 +52,10 @@ labels:
+diff --git a/ovn/values.yaml b/ovn/values.yaml
+index a18184ab..b07a0f5a 100644
+--- a/ovn/values.yaml
++++ b/ovn/values.yaml
+@@ -51,12 +51,10 @@ labels:
  
  volume:
    ovn_ovsdb_nb:
@@ -757,7 +683,7 @@ index 518dd71e..214dd16f 100644
  
    # auto_bridge_add:
    #   br-private: eth0
-@@ -138,13 +138,41 @@ pod:
+@@ -135,13 +135,41 @@ pod:
          readiness:
            enabled: true
            params:
@@ -804,7 +730,7 @@ index 518dd71e..214dd16f 100644
    dns_policy: "ClusterFirstWithHostNet"
    replicas:
      ovn_ovsdb_nb: 1
-@@ -179,18 +207,18 @@ pod:
+@@ -176,18 +204,18 @@ pod:
      ovs:
        ovn_ovsdb_nb:
          requests:
