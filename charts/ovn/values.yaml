@@ -20,11 +20,12 @@ release_group: null
 
 images:
   tags:
-    ovn_ovsdb_nb: docker.io/openstackhelm/ovn:latest-ubuntu_focal
-    ovn_ovsdb_sb: docker.io/openstackhelm/ovn:latest-ubuntu_focal
-    ovn_northd: docker.io/openstackhelm/ovn:latest-ubuntu_focal
-    ovn_controller: docker.io/openstackhelm/ovn:latest-ubuntu_focal
-    dep_check: quay.io/airshipit/kubernetes-entrypoint:v1.0.0
+    ovn_ovsdb_nb: docker.io/openstackhelm/ovn:ubuntu_focal
+    ovn_ovsdb_sb: docker.io/openstackhelm/ovn:ubuntu_focal
+    ovn_northd: docker.io/openstackhelm/ovn:ubuntu_focal
+    ovn_controller: docker.io/openstackhelm/ovn:ubuntu_focal
+    ovn_controller_kubectl: docker.io/openstackhelm/ceph-config-helper:latest-ubuntu_jammy
+    dep_check: quay.io/airshipit/kubernetes-entrypoint:latest-ubuntu_focal
     image_repo_sync: docker.io/library/docker:17.07.0
     vector: docker.io/timberio/vector:0.39.0-debian
     ovn_logging_parser: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
@@ -37,19 +38,19 @@ images:
 
 labels:
   ovn_ovsdb_nb:
-    node_selector_key: openstack-compute-node
+    node_selector_key: openstack-network-node
     node_selector_value: enabled
   ovn_ovsdb_sb:
-    node_selector_key: openstack-compute-node
+    node_selector_key: openstack-network-node
     node_selector_value: enabled
   ovn_northd:
-    node_selector_key: openstack-compute-node
+    node_selector_key: openstack-network-node
     node_selector_value: enabled
   ovn_controller:
-    node_selector_key: openstack-compute-node
+    node_selector_key: openvswitch
     node_selector_value: enabled
   ovn_controller_gw:
-    node_selector_key: openstack-control-plane
+    node_selector_key: l3-agent
     node_selector_value: enabled
 
 volume:
@@ -72,7 +73,7 @@ network:
 
 conf:
   ovn_cms_options: "availability-zones=nova"
-  gw_ovn_cms_options: "enable-chassis-as-gw,availability-zones=nova"
+  ovn_cms_options_gw_enabled: "enable-chassis-as-gw,availability-zones=nova"
   ovn_encap_type: geneve
   ovn_bridge: br-int
   ovn_bridge_mappings: external:br-ex
@@ -83,10 +84,6 @@ conf:
   #   br-private: eth0
   #   br-public: eth1
   auto_bridge_add: {}
-
-  # NOTE: should be same as nova.conf.use_fqdn.compute
-  use_fqdn:
-    compute: true
 
   ovn_network_logging_parser_uwsgi:
     uwsgi:
@@ -107,6 +104,9 @@ conf:
       wsgi-file: /var/lib/openstack/bin/neutron-ovn-network-logging-parser-wsgi
 
 pod:
+  # NOTE: should be same as nova.pod.use_fqdn.compute
+  use_fqdn:
+    compute: true
   security_context:
     ovn_northd:
       container:
@@ -117,21 +117,11 @@ pod:
     ovn_controller:
       container:
         controller_init:
+          readOnlyRootFilesystem: true
           privileged: true
-          runAsUser: 0
         controller:
-          capabilities:
-            add:
-              - SYS_NICE
-    ovn_controller_gw:
-      container:
-        controller_init:
+          readOnlyRootFilesystem: true
           privileged: true
-          runAsUser: 0
-        controller:
-          capabilities:
-            add:
-              - SYS_NICE
         ovn_logging_parser:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -146,8 +136,6 @@ pod:
     ovn_northd:
       enabled: false
     ovn_controller:
-      enabled: false
-    ovn_controller_gw:
       enabled: false
   affinity:
     anti:
@@ -224,10 +212,6 @@ pod:
           enabled: true
           min_ready_seconds: 0
           max_unavailable: 1
-        ovn_controller_gw:
-          enabled: true
-          min_ready_seconds: 0
-          max_unavailable: 1
   resources:
     enabled: false
     ovs:
@@ -259,28 +243,20 @@ pod:
         limits:
           memory: "1024Mi"
           cpu: "2000m"
-      ovn_controller_gw:
-        requests:
-          memory: "128Mi"
-          cpu: "100m"
-        limits:
-          memory: "1024Mi"
-          cpu: "2000m"
-    ovn_controller_gw:
-      ovn_logging_parser:
-        requests:
-          memory: "128Mi"
-          cpu: "100m"
-        limits:
-          memory: "256Mi"
-          cpu: "500m"
-      vector:
-        requests:
-          memory: "128Mi"
-          cpu: "100m"
-        limits:
-          memory: "256Mi"
-          cpu: "500m"
+    ovn_logging_parser:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "256Mi"
+        cpu: "500m"
+    vector:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "256Mi"
+        cpu: "500m"
     jobs:
       image_repo_sync:
         requests:
@@ -289,6 +265,7 @@ pod:
         limits:
           memory: "1024Mi"
           cpu: "2000m"
+
   sidecars:
     ovn_logging_parser: false
     vector: false
@@ -387,9 +364,6 @@ network_policy:
   ovn_controller:
     ingress:
       - {}
-  ovn_controller_gw:
-    ingress:
-      - {}
     egress:
       - {}
 
@@ -415,10 +389,6 @@ dependencies:
       services:
         - endpoint: internal
           service: ovn-ovsdb-sb
-    ovn_controller_gw:
-      services:
-        - endpoint: internal
-          service: ovn-ovsdb-sb
       pod:
         - requireSameNode: true
           labels:
@@ -439,6 +409,5 @@ manifests:
   statefulset_ovn_ovsdb_sb: true
   deployment_ovn_northd: true
   daemonset_ovn_controller: true
-  daemonset_ovn_controller_gw: true
   job_image_repo_sync: true
 ...
