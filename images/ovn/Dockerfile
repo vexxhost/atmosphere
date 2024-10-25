@@ -35,7 +35,7 @@ COPY --from=ovn-kubernetes --link /src/dist/images/ovndb-raft-functions.sh /root
 COPY --from=ovn-kubernetes --link /src/dist/images/ovnkube.sh /root/ovnkube.sh
 COPY --from=ovn-kubernetes --link /usr/bin/ovn-kube-util /usr/bin/ovn-kube-util
 
-ARG PROJECT=ovn
+ARG PROJECT
 ENV OVS_USER_ID=42424
 RUN \
     groupadd -g 42424 ${PROJECT} && \
