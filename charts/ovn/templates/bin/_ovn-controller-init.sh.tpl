@@ -18,7 +18,7 @@ ANNOTATION_KEY="atmosphere.cloud/ovn-system-id"
 
 function get_ip_address_from_interface {
   local interface=$1
-  local ip=$(ip -4 -o addr s "${interface}" | awk '{ print $4; exit }' | awk -F '/' '{print $1}')
+  local ip=$(ip -4 -o addr s "${interface}" | awk '{ print $4; exit }' | awk -F '/' 'NR==1 {print $1}')
   if [ -z "${ip}" ] ; then
     exit 1
   fi
@@ -27,7 +27,7 @@ function get_ip_address_from_interface {
 
 function get_ip_prefix_from_interface {
   local interface=$1
-  local prefix=$(ip -4 -o addr s "${interface}" | awk '{ print $4; exit }' | awk -F '/' '{print $2}')
+  local prefix=$(ip -4 -o addr s "${interface}" | awk '{ print $4; exit }' | awk -F '/' 'NR==1 {print $2}')
   if [ -z "${prefix}" ] ; then
     exit 1
   fi
@@ -70,7 +70,7 @@ function migrate_ip_from_nic {
   elif [[ -z "${bridge_ip}" && -z "${ip}" ]]; then
     echo "Interface and bridge have no ips configured. Leaving as is."
   else
-    echo "Interface ${name} has invalid IP address. IP:[${ip}]; Prefix:[${prefix}]..."
+    echo "Interface ${src_nic} has invalid IP address. IP:[${ip}]; Prefix:[${prefix}]..."
     exit 1
   fi
 
@@ -144,13 +144,20 @@ ovs-vsctl set open . external-ids:rundir="/var/run/openvswitch"
 ovs-vsctl set open . external-ids:ovn-encap-type="{{ .Values.conf.ovn_encap_type }}"
 ovs-vsctl set open . external-ids:ovn-bridge="{{ .Values.conf.ovn_bridge }}"
 ovs-vsctl set open . external-ids:ovn-bridge-mappings="{{ .Values.conf.ovn_bridge_mappings }}"
-ovs-vsctl set open . external-ids:ovn-cms-options="${OVN_CMS_OPTIONS}"
+
+GW_ENABLED=$(cat /tmp/gw-enabled/gw-enabled)
+if [[ ${GW_ENABLED} == {{ .Values.labels.ovn_controller_gw.node_selector_value }} ]]; then
+  ovs-vsctl set open . external-ids:ovn-cms-options={{ .Values.conf.ovn_cms_options_gw_enabled }}
+else
+  ovs-vsctl set open . external-ids:ovn-cms-options={{ .Values.conf.ovn_cms_options }}
+fi
+
 {{ if .Values.conf.ovn_bridge_datapath_type -}}
 ovs-vsctl set open . external-ids:ovn-bridge-datapath-type="{{ .Values.conf.ovn_bridge_datapath_type }}"
 {{- end }}
 
 # Configure hostname
-{{- if .Values.conf.use_fqdn.compute }}
+{{- if .Values.pod.use_fqdn.compute }}
   ovs-vsctl set open . external-ids:hostname="$(hostname -f)"
 {{- else }}
   ovs-vsctl set open . external-ids:hostname="$(hostname)"
@@ -164,7 +171,7 @@ do
   bridge=${bmap%:*}
   iface=${bmap#*:}
   ovs-vsctl --may-exist add-br $bridge -- set bridge $bridge protocols=OpenFlow13
-  if [ -n "$iface" ] && [ "$iface" != "null" ]
+  if [ -n "$iface" ] && [ "$iface" != "null" ] && ( ip link show $iface 1>/dev/null 2>&1 );
   then
     ovs-vsctl --may-exist add-port $bridge $iface
     migrate_ip_from_nic $iface $bridge
