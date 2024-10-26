@@ -12,6 +12,10 @@ local disabledAlerts = [
   // Superseded by CephHealthDetail* alerts
   'CephHealthWarning',
   'CephHealthError',
+
+  // * Dropped `CephPGImbalance`
+  // the balancer module takes care of this
+  'CephPGImbalance',
 ];
 
 // NOTE(mnaser): This is the default mapping for severities:
