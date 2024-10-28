@@ -26,11 +26,6 @@
       register: _ovn_controller_ds_info
       failed_when: false
 
-    - name: Check if ovn controller has type label in spec.selector
-      ansible.builtin.set_fact:
-        _ovn_controller_replace: "{{ 'type' in _ovn_controller_ds_info.resources[0].spec.selector.matchLabels }}"
-      when: _ovn_controller_ds_info.resources | length > 0
-
     - name: Delete existing ovn controller DaemonSet if type label is found
       kubernetes.core.k8s:
         api_version: apps/v1
@@ -39,7 +34,9 @@
         namespace: "{{ ovn_helm_release_namespace }}"
         state: absent
         kubeconfig: "{{ ovn_helm_kubeconfig }}"
-      when: _ovn_controller_replace | default(false)
+      when:
+        - _ovn_controller_ds_info.resources | length > 0
+        - "'type' in _ovn_controller_ds_info.resources[0].spec.selector.matchLabels"
 
 - name: Deploy Helm chart
   run_once: true
