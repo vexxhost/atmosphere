@@ -36,7 +36,21 @@ devices {
         dev_loss_tmo             600
         find_multipaths          yes
     }
+    device {
+        vendor                   "Linux"
+        product                  "LVM"
+        path_selector            "round-robin 0"
+        path_grouping_policy     "multibus"
+        failback                 immediate
+        path_checker             tur
+        features                 "1 queue_if_no_path"
+        no_path_retry            5
+        rr_weight                "priorities"
+        dev_loss_tmo             600
+        find_multipaths          yes
+    }
 }
+
 
 blacklist {
       devnode "^pxd[0-9]*"
