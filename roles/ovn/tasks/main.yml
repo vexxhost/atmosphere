@@ -27,7 +27,7 @@
       failed_when: false
 
     - name: Check if ovn controller has type label in spec.selector
-      set_fact:
+      ansible.builtin.set_fact:
         _ovn_controller_replace: "{{ 'type' in _ovn_controller_ds_info.resources[0].spec.selector.matchLabels }}"
       when: _ovn_controller_ds_info.resources | length > 0
 
