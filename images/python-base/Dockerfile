@@ -10,7 +10,7 @@ RUN \
     apt-get install -qq -y --no-install-recommends \
         ca-certificates \
         libpcre3 \
-        libpython3.10 \
+        libpython3.12 \
         lsb-release \
         python3-setuptools \
         sudo && \
