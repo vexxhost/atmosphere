@@ -18,11 +18,15 @@
             checksum: sha256:7a6b6d5ea003e8d59def294392c64e28338da627bf760cf268e788d6a8832a23
 
         - name: Extract Prometheus into /usr/local/bin
+          become: true
           ansible.builtin.unarchive:
             src: "{{ promtool_file.path }}"
             dest: /usr/local/bin
             remote_src: true
-            extra_opts: --strip-components=1
+            extra_opts:
+              - --strip-components=1
+            include:
+              - promtool
       always:
         - name: Remove temporary file
           ansible.builtin.file:
