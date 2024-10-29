@@ -12,6 +12,32 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+- name: Replace unnecessary label in ovn-controller daemonset
+  run_once: true
+  when: atmosphere_network_backend == 'ovn'
+  block:
+    - name: Check if ovn_controller DaemonSet exists
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: DaemonSet
+        namespace: "{{ ovn_helm_release_namespace }}"
+        name: ovn-controller
+        kubeconfig: /etc/kubernetes/admin.conf
+      register: _ovn_controller_ds_info
+      failed_when: false
+
+    - name: Delete existing ovn controller DaemonSet if type label is found
+      kubernetes.core.k8s:
+        api_version: apps/v1
+        kind: DaemonSet
+        name: ovn-controller
+        namespace: "{{ ovn_helm_release_namespace }}"
+        state: absent
+        kubeconfig: /etc/kubernetes/admin.conf
+      when:
+        - _ovn_controller_ds_info.resources | length > 0
+        - "'type' in _ovn_controller_ds_info.resources[0].spec.selector.matchLabels"
+
 - name: Deploy Helm chart
   run_once: true
   when: atmosphere_network_backend == 'ovn'
