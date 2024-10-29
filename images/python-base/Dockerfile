@@ -9,6 +9,7 @@ RUN \
     apt-get update -qq && \
     apt-get install -qq -y --no-install-recommends \
         ca-certificates \
+        libpcre3 \
         libpython3.10 \
         lsb-release \
         python3-setuptools \
