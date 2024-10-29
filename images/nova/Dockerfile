@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
-# Atmosphere-Rebuild-Time: 2024-12-18T02:27:44Z
+# Atmosphere-Rebuild-Time: 2024-12-18T04:27:44Z
 
 ARG RELEASE
 
 FROM harbor.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
-ARG NOVA_GIT_REF=ea0f46f80d645cf2f51c9e06df2d5e45a77f54cf
+ARG NOVA_GIT_REF=110849f7f972d8cb536a9c96c4cb59f06e357eeb
 ADD --keep-git-dir=true https://opendev.org/openstack/nova.git#${NOVA_GIT_REF} /src/nova
 RUN git -C /src/nova fetch --unshallow
 COPY patches/nova /patches/nova

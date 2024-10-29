@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Atmosphere-Rebuild-Time: 2024-10-14T18:43:39Z
+# Atmosphere-Rebuild-Time: 2024-10-29T22:19:48Z
 
 ARG RELEASE
 
@@ -11,7 +11,7 @@ RUN GO111MODULE=off CGO_ENABLED=0 GOOS=linux go build \
     /src/octavia_tempest_plugin/contrib/test_server/test_server.go
 
 FROM harbor.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
-ARG TEMPEST_GIT_REF=c0da6e843a74c2392c8e87e8ff36d2fea12949c4
+ARG TEMPEST_GIT_REF=b530c1ffb70110ab3d9112c90cd55c48db0285a0
 ADD --keep-git-dir=true https://opendev.org/openstack/tempest.git#${TEMPEST_GIT_REF} /src/tempest
 RUN git -C /src/tempest fetch --unshallow
 ADD --keep-git-dir=true https://opendev.org/openstack/barbican-tempest-plugin.git#master /src/barbican-tempest-plugin

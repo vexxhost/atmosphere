@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
-# Atmosphere-Rebuild-Time: 2024-10-29T22:13:12Z
+# Atmosphere-Rebuild-Time: 2024-10-29T22:19:48Z
 
 ARG RELEASE
 
 FROM harbor.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
-ARG MANILA_GIT_REF=a1706e52a1faa1e1ed367fc996ec17117a247b7a
+ARG MANILA_GIT_REF=814e76dc53a9af18ba9b4e6c0f75a9e9ebab0bfb
 ADD --keep-git-dir=true https://opendev.org/openstack/manila.git#${MANILA_GIT_REF} /src/manila
 RUN git -C /src/manila fetch --unshallow
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe

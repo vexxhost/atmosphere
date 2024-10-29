@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Atmosphere-Rebuild-Time: 2024-10-29T22:13:12Z
+# Atmosphere-Rebuild-Time: 2024-10-29T22:19:48Z
 
 ARG RELEASE
 
@@ -12,7 +12,7 @@ RUN tar -xzf /helm.tar.gz
 RUN mv /${TARGETOS}-${TARGETARCH}/helm /usr/bin/helm
 
 FROM harbor.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
-ARG MAGNUM_GIT_REF=3d2d2be6f66b05479d1fde1cd706f9c8597cc623
+ARG MAGNUM_GIT_REF=1f2fe6bb069a415eb54d72ef837fa6176e18d0ac
 ADD --keep-git-dir=true https://opendev.org/openstack/magnum.git#${MAGNUM_GIT_REF} /src/magnum
 RUN git -C /src/magnum fetch --unshallow
 COPY patches/magnum /patches/magnum
