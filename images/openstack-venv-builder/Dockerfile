@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
-# Atmosphere-Rebuild-Time: 2024-10-14T18:43:39Z
+# Atmosphere-Rebuild-Time: 2024-10-29T22:13:12Z
 
 ARG RELEASE
 
 FROM registry.atmosphere.dev/library/ubuntu-cloud-archive:${RELEASE} AS requirements
-ARG REQUIREMENTS_GIT_REF=18098b9abacbd8d7257bebc1b302294f634441ab
+ARG REQUIREMENTS_GIT_REF=74e57b113887918497159843b3e5836ec9029280
 ADD --keep-git-dir=true https://opendev.org/openstack/requirements.git#${REQUIREMENTS_GIT_REF} /src/requirements
 RUN cp /src/requirements/upper-constraints.txt /upper-constraints.txt
 RUN <<EOF sh -xe
