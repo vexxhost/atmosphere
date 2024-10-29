@@ -22,7 +22,7 @@
         kind: DaemonSet
         namespace: "{{ ovn_helm_release_namespace }}"
         name: ovn-controller
-        kubeconfig: "{{ ovn_helm_kubeconfig }}"
+        kubeconfig: /etc/kubernetes/admin.conf
       register: _ovn_controller_ds_info
       failed_when: false
 
@@ -33,7 +33,7 @@
         name: ovn-controller
         namespace: "{{ ovn_helm_release_namespace }}"
         state: absent
-        kubeconfig: "{{ ovn_helm_kubeconfig }}"
+        kubeconfig: /etc/kubernetes/admin.conf
       when:
         - _ovn_controller_ds_info.resources | length > 0
         - "'type' in _ovn_controller_ds_info.resources[0].spec.selector.matchLabels"
