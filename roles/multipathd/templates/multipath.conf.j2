@@ -36,6 +36,23 @@ devices {
         dev_loss_tmo             600
         find_multipaths          yes
     }
+    device {
+        vendor                   "3PARdata"
+        product                  "VV"
+        path_grouping_policy     "group_by_prio"
+        path_selector            "round-robin 0"
+        path_checker             tur
+        features                 "0"
+        hardware_handler         "1 alua"
+        prio                     "alua"
+        failback                 immediate
+        rr_weight                "uniform"
+        no_path_retry            18
+        rr_min_io_rq             1
+        detect_prio              yes
+        fast_io_fail_tmo         10
+        dev_loss_tmo             "infinity"
+    }
 }
 
 blacklist {
