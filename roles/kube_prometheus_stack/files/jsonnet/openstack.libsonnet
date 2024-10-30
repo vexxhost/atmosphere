@@ -153,10 +153,10 @@
             {
               alert: 'NeutronNetworkOutOfIPs',
               annotations: {
-                description: 'The subnet {{ $labels.subnet_name }} within {{ $labels.network_name }} is currently at {{ $value }}% utilization.  If the IP addresses run out, it will impact the provisioning of new ports.',
-                summary: '[{{ $labels.network_name }}] {{ $labels.subnet_name }} running out of IPs',
+                description: 'The network {{ $labels.network_id }} is currently at {{ $value }}% utilization.  If the IP addresses run out, it will impact the provisioning of new ports.',
+                summary: '[{{ $labels.network_id }}] Network running out of IPs',
               },
-              expr: 'sum by (network_id) (openstack_neutron_network_ip_availabilities_used{project_id!=""}) / sum by (network_id) (openstack_neutron_network_ip_availabilities_total{project_id!=""}) * 100 > 80',
+              expr: '(sum by (network_id) (openstack_neutron_network_ip_availabilities_used{project_id!=""}) and on (network_id) label_replace(openstack_neutron_network{is_external="true", is_shared="true"}, "network_id", "$1", "id", "(.*)")) / (sum by (network_id) (openstack_neutron_network_ip_availabilities_total{project_id!=""}) and on (network_id) label_replace(openstack_neutron_network{is_external="true", is_shared="true"}, "network_id", "$1", "id", "(.*)")) * 100 > 80',
               'for': '6h',
               labels: {
                 severity: 'warning',
