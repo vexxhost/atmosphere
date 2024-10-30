@@ -28,16 +28,22 @@ func TestImageExist(t *testing.T) {
 		// NOTE(mnaser): ParseReference does not allow both tag & digest,
 		//               so we strip the tags from the image name.
 		nameWithTagSplit := strings.Split(image, "@")
-		require.Len(t, nameWithTagSplit, 2)
+		// NOTE(okozachenko1203): We'll enable this again when use image digest.
+		// require.Len(t, nameWithTagSplit, 2)
 		nameWithTag := nameWithTagSplit[0]
-		name := strings.Split(nameWithTag, ":")[0]
-		digest := strings.Split(image, "@")[1]
-		image := fmt.Sprintf("%s@%s", name, digest)
+		var imageRef string
+		if len(nameWithTagSplit) == 2 {
+			name := strings.Split(nameWithTag, ":")[0]
+			digest := strings.Split(image, "@")[1]
+			imageRef = fmt.Sprintf("%s@%s", name, digest)
+		} else {
+			imageRef = nameWithTag
+		}
 
-		t.Run(image, func(t *testing.T) {
+		t.Run(imageRef, func(t *testing.T) {
 			t.Parallel()
 
-			ref, err := docker.ParseReference(fmt.Sprintf("//%s", image))
+			ref, err := docker.ParseReference(fmt.Sprintf("//%s", imageRef))
 			require.NoError(t, err)
 
 			ctx := context.Background()
