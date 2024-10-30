@@ -1,0 +1,35 @@
+# Copyright (c) 2024 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'openstack_neutron_network{id="4cf895c9-c3d1-489e-b02e-59b5c8976809",is_external="false",is_shared="false",name="public",provider_network_type="vlan",provider_physical_network="external",provider_segmentation_id="3",status="ACTIVE",subnets="54d6f61d-db07-451c-9ab3-b9609b6b6f0b",tags="tag1,tag2",tenant_id="4fd44f30292945e481c7b8a0c8908869"} 0'
+        values: '0x360'
+      - series: 'openstack_neutron_network_ip_availabilities_total{cidr="172.24.4.0/24",ip_version="4",network_id="4cf895c9-c3d1-489e-b02e-59b5c8976809",network_name="public",project_id="1a02cc95f1734fcc9d3c753818f03002",subnet_name="public-subnet"}'
+        values: '253x360'
+      - series: 'openstack_neutron_network_ip_availabilities_used{cidr="172.24.4.0/24",ip_version="4",network_id="4cf895c9-c3d1-489e-b02e-59b5c8976809",network_name="public",project_id="1a02cc95f1734fcc9d3c753818f03002",subnet_name="public-subnet"}'
+        values: '250x360'
+    alert_rule_test:
+      - eval_time: 6h
+        alertname: NeutronNetworkOutOfIPs
+        exp_alerts: []
+
+  - interval: 1m
+    input_series:
+      - series: 'openstack_neutron_network{id="4cf895c9-c3d1-489e-b02e-59b5c8976809",is_external="true",is_shared="true",name="public",provider_network_type="vlan",provider_physical_network="external",provider_segmentation_id="3",status="ACTIVE",subnets="54d6f61d-db07-451c-9ab3-b9609b6b6f0b",tags="tag1,tag2",tenant_id="4fd44f30292945e481c7b8a0c8908869"} 0'
+        values: '0x360'
+      - series: 'openstack_neutron_network_ip_availabilities_total{cidr="172.24.4.0/24",ip_version="4",network_id="4cf895c9-c3d1-489e-b02e-59b5c8976809",network_name="public",project_id="1a02cc95f1734fcc9d3c753818f03002",subnet_name="public-subnet"}'
+        values: '253x360'
+      - series: 'openstack_neutron_network_ip_availabilities_used{cidr="172.24.4.0/24",ip_version="4",network_id="4cf895c9-c3d1-489e-b02e-59b5c8976809",network_name="public",project_id="1a02cc95f1734fcc9d3c753818f03002",subnet_name="public-subnet"}'
+        values: '250x360'
+    alert_rule_test:
+      - eval_time: 6h
+        alertname: NeutronNetworkOutOfIPs
+        exp_alerts:
+          - exp_labels:
+              network_id: 4cf895c9-c3d1-489e-b02e-59b5c8976809
+              severity: P3
+            exp_annotations:
+              summary: "[4cf895c9-c3d1-489e-b02e-59b5c8976809] Network running out of IPs"
+              description: "The network 4cf895c9-c3d1-489e-b02e-59b5c8976809 is currently at 98.81422924901186% utilization.  If the IP addresses run out, it will impact the provisioning of new ports."
