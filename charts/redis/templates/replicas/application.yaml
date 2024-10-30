@@ -18,6 +18,7 @@ spec:
   {{- if and (not (eq .Values.replica.kind "DaemonSet")) (not .Values.replica.autoscaling.enabled) }}
   replicas: {{ .Values.replica.replicaCount }}
   {{- end }}
+  revisionHistoryLimit: {{ .Values.replica.revisionHistoryLimit }}
   {{- $podLabels := include "common.tplvalues.merge" ( dict "values" ( list .Values.replica.podLabels .Values.commonLabels ) "context" . ) }}
   selector:
     matchLabels: {{- include "common.labels.matchLabels" ( dict "customLabels" $podLabels "context" $ ) | nindent 6 }}
@@ -55,6 +56,9 @@ spec:
         {{- include "common.tplvalues.render" ( dict "value" .Values.metrics.podAnnotations "context" $ ) | nindent 8 }}
         {{- end }}
     spec:
+      {{- if .Values.replica.extraPodSpec }}
+      {{- include "common.tplvalues.render" (dict "value" .Values.replica.extraPodSpec "context" $) | nindent 6 }}
+      {{- end }}
       {{- include "redis.imagePullSecrets" . | nindent 6 }}
       {{- if .Values.replica.hostAliases }}
       hostAliases: {{- include "common.tplvalues.render" (dict "value" .Values.replica.hostAliases "context" $) | nindent 8 }}
@@ -411,6 +415,10 @@ spec:
           securityContext: {{- omit .Values.volumePermissions.containerSecurityContext "runAsUser" | toYaml | nindent 12 }}
           {{- else }}
           securityContext: {{- .Values.volumePermissions.containerSecurityContext | toYaml | nindent 12 }}
+          {{- end }}
+          {{- if .Values.volumePermissions.extraEnvVars }}
+          env:
+          {{- include "common.tplvalues.render" (dict "value" .Values.volumePermissions.extraEnvVars "context" $) | nindent 12 }}
           {{- end }}
           {{- if .Values.volumePermissions.resources }}
           resources: {{- toYaml .Values.volumePermissions.resources | nindent 12 }}

@@ -9,7 +9,8 @@
 
 ## @param global.imageRegistry Global Docker image registry
 ## @param global.imagePullSecrets Global Docker registry secret names as an array
-## @param global.storageClass Global StorageClass for Persistent Volume(s)
+## @param global.defaultStorageClass Global default StorageClass for Persistent Volume(s)
+## @param global.storageClass DEPRECATED: use global.defaultStorageClass instead
 ## @param global.redis.password Global Redis&reg; password (overrides `auth.password`)
 ##
 global:
@@ -19,6 +20,7 @@ global:
   ##   - myRegistryKeySecretName
   ##
   imagePullSecrets: []
+  defaultStorageClass: ""
   storageClass: ""
   redis:
     password: ""
@@ -100,7 +102,7 @@ diagnosticMode:
 image:
   registry: docker.io
   repository: bitnami/redis
-  tag: 7.2.4-debian-12-r16
+  tag: 7.4.1-debian-12-r0
   digest: ""
   ## Specify a imagePullPolicy
   ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
@@ -170,6 +172,9 @@ master:
   ## @param master.count Number of Redis&reg; master instances to deploy (experimental, requires additional configuration)
   ##
   count: 1
+  ## @param master.revisionHistoryLimit The number of old history to retain to allow rollback
+  ## NOTE: Explicitly setting this field to 0, will result in cleaning up all the history, breaking ability to rollback
+  revisionHistoryLimit: 10
   ## @param master.configuration Configuration for Redis&reg; master nodes
   ## ref: https://redis.io/topics/config
   ##
@@ -618,6 +623,19 @@ master:
     ## @param master.serviceAccount.annotations Additional custom annotations for the ServiceAccount
     ##
     annotations: {}
+  ## Pod Disruption Budget configuration
+  ## ref: https://kubernetes.io/docs/tasks/run-application/configure-pdb
+  ## @param master.pdb.create Enable/disable a Pod Disruption Budget creation
+  ## @param master.pdb.minAvailable [object] Minimum number/percentage of pods that should remain scheduled
+  ## @param master.pdb.maxUnavailable [object] Maximum number/percentage of pods that may be made unavailable. Defaults to `1` if both `master.pdb.minAvailable` and `master.pdb.maxUnavailable` are empty.
+  ##
+  pdb:
+    create: true
+    minAvailable: ""
+    maxUnavailable: ""
+  ## @param master.extraPodSpec Optionally specify extra PodSpec for the Redis&reg; master pod(s)
+  ##
+  extraPodSpec: {}
 ## @section Redis&reg; replicas configuration parameters
 ##
 replica:
@@ -628,6 +646,9 @@ replica:
   ## @param replica.replicaCount Number of Redis&reg; replicas to deploy
   ##
   replicaCount: 3
+  ## @param replica.revisionHistoryLimit The number of old history to retain to allow rollback
+  ## NOTE: Explicitly setting this field to 0, will result in cleaning up all the history, breaking ability to rollback
+  revisionHistoryLimit: 10
   ## @param replica.configuration Configuration for Redis&reg; replicas nodes
   ## ref: https://redis.io/topics/config
   ##
@@ -1090,6 +1111,19 @@ replica:
     ## @param replica.serviceAccount.annotations Additional custom annotations for the ServiceAccount
     ##
     annotations: {}
+  ## Pod Disruption Budget configuration
+  ## ref: https://kubernetes.io/docs/tasks/run-application/configure-pdb
+  ## @param replica.pdb.create Enable/disable a Pod Disruption Budget creation
+  ## @param replica.pdb.minAvailable [object] Minimum number/percentage of pods that should remain scheduled
+  ## @param replica.pdb.maxUnavailable [object] Maximum number/percentage of pods that may be made unavailable. Defaults to `1` if both `replica.pdb.minAvailable` and `replica.pdb.maxUnavailable` are empty.
+  ##
+  pdb:
+    create: true
+    minAvailable: ""
+    maxUnavailable: ""
+  ## @param replica.extraPodSpec Optionally specify extra PodSpec for the Redis&reg; replicas pod(s)
+  ##
+  extraPodSpec: {}
 ## @section Redis&reg; Sentinel configuration parameters
 ##
 
@@ -1112,7 +1146,7 @@ sentinel:
   image:
     registry: docker.io
     repository: bitnami/redis-sentinel
-    tag: 7.2.4-debian-12-r13
+    tag: 7.4.1-debian-12-r0
     digest: ""
     ## Specify a imagePullPolicy
     ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
@@ -1492,6 +1526,9 @@ sentinel:
   ## @param sentinel.terminationGracePeriodSeconds Integer setting the termination grace period for the redis-node pods
   ##
   terminationGracePeriodSeconds: 30
+  ## @param sentinel.extraPodSpec Optionally specify extra PodSpec for the Redis&reg; Sentinel pod(s)
+  ##
+  extraPodSpec: {}
 ## @section Other Parameters
 ##
 
@@ -1612,17 +1649,9 @@ serviceAccount:
   annotations: {}
 ## Redis&reg; Pod Disruption Budget configuration
 ## ref: https://kubernetes.io/docs/tasks/run-application/configure-pdb/
+## @param pdb DEPRECATED Please use `master.pdb` and `replica.pdb` values instead
 ##
-pdb:
-  ## @param pdb.create Specifies whether a PodDisruptionBudget should be created
-  ##
-  create: false
-  ## @param pdb.minAvailable Min number of pods that must still be available after the eviction
-  ##
-  minAvailable: 1
-  ## @param pdb.maxUnavailable Max number of pods that can be unavailable after the eviction
-  ##
-  maxUnavailable: ""
+pdb: {}
 ## TLS configuration
 ##
 tls:
@@ -1671,7 +1700,7 @@ metrics:
   image:
     registry: docker.io
     repository: bitnami/redis-exporter
-    tag: 1.59.0-debian-12-r6
+    tag: 1.63.0-debian-12-r1
     digest: ""
     pullPolicy: IfNotPresent
     ## Optionally specify an array of imagePullSecrets.
@@ -1908,7 +1937,7 @@ metrics:
     # add metricRelabelings with label like app=redis to main redis pod-monitor port
     # - interval: "30s"
     #   path: "/scrape"
-    #   port: "metrics"
+    #   port: "http-metrics"
     #   params:
     #     target: ["localhost:26379"]
     #   metricRelabelings:
@@ -2043,7 +2072,7 @@ volumePermissions:
   image:
     registry: docker.io
     repository: bitnami/os-shell
-    tag: 12-debian-12-r21
+    tag: 12-debian-12-r30
     digest: ""
     pullPolicy: IfNotPresent
     ## Optionally specify an array of imagePullSecrets.
@@ -2083,6 +2112,14 @@ volumePermissions:
     seLinuxOptions: {}
     runAsUser: 0
 
+  ## @param volumePermissions.extraEnvVars Array with extra environment variables to add to volume permissions init container.
+  ## e.g:
+  ## extraEnvVars:
+  ##   - name: FOO
+  ##     value: "bar"
+  ##
+  extraEnvVars: []
+
 ## Kubectl InitContainer
 ## used by Sentinel to update the isMaster label on the Redis(TM) pods
 ##
@@ -2099,7 +2136,7 @@ kubectl:
   image:
     registry: docker.io
     repository: bitnami/kubectl
-    tag: 1.30.0-debian-12-r5
+    tag: 1.31.1-debian-12-r3
     digest: ""
     ## Specify a imagePullPolicy
     ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
@@ -2169,7 +2206,7 @@ sysctl:
   image:
     registry: docker.io
     repository: bitnami/os-shell
-    tag: 12-debian-12-r21
+    tag: 12-debian-12-r30
     digest: ""
     pullPolicy: IfNotPresent
     ## Optionally specify an array of imagePullSecrets.
