@@ -11,7 +11,7 @@ RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF b
 pip3 install \
     --constraint /upper-constraints.txt \
         /src/keystone[ldap] \
-        keystone-keycloak-backend==0.1.8
+        keystone-keycloak-backend==0.2.0
 EOF
 
 FROM registry.atmosphere.dev/library/openstack-python-runtime:${RELEASE}
