@@ -166,13 +166,6 @@
                 severity: 'P5',
               },
             },
-            {
-              alert: 'NodeNonLTSKernel',
-              expr: 'node_uname_info{release!~"^5.(4|15).*"}',
-              labels: {
-                severity: 'P5',
-              },
-            },
           ],
         },
         {
