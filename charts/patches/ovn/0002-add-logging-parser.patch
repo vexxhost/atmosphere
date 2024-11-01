@@ -70,12 +70,12 @@ index 47b84be8..0d221f19 100644
  {{- end }}
  
 diff --git a/ovn/templates/daemonset-controller.yaml b/ovn/templates/daemonset-controller.yaml
-index e421794f..843cbeaa 100644
+index 6c240213..82b70f78 100644
 --- a/ovn/templates/daemonset-controller.yaml
 +++ b/ovn/templates/daemonset-controller.yaml
 @@ -156,6 +156,52 @@ spec:
                mountPath: /var/log/ovn
-             - name: run-ovn
+             - name: run-openvswitch
                mountPath: /run/ovn
 +        {{- if .Values.pod.sidecars.vector }}
 +        - name: vector
@@ -126,7 +126,7 @@ index e421794f..843cbeaa 100644
        volumes:
          - name: ovn-bin
            configMap:
-@@ -225,4 +225,17 @@
+@@ -179,4 +225,17 @@ spec:
              type: DirectoryOrCreate
          - name: gw-enabled
            emptyDir: {}
@@ -146,10 +146,10 @@ index e421794f..843cbeaa 100644
  {{- end }}
 diff --git a/ovn/templates/secret-vector.yaml b/ovn/templates/secret-vector.yaml
 new file mode 100644
-index 00000000..028e8a9a
+index 00000000..989f3afa
 --- /dev/null
 +++ b/ovn/templates/secret-vector.yaml
-@@ -0,0 +1,56 @@
+@@ -0,0 +1,26 @@
 +{{/*
 +Licensed under the Apache License, Version 2.0 (the "License");
 +you may not use this file except in compliance with the License.
@@ -165,6 +165,7 @@ index 00000000..028e8a9a
 +*/}}
 +
 +{{- if .Values.pod.sidecars.vector }}
++{{- $envAll := . }}
 +
 +---
 +apiVersion: v1
@@ -172,8 +173,44 @@ index 00000000..028e8a9a
 +metadata:
 +  name: ovn-vector-config
 +type: Opaque
-+stringData:
-+  vector.toml: |
++data:
++{{- include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conf.vector "key" "vector.toml" "format" "Secret" ) | indent 2 }}
++{{- end }}
+diff --git a/ovn/values.yaml b/ovn/values.yaml
+index 8459e33a..3ffdecec 100644
+--- a/ovn/values.yaml
++++ b/ovn/values.yaml
+@@ -27,6 +27,8 @@ images:
+     ovn_controller_kubectl: docker.io/openstackhelm/ceph-config-helper:latest-ubuntu_jammy
+     dep_check: quay.io/airshipit/kubernetes-entrypoint:latest-ubuntu_focal
+     image_repo_sync: docker.io/library/docker:17.07.0
++    vector: docker.io/timberio/vector:0.39.0-debian
++    ovn_logging_parser: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
+   pull_policy: "IfNotPresent"
+   local_registry:
+     active: false
+@@ -83,6 +85,56 @@ conf:
+   #   br-public: eth1
+   auto_bridge_add: {}
+ 
++  ovn_network_logging_parser_uwsgi:
++    uwsgi:
++      add-header: "Connection: close"
++      buffer-size: 65535
++      die-on-term: true
++      enable-threads: true
++      exit-on-reload: false
++      hook-master-start: unix_signal:15 gracefully_kill_them_all
++      lazy-apps: true
++      log-x-forwarded-for: true
++      master: true
++      processes: 1
++      procname-prefix-spaced: "neutron-ovn-network-logging-parser:"
++      route-user-agent: '^kube-probe.* donotlog:'
++      thunder-lock: true
++      worker-reload-mercy: 80
++      wsgi-file: /var/lib/openstack/bin/neutron-ovn-network-logging-parser-wsgi
++  vector: |
 +    [sources.file_logs]
 +    type = "file"
 +    include = [ "/logs/ovn-controller.log" ]
@@ -205,45 +242,11 @@ index 00000000..028e8a9a
 +    endpoint = "http://loki.monitoring:3100"
 +    encoding.codec = "json"
 +    tenant_id = "{{`{{ project_id }}`}}"
-+{{- end }}
-diff --git a/ovn/values.yaml b/ovn/values.yaml
-index b07a0f5a..79fde2c2 100644
---- a/ovn//values.yaml
-+++ b/ovn//values.yaml
-@@ -26,5 +26,7 @@ images:
-     dep_check: quay.io/airshipit/kubernetes-entrypoint:latest-ubuntu_focal
-     image_repo_sync: docker.io/library/docker:17.07.0
-+    vector: docker.io/timberio/vector:0.39.0-debian
-+    ovn_logging_parser: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
-   pull_policy: "IfNotPresent"
-   local_registry:
-     active: false
-@@ -82,6 +84,24 @@ conf:
-   #   br-public: eth1
-   auto_bridge_add: {}
- 
-+  ovn_network_logging_parser_uwsgi:
-+    uwsgi:
-+      add-header: "Connection: close"
-+      buffer-size: 65535
-+      die-on-term: true
-+      enable-threads: true
-+      exit-on-reload: false
-+      hook-master-start: unix_signal:15 gracefully_kill_them_all
-+      lazy-apps: true
-+      log-x-forwarded-for: true
-+      master: true
-+      processes: 1
-+      procname-prefix-spaced: "neutron-ovn-network-logging-parser:"
-+      route-user-agent: '^kube-probe.* donotlog:'
-+      thunder-lock: true
-+      worker-reload-mercy: 80
-+      wsgi-file: /var/lib/openstack/bin/neutron-ovn-network-logging-parser-wsgi
 +
  pod:
    # NOTE: should be same as nova.pod.use_fqdn.compute
    use_fqdn:
-@@ -109,6 +129,12 @@ pod:
+@@ -102,6 +154,12 @@ pod:
          controller:
            readOnlyRootFilesystem: true
            privileged: true
@@ -256,7 +259,7 @@ index b07a0f5a..79fde2c2 100644
    tolerations:
      ovn_ovsdb_nb:
        enabled: false
-@@ -237,6 +263,20 @@ pod:
+@@ -217,6 +275,20 @@ pod:
          limits:
            memory: "1024Mi"
            cpu: "2000m"
@@ -277,8 +280,7 @@ index b07a0f5a..79fde2c2 100644
      jobs:
        image_repo_sync:
          requests:
-@@ -245,7 +286,11 @@ pod:
-         limits:
+@@ -226,6 +298,10 @@ pod:
            memory: "1024Mi"
            cpu: "2000m"
  
@@ -289,7 +291,7 @@ index b07a0f5a..79fde2c2 100644
  secrets:
    oci_image_registry:
      ovn: ovn-oci-image-registry-key
-@@ -304,6 +349,22 @@ endpoints:
+@@ -284,6 +360,22 @@ endpoints:
          default: 6642
        raft:
          default: 6644
