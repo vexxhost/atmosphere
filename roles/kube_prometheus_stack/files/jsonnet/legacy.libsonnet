@@ -124,7 +124,6 @@
             };
             [
               recordingRule('backlog', 'sum(node_softnet_backlog_len) by (instance)'),
-              recordingRule('squeezed', 'sum(rate(node_softnet_times_squeezed_total[1m])) by (instance)'),
               recordingRule('dropped', 'sum(rate(node_softnet_dropped_total[1m])) by (instance)'),
             ],
         },
@@ -163,13 +162,6 @@
               alert: 'NodeLowEntropy',
               expr: 'node_entropy_available_bits / node_entropy_pool_size_bits < 0.20',
               'for': '5m',
-              labels: {
-                severity: 'P5',
-              },
-            },
-            {
-              alert: 'NodeNonLTSKernel',
-              expr: 'node_uname_info{release!~"^5.(4|15).*"}',
               labels: {
                 severity: 'P5',
               },
@@ -218,9 +210,6 @@
               alertRule('backlog', '5000', '0'),
               alertRule('backlog', '5000', '0.5'),
               alertRule('backlog', '5000', '0.75'),
-
-              alertRule('squeezed', '0', '0'),
-
               alertRule('dropped', '0', '0'),
               alertRule('dropped', '0', '0.5'),
               alertRule('dropped', '0', '0.75'),

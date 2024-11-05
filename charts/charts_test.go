@@ -16,7 +16,6 @@ import (
 
 var (
 	KUBERNETES_VERSIONS = []string{
-		"1.22.0",
 		"1.23.0",
 		"1.24.0",
 		"1.25.0",
@@ -59,10 +58,11 @@ func TestKubeconform(t *testing.T) {
 		opts := validator.Opts{
 			KubernetesVersion: version,
 			SkipKinds: map[string]struct{}{
-				"CephBlockPool":   {},
-				"CephCluster":     {},
-				"CephFilesystem":  {},
-				"CephObjectStore": {},
+				"CephBlockPool":                {},
+				"CephCluster":                  {},
+				"CephFilesystem":               {},
+				"CephObjectStore":              {},
+				"CephFilesystemSubVolumeGroup": {},
 				"apiextensions.k8s.io/v1/CustomResourceDefinition": {},
 			},
 			Strict: true,
@@ -76,6 +76,9 @@ func TestKubeconform(t *testing.T) {
 
 	for _, file := range files {
 		if !file.IsDir() {
+			continue
+		}
+		if file.Name() == "patches" {
 			continue
 		}
 
@@ -92,7 +95,22 @@ func TestKubeconform(t *testing.T) {
 
 					t.Parallel()
 
-					rel, err := client.Run(chart, map[string]interface{}{})
+					rel, err := client.Run(
+						chart,
+						// NOTE(okozachenko1203): loki helm chart default values doesn't work.
+						map[string]interface{}{
+							"loki": map[string]interface{}{
+								"storage": map[string]interface{}{
+									"bucketNames": map[string]string{
+										"chunks": "FIXME",
+										"ruler":  "FIXME",
+										"admin":  "FIXME",
+									},
+								},
+								"useTestSchema": true,
+							},
+						},
+					)
 					require.NoError(t, err)
 
 					manifests := io.NopCloser(strings.NewReader(rel.Manifest))

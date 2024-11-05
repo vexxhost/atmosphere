@@ -125,8 +125,6 @@ ovn_helm_values:
       ovn_ovsdb_nb: 1
       ovn_ovsdb_sb: 1
       ovn_northd: 1
-  manifests:
-    daemonset_ovn_controller: false
 
 coredns_helm_values:
   replicaCount: 1
@@ -214,10 +212,7 @@ magnum_helm_values:
       api: 1
       conductor: 1
 magnum_image_disk_format: qcow2
-magnum_images:
-  - name: ubuntu-2204-kube-v1.27.8s
-    url: https://object-storage.public.mtl1.vexxhost.net/swift/v1/a91f106f55e64246babde7402c21b87a/magnum-capi/ubuntu-2204-kube-v1.27.8.qcow2
-    distro: ubuntu
+magnum_images: "[ {{ _magnum_images[-1] }} ]"
 
 manila_helm_values:
   conf:
