@@ -14,6 +14,7 @@ information to ensure stable and efficient operation of the system.
    :maxdepth: 2
 
    ceph
+   emulated-tpm
    integration
    maintenance
    monitoring

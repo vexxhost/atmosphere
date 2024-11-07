@@ -15,7 +15,7 @@ Verify the configuration
 Verify vTPM support by inspecting the traits on the compute node’s resource provider:
 
 .. code-block:: console
-   
+
  $ COMPUTE_UUID=$(openstack resource provider list --name $HOST -f value -c uuid)
  $ openstack resource provider trait list $COMPUTE_UUID | grep SECURITY_TPM
  | COMPUTE_SECURITY_TPM_1_2 |
@@ -27,7 +27,7 @@ Configuring a flavor or image
 
 A vTPM can be requested on a server via flavor extra specs or image metadata properties.
 There are two versions supported - 1.2 and 2.0 - and two models - TPM Interface
-Specification (TIS) and Command-Response Buffer (CRB). The CRB model is only supported 
+Specification (TIS) and Command-Response Buffer (CRB). The CRB model is only supported
 with version 2.0.
 
 For example, to configure a flavor to use the TPM 2.0 with the CRB model:
