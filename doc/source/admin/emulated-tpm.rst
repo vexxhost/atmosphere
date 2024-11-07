@@ -6,49 +6,13 @@ Emulated Trusted Platform Module (vTPM)
 Starting in the 22.0.0 (Victoria) release, Nova supports adding an emulated virtual
 Trusted Platform Module (vTPM) to guests.
 
-
-Enabling vTPM
-=============
-
-The following are required on each compute host wishing to support the vTPM
-feature:
-
-* Currently vTPM is only supported when using the libvirt compute driver with a
-  ``libvirt.virt_type`` of ``kvm`` or ``qemu``.
-
-* A ``key manager service``, such as ``barbican``, must be configured to store
-  secrets used to encrypt the virtual device files at rest.
-
-* The ``swtpm`` binary and associated ``libraries``.
-
-* Set the ``libvirt.swtpm_enabled`` config option to ``true``. 
-This will enable support for both TPM version 1.2 and 2.0.
-
-
-Configuring vTPM at Atmosphere
-==============================
-
-* Barbican is enabled by default, so don’t need to configure other KMS
-
-* Nova compute image must install following packages
-
-.. code-block:: console
-
-   $ apt-get install swtpm swtpm-tools libtpms0
-
-* Set the libvirt config option in nova compute nova.conf
-
-.. code-block:: console
-
-   swtpm_enabled: true
-   swtpm_user: swtpm
-   swtpm_group: swtpm
-   
+The vTPM feature is enabled by default, so just verify and configure the flavor with
+vTPM.
 
 Verify the configuration
 ========================
-With the above requirements satisfied, verify vTPM support by inspecting 
-the traits on the compute node’s resource provider:
+
+Verify vTPM support by inspecting the traits on the compute node’s resource provider:
 
 .. code-block:: console
    
