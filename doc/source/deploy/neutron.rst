@@ -219,4 +219,4 @@ To configure networks with `Jumbo frames <https://docs.openstack.org/neutron/lat
 
 If you want to enable Jumbo frames for existing Neutron networks, adjust their `mtu` attribute accordingly.
 
-Remember to also configure the physical network interfaces with MTU 9000 (for Ubuntu, see the `mtu` property in `netplan <https://netplan.readthedocs.io/en/latest/netplan-yaml>`_).
+Remember to also configure the physical network interfaces with MTU 9000 (for Ubuntu, see the `mtu` property in `netplan <https://netplan.readthedocs.io/en/latest/netplan-yaml>`_ ).
