@@ -1,14 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
-# Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
+# Atmosphere-Rebuild-Time: 2024-10-29T22:19:48Z
 
 ARG RELEASE
 
 FROM registry.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
-ARG NOVA_GIT_REF=c199becf52267ba37c5191f6f82e29bb5232b607
+ARG NOVA_GIT_REF=110849f7f972d8cb536a9c96c4cb59f06e357eeb
 ADD --keep-git-dir=true https://opendev.org/openstack/nova.git#${NOVA_GIT_REF} /src/nova
 RUN git -C /src/nova fetch --unshallow
-COPY patches/nova /patches/nova
-RUN git -C /src/nova apply --verbose /patches/nova/*
 ARG SCHEDULER_FILTERS_GIT_REF=eb17f39c68606cca7ec68bf3e40d58e0954326ee
 ADD --keep-git-dir=true https://github.com/vexxhost/nova-scheduler-filters.git#${SCHEDULER_FILTERS_GIT_REF} /src/nova-scheduler-filters
 RUN git -C /src/nova-scheduler-filters fetch --unshallow

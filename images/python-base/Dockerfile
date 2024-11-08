@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
+# Atmosphere-Rebuild-Time: 2024-10-14T18:43:39Z
 
 ARG RELEASE
 
@@ -9,9 +9,10 @@ RUN \
     apt-get update -qq && \
     apt-get install -qq -y --no-install-recommends \
         ca-certificates \
-        libpython3.10 \
+        libpcre3 \
+        libpython3.12 \
         lsb-release \
-        python3-distutils \
+        python3-setuptools \
         sudo && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*

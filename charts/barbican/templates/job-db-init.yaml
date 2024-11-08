@@ -21,7 +21,7 @@ helm.sh/hook-weight: "-5"
 
 {{- if .Values.manifests.job_db_init }}
 {{- $serviceName := "barbican" -}}
-{{- $dbToInit := dict "adminSecret" .Values.secrets.oslo_db.admin "configFile" (printf "/etc/%s/%s.conf" $serviceName $serviceName ) "logConfigFile" (printf "/etc/%s/logging.conf" $serviceName ) "configDbSection" "DEFAULT" "configDbKey" "sql_connection" -}}
+{{- $dbToInit := dict "adminSecret" .Values.secrets.oslo_db.admin "configFile" (printf "/etc/%s/%s.conf" $serviceName $serviceName ) "logConfigFile" (printf "/etc/%s/logging.conf" $serviceName ) "configDbSection" "database" "configDbKey" "connection" -}}
 {{- $dbInitJob := dict "envAll" . "serviceName" $serviceName "dbToInit" $dbToInit "jobAnnotations" (include "metadata.annotations.job.db_init" . | fromYaml) -}}
 {{- if .Values.manifests.certificates -}}
 {{- $_ := set $dbInitJob "dbAdminTlsSecret" .Values.endpoints.oslo_db.auth.admin.secret.tls.internal -}}
