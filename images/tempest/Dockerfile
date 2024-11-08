@@ -26,6 +26,8 @@ ADD --keep-git-dir=true https://opendev.org/openstack/neutron-tempest-plugin.git
 RUN git -C /src/neutron-tempest-plugin fetch --unshallow
 ADD --keep-git-dir=true https://opendev.org/openstack/octavia-tempest-plugin.git#master /src/octavia-tempest-plugin
 RUN git -C /src/octavia-tempest-plugin fetch --unshallow
+ADD --keep-git-dir=true https://opendev.org/openstack/designate-tempest-plugin.git#master /src/designate-tempest-plugin
+RUN git -C /src/designate-tempest-plugin fetch --unshallow
 ADD https://releases.openstack.org/constraints/upper/master /upper-constraints.txt
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
 pip3 install \
@@ -37,6 +39,7 @@ pip3 install \
         /src/keystone-tempest-plugin \
         /src/neutron-tempest-plugin \
         /src/octavia-tempest-plugin
+        /src/designate-tempest-plugin
 EOF
 
 FROM registry.atmosphere.dev/library/openstack-python-runtime:${RELEASE}
