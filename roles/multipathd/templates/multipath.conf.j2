@@ -21,6 +21,26 @@ devices {
         find_multipaths             yes
     }
     device {
+        vendor                      "NETAPP"
+        product                     "LUN.*"
+        detect_prio                 yes
+        dev_loss_tmo                infinity
+        failback                    immediate
+        fast_io_fail_tmo            5
+        features                    "2 pg_init_retries 50"
+        flush_on_last_del           yes
+        hardware_handler            "1 alua"
+        no_path_retry               queue
+        path_checker                tur
+        path_grouping_policy        group_by_prio
+        path_selector               "service-time 0"
+        polling_interval            5
+        prio                        alua
+        retain_attached_hw_handler  yes
+        rr_weight                   uniform
+        user_friendly_names         no
+    }
+    device {
         vendor                   "PURE"
         product                  "FlashArray"
         path_selector            "service-time 0"
