@@ -22,11 +22,18 @@
     group: root
     mode: '0644'
   delegate_to: localhost
-  register: _tempest_subunit_copy
 
-- name: Convert results from Subunit to JUNIT XML
-  ansible.builtin.shell: "cat {{ tempest_subunit_path }} | subunit2junitxml -o {{ tempest_junit_path }}"
-  register: subunitOutput
-  failed_when: subunitOutput.rc >= 2 # this is here that the pipeline doesn't break before the actual job which then registers the whole tests to the main piepline
-  when: _tempest_subunit_copy.changed
+- name: slurp junit file
+  ansible.builtin.slurp:
+    src: /tmp/stestr/results.junit
+  register: _tempest_results_junit
+  delegate_to: "{{ _tempest_pod_obj.resources[0].spec.nodeName }}"
+
+- name: Save Junit file
+  ansible.builtin.copy:
+    content: "{{ _tempest_results_junit.content | b64decode }}"
+    dest: "{{ tempest_junit_path }}"
+    owner: root
+    group: root
+    mode: '0644'
   delegate_to: localhost

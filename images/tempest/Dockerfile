@@ -40,6 +40,7 @@ pip3 install \
         /src/neutron-tempest-plugin \
         /src/octavia-tempest-plugin
         /src/designate-tempest-plugin
+pip3 install subunit junitxml
 EOF
 
 FROM registry.atmosphere.dev/library/openstack-python-runtime:${RELEASE}
