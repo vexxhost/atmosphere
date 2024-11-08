@@ -99,7 +99,7 @@
   register: _tempest_job_obj
 
 - name: Process tempest results locally
-  when: not (tempest_generate_subunit | bool)
+  when: not (tempest_helm_values.conf.subunit_output | default(_tempest_helm_values.conf.subunit_output) | bool)
   block:
     - name: Get tempest log
       kubernetes.core.k8s_log:
@@ -120,4 +120,4 @@
 
 - name: Process tempest result as unit test file
   ansible.builtin.import_tasks: unit.yml
-  when: (tempest_generate_subunit | bool)
+  when: (tempest_helm_values.conf.subunit_output | default(_tempest_helm_values.conf.subunit_output) | bool)

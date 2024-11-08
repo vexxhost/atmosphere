@@ -24,7 +24,11 @@ trap "tempest cleanup; exit" 1 ERR
 fi
 {{- end }}
 
+{{ if .Values.conf.subunit_output }}
+tempest run --config-file /etc/tempest/tempest.conf -w 4 --smoke --subunit > /.stestr/results.subunit
+{{ else }}
 {{ .Values.conf.script }}
+{{- end }}
 
 {{ if .Values.conf.cleanup.enabled }}
 tempest cleanup
