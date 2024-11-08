@@ -38,7 +38,7 @@ pip3 install \
         /src/heat-tempest-plugin \
         /src/keystone-tempest-plugin \
         /src/neutron-tempest-plugin \
-        /src/octavia-tempest-plugin
+        /src/octavia-tempest-plugin \
         /src/designate-tempest-plugin
 pip3 install subunit junitxml
 EOF
