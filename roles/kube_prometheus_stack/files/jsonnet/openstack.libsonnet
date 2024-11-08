@@ -226,7 +226,7 @@
           },
           {
             alert: 'NovaServiceGroupDown',
-            expr: 'min by (exported_service) (openstack_nova_agent_state) == 0',
+            expr: 'sum by (exported_service) (openstack_nova_agent_state) == 0',
             'for': '5m',
             labels: {
               severity: 'P2',
