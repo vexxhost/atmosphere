@@ -1,0 +1,59 @@
+From ee92066b3a4f3c032da62be010d4e4d8206662d9 Mon Sep 17 00:00:00 2001
+From: Michiel Piscaer <michiel@piscaer.com>
+Date: Sat, 09 Nov 2024 11:08:06 +0100
+Subject: [PATCH] Export tempest Subunit & Junit reports
+
+Change-Id: I99ee877d21c2aedfb196b8a13eb6bea1a73dd93a
+---
+
+diff --git a/tempest/templates/bin/_run-tests.sh.tpl b/tempest/templates/bin/_run-tests.sh.tpl
+index f3fc5c2..c7695b2 100644
+--- a/tempest/templates/bin/_run-tests.sh.tpl
++++ b/tempest/templates/bin/_run-tests.sh.tpl
+@@ -24,7 +24,12 @@
+ fi
+ {{- end }}
+ 
++{{ if .Values.conf.subunit_output }}
++tempest run --config-file /etc/tempest/tempest.conf -w 4 --smoke --subunit > /var/lib/tempest/data/results.subunit
++cat /var/lib/tempest/data/results.subunit | subunit2junitxml -o /var/lib/tempest/data/results.junit
++{{ else }}
+ {{ .Values.conf.script }}
++{{- end }}
+ 
+ {{ if .Values.conf.cleanup.enabled }}
+ tempest cleanup
+diff --git a/tempest/templates/job-run-tests.yaml b/tempest/templates/job-run-tests.yaml
+index fc37523..784a068 100644
+--- a/tempest/templates/job-run-tests.yaml
++++ b/tempest/templates/job-run-tests.yaml
+@@ -114,11 +114,14 @@
+             name: tempest-bin
+             defaultMode: 0555
+         - name: tempest-reports
+-        {{- if not .Values.pvc.enabled }}
+-          emptyDir: {}
+-        {{- else }}
++        {{- if .Values.pvc.enabled }}
+           persistentVolumeClaim:
+             claimName: {{ .Values.pvc.name }}
++        {{- else if .Values.conf.subunit_output }}
++          hostPath:
++            path: /tmp/tempest-reports
++        {{- else }}
++          emptyDir: {}
+         {{- end }}
+ {{- dict "enabled" (or .Values.manifests.certificates .Values.tls.identity) "name" .Values.secrets.tls.identity.api.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
+ {{- end }}
+diff --git a/tempest/values.yaml b/tempest/values.yaml
+index 3de9671..bf93128 100644
+--- a/tempest/values.yaml
++++ b/tempest/values.yaml
+@@ -272,6 +272,7 @@
+     formatter_default:
+       format: "%(message)s"
+       datefmt: "%Y-%m-%d %H:%M:%S"
++  subunit_output: false
+ 
+ 
+ pvc:
