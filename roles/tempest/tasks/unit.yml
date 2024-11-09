@@ -10,7 +10,7 @@
 
 - name: Slurp Subunit file
   ansible.builtin.slurp:
-    src: /tmp/stestr/results.subunit
+    src: /tmp/tempest-reports/results.subunit
   register: _tempest_results_subunit
   delegate_to: "{{ _tempest_pod_obj.resources[0].spec.nodeName }}"
 
@@ -25,7 +25,7 @@
 
 - name: Slurp junit file
   ansible.builtin.slurp:
-    src: /tmp/stestr/results.junit
+    src: /tmp/tempest-reports/results.junit
   register: _tempest_results_junit
   delegate_to: "{{ _tempest_pod_obj.resources[0].spec.nodeName }}"
 

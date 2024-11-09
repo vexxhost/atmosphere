@@ -121,6 +121,8 @@ spec:
         - name: tempest-reports
         {{- if not .Values.pvc.enabled }}
           emptyDir: {}
+        {{- else if .Values.conf.subunit_output }}
+          path: /tmp/tempest-reports
         {{- else }}
           persistentVolumeClaim:
             claimName: {{ .Values.pvc.name }}
