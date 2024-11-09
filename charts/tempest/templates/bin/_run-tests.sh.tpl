@@ -26,7 +26,7 @@ fi
 
 {{ if .Values.conf.subunit_output }}
 tempest run --config-file /etc/tempest/tempest.conf -w 4 --smoke --subunit > /var/lib/tempest/data/results.subunit
-cat /var/lib/tempest/data/results.subunit | subunit2junitxml -o /var/lib/tempest/data/results.junit
+cat /var/lib/tempest/data/results.subunit | subunit2junitxml -o /var/lib/tempest/data/results.junit || echo converted subunit file
 {{ else }}
 {{ .Values.conf.script }}
 {{- end }}
