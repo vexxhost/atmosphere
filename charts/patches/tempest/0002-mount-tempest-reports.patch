@@ -1,4 +1,4 @@
-From ee92066b3a4f3c032da62be010d4e4d8206662d9 Mon Sep 17 00:00:00 2001
+From 39ea38b20d77057985c453fb7859867c6c1816a8 Mon Sep 17 00:00:00 2001
 From: Michiel Piscaer <michiel@piscaer.com>
 Date: Sat, 09 Nov 2024 11:08:06 +0100
 Subject: [PATCH] Export tempest Subunit & Junit reports
@@ -7,15 +7,30 @@ Change-Id: I99ee877d21c2aedfb196b8a13eb6bea1a73dd93a
 ---
 
 diff --git a/tempest/templates/bin/_run-tests.sh.tpl b/tempest/templates/bin/_run-tests.sh.tpl
-index f3fc5c2..c7695b2 100644
+index f3fc5c2..e47543c 100644
 --- a/tempest/templates/bin/_run-tests.sh.tpl
 +++ b/tempest/templates/bin/_run-tests.sh.tpl
-@@ -24,7 +24,12 @@
+@@ -16,6 +16,14 @@
+ 
+ set -ex
+ 
++if [ ! -f /etc/tempest/test-blacklist ]; then
++  touch /etc/tempest/test-blacklist
++fi
++
++if [ ! -f /etc/tempest/test-whitelist ]; then
++  touch /etc/tempest/test-whitelist
++fi
++
+ {{ if .Values.conf.cleanup.enabled }}
+ tempest cleanup --init-saved-state
+ 
+@@ -24,7 +32,12 @@
  fi
  {{- end }}
  
 +{{ if .Values.conf.subunit_output }}
-+tempest run --config-file /etc/tempest/tempest.conf -w 4 --smoke --subunit > /var/lib/tempest/data/results.subunit
++tempest run --include-list /etc/tempest/test-whitelist --exclude-list /etc/tempest/test-blacklist --config-file /etc/tempest/tempest.conf -w 4 --smoke --subunit > /var/lib/tempest/data/results.subunit
 +cat /var/lib/tempest/data/results.subunit | subunit2junitxml -o /var/lib/tempest/data/results.junit || echo converted subunit file
 +{{ else }}
  {{ .Values.conf.script }}
@@ -46,9 +61,18 @@ index fc37523..784a068 100644
  {{- dict "enabled" (or .Values.manifests.certificates .Values.tls.identity) "name" .Values.secrets.tls.identity.api.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
  {{- end }}
 diff --git a/tempest/values.yaml b/tempest/values.yaml
-index 3de9671..bf93128 100644
+index 3de9671..07a4c4b 100644
 --- a/tempest/values.yaml
 +++ b/tempest/values.yaml
+@@ -97,7 +97,7 @@
+ 
+ conf:
+   script: |
+-    tempest run --config-file /etc/tempest/tempest.conf -w 4 --smoke
++    tempest run --include-list /etc/tempest/test-whitelist --exclude-list /etc/tempest/test-blacklist --config-file /etc/tempest/tempest.conf -w 4 --smoke
+   # The following sections can be used to blacklist and whitelist specific tests.
+   # If either section is not empty, it will be used to create an entry in the
+   # tempest-etc configmap and will be mounted into the tempest-run-tests pod
 @@ -272,6 +272,7 @@
      formatter_default:
        format: "%(message)s"

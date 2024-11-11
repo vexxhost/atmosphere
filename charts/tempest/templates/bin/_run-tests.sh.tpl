@@ -16,6 +16,14 @@ limitations under the License.
 
 set -ex
 
+if [ ! -f /etc/tempest/test-blacklist ]; then
+  touch /etc/tempest/test-blacklist
+fi
+
+if [ ! -f /etc/tempest/test-whitelist ]; then
+  touch /etc/tempest/test-whitelist
+fi
+
 {{ if .Values.conf.cleanup.enabled }}
 tempest cleanup --init-saved-state
 
@@ -25,7 +33,7 @@ fi
 {{- end }}
 
 {{ if .Values.conf.subunit_output }}
-tempest run --config-file /etc/tempest/tempest.conf -w 4 --smoke --subunit > /var/lib/tempest/data/results.subunit
+tempest run --include-list /etc/tempest/test-whitelist --exclude-list /etc/tempest/test-blacklist --config-file /etc/tempest/tempest.conf -w 4 --smoke --subunit > /var/lib/tempest/data/results.subunit
 cat /var/lib/tempest/data/results.subunit | subunit2junitxml -o /var/lib/tempest/data/results.junit || echo converted subunit file
 {{ else }}
 {{ .Values.conf.script }}
