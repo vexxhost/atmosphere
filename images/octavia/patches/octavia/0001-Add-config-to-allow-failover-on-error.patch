@@ -1,0 +1,109 @@
+From a255df16e20854b39647620729fa8d2ef9913e65 Mon Sep 17 00:00:00 2001
+From: ricolin <rlin@vexxhost.com>
+Date: Tue, 12 Nov 2024 14:48:52 +0800
+Subject: [PATCH] Add config to allow failover on error
+
+Add config `failover_on_error` to allow Amphora failover with `ERROR`
+status.
+
+A lot of Amphora `ERROR` are able to solved by running failover on LB.
+With nothing change on original scenario, this new config allow
+environments to do failover automatically for Amphora on ERROR status.
+
+Change-Id: Icff02f7a621cc13a8a0383e1b322f96027c421a6
+---
+ octavia/common/config.py                         |  6 ++++++
+ octavia/db/repositories.py                       | 13 ++++++++++---
+ octavia/tests/functional/db/test_repositories.py | 16 ++++++++++++++++
+ ...-error-amphora-failover-ab882982adc05f01.yaml |  9 +++++++++
+ 4 files changed, 41 insertions(+), 3 deletions(-)
+ create mode 100644 releasenotes/notes/allow-error-amphora-failover-ab882982adc05f01.yaml
+
+diff --git a/octavia/common/config.py b/octavia/common/config.py
+index 5fde9bd41..5ed7cf4cb 100644
+--- a/octavia/common/config.py
++++ b/octavia/common/config.py
+@@ -324,6 +324,12 @@ health_manager_opts = [
+                deprecated_for_removal=True,
+                deprecated_reason=_('This driver interface was removed.'),
+                deprecated_since='Victoria'),
++    cfg.BoolOpt('failover_on_error', default=False,
++                help=_('Set this to True to allow failover when amphora '
++                       'status in Error. Beware that, try to performing '
++                       'failover when ERROR status might not help to solve '
++                       'the ERROR status for Amphora. '
++                       'So use this option with caution.')),
+ ]
+ 
+ oslo_messaging_opts = [
+diff --git a/octavia/db/repositories.py b/octavia/db/repositories.py
+index b0ed8a6ab..7009e5e42 100644
+--- a/octavia/db/repositories.py
++++ b/octavia/db/repositories.py
+@@ -1579,11 +1579,18 @@ class AmphoraHealthRepository(BaseRepository):
+         # We don't want to attempt to failover amphora that are not
+         # currently in the ALLOCATED or FAILOVER_STOPPED state.
+         # i.e. Not DELETED, PENDING_*, etc.
++        # If CONF.health_manager.failover_on_error is set, we will allow
++        # performing failover when Amphora on error status.
++        allow_stats = [
++            consts.AMPHORA_ALLOCATED,
++            consts.AMPHORA_FAILOVER_STOPPED
++        ]
++        if CONF.health_manager.failover_on_error:
++            allow_stats.append(consts.ERROR)
++
+         allocated_amp_ids_subquery = (
+             select(models.Amphora.id).where(
+-                models.Amphora.status.in_(
+-                    [consts.AMPHORA_ALLOCATED,
+-                     consts.AMPHORA_FAILOVER_STOPPED])))
++                models.Amphora.status.in_(allow_stats)))
+ 
+         # Pick one expired amphora for automatic failover
+         amp_health = lock_session.query(
+diff --git a/octavia/tests/functional/db/test_repositories.py b/octavia/tests/functional/db/test_repositories.py
+index 15d3063a5..0ed408335 100644
+--- a/octavia/tests/functional/db/test_repositories.py
++++ b/octavia/tests/functional/db/test_repositories.py
+@@ -3957,6 +3957,22 @@ class AmphoraHealthRepositoryTest(BaseRepositoryTest):
+             self.session)
+         self.assertEqual(uuid, stale_amphora.amphora_id)
+ 
++    def test_get_stale_error_amphora(self):
++        conf = self.useFixture(oslo_fixture.Config(cfg.CONF))
++        conf.config(group='health_manager', failover_on_error=True)
++        stale_amphora = self.amphora_health_repo.get_stale_amphora(
++            self.session)
++        self.assertIsNone(stale_amphora)
++
++        uuid = uuidutils.generate_uuid()
++        self.create_amphora(uuid)
++        self.amphora_repo.update(self.session, uuid,
++                                 status=constants.ERROR)
++        self.create_amphora_health(uuid)
++        stale_amphora = self.amphora_health_repo.get_stale_amphora(
++            self.session)
++        self.assertEqual(uuid, stale_amphora.amphora_id)
++
+     def test_get_stale_amphora_past_threshold(self):
+         conf = self.useFixture(oslo_fixture.Config(cfg.CONF))
+         conf.config(group='health_manager', failover_threshold=3)
+diff --git a/releasenotes/notes/allow-error-amphora-failover-ab882982adc05f01.yaml b/releasenotes/notes/allow-error-amphora-failover-ab882982adc05f01.yaml
+new file mode 100644
+index 000000000..abbe0dd3d
+--- /dev/null
++++ b/releasenotes/notes/allow-error-amphora-failover-ab882982adc05f01.yaml
+@@ -0,0 +1,9 @@
++---
++fixes:
++  - |
++    Add config `[health_manager]/failover_on_error` (disable by default) to
++    allow health manager pick up any Amphora in both ERROR status and
++    expired on heartbeats conditions when looking for stale Amphora to
++    failover. Beware that, try to performing failover when ERROR status
++    might not help to solve the ERROR status for Amphora.
++    So use this option with caution.
+-- 
+2.25.1
+
