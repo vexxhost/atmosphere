@@ -33,3 +33,42 @@ tests:
             exp_annotations:
               summary: "[4cf895c9-c3d1-489e-b02e-59b5c8976809] Network running out of IPs"
               description: "The network 4cf895c9-c3d1-489e-b02e-59b5c8976809 is currently at 98.81422924901186% utilization.  If the IP addresses run out, it will impact the provisioning of new ports."
+
+  - interval: 1m
+    input_series:
+      - series: 'openstack_nova_agent_state{adminState="enabled",disabledReason="",hostname="nova-conductor-597bdfc87-6txcp",id="2586db0d-54f2-4f86-9592-dfd780e08a24",service="nova-conductor",zone="internal"}'
+        values: '1x30'
+      - series: 'openstack_nova_agent_state{adminState="enabled",disabledReason="",hostname="nova-conductor-597bdfc87-l5r9p",id="468f47b0-3341-4930-a854-fe19b586da38",service="nova-conductor",zone="internal"}'
+        values: '1x30'
+      - series: 'openstack_nova_agent_state{adminState="enabled",disabledReason="",hostname="nova-conductor-597bdfc87-t64dr",id="851580a2-0950-49ea-8a4f-37170bbed6ef",service="nova-conductor",zone="internal"}'
+        values: '1x30'
+      - series: 'openstack_nova_agent_state{adminState="enabled",disabledReason="",hostname="nova-conductor-6c78774ff8-8lr6r",id="25da15ac-497a-4b9d-9c57-ec78c172fae6",service="nova-conductor",zone="internal"}'
+        values: '0x30'
+      - series: 'openstack_nova_agent_state{adminState="enabled",disabledReason="",hostname="nova-conductor-6c78774ff8-xz4cv",id="8ac2fe99-a601-4a72-9ef7-2cd401db3aee",service="nova-conductor",zone="internal"}'
+        values: '0x30'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: NovaServiceGroupDown
+        exp_alerts: []
+
+  - interval: 1m
+    input_series:
+      - series: 'openstack_nova_agent_state{adminState="enabled",disabledReason="",hostname="nova-conductor-597bdfc87-6txcp",id="2586db0d-54f2-4f86-9592-dfd780e08a24",service="nova-conductor",zone="internal"}'
+        values: '0x30'
+      - series: 'openstack_nova_agent_state{adminState="enabled",disabledReason="",hostname="nova-conductor-597bdfc87-l5r9p",id="468f47b0-3341-4930-a854-fe19b586da38",service="nova-conductor",zone="internal"}'
+        values: '0x30'
+      - series: 'openstack_nova_agent_state{adminState="enabled",disabledReason="",hostname="nova-conductor-597bdfc87-t64dr",id="851580a2-0950-49ea-8a4f-37170bbed6ef",service="nova-conductor",zone="internal"}'
+        values: '0x30'
+      - series: 'openstack_nova_agent_state{adminState="enabled",disabledReason="",hostname="nova-conductor-6c78774ff8-8lr6r",id="25da15ac-497a-4b9d-9c57-ec78c172fae6",service="nova-conductor",zone="internal"}'
+        values: '0x30'
+      - series: 'openstack_nova_agent_state{adminState="enabled",disabledReason="",hostname="nova-conductor-6c78774ff8-xz4cv",id="8ac2fe99-a601-4a72-9ef7-2cd401db3aee",service="nova-conductor",zone="internal"}'
+        values: '0x30'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: NovaServiceGroupDown
+        exp_alerts:
+          - exp_labels:
+              severity: P2
+            exp_annotations:
+              summary: "Nova service group down"
+              description: "All instances of a specific Nova service have been down for more than 5 minutes."
