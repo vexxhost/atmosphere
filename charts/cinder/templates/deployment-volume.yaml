@@ -242,11 +242,13 @@ spec:
               readOnly: true
             {{- end }}
             {{- end }}
-            {{- if .Values.conf.cinder.DEFAULT.nfs_shares_config }}
+            {{- range $key, $backend := .Values.conf.backends }}
+            {{- if $backend.nfs_shares_config }}
             - name: cinder-etc
-              mountPath: {{ .Values.conf.cinder.DEFAULT.nfs_shares_config }}
-              subPath: {{ base .Values.conf.cinder.DEFAULT.nfs_shares_config }}
+              mountPath: /etc/cinder/nfs/nfs_shares_{{ $key }}
+              subPath: nfs_shares_{{ $key }}
               readOnly: true
+            {{- end }}
             {{- end }}
             {{- if .Values.conf.enable_iscsi }}
             - name: host-rootfs
