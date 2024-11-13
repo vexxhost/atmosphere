@@ -198,3 +198,9 @@ data:
   external-ceph.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.ceph_client.external_ceph.conf | b64enc }}
 {{- end }}
 {{- end }}
+{{- range $key, $backend := .Values.conf.backends }}
+{{- if $backend.nfs_shares_config }}
+  nfs_shares_{{ $key }}: |
+    {{ $backend.nfs_shares_config | b64enc }}
+{{- end }}
+{{- end }}
