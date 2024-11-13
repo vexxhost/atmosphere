@@ -68,10 +68,17 @@ except:
 # Set Internal Endpoint
 try:
     endpoint_url = os.environ['OS_BOOTSTRAP_INTERNAL_URL']
+    region_id = os.environ['OS_REGION_NAME']
     cmd = ("update endpoint set url = %s where interface ='internal' and "
            "service_id = (select id from service where "
-           "service.type = 'identity')")
-    user_engine.execute(cmd, (endpoint_url,))
+           "service.type = 'identity') and "
+           "region_id = %s")
+    with user_engine.connect() as connection:
+        connection.execute(cmd, (endpoint_url,region_id))
+        try:
+            connection.commit()
+        except AttributeError:
+            pass
 except:
     logger.critical("Could not update internal endpoint")
     raise
@@ -79,10 +86,17 @@ except:
 # Set Admin Endpoint
 try:
     endpoint_url = os.environ['OS_BOOTSTRAP_ADMIN_URL']
+    region_id = os.environ['OS_REGION_NAME']
     cmd = ("update endpoint set url = %s where interface ='admin' "
            "and service_id = (select id from service where "
-           "service.type = 'identity')")
-    user_engine.execute(cmd, (endpoint_url,))
+           "service.type = 'identity') "
+           "and region_id = %s")
+    with user_engine.connect() as connection:
+        connection.execute(cmd, (endpoint_url,region_id))
+        try:
+            connection.commit()
+        except AttributeError:
+            pass
 except:
     logger.critical("Could not update admin endpoint")
     raise
@@ -90,20 +104,28 @@ except:
 # Set Public Endpoint
 try:
     endpoint_url = os.environ['OS_BOOTSTRAP_PUBLIC_URL']
+    region_id = os.environ['OS_REGION_NAME']
     cmd = ("update endpoint set url = %s where interface ='public' "
            "and service_id = (select id from service where "
-           "service.type = 'identity')")
-    user_engine.execute(cmd, (endpoint_url,))
+           "service.type = 'identity') "
+           "and region_id = %s")
+    with user_engine.connect() as connection:
+        connection.execute(cmd, (endpoint_url,region_id))
+        try:
+            connection.commit()
+        except AttributeError:
+            pass
 except:
     logger.critical("Could not update public endpoint")
     raise
 
 # Print endpoints
 try:
-    endpoints = user_engine.execute(
-        ("select interface, url from endpoint where service_id = "
-         "(select id from service where service.type = 'identity')")
-    ).fetchall()
+    with user_engine.connect() as connection:
+        endpoints = connection.execute(
+            ("select interface, url from endpoint where service_id = "
+            "(select id from service where service.type = 'identity')")
+        ).fetchall()
     for row in endpoints:
         logger.info("endpoint ({0}): {1}".format(row[0], row[1]))
 except:
