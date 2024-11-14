@@ -200,7 +200,7 @@ data:
 {{- end }}
 {{- range $key, $backend := .Values.conf.backends }}
 {{- if $backend.nfs_shares_config }}
-  nfs_shares_{{ $key }}: |
-    {{ $backend.nfs_shares_config | b64enc }}
+  nfs-{{ $key }}: |
+    {{ $.Files.Get $backend.nfs_shares_config | b64enc }}
 {{- end }}
 {{- end }}
