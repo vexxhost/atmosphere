@@ -8,6 +8,8 @@
 - job:
     name: atmosphere-golang-go-test
     parent: atmosphere-golang-go
+    pre-run:
+      - zuul.d/playbooks/common/switch-to-atmosphere-mirror.yml
     vars:
       go_command: test ./... -v
 
@@ -34,20 +36,25 @@
 - job:
     name: atmosphere-build-collection
     parent: build-ansible-collection
-    pre-run: zuul.d/playbooks/build-collection/pre.yml
+    pre-run:
+      - zuul.d/playbooks/common/switch-to-atmosphere-mirror.yml
+      - zuul.d/playbooks/build-collection/pre.yml
     irrelevant-files:
       - ^doc/
 
 - job:
     name: atmosphere-publish-collection
     parent: publish-ansible-collection-vexxhost
-    pre-run: zuul.d/playbooks/build-collection/pre.yml
+    pre-run:
+      - zuul.d/playbooks/build-collection/pre.yml
 
 - job:
     name: atmosphere-molecule
     parent: tox
     abstract: true
-    pre-run: zuul.d/playbooks/molecule/pre.yml
+    pre-run:
+      - zuul.d/playbooks/common/switch-to-atmosphere-mirror.yml
+      - zuul.d/playbooks/molecule/pre.yml
     run: zuul.d/playbooks/molecule/run.yml
     post-run: zuul.d/playbooks/molecule/post.yml
     irrelevant-files:
