@@ -1,0 +1,31 @@
+{% set used_lvm_devices = [] %}
+{% set cinder_lvm_devices_filter_override = [] %}
+{% if cinder_lvm_devices_filter_override|length > 0 %}
+    {% set used_lvm_devices = cinder_lvm_devices_filter_override %}
+{% else %}
+    {% set lv_devices = lvm_devices.stdout.split('\n') %}
+    {% if lv_devices|length > 0 %}
+        {% for net in lv_devices %}
+            {% if net != '' %}
+                {% set lv_device = '"a/' + net + '/"' %}
+                {% if used_lvm_devices.append(lv_device) %}{% endif %}
+            {% endif %}
+        {% endfor %}
+    {% endif %}
+
+# Ansible Discovered LVM Devices {{ lv_devices }}
+{% endif %}
+
+{% if used_lvm_devices|length <= 0 %}
+    {# If there are no LVM devices present, allow all devices to be scanned #}
+    {% if used_lvm_devices.append('"a/.*/"') %}{% endif %}
+{% else %}
+    {# Append 'loop.*' to the list to help with AIO deployments. #}
+    {% if used_lvm_devices.append('"a/loop.*/"') %}{% endif %}
+    {# Disable scanning any other devices than the ones listed. #}
+    {% if used_lvm_devices.append('"r/.*/"') %}{% endif %}
+{% endif %}
+
+devices {
+    filter = [ {{ used_lvm_devices|join(', ') }} ]
+}
