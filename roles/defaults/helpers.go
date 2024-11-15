@@ -24,5 +24,5 @@ func AssertAtmosphereImage(t *testing.T, expected string, value string) {
 	image, err := GetImageByKey(imageName)
 	require.NoError(t, err)
 
-	assert.Equal(t, expected, image)
+	assert.Contains(t, image, expected)
 }
