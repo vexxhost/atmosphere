@@ -15,4 +15,5 @@ RUN go build -o main ./cmd/libvirt-tls-sidecar/main.go
 
 FROM registry.atmosphere.dev/library/ubuntu:${RELEASE} AS libvirt-tls-sidecar
 COPY --from=libvirt-tls-sidecar-builder /src/main /usr/bin/libvirt-tls-sidecar
+RUN apt-get update && apt-get install -y libvirt-clients
 ENTRYPOINT ["/usr/bin/libvirt-tls-sidecar"]

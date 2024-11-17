@@ -5,12 +5,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
+	"os/exec"
 	"time"
 
 	cmv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
 	cmmeta "github.com/cert-manager/cert-manager/pkg/apis/meta/v1"
 	cmclient "github.com/cert-manager/cert-manager/pkg/client/clientset/versioned/typed/certmanager/v1"
+	"github.com/digitalocean/go-libvirt"
 	log "github.com/sirupsen/logrus"
 	"github.com/vexxhost/atmosphere/internal/net"
 	v1 "k8s.io/api/core/v1"
@@ -38,6 +41,10 @@ const (
 	EnvVarPodName      = "POD_NAME"
 	EnvVarPodNamespace = "POD_NAMESPACE"
 	EnvVarPodIP        = "POD_IP"
+)
+
+const (
+	qmpCmd = `{"execute": "display-reload", "arguments":{"type": "vnc", "tls-certs": true}}`
 )
 
 type LibvirtCertificateSpec struct {
@@ -229,10 +236,12 @@ func (m *LibvirtManager) watch(ctx context.Context) {
 			AddFunc: func(obj interface{}) {
 				secret := obj.(*v1.Secret)
 				m.write(secret)
+				m.reloadLibvirtTLS()
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				secret := newObj.(*v1.Secret)
 				m.write(secret)
+				m.reloadLibvirtTLS()
 			},
 			DeleteFunc: func(obj interface{}) {
 				m.logger.Fatal("secret deleted")
@@ -260,6 +269,7 @@ func (m *LibvirtManager) write(secret *v1.Secret) {
 		m.writeFile("/etc/pki/qemu/server-key.pem", secret.Data["tls.key"])
 		m.writeFile("/etc/pki/qemu/client-cert.pem", secret.Data["tls.crt"])
 		m.writeFile("/etc/pki/qemu/client-key.pem", secret.Data["tls.key"])
+
 	case LibvirtCertificateTypeVNC:
 		m.createDirectory("/etc/pki/libvirt-vnc")
 		m.writeFile("/etc/pki/libvirt-vnc/ca-cert.pem", secret.Data["ca.crt"])
@@ -313,5 +323,41 @@ func (m *LibvirtManager) writeFile(path string, data []byte) {
 	err = os.WriteFile(path, data, 0644)
 	if err != nil {
 		log.Fatal(err)
+	}
+}
+
+func (m *LibvirtManager) reloadLibvirtTLS() {
+	uri, _ := url.Parse(string(libvirt.QEMUSystem))
+	conn, err := libvirt.ConnectToURI(uri)
+	if err != nil {
+		log.Printf("Failed to connect to %s: %v, skip at sidecar container start", uri, err)
+		return
+	}
+	defer conn.Disconnect()
+
+	switch m.spec.Type {
+	case LibvirtCertificateTypeVNC:
+		flags := libvirt.ConnectListDomainsActive
+		domains, _, err := conn.ConnectListAllDomains(1, flags)
+		if err != nil {
+			log.Printf("Failed to get list of domains: %v", err)
+		}
+
+		for _, dom := range domains {
+			response, err := conn.QEMUDomainMonitorCommand(dom, qmpCmd, 0)
+			time.Sleep(2 * time.Second)
+			if err != nil {
+				log.Printf("Failed to send QMP command to domain %s: %v", dom.Name, err)
+			} else {
+				log.Printf("Domain: %s\nQMP Response: %s\n\n", dom.Name, response)
+			}
+		}
+	case LibvirtCertificateTypeAPI:
+		cmd := exec.Command("virt-admin", "server-update-tls", "libvirtd")
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			log.Printf("reload libvirtd server tls failed with %s\n", err)
+		}
+		log.Printf("reload libvirtd server tls result:\n%s\n", string(out))
 	}
 }
