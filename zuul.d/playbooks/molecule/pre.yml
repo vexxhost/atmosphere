@@ -35,13 +35,6 @@
         opts: nodev,nosuid,size=512M
         state: mounted
 
-    # TODO(mnaser): Drop this when we can use https://github.com/vexxhost/atmosphere/pull/977
-    - name: Prefix all images for the job to point to mirror
-      ansible.builtin.shell: |
-        sed -i '/registry.atmosphere.dev/!s/  \(.*\): \(.*\)$/  \1: registry.atmosphere.dev\/\2/' roles/defaults/vars/main.yml
-      args:
-        chdir: "{{ zuul.project.src_dir }}"
-
     # TODO(mnaser): Drop this when we move to PBR
     - name: Add current folder to Git's safe directories
       become: true
