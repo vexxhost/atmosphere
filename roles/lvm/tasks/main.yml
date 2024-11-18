@@ -13,21 +13,22 @@
 # under the License.
 
 - name: Discover lvm devices
-  shell: >-
+  ansible.builtin.shell: |
+    set -o pipefail
     /sbin/pvdisplay | awk '/PV\ Name/ {print $3}' | sed 's/\/dev\///g'
   register: lvm_devices
   changed_when: lvm_devices.rc != 0
   failed_when: false
 
 - name: Ensure "/etc/lvm" directory
-  file:
+  ansible.builtin.file:
     state: "directory"
     path: "/etc/lvm"
     mode: "0755"
   when: lvm_devices.rc == 0
 
 - name: Drop lvm Config
-  template:
+  ansible.builtin.template:
     src: "lvm.conf.j2"
     dest: "/etc/lvm/lvm.conf"
     owner: "root"
