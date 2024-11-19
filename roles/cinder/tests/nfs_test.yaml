@@ -1,0 +1,51 @@
+suite: nfs_test.yaml
+tests:
+  - it: "should render ConfigMap with specified string data"
+    templates:
+      - templates/configmap-etc.yaml
+    set:
+      conf:
+        backends:
+          nfs:
+            nfs_shares_config: "test_content_1"
+    asserts:
+      - equal:
+          path: data.nfs-nfs
+          value: |
+            dGVzdF9jb250ZW50XzE=
+
+  - it: "should render ConfigMap with specified list data"
+    templates:
+      - templates/configmap-etc.yaml
+    set:
+      conf:
+        backends:
+          nfs:
+            nfs_shares_config:
+              - "test_content_1"
+              - "test_content_2"
+    asserts:
+      - equal:
+          path: data.nfs-nfs
+          value: |
+            dGVzdF9jb250ZW50XzEKdGVzdF9jb250ZW50XzI=
+
+  - it: "should include NFS volume in Deployment"
+    templates:
+      - templates/deployment-volume.yaml
+    documentIndex: 3
+    set:
+      conf:
+        backends:
+          nfs:
+            nfs_shares_config:
+              - "test_content_1"
+              - "test_content_2"
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[?(@.name=='cinder-volume')].volumeMounts[?(@.subPath=='nfs-nfs')]
+          value:
+            name: cinder-etc
+            mountPath: /etc/cinder/nfs/nfs
+            readOnly: true
+            subPath: nfs-nfs
