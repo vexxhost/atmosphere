@@ -30,6 +30,7 @@ except ImportError:
     PARSER_OPTS = {"strict": False}
 import logging
 from sqlalchemy import create_engine
+from sqlalchemy import text
 
 # Create logger, console handler and formatter
 logger = logging.getLogger('OpenStack-Helm DB Drop')
@@ -127,8 +128,13 @@ except:
 # Delete all entries from credential table
 
 try:
-    cmd = "DELETE FROM credential"
-    user_engine.execute(cmd)
+    cmd = text("DELETE FROM credential")
+    with user_engine.connect() as connection:
+        connection.execute(cmd)
+        try:
+            connection.commit()
+        except AttributeError:
+            pass
     logger.info('Deleted all entries in credential table')
 except:
     logger.critical('Failed to clean up credential table in keystone db')
