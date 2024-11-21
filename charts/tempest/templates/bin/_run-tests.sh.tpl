@@ -24,12 +24,19 @@ if [ ! -f /etc/tempest/test-whitelist ]; then
   touch /etc/tempest/test-whitelist
 fi
 
+{{ if .Values.conf.cleanup.previous_run }}
+tempest cleanup --prefix {{ .Values.conf.cleanup.prefix_name }}
+{{ end }}
+
 {{ if .Values.conf.cleanup.enabled }}
+mkdir -p /var/lib/tempest/saved_state
+pushd /var/lib/tempest/saved_state
 tempest cleanup --init-saved-state
 
 if [ "true" == "{{- .Values.conf.cleanup.force -}}" ]; then
 trap "tempest cleanup; exit" 1 ERR
 fi
+popd
 {{- end }}
 
 {{ if .Values.conf.subunit_output }}
@@ -39,6 +46,9 @@ cat /var/lib/tempest/data/results.subunit | subunit2junitxml -o /var/lib/tempest
 {{ .Values.conf.script }}
 {{- end }}
 
-{{ if .Values.conf.cleanup.enabled }}
+{{ if and .Values.conf.cleanup.enabled (not .Values.conf.cleanup.previous_run) }}
+mkdir -p /var/lib/tempest/saved_state
+pushd /var/lib/tempest/saved_state
 tempest cleanup
+popd
 {{- end }}
