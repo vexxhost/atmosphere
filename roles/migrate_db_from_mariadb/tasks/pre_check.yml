@@ -24,11 +24,11 @@
       register: _service_etc_secret
 
     - name: Fetch db connection string secret data
-      set_fact:
+      ansible.builtin.set_fact:
         _service_db_conn_string: "{{ _service_etc_secret.resources[0].data.values() | map('b64decode') | select('search', 'mysql\\+pymysql') }}"
 
     - name: Check if the service uses legacy MariaDB
-      set_fact:
+      ansible.builtin.set_fact:
         _service_uses_mariadb: >-
           {{
             _service_db_conn_string
@@ -39,12 +39,12 @@
 
     - name: Fetch the mariadb username and password
       when: _service_uses_mariadb
-      set_fact:
+      ansible.builtin.set_fact:
         _service_mariadb_credential: "{{ _service_db_conn_string | map('split', 'mysql+pymysql://') | list | map('last') |list | map('split', '@' + migrate_db_from_mariadb_mariadb_service_name) | list | map('first') }}"
 
     - name: Fetch the mariadb username and password
       when: _service_uses_mariadb
-      set_fact:
+      ansible.builtin.set_fact:
         _service_mariadb_username: "{{ _service_mariadb_credential | map('split', ':') | map('first') | join('') }}"
         _service_mariadb_password: "{{ _service_mariadb_credential | map('split', ':') | map('last') | join('') }}"
 
