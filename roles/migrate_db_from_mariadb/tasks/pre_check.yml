@@ -45,8 +45,8 @@
     - name: Fetch the mariadb username and password
       when: _service_uses_mariadb
       set_fact:
-        _service_mariadb_username: "{{ _service_mariadb_credential | map('split', ':') | list | map('first') }}"
-        _service_mariadb_password: "{{ _service_mariadb_credential | map('split', ':') | list | map('last') }}"
+        _service_mariadb_username: "{{ _service_mariadb_credential | map('split', ':') | map('first') | join('') }}"
+        _service_mariadb_password: "{{ _service_mariadb_credential | map('split', ':') | map('last') | join('') }}"
 
 - name: Check if the database exists in PXC already
   when: _service_uses_mariadb

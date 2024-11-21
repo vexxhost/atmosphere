@@ -23,12 +23,15 @@
       heat: heat
 
 - name: Scale down heat service
-  when: _service_uses_mariadb
-  kubernetes.core.k8s:
+  kubernetes.core.k8s_scale:
+    api_version: v1
     kind: Deployment
-    migrate_db_from_mariadb_pxc_namespace: "{{ heat_helm_release_namespace }}"
+    namespace: "{{ heat_helm_release_namespace }}"
     name: "{{ item }}"
     replicas: 0
+    wait_timeout: 60
+  retries: 3
+  delay: 1
   loop:
     - heat-api
     - heat-cfn
