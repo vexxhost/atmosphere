@@ -1,9 +1,10 @@
 # Copyright (c) 2024 VEXXHOST, Inc.
 # SPDX-License-Identifier: Apache-2.0
 
+import glob
 import os
 import subprocess
-import glob
+
 
 def run_helm_unittest(charts_dir, exclusions):
     """
@@ -38,10 +39,12 @@ def run_helm_unittest(charts_dir, exclusions):
         print("\nOne or more charts had test failures.")
         exit(1)
 
+
 def main():
     charts_dir = os.getenv("CHARTS_DIR", "charts")
     exclusions = ["patches"]
     run_helm_unittest(charts_dir, exclusions)
+
 
 if __name__ == "__main__":
     main()
