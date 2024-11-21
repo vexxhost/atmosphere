@@ -56,12 +56,13 @@ metadata:
   name: keystone-fernet-setup
   labels:
 {{ tuple $envAll "keystone" "fernet-setup" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
-{{- if .Values.helm3_hook }}
   annotations:
+{{- if .Values.helm3_hook }}
     "helm.sh/hook": post-install,post-upgrade
     "helm.sh/hook-weight": "-5"
     "helm.sh/hook-delete-policy": before-hook-creation
 {{- end }}
+{{ tuple "keystone_fernet_setup" $envAll | include "helm-toolkit.snippets.custom_job_annotations" | indent 4 }}
 spec:
   template:
     metadata:
