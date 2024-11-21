@@ -1,0 +1,49 @@
+# Copyright (c) 2023 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Check If the service uses legacy mariadb and PXC is fresh
+  ansible.builtin.include_role:
+    name: migrate_db_from_mariadb
+    tasks_from: pre_check
+  vars:
+    migrate_db_from_mariadb_openstack_service: heat
+    migrate_db_from_mariadb_pxc_namespace: "{{ heat_helm_release_namespace }}"
+    migrate_db_from_mariadb_databases:
+      heat: heat
+
+- name: Scale down heat service
+  when: _service_uses_mariadb
+  kubernetes.core.k8s:
+    kind: Deployment
+    migrate_db_from_mariadb_pxc_namespace: "{{ heat_helm_release_namespace }}"
+    name: "{{ item }}"
+    replicas: 0
+  loop:
+    - heat-api
+    - heat-cfn
+    - heat-engine
+
+- name: Migrate the database
+  when: _service_uses_mariadb
+  ansible.builtin.include_role:
+    name: migrate_db_from_mariadb
+    tasks_from: migrate_db
+  vars:
+    migrate_db_from_mariadb_mariadb_namespace: "{{ heat_helm_release_namespace }}"
+    migrate_db_from_mariadb_databases:
+      heat: heat
+
+- name: Run deployment flow
+  ansible.builtin.import_tasks:
+    file: main.yml

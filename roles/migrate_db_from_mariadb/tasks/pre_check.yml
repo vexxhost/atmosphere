@@ -1,0 +1,73 @@
+# Copyright (c) 2023 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Check if the service uses Mariadb
+  run_once: true
+  block:
+    - name: Get the Openstack service secret
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Secret
+        name: "{{ migrate_db_from_mariadb_openstack_service }}-etc"
+        namespace: openstack
+      register: _service_etc_secret
+
+    - name: Fetch db connection string secret data
+      set_fact:
+        _service_db_conn_string: "{{ _service_etc_secret.resources[0].data.values() | map('b64decode') | select('search', 'mysql\\+pymysql') }}"
+
+    - name: Check if the service uses legacy MariaDB
+      set_fact:
+        _service_uses_mariadb: >-
+          {{
+            _service_db_conn_string
+            | select('search', migrate_db_from_mariadb_mariadb_service_name)
+            | list
+            | length > 0
+          }}
+
+    - name: Fetch the mariadb username and password
+      when: _service_uses_mariadb
+      set_fact:
+        _service_mariadb_credential: "{{ _service_db_conn_string | map('split', 'mysql+pymysql://') | list | map('last') |list | map('split', '@' + migrate_db_from_mariadb_mariadb_service_name) | list | map('first') }}"
+
+    - name: Fetch the mariadb username and password
+      when: _service_uses_mariadb
+      set_fact:
+        _service_mariadb_username: "{{ _service_mariadb_credential | map('split', ':') | list | map('first') }}"
+        _service_mariadb_password: "{{ _service_mariadb_credential | map('split', ':') | list | map('last') }}"
+
+- name: Check if the database exists in PXC already
+  when: _service_uses_mariadb
+  run_once: true
+  block:
+    - name: Get the Kuberentes service for Percona XtraDB Cluster
+      run_once: true
+      kubernetes.core.k8s_info:
+        kind: Service
+        name: "{{ openstack_helm_endpoints.oslo_db.hosts.default }}"
+        namespace: "{{ migrate_db_from_mariadb_pxc_namespace }}"
+      register: _pxc_service
+
+    - name: Fail if the databases already exist
+      run_once: true
+      check_mode: true
+      community.mysql.mysql_db:
+        login_host: "{{ _pxc_service.resources[0].spec.clusterIP }}"
+        login_user: root
+        login_password: "{{ openstack_helm_endpoints.oslo_db.auth.admin.password }}"
+        name: "{{ item.value }}"
+      register: _pxc_db_check
+      failed_when: _pxc_db_check is not changed
+      loop: "{{ migrate_db_from_mariadb_databases | dict2items }}"
