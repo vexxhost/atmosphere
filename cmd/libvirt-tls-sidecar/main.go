@@ -1,85 +1,84 @@
 // Copyright (c) 2024 VEXXHOST, Inc.
-//
-// Licensed under the Apache License, Version 2.0 (the "License"); you may
-// not use this file except in compliance with the License. You may obtain
-// a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-// WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-// License for the specific language governing permissions and limitations
-// under the License.
+// SPDX-License-Identifier: Apache-2.0
 
 package main
 
 import (
 	"context"
 	"fmt"
-	"os"
 
-	cmmeta "github.com/cert-manager/cert-manager/pkg/apis/meta/v1"
+	"github.com/kelseyhightower/envconfig"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/client-go/rest"
 
-	"github.com/vexxhost/atmosphere/internal/tls"
+	"github.com/vexxhost/pod-tls-sidecar/pkg/template"
+	"github.com/vexxhost/pod-tls-sidecar/pkg/tls"
 )
 
-const (
-	EnvVarApiIssuerKind = "API_ISSUER_KIND"
-	EnvVarApiIssuerName = "API_ISSUER_NAME"
-	EnvVarVncIssuerKind = "VNC_ISSUER_KIND"
-	EnvVarVncIssuerName = "VNC_ISSUER_NAME"
-)
+type IssuerInfo struct {
+	Kind string `envconfig:"ISSUER_KIND" required:"true"`
+	Name string `envconfig:"ISSUER_NAME" required:"true"`
+}
 
 func main() {
+	var apiIssuer IssuerInfo
+	if err := envconfig.Process("API", &apiIssuer); err != nil {
+		log.Fatal(err)
+	}
+
+	var vncIssuer IssuerInfo
+	if err := envconfig.Process("VNC", &vncIssuer); err != nil {
+		log.Fatal(err)
+	}
+
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	required := []string{
-		EnvVarApiIssuerKind,
-		EnvVarApiIssuerName,
-		EnvVarVncIssuerKind,
-		EnvVarVncIssuerName,
-	}
-
-	for _, env := range required {
-		if os.Getenv(env) == "" {
-			log.Fatal(fmt.Sprintf("missing required environment variable: %s", env))
-		}
-	}
-
 	ctx := context.Background()
-	go createCertificateSpec(ctx, config, tls.LibvirtCertificateTypeAPI)
-	go createCertificateSpec(ctx, config, tls.LibvirtCertificateTypeVNC)
+
+	go createCertificateSpec(ctx, config, "api", &apiIssuer, &tls.WritePathConfig{
+		CertificateAuthorityPaths: []string{"/etc/pki/CA/cacert.pem", "/etc/pki/qemu/ca-cert.pem"},
+		CertificatePaths:          []string{"/etc/pki/libvirt/servercert.pem", "/etc/pki/libvirt/clientcert.pem", "/etc/pki/qemu/server-cert.pem", "/etc/pki/qemu/client-cert.pem"},
+		CertificateKeyPaths:       []string{"/etc/pki/libvirt/private/serverkey.pem", "/etc/pki/libvirt/private/clientkey.pem", "/etc/pki/qemu/server-key.pem", "/etc/pki/qemu/client-key.pem"},
+	})
+	go createCertificateSpec(ctx, config, "vnc", &vncIssuer, &tls.WritePathConfig{
+		CertificateAuthorityPaths: []string{"/etc/pki/libvirt-vnc/ca-cert.pem"},
+		CertificatePaths:          []string{"/etc/pki/libvirt-vnc/server-cert.pem"},
+		CertificateKeyPaths:       []string{"/etc/pki/libvirt-vnc/server-key.pem"},
+	})
 
 	<-ctx.Done()
 }
 
-func createCertificateSpec(ctx context.Context, config *rest.Config, certificateType tls.LibvirtCertificateType) {
-	var issuerRef cmmeta.ObjectReference
-	switch certificateType {
-	case tls.LibvirtCertificateTypeAPI:
-		issuerRef = cmmeta.ObjectReference{
-			Kind: os.Getenv(EnvVarApiIssuerKind),
-			Name: os.Getenv(EnvVarApiIssuerName),
-		}
-	case tls.LibvirtCertificateTypeVNC:
-		issuerRef = cmmeta.ObjectReference{
-			Kind: os.Getenv(EnvVarVncIssuerKind),
-			Name: os.Getenv(EnvVarVncIssuerName),
-		}
+func createCertificateSpec(ctx context.Context, config *rest.Config, name string, issuer *IssuerInfo, writePathConfig *tls.WritePathConfig) {
+	tmpl, err := template.New(fmt.Sprintf(`
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+	name: {{ .PodInfo.Name }}-%s
+	namespace: {{ .PodInfo.Namespace }}
+spec:
+	commonName: "{{ .FQDN }}"
+	dnsNames:
+		- "{{ .Hostname }}"
+		- "{{ .FQDN }}"
+	ipAddresses:
+		- "{{ .PodInfo.IP }}"
+	usages:
+		- client auth
+		- server auth
+	issuerRef:
+		kind: %s
+		name: %s
+	secretName: {{ .PodInfo.Name }}-%s
+`, name, issuer.Kind, issuer.Name, name))
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	spec := &tls.LibvirtCertificateSpec{
-		Type:      certificateType,
-		IssuerRef: issuerRef,
-	}
-
-	manager, err := tls.NewLibvirtManager(config, spec)
+	manager, err := tls.NewManager(config, tmpl, writePathConfig)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -89,9 +88,5 @@ func createCertificateSpec(ctx context.Context, config *rest.Config, certificate
 		log.Fatal(err)
 	}
 
-	log.WithFields(log.Fields{
-		"certificateType": certificateType,
-	}).Info("certificate created")
-
-	go manager.Watch(ctx)
+	manager.Watch(ctx)
 }

@@ -10,7 +10,6 @@ RUN go mod download
 
 FROM go-builder AS libvirt-tls-sidecar-builder
 COPY cmd/ /src/cmd/
-COPY internal/ /src/internal/
 RUN go build -o main ./cmd/libvirt-tls-sidecar/main.go
 
 FROM registry.atmosphere.dev/library/ubuntu:${RELEASE} AS libvirt-tls-sidecar
