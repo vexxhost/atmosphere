@@ -38,21 +38,21 @@ func main() {
 
 	ctx := context.Background()
 
-	go createCertificateSpec(ctx, config, "api", &apiIssuer, &tls.WritePathConfig{
+	go createCertificateSpec(ctx, "api", &apiIssuer, tls.WithRestConfig(config), tls.WithPaths(&tls.WritePathConfig{
 		CertificateAuthorityPaths: []string{"/etc/pki/CA/cacert.pem", "/etc/pki/qemu/ca-cert.pem"},
 		CertificatePaths:          []string{"/etc/pki/libvirt/servercert.pem", "/etc/pki/libvirt/clientcert.pem", "/etc/pki/qemu/server-cert.pem", "/etc/pki/qemu/client-cert.pem"},
 		CertificateKeyPaths:       []string{"/etc/pki/libvirt/private/serverkey.pem", "/etc/pki/libvirt/private/clientkey.pem", "/etc/pki/qemu/server-key.pem", "/etc/pki/qemu/client-key.pem"},
-	})
-	go createCertificateSpec(ctx, config, "vnc", &vncIssuer, &tls.WritePathConfig{
+	}))
+	go createCertificateSpec(ctx, "vnc", &vncIssuer, tls.WithRestConfig(config), tls.WithPaths(&tls.WritePathConfig{
 		CertificateAuthorityPaths: []string{"/etc/pki/libvirt-vnc/ca-cert.pem"},
 		CertificatePaths:          []string{"/etc/pki/libvirt-vnc/server-cert.pem"},
 		CertificateKeyPaths:       []string{"/etc/pki/libvirt-vnc/server-key.pem"},
-	})
+	}))
 
 	<-ctx.Done()
 }
 
-func createCertificateSpec(ctx context.Context, config *rest.Config, name string, issuer *IssuerInfo, writePathConfig *tls.WritePathConfig) {
+func createCertificateSpec(ctx context.Context, name string, issuer *IssuerInfo, opts ...tls.Option) {
 	tmpl, err := template.New(fmt.Sprintf(`
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -78,7 +78,17 @@ spec:
 		log.Fatal(err)
 	}
 
-	manager, err := tls.NewManager(config, tmpl, writePathConfig)
+	args := []tls.Option{
+		tls.WithTemplate(tmpl),
+	}
+	args = append(args, opts...)
+
+	config, err := tls.NewConfig(args...)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	manager, err := tls.NewManager(config)
 	if err != nil {
 		log.Fatal(err)
 	}
