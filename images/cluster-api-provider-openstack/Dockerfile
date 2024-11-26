@@ -2,13 +2,13 @@
 # Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
 
 FROM alpine/git:2.43.0 AS src
-ARG CAPO_VERSION=v0.9.0
+ARG CAPO_VERSION=v0.11.2
 ADD https://github.com/kubernetes-sigs/cluster-api-provider-openstack.git#${CAPO_VERSION} /src
 WORKDIR /src
-COPY /patches /patches
-RUN git apply /patches/*.patch
+# COPY /patches /patches
+# RUN git apply /patches/*.patch
 
-FROM golang:1.20 AS builder
+FROM golang:1.22 AS builder
 COPY --from=src --link /src /src
 WORKDIR /src
 ARG ARCH
