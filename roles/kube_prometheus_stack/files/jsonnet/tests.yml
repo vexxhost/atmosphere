@@ -76,11 +76,11 @@ tests:
   - interval: 1m
     input_series:
       - series: 'node_time_seconds{instance="instance1", job="node"}'
-        values: '1732000000'
+        values: '0 60 120 180 240 300'
       - series: 'node_time_seconds{instance="instance2", job="node"}'
-        values: '1732000000'
+        values: '1 61 121 181 241 301'
       - series: 'node_time_seconds{instance="instance3", job="node"}'
-        values: '1732000001'
+        values: '2 62 122 182 242 302'
     alert_rule_test:
       - eval_time: 5m
         alertname: NodeTimeSkewDetected
@@ -91,4 +91,4 @@ tests:
               job: node
             exp_annotations:
               summary: "Node instance3 has a time difference."
-              description: "Node instance3 has a time difference 1."
+              description: "Node instance3 has a time difference 2."
