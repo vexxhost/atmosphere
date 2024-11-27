@@ -407,6 +407,20 @@
               description: 'Systemd service {{ $labels.name }} has entered failed state at {{ $labels.instance }}',
             },
           },
+          {
+            alert: 'NodeTimeSkewDetected',
+            expr: |||
+              node_time_seconds{%(nodeExporterSelector)s} - on() group_left min(node_time_seconds{%(nodeExporterSelector)s}) > 0
+            ||| % $._config,
+            'for': '5m',
+            labels: {
+              severity: 'warning',
+            },
+            annotations: {
+              summary: 'Node {{ $labels.instance }} has a time difference.',
+              description: 'Node {{ $labels.instance }} has a time difference {{ $value }}.',
+            },
+          },
         ],
       },
     ],
