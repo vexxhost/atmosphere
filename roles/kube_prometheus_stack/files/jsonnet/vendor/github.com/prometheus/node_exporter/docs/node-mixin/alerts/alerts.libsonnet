@@ -410,7 +410,7 @@
           {
             alert: 'NodeTimeSkewDetected',
             expr: |||
-              node_time_seconds{%(nodeExporterSelector)s} - on() group_left min(node_time_seconds{%(nodeExporterSelector)s}) > 0
+              abs(timestamp(node_time_seconds{%(nodeExporterSelector)s}) - node_time_seconds{%(nodeExporterSelector)s}) > 1
             ||| % $._config,
             'for': '5m',
             labels: {
