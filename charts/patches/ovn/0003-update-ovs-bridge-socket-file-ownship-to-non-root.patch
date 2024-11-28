@@ -1,0 +1,13 @@
+diff --git a/charts/ovn/templates/bin/_ovn-controller-init.sh.tpl b/charts/ovn/templates/bin/_ovn-controller-init.sh.tpl
+index b1960212..8da8416f 100644
+--- a/ovn/templates/bin/_ovn-controller-init.sh.tpl
++++ b/ovn/templates/bin/_ovn-controller-init.sh.tpl
+@@ -169,5 +169,8 @@ do
+   then
+     ovs-vsctl --may-exist add-port $bridge $iface
+     migrate_ip_from_nic $iface $bridge
++  # update bridge socket file to non root owner 42424
++  chown 42424:42424 /var/run/openvswitch/*.mgmt
++  chown 42424:42424 /var/run/openvswitch/*.snoop
+   fi
+ done
