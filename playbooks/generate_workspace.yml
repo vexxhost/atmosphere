@@ -59,6 +59,15 @@
         ceph_mon_fsid: "{{ ceph_fsid }}"
         ceph_mon_public_network: "{{ ceph_public_network }}"
 
+    - name: Load the latest Ceph control plane configuration
+      ansible.builtin.include_vars:
+       file: "{{ _ceph_path }}"
+       name: ceph
+
+    - name: set ceph_fsid
+      ansible.builtin.set_fact:
+       ceph: "{{ ceph| combine({'ceph_fsid': ceph['ceph_mon_fsid']}) }}"
+
     - name: Write new Ceph control plane configuration file to disk
       ansible.builtin.copy:
         content: "{{ ceph | to_nice_yaml(indent=2, width=180) }}"
