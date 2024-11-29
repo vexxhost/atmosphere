@@ -72,3 +72,36 @@ tests:
             exp_annotations:
               summary: "Nova service group down"
               description: "All instances of a specific Nova service have been down for more than 5 minutes."
+
+  - interval: 1m
+    input_series:
+      - series: 'node_time_seconds{instance="instance1", job="node"}'
+        values: '0 60 120 180 240 300'
+      - series: 'node_time_seconds{instance="instance2", job="node"}'
+        values: '1 61 121 181 241 301'
+      - series: 'node_time_seconds{instance="instance3", job="node"}'
+        values: '2 62 122 182 242 302'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: NodeTimeSkewDetected
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+              instance: instance3
+              job: node
+            exp_annotations:
+              summary: "Node instance3 has a time difference."
+              description: "Node instance3 has a time difference 2."
+
+  - interval: 1m
+    input_series:
+      - series: 'node_time_seconds{instance="instance1", job="node"}'
+        values: '0 60 120 180 240 300'
+      - series: 'node_time_seconds{instance="instance2", job="node"}'
+        values: '0 60 120 180 240 300'
+      - series: 'node_time_seconds{instance="instance3", job="node"}'
+        values: '0 60 120 180 240 300'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: NodeTimeSkewDetected
+        exp_alerts: []
