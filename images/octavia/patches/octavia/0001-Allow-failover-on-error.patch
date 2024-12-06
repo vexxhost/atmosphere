@@ -1,0 +1,335 @@
+From 4a639f5c0f75cc5e58adf2e247808836de9a0d23 Mon Sep 17 00:00:00 2001
+From: ricolin <rlin@vexxhost.com>
+Date: Mon, 11 Nov 2024 19:04:39 +0800
+Subject: [PATCH] Allow failover on error
+
+Add config `failover_on_error` to allow Amphora failover with `ERROR`
+status.
+Add config `failover_on_error_max_retries` to allow limit retries for
+Amphora failover with `ERROR` status. Set to -1 to drop the limitation.
+
+Add column `error_retries` to Amphora table for allow tracking error retry
+counts.
+
+A lot of Amphora `ERROR` are able to solved by running failover on LB.
+With nothing change on original scenario, these new configs allow
+environments to do failover automatically for Amphora on ERROR status.
+
+Change-Id: Icff02f7a621cc13a8a0383e1b322f96027c421a6
+---
+ octavia/common/config.py                      | 11 ++++++
+ octavia/common/constants.py                   |  3 ++
+ octavia/common/data_models.py                 |  4 +-
+ .../healthmanager/health_manager.py           |  3 +-
+ .../controller/worker/v2/controller_worker.py | 23 +++++++++--
+ .../worker/v2/flows/amphora_flows.py          |  2 +-
+ .../worker/v2/tasks/database_tasks.py         |  3 +-
+ .../6c59498c8922_add_error_retries.py         | 39 +++++++++++++++++++
+ octavia/db/models.py                          |  1 +
+ octavia/db/repositories.py                    | 34 ++++++++++++++--
+ ...ror-amphora-failover-ab882982adc05f01.yaml | 24 ++++++++++++
+ 15 files changed, 202 insertions(+), 32 deletions(-)
+ create mode 100644 octavia/db/migration/alembic_migrations/versions/6c59498c8922_add_error_retries.py
+ create mode 100644 releasenotes/notes/allow-error-amphora-failover-ab882982adc05f01.yaml
+
+diff --git a/octavia/common/config.py b/octavia/common/config.py
+index a414b737e..c115f279f 100644
+--- a/octavia/common/config.py
++++ b/octavia/common/config.py
+@@ -309,6 +309,17 @@ health_manager_opts = [
+                default=10,
+                mutable=True,
+                help=_('Sleep time between sending heartbeats.')),
++    cfg.BoolOpt('failover_on_error', default=False,
++                help=_('Set this to True to allow failover when amphora '
++                       'status in Error. Beware that, try to performing '
++                       'failover when ERROR status might not help to solve '
++                       'the ERROR status for Amphora. '
++                       'So use this option with caution.')),
++    cfg.IntOpt('failover_on_error_max_retries',
++               default=3,
++               min=-1,
++               help=_('Retry threshold for failover on an ERROR amphora.'
++                      'Setting "-1" to remove the threshold.')),
+ ]
+ 
+ oslo_messaging_opts = [
+diff --git a/octavia/common/constants.py b/octavia/common/constants.py
+index 7e31cc2ad..bf0ffd31f 100644
+--- a/octavia/common/constants.py
++++ b/octavia/common/constants.py
+@@ -977,3 +977,6 @@ NFT_TABLE = 'amphora_table'
+ NFT_CHAIN = 'amphora_chain'
+ NFT_VIP_CHAIN = 'amphora_vip_chain'
+ PROTOCOL = 'protocol'
++
++# Amphora failover retries on ERROR status
++AMP_ERR_RETRIES = 'error_retries'
+diff --git a/octavia/common/data_models.py b/octavia/common/data_models.py
+index b416c25e7..059684561 100644
+--- a/octavia/common/data_models.py
++++ b/octavia/common/data_models.py
+@@ -620,7 +620,8 @@ class Amphora(BaseDataModel):
+                  load_balancer=None, role=None, cert_expiration=None,
+                  cert_busy=False, vrrp_interface=None, vrrp_id=None,
+                  vrrp_priority=None, cached_zone=None, created_at=None,
+-                 updated_at=None, image_id=None, compute_flavor=None):
++                 updated_at=None, image_id=None, compute_flavor=None,
++                 error_retries=0):
+         self.id = id
+         self.load_balancer_id = load_balancer_id
+         self.compute_id = compute_id
+@@ -642,6 +643,7 @@ class Amphora(BaseDataModel):
+         self.updated_at = updated_at
+         self.image_id = image_id
+         self.compute_flavor = compute_flavor
++        self.error_retries = error_retries
+ 
+     def delete(self):
+         for amphora in self.load_balancer.amphorae:
+diff --git a/octavia/controller/healthmanager/health_manager.py b/octavia/controller/healthmanager/health_manager.py
+index 1ba19c025..d037564e9 100644
+--- a/octavia/controller/healthmanager/health_manager.py
++++ b/octavia/controller/healthmanager/health_manager.py
+@@ -138,7 +138,8 @@ class HealthManager:
+ 
+             LOG.info("Stale amphora's id is: %s", amp_health.amphora_id)
+             fut = self.executor.submit(
+-                self.cw.failover_amphora, amp_health.amphora_id, reraise=True)
++                self.cw.failover_amphora, amp_health.amphora_id, reraise=True,
++                count_error_retries=True)
+             fut.add_done_callback(
+                 functools.partial(update_stats_on_done, stats)
+             )
+diff --git a/octavia/controller/worker/v2/controller_worker.py b/octavia/controller/worker/v2/controller_worker.py
+index fa1feb216..1ad6616a0 100644
+--- a/octavia/controller/worker/v2/controller_worker.py
++++ b/octavia/controller/worker/v2/controller_worker.py
+@@ -395,7 +395,8 @@ class ControllerWorker:
+                  constants.BUILD_TYPE_PRIORITY:
+                  constants.LB_CREATE_NORMAL_PRIORITY,
+                  lib_consts.FLAVOR: flavor,
+-                 lib_consts.AVAILABILITY_ZONE: availability_zone}
++                 lib_consts.AVAILABILITY_ZONE: availability_zone,
++                 constants.AMP_ERR_RETRIES: 0}
+ 
+         topology = lb.topology
+         if (not CONF.nova.enable_anti_affinity or
+@@ -976,7 +977,8 @@ class ControllerWorker:
+             flow_utils.get_update_l7rule_flow,
+             store=store)
+ 
+-    def failover_amphora(self, amphora_id, reraise=False):
++    def failover_amphora(self, amphora_id, reraise=False,
++                         count_error_retries=False):
+         """Perform failover operations for an amphora.
+ 
+         Note: This expects the load balancer to already be in
+@@ -984,6 +986,8 @@ class ControllerWorker:
+ 
+         :param amphora_id: ID for amphora to failover
+         :param reraise: If enabled reraise any caught exception
++        :param count_error_retries: If enabled allows counts Amphora failover
++        on ERROR status
+         :returns: None
+         :raises octavia.common.exceptions.NotFound: The referenced amphora was
+                                                     not found
+@@ -1013,6 +1017,17 @@ class ControllerWorker:
+                                                      amphora_id=amphora.id)
+                 return
+ 
++            if amphora.status == constants.ERROR:
++                amp_err_retries = getattr(
++                    amphora, constants.AMP_ERR_RETRIES, 0
++                )
++                if count_error_retries:
++                    amp_err_retries += 1
++            else:
++                # It's no longer failover on ERROR status,
++                # clean it for new Amphora.
++                amp_err_retries = 0
++
+             loadbalancer = None
+             if amphora.load_balancer_id:
+                 with session.begin():
+@@ -1066,7 +1081,9 @@ class ControllerWorker:
+                              constants.SERVER_GROUP_ID: server_group_id,
+                              constants.LOADBALANCER_ID: lb_id,
+                              constants.VIP: vip_dict,
+-                             constants.ADDITIONAL_VIPS: additional_vip_dicts}
++                             constants.ADDITIONAL_VIPS: additional_vip_dicts,
++                             constants.AMP_ERR_RETRIES: amp_err_retries,
++                             }
+ 
+             self.run_flow(
+                 flow_utils.get_failover_amphora_flow,
+diff --git a/octavia/controller/worker/v2/flows/amphora_flows.py b/octavia/controller/worker/v2/flows/amphora_flows.py
+index 45816b2f7..ff624a8d6 100644
+--- a/octavia/controller/worker/v2/flows/amphora_flows.py
++++ b/octavia/controller/worker/v2/flows/amphora_flows.py
+@@ -94,7 +94,7 @@ class AmphoraFlows:
+         create_amp_for_lb_subflow = linear_flow.Flow(sf_name)
+         create_amp_for_lb_subflow.add(database_tasks.CreateAmphoraInDB(
+             name=sf_name + '-' + constants.CREATE_AMPHORA_INDB,
+-            requires=constants.LOADBALANCER_ID,
++            requires=(constants.LOADBALANCER_ID, constants.AMP_ERR_RETRIES),
+             provides=constants.AMPHORA_ID))
+ 
+         create_amp_for_lb_subflow.add(cert_task.GenerateServerPEMTask(
+diff --git a/octavia/controller/worker/v2/tasks/database_tasks.py b/octavia/controller/worker/v2/tasks/database_tasks.py
+index 48b4d92d4..3ccfcc44b 100644
+--- a/octavia/controller/worker/v2/tasks/database_tasks.py
++++ b/octavia/controller/worker/v2/tasks/database_tasks.py
+@@ -102,7 +102,8 @@ class CreateAmphoraInDB(BaseDatabaseTask):
+                 id=uuidutils.generate_uuid(),
+                 load_balancer_id=loadbalancer_id,
+                 status=constants.PENDING_CREATE,
+-                cert_busy=False)
++                cert_busy=False,
++                **kwargs)
+         if loadbalancer_id:
+             LOG.info("Created Amphora %s in DB for load balancer %s",
+                      amphora.id, loadbalancer_id)
+diff --git a/octavia/db/migration/alembic_migrations/versions/6c59498c8922_add_error_retries.py b/octavia/db/migration/alembic_migrations/versions/6c59498c8922_add_error_retries.py
+new file mode 100644
+index 000000000..a1b51daad
+--- /dev/null
++++ b/octavia/db/migration/alembic_migrations/versions/6c59498c8922_add_error_retries.py
+@@ -0,0 +1,39 @@
++#    Licensed under the Apache License, Version 2.0 (the "License"); you may
++#    not use this file except in compliance with the License. You may obtain
++#    a copy of the License at
++#
++#         http://www.apache.org/licenses/LICENSE-2.0
++#
++#    Unless required by applicable law or agreed to in writing, software
++#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
++#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
++#    License for the specific language governing permissions and limitations
++#    under the License.
++
++"""add error retries
++
++Revision ID: 6c59498c8922
++Revises: db2a73e82626
++Create Date: 2024-11-15 20:31:44.758804
++
++"""
++
++from alembic import op
++import sqlalchemy as sa
++
++
++# revision identifiers, used by Alembic.
++revision = '6c59498c8922'
++down_revision = 'db2a73e82626'
++
++
++def upgrade():
++    op.add_column(
++        'amphora',
++        sa.Column(
++            'error_retries',
++            sa.Integer(),
++            default=0,
++            nullable=False
++        )
++    )
+diff --git a/octavia/db/models.py b/octavia/db/models.py
+index e1ab20ba3..63c109a85 100644
+--- a/octavia/db/models.py
++++ b/octavia/db/models.py
+@@ -703,6 +703,7 @@ class Amphora(base_models.BASE, base_models.IdMixin, models.TimestampMixin):
+     load_balancer = orm.relationship("LoadBalancer", uselist=False,
+                                      back_populates='amphorae')
+     compute_flavor = sa.Column(sa.String(255), nullable=True)
++    error_retries = sa.Column(sa.Integer(), default=0, nullable=False)
+ 
+     def __str__(self):
+         return (f"Amphora(id={self.id!r}, load_balancer_id="
+diff --git a/octavia/db/repositories.py b/octavia/db/repositories.py
+index 48656540e..bed58c450 100644
+--- a/octavia/db/repositories.py
++++ b/octavia/db/repositories.py
+@@ -27,6 +27,8 @@ from oslo_db import exception as db_exception
+ from oslo_log import log as logging
+ from oslo_serialization import jsonutils
+ from oslo_utils import uuidutils
++from sqlalchemy import and_
++from sqlalchemy import or_
+ from sqlalchemy.orm import noload
+ from sqlalchemy.orm import Session
+ from sqlalchemy.orm import subqueryload
+@@ -1605,11 +1607,35 @@ class AmphoraHealthRepository(BaseRepository):
+         # We don't want to attempt to failover amphora that are not
+         # currently in the ALLOCATED or FAILOVER_STOPPED state.
+         # i.e. Not DELETED, PENDING_*, etc.
++        # But if CONF.health_manager.failover_on_error is set, we will allow
++        # performing failover when Amphora on ERROR status with certain
++        # conditions.
++        allow_status = [
++            consts.AMPHORA_ALLOCATED,
++            consts.AMPHORA_FAILOVER_STOPPED
++        ]
++        if CONF.health_manager.failover_on_error:
++            limit = CONF.health_manager.failover_on_error_max_retries
++            error_status = [consts.ERROR]
++            if limit == -1:
++                # No limit on ERROR Amphora retries
++                where_subquery = models.Amphora.status.in_(
++                    allow_status + error_status
++                )
++            else:
++                # Limit on ERROR Amphora retries
++                where_subquery = or_(
++                    models.Amphora.status.in_(allow_status),
++                    and_(
++                        models.Amphora.status.in_(error_status),
++                        models.Amphora.error_retries < limit)
++                )
++        else:
++            where_subquery = models.Amphora.status.in_(allow_status)
++
+         allocated_amp_ids_subquery = (
+-            select(models.Amphora.id).where(
+-                models.Amphora.status.in_(
+-                    [consts.AMPHORA_ALLOCATED,
+-                     consts.AMPHORA_FAILOVER_STOPPED])))
++            select(models.Amphora.id).where(where_subquery)
++        )
+ 
+         # Pick one expired amphora for automatic failover
+         amp_health = lock_session.query(
+diff --git a/releasenotes/notes/allow-error-amphora-failover-ab882982adc05f01.yaml b/releasenotes/notes/allow-error-amphora-failover-ab882982adc05f01.yaml
+new file mode 100644
+index 000000000..5fabe45ff
+--- /dev/null
++++ b/releasenotes/notes/allow-error-amphora-failover-ab882982adc05f01.yaml
+@@ -0,0 +1,24 @@
++---
++features:
++  - |
++    Allow failover on Amphora in ERROR status. Also tracing the retries counts
++    on failover Amphora in ERROR status. The counting is recorded in
++    DB (Amphora.error_retries) and will get cleaned when
++    Amphora able to run failover on non-ERROR status.
++    If retry counts hits max retries limit, it will requires more investigate
++    and running failover manually (if needs).
++    For this feature, we add config `[health_manager]/failover_on_error`
++    (disable by default) to allow health manager pick up any Amphora in both
++    ERROR status and expired on heartbeats conditions when looking for stale
++    Amphora to failover.
++    Also add config `[health_manager]/failover_on_error_max_retries`
++    (default to 0) to control max retries to run failover on error status
++    Amphora. Set to `-1` to allow unlimited retries.
++    Beware that, try to performing failover when ERROR
++    status might not help to solve the ERROR status for Amphora.
++    So use this option with caution.
++
++upgrade:
++  - |
++    Upgrade requires a database migration to update amphora table.
++    Add `error_retries` column for tracing Amphora error status retries.
+-- 
+2.25.1
+
