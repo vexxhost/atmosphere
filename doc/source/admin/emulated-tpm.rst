@@ -3,9 +3,6 @@ Emulated Trusted Platform Module (vTPM)
 #######################################
 
 
-Starting in the 22.0.0 (Victoria) release, Nova supports adding an emulated virtual
-Trusted Platform Module (vTPM) to guests.
-
 The vTPM feature is enabled by default, so just verify and configure the flavor with
 vTPM.
 
@@ -20,6 +17,8 @@ Verify vTPM support by inspecting the traits on the compute node’s resource pr
  $ openstack resource provider trait list $COMPUTE_UUID | grep SECURITY_TPM
  | COMPUTE_SECURITY_TPM_1_2 |
  | COMPUTE_SECURITY_TPM_2_0 |
+
+$HOST represents the hostname of the compute node where you want to verify vTPM support.
 
 
 Configuring a flavor or image
@@ -36,6 +35,14 @@ For example, to configure a flavor to use the TPM 2.0 with the CRB model:
 
    $ openstack flavor create test.vtpm \
     --ram 512 --disk 1 --vcpus 1  \
+    --property hw:tpm_version=2.0 \
+    --property hw:tpm_model=tpm-crb
+
+To configure a image to use the TPM 2.0 with CRB model:
+
+.. code-block:: console
+
+   $ openstack image set <image-name-or-uuid> \
     --property hw:tpm_version=2.0 \
     --property hw:tpm_model=tpm-crb
 
