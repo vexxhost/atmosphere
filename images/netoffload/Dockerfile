@@ -9,7 +9,7 @@ ADD https://github.com/vexxhost/netoffload.git#${NETOFFLOAD_GIT_REF} /src
 WORKDIR /src
 RUN go build -v -o offloadctl ./cmd/offloadctl/main.go
 
-FROM registry.atmosphere.dev/library/ubuntu:${RELEASE}
+FROM harbor.atmosphere.dev/library/ubuntu:${RELEASE}
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \
