@@ -16,6 +16,10 @@ local disabledAlerts = [
   // * Dropped `CephPGImbalance`
   // the balancer module takes care of this
   'CephPGImbalance',
+
+  // * Dropped `MySQLDown` due to noisy alerts even
+  //   the replication still more than minimum
+  'MySQLDown',
 ];
 
 // NOTE(mnaser): This is the default mapping for severities:
@@ -140,6 +144,29 @@ local mixins = {
               labels: {
                 severity: 'warning',
               },
+            },
+            {
+              alert: 'MysqlClusterDown',
+              'for': '1m',
+              expr: 'count(mysql_up==0) != count(mysql_up)',
+              labels: {
+                severity: 'info',
+              },
+              annotations: {
+                summary: '{{ $value }} percona-xtradb replication down',
+              },
+            },
+            {
+              alert: 'MysqlClusterDown',
+              'for': '1m',
+              expr: 'count(mysql_up==1) < 3',
+              labels: {
+                severity: 'warning',
+              },
+              annotations: {
+                summary: 'Only {{ $value }} percona-xtradb cluster are online',
+                description: "percona-xtradb cluster less than 3 replication, please check with kubectl get pods -n openstack -l app.kubernetes.io/component=pxc",
+              },              
             },
           ],
         },
