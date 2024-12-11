@@ -3,7 +3,7 @@
 
 ARG RELEASE
 
-FROM golang:1.18 AS octavia-test-server
+FROM harbor.atmosphere.dev/docker.io/library/golang:1.18 AS octavia-test-server
 ADD --keep-git-dir=true https://opendev.org/openstack/octavia-tempest-plugin.git#master /src
 RUN GO111MODULE=off CGO_ENABLED=0 GOOS=linux go build \
     -a -ldflags '-s -w -extldflags -static' \

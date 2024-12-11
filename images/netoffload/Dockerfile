@@ -3,7 +3,7 @@
 
 ARG RELEASE
 
-FROM golang:1.20 AS build
+FROM harbor.atmosphere.dev/docker.io/library/golang:1.20 AS build
 ARG NETOFFLOAD_GIT_REF=94b8c0fdb0b83bd1b7e14b9a58077a047c78a800
 ADD https://github.com/vexxhost/netoffload.git#${NETOFFLOAD_GIT_REF} /src
 WORKDIR /src
