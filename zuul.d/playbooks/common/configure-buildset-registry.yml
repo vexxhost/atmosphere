@@ -36,7 +36,7 @@
         - name: Replace the registry in image manifest
           ansible.builtin.replace:
             path: "{{ zuul.project.src_dir }}/roles/defaults/vars/main.yml"
-            regexp: "{{ repo.replace('harbor.atmosphere.dev', 'registry.atmosphere.dev') }}"
+            regexp: "{{ repo }}:"
             replace: '{{ buildset_registry.host }}:{{ buildset_registry.port }}/{{ repo }}:'
           loop: "{{ zuul.artifacts | default([]) }}"
           loop_control:
