@@ -105,3 +105,18 @@ tests:
       - eval_time: 5m
         alertname: NodeTimeSkewDetected
         exp_alerts: []
+
+  - interval: 1m
+    input_series:
+      - series: 'mysql_up'
+        values: '1'
+    input_series:
+      - series: 'mysql_up'
+        values: '1'
+    input_series:
+      - series: 'mysql_up'
+        values: '0'                
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: MysqlClusterDown
+        exp_alerts: []
