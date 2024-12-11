@@ -9,7 +9,7 @@ ADD --keep-git-dir=true https://opendev.org/openstack/horizon.git#${HORIZON_GIT_
 RUN git -C /src/horizon fetch --unshallow
 ADD --keep-git-dir=true https://opendev.org/openstack/designate-dashboard.git#master /src/designate-dashboard
 RUN git -C /src/designate-dashboard fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/heat-dashboard.git#master /src/heat-dashboard
+ADD --keep-git-dir=true https://opendev.org/openstack/heat-dashboard.git#3070b2c8d5cc6e070df01233ec50b32ea987d92d /src/heat-dashboard
 RUN git -C /src/heat-dashboard fetch --unshallow
 ADD --keep-git-dir=true https://opendev.org/openstack/ironic-ui.git#master /src/ironic-ui
 RUN git -C /src/ironic-ui fetch --unshallow
