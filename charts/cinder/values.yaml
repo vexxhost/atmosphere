@@ -140,9 +140,7 @@ pod:
           runAsUser: 0
           readOnlyRootFilesystem: true
         cinder_volume:
-          capabilities:
-            add:
-              - SYS_ADMIN
+          privileged: true
           readOnlyRootFilesystem: true
     storage_init:
       pod:
@@ -1011,6 +1009,8 @@ conf:
       - volume_type
     volume_type: []
   enable_iscsi: false
+  enable_conversion_tmpfs: false
+  conversion_tmpfs_size: "10Gi"
   cinder_api_uwsgi:
     uwsgi:
       add-header: "Connection: close"
