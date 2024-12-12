@@ -3,7 +3,7 @@
 
 ARG RELEASE
 
-FROM registry.atmosphere.dev/library/ubuntu-cloud-archive:${RELEASE}
+FROM harbor.atmosphere.dev/library/ubuntu-cloud-archive:${RELEASE}
 ENV PATH=/var/lib/openstack/bin:$PATH
 RUN \
     apt-get update -qq && \
