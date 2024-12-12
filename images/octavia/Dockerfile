@@ -9,7 +9,7 @@ ADD --keep-git-dir=true https://opendev.org/openstack/octavia.git#${OCTAVIA_GIT_
 RUN git -C /src/octavia fetch --unshallow
 COPY patches/octavia /patches/octavia
 RUN git -C /src/octavia apply --verbose /patches/octavia/*
-ADD --keep-git-dir=true https://opendev.org/openstack/ovn-octavia-provider.git/src/tag/zed-eol /src/ovn-octavia-provider
+ADD --keep-git-dir=true https://opendev.org/openstack/ovn-octavia-provider.git#zed-eol /src/ovn-octavia-provider
 RUN git -C /src/ovn-octavia-provider fetch --unshallow
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
 pip3 install \
