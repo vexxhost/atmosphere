@@ -1,10 +1,16 @@
 - name: Switch to Atmosphere image mirror
   hosts: all
   tasks:
+    - name: Switch all images out of the CDN
+      ansible.builtin.replace:
+        path: "{{ zuul.project.src_dir }}/roles/defaults/vars/main.yml"
+        regexp: 'registry.atmosphere.dev'
+        replace: 'harbor.atmosphere.dev'
+
     # TODO(mnaser): Drop this when we can use https://github.com/vexxhost/atmosphere/pull/977
     - name: Prefix all images for the job to point to mirror
       ansible.builtin.shell: |
-        sed -i '/registry.atmosphere.dev/!s/  \(.*\): \(.*\)$/  \1: registry.atmosphere.dev\/\2/' roles/defaults/vars/main.yml
+        sed -i '/harbor.atmosphere.dev/!s/  \(.*\): \(.*\)$/  \1: harbor.atmosphere.dev\/\2/' roles/defaults/vars/main.yml
       args:
         chdir: "{{ zuul.project.src_dir }}"
 

@@ -3,7 +3,7 @@
 
 ARG RELEASE
 
-ARG FROM=registry.atmosphere.dev/library/ubuntu-cloud-archive:${RELEASE}
+ARG FROM=harbor.atmosphere.dev/library/ubuntu-cloud-archive:${RELEASE}
 FROM ${FROM}
 ONBUILD ARG PROJECT
 ONBUILD ARG SHELL=/usr/sbin/nologin
