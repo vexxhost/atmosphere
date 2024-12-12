@@ -3,7 +3,7 @@
 
 ARG RELEASE
 
-FROM registry.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
+FROM harbor.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
 ARG OCTAVIA_GIT_REF=b61c340b096f0a2a90a7db8209639da11e25a4c6
 ADD --keep-git-dir=true https://opendev.org/openstack/octavia.git#${OCTAVIA_GIT_REF} /src/octavia
 RUN git -C /src/octavia fetch --unshallow
@@ -16,7 +16,7 @@ pip3 install \
         /src/ovn-octavia-provider
 EOF
 
-FROM registry.atmosphere.dev/library/openstack-python-runtime:${RELEASE}
+FROM harbor.atmosphere.dev/library/openstack-python-runtime:${RELEASE}
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \

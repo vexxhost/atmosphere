@@ -3,7 +3,7 @@
 
 ARG RELEASE
 
-FROM registry.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
+FROM harbor.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
 ARG NEUTRON_GIT_REF=c6d4a3e364b11568dfd36a11551f553c11c48308
 ADD --keep-git-dir=true https://opendev.org/openstack/neutron.git#${NEUTRON_GIT_REF} /src/neutron
 RUN git -C /src/neutron fetch --unshallow
@@ -25,7 +25,7 @@ pip3 install \
         /src/neutron-ovn-network-logging-parser
 EOF
 
-FROM registry.atmosphere.dev/library/openstack-python-runtime:${RELEASE}
+FROM harbor.atmosphere.dev/library/openstack-python-runtime:${RELEASE}
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \

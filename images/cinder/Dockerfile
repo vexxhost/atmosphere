@@ -3,7 +3,7 @@
 
 ARG RELEASE
 
-FROM registry.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
+FROM harbor.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
 ARG CINDER_GIT_REF=db98dc207060da234c32a563c13cac1edbd62952
 ADD --keep-git-dir=true https://opendev.org/openstack/cinder.git#${CINDER_GIT_REF} /src/cinder
 RUN git -C /src/cinder fetch --unshallow
@@ -19,7 +19,7 @@ pip3 install \
         storpool.spopenstack
 EOF
 
-FROM registry.atmosphere.dev/library/openstack-python-runtime:${RELEASE}
+FROM harbor.atmosphere.dev/library/openstack-python-runtime:${RELEASE}
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \
