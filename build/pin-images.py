@@ -65,10 +65,13 @@ def get_digest(image_ref, token=None):
 def get_pinned_image(image_src):
     image_ref = reference.Reference.parse(image_src)
 
-    if image_ref.domain() == "registry.atmosphere.dev":
+    if (
+        image_ref.domain() == "registry.atmosphere.dev"
+        or image_ref.domain() == "harbor.atmosphere.dev"
+    ):
         # Get token for docker.io
         r = requests.get(
-            "https://registry.atmosphere.dev/service/token",
+            "https://harbor.atmosphere.dev/service/token",
             timeout=5,
             params={
                 "service": "harbor-registry",
