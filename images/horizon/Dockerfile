@@ -9,7 +9,7 @@ ADD --keep-git-dir=true https://opendev.org/openstack/horizon.git#${HORIZON_GIT_
 RUN git -C /src/horizon fetch --unshallow
 ADD --keep-git-dir=true https://opendev.org/openstack/designate-dashboard.git#unmaintained/zed /src/designate-dashboard
 RUN git -C /src/designate-dashboard fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/heat-dashboard.git/src/tag/zed-eol /src/heat-dashboard
+ADD --keep-git-dir=true https://opendev.org/openstack/heat-dashboard.git#zed-eol /src/heat-dashboard
 RUN git -C /src/heat-dashboard fetch --unshallow
 ADD --keep-git-dir=true https://opendev.org/openstack/ironic-ui.git#unmaintained/zed /src/ironic-ui
 RUN git -C /src/ironic-ui fetch --unshallow
@@ -21,7 +21,7 @@ ADD --keep-git-dir=true https://opendev.org/openstack/neutron-vpnaas-dashboard.g
 RUN git -C /src/neutron-vpnaas-dashboard fetch --unshallow
 ADD --keep-git-dir=true https://opendev.org/openstack/octavia-dashboard.git#unmaintained/zed /src/octavia-dashboard
 RUN git -C /src/octavia-dashboard fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/senlin-dashboard.git/src/tag/zed-eol
+ADD --keep-git-dir=true https://opendev.org/openstack/senlin-dashboard.git#zed-eol /src/senlin-dashboard
 RUN git -C /src/senlin-dashboard fetch --unshallow
 COPY patches/horizon /patches/horizon
 RUN git -C /src/horizon apply --verbose /patches/horizon/*
