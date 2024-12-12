@@ -21,7 +21,7 @@ ADD --keep-git-dir=true https://opendev.org/openstack/neutron-vpnaas-dashboard.g
 RUN git -C /src/neutron-vpnaas-dashboard fetch --unshallow
 ADD --keep-git-dir=true https://opendev.org/openstack/octavia-dashboard.git#unmaintained/2023.1 /src/octavia-dashboard
 RUN git -C /src/octavia-dashboard fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/senlin-dashboard/src/tag/2023.1-eol /src/senlin-dashboard
+ADD --keep-git-dir=true https://opendev.org/openstack/senlin-dashboard.git#2023.1-eol /src/senlin-dashboard
 RUN git -C /src/senlin-dashboard fetch --unshallow
 COPY patches/horizon /patches/horizon
 RUN git -C /src/horizon apply --verbose /patches/horizon/*
