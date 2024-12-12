@@ -146,14 +146,16 @@ spec:
             {{- end }}
       volumes:
         - name: pod-tmp
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: nova-bin
           configMap:
             name: nova-bin
             defaultMode: 0555
         {{- if $envAll.Values.conf.ceph.enabled }}
         - name: etcceph
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: ceph-etc
           configMap:
             name: {{ .Values.ceph_client.configmap }}

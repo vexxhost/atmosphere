@@ -288,9 +288,11 @@ spec:
 {{ if $mounts_cinder_backup.volumeMounts }}{{ toYaml $mounts_cinder_backup.volumeMounts | indent 12 }}{{ end }}
       volumes:
         - name: pod-tmp
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: cinder-tmp
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: cinder-etc
           secret:
             secretName: cinder-etc
@@ -301,7 +303,8 @@ spec:
             defaultMode: 0555
         {{ if or (contains "cinder.backup.drivers.ceph" .Values.conf.cinder.DEFAULT.backup_driver) (eq "true" (include "cinder.utils.has_ceph_backend" $envAll)) }}
         - name: etcceph
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         {{- if and .Values.backup.external_ceph_rbd.enabled .Values.backup.external_ceph_rbd.configmap }}
         - name: external-backup-ceph-etc
           configMap:
@@ -343,7 +346,8 @@ spec:
         # NOTE (portdirect): this will need to be set to a shared mount amongst all cinder
         # pods for the coordination backend to be fully functional.
         - name: cinder-coordination
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         {{- end }}
         {{- if .Values.conf.enable_iscsi }}
         - name: host-rootfs
@@ -359,7 +363,8 @@ spec:
           hostPath:
             path: /etc/iscsi
         - name: usrlocalsbin
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         {{- end }}
 {{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_db.auth.admin.secret.tls.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
 {{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_messaging.auth.admin.secret.tls.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}

@@ -335,15 +335,19 @@ spec:
         {{- end }}
       volumes:
         - name: pod-tmp
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: pod-shared
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         {{- if .Values.manifests.certificates }}
         - name: wsgi-neutron
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         {{- end }}
         - name: pod-var-neutron
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: neutron-bin
           configMap:
             name: neutron-bin
@@ -354,7 +358,8 @@ spec:
             defaultMode: 0444
         {{- if ( has "tungstenfabric" .Values.network.backend ) }}
         - name: neutron-plugin-shared
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         {{- end }}
 {{- dict "enabled" .Values.manifests.certificates "name" .Values.endpoints.oslo_db.auth.admin.secret.tls.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
 {{- dict "enabled" (or .Values.manifests.certificates .Values.tls.identity) "name" .Values.secrets.tls.network.server.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}

@@ -104,9 +104,11 @@ spec:
 {{- dict "enabled" (or .Values.manifests.certificates .Values.tls.identity) "name" .Values.secrets.tls.identity.api.internal "path" "/etc/tempest/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
       volumes:
         - name: pod-tmp
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: etctempest
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: tempest-etc
           secret:
             secretName: tempest-etc
@@ -120,7 +122,8 @@ spec:
             path: /tmp/stestr
         - name: tempest-reports
         {{- if not .Values.pvc.enabled }}
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         {{- else }}
           persistentVolumeClaim:
             claimName: {{ .Values.pvc.name }}

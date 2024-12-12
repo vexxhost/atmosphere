@@ -516,7 +516,8 @@ spec:
           secret:
             secretName: {{ include "postgresql.v1.tlsSecretName" . }}
         - name: postgresql-certificates
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         {{- end }}
         {{- if and .Values.metrics.enabled .Values.metrics.customMetrics }}
         - name: custom-metrics
@@ -532,7 +533,8 @@ spec:
             {{- end }}
         {{- end }}
         - name: empty-dir
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         {{- if .Values.readReplicas.extraVolumes }}
         {{- include "common.tplvalues.render" ( dict "value" .Values.readReplicas.extraVolumes "context" $ ) | nindent 8 }}
         {{- end }}
@@ -542,7 +544,8 @@ spec:
             claimName: {{ tpl .Values.readReplicas.persistence.existingClaim $ }}
   {{- else if not .Values.readReplicas.persistence.enabled }}
         - name: data
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
   {{- else }}
   {{- if .Values.readReplicas.persistentVolumeClaimRetentionPolicy.enabled }}
   persistentVolumeClaimRetentionPolicy:

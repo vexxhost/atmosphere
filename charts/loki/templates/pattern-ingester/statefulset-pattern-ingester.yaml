@@ -133,7 +133,8 @@ spec:
       {{- end }}
       volumes:
         - name: temp
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: config
           {{- include "loki.configVolume" . | nindent 10 }}
         - name: runtime-config
@@ -150,7 +151,8 @@ spec:
         {{- end }}
         {{- if not .Values.patternIngester.persistence.enabled }}
         - name: data
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         {{- end }}
         {{- with .Values.patternIngester.extraVolumes }}
         {{- toYaml . | nindent 8 }}

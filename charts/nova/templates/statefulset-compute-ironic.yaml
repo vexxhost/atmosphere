@@ -97,7 +97,8 @@ spec:
 {{ if $mounts_nova_compute_ironic.volumeMounts }}{{ toYaml $mounts_nova_compute_ironic.volumeMounts | indent 12 }}{{ end }}
       volumes:
         - name: pod-tmp
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: nova-bin
           configMap:
             name: nova-bin

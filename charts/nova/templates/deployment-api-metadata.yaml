@@ -200,10 +200,12 @@ spec:
 {{ if $mounts_nova_api_metadata.volumeMounts }}{{ toYaml $mounts_nova_api_metadata.volumeMounts | indent 12 }}{{ end }}
       volumes:
         - name: pod-tmp
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         {{- if .Values.manifests.certificates }}
         - name: wsgi-nova
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         {{- end }}
         - name: nova-bin
           configMap:
@@ -214,7 +216,8 @@ spec:
             secretName: nova-etc
             defaultMode: 0444
         - name: pod-shared
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
 {{- dict "enabled" .Values.manifests.certificates "name" .Values.endpoints.oslo_db.auth.admin.secret.tls.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
 {{- dict "enabled" (or .Values.manifests.certificates .Values.tls.identity) "name" .Values.secrets.tls.compute_metadata.metadata.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
 {{ if $mounts_nova_api_metadata.volumes }}{{ toYaml $mounts_nova_api_metadata.volumes | indent 8 }}{{ end }}

@@ -128,7 +128,8 @@ spec:
             secretName: enterprise-logs-license
           {{- end }}
         - name: shared
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         {{- if .Values.enterprise.tokengen.extraVolumes }}
         {{ toYaml .Values.enterprise.tokengen.extraVolumes | nindent 8 }}
         {{- end }}

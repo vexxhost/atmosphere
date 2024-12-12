@@ -129,13 +129,15 @@ index 6c240213..82b70f78 100644
 @@ -179,4 +225,17 @@ spec:
              type: DirectoryOrCreate
          - name: gw-enabled
-           emptyDir: {}
+           emptyDir:
+             medium: Memory
 +        {{- if .Values.pod.sidecars.vector }}
 +        - name: vector-config
 +          secret:
 +            secretName: ovn-vector-config
 +        - name: vector-data
-+          emptyDir: {}
++          emptyDir:
+            medium: Memory
 +        {{- end }}
 +        {{- if .Values.pod.sidecars.ovn_logging_parser }}
 +        - name: neutron-etc

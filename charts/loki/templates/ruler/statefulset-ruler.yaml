@@ -149,13 +149,15 @@ spec:
             name: {{ include "loki.rulerFullname" $ }}-{{ include "loki.rulerRulesDirName" $dir }}
         {{- end }}
         - name: tmp
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         {{- with .Values.ruler.extraVolumes }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
   {{- if not .Values.ruler.persistence.enabled }}
         - name: data
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
   {{- else }}
   volumeClaimTemplates:
     - metadata:

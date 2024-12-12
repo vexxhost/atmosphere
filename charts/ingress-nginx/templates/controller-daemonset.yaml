@@ -214,7 +214,8 @@ spec:
       volumes:
       {{- if (or .Values.controller.extraModules .Values.controller.opentelemetry.enabled)}}
         - name: modules
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
       {{- end }}
       {{- if .Values.controller.customTemplate.configMapName }}
         - name: nginx-template-volume

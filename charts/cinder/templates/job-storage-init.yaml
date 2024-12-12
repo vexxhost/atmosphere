@@ -152,14 +152,16 @@ spec:
       {{- end }}
       volumes:
         - name: pod-tmp
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: cinder-bin
           configMap:
             name: cinder-bin
             defaultMode: 0555
         {{- if eq "true" (include "cinder.utils.has_ceph_backend" $envAll) }}
         - name: etcceph
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: ceph-etc
           configMap:
             name: {{ .Values.ceph_client.configmap }}

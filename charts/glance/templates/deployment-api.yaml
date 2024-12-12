@@ -319,11 +319,14 @@ spec:
 {{ if $mounts_glance_api.volumeMounts }}{{ toYaml $mounts_glance_api.volumeMounts | indent 12 }}{{ end }}
       volumes:
         - name: pod-tmp
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: glance-tmp
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: etcglance
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: glance-bin
           configMap:
             name: glance-bin
@@ -338,11 +341,13 @@ spec:
             claimName: glance-images
 {{ else }}
         - name: glance-images
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
 {{- end }}
 {{- if eq .Values.storage "rbd" }}
         - name: etcceph
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: ceph-etc
           configMap:
             name: {{ .Values.ceph_client.configmap }}
@@ -365,7 +370,8 @@ spec:
           hostPath:
             path: /etc/iscsi
         - name: usrlocalsbin
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: etcmultipath
           hostPath:
             path: /etc/multipath

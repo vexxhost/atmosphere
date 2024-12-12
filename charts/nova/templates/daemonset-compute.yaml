@@ -482,7 +482,8 @@ spec:
         {{ end }}
       volumes:
         - name: pod-tmp
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: nova-bin
           configMap:
             name: nova-bin
@@ -530,7 +531,8 @@ spec:
           hostPath:
             path: /sys/fs/cgroup
         - name: pod-shared
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: machine-id
           hostPath:
             path: /etc/machine-id
@@ -548,7 +550,8 @@ spec:
           hostPath:
             path: /dev
         - name: usrlocalsbin
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: etcmultipath
           hostPath:
             path: /etc/multipath
@@ -559,9 +562,11 @@ spec:
         {{- end }}
         {{- if ( has "tungstenfabric" .Values.network.backend ) }}
         - name: tf-plugin-shared
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: tf-plugin-bin
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         {{- end }}
 {{- dict "enabled" (or .Values.manifests.certificates .Values.tls.identity) "name" .Values.secrets.tls.compute.osapi.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
 {{- dict "enabled" .Values.manifests.certificates "name" .Values.endpoints.oslo_messaging.auth.admin.secret.tls.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}

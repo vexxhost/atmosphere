@@ -100,11 +100,14 @@ spec:
 {{ if $mounts_manila_scheduler.volumeMounts }}{{ toYaml $mounts_manila_scheduler.volumeMounts | indent 12 }}{{ end }}
       volumes:
         - name: pod-tmp
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: state-tmp
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: etcmanila
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: manila-etc
           secret:
             secretName: manila-etc

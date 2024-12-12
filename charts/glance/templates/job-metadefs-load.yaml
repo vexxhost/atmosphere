@@ -82,13 +82,15 @@ spec:
 {{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_db.auth.admin.secret.tls.internal "path" "/etc/mysql/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
       volumes:
         - name: pod-tmp
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: glance-bin
           configMap:
             name: glance-bin
             defaultMode: 0555
         - name: etcglance
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: glance-etc
           secret:
             secretName: glance-etc

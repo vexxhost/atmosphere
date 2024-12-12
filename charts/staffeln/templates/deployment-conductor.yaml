@@ -128,11 +128,14 @@ spec:
 {{ if $mounts_staffeln_conductor.volumeMounts }}{{ toYaml $mounts_staffeln_conductor.volumeMounts | indent 12 }}{{ end }}
       volumes:
         - name: pod-tmp
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: state-tmp
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: etcstaffeln
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: staffeln-etc
           secret:
             secretName: staffeln-etc
@@ -143,7 +146,8 @@ spec:
             defaultMode: 0555
         {{- if eq ( split "://" .Values.conf.staffeln.coordination.backend_url )._0 "file" }}
         - name: staffeln-coordination
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         {{- end }}
 {{- dict "enabled" .Values.manifests.certificates "name" .Values.endpoints.oslo_db.auth.admin.secret.tls.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
 

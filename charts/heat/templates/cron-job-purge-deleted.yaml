@@ -92,9 +92,11 @@ spec:
 {{ if $mounts_heat_purge_deleted.volumeMounts }}{{ toYaml $mounts_heat_purge_deleted.volumeMounts | indent 14 }}{{ end }}
           volumes:
             - name: pod-tmp
-              emptyDir: {}
+              emptyDir:
+                medium: Memory
             - name: etcheat
-              emptyDir: {}
+              emptyDir:
+                medium: Memory
             - name: heat-etc
               secret:
                 secretName: heat-etc

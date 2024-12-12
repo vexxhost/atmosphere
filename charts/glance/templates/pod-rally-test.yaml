@@ -107,7 +107,8 @@ spec:
 {{ if $mounts_tests.volumeMounts }}{{ toYaml $mounts_tests.volumeMounts | indent 8 }}{{ end }}
   volumes:
     - name: pod-tmp
-      emptyDir: {}
+      emptyDir:
+        medium: Memory
     - name: glance-etc
       secret:
         secretName: glance-etc
@@ -117,9 +118,11 @@ spec:
         name: glance-bin
         defaultMode: 0555
     - name: rally-db
-      emptyDir: {}
+      emptyDir:
+        medium: Memory
     - name: rally-work
-      emptyDir: {}
+      emptyDir:
+        medium: Memory
 {{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.image.api.internal | include "helm-toolkit.snippets.tls_volume" | indent 4 }}
 {{ if $mounts_tests.volumes }}{{ toYaml $mounts_tests.volumes | indent 4 }}{{ end }}
 {{- end }}

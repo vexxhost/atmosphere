@@ -145,7 +145,8 @@ spec:
 {{ if $mounts_ironic_api.volumeMounts }}{{ toYaml $mounts_ironic_api.volumeMounts | indent 12 }}{{ end }}
       volumes:
         - name: pod-tmp
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: ironic-bin
           configMap:
             name: ironic-bin
@@ -155,6 +156,7 @@ spec:
             secretName: ironic-etc
             defaultMode: 0444
         - name: pod-shared
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
 {{ if $mounts_ironic_api.volumes }}{{ toYaml $mounts_ironic_api.volumes | indent 8 }}{{ end }}
 {{- end }}

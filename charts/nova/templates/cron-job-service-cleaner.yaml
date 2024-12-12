@@ -75,9 +75,11 @@ spec:
 {{- dict "enabled" (or .Values.manifests.certificates .Values.tls.identity) "name" .Values.secrets.tls.compute.osapi.internal | include "helm-toolkit.snippets.tls_volume_mount" | indent 16 }}
           volumes:
             - name: pod-tmp
-              emptyDir: {}
+              emptyDir:
+                medium: Memory
             - name: etcnova
-              emptyDir: {}
+              emptyDir:
+                medium: Memory
             - name: nova-etc
               secret:
                 secretName: nova-etc

@@ -1192,7 +1192,8 @@ volumes:
       sizeLimit: {{ . }}
       {{- end }}
     {{- else }}
-    emptyDir: {}
+    emptyDir:
+      medium: Memory
     {{- end }}
   {{- end }}
   {{- if .Values.sidecar.alerts.enabled }}
@@ -1283,12 +1284,14 @@ volumes:
     emptyDir:
       {{- toYaml .emptyDir | nindent 6 }}
     {{- else }}
-    emptyDir: {}
+    emptyDir:
+      medium: Memory
     {{- end }}
   {{- end }}
   {{- range .Values.extraEmptyDirMounts }}
   - name: {{ .name }}
-    emptyDir: {}
+    emptyDir:
+      medium: Memory
   {{- end }}
   {{- with .Values.extraContainerVolumes }}
   {{- tpl (toYaml .) $root | nindent 2 }}

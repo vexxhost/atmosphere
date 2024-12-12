@@ -109,7 +109,8 @@ spec:
 {{ if $mounts_tests.volumeMounts }}{{ toYaml $mounts_tests.volumeMounts | indent 8 }}{{ end }}
   volumes:
     - name: pod-tmp
-      emptyDir: {}
+      emptyDir:
+        medium: Memory
     - name: keystone-etc
       secret:
         secretName: keystone-etc
@@ -119,9 +120,11 @@ spec:
         name: keystone-bin
         defaultMode: 0555
     - name: rally-db
-      emptyDir: {}
+      emptyDir:
+        medium: Memory
     - name: rally-work
-      emptyDir: {}
+      emptyDir:
+        medium: Memory
 {{- if and .Values.manifests.certificates .Values.secrets.tls.identity.api.internal }}
 {{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.identity.api.internal | include "helm-toolkit.snippets.tls_volume" | indent 4 }}
 {{- end }}

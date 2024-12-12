@@ -127,7 +127,8 @@ spec:
 {{ if $mounts_octavia_health_manager.volumeMounts }}{{ toYaml $mounts_octavia_health_manager.volumeMounts | indent 12 }}{{ end }}
       volumes:
         - name: pod-etc-octavia
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: octavia-bin
           configMap:
             name: octavia-bin
@@ -137,7 +138,8 @@ spec:
             secretName: {{ $configMapName }}
             defaultMode: 0444
         - name: pod-shared
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: run
           hostPath:
             path: /run

@@ -170,11 +170,14 @@ spec:
 {{ if $mounts_horizon.volumeMounts }}{{ toYaml $mounts_horizon.volumeMounts | indent 12 }}{{ end }}
       volumes:
         - name: pod-tmp
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: wsgi-horizon
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: static-horizon
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: horizon-bin
           configMap:
             name: horizon-bin

@@ -155,7 +155,8 @@ spec:
         {{- end }}
   {{- if not .Values.indexGateway.persistence.enabled }}
         - name: data
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
   {{- else if .Values.indexGateway.persistence.inMemory }}
         - name: data
         {{- if .Values.indexGateway.persistence.inMemory }}

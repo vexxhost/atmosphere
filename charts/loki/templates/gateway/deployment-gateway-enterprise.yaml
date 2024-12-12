@@ -137,7 +137,8 @@ spec:
             secretName: enterprise-logs-license
           {{- end }}
         - name: storage
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         {{- if .Values.enterpriseGateway.extraVolumes }}
         {{ toYaml .Values.enterpriseGateway.extraVolumes | nindent 8 }}
         {{- end }}

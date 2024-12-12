@@ -282,7 +282,8 @@ volumes:
     persistentVolumeClaim:
       claimName: {{ if .Values.persistentVolume.existingClaim }}{{ .Values.persistentVolume.existingClaim }}{{- else }}{{ include "prometheus-pushgateway.fullname" . }}{{- end }}
   {{- else }}
-    emptyDir: {}
+    emptyDir:
+      medium: Memory
   {{- end }}
   {{- if .Values.webConfiguration }}
   - name: web-config

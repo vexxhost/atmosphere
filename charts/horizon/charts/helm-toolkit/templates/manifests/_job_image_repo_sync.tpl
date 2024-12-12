@@ -99,7 +99,8 @@ spec:
 {{- end }}
       volumes:
         - name: pod-tmp
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: bootstrap-sh
 {{- if $secretBin }}
           secret:

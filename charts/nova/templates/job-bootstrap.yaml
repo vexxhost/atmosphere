@@ -105,13 +105,15 @@ spec:
 {{- dict "enabled" (or .Values.manifests.certificates .Values.tls.identity) "name" .Values.secrets.tls.compute.osapi.internal | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
       volumes:
         - name: pod-tmp
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: bootstrap-sh
           configMap:
             name: {{ $configMapBin | quote }}
             defaultMode: 0555
         - name: etc-service
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: bootstrap-conf
           secret:
             secretName: {{ $configMapEtc | quote }}

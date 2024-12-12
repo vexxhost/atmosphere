@@ -157,7 +157,8 @@ spec:
 {{ if $mounts_nova_novncproxy.volumeMounts }}{{ toYaml $mounts_nova_novncproxy.volumeMounts | indent 12 }}{{ end }}
       volumes:
         - name: pod-tmp
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: nova-bin
           configMap:
             name: nova-bin
@@ -167,9 +168,11 @@ spec:
             secretName: nova-etc
             defaultMode: 0444
         - name: pod-usr-share-novnc
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: pod-shared
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         {{- if $vencrypt_enabled }}
         - name: {{ .Values.secrets.tls.compute_novnc_proxy.vencrypt.internal }}
           secret:

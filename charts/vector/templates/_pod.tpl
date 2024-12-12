@@ -181,7 +181,8 @@ volumes:
 {{- end }}
 {{- else if (ne .Values.role "Agent") }}
   - name: data
-    emptyDir: {}
+    emptyDir:
+      medium: Memory
 {{- end }}
   - name: config
     projected:
@@ -201,7 +202,8 @@ volumes:
     hostPath:
       path: {{ .Values.persistence.hostPath.path | quote }}
   {{- else }}
-    emptyDir: {}
+    emptyDir:
+      medium: Memory
   {{- end }}
     {{- with .Values.defaultVolumes }}
     {{- toYaml . | nindent 2 }}

@@ -165,14 +165,16 @@ spec:
             {{- end }}
       volumes:
         - name: pod-tmp
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: cinder-bin
           configMap:
             name: cinder-bin
             defaultMode: 0555
         {{- if (contains "cinder.backup.drivers.ceph" .Values.conf.cinder.DEFAULT.backup_driver) }}
         - name: etcceph
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: ceph-etc
           configMap:
             name: {{ .Values.ceph_client.configmap }}

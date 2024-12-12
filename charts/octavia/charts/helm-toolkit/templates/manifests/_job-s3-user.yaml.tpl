@@ -131,7 +131,8 @@ spec:
             {{ end }}
       volumes:
         - name: pod-tmp
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: create-s3-user-sh
 {{- if $secretBin }}
           secret:
@@ -147,7 +148,8 @@ spec:
             name: {{ $configMapBin | quote }}
             defaultMode: 0555
         - name: etcceph
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: ceph-etc
           configMap:
             name: {{ $configMapCeph | quote }}

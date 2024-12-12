@@ -144,13 +144,17 @@ spec:
 {{ if $mounts_manila_share.volumeMounts }}{{ toYaml $mounts_manila_share.volumeMounts | indent 12 }}{{ end }}
       volumes:
         - name: pod-tmp
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: pod-shared
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: state-tmp
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: etcmanila
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: run-openvswitch
           hostPath:
             path: /run/openvswitch

@@ -249,9 +249,11 @@ spec:
 {{ if $mounts_neutron_dhcp_agent.volumeMounts }}{{ toYaml $mounts_neutron_dhcp_agent.volumeMounts | indent 12 }}{{ end }}
       volumes:
         - name: pod-tmp
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: pod-var-neutron
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: neutron-bin
           configMap:
             name: neutron-bin
@@ -268,7 +270,8 @@ spec:
           hostPath:
             path: /var/lib/neutron/openstack-helm
         - name: pod-shared
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         {{- if .Values.network.share_namespaces }}
         - name: host-run-netns
           hostPath:

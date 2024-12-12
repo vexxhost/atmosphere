@@ -115,11 +115,14 @@ spec:
 {{ if $mounts_magnum_api.volumeMounts }}{{ toYaml $mounts_magnum_api.volumeMounts | indent 12 }}{{ end }}
       volumes:
         - name: pod-tmp
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: pod-etc-magnum
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: pod-var-cache-magnum
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: magnum-bin
           configMap:
             name: magnum-bin
@@ -129,6 +132,7 @@ spec:
             secretName: magnum-etc
             defaultMode: 0444
         - name: magnum-lock-path
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
 {{ if $mounts_magnum_api.volumes }}{{ toYaml $mounts_magnum_api.volumes | indent 8 }}{{ end }}
 {{- end }}

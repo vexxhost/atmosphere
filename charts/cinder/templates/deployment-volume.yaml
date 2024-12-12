@@ -296,7 +296,8 @@ spec:
 {{ if $mounts_cinder_volume.volumeMounts }}{{ toYaml $mounts_cinder_volume.volumeMounts | indent 12 }}{{ end }}
       volumes:
         - name: pod-tmp
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: cinder-bin
           configMap:
             name: cinder-bin
@@ -306,12 +307,15 @@ spec:
             secretName: cinder-etc
             defaultMode: 0444
         - name: pod-shared
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: cinder-conversion
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         {{- if eq "true" (include "cinder.utils.has_ceph_backend" $envAll) }}
         - name: etcceph
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: ceph-etc
           configMap:
             name: {{ .Values.ceph_client.configmap }}
@@ -335,7 +339,8 @@ spec:
         # NOTE (portdirect): this will need to be set to a shared mount amongst all cinder
         # pods for the coordination backend to be fully functional.
         - name: cinder-coordination
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         {{- end }}
         {{- if .Values.conf.enable_iscsi }}
         - name: host-rootfs
@@ -351,7 +356,8 @@ spec:
           hostPath:
             path: /etc/iscsi
         - name: usrlocalsbin
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: etcmultipath
           hostPath:
             path: /etc/multipath

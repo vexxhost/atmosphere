@@ -125,7 +125,8 @@ spec:
       {{- if or .Values.keycloakConfigCli.configuration .Values.keycloakConfigCli.existingConfigmap .Values.keycloakConfigCli.extraVolumes }}
       volumes:
         - name: empty-dir
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         {{- if or .Values.keycloakConfigCli.configuration .Values.keycloakConfigCli.existingConfigmap }}
         - name: config-volume
           configMap:

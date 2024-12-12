@@ -121,9 +121,11 @@ spec:
 {{ if $mounts_keystone_fernet_rotate.volumeMounts }}{{ toYaml $mounts_keystone_fernet_rotate.volumeMounts | indent 16 }}{{ end }}
           volumes:
             - name: pod-tmp
-              emptyDir: {}
+              emptyDir:
+                medium: Memory
             - name: etckeystone
-              emptyDir: {}
+              emptyDir:
+                medium: Memory
             - name: keystone-etc
               secret:
                 secretName: keystone-etc

@@ -113,7 +113,8 @@ spec:
 {{- end }}
       volumes:
         - name: pod-tmp
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: rabbit-init-sh
 {{- if $secretBin }}
           secret:

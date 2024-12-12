@@ -164,15 +164,20 @@ spec:
 {{ if $mounts_keystone_api.volumeMounts }}{{ toYaml $mounts_keystone_api.volumeMounts | indent 12 }}{{ end }}
       volumes:
         - name: pod-tmp
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: etckeystone
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: wsgi-keystone
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: logs-apache
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: run-apache
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: keystone-etc
           secret:
             secretName: keystone-etc

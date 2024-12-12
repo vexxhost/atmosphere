@@ -595,7 +595,8 @@ spec:
         {{- end }}
       volumes:
         - name: empty-dir
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         {{- if or .Values.primary.configuration .Values.primary.pgHbaConfiguration .Values.primary.existingConfigmap }}
         - name: postgresql-config
           configMap:
@@ -626,7 +627,8 @@ spec:
           secret:
             secretName: {{ include "postgresql.v1.tlsSecretName" . }}
         - name: postgresql-certificates
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         {{- end }}
         {{- if .Values.primary.extraVolumes }}
         {{- include "common.tplvalues.render" ( dict "value" .Values.primary.extraVolumes "context" $ ) | nindent 8 }}
@@ -650,7 +652,8 @@ spec:
             claimName: {{ tpl .Values.primary.persistence.existingClaim $ }}
   {{- else if not .Values.primary.persistence.enabled }}
         - name: {{ .Values.primary.persistence.volumeName }}
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
   {{- else }}
   {{- if .Values.primary.persistentVolumeClaimRetentionPolicy.enabled }}
   persistentVolumeClaimRetentionPolicy:

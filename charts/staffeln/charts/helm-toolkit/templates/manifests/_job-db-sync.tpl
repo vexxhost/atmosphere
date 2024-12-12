@@ -113,7 +113,8 @@ spec:
 {{- end }}
       volumes:
         - name: pod-tmp
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: db-sync-sh
 {{- if $secretBin }}
           secret:
@@ -125,7 +126,8 @@ spec:
             defaultMode: 0555
 {{- end }}
         - name: etc-service
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: db-sync-conf
           secret:
             secretName: {{ $configMapEtc | quote }}

@@ -141,11 +141,14 @@ spec:
 {{ if $mounts_heat_cfn.volumeMounts }}{{ toYaml $mounts_heat_cfn.volumeMounts | indent 12 }}{{ end }}
       volumes:
         - name: pod-tmp
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: pod-etc-heat
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: wsgi-heat
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: heat-bin
           configMap:
             name: heat-bin

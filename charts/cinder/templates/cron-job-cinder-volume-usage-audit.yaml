@@ -96,9 +96,11 @@ spec:
 {{ if $mounts_cinder_volume_usage_audit.volumeMounts }}{{ toYaml $mounts_cinder_volume_usage_audit.volumeMounts | indent 16 }}{{ end }}
           volumes:
             - name: pod-tmp
-              emptyDir: {}
+              emptyDir:
+                medium: Memory
             - name: etccinder
-              emptyDir: {}
+              emptyDir:
+                medium: Memory
             - name: cinder-etc
               secret:
                 secretName: cinder-etc

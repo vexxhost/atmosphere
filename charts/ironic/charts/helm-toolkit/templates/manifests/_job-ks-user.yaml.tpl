@@ -140,7 +140,8 @@ spec:
             {{- end }}
       volumes:
         - name: pod-tmp
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: ks-user-sh
 {{- if $secretBin }}
           secret:

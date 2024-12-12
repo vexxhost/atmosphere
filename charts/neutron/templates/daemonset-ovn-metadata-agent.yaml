@@ -215,9 +215,11 @@ spec:
 {{ if $mounts_neutron_ovn_metadata_agent.volumeMounts }}{{ toYaml $mounts_neutron_ovn_metadata_agent.volumeMounts | indent 12 }}{{ end }}
       volumes:
         - name: pod-tmp
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: pod-var-neutron
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: run-openvswitch
           hostPath:
             path: /run/openvswitch

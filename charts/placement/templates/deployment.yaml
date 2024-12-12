@@ -131,9 +131,11 @@ spec:
 {{ if $mounts_placement.volumeMounts }}{{ toYaml $mounts_placement.volumeMounts | indent 12 }}{{ end }}
       volumes:
         - name: pod-tmp
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: wsgi-placement
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: placement-bin
           configMap:
             name: placement-bin

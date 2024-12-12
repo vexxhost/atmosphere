@@ -97,9 +97,11 @@ spec:
 {{ if $mounts_designate_mdns.volumeMounts }}{{ toYaml $mounts_designate_mdns.volumeMounts | indent 12 }}{{ end }}
       volumes:
         - name: pod-etc-designate
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: pod-var-cache-designate
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: designate-bin
           configMap:
             name: designate-bin

@@ -117,7 +117,8 @@ spec:
 {{- end }}
       volumes:
         - name: pod-tmp
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: bootstrap-sh
 {{- if $secretBin }}
           secret:
@@ -129,7 +130,8 @@ spec:
             defaultMode: 0555
 {{- end }}
         - name: etc-service
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: bootstrap-conf
           secret:
             secretName: {{ $configMapEtc | quote }}

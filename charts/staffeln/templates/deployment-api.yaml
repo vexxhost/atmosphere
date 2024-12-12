@@ -97,11 +97,14 @@ spec:
 {{ if $mounts_staffeln_api.volumeMounts }}{{ toYaml $mounts_staffeln_api.volumeMounts | indent 12 }}{{ end }}
       volumes:
         - name: pod-tmp
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: state-tmp
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: etcstaffeln
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: staffeln-etc
           secret:
             secretName: staffeln-etc

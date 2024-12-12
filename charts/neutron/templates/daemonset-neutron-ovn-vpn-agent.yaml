@@ -219,9 +219,11 @@ spec:
 {{ if $mounts_ovn_vpn_agent.volumeMounts }}{{ toYaml $mounts_ovn_vpn_agent.volumeMounts | indent 12 }}{{ end }}
       volumes:
         - name: pod-tmp
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: pod-var-neutron
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: run
           hostPath:
             path: /run

@@ -114,7 +114,8 @@ spec:
 {{ if $mounts_cinder_scheduler.volumeMounts }}{{ toYaml $mounts_cinder_scheduler.volumeMounts | indent 12 }}{{ end }}
       volumes:
         - name: pod-tmp
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: cinder-bin
           configMap:
             name: cinder-bin
@@ -127,7 +128,8 @@ spec:
         # NOTE (portdirect): this will need to be set to a shared mount amongst all cinder
         # pods for the coordination backend to be fully functional.
         - name: cinder-coordination
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         {{- end }}
  {{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.volume.api.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
 {{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_db.auth.admin.secret.tls.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}

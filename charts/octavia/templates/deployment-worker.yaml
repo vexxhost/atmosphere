@@ -89,7 +89,8 @@ spec:
 {{ if $mounts_octavia_worker.volumeMounts }}{{ toYaml $mounts_octavia_worker.volumeMounts | indent 12 }}{{ end }}
       volumes:
         - name: pod-etc-octavia
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: octavia-bin
           configMap:
             name: octavia-bin

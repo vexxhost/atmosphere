@@ -97,7 +97,8 @@ spec:
 {{ if $mounts_tests.volumeMounts }}{{ toYaml $mounts_tests.volumeMounts | indent 8 }}{{ end }}
   volumes:
     - name: pod-tmp
-      emptyDir: {}
+      emptyDir:
+        medium: Memory
     - name: cinder-etc
       secret:
         secretName: cinder-etc
@@ -107,7 +108,8 @@ spec:
         name: cinder-bin
         defaultMode: 0555
     - name: rally-db
-      emptyDir: {}
+      emptyDir:
+        medium: Memory
 {{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.volume.api.internal | include "helm-toolkit.snippets.tls_volume" | indent 4 }}
 {{ if $mounts_tests.volumes }}{{ toYaml $mounts_tests.volumes | indent 4 }}{{ end }}
 {{- end }}

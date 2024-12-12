@@ -98,9 +98,11 @@ spec:
 {{ if $mounts_heat_engine_cleaner.volumeMounts }}{{ toYaml $mounts_heat_engine_cleaner.volumeMounts | indent 14 }}{{ end }}
           volumes:
             - name: pod-tmp
-              emptyDir: {}
+              emptyDir:
+                medium: Memory
             - name: etcheat
-              emptyDir: {}
+              emptyDir:
+                medium: Memory
             - name: heat-etc
               secret:
                 secretName: heat-etc

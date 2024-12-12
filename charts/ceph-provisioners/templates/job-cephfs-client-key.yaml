@@ -126,9 +126,11 @@ spec:
               readOnly: true
       volumes:
         - name: pod-tmp
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: pod-etc-ceph
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: ceph-provisioners-bin
           configMap:
             name: {{ printf "%s-%s" $envAll.Release.Name "ceph-prov-bin" | quote }}

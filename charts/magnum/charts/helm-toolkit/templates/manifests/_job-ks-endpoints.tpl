@@ -116,7 +116,8 @@ spec:
 {{- end }}
       volumes:
         - name: pod-tmp
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: ks-endpoints-sh
 {{- if $secretBin }}
           secret:

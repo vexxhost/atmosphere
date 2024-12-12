@@ -126,9 +126,11 @@ spec:
 {{ if $mounts_barbican_api.volumeMounts }}{{ toYaml $mounts_barbican_api.volumeMounts | indent 12 }}{{ end }}
       volumes:
         - name: pod-tmp
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: etcbarbican
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: barbican-etc
           secret:
             secretName: barbican-etc

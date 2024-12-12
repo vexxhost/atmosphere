@@ -182,7 +182,8 @@ spec:
           persistentVolumeClaim:
             claimName: {{ .Values.persistence.existingClaim | default (include "minio.fullname" .) }}
         {{- else }}
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         {{- end }}
         {{- if .Values.extraSecret }}
         - name: extra-secret

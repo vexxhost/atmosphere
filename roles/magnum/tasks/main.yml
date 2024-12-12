@@ -108,14 +108,17 @@
               serviceAccountName: magnum-conductor
               volumes:
                 - name: pod-tmp
-                  emptyDir: {}
+                  emptyDir:
+                    medium: Memory
                 - name: pod-run
-                  emptyDir: {}
+                  emptyDir:
+                    medium: Memory
                 - name: config
                   configMap:
                     name: magnum-cluster-api-proxy-config
                 - name: haproxy-state
-                  emptyDir: {}
+                  emptyDir:
+                    medium: Memory
                 - name: host-run-netns
                   hostPath:
                     path: /run/netns

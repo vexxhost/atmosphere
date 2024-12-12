@@ -224,13 +224,15 @@ spec:
             path: /run/ovn
             type: DirectoryOrCreate
         - name: gw-enabled
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         {{- if .Values.pod.sidecars.vector }}
         - name: vector-config
           secret:
             secretName: ovn-vector-config
         - name: vector-data
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         {{- end }}
         {{- if .Values.pod.sidecars.ovn_logging_parser }}
         - name: neutron-etc

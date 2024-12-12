@@ -199,7 +199,8 @@ spec:
         {{- end }}
   {{- if not .Values.ingester.persistence.enabled }}
         - name: data
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
   {{- else if .Values.ingester.persistence.inMemory }}
         - name: data
         {{- if .Values.ingester.persistence.inMemory }}

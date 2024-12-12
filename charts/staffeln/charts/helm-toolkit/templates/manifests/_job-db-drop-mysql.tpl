@@ -140,7 +140,8 @@ spec:
 {{- end }}
       volumes:
         - name: pod-tmp
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: db-drop-sh
 {{- if $secretBin }}
           secret:
@@ -160,7 +161,8 @@ spec:
 {{- if and (eq $dbToDropType "oslo") $local.configMapBinFirst }}
 {{- $_ := set $local "configMapBinFirst" false }}
         - name: etc-service
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: db-drop-conf
           secret:
             secretName: {{ $configMapEtc | quote }}

@@ -135,9 +135,11 @@ spec:
 {{ if $mounts_neutron_netns_cleanup_cron.volumeMounts }}{{ toYaml $mounts_neutron_netns_cleanup_cron.volumeMounts | indent 12 }}{{ end }}
       volumes:
         - name: pod-tmp
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: pod-var-neutron
-          emptyDir: {}
+          emptyDir:
+            medium: Memory
         - name: neutron-bin
           configMap:
             name: neutron-bin
