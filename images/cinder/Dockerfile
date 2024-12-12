@@ -3,7 +3,7 @@
 
 ARG RELEASE
 
-FROM registry.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
+FROM harbor.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
 ARG CINDER_GIT_REF=4aa6590a483901de64e0d162fff11f3d2d7f9977
 ADD --keep-git-dir=true https://opendev.org/openstack/cinder.git#${CINDER_GIT_REF} /src/cinder
 RUN git -C /src/cinder fetch --unshallow
@@ -25,7 +25,7 @@ ADD --chmod=644 \
     https://github.com/storpool/storpool-openstack-integration/raw/master/drivers/os_brick/openstack/zed/storpool.py \
     /var/lib/openstack/lib/python3.10/site-packages/os_brick/initiator/connectors/storpool.py
 
-FROM registry.atmosphere.dev/library/openstack-python-runtime:${RELEASE}
+FROM harbor.atmosphere.dev/library/openstack-python-runtime:${RELEASE}
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \
