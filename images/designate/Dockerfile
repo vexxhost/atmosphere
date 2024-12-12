@@ -3,7 +3,7 @@
 
 ARG RELEASE
 
-FROM registry.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
+FROM harbor.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
 ARG DESIGNATE_GIT_REF=2c817b3d7f01de44023f195c6e8de8853683a54a
 ADD --keep-git-dir=true https://opendev.org/openstack/designate.git#${DESIGNATE_GIT_REF} /src/designate
 RUN git -C /src/designate fetch --unshallow
@@ -15,7 +15,7 @@ pip3 install \
         /src/designate
 EOF
 
-FROM registry.atmosphere.dev/library/openstack-python-runtime:${RELEASE}
+FROM harbor.atmosphere.dev/library/openstack-python-runtime:${RELEASE}
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \

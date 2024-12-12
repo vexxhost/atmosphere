@@ -3,7 +3,7 @@
 
 ARG RELEASE
 
-FROM golang:1.20 AS ovn-kubernetes
+FROM harbor.atmosphere.dev/docker.io/library/golang:1.20 AS ovn-kubernetes
 ARG OVN_KUBERNETES_REF=5359e7d7f872058b6e5bf884c9f19d1922451f29
 ADD https://github.com/ovn-org/ovn-kubernetes.git#${OVN_KUBERNETES_REF} /src
 COPY patches/ovn-kubernetes /patches/ovn-kubernetes
@@ -13,7 +13,7 @@ cd /src/go-controller
 go build -o /usr/bin/ovn-kube-util ./cmd/ovn-kube-util
 EOF
 
-FROM registry.atmosphere.dev/library/openvswitch:${RELEASE}
+FROM harbor.atmosphere.dev/library/openvswitch:${RELEASE}
 ARG TARGETPLATFORM
 ADD --chmod=755 https://dl.k8s.io/release/v1.29.3/bin/${TARGETPLATFORM}/kubectl /usr/local/bin/kubectl
 ARG OVN_SERIES=24.03
