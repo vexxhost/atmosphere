@@ -3,25 +3,25 @@
 
 ARG RELEASE
 
-FROM registry.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
+FROM harbor.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
 ARG HORIZON_GIT_REF=b467683b1ed2aab4e38fe2cb2ac7ae5500e5d5c0
 ADD --keep-git-dir=true https://opendev.org/openstack/horizon.git#${HORIZON_GIT_REF} /src/horizon
 RUN git -C /src/horizon fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/designate-dashboard.git#stable/2023.1 /src/designate-dashboard
+ADD --keep-git-dir=true https://opendev.org/openstack/designate-dashboard.git#unmaintained/2023.1 /src/designate-dashboard
 RUN git -C /src/designate-dashboard fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/heat-dashboard.git#stable/2023.1 /src/heat-dashboard
+ADD --keep-git-dir=true https://opendev.org/openstack/heat-dashboard.git#unmaintained/2023.1 /src/heat-dashboard
 RUN git -C /src/heat-dashboard fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/ironic-ui.git#stable/2023.1 /src/ironic-ui
+ADD --keep-git-dir=true https://opendev.org/openstack/ironic-ui.git#unmaintained/2023.1 /src/ironic-ui
 RUN git -C /src/ironic-ui fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/magnum-ui.git#stable/2023.1 /src/magnum-ui
+ADD --keep-git-dir=true https://opendev.org/openstack/magnum-ui.git#unmaintained/2023.1 /src/magnum-ui
 RUN git -C /src/magnum-ui fetch --unshallow
 ADD --keep-git-dir=true https://opendev.org/openstack/manila-ui.git#stable/2023.1 /src/manila-ui
 RUN git -C /src/manila-ui fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/neutron-vpnaas-dashboard.git#stable/2023.1 /src/neutron-vpnaas-dashboard
+ADD --keep-git-dir=true https://opendev.org/openstack/neutron-vpnaas-dashboard.git#unmaintained/2023.1 /src/neutron-vpnaas-dashboard
 RUN git -C /src/neutron-vpnaas-dashboard fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/octavia-dashboard.git#stable/2023.1 /src/octavia-dashboard
+ADD --keep-git-dir=true https://opendev.org/openstack/octavia-dashboard.git#unmaintained/2023.1 /src/octavia-dashboard
 RUN git -C /src/octavia-dashboard fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/senlin-dashboard.git#stable/2023.1 /src/senlin-dashboard
+ADD --keep-git-dir=true https://opendev.org/openstack/senlin-dashboard.git#2023.1-eol /src/senlin-dashboard
 RUN git -C /src/senlin-dashboard fetch --unshallow
 COPY patches/horizon /patches/horizon
 RUN git -C /src/horizon apply --verbose /patches/horizon/*
@@ -42,7 +42,7 @@ pip3 install \
         pymemcache
 EOF
 
-FROM registry.atmosphere.dev/library/openstack-python-runtime:${RELEASE}
+FROM harbor.atmosphere.dev/library/openstack-python-runtime:${RELEASE}
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \
