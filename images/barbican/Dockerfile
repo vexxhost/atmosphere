@@ -3,7 +3,7 @@
 
 ARG RELEASE
 
-FROM registry.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
+FROM harbor.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
 ARG BARBICAN_GIT_REF=7d6749fcb1ad16a3350de82cd8e523d5b55306f8
 ADD --keep-git-dir=true https://opendev.org/openstack/barbican.git#${BARBICAN_GIT_REF} /src/barbican
 RUN git -C /src/barbican fetch --unshallow
@@ -14,5 +14,5 @@ pip3 install \
         pykmip
 EOF
 
-FROM registry.atmosphere.dev/library/openstack-python-runtime:${RELEASE}
+FROM harbor.atmosphere.dev/library/openstack-python-runtime:${RELEASE}
 COPY --from=build --link /var/lib/openstack /var/lib/openstack

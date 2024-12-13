@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
-# Atmosphere-Rebuild-Time: 2024-06-28T12:14:26Z
+# Atmosphere-Rebuild-Time: 2024-06-26T17:38:39Z
 
 ARG RELEASE
 
-FROM registry.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
+FROM harbor.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
 ARG IRONIC_GIT_REF=d0fb7bce54e9d241a4442ef2347ac51ee1f4d7af
 ADD --keep-git-dir=true https://opendev.org/openstack/ironic.git#${IRONIC_GIT_REF} /src/ironic
 RUN git -C /src/ironic fetch --unshallow
@@ -15,7 +15,7 @@ pip3 install \
         sushy
 EOF
 
-FROM registry.atmosphere.dev/library/openstack-python-runtime:${RELEASE}
+FROM harbor.atmosphere.dev/library/openstack-python-runtime:${RELEASE}
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \

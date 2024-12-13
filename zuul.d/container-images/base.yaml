@@ -39,7 +39,7 @@
         - ['docker.io', 'https://registry-1.docker.io']
         - ['quay.io', 'https://quay.io']
         - ['gcr.io', 'https://gcr.io']
-        - ['registry.atmosphere.dev', 'https://registry.atmosphere.dev']
+        - ['harbor.atmosphere.dev', 'https://harbor.atmosphere.dev']
 
 - job:
     name: atmosphere-upload-container-image
@@ -49,7 +49,7 @@
       - ^doc/
     secrets:
       name: container_registry_credentials
-      secret: atmosphere-registry-credentials
+      secret: atmosphere-harbor-credentials
       pass-to-parent: true
     vars: *image_vars
 
@@ -60,7 +60,7 @@
       - ^doc/
     secrets:
       name: container_registry_credentials
-      secret: atmosphere-registry-credentials
+      secret: atmosphere-harbor-credentials
       pass-to-parent: true
     nodeset:
       nodes: []

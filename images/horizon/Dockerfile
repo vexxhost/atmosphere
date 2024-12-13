@@ -3,13 +3,13 @@
 
 ARG RELEASE
 
-FROM registry.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
+FROM harbor.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
 ARG HORIZON_GIT_REF=5de40f9b222608d35c5a0919117259e966217a86
 ADD --keep-git-dir=true https://opendev.org/openstack/horizon.git#${HORIZON_GIT_REF} /src/horizon
 RUN git -C /src/horizon fetch --unshallow
 ADD --keep-git-dir=true https://opendev.org/openstack/designate-dashboard.git#unmaintained/zed /src/designate-dashboard
 RUN git -C /src/designate-dashboard fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/heat-dashboard.git#unmaintained/zed /src/heat-dashboard
+ADD --keep-git-dir=true https://opendev.org/openstack/heat-dashboard.git#zed-eol /src/heat-dashboard
 RUN git -C /src/heat-dashboard fetch --unshallow
 ADD --keep-git-dir=true https://opendev.org/openstack/ironic-ui.git#unmaintained/zed /src/ironic-ui
 RUN git -C /src/ironic-ui fetch --unshallow
@@ -21,7 +21,7 @@ ADD --keep-git-dir=true https://opendev.org/openstack/neutron-vpnaas-dashboard.g
 RUN git -C /src/neutron-vpnaas-dashboard fetch --unshallow
 ADD --keep-git-dir=true https://opendev.org/openstack/octavia-dashboard.git#unmaintained/zed /src/octavia-dashboard
 RUN git -C /src/octavia-dashboard fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/senlin-dashboard.git#unmaintained/zed /src/senlin-dashboard
+ADD --keep-git-dir=true https://opendev.org/openstack/senlin-dashboard.git#zed-eol /src/senlin-dashboard
 RUN git -C /src/senlin-dashboard fetch --unshallow
 COPY patches/horizon /patches/horizon
 RUN git -C /src/horizon apply --verbose /patches/horizon/*
@@ -41,7 +41,7 @@ pip3 install \
         /src/senlin-dashboard
 EOF
 
-FROM registry.atmosphere.dev/library/openstack-python-runtime:${RELEASE}
+FROM harbor.atmosphere.dev/library/openstack-python-runtime:${RELEASE}
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \

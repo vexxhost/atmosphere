@@ -3,7 +3,7 @@
 
 ARG RELEASE
 
-FROM registry.atmosphere.dev/library/openstack-runtime:${RELEASE}
+FROM harbor.atmosphere.dev/library/openstack-runtime:${RELEASE}
 ADD --chmod=644 https://download.ceph.com/keys/release.gpg /etc/apt/trusted.gpg.d/ceph.gpg
 COPY <<EOF /etc/apt/sources.list.d/ceph.list
 deb http://download.ceph.com/debian-reef/ jammy main
