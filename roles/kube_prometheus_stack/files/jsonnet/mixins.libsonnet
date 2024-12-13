@@ -159,14 +159,14 @@ local mixins = {
             {
               alert: 'MysqlClusterDown',
               'for': '1m',
-              expr: 'count(mysql_up==1) < 3',
+              expr: 'round(count(mysql_up==1)/count(mysql_up) * 100) <= 50',
               labels: {
                 severity: 'warning',
               },
               annotations: {
-                summary: 'Only {{ $value }} percona-xtradb cluster are online',
-                description: "percona-xtradb cluster less than 3 replication, please check with kubectl get pods -n openstack -l app.kubernetes.io/component=pxc",
-              },              
+                summary: 'Only {{ $value }}% percona-xtradb cluster are online',
+                description: "percona-xtradb cluster less than minimum replication, please check with kubectl get pods -n openstack -l app.kubernetes.io/component=pxc",
+              },
             },
           ],
         },
