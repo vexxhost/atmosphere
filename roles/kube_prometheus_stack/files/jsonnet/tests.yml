@@ -110,13 +110,50 @@ tests:
     input_series:
       - series: 'mysql_up{instance="percona-xtradb-pxc-0", job="pxc"}'
         values: '1'
-    input_series:
       - series: 'mysql_up{instance="percona-xtradb-pxc-1", job="pxc"}'
         values: '1'
-    input_series:
       - series: 'mysql_up{instance="percona-xtradb-pxc-3", job="pxc"}'
         values: '0'                
     alert_rule_test:
-      - eval_time: 5m
+      - eval_time: 1m
         alertname: MysqlClusterDown
-        exp_alerts: []
+        exp_alerts:
+          - exp_labels:
+              severity: P5
+            exp_annotations:
+              summary: "1 percona-xtradb replication down"
+
+  - interval: 1m
+    input_series:
+      - series: 'mysql_up{instance="percona-xtradb-pxc-0", job="pxc"}'
+        values: '1'
+      - series: 'mysql_up{instance="percona-xtradb-pxc-1", job="pxc"}'
+        values: '0'
+      - series: 'mysql_up{instance="percona-xtradb-pxc-3", job="pxc"}'
+        values: '0'                
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: MysqlClusterDown
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+            exp_annotations:
+              summary: 'Only 33% percona-xtradb cluster are online'
+              description: "percona-xtradb cluster less than minimum replication, please check with kubectl get pods -n openstack -l app.kubernetes.io/component=pxc"
+          - exp_labels:
+              severity: P5
+            exp_annotations:
+              summary: "2 percona-xtradb replication down"
+
+  - interval: 1m
+    input_series:
+      - series: 'mysql_up{instance="percona-xtradb-pxc-0", job="pxc"}'
+        values: '1'
+      - series: 'mysql_up{instance="percona-xtradb-pxc-1", job="pxc"}'
+        values: '1'
+      - series: 'mysql_up{instance="percona-xtradb-pxc-3", job="pxc"}'
+        values: '1'                
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: MysqlClusterDown
+        exp_alerts: []              
