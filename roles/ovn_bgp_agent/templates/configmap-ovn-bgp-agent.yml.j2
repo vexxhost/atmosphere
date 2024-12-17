@@ -1,0 +1,22 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ovn-bgp-agent-bin
+  namespace: openstack
+data:
+  ovn-bgp-agent.sh: |
+    #!/bin/bash
+    set -x
+    exec ovn-bgp-agent \
+          --config-file /etc/ovn-bgp-agent/ovn-bgp-agent.conf \
+          --config-file /tmp/pod-shared/ovn.ini
+  ovn-bgp-agent-init.sh: |
+    #!/bin/bash
+    set -ex
+    mkdir -p /tmp/pod-shared
+    tee > /tmp/pod-shared/ovn.ini << EOF
+    [ovn]
+    ovn_nb_connection=tcp:$OVN_OVSDB_NB_SERVICE_HOST:$OVN_OVSDB_NB_SERVICE_PORT_OVSDB
+    ovn_sb_connection=tcp:$OVN_OVSDB_SB_SERVICE_HOST:$OVN_OVSDB_SB_SERVICE_PORT_OVSDB
+    EOF
