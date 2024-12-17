@@ -1,0 +1,10 @@
+---
+- name: Deploy OVN BGP Agent ConfigMap
+  kubernetes.core.k8s:
+    definition: "{{ lookup('template', 'templates/configmap-ovn-bgp-agent.yml.j2') }}"
+- name: Deploy OVN BGP Agent Secret
+  kubernetes.core.k8s:
+    definition: "{{ lookup('template', 'templates/secret-ovn-bgp-agent.yml.j2') }}"
+- name: Deploy OVN BGP Agent DaemonSet
+  kubernetes.core.k8s:
+    definition: "{{ lookup('template', 'templates/daemonset-ovn-bgp-agent.yml.j2') }}"

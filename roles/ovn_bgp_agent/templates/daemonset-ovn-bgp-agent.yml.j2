@@ -1,0 +1,92 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: ovn-bgp-agent
+  namespace: {{ ovn_bgp_agent.namespace }}
+  labels:
+    application: neutron
+    component: ovn-bgp-agent
+    release_group: neutron
+spec:
+  selector:
+    matchLabels:
+      application: neutron
+      component: ovn-bgp-agent
+      release_group: neutron
+  template:
+    metadata:
+      labels:
+        application: neutron
+        component: ovn-bgp-agent
+        release_group: neutron
+    spec:
+      serviceAccountName: ovn-bgp-agent
+      containers:
+      - command:
+        - /tmp/ovn-bgp-agent.sh
+        name: ovn-bgp-agent
+        image: {{ ovn_bgp_agent.image }}
+        env:
+        - name: OVN_SB_DB
+          value: "{{ ovn_bgp_agent.ovn_sb_db }}"
+        - name: OVN_NB_DB
+          value: "{{ ovn_bgp_agent.ovn_nb_db }}"
+        resources: {}
+        volumeMounts:
+        - mountPath: /run/openvswitch
+          name: run-openvswitch
+        - mountPath: /tmp
+          name: pod-tmp
+        - mountPath: /var/lib/neutron
+          name: pod-var-neutron
+        - mountPath: /tmp/ovn-bgp-agent.sh
+          name: ovn-bgp-agent-bin
+          readOnly: true
+          subPath: ovn-bgp-agent.sh
+        - mountPath: /etc/ovn-bgp-agent/ovn-bgp-agent.conf
+          name: ovn-bgp-agent-etc
+          readOnly: true
+          subPath: ovn-bgp-agent.conf
+        - mountPath: /etc/ovn-bgp-agent/rootwrap.conf
+          name: ovn-bgp-agent-etc
+          readOnly: true
+          subPath: rootwrap.conf
+        - mountPath: /etc/kubernetes/admin.conf
+          name: ovn-bgp-agent-etc
+          readOnly: true
+          subPath: admin.conf
+        securityContext:
+          privileged: true
+      initContainers:
+      - command:
+        - /tmp/ovn-bgp-agent-init.sh
+        image: registry.atmosphere.dev/library/neutron:main
+        imagePullPolicy: IfNotPresent
+        name: ovn-bgp-agent-init
+        securityContext:
+          readOnlyRootFilesystem: true
+          runAsUser: 0
+        volumeMounts:
+        - mountPath: /tmp
+          name: pod-tmp
+        - mountPath: /tmp/ovn-bgp-agent-init.sh
+          name: ovn-bgp-agent-bin
+          readOnly: true
+          subPath: ovn-bgp-agent-init.sh
+      volumes:
+      - emptyDir: {}
+        name: pod-tmp
+      - emptyDir: {}
+        name: pod-var-neutron
+      - hostPath:
+          path: /run/openvswitch
+          type: ""
+        name: run-openvswitch
+      - configMap:
+          defaultMode: 365
+          name: ovn-bgp-agent-bin
+        name: ovn-bgp-agent-bin
+      - name: ovn-bgp-agent-etc
+        secret:
+          defaultMode: 292
+          secretName: ovn-bgp-agent-etc
