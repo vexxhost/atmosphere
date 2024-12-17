@@ -7,7 +7,7 @@ FROM harbor.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
 ARG NOVA_GIT_REF=70a435fd519a0ebcc3ac9ad5254fefbf19c93e48
 ADD --keep-git-dir=true https://opendev.org/openstack/nova.git#${NOVA_GIT_REF} /src/nova
 RUN git -C /src/nova fetch --unshallow
-ARG SCHEDULER_FILTERS_GIT_REF=eb17f39c68606cca7ec68bf3e40d58e0954326ee
+ARG SCHEDULER_FILTERS_GIT_REF=77ed1c2ca70f4166a6d0995c7d3d90822f0ca6c0
 ADD --keep-git-dir=true https://github.com/vexxhost/nova-scheduler-filters.git#${SCHEDULER_FILTERS_GIT_REF} /src/nova-scheduler-filters
 RUN git -C /src/nova-scheduler-filters fetch --unshallow
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
