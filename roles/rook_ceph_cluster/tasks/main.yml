@@ -122,13 +122,13 @@
     - interface: public
       url: "https://{{ openstack_helm_endpoints.rook_ceph_cluster.host_fqdn_override.public.host }}/swift/v1/%(tenant_id)s"
     - interface: internal
-      url: "http://rook-ceph-rgw-ceph.openstack.svc.cluster.local/swift/v1/%(tenant_id)s"
+      url: "http://rook-ceph-rgw-{{ rook_ceph_cluster_name }}.openstack.svc.cluster.local/swift/v1/%(tenant_id)s"
 
 - name: Create Ingress
   ansible.builtin.include_role:
     name: openstack_helm_ingress
   vars:
     openstack_helm_ingress_endpoint: rook_ceph_cluster
-    openstack_helm_ingress_service_name: rook-ceph-rgw-ceph
+    openstack_helm_ingress_service_name: rook-ceph-rgw-{{ rook_ceph_cluster_name }}
     openstack_helm_ingress_service_port: 80
     openstack_helm_ingress_annotations: "{{ _rook_ceph_cluster_radosgw_annotations | combine(rook_ceph_cluster_radosgw_annotations, recursive=True) }}"
