@@ -23,6 +23,10 @@ limitations under the License.
 {{- $_ := set .Values.conf.ovn_network_logging_parser_uwsgi.uwsgi "http-socket" $http_socket -}}
 {{- end -}}
 
+{{- if empty $envAll.Values.conf.ovn_bgp_agent.frr_k8s.namespace -}}
+{{- $_ := set .Values.conf.ovn_bgp_agent.frr_k8s "namespace" $envAll.Release.Namespace -}}
+{{- end -}}
+
 ---
 apiVersion: v1
 kind: Secret
@@ -32,6 +36,13 @@ type: Opaque
 data:
   auto_bridge_add: {{ toJson $envAll.Values.conf.auto_bridge_add | b64enc }}
   neutron-ovn-network-logging-parser-uwsgi.ini: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.ovn_network_logging_parser_uwsgi | b64enc }}
+  ovn-bgp-agent.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.ovn_bgp_agent | b64enc }}
+  ovn_bgp_agent_sudoers: {{ $envAll.Values.conf.ovn_bgp_agent_sudoers | b64enc }}
+  rootwrap.conf: {{ $envAll.Values.conf.rootwrap | b64enc }}
+{{- range $key, $value := $envAll.Values.conf.rootwrap_filters }}
+{{- $filePrefix := replace "_" "-"  $key }}
+  {{ printf "%s.filters" $filePrefix }}: {{ $value.content | b64enc }}
+{{- end }}
 {{- end }}
 {{- end }}
 
