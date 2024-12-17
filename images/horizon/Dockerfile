@@ -15,7 +15,7 @@ ADD --keep-git-dir=true https://opendev.org/openstack/ironic-ui.git#unmaintained
 RUN git -C /src/ironic-ui fetch --unshallow
 ADD --keep-git-dir=true https://opendev.org/openstack/magnum-ui.git#unmaintained/2023.1 /src/magnum-ui
 RUN git -C /src/magnum-ui fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/manila-ui.git#stable/2023.1 /src/manila-ui
+ADD --keep-git-dir=true https://opendev.org/openstack/manila-ui.git#unmaintained/2023.1 /src/manila-ui
 RUN git -C /src/manila-ui fetch --unshallow
 ADD --keep-git-dir=true https://opendev.org/openstack/neutron-vpnaas-dashboard.git#unmaintained/2023.1 /src/neutron-vpnaas-dashboard
 RUN git -C /src/neutron-vpnaas-dashboard fetch --unshallow
