@@ -112,16 +112,32 @@ tests:
         values: '1'
       - series: 'mysql_up{instance="percona-xtradb-pxc-1", job="pxc"}'
         values: '1'
-      - series: 'mysql_up{instance="percona-xtradb-pxc-3", job="pxc"}'
-        values: '0'                
+      - series: 'mysql_up{instance="percona-xtradb-pxc-2", job="pxc"}'
+        values: '1'
     alert_rule_test:
       - eval_time: 1m
+        alertname: MysqlClusterDown
+        exp_alerts: []
+
+  - interval: 1m
+    input_series:
+      - series: 'mysql_up{instance="percona-xtradb-pxc-0", job="pxc"}'
+        values: '1'
+      - series: 'mysql_up{instance="percona-xtradb-pxc-1", job="pxc"}'
+        values: '1'
+      - series: 'mysql_up{instance="percona-xtradb-pxc-2", job="pxc"}'
+        values: '0'
+    alert_rule_test:
+      - eval_time: 5m
         alertname: MysqlClusterDown
         exp_alerts:
           - exp_labels:
               severity: P5
+              instance: percona-xtradb-pxc-2
+              job: pxc
             exp_annotations:
-              summary: "1 percona-xtradb replication down"
+              summary: Percona XtraDB Cluster replica is down
+              description: percona-xtradb-pxc-2 replica is down.
 
   - interval: 1m
     input_series:
@@ -129,31 +145,46 @@ tests:
         values: '1'
       - series: 'mysql_up{instance="percona-xtradb-pxc-1", job="pxc"}'
         values: '0'
-      - series: 'mysql_up{instance="percona-xtradb-pxc-3", job="pxc"}'
-        values: '0'                
+      - series: 'mysql_up{instance="percona-xtradb-pxc-2", job="pxc"}'
+        values: '0'
     alert_rule_test:
-      - eval_time: 1m
+      - eval_time: 5m
         alertname: MysqlClusterDown
         exp_alerts:
           - exp_labels:
               severity: P3
             exp_annotations:
-              summary: 'Only 33% percona-xtradb cluster are online'
-              description: "percona-xtradb cluster less than minimum replication, please check with kubectl get pods -n openstack -l app.kubernetes.io/component=pxc"
+              summary: Percona XtraDB Cluster replicas are down
+              description: 33% of replicas are online.
           - exp_labels:
               severity: P5
+              instance: percona-xtradb-pxc-1
+              job: pxc
             exp_annotations:
-              summary: "2 percona-xtradb replication down"
+              summary: Percona XtraDB Cluster replica is down
+              description: percona-xtradb-pxc-1 replica is down.
+          - exp_labels:
+              severity: P5
+              instance: percona-xtradb-pxc-2
+              job: pxc
+            exp_annotations:
+              summary: Percona XtraDB Cluster replica is down
+              description: percona-xtradb-pxc-2 replica is down.
 
   - interval: 1m
     input_series:
       - series: 'mysql_up{instance="percona-xtradb-pxc-0", job="pxc"}'
-        values: '1'
+        values: '0'
       - series: 'mysql_up{instance="percona-xtradb-pxc-1", job="pxc"}'
-        values: '1'
+        values: '0'
       - series: 'mysql_up{instance="percona-xtradb-pxc-3", job="pxc"}'
-        values: '1'                
+        values: '0'
     alert_rule_test:
       - eval_time: 1m
         alertname: MysqlClusterDown
-        exp_alerts: []              
+        exp_alerts:
+          - exp_labels:
+              severity: P1
+            exp_annotations:
+              summary: Percona XtraDB Cluster is down
+              description: All replicas are down.

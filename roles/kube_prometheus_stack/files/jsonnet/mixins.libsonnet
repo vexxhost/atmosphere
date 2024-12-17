@@ -147,25 +147,32 @@ local mixins = {
             },
             {
               alert: 'MysqlClusterDown',
-              'for': '1m',
-              expr: 'count(mysql_up==0) != count(mysql_up)',
-              labels: {
-                severity: 'info',
-              },
+              'for': '5m',
+              expr: 'mysql_up == 0',
+              labels: { severity: 'info' },
               annotations: {
-                summary: '{{ $value }} percona-xtradb replication down',
+                summary: 'Percona XtraDB Cluster replica is down',
+                description: "{{ $labels.instance }} replica is down.",
+              },
+            },
+            {
+              alert: 'MysqlClusterDown',
+              'for': '5m',
+              expr: 'round(count(mysql_up==1) / count(mysql_up) * 100) <= 50',
+              labels: { severity: 'warning' },
+              annotations: {
+                summary: 'Percona XtraDB Cluster replicas are down',
+                description: "{{ $value }}% of replicas are online.",
               },
             },
             {
               alert: 'MysqlClusterDown',
               'for': '1m',
-              expr: 'round(count(mysql_up==1)/count(mysql_up) * 100) <= 50',
-              labels: {
-                severity: 'warning',
-              },
+              expr: 'count(mysql_up==0) == count(mysql_up)',
+              labels: { severity: 'critical' },
               annotations: {
-                summary: 'Only {{ $value }}% percona-xtradb cluster are online',
-                description: "percona-xtradb cluster less than minimum replication, please check with kubectl get pods -n openstack -l app.kubernetes.io/component=pxc",
+                summary: 'Percona XtraDB Cluster is down',
+                description: "All replicas are down.",
               },
             },
           ],
