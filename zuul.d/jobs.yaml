@@ -163,6 +163,44 @@
       tox_envlist: molecule-aio-ovn
 
 - job:
+    name: atmosphere-molecule-aio-ovn-bgp-agent
+    parent: atmosphere-molecule-aio-ovn
+    pre-run: zuul.d/playbooks/ovn-bgp-agent/pre.yml
+    vars:
+      ansible_extra_vars:
+        ovn_bgp_agent_enabled: true
+        tempest_helm_values:
+          conf:
+            tempest:
+              service_available:
+                horizon: false
+                load_balancer: false
+                swift: false
+      ansible_molecule_skip_tags:
+        - monitoring
+        - barbican
+        - rook-ceph
+        - rook-ceph-cluster
+        - staffeln
+        - iscsi
+        - lpfc
+        - mulitpathd
+        - coredns
+        - heat
+        - horizon
+        - magnum
+        - manila
+        - octavia
+        - openstack-exporter
+        - node-feature-discovery
+        - kube-prometheus-stack
+        - loki
+        - vector
+        - goldpinger
+        - ipmi-exporter
+        - prometheus-pushgateway
+
+- job:
     name: atmosphere-molecule-aio-upgrade-base
     run: zuul.d/playbooks/upgrade/run-upgrade.yml
     abstract: true
