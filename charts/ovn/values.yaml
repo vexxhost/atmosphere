@@ -52,6 +52,9 @@ labels:
   ovn_controller_gw:
     node_selector_key: l3-agent
     node_selector_value: enabled
+  ovn_bgp_agent:
+    node_selector_key: openvswitch
+    node_selector_value: enabled
 
 volume:
   ovn_ovsdb_nb:
@@ -133,6 +136,64 @@ conf:
     endpoint = "http://loki.monitoring:3100"
     encoding.codec = "json"
     tenant_id = "{{`{{ project_id }}`}}"
+  ovn_bgp_agent:
+    DEFAULT:
+      debug: False
+      reconcile_interval: 120
+      expose_tenant_networks: True
+      driver: ovn_bgp_driver
+      frr_driver: frr_k8s
+      ovsdb_connection: unix:/run/openvswitch/db.sock
+    agent:
+      root_helper: sudo /var/lib/openstack/bin/ovn-bgp-agent-rootwrap /etc/ovn-bgp-agent/rootwrap.conf
+      root_helper_daemon: sudo /var/lib/openstack/bin/ovn-bgp-agent-rootwrap-daemon /etc/ovn-bgp-agent/rootwrap.conf
+    frr_k8s:
+      node_to_config: testnodename
+      peer_address: 10.2.2.254:179
+      source_address: 10.1.1.254
+      my_asn: 100
+      router_id: 10.1.1.254
+      peer_asn: 100
+      hold_time: 1s
+      keep_alive_time: 1s
+      password: password
+      ebgp_multi_hop: False
+      vrf_name: fake-vrf
+  rootwrap: |
+    # Configuration for neutron-rootwrap
+    # This file should be owned by (and only-writeable by) the root user
+
+    [DEFAULT]
+    # List of directories to load filter definitions from (separated by ',').
+    # These directories MUST all be only writeable by root !
+    filters_path=/etc/neutron/rootwrap.d,/usr/share/neutron/rootwrap,/var/lib/openstack/etc/neutron/rootwrap.d
+
+    # List of directories to search executables in, in case filters do not
+    # explicitely specify a full path (separated by ',')
+    # If not specified, defaults to system PATH environment variable.
+    # These directories MUST all be only writeable by root !
+    exec_dirs=/sbin,/usr/sbin,/bin,/usr/bin,/usr/local/bin,/usr/local/sbin,/var/lib/openstack/bin,/var/lib/kolla/venv/bin
+
+    # Enable logging to syslog
+    # Default value is False
+    use_syslog=False
+
+    # Which syslog facility to use.
+    # Valid values include auth, authpriv, syslog, local0, local1...
+    # Default value is 'syslog'
+    syslog_log_facility=syslog
+
+    # Which messages to log.
+    # INFO means log all usage
+    # ERROR means only log unsuccessful attempts
+    syslog_log_level=ERROR
+
+    [xenapi]
+    # XenAPI configuration is only required by the L2 agent if it is to
+    # target a XenServer/XCP compute host's dom0.
+    xenapi_connection_url=<None>
+    xenapi_connection_username=root
+    xenapi_connection_password=<None>
 
 pod:
   # NOTE: should be same as nova.pod.use_fqdn.compute
@@ -440,4 +501,5 @@ manifests:
   deployment_ovn_northd: true
   daemonset_ovn_controller: true
   job_image_repo_sync: true
+  daemonset_ovn_bgp_agent: false
 ...
