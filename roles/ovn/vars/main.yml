@@ -33,6 +33,10 @@ _ovn_helm_values:
       size: 20Gi
     ovn_ovsdb_sb:
       size: 20Gi
+  conf:
+    ovn_bgp_agent:
+      DEFAULT:
+        bgp_driver: frr_k8s
   pod:
     probes:
       ovn_northd:
@@ -58,3 +62,5 @@ _ovn_helm_values:
     sidecars:
       ovn_logging_parser: "{{ ovn_network_logging_parser_enabled }}"
       vector: "{{ ovn_network_logging_parser_enabled }}"
+  manifests:
+    daemonset_ovn_bgp_agent: "{{ ovn_bgp_agent_enabled | default(false) }}"
