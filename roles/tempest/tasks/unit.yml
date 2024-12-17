@@ -1,0 +1,39 @@
+---
+- name: Get tempest pod object
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Pod
+    namespace: openstack
+    label_selectors:
+      - job-name=tempest-run-tests
+  register: _tempest_pod_obj
+
+- name: Slurp Subunit file
+  ansible.builtin.slurp:
+    src: /tmp/tempest-reports/results.subunit
+  register: _tempest_results_subunit
+  delegate_to: "{{ _tempest_pod_obj.resources[0].spec.nodeName }}"
+
+- name: Save Subunit file
+  ansible.builtin.copy:
+    content: "{{ _tempest_results_subunit.content | b64decode }}"
+    dest: "{{ tempest_subunit_path }}"
+    owner: root
+    group: root
+    mode: '0644'
+  delegate_to: localhost
+
+- name: Slurp junit file
+  ansible.builtin.slurp:
+    src: /tmp/tempest-reports/results.junit
+  register: _tempest_results_junit
+  delegate_to: "{{ _tempest_pod_obj.resources[0].spec.nodeName }}"
+
+- name: Save Junit file
+  ansible.builtin.copy:
+    content: "{{ _tempest_results_junit.content | b64decode }}"
+    dest: "{{ tempest_junit_path }}"
+    owner: root
+    group: root
+    mode: '0644'
+  delegate_to: localhost
