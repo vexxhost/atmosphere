@@ -184,6 +184,24 @@ target "ovn" {
     ]
 }
 
+target "ovn-bgp-agent" {
+    context = "images/ovn-bgp-agent"
+    platforms = ["linux/amd64", "linux/arm64"]
+
+    contexts = {
+        "openstack-venv-builder" = "target:openstack-venv-builder"
+        "openstack-neutron" = "target:openstack-neutron"
+    }
+
+    args = {
+        PROJECT = "ovn-bgp-agent"
+    }
+
+    tags = [
+        "${REGISTRY}/ovn-bgp-agent:${TAG}"
+    ]
+}
+
 target "python-openstackclient" {
     context = "images/python-openstackclient"
     platforms = ["linux/amd64", "linux/arm64"]
@@ -263,6 +281,7 @@ group "default" {
         "openstack-staffeln",
         "openstack-tempest",
         "openvswitch",
+        "ovn-bgp-agent",
         "ovn-central",
         "ovn-host",
         "python-openstackclient",
