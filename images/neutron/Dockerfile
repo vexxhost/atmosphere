@@ -10,6 +10,9 @@ RUN git -C /src/neutron fetch --unshallow
 ARG NEUTRON_VPNAAS_GIT_REF=7bc6d94305d34269d7522a9850c22aa42b50cdab
 ADD --keep-git-dir=true https://opendev.org/openstack/neutron-vpnaas.git#${NEUTRON_VPNAAS_GIT_REF} /src/neutron-vpnaas
 RUN git -C /src/neutron-vpnaas fetch --unshallow
+ARG NETWORKING_BAREMETAL_GIT_REF=8b92ad81c0bdbfde60a6f0c47ff0133c08bb617e
+ADD --keep-git-dir=true https://opendev.org/openstack/networking-baremetal.git#${NETWORKING_BAREMETAL_GIT_REF} /src/networking-baremetal
+RUN git -C /src/networking-baremetal fetch --unshallow
 ARG POLICY_SERVER_GIT_REF=85f47edbcf66aaf3a289dc3ae76191adce91018f
 ADD --keep-git-dir=true https://github.com/vexxhost/neutron-policy-server.git#${POLICY_SERVER_GIT_REF} /src/neutron-policy-server
 RUN git -C /src/neutron-policy-server fetch --unshallow
@@ -21,6 +24,7 @@ pip3 install \
     --constraint /upper-constraints.txt \
         /src/neutron \
         /src/neutron-vpnaas \
+        /src/networking-baremetal \
         /src/neutron-policy-server \
         /src/neutron-ovn-network-logging-parser
 EOF
