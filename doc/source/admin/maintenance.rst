@@ -44,7 +44,7 @@ different types of instances:
 
 - Boot from Volume Instances:
 
-These instances have their root disks stored on an external volume (e.g., Ceph).
+These instances have their root disks stored on a distributed storage system (e.g., Ceph).
 Evacuating these instances is safe and ensures that data integrity is maintained
 since the root volume is detached from the failing hypervisor and reattached to a
 new one.
@@ -53,10 +53,9 @@ new one.
 
 These instances have their root disks stored locally on the hypervisor's ephemeral
 storage. Evacuating these instances will result in the loss of all data stored
-in the root disk, as ephemeral storage is not persistent and cannot be transferred
-to another hypervisor.
+in the root disk.
 
-.. admonition:: Note
+.. admonition:: warning
 
     Evacuation of non-boot-from-volume instances should be avoided unless data loss
     is acceptable or has been mitigated through backups or other mechanisms.
