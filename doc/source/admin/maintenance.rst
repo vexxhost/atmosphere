@@ -39,10 +39,34 @@ the following command:
 Compute Node
 ============
 
-In order to evacuate a compute node, you will need to start by disabling the
-OpenStack compute service on the node.  This will prevent new workloads from
-being scheduled on the node.  To disable the OpenStack compute service, run
-the following command against the node you want to evacuate:
+Before initiating VM evacuation, it is important to understand the implications for
+different types of instances:
+
+- Boot from Volume Instances:
+
+These instances have their root disks stored on an external volume (e.g., Ceph).
+Evacuating these instances is safe and ensures that data integrity is maintained
+since the root volume is detached from the failing hypervisor and reattached to a
+new one.
+
+- Non-Boot from Volume Instances:
+
+These instances have their root disks stored locally on the hypervisor's ephemeral
+storage. Evacuating these instances will result in the loss of all data stored
+in the root disk, as ephemeral storage is not persistent and cannot be transferred
+to another hypervisor.
+
+.. admonition:: Note
+
+    Evacuation of non-boot-from-volume instances should be avoided unless data loss
+    is acceptable or has been mitigated through backups or other mechanisms.
+
+The evacuation process can be divided into two scenarios based on the state of
+the hypervisor. In order to evacuate a compute node with the hypervisor running,
+you will need to start by disabling the OpenStack compute service on the node.
+This will prevent new workloads from being scheduled on the node.  To disable
+the OpenStack compute service, run the following command against the node you
+want to evacuate:
 
 .. code-block:: console
 
