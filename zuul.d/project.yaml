@@ -23,65 +23,65 @@
         - atmosphere-tox-helm-unittest
         - atmosphere-tox-py3
         - atmosphere-build-collection:
-            dependencies: &molecule_check_dependencies
-              - name: atmosphere-build-container-image-barbican
+            dependencies: &build_apko_image_jobs
+              - name: atmosphere-build-apko-image-barbican
                 soft: true
-              - name: atmosphere-build-container-image-cinder
+              - name: atmosphere-build-apko-image-cinder
                 soft: true
-              - name: atmosphere-build-container-image-designate
+              - name: atmosphere-build-apko-image-designate
                 soft: true
-              - name: atmosphere-build-container-image-glance
+              - name: atmosphere-build-apko-image-glance
                 soft: true
-              - name: atmosphere-build-container-image-heat
+              - name: atmosphere-build-apko-image-heat
                 soft: true
-              - name: atmosphere-build-container-image-horizon
+              - name: atmosphere-build-apko-image-horizon
                 soft: true
-              - name: atmosphere-build-container-image-ironic
+              - name: atmosphere-build-apko-image-ironic
                 soft: true
-              - name: atmosphere-build-container-image-keepalived
+              - name: atmosphere-build-apko-image-keepalived
                 soft: true
-              - name: atmosphere-build-container-image-keystone
+              - name: atmosphere-build-apko-image-keystone
                 soft: true
-              - name: atmosphere-build-container-image-kubernetes-entrypoint
+              - name: atmosphere-build-apko-image-kubernetes-entrypoint
                 soft: true
-              - name: atmosphere-build-container-image-libvirtd
+              - name: atmosphere-build-apko-image-libvirtd
                 soft: true
-              - name: atmosphere-build-container-image-magnum
+              - name: atmosphere-build-apko-image-magnum
                 soft: true
-              - name: atmosphere-build-container-image-manila
+              - name: atmosphere-build-apko-image-manila
                 soft: true
-              - name: atmosphere-build-container-image-netoffload
+              - name: atmosphere-build-apko-image-netoffload
                 soft: true
-              - name: atmosphere-build-container-image-neutron
+              - name: atmosphere-build-apko-image-neutron
                 soft: true
-              - name: atmosphere-build-container-image-nova
+              - name: atmosphere-build-apko-image-nova
                 soft: true
-              - name: atmosphere-build-container-image-nova-ssh
+              - name: atmosphere-build-apko-image-nova-ssh
                 soft: true
-              - name: atmosphere-build-container-image-octavia
+              - name: atmosphere-build-apko-image-octavia
                 soft: true
-              - name: atmosphere-build-container-image-openvswitch
+              - name: atmosphere-build-apko-image-openvswitch
                 soft: true
-              - name: atmosphere-build-container-image-ovn
+              - name: atmosphere-build-apko-image-ovn
                 soft: true
-              - name: atmosphere-build-container-image-placement
+              - name: atmosphere-build-apko-image-placement
                 soft: true
-              - name: atmosphere-build-container-image-python-openstackclient
+              - name: atmosphere-build-apko-image-python-openstackclient
                 soft: true
-              - name: atmosphere-build-container-image-staffeln
+              - name: atmosphere-build-apko-image-staffeln
                 soft: true
-              - name: atmosphere-build-container-image-tempest
+              - name: atmosphere-build-apko-image-tempest
                 soft: true
         - atmosphere-molecule-aio-keycloak:
-            dependencies: *molecule_check_dependencies
+            dependencies: *build_apko_image_jobs
         - atmosphere-molecule-aio-openvswitch:
-            dependencies: *molecule_check_dependencies
+            dependencies: *build_apko_image_jobs
         - atmosphere-molecule-aio-ovn:
-            dependencies: *molecule_check_dependencies
+            dependencies: *build_apko_image_jobs
         - atmosphere-molecule-csi-local-path-provisioner:
-            dependencies: *molecule_check_dependencies
+            dependencies: *build_apko_image_jobs
         - atmosphere-molecule-csi-rbd:
-            dependencies: *molecule_check_dependencies
+            dependencies: *build_apko_image_jobs
     gate:
       jobs:
         - atmosphere-chart-vendor
@@ -89,71 +89,23 @@
         - atmosphere-linters
         - atmosphere-tox-py3
         - atmosphere-build-collection:
-            dependencies: &molecule_gate_dependencies
-              - name: atmosphere-upload-container-image-barbican
-                soft: true
-              - name: atmosphere-upload-container-image-cinder
-                soft: true
-              - name: atmosphere-upload-container-image-designate
-                soft: true
-              - name: atmosphere-upload-container-image-glance
-                soft: true
-              - name: atmosphere-upload-container-image-heat
-                soft: true
-              - name: atmosphere-upload-container-image-horizon
-                soft: true
-              - name: atmosphere-upload-container-image-ironic
-                soft: true
-              - name: atmosphere-upload-container-image-keepalived
-                soft: true
-              - name: atmosphere-upload-container-image-keystone
-                soft: true
-              - name: atmosphere-upload-container-image-kubernetes-entrypoint
-                soft: true
-              - name: atmosphere-upload-container-image-libvirtd
-                soft: true
-              - name: atmosphere-upload-container-image-magnum
-                soft: true
-              - name: atmosphere-upload-container-image-manila
-                soft: true
-              - name: atmosphere-upload-container-image-netoffload
-                soft: true
-              - name: atmosphere-upload-container-image-neutron
-                soft: true
-              - name: atmosphere-upload-container-image-nova
-                soft: true
-              - name: atmosphere-upload-container-image-nova-ssh
-                soft: true
-              - name: atmosphere-upload-container-image-octavia
-                soft: true
-              - name: atmosphere-upload-container-image-openvswitch
-                soft: true
-              - name: atmosphere-upload-container-image-ovn
-                soft: true
-              - name: atmosphere-upload-container-image-placement
-                soft: true
-              - name: atmosphere-upload-container-image-python-openstackclient
-                soft: true
-              - name: atmosphere-upload-container-image-staffeln
-                soft: true
-              - name: atmosphere-upload-container-image-tempest
-                soft: true
+            dependencies: *build_apko_image_jobs
         - atmosphere-molecule-aio-keycloak:
-            dependencies: *molecule_gate_dependencies
+            dependencies: *build_apko_image_jobs
         - atmosphere-molecule-aio-openvswitch:
-            dependencies: *molecule_gate_dependencies
+            dependencies: *build_apko_image_jobs
         - atmosphere-molecule-aio-ovn:
-            dependencies: *molecule_gate_dependencies
+            dependencies: *build_apko_image_jobs
         - atmosphere-molecule-csi-local-path-provisioner:
-            dependencies: *molecule_gate_dependencies
+            dependencies: *build_apko_image_jobs
         - atmosphere-molecule-csi-rbd:
-            dependencies: *molecule_gate_dependencies
+            dependencies: *build_apko_image_jobs
     release:
       jobs:
         - atmosphere-publish-collection
     periodic:
       jobs:
         - atmosphere-molecule-aio-upgrade-openvswitch:
-            dependencies: *molecule_check_dependencies
+            dependencies: *build_apko_image_jobs
         - atmosphere-molecule-aio-upgrade-ovn:
-            dependencies: *molecule_check_dependencies
+            dependencies: *build_apko_image_jobs
