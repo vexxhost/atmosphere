@@ -1,0 +1,30 @@
+# Copyright (c) 2024 VEXXHOST, Inc.
+# SPDX-License-Identifier: GPL-3.0-only
+# Atmosphere-Rebuild-Time: 2025-01-04T23:34:28Z
+
+include: _base.yaml
+
+contents:
+  packages:
+    - py3-osc-placement
+    - py3-python-barbicanclient
+    - py3-python-designateclient
+    - py3-python-glanceclient
+    - py3-python-heatclient
+    - py3-python-ironicclient
+    - py3-python-magnumclient
+    - py3-python-manilaclient
+    - py3-python-neutronclient
+    - py3-python-novaclient
+    - py3-python-octaviaclient
+    - py3-python-openstackclient
+    - py3-python-swiftclient
+
+environment:
+  # NOTE(mnaser): The Magnum client relies on the SHELL environment variable
+  #               to determine the shell to use.
+  SHELL: /bin/bash
+
+# NOTE(mnaser): When we call this container, we mount the current directory
+#               into `/opt` and then we can call `openstack` commands.
+work-dir: /opt
