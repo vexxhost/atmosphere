@@ -58,7 +58,6 @@ __neutron_helm_values:
         driver: noop
       service_providers:
         service_provider: VPN:strongswan:neutron_vpnaas.services.vpn.service_drivers.ipsec.IPsecVPNDriver:default
-      neutron_default_dns_servers: 10.96.0.20
     dhcp_agent:
       DEFAULT:
         dnsmasq_dns_servers: "{{ neutron_coredns_cluster_ip | default('10.96.0.20') }}"
@@ -94,10 +93,6 @@ __neutron_ovn_helm_values:
         ovn_emit_need_to_frag: true
       service_providers:
         service_provider: VPN:strongswan:neutron_vpnaas.services.vpn.service_drivers.ovn_ipsec.IPsecOvnVPNDriver:default
-    dhcp_agent:
-      DEFAULT:
-        dnsmasq_dns_servers: "{{ neutron_coredns_cluster_ip | default('1.1.1.1') }}"
-        enable_isolated_metadata: true
     ovn_metadata_agent:
       DEFAULT:
         metadata_proxy_shared_secret: "{{ openstack_helm_endpoints['compute_metadata']['secret'] }}"
