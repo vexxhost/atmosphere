@@ -1,0 +1,26 @@
+# Copyright (c) 2024 VEXXHOST, Inc.
+# SPDX-License-Identifier: GPL-3.0-only
+# Atmosphere-Rebuild-Time: 2025-01-04T23:34:28Z
+
+include: _openstack-service.yaml
+
+contents:
+  packages:
+    - py3-placement
+
+accounts:
+  groups:
+    - groupname: placement
+      gid: 42424
+  users:
+    - username: placement
+      uid: 42424
+      gid: 42424
+      homedir: /var/lib/placement
+
+paths:
+  - path: /var/lib/placement
+    type: directory
+    uid: 42424
+    gid: 42424
+    permissions: 0o755

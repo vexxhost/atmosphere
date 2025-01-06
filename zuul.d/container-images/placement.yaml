@@ -1,86 +1,35 @@
 # Copyright (c) 2024 VEXXHOST, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"); you may
-# not use this file except in compliance with the License. You may obtain
-# a copy of the License at
-#
-#      http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-# License for the specific language governing permissions and limitations
-# under the License.
+# SPDX-License-Identifier: GPL-3.0-only
 
-# - project:
-#     check:
-#       jobs:
-#         - atmosphere-build-container-image-placement
-#     gate:
-#       jobs:
-#         - atmosphere-upload-container-image-placement
-#     promote:
-#       jobs:
-#         - atmosphere-promote-container-image-placement
+- project:
+    check:
+      jobs:
+        - atmosphere-build-apko-image-placement
+    gate:
+      jobs:
+        - atmosphere-build-apko-image-placement
+    promote:
+      jobs:
+        - atmosphere-promote-apko-image-placement
 
-# - job:
-#     name: atmosphere-build-container-image-placement
-#     parent: atmosphere-build-container-image
-#     dependencies:
-#       - name: atmosphere-buildset-registry
-#         soft: false
-#       - name: atmosphere-build-container-image-ubuntu
-#         soft: true
-#       - name: atmosphere-build-container-image-ubuntu-cloud-archive
-#         soft: true
-#       - name: atmosphere-build-container-image-python-base
-#         soft: true
-#       - name: atmosphere-build-container-image-openstack-venv-builder
-#         soft: true
-#       - name: atmosphere-build-container-image-openstack-python-runtime
-#         soft: true
-#     vars: &container_image_vars
-#       promote_container_image_job: atmosphere-upload-container-image-placement
-#       container_images:
-#         - context: images/placement
-#           registry: harbor.atmosphere.dev
-#           repository: harbor.atmosphere.dev/library/placement
-#           arch:
-#             - linux/amd64
-#           build_args:
-#             - "RELEASE={{ zuul.branch | replace('stable/', '') }}"
-#             - PROJECT=placement
-#           tags:
-#             - "{{ zuul.branch | replace('stable/', '') }}"
-#     files: &container_image_files
-#       - images/ubuntu/.*
-#       - images/ubuntu-cloud-archive/.*
-#       - images/python-base/.*
-#       - images/openstack-venv-builder/.*
-#       - images/openstack-python-runtime/.*
-#       - images/placement/.*
+- job:
+    name: atmosphere-build-apko-image-placement
+    parent: atmosphere-build-apko-image
+    vars: &container_image_vars
+      promote_container_image_job: atmosphere-build-apko-image-placement
+      container_images:
+        - container_filename: placement.yaml
+          registry: harbor.atmosphere.dev
+          repository: harbor.atmosphere.dev/library/placement
+          tags:
+            - "{{ zuul.branch | replace('stable/', '') }}"
+    files: &container_image_files
+      - images/_base.yaml
+      - images/_openstack-service.yaml
+      - images/placement.yaml
 
-# - job:
-#     name: atmosphere-upload-container-image-placement
-#     parent: atmosphere-upload-container-image
-#     dependencies:
-#       - name: atmosphere-buildset-registry
-#         soft: false
-#       - name: atmosphere-upload-container-image-ubuntu
-#         soft: true
-#       - name: atmosphere-upload-container-image-ubuntu-cloud-archive
-#         soft: true
-#       - name: atmosphere-upload-container-image-python-base
-#         soft: true
-#       - name: atmosphere-upload-container-image-openstack-venv-builder
-#         soft: true
-#       - name: atmosphere-upload-container-image-openstack-python-runtime
-#         soft: true
-#     vars: *container_image_vars
-#     files: *container_image_files
-
-# - job:
-#     name: atmosphere-promote-container-image-placement
-#     parent: atmosphere-promote-container-image
-#     vars: *container_image_vars
-#     files: *container_image_files
+- job:
+    name: atmosphere-promote-apko-image-placement
+    parent: atmosphere-promote-apko-image
+    vars: *container_image_vars
+    files: *container_image_files
