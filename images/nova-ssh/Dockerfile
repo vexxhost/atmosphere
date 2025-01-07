@@ -7,6 +7,7 @@ FROM harbor.atmosphere.dev/library/openstack-runtime:${RELEASE}
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \
+    iproute2 \
     openssh-server \
     openssh-client
 EOF
