@@ -29,7 +29,6 @@ images:
     image_repo_sync: docker.io/library/docker:17.07.0
     vector: docker.io/timberio/vector:0.39.0-debian
     ovn_logging_parser: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
-    ovn_exporter: docker.io/openstackhelm/ovn:latest-ubuntu_focal
     openvswitch_exporter: docker.io/openstackhelm/ovn:latest-ubuntu_focal
   pull_policy: "IfNotPresent"
   local_registry:
@@ -155,15 +154,6 @@ pod:
           privileged: true
         controller:
           readOnlyRootFilesystem: true
-          capabilities:
-            add:
-              - SYS_NICE
-        exporter:
-          allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: true
-    ovn_controller_gw:
-      container:
-        controller_init:
           privileged: true
         ovn_logging_parser:
           allowPrivilegeEscalation: false
@@ -322,7 +312,6 @@ pod:
   sidecars:
     ovn_logging_parser: false
     vector: false
-    ovn_exporter: false
     openvswitch_exporter: false
 
 secrets:

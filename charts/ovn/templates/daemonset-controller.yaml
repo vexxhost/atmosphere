@@ -155,7 +155,7 @@ spec:
             - name: logs
               mountPath: /var/log/ovn
             - name: run-openvswitch
-              mountPath: /var/run/openvswitch
+              mountPath: /run/ovn
         {{- if .Values.pod.sidecars.vector }}
         - name: vector
 {{ tuple $envAll "vector" | include "helm-toolkit.snippets.image" | indent 10 }}
@@ -201,6 +201,7 @@ spec:
               mountPath: /etc/neutron/neutron-ovn-network-logging-parser-uwsgi.ini
               subPath: neutron-ovn-network-logging-parser-uwsgi.ini
               readOnly: true
+        {{- end }}
         {{- if .Values.pod.sidecars.openvswitch_exporter }}
         - name: exporter
 {{ tuple $envAll "openvswitch_exporter" | include "helm-toolkit.snippets.image" | indent 10 }}
