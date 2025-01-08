@@ -1,0 +1,81 @@
+# Copyright (c) 2024 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+{{- $mounts_ceph_osd_exporter := .Values.pod.mounts.ceph_osd_exporter.ceph_osd_exporter }}
+
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "ceph_osd_exporter.fullname" . }}
+  namespace: monitoring
+  labels:
+    {{- include "ceph_osd_exporter.labels" . | nindent 4 }}
+spec:
+  {{- with .Values.updateStrategy }}
+  updateStrategy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "ceph_osd_exporter.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{ toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "ceph_osd_exporter.selectorLabels" . | nindent 8 }}
+      {{- with .Values.podLabels }}
+        {{ toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      serviceAccountName: {{ include "ceph_osd_exporter.serviceAccountName" . }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: ceph-osd-exporter
+          {{- with .Values.containerSecurityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: metrics
+              containerPort: {{ .Values.ceph_osd_exporter.port }}
+          volumeMounts:
+            - name: run-ceph
+              mountPath: /var/run/ceph
+{{ if $mounts_ceph_osd_exporter.volumeMounts }}{{ toYaml $mounts_ceph_osd_exporter.volumeMounts | indent 12 }}{{ end }}
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              port: {{ .Values.ceph_osd_exporter.port }}
+              scheme: HTTP
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              port: {{ .Values.ceph_osd_exporter.port }}
+              scheme: HTTP
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+      volumes:
+        - name: run-ceph
+          hostPath:
+            path: /var/run/ceph
+{{ if $mounts_ceph_osd_exporter.volumes }}{{ toYaml $mounts_ceph_osd_exporter.volumes | indent 8 }}{{ end }}
