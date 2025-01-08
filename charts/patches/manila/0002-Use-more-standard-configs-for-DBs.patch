@@ -1,0 +1,31 @@
+From b356c3c5e5d392332ff275040bf17be257619076 Mon Sep 17 00:00:00 2001
+From: ricolin <rlin@vexxhost.com>
+Date: Wed, 8 Jan 2025 15:55:01 +0800
+Subject: [PATCH] Use more standard configs for DBs.
+
+This propose to changes some Barbican and Manila settings.
+
+To use more standard configs for Barbican DB connection and
+for DB drop job in Both Barbican and Manila wich you can reference
+same setting from cinder/templates/job-db-drop.yaml .
+
+Change-Id: I1be6fc2676363b1348b5bcf4c9433cdcd7ec8a63
+---
+diff --git a/manila/templates/job-db-drop.yaml b/manila/templates/job-db-drop.yaml
+index 9d63fa95..8dc2ba67 100644
+--- a/manila/templates/job-db-drop.yaml
++++ b/charts/manila/templates/job-db-drop.yaml
+@@ -13,11 +13,9 @@ limitations under the License.
+ */}}
+ 
+ {{- if .Values.manifests.job_db_drop }}
+-{{- $serviceName := "manila" -}}
+-{{- $dbToDrop := dict "adminSecret" .Values.secrets.oslo_db.admin "configFile" (printf "/etc/%s/%s.conf" $serviceName $serviceName ) "logConfigFile" (printf "/etc/%s/logging.conf" $serviceName ) "configDbSection" "DEFAULT" "configDbKey" "sql_connection" -}}
+-{{- $dbDropJob := dict "envAll" . "serviceName" $serviceName "dbToDrop" $dbToDrop -}}
++{{- $dbDropJob := dict "envAll" . "serviceName" "manila" -}}
+ {{- if .Values.manifests.certificates -}}
+-{{- $_ := set $dbToDrop "dbAdminTlsSecret" .Values.endpoints.oslo_db.auth.admin.secret.tls.internal -}}
++{{- $_ := set $dbDropJob "dbAdminTlsSecret" .Values.endpoints.oslo_db.auth.admin.secret.tls.internal -}}
+ {{- end -}}
+ {{- if .Values.pod.tolerations.manila.enabled -}}
+ {{- $_ := set $dbDropJob "tolerationsEnabled" true -}}

@@ -1,0 +1,92 @@
+From b356c3c5e5d392332ff275040bf17be257619076 Mon Sep 17 00:00:00 2001
+From: ricolin <rlin@vexxhost.com>
+Date: Wed, 8 Jan 2025 15:55:01 +0800
+Subject: [PATCH] Use more standard configs for DBs.
+
+This propose to changes some Barbican and Manila settings.
+
+To use more standard configs for Barbican DB connection and
+for DB drop job in Both Barbican and Manila wich you can reference
+same setting from cinder/templates/job-db-drop.yaml .
+
+Change-Id: I1be6fc2676363b1348b5bcf4c9433cdcd7ec8a63
+---
+diff --git a/barbican/templates/bin/_simple_crypto_kek_rewrap.py.tpl b/charts/barbican/templates/bin/_simple_crypto_kek_rewrap.py.tpl
+index 7a521752..8f476f73 100644
+--- a/barbican/templates/bin/_simple_crypto_kek_rewrap.py.tpl
++++ b/charts/barbican/templates/bin/_simple_crypto_kek_rewrap.py.tpl
+@@ -33,7 +33,7 @@ class KekRewrap(object):
+ 
+     def __init__(self, conf, old_kek):
+         self.dry_run = False
+-        self.db_engine = session.create_engine(conf.sql_connection)
++        self.db_engine = session.create_engine(conf.database.connection)
+         self._session_creator = scoping.scoped_session(
+             orm.sessionmaker(
+                 bind=self.db_engine,
+diff --git a/barbican/templates/configmap-etc.yaml b/charts/barbican/templates/configmap-etc.yaml
+index d2bff2c0..fba29565 100644
+--- a/barbican/templates/configmap-etc.yaml
++++ b/charts/barbican/templates/configmap-etc.yaml
+@@ -49,12 +49,12 @@ limitations under the License.
+ {{- $_ := set .Values.conf.barbican.keystone_authtoken "memcache_secret_key" ( default ( randAlphaNum 64 ) .Values.endpoints.oslo_cache.auth.memcache_secret_key ) -}}
+ {{- end -}}
+ 
+-{{- if empty .Values.conf.barbican.DEFAULT.sql_connection -}}
++{{- if empty .Values.conf.barbican.database.connection -}}
+ {{- $connection := tuple "oslo_db" "internal" "barbican" "mysql" . | include "helm-toolkit.endpoints.authenticated_endpoint_uri_lookup" -}}
+ {{- if .Values.manifests.certificates -}}
+-{{- $_ := (printf "%s?charset=utf8&ssl_ca=/etc/mysql/certs/ca.crt&ssl_key=/etc/mysql/certs/tls.key&ssl_cert=/etc/mysql/certs/tls.crt&ssl_verify_cert" $connection ) | set .Values.conf.barbican.DEFAULT "sql_connection" -}}
++{{- $_ := (printf "%s?charset=utf8&ssl_ca=/etc/mysql/certs/ca.crt&ssl_key=/etc/mysql/certs/tls.key&ssl_cert=/etc/mysql/certs/tls.crt&ssl_verify_cert" $connection ) | set .Values.conf.barbican.database "connection" -}}
+ {{- else -}}
+-{{- $_ := set .Values.conf.barbican.DEFAULT "sql_connection" $connection -}}
++{{- $_ := set .Values.conf.barbican.database "connection" $connection -}}
+ {{- end -}}
+ {{- end -}}
+ 
+diff --git a/barbican/templates/job-db-drop.yaml b/charts/barbican/templates/job-db-drop.yaml
+index b6f0a6fa..b3f474e1 100644
+--- a/barbican/templates/job-db-drop.yaml
++++ b/charts/barbican/templates/job-db-drop.yaml
+@@ -13,11 +13,9 @@ limitations under the License.
+ */}}
+ 
+ {{- if .Values.manifests.job_db_drop }}
+-{{- $serviceName := "barbican" -}}
+-{{- $dbToDrop := dict "adminSecret" .Values.secrets.oslo_db.admin "configFile" (printf "/etc/%s/%s.conf" $serviceName $serviceName ) "logConfigFile" (printf "/etc/%s/logging.conf" $serviceName ) "configDbSection" "DEFAULT" "configDbKey" "sql_connection" -}}
+-{{- $dbDropJob := dict "envAll" . "serviceName" $serviceName "dbToDrop" $dbToDrop -}}
++{{- $dbDropJob := dict "envAll" . "serviceName" "barbican" -}}
+ {{- if .Values.manifests.certificates -}}
+-{{- $_ := set $dbToDrop "dbAdminTlsSecret" .Values.endpoints.oslo_db.auth.admin.secret.tls.internal -}}
++{{- $_ := set $dbDropJob "dbAdminTlsSecret" .Values.endpoints.oslo_db.auth.admin.secret.tls.internal -}}
+ {{- end -}}
+ {{- if .Values.pod.tolerations.barbican.enabled -}}
+ {{- $_ := set $dbDropJob "tolerationsEnabled" true -}}
+diff --git a/barbican/templates/job-db-init.yaml b/charts/barbican/templates/job-db-init.yaml
+index afe16dcc..8d24ff93 100644
+--- a/barbican/templates/job-db-init.yaml
++++ b/charts/barbican/templates/job-db-init.yaml
+@@ -13,19 +13,18 @@ limitations under the License.
+ */}}
+ 
+ {{- define "metadata.annotations.job.db_init" }}
+-{{- if .Values.helm3_hook }}
+ helm.sh/hook: post-install,post-upgrade
+ helm.sh/hook-weight: "-5"
+ {{- end }}
+-{{- end }}
+ 
+ {{- if .Values.manifests.job_db_init }}
+-{{- $serviceName := "barbican" -}}
+-{{- $dbToInit := dict "adminSecret" .Values.secrets.oslo_db.admin "configFile" (printf "/etc/%s/%s.conf" $serviceName $serviceName ) "logConfigFile" (printf "/etc/%s/logging.conf" $serviceName ) "configDbSection" "DEFAULT" "configDbKey" "sql_connection" -}}
+-{{- $dbInitJob := dict "envAll" . "serviceName" $serviceName "dbToInit" $dbToInit "jobAnnotations" (include "metadata.annotations.job.db_init" . | fromYaml) -}}
++{{- $dbInitJob := dict "envAll" . "serviceName" "barbican" -}}
+ {{- if .Values.manifests.certificates -}}
+ {{- $_ := set $dbInitJob "dbAdminTlsSecret" .Values.endpoints.oslo_db.auth.admin.secret.tls.internal -}}
+ {{- end -}}
++{{- if .Values.helm3_hook }}
++{{- $_ := set $dbInitJob "jobAnnotations" (include "metadata.annotations.job.db_init" . | fromYaml) }}
++{{- end }}
+ {{- if .Values.pod.tolerations.barbican.enabled -}}
+ {{- $_ := set $dbInitJob "tolerationsEnabled" true -}}
+ {{- end -}}
