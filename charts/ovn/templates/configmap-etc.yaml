@@ -32,6 +32,8 @@ type: Opaque
 data:
   auto_bridge_add: {{ toJson $envAll.Values.conf.auto_bridge_add | b64enc }}
   neutron-ovn-network-logging-parser-uwsgi.ini: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.ovn_network_logging_parser_uwsgi | b64enc }}
+  ovn-bgp-agent.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.ovn_bgp_agent | b64enc }}
+  rootwrap.conf: {{ $envAll.Values.conf.rootwrap | b64enc }}
 {{- end }}
 {{- end }}
 
