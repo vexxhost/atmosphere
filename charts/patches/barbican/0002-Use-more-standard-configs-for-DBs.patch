@@ -15,7 +15,7 @@ diff --git a/barbican/templates/bin/_simple_crypto_kek_rewrap.py.tpl b/charts/ba
 index 7a521752..8f476f73 100644
 --- a/barbican/templates/bin/_simple_crypto_kek_rewrap.py.tpl
 +++ b/charts/barbican/templates/bin/_simple_crypto_kek_rewrap.py.tpl
-@@ -33,7 +33,7 @@ class KekRewrap(object):
+@@ -33,11 +33,10 @@ class KekRewrap(object):
  
      def __init__(self, conf, old_kek):
          self.dry_run = False
@@ -24,6 +24,10 @@ index 7a521752..8f476f73 100644
          self._session_creator = scoping.scoped_session(
              orm.sessionmaker(
                  bind=self.db_engine,
+-                autocommit=True
+             )
+         )
+         self.crypto_plugin = simple_crypto.SimpleCryptoPlugin(conf)
 diff --git a/barbican/templates/configmap-etc.yaml b/charts/barbican/templates/configmap-etc.yaml
 index d2bff2c0..fba29565 100644
 --- a/barbican/templates/configmap-etc.yaml
