@@ -12,48 +12,48 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- project:
-    check:
-      jobs:
-        - atmosphere-build-container-image-openvswitch
-    gate:
-      jobs:
-        - atmosphere-upload-container-image-openvswitch
-    promote:
-      jobs:
-        - atmosphere-promote-container-image-openvswitch
+# - project:
+#     check:
+#       jobs:
+#         - atmosphere-build-container-image-openvswitch
+#     gate:
+#       jobs:
+#         - atmosphere-upload-container-image-openvswitch
+#     promote:
+#       jobs:
+#         - atmosphere-promote-container-image-openvswitch
 
-- job:
-    name: atmosphere-build-container-image-openvswitch
-    parent: atmosphere-build-container-image
-    dependencies:
-      - name: atmosphere-buildset-registry
-        soft: false
-    vars: &container_image_vars
-      promote_container_image_job: atmosphere-upload-container-image-openvswitch
-      container_images:
-        - context: images/openvswitch
-          registry: harbor.atmosphere.dev
-          repository: harbor.atmosphere.dev/library/openvswitch
-          arch:
-            - linux/amd64
-            - linux/arm64
-          tags:
-            - "{{ zuul.branch | replace('stable/', '') }}"
-    files: &container_image_files
-      - images/openvswitch/.*
+# - job:
+#     name: atmosphere-build-container-image-openvswitch
+#     parent: atmosphere-build-container-image
+#     dependencies:
+#       - name: atmosphere-buildset-registry
+#         soft: false
+#     vars: &container_image_vars
+#       promote_container_image_job: atmosphere-upload-container-image-openvswitch
+#       container_images:
+#         - context: images/openvswitch
+#           registry: harbor.atmosphere.dev
+#           repository: harbor.atmosphere.dev/library/openvswitch
+#           arch:
+#             - linux/amd64
+#             - linux/arm64
+#           tags:
+#             - "{{ zuul.branch | replace('stable/', '') }}"
+#     files: &container_image_files
+#       - images/openvswitch/.*
 
-- job:
-    name: atmosphere-upload-container-image-openvswitch
-    parent: atmosphere-upload-container-image
-    dependencies:
-      - name: atmosphere-buildset-registry
-        soft: false
-    vars: *container_image_vars
-    files: *container_image_files
+# - job:
+#     name: atmosphere-upload-container-image-openvswitch
+#     parent: atmosphere-upload-container-image
+#     dependencies:
+#       - name: atmosphere-buildset-registry
+#         soft: false
+#     vars: *container_image_vars
+#     files: *container_image_files
 
-- job:
-    name: atmosphere-promote-container-image-openvswitch
-    parent: atmosphere-promote-container-image
-    vars: *container_image_vars
-    files: *container_image_files
+# - job:
+#     name: atmosphere-promote-container-image-openvswitch
+#     parent: atmosphere-promote-container-image
+#     vars: *container_image_vars
+#     files: *container_image_files

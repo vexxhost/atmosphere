@@ -12,65 +12,65 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- project:
-    check:
-      jobs:
-        - atmosphere-build-container-image-openstack-venv-builder
-    gate:
-      jobs:
-        - atmosphere-upload-container-image-openstack-venv-builder
-    promote:
-      jobs:
-        - atmosphere-promote-container-image-openstack-venv-builder
+# - project:
+#     check:
+#       jobs:
+#         - atmosphere-build-container-image-openstack-venv-builder
+#     gate:
+#       jobs:
+#         - atmosphere-upload-container-image-openstack-venv-builder
+#     promote:
+#       jobs:
+#         - atmosphere-promote-container-image-openstack-venv-builder
 
-- job:
-    name: atmosphere-build-container-image-openstack-venv-builder
-    parent: atmosphere-build-container-image
-    dependencies:
-      - name: atmosphere-buildset-registry
-        soft: false
-      - name: atmosphere-build-container-image-ubuntu
-        soft: true
-      - name: atmosphere-build-container-image-ubuntu-cloud-archive
-        soft: true
-      - name: atmosphere-build-container-image-python-base
-        soft: true
-    vars: &container_image_vars
-      promote_container_image_job: atmosphere-upload-container-image-openstack-venv-builder
-      container_images:
-        - context: images/openstack-venv-builder
-          registry: harbor.atmosphere.dev
-          repository: harbor.atmosphere.dev/library/openstack-venv-builder
-          arch:
-            - linux/amd64
-            - linux/arm64
-          build_args:
-            - "RELEASE={{ zuul.branch | replace('stable/', '') }}"
-          tags:
-            - "{{ zuul.branch | replace('stable/', '') }}"
-    files: &container_image_files
-      - images/ubuntu/.*
-      - images/ubuntu-cloud-archive/.*
-      - images/python-base/.*
-      - images/openstack-venv-builder/.*
+# - job:
+#     name: atmosphere-build-container-image-openstack-venv-builder
+#     parent: atmosphere-build-container-image
+#     dependencies:
+#       - name: atmosphere-buildset-registry
+#         soft: false
+#       - name: atmosphere-build-container-image-ubuntu
+#         soft: true
+#       - name: atmosphere-build-container-image-ubuntu-cloud-archive
+#         soft: true
+#       - name: atmosphere-build-container-image-python-base
+#         soft: true
+#     vars: &container_image_vars
+#       promote_container_image_job: atmosphere-upload-container-image-openstack-venv-builder
+#       container_images:
+#         - context: images/openstack-venv-builder
+#           registry: harbor.atmosphere.dev
+#           repository: harbor.atmosphere.dev/library/openstack-venv-builder
+#           arch:
+#             - linux/amd64
+#             - linux/arm64
+#           build_args:
+#             - "RELEASE={{ zuul.branch | replace('stable/', '') }}"
+#           tags:
+#             - "{{ zuul.branch | replace('stable/', '') }}"
+#     files: &container_image_files
+#       - images/ubuntu/.*
+#       - images/ubuntu-cloud-archive/.*
+#       - images/python-base/.*
+#       - images/openstack-venv-builder/.*
 
-- job:
-    name: atmosphere-upload-container-image-openstack-venv-builder
-    parent: atmosphere-upload-container-image
-    dependencies:
-      - name: atmosphere-buildset-registry
-        soft: false
-      - name: atmosphere-upload-container-image-ubuntu
-        soft: true
-      - name: atmosphere-upload-container-image-ubuntu-cloud-archive
-        soft: true
-      - name: atmosphere-upload-container-image-python-base
-        soft: true
-    vars: *container_image_vars
-    files: *container_image_files
+# - job:
+#     name: atmosphere-upload-container-image-openstack-venv-builder
+#     parent: atmosphere-upload-container-image
+#     dependencies:
+#       - name: atmosphere-buildset-registry
+#         soft: false
+#       - name: atmosphere-upload-container-image-ubuntu
+#         soft: true
+#       - name: atmosphere-upload-container-image-ubuntu-cloud-archive
+#         soft: true
+#       - name: atmosphere-upload-container-image-python-base
+#         soft: true
+#     vars: *container_image_vars
+#     files: *container_image_files
 
-- job:
-    name: atmosphere-promote-container-image-openstack-venv-builder
-    parent: atmosphere-promote-container-image
-    vars: *container_image_vars
-    files: *container_image_files
+# - job:
+#     name: atmosphere-promote-container-image-openstack-venv-builder
+#     parent: atmosphere-promote-container-image
+#     vars: *container_image_vars
+#     files: *container_image_files

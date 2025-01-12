@@ -1,0 +1,29 @@
+# Copyright (c) 2024 VEXXHOST, Inc.
+# SPDX-License-Identifier: GPL-3.0-only
+# Atmosphere-Rebuild-Time: 2025-01-04T23:34:28Z
+
+include: _openstack-service.yaml
+
+contents:
+  packages:
+    - dhclient
+    - openssh-client
+    - py3-octavia
+    - py3-ovn-octavia-provider
+
+accounts:
+  groups:
+    - groupname: octavia
+      gid: 42424
+  users:
+    - username: octavia
+      uid: 42424
+      gid: 42424
+      homedir: /var/lib/octavia
+
+paths:
+  - path: /var/lib/octavia
+    type: directory
+    uid: 42424
+    gid: 42424
+    permissions: 0o755

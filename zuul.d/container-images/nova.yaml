@@ -12,77 +12,77 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- project:
-    check:
-      jobs:
-        - atmosphere-build-container-image-nova
-    gate:
-      jobs:
-        - atmosphere-upload-container-image-nova
-    promote:
-      jobs:
-        - atmosphere-promote-container-image-nova
+# - project:
+#     check:
+#       jobs:
+#         - atmosphere-build-container-image-nova
+#     gate:
+#       jobs:
+#         - atmosphere-upload-container-image-nova
+#     promote:
+#       jobs:
+#         - atmosphere-promote-container-image-nova
 
-- job:
-    name: atmosphere-build-container-image-nova
-    parent: atmosphere-build-container-image
-    dependencies:
-      - name: atmosphere-buildset-registry
-        soft: false
-      - name: atmosphere-build-container-image-ubuntu
-        soft: true
-      - name: atmosphere-build-container-image-ubuntu-cloud-archive
-        soft: true
-      - name: atmosphere-build-container-image-python-base
-        soft: true
-      - name: atmosphere-build-container-image-openstack-venv-builder
-        soft: true
-      - name: atmosphere-build-container-image-openstack-python-runtime
-        soft: true
-    vars: &container_image_vars
-      promote_container_image_job: atmosphere-upload-container-image-nova
-      container_images:
-        - context: images/nova
-          registry: harbor.atmosphere.dev
-          repository: harbor.atmosphere.dev/library/nova
-          arch:
-            - linux/amd64
-            - linux/arm64
-          build_args:
-            - "RELEASE={{ zuul.branch | replace('stable/', '') }}"
-            - PROJECT=nova
-            - SHELL=/bin/bash
-          tags:
-            - "{{ zuul.branch | replace('stable/', '') }}"
-    files: &container_image_files
-      - images/ubuntu/.*
-      - images/ubuntu-cloud-archive/.*
-      - images/python-base/.*
-      - images/openstack-venv-builder/.*
-      - images/openstack-python-runtime/.*
-      - images/nova/.*
+# - job:
+#     name: atmosphere-build-container-image-nova
+#     parent: atmosphere-build-container-image
+#     dependencies:
+#       - name: atmosphere-buildset-registry
+#         soft: false
+#       - name: atmosphere-build-container-image-ubuntu
+#         soft: true
+#       - name: atmosphere-build-container-image-ubuntu-cloud-archive
+#         soft: true
+#       - name: atmosphere-build-container-image-python-base
+#         soft: true
+#       - name: atmosphere-build-container-image-openstack-venv-builder
+#         soft: true
+#       - name: atmosphere-build-container-image-openstack-python-runtime
+#         soft: true
+#     vars: &container_image_vars
+#       promote_container_image_job: atmosphere-upload-container-image-nova
+#       container_images:
+#         - context: images/nova
+#           registry: harbor.atmosphere.dev
+#           repository: harbor.atmosphere.dev/library/nova
+#           arch:
+#             - linux/amd64
+#             - linux/arm64
+#           build_args:
+#             - "RELEASE={{ zuul.branch | replace('stable/', '') }}"
+#             - PROJECT=nova
+#             - SHELL=/bin/bash
+#           tags:
+#             - "{{ zuul.branch | replace('stable/', '') }}"
+#     files: &container_image_files
+#       - images/ubuntu/.*
+#       - images/ubuntu-cloud-archive/.*
+#       - images/python-base/.*
+#       - images/openstack-venv-builder/.*
+#       - images/openstack-python-runtime/.*
+#       - images/nova/.*
 
-- job:
-    name: atmosphere-upload-container-image-nova
-    parent: atmosphere-upload-container-image
-    dependencies:
-      - name: atmosphere-buildset-registry
-        soft: false
-      - name: atmosphere-upload-container-image-ubuntu
-        soft: true
-      - name: atmosphere-upload-container-image-ubuntu-cloud-archive
-        soft: true
-      - name: atmosphere-upload-container-image-python-base
-        soft: true
-      - name: atmosphere-upload-container-image-openstack-venv-builder
-        soft: true
-      - name: atmosphere-upload-container-image-openstack-python-runtime
-        soft: true
-    vars: *container_image_vars
-    files: *container_image_files
+# - job:
+#     name: atmosphere-upload-container-image-nova
+#     parent: atmosphere-upload-container-image
+#     dependencies:
+#       - name: atmosphere-buildset-registry
+#         soft: false
+#       - name: atmosphere-upload-container-image-ubuntu
+#         soft: true
+#       - name: atmosphere-upload-container-image-ubuntu-cloud-archive
+#         soft: true
+#       - name: atmosphere-upload-container-image-python-base
+#         soft: true
+#       - name: atmosphere-upload-container-image-openstack-venv-builder
+#         soft: true
+#       - name: atmosphere-upload-container-image-openstack-python-runtime
+#         soft: true
+#     vars: *container_image_vars
+#     files: *container_image_files
 
-- job:
-    name: atmosphere-promote-container-image-nova
-    parent: atmosphere-promote-container-image
-    vars: *container_image_vars
-    files: *container_image_files
+# - job:
+#     name: atmosphere-promote-container-image-nova
+#     parent: atmosphere-promote-container-image
+#     vars: *container_image_vars
+#     files: *container_image_files
