@@ -1,6 +1,6 @@
-From a37e5d80306b4902a65dd3e38501fdaddc7c822a Mon Sep 17 00:00:00 2001
+From 210d4f3d9d6d980535671623ef546a31531835b0 Mon Sep 17 00:00:00 2001
 From: ricolin <rlin@vexxhost.com>
-Date: Wed, 30 Oct 2024 12:54:42 +0800
+Date: Tue, 14 Jan 2025 11:44:09 +0800
 Subject: [PATCH] Directly import converted image to RBD
 
 For volume encryption from Glance image case,
@@ -12,22 +12,14 @@ upload image to RBD.
 Related-Bug: #2055517
 Change-Id: Ib5e15eeee6a02e2833d14ac34f6fdeb4a6548a67
 ---
- cinder/volume/drivers/rbd.py | 70 +++++++++++++++++++-----------------
- 1 file changed, 37 insertions(+), 33 deletions(-)
+ cinder/volume/drivers/rbd.py | 69 +++++++++++++++++++-----------------
+ 1 file changed, 37 insertions(+), 32 deletions(-)
 
 diff --git a/cinder/volume/drivers/rbd.py b/cinder/volume/drivers/rbd.py
-index 6cc86c2c5..7c7be68ae 100644
+index 6cc86c2c5..396b75f42 100644
 --- a/cinder/volume/drivers/rbd.py
 +++ b/cinder/volume/drivers/rbd.py
-@@ -33,7 +33,6 @@ from oslo_log import log as logging
- from oslo_service import loopingcall
- from oslo_utils import encodeutils
- from oslo_utils import excutils
--from oslo_utils import fileutils
- from oslo_utils import units
- try:
-     import rados
-@@ -1911,11 +1910,10 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
+@@ -1911,11 +1911,10 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                               image_id: str) -> None:
          self._copy_image_to_volume(context, volume, image_service, image_id)
  
@@ -43,7 +35,7 @@ index 6cc86c2c5..7c7be68ae 100644
          encryption = volume_utils.check_encryption_provider(
              volume,
              context)
-@@ -1929,25 +1927,29 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
+@@ -1929,25 +1928,29 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
          cipher_spec = image_utils.decode_cipher(encryption['cipher'],
                                                  encryption['key_size'])
  
@@ -86,7 +78,7 @@ index 6cc86c2c5..7c7be68ae 100644
  
      def _copy_image_to_volume(self,
                                context: context.RequestContext,
-@@ -1964,9 +1966,6 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
+@@ -1964,9 +1967,6 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                                       self.configuration.volume_dd_blocksize,
                                       size=volume.size)
  
@@ -96,7 +88,7 @@ index 6cc86c2c5..7c7be68ae 100644
              @utils.retry(exception.VolumeIsBusy,
                           self.configuration.rados_connection_interval,
                           self.configuration.rados_connection_retries)
-@@ -1975,17 +1974,22 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
+@@ -1975,17 +1975,22 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
  
              _delete_volume(volume)
  
