@@ -12,12 +12,23 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-memcached_helm_release_name: memcached
-memcached_helm_chart_path: "../../charts/memcached/"
-memcached_helm_chart_ref: /usr/local/src/memcached
 
-memcached_helm_release_namespace: openstack
-memcached_helm_kubeconfig: "{{ kubeconfig_path | default('/etc/kubernetes/admin.conf') }}"
-memcached_helm_values: {}
+- name: Delete deployments
+  kubernetes.core.k8s:
+    name: testing
+    api_version: apps/v1
+    kind: Deployment
+    state: absent
+    delete_options:
+      propagationPolicy: Orphan
+  loop: {{ orphan_delete_deployments}}
 
-memcached_orphan_delete: "{{ atmosphere_orphan_delete }}"
+- name: Delete statefulsets
+  kubernetes.core.k8s:
+    name: testing
+    api_version: apps/v1
+    kind: StatefulSet
+    state: absent
+    delete_options:
+      propagationPolicy: Orphan
+  loop: {{ orphan_delete_statefulsets}}

@@ -12,6 +12,13 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+- name: Delete old resources
+  ansible.builtin.include_role:
+    name: orphan_delete
+  vars:
+    orphan_delete_deployments: memcached-memcached
+  when: memcached_orphan_delete
+
 - name: Deploy Helm chart
   run_once: true
   kubernetes.core.helm:
