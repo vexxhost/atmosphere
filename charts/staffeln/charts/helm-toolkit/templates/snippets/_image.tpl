@@ -19,7 +19,7 @@ values: |
   images:
     tags:
       test_image: docker.io/port/test:version-foo
-      image_foo: quay.io/airshipit/kubernetes-entrypoint:latest-ubuntu_focal
+      image_foo: quay.io/airshipit/kubernetes-entrypoint:v1.0.0
     pull_policy: IfNotPresent
     local_registry:
       active: true
