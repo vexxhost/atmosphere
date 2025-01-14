@@ -4,28 +4,26 @@
 - project:
     check:
       jobs:
-        - atmosphere-build-container-image-ironic
+        - atmosphere-build-container-image-centos
     gate:
       jobs:
-        - atmosphere-build-container-image-ironic
+        - atmosphere-build-container-image-centos
     promote:
       jobs:
-        - atmosphere-promote-container-image-ironic
+        - atmosphere-promote-container-image-centos
 
 - job:
-    name: atmosphere-build-container-image-ironic
+    name: atmosphere-build-container-image-centos
     parent: atmosphere-build-container-image
     dependencies:
       - name: atmosphere-buildset-registry
         soft: false
-      - name: atmosphere-build-container-image-centos
-        soft: true
     vars: &container_image_vars
-      promote_container_image_job: atmosphere-build-container-image-ironic
+      promote_container_image_job: atmosphere-build-container-image-centos
       container_images:
-        - context: images/ironic
+        - context: images/centos
           registry: harbor.atmosphere.dev
-          repository: harbor.atmosphere.dev/library/ironic
+          repository: harbor.atmosphere.dev/library/centos
           arch:
             - linux/amd64
             - linux/arm64
@@ -35,10 +33,9 @@
             - "{{ zuul.branch | replace('stable/', '') }}"
     files: &container_image_files
       - images/centos/.*
-      - images/ironic/.*
 
 - job:
-    name: atmosphere-promote-container-image-ironic
+    name: atmosphere-promote-container-image-centos
     parent: atmosphere-promote-container-image
     vars: *container_image_vars
     files: *container_image_files

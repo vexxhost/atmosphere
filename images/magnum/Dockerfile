@@ -1,9 +1,22 @@
-# SPDX-License-Identifier: Apache-2.0
-# Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
+# Copyright (c) 2024 VEXXHOST, Inc.
+# SPDX-License-Identifier: GPL-3.0-only
+# Atmosphere-Rebuild-Time: 2025-01-04T23:34:28Z
 
 ARG RELEASE
+ARG FROM=harbor.atmosphere.dev/library/centos:${RELEASE}
 
-FROM harbor.atmosphere.dev/library/ubuntu:${RELEASE} AS helm
+FROM --platform=$BUILDPLATFORM ${FROM} AS installer
+ARG TARGETARCH
+RUN --mount=type=cache,id=dnf-cache-${TARGETARCH},target=/var/cache/dnf --mount=type=cache,id=dnf-cache-${TARGETARCH},target=/target/var/cache/dnf <<EOF bash -xe
+install-packages \
+  haproxy \
+  openstack-magnum-api \
+  openstack-magnum-conductor \
+  python3-pip \
+  uwsgi-plugin-python3
+EOF
+
+FROM --platform=$BUILDPLATFORM ${FROM} AS helm
 ARG TARGETOS
 ARG TARGETARCH
 ARG HELM_VERSION=3.14.0
@@ -11,27 +24,10 @@ ADD https://get.helm.sh/helm-v${HELM_VERSION}-${TARGETOS}-${TARGETARCH}.tar.gz /
 RUN tar -xzf /helm.tar.gz
 RUN mv /${TARGETOS}-${TARGETARCH}/helm /usr/bin/helm
 
-FROM harbor.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
-ARG MAGNUM_GIT_REF=c613ea4e419edc0086116da07e93cf19206746e1
-ADD --keep-git-dir=true https://opendev.org/openstack/magnum.git#${MAGNUM_GIT_REF} /src/magnum
-RUN git -C /src/magnum fetch --unshallow
-COPY patches/magnum /patches/magnum
-RUN git -C /src/magnum apply --verbose /patches/magnum/*
+FROM scratch
+COPY --link --from=installer /target/ /
+# TODO(mnaser): Remove this + "python3-pip" dependency once this is packaged
+COPY --link --from=helm /usr/bin/helm /usr/local/bin/helm
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
-sed -i s/^oslo.db===.*$/oslo.db==14.1.0/ /upper-constraints.txt
-pip3 install \
-    --constraint /upper-constraints.txt \
-        /src/magnum \
-        magnum-cluster-api==0.24.2
+python3 -m pip install magnum-cluster-api==0.24.1
 EOF
-
-FROM harbor.atmosphere.dev/library/openstack-python-runtime:${RELEASE}
-RUN <<EOF bash -xe
-apt-get update -qq
-apt-get install -qq -y --no-install-recommends \
-    haproxy
-apt-get clean
-rm -rf /var/lib/apt/lists/*
-EOF
-COPY --from=helm --link /usr/bin/helm /usr/local/bin/helm
-COPY --from=build --link /var/lib/openstack /var/lib/openstack

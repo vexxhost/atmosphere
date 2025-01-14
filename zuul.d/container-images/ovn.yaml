@@ -18,7 +18,7 @@
         - atmosphere-build-container-image-ovn
     gate:
       jobs:
-        - atmosphere-upload-container-image-ovn
+        - atmosphere-build-container-image-ovn
     promote:
       jobs:
         - atmosphere-promote-container-image-ovn
@@ -29,16 +29,17 @@
     dependencies:
       - name: atmosphere-buildset-registry
         soft: false
-      - name: atmosphere-build-container-image-openvswitch
+      - name: atmosphere-build-container-image-centos
         soft: true
     vars: &container_image_vars
-      promote_container_image_job: atmosphere-upload-container-image-ovn
+      promote_container_image_job: atmosphere-build-container-image-ovn
       container_images:
         - context: images/ovn
           registry: harbor.atmosphere.dev
           repository: harbor.atmosphere.dev/library/ovn-central
           arch:
             - linux/amd64
+            - linux/arm64
           build_args:
             - "RELEASE={{ zuul.branch | replace('stable/', '') }}"
             - OVN_COMPONENT=central
@@ -56,19 +57,8 @@
           tags:
             - "{{ zuul.branch | replace('stable/', '') }}"
     files: &container_image_files
-      - images/openvswitch/.*
+      - images/centos/.*
       - images/ovn/.*
-
-- job:
-    name: atmosphere-upload-container-image-ovn
-    parent: atmosphere-upload-container-image
-    dependencies:
-      - name: atmosphere-buildset-registry
-        soft: false
-      - name: atmosphere-upload-container-image-openvswitch
-        soft: true
-    vars: *container_image_vars
-    files: *container_image_files
 
 - job:
     name: atmosphere-promote-container-image-ovn

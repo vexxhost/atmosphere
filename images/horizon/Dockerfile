@@ -1,50 +1,31 @@
-# SPDX-License-Identifier: Apache-2.0
-# Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
+# Copyright (c) 2024 VEXXHOST, Inc.
+# SPDX-License-Identifier: GPL-3.0-only
+# Atmosphere-Rebuild-Time: 2025-01-04T23:34:28Z
 
 ARG RELEASE
+ARG FROM=harbor.atmosphere.dev/library/centos:${RELEASE}
 
-FROM harbor.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
-ARG HORIZON_GIT_REF=14212342cf8f7eb987e50de112958af31063e02e
-ADD --keep-git-dir=true https://opendev.org/openstack/horizon.git#${HORIZON_GIT_REF} /src/horizon
-RUN git -C /src/horizon fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/designate-dashboard.git#master /src/designate-dashboard
-RUN git -C /src/designate-dashboard fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/heat-dashboard.git#3070b2c8d5cc6e070df01233ec50b32ea987d92d /src/heat-dashboard
-RUN git -C /src/heat-dashboard fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/ironic-ui.git#master /src/ironic-ui
-RUN git -C /src/ironic-ui fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/magnum-ui.git#master /src/magnum-ui
-RUN git -C /src/magnum-ui fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/manila-ui.git#master /src/manila-ui
-RUN git -C /src/manila-ui fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/neutron-vpnaas-dashboard.git#master /src/neutron-vpnaas-dashboard
-RUN git -C /src/neutron-vpnaas-dashboard fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/octavia-dashboard.git#master /src/octavia-dashboard
-RUN git -C /src/octavia-dashboard fetch --unshallow
-COPY patches/horizon /patches/horizon
-RUN git -C /src/horizon apply --verbose /patches/horizon/*
-COPY patches/magnum-ui /patches/magnum-ui
-RUN git -C /src/magnum-ui apply --verbose /patches/magnum-ui/*
+FROM --platform=$BUILDPLATFORM ${FROM} AS installer
+ARG TARGETARCH
+RUN --mount=type=cache,id=dnf-cache-${TARGETARCH},target=/var/cache/dnf --mount=type=cache,id=dnf-cache-${TARGETARCH},target=/target/var/cache/dnf <<EOF bash -xe
+install-packages \
+  gettext \
+  httpd \
+  mod_wsgi \
+  openstack-dashboard \
+  openstack-designate-ui \
+  openstack-heat-ui \
+  openstack-ironic-ui \
+  openstack-magnum-ui \
+  openstack-manila-ui \
+  openstack-octavia-ui \
+  python3-pip \
+  python3-pymemcache
+EOF
+
+FROM scratch
+COPY --link --from=installer /target/ /
+# TODO(mnaser): Remove this + "python3-pip" dependency once this is packaged
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
-pip3 install \
-    --constraint /upper-constraints.txt \
-        /src/designate-dashboard \
-        /src/heat-dashboard \
-        /src/horizon \
-        /src/ironic-ui \
-        /src/magnum-ui \
-        /src/manila-ui \
-        /src/neutron-vpnaas-dashboard \
-        /src/octavia-dashboard \
-        pymemcache
+python3 -m pip install neutron-vpnaas-dashboard
 EOF
-
-FROM harbor.atmosphere.dev/library/openstack-python-runtime:${RELEASE}
-RUN <<EOF bash -xe
-apt-get update -qq
-apt-get install -qq -y --no-install-recommends \
-    apache2 gettext libapache2-mod-wsgi-py3
-apt-get clean
-rm -rf /var/lib/apt/lists/*
-EOF
-COPY --from=build --link /var/lib/openstack /var/lib/openstack

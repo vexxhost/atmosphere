@@ -1,16 +1,5 @@
-# Copyright (c) 2024 VEXXHOST, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"); you may
-# not use this file except in compliance with the License. You may obtain
-# a copy of the License at
-#
-#      http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-# License for the specific language governing permissions and limitations
-# under the License.
+# Copyright (c) 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: GPL-3.0-only
 
 - project:
     check:
@@ -18,7 +7,7 @@
         - atmosphere-build-container-image-python-openstackclient
     gate:
       jobs:
-        - atmosphere-upload-container-image-python-openstackclient
+        - atmosphere-build-container-image-python-openstackclient
     promote:
       jobs:
         - atmosphere-promote-container-image-python-openstackclient
@@ -29,49 +18,24 @@
     dependencies:
       - name: atmosphere-buildset-registry
         soft: false
-      - name: atmosphere-build-container-image-ubuntu
-        soft: true
-      - name: atmosphere-build-container-image-ubuntu-cloud-archive
-        soft: true
-      - name: atmosphere-build-container-image-python-base
-        soft: true
-      - name: atmosphere-build-container-image-openstack-venv-builder
+      - name: atmosphere-build-container-image-centos
         soft: true
     vars: &container_image_vars
-      promote_container_image_job: atmosphere-upload-container-image-python-openstackclient
+      promote_container_image_job: atmosphere-build-container-image-python-openstackclient
       container_images:
         - context: images/python-openstackclient
           registry: harbor.atmosphere.dev
           repository: harbor.atmosphere.dev/library/python-openstackclient
           arch:
             - linux/amd64
+            - linux/arm64
           build_args:
             - "RELEASE={{ zuul.branch | replace('stable/', '') }}"
           tags:
             - "{{ zuul.branch | replace('stable/', '') }}"
     files: &container_image_files
-      - images/ubuntu/.*
-      - images/ubuntu-cloud-archive/.*
-      - images/python-base/.*
-      - images/openstack-venv-builder/.*
+      - images/centos/.*
       - images/python-openstackclient/.*
-
-- job:
-    name: atmosphere-upload-container-image-python-openstackclient
-    parent: atmosphere-upload-container-image
-    dependencies:
-      - name: atmosphere-buildset-registry
-        soft: false
-      - name: atmosphere-upload-container-image-ubuntu
-        soft: true
-      - name: atmosphere-upload-container-image-ubuntu-cloud-archive
-        soft: true
-      - name: atmosphere-upload-container-image-python-base
-        soft: true
-      - name: atmosphere-upload-container-image-openstack-venv-builder
-        soft: true
-    vars: *container_image_vars
-    files: *container_image_files
 
 - job:
     name: atmosphere-promote-container-image-python-openstackclient

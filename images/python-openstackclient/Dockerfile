@@ -1,28 +1,30 @@
-# SPDX-License-Identifier: Apache-2.0
-# Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
+# Copyright (c) 2024 VEXXHOST, Inc.
+# SPDX-License-Identifier: GPL-3.0-only
+# Atmosphere-Rebuild-Time: 2025-01-04T23:34:28Z
 
 ARG RELEASE
+ARG FROM=harbor.atmosphere.dev/library/centos:${RELEASE}
 
-FROM harbor.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
-RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
-pip3 install \
-    --constraint /upper-constraints.txt \
-        osc-placement \
-        python-barbicanclient \
-        python-designateclient \
-        python-glanceclient \
-        python-heatclient \
-        python-ironicclient \
-        python-magnumclient \
-        python-manilaclient \
-        python-neutronclient \
-        python-octaviaclient \
-        python-openstackclient \
-        python-swiftclient
+FROM --platform=$BUILDPLATFORM ${FROM} AS installer
+ARG TARGETARCH
+RUN --mount=type=cache,id=dnf-cache-${TARGETARCH},target=/var/cache/dnf --mount=type=cache,id=dnf-cache-${TARGETARCH},target=/target/var/cache/dnf <<EOF bash -xe
+install-packages \
+  python3-openstackclient \
+  python3-osc-placement \
+  python3-barbicanclient \
+  python3-designateclient \
+  python3-glanceclient \
+  python3-heatclient \
+  python3-ironicclient \
+  python3-magnumclient \
+  python3-manilaclient \
+  python3-neutronclient \
+  python3-octaviaclient \
+  python3-swiftclient
 EOF
 
-FROM harbor.atmosphere.dev/library/python-base:${RELEASE}
-COPY --from=build --link /var/lib/openstack /var/lib/openstack
+FROM scratch
+COPY --link --from=installer /target/ /
 
 # NOTE(mnaser): The Magnum client relies on the SHELL environment variable
 #               to determine the shell to use.

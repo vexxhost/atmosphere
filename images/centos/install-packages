@@ -1,0 +1,39 @@
+#!/bin/bash -xe
+
+case "$TARGETARCH" in
+  amd64)
+    ARCH=x86_64
+    ;;
+  arm64)
+    ARCH=aarch64
+    ;;
+  *)
+esac
+
+dnf_install () {
+  dnf install \
+    -y \
+    --nodocs \
+    --setopt=keepcache=true \
+    --setopt=install_weak_deps=False \
+    --setopt=tsflags=nodocs \
+    --installroot=/target \
+    --releasever=9 \
+    --forcearch=${ARCH} \
+    "$@"
+}
+
+dnf_install ${@}
+
+# NOTE(mnaser): "requests" throws warnings about chardet missing so
+#               if it ends up being installed, we should install
+#               chardet to avoid the warnings.
+if dnf list installed --installroot=/target --releasever=9 | grep -q requests; then
+  dnf_install python3-chardet
+fi
+
+# NOTE(mnnaser): OSH expects `python` and not `python3`, for now, we
+#                setup a small symlink to make it work.
+pushd /target/usr/bin
+ln -s python3 python
+popd

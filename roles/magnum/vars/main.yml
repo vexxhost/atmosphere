@@ -17,6 +17,10 @@ _magnum_helm_values:
   images:
     tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('magnum') }}"
   conf:
+    magnum_api_uwsgi:
+      uwsgi:
+        plugin: python3
+        wsgi-file: /usr/bin/magnum-api-wsgi
     magnum:
       DEFAULT:
         log_config_append: null

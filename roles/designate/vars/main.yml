@@ -17,6 +17,10 @@ _designate_helm_values:
   images:
     tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('designate') }}"
   conf:
+    designate_api_uwsgi:
+      uwsgi:
+        plugin: python3
+        wsgi-file: /usr/bin/designate-api-wsgi
     designate:
       DEFAULT:
         log_config_append: null

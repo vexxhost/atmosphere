@@ -1,13 +1,17 @@
-# SPDX-License-Identifier: Apache-2.0
-# Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
+# Copyright (c) 2024 VEXXHOST, Inc.
+# SPDX-License-Identifier: GPL-3.0-only
+# Atmosphere-Rebuild-Time: 2025-01-04T23:34:28Z
 
 ARG RELEASE
+ARG FROM=harbor.atmosphere.dev/library/centos:${RELEASE}
 
-FROM harbor.atmosphere.dev/library/ubuntu:${RELEASE}
-RUN <<EOF bash -xe
-apt-get update -qq
-apt-get install -qq -y --no-install-recommends \
-    curl keepalived
-apt-get clean
-rm -rf /var/lib/apt/lists/*
+FROM --platform=$BUILDPLATFORM ${FROM} AS installer
+ARG TARGETARCH
+RUN --mount=type=cache,id=dnf-cache-${TARGETARCH},target=/var/cache/dnf --mount=type=cache,id=dnf-cache-${TARGETARCH},target=/target/var/cache/dnf <<EOF bash -xe
+install-packages \
+  curl \
+  keepalived
 EOF
+
+FROM scratch
+COPY --link --from=installer /target/ /

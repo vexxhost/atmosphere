@@ -17,6 +17,25 @@ _keystone_helm_values:
   images:
     tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('keystone') }}"
   pod:
+    security_context:
+      keystone:
+        pod:
+          runAsUser: 163
+      credential_setup:
+        pod:
+          runAsUser: 163
+      fernet_setup:
+        pod:
+          runAsUser: 163
+      fernet_rotate:
+        pod:
+          runAsUser: 163
+      domain_manage:
+        pod:
+          runAsUser: 163
+      test:
+        pod:
+          runAsUser: 163
     replicas:
       api: 3
     mounts:
@@ -31,6 +50,11 @@ _keystone_helm_values:
               hostPath:
                 path: "{{ defaults_ca_certificates_path }}"
   conf:
+    software:
+      apache2:
+        binary: httpd
+        conf_dir: /etc/httpd/conf.d
+        mods_dir: /etc/httpd/conf.d
     keystone:
       DEFAULT:
         log_config_append: null
@@ -76,7 +100,7 @@ _keystone_helm_values:
         OIDCRedirectURI {{ keystone_oidc_redirect_uri }}
         OIDCRedirectURLsAllowed {{ keystone_oidc_redirect_urls_allowed | join(' ') }}
         # NOTE(mnaser): These are Atmosphere specific settings.
-        OIDCSessionType client-cookie:store_id_token
+        OIDCSessionType client-cookie:persistent
         OIDCXForwardedHeaders X-Forwarded-Host X-Forwarded-Proto
         <Location /v3/auth/OS-FEDERATION/identity_providers/redirect>
           AuthType openid-connect
