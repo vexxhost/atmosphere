@@ -1,7 +1,7 @@
-From ddb4c87da6d20cc2cf37db70498f6890db1b2498 Mon Sep 17 00:00:00 2001
+From 294e042c15e288b5ce4d0c0451d1672fc9577f9d Mon Sep 17 00:00:00 2001
 From: ricolin <rlin@vexxhost.com>
-Date: Tue, 22 Oct 2024 18:31:52 +0800
-Subject: [PATCH] Directly import converted image to RBD
+Date: Mon, 13 Jan 2025 11:55:43 +0800
+Subject: [PATCH] [PATCH] Directly import converted image to RBD
 
 For volume encryption from Glance image case,
 once we cloned the image down, we do convert and import back to RBD.
@@ -12,25 +12,14 @@ upload image to RBD.
 Related-Bug: #2055517
 Change-Id: Ib5e15eeee6a02e2833d14ac34f6fdeb4a6548a67
 ---
- cinder/tests/unit/volume/drivers/test_rbd.py  |  2 -
- cinder/volume/drivers/rbd.py                  | 57 ++++++++-----------
- ...verted-encrypt-image-005986a59d1027e1.yaml |  9 +++
- 3 files changed, 34 insertions(+), 34 deletions(-)
- create mode 100644 releasenotes/notes/allow-direct-import-converted-encrypt-image-005986a59d1027e1.yaml
+ cinder/volume/drivers/rbd.py | 67 +++++++++++++++++++-----------------
+ 1 file changed, 36 insertions(+), 31 deletions(-)
 
 diff --git a/cinder/volume/drivers/rbd.py b/cinder/volume/drivers/rbd.py
-index 13f67b3d4..291db326d 100644
+index 977b23356..cd71046b0 100644
 --- a/cinder/volume/drivers/rbd.py
 +++ b/cinder/volume/drivers/rbd.py
-@@ -32,7 +32,6 @@ from oslo_log import log as logging
- from oslo_service import loopingcall
- from oslo_utils import encodeutils
- from oslo_utils import excutils
--from oslo_utils import fileutils
- from oslo_utils import units
- try:
-     import rados
-@@ -1992,11 +1991,10 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
+@@ -1995,11 +1995,10 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
          self._copy_image_to_volume(context, volume, image_service, image_id,
                                     disable_sparse=disable_sparse)
  
@@ -46,7 +35,7 @@ index 13f67b3d4..291db326d 100644
          encryption = volume_utils.check_encryption_provider(
              volume,
              context)
-@@ -2010,6 +2008,19 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
+@@ -2013,6 +2012,19 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
          cipher_spec = image_utils.decode_cipher(encryption['cipher'],
                                                  encryption['key_size'])
  
@@ -66,7 +55,7 @@ index 13f67b3d4..291db326d 100644
          tmp_dir = volume_utils.image_conversion_dir()
  
          with tempfile.NamedTemporaryFile(prefix='luks_',
-@@ -2017,18 +2028,10 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
+@@ -2020,18 +2032,10 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
              with open(pass_file.name, 'w') as f:
                  f.write(passphrase)
  
@@ -89,7 +78,7 @@ index 13f67b3d4..291db326d 100644
  
      def _copy_image_to_volume(self,
                                context: context.RequestContext,
-@@ -2047,9 +2050,6 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
+@@ -2050,9 +2054,6 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                                       size=volume.size,
                                       disable_sparse=disable_sparse)
  
@@ -99,7 +88,7 @@ index 13f67b3d4..291db326d 100644
              @utils.retry(exception.VolumeIsBusy,
                           self.configuration.rados_connection_interval,
                           self.configuration.rados_connection_retries)
-@@ -2058,17 +2058,21 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
+@@ -2061,17 +2062,21 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
  
              _delete_volume(volume)
  
@@ -132,21 +121,6 @@ index 13f67b3d4..291db326d 100644
          self._resize(volume)
          # We may need to re-enable replication because we have deleted the
          # original image and created a new one using the command line import.
-diff --git a/releasenotes/notes/allow-direct-import-converted-encrypt-image-005986a59d1027e1.yaml b/releasenotes/notes/allow-direct-import-converted-encrypt-image-005986a59d1027e1.yaml
-new file mode 100644
-index 000000000..b1544214d
---- /dev/null
-+++ b/releasenotes/notes/allow-direct-import-converted-encrypt-image-005986a59d1027e1.yaml
-@@ -0,0 +1,9 @@
-+---
-+fixes:
-+  - |
-+    [Bug 255517](https://bugs.launchpad.net/cinder/+bug/2055517): Improve slow
-+    on create encrypted volumes with temp file import.
-+    For volume encryption from Glance image case, once we cloned the image
-+    down, we do convert and import back to RBD. We now avoid another tempfile
-+    write and directly upload image to RBD. And it is now directly upload to
-+    RBD with qemu-img command without temprory converted image file generated.
 -- 
 2.25.1
 
