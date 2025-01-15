@@ -18,7 +18,7 @@
         - atmosphere-build-container-image-openstack-python-runtime
     gate:
       jobs:
-        - atmosphere-upload-container-image-openstack-python-runtime
+        - atmosphere-build-container-image-openstack-python-runtime
     promote:
       jobs:
         - atmosphere-promote-container-image-openstack-python-runtime
@@ -36,7 +36,7 @@
       - name: atmosphere-build-container-image-python-base
         soft: true
     vars: &container_image_vars
-      promote_container_image_job: atmosphere-upload-container-image-openstack-python-runtime
+      promote_container_image_job: atmosphere-build-container-image-openstack-python-runtime
       container_images:
         - context: images/openstack-runtime
           registry: harbor.atmosphere.dev
@@ -55,21 +55,6 @@
       - images/ubuntu-cloud-archive/.*
       - images/python-base/.*
       - images/openstack-runtime/.*
-
-- job:
-    name: atmosphere-upload-container-image-openstack-python-runtime
-    parent: atmosphere-upload-container-image
-    dependencies:
-      - name: atmosphere-buildset-registry
-        soft: false
-      - name: atmosphere-upload-container-image-ubuntu
-        soft: true
-      - name: atmosphere-upload-container-image-ubuntu-cloud-archive
-        soft: true
-      - name: atmosphere-upload-container-image-python-base
-        soft: true
-    vars: *container_image_vars
-    files: *container_image_files
 
 - job:
     name: atmosphere-promote-container-image-openstack-python-runtime

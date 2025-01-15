@@ -18,7 +18,7 @@
         - atmosphere-build-container-image-ubuntu-cloud-archive
     gate:
       jobs:
-        - atmosphere-upload-container-image-ubuntu-cloud-archive
+        - atmosphere-build-container-image-ubuntu-cloud-archive
     promote:
       jobs:
         - atmosphere-promote-container-image-ubuntu-cloud-archive
@@ -32,7 +32,7 @@
       - name: atmosphere-build-container-image-ubuntu
         soft: true
     vars: &container_image_vars
-      promote_container_image_job: atmosphere-upload-container-image-ubuntu-cloud-archive
+      promote_container_image_job: atmosphere-build-container-image-ubuntu-cloud-archive
       container_images:
         - context: images/ubuntu-cloud-archive
           registry: harbor.atmosphere.dev
@@ -48,17 +48,6 @@
     files: &container_image_files
       - images/ubuntu/.*
       - images/ubuntu-cloud-archive/.*
-
-- job:
-    name: atmosphere-upload-container-image-ubuntu-cloud-archive
-    parent: atmosphere-upload-container-image
-    dependencies:
-      - name: atmosphere-buildset-registry
-        soft: false
-      - name: atmosphere-upload-container-image-ubuntu
-        soft: true
-    vars: *container_image_vars
-    files: *container_image_files
 
 - job:
     name: atmosphere-promote-container-image-ubuntu-cloud-archive

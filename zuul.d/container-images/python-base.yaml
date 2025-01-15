@@ -18,7 +18,7 @@
         - atmosphere-build-container-image-python-base
     gate:
       jobs:
-        - atmosphere-upload-container-image-python-base
+        - atmosphere-build-container-image-python-base
     promote:
       jobs:
         - atmosphere-promote-container-image-python-base
@@ -34,7 +34,7 @@
       - name: atmosphere-build-container-image-ubuntu-cloud-archive
         soft: true
     vars: &container_image_vars
-      promote_container_image_job: atmosphere-upload-container-image-python-base
+      promote_container_image_job: atmosphere-build-container-image-python-base
       container_images:
         - context: images/python-base
           registry: harbor.atmosphere.dev
@@ -51,19 +51,6 @@
       - images/ubuntu/.*
       - images/ubuntu-cloud-archive/.*
       - images/python-base/.*
-
-- job:
-    name: atmosphere-upload-container-image-python-base
-    parent: atmosphere-upload-container-image
-    dependencies:
-      - name: atmosphere-buildset-registry
-        soft: false
-      - name: atmosphere-upload-container-image-ubuntu
-        soft: true
-      - name: atmosphere-upload-container-image-ubuntu-cloud-archive
-        soft: true
-    vars: *container_image_vars
-    files: *container_image_files
 
 - job:
     name: atmosphere-promote-container-image-python-base

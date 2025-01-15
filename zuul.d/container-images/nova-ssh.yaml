@@ -18,7 +18,7 @@
         - atmosphere-build-container-image-nova-ssh
     gate:
       jobs:
-        - atmosphere-upload-container-image-nova-ssh
+        - atmosphere-build-container-image-nova-ssh
     promote:
       jobs:
         - atmosphere-promote-container-image-nova-ssh
@@ -36,7 +36,7 @@
       - name: atmosphere-build-container-image-openstack-runtime
         soft: true
     vars: &container_image_vars
-      promote_container_image_job: atmosphere-upload-container-image-nova-ssh
+      promote_container_image_job: atmosphere-build-container-image-nova-ssh
       container_images:
         - context: images/nova-ssh
           registry: harbor.atmosphere.dev
@@ -56,21 +56,6 @@
       - images/ubuntu-cloud-archive/.*
       - images/openstack-runtime/.*
       - images/nova-ssh/.*
-
-- job:
-    name: atmosphere-upload-container-image-nova-ssh
-    parent: atmosphere-upload-container-image
-    dependencies:
-      - name: atmosphere-buildset-registry
-        soft: false
-      - name: atmosphere-upload-container-image-ubuntu
-        soft: true
-      - name: atmosphere-upload-container-image-ubuntu-cloud-archive
-        soft: true
-      - name: atmosphere-upload-container-image-openstack-runtime
-        soft: true
-    vars: *container_image_vars
-    files: *container_image_files
 
 - job:
     name: atmosphere-promote-container-image-nova-ssh

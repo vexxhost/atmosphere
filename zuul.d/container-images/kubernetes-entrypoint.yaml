@@ -18,7 +18,7 @@
         - atmosphere-build-container-image-kubernetes-entrypoint
     gate:
       jobs:
-        - atmosphere-upload-container-image-kubernetes-entrypoint
+        - atmosphere-build-container-image-kubernetes-entrypoint
     promote:
       jobs:
         - atmosphere-promote-container-image-kubernetes-entrypoint
@@ -30,7 +30,7 @@
       - name: atmosphere-buildset-registry
         soft: false
     vars: &container_image_vars
-      promote_container_image_job: atmosphere-upload-container-image-kubernetes-entrypoint
+      promote_container_image_job: atmosphere-build-container-image-kubernetes-entrypoint
       container_images:
         - context: images/kubernetes-entrypoint
           registry: harbor.atmosphere.dev
@@ -42,15 +42,6 @@
             - "{{ zuul.branch | replace('stable/', '') }}"
     files: &container_image_files
       - images/kubernetes-entrypoint/.*
-
-- job:
-    name: atmosphere-upload-container-image-kubernetes-entrypoint
-    parent: atmosphere-upload-container-image
-    dependencies:
-      - name: atmosphere-buildset-registry
-        soft: false
-    vars: *container_image_vars
-    files: *container_image_files
 
 - job:
     name: atmosphere-promote-container-image-kubernetes-entrypoint

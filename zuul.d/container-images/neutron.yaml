@@ -18,7 +18,7 @@
         - atmosphere-build-container-image-neutron
     gate:
       jobs:
-        - atmosphere-upload-container-image-neutron
+        - atmosphere-build-container-image-neutron
     promote:
       jobs:
         - atmosphere-promote-container-image-neutron
@@ -40,7 +40,7 @@
       - name: atmosphere-build-container-image-openstack-python-runtime
         soft: true
     vars: &container_image_vars
-      promote_container_image_job: atmosphere-upload-container-image-neutron
+      promote_container_image_job: atmosphere-build-container-image-neutron
       container_images:
         - context: images/neutron
           registry: harbor.atmosphere.dev
@@ -61,25 +61,6 @@
       - images/openstack-venv-builder/.*
       - images/openstack-python-runtime/.*
       - images/neutron/.*
-
-- job:
-    name: atmosphere-upload-container-image-neutron
-    parent: atmosphere-upload-container-image
-    dependencies:
-      - name: atmosphere-buildset-registry
-        soft: false
-      - name: atmosphere-upload-container-image-ubuntu
-        soft: true
-      - name: atmosphere-upload-container-image-ubuntu-cloud-archive
-        soft: true
-      - name: atmosphere-upload-container-image-python-base
-        soft: true
-      - name: atmosphere-upload-container-image-openstack-venv-builder
-        soft: true
-      - name: atmosphere-upload-container-image-openstack-python-runtime
-        soft: true
-    vars: *container_image_vars
-    files: *container_image_files
 
 - job:
     name: atmosphere-promote-container-image-neutron
