@@ -1,9 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # Atmosphere-Rebuild-Time: 2024-06-26T17:38:39Z
 
+ARG REGISTRY
 ARG RELEASE
 
-FROM harbor.atmosphere.dev/library/ubuntu:${RELEASE}
+FROM ${REGISTRY}/ubuntu:${RELEASE}
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \

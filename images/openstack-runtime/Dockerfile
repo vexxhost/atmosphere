@@ -1,9 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # Atmosphere-Rebuild-Time: 2024-06-26T17:38:39Z
 
+ARG REGISTRY
 ARG RELEASE
 
-ARG FROM=harbor.atmosphere.dev/library/ubuntu-cloud-archive:${RELEASE}
+ARG FROM=${REGISTRY}/ubuntu-cloud-archive:${RELEASE}
 FROM ${FROM}
 ONBUILD ARG PROJECT
 ONBUILD ARG SHELL=/usr/sbin/nologin
