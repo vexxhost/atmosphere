@@ -44,11 +44,12 @@
       container_images:
         - context: images/magnum
           registry: harbor.atmosphere.dev
-          repository: harbor.atmosphere.dev/library/magnum
+          repository: "{{ container_registry }}/magnum"
           arch:
             - linux/amd64
             - linux/arm64
           build_args:
+            - REGISTRY={{ container_registry }}
             - "RELEASE={{ zuul.branch | replace('stable/', '') }}"
             - PROJECT=magnum
           tags:

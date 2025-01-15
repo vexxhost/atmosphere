@@ -40,11 +40,12 @@
       container_images:
         - context: images/nova-ssh
           registry: harbor.atmosphere.dev
-          repository: harbor.atmosphere.dev/library/nova-ssh
+          repository: "{{ container_registry }}/nova-ssh"
           arch:
             - linux/amd64
             - linux/arm64
           build_args:
+            - REGISTRY={{ container_registry }}
             - "RELEASE={{ zuul.branch | replace('stable/', '') }}"
             - PROJECT=nova
             - SHELL=/bin/bash

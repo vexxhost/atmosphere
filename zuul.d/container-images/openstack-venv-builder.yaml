@@ -40,11 +40,12 @@
       container_images:
         - context: images/openstack-venv-builder
           registry: harbor.atmosphere.dev
-          repository: harbor.atmosphere.dev/library/openstack-venv-builder
+          repository: "{{ container_registry }}/openstack-venv-builder"
           arch:
             - linux/amd64
             - linux/arm64
           build_args:
+            - REGISTRY={{ container_registry }}
             - "RELEASE={{ zuul.branch | replace('stable/', '') }}"
           tags:
             - "{{ zuul.branch | replace('stable/', '') }}"

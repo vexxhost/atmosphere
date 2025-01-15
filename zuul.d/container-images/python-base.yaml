@@ -38,11 +38,12 @@
       container_images:
         - context: images/python-base
           registry: harbor.atmosphere.dev
-          repository: harbor.atmosphere.dev/library/python-base
+          repository: "{{ container_registry }}/python-base"
           arch:
             - linux/amd64
             - linux/arm64
           build_args:
+            - REGISTRY={{ container_registry }}
             - "RELEASE={{ zuul.branch | replace('stable/', '') }}"
           tags:
             - "{{ zuul.branch | replace('stable/', '') }}"
