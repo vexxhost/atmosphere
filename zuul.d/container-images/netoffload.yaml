@@ -36,10 +36,11 @@
       container_images:
         - context: images/netoffload
           registry: harbor.atmosphere.dev
-          repository: harbor.atmosphere.dev/library/netoffload
+          repository: "{{ container_registry }}/netoffload"
           arch:
             - linux/amd64
           build_args:
+            - REGISTRY={{ container_registry }}
             - "RELEASE={{ zuul.branch | replace('stable/', '') }}"
           tags:
             - "{{ zuul.branch | replace('stable/', '') }}"

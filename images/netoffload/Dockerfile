@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
 
+ARG REGISTRY
 ARG RELEASE
 
 FROM harbor.atmosphere.dev/docker.io/library/golang:1.20 AS build
@@ -9,7 +10,7 @@ ADD https://github.com/vexxhost/netoffload.git#${NETOFFLOAD_GIT_REF} /src
 WORKDIR /src
 RUN go build -v -o offloadctl ./cmd/offloadctl/main.go
 
-FROM harbor.atmosphere.dev/library/ubuntu:${RELEASE}
+FROM ${REGISTRY}/ubuntu:${RELEASE}
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \
