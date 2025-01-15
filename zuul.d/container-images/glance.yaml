@@ -44,10 +44,11 @@
       container_images:
         - context: images/glance
           registry: harbor.atmosphere.dev
-          repository: harbor.atmosphere.dev/library/glance
+          repository: "{{ container_registry }}/glance"
           arch:
             - linux/amd64
           build_args:
+            - REGISTRY={{ container_registry }}
             - "RELEASE={{ zuul.branch | replace('stable/', '') }}"
             - PROJECT=glance
           tags:
