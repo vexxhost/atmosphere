@@ -18,7 +18,7 @@
         - atmosphere-build-container-image-openvswitch
     gate:
       jobs:
-        - atmosphere-upload-container-image-openvswitch
+        - atmosphere-build-container-image-openvswitch
     promote:
       jobs:
         - atmosphere-promote-container-image-openvswitch
@@ -30,7 +30,7 @@
       - name: atmosphere-buildset-registry
         soft: false
     vars: &container_image_vars
-      promote_container_image_job: atmosphere-upload-container-image-openvswitch
+      promote_container_image_job: atmosphere-build-container-image-openvswitch
       container_images:
         - context: images/openvswitch
           registry: harbor.atmosphere.dev
@@ -42,15 +42,6 @@
             - "{{ zuul.branch | replace('stable/', '') }}"
     files: &container_image_files
       - images/openvswitch/.*
-
-- job:
-    name: atmosphere-upload-container-image-openvswitch
-    parent: atmosphere-upload-container-image
-    dependencies:
-      - name: atmosphere-buildset-registry
-        soft: false
-    vars: *container_image_vars
-    files: *container_image_files
 
 - job:
     name: atmosphere-promote-container-image-openvswitch
