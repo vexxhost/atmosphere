@@ -1,5 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
+<<<<<<< HEAD   (cc610c Pin ansible-compat)
 # Atmosphere-Rebuild-Time: 2024-06-28T12:14:26Z
+=======
+# Atmosphere-Rebuild-Time: 2025-01-15T02:05:46Z
+>>>>>>> CHANGE (d4d959 Add missing libvirt image dependency)
 
 ARG RELEASE
 
