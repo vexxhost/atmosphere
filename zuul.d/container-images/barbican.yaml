@@ -18,7 +18,7 @@
         - atmosphere-build-container-image-barbican
     gate:
       jobs:
-        - atmosphere-upload-container-image-barbican
+        - atmosphere-build-container-image-barbican
     promote:
       jobs:
         - atmosphere-promote-container-image-barbican
@@ -40,7 +40,7 @@
       - name: atmosphere-build-container-image-openstack-python-runtime
         soft: true
     vars: &container_image_vars
-      promote_container_image_job: atmosphere-upload-container-image-barbican
+      promote_container_image_job: atmosphere-build-container-image-barbican
       container_images:
         - context: images/barbican
           registry: harbor.atmosphere.dev
@@ -60,25 +60,6 @@
       - images/openstack-venv-builder/.*
       - images/openstack-python-runtime/.*
       - images/barbican/.*
-
-- job:
-    name: atmosphere-upload-container-image-barbican
-    parent: atmosphere-upload-container-image
-    dependencies:
-      - name: atmosphere-buildset-registry
-        soft: false
-      - name: atmosphere-upload-container-image-ubuntu
-        soft: true
-      - name: atmosphere-upload-container-image-ubuntu-cloud-archive
-        soft: true
-      - name: atmosphere-upload-container-image-python-base
-        soft: true
-      - name: atmosphere-upload-container-image-openstack-venv-builder
-        soft: true
-      - name: atmosphere-upload-container-image-openstack-python-runtime
-        soft: true
-    vars: *container_image_vars
-    files: *container_image_files
 
 - job:
     name: atmosphere-promote-container-image-barbican

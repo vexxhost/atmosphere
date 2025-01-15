@@ -18,7 +18,7 @@
         - atmosphere-build-container-image-octavia
     gate:
       jobs:
-        - atmosphere-upload-container-image-octavia
+        - atmosphere-build-container-image-octavia
     promote:
       jobs:
         - atmosphere-promote-container-image-octavia
@@ -40,7 +40,7 @@
       - name: atmosphere-build-container-image-openstack-python-runtime
         soft: true
     vars: &container_image_vars
-      promote_container_image_job: atmosphere-upload-container-image-octavia
+      promote_container_image_job: atmosphere-build-container-image-octavia
       container_images:
         - context: images/octavia
           registry: harbor.atmosphere.dev
@@ -60,25 +60,6 @@
       - images/openstack-venv-builder/.*
       - images/openstack-python-runtime/.*
       - images/octavia/.*
-
-- job:
-    name: atmosphere-upload-container-image-octavia
-    parent: atmosphere-upload-container-image
-    dependencies:
-      - name: atmosphere-buildset-registry
-        soft: false
-      - name: atmosphere-upload-container-image-ubuntu
-        soft: true
-      - name: atmosphere-upload-container-image-ubuntu-cloud-archive
-        soft: true
-      - name: atmosphere-upload-container-image-python-base
-        soft: true
-      - name: atmosphere-upload-container-image-openstack-venv-builder
-        soft: true
-      - name: atmosphere-upload-container-image-openstack-python-runtime
-        soft: true
-    vars: *container_image_vars
-    files: *container_image_files
 
 - job:
     name: atmosphere-promote-container-image-octavia
