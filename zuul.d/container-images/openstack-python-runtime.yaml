@@ -40,13 +40,14 @@
       container_images:
         - context: images/openstack-runtime
           registry: harbor.atmosphere.dev
-          repository: harbor.atmosphere.dev/library/openstack-python-runtime
+          repository: "{{ container_registry }}/openstack-python-runtime"
           arch:
             - linux/amd64
             - linux/arm64
           build_args:
+            - REGISTRY={{ container_registry }}
             - "RELEASE={{ zuul.branch | replace('stable/', '') }}"
-            - "FROM=harbor.atmosphere.dev/library/python-base:{{ zuul.branch | replace('stable/', '') }}"
+            - "FROM={{ container_registry }}/python-base:{{ zuul.branch | replace('stable/', '') }}"
           tags:
             - "{{ zuul.branch | replace('stable/', '') }}"
     files: &container_image_files

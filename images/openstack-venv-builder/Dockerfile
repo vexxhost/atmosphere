@@ -1,9 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # Atmosphere-Rebuild-Time: 2024-06-25T13:53:44Z
 
+ARG REGISTRY
 ARG RELEASE
 
-FROM harbor.atmosphere.dev/library/ubuntu-cloud-archive:${RELEASE} AS requirements
+FROM ${REGISTRY}/ubuntu-cloud-archive:${RELEASE} AS requirements
 ARG REQUIREMENTS_GIT_REF=b14cdf8aeba6b7fba4ed85ae4e140d1f52a4038c
 ADD --keep-git-dir=true https://opendev.org/openstack/requirements.git#${REQUIREMENTS_GIT_REF} /src/requirements
 RUN cp /src/requirements/upper-constraints.txt /upper-constraints.txt
@@ -12,7 +13,7 @@ sed -i '/glance-store/d' /upper-constraints.txt
 sed -i '/horizon/d' /upper-constraints.txt
 EOF
 
-FROM harbor.atmosphere.dev/library/python-base:${RELEASE}
+FROM ${REGISTRY}/python-base:${RELEASE}
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \
