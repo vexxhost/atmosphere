@@ -42,12 +42,34 @@
         - ['harbor.atmosphere.dev', 'https://harbor.atmosphere.dev']
 
 - job:
+    name: atmosphere-build-container-image-multiarch
+    parent: atmosphere-build-container-image
+    vars:
+      docker_buildx_enable_multiarch: false
+    nodeset:
+      nodes:
+        - name: amd64
+          label: jammy-2c-8g
+        - name: arm64
+          label: jammy-2c-8g-arm64
+
+- job:
     name: atmosphere-upload-container-image
     parent: ci-upload-container-image
     abstract: true
     irrelevant-files:
       - ^doc/
     vars: *image_vars
+
+- job:
+    name: atmosphere-upload-container-image-multiarch
+    parent: atmosphere-upload-container-image
+    nodeset:
+      nodes:
+        - name: amd64
+          label: jammy-2c-8g
+        - name: arm64
+          label: jammy-2c-8g-arm64
 
 - job:
     name: atmosphere-promote-container-image
