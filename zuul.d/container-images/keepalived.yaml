@@ -36,10 +36,11 @@
       container_images:
         - context: images/keepalived
           registry: harbor.atmosphere.dev
-          repository: harbor.atmosphere.dev/library/keepalived
+          repository: "{{ container_registry }}/keepalived"
           arch:
             - linux/amd64
           build_args:
+            - REGISTRY={{ container_registry }}
             - "RELEASE={{ zuul.branch | replace('stable/', '') }}"
           tags:
             - "{{ zuul.branch | replace('stable/', '') }}"

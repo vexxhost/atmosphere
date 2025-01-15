@@ -1,9 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
 
+ARG REGISTRY
 ARG RELEASE
 
-FROM harbor.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
+FROM ${REGISTRY}/openstack-venv-builder:${RELEASE} AS build
 ARG KEYSTONE_GIT_REF=8ca73f758bb613a57815fbe4ae78e3d2afa4af49
 ADD --keep-git-dir=true https://opendev.org/openstack/keystone.git#${KEYSTONE_GIT_REF} /src/keystone
 RUN git -C /src/keystone fetch --unshallow
@@ -14,7 +15,7 @@ pip3 install \
         keystone-keycloak-backend==0.1.8
 EOF
 
-FROM harbor.atmosphere.dev/library/openstack-python-runtime:${RELEASE}
+FROM ${REGISTRY}/openstack-python-runtime:${RELEASE}
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \

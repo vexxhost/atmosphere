@@ -44,10 +44,11 @@
       container_images:
         - context: images/tempest
           registry: harbor.atmosphere.dev
-          repository: harbor.atmosphere.dev/library/tempest
+          repository: "{{ container_registry }}/tempest"
           arch:
             - linux/amd64
           build_args:
+            - REGISTRY={{ container_registry }}
             - "RELEASE={{ zuul.branch | replace('stable/', '') }}"
             - PROJECT=tempest
           tags:
