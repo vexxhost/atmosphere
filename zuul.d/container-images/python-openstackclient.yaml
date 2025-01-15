@@ -42,10 +42,11 @@
       container_images:
         - context: images/python-openstackclient
           registry: harbor.atmosphere.dev
-          repository: harbor.atmosphere.dev/library/python-openstackclient
+          repository: "{{ container_registry }}/python-openstackclient"
           arch:
             - linux/amd64
           build_args:
+            - REGISTRY={{ container_registry }}
             - "RELEASE={{ zuul.branch | replace('stable/', '') }}"
           tags:
             - "{{ zuul.branch | replace('stable/', '') }}"
