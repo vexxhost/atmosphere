@@ -3,9 +3,10 @@
 
 # Build
 
+ARG REGISTRY
 ARG RELEASE
 
-FROM harbor.atmosphere.dev/library/ubuntu-cloud-archive:${RELEASE} AS requirements
+FROM ${REGISTRY}/ubuntu-cloud-archive:${RELEASE} AS requirements
 ARG REQUIREMENTS_GIT_REF=b4513973fdd1c3b43159fe0e02fa73d845a9c1ba
 ADD --keep-git-dir=true https://opendev.org/openstack/requirements.git#${REQUIREMENTS_GIT_REF} /src/requirements
 RUN cp /src/requirements/upper-constraints.txt /upper-constraints.txt
@@ -14,7 +15,7 @@ sed -i '/glance-store/d' /upper-constraints.txt
 sed -i '/horizon/d' /upper-constraints.txt
 EOF
 
-FROM harbor.atmosphere.dev/library/python-base:${RELEASE}
+FROM ${REGISTRY}/python-base:${RELEASE}
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \

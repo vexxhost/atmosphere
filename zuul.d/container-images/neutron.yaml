@@ -44,11 +44,12 @@
       container_images:
         - context: images/neutron
           registry: harbor.atmosphere.dev
-          repository: harbor.atmosphere.dev/library/neutron
+          repository: "{{ container_registry }}/neutron"
           arch:
             - linux/amd64
             - linux/arm64
           build_args:
+            - REGISTRY={{ container_registry }}
             - "RELEASE={{ zuul.branch | replace('stable/', '') }}"
             - PROJECT=neutron
           tags:

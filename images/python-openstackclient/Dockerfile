@@ -1,9 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # Atmosphere-Rebuild-Time: 2024-06-28T12:14:26Z
 
+ARG REGISTRY
 ARG RELEASE
 
-FROM harbor.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
+FROM ${REGISTRY}/openstack-venv-builder:${RELEASE} AS build
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
 pip3 install \
     --constraint /upper-constraints.txt \
@@ -22,7 +23,7 @@ pip3 install \
         python-swiftclient
 EOF
 
-FROM harbor.atmosphere.dev/library/python-base:${RELEASE}
+FROM ${REGISTRY}/python-base:${RELEASE}
 COPY --from=build --link /var/lib/openstack /var/lib/openstack
 
 # NOTE(mnaser): The Magnum client relies on the SHELL environment variable

@@ -1,9 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # Atmosphere-Rebuild-Time: 2024-06-28T12:14:26Z
 
+ARG REGISTRY
 ARG RELEASE
 
-FROM harbor.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
+FROM ${REGISTRY}/openstack-venv-builder:${RELEASE} AS build
 ARG OCTAVIA_GIT_REF=000b577f3e9c9ff7cb893e9f6e635753017a78c6
 ADD --keep-git-dir=true https://opendev.org/openstack/octavia.git#${OCTAVIA_GIT_REF} /src/octavia
 RUN git -C /src/octavia fetch --unshallow
@@ -18,7 +19,7 @@ pip3 install \
         /src/ovn-octavia-provider
 EOF
 
-FROM harbor.atmosphere.dev/library/openstack-python-runtime:${RELEASE}
+FROM ${REGISTRY}/openstack-python-runtime:${RELEASE}
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \
