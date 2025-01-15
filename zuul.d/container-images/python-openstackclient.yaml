@@ -18,7 +18,7 @@
         - atmosphere-build-container-image-python-openstackclient
     gate:
       jobs:
-        - atmosphere-upload-container-image-python-openstackclient
+        - atmosphere-build-container-image-python-openstackclient
     promote:
       jobs:
         - atmosphere-promote-container-image-python-openstackclient
@@ -38,7 +38,7 @@
       - name: atmosphere-build-container-image-openstack-venv-builder
         soft: true
     vars: &container_image_vars
-      promote_container_image_job: atmosphere-upload-container-image-python-openstackclient
+      promote_container_image_job: atmosphere-build-container-image-python-openstackclient
       container_images:
         - context: images/python-openstackclient
           registry: harbor.atmosphere.dev
@@ -56,23 +56,6 @@
       - images/python-base/.*
       - images/openstack-venv-builder/.*
       - images/python-openstackclient/.*
-
-- job:
-    name: atmosphere-upload-container-image-python-openstackclient
-    parent: atmosphere-upload-container-image
-    dependencies:
-      - name: atmosphere-buildset-registry
-        soft: false
-      - name: atmosphere-upload-container-image-ubuntu
-        soft: true
-      - name: atmosphere-upload-container-image-ubuntu-cloud-archive
-        soft: true
-      - name: atmosphere-upload-container-image-python-base
-        soft: true
-      - name: atmosphere-upload-container-image-openstack-venv-builder
-        soft: true
-    vars: *container_image_vars
-    files: *container_image_files
 
 - job:
     name: atmosphere-promote-container-image-python-openstackclient
