@@ -44,10 +44,11 @@
       container_images:
         - context: images/manila
           registry: harbor.atmosphere.dev
-          repository: harbor.atmosphere.dev/library/manila
+          repository: "{{ container_registry }}/manila"
           arch:
             - linux/amd64
           build_args:
+            - REGISTRY={{ container_registry }}
             - "RELEASE={{ zuul.branch | replace('stable/', '') }}"
             - PROJECT=manila
           tags:

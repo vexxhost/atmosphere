@@ -1,9 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
 
+ARG REGISTRY
 ARG RELEASE
 
-FROM harbor.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
+FROM ${REGISTRY}/openstack-venv-builder:${RELEASE} AS build
 ARG BARBICAN_GIT_REF=ca57ef5436e20e90cf6cd6853efe3c89a9afd986
 ADD --keep-git-dir=true https://opendev.org/openstack/barbican.git#${BARBICAN_GIT_REF} /src/barbican
 RUN git -C /src/barbican fetch --unshallow
@@ -14,5 +15,5 @@ pip3 install \
         pykmip
 EOF
 
-FROM harbor.atmosphere.dev/library/openstack-python-runtime:${RELEASE}
+FROM ${REGISTRY}/openstack-python-runtime:${RELEASE}
 COPY --from=build --link /var/lib/openstack /var/lib/openstack
