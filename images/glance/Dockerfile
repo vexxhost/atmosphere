@@ -1,9 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # Atmosphere-Rebuild-Time: 2024-06-26T17:38:39Z
 
+ARG REGISTRY
 ARG RELEASE
 
-FROM harbor.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
+FROM ${REGISTRY}/openstack-venv-builder:${RELEASE} AS build
 ARG GLANCE_GIT_REF=b5b29a0ae15d44424f04db0686328d0a01a14853
 ADD --keep-git-dir=true https://opendev.org/openstack/glance.git#${GLANCE_GIT_REF} /src/glance
 RUN git -C /src/glance fetch --unshallow
@@ -18,7 +19,7 @@ pip3 install \
         storpool.spopenstack
 EOF
 
-FROM harbor.atmosphere.dev/library/openstack-python-runtime:${RELEASE}
+FROM ${REGISTRY}/openstack-python-runtime:${RELEASE}
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \

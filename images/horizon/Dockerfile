@@ -1,9 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # Atmosphere-Rebuild-Time: 2024-06-26T17:38:39Z
 
+ARG REGISTRY
 ARG RELEASE
 
-FROM harbor.atmosphere.dev/library/openstack-venv-builder:${RELEASE} AS build
+FROM ${REGISTRY}/openstack-venv-builder:${RELEASE} AS build
 ARG HORIZON_GIT_REF=dcaf0cc51fe998ca6de89a82a3cdadd26131830b
 ADD --keep-git-dir=true https://opendev.org/openstack/horizon.git#${HORIZON_GIT_REF} /src/horizon
 RUN git -C /src/horizon fetch --unshallow
@@ -39,7 +40,7 @@ pip3 install \
         pymemcache
 EOF
 
-FROM harbor.atmosphere.dev/library/openstack-python-runtime:${RELEASE}
+FROM ${REGISTRY}/openstack-python-runtime:${RELEASE}
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \
