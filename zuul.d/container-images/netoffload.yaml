@@ -18,7 +18,7 @@
         - atmosphere-build-container-image-netoffload
     gate:
       jobs:
-        - atmosphere-upload-container-image-netoffload
+        - atmosphere-build-container-image-netoffload
     promote:
       jobs:
         - atmosphere-promote-container-image-netoffload
@@ -32,7 +32,7 @@
       - name: atmosphere-build-container-image-ubuntu
         soft: true
     vars: &container_image_vars
-      promote_container_image_job: atmosphere-upload-container-image-netoffload
+      promote_container_image_job: atmosphere-build-container-image-netoffload
       container_images:
         - context: images/netoffload
           registry: harbor.atmosphere.dev
@@ -47,17 +47,6 @@
     files: &container_image_files
       - images/ubuntu/.*
       - images/netoffload/.*
-
-- job:
-    name: atmosphere-upload-container-image-netoffload
-    parent: atmosphere-upload-container-image
-    dependencies:
-      - name: atmosphere-buildset-registry
-        soft: false
-      - name: atmosphere-upload-container-image-ubuntu
-        soft: true
-    vars: *container_image_vars
-    files: *container_image_files
 
 - job:
     name: atmosphere-promote-container-image-netoffload
