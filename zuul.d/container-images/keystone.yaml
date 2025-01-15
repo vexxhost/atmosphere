@@ -44,10 +44,11 @@
       container_images:
         - context: images/keystone
           registry: harbor.atmosphere.dev
-          repository: harbor.atmosphere.dev/library/keystone
+          repository: "{{ container_registry }}/keystone"
           arch:
             - linux/amd64
           build_args:
+            - REGISTRY={{ container_registry }}
             - "RELEASE={{ zuul.branch | replace('stable/', '') }}"
             - PROJECT=keystone
           tags:
