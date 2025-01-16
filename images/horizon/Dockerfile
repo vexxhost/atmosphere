@@ -14,7 +14,8 @@ ADD --keep-git-dir=true https://opendev.org/openstack/heat-dashboard.git#zed-eol
 RUN git -C /src/heat-dashboard fetch --unshallow
 ADD --keep-git-dir=true https://opendev.org/openstack/ironic-ui.git#unmaintained/zed /src/ironic-ui
 RUN git -C /src/ironic-ui fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/magnum-ui.git#unmaintained/zed /src/magnum-ui
+ARG MAGNUM_UI_REF=c4c60b779d52a713c0acb3ef4c7987aab1a42657
+ADD --keep-git-dir=true https://opendev.org/openstack/magnum-ui.git#${MAGNUM_UI_REF} /src/magnum-ui
 RUN git -C /src/magnum-ui fetch --unshallow
 ADD --keep-git-dir=true https://opendev.org/openstack/manila-ui.git#unmaintained/zed /src/manila-ui
 RUN git -C /src/manila-ui fetch --unshallow
