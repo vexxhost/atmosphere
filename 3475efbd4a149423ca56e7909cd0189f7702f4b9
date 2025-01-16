@@ -1,0 +1,280 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "0921ae87_33580854",
+        "filename": "charts/ovn/templates/statefulset-ovsdb-nb.yaml",
+        "patchSetId": 2
+      },
+      "lineNbr": 106,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2025-01-16T20:22:12Z",
+      "side": 1,
+      "message": "Do we even need this?  ovsdb is just a db server, it should not need to interact with openvswitch, I think we should try and limit the interactions there.",
+      "range": {
+        "startLine": 105,
+        "startChar": 0,
+        "endLine": 106,
+        "endChar": 45
+      },
+      "revId": "3475efbd4a149423ca56e7909cd0189f7702f4b9",
+      "serverId": "a369f105-6bff-480f-8aaf-eafd1f85bb44"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e840dd19_9873bdb8",
+        "filename": "charts/ovn/templates/statefulset-ovsdb-nb.yaml",
+        "patchSetId": 2
+      },
+      "lineNbr": 115,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2025-01-16T20:22:12Z",
+      "side": 1,
+      "message": "We would then remove this.",
+      "range": {
+        "startLine": 112,
+        "startChar": 0,
+        "endLine": 115,
+        "endChar": 35
+      },
+      "revId": "3475efbd4a149423ca56e7909cd0189f7702f4b9",
+      "serverId": "a369f105-6bff-480f-8aaf-eafd1f85bb44"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "73953e32_fd967bc7",
+        "filename": "charts/ovn/templates/statefulset-ovsdb-nb.yaml",
+        "patchSetId": 2
+      },
+      "lineNbr": 119,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2025-01-16T20:22:12Z",
+      "side": 1,
+      "message": "Same thing here, I don\u0027t think we need a dedicated folder on the host to link this too, it can be isolated.",
+      "range": {
+        "startLine": 116,
+        "startChar": 0,
+        "endLine": 119,
+        "endChar": 35
+      },
+      "revId": "3475efbd4a149423ca56e7909cd0189f7702f4b9",
+      "serverId": "a369f105-6bff-480f-8aaf-eafd1f85bb44"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "81ea7b8f_18520d2c",
+        "filename": "charts/ovn/templates/statefulset-ovsdb-sb.yaml",
+        "patchSetId": 2
+      },
+      "lineNbr": 106,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2025-01-16T20:22:12Z",
+      "side": 1,
+      "message": "This seems unnecessary, we should remove it I think.",
+      "range": {
+        "startLine": 105,
+        "startChar": 0,
+        "endLine": 106,
+        "endChar": 45
+      },
+      "revId": "3475efbd4a149423ca56e7909cd0189f7702f4b9",
+      "serverId": "a369f105-6bff-480f-8aaf-eafd1f85bb44"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "734dfadd_8837a1e3",
+        "filename": "charts/ovn/templates/statefulset-ovsdb-sb.yaml",
+        "patchSetId": 2
+      },
+      "lineNbr": 115,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2025-01-16T20:22:12Z",
+      "side": 1,
+      "message": "Which would make this useless too.",
+      "range": {
+        "startLine": 112,
+        "startChar": 0,
+        "endLine": 115,
+        "endChar": 35
+      },
+      "revId": "3475efbd4a149423ca56e7909cd0189f7702f4b9",
+      "serverId": "a369f105-6bff-480f-8aaf-eafd1f85bb44"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "1576ee60_7563051b",
+        "filename": "charts/ovn/templates/statefulset-ovsdb-sb.yaml",
+        "patchSetId": 2
+      },
+      "lineNbr": 119,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2025-01-16T20:22:12Z",
+      "side": 1,
+      "message": "Does it make sense to make this an empty directory instead of a hostPath since this is just a database so it doesn\u0027t really need to \"play\" or touch anything there, we don\u0027t use the sockets either AFAIK since we talk over `tcp` only.",
+      "range": {
+        "startLine": 116,
+        "startChar": 0,
+        "endLine": 119,
+        "endChar": 35
+      },
+      "revId": "3475efbd4a149423ca56e7909cd0189f7702f4b9",
+      "serverId": "a369f105-6bff-480f-8aaf-eafd1f85bb44"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a7141144_f8882d16",
+        "filename": "images/ovn/patches/ovn-kubernetes/0004-ensure-openvswitch-pid-directory-is-accessable-by-no.patch",
+        "patchSetId": 2
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2025-01-16T20:22:12Z",
+      "side": 1,
+      "message": "The full commit for this is:\n\n    chown -R ${ovs_user_id} /etc/openvswitch\n    chown -R ${ovs_user_id} ${OVS_RUNDIR}\n    chown -R ${ovs_user_id} ${OVS_LOGDIR}\n    chown -R ${ovs_user_id} ${OVN_ETCDIR}\n    chown -R ${ovs_user_id} ${OVN_RUNDIR}\n    chown -R ${ovs_user_id} ${OVN_LOGDIR}\n    \nTechnically, I\u0027m thinking if we removed the `ovs` mount from the db servers, couldn\u0027t we just set  `OVS_USER_ID` to `42424` ?\n\nhttps://github.com/ovn-kubernetes/ovn-kubernetes/blob/master/dist/images/ovnkube.sh\n\nMaybe I\u0027m missing something here though.",
+      "range": {
+        "startLine": 20,
+        "startChar": 0,
+        "endLine": 22,
+        "endChar": 36
+      },
+      "revId": "3475efbd4a149423ca56e7909cd0189f7702f4b9",
+      "serverId": "a369f105-6bff-480f-8aaf-eafd1f85bb44"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "07ac10f4_892f7315",
+        "filename": "images/ovn/patches/ovn-kubernetes/0004-ensure-openvswitch-pid-directory-is-accessable-by-no.patch",
+        "patchSetId": 2
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2025-01-16T20:22:12Z",
+      "side": 1,
+      "message": "Do you think this is a but with upstream?",
+      "range": {
+        "startLine": 34,
+        "startChar": 0,
+        "endLine": 35,
+        "endChar": 86
+      },
+      "revId": "3475efbd4a149423ca56e7909cd0189f7702f4b9",
+      "serverId": "a369f105-6bff-480f-8aaf-eafd1f85bb44"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a6e6a44b_30027b02",
+        "filename": "images/ovn/patches/ovn-kubernetes/0004-ensure-openvswitch-pid-directory-is-accessable-by-no.patch",
+        "patchSetId": 2
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2025-01-16T20:22:12Z",
+      "side": 1,
+      "message": "Same here.",
+      "range": {
+        "startLine": 41,
+        "startChar": 0,
+        "endLine": 42,
+        "endChar": 103
+      },
+      "revId": "3475efbd4a149423ca56e7909cd0189f7702f4b9",
+      "serverId": "a369f105-6bff-480f-8aaf-eafd1f85bb44"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c0142b13_f6de9771",
+        "filename": "images/ovn/patches/ovn-kubernetes/0004-ensure-openvswitch-pid-directory-is-accessable-by-no.patch",
+        "patchSetId": 2
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2025-01-16T20:22:12Z",
+      "side": 1,
+      "message": "Same here",
+      "range": {
+        "startLine": 50,
+        "startChar": 0,
+        "endLine": 51,
+        "endChar": 85
+      },
+      "revId": "3475efbd4a149423ca56e7909cd0189f7702f4b9",
+      "serverId": "a369f105-6bff-480f-8aaf-eafd1f85bb44"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6c339e0b_6c219509",
+        "filename": "images/ovn/patches/ovn-kubernetes/0004-ensure-openvswitch-pid-directory-is-accessable-by-no.patch",
+        "patchSetId": 2
+      },
+      "lineNbr": 60,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2025-01-16T20:22:12Z",
+      "side": 1,
+      "message": "Same here",
+      "range": {
+        "startLine": 59,
+        "startChar": 0,
+        "endLine": 60,
+        "endChar": 76
+      },
+      "revId": "3475efbd4a149423ca56e7909cd0189f7702f4b9",
+      "serverId": "a369f105-6bff-480f-8aaf-eafd1f85bb44"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "c12573af_c95c3373",
+        "filename": "images/ovn/patches/ovn-kubernetes/0004-ensure-openvswitch-pid-directory-is-accessable-by-no.patch",
+        "patchSetId": 2
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2025-01-16T20:22:12Z",
+      "side": 1,
+      "message": "Are we using this function call somewhere?  In that case, then I think we need ovs run mounted so we can make those calls?",
+      "range": {
+        "startLine": 67,
+        "startChar": 0,
+        "endLine": 77,
+        "endChar": 3
+      },
+      "revId": "3475efbd4a149423ca56e7909cd0189f7702f4b9",
+      "serverId": "a369f105-6bff-480f-8aaf-eafd1f85bb44"
+    }
+  ]
+}
