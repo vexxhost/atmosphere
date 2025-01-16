@@ -79,7 +79,7 @@
       tags:
         - iscsi
 
-- name: Deploy Open vSwitch
+- name: Deploy SDN
   hosts: controllers:computes
   become: true
   gather_facts: false
@@ -88,13 +88,13 @@
       tags:
         - openvswitch
 
-- hosts: controllers[0]
-  become: true
-  roles:
     - role: ovn
       tags:
         - ovn
 
+- hosts: controllers[0]
+  become: true
+  roles:
     - role: libvirt
       tags:
         - libvirt
