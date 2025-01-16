@@ -22,6 +22,7 @@ author = "VEXXHOST, Inc."
 extensions = [
     "sphinx_copybutton",
     "pbr.sphinxext",
+    "reno.sphinxext",
 ]
 
 templates_path = ["_templates"]
