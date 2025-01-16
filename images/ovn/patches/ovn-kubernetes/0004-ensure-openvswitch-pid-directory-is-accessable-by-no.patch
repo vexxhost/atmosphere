@@ -1,0 +1,80 @@
+From 103c75efeb24971b661b64802f2d970c051b891f Mon Sep 17 00:00:00 2001
+From: Yaguang Tang <heut2008@gmail.com>
+Date: Thu, 16 Jan 2025 22:41:33 +0800
+Subject: [PATCH] ensure openvswitch pid directory is accessable by nova for
+ dpdk usecase
+
+---
+ dist/images/ovnkube.sh                               |  3 +++
+ .../cmd/ovn-kube-util/app/readiness-probe.go         | 12 ++++++------
+ 2 files changed, 9 insertions(+), 6 deletions(-)
+
+diff --git a/dist/images/ovnkube.sh b/dist/images/ovnkube.sh
+index 338429d00..f05b866c4 100755
+--- a/dist/images/ovnkube.sh
++++ b/dist/images/ovnkube.sh
+@@ -335,6 +335,9 @@ setup_ovs_permissions() {
+     chown -R ${ovs_user_id} ${OVN_ETCDIR}
+     chown -R ${ovs_user_id} ${OVN_RUNDIR}
+     chown -R ${ovs_user_id} ${OVN_LOGDIR}
++  else
++    # ensure nova can write dpdk socket file
++    chown 42424:42424 ${OVS_RUNDIR}
+   fi
+ }
+ 
+diff --git a/go-controller/cmd/ovn-kube-util/app/readiness-probe.go b/go-controller/cmd/ovn-kube-util/app/readiness-probe.go
+index 368bba8bf..145f7a9f5 100644
+--- a/go-controller/cmd/ovn-kube-util/app/readiness-probe.go
++++ b/go-controller/cmd/ovn-kube-util/app/readiness-probe.go
+@@ -25,13 +25,13 @@ var callbacks = map[string]readinessFunc{
+ 
+ func ovnControllerReadiness(target string) error {
+ 	// Check if ovn-controller is connected to OVN SB
+-	output, _, err := util.RunOVSAppctlWithTimeout(5, "-t", target, "connection-status")
++	output, _, err := util.RunOVNAppctlWithTimeout(5, "-t", target, "connection-status")
+ 	if err != nil {
+ 		return fmt.Errorf("failed getting connection status of %q: (%v)", target, err)
+ 	} else if output != "connected" {
+ 		return fmt.Errorf("%q is not connected to OVN SB database, status: (%s)", target, output)
+ 	}
+-	result, _, err := util.RunOVSAppctlWithTimeout(5, "-t", target, "coverage/read-counter", "lflow_run")
++	result, _, err := util.RunOVNAppctlWithTimeout(5, "-t", target, "coverage/read-counter", "lflow_run")
+ 	if err != nil {
+ 		return fmt.Errorf("failed getting coverage/show of %q: (%v)", target, err)
+ 	} else if result == "0" {
+@@ -45,7 +45,7 @@ func ovnControllerReadiness(target string) error {
+ 		return fmt.Errorf("failed to get pid for osvdb-server process: %v", err)
+ 	}
+ 	ctlFile := fmt.Sprintf("/var/run/openvswitch/ovsdb-server.%s.ctl", strings.Trim(string(ovsdbPid), " \n"))
+-	_, _, err = util.RunOVSAppctlWithTimeout(5, "-t", ctlFile, "ovsdb-server/list-dbs")
++	_, _, err = util.RunOVNAppctlWithTimeout(5, "-t", ctlFile, "ovsdb-server/list-dbs")
+ 	if err != nil {
+ 		return fmt.Errorf("failed retrieving list of databases from ovsdb-server: %v", err)
+ 	}
+@@ -55,7 +55,7 @@ func ovnControllerReadiness(target string) error {
+ 		return fmt.Errorf("failed to get pid for ovs-vswitchd process: %v", err)
+ 	}
+ 	ctlFile = fmt.Sprintf("/var/run/openvswitch/ovs-vswitchd.%s.ctl", strings.Trim(string(ovsPid), " \n"))
+-	_, _, err = util.RunOVSAppctlWithTimeout(5, "-t", ctlFile, "ofproto/list")
++	_, _, err = util.RunOVNAppctlWithTimeout(5, "-t", ctlFile, "ofproto/list")
+ 	if err != nil {
+ 		return fmt.Errorf("failed to retrieve ofproto instances from ovs-vswitchd: %v", err)
+ 	}
+@@ -137,11 +137,11 @@ func ovnNorthdReadiness(target string) error {
+ }
+ 
+ func ovsDaemonsReadiness(target string) error {
+-	_, _, err := util.RunOVSAppctlWithTimeout(5, "-t", "ovsdb-server", "ovsdb-server/list-dbs")
++	_, _, err := util.RunOVNAppctlWithTimeout(5, "-t", "ovsdb-server", "ovsdb-server/list-dbs")
+ 	if err != nil {
+ 		return fmt.Errorf("failed retrieving list of databases from ovsdb-server: %v", err)
+ 	}
+-	_, _, err = util.RunOVSAppctlWithTimeout(5, "-t", "ovs-vswitchd", "ofproto/list")
++	_, _, err = util.RunOVNAppctlWithTimeout(5, "-t", "ovs-vswitchd", "ofproto/list")
+ 	if err != nil {
+ 		return fmt.Errorf("failed to retrieve ofproto instances from ovs-vswitchd: %v", err)
+ 	}
+-- 
+2.39.5 (Apple Git-154)
+
