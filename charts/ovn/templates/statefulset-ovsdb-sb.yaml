@@ -104,7 +104,7 @@ spec:
           volumeMounts:
             - name: run-openvswitch
               mountPath: /var/run/openvswitch
-            - name: run-openvswitch
+            - name: run-ovn
               mountPath: /var/run/ovn
             - name: data
               mountPath: /etc/ovn
@@ -112,6 +112,10 @@ spec:
         - name: run-openvswitch
           hostPath:
             path: /run/openvswitch
+            type: DirectoryOrCreate
+        - name: run-ovn
+          hostPath:
+            path: /run/ovn
             type: DirectoryOrCreate
 {{- if not .Values.volume.ovn_ovsdb_sb.enabled }}
         - name: data
