@@ -1,0 +1,12 @@
+- hosts: all
+  tasks:
+    - name: Ensure that "reno" is installed
+      become: true
+      ansible.builtin.package:
+        name: python3-reno
+        state: present
+
+    - name: Generate the release notes
+      ansible.builtin.command: reno report --output CHANGELOG.rst
+      args:
+        chdir: "{{ zuul.project.src_dir }}"
