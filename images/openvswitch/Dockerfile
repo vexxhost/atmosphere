@@ -16,4 +16,6 @@ dnf -y --setopt=install_weak_deps=False --setopt=tsflags=nodocs install \
     tcpdump
 dnf -y clean all
 rm -rf /var/cache/dnf
+usermod -u 42424 openvswitch
+sed -i 's/root:root/openvswitch:hugetlbfs/' /etc/openvswitch/default.conf
 EOF
