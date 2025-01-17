@@ -59,14 +59,15 @@ the CRB model:
 Image configuration
 -------------------
 
-You can also configure the vTPM on an image using the same properties. For example,
-to configure an image to use the TPM 2.0 with CRB model:
+You can also configure the vTPM on an image using the ``hw_tpm_version`` and
+``hw_tpm_model`` image metadata properties. For example, to configure an image
+to use the TPM 2.0 with CRB model:
 
 .. code-block:: console
 
  $ openstack image set <image-name-or-uuid> \
-     --property hw:tpm_version=2.0 \
-     --property hw:tpm_model=tpm-crb
+     --property hw_tpm_version=2.0 \
+     --property hw_tpm_model=tpm-crb
 
 This can be useful if you need to enable the vTPM feature without having operator
 access to the cloud or for specific images such as Windows versions that require
