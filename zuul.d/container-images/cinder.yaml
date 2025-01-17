@@ -18,7 +18,7 @@
         - atmosphere-build-container-image-cinder
     gate:
       jobs:
-        - atmosphere-upload-container-image-cinder
+        - atmosphere-build-container-image-cinder
     promote:
       jobs:
         - atmosphere-promote-container-image-cinder
@@ -40,7 +40,7 @@
       - name: atmosphere-build-container-image-openstack-python-runtime
         soft: true
     vars: &container_image_vars
-      promote_container_image_job: atmosphere-upload-container-image-cinder
+      promote_container_image_job: atmosphere-build-container-image-cinder
       container_images:
         - context: images/cinder
           registry: harbor.atmosphere.dev
@@ -60,25 +60,6 @@
       - images/openstack-venv-builder/.*
       - images/openstack-python-runtime/.*
       - images/cinder/.*
-
-- job:
-    name: atmosphere-upload-container-image-cinder
-    parent: atmosphere-upload-container-image
-    dependencies:
-      - name: atmosphere-buildset-registry
-        soft: false
-      - name: atmosphere-upload-container-image-ubuntu
-        soft: true
-      - name: atmosphere-upload-container-image-ubuntu-cloud-archive
-        soft: true
-      - name: atmosphere-upload-container-image-python-base
-        soft: true
-      - name: atmosphere-upload-container-image-openstack-venv-builder
-        soft: true
-      - name: atmosphere-upload-container-image-openstack-python-runtime
-        soft: true
-    vars: *container_image_vars
-    files: *container_image_files
 
 - job:
     name: atmosphere-promote-container-image-cinder
