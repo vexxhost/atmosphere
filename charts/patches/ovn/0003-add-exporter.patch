@@ -1,0 +1,83 @@
+diff --git a/ovn/templates/daemonset-controller.yaml b/ovn/templates/daemonset-controller.yaml
+index 82b70f78..1eb6c907 100644
+--- a/ovn/templates/daemonset-controller.yaml
++++ b/ovn/templates/daemonset-controller.yaml
+@@ -202,6 +202,34 @@ spec:
+               subPath: neutron-ovn-network-logging-parser-uwsgi.ini
+               readOnly: true
+         {{- end }}
++        {{- if .Values.pod.sidecars.openvswitch_exporter }}
++        - name: exporter
++{{ tuple $envAll "openvswitch_exporter" | include "helm-toolkit.snippets.image" | indent 10 }}
++{{ tuple $envAll $envAll.Values.pod.resources.exporter | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
++{{ dict "envAll" $envAll "application" "ovn_controller" "container" "exporter" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
++          args:
++            - --web.listen-address=:9273
++          ports:
++            - name: metrics
++              containerPort: 9273
++          readinessProbe:
++            failureThreshold: 3
++            httpGet:
++              path: /
++              port: metrics
++              scheme: HTTP
++          livenessProbe:
++            failureThreshold: 3
++            httpGet:
++              path: /
++              port: metrics
++              scheme: HTTP
++          volumeMounts:
++            - name: run-openvswitch
++              mountPath: /var/run/ovn
++            - name: run-openvswitch
++              mountPath: /var/run/openvswitch
++        {{- end }}
+       volumes:
+         - name: ovn-bin
+           configMap:
+diff --git a/ovn/values.yaml b/ovn/values.yaml
+index 3ffdecec..ac643f84 100644
+--- a/ovn/values.yaml
++++ b/ovn/values.yaml
+@@ -29,6 +29,7 @@ images:
+     image_repo_sync: docker.io/library/docker:17.07.0
+     vector: docker.io/timberio/vector:0.39.0-debian
+     ovn_logging_parser: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
++    openvswitch_exporter: docker.io/openstackhelm/ovn:latest-ubuntu_focal
+   pull_policy: "IfNotPresent"
+   local_registry:
+     active: false
+@@ -160,6 +161,9 @@ pod:
+         vector:
+           allowPrivilegeEscalation: false
+           readOnlyRootFilesystem: true
++        exporter:
++          allowPrivilegeEscalation: false
++          readOnlyRootFilesystem: true
+   tolerations:
+     ovn_ovsdb_nb:
+       enabled: false
+@@ -289,6 +293,13 @@ pod:
+       limits:
+         memory: "256Mi"
+         cpu: "500m"
++    exporter:
++      requests:
++        memory: "128Mi"
++        cpu: "100m"
++      limits:
++        memory: "256Mi"
++        cpu: "500m"
+     jobs:
+       image_repo_sync:
+         requests:
+@@ -301,6 +312,7 @@ pod:
+   sidecars:
+     ovn_logging_parser: false
+     vector: false
++    openvswitch_exporter: false
+ 
+ secrets:
+   oci_image_registry:
