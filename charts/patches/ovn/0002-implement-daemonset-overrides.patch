@@ -1,0 +1,74 @@
+diff --git a/ovn/templates/configmap-bin.yaml b/ovn/templates/configmap-bin.yaml
+index 77547470..e61f356e 100644
+--- a/ovn/templates/configmap-bin.yaml
++++ b/ovn/templates/configmap-bin.yaml
+@@ -12,13 +12,15 @@ See the License for the specific language governing permissions and
+ limitations under the License.
+ */}}
+ 
+-{{- if .Values.manifests.configmap_bin }}
+-{{- $envAll := . }}
++{{- define "ovn.configmap.bin" }}
++{{- $configMapName := index . 0 }}
++{{- $envAll := index . 1 }}
++{{- with $envAll }}
+ ---
+ apiVersion: v1
+ kind: ConfigMap
+ metadata:
+-  name: ovn-bin
++  name: {{ $configMapName }}
+ data:
+ {{- if .Values.images.local_registry.active }}
+   image-repo-sync.sh: |
+@@ -29,3 +31,8 @@ data:
+   ovn-network-logging-parser.sh: |
+ {{ tuple "bin/_ovn-network-logging-parser.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+ {{- end }}
++{{- end }}
++
++{{- if .Values.manifests.configmap_bin }}
++{{- list "ovn-bin" . | include "ovn.configmap.bin" }}
++{{- end }}
+diff --git a/ovn/templates/daemonset-controller.yaml b/ovn/templates/daemonset-controller.yaml
+index a0543381..447d76a9 100644
+--- a/ovn/templates/daemonset-controller.yaml
++++ b/ovn/templates/daemonset-controller.yaml
+@@ -21,13 +21,12 @@ exec:
+     - ovn-controller
+ {{- end }}
+ 
+-{{- if .Values.manifests.daemonset_ovn_controller }}
+-{{- $envAll := . }}
+-
+-{{- $configMapName := "ovn-etc" }}
+-{{- $serviceAccountName := "ovn-controller" }}
+-{{ tuple $envAll "ovn_controller" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+-
++{{- define "ovn.daemonset" }}
++{{- $daemonset := index . 0 }}
++{{- $configMapName := index . 1 }}
++{{- $serviceAccountName := index . 2 }}
++{{- $envAll := index . 3 }}
++{{- with $envAll }}
+ ---
+ kind: DaemonSet
+ apiVersion: apps/v1
+@@ -214,3 +213,17 @@ spec:
+             defaultMode: 0444
+         {{- end }}
+ {{- end }}
++{{- end }}
++
++{{- if .Values.manifests.daemonset_ovn_controller }}
++{{- $envAll := . }}
++{{- $daemonset := "controller" }}
++{{- $configMapName := "ovn-etc" }}
++{{- $serviceAccountName := "ovn-controller" }}
++
++{{ tuple $envAll "ovn_controller" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
++{{- $configmap_yaml := "ovn.configmap.etc" }}
++
++{{/* Preffer using .Values.overrides rather than .Values.conf.overrides */}}
++{{- list $daemonset "ovn.daemonset" $serviceAccountName $configmap_yaml $configMapName "ovn.configmap.bin" "ovn-bin" . | include "helm-toolkit.utils.daemonset_overrides_root" }}
++{{- end }}
