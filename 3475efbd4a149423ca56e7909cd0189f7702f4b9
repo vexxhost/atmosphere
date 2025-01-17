@@ -284,6 +284,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "e21fdcfc_523b0dc3",
+        "filename": "images/ovn/patches/ovn-kubernetes/0004-ensure-openvswitch-pid-directory-is-accessable-by-no.patch",
+        "patchSetId": 2
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2025-01-17T02:27:40Z",
+      "side": 1,
+      "message": "and if I understand the scope of the problem correctly:\n\n- ovsdb-server runs as non-root (42424)\n- ovs-vswitchd runs as root\n- ovn-controller runs as root\n- qemu processes run as non-root (42424)\n\nso technically, I think ovsdb-server being non-root doesn\u0027t matter because it\u0027s just a server, things connect to it, and it matches qemu anyways.\n\nqemu tries to start the dpdk process in the run dir but permission is root there, so its not able to write since its using user 42424\n\nit seems redhat has been running ovs as non-root:\n\nhttps://developers.redhat.com/blog/2018/03/23/non-root-open-vswitch-rhel\n\nso why don\u0027t we:\n\n1. in ovs, add initContainer to set permissions to 42424 for ovs folders\n1. in ovs, set permissions for /dev/hugepages to 42424 (see https://github.com/openvswitch/ovs/blob/caed64d1685409d1f9b53b35621a08ad6588200c/rhel/usr_lib_systemd_system_ovs-vswitchd.service.in#L20)\n2. in ovs, start running it as 42424 with `--user` set to whatever 42424 user is (see user flag https://www.openvswitch.org/support/dist-docs/ovs-vswitchd.8.txt)\n3. at this point, ovs will be running as 42424 (non-root)\n4. all other services are 42424 so everything is still ok, except ovn-controller but its root so it can keep working\n5. switch ovn-controller to running on 42424, will be able to talk to local sock because 42424 and it doesnt really do anything other than talk to ovs (kernel level)\n\nthat will transition everything out of root into 42424 successfully I think",
+      "parentUuid": "b9ce764d_0dba7cd4",
+      "range": {
+        "startLine": 20,
+        "startChar": 0,
+        "endLine": 22,
+        "endChar": 36
+      },
+      "revId": "3475efbd4a149423ca56e7909cd0189f7702f4b9",
+      "serverId": "a369f105-6bff-480f-8aaf-eafd1f85bb44"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "07ac10f4_892f7315",
         "filename": "images/ovn/patches/ovn-kubernetes/0004-ensure-openvswitch-pid-directory-is-accessable-by-no.patch",
         "patchSetId": 2
@@ -507,6 +531,30 @@
       "side": 1,
       "message": "This is called by ovn-kube-util, which we use for ovn-controller readiness check. so when i update the ovn run dir to use it\u0027s own dir /run/ovn, the ovs-appctl can\u0027t check the ovn service because ovs-appctl using the ovs /run/openvswitch to find the pid file and ctl file.",
       "parentUuid": "2dd4c262_a27eedb2",
+      "range": {
+        "startLine": 67,
+        "startChar": 0,
+        "endLine": 77,
+        "endChar": 3
+      },
+      "revId": "3475efbd4a149423ca56e7909cd0189f7702f4b9",
+      "serverId": "a369f105-6bff-480f-8aaf-eafd1f85bb44"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "e68c6fc0_7f08a360",
+        "filename": "images/ovn/patches/ovn-kubernetes/0004-ensure-openvswitch-pid-directory-is-accessable-by-no.patch",
+        "patchSetId": 2
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2025-01-17T02:27:40Z",
+      "side": 1,
+      "message": "But isn\u0027t this readiness check really trying to check if ovs is alive or not, hence it needs to use ovs-appctl and the mount for /run/ovs is needed?",
+      "parentUuid": "3472f339_2c4d4ad0",
       "range": {
         "startLine": 67,
         "startChar": 0,
