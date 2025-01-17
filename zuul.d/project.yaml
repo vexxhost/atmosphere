@@ -24,65 +24,41 @@
         - atmosphere-tox-helm-unittest
         - atmosphere-tox-py3
         - atmosphere-build-collection:
-            dependencies: &image_build_jobs
-              - name: atmosphere-build-container-image-barbican
-                soft: true
-              - name: atmosphere-build-container-image-cinder
-                soft: true
-              - name: atmosphere-build-container-image-designate
-                soft: true
-              - name: atmosphere-build-container-image-glance
-                soft: true
-              - name: atmosphere-build-container-image-heat
-                soft: true
-              - name: atmosphere-build-container-image-horizon
-                soft: true
-              - name: atmosphere-build-container-image-ironic
-                soft: true
-              - name: atmosphere-build-container-image-keepalived
-                soft: true
-              - name: atmosphere-build-container-image-keystone
-                soft: true
-              - name: atmosphere-build-container-image-kubernetes-entrypoint
-                soft: true
-              - name: atmosphere-build-container-image-libvirtd
-                soft: true
-              - name: atmosphere-build-container-image-magnum
-                soft: true
-              - name: atmosphere-build-container-image-manila
-                soft: true
-              - name: atmosphere-build-container-image-netoffload
-                soft: true
-              - name: atmosphere-build-container-image-neutron
-                soft: true
-              - name: atmosphere-build-container-image-nova
-                soft: true
-              - name: atmosphere-build-container-image-nova-ssh
-                soft: true
-              - name: atmosphere-build-container-image-octavia
-                soft: true
-              - name: atmosphere-build-container-image-openvswitch
-                soft: true
-              - name: atmosphere-build-container-image-ovn
-                soft: true
-              - name: atmosphere-build-container-image-placement
-                soft: true
-              - name: atmosphere-build-container-image-python-openstackclient
-                soft: true
-              - name: atmosphere-build-container-image-staffeln
-                soft: true
-              - name: atmosphere-build-container-image-tempest
-                soft: true
+            requires: &images
+              - atmosphere-images-barbican
+              - atmosphere-images-cinder
+              - atmosphere-images-designate
+              - atmosphere-images-glance
+              - atmosphere-images-heat
+              - atmosphere-images-horizon
+              - atmosphere-images-ironic
+              - atmosphere-images-keepalived
+              - atmosphere-images-keystone
+              - atmosphere-images-kubernetes-entrypoint
+              - atmosphere-images-libvirtd
+              - atmosphere-images-magnum
+              - atmosphere-images-manila
+              - atmosphere-images-netoffload
+              - atmosphere-images-neutron
+              - atmosphere-images-nova
+              - atmosphere-images-nova-ssh
+              - atmosphere-images-octavia
+              - atmosphere-images-openvswitch
+              - atmosphere-images-ovn
+              - atmosphere-images-placement
+              - atmosphere-images-python-openstackclient
+              - atmosphere-images-staffeln
+              - atmosphere-images-tempest
         - atmosphere-molecule-aio-keycloak:
-            dependencies: *image_build_jobs
+            requires: *images
         - atmosphere-molecule-aio-openvswitch:
-            dependencies: *image_build_jobs
+            requires: *images
         - atmosphere-molecule-aio-ovn:
-            dependencies: *image_build_jobs
+            requires: *images
         - atmosphere-molecule-csi-local-path-provisioner:
-            dependencies: *image_build_jobs
+            requires: *images
         - atmosphere-molecule-csi-rbd:
-            dependencies: *image_build_jobs
+            requires: *images
     gate:
       jobs:
         - atmosphere-chart-vendor
@@ -91,25 +67,23 @@
         - atmosphere-linters
         - atmosphere-tox-py3
         - atmosphere-build-collection:
-            dependencies: *image_build_jobs
+            requires: *images
         - atmosphere-molecule-aio-keycloak:
-            dependencies: *image_build_jobs
+            requires: *images
         - atmosphere-molecule-aio-openvswitch:
-            dependencies: *image_build_jobs
+            requires: *images
         - atmosphere-molecule-aio-ovn:
-            dependencies: *image_build_jobs
+            requires: *images
         - atmosphere-molecule-csi-local-path-provisioner:
-            dependencies: *image_build_jobs
+            requires: *images
         - atmosphere-molecule-csi-rbd:
-            dependencies: *image_build_jobs
+            requires: *images
     release:
       jobs:
         - atmosphere-publish-collection
     periodic:
       jobs:
-        - atmosphere-molecule-aio-upgrade-openvswitch:
-            dependencies: *image_build_jobs
-        - atmosphere-molecule-aio-upgrade-ovn:
-            dependencies: *image_build_jobs
+        - atmosphere-molecule-aio-upgrade-openvswitch
+        - atmosphere-molecule-aio-upgrade-ovn
     vars:
       container_registry: harbor.atmosphere.dev/library
