@@ -33,6 +33,7 @@ except ImportError:
     PARSER_OPTS = {"strict": False}
 import logging
 from sqlalchemy import create_engine
+from sqlalchemy import text
 
 # Create logger, console handler and formatter
 logger = logging.getLogger('OpenStack-Helm DB Drop')
@@ -124,7 +125,12 @@ except:
 
 # Delete DB
 try:
-    root_engine.execute("DROP DATABASE IF EXISTS {0}".format(database))
+    with root_engine.connect() as connection:
+        connection.execute(text("DROP DATABASE IF EXISTS {0}".format(database)))
+        try:
+            connection.commit()
+        except AttributeError:
+            pass
     logger.info("Deleted database {0}".format(database))
 except:
     logger.critical("Could not drop database {0}".format(database))
@@ -132,7 +138,12 @@ except:
 
 # Delete DB User
 try:
-    root_engine.execute("DROP USER IF EXISTS {0}".format(user))
+    with root_engine.connect() as connection:
+        connection.execute(text("DROP USER IF EXISTS {0}".format(user)))
+        try:
+            connection.commit()
+        except AttributeError:
+            pass
     logger.info("Deleted user {0}".format(user))
 except:
     logger.critical("Could not delete user {0}".format(user))
