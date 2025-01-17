@@ -1,0 +1,41 @@
+From 6a7ac0d3cd363665300d6d49d36e3df6a0df7b89 Mon Sep 17 00:00:00 2001
+From: Yaguang Tang <heut2008@gmail.com>
+Date: Sat, 18 Jan 2025 20:06:59 +0800
+Subject: [PATCH] add option to specify openvswitch to run with non-root user
+
+Change-Id: I27a0927fb8b01b4eb997e8e7b840adc7a9e56d26
+---
+ openvswitch/templates/bin/_openvswitch-vswitchd.sh.tpl   | 3 ++-
+ openvswitch/values.yaml                               | 5 +++++
+ 2 files changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/openvswitch/templates/bin/_openvswitch-vswitchd.sh.tpl b/openvswitch/templates/bin/_openvswitch-vswitchd.sh.tpl
+index d32d2ec9..c1419b66 100644
+--- a/openvswitch/templates/bin/_openvswitch-vswitchd.sh.tpl
++++ b/openvswitch/templates/bin/_openvswitch-vswitchd.sh.tpl
+@@ -119,7 +119,8 @@ function start () {
+           -vconsole:err \
+           -vconsole:info \
+           --pidfile=${OVS_PID} \
+-          --mlockall
++          --mlockall \
++          --user={{ .Values.conf.ovs_user_name }}
+ }
+
+ function stop () {
+diff --git a/openvswitch/values.yaml b/openvswitch/values.yaml
+index 01aa93d3..52ba63c3 100644
+--- a/openvswitch/values.yaml
++++ b/openvswitch/values.yaml
+@@ -241,4 +241,9 @@ conf:
+     #     vHost IOMMU feature restricts the vhost memory that a virtio device
+     #     access, available with DPDK v17.11
+     # vhost_iommu_support: true
++
++  ## OVS supports run in non-root for both OVS and OVS DPDK mode, you can
++  # optionally specify to use user with id 42424, ensure the user exists
++  # in the container image.
++  ovs_user_name: "root:root"
+ ...
+--
+2.39.5 (Apple Git-154)

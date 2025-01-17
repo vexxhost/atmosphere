@@ -1,0 +1,24 @@
+From 3e6467f861451b9cfbce32b70f4b5873cb3e24c4 Mon Sep 17 00:00:00 2001
+From: Yaguang Tang <heut2008@gmail.com>
+Date: Fri, 17 Jan 2025 17:56:00 +0800
+Subject: [PATCH] set hugepage mount point permission for nova when using dpdk
+
+Change-Id: Ic4b6e8aac5a4c6b6398e5ef03fa9608c43f766ed
+---
+ openvswitch/templates/bin/_openvswitch-vswitchd.sh.tpl | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/openvswitch/templates/bin/_openvswitch-vswitchd.sh.tpl b/openvswitch/templates/bin/_openvswitch-vswitchd.sh.tpl
+index dad613c3..d32d2ec9 100644
+--- a/openvswitch/templates/bin/_openvswitch-vswitchd.sh.tpl
++++ b/openvswitch/templates/bin/_openvswitch-vswitchd.sh.tpl
+@@ -25,6 +25,7 @@ OVS_PID=/run/openvswitch/ovs-vswitchd.pid
+ {{- if .Values.conf.ovs_dpdk.enabled }}
+ mkdir -p /run/openvswitch/{{ .Values.conf.ovs_dpdk.vhostuser_socket_dir }}
+ chown {{ .Values.pod.user.nova.uid }}.{{ .Values.pod.user.nova.uid }} /run/openvswitch/{{ .Values.conf.ovs_dpdk.vhostuser_socket_dir }}
++chown {{ .Values.pod.user.nova.uid }}.{{ .Values.pod.user.nova.uid }} {{ .Values.conf.ovs_dpdk.hugepages_mountpath }}
+ {{- end }}
+
+ function start () {
+--
+2.39.5 (Apple Git-154)
