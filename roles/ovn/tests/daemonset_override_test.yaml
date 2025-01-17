@@ -1,0 +1,71 @@
+suite: daemonset-overrides
+set:
+  conf:
+    auto_bridge_add:
+      br-ex: eth0
+  overrides:
+    ovn_controller:
+      labels:
+        compute::group1:
+          values:
+            conf:
+              ovn_bridge_mappings: external-rack008:br-ex
+tests:
+  - it: should support auto_bridge_add overrides
+    templates:
+      - templates/configmap-etc.yaml
+      - templates/daemonset-controller.yaml
+    set:
+      overrides:
+        ovn_controller:
+          labels:
+            compute::group1:
+              values:
+                conf:
+                  auto_bridge_add:
+                    br-ex: eth1
+    asserts:
+      - template: templates/daemonset-controller.yaml
+        documentSelector:
+          path: metadata.name
+          value: ovn-controller-default-etc
+        equal:
+          path: data.auto_bridge_add
+          decodeBase64: true
+          value: '{"br-ex":"eth0"}'
+      - template: templates/daemonset-controller.yaml
+        documentSelector:
+          path: metadata.name
+          value: ovn-controller-default
+        equal:
+          path: spec.template.spec.volumes[0].configMap.name
+          value: ovn-controller-default-bin
+      - template: templates/daemonset-controller.yaml
+        documentSelector:
+          path: metadata.name
+          value: ovn-controller-default
+        equal:
+          path: spec.template.spec.volumes[2].secret.secretName
+          value: ovn-controller-default-etc
+      - template: templates/daemonset-controller.yaml
+        documentSelector:
+          path: metadata.name
+          value: ovn-controller-3b10364d270841a9-etc
+        equal:
+          path: data.auto_bridge_add
+          decodeBase64: true
+          value: '{"br-ex":"eth1"}'
+      - template: templates/daemonset-controller.yaml
+        documentSelector:
+          path: metadata.name
+          value: ovn-controller-3b10364d270841a9
+        equal:
+          path: spec.template.spec.volumes[0].configMap.name
+          value: ovn-controller-3b10364d270841a9-bin
+      - template: templates/daemonset-controller.yaml
+        documentSelector:
+          path: metadata.name
+          value: ovn-controller-3b10364d270841a9
+        equal:
+          path: spec.template.spec.volumes[2].secret.secretName
+          value: ovn-controller-3b10364d270841a9-etc
