@@ -1,0 +1,35 @@
+suite: no-overrides
+set:
+  conf:
+    auto_bridge_add:
+      br-ex: eth0
+tests:
+  - it: should handle no overrides
+    templates:
+      - templates/daemonset-controller.yaml
+    asserts:
+      - template: templates/daemonset-controller.yaml
+        documentSelector:
+          path: metadata.name
+          value: ovn-controller-default-etc
+        equal:
+          path: data.auto_bridge_add
+          decodeBase64: true
+          value: '{"br-ex":"eth0"}'
+      - template: templates/daemonset-controller.yaml
+        documentSelector:
+          path: metadata.name
+          value: ovn-controller-default
+        equal:
+          path: spec.template.spec.volumes[0].configMap.name
+          value: ovn-controller-default-bin
+      - template: templates/daemonset-controller.yaml
+        documentSelector:
+          path: metadata.name
+          value: ovn-controller-default
+        equal:
+          path: spec.template.spec.volumes[2].secret.secretName
+          value: ovn-controller-default-etc
+      - template: templates/daemonset-controller.yaml
+        hasDocuments:
+          count: 6
