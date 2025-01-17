@@ -22,7 +22,7 @@ def get_digest(image_ref, token=None):
     if token:
         headers["Authorization"] = f"Bearer {token}"
     else:
-        r = requests.get(url, timeout=5)
+        r = requests.get(url, timeout=5, verify=False)
         auth_header = r.headers.get("Www-Authenticate")
         if auth_header:
             realm = auth_header.split(",")[0].split("=")[1].strip('"')
@@ -30,6 +30,7 @@ def get_digest(image_ref, token=None):
             r = requests.get(
                 realm,
                 timeout=5,
+                verify=False,
                 params={"scope": f"repository:{image_ref.path()}:pull"},
             )
             r.raise_for_status()
@@ -42,6 +43,7 @@ def get_digest(image_ref, token=None):
         r = requests.get(
             f"https://{image_ref.domain()}/v2/{image_ref.path()}/manifests/{image_ref['tag']}",
             timeout=5,
+            verify=False,
             headers=headers,
         )
         r.raise_for_status()
@@ -52,6 +54,7 @@ def get_digest(image_ref, token=None):
         r = requests.get(
             f"https://{image_ref.domain()}/v2/{image_ref.path()}/manifests/{image_ref['tag']}",
             timeout=5,
+            verify=False,
             headers=headers,
         )
         r.raise_for_status()
@@ -62,7 +65,10 @@ def get_digest(image_ref, token=None):
 def get_pinned_image(image_src):
     image_ref = reference.Reference.parse(image_src)
     if image_ref.domain() != "harbor.atmosphere.dev":
-        image_ref = reference.Reference.parse("harbor.atmosphere.dev/" + image_src)
+        try:
+            image_ref = reference.Reference.parse("harbor.atmosphere.dev/" + image_src)
+        except Exception:
+            LOG.warn(f"failed to parse image path {image_src}")
 
     if (
         image_ref.domain() == "registry.atmosphere.dev"
