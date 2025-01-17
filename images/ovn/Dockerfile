@@ -15,6 +15,7 @@ go build -o /usr/bin/ovn-kube-util ./cmd/ovn-kube-util
 EOF
 
 FROM ${REGISTRY}/openvswitch:${RELEASE}
+ENV OVS_USER_ID=42424
 ARG TARGETPLATFORM
 ADD --chmod=755 https://dl.k8s.io/release/v1.29.3/bin/${TARGETPLATFORM}/kubectl /usr/local/bin/kubectl
 ARG OVN_SERIES=24.03
