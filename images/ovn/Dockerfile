@@ -4,7 +4,7 @@
 ARG REGISTRY
 ARG RELEASE
 
-FROM harbor.atmosphere.dev/docker.io/library/golang:1.20 AS ovn-kubernetes
+FROM ${REGISTRY}/docker.io/library/golang:1.20 AS ovn-kubernetes
 ARG OVN_KUBERNETES_REF=5359e7d7f872058b6e5bf884c9f19d1922451f29
 ADD https://github.com/ovn-org/ovn-kubernetes.git#${OVN_KUBERNETES_REF} /src
 COPY patches/ovn-kubernetes /patches/ovn-kubernetes
@@ -15,6 +15,7 @@ go build -o /usr/bin/ovn-kube-util ./cmd/ovn-kube-util
 EOF
 
 FROM ${REGISTRY}/openvswitch:${RELEASE}
+ENV OVS_USER_ID=42424
 ARG TARGETPLATFORM
 ADD --chmod=755 https://dl.k8s.io/release/v1.29.3/bin/${TARGETPLATFORM}/kubectl /usr/local/bin/kubectl
 ARG OVN_SERIES=24.03
@@ -35,3 +36,9 @@ EOF
 COPY --from=ovn-kubernetes --link /src/dist/images/ovndb-raft-functions.sh /root/ovndb-raft-functions.sh
 COPY --from=ovn-kubernetes --link /src/dist/images/ovnkube.sh /root/ovnkube.sh
 COPY --from=ovn-kubernetes --link /usr/bin/ovn-kube-util /usr/bin/ovn-kube-util
+
+RUN <<EOF bash -xe
+    usermod -u 42424 openvswitch
+    mkdir -p  /var/log/ovn /var/lib/ovn /var/run/ovn
+    chown -Rv 42424:42424 /var/log/ovn /var/lib/ovn /var/run/ovn
+EOF
