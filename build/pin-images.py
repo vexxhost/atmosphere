@@ -62,7 +62,10 @@ def get_digest(image_ref, token=None):
 def get_pinned_image(image_src):
     image_ref = reference.Reference.parse(image_src)
     if image_ref.domain() != "harbor.atmosphere.dev":
-        image_ref = reference.Reference.parse("harbor.atmosphere.dev/" + image_src)
+        try:
+            image_ref = reference.Reference.parse("harbor.atmosphere.dev/" + image_src)
+        except Exception:
+            LOG.warn(f"failed to parse image path {image_src}")
 
     if (
         image_ref.domain() == "registry.atmosphere.dev"

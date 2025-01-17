@@ -25,6 +25,7 @@ OVS_PID=/run/openvswitch/ovs-vswitchd.pid
 {{- if .Values.conf.ovs_dpdk.enabled }}
 mkdir -p /run/openvswitch/{{ .Values.conf.ovs_dpdk.vhostuser_socket_dir }}
 chown {{ .Values.pod.user.nova.uid }}.{{ .Values.pod.user.nova.uid }} /run/openvswitch/{{ .Values.conf.ovs_dpdk.vhostuser_socket_dir }}
+chown {{ .Values.pod.user.nova.uid }}.{{ .Values.pod.user.nova.uid }} {{ .Values.conf.ovs_dpdk.hugepages_mountpath }}
 {{- end }}
 
 function start () {
@@ -118,7 +119,8 @@ function start () {
           -vconsole:err \
           -vconsole:info \
           --pidfile=${OVS_PID} \
-          --mlockall
+          --mlockall \
+          --user={{ .Values.conf.ovs_user_name }}
 }
 
 function stop () {
