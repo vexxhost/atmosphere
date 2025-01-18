@@ -1,10 +1,8 @@
-# SPDX-License-Identifier: Apache-2.0
-# Atmosphere-Rebuild-Time: 2024-06-28T12:14:26Z
+# SPDX-FileCopyrightText: © 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Atmosphere-Rebuild-Time: 2024-06-26T17:38:39Z
 
-ARG REGISTRY
-ARG RELEASE
-
-FROM ${REGISTRY}/openstack-runtime:${RELEASE}
+FROM openstack-runtime
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \

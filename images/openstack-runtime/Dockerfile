@@ -1,11 +1,8 @@
-# SPDX-License-Identifier: Apache-2.0
-# Atmosphere-Rebuild-Time: 2024-06-28T12:14:26Z
+# SPDX-FileCopyrightText: © 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Atmosphere-Rebuild-Time: 2024-06-26T17:38:39Z
 
-ARG REGISTRY
-ARG RELEASE
-
-ARG FROM=${REGISTRY}/ubuntu-cloud-archive:${RELEASE}
-FROM ${FROM}
+FROM base
 ONBUILD ARG PROJECT
 ONBUILD ARG SHELL=/usr/sbin/nologin
 ONBUILD RUN \
