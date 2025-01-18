@@ -1,7 +1,8 @@
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: © 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: GPL-3.0-or-later
 # Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
 
-FROM quay.io/centos/centos:stream9
+FROM centos
 ADD --chmod=755 https://github.com/krallin/tini/releases/download/v0.19.0/tini /tini
 ARG OVS_SERIES=3.2
 ARG OVS_VERSION=${OVS_SERIES}.0-80

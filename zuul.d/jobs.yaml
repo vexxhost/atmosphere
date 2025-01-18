@@ -46,6 +46,25 @@
     parent: tox
 
 - job:
+    name: atmosphere-build-images
+    parent: depot-bake
+    vars:
+      depot_bake_project_id: jd10vkmkwv
+      depot_bake_environment:
+        REGISTRY: harbor.atmosphere.dev/ci
+        TAG: "{{ zuul.change }}"
+    files: &image_build_files
+      - ^images/
+      - docker-bake.hcl
+
+- job:
+    name: atmosphere-promote-images
+    parent: promote-depot-bake
+    files: *image_build_files
+    vars:
+      promote_depot_bake_job: atmosphere-build-images
+
+- job:
     name: atmosphere-build-collection
     parent: build-ansible-collection
     pre-run:
