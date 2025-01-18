@@ -1,10 +1,8 @@
-# SPDX-License-Identifier: Apache-2.0
-# Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
+# SPDX-FileCopyrightText: © 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Atmosphere-Rebuild-Time: 2024-06-26T17:38:39Z
 
-ARG REGISTRY
-ARG RELEASE
-
-FROM ${REGISTRY}/openstack-venv-builder:${RELEASE} AS build
+FROM openstack-venv-builder AS build
 ARG HORIZON_GIT_REF=b467683b1ed2aab4e38fe2cb2ac7ae5500e5d5c0
 ADD --keep-git-dir=true https://opendev.org/openstack/horizon.git#${HORIZON_GIT_REF} /src/horizon
 RUN git -C /src/horizon fetch --unshallow
@@ -14,7 +12,8 @@ ADD --keep-git-dir=true https://opendev.org/openstack/heat-dashboard.git#unmaint
 RUN git -C /src/heat-dashboard fetch --unshallow
 ADD --keep-git-dir=true https://opendev.org/openstack/ironic-ui.git#unmaintained/2023.1 /src/ironic-ui
 RUN git -C /src/ironic-ui fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/magnum-ui.git#unmaintained/2023.1 /src/magnum-ui
+ARG MAGNUM_UI_REF=bf91ac67419cddb4953d0a04890377be618fa160
+ADD --keep-git-dir=true https://opendev.org/openstack/magnum-ui.git#${MAGNUM_UI_REF} /src/magnum-ui
 RUN git -C /src/magnum-ui fetch --unshallow
 ADD --keep-git-dir=true https://opendev.org/openstack/manila-ui.git#unmaintained/2023.1 /src/manila-ui
 RUN git -C /src/manila-ui fetch --unshallow
@@ -43,7 +42,7 @@ pip3 install \
         pymemcache
 EOF
 
-FROM ${REGISTRY}/openstack-python-runtime:${RELEASE}
+FROM openstack-python-runtime
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \
