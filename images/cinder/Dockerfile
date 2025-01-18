@@ -1,10 +1,8 @@
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: © 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: GPL-3.0-or-later
 # Atmosphere-Rebuild-Time: 2024-06-26T17:38:39Z
 
-ARG REGISTRY
-ARG RELEASE
-
-FROM ${REGISTRY}/openstack-venv-builder:${RELEASE} AS build
+FROM openstack-venv-builder AS build
 ARG CINDER_GIT_REF=db98dc207060da234c32a563c13cac1edbd62952
 ADD --keep-git-dir=true https://opendev.org/openstack/cinder.git#${CINDER_GIT_REF} /src/cinder
 RUN git -C /src/cinder fetch --unshallow
@@ -20,7 +18,7 @@ pip3 install \
         storpool.spopenstack
 EOF
 
-FROM ${REGISTRY}/openstack-python-runtime:${RELEASE}
+FROM openstack-python-runtime
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \

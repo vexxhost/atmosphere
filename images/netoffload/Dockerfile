@@ -1,16 +1,14 @@
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: © 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: GPL-3.0-or-later
 # Atmosphere-Rebuild-Time: 2024-06-26T17:38:39Z
 
-ARG REGISTRY
-ARG RELEASE
-
-FROM harbor.atmosphere.dev/docker.io/library/golang:1.20 AS build
+FROM golang AS build
 ARG NETOFFLOAD_GIT_REF=94b8c0fdb0b83bd1b7e14b9a58077a047c78a800
 ADD https://github.com/vexxhost/netoffload.git#${NETOFFLOAD_GIT_REF} /src
 WORKDIR /src
 RUN go build -v -o offloadctl ./cmd/offloadctl/main.go
 
-FROM ${REGISTRY}/ubuntu:${RELEASE}
+FROM ubuntu
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \
