@@ -1,5 +1,6 @@
-# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: GPL-3.0-or-later
 # Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
 
-FROM harbor.atmosphere.dev/docker.io/library/ubuntu:jammy-20240227
+FROM ubuntu
 LABEL org.opencontainers.image.source=https://github.com/vexxhost/atmosphere
