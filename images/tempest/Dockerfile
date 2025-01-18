@@ -1,17 +1,15 @@
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: © 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: GPL-3.0-or-later
 # Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
 
-ARG REGISTRY
-ARG RELEASE
-
-FROM harbor.atmosphere.dev/docker.io/library/golang:1.18 AS octavia-test-server
+FROM golang AS octavia-test-server
 ADD --keep-git-dir=true https://opendev.org/openstack/octavia-tempest-plugin.git#master /src
 RUN GO111MODULE=off CGO_ENABLED=0 GOOS=linux go build \
     -a -ldflags '-s -w -extldflags -static' \
     -o /build/test_server.bin \
     /src/octavia_tempest_plugin/contrib/test_server/test_server.go
 
-FROM ${REGISTRY}/openstack-venv-builder:${RELEASE} AS build
+FROM openstack-venv-builder AS build
 ARG TEMPEST_GIT_REF=c0da6e843a74c2392c8e87e8ff36d2fea12949c4
 ADD --keep-git-dir=true https://opendev.org/openstack/tempest.git#${TEMPEST_GIT_REF} /src/tempest
 RUN git -C /src/tempest fetch --unshallow
@@ -40,7 +38,7 @@ pip3 install \
         /src/octavia-tempest-plugin
 EOF
 
-FROM ${REGISTRY}/openstack-python-runtime:${RELEASE}
+FROM openstack-python-runtime
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \

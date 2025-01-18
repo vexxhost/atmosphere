@@ -1,6 +1,21 @@
-exclude: '^(roles/kube_prometheus_stack/files/jsonnet|charts)'
+exclude: "^(roles/kube_prometheus_stack/files/jsonnet|charts)"
 
 repos:
+  - repo: local
+    hooks:
+      - id: check-spdx-copyright-text
+        name: Check SPDX-FileCopyrightText
+        entry: '# SPDX-FileCopyrightText: © [0-9]{4} VEXXHOST, Inc.'
+        language: pygrep
+        args: [--negate]
+        files: ^images/.*/Dockerfile$
+      - id: check-spdx-license-identifier
+        name: Check SPDX-License-Identifier
+        entry: '# SPDX-License-Identifier: GPL-3.0-or-later'
+        language: pygrep
+        args: [--negate]
+        files: ^images/.*/Dockerfile$
+
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.3.0
     hooks:
