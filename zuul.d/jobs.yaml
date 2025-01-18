@@ -46,6 +46,16 @@
     parent: tox
 
 - job:
+    name: atmosphere-build-images
+    pre-run:
+      - zuul.d/playbooks/images/pre.yml
+    run:
+      - zuul.d/playbooks/images/run.yml
+    files:
+      - ^images/
+      - docker-bake.hcl
+
+- job:
     name: atmosphere-build-collection
     parent: build-ansible-collection
     pre-run:

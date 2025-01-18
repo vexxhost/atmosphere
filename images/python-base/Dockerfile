@@ -1,10 +1,8 @@
-# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: GPL-3.0-only
 # Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
 
-ARG REGISTRY
-ARG RELEASE
-
-FROM ${REGISTRY}/ubuntu-cloud-archive:${RELEASE}
+FROM ubuntu-cloud-archive
 ENV PATH=/var/lib/openstack/bin:$PATH
 RUN \
     apt-get update -qq && \
