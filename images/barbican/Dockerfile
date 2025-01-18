@@ -1,10 +1,8 @@
-# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: GPL-3.0-only
 # Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
 
-ARG REGISTRY
-ARG RELEASE
-
-FROM ${REGISTRY}/openstack-venv-builder:${RELEASE} AS build
+FROM openstack-venv-builder AS build
 ARG BARBICAN_GIT_REF=ca57ef5436e20e90cf6cd6853efe3c89a9afd986
 ADD --keep-git-dir=true https://opendev.org/openstack/barbican.git#${BARBICAN_GIT_REF} /src/barbican
 RUN git -C /src/barbican fetch --unshallow
@@ -15,5 +13,5 @@ pip3 install \
         pykmip
 EOF
 
-FROM ${REGISTRY}/openstack-python-runtime:${RELEASE}
+FROM openstack-python-runtime
 COPY --from=build --link /var/lib/openstack /var/lib/openstack
