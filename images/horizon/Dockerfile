@@ -1,10 +1,8 @@
-# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: GPL-3.0-only
 # Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
 
-ARG REGISTRY
-ARG RELEASE
-
-FROM ${REGISTRY}/openstack-venv-builder:${RELEASE} AS build
+FROM openstack-venv-builder AS build
 ARG HORIZON_GIT_REF=14212342cf8f7eb987e50de112958af31063e02e
 ADD --keep-git-dir=true https://opendev.org/openstack/horizon.git#${HORIZON_GIT_REF} /src/horizon
 RUN git -C /src/horizon fetch --unshallow
@@ -41,7 +39,7 @@ pip3 install \
         pymemcache
 EOF
 
-FROM ${REGISTRY}/openstack-python-runtime:${RELEASE}
+FROM openstack-python-runtime
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \
