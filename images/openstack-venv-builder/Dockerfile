@@ -1,10 +1,11 @@
-# SPDX-License-Identifier: Apache-2.0
-# Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
+# SPDX-FileCopyrightText: © 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Atmosphere-Rebuild-Time: 2024-06-26T17:38:39Z
 
 ARG REGISTRY
 ARG RELEASE
 
-FROM ${REGISTRY}/ubuntu-cloud-archive:${RELEASE} AS requirements
+FROM ubuntu-cloud-archive AS requirements
 ARG REQUIREMENTS_GIT_REF=c15ff09802a7cc4561275c9c0dbcfed9213c6e11
 ADD --keep-git-dir=true https://opendev.org/openstack/requirements.git#${REQUIREMENTS_GIT_REF} /src/requirements
 RUN cp /src/requirements/upper-constraints.txt /upper-constraints.txt
@@ -13,7 +14,7 @@ sed -i '/glance-store/d' /upper-constraints.txt
 sed -i '/horizon/d' /upper-constraints.txt
 EOF
 
-FROM ${REGISTRY}/python-base:${RELEASE}
+FROM python-base
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \
