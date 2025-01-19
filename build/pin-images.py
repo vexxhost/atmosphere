@@ -61,6 +61,8 @@ def get_digest(image_ref, token=None):
 @functools.cache
 def get_pinned_image(image_src):
     image_ref = reference.Reference.parse(image_src)
+    if image_ref.domain() != "harbor.atmosphere.dev":
+        image_ref = reference.Reference.parse("harbor.atmosphere.dev/" + image_src)
 
     if (
         image_ref.domain() == "registry.atmosphere.dev"
@@ -127,7 +129,8 @@ def get_pinned_image(image_src):
     else:
         digest = get_digest(image_ref)
 
-    return f"{image_ref.domain()}/{image_ref.path()}:{image_ref['tag']}@{digest}"
+    original_ref = reference.Reference.parse(image_src)
+    return f"{original_ref.domain()}/{original_ref.path()}:{original_ref['tag']}@{digest}"
 
 
 def main():
@@ -156,7 +159,9 @@ def main():
             .replace("{{ atmosphere_release }}", data["atmosphere_release"])
             .replace("{{ atmosphere_image_prefix }}", "")
         )
-        pinned_image = get_pinned_image(image_src)
+        pinned_image = get_pinned_image(image_src).replace(
+            "harbor.atmosphere.dev", "registry.atmosphere.dev"
+        )
 
         LOG.info("Pinning image %s from %s to %s", image, image_src, pinned_image)
         data["_atmosphere_images"][image] = "{{ atmosphere_image_prefix }}%s" % (
