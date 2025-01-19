@@ -44,10 +44,11 @@
       container_images:
         - context: images/placement
           registry: harbor.atmosphere.dev
-          repository: harbor.atmosphere.dev/library/placement
+          repository: "{{ container_registry }}/placement"
           arch:
             - linux/amd64
           build_args:
+            - REGISTRY={{ container_registry }}
             - "RELEASE={{ zuul.branch | replace('stable/', '') }}"
             - PROJECT=placement
           tags:
