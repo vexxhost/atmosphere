@@ -1,12 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
 # Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
 
+ARG REQUIREMENTS_GIT_REPO
 ARG REGISTRY
 ARG RELEASE
 
 FROM ${REGISTRY}/ubuntu-cloud-archive:${RELEASE} AS requirements
 ARG REQUIREMENTS_GIT_REF=18098b9abacbd8d7257bebc1b302294f634441ab
-ADD --keep-git-dir=true https://opendev.org/openstack/requirements.git#${REQUIREMENTS_GIT_REF} /src/requirements
+ADD --keep-git-dir=true ${REQUIREMENTS_GIT_REPO}#${REQUIREMENTS_GIT_REF} /src/requirements
 RUN cp /src/requirements/upper-constraints.txt /upper-constraints.txt
 RUN <<EOF sh -xe
 sed -i '/glance-store/d' /upper-constraints.txt
