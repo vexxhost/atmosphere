@@ -51,8 +51,36 @@
             - REGISTRY={{ container_registry }}
             - "RELEASE={{ zuul.branch | replace('stable/', '') }}"
             - PROJECT=tempest
+            - TEMPEST_GIT_REPO={{ tempest_git_repo }}
+            - TEMPEST_GIT_REF={{ tempest_git_ref }}
+            - BARBICAN_TEMPEST_PLUGIN_GIT_REPO={{ barbican_tempest_plugin_git_repo }}
+            - BARBICAN_TEMPEST_PLUGIN_GIT_REF={{ barbican_tempest_plugin_git_ref }}
+            - CINDER_TEMPEST_PLUGIN_GIT_REPO={{ cinder_tempest_plugin_git_repo }}
+            - CINDER_TEMPEST_PLUGIN_GIT_REF={{ cinder_tempest_plugin_git_ref }}
+            - HEAT_TEMPEST_PLUGIN_GIT_REPO={{ heat_tempest_plugin_git_repo }}
+            - HEAT_TEMPEST_PLUGIN_GIT_REF={{ heat_tempest_plugin_git_ref }}
+            - KEYSTONE_TEMPEST_PLUGIN_GIT_REPO={{ keystone_tempest_plugin_git_repo }}
+            - KEYSTONE_TEMPEST_PLUGIN_GIT_REF={{ keystone_tempest_plugin_git_ref }}
+            - NEUTRON_TEMPEST_PLUGIN_GIT_REPO={{ neutron_tempest_plugin_git_repo }}
+            - NEUTRON_TEMPEST_PLUGIN_GIT_REF={{ neutron_tempest_plugin_git_ref }}
+            - OCTAVIA_TEMPEST_PLUGIN_GIT_REPO={{ octavia_tempest_plugin_git_repo }}
+            - OCTAVIA_TEMPEST_PLUGIN_GIT_REF={{ octavia_tempest_plugin_git_ref }}
           tags:
             - "{{ zuul.branch | replace('stable/', '') }}"
+      tempest_git_repo: https://opendev.org/openstack/tempest.git
+      tempest_git_ref: c0da6e843a74c2392c8e87e8ff36d2fea12949c4
+      barbican_tempest_plugin_git_repo: https://opendev.org/openstack/barbican-tempest-plugin.git
+      barbican_tempest_plugin_git_ref: master
+      cinder_tempest_plugin_git_repo: https://opendev.org/openstack/cinder-tempest-plugin.git
+      cinder_tempest_plugin_git_ref: master
+      heat_tempest_plugin_git_repo: https://opendev.org/openstack/heat-tempest-plugin.git
+      heat_tempest_plugin_git_ref: master
+      keystone_tempest_plugin_git_repo: https://opendev.org/openstack/keystone-tempest-plugin.git
+      keystone_tempest_plugin_git_ref: master
+      neutron_tempest_plugin_git_repo: https://opendev.org/openstack/neutron-tempest-plugin.git
+      neutron_tempest_plugin_git_ref: master
+      octavia_tempest_plugin_git_repo: https://opendev.org/openstack/octavia-tempest-plugin.git
+      octavia_tempest_plugin_git_ref: master
     files: &container_image_files
       - images/ubuntu/.*
       - images/ubuntu-cloud-archive/.*

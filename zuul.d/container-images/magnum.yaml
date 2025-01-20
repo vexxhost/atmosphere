@@ -52,8 +52,12 @@
             - REGISTRY={{ container_registry }}
             - "RELEASE={{ zuul.branch | replace('stable/', '') }}"
             - PROJECT=magnum
+            - MAGNUM_GIT_REPO={{ magnum_git_repo }}
+            - MAGNUM_GIT_REF={{ magnum_git_ref }}
           tags:
             - "{{ zuul.branch | replace('stable/', '') }}"
+      magnum_git_repo: https://opendev.org/openstack/magnum.git
+      magnum_git_ref: c613ea4e419edc0086116da07e93cf19206746e1
     files: &container_image_files
       - images/ubuntu/.*
       - images/ubuntu-cloud-archive/.*

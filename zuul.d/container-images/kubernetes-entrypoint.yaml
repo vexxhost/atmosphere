@@ -38,8 +38,13 @@
           arch:
             - linux/amd64
             - linux/arm64
+          build_args:
+            - KUBERNETES_ENTRYPOINT_GIT_REPO={{ kubernetes_entrypoint_git_repo }}
+            - KUBERNETES_ENTRYPOINT_GIT_REF={{ kubernetes_entrypoint_git_ref }}  
           tags:
             - "{{ zuul.branch | replace('stable/', '') }}"
+      kubernetes_entrypoint_git_repo: https://opendev.org/airship/kubernetes-entrypoint.git
+      kubernetes_entrypoint_git_ref: 4fbcf7ce324dc66e78480f73035e31434cfea1e8
     files: &container_image_files
       - images/kubernetes-entrypoint/.*
 

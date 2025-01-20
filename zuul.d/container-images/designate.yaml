@@ -51,8 +51,12 @@
             - REGISTRY={{ container_registry }}
             - "RELEASE={{ zuul.branch | replace('stable/', '') }}"
             - PROJECT=designate
+            - DESIGNATE_GIT_REPO={{ designate_git_repo }}
+            - DESIGNATE_GIT_REF={{ designate_git_ref }}
           tags:
             - "{{ zuul.branch | replace('stable/', '') }}"
+      designate_git_repo: https://opendev.org/openstack/designate.git
+      designate_git_ref: 097ffc6df181290eba1bcd7c492b1b505bc15434
     files: &container_image_files
       - images/ubuntu/.*
       - images/ubuntu-cloud-archive/.*

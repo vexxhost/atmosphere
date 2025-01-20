@@ -51,8 +51,12 @@
             - REGISTRY={{ container_registry }}
             - "RELEASE={{ zuul.branch | replace('stable/', '') }}"
             - PROJECT=cinder
+            - CINDER_GIT_REPO={{ cinder_git_repo }}
+            - CINDER_GIT_REF={{ cinder_git_ref }}
           tags:
             - "{{ zuul.branch | replace('stable/', '') }}"
+      cinder_git_repo: https://opendev.org/openstack/cinder.git 
+      cinder_git_ref: b0f0b9015b9dfa228dff98eeee5116d8eca1c3cc
     files: &container_image_files
       - images/ubuntu/.*
       - images/ubuntu-cloud-archive/.*

@@ -51,8 +51,12 @@
             - REGISTRY={{ container_registry }}
             - "RELEASE={{ zuul.branch | replace('stable/', '') }}"
             - PROJECT=heat
+            - HEAT_GIT_REPO={{ heat_git_repo }}
+            - HEAT_GIT_REF={{ heat_git_ref }}
           tags:
             - "{{ zuul.branch | replace('stable/', '') }}"
+      heat_git_repo: https://opendev.org/openstack/heat.git
+      heat_git_ref: 80eea85194825773d1b60ecc4386b2d5ba52a066
     files: &container_image_files
       - images/ubuntu/.*
       - images/ubuntu-cloud-archive/.*

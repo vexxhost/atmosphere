@@ -52,8 +52,28 @@
             - REGISTRY={{ container_registry }}
             - "RELEASE={{ zuul.branch | replace('stable/', '') }}"
             - PROJECT=neutron
+            - NEUTRON_GIT_REPO={{ neutron_git_repo }}
+            - NEUTRON_GIT_REF={{ neutron_git_ref }}
+            - NEUTRON_VPNAAS_GIT_REPO={{ neutron_vpnaas_git_repo }}
+            - NEUTRON_VPNAAS_GIT_REF={{ neutron_vpnaas_git_ref }}
+            - NETWORKING_BAREMETAL_GIT_REPO={{ networking_baremetal_git_repo }}
+            - NETWORKING_BAREMETAL_GIT_REF={{ networking_baremetal_git_ref }}
+            - POLICY_SERVER_GIT_REPO={{ policy_server_git_repo }}
+            - POLICY_SERVER_GIT_REF={{ policy_server_git_ref }}
+            - LOG_PASER_GIT_REPO={{ logging_parser_git_repo }}
+            - LOG_PASER_GIT_REF={{ logging_parser_git_ref }}
           tags:
             - "{{ zuul.branch | replace('stable/', '') }}"
+      neutron_git_repo: https://opendev.org/openstack/neutron.git
+      neutron_git_ref: 019294c71d94b788c14b23dc1da3c21f51bcdb0b
+      neutron_vpnaas_git_repo: https://opendev.org/openstack/neutron-vpnaas.git
+      neutron_vpnaas_git_ref: 7bc6d94305d34269d7522a9850c22aa42b50cdab
+      networking_baremetal_git_repo: https://opendev.org/openstack/networking-baremetal.git
+      networking_baremetal_git_ref: 8b92ad81c0bdbfde60a6f0c47ff0133c08bb617e
+      policy_server_git_repo: https://github.com/vexxhost/neutron-policy-server.git
+      policy_server_git_ref: 85f47edbcf66aaf3a289dc3ae76191adce91018f
+      logging_parser_git_repo: https://github.com/vexxhost/neutron-ovn-network-logging-parser.git
+      logging_parser_git_ref: 9bc923c1294864ec709c538ba5c309065ef710d5
     files: &container_image_files
       - images/ubuntu/.*
       - images/ubuntu-cloud-archive/.*
