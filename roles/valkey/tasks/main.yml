@@ -1,0 +1,27 @@
+# Copyright (c) 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Create "valkey-auth" secret
+  run_once: true
+  no_log: true
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      type: Opaque
+      metadata:
+        name: valkey-auth
+        namespace: openstack
+      stringData:
+        password: "{{ openstack_helm_endpoints_valkey_password }}"
+
+- name: Deploy Helm chart
+  run_once: true
+  kubernetes.core.helm:
+    name: "{{ valkey_helm_release_name }}"
+    chart_ref: "{{ valkey_helm_chart_ref }}"
+    release_namespace: "{{ valkey_helm_release_namespace }}"
+    create_namespace: true
+    kubeconfig: "{{ kubeconfig_path | default('/etc/kubernetes/admin.conf') }}"
+    values: "{{ _valkey_helm_values | combine(valkey_helm_values, recursive=True) }}"
