@@ -43,6 +43,8 @@
             - REGISTRY={{ container_registry }}
             - "RELEASE={{ zuul.branch | replace('stable/', '') }}"
             - OVN_COMPONENT=central
+            - OVN_KUBERNETES_REPO={{ ovn_kubernetes_repo }}
+            - OVN_KUBERNETES_REF={{ ovn_kubernetes_ref }}
           tags:
             - "{{ zuul.branch | replace('stable/', '') }}"
         - context: images/ovn
@@ -55,8 +57,12 @@
             - REGISTRY={{ container_registry }}
             - "RELEASE={{ zuul.branch | replace('stable/', '') }}"
             - OVN_COMPONENT=host
+            - OVN_KUBERNETES_REPO={{ ovn_kubernetes_repo }}
+            - OVN_KUBERNETES_REF={{ ovn_kubernetes_ref }}
           tags:
             - "{{ zuul.branch | replace('stable/', '') }}"
+      ovn_kubernetes_repo: https://github.com/ovn-org/ovn-kubernetes.git
+      ovn_kubernetes_ref: 5359e7d7f872058b6e5bf884c9f19d1922451f29
     files: &container_image_files
       - images/openvswitch/.*
       - images/ovn/.*

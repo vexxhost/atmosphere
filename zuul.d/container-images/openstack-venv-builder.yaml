@@ -47,8 +47,12 @@
           build_args:
             - REGISTRY={{ container_registry }}
             - "RELEASE={{ zuul.branch | replace('stable/', '') }}"
+            - REQUIREMENTS_GIT_REPO={{ requirements_git_repo }}
+            - REQUIREMENTS_GIT_REF={{ requirements_git_ref }}
           tags:
             - "{{ zuul.branch | replace('stable/', '') }}"
+      requirements_git_repo: https://opendev.org/openstack/requirements.git
+      requirements_git_ref: 18098b9abacbd8d7257bebc1b302294f634441ab
     files: &container_image_files
       - images/ubuntu/.*
       - images/ubuntu-cloud-archive/.*

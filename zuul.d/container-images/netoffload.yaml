@@ -42,8 +42,12 @@
           build_args:
             - REGISTRY={{ container_registry }}
             - "RELEASE={{ zuul.branch | replace('stable/', '') }}"
+            - NETOFFLOAD_GIT_REPO={{ netoffload_git_repo }}
+            - NETOFFLOAD_GIT_REF={{ netoffload_git_ref }}
           tags:
             - "{{ zuul.branch | replace('stable/', '') }}"
+      netoffload_git_repo: https://github.com/vexxhost/netoffload.git
+      netoffload_git_ref: 94b8c0fdb0b83bd1b7e14b9a58077a047c78a800
     files: &container_image_files
       - images/ubuntu/.*
       - images/netoffload/.*

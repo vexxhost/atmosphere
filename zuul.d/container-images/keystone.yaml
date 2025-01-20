@@ -51,8 +51,12 @@
             - REGISTRY={{ container_registry }}
             - "RELEASE={{ zuul.branch | replace('stable/', '') }}"
             - PROJECT=keystone
+            - KEYSTONE_GIT_REPO={{ keystone_git_repo }}
+            - KEYSTONE_GIT_REF={{ keystone_git_ref }}
           tags:
             - "{{ zuul.branch | replace('stable/', '') }}"
+      keystone_git_repo: https://opendev.org/openstack/keystone.git
+      keystone_git_ref: 8ca73f758bb613a57815fbe4ae78e3d2afa4af49
     files: &container_image_files
       - images/ubuntu/.*
       - images/ubuntu-cloud-archive/.*

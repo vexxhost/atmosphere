@@ -51,8 +51,12 @@
             - REGISTRY={{ container_registry }}
             - "RELEASE={{ zuul.branch | replace('stable/', '') }}"
             - PROJECT=ironic
+            - IRONIC_GIT_REPO={{ ironic_git_repo }}
+            - IRONIC_GIT_REF={{ ironic_git_ref }}
           tags:
             - "{{ zuul.branch | replace('stable/', '') }}"
+      ironic_git_repo: https://opendev.org/openstack/ironic.git
+      ironic_git_ref: 22aa29b864eecd00bfb7c67cc2075030da1eb1d0
     files: &container_image_files
       - images/ubuntu/.*
       - images/ubuntu-cloud-archive/.*

@@ -51,8 +51,12 @@
             - REGISTRY={{ container_registry }}
             - "RELEASE={{ zuul.branch | replace('stable/', '') }}"
             - PROJECT=staffeln
+            - STAFFELN_GIT_REPO={{ staffeln_git_repo }}
+            - STAFFELN_GIT_REF={{ staffeln_git_ref }}
           tags:
             - "{{ zuul.branch | replace('stable/', '') }}"
+      staffeln_git_repo: https://github.com/vexxhost/staffeln.git
+      staffeln_git_ref: v2.2.3
     files: &container_image_files
       - images/ubuntu/.*
       - images/ubuntu-cloud-archive/.*

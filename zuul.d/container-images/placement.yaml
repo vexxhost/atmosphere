@@ -51,8 +51,12 @@
             - REGISTRY={{ container_registry }}
             - "RELEASE={{ zuul.branch | replace('stable/', '') }}"
             - PROJECT=placement
+            - PLACEMENT_GIT_REPO={{ placement_git_repo }}
+            - PLACEMENT_GIT_REF={{ placement_git_ref }}
           tags:
             - "{{ zuul.branch | replace('stable/', '') }}"
+      placement_git_repo: https://opendev.org/openstack/placement.git
+      placement_git_ref: 96a9aeb3b4a6ffff5bbf247b213409395239fc7a
     files: &container_image_files
       - images/ubuntu/.*
       - images/ubuntu-cloud-archive/.*

@@ -51,8 +51,12 @@
             - REGISTRY={{ container_registry }}
             - "RELEASE={{ zuul.branch | replace('stable/', '') }}"
             - PROJECT=manila
+            - MANILA_GIT_REPO={{ manila_git_repo }}
+            - MANILA_GIT_REF={{ manila_git_ref }}
           tags:
             - "{{ zuul.branch | replace('stable/', '') }}"
+      manila_git_repo: https://opendev.org/openstack/manila.git
+      manila_git_ref: d8987589ae88ae9b2769fbe6f26d5b6994098038
     files: &container_image_files
       - images/ubuntu/.*
       - images/ubuntu-cloud-archive/.*

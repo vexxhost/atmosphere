@@ -51,8 +51,16 @@
             - REGISTRY={{ container_registry }}
             - "RELEASE={{ zuul.branch | replace('stable/', '') }}"
             - PROJECT=glance
+            - GLANCE_GIT_REPO={{ glance_git_repo }}
+            - GLANCE_GIT_REF={{ glance_git_ref }}
+            - GLANCE_STORE_GIT_REPO={{ glance_store_git_repo }}
+            - GLANCE_STORE_GIT_REF={{ glance_store_git_ref }}
           tags:
             - "{{ zuul.branch | replace('stable/', '') }}"
+      glance_git_repo: https://opendev.org/openstack/glance.git
+      glance_git_ref: 0bcd6cd71c09917c6734421374fd598d73e8d0cc
+      glance_store_git_repo: https://opendev.org/openstack/glance_store.git
+      glance_store_git_ref: master
     files: &container_image_files
       - images/ubuntu/.*
       - images/ubuntu-cloud-archive/.*
