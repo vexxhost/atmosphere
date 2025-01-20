@@ -1,0 +1,19 @@
+# Copyright (c) 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+_valkey_helm_values:
+  replica:
+    replicaCount: 1
+  auth:
+    enabled: true
+    sentinel: true
+    existingSecretPasswordKey: "password"
+    existingSecret: valkey-auth
+  sentinel:
+    enabled: true
+  metrics:
+    enabled: true
+  image:
+    registry: "{{ atmosphere_images['valkey'] | vexxhost.kubernetes.docker_image('domain') }}"
+    repository: "{{ atmosphere_images['valkey'] | vexxhost.kubernetes.docker_image('path') }}"
+    tag: "{{ atmosphere_images['valkey'] | vexxhost.kubernetes.docker_image('tag') }}"
