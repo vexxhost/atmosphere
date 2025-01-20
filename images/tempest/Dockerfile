@@ -12,8 +12,9 @@ RUN GO111MODULE=off CGO_ENABLED=0 GOOS=linux go build \
     /src/octavia_tempest_plugin/contrib/test_server/test_server.go
 
 FROM ${REGISTRY}/openstack-venv-builder:${RELEASE} AS build
+ARG TEMPEST_GIT_REPO
 ARG TEMPEST_GIT_REF=c0da6e843a74c2392c8e87e8ff36d2fea12949c4
-ADD --keep-git-dir=true https://opendev.org/openstack/tempest.git#${TEMPEST_GIT_REF} /src/tempest
+ADD --keep-git-dir=true ${TEMPEST_GIT_REPO}#${TEMPEST_GIT_REF} /src/tempest
 RUN git -C /src/tempest fetch --unshallow
 ADD --keep-git-dir=true https://opendev.org/openstack/barbican-tempest-plugin.git#master /src/barbican-tempest-plugin
 RUN git -C /src/barbican-tempest-plugin fetch --unshallow
