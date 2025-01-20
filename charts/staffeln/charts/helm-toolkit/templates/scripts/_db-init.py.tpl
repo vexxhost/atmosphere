@@ -33,7 +33,6 @@ except ImportError:
     PARSER_OPTS = {"strict": False}
 import logging
 from sqlalchemy import create_engine
-from sqlalchemy import text
 
 # Create logger, console handler and formatter
 logger = logging.getLogger('OpenStack-Helm DB Init')
@@ -125,12 +124,7 @@ except:
 
 # Create DB
 try:
-    with root_engine.connect() as connection:
-        connection.execute(text("CREATE DATABASE IF NOT EXISTS {0}".format(database)))
-        try:
-            connection.commit()
-        except AttributeError:
-            pass
+    root_engine.execute("CREATE DATABASE IF NOT EXISTS {0}".format(database))
     logger.info("Created database {0}".format(database))
 except:
     logger.critical("Could not create database {0}".format(database))
@@ -138,16 +132,11 @@ except:
 
 # Create DB User
 try:
-    with root_engine.connect() as connection:
-        connection.execute(
-            text("CREATE USER IF NOT EXISTS \'{0}\'@\'%%\' IDENTIFIED BY \'{1}\' {2}".format(
-                user, password, mysql_x509)))
-        connection.execute(
-            text("GRANT ALL ON `{0}`.* TO \'{1}\'@\'%%\'".format(database, user)))
-        try:
-            connection.commit()
-        except AttributeError:
-            pass
+    root_engine.execute(
+        "CREATE USER IF NOT EXISTS \'{0}\'@\'%%\' IDENTIFIED BY \'{1}\' {2}".format(
+            user, password, mysql_x509))
+    root_engine.execute(
+        "GRANT ALL ON `{0}`.* TO \'{1}\'@\'%%\'".format(database, user))
     logger.info("Created user {0} for {1}".format(user, database))
 except:
     logger.critical("Could not create user {0} for {1}".format(user, database))
