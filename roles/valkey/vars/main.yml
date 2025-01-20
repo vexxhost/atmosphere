@@ -1,0 +1,40 @@
+# Copyright (c) 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+_valkey_helm_values:
+  global:
+    security:
+      # NOTE(rlin): This allows us to use our own container repo for valkey.
+      allowInsecureImages: true
+  image:
+    registry: "{{ atmosphere_images['valkey'] | vexxhost.kubernetes.docker_image('domain') }}"
+    repository: "{{ atmosphere_images['valkey'] | vexxhost.kubernetes.docker_image('path') }}"
+    tag: "{{ atmosphere_images['valkey'] | vexxhost.kubernetes.docker_image('tag') }}"
+  auth:
+    # NOTE(mnaser): We are using TLS client instead of password based authentication,
+    #               this provides both encryption and authentication.
+    enabled: false
+    sentinel: false
+  replica:
+    nodeSelector:
+      openstack-control-plane: enabled
+    podAntiAffinityPreset: hard
+  sentinel:
+    enabled: true
+    image:
+      registry: "{{ atmosphere_images['valkey_sentinel'] | vexxhost.kubernetes.docker_image('domain') }}"
+      repository: "{{ atmosphere_images['valkey_sentinel'] | vexxhost.kubernetes.docker_image('path') }}"
+      tag: "{{ atmosphere_images['valkey_sentinel'] | vexxhost.kubernetes.docker_image('tag') }}"
+    primarySet: atmosphere
+  tls:
+    enabled: true
+    existingSecret: "{{ valkey_server_certificate_secret_name }}"
+    certFilename: tls.crt
+    certKeyFilename: tls.key
+    certCAFilename: ca.crt
+  metrics:
+    enabled: true
+    image:
+      registry: "{{ atmosphere_images['redis_exporter'] | vexxhost.kubernetes.docker_image('domain') }}"
+      repository: "{{ atmosphere_images['redis_exporter'] | vexxhost.kubernetes.docker_image('path') }}"
+      tag: "{{ atmosphere_images['redis_exporter'] | vexxhost.kubernetes.docker_image('tag') }}"
