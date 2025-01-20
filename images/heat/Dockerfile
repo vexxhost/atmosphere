@@ -3,8 +3,9 @@
 # Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
 
 FROM openstack-venv-builder AS build
-ARG HEAT_GIT_REF=64bdbb9bc66c38760989dd7bb2574ccc14069872
-ADD --keep-git-dir=true https://opendev.org/openstack/heat.git#${HEAT_GIT_REF} /src/heat
+ARG HEAT_GIT_REPO
+ARG HEAT_GIT_REF
+ADD --keep-git-dir=true ${HEAT_GIT_REPO}#${HEAT_GIT_REF} /src/heat
 RUN git -C /src/heat fetch --unshallow
 RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe
 uv pip install \

@@ -3,8 +3,9 @@
 # Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
 
 FROM openstack-venv-builder AS build
-ARG KEYSTONE_GIT_REF=47891f4ae8fd7876e5a7657f58c32c371feeddc3
-ADD --keep-git-dir=true https://opendev.org/openstack/keystone.git#${KEYSTONE_GIT_REF} /src/keystone
+ARG KEYSTONE_GIT_REPO
+ARG KEYSTONE_GIT_REF
+ADD --keep-git-dir=true ${KEYSTONE_GIT_REPO}#${KEYSTONE_GIT_REF} /src/keystone
 RUN git -C /src/keystone fetch --unshallow
 RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe
 uv pip install \

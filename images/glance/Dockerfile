@@ -3,10 +3,13 @@
 # Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
 
 FROM openstack-venv-builder AS build
-ARG GLANCE_GIT_REF=d1cc917a29c9d2e87b1bad51a33a8a2500eb69c6
-ADD --keep-git-dir=true https://opendev.org/openstack/glance.git#${GLANCE_GIT_REF} /src/glance
+ARG GLANCE_GIT_REPO
+ARG GLANCE_GIT_REF
+ADD --keep-git-dir=true ${GLANCE_GIT_REPO}#${GLANCE_GIT_REF} /src/glance
 RUN git -C /src/glance fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/glance_store.git#stable/2024.2 /src/glance_store
+ARG GLANCE_STORE_GIT_REPO
+ARG GLANCE_STORE_GIT_REF
+ADD --keep-git-dir=true ${GLANCE_STORE_GIT_REPO}#${GLANCE_STORE_GIT_REF} /src/glance_store
 RUN git -C /src/glance_store fetch --unshallow
 RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe
 uv pip install \

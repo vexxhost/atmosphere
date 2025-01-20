@@ -10,20 +10,33 @@ RUN GO111MODULE=off CGO_ENABLED=0 GOOS=linux go build \
     /src/octavia_tempest_plugin/contrib/test_server/test_server.go
 
 FROM openstack-venv-builder AS build
-ARG TEMPEST_GIT_REF=338a3b7224a55e88fc46d7f80e8896a3231b910e
-ADD --keep-git-dir=true https://opendev.org/openstack/tempest.git#${TEMPEST_GIT_REF} /src/tempest
+ARG TEMPEST_GIT_REPO
+ARG TEMPEST_GIT_REF
+ADD --keep-git-dir=true ${TEMPEST_GIT_REPO}#${TEMPEST_GIT_REF} /src/tempest
 RUN git -C /src/tempest fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/barbican-tempest-plugin.git#master /src/barbican-tempest-plugin
+ARG BARBICAN_TEMPEST_PLUGIN_GIT_REPO
+ARG BARBICAN_TEMPEST_PLUGIN_GIT_REF
+ADD --keep-git-dir=true ${BARBICAN_TEMPEST_PLUGIN_GIT_REPO}#${BARBICAN_TEMPEST_PLUGIN_GIT_REF} /src/barbican-tempest-plugin
 RUN git -C /src/barbican-tempest-plugin fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/cinder-tempest-plugin.git#master /src/cinder-tempest-plugin
+ARG CINDER_TEMPEST_PLUGIN_GIT_REPO
+ARG CINDER_TEMPEST_PLUGIN_GIT_REF
+ADD --keep-git-dir=true ${CINDER_TEMPEST_PLUGIN_GIT_REPO}#${CINDER_TEMPEST_PLUGIN_GIT_REF} /src/cinder-tempest-plugin
 RUN git -C /src/cinder-tempest-plugin fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/heat-tempest-plugin.git#master /src/heat-tempest-plugin
+ARG HEAT_TEMPEST_PLUGIN_GIT_REPO
+ARG HEAT_TEMPEST_PLUGIN_GIT_REF
+ADD --keep-git-dir=true ${HEAT_TEMPEST_PLUGIN_GIT_REPO}#${HEAT_TEMPEST_PLUGIN_GIT_REF} /src/heat-tempest-plugin
 RUN git -C /src/heat-tempest-plugin fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/keystone-tempest-plugin.git#master /src/keystone-tempest-plugin
+ARG KEYSTONE_TEMPEST_PLUGIN_GIT_REPO
+ARG KEYSTONE_TEMPEST_PLUGIN_GIT_REF
+ADD --keep-git-dir=true ${KEYSTONE_TEMPEST_PLUGIN_GIT_REPO}#${KEYSTONE_TEMPEST_PLUGIN_GIT_REF} /src/keystone-tempest-plugin
 RUN git -C /src/keystone-tempest-plugin fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/neutron-tempest-plugin.git#master /src/neutron-tempest-plugin
+ARG NEUTRON_TEMPEST_PLUGIN_GIT_REPO
+ARG NEUTRON_TEMPEST_PLUGIN_GIT_REF
+ADD --keep-git-dir=true ${NEUTRON_TEMPEST_PLUGIN_GIT_REPO}#${NEUTRON_TEMPEST_PLUGIN_GIT_REF} /src/neutron-tempest-plugin
 RUN git -C /src/neutron-tempest-plugin fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/octavia-tempest-plugin.git#master /src/octavia-tempest-plugin
+ARG OCTAVIA_TEMPEST_PLUGIN_GIT_REPO
+ARG OCTAVIA_TEMPEST_PLUGIN_GIT_REF
+ADD --keep-git-dir=true ${OCTAVIA_TEMPEST_PLUGIN_GIT_REPO}#${OCTAVIA_TEMPEST_PLUGIN_GIT_REF} /src/octavia-tempest-plugin
 RUN git -C /src/octavia-tempest-plugin fetch --unshallow
 ADD https://releases.openstack.org/constraints/upper/master /upper-constraints.txt
 RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe
