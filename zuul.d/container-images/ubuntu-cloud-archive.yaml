@@ -36,11 +36,12 @@
       container_images:
         - context: images/ubuntu-cloud-archive
           registry: harbor.atmosphere.dev
-          repository: harbor.atmosphere.dev/library/ubuntu-cloud-archive
+          repository: "{{ container_registry }}/ubuntu-cloud-archive"
           arch:
             - linux/amd64
             - linux/arm64
           build_args:
+            - REGISTRY={{ container_registry }}
             - "RELEASE={{ zuul.branch | replace('stable/', '') }}"
           tags:
             - "{{ zuul.branch | replace('stable/', '') }}"
