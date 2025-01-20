@@ -3,11 +3,15 @@
 # Atmosphere-Rebuild-Time: 2024-12-17T01:27:44Z
 
 FROM openstack-venv-builder AS build
-ARG NOVA_GIT_REF=1b28f649feaf2c9929f15214814f8af950e5c19c
-ADD --keep-git-dir=true https://opendev.org/openstack/nova.git#${NOVA_GIT_REF} /src/nova
+ARG NOVA_GIT_REPO
+ARG NOVA_GIT_REF
+ADD --keep-git-dir=true ${NOVA_GIT_REPO}#${NOVA_GIT_REF} /src/nova
 RUN git -C /src/nova fetch --unshallow
-ARG SCHEDULER_FILTERS_GIT_REF=77ed1c2ca70f4166a6d0995c7d3d90822f0ca6c0
-ADD --keep-git-dir=true https://github.com/vexxhost/nova-scheduler-filters.git#${SCHEDULER_FILTERS_GIT_REF} /src/nova-scheduler-filters
+COPY patches/nova /patches/nova
+RUN git -C /src/nova apply --verbose /patches/nova/*
+ARG SCHEDULER_FILTERS_GIT_REPO
+ARG SCHEDULER_FILTERS_GIT_REF
+ADD --keep-git-dir=true ${SCHEDULER_FILTERS_GIT_REPO}#${SCHEDULER_FILTERS_GIT_REF} /src/nova-scheduler-filters
 RUN git -C /src/nova-scheduler-filters fetch --unshallow
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
 pip3 install \
