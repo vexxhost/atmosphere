@@ -1,14 +1,16 @@
 # SPDX-License-Identifier: Apache-2.0
 # Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
 
+ARG GLANCE_GIT_REPO
+ARG GLANCE_STORE_GIT_REPO
 ARG REGISTRY
 ARG RELEASE
 
 FROM ${REGISTRY}/openstack-venv-builder:${RELEASE} AS build
 ARG GLANCE_GIT_REF=0bcd6cd71c09917c6734421374fd598d73e8d0cc
-ADD --keep-git-dir=true https://opendev.org/openstack/glance.git#${GLANCE_GIT_REF} /src/glance
+ADD --keep-git-dir=true ${GLANCE_GIT_REPO}#${GLANCE_GIT_REF} /src/glance
 RUN git -C /src/glance fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/glance_store.git#master /src/glance_store
+ADD --keep-git-dir=true ${GLANCE_STORE_GIT_REPO}#master /src/glance_store
 RUN git -C /src/glance_store fetch --unshallow
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
 pip3 install \
