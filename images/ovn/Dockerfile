@@ -5,8 +5,9 @@ ARG REGISTRY
 ARG RELEASE
 
 FROM harbor.atmosphere.dev/docker.io/library/golang:1.20 AS ovn-kubernetes
+ARG OVN_KUBERNETES_REPO
 ARG OVN_KUBERNETES_REF=5359e7d7f872058b6e5bf884c9f19d1922451f29
-ADD https://github.com/ovn-org/ovn-kubernetes.git#${OVN_KUBERNETES_REF} /src
+ADD ${OVN_KUBERNETES_REPO}#${OVN_KUBERNETES_REF} /src
 COPY patches/ovn-kubernetes /patches/ovn-kubernetes
 RUN git -C /src apply --verbose /patches/ovn-kubernetes/*
 RUN <<EOF bash -xe

@@ -5,8 +5,9 @@ ARG REGISTRY
 ARG RELEASE
 
 FROM ${REGISTRY}/openstack-venv-builder:${RELEASE} AS build
+ARG DESIGNATE_GIT_REPO
 ARG DESIGNATE_GIT_REF=097ffc6df181290eba1bcd7c492b1b505bc15434
-ADD --keep-git-dir=true https://opendev.org/openstack/designate.git#${DESIGNATE_GIT_REF} /src/designate
+ADD --keep-git-dir=true ${DESIGNATE_GIT_REPO}#${DESIGNATE_GIT_REF} /src/designate
 RUN git -C /src/designate fetch --unshallow
 COPY patches/designate /patches/designate
 RUN git -C /src/designate apply --verbose /patches/designate/*

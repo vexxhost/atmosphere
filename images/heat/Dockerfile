@@ -5,8 +5,9 @@ ARG REGISTRY
 ARG RELEASE
 
 FROM ${REGISTRY}/openstack-venv-builder:${RELEASE} AS build
+ARG HEAT_GIT_REPO
 ARG HEAT_GIT_REF=80eea85194825773d1b60ecc4386b2d5ba52a066
-ADD --keep-git-dir=true https://opendev.org/openstack/heat.git#${HEAT_GIT_REF} /src/heat
+ADD --keep-git-dir=true ${HEAT_GIT_REPO}#${HEAT_GIT_REF} /src/heat
 RUN git -C /src/heat fetch --unshallow
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
 pip3 install \
