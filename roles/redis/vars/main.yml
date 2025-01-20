@@ -1,0 +1,12 @@
+# Copyright (c) 2024 VEXXHOST, Inc.
+# SPDX-License-Identifier: APACHE-2.0
+
+_redis_helm_values:
+  replica:
+    replicaCount: 3
+  auth:
+    enabled: false
+  image:
+    registry: "{{ atmosphere_images['redis'] | vexxhost.kubernetes.docker_image('domain') }}"
+    repository: "{{ atmosphere_images['redis'] | vexxhost.kubernetes.docker_image('path') }}"
+    tag: "{{ atmosphere_images['redis'] | vexxhost.kubernetes.docker_image('tag') }}"
