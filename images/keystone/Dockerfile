@@ -1,12 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
 # Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
 
+ARG KEYSTONE_GIT_REPO
 ARG REGISTRY
 ARG RELEASE
 
 FROM ${REGISTRY}/openstack-venv-builder:${RELEASE} AS build
 ARG KEYSTONE_GIT_REF=8ca73f758bb613a57815fbe4ae78e3d2afa4af49
-ADD --keep-git-dir=true https://opendev.org/openstack/keystone.git#${KEYSTONE_GIT_REF} /src/keystone
+ADD --keep-git-dir=true ${KEYSTONE_GIT_REPO}#${KEYSTONE_GIT_REF} /src/keystone
 RUN git -C /src/keystone fetch --unshallow
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
 pip3 install \

@@ -1,12 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
 # Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
 
+ARG STAFFELN_GIT_REPO
 ARG REGISTRY
 ARG RELEASE
 
 FROM ${REGISTRY}/openstack-venv-builder:${RELEASE} AS build
 ARG STAFFELN_GIT_REF=v2.2.3
-ADD --keep-git-dir=true https://github.com/vexxhost/staffeln.git#${STAFFELN_GIT_REF} /src/staffeln
+ADD --keep-git-dir=true ${STAFFELN_GIT_REPO}#${STAFFELN_GIT_REF} /src/staffeln
 RUN git -C /src/staffeln fetch --unshallow
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
 pip3 install \
