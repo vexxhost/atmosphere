@@ -1,0 +1,174 @@
+# Copyright (c) 2023 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+# NOTE(okozachenko1203): helm diff does not include resource information in dyff format when only one file will be changed.
+- name: Check if resource information is missing in filtered lines
+  ansible.builtin.set_fact:
+    _helm_upgrade_diff_missing_resource_info: "{{ _helm_upgrade_diff_filtered_lines | select('search', '\\(([^)]+)\\)$') | list | length == 0 }}"
+
+- name: Format helm diff result for single-file changes
+  when: _helm_upgrade_diff_missing_resource_info
+  block:
+    - name: Retrieve resource information if only one line is found
+      changed_when: false
+      ansible.builtin.command:
+        cmd: >
+          helm diff upgrade "{{ helm_upgrade_release_name }}"
+          "{{ helm_upgrade_chart_ref }}"
+          --namespace "{{ helm_upgrade_release_namespace }}"
+          --values "{{ _helm_upgrade_values_file_path }}"
+          --output template
+      register: _helm_upgrade_diff_output
+
+    - name: Set resource information for the file
+      ansible.builtin.set_fact:
+        _helm_upgrade_diff_resource_field: "{{ (_helm_upgrade_diff_output.stdout | from_json)[0].kind }}/{{ (_helm_upgrade_diff_output.stdout | from_json)[0].namespace }}/{{ (_helm_upgrade_diff_output.stdout | from_json)[0].name }}"
+
+    - name: Parse resource information for single-line diff
+      ansible.builtin.set_fact:
+        _helm_upgrade_diff_formatted_lines: "{{ _helm_upgrade_diff_filtered_lines | map('regex_replace', '^(.*)$', '{\"path\": \"\\1\", \"resource\": \"' + _helm_upgrade_diff_resource_field + '\"}') | map('from_json') | list }}"
+
+- name: Format helm diff result for multi-file changes
+  when: not _helm_upgrade_diff_missing_resource_info
+  ansible.builtin.set_fact:
+    _helm_upgrade_diff_formatted_lines: "{{ _helm_upgrade_diff_filtered_lines | map('regex_replace', '^(\\S+)\\s+\\(([^)]+)\\)$', '{\"path\": \"\\1\", \"resource\": \"\\2\"}') | map('from_json') | list }}"
+
+# This outputs the list of dictionaries, whose path field is a changed path and resource field is the resource name.
+#  ex:
+#   [
+#     {
+#       "path": "spec.selector.matchLabels.component",
+#       "resource": "Deployment/default/heat-api"
+#     },
+#     {
+#       "path": "spec.selector.matchLabels.component",
+#       "resource": "Deployment/default/heat-cfn"
+#     }
+#   ]
+- name: Output helm diff output in the simple format
+  ansible.builtin.debug:
+    msg: "{{ _helm_upgrade_diff_formatted_lines }}"
+
+- name: Initialize the _helm_upgrade_immutable_check list
+  ansible.builtin.set_fact:
+    _helm_upgrade_immutable_check: []
+
+- name: Check if there are changes for immutable fields
+  loop: "{{ _helm_upgrade_diff_formatted_lines }}"
+  vars:
+    is_immutable: >-
+      {{
+        helm_upgrade_immutable_fields | select("in", item.path) | list | length > 0
+      }}
+  ansible.builtin.set_fact:
+    _helm_upgrade_immutable_check: "{{ _helm_upgrade_immutable_check + [{ item.resource: is_immutable }] }}"
+
+- name: Output immutability check of changes
+  ansible.builtin.debug:
+    msg: "{{ _helm_upgrade_immutable_check }}"
+
+- name: Initialize resource type lists
+  ansible.builtin.set_fact:
+    _helm_upgrade_orphan_delete_deployments: []
+    _helm_upgrade_orphan_delete_statefulsets: []
+    _helm_upgrade_orphan_delete_daemonsets: []
+
+- name: Populate resource type lists for orphan deletion
+  loop: "{{ _helm_upgrade_immutable_check }}"
+  vars:
+    resource_name: "{{ item.keys() | first }}"
+    resource_type: "{{ resource_name.split('/')[0] }}"
+  when: item.values() | first  # Only include resources with immutable changes
+  ansible.builtin.set_fact:
+    _helm_upgrade_orphan_delete_deployments: >-
+      {{
+        _helm_upgrade_orphan_delete_deployments +
+        [resource_name.split('/')[-1]]
+        if resource_type == "Deployment" else _helm_upgrade_orphan_delete_deployments
+      }}
+    _helm_upgrade_orphan_delete_statefulsets: >-
+      {{
+        _helm_upgrade_orphan_delete_statefulsets +
+        [resource_name.split('/')[-1]]
+        if resource_type == "StatefulSet" else _helm_upgrade_orphan_delete_statefulsets
+      }}
+    _helm_upgrade_orphan_delete_daemonsets: >-
+      {{
+        _helm_upgrade_orphan_delete_daemonsets +
+        [resource_name.split('/')[-1]]
+        if resource_type == "DaemonSet" else _helm_upgrade_orphan_delete_daemonsets
+      }}
+
+- name: Delete Deployments for immutable field change
+  when: _helm_upgrade_orphan_delete_deployments | list | length > 0
+  block:
+    - name: Print Deployments before deletion
+      ansible.builtin.debug:
+        msg: "{{ _helm_upgrade_orphan_delete_deployments }}"
+
+    - name: Wait for confirmation of deleting Deployments
+      ansible.builtin.pause:
+
+    - name: Delete Deployments
+      kubernetes.core.k8s:
+        name: "{{ item }}"
+        api_version: apps/v1
+        kind: Deployment
+        namespace: "{{ helm_upgrade_release_namespace }}"
+        state: absent
+        delete_options:
+          propagationPolicy: Orphan
+      loop: "{{ _helm_upgrade_orphan_delete_deployments }}"
+
+- name: Delete StatefulSets for immutable field change
+  when: _helm_upgrade_orphan_delete_statefulsets | list | length > 0
+  block:
+    - name: Print StatefulSets before deletion
+      ansible.builtin.debug:
+        msg: "{{ _helm_upgrade_orphan_delete_statefulsets }}"
+
+    - name: Wait for confirmation of deleting StatefulSets
+      ansible.builtin.pause:
+
+    - name: Delete StatefulSets
+      kubernetes.core.k8s:
+        name: "{{ item }}"
+        api_version: apps/v1
+        kind: StatefulSet
+        namespace: "{{ helm_upgrade_release_namespace }}"
+        state: absent
+        delete_options:
+          propagationPolicy: Orphan
+      loop: "{{ _helm_upgrade_orphan_delete_statefulsets }}"
+
+- name: Delete DaemonSets for immutable field change
+  when: _helm_upgrade_orphan_delete_daemonsets | list | length > 0
+  block:
+    - name: Print DaemonSets before deletion
+      ansible.builtin.debug:
+        msg: "{{ _helm_upgrade_orphan_delete_daemonsets }}"
+
+    - name: Wait for confirmation of deleting DaemonSets
+      ansible.builtin.pause:
+
+    - name: Delete DaemonSets
+      kubernetes.core.k8s:
+        name: "{{ item }}"
+        api_version: apps/v1
+        kind: StatefulSet
+        namespace: "{{ helm_upgrade_release_namespace }}"
+        state: absent
+        delete_options:
+          propagationPolicy: Orphan
+      loop: "{{ _helm_upgrade_orphan_delete_daemonsets }}"
