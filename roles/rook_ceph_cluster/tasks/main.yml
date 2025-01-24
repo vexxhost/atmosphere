@@ -95,12 +95,13 @@
     name: "{{ openstack_helm_endpoints.identity.auth.rgw.username }}"
     password: "{{ openstack_helm_endpoints.identity.auth.rgw.password }}"
     domain: service
+  register: service_user
 
 - name: Grant access to "service" project
   openstack.cloud.role_assignment:
     cloud: atmosphere
     domain: service
-    user: "{{ openstack_helm_endpoints.identity.auth.rgw.username }}"
+    user: "{{ service_user.id }}"
     project: service
     role: admin
 
