@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
+# Atmosphere-Rebuild-Time: 2025-01-24T11:51:19Z
 
 ARG REGISTRY
 ARG RELEASE
@@ -14,7 +14,7 @@ RUN git -C /src/neutron-vpnaas fetch --unshallow
 ARG NETWORKING_BAREMETAL_GIT_REF=bfcd09e4716be0dbf49ee88d18020084c60d0650
 ADD --keep-git-dir=true https://opendev.org/openstack/networking-baremetal.git#${NETWORKING_BAREMETAL_GIT_REF} /src/networking-baremetal
 RUN git -C /src/networking-baremetal fetch --unshallow
-ARG POLICY_SERVER_GIT_REF=85f47edbcf66aaf3a289dc3ae76191adce91018f
+ARG POLICY_SERVER_GIT_REF=d87012b56741cb2ad44fa4dec9c5f24001ad60fe
 ADD --keep-git-dir=true https://github.com/vexxhost/neutron-policy-server.git#${POLICY_SERVER_GIT_REF} /src/neutron-policy-server
 RUN git -C /src/neutron-policy-server fetch --unshallow
 ARG LOG_PASER_GIT_REF=9bc923c1294864ec709c538ba5c309065ef710d5
