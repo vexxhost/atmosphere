@@ -112,4 +112,4 @@ __neutron_policy_server_helm_values:
     policy:
       delete_port: "(rule:context_is_advsvc or role:member and project_id:%(project_id)s or (rule:admin_only) or (role:member and rule:network_owner)) and http://neutron-server:9697/port-delete"
       update_port:mac_address: "(rule:admin_only or rule:context_is_advsvc) and http://neutron-server:9697/port-update"
-      update_port:fixed_ips: "(rule:context_is_advsvc or rule:network_owner or rule:admin_only) and http://neutron-server:9697/port-update"
+      update_port:fixed_ips: "(rule:context_is_advsvc or (rule:admin_only) or (role:member and rule:network_owner)) and http://neutron-server:9697/port-update"
