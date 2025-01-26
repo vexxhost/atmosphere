@@ -20,6 +20,13 @@
 
 - name: Prepare for collection build
   hosts: all
+  pre_tasks:
+    - name: Ensure "go" is installed
+      ansible.builtin.include_role:
+        name: ensure-go
+      vars:
+        go_version: "1.22.3"
+
   tasks:
     - name: Find all roles
       find:
@@ -45,9 +52,9 @@
 
     - name: Pin all image digests
       ansible.builtin.include_role:
-        name: tox
+        name: go
       vars:
-        tox_envlist: pin-digests
+        go_command: run cmd/pinimages/pinimages.go
 
     - name: Print out the new image manifest file
       ansible.builtin.command: |
