@@ -7,8 +7,9 @@ toolchain go1.22.3
 require (
 	github.com/containers/image/v5 v5.30.1
 	github.com/erikgeiser/promptkit v0.9.0
-	github.com/goccy/go-yaml v1.11.3
+	github.com/goccy/go-yaml v1.15.15
 	github.com/nsf/jsondiff v0.0.0-20230430225905-43f6cf3098c1
+	github.com/opencontainers/go-digest v1.0.0
 	github.com/percona/percona-xtradb-cluster-operator v1.14.0
 	github.com/prometheus/client_golang v1.19.1
 	github.com/prometheus/common v0.55.0
@@ -18,6 +19,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.9.0
 	github.com/yannh/kubeconform v0.6.4
+	golang.org/x/sync v0.8.0
 	gopkg.in/ini.v1 v1.67.0
 	gopkg.in/yaml.v2 v2.4.0
 	gorm.io/driver/mysql v1.5.6
@@ -141,7 +143,6 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f // indirect
 	github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f // indirect
-	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0 // indirect
 	github.com/opencontainers/runtime-spec v1.2.0 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
@@ -172,12 +173,10 @@ require (
 	golang.org/x/exp v0.0.0-20240222234643-814bf88cf225 // indirect
 	golang.org/x/net v0.27.0 // indirect
 	golang.org/x/oauth2 v0.21.0 // indirect
-	golang.org/x/sync v0.8.0 // indirect
 	golang.org/x/sys v0.25.0 // indirect
 	golang.org/x/term v0.24.0 // indirect
 	golang.org/x/text v0.18.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
-	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240708141625-4ad9e859172b // indirect
 	google.golang.org/grpc v1.65.0 // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
