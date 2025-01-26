@@ -1,9 +1,8 @@
 #!/bin/bash -xe
 
 VERSION=$1
-LATEST_VERSION=$2
 
-if [ -z "$VERSION" ] || [ -z "$LATEST_VERSION" ]; then
+if [ -z "$VERSION" ]; then
   echo "Usage: $0 <version> <latest_version>"
   exit 1
 fi
@@ -16,8 +15,9 @@ sed -i s/^atmosphere_version:.*/atmosphere_version:\ $VERSION/ roles/defaults/de
 git add galaxy.yml roles/defaults/defaults/main.yml
 git commit -m "Release $VERSION"
 
-# Push the release commit
-git push
+# Create a local tag
+git tag v$VERSION
 
-# Create GitHub release with gh CLI
-gh release create v$VERSION --target $(git rev-parse HEAD) --generate-notes --latest=$LATEST_VERSION
+# Push the release commit
+git push gerrit refs/heads/$(git rev-parse --abbrev-ref HEAD)
+git push --tags gerrit refs/heads/$(git rev-parse --abbrev-ref HEAD)
