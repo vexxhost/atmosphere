@@ -246,6 +246,7 @@ group "default" {
         "openstack-nova",
         "openstack-octavia",
         "openstack-placement",
+        "openstack-senlin",
         "openstack-staffeln",
         "openstack-tempest",
         "openvswitch",
