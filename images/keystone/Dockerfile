@@ -1,10 +1,8 @@
-# SPDX-License-Identifier: Apache-2.0
-# Atmosphere-Rebuild-Time: 2024-06-25T13:53:44Z
+# SPDX-FileCopyrightText: © 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Atmosphere-Rebuild-Time: 2024-06-26T17:38:39Z
 
-ARG REGISTRY
-ARG RELEASE
-
-FROM ${REGISTRY}/openstack-venv-builder:${RELEASE} AS build
+FROM openstack-venv-builder AS build
 ARG KEYSTONE_GIT_REF=7697140fc23cee66b17050651813ebe902671256
 ADD --keep-git-dir=true https://opendev.org/openstack/keystone.git#${KEYSTONE_GIT_REF} /src/keystone
 RUN git -C /src/keystone fetch --unshallow
@@ -17,7 +15,7 @@ pip3 install \
         keystone-keycloak-backend==0.1.8
 EOF
 
-FROM ${REGISTRY}/openstack-python-runtime:${RELEASE}
+FROM openstack-python-runtime
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \
@@ -28,6 +26,11 @@ EOF
 ARG MOD_AUTH_OPENIDC_VERSION=2.4.12.1
 ARG TARGETARCH
 RUN <<EOF bash -xe
+# TODO(mnaser): mod_auth_openidc does not have aarch64 builds
+if [ "${TARGETARCH}" = "arm64" ]; then
+    exit 0
+fi
+
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \
     curl

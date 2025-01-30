@@ -1,10 +1,8 @@
-# SPDX-License-Identifier: Apache-2.0
-# Atmosphere-Rebuild-Time: 2024-06-25T13:53:44Z
+# SPDX-FileCopyrightText: © 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Atmosphere-Rebuild-Time: 2024-06-26T17:38:39Z
 
-ARG REGISTRY
-ARG RELEASE
-
-FROM ${REGISTRY}/openstack-venv-builder:${RELEASE} AS build
+FROM openstack-venv-builder AS build
 ARG STAFFELN_GIT_REF=v2.2.3
 ADD --keep-git-dir=true https://github.com/vexxhost/staffeln.git#${STAFFELN_GIT_REF} /src/staffeln
 RUN git -C /src/staffeln fetch --unshallow
@@ -14,5 +12,5 @@ pip3 install \
         /src/staffeln
 EOF
 
-FROM ${REGISTRY}/openstack-python-runtime:${RELEASE}
+FROM openstack-python-runtime
 COPY --from=build --link /var/lib/openstack /var/lib/openstack

@@ -1,10 +1,8 @@
-# SPDX-License-Identifier: Apache-2.0
-# Atmosphere-Rebuild-Time: 2024-06-25T13:53:44Z
+# SPDX-FileCopyrightText: © 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Atmosphere-Rebuild-Time: 2024-06-26T17:38:39Z
 
-ARG REGISTRY
-ARG RELEASE
-
-FROM ${REGISTRY}/openstack-venv-builder:${RELEASE} AS build
+FROM openstack-venv-builder AS build
 ARG DESIGNATE_GIT_REF=2c817b3d7f01de44023f195c6e8de8853683a54a
 ADD --keep-git-dir=true https://opendev.org/openstack/designate.git#${DESIGNATE_GIT_REF} /src/designate
 RUN git -C /src/designate fetch --unshallow
@@ -16,7 +14,7 @@ pip3 install \
         /src/designate
 EOF
 
-FROM ${REGISTRY}/openstack-python-runtime:${RELEASE}
+FROM openstack-python-runtime
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \

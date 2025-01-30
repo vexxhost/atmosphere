@@ -1,10 +1,8 @@
-# SPDX-License-Identifier: Apache-2.0
-# Atmosphere-Rebuild-Time: 2024-06-25T13:53:44Z
+# SPDX-FileCopyrightText: © 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Atmosphere-Rebuild-Time: 2024-06-26T17:38:39Z
 
-ARG REGISTRY
-ARG RELEASE
-
-FROM harbor.atmosphere.dev/docker.io/library/golang:1.20 AS ovn-kubernetes
+FROM golang AS ovn-kubernetes
 ARG OVN_KUBERNETES_REF=5359e7d7f872058b6e5bf884c9f19d1922451f29
 ADD https://github.com/ovn-org/ovn-kubernetes.git#${OVN_KUBERNETES_REF} /src
 COPY patches/ovn-kubernetes /patches/ovn-kubernetes
@@ -14,7 +12,7 @@ cd /src/go-controller
 go build -o /usr/bin/ovn-kube-util ./cmd/ovn-kube-util
 EOF
 
-FROM ${REGISTRY}/openvswitch:${RELEASE}
+FROM openvswitch
 ENV OVS_USER_ID=42424
 ARG TARGETPLATFORM
 ADD --chmod=755 https://dl.k8s.io/release/v1.29.3/bin/${TARGETPLATFORM}/kubectl /usr/local/bin/kubectl
