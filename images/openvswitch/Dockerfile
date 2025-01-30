@@ -13,7 +13,8 @@ dnf -y --setopt=install_weak_deps=False --setopt=tsflags=nodocs install \
     openvswitch${OVS_SERIES}-${OVS_VERSION}.el9s \
     openvswitch${OVS_SERIES}-test-${OVS_VERSION}.el9s \
     python3-netifaces \
-    tcpdump
+    tcpdump \
+    jq
 dnf -y clean all
 rm -rf /var/cache/dnf
 EOF
