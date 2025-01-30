@@ -203,6 +203,7 @@ target "openstack" {
             "nova",
             "octavia",
             "placement",
+            "senlin",
             "staffeln",
             "tempest",
         ]
@@ -246,6 +247,7 @@ group "default" {
         "openstack-nova",
         "openstack-octavia",
         "openstack-placement",
+        "openstack-senlin",
         "openstack-staffeln",
         "openstack-tempest",
         "openvswitch",
