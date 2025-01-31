@@ -62,10 +62,7 @@ _nova_helm_values:
       cache:
         backend: oslo_cache.memcache_pool
       cinder:
-        catalog_info: volumev3::internalURL
-        os_region_name: "{{ openstack_helm_endpoints_nova_region_name }}"
-        username: "nova-{{ openstack_helm_endpoints_nova_region_name }}"
-        password: "{{ openstack_helm_endpoints_nova_keystone_password }}"
+        auth_type: password
       conductor:
         workers: 8
       compute:
@@ -111,6 +108,8 @@ _nova_helm_values:
         driver: noop
       os_vif_ovs:
         ovsdb_connection: unix:/run/openvswitch/db.sock
+      privsep_osbrick:
+        helper_command: sudo nova-rootwrap /etc/nova/rootwrap.conf privsep-helper --config-file /etc/nova/nova.conf
       scheduler:
         max_attempts: 3
         workers: 8
