@@ -21,7 +21,7 @@ FROM openstack-python-runtime
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \
-    ceph-common lsscsi nvme-cli python3-rados python3-rbd qemu-block-extra qemu-utils sysfsutils udev util-linux
+    ceph-common dmidecode lsscsi nvme-cli python3-rados python3-rbd qemu-block-extra qemu-utils sysfsutils udev util-linux
 apt-get clean
 rm -rf /var/lib/apt/lists/*
 EOF
