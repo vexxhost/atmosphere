@@ -52,6 +52,8 @@ __cinder_helm_values:
         pool_timeout: 30
       oslo_messaging_notifications:
         driver: noop
+      privsep_entrypoint:
+        helper_command: sudo cinder-rootwrap /etc/cinder/rootwrap.conf privsep-helper --config-file /etc/cinder/cinder.conf
   manifests:
     ingress_api: false
     job_clean: false
