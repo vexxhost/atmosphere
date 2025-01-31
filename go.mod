@@ -22,7 +22,7 @@ require (
 	golang.org/x/sync v0.8.0
 	gopkg.in/ini.v1 v1.67.0
 	gopkg.in/yaml.v2 v2.4.0
-	gorm.io/driver/mysql v1.5.6
+	gorm.io/driver/mysql v1.5.7
 	gorm.io/gorm v1.25.10
 	helm.sh/helm/v3 v3.16.2
 	k8s.io/api v0.31.1
