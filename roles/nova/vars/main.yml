@@ -45,6 +45,19 @@ _nova_helm_values:
   conf:
     ceph:
       enabled: "{{ atmosphere_ceph_enabled | default(true) | bool }}"
+    rootwrap_filters:
+      os-brick:
+        pods:
+          - compute
+        content: |
+          # os-brick command filters
+          # This file should be owned by (and only-writeable by) the root user
+
+          [Filters]
+          # privileged/__init__.py: priv_context.PrivContext(default)
+          # This line ties the superuser privs with the config files, context name,
+          # and (implicitly) the actual python code invoked.
+          privsep-rootwrap: RegExpFilter, privsep-helper, root, privsep-helper, --config-file, /etc/(?!\.\.).*, --privsep_context, os_brick.privileged.default, --privsep_sock_path, /tmp/.*-privsep.sock
     nova:
       DEFAULT:
         log_config_append: null
