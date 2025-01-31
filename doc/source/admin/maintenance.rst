@@ -140,6 +140,7 @@ We generally recommend using ephemeral storage only for workloads where critical
 long-lived data is not a requirement and performance is the primary concern. 
 A typical example of ephemeral resource usage is virtual machines deployed for CI/CD systems.
 
+
 *********************
 Renewing Certificates
 *********************
