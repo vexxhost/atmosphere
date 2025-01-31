@@ -2,7 +2,7 @@ module github.com/vexxhost/atmosphere
 
 go 1.22.0
 
-toolchain go1.22.3
+toolchain go1.23.5
 
 require (
 	github.com/containers/image/v5 v5.30.1
