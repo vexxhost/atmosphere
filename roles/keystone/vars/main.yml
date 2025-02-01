@@ -89,7 +89,10 @@ _keystone_helm_values:
         {% for domain in keystone_domains %}
         <Location /v3/OS-FEDERATION/identity_providers/{{ domain.name }}/protocols/openid/auth>
           Require valid-user
-          AuthType oauth20
+          AuthType auth-openidc
+          OAuth2TokenVerify jwks_uri {{ keystone_federation_oidc_jwks_uri }}
+          Require oauth2_claim iss:{{ keystone_oauth2_realm_issuer_uri }}
+          SetEnv HTTP_OIDC_ISS {{ keystone_oauth2_realm_issuer_uri }}
         </Location>
         <Location /v3/auth/OS-FEDERATION/identity_providers/{{ domain.name }}/protocols/openid/websso>
           Require valid-user
