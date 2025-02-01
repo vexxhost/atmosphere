@@ -56,6 +56,7 @@ keystone_domains:
     keycloak_scopes: "{{ keystone_keycloak_scopes }}"                           # Keycloak scopes
 
 # Keystone OpenID Connect settings (defaults to Keycloak for Atmosphere)
+keystone_federation_oidc_jwks_uri: "{{ keystone_keycloak_server_url }}/realms/atmosphere/protocol/openid-connect/certs"
 keystone_oidc_ssl_validate_server: "{{ (cluster_issuer_type == 'self-signed') | ternary('Off', 'On') }}"
 keystone_oidc_crypto_passphrase: "{{ undef('You must specify a Keystone OIDC client secret using keystone_oidc_crypto_passphrase') }}"
 keystone_oidc_redirect_uri: "https://{{ openstack_helm_endpoints_keystone_api_host }}/v3/auth/OS-FEDERATION/identity_providers/redirect"

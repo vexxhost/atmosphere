@@ -71,6 +71,7 @@ _keystone_helm_values:
         # OIDC
         OIDCClaimPrefix "OIDC-"
         OIDCMetadataDir /var/lib/apache2/oidc
+        OIDCOAuthVerifyJwksUri {{ keystone_federation_oidc_jwks_uri }}
         OIDCSSLValidateServer "{{ keystone_oidc_ssl_validate_server }}"
         OIDCCryptoPassphrase {{ keystone_oidc_crypto_passphrase }}
         OIDCRedirectURI {{ keystone_oidc_redirect_uri }}
@@ -89,7 +90,7 @@ _keystone_helm_values:
         {% for domain in keystone_domains %}
         <Location /v3/OS-FEDERATION/identity_providers/{{ domain.name }}/protocols/openid/auth>
           Require valid-user
-          AuthType oauth20
+          AuthType auth-openidc
         </Location>
         <Location /v3/auth/OS-FEDERATION/identity_providers/{{ domain.name }}/protocols/openid/websso>
           Require valid-user
