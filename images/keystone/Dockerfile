@@ -17,11 +17,13 @@ FROM openstack-python-runtime
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \
-    apache2 libapache2-mod-wsgi-py3
+    apache2 libapache2-mod-wsgi-py3 libmemcached11
 apt-get clean
 rm -rf /var/lib/apt/lists/*
 EOF
 ARG MOD_AUTH_OPENIDC_VERSION=2.4.12.1
+ARG MOD_OAUTH2_OPENIDC_VERSION=4.0.0
+ARG LIBOAUTH2_OPENIDC_VERSION=2.0.0
 ARG TARGETARCH
 RUN <<EOF bash -xe
 # TODO(mnaser): mod_auth_openidc does not have aarch64 builds
@@ -33,8 +35,11 @@ apt-get update -qq
 apt-get install -qq -y --no-install-recommends \
     curl
 curl -LO https://github.com/OpenIDC/mod_auth_openidc/releases/download/v${MOD_AUTH_OPENIDC_VERSION}/libapache2-mod-auth-openidc_${MOD_AUTH_OPENIDC_VERSION}-1.$(lsb_release -sc)_${TARGETARCH}.deb
+curl -LO https://github.com/OpenIDC/liboauth2/releases/download/v${LIBOAUTH2_OPENIDC_VERSION}/liboauth2_${MOD_AUTH_OPENIDC_VERSION}-1.$(lsb_release -sc)_${TARGETARCH}.deb
+curl -LO https://github.com/OpenIDC/liboauth2/releases/download/v${LIBOAUTH2_OPENIDC_VERSION}/liboauth2-apache_${MOD_AUTH_OPENIDC_VERSION}-1.$(lsb_release -sc)_${TARGETARCH}.deb
+curl -LO https://github.com/OpenIDC/mod_oauth2/releases/download/v${MOD_OAUTH2_OPENIDC_VERSION}/libapache2-mod-oauth2_${MOD_OAUTH2_OPENIDC_VERSION}-1.$(lsb_release -sc)_${TARGETARCH}.deb
 apt-get install -y --no-install-recommends ./libapache2-mod-auth-openidc_${MOD_AUTH_OPENIDC_VERSION}-1.$(lsb_release -sc)_${TARGETARCH}.deb
-a2enmod auth_openidc
+a2enmod auth_openidc oauth2
 apt-get purge -y --auto-remove curl
 apt-get clean
 rm -rfv /var/lib/apt/lists/* libapache2-mod-auth-openidc_${MOD_AUTH_OPENIDC_VERSION}-1.$(lsb_release -sc)_${TARGETARCH}.deb
