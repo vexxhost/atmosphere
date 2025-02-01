@@ -184,6 +184,20 @@ target "python-openstackclient" {
         "${REGISTRY}/python-openstackclient:${TAG}"
     ]
 }
+# skip keystone arm64 build duo to no OIDC deb packages
+target "keystone" {
+    context = "images/openstack-keystone"
+    platforms = ["linux/amd64"]
+
+    contexts = {
+        "openstack-venv-builder" = "target:openstack-venv-builder"
+        "openstack-python-runtime" = "target:openstack-python-runtime"
+    }
+
+    tags = [
+        "${REGISTRY}/keystone:${TAG}"
+    ]
+}
 
 target "openstack" {
     name = "openstack-${service}"
@@ -196,7 +210,6 @@ target "openstack" {
             "heat",
             "horizon",
             "ironic",
-            "keystone",
             "magnum",
             "manila",
             "neutron",
