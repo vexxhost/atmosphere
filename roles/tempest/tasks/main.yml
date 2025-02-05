@@ -34,10 +34,10 @@
         conf:
           tempest:
             compute:
-              image_ref: "{{ _tempest_test_image.openstack_image.id }}"
+              image_ref: "{{ _tempest_test_image.images.0.id }}"
       when:
         - tempest_helm_values.conf.tempest.compute.image_ref is not defined
-        - _tempest_test_image.openstack_image.id is defined
+        - _tempest_test_image.images | length > 0
 
     - name: Get test flavor object
       openstack.cloud.compute_flavor_info:
@@ -53,10 +53,10 @@
         conf:
           tempest:
             compute:
-              flavor_ref: "{{ _tempest_test_flavor.openstack_flavors[0].id }}"
+              flavor_ref: "{{ _tempest_test_flavor.flavors[0].id }}"
       when:
         - tempest_helm_values.conf.tempest.compute.flavor_ref is not defined
-        - _tempest_test_flavor.openstack_flavors[0].id is defined
+        - _tempest_test_flavor.flavors[0].id is defined
 
     - name: Get test network object
       openstack.cloud.networks_info:
@@ -72,10 +72,10 @@
         conf:
           tempest:
             network:
-              public_network_id: "{{ _tempest_test_network.openstack_networks[0].id }}"
+              public_network_id: "{{ _tempest_test_network.networks[0].id }}"
       when:
         - tempest_helm_values.conf.tempest.network.public_network_id is not defined
-        - _tempest_test_network.openstack_networks[0].id is defined
+        - _tempest_test_network.networks[0].id is defined
 
 - name: Deploy Helm chart
   failed_when: false
