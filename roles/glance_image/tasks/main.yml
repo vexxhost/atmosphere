@@ -30,6 +30,7 @@
   block:
     - name: Generate temporary work directory
       ansible.builtin.tempfile:
+        path: "{{ glance_image_tempfile_path | default(omit) }}"
         state: directory
       register: _workdir
 
@@ -38,6 +39,7 @@
         url: "{{ glance_image_url }}"
         dest: "{{ _workdir.path }}/{{ glance_image_url | basename }}"
         mode: "0600"
+        tmp_dest: "{{ _workdir.path }}"
       register: _get_url
       retries: 3
       delay: "{{ 15 | random + 3 }}"
@@ -61,8 +63,7 @@
         - glance_image_disk_format not in ['aki', 'ari']
         - glance_image_disk_format != _image_format.stdout
       changed_when: true
-      ansible.builtin.command:
-        qemu-img convert -O {{ glance_image_disk_format }} {{ _get_url.dest }} {{ _get_url.dest }}.converted
+      ansible.builtin.command: qemu-img convert -O {{ glance_image_disk_format }} {{ _get_url.dest }} {{ _get_url.dest }}.converted
       register: glance_image_conversion
 
     - name: Wait until image service ready
