@@ -17,6 +17,16 @@ _horizon_helm_values:
   images:
     tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('horizon') }}"
   pod:
+    security_context:
+      horizon:
+        pod:
+          fsGroup: 42424
+      db_sync:
+        pod:
+          fsGroup: 42424
+      tests:
+        pod:
+          fsGroup: 42424
     replicas:
       server: 3
   conf:
@@ -24,6 +34,8 @@ _horizon_helm_values:
       local_settings:
         config:
           disallow_iframe_embed: "True"
+          allowed_hosts:
+            - "{{ openstack_helm_endpoints_horizon_api_host }}"
           secure_proxy_ssl_header: "True"
           horizon_images_upload_mode: direct
           openstack_enable_password_retrieve: "True"
@@ -55,3 +67,5 @@ _horizon_helm_values:
 _horizon_ingress_annotations:
   nginx.ingress.kubernetes.io/proxy-body-size: "5000m"
   nginx.ingress.kubernetes.io/proxy-request-buffering: "off"
+  nginx.ingress.kubernetes.io/enable-cors: "true"
+  nginx.ingress.kubernetes.io/cors-allow-origin: "{{ openstack_helm_endpoints_horizon_api_host }}"
