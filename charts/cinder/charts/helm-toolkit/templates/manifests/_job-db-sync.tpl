@@ -68,6 +68,12 @@ spec:
       annotations:
 {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
     spec:
+{{ with $envAll.Values.pod.priorityClassName.cinder_api }}
+      priorityClassName: {{ . }}
+{{ end }}
+{{ with $envAll.Values.pod.runtimeClassName.cinder_api }}
+      runtimeClassName: {{ . }}
+{{ end }}
       serviceAccountName: {{ $serviceAccountName }}
       restartPolicy: OnFailure
       {{ tuple $envAll "db_sync" | include "helm-toolkit.snippets.kubernetes_image_pull_secrets" | indent 6 }}
