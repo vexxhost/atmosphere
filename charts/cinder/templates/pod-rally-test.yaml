@@ -38,6 +38,12 @@ spec:
 {{ end }}
   nodeSelector:
     {{ .Values.labels.test.node_selector_key }}: {{ .Values.labels.test.node_selector_value }}
+{{ with .Values.pod.priorityClassName.cinder_tests }}
+  priorityClassName: {{ . }}
+{{ end }}
+{{ with .Values.pod.runtimeClassName.cinder_tests }}
+  runtimeClassName: {{ . }}
+{{ end }}
   serviceAccountName: {{ $serviceAccountName }}
   initContainers:
 {{ tuple $envAll "tests" $mounts_tests_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 4 }}
