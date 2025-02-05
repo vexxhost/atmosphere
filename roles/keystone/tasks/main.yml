@@ -41,6 +41,28 @@
   loop_control:
     label: "{{ item.name }}"
 
+- name: Setup Keycloak Authentication Required Actions (MFA)
+  community.general.keycloak_authentication_required_actions:
+    # Keycloak settings
+    auth_keycloak_url: "{{ item.keycloak_server_url }}"
+    auth_realm: "{{ item.keycloak_user_realm_name }}"
+    auth_client_id: "{{ item.keycloak_admin_client_id }}"
+    auth_username: "{{ item.keycloak_admin_user }}"
+    auth_password: "{{ item.keycloak_admin_password }}"
+    validate_certs: "{{ cluster_issuer_type != 'self-signed' }}"
+    # Realm settings
+    realm: "{{ item.name }}"
+    required_actions:
+      - alias: "CONFIGURE_TOTP"
+        name: "Configure OTP"
+        providerId: "CONFIGURE_TOTP"
+        defaultAction: "{{ item.keycloak_totp_default_action | default(keystone_keycloak_realm_default_totp_default_action | default(omit)) }}"
+        enabled: true
+    state: present
+  loop: "{{ keystone_domains }}"
+  loop_control:
+    label: "{{ item.name }}"
+
 - name: Create ConfigMap with all OpenID connect configurations
   run_once: true
   kubernetes.core.k8s:
