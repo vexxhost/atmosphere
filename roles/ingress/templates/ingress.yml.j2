@@ -21,7 +21,9 @@ spec:
                 name: {{ ingress_service_name }}
                 port:
                   number: {{ ingress_service_port }}
+{% if not ingress_use_default_tls_certificate %}
   tls:
     - secretName: {{ ingress_secret_name | default(ingress_service_name ~ '-certs') }}
       hosts:
         - {{ ingress_host }}
+{% endif %}
