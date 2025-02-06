@@ -68,6 +68,12 @@ spec:
       annotations:
 {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
     spec:
+{{ with $envAll.Values.pod.priorityClassName.db_sync }}
+      priorityClassName: {{ . }}
+{{ end }}
+{{ with $envAll.Values.pod.runtimeClassName.db_sync }}
+      runtimeClassName: {{ . }}
+{{ end }}
       serviceAccountName: {{ $serviceAccountName }}
       restartPolicy: OnFailure
       {{ tuple $envAll "db_sync" | include "helm-toolkit.snippets.kubernetes_image_pull_secrets" | indent 6 }}
