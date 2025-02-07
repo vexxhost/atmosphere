@@ -19,3 +19,4 @@ information to ensure stable and efficient operation of the system.
    maintenance
    monitoring
    troubleshooting
+   upgrading
