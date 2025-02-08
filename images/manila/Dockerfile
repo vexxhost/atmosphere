@@ -3,7 +3,7 @@
 # Atmosphere-Rebuild-Time: 2024-06-26T17:38:39Z
 
 FROM openstack-venv-builder AS build
-ARG MANILA_GIT_REF=f0c33dec536708c940f2010d11dd8c778c28d2e7
+ARG MANILA_GIT_REF=221dae96df038d572dbe99f71e75e7bc7d2cf55e
 ADD --keep-git-dir=true https://opendev.org/openstack/manila.git#${MANILA_GIT_REF} /src/manila
 RUN git -C /src/manila fetch --unshallow
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
