@@ -29,4 +29,6 @@ func TestHelmValues(t *testing.T) {
 	require.NoError(t, err)
 
 	testutils.TestDatabaseConf(t, vals.Conf.Keystone.Database)
+	testutils.TestAllPodsHaveRuntimeClass(t, vals)
+	testutils.TestAllPodsHavePriorityClass(t, vals)
 }
