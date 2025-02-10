@@ -7,7 +7,19 @@ import (
 )
 
 type HelmValues struct {
+	Pod  `yaml:"pod"`
 	Conf `yaml:"conf"`
+}
+
+type PodPriorityClassConfig map[string]string
+type PodRuntimeClassConfig map[string]string
+
+type PodMount map[string]interface{}
+
+type Pod struct {
+	PriorityClass PodPriorityClassConfig `yaml:"priorityClassName,omitempty"`
+	RuntimeClass  PodRuntimeClassConfig  `yaml:"runtimeClassName,omitempty"`
+	Mounts        map[string]PodMount    `yaml:"mounts,omitempty"`
 }
 
 type Conf struct {
@@ -16,9 +28,11 @@ type Conf struct {
 	Designate *DesignateConf `yaml:"designate,omitempty"`
 	Glance    *GlanceConf    `yaml:"glance,omitempty"`
 	Heat      *HeatConf      `yaml:"heat,omitempty"`
+	Ironic    *IronicConf    `yaml:"ironic,omitempty"`
 	Keystone  *KeystoneConf  `yaml:"keystone,omitempty"`
 	Magnum    *MagnumConf    `yaml:"magnum,omitempty"`
 	Manila    *ManilaConf    `yaml:"manila,omitempty"`
+	Memcached *MemcachedConf `yaml:"memcached,omitempty"`
 	Neutron   *NeutronConf   `yaml:"neutron,omitempty"`
 	Nova      *NovaConf      `yaml:"nova,omitempty"`
 	Octavia   *OctaviaConf   `yaml:"octavia,omitempty"`
