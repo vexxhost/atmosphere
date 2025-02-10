@@ -1,4 +1,4 @@
-package manila
+package horizon
 
 import (
 	_ "embed"
@@ -19,7 +19,7 @@ var (
 )
 
 type Vars struct {
-	openstack_helm.HelmValues `yaml:"_manila_helm_values"`
+	openstack_helm.HelmValues `yaml:"_horizon_helm_values"`
 }
 
 func TestMain(m *testing.M) {
@@ -32,10 +32,9 @@ func TestMain(m *testing.M) {
 }
 
 func TestHelmValues(t *testing.T) {
-	vals, err := openstack_helm.CoalescedHelmValues("../../charts/manila", &vars.HelmValues)
+	vals, err := openstack_helm.CoalescedHelmValues("../../charts/horizon", &vars.HelmValues)
 	require.NoError(t, err)
 
-	testutils.TestDatabaseConf(t, vals.Conf.Manila.Database)
 	testutils.TestAllPodsHaveRuntimeClass(t, vals)
 	testutils.TestAllPodsHavePriorityClass(t, vals)
 }
