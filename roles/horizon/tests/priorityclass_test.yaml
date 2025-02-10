@@ -1,0 +1,48 @@
+suite: priorityclass
+tests:
+  - it: should support not having a priority class
+    templates:
+      - templates/deployment.yaml
+      - templates/pod-helm-tests.yaml
+      - templates/job-db-sync.yaml
+    asserts:
+      - template: templates/deployment.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.priorityClassName
+      - template: templates/pod-helm-tests.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.priorityClassName
+      - template: templates/job-db-sync.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.priorityClassName
+
+  - it: should support setting a priority class
+    templates:
+      - templates/deployment.yaml
+      - templates/pod-helm-tests.yaml
+      - templates/job-db-sync.yaml
+    set:
+      pod:
+        priorityClassName:
+          horizon: platform
+          horizon_tests: platform
+          db_sync: platform
+    asserts:
+      - template: templates/deployment.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/pod-helm-tests.yaml
+        documentIndex: 3
+        equal:
+          path: spec.priorityClassName
+          value: platform
+      - template: templates/job-db-sync.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform

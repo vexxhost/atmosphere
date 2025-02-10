@@ -48,6 +48,12 @@ spec:
 {{- end }}
 {{ dict "envAll" $envAll "podName" "horizon" "containerNames" (list "horizon" "init" ) | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
     spec:
+{{ with .Values.pod.priorityClassName.horizon }}
+      priorityClassName: {{ . }}
+{{ end }}
+{{ with .Values.pod.runtimeClassName.horizon }}
+      runtimeClassName: {{ . }}
+{{ end }}
       serviceAccountName: {{ $serviceAccountName }}
 {{ dict "envAll" $envAll "application" "horizon" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
       affinity:
