@@ -22,7 +22,16 @@ _keystone_helm_values:
     mounts:
       keystone_api:
         keystone_api:
-          volumeMounts: "{{ keystone_domains | vexxhost.atmosphere.keystone_domains_to_mounts + [{'name': 'ca-certificates', 'mountPath': '/etc/ssl/certs/ca-certificates.crt', 'readOnly': true}] }}"
+          volumeMounts: "{{ lookup('vexxhost.atmosphere.idp_oauth_keys', keystone_domains, validate_certs=keystone_oidc_ssl_validate_server)
+              | vexxhost.atmosphere.keystone_domains_idp_cert_to_mounts + keystone_domains
+              | vexxhost.atmosphere.keystone_domains_to_mounts + [
+                      {
+                        'name': 'ca-certificates',
+                        'mountPath': '/etc/ssl/certs/ca-certificates.crt',
+                        'readOnly': true
+                      }
+                    ]
+              }}"
           volumes:
             - name: keystone-openid-metadata
               configMap:
@@ -73,6 +82,7 @@ _keystone_helm_values:
         OIDCMetadataDir /var/lib/apache2/oidc
         OIDCSSLValidateServer "{{ keystone_oidc_ssl_validate_server }}"
         OIDCCryptoPassphrase {{ keystone_oidc_crypto_passphrase }}
+        OIDCOAuthVerifyCertFiles "{{ keystone_oauth2_kid_cert_list }}"
         OIDCRedirectURI {{ keystone_oidc_redirect_uri }}
         OIDCRedirectURLsAllowed {{ keystone_oidc_redirect_urls_allowed | join(' ') }}
         # NOTE(mnaser): These are Atmosphere specific settings.
@@ -89,7 +99,7 @@ _keystone_helm_values:
         {% for domain in keystone_domains %}
         <Location /v3/OS-FEDERATION/identity_providers/{{ domain.name }}/protocols/openid/auth>
           Require valid-user
-          AuthType oauth20
+          AuthType auth-openidc
         </Location>
         <Location /v3/auth/OS-FEDERATION/identity_providers/{{ domain.name }}/protocols/openid/websso>
           Require valid-user
