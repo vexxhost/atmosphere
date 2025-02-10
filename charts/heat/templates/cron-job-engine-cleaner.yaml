@@ -52,6 +52,12 @@ spec:
             configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
 {{ dict "envAll" $envAll "podName" "heat-engine-cleaner" "containerNames" (list "heat-engine-cleaner" "init" ) | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
         spec:
+{{ with .Values.pod.priorityClassName.heat_engine_cleaner }}
+          priorityClassName: {{ . }}
+{{ end }}
+{{ with .Values.pod.runtimeClassName.heat_engine_cleaner }}
+          runtimeClassName: {{ . }}
+{{ end }}
           serviceAccountName: {{ $serviceAccountName }}
 {{ dict "envAll" $envAll "application" "engine_cleaner" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 10 }}
           restartPolicy: OnFailure

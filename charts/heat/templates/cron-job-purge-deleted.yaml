@@ -47,6 +47,12 @@ spec:
 {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 12 }}
 {{ dict "envAll" $envAll "podName" "heat-purge-deleted" "containerNames" (list "init" "heat-purge-deleted" ) | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
         spec:
+{{ with .Values.pod.priorityClassName.heat_purge_deleted }}
+          priorityClassName: {{ . }}
+{{ end }}
+{{ with .Values.pod.runtimeClassName.heat_purge_deleted }}
+          runtimeClassName: {{ . }}
+{{ end }}
           serviceAccountName: {{ $serviceAccountName }}
           restartPolicy: OnFailure
 {{ if $envAll.Values.pod.tolerations.heat.enabled }}
