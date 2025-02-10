@@ -21,7 +21,7 @@ apt-get install -qq -y --no-install-recommends \
 apt-get clean
 rm -rf /var/lib/apt/lists/*
 EOF
-ARG MOD_AUTH_OPENIDC_VERSION=2.4.12.1
+ARG MOD_AUTH_OPENIDC_VERSION=2.4.14.4
 ARG TARGETARCH
 RUN <<EOF bash -xe
 # TODO(mnaser): mod_auth_openidc does not have aarch64 builds
