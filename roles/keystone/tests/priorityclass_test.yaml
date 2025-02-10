@@ -1,0 +1,72 @@
+suite: priorityclass
+tests:
+  - it: should support not having a priority class
+    templates:
+      - templates/deployment-api.yaml
+      - templates/cron-job-credential-rotate.yaml
+      - templates/cron-job-fernet-rotate.yaml
+      - templates/pod-rally-test.yaml
+      - templates/job-db-sync.yaml
+    asserts:
+      - template: templates/deployment-api.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.priorityClassName
+      - template: templates/cron-job-credential-rotate.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.jobTemplate.spec.template.spec.priorityClassName
+      - template: templates/cron-job-fernet-rotate.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.jobTemplate.spec.template.spec.priorityClassName
+      - template: templates/pod-rally-test.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.priorityClassName
+      - template: templates/job-db-sync.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.priorityClassName
+
+  - it: should support setting a priority class
+    templates:
+      - templates/deployment-api.yaml
+      - templates/cron-job-credential-rotate.yaml
+      - templates/cron-job-fernet-rotate.yaml
+      - templates/pod-rally-test.yaml
+      - templates/job-db-sync.yaml
+    set:
+      pod:
+        priorityClassName:
+          keystone_api: platform
+          keystone_tests: platform
+          keystone_credential_rotate: platform
+          keystone_fernet_rotate: platform
+          db_sync: platform
+    asserts:
+      - template: templates/deployment-api.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/cron-job-credential-rotate.yaml
+        documentIndex: 5
+        equal:
+          path: spec.jobTemplate.spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/cron-job-fernet-rotate.yaml
+        documentIndex: 5
+        equal:
+          path: spec.jobTemplate.spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/pod-rally-test.yaml
+        documentIndex: 3
+        equal:
+          path: spec.priorityClassName
+          value: platform
+      - template: templates/job-db-sync.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
