@@ -45,6 +45,12 @@ spec:
         configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
 {{ tuple "ironic_api" . | include "helm-toolkit.snippets.custom_pod_annotations" | indent 8 }}
     spec:
+{{ with .Values.pod.priorityClassName.ironic_api }}
+      priorityClassName: {{ . }}
+{{ end }}
+{{ with .Values.pod.runtimeClassName.ironic_api }}
+      runtimeClassName: {{ . }}
+{{ end }}
       serviceAccountName: {{ $serviceAccountName }}
       affinity:
 {{ tuple $envAll "ironic" "api" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
