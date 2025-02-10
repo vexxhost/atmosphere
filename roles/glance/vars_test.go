@@ -36,4 +36,6 @@ func TestHelmValues(t *testing.T) {
 	require.NoError(t, err)
 
 	testutils.TestDatabaseConf(t, vals.Conf.Glance.Database)
+	testutils.TestAllPodsHaveRuntimeClass(t, vals)
+	testutils.TestAllPodsHavePriorityClass(t, vals)
 }
