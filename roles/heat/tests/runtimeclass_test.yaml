@@ -1,0 +1,99 @@
+suite: runtimeclass
+tests:
+  - it: should support not having a runtime class
+    templates:
+      - templates/deployment-api.yaml
+      - templates/deployment-cfn.yaml
+      - templates/deployment-cloudwatch.yaml
+      - templates/cron-job-engine-cleaner.yaml
+      - templates/cron-job-purge-deleted.yaml
+      - templates/deployment-engine.yaml
+      - templates/pod-rally-test.yaml
+      - templates/job-db-sync.yaml
+    asserts:
+      - template: templates/deployment-api.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.runtimeClassName
+      - template: templates/deployment-cfn.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.runtimeClassName
+      - template: templates/cron-job-engine-cleaner.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.jobTemplate.spec.template.spec.runtimeClassName
+      - template: templates/cron-job-purge-deleted.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.jobTemplate.spec.template.spec.runtimeClassName
+      - template: templates/deployment-engine.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.runtimeClassName
+      - template: templates/pod-rally-test.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.runtimeClassName
+      - template: templates/job-db-sync.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.runtimeClassName
+
+  - it: should support setting a runtime class
+    templates:
+      - templates/deployment-api.yaml
+      - templates/deployment-cfn.yaml
+      - templates/deployment-cloudwatch.yaml
+      - templates/cron-job-engine-cleaner.yaml
+      - templates/cron-job-purge-deleted.yaml
+      - templates/deployment-engine.yaml
+      - templates/pod-rally-test.yaml
+      - templates/job-db-sync.yaml
+    set:
+      pod:
+        runtimeClassName:
+          heat_api: kata-clh
+          heat_cfn: kata-clh
+          heat_cloudwatch: kata-clh
+          heat_tests: kata-clh
+          heat_engine_cleaner: kata-clh
+          heat_purge_deleted: kata-clh
+          heat_engine: kata-clh
+          db_sync: kata-clh
+    asserts:
+      - template: templates/deployment-api.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.runtimeClassName
+          value: kata-clh
+      - template: templates/deployment-cfn.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.runtimeClassName
+          value: kata-clh
+      - template: templates/cron-job-engine-cleaner.yaml
+        documentIndex: 3
+        equal:
+          path: spec.jobTemplate.spec.template.spec.runtimeClassName
+          value: kata-clh
+      - template: templates/cron-job-purge-deleted.yaml
+        documentIndex: 3
+        equal:
+          path: spec.jobTemplate.spec.template.spec.runtimeClassName
+          value: kata-clh
+      - template: templates/deployment-engine.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.runtimeClassName
+          value: kata-clh
+      - template: templates/pod-rally-test.yaml
+        documentIndex: 3
+        equal:
+          path: spec.runtimeClassName
+          value: kata-clh
+      - template: templates/job-db-sync.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.runtimeClassName
+          value: kata-clh
