@@ -59,6 +59,18 @@ def keystone_domains_to_mounts(domains):
     ]
 
 
+def keystone_domains_idp_cert_to_mounts(domains):
+    return [
+        {
+            "name": "keystone-openid-metadata",
+            "mountPath": "/var/lib/apache2/oauth_certs/%s.pem"
+            % (domains[d]["idp_oauth_kid"]),
+            "subPath": "%s-oauth-cert" % (d),
+        }
+        for d in domains
+    ]
+
+
 def keystone_domains_to_idp_mappings(domains):
     return [
         {"label": d["label"], "name": d["name"], "idp": d["name"], "protocol": "openid"}
@@ -71,6 +83,7 @@ class FilterModule(object):
         return {
             "issuer_from_domain": issuer_from_domain,
             "keystone_domains_to_mounts": keystone_domains_to_mounts,
+            "keystone_domains_idp_cert_to_mounts": keystone_domains_idp_cert_to_mounts,
             "keystone_domains_to_idp_mappings": keystone_domains_to_idp_mappings,
             "to_ks_domains": to_ks_domains,
             "urlencoded_issuer_from_domain": urlencoded_issuer_from_domain,
