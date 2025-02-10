@@ -10,4 +10,9 @@ data:
   {{ domain.name }}-oidc-client: '{"client_id":"{{ domain.keycloak_client_id }}","client_secret":"{{ domain.keycloak_client_secret }}","response_type":"id_token"}'
   {{ domain.name }}-oidc-conf: '{"scope":"{{ domain.keycloak_scopes }}"}'
   {{ domain.name }}-oidc-provider: '{{ lookup('url', domain.keycloak_server_url ~ "/realms/" ~ domain.keycloak_realm ~ "/.well-known/openid-configuration", validate_certs=keystone_oidc_ssl_validate_server) }}'
+  {{ domain.name }}-oauth-key-id: "{{ lookup('vexxhost.atmosphere.idp_oauth_keys', keystone_domains, validate_certs=keystone_oidc_ssl_validate_server)[domain.name]['idp_oauth_kid'] }}"
+  {{ domain.name }}-oauth-cert: |
+    -----BEGIN CERTIFICATE-----
+  {{ lookup('vexxhost.atmosphere.idp_oauth_keys', keystone_domains, validate_certs=keystone_oidc_ssl_validate_server)[domain.name]['idp_oauth_kid_cert'] | indent(4, true)}}
+    -----END CERTIFICATE-----
 {% endfor %}
