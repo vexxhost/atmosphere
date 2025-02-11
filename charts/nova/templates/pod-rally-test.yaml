@@ -44,6 +44,12 @@ spec:
 {{ tuple $envAll "nova" | include "helm-toolkit.snippets.kubernetes_tolerations" | indent 2 }}
 {{ end }}
   restartPolicy: Never
+{{ with .Values.pod.priorityClassName.nova_tests }}
+  priorityClassName: {{ . }}
+{{ end }}
+{{ with .Values.pod.runtimeClassName.nova_tests }}
+  runtimeClassName: {{ . }}
+{{ end }}
   serviceAccountName: {{ $serviceAccountName }}
   initContainers:
 {{ tuple $envAll "tests" $mounts_tests_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 4 }}
