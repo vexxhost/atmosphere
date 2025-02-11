@@ -72,7 +72,8 @@ func TestPerconaXtraDBClusterPXCSpec(t *testing.T) {
 
 func parsePXCConfiguration(t *testing.T, cfg string) *ini.File {
 	parsed, err := ini.LoadSources(ini.LoadOptions{
-		AllowBooleanKeys: true,
+		AllowBooleanKeys:          true,
+		UnescapeValueDoubleQuotes: true,
 	}, []byte(cfg))
 	require.NoError(t, err)
 
@@ -83,10 +84,24 @@ func TestPerconaXtraDBClusterPXCConfiguration(t *testing.T) {
 	cfg := parsePXCConfiguration(t, vars.PerconaXtraDBClusterSpec.PXC.Configuration)
 
 	section := cfg.Section("mysqld")
-	assert.Equal(t, 8192, section.Key("max_connections").MustInt())
-	assert.Equal(t, "4096M", section.Key("innodb_buffer_pool_size").String())
+	assert.Len(t, section.Keys(), 16)
+
+	assert.Equal(t, "{{ percona_xtradb_cluster_innodb_buffer_pool_size }}", section.Key("innodb_buffer_pool_size").String())
+	assert.Equal(t, "128M", section.Key("innodb_log_buffer_size").String())
+	assert.Equal(t, "1G", section.Key("innodb_log_file_size").String())
+	assert.Equal(t, 8, section.Key("innodb_read_io_threads").MustInt())
+	assert.Equal(t, 8, section.Key("innodb_write_io_threads").MustInt())
 	assert.Equal(t, "16M", section.Key("max_allowed_packet").String())
-	assert.Equal(t, true, section.Key("skip-name-resolve").MustBool())
+	assert.Equal(t, 10000, section.Key("max_connect_errors").MustInt())
+	assert.Equal(t, 8192, section.Key("max_connections").MustInt())
+	assert.Equal(t, "64M", section.Key("max_heap_table_size").String())
+	assert.Equal(t, "derived_merge=off", section.Key("optimizer_switch").String())
+	assert.Equal(t, "MASTER", section.Key("pxc_strict_mode").String())
+	assert.Equal(t, "ON", section.Key("skip_name_resolve").String())
+	assert.Equal(t, "64M", section.Key("tmp_table_size").String())
+	assert.Equal(t, "evs.suspect_timeout=PT30S; gcache.size=2G; gcomm.thread_prio=rr:2; gcs.fc_factor=0.8; gcs.fc_limit=160; gmcast.peer_timeout=PT15S", section.Key("wsrep_provider_options").String())
+	assert.Equal(t, 3, section.Key("wsrep_retry_autocommit").MustInt())
+	assert.Equal(t, 16, section.Key("wsrep_slave_threads").MustInt())
 }
 
 func TestPerconaXtraDBClusterPXCSidecarSpec(t *testing.T) {

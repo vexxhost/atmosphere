@@ -7,12 +7,25 @@ _percona_xtradb_cluster_spec:
     autoRecovery: true
     configuration: |
       [mysqld]
-      max_connections=8192
-      innodb_buffer_pool_size=4096M
+      innodb_buffer_pool_size={{ percona_xtradb_cluster_innodb_buffer_pool_size }}
+      innodb_log_buffer_size=128M
+      innodb_log_file_size=1G
+      innodb_read_io_threads=8
+      innodb_write_io_threads=8
       max_allowed_packet=16M
-      # Skip reverse DNS lookup of clients
-      skip-name-resolve
+      max_connect_errors=10000
+      max_connections=8192
+      max_heap_table_size=64M
+      optimizer_switch=derived_merge=off
       pxc_strict_mode=MASTER
+      skip_name_resolve=ON
+      tmp_table_size=64M
+      wsrep_provider_options="evs.suspect_timeout=PT30S; gcache.size=2G; gcs.fc_factor=0.8; gcs.fc_limit=160; gmcast.peer_timeout=PT15S"
+      wsrep_retry_autocommit=3
+      wsrep_slave_threads=16
+    containerSecurityContext:
+      capabilities:
+        add: [SYS_NICE]
     sidecars:
       - name: exporter
         image: "{{ atmosphere_images['prometheus_mysqld_exporter'] | vexxhost.kubernetes.docker_image('ref') }}"
