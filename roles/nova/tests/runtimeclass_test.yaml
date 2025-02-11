@@ -1,0 +1,170 @@
+suite: runtimeclass
+tests:
+  - it: should support not having a runtime class
+    templates:
+      - templates/daemonset-compute.yaml
+      - templates/deployment-api-metadata.yaml
+      - templates/deployment-api-osapi.yaml
+      - templates/deployment-conductor.yaml
+      - templates/deployment-novncproxy.yaml
+      - templates/deployment-scheduler.yaml
+      - templates/deployment-spiceproxy.yaml
+      - templates/cron-job-archive-deleted-rows.yaml
+      - templates/cron-job-cell-setup.yaml
+      - templates/cron-job-service-cleaner.yaml
+      - templates/statefulset-compute-ironic.yaml
+      - templates/pod-rally-test.yaml
+      - templates/job-db-sync.yaml
+    set:
+      console:
+        console_kind: spice
+      manifests:
+        cron_job_archive_deleted_rows: true
+        statefulset_compute_ironic: true
+    asserts:
+      - template: templates/daemonset-compute.yaml
+        documentIndex: 4
+        notExists:
+          path: spec.template.spec.runtimeClassName
+      - template: templates/deployment-api-metadata.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.runtimeClassName
+      - template: templates/deployment-api-osapi.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.runtimeClassName
+      - template: templates/deployment-conductor.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.runtimeClassName
+      - template: templates/deployment-scheduler.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.runtimeClassName
+      - template: templates/deployment-spiceproxy.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.runtimeClassName
+      - template: templates/statefulset-compute-ironic.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.runtimeClassName
+      - template: templates/cron-job-archive-deleted-rows.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.jobTemplate.spec.template.spec.runtimeClassName
+      - template: templates/cron-job-cell-setup.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.jobTemplate.spec.template.spec.runtimeClassName
+      - template: templates/cron-job-service-cleaner.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.jobTemplate.spec.template.spec.runtimeClassName
+      - template: templates/pod-rally-test.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.runtimeClassName
+      - template: templates/job-db-sync.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.runtimeClassName
+
+  - it: should support setting a runtime class
+    templates:
+      - templates/daemonset-compute.yaml
+      - templates/deployment-api-metadata.yaml
+      - templates/deployment-api-osapi.yaml
+      - templates/deployment-conductor.yaml
+      - templates/deployment-novncproxy.yaml
+      - templates/deployment-scheduler.yaml
+      - templates/deployment-spiceproxy.yaml
+      - templates/cron-job-archive-deleted-rows.yaml
+      - templates/cron-job-cell-setup.yaml
+      - templates/cron-job-service-cleaner.yaml
+      - templates/statefulset-compute-ironic.yaml
+      - templates/pod-rally-test.yaml
+      - templates/job-db-sync.yaml
+    set:
+      console:
+        console_kind: spice
+      manifests:
+        cron_job_archive_deleted_rows: true
+        statefulset_compute_ironic: true
+      pod:
+        runtimeClassName:
+          nova_compute: kata-clh
+          nova_api_metadata: kata-clh
+          nova_api_osapi: kata-clh
+          nova_conductor: kata-clh
+          nova_novncproxy: kata-clh
+          nova_scheduler: kata-clh
+          nova_spiceproxy: kata-clh
+          nova_archive_deleted_rows: kata-clh
+          nova_cell_setup: kata-clh
+          nova_service_cleaner: kata-clh
+          nova_compute_ironic: kata-clh
+          nova_tests: kata-clh
+          db_sync: kata-clh
+    asserts:
+      - template: templates/daemonset-compute.yaml
+        documentIndex: 4
+        equal:
+          path: spec.template.spec.runtimeClassName
+          value: kata-clh
+      - template: templates/deployment-api-metadata.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.runtimeClassName
+          value: kata-clh
+      - template: templates/deployment-api-osapi.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.runtimeClassName
+          value: kata-clh
+      - template: templates/deployment-conductor.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.runtimeClassName
+          value: kata-clh
+      - template: templates/deployment-scheduler.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.runtimeClassName
+          value: kata-clh
+      - template: templates/deployment-spiceproxy.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.runtimeClassName
+          value: kata-clh
+      - template: templates/cron-job-archive-deleted-rows.yaml
+        documentIndex: 3
+        equal:
+          path: spec.jobTemplate.spec.template.spec.runtimeClassName
+          value: kata-clh
+      - template: templates/cron-job-cell-setup.yaml
+        documentIndex: 3
+        equal:
+          path: spec.jobTemplate.spec.template.spec.runtimeClassName
+          value: kata-clh
+      - template: templates/cron-job-service-cleaner.yaml
+        documentIndex: 3
+        equal:
+          path: spec.jobTemplate.spec.template.spec.runtimeClassName
+          value: kata-clh
+      - template: templates/statefulset-compute-ironic.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.runtimeClassName
+          value: kata-clh
+      - template: templates/pod-rally-test.yaml
+        documentIndex: 3
+        equal:
+          path: spec.runtimeClassName
+          value: kata-clh
+      - template: templates/job-db-sync.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.runtimeClassName
+          value: kata-clh

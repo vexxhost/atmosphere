@@ -55,6 +55,12 @@ spec:
         configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
 {{ tuple "nova_spiceproxy" . | include "helm-toolkit.snippets.custom_pod_annotations" | indent 8 }}
     spec:
+{{ with .Values.pod.priorityClassName.nova_spiceproxy }}
+      priorityClassName: {{ . }}
+{{ end }}
+{{ with .Values.pod.runtimeClassName.nova_spiceproxy }}
+      runtimeClassName: {{ . }}
+{{ end }}
       serviceAccountName: {{ $serviceAccountName }}
 {{ dict "envAll" $envAll "application" "nova" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
       affinity:

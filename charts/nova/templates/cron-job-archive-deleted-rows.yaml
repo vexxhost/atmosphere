@@ -42,6 +42,12 @@ spec:
           labels:
 {{ tuple $envAll "nova" "archive-deleted-rows" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 12 }}
         spec:
+{{ with .Values.pod.priorityClassName.nova_archive_deleted_rows }}
+          priorityClassName: {{ . }}
+{{ end }}
+{{ with .Values.pod.runtimeClassName.nova_archive_deleted_rows }}
+          runtimeClassName: {{ . }}
+{{ end }}
           serviceAccountName: {{ $serviceAccountName }}
 {{ dict "envAll" $envAll "application" "archive_deleted_rows" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 10 }}
           restartPolicy: OnFailure

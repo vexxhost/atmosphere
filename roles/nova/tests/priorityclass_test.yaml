@@ -1,0 +1,166 @@
+suite: priorityclass
+tests:
+  - it: should support not having a priority class
+    templates:
+      - templates/daemonset-compute.yaml
+      - templates/deployment-api-metadata.yaml
+      - templates/deployment-api-osapi.yaml
+      - templates/deployment-conductor.yaml
+      - templates/deployment-novncproxy.yaml
+      - templates/deployment-scheduler.yaml
+      - templates/deployment-spiceproxy.yaml
+      - templates/cron-job-archive-deleted-rows.yaml
+      - templates/cron-job-cell-setup.yaml
+      - templates/cron-job-service-cleaner.yaml
+      - templates/statefulset-compute-ironic.yaml
+      - templates/pod-rally-test.yaml
+      - templates/job-db-sync.yaml
+    set:
+      manifests:
+        cron_job_archive_deleted_rows: true
+        statefulset_compute_ironic: true
+    asserts:
+      - template: templates/daemonset-compute.yaml
+        documentIndex: 4
+        notExists:
+          path: spec.template.spec.priorityClassName
+      - template: templates/deployment-api-metadata.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.priorityClassName
+      - template: templates/deployment-api-osapi.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.priorityClassName
+      - template: templates/deployment-conductor.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.priorityClassName
+      - template: templates/deployment-novncproxy.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.priorityClassName
+      - template: templates/deployment-scheduler.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.priorityClassName
+      - template: templates/statefulset-compute-ironic.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.priorityClassName
+      - template: templates/cron-job-archive-deleted-rows.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.jobTemplate.spec.template.spec.priorityClassName
+      - template: templates/cron-job-cell-setup.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.jobTemplate.spec.template.spec.priorityClassName
+      - template: templates/cron-job-service-cleaner.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.jobTemplate.spec.template.spec.priorityClassName
+      - template: templates/pod-rally-test.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.priorityClassName
+      - template: templates/job-db-sync.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.priorityClassName
+
+  - it: should support setting a priority class
+    templates:
+      - templates/daemonset-compute.yaml
+      - templates/deployment-api-metadata.yaml
+      - templates/deployment-api-osapi.yaml
+      - templates/deployment-conductor.yaml
+      - templates/deployment-novncproxy.yaml
+      - templates/deployment-scheduler.yaml
+      - templates/deployment-spiceproxy.yaml
+      - templates/cron-job-archive-deleted-rows.yaml
+      - templates/cron-job-cell-setup.yaml
+      - templates/cron-job-service-cleaner.yaml
+      - templates/statefulset-compute-ironic.yaml
+      - templates/pod-rally-test.yaml
+      - templates/job-db-sync.yaml
+    set:
+      manifests:
+        cron_job_archive_deleted_rows: true
+        statefulset_compute_ironic: true
+      pod:
+        priorityClassName:
+          nova_compute: platform
+          nova_api_metadata: platform
+          nova_api_osapi: platform
+          nova_conductor: platform
+          nova_novncproxy: platform
+          nova_scheduler: platform
+          nova_spiceproxy: platform
+          nova_archive_deleted_rows: platform
+          nova_cell_setup: platform
+          nova_service_cleaner: platform
+          nova_compute_ironic: platform
+          nova_tests: platform
+          db_sync: platform
+    asserts:
+      - template: templates/daemonset-compute.yaml
+        documentIndex: 4
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/deployment-api-metadata.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/deployment-api-osapi.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/deployment-conductor.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/deployment-novncproxy.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/deployment-scheduler.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/cron-job-archive-deleted-rows.yaml
+        documentIndex: 3
+        equal:
+          path: spec.jobTemplate.spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/cron-job-cell-setup.yaml
+        documentIndex: 3
+        equal:
+          path: spec.jobTemplate.spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/cron-job-service-cleaner.yaml
+        documentIndex: 3
+        equal:
+          path: spec.jobTemplate.spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/statefulset-compute-ironic.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/pod-rally-test.yaml
+        documentIndex: 3
+        equal:
+          path: spec.priorityClassName
+          value: platform
+      - template: templates/job-db-sync.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
