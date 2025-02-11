@@ -1,0 +1,241 @@
+suite: runtimeclass
+tests:
+  - it: should support not having a runtime class
+    templates:
+      - templates/daemonset-bagpipe-bgp.yaml
+      - templates/daemonset-bgp-dragent.yaml
+      - templates/daemonset-dhcp-agent.yaml
+      - templates/daemonset-l2gw-agent.yaml
+      - templates/daemonset-l3-agent.yaml
+      - templates/daemonset-lb-agent.yaml
+      - templates/daemonset-metadata-agent.yaml
+      - templates/daemonset-netns-cleanup-cron.yaml
+      - templates/daemonset-neutron-ovn-vpn-agent.yaml
+      - templates/daemonset-ovn-metadata-agent.yaml
+      - templates/daemonset-ovs-agent.yaml
+      - templates/daemonset-sriov-agent.yaml
+      - templates/deployment-ironic-agent.yaml
+      - templates/deployment-rpc_server.yaml
+      - templates/deployment-server.yaml
+      - templates/pod-rally-test.yaml
+      - templates/job-db-sync.yaml
+    set:
+      network:
+        backend:
+          - openvswitch
+          - sriov
+          - linuxbridge
+      manifests:
+        daemonset_l2gw_agent: true
+        daemonset_bagpipe_bgp: true
+        daemonset_bgp_dragent: true
+        daemonset_ovn_metadata_agent: true
+        daemonset_ovn_vpn_agent: true
+        deployment_ironic_agent: true
+    asserts:
+      - template: templates/daemonset-bagpipe-bgp.yaml
+        documentIndex: 2
+        notExists:
+          path: spec.template.spec.runtimeClassName
+      - template: templates/daemonset-bgp-dragent.yaml
+        documentIndex: 2
+        notExists:
+          path: spec.template.spec.runtimeClassName
+      - template: templates/daemonset-dhcp-agent.yaml
+        documentIndex: 4
+        notExists:
+          path: spec.template.spec.runtimeClassName
+      - template: templates/daemonset-l2gw-agent.yaml
+        documentIndex: 2
+        notExists:
+          path: spec.template.spec.runtimeClassName
+      - template: templates/daemonset-l3-agent.yaml
+        documentIndex: 4
+        notExists:
+          path: spec.template.spec.runtimeClassName
+      - template: templates/daemonset-lb-agent.yaml
+        documentIndex: 4
+        notExists:
+          path: spec.template.spec.runtimeClassName
+      - template: templates/daemonset-metadata-agent.yaml
+        documentIndex: 4
+        notExists:
+          path: spec.template.spec.runtimeClassName
+      - template: templates/daemonset-netns-cleanup-cron.yaml
+        documentIndex: 2
+        notExists:
+          path: spec.template.spec.runtimeClassName
+      - template: templates/daemonset-neutron-ovn-vpn-agent.yaml
+        documentIndex: 4
+        notExists:
+          path: spec.template.spec.runtimeClassName
+      - template: templates/daemonset-ovn-metadata-agent.yaml
+        documentIndex: 4
+        notExists:
+          path: spec.template.spec.runtimeClassName
+      - template: templates/daemonset-ovs-agent.yaml
+        documentIndex: 4
+        notExists:
+          path: spec.template.spec.runtimeClassName
+      - template: templates/daemonset-sriov-agent.yaml
+        documentIndex: 2
+        notExists:
+          path: spec.template.spec.runtimeClassName
+      - template: templates/deployment-ironic-agent.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.runtimeClassName
+      - template: templates/deployment-rpc_server.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.runtimeClassName
+      - template: templates/deployment-server.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.runtimeClassName
+      - template: templates/pod-rally-test.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.runtimeClassName
+      - template: templates/job-db-sync.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.runtimeClassName
+
+  - it: should support setting a runtime class
+    templates:
+      - templates/daemonset-bagpipe-bgp.yaml
+      - templates/daemonset-bgp-dragent.yaml
+      - templates/daemonset-dhcp-agent.yaml
+      - templates/daemonset-l2gw-agent.yaml
+      - templates/daemonset-l3-agent.yaml
+      - templates/daemonset-lb-agent.yaml
+      - templates/daemonset-metadata-agent.yaml
+      - templates/daemonset-netns-cleanup-cron.yaml
+      - templates/daemonset-neutron-ovn-vpn-agent.yaml
+      - templates/daemonset-ovn-metadata-agent.yaml
+      - templates/daemonset-ovs-agent.yaml
+      - templates/daemonset-sriov-agent.yaml
+      - templates/deployment-ironic-agent.yaml
+      - templates/deployment-rpc_server.yaml
+      - templates/deployment-server.yaml
+      - templates/pod-rally-test.yaml
+      - templates/job-db-sync.yaml
+    set:
+      network:
+        backend:
+          - openvswitch
+          - sriov
+          - linuxbridge
+      pod:
+        runtimeClassName:
+          neutron_bagpipe_bgp: kata-clh
+          neutron_bgp_dragent: kata-clh
+          neutron_dhcp_agent: kata-clh
+          neutron_l2gw_agent: kata-clh
+          neutron_l3_agent: kata-clh
+          neutron_lb_agent: kata-clh
+          neutron_metadata_agent: kata-clh
+          neutron_netns_cleanup_cron: kata-clh
+          neutron_ovn_vpn_agent: kata-clh
+          neutron_ovn_metadata_agent: kata-clh
+          neutron_ovs_agent: kata-clh
+          neutron_sriov_agent: kata-clh
+          neutron_ironic_agent: kata-clh
+          neutron_rpc_server: kata-clh
+          neutron_server: kata-clh
+          neutron_tests: kata-clh
+          db_sync: kata-clh
+      manifests:
+        daemonset_l2gw_agent: true
+        daemonset_bagpipe_bgp: true
+        daemonset_bgp_dragent: true
+        daemonset_ovn_metadata_agent: true
+        daemonset_ovn_vpn_agent: true
+        deployment_ironic_agent: true
+    asserts:
+      - template: templates/daemonset-bagpipe-bgp.yaml
+        documentIndex: 2
+        equal:
+          path: spec.template.spec.runtimeClassName
+          value: kata-clh
+      - template: templates/daemonset-bgp-dragent.yaml
+        documentIndex: 2
+        equal:
+          path: spec.template.spec.runtimeClassName
+          value: kata-clh
+      - template: templates/daemonset-dhcp-agent.yaml
+        documentIndex: 4
+        equal:
+          path: spec.template.spec.runtimeClassName
+          value: kata-clh
+      - template: templates/daemonset-l2gw-agent.yaml
+        documentIndex: 2
+        equal:
+          path: spec.template.spec.runtimeClassName
+          value: kata-clh
+      - template: templates/daemonset-l3-agent.yaml
+        documentIndex: 4
+        equal:
+          path: spec.template.spec.runtimeClassName
+          value: kata-clh
+      - template: templates/daemonset-lb-agent.yaml
+        documentIndex: 4
+        equal:
+          path: spec.template.spec.runtimeClassName
+          value: kata-clh
+      - template: templates/daemonset-metadata-agent.yaml
+        documentIndex: 4
+        equal:
+          path: spec.template.spec.runtimeClassName
+          value: kata-clh
+      - template: templates/daemonset-netns-cleanup-cron.yaml
+        documentIndex: 2
+        equal:
+          path: spec.template.spec.runtimeClassName
+          value: kata-clh
+      - template: templates/daemonset-neutron-ovn-vpn-agent.yaml
+        documentIndex: 4
+        equal:
+          path: spec.template.spec.runtimeClassName
+          value: kata-clh
+      - template: templates/daemonset-ovn-metadata-agent.yaml
+        documentIndex: 4
+        equal:
+          path: spec.template.spec.runtimeClassName
+          value: kata-clh
+      - template: templates/daemonset-ovs-agent.yaml
+        documentIndex: 4
+        equal:
+          path: spec.template.spec.runtimeClassName
+          value: kata-clh
+      - template: templates/daemonset-sriov-agent.yaml
+        documentIndex: 2
+        equal:
+          path: spec.template.spec.runtimeClassName
+          value: kata-clh
+      - template: templates/deployment-ironic-agent.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.runtimeClassName
+          value: kata-clh
+      - template: templates/deployment-rpc_server.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.runtimeClassName
+          value: kata-clh
+      - template: templates/deployment-server.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.runtimeClassName
+          value: kata-clh
+      - template: templates/pod-rally-test.yaml
+        documentIndex: 3
+        equal:
+          path: spec.runtimeClassName
+          value: kata-clh
+      - template: templates/job-db-sync.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.runtimeClassName
+          value: kata-clh
