@@ -46,6 +46,12 @@ spec:
 {{ dict "envAll" $envAll "podName" "manila-share" "containerNames" (list "init" "manila-share" "manila-share-init") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
     spec:
 {{ dict "envAll" $envAll "application" "manila" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+{{ with .Values.pod.priorityClassName.manila_share }}
+      priorityClassName: {{ . }}
+{{ end }}
+{{ with .Values.pod.runtimeClassName.manila_share }}
+      runtimeClassName: {{ . }}
+{{ end }}
       serviceAccountName: {{ $serviceAccountName }}
       affinity:
 {{ tuple $envAll "manila" "share" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
