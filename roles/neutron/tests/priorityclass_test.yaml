@@ -1,0 +1,241 @@
+suite: priorityclass
+tests:
+  - it: should support not having a priority class
+    templates:
+      - templates/daemonset-bagpipe-bgp.yaml
+      - templates/daemonset-bgp-dragent.yaml
+      - templates/daemonset-dhcp-agent.yaml
+      - templates/daemonset-l2gw-agent.yaml
+      - templates/daemonset-l3-agent.yaml
+      - templates/daemonset-lb-agent.yaml
+      - templates/daemonset-metadata-agent.yaml
+      - templates/daemonset-netns-cleanup-cron.yaml
+      - templates/daemonset-neutron-ovn-vpn-agent.yaml
+      - templates/daemonset-ovn-metadata-agent.yaml
+      - templates/daemonset-ovs-agent.yaml
+      - templates/daemonset-sriov-agent.yaml
+      - templates/deployment-ironic-agent.yaml
+      - templates/deployment-rpc_server.yaml
+      - templates/deployment-server.yaml
+      - templates/pod-rally-test.yaml
+      - templates/job-db-sync.yaml
+    set:
+      network:
+        backend:
+          - openvswitch
+          - sriov
+          - linuxbridge
+      manifests:
+        daemonset_l2gw_agent: true
+        daemonset_bagpipe_bgp: true
+        daemonset_bgp_dragent: true
+        daemonset_ovn_metadata_agent: true
+        daemonset_ovn_vpn_agent: true
+        deployment_ironic_agent: true
+    asserts:
+      - template: templates/daemonset-bagpipe-bgp.yaml
+        documentIndex: 2
+        notExists:
+          path: spec.template.spec.priorityClassName
+      - template: templates/daemonset-bgp-dragent.yaml
+        documentIndex: 2
+        notExists:
+          path: spec.template.spec.priorityClassName
+      - template: templates/daemonset-dhcp-agent.yaml
+        documentIndex: 4
+        notExists:
+          path: spec.template.spec.priorityClassName
+      - template: templates/daemonset-l2gw-agent.yaml
+        documentIndex: 2
+        notExists:
+          path: spec.template.spec.priorityClassName
+      - template: templates/daemonset-l3-agent.yaml
+        documentIndex: 4
+        notExists:
+          path: spec.template.spec.priorityClassName
+      - template: templates/daemonset-lb-agent.yaml
+        documentIndex: 4
+        notExists:
+          path: spec.template.spec.priorityClassName
+      - template: templates/daemonset-metadata-agent.yaml
+        documentIndex: 4
+        notExists:
+          path: spec.template.spec.priorityClassName
+      - template: templates/daemonset-netns-cleanup-cron.yaml
+        documentIndex: 2
+        notExists:
+          path: spec.template.spec.priorityClassName
+      - template: templates/daemonset-neutron-ovn-vpn-agent.yaml
+        documentIndex: 4
+        notExists:
+          path: spec.template.spec.priorityClassName
+      - template: templates/daemonset-ovn-metadata-agent.yaml
+        documentIndex: 4
+        notExists:
+          path: spec.template.spec.priorityClassName
+      - template: templates/daemonset-ovs-agent.yaml
+        documentIndex: 4
+        notExists:
+          path: spec.template.spec.priorityClassName
+      - template: templates/daemonset-sriov-agent.yaml
+        documentIndex: 2
+        notExists:
+          path: spec.template.spec.priorityClassName
+      - template: templates/deployment-ironic-agent.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.priorityClassName
+      - template: templates/deployment-rpc_server.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.priorityClassName
+      - template: templates/deployment-server.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.priorityClassName
+      - template: templates/pod-rally-test.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.priorityClassName
+      - template: templates/job-db-sync.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.priorityClassName
+
+  - it: should support setting a priority class
+    templates:
+      - templates/daemonset-bagpipe-bgp.yaml
+      - templates/daemonset-bgp-dragent.yaml
+      - templates/daemonset-dhcp-agent.yaml
+      - templates/daemonset-l2gw-agent.yaml
+      - templates/daemonset-l3-agent.yaml
+      - templates/daemonset-lb-agent.yaml
+      - templates/daemonset-metadata-agent.yaml
+      - templates/daemonset-netns-cleanup-cron.yaml
+      - templates/daemonset-neutron-ovn-vpn-agent.yaml
+      - templates/daemonset-ovn-metadata-agent.yaml
+      - templates/daemonset-ovs-agent.yaml
+      - templates/daemonset-sriov-agent.yaml
+      - templates/deployment-ironic-agent.yaml
+      - templates/deployment-rpc_server.yaml
+      - templates/deployment-server.yaml
+      - templates/pod-rally-test.yaml
+      - templates/job-db-sync.yaml
+    set:
+      network:
+        backend:
+          - openvswitch
+          - sriov
+          - linuxbridge
+      pod:
+        priorityClassName:
+          neutron_bagpipe_bgp: platform
+          neutron_bgp_dragent: platform
+          neutron_dhcp_agent: platform
+          neutron_l2gw_agent: platform
+          neutron_l3_agent: platform
+          neutron_lb_agent: platform
+          neutron_metadata_agent: platform
+          neutron_netns_cleanup_cron: platform
+          neutron_ovn_vpn_agent: platform
+          neutron_ovn_metadata_agent: platform
+          neutron_ovs_agent: platform
+          neutron_sriov_agent: platform
+          neutron_ironic_agent: platform
+          neutron_rpc_server: platform
+          neutron_server: platform
+          neutron_tests: platform
+          db_sync: platform
+      manifests:
+        daemonset_l2gw_agent: true
+        daemonset_bagpipe_bgp: true
+        daemonset_bgp_dragent: true
+        daemonset_ovn_metadata_agent: true
+        daemonset_ovn_vpn_agent: true
+        deployment_ironic_agent: true
+    asserts:
+      - template: templates/daemonset-bagpipe-bgp.yaml
+        documentIndex: 2
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/daemonset-bgp-dragent.yaml
+        documentIndex: 2
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/daemonset-dhcp-agent.yaml
+        documentIndex: 4
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/daemonset-l2gw-agent.yaml
+        documentIndex: 2
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/daemonset-l3-agent.yaml
+        documentIndex: 4
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/daemonset-lb-agent.yaml
+        documentIndex: 4
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/daemonset-metadata-agent.yaml
+        documentIndex: 4
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/daemonset-netns-cleanup-cron.yaml
+        documentIndex: 2
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/daemonset-neutron-ovn-vpn-agent.yaml
+        documentIndex: 4
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/daemonset-ovn-metadata-agent.yaml
+        documentIndex: 4
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/daemonset-ovs-agent.yaml
+        documentIndex: 4
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/daemonset-sriov-agent.yaml
+        documentIndex: 2
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/deployment-ironic-agent.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/deployment-rpc_server.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/deployment-server.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/pod-rally-test.yaml
+        documentIndex: 3
+        equal:
+          path: spec.priorityClassName
+          value: platform
+      - template: templates/job-db-sync.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
