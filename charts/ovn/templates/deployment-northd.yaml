@@ -49,6 +49,8 @@ spec:
         configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
     spec:
       serviceAccountName: {{ $serviceAccountName }}
+      affinity:
+{{- tuple $envAll "ovn" "ovn_northd" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
       nodeSelector:
         {{ .Values.labels.ovn_northd.node_selector_key }}: {{ .Values.labels.ovn_northd.node_selector_value }}
       initContainers:
