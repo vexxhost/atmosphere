@@ -1,0 +1,72 @@
+suite: priorityclass
+tests:
+  - it: should support not having a priority class
+    templates:
+      - templates/daemonset-health-manager.yaml
+      - templates/deployment-api.yaml
+      - templates/deployment-housekeeping.yaml
+      - templates/deployment-worker.yaml
+      - templates/job-db-sync.yaml
+    asserts:
+      - template: templates/daemonset-health-manager.yaml
+        documentIndex: 4
+        notExists:
+          path: spec.template.spec.priorityClassName
+      - template: templates/deployment-api.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.priorityClassName
+      - template: templates/deployment-housekeeping.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.priorityClassName
+      - template: templates/deployment-worker.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.priorityClassName
+      - template: templates/job-db-sync.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.priorityClassName
+
+  - it: should support setting a priority class
+    templates:
+      - templates/daemonset-health-manager.yaml
+      - templates/deployment-api.yaml
+      - templates/deployment-housekeeping.yaml
+      - templates/deployment-worker.yaml
+      - templates/job-db-sync.yaml
+    set:
+      pod:
+        priorityClassName:
+          octavia_health_manager: platform
+          octavia_api: platform
+          octavia_housekeeping: platform
+          octavia_worker: platform
+          db_sync: platform
+    asserts:
+      - template: templates/daemonset-health-manager.yaml
+        documentIndex: 4
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/deployment-api.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/deployment-housekeeping.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/deployment-worker.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/job-db-sync.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
