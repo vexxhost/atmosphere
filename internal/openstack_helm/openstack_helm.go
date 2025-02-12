@@ -20,7 +20,10 @@ type Pod struct {
 	PriorityClass PodPriorityClassConfig `yaml:"priorityClassName,omitempty"`
 	RuntimeClass  PodRuntimeClassConfig  `yaml:"runtimeClassName,omitempty"`
 	Mounts        map[string]PodMount    `yaml:"mounts,omitempty"`
+	AntiAffinityType PodAntiAffinityTypeConfig `yaml:"affinity.anti.type,omitempty"`
 }
+
+type PodAntiAffinityTypeConfig map[string]interface{}
 
 type Conf struct {
 	Barbican  *BarbicanConf  `yaml:"barbican,omitempty"`
