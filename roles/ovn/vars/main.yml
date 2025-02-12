@@ -43,6 +43,14 @@ _ovn_helm_values:
               initialDelaySeconds: 30
               timeoutSeconds: 30
               periodSeconds: 60
+    affinity:
+      anti:
+        type:
+          default: requiredDuringSchedulingIgnoredDuringExecution
+        topologyKey:
+          default: kubernetes.io/hostname
+        weight:
+          default: 10
     replicas:
       ovn_ovsdb_nb: 3
       ovn_ovsdb_sb: 3
