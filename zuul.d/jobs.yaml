@@ -6,6 +6,14 @@
       go_version: 1.21.13
 
 - job:
+    name: atmosphere-cargo-test
+    run:
+      - zuul.d/playbooks/cargo-test/run.yml
+    dependencies:
+      - name: atmosphere-build-images
+        soft: true
+
+- job:
     name: atmosphere-golang-go-test
     parent: atmosphere-golang-go
     vars:
