@@ -3,13 +3,13 @@
 # Atmosphere-Rebuild-Time: 2025-01-24T11:51:19Z
 
 FROM openstack-venv-builder AS build
-ARG NEUTRON_GIT_REF=019294c71d94b788c14b23dc1da3c21f51bcdb0b
+ARG NEUTRON_GIT_REF=9aac096007cc01c625bef5820a7ca893969ce832
 ADD --keep-git-dir=true https://opendev.org/openstack/neutron.git#${NEUTRON_GIT_REF} /src/neutron
 RUN git -C /src/neutron fetch --unshallow
-ARG NEUTRON_VPNAAS_GIT_REF=7bc6d94305d34269d7522a9850c22aa42b50cdab
+ARG NEUTRON_VPNAAS_GIT_REF=wallaby-eol
 ADD --keep-git-dir=true https://opendev.org/openstack/neutron-vpnaas.git#${NEUTRON_VPNAAS_GIT_REF} /src/neutron-vpnaas
 RUN git -C /src/neutron-vpnaas fetch --unshallow
-ARG NETWORKING_BAREMETAL_GIT_REF=8b92ad81c0bdbfde60a6f0c47ff0133c08bb617e
+ARG NETWORKING_BAREMETAL_GIT_REF=unmaintained/wallaby
 ADD --keep-git-dir=true https://opendev.org/openstack/networking-baremetal.git#${NETWORKING_BAREMETAL_GIT_REF} /src/networking-baremetal
 RUN git -C /src/networking-baremetal fetch --unshallow
 ARG POLICY_SERVER_GIT_REF=d87012b56741cb2ad44fa4dec9c5f24001ad60fe
