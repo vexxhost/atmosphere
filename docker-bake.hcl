@@ -3,7 +3,7 @@ variable "REGISTRY" {
 }
 
 variable "TAG" {
-    default = "main"
+    default = "train"
 }
 
 target "ubuntu" {
@@ -11,7 +11,7 @@ target "ubuntu" {
     platforms = ["linux/amd64", "linux/arm64"]
 
     contexts = {
-        "ubuntu" = "docker-image://docker.io/library/ubuntu:jammy-20240227"
+        "ubuntu" = "docker-image://docker.io/library/ubuntu:bionic"
     }
 }
 

@@ -3,6 +3,12 @@
 # Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
 
 FROM base
+RUN <<EOF bash -xe
+apt-get update -qq
+apt-get -o Dpkg::Options::="--force-confmiss" install --reinstall netbase
+apt-get clean
+rm -rf /var/lib/apt/lists/*
+EOF
 ONBUILD ARG PROJECT
 ONBUILD ARG SHELL=/usr/sbin/nologin
 ONBUILD RUN \
