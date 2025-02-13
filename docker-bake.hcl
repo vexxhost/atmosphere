@@ -128,6 +128,7 @@ target "nova-ssh" {
 
     args = {
         PROJECT = "nova"
+        SHELL = "/bin/bash"
     }
 
     tags = [
