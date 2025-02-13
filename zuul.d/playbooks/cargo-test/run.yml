@@ -1,0 +1,15 @@
+- hosts: all
+  gather_facts: false
+  roles:
+    - ensure-rust
+
+- hosts: all
+  gather_facts: false
+  tasks:
+    - name: Run "cargo test"
+      ansible.builtin.command: cargo test
+      args:
+        chdir: "{{ zuul.project.src_dir }}"
+      environment:
+        REGISTRY: "{{ (zuul.artifacts | default([]) | length > 0) | ternary('harbor.atmosphere.dev/ci', 'harbor.atmosphere.dev/library') }}"
+        TAG: "{{ (zuul.artifacts | default([]) | length > 0) | ternary(zuul.change, zuul.branch.replace('stable/', '')) }}"
