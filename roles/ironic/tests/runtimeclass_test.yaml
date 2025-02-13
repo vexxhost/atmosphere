@@ -3,13 +3,23 @@ tests:
   - it: should support not having a runtime class
     templates:
       - templates/deployment-api.yaml
+      - templates/statefulset-conductor.yaml
       - templates/job-db-sync.yaml
+      - templates/job-bootstrap.yaml
     asserts:
       - template: templates/deployment-api.yaml
         documentIndex: 3
         notExists:
           path: spec.template.spec.runtimeClassName
+      - template: templates/statefulset-conductor.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.runtimeClassName
       - template: templates/job-db-sync.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.runtimeClassName
+      - template: templates/job-bootstrap.yaml
         documentIndex: 3
         notExists:
           path: spec.template.spec.runtimeClassName
@@ -17,19 +27,33 @@ tests:
   - it: should support setting a runtime class
     templates:
       - templates/deployment-api.yaml
+      - templates/statefulset-conductor.yaml
       - templates/job-db-sync.yaml
+      - templates/job-bootstrap.yaml
     set:
       pod:
         runtimeClassName:
           ironic_api: kata-clh
+          ironic_conductor: kata-clh
           db_sync: kata-clh
+          bootstrap: kata-clh
     asserts:
       - template: templates/deployment-api.yaml
         documentIndex: 3
         equal:
           path: spec.template.spec.runtimeClassName
           value: kata-clh
+      - template: templates/statefulset-conductor.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.runtimeClassName
+          value: kata-clh
       - template: templates/job-db-sync.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.runtimeClassName
+          value: kata-clh
+      - template: templates/job-bootstrap.yaml
         documentIndex: 3
         equal:
           path: spec.template.spec.runtimeClassName
