@@ -10,6 +10,8 @@ tests:
       - templates/deployment-engine.yaml
       - templates/pod-rally-test.yaml
       - templates/job-db-sync.yaml
+      - templates/job-bootstrap.yaml
+      - templates/job-trusts.yaml
     asserts:
       - template: templates/deployment-api.yaml
         documentIndex: 3
@@ -36,6 +38,14 @@ tests:
         notExists:
           path: spec.runtimeClassName
       - template: templates/job-db-sync.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.runtimeClassName
+      - template: templates/job-bootstrap.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.runtimeClassName
+      - template: templates/job-trusts.yaml
         documentIndex: 3
         notExists:
           path: spec.template.spec.runtimeClassName
@@ -50,6 +60,8 @@ tests:
       - templates/deployment-engine.yaml
       - templates/pod-rally-test.yaml
       - templates/job-db-sync.yaml
+      - templates/job-bootstrap.yaml
+      - templates/job-trusts.yaml
     set:
       pod:
         runtimeClassName:
@@ -61,6 +73,8 @@ tests:
           heat_purge_deleted: kata-clh
           heat_engine: kata-clh
           db_sync: kata-clh
+          bootstrap: kata-clh
+          heat_trusts: kata-clh
     asserts:
       - template: templates/deployment-api.yaml
         documentIndex: 3
@@ -93,6 +107,16 @@ tests:
           path: spec.runtimeClassName
           value: kata-clh
       - template: templates/job-db-sync.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.runtimeClassName
+          value: kata-clh
+      - template: templates/job-bootstrap.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.runtimeClassName
+          value: kata-clh
+      - template: templates/job-trusts.yaml
         documentIndex: 3
         equal:
           path: spec.template.spec.runtimeClassName

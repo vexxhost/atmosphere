@@ -1,0 +1,41 @@
+From 1df9feeb330507bc2f988951e2b4813408621cb3 Mon Sep 17 00:00:00 2001
+From: Dong Ma <dong.ma@vexxhost.com>
+Date: Thu, 13 Feb 2025 16:15:52 +0000
+Subject: [PATCH] Fix the missing {priority,runtime}ClassName
+
+diff --git a/staffeln/charts/helm-toolkit/templates/manifests/_job-bootstrap.tpl b/staffeln/charts/helm-toolkit/templates/manifests/_job-bootstrap.tpl
+index 5d98c8b7..478721d5 100644
+--- a/staffeln/charts/helm-toolkit/templates/manifests/_job-bootstrap.tpl
++++ b/staffeln/charts/helm-toolkit/templates/manifests/_job-bootstrap.tpl
+@@ -69,6 +69,12 @@ spec:
+       annotations:
+ {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
+     spec:
++{{- if and $envAll.Values.pod.priorityClassName $envAll.Values.pod.priorityClassName.bootstrap }}
++      priorityClassName: {{ $envAll.Values.pod.priorityClassName.bootstrap }}
++{{- end }}
++{{- if and $envAll.Values.pod.runtimeClassName $envAll.Values.pod.runtimeClassName.bootstrap }}
++      runtimeClassName: {{ $envAll.Values.pod.runtimeClassName.bootstrap }}
++{{- end }}
+       serviceAccountName: {{ $serviceAccountName }}
+       restartPolicy: OnFailure
+       {{ tuple $envAll "bootstrap" | include "helm-toolkit.snippets.kubernetes_image_pull_secrets" | indent 6 }}
+diff --git a/staffeln/values.yaml b/staffeln/values.yaml
+index a1a3e292..e6e09c4b 100644
+--- a/staffeln/values.yaml
++++ b/staffeln/values.yaml
+@@ -57,10 +57,14 @@ pod:
+   priorityClassName:
+     staffeln_api: null
+     staffeln_conductor: null
++    staffeln_tests: null
++    bootstrap: null
+     db_sync: null
+   runtimeClassName:
+     staffeln_api: null
+     staffeln_conductor: null
++    staffeln_tests: null
++    bootstrap: null
+     db_sync: null
+   security_context:
+     staffeln:
