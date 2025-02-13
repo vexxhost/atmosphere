@@ -15,6 +15,7 @@ tests:
       - templates/statefulset-compute-ironic.yaml
       - templates/pod-rally-test.yaml
       - templates/job-db-sync.yaml
+      - templates/job-bootstrap.yaml
     set:
       console:
         console_kind: spice
@@ -70,6 +71,10 @@ tests:
         documentIndex: 3
         notExists:
           path: spec.template.spec.runtimeClassName
+      - template: templates/job-bootstrap.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.runtimeClassName
 
   - it: should support setting a runtime class
     templates:
@@ -86,6 +91,7 @@ tests:
       - templates/statefulset-compute-ironic.yaml
       - templates/pod-rally-test.yaml
       - templates/job-db-sync.yaml
+      - templates/job-bootstrap.yaml
     set:
       console:
         console_kind: spice
@@ -107,6 +113,7 @@ tests:
           nova_compute_ironic: kata-clh
           nova_tests: kata-clh
           db_sync: kata-clh
+          bootstrap: kata-clh
     asserts:
       - template: templates/daemonset-compute.yaml
         documentIndex: 4
@@ -164,6 +171,11 @@ tests:
           path: spec.runtimeClassName
           value: kata-clh
       - template: templates/job-db-sync.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.runtimeClassName
+          value: kata-clh
+      - template: templates/job-bootstrap.yaml
         documentIndex: 3
         equal:
           path: spec.template.spec.runtimeClassName

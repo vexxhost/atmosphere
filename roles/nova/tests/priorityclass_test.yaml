@@ -15,6 +15,7 @@ tests:
       - templates/statefulset-compute-ironic.yaml
       - templates/pod-rally-test.yaml
       - templates/job-db-sync.yaml
+      - templates/job-bootstrap.yaml
     set:
       manifests:
         cron_job_archive_deleted_rows: true
@@ -68,6 +69,10 @@ tests:
         documentIndex: 3
         notExists:
           path: spec.template.spec.priorityClassName
+      - template: templates/job-bootstrap.yaml
+        documentIndex: 5
+        notExists:
+          path: spec.template.spec.priorityClassName
 
   - it: should support setting a priority class
     templates:
@@ -84,6 +89,7 @@ tests:
       - templates/statefulset-compute-ironic.yaml
       - templates/pod-rally-test.yaml
       - templates/job-db-sync.yaml
+      - templates/job-bootstrap.yaml
     set:
       manifests:
         cron_job_archive_deleted_rows: true
@@ -103,6 +109,7 @@ tests:
           nova_compute_ironic: platform
           nova_tests: platform
           db_sync: platform
+          bootstrap: platform
     asserts:
       - template: templates/daemonset-compute.yaml
         documentIndex: 4
@@ -160,6 +167,11 @@ tests:
           path: spec.priorityClassName
           value: platform
       - template: templates/job-db-sync.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/job-bootstrap.yaml
         documentIndex: 3
         equal:
           path: spec.template.spec.priorityClassName

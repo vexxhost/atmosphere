@@ -5,8 +5,14 @@ tests:
       - templates/deployment-api.yaml
       - templates/cron-job-credential-rotate.yaml
       - templates/cron-job-fernet-rotate.yaml
+      - templates/job-credential-cleanup.yaml
+      - templates/job-credential-setup.yaml
+      - templates/job-domain-manage.yaml
+      - templates/job-fernet-setup.yaml
       - templates/pod-rally-test.yaml
       - templates/job-db-sync.yaml
+      - templates/job-db-init.yaml
+      - templates/job-bootstrap.yaml
     asserts:
       - template: templates/deployment-api.yaml
         documentIndex: 3
@@ -20,6 +26,22 @@ tests:
         documentIndex: 3
         notExists:
           path: spec.jobTemplate.spec.template.spec.priorityClassName
+      - template: templates/job-credential-cleanup.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.priorityClassName
+      - template: templates/job-fernet-setup.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.priorityClassName
+      - template: templates/job-credential-setup.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.priorityClassName
+      - template: templates/job-domain-manage.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.priorityClassName
       - template: templates/pod-rally-test.yaml
         documentIndex: 3
         notExists:
@@ -28,14 +50,25 @@ tests:
         documentIndex: 3
         notExists:
           path: spec.template.spec.priorityClassName
+      - template: templates/job-db-init.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.priorityClassName
+      - template: templates/job-bootstrap.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.priorityClassName
 
   - it: should support setting a priority class
     templates:
-      - templates/deployment-api.yaml
-      - templates/cron-job-credential-rotate.yaml
-      - templates/cron-job-fernet-rotate.yaml
+      - templates/job-credential-cleanup.yaml
+      - templates/job-credential-setup.yaml
+      - templates/job-domain-manage.yaml
+      - templates/job-fernet-setup.yaml
       - templates/pod-rally-test.yaml
       - templates/job-db-sync.yaml
+      - templates/job-db-init.yaml
+      - templates/job-bootstrap.yaml
     set:
       pod:
         priorityClassName:
@@ -43,7 +76,13 @@ tests:
           keystone_tests: platform
           keystone_credential_rotate: platform
           keystone_fernet_rotate: platform
+          keystone_credential_setup: platform
+          keystone_fernet_setup: platform
+          keystone_credential_cleanup: platform
+          keystone_domain_manage: platform
           db_sync: platform
+          db_init: platform
+          bootstrap: platform
     asserts:
       - template: templates/deployment-api.yaml
         documentIndex: 3
@@ -60,12 +99,42 @@ tests:
         equal:
           path: spec.jobTemplate.spec.template.spec.priorityClassName
           value: platform
+      - template: templates/job-credential-setup.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/job-fernet-setup.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/job-credential-cleanup.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/job-domain-manage.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
       - template: templates/pod-rally-test.yaml
         documentIndex: 3
         equal:
           path: spec.priorityClassName
           value: platform
       - template: templates/job-db-sync.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/job-db-init.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/job-bootstrap.yaml
         documentIndex: 3
         equal:
           path: spec.template.spec.priorityClassName
