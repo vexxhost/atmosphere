@@ -7,9 +7,15 @@ import (
 )
 
 type HelmValues struct {
-	Conf `yaml:"conf"`
+    Pod       Pod                    `yaml:"pod"`
+    Conf      Conf                   `yaml:"conf"`
 }
 
+type PodAntiAffinityTypeConfig map[string]interface{}
+
+type Pod struct {
+	AntiAffinityType PodAntiAffinityTypeConfig `yaml:"affinity.anti.type,omitempty"`
+}
 type Conf struct {
 	Barbican  *BarbicanConf  `yaml:"barbican,omitempty"`
 	Cinder    *CinderConf    `yaml:"cinder,omitempty"`
