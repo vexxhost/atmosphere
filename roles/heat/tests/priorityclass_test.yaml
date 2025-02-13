@@ -10,6 +10,8 @@ tests:
       - templates/deployment-engine.yaml
       - templates/pod-rally-test.yaml
       - templates/job-db-sync.yaml
+      - templates/job-bootstrap.yaml
+      - templates/job-trusts.yaml
     asserts:
       - template: templates/deployment-api.yaml
         documentIndex: 3
@@ -36,6 +38,14 @@ tests:
         notExists:
           path: spec.priorityClassName
       - template: templates/job-db-sync.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.priorityClassName
+      - template: templates/job-bootstrap.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.priorityClassName
+      - template: templates/job-trusts.yaml
         documentIndex: 3
         notExists:
           path: spec.template.spec.priorityClassName
@@ -50,6 +60,8 @@ tests:
       - templates/deployment-engine.yaml
       - templates/pod-rally-test.yaml
       - templates/job-db-sync.yaml
+      - templates/job-bootstrap.yaml
+      - templates/job-trusts.yaml
     set:
       pod:
         priorityClassName:
@@ -61,6 +73,8 @@ tests:
           heat_purge_deleted: platform
           heat_engine: platform
           db_sync: platform
+          bootstrap: platform
+          heat_trusts: platform
     asserts:
       - template: templates/deployment-api.yaml
         documentIndex: 3
@@ -93,6 +107,16 @@ tests:
           path: spec.priorityClassName
           value: platform
       - template: templates/job-db-sync.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/job-bootstrap.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/job-trusts.yaml
         documentIndex: 3
         equal:
           path: spec.template.spec.priorityClassName

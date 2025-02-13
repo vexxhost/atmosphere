@@ -5,8 +5,14 @@ tests:
       - templates/deployment-api.yaml
       - templates/cron-job-credential-rotate.yaml
       - templates/cron-job-fernet-rotate.yaml
+      - templates/job-credential-cleanup.yaml
+      - templates/job-credential-setup.yaml
+      - templates/job-domain-manage.yaml
+      - templates/job-fernet-setup.yaml
       - templates/pod-rally-test.yaml
       - templates/job-db-sync.yaml
+      - templates/job-db-init.yaml
+      - templates/job-bootstrap.yaml
     asserts:
       - template: templates/deployment-api.yaml
         documentIndex: 3
@@ -20,11 +26,35 @@ tests:
         documentIndex: 3
         notExists:
           path: spec.jobTemplate.spec.template.spec.runtimeClassName
+      - template: templates/job-credential-cleanup.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.runtimeClassName
+      - template: templates/job-fernet-setup.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.runtimeClassName
+      - template: templates/job-credential-setup.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.runtimeClassName
+      - template: templates/job-domain-manage.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.runtimeClassName
       - template: templates/pod-rally-test.yaml
         documentIndex: 3
         notExists:
           path: spec.runtimeClassName
       - template: templates/job-db-sync.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.runtimeClassName
+      - template: templates/job-db-init.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.runtimeClassName
+      - template: templates/job-bootstrap.yaml
         documentIndex: 3
         notExists:
           path: spec.template.spec.runtimeClassName
@@ -34,8 +64,14 @@ tests:
       - templates/deployment-api.yaml
       - templates/cron-job-credential-rotate.yaml
       - templates/cron-job-fernet-rotate.yaml
+      - templates/job-credential-cleanup.yaml
+      - templates/job-credential-setup.yaml
+      - templates/job-domain-manage.yaml
+      - templates/job-fernet-setup.yaml
       - templates/pod-rally-test.yaml
       - templates/job-db-sync.yaml
+      - templates/job-db-init.yaml
+      - templates/job-bootstrap.yaml
     set:
       pod:
         runtimeClassName:
@@ -43,7 +79,13 @@ tests:
           keystone_tests: kata-clh
           keystone_credential_rotate: kata-clh
           keystone_fernet_rotate: kata-clh
+          keystone_credential_setup: kata-clh
+          keystone_fernet_setup: kata-clh
+          keystone_credential_cleanup: kata-clh
+          keystone_domain_manage: kata-clh
           db_sync: kata-clh
+          db_init: kata-clh
+          bootstrap: kata-clh
     asserts:
       - template: templates/deployment-api.yaml
         documentIndex: 3
@@ -60,12 +102,42 @@ tests:
         equal:
           path: spec.jobTemplate.spec.template.spec.runtimeClassName
           value: kata-clh
+      - template: templates/job-credential-setup.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.runtimeClassName
+          value: kata-clh
+      - template: templates/job-fernet-setup.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.runtimeClassName
+          value: kata-clh
+      - template: templates/job-credential-cleanup.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.runtimeClassName
+          value: kata-clh
+      - template: templates/job-domain-manage.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.runtimeClassName
+          value: kata-clh
       - template: templates/pod-rally-test.yaml
         documentIndex: 3
         equal:
           path: spec.runtimeClassName
           value: kata-clh
       - template: templates/job-db-sync.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.runtimeClassName
+          value: kata-clh
+      - template: templates/job-db-init.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.runtimeClassName
+          value: kata-clh
+      - template: templates/job-bootstrap.yaml
         documentIndex: 3
         equal:
           path: spec.template.spec.runtimeClassName

@@ -5,6 +5,7 @@ tests:
       - templates/deployment.yaml
       - templates/pod-helm-tests.yaml
       - templates/job-db-sync.yaml
+      - templates/job-db-init.yaml
     asserts:
       - template: templates/deployment.yaml
         documentIndex: 3
@@ -15,6 +16,10 @@ tests:
         notExists:
           path: spec.runtimeClassName
       - template: templates/job-db-sync.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.runtimeClassName
+      - template: templates/job-db-init.yaml
         documentIndex: 3
         notExists:
           path: spec.template.spec.runtimeClassName
@@ -24,12 +29,14 @@ tests:
       - templates/deployment.yaml
       - templates/pod-helm-tests.yaml
       - templates/job-db-sync.yaml
+      - templates/job-db-init.yaml
     set:
       pod:
         runtimeClassName:
           horizon: kata-clh
           horizon_tests: kata-clh
           db_sync: kata-clh
+          db_init: kata-clh
     asserts:
       - template: templates/deployment.yaml
         documentIndex: 3
@@ -42,6 +49,11 @@ tests:
           path: spec.runtimeClassName
           value: kata-clh
       - template: templates/job-db-sync.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.runtimeClassName
+          value: kata-clh
+      - template: templates/job-db-init.yaml
         documentIndex: 3
         equal:
           path: spec.template.spec.runtimeClassName

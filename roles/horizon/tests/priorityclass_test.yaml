@@ -5,6 +5,7 @@ tests:
       - templates/deployment.yaml
       - templates/pod-helm-tests.yaml
       - templates/job-db-sync.yaml
+      - templates/job-db-init.yaml
     asserts:
       - template: templates/deployment.yaml
         documentIndex: 3
@@ -15,6 +16,10 @@ tests:
         notExists:
           path: spec.priorityClassName
       - template: templates/job-db-sync.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.priorityClassName
+      - template: templates/job-db-init.yaml
         documentIndex: 3
         notExists:
           path: spec.template.spec.priorityClassName
@@ -24,12 +29,14 @@ tests:
       - templates/deployment.yaml
       - templates/pod-helm-tests.yaml
       - templates/job-db-sync.yaml
+      - templates/job-db-init.yaml
     set:
       pod:
         priorityClassName:
           horizon: platform
           horizon_tests: platform
           db_sync: platform
+          db_init: platform
     asserts:
       - template: templates/deployment.yaml
         documentIndex: 3
@@ -42,6 +49,11 @@ tests:
           path: spec.priorityClassName
           value: platform
       - template: templates/job-db-sync.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/job-db-init.yaml
         documentIndex: 3
         equal:
           path: spec.template.spec.priorityClassName

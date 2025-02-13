@@ -5,6 +5,10 @@ tests:
       - templates/deployment-api.yaml
       - templates/statefulset-conductor.yaml
       - templates/job-db-sync.yaml
+      - templates/job-bootstrap.yaml
+    set:
+      bootstrap:
+        enabled: true
     asserts:
       - template: templates/deployment-api.yaml
         documentIndex: 3
@@ -16,6 +20,10 @@ tests:
           path: spec.template.spec.priorityClassName
       - template: templates/job-db-sync.yaml
         documentIndex: 3
+        notExists:
+          path: spec.template.spec.priorityClassName
+      - template: templates/job-bootstrap.yaml
+        documentIndex: 1
         notExists:
           path: spec.template.spec.priorityClassName
 
@@ -24,12 +32,16 @@ tests:
       - templates/deployment-api.yaml
       - templates/statefulset-conductor.yaml
       - templates/job-db-sync.yaml
+      - templates/job-bootstrap.yaml
     set:
       pod:
         priorityClassName:
           magnum_api: platform
           magnum_conductor: platform
           db_sync: platform
+          bootstrap: platform
+      bootstrap:
+        enabled: true
     asserts:
       - template: templates/deployment-api.yaml
         documentIndex: 3
@@ -43,6 +55,11 @@ tests:
           value: platform
       - template: templates/job-db-sync.yaml
         documentIndex: 3
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/job-bootstrap.yaml
+        documentIndex: 1
         equal:
           path: spec.template.spec.priorityClassName
           value: platform

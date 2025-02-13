@@ -8,6 +8,7 @@ tests:
       - templates/deployment-share.yaml
       - templates/pod-rally-test.yaml
       - templates/job-db-sync.yaml
+      - templates/job-bootstrap.yaml
     asserts:
       - template: templates/deployment-api.yaml
         documentIndex: 3
@@ -31,6 +32,10 @@ tests:
           path: spec.priorityClassName
       - template: templates/job-db-sync.yaml
         documentIndex: 3
+        notExists:
+          path: spec.template.spec.priorityClassName
+      - template: templates/job-bootstrap.yaml
+        documentIndex: 1
         notExists:
           path: spec.template.spec.priorityClassName
 
@@ -42,6 +47,7 @@ tests:
       - templates/deployment-share.yaml
       - templates/pod-rally-test.yaml
       - templates/job-db-sync.yaml
+      - templates/job-bootstrap.yaml
     set:
       pod:
         priorityClassName:
@@ -51,6 +57,7 @@ tests:
           manila_share: platform
           manila_tests: platform
           db_sync: platform
+          bootstrap: platform
     asserts:
       - template: templates/deployment-api.yaml
         documentIndex: 3
@@ -79,6 +86,11 @@ tests:
           value: platform
       - template: templates/job-db-sync.yaml
         documentIndex: 3
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/job-bootstrap.yaml
+        documentIndex: 1
         equal:
           path: spec.template.spec.priorityClassName
           value: platform
