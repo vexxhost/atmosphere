@@ -7,6 +7,7 @@ tests:
       - templates/deployment-housekeeping.yaml
       - templates/deployment-worker.yaml
       - templates/job-db-sync.yaml
+      - templates/job-bootstrap.yaml
     asserts:
       - template: templates/daemonset-health-manager.yaml
         documentIndex: 4
@@ -26,6 +27,10 @@ tests:
           path: spec.template.spec.runtimeClassName
       - template: templates/job-db-sync.yaml
         documentIndex: 3
+        notExists:
+          path: spec.template.spec.runtimeClassName
+      - template: templates/job-bootstrap.yaml
+        documentIndex: 1
         notExists:
           path: spec.template.spec.runtimeClassName
 
@@ -36,6 +41,7 @@ tests:
       - templates/deployment-housekeeping.yaml
       - templates/deployment-worker.yaml
       - templates/job-db-sync.yaml
+      - templates/job-bootstrap.yaml
     set:
       pod:
         runtimeClassName:
@@ -44,6 +50,7 @@ tests:
           octavia_housekeeping: kata-clh
           octavia_worker: kata-clh
           db_sync: kata-clh
+          bootstrap: kata-clh
     asserts:
       - template: templates/daemonset-health-manager.yaml
         documentIndex: 4
@@ -67,6 +74,11 @@ tests:
           value: kata-clh
       - template: templates/job-db-sync.yaml
         documentIndex: 3
+        equal:
+          path: spec.template.spec.runtimeClassName
+          value: kata-clh
+      - template: templates/job-bootstrap.yaml
+        documentIndex: 1
         equal:
           path: spec.template.spec.runtimeClassName
           value: kata-clh

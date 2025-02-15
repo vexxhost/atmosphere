@@ -3,13 +3,23 @@ tests:
   - it: should support not having a priority class
     templates:
       - templates/deployment-api.yaml
+      - templates/statefulset-conductor.yaml
       - templates/job-db-sync.yaml
+      - templates/job-bootstrap.yaml
     asserts:
       - template: templates/deployment-api.yaml
         documentIndex: 3
         notExists:
           path: spec.template.spec.priorityClassName
+      - template: templates/statefulset-conductor.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.priorityClassName
       - template: templates/job-db-sync.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.priorityClassName
+      - template: templates/job-bootstrap.yaml
         documentIndex: 3
         notExists:
           path: spec.template.spec.priorityClassName
@@ -17,19 +27,33 @@ tests:
   - it: should support setting a priority class
     templates:
       - templates/deployment-api.yaml
+      - templates/statefulset-conductor.yaml
       - templates/job-db-sync.yaml
+      - templates/job-bootstrap.yaml
     set:
       pod:
         priorityClassName:
           ironic_api: platform
+          ironic_conductor: platform
           db_sync: platform
+          bootstrap: platform
     asserts:
       - template: templates/deployment-api.yaml
         documentIndex: 3
         equal:
           path: spec.template.spec.priorityClassName
           value: platform
+      - template: templates/statefulset-conductor.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
       - template: templates/job-db-sync.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/job-bootstrap.yaml
         documentIndex: 3
         equal:
           path: spec.template.spec.priorityClassName

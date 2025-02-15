@@ -19,7 +19,10 @@ tests:
       - templates/deployment-server.yaml
       - templates/pod-rally-test.yaml
       - templates/job-db-sync.yaml
+      - templates/job-bootstrap.yaml
     set:
+      bootstrap:
+        enabled: true
       network:
         backend:
           - openvswitch
@@ -99,6 +102,10 @@ tests:
           path: spec.runtimeClassName
       - template: templates/job-db-sync.yaml
         documentIndex: 3
+        notExists:
+          path: spec.template.spec.runtimeClassName
+      - template: templates/job-bootstrap.yaml
+        documentIndex: 1
         notExists:
           path: spec.template.spec.runtimeClassName
 
@@ -121,7 +128,10 @@ tests:
       - templates/deployment-server.yaml
       - templates/pod-rally-test.yaml
       - templates/job-db-sync.yaml
+      - templates/job-bootstrap.yaml
     set:
+      bootstrap:
+        enabled: true
       network:
         backend:
           - openvswitch
@@ -129,15 +139,15 @@ tests:
           - linuxbridge
       pod:
         runtimeClassName:
-          neutron_bagpipe_bgp: kata-clh
-          neutron_bgp_dragent: kata-clh
+          bagpipe_bgp: kata-clh
+          bgp_dragent: kata-clh
           neutron_dhcp_agent: kata-clh
           neutron_l2gw_agent: kata-clh
           neutron_l3_agent: kata-clh
           neutron_lb_agent: kata-clh
           neutron_metadata_agent: kata-clh
           neutron_netns_cleanup_cron: kata-clh
-          neutron_ovn_vpn_agent: kata-clh
+          ovn_vpn_agent: kata-clh
           neutron_ovn_metadata_agent: kata-clh
           neutron_ovs_agent: kata-clh
           neutron_sriov_agent: kata-clh
@@ -146,6 +156,7 @@ tests:
           neutron_server: kata-clh
           neutron_tests: kata-clh
           db_sync: kata-clh
+          bootstrap: kata-clh
       manifests:
         daemonset_l2gw_agent: true
         daemonset_bagpipe_bgp: true
@@ -235,6 +246,11 @@ tests:
           path: spec.runtimeClassName
           value: kata-clh
       - template: templates/job-db-sync.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.runtimeClassName
+          value: kata-clh
+      - template: templates/job-bootstrap.yaml
         documentIndex: 3
         equal:
           path: spec.template.spec.runtimeClassName

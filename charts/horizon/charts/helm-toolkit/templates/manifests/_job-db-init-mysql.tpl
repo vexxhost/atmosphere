@@ -71,6 +71,12 @@ spec:
       annotations:
 {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
     spec:
+{{- if and $envAll.Values.pod.priorityClassName $envAll.Values.pod.priorityClassName.db_init }}
+      priorityClassName: {{ $envAll.Values.pod.priorityClassName.db_init }}
+{{- end }}
+{{- if and $envAll.Values.pod.runtimeClassName $envAll.Values.pod.runtimeClassName.db_init }}
+      runtimeClassName: {{ $envAll.Values.pod.runtimeClassName.db_init }}
+{{- end }}
       serviceAccountName: {{ $serviceAccountName }}
       restartPolicy: OnFailure
       {{ tuple $envAll "db_init" | include "helm-toolkit.snippets.kubernetes_image_pull_secrets" | indent 6 }}

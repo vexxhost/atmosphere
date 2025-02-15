@@ -78,10 +78,10 @@ spec:
         configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
     spec:
 {{ dict "envAll" $envAll "application" "ovn_vpn_agent" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
-{{ with .Values.pod.priorityClassName.neutron_ovn_vpn_agent }}
+{{ with .Values.pod.priorityClassName.ovn_vpn_agent }}
       priorityClassName: {{ . }}
 {{ end }}
-{{ with .Values.pod.runtimeClassName.neutron_ovn_vpn_agent }}
+{{ with .Values.pod.runtimeClassName.ovn_vpn_agent }}
       runtimeClassName: {{ . }}
 {{ end }}
       serviceAccountName: {{ $serviceAccountName }}
