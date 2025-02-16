@@ -34,7 +34,7 @@ EOF
 COPY --from=ovn-kubernetes --link /src/dist/images/ovndb-raft-functions.sh /root/ovndb-raft-functions.sh
 COPY --from=ovn-kubernetes --link /src/dist/images/ovnkube.sh /root/ovnkube.sh
 COPY --from=ovn-kubernetes --link /usr/bin/ovn-kube-util /usr/bin/ovn-kube-util
-
+COPY --from=ovsinit /usr/local/bin/ovsinit /usr/local/bin/ovsinit
 RUN <<EOF bash -xe
     usermod -u 42424 openvswitch
     mkdir -p  /var/log/ovn /var/lib/ovn /var/run/ovn

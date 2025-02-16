@@ -25,58 +25,6 @@ function get_ip_address_from_interface {
   echo ${ip}
 }
 
-function get_ip_prefix_from_interface {
-  local interface=$1
-  local prefix=$(ip -4 -o addr s "${interface}" | awk '{ print $4; exit }' | awk -F '/' 'NR==1 {print $2}')
-  if [ -z "${prefix}" ] ; then
-    exit 1
-  fi
-  echo ${prefix}
-}
-
-function migrate_ip_from_nic {
-  src_nic=$1
-  bridge_name=$2
-
-  # Enabling explicit error handling: We must avoid to lose the IP
-  # address in the migration process. Hence, on every error, we
-  # attempt to assign the IP back to the original NIC and exit.
-  set +e
-
-  ip=$(get_ip_address_from_interface ${src_nic})
-  prefix=$(get_ip_prefix_from_interface ${src_nic})
-
-  bridge_ip=$(get_ip_address_from_interface "${bridge_name}")
-  bridge_prefix=$(get_ip_prefix_from_interface "${bridge_name}")
-
-  ip link set ${bridge_name} up
-
-  if [[ -n "${ip}" && -n "${prefix}" ]]; then
-    ip addr flush dev ${src_nic}
-    if [ $? -ne 0 ] ; then
-      ip addr add ${ip}/${prefix} dev ${src_nic}
-      echo "Error while flushing IP from ${src_nic}."
-      exit 1
-    fi
-
-    ip addr add ${ip}/${prefix} dev "${bridge_name}"
-    if [ $? -ne 0 ] ; then
-      echo "Error assigning IP to bridge "${bridge_name}"."
-      ip addr add ${ip}/${prefix} dev ${src_nic}
-      exit 1
-    fi
-  elif [[ -n "${bridge_ip}" && -n "${bridge_prefix}" ]]; then
-    echo "Bridge '${bridge_name}' already has IP assigned. Keeping the same:: IP:[${bridge_ip}]; Prefix:[${bridge_prefix}]..."
-  elif [[ -z "${bridge_ip}" && -z "${ip}" ]]; then
-    echo "Interface and bridge have no ips configured. Leaving as is."
-  else
-    echo "Interface ${src_nic} has invalid IP address. IP:[${ip}]; Prefix:[${prefix}]..."
-    exit 1
-  fi
-
-  set -e
-}
-
 function get_current_system_id {
   ovs-vsctl --if-exists get Open_vSwitch . external_ids:system-id | tr -d '"'
 }
@@ -174,6 +122,7 @@ do
   if [ -n "$iface" ] && [ "$iface" != "null" ] && ( ip link show $iface 1>/dev/null 2>&1 );
   then
     ovs-vsctl --may-exist add-port $bridge $iface
-    migrate_ip_from_nic $iface $bridge
   fi
 done
+
+/usr/local/bin/ovsinit /tmp/auto_bridge_add
