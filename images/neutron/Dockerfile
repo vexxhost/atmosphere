@@ -38,4 +38,5 @@ apt-get install -qq -y --no-install-recommends \
 apt-get clean
 rm -rf /var/lib/apt/lists/*
 EOF
+COPY --from=ovsinit /usr/local/bin/ovsinit /usr/local/bin/ovsinit
 COPY --from=build --link /var/lib/openstack /var/lib/openstack
