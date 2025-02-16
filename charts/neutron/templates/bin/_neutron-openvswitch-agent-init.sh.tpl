@@ -435,12 +435,13 @@ do
   if [ -n "$iface" ] && [ "$iface" != "null" ] && ( ip link show $iface 1>/dev/null 2>&1 );
   then
     ovs-vsctl --db=unix:${OVS_SOCKET} --may-exist add-port $bridge $iface
-    migrate_ip_from_nic $iface $bridge
     if [[ "${DPDK_ENABLED}" != "true" ]]; then
       ip link set dev $iface up
     fi
   fi
 done
+
+/usr/local/bin/ovsinit /tmp/auto_bridge_add
 
 tunnel_types="{{- .Values.conf.plugins.openvswitch_agent.agent.tunnel_types -}}"
 if [[ -n "${tunnel_types}" ]] ; then
