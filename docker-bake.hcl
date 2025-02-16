@@ -160,6 +160,7 @@ target "ovn" {
 
     contexts = {
         "golang" = "docker-image://docker.io/library/golang:1.20"
+        "ovsinit" = "./crates/ovsinit"
         "openvswitch" = "target:openvswitch"
     }
 

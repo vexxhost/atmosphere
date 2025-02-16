@@ -2,6 +2,21 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Atmosphere-Rebuild-Time: 2024-10-31T12:56:04Z
 
+FROM openvswitch AS rust
+RUN curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y
+RUN <<EOF sh -xe
+dnf -y --setopt=install_weak_deps=False --setopt=tsflags=nodocs install \
+    gcc
+dnf -y clean all
+rm -rf /var/cache/dnf
+EOF
+ENV PATH=/root/.cargo/bin:$PATH
+WORKDIR /src
+
+FROM rust AS ovsinit-builder
+COPY --from=ovsinit / /src
+RUN cargo build --release
+
 FROM golang AS ovn-kubernetes
 ARG OVN_KUBERNETES_REF=5359e7d7f872058b6e5bf884c9f19d1922451f29
 ADD https://github.com/ovn-org/ovn-kubernetes.git#${OVN_KUBERNETES_REF} /src
@@ -34,7 +49,7 @@ EOF
 COPY --from=ovn-kubernetes --link /src/dist/images/ovndb-raft-functions.sh /root/ovndb-raft-functions.sh
 COPY --from=ovn-kubernetes --link /src/dist/images/ovnkube.sh /root/ovnkube.sh
 COPY --from=ovn-kubernetes --link /usr/bin/ovn-kube-util /usr/bin/ovn-kube-util
-
+COPY --from=ovsinit-builder /src/target/release/ovsinit /usr/bin/ovsinit
 RUN <<EOF bash -xe
     usermod -u 42424 openvswitch
     mkdir -p  /var/log/ovn /var/lib/ovn /var/run/ovn
