@@ -20,6 +20,9 @@ pip3 install \
         storpool \
         storpool.spopenstack
 EOF
+ADD --chmod=644 \
+    https://github.com/storpool/storpool-openstack-integration/raw/master/drivers/os_brick/openstack/caracal/storpool.py \
+    /var/lib/openstack/lib/python3.10/site-packages/os_brick/initiator/connectors/storpool.py
 
 FROM openstack-python-runtime
 ADD https://github.com/novnc/noVNC.git#v1.4.0 /usr/share/novnc
