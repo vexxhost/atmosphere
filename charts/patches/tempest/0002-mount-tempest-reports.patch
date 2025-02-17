@@ -1,0 +1,106 @@
+From 802f8015da77f529920737d1fab50c1ce1972ff0 Mon Sep 17 00:00:00 2001
+From: Michiel Piscaer <michiel@piscaer.com>
+Date: Sat, 09 Nov 2024 11:08:06 +0100
+Subject: [PATCH] Export tempest Subunit & Junit reports
+
+Change-Id: I99ee877d21c2aedfb196b8a13eb6bea1a73dd93a
+---
+
+diff --git a/tempest/templates/bin/_run-tests.sh.tpl b/tempest/templates/bin/_run-tests.sh.tpl
+index f3fc5c2..8b4c839 100644
+--- a/tempest/templates/bin/_run-tests.sh.tpl
++++ b/tempest/templates/bin/_run-tests.sh.tpl
+@@ -16,16 +16,39 @@
+ 
+ set -ex
+ 
++if [ ! -f /etc/tempest/test-blacklist ]; then
++  touch /etc/tempest/test-blacklist
++fi
++
++if [ ! -f /etc/tempest/test-whitelist ]; then
++  touch /etc/tempest/test-whitelist
++fi
++
++{{ if .Values.conf.cleanup.previous_run }}
++tempest cleanup --prefix {{ .Values.conf.cleanup.prefix_name }}
++{{ end }}
++
+ {{ if .Values.conf.cleanup.enabled }}
++mkdir -p /var/lib/tempest/saved_state
++pushd /var/lib/tempest/saved_state
+ tempest cleanup --init-saved-state
+ 
+ if [ "true" == "{{- .Values.conf.cleanup.force -}}" ]; then
+ trap "tempest cleanup; exit" 1 ERR
+ fi
++popd
+ {{- end }}
+ 
++{{ if .Values.conf.subunit_output }}
++tempest run --include-list /etc/tempest/test-whitelist --exclude-list /etc/tempest/test-blacklist --config-file /etc/tempest/tempest.conf -w 4 --smoke --subunit > /var/lib/tempest/data/results.subunit
++cat /var/lib/tempest/data/results.subunit | subunit2junitxml -o /var/lib/tempest/data/results.junit || echo converted subunit file
++{{ else }}
+ {{ .Values.conf.script }}
++{{- end }}
+ 
+-{{ if .Values.conf.cleanup.enabled }}
++{{ if and .Values.conf.cleanup.enabled (not .Values.conf.cleanup.previous_run) }}
++mkdir -p /var/lib/tempest/saved_state
++pushd /var/lib/tempest/saved_state
+ tempest cleanup
++popd
+ {{- end }}
+diff --git a/tempest/templates/job-run-tests.yaml b/tempest/templates/job-run-tests.yaml
+index fc37523..784a068 100644
+--- a/tempest/templates/job-run-tests.yaml
++++ b/tempest/templates/job-run-tests.yaml
+@@ -114,11 +114,14 @@
+             name: tempest-bin
+             defaultMode: 0555
+         - name: tempest-reports
+-        {{- if not .Values.pvc.enabled }}
+-          emptyDir: {}
+-        {{- else }}
++        {{- if .Values.pvc.enabled }}
+           persistentVolumeClaim:
+             claimName: {{ .Values.pvc.name }}
++        {{- else if .Values.conf.subunit_output }}
++          hostPath:
++            path: /tmp/tempest-reports
++        {{- else }}
++          emptyDir: {}
+         {{- end }}
+ {{- dict "enabled" (or .Values.manifests.certificates .Values.tls.identity) "name" .Values.secrets.tls.identity.api.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
+ {{- end }}
+diff --git a/tempest/values.yaml b/tempest/values.yaml
+index 3de9671..ddd13c1 100644
+--- a/tempest/values.yaml
++++ b/tempest/values.yaml
+@@ -97,7 +97,7 @@
+ 
+ conf:
+   script: |
+-    tempest run --config-file /etc/tempest/tempest.conf -w 4 --smoke
++    tempest run --include-list /etc/tempest/test-whitelist --exclude-list /etc/tempest/test-blacklist --config-file /etc/tempest/tempest.conf -w 4 --smoke
+   # The following sections can be used to blacklist and whitelist specific tests.
+   # If either section is not empty, it will be used to create an entry in the
+   # tempest-etc configmap and will be mounted into the tempest-run-tests pod
+@@ -234,6 +234,9 @@
+   cleanup:
+     force: false
+     enabled: true
++    previous_run: false
++    prefix_name: tempest
++    saved_state_pvc_name: pvc-tempest-savedstate
+   tempest_logging:
+     loggers:
+       keys:
+@@ -272,6 +275,7 @@
+     formatter_default:
+       format: "%(message)s"
+       datefmt: "%Y-%m-%d %H:%M:%S"
++  subunit_output: false
+ 
+ 
+ pvc:
