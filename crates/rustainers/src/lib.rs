@@ -214,7 +214,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_container_exec() -> Result<(), DockerContainerGuardError> {
-        let guard = DockerContainerGuard::spawn("alpine:latest").await?;
+        let guard = DockerContainerGuard::spawn("registry.atmosphere.dev/docker.io/library/alpine:latest").await?;
 
         let output = guard.exec(vec!["echo", "hello from container"]).await?;
         assert!(output.contains("hello from container"));
@@ -224,7 +224,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_container_read_file() -> Result<(), DockerContainerGuardError> {
-        let guard = DockerContainerGuard::spawn("alpine:latest").await?;
+        let guard = DockerContainerGuard::spawn("registry.atmosphere.dev/docker.io/library/alpine:latest").await?;
 
         let file = guard.read_file("/usr/lib/os-release").await?;
         assert!(file.len() > 0);
@@ -234,7 +234,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_container_get_user() -> Result<(), DockerContainerGuardError> {
-        let guard = DockerContainerGuard::spawn("alpine:latest").await?;
+        let guard = DockerContainerGuard::spawn("registry.atmosphere.dev/docker.io/library/alpine:latest").await?;
 
         let user = guard.get_user("root").await?;
         assert_eq!(user.name, "root");
