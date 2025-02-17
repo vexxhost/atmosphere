@@ -20,6 +20,12 @@ pip3 install \
         storpool \
         storpool.spopenstack
 EOF
+<<<<<<< HEAD   (365139 Release 4.2.12)
+=======
+ADD --chmod=644 \
+    https://github.com/storpool/storpool-openstack-integration/raw/master/drivers/os_brick/openstack/caracal/storpool.py \
+    /var/lib/openstack/lib/python3.10/site-packages/os_brick/initiator/connectors/storpool.py
+>>>>>>> CHANGE (4672c4 Upgrade Storpool driver to Caracal)
 
 FROM openstack-python-runtime
 ADD https://github.com/novnc/noVNC.git#v1.4.0 /usr/share/novnc
