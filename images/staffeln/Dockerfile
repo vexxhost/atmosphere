@@ -3,7 +3,7 @@
 # Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
 
 FROM openstack-venv-builder AS build
-ARG STAFFELN_GIT_REF=v2.2.3
+ARG STAFFELN_GIT_REF=TODO
 ADD --keep-git-dir=true https://github.com/vexxhost/staffeln.git#${STAFFELN_GIT_REF} /src/staffeln
 RUN git -C /src/staffeln fetch --unshallow
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe

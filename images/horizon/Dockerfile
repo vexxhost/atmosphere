@@ -3,7 +3,7 @@
 # Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
 
 FROM openstack-venv-builder AS build
-ARG HORIZON_GIT_REF=14212342cf8f7eb987e50de112958af31063e02e
+ARG HORIZON_GIT_REF=23d0b9525f7c11288d503123e29db0bd66f9ca88
 ADD --keep-git-dir=true https://opendev.org/openstack/horizon.git#${HORIZON_GIT_REF} /src/horizon
 RUN git -C /src/horizon fetch --unshallow
 ADD --keep-git-dir=true https://opendev.org/openstack/designate-dashboard.git#master /src/designate-dashboard

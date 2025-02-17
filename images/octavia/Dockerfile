@@ -3,7 +3,7 @@
 # Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
 
 FROM openstack-venv-builder AS build
-ARG OCTAVIA_GIT_REF=824b51a1dad80292b7a8ad5d61bf3ce706b1fb29
+ARG OCTAVIA_GIT_REF=e15cb80d8f325e7474fb2175a1a8e9805a473295
 ADD --keep-git-dir=true https://opendev.org/openstack/octavia.git#${OCTAVIA_GIT_REF} /src/octavia
 RUN git -C /src/octavia fetch --unshallow
 ADD --keep-git-dir=true https://opendev.org/openstack/ovn-octavia-provider.git#master /src/ovn-octavia-provider
