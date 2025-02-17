@@ -90,7 +90,7 @@ target "kubernetes-entrypoint" {
     platforms = ["linux/amd64", "linux/arm64"]
 
     contexts = {
-        "golang" = "docker-image://docker.io/library/golang:1.21"
+        "golang" = "docker-image://docker.io/library/golang:1.23"
     }
 
     tags = [
