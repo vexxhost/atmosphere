@@ -3,7 +3,7 @@ variable "REGISTRY" {
 }
 
 variable "TAG" {
-    default = "main"
+    default = "train"
 }
 
 target "ubuntu" {
