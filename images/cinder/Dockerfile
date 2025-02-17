@@ -18,10 +18,10 @@ pip3 install \
         storpool.spopenstack
 EOF
 ADD --chmod=644 \
-    https://github.com/storpool/storpool-openstack-integration/raw/master/drivers/cinder/openstack/antelope/storpool.py \
+    https://github.com/storpool/storpool-openstack-integration/raw/master/drivers/os_brick/openstack/bobcat/storpool.py \
     /var/lib/openstack/lib/python3.10/site-packages/cinder/volume/drivers/storpool.py
 ADD --chmod=644 \
-    https://github.com/storpool/storpool-openstack-integration/raw/master/drivers/os_brick/openstack/antelope/storpool.py \
+    https://github.com/storpool/storpool-openstack-integration/raw/master/drivers/os_brick/openstack/bobcat/storpool.py \
     /var/lib/openstack/lib/python3.10/site-packages/os_brick/initiator/connectors/storpool.py
 
 FROM openstack-python-runtime
