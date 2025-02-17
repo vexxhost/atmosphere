@@ -17,7 +17,11 @@ pip3 install \
         storpool.spopenstack
 EOF
 ADD --chmod=644 \
+<<<<<<< HEAD   (f83701 Release 3.2.12)
     https://github.com/storpool/storpool-openstack-integration/raw/master/drivers/os_brick/openstack/antelope/storpool.py \
+=======
+    https://github.com/storpool/storpool-openstack-integration/raw/master/drivers/os_brick/openstack/caracal/storpool.py \
+>>>>>>> CHANGE (01bee5 Upgrade Storpool driver to Caracal)
     /var/lib/openstack/lib/python3.10/site-packages/os_brick/initiator/connectors/storpool.py
 
 FROM openstack-python-runtime
