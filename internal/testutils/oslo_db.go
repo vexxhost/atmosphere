@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/vexxhost/atmosphere/internal/openstack_helm"
 )
@@ -41,5 +42,22 @@ func TestAllPodsHavePriorityClass(t *testing.T, vals *openstack_helm.HelmValues)
 	for pod := range vals.Pod.Mounts {
 		podName := podNameForClass(pod)
 		assert.Contains(t, vals.Pod.PriorityClass, podName)
+	}
+}
+
+func TestAllPodsHaveAntiAffinityType(t *testing.T, vals *openstack_helm.HelmValues) {
+	for pod := range vals.Pod.AntiAffinityType {
+		podName := podNameForClass(pod)
+
+		expected := "requiredDuringSchedulingIgnoredDuringExecution"
+
+		defaultRaw, ok := vals.Pod.AntiAffinityType["default"]
+		require.True(t, ok, "default key not found in affinity.anti.type block")
+
+		actual, ok := defaultRaw.(string)
+		require.True(t, ok, "default anti affinity type is not a string")
+
+		assert.Equal(t, expected, actual, "anti affinity type does not match expected value")
+		assert.Contains(t, vals.Pod.AntiAffinityType, podName)
 	}
 }
