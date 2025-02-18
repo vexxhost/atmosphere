@@ -3,7 +3,7 @@
 # Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
 
 FROM golang AS build
-ARG KUBERNETES_ENTRYPOINT_GIT_REF=4fbcf7ce324dc66e78480f73035e31434cfea1e8
+ARG KUBERNETES_ENTRYPOINT_GIT_REF=df2f40f3dec3aca3e648f4f351ff5ccfbd659b59
 ADD https://opendev.org/airship/kubernetes-entrypoint.git#${KUBERNETES_ENTRYPOINT_GIT_REF} /src
 WORKDIR /src
 RUN CGO_ENABLED=0 GOOS=linux go build -o /main

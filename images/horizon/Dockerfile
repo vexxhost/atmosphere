@@ -3,23 +3,23 @@
 # Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
 
 FROM openstack-venv-builder AS build
-ARG HORIZON_GIT_REF=14212342cf8f7eb987e50de112958af31063e02e
+ARG HORIZON_GIT_REF=23d0b9525f7c11288d503123e29db0bd66f9ca88
 ADD --keep-git-dir=true https://opendev.org/openstack/horizon.git#${HORIZON_GIT_REF} /src/horizon
 RUN git -C /src/horizon fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/designate-dashboard.git#master /src/designate-dashboard
+ADD --keep-git-dir=true https://opendev.org/openstack/designate-dashboard.git#stable/2024.2 /src/designate-dashboard
 RUN git -C /src/designate-dashboard fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/heat-dashboard.git#3070b2c8d5cc6e070df01233ec50b32ea987d92d /src/heat-dashboard
+ADD --keep-git-dir=true https://opendev.org/openstack/heat-dashboard.git#stable/2024.2 /src/heat-dashboard
 RUN git -C /src/heat-dashboard fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/ironic-ui.git#master /src/ironic-ui
+ADD --keep-git-dir=true https://opendev.org/openstack/ironic-ui.git#stable/2024.2 /src/ironic-ui
 RUN git -C /src/ironic-ui fetch --unshallow
 ARG MAGNUM_UI_REF=c9fdb537eaded73e81ea296d893e45d753337dc7
 ADD --keep-git-dir=true https://opendev.org/openstack/magnum-ui.git#${MAGNUM_UI_REF} /src/magnum-ui
 RUN git -C /src/magnum-ui fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/manila-ui.git#master /src/manila-ui
+ADD --keep-git-dir=true https://opendev.org/openstack/manila-ui.git#stable/2024.2 /src/manila-ui
 RUN git -C /src/manila-ui fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/neutron-vpnaas-dashboard.git#master /src/neutron-vpnaas-dashboard
+ADD --keep-git-dir=true https://opendev.org/openstack/neutron-vpnaas-dashboard.git#stable/2024.2 /src/neutron-vpnaas-dashboard
 RUN git -C /src/neutron-vpnaas-dashboard fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/octavia-dashboard.git#master /src/octavia-dashboard
+ADD --keep-git-dir=true https://opendev.org/openstack/octavia-dashboard.git#stable/2024.2 /src/octavia-dashboard
 RUN git -C /src/octavia-dashboard fetch --unshallow
 COPY patches/horizon /patches/horizon
 RUN git -C /src/horizon apply --verbose /patches/horizon/*
