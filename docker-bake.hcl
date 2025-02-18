@@ -15,6 +15,17 @@ target "ubuntu" {
     }
 }
 
+target "ovsinit" {
+    context = "images/ovsinit"
+    platforms = ["linux/amd64", "linux/arm64"]
+
+    contexts = {
+        "runtime" = "docker-image://docker.io/library/debian:bullseye-slim"
+        "rust" = "docker-image://docker.io/library/rust:1.84-bullseye"
+        "src" = "./crates/ovsinit"
+    }
+}
+
 target "ubuntu-cloud-archive" {
     context = "images/ubuntu-cloud-archive"
     platforms = ["linux/amd64", "linux/arm64"]
@@ -161,6 +172,7 @@ target "ovn" {
     contexts = {
         "golang" = "docker-image://docker.io/library/golang:1.20"
         "openvswitch" = "target:openvswitch"
+        "ovsinit" = "target:ovsinit"
     }
 
     args = {
@@ -218,8 +230,9 @@ target "openstack" {
     }
 
     contexts = {
-        "openstack-venv-builder" = "target:openstack-venv-builder"
         "openstack-python-runtime" = "target:openstack-python-runtime"
+        "openstack-venv-builder" = "target:openstack-venv-builder"
+        "ovsinit" = "target:ovsinit"
     }
 
     tags = [
