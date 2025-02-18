@@ -16,7 +16,7 @@ require (
 	github.com/prometheus/prometheus v0.54.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.1
-	github.com/spf13/pflag v1.0.5
+	github.com/spf13/pflag v1.0.6
 	github.com/stretchr/testify v1.9.0
 	github.com/yannh/kubeconform v0.6.4
 	golang.org/x/sync v0.8.0
