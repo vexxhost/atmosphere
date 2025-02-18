@@ -260,6 +260,27 @@ so by making the following changes to your inventory:
 In the example above, we are whitelisting the IP range ``10.0.0.0/24`` and the IP address
 ``172.10.0.1``.
 
+Override Rules
+~~~~~~~~~~~~~~
+
+It's possible to override existing prometheus rules
+by using ``kube_prometheus_stack_rules_jsonnet_path`` variable (default to `jsonnet/rules.jsonnet` ) to point to the
+new jsonnet file path to override existing or create new PrometheusRules.
+You can also create your own mixin by importing jsonnet/rules.jsonnet into your own file using
+jsonnet import existing rules.
+Here is an example to include existing rules in new jsonnet file:
+
+.. code-block:: jsonnet
+
+    local mixins = import 'rules.jsonnet';
+
+    {
+      [mixin]: {
+        groups: (mixins[mixin].prometheusAlerts.groups + if std.objectHasAll(mixins[mixin], 'prometheusRules') then mixins[mixin].prometheusRules.groups else [])
+      } for mixin in std.objectFields(mixins)
+    }
+
+
 AlertManager
 ============
 
