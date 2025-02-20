@@ -5,6 +5,9 @@ Release Notes
 .. release-notes:: Development Release
    :branch: main
 
+.. release-notes:: OpenStack Caracal (2024.2)
+   :branch: stable/2024.2
+
 .. release-notes:: OpenStack Caracal (2024.1)
    :branch: stable/2024.1
 
