@@ -3,7 +3,7 @@
 # Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
 
 FROM openstack-venv-builder AS build
-ARG IRONIC_GIT_REF=5aa51d6985d25acd6abfb161c62c66facc20a6ca
+ARG IRONIC_GIT_REF=d3c74c6a4bc6917cc97e834d4d8db26ad9d6e905
 ADD --keep-git-dir=true https://opendev.org/openstack/ironic.git#${IRONIC_GIT_REF} /src/ironic
 RUN git -C /src/ironic fetch --unshallow
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
