@@ -3,7 +3,7 @@
 # Atmosphere-Rebuild-Time: 2024-12-17T01:27:44Z
 
 FROM openstack-venv-builder AS build
-ARG NOVA_GIT_REF=1b28f649feaf2c9929f15214814f8af950e5c19c
+ARG NOVA_GIT_REF=375d95565d594182c5472f710b3f7bd53f0746d4
 ADD --keep-git-dir=true https://opendev.org/openstack/nova.git#${NOVA_GIT_REF} /src/nova
 RUN git -C /src/nova fetch --unshallow
 ARG SCHEDULER_FILTERS_GIT_REF=77ed1c2ca70f4166a6d0995c7d3d90822f0ca6c0
