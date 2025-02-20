@@ -3,7 +3,7 @@
 # Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
 
 FROM openstack-venv-builder AS build
-ARG HEAT_GIT_REF=64bdbb9bc66c38760989dd7bb2574ccc14069872
+ARG HEAT_GIT_REF=8dfa34307d0bfa828d23f37cae71109ec3addcff
 ADD --keep-git-dir=true https://opendev.org/openstack/heat.git#${HEAT_GIT_REF} /src/heat
 RUN git -C /src/heat fetch --unshallow
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe

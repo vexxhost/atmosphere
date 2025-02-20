@@ -3,7 +3,7 @@
 # Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
 
 FROM openstack-venv-builder AS build
-ARG PLACEMENT_GIT_REF=828b2559a1b3c0b59c543e851c6ea3efb1baae20
+ARG PLACEMENT_GIT_REF=8f58003ca718704e18b5ea34d9334750fe9576b5
 ADD --keep-git-dir=true https://opendev.org/openstack/placement.git#${PLACEMENT_GIT_REF} /src/placement
 RUN git -C /src/placement fetch --unshallow
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe

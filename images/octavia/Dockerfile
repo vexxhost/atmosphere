@@ -3,10 +3,10 @@
 # Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
 
 FROM openstack-venv-builder AS build
-ARG OCTAVIA_GIT_REF=e15cb80d8f325e7474fb2175a1a8e9805a473295
+ARG OCTAVIA_GIT_REF=63be8fd0b3c64e2b4ecdef825d23fbe5e3e22327
 ADD --keep-git-dir=true https://opendev.org/openstack/octavia.git#${OCTAVIA_GIT_REF} /src/octavia
 RUN git -C /src/octavia fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/ovn-octavia-provider.git#stable/2024.2 /src/ovn-octavia-provider
+ADD --keep-git-dir=true https://opendev.org/openstack/ovn-octavia-provider.git#master /src/ovn-octavia-provider
 RUN git -C /src/ovn-octavia-provider fetch --unshallow
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
 pip3 install \
