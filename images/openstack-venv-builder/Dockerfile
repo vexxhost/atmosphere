@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: © 2025 VEXXHOST, Inc.
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
+# Atmosphere-Rebuild-Time: 2025-02-20T21:42:46Z
 
 FROM ubuntu-cloud-archive AS requirements
 ARG REQUIREMENTS_GIT_REF=d620ff557c22c4b8c1398b6dc84772c341fb4d5a
