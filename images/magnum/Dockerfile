@@ -21,7 +21,7 @@ sed -i s/^oslo.db===.*$/oslo.db==14.1.0/ /upper-constraints.txt
 pip3 install \
     --constraint /upper-constraints.txt \
         /src/magnum \
-        magnum-cluster-api==0.24.2
+        magnum-cluster-api==0.26.0
 EOF
 
 FROM openstack-python-runtime
