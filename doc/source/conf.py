@@ -20,9 +20,10 @@ author = "VEXXHOST, Inc."
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
-    "sphinx_copybutton",
     "pbr.sphinxext",
     "reno.sphinxext",
+    "sphinx_copybutton",
+    "sphinxcontrib.mermaid",
 ]
 
 templates_path = ["_templates"]
