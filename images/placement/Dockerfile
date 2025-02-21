@@ -6,8 +6,8 @@ FROM openstack-venv-builder AS build
 ARG PLACEMENT_GIT_REF=828b2559a1b3c0b59c543e851c6ea3efb1baae20
 ADD --keep-git-dir=true https://opendev.org/openstack/placement.git#${PLACEMENT_GIT_REF} /src/placement
 RUN git -C /src/placement fetch --unshallow
-RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
-pip3 install \
+RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe
+uv pip install \
     --constraint /upper-constraints.txt \
         /src/placement
 EOF

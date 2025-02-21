@@ -6,8 +6,8 @@ FROM openstack-venv-builder AS build
 ARG BARBICAN_GIT_REF=b5841df387e5ab38caf173950a1d98ab37a51453
 ADD --keep-git-dir=true https://opendev.org/openstack/barbican.git#${BARBICAN_GIT_REF} /src/barbican
 RUN git -C /src/barbican fetch --unshallow
-RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
-pip3 install \
+RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe
+uv pip install \
     --constraint /upper-constraints.txt \
         /src/barbican \
         pykmip

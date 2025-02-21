@@ -8,8 +8,8 @@ ADD --keep-git-dir=true https://opendev.org/openstack/glance.git#${GLANCE_GIT_RE
 RUN git -C /src/glance fetch --unshallow
 ADD --keep-git-dir=true https://opendev.org/openstack/glance_store.git#stable/2024.2 /src/glance_store
 RUN git -C /src/glance_store fetch --unshallow
-RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
-pip3 install \
+RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe
+uv pip install \
     --constraint /upper-constraints.txt \
         /src/glance \
         /src/glance_store[cinder] \

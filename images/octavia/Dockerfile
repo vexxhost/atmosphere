@@ -8,8 +8,8 @@ ADD --keep-git-dir=true https://opendev.org/openstack/octavia.git#${OCTAVIA_GIT_
 RUN git -C /src/octavia fetch --unshallow
 ADD --keep-git-dir=true https://opendev.org/openstack/ovn-octavia-provider.git#stable/2024.2 /src/ovn-octavia-provider
 RUN git -C /src/ovn-octavia-provider fetch --unshallow
-RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
-pip3 install \
+RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe
+uv pip install \
     --constraint /upper-constraints.txt \
         /src/octavia \
         /src/ovn-octavia-provider

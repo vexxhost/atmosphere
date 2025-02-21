@@ -24,18 +24,19 @@ apt-get install -qq -y --no-install-recommends \
     lsb-release \
     openssh-client \
     python3 \
-    python3-dev \
-    python3-pip \
-    python3-venv
+    python3-dev
 apt-get clean
 rm -rf /var/lib/apt/lists/*
 EOF
-RUN python3 -m venv --upgrade-deps --system-site-packages /var/lib/openstack
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 COPY --from=requirements --link /upper-constraints.txt /upper-constraints.txt
-RUN pip3 install \
+RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe
+uv venv --system-site-packages /var/lib/openstack
+uv pip install \
     --constraint /upper-constraints.txt \
         cryptography \
         pymysql \
         python-binary-memcached \
         python-memcached \
         uwsgi
+EOF

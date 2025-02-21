@@ -14,8 +14,8 @@ FROM openstack-venv-builder AS build
 ARG MAGNUM_GIT_REF=db197e08a09da93062fc4222180051dadfc0f0d8
 ADD --keep-git-dir=true https://opendev.org/openstack/magnum.git#${MAGNUM_GIT_REF} /src/magnum
 RUN git -C /src/magnum fetch --unshallow
-RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
-pip3 install \
+RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe
+uv pip install \
     --constraint /upper-constraints.txt \
         /src/magnum \
         magnum-cluster-api==0.26.2
