@@ -26,8 +26,8 @@ RUN git -C /src/neutron-tempest-plugin fetch --unshallow
 ADD --keep-git-dir=true https://opendev.org/openstack/octavia-tempest-plugin.git#master /src/octavia-tempest-plugin
 RUN git -C /src/octavia-tempest-plugin fetch --unshallow
 ADD https://releases.openstack.org/constraints/upper/master /upper-constraints.txt
-RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
-pip3 install \
+RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe
+uv pip install \
     --constraint /upper-constraints.txt \
         /src/tempest \
         /src/barbican-tempest-plugin \

@@ -25,8 +25,8 @@ COPY patches/horizon /patches/horizon
 RUN git -C /src/horizon apply --verbose /patches/horizon/*
 COPY patches/magnum-ui /patches/magnum-ui
 RUN git -C /src/magnum-ui apply --verbose /patches/magnum-ui/*
-RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
-pip3 install \
+RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe
+uv pip install \
     --constraint /upper-constraints.txt \
         /src/designate-dashboard \
         /src/heat-dashboard \
