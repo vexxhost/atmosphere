@@ -6,6 +6,8 @@ FROM openstack-venv-builder AS build
 ARG NEUTRON_GIT_REF=ece6a9a7acab20d5a39f54784427258d54b72cfd
 ADD --keep-git-dir=true https://opendev.org/openstack/neutron.git#${NEUTRON_GIT_REF} /src/neutron
 RUN git -C /src/neutron fetch --unshallow
+COPY patches/neutron /patches/neutron
+RUN git -C /src/neutron apply --verbose /patches/neutron/*
 ADD --keep-git-dir=true https://opendev.org/openstack/neutron-vpnaas.git#zed-eol /src/neutron-vpnaas
 RUN git -C /src/neutron-vpnaas fetch --unshallow
 ARG NETWORKING_BAREMETAL_GIT_REF=fc8ddc5f68eba645239e5faa3c370dab5cc94bc9
