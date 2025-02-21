@@ -6,8 +6,8 @@ FROM openstack-venv-builder AS build
 ARG IRONIC_GIT_REF=5aa51d6985d25acd6abfb161c62c66facc20a6ca
 ADD --keep-git-dir=true https://opendev.org/openstack/ironic.git#${IRONIC_GIT_REF} /src/ironic
 RUN git -C /src/ironic fetch --unshallow
-RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
-pip3 install \
+RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe
+uv pip install \
     --constraint /upper-constraints.txt \
         /src/ironic \
         python-dracclient \
