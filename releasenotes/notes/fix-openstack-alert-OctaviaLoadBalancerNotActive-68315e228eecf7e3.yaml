@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fix When a lb is stuck in for example provisioning_state PENDING_UPDATE
+    but operational_state is ONLINE. No alert is generated because gauge from metrics
+    `openstack_loadbalancer_loadbalancer_status{provisioning_status!="ACTIVE"}`
+    depends on operational_state which will ignore the ONLINE state
