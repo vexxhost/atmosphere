@@ -188,3 +188,21 @@ tests:
             exp_annotations:
               summary: Percona XtraDB Cluster is down
               description: All replicas are down.
+
+  - interval: 1m
+    input_series:
+      - series: 'openstack_loadbalancer_loadbalancer_status{id="d4e449ad-fad5-4d9e-a039-f71c773ec999", job="openstack-exporter", name="test-lb", operating_status="ONLINE", provisioning_status="PENDING_UPDATE"}'
+        values: '0+0x15'
+      - series: 'openstack_loadbalancer_loadbalancer_status{id="25dcf79f-b09d-4d0c-9e29-b69ded2ec734", job="openstack-exporter", name="test-lb-2", operating_status="ONLINE", provisioning_status="ACTIVE"}'
+        values: '0+0x15'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: OctaviaLoadBalancerNotActive
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+              id: d4e449ad-fad5-4d9e-a039-f71c773ec999
+              name: test-lb
+            exp_annotations:
+              summary: Octavia load balancer not active
+              description: Load balancer with ID d4e449ad-fad5-4d9e-a039-f71c773ec999 stuck in non-active state for more then 15 minutes.
