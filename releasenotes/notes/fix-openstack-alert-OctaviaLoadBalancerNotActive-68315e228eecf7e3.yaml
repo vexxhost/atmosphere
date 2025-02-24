@@ -1,0 +1,10 @@
+---
+issues:
+  - |
+    When a loadbalancer is stuck in for example provisioning_state PENDING_UPDATE 
+    but operational_state is ONLINE. No alert is generated.
+fixes:
+  - |
+    To Fix this issues we need to change our alert rule from 'openstack_loadbalancer_loadbalancer_status{provisioning_status!="ACTIVE"} > 0'
+    into 'count by (id,name) (openstack_loadbalancer_loadbalancer_status{job="openstack-exporter",provisioning_status!="ACTIVE"}) > 0'
+    since the values of metrics openstack_loadbalancer_loadbalancer_status was always 0 when the operational_state is ONLINE
