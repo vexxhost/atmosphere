@@ -23,11 +23,11 @@
 - name: Assert that we match a single network only
   ansible.builtin.assert:
     that:
-      - ironic_bare_metal_networks_info.openstack_networks | length == 1
-    fail_msg: "Expected exactly one network, but found {{ ironic_bare_metal_networks_info.openstack_networks | length }}"
+      - ironic_bare_metal_networks_info.networks | length == 1
+    fail_msg: "Expected exactly one network, but found {{ ironic_bare_metal_networks_info.networks | length }}"
     success_msg: "Successfully matched a single network"
   run_once: true
 
 - name: Set fact with bare metal network information
   ansible.builtin.set_fact:
-    ironic_bare_metal_network: "{{ ironic_bare_metal_networks_info.openstack_networks[0] }}"
+    ironic_bare_metal_network: "{{ ironic_bare_metal_networks_info.networks[0] }}"
