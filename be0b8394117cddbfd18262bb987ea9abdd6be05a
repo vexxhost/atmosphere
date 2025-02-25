@@ -43,6 +43,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "aa791ded_b33e3a89",
+        "filename": "releasenotes/notes/fix-openstack-alert-OctaviaLoadBalancerNotActive-68315e228eecf7e3.yaml",
+        "patchSetId": 1
+      },
+      "lineNbr": 5,
+      "author": {
+        "id": 1000005
+      },
+      "writtenOn": "2025-02-25T04:16:20Z",
+      "side": 1,
+      "message": "I think we should drop this,  as operational_state is not part of this issue. \nI think the issue is, we set the wrong compare for the alert\nAlso as Yaguang said, all describe here can move to fixes and all descriptions should use same - like\n\nfixes:\n  - |\n    xxxxx\n    xxxxx",
+      "parentUuid": "bd515cd7_e0f8f60b",
+      "range": {
+        "startLine": 4,
+        "startChar": 4,
+        "endLine": 5,
+        "endChar": 59
+      },
+      "revId": "be0b8394117cddbfd18262bb987ea9abdd6be05a",
+      "serverId": "a369f105-6bff-480f-8aaf-eafd1f85bb44"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "991e25a7_33567a8f",
         "filename": "releasenotes/notes/fix-openstack-alert-OctaviaLoadBalancerNotActive-68315e228eecf7e3.yaml",
         "patchSetId": 1
@@ -66,6 +90,30 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "4906eb79_c8095279",
+        "filename": "releasenotes/notes/fix-openstack-alert-OctaviaLoadBalancerNotActive-68315e228eecf7e3.yaml",
+        "patchSetId": 1
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 1000005
+      },
+      "writtenOn": "2025-02-25T04:16:20Z",
+      "side": 1,
+      "message": "agree",
+      "parentUuid": "991e25a7_33567a8f",
+      "range": {
+        "startLine": 8,
+        "startChar": 4,
+        "endLine": 10,
+        "endChar": 124
+      },
+      "revId": "be0b8394117cddbfd18262bb987ea9abdd6be05a",
+      "serverId": "a369f105-6bff-480f-8aaf-eafd1f85bb44"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "08c08b61_ca08db7b",
         "filename": "roles/kube_prometheus_stack/files/jsonnet/openstack.libsonnet",
         "patchSetId": 1
@@ -77,6 +125,30 @@
       "writtenOn": "2025-02-25T02:52:26Z",
       "side": 1,
       "message": "I\u0027m okay with this anyway because add count by doesn\u0027t hurt anything.\nBut can you clear this for me, what I don\u0027t get it is why the original expr related to `operational_state` or said `provisioning_status!\u003d\"ACTIVE\"` will gonna be ignored because operational_state?",
+      "range": {
+        "startLine": 328,
+        "startChar": 21,
+        "endLine": 328,
+        "endChar": 39
+      },
+      "revId": "be0b8394117cddbfd18262bb987ea9abdd6be05a",
+      "serverId": "a369f105-6bff-480f-8aaf-eafd1f85bb44"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "80a0816f_85a0647c",
+        "filename": "roles/kube_prometheus_stack/files/jsonnet/openstack.libsonnet",
+        "patchSetId": 1
+      },
+      "lineNbr": 328,
+      "author": {
+        "id": 1000005
+      },
+      "writtenOn": "2025-02-25T04:16:20Z",
+      "side": 1,
+      "message": "I think the issue is, openstack_loadbalancer_loadbalancer_status never suppose to directly compare with int as it\u0027s a list,\nAlso not sure why we add `job` here, if no other concerns, it should be:\n```suggestion\n              expr: \u0027count by (id,name) (openstack_loadbalancer_loadbalancer_status{provisioning_status!\u003d\"ACTIVE\"}) \u003e 0\u0027,\n```",
+      "parentUuid": "08c08b61_ca08db7b",
       "range": {
         "startLine": 328,
         "startChar": 21,
