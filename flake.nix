@@ -23,6 +23,7 @@
               nixpkgs-fmt
               patchutils
               python311Packages.tox
+              reno
             ];
           };
         }
