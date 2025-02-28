@@ -96,13 +96,21 @@
     password: "{{ openstack_helm_endpoints.identity.auth.rgw.password }}"
     domain: service
 
+# NOTE(mnaser): https://storyboard.openstack.org/#!/story/2010579
 - name: Grant access to "service" project
-  openstack.cloud.role_assignment:
-    cloud: atmosphere
-    domain: service
-    user: "{{ openstack_helm_endpoints.identity.auth.rgw.username }}"
-    project: service
-    role: admin
+  changed_when: false
+  ansible.builtin.shell: |
+    set -o posix
+    source /etc/profile.d/atmosphere.sh
+    openstack role add \
+      --user-domain service \
+      --project service \
+      --user {{ openstack_helm_endpoints.identity.auth.rgw.username }} \
+      admin
+  args:
+    executable: /bin/bash
+  environment:
+    OS_CLOUD: atmosphere
 
 - name: Create OpenStack service
   openstack.cloud.catalog_service:
