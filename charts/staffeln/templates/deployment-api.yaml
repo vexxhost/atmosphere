@@ -46,6 +46,12 @@ spec:
 {{ dict "envAll" $envAll "podName" "staffeln-api" "containerNames" (list "init" "staffeln-api") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
     spec:
 {{ dict "envAll" $envAll "application" "staffeln" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+{{ with .Values.pod.priorityClassName.staffeln_api }}
+      priorityClassName: {{ . }}
+{{ end }}
+{{ with .Values.pod.runtimeClassName.staffeln_api }}
+      runtimeClassName: {{ . }}
+{{ end }}
       serviceAccountName: {{ $serviceAccountName }}
       affinity:
 {{ tuple $envAll "staffeln" "api" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
