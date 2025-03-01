@@ -1,0 +1,99 @@
+suite: priorityclass
+tests:
+  - it: should support not having a priority class
+    templates:
+      - templates/deployment-api.yaml
+      - templates/deployment-cfn.yaml
+      - templates/deployment-cloudwatch.yaml
+      - templates/cron-job-engine-cleaner.yaml
+      - templates/cron-job-purge-deleted.yaml
+      - templates/deployment-engine.yaml
+      - templates/pod-rally-test.yaml
+      - templates/job-db-sync.yaml
+    asserts:
+      - template: templates/deployment-api.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.priorityClassName
+      - template: templates/deployment-cfn.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.priorityClassName
+      - template: templates/cron-job-engine-cleaner.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.jobTemplate.spec.template.spec.priorityClassName
+      - template: templates/cron-job-purge-deleted.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.jobTemplate.spec.template.spec.priorityClassName
+      - template: templates/deployment-engine.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.priorityClassName
+      - template: templates/pod-rally-test.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.priorityClassName
+      - template: templates/job-db-sync.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.priorityClassName
+
+  - it: should support setting a priority class
+    templates:
+      - templates/deployment-api.yaml
+      - templates/deployment-cfn.yaml
+      - templates/deployment-cloudwatch.yaml
+      - templates/cron-job-engine-cleaner.yaml
+      - templates/cron-job-purge-deleted.yaml
+      - templates/deployment-engine.yaml
+      - templates/pod-rally-test.yaml
+      - templates/job-db-sync.yaml
+    set:
+      pod:
+        priorityClassName:
+          heat_api: platform
+          heat_cfn: platform
+          heat_cloudwatch: platform
+          heat_tests: platform
+          heat_engine_cleaner: platform
+          heat_purge_deleted: platform
+          heat_engine: platform
+          db_sync: platform
+    asserts:
+      - template: templates/deployment-api.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/deployment-cfn.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/cron-job-engine-cleaner.yaml
+        documentIndex: 3
+        equal:
+          path: spec.jobTemplate.spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/cron-job-purge-deleted.yaml
+        documentIndex: 3
+        equal:
+          path: spec.jobTemplate.spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/deployment-engine.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/pod-rally-test.yaml
+        documentIndex: 3
+        equal:
+          path: spec.priorityClassName
+          value: platform
+      - template: templates/job-db-sync.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
