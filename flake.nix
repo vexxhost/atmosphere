@@ -19,6 +19,7 @@
               earthly
               glibcLocales
               go
+              just
               kubernetes-helm
               nixpkgs-fmt
               patchutils
