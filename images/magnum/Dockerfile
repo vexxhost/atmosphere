@@ -18,7 +18,7 @@ RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe
 uv pip install \
     --constraint /upper-constraints.txt \
         /src/magnum \
-        magnum-cluster-api==0.26.2
+        magnum-cluster-api==0.27.0
 EOF
 
 FROM openstack-python-runtime
