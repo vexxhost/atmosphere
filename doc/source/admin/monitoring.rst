@@ -461,3 +461,17 @@ Alerts Reference
   .. code-block:: console
 
     openstack server list --all-projects --long -n --ip $IP
+
+``EtcdMembersDown``
+  If any alarms are fired from Promethetus for ``etcd`` issues such as ``TargetDown``,
+  ``etcdMembersDown``, or ``etcdInsufficientMembers``), it could be due to expired
+  certificates.  You can update the certificates that ``kube-prometheus-stack`` uses for
+  talking with ``etcd`` with the following commands:
+
+  .. code-block:: console
+
+    kubectl -n monitoring delete secret/kube-prometheus-stack-etcd-client-cert
+    kubectl -n monitoring create secret generic kube-prometheus-stack-etcd-client-cert \
+        --from-file=/etc/kubernetes/pki/etcd/ca.crt \
+        --from-file=/etc/kubernetes/pki/etcd/healthcheck-client.crt \
+        --from-file=/etc/kubernetes/pki/etcd/healthcheck-client.key
