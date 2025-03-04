@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout project
-        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -44,13 +44,21 @@ jobs:
           pipx inject python-swiftclient python-keystoneclient
 
       - name: Cache DIB_IMAGE_CACHE
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4
+        id: cache-dib-image-cache
+        uses: actions/cache/restore@v4
         with:
           path: ~/.cache/image-create
           key: dib-image-cache
 
       - name: Build image
         run: tox -ebuild-manila-image
+
+      - name: Save DIB_IMAGE_CACHE
+        id: dib-image-cache-save
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.cache/image-create
+          key: ${{ steps.cache-dib-image-cache.outputs.cache-primary-key }}
 
       - name: Publish image
         if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event_name == 'release'
