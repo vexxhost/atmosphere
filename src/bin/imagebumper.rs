@@ -108,6 +108,10 @@ fn get_repo_map(clientset: &ClientSet) -> HashMap<&'static str, Repository> {
         Repository::from_url(clientset, "https://opendev.org/openstack/requirements.git").unwrap(),
     );
     map.insert(
+        "OVN_BGP_AGENT_GIT_REF",
+        Repository::from_url(clientset, "https://opendev.org/openstack/ovn-bgp-agent.git").unwrap(),
+    );
+    map.insert(
         "PLACEMENT_GIT_REF",
         Repository::from_url(clientset, "https://opendev.org/openstack/placement.git").unwrap(),
     );
