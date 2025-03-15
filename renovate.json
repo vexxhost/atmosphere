@@ -6,22 +6,36 @@
   "prHourlyLimit": 10,
   "packageRules": [
     {
-      "matchPackagePatterns": ["*"],
-      "enabled": false
+      "enabled": false,
+      "matchPackagePatterns": ["*"]
     },
     {
+      "enabled": true,
       "matchDatasources": ["pypi"],
-      "matchPackageNames": ["magnum-cluster-api"],
-      "enabled": true
+      "matchPackageNames": ["magnum-cluster-api"]
+    },
+    {
+      "enabled": true,
+      "matchDatasources": ["git-refs"]
     }
   ],
-  "regexManagers": [
+  "customManagers": [
     {
+      "customType": "regex",
       "fileMatch": ["images/magnum/Dockerfile"],
       "matchStrings": ["magnum-cluster-api==(?<currentValue>.*?)\\s"],
       "datasourceTemplate": "pypi",
       "depNameTemplate": "magnum-cluster-api",
       "versioningTemplate": "semver"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": ["images/neutron/Dockerfile"],
+      "matchStrings": ["POLICY_SERVER_GIT_REF=(?<currentDigest>.*?)\\n"],
+      "datasourceTemplate": "git-refs",
+      "depNameTemplate": "neutron-policy-server",
+      "packageNameTemplate": "https://review.vexxhost.dev/neutron-policy-server",
+      "currentValueTemplate": "main"
     }
   ]
 }
