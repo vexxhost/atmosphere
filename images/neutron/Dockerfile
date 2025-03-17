@@ -14,7 +14,7 @@ RUN git -C /src/neutron-vpnaas fetch --unshallow
 ARG NETWORKING_BAREMETAL_GIT_REF=8dc6edadce564ad4896ecfd5d2bca68396d1d7e6
 ADD --keep-git-dir=true https://opendev.org/openstack/networking-baremetal.git#${NETWORKING_BAREMETAL_GIT_REF} /src/networking-baremetal
 RUN git -C /src/networking-baremetal fetch --unshallow
-ARG POLICY_SERVER_GIT_REF=d87012b56741cb2ad44fa4dec9c5f24001ad60fe
+ARG POLICY_SERVER_GIT_REF=41c862a7e15955195ebac56a48ae98137aac146d
 ADD --keep-git-dir=true https://github.com/vexxhost/neutron-policy-server.git#${POLICY_SERVER_GIT_REF} /src/neutron-policy-server
 RUN git -C /src/neutron-policy-server fetch --unshallow
 ARG LOG_PASER_GIT_REF=9bc923c1294864ec709c538ba5c309065ef710d5
