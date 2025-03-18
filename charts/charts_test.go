@@ -16,7 +16,6 @@ import (
 
 var (
 	KUBERNETES_VERSIONS = []string{
-		"1.23.0",
 		"1.24.0",
 		"1.25.0",
 		"1.26.0",
