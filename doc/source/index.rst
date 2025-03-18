@@ -28,6 +28,7 @@ curated by years of experience from our team alongside other features such as:
    config/index
    deploy/index
    admin/index
+   user/index
    release-notes
 
 
