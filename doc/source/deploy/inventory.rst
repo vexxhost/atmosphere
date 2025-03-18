@@ -32,6 +32,43 @@ The recommended layout is as follows:
     │   └── site.yml
     └── requirements.yml
 
+The ``requirements.yml`` file is used to specify the atmosphere ansible collection
+version that will be used to deploy the platform.  Please refer to the `Release Notes`
+for the version information.  The file contents should look like this:
+
+.. code-block:: yaml
+
+    collections:
+      - name: vexxhost.atmosphere
+        version: 4.3.1
+
+To generate the inventory configuration files, you can use the ``generate_workspace``
+playbook to simplify the process.  The following command will generate the
+inventory in the specified directory:
+
+.. code-block:: bash
+
+    ansible-playbook -e domain_name="yourdomain.com" \
+                     -e workspace_path="$(pwd)/cloud-config/inventory" \
+                     vexxhost.atmosphere.generate_workspace
+
+The ``cloud-config`` directory can be managed by any SCM tool of your choice, such as Git,
+and can be used to store all the configuration files and secrets required to deploy the
+platform.  You also need to assign the domain name of your cluster to the domain_name
+variable for production deployments.
+
+Refer to the other sections of the `Deployment Guide` to update the configuration files
+according to your network and hardware specification in the inventory directory.
+
+The file contents should look like this:
+
+.. code-block:: yaml
+
+    collections:
+      - name: vexxhost.atmosphere
+        version: 4.3.1
+
+
 *************
 ``hosts.ini``
 *************
