@@ -23,7 +23,7 @@
     - name: Get test image object
       openstack.cloud.image_info:
         cloud: atmosphere
-        image: cirros
+        image: "{{ tempest_glance_image | default('cirros') }}"
       register: _tempest_test_image
       when: tempest_helm_values.conf.tempest.compute.image_ref is not defined
 
@@ -42,7 +42,7 @@
     - name: Get test flavor object
       openstack.cloud.compute_flavor_info:
         cloud: atmosphere
-        name: m1.tiny
+        name: "{{ tempest_flavor | default('m1.tiny') }}"
       register: _tempest_test_flavor
       when: tempest_helm_values.conf.tempest.compute.flavor_ref is not defined
 
@@ -61,7 +61,7 @@
     - name: Get test network object
       openstack.cloud.networks_info:
         cloud: atmosphere
-        name: public
+        name: "{{ tempest_public_network | default('public') }}"
       register: _tempest_test_network
       when: tempest_helm_values.conf.tempest.network.public_network_id is not defined
 
@@ -82,12 +82,13 @@
   run_once: true
   kubernetes.core.helm:
     name: "{{ tempest_helm_release_name }}"
+    force: true
     chart_ref: "{{ tempest_helm_chart_ref }}"
     release_namespace: "{{ tempest_helm_release_namespace }}"
     kubeconfig: "{{ tempest_helm_kubeconfig }}"
     values: "{{ _tempest_helm_values | combine(_tempest_network_backend_settings[atmosphere_network_backend], recursive=True) | combine(tempest_helm_values, recursive=True) }}" # noqa: yaml[line-length]
     wait: true
-    wait_timeout: 20m
+    wait_timeout: 60m
 
 - name: Get tempest job object
   kubernetes.core.k8s_info:
@@ -97,19 +98,26 @@
     namespace: openstack
   register: _tempest_job_obj
 
-- name: Get tempest log
-  kubernetes.core.k8s_log:
-    namespace: openstack
-    label_selectors:
-      - job-name=tempest-run-tests
-  register: _tempest_log
+- name: Process tempest results locally
+  when: not (tempest_helm_values.conf.subunit_output | default(_tempest_helm_values.conf.subunit_output) | bool)
+  block:
+    - name: Get tempest log
+      kubernetes.core.k8s_log:
+        namespace: openstack
+        label_selectors:
+          - job-name=tempest-run-tests
+      register: _tempest_log
 
-- name: Print tempest log details
-  ansible.builtin.debug:
-    msg: "{{ _tempest_log.log_lines }}"
+    - name: Print tempest log details
+      ansible.builtin.debug:
+        msg: "{{ _tempest_log.log_lines }}"
 
-- name: Fail when tempest result is failed
-  ansible.builtin.fail:
-    msg: "Tempest failed!"
-  when: _tempest_job_obj.resources[0]['status']['succeeded'] is not defined or
-        _tempest_job_obj.resources[0]['status']['succeeded'] != 1
+    - name: Fail when tempest result is failed
+      ansible.builtin.fail:
+        msg: "Tempest failed!"
+      when: _tempest_job_obj.resources[0]['status']['succeeded'] is not defined or
+            _tempest_job_obj.resources[0]['status']['succeeded'] != 1
+
+- name: Process tempest result as unit test file
+  ansible.builtin.import_tasks: unit.yml
+  when: (tempest_helm_values.conf.subunit_output | default(_tempest_helm_values.conf.subunit_output) | bool)

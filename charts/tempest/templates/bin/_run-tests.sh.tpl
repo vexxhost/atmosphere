@@ -16,16 +16,39 @@ limitations under the License.
 
 set -ex
 
+if [ ! -f /etc/tempest/test-blacklist ]; then
+  touch /etc/tempest/test-blacklist
+fi
+
+if [ ! -f /etc/tempest/test-whitelist ]; then
+  touch /etc/tempest/test-whitelist
+fi
+
+{{ if .Values.conf.cleanup.previous_run }}
+tempest cleanup --prefix {{ .Values.conf.cleanup.prefix_name }}
+{{ end }}
+
 {{ if .Values.conf.cleanup.enabled }}
+mkdir -p /var/lib/tempest/saved_state
+pushd /var/lib/tempest/saved_state
 tempest cleanup --init-saved-state
 
 if [ "true" == "{{- .Values.conf.cleanup.force -}}" ]; then
 trap "tempest cleanup; exit" 1 ERR
 fi
+popd
 {{- end }}
 
+{{ if .Values.conf.subunit_output }}
+tempest run --include-list /etc/tempest/test-whitelist --exclude-list /etc/tempest/test-blacklist --config-file /etc/tempest/tempest.conf -w 4 --smoke --subunit > /var/lib/tempest/data/results.subunit
+cat /var/lib/tempest/data/results.subunit | subunit2junitxml -o /var/lib/tempest/data/results.junit || echo converted subunit file
+{{ else }}
 {{ .Values.conf.script }}
+{{- end }}
 
-{{ if .Values.conf.cleanup.enabled }}
+{{ if and .Values.conf.cleanup.enabled (not .Values.conf.cleanup.previous_run) }}
+mkdir -p /var/lib/tempest/saved_state
+pushd /var/lib/tempest/saved_state
 tempest cleanup
+popd
 {{- end }}

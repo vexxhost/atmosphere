@@ -119,11 +119,14 @@ spec:
           hostPath:
             path: /tmp/stestr
         - name: tempest-reports
-        {{- if not .Values.pvc.enabled }}
-          emptyDir: {}
-        {{- else }}
+        {{- if .Values.pvc.enabled }}
           persistentVolumeClaim:
             claimName: {{ .Values.pvc.name }}
+        {{- else if .Values.conf.subunit_output }}
+          hostPath:
+            path: /tmp/tempest-reports
+        {{- else }}
+          emptyDir: {}
         {{- end }}
 {{- dict "enabled" (or .Values.manifests.certificates .Values.tls.identity) "name" .Values.secrets.tls.identity.api.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
 {{- end }}
