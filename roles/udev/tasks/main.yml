@@ -1,0 +1,30 @@
+# SPDX-FileCopyrightText: © 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+- name: Add udev rules for Pure Storage FlashArray
+  ansible.builtin.copy:
+    src: 99-pure-storage.rules
+    dest: /etc/udev/rules.d/99-pure-storage.rules
+    owner: root
+    group: root
+    mode: "0644"
+  when: >
+    cinder_helm_values.conf.backends.values() |
+    selectattr('volume_driver', 'defined') |
+    selectattr('volume_driver', 'equalto', 'cinder.volume.drivers.pure.PureISCSIDriver') |
+    list | length > 0
+  notify: Reload udev
+
+- name: Add udev rules for SCSI Unit Attention
+  ansible.builtin.copy:
+    src:  90-scsi-ua.rules
+    dest: /etc/udev/rules.d/90-scsi-ua.rules
+    owner: root
+    group: root
+    mode: "0644"
+  when: >
+    cinder_helm_values.conf.backends.values() |
+    selectattr('volume_driver', 'defined') |
+    selectattr('volume_driver', 'equalto', 'cinder.volume.drivers.pure.PureISCSIDriver') |
+    list | length > 0
+  notify: Reload udev
