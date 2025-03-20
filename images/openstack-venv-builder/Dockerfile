@@ -6,6 +6,7 @@ ARG REGISTRY
 ARG RELEASE
 
 FROM ubuntu-cloud-archive AS requirements
+# renovate: name=openstack/requirements repo=https://opendev.org/openstack/requirements.git branch=unmaintained/2023.1
 ARG REQUIREMENTS_GIT_REF=c15ff09802a7cc4561275c9c0dbcfed9213c6e11
 ADD --keep-git-dir=true https://opendev.org/openstack/requirements.git#${REQUIREMENTS_GIT_REF} /src/requirements
 RUN cp /src/requirements/upper-constraints.txt /upper-constraints.txt

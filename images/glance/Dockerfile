@@ -3,10 +3,13 @@
 # Atmosphere-Rebuild-Time: 2024-06-26T17:38:39Z
 
 FROM openstack-venv-builder AS build
+# renovate: name=openstack/glance repo=https://opendev.org/openstack/glance.git branch=unmaintained/2023.1
 ARG GLANCE_GIT_REF=edd75b70a4541c5dd89715a75ad565692dca2efa
 ADD --keep-git-dir=true https://opendev.org/openstack/glance.git#${GLANCE_GIT_REF} /src/glance
 RUN git -C /src/glance fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/glance_store.git#unmaintained/2023.1 /src/glance_store
+# renovate: name=openstack/glance_store repo=https://opendev.org/openstack/glance_store.git branch=unmaintained/2023.1
+ARG GLANCE_STORE_GIT_REF=97b6f4c030189a80df0b525420a3760ae3a81941
+ADD --keep-git-dir=true https://opendev.org/openstack/glance_store.git#${GLANCE_STORE_GIT_REF} /src/glance_store
 RUN git -C /src/glance_store fetch --unshallow
 COPY patches/glance_store /patches/glance_store
 RUN git -C /src/glance_store apply --verbose /patches/glance_store/*
