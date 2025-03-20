@@ -3,20 +3,25 @@
 # Atmosphere-Rebuild-Time: 2025-01-24T11:51:19Z
 
 FROM openstack-venv-builder AS build
+# renovate: name=openstack/neutron repo=https://opendev.org/openstack/neutron.git branch=stable/2024.1
 ARG NEUTRON_GIT_REF=c6d4a3e364b11568dfd36a11551f553c11c48308
 ADD --keep-git-dir=true https://opendev.org/openstack/neutron.git#${NEUTRON_GIT_REF} /src/neutron
 RUN git -C /src/neutron fetch --unshallow
 COPY patches/neutron /patches/neutron
 RUN git -C /src/neutron apply --verbose /patches/neutron/*
-ARG NEUTRON_VPNAAS_GIT_REF=297855d0c98de29092ef94ce6686c56eb9f6b422
+# renovate: name=openstack/neutron-vpnaas repo=https://opendev.org/openstack/neutron-vpnaas.git branch=stable/2024.1
+ARG NEUTRON_VPNAAS_GIT_REF=8655ef2b0f95a600639636665dd4b83b0a107bc7
 ADD --keep-git-dir=true https://opendev.org/openstack/neutron-vpnaas.git#${NEUTRON_VPNAAS_GIT_REF} /src/neutron-vpnaas
 RUN git -C /src/neutron-vpnaas fetch --unshallow
+# renovate: name=openstack/networking-baremetal repo=https://opendev.org/openstack/networking-baremetal.git branch=stable/2024.1
 ARG NETWORKING_BAREMETAL_GIT_REF=8dc6edadce564ad4896ecfd5d2bca68396d1d7e6
 ADD --keep-git-dir=true https://opendev.org/openstack/networking-baremetal.git#${NETWORKING_BAREMETAL_GIT_REF} /src/networking-baremetal
 RUN git -C /src/networking-baremetal fetch --unshallow
+# renovate: name=vexxhost/neutron-policy-server repo=https://github.com/vexxhost/neutron-policy-server.git branch=main
 ARG POLICY_SERVER_GIT_REF=41c862a7e15955195ebac56a48ae98137aac146d
 ADD --keep-git-dir=true https://github.com/vexxhost/neutron-policy-server.git#${POLICY_SERVER_GIT_REF} /src/neutron-policy-server
 RUN git -C /src/neutron-policy-server fetch --unshallow
+# renovate: name=vexxhost/neutron-ovn-network-logging-parser repo=https://github.com/vexxhost/neutron-ovn-network-logging-parser.git branch=main
 ARG LOG_PASER_GIT_REF=9bc923c1294864ec709c538ba5c309065ef710d5
 ADD --keep-git-dir=true https://github.com/vexxhost/neutron-ovn-network-logging-parser.git#${LOG_PASER_GIT_REF} /src/neutron-ovn-network-logging-parser
 RUN git -C /src/neutron-ovn-network-logging-parser fetch --unshallow
