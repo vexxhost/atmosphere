@@ -3,6 +3,7 @@
 # Atmosphere-Rebuild-Time: 2024-06-26T17:38:39Z
 
 FROM openstack-venv-builder AS build
+# renovate: name=openstack/manila repo=https://opendev.org/openstack/manila.git branch=stable/2023.2
 ARG MANILA_GIT_REF=b4d1e6e9e6e9f77d5fb74c499badae92c271e1ba
 ADD --keep-git-dir=true https://opendev.org/openstack/manila.git#${MANILA_GIT_REF} /src/manila
 RUN git -C /src/manila fetch --unshallow

@@ -3,6 +3,7 @@
 # Atmosphere-Rebuild-Time: 2024-06-26T17:38:39Z
 
 FROM openstack-venv-builder AS build
+# renovate: name=openstack/barbican repo=https://opendev.org/openstack/barbican.git branch=stable/2023.2
 ARG BARBICAN_GIT_REF=00274b2f07d050c5b4571bfc0f4e5698acf678f1
 ADD --keep-git-dir=true https://opendev.org/openstack/barbican.git#${BARBICAN_GIT_REF} /src/barbican
 RUN git -C /src/barbican fetch --unshallow
