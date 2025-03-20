@@ -3,6 +3,7 @@
 # Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
 
 FROM openstack-venv-builder AS build
+# renovate: name=openstack/ironic repo=https://opendev.org/openstack/ironic.git branch=master
 ARG IRONIC_GIT_REF=5aa51d6985d25acd6abfb161c62c66facc20a6ca
 ADD --keep-git-dir=true https://opendev.org/openstack/ironic.git#${IRONIC_GIT_REF} /src/ironic
 RUN git -C /src/ironic fetch --unshallow

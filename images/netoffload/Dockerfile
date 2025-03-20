@@ -3,6 +3,7 @@
 # Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
 
 FROM golang AS build
+# renovate: name=vexxhost/netoffload repo=https://github.com/vexxhost/netoffload.git branch=main
 ARG NETOFFLOAD_GIT_REF=94b8c0fdb0b83bd1b7e14b9a58077a047c78a800
 ADD https://github.com/vexxhost/netoffload.git#${NETOFFLOAD_GIT_REF} /src
 WORKDIR /src

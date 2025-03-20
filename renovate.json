@@ -26,30 +26,17 @@
     {
       "groupName": "openstack",
       "matchDatasources": ["git-refs"],
-      "matchFileNames": ["images/manila/Dockerfile"]
+      "matchPackageNames": ["https://opendev.org/openstack/**"]
     }
   ],
   "customManagers": [
     {
       "customType": "regex",
-      "fileMatch": ["images/manila/Dockerfile"],
+      "fileMatch": ["Dockerfile"],
       "matchStrings": [
-        "ARG (?<depName>[A-Z_]+)_GIT_REF=(?<currentDigest>.*?)\\s+ADD --keep-git-dir=true https://opendev\\.org/openstack/(?<packageName>[a-z-]+)\\.git"
+        "# renovate: name=(?<depName>.+?) repo=(?<packageName>.+?) branch=(?<currentValue>.+?)\nARG .+?_GIT_REF=(?<currentDigest>.+?)\n"
       ],
-      "datasourceTemplate": "git-refs",
-      "depNameTemplate": "openstack/{{packageName}}",
-      "packageNameTemplate": "https://opendev.org/openstack/{{packageName}}",
-      "currentValueTemplate": "{{#if (equals baseBranch 'main')}}master{{else}}{{baseBranch}}{{/if}}"
-    },
-    {
-      "customType": "regex",
-      "fileMatch": ["images/tempest/Dockerfile"],
-      "matchStrings": [
-        "ADD --keep-git-dir=true https://opendev.org/openstack/(?<depName>[^.]+)(\\.git)?#(?<currentDigest>[0-9a-f]{40}) /src(?<path>.*)"
-      ],
-      "datasourceTemplate": "git-refs",
-      "packageNameTemplate": "https://opendev.org/openstack/{{depName}}",
-      "currentValueTemplate": "master"
+      "datasourceTemplate": "git-refs"
     },
     {
       "customType": "regex",

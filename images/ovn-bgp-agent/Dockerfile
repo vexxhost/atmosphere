@@ -3,6 +3,7 @@
 # Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
 
 FROM openstack-venv-builder AS build
+# renovate: name=openstack/ovn-bgp-agent repo=https://opendev.org/openstack/ovn-bgp-agent.git branch=master
 ARG OVN_BGP_AGENT_GIT_REF=704742076a28c13b811ea37e71dae1e4b0aca573
 ADD --keep-git-dir=true https://opendev.org/openstack/ovn-bgp-agent.git#${OVN_BGP_AGENT_GIT_REF} /src/ovn-bgp-agent
 RUN git -C /src/ovn-bgp-agent fetch --unshallow
