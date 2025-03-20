@@ -3,6 +3,7 @@
 # Atmosphere-Rebuild-Time: 2024-06-26T17:38:39Z
 
 FROM openstack-venv-builder AS build
+# renovate: name=openstack/heat repo=https://opendev.org/openstack/heat.git branch=unmaintained/zed
 ARG HEAT_GIT_REF=d3948706a3ff28d0160157f76f1e18244a8dad5c
 ADD --keep-git-dir=true https://opendev.org/openstack/heat.git#${HEAT_GIT_REF} /src/heat
 RUN git -C /src/heat fetch --unshallow

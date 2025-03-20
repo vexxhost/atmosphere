@@ -3,17 +3,23 @@
 # Atmosphere-Rebuild-Time: 2025-02-18T16:07:40Z
 
 FROM openstack-venv-builder AS build
+# renovate: name=openstack/neutron repo=https://opendev.org/openstack/neutron.git branch=unmaintained/zed
 ARG NEUTRON_GIT_REF=ece6a9a7acab20d5a39f54784427258d54b72cfd
 ADD --keep-git-dir=true https://opendev.org/openstack/neutron.git#${NEUTRON_GIT_REF} /src/neutron
 RUN git -C /src/neutron fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/neutron-vpnaas.git#zed-eol /src/neutron-vpnaas
+# renovate: name=openstack/neutron-vpnaas repo=https://opendev.org/openstack/neutron-vpnaas.git branch=zed-eol
+ARG NEUTRON_VPNAAS_GIT_REF=45d63e1e9adc2b3ce4e3b2b5728744f99ea70a97
+ADD --keep-git-dir=true https://opendev.org/openstack/neutron-vpnaas.git#${NEUTRON_VPNAAS_GIT_REF} /src/neutron-vpnaas
 RUN git -C /src/neutron-vpnaas fetch --unshallow
+# renovate: name=openstack/networking-baremetal repo=https://opendev.org/openstack/networking-baremetal.git branch=unmaintained/zed
 ARG NETWORKING_BAREMETAL_GIT_REF=fc8ddc5f68eba645239e5faa3c370dab5cc94bc9
 ADD --keep-git-dir=true https://opendev.org/openstack/networking-baremetal.git#${NETWORKING_BAREMETAL_GIT_REF} /src/networking-baremetal
 RUN git -C /src/networking-baremetal fetch --unshallow
+# renovate: name=vexxhost/neutron-policy-server repo=https://github.com/vexxhost/neutron-policy-server.git branch=main
 ARG POLICY_SERVER_GIT_REF=41c862a7e15955195ebac56a48ae98137aac146d
 ADD --keep-git-dir=true https://github.com/vexxhost/neutron-policy-server.git#${POLICY_SERVER_GIT_REF} /src/neutron-policy-server
 RUN git -C /src/neutron-policy-server fetch --unshallow
+# renovate: name=vexxhost/neutron-ovn-network-logging-parser repo=https://github.com/vexxhost/neutron-ovn-network-logging-parser.git branch=main
 ARG LOG_PASER_GIT_REF=9bc923c1294864ec709c538ba5c309065ef710d5
 ADD --keep-git-dir=true https://github.com/vexxhost/neutron-ovn-network-logging-parser.git#${LOG_PASER_GIT_REF} /src/neutron-ovn-network-logging-parser
 RUN git -C /src/neutron-ovn-network-logging-parser fetch --unshallow
