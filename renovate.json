@@ -22,9 +22,35 @@
       "groupName": "tempest",
       "matchDatasources": ["git-refs"],
       "matchFileNames": ["images/tempest/Dockerfile"]
+    },
+    {
+      "groupName": "openstack",
+      "matchDatasources": ["git-refs"],
+      "matchFileNames": ["images/manila/Dockerfile"]
     }
   ],
   "customManagers": [
+    {
+      "customType": "regex",
+      "fileMatch": ["images/manila/Dockerfile"],
+      "matchStrings": [
+        "ARG (?<depName>[A-Z_]+)_GIT_REF=(?<currentDigest>.*?)\\s+ADD --keep-git-dir=true https://opendev\\.org/openstack/(?<packageName>[a-z-]+)\\.git"
+      ],
+      "datasourceTemplate": "git-refs",
+      "depNameTemplate": "openstack/{{packageName}}",
+      "packageNameTemplate": "https://opendev.org/openstack/{{packageName}}",
+      "currentValueTemplate": "{{#if (equals baseBranch 'main')}}master{{else}}{{baseBranch}}{{/if}}"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": ["images/tempest/Dockerfile"],
+      "matchStrings": [
+        "ADD --keep-git-dir=true https://opendev.org/openstack/(?<depName>[^.]+)(\\.git)?#(?<currentDigest>[0-9a-f]{40}) /src(?<path>.*)"
+      ],
+      "datasourceTemplate": "git-refs",
+      "packageNameTemplate": "https://opendev.org/openstack/{{depName}}",
+      "currentValueTemplate": "master"
+    },
     {
       "customType": "regex",
       "fileMatch": ["images/magnum/Dockerfile"],
@@ -41,16 +67,6 @@
       "depNameTemplate": "neutron-policy-server",
       "packageNameTemplate": "https://review.vexxhost.dev/neutron-policy-server",
       "currentValueTemplate": "main"
-    },
-    {
-      "customType": "regex",
-      "fileMatch": ["images/tempest/Dockerfile"],
-      "matchStrings": [
-        "ADD --keep-git-dir=true https://opendev.org/openstack/(?<depName>[^.]+)(\\.git)?#(?<currentDigest>[0-9a-f]{40}) /src(?<path>.*)"
-      ],
-      "datasourceTemplate": "git-refs",
-      "packageNameTemplate": "https://opendev.org/openstack/{{depName}}",
-      "currentValueTemplate": "master"
     }
   ]
 }
