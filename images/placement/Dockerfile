@@ -3,6 +3,7 @@
 # Atmosphere-Rebuild-Time: 2025-02-20T21:42:46Z
 
 FROM openstack-venv-builder AS build
+# renovate: name=openstack/placement repo=https://opendev.org/openstack/placement.git branch=stable/2024.2
 ARG PLACEMENT_GIT_REF=828b2559a1b3c0b59c543e851c6ea3efb1baae20
 ADD --keep-git-dir=true https://opendev.org/openstack/placement.git#${PLACEMENT_GIT_REF} /src/placement
 RUN git -C /src/placement fetch --unshallow

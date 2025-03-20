@@ -3,9 +3,11 @@
 # Atmosphere-Rebuild-Time: 2025-02-20T21:42:46Z
 
 FROM openstack-venv-builder AS build
+# renovate: name=openstack/nova repo=https://opendev.org/openstack/nova.git branch=stable/2024.2
 ARG NOVA_GIT_REF=1b28f649feaf2c9929f15214814f8af950e5c19c
 ADD --keep-git-dir=true https://opendev.org/openstack/nova.git#${NOVA_GIT_REF} /src/nova
 RUN git -C /src/nova fetch --unshallow
+# renovate: name=vexxhost/nova-scheduler-filters repo=https://github.com/vexxhost/nova-scheduler-filters.git branch=main
 ARG SCHEDULER_FILTERS_GIT_REF=77ed1c2ca70f4166a6d0995c7d3d90822f0ca6c0
 ADD --keep-git-dir=true https://github.com/vexxhost/nova-scheduler-filters.git#${SCHEDULER_FILTERS_GIT_REF} /src/nova-scheduler-filters
 RUN git -C /src/nova-scheduler-filters fetch --unshallow

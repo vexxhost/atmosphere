@@ -3,6 +3,7 @@
 # Atmosphere-Rebuild-Time: 2025-02-20T21:42:46Z
 
 FROM golang AS build
+# renovate: name=kubernetes-entrypoint repo=https://opendev.org/airship/kubernetes-entrypoint.git branch=master
 ARG KUBERNETES_ENTRYPOINT_GIT_REF=df2f40f3dec3aca3e648f4f351ff5ccfbd659b59
 ADD https://opendev.org/airship/kubernetes-entrypoint.git#${KUBERNETES_ENTRYPOINT_GIT_REF} /src
 WORKDIR /src
