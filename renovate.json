@@ -4,6 +4,9 @@
   "baseBranches": ["main", "/^stable\\/.*/"],
   "commitBody": "Skip-Release-Notes",
   "prHourlyLimit": 10,
+  "prBodyDefinitions": {
+    "OpenDev Links": "[Compare changes](https://opendev.org/{{{depName}}}/compare/{{{currentDigestShort}}}...{{{newDigestShort}}})"
+  },
   "packageRules": [
     {
       "enabled": false,
@@ -19,14 +22,19 @@
       "matchDatasources": ["git-refs"]
     },
     {
-      "groupName": "tempest",
       "matchDatasources": ["git-refs"],
-      "matchFileNames": ["images/tempest/Dockerfile"]
+      "matchPackageNames": ["https://opendev.org/**"],
+      "prBodyColumns": ["Package", "Update", "Change", "OpenDev Links"]
     },
     {
-      "groupName": "openstack",
       "matchDatasources": ["git-refs"],
-      "matchPackageNames": ["https://opendev.org/openstack/**"]
+      "matchFileNames": ["images/tempest/Dockerfile"],
+      "groupName": "tempest"
+    },
+    {
+      "matchDatasources": ["git-refs"],
+      "matchPackageNames": ["https://opendev.org/openstack/**"],
+      "groupName": "openstack"
     }
   ],
   "customManagers": [
