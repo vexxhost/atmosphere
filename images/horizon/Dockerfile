@@ -4,7 +4,7 @@
 
 FROM openstack-venv-builder AS build
 # renovate: name=openstack/horizon repo=https://opendev.org/openstack/horizon.git branch=unmaintained/2023.1
-ARG HORIZON_GIT_REF=b467683b1ed2aab4e38fe2cb2ac7ae5500e5d5c0
+ARG HORIZON_GIT_REF=d205ff09bed65b08960c3578434060eac9273fba
 ADD --keep-git-dir=true https://opendev.org/openstack/horizon.git#${HORIZON_GIT_REF} /src/horizon
 RUN git -C /src/horizon fetch --unshallow
 # renovate: name=openstack/designate-dashboard repo=https://opendev.org/openstack/designate-dashboard.git branch=unmaintained/2023.1

@@ -1,0 +1,27 @@
+
+From 5093c4101edaaceaa258f1586b5f2a99dc101f71 Mon Sep 17 00:00:00 2001
+From: chung00-lee <chung00.lee@samsung.com>
+Date: Thu, 21 Nov 2024 17:15:45 +0900
+Subject: [PATCH] Replace placement request path
+Remove '//' in the placement request path.
+Closes-Bug: #2089223
+Change-Id: I2646ac3f82c7e1ab01faf1626bd8aa8046d66d0d
+---
+diff --git a/openstack_dashboard/api/placement.py b/openstack_dashboard/api/placement.py
+index f2cf5ae..94ef4b9 100644
+--- a/openstack_dashboard/api/placement.py
++++ b/openstack_dashboard/api/placement.py
+@@ -55,8 +55,11 @@
+ 
+ def _get_json(request, path):
+     adapter = make_adapter(request)
+-    uri = base.url_for(request, 'placement') + path
+-    response, body = adapter.get(uri)
++
++    base_uri = base.url_for(request, 'placement')
++    new_uri = base_uri.rstrip('/') + '/' + path.lstrip('/')
++
++    response, body = adapter.get(new_uri)
+     return response.json()
+ 
+ 
