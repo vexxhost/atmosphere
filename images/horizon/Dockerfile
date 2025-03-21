@@ -4,7 +4,7 @@
 
 FROM openstack-venv-builder AS build
 # renovate: name=openstack/horizon repo=https://opendev.org/openstack/horizon.git branch=master
-ARG HORIZON_GIT_REF=23d0b9525f7c11288d503123e29db0bd66f9ca88
+ARG HORIZON_GIT_REF=5093c4101edaaceaa258f1586b5f2a99dc101f71
 ADD --keep-git-dir=true https://opendev.org/openstack/horizon.git#${HORIZON_GIT_REF} /src/horizon
 RUN git -C /src/horizon fetch --unshallow
 # renovate: name=openstack/designate-dashboard repo=https://opendev.org/openstack/designate-dashboard.git branch=master
@@ -35,8 +35,6 @@ RUN git -C /src/neutron-vpnaas-dashboard fetch --unshallow
 ARG OCTAVIA_DASHBOARD_REF=1d4b034669c819217a0f58a394dae4340661bdeb
 ADD --keep-git-dir=true https://opendev.org/openstack/octavia-dashboard.git#${OCTAVIA_DASHBOARD_REF} /src/octavia-dashboard
 RUN git -C /src/octavia-dashboard fetch --unshallow
-COPY patches/horizon /patches/horizon
-RUN git -C /src/horizon apply --verbose /patches/horizon/*
 COPY patches/magnum-ui /patches/magnum-ui
 RUN git -C /src/magnum-ui apply --verbose /patches/magnum-ui/*
 RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe
