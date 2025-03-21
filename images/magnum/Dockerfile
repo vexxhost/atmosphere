@@ -12,13 +12,10 @@ RUN mv /${TARGETOS}-${TARGETARCH}/helm /usr/bin/helm
 
 FROM openstack-venv-builder AS build
 # renovate: name=openstack/magnum repo=https://opendev.org/openstack/magnum.git branch=stable/2024.1
-ARG MAGNUM_GIT_REF=2045ffb5ccbfb7873228eba9a6cecc1f65f4ab3f
+ARG MAGNUM_GIT_REF=b47479272a5ea0fc4b0cc81fd51f1ef6f20ccc9a
 ADD --keep-git-dir=true https://opendev.org/openstack/magnum.git#${MAGNUM_GIT_REF} /src/magnum
 RUN git -C /src/magnum fetch --unshallow
-COPY patches/magnum /patches/magnum
-RUN git -C /src/magnum apply --verbose /patches/magnum/*
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
-sed -i s/^oslo.db===.*$/oslo.db==14.1.0/ /upper-constraints.txt
 pip3 install \
     --constraint /upper-constraints.txt \
         /src/magnum \
