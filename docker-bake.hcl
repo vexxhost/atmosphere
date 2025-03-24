@@ -90,7 +90,7 @@ target "kubernetes-entrypoint" {
     platforms = ["linux/amd64", "linux/arm64"]
 
     contexts = {
-        "golang" = "docker-image://docker.io/library/golang:1.21"
+        "golang" = "docker-image://docker.io/library/golang:1.24"
     }
 
     tags = [
@@ -120,7 +120,7 @@ target "netoffload" {
     platforms = ["linux/amd64", "linux/arm64"]
 
     contexts = {
-        "golang" = "docker-image://docker.io/library/golang:1.20"
+        "golang" = "docker-image://docker.io/library/golang:1.24"
         "ubuntu" = "target:ubuntu"
     }
 
@@ -170,7 +170,7 @@ target "ovn" {
     platforms = ["linux/amd64", "linux/arm64"]
 
     contexts = {
-        "golang" = "docker-image://docker.io/library/golang:1.20"
+        "golang" = "docker-image://docker.io/library/golang:1.24"
         "openvswitch" = "target:openvswitch"
         "ovsinit" = "target:ovsinit"
     }
