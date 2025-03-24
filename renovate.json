@@ -14,6 +14,10 @@
     },
     {
       "enabled": true,
+      "matchFileNames": ["docker-bake.hcl"]
+    },
+    {
+      "enabled": true,
       "matchDatasources": ["pypi"],
       "matchPackageNames": ["magnum-cluster-api"]
     },
@@ -39,6 +43,12 @@
     }
   ],
   "customManagers": [
+    {
+      "customType": "regex",
+      "fileMatch": ["docker-bake.hcl"],
+      "matchStrings": ["\"docker-image:\/\/(?<depName>.+?):(?<currentValue>.+?)\""],
+      "datasourceTemplate": "docker"
+    },
     {
       "customType": "regex",
       "fileMatch": ["Dockerfile"],
