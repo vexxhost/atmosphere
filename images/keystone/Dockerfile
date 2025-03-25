@@ -4,7 +4,7 @@
 
 FROM openstack-venv-builder AS build
 # renovate: name=openstack/keystone repo=https://opendev.org/openstack/keystone.git branch=unmaintained/2023.1
-ARG KEYSTONE_GIT_REF=084eeec60b259f2852002881cdb171a3f20584d4
+ARG KEYSTONE_GIT_REF=e4b40af0ae3698fbbbbfb8c22468b33aae80e6d7
 ADD --keep-git-dir=true https://opendev.org/openstack/keystone.git#${KEYSTONE_GIT_REF} /src/keystone
 RUN git -C /src/keystone fetch --unshallow
 COPY patches/keystone /patches/keystone
@@ -13,7 +13,7 @@ RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF b
 pip3 install \
     --constraint /upper-constraints.txt \
         /src/keystone[ldap] \
-        keystone-keycloak-backend==0.1.8
+        keystone-keycloak-backend==0.2.0
 EOF
 
 FROM openstack-python-runtime
