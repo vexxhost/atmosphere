@@ -4,13 +4,13 @@
 
 FROM openstack-venv-builder AS build
 # renovate: name=openstack/neutron repo=https://opendev.org/openstack/neutron.git branch=stable/2024.2
-ARG NEUTRON_GIT_REF=804d6006e3f09c214d6de8a3f23de70c44f1d51d
+ARG NEUTRON_GIT_REF=2454165a9b48eb3eed218ae5e96a928db3ba1db9
 ADD --keep-git-dir=true https://opendev.org/openstack/neutron.git#${NEUTRON_GIT_REF} /src/neutron
 RUN git -C /src/neutron fetch --unshallow
 COPY patches/neutron /patches/neutron
 RUN git -C /src/neutron apply --verbose /patches/neutron/*
 # renovate: name=openstack/neutron-vpnaas repo=https://opendev.org/openstack/neutron-vpnaas.git branch=stable/2024.2
-ARG NEUTRON_VPNAAS_GIT_REF=990e478b1e6db459b6cb9aec53ce808e2957bb65
+ARG NEUTRON_VPNAAS_GIT_REF=11ffc53800e528d0b0544f7467a7487e0822bd3f
 ADD --keep-git-dir=true https://opendev.org/openstack/neutron-vpnaas.git#${NEUTRON_VPNAAS_GIT_REF} /src/neutron-vpnaas
 RUN git -C /src/neutron-vpnaas fetch --unshallow
 # renovate: name=openstack/networking-baremetal repo=https://opendev.org/openstack/networking-baremetal.git branch=stable/2024.2
