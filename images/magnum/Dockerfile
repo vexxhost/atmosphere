@@ -19,7 +19,7 @@ RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF b
 pip3 install \
     --constraint /upper-constraints.txt \
         /src/magnum \
-        magnum-cluster-api==0.29.2
+        magnum-cluster-api==0.29.3
 EOF
 
 FROM openstack-python-runtime
