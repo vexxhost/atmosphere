@@ -4,7 +4,7 @@
 
 FROM openstack-venv-builder AS build
 # renovate: name=openstack/nova repo=https://opendev.org/openstack/nova.git branch=stable/2024.2
-ARG NOVA_GIT_REF=1b28f649feaf2c9929f15214814f8af950e5c19c
+ARG NOVA_GIT_REF=1c9f3a124103fbc9972b2c4295ecfd4b9091a8cd
 ADD --keep-git-dir=true https://opendev.org/openstack/nova.git#${NOVA_GIT_REF} /src/nova
 RUN git -C /src/nova fetch --unshallow
 # renovate: name=vexxhost/nova-scheduler-filters repo=https://github.com/vexxhost/nova-scheduler-filters.git branch=main
