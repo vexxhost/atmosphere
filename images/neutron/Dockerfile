@@ -4,7 +4,7 @@
 
 FROM openstack-venv-builder AS build
 # renovate: name=openstack/neutron repo=https://opendev.org/openstack/neutron.git branch=stable/2024.1
-ARG NEUTRON_GIT_REF=c6d4a3e364b11568dfd36a11551f553c11c48308
+ARG NEUTRON_GIT_REF=5958e01ce83e3f796cb0be28cfdd44a25521b77f
 ADD --keep-git-dir=true https://opendev.org/openstack/neutron.git#${NEUTRON_GIT_REF} /src/neutron
 RUN git -C /src/neutron fetch --unshallow
 COPY patches/neutron /patches/neutron
