@@ -12,6 +12,7 @@ ceph_conf_overrides:
     value: false
 
 kubernetes_keepalived_interface: br-mgmt
+pacemaker_corosync_ring_interface: br-mgmt
 
 cilium_helm_values:
   operator:
@@ -226,6 +227,17 @@ manila_helm_values:
     replicas:
       api: 1
       scheduler: 1
+
+masakari_helm_values:
+  conf:
+    masakari:
+      DEFAULT:
+        debug: "{{ lookup('env', 'ATMOSPHERE_DEBUG') | default('false', True) }}"
+        masakari_api_workers: 2
+  pod:
+    replicas:
+      masakari_api: 1
+      masakari_engine: 1
 
 horizon_helm_values:
   conf:
