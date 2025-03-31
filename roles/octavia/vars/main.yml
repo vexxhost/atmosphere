@@ -19,6 +19,19 @@ _octavia_helm_values:
   pod:
     mounts:
       octavia_api:
+        octavia_driver_agent:
+          volumeMounts:
+            - name: octavia-server-ca
+              mountPath: /etc/octavia/certs/server
+            - name: octavia-client-certs
+              mountPath: /etc/octavia/certs/client
+          volumes:
+            - name: octavia-server-ca
+              secret:
+                secretName: octavia-server-ca
+            - name: octavia-client-certs
+              secret:
+                secretName: octavia-client-certs
         octavia_api:
           volumeMounts:
             - name: octavia-server-ca
@@ -123,6 +136,10 @@ _octavia_helm_values:
         max_overflow: 50
         max_pool_size: 5
         pool_timeout: 30
+      api_settings:
+        enabled_provider_drivers: 'amphora:The Octavia Amphora driver.,octavia:Deprecated alias of the Octavia Amphora driver.'
+      driver_agent:
+        enabled_provider_agents: ''
       glance:
         endpoint_type: internalURL
       haproxy_amphora:
@@ -140,6 +157,7 @@ _octavia_helm_values:
         endpoint_type: internalURL
       service_auth:
         endpoint_type: internalURL
+        valid_interfaces: internal
       task_flow:
         jobboard_expiration_time: 100
         jobboard_redis_sentinel: atmosphere
@@ -148,3 +166,11 @@ _octavia_helm_values:
   manifests:
     ingress_api: false
     service_ingress_api: false
+
+__octavia_ovn_helm_values:
+  conf:
+    octavia:
+      api_settings:
+        enabled_provider_drivers: 'amphora:The Octavia Amphora driver.,octavia:Deprecated alias of the Octavia Amphora driver.,ovn:Octavia OVN driver.'
+      driver_agent:
+        enabled_provider_agents: 'ovn'
