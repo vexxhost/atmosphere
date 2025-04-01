@@ -19,3 +19,9 @@
       become: true
       ansible.builtin.package:
         name: jq
+
+    - name: Add extra variables
+      when: ansible_extra_vars is defined
+      ansible.builtin.copy:
+        content: "{{ ansible_extra_vars | to_nice_yaml }}"
+        dest: "{{ zuul.project.src_dir }}/molecule/aio/group_vars/all/vars.yml"
