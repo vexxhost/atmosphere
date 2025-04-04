@@ -1,0 +1,17 @@
+# SPDX-FileCopyrightText: © 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
+
+FROM openstack-venv-builder AS build
+# renovate: name=openstack/ovn-bgp-agent repo=https://opendev.org/openstack/ovn-bgp-agent.git branch=stable/2024.2
+ARG OVN_BGP_AGENT_GIT_REF=704742076a28c13b811ea37e71dae1e4b0aca573
+ADD --keep-git-dir=true https://opendev.org/openstack/ovn-bgp-agent.git#${OVN_BGP_AGENT_GIT_REF} /src/ovn-bgp-agent
+RUN git -C /src/ovn-bgp-agent fetch --unshallow
+RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe
+uv pip install \
+    --constraint /upper-constraints.txt \
+        /src/ovn-bgp-agent
+EOF
+
+FROM openstack-python-runtime
+COPY --from=build --link /var/lib/openstack /var/lib/openstack
