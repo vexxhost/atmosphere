@@ -103,6 +103,8 @@
     vars:
       tox_environment:
         ATMOSPHERE_IMAGE_PREFIX: "harbor.atmosphere.dev/"
+        ATMOSPHERE_ANSIBLE_TAGS: "{{ ansible_molecule_tags | default(['all']) | join(',') }}"
+        ATMOSPHERE_ANSIBLE_SKIP_TAGS: "{{ ansible_molecule_skip_tags | default([]) | join(',') }}"
 
 - job:
     name: atmosphere-molecule-csi

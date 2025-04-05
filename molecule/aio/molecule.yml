@@ -34,6 +34,10 @@ provisioner:
   config_options:
     defaults:
       callbacks_enabled: ansible.posix.profile_tasks
+    tags:
+      run: ${ATMOSPHERE_ANSIBLE_TAGS-all}
+  options:
+    skip-tags: "${ATMOSPHERE_ANSIBLE_SKIP_TAGS-molecule-notest,notest}"
   inventory:
     links:
       host_vars: "${ATMOSPHERE_ANSIBLE_VARS_PATH-$MOLECULE_SCENARIO_DIRECTORY}/host_vars"
