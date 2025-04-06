@@ -29,6 +29,7 @@ images:
     image_repo_sync: docker.io/library/docker:17.07.0
     vector: docker.io/timberio/vector:0.39.0-debian
     ovn_logging_parser: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
+    ovn_bgp_agent: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
   pull_policy: "IfNotPresent"
   local_registry:
     active: false
@@ -51,6 +52,9 @@ labels:
     node_selector_value: enabled
   ovn_controller_gw:
     node_selector_key: l3-agent
+    node_selector_value: enabled
+  ovn_bgp_agent:
+    node_selector_key: openvswitch
     node_selector_value: enabled
 
 volume:
@@ -133,6 +137,65 @@ conf:
     endpoint = "http://loki.monitoring:3100"
     encoding.codec = "json"
     tenant_id = "{{`{{ project_id }}`}}"
+  ovn_bgp_agent:
+    DEFAULT:
+      ovsdb_connection: unix:/run/openvswitch/db.sock
+    agent:
+      root_helper: sudo /var/lib/openstack/bin/ovn-bgp-agent-rootwrap /etc/ovn-bgp-agent/rootwrap.conf
+      root_helper_daemon: sudo /var/lib/openstack/bin/ovn-bgp-agent-rootwrap-daemon /etc/ovn-bgp-agent/rootwrap.conf
+    frr_k8s: {}
+  ovn_bgp_agent_sudoers: |
+    # This sudoers file supports rootwrap for both Kolla and LOCI Images.
+    Defaults !requiretty
+    Defaults secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin:/var/lib/openstack/bin:/var/lib/kolla/venv/bin"
+    ovn_bgp_agent ALL = (root) NOPASSWD: /var/lib/kolla/venv/bin/ovn-bgp-agent-rootwrap /etc/ovn-bgp-agent/rootwrap.conf *, /var/lib/openstack/bin/ovn-bgp-agent-rootwrap /etc/ovn-bgp-agent/rootwrap.conf *
+    ovn_bgp_agent ALL = (root) NOPASSWD: /var/lib/kolla/venv/bin/ovn-bgp-agent-rootwrap-daemon /etc/ovn-bgp-agent/rootwrap.conf, /var/lib/openstack/bin/ovn-bgp-agent-rootwrap-daemon /etc/ovn-bgp-aegnt/rootwrap.conf
+  rootwrap: |
+    # Configuration for ovn-bgp-agent-rootwrap
+    # This file should be owned by (and only-writeable by) the root user
+
+    [DEFAULT]
+    # List of directories to load filter definitions from (separated by ',').
+    # These directories MUST all be only writeable by root !
+    filters_path=/etc/ovn-bgp-agent/rootwrap.d,/usr/share/ovn-bgp-agent/rootwrap
+
+    # List of directories to search executables in, in case filters do not
+    # explicitely specify a full path (separated by ',')
+    # If not specified, defaults to system PATH environment variable.
+    # These directories MUST all be only writeable by root !
+    exec_dirs=/sbin,/usr/sbin,/bin,/usr/bin,/usr/local/bin,/usr/local/sbin,/var/lib/openstack/bin,/var/lib/kolla/venv/bin
+
+    # Enable logging to syslog
+    # Default value is False
+    use_syslog=False
+
+    # Which syslog facility to use.
+    # Valid values include auth, authpriv, syslog, local0, local1...
+    # Default value is 'syslog'
+    syslog_log_facility=syslog
+
+    # Which messages to log.
+    # INFO means log all usage
+    # ERROR means only log unsuccessful attempts
+    syslog_log_level=ERROR
+  rootwrap_filters:
+    ovn_bgp_agent:
+      pods:
+        - ovn_bgp_agent
+      content: |
+        # ovn-bgp-agent-rootwrap command filters for scripts
+        # This file should be owned by (and only-writable by) the root user
+
+        [Filters]
+        # privileged/__init__.py: priv_context.PrivContext(default)
+        # This line ties the superuser privs with the config files, context name,
+        # and (implicitly) the actual python code invoked.
+        privsep-rootwrap: RegExpFilter, privsep-helper, root, privsep-helper, --config-file, /etc/(?!\.\.).*, --privsep_context, ovn_bgp_agent.privileged.default, --privsep_sock_path, /tmp/.*
+
+        ovs-vsctl: CommandFilter, ovs-vsctl, root
+        sysctl: CommandFilter, sysctl, root
+        ip: IpFilter, ip, root
+        vtysh: CommandFilter, vtysh, root
 
 pod:
   # NOTE: should be same as nova.pod.use_fqdn.compute
@@ -159,6 +222,13 @@ pod:
         vector:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
+    ovn_bgp_agent:
+      container:
+        ovn_bgp_agent_init:
+          readOnlyRootFilesystem: true
+          privileged: true
+        ovn_bgp_agent:
+          privileged: true
   tolerations:
     ovn_ovsdb_nb:
       enabled: false
@@ -440,4 +510,5 @@ manifests:
   deployment_ovn_northd: true
   daemonset_ovn_controller: true
   job_image_repo_sync: true
+  daemonset_ovn_bgp_agent: true
 ...
