@@ -95,6 +95,7 @@
     name: "{{ openstack_helm_endpoints.identity.auth.rgw.username }}"
     password: "{{ openstack_helm_endpoints.identity.auth.rgw.password }}"
     domain: service
+  register: service_user
 
 # NOTE(mnaser): https://storyboard.openstack.org/#!/story/2010579
 - name: Grant access to "service" project
@@ -105,7 +106,7 @@
     openstack role add \
       --user-domain service \
       --project service \
-      --user {{ openstack_helm_endpoints.identity.auth.rgw.username }} \
+      --user {{ service_user.id }} \
       admin
   args:
     executable: /bin/bash
