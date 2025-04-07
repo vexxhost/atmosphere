@@ -24,9 +24,15 @@ ovn_nb_connection=tcp:$OVN_OVSDB_NB_SERVICE_HOST:$OVN_OVSDB_NB_SERVICE_PORT_OVSD
 ovn_sb_connection=tcp:$OVN_OVSDB_SB_SERVICE_HOST:$OVN_OVSDB_SB_SERVICE_PORT_OVSDB
 EOF
 
-{{- if empty .Values.conf.ovn_bgp_agent.DEFAULT.bgp_router_id }}
+{{- if or (empty .Values.conf.ovn_bgp_agent.DEFAULT.bgp_router_id) (empty .Values.conf.ovn_bgp_agent.frr_k8s.node_name) }}
 tee > /tmp/pod-shared/ovn-bgp-agent.ini << EOF
+{{- if empty .Values.conf.ovn_bgp_agent.DEFAULT.bgp_router_id }}
 [DEFAULT]
 bgp_router_id=$NODE_IP
+{{- end }}
+{{- if empty .Values.conf.ovn_bgp_agent.frr_k8s.node_name }}
+[frr_k8s]
+node_name=$NODE_NAME
+{{- end }}
 EOF
 {{- end }}
