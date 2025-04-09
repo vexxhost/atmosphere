@@ -206,3 +206,37 @@ tests:
             exp_annotations:
               summary: Octavia load balancer not active
               description: Load balancer with ID d4e449ad-fad5-4d9e-a039-f71c773ec999 stuck in non-active state for more then 15 minutes.
+
+  - interval: 1m
+    input_series:
+      - series: 'openstack_loadbalancer_amphora_status{cert_expiration="2020-08-08T23:44:31Z",compute_id="667bb225-69aa-44b1-8908-694dc624c267",ha_ip="10.0.0.6",id="45f40289-0551-483a-b089-47214bc2a8a4",lb_network_ip="192.168.0.6",loadbalancer_id="882f2a9d-9d53-4bd0-b0e9-08e9d0de11f9",role="MASTER",status="READY"}'
+        values: '2x15'
+      - series: 'openstack_loadbalancer_amphora_status{cert_expiration="2020-08-08T23:44:30Z",compute_id="9cd0f9a2-fe12-42fc-a7e3-5b6fbbe20395",ha_ip="10.0.0.6",id="7f890893-ced0-46ed-8697-33415d070e5a",lb_network_ip="192.168.0.17",loadbalancer_id="882f2a9d-9d53-4bd0-b0e9-08e9d0de11f9",role="BACKUP",status="ERROR"}'
+        values: '6x15'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: OctaviaAmphoraError
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+              id: 7f890893-ced0-46ed-8697-33415d070e5a
+            exp_annotations:
+              summary: Octavia Amphora in error state
+              description: Amphora with ID 7f890893-ced0-46ed-8697-33415d070e5a stuck in error state for more then 15 minutes.
+
+  - interval: 1m
+    input_series:
+      - series: 'openstack_loadbalancer_amphora_status{cert_expiration="2020-08-08T23:44:31Z",compute_id="667bb225-69aa-44b1-8908-694dc624c267",ha_ip="10.0.0.6",id="45f40289-0551-483a-b089-47214bc2a8a4",lb_network_ip="192.168.0.6",loadbalancer_id="882f2a9d-9d53-4bd0-b0e9-08e9d0de11f9",role="MASTER",status="READY"}'
+        values: '2x60'
+      - series: 'openstack_loadbalancer_amphora_status{cert_expiration="2020-08-08T23:44:30Z",compute_id="9cd0f9a2-fe12-42fc-a7e3-5b6fbbe20395",ha_ip="10.0.0.6",id="7f890893-ced0-46ed-8697-33415d070e5a",lb_network_ip="192.168.0.17",loadbalancer_id="882f2a9d-9d53-4bd0-b0e9-08e9d0de11f9",role="BACKUP",status="PENDING_CREATE"}'
+        values: '3x60'
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: OctaviaAmphoraNotReady
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+              id: 7f890893-ced0-46ed-8697-33415d070e5a
+            exp_annotations:
+              summary: Octavia Amphora not ready
+              description: Amphora with ID 7f890893-ced0-46ed-8697-33415d070e5a stuck in non-ready state for more then 1 hour.

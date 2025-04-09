@@ -331,6 +331,30 @@
                 severity: 'P3',
               },
             },
+            {
+              alert: 'OctaviaAmphoraError',
+              annotations: {
+                summary: 'Octavia Amphora in error state',
+                description: 'Amphora with ID {{ $labels.id }} stuck in error state for more then 15 minutes.',
+              },
+              expr: 'count by (id,name) (openstack_loadbalancer_amphora_status{status="ERROR"}) > 0',
+              'for': '15m',
+              labels: {
+                severity: 'P3',
+              },
+            },
+            {
+              alert: 'OctaviaAmphoraNotReady',
+              annotations: {
+                summary: 'Octavia Amphora not ready',
+                description: 'Amphora with ID {{ $labels.id }} stuck in non-ready state for more then 1 hour.',
+              },
+              expr: 'count by (id,name) (openstack_loadbalancer_amphora_status{status!="READY"}) > 0',
+              'for': '1h',
+              labels: {
+                severity: 'P3',
+              },
+            },
           ],
       },
     ],
