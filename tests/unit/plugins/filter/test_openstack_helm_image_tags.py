@@ -49,7 +49,7 @@ def test_openstack_helm_image_tags_for_magnum(atmosphere_images):
         "bootstrap": "registry.atmosphere.dev/library/heat:{{ atmosphere_release }}",
         "db_drop": "registry.atmosphere.dev/library/heat:{{ atmosphere_release }}",
         "db_init": "registry.atmosphere.dev/library/heat:{{ atmosphere_release }}",
-        "dep_check": "registry.atmosphere.dev/library/kubernetes-entrypoint:{{ atmosphere_release }}",
+        "dep_check": "ghcr.io/vexxhost/kubernetes-entrypoint:edge",
         "ks_endpoints": "registry.atmosphere.dev/library/heat:{{ atmosphere_release }}",
         "ks_service": "registry.atmosphere.dev/library/heat:{{ atmosphere_release }}",
         "ks_user": "registry.atmosphere.dev/library/heat:{{ atmosphere_release }}",

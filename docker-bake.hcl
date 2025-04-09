@@ -85,19 +85,6 @@ target "keepalived" {
     ]
 }
 
-target "kubernetes-entrypoint" {
-    context = "images/kubernetes-entrypoint"
-    platforms = ["linux/amd64", "linux/arm64"]
-
-    contexts = {
-        "golang" = "docker-image://docker.io/library/golang:1.24"
-    }
-
-    tags = [
-        "${REGISTRY}/kubernetes-entrypoint:${TAG}"
-    ]
-}
-
 target "libvirtd" {
     context = "images/libvirtd"
     platforms = ["linux/amd64", "linux/arm64"]
@@ -242,7 +229,6 @@ target "openstack" {
 group "default" {
     targets = [
         "keepalived",
-        "kubernetes-entrypoint",
         "libvirtd",
         "netoffload",
         "nova-ssh",
