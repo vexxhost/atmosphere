@@ -23,6 +23,9 @@ _frr_k8s_helm_values:
         tag: "{{ atmosphere_images['frr'] | vexxhost.kubernetes.docker_image('tag') }}"
     nodeSelector:
       openvswitch: enabled
+    webhook:
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: ""
   prometheus:
     rbacProxy:
       repository: "{{ atmosphere_images['kube_rbac_proxy'] | vexxhost.kubernetes.docker_image('name') }}"
