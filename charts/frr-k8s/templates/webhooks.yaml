@@ -88,6 +88,10 @@ spec:
         - name: cert
           mountPath: /tmp/k8s-webhook-server/serving-certs
           readOnly: true
+      {{- with .Values.frrk8s.webhook.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       {{- with .Values.frrk8s.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}

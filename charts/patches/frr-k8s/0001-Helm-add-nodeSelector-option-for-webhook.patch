@@ -1,0 +1,59 @@
+From 039608012340cece20ef5860fa208c2938650fbe Mon Sep 17 00:00:00 2001
+From: Dong Ma <dong.ma@vexxhost.com>
+Date: Thu, 10 Apr 2025 04:07:46 +0000
+Subject: [PATCH] Helm: add nodeSelector option for webhook
+
+Differentiate node selection for webhook server and frr-k8s
+DaemonSet. Webhook server now runs exclusively on control plane nodes.
+
+Signed-off-by: Dong Ma <dong.ma@vexxhost.com>
+---
+ charts/frr-k8s/README.md               | 1 +
+ charts/frr-k8s/templates/webhooks.yaml | 4 ++++
+ charts/frr-k8s/values.yaml             | 3 +++
+ 3 files changed, 8 insertions(+)
+
+diff --git a/frr-k8s/README.md b/frr-k8s/README.md
+index 212054d..b90df4e 100644
+--- a/frr-k8s/README.md
++++ b/frr-k8s/README.md
+@@ -69,6 +69,7 @@ Kubernetes: `>= 1.19.0-0`
+ | frrk8s.tolerateMaster | bool | `true` |  |
+ | frrk8s.tolerations | list | `[]` |  |
+ | frrk8s.updateStrategy.type | string | `"RollingUpdate"` |  |
++| frrk8s.webhook.nodeSelector | object | `{}` |  |
+ | fullnameOverride | string | `""` |  |
+ | nameOverride | string | `""` |  |
+ | prometheus.metricsBindAddress | string | `"127.0.0.1"` |  |
+diff --git a/frr-k8s/templates/webhooks.yaml b/frr-k8s/templates/webhooks.yaml
+index 2549837..e9356b2 100644
+--- a/frr-k8s/templates/webhooks.yaml
++++ b/frr-k8s/templates/webhooks.yaml
+@@ -88,6 +88,10 @@ spec:
+         - name: cert
+           mountPath: /tmp/k8s-webhook-server/serving-certs
+           readOnly: true
++      {{- with .Values.frrk8s.webhook.nodeSelector }}
++      nodeSelector:
++        {{- toYaml . | nindent 8 }}
++      {{- end }}
+       {{- with .Values.frrk8s.affinity }}
+       affinity:
+         {{- toYaml . | nindent 8 }}
+diff --git a/frr-k8s/values.yaml b/frr-k8s/values.yaml
+index 9b5d4b1..39aff9b 100644
+--- a/frr-k8s/values.yaml
++++ b/frr-k8s/values.yaml
+@@ -168,6 +168,9 @@ frrk8s:
+     resources: {}
+   frrMetrics:
+     resources: {}
++  # webhook contains configuration specific to the webhook deployment
++  webhook:
++    nodeSelector: {}
+ crds:
+   enabled: true
+   validationFailurePolicy: Fail
+-- 
+2.34.1
+
