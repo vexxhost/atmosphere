@@ -1,0 +1,69 @@
+# Copyright (c) 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Create TLS resources
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      - apiVersion: cert-manager.io/v1
+        kind: Certificate
+        metadata:
+          name: "{{ valkey_ca_certificate_name }}"
+          namespace: "{{ valkey_helm_release_namespace }}"
+        spec:
+          commonName: "{{ valkey_ca_certificate_common_name }}"
+          duration: 87600h0m0s
+          isCA: true
+          issuerRef:
+            group: cert-manager.io
+            kind: ClusterIssuer
+            name: self-signed
+          privateKey:
+            algorithm: RSA
+            size: 2048
+          renewBefore: 720h0m0s
+          secretName: "{{ valkey_ca_certificate_secret_name }}"
+
+      - apiVersion: cert-manager.io/v1
+        kind: Issuer
+        metadata:
+          name: "{{ valkey_issuer_name }}"
+          namespace: "{{ valkey_helm_release_namespace }}"
+        spec:
+          ca:
+            secretName: "{{ valkey_ca_certificate_secret_name }}"
+
+      - apiVersion: cert-manager.io/v1
+        kind: Certificate
+        metadata:
+          name: "{{ valkey_server_certificate_name }}"
+          namespace: "{{ valkey_helm_release_namespace }}"
+        spec:
+          commonName: "{{ valkey_server_certificate_common_name }}"
+          dnsNames:
+            - 127.0.0.1
+            - localhost
+            - "{{ valkey_helm_release_name }}.{{ valkey_helm_release_namespace }}.svc.cluster.local"
+            - "*.{{ valkey_helm_release_name }}.{{ valkey_helm_release_namespace }}.svc.cluster.local"
+            - "{{ valkey_helm_release_name }}-headless.{{ valkey_helm_release_namespace }}.svc.cluster.local"
+            - "*.{{ valkey_helm_release_name }}-headless.{{ valkey_helm_release_namespace }}.svc.cluster.local"
+          duration: 87600h0m0s
+          issuerRef:
+            group: cert-manager.io
+            kind: Issuer
+            name: "{{ valkey_issuer_name }}"
+          privateKey:
+            algorithm: RSA
+            size: 2048
+          renewBefore: 720h0m0s
+          secretName: "{{ valkey_server_certificate_secret_name }}"
+
+- name: Deploy Helm chart
+  run_once: true
+  kubernetes.core.helm:
+    name: "{{ valkey_helm_release_name }}"
+    chart_ref: "{{ valkey_helm_chart_ref }}"
+    release_namespace: "{{ valkey_helm_release_namespace }}"
+    create_namespace: true
+    kubeconfig: "{{ kubeconfig_path | default('/etc/kubernetes/admin.conf') }}"
+    values: "{{ _valkey_helm_values | combine(valkey_helm_values, recursive=True) }}"
