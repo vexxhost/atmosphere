@@ -558,6 +558,17 @@ _kube_prometheus_stack_helm_values:
         podMetricsEndpoints:
           - port: prometheus
             relabelings: *relabelings_instance_to_pod_name
+      - name: valkey
+        jobLabel: app.kubernetes.io/name
+        namespaceSelector:
+          matchNames:
+            - openstack
+        selector:
+          matchLabels:
+            app.kubernetes.io/name: valkey
+        podMetricsEndpoints:
+          - port: metrics
+            relabelings: *relabelings_instance_to_pod_name
   prometheusOperator:
     admissionWebhooks:
       patch:
