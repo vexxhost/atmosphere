@@ -1,0 +1,29 @@
+name: pr
+
+on:
+  pull_request:
+    types:
+      - edited
+      - labeled
+      - opened
+      - reopened
+      - synchronize
+      - unlabeled
+
+permissions: {}
+
+jobs:
+  reno:
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.pull_request.labels.*.name, 'skip-release-notes')"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: tj-actions/changed-files@ed68ef82c095e0d48ec87eccea555d944a631a4c # v46
+        id: changed-files
+        with:
+          dir_names: true
+      - uses: actions/github-script@v6
+        if: "!contains(steps.changed-files.outputs.added_files, 'releasenotes/notes/')"
+        with:
+          script: |
+            core.setFailed("Pull requests without the 'skip-release-notes' label must add a release note with reno.")
