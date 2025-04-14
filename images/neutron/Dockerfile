@@ -4,7 +4,7 @@
 
 FROM openstack-venv-builder AS build
 # renovate: name=openstack/neutron repo=https://opendev.org/openstack/neutron.git branch=master
-ARG NEUTRON_GIT_REF=804d6006e3f09c214d6de8a3f23de70c44f1d51d
+ARG NEUTRON_GIT_REF=286541a57a8194b06985c2bf1778b73c56ca5e0f
 ADD --keep-git-dir=true https://opendev.org/openstack/neutron.git#${NEUTRON_GIT_REF} /src/neutron
 RUN git -C /src/neutron fetch --unshallow
 COPY patches/neutron /patches/neutron
@@ -25,6 +25,11 @@ RUN git -C /src/neutron-policy-server fetch --unshallow
 ARG LOG_PASER_GIT_REF=f9ca8427d074bf90638bed0b60e0d3656b6c2825
 ADD --keep-git-dir=true https://github.com/vexxhost/neutron-ovn-network-logging-parser.git#${LOG_PASER_GIT_REF} /src/neutron-ovn-network-logging-parser
 RUN git -C /src/neutron-ovn-network-logging-parser fetch --unshallow
+# renovate: name=openstack/tap-as-a-service repo=https://opendev.org/openstack/tap-as-a-service.git branch=master
+ARG TAP_AS_A_SERVICE_GIT_REF=6ef9395531010fb27f364eca52474dd890db84af
+ADD --keep-git-dir=true https://opendev.org/openstack/tap-as-a-service.git#${TAP_AS_A_SERVICE_GIT_REF} /src/tap-as-a-service
+RUN git -C /src/tap-as-a-service fetch --unshallow
+
 RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe
 uv pip install \
     --constraint /upper-constraints.txt \
@@ -32,7 +37,8 @@ uv pip install \
         /src/neutron-vpnaas \
         /src/networking-baremetal \
         /src/neutron-policy-server \
-        /src/neutron-ovn-network-logging-parser
+        /src/neutron-ovn-network-logging-parser \
+        /src/tap-as-a-service
 EOF
 
 FROM openstack-python-runtime
