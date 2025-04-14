@@ -36,7 +36,7 @@
   block:
     - name: Set fact for include_app_kubernetes_io existence
       ansible.builtin.set_fact:
-        _openstack_helm_upgrade_include_labels_exists: "{{ 'pod' in _openstack_helm_upgrade_release_info.status.values and 'labels' in _openstack_helm_upgrade_release_info.status.values.pod and 'include_app_kubernetes_io' in _openstack_helm_upgrade_release_info.status.values.pod.labels }}"
+        _openstack_helm_upgrade_include_labels_exists: "{{ 'pod' in (_openstack_helm_upgrade_release_info.status['values'] | default({})) and 'labels' in (_openstack_helm_upgrade_release_info.status['values']['pod'] | default({})) and 'include_app_kubernetes_io' in (_openstack_helm_upgrade_release_info.status['values']['pod']['labels'] | default({})) }}"  # noqa: yaml[line-length]
 
     - name: Set helm values for new install
       ansible.builtin.set_fact:
