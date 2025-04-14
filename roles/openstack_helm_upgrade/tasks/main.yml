@@ -27,18 +27,20 @@
         _openstack_helm_upgrade_release_exists: "{{ _openstack_helm_upgrade_release_info.status is defined }}"
 
 - name: Set helm values for new install
-  openstack_helm_upgrade_values: "{{ openstack_helm_upgrade_values | combine({'pod': {'labels': {'include_app_kubernetes_io': false}}}, recursive=True) }}"
+  ansible.builtin.set_fact:
+    openstack_helm_upgrade_values: "{{ openstack_helm_upgrade_values | combine({'pod': {'labels': {'include_app_kubernetes_io': false}}}, recursive=True) }}"
   when: not _openstack_helm_upgrade_release_exists
 
 - name: Set helm values for upgrade
   when: _openstack_helm_upgrade_release_exists
   block:
     - name: Set fact for include_app_kubernetes_io existence
-      set_fact:
+      ansible.builtin.set_fact:
         _openstack_helm_upgrade_include_labels_exists: "{{ 'pod' in _openstack_helm_upgrade_release_info.status.values and 'labels' in _openstack_helm_upgrade_release_info.status.values.pod and 'include_app_kubernetes_io' in _openstack_helm_upgrade_release_info.status.values.pod.labels }}"
 
     - name: Set helm values for new install
-      openstack_helm_upgrade_values: "{{ openstack_helm_upgrade_values | combine({'pod': {'labels': {'include_app_kubernetes_io': false}}}, recursive=True) }}"
+      ansible.builtin.set_fact:
+        openstack_helm_upgrade_values: "{{ openstack_helm_upgrade_values | combine({'pod': {'labels': {'include_app_kubernetes_io': false}}}, recursive=True) }}"
       when: not _openstack_helm_upgrade_include_labels_exists
 
 - name: Deploy Helm chart
