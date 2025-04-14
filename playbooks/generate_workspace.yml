@@ -410,7 +410,7 @@
     - name: Set values for SSH keys
       when: item.path is defined
       ansible.builtin.set_fact:
-        secrets: "{{ secrets | default({}) | combine({item.item: lookup('file', item.path)}) }}"
+        secrets: "{{ secrets | default({}) | combine({item.item: lookup('file', item.path) + '\n'}) }}"
       loop: "{{ _ssh_key_file.results }}"
       loop_control:
         label: "{{ item.item }}"
