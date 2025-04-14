@@ -27,7 +27,7 @@ _nova_helm_values:
     ssh:
       enabled: true
       public_key: "{{ _nova_ssh_publickey.public_key }}"
-      private_key: "{{ nova_ssh_key }}"
+      private_key: "{{ nova_ssh_key | regex_replace('([^\n])$', '\\1\n') }}"
   bootstrap:
     structured:
       flavors:
