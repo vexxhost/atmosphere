@@ -500,6 +500,22 @@ _kube_prometheus_stack_helm_values:
                 replacement: default
                 targetLabel: instance
             scrapeTimeout: 30s
+      - name: percona-xtradb-haproxy
+        jobLabel: app.kubernetes.io/component
+        namespaceSelector:
+          matchNames:
+            - openstack
+        selector:
+          matchLabels:
+            name: percona-xtradb-haproxy-metrics
+        endpoints:
+          - port: metrics
+            interval: 1m
+            relabelings:
+              - action: replace
+                regex: (.*)
+                replacement: default
+                targetLabel: instance
     additionalPodMonitors:
       - name: ipmi-exporter
         jobLabel: job
