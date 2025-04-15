@@ -16,6 +16,7 @@
           devShell = pkgs.mkShell {
             buildInputs = with pkgs; [
               bashInteractive
+              docutils
               earthly
               glibcLocales
               go
@@ -25,6 +26,8 @@
               patchutils
               python311Packages.tox
               reno
+              renovate
+              vale
             ];
           };
         }
