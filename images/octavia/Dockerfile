@@ -4,7 +4,7 @@
 
 FROM openstack-venv-builder AS build
 # renovate: name=openstack/octavia repo=https://opendev.org/openstack/octavia.git branch=stable/2024.2
-ARG OCTAVIA_GIT_REF=e15cb80d8f325e7474fb2175a1a8e9805a473295
+ARG OCTAVIA_GIT_REF=82d00251baf209bdd9fc74b63115df346b6c74d2
 ADD --keep-git-dir=true https://opendev.org/openstack/octavia.git#${OCTAVIA_GIT_REF} /src/octavia
 RUN git -C /src/octavia fetch --unshallow
 # renovate: name=openstack/ovn-octavia-provider repo=https://opendev.org/openstack/ovn-octavia-provider.git branch=stable/2024.2
