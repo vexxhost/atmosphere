@@ -95,6 +95,39 @@ local mixins = {
             },
           ],
         },
+        {
+          name: 'bluestore-fragmentation-rating',
+          rules: [
+            {
+              alert: 'BluestoreFragmentationRateingConsiderable',
+              annotations: {
+                description: 'Bluestore fragmentation rating for OSD {{ $labels.osd }} on host {{ $labels.instance }} is currently at {{ $value }}. If it continue to goes higher then 0.9, it will impact other running services.',
+                summary: '[{{ $labels.osd }}] reaching a considerable value: {{ $value }}',
+              },
+              'for': '1m',
+              expr: |||
+                ceph_osd_fragmentation_rating > 0.7
+              |||,
+              labels: {
+                severity: 'warning',
+              },
+            },
+            {
+              alert: 'BluestoreFragmentationRateingHigh',
+              annotations: {
+                description: 'Bluestore fragmentation rating for OSD {{ $labels.osd }} on host {{ $labels.instance }} is currently at {{ $value }}. It might impact other running services.',
+                summary: '[{{ $labels.osd }}] reaching a high value: {{ $value }}',
+              },
+              'for': '1m',
+              expr: |||
+                ceph_osd_fragmentation_rating > 0.9
+              |||,
+              labels: {
+                severity: 'P3',
+              },
+            }
+          ],
+        },
       ],
     }
   },
