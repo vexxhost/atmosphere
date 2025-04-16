@@ -4,17 +4,17 @@
 
 FROM openstack-venv-builder AS build
 # renovate: name=openstack/neutron repo=https://opendev.org/openstack/neutron.git branch=master
-ARG NEUTRON_GIT_REF=804d6006e3f09c214d6de8a3f23de70c44f1d51d
+ARG NEUTRON_GIT_REF=f511ef918e1a3a60bbc1dec5edbec35ddf736223
 ADD --keep-git-dir=true https://opendev.org/openstack/neutron.git#${NEUTRON_GIT_REF} /src/neutron
 RUN git -C /src/neutron fetch --unshallow
 COPY patches/neutron /patches/neutron
 RUN git -C /src/neutron apply --verbose /patches/neutron/*
 # renovate: name=openstack/neutron-vpnaas repo=https://opendev.org/openstack/neutron-vpnaas.git branch=master
-ARG NEUTRON_VPNAAS_GIT_REF=990e478b1e6db459b6cb9aec53ce808e2957bb65
+ARG NEUTRON_VPNAAS_GIT_REF=0d94efd01f38d61007f5fd828e940c7f9f216866
 ADD --keep-git-dir=true https://opendev.org/openstack/neutron-vpnaas.git#${NEUTRON_VPNAAS_GIT_REF} /src/neutron-vpnaas
 RUN git -C /src/neutron-vpnaas fetch --unshallow
 # renovate: name=openstack/networking-baremetal repo=https://opendev.org/openstack/networking-baremetal.git branch=master
-ARG NETWORKING_BAREMETAL_GIT_REF=1fba63ce21619d3fe70117c6679e53629c612bc1
+ARG NETWORKING_BAREMETAL_GIT_REF=b66252c50a65480745cef7076f87509481627694
 ADD --keep-git-dir=true https://opendev.org/openstack/networking-baremetal.git#${NETWORKING_BAREMETAL_GIT_REF} /src/networking-baremetal
 RUN git -C /src/networking-baremetal fetch --unshallow
 # renovate: name=vexxhost/neutron-policy-server repo=https://github.com/vexxhost/neutron-policy-server.git branch=main
