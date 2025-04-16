@@ -27,7 +27,7 @@ EOF
 #EOF
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
 pip3 install \
-    --constraint /upper-constraints2.txt \
+    --constraint /upper-constraints.txt \
         /src/octavia[redis] \
         /src/ovn-octavia-provider
 EOF
