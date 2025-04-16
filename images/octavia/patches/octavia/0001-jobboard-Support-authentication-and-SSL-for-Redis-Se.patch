@@ -1,0 +1,102 @@
+From 3d6623e764d80c8da2dbe08bf28346deccb5a5a3 Mon Sep 17 00:00:00 2001
+From: ricolin <rlin@vexxhost.com>
+Date: Thu, 17 Apr 2025 08:53:46 +0800
+Subject: [PATCH] jobboard: Support authentication and SSL for Redis Sentinel
+
+This allows users to enable SSL and/or authentication for Redis
+Sentinel. Previously these could be enabled only for Redis, and
+Sentinel always had to be no-SSL and no-auth.
+
+Cherry-Pick from: 37b944d8b89d033ea4d8ae1f05728d987f51fae3
+
+Change-Id: Iea751dd0ab7367c5e56900ee17ba2932c7c7e68f
+---
+ octavia/common/config.py                           | 11 +++++++++++
+ .../worker/v2/taskflow_jobboard_driver.py          | 14 ++++++++++++++
+ ...dis-sentinel-auth-and-ssl-be1888903d68922d.yaml | 13 +++++++++++++
+ 3 files changed, 38 insertions(+)
+ create mode 100644 releasenotes/notes/redis-sentinel-auth-and-ssl-be1888903d68922d.yaml
+
+diff --git a/octavia/common/config.py b/octavia/common/config.py
+index e95f3f434..ce68f878d 100644
+--- a/octavia/common/config.py
++++ b/octavia/common/config.py
+@@ -590,6 +590,10 @@ task_flow_opts = [
+                     'job id and claims for it.'),
+     cfg.StrOpt('jobboard_redis_sentinel', default=None,
+                help='Sentinel name if it is used for Redis.'),
++    cfg.StrOpt('jobboard_redis_sentinel_username',
++               help='Redis Sentinel server user name'),
++    cfg.StrOpt('jobboard_redis_sentinel_password', secret=True,
++               help='Redis Sentinel server password'),
+     cfg.DictOpt('jobboard_redis_backend_ssl_options',
+                 help='Redis jobboard backend ssl configuration options.',
+                 default={'ssl': False,
+@@ -597,6 +601,13 @@ task_flow_opts = [
+                          'ssl_certfile': None,
+                          'ssl_ca_certs': None,
+                          'ssl_cert_reqs': 'required'}),
++    cfg.DictOpt('jobboard_redis_sentinel_ssl_options',
++                help='Redis sentinel ssl configuration options.',
++                default={'ssl': False,
++                         'ssl_keyfile': None,
++                         'ssl_certfile': None,
++                         'ssl_ca_certs': None,
++                         'ssl_cert_reqs': 'required'}),
+     cfg.DictOpt('jobboard_zookeeper_ssl_options',
+                 help='Zookeeper jobboard backend ssl configuration options.',
+                 default={'use_ssl': False,
+diff --git a/octavia/controller/worker/v2/taskflow_jobboard_driver.py b/octavia/controller/worker/v2/taskflow_jobboard_driver.py
+index d8595d7c5..adcba4f6f 100644
+--- a/octavia/controller/worker/v2/taskflow_jobboard_driver.py
++++ b/octavia/controller/worker/v2/taskflow_jobboard_driver.py
+@@ -15,6 +15,7 @@ import contextlib
+ 
+ from oslo_config import cfg
+ from oslo_log import log
++from oslo_utils import strutils
+ from taskflow.jobs import backends as job_backends
+ from taskflow.persistence import backends as persistence_backends
+ 
+@@ -97,6 +98,19 @@ class RedisTaskFlowDriver(JobboardTaskFlowDriver):
+         }
+         jobboard_backend_conf.update(
+             CONF.task_flow.jobboard_redis_backend_ssl_options)
++
++        sentinel_kwargs = CONF.task_flow.jobboard_redis_sentinel_ssl_options
++        if 'ssl' in sentinel_kwargs:
++            sentinel_kwargs['ssl'] = strutils.bool_from_string(
++                sentinel_kwargs['ssl'])
++        if CONF.task_flow.jobboard_redis_sentinel_username is not None:
++            sentinel_kwargs['username'] = (
++                CONF.task_flow.jobboard_redis_sentinel_username)
++        if CONF.task_flow.jobboard_redis_sentinel_password is not None:
++            sentinel_kwargs['password'] = (
++                CONF.task_flow.jobboard_redis_sentinel_password)
++        jobboard_backend_conf['sentinel_kwargs'] = sentinel_kwargs
++
+         return job_backends.backend(
+             CONF.task_flow.jobboard_backend_namespace,
+             jobboard_backend_conf,
+diff --git a/releasenotes/notes/redis-sentinel-auth-and-ssl-be1888903d68922d.yaml b/releasenotes/notes/redis-sentinel-auth-and-ssl-be1888903d68922d.yaml
+new file mode 100644
+index 000000000..6ad12998d
+--- /dev/null
++++ b/releasenotes/notes/redis-sentinel-auth-and-ssl-be1888903d68922d.yaml
+@@ -0,0 +1,13 @@
++---
++features:
++  - |
++    The following options, to enable authentication in Redis Sentinel, have
++    been added.
++
++    - ``[task_flow] jobboard_redis_sentinel_username``
++    - ``[task_flow] jobboard_redis_sentinel_password``
++
++  - |
++    The new ``[task_flow] jobboard_redis_sentinel_ssl_options`` option has
++    been added. This option controls SSL settings for connections to Redis
++    Sentinel.
+-- 
+2.25.1
+
