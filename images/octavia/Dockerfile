@@ -7,10 +7,15 @@ FROM openstack-venv-builder AS build
 ARG OCTAVIA_GIT_REF=a68edea6e243b1bab88ab73558d5a81581cedac1
 ADD --keep-git-dir=true https://opendev.org/openstack/octavia.git#${OCTAVIA_GIT_REF} /src/octavia
 RUN git -C /src/octavia fetch --unshallow
+COPY patches/octavia /patches/octavia
+RUN git -C /src/octavia apply --verbose /patches/octavia/*
 # renovate: name=openstack/ovn-octavia-provider repo=https://opendev.org/openstack/ovn-octavia-provider.git branch=stable/2023.2
 ARG OVN_OCTAVIA_PROVIDER_GIT_REF=f767d5046fe05dde331816a15a5178e4f9880ff7
 ADD --keep-git-dir=true https://opendev.org/openstack/ovn-octavia-provider.git#${OVN_OCTAVIA_PROVIDER_GIT_REF} /src/ovn-octavia-provider
 RUN git -C /src/ovn-octavia-provider fetch --unshallow
+RUN <<EOF bash -xe
+ sed -i 's/taskflow===.*/taskflow===5.5.0/g' /upper-constraints.txt
+EOF
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
 pip3 install \
     --constraint /upper-constraints.txt \
