@@ -8,7 +8,7 @@ ARG REQUIREMENTS_GIT_REF=a795befd0341722114868ae51bba9fc3eeea8a88
 ADD --keep-git-dir=true https://opendev.org/openstack/requirements.git#${REQUIREMENTS_GIT_REF} /src/requirements
 RUN cp /src/requirements/upper-constraints.txt /upper-constraints.txt
 RUN <<EOF sh -xe
-sed -i '/glance-store/d' /upper-constraints.txt
+sed -i '/glance_store/d' /upper-constraints.txt
 sed -i '/horizon/d' /upper-constraints.txt
 EOF
 
