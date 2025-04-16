@@ -1,4 +1,4 @@
-From 77f21321779fa4d8611de2c7713093a8b7826b46 Mon Sep 17 00:00:00 2001
+From 67167bc4b301ae9e0cba17cf2caa8fc5317f9f9d Mon Sep 17 00:00:00 2001
 From: Dong Ma <winterma.dong@gmail.com>
 Date: Tue, 10 Dec 2024 21:59:07 +0800
 Subject: [PATCH 2/2] Add the support of create kubernetes resource
@@ -26,10 +26,10 @@ Signed-off-by: Dong Ma <winterma.dong@gmail.com>
  create mode 100644 ovn_bgp_agent/tests/unit/drivers/openstack/utils/testdata/TestSingleVRFIBGP.golden
 
 diff --git a/ovn_bgp_agent/config.py b/ovn_bgp_agent/config.py
-index e43afc6..1a69b1e 100644
+index 3015021..be80a83 100644
 --- a/ovn_bgp_agent/config.py
 +++ b/ovn_bgp_agent/config.py
-@@ -243,6 +243,14 @@ local_ovn_cluster_opts = [
+@@ -251,6 +251,14 @@ local_ovn_cluster_opts = [
                      ' NB driver is used.'),
  ]
  
@@ -44,7 +44,7 @@ index e43afc6..1a69b1e 100644
  CONF = cfg.CONF
  EXTRA_LOG_LEVEL_DEFAULTS = [
      'oslo.privsep.daemon=INFO'
-@@ -256,6 +264,7 @@ def register_opts():
+@@ -264,6 +272,7 @@ def register_opts():
      CONF.register_opts(root_helper_opts, "agent")
      CONF.register_opts(ovn_opts, "ovn")
      CONF.register_opts(local_ovn_cluster_opts, "local_ovn_cluster")
@@ -52,7 +52,7 @@ index e43afc6..1a69b1e 100644
  
  
  def init(args, **kwargs):
-@@ -283,4 +292,5 @@ def list_opts():
+@@ -291,4 +300,5 @@ def list_opts():
          ("agent", root_helper_opts),
          ("ovn", ovn_opts),
          ("local_ovn_cluster", local_ovn_cluster_opts),
@@ -595,10 +595,10 @@ index 0000000..2487918
 +    "status": {}
 +}
 diff --git a/setup.cfg b/setup.cfg
-index f0c43a7..707a9fc 100644
+index af2cb5d..50fb37e 100644
 --- a/setup.cfg
 +++ b/setup.cfg
-@@ -42,6 +42,11 @@ ovn_bgp_agent.drivers =
+@@ -44,6 +44,11 @@ ovn_bgp_agent.drivers =
  
  ovn_bgp_agent.bgp_drivers =
      frr = ovn_bgp_agent.drivers.openstack.utils.frr:FRRDriver
@@ -611,10 +611,10 @@ index f0c43a7..707a9fc 100644
 +frr-k8s =
 +    kubernetes>=24.2.0
 diff --git a/test-requirements.txt b/test-requirements.txt
-index 8e2cc74..ef0486b 100644
+index 9472f33..f0f7c0f 100644
 --- a/test-requirements.txt
 +++ b/test-requirements.txt
-@@ -11,3 +11,4 @@ oslotest>=1.10.0 # Apache-2.0
+@@ -7,3 +7,4 @@ oslotest>=1.10.0 # Apache-2.0
  pyroute2>=0.6.4;sys_platform!='win32' # Apache-2.0 (+ dual licensed GPL2)
  stestr>=1.0.0 # Apache-2.0
  testtools>=1.4.0 # MIT
