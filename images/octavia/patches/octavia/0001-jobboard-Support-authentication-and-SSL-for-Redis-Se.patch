@@ -1,0 +1,471 @@
+From 46ab3ccaae1dd3a8dc2dc3982121aa5c5ce00758 Mon Sep 17 00:00:00 2001
+From: ricolin <rlin@vexxhost.com>
+Date: Thu, 17 Apr 2025 08:43:34 +0800
+Subject: [PATCH] jobboard: Support authentication and SSL for Redis Sentinel
+
+This allows users to enable SSL and/or authentication for Redis
+Sentinel. Previously these could be enabled only for Redis, and
+Sentinel always had to be no-SSL and no-auth.
+
+Cherry-Pick from: 37b944d8b89d033ea4d8ae1f05728d987f51fae3
+
+Change-Id: Iea751dd0ab7367c5e56900ee17ba2932c7c7e68f
+---
+ octavia/common/config.py                      |  11 +
+ .../worker/v2/taskflow_jobboard_driver.py     |  14 +
+ octavia/tests/unit/base.py                    |   1 +
+ .../v2/test_taskflow_jobboard_driver.py       | 348 ++++++++++++++++++
+ ...entinel-auth-and-ssl-be1888903d68922d.yaml |  13 +
+ 5 files changed, 387 insertions(+)
+ create mode 100644 octavia/tests/unit/controller/worker/v2/test_taskflow_jobboard_driver.py
+ create mode 100644 releasenotes/notes/redis-sentinel-auth-and-ssl-be1888903d68922d.yaml
+
+diff --git a/octavia/common/config.py b/octavia/common/config.py
+index 7476d222b..f549858e0 100644
+--- a/octavia/common/config.py
++++ b/octavia/common/config.py
+@@ -586,6 +586,10 @@ task_flow_opts = [
+                     'job id and claims for it.'),
+     cfg.StrOpt('jobboard_redis_sentinel', default=None,
+                help='Sentinel name if it is used for Redis.'),
++    cfg.StrOpt('jobboard_redis_sentinel_username',
++               help='Redis Sentinel server user name'),
++    cfg.StrOpt('jobboard_redis_sentinel_password', secret=True,
++               help='Redis Sentinel server password'),
+     cfg.DictOpt('jobboard_redis_backend_ssl_options',
+                 help='Redis jobboard backend ssl configuration options.',
+                 default={'ssl': False,
+@@ -593,6 +597,13 @@ task_flow_opts = [
+                          'ssl_certfile': None,
+                          'ssl_ca_certs': None,
+                          'ssl_cert_reqs': 'required'}),
++    cfg.DictOpt('jobboard_redis_sentinel_ssl_options',
++                help='Redis sentinel ssl configuration options.',
++                default={'ssl': False,
++                         'ssl_keyfile': None,
++                         'ssl_certfile': None,
++                         'ssl_ca_certs': None,
++                         'ssl_cert_reqs': 'required'}),
+     cfg.DictOpt('jobboard_zookeeper_ssl_options',
+                 help='Zookeeper jobboard backend ssl configuration options.',
+                 default={'use_ssl': False,
+diff --git a/octavia/controller/worker/v2/taskflow_jobboard_driver.py b/octavia/controller/worker/v2/taskflow_jobboard_driver.py
+index d8595d7c5..adcba4f6f 100644
+--- a/octavia/controller/worker/v2/taskflow_jobboard_driver.py
++++ b/octavia/controller/worker/v2/taskflow_jobboard_driver.py
+@@ -15,6 +15,7 @@ import contextlib
+ 
+ from oslo_config import cfg
+ from oslo_log import log
++from oslo_utils import strutils
+ from taskflow.jobs import backends as job_backends
+ from taskflow.persistence import backends as persistence_backends
+ 
+@@ -97,6 +98,19 @@ class RedisTaskFlowDriver(JobboardTaskFlowDriver):
+         }
+         jobboard_backend_conf.update(
+             CONF.task_flow.jobboard_redis_backend_ssl_options)
++
++        sentinel_kwargs = CONF.task_flow.jobboard_redis_sentinel_ssl_options
++        if 'ssl' in sentinel_kwargs:
++            sentinel_kwargs['ssl'] = strutils.bool_from_string(
++                sentinel_kwargs['ssl'])
++        if CONF.task_flow.jobboard_redis_sentinel_username is not None:
++            sentinel_kwargs['username'] = (
++                CONF.task_flow.jobboard_redis_sentinel_username)
++        if CONF.task_flow.jobboard_redis_sentinel_password is not None:
++            sentinel_kwargs['password'] = (
++                CONF.task_flow.jobboard_redis_sentinel_password)
++        jobboard_backend_conf['sentinel_kwargs'] = sentinel_kwargs
++
+         return job_backends.backend(
+             CONF.task_flow.jobboard_backend_namespace,
+             jobboard_backend_conf,
+diff --git a/octavia/tests/unit/base.py b/octavia/tests/unit/base.py
+index ed97cfa66..5b0052190 100644
+--- a/octavia/tests/unit/base.py
++++ b/octavia/tests/unit/base.py
+@@ -35,6 +35,7 @@ class TestCase(testtools.TestCase):
+         config.register_cli_opts()
+         self.addCleanup(mock.patch.stopall)
+         self.addCleanup(self.clean_caches)
++        self.addCleanup(cfg.CONF.reset)
+ 
+         self.warning_fixture = self.useFixture(oc_fixtures.WarningsFixture())
+ 
+diff --git a/octavia/tests/unit/controller/worker/v2/test_taskflow_jobboard_driver.py b/octavia/tests/unit/controller/worker/v2/test_taskflow_jobboard_driver.py
+new file mode 100644
+index 000000000..0a0efca55
+--- /dev/null
++++ b/octavia/tests/unit/controller/worker/v2/test_taskflow_jobboard_driver.py
+@@ -0,0 +1,348 @@
++# Copyright 2024 NTT DATA Group Corporation
++#
++# Licensed under the Apache License, Version 2.0 (the "License"); you may
++# not use this file except in compliance with the License. You may obtain
++# a copy of the License at
++#
++# http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
++# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
++# License for the specific language governing permissions and limitations
++# under the License.
++#
++from unittest import mock
++
++from oslo_config import cfg
++
++from octavia.controller.worker.v2 import taskflow_jobboard_driver
++import octavia.tests.unit.base as base
++
++
++class TestRedisTaskFlowDriver(base.TestCase):
++
++    @mock.patch('octavia.controller.worker.v2.taskflow_jobboard_driver.'
++                'job_backends')
++    def test_job_board_default(self, mock_job_backends):
++        driver = taskflow_jobboard_driver.RedisTaskFlowDriver(mock.Mock())
++        driver.job_board(None)
++        mock_job_backends.backend.assert_called_once_with(
++            'octavia_jobboard',
++            {
++                'board': 'redis',
++                'host': '127.0.0.1',
++                'port': 6379,
++                'namespace': 'octavia_jobboard',
++                'sentinel': None,
++                'sentinel_fallbacks': [],
++                'ssl': False,
++                'ssl_keyfile': None,
++                'ssl_certfile': None,
++                'ssl_ca_certs': None,
++                'ssl_cert_reqs': 'required',
++                'sentinel_kwargs': {
++                    'ssl': False,
++                    'ssl_keyfile': None,
++                    'ssl_certfile': None,
++                    'ssl_ca_certs': None,
++                    'ssl_cert_reqs': 'required',
++                }
++            },
++            persistence=None
++        )
++
++    @mock.patch('octavia.controller.worker.v2.taskflow_jobboard_driver.'
++                'job_backends')
++    def test_job_board_password(self, mock_job_backends):
++        driver = taskflow_jobboard_driver.RedisTaskFlowDriver(mock.Mock())
++        cfg.CONF.set_override('jobboard_backend_password', 'redispass',
++                              group='task_flow')
++        driver.job_board(None)
++        mock_job_backends.backend.assert_called_once_with(
++            'octavia_jobboard',
++            {
++                'board': 'redis',
++                'host': '127.0.0.1',
++                'port': 6379,
++                'namespace': 'octavia_jobboard',
++                'password': 'redispass',
++                'sentinel': None,
++                'sentinel_fallbacks': [],
++                'ssl': False,
++                'ssl_keyfile': None,
++                'ssl_certfile': None,
++                'ssl_ca_certs': None,
++                'ssl_cert_reqs': 'required',
++                'sentinel_kwargs': {
++                    'ssl': False,
++                    'ssl_keyfile': None,
++                    'ssl_certfile': None,
++                    'ssl_ca_certs': None,
++                    'ssl_cert_reqs': 'required',
++                }
++            },
++            persistence=None
++        )
++
++    @mock.patch('octavia.controller.worker.v2.taskflow_jobboard_driver.'
++                'job_backends')
++    def test_job_board_username(self, mock_job_backends):
++        driver = taskflow_jobboard_driver.RedisTaskFlowDriver(mock.Mock())
++        cfg.CONF.set_override('jobboard_backend_password', 'redispass',
++                              group='task_flow')
++        cfg.CONF.set_override('jobboard_backend_username', 'redisuser',
++                              group='task_flow')
++        driver.job_board(None)
++        mock_job_backends.backend.assert_called_once_with(
++            'octavia_jobboard',
++            {
++                'board': 'redis',
++                'host': '127.0.0.1',
++                'port': 6379,
++                'namespace': 'octavia_jobboard',
++                'username': 'redisuser',
++                'password': 'redispass',
++                'sentinel': None,
++                'sentinel_fallbacks': [],
++                'ssl': False,
++                'ssl_keyfile': None,
++                'ssl_certfile': None,
++                'ssl_ca_certs': None,
++                'ssl_cert_reqs': 'required',
++                'sentinel_kwargs': {
++                    'ssl': False,
++                    'ssl_keyfile': None,
++                    'ssl_certfile': None,
++                    'ssl_ca_certs': None,
++                    'ssl_cert_reqs': 'required',
++                }
++            },
++            persistence=None
++        )
++
++    @mock.patch('octavia.controller.worker.v2.taskflow_jobboard_driver.'
++                'job_backends')
++    def test_job_board_ssl(self, mock_job_backends):
++        driver = taskflow_jobboard_driver.RedisTaskFlowDriver(mock.Mock())
++        cfg.CONF.set_override(
++            'jobboard_redis_backend_ssl_options',
++            {
++                'ssl': True,
++                'ssl_keyfile': 'rediskey',
++                'ssl_certfile': 'rediscert',
++                'ssl_ca_certs': 'redisca',
++                'ssl_cert_reqs': 'required'
++            },
++            group='task_flow')
++        driver.job_board(None)
++        mock_job_backends.backend.assert_called_once_with(
++            'octavia_jobboard',
++            {
++                'board': 'redis',
++                'host': '127.0.0.1',
++                'port': 6379,
++                'namespace': 'octavia_jobboard',
++                'sentinel': None,
++                'sentinel_fallbacks': [],
++                'ssl': True,
++                'ssl_keyfile': 'rediskey',
++                'ssl_certfile': 'rediscert',
++                'ssl_ca_certs': 'redisca',
++                'ssl_cert_reqs': 'required',
++                'sentinel_kwargs': {
++                    'ssl': False,
++                    'ssl_keyfile': None,
++                    'ssl_certfile': None,
++                    'ssl_ca_certs': None,
++                    'ssl_cert_reqs': 'required',
++                }
++            },
++            persistence=None
++        )
++
++    @mock.patch('octavia.controller.worker.v2.taskflow_jobboard_driver.'
++                'job_backends')
++    def test_job_board_sentinel(self, mock_job_backends):
++        driver = taskflow_jobboard_driver.RedisTaskFlowDriver(mock.Mock())
++        cfg.CONF.set_override('jobboard_redis_sentinel', 'mymaster',
++                              group='task_flow')
++        cfg.CONF.set_override('jobboard_backend_hosts',
++                              ['host1', 'host2', 'host3'],
++                              group='task_flow')
++        cfg.CONF.set_override('jobboard_backend_port', 26379,
++                              group='task_flow')
++        driver.job_board(None)
++        mock_job_backends.backend.assert_called_once_with(
++            'octavia_jobboard',
++            {
++                'board': 'redis',
++                'host': 'host1',
++                'port': 26379,
++                'namespace': 'octavia_jobboard',
++                'sentinel': 'mymaster',
++                'sentinel_fallbacks': ['host2:26379', 'host3:26379'],
++                'ssl': False,
++                'ssl_keyfile': None,
++                'ssl_certfile': None,
++                'ssl_ca_certs': None,
++                'ssl_cert_reqs': 'required',
++                'sentinel_kwargs': {
++                    'ssl': False,
++                    'ssl_keyfile': None,
++                    'ssl_certfile': None,
++                    'ssl_ca_certs': None,
++                    'ssl_cert_reqs': 'required',
++                }
++            },
++            persistence=None
++        )
++
++    @mock.patch('octavia.controller.worker.v2.taskflow_jobboard_driver.'
++                'job_backends')
++    def test_job_board_sentinel_password(self, mock_job_backends):
++        driver = taskflow_jobboard_driver.RedisTaskFlowDriver(mock.Mock())
++        cfg.CONF.set_override('jobboard_redis_sentinel', 'mymaster',
++                              group='task_flow')
++        cfg.CONF.set_override('jobboard_backend_hosts',
++                              ['host1', 'host2', 'host3'],
++                              group='task_flow')
++        cfg.CONF.set_override('jobboard_backend_port', 26379,
++                              group='task_flow')
++        cfg.CONF.set_override('jobboard_backend_password', 'redispass',
++                              group='task_flow')
++        cfg.CONF.set_override('jobboard_redis_sentinel_password',
++                              'sentinelpass', group='task_flow')
++        driver.job_board(None)
++        mock_job_backends.backend.assert_called_once_with(
++            'octavia_jobboard',
++            {
++                'board': 'redis',
++                'host': 'host1',
++                'port': 26379,
++                'namespace': 'octavia_jobboard',
++                'password': 'redispass',
++                'sentinel': 'mymaster',
++                'sentinel_fallbacks': ['host2:26379', 'host3:26379'],
++                'ssl': False,
++                'ssl_keyfile': None,
++                'ssl_certfile': None,
++                'ssl_ca_certs': None,
++                'ssl_cert_reqs': 'required',
++                'sentinel_kwargs': {
++                    'password': 'sentinelpass',
++                    'ssl': False,
++                    'ssl_keyfile': None,
++                    'ssl_certfile': None,
++                    'ssl_ca_certs': None,
++                    'ssl_cert_reqs': 'required',
++                }
++            },
++            persistence=None
++        )
++
++    @mock.patch('octavia.controller.worker.v2.taskflow_jobboard_driver.'
++                'job_backends')
++    def test_job_board_sentinel_username(self, mock_job_backends):
++        driver = taskflow_jobboard_driver.RedisTaskFlowDriver(mock.Mock())
++        cfg.CONF.set_override('jobboard_redis_sentinel', 'mymaster',
++                              group='task_flow')
++        cfg.CONF.set_override('jobboard_backend_hosts',
++                              ['host1', 'host2', 'host3'],
++                              group='task_flow')
++        cfg.CONF.set_override('jobboard_backend_port', 26379,
++                              group='task_flow')
++        cfg.CONF.set_override('jobboard_backend_username', 'redisuser',
++                              group='task_flow')
++        cfg.CONF.set_override('jobboard_backend_password', 'redispass',
++                              group='task_flow')
++        cfg.CONF.set_override('jobboard_redis_sentinel_username',
++                              'sentineluser', group='task_flow')
++        cfg.CONF.set_override('jobboard_redis_sentinel_password',
++                              'sentinelpass', group='task_flow')
++        driver.job_board(None)
++        mock_job_backends.backend.assert_called_once_with(
++            'octavia_jobboard',
++            {
++                'board': 'redis',
++                'host': 'host1',
++                'port': 26379,
++                'namespace': 'octavia_jobboard',
++                'username': 'redisuser',
++                'password': 'redispass',
++                'sentinel': 'mymaster',
++                'sentinel_fallbacks': ['host2:26379', 'host3:26379'],
++                'ssl': False,
++                'ssl_keyfile': None,
++                'ssl_certfile': None,
++                'ssl_ca_certs': None,
++                'ssl_cert_reqs': 'required',
++                'sentinel_kwargs': {
++                    'username': 'sentineluser',
++                    'password': 'sentinelpass',
++                    'ssl': False,
++                    'ssl_keyfile': None,
++                    'ssl_certfile': None,
++                    'ssl_ca_certs': None,
++                    'ssl_cert_reqs': 'required',
++                }
++            },
++            persistence=None
++        )
++
++    @mock.patch('octavia.controller.worker.v2.taskflow_jobboard_driver.'
++                'job_backends')
++    def test_job_board_sentinel_ssl(self, mock_job_backends):
++        driver = taskflow_jobboard_driver.RedisTaskFlowDriver(mock.Mock())
++        cfg.CONF.set_override('jobboard_redis_sentinel', 'mymaster',
++                              group='task_flow')
++        cfg.CONF.set_override('jobboard_backend_hosts',
++                              ['host1', 'host2', 'host3'],
++                              group='task_flow')
++        cfg.CONF.set_override('jobboard_backend_port', 26379,
++                              group='task_flow')
++        cfg.CONF.set_override(
++            'jobboard_redis_backend_ssl_options',
++            {
++                'ssl': True,
++                'ssl_keyfile': 'rediskey',
++                'ssl_certfile': 'rediscert',
++                'ssl_ca_certs': 'redisca',
++                'ssl_cert_reqs': 'required'
++            },
++            group='task_flow')
++        cfg.CONF.set_override(
++            'jobboard_redis_sentinel_ssl_options',
++            {
++                'ssl': True,
++                'ssl_keyfile': 'sentinelkey',
++                'ssl_certfile': 'sentinelcert',
++                'ssl_ca_certs': 'sentinelca',
++                'ssl_cert_reqs': 'required'
++            },
++            group='task_flow')
++        driver.job_board(None)
++        mock_job_backends.backend.assert_called_once_with(
++            'octavia_jobboard',
++            {
++                'board': 'redis',
++                'host': 'host1',
++                'port': 26379,
++                'namespace': 'octavia_jobboard',
++                'sentinel': 'mymaster',
++                'sentinel_fallbacks': ['host2:26379', 'host3:26379'],
++                'ssl': True,
++                'ssl_keyfile': 'rediskey',
++                'ssl_certfile': 'rediscert',
++                'ssl_ca_certs': 'redisca',
++                'ssl_cert_reqs': 'required',
++                'sentinel_kwargs': {
++                    'ssl': True,
++                    'ssl_keyfile': 'sentinelkey',
++                    'ssl_certfile': 'sentinelcert',
++                    'ssl_ca_certs': 'sentinelca',
++                    'ssl_cert_reqs': 'required'
++                }
++            },
++            persistence=None
++        )
+diff --git a/releasenotes/notes/redis-sentinel-auth-and-ssl-be1888903d68922d.yaml b/releasenotes/notes/redis-sentinel-auth-and-ssl-be1888903d68922d.yaml
+new file mode 100644
+index 000000000..6ad12998d
+--- /dev/null
++++ b/releasenotes/notes/redis-sentinel-auth-and-ssl-be1888903d68922d.yaml
+@@ -0,0 +1,13 @@
++---
++features:
++  - |
++    The following options, to enable authentication in Redis Sentinel, have
++    been added.
++
++    - ``[task_flow] jobboard_redis_sentinel_username``
++    - ``[task_flow] jobboard_redis_sentinel_password``
++
++  - |
++    The new ``[task_flow] jobboard_redis_sentinel_ssl_options`` option has
++    been added. This option controls SSL settings for connections to Redis
++    Sentinel.
+-- 
+2.25.1
+
