@@ -176,7 +176,7 @@ the Heat stack:
 
 This will create a Heat stack with the name `atmosphere` and start deploying
 the cloud.  Once it's complete, you can login to any of the systems by using
-the `login` sub-command.  For exampel, to login to the first controller node,
+the `login` sub-command. For example, to login to the first controller node,
 you can run the following:
 
 .. code-block:: console

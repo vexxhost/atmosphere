@@ -35,7 +35,7 @@ steps documented before getting started.
 Open vSwitch configuration
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-In order to enable hardware off-loading in Open vSwitch, you must make sure that
+To enable hardware off-loading in Open vSwitch, you must make sure that
 you deploy with the following configuration:
 
 .. code-block:: yaml
@@ -48,7 +48,7 @@ you deploy with the following configuration:
 Neutron configuration
 ^^^^^^^^^^^^^^^^^^^^^
 
-In order to enable hardware off-loading in Neutron, you can simply deploy it
+To enable hardware off-loading in Neutron, you can simply deploy it
 with the following configuration and it will use `netoffload <https://github.com/vexxhost/netoffload>`_
 to automatically configure ASAP\ :sup:`2`.
 
@@ -77,14 +77,15 @@ DPDK is a set of libraries and drivers for fast packet processing. It is
 designed to run mostly in userspace, and can be used to accelerate network
 functions in OpenStack.
 
-DPDK can be used with OVN to accelerate the processing of packets in the
-datapath. This can be done by enabling the DPDK support in the OVN
+DPDK can be used with Open Virtual Network (OVN) to accelerate the processing
+of packets in the datapath.
+This can be done by enabling the DPDK support in the Open Virtual Network (OVN)
 configuration.
 
 Open vSwitch configuration
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-In order to enable hardware off-loading in Open vSwitch, you must make sure that
+To enable hardware off-loading in Open vSwitch, you must make sure that
 you deploy with the following configuration:
 
 .. code-block:: yaml
@@ -106,8 +107,8 @@ parameters, please refer to the `OpenvSwitch documentation <https://docs.openvsw
 OVN configuration
 ^^^^^^^^^^^^^^^^^
 
-In order to enable hardware off-loading in OVN, you must make sure that
-you deploy with the following configuration:
+To enable hardware off-loading in Open Virtual Network (OVN),
+you must make sure that you deploy with the following configuration:
 
 .. code-block:: yaml
 
@@ -123,7 +124,7 @@ you deploy with the following configuration:
 Neutron configuration
 ^^^^^^^^^^^^^^^^^^^^^
 
-In order to enable hardware off-loading in Neutron, you can simply deploy it
+To enable hardware off-loading in Neutron, you can simply deploy it
 with the following configuration and it will take care of creating the
 DPDK interfaces for you.
 
@@ -169,8 +170,8 @@ DPDK interfaces for you.
 Flavor configuration
 ^^^^^^^^^^^^^^^^^^^^
 
-In order to use DPDK with OVN, you must create a flavor that supports DPDKw
-which also includes making changes for the services that use the service
+To use DPDK with Open Virtual Network (OVN), you must create a flavor that supports DPDK.
+Which also includes making changes for the services that use the service
 virtual machine model such as Octavia and Manila.
 
 .. code-block:: yaml
