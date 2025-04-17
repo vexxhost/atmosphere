@@ -89,14 +89,14 @@ class KekRewrap(object):
 
     def get_keks_for_project(self, project):
         keks = []
-        with self.db_session.begin() as transaction:
-            print('Retrieving KEKs for Project {}'.format(project.external_id))
-            query = transaction.session.query(models.KEKDatum)
-            query = query.filter_by(project_id=project.id)
-            query = query.filter_by(plugin_name=self.plugin_name)
 
-            keks = query.all()
-
+        if self.db_session.in_transaction():
+            keks = self.db_session.query(models.ProjectSecretStore).filter(
+                models.ProjectSecretStore.project_id == project.id).all()
+        else:
+            with self.db_session.begin() as transaction:
+                keks = self.db_session.query(models.ProjectSecretStore).filter(
+                    models.ProjectSecretStore.project_id == project.id).all()
         return keks
 
     def get_projects(self):
