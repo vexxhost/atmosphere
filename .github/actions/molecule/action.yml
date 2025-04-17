@@ -1,0 +1,122 @@
+name: molecule
+description: Run a Molecule test
+
+inputs:
+  scenario:
+    description: Scenario to run
+    required: true
+  extra-vars:
+    description: Extra vars to pass to ansible-playbook
+    required: false
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: sudo swapoff -a
+
+    - shell: bash
+      run: |
+        sudo mkdir -p /var/lib/etcd
+        sudo mount -t tmpfs -o nodev,nosuid,size=512M tmpfs /var/lib/etcd
+
+    # TODO: switch to images from the build job
+
+    - uses: astral-sh/setup-uv@v5
+
+    - shell: bash
+      run: |
+        uv sync --dev
+        echo ${{ github.workspace }}/.venv/bin >> $GITHUB_PATH
+      env:
+        UV_PYTHON_DOWNLOADS: never
+        UV_PYTHON_PREFERENCE: only-system
+
+    - shell: bash
+      run: mkdir -p ~/cache
+
+    - uses: actions/cache@v4
+      id: ansible-collections-cache
+      with:
+        path: ~/cache/ansible-collections
+        key: ansible-galaxy-${{ hashFiles('galaxy.yml') }}
+
+    - shell: bash
+      if: steps.ansible-collections-cache.outputs.cache-hit == 'true'
+      run: |
+        sudo mkdir -p /root/.ansible
+        sudo mv ~/cache/ansible-collections /root/.ansible/collections
+        sudo chown -R root:root /root/.ansible/collections
+
+    - uses: actions/cache@v4
+      id: containerd-images-cache
+      with:
+        path: ~/cache/containerd-images
+        key: containerd-images-${{ inputs.scenario }}-${{ github.sha }}-${{ hashFiles('roles/defaults/vars/main.yml') }}
+        restore-keys: |
+          containerd-images-${{ inputs.scenario }}-${{ github.sha }}-
+          containerd-images-${{ inputs.scenario }}-
+          containerd-images-
+
+    - shell: bash
+      if: steps.containerd-images-cache.outputs.cache-hit == 'true'
+      run: |
+        sudo mkdir -p /var/lib/containerd
+        sudo mv ~/cache/containerd-images /var/lib/containerd/io.containerd.content.v1.content
+        sudo chown -R root:root /var/lib/containerd/io.containerd.content.v1.content
+
+    - uses: actions/cache@v4
+      id: downloads-cache
+      with:
+        path: ~/cache/downloads
+        key: downloads-${{ github.sha }}
+        restore-keys: |
+          downloads-${{ github.sha }}
+          downloads-
+
+    - shell: bash
+      if: steps.downloads-cache.outputs.cache-hit == 'true'
+      run: |
+        sudo mkdir -p /var/lib/downloads
+        sudo mv ~/cache/downloads /var/lib/downloads
+        sudo chown -R root:root /var/lib/downloads
+
+    - shell: bash
+      run: |
+        sudo systemctl unmask multipathd
+
+    - shell: bash
+      run: sudo env "PATH=$PATH" "ATMOSPHERE_NETWORK_BACKEND=${{ env.ATMOSPHERE_NETWORK_BACKEND }}" molecule test -s ${{ inputs.scenario }} -- -e ansible_python_interpreter=/usr/bin/python3
+
+    - shell: bash
+      if: always()
+      run: |
+        sudo sos report --batch --all-logs --build --plugin-option kubernetes.all=on --plugin-option kubernetes.describe=on
+        sudo chown -R runner:runner /tmp/sosreport*
+        mv /tmp/sosreport* /tmp/sosreport
+        cat /tmp/sosreport/sos_logs/sos.log
+
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: sosreport-${{ inputs.scenario }}
+        retention-days: 7
+        path: |
+          /tmp/sosreport/**
+          !/tmp/sosreport*/sys
+          !/tmp/sosreport*/proc
+
+    - shell: bash
+      if: always()
+      run: |
+        sudo rm -rf ~/cache/ansible-collections
+        sudo mv /root/.ansible/collections ~/cache/ansible-collections
+        sudo chown -R runner:runner ~/cache/ansible-collections
+
+        sudo rm -rf ~/cache/containerd-images
+        sudo mv /var/lib/containerd/io.containerd.content.v1.content ~/cache/containerd-images
+        sudo chown -R runner:runner ~/cache/containerd-images
+
+        sudo rm -rf ~/cache/downloads
+        sudo mv /var/lib/downloads ~/cache/downloads
+        sudo chown -R runner:runner ~/cache/downloads

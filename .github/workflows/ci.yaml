@@ -1,0 +1,48 @@
+name: ci
+
+on:
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  # vale:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - run: sudo apt-get install -y docutils
+  #     - uses: errata-ai/vale-action@v2.1.1
+  #       with:
+  #         files: doc,releasenotes
+  #         separator: ","
+  #         fail_on_error: true
+
+  # images:
+  #   uses: ./.github/workflows/images.yaml
+  #   permissions:
+  #     id-token: write
+  #     contents: read
+
+  # keycloak:
+  #   runs-on: depot-ubuntu-22.04-4
+  #   # needs: images
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: ./.github/actions/molecule
+  #       with:
+  #         scenario: keycloak
+
+  ovn:
+    runs-on: depot-ubuntu-22.04-16
+    # needs: images
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/molecule
+        with:
+          scenario: aio
+        env:
+          ATMOSPHERE_NETWORK_BACKEND: ovn

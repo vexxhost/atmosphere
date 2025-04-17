@@ -12,8 +12,9 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Wait for user to read warning
+- name: Warn user about system changes
   hosts: localhost
+  # when: not (lookup('ansible.builtin.env', 'CI') | default('false', True) | bool)
   tasks:
     - name: Wait for user to read warning
       ignore_errors: true # noqa: ignore-errors

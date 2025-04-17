@@ -1,0 +1,32 @@
+name: images
+
+on:
+  workflow_call:
+
+permissions: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: tj-actions/changed-files@ed68ef82c095e0d48ec87eccea555d944a631a4c # v46
+        id: changed-files
+        with:
+          files: |
+            .github/workflows/images.yaml
+            ^images/
+            docker-bake.hcl
+      - uses: depot/setup-action@v1
+        if: steps.changed-files.outputs.any_modified == 'true'
+      - uses: depot/bake-action@v1
+        id: bake
+        if: steps.changed-files.outputs.any_modified == 'true'
+        with:
+          project: jd10vkmkwv
+          save: true
+    outputs:
+      metadata: ${{ steps.bake.outputs.metadata }}
