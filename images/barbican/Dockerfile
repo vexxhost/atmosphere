@@ -4,7 +4,7 @@
 
 FROM openstack-venv-builder AS build
 # renovate: name=openstack/barbican repo=https://opendev.org/openstack/barbican.git branch=master
-ARG BARBICAN_GIT_REF=b5841df387e5ab38caf173950a1d98ab37a51453
+ARG BARBICAN_GIT_REF=62a1d6956f5ff335a8beee0d8a960391c8aac0f0
 ADD --keep-git-dir=true https://opendev.org/openstack/barbican.git#${BARBICAN_GIT_REF} /src/barbican
 RUN git -C /src/barbican fetch --unshallow
 RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe

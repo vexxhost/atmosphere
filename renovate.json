@@ -1,57 +1,109 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended"],
-  "baseBranches": ["main", "/^stable\\/.*/"],
-  "commitBody": "Skip-Release-Notes",
+  "extends": [
+    "config:recommended"
+  ],
+  "baseBranches": [
+    "main",
+    "/^stable\\/.*/"
+  ],
+  "addLabels": [
+    "skip-release-notes"
+  ],
   "prHourlyLimit": 10,
   "prBodyDefinitions": {
-    "OpenDev Links": "[Compare changes](https://opendev.org/{{{depName}}}/compare/{{{currentDigestShort}}}...{{{newDigestShort}}})"
+    "OpenDev Links": "[Compare changes](https://opendev.org/{{{depName}}}/compare/{{{currentDigest}}}...{{{newDigest}}})"
   },
   "packageRules": [
     {
       "enabled": false,
-      "matchPackagePatterns": ["*"]
+      "matchPackageNames": [
+        "*"
+      ]
     },
     {
       "enabled": true,
-      "matchFileNames": ["docker-bake.hcl"]
+      "matchFileNames": [
+        "docker-bake.hcl"
+      ]
     },
     {
       "enabled": true,
-      "matchDatasources": ["pypi"],
-      "matchPackageNames": ["magnum-cluster-api"]
+      "matchDatasources": [
+        "pypi"
+      ],
+      "matchPackageNames": [
+        "magnum-cluster-api"
+      ]
     },
     {
       "enabled": true,
-      "matchDatasources": ["git-refs"]
+      "matchDatasources": [
+        "git-refs"
+      ]
     },
     {
-      "matchDatasources": ["git-refs"],
-      "matchPackageNames": ["https://opendev.org/**"],
-      "prBodyColumns": ["Package", "Update", "Change", "OpenDev Links"]
+      "matchDatasources": [
+        "git-refs"
+      ],
+      "matchPackageNames": [
+        "https://opendev.org/**"
+      ],
+      "prBodyColumns": [
+        "Package",
+        "Update",
+        "Change",
+        "OpenDev Links"
+      ]
     },
     {
-      "matchDatasources": ["git-refs"],
-      "matchFileNames": ["images/tempest/Dockerfile"],
+      "matchDatasources": [
+        "git-refs"
+      ],
+      "matchFileNames": [
+        "images/tempest/Dockerfile"
+      ],
       "groupName": "tempest"
     },
     {
-      "matchDatasources": ["git-refs"],
-      "matchPackageNames": ["https://opendev.org/openstack/**"],
-      "matchFileNames": ["!images/tempest/Dockerfile"],
+      "matchDatasources": [
+        "git-refs"
+      ],
+      "matchPackageNames": [
+        "https://opendev.org/openstack/**"
+      ],
+      "matchFileNames": [
+        "!images/tempest/Dockerfile"
+      ],
       "groupName": "openstack"
+    },
+    {
+      "matchDatasources": [
+        "git-refs"
+      ],
+      "matchPackageNames": [
+        "https://opendev.org/openstack/**"
+      ],
+      "matchBaseBranches": ["main"],
+      "schedule": ["* * * * 1"]
     }
   ],
   "customManagers": [
     {
       "customType": "regex",
-      "fileMatch": ["docker-bake.hcl"],
-      "matchStrings": ["\"docker-image:\/\/(?<depName>.+?):(?<currentValue>.+?)\""],
+      "fileMatch": [
+        "docker-bake.hcl"
+      ],
+      "matchStrings": [
+        "\"docker-image://(?<depName>.+?):(?<currentValue>.+?)\""
+      ],
       "datasourceTemplate": "docker"
     },
     {
       "customType": "regex",
-      "fileMatch": ["Dockerfile"],
+      "fileMatch": [
+        "Dockerfile"
+      ],
       "matchStrings": [
         "# renovate: name=(?<depName>.+?) repo=(?<packageName>.+?) branch=(?<currentValue>.+?)\nARG .+?_GIT_REF=(?<currentDigest>.+?)\n"
       ],
@@ -59,16 +111,24 @@
     },
     {
       "customType": "regex",
-      "fileMatch": ["images/magnum/Dockerfile"],
-      "matchStrings": ["magnum-cluster-api==(?<currentValue>.*?)\\s"],
+      "fileMatch": [
+        "images/magnum/Dockerfile"
+      ],
+      "matchStrings": [
+        "magnum-cluster-api==(?<currentValue>.*?)\\s"
+      ],
       "datasourceTemplate": "pypi",
       "depNameTemplate": "magnum-cluster-api",
       "versioningTemplate": "semver"
     },
     {
       "customType": "regex",
-      "fileMatch": ["images/neutron/Dockerfile"],
-      "matchStrings": ["POLICY_SERVER_GIT_REF=(?<currentDigest>.*?)\\n"],
+      "fileMatch": [
+        "images/neutron/Dockerfile"
+      ],
+      "matchStrings": [
+        "POLICY_SERVER_GIT_REF=(?<currentDigest>.*?)\\n"
+      ],
       "datasourceTemplate": "git-refs",
       "depNameTemplate": "neutron-policy-server",
       "packageNameTemplate": "https://review.vexxhost.dev/neutron-policy-server",
