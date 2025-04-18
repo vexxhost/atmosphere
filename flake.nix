@@ -27,6 +27,7 @@
               python311Packages.tox
               reno
               renovate
+              uv
               vale
             ];
           };

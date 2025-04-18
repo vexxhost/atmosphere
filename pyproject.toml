@@ -1,0 +1,31 @@
+[build-system]
+requires = ["pbr>=6.1.1"]
+build-backend = "pbr.build"
+
+[project]
+name = "atmosphere"
+dynamic = ["version"]
+dependencies = [
+    "ansible-core>=2.15.9",
+    "docker-image-py>=0.1.12",
+    "jmespath>=1.0.1",
+    "netaddr>=0.8.0",
+    "openstacksdk>1",
+    "rjsonnet>=0.5.2",
+]
+
+[dependency-groups]
+dev = [
+    "ansible-compat==24.10.0",
+    "kubernetes>=32.0.1",
+    "molecule==24.9.0",
+    "oslotest>=5.0.0",
+    "stestr>=4.1.0",
+    "testscenarios>=0.5.0",
+]
+
+[tool.setuptools]
+packages = ["atmosphere"]
+
+[tool.setuptools.dynamic]
+version = {attr = "atmosphere.__version__"}
