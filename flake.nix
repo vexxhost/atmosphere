@@ -18,6 +18,7 @@
               bashInteractive
               docutils
               earthly
+              gh
               glibcLocales
               go
               just
@@ -27,6 +28,7 @@
               python311Packages.tox
               reno
               renovate
+              uv
               vale
             ];
           };
