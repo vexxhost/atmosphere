@@ -4,7 +4,7 @@
 
 FROM openstack-venv-builder AS build
 # renovate: name=openstack/designate repo=https://opendev.org/openstack/designate.git branch=stable/2023.2
-ARG DESIGNATE_GIT_REF=f0f9ad6c4dea2e67766574a8d8af7a771fb71bb0
+ARG DESIGNATE_GIT_REF=eaecbaa8173a9c2efe1dccd2157928d2d0574133
 ADD --keep-git-dir=true https://opendev.org/openstack/designate.git#${DESIGNATE_GIT_REF} /src/designate
 RUN git -C /src/designate fetch --unshallow
 COPY patches/designate /patches/designate
