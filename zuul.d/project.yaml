@@ -17,13 +17,10 @@
       jobs:
         - atmosphere-tox-helm-unittest
         - atmosphere-tox-py3
-        - atmosphere-build-images
-        - atmosphere-build-collection:
+        - atmosphere-molecule-aio-keycloak:
             dependencies: &image_build_jobs
               - name: atmosphere-build-images
                 soft: true
-        - atmosphere-molecule-aio-keycloak:
-            dependencies: *image_build_jobs
         - atmosphere-molecule-aio-openvswitch:
             dependencies: *image_build_jobs
         - atmosphere-molecule-aio-ovn:
@@ -36,8 +33,6 @@
       jobs:
         - atmosphere-tox-py3
         - atmosphere-build-images
-        - atmosphere-build-collection:
-            dependencies: *image_build_jobs
         - atmosphere-molecule-aio-keycloak:
             dependencies: *image_build_jobs
         - atmosphere-molecule-aio-openvswitch:
@@ -48,9 +43,6 @@
             dependencies: *image_build_jobs
         - atmosphere-molecule-csi-rbd:
             dependencies: *image_build_jobs
-    release:
-      jobs:
-        - atmosphere-publish-collection
     promote:
       jobs:
         - atmosphere-promote-images

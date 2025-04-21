@@ -29,21 +29,6 @@
       promote_depot_bake_job: atmosphere-build-images
 
 - job:
-    name: atmosphere-build-collection
-    parent: build-ansible-collection
-    pre-run:
-      - zuul.d/playbooks/build-collection/pre.yml
-    irrelevant-files:
-      - ^doc/
-      - ^releasenotes/
-
-- job:
-    name: atmosphere-publish-collection
-    parent: publish-ansible-collection-vexxhost
-    pre-run:
-      - zuul.d/playbooks/build-collection/pre.yml
-
-- job:
     name: atmosphere-molecule
     parent: tox
     abstract: true
