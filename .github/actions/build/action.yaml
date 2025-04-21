@@ -1,0 +1,37 @@
+name: Build Atmosphere collection
+description: Build Ansible collection for Atmosphere
+
+runs:
+  using: composite
+  steps:
+    - uses: astral-sh/setup-uv@v5
+    - shell: bash
+      run: uvx reno report --output CHANGELOG.rst
+
+    - shell: bash
+      run: |
+        # Find all role directories
+        ROLE_DIRS=$(find roles -mindepth 1 -maxdepth 1 -type d)
+
+        # Initialize error flag
+        MISSING_README=0
+
+        # Check each role directory for README.md
+        for ROLE in $ROLE_DIRS; do
+          if [ ! -f "$ROLE/README.md" ]; then
+            echo "::error::Missing README.md in role $ROLE"
+            MISSING_README=1
+          else
+            echo "README.md found in $ROLE"
+          fi
+        done
+
+        # Fail if any README.md is missing
+        if [ $MISSING_README -ne 0 ]; then
+          exit 1
+        fi
+
+    - shell: bash
+      run: |
+        go run cmd/pinimages/pinimages.go
+        cat ./roles/defaults/vars/main.yml
