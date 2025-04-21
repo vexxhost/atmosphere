@@ -13,7 +13,7 @@ RUN GO111MODULE=off CGO_ENABLED=0 GOOS=linux go build \
 
 FROM openstack-venv-builder AS build
 # renovate: name=openstack/requirements repo=https://opendev.org/openstack/requirements.git branch=master
-ARG REQUIREMENTS_GIT_REF=a795befd0341722114868ae51bba9fc3eeea8a88
+ARG REQUIREMENTS_GIT_REF=1cecf886b2df680590d5eca285fae3ffe899ce38
 ADD --keep-git-dir=true https://opendev.org/openstack/requirements.git#${REQUIREMENTS_GIT_REF} /src/requirements
 RUN git -C /src/requirements fetch --unshallow
 # renovate: name=openstack/tempest repo=https://opendev.org/openstack/tempest.git branch=master
