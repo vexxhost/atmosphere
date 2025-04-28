@@ -238,7 +238,7 @@ do so by making the following changes to your inventory:
           nginx.ingress.kubernetes.io/auth-type: basic
           nginx.ingress.kubernetes.io/auth-secret: basic-auth-secret-name
 
-In the example above, we are using the ``basic-auth-secret-name`` secret to
+In the example, we are using the ``basic-auth-secret-name`` secret to
 authenticate users.  The secret should be created in the same namespace as the
 Prometheus deployment based on the `Ingress NGINX Annotations <https://github.com/kubernetes/ingress-nginx/blob/main/docs/user-guide/nginx-configuration/annotations.md#annotations>`_.
 
@@ -257,8 +257,89 @@ so by making the following changes to your inventory:
         annotations:
           nginx.ingress.kubernetes.io/whitelist-source-range: "10.0.0.0/24,172.10.0.1"
 
-In the example above, we are whitelisting the IP range ``10.0.0.0/24`` and the IP address
+In the example, we are whitelisting the IP range ``10.0.0.0/24`` and the IP address
 ``172.10.0.1``.
+
+Override Rules
+~~~~~~~~~~~~~~
+
+It's possible to override existing prometheus rules
+by using ``kube_prometheus_stack_rules_jsonnet_path`` variable (default to `jsonnet/rules.jsonnet` ).
+Point it to the new jsonnet file path to override existing or create new PrometheusRules.
+You can also create your own mixin by importing jsonnet/rules.jsonnet into your own file using
+jsonnet import existing rules.
+To override rules, making the following changes to your inventory:
+
+.. code-block:: yaml
+
+    kube_prometheus_stack_rules_jsonnet_path: "jsonnet/new-rules.jsonnet"
+
+Here is an example to include all existing rules in new jsonnet file:
+
+.. code-block:: text
+
+    local mixins = import 'rules.jsonnet';
+
+    {
+      [mixin]: {
+        groups: (mixins[mixin].prometheusAlerts.groups + if std.objectHasAll(mixins[mixin], 'prometheusRules') then mixins[mixin].prometheusRules.groups else [])
+      } for mixin in std.objectFields(mixins)
+    }
+
+And you can also override specific alerts groups if you needs:
+
+.. code-block:: text
+
+    local mixins = import 'rules.jsonnet';
+
+    {
+      [mixin]: {
+        groups: (mixins[mixin].prometheusAlerts.groups + if std.objectHasAll(mixins[mixin], 'prometheusRules') then mixins[mixin].prometheusRules.groups else [])
+      } for mixin in std.objectFields(mixins)
+    } + {
+      ceph+: {
+        prometheusAlerts+: {
+          groups+: [
+            {
+              name: 'new cluster health detail',
+              rules: [
+                {
+                  alert: 'CephHealthDetailError',
+                  'for': '10m',
+                  expr: 'ceph_health_detail{severity="HEALTH_ERROR"} == 1',
+                  labels: { severity: 'critical' },
+                  annotations: {
+                    summary: 'Ceph is in the ERROR state',
+                    description: "Health check {{ $labels.name }} has been HEALTH_ERROR for more than 10 minutes. Please check 'ceph health detail' for more information.",
+                  },
+                },
+              ],
+            },
+          ],
+        }
+      },
+    }
+
+In this example, ceph will takes all groups and extend with new groups.
+If you wish to simply override all existing rules groups, you can directly change the example with:
+
+.. code-block:: text
+
+    local mixins = import 'rules.jsonnet';
+
+    {
+      ...
+
+    } + {
+      ceph: {
+        prometheusAlerts: {
+          groups: [
+            ...
+          ]
+        }
+
+For more jsonnet grammar, you can reference https://jsonnet.org/ref/language.html
+
 
 AlertManager
 ============
