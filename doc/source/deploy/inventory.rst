@@ -33,8 +33,8 @@ The recommended layout is as follows:
     └── requirements.yml
 
 The ``requirements.yml`` file is used to specify the atmosphere ansible collection
-version that will be used to deploy the platform.  Please refer to the `Release Notes`
-for the version information.  The file contents should look like this:
+version that will be used to deploy the platform. Please refer to the `Release Notes`
+for the version information. The file contents should look like this:
 
 .. code-block:: yaml
 
@@ -43,7 +43,7 @@ for the version information.  The file contents should look like this:
         version: 4.3.1
 
 To generate the inventory configuration files, you can use the ``generate_workspace``
-playbook to simplify the process.  The following command will generate the
+playbook to simplify the process. The following command will generate the
 inventory in the specified directory:
 
 .. code-block:: bash
@@ -74,7 +74,7 @@ The file contents should look like this:
 *************
 
 The ``hosts.ini`` file is the Ansible inventory file that will be used to deploy
-the platform. It is recommended to use the following layout:
+the platform. It's recommended to use the following layout:
 
 .. code-block:: ini
 
@@ -93,10 +93,10 @@ the platform. It is recommended to use the following layout:
     ceph2.cloud.atmosphere.dev
     ceph3.cloud.atmosphere.dev
 
-.. admonition:: FQDNs are required!
+.. admonition:: FQDN is required!
 
-      The hostnames listed in the inventory file must be a FQDN that resolves to
-      the IP address of the host.  If they do not, you will have failures such
+      The hostname listed in the inventory file must be a FQDN that resolves to
+      the IP address of the host. If they don't, you will have failures such
       as agents failing to start, live migration failures and other transient
       and hard to diagnose issues.
 

@@ -7,14 +7,14 @@ This document shows the most common way of upgrading your Atmosphere deployment.
 .. admonition:: Avoid jumping Atmosphere major releases
     :class: warning
 
-    It is important to avoid jumping major versions in Atmosphere, which is the
+    It's important to avoid jumping major versions in Atmosphere, which is the
     same advice in OpenStack.
 
     For example, If you are running Atmosphere Zed release (version 1) and want
     to move to Bobcat (version 3) you should perform 2 upgrades: version 1 to
     version 2 and then version 3.
 
-    If you dont do this, you may face database inconsistencies and failures on
+    If you don't do this, you may face database inconsistencies and failures on
     services like Nova or Neutron, or failed upgrades of components such as
     RabbitMQ.
 
@@ -22,7 +22,7 @@ This document shows the most common way of upgrading your Atmosphere deployment.
 Preparing the environment
 **************************
 
-On the deployment box, or any other place that you have your Ansible inventory,
+On the deployment box, or any other place that you have your ansible inventory,
 you should update the ``requirements.yml`` file and point to the target
 Atmosphere release you want to upgrade to.
 
@@ -32,7 +32,7 @@ Atmosphere release you want to upgrade to.
   - name: vexxhost.atmosphere
     version: X.Y.Z
 
-Once that is done, you should update your collections by running:
+Once that's done, you should update your collections by running:
 
 .. code-block:: console
 
@@ -40,7 +40,7 @@ Once that is done, you should update your collections by running:
 
 It's important to review your inventory, specifically image overrides to make
 sure that the image overrides are still necessary, otherwise you may end up
-with a broken deployment since the images will not be the ones the Atmosphere
+with a broken deployment since the images wont be the ones the Atmosphere
 collection expects.
 
 *******************
@@ -57,7 +57,7 @@ which gives you the most granular control.
     $ ansible-playbook -i hosts.ini playbooks/site.yml
 
 You can also run the Atmosphere provided playbooks by pointing to a specific
-playbook of the Ansible collection, in this case, the Ceph playbook:
+playbook of the ansible collection, in this case, the Ceph playbook:
 
 .. code-block:: console
 
@@ -72,7 +72,7 @@ following command:
     $ ansible-playbook -i hosts.ini vexxhost.atmosphere.openstack --tags keystone
 
 During the upgrade, you may find it useful to have a monitor on all of the pods
-in the cluster to ensure that they are becoming ready and not failing. You can
+in the cluster to ensure that they're becoming ready and not failing. You can
 do this by running the following command:
 
 .. code-block:: console

@@ -62,7 +62,7 @@ issued by an identity provider which exists in the Keycloak realm.
         -d "subject_token=<OIDC_TOKEN>" \
         -d "subject_token_type=urn:ietf:params:oauth:token-type:access_token"
 
-   The response will return a token that is issued by Keycloak which you can use
+   The response will return a token that's issued by Keycloak which you can use
    to authenticate with the OpenStack API.
 
    .. code-block:: json
@@ -99,8 +99,8 @@ issued by an identity provider which exists in the Keycloak realm.
 
 3. **List projects using the Keystone Token** (optional, if you already know the project ID)
 
-   At this point, you have an unscoped token issued by Keystone which is not bound
-   to any project.  You will need to exchange that token for a project-scoped token
+   At this point, you have an unscoped token issued by Keystone which isn't bound
+   to any project. You will need to exchange that token for a project-scoped token
    in order to be able to interact with the OpenStack APIs.
 
    You can choose to list what projects you have access to using the Keystone token

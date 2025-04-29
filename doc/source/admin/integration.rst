@@ -88,6 +88,6 @@ This service runs as a sidecar WSGI server that responds to ``oslo.policy`` ``Ht
 rules which are configured into the Neutron policy file.
 
 By default, the policy server is enabled and the Neutron policy is updated to include
-the necessary checks.  In order to disable the policy server, set the
+the necessary checks. In order to disable the policy server, set the
 ``neutron_policy_server_integration_enabled`` variable to ``false`` in the deployment
 configuration.
