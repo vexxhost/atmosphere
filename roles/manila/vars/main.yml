@@ -62,6 +62,13 @@ _manila_helm_values:
         service_instance_security_group: manila-service-security-group
       oslo_messaging_notifications:
         driver: noop
+      nova:
+        api_microversion: 2.60
+        endpoint_type: internalURL
+        region_name: "{{ openstack_helm_endpoints_nova_region_name }}"
+      glance:
+        endpoint_type: internalURL
+        region_name: "{{ openstack_helm_endpoints_glance_region_name }}"
   manifests:
     ingress_api: false
     service_ingress_api: false
