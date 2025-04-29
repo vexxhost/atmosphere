@@ -31,7 +31,7 @@ CONF = simple_crypto.CONF
 
 class KekRewrap(object):
 
-    def __init__(self, conf, old_kek):
+    def __init__(self, conf, old_keks):
         self.dry_run = False
         self.db_engine = session.create_engine(conf.database.connection)
         self._session_creator = scoping.scoped_session(
@@ -41,11 +41,22 @@ class KekRewrap(object):
         )
         self.crypto_plugin = simple_crypto.SimpleCryptoPlugin(conf)
         self.plugin_name = utils.generate_fullname_for(self.crypto_plugin)
-        self.decryptor = fernet.Fernet(old_kek.encode('utf-8'))
-        self.encryptor = fernet.Fernet(self.crypto_plugin.master_kek)
+
+        if hasattr(self.crypto_plugin, 'master_kek'):
+            self.encryptor = fernet.Fernet(self.crypto_plugin.master_kek)
+        else:
+            self.encryptor = fernet.MultiFernet(
+                [fernet.Fernet(x) for x in self.crypto_plugin.master_keys]
+            )
+        self.decryptor = fernet.MultiFernet(
+            [fernet.Fernet(x.encode('utf-8')) for x in old_keks]
+        )
 
     def rewrap_kek(self, project, kek):
-        with self.db_session.begin():
+        db_begin_fn = self.db_session.begin_nested if (
+            self.db_session.in_transaction()) else self.db_session.begin
+        with db_begin_fn():
+
             plugin_meta = kek.plugin_meta
 
             # try to unwrap with the target kek, and if successful, skip
@@ -81,7 +92,9 @@ class KekRewrap(object):
 
     def get_keks_for_project(self, project):
         keks = []
-        with self.db_session.begin() as transaction:
+        db_begin_fn = self.db_session.begin_nested if (
+            self.db_session.in_transaction()) else self.db_session.begin
+        with db_begin_fn() as transaction:
             print('Retrieving KEKs for Project {}'.format(project.external_id))
             query = transaction.session.query(models.KEKDatum)
             query = query.filter_by(project_id=project.id)
@@ -95,7 +108,9 @@ class KekRewrap(object):
         print('Retrieving all available projects')
 
         projects = []
-        with self.db_session.begin() as transaction:
+        db_begin_fn = self.db_session.begin_nested if (
+            self.db_session.in_transaction()) else self.db_session.begin
+        with db_begin_fn() as transaction:
             projects = transaction.session.query(models.Project).all()
 
         return projects
@@ -142,14 +157,17 @@ def main():
         help='Displays changes that will be made (Non-destructive)'
     )
     parser.add_argument(
-        '--old-kek',
-        default='dGhpcnR5X3R3b19ieXRlX2tleWJsYWhibGFoYmxhaGg=',
-        help='Old key encryption key previously used by Simple Crypto Plugin. '
-             '(32 bytes, base64-encoded)'
+        '--old-keks',
+        default="dGhpcnR5X3R3b19ieXRlX2tleWJsYWhibGFoYmxhaGg=",
+        help='Old key encryption keys previously used by Simple Crypto Plugin. '
+             'A comma separated string of list contain keys '
+             '( with formate 32 bytes and base64-encoded ). '
+             'First key in list is used for ecnrypting new data. '
+             'Additional keys used for decrypting existing data.'
     )
     args = parser.parse_args()
 
-    rewrapper = KekRewrap(CONF, args.old_kek)
+    rewrapper = KekRewrap(CONF, args.old_keks.split(","))
     rewrapper.execute(args.dry_run)
 
 
