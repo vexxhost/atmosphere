@@ -26,7 +26,7 @@ Dell PowerStore
 
 In order to be able to use Dell PowerStore, you'll need to make sure that you
 setup the hosts inside of your storage array. You'll also need to make sure
-that they are not inside a host group or otherwise individual attachments will
+that they aren't inside a host group or otherwise individual attachments will
 not work.
 
 You can enable the native PowerStore driver for Cinder with the following

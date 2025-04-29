@@ -166,6 +166,8 @@ spec:
               mountPath: /etc/pki/libvirt
             - name: etc-pki-libvirt-vnc
               mountPath: /etc/pki/libvirt-vnc
+            - name: libvirt-run
+              mountPath: /run/libvirt
         - name: libvirt
 {{ tuple $envAll "libvirt" | include "helm-toolkit.snippets.image" | indent 10 }}
 {{ tuple $envAll $envAll.Values.pod.resources.libvirt | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
@@ -354,6 +356,8 @@ spec:
         - name: run
           hostPath:
             path: /run
+        - name: libivrt-run
+          hostPath: /run/libvirt
         - name: dev
           hostPath:
             path: /dev

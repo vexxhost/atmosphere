@@ -12,7 +12,7 @@ details for configurations that require special handling.
 Ceph
 ****
 
-The Atmosphere deployment includes a pre-configured Ceph cluster that is
+The Atmosphere deployment includes a pre-configured Ceph cluster that's
 ready to use with Glance, requiring no additional configuration steps. This
 setup is recommended for most users as it provides a seamless and integrated
 storage solution.
@@ -37,7 +37,7 @@ managing images as block storage volumes, apply the following configuration:
             disk_formats: raw
 
 This configuration sets Cinder as the default and only storage backend for
-Glance, with images stored in the ``raw`` disk format.  The configuration
+Glance, with images stored in the ``raw`` disk format. The configuration
 above will use the Cinder default volume type for image storage.
 
 If you want to use a specific volume type, you can merge the following with
@@ -64,7 +64,7 @@ StorPool
 
 For deployments utilizing StorPool as the storage backend, additional
 configuration settings are necessary to ensure proper integration and
-functionality.  You can merge the following with the base Cinder configuration
+functionality. You can merge the following with the base Cinder configuration
 above:
 
 .. code-block:: yaml
