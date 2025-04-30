@@ -97,6 +97,5 @@ buildPythonApplication rec {
     description = "OpenStack Identity (Keystone) Middleware";
     homepage = "https://opendev.org/openstack/keystonemiddleware";
     license = licenses.asl20;
-    teams = [ teams.openstack ];
   };
 }

@@ -103,6 +103,5 @@ buildPythonApplication rec {
     description = "OpenStack resource provider inventory allocation service";
     homepage = "https://opendev.org/openstack/placement";
     license = licenses.asl20;
-    teams = [ teams.openstack ];
   };
 }

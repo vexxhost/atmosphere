@@ -2,6 +2,12 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
+
+    nix2container = {
+      url = "github:nlewo/nix2container";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.flake-utils.follows = "flake-utils";
+    };
   };
 
   outputs =
@@ -9,12 +15,13 @@
       self,
       nixpkgs,
       flake-utils,
+      nix2container,
     }:
     flake-utils.lib.eachDefaultSystem (
       system:
       let
         packagesOverlay = final: prev: {
-          openstack-placement = prev.python3Packages.callPackage ./pkgs/openstack-placement { };
+          openstack-placement = prev.python3.pkgs.callPackage ./pkgs/openstack-placement { };
 
           pythonPackagesExtensions = prev.pythonPackagesExtensions ++ [
             (python-final: python-prev: {
@@ -44,12 +51,32 @@
           inherit system;
           overlays = [ packagesOverlay ];
         };
+
+        nix2containerPkgs = nix2container.packages.${system};
+        n2c = nix2containerPkgs.nix2container;
+
+        uwsgi = pkgs.uwsgi.override({
+          python3 = pkgs.python3;
+          plugins = ["python3"];
+        });
       in
       {
         formatter = pkgs.nixfmt-rfc-style;
 
         packages = {
-          openstack-placement = pkgs.openstack-placement;
+          openstack-placement = n2c.buildImage {
+            name = "ghcr.io/vexxhost/placement";
+            maxLayers = 64;
+
+            copyToRoot = [
+              pkgs.dockerTools.caCertificates
+              (pkgs.buildEnv {
+                name = "root";
+                paths = with pkgs; [ coreutils uwsgi openstack-placement ];
+                pathsToLink = [ "/bin" "/etc" ];
+              })
+            ];
+          };
         };
 
         devShell = pkgs.mkShell {
