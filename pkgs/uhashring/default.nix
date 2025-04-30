@@ -4,7 +4,7 @@
   fetchFromGitHub,
   hatchling,
   pytestCheckHook,
-  python-memcached
+  python-memcached,
 }:
 
 buildPythonApplication rec {

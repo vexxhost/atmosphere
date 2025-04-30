@@ -1,4 +1,10 @@
-{ pkgs, lib, buildGoModule, dockerTools, rev }:
+{
+  pkgs,
+  lib,
+  buildGoModule,
+  dockerTools,
+  rev,
+}:
 rec {
   loki-helm-test = buildGoModule rec {
     pname = "loki-helm-test";
@@ -11,7 +17,7 @@ rec {
       runHook preBuild
       go test --tags=helm_test -c -o $out/bin/helm-test ./production/helm/loki/src/helm-test
       runHook postBuild
-      '';
+    '';
 
     doCheck = false;
   };

@@ -13,37 +13,43 @@
     flake-utils.lib.eachDefaultSystem (
       system:
       let
-        pythonPackagesOverlay = final: prev: {
+        packagesOverlay = final: prev: {
+          openstack-placement = prev.python3Packages.callPackage ./pkgs/openstack-placement { };
+
           pythonPackagesExtensions = prev.pythonPackagesExtensions ++ [
             (python-final: python-prev: {
-              etcd3gw = pkgs.python3Packages.callPackage ./pkgs/etcd3gw { };
+              etcd3gw = python-final.callPackage ./pkgs/etcd3gw { };
               futurist = python-final.callPackage ./pkgs/futurist { };
-              gabbi = pkgs.python3Packages.callPackage ./pkgs/gabbi { };
-              jsonpath-rw-ext = pkgs.python3Packages.callPackage ./pkgs/jsonpath-rw-ext { };
-              keystonemiddleware = pkgs.python3Packages.callPackage ./pkgs/keystonemiddleware { };
-              microversion-parse = pkgs.python3Packages.callPackage ./pkgs/microversion-parse { };
-              oslo-cache = pkgs.python3Packages.callPackage ./pkgs/oslo-cache { };
-              oslo-messaging = pkgs.python3Packages.callPackage ./pkgs/oslo-messaging { };
-              oslo-metrics = pkgs.python3Packages.callPackage ./pkgs/oslo-metrics { };
-              oslo-middleware = pkgs.python3Packages.callPackage ./pkgs/oslo-middleware { };
-              oslo-service = pkgs.python3Packages.callPackage ./pkgs/oslo-service { };
-              pycadf = pkgs.python3Packages.callPackage ./pkgs/pycadf { };
-              python-binary-memcached = pkgs.python3Packages.callPackage ./pkgs/python-binary-memcached { };
-              uhashring = pkgs.python3Packages.callPackage ./pkgs/uhashring { };
+              gabbi = python-final.callPackage ./pkgs/gabbi { };
+              jsonpath-rw-ext = python-final.callPackage ./pkgs/jsonpath-rw-ext { };
+              keystonemiddleware = python-final.callPackage ./pkgs/keystonemiddleware { };
+              microversion-parse = python-final.callPackage ./pkgs/microversion-parse { };
+              os-resource-classes = python-final.callPackage ./pkgs/os-resource-classes { };
+              os-traits = python-final.callPackage ./pkgs/os-traits { };
+              oslo-cache = python-final.callPackage ./pkgs/oslo-cache { };
+              oslo-messaging = python-final.callPackage ./pkgs/oslo-messaging { };
+              oslo-metrics = python-final.callPackage ./pkgs/oslo-metrics { };
+              oslo-middleware = python-final.callPackage ./pkgs/oslo-middleware { };
+              oslo-policy = python-final.callPackage ./pkgs/oslo-policy { };
+              oslo-service = python-final.callPackage ./pkgs/oslo-service { };
+              oslo-upgradecheck = python-final.callPackage ./pkgs/oslo-upgradecheck { };
+              pycadf = python-final.callPackage ./pkgs/pycadf { };
+              python-binary-memcached = python-final.callPackage ./pkgs/python-binary-memcached { };
+              uhashring = python-final.callPackage ./pkgs/uhashring { };
             })
           ];
         };
 
         pkgs = import nixpkgs {
           inherit system;
-          overlays = [ pythonPackagesOverlay ];
+          overlays = [ packagesOverlay ];
         };
       in
       {
         formatter = pkgs.nixfmt-rfc-style;
 
         packages = {
-          openstack-placement = pkgs.python3Packages.callPackage ./pkgs/openstack-placement { };
+          openstack-placement = pkgs.openstack-placement;
         };
 
         devShell = pkgs.mkShell {

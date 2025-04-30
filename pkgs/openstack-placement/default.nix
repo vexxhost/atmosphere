@@ -22,7 +22,19 @@
   routes,
   sqlalchemy,
   webob,
+  bandit,
+  coverage,
+  cryptography,
+  fixtures,
+  gabbi,
+  hacking,
+  oslotest,
+  osprofiler,
+  psycopg2,
+  pymysql,
   stestr,
+  testtools,
+  wsgi-intercept,
 }:
 
 buildPythonApplication rec {
@@ -66,7 +78,19 @@ buildPythonApplication rec {
   ];
 
   nativeCheckInputs = [
+    bandit
+    coverage
+    cryptography
+    fixtures
+    gabbi
+    hacking
+    oslotest
+    osprofiler
+    psycopg2
+    pymysql
     stestr
+    testtools
+    wsgi-intercept
   ];
 
   checkPhase = ''
