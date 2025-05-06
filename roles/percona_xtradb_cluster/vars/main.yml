@@ -1,10 +1,27 @@
 _percona_xtradb_cluster_spec:
   crVersion: "1.14.0"
   secretsName: percona-xtradb
+  initContainer:
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+          - ALL
+      runAsNonRoot: true
+      seccompProfile:
+        type: RuntimeDefault
   pxc:
     size: 3
     image: "{{ atmosphere_images['percona_xtradb_cluster'] | vexxhost.kubernetes.docker_image('ref') }}"
     autoRecovery: true
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+          - ALL
+      runAsNonRoot: true
+      seccompProfile:
+        type: RuntimeDefault
     configuration: |
       [mysqld]
       max_connections=8192
@@ -42,6 +59,14 @@ _percona_xtradb_cluster_spec:
     enabled: true
     size: 3
     image: "{{ atmosphere_images['percona_xtradb_cluster_haproxy'] | vexxhost.kubernetes.docker_image('ref') }}"
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+          - ALL
+      runAsNonRoot: true
+      seccompProfile:
+        type: RuntimeDefault
     nodeSelector:
       openstack-control-plane: enabled
     # NOTE(fitbeard): The actual default configuration file can be found here:
