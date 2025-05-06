@@ -13,11 +13,11 @@ RUN GO111MODULE=off CGO_ENABLED=0 GOOS=linux go build \
 
 FROM openstack-venv-builder AS build
 # renovate: name=openstack/requirements repo=https://opendev.org/openstack/requirements.git branch=master
-ARG REQUIREMENTS_GIT_REF=52bbab14878b98c8f7eb109f10e2a26c84638b52
+ARG REQUIREMENTS_GIT_REF=b58f4867d2406854e476fa599ca52d270aa2cd19
 ADD --keep-git-dir=true https://opendev.org/openstack/requirements.git#${REQUIREMENTS_GIT_REF} /src/requirements
 RUN git -C /src/requirements fetch --unshallow
 # renovate: name=openstack/tempest repo=https://opendev.org/openstack/tempest.git branch=master
-ARG TEMPEST_GIT_REF=60364b39f174749bd5bd255016fc6584ded1f66c
+ARG TEMPEST_GIT_REF=d12904cde88c96a6b7792f697d868823a09b5377
 ADD --keep-git-dir=true https://opendev.org/openstack/tempest.git#${TEMPEST_GIT_REF} /src/tempest
 RUN git -C /src/tempest fetch --unshallow
 # renovate: name=openstack/barbican-tempest-plugin repo=https://opendev.org/openstack/barbican-tempest-plugin.git branch=master
@@ -37,7 +37,7 @@ ARG KEYSTONE_TEMPEST_PLUGIN_GIT_REF=f3c89425613f333a1152a7d420e5d681154f7ad1
 ADD --keep-git-dir=true https://opendev.org/openstack/keystone-tempest-plugin.git#${KEYSTONE_TEMPEST_PLUGIN_GIT_REF} /src/keystone-tempest-plugin
 RUN git -C /src/keystone-tempest-plugin fetch --unshallow
 # renovate: name=openstack/neutron-tempest-plugin repo=https://opendev.org/openstack/neutron-tempest-plugin.git branch=master
-ARG NEUTRON_TEMPEST_PLUGIN_GIT_REF=e32b2e1b7ca572382170e3465c60b2fab20832a4
+ARG NEUTRON_TEMPEST_PLUGIN_GIT_REF=ce5687b215fa0d43ef371c8de7def95caf9ce7fc
 ADD --keep-git-dir=true https://opendev.org/openstack/neutron-tempest-plugin.git#${NEUTRON_TEMPEST_PLUGIN_GIT_REF} /src/neutron-tempest-plugin
 RUN git -C /src/neutron-tempest-plugin fetch --unshallow
 # renovate: name=openstack/octavia-tempest-plugin repo=https://opendev.org/openstack/octavia-tempest-plugin.git branch=master
