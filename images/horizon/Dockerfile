@@ -11,7 +11,6 @@ RUN git -C /src/horizon fetch --unshallow
 ARG DESIGNATE_DASHBOARD_GIT_REF=fde744e28936a7e4a0e9bc73137c5e67f11cd333
 ADD --keep-git-dir=true https://opendev.org/openstack/designate-dashboard.git#${DESIGNATE_DASHBOARD_GIT_REF} /src/designate-dashboard
 RUN git -C /src/designate-dashboard fetch --unshallow
-# renovate: name=openstack/heat-dashboard repo=https://opendev.org/openstack/heat-dashboard.git branch=zed-eol
 ARG HEAT_DASHBOARD_GIT_REF=5d1ef0faf10c77490051984e850ce0431054db7f
 ADD --keep-git-dir=true https://opendev.org/openstack/heat-dashboard.git#${HEAT_DASHBOARD_GIT_REF} /src/heat-dashboard
 RUN git -C /src/heat-dashboard fetch --unshallow
@@ -35,7 +34,8 @@ RUN git -C /src/neutron-vpnaas-dashboard fetch --unshallow
 ARG OCTAVIA_DASHBOARD_REF=c3cec4d27756601aff32d0fd560166e65a2e1547
 ADD --keep-git-dir=true https://opendev.org/openstack/octavia-dashboard.git#${OCTAVIA_DASHBOARD_REF} /src/octavia-dashboard
 RUN git -C /src/octavia-dashboard fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/senlin-dashboard.git#zed-eol /src/senlin-dashboard
+ARG SENLIN_DASHBOARD_GIT_REF=02183504a09ed089d7a74ee2808b3eceda342cec
+ADD --keep-git-dir=true https://opendev.org/openstack/senlin-dashboard.git#${SENLIN_DASHBOARD_GIT_REF} /src/senlin-dashboard
 RUN git -C /src/senlin-dashboard fetch --unshallow
 COPY patches/horizon /patches/horizon
 RUN git -C /src/horizon apply --verbose /patches/horizon/*

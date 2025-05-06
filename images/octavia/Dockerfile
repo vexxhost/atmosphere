@@ -3,14 +3,12 @@
 # Atmosphere-Rebuild-Time: 2024-06-26T17:38:39Z
 
 FROM openstack-venv-builder AS build
-# renovate: name=openstack/octavia repo=https://opendev.org/openstack/octavia.git branch=zed-eol
-ARG OCTAVIA_GIT_REF=ddfd2e4e42300ccf0cf0d865900d2ec252cee41a
+ARG OCTAVIA_GIT_REF=06dd3559f8616c57462ee646168e4a6069dd30ee
 ADD --keep-git-dir=true https://opendev.org/openstack/octavia.git#${OCTAVIA_GIT_REF} /src/octavia
 RUN git -C /src/octavia fetch --unshallow
 COPY patches/octavia /patches/octavia
 RUN git -C /src/octavia apply --verbose /patches/octavia/*
-# renovate: name=openstack/ovn-octavia-provider repo=https://opendev.org/openstack/ovn-octavia-provider.git branch=zed-eol
-ARG OVN_OCTAVIA_PROVIDER_GIT_REF=2374cce13f6f5dc70cc5387e9c7b8fa2dc5bf0f0
+ARG OVN_OCTAVIA_PROVIDER_GIT_REF=2a98dbb555626cb844cd1b804c1fb49049b7c86c
 ADD --keep-git-dir=true https://opendev.org/openstack/ovn-octavia-provider.git#${OVN_OCTAVIA_PROVIDER_GIT_REF} /src/ovn-octavia-provider
 RUN git -C /src/ovn-octavia-provider fetch --unshallow
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
