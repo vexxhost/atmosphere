@@ -21,8 +21,7 @@ func GetImages() (map[string]string, error) {
 	modifiedVarsFile := []byte(strings.ReplaceAll(string(varsFile), "{{ atmosphere_release }}", release))
 
 	// Fix prefixes for images to allow tests to run
-	modifiedVarsFile = []byte(strings.ReplaceAll(string(modifiedVarsFile), "{{ atmosphere_image_prefix }}registry.atmosphere.dev", "harbor.atmosphere.dev"))
-	modifiedVarsFile = []byte(strings.ReplaceAll(string(modifiedVarsFile), "{{ atmosphere_image_prefix }}", "harbor.atmosphere.dev/"))
+	modifiedVarsFile = []byte(strings.ReplaceAll(string(modifiedVarsFile), "{{ atmosphere_image_prefix }}", ""))
 
 	path, err := yaml.PathString("$._atmosphere_images")
 	if err != nil {
