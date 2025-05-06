@@ -1,22 +1,7 @@
 - job:
-    name: atmosphere-cargo-test
-    run:
-      - zuul.d/playbooks/cargo-test/run.yml
-    dependencies:
-      - name: atmosphere-build-images
-        soft: true
-
-- job:
     name: atmosphere-linters
     parent: tox-linters
     pre-run: zuul.d/playbooks/linters/pre.yml
-
-- job:
-    name: atmosphere-tox-promtool-test
-    parent: tox
-    pre-run: zuul.d/playbooks/promtool/pre.yml
-    vars:
-      tox_envlist: promtool-test
 
 - job:
     name: atmosphere-tox-helm-unittest
