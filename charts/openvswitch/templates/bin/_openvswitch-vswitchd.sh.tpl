@@ -114,6 +114,11 @@ function start () {
   fi
 {{- end }}
 
+  # Remove the pid file if it exists
+  if [ -f $OVS_PID ]; then
+      rm -f $OVS_PID
+  fi
+
   exec /usr/sbin/ovs-vswitchd unix:${OVS_SOCKET} \
           -vconsole:emer \
           -vconsole:err \
