@@ -29,6 +29,26 @@ jobs:
           go-version-file: go.mod
       - uses: robherley/go-test-action@b19f6aadabfb1ad85079065b21aa2af132466468 # v0.6.0
 
+  vale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get install -y docutils
+      - uses: errata-ai/vale-action@v2.1.1
+        with:
+          files: doc,releasenotes
+          separator: ","
+          fail_on_error: true
+
+  pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/build
+      - uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd # v3.0.1
+
   build:
     runs-on: ubuntu-latest
     steps:
