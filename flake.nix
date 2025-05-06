@@ -32,6 +32,7 @@
             go
             kubernetes-helm
             patchutils
+            pre-commit
             python311Packages.tox
             reno
             renovate
