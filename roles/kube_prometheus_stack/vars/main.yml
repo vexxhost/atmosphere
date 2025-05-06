@@ -483,6 +483,24 @@ _kube_prometheus_stack_helm_values:
         endpoints:
           - port: metrics
             relabelings: *relabelings_instance_to_node_name
+      - name: ceph-osd-exporter
+        jobLabel: jobLabel
+        namespaceSelector:
+          matchNames:
+            - monitoring
+        selector:
+          matchLabels:
+            app.kubernetes.io/instance: ceph-osd-exporter
+            app.kubernetes.io/name: ceph-osd-exporter
+        endpoints:
+          - port: metrics
+            interval: 1m
+            relabelings:
+              - action: replace
+                regex: (.*)
+                replacement: default
+                targetLabel: instance
+            scrapeTimeout: 30s
       - name: openstack-exporter
         jobLabel: jobLabel
         namespaceSelector:

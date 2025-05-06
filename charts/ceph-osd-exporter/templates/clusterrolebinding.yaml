@@ -1,0 +1,16 @@
+{{- if and .Values.rbac.create .Values.rbac.clusterscoped }}
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: {{ include "ceph_osd_exporter.fullname" . }}-clusterrolebinding
+  labels:
+    {{- include "ceph_osd_exporter.labels" . | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "ceph_osd_exporter.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: ClusterRole
+  name: {{ include "ceph_osd_exporter.fullname" . }}-clusterrole
+  apiGroup: rbac.authorization.k8s.io
+{{- end }}

@@ -1,0 +1,13 @@
+# Copyright (c) 2024 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+
+- name: Deploy Helm chart
+  run_once: true
+  kubernetes.core.helm:
+    name: "{{ ceph_osd_exporter_helm_release_name }}"
+    chart_ref: "{{ ceph_osd_exporter_helm_chart_ref }}"
+    release_namespace: "{{ ceph_osd_exporter_helm_release_namespace }}"
+    create_namespace: true
+    kubeconfig: "{{ ceph_osd_exporter_helm_kubeconfig }}"
+    values: "{{ _ceph_osd_exporter_helm_values | combine(ceph_osd_exporter_helm_values, recursive=True) }}"
