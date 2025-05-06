@@ -1,23 +1,10 @@
 - job:
-    name: atmosphere-golang-go
-    parent: golang-go
-    abstract: true
-    vars:
-      go_version: 1.21.13
-
-- job:
     name: atmosphere-cargo-test
     run:
       - zuul.d/playbooks/cargo-test/run.yml
     dependencies:
       - name: atmosphere-build-images
         soft: true
-
-- job:
-    name: atmosphere-golang-go-test
-    parent: atmosphere-golang-go
-    vars:
-      go_command: test ./... -v
 
 - job:
     name: atmosphere-linters
