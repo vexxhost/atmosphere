@@ -1,0 +1,124 @@
+From 8c36ae4bca0e64459389577e832be8c774cf7f25 Mon Sep 17 00:00:00 2001
+From: ricolin <rlin@vexxhost.com>
+Date: Thu, 8 May 2025 00:33:33 +0800
+Subject: [PATCH] Rebase fix-neutron-ironic-agent.patch
+
+---
+ .../bin/_neutron-ironic-agent-init.sh.tpl     | 25 +++++++++++++++++++
+ neutron/templates/configmap-bin.yaml   |  2 ++
+ .../templates/deployment-ironic-agent.yaml    | 17 +++++++++++++
+ neutron/values.yaml                    |  4 +++
+ 4 files changed, 48 insertions(+)
+ create mode 100644 neutron/templates/bin/_neutron-ironic-agent-init.sh.tpl
+
+diff --git a/neutron/templates/bin/_neutron-ironic-agent-init.sh.tpl b/neutron/templates/bin/_neutron-ironic-agent-init.sh.tpl
+new file mode 100644
+index 00000000..3df3315b
+--- /dev/null
++++ b/neutron/templates/bin/_neutron-ironic-agent-init.sh.tpl
+@@ -0,0 +1,25 @@
++#!/bin/bash
++
++{{/*
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++  http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++*/}}
++
++set -ex
++
++{{- if and ( empty .Values.conf.neutron.DEFAULT.host ) ( .Values.pod.use_fqdn.neutron_agent ) }}
++mkdir -p /tmp/pod-shared
++tee > /tmp/pod-shared/neutron-agent.ini << EOF
++[DEFAULT]
++host = $(hostname --fqdn)
++EOF
++{{- end }}
+diff --git a/neutron/templates/configmap-bin.yaml b/neutron/templates/configmap-bin.yaml
+index 2032b156..87b2b798 100644
+--- a/neutron/templates/configmap-bin.yaml
++++ b/neutron/templates/configmap-bin.yaml
+@@ -95,6 +95,8 @@ data:
+ {{ tuple "bin/_neutron-policy-server.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+   neutron-rpc-server.sh: |
+ {{ tuple "bin/_neutron-rpc-server.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
++  neutron-ironic-agent-init.sh: |
++{{ tuple "bin/_neutron-ironic-agent-init.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+   neutron-ironic-agent.sh: |
+ {{ tuple "bin/_neutron-ironic-agent.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+   neutron-netns-cleanup-cron.sh: |
+diff --git a/neutron/templates/deployment-ironic-agent.yaml b/neutron/templates/deployment-ironic-agent.yaml
+index 014c9adf..1b468e2b 100644
+--- a/neutron/templates/deployment-ironic-agent.yaml
++++ b/neutron/templates/deployment-ironic-agent.yaml
+@@ -60,6 +60,19 @@ spec:
+       terminationGracePeriodSeconds: {{ .Values.pod.lifecycle.termination_grace_period.ironic_agent.timeout | default "30" }}
+       initContainers:
+ {{ tuple $envAll "pod_dependency" $mounts_neutron_ironic_agent_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
++        - name: neutron-ironic-agent-init
++{{ tuple $envAll "neutron_ironic_agent_init" | include "helm-toolkit.snippets.image" | indent 10 }}
++{{ tuple $envAll $envAll.Values.pod.resources.ironic_agent | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
++{{ dict "envAll" $envAll "application" "neutron_ironic_agent" "container" "neutron_ironic_agent_init" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
++          command:
++            - /tmp/neutron-ironic-agent-init.sh
++          volumeMounts:
++            - name: pod-shared
++              mountPath: /tmp/pod-shared
++            - name: neutron-bin
++              mountPath: /tmp/neutron-ironic-agent-init.sh
++              subPath: neutron-ironic-agent-init.sh
++              readOnly: true
+       containers:
+         - name: neutron-ironic-agent
+ {{ tuple $envAll "neutron_ironic_agent" | include "helm-toolkit.snippets.image" | indent 10 }}
+@@ -79,6 +92,8 @@ spec:
+               mountPath: /tmp
+             - name: pod-var-neutron
+               mountPath: {{ .Values.conf.neutron.DEFAULT.state_path }}
++            - name: pod-shared
++              mountPath: /tmp/pod-shared
+             - name: neutron-bin
+               mountPath: /tmp/neutron-ironic-agent.sh
+               subPath: neutron-ironic-agent.sh
+@@ -104,6 +119,8 @@ spec:
+           emptyDir: {}
+         - name: pod-var-neutron
+           emptyDir: {}
++        - name: pod-shared
++          mountPath: /tmp/pod-shared
+         - name: neutron-bin
+           configMap:
+             name: neutron-bin
+diff --git a/neutron/values.yaml b/neutron/values.yaml
+index e8c37287..049c4481 100644
+--- a/neutron/values.yaml
++++ b/neutron/values.yaml
+@@ -46,6 +46,7 @@ images:
+     neutron_sriov_agent_init: quay.io/airshipit/neutron:stein-18.04-sriov
+     neutron_bagpipe_bgp: quay.io/airshipit/neutron:2024.1-ubuntu_jammy
+     neutron_bgp_dragent: quay.io/airshipit/neutron:2024.1-ubuntu_jammy
++    neutron_ironic_agent_init: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
+     neutron_ironic_agent: quay.io/airshipit/neutron:2024.1-ubuntu_jammy
+     neutron_netns_cleanup_cron: quay.io/airshipit/neutron:2024.1-ubuntu_jammy
+     dep_check: quay.io/airshipit/kubernetes-entrypoint:latest-ubuntu_focal
+@@ -679,6 +680,9 @@ pod:
+       pod:
+         runAsUser: 42424
+       container:
++        neutron_ironic_agent_init:
++          runAsUser: 0
++          readOnlyRootFilesystem: true
+         neutron_ironic_agent:
+           allowPrivilegeEscalation: false
+           readOnlyRootFilesystem: true
+-- 
+2.25.1
+
