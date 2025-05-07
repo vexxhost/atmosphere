@@ -92,7 +92,14 @@
     {
       "groupName": "pxc",
       "enabled": true,
-      "matchPackageNames": ["pxc-operator", "percona/percona-xtradb-cluster-operator"]
+      "matchPackageNames": [
+        "docker.io/percona/haproxy",
+        "docker.io/percona/percona-xtradb-cluster-operator",
+        "docker.io/percona/percona-xtradb-cluster",
+        "percona/percona-xtradb-cluster-operator",
+        "pxc-operator",
+        "quay.io/prometheus/mysqld-exporter"
+      ]
     }
   ],
   "customManagers": [
@@ -104,6 +111,15 @@
         "charts.{ \"depName\": name, \"currentValue\": version, \"registryUrl\": repository.url }"
       ],
       "datasourceTemplate": "helm"
+    },
+    {
+      "customType": "jsonata",
+      "fileFormat": "yaml",
+      "fileMatch": ["roles/defaults/vars/main.yml"],
+      "matchStrings": [
+        "$map($each(_atmosphere_images, function ($v) { $split($replace($replace($v, \"{{ atmosphere_image_prefix }}\", \"\"), \"{{ atmosphere_release }}\", atmosphere_release), \":\") }), function ($v) { { \"depName\": $v[0], \"currentValue\": $v[1] } })"
+      ],
+      "datasourceTemplate": "docker"
     },
     {
       "customType": "regex",
