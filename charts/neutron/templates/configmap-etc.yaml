@@ -155,7 +155,7 @@ limitations under the License.
 
 {{- if empty $envAll.Values.conf.dhcp_agent.DEFAULT.interface_driver -}}
 {{- $_ := set $envAll.Values "__interface_driver" ( list ) }}
-{{- if or ( has "openvswitch" $envAll.Values.network.backend ) ( has "ovn" $envAll.Values.network.backend ) -}}
+{{- if ( has "openvswitch" $envAll.Values.network.backend ) -}}
 {{ $__interface_driver := append $envAll.Values.__interface_driver "openvswitch" }}
 {{- $_ := set $envAll.Values "__interface_driver" $__interface_driver }}
 {{- end -}}
@@ -164,9 +164,6 @@ limitations under the License.
 {{- $_ := set $envAll.Values "__interface_driver" $__interface_driver }}
 {{- end -}}
 {{- $_ := set $envAll.Values.conf.dhcp_agent.DEFAULT "interface_driver" $envAll.Values.__interface_driver -}}
-{{- end -}}
-{{- if and (has "ovn" $envAll.Values.network.backend) (empty $envAll.Values.conf.dhcp_agent.ovs.ovsdb_connection) -}}
-{{- $_ := set $envAll.Values.conf.dhcp_agent.ovs "ovsdb_connection" "unix:/run/openvswitch/db.sock" -}}
 {{- end -}}
 
 {{- if empty $envAll.Values.conf.l3_agent.DEFAULT.interface_driver -}}
@@ -199,15 +196,6 @@ limitations under the License.
 {{- $http_socket_port := tuple "network" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" | toString }}
 {{- $http_socket := printf "0.0.0.0:%s" $http_socket_port }}
 {{- $_ := set .Values.conf.neutron_api_uwsgi.uwsgi "http-socket" $http_socket -}}
-{{- end -}}
-
-{{- if empty .Values.conf.neutron_policy_server_uwsgi.uwsgi.processes -}}
-{{- $_ := set .Values.conf.neutron_policy_server_uwsgi.uwsgi "processes" .Values.conf.neutron.DEFAULT.api_workers -}}
-{{- end -}}
-{{- if empty (index .Values.conf.neutron_policy_server_uwsgi.uwsgi "http-socket") -}}
-{{- $http_socket_port := tuple "network" "service" "policy_server" . | include "helm-toolkit.endpoints.endpoint_port_lookup" | toString }}
-{{- $http_socket := printf "0.0.0.0:%s" $http_socket_port }}
-{{- $_ := set .Values.conf.neutron_policy_server_uwsgi.uwsgi "http-socket" $http_socket -}}
 {{- end -}}
 
 {{- if and (empty .Values.conf.logging.handler_fluent) (has "fluent" .Values.conf.logging.handlers.keys) -}}
@@ -308,7 +296,6 @@ data:
   api-paste.ini: {{ include "helm-toolkit.utils.to_ini" $envAll.Values.conf.paste | b64enc }}
   policy.yaml: {{ toYaml $envAll.Values.conf.policy | b64enc }}
   neutron-api-uwsgi.ini: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.neutron_api_uwsgi | b64enc }}
-  neutron-policy-server-uwsgi.ini: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.neutron_policy_server_uwsgi | b64enc }}
   neutron.conf: {{ include "helm-toolkit.utils.to_oslo_conf" $envAll.Values.conf.neutron | b64enc }}
   logging.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.logging | b64enc }}
   api_audit_map.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.api_audit_map | b64enc }}
