@@ -21,7 +21,7 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 	gorm.io/driver/mysql v1.5.6
 	gorm.io/gorm v1.25.10
-	helm.sh/helm/v3 v3.16.2
+	helm.sh/helm/v3 v3.17.3
 	k8s.io/api v0.31.1
 	k8s.io/apimachinery v0.31.1
 	k8s.io/cli-runtime v0.31.1
