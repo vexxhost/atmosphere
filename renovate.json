@@ -87,9 +87,24 @@
       ],
       "matchBaseBranches": ["main"],
       "schedule": ["* * * * 1"]
+    },
+
+    {
+      "groupName": "pxc",
+      "enabled": true,
+      "matchPackageNames": ["pxc-operator", "percona/percona-xtradb-cluster-operator"]
     }
   ],
   "customManagers": [
+    {
+      "customType": "jsonata",
+      "fileFormat": "yaml",
+      "fileMatch": [".charts.yml"],
+      "matchStrings": [
+        "charts.{ \"depName\": name, \"currentValue\": version, \"registryUrl\": repository.url }"
+      ],
+      "datasourceTemplate": "helm"
+    },
     {
       "customType": "regex",
       "fileMatch": [
@@ -138,11 +153,10 @@
     {
       "customType": "jsonata",
       "fileFormat": "yaml",
-      "fileMatch": [".charts.yml"],
-      "matchStrings": [
-        "charts.{ \"depName\": name, \"currentValue\": version, \"registryUrl\": repository.url }",
-      ],
-      "datasourceTemplate": "helm"
+      "fileMatch": ["roles/percona_xtradb_cluster/vars/main.yml"],
+      "matchStrings": ["_percona_xtradb_cluster_spec.{ \"version\": crVersion }"],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "percona/percona-xtradb-cluster-operator"
     }
   ]
 }
