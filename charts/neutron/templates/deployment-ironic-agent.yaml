@@ -49,12 +49,6 @@ spec:
 {{ tuple "neutron_ironic_agent" . | include "helm-toolkit.snippets.custom_pod_annotations" | indent 8 }}
     spec:
 {{ dict "envAll" $envAll "application" "neutron_ironic_agent" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
-{{ with .Values.pod.priorityClassName.neutron_ironic_agent }}
-      priorityClassName: {{ . }}
-{{ end }}
-{{ with .Values.pod.runtimeClassName.neutron_ironic_agent }}
-      runtimeClassName: {{ . }}
-{{ end }}
       serviceAccountName: {{ $serviceAccountName }}
       affinity:
 {{ tuple $envAll "neutron" "ironic_agent" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
@@ -66,19 +60,6 @@ spec:
       terminationGracePeriodSeconds: {{ .Values.pod.lifecycle.termination_grace_period.ironic_agent.timeout | default "30" }}
       initContainers:
 {{ tuple $envAll "pod_dependency" $mounts_neutron_ironic_agent_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
-        - name: neutron-ironic-agent-init
-{{ tuple $envAll "neutron_ironic_agent_init" | include "helm-toolkit.snippets.image" | indent 10 }}
-{{ tuple $envAll $envAll.Values.pod.resources.ironic_agent | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
-{{ dict "envAll" $envAll "application" "neutron_ironic_agent" "container" "neutron_ironic_agent_init" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
-          command:
-            - /tmp/neutron-ironic-agent-init.sh
-          volumeMounts:
-            - name: pod-shared
-              mountPath: /tmp/pod-shared
-            - name: neutron-bin
-              mountPath: /tmp/neutron-ironic-agent-init.sh
-              subPath: neutron-ironic-agent-init.sh
-              readOnly: true
       containers:
         - name: neutron-ironic-agent
 {{ tuple $envAll "neutron_ironic_agent" | include "helm-toolkit.snippets.image" | indent 10 }}
@@ -98,8 +79,6 @@ spec:
               mountPath: /tmp
             - name: pod-var-neutron
               mountPath: {{ .Values.conf.neutron.DEFAULT.state_path }}
-            - name: pod-shared
-              mountPath: /tmp/pod-shared
             - name: neutron-bin
               mountPath: /tmp/neutron-ironic-agent.sh
               subPath: neutron-ironic-agent.sh
@@ -125,8 +104,6 @@ spec:
           emptyDir: {}
         - name: pod-var-neutron
           emptyDir: {}
-        - name: pod-shared
-          mountPath: /tmp/pod-shared
         - name: neutron-bin
           configMap:
             name: neutron-bin
