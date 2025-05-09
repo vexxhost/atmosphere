@@ -1,0 +1,369 @@
+From 5c849f889e3d499b76e8c2d2e962cd34509ab0c0 Mon Sep 17 00:00:00 2001
+From: ricolin <rlin@vexxhost.com>
+Date: Wed, 7 May 2025 14:42:13 +0800
+Subject: [PATCH 3/3] Add cron job for neutron ovn db sync/repair
+
+This helps to earlier find/repair any unsynced part in OVN DB.
+The log output can combine with loki to generate really helpfull alerts,
+so we don't need to wait for environment network package flow to
+break down first to understand our OVN db got out of sync.
+
+Change-Id: I2c385ba71677c5b06e8fdf9efed6bba4f2ae8a6d
+---
+ .../templates/bin/_neutron-ovn-db-sync.sh.tpl |  38 ++++
+ neutron/templates/configmap-bin.yaml          |   2 +
+ neutron/templates/cron-job-ovn-db-sync.yaml   | 184 ++++++++++++++++++
+ neutron/values.yaml                           |  24 +++
+ .../notes/neutron-f0674e08d80fc203.yaml       |  14 ++
+ 5 files changed, 262 insertions(+)
+ create mode 100644 neutron/templates/bin/_neutron-ovn-db-sync.sh.tpl
+ create mode 100644 neutron/templates/cron-job-ovn-db-sync.yaml
+ create mode 100644 releasenotes/notes/neutron-f0674e08d80fc203.yaml
+
+diff --git a/neutron/templates/bin/_neutron-ovn-db-sync.sh.tpl b/neutron/templates/bin/_neutron-ovn-db-sync.sh.tpl
+new file mode 100644
+index 000000000..f945ebdd8
+--- /dev/null
++++ b/neutron/templates/bin/_neutron-ovn-db-sync.sh.tpl
+@@ -0,0 +1,38 @@
++#!/bin/bash
++
++{{/*
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++   http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++*/}}
++
++set -ex
++
++neutron-ovn-db-sync-util \
++        --config-file /etc/neutron/neutron.conf \
++{{- if ( has "ovn" .Values.network.backend ) }}
++        --config-file /tmp/pod-shared/ovn.ini \
++{{- end }}
++{{- if .Values.conf.plugins.taas.taas.enabled }}
++        --config-file /etc/neutron/taas_plugin.ini \
++{{- end }}
++{{- if ( has "sriov" .Values.network.backend ) }}
++        --config-file /etc/neutron/plugins/ml2/sriov_agent.ini \
++{{- end }}
++{{- if .Values.conf.plugins.l2gateway }}
++        --config-file /etc/neutron/l2gw_plugin.ini \
++{{- end }}
++{{- if ( has "tungstenfabric" .Values.network.backend ) }}
++        --config-file /etc/neutron/plugins/tungstenfabric/tf_plugin.ini \
++{{- else }}
++        --config-file /etc/neutron/plugins/ml2/ml2_conf.ini \
++{{- end }}
++        --ovn-neutron_sync_mode "$1"
+diff --git a/neutron/templates/configmap-bin.yaml b/neutron/templates/configmap-bin.yaml
+index f5fc72973..01b9d7f03 100644
+--- a/neutron/templates/configmap-bin.yaml
++++ b/neutron/templates/configmap-bin.yaml
+@@ -105,6 +105,8 @@ data:
+   neutron-metadata-agent-init.sh: |
+ {{ tuple "bin/_neutron-metadata-agent-init.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+ {{- if ( has "ovn" .Values.network.backend ) }}
++  neutron-ovn-db-sync.sh: |
++{{ tuple "bin/_neutron-ovn-db-sync.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+   neutron-ovn-metadata-agent.sh: |
+ {{ tuple "bin/_neutron-ovn-metadata-agent.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+   neutron-ovn-init.sh: |
+diff --git a/neutron/templates/cron-job-ovn-db-sync.yaml b/neutron/templates/cron-job-ovn-db-sync.yaml
+new file mode 100644
+index 000000000..636aa8bf6
+--- /dev/null
++++ b/neutron/templates/cron-job-ovn-db-sync.yaml
+@@ -0,0 +1,184 @@
++{{/*
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++   http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++*/}}
++
++{{- if .Values.manifests.cron_job_ovn_db_sync }}
++{{- $envAll := . }}
++
++{{- $mounts_neutron_ovn_db_sync := .Values.pod.mounts.neutron_ovn_db_sync.neutron_ovn_db_sync }}
++{{- $mounts_neutron_ovn_db_sync_init := .Values.pod.mounts.neutron_ovn_db_sync.init_container }}
++
++{{- $serviceAccountName := "neutron-ovn-db-sync" }}
++{{ tuple $envAll "pod_dependency" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
++---
++apiVersion: batch/v1
++kind: CronJob
++metadata:
++  name: neutron-ovn-db-sync
++  annotations:
++    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
++spec:
++  schedule: {{ .Values.jobs.ovn_db_sync.cron | quote }}
++  successfulJobsHistoryLimit: {{ .Values.jobs.ovn_db_sync.history.success }}
++  failedJobsHistoryLimit: {{ .Values.jobs.ovn_db_sync.history.failed }}
++  concurrencyPolicy: Forbid
++  jobTemplate:
++    metadata:
++      labels:
++{{ tuple $envAll "neutron" "ovn-db-sync" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
++      annotations:
++{{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
++        configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
++        configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
++{{ dict "envAll" $envAll "podName" "neutron-ovn-db-sync" "containerNames" (list "init" "neutron-ovn-db-sync" ) | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
++    spec:
++      template:
++        metadata:
++          labels:
++{{ tuple $envAll "neutron" "ovn-db-sync" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 12 }}
++          annotations:
++{{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 12 }}
++{{ dict "envAll" $envAll "podName" "neutron-ovn-db-sync" "containerNames" (list "init" "neutron-ovn-db-sync" ) | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
++        spec:
++{{ with .Values.pod.priorityClassName.neutron_ovn_db_sync }}
++          priorityClassName: {{ . }}
++{{ end }}
++{{ with .Values.pod.runtimeClassName.neutron_ovn_db_sync }}
++          runtimeClassName: {{ . }}
++{{ end }}
++          serviceAccountName: {{ $serviceAccountName }}
++          restartPolicy: OnFailure
++{{ if $envAll.Values.pod.tolerations.neutron.enabled }}
++{{ tuple $envAll "neutron" | include "helm-toolkit.snippets.kubernetes_tolerations" | indent 10 }}
++{{ end }}
++          nodeSelector:
++            {{ .Values.labels.job.node_selector_key }}: {{ .Values.labels.job.node_selector_value }}
++          initContainers:
++{{ tuple $envAll "ovn_db_sync" $mounts_neutron_ovn_db_sync_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 12 }}
++            - name: ovn-neutron-init
++{{ tuple $envAll "neutron_ovn_db_sync" | include "helm-toolkit.snippets.image" | indent 14 }}
++              command:
++                - /tmp/neutron-ovn-init.sh
++              volumeMounts:
++                - name: pod-shared
++                  mountPath: /tmp/pod-shared
++                - name: neutron-bin
++                  mountPath: /tmp/neutron-ovn-init.sh
++                  subPath: neutron-ovn-init.sh
++                  readOnly: true
++          containers:
++            - name: neutron-ovn-db-sync
++{{ tuple $envAll "neutron_ovn_db_sync" | include "helm-toolkit.snippets.image" | indent 14 }}
++{{ tuple $envAll $envAll.Values.pod.resources.jobs.ovn_db_sync | include "helm-toolkit.snippets.kubernetes_resources" | indent 14 }}
++{{- if or .Values.manifests.certificates .Values.tls.identity }}
++              env:
++                - name: REQUESTS_CA_BUNDLE
++                  value: "/etc/neutron/certs/ca.crt"
++{{- end }}
++              command:
++                - /tmp/neutron-ovn-db-sync.sh
++                - {{ quote .Values.jobs.ovn_db_sync.sync_mode }}
++              volumeMounts:
++                - name: neutron-bin
++                  mountPath: /tmp/neutron-ovn-db-sync.sh
++                  subPath: neutron-ovn-db-sync.sh
++                  readOnly: true
++                - name: pod-tmp
++                  mountPath: /tmp
++                - name: pod-shared
++                  mountPath: /tmp/pod-shared
++                - name: pod-var-neutron
++                  mountPath: {{ .Values.conf.neutron.DEFAULT.state_path }}
++                - name: neutron-etc
++                  mountPath: /etc/neutron/neutron.conf
++                  subPath: neutron.conf
++                  readOnly: true
++                {{- if( has "tungstenfabric" .Values.network.backend ) }}
++                - name: neutron-etc
++                  mountPath: /etc/neutron/plugins/tungstenfabric/tf_plugin.ini
++                  subPath: tf_plugin.ini
++                  readOnly: true
++                - name: neutron-etc
++                  mountPath: /etc/contrail/vnc_api_lib.ini
++                  subPath: vnc_api_lib.ini
++                  readOnly: true
++                - name: neutron-plugin-shared
++                  mountPath: /opt/plugin
++                - name: neutron-bin
++                  mountPath: /usr/local/lib/python2.7/site-packages/tf-plugin.pth
++                  subPath: tf-plugin.pth
++                  readOnly: true
++                - name: neutron-bin
++                  mountPath: /var/lib/openstack/lib/python2.7/site-packages/tf-plugin.pth
++                  subPath: tf-plugin.pth
++                  readOnly: true
++                - name: neutron-bin
++                  mountPath: /var/lib/openstack/lib/python3.6/site-packages/tf-plugin.pth
++                  subPath: tf-plugin.pth
++                  readOnly: true
++                {{- else }}
++                - name: neutron-etc
++                  mountPath: /etc/neutron/plugins/ml2/ml2_conf.ini
++                  subPath: ml2_conf.ini
++                  readOnly: true
++                {{- end }}
++                {{ if ( has "sriov" .Values.network.backend ) }}
++                - name: neutron-etc
++                  mountPath: /etc/neutron/plugins/ml2/sriov_agent.ini
++                  subPath: sriov_agent.ini
++                  readOnly: true
++                {{ end }}
++                {{- if .Values.conf.plugins.taas.taas.enabled }}
++                - name: neutron-etc
++                  mountPath: /etc/neutron/taas_plugin.ini
++                  subPath: taas_plugin.ini
++                  readOnly: true
++                {{ end }}
++                {{- if .Values.conf.plugins.l2gateway }}
++                - name: neutron-etc
++                  mountPath: /etc/neutron/l2gw_plugin.ini
++                  subPath: l2gw_plugin.ini
++                  readOnly: true
++                {{ end }}
++{{- dict "enabled" .Values.manifests.certificates "name" .Values.endpoints.oslo_db.auth.admin.secret.tls.internal "path" "/etc/mysql/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 16 }}
++{{- dict "enabled" (or .Values.manifests.certificates .Values.tls.identity) "name" .Values.secrets.tls.network.server.internal "path" "/etc/neutron/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 16 }}
++{{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_messaging.auth.admin.secret.tls.internal "path" "/etc/rabbitmq/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 16 }}
++{{ if $mounts_neutron_ovn_db_sync.volumeMounts }}{{ toYaml $mounts_neutron_ovn_db_sync.volumeMounts | indent 14 }}{{ end }}
++          volumes:
++            - name: pod-tmp
++              emptyDir: {}
++            - name: pod-shared
++              emptyDir: {}
++            {{- if .Values.manifests.certificates }}
++            - name: wsgi-neutron
++              emptyDir: {}
++            {{- end }}
++            - name: pod-var-neutron
++              emptyDir: {}
++            - name: neutron-bin
++              configMap:
++                name: neutron-bin
++                defaultMode: 0555
++            - name: neutron-etc
++              secret:
++                secretName: neutron-etc
++                defaultMode: 0444
++            {{- if ( has "tungstenfabric" .Values.network.backend ) }}
++            - name: neutron-plugin-shared
++              emptyDir: {}
++            {{- end }}
++{{- dict "enabled" .Values.manifests.certificates "name" .Values.endpoints.oslo_db.auth.admin.secret.tls.internal | include "helm-toolkit.snippets.tls_volume" | indent 12 }}
++{{- dict "enabled" (or .Values.manifests.certificates .Values.tls.identity) "name" .Values.secrets.tls.network.server.internal | include "helm-toolkit.snippets.tls_volume" | indent 12 }}
++{{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_messaging.auth.admin.secret.tls.internal | include "helm-toolkit.snippets.tls_volume" | indent 12 }}
++{{ if $mounts_neutron_ovn_db_sync.volumes }}{{ toYaml $mounts_neutron_ovn_db_sync.volumes | indent 12 }}{{ end }}
++{{- end }}
+diff --git a/neutron/values.yaml b/neutron/values.yaml
+index 09dd68f3e..b3729b14e 100644
+--- a/neutron/values.yaml
++++ b/neutron/values.yaml
+@@ -36,6 +36,7 @@ images:
+     neutron_dhcp: quay.io/airshipit/neutron:2024.1-ubuntu_jammy
+     neutron_metadata: quay.io/airshipit/neutron:2024.1-ubuntu_jammy
+     neutron_ovn_metadata: quay.io/airshipit/neutron:2024.1-ubuntu_jammy
++    neutron_ovn_db_sync: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
+     neutron_ovn_vpn: quay.io/airshipit/neutron:2024.1-ubuntu_jammy
+     neutron_l3: quay.io/airshipit/neutron:2024.1-ubuntu_jammy
+     neutron_l2gw: quay.io/airshipit/neutron:2024.1-ubuntu_jammy
+@@ -397,6 +398,7 @@ pod:
+     neutron_metadata_agent: null
+     neutron_netns_cleanup_cron: null
+     ovn_vpn_agent: null
++    neutron_ovn_db_sync: null
+     neutron_ovn_metadata_agent: null
+     neutron_ovs_agent: null
+     neutron_sriov_agent: null
+@@ -416,6 +418,7 @@ pod:
+     neutron_metadata_agent: null
+     neutron_netns_cleanup_cron: null
+     ovn_vpn_agent: null
++    neutron_ovn_db_sync: null
+     neutron_ovn_metadata_agent: null
+     neutron_ovs_agent: null
+     neutron_sriov_agent: null
+@@ -770,6 +773,11 @@ pod:
+       neutron_metadata_agent:
+         volumeMounts:
+         volumes:
++    neutron_ovn_db_sync:
++      init_container: null
++      neutron_ovn_db_sync:
++        volumeMounts:
++        volumes:
+     neutron_ovn_metadata_agent:
+       init_container: null
+       neutron_ovn_metadata_agent:
+@@ -1051,6 +1059,13 @@ pod:
+         limits:
+           memory: "1024Mi"
+           cpu: "2000m"
++      ovn_db_sync:
++        requests:
++          memory: "128Mi"
++          cpu: "100m"
++        limits:
++          memory: "1024Mi"
++          cpu: "2000m"
+       tests:
+         requests:
+           memory: "128Mi"
+@@ -2667,6 +2682,14 @@ health_probe:
+   logging:
+     level: ERROR
+ 
++jobs:
++  ovn_db_sync:
++    cron: "*/5 * * * *"
++    sync_mode: log
++    history:
++      success: 3
++      failed: 1
++
+ tls:
+   identity: false
+   oslo_messaging: false
+@@ -2674,6 +2697,7 @@ tls:
+ 
+ manifests:
+   certificates: false
++  cron_job_ovn_db_sync: false
+   configmap_bin: true
+   configmap_etc: true
+   daemonset_dhcp_agent: true
+diff --git a/releasenotes/notes/neutron-f0674e08d80fc203.yaml b/releasenotes/notes/neutron-f0674e08d80fc203.yaml
+new file mode 100644
+index 000000000..9a5bcd9f5
+--- /dev/null
++++ b/releasenotes/notes/neutron-f0674e08d80fc203.yaml
+@@ -0,0 +1,14 @@
++---
++neutron:
++  - |
++    Add new cron job for neutron ovn db sync that runs evey 5 mins by default.
++    This could be use as log alert if any part out of sync.
++    Or it can be use as automatic repair method to prevent
++    OVN DB got modified and failed it's purpose.
++    This cron job is default disabled.
++    Set `.Values.manifests.cron_job_ovn_db_sync_repair` to
++    `true` to enable the cronjob.
++    The sync mode for the cronjob is default only for check sync status.
++    Set `.Values.jobs.ovn_db_sync_repair.sync_mode` to `repair` for enable
++    automatic repair and sync OVN DB from Neutron DB.
++...
+-- 
+2.25.1
+
