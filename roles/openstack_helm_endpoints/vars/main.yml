@@ -118,6 +118,31 @@ _openstack_helm_endpoints_image:
       glance:
         password: "{{ openstack_helm_endpoints_glance_rabbitmq_password }}"
 
+_openstack_helm_endpoints_instance_ha:
+  identity:
+    auth:
+      masakari:
+        region_name: "{{ openstack_helm_endpoints_masakari_region_name }}"
+        username: "masakari-{{ openstack_helm_endpoints_masakari_region_name }}"
+        password: "{{ openstack_helm_endpoints_masakari_keystone_password }}"
+  image:
+    scheme:
+      public: https
+    host_fqdn_override:
+      public:
+        host: "{{ openstack_helm_endpoints_masakari_api_host }}"
+    port:
+      api:
+        public: 443
+  oslo_db:
+    auth:
+      masakari:
+        password: "{{ openstack_helm_endpoints_masakari_mariadb_password }}"
+  oslo_messaging:
+    auth:
+      masakari:
+        password: "{{ openstack_helm_endpoints_masakari_rabbitmq_password }}"
+
 _openstack_helm_endpoints_volumev3:
   identity:
     auth:
