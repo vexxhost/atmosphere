@@ -79,6 +79,12 @@ spec:
 {{ dict "envAll" $envAll "podName" "neutron-dhcp-agent-default" "containerNames" (list "neutron-dhcp-agent" "neutron-dhcp-agent-init" "init") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
     spec:
 {{ dict "envAll" $envAll "application" "neutron_dhcp_agent" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+{{ with .Values.pod.priorityClassName.neutron_dhcp_agent }}
+      priorityClassName: {{ . }}
+{{ end }}
+{{ with .Values.pod.runtimeClassName.neutron_dhcp_agent }}
+      runtimeClassName: {{ . }}
+{{ end }}
       serviceAccountName: {{ $serviceAccountName }}
 {{ if $envAll.Values.pod.tolerations.neutron.enabled }}
 {{ tuple $envAll "neutron" | include "helm-toolkit.snippets.kubernetes_tolerations" | indent 6 }}
