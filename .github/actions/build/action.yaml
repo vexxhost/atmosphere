@@ -1,6 +1,11 @@
 name: Build Atmosphere collection
 description: Build Ansible collection for Atmosphere
 
+inputs:
+  pin-images:
+    description: Pin images in the collection
+    default: "true"
+
 runs:
   using: composite
   steps:
@@ -32,6 +37,7 @@ runs:
         fi
 
     - shell: bash
+      if: ${{ inputs.pin-images == 'true' }}
       run: |
         go run cmd/pinimages/pinimages.go
         cat ./roles/defaults/vars/main.yml
