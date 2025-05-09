@@ -4,11 +4,11 @@
 
 FROM openstack-venv-builder AS build
 # renovate: name=openstack/neutron repo=https://opendev.org/openstack/neutron.git branch=unmaintained/zed
-ARG NEUTRON_GIT_REF=ece6a9a7acab20d5a39f54784427258d54b72cfd
+ARG NEUTRON_GIT_REF=42cc387bdf474112a8a31d0a7cb87dcafbd88734
 ADD --keep-git-dir=true https://opendev.org/openstack/neutron.git#${NEUTRON_GIT_REF} /src/neutron
 RUN git -C /src/neutron fetch --unshallow
 # renovate: name=openstack/neutron-vpnaas repo=https://opendev.org/openstack/neutron-vpnaas.git branch=zed-eol
-ARG NEUTRON_VPNAAS_GIT_REF=45d63e1e9adc2b3ce4e3b2b5728744f99ea70a97
+ARG NEUTRON_VPNAAS_GIT_REF=8fa4ca57782f144bfa2314a466669050f2f76e86
 ADD --keep-git-dir=true https://opendev.org/openstack/neutron-vpnaas.git#${NEUTRON_VPNAAS_GIT_REF} /src/neutron-vpnaas
 RUN git -C /src/neutron-vpnaas fetch --unshallow
 # renovate: name=openstack/networking-baremetal repo=https://opendev.org/openstack/networking-baremetal.git branch=unmaintained/zed
