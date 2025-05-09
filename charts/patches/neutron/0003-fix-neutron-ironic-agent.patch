@@ -1,3 +1,16 @@
+From 8c36ae4bca0e64459389577e832be8c774cf7f25 Mon Sep 17 00:00:00 2001
+From: ricolin <rlin@vexxhost.com>
+Date: Thu, 8 May 2025 00:33:33 +0800
+Subject: [PATCH] Rebase fix-neutron-ironic-agent.patch
+
+---
+ .../bin/_neutron-ironic-agent-init.sh.tpl     | 25 +++++++++++++++++++
+ neutron/templates/configmap-bin.yaml   |  2 ++
+ .../templates/deployment-ironic-agent.yaml    | 17 +++++++++++++
+ neutron/values.yaml                    |  4 +++
+ 4 files changed, 48 insertions(+)
+ create mode 100644 neutron/templates/bin/_neutron-ironic-agent-init.sh.tpl
+
 diff --git a/neutron/templates/bin/_neutron-ironic-agent-init.sh.tpl b/neutron/templates/bin/_neutron-ironic-agent-init.sh.tpl
 new file mode 100644
 index 00000000..3df3315b
@@ -85,16 +98,16 @@ index 014c9adf..1b468e2b 100644
            configMap:
              name: neutron-bin
 diff --git a/neutron/values.yaml b/neutron/values.yaml
-index 819d7853..b1ff4569 100644
+index e8c37287..049c4481 100644
 --- a/neutron/values.yaml
 +++ b/neutron/values.yaml
 @@ -46,6 +46,7 @@ images:
-     neutron_sriov_agent_init: docker.io/openstackhelm/neutron:stein-18.04-sriov
-     neutron_bagpipe_bgp: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
-     neutron_bgp_dragent: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
+     neutron_sriov_agent_init: quay.io/airshipit/neutron:stein-18.04-sriov
+     neutron_bagpipe_bgp: quay.io/airshipit/neutron:2024.1-ubuntu_jammy
+     neutron_bgp_dragent: quay.io/airshipit/neutron:2024.1-ubuntu_jammy
 +    neutron_ironic_agent_init: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
-     neutron_ironic_agent: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
-     neutron_netns_cleanup_cron: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
+     neutron_ironic_agent: quay.io/airshipit/neutron:2024.1-ubuntu_jammy
+     neutron_netns_cleanup_cron: quay.io/airshipit/neutron:2024.1-ubuntu_jammy
      dep_check: quay.io/airshipit/kubernetes-entrypoint:latest-ubuntu_focal
 @@ -679,6 +680,9 @@ pod:
        pod:
@@ -106,3 +119,6 @@ index 819d7853..b1ff4569 100644
          neutron_ironic_agent:
            allowPrivilegeEscalation: false
            readOnlyRootFilesystem: true
+-- 
+2.25.1
+
