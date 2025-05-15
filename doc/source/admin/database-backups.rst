@@ -1,8 +1,8 @@
 #################
-Database Backup Guide
+Database backup guide
 #################
 
-This guide provides instructions how to backup database.
+This guide provides instructions how to backup and restore database.
 
 ********************************
 Scheduled backups
@@ -16,7 +16,7 @@ You can override the default backup settings by setting the
 ``percona_xtradb_cluster_spec`` variable inside your inventory. You can use the
 following examples as a starting point.
 
-Persistent Volume
+Persistent volume
 ==================
 
 The following example shows a backup that runs daily at 6 AM to a persistent
@@ -28,8 +28,8 @@ example below:
 
   The Percona Operator for MySQL creates a persistent volume claim for every
   single backup. This means that if you have 3 backups kept, you will have 3
-  persistent volume claims. It's best to set the storage in that case to the
-  size of a single backup (or perhaps match your backup size to the size of the
+  persistent volume claims. It's best to set the storage to the size of a
+  single backup (or perhaps match your backup size to the size of the
   cluster storage, which defaults to ``160Gi``).
 
 .. code-block:: yaml
@@ -53,7 +53,7 @@ example below:
           keep: 3
           storageName: fs-pvc
 
-Amazon S3 or S3-Compatible Storage
+Amazon S3 or s3-compatible storage
 ===================================
 
 To store backups on the Amazon S3, you need to create a Secret with the following values:
@@ -100,3 +100,146 @@ S3-compatible storage with 3 backups kept.
           schedule: 0 6 * * *
           keep: 3
          storageName: s3-bck
+
+*******************
+On-demand backups
+*******************
+
+To make an on-demand backup, you should first check your Custom Resource
+for the necessary options and make changes, if needed. The ``backup.storages``
+subsection should contain at least one configured storage.
+
+Examples:
+
+.. code-block:: yaml
+
+  apiVersion: pxc.percona.com/v1
+  kind: PerconaXtraDBClusterBackup
+  metadata:
+    finalizers:
+      # Finalizer can be set even if you use a persistent volume.
+      # In newer operator versions finalizer will be renamed to percona.com/delete-backup
+      - delete-s3-backup
+    name: backup1-pvc
+  spec:
+    pxcCluster: percona-xtradb
+    storageName: fs-pvc
+
+.. code-block:: yaml
+
+  apiVersion: pxc.percona.com/v1
+  kind: PerconaXtraDBClusterBackup
+  metadata:
+    finalizers:
+      # In newer operator versions finalizer will be renamed to percona.com/delete-backup
+      - delete-s3-backup
+    name: backup1-s3
+  spec:
+    pxcCluster: percona-xtradb
+    storageName: s3-bck
+
+.. code-block:: shell
+
+  kubectl -n openstack apply -f /path/to/backup.yaml
+
+Track the backup process by checking the status of the Backup object:
+
+.. code-block:: shell
+
+  kubectl -n openstack get pxc-backup -w
+
+***********************************
+Restore the cluster from a backup
+***********************************
+
+Find out correct names for the backup. Available backups can be
+listed with the following command:
+
+.. code-block:: shell
+
+  kubectl -n openstack get pxc-backup
+
+Examples:
+
+Restore with a name from a backup CRD list:
+
+.. code-block:: yaml
+
+  apiVersion: pxc.percona.com/v1
+  kind: PerconaXtraDBClusterRestore
+  metadata:
+    name: restore1-from-pvc
+  spec:
+    pxcCluster: percona-xtradb
+    backupName: backup1-pvc
+
+Restore from a remote location without a backup name when the system deletes
+the backup CRD or when another cluster creates the backup:
+
+.. code-block:: yaml
+
+  apiVersion: pxc.percona.com/v1
+  kind: PerconaXtraDBClusterRestore
+  metadata:
+    name: restore1-from-remote-s3
+  spec:
+    pxcCluster: percona-xtradb
+    backupSource:
+      destination: s3://atmosphere-pxc-backup-1234/region-x/backup1-s3
+      s3:
+        credentialsSecret: pxc-backup-s3
+        region: us-east-1
+
+.. code-block:: shell
+
+  kubectl -n openstack apply -f /path/to/restore.yaml
+
+*************************************
+Backup performance related settings
+*************************************
+
+This example is for relatively large clusters with a lot of data.
+
+.. admonition:: Warning
+  :class: warning
+
+  Keep in mind that configuration settings aren't merged with the default
+  settings. If you set any value in the configuration you have to set all parameters from default
+  configuration also.
+
+.. code-block:: yaml
+
+  percona_xtradb_cluster_spec:
+    pxc:
+      configuration: |
+        [mysqld]
+        max_connections=8192
+        innodb_buffer_pool_size=8G
+        # Skip reverse DNS lookup of clients
+        skip-name-resolve
+        pxc_strict_mode=MASTER
+        innodb_buffer_pool_instances=4
+        innodb_thread_concurrency=4
+        innodb_flush_sync=OFF
+        wsrep_applier_threads=4
+        wsrep_restart_replica=ON
+        [sst]
+        # We are using huge value for sst idle timeout because
+        # script which is responsible for backup restoration size
+        # detection is not aware about time needed for transferred
+        # data decompression
+        # BUG: https://perconadev.atlassian.net/browse/PXC-3951
+        sst-idle-timeout=36000
+        xbstream-opts="--decompress --decompress-threads=4 --parallel=4"
+        inno-apply-opts="--use-memory=6G"
+        inno-backup-opts="--parallel=4"
+        [xtrabackup]
+        # https://docs.percona.com/percona-xtrabackup/8.0/xtrabackup-option-reference.html#compress
+        compress
+        compress-threads=4
+        read-buffer-size=100M
+        parallel=4
+        use-memory=6G
+        rebuild-threads=4
+        [xbcloud]
+        parallel=4
