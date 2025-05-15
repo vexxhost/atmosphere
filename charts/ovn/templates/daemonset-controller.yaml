@@ -177,6 +177,34 @@ spec:
               subPath: neutron-ovn-network-logging-parser-uwsgi.ini
               readOnly: true
         {{- end }}
+        {{- if .Values.pod.sidecars.openvswitch_exporter }}
+        - name: exporter
+{{ tuple $envAll "openvswitch_exporter" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.exporter | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "ovn_controller" "container" "exporter" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          args:
+            - --web.listen-address=:9273
+          ports:
+            - name: metrics
+              containerPort: 9273
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              port: metrics
+              scheme: HTTP
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              port: metrics
+              scheme: HTTP
+          volumeMounts:
+            - name: run-openvswitch
+              mountPath: /var/run/ovn
+            - name: run-openvswitch
+              mountPath: /var/run/openvswitch
+        {{- end }}
       volumes:
         - name: ovn-bin
           configMap:
