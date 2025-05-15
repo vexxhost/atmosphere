@@ -1,12 +1,12 @@
-#################
+#####################
 Database backup guide
-#################
+#####################
 
 This guide provides instructions how to backup and restore database.
 
-********************************
+*****************
 Scheduled backups
-********************************
+*****************
 
 For more details on how to configure backups, you can refer to the
 `scheduled backups documentation <https://docs.percona.com/percona-operator-for-mysql/pxc/backups-scheduled.html>`_
@@ -17,7 +17,7 @@ You can override the default backup settings by setting the
 following examples as a starting point.
 
 Persistent volume
-==================
+=================
 
 The following example shows a backup that runs daily at 6 AM to a persistent
 volume with 3 backups kept. The size of the persistent volume is 50Gi in the
@@ -54,7 +54,7 @@ example below:
           storageName: fs-pvc
 
 Amazon S3 or s3-compatible storage
-===================================
+==================================
 
 To store backups on the Amazon S3, you need to create a Secret with the following values:
 
@@ -101,9 +101,9 @@ S3-compatible storage with 3 backups kept.
           keep: 3
          storageName: s3-bck
 
-*******************
+*****************
 On-demand backups
-*******************
+*****************
 
 To make an on-demand backup, you should first check your Custom Resource
 for the necessary options and make changes, if needed. The ``backup.storages``
@@ -148,9 +148,9 @@ Track the backup process by checking the status of the Backup object:
 
   kubectl -n openstack get pxc-backup -w
 
-***********************************
+*********************************
 Restore the cluster from a backup
-***********************************
+*********************************
 
 Find the correct backup names. Use the following command to list the available backups:
 
@@ -193,9 +193,9 @@ the backup CRD or when another cluster creates the backup:
 
   kubectl -n openstack apply -f /path/to/restore.yaml
 
-*************************************
+***********************************
 Backup performance related settings
-*************************************
+***********************************
 
 This example is for relatively large clusters with a lot of data.
 
