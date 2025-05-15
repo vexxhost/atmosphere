@@ -1,0 +1,48 @@
+# Copyright (c) 2023 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Define a consistent path of a temporary YAML file for Helm values
+  ansible.builtin.set_fact:
+    _helm_upgrade_values_file_path: "/tmp/helm_values_{{ helm_upgrade_values | hash('sha256') }}.yaml"
+
+- name: Write helm_upgrade_values to the temporary file
+  changed_when: false
+  ansible.builtin.copy:
+    content: "{{ helm_upgrade_values }}"
+    dest: "{{ _helm_upgrade_values_file_path }}"
+    mode: "0644"
+
+- name: Run helm diff to detect changes
+  ansible.builtin.command:
+    cmd: >
+      helm diff upgrade "{{ helm_upgrade_release_name }}"
+      "{{ helm_upgrade_chart_ref }}"
+      --namespace "{{ helm_upgrade_release_namespace }}"
+      --values "{{ _helm_upgrade_values_file_path }}"
+      --output dyff
+  register: _helm_upgrade_diff_output
+  failed_when: _helm_upgrade_diff_output.rc not in [0, 2]  # 2 means changes detected
+  changed_when: false
+
+- name: Print Helm diff output
+  ansible.builtin.debug:
+    msg: "{{ _helm_upgrade_diff_output.stdout_lines }}"
+
+- name: Filter lines that don't start with a space or are not empty
+  ansible.builtin.set_fact:
+    _helm_upgrade_diff_filtered_lines: "{{ _helm_upgrade_diff_output.stdout_lines | select('search', '^\\S') | list }}"
+
+- name: Check if there are changes
+  ansible.builtin.set_fact:
+    _helm_upgrade_diff_has_changes: "{{ _helm_upgrade_diff_filtered_lines | length > 0 }}"
