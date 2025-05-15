@@ -13,14 +13,15 @@
 # under the License.
 
 - name: Deploy Helm chart
-  run_once: true
-  kubernetes.core.helm:
-    name: "{{ memcached_helm_release_name }}"
-    chart_ref: "{{ memcached_helm_chart_ref }}"
-    release_namespace: "{{ memcached_helm_release_namespace }}"
-    create_namespace: true
-    kubeconfig: "{{ memcached_helm_kubeconfig }}"
-    values: "{{ _memcached_helm_values | combine(memcached_helm_values, recursive=True) }}"
+  ansible.builtin.include_role:
+    name: helm_upgrade
+  vars:
+    helm_upgrade_release_name: "{{ memcached_helm_release_name }}"
+    helm_upgrade_chart_ref: "{{ memcached_helm_chart_ref }}"
+    helm_upgrade_release_namespace: "{{ memcached_helm_release_namespace }}"
+    helm_upgrade_create_namespace: true
+    helm_upgrade_kubeconfig: "{{ memcached_helm_kubeconfig }}"
+    helm_upgrade_values: "{{ _memcached_helm_values | combine(memcached_helm_values, recursive=True) }}"
 
 - name: Apply manifests for monitoring
   run_once: true
