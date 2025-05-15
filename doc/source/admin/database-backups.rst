@@ -152,8 +152,7 @@ Track the backup process by checking the status of the Backup object:
 Restore the cluster from a backup
 ***********************************
 
-Find out correct names for the backup. Available backups can be
-listed with the following command:
+Find the correct backup names. Use the following command to list the available backups:
 
 .. code-block:: shell
 
@@ -204,8 +203,8 @@ This example is for relatively large clusters with a lot of data.
   :class: warning
 
   Keep in mind that configuration settings aren't merged with the default
-  settings. If you set any value in the configuration you have to set all parameters from default
-  configuration also.
+  settings. If you set any value in the configuration you also have to set all parameters from
+  ``_percona_xtradb_cluster_spec.pxc.configuration`` defaults.
 
 .. code-block:: yaml
 
