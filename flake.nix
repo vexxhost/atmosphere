@@ -6,6 +6,7 @@
     systems.url = "github:nix-systems/default";
     flake-parts.url = "github:hercules-ci/flake-parts";
     pkgs-by-name-for-flake-parts.url = "github:drupol/pkgs-by-name-for-flake-parts";
+    nix2container.url = "github:nlewo/nix2container";
   };
 
   outputs =
@@ -20,10 +21,14 @@
         ];
 
         perSystem =
-          { system, pkgs, ... }:
+          { config, system, pkgs, ... }:
+          let
+            n2c = inputs.nix2container.packages.${system}.nix2container;
+          in
           {
             formatter = pkgs.nixfmt-rfc-style;
 
+            # Load local packages into `nixpkgs`
             _module.args.pkgs = import inputs.nixpkgs {
               inherit system;
               overlays = [
@@ -31,6 +36,22 @@
               ];
             };
             pkgsDirectory = ./pkgs/by-name;
+
+            # Images
+            packages = {
+              capoControllerManager = n2c.buildImage {
+                name = "ghcr.io/vexxhost/atmosphere/capo-controller-manager";
+                maxLayers = 64;
+
+                copyToRoot = with pkgs.dockerTools; [
+                  caCertificates
+                ];
+
+                config = {
+                  Entrypoint = [ (pkgs.lib.getExe config.packages.cluster-api-provider-openstack) ];
+                };
+              };
+            };
 
             devShells.default = pkgs.mkShell {
               LD_LIBRARY_PATH = "${pkgs.stdenv.cc.cc.lib}/lib";
@@ -58,6 +79,7 @@
           };
 
         flake = {
+          # Expose package out of the Flake
           overlays.default =
             final: prev:
             withSystem prev.stdenv.hostPlatform.system (

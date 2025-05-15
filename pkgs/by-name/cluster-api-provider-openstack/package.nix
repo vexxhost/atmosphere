@@ -59,5 +59,6 @@ buildGoModule rec {
     description = "Cluster API implementation for OpenStack";
     license = licenses.asl20;
     homepage = "https://cluster-api-openstack.sigs.k8s.io/";
+    mainProgram = "cluster-api-provider-openstack";
   };
 }
