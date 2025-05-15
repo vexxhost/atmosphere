@@ -21,9 +21,28 @@
         ];
 
         perSystem =
-          { config, system, pkgs, ... }:
+          {
+            config,
+            system,
+            pkgs,
+            ...
+          }:
           let
-            n2c = inputs.nix2container.packages.${system}.nix2container;
+            mkImage =
+              args:
+              let
+                image = inputs.nix2container.packages.${system}.nix2container.buildImage args;
+              in
+              image
+              // {
+                copyToRegistryWithMetadataTags = pkgs.writeShellScriptBin "copy-docker-image" ''
+                  IFS=$'\n'
+                  set -x
+                  for DOCKER_TAG in $DOCKER_METADATA_OUTPUT_TAGS; do
+                    ${pkgs.lib.getExe image.copyTo} "docker://$DOCKER_TAG"
+                  done
+                '';
+              };
           in
           {
             formatter = pkgs.nixfmt-rfc-style;
@@ -38,20 +57,85 @@
             pkgsDirectory = ./pkgs/by-name;
 
             # Images
-            packages = {
-              capoControllerManager = n2c.buildImage {
-                name = "ghcr.io/vexxhost/atmosphere/capo-controller-manager";
-                maxLayers = 64;
+            packages =
+              let
+                imageDefinitions = {
+                  capoControllerManagerImage = mkImage {
+                    name = "ghcr.io/vexxhost/atmosphere/capo-controller-manager";
+                    maxLayers = 64;
 
-                copyToRoot = with pkgs.dockerTools; [
-                  caCertificates
-                ];
+                    copyToRoot = with pkgs.dockerTools; [
+                      caCertificates
+                    ];
 
-                config = {
-                  Entrypoint = [ (pkgs.lib.getExe config.packages.cluster-api-provider-openstack) ];
+                    config = {
+                      Entrypoint = [ (pkgs.lib.getExe config.packages.cluster-api-provider-openstack) ];
+                    };
+                  };
+
+                  # More images here...
                 };
+
+                # Get a sample image to extract attributes (assuming all images have the same attributes)
+                sampleImage = builtins.head (builtins.attrValues imageDefinitions);
+
+                # Get all attributes that are derivations/executables (like copyToDockerDaemon, copyToRegistryWithMetadataTags)
+                executableAttrs = builtins.filter (
+                  attr:
+                  builtins.hasAttr attr sampleImage
+                  && builtins.isAttrs (builtins.getAttr attr sampleImage)
+                  && builtins.hasAttr "type" (builtins.getAttr attr sampleImage)
+                  && (builtins.getAttr attr sampleImage).type == "derivation"
+                ) (builtins.attrNames sampleImage);
+
+                # Create a function to generate a script that runs a specific attribute across all images
+                makeParallelScript =
+                  attrName:
+                  pkgs.writeShellScriptBin "parallel-${attrName}" ''
+                    #!/usr/bin/env bash
+                    set -euo pipefail
+
+                    ${builtins.concatStringsSep "\n" (
+                      builtins.attrValues (
+                        builtins.mapAttrs (
+                          imageName: image:
+                          let
+                            attr = builtins.getAttr attrName image;
+                          in
+                          ''
+                            echo "Running ${attrName} for image: ${imageName}"
+                            ${pkgs.lib.getExe attr}
+                          ''
+                        ) imageDefinitions
+                      )
+                    )}
+
+                    echo "Completed ${attrName} for all images successfully!"
+                  '';
+
+                # Generate parallel scripts for all executable attributes
+                parallelScripts = builtins.listToAttrs (
+                  map (attrName: {
+                    name = attrName;
+                    value = makeParallelScript attrName;
+                  }) executableAttrs
+                );
+
+                # Create the linkfarm with all images
+                imageLinkFarm = pkgs.linkFarm "atmosphere-images" (
+                  builtins.attrValues (
+                    builtins.mapAttrs (name: image: {
+                      inherit name;
+                      path = image;
+                    }) imageDefinitions
+                  )
+                );
+              in
+              imageDefinitions
+              // {
+                # Expose the images linkfarm with all the parallel script capabilities
+                images = imageLinkFarm // parallelScripts;
               };
-            };
 
             devShells.default = pkgs.mkShell {
               LD_LIBRARY_PATH = "${pkgs.stdenv.cc.cc.lib}/lib";
