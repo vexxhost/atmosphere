@@ -28,12 +28,15 @@ _percona_xtradb_cluster_spec:
         ports:
           - name: metrics
             containerPort: 9104
-        livenessProbe:
+        readinessProbe:
           httpGet:
             port: metrics
             path: /
     nodeSelector:
       openstack-control-plane: enabled
+    livenessProbes:
+      timeoutSeconds: 60
+      failureThreshold: 100
     volumeSpec:
       persistentVolumeClaim:
         resources:
