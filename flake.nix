@@ -66,10 +66,18 @@
 
                     copyToRoot = with pkgs.dockerTools; [
                       caCertificates
+                      # NOTE(mnaser): CAPO controllers must run out of `/manager`
+                      (pkgs.runCommand "install-capo-controller-manager" {} ''
+                        mkdir -p $out
+                        cp ${pkgs.lib.getExe config.packages.cluster-api-provider-openstack} $out/manager
+                      '')
                     ];
 
                     config = {
-                      Entrypoint = [ (pkgs.lib.getExe config.packages.cluster-api-provider-openstack) ];
+                      Entrypoint = [ "/manager" ];
+                      Labels = {
+                        "org.opencontainers.image.source" = "https://github.com/vexxhost/atmosphere";
+                      };
                     };
                   };
 
