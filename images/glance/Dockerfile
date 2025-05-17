@@ -4,11 +4,11 @@
 
 FROM openstack-venv-builder AS build
 # renovate: name=openstack/glance repo=https://opendev.org/openstack/glance.git branch=master
-ARG GLANCE_GIT_REF=788172a6f7c7a214e87a80a27cb26ea33da67a58
+ARG GLANCE_GIT_REF=1cb8621830b1dc2e6b045e51f6b0be1b453094a0
 ADD --keep-git-dir=true https://opendev.org/openstack/glance.git#${GLANCE_GIT_REF} /src/glance
 RUN git -C /src/glance fetch --unshallow
 # renovate: name=openstack/glance_store repo=https://opendev.org/openstack/glance_store.git branch=master
-ARG GLANCE_STORE_GIT_REF=2fd7875820a531d26336a317d5c0841d452bc6f9
+ARG GLANCE_STORE_GIT_REF=8ac98ddf6170f66d4bdefac159b633c713a75dd5
 ADD --keep-git-dir=true https://opendev.org/openstack/glance_store.git#${GLANCE_STORE_GIT_REF} /src/glance_store
 RUN git -C /src/glance_store fetch --unshallow
 RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe
