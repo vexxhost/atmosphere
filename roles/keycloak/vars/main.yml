@@ -16,6 +16,11 @@ _keycloak_ingress_annotations:
   cert-manager.io/cluster-issuer: "{{ keycloak_ingress_cluster_issuer }}"
 
 _keycloak_helm_values:
+  # NOTE(fitbeard): https://github.com/bitnami/charts/issues/30850
+  # Allow use of non-standard Bitnami image
+  global:
+    security:
+      allowInsecureImages: true
   # NOTE(mnaser): These workarounds below are needed to allow the Bitnami Helm chart to work with
   #               the upstream image.
   enableDefaultInitContainers: false
