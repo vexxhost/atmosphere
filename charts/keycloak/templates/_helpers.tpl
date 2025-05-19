@@ -108,7 +108,7 @@ Return the Database hostname
 Return the Database port
 */}}
 {{- define "keycloak.databasePort" -}}
-{{- ternary "5432" (tpl (.Values.externalDatabase.port | toString) $) .Values.postgresql.enabled | quote -}}
+{{- ternary "5432" .Values.externalDatabase.port .Values.postgresql.enabled | quote -}}
 {{- end -}}
 
 {{/*
@@ -126,7 +126,7 @@ Return the Database database name
         {{- .Values.postgresql.auth.database -}}
     {{- end -}}
 {{- else -}}
-    {{- tpl .Values.externalDatabase.database $ -}}
+    {{- .Values.externalDatabase.database -}}
 {{- end -}}
 {{- end -}}
 
@@ -145,7 +145,7 @@ Return the Database user
         {{- .Values.postgresql.auth.username -}}
     {{- end -}}
 {{- else -}}
-    {{- tpl .Values.externalDatabase.user $ -}}
+    {{- .Values.externalDatabase.user -}}
 {{- end -}}
 {{- end -}}
 
@@ -168,7 +168,7 @@ Return the Database encrypted password
         {{- default (include "keycloak.postgresql.fullname" .) (tpl .Values.postgresql.auth.existingSecret $) -}}
     {{- end -}}
 {{- else -}}
-    {{- default (printf "%s-externaldb" (include "common.names.fullname" .)) (tpl .Values.externalDatabase.existingSecret $) -}}
+    {{- default (printf "%s-externaldb" .Release.Name) (tpl .Values.externalDatabase.existingSecret $) -}}
 {{- end -}}
 {{- end -}}
 
@@ -177,7 +177,7 @@ Add environment variables to configure database values
 */}}
 {{- define "keycloak.databaseSecretPasswordKey" -}}
 {{- if .Values.postgresql.enabled -}}
-    {{- printf "%s" (.Values.postgresql.auth.secretKeys.userPasswordKey | default "password") -}}
+    {{- print "password" -}}
 {{- else -}}
     {{- if .Values.externalDatabase.existingSecret -}}
         {{- if .Values.externalDatabase.existingSecretPasswordKey -}}
@@ -340,7 +340,7 @@ keycloak: tls.enabled
 
 {{/* Validate values of Keycloak - Production mode enabled */}}
 {{- define "keycloak.validateValues.production" -}}
-{{- if and .Values.production (not .Values.tls.enabled) (not (eq .Values.proxy "edge")) (empty .Values.proxyHeaders) -}}
+{{- if and .Values.production (not .Values.tls.enabled) (not (eq .Values.proxy "edge")) -}}
 keycloak: production
     In order to enable Production mode, you also need to enable HTTPS/TLS
     using the value 'tls.enabled' and providing an existing secret containing the Keystore and Trustore.

@@ -9,7 +9,7 @@ apiVersion: {{ include "common.capabilities.statefulset.apiVersion" . }}
 kind: StatefulSet
 metadata:
   name: {{ include "postgresql.v1.readReplica.fullname" . }}
-  namespace: {{ include "common.names.namespace" . | quote }}
+  namespace: {{ .Release.Namespace | quote }}
   {{- $labels := include "common.tplvalues.merge" ( dict "values" ( list .Values.readReplicas.labels .Values.commonLabels ) "context" . ) }}
   labels: {{- include "common.labels.standard" ( dict "customLabels" $labels "context" $ ) | nindent 4 }}
     app.kubernetes.io/component: read
@@ -32,13 +32,10 @@ spec:
       name: {{ include "postgresql.v1.readReplica.fullname" . }}
       labels: {{- include "common.labels.standard" ( dict "customLabels" $podLabels "context" $ ) | nindent 8 }}
         app.kubernetes.io/component: read
-      {{- if or .Values.passwordUpdateJob.enabled (include "postgresql.v1.readReplicas.createExtendedConfigmap" .) .Values.readReplicas.podAnnotations }}
+      {{- if or (include "postgresql.v1.readReplicas.createExtendedConfigmap" .) .Values.readReplicas.podAnnotations }}
       annotations:
         {{- if (include "postgresql.v1.readReplicas.createExtendedConfigmap" .) }}
         checksum/extended-configuration: {{ pick (include (print $.Template.BasePath "/primary/extended-configmap.yaml") . | fromYaml) "data" | toYaml | sha256sum }}
-        {{- end }}
-        {{- if .Values.passwordUpdateJob.enabled }}
-        charts.bitnami.com/password-last-update: {{ now | date "20060102150405" | quote }}
         {{- end }}
         {{- if .Values.readReplicas.podAnnotations }}
         {{- include "common.tplvalues.render" ( dict "value" .Values.readReplicas.podAnnotations "context" $ ) | nindent 8 }}
@@ -396,7 +393,7 @@ spec:
             - name: empty-dir
               mountPath: /opt/bitnami/postgresql/tmp
               subPath: app-tmp-dir
-            {{- if and .Values.auth.usePasswordFiles (or .Values.auth.enablePostgresUser $customUser) }}
+            {{- if .Values.auth.usePasswordFiles }}
             - name: postgresql-password
               mountPath: /opt/bitnami/postgresql/secrets/
             {{- end }}
@@ -431,28 +428,22 @@ spec:
           {{- if .Values.diagnosticMode.enabled }}
           command: {{- include "common.tplvalues.render" (dict "value" .Values.diagnosticMode.command "context" $) | nindent 12 }}
           args: {{- include "common.tplvalues.render" (dict "value" .Values.diagnosticMode.args "context" $) | nindent 12 }}
-          {{- else if or .Values.metrics.customMetrics .Values.metrics.collectors }}
-          args:
-            {{- if .Values.metrics.customMetrics }}
-            - --extend.query-path
-            - /conf/custom-metrics.yaml
-            {{- end }}
-            {{- range $name, $enabled := .Values.metrics.collectors }}
-            - --{{ if not $enabled }}no-{{ end }}collector.{{ $name }}
-            {{- end }}
+          {{- else if .Values.metrics.customMetrics }}
+          args: [ "--extend.query-path", "/conf/custom-metrics.yaml" ]
           {{- end }}
           env:
+          {{- $database := required "In order to enable metrics you need to specify a database (.Values.auth.database or .Values.global.postgresql.auth.database)" (include "postgresql.v1.database" .) }}
             - name: DATA_SOURCE_URI
-              value: {{ printf "127.0.0.1:%d/postgres?sslmode=disable" (int (include "postgresql.v1.service.port" .)) }}
+              value: {{ printf "127.0.0.1:%d/%s?sslmode=disable" (int (include "postgresql.v1.service.port" .)) $database }}
             {{- if .Values.auth.usePasswordFiles }}
             - name: DATA_SOURCE_PASS_FILE
-              value: {{ printf "/opt/bitnami/postgresql/secrets/%s" (include (ternary "postgresql.v1.adminPasswordKey" "postgresql.v1.userPasswordKey" (empty $customUser)) .) }}
+              value: {{ printf "/opt/bitnami/postgresql/secrets/%s" (include "postgresql.v1.userPasswordKey" .) }}
             {{- else }}
             - name: DATA_SOURCE_PASS
               valueFrom:
                 secretKeyRef:
                   name: {{ include "postgresql.v1.secretName" . }}
-                  key: {{ include (ternary "postgresql.v1.adminPasswordKey" "postgresql.v1.userPasswordKey" (empty $customUser)) . }}
+                  key: {{ include "postgresql.v1.userPasswordKey" . }}
             {{- end }}
             - name: DATA_SOURCE_USER
               value: {{ default "postgres" $customUser | quote }}
@@ -491,7 +482,7 @@ spec:
             - name: empty-dir
               mountPath: /tmp
               subPath: tmp-dir
-            {{- if and .Values.auth.usePasswordFiles (or .Values.auth.enablePostgresUser $customUser) }}
+            {{- if .Values.auth.usePasswordFiles }}
             - name: postgresql-password
               mountPath: /opt/bitnami/postgresql/secrets/
             {{- end }}
@@ -515,7 +506,7 @@ spec:
           configMap:
             name: {{ include "postgresql.v1.readReplicas.extendedConfigmapName" . }}
         {{- end }}
-        {{- if and .Values.auth.usePasswordFiles (or .Values.auth.enablePostgresUser $customUser) }}
+        {{- if .Values.auth.usePasswordFiles }}
         - name: postgresql-password
           secret:
             secretName: {{ include "postgresql.v1.secretName" . }}
