@@ -60,14 +60,13 @@ Return a topologyKey definition
 
 {{/*
 Return a soft podAffinity/podAntiAffinity definition
-{{ include "common.affinities.pods.soft" (dict "component" "FOO" "customLabels" .Values.podLabels "extraMatchLabels" .Values.extraMatchLabels "topologyKey" "BAR" "extraPodAffinityTerms" .Values.extraPodAffinityTerms "extraNamespaces" (list "namespace1" "namespace2") "context" $) -}}
+{{ include "common.affinities.pods.soft" (dict "component" "FOO" "customLabels" .Values.podLabels "extraMatchLabels" .Values.extraMatchLabels "topologyKey" "BAR" "extraPodAffinityTerms" .Values.extraPodAffinityTerms "context" $) -}}
 */}}
 {{- define "common.affinities.pods.soft" -}}
 {{- $component := default "" .component -}}
 {{- $customLabels := default (dict) .customLabels -}}
 {{- $extraMatchLabels := default (dict) .extraMatchLabels -}}
 {{- $extraPodAffinityTerms := default (list) .extraPodAffinityTerms -}}
-{{- $extraNamespaces := default (list) .extraNamespaces -}}
 preferredDuringSchedulingIgnoredDuringExecution:
   - podAffinityTerm:
       labelSelector:
@@ -78,13 +77,6 @@ preferredDuringSchedulingIgnoredDuringExecution:
           {{- range $key, $value := $extraMatchLabels }}
           {{ $key }}: {{ $value | quote }}
           {{- end }}
-      {{- if $extraNamespaces }}
-      namespaces:
-        - {{ .context.Release.Namespace }}
-        {{- with $extraNamespaces }}
-        {{ include "common.tplvalues.render" (dict "value" . "context" $) | nindent 8 }}
-        {{- end }}
-      {{- end }}
       topologyKey: {{ include "common.affinities.topologyKey" (dict "topologyKey" .topologyKey) }}
     weight: 1
   {{- range $extraPodAffinityTerms }}
@@ -104,14 +96,13 @@ preferredDuringSchedulingIgnoredDuringExecution:
 
 {{/*
 Return a hard podAffinity/podAntiAffinity definition
-{{ include "common.affinities.pods.hard" (dict "component" "FOO" "customLabels" .Values.podLabels "extraMatchLabels" .Values.extraMatchLabels "topologyKey" "BAR" "extraPodAffinityTerms" .Values.extraPodAffinityTerms "extraNamespaces" (list "namespace1" "namespace2") "context" $) -}}
+{{ include "common.affinities.pods.hard" (dict "component" "FOO" "customLabels" .Values.podLabels "extraMatchLabels" .Values.extraMatchLabels "topologyKey" "BAR" "extraPodAffinityTerms" .Values.extraPodAffinityTerms "context" $) -}}
 */}}
 {{- define "common.affinities.pods.hard" -}}
 {{- $component := default "" .component -}}
 {{- $customLabels := default (dict) .customLabels -}}
 {{- $extraMatchLabels := default (dict) .extraMatchLabels -}}
 {{- $extraPodAffinityTerms := default (list) .extraPodAffinityTerms -}}
-{{- $extraNamespaces := default (list) .extraNamespaces -}}
 requiredDuringSchedulingIgnoredDuringExecution:
   - labelSelector:
       matchLabels: {{- (include "common.labels.matchLabels" ( dict "customLabels" $customLabels "context" .context )) | nindent 8 }}
@@ -121,13 +112,6 @@ requiredDuringSchedulingIgnoredDuringExecution:
         {{- range $key, $value := $extraMatchLabels }}
         {{ $key }}: {{ $value | quote }}
         {{- end }}
-      {{- if $extraNamespaces }}
-      namespaces:
-        - {{ .context.Release.Namespace }}
-        {{- with $extraNamespaces }}
-        {{ include "common.tplvalues.render" (dict "value" . "context" $) | nindent 8 }}
-        {{- end }}
-      {{- end }}
     topologyKey: {{ include "common.affinities.topologyKey" (dict "topologyKey" .topologyKey) }}
   {{- range $extraPodAffinityTerms }}
   - labelSelector:

@@ -5,13 +5,7 @@ _keycloak_ingress_annotations:
   cert-manager.io/cluster-issuer: "{{ keycloak_ingress_cluster_issuer }}"
 
 _keycloak_helm_values:
-  usePasswordFiles: false
-  # NOTE(fitbeard): https://github.com/bitnami/charts/issues/30850
-  # Allow use of non-standard Bitnami image
-  global:
-    security:
-      allowInsecureImages: true
-  replicaCount: 1
+  replicaCount: 3
   # NOTE(mnaser): These workarounds below are needed to allow the Bitnami Helm chart to work with
   #               the upstream image.
   enableDefaultInitContainers: false
@@ -24,6 +18,8 @@ _keycloak_helm_values:
   extraEnvVars:
     - name: KC_FEATURES
       value: "token-exchange,admin-fine-grained-authz"
+    - name: KC_PROXY
+      value: edge
     - name: KC_DB
       value: mysql
     - name: KC_DB_URL
@@ -35,8 +31,6 @@ _keycloak_helm_values:
         secretKeyRef:
           key: db-password
           name: keycloak-externaldb
-    - name: KC_HOSTNAME
-      value: "https://{{ keycloak_host }}"
     - name: JAVA_OPTS_APPEND
       value: "-Djgroups.dns.query=keycloak-headless.{{ keycloak_helm_release_namespace }}.svc"
     - name: KC_CACHE_STACK
@@ -50,7 +44,7 @@ _keycloak_helm_values:
     - --health-enabled=true
     - --http-enabled=true
     - --http-port=8080
-    - --hostname-strict=true
+    - --hostname-strict=false
     - --spi-events-listener-jboss-logging-success-level=info
     - --spi-events-listener-jboss-logging-error-level=warn
     - --transaction-xa-enabled=false
@@ -71,7 +65,7 @@ _keycloak_helm_values:
   postgresql:
     enabled: false
   production: true
-  proxyHeaders: xforwarded
+  proxy: edge
   cache:
     enabled: true
   service:
@@ -80,8 +74,8 @@ _keycloak_helm_values:
         - name: infinispan
           port: 7800
           protocol: TCP
-          # NOTE(fitbeard): Name 'discovery' and port 7800 
-          # are hardcoded in a 'statefulset.yaml' template
+          # NOTE(fitbeard): Name 'discovery' and port 7800
+          # are hardcoded in the 'statefulset.yaml' template
           targetPort: discovery
   startupProbe:
     enabled: true
