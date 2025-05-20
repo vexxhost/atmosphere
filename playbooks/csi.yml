@@ -13,7 +13,6 @@
 # under the License.
 
 - hosts: controllers
-  strategy: serverscom.mitogen.mitogen_linear
   become: true
   roles:
     - role: csi
@@ -22,3 +21,4 @@
   environment:
     CEPH_CONTAINER_IMAGE: "{{ cephadm_image | default('quay.io/ceph/ceph:v' + (ceph_version | default('18.2.7'))) }}"
     CEPH_CONTAINER_BINARY: docker
+    ENABLE_TURBO_MODE: "1"

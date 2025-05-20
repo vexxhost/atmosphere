@@ -14,7 +14,6 @@
 
 - name: Deploy OpenStack
   hosts: controllers[0]
-  strategy: serverscom.mitogen.mitogen_linear
   become: true
   roles:
     - role: memcached
@@ -63,10 +62,10 @@
   environment:
     CEPH_CONTAINER_IMAGE: "{{ cephadm_image | default('quay.io/ceph/ceph:v' + (ceph_version | default('18.2.7'))) }}"
     CEPH_CONTAINER_BINARY: docker
+    ENABLE_TURBO_MODE: "1"
 
 - name: Configure operating system
   hosts: controllers:computes
-  strategy: serverscom.mitogen.mitogen_linear
   become: true
   roles:
     - role: lpfc
@@ -83,7 +82,6 @@
 
 - name: Deploy SDN
   hosts: controllers:computes
-  strategy: serverscom.mitogen.mitogen_linear
   become: true
   gather_facts: false
   roles:
@@ -99,9 +97,10 @@
     - role: ovn
       tags:
         - ovn
+  environment:
+    ENABLE_TURBO_MODE: "1"
 
 - hosts: controllers[0]
-  strategy: serverscom.mitogen.mitogen_linear
   become: true
   roles:
     - role: libvirt
@@ -150,9 +149,10 @@
     - role: openstack_exporter
       tags:
         - openstack-exporter
+  environment:
+    ENABLE_TURBO_MODE: "1"
 
 - hosts: controllers
-  strategy: serverscom.mitogen.mitogen_linear
   become: true
   roles:
     - role: openstack_cli

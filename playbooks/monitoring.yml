@@ -14,7 +14,6 @@
 
 - name: Deploy Monitoring
   hosts: controllers[0]
-  strategy: serverscom.mitogen.mitogen_linear
   become: true
   roles:
     - role: node_feature_discovery
@@ -44,3 +43,5 @@
     - role: prometheus_pushgateway
       tags:
         - prometheus-pushgateway
+  environment:
+    ENABLE_TURBO_MODE: "1"
