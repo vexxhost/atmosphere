@@ -14,7 +14,6 @@
 
 - name: Deploy OpenStack
   hosts: controllers[0]
-  strategy: serverscom.mitogen.mitogen_linear
   become: true
   roles:
     - role: memcached
@@ -66,7 +65,6 @@
 
 - name: Configure operating system
   hosts: controllers:computes
-  strategy: serverscom.mitogen.mitogen_linear
   become: true
   roles:
     - role: lpfc
@@ -83,7 +81,6 @@
 
 - name: Deploy SDN
   hosts: controllers:computes
-  strategy: serverscom.mitogen.mitogen_linear
   become: true
   gather_facts: false
   roles:
@@ -101,7 +98,6 @@
         - ovn
 
 - hosts: controllers[0]
-  strategy: serverscom.mitogen.mitogen_linear
   become: true
   roles:
     - role: libvirt
@@ -152,7 +148,6 @@
         - openstack-exporter
 
 - hosts: controllers
-  strategy: serverscom.mitogen.mitogen_linear
   become: true
   roles:
     - role: openstack_cli
