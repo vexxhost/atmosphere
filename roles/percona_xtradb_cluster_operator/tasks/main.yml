@@ -1,44 +1,18 @@
-# Copyright (c) 2023 VEXXHOST, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"); you may
-# not use this file except in compliance with the License. You may obtain
-# a copy of the License at
-#
-#      http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-# License for the specific language governing permissions and limitations
-# under the License.
+# Copyright (c) 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
 
-- name: Get current Helm Chart info
+- name: Install all CRDs
   run_once: true
-  kubernetes.core.helm_info:
-    name: "{{ percona_xtradb_cluster_operator_helm_release_name }}"
-    namespace: "{{ percona_xtradb_cluster_operator_helm_release_namespace }}"
-  register: percona_xtradb_cluster_operator_helm_chart_current
-
-- name: Get target Helm Chart info
-  run_once: true
-  ansible.builtin.set_fact:
-    chart_info: "{{ lookup('file', percona_xtradb_cluster_operator_helm_chart_path + '/Chart.yaml') | from_yaml }}"
-
-- name: Set current Helm Chart app version
-  run_once: true
-  ansible.builtin.set_fact:
-    current_version: "{{ percona_xtradb_cluster_operator_helm_chart_current.status['app_version'] | default('0.0.1') }}"
-
-- name: Set target Helm Chart app version
-  run_once: true
-  ansible.builtin.set_fact:
-    target_version: "{{ chart_info.appVersion }}"
-
-- name: Apply CRDs
-  run_once: true
+  changed_when: false
   kubernetes.core.k8s:
-    definition: "{{ lookup('file', percona_xtradb_cluster_operator_helm_chart_path + '/crds/crd.yaml') | from_yaml_all }}"
-  when: target_version is version(current_version, '>', strict=True)
+    state: present
+    definition: "{{ lookup('pipe', 'cat ' + role_path + '/../../charts/pxc-operator/crds' + '/*.yaml') | regex_replace('- =$', '- \"=\"', multiline=True) | from_yaml_all }}" # noqa: yaml[line-length]
+    apply: true
+    server_side_apply:
+      field_manager: atmosphere
+      force_conflicts: true
+  tags:
+    - percona-xtradb-cluster-operator-crds
 
 - name: Deploy Helm chart
   run_once: true
