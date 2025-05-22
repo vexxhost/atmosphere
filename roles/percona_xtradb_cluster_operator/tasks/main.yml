@@ -12,6 +12,34 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+- name: Get current Helm Chart info
+  run_once: true
+  kubernetes.core.helm_info:
+    name: "{{ percona_xtradb_cluster_operator_helm_release_name }}"
+    namespace: "{{ percona_xtradb_cluster_operator_helm_release_namespace }}"
+  register: percona_xtradb_cluster_operator_helm_chart_current
+
+- name: Get target Helm Chart info
+  run_once: true
+  ansible.builtin.set_fact:
+    chart_info: "{{ lookup('file', percona_xtradb_cluster_operator_helm_chart_path + '/Chart.yaml') | from_yaml }}"
+
+- name: Set current Helm Chart app version
+  run_once: true
+  ansible.builtin.set_fact:
+    current_version: "{{ percona_xtradb_cluster_operator_helm_chart_current.status['app_version'] | default('0.0.1') }}"
+
+- name: Set target Helm Chart app version
+  run_once: true
+  ansible.builtin.set_fact:
+    target_version: "{{ chart_info.appVersion }}"
+
+- name: Apply CRDs
+  run_once: true
+  kubernetes.core.k8s:
+    definition: "{{ lookup('file', percona_xtradb_cluster_operator_helm_chart_path + '/crds/crd.yaml') | from_yaml_all }}"
+  when: target_version is version(current_version, '>', strict=True)
+
 - name: Deploy Helm chart
   run_once: true
   kubernetes.core.helm:
