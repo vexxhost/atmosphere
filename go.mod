@@ -10,7 +10,7 @@ require (
 	github.com/goccy/go-yaml v1.17.1
 	github.com/nsf/jsondiff v0.0.0-20230430225905-43f6cf3098c1
 	github.com/opencontainers/go-digest v1.0.0
-	github.com/percona/percona-xtradb-cluster-operator v1.14.0
+	github.com/percona/percona-xtradb-cluster-operator v1.16.1
 	github.com/prometheus/client_golang v1.22.0
 	github.com/prometheus/common v0.63.0
 	github.com/prometheus/prometheus v0.303.1
