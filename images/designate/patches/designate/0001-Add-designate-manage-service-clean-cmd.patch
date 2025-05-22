@@ -1,0 +1,200 @@
+From d9c7c3561943fef861c1af2c195e14b335c30afb Mon Sep 17 00:00:00 2001
+From: ricolin <rlin@vexxhost.com>
+Date: Mon, 12 May 2025 22:50:20 +0800
+Subject: [PATCH] Add `designate-manage service clean` cmd
+
+Add `designate-manage service clean` cmd to allow clean stale services.
+Any services not provide heartbeat within double heartbeat_interval time
+needs to be consider as dead services. And should be removed ASAP.
+
+And in any case, even service is actually alive (maybe in a crazy rpc
+timeout case), it can alway update and create it's service status back.
+So we're fine to delete the service status in this case too.
+
+Closes-Bug: #2110262
+
+Change-Id: I211d0a60aa19ab4c0ae0fbb808e2d9080ccbbedd
+---
+ designate/manage/service.py                   | 57 +++++++++++++++++++
+ designate/storage/sqlalchemy/__init__.py      | 11 ++++
+ .../tests/functional/manage/test_service.py   | 48 ++++++++++++++++
+ ...ge_service_clean_cmd-8756ff607ff74d9b.yaml | 13 +++++
+ setup.cfg                                     |  1 +
+ 5 files changed, 130 insertions(+)
+ create mode 100644 designate/manage/service.py
+ create mode 100644 designate/tests/functional/manage/test_service.py
+ create mode 100644 releasenotes/notes/add-designate-manage_service_clean_cmd-8756ff607ff74d9b.yaml
+
+diff --git a/designate/manage/service.py b/designate/manage/service.py
+new file mode 100644
+index 00000000..bf736b13
+--- /dev/null
++++ b/designate/manage/service.py
+@@ -0,0 +1,57 @@
++# Copyright (c) 2025 VEXXHOST, Inc.
++# SPDX-License-Identifier: Apache-2.0
++from oslo_log import log as logging
++import oslo_messaging as messaging
++from oslo_utils import timeutils
++
++import designate.conf
++from designate.manage import base
++from designate import rpc
++from designate import storage
++
++
++CONF = designate.conf.CONF
++LOG = logging.getLogger(__name__)
++
++
++class ServiceCommands(base.Commands):
++    def __init__(self):
++        super().__init__()
++        self.heartbeat_interval = None
++        self.storage = storage.get_storage()
++
++    def _setup(self):
++        rpc.init(CONF)
++        self.heartbeat_interval = CONF.heartbeat_emitter.heartbeat_interval
++
++    def clean(self):
++        self._setup()
++        LOG.info("Start cleaning dead services.")
++        try:
++            statuses = self.storage.find_service_statuses(self.context)
++            for status in statuses:
++                if status.heartbeated_at:
++                    # Clean stale servcie if it pass 2*(heartbeat_interval)
++                    check_interval = (
++                        timeutils.utcnow() - status.heartbeated_at
++                    ).total_seconds()
++                    if check_interval > 2 * self.heartbeat_interval:
++                        LOG.info("Found dead service for delete: "
++                                 "%(service_name)s. "
++                                 "Last service heartbeat time is "
++                                 "%(check_interval)s seconds ago.",
++                                 {
++                                     'service_name': status.service_name,
++                                     'check_interval': check_interval
++                                 }
++                                 )
++                        self.storage.delete_service_status(
++                            self.context, status)
++        except messaging.exceptions.MessagingTimeout:
++            LOG.critical(
++                'No response received from designate-central. '
++                'Check it is running, and retry'
++            )
++            raise SystemExit(1)
++
++        LOG.info("Job finished.")
+diff --git a/designate/storage/sqlalchemy/__init__.py b/designate/storage/sqlalchemy/__init__.py
+index cc1d4ff6..2850e720 100644
+--- a/designate/storage/sqlalchemy/__init__.py
++++ b/designate/storage/sqlalchemy/__init__.py
+@@ -2461,6 +2461,17 @@ class SQLAlchemyStorage(base.SQLAlchemy):
+             exceptions.DuplicateServiceStatus,
+             exceptions.ServiceStatusNotFound)
+ 
++    def delete_service_status(self, context, service_status):
++        """
++        Delete the Service status.
++
++        :param context: RPC Context.
++        :param service_status: Status for a service.
++        """
++        return self._delete(
++            context, tables.service_status, service_status,
++            exceptions.ServiceStatusNotFound)
++
+     # Reverse Name utils
+     def _rname_check(self, criterion):
+         # If the criterion has 'name' in it, switch it out for reverse_name
+diff --git a/designate/tests/functional/manage/test_service.py b/designate/tests/functional/manage/test_service.py
+new file mode 100644
+index 00000000..bd72b8aa
+--- /dev/null
++++ b/designate/tests/functional/manage/test_service.py
+@@ -0,0 +1,48 @@
++# Licensed under the Apache License, Version 2.0 (the "License"); you may
++# not use this file except in compliance with the License. You may obtain
++# a copy of the License at
++#
++#      http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
++# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
++# License for the specific language governing permissions and limitations
++# under the License.
++
++
++from unittest import mock
++
++from oslo_log import log as logging
++from oslo_utils import timeutils
++
++from designate.manage import service
++from designate import objects
++from designate.tests import base_fixtures
++import designate.tests.functional
++
++CONF = designate.conf.CONF
++LOG = logging.getLogger(__name__)
++
++
++class ManageServiceTestCase(designate.tests.functional.TestCase):
++    def setUp(self):
++        super().setUp()
++        self.stdlog = base_fixtures.StandardLogging()
++        self.useFixture(self.stdlog)
++        self.command = service.ServiceCommands()
++
++    @mock.patch.object(service, 'LOG')
++    def test_service_clean(self, m_log):
++        values = self.get_service_status_fixture()
++
++        service_status = objects.ServiceStatus.from_dict(values)
++        service_status.heartbeated_at = timeutils.datetime.datetime(
++            2024, 5, 8, 14, 46, 38, 314323)
++        self.storage.create_service_status(
++            self.admin_context, service_status)
++        self.command.clean()
++        self.assertIn(
++            service_status.service_name,
++            m_log.info.call_args_list[1].args[1]['service_name']
++        )
+diff --git a/releasenotes/notes/add-designate-manage_service_clean_cmd-8756ff607ff74d9b.yaml b/releasenotes/notes/add-designate-manage_service_clean_cmd-8756ff607ff74d9b.yaml
+new file mode 100644
+index 00000000..4dd7d246
+--- /dev/null
++++ b/releasenotes/notes/add-designate-manage_service_clean_cmd-8756ff607ff74d9b.yaml
+@@ -0,0 +1,13 @@
++---
++fixes:
++  - |
++    New cmd `designate-manage service clean`.
++    Previously Designate service always stuck in `UP` even we
++    stop provide any heartbeat for long while.
++    And no method to clean services status.
++    For services that run on containers (like in K8s),
++    The list of `UP` services statuses just piling up.
++    Add new cmd `designate-manage service clean` to delect and
++    clean any service that fail to provide heartbeat within
++    double heartbeat interval time.
++    `CONF.heartbeat_emitter.heartbeat_interval` default to 10 seconds.
+diff --git a/setup.cfg b/setup.cfg
+index 2c379f95..4f9ea155 100644
+--- a/setup.cfg
++++ b/setup.cfg
+@@ -102,6 +102,7 @@ designate.scheduler.filters =
+ designate.manage =
+     database = designate.manage.database:DatabaseCommands
+     pool = designate.manage.pool:PoolCommands
++    service = designate.manage.service:ServiceCommands
+     tlds = designate.manage.tlds:TLDCommands
+ 
+ designate.producer_tasks =
+-- 
+2.25.1
+
