@@ -75,3 +75,5 @@ keystone_oidc_redirect_uri: "https://{{ openstack_helm_endpoints_keystone_api_ho
 keystone_oidc_redirect_urls_allowed:
   - "^https://{{ openstack_helm_endpoints_keystone_api_host }}/v3/auth/OS-FEDERATION/identity_providers/({{ keystone_domains | map(attribute='name') | join('|') }})/protocols/openid/websso" # noqa: yaml[line-length]
   - "^https://{{ openstack_helm_endpoints_horizon_api_host }}/auth/logout/$"
+
+keystone_oauth2_kid_cert_list: "{{ lookup('vexxhost.atmosphere.idp_oauth_keys', keystone_domains, validate_certs=keystone_oidc_ssl_validate_server).values() | map(attribute='idp_oauth_kid_cert_path') | join(' ') }}"
