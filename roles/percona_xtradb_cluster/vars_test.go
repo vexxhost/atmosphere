@@ -48,12 +48,13 @@ func TestPerconaXtraDBClusterSpec(t *testing.T) {
 
 	assert.Equal(t, chart.AppVersion(), vars.PerconaXtraDBClusterSpec.CRVersion)
 	assert.Equal(t, "percona-xtradb", vars.PerconaXtraDBClusterSpec.SecretsName)
+	assert.Equal(t, true, vars.PerconaXtraDBClusterSpec.VolumeExpansionEnabled)
 }
 
 func TestPerconaXtraDBClusterPXCSpec(t *testing.T) {
 	assert.Equal(t, int32(3), vars.PerconaXtraDBClusterSpec.PXC.Size)
 	assert.Equal(t, true, *vars.PerconaXtraDBClusterSpec.PXC.AutoRecovery)
-	defaults.AssertAtmosphereImage(t, "docker.io/percona/percona-xtradb-cluster:8.0.36-28.1", vars.PerconaXtraDBClusterSpec.PXC.Image)
+	defaults.AssertAtmosphereImage(t, "docker.io/percona/percona-xtradb-cluster:8.0.41-32.1", vars.PerconaXtraDBClusterSpec.PXC.Image)
 
 	assert.Equal(t, map[string]string{
 		"openstack-control-plane": "enabled",
@@ -115,10 +116,7 @@ func TestPerconaXtraDBClusterHAProxySpec(t *testing.T) {
 	assert.Equal(t, true, vars.PerconaXtraDBClusterSpec.HAProxy.Enabled)
 	assert.Equal(t, int32(3), vars.PerconaXtraDBClusterSpec.HAProxy.Size)
 
-	defaults.AssertAtmosphereImage(t,
-		fmt.Sprintf("docker.io/percona/percona-xtradb-cluster-operator:%s-haproxy", vars.PerconaXtraDBClusterSpec.CRVersion),
-		vars.PerconaXtraDBClusterSpec.HAProxy.Image,
-	)
+	defaults.AssertAtmosphereImage(t, "docker.io/percona/haproxy:2.8.11", vars.PerconaXtraDBClusterSpec.HAProxy.Image)
 
 	assert.Equal(t, map[string]string{
 		"openstack-control-plane": "enabled",
