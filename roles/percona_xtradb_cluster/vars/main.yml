@@ -1,6 +1,10 @@
+# Copyright (c) 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
 _percona_xtradb_cluster_spec:
-  crVersion: "1.14.0"
+  crVersion: "1.16.1"
   secretsName: percona-xtradb
+  enableVolumeExpansion: true
   pxc:
     size: 3
     image: "{{ atmosphere_images['percona_xtradb_cluster'] | vexxhost.kubernetes.docker_image('ref') }}"
@@ -48,7 +52,7 @@ _percona_xtradb_cluster_spec:
     nodeSelector:
       openstack-control-plane: enabled
     # NOTE(fitbeard): The actual default configuration file can be found here:
-    # https://github.com/percona/percona-docker/blob/pxc-operator-1.14.0/haproxy/dockerdir/etc/haproxy/haproxy-global.cfg
+    # https://github.com/percona/percona-docker/blob/pxc-operator-1.16.1/haproxy/dockerdir/etc/haproxy/haproxy-global.cfg
     # Should be aligned with upstream example when bumping chart version
     configuration: |
       global
