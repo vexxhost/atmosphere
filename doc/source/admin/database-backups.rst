@@ -118,8 +118,7 @@ Examples:
   metadata:
     finalizers:
       # Finalizer can be set even if you use a persistent volume.
-      # In newer operator versions finalizer will be renamed to percona.com/delete-backup
-      - delete-s3-backup
+      - percona.com/delete-backup
     name: backup1-pvc
   spec:
     pxcCluster: percona-xtradb
@@ -131,8 +130,7 @@ Examples:
   kind: PerconaXtraDBClusterBackup
   metadata:
     finalizers:
-      # In newer operator versions finalizer will be renamed to percona.com/delete-backup
-      - delete-s3-backup
+      - percona.com/delete-backup
     name: backup1-s3
   spec:
     pxcCluster: percona-xtradb
