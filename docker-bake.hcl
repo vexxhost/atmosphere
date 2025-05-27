@@ -251,6 +251,7 @@ target "openstack" {
 
 group "default" {
     targets = [
+        "cluster-api-provider-openstack",
         "keepalived",
         "libvirtd",
         "netoffload",
