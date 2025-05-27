@@ -8,6 +8,7 @@ variable "TAG" {
 
 target "cluster-api-provider-openstack-source" {
     context = "images/source-patch"
+    platforms = ["linux/amd64", "linux/arm64"]
 
     contexts = {
         "git" = "https://github.com/kubernetes-sigs/cluster-api-provider-openstack.git#v0.11.6"
