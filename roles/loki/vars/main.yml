@@ -113,3 +113,9 @@ _loki_helm_values:
                     severity: critical
                   annotations:
                     summary: Nova Cell is not responding. It can cause port deletion in CAPI.
+                - alert: NeutronOVNACLNotSync
+                  expr: 'count_over_time({pod_label_component="ovn-db-sync"} |= "ACLs to be added" [1m]) > 0'
+                  labels:
+                    severity: critical
+                  annotations:
+                    summary: Neutron OVN ACL out of sync, this could cause network package leak.

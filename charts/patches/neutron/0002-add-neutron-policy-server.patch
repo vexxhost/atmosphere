@@ -1,3 +1,18 @@
+From 6b5bd232399e425bb5a13dcfeab31cd6c5022677 Mon Sep 17 00:00:00 2001
+From: ricolin <rlin@vexxhost.com>
+Date: Thu, 8 May 2025 00:19:34 +0800
+Subject: [PATCH] Rebase add-neutron-policy-server.patch
+
+---
+ .../bin/_neutron-policy-server.sh.tpl         | 28 +++++++++
+ neutron/templates/configmap-bin.yaml   |  2 +
+ neutron/templates/configmap-etc.yaml   | 10 ++++
+ .../neutron/templates/deployment-server.yaml  | 58 +++++++++++++++++++
+ neutron/templates/service-server.yaml  |  5 ++
+ neutron/values.yaml                    | 33 +++++++++++
+ 6 files changed, 136 insertions(+)
+ create mode 100644 neutron/templates/bin/_neutron-policy-server.sh.tpl
+
 diff --git a/neutron/templates/bin/_neutron-policy-server.sh.tpl b/neutron/templates/bin/_neutron-policy-server.sh.tpl
 new file mode 100644
 index 00000000..3ff9c8dd
@@ -33,7 +48,7 @@ index 00000000..3ff9c8dd
 +
 +$COMMAND
 diff --git a/neutron/templates/configmap-bin.yaml b/neutron/templates/configmap-bin.yaml
-index 40b70060..b6ad4af4 100644
+index f5fc7297..2032b156 100644
 --- a/neutron/templates/configmap-bin.yaml
 +++ b/neutron/templates/configmap-bin.yaml
 @@ -91,6 +91,8 @@ data:
@@ -46,7 +61,7 @@ index 40b70060..b6ad4af4 100644
  {{ tuple "bin/_neutron-rpc-server.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
    neutron-ironic-agent.sh: |
 diff --git a/neutron/templates/configmap-etc.yaml b/neutron/templates/configmap-etc.yaml
-index f7411bf5..bd52753d 100644
+index db92641d..82865c09 100644
 --- a/neutron/templates/configmap-etc.yaml
 +++ b/neutron/templates/configmap-etc.yaml
 @@ -198,6 +198,15 @@ limitations under the License.
@@ -65,7 +80,7 @@ index f7411bf5..bd52753d 100644
  {{- if and (empty .Values.conf.logging.handler_fluent) (has "fluent" .Values.conf.logging.handlers.keys) -}}
  {{- $fluentd_host := tuple "fluentd" "internal" $envAll | include "helm-toolkit.endpoints.hostname_namespaced_endpoint_lookup" }}
  {{- $fluentd_port := tuple "fluentd" "internal" "service" $envAll | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
-@@ -293,6 +302,7 @@ data:
+@@ -296,6 +305,7 @@ data:
    api-paste.ini: {{ include "helm-toolkit.utils.to_ini" $envAll.Values.conf.paste | b64enc }}
    policy.yaml: {{ toYaml $envAll.Values.conf.policy | b64enc }}
    neutron-api-uwsgi.ini: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.neutron_api_uwsgi | b64enc }}
@@ -159,18 +174,18 @@ index 8fcee669..c7075b10 100644
  {{ tuple $envAll "neutron" "server" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
    {{ if .Values.network.server.node_port.enabled }}
 diff --git a/neutron/values.yaml b/neutron/values.yaml
-index 4e9c6a11..495e0bab 100644
+index 1691e004..e8c37287 100644
 --- a/neutron/values.yaml
 +++ b/neutron/values.yaml
 @@ -32,6 +32,7 @@ images:
-     ks_endpoints: docker.io/openstackhelm/heat:2024.1-ubuntu_jammy
+     ks_endpoints: quay.io/airshipit/heat:2024.1-ubuntu_jammy
      netoffload: ghcr.io/vexxhost/netoffload:v1.0.1
-     neutron_server: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
+     neutron_server: quay.io/airshipit/neutron:2024.1-ubuntu_jammy
 +    neutron_policy_server: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
-     neutron_rpc_server: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
-     neutron_dhcp: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
-     neutron_metadata: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
-@@ -372,6 +373,8 @@ dependencies:
+     neutron_rpc_server: quay.io/airshipit/neutron:2024.1-ubuntu_jammy
+     neutron_dhcp: quay.io/airshipit/neutron:2024.1-ubuntu_jammy
+     neutron_metadata: quay.io/airshipit/neutron:2024.1-ubuntu_jammy
+@@ -387,6 +388,8 @@ dependencies:
            service: local_image_registry
  
  pod:
@@ -179,7 +194,7 @@ index 4e9c6a11..495e0bab 100644
    use_fqdn:
      neutron_agent: true
    probes:
-@@ -615,6 +618,9 @@ pod:
+@@ -651,6 +654,9 @@ pod:
          neutron_server:
            allowPrivilegeEscalation: false
            readOnlyRootFilesystem: true
@@ -189,7 +204,7 @@ index 4e9c6a11..495e0bab 100644
      neutron_rpc_server:
        pod:
          runAsUser: 42424
-@@ -890,6 +896,13 @@ pod:
+@@ -942,6 +948,13 @@ pod:
        limits:
          memory: "1024Mi"
          cpu: "2000m"
@@ -203,7 +218,7 @@ index 4e9c6a11..495e0bab 100644
      ironic_agent:
        requests:
          memory: "128Mi"
-@@ -1318,6 +1331,22 @@ conf:
+@@ -1370,6 +1383,22 @@ conf:
        thunder-lock: true
        worker-reload-mercy: 80
        wsgi-file: /var/lib/openstack/bin/neutron-api
@@ -226,7 +241,7 @@ index 4e9c6a11..495e0bab 100644
    policy: {}
    api_audit_map:
      DEFAULT:
-@@ -2463,6 +2492,10 @@ endpoints:
+@@ -2530,6 +2559,10 @@ endpoints:
          default: 9696
          public: 80
          service: 9696
@@ -237,3 +252,6 @@ index 4e9c6a11..495e0bab 100644
    load_balancer:
      name: octavia
      hosts:
+-- 
+2.25.1
+
