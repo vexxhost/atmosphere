@@ -1,0 +1,50 @@
+name: Run Molecule Tests
+description: Run Molecule tests for Atmosphere collection
+
+inputs:
+  scenario:
+    description: Molecule scenario to run
+    required: true
+  csi_driver:
+    description: CSI driver to use for the test
+    default: local-path-provisioner
+  network_backend:
+    description: Network backend to use for the test
+    default: openvswitch
+  depot_build_id:
+    description: Depot build ID to use for the test
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: sudo swapoff -a
+
+    - shell: bash
+      run: |
+        sudo mkdir -p /var/lib/etcd
+        sudo mount -t tmpfs -o nodev,nosuid,size=512M tmpfs /var/lib/etcd
+
+    - uses: astral-sh/setup-uv@v6
+
+    - shell: bash
+      run: |
+        uv sync --dev
+        echo ${{ github.workspace }}/.venv/bin >> $GITHUB_PATH
+      env:
+        UV_PYTHON_DOWNLOADS: never
+        UV_PYTHON_PREFERENCE: only-system
+
+    - uses: depot/setup-action@v1
+      if: ${{ inputs.depot_build_id != '' }}
+      with:
+        oidc: true
+
+    - shell: bash
+      run: sudo --preserve-env=ANSIBLE_PYTHON_INTERPRETER,ATMOSPHERE_NETWORK_BACKEND,DEPOT_BUILD_ID,DEPOT_TOKEN,MOLECULE_CSI_DRIVER env "PATH=$PATH" molecule test -s ${{ inputs.scenario }}
+      env:
+        ANSIBLE_PYTHON_INTERPRETER: /usr/bin/python3
+        ATMOSPHERE_NETWORK_BACKEND: ${{ inputs.network_backend }}
+        DEPOT_BUILD_ID: ${{ inputs.depot_build_id }}
+        MOLECULE_CSI_DRIVER: ${{ inputs.csi_driver }}

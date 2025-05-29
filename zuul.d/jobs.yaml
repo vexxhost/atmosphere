@@ -50,23 +50,6 @@
         ATMOSPHERE_ANSIBLE_SKIP_TAGS: "{{ ansible_molecule_skip_tags | default([]) | join(',') }}"
 
 - job:
-    name: atmosphere-molecule-csi
-    parent: atmosphere-molecule
-    abstract: true
-
-- job:
-    name: atmosphere-molecule-csi-local-path-provisioner
-    parent: atmosphere-molecule-csi
-    vars:
-      tox_envlist: molecule-csi-local-path-provisioner
-
-- job:
-    name: atmosphere-molecule-csi-rbd
-    parent: atmosphere-molecule-csi
-    vars:
-      tox_envlist: molecule-csi-rbd
-
-- job:
     name: atmosphere-molecule-aio
     parent: atmosphere-molecule
     abstract: true
@@ -84,28 +67,6 @@
           label: jammy-8c-8g
     vars:
       tox_envlist: molecule-keycloak
-
-- job:
-    name: atmosphere-molecule-aio-full
-    parent: atmosphere-molecule-aio
-    abstract: true
-    timeout: 7200
-    nodeset:
-      nodes:
-        - name: ubuntu-jammy
-          label: jammy-16c-64g
-
-- job:
-    name: atmosphere-molecule-aio-openvswitch
-    parent: atmosphere-molecule-aio-full
-    vars:
-      tox_envlist: molecule-aio-openvswitch
-
-- job:
-    name: atmosphere-molecule-aio-ovn
-    parent: atmosphere-molecule-aio-full
-    vars:
-      tox_envlist: molecule-aio-ovn
 
 - job:
     name: atmosphere-molecule-aio-ovn-bgp-agent
