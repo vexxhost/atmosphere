@@ -12,7 +12,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Configure hostname
+- name: Prepare systems for CI
   hosts: all
   tasks:
     - name: Configure short hostname
@@ -24,6 +24,31 @@
         path: /etc/hosts
         regexp: '^127\.0\.1\.1'
         line: 127.0.1.1 {{ inventory_hostname }} {{ inventory_hostname_short }}
+
+    - name: Pull built images in CI
+      when: lookup('env', 'DEPOT_BUILD_ID') is defined and lookup('env', 'DEPOT_BUILD_ID') != ''
+      block:
+        - name: Install "containerd"
+          ansible.builtin.include_role:
+            name: vexxhost.containers.containerd
+
+        - name: Pull Atmosphere images
+          register: depot_pull
+          ansible.builtin.command:
+            cmd: depot pull {{ lookup('env', 'DEPOT_BUILD_ID') }}
+
+        - name: Print list of pulled images
+          ansible.builtin.debug:
+            msg: "{{ depot_pull.stdout_lines }}"
+
+        - name: Gather list of images
+          register: image_list
+          ansible.builtin.command:
+            cmd: ctr image ls
+
+        - name: Print list of Atmosphere images
+          ansible.builtin.debug:
+            msg: "{{ image_list.stdout_lines }}"
 
 - name: Create fake devices for Ceph
   ansible.builtin.import_playbook: vexxhost.ceph.create_fake_devices
