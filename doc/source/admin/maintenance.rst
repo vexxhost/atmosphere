@@ -23,7 +23,7 @@ the node you want to drain:
 
 .. code-block:: console
 
-    $ kubectl drain <node-name> --ignore-daemonsets --delete-local-data <node-name>
+    $ kubectl drain <node-name> --ignore-daemonsets --delete-emptydir-data <node-name>
 
 In the example above, you would replace ``<node-name>`` with the name of the
 node you want to drain.  Once this process is complete, you can safely perform
