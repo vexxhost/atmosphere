@@ -1,7 +1,7 @@
-From a3671cc242adb85f792d1c8c57ccc7692f1ec251 Mon Sep 17 00:00:00 2001
+From 4c4cce4eefd9b3af90c5929250be7461c7ed8d50 Mon Sep 17 00:00:00 2001
 From: Mohammed Naser <mnaser@vexxhost.com>
 Date: Mon, 20 Feb 2023 00:55:14 +0000
-Subject: [PATCH] fix: disable resizing for admins
+Subject: [PATCH 1/2] fix: disable resizing for admins
 
 By default, admins see all clusters and they are allowed to do all
 actions however the resize function will not work so we're displaying
@@ -11,13 +11,14 @@ This will hide the resize button for clusters that don't match the
 project ID of the current user.
 
 Change-Id: If09c509abdd21a5a7b9bc374af52a06404fb0ff8
+Signed-off-by: Mohammed Naser <mnaser@vexxhost.com>
 ---
  .../clusters/resize/resize.service.js         |  9 ++++---
  .../clusters/resize/resize.service.spec.js    | 25 +++++++++++++++----
  2 files changed, 25 insertions(+), 9 deletions(-)
 
 diff --git a/magnum_ui/static/dashboard/container-infra/clusters/resize/resize.service.js b/magnum_ui/static/dashboard/container-infra/clusters/resize/resize.service.js
-index ebc6a96..b86833a 100644
+index 39ecb3f..9ffca38 100644
 --- a/magnum_ui/static/dashboard/container-infra/clusters/resize/resize.service.js
 +++ b/magnum_ui/static/dashboard/container-infra/clusters/resize/resize.service.js
 @@ -32,6 +32,7 @@
@@ -49,9 +50,9 @@ index ebc6a96..b86833a 100644
 +      return userSession.isCurrentProject(selected.project_id);
      }
  
-     function constructModalConfig(workerNodesList) {
+     function constructModalConfig(nodegroups, workerNodesList) {
 diff --git a/magnum_ui/static/dashboard/container-infra/clusters/resize/resize.service.spec.js b/magnum_ui/static/dashboard/container-infra/clusters/resize/resize.service.spec.js
-index 842df87..645b149 100644
+index 0f64b93..94e4a3f 100644
 --- a/magnum_ui/static/dashboard/container-infra/clusters/resize/resize.service.spec.js
 +++ b/magnum_ui/static/dashboard/container-infra/clusters/resize/resize.service.spec.js
 @@ -19,9 +19,10 @@
@@ -102,4 +103,5 @@ index 842df87..645b149 100644
  
      it('should open the modal, hide the loading spinner and check the form model',
 -- 
-2.34.1
+2.49.0
+

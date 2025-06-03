@@ -1,7 +1,7 @@
-From 6ecbb870f24f5c5c4a5b548166ac292801adda84 Mon Sep 17 00:00:00 2001
+From 0a24acbab82f7b2196ef8ba9feec0eb2944d0cb5 Mon Sep 17 00:00:00 2001
 From: Mohammed Naser <mnaser@vexxhost.com>
-Date: Sun, 19 Feb 2023 21:39:46 +0000
-Subject: [PATCH] [capi] Avoid going through Heat for worker list
+Date: Tue, 3 Jun 2025 18:58:26 +0000
+Subject: [PATCH 2/2] [capi] Avoid going through Heat for worker list
 
 By default, Magnum UI goes through Heat to get the list of nodes
 which is not correct since it's making an assumption that Heat
@@ -16,18 +16,16 @@ So for now, if stack_id doesn't look like a UUID, we assume it
 is deployed using Clsuter API driver for Magnum and look up with
 that alternative method instead.
 
-(cherry picked from commit 6f31cc5cacf23398b76392922ee9863d50aa9e7e)
-(cherry picked from commit d44f16f13a89d7fb00d3d949a392d638ce2d0cc8)
-(cherry picked from commit 72122e350429590e9002058e7e35c4dcc94d2d4f)
+Signed-off-by: Mohammed Naser <mnaser@vexxhost.com>
 ---
  magnum_ui/api/rest/magnum.py | 18 ++++++++++++++++++
- 1 file changed, 19 insertions(+)
+ 1 file changed, 18 insertions(+)
 
 diff --git a/magnum_ui/api/rest/magnum.py b/magnum_ui/api/rest/magnum.py
-index ba66e0e..bf331bc 100644
+index 74ea73b..4b679d1 100644
 --- a/magnum_ui/api/rest/magnum.py
 +++ b/magnum_ui/api/rest/magnum.py
-@@ -17,6 +17,8 @@
+@@ -17,6 +17,8 @@ import re
  
  from collections import defaultdict
  
@@ -36,7 +34,7 @@ index ba66e0e..bf331bc 100644
  from django.conf import settings
  from django.http import HttpResponse
  from django.http import HttpResponseNotFound
-@@ -228,6 +230,19 @@ class ClusterResize(generic.View):
+@@ -229,6 +231,19 @@ class ClusterResize(generic.View):
  
      url_regex = r'container_infra/clusters/(?P<cluster_id>[^/]+)/resize$'
  
@@ -56,13 +54,16 @@ index ba66e0e..bf331bc 100644
      @rest_utils.ajax()
      def get(self, request, cluster_id):
          """Get cluster details for resize"""
-@@ -237,6 +252,9 @@ def get(self, request, cluster_id):
+@@ -238,6 +253,9 @@ class ClusterResize(generic.View):
              print(e)
              return HttpResponseNotFound()
  
 +        if not uuidutils.is_uuid_like(cluster["stack_id"]):
 +            return self._cluster_api_resize_get(request, cluster)
 +
-         stack = heat.stack_get(request, cluster["stack_id"])
-         search_opts = {"name": "%s-" % stack.stack_name}
-         servers = api.nova.server_list(request, search_opts=search_opts)[0]
+         try:
+             ngs = magnum.nodegroup_list(request, cluster_id)
+             nodegroups = [n.to_dict() for n in ngs]
+-- 
+2.49.0
+
