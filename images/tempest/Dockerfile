@@ -14,19 +14,19 @@ RUN GO111MODULE=off CGO_ENABLED=0 GOOS=linux go build \
 FROM openstack-venv-builder AS build
 ADD --keep-git-dir=true https://opendev.org/openstack/requirements.git#2023.2-eol /src/requirements
 RUN git -C /src/requirements fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/tempest.git#2023.2-eol /src/tempest
+ADD --keep-git-dir=true https://opendev.org/openstack/tempest.git#2023.2-last /src/tempest
 RUN git -C /src/tempest fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/barbican-tempest-plugin.git#2023.2-eol /src/barbican-tempest-plugin
+ADD --keep-git-dir=true https://opendev.org/openstack/barbican-tempest-plugin.git#2023.2-last /src/barbican-tempest-plugin
 RUN git -C /src/barbican-tempest-plugin fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/cinder-tempest-plugin.git#2023.2-eol /src/cinder-tempest-plugin
+ADD --keep-git-dir=true https://opendev.org/openstack/cinder-tempest-plugin.git#2023.2-last /src/cinder-tempest-plugin
 RUN git -C /src/cinder-tempest-plugin fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/heat-tempest-plugin.git#2023.2-eol /src/heat-tempest-plugin
+ADD --keep-git-dir=true https://opendev.org/openstack/heat-tempest-plugin.git#2023.2-last /src/heat-tempest-plugin
 RUN git -C /src/heat-tempest-plugin fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/keystone-tempest-plugin.git#2023.2-eol /src/keystone-tempest-plugin
+ADD --keep-git-dir=true https://opendev.org/openstack/keystone-tempest-plugin.git#2023.2-last /src/keystone-tempest-plugin
 RUN git -C /src/keystone-tempest-plugin fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/neutron-tempest-plugin.git#2023.2-eol /src/neutron-tempest-plugin
+ADD --keep-git-dir=true https://opendev.org/openstack/neutron-tempest-plugin.git#2023.2-last /src/neutron-tempest-plugin
 RUN git -C /src/neutron-tempest-plugin fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/octavia-tempest-plugin.git#2023.2-eol /src/octavia-tempest-plugin
+ADD --keep-git-dir=true https://opendev.org/openstack/octavia-tempest-plugin.git#2023.2-last /src/octavia-tempest-plugin
 RUN git -C /src/octavia-tempest-plugin fetch --unshallow
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
 pip3 install \
