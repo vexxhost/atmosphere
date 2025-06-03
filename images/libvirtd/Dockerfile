@@ -3,10 +3,6 @@
 # Atmosphere-Rebuild-Time: 2025-01-15T02:05:46Z
 
 FROM openstack-runtime
-ADD --chmod=644 https://download.ceph.com/keys/release.gpg /etc/apt/trusted.gpg.d/ceph.gpg
-COPY <<EOF /etc/apt/sources.list.d/ceph.list
-deb http://download.ceph.com/debian-reef/ jammy main
-EOF
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \

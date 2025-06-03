@@ -3,12 +3,12 @@
 # Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
 
 FROM openstack-venv-builder AS build
-# renovate: name=openstack/octavia repo=https://opendev.org/openstack/octavia.git branch=master
-ARG OCTAVIA_GIT_REF=84f512687a6a1995378bfc5b13753ef4a145601c
+# renovate: name=openstack/octavia repo=https://opendev.org/openstack/octavia.git branch=stable/2025.1
+ARG OCTAVIA_GIT_REF=b8824ede82c42b81ca35248bd6ab6fb8bf51f3cd
 ADD --keep-git-dir=true https://opendev.org/openstack/octavia.git#${OCTAVIA_GIT_REF} /src/octavia
 RUN git -C /src/octavia fetch --unshallow
-# renovate: name=openstack/ovn-octavia-provider repo=https://opendev.org/openstack/ovn-octavia-provider.git branch=master
-ARG OVN_OCTAVIA_PROVIDER_GIT_REF=502c6d154d8e8c15ca598328aaf309479b06307b
+# renovate: name=openstack/ovn-octavia-provider repo=https://opendev.org/openstack/ovn-octavia-provider.git branch=stable/2025.1
+ARG OVN_OCTAVIA_PROVIDER_GIT_REF=820d75844e2bb676a1158fa4876188eca28f63d2
 ADD --keep-git-dir=true https://opendev.org/openstack/ovn-octavia-provider.git#${OVN_OCTAVIA_PROVIDER_GIT_REF} /src/ovn-octavia-provider
 RUN git -C /src/ovn-octavia-provider fetch --unshallow
 RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe

@@ -3,8 +3,8 @@
 # Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
 
 FROM ubuntu-cloud-archive AS requirements
-# renovate: name=openstack/requirements repo=https://opendev.org/openstack/requirements.git branch=master
-ARG REQUIREMENTS_GIT_REF=52bbab14878b98c8f7eb109f10e2a26c84638b52
+# renovate: name=openstack/requirements repo=https://opendev.org/openstack/requirements.git branch=stable/2025.1
+ARG REQUIREMENTS_GIT_REF=e31b331399de82c2277635b0c2ee2a6a271cd229
 ADD --keep-git-dir=true https://opendev.org/openstack/requirements.git#${REQUIREMENTS_GIT_REF} /src/requirements
 RUN cp /src/requirements/upper-constraints.txt /upper-constraints.txt
 RUN <<EOF sh -xe
