@@ -10,25 +10,6 @@
     parent: tox
 
 - job:
-    name: atmosphere-build-images
-    parent: depot-bake
-    vars:
-      depot_bake_project_id: jd10vkmkwv
-      depot_bake_environment:
-        REGISTRY: harbor.atmosphere.dev/ci
-        TAG: "{{ zuul.change }}"
-    files: &image_build_files
-      - ^images/
-      - docker-bake.hcl
-
-- job:
-    name: atmosphere-promote-images
-    parent: promote-depot-bake
-    files: *image_build_files
-    vars:
-      promote_depot_bake_job: atmosphere-build-images
-
-- job:
     name: atmosphere-molecule
     parent: tox
     abstract: true
@@ -48,23 +29,6 @@
         ATMOSPHERE_IMAGE_PREFIX: "harbor.atmosphere.dev/"
 
 - job:
-    name: atmosphere-molecule-csi
-    parent: atmosphere-molecule
-    abstract: true
-
-- job:
-    name: atmosphere-molecule-csi-local-path-provisioner
-    parent: atmosphere-molecule-csi
-    vars:
-      tox_envlist: molecule-csi-local-path-provisioner
-
-- job:
-    name: atmosphere-molecule-csi-rbd
-    parent: atmosphere-molecule-csi
-    vars:
-      tox_envlist: molecule-csi-rbd
-
-- job:
     name: atmosphere-molecule-aio
     parent: atmosphere-molecule
     abstract: true
@@ -72,38 +36,6 @@
     post-run: zuul.d/playbooks/molecule-aio/post.yml
     roles:
       - zuul: openstack/openstack-helm
-
-- job:
-    name: atmosphere-molecule-aio-keycloak
-    parent: atmosphere-molecule-aio
-    nodeset:
-      nodes:
-        - name: ubuntu-jammy
-          label: jammy-8c-8g
-    vars:
-      tox_envlist: molecule-keycloak
-
-- job:
-    name: atmosphere-molecule-aio-full
-    parent: atmosphere-molecule-aio
-    abstract: true
-    timeout: 7200
-    nodeset:
-      nodes:
-        - name: ubuntu-jammy
-          label: jammy-16c-64g
-
-- job:
-    name: atmosphere-molecule-aio-openvswitch
-    parent: atmosphere-molecule-aio-full
-    vars:
-      tox_envlist: molecule-aio-openvswitch
-
-- job:
-    name: atmosphere-molecule-aio-ovn
-    parent: atmosphere-molecule-aio-full
-    vars:
-      tox_envlist: molecule-aio-ovn
 
 - job:
     name: atmosphere-molecule-aio-ovn-bgp-agent
