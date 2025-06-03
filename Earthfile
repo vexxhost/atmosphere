@@ -1,18 +1,5 @@
 VERSION --use-copy-link --try 0.8
 
-unit.go:
-  FROM golang:1.21
-  RUN go install github.com/jstemmer/go-junit-report/v2@latest
-  COPY --dir go.mod go.sum /src
-  WORKDIR /src
-  RUN go mod download
-  COPY --dir charts/ cmd/ internal/ roles/ tools/ /src
-  TRY
-    RUN go test -v 2>&1 ./... | go-junit-report -set-exit-code > junit-go.xml
-  FINALLY
-    SAVE ARTIFACT /src/junit-go.xml AS LOCAL junit-go.xml
-  END
-
 build.venv.runtime:
   FROM ubuntu:jammy
   RUN \
