@@ -7,7 +7,7 @@ ARG RELEASE
 
 FROM ubuntu-cloud-archive AS requirements
 # renovate: name=openstack/requirements repo=https://opendev.org/openstack/requirements.git branch=2023.2-eol
-ARG REQUIREMENTS_GIT_REF=5df9e1dc718f0b1f719d32fc445160911c99470f
+ARG REQUIREMENTS_GIT_REF=ee69687c124b2f9b0846c93193e60482c421e57e
 ADD --keep-git-dir=true https://opendev.org/openstack/requirements.git#${REQUIREMENTS_GIT_REF} /src/requirements
 RUN cp /src/requirements/upper-constraints.txt /upper-constraints.txt
 RUN <<EOF sh -xe
