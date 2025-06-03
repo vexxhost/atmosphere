@@ -3,9 +3,7 @@
 # Atmosphere-Rebuild-Time: 2024-06-26T17:38:39Z
 
 FROM openstack-venv-builder AS build
-# renovate: name=openstack/heat repo=https://opendev.org/openstack/heat.git branch=stable/2023.2
-ARG HEAT_GIT_REF=b6af90341eb09ab29a8a89adff88b7bcc5a1a177
-ADD --keep-git-dir=true https://opendev.org/openstack/heat.git#${HEAT_GIT_REF} /src/heat
+ADD --keep-git-dir=true https://opendev.org/openstack/heat.git#2023.2-eol /src/heat
 RUN git -C /src/heat fetch --unshallow
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
 pip3 install \

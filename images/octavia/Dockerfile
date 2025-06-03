@@ -3,15 +3,11 @@
 # Atmosphere-Rebuild-Time: 2024-06-26T17:38:39Z
 
 FROM openstack-venv-builder AS build
-# renovate: name=openstack/octavia repo=https://opendev.org/openstack/octavia.git branch=stable/2023.2
-ARG OCTAVIA_GIT_REF=148abf84d18ddf7cc41818f1db7945f470701d45
-ADD --keep-git-dir=true https://opendev.org/openstack/octavia.git#${OCTAVIA_GIT_REF} /src/octavia
+ADD --keep-git-dir=true https://opendev.org/openstack/octavia.git#2023.2-eol /src/octavia
 RUN git -C /src/octavia fetch --unshallow
 COPY patches/octavia /patches/octavia
 RUN git -C /src/octavia apply --verbose /patches/octavia/*
-# renovate: name=openstack/ovn-octavia-provider repo=https://opendev.org/openstack/ovn-octavia-provider.git branch=stable/2023.2
-ARG OVN_OCTAVIA_PROVIDER_GIT_REF=f767d5046fe05dde331816a15a5178e4f9880ff7
-ADD --keep-git-dir=true https://opendev.org/openstack/ovn-octavia-provider.git#${OVN_OCTAVIA_PROVIDER_GIT_REF} /src/ovn-octavia-provider
+ADD --keep-git-dir=true https://opendev.org/openstack/ovn-octavia-provider.git#2023.2-eol /src/ovn-octavia-provider
 RUN git -C /src/ovn-octavia-provider fetch --unshallow
 RUN <<EOF bash -xe
  sed -i 's/taskflow===.*/taskflow===5.5.0/g' /upper-constraints.txt
