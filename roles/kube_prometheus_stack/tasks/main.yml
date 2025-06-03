@@ -245,6 +245,7 @@
             OAUTH2_PROXY_OIDC_ISSUER_URL: "{{ kube_prometheus_stack_keycloak_server_url }}/realms/{{ kube_prometheus_stack_keycloak_realm }}"
             OAUTH2_PROXY_ALLOWED_ROLE: "{{ item.id }}:{{ item.roles[0] }}"
             OAUTH2_PROXY_CODE_CHALLENGE_METHOD: "S256"
+            OAUTH2_PROXY_SKIP_JWT_BEARER_TOKENS: "true"
           data:
             OAUTH2_PROXY_COOKIE_SECRET: "$(.cookie-secret.data.password)"
             OAUTH2_PROXY_CLIENT_SECRET: "$(.client-secret.data.password)"
