@@ -57,6 +57,12 @@ runs:
           echo "File $FILE not found, skipping replacement."
         fi
 
+    # NOTE(mnaser): The newer versions of Helm have introduced more strict handling of
+    #               spacing that breaks some of the Helm charts, so we remove it here
+    #               for now so that Ansible installs it.
+    - shell: bash
+      run: rm -rfv /usr/local/bin/helm || true
+
     - shell: bash
       run: sudo --preserve-env=ANSIBLE_PYTHON_INTERPRETER,ATMOSPHERE_NETWORK_BACKEND,DEPOT_BUILD_ID,DEPOT_TOKEN,MOLECULE_CSI_DRIVER env "PATH=$PATH" molecule test -s ${{ inputs.scenario }}
       env:
