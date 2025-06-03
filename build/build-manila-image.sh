@@ -3,7 +3,7 @@
 
 set -xe
 
-ATMOSPHERE_VERSION=$(pbr info -s atmosphere)
+ATMOSPHERE_VERSION=$(python3 -c "from atmosphere._version import __version__; print(__version__)")
 
 # Create work directory
 TMPDIR=$(mktemp -d)

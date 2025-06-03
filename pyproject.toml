@@ -1,6 +1,6 @@
 [build-system]
-requires = ["pbr>=6.1.1"]
-build-backend = "pbr.build"
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
 
 [project]
 name = "atmosphere"
@@ -46,8 +46,8 @@ source = "https://github.com/vexxhost/atmosphere"
 documentation = "https://vexxhost.github.io/atmosphere/"
 issues = "https://github.com/vexxhost/atmosphere/issues"
 
-[tool.setuptools]
-packages = ["atmosphere"]
+[tool.hatch.version]
+source = "vcs"
 
-[tool.setuptools.dynamic]
-version = {attr = "atmosphere.__version__"}
+[tool.hatch.build.hooks.vcs]
+version-file = "atmosphere/_version.py"
