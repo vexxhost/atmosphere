@@ -14,6 +14,9 @@ inputs:
   depot_build_id:
     description: Depot build ID to use for the test
     default: ''
+  use_mirrors:
+    description: Use mirrors for container images
+    default: "true"
 
 runs:
   using: composite
@@ -40,6 +43,19 @@ runs:
       if: ${{ inputs.depot_build_id != '' }}
       with:
         oidc: true
+
+    - shell: bash
+      if: ${{ inputs.use_mirrors == 'true' }}
+      run: |
+        FILE="roles/defaults/vars/main.yml"
+        if [[ -f "$FILE" ]]; then
+          sed -i -E \
+            -e "s|\{\{\s*atmosphere_image_prefix\s*\}\}registry\.atmosphere\.dev|harbor.atmosphere.dev|g" \
+            -e "s|\{\{\s*atmosphere_image_prefix\s*\}\}|harbor.atmosphere.dev/|g" \
+            "$FILE"
+        else
+          echo "File $FILE not found, skipping replacement."
+        fi
 
     - shell: bash
       run: sudo --preserve-env=ANSIBLE_PYTHON_INTERPRETER,ATMOSPHERE_NETWORK_BACKEND,DEPOT_BUILD_ID,DEPOT_TOKEN,MOLECULE_CSI_DRIVER env "PATH=$PATH" molecule test -s ${{ inputs.scenario }}
