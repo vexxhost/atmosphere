@@ -12,9 +12,7 @@ RUN GO111MODULE=off CGO_ENABLED=0 GOOS=linux go build \
     /src/octavia_tempest_plugin/contrib/test_server/test_server.go
 
 FROM openstack-venv-builder AS build
-# renovate: name=openstack/requirements repo=https://opendev.org/openstack/requirements.git branch=master
-ARG REQUIREMENTS_GIT_REF=b58f4867d2406854e476fa599ca52d270aa2cd19
-ADD --keep-git-dir=true https://opendev.org/openstack/requirements.git#${REQUIREMENTS_GIT_REF} /src/requirements
+ADD --keep-git-dir=true https://opendev.org/openstack/requirements.git#2023.2-eol /src/requirements
 RUN git -C /src/requirements fetch --unshallow
 # renovate: name=openstack/tempest repo=https://opendev.org/openstack/tempest.git branch=master
 ARG TEMPEST_GIT_REF=d12904cde88c96a6b7792f697d868823a09b5377
