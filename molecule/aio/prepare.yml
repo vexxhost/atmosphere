@@ -61,7 +61,7 @@
 
         - name: Tag pulled images
           ansible.builtin.command:
-            cmd: ctr -n="k8s.io" image tag {{ depot_get_pull_info.json.reference }}-{{ item.targetName }} {{ item.tags[0] | replace('harbor.atmosphere.dev', 'registry.atmosphere.dev') }}
+            cmd: ctr -n="k8s.io" image tag {{ depot_get_pull_info.json.reference }}-{{ item.targetName }} {{ item.tags[0] }} {{ item.tags[0] | replace('harbor.atmosphere.dev', 'registry.atmosphere.dev') }}
           loop: "{{ depot_pull_images.results | map(attribute='item') }}"
           loop_control:
             label: "{{ item.tags[0] }}"
