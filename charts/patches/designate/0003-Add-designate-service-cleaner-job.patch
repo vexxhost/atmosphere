@@ -1,0 +1,249 @@
+From c4e00f5b06803f2e282afc4f04627cb9c7a61036 Mon Sep 17 00:00:00 2001
+From: ricolin <rlin@vexxhost.com>
+Date: Fri, 9 May 2025 09:43:59 +0800
+Subject: [PATCH] Add designate service cleaner job
+
+Change-Id: I1862c2e25103376f860b8a2faac82794db83e4f8
+---
+ .../bin/_designate-service-cleaner.sh.tpl     |   8 ++
+ designate/templates/configmap-bin.yaml        |   2 +
+ .../templates/cron-job-service.cleaner.yaml   | 102 ++++++++++++++++++
+ designate/values.yaml                         |  26 +++++
+ .../notes/designate-9ed4257ab657b224.yaml     |   6 ++
+ 5 files changed, 144 insertions(+)
+ create mode 100644 designate/templates/bin/_designate-service-cleaner.sh.tpl
+ create mode 100644 designate/templates/cron-job-service.cleaner.yaml
+ create mode 100644 releasenotes/notes/designate-9ed4257ab657b224.yaml
+
+diff --git a/designate/templates/bin/_designate-service-cleaner.sh.tpl b/designate/templates/bin/_designate-service-cleaner.sh.tpl
+new file mode 100644
+index 000000000..aada3787d
+--- /dev/null
++++ b/designate/templates/bin/_designate-service-cleaner.sh.tpl
+@@ -0,0 +1,8 @@
++# Copyright (c) 2025 VEXXHOST, Inc.
++# SPDX-License-Identifier: Apache-2.0
++
++set -ex
++
++designate-manage \
++  --config-file /etc/designate/designate.conf \
++  service clean
+diff --git a/designate/templates/configmap-bin.yaml b/designate/templates/configmap-bin.yaml
+index 2d93be0ea..a3217d24f 100644
+--- a/designate/templates/configmap-bin.yaml
++++ b/designate/templates/configmap-bin.yaml
+@@ -44,6 +44,8 @@ data:
+ {{ tuple "bin/_designate-producer.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+   designate-sink.sh: |
+ {{ tuple "bin/_designate-sink.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
++  designate-service-cleaner.sh: |
++{{ tuple "bin/_designate-service-cleaner.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+   rabbit-init.sh: |
+ {{- include "helm-toolkit.scripts.rabbit_init" . | indent 4 }}
+ 
+diff --git a/designate/templates/cron-job-service.cleaner.yaml b/designate/templates/cron-job-service.cleaner.yaml
+new file mode 100644
+index 000000000..2ed6250f2
+--- /dev/null
++++ b/designate/templates/cron-job-service.cleaner.yaml
+@@ -0,0 +1,102 @@
++# Copyright (c) 2025 VEXXHOST, Inc.
++# SPDX-License-Identifier: Apache-2.0
++
++{{- if .Values.manifests.cron_job_service_cleaner }}
++{{- $envAll := . }}
++
++{{- $mounts_designate_service_cleaner := .Values.pod.mounts.designate_service_cleaner.designate_service_cleaner }}
++{{- $mounts_designate_service_cleaner_init := .Values.pod.mounts.designate_service_cleaner.init_container }}
++
++{{- $serviceAccountName := "designate-service-cleaner" }}
++{{ tuple $envAll "service_cleaner" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
++---
++apiVersion: batch/v1
++kind: CronJob
++metadata:
++  name: designate-service-cleaner
++  annotations:
++    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
++spec:
++  schedule: {{ .Values.jobs.service_cleaner.cron | quote }}
++  successfulJobsHistoryLimit: {{ .Values.jobs.service_cleaner.history.success }}
++  failedJobsHistoryLimit: {{ .Values.jobs.service_cleaner.history.failed }}
++  concurrencyPolicy: Forbid
++  jobTemplate:
++    metadata:
++      labels:
++{{ tuple $envAll "designate" "service-cleaner" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
++      annotations:
++{{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
++        configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
++        configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
++{{ dict "envAll" $envAll "podName" "designate-service-cleaner" "containerNames" (list "init" "designate-service-cleaner" ) | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
++    spec:
++      template:
++        metadata:
++          labels:
++{{ tuple $envAll "designate" "service-cleaner" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 12 }}
++          annotations:
++{{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 12 }}
++{{ dict "envAll" $envAll "podName" "designate-service-cleaner" "containerNames" (list "init" "designate-service-cleaner" ) | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
++        spec:
++{{ with .Values.pod.priorityClassName.designate_service_cleaner }}
++          priorityClassName: {{ . }}
++{{ end }}
++{{ with .Values.pod.runtimeClassName.designate_service_cleaner }}
++          runtimeClassName: {{ . }}
++{{ end }}
++          serviceAccountName: {{ $serviceAccountName }}
++          restartPolicy: OnFailure
++          nodeSelector:
++            {{ .Values.labels.service_cleaner.node_selector_key }}: {{ .Values.labels.service_cleaner.node_selector_value }}
++          initContainers:
++{{ tuple $envAll "service_cleaner" $mounts_designate_service_cleaner_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 12 }}
++          containers:
++            - name: designate-service-cleaner
++{{ tuple $envAll "designate_service_cleaner" | include "helm-toolkit.snippets.image" | indent 14 }}
++{{ tuple $envAll $envAll.Values.pod.resources.jobs.service_cleaner | include "helm-toolkit.snippets.kubernetes_resources" | indent 14 }}
++              command:
++                - /tmp/designate-service-cleaner.sh
++              volumeMounts:
++                - name: designate-bin
++                  mountPath: /tmp/designate-service-cleaner.sh
++                  subPath: designate-service-cleaner.sh
++                  readOnly: true
++                - name: pod-etc-designate
++                  mountPath: /etc/designate
++                - name: pod-var-cache-designate
++                  mountPath: /var/cache/designate
++                - name: designate-etc
++                  mountPath: /etc/designate/designate.conf
++                  subPath: designate.conf
++                  readOnly: true
++                - name: designate-etc
++                  mountPath: /etc/designate/api-paste.ini
++                  subPath: api-paste.ini
++                  readOnly: true
++                - name: designate-etc
++                  mountPath: /etc/designate/policy.yaml
++                  subPath: policy.yaml
++                  readOnly: true
++                {{- if .Values.conf.designate.DEFAULT.log_config_append }}
++                - name: designate-etc
++                  mountPath: {{ .Values.conf.designate.DEFAULT.log_config_append }}
++                  subPath: {{ base .Values.conf.designate.DEFAULT.log_config_append }}
++                  readOnly: true
++                {{- end }}
++{{ if $mounts_designate_service_cleaner.volumeMounts }}{{ toYaml $mounts_designate_service_cleaner.volumeMounts | indent 16 }}{{ end }}
++          volumes:
++            - name: pod-etc-designate
++              emptyDir: {}
++            - name: pod-var-cache-designate
++              emptyDir: {}
++            - name: designate-bin
++              configMap:
++                name: designate-bin
++                defaultMode: 0555
++            - name: designate-etc
++              secret:
++                secretName: designate-etc
++                defaultMode: 0444
++{{ if $mounts_designate_service_cleaner.volumes }}{{ toYaml $mounts_designate_service_cleaner.volumes | indent 12 }}{{ end }}
++{{- end }}
+diff --git a/designate/values.yaml b/designate/values.yaml
+index 2850fd33c..32cd1ebeb 100644
+--- a/designate/values.yaml
++++ b/designate/values.yaml
+@@ -37,6 +37,9 @@ labels:
+   mdns:
+     node_selector_key: openstack-control-plane
+     node_selector_value: enabled
++  service_cleaner:
++    node_selector_key: openstack-control-plane
++    node_selector_value: enabled
+   sink:
+     node_selector_key: openstack-control-plane
+     node_selector_value: enabled
+@@ -58,6 +61,7 @@ images:
+     designate_worker: quay.io/airshipit/designate:2024.1-ubuntu_jammy
+     designate_producer: quay.io/airshipit/designate:2024.1-ubuntu_jammy
+     designate_sink: quay.io/airshipit/designate:2024.1-ubuntu_jammy
++    designate_service_cleaner: quay.io/airshipit/designate:2024.1-ubuntu_jammy
+   pull_policy: "IfNotPresent"
+   local_registry:
+     active: false
+@@ -71,6 +75,7 @@ pod:
+     designate_central: null
+     designate_mdns: null
+     designate_producer: null
++    designate_service_cleaner: null
+     designate_sink: null
+     designate_worker: null
+     db_sync: null
+@@ -79,6 +84,7 @@ pod:
+     designate_central: null
+     designate_mdns: null
+     designate_producer: null
++    designate_service_cleaner: null
+     designate_sink: null
+     designate_worker: null
+     db_sync: null
+@@ -114,6 +120,11 @@ pod:
+       designate_producer:
+         volumeMounts:
+         volumes:
++    designate_service_cleaner:
++      init_container: null
++      designate_service_cleaner:
++        volumeMounts:
++        volumes:
+     designate_sink:
+       init_container: null
+       designate_sink:
+@@ -216,6 +227,13 @@ pod:
+         limits:
+           memory: "1024Mi"
+           cpu: "2000m"
++      service_cleaner:
++        requests:
++          memory: "128Mi"
++          cpu: "100m"
++        limits:
++          memory: "1024Mi"
++          cpu: "2000m"
+       tests:
+         requests:
+           memory: "128Mi"
+@@ -745,9 +763,17 @@ endpoints:
+       powerdns:
+         default: 53
+ 
++jobs:
++  service_cleaner:
++    cron: "*/10 * * * *"
++    history:
++      success: 3
++      failed: 1
++
+ manifests:
+   configmap_bin: true
+   configmap_etc: true
++  cron_job_service_cleaner: true
+   deployment_api: true
+   deployment_central: true
+   deployment_worker: true
+diff --git a/releasenotes/notes/designate-9ed4257ab657b224.yaml b/releasenotes/notes/designate-9ed4257ab657b224.yaml
+new file mode 100644
+index 000000000..dec007eae
+--- /dev/null
++++ b/releasenotes/notes/designate-9ed4257ab657b224.yaml
+@@ -0,0 +1,6 @@
++---
++designate:
++  - |
++    Add a periodic job to clean Designate services which not report
++    it's heartbeat within two heartbeat interval cycle.
++...
+-- 
+2.25.1
+
