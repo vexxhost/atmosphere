@@ -10,7 +10,7 @@ RUN \
         ca-certificates \
         libpython3.10 \
         lsb-release \
-        python3-distutils \
+        python3-setuptools \
         sudo && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
