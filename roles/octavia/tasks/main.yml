@@ -96,6 +96,36 @@
     security_group: -1
     security_group_rule: -1
 
+- name: Get the Kuberentes service for OVN DB SB
+  when: atmosphere_network_backend == 'ovn'
+  run_once: true
+  kubernetes.core.k8s_info:
+    kind: Service
+    name: ovn-ovsdb-sb
+    namespace: "{{ octavia_helm_release_namespace }}"
+  register: _ovndb_sb_service
+
+- name: Get the Kuberentes service for OVN DB NB
+  when: atmosphere_network_backend == 'ovn'
+  run_once: true
+  kubernetes.core.k8s_info:
+    kind: Service
+    name: ovn-ovsdb-nb
+    namespace: "{{ octavia_helm_release_namespace }}"
+  register: _ovndb_nb_service
+
+- name: Append Helm values
+  when: atmosphere_network_backend == 'ovn'
+  ansible.builtin.set_fact:
+    _octavia_helm_values: "{{ _octavia_helm_values | combine(ovn_connect_config, recursive=True) | combine(__octavia_ovn_helm_values, recursive=True) }}"
+  vars:
+    ovn_connect_config:
+      conf:
+        octavia:
+          ovn:
+            ovn_sb_connection: "tcp:{{ _ovndb_sb_service.resources[0].spec.clusterIP }}:{{ _ovndb_sb_service.resources[0].spec.ports[0].port }}"
+            ovn_nb_connection: "tcp:{{ _ovndb_nb_service.resources[0].spec.clusterIP }}:{{ _ovndb_nb_service.resources[0].spec.ports[0].port }}"
+
 - name: Deploy Helm chart
   run_once: true
   kubernetes.core.helm:
