@@ -7,8 +7,6 @@ FROM openstack-venv-builder AS build
 ARG NEUTRON_GIT_REF=0d4ef860549a552db3a9d04934154ad256662bbb
 ADD --keep-git-dir=true https://opendev.org/openstack/neutron.git#${NEUTRON_GIT_REF} /src/neutron
 RUN git -C /src/neutron fetch --unshallow
-COPY patches/neutron /patches/neutron
-RUN git -C /src/neutron apply --verbose /patches/neutron/*
 # renovate: name=openstack/neutron-dynamic-routing repo=https://opendev.org/openstack/neutron-dynamic-routing.git branch=stable/2024.1
 ARG NEUTRON_DYNAMIC_ROUTING_GIT_REF=4f6b9f262f44d532b8120507eef688c57cf28ec1
 ADD --keep-git-dir=true https://opendev.org/openstack/neutron-dynamic-routing.git#${NEUTRON_DYNAMIC_ROUTING_GIT_REF} /src/neutron-dynamic-routing
@@ -33,6 +31,10 @@ RUN git -C /src/neutron-policy-server fetch --unshallow
 ARG LOG_PASER_GIT_REF=3895d8f9d004e612c71b4f798d31c758e113946b
 ADD --keep-git-dir=true https://github.com/vexxhost/neutron-ovn-network-logging-parser.git#${LOG_PASER_GIT_REF} /src/neutron-ovn-network-logging-parser
 RUN git -C /src/neutron-ovn-network-logging-parser fetch --unshallow
+COPY patches/neutron /patches/neutron
+RUN git -C /src/neutron apply --verbose /patches/neutron/*
+COPY patches/networking-generic-switch /patches/networking-generic-switch
+RUN git -C /src/networking-generic-switch apply --verbose /patches/networking-generic-switch/*
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
 pip3 install \
     --constraint /upper-constraints.txt \
