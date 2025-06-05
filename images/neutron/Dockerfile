@@ -9,6 +9,10 @@ ADD --keep-git-dir=true https://opendev.org/openstack/neutron.git#${NEUTRON_GIT_
 RUN git -C /src/neutron fetch --unshallow
 COPY patches/neutron /patches/neutron
 RUN git -C /src/neutron apply --verbose /patches/neutron/*
+# renovate: name=openstack/neutron-dynamic-routing repo=https://opendev.org/openstack/neutron-dynamic-routing.git branch=stable/2024.1
+ARG NEUTRON_DYNAMIC_ROUTING_GIT_REF=4f6b9f262f44d532b8120507eef688c57cf28ec1
+ADD --keep-git-dir=true https://opendev.org/openstack/neutron-dynamic-routing.git#${NEUTRON_DYNAMIC_ROUTING_GIT_REF} /src/neutron-dynamic-routing
+RUN git -C /src/neutron-dynamic-routing fetch --unshallow
 # renovate: name=openstack/neutron-vpnaas repo=https://opendev.org/openstack/neutron-vpnaas.git branch=stable/2024.1
 ARG NEUTRON_VPNAAS_GIT_REF=8655ef2b0f95a600639636665dd4b83b0a107bc7
 ADD --keep-git-dir=true https://opendev.org/openstack/neutron-vpnaas.git#${NEUTRON_VPNAAS_GIT_REF} /src/neutron-vpnaas
@@ -17,6 +21,10 @@ RUN git -C /src/neutron-vpnaas fetch --unshallow
 ARG NETWORKING_BAREMETAL_GIT_REF=8dc6edadce564ad4896ecfd5d2bca68396d1d7e6
 ADD --keep-git-dir=true https://opendev.org/openstack/networking-baremetal.git#${NETWORKING_BAREMETAL_GIT_REF} /src/networking-baremetal
 RUN git -C /src/networking-baremetal fetch --unshallow
+# renovate: name=openstack/networking-generic-switch repo=https://opendev.org/openstack/networking-generic-switch.git branch=stable/2024.1
+ARG NETWORKING_GENERIC_SWITCH_GIT_REF=b6bb46af9d56aae50e2afb17641289733f446a1b
+ADD --keep-git-dir=true https://opendev.org/openstack/networking-generic-switch.git#${NETWORKING_GENERIC_SWITCH_GIT_REF} /src/networking-generic-switch
+RUN git -C /src/networking-generic-switch fetch --unshallow
 # renovate: name=vexxhost/neutron-policy-server repo=https://github.com/vexxhost/neutron-policy-server.git branch=main
 ARG POLICY_SERVER_GIT_REF=41c862a7e15955195ebac56a48ae98137aac146d
 ADD --keep-git-dir=true https://github.com/vexxhost/neutron-policy-server.git#${POLICY_SERVER_GIT_REF} /src/neutron-policy-server
@@ -29,8 +37,10 @@ RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF b
 pip3 install \
     --constraint /upper-constraints.txt \
         /src/neutron \
+        /src/neutron-dynamic-routing \
         /src/neutron-vpnaas \
         /src/networking-baremetal \
+        /src/networking-generic-switch \
         /src/neutron-policy-server \
         /src/neutron-ovn-network-logging-parser
 EOF
