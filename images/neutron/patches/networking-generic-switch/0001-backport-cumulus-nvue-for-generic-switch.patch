@@ -1,0 +1,235 @@
+From cfd864a8b8c1c7c825fe0d9fef5f01363dc24666 Mon Sep 17 00:00:00 2001
+From: Tadas Sutkaitis <tadas.sutkaitis@vexxhost.com>
+Date: Thu, 5 Jun 2025 18:55:33 +0300
+Subject: [PATCH] feat: backport culumus_nvue from 2024.2
+
+Signed-off-by: Tadas Sutkaitis <tadas.sutkaitis@vexxhost.com>
+
+---
+ networking_generic_switch/devices/__init__.py | 35 +++++++++
+ .../devices/netmiko_devices/cumulus.py        | 78 +++++++++++++++++++
+ .../generic_switch_mech.py                    | 40 +++++++++-
+ setup.cfg                                     |  6 +-
+ 4 files changed, 157 insertions(+), 2 deletions(-)
+
+diff --git a/networking_generic_switch/devices/__init__.py b/networking_generic_switch/devices/__init__.py
+index defe203..a3ae8b5 100644
+--- a/networking_generic_switch/devices/__init__.py
++++ b/networking_generic_switch/devices/__init__.py
+@@ -54,6 +54,10 @@ NGS_INTERNAL_OPTS = [
+     {'name': 'ngs_fake_sleep_min_s'},
+     {'name': 'ngs_fake_sleep_max_s'},
+     {'name': 'ngs_fake_failure_prob'},
++    # Allow list for VLANs and ports for this switch
++    # default open, but setting empty string blocks all ports
++    {'name': 'ngs_allowed_vlans'},
++    {'name': 'ngs_allowed_ports'},
+ ]
+ 
+ 
+@@ -179,6 +183,37 @@ class GenericSwitchDevice(object, metaclass=abc.ABCMeta):
+         return strutils.bool_from_string(
+             self.ngs_config['ngs_batch_requests'])
+ 
++    def _get_allowed_vlans(self):
++        allowed_vlans = self.ngs_config.get('ngs_allowed_vlans')
++        if allowed_vlans is None:
++            return None
++        return allowed_vlans.split(',')
++
++    def _get_allowed_ports(self):
++        allowed_ports = self.ngs_config.get('ngs_allowed_ports')
++        if allowed_ports is None:
++            return None
++        return allowed_ports.split(',')
++
++    def is_allowed(self, port_id, segmentation_id):
++        is_port_id_allowed = True
++        allowed_ports = self._get_allowed_ports()
++        if allowed_ports is not None:
++            is_port_id_allowed = port_id in allowed_ports
++            LOG.debug("Port %(port_id) allowed: %(is_port_id_allowed",
++                      {"port_id": port_id,
++                       "is_port_id_allowed": is_port_id_allowed})
++
++        is_vlan_allowed = True
++        allowed_vlans = self._get_allowed_vlans()
++        if allowed_vlans is not None:
++            is_vlan_allowed = str(segmentation_id) in allowed_vlans
++            LOG.debug("VLAN %(vlan) allowed: %(is_allowed",
++                      {"vlan": segmentation_id,
++                       "is_allowed": is_vlan_allowed})
++
++        return is_port_id_allowed and is_vlan_allowed
++
+     @abc.abstractmethod
+     def add_network(self, segmentation_id, network_id):
+         pass
+diff --git a/networking_generic_switch/devices/netmiko_devices/cumulus.py b/networking_generic_switch/devices/netmiko_devices/cumulus.py
+index 9095348..277c1ee 100644
+--- a/networking_generic_switch/devices/netmiko_devices/cumulus.py
++++ b/networking_generic_switch/devices/netmiko_devices/cumulus.py
+@@ -87,3 +87,81 @@ class Cumulus(netmiko_devices.NetmikoSwitch):
+         re.compile(r'command not found'),
+         re.compile(r'is not a physical interface on this switch'),
+     ]
++
++
++class CumulusNVUE(netmiko_devices.NetmikoSwitch):
++    """Built for Cumulus 5.x
++
++    Note for this switch you want config like this,
++    where secret is the password needed for sudo su:
++
++    [genericswitch:<hostname>]
++    device_type = netmiko_cumulus_nvue
++    ip = <ip>
++    username = <username>
++    password = <password>
++    secret = <password for sudo>
++    ngs_physical_networks = physnet1
++    ngs_max_connections = 1
++    ngs_port_default_vlan = 123
++    ngs_disable_inactive_ports = False
++    """
++    NETMIKO_DEVICE_TYPE = "linux"
++
++    ADD_NETWORK = [
++        'nv set bridge domain br_default vlan {segmentation_id}',
++    ]
++
++    DELETE_NETWORK = [
++        'nv unset bridge domain br_default vlan {segmentation_id}',
++    ]
++
++    PLUG_PORT_TO_NETWORK = [
++        'nv set interface {port} bridge domain br_default access '
++        '{segmentation_id}',
++    ]
++
++    DELETE_PORT = [
++        'nv unset interface {port} bridge domain br_default access',
++    ]
++
++    ENABLE_PORT = [
++        'nv set interface {port} link state up',
++    ]
++
++    DISABLE_PORT = [
++        'nv set interface {port} link state down',
++    ]
++
++    SAVE_CONFIGURATION = [
++        'nv config save',
++    ]
++
++    ERROR_MSG_PATTERNS = [
++        # Its tempting to add this error message, but as only one
++        # bridge-access is allowed, we ignore that error for now:
++        # re.compile(r'configuration does not have "bridge-access')
++        re.compile(r'Invalid config'),
++        re.compile(r'Config invalid at'),
++        re.compile(r'ERROR: Command not found.'),
++        re.compile(r'command not found'),
++        re.compile(r'is not a physical interface on this switch'),
++        re.compile(r'Error: Invalid parameter'),
++        re.compile(r'Unable to restart services'),
++        re.compile(r'Failure during apply'),
++    ]
++
++    def send_config_set(self, net_connect, cmd_set):
++        """Send a set of configuration lines to the device.
++
++        :param net_connect: a netmiko connection object.
++        :param cmd_set: a list of configuration lines to send.
++        :returns: The output of the configuration commands.
++        """
++        cmd_set.append('nv config apply --assume-yes')
++        # NOTE: Do not exit config mode because save needs elevated
++        # privileges
++        return net_connect.send_config_set(config_commands=cmd_set,
++                                           cmd_verify=False,
++                                           enter_config_mode=False,
++                                           exit_config_mode=False)
+diff --git a/networking_generic_switch/generic_switch_mech.py b/networking_generic_switch/generic_switch_mech.py
+index 6071918..9fa30c9 100644
+--- a/networking_generic_switch/generic_switch_mech.py
++++ b/networking_generic_switch/generic_switch_mech.py
+@@ -477,9 +477,47 @@ class GenericSwitchDriver(api.MechanismDriver):
+             if not self._is_link_valid(port, network):
+                 return
+ 
+-            segments = context.segments_to_bind
++            is_802_3ad = self._is_802_3ad(port)
++            for link in local_link_information:
++                port_id = link.get('port_id')
++                switch_info = link.get('switch_info')
++                switch_id = link.get('switch_id')
++                switch = device_utils.get_switch_device(
++                    self.switches, switch_info=switch_info,
++                    ngs_mac_address=switch_id)
++
++                segments = context.segments_to_bind
++                # If segmentation ID is None, set vlan 1
++                segmentation_id = segments[0].get('segmentation_id') or 1
++
++                # Fail if port or vlan not in allow list
++                if not switch.is_allowed(port_id, segmentation_id):
++                    LOG.warn("Skipped binding port %(port_id)s, "
++                             "port %(port)s in segment "
++                             "%(segment_id)s on device %(device)s, as either "
++                             "the port or vlan is not on the allow list",
++                             {'port_id': port['id'], 'port': port_id,
++                              'device': switch_info,
++                              'segment_id': segmentation_id})
++                    return
++
++                LOG.debug("Putting port %(port_id)s on %(switch_info)s "
++                          "to vlan: %(segmentation_id)s",
++                          {'port_id': port_id, 'switch_info': switch_info,
++                           'segmentation_id': segmentation_id})
++                # Move port to network
++                if is_802_3ad and hasattr(switch, 'plug_bond_to_network'):
++                    switch.plug_bond_to_network(port_id, segmentation_id)
++                else:
++                    switch.plug_port_to_network(port_id, segmentation_id)
++                LOG.info("Successfully bound port %(port_id)s in segment "
++                         "%(segment_id)s on device %(device)s",
++                         {'port_id': port['id'], 'device': switch_info,
++                          'segment_id': segmentation_id})
++
+             context.set_binding(segments[0][api.ID],
+                                 portbindings.VIF_TYPE_OTHER, {})
++
+             provisioning_blocks.add_provisioning_component(
+                 context._plugin_context, port['id'], resources.PORT,
+                 GENERIC_SWITCH_ENTITY)
+diff --git a/setup.cfg b/setup.cfg
+index 01d6962..0d86ba6 100644
+--- a/setup.cfg
++++ b/setup.cfg
+@@ -18,6 +18,8 @@ classifier =
+     Programming Language :: Python :: 3
+     Programming Language :: Python :: 3.8
+     Programming Language :: Python :: 3.9
++    Programming Language :: Python :: 3.10
++    Programming Language :: Python :: 3.11
+ 
+ description_file =
+     README.rst
+@@ -47,6 +49,7 @@ generic_switch.devices =
+     netmiko_juniper = networking_generic_switch.devices.netmiko_devices.juniper:Juniper
+     netmiko_mellanox_mlnxos = networking_generic_switch.devices.netmiko_devices.mellanox_mlnxos:MellanoxMlnxOS
+     netmiko_cumulus = networking_generic_switch.devices.netmiko_devices.cumulus:Cumulus
++    netmiko_cumulus_nvue = networking_generic_switch.devices.netmiko_devices.cumulus:CumulusNVUE
+     netmiko_sonic = networking_generic_switch.devices.netmiko_devices.sonic:Sonic
+     netmiko_nokia_srl = networking_generic_switch.devices.netmiko_devices.nokia:NokiaSRL
+     netmiko_pluribus = networking_generic_switch.devices.netmiko_devices.pluribus:Pluribus
+@@ -59,4 +62,5 @@ tempest.test_plugins =
+ quiet-level = 4
+ # Words to ignore:
+ # cna: Intel CNA card
+-ignore-words-list = cna
+\ No newline at end of file
++# assertIn: Python's unittest method
++ignore-words-list = cna,assertIn
