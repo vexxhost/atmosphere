@@ -1,0 +1,804 @@
+From 1d91b5a15ccd53607535457e30e358e839d817a4 Mon Sep 17 00:00:00 2001
+From: ricolin <rlin@vexxhost.com>
+Date: Thu, 24 Apr 2025 14:19:47 +0800
+Subject: [PATCH] Fix ovn db sync with log resources
+
+Make sure neutron ovn db sync counts log resource changes.
+This help to avoid important acls (like acls for `neutron_pg_drop`)
+got deleted due to miss match case.
+
+Additionally, switch to update instead of recreate acl in ovn sync.
+To update optional columns, `pg-acl-add` could in some cases,
+not able to properly update label and options columns.
+With change to using db_set, we will sure we not face that same issue
+in any cases.
+
+Closes-Bug: #2107925
+Closes-Bug: #2087909
+
+Change-Id: Iaec0fce556f6e6635beb554e03e6720e0e04b2b1
+---
+ neutron/common/ovn/acl.py                     |   6 +-
+ neutron/common/ovn/constants.py               |   3 +-
+ .../ovn/mech_driver/ovsdb/ovn_db_sync.py      | 260 +++++++++++++++++-
+ .../ovn/mech_driver/ovsdb/test_ovn_db_sync.py |   8 +-
+ neutron/tests/unit/common/ovn/test_acl.py     |   2 +
+ .../ovn/mech_driver/ovsdb/test_ovn_db_sync.py | 214 +++++++++++++-
+ ...log-with-ovn-db-sync-2fe57474079c40a1.yaml |  15 +
+ 7 files changed, 483 insertions(+), 25 deletions(-)
+ create mode 100644 releasenotes/notes/fix-network-log-with-ovn-db-sync-2fe57474079c40a1.yaml
+
+diff --git a/neutron/common/ovn/acl.py b/neutron/common/ovn/acl.py
+index 90a708b522..d567db7ea4 100644
+--- a/neutron/common/ovn/acl.py
++++ b/neutron/common/ovn/acl.py
+@@ -148,7 +148,9 @@ def add_acls_for_drop_port_group(pg_name):
+                "name": [],
+                "severity": [],
+                "direction": direction,
+-               "match": f'{p} == @{pg_name} && ip'}
++               "match": f'{p} == @{pg_name} && ip',
++               "meter": [],
++               }
+         acl_list.append(acl)
+     return acl_list
+ 
+@@ -167,6 +169,7 @@ def drop_all_ip_traffic_for_port(port):
+                "severity": [],
+                "direction": direction,
+                "match": '{} == "{}" && ip'.format(p, port['id']),
++               "meter": [],
+                "external_ids": {'neutron:lport': port['id']}}
+         acl_list.append(acl)
+     return acl_list
+@@ -187,6 +190,7 @@ def add_sg_rule_acl_for_port_group(port_group, r, stateful, match):
+            "severity": [],
+            "direction": dir_map[r['direction']],
+            "match": match,
++           "meter": [],
+            ovn_const.OVN_SG_RULE_EXT_ID_KEY: r['id']}
+     return acl
+ 
+diff --git a/neutron/common/ovn/constants.py b/neutron/common/ovn/constants.py
+index ab255d8244..a563633012 100644
+--- a/neutron/common/ovn/constants.py
++++ b/neutron/common/ovn/constants.py
+@@ -259,7 +259,8 @@ INITIAL_REV_NUM = -1
+ 
+ ACL_EXPECTED_COLUMNS_NBDB = (
+     'external_ids', 'direction', 'log', 'priority',
+-    'name', 'action', 'severity', 'match')
++    'name', 'action', 'severity', 'match', 'meter',
++    'label', 'options')
+ 
+ # Resource types
+ TYPE_NETWORKS = 'networks'
+diff --git a/neutron/plugins/ml2/drivers/ovn/mech_driver/ovsdb/ovn_db_sync.py b/neutron/plugins/ml2/drivers/ovn/mech_driver/ovsdb/ovn_db_sync.py
+index 88410d0b1c..24bfcd2a6d 100644
+--- a/neutron/plugins/ml2/drivers/ovn/mech_driver/ovsdb/ovn_db_sync.py
++++ b/neutron/plugins/ml2/drivers/ovn/mech_driver/ovsdb/ovn_db_sync.py
+@@ -13,6 +13,7 @@
+ import abc
+ from datetime import datetime
+ import itertools
++import secrets
+ 
+ from eventlet import greenthread
+ from neutron_lib.api.definitions import segment as segment_def
+@@ -35,9 +36,10 @@ from neutron.objects.port_forwarding import PortForwarding
+ from neutron.plugins.ml2.drivers.ovn.mech_driver.ovsdb.extensions import qos \
+     as ovn_qos
+ from neutron.plugins.ml2.drivers.ovn.mech_driver.ovsdb import ovn_client
++from neutron.services.logapi.common import db_api as log_db_api
++from neutron.services.logapi.drivers.ovn import driver as log_driver
+ from neutron.services.segments import db as segments_db
+ 
+-
+ LOG = log.getLogger(__name__)
+ 
+ 
+@@ -82,6 +84,7 @@ class OvnNbSynchronizer(OvnDbSynchronizer):
+             self.segments_plugin = (
+                 manager.NeutronManager.load_class_for_provider(
+                     'neutron.service_plugins', 'segments')())
++        self.ovn_log_driver = log_driver.OVNDriver()
+ 
+     def stop(self):
+         if utils.is_ovn_l3(self.l3_plugin):
+@@ -242,6 +245,7 @@ class OvnNbSynchronizer(OvnDbSynchronizer):
+             for acl in acls:
+                 acl_string = {k: getattr(acl, k) for k in acl_columns}
+                 acl_string['port_group'] = pg.name
++                acl_string['uuid'] = acl.uuid
+                 if id_key in acl.external_ids:
+                     acl_string[id_key] = acl.external_ids[id_key]
+                 ovn_acls.append(acl_string)
+@@ -255,14 +259,64 @@ class OvnNbSynchronizer(OvnDbSynchronizer):
+         @return: Nothing
+         """
+         LOG.debug('OVN-NB Sync ACLs started @ %s', str(datetime.now()))
+-
++        sg_log_map = {}
++        sgr_sg_map = {}
+         neutron_acls = []
++        acl_meter_name = self.ovn_log_driver.meter_name
++        acl_options = {'log-related': "true"}
++        is_support_label = "label" in (
++            self.ovn_api._tables['ACL'].columns.keys() &
++            set(ovn_const.ACL_EXPECTED_COLUMNS_NBDB)
++        )
++
++        def _fetch_log_attrs(n_id, na):
++            # Check if logs exist for sg, if exist,
++            # will try to compare with log info
++            if len(sg_log_map.get(sgr_sg_map.get(n_id, None)[0], {})) > 0:
++                # get logs for security group
++                sg_logs = sg_log_map.get(sgr_sg_map.get(n_id)[0])
++                # No oa matched, directly assign one log
++                acl_name, sg_log = next(iter(sg_logs.items()))
++
++                # check stateful for security group
++                if not sgr_sg_map.get(n_id)[1]:
++                    meter_name = acl_meter_name + ("_stateless")
++                else:
++                    meter_name = acl_meter_name
++                actions_enabled = self.ovn_log_driver._acl_actions_enabled(
++                    sg_log)
++                log_attrs = {
++                    "log": na.get("action") in actions_enabled,
++                    "meter": [meter_name],
++                    "severity": ["info"],
++                    "name": [acl_name]
++                }
++                if is_support_label:
++                    # Label needs to be an unsigned 32 bit number
++                    # and not 0.
++                    log_attrs['label'] = secrets.SystemRandom(
++                    ).randrange(1, log_driver.MAX_INT_LABEL)
++                    log_attrs['options'] = acl_options
++            else:
++                log_attrs = {"label": 0, "options": {}} if (
++                    is_support_label) else {}
++            return log_attrs
++
+         # we have to fetch groups to determine if stateful is set
+         for sg in self.core_plugin.get_security_groups(ctx):
+             stateful = sg.get("stateful", True)
+             pg_name = utils.ovn_port_group_name(sg['id'])
++
++            # Fetch logs for security group
++            sg_logs = log_db_api.get_logs_bound_sg(ctx, sg_id=sg['id'])
++            if sg_logs:
++                sg_log_map[sg['id']] = {
++                    (f"{ovn_const.OVN_NAME_PREFIX}"
++                     f"{sg_log.id}"): sg_log for sg_log in sg_logs
++                }
+             for sgr in self.core_plugin.get_security_group_rules(
+                     ctx, {'security_group_id': sg['id']}):
++                sgr_sg_map[sgr['id']] = (sg['id'], stateful)
+                 neutron_acls.append(
+                     acl_utils._add_sg_rule_acl_for_port_group(
+                         pg_name, stateful, sgr)
+@@ -280,7 +334,7 @@ class OvnNbSynchronizer(OvnDbSynchronizer):
+         ovn_acls.sort(key=lambda x: x.get(
+             ovn_const.OVN_SG_RULE_EXT_ID_KEY, ""))
+         neutron_num, ovn_num = len(neutron_acls), len(ovn_acls)
+-        add_acls, remove_acls, ovn_default_acls = [], [], []
++        add_acls, remove_acls, ovn_default_acls, update_acls = [], [], [], []
+         n_index = o_index = 0
+         # neutron_acls and ovn_acls have been sorted, and we need to traverse
+         # both arrays from scratch until we reach the end of one of them.
+@@ -303,22 +357,76 @@ class OvnNbSynchronizer(OvnDbSynchronizer):
+                 ovn_default_acls.append(oa)
+                 o_index += 1
+             elif n_id == o_id:
++                # Check if logs exist for sg, if exist,
++                # will try to compare with log info
++                if len(sg_log_map.get(sgr_sg_map.get(n_id, None)[0], {})) > 0:
++                    # get logs for security group
++                    sg_logs = sg_log_map.get(sgr_sg_map.get(n_id)[0])
++
++                    # Determine one log for acl
++                    oa_name = next(iter(oa.get("name")), None)
++                    if oa_name and oa_name in sg_logs:
++                        sg_log = sg_logs.get(oa_name)
++                        acl_name = oa_name
++                    else:
++                        acl_name, sg_log = next(iter(sg_logs.items()))
++
++                    # check stateful for security group
++                    if not sgr_sg_map.get(n_id)[1]:
++                        meter_name = acl_meter_name + ("_stateless")
++                    else:
++                        meter_name = acl_meter_name
++                    actions_enabled = self.ovn_log_driver._acl_actions_enabled(
++                        sg_log)
++                    log_attrs = {
++                        "log": na.get("action") in actions_enabled,
++                        "meter": [meter_name],
++                        "severity": ["info"],
++                        "name": [acl_name]
++                    }
++
++                    oa_label = oa.get("label", None)
++                    # if label in OVN acl not found,
++                    # that means OVN version < 22.03
++                    if oa_label is not None:
++                        # Label needs to be an unsigned 32 bit number
++                        # and not 0.
++                        if log_driver.MAX_INT_LABEL >= oa_label > 0:
++                            # Try to reuse existing label to avoid unnecessary
++                            # acl update
++                            log_attrs['label'] = oa_label
++                        else:
++                            log_attrs['label'] = secrets.SystemRandom(
++                            ).randrange(1, log_driver.MAX_INT_LABEL)
++                        log_attrs['options'] = acl_options
++                else:
++                    log_attrs = {"label": 0, "options": {}} if (
++                        is_support_label) else {}
++
++                # allow reuse existing acl
++                na['uuid'] = oa.get('uuid')
++                # Update neutron acl with log related attributes
++                na.update(log_attrs)
+                 if any(item not in na.items() for item in oa.items()):
+-                    add_acls.append(na)
+-                    remove_acls.append(oa)
++                    update_acls.append(na)
+                 n_index += 1
+                 o_index += 1
+             elif n_id > o_id:
+                 remove_acls.append(oa)
+                 o_index += 1
+             else:
++                # Update neutron acl with log related attributes
++                na.update(_fetch_log_attrs(n_id, na))
+                 add_acls.append(na)
+                 n_index += 1
+ 
+         if n_index < neutron_num:
+             # We didn't find the OVN ACLs matching the Neutron ACLs
+             # in "ovn_acls" and we are just adding the pending Neutron ACLs.
+-            add_acls.extend(neutron_acls[n_index:])
++            for na in neutron_acls[n_index:]:
++                n_id = na[ovn_const.OVN_SG_RULE_EXT_ID_KEY]
++                na.update(_fetch_log_attrs(n_id, na))
++                add_acls.append(na)
+         if o_index < ovn_num:
+             # Any OVN ACLs not matching the Neutron ACLs is removed.
+             remove_acls.extend(ovn_acls[o_index:])
+@@ -331,26 +439,119 @@ class OvnNbSynchronizer(OvnDbSynchronizer):
+             self.ovn_api._tables['Logical_Switch'].rows.values())]
+         num_acls_to_remove_from_ls = get_num_acls(ovn_acls_from_ls)
+ 
++        def _fetch_default_log_attrs(
++                acl_name, target_log, na_action, oa_label=None):
++            log_attrs = {"label": 0, "options": {}} if (
++                is_support_label) else {}
++            if target_log is None:
++                for logs in sg_log_map.values():
++                    for name, log_item in logs.items():
++                        if log_item.event.upper() == na_action.upper():
++                            acl_name, target_log = name, log_item
++                            break
++                    else:
++                        continue
++                    break
++
++            if target_log:
++                actions_enabled = (
++                    self.ovn_log_driver._acl_actions_enabled(
++                        target_log)
++                )
++                log_attrs = {
++                    "log": na_action in actions_enabled,
++                    "meter": [acl_meter_name],
++                    "severity": ["info"],
++                    "name": [acl_name or ""]
++                }
++                # if label in OVN acl not found,
++                # that means OVN version < 22.03
++                if oa_label is not None:
++                    # Label needs to be an unsigned 32 bit number
++                    # and not 0.
++                    if log_driver.MAX_INT_LABEL >= oa_label > 0:
++                        # Try to reuse existing label to avoid
++                        # unnecessary acl update
++                        log_attrs['label'] = oa_label
++                    else:
++                        log_attrs['label'] = secrets.SystemRandom(
++                        ).randrange(1, log_driver.MAX_INT_LABEL)
++                    log_attrs['options'] = acl_options
++            return log_attrs
++
+         # Remove the common ones
+         for na in list(neutron_default_acls):
+             for ovn_a in ovn_default_acls.copy():
+-                if all(item in na.items() for item in ovn_a.items()):
+-                    neutron_default_acls.remove(na)
+-                    ovn_default_acls.remove(ovn_a)
+-                    break
++                basic_match = True
++                for col in ('direction', 'match', 'action'):
++                    if ovn_a.get(col) != na.get(col):
++                        basic_match = False
++                        continue
++                if not basic_match:
++                    continue
++                # We can drop this acl from lists. And may add
++                # to update_acls later if any part need to be update.
++                neutron_default_acls.remove(na)
++                ovn_default_acls.remove(ovn_a)
++
++                # At this point we can reuse ovn_a uuid for acl update
++                na['uuid'] = ovn_a.get('uuid')
++
++                # If no logs found for all security group,
++                # we can skip log fetch for default acls
++                if sg_log_map:
++                    # Fetch acl_name and target_log
++                    # Try to find match log if name is set.
++                    acl_name = next(iter(ovn_a.get("name")), None)
++                    target_log = None
++                    if acl_name:
++                        # check ovn acl name is valid
++                        for logs in sg_log_map.values():
++                            if acl_name in logs:
++                                target_log = logs.get(acl_name)
++                                break
++                    log_attrs = _fetch_default_log_attrs(
++                        acl_name,
++                        target_log,
++                        na_action=na.get("action"),
++                        oa_label=ovn_a.get("label", None)
++                    )
++                else:
++                    log_attrs = {"label": 0, "options": {}} if (
++                        is_support_label) else {}
++                # Update neutron acl with log related attributes
++                na.update(log_attrs)
++                if any(item not in na.items() for item in ovn_a.items()):
++                    # needs update this acl
++                    update_acls.append(na)
++        # Add logs attrs acls in neutron_default_acls
++        for nda in neutron_default_acls:
++            if sg_log_map:
++                log_attrs = _fetch_default_log_attrs(
++                    acl_name=None, target_log=None,
++                    na_action=nda.get("action"), oa_label=None)
++            else:
++                log_attrs = {"label": 0, "options": {}} if (
++                    is_support_label) else {}
++            nda.update(log_attrs)
++
+         neutron_acls = add_acls + neutron_default_acls
+         ovn_acls = remove_acls + ovn_default_acls
+         num_acls_to_add = len(neutron_acls)
+         num_acls_to_remove = len(ovn_acls) + num_acls_to_remove_from_ls
+-        if num_acls_to_add or num_acls_to_remove:
++        num_acls_to_update = len(update_acls)
++        if num_acls_to_add or num_acls_to_remove or num_acls_to_update:
+             LOG.warning('ACLs to be added: %(add)d '
+-                        'ACLs to be removed: %(remove)d',
++                        'ACLs to be removed: %(remove)d '
++                        'ACLs to be update: %(update)d',
+                         {'add': num_acls_to_add,
+-                         'remove': num_acls_to_remove})
++                         'remove': num_acls_to_remove,
++                         'update': num_acls_to_update})
+ 
+         if (self.mode == ovn_const.OVN_DB_SYNC_MODE_REPAIR and
+-                (num_acls_to_add or num_acls_to_remove)):
++                (num_acls_to_add or num_acls_to_remove or num_acls_to_update)):
+             one_time_pg_resync = True
++            new_acl_update_list = []
+             while True:
+                 try:
+                     with self.ovn_api.transaction(check_error=True) as txn:
+@@ -358,6 +559,8 @@ class OvnNbSynchronizer(OvnDbSynchronizer):
+                             LOG.warning('ACL found in Neutron but not in '
+                                         'OVN NB DB for port group %s',
+                                         acla['port_group'])
++                            if 'label' in acla and acla['label'] > 0:
++                                new_acl_update_list.append(acla)
+                             txn.add(self.ovn_api.pg_acl_add(
+                                 **acla, may_exist=True))
+                 except idlutils.RowNotFound as row_err:
+@@ -394,6 +597,35 @@ class OvnNbSynchronizer(OvnDbSynchronizer):
+                                     'Switch %s', aclr[0])
+                         txn.add(self.ovn_api.acl_del(aclr[0]))
+ 
++                for aclu in update_acls:
++                    acl_uuid = aclu.pop('uuid')
++                    aclu.pop('port_group', None)
++                    sgr_id = aclu.pop(ovn_const.OVN_SG_RULE_EXT_ID_KEY, None)
++                    if sgr_id:
++                        aclu['external_ids'] = aclu.get(
++                            'external_ids', {}
++                        ).update({ovn_const.OVN_SG_RULE_EXT_ID_KEY: sgr_id})
++
++                    txn.add(self.ovn_api.db_set(
++                        "ACL", acl_uuid, *aclu.items()))
++
++                # fetch uuid for new_acl_update_list so we can
++                # update it's options and label is required.
++                if is_support_label and new_acl_update_list:
++                    ovn_acls = self._get_acls_from_port_groups()
++                    for aclu in new_acl_update_list:
++                        n_id = aclu[ovn_const.OVN_SG_RULE_EXT_ID_KEY]
++                        for oa in ovn_acls:
++                            o_id = oa.get(ovn_const.OVN_SG_RULE_EXT_ID_KEY)
++                            if n_id == o_id:
++                                acl_uuid = oa.get('uuid')
++                                txn.add(self.ovn_api.db_set(
++                                    "ACL", acl_uuid,
++                                    ('label', aclu['label']),
++                                    ('options', aclu['options'])
++                                ))
++                                break
++
+         LOG.debug('OVN-NB Sync ACLs completed @ %s', str(datetime.now()))
+ 
+     def _calculate_routes_differences(self, ovn_routes, db_routes):
+diff --git a/neutron/tests/functional/plugins/ml2/drivers/ovn/mech_driver/ovsdb/test_ovn_db_sync.py b/neutron/tests/functional/plugins/ml2/drivers/ovn/mech_driver/ovsdb/test_ovn_db_sync.py
+index 19478d1844..cc53ce137a 100644
+--- a/neutron/tests/functional/plugins/ml2/drivers/ovn/mech_driver/ovsdb/test_ovn_db_sync.py
++++ b/neutron/tests/functional/plugins/ml2/drivers/ovn/mech_driver/ovsdb/test_ovn_db_sync.py
+@@ -1080,7 +1080,7 @@ class TestOvnNbSync(testlib_api.MySQLTestCaseMixin,
+ 
+     @staticmethod
+     def _build_acl_for_pgs(priority, direction, log, name, action,
+-                           severity, match, port_group, **kwargs):
++                           severity, match, meter, port_group, **kwargs):
+         return {
+             'priority': priority,
+             'direction': direction,
+@@ -1089,7 +1089,11 @@ class TestOvnNbSync(testlib_api.MySQLTestCaseMixin,
+             'action': action,
+             'severity': severity,
+             'match': match,
+-            'external_ids': kwargs}
++            'meter': meter,
++            'external_ids': kwargs,
++            'options': {},
++            'label': 0,
++        }
+ 
+     def _validate_dhcp_opts(self, should_match=True):
+         observed_plugin_dhcp_options_rows = []
+diff --git a/neutron/tests/unit/common/ovn/test_acl.py b/neutron/tests/unit/common/ovn/test_acl.py
+index ee9eeb68b3..21e3734896 100644
+--- a/neutron/tests/unit/common/ovn/test_acl.py
++++ b/neutron/tests/unit/common/ovn/test_acl.py
+@@ -60,6 +60,7 @@ class TestACLs(base.BaseTestCase):
+                         'lport': self.fake_port['id'],
+                         'lswitch': 'neutron-network_id1',
+                         'match': 'outport == "fake_port_id1" && ip',
++                        'meter': [],
+                         'priority': 1001}
+         acl_from_lport = {'action': 'drop', 'direction': 'from-lport',
+                           'external_ids': {'neutron:lport':
+@@ -68,6 +69,7 @@ class TestACLs(base.BaseTestCase):
+                           'lport': self.fake_port['id'],
+                           'lswitch': 'neutron-network_id1',
+                           'match': 'inport == "fake_port_id1" && ip',
++                          'meter': [],
+                           'priority': 1001}
+         for acl in acls:
+             if 'to-lport' in acl.values():
+diff --git a/neutron/tests/unit/plugins/ml2/drivers/ovn/mech_driver/ovsdb/test_ovn_db_sync.py b/neutron/tests/unit/plugins/ml2/drivers/ovn/mech_driver/ovsdb/test_ovn_db_sync.py
+index 01fc25585d..9876d79a46 100644
+--- a/neutron/tests/unit/plugins/ml2/drivers/ovn/mech_driver/ovsdb/test_ovn_db_sync.py
++++ b/neutron/tests/unit/plugins/ml2/drivers/ovn/mech_driver/ovsdb/test_ovn_db_sync.py
+@@ -22,6 +22,7 @@ from neutron.common.ovn import constants as ovn_const
+ from neutron.plugins.ml2.drivers.ovn.mech_driver.ovsdb import impl_idl_ovn
+ from neutron.plugins.ml2.drivers.ovn.mech_driver.ovsdb import ovn_client
+ from neutron.plugins.ml2.drivers.ovn.mech_driver.ovsdb import ovn_db_sync
++from neutron.services.logapi.common import db_api as log_db_api
+ from neutron.services.ovn_l3 import plugin as ovn_plugin
+ from neutron.tests.unit import fake_resources as fakes
+ from neutron.tests.unit.plugins.ml2.drivers.ovn.mech_driver import \
+@@ -142,23 +143,94 @@ class TestOvnNbSyncML2(test_mech_driver.OVNMechanismDriverTestCase):
+                                        'id': 'ruleid1',
+                                        'security_group_id': 'sg2'}],
+              'name': 'all-tcpe'}]
++        self.get_security_group_rules = [
++            [{'id': 'sgr1'}, {'id': 'sgr3'}],
++            [{'id': 'sgr2'}],
++        ]
++        self.add_sgr_acl_for_pg = [
++            {'port_group': 'pg_sg1', 'priority': 1001,
++             'action': 'drop', 'name': ['neutron-log_id1'], 'severity': [],
++             'log': True, 'neutron:security_group_rule_id': 'sgr3',
++             'direction': 'to-lport',
++             'match': 'inport == @neutron_pg_sg1 && ip',
++             'meter': ['acl_log_meter']},
++            {'port_group': 'pg_sg1', 'priority': 1001,
++             'action': 'drop', 'name': ['neutron-log_id1'], 'severity': [],
++             'log': True, 'neutron:security_group_rule_id': 'sgr1',
++             'direction': 'from-lport',
++             'match': 'inport == @neutron_pg_sg1 && ip',
++             'meter': ['acl_log_meter']},
++            {'port_group': 'pg_sg2', 'priority': 1001,
++             'action': 'drop', 'name': [], 'severity': [],
++             'log': False, 'neutron:security_group_rule_id': 'sgr2',
++             'direction': 'from-lport',
++             'match': 'inport == @neutron_pg_sg2 && ip',
++             'meter': []},
++        ]
+ 
+         self.sg_port_groups_ovn = [mock.Mock(), mock.Mock(), mock.Mock()]
+         self.sg_port_groups_ovn[0].configure_mock(
+             name='pg_sg1',
+             external_ids={ovn_const.OVN_SG_EXT_ID_KEY: 'sg1'},
+             ports=[],
+-            acls=[])
++            acls=[
++                mock.MagicMock(uuid='acl_uuid1', priority=1001,
++                               action='drop',
++                               name=[], severity=[], direction='from-lport',
++                               match='inport == @neutron_pg_sg1 && ip',
++                               external_ids={
++                                   'neutron:security_group_rule_id': 'sgr1'},
++                               options={'log-related': "true"},
++                               log=False, meter=['acl_log_meter'], label=0),
++                mock.MagicMock(uuid='acl_uuid2', priority=1001,
++                               action='accept',
++                               name=[], severity=[], direction='from-lport',
++                               match='inport == @neutron_pg_sg1 && ip',
++                               external_ids={
++                                   'neutron:security_group_rule_id': 'sgr33'},
++                               options={'log-related': "true"},
++                               log=False, meter=['acl_log_meter'], label=0),
++            ])
+         self.sg_port_groups_ovn[1].configure_mock(
+             name='pg_unknown_del',
+             external_ids={ovn_const.OVN_SG_EXT_ID_KEY: 'sg2'},
+             ports=[],
+-            acls=[])
++            acls=[
++                mock.MagicMock(uuid='acl_uuid3', priority=1001,
++                               action='accept',
++                               name=[], severity=[], direction='from-lport',
++                               match='inport == @neutron_pg_sg1 && ip',
++                               external_ids={
++                                   'neutron:security_group_rule_id': 'sgr2'},
++                               options={'log-related': "true"},
++                               log=False, meter=['acl_log_meter'], label=0),
++            ])
+         self.sg_port_groups_ovn[2].configure_mock(
+             name='neutron_pg_drop',
+             external_ids=[],
+             ports=[],
+-            acls=[])
++            acls=[
++                mock.MagicMock(uuid='acl_uuid4', priority=1002, action='drop',
++                               name=[], severity=[], direction='to-lport',
++                               match='outport == @neutron_pg_drop && ip',
++                               external_ids={},
++                               options={'log-related': "true"},
++                               log=False, meter=['acl_log_meter'], label=0),
++                mock.MagicMock(uuid='acl_uuid5', priority=1002, action='all',
++                               name=[], severity=[], direction='to-lport',
++                               match='outport == @neutron_pg_drop && ip',
++                               external_ids={},
++                               options={'log-related': "true"},
++                               log=False, meter=['acl_log_meter'], label=0),
++            ])
++
++        self.get_logs_bound_sg = [
++            [
++                mock.Mock(id='log_id1', enabled=True, event='drop'),
++                mock.Mock(id='log_id2', enabled=True, event='accept')
++            ],
++            [],
++        ]
+ 
+         self.ports = [
+             {'id': 'p1n1',
+@@ -441,6 +513,12 @@ class TestOvnNbSyncML2(test_mech_driver.OVNMechanismDriverTestCase):
+         ovn_nb_synchronizer.get_acls.return_value = self.acls_ovn
+         core_plugin.get_security_groups = mock.MagicMock(
+             return_value=self.security_groups)
++        core_plugin.get_security_group_rules = mock.MagicMock(
++            side_effect=self.get_security_group_rules)
++
++        mock.patch.object(acl, '_add_sg_rule_acl_for_port_group',
++                          side_effect=self.add_sgr_acl_for_pg).start()
++
+         get_sg_port_groups = mock.MagicMock()
+         get_sg_port_groups.execute.return_value = self.sg_port_groups_ovn
+         ovn_api.db_list_rows.return_value = get_sg_port_groups
+@@ -564,6 +642,14 @@ class TestOvnNbSyncML2(test_mech_driver.OVNMechanismDriverTestCase):
+             [self.get_sync_router_ports[2]],
+         )
+ 
++        ovn_api._tables['ACL'].columns = mock.Mock(
++            keys=mock.Mock(
++                return_value=set(ovn_const.ACL_EXPECTED_COLUMNS_NBDB)
++            )
++        )
++        mock.patch.object(log_db_api, 'get_logs_bound_sg',
++                          side_effect=self.get_logs_bound_sg).start()
++
+     def _test_ovn_nb_sync_helper(self, ovn_nb_synchronizer,
+                                  networks, ports,
+                                  routers, router_ports,
+@@ -580,7 +666,13 @@ class TestOvnNbSyncML2(test_mech_driver.OVNMechanismDriverTestCase):
+                                  delete_dhcp_options_list,
+                                  add_port_groups_list,
+                                  del_port_groups_list,
+-                                 create_metadata_list):
++                                 create_metadata_list,
++                                 get_logs_bound_sg=None,
++                                 check_pg_acl=False,
++                                 pg_acl_add_list=None,
++                                 pg_acl_del_list=None,
++                                 db_set_list=None,
++                                 ):
+         self._test_mocks_helper(ovn_nb_synchronizer)
+ 
+         ovn_api = ovn_nb_synchronizer.ovn_api
+@@ -764,8 +856,99 @@ class TestOvnNbSyncML2(test_mech_driver.OVNMechanismDriverTestCase):
+         ovn_api.delete_dhcp_options.assert_has_calls(
+             delete_dhcp_options_calls, any_order=True)
+ 
+-    def test_ovn_nb_sync_mode_repair(self):
++        if not get_logs_bound_sg:
++            get_logs_bound_sg = []
++        self.assertEqual(log_db_api.get_logs_bound_sg.call_count,
++                         len(get_logs_bound_sg))
++        get_logs_bound_sg_calls = [
++            mock.call(mock.ANY, sg_id=sg_id)
++            for sg_id in get_logs_bound_sg]
++        log_db_api.get_logs_bound_sg.assert_has_calls(
++            get_logs_bound_sg_calls, any_order=True)
++
++        if check_pg_acl:
++            if not pg_acl_add_list:
++                pg_acl_add_list = []
++            self.assertEqual(ovn_api.pg_acl_add.call_count,
++                             len(pg_acl_add_list))
++            # pg_acl_add_list might contains special argument name
++            # like `neutron:security_group_rule_id`.
++            # Thus uses enumerate compare.
++            for index, args in enumerate(pg_acl_add_list):
++                call_kwargs = ovn_api.pg_acl_add.call_args_list[index].kwargs
++                for key in args:
++                    self.assertEqual(args[key], call_kwargs[key])
++            if not pg_acl_del_list:
++                pg_acl_del_list = []
++            self.assertEqual(ovn_api.pg_acl_del.call_count,
++                             len(pg_acl_del_list))
++            pg_acl_del_calls = pg_acl_del_list
++            ovn_api.pg_acl_del.assert_has_calls(
++                pg_acl_del_calls, any_order=True)
++
++            if not db_set_list:
++                db_set_list = []
++            self.assertEqual(ovn_api.db_set.call_count,
++                             len(db_set_list))
++            db_set_calls = db_set_list
++            ovn_api.db_set.assert_has_calls(
++                db_set_calls, any_order=True)
+ 
++    def test_ovn_nb_sync_mode_repair(self):
++        check_pg_acl = True
++        pg_acl_add_list = [
++            {'port_group': 'pg_sg1', 'priority': 1001,
++             'action': 'drop', 'name': ['neutron-log_id1'],
++             'severity': ['info'], 'log': True,
++             'neutron:security_group_rule_id': 'sgr3',
++             'direction': 'to-lport',
++             'match': 'inport == @neutron_pg_sg1 && ip',
++             'meter': ['acl_log_meter'],
++             'options': {'log-related': 'true'},
++             'may_exist': True
++             },
++            {'port_group': 'neutron_pg_drop',
++             'priority': 1001, 'action': 'drop', 'log': True,
++             'name': ['neutron-log_id1'], 'severity': ['info'],
++             'direction': 'from-lport',
++             'match': 'inport == @neutron_pg_drop && ip',
++             'meter': ['acl_log_meter'], 'may_exist': True
++             }
++        ]
++        pg_acl_del_list = [
++            mock.call('pg_sg1', 'from-lport', 1001,
++                      'inport == @neutron_pg_sg1 && ip'),
++            mock.call('neutron_pg_drop', 'to-lport', 1002,
++                      'outport == @neutron_pg_drop && ip')
++        ]
++        db_set_list = [
++            mock.call(
++                'ACL', 'acl_uuid1',
++                ('priority', 1001),
++                ('action', 'drop'),
++                ('name', ['neutron-log_id1']),
++                ('severity', ['info']), ('log', True),
++                ('direction', 'from-lport'),
++                ('match', 'inport == @neutron_pg_sg1 && ip'),
++                ('meter', ['acl_log_meter']),
++                ('label', mock.ANY),
++                ('options', {'log-related': 'true'}),
++                ('external_ids', None)),
++            mock.call(
++                'ACL', 'acl_uuid3', ('priority', 1001), ('action', 'drop'),
++                ('name', []), ('severity', []), ('log', False),
++                ('direction', 'from-lport'),
++                ('match', 'inport == @neutron_pg_sg2 && ip'), ('meter', []),
++                ('label', 0), ('options', {}), ('external_ids', None)),
++            mock.call(
++                'ACL', 'acl_uuid4', ('priority', 1001), ('action', 'drop'),
++                ('log', True), ('name', ['neutron-log_id1']),
++                ('severity', ['info']), ('direction', 'to-lport'),
++                ('match', 'outport == @neutron_pg_drop && ip'),
++                ('meter', ['acl_log_meter']), ('label', mock.ANY),
++                ('options', {'log-related': 'true'}))]
++
++        get_logs_bound_sg = ['sg1', 'sg2']
+         create_network_list = [{'net': {'id': 'n2', 'mtu': 1450},
+                                 'ext_ids': {}}]
+         del_network_list = ['neutron-n3']
+@@ -892,9 +1075,20 @@ class TestOvnNbSyncML2(test_mech_driver.OVNMechanismDriverTestCase):
+                                       delete_dhcp_options_list,
+                                       add_port_groups_list,
+                                       del_port_groups_list,
+-                                      create_metadata_list)
++                                      create_metadata_list,
++                                      get_logs_bound_sg,
++                                      check_pg_acl=check_pg_acl,
++                                      pg_acl_add_list=pg_acl_add_list,
++                                      pg_acl_del_list=pg_acl_del_list,
++                                      db_set_list=db_set_list,
++                                      )
+ 
+     def test_ovn_nb_sync_mode_log(self):
++        check_pg_acl = True
++        pg_acl_add_list = []
++        pg_acl_del_list = []
++        db_set_list = []
++        get_logs_bound_sg = ['sg1', 'sg2']
+         create_network_list = []
+         create_port_list = []
+         create_provnet_port_list = []
+@@ -942,7 +1136,13 @@ class TestOvnNbSyncML2(test_mech_driver.OVNMechanismDriverTestCase):
+                                       delete_dhcp_options_list,
+                                       add_port_groups_list,
+                                       del_port_groups_list,
+-                                      create_metadata_list)
++                                      create_metadata_list,
++                                      get_logs_bound_sg,
++                                      check_pg_acl=check_pg_acl,
++                                      pg_acl_add_list=pg_acl_add_list,
++                                      pg_acl_del_list=pg_acl_del_list,
++                                      db_set_list=db_set_list,
++                                      )
+ 
+     def _test_ovn_nb_sync_calculate_routes_helper(self,
+                                                   ovn_routes,
+diff --git a/releasenotes/notes/fix-network-log-with-ovn-db-sync-2fe57474079c40a1.yaml b/releasenotes/notes/fix-network-log-with-ovn-db-sync-2fe57474079c40a1.yaml
+new file mode 100644
+index 0000000000..66e258ace8
+--- /dev/null
++++ b/releasenotes/notes/fix-network-log-with-ovn-db-sync-2fe57474079c40a1.yaml
+@@ -0,0 +1,15 @@
++---
++fixes:
++  - |
++    Fix running neutron-ovn-db-sync-util when OVN network log resources exist.
++    The command workflow did not consider log resources, which caused ACLs
++    related to the neutron_pg_drop rule to get deleted during sync. For more
++    information see
++    `bug 2107925 <https://bugs.launchpad.net/neutron/+bug/2107925>`_.
++    Additionally, we changed to update ACLs instead of recreate one if
++    possible. With using update instead of recreate for ACLs,
++    we're able to easier sync optional columns like `options` and `label`
++    without recreate entire ACL. Also reduce risk to lost ACL for pgs
++    like in
++    `bug 2107925 <https://bugs.launchpad.net/neutron/+bug/2107925>`_.
++...
+-- 
+2.25.1
+
