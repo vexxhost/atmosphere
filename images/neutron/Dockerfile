@@ -3,12 +3,6 @@
 # Atmosphere-Rebuild-Time: 2025-01-24T11:51:19Z
 
 FROM openstack-venv-builder AS build
-# renovate: name=openstack/neutron repo=https://opendev.org/openstack/neutron.git branch=master
-ARG NEUTRON_GIT_REF=9112672da6a6269e18e4f6a36211b732aed81575
-ADD --keep-git-dir=true https://opendev.org/openstack/neutron.git#${NEUTRON_GIT_REF} /src/neutron
-RUN git -C /src/neutron fetch --unshallow
-COPY patches/neutron /patches/neutron
-RUN git -C /src/neutron apply --verbose /patches/neutron/*
 # renovate: name=openstack/neutron-dynamic-routing repo=https://opendev.org/openstack/neutron-dynamic-routing.git branch=master
 ARG NEUTRON_DYNAMIC_ROUTING_GIT_REF=014f0443a1a0cb4def107d6de4389275161b52ff
 ADD --keep-git-dir=true https://opendev.org/openstack/neutron-dynamic-routing.git#${NEUTRON_DYNAMIC_ROUTING_GIT_REF} /src/neutron-dynamic-routing
@@ -33,7 +27,9 @@ RUN git -C /src/neutron-policy-server fetch --unshallow
 ARG LOG_PASER_GIT_REF=3895d8f9d004e612c71b4f798d31c758e113946b
 ADD --keep-git-dir=true https://github.com/vexxhost/neutron-ovn-network-logging-parser.git#${LOG_PASER_GIT_REF} /src/neutron-ovn-network-logging-parser
 RUN git -C /src/neutron-ovn-network-logging-parser fetch --unshallow
-RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe
+RUN \
+  --mount=type=bind,from=neutron-source,source=/,target=/src/neutron,readwrite \
+  --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe
 uv pip install \
     --constraint /upper-constraints.txt \
         /src/neutron \
