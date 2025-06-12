@@ -208,6 +208,37 @@ target "python-openstackclient" {
     ]
 }
 
+target "neutron-source" {
+    context = "images/source-patch"
+    target = "unshallow"
+    platforms = ["linux/amd64", "linux/arm64"]
+
+    contexts = {
+        "git" = "https://opendev.org/openstack/neutron.git#c45a27ee6739743509ad6e83079d9a90f8fa497a" # renovate: branch=master
+        "patches" = "patches/openstack/neutron"
+    }
+}
+
+target "neutron" {
+    context = "images/neutron"
+    platforms = ["linux/amd64", "linux/arm64"]
+
+    args = {
+        PROJECT = "neutron"
+    }
+
+    contexts = {
+        "neutron-source" = "target:neutron-source"
+        "openstack-python-runtime" = "target:openstack-python-runtime"
+        "openstack-venv-builder" = "target:openstack-venv-builder"
+        "ovsinit" = "target:ovsinit"
+    }
+
+    tags = [
+        "${REGISTRY}/neutron:${TAG}"
+    ]
+}
+
 target "openstack" {
     name = "openstack-${service}"
     matrix = {
@@ -222,7 +253,6 @@ target "openstack" {
             "keystone",
             "magnum",
             "manila",
-            "neutron",
             "nova",
             "octavia",
             "ovn-bgp-agent",
@@ -256,6 +286,7 @@ group "default" {
         "keepalived",
         "libvirtd",
         "netoffload",
+        "neutron",
         "nova-ssh",
         "openstack-barbican",
         "openstack-cinder",
@@ -267,7 +298,6 @@ group "default" {
         "openstack-keystone",
         "openstack-magnum",
         "openstack-manila",
-        "openstack-neutron",
         "openstack-nova",
         "openstack-octavia",
         "openstack-ovn-bgp-agent",
