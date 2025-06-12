@@ -6,6 +6,10 @@ _keycloak_ingress_annotations:
 
 _keycloak_helm_values:
   replicaCount: 3
+  # NOTE(fitbeard): Overriding Bitnami default which is 'Parallel'
+  # https://github.com/keycloak/keycloak/issues/21108
+  # https://github.com/keycloak/keycloak/issues/28454
+  podManagementPolicy: OrderedReady
   # NOTE(mnaser): These workarounds below are needed to allow the Bitnami Helm chart to work with
   #               the upstream image.
   enableDefaultInitContainers: false

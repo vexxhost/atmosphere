@@ -53,6 +53,31 @@
     login_password: "{{ openstack_helm_endpoints.oslo_db.auth.admin.password }}"
     query: "set global pxc_strict_mode='PERMISSIVE'"
 
+- name: Check if Keycloak StatefulSet already installed
+  run_once: true
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: StatefulSet
+    name: "{{ keycloak_helm_release_name }}"
+    namespace: "{{ keycloak_helm_release_namespace }}"
+  register: _keycloak_sts_current
+
+- name: Set fact about current podManagementPolicy
+  run_once: true
+  ansible.builtin.set_fact:
+    _keycloak_pod_policy: "{{ _keycloak_sts_current.resources[0].spec.podManagementPolicy | default('') }}"
+
+- name: Delete Keycloak StatefulSet if podManagementPolicy is set to Parallel
+  run_once: true
+  kubernetes.core.k8s:
+    api_version: apps/v1
+    kind: StatefulSet
+    name: "{{ keycloak_helm_release_name }}"
+    namespace: "{{ keycloak_helm_release_namespace }}"
+    state: absent
+  register: _keycloak_sts_delete
+  when: _keycloak_pod_policy == 'Parallel'
+
 - name: Deploy Helm chart
   run_once: true
   kubernetes.core.helm:
@@ -64,8 +89,10 @@
     wait: true
     timeout: 10m
     values: "{{ _keycloak_helm_values | combine(keycloak_helm_values, recursive=True) }}"
+    force: "{{ _keycloak_sts_delete.changed }}"
 
-- name: Wait until keycloak ready
+- name: Wait until Keycloak ready
+  run_once: true
   kubernetes.core.k8s_info:
     api_version: apps/v1
     kind: StatefulSet
