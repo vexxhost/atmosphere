@@ -1,0 +1,13 @@
+fixes:
+  - |
+    In an OVN deployment where external (baremetal) ports connect to VLAN
+    networks, you need to bind the internal router port associated with
+    the network to the same `ha_chassis_group` as the network. This setup
+    mimics how the external port of the router functions in relation to
+    the upstream gateway.
+
+    In essence, the baremetal ports aren't able to communicate with their
+    default gateway if either the internal router port is unbound or if
+    the vrouter doesn't have an external gateway set, with the external
+    router port bound to the same exact chassis and with the same exact
+    priorities as the `ha_chassis_group` of the VLAN network.
