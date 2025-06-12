@@ -4,7 +4,7 @@
 
 FROM openstack-venv-builder AS build
 # renovate: name=openstack/nova repo=https://opendev.org/openstack/nova.git branch=unmaintained/zed
-ARG NOVA_GIT_REF=ba71dc50dbba82bbdecb845afea67ad2275897ec
+ARG NOVA_GIT_REF=200d375b320af489938eb776ee9db9c4f68b3fab
 ADD --keep-git-dir=true https://opendev.org/openstack/nova.git#${NOVA_GIT_REF} /src/nova
 RUN git -C /src/nova fetch --unshallow
 COPY patches/nova /patches/nova
