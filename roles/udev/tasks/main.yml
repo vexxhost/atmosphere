@@ -8,12 +8,6 @@
     owner: root
     group: root
     mode: "0644"
-  when: >
-    cinder_helm_values['conf']['backends'] is defined and
-    (cinder_helm_values['conf']['backends'] | dict2items |
-    selectattr('value.volume_driver', 'defined') |
-    selectattr('value.volume_driver', 'equalto', 'cinder.volume.drivers.pure.PureISCSIDriver') |
-    list | length > 0)
   notify: Reload udev
 
 - name: Add udev rules for SCSI Unit Attention
@@ -23,7 +17,4 @@
     owner: root
     group: root
     mode: "0644"
-  when: >
-    cinder_helm_values['conf'] is defined and
-    cinder_helm_values['conf']['enable_iscsi'] | default(false) | bool
   notify: Reload udev
