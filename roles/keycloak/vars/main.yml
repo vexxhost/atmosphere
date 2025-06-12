@@ -1,21 +1,15 @@
-# Copyright (c) 2022 VEXXHOST, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"); you may
-# not use this file except in compliance with the License. You may obtain
-# a copy of the License at
-#
-#      http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-# License for the specific language governing permissions and limitations
-# under the License.
+# Copyright (c) 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
 
 _keycloak_ingress_annotations:
   cert-manager.io/cluster-issuer: "{{ keycloak_ingress_cluster_issuer }}"
 
 _keycloak_helm_values:
+  replicaCount: 3
+  # NOTE(fitbeard): Overriding Bitnami default which is 'Parallel'
+  # https://github.com/keycloak/keycloak/issues/21108
+  # https://github.com/keycloak/keycloak/issues/28454
+  podManagementPolicy: OrderedReady
   # NOTE(mnaser): These workarounds below are needed to allow the Bitnami Helm chart to work with
   #               the upstream image.
   enableDefaultInitContainers: false
@@ -41,6 +35,12 @@ _keycloak_helm_values:
         secretKeyRef:
           key: db-password
           name: keycloak-externaldb
+    - name: JAVA_OPTS_APPEND
+      value: "-Djgroups.dns.query=keycloak-headless.{{ keycloak_helm_release_namespace }}.svc"
+    - name: KC_CACHE_STACK
+      value: kubernetes
+    - name: KC_CACHE
+      value: ispn
   command:
     - /opt/keycloak/bin/kc.sh
     - --verbose
@@ -70,6 +70,17 @@ _keycloak_helm_values:
     enabled: false
   production: true
   proxy: edge
+  cache:
+    enabled: true
+  service:
+    headless:
+      extraPorts:
+        - name: infinispan
+          port: 7800
+          protocol: TCP
+          # NOTE(fitbeard): Name 'discovery' and port 7800
+          # are hardcoded in the 'statefulset.yaml' template
+          targetPort: discovery
   startupProbe:
     enabled: true
     initialDelaySeconds: 5
