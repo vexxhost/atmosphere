@@ -44,7 +44,7 @@ target "ovsinit" {
 
     contexts = {
         "runtime" = "docker-image://docker.io/library/debian:bullseye-slim"
-        "rust" = "docker-image://docker.io/library/rust:1.86-bullseye"
+        "rust" = "docker-image://docker.io/library/rust:1.87-bullseye"
         "src" = "./crates/ovsinit"
     }
 }
