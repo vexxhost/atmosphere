@@ -1,0 +1,79 @@
+From dc142ec17910ebb0855f9cc21b77af2c554a7bbe Mon Sep 17 00:00:00 2001
+From: Afonne-CID <afonnepaulc@gmail.com>
+Date: Tue, 03 Jun 2025 23:14:10 +0100
+Subject: [PATCH] Cast numeric Netmiko kwargs to native types.
+
+Convert port/timeout options from str to int/float,
+fixing type errors raised by ConnectHandler.
+
+Closes-Bug: #2110111
+Change-Id: I9a4a1f857d2ace7c87cfbd6ed56356c1ed227caf
+Signed-off-by: Afonne-CID <afonnepaulc@gmail.com>
+(cherry picked from commit d26adb822d2cd006e9fabe89a31359e416ee7bce)
+---
+
+diff --git a/networking_generic_switch/devices/netmiko_devices/__init__.py b/networking_generic_switch/devices/netmiko_devices/__init__.py
+index a028b29..f53c379 100644
+--- a/networking_generic_switch/devices/netmiko_devices/__init__.py
++++ b/networking_generic_switch/devices/netmiko_devices/__init__.py
+@@ -119,6 +119,31 @@
+             self.config['session_log_record_writes'] = True
+             self.config['session_log_file_mode'] = 'append'
+ 
++        _NUMERIC_CAST = {
++            "port": int,
++            "global_delay_factor": float,
++            "conn_timeout": float,
++            "auth_timeout": float,
++            "banner_timeout": float,
++            "blocking_timeout": float,
++            "timeout": float,
++            "session_timeout": float,
++            "read_timeout_override": float,
++            "keepalive": int,
++        }
++
++        for key, expected_type in _NUMERIC_CAST.items():
++            value = self.config.get(key)
++            if isinstance(value, str):
++                try:
++                    self.config[key] = expected_type(value)
++                except ValueError:
++                    LOG.error(
++                        "Invalid value %s for %s; expected %s",
++                        value, key, expected_type.__name__,
++                    )
++                    raise exc.GenericSwitchNetmikoConfigError()
++
+         self.lock_kwargs = {
+             'locks_pool_size': int(self.ngs_config['ngs_max_connections']),
+             'locks_prefix': self.config.get(
+diff --git a/networking_generic_switch/tests/unit/test_devices.py b/networking_generic_switch/tests/unit/test_devices.py
+index 7587837..ac0567c 100644
+--- a/networking_generic_switch/tests/unit/test_devices.py
++++ b/networking_generic_switch/tests/unit/test_devices.py
+@@ -218,3 +218,24 @@
+             "ciphers": ["blowfish-cbc", "3des-cbc"],
+         }
+         self.assertEqual(expected, algos)
++
++    def test_float_params_cast(self):
++        config = {
++            "device_type": 'netmiko_ovs_linux',
++            "ip": "10.1.2.3",
++            "username": "u",
++            "password": "p",
++            "conn_timeout": "20.0",
++            "global_delay_factor": "2.5",
++            "port": "2222",
++        }
++        device = devices.device_manager(config)
++
++        self.assertIsInstance(device.config["conn_timeout"], float)
++        self.assertEqual(device.config["conn_timeout"], 20.0)
++
++        self.assertIsInstance(device.config["global_delay_factor"], float)
++        self.assertEqual(device.config["global_delay_factor"], 2.5)
++
++        self.assertIsInstance(device.config["port"], int)
++        self.assertEqual(device.config["port"], 2222)
