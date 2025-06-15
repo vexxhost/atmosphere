@@ -4,11 +4,11 @@
 
 FROM openstack-venv-builder AS build
 # renovate: name=openstack/octavia repo=https://opendev.org/openstack/octavia.git branch=master
-ARG OCTAVIA_GIT_REF=84f512687a6a1995378bfc5b13753ef4a145601c
+ARG OCTAVIA_GIT_REF=2fb6ba9343e39f60f058a781afd14b906dd84daa
 ADD --keep-git-dir=true https://opendev.org/openstack/octavia.git#${OCTAVIA_GIT_REF} /src/octavia
 RUN git -C /src/octavia fetch --unshallow
 # renovate: name=openstack/ovn-octavia-provider repo=https://opendev.org/openstack/ovn-octavia-provider.git branch=master
-ARG OVN_OCTAVIA_PROVIDER_GIT_REF=502c6d154d8e8c15ca598328aaf309479b06307b
+ARG OVN_OCTAVIA_PROVIDER_GIT_REF=ad1dbaf8766ad1ea026f08805478695de365560a
 ADD --keep-git-dir=true https://opendev.org/openstack/ovn-octavia-provider.git#${OVN_OCTAVIA_PROVIDER_GIT_REF} /src/ovn-octavia-provider
 RUN git -C /src/ovn-octavia-provider fetch --unshallow
 RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe
