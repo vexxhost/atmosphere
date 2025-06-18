@@ -20,10 +20,10 @@ uv pip install \
 EOF
 ADD --chmod=644 \
     https://github.com/storpool/storpool-openstack-integration/raw/master/drivers/cinder/openstack/caracal/storpool.py \
-    /var/lib/openstack/lib/python3.10/site-packages/cinder/volume/drivers/storpool.py
+    /var/lib/openstack/lib/python3.12/site-packages/cinder/volume/drivers/storpool.py
 ADD --chmod=644 \
     https://github.com/storpool/storpool-openstack-integration/raw/master/drivers/os_brick/openstack/caracal/storpool.py \
-    /var/lib/openstack/lib/python3.10/site-packages/os_brick/initiator/connectors/storpool.py
+    /var/lib/openstack/lib/python3.12/site-packages/os_brick/initiator/connectors/storpool.py
 
 FROM openstack-python-runtime
 RUN <<EOF bash -xe
