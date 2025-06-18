@@ -32,6 +32,23 @@
     openstack_helm_ingress_annotations: "{{ _glance_ingress_annotations | combine(glance_ingress_annotations) }}"
     openstack_helm_ingress_class_name: "{{ glance_ingress_class_name }}"
 
+- name: Check glance log
+  run_once: true
+  ansible.builtin.command:
+    cmd: kubectl -n openstack logs service/glance-api
+  register: log
+  retries: 60
+  delay: 1
+  until: log is not failed
+
+- name: Check glance log
+  ansible.builtin.debug:
+    msg: "{{ log }}"
+
+- name: Check glance log2
+  ansible.builtin.debug:
+    msg: "{{ log.stdout_lines }}"
+
 - name: Create images
   ansible.builtin.include_role:
     name: glance_image
