@@ -62,6 +62,7 @@
   environment:
     CEPH_CONTAINER_IMAGE: "{{ cephadm_image | default('quay.io/ceph/ceph:v' + (ceph_version | default('18.2.7'))) }}"
     CEPH_CONTAINER_BINARY: docker
+    ENABLE_TURBO_MODE: "true"
 
 - name: Configure operating system
   hosts: controllers:computes
@@ -100,6 +101,8 @@
     - role: ovn
       tags:
         - ovn
+  environment:
+    ENABLE_TURBO_MODE: "true"
 
 - hosts: controllers[0]
   become: true
@@ -150,6 +153,8 @@
     - role: openstack_exporter
       tags:
         - openstack-exporter
+  environment:
+    ENABLE_TURBO_MODE: "true"
 
 - hosts: controllers
   become: true
