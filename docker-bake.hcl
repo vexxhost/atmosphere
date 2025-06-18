@@ -34,7 +34,7 @@ target "ubuntu" {
     platforms = ["linux/amd64", "linux/arm64"]
 
     contexts = {
-        "ubuntu" = "docker-image://docker.io/library/ubuntu:jammy-20240227"
+        "ubuntu" = "docker-image://docker.io/library/ubuntu:noble-20250529"
     }
 }
 
