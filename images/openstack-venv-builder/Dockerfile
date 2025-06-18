@@ -39,5 +39,5 @@ uv pip install \
         pymysql \
         python-binary-memcached \
         python-memcached \
-        uwsgi
+        uwsgi==2.0.23
 EOF
