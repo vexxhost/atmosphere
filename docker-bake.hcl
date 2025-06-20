@@ -214,7 +214,7 @@ target "neutron-source" {
     platforms = ["linux/amd64", "linux/arm64"]
 
     contexts = {
-        "git" = "https://opendev.org/openstack/neutron.git#c45a27ee6739743509ad6e83079d9a90f8fa497a" # renovate: branch=master
+        "git" = "https://opendev.org/openstack/neutron.git#28ee3606e56204967e7d40142974edfcdaf7e7f9" # renovate: branch=master
         "patches" = "patches/openstack/neutron"
     }
 }
@@ -225,7 +225,7 @@ target "networking-generic-switch-source" {
     platforms = ["linux/amd64", "linux/arm64"]
 
     contexts = {
-        "git" = "https://opendev.org/openstack/networking-generic-switch.git#ced747b10e5ab7797f82a9306614c866b4398e4f" # renovate: branch=master
+        "git" = "https://opendev.org/openstack/networking-generic-switch.git#a2c59ad14d392aafa44c8cc8db7a01766d7f5320" # renovate: branch=master
         "patches" = "patches/openstack/networking-generic-switch"
     }
 }
