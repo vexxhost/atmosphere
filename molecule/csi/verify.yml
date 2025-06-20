@@ -33,6 +33,40 @@
                 storage: 5Gi
             storageClassName: general
 
+    - name: Check disk usage
+      changed_when: false
+      ansible.builtin.command:
+        cmd: "df -h"
+      register: log
+      retries: 60
+      delay: 1
+      until: log is not failed
+
+    - name: Check log
+      ansible.builtin.debug:
+        msg: "{{ log }}"
+
+    - name: Check log stdout
+      ansible.builtin.debug:
+        msg: "{{ log.stdout_lines }}"
+
+    - name: Check node usage
+      changed_when: false
+      ansible.builtin.command:
+        cmd: "kubectl describe node instance"
+      register: log_node
+      retries: 60
+      delay: 1
+      until: log_node is not failed
+
+    - name: Check log_node
+      ansible.builtin.debug:
+        msg: "{{ log_node }}"
+
+    - name: Check log_node stdout
+      ansible.builtin.debug:
+        msg: "{{ log_node.stdout_lines }}"
+
     - name: Create a pod
       kubernetes.core.k8s:
         state: present
