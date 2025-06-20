@@ -26,3 +26,47 @@
 - import_playbook: vexxhost.ceph.site
   vars:
     containerd_pause_image: "{{ atmosphere_images['pause'] }}"
+
+- hosts: "{{ target | default('all') }}"
+  become: true
+  tasks:
+    - name: Check disk usage
+      changed_when: false
+      ansible.builtin.command:
+        cmd: "df -h"
+      register: log
+      retries: 60
+      delay: 1
+      until: log is not failed
+
+    - name: Check log stdout
+      ansible.builtin.debug:
+        msg: "{{ log.stdout_lines }}"
+
+    - name: Check disk usage big file
+      ignore_errors: true
+      changed_when: false
+      ansible.builtin.command:
+        cmd: "bash -c 'set -ex; find / -size +100M -ls'"
+      register: log_big
+      retries: 5
+      delay: 1
+      until: log_big is not failed
+
+    - name: Check log stdout for big file
+      ansible.builtin.debug:
+        msg: "{{ log_big.stdout_lines }}"
+
+    - name: Check disk usage loopback dev
+      changed_when: false
+      ansible.builtin.command:
+        cmd: "losetup -a"
+      register: log_loop
+      retries: 5
+      delay: 1
+      until: log_loop is not failed
+
+    - name: Check log stdout for loopback dev
+      ansible.builtin.debug:
+        msg: "{{ log_loop.stdout_lines }}"
+
