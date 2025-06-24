@@ -26,3 +26,18 @@
 - import_playbook: vexxhost.ceph.site
   vars:
     containerd_pause_image: "{{ atmosphere_images['pause'] }}"
+
+- hosts: all
+  become: true
+  tasks:
+    - name: Ensure rbd kernel module is loaded
+      ansible.builtin.modprobe:
+        name: rbd
+        state: present
+
+    - name: Persist rbd kernel module loading on boot
+      ansible.builtin.lineinfile:
+        path: /etc/modules-load.d/rbd.conf
+        line: rbd
+        create: yes
+        state: present
