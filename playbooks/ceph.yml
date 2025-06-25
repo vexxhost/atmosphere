@@ -27,17 +27,11 @@
   vars:
     containerd_pause_image: "{{ atmosphere_images['pause'] }}"
 
-- hosts: all
-  become: true
+- hosts: "{{ target | default('all') }}"
+  gather_facts: false
   tasks:
-    - name: Ensure rbd kernel module is loaded
-      ansible.builtin.modprobe:
+    - name: Ensure RBD kernel module is loaded
+      become: true
+      community.general.modprobe:
         name: rbd
-        state: present
-
-    - name: Persist rbd kernel module loading on boot
-      ansible.builtin.lineinfile:
-        path: /etc/modules-load.d/rbd.conf
-        line: rbd
-        create: yes
-        state: present
+        persistent: present
