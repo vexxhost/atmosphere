@@ -1,0 +1,224 @@
+From ca19d40949253561aed0f1552cde9db97f56f6c4 Mon Sep 17 00:00:00 2001
+From: zhouhenglc <zhouhenglc@inspur.com>
+Date: Fri, 9 Jun 2023 10:13:16 +0800
+Subject: [PATCH 1/2] Improve ACL comparison efficiency
+
+The current comparison strategy is very time-consuming, and if
+there are hundreds of thousands of security group rules, the
+comparison time can still vary from several hours. The main
+time-consuming operations are [1].
+
+This patch is sorted first by security group rule ID and then
+compared. The execution of sorting actions is relatively fast.
+After actual measurement, the total time consumption is in the
+minute level.
+
+Partial-Bug: #2023130
+[1] https://github.com/openstack/neutron/blob/b86ca713f7d422489f2526c1a94ffc8393b3ed75/neutron/plugins/ml2/drivers/ovn/mech_driver/ovsdb/ovn_db_sync.py#L285-L291
+
+Change-Id: If4c886d928258450aac31e12a4e26e0cbe2ace62
+---
+ .../ovn/mech_driver/ovsdb/ovn_db_sync.py      | 66 +++++++++++++++++--
+ .../ovn/mech_driver/ovsdb/test_ovn_db_sync.py | 53 +++++++++++++++
+ ...omparison-efficiency-9fc1027c37626419.yaml |  8 +++
+ 3 files changed, 121 insertions(+), 6 deletions(-)
+ create mode 100644 releasenotes/notes/improve-acl-comparison-efficiency-9fc1027c37626419.yaml
+
+diff --git a/neutron/plugins/ml2/drivers/ovn/mech_driver/ovsdb/ovn_db_sync.py b/neutron/plugins/ml2/drivers/ovn/mech_driver/ovsdb/ovn_db_sync.py
+index 213cd96031..28775fc8f5 100644
+--- a/neutron/plugins/ml2/drivers/ovn/mech_driver/ovsdb/ovn_db_sync.py
++++ b/neutron/plugins/ml2/drivers/ovn/mech_driver/ovsdb/ovn_db_sync.py
+@@ -239,11 +239,14 @@ class OvnNbSynchronizer(OvnDbSynchronizer):
+         acl_columns = (self.ovn_api._tables['ACL'].columns.keys() &
+                        set(ovn_const.ACL_EXPECTED_COLUMNS_NBDB))
+         acl_columns.discard('external_ids')
++        id_key = ovn_const.OVN_SG_RULE_EXT_ID_KEY
+         for pg in self.ovn_api.db_list_rows('Port_Group').execute():
+             acls = getattr(pg, 'acls', [])
+             for acl in acls:
+                 acl_string = {k: getattr(acl, k) for k in acl_columns}
+                 acl_string['port_group'] = pg.name
++                if id_key in acl.external_ids:
++                    acl_string[id_key] = acl.external_ids[id_key]
+                 ovn_acls.append(acl_string)
+         return ovn_acls
+ 
+@@ -275,10 +278,60 @@ class OvnNbSynchronizer(OvnDbSynchronizer):
+                 pg_name = utils.ovn_port_group_name(sgr['security_group_id'])
+                 neutron_acls.append(acl_utils._add_sg_rule_acl_for_port_group(
+                     pg_name, True, sgr))
+-        neutron_acls += acl_utils.add_acls_for_drop_port_group(
++        # Sort the acls in the Neutron database according to the security
++        # group rule ID for easy comparison in the future.
++        neutron_acls.sort(key=lambda x: x[ovn_const.OVN_SG_RULE_EXT_ID_KEY])
++        neutron_default_acls = acl_utils.add_acls_for_drop_port_group(
+             ovn_const.OVN_DROP_PORT_GROUP_NAME)
+ 
+         ovn_acls = self._get_acls_from_port_groups()
++        # Sort the acls in the ovn database according to the security
++        # group rule id for easy comparison in the future.
++        ovn_acls.sort(key=lambda x: x.get(
++            ovn_const.OVN_SG_RULE_EXT_ID_KEY, ""))
++        neutron_num, ovn_num = len(neutron_acls), len(ovn_acls)
++        add_acls, remove_acls, ovn_default_acls = [], [], []
++        n_index = o_index = 0
++        # neutron_acls and ovn_acls have been sorted, and we need to traverse
++        # both arrays from scratch until we reach the end of one of them.
++        # If it is found that the elements of two arrays are consistent,
++        # it is considered that the data is consistent. If it is found during
++        # comparison that the security group rule id in neutron_acls is
++        # smaller than the security group rule id in ovn_acls, as the arrays
++        # have been sorted, this security group rule will no longer appear in
++        # the future. This indicates that this security group rule only
++        # exists in neutron_acls. If it is a related situation, this security
++        # group rule only appears in ovn_acls.
++        while n_index < neutron_num and o_index < ovn_num:
++            na, oa = neutron_acls[n_index], ovn_acls[o_index]
++            n_id = na[ovn_const.OVN_SG_RULE_EXT_ID_KEY]
++            o_id = oa.get(ovn_const.OVN_SG_RULE_EXT_ID_KEY)
++            if not o_id:
++                # There may be some ACLs in the OVN database that do not have
++                # security group rule id. These are the default rules, which
++                # will be specially compared and processed later.
++                ovn_default_acls.append(oa)
++                o_index += 1
++            elif n_id == o_id:
++                if any(item not in na.items() for item in oa.items()):
++                    add_acls.append(na)
++                    remove_acls.append(oa)
++                n_index += 1
++                o_index += 1
++            elif n_id > o_id:
++                remove_acls.append(oa)
++                o_index += 1
++            else:
++                add_acls.append(na)
++                n_index += 1
++
++        if n_index < neutron_num:
++            # We didn't find the OVN ACLs matching the Neutron ACLs
++            # in "ovn_acls" and we are just adding the pending Neutron ACLs.
++            add_acls.extend(neutron_acls[n_index:])
++        if o_index < ovn_num:
++            # Any OVN ACLs not matching the Neutron ACLs is removed.
++            remove_acls.extend(ovn_acls[o_index:])
+ 
+         # We need to remove also all the ACLs applied to Logical Switches
+         def get_num_acls(ovn_acls):
+@@ -289,13 +342,14 @@ class OvnNbSynchronizer(OvnDbSynchronizer):
+         num_acls_to_remove_from_ls = get_num_acls(ovn_acls_from_ls)
+ 
+         # Remove the common ones
+-        for na in list(neutron_acls):
+-            for ovn_a in ovn_acls.copy():
++        for na in list(neutron_default_acls):
++            for ovn_a in ovn_default_acls.copy():
+                 if all(item in na.items() for item in ovn_a.items()):
+-                    neutron_acls.remove(na)
+-                    ovn_acls.remove(ovn_a)
++                    neutron_default_acls.remove(na)
++                    ovn_default_acls.remove(ovn_a)
+                     break
+-
++        neutron_acls = add_acls + neutron_default_acls
++        ovn_acls = remove_acls + ovn_default_acls
+         num_acls_to_add = len(neutron_acls)
+         num_acls_to_remove = len(ovn_acls) + num_acls_to_remove_from_ls
+         if num_acls_to_add or num_acls_to_remove:
+diff --git a/neutron/tests/functional/plugins/ml2/drivers/ovn/mech_driver/ovsdb/test_ovn_db_sync.py b/neutron/tests/functional/plugins/ml2/drivers/ovn/mech_driver/ovsdb/test_ovn_db_sync.py
+index 1a9c158c85..4c78a4f20e 100644
+--- a/neutron/tests/functional/plugins/ml2/drivers/ovn/mech_driver/ovsdb/test_ovn_db_sync.py
++++ b/neutron/tests/functional/plugins/ml2/drivers/ovn/mech_driver/ovsdb/test_ovn_db_sync.py
+@@ -22,7 +22,9 @@ from neutron_lib.api.definitions import floating_ip_port_forwarding as pf_def
+ from neutron_lib.api.definitions import port_security as ps
+ from neutron_lib import constants
+ from neutron_lib import context
++from neutron_lib.db import api as db_api
+ from neutron_lib.services.qos import constants as qos_const
++from oslo_config import cfg
+ from oslo_utils import uuidutils
+ from ovsdbapp.backend.ovs_idl import idlutils
+ from ovsdbapp import constants as ovsdbapp_const
+@@ -55,6 +57,7 @@ class TestOvnNbSync(testlib_api.MySQLTestCaseMixin,
+         super(TestOvnNbSync, self).setUp(maintenance_worker=True)
+         self.assertEqual(mysql_dialect.name, self.db.engine.dialect.name)
+         ovn_config.cfg.CONF.set_override('dns_domain', 'ovn.test')
++        cfg.CONF.set_override('quota_security_group_rule', -1, group='QUOTAS')
+         ext_mgr = test_extraroute.ExtraRouteTestExtensionManager()
+         self.ext_api = test_extensions.setup_extensions_middleware(ext_mgr)
+         sg_mgr = test_securitygroup.SecurityGroupTestExtensionManager()
+@@ -1754,6 +1757,56 @@ class TestOvnNbSync(testlib_api.MySQLTestCaseMixin,
+         nb_synchronizer.sync_fip_qos_policies(ctx)
+         self._validate_qos_records()
+ 
++    def _create_security_group_rule(self, sg_id, direction, tcp_port):
++        data = {'security_group_rule': {'security_group_id': sg_id,
++                                        'direction': direction,
++                                        'protocol': constants.PROTO_NAME_TCP,
++                                        'ethertype': constants.IPv4,
++                                        'port_range_min': tcp_port,
++                                        'port_range_max': tcp_port}}
++        req = self.new_create_request('security-group-rules', data, self.fmt)
++        res = req.get_response(self.api)
++        sgr = self.deserialize(self.fmt, res)
++        self.assertIn('security_group_rule', sgr)
++        return sgr['security_group_rule']['id']
++
++    def test_sync_acls(self):
++        data = {'security_group': {'name': 'sg1'}}
++        sg_req = self.new_create_request('security-groups', data)
++        res = sg_req.get_response(self.api)
++        sg = self.deserialize(self.fmt, res)['security_group']
++
++        sgr_ids = []
++        for tcp_port in range(8050, 8055):
++            sgr_ids.append(self._create_security_group_rule(
++                sg['id'], 'ingress', tcp_port))
++        for tcp_port in range(10000, 10005):
++            sgr_ids.append(self._create_security_group_rule(
++                sg['id'], 'egress', tcp_port))
++        self._validate_acls()
++
++        # Delete ACLs from the OVN DB.
++        with self.nb_api.transaction(check_error=True) as txn:
++            pg_name = utils.ovn_port_group_name(sg['id'])
++            txn.add(self.nb_api.pg_acl_del(pg_name, direction='to-lport'))
++        self._validate_acls(should_match=False)
++
++        nb_synchronizer = ovn_db_sync.OvnNbSynchronizer(
++            self.plugin, self.mech_driver.nb_ovn, self.mech_driver.sb_ovn,
++            'repair', self.mech_driver)
++        ctx = context.get_admin_context()
++        nb_synchronizer.sync_acls(ctx)
++        self._validate_acls()
++        # Delete Security Group Rules from Neutron DB.
++        for i in range(5):
++            with db_api.CONTEXT_WRITER.using(context):
++                sgr = self.plugin._get_security_group_rule(
++                    self.ctx, sgr_ids[i])
++                sgr.delete()
++        self._validate_acls(should_match=False)
++        nb_synchronizer.sync_acls(ctx)
++        self._validate_acls()
++
+ 
+ class TestOvnSbSync(base.TestOVNFunctionalBase):
+ 
+diff --git a/releasenotes/notes/improve-acl-comparison-efficiency-9fc1027c37626419.yaml b/releasenotes/notes/improve-acl-comparison-efficiency-9fc1027c37626419.yaml
+new file mode 100644
+index 0000000000..847b7e4d19
+--- /dev/null
++++ b/releasenotes/notes/improve-acl-comparison-efficiency-9fc1027c37626419.yaml
+@@ -0,0 +1,8 @@
++---
++other:
++  - |
++    Neutron uses a new algorithm to compare the differences between security
++    group rules in Neutron and ACLs in OVN. Before comparison, the data is
++    sorted according to the security group rule ID, then the two ordered
++    arrays are compared. This increases efficiency when larger sets of rules
++    need to be synchronized.
+\ No newline at end of file
+-- 
+2.25.1
+
