@@ -8,9 +8,10 @@ RUN \
     apt-get update -qq && \
     apt-get install -qq -y --no-install-recommends \
         ca-certificates \
-        libpython3.10 \
+        libpython3.12 \
         lsb-release \
-        python3-distutils \
+        libpcre3 \
+        python3-setuptools \
         sudo && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*

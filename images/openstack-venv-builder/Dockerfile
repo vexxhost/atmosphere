@@ -32,6 +32,7 @@ EOF
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 COPY --from=requirements --link /upper-constraints.txt /upper-constraints.txt
 RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe
+uv cache clean uwsgi
 uv venv --system-site-packages /var/lib/openstack
 uv pip install \
     --constraint /upper-constraints.txt \
