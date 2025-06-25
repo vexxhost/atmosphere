@@ -1,5 +1,6 @@
 atmosphere_image_prefix: "{{ lookup('env', 'ATMOSPHERE_IMAGE_PREFIX') | default('', True) }}"
 
+ceph_version: 18.2.7
 ceph_conf_overrides:
   - section: global
     option: mon allow pool size one
@@ -17,7 +18,7 @@ cilium_helm_values:
   operator:
     replicas: 1
 
-csi_driver: "{{ lookup('env', 'MOLECULE_CSI_DRIVER') | default('local-path-provisioner', True) }}"
+csi_driver: "{{ lookup('ansible.builtin.env', 'MOLECULE_CSI_DRIVER', default='local-path-provisioner') }}"
 
 cluster_issuer_type: self-signed
 
