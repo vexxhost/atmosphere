@@ -44,7 +44,7 @@ target "ovsinit" {
 
     contexts = {
         "runtime" = "docker-image://docker.io/library/debian:bullseye-slim"
-        "rust" = "docker-image://docker.io/library/rust:1.86-bullseye"
+        "rust" = "docker-image://docker.io/library/rust:1.87-bullseye"
         "src" = "./crates/ovsinit"
     }
 }
@@ -208,6 +208,49 @@ target "python-openstackclient" {
     ]
 }
 
+target "neutron-source" {
+    context = "images/source-patch"
+    target = "unshallow"
+    platforms = ["linux/amd64", "linux/arm64"]
+
+    contexts = {
+        "git" = "https://opendev.org/openstack/neutron.git#c45a27ee6739743509ad6e83079d9a90f8fa497a" # renovate: branch=master
+        "patches" = "patches/openstack/neutron"
+    }
+}
+
+target "networking-generic-switch-source" {
+    context = "images/source-patch"
+    target = "unshallow"
+    platforms = ["linux/amd64", "linux/arm64"]
+
+    contexts = {
+        "git" = "https://opendev.org/openstack/networking-generic-switch.git#ced747b10e5ab7797f82a9306614c866b4398e4f" # renovate: branch=master
+        "patches" = "patches/openstack/networking-generic-switch"
+    }
+}
+
+target "neutron" {
+    context = "images/neutron"
+    platforms = ["linux/amd64", "linux/arm64"]
+
+    args = {
+        PROJECT = "neutron"
+    }
+
+    contexts = {
+        "neutron-source" = "target:neutron-source"
+        "networking-generic-switch-source" = "target:networking-generic-switch-source"
+        "openstack-python-runtime" = "target:openstack-python-runtime"
+        "openstack-venv-builder" = "target:openstack-venv-builder"
+        "ovsinit" = "target:ovsinit"
+    }
+
+    tags = [
+        "${REGISTRY}/neutron:${TAG}"
+    ]
+}
+
 target "openstack" {
     name = "openstack-${service}"
     matrix = {
@@ -222,7 +265,6 @@ target "openstack" {
             "keystone",
             "magnum",
             "manila",
-            "neutron",
             "nova",
             "octavia",
             "ovn-bgp-agent",
@@ -256,6 +298,7 @@ group "default" {
         "keepalived",
         "libvirtd",
         "netoffload",
+        "neutron",
         "nova-ssh",
         "openstack-barbican",
         "openstack-cinder",
@@ -267,7 +310,6 @@ group "default" {
         "openstack-keystone",
         "openstack-magnum",
         "openstack-manila",
-        "openstack-neutron",
         "openstack-nova",
         "openstack-octavia",
         "openstack-ovn-bgp-agent",
