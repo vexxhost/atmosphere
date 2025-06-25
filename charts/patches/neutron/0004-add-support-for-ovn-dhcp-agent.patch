@@ -1,5 +1,20 @@
+From d57fac1ff729fe0ac662bf5aeadfd971abe25223 Mon Sep 17 00:00:00 2001
+From: ricolin <rlin@vexxhost.com>
+Date: Thu, 8 May 2025 01:03:17 +0800
+Subject: [PATCH] Allow neutron work with OVN+DHCP
+
+Change-Id: Ib8bb71e0b23e905ca72aeae5ef06daa292e7e042
+---
+ .../templates/bin/_neutron-dhcp-agent.sh.tpl  |  3 +++
+ neutron/templates/configmap-etc.yaml          |  5 ++++-
+ neutron/templates/daemonset-dhcp-agent.yaml   | 22 +++++++++++++++++++
+ neutron/values.yaml                           |  2 ++
+ .../notes/neutron-b225c11a5e1d522d.yaml       |  5 +++++
+ 5 files changed, 36 insertions(+), 1 deletion(-)
+ create mode 100644 releasenotes/notes/neutron-b225c11a5e1d522d.yaml
+
 diff --git a/neutron/templates/bin/_neutron-dhcp-agent.sh.tpl b/neutron/templates/bin/_neutron-dhcp-agent.sh.tpl
-index 0f73e5a3..b6296f48 100644
+index 0f73e5a39..b6296f48f 100644
 --- a/neutron/templates/bin/_neutron-dhcp-agent.sh.tpl
 +++ b/neutron/templates/bin/_neutron-dhcp-agent.sh.tpl
 @@ -17,6 +17,9 @@ limitations under the License.
@@ -13,7 +28,7 @@ index 0f73e5a3..b6296f48 100644
    --config-file /tmp/pod-shared/neutron-agent.ini \
  {{- end }}
 diff --git a/neutron/templates/configmap-etc.yaml b/neutron/templates/configmap-etc.yaml
-index 82865c09..9d001304 100644
+index db92641d9..ec12baa9a 100644
 --- a/neutron/templates/configmap-etc.yaml
 +++ b/neutron/templates/configmap-etc.yaml
 @@ -155,7 +155,7 @@ limitations under the License.
@@ -36,7 +51,7 @@ index 82865c09..9d001304 100644
  {{- if empty $envAll.Values.conf.l3_agent.DEFAULT.interface_driver -}}
  {{- $_ := set $envAll.Values "__interface_driver" ( list ) }}
 diff --git a/neutron/templates/daemonset-dhcp-agent.yaml b/neutron/templates/daemonset-dhcp-agent.yaml
-index 17e15f8e..af724875 100644
+index 17e15f8e1..af7248757 100644
 --- a/neutron/templates/daemonset-dhcp-agent.yaml
 +++ b/neutron/templates/daemonset-dhcp-agent.yaml
 @@ -94,6 +94,19 @@ spec:
@@ -83,10 +98,10 @@ index 17e15f8e..af724875 100644
  {{ if $mounts_neutron_dhcp_agent.volumes }}{{ toYaml $mounts_neutron_dhcp_agent.volumes | indent 8 }}{{ end }}
  {{- end }}
 diff --git a/neutron/values.yaml b/neutron/values.yaml
-index b1ff4569..83e34c08 100644
+index 204e8c7ae..3ede16077 100644
 --- a/neutron/values.yaml
 +++ b/neutron/values.yaml
-@@ -2149,6 +2149,8 @@ conf:
+@@ -2113,6 +2113,8 @@ conf:
        interface_driver: null
        dnsmasq_config_file: /etc/neutron/dnsmasq.conf
        force_metadata: True
@@ -95,3 +110,17 @@ index b1ff4569..83e34c08 100644
    dnsmasq: |
        #no-hosts
        #port=5353
+diff --git a/releasenotes/notes/neutron-b225c11a5e1d522d.yaml b/releasenotes/notes/neutron-b225c11a5e1d522d.yaml
+new file mode 100644
+index 000000000..d046815c0
+--- /dev/null
++++ b/releasenotes/notes/neutron-b225c11a5e1d522d.yaml
+@@ -0,0 +1,5 @@
++---
++neutron:
++  - |
++    Fix OVN support in neutron DHCP.
++...
+-- 
+2.25.1
+
