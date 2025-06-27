@@ -1,0 +1,121 @@
+From a5a37cd5c67770522866af203ecc701649bfb659 Mon Sep 17 00:00:00 2001
+From: Dmitriy Rabotyagov <dmitriy.rabotyagov@cleura.com>
+Date: Mon, 9 Dec 2024 14:18:14 +0100
+Subject: [PATCH] Ensure that bridge exist and UP before adding tables
+
+At the moment OVN NB driver attempts to add routes for the device
+which is in DOWN state, which results in exception:
+pyroute2.netlink.exceptions.NetlinkError: (100, 'Network is down')
+
+Such scenario is possible in case of migration from regular L2 OVN to
+BGP or corner cases where operators didn't manage to ensure device
+to be UP in their network config.
+
+Anyway, it's better to handle such cases and ensure required devices
+are in proper state before executing actions towards them.
+
+Change-Id: I43fd10d5ae220450afc584a0f6fd40eb95ec8134
+(cherry picked from commit fa344056c8c98b537cf222434062f7714ee0ca88)
+---
+ ovn_bgp_agent/drivers/openstack/ovn_bgp_driver.py    |  2 ++
+ ovn_bgp_agent/drivers/openstack/utils/wire.py        |  2 ++
+ .../unit/drivers/openstack/test_nb_ovn_bgp_driver.py | 11 +++++++----
+ .../unit/drivers/openstack/test_ovn_bgp_driver.py    | 12 ++++++++----
+ 4 files changed, 19 insertions(+), 8 deletions(-)
+
+diff --git a/ovn_bgp_agent/drivers/openstack/ovn_bgp_driver.py b/ovn_bgp_agent/drivers/openstack/ovn_bgp_driver.py
+index 215a964..c329d4e 100644
+--- a/ovn_bgp_agent/drivers/openstack/ovn_bgp_driver.py
++++ b/ovn_bgp_agent/drivers/openstack/ovn_bgp_driver.py
+@@ -155,6 +155,8 @@ class OVNBGPDriver(driver_api.AgentDriverBase):
+                 continue
+             self.ovn_bridge_mappings[network] = bridge
+ 
++            linux_net.ensure_bridge(bridge)
++
+             if not extra_routes.get(bridge):
+                 extra_routes[bridge] = (
+                     linux_net.ensure_routing_table_for_bridge(
+diff --git a/ovn_bgp_agent/drivers/openstack/utils/wire.py b/ovn_bgp_agent/drivers/openstack/utils/wire.py
+index 9362f64..ef9b5b1 100644
+--- a/ovn_bgp_agent/drivers/openstack/utils/wire.py
++++ b/ovn_bgp_agent/drivers/openstack/utils/wire.py
+@@ -55,6 +55,8 @@ def _ensure_base_wiring_config_underlay(idl, ovs_idl, routing_tables):
+             continue
+         ovn_bridge_mappings[network] = bridge
+ 
++        linux_net.ensure_bridge(bridge)
++
+         linux_net.ensure_routing_table_for_bridge(
+             routing_tables, bridge, CONF.bgp_vrf_table_id)
+         vlan_tags = idl.get_network_vlan_tag_by_network_name(network)
+diff --git a/ovn_bgp_agent/tests/unit/drivers/openstack/test_nb_ovn_bgp_driver.py b/ovn_bgp_agent/tests/unit/drivers/openstack/test_nb_ovn_bgp_driver.py
+index d3ca766..88fec84 100644
+--- a/ovn_bgp_agent/tests/unit/drivers/openstack/test_nb_ovn_bgp_driver.py
++++ b/ovn_bgp_agent/tests/unit/drivers/openstack/test_nb_ovn_bgp_driver.py
+@@ -141,13 +141,14 @@ class TestNBOVNBGPDriver(test_base.TestCase):
+     @mock.patch.object(ovs, 'get_ovs_patch_ports_info')
+     @mock.patch.object(linux_net, 'get_interface_address')
+     @mock.patch.object(linux_net, 'ensure_arp_ndp_enabled_for_bridge')
++    @mock.patch.object(linux_net, 'ensure_bridge')
+     @mock.patch.object(linux_net, 'ensure_vlan_device_for_network')
+     @mock.patch.object(linux_net, 'ensure_routing_table_for_bridge')
+     def test_sync(self, mock_routing_bridge, mock_ensure_vlan_network,
+-                  mock_ensure_arp, mock_nic_address, mock_get_patch_ports,
+-                  mock_ensure_mac, mock_remove_flows, mock_exposed_ips,
+-                  mock_get_ip_rules, mock_del_exposed_ips, mock_del_ip_rules,
+-                  mock_del_ip_routes, mock_get_extra_route,
++                  mock_ensure_br, mock_ensure_arp, mock_nic_address,
++                  mock_get_patch_ports, mock_ensure_mac, mock_remove_flows,
++                  mock_exposed_ips, mock_get_ip_rules, mock_del_exposed_ips,
++                  mock_del_ip_rules, mock_del_ip_routes, mock_get_extra_route,
+                   mock_get_bridge_vlans, mock_delete_vlan_dev):
+         self.mock_ovs_idl.get_ovn_bridge_mappings.return_value = [
+             'net0:bridge0', 'net1:bridge1']
+@@ -203,6 +204,8 @@ class TestNBOVNBGPDriver(test_base.TestCase):
+         expected_calls = [mock.call({}, 'bridge0', CONF.bgp_vrf_table_id),
+                           mock.call({}, 'bridge1', CONF.bgp_vrf_table_id)]
+         mock_routing_bridge.assert_has_calls(expected_calls)
++        expected_calls = [mock.call('bridge0'), mock.call('bridge1')]
++        mock_ensure_br.assert_has_calls(expected_calls)
+         expected_calls = [mock.call('bridge0', 10), mock.call('bridge1', 11)]
+         mock_ensure_vlan_network.assert_has_calls(expected_calls)
+         expected_calls = [mock.call('bridge0', 1, [10]),
+diff --git a/ovn_bgp_agent/tests/unit/drivers/openstack/test_ovn_bgp_driver.py b/ovn_bgp_agent/tests/unit/drivers/openstack/test_ovn_bgp_driver.py
+index dbf3876..6d73906 100644
+--- a/ovn_bgp_agent/tests/unit/drivers/openstack/test_ovn_bgp_driver.py
++++ b/ovn_bgp_agent/tests/unit/drivers/openstack/test_ovn_bgp_driver.py
+@@ -112,15 +112,16 @@ class TestOVNBGPDriver(test_base.TestCase):
+     @mock.patch.object(linux_net, 'get_ovn_ip_rules')
+     @mock.patch.object(linux_net, 'get_exposed_ips')
+     @mock.patch.object(linux_net, 'get_interface_address')
++    @mock.patch.object(linux_net, 'ensure_bridge')
+     @mock.patch.object(linux_net, 'ensure_vlan_device_for_network')
+     @mock.patch.object(linux_net, 'ensure_routing_table_for_bridge')
+     @mock.patch.object(linux_net, 'ensure_arp_ndp_enabled_for_bridge')
+     def test_sync(
+             self, mock_ensure_arp, mock_routing_bridge,
+-            mock_ensure_vlan_network, mock_nic_address, mock_exposed_ips,
+-            mock_get_ip_rules, mock_get_patch_ports, mock_ensure_mac,
+-            mock_remove_flows, mock_del_exposed_ips, mock_del_ip_rules,
+-            mock_del_ip_routes, mock_vlan_leftovers):
++            mock_ensure_vlan_network, mock_ensure_br, mock_nic_address,
++            mock_exposed_ips, mock_get_ip_rules, mock_get_patch_ports,
++            mock_ensure_mac, mock_remove_flows, mock_del_exposed_ips,
++            mock_del_ip_rules, mock_del_ip_routes, mock_vlan_leftovers):
+         self.mock_ovs_idl.get_ovn_bridge_mappings.return_value = [
+             'net0:bridge0', 'net1:bridge1']
+         self.sb_idl.get_network_vlan_tag_by_network_name.side_effect = (
+@@ -148,6 +149,9 @@ class TestOVNBGPDriver(test_base.TestCase):
+                           mock.call('bridge1', 2, [11])]
+         mock_ensure_arp.assert_has_calls(expected_calls)
+ 
++        expected_calls = [mock.call('bridge0'), mock.call('bridge1')]
++        mock_ensure_br.assert_has_calls(expected_calls)
++
+         expected_calls = [mock.call({}, 'bridge0', CONF.bgp_vrf_table_id),
+                           mock.call({}, 'bridge1', CONF.bgp_vrf_table_id)]
+         mock_routing_bridge.assert_has_calls(expected_calls)
+-- 
+2.34.1
+
