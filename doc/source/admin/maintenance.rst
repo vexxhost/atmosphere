@@ -150,7 +150,7 @@ directly impacted:
   specific controller IP addresses require updates.
 
 Recommended procedure
-====================
+=====================
 
 To change a controller node's IP address, follow this procedure:
 
