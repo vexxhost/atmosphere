@@ -114,9 +114,9 @@ command one at a time on each node:
 
     $ ps auxf | egrep '(kube-(apiserver|controller-manager|scheduler)|etcd)' | awk '{ print $2 }' | xargs sudo kill
 
-*******************************
+*************************************
 Changing controller network addresses
-*******************************
+*************************************
 
 Changing the IP address of an existing controller node is a complex operation
 that affects multiple critical components of the Atmosphere deployment.
@@ -124,7 +124,7 @@ The recommended approach is to remove and redeploy the controller node
 rather than attempting an in-place IP change.
 
 Components affected by address changes
-=================================
+======================================
 
 When a controller node's IP address changes, the following components are
 directly impacted:
