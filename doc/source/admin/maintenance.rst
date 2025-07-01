@@ -143,7 +143,7 @@ directly impacted:
 * **Virtual IP**: The virtual IP configuration depends on the underlying
   node IP addresses for proper fail-over behavior.
 
-* **DNS resolution**: The fully qualified domain names (FQDN) in the inventory
+* **DNS resolution**: The fully qualified domain names (FQDNs) in the inventory
   must resolve to the correct IP addresses.
 
 * **Network policies and firewall rules**: Any security policies that reference
@@ -158,7 +158,7 @@ To change a controller node's IP address, follow this procedure:
    control plane's redundancy. Ensure you have adequate time and that the
    remaining controllers can handle the load.
 
-2. **Verify cluster health**: Before proceeding, verify all components are
+2. **Verify cluster health**: Before proceeding, ensure all components are
    healthy:
 
    .. code-block:: console
@@ -206,7 +206,7 @@ To change a controller node's IP address, follow this procedure:
          member remove <member-id>
 
 6. **Update inventory**: Modify your inventory to reflect the new IP
-   address for the controller node. Verify the FQDN resolves to the new IP.
+   address for the controller node. Ensure the FQDN resolves to the new IP.
 
 7. **Update DNS records**: Update any DNS records to point the controller's
    FQDN to the new IP address. Verify resolution:
