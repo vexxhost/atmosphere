@@ -115,22 +115,21 @@ command one at a time on each node:
     $ ps auxf | egrep '(kube-(apiserver|controller-manager|scheduler)|etcd)' | awk '{ print $2 }' | xargs sudo kill
 
 *******************************
-Changing Controller IP Addresses
+Changing controller IP addresses
 *******************************
 
 Changing the IP address of an existing controller node is a complex operation
-that affects multiple critical components of the Atmosphere deployment. Due to
-the distributed nature of the system and the dependencies between components,
-the recommended approach is to remove and redeploy the controller node rather
-than attempting an in-place IP change.
+that affects multiple critical components of the Atmosphere deployment.
+The recommended approach is to remove and redeploy the controller node
+rather than attempting an in-place IP change.
 
-Components Affected by IP Changes
+Components affected by IP changes
 =================================
 
 When a controller node's IP address changes, the following components are
 directly impacted:
 
-* **``etcd`` cluster**: The ``etcd`` cluster stores its member list with specific IP
+* **etcd cluster**: The etcd cluster stores its member list with specific IP
   addresses. Changing an IP requires careful reconfiguration of the cluster
   membership.
 
@@ -139,18 +138,18 @@ directly impacted:
   across the cluster.
 
 * **Kubernetes API server**: The API server advertises its address to other
-  components, and certificates may be tied to specific IP addresses.
+  components, and certificates may tie to specific IP addresses.
 
 * **Virtual IP**: The virtual IP configuration depends on the underlying
-  node IP addresses for proper failover behavior.
+  node IP addresses for proper fail-over behavior.
 
-* **DNS resolution**: The fully qualified domain names (FQDNs) in the inventory
+* **DNS resolution**: The fully qualified domain names (FQDN) in the inventory
   must resolve to the correct IP addresses.
 
 * **Network policies and firewall rules**: Any security policies that reference
-  specific controller IP addresses need to be updated.
+  specific controller IP addresses require updates.
 
-Recommended Procedure
+Recommended procedure
 ====================
 
 To change a controller node's IP address, follow this procedure:
@@ -159,7 +158,7 @@ To change a controller node's IP address, follow this procedure:
    control plane's redundancy. Ensure you have adequate time and that the
    remaining controllers can handle the load.
 
-2. **Verify cluster health**: Before proceeding, ensure all components are
+2. **Verify cluster health**: Before proceeding, verify all components are
    healthy:
 
    .. code-block:: console
@@ -182,9 +181,9 @@ To change a controller node's IP address, follow this procedure:
 
        $ kubectl delete node <node-name>
 
-5. **Remove etcd member** (if the node runs ``etcd``):
+5. **Remove etcd member** (if the node runs etcd):
 
-   First, identify the ``etcd`` member ID:
+   First, identify the etcd member ID:
 
    .. code-block:: console
 
@@ -206,8 +205,8 @@ To change a controller node's IP address, follow this procedure:
          --key=/etc/kubernetes/pki/etcd/server.key \
          member remove <member-id>
 
-6. **Update inventory**: Modify your Ansible inventory to reflect the new IP
-   address for the controller node. Ensure the FQDN resolves to the new IP.
+6. **Update inventory**: Modify your inventory to reflect the new IP
+   address for the controller node. Verify the FQDN resolves to the new IP.
 
 7. **Update DNS records**: Update any DNS records to point the controller's
    FQDN to the new IP address. Verify resolution:
@@ -216,7 +215,7 @@ To change a controller node's IP address, follow this procedure:
 
        $ nslookup <controller-fqdn>
 
-8. **Clean up the old node**: On the node itself, clean up Kubernetes and ``etcd``
+8. **Clean up the old node**: On the node itself, clean up Kubernetes and etcd
    data:
 
    .. code-block:: console
@@ -237,7 +236,7 @@ To change a controller node's IP address, follow this procedure:
         $ kubectl get pods -n kube-system | grep etcd
         $ kubectl cluster-info
 
-Alternative Approach for Multiple Controllers
+Alternative approach for multiple controllers
 =============================================
 
 If you need to change IP addresses for multiple controllers, consider deploying
@@ -255,8 +254,8 @@ This approach maintains higher availability throughout the process:
 
 .. admonition:: Important Considerations
 
-   * Always maintain quorum in the ``etcd`` cluster (majority of nodes operational)
+   * Always maintain quorum in the etcd cluster (majority of nodes operational)
    * Test this procedure in a non-production environment first
    * Have backups of critical data before proceeding
-   * Consider the impact on any external systems that may reference controller IPs
+   * Consider the impact on any external systems that may reference controller IP addresses
    * Some components may cache old IP addresses and require restart
