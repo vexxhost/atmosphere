@@ -78,3 +78,11 @@
       ansible.builtin.package:
         name: unattended-upgrades
         state: absent
+
+- ansible.builtin.import_playbook: atmosphere.common.metrics_server
+  vars:
+    target: controllers
+    metrics_server_image: "{{ atmosphere_images['metrics_server'] }}"
+    metrics_server_helm_values:
+      nodeSelector:
+        openstack-control-plane: enabled
