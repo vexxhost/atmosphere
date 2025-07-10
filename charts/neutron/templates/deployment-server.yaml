@@ -81,12 +81,8 @@ spec:
 {{ dict "envAll" $envAll "podName" "neutron-server" "containerNames" (list "neutron-server" "init" "nginx") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
     spec:
 {{ dict "envAll" $envAll "application" "neutron_server" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
-{{ with .Values.pod.priorityClassName.neutron_server }}
-      priorityClassName: {{ . }}
-{{ end }}
-{{ with .Values.pod.runtimeClassName.neutron_server }}
-      runtimeClassName: {{ . }}
-{{ end }}
+{{ tuple "neutron_server" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
+{{ tuple "neutron_server" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
       serviceAccountName: {{ $serviceAccountName }}
       affinity:
 {{ tuple $envAll "neutron" "server" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
@@ -190,9 +186,11 @@ spec:
                 command:
                   - /tmp/neutron-server.sh
                   - stop
+{{- if not $envAll.Values.manifests.certificates }}
           ports:
             - name: q-api
               containerPort: {{ tuple "network" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+{{- end }}
           volumeMounts:
             - name: pod-tmp
               mountPath: /tmp

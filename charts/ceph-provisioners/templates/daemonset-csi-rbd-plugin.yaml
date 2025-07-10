@@ -25,7 +25,13 @@ metadata:
 rules:
   - apiGroups: [""]
     resources: ["nodes"]
+    verbs: ["get", "watch", "list"]
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
     verbs: ["get"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["volumeattachments"]
+    verbs: ["get", "watch", "list"]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
@@ -103,7 +109,7 @@ spec:
             - "--nodeserver=true"
             - "--endpoint=$(CSI_ENDPOINT)"
             - "--v=0"
-            - "--drivername=$(DEPLOYMENT_NAMESPACE).rbd.csi.ceph.com"
+            - "--drivername={{ $envAll.Values.storageclass.csi_rbd.provisioner }}"
             - "--pidlimit=-1"
           env:
             - name: DEPLOYMENT_NAMESPACE

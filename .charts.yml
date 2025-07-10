@@ -5,8 +5,8 @@
     url: https://tarballs.openstack.org/openstack-helm-infra
   openstack_helm_dependencies: &openstack_helm_dependencies
     - name: helm-toolkit
-      repository: https://tarballs.openstack.org/openstack-helm-infra
-      version: 0.2.69
+      repository: https://tarballs.openstack.org/openstack-helm
+      version: 2025.1.8
 
 charts:
   - name: barbican
@@ -24,8 +24,8 @@ charts:
     repository:
       url: https://ceph.github.io/csi-charts
   - name: ceph-provisioners
-    version: 0.1.8
-    repository: *openstack_helm_infra_repository
+    version: 2025.1.0
+    repository: *openstack_helm_repository
     dependencies: *openstack_helm_dependencies
   - name: godaddy-webhook
     version: 0.3.0
@@ -80,13 +80,9 @@ charts:
         review.opendev.org:
           - 899931
   - name: horizon
-    version: 0.3.15
+    version: 2025.1.1
     repository: *openstack_helm_repository
     dependencies: *openstack_helm_dependencies
-    patches:
-      gerrit:
-        review.opendev.org:
-          - 919480
   - name: ingress-nginx
     version: 4.12.1
     repository:
@@ -104,21 +100,20 @@ charts:
     repository:
       url: https://charts.bitnami.com/bitnami
   - name: keystone
-    version: 0.3.17
+    version: 2025.1.1
     repository: *openstack_helm_repository
     dependencies: *openstack_helm_dependencies
     patches:
       gerrit:
         review.opendev.org:
           - 899867
-          - 934703
   - name: kube-prometheus-stack
     version: 60.2.0
     repository:
       url: https://prometheus-community.github.io/helm-charts
   - name: libvirt
-    version: 0.1.27
-    repository: *openstack_helm_infra_repository
+    version: 2025.1.0
+    repository: *openstack_helm_repository
     dependencies: *openstack_helm_dependencies
   - name: loki
     version: 6.6.3
@@ -142,17 +137,13 @@ charts:
           - 883168
           - 899923
   - name: memcached
-    version: 0.1.12
-    repository: *openstack_helm_infra_repository
-    dependencies: *openstack_helm_dependencies
-  - name: neutron
-    version: 0.3.47
+    version: 2025.1.0
     repository: *openstack_helm_repository
     dependencies: *openstack_helm_dependencies
-    patches:
-      gerrit:
-        review.opendev.org:
-          - 931781
+  - name: neutron
+    version: 2025.1.11
+    repository: *openstack_helm_repository
+    dependencies: *openstack_helm_dependencies
   - name: node-feature-discovery
     version: 0.15.4
     repository:

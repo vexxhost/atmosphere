@@ -1,0 +1,38 @@
+From f14736f3f0f38e04927b8d40a86000171f62847b Mon Sep 17 00:00:00 2001
+From: ricolin <rlin@vexxhost.com>
+Date: Wed, 9 Jul 2025 14:39:33 +0800
+Subject: [PATCH] [Neutron][Ovn]Use correct way to define ClassName
+
+Correct yaml for define priorityClassName and runtimeClassName in
+`cron-job-ovn-db-sync.yaml`
+
+ref: https://review.opendev.org/c/openstack/openstack-helm/+/954431
+
+Change-Id: If0e2de976c179d07ace5111ab925fd9663ec826c
+Signed-off-by: ricolin <rlin@vexxhost.com>
+---
+ neutron/templates/cron-job-ovn-db-sync.yaml | 8 ++------
+ 1 file changed, 2 insertions(+), 6 deletions(-)
+
+diff --git a/neutron/templates/cron-job-ovn-db-sync.yaml b/neutron/templates/cron-job-ovn-db-sync.yaml
+index 636aa8bf6..e593414fc 100644
+--- a/neutron/templates/cron-job-ovn-db-sync.yaml
++++ b/neutron/templates/cron-job-ovn-db-sync.yaml
+@@ -50,12 +50,8 @@ spec:
+ {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 12 }}
+ {{ dict "envAll" $envAll "podName" "neutron-ovn-db-sync" "containerNames" (list "init" "neutron-ovn-db-sync" ) | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+         spec:
+-{{ with .Values.pod.priorityClassName.neutron_ovn_db_sync }}
+-          priorityClassName: {{ . }}
+-{{ end }}
+-{{ with .Values.pod.runtimeClassName.neutron_ovn_db_sync }}
+-          runtimeClassName: {{ . }}
+-{{ end }}
++{{ tuple "neutron_ovn_db_sync" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "neutron_ovn_db_sync" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
+           serviceAccountName: {{ $serviceAccountName }}
+           restartPolicy: OnFailure
+ {{ if $envAll.Values.pod.tolerations.neutron.enabled }}
+-- 
+2.25.1
+
