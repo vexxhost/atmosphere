@@ -1,146 +1,78 @@
-From 5fa9fbab45a5cd489007ca0286e7203accd1f398 Mon Sep 17 00:00:00 2001
-From: Mohammed Naser <mnaser@vexxhost.com>
-Date: Thu, 6 Feb 2025 09:33:47 -0500
-Subject: [PATCH] Enable {priority,runtime}ClassName for Cinder
-
----
- .../cron-job-cinder-volume-usage-audit.yaml      |  6 ++++++
- cinder/templates/deployment-api.yaml             |  6 ++++++
- cinder/templates/deployment-backup.yaml          |  6 ++++++
- cinder/templates/deployment-scheduler.yaml       |  6 ++++++
- cinder/templates/deployment-volume.yaml          |  6 ++++++
- cinder/templates/pod-rally-test.yaml             |  6 ++++++
- cinder/values.yaml                               | 16 ++++++++++++++++
- 7 files changed, 52 insertions(+)
-
 diff --git a/cinder/templates/cron-job-cinder-volume-usage-audit.yaml b/cinder/templates/cron-job-cinder-volume-usage-audit.yaml
-index 1d935f12..18d9e28e 100644
+index 897b5b63..8609e42b 100644
 --- a/cinder/templates/cron-job-cinder-volume-usage-audit.yaml
 +++ b/cinder/templates/cron-job-cinder-volume-usage-audit.yaml
-@@ -50,6 +50,12 @@ spec:
+@@ -50,6 +50,8 @@ spec:
  {{ dict "envAll" $envAll "podName" $serviceAccountName "containerNames" (list "cinder-volume-usage-audit" "init") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 12 }}
          spec:
  {{ dict "envAll" $envAll "application" "volume_usage_audit" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 10 }}
-+{{ with .Values.pod.priorityClassName.cinder_api }}
-+          priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.cinder_api }}
-+          runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "cinder_volume_usage_audit" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 10 }}
++{{ tuple "cinder_volume_usage_audit" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 10 }}
            serviceAccountName: {{ $serviceAccountName }}
            restartPolicy: OnFailure
  {{ if $envAll.Values.pod.tolerations.cinder.enabled }}
 diff --git a/cinder/templates/deployment-api.yaml b/cinder/templates/deployment-api.yaml
-index f29d103f..3b1a30d6 100644
+index 641ed3b4..8c67915b 100644
 --- a/cinder/templates/deployment-api.yaml
 +++ b/cinder/templates/deployment-api.yaml
-@@ -46,6 +46,12 @@ spec:
+@@ -46,6 +46,8 @@ spec:
  {{ tuple "cinder_api" . | include "helm-toolkit.snippets.custom_pod_annotations" | indent 8 }}
  {{ dict "envAll" $envAll "podName" "cinder-api" "containerNames" (list "cinder-api" "ceph-coordination-volume-perms" "init") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
      spec:
-+{{ with .Values.pod.priorityClassName.cinder_api }}
-+      priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.cinder_api }}
-+      runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "cinder_api" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "cinder_api" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
        serviceAccountName: {{ $serviceAccountName }}
  {{ dict "envAll" $envAll "application" "cinder_api" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
        affinity:
 diff --git a/cinder/templates/deployment-backup.yaml b/cinder/templates/deployment-backup.yaml
-index ccd84fc0..617031a0 100644
+index 36574466..83437af2 100644
 --- a/cinder/templates/deployment-backup.yaml
 +++ b/cinder/templates/deployment-backup.yaml
-@@ -48,6 +48,12 @@ spec:
+@@ -48,6 +48,8 @@ spec:
  {{ tuple "cinder_backup" . | include "helm-toolkit.snippets.custom_pod_annotations" | indent 8 }}
  {{ dict "envAll" $envAll "podName" "cinder-backup" "containerNames" (list "cinder-backup" "ceph-coordination-volume-perms" "init") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
      spec:
-+{{ with .Values.pod.priorityClassName.cinder_backup }}
-+      priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.cinder_backup }}
-+      runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "cinder_backup" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "cinder_backup" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
        serviceAccountName: {{ $serviceAccountName }}
  {{ dict "envAll" $envAll "application" "cinder_backup" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
        affinity:
 diff --git a/cinder/templates/deployment-scheduler.yaml b/cinder/templates/deployment-scheduler.yaml
-index 73e14e55..016ade95 100644
+index 03206a8d..9fb579af 100644
 --- a/cinder/templates/deployment-scheduler.yaml
 +++ b/cinder/templates/deployment-scheduler.yaml
-@@ -46,6 +46,12 @@ spec:
+@@ -46,6 +46,8 @@ spec:
  {{ tuple "cinder_scheduler" . | include "helm-toolkit.snippets.custom_pod_annotations" | indent 8 }}
  {{ dict "envAll" $envAll "podName" "cinder-scheduler" "containerNames" (list "cinder-scheduler" "ceph-coordination-volume-perms" "init") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
      spec:
-+{{ with .Values.pod.priorityClassName.cinder_scheduler }}
-+      priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.cinder_scheduler }}
-+      runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "cinder_scheduler" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "cinder_scheduler" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
        serviceAccountName: {{ $serviceAccountName }}
  {{ dict "envAll" $envAll "application" "cinder_scheduler" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
        affinity:
 diff --git a/cinder/templates/deployment-volume.yaml b/cinder/templates/deployment-volume.yaml
-index c28518da..83430c33 100644
+index a21c13ef..80eb8247 100644
 --- a/cinder/templates/deployment-volume.yaml
 +++ b/cinder/templates/deployment-volume.yaml
-@@ -48,6 +48,12 @@ spec:
+@@ -48,6 +48,8 @@ spec:
  {{ tuple "cinder_volume" . | include "helm-toolkit.snippets.custom_pod_annotations" | indent 8 }}
  {{ dict "envAll" $envAll "podName" "cinder-volume" "containerNames" (list "cinder-volume" "ceph-coordination-volume-perms" "init-cinder-conf" "init" ) | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
      spec:
-+{{ with .Values.pod.priorityClassName.cinder_volume }}
-+      priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.cinder_volume }}
-+      runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "cinder_volume" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "cinder_volume" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
        serviceAccountName: {{ $serviceAccountName }}
  {{ dict "envAll" $envAll "application" "cinder_volume" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
        affinity:
 diff --git a/cinder/templates/pod-rally-test.yaml b/cinder/templates/pod-rally-test.yaml
-index 34316c65..a2852359 100644
+index 3ed52cde..f940edab 100644
 --- a/cinder/templates/pod-rally-test.yaml
 +++ b/cinder/templates/pod-rally-test.yaml
-@@ -38,6 +38,12 @@ spec:
+@@ -38,6 +38,8 @@ spec:
  {{ end }}
    nodeSelector:
      {{ .Values.labels.test.node_selector_key }}: {{ .Values.labels.test.node_selector_value }}
-+{{ with .Values.pod.priorityClassName.cinder_tests }}
-+  priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.cinder_tests }}
-+  runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "cinder_tests" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 2 }}
++{{ tuple "cinder_tests" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 2 }}
    serviceAccountName: {{ $serviceAccountName }}
    initContainers:
  {{ tuple $envAll "tests" $mounts_tests_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 4 }}
-diff --git a/cinder/values.yaml b/cinder/values.yaml
-index 6b335be1..1377e4cd 100644
---- a/cinder/values.yaml
-+++ b/cinder/values.yaml
-@@ -76,6 +76,22 @@ jobs:
-       failed: 1
- 
- pod:
-+  priorityClassName:
-+    cinder_api: null
-+    cinder_backup: null
-+    cinder_scheduler: null
-+    cinder_tests: null
-+    cinder_volume_usage_audit: null
-+    cinder_volume: null
-+    db_sync: null
-+  runtimeClassName:
-+    cinder_api: null
-+    cinder_backup: null
-+    cinder_scheduler: null
-+    cinder_tests: null
-+    cinder_volume_usage_audit: null
-+    cinder_volume: null
-+    db_sync: null
-   security_context:
-     volume_usage_audit:
-       pod:
--- 
-2.43.0
