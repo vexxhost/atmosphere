@@ -1,85 +1,39 @@
-From 2db1eab6b5df7070e93d11cbbbcd492aa849ad9c Mon Sep 17 00:00:00 2001
-From: Dong Ma <dong.ma@vexxhost.com>
-Date: Mon, 10 Feb 2025 13:14:30 +0000
-Subject: [PATCH] Enable {priority,runtime}ClassName for Horizon
-
----
- horizon/templates/deployment.yaml     | 6 ++++++
- horizon/templates/job-db-sync.yaml    | 6 ++++++
- horizon/templates/pod-helm-tests.yaml | 6 ++++++
- horizon/values.yaml                   | 8 ++++++++
- 4 files changed, 26 insertions(+)
-
 diff --git a/horizon/templates/deployment.yaml b/horizon/templates/deployment.yaml
-index 0037fef3..666edd65 100644
+index 0037fef3..56ff0e98 100644
 --- a/horizon/templates/deployment.yaml
 +++ b/horizon/templates/deployment.yaml
-@@ -48,6 +48,12 @@ spec:
+@@ -48,6 +48,8 @@ spec:
  {{- end }}
  {{ dict "envAll" $envAll "podName" "horizon" "containerNames" (list "horizon" "init" ) | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
      spec:
-+{{ with .Values.pod.priorityClassName.horizon }}
-+      priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.horizon }}
-+      runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "horizon" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "horizon" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
        serviceAccountName: {{ $serviceAccountName }}
  {{ dict "envAll" $envAll "application" "horizon" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
        affinity:
 diff --git a/horizon/templates/job-db-sync.yaml b/horizon/templates/job-db-sync.yaml
-index c2229cdd..8ae8643f 100644
+index c2229cdd..3058863c 100644
 --- a/horizon/templates/job-db-sync.yaml
 +++ b/horizon/templates/job-db-sync.yaml
-@@ -41,6 +41,12 @@ spec:
+@@ -41,6 +41,8 @@ spec:
        annotations:
  {{ dict "envAll" $envAll "podName" "horizon-db-sync" "containerNames" (list "horizon-db-sync" "init" ) | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
      spec:
-+{{ with .Values.pod.priorityClassName.db_sync }}
-+      priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.db_sync }}
-+      runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "db_sync" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "db_sync" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
        serviceAccountName: {{ $serviceAccountName }}
  {{ dict "envAll" $envAll "application" "db_sync" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
        restartPolicy: OnFailure
 diff --git a/horizon/templates/pod-helm-tests.yaml b/horizon/templates/pod-helm-tests.yaml
-index 7d163039..4513053b 100644
+index 7d163039..7c9d0a3b 100644
 --- a/horizon/templates/pod-helm-tests.yaml
 +++ b/horizon/templates/pod-helm-tests.yaml
-@@ -34,6 +34,12 @@ metadata:
+@@ -34,6 +34,8 @@ metadata:
  spec:
  {{ dict "envAll" $envAll "application" "test" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 2 }}
    restartPolicy: Never
-+{{ with .Values.pod.priorityClassName.horizon_tests }}
-+  priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.horizon_tests }}
-+  runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "horizon_tests" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 2 }}
++{{ tuple "horizon_tests" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 2 }}
    serviceAccountName: {{ $serviceAccountName }}
  {{ if $envAll.Values.pod.tolerations.horizon.enabled }}
  {{ tuple $envAll "horizon" | include "helm-toolkit.snippets.kubernetes_tolerations" | indent 2 }}
-diff --git a/horizon/values.yaml b/horizon/values.yaml
-index 4a060452..b3782c57 100644
---- a/horizon/values.yaml
-+++ b/horizon/values.yaml
-@@ -1103,6 +1103,14 @@ dependencies:
-           service: dashboard
- 
- pod:
-+  priorityClassName:
-+    horizon: null
-+    horizon_tests: null
-+    db_sync: null
-+  runtimeClassName:
-+    horizon: null
-+    horizon_tests: null
-+    db_sync: null
-   security_context:
-     horizon:
-       pod:
--- 
-2.34.1
-
