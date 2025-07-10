@@ -1,147 +1,78 @@
-From 6d9700b99f7dc8462faed77ee404682c4c042c20 Mon Sep 17 00:00:00 2001
-From: Dong Ma <dong.ma@vexxhost.com>
-Date: Mon, 10 Feb 2025 08:55:22 +0000
-Subject: [PATCH] Enable {priority,runtime}ClassName for Designate
-
----
- designate/templates/deployment-api.yaml   |  6 ++++++
- designate/templates/deployment-central.yaml  |  6 ++++++
- designate/templates/deployment-mdns.yaml  |  6 ++++++
- designate/templates/deployment-producer.yaml |  6 ++++++
- designate/templates/deployment-sink.yaml  |  6 ++++++
- designate/templates/deployment-worker.yaml   |  6 ++++++
- designate/values.yaml                     | 16 ++++++++++++++++
- 7 files changed, 52 insertions(+)
-
 diff --git a/designate/templates/deployment-api.yaml b/designate/templates/deployment-api.yaml
-index e9df6b6e..2f6ed7ca 100644
+index e9df6b6e..080561f0 100644
 --- a/designate/templates/deployment-api.yaml
 +++ b/designate/templates/deployment-api.yaml
-@@ -41,6 +41,12 @@ spec:
+@@ -41,6 +41,8 @@ spec:
          configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
          configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
      spec:
-+{{ with .Values.pod.priorityClassName.designate_api }}
-+      priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.designate_api }}
-+      runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "designate_api" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "designate_api" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
        serviceAccountName: {{ $serviceAccountName }}
  {{ dict "envAll" $envAll "application" "designate" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
        affinity:
 diff --git a/designate/templates/deployment-central.yaml b/designate/templates/deployment-central.yaml
-index 02d9f3ca..c3e7dcdb 100644
+index 02d9f3ca..25a22d56 100644
 --- a/designate/templates/deployment-central.yaml
 +++ b/designate/templates/deployment-central.yaml
-@@ -41,6 +41,12 @@ spec:
+@@ -41,6 +41,8 @@ spec:
          configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
          configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
      spec:
-+{{ with .Values.pod.priorityClassName.designate_central }}
-+      priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.designate_central }}
-+      runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "designate_central" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "designate_central" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
        serviceAccountName: {{ $serviceAccountName }}
        affinity:
  {{ tuple $envAll "designate" "central" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
 diff --git a/designate/templates/deployment-mdns.yaml b/designate/templates/deployment-mdns.yaml
-index d58f6304..9312bc7d 100644
+index d58f6304..05d7f398 100644
 --- a/designate/templates/deployment-mdns.yaml
 +++ b/designate/templates/deployment-mdns.yaml
-@@ -41,6 +41,12 @@ spec:
+@@ -41,6 +41,8 @@ spec:
          configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
          configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
      spec:
-+{{ with .Values.pod.priorityClassName.designate_mdns }}
-+      priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.designate_mdns }}
-+      runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "designate_mdns" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "designate_mdns" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
        serviceAccountName: {{ $serviceAccountName }}
  {{ dict "envAll" $envAll "application" "designate" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
        affinity:
 diff --git a/designate/templates/deployment-producer.yaml b/designate/templates/deployment-producer.yaml
-index 491dbad8..68e46fb4 100644
+index 491dbad8..685d37ed 100644
 --- a/designate/templates/deployment-producer.yaml
 +++ b/designate/templates/deployment-producer.yaml
-@@ -41,6 +41,12 @@ spec:
+@@ -41,6 +41,8 @@ spec:
          configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
          configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
      spec:
-+{{ with .Values.pod.priorityClassName.designate_producer }}
-+      priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.designate_producer }}
-+      runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "designate_producer" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "designate_producer" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
        serviceAccountName: {{ $serviceAccountName }}
        affinity:
  {{ tuple $envAll "designate" "producer" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
 diff --git a/designate/templates/deployment-sink.yaml b/designate/templates/deployment-sink.yaml
-index e577d9d8..63222a1a 100644
+index e577d9d8..61361cba 100644
 --- a/designate/templates/deployment-sink.yaml
 +++ b/designate/templates/deployment-sink.yaml
-@@ -41,6 +41,12 @@ spec:
+@@ -41,6 +41,8 @@ spec:
          configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
          configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
      spec:
-+{{ with .Values.pod.priorityClassName.designate_sink }}
-+      priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.designate_sink }}
-+      runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "designate_sink" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "designate_sink" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
        serviceAccountName: {{ $serviceAccountName }}
        affinity:
  {{ tuple $envAll "designate" "sink" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
 diff --git a/designate/templates/deployment-worker.yaml b/designate/templates/deployment-worker.yaml
-index 74f9c998..12d0b96a 100644
+index 74f9c998..dbeff997 100644
 --- a/designate/templates/deployment-worker.yaml
 +++ b/designate/templates/deployment-worker.yaml
-@@ -41,6 +41,12 @@ spec:
+@@ -41,6 +41,8 @@ spec:
          configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
          configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
      spec:
-+{{ with .Values.pod.priorityClassName.designate_worker }}
-+      priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.designate_worker }}
-+      runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "designate_worker" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "designate_worker" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
        serviceAccountName: {{ $serviceAccountName }}
        affinity:
  {{ tuple $envAll "designate" "worker" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
-diff --git a/designate/values.yaml b/designate/values.yaml
-index 71694146..6e520ca4 100644
---- a/designate/values.yaml
-+++ b/designate/values.yaml
-@@ -66,6 +66,22 @@ images:
-       - image_repo_sync
- 
- pod:
-+  priorityClassName:
-+    designate_api: null
-+    designate_central: null
-+    designate_mdns: null
-+    designate_producer: null
-+    designate_sink: null
-+    designate_worker: null
-+    db_sync: null
-+  runtimeClassName:
-+    designate_api: null
-+    designate_central: null
-+    designate_mdns: null
-+    designate_producer: null
-+    designate_sink: null
-+    designate_worker: null
-+    db_sync: null
-   affinity:
-     anti:
-       type:
--- 
-2.34.1
-

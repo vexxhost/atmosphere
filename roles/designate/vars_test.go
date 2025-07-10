@@ -34,6 +34,32 @@ func TestMain(m *testing.M) {
 func TestHelmValues(t *testing.T) {
 	vals, err := openstack_helm.CoalescedHelmValues("../../charts/designate", &vars.HelmValues)
 	require.NoError(t, err)
+	// (rlin): Before you add any new priority class here.
+	// Make sure we do use snippets tool
+	// helm-toolkit.snippets.kubernetes_pod_priority_class
+	// for the actual template. Like:
+	// {{ tuple "heat_api" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" }}
+	vars.HelmValues.Pod.PriorityClass = map[string]string{
+		"designate_api": "high-priority",
+		"designate_central": "high-priority",
+		"designate_mdns": "high-priority",
+		"designate_producer": "high-priority",
+		"designate_sink": "high-priority",
+		"designate_worker": "high-priority",
+	}
+	// (rlin): Before you add any new runtime class here.
+	// Make sure we do use snippets tool
+	// helm-toolkit.snippets.kubernetes_pod_runtime_class
+	// for the actual template. Like:
+	// {{ tuple "heat_api" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" }}
+	vars.HelmValues.Pod.RuntimeClass = map[string]string{
+		"designate_api": "kata-clh",
+		"designate_central": "kata-clh",
+		"designate_mdns": "kata-clh",
+		"designate_producer": "kata-clh",
+		"designate_sink": "kata-clh",
+		"designate_worker": "kata-clh",
+	}
 
 	testutils.TestDatabaseConf(t, vals.Conf.Designate.Database)
 	testutils.TestAllPodsHaveRuntimeClass(t, vals)
