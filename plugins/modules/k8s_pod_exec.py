@@ -524,8 +524,8 @@ def save_output_to_file(output, file_path):
     try:
         # Create directory if it doesn't exist
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
-        
-        with open(file_path, 'w') as f:
+
+        with open(file_path, "w") as f:
             f.write(output)
         return {"success": True, "msg": f"Output saved to {file_path}"}
     except Exception as e:
@@ -550,8 +550,8 @@ def main():
             required=False,
             options=dict(
                 secret_name=dict(type="str", required=True),
-                prefix=dict(type="str", required=False)
-            )
+                prefix=dict(type="str", required=False),
+            ),
         ),
         env_from_configmaps=dict(
             type="list",
@@ -579,8 +579,8 @@ def main():
             options=dict(
                 configmap_name=dict(type="str", required=True),
                 mount_path=dict(type="str", required=True),
-                default_mode=dict(type="int", default=420)
-            )
+                default_mode=dict(type="int", default=420),
+            ),
         ),
         working_dir=dict(type="str", required=False),
         service_account=dict(type="str", required=False),
@@ -591,27 +591,24 @@ def main():
             required=False,
             options=dict(
                 requests=dict(type="dict", required=False),
-                limits=dict(type="dict", required=False)
-            )
+                limits=dict(type="dict", required=False),
+            ),
         ),
         save_output_to=dict(type="str", required=False),
         keep_pod=dict(type="bool", default=False)
     )
 
-    module = AnsibleModule(
-        argument_spec=module_args,
-        supports_check_mode=True
-    )
+    module = AnsibleModule(argument_spec=module_args, supports_check_mode=True)
 
     # Check if kubernetes library is available
     if not HAS_KUBERNETES:
         module.fail_json(msg="kubernetes library is required for this module")
 
     # Load Kubernetes configuration
-    kubeconfig_path = module.params.get('kubeconfig_path')
+    kubeconfig_path = module.params.get("kubeconfig_path")
     config_result = load_kubernetes_config(kubeconfig_path)
-    if not config_result['success']:
-        module.fail_json(msg=config_result['msg'])
+    if not config_result["success"]:
+        module.fail_json(msg=config_result["msg"])
 
     # Initialize API client
     api_instance = client.CoreV1Api()
@@ -631,7 +628,7 @@ def main():
         check_result = {
             "changed": True,
             "pod_manifest": pod_manifest,
-            "config_loaded": config_result["msg"]
+            "config_loaded": config_result["msg"],
         }
         if kubeconfig_path:
             check_result["kubeconfig_used"] = config_result.get("path", kubeconfig_path)
@@ -643,7 +640,7 @@ def main():
         "stdout": "",
         "stderr": "",
         "pod_status": "",
-        "execution_time": 0
+        "execution_time": 0,
     }
 
     # Add kubeconfig info to results if specified
@@ -657,7 +654,9 @@ def main():
             module.fail_json(msg=create_result["msg"])
 
         # Wait for pod completion
-        wait_result = wait_for_pod_completion(api_instance, namespace, pod_name, timeout)
+        wait_result = wait_for_pod_completion(
+            api_instance, namespace, pod_name, timeout
+        )
         if not wait_result["success"]:
             # Try to cleanup before failing
             if not keep_pod:
@@ -704,5 +703,5 @@ def main():
         module.fail_json(msg=f"Unexpected error: {str(e)}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
