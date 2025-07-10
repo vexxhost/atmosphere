@@ -1,114 +1,59 @@
-From 128338c29bab59691b7a3bb610dc9f7889587871 Mon Sep 17 00:00:00 2001
-From: Dong Ma <dong.ma@vexxhost.com>
-Date: Wed, 12 Feb 2025 02:49:32 +0000
-Subject: [PATCH] Enable {priority,runtime}ClassName for Octavia
-
----
- .../octavia/templates/daemonset-health-manager.yaml  |  6 ++++++
- .../octavia/templates/deployment-api.yaml            |  6 ++++++
- .../octavia/templates/deployment-housekeeping.yaml   |  6 ++++++
- .../octavia/templates/deployment-worker.yaml         |  8 +++++++-
- .../octavia/values.yaml                              | 12 ++++++++++++
- 5 files changed, 37 insertions(+), 1 deletion(-)
-
 diff --git a/octavia/templates/daemonset-health-manager.yaml b/octavia/templates/daemonset-health-manager.yaml
-index a355e86e..1fcda415 100644
+index a355e86e..cf6602b3 100644
 --- a/octavia/templates/daemonset-health-manager.yaml
 +++ b/octavia/templates/daemonset-health-manager.yaml
-@@ -46,6 +46,12 @@ spec:
+@@ -46,6 +46,8 @@ spec:
          configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
          configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
      spec:
-+{{ with .Values.pod.priorityClassName.octavia_health_manager }}
-+      priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.octavia_health_manager }}
-+      runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "octavia_health_manager" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "octavia_health_manager" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
        serviceAccountName: {{ $serviceAccountName }}
        dnsPolicy: ClusterFirstWithHostNet
        hostNetwork: true
 diff --git a/octavia/templates/deployment-api.yaml b/octavia/templates/deployment-api.yaml
-index da159724..e584f768 100644
+index da159724..ef84b58e 100644
 --- a/octavia/templates/deployment-api.yaml
 +++ b/octavia/templates/deployment-api.yaml
-@@ -45,6 +45,12 @@ spec:
+@@ -45,6 +45,8 @@ spec:
          configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
          configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
      spec:
-+{{ with .Values.pod.priorityClassName.octavia_api }}
-+      priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.octavia_api }}
-+      runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "octavia_api" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "octavia_api" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
        serviceAccountName: {{ $serviceAccountName }}
        affinity:
  {{ tuple $envAll "octavia" "api" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
 diff --git a/octavia/templates/deployment-housekeeping.yaml b/octavia/templates/deployment-housekeeping.yaml
-index 39903b6b..584ca180 100644
+index 39903b6b..5567fa2a 100644
 --- a/octavia/templates/deployment-housekeeping.yaml
 +++ b/octavia/templates/deployment-housekeeping.yaml
-@@ -45,6 +45,12 @@ spec:
+@@ -45,6 +45,8 @@ spec:
          configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
          configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
      spec:
-+{{ with .Values.pod.priorityClassName.octavia_housekeeping }}
-+      priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.octavia_housekeeping }}
-+      runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "octavia_housekeeping" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "octavia_housekeeping" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
        serviceAccountName: {{ $serviceAccountName }}
        dnsPolicy: ClusterFirstWithHostNet
        hostNetwork: true
 diff --git a/octavia/templates/deployment-worker.yaml b/octavia/templates/deployment-worker.yaml
-index 54cf68d7..561a604c 100644
+index 54cf68d7..e7a12c37 100644
 --- a/octavia/templates/deployment-worker.yaml
 +++ b/octavia/templates/deployment-worker.yaml
-@@ -45,6 +45,12 @@ spec:
+@@ -45,6 +45,8 @@ spec:
          configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
          configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
      spec:
-+{{ with .Values.pod.priorityClassName.octavia_worker }}
-+      priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.octavia_worker }}
-+      runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "octavia_worker" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "octavia_worker" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
        serviceAccountName: {{ $serviceAccountName }}
        dnsPolicy: ClusterFirstWithHostNet
        hostNetwork: true
-@@ -99,4 +105,4 @@ spec:
+@@ -99,4 +101,4 @@ spec:
              secretName: octavia-etc
              defaultMode: 0444
  {{ if $mounts_octavia_worker.volumes }}{{ toYaml $mounts_octavia_worker.volumes | indent 8 }}{{ end }}
 -{{- end }}
 \ No newline at end of file
 +{{- end }}
-diff --git a/octavia/values.yaml b/octavia/values.yaml
-index b15114a5..448c781e 100644
---- a/octavia/values.yaml
-+++ b/octavia/values.yaml
-@@ -526,6 +526,18 @@ endpoints:
-         public: 80
- 
- pod:
-+  priorityClassName:
-+    octavia_health_manager: null
-+    octavia_api: null
-+    octavia_housekeeping: null
-+    octavia_worker: null
-+    db_sync: null
-+  runtimeClassName:
-+    octavia_health_manager: null
-+    octavia_api: null
-+    octavia_housekeeping: null
-+    octavia_worker: null
-+    db_sync: null
-   user:
-     octavia:
-       uid: 42424
--- 
-2.34.1
-
