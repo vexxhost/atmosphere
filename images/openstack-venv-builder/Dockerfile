@@ -10,7 +10,6 @@ RUN cp /src/requirements/upper-constraints.txt /upper-constraints.txt
 RUN <<EOF sh -xe
 sed -i '/glance_store/d' /upper-constraints.txt
 sed -i '/horizon/d' /upper-constraints.txt
-sed -i '/python-openstackclient/d' /upper-constraints.txt
 EOF
 
 FROM python-base
