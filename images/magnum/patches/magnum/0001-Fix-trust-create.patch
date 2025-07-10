@@ -1,0 +1,34 @@
+From b8a351b99b40c0aa123be3d51a4d0b73e66aa2dc Mon Sep 17 00:00:00 2001
+From: ricolin <rlin@vexxhost.com>
+Date: Thu, 10 Jul 2025 09:19:19 +0800
+Subject: [PATCH] Fix trust create
+
+Current trust create contains unexpected parameter `delegation_depth`
+As it could failed current Keystone RBAC validation with error
+`jsonschema.exceptions.ValidationError`.
+
+change to `allow_redelegation=False` instead.
+
+(cherry picked from commit f622116fbdcae12e33fe89f279d6a7a96216da2c)
+Change-Id: Ia843991e17aca72a1a1d6f47c480ff95324f5c1f
+Signed-off-by: ricolin <rlin@vexxhost.com>
+---
+ magnum/common/keystone.py                 | 2 +-
+ 2 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/magnum/common/keystone.py b/magnum/common/keystone.py
+index cbc95f19..6354ee7d 100644
+--- a/magnum/common/keystone.py
++++ b/magnum/common/keystone.py
+@@ -211,7 +211,7 @@ class KeystoneClientV3(object):
+                 project=trustor_project_id,
+                 trustee_user=trustee_user,
+                 impersonation=True,
+-                delegation_depth=0,
++                allow_redelegation=False,
+                 role_names=roles)
+         except Exception:
+             LOG.exception('Failed to create trust')
+-- 
+2.25.1
+
