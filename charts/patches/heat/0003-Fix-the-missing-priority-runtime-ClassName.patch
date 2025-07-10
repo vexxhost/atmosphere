@@ -3,23 +3,6 @@ From: Dong Ma <dong.ma@vexxhost.com>
 Date: Thu, 13 Feb 2025 16:15:52 +0000
 Subject: [PATCH] Fix the missing {priority,runtime}ClassName
 
-diff --git a/heat/charts/helm-toolkit/templates/manifests/_job-bootstrap.tpl b/heat/charts/helm-toolkit/templates/manifests/_job-bootstrap.tpl
-index 6b77004f..da3c4819 100644
---- a/heat/charts/helm-toolkit/templates/manifests/_job-bootstrap.tpl
-+++ b/heat/charts/helm-toolkit/templates/manifests/_job-bootstrap.tpl
-@@ -70,6 +70,12 @@ spec:
-       annotations:
- {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
-     spec:
-+{{- if and $envAll.Values.pod.priorityClassName $envAll.Values.pod.priorityClassName.bootstrap }}
-+      priorityClassName: {{ $envAll.Values.pod.priorityClassName.bootstrap }}
-+{{- end }}
-+{{- if and $envAll.Values.pod.runtimeClassName $envAll.Values.pod.runtimeClassName.bootstrap }}
-+      runtimeClassName: {{ $envAll.Values.pod.runtimeClassName.bootstrap }}
-+{{- end }}
-       serviceAccountName: {{ $serviceAccountName }}
-       restartPolicy: OnFailure
-       {{ tuple $envAll "bootstrap" | include "helm-toolkit.snippets.kubernetes_image_pull_secrets" | indent 6 }}
 diff --git a/heat/templates/job-trusts.yaml b/heat/templates/job-trusts.yaml
 index ae5bc644..e539e7f9 100644
 --- a/heat/templates/job-trusts.yaml

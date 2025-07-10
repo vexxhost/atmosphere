@@ -3,23 +3,6 @@ From: Dong Ma <dong.ma@vexxhost.com>
 Date: Thu, 13 Feb 2025 16:15:52 +0000
 Subject: [PATCH] Fix the missing {priority,runtime}ClassName
 
-diff --git a/horizon/charts/helm-toolkit/templates/manifests/_job-db-init-mysql.tpl b/horizon/charts/helm-toolkit/templates/manifests/_job-db-init-mysql.tpl
-index b8a1dce3..1db62b01 100644
---- a/horizon/charts/helm-toolkit/templates/manifests/_job-db-init-mysql.tpl
-+++ b/horizon/charts/helm-toolkit/templates/manifests/_job-db-init-mysql.tpl
-@@ -71,6 +71,12 @@ spec:
-       annotations:
- {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
-     spec:
-+{{- if and $envAll.Values.pod.priorityClassName $envAll.Values.pod.priorityClassName.db_init }}
-+      priorityClassName: {{ $envAll.Values.pod.priorityClassName.db_init }}
-+{{- end }}
-+{{- if and $envAll.Values.pod.runtimeClassName $envAll.Values.pod.runtimeClassName.db_init }}
-+      runtimeClassName: {{ $envAll.Values.pod.runtimeClassName.db_init }}
-+{{- end }}
-       serviceAccountName: {{ $serviceAccountName }}
-       restartPolicy: OnFailure
-       {{ tuple $envAll "db_init" | include "helm-toolkit.snippets.kubernetes_image_pull_secrets" | indent 6 }}
 diff --git a/horizon/values.yaml b/horizon/values.yaml
 index b3782c57..33a74d2e 100644
 --- a/horizon/values.yaml
