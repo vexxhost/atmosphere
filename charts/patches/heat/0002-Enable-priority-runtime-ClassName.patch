@@ -1,167 +1,104 @@
-From 42c3cd6735ecc24f89ae3a0d83cf272eccfb343c Mon Sep 17 00:00:00 2001
-From: Dong Ma <dong.ma@vexxhost.com>
-Date: Mon, 10 Feb 2025 11:24:08 +0000
-Subject: [PATCH] Enable {priority,runtime}ClassName for Heat
-
----
- heat/templates/cron-job-engine-cleaner.yaml   |  6 ++++++
- heat/templates/cron-job-purge-deleted.yaml    |  6 ++++++
- heat/templates/deployment-api.yaml            |  6 ++++++
- heat/templates/deployment-cfn.yaml            |  6 ++++++
- heat/templates/deployment-cloudwatch.yaml     |  6 ++++++
- heat/templates/deployment-engine.yaml         |  6 ++++++
- heat/templates/pod-rally-test.yaml            |  6 ++++++
- heat/values.yaml                              | 18 ++++++++++++++++++
- 8 files changed, 60 insertions(+)
-
 diff --git a/heat/templates/cron-job-engine-cleaner.yaml b/heat/templates/cron-job-engine-cleaner.yaml
-index a7eded42..32674b6a 100644
+index a7eded42..f3cbd292 100644
 --- a/heat/templates/cron-job-engine-cleaner.yaml
 +++ b/heat/templates/cron-job-engine-cleaner.yaml
-@@ -52,6 +52,12 @@ spec:
+@@ -52,6 +52,8 @@ spec:
              configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
  {{ dict "envAll" $envAll "podName" "heat-engine-cleaner" "containerNames" (list "heat-engine-cleaner" "init" ) | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
          spec:
-+{{ with .Values.pod.priorityClassName.heat_engine_cleaner }}
-+          priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.heat_engine_cleaner }}
-+          runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "heat_engine_cleaner" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 10 }}
++{{ tuple "heat_engine_cleaner" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 10 }}
            serviceAccountName: {{ $serviceAccountName }}
  {{ dict "envAll" $envAll "application" "engine_cleaner" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 10 }}
            restartPolicy: OnFailure
 diff --git a/heat/templates/cron-job-purge-deleted.yaml b/heat/templates/cron-job-purge-deleted.yaml
-index 4d83c294..285c2d3e 100644
+index 4d83c294..9aea8831 100644
 --- a/heat/templates/cron-job-purge-deleted.yaml
 +++ b/heat/templates/cron-job-purge-deleted.yaml
-@@ -47,6 +47,12 @@ spec:
+@@ -47,6 +47,8 @@ spec:
  {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 12 }}
  {{ dict "envAll" $envAll "podName" "heat-purge-deleted" "containerNames" (list "init" "heat-purge-deleted" ) | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
          spec:
-+{{ with .Values.pod.priorityClassName.heat_purge_deleted }}
-+          priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.heat_purge_deleted }}
-+          runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "heat_purge_deleted" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 10 }}
++{{ tuple "heat_purge_deleted" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 10 }}
            serviceAccountName: {{ $serviceAccountName }}
            restartPolicy: OnFailure
  {{ if $envAll.Values.pod.tolerations.heat.enabled }}
 diff --git a/heat/templates/deployment-api.yaml b/heat/templates/deployment-api.yaml
-index ca346563..f737c84f 100644
+index ca346563..800eefad 100644
 --- a/heat/templates/deployment-api.yaml
 +++ b/heat/templates/deployment-api.yaml
-@@ -45,6 +45,12 @@ spec:
+@@ -45,6 +45,8 @@ spec:
          configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
  {{ dict "envAll" $envAll "podName" "heat-api" "containerNames" (list "heat-api" "init" ) | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
      spec:
-+{{ with .Values.pod.priorityClassName.heat_api }}
-+      priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.heat_api }}
-+      runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "heat_api" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "heat_api" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
        serviceAccountName: {{ $serviceAccountName }}
  {{ dict "envAll" $envAll "application" "heat" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
        affinity:
 diff --git a/heat/templates/deployment-cfn.yaml b/heat/templates/deployment-cfn.yaml
-index 84015438..5f5584ef 100644
+index 84015438..6221838a 100644
 --- a/heat/templates/deployment-cfn.yaml
 +++ b/heat/templates/deployment-cfn.yaml
-@@ -45,6 +45,12 @@ spec:
+@@ -45,6 +45,8 @@ spec:
          configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
  {{ dict "envAll" $envAll "podName" "heat-cfn" "containerNames" (list "heat-cfn" "init" ) | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
      spec:
-+{{ with .Values.pod.priorityClassName.heat_cfn }}
-+      priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.heat_cfn }}
-+      runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "heat_cfn" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "heat_cfn" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
        serviceAccountName: {{ $serviceAccountName }}
  {{ dict "envAll" $envAll "application" "heat" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
        affinity:
 diff --git a/heat/templates/deployment-cloudwatch.yaml b/heat/templates/deployment-cloudwatch.yaml
-index f1f73535..0c9dec54 100644
+index f1f73535..47b8e9ae 100644
 --- a/heat/templates/deployment-cloudwatch.yaml
 +++ b/heat/templates/deployment-cloudwatch.yaml
-@@ -44,6 +44,12 @@ spec:
+@@ -44,6 +44,8 @@ spec:
          configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
          configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
      spec:
-+{{ with .Values.pod.priorityClassName.heat_cloudwatch }}
-+      priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.heat_cloudwatch }}
-+      runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "heat_cloudwatch" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "heat_cloudwatch" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
        serviceAccountName: {{ $serviceAccountName }}
  {{ dict "envAll" $envAll "application" "heat" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
        affinity:
 diff --git a/heat/templates/deployment-engine.yaml b/heat/templates/deployment-engine.yaml
-index 7b7b8adf..d228a876 100644
+index 7b7b8adf..17a001d5 100644
 --- a/heat/templates/deployment-engine.yaml
 +++ b/heat/templates/deployment-engine.yaml
-@@ -53,6 +53,12 @@ spec:
+@@ -53,6 +53,8 @@ spec:
  {{ dict "envAll" $envAll "podName" "heat-engine" "containerNames" (list "heat-engine" "init" ) | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
  {{- end }}
      spec:
-+{{ with .Values.pod.priorityClassName.heat_engine }}
-+      priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.heat_engine }}
-+      runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "heat_engine" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "heat_engine" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
        serviceAccountName: {{ $serviceAccountName }}
  {{ dict "envAll" $envAll "application" "heat" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
        affinity:
+diff --git a/heat/templates/job-trusts.yaml b/heat/templates/job-trusts.yaml
+index ae5bc644..c6f2fd3f 100644
+--- a/heat/templates/job-trusts.yaml
++++ b/heat/templates/job-trusts.yaml
+@@ -43,6 +43,8 @@ spec:
+         configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
+ {{ dict "envAll" $envAll "podName" "heat-trusts" "containerNames" (list "heat-trusts" "init" ) | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+     spec:
++{{ tuple "heat_trusts" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "heat_trusts" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
+       serviceAccountName: {{ $serviceAccountName }}
+ {{ dict "envAll" $envAll "application" "trusts" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+       restartPolicy: OnFailure
 diff --git a/heat/templates/pod-rally-test.yaml b/heat/templates/pod-rally-test.yaml
-index ac6c636e..610048cf 100644
+index ac6c636e..dd6338ac 100644
 --- a/heat/templates/pod-rally-test.yaml
 +++ b/heat/templates/pod-rally-test.yaml
-@@ -43,6 +43,12 @@ spec:
+@@ -43,6 +43,8 @@ spec:
  {{ tuple $envAll "heat" | include "helm-toolkit.snippets.kubernetes_tolerations" | indent 2 }}
  {{ end }}
    restartPolicy: Never
-+{{ with .Values.pod.priorityClassName.heat_tests }}
-+  priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.heat_tests }}
-+  runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "heat_tests" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 2 }}
++{{ tuple "heat_tests" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 2 }}
    serviceAccountName: {{ $serviceAccountName }}
    initContainers:
  {{ tuple $envAll "tests" $mounts_tests_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 4 }}
-diff --git a/heat/values.yaml b/heat/values.yaml
-index 1cf8bdc4..af99c49c 100644
---- a/heat/values.yaml
-+++ b/heat/values.yaml
-@@ -1015,6 +1015,24 @@ endpoints:
-         default: 80
- 
- pod:
-+  priorityClassName:
-+    heat_api: null
-+    heat_cfn: null
-+    heat_cloudwatch: null
-+    heat_tests: null
-+    heat_engine_cleaner: null
-+    heat_purge_deleted: null
-+    heat_engine: null
-+    db_sync: null
-+  runtimeClassName:
-+    heat_api: null
-+    heat_cfn: null
-+    heat_cloudwatch: null
-+    heat_tests: null
-+    heat_engine_cleaner: null
-+    heat_purge_deleted: null
-+    heat_engine: null
-+    db_sync: null
-   security_context:
-     heat:
-       pod:
--- 
-2.34.1
-
