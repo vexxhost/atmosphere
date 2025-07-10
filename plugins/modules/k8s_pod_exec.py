@@ -4,7 +4,7 @@
 from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
-DOCUMENTATION = '''
+DOCUMENTATION = """
 ---
 module: k8s_pod_exec
 short_description: Create Kubernetes pod, execute command, and retrieve output
@@ -172,9 +172,9 @@ options:
             - Whether to keep the pod after execution (useful for debugging)
         type: bool
         default: false
-'''
+"""
 
-EXAMPLES = '''
+EXAMPLES = """
 # Basic pod execution with default kubeconfig
 - name: Execute simple command
   k8s_pod_exec:
@@ -250,9 +250,9 @@ EXAMPLES = '''
         cpu: "200m"
     save_output_to: /tmp/disk_usage.txt
     timeout: 120
-'''
+"""
 
-RETURN = '''
+RETURN = """
 stdout:
     description: Command output from the pod
     type: str
@@ -281,14 +281,15 @@ kubeconfig_used:
     description: Path to kubeconfig file used for authentication
     type: str
     returned: when kubeconfig_path parameter is specified
-'''
+"""
 
-from ansible.module_utils.basic import AnsibleModule
-import time
 import os
+import time
+from ansible.module_utils.basic import AnsibleModule
 
 try:
     from kubernetes import client, config
+
     HAS_KUBERNETES = True
 except ImportError:
     HAS_KUBERNETES = False
@@ -300,14 +301,18 @@ def load_kubernetes_config(kubeconfig_path=None):
         if kubeconfig_path:
             # Expand user home directory if ~ is used
             kubeconfig_path = os.path.expanduser(kubeconfig_path)
-            
+
             # Check if kubeconfig file exists
             if not os.path.exists(kubeconfig_path):
-                return {"success": False, "msg": f"Kubeconfig file not found: {kubeconfig_path}"}
-            
+                return {
+                    "success": False, "msg": f"Kubeconfig file not found: {kubeconfig_path}"
+                }
+
             # Load config from specified path
             config.load_kube_config(config_file=kubeconfig_path)
-            return {"success": True, "msg": f"Loaded kubeconfig from {kubeconfig_path}", "path": kubeconfig_path}
+            return {
+                "success": True, "msg": f"Loaded kubeconfig from {kubeconfig_path}", "path": kubeconfig_path
+            }
         else:
             # Try default kubeconfig locations first
             try:
@@ -317,37 +322,37 @@ def load_kubernetes_config(kubeconfig_path=None):
                 # Fall back to in-cluster config
                 config.load_incluster_config()
                 return {"success": True, "msg": "Loaded in-cluster config"}
-                
+
     except Exception as e:
         return {"success": False, "msg": f"Failed to load Kubernetes config: {str(e)}"}
 
 
 def build_pod_spec(module_params):
     """Build the pod specification based on module parameters."""
-    
+
     # Container specification
     container = {
         "name": module_params['pod_name'],
         "image": module_params['container_image'],
         "command": module_params['command']
     }
-    
+
     # Add args if provided
     if module_params.get('args'):
         container["args"] = module_params['args']
-    
+
     # Add working directory if provided
     if module_params.get('working_dir'):
         container["workingDir"] = module_params['working_dir']
-    
+
     # Environment variables
     env_vars = []
-    
+
     # Direct environment variables
     if module_params.get('env_vars'):
         for key, value in module_params['env_vars'].items():
             env_vars.append({"name": key, "value": str(value)})
-    
+
     # Environment variables from secrets
     env_from = []
     if module_params.get('env_from_secrets'):
@@ -360,7 +365,7 @@ def build_pod_spec(module_params):
             if secret_ref.get('prefix'):
                 env_from_entry["prefix"] = secret_ref['prefix']
             env_from.append(env_from_entry)
-    
+
     # Environment variables from config maps
     if module_params.get('env_from_configmaps'):
         for cm_ref in module_params['env_from_configmaps']:
@@ -372,32 +377,33 @@ def build_pod_spec(module_params):
             if cm_ref.get('prefix'):
                 env_from_entry["prefix"] = cm_ref['prefix']
             env_from.append(env_from_entry)
-    
+
     if env_vars:
         container["env"] = env_vars
     if env_from:
         container["envFrom"] = env_from
-    
+
     # Volume mounts
     volume_mounts = []
     volumes = []
-    
+
     # Secret mounts
-    if module_params.get('secret_mounts'):
-        for secret_mount in module_params['secret_mounts']:
+    if module_params.get("secret_mounts"):
+        for secret_mount in module_params["secret_mounts"]:
             volume_name = f"secret-{secret_mount['secret_name']}"
-            volume_mounts.append({
-                "name": volume_name,
-                "mountPath": secret_mount['mount_path']
-            })
-            volumes.append({
-                "name": volume_name,
-                "secret": {
-                    "secretName": secret_mount['secret_name'],
-                    "defaultMode": secret_mount.get('default_mode', 420)
+            volume_mounts.append(
+                {"name": volume_name, "mountPath": secret_mount["mount_path"]}
+            )
+            volumes.append(
+                {
+                    "name": volume_name,
+                    "secret": {
+                        "secretName": secret_mount["secret_name"],
+                        "defaultMode": secret_mount.get("default_mode", 420)
+                    },
                 }
-            })
-    
+            )
+
     # Config map mounts
     if module_params.get('configmap_mounts'):
         for cm_mount in module_params['configmap_mounts']:
@@ -416,33 +422,33 @@ def build_pod_spec(module_params):
     
     if volume_mounts:
         container["volumeMounts"] = volume_mounts
-    
+
     # Resource specifications
     if module_params.get('resources'):
         container["resources"] = module_params['resources']
-    
+
     # Pod specification
     pod_spec = {
         "containers": [container],
         "restartPolicy": "Never"
     }
-    
+
     # Add volumes if any
     if volumes:
         pod_spec["volumes"] = volumes
-    
+
     # Service account
     if module_params.get('service_account'):
         pod_spec["serviceAccountName"] = module_params['service_account']
-    
+
     # Node selector
     if module_params.get('node_selector'):
         pod_spec["nodeSelector"] = module_params['node_selector']
-    
+
     # Tolerations
     if module_params.get('tolerations'):
         pod_spec["tolerations"] = module_params['tolerations']
-    
+
     # Complete pod manifest
     pod_manifest = {
         "apiVersion": "v1",
@@ -456,7 +462,7 @@ def build_pod_spec(module_params):
         },
         "spec": pod_spec
     }
-    
+
     return pod_manifest
 
 
@@ -472,7 +478,7 @@ def create_pod(api_instance, namespace, pod_manifest):
 def wait_for_pod_completion(api_instance, namespace, pod_name, timeout):
     """Wait for the pod to complete execution."""
     start_time = time.time()
-    
+
     while time.time() - start_time < timeout:
         try:
             pod = api_instance.read_namespaced_pod(name=pod_name, namespace=namespace)
@@ -481,12 +487,12 @@ def wait_for_pod_completion(api_instance, namespace, pod_name, timeout):
             if phase in ["Succeeded", "Failed"]:
                 execution_time = time.time() - start_time
                 return {"success": True, "phase": phase, "execution_time": execution_time}
-            
+
             time.sleep(2)
-            
+
         except client.exceptions.ApiException as e:
             return {"success": False, "msg": f"Failed to check pod status: {str(e)}"}
-    
+
     execution_time = time.time() - start_time
     return {"success": False, "msg": "Pod execution timeout", "execution_time": execution_time}
 
@@ -530,66 +536,66 @@ def main():
     """Main module execution."""
     
     module_args = dict(
-        namespace=dict(type='str', required=True),
-        pod_name=dict(type='str', required=True),
-        container_image=dict(type='str', required=True),
-        command=dict(type='list', elements='str', required=True),
-        args=dict(type='list', elements='str', required=False),
-        timeout=dict(type='int', default=300),
-        kubeconfig_path=dict(type='str', required=False),
-        env_vars=dict(type='dict', required=False),
+        namespace=dict(type="str", required=True),
+        pod_name=dict(type="str", required=True),
+        container_image=dict(type="str", required=True),
+        command=dict(type="list", elements="str", required=True),
+        args=dict(type="list", elements="str", required=False),
+        timeout=dict(type="int", default=300),
+        kubeconfig_path=dict(type="str", required=False),
+        env_vars=dict(type="dict", required=False),
         env_from_secrets=dict(
-            type='list',
-            elements='dict',
+            type="list",
+            elements="dict",
             required=False,
             options=dict(
-                secret_name=dict(type='str', required=True),
-                prefix=dict(type='str', required=False)
+                secret_name=dict(type="str", required=True),
+                prefix=dict(type="str", required=False)
             )
         ),
         env_from_configmaps=dict(
-            type='list',
-            elements='dict',
+            type="list",
+            elements="dict",
             required=False,
             options=dict(
-                configmap_name=dict(type='str', required=True),
-                prefix=dict(type='str', required=False)
+                configmap_name=dict(type="str", required=True),
+                prefix=dict(type="str", required=False)
             )
         ),
         secret_mounts=dict(
-            type='list',
-            elements='dict',
+            type="list",
+            elements="dict",
             required=False,
             options=dict(
-                secret_name=dict(type='str', required=True),
-                mount_path=dict(type='str', required=True),
-                default_mode=dict(type='int', default=420)
+                secret_name=dict(type="str", required=True),
+                mount_path=dict(type="str", required=True),
+                default_mode=dict(type="int", default=420)
             )
         ),
         configmap_mounts=dict(
-            type='list',
-            elements='dict',
+            type="list",
+            elements="dict",
             required=False,
             options=dict(
-                configmap_name=dict(type='str', required=True),
-                mount_path=dict(type='str', required=True),
-                default_mode=dict(type='int', default=420)
+                configmap_name=dict(type="str", required=True),
+                mount_path=dict(type="str", required=True),
+                default_mode=dict(type="int", default=420)
             )
         ),
-        working_dir=dict(type='str', required=False),
-        service_account=dict(type='str', required=False),
-        node_selector=dict(type='dict', required=False),
-        tolerations=dict(type='list', elements='dict', required=False),
+        working_dir=dict(type="str", required=False),
+        service_account=dict(type="str", required=False),
+        node_selector=dict(type="dict", required=False),
+        tolerations=dict(type="list", elements="dict", required=False),
         resources=dict(
-            type='dict',
+            type="dict",
             required=False,
             options=dict(
-                requests=dict(type='dict', required=False),
-                limits=dict(type='dict', required=False)
+                requests=dict(type="dict", required=False),
+                limits=dict(type="dict", required=False)
             )
         ),
-        save_output_to=dict(type='str', required=False),
-        keep_pod=dict(type='bool', default=False)
+        save_output_to=dict(type="str", required=False),
+        keep_pod=dict(type="bool", default=False)
     )
 
     module = AnsibleModule(
@@ -611,11 +617,11 @@ def main():
     api_instance = client.CoreV1Api()
 
     # Extract parameters
-    namespace = module.params['namespace']
-    pod_name = module.params['pod_name']
-    timeout = module.params['timeout']
-    save_output_to = module.params.get('save_output_to')
-    keep_pod = module.params['keep_pod']
+    namespace = module.params["namespace"]
+    pod_name = module.params["pod_name"]
+    timeout = module.params["timeout"]
+    save_output_to = module.params.get("save_output_to")
+    keep_pod = module.params["keep_pod"]
 
     # Build pod specification
     pod_manifest = build_pod_spec(module.params)
@@ -623,67 +629,67 @@ def main():
     # Check mode - don't actually create resources
     if module.check_mode:
         check_result = {
-            'changed': True,
-            'pod_manifest': pod_manifest,
-            'config_loaded': config_result['msg']
+            "changed": True,
+            "pod_manifest": pod_manifest,
+            "config_loaded": config_result["msg"]
         }
         if kubeconfig_path:
-            check_result['kubeconfig_used'] = config_result.get('path', kubeconfig_path)
+            check_result["kubeconfig_used"] = config_result.get("path", kubeconfig_path)
         module.exit_json(**check_result)
 
     results = {
-        'changed': True,
-        'pod_name': pod_name,
-        'stdout': '',
-        'stderr': '',
-        'pod_status': '',
-        'execution_time': 0
+        "changed": True,
+        "pod_name": pod_name,
+        "stdout": "",
+        "stderr": "",
+        "pod_status": "",
+        "execution_time": 0
     }
 
     # Add kubeconfig info to results if specified
     if kubeconfig_path:
-        results['kubeconfig_used'] = config_result.get('path', kubeconfig_path)
+        results["kubeconfig_used"] = config_result.get("path", kubeconfig_path)
 
     try:
         # Create pod
         create_result = create_pod(api_instance, namespace, pod_manifest)
-        if not create_result['success']:
-            module.fail_json(msg=create_result['msg'])
+        if not create_result["success"]:
+            module.fail_json(msg=create_result["msg"])
 
         # Wait for pod completion
         wait_result = wait_for_pod_completion(api_instance, namespace, pod_name, timeout)
-        if not wait_result['success']:
+        if not wait_result["success"]:
             # Try to cleanup before failing
             if not keep_pod:
                 delete_pod(api_instance, namespace, pod_name)
-            module.fail_json(msg=wait_result['msg'])
+            module.fail_json(msg=wait_result["msg"])
 
-        results['pod_status'] = wait_result['phase']
-        results['execution_time'] = wait_result['execution_time']
+        results["pod_status"] = wait_result["phase"]
+        results["execution_time"] = wait_result["execution_time"]
 
         # Get pod logs
         logs_result = get_pod_logs(api_instance, namespace, pod_name)
-        if logs_result['success']:
-            results['stdout'] = logs_result['logs']
+        if logs_result["success"]:
+            results["stdout"] = logs_result["logs"]
         else:
-            results['stderr'] = logs_result['msg']
+            results["stderr"] = logs_result["msg"]
 
         # Save output to file if requested
-        if save_output_to and results['stdout']:
-            save_result = save_output_to_file(results['stdout'], save_output_to)
-            if save_result['success']:
-                results['saved_to'] = save_output_to
+        if save_output_to and results["stdout"]:
+            save_result = save_output_to_file(results["stdout"], save_output_to)
+            if save_result["success"]:
+                results["saved_to"] = save_output_to
             else:
                 module.warn(f"Failed to save output: {save_result['msg']}")
 
         # Delete pod unless keep_pod is True
         if not keep_pod:
             delete_result = delete_pod(api_instance, namespace, pod_name)
-            if not delete_result['success']:
+            if not delete_result["success"]:
                 module.warn(f"Failed to delete pod: {delete_result['msg']}")
 
         # Check if pod failed
-        if wait_result['phase'] == 'Failed':
+        if wait_result["phase"] == "Failed":
             module.fail_json(msg=f"Pod execution failed", **results)
 
         module.exit_json(**results)
