@@ -1,347 +1,208 @@
-From c11ca88302027988fa44059991141395475c103e Mon Sep 17 00:00:00 2001
-From: Dong Ma <dong.ma@vexxhost.com>
-Date: Tue, 11 Feb 2025 11:03:48 +0000
-Subject: [PATCH] Enable {priority,runtime}ClassName for Neutron
-
----
- .../templates/daemonset-bagpipe-bgp.yaml      |  6 ++++
- .../templates/daemonset-bgp-dragent.yaml      |  6 ++++
- .../templates/daemonset-dhcp-agent.yaml       |  6 ++++
- .../templates/daemonset-l2gw-agent.yaml       |  6 ++++
- .../neutron/templates/daemonset-l3-agent.yaml |  6 ++++
- .../neutron/templates/daemonset-lb-agent.yaml |  6 ++++
- .../templates/daemonset-metadata-agent.yaml   |  6 ++++
- .../daemonset-netns-cleanup-cron.yaml         |  6 ++++
- .../daemonset-neutron-ovn-vpn-agent.yaml      |  6 ++++
- .../daemonset-ovn-metadata-agent.yaml         |  6 ++++
- .../templates/daemonset-ovs-agent.yaml        |  6 ++++
- .../templates/daemonset-sriov-agent.yaml      |  6 ++++
- .../templates/deployment-ironic-agent.yaml    |  6 ++++
- .../templates/deployment-rpc_server.yaml      |  6 ++++
- .../neutron/templates/deployment-server.yaml  |  6 ++++
- neutron/templates/pod-rally-test.yaml  |  6 ++++
- neutron/values.yaml                    | 36 +++++++++++++++++++
- 17 files changed, 132 insertions(+)
-
 diff --git a/neutron/templates/daemonset-bagpipe-bgp.yaml b/neutron/templates/daemonset-bagpipe-bgp.yaml
-index b6d2157e..fd4f0930 100644
+index b6d2157e..e9b59eaa 100644
 --- a/neutron/templates/daemonset-bagpipe-bgp.yaml
 +++ b/neutron/templates/daemonset-bagpipe-bgp.yaml
-@@ -57,6 +57,12 @@ spec:
+@@ -57,6 +57,8 @@ spec:
  {{ tuple "neutron_bagpipe_bgp" . | include "helm-toolkit.snippets.custom_pod_annotations" | indent 8 }}
      spec:
  {{ dict "envAll" $envAll "application" "neutron_bagpipe_bgp" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
-+{{ with .Values.pod.priorityClassName.neutron_bagpipe_bgp }}
-+      priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.neutron_bagpipe_bgp }}
-+      runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "bagpipe_bgp" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "bagpipe_bgp" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
        serviceAccountName: {{ $serviceAccountName }}
  {{ if $envAll.Values.pod.tolerations.neutron.enabled }}
  {{ tuple $envAll "neutron" | include "helm-toolkit.snippets.kubernetes_tolerations" | indent 6 }}
 diff --git a/neutron/templates/daemonset-bgp-dragent.yaml b/neutron/templates/daemonset-bgp-dragent.yaml
-index b0494c3e..caa61391 100644
+index b0494c3e..a44b7f6a 100644
 --- a/neutron/templates/daemonset-bgp-dragent.yaml
 +++ b/neutron/templates/daemonset-bgp-dragent.yaml
-@@ -56,6 +56,12 @@ spec:
+@@ -56,6 +56,8 @@ spec:
  {{ tuple "neutron_bgp_dragent" . | include "helm-toolkit.snippets.custom_pod_annotations" | indent 8 }}
      spec:
  {{ dict "envAll" $envAll "application" "neutron_bgp_dragent" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
-+{{ with .Values.pod.priorityClassName.neutron_bgp_dragent }}
-+      priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.neutron_bgp_dragent }}
-+      runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "bgp_dragent" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "bgp_dragent" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
        serviceAccountName: {{ $serviceAccountName }}
  {{ if $envAll.Values.pod.tolerations.neutron.enabled }}
  {{ tuple $envAll "neutron" | include "helm-toolkit.snippets.kubernetes_tolerations" | indent 6 }}
 diff --git a/neutron/templates/daemonset-dhcp-agent.yaml b/neutron/templates/daemonset-dhcp-agent.yaml
-index 17e15f8e..b51d179d 100644
+index af724875..75266dd6 100644
 --- a/neutron/templates/daemonset-dhcp-agent.yaml
 +++ b/neutron/templates/daemonset-dhcp-agent.yaml
-@@ -79,6 +79,12 @@ spec:
+@@ -79,6 +79,8 @@ spec:
  {{ dict "envAll" $envAll "podName" "neutron-dhcp-agent-default" "containerNames" (list "neutron-dhcp-agent" "neutron-dhcp-agent-init" "init") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
      spec:
  {{ dict "envAll" $envAll "application" "neutron_dhcp_agent" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
-+{{ with .Values.pod.priorityClassName.neutron_dhcp_agent }}
-+      priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.neutron_dhcp_agent }}
-+      runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "neutron_dhcp_agent" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "neutron_dhcp_agent" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
        serviceAccountName: {{ $serviceAccountName }}
  {{ if $envAll.Values.pod.tolerations.neutron.enabled }}
  {{ tuple $envAll "neutron" | include "helm-toolkit.snippets.kubernetes_tolerations" | indent 6 }}
 diff --git a/neutron/templates/daemonset-l2gw-agent.yaml b/neutron/templates/daemonset-l2gw-agent.yaml
-index e9481981..ab984a30 100644
+index e9481981..e798aca0 100644
 --- a/neutron/templates/daemonset-l2gw-agent.yaml
 +++ b/neutron/templates/daemonset-l2gw-agent.yaml
-@@ -80,6 +80,12 @@ spec:
+@@ -80,6 +80,8 @@ spec:
  {{ tuple "neutron_l2gw_agent" . | include "helm-toolkit.snippets.custom_pod_annotations" | indent 8 }}
      spec:
  {{ dict "envAll" $envAll "application" "neutron_l2gw_agent" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
-+{{ with .Values.pod.priorityClassName.neutron_l2gw_agent }}
-+      priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.neutron_l2gw_agent }}
-+      runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "neutron_l2gw_agent" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "neutron_l2gw_agent" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
        serviceAccountName: {{ $serviceAccountName }}
  {{ if $envAll.Values.pod.tolerations.neutron.enabled }}
  {{ tuple $envAll "neutron" | include "helm-toolkit.snippets.kubernetes_tolerations" | indent 6 }}
 diff --git a/neutron/templates/daemonset-l3-agent.yaml b/neutron/templates/daemonset-l3-agent.yaml
-index b4bbd096..21b45d71 100644
+index b4bbd096..1afc2685 100644
 --- a/neutron/templates/daemonset-l3-agent.yaml
 +++ b/neutron/templates/daemonset-l3-agent.yaml
-@@ -80,6 +80,12 @@ spec:
+@@ -80,6 +80,8 @@ spec:
  {{ dict "envAll" $envAll "podName" "neutron-l3-agent-default" "containerNames" (list "neutron-l3-agent" "init"  "neutron-l3-agent-init") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
      spec:
  {{ dict "envAll" $envAll "application" "neutron_l3_agent" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
-+{{ with .Values.pod.priorityClassName.neutron_l3_agent }}
-+      priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.neutron_l3_agent }}
-+      runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "neutron_l3_agent" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "neutron_l3_agent" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
        serviceAccountName: {{ $serviceAccountName }}
  {{ if $envAll.Values.pod.tolerations.neutron.enabled }}
  {{ tuple $envAll "neutron" | include "helm-toolkit.snippets.kubernetes_tolerations" | indent 6 }}
 diff --git a/neutron/templates/daemonset-lb-agent.yaml b/neutron/templates/daemonset-lb-agent.yaml
-index 35ff8fe0..77337f7a 100644
+index 35ff8fe0..f9c9cea9 100644
 --- a/neutron/templates/daemonset-lb-agent.yaml
 +++ b/neutron/templates/daemonset-lb-agent.yaml
-@@ -55,6 +55,12 @@ spec:
+@@ -55,6 +55,8 @@ spec:
  {{ tuple "neutron_lb_agent" . | include "helm-toolkit.snippets.custom_pod_annotations" | indent 8 }}
      spec:
  {{ dict "envAll" $envAll "application" "neutron_lb_agent" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
-+{{ with .Values.pod.priorityClassName.neutron_lb_agent }}
-+      priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.neutron_lb_agent }}
-+      runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "neutron_lb_agent" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "neutron_lb_agent" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
        serviceAccountName: {{ $serviceAccountName }}
  {{ if $envAll.Values.pod.tolerations.neutron.enabled }}
  {{ tuple $envAll "neutron" | include "helm-toolkit.snippets.kubernetes_tolerations" | indent 6 }}
 diff --git a/neutron/templates/daemonset-metadata-agent.yaml b/neutron/templates/daemonset-metadata-agent.yaml
-index fc9a75ee..229ed5c6 100644
+index fc9a75ee..5ecbc5eb 100644
 --- a/neutron/templates/daemonset-metadata-agent.yaml
 +++ b/neutron/templates/daemonset-metadata-agent.yaml
-@@ -76,6 +76,12 @@ spec:
+@@ -76,6 +76,8 @@ spec:
  {{ dict "envAll" $envAll "podName" "neutron-metadata-agent-default" "containerNames" (list "neutron-metadata-agent" "neutron-metadata-agent-init" "init") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
      spec:
  {{ dict "envAll" $envAll "application" "neutron_metadata_agent" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
-+{{ with .Values.pod.priorityClassName.neutron_metadata_agent }}
-+      priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.neutron_metadata_agent }}
-+      runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "neutron_metadata_agent" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "neutron_metadata_agent" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
        serviceAccountName: {{ $serviceAccountName }}
  {{ if $envAll.Values.pod.tolerations.neutron.enabled }}
  {{ tuple $envAll "neutron" | include "helm-toolkit.snippets.kubernetes_tolerations" | indent 6 }}
 diff --git a/neutron/templates/daemonset-netns-cleanup-cron.yaml b/neutron/templates/daemonset-netns-cleanup-cron.yaml
-index d43c5950..df50c45a 100644
+index d43c5950..eab1dbd0 100644
 --- a/neutron/templates/daemonset-netns-cleanup-cron.yaml
 +++ b/neutron/templates/daemonset-netns-cleanup-cron.yaml
-@@ -48,6 +48,12 @@ spec:
+@@ -48,6 +48,8 @@ spec:
  {{ dict "envAll" $envAll "podName" "neutron-netns-cleanup-cron-default" "containerNames" (list "neutron-netns-cleanup-cron" "init" ) | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
      spec:
  {{ dict "envAll" $envAll "application" "neutron_netns_cleanup_cron" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
-+{{ with .Values.pod.priorityClassName.neutron_netns_cleanup_cron }}
-+      priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.neutron_netns_cleanup_cron }}
-+      runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "neutron_netns_cleanup_cron" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "neutron_netns_cleanup_cron" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
        serviceAccountName: {{ $serviceAccountName }}
  {{ if $envAll.Values.pod.tolerations.neutron.enabled }}
  {{ tuple $envAll "neutron" | include "helm-toolkit.snippets.kubernetes_tolerations" | indent 6 }}
 diff --git a/neutron/templates/daemonset-neutron-ovn-vpn-agent.yaml b/neutron/templates/daemonset-neutron-ovn-vpn-agent.yaml
-index fc6d8055..30c372f9 100644
+index fc6d8055..15707bf7 100644
 --- a/neutron/templates/daemonset-neutron-ovn-vpn-agent.yaml
 +++ b/neutron/templates/daemonset-neutron-ovn-vpn-agent.yaml
-@@ -78,6 +78,12 @@ spec:
+@@ -78,6 +78,8 @@ spec:
          configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
      spec:
  {{ dict "envAll" $envAll "application" "ovn_vpn_agent" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
-+{{ with .Values.pod.priorityClassName.neutron_ovn_vpn_agent }}
-+      priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.neutron_ovn_vpn_agent }}
-+      runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "ovn_vpn_agent" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "ovn_vpn_agent" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
        serviceAccountName: {{ $serviceAccountName }}
  {{ if $envAll.Values.pod.tolerations.neutron.enabled }}
  {{ tuple $envAll "neutron" | include "helm-toolkit.snippets.kubernetes_tolerations" | indent 6 }}
 diff --git a/neutron/templates/daemonset-ovn-metadata-agent.yaml b/neutron/templates/daemonset-ovn-metadata-agent.yaml
-index 47e12567..80ca3f07 100644
+index 47e12567..98d78878 100644
 --- a/neutron/templates/daemonset-ovn-metadata-agent.yaml
 +++ b/neutron/templates/daemonset-ovn-metadata-agent.yaml
-@@ -76,6 +76,12 @@ spec:
+@@ -76,6 +76,8 @@ spec:
  {{ dict "envAll" $envAll "podName" "neutron-ovn-metadata-agent-default" "containerNames" (list "neutron-ovn-metadata-agent" "neutron-ovn-metadata-agent-init" "init") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
      spec:
  {{ dict "envAll" $envAll "application" "neutron_ovn_metadata_agent" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
-+{{ with .Values.pod.priorityClassName.neutron_ovn_metadata_agent }}
-+      priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.neutron_ovn_metadata_agent }}
-+      runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "neutron_ovn_metadata_agent" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "neutron_ovn_metadata_agent" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
        serviceAccountName: {{ $serviceAccountName }}
  {{ if $envAll.Values.pod.tolerations.neutron.enabled }}
  {{ tuple $envAll "neutron" | include "helm-toolkit.snippets.kubernetes_tolerations" | indent 6 }}
 diff --git a/neutron/templates/daemonset-ovs-agent.yaml b/neutron/templates/daemonset-ovs-agent.yaml
-index 0ea60f58..c6eb4c01 100644
+index 0ea60f58..7491278d 100644
 --- a/neutron/templates/daemonset-ovs-agent.yaml
 +++ b/neutron/templates/daemonset-ovs-agent.yaml
-@@ -59,6 +59,12 @@ spec:
+@@ -59,6 +59,8 @@ spec:
  {{ dict "envAll" $envAll "podName" "$configMapName" "containerNames" (list "neutron-ovs-agent" "init" "neutron-openvswitch-agent-kernel-modules" "neutron-ovs-agent-init") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
      spec:
  {{ dict "envAll" $envAll "application" "neutron_ovs_agent" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
-+{{ with .Values.pod.priorityClassName.neutron_ovs_agent }}
-+      priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.neutron_ovs_agent }}
-+      runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "neutron_ovs_agent" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "neutron_ovs_agent" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
        serviceAccountName: {{ $serviceAccountName }}
        nodeSelector:
          {{ .Values.labels.ovs.node_selector_key }}: {{ .Values.labels.ovs.node_selector_value }}
 diff --git a/neutron/templates/daemonset-sriov-agent.yaml b/neutron/templates/daemonset-sriov-agent.yaml
-index 5b96cd7c..efd48e01 100644
+index 5b96cd7c..9b68c53c 100644
 --- a/neutron/templates/daemonset-sriov-agent.yaml
 +++ b/neutron/templates/daemonset-sriov-agent.yaml
-@@ -62,6 +62,12 @@ spec:
+@@ -62,6 +62,8 @@ spec:
  {{ dict "envAll" $envAll "podName" "neutron-sriov-agent-default" "containerNames" (list "neutron-sriov-agent-init" "init" "neutron-sriov-agent") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
      spec:
  {{ dict "envAll" $envAll "application" "neutron_sriov_agent" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
-+{{ with .Values.pod.priorityClassName.neutron_sriov_agent }}
-+      priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.neutron_sriov_agent }}
-+      runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "neutron_sriov_agent" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "neutron_sriov_agent" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
        serviceAccountName: {{ $serviceAccountName }}
        nodeSelector:
          {{ .Values.labels.sriov.node_selector_key }}: {{ .Values.labels.sriov.node_selector_value }}
 diff --git a/neutron/templates/deployment-ironic-agent.yaml b/neutron/templates/deployment-ironic-agent.yaml
-index 1b468e2b..8d2663f9 100644
+index 1b468e2b..2ac170cb 100644
 --- a/neutron/templates/deployment-ironic-agent.yaml
 +++ b/neutron/templates/deployment-ironic-agent.yaml
-@@ -49,6 +49,12 @@ spec:
+@@ -49,6 +49,8 @@ spec:
  {{ tuple "neutron_ironic_agent" . | include "helm-toolkit.snippets.custom_pod_annotations" | indent 8 }}
      spec:
  {{ dict "envAll" $envAll "application" "neutron_ironic_agent" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
-+{{ with .Values.pod.priorityClassName.neutron_ironic_agent }}
-+      priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.neutron_ironic_agent }}
-+      runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "neutron_ironic_agent" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "neutron_ironic_agent" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
        serviceAccountName: {{ $serviceAccountName }}
        affinity:
  {{ tuple $envAll "neutron" "ironic_agent" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
 diff --git a/neutron/templates/deployment-rpc_server.yaml b/neutron/templates/deployment-rpc_server.yaml
-index 1866e21e..f5f72403 100644
+index 1866e21e..363b899b 100644
 --- a/neutron/templates/deployment-rpc_server.yaml
 +++ b/neutron/templates/deployment-rpc_server.yaml
-@@ -49,6 +49,12 @@ spec:
+@@ -49,6 +49,8 @@ spec:
  {{ dict "envAll" $envAll "podName" "neutron-rpc-server" "containerNames" (list "neutron-rpc-server" "init") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
      spec:
  {{ dict "envAll" $envAll "application" "neutron_rpc_server" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
-+{{ with .Values.pod.priorityClassName.neutron_rpc_server }}
-+      priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.neutron_rpc_server }}
-+      runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "neutron_rpc_server" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "neutron_rpc_server" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
        serviceAccountName: {{ $serviceAccountName }}
        affinity:
  {{ tuple $envAll "neutron" "rpc_server" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
 diff --git a/neutron/templates/deployment-server.yaml b/neutron/templates/deployment-server.yaml
-index 457401b4..464b3c3c 100644
+index 457401b4..ebddaab1 100644
 --- a/neutron/templates/deployment-server.yaml
 +++ b/neutron/templates/deployment-server.yaml
-@@ -81,6 +81,12 @@ spec:
+@@ -81,6 +81,8 @@ spec:
  {{ dict "envAll" $envAll "podName" "neutron-server" "containerNames" (list "neutron-server" "init" "nginx") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
      spec:
  {{ dict "envAll" $envAll "application" "neutron_server" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
-+{{ with .Values.pod.priorityClassName.neutron_server }}
-+      priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.neutron_server }}
-+      runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "neutron_server" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "neutron_server" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
        serviceAccountName: {{ $serviceAccountName }}
        affinity:
  {{ tuple $envAll "neutron" "server" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
 diff --git a/neutron/templates/pod-rally-test.yaml b/neutron/templates/pod-rally-test.yaml
-index 5ef57fa3..a1e3e1ad 100644
+index 5ef57fa3..15165cf0 100644
 --- a/neutron/templates/pod-rally-test.yaml
 +++ b/neutron/templates/pod-rally-test.yaml
-@@ -44,6 +44,12 @@ spec:
+@@ -44,6 +44,8 @@ spec:
  {{ tuple $envAll "neutron" | include "helm-toolkit.snippets.kubernetes_tolerations" | indent 2 }}
  {{ end }}
    restartPolicy: Never
-+{{ with .Values.pod.priorityClassName.neutron_tests }}
-+  priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.neutron_tests }}
-+  runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "neutron_tests" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 2 }}
++{{ tuple "neutron_tests" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 2 }}
    serviceAccountName: {{ $serviceAccountName }}
    initContainers:
  {{ tuple $envAll "tests" $mounts_tests_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 4 }}
-diff --git a/neutron/values.yaml b/neutron/values.yaml
-index b1ff4569..0f559976 100644
---- a/neutron/values.yaml
-+++ b/neutron/values.yaml
-@@ -389,6 +389,42 @@ dependencies:
-           service: local_image_registry
- 
- pod:
-+  priorityClassName:
-+    neutron_bagpipe_bgp: null
-+    neutron_bgp_dragent: null
-+    neutron_dhcp_agent: null
-+    neutron_l2gw_agent: null
-+    neutron_l3_agent: null
-+    neutron_lb_agent: null
-+    neutron_metadata_agent: null
-+    neutron_netns_cleanup_cron: null
-+    neutron_ovn_vpn_agent: null
-+    neutron_ovn_metadata_agent: null
-+    neutron_ovs_agent: null
-+    neutron_sriov_agent: null
-+    neutron_ironic_agent: null
-+    neutron_rpc_server: null
-+    neutron_server: null
-+    neutron_tests: null
-+    db_sync: null
-+  runtimeClassName:
-+    neutron_bagpipe_bgp: null
-+    neutron_bgp_dragent: null
-+    neutron_dhcp_agent: null
-+    neutron_l2gw_agent: null
-+    neutron_l3_agent: null
-+    neutron_lb_agent: null
-+    neutron_metadata_agent: null
-+    neutron_netns_cleanup_cron: null
-+    neutron_ovn_vpn_agent: null
-+    neutron_ovn_metadata_agent: null
-+    neutron_ovs_agent: null
-+    neutron_sriov_agent: null
-+    neutron_ironic_agent: null
-+    neutron_rpc_server: null
-+    neutron_server: null
-+    neutron_tests: null
-+    db_sync: null
-   sidecars:
-     neutron_policy_server: false
-   use_fqdn:
--- 
-2.34.1
-
