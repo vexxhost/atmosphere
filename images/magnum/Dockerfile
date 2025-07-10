@@ -16,7 +16,7 @@ ARG MAGNUM_GIT_REF=db197e08a09da93062fc4222180051dadfc0f0d8
 ADD --keep-git-dir=true https://opendev.org/openstack/magnum.git#${MAGNUM_GIT_REF} /src/magnum
 RUN git -C /src/magnum fetch --unshallow
 COPY patches/magnum /patches/magnum
-RUN git -C /src apply --verbose /patches/magnum/*
+RUN git -C /src/magnum apply --verbose /patches/magnum/*
 RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe
 uv pip install \
     --constraint /upper-constraints.txt \
