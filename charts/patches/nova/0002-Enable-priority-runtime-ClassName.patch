@@ -1,267 +1,156 @@
-From 5be27382cc31cf6540abe3d6bcfd05f33ba1077e Mon Sep 17 00:00:00 2001
-From: Dong Ma <dong.ma@vexxhost.com>
-Date: Tue, 11 Feb 2025 16:47:00 +0000
-Subject: [PATCH] Enable {priority,runtime}ClassName for Nova
-
----
- .../cron-job-archive-deleted-rows.yaml        |  6 ++++
- .../nova/templates/cron-job-cell-setup.yaml   |  6 ++++
- .../templates/cron-job-service-cleaner.yaml   |  6 ++++
- .../nova/templates/daemonset-compute.yaml     |  6 ++++
- .../templates/deployment-api-metadata.yaml    |  6 ++++
- .../nova/templates/deployment-api-osapi.yaml  |  6 ++++
- .../nova/templates/deployment-conductor.yaml  |  6 ++++
- .../nova/templates/deployment-novncproxy.yaml |  6 ++++
- .../nova/templates/deployment-scheduler.yaml  |  6 ++++
- .../nova/templates/deployment-spiceproxy.yaml |  6 ++++
- .../nova/templates/pod-rally-test.yaml        |  6 ++++
- .../templates/statefulset-compute-ironic.yaml |  6 ++++
- .../nova/values.yaml                          | 28 +++++++++++++++++++
- 13 files changed, 100 insertions(+)
-
 diff --git a/nova/templates/cron-job-archive-deleted-rows.yaml b/nova/templates/cron-job-archive-deleted-rows.yaml
-index 7316b3ac..48e83ab2 100644
+index 7316b3ac..cfaba7af 100644
 --- a/nova/templates/cron-job-archive-deleted-rows.yaml
 +++ b/nova/templates/cron-job-archive-deleted-rows.yaml
-@@ -42,6 +42,12 @@ spec:
+@@ -42,6 +42,8 @@ spec:
            labels:
  {{ tuple $envAll "nova" "archive-deleted-rows" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 12 }}
          spec:
-+{{ with .Values.pod.priorityClassName.nova_archive_deleted_rows }}
-+          priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.nova_archive_deleted_rows }}
-+          runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "nova_archive_deleted_rows" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 10 }}
++{{ tuple "nova_archive_deleted_rows" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 10 }}
            serviceAccountName: {{ $serviceAccountName }}
  {{ dict "envAll" $envAll "application" "archive_deleted_rows" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 10 }}
            restartPolicy: OnFailure
 diff --git a/nova/templates/cron-job-cell-setup.yaml b/nova/templates/cron-job-cell-setup.yaml
-index b90b84e8..23840ce4 100644
+index b90b84e8..a129cba9 100644
 --- a/nova/templates/cron-job-cell-setup.yaml
 +++ b/nova/templates/cron-job-cell-setup.yaml
-@@ -42,6 +42,12 @@ spec:
+@@ -42,6 +42,8 @@ spec:
            labels:
  {{ tuple $envAll "nova" "cell-setup" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 12 }}
          spec:
-+{{ with .Values.pod.priorityClassName.nova_cell_setup }}
-+          priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.nova_cell_setup }}
-+          runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "nova_cell_setup" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 10 }}
++{{ tuple "nova_cell_setup" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 10 }}
            serviceAccountName: {{ $serviceAccountName }}
  {{ dict "envAll" $envAll "application" "cell_setup" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 10 }}
            restartPolicy: OnFailure
 diff --git a/nova/templates/cron-job-service-cleaner.yaml b/nova/templates/cron-job-service-cleaner.yaml
-index dd61db79..c5153043 100644
+index dd61db79..89adca00 100644
 --- a/nova/templates/cron-job-service-cleaner.yaml
 +++ b/nova/templates/cron-job-service-cleaner.yaml
-@@ -42,6 +42,12 @@ spec:
+@@ -42,6 +42,8 @@ spec:
            labels:
  {{ tuple $envAll "nova" "service-cleaner" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 12 }}
          spec:
-+{{ with .Values.pod.priorityClassName.nova_service_cleaner }}
-+          priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.nova_service_cleaner }}
-+          runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "nova_service_cleaner" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 10 }}
++{{ tuple "nova_service_cleaner" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 10 }}
            serviceAccountName: {{ $serviceAccountName }}
  {{ dict "envAll" $envAll "application" "service_cleaner" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 10 }}
            restartPolicy: OnFailure
 diff --git a/nova/templates/daemonset-compute.yaml b/nova/templates/daemonset-compute.yaml
-index 3ad00ff2..e62ea760 100644
+index 3ad00ff2..928be37a 100644
 --- a/nova/templates/daemonset-compute.yaml
 +++ b/nova/templates/daemonset-compute.yaml
-@@ -90,6 +90,12 @@ spec:
+@@ -90,6 +90,8 @@ spec:
  {{ tuple "nova_compute" . | include "helm-toolkit.snippets.custom_pod_annotations" | indent 8 }}
  {{ dict "envAll" $envAll "podName" "nova-compute-default" "containerNames" (list "nova-compute" "init" "nova-compute-init" "nova-compute-vnc-init") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
      spec:
-+{{ with .Values.pod.priorityClassName.nova_compute }}
-+      priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.nova_compute }}
-+      runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "nova_compute" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "nova_compute" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
        serviceAccountName: {{ $serviceAccountName }}
  {{ dict "envAll" $envAll "application" "nova" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
        nodeSelector:
 diff --git a/nova/templates/deployment-api-metadata.yaml b/nova/templates/deployment-api-metadata.yaml
-index 51e30c9d..c4c64f92 100644
+index 51e30c9d..8d7a3a76 100644
 --- a/nova/templates/deployment-api-metadata.yaml
 +++ b/nova/templates/deployment-api-metadata.yaml
-@@ -60,6 +60,12 @@ spec:
+@@ -60,6 +60,8 @@ spec:
  {{ tuple "nova_api_metadata" . | include "helm-toolkit.snippets.custom_pod_annotations" | indent 8 }}
  {{ dict "envAll" $envAll "podName" "nova-api-metadata" "containerNames" (list "nova-api-metadata-init" "nova-api" "init") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
      spec:
-+{{ with .Values.pod.priorityClassName.nova_api_metadata }}
-+      priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.nova_api_metadata }}
-+      runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "nova_api_metadata" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "nova_api_metadata" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
        serviceAccountName: {{ $serviceAccountName }}
  {{ dict "envAll" $envAll "application" "nova" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
        affinity:
 diff --git a/nova/templates/deployment-api-osapi.yaml b/nova/templates/deployment-api-osapi.yaml
-index b203ba6c..70a65f59 100644
+index b203ba6c..10f50d72 100644
 --- a/nova/templates/deployment-api-osapi.yaml
 +++ b/nova/templates/deployment-api-osapi.yaml
-@@ -60,6 +60,12 @@ spec:
+@@ -60,6 +60,8 @@ spec:
  {{ tuple "nova_api_osapi" . | include "helm-toolkit.snippets.custom_pod_annotations" | indent 8 }}
  {{ dict "envAll" $envAll "podName" "nova-api-osapi" "containerNames" (list "nova-osapi" "init") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
      spec:
-+{{ with .Values.pod.priorityClassName.nova_api_osapi }}
-+      priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.nova_api_osapi }}
-+      runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "nova_api_osapi" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "nova_api_osapi" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
        serviceAccountName: {{ $serviceAccountName }}
  {{ dict "envAll" $envAll "application" "nova" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
        affinity:
 diff --git a/nova/templates/deployment-conductor.yaml b/nova/templates/deployment-conductor.yaml
-index b58b3855..50a7ddbf 100644
+index b58b3855..662028de 100644
 --- a/nova/templates/deployment-conductor.yaml
 +++ b/nova/templates/deployment-conductor.yaml
-@@ -69,6 +69,12 @@ spec:
+@@ -69,6 +69,8 @@ spec:
  {{ tuple "nova_conductor" . | include "helm-toolkit.snippets.custom_pod_annotations" | indent 8 }}
  {{ dict "envAll" $envAll "podName" "nova-conductor" "containerNames" (list "nova-conductor" "init") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
      spec:
-+{{ with .Values.pod.priorityClassName.nova_conductor }}
-+      priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.nova_conductor }}
-+      runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "nova_conductor" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "nova_conductor" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
        serviceAccountName: {{ $serviceAccountName }}
  {{ dict "envAll" $envAll "application" "nova" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
        affinity:
 diff --git a/nova/templates/deployment-novncproxy.yaml b/nova/templates/deployment-novncproxy.yaml
-index f4c1d8ba..670e1ccb 100644
+index f4c1d8ba..5cd435d3 100644
 --- a/nova/templates/deployment-novncproxy.yaml
 +++ b/nova/templates/deployment-novncproxy.yaml
-@@ -58,6 +58,12 @@ spec:
+@@ -58,6 +58,8 @@ spec:
  {{ tuple "nova_novncproxy" . | include "helm-toolkit.snippets.custom_pod_annotations" | indent 8 }}
  {{ dict "envAll" $envAll "podName" "nova-novncproxy" "containerNames" (list "nova-novncproxy" "nova-novncproxy-init-assets" "nova-novncproxy-init" "init") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
      spec:
-+{{ with .Values.pod.priorityClassName.nova_novncproxy }}
-+      priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.nova_novncproxy }}
-+      runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "nova_novncproxy" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "nova_novncproxy" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
        serviceAccountName: {{ $serviceAccountName }}
  {{ dict "envAll" $envAll "application" "nova" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
        affinity:
 diff --git a/nova/templates/deployment-scheduler.yaml b/nova/templates/deployment-scheduler.yaml
-index bba444c9..a8a529a9 100644
+index bba444c9..f760c01a 100644
 --- a/nova/templates/deployment-scheduler.yaml
 +++ b/nova/templates/deployment-scheduler.yaml
-@@ -69,6 +69,12 @@ spec:
+@@ -69,6 +69,8 @@ spec:
  {{ tuple "nova_scheduler" . | include "helm-toolkit.snippets.custom_pod_annotations" | indent 8 }}
  {{ dict "envAll" $envAll "podName" "nova-scheduler" "containerNames" (list "nova-scheduler" "init") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
      spec:
-+{{ with .Values.pod.priorityClassName.nova_scheduler }}
-+      priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.nova_scheduler }}
-+      runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "nova_scheduler" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "nova_scheduler" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
        serviceAccountName: {{ $serviceAccountName }}
  {{ dict "envAll" $envAll "application" "nova" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
        affinity:
 diff --git a/nova/templates/deployment-spiceproxy.yaml b/nova/templates/deployment-spiceproxy.yaml
-index eca1628e..68b3c004 100644
+index eca1628e..5c99dfb7 100644
 --- a/nova/templates/deployment-spiceproxy.yaml
 +++ b/nova/templates/deployment-spiceproxy.yaml
-@@ -55,6 +55,12 @@ spec:
+@@ -55,6 +55,8 @@ spec:
          configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
  {{ tuple "nova_spiceproxy" . | include "helm-toolkit.snippets.custom_pod_annotations" | indent 8 }}
      spec:
-+{{ with .Values.pod.priorityClassName.nova_spiceproxy }}
-+      priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.nova_spiceproxy }}
-+      runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "nova_spiceproxy" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "nova_spiceproxy" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
        serviceAccountName: {{ $serviceAccountName }}
  {{ dict "envAll" $envAll "application" "nova" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
        affinity:
 diff --git a/nova/templates/pod-rally-test.yaml b/nova/templates/pod-rally-test.yaml
-index d53f2047..659d4b50 100644
+index d53f2047..55c955b3 100644
 --- a/nova/templates/pod-rally-test.yaml
 +++ b/nova/templates/pod-rally-test.yaml
-@@ -44,6 +44,12 @@ spec:
+@@ -44,6 +44,8 @@ spec:
  {{ tuple $envAll "nova" | include "helm-toolkit.snippets.kubernetes_tolerations" | indent 2 }}
  {{ end }}
    restartPolicy: Never
-+{{ with .Values.pod.priorityClassName.nova_tests }}
-+  priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.nova_tests }}
-+  runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "nova_tests" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 2 }}
++{{ tuple "nova_tests" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 2 }}
    serviceAccountName: {{ $serviceAccountName }}
    initContainers:
  {{ tuple $envAll "tests" $mounts_tests_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 4 }}
 diff --git a/nova/templates/statefulset-compute-ironic.yaml b/nova/templates/statefulset-compute-ironic.yaml
-index 37d3fc5a..deb6c7c0 100644
+index 37d3fc5a..51b761c2 100644
 --- a/nova/templates/statefulset-compute-ironic.yaml
 +++ b/nova/templates/statefulset-compute-ironic.yaml
-@@ -45,6 +45,12 @@ spec:
+@@ -45,6 +45,8 @@ spec:
          configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
  {{ dict "envAll" $envAll "podName" "nova-compute-default" "containerNames" (list "nova-compute") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
      spec:
-+{{ with .Values.pod.priorityClassName.nova_compute_ironic }}
-+      priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.nova_compute_ironic }}
-+      runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "nova_compute_ironic" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "nova_compute_ironic" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
        serviceAccountName: {{ $serviceAccountName }}
  {{ dict "envAll" $envAll "application" "nova" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
        affinity:
-diff --git a/nova/values.yaml b/nova/values.yaml
-index e0c5866e..4967835c 100644
---- a/nova/values.yaml
-+++ b/nova/values.yaml
-@@ -2037,6 +2037,34 @@ endpoints:
-         default: 80
- 
- pod:
-+  priorityClassName:
-+    nova_compute: null
-+    nova_api_metadata: null
-+    nova_api_osapi: null
-+    nova_conductor: null
-+    nova_novncproxy: null
-+    nova_scheduler: null
-+    nova_spiceproxy: null
-+    nova_archive_deleted_rows: null
-+    nova_cell_setup: null
-+    nova_service_cleaner: null
-+    nova_compute_ironic: null
-+    nova_tests: null
-+    db_sync: null
-+  runtimeClassName:
-+    nova_compute: null
-+    nova_api_metadata: null
-+    nova_api_osapi: null
-+    nova_conductor: null
-+    nova_novncproxy: null
-+    nova_scheduler: null
-+    nova_spiceproxy: null
-+    nova_archive_deleted_rows: null
-+    nova_cell_setup: null
-+    nova_service_cleaner: null
-+    nova_compute_ironic: null
-+    nova_tests: null
-+    db_sync: null
-   probes:
-     rpc_timeout: 60
-     rpc_retries: 2
--- 
-2.34.1
-
