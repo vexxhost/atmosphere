@@ -285,6 +285,7 @@ kubeconfig_used:
 
 import os
 import time
+
 from ansible.module_utils.basic import AnsibleModule
 
 try:
@@ -305,7 +306,8 @@ def load_kubernetes_config(kubeconfig_path=None):
             # Check if kubeconfig file exists
             if not os.path.exists(kubeconfig_path):
                 return {
-                    "success": False, "msg": f"Kubeconfig file not found: {kubeconfig_path}"
+                    "success": False,
+                    "msg": f"Kubeconfig file not found: {kubeconfig_path}",
                 }
 
             # Load config from specified path
@@ -454,11 +456,8 @@ def build_pod_spec(module_params):
         "apiVersion": "v1",
         "kind": "Pod",
         "metadata": {
-            "name": module_params['pod_name'],
-            "labels": {
-                "app": "k8s-pod-exec",
-                "created-by": "ansible-k8s-pod-exec"
-            }
+            "name": module_params["pod_name"],
+            "labels": {"app": "k8s-pod-exec", "created-by": "ansible-k8s-pod-exec"},
         },
         "spec": pod_spec
     }
@@ -470,7 +469,10 @@ def create_pod(api_instance, namespace, pod_manifest):
     """Create a pod in the specified namespace."""
     try:
         api_instance.create_namespaced_pod(namespace=namespace, body=pod_manifest)
-        return {"success": True, "msg": f"Pod {pod_manifest['metadata']['name']} created successfully"}
+        return {
+            "success": True,
+            "msg": f"Pod {pod_manifest['metadata']['name']} created successfully",
+        }
     except client.exceptions.ApiException as e:
         return {"success": False, "msg": f"Failed to create pod: {str(e)}"}
 
@@ -486,7 +488,11 @@ def wait_for_pod_completion(api_instance, namespace, pod_name, timeout):
             
             if phase in ["Succeeded", "Failed"]:
                 execution_time = time.time() - start_time
-                return {"success": True, "phase": phase, "execution_time": execution_time}
+                return {
+                    "success": True,
+                    "phase": phase,
+                    "execution_time": execution_time,
+                }
 
             time.sleep(2)
 
@@ -494,16 +500,18 @@ def wait_for_pod_completion(api_instance, namespace, pod_name, timeout):
             return {"success": False, "msg": f"Failed to check pod status: {str(e)}"}
 
     execution_time = time.time() - start_time
-    return {"success": False, "msg": "Pod execution timeout", "execution_time": execution_time}
+    return {
+        "success": False,
+        "msg": "Pod execution timeout",
+        "execution_time": execution_time,
+    }
 
 
 def get_pod_logs(api_instance, namespace, pod_name):
     """Retrieve logs from the pod."""
     try:
         logs = api_instance.read_namespaced_pod_log(
-            name=pod_name, 
-            namespace=namespace,
-            pretty=True
+            name=pod_name, namespace=namespace, pretty=True
         )
         return {"success": True, "logs": logs}
     except client.exceptions.ApiException as e:
@@ -559,8 +567,8 @@ def main():
             required=False,
             options=dict(
                 configmap_name=dict(type="str", required=True),
-                prefix=dict(type="str", required=False)
-            )
+                prefix=dict(type="str", required=False),
+            ),
         ),
         secret_mounts=dict(
             type="list",
@@ -569,8 +577,8 @@ def main():
             options=dict(
                 secret_name=dict(type="str", required=True),
                 mount_path=dict(type="str", required=True),
-                default_mode=dict(type="int", default=420)
-            )
+                default_mode=dict(type="int", default=420),
+            ),
         ),
         configmap_mounts=dict(
             type="list",
@@ -595,7 +603,7 @@ def main():
             ),
         ),
         save_output_to=dict(type="str", required=False),
-        keep_pod=dict(type="bool", default=False)
+        keep_pod=dict(type="bool", default=False),
     )
 
     module = AnsibleModule(argument_spec=module_args, supports_check_mode=True)
