@@ -71,12 +71,6 @@ spec:
           labels:
 {{ tuple $envAll "keystone" "fernet-rotate" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 12 }}
         spec:
-{{ with .Values.pod.priorityClassName.keystone_fernet_rotate }}
-          priorityClassName: {{ . }}
-{{ end }}
-{{ with .Values.pod.runtimeClassName.keystone_fernet_rotate }}
-          runtimeClassName: {{ . }}
-{{ end }}
           serviceAccountName: {{ $serviceAccountName }}
 {{ dict "envAll" $envAll "application" "fernet_rotate" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 10 }}
           initContainers:

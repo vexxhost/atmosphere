@@ -74,12 +74,6 @@ spec:
         configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
 {{ dict "envAll" $envAll "podName" "keystone-fernet-setup" "containerNames" (list "keystone-fernet-setup") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
     spec:
-{{ with .Values.pod.priorityClassName.keystone_fernet_setup }}
-      priorityClassName: {{ . }}
-{{ end }}
-{{ with .Values.pod.runtimeClassName.keystone_fernet_setup }}
-      runtimeClassName: {{ . }}
-{{ end }}
       serviceAccountName: {{ $serviceAccountName }}
 {{ dict "envAll" $envAll "application" "fernet_setup" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
       initContainers:

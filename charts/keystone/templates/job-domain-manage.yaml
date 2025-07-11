@@ -42,12 +42,6 @@ spec:
         configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
 {{ dict "envAll" $envAll "podName" "keystone-domain-manage" "containerNames" (list "keystone-domain-manage" "keystone-domain-manage-init") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
     spec:
-{{ with .Values.pod.priorityClassName.keystone_domain_manage }}
-      priorityClassName: {{ . }}
-{{ end }}
-{{ with .Values.pod.runtimeClassName.keystone_domain_manage }}
-      runtimeClassName: {{ . }}
-{{ end }}
       serviceAccountName: {{ $serviceAccountName }}
 {{ dict "envAll" $envAll "application" "domain_manage" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
       restartPolicy: OnFailure

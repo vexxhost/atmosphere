@@ -34,6 +34,26 @@ func TestMain(m *testing.M) {
 func TestHelmValues(t *testing.T) {
 	vals, err := openstack_helm.CoalescedHelmValues("../../charts/horizon", &vars.HelmValues)
 	require.NoError(t, err)
+	// (rlin): Before you add any new priority class here.
+	// Make sure we do use snippets tool
+	// helm-toolkit.snippets.kubernetes_pod_priority_class
+	// for the actual template. Like:
+	// {{ tuple "heat_api" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" }}
+	vars.HelmValues.Pod.PriorityClass = map[string]string{
+		"horizon": "high-priority",
+		"db_sync": "high-priority",
+		"horizon_tests": "high-priority",
+	}
+	// (rlin): Before you add any new runtime class here.
+	// Make sure we do use snippets tool
+	// helm-toolkit.snippets.kubernetes_pod_runtime_class
+	// for the actual template. Like:
+	// {{ tuple "heat_api" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" }}
+	vars.HelmValues.Pod.RuntimeClass = map[string]string{
+		"horizon": "kata-clh",
+		"db_sync": "kata-clh",
+		"horizon_tests": "kata-clh",
+	}
 
 	testutils.TestAllPodsHaveRuntimeClass(t, vals)
 	testutils.TestAllPodsHavePriorityClass(t, vals)

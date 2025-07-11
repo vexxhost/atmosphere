@@ -42,12 +42,6 @@ spec:
 {{ dict "envAll" $envAll "application" "test" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 2 }}
   nodeSelector:
     {{ .Values.labels.test.node_selector_key }}: {{ .Values.labels.test.node_selector_value }}
-{{ with .Values.pod.priorityClassName.keystone_tests }}
-  priorityClassName: {{ . }}
-{{ end }}
-{{ with .Values.pod.runtimeClassName.keystone_tests }}
-  runtimeClassName: {{ . }}
-{{ end }}
   serviceAccountName: {{ $serviceAccountName }}
   initContainers:
 {{ tuple $envAll "tests" $mounts_tests_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 4 }}
