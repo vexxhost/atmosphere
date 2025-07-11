@@ -6,15 +6,26 @@
   kubernetes.core.k8s:
     state: present
     definition:
-      apiVersion: vault.banzaicloud.com/v1alpha1
-      kind: Vault
-      metadata:
-        name: vault
-        namespace: "{{ vault_namespace }}"
-        labels:
-          app.kubernetes.io/name: vault
-          vault_cr: vault
-      spec: "{{ _vault_spec | combine(vault_spec, recursive=True) }}"
+      - apiVersion: vault.banzaicloud.com/v1alpha1
+        kind: Vault
+        metadata:
+          name: vault
+          namespace: "{{ vault_namespace }}"
+          labels:
+            app.kubernetes.io/name: vault
+            vault_cr: vault
+        spec: "{{ _vault_spec | combine(vault_spec, recursive=True) }}"
+
+      # NOTE(fitbeard): We use config from secret due to potentially sensitive data in it
+      - apiVersion: v1
+        kind: Secret
+        metadata:
+          labels:
+            app.kubernetes.io/name: vault-configurator
+            vault_cr: vault
+          name: atmosphere-vault-config
+          namespace: "{{ vault_namespace }}"
+        stringData: "{{ _vault_config }}"
 
 - name: Wait for Vault to be available
   run_once: true

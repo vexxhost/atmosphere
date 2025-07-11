@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from __future__ import absolute_import, division, print_function
+
 __metaclass__ = type
 
 DOCUMENTATION = """
@@ -313,7 +314,9 @@ def load_kubernetes_config(kubeconfig_path=None):
             # Load config from specified path
             config.load_kube_config(config_file=kubeconfig_path)
             return {
-                "success": True, "msg": f"Loaded kubeconfig from {kubeconfig_path}", "path": kubeconfig_path
+                "success": True,
+                "msg": f"Loaded kubeconfig from {kubeconfig_path}",
+                "path": kubeconfig_path,
             }
         else:
             # Try default kubeconfig locations first
@@ -334,50 +337,50 @@ def build_pod_spec(module_params):
 
     # Container specification
     container = {
-        "name": module_params['pod_name'],
-        "image": module_params['container_image'],
-        "command": module_params['command']
+        "name": module_params["pod_name"],
+        "image": module_params["container_image"],
+        "command": module_params["command"],
     }
 
     # Add args if provided
-    if module_params.get('args'):
-        container["args"] = module_params['args']
+    if module_params.get("args"):
+        container["args"] = module_params["args"]
 
     # Add working directory if provided
-    if module_params.get('working_dir'):
-        container["workingDir"] = module_params['working_dir']
+    if module_params.get("working_dir"):
+        container["workingDir"] = module_params["working_dir"]
 
     # Environment variables
     env_vars = []
 
     # Direct environment variables
-    if module_params.get('env_vars'):
-        for key, value in module_params['env_vars'].items():
+    if module_params.get("env_vars"):
+        for key, value in module_params["env_vars"].items():
             env_vars.append({"name": key, "value": str(value)})
 
     # Environment variables from secrets
     env_from = []
-    if module_params.get('env_from_secrets'):
-        for secret_ref in module_params['env_from_secrets']:
+    if module_params.get("env_from_secrets"):
+        for secret_ref in module_params["env_from_secrets"]:
             env_from_entry = {
                 "secretRef": {
-                    "name": secret_ref['secret_name']
+                    "name": secret_ref["secret_name"]
                 }
             }
-            if secret_ref.get('prefix'):
-                env_from_entry["prefix"] = secret_ref['prefix']
+            if secret_ref.get("prefix"):
+                env_from_entry["prefix"] = secret_ref["prefix"]
             env_from.append(env_from_entry)
 
     # Environment variables from config maps
-    if module_params.get('env_from_configmaps'):
-        for cm_ref in module_params['env_from_configmaps']:
+    if module_params.get("env_from_configmaps"):
+        for cm_ref in module_params["env_from_configmaps"]:
             env_from_entry = {
                 "configMapRef": {
-                    "name": cm_ref['configmap_name']
+                    "name": cm_ref["configmap_name"]
                 }
             }
-            if cm_ref.get('prefix'):
-                env_from_entry["prefix"] = cm_ref['prefix']
+            if cm_ref.get("prefix"):
+                env_from_entry["prefix"] = cm_ref["prefix"]
             env_from.append(env_from_entry)
 
     if env_vars:
@@ -401,24 +404,24 @@ def build_pod_spec(module_params):
                     "name": volume_name,
                     "secret": {
                         "secretName": secret_mount["secret_name"],
-                        "defaultMode": secret_mount.get("default_mode", 420)
+                        "defaultMode": secret_mount.get("default_mode", 420),
                     },
                 }
             )
 
     # Config map mounts
-    if module_params.get('configmap_mounts'):
-        for cm_mount in module_params['configmap_mounts']:
+    if module_params.get("configmap_mounts"):
+        for cm_mount in module_params["configmap_mounts"]:
             volume_name = f"configmap-{cm_mount['configmap_name']}"
             volume_mounts.append({
                 "name": volume_name,
-                "mountPath": cm_mount['mount_path']
+                "mountPath": cm_mount["mount_path"]
             })
             volumes.append({
                 "name": volume_name,
                 "configMap": {
-                    "name": cm_mount['configmap_name'],
-                    "defaultMode": cm_mount.get('default_mode', 420)
+                    "name": cm_mount["configmap_name"],
+                    "defaultMode": cm_mount.get("default_mode", 420),
                 }
             })
     

@@ -1,18 +1,19 @@
 # Copyright (c) 2025 VEXXHOST, Inc.
 # SPDX-License-Identifier: Apache-2.0
 
-import socket
+import os
 import select
+import signal
+import socket
+import sys
 import threading
 import time
-import signal
-import sys
-import os
 
 from ansible.module_utils.basic import AnsibleModule
 
 try:
     from kubernetes import client, config, stream
+
     HAS_KUBERNETES = True
 except ImportError:
     HAS_KUBERNETES = False
@@ -89,20 +90,20 @@ shutdown_event = threading.Event()
 def cleanup_resources():
     """Clean up all active servers and threads"""
     global active_servers, active_threads
-    
+
     shutdown_event.set()
-    
+
     # Close all server sockets
     for server in active_servers:
         try:
             server.close()
         except:
             pass
-    
+
     # Wait for threads to finish (with timeout)
     for thread in active_threads:
         thread.join(timeout=2)
-    
+
     active_servers.clear()
     active_threads.clear()
 
@@ -118,18 +119,18 @@ def resolve_pod_from_service(core_v1, namespace, service_name):
         selector = svc.spec.selector
         if not selector:
             raise Exception("Service has no selector to resolve pods.")
-        
+
         label_selector = ",".join(f"{k}={v}" for k, v in selector.items())
         pods = core_v1.list_namespaced_pod(namespace, label_selector=label_selector)
-        
+
         if not pods.items:
             raise Exception("No pods found matching service selector.")
-        
+
         # Find a running pod
         for pod in pods.items:
             if pod.status.phase == "Running":
                 return pod.metadata.name
-        
+
         raise Exception("No running pods found matching service selector.")
     except client.exceptions.ApiException as e:
         if e.status == 404:
@@ -223,10 +224,10 @@ def forward_port(core_v1, namespace, pod_name, local_port, remote_port):
                             continue
                         except (ConnectionResetError, BrokenPipeError):
                             break
-                            
+          
                 except (ConnectionResetError, BrokenPipeError, OSError):
                     break
-                    
+
         except Exception as e:
             # Log connection errors for debugging
             pass
@@ -349,12 +350,12 @@ def main():
         pod = core_v1.read_namespaced_pod(name=pod_name, namespace=namespace)
         if pod.status.phase != "Running":
             module.fail_json(msg=f"Pod '{pod_name}' is not running. Status: {pod.status.phase}")
-        
+
         # Check container readiness more safely
         if pod.status.container_statuses:
             if not all(c.ready for c in pod.status.container_statuses):
                 module.fail_json(msg=f"Not all containers in pod '{pod_name}' are ready.")
-        
+
     except client.exceptions.ApiException as e:
         if e.status == 404:
             module.fail_json(msg=f"Pod '{pod_name}' not found in namespace '{namespace}'.")
@@ -366,8 +367,10 @@ def main():
     try:
         for pair in ports.split(','):
             local, remote = map(int, pair.strip().split(':'))
-            if not (1 <= local <= 65535) or not (1 <= remote <= 65535):
-                module.fail_json(msg=f"Invalid port range in '{pair}'. Ports must be between 1 and 65535.")
+            if not (1025 <= local <= 65535):
+                module.fail_json(msg=f"Invalid local port in '{pair}'. Local ports must be between 1025 and 65535.")
+            if not (1 <= remote <= 65535):
+                module.fail_json(msg=f"Invalid remote port in '{pair}'. Remote ports must be between 1 and 65535.")
             port_pairs.append((local, remote))
     except ValueError as e:
         module.fail_json(msg=f"Invalid port format: {e}. Expected 'local:remote' pairs.")
@@ -393,7 +396,7 @@ def main():
                     pass
             except:
                 pass
-                
+
     except Exception as e:
         cleanup_resources()
         module.fail_json(msg=f"Port forwarding failed: {e}")
@@ -412,7 +415,7 @@ def main():
         else:
             # Not async mode - return immediately, port forwarding runs in background
             pass
-            
+
     except KeyboardInterrupt:
         pass
     finally:
@@ -425,5 +428,6 @@ def main():
         pid=os.getpid()
     )
 
-if __name__ == '__main__':
+if __name__ == "__main__":
+
     main()

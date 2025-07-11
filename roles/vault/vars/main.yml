@@ -60,3 +60,68 @@ _vault_spec:
   secretInitsConfig:
     - name: VAULT_LOG_LEVEL
       value: "{{ vault_log_level }}"
+
+# NOTE(fitbeard): Merging with overrides can lead to unexpected results.
+# The best way to extend this configuration is to fully override it
+# with your own configuration.
+# TODO(fitbeard): Add OIDC auth with Keycloak
+_vault_config:
+  vault-config.yml: |
+    purgeUnmanagedConfig:
+      enabled: true
+    auth:
+      - type: approle
+        path: approle
+        roles:
+          - name: ansible
+            description: Ansible role for Vault
+            secret_id_ttl: 2m
+            secret_id_num_uses: 1
+            token_ttl: 2m
+            token_max_ttl: 5m
+            token_type: default
+            token_policies: ["write_kv_all"]
+      - type: kubernetes
+        path: kubernetes/local
+        description: Kubernetes authentication for local cluster
+        config:
+          kubernetes_host: https://kubernetes.default.svc
+        roles:
+          - name: ansible
+            bound_service_account_names: ["ansible"]
+            bound_service_account_namespaces: ["{{ vault_namespace | quote }}"]
+            policies: ["ansible"]
+            ttl: 1m
+          - name: external-secrets-cluster-secret-store
+            bound_service_account_names: ["external-secrets"]
+            bound_service_account_namespaces: ["external-secrets"]
+            policies: ["read_kv_all"]
+            ttl: 1h
+          - name: vault
+            bound_service_account_names: ["*"]
+            bound_service_account_namespaces: ["{{ vault_namespace | quote }}", "openstack"]
+            policies: ["read_kv_all"]
+            ttl: 1h
+    policies:
+      - name: ansible
+        rules: |
+          path "auth/approle/role/ansible/role-id" {
+            capabilities = [ "read" ]
+          }
+          path "auth/approle/role/ansible/secret-id" {
+             capabilities = [ "update" ]
+          }
+      - name: read_kv_all
+        rules: |
+          path "{{ atmosphere_vault_mount_point }}/data/*" {
+            capabilities = ["read"]
+          }
+      - name: write_kv_all
+        rules: |
+          path "{{ atmosphere_vault_mount_point }}/data/*" {
+            capabilities = ["create", "update", "patch", "read", "delete"]
+          }
+    secrets:
+      - type: kv-v2
+        path: {{ atmosphere_vault_mount_point }}
+        description: Atmosphere static secrets
