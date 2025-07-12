@@ -4,7 +4,7 @@
 
 FROM golang AS octavia-test-server
 # renovate: name=openstack/octavia-tempest-plugin repo=https://opendev.org/openstack/octavia-tempest-plugin.git branch=master
-ARG OCTAVIA_TEMPEST_PLUGIN_GIT_REF=fd803099c2c602fc5e8df1d4bcf25b1e585e4b51
+ARG OCTAVIA_TEMPEST_PLUGIN_GIT_REF=afffce19230077433c7c0f7e35b635fd22d18c25
 ADD --keep-git-dir=true https://opendev.org/openstack/octavia-tempest-plugin.git#${OCTAVIA_TEMPEST_PLUGIN_GIT_REF} /src
 RUN GO111MODULE=off CGO_ENABLED=0 GOOS=linux go build \
     -a -ldflags '-s -w -extldflags -static' \
@@ -13,11 +13,11 @@ RUN GO111MODULE=off CGO_ENABLED=0 GOOS=linux go build \
 
 FROM openstack-venv-builder AS build
 # renovate: name=openstack/requirements repo=https://opendev.org/openstack/requirements.git branch=master
-ARG REQUIREMENTS_GIT_REF=b58f4867d2406854e476fa599ca52d270aa2cd19
+ARG REQUIREMENTS_GIT_REF=1f2be26ab5a4d601127817b90c794e61cc40bd12
 ADD --keep-git-dir=true https://opendev.org/openstack/requirements.git#${REQUIREMENTS_GIT_REF} /src/requirements
 RUN git -C /src/requirements fetch --unshallow
 # renovate: name=openstack/tempest repo=https://opendev.org/openstack/tempest.git branch=master
-ARG TEMPEST_GIT_REF=d12904cde88c96a6b7792f697d868823a09b5377
+ARG TEMPEST_GIT_REF=de95a36f17404d3fa51bb49fc9cc44238f9e2fc7
 ADD --keep-git-dir=true https://opendev.org/openstack/tempest.git#${TEMPEST_GIT_REF} /src/tempest
 RUN git -C /src/tempest fetch --unshallow
 # renovate: name=openstack/barbican-tempest-plugin repo=https://opendev.org/openstack/barbican-tempest-plugin.git branch=master
@@ -25,23 +25,23 @@ ARG BARBICAN_TEMPEST_PLUGIN_GIT_REF=2cd185133a86242c58d721e66c2db753a369fe60
 ADD --keep-git-dir=true https://opendev.org/openstack/barbican-tempest-plugin.git#${BARBICAN_TEMPEST_PLUGIN_GIT_REF} /src/barbican-tempest-plugin
 RUN git -C /src/barbican-tempest-plugin fetch --unshallow
 # renovate: name=openstack/cinder-tempest-plugin repo=https://opendev.org/openstack/cinder-tempest-plugin.git branch=master
-ARG CINDER_TEMPEST_PLUGIN_GIT_REF=bb5594c061370316bfc881e24d11b3350fb0aef9
+ARG CINDER_TEMPEST_PLUGIN_GIT_REF=5102371cefecc0bf90e8ff789b1159b3dc6a5229
 ADD --keep-git-dir=true https://opendev.org/openstack/cinder-tempest-plugin.git#${CINDER_TEMPEST_PLUGIN_GIT_REF} /src/cinder-tempest-plugin
 RUN git -C /src/cinder-tempest-plugin fetch --unshallow
 # renovate: name=openstack/heat-tempest-plugin repo=https://opendev.org/openstack/heat-tempest-plugin.git branch=master
-ARG HEAT_TEMPEST_PLUGIN_GIT_REF=d2db170988fe1ad3aedda997377b768a83ba9fe9
+ARG HEAT_TEMPEST_PLUGIN_GIT_REF=63de1c25800d85eb2075de65c9b05f7ded87779d
 ADD --keep-git-dir=true https://opendev.org/openstack/heat-tempest-plugin.git#${HEAT_TEMPEST_PLUGIN_GIT_REF} /src/heat-tempest-plugin
 RUN git -C /src/heat-tempest-plugin fetch --unshallow
 # renovate: name=openstack/keystone-tempest-plugin repo=https://opendev.org/openstack/keystone-tempest-plugin.git branch=master
-ARG KEYSTONE_TEMPEST_PLUGIN_GIT_REF=f3c89425613f333a1152a7d420e5d681154f7ad1
+ARG KEYSTONE_TEMPEST_PLUGIN_GIT_REF=2ca14a9df38ed3cc42a7e2a6b6d67400ebc5be62
 ADD --keep-git-dir=true https://opendev.org/openstack/keystone-tempest-plugin.git#${KEYSTONE_TEMPEST_PLUGIN_GIT_REF} /src/keystone-tempest-plugin
 RUN git -C /src/keystone-tempest-plugin fetch --unshallow
 # renovate: name=openstack/neutron-tempest-plugin repo=https://opendev.org/openstack/neutron-tempest-plugin.git branch=master
-ARG NEUTRON_TEMPEST_PLUGIN_GIT_REF=ce5687b215fa0d43ef371c8de7def95caf9ce7fc
+ARG NEUTRON_TEMPEST_PLUGIN_GIT_REF=18d57c70296102623e092748bd52e5ecc2fd1e0c
 ADD --keep-git-dir=true https://opendev.org/openstack/neutron-tempest-plugin.git#${NEUTRON_TEMPEST_PLUGIN_GIT_REF} /src/neutron-tempest-plugin
 RUN git -C /src/neutron-tempest-plugin fetch --unshallow
 # renovate: name=openstack/octavia-tempest-plugin repo=https://opendev.org/openstack/octavia-tempest-plugin.git branch=master
-ARG OCTAVIA_TEMPEST_PLUGIN_GIT_REF=fd803099c2c602fc5e8df1d4bcf25b1e585e4b51
+ARG OCTAVIA_TEMPEST_PLUGIN_GIT_REF=afffce19230077433c7c0f7e35b635fd22d18c25
 ADD --keep-git-dir=true https://opendev.org/openstack/octavia-tempest-plugin.git#${OCTAVIA_TEMPEST_PLUGIN_GIT_REF} /src/octavia-tempest-plugin
 RUN git -C /src/octavia-tempest-plugin fetch --unshallow
 RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe
