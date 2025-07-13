@@ -293,7 +293,7 @@ def main():
     )
 
     if not HAS_KUBERNETES:
-        module.fail_json(msg="The 'kubernetes' Python client is required. Install it with 'pip install kubernetes'.")
+        module.fail_json(msg="kubernetes library is required for this module")
 
     namespace = module.params['namespace']
     pod_name = module.params['pod_name']
@@ -368,9 +368,11 @@ def main():
         for pair in ports.split(','):
             local, remote = map(int, pair.strip().split(':'))
             if not (1025 <= local <= 65535):
-                module.fail_json(msg=f"Invalid local port in '{pair}'. Local ports must be between 1025 and 65535.")
+                module.fail_json(
+                    msg=f"Invalid local port in '{pair}'. Local ports must be between 1025 and 65535.")
             if not (1 <= remote <= 65535):
-                module.fail_json(msg=f"Invalid remote port in '{pair}'. Remote ports must be between 1 and 65535.")
+                module.fail_json(
+                    msg=f"Invalid remote port in '{pair}'. Remote ports must be between 1 and 65535.")
             port_pairs.append((local, remote))
     except ValueError as e:
         module.fail_json(msg=f"Invalid port format: {e}. Expected 'local:remote' pairs.")
@@ -381,15 +383,15 @@ def main():
         for local, remote in port_pairs:
             result = forward_port(core_v1, namespace, pod_name, local, remote)
             results.append(result)
-            
+
         # Verify port forwarding is actually listening
         time.sleep(0.1)  # Brief pause to let servers start
         for result in results:
-            port = result['effective_local_port']
+            port = result["effective_local_port"]
             try:
                 test_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 test_sock.settimeout(1)
-                test_result = test_sock.connect_ex(('127.0.0.1', port))
+                test_result = test_sock.connect_ex(("127.0.0.1", port))
                 test_sock.close()
                 if test_result != 0:
                     # Port is not listening, which is expected until first connection
@@ -407,7 +409,7 @@ def main():
         # Check if we're running under async by looking for common async environment indicators
         # In async mode, we should keep running; otherwise return immediately
         is_async = os.environ.get('ANSIBLE_ASYNC_DIR') is not None
-        
+
         if is_async:
             # Running in async mode - keep the process alive
             while not shutdown_event.is_set():
@@ -422,11 +424,12 @@ def main():
         cleanup_resources()
 
     module.exit_json(
-        changed=True, 
-        msg=f"Port forwarding started for {len(results)} port(s). Use Ansible async/poll to manage lifecycle.", 
+        changed=True,
+        msg=f"Port forwarding started for {len(results)} port(s). Use Ansible async/poll to manage lifecycle.",
         forwards=results,
-        pid=os.getpid()
+        pid=os.getpid(),
     )
+
 
 if __name__ == "__main__":
 
