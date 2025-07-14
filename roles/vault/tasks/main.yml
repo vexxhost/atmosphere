@@ -8,6 +8,7 @@
     definition:
       - apiVersion: vault.banzaicloud.com/v1alpha1
         kind: Vault
+        kubeconfig: "{{ vault_kubeconfig }}"
         metadata:
           name: vault
           namespace: "{{ vault_namespace }}"
@@ -19,6 +20,7 @@
       # NOTE(fitbeard): We use config from secret due to potentially sensitive data in it
       - apiVersion: v1
         kind: Secret
+        kubeconfig: "{{ vault_kubeconfig }}"
         metadata:
           labels:
             app.kubernetes.io/name: vault-configurator
@@ -32,6 +34,7 @@
   kubernetes.core.k8s_info:
     api_version: vault.banzaicloud.com/v1alpha1
     kind: Vault
+    kubeconfig: "{{ vault_kubeconfig }}"
     name: vault
     namespace: "{{ vault_namespace }}"
     wait_sleep: 5

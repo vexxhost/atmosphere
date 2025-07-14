@@ -145,12 +145,13 @@ def create_server_socket(port):
     server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
     try:
-        server.bind(('127.0.0.1', port))
+        server.bind(("127.0.0.1", port))
         actual_port = server.getsockname()[1]
         return server, actual_port
     except OSError:
         server.close()
         raise
+
 
 def forward_port(core_v1, namespace, pod_name, local_port, remote_port):
     """Set up port forwarding for a single port pair"""
@@ -169,7 +170,9 @@ def forward_port(core_v1, namespace, pod_name, local_port, remote_port):
 
     try:
         server.listen(5)
-        server.settimeout(1)  # Set timeout for accept() to allow checking shutdown_event
+        server.settimeout(
+            1
+        )  # Set timeout for accept() to allow checking shutdown_event
         active_servers.append(server)
     except OSError as e:
         server.close()
@@ -184,7 +187,7 @@ def forward_port(core_v1, namespace, pod_name, local_port, remote_port):
                 core_v1.connect_get_namespaced_pod_portforward,
                 pod_name,
                 namespace,
-                ports=str(remote_port)
+                ports=str(remote_port),
             )
 
             # Get the socket for the remote port
@@ -199,10 +202,10 @@ def forward_port(core_v1, namespace, pod_name, local_port, remote_port):
                 try:
                     # Use select with timeout to check for shutdown
                     ready, _, _ = select.select([client_sock, remote_sock], [], [], 1)
-                    
+
                     if not ready:
                         continue
-                    
+
                     if client_sock in ready:
                         try:
                             data = client_sock.recv(4096)
@@ -213,7 +216,7 @@ def forward_port(core_v1, namespace, pod_name, local_port, remote_port):
                             continue
                         except (ConnectionResetError, BrokenPipeError):
                             break
-                    
+
                     if remote_sock in ready:
                         try:
                             data = remote_sock.recv(4096)
@@ -224,7 +227,7 @@ def forward_port(core_v1, namespace, pod_name, local_port, remote_port):
                             continue
                         except (ConnectionResetError, BrokenPipeError):
                             break
-          
+
                 except (ConnectionResetError, BrokenPipeError, OSError):
                     break
 
@@ -251,16 +254,16 @@ def forward_port(core_v1, namespace, pod_name, local_port, remote_port):
                 if shutdown_event.is_set():
                     client_sock.close()
                     break
-                
+
                 # Handle each connection in a separate thread
                 thread = threading.Thread(
-                    target=handle_connection, 
+                    target=handle_connection,
                     args=(client_sock, remote_port),
-                    daemon=True
+                    daemon=True,
                 )
                 thread.start()
                 active_threads.append(thread)
-                
+
             except socket.timeout:
                 continue  # Check shutdown_event again
             except OSError:
@@ -281,31 +284,39 @@ def forward_port(core_v1, namespace, pod_name, local_port, remote_port):
 def main():
     module = AnsibleModule(
         argument_spec=dict(
-            namespace=dict(required=True, type='str'),
-            pod_name=dict(required=False, type='str'),
-            service_name=dict(required=False, type='str'),
-            ports=dict(required=True, type='str'),
-            kubeconfig_path=dict(required=False, type='str'),
-            state=dict(required=False, type='str', choices=['present', 'absent'], default='present'),
+            namespace=dict(required=True, type="str"),
+            pod_name=dict(required=False, type="str"),
+            service_name=dict(required=False, type="str"),
+            ports=dict(required=True, type="str"),
+            kubeconfig_path=dict(required=False, type="str"),
+            state=dict(
+                required=False,
+                type="str",
+                choices=["present", "absent"],
+                default="present"
+            ),
         ),
-        required_one_of=[['pod_name', 'service_name']],
+        required_one_of=[["pod_name", "service_name"]],
         supports_check_mode=False
     )
 
     if not HAS_KUBERNETES:
         module.fail_json(msg="kubernetes library is required for this module")
 
-    namespace = module.params['namespace']
-    pod_name = module.params['pod_name']
-    service_name = module.params['service_name']
-    ports = module.params['ports']
-    kubeconfig_path = module.params['kubeconfig_path']
-    state = module.params['state']
+    namespace = module.params["namespace"]
+    pod_name = module.params["pod_name"]
+    service_name = module.params["service_name"]
+    ports = module.params["ports"]
+    kubeconfig_path = module.params["kubeconfig_path"]
+    state = module.params["state"]
 
     # For 'absent' state, we can't really stop port forwarding since it's running in background
     # This would require a more complex implementation with PID files or similar
     if state == 'absent':
-        module.exit_json(changed=False, msg="Port forwarding stop not implemented. Use async task termination instead.")
+        module.exit_json(
+            changed=False,
+            msg="Port forwarding stop not implemented. Use async task termination instead."
+        )
 
     # Set up signal handlers for cleanup
     signal.signal(signal.SIGTERM, signal_handler)
@@ -339,7 +350,9 @@ def main():
         try:
             pod_name = resolve_pod_from_service(core_v1, namespace, service_name)
         except Exception as e:
-            module.fail_json(msg=f"Could not resolve pod from service '{service_name}': {e}")
+            module.fail_json(
+                msg=f"Could not resolve pod from service '{service_name}': {e}"
+            )
     elif not pod_name and not service_name:
         module.fail_json(msg="Either pod_name or service_name must be provided")
     
@@ -349,33 +362,43 @@ def main():
     try:
         pod = core_v1.read_namespaced_pod(name=pod_name, namespace=namespace)
         if pod.status.phase != "Running":
-            module.fail_json(msg=f"Pod '{pod_name}' is not running. Status: {pod.status.phase}")
+            module.fail_json(
+                msg=f"Pod '{pod_name}' is not running. Status: {pod.status.phase}"
+            )
 
         # Check container readiness more safely
         if pod.status.container_statuses:
             if not all(c.ready for c in pod.status.container_statuses):
-                module.fail_json(msg=f"Not all containers in pod '{pod_name}' are ready.")
+                module.fail_json(
+                    msg=f"Not all containers in pod '{pod_name}' are ready."
+                )
 
     except client.exceptions.ApiException as e:
         if e.status == 404:
-            module.fail_json(msg=f"Pod '{pod_name}' not found in namespace '{namespace}'.")
+            module.fail_json(
+                msg=f"Pod '{pod_name}' not found in namespace '{namespace}'."
+            )
         else:
             module.fail_json(msg=f"Error accessing pod: {e}")
 
     # Parse and validate port mappings
     port_pairs = []
     try:
-        for pair in ports.split(','):
-            local, remote = map(int, pair.strip().split(':'))
+        for pair in ports.split(","):
+            local, remote = map(int, pair.strip().split(":"))
             if not (1025 <= local <= 65535):
                 module.fail_json(
-                    msg=f"Invalid local port in '{pair}'. Local ports must be between 1025 and 65535.")
+                    msg=f"Invalid local port in '{pair}'. Local ports must be between 1025 and 65535."
+                )
             if not (1 <= remote <= 65535):
                 module.fail_json(
-                    msg=f"Invalid remote port in '{pair}'. Remote ports must be between 1 and 65535.")
+                    msg=f"Invalid remote port in '{pair}'. Remote ports must be between 1 and 65535."
+                )
             port_pairs.append((local, remote))
     except ValueError as e:
-        module.fail_json(msg=f"Invalid port format: {e}. Expected 'local:remote' pairs.")
+        module.fail_json(
+            msg=f"Invalid port format: {e}. Expected 'local:remote' pairs."
+        )
 
     # Start port forwards
     results = []
@@ -408,7 +431,7 @@ def main():
     try:
         # Check if we're running under async by looking for common async environment indicators
         # In async mode, we should keep running; otherwise return immediately
-        is_async = os.environ.get('ANSIBLE_ASYNC_DIR') is not None
+        is_async = os.environ.get("ANSIBLE_ASYNC_DIR") is not None
 
         if is_async:
             # Running in async mode - keep the process alive
