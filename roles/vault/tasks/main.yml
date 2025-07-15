@@ -5,10 +5,10 @@
   run_once: true
   kubernetes.core.k8s:
     state: present
+    kubeconfig: "{{ vault_kubeconfig }}"
     definition:
       - apiVersion: vault.banzaicloud.com/v1alpha1
         kind: Vault
-        kubeconfig: "{{ vault_kubeconfig }}"
         metadata:
           name: vault
           namespace: "{{ vault_namespace }}"
@@ -20,7 +20,6 @@
       # NOTE(fitbeard): We use config from secret due to potentially sensitive data in it
       - apiVersion: v1
         kind: Secret
-        kubeconfig: "{{ vault_kubeconfig }}"
         metadata:
           labels:
             app.kubernetes.io/name: vault-configurator

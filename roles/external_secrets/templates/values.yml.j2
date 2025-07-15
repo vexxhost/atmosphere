@@ -1,0 +1,23 @@
+provider:
+  vault:
+    server: "{{ external_secrets_cluster_secret_store_vault_address | default('https://vault.vault-operator-system:8200') }}"
+    path: "{{ atmosphere_vault_mount_point }}"
+    version: v2
+    # NOTE(fitbeard): This part is only needed for local Vault deployment.
+    # If external Vault server is using a self-signed certificate or a certificate
+    # not recognized by the system's CA store then this part should be described
+    # inside 'external_secrets_cluster_secret_store_spec' override.
+{% if atmosphere_vault_internal | default(true) | bool %}
+    caProvider:
+      type: Secret
+      namespace: "{{ external_secrets_cluster_secret_store_namespace }}"
+      name: vault-tls
+      key: ca.crt
+{% endif %}
+    auth:
+      kubernetes:
+        mountPath: "{{ external_secrets_cluster_secret_store_vault_auth_mount_path | default('kubernetes/local') }}"
+        role: "{{ external_secrets_cluster_secret_store_vault_auth_role | default('external-secrets-cluster-secret-store') }}"
+        serviceAccountRef:
+          name: external-secrets
+          namespace: "{{ external_secrets_cluster_secret_store_namespace }}"

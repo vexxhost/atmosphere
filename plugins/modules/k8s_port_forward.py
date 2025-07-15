@@ -87,6 +87,7 @@ active_servers = []
 active_threads = []
 shutdown_event = threading.Event()
 
+
 def cleanup_resources():
     """Clean up all active servers and threads"""
     global active_servers, active_threads
@@ -107,10 +108,12 @@ def cleanup_resources():
     active_servers.clear()
     active_threads.clear()
 
+
 def signal_handler(signum, frame):
     """Handle cleanup on signal"""
     cleanup_resources()
     sys.exit(0)
+
 
 def resolve_pod_from_service(core_v1, namespace, service_name):
     """Resolve a pod name from a service name"""
@@ -134,7 +137,9 @@ def resolve_pod_from_service(core_v1, namespace, service_name):
         raise Exception("No running pods found matching service selector.")
     except client.exceptions.ApiException as e:
         if e.status == 404:
-            raise Exception(f"Service '{service_name}' not found in namespace '{namespace}'.")
+            raise Exception(
+                f"Service '{service_name}' not found in namespace '{namespace}'."
+            )
         else:
             raise Exception(f"Error accessing service: {e}")
 
@@ -281,6 +286,7 @@ def forward_port(core_v1, namespace, pod_name, local_port, remote_port):
         "target_pod": pod_name,
     }
 
+
 def main():
     module = AnsibleModule(
         argument_spec=dict(
@@ -293,11 +299,11 @@ def main():
                 required=False,
                 type="str",
                 choices=["present", "absent"],
-                default="present"
+                default="present",
             ),
         ),
         required_one_of=[["pod_name", "service_name"]],
-        supports_check_mode=False
+        supports_check_mode=False,
     )
 
     if not HAS_KUBERNETES:
@@ -315,7 +321,7 @@ def main():
     if state == 'absent':
         module.exit_json(
             changed=False,
-            msg="Port forwarding stop not implemented. Use async task termination instead."
+            msg="Port forwarding stop not implemented. Use async task termination instead.",
         )
 
     # Set up signal handlers for cleanup
@@ -355,7 +361,7 @@ def main():
             )
     elif not pod_name and not service_name:
         module.fail_json(msg="Either pod_name or service_name must be provided")
-    
+
     # If both are provided, prefer pod_name (already set)
 
     # Validate pod

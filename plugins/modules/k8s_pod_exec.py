@@ -362,11 +362,7 @@ def build_pod_spec(module_params):
     env_from = []
     if module_params.get("env_from_secrets"):
         for secret_ref in module_params["env_from_secrets"]:
-            env_from_entry = {
-                "secretRef": {
-                    "name": secret_ref["secret_name"]
-                }
-            }
+            env_from_entry = {"secretRef": {"name": secret_ref["secret_name"]}}
             if secret_ref.get("prefix"):
                 env_from_entry["prefix"] = secret_ref["prefix"]
             env_from.append(env_from_entry)
@@ -374,11 +370,7 @@ def build_pod_spec(module_params):
     # Environment variables from config maps
     if module_params.get("env_from_configmaps"):
         for cm_ref in module_params["env_from_configmaps"]:
-            env_from_entry = {
-                "configMapRef": {
-                    "name": cm_ref["configmap_name"]
-                }
-            }
+            env_from_entry = {"configMapRef": {"name": cm_ref["configmap_name"]}}
             if cm_ref.get("prefix"):
                 env_from_entry["prefix"] = cm_ref["prefix"]
             env_from.append(env_from_entry)
@@ -413,24 +405,25 @@ def build_pod_spec(module_params):
     if module_params.get("configmap_mounts"):
         for cm_mount in module_params["configmap_mounts"]:
             volume_name = f"configmap-{cm_mount['configmap_name']}"
-            volume_mounts.append({
-                "name": volume_name,
-                "mountPath": cm_mount["mount_path"]
-            })
-            volumes.append({
-                "name": volume_name,
-                "configMap": {
-                    "name": cm_mount["configmap_name"],
-                    "defaultMode": cm_mount.get("default_mode", 420),
+            volume_mounts.append(
+                {"name": volume_name, "mountPath": cm_mount["mount_path"]}
+            )
+            volumes.append(
+                {
+                    "name": volume_name,
+                    "configMap": {
+                        "name": cm_mount["configmap_name"],
+                        "defaultMode": cm_mount.get("default_mode", 420),
+                    },
                 }
-            })
-    
+            )
+
     if volume_mounts:
         container["volumeMounts"] = volume_mounts
 
     # Resource specifications
-    if module_params.get('resources'):
-        container["resources"] = module_params['resources']
+    if module_params.get("resources"):
+        container["resources"] = module_params["resources"]
 
     # Pod specification
     pod_spec = {
@@ -443,16 +436,16 @@ def build_pod_spec(module_params):
         pod_spec["volumes"] = volumes
 
     # Service account
-    if module_params.get('service_account'):
-        pod_spec["serviceAccountName"] = module_params['service_account']
+    if module_params.get("service_account"):
+        pod_spec["serviceAccountName"] = module_params["service_account"]
 
     # Node selector
-    if module_params.get('node_selector'):
-        pod_spec["nodeSelector"] = module_params['node_selector']
+    if module_params.get("node_selector"):
+        pod_spec["nodeSelector"] = module_params["node_selector"]
 
     # Tolerations
-    if module_params.get('tolerations'):
-        pod_spec["tolerations"] = module_params['tolerations']
+    if module_params.get("tolerations"):
+        pod_spec["tolerations"] = module_params["tolerations"]
 
     # Complete pod manifest
     pod_manifest = {
@@ -462,7 +455,7 @@ def build_pod_spec(module_params):
             "name": module_params["pod_name"],
             "labels": {"app": "k8s-pod-exec", "created-by": "ansible-k8s-pod-exec"},
         },
-        "spec": pod_spec
+        "spec": pod_spec,
     }
 
     return pod_manifest
@@ -488,7 +481,7 @@ def wait_for_pod_completion(api_instance, namespace, pod_name, timeout):
         try:
             pod = api_instance.read_namespaced_pod(name=pod_name, namespace=namespace)
             phase = pod.status.phase
-            
+
             if phase in ["Succeeded", "Failed"]:
                 execution_time = time.time() - start_time
                 return {
@@ -545,7 +538,7 @@ def save_output_to_file(output, file_path):
 
 def main():
     """Main module execution."""
-    
+
     module_args = dict(
         namespace=dict(type="str", required=True),
         pod_name=dict(type="str", required=True),
