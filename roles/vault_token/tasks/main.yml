@@ -1,0 +1,41 @@
+# Copyright (c) 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Create resources required for issuing Vault token
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ vault_token_kubeconfig }}"
+    definition:
+      - apiVersion: v1
+        kind: ServiceAccount
+        metadata:
+          name: "{{ vault_token_service_account }}"
+          namespace: "{{ vault_token_service_account_namespace }}"
+
+      - apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: "{{ vault_token_configmap }}"
+          namespace: "{{ vault_token_service_account_namespace }}"
+        data: "{{ vault_token_issuing_script }}"
+
+- name: Get Vault token
+  run_once: true
+  changed_when: false
+  vexxhost.atmosphere.k8s_pod_exec:
+    service_account: "{{ vault_token_service_account }}"
+    namespace: "{{ vault_token_service_account_namespace }}"
+    kubeconfig: "{{ vault_token_kubeconfig }}"
+    pod_name: vault-get-token-{{ ansible_date_time.epoch }}
+    container_image: "{{ atmosphere_images['vault'] }}"
+    command: ["sh", "/etc/vault-scripts/token.sh"]
+    env_vars: "{{ vault_token_pod_environment_variables }}"
+    secret_mounts: "{{ vault_token_pod_secret_mounts }}"
+    configmap_mounts: "{{ vault_token_pod_configmap_mounts }}"
+  register: vault_token
+
+- name: Set Vault token fact
+  run_once: true
+  ansible.builtin.set_fact:
+    vault_token: "{{ vault_token.stdout }}"

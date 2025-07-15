@@ -44,7 +44,7 @@ options:
     description: Comma-separated list of local:remote port pairs (e.g. "8080:80,8443:443")
     required: true
     type: str
-  kubeconfig_path:
+  kubeconfig:
     description: Path to kubeconfig file
     required: false
     type: str
@@ -294,7 +294,7 @@ def main():
             pod_name=dict(required=False, type="str"),
             service_name=dict(required=False, type="str"),
             ports=dict(required=True, type="str"),
-            kubeconfig_path=dict(required=False, type="str"),
+            kubeconfig=dict(required=False, type="str"),
             state=dict(
                 required=False,
                 type="str",
@@ -313,12 +313,12 @@ def main():
     pod_name = module.params["pod_name"]
     service_name = module.params["service_name"]
     ports = module.params["ports"]
-    kubeconfig_path = module.params["kubeconfig_path"]
+    kubeconfig = module.params["kubeconfig"]
     state = module.params["state"]
 
     # For 'absent' state, we can't really stop port forwarding since it's running in background
     # This would require a more complex implementation with PID files or similar
-    if state == 'absent':
+    if state == "absent":
         module.exit_json(
             changed=False,
             msg="Port forwarding stop not implemented. Use async task termination instead.",
@@ -330,8 +330,8 @@ def main():
 
     # Load kubeconfig
     try:
-        if kubeconfig_path:
-            config.load_kube_config(config_file=kubeconfig_path)
+        if kubeconfig:
+            config.load_kube_config(config_file=kubeconfig)
         else:
             try:
                 config.load_incluster_config()

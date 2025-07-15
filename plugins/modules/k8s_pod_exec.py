@@ -51,7 +51,7 @@ options:
             - Maximum time in seconds to wait for pod completion
         type: int
         default: 300
-    kubeconfig_path:
+    kubeconfig:
         description:
             - Path to kubeconfig file for Kubernetes authentication
             - If not specified, will try default kubeconfig locations or in-cluster config
@@ -191,7 +191,7 @@ EXAMPLES = """
     pod_name: test-pod
     container_image: alpine
     command: ["printenv"]
-    kubeconfig_path: /path/to/custom/kubeconfig
+    kubeconfig: /path/to/custom/kubeconfig
     env_vars:
       MY_VAR: "test_value"
 
@@ -202,7 +202,7 @@ EXAMPLES = """
     pod_name: test-pod
     container_image: alpine
     command: ["printenv"]
-    kubeconfig_path: ~/.kube/production-config
+    kubeconfig: ~/.kube/production-config
     env_vars:
       MY_VAR: "test_value"
       ENVIRONMENT: "production"
@@ -214,7 +214,7 @@ EXAMPLES = """
     pod_name: test-pod
     container_image: alpine
     command: ["cat", "/etc/secret/password"]
-    kubeconfig_path: /etc/kubernetes/admin.conf
+    kubeconfig: /etc/kubernetes/admin.conf
     secret_mounts:
       - secret_name: my-secret
         mount_path: /etc/secret
@@ -229,7 +229,7 @@ EXAMPLES = """
     pod_name: test-pod
     container_image: alpine
     command: ["cat", "/etc/config/app.conf"]
-    kubeconfig_path: "{{ ansible_env.HOME }}/.kube/staging-config"
+    kubeconfig: "{{ ansible_env.HOME }}/.kube/staging-config"
     configmap_mounts:
       - configmap_name: my-config
         mount_path: /etc/config
@@ -241,7 +241,7 @@ EXAMPLES = """
     pod_name: test-pod
     container_image: alpine
     command: ["df", "-h"]
-    kubeconfig_path: /var/lib/kubernetes/kubeconfig
+    kubeconfig: /var/lib/kubernetes/kubeconfig
     resources:
       requests:
         memory: "64Mi"
@@ -281,7 +281,7 @@ saved_to:
 kubeconfig_used:
     description: Path to kubeconfig file used for authentication
     type: str
-    returned: when kubeconfig_path parameter is specified
+    returned: when kubeconfig parameter is specified
 """
 
 import os
@@ -297,26 +297,26 @@ except ImportError:
     HAS_KUBERNETES = False
 
 
-def load_kubernetes_config(kubeconfig_path=None):
+def load_kubernetes_config(kubeconfig=None):
     """Load Kubernetes configuration from specified path or defaults."""
     try:
-        if kubeconfig_path:
+        if kubeconfig:
             # Expand user home directory if ~ is used
-            kubeconfig_path = os.path.expanduser(kubeconfig_path)
+            kubeconfig = os.path.expanduser(kubeconfig)
 
             # Check if kubeconfig file exists
-            if not os.path.exists(kubeconfig_path):
+            if not os.path.exists(kubeconfig):
                 return {
                     "success": False,
-                    "msg": f"Kubeconfig file not found: {kubeconfig_path}",
+                    "msg": f"Kubeconfig file not found: {kubeconfig}",
                 }
 
             # Load config from specified path
-            config.load_kube_config(config_file=kubeconfig_path)
+            config.load_kube_config(config_file=kubeconfig)
             return {
                 "success": True,
-                "msg": f"Loaded kubeconfig from {kubeconfig_path}",
-                "path": kubeconfig_path,
+                "msg": f"Loaded kubeconfig from {kubeconfig}",
+                "path": kubeconfig,
             }
         else:
             # Try default kubeconfig locations first
@@ -426,10 +426,7 @@ def build_pod_spec(module_params):
         container["resources"] = module_params["resources"]
 
     # Pod specification
-    pod_spec = {
-        "containers": [container],
-        "restartPolicy": "Never"
-    }
+    pod_spec = {"containers": [container], "restartPolicy": "Never"}
 
     # Add volumes if any
     if volumes:
@@ -546,7 +543,7 @@ def main():
         command=dict(type="list", elements="str", required=True),
         args=dict(type="list", elements="str", required=False),
         timeout=dict(type="int", default=300),
-        kubeconfig_path=dict(type="str", required=False),
+        kubeconfig=dict(type="str", required=False),
         env_vars=dict(type="dict", required=False),
         env_from_secrets=dict(
             type="list",
@@ -609,8 +606,8 @@ def main():
         module.fail_json(msg="kubernetes library is required for this module")
 
     # Load Kubernetes configuration
-    kubeconfig_path = module.params.get("kubeconfig_path")
-    config_result = load_kubernetes_config(kubeconfig_path)
+    kubeconfig = module.params.get("kubeconfig")
+    config_result = load_kubernetes_config(kubeconfig)
     if not config_result["success"]:
         module.fail_json(msg=config_result["msg"])
 
@@ -634,8 +631,8 @@ def main():
             "pod_manifest": pod_manifest,
             "config_loaded": config_result["msg"],
         }
-        if kubeconfig_path:
-            check_result["kubeconfig_used"] = config_result.get("path", kubeconfig_path)
+        if kubeconfig:
+            check_result["kubeconfig_used"] = config_result.get("path", kubeconfig)
         module.exit_json(**check_result)
 
     results = {
@@ -648,8 +645,8 @@ def main():
     }
 
     # Add kubeconfig info to results if specified
-    if kubeconfig_path:
-        results["kubeconfig_used"] = config_result.get("path", kubeconfig_path)
+    if kubeconfig:
+        results["kubeconfig_used"] = config_result.get("path", kubeconfig)
 
     try:
         # Create pod
