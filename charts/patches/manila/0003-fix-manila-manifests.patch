@@ -1,4 +1,4 @@
-From d066f1dd32eb1c88ae472070a4238989394ffc7a Mon Sep 17 00:00:00 2001
+From c249c90bdbeb3aebdfe8744862cdb016c6404e62 Mon Sep 17 00:00:00 2001
 From: ricolin <rlin@vexxhost.com>
 Date: Thu, 10 Jul 2025 15:23:22 +0800
 Subject: [PATCH] fix manila manifests
@@ -6,14 +6,81 @@ Subject: [PATCH] fix manila manifests
 Signed-off-by: ricolin <rlin@vexxhost.com>
 Change-Id: Id4574e1672ef8d5e8d57687b9c9071f54e173d97
 ---
- manila/values.yaml | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ manila/templates/pod-rally-test.yaml           | 18 +++++++++---------
+ manila/values.yaml                             | 11 ++++++++++-
+ .../notes/manila-f7286f302a9372eb.yaml         |  5 +++++
+ 3 files changed, 24 insertions(+), 10 deletions(-)
+ create mode 100644 releasenotes/notes/manila-f7286f302a9372eb.yaml
 
+diff --git a/manila/templates/pod-rally-test.yaml b/manila/templates/pod-rally-test.yaml
+index 20bf09af9..1cdb95db7 100644
+--- a/manila/templates/pod-rally-test.yaml
++++ b/manila/templates/pod-rally-test.yaml
+@@ -64,27 +64,27 @@ spec:
+ {{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.share.api.internal | include "helm-toolkit.snippets.tls_volume_mount"  | indent 8 }}
+ {{- end }}
+       env:
+-{{- with $env := dict "ksUserSecret" .Values.secrets.share.admin "useCA" (and .Values.manifests.certificates .Values.secrets.tls.share.api.internal) }}
+-{{- include "helm-toolkit.snippets.manila_openrc_env_vars" $env | indent 8 }}
++{{- with $env := dict "ksUserSecret" .Values.secrets.identity.admin "useCA" (and .Values.manifests.certificates .Values.secrets.tls.share.api.internal) }}
++{{- include "helm-toolkit.snippets.keystone_openrc_env_vars" $env | indent 8 }}
+ {{- end }}
+         - name: SERVICE_OS_SERVICE_NAME
+           value: "test"
+-{{- with $env := dict "ksUserSecret" .Values.secrets.share.test }}
+-{{- include "helm-toolkit.snippets.manila_user_create_env_vars" $env | indent 8 }}
++{{- with $env := dict "ksUserSecret" .Values.secrets.identity.test }}
++{{- include "helm-toolkit.snippets.keystone_user_create_env_vars" $env | indent 8 }}
+ {{- end }}
+         - name: SERVICE_OS_ROLE
+-          value: {{ .Values.endpoints.share.auth.test.role | quote }}
++          value: {{ .Values.endpoints.identity.auth.test.role | quote }}
+   containers:
+     - name: manila-test
+ {{ tuple $envAll "test" | include "helm-toolkit.snippets.image" | indent 6 }}
+ {{ tuple $envAll $envAll.Values.pod.resources.jobs.tests | include "helm-toolkit.snippets.kubernetes_resources" | indent 6 }}
+ {{ dict "envAll" $envAll "application" "test" "container" "manila_test" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 6}}
+       env:
+-{{- with $env := dict "ksUserSecret" .Values.secrets.share.admin "useCA" (and .Values.manifests.certificates .Values.secrets.tls.share.api.internal) }}
+-{{- include "helm-toolkit.snippets.manila_openrc_env_vars" $env | indent 8 }}
++{{- with $env := dict "ksUserSecret" .Values.secrets.identity.admin "useCA" (and .Values.manifests.certificates .Values.secrets.tls.share.api.internal) }}
++{{- include "helm-toolkit.snippets.keystone_openrc_env_vars" $env | indent 8 }}
+ {{- end }}
+-{{- with $env := dict "ksUserSecret" .Values.secrets.share.test }}
+-{{- include "helm-toolkit.snippets.manila_user_create_env_vars" $env | indent 8 }}
++{{- with $env := dict "ksUserSecret" .Values.secrets.identity.test }}
++{{- include "helm-toolkit.snippets.keystone_user_create_env_vars" $env | indent 8 }}
+ {{- end }}
+         - name: RALLY_ENV_NAME
+           value: {{.deployment_name}}
 diff --git a/manila/values.yaml b/manila/values.yaml
-index 082a0d767..8ca3ea608 100644
+index 082a0d767..28d4cba44 100644
 --- a/manila/values.yaml
 +++ b/manila/values.yaml
-@@ -1105,7 +1105,7 @@ manifests:
+@@ -872,6 +872,7 @@ secrets:
+   identity:
+     admin: manila-keystone-admin
+     manila: manila-keystone-user
++    test: manila-keystone-test
+   oslo_db:
+     admin: manila-db-admin
+     manila: manila-db-user
+@@ -933,6 +934,14 @@ endpoints:
+         project_name: service
+         user_domain_name: service
+         project_domain_name: service
++      test:
++        role: admin
++        region_name: RegionOne
++        username: manila-test
++        password: password
++        project_name: test
++        user_domain_name: service
++        project_domain_name: service
+     hosts:
+       default: keystone
+       internal: keystone-api
+@@ -1105,7 +1114,7 @@ manifests:
    job_ks_service: true
    job_ks_user: true
    pdb_api: true
