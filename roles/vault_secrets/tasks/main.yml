@@ -1,0 +1,209 @@
+# Copyright (c) 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Install hvac
+  ansible.builtin.pip:
+    name: hvac
+
+- name: Configure dependencies (without Ingress)
+  when: atmosphere_vault_internal | default(true) | bool
+        and
+        (not atmosphere_vault_over_ingress | default(true) | bool)
+  block:
+    - name: Get Vault CA certificate
+      run_once: true
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Secret
+        kubeconfig: "{{ vault_secret_kubeconfig }}"
+        name: vault-tls
+        namespace: "{{ vault_secrets_namespace | default('vault-operator-system') }}"
+      register: vault_ca
+
+    - name: Set Vault CA path fact
+      run_once: true
+      ansible.builtin.set_fact:
+        vault_ca_path: "{{ '/usr/local/share/ca-certificates' if ansible_facts['os_family'] in ['Debian'] else '/etc/pki/ca-trust/source/anchors' }}/vault.crt"
+
+    - name: Copy Vault CA certificate on host
+      ansible.builtin.copy:
+        content: "{{ vault_ca.resources[0].data['ca.crt'] | b64decode }}"
+        dest: "{{ vault_ca_path }}"
+        mode: "0644"
+
+    - name: Find random available port
+      run_once: true
+      changed_when: false
+      delegate_to: "{{ groups[vault_secrets_bootstrap_group] | sort | first }}"
+      ansible.builtin.command: python3 -c "import socket; s=socket.socket(); s.bind(('', 0)); print(s.getsockname()[1]); s.close()"
+      register: free_port
+
+    - name: Create port forward for Vault service endpoint
+      run_once: true
+      changed_when: false
+      delegate_to: "{{ groups[vault_secrets_bootstrap_group] | sort | first }}"
+      vexxhost.atmosphere.k8s_port_forward:
+        kubeconfig: "{{ vault_secret_kubeconfig }}"
+        namespace: "{{ vault_secrets_namespace | default('vault-operator-system') }}"
+        service_name: vault
+        ports: "{{ free_port.stdout }}:8200"
+      async: 180
+      poll: 0
+
+    - name: Set Vault address fact
+      run_once: true
+      ansible.builtin.set_fact:
+        vault_address: "https://127.0.0.1:{{ free_port.stdout }}"
+
+- name: Check if secrets exists
+  run_once: true
+  delegate_to: "{{ groups[vault_secrets_bootstrap_group] | sort | first }}"
+  community.hashi_vault.vault_kv2_get:
+    url: "{{ vault_address | default(vault_host) }}"
+    ca_cert: "{{ vault_ca_path | default(omit) }}"
+    token: "{{ vault_token }}"
+    engine_mount_point: "{{ atmosphere_vault_mount_point }}"
+    path: "{{ atmosphere_vault_secret_path_prefix }}{{ item.path }}"
+  register: secret_check
+  failed_when: false
+  loop: "{{ vault_secrets }}"
+  loop_control:
+    loop_var: item
+    label: "{{ atmosphere_vault_secret_path_prefix }}{{ item.path }}"
+
+- name: Generate random values for all empty secrets in all paths
+  run_once: true
+  ansible.builtin.set_fact:
+    vault_secrets: |
+      {%- set vault_secrets_updated = [] -%}
+      {%- for path_item in vault_secrets -%}
+        {%- set path_result = secret_check.results | selectattr('item.path', 'equalto', path_item.path) | first -%}
+        {%- set existing_data = path_result.data.data | default({}) -%}
+        {%- set updated_item_data = {} -%}
+        {%- for key, value in path_item.data.items() -%}
+          {%- if value == '' or value is none or value == none or (value is mapping and value.constraints is defined) -%}
+            {# Determine if we need to generate a new value #}
+            {%- set needs_new_value = false -%}
+            {%- set upper_flag = 'true' -%}
+            {%- set lower_flag = 'true' -%}
+            {%- set numbers_flag = 'true' -%}
+            {%- set special_flag = 'false' -%}
+            {%- set custom_length = 32 -%}
+            {# Parse custom constraints if defined #}
+            {%- if value is mapping and value.constraints is defined -%}
+              {%- set upper_list = value.constraints | select('match', '^upper=') | list -%}
+              {%- set lower_list = value.constraints | select('match', '^lower=') | list -%}
+              {%- set numbers_list = value.constraints | select('match', '^numbers=') | list -%}
+              {%- set special_list = value.constraints | select('match', '^special=') | list -%}
+              {%- set length_list = value.constraints | select('match', '^length=') | list -%}
+              {%- set upper_flag = upper_list[0].split('=')[1] if upper_list | length > 0 else 'true' -%}
+              {%- set lower_flag = lower_list[0].split('=')[1] if lower_list | length > 0 else 'true' -%}
+              {%- set numbers_flag = numbers_list[0].split('=')[1] if numbers_list | length > 0 else 'true' -%}
+              {%- set special_flag = special_list[0].split('=')[1] if special_list | length > 0 else 'false' -%}
+              {%- set custom_length = length_list[0].split('=')[1] | int if length_list | length > 0 else 32 -%}
+              {# Check if existing value matches current length requirement #}
+              {%- if key in existing_data -%}
+                {%- if existing_data[key] | length != custom_length -%}
+                  {%- set needs_new_value = true -%}
+                {%- endif -%}
+              {%- else -%}
+                {%- set needs_new_value = true -%}
+              {%- endif -%}
+            {%- else -%}
+              {# For simple null/empty values, check if we need to generate #}
+              {%- if key not in existing_data -%}
+                {%- set needs_new_value = true -%}
+              {%- else -%}
+                {# Check if existing value is empty/null and needs random generation #}
+                {%- set existing_value = existing_data[key] -%}
+                {%- if existing_value == '' or existing_value is none or existing_value == none or existing_value == 'null' or existing_value == 'None' -%}
+                  {%- set needs_new_value = true -%}
+                {%- endif -%}
+              {%- endif -%}
+            {%- endif -%}
+            {# Generate new value if needed, otherwise keep existing #}
+            {%- if needs_new_value -%}
+              {%- if special_flag == 'true' -%}
+                {%-
+                  set random_value = lookup('community.general.random_string',
+                  length=custom_length, upper=upper_flag, lower=lower_flag, numbers=numbers_flag,
+                  special=special_flag, override_special='!#$^&*_', min_special=2)
+                -%}
+              {%- else -%}
+                {%-
+                  set random_value = lookup('community.general.random_string',
+                  length=custom_length, upper=upper_flag, lower=lower_flag,
+                  numbers=numbers_flag, special=special_flag)
+                -%}
+              {%- endif -%}
+              {%- set _ = updated_item_data.update({key: random_value}) -%}
+            {%- else -%}
+              {%- set _ = updated_item_data.update({key: existing_data[key]}) -%}
+            {%- endif -%}
+          {%- else -%}
+            {%- set _ = updated_item_data.update({key: value}) -%}
+          {%- endif -%}
+        {%- endfor -%}
+        {%- set updated_item = path_item | combine({'data': updated_item_data}) -%}
+        {%- set _ = vault_secrets_updated.append(updated_item) -%}
+      {%- endfor -%}
+      {{ vault_secrets_updated }}
+  when: |
+    vault_secrets | map(attribute='data') | map('dict2items') | flatten |
+    selectattr('value', 'in', ['', none]) | list | length > 0 or vault_secrets |
+    map(attribute='data') | map('dict2items') | flatten |
+    selectattr('value', 'mapping') | selectattr('value.constraints', 'defined') |
+    list | length > 0
+
+- name: Determine which secrets need to be written
+  run_once: true
+  ansible.builtin.set_fact:
+    secrets_to_write: "{{ secrets_to_write | default({}) | combine({current_path: path_keys}) }}"
+  vars:
+    current_path: "{{ path_data.path }}"
+    secret_result: "{{ secret_check.results | selectattr('item.path', 'equalto', current_path) | first }}"
+    existing_data: "{{ secret_result.data.data | default({}) }}"
+    path_keys: |
+      {%- set keys_to_update = {} -%}
+      {%- for key, value in path_data.data.items() -%}
+        {%- if key not in existing_data or existing_data[key] != value -%}
+          {%- set _ = keys_to_update.update({key: value}) -%}
+        {%- endif -%}
+      {%- endfor -%}
+      {{ keys_to_update }}
+  loop: "{{ vault_secrets }}"
+  loop_control:
+    loop_var: path_data
+    label: "{{ atmosphere_vault_secret_path_prefix }}{{ path_data.path }}"
+
+- name: Write only missing secrets
+  run_once: true
+  delegate_to: "{{ groups[vault_secrets_bootstrap_group] | sort | first }}"
+  community.hashi_vault.vault_kv2_write:
+    url: "{{ vault_address | default(vault_host) }}"
+    ca_cert: "{{ vault_ca_path | default(omit) }}"
+    token: "{{ vault_token }}"
+    read_before_write: true
+    engine_mount_point: "{{ atmosphere_vault_mount_point }}"
+    path: "{{ atmosphere_vault_secret_path_prefix }}{{ item.path }}"
+    data: "{{ (existing_data | default({})) | combine(secrets_to_write[item.path] | default({})) }}"
+  vars:
+    secret_result: "{{ secret_check.results | selectattr('item.path', 'equalto', item.path) | first }}"
+    existing_data: "{{ secret_result.data.data | default({}) }}"
+  loop: "{{ vault_secrets }}"
+  loop_control:
+    loop_var: item
+    label: "{{ atmosphere_vault_secret_path_prefix }}{{ item.path }}"
+  when: secrets_to_write is defined and secrets_to_write[item.path] is defined and secrets_to_write[item.path] | length > 0
+
+- name: Display result
+  run_once: true
+  ansible.builtin.debug:
+    msg:
+      - "Path: {{ atmosphere_vault_secret_path_prefix }}{{ item.path }}"
+      - "Status: {{ 'No changes needed' if not (secrets_to_write is defined and secrets_to_write[item.path] is defined and secrets_to_write[item.path] | length > 0) else 'Changes made' }}"
+      - "Changed secrets: {{ secrets_to_write[item.path] | default({}) | list | join(', ') if (secrets_to_write is defined and secrets_to_write[item.path] is defined and secrets_to_write[item.path] | length > 0) else 'none' }}"
+  loop: "{{ vault_secrets }}"
+  loop_control:
+    loop_var: item
+    label: "{{ atmosphere_vault_secret_path_prefix }}{{ item.path }}"
