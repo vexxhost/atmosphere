@@ -46,6 +46,12 @@ options:
         type: list
         elements: str
         required: false
+    image_pull_policy:
+      description: Image pull policy for the container
+      required: false
+      type: str
+      choices: ['IfNotPresent', 'Always', 'Never']
+      default: 'Always'
     timeout:
         description:
             - Maximum time in seconds to wait for pod completion
@@ -340,6 +346,7 @@ def build_pod_spec(module_params):
         "name": module_params["pod_name"],
         "image": module_params["container_image"],
         "command": module_params["command"],
+        "imagePullPolicy": module_params["image_pull_policy"],
     }
 
     # Add args if provided
@@ -542,6 +549,12 @@ def main():
         container_image=dict(type="str", required=True),
         command=dict(type="list", elements="str", required=True),
         args=dict(type="list", elements="str", required=False),
+        image_pull_policy=dict(
+            required=False,
+            type="str",
+            choices=["IfNotPresent", "Always", "Never"],
+            default="Always",
+        ),
         timeout=dict(type="int", default=300),
         kubeconfig=dict(type="str", required=False),
         env_vars=dict(type="dict", required=False),
