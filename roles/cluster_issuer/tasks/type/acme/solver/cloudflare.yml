@@ -12,6 +12,41 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+- name: Migrate existing secrets to Vault
+  block:
+    - name: Check if Kubernetes secret exists
+      run_once: true
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Secret
+        name: "{{ cluster_issuer_acme_cloudflare_secret_name }}"
+        namespace: cert-manager
+      register: secret_info
+
+    - name: Set 'secret_exists' fact
+      run_once: true
+      ansible.builtin.set_fact:
+        secret_exists: "{{ secret_info.resources | length > 0 }}"
+
+    - name: Extract secret data if 'secret_exists'
+      run_once: true
+      ansible.builtin.set_fact:
+        api_token: "{{ secret_info.resources[0].data['api-token'] | b64decode }}"
+      when: secret_exists
+
+    - name: Create Vault secrets
+      ansible.builtin.include_role:
+        name: vault_secrets
+      vars:
+        atmosphere_vault_over_ingress: false
+        vault_secrets:
+          - path: cert-manager/issuers/cloudflare
+            data:
+              api-token: "{{ api_token }}"
+      when: secret_exists
+
+# TODO: Helm chart atmosphere.common for external-secrets and k8s secret creation
+
 - name: Create ClusterIssuer
   run_once: true
   kubernetes.core.k8s:
