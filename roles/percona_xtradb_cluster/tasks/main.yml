@@ -1,37 +1,111 @@
 # Copyright (c) 2025 VEXXHOST, Inc.
 # SPDX-License-Identifier: Apache-2.0
 
-- name: Create a secret for Percona XtraDB cluster passwords
-  run_once: true
+- name: Migrate existing secrets to Vault
   block:
-    - name: Check if the Percona XtraDB cluster secret exists
+    - name: Check if Kubernetes secret exists
+      run_once: true
       kubernetes.core.k8s_info:
         api_version: v1
         kind: Secret
         name: percona-xtradb
         namespace: openstack
-      register: _pxc_secret
-      ignore_errors: true
+      register: secret_info
 
-    - name: Create a secret
-      when: ( _pxc_secret.resources | length==0 )
-      kubernetes.core.k8s:
-        state: present
-        definition:
-          apiVersion: v1
-          stringData:
-            clustercheck: "{{ lookup('password', '/dev/null chars=ascii_lowercase,ascii_uppercase,digits length=32') }}"
-            monitor: "{{ lookup('password', '/dev/null chars=ascii_lowercase,ascii_uppercase,digits length=32') }}"
-            operator: "{{ lookup('password', '/dev/null chars=ascii_lowercase,ascii_uppercase,digits length=32') }}"
-            proxyadmin: "{{ lookup('password', '/dev/null chars=ascii_lowercase,ascii_uppercase,digits length=32') }}"
-            replication: "{{ lookup('password', '/dev/null chars=ascii_lowercase,ascii_uppercase,digits length=32') }}"
-            root: "{{ lookup('password', '/dev/null chars=ascii_lowercase,ascii_uppercase,digits length=32') }}"
-            xtrabackup: "{{ lookup('password', '/dev/null chars=ascii_lowercase,ascii_uppercase,digits length=32') }}"
-          kind: Secret
-          metadata:
-            name: percona-xtradb
-            namespace: openstack
-          type: Opaque
+    - name: Set 'secret_exists' fact
+      run_once: true
+      ansible.builtin.set_fact:
+        secret_exists: "{{ secret_info.resources | length > 0 }}"
+
+    - name: Extract secret data if 'secret_exists'
+      run_once: true
+      ansible.builtin.set_fact:
+        clustercheck: "{{ secret_info.resources[0].data['clustercheck'] | b64decode }}"
+        monitor: "{{ secret_info.resources[0].data['monitor'] | b64decode }}"
+        operator: "{{ secret_info.resources[0].data['operator'] | b64decode }}"
+        proxyadmin: "{{ secret_info.resources[0].data['proxyadmin'] | b64decode }}"
+        replication: "{{ secret_info.resources[0].data['replication'] | b64decode }}"
+        root: "{{ secret_info.resources[0].data['root'] | b64decode }}"
+        xtrabackup: "{{ secret_info.resources[0].data['xtrabackup'] | b64decode }}"
+      when: secret_exists
+
+    - name: Create Vault secrets
+      ansible.builtin.include_role:
+        name: vault_secrets
+      vars:
+        vault_secrets:
+          - path: percona-xtradb/cluster-secrets
+            data:
+              clustercheck: "{{ clustercheck }}"
+              monitor: "{{ monitor }}"
+              operator: "{{ operator }}"
+              proxyadmin: "{{ proxyadmin }}"
+              replication: "{{ replication }}"
+              root: "{{ root }}"
+              xtrabackup: "{{ xtrabackup }}"
+      when: secret_exists
+
+# TODO: Use 'atmosphere.common' helm chart for external-secrets and other k8s resource creation
+# For now mimic helm chart logic with plain manifests
+#
+# helm:
+#   secretKeys:
+#   - name: percona-xtradb
+#     values:
+#       - percona-xtradb/cluster-secrets
+
+- name: Create a secret for Percona XtraDB cluster passwords (ExternalSecret)
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: external-secrets.io/v1
+      kind: ExternalSecret
+      metadata:
+        namespace: openstack
+        name: percona-xtradb-keys-secret # Mimic helm chart format for simple secrets
+      spec:
+        refreshInterval: "60s"
+        secretStoreRef:
+          name: atmosphere # Mimic helm chart default secret store name and type
+          kind: ClusterSecretStore
+        target:
+          name: percona-xtradb-keys-secret # Mimic helm chart format for simple secrets
+        dataFrom:
+          - extract:
+              key: percona-xtradb/cluster-secrets
+
+# - name: Create a secret for Percona XtraDB cluster passwords (old method)
+#   run_once: true
+#   block:
+#     - name: Check if the Percona XtraDB cluster secret exists
+#       kubernetes.core.k8s_info:
+#         api_version: v1
+#         kind: Secret
+#         name: percona-xtradb
+#         namespace: openstack
+#       register: _pxc_secret
+#       ignore_errors: true
+
+#     - name: Create a secret
+#       when: ( _pxc_secret.resources | length==0 )
+#       kubernetes.core.k8s:
+#         state: present
+#         definition:
+#           apiVersion: v1
+#           stringData:
+#             clustercheck: "{{ lookup('password', '/dev/null chars=ascii_lowercase,ascii_uppercase,digits length=32') }}"
+#             monitor: "{{ lookup('password', '/dev/null chars=ascii_lowercase,ascii_uppercase,digits length=32') }}"
+#             operator: "{{ lookup('password', '/dev/null chars=ascii_lowercase,ascii_uppercase,digits length=32') }}"
+#             proxyadmin: "{{ lookup('password', '/dev/null chars=ascii_lowercase,ascii_uppercase,digits length=32') }}"
+#             replication: "{{ lookup('password', '/dev/null chars=ascii_lowercase,ascii_uppercase,digits length=32') }}"
+#             root: "{{ lookup('password', '/dev/null chars=ascii_lowercase,ascii_uppercase,digits length=32') }}"
+#             xtrabackup: "{{ lookup('password', '/dev/null chars=ascii_lowercase,ascii_uppercase,digits length=32') }}"
+#           kind: Secret
+#           metadata:
+#             name: percona-xtradb
+#             namespace: openstack
+#           type: Opaque
 
 - name: Check if the Percona XtraDB cluster exists
   run_once: true

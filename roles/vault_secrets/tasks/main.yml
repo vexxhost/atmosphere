@@ -15,7 +15,7 @@
       kubernetes.core.k8s_info:
         api_version: v1
         kind: Secret
-        kubeconfig: "{{ vault_secret_kubeconfig }}"
+        kubeconfig: "{{ vault_secrets_kubeconfig }}"
         name: vault-tls
         namespace: "{{ vault_secrets_namespace | default('vault-operator-system') }}"
       register: vault_ca
@@ -43,7 +43,7 @@
       changed_when: false
       delegate_to: "{{ groups[vault_secrets_bootstrap_group] | sort | first }}"
       vexxhost.atmosphere.k8s_port_forward:
-        kubeconfig: "{{ vault_secret_kubeconfig }}"
+        kubeconfig: "{{ vault_secrets_kubeconfig }}"
         namespace: "{{ vault_secrets_namespace | default('vault-operator-system') }}"
         service_name: vault
         ports: "{{ free_port.stdout }}:8200"
@@ -53,13 +53,13 @@
     - name: Set Vault address fact
       run_once: true
       ansible.builtin.set_fact:
-        vault_address: "https://127.0.0.1:{{ free_port.stdout }}"
+        vault_address: "127.0.0.1:{{ free_port.stdout }}"
 
 - name: Check if secrets exists
   run_once: true
   delegate_to: "{{ groups[vault_secrets_bootstrap_group] | sort | first }}"
   community.hashi_vault.vault_kv2_get:
-    url: "{{ vault_address | default(vault_host) }}"
+    url: "https://{{ vault_address | default(vault_host) }}"
     ca_cert: "{{ vault_ca_path | default(omit) }}"
     token: "{{ vault_token }}"
     engine_mount_point: "{{ atmosphere_vault_mount_point }}"
@@ -180,7 +180,7 @@
   run_once: true
   delegate_to: "{{ groups[vault_secrets_bootstrap_group] | sort | first }}"
   community.hashi_vault.vault_kv2_write:
-    url: "{{ vault_address | default(vault_host) }}"
+    url: "https://{{ vault_address | default(vault_host) }}"
     ca_cert: "{{ vault_ca_path | default(omit) }}"
     token: "{{ vault_token }}"
     read_before_write: true
