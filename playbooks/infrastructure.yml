@@ -1,7 +1,7 @@
 # Copyright (c) 2025 VEXXHOST, Inc.
 # SPDX-License-Identifier: Apache-2.0
 
-# NOTE(fitbeard): We need Cert Manager installed before secret components
+# NOTE(fitbeard): We need Cert Manager installed before secrets infrastructure
 - name: Deploy Cert Manager
   hosts: controllers
   become: true
@@ -13,7 +13,7 @@
 - name: Deploy Secrets Infrastructure
   import_playbook: vexxhost.atmosphere.secrets
 
-- name: Deploy Infrastructure
+- name: Deploy Ingress Controller
   hosts: controllers
   become: true
   roles:
@@ -25,6 +25,22 @@
       tags:
         - ingress-nginx
 
+- name: Deploy Vault Ingress
+  hosts: controllers
+  become: true
+  tasks:
+    - name: Vault Ingress
+      ansible.builtin.import_role:
+        name: vault
+        tasks_from: ingress
+      when: atmosphere_vault_internal | default(true) | bool
+      tags:
+        - vault-ingress
+
+- name: Deploy Infrastructure
+  hosts: controllers
+  become: true
+  roles:
     - role: rabbitmq_cluster_operator
       tags:
         - rabbitmq-cluster-operator
