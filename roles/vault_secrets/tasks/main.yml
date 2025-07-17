@@ -63,13 +63,13 @@
     ca_cert: "{{ vault_ca_path | default(omit) }}"
     token: "{{ vault_token }}"
     engine_mount_point: "{{ atmosphere_vault_mount_point }}"
-    path: "{{ atmosphere_vault_secret_path_prefix }}{{ item.path }}"
+    path: "{{ item.path }}"
   register: secret_check
   failed_when: false
   loop: "{{ vault_secrets }}"
   loop_control:
     loop_var: item
-    label: "{{ atmosphere_vault_secret_path_prefix }}{{ item.path }}"
+    label: "{{ item.path }}"
 
 - name: Generate random values for all empty secrets in all paths
   run_once: true
@@ -174,7 +174,7 @@
   loop: "{{ vault_secrets }}"
   loop_control:
     loop_var: path_data
-    label: "{{ atmosphere_vault_secret_path_prefix }}{{ path_data.path }}"
+    label: "{{ path_data.path }}"
 
 - name: Write only missing secrets
   run_once: true
@@ -185,7 +185,7 @@
     token: "{{ vault_token }}"
     read_before_write: true
     engine_mount_point: "{{ atmosphere_vault_mount_point }}"
-    path: "{{ atmosphere_vault_secret_path_prefix }}{{ item.path }}"
+    path: "{{ item.path }}"
     data: "{{ (existing_data | default({})) | combine(secrets_to_write[item.path] | default({})) }}"
   vars:
     secret_result: "{{ secret_check.results | selectattr('item.path', 'equalto', item.path) | first }}"
@@ -193,17 +193,17 @@
   loop: "{{ vault_secrets }}"
   loop_control:
     loop_var: item
-    label: "{{ atmosphere_vault_secret_path_prefix }}{{ item.path }}"
+    label: "{{ item.path }}"
   when: secrets_to_write is defined and secrets_to_write[item.path] is defined and secrets_to_write[item.path] | length > 0
 
 - name: Display result
   run_once: true
   ansible.builtin.debug:
     msg:
-      - "Path: {{ atmosphere_vault_secret_path_prefix }}{{ item.path }}"
+      - "Path: {{ item.path }}"
       - "Status: {{ 'No changes needed' if not (secrets_to_write is defined and secrets_to_write[item.path] is defined and secrets_to_write[item.path] | length > 0) else 'Changes made' }}"
       - "Changed secrets: {{ secrets_to_write[item.path] | default({}) | list | join(', ') if (secrets_to_write is defined and secrets_to_write[item.path] is defined and secrets_to_write[item.path] | length > 0) else 'none' }}"
   loop: "{{ vault_secrets }}"
   loop_control:
     loop_var: item
-    label: "{{ atmosphere_vault_secret_path_prefix }}{{ item.path }}"
+    label: "{{ item.path }}"
