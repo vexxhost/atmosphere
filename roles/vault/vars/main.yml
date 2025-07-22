@@ -64,11 +64,10 @@ _vault_spec:
 # NOTE(fitbeard): Merging with overrides can lead to unexpected results.
 # The best way to extend this configuration is to fully override it
 # with your own configuration.
-# TODO(fitbeard): Add OIDC auth with Keycloak
 _vault_config:
   vault-config.yml: |
     purgeUnmanagedConfig:
-      enabled: true
+      enabled: false
     auth:
       - type: approle
         path: approle
@@ -118,6 +117,12 @@ _vault_config:
           }
       - name: write_kv_all
         rules: |
+          path "{{ atmosphere_vault_mount_point }}/metadata" {
+            capabilities = ["list"]
+          }
+          path "{{ atmosphere_vault_mount_point }}/metadata/*" {
+            capabilities = ["read", "list"]
+          }
           path "{{ atmosphere_vault_mount_point }}/data/*" {
             capabilities = ["create", "update", "patch", "read", "delete"]
           }
@@ -129,3 +134,51 @@ _vault_config:
 _vault_ingress_annotations:
   cert-manager.io/cluster-issuer: "{{ vault_ingress_cluster_issuer }}"
   nginx.ingress.kubernetes.io/backend-protocol: https
+
+# NOTE(fitbeard): Merging with overrides can lead to unexpected results.
+# The best way to extend this configuration is to fully override it
+# with your own configuration.
+_vault_keycloak_config:
+  vault-config.yml: |
+    auth:
+      - type: oidc
+        path: oidc
+        description: Keycloak OIDC Authentication backend
+        options:
+          listing_visibility: unauth
+          default_lease_ttl: 1h
+          max_lease_ttl: 1h
+          token_type: default-service
+        config:
+          oidc_discovery_url: "https://{{ keycloak_host }}/realms/{{ vault_keycloak_realm }}"
+          bound_issuer: "{{ keycloak_host }}"
+          oidc_client_id: "{{ vault_keycloak_client_id }}"
+          oidc_client_secret: "{{ vault_keycloak_client_secret }}"
+          default_role: "default"
+          listing_visibility: "unauth"
+        roles:
+          - name: default
+            token_type: default
+            token_no_default_policy: true
+            token_policies: []
+            token_max_ttl: 1h
+            token_ttl: 1h
+            user_claim: "sub"
+            groups_claim: "groups"
+            oidc_scopes: ["openid"]
+            bound_audiences: ["{{ vault_keycloak_client_id | quote }}"]
+            allowed_redirect_uris:
+              - "https://{{ vault_host }}/ui/vault/auth/oidc/oidc/callback"
+              - "http://localhost:8250/oidc/callback"
+            bound_claims:
+              groups: "/vault_admins"
+    groups:
+      - name: vault_admins
+        policies:
+          - default
+          - write_kv_all
+        type: external
+    group-aliases:
+      - name: "/vault_admins"
+        mountpath: oidc
+        group: vault_admins

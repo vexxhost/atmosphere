@@ -64,3 +64,15 @@
     - role: keepalived
       tags:
         - keepalived
+
+- name: Deploy Vault Keycloak Integration
+  hosts: controllers
+  become: true
+  tasks:
+    - name: Vault Keycloak Integration
+      ansible.builtin.import_role:
+        name: vault
+        tasks_from: keycloak
+      when: atmosphere_vault_internal | default(true) | bool
+      tags:
+        - vault-keycloak
