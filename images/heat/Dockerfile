@@ -4,7 +4,7 @@
 
 FROM openstack-venv-builder AS build
 # renovate: name=openstack/heat repo=https://opendev.org/openstack/heat.git branch=unmaintained/zed
-ARG HEAT_GIT_REF=d3948706a3ff28d0160157f76f1e18244a8dad5c
+ARG HEAT_GIT_REF=665ccfc2626f88b422d1c0db07d63556f208a908
 ADD --keep-git-dir=true https://opendev.org/openstack/heat.git#${HEAT_GIT_REF} /src/heat
 RUN git -C /src/heat fetch --unshallow
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
