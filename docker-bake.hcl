@@ -208,6 +208,49 @@ target "python-openstackclient" {
     ]
 }
 
+target "neutron-source" {
+    context = "images/source-patch"
+    target = "unshallow"
+    platforms = ["linux/amd64", "linux/arm64"]
+
+    contexts = {
+        "git" = "https://opendev.org/openstack/neutron.git#dcd0d3e4c6d02a0176695f13b0ba80e0b4243077" # renovate: branch=stable/2025.1
+        "patches" = "patches/openstack/neutron"
+    }
+}
+
+target "networking-generic-switch-source" {
+    context = "images/source-patch"
+    target = "unshallow"
+    platforms = ["linux/amd64", "linux/arm64"]
+
+    contexts = {
+        "git" = "https://opendev.org/openstack/networking-generic-switch.git#af6c3efb1ea17bcd4d4e1d054c8fc4c5eb47480d" # renovate: branch=stable/2025.1
+        "patches" = "patches/openstack/networking-generic-switch"
+    }
+}
+
+target "neutron" {
+    context = "images/neutron"
+    platforms = ["linux/amd64", "linux/arm64"]
+
+    args = {
+        PROJECT = "neutron"
+    }
+
+    contexts = {
+        "neutron-source" = "target:neutron-source"
+        "networking-generic-switch-source" = "target:networking-generic-switch-source"
+        "openstack-python-runtime" = "target:openstack-python-runtime"
+        "openstack-venv-builder" = "target:openstack-venv-builder"
+        "ovsinit" = "target:ovsinit"
+    }
+
+    tags = [
+        "${REGISTRY}/neutron:${TAG}"
+    ]
+}
+
 target "openstack" {
     name = "openstack-${service}"
     matrix = {
@@ -222,7 +265,6 @@ target "openstack" {
             "keystone",
             "magnum",
             "manila",
-            "neutron",
             "nova",
             "octavia",
             "ovn-bgp-agent",
@@ -256,6 +298,7 @@ group "default" {
         "keepalived",
         "libvirtd",
         "netoffload",
+        "neutron",
         "nova-ssh",
         "openstack-barbican",
         "openstack-cinder",
@@ -267,7 +310,6 @@ group "default" {
         "openstack-keystone",
         "openstack-magnum",
         "openstack-manila",
-        "openstack-neutron",
         "openstack-nova",
         "openstack-octavia",
         "openstack-ovn-bgp-agent",
