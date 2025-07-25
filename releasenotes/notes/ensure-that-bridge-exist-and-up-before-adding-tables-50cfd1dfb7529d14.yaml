@@ -1,0 +1,13 @@
+fixes:
+  - |
+    Make sure that the bridge exists and is up before adding tables
+
+    At the moment OVN NB driver attempts to add routes for the device
+    which is in down state, which results in exception.
+
+    Such scenario is possible in case of migration from regular L2 OVN to
+    BGP or corner cases where operators didn't manage to make sure device
+    to be UP in their network configuration.
+
+    Anyway, it's better to handle such cases and make sure required devices
+    are in proper state before executing actions towards them.
