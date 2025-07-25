@@ -1,0 +1,15 @@
+# Copyright (c) 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Create Vault Ingress
+  ansible.builtin.include_role:
+    name: ingress
+  vars:
+    ingress_name: vault
+    ingress_namespace: "{{ vault_namespace }}"
+    ingress_class_name: "{{ vault_ingress_class_name }}"
+    ingress_host: "{{ vault_host }}"
+    ingress_service_name: vault
+    ingress_service_port: 8200
+    ingress_secret_name: "{{ vault_host_tls_secret_name }}"
+    ingress_annotations: "{{ _vault_ingress_annotations | combine(vault_ingress_annotations, recursive=True) }}"
