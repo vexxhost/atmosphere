@@ -13,9 +13,6 @@
 # under the License.
 
 _tempest_helm_values:
-  pod:
-    labels:
-      include_app_kubernetes_io: false
   endpoints: "{{ openstack_helm_endpoints | combine(_tempest_endpoint_values, recursive=True) }}"
   images:
     tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('tempest') }}"
@@ -23,6 +20,9 @@ _tempest_helm_values:
     run_tests:
       restartPolicy: Never
       backoffLimit: 0
+  pod:
+    labels:
+      include_app_kubernetes_io: false
   conf:
     tempest:
       service_available:
