@@ -32,6 +32,26 @@ func TestMain(m *testing.M) {
 }
 
 func TestHelmValues(t *testing.T) {
+	// (rlin): Before you add any new priority class here.
+	// Make sure we do use snippets tool
+	// helm-toolkit.snippets.kubernetes_pod_priority_class
+	// for the actual template. Like:
+	// {{ tuple "heat_api" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" }}
+	vars.HelmValues.Pod.PriorityClass = map[string]string{
+		"db_sync": "high-priority",
+		"glance_api": "high-priority",
+		"glance_tests": "high-priority",
+	}
+	// (rlin): Before you add any new runtime class here.
+	// Make sure we do use snippets tool
+	// helm-toolkit.snippets.kubernetes_pod_runtime_class
+	// for the actual template. Like:
+	// {{ tuple "heat_api" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" }}
+	vars.HelmValues.Pod.RuntimeClass = map[string]string{
+		"db_sync": "kata-clh",
+		"glance_api": "kata-clh",
+		"glance_tests": "kata-clh",
+	}
 	vals, err := openstack_helm.CoalescedHelmValues("../../charts/glance", &vars.HelmValues)
 	require.NoError(t, err)
 
