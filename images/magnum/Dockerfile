@@ -12,7 +12,7 @@ RUN mv /${TARGETOS}-${TARGETARCH}/helm /usr/bin/helm
 
 FROM openstack-venv-builder AS build
 # renovate: name=openstack/magnum repo=https://opendev.org/openstack/magnum.git branch=stable/2024.2
-ARG MAGNUM_GIT_REF=db197e08a09da93062fc4222180051dadfc0f0d8
+ARG MAGNUM_GIT_REF=b8a351b99b40c0aa123be3d51a4d0b73e66aa2dc
 ADD --keep-git-dir=true https://opendev.org/openstack/magnum.git#${MAGNUM_GIT_REF} /src/magnum
 RUN git -C /src/magnum fetch --unshallow
 RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe
