@@ -47,7 +47,7 @@ func TestPerconaXtraDBClusterSpec(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, chart.AppVersion(), vars.PerconaXtraDBClusterSpec.CRVersion)
-	assert.Equal(t, "percona-xtradb", vars.PerconaXtraDBClusterSpec.SecretsName)
+	assert.Equal(t, "percona-xtradb-keys-secret", vars.PerconaXtraDBClusterSpec.SecretsName)
 	assert.Equal(t, true, vars.PerconaXtraDBClusterSpec.VolumeExpansionEnabled)
 }
 

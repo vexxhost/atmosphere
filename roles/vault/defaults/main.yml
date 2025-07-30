@@ -1,0 +1,27 @@
+# Copyright (c) 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+vault_namespace: vault-operator-system
+
+vault_host: "{{ undef('You must specify a Vault host using vault_host') }}"
+vault_host_tls_secret_name: "{{ openstack_helm_ingress_secret_name | default(vault_host + '-tls')}}"
+
+vault_ingress_annotations: {}
+vault_ingress_class_name: "{{ atmosphere_ingress_class_name }}"
+vault_ingress_cluster_issuer: "{{ atmosphere_ingress_cluster_issuer }}"
+
+vault_spec: {}
+
+vault_log_level: info
+vault_kubeconfig: "{{ kubeconfig_path | default('/etc/kubernetes/admin.conf') }}"
+
+vault_keycloak_server_url: "https://{{ keycloak_host }}"
+vault_keycloak_admin_realm_name: master
+vault_keycloak_admin_client_id: admin-cli
+vault_keycloak_admin_user: admin
+vault_keycloak_admin_password: "{{ keycloak_admin_password }}"
+vault_keycloak_realm: atmosphere
+vault_keycloak_realm_name: Atmosphere
+
+vault_keycloak_client_id: vault
+# vault_keycloak_client_secret:
