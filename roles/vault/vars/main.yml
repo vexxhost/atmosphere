@@ -89,19 +89,22 @@ _vault_config:
           - name: ansible
             bound_service_account_names: ["ansible"]
             bound_service_account_namespaces: ["{{ vault_namespace | quote }}"]
-            audience: https://kubernetes.default.svc
+            # https://kubernetes.io/docs/reference/command-line-tools-reference/kube-apiserver/
+            # https://outshift.cisco.com/blog/kubernetes-oidc
+            # https://support.hashicorp.com/hc/en-us/articles/34458984727443-Audience-parameter-usage-with-kube-auth-in-vault-with-caveats
+            audience: https://kubernetes.default.svc.cluster.local
             policies: ["ansible"]
             ttl: 1m
           - name: external-secrets-cluster-secret-store
             bound_service_account_names: ["external-secrets"]
             bound_service_account_namespaces: ["external-secrets"]
-            audience: https://kubernetes.default.svc
+            audience: https://kubernetes.default.svc.cluster.local
             policies: ["read_kv_all"]
             ttl: 1h
           - name: vault
             bound_service_account_names: ["*"]
             bound_service_account_namespaces: ["{{ vault_namespace | quote }}", "openstack"]
-            audience: https://kubernetes.default.svc
+            audience: https://kubernetes.default.svc.cluster.local
             policies: ["read_kv_all"]
             ttl: 1h
     policies:
