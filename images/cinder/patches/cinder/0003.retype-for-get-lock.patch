@@ -1,0 +1,47 @@
+diff --git a/cinder/coordination.py b/cinder/coordination.py
+index afa5f8803..7bd3e0d67 100644
+--- a/cinder/coordination.py
++++ b/cinder/coordination.py
+@@ -102,8 +102,13 @@ class Coordinator(object):
+         :param str name: The lock name that is used to identify it
+             across all nodes.
+         """
+-        # NOTE(bluex): Tooz expects lock name as a byte string.
+-        lock_name = (self.prefix + name).encode('ascii')
++        backend_url = cfg.CONF.coordination.backend_url
++        if backend_url.startswith('kubernetes://'):
++            # Kubernetes lock (tooz with sherlock) currently can't accept "_" and bytes
++            lock_name = str((self.prefix + name)).replace("_", "-")
++        else:
++            # NOTE(bluex): Tooz expects lock name as a byte string.
++            lock_name = (self.prefix + name).encode('ascii')
+         if self.coordinator is not None:
+             return self.coordinator.get_lock(lock_name)
+         else:
+@@ -141,6 +146,12 @@ def __acquire(lock, blocking, f_name):
+     t1 = timeutils.now()
+     name = utils.convert_str(lock.name)
+     LOG.debug('Acquiring lock "%s" by "%s"', name, f_name)
++    backend_url = cfg.CONF.coordination.backend_url
++    if backend_url.startswith('kubernetes://'):
++        # Kubernetes lock currently can't have timeout=None case.
++        # If blocking is true, timeout will be None
++       blocking = blocking if blocking != True else 3600
++
+     lock.acquire(blocking)
+     t2 = timeutils.now()
+     LOG.debug('Lock "%s" acquired by "%s" :: waited %0.3fs',
+@@ -220,7 +231,12 @@ def synchronized(*lock_names: str,
+         # Prevent deadlocks not duplicating and sorting them by name to always
+         # acquire them in the same order.
+         names = sorted(set([name.format(**call_args) for name in lock_names]))
+-        locks = [coordinator.get_lock(name) for name in names]
++        backend_url = cfg.CONF.coordination.backend_url
++        if backend_url.startswith('kubernetes://'):
++            # Kubernetes lock (tooz with sherlock) currently can't accept "_"
++            locks = [coordinator.get_lock(name.replace("_", "-")) for name in names]
++        else:
++            locks = [coordinator.get_lock(name) for name in names]
+         acquired_times = []
+         f_name = f.__name__
+         t1 = timeutils.now()
