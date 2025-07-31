@@ -23,6 +23,39 @@ limitations under the License.
 {{- $serviceAccountName := "cinder-volume" }}
 {{ tuple $envAll "volume" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
 ---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: {{ $serviceAccountName }}
+rules:
+  - apiGroups:
+      - ''
+      - 'coordination.k8s.io'
+    resources:
+      - leases
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - patch
+      - update
+      - delete
+      - deletecollection
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $serviceAccountName }}-leases
+subjects:
+  - kind: ServiceAccount
+    name: {{ $serviceAccountName }}
+    namespace: {{ $envAll.Release.Namespace }}
+roleRef:
+  kind: Role
+  name: {{ $serviceAccountName }}
+  apiGroup: rbac.authorization.k8s.io
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
