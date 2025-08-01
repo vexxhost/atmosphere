@@ -1,5 +1,5 @@
 diff --git a/cinder/coordination.py b/cinder/coordination.py
-index afa5f8803..7bd3e0d67 100644
+index afa5f8803..e66f3f7b0 100644
 --- a/cinder/coordination.py
 +++ b/cinder/coordination.py
 @@ -102,8 +102,13 @@ class Coordinator(object):
@@ -18,19 +18,21 @@ index afa5f8803..7bd3e0d67 100644
          if self.coordinator is not None:
              return self.coordinator.get_lock(lock_name)
          else:
-@@ -141,6 +146,12 @@ def __acquire(lock, blocking, f_name):
+@@ -141,7 +146,13 @@ def __acquire(lock, blocking, f_name):
      t1 = timeutils.now()
      name = utils.convert_str(lock.name)
      LOG.debug('Acquiring lock "%s" by "%s"', name, f_name)
+-    lock.acquire(blocking)
 +    backend_url = cfg.CONF.coordination.backend_url
 +    if backend_url.startswith('kubernetes://'):
 +        # Kubernetes lock currently can't have timeout=None case.
 +        # If blocking is true, timeout will be None
-+       blocking = blocking if blocking != True else 3600
++       blocking = blocking if blocking != True else 60
 +
-     lock.acquire(blocking)
++    lock.acquire(blocking, expire=86400)
      t2 = timeutils.now()
      LOG.debug('Lock "%s" acquired by "%s" :: waited %0.3fs',
+               name, f_name, t2 - t1)
 @@ -220,7 +231,12 @@ def synchronized(*lock_names: str,
          # Prevent deadlocks not duplicating and sorting them by name to always
          # acquire them in the same order.
