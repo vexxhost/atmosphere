@@ -1,0 +1,128 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+---
+- name: Install Corosync
+  become: true
+  ansible.builtin.package:
+    name: corosync
+    state: present
+
+- name: Install Pacemaker
+  become: true
+  ansible.builtin.package:
+    name: pacemaker
+    state: present
+  when: inventory_hostname in groups[pacemaker_corosync_group]
+
+- name: Install Pacemaker Remote
+  become: true
+  ansible.builtin.package:
+    name: pacemaker-remote
+    state: present
+  when: inventory_hostname in groups[pacemaker_remote_group]
+
+- name: Generate Corosync authkey (only on first node)
+  become: true
+  ansible.builtin.command: corosync-keygen
+  args:
+    creates: /etc/corosync/authkey
+  when: inventory_hostname == groups[pacemaker_corosync_group][0]
+  notify: Restart corosync
+
+- name: Create temporary file to receive authkey
+  ansible.builtin.tempfile:
+    state: file
+  register: authkey_tempfile
+  changed_when: false
+  check_mode: no
+  delegate_to: localhost
+  when: inventory_hostname != groups[pacemaker_corosync_group][0]
+
+- name: Fetch authkey from first Corosync node
+  ansible.builtin.fetch:
+    src: /etc/corosync/authkey
+    dest: "{{ authkey_tempfile.path }}"
+    flat: true
+  delegate_to: "{{ groups[pacemaker_corosync_group][0] }}"
+  changed_when: false
+  check_mode: no
+  when: inventory_hostname != groups[pacemaker_corosync_group][0]
+
+- name: Copy authkey to current node
+  become: true
+  ansible.builtin.copy:
+    src: "{{ authkey_tempfile.path }}"
+    dest: /etc/corosync/authkey
+    mode: "0400"
+    owner: root
+  when: inventory_hostname != groups[pacemaker_corosync_group][0]
+  notify: Restart corosync
+
+- name: Clean up temporary authkey file
+  ansible.builtin.file:
+    path: "{{ authkey_tempfile.path }}"
+    state: absent
+  changed_when: false
+  check_mode: no
+  delegate_to: localhost
+  when: inventory_hostname != groups[pacemaker_corosync_group][0]
+
+- name: Set correct permissions for authkey
+  become: true
+  ansible.builtin.file:
+    path: /etc/corosync/authkey
+    mode: "0400"
+    owner: root
+  notify: Restart corosync
+
+- name: Deploy Corosync configuration
+  become: true
+  ansible.builtin.template:
+    src: corosync.conf.j2
+    dest: /etc/corosync/corosync.conf
+    mode: "0400"
+    owner: root
+  notify: Restart corosync
+
+- name: Creates log directory
+  ansible.builtin.file:
+    path: /var/log/corosync
+    state: directory
+    mode: "0775"
+  when: pacemaker_corosync_use_logfile | bool
+
+- name: Adds logrotate config for corosync
+  ansible.builtin.template:
+    src: corosync_logrotate.conf.j2
+    dest: /etc/logrotate.d/corosync
+    mode: "0644"
+    owner: root
+  when: pacemaker_corosync_use_logfile | bool
+
+- name: Ensure Corosync service directory exists
+  become: true
+  ansible.builtin.file:
+    path: /etc/corosync/service.d/
+    state: directory
+    mode: "0755"
+
+- name: Deploy Pacemaker service configuration
+  become: true
+  ansible.builtin.copy:
+    src: pcmk
+    dest: /etc/corosync/service.d/pcmk
+    owner: root
+    mode: "0400"
+  notify: Restart corosync
