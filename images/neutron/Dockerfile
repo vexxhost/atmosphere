@@ -16,7 +16,7 @@ ARG NETWORKING_BAREMETAL_GIT_REF=1c0c66eae415a233e80d33324a5c19b183a4ee2b
 ADD --keep-git-dir=true https://opendev.org/openstack/networking-baremetal.git#${NETWORKING_BAREMETAL_GIT_REF} /src/networking-baremetal
 RUN git -C /src/networking-baremetal fetch --unshallow
 # renovate: name=openstack/networking-generic-switch repo=https://opendev.org/openstack/networking-generic-switch.git branch=master
-ARG NETWORKING_GENERIC_SWITCH_GIT_REF=ced747b10e5ab7797f82a9306614c866b4398e4f
+ARG NETWORKING_GENERIC_SWITCH_GIT_REF=c5cfb150cb0836f7a598cfc802d8b54a3eb954b1
 ADD --keep-git-dir=true https://opendev.org/openstack/networking-generic-switch.git#${NETWORKING_GENERIC_SWITCH_GIT_REF} /src/networking-generic-switch
 RUN git -C /src/networking-generic-switch fetch --unshallow
 # renovate: name=vexxhost/neutron-policy-server repo=https://github.com/vexxhost/neutron-policy-server.git branch=main
