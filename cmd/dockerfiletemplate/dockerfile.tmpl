@@ -1,0 +1,18 @@
+# SPDX-FileCopyrightText: © 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Atmosphere-Rebuild-Time: {{ dateInZone "2006-01-02T15:04:05Z" (now) "UTC" }}
+
+FROM openstack-venv-builder AS build
+{{- range $wheel := .Wheels }}
+ADD {{ $wheel.GitRepository }}#{{ $wheel.GitReference }} /src/{{ $wheel.Name }}
+RUN PBR_VERSION={{ $wheel.PbrVersion }} uv build --wheel /src/{{ $wheel.Name }} --out-dir /wheels
+{{- end }}
+RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe
+uv pip install \
+    --constraint /upper-constraints.txt \
+        /wheels/*.whl{{- range $p := .PythonPackages }} \
+        {{ $p }}{{- end }}
+EOF
+
+FROM openstack-python-runtime
+COPY --from=build --link /var/lib/openstack /var/lib/openstack
