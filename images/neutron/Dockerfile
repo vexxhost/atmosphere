@@ -15,6 +15,10 @@ RUN git -C /src/neutron-vpnaas fetch --unshallow
 ARG NETWORKING_BAREMETAL_GIT_REF=1c0c66eae415a233e80d33324a5c19b183a4ee2b
 ADD --keep-git-dir=true https://opendev.org/openstack/networking-baremetal.git#${NETWORKING_BAREMETAL_GIT_REF} /src/networking-baremetal
 RUN git -C /src/networking-baremetal fetch --unshallow
+# renovate: name=openstack/networking-generic-switch repo=https://opendev.org/openstack/networking-generic-switch.git branch=master
+ARG NETWORKING_GENERIC_SWITCH_GIT_REF=ced747b10e5ab7797f82a9306614c866b4398e4f
+ADD --keep-git-dir=true https://opendev.org/openstack/networking-generic-switch.git#${NETWORKING_GENERIC_SWITCH_GIT_REF} /src/networking-generic-switch
+RUN git -C /src/networking-generic-switch fetch --unshallow
 # renovate: name=vexxhost/neutron-policy-server repo=https://github.com/vexxhost/neutron-policy-server.git branch=main
 ARG POLICY_SERVER_GIT_REF=41c862a7e15955195ebac56a48ae98137aac146d
 ADD --keep-git-dir=true https://github.com/vexxhost/neutron-policy-server.git#${POLICY_SERVER_GIT_REF} /src/neutron-policy-server
@@ -25,7 +29,6 @@ ADD --keep-git-dir=true https://github.com/vexxhost/neutron-ovn-network-logging-
 RUN git -C /src/neutron-ovn-network-logging-parser fetch --unshallow
 RUN \
   --mount=type=bind,from=neutron-source,source=/,target=/src/neutron,readwrite \
-  --mount=type=bind,from=networking-generic-switch-source,source=/,target=/src/networking-generic-switch,readwrite \
   --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe
 uv pip install \
     --constraint /upper-constraints.txt \
