@@ -1,0 +1,33 @@
+# Copyright (c) 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+vault_token_role: ansible
+vault_token_service_account: ansible
+vault_token_service_account_namespace: vault-operator-system
+vault_token_configmap: vault-get-token
+vault_token_container_image: "{{ atmosphere_images['vault'] }}"
+
+vault_token_pod_environment_variables:
+  VAULT_ADDR: https://vault.vault-operator-system:8200
+  VAULT_CACERT: /etc/vault-tls/ca.crt
+
+vault_token_pod_secret_mounts:
+  - secret_name: vault-tls
+    mount_path: /etc/vault-tls
+
+vault_token_pod_configmap_mounts:
+  - configmap_name: "{{ vault_token_configmap }}"
+    mount_path: /etc/vault-scripts
+
+vault_token_issuing_script:
+  token.sh: |
+    #!/bin/sh
+    export JWT=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+    export VAULT_TOKEN=$(vault write -field=token auth/{{ atmosphere_vault_kubernetes_auth_path }}/login role={{ vault_token_role }} jwt=$JWT)
+    export ROLE_ID=$(vault read -field=role_id auth/approle/role/{{ vault_token_role }}/role-id)
+    export SECRET_ID=$(vault write -f -field=secret_id auth/approle/role/{{ vault_token_role }}/secret-id)
+    vault write -field=token auth/approle/login \
+      role_id=$ROLE_ID \
+      secret_id=$SECRET_ID
+
+vault_token_kubeconfig: "{{ kubeconfig_path | default('/etc/kubernetes/admin.conf') }}"
