@@ -23,6 +23,7 @@ import os
 import sys
 
 import pymysql
+pymysql.version_info = (2, 2, 4, 'final', 0)
 pymysql.install_as_MySQLdb()
 
 from django.core.management import execute_from_command_line
