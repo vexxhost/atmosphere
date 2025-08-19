@@ -1,0 +1,186 @@
+# Copyright (c) 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Wait until Keycloak service is ready
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: StatefulSet
+    name: keycloak
+    namespace: auth-system
+    kubeconfig: "{{ vault_kubeconfig }}"
+  register: vault_keycloak_service
+  retries: 120
+  delay: 5
+  until:
+    - vault_keycloak_service.resources[0].status.replicas == vault_keycloak_service.resources[0].status.readyReplicas # noqa: yaml[line-length]
+
+- name: Create Keycloak realm
+  no_log: true
+  run_once: true
+  changed_when: false
+  community.general.keycloak_realm:
+    # Keycloak settings
+    auth_keycloak_url: "{{ vault_keycloak_server_url }}"
+    auth_realm: "{{ vault_keycloak_admin_realm_name }}"
+    auth_client_id: "{{ vault_keycloak_admin_client_id }}"
+    auth_username: "{{ vault_keycloak_admin_user }}"
+    auth_password: "{{ vault_keycloak_admin_password }}"
+    validate_certs: "{{ cluster_issuer_type != 'self-signed' }}"
+    # Realm settings
+    id: "{{ vault_keycloak_realm }}"
+    realm: "{{ vault_keycloak_realm }}"
+    display_name: "{{ vault_keycloak_realm_name }}"
+    enabled: true
+
+- name: Create Keycloak 'groups' client scope
+  no_log: true
+  run_once: true
+  changed_when: false
+  community.general.keycloak_clientscope:
+    # Keycloak settings
+    auth_keycloak_url: "{{ vault_keycloak_server_url }}"
+    auth_realm: "{{ vault_keycloak_admin_realm_name }}"
+    auth_client_id: "{{ vault_keycloak_admin_client_id }}"
+    auth_username: "{{ vault_keycloak_admin_user }}"
+    auth_password: "{{ vault_keycloak_admin_password }}"
+    validate_certs: "{{ cluster_issuer_type != 'self-signed' }}"
+    # Client scope settings
+    name: groups
+    protocol: openid-connect
+    realm: "{{ vault_keycloak_realm }}"
+    attributes:
+      include.in.token.scope: false
+      display.on.consent.screen: "false"
+    protocol_mappers:
+      - name: groups
+        protocol: openid-connect
+        protocolMapper: oidc-group-membership-mapper
+        config:
+          access.token.claim: true
+          claim.name: groups
+          full.path: true
+          id.token.claim: true
+          introspection.token.claim: true
+          lightweight.claim: false
+          userinfo.token.claim: true
+
+- name: Create Keycloak client
+  no_log: true
+  run_once: true
+  community.general.keycloak_client:
+    # Keycloak settings
+    auth_keycloak_url: "{{ vault_keycloak_server_url }}"
+    auth_realm: "{{ vault_keycloak_admin_realm_name }}"
+    auth_client_id: "{{ vault_keycloak_admin_client_id }}"
+    auth_username: "{{ vault_keycloak_admin_user }}"
+    auth_password: "{{ vault_keycloak_admin_password }}"
+    validate_certs: "{{ cluster_issuer_type != 'self-signed' }}"
+    # Realm settings
+    realm: "{{ vault_keycloak_realm }}"
+    client_id: "{{ vault_keycloak_client_id }}"
+    secret: "{{ vault_keycloak_client_secret }}"
+    direct_access_grants_enabled: false
+    service_accounts_enabled: false
+    public_client: false
+    redirect_uris:
+      - "https://{{ vault_host }}/ui/vault/auth/oidc/oidc/callback"
+      - "http://localhost:8250/oidc/callback"
+
+# NOTE(fitbeard): Not implemented:
+# https://github.com/ansible-collections/community.general/issues/5495
+- name: Assign 'groups' client scope as default for Keycloak client
+  block:
+    - name: Get admin access token
+      run_once: true
+      no_log: true
+      ansible.builtin.uri:
+        url: "{{ vault_keycloak_server_url }}/realms/{{ vault_keycloak_admin_realm_name }}/protocol/openid-connect/token" # noqa: yaml[line-length]
+        method: POST
+        body_format: form-urlencoded
+        validate_certs: "{{ cluster_issuer_type != 'self-signed' }}"
+        body:
+          grant_type: password
+          client_id: "{{ vault_keycloak_admin_client_id }}"
+          username: "{{ vault_keycloak_admin_user }}"
+          password: "{{ vault_keycloak_admin_password }}"
+        status_code: 200
+      register: token_response
+
+    - name: Set admin token fact
+      run_once: true
+      no_log: true
+      ansible.builtin.set_fact:
+        admin_token: "{{ token_response.json.access_token }}"
+
+    - name: Get all clients
+      run_once: true
+      no_log: true
+      ansible.builtin.uri:
+        url: "{{ vault_keycloak_server_url }}/admin/realms/{{ vault_keycloak_realm }}/clients"
+        method: GET
+        validate_certs: "{{ cluster_issuer_type != 'self-signed' }}"
+        headers:
+          Authorization: "Bearer {{ admin_token }}"
+        status_code: 200
+      register: clients_response
+
+    - name: Find client UUID
+      run_once: true
+      no_log: true
+      ansible.builtin.set_fact:
+        client_uuid: "{{ item.id }}"
+      loop: "{{ clients_response.json }}"
+      when: item.clientId == vault_keycloak_client_id
+
+    - name: Get available client scopes
+      run_once: true
+      no_log: true
+      ansible.builtin.uri:
+        url: "{{ vault_keycloak_server_url }}/admin/realms/{{ vault_keycloak_realm }}/client-scopes"
+        method: GET
+        validate_certs: "{{ cluster_issuer_type != 'self-signed' }}"
+        headers:
+          Authorization: "Bearer {{ admin_token }}"
+        status_code: 200
+      register: available_scopes
+
+    - name: Create scope mapping
+      run_once: true
+      no_log: true
+      ansible.builtin.set_fact:
+        scope_map: "{{ scope_map | default({}) | combine({item.name: item.id}) }}"
+      loop: "{{ available_scopes.json }}"
+
+    - name: Set default client scopes
+      run_once: true
+      no_log: true
+      ansible.builtin.uri:
+        url: "{{ vault_keycloak_server_url }}/admin/realms/{{ vault_keycloak_realm }}/clients/{{ client_uuid }}/default-client-scopes/{{ scope_map[item] }}" # noqa: yaml[line-length]
+        method: PUT
+        validate_certs: "{{ cluster_issuer_type != 'self-signed' }}"
+        headers:
+          Authorization: "Bearer {{ admin_token }}"
+        status_code: 204
+      loop:
+        - acr
+        - address
+        - profile
+        - roles
+        - web-origins
+        - groups
+
+- name: Deploy Vault configuration
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ vault_kubeconfig }}"
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        labels:
+          app.kubernetes.io/name: vault-configurator
+          vault_cr: vault
+        name: atmosphere-vault-keycloak-config
+        namespace: "{{ vault_namespace }}"
+      stringData: "{{ _vault_keycloak_config }}"

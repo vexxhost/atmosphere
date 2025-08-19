@@ -1,0 +1,30 @@
+# Copyright (c) 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Deploy ClusterSecretStore for External Secrets
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ external_secrets_kubeconfig }}"
+    definition:
+      apiVersion: external-secrets.io/v1
+      kind: ClusterSecretStore
+      metadata:
+        name: "{{ external_secrets_cluster_secret_store_name }}"
+        namespace: "{{ external_secrets_cluster_secret_store_namespace }}"
+      spec: "{{ lookup('ansible.builtin.template', 'values.yml.j2') | from_yaml | combine(external_secrets_cluster_secret_store_spec, recursive=True) }}"
+
+- name: Wait for ClusterSecretStore to be available
+  run_once: true
+  kubernetes.core.k8s_info:
+    api_version: external-secrets.io/v1
+    kind: ClusterSecretStore
+    kubeconfig: "{{ external_secrets_kubeconfig }}"
+    name: "{{ external_secrets_cluster_secret_store_name }}"
+    namespace: "{{ external_secrets_cluster_secret_store_namespace }}"
+    wait_sleep: 5
+    wait_timeout: 90
+    wait: true
+    wait_condition:
+      type: Ready
+      status: true

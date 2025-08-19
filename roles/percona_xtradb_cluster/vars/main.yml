@@ -3,7 +3,7 @@
 
 _percona_xtradb_cluster_spec:
   crVersion: "1.16.1"
-  secretsName: percona-xtradb
+  secretsName: percona-xtradb-keys-secret
   enableVolumeExpansion: true
   pxc:
     size: 3
@@ -26,7 +26,7 @@ _percona_xtradb_cluster_spec:
           - name: MYSQLD_EXPORTER_PASSWORD
             valueFrom:
               secretKeyRef:
-                name: percona-xtradb
+                name: percona-xtradb-keys-secret
                 key: monitor
         ports:
           - name: metrics

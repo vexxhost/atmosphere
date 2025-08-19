@@ -40,6 +40,7 @@ _atmosphere_images:
   cluster_api_kubeadm_bootstrap_controller: "{{ atmosphere_image_prefix }}registry.k8s.io/cluster-api/kubeadm-bootstrap-controller:v1.8.4"
   cluster_api_kubeadm_control_plane_controller: "{{ atmosphere_image_prefix }}registry.k8s.io/cluster-api/kubeadm-control-plane-controller:v1.8.4"
   cluster_api_openstack_controller: "{{ atmosphere_image_prefix }}registry.atmosphere.dev/library/capi-openstack-controller:{{ atmosphere_release }}"
+  consul_template: "{{ atmosphere_image_prefix }}docker.io/hashicorp/consul-template:0.41.0"
   csi_node_driver_registrar: "{{ atmosphere_image_prefix }}registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.10.0"
   csi_rbd_attacher: "{{ atmosphere_image_prefix }}registry.k8s.io/sig-storage/csi-attacher:v4.5.0"
   csi_rbd_plugin: "{{ atmosphere_image_prefix }}quay.io/cephcsi/cephcsi:v3.11.0"
@@ -56,6 +57,7 @@ _atmosphere_images:
   designate_producer: "{{ atmosphere_image_prefix }}registry.atmosphere.dev/library/designate:{{ atmosphere_release }}"
   designate_sink: "{{ atmosphere_image_prefix }}registry.atmosphere.dev/library/designate:{{ atmosphere_release }}"
   designate_worker: "{{ atmosphere_image_prefix }}registry.atmosphere.dev/library/designate:{{ atmosphere_release }}"
+  external_secrets_operator: "{{ atmosphere_image_prefix }}oci.external-secrets.io/external-secrets/external-secrets:v0.18.1"
   glance_api: "{{ atmosphere_image_prefix }}registry.atmosphere.dev/library/glance:{{ atmosphere_release }}"
   glance_db_sync: "{{ atmosphere_image_prefix }}registry.atmosphere.dev/library/glance:{{ atmosphere_release }}"
   glance_metadefs_load: "{{ atmosphere_image_prefix }}registry.atmosphere.dev/library/glance:{{ atmosphere_release }}"
@@ -229,6 +231,11 @@ _atmosphere_images:
   tempest_run_tests: "{{ atmosphere_image_prefix }}registry.atmosphere.dev/library/tempest:{{ atmosphere_release }}"
   valkey: "{{ atmosphere_image_prefix }}docker.io/bitnami/valkey:8.0.2-debian-12-r4"
   valkey_sentinel: "{{ atmosphere_image_prefix }}docker.io/bitnami/valkey-sentinel:8.0.2-debian-12-r4"
+  vault: "{{ atmosphere_image_prefix }}docker.io/hashicorp/vault:1.20.1"
+  vault_operator: "{{ atmosphere_image_prefix }}ghcr.io/bank-vaults/vault-operator:v1.23.0"
+  vault_operator_bank_vaults: "{{ atmosphere_image_prefix }}ghcr.io/bank-vaults/bank-vaults:v1.32.0"
+  vault_secrets_webhook: "{{ atmosphere_image_prefix }}ghcr.io/bank-vaults/vault-secrets-webhook:v1.22.0"
+  vault_secrets_webhook_vault_env: "{{ atmosphere_image_prefix }}ghcr.io/bank-vaults/vault-env:v1.22.0"
   vector: "{{ atmosphere_image_prefix }}docker.io/timberio/vector:0.38.0-debian"
 
 atmosphere_images: '{{ _atmosphere_images | combine(atmosphere_image_overrides, recursive=True) }}'

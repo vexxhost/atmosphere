@@ -1,0 +1,44 @@
+# Copyright (c) 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Deploy Vault
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ vault_kubeconfig }}"
+    definition:
+      - apiVersion: vault.banzaicloud.com/v1alpha1
+        kind: Vault
+        metadata:
+          name: vault
+          namespace: "{{ vault_namespace }}"
+          labels:
+            app.kubernetes.io/name: vault
+            vault_cr: vault
+        spec: "{{ _vault_spec | combine(vault_spec, recursive=True) }}"
+
+      # NOTE(fitbeard): We use config from secret due to potentially sensitive data in it
+      - apiVersion: v1
+        kind: Secret
+        metadata:
+          labels:
+            app.kubernetes.io/name: vault-configurator
+            vault_cr: vault
+          name: atmosphere-vault-config
+          namespace: "{{ vault_namespace }}"
+        stringData: "{{ _vault_config }}"
+
+- name: Wait for Vault to be available
+  run_once: true
+  kubernetes.core.k8s_info:
+    api_version: vault.banzaicloud.com/v1alpha1
+    kind: Vault
+    kubeconfig: "{{ vault_kubeconfig }}"
+    name: vault
+    namespace: "{{ vault_namespace }}"
+    wait_sleep: 5
+    wait_timeout: 180
+    wait: true
+    wait_condition:
+      type: Healthy
+      status: true
