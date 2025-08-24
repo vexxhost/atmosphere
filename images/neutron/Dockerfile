@@ -23,6 +23,10 @@ RUN git -C /src/neutron-policy-server fetch --unshallow
 ARG LOG_PASER_GIT_REF=3895d8f9d004e612c71b4f798d31c758e113946b
 ADD --keep-git-dir=true https://github.com/vexxhost/neutron-ovn-network-logging-parser.git#${LOG_PASER_GIT_REF} /src/neutron-ovn-network-logging-parser
 RUN git -C /src/neutron-ovn-network-logging-parser fetch --unshallow
+# renovate: name=openstack/tap-as-a-service repo=https://opendev.org/openstack/tap-as-a-service.git branch=master
+ARG TAP_AS_A_SERVICE_GIT_REF=c06a9ff7963e23b2c7faff89b188bd9295a753cc
+ADD --keep-git-dir=true https://opendev.org/openstack/tap-as-a-service.git#${TAP_AS_A_SERVICE_GIT_REF} /src/tap-as-a-service
+RUN git -C /src/tap-as-a-service fetch --unshallow
 RUN \
   --mount=type=bind,from=neutron-source,source=/,target=/src/neutron,readwrite \
   --mount=type=bind,from=networking-generic-switch-source,source=/,target=/src/networking-generic-switch,readwrite \
@@ -35,7 +39,8 @@ uv pip install \
         /src/networking-baremetal \
         /src/networking-generic-switch \
         /src/neutron-policy-server \
-        /src/neutron-ovn-network-logging-parser
+        /src/neutron-ovn-network-logging-parser \
+        /src/tap-as-a-service
 EOF
 
 FROM openstack-python-runtime
