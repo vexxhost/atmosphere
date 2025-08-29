@@ -10,4 +10,3 @@ Diagrams
    :figclass: align-center
 
    *Kubernetes overview.*
-
