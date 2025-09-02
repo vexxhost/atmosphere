@@ -7,6 +7,8 @@ FROM openstack-venv-builder AS build
 ARG MANILA_GIT_REF=5fadf50c80dddd6c1cb167fd1d10debd5092fe0e
 ADD --keep-git-dir=true https://opendev.org/openstack/manila.git#${MANILA_GIT_REF} /src/manila
 RUN git -C /src/manila fetch --unshallow
+COPY patches/manila /patches/manila
+RUN git -C /src/manila apply --verbose /patches/manila/*
 RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe
 uv pip install \
     --constraint /upper-constraints.txt \
