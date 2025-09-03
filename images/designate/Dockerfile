@@ -4,7 +4,7 @@
 
 FROM openstack-venv-builder AS build
 # renovate: name=openstack/designate repo=https://opendev.org/openstack/designate.git branch=unmaintained/zed
-ARG DESIGNATE_GIT_REF=d247267823034c5e656f74e91b50475aa54d3fa6
+ARG DESIGNATE_GIT_REF=f84acb20aba00eb5a584dcbb25e2abb5968bb427
 ADD --keep-git-dir=true https://opendev.org/openstack/designate.git#${DESIGNATE_GIT_REF} /src/designate
 RUN git -C /src/designate fetch --unshallow
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
