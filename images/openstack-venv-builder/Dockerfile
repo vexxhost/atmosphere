@@ -36,6 +36,7 @@ RUN python3 -m venv --upgrade-deps --system-site-packages /var/lib/openstack
 COPY --from=requirements --link /upper-constraints.txt /upper-constraints.txt
 RUN pip3 install \
     --constraint /upper-constraints.txt \
+        confluent-kafka \
         cryptography \
         pymysql \
         python-binary-memcached \
