@@ -20,7 +20,9 @@ RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \
     build-essential \
+    curl \
     git \
+    gnupg \
     libldap2-dev \
     libpcre3-dev \
     libsasl2-dev \
@@ -34,6 +36,12 @@ apt-get install -qq -y --no-install-recommends \
 apt-get clean
 rm -rf /var/lib/apt/lists/*
 EOF
+RUN curl -sL https://packages.confluent.io/clients/deb/archive.key | apt-key add - && \
+    echo "deb https://packages.confluent.io/clients/deb/ jammy main" > /etc/apt/sources.list.d/confluent.list && \
+    apt-get update -qq && \
+    apt-get install -qq -y --no-install-recommends librdkafka-dev && \
+    apt-get clean && \
+    rm -rf /etc/apt/sources.list.d/confluent.list /var/lib/apt/lists/*
 RUN python3 -m venv --upgrade-deps --system-site-packages /var/lib/openstack
 COPY --from=requirements --link /upper-constraints.txt /upper-constraints.txt
 RUN pip3 install \
