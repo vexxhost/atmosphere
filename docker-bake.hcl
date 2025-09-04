@@ -6,29 +6,6 @@ variable "TAG" {
     default = "2024.2"
 }
 
-target "cluster-api-provider-openstack-source" {
-    context = "images/source-patch"
-    platforms = ["linux/amd64", "linux/arm64"]
-
-    contexts = {
-        "git" = "https://github.com/kubernetes-sigs/cluster-api-provider-openstack.git#v0.11.6"
-        "patches" = "patches/kubernetes-sigs/cluster-api-provider-openstack"
-    }
-}
-
-target "cluster-api-provider-openstack" {
-    context = "images/cluster-api-provider-openstack"
-    platforms = ["linux/amd64", "linux/arm64"]
-
-    contexts = {
-        "source" = "target:cluster-api-provider-openstack-source"
-    }
-
-    tags = [
-        "${REGISTRY}/capi-openstack-controller:${TAG}"
-    ]
-}
-
 target "ubuntu" {
     context = "images/ubuntu"
     platforms = ["linux/amd64", "linux/arm64"]
@@ -294,7 +271,6 @@ target "openstack" {
 
 group "default" {
     targets = [
-        "cluster-api-provider-openstack",
         "keepalived",
         "libvirtd",
         "netoffload",
