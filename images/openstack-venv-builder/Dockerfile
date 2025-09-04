@@ -36,6 +36,7 @@ uv cache clean uwsgi
 uv venv --system-site-packages /var/lib/openstack
 uv pip install \
     --constraint /upper-constraints.txt \
+        confluent-kafka \
         cryptography \
         pymysql \
         python-binary-memcached \
