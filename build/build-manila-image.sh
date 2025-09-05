@@ -14,4 +14,4 @@ git clone https://opendev.org/openstack/manila-image-elements $TMPDIR
 
 # Build image
 export ELEMENTS_PATH=$TMPDIR/elements
-disk-image-create -o manila-${ATMOSPHERE_VERSION}.qcow2 vm manila-ubuntu-minimal dhcp-all-interfaces manila-ssh ubuntu-nfs ubuntu-cifs
+disk-image-create -t raw -o manila-${ATMOSPHERE_VERSION}.raw vm manila-ubuntu-minimal dhcp-all-interfaces manila-ssh ubuntu-nfs ubuntu-cifs
