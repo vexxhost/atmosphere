@@ -196,17 +196,6 @@ target "neutron-source" {
     }
 }
 
-target "networking-generic-switch-source" {
-    context = "images/source-patch"
-    target = "unshallow"
-    platforms = ["linux/amd64", "linux/arm64"]
-
-    contexts = {
-        "git" = "https://opendev.org/openstack/networking-generic-switch.git#b6bb46af9d56aae50e2afb17641289733f446a1b" # renovate: branch=stable/2024.1
-        "patches" = "patches/openstack/networking-generic-switch"
-    }
-}
-
 target "neutron" {
     context = "images/neutron"
     platforms = ["linux/amd64", "linux/arm64"]
@@ -217,7 +206,6 @@ target "neutron" {
 
     contexts = {
         "neutron-source" = "target:neutron-source"
-        "networking-generic-switch-source" = "target:networking-generic-switch-source"
         "openstack-python-runtime" = "target:openstack-python-runtime"
         "openstack-venv-builder" = "target:openstack-venv-builder"
         "ovsinit" = "target:ovsinit"
