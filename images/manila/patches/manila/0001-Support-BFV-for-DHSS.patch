@@ -1,0 +1,800 @@
+From db479f1ec1e2f1ea5dfebfa36524b82223894228 Mon Sep 17 00:00:00 2001
+From: ricolin <rlin@vexxhost.com>
+Date: Mon, 1 Sep 2025 16:53:38 +0800
+Subject: [PATCH] Support BFV for DHSS
+
+Now support boot from volume for service instance (when DHSS=True)
+New volume can either use image source our base volume
+source depends on driver configs.
+ref: https://review.opendev.org/c/openstack/manila/+/959016
+
+Change-Id: I9a2e53f56d2c76a2a090cedd2cb9323ce520c13c
+Signed-off-by: ricolin <rlin@vexxhost.com>
+---
+ manila/compute/nova.py                        |   5 +-
+ manila/share/drivers/generic.py               |  31 +--
+ manila/share/drivers/service_instance.py      | 114 +++++++++-
+ manila/tests/fake_volume.py                   |   3 +
+ manila/tests/share/drivers/test_generic.py    |  77 +------
+ .../share/drivers/test_service_instance.py    | 203 ++++++++++++++++++
+ manila/tests/volume/test_cinder.py            |  65 ++++++
+ manila/volume/cinder.py                       |  38 +++-
+ .../allow_dhss_bfv-e542d558292a1bf3.yaml      |  30 +++
+ 9 files changed, 459 insertions(+), 107 deletions(-)
+ create mode 100644 releasenotes/notes/allow_dhss_bfv-e542d558292a1bf3.yaml
+
+diff --git a/manila/compute/nova.py b/manila/compute/nova.py
+index 6778f7891..54781f439 100644
+--- a/manila/compute/nova.py
++++ b/manila/compute/nova.py
+@@ -77,7 +77,10 @@ def _untranslate_server_summary_view(server):
+     d['status'] = server.status
+     d['flavor'] = server.flavor.get('id') or server.flavor['original_name']
+     d['name'] = server.name
+-    d['image'] = server.image['id']
++    if server.image:
++        d['image'] = server.image['id']
++    d['volume_attached'] = getattr(
++        server, "os-extended-volumes:volumes_attached", [])
+     d['created'] = server.created
+     d['addresses'] = server.addresses
+     d['networks'] = server.networks
+diff --git a/manila/share/drivers/generic.py b/manila/share/drivers/generic.py
+index 4b0260133..6fb0731b1 100644
+--- a/manila/share/drivers/generic.py
++++ b/manila/share/drivers/generic.py
+@@ -578,38 +578,11 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
+             _('Volume has not been created in %ss. Giving up') %
+             self.configuration.max_time_to_create_volume
+         )
+-
+-        return self._wait_for_available_volume(
++        return self.volume_api.wait_for_available_volume(
+             volume, self.configuration.max_time_to_create_volume,
+             msg_error=msg_error, msg_timeout=msg_timeout
+         )
+ 
+-    def _wait_for_available_volume(self, volume, timeout,
+-                                   msg_error, msg_timeout,
+-                                   expected_size=None):
+-        t = time.time()
+-        while time.time() - t < timeout:
+-            if volume['status'] == const.STATUS_AVAILABLE:
+-                if expected_size and volume['size'] != expected_size:
+-                    LOG.debug("The volume %(vol_id)s is available but the "
+-                              "volume size does not match the expected size. "
+-                              "A volume resize operation may be pending. "
+-                              "Expected size: %(expected_size)s, "
+-                              "Actual size: %(volume_size)s.",
+-                              dict(vol_id=volume['id'],
+-                                   expected_size=expected_size,
+-                                   volume_size=volume['size']))
+-                else:
+-                    break
+-            elif 'error' in volume['status'].lower():
+-                raise exception.ManilaException(msg_error)
+-            time.sleep(1)
+-            volume = self.volume_api.get(self.admin_context, volume['id'])
+-        else:
+-            raise exception.ManilaException(msg_timeout)
+-
+-        return volume
+-
+     def _deallocate_container(self, context, share):
+         """Deletes cinder volume."""
+         try:
+@@ -695,7 +668,7 @@ class GenericShareDriver(driver.ExecuteMixin, driver.ShareDriver):
+             _('Volume has not been extended in %ss. Giving up') %
+             self.configuration.max_time_to_extend_volume
+         )
+-        return self._wait_for_available_volume(
++        return self.volume_api.wait_for_available_volume(
+             volume, self.configuration.max_time_to_extend_volume,
+             msg_error=msg_error, msg_timeout=msg_timeout,
+             expected_size=new_size
+diff --git a/manila/share/drivers/service_instance.py b/manila/share/drivers/service_instance.py
+index 5befbf61e..20bd0c8db 100644
+--- a/manila/share/drivers/service_instance.py
++++ b/manila/share/drivers/service_instance.py
+@@ -37,6 +37,7 @@ from manila.network.linux import ip_lib
+ from manila.network.neutron import api as neutron
+ from manila import ssh_utils
+ from manila import utils
++from manila import volume
+ 
+ LOG = log.getLogger(__name__)
+ NEUTRON_NAME = "neutron"
+@@ -126,6 +127,38 @@ share_servers_handling_mode_opts = [
+         help="ID of neutron subnet used to communicate with admin network,"
+              " to create additional admin export locations on. "
+              "Related to 'admin_network_id'."),
++    cfg.BoolOpt(
++        'service_instance_boot_from_volume',
++        default=False,
++        help='Boot service instances (share servers) from a Cinder volume. '
++             'If False, boot from the image as before.'
++             'Only used if driver_handles_share_servers=True.'
++    ),
++    cfg.IntOpt(
++        'boot_volume_size',
++        default=10,
++        min=1,
++        help='Size (GiB) of the root volume when booting from volume.'
++             'Only used if driver_handles_share_servers=True.'
++    ),
++    cfg.StrOpt(
++        'boot_volume_type',
++        help='Name or id of cinder volume type which will be used '
++             'for all boot volumes created by driver.'),
++    cfg.StrOpt(
++        'base_boot_volume_id',
++        help="UUID of volume in Cinder, that will be used as base volume "
++             "that bootable volume clone from during service instance "
++             "creation. Only used if driver_handles_share_servers=True."),
++    cfg.BoolOpt(
++        'boot_volume_delete_on_termination',
++        default=True,
++        help='Whether the root volume is deleted when the service instance '
++             'is terminated. Only used if driver_handles_share_servers=True.'
++    ),
++    cfg.StrOpt('boot_volume_name_template',
++               default='manila-share-%s-boot',
++               help="Boot volume name template."),
+ ]
+ 
+ no_share_servers_handling_mode_opts = [
+@@ -229,6 +262,7 @@ class ServiceInstanceManager(object):
+ 
+         self.image_api = image.API()
+         self.compute_api = compute.API()
++        self.volume_api = volume.API()
+ 
+         self.path_to_private_key = self.get_config_option(
+             "path_to_private_key")
+@@ -554,9 +588,81 @@ class ServiceInstanceManager(object):
+                 service_image_name)
+         return images[0]
+ 
++    def _build_bdm_from_volume(self, volume_id, delete_on_termination=True):
++        return [{
++            'boot_index': 0,
++            'uuid': volume_id,
++            'source_type': 'volume',
++            'destination_type': 'volume',
++            'delete_on_termination': bool(delete_on_termination),
++        }]
++
++    def _build_bdm_from_image(self, image_id, size_gb,
++                              delete_on_termination=True):
++        # Nova will create the volume in Cinder and attach as root
++        return [{
++            'boot_index': 0,
++            'uuid': image_id,
++            'source_type': 'image',
++            'destination_type': 'volume',
++            'volume_size': int(size_gb),
++            'delete_on_termination': bool(delete_on_termination),
++        }]
++
+     def _create_service_instance(self, context, instance_name, network_info):
+         """Creates service vm and sets up networking for it."""
++        boot_from_volume = self.get_config_option(
++            'service_instance_boot_from_volume')
++        block_device_mapping_v2 = None
+         service_image_id = self._get_service_image(context)
++        if boot_from_volume:
++            del_root = self.get_config_option(
++                'boot_volume_delete_on_termination')
++            base_vol_id = self.get_config_option(
++                "base_boot_volume_id")
++            root_size = self.get_config_option('boot_volume_size')
++            if base_vol_id:
++                msg = "Creating boot volume for share server '%s'."
++                LOG.debug(msg, network_info['server_id'])
++                name = self.get_config_option(
++                    'boot_volume_name_template'
++                ) % network_info[
++                    'server_id']
++
++                volume_info = {
++                    'size': root_size,
++                    'name': name,
++                    'description': '',
++                    'availability_zone': (
++                        self.availability_zone
++                    ),
++                    'source_volid': base_vol_id
++                }
++                vol_type = self.get_config_option("boot_volume_type")
++                # Try to fallback to cinder_volume_type if no boot volume_type
++                volume_info['volume_type'] = (
++                    vol_type or CONF.cinder_volume_type)
++                volume = self.volume_api.create(context, **volume_info)
++                msg_error = _('Failed to create bootable volume')
++                msg_timeout = (
++                    _('Volume has not been created in %ss. Giving up') %
++                    CONF.max_time_to_create_volume
++                )
++
++                volume = self.volume_api.wait_for_available_volume(
++                    volume, CONF.max_time_to_create_volume,
++                    msg_error=msg_error, msg_timeout=msg_timeout
++                )
++                block_device_mapping_v2 = self._build_bdm_from_volume(
++                    volume['id'], del_root
++                )
++            else:
++                block_device_mapping_v2 = self._build_bdm_from_image(
++                    service_image_id,
++                    root_size,
++                    delete_on_termination=del_root
++                )
++
+         key_name, key_path = self._get_key(context)
+         if not (self.get_config_option("service_instance_password") or
+                 key_name):
+@@ -585,10 +691,16 @@ class ServiceInstanceManager(object):
+                 network_data['admin_port']['id'])
+         try:
+             create_kwargs = self._get_service_instance_create_kwargs()
++            if boot_from_volume:
++                create_kwargs[
++                    'block_device_mapping_v2'
++                ] = block_device_mapping_v2
++                create_kwargs['image'] = None
++            else:
++                create_kwargs['image'] = service_image_id
+             service_instance = self.compute_api.server_create(
+                 context,
+                 name=instance_name,
+-                image=service_image_id,
+                 flavor=self.get_config_option("service_instance_flavor_id"),
+                 key_name=key_name,
+                 nics=network_data['nics'],
+diff --git a/manila/tests/fake_volume.py b/manila/tests/fake_volume.py
+index c4f87b345..901d296f9 100644
+--- a/manila/tests/fake_volume.py
++++ b/manila/tests/fake_volume.py
+@@ -70,3 +70,6 @@ class API(object):
+ 
+     def get_all_snapshots(self, search_opts):
+         pass
++
++    def wait_for_available_volume(self, volume, timeout, **kwargs):
++        return volume
+diff --git a/manila/tests/share/drivers/test_generic.py b/manila/tests/share/drivers/test_generic.py
+index f80ddff1c..8232366c0 100644
+--- a/manila/tests/share/drivers/test_generic.py
++++ b/manila/tests/share/drivers/test_generic.py
+@@ -823,78 +823,6 @@ class GenericShareDriverTestCase(test.TestCase):
+             volume_type=None,
+             availability_zone=self.share['availability_zone'])
+ 
+-    def test_allocate_container_error(self):
+-        fake_vol = fake_volume.FakeVolume(status='error')
+-        self.mock_object(self._driver.volume_api, 'create',
+-                         mock.Mock(return_value=fake_vol))
+-
+-        self.assertRaises(exception.ManilaException,
+-                          self._driver._allocate_container,
+-                          self._context,
+-                          self.share)
+-
+-    def test_wait_for_available_volume(self):
+-        fake_volume = {'status': 'creating', 'id': 'fake'}
+-        fake_available_volume = {'status': 'available', 'id': 'fake'}
+-        self.mock_object(self._driver.volume_api, 'get',
+-                         mock.Mock(return_value=fake_available_volume))
+-
+-        actual_result = self._driver._wait_for_available_volume(
+-            fake_volume, 5, "error", "timeout")
+-
+-        self.assertEqual(fake_available_volume, actual_result)
+-        self._driver.volume_api.get.assert_called_once_with(
+-            mock.ANY, fake_volume['id'])
+-
+-    @mock.patch('time.sleep')
+-    def test_wait_for_available_volume_error_extending(self, mock_sleep):
+-        fake_volume = {'status': const.STATUS_EXTENDING_ERROR, 'id': 'fake'}
+-        self.assertRaises(exception.ManilaException,
+-                          self._driver._wait_for_available_volume,
+-                          fake_volume, 5, 'error', 'timeout')
+-        self.assertFalse(mock_sleep.called)
+-
+-    @mock.patch('time.sleep')
+-    def test_wait_for_extending_volume(self, mock_sleep):
+-        initial_size = 1
+-        expected_size = 2
+-        mock_volume = fake_volume.FakeVolume(status='available',
+-                                             size=initial_size)
+-        mock_extending_vol = fake_volume.FakeVolume(status='extending',
+-                                                    size=initial_size)
+-        mock_extended_vol = fake_volume.FakeVolume(status='available',
+-                                                   size=expected_size)
+-
+-        self.mock_object(self._driver.volume_api, 'get',
+-                         mock.Mock(side_effect=[mock_extending_vol,
+-                                                mock_extended_vol]))
+-
+-        result = self._driver._wait_for_available_volume(
+-            mock_volume, 5, "error", "timeout",
+-            expected_size=expected_size)
+-
+-        expected_get_count = 2
+-
+-        self.assertEqual(mock_extended_vol, result)
+-        self._driver.volume_api.get.assert_has_calls(
+-            [mock.call(self._driver.admin_context, mock_volume['id'])] *
+-            expected_get_count)
+-        mock_sleep.assert_has_calls([mock.call(1)] * expected_get_count)
+-
+-    @ddt.data(mock.Mock(return_value={'status': 'creating', 'id': 'fake'}),
+-              mock.Mock(return_value={'status': 'error', 'id': 'fake'}))
+-    def test_wait_for_available_volume_invalid(self, volume_get_mock):
+-        fake_volume = {'status': 'creating', 'id': 'fake'}
+-        self.mock_object(self._driver.volume_api, 'get', volume_get_mock)
+-        self.mock_object(time, 'time',
+-                         mock.Mock(side_effect=[1.0, 1.33, 1.67, 2.0]))
+-
+-        self.assertRaises(
+-            exception.ManilaException,
+-            self._driver._wait_for_available_volume,
+-            fake_volume, 1, "error", "timeout"
+-        )
+-
+     def test_deallocate_container(self):
+         fake_vol = fake_volume.FakeVolume()
+         self.mock_object(self._driver, '_get_volume',
+@@ -1642,14 +1570,15 @@ class GenericShareDriverTestCase(test.TestCase):
+         fake_volume = {'id': 'fake'}
+         new_size = 123
+         self.mock_object(self._driver.volume_api, 'extend')
+-        self.mock_object(self._driver, '_wait_for_available_volume')
++        self.mock_object(self._driver.volume_api, 'wait_for_available_volume')
+ 
+         self._driver._extend_volume(self._context, fake_volume, new_size)
+ 
+         self._driver.volume_api.extend.assert_called_once_with(
+             self._context, fake_volume['id'], new_size
+         )
+-        self._driver._wait_for_available_volume.assert_called_once_with(
++        m_wfav = self._driver.volume_api.wait_for_available_volume
++        m_wfav.assert_called_once_with(
+             fake_volume, mock.ANY, msg_timeout=mock.ANY, msg_error=mock.ANY,
+             expected_size=new_size
+         )
+diff --git a/manila/tests/share/drivers/test_service_instance.py b/manila/tests/share/drivers/test_service_instance.py
+index 05f691cf6..ad285fe3d 100644
+--- a/manila/tests/share/drivers/test_service_instance.py
++++ b/manila/tests/share/drivers/test_service_instance.py
+@@ -41,6 +41,8 @@ CONF = cfg.CONF
+ def fake_get_config_option(key):
+     if key == 'driver_handles_share_servers':
+         return True
++    if key == 'service_instance_boot_from_volume':
++        return False
+     elif key == 'service_instance_password':
+         return None
+     elif key == 'service_instance_user':
+@@ -86,6 +88,7 @@ class FakeServiceInstance(object):
+     def __init__(self, driver_config=None):
+         super(FakeServiceInstance, self).__init__()
+         self.compute_api = service_instance.compute.API()
++        self.volume_api = service_instance.volume.API()
+         self.admin_context = service_instance.context.get_admin_context()
+         self.driver_config = driver_config
+ 
+@@ -1115,6 +1118,206 @@ class ServiceInstanceManagerTestCase(test.TestCase):
+                 sg[0]['id']))
+         self._manager.network_helper.get_network_name.assert_has_calls([])
+ 
++    def test___create_service_instance_with_bfv_with_image(self):
++        self.mock_object(service_instance, 'NeutronNetworkHelper',
++                         mock.Mock(side_effect=FakeNetworkHelper))
++        config_data = dict(DEFAULT=dict(
++            service_instance_boot_from_volume=True,
++            boot_volume_size=100,
++            boot_volume_name_template="boo_vol_name_%s",
++            driver_handles_share_servers=True,
++            service_instance_user='fake_user',
++            limit_ssh_access=True))
++        with test_utils.create_temp_config_with_opts(config_data):
++            self._manager = service_instance.ServiceInstanceManager()
++
++        server_create = dict(id='fakeid', status='CREATING', networks=dict())
++        net_name = self._manager.get_config_option("service_network_name")
++        sg = [{'id': 'fakeid', 'name': 'fakename'}, ]
++        ip_address = 'fake_ip_address'
++        service_image_id = 'fake_service_image_id'
++        key_data = 'fake_key_name', 'fake_key_path'
++        instance_name = 'fake_instance_name'
++        network_info = dict(server_id='fake_server')
++        network_data = {'nics': ['fake_nic1', 'fake_nic2']}
++        network_data['router'] = dict(id='fake_router_id')
++        server_get = dict(
++            id='fakeid', status='ACTIVE', networks={net_name: [ip_address]})
++        block_device_mapping_v2 = [{
++            'boot_index': 0, 'uuid': service_image_id,
++            'source_type': 'image', 'destination_type': 'volume',
++            'volume_size': 100, 'delete_on_termination': True
++        }]
++        network_data.update(dict(
++            router_id='fake_router_id', subnet_id='fake_subnet_id',
++            public_port=dict(id='fake_public_port',
++                             fixed_ips=[dict(ip_address=ip_address)]),
++            service_port=dict(id='fake_service_port',
++                              fixed_ips=[{'ip_address': ip_address}]),
++            admin_port={'id': 'fake_admin_port',
++                        'fixed_ips': [{'ip_address': ip_address}]},
++            service_subnet={'id': 'fake_subnet_id',
++                            'cidr': '10.254.0.0/28'})
++        )
++        self.mock_object(service_instance.time, 'time',
++                         mock.Mock(return_value=5))
++        self.mock_object(self._manager.network_helper, 'setup_network',
++                         mock.Mock(return_value=network_data))
++        self.mock_object(self._manager.network_helper, 'get_network_name',
++                         mock.Mock(return_value=net_name))
++        self.mock_object(self._manager, '_get_service_image',
++                         mock.Mock(return_value=service_image_id))
++        self.mock_object(self._manager, '_get_key',
++                         mock.Mock(return_value=key_data))
++        self.mock_object(self._manager, '_get_or_create_security_groups',
++                         mock.Mock(return_value=sg))
++        self.mock_object(self._manager.compute_api, 'server_create',
++                         mock.Mock(return_value=server_create))
++        self.mock_object(self._manager.compute_api, 'server_get',
++                         mock.Mock(return_value=server_get))
++        self.mock_object(self._manager.compute_api,
++                         'add_security_group_to_server')
++        self.mock_object(self._manager.volume_api, 'create')
++        self.mock_object(self._manager.volume_api, 'wait_for_available_volume')
++        expected = {
++            'id': server_get['id'],
++            'status': server_get['status'],
++            'pk_path': key_data[1],
++            'public_address': ip_address,
++            'router_id': network_data.get('router_id'),
++            'subnet_id': network_data.get('subnet_id'),
++            'instance_id': server_get['id'],
++            'ip': ip_address,
++            'networks': server_get['networks'],
++            'public_port_id': 'fake_public_port',
++            'service_port_id': 'fake_service_port',
++            'admin_port_id': 'fake_admin_port',
++            'admin_ip': 'fake_ip_address',
++        }
++
++        result = self._manager._create_service_instance(
++            self._manager.admin_context, instance_name, network_info)
++
++        self.assertEqual(expected, result)
++        self._manager.compute_api.server_create.assert_called_once_with(
++            self._manager.admin_context, name=instance_name,
++            image=None, flavor='100',
++            key_name=key_data[0], nics=network_data['nics'],
++            availability_zone=service_instance.CONF.storage_availability_zone,
++            block_device_mapping_v2=block_device_mapping_v2,
++        )
++        self._manager.volume_api.create.assert_not_called()
++        self._manager.volume_api.wait_for_available_volume.assert_not_called()
++
++    def test___create_service_instance_with_bfv_with_vol(self):
++        self.mock_object(service_instance, 'NeutronNetworkHelper',
++                         mock.Mock(side_effect=FakeNetworkHelper))
++        config_data = dict(DEFAULT=dict(
++            service_instance_boot_from_volume=True,
++            boot_volume_size=100,
++            boot_volume_type='lvm_test1',
++            base_boot_volume_id='fake_boot_base_vol',
++            boot_volume_delete_on_termination=False,
++            driver_handles_share_servers=True,
++            service_instance_user='fake_user',
++            limit_ssh_access=True))
++        with test_utils.create_temp_config_with_opts(config_data):
++            self._manager = service_instance.ServiceInstanceManager()
++
++        server_create = dict(id='fakeid', status='CREATING', networks=dict())
++        net_name = self._manager.get_config_option("service_network_name")
++        sg = [{'id': 'fakeid', 'name': 'fakename'}, ]
++        ip_address = 'fake_ip_address'
++        service_image_id = 'fake_service_image_id'
++        key_data = 'fake_key_name', 'fake_key_path'
++        instance_name = 'fake_instance_name'
++        network_info = dict(server_id='fake_server')
++        network_data = {'nics': ['fake_nic1', 'fake_nic2']}
++        network_data['router'] = dict(id='fake_router_id')
++        server_get = dict(
++            id='fakeid', status='ACTIVE', networks={net_name: [ip_address]})
++        block_device_mapping_v2 = [{
++            'boot_index': 0, 'uuid': 'fake_vol',
++            'source_type': 'volume', 'destination_type': 'volume',
++            'delete_on_termination': False
++        }]
++        network_data.update(dict(
++            router_id='fake_router_id', subnet_id='fake_subnet_id',
++            public_port=dict(id='fake_public_port',
++                             fixed_ips=[dict(ip_address=ip_address)]),
++            service_port=dict(id='fake_service_port',
++                              fixed_ips=[{'ip_address': ip_address}]),
++            admin_port={'id': 'fake_admin_port',
++                        'fixed_ips': [{'ip_address': ip_address}]},
++            service_subnet={'id': 'fake_subnet_id',
++                            'cidr': '10.254.0.0/28'})
++        )
++        fake_volume = {'status': 'creating', 'id': 'fake_vol'}
++        fake_available_volume = {'status': 'available', 'id': 'fake_vol'}
++
++        self.mock_object(service_instance.time, 'time',
++                         mock.Mock(return_value=5))
++        self.mock_object(self._manager.network_helper, 'setup_network',
++                         mock.Mock(return_value=network_data))
++        self.mock_object(self._manager.network_helper, 'get_network_name',
++                         mock.Mock(return_value=net_name))
++        self.mock_object(self._manager, '_get_service_image',
++                         mock.Mock(return_value=service_image_id))
++        self.mock_object(self._manager, '_get_key',
++                         mock.Mock(return_value=key_data))
++        self.mock_object(self._manager, '_get_or_create_security_groups',
++                         mock.Mock(return_value=sg))
++        self.mock_object(self._manager.compute_api, 'server_create',
++                         mock.Mock(return_value=server_create))
++        self.mock_object(self._manager.compute_api, 'server_get',
++                         mock.Mock(return_value=server_get))
++        self.mock_object(self._manager.compute_api,
++                         'add_security_group_to_server')
++        self.mock_object(self._manager.volume_api, 'create',
++                         mock.Mock(return_value=fake_volume))
++        self.mock_object(self._manager.volume_api, 'wait_for_available_volume',
++                         mock.Mock(return_value=fake_available_volume))
++        expected = {
++            'id': server_get['id'],
++            'status': server_get['status'],
++            'pk_path': key_data[1],
++            'public_address': ip_address,
++            'router_id': network_data.get('router_id'),
++            'subnet_id': network_data.get('subnet_id'),
++            'instance_id': server_get['id'],
++            'ip': ip_address,
++            'networks': server_get['networks'],
++            'public_port_id': 'fake_public_port',
++            'service_port_id': 'fake_service_port',
++            'admin_port_id': 'fake_admin_port',
++            'admin_ip': 'fake_ip_address',
++        }
++
++        result = self._manager._create_service_instance(
++            self._manager.admin_context, instance_name, network_info)
++
++        self.assertEqual(expected, result)
++        self._manager.compute_api.server_create.assert_called_once_with(
++            self._manager.admin_context, name=instance_name,
++            image=None, flavor='100',
++            key_name=key_data[0], nics=network_data['nics'],
++            availability_zone=service_instance.CONF.storage_availability_zone,
++            block_device_mapping_v2=block_device_mapping_v2,
++        )
++        self._manager.volume_api.create.assert_called_once_with(
++            self._manager.admin_context,
++            size=100, name='manila-share-fake_server-boot',
++            description='', availability_zone='nova',
++            source_volid='fake_boot_base_vol', volume_type='lvm_test1'
++        )
++        (self._manager.volume_api.wait_for_available_volume.
++         assert_called_once_with(
++             {'status': 'creating', 'id': 'fake_vol'},
++             180,
++             msg_error='Failed to create bootable volume',
++             msg_timeout='Volume has not been created in 180s. Giving up')
++         )
++
+     def test___create_service_instance_neutron_no_admin_ip(self):
+         self.mock_object(service_instance, 'NeutronNetworkHelper',
+                          mock.Mock(side_effect=FakeNetworkHelper))
+diff --git a/manila/tests/volume/test_cinder.py b/manila/tests/volume/test_cinder.py
+index d116ea74e..f60a21581 100644
+--- a/manila/tests/volume/test_cinder.py
++++ b/manila/tests/volume/test_cinder.py
+@@ -12,14 +12,17 @@
+ #    License for the specific language governing permissions and limitations
+ #    under the License.
+ 
++import time
+ from unittest import mock
+ 
+ from cinderclient import exceptions as cinder_exception
+ import ddt
+ 
++from manila.common import constants as const
+ from manila import context
+ from manila import exception
+ from manila import test
++from manila.tests import fake_volume
+ from manila.tests import utils as test_utils
+ from manila.volume import cinder
+ 
+@@ -287,3 +290,65 @@ class CinderApiTestCase(test.TestCase):
+         self.api.delete_snapshot(self.ctx, 'id1')
+         self.cinderclient.volume_snapshots.delete.assert_called_once_with(
+             'id1')
++
++    def test_wait_for_available_volume(self):
++        fake_volume = {'status': 'creating', 'id': 'fake'}
++        fake_available_volume = {'status': 'available', 'id': 'fake'}
++        self.mock_object(self.cinderclient.volumes, 'get',
++                         mock.Mock(return_value=fake_available_volume))
++
++        actual_result = self.api.wait_for_available_volume(
++            fake_volume, 5, "error", "timeout")
++
++        self.assertEqual(fake_available_volume, actual_result)
++        self.cinderclient.volumes.get.assert_called_once_with(
++            fake_volume['id'])
++
++    @mock.patch('time.sleep')
++    def test_wait_for_available_volume_error_extending(self, mock_sleep):
++        fake_volume = {'status': const.STATUS_EXTENDING_ERROR, 'id': 'fake'}
++        self.assertRaises(exception.ManilaException,
++                          self.api.wait_for_available_volume,
++                          fake_volume, 5, 'error', 'timeout')
++        self.assertFalse(mock_sleep.called)
++
++    @mock.patch('time.sleep')
++    def test_wait_for_extending_volume(self, mock_sleep):
++        initial_size = 1
++        expected_size = 2
++        mock_volume = fake_volume.FakeVolume(status='available',
++                                             size=initial_size)
++        mock_extending_vol = fake_volume.FakeVolume(status='extending',
++                                                    size=initial_size)
++        mock_extended_vol = fake_volume.FakeVolume(status='available',
++                                                   size=expected_size)
++
++        self.mock_object(self.cinderclient.volumes, 'get',
++                         mock.Mock(side_effect=[mock_extending_vol,
++                                                mock_extended_vol]))
++
++        result = self.api.wait_for_available_volume(
++            mock_volume, 5, "error", "timeout",
++            expected_size=expected_size)
++
++        expected_get_count = 2
++
++        self.assertEqual(mock_extended_vol, result)
++        self.cinderclient.volumes.get.assert_has_calls(
++            [mock.call(mock_volume['id'])] * expected_get_count
++        )
++        mock_sleep.assert_has_calls([mock.call(1)] * expected_get_count)
++
++    @ddt.data(mock.Mock(return_value={'status': 'creating', 'id': 'fake'}),
++              mock.Mock(return_value={'status': 'error', 'id': 'fake'}))
++    def test_wait_for_available_volume_invalid(self, volume_get_mock):
++        fake_volume = {'status': 'creating', 'id': 'fake'}
++        self.mock_object(self.cinderclient.volumes, 'get', volume_get_mock)
++        self.mock_object(time, 'time',
++                         mock.Mock(side_effect=[1.0, 1.33, 1.67, 2.0]))
++
++        self.assertRaises(
++            exception.ManilaException,
++            self.api.wait_for_available_volume,
++            fake_volume, 1, "error", "timeout"
++        )
+diff --git a/manila/volume/cinder.py b/manila/volume/cinder.py
+index ea93b5d6e..d6799fa3c 100644
+--- a/manila/volume/cinder.py
++++ b/manila/volume/cinder.py
+@@ -18,19 +18,24 @@ Handles all requests relating to volumes + cinder.
+ """
+ 
+ import copy
++import time
+ 
+ from cinderclient import exceptions as cinder_exception
+ from cinderclient.v3 import client as cinder_client
+ from keystoneauth1 import loading as ks_loading
+ from oslo_config import cfg
++from oslo_log import log
+ 
+ from manila.common import client_auth
+ from manila.common.config import core_opts
++from manila.common import constants as const
+ import manila.context as ctxt
+ from manila.db import base
+ from manila import exception
+ from manila.i18n import _
+ 
++LOG = log.getLogger(__name__)
++
+ CINDER_GROUP = 'cinder'
+ AUTH_OBJ = None
+ 
+@@ -235,7 +240,7 @@ class API(base.Base):
+ 
+     def create(self, context, size, name, description, snapshot=None,
+                image_id=None, volume_type=None, metadata=None,
+-               availability_zone=None):
++               availability_zone=None, source_volid=None):
+ 
+         if snapshot is not None:
+             snapshot_id = snapshot['id']
+@@ -250,7 +255,9 @@ class API(base.Base):
+                       project_id=context.project_id,
+                       availability_zone=availability_zone,
+                       metadata=metadata,
+-                      imageRef=image_id)
++                      imageRef=image_id,
++                      source_volid=source_volid
++                      )
+ 
+         try:
+             item = cinderclient(context).volumes.create(size, **kwargs)
+@@ -318,3 +325,30 @@ class API(base.Base):
+     @translate_snapshot_exception
+     def delete_snapshot(self, context, snapshot_id):
+         cinderclient(context).volume_snapshots.delete(snapshot_id)
++
++    def wait_for_available_volume(self, volume, timeout,
++                                  msg_error="Volume failed.",
++                                  msg_timeout="Volume action timeout.",
++                                  expected_size=None):
++        t = time.time()
++        while time.time() - t < timeout:
++            if volume['status'] == const.STATUS_AVAILABLE:
++                if expected_size and volume['size'] != expected_size:
++                    LOG.debug("The volume %(vol_id)s is available but the "
++                              "volume size does not match the expected size. "
++                              "A volume resize operation may be pending. "
++                              "Expected size: %(expected_size)s, "
++                              "Actual size: %(volume_size)s.",
++                              dict(vol_id=volume['id'],
++                                   expected_size=expected_size,
++                                   volume_size=volume['size']))
++                else:
++                    break
++            elif 'error' in volume['status'].lower():
++                raise exception.ManilaException(msg_error)
++            time.sleep(1)
++            volume = self.get(ctxt.get_admin_context(), volume['id'])
++        else:
++            raise exception.ManilaException(msg_timeout)
++
++        return volume
+diff --git a/releasenotes/notes/allow_dhss_bfv-e542d558292a1bf3.yaml b/releasenotes/notes/allow_dhss_bfv-e542d558292a1bf3.yaml
+new file mode 100644
+index 000000000..b43660bb7
+--- /dev/null
++++ b/releasenotes/notes/allow_dhss_bfv-e542d558292a1bf3.yaml
+@@ -0,0 +1,30 @@
++---
++features:
++  - |
++    Support boot from volume for DHSS mode service instance.
++    Boot volume can be created either from an image or an assigned base volume,
++    depending on configuration.
++
++    For create boot from volume with image as source.
++    You can now use:
++
++    .. code-block:: ini
++
++        [$DRIVER_NAME|DEFAULT]
++        service_image_name = 'manila-service-image'
++        service_instance_boot_from_volume = True
++
++    This will automatically create volume that base on the service image.
++
++    And for create boot from volume with base volume as source.
++    You can now use:
++
++    .. code-block:: ini
++
++        [$DRIVER_NAME|DEFAULT]
++        base_boot_volume_id = '42c3cdca-1e84-4654-9068-59b192ff8f32'
++        service_instance_boot_from_volume = True
++
++    This will create new volume base on that base boot volume.
++
++    Once volume is ready, it will attached to server as bootable volume.
+-- 
+2.25.1
+
