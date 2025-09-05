@@ -24,7 +24,17 @@
   delay: 1
   until: _image_info is not failed
 
-  # TODO(ricolin): Add check if image format are the same, otherwise, recreate image
+- name: Delete any image(s) with incorrect disk_format
+  openstack.cloud.image:
+    state: absent
+    # Delete by ID to avoid ambiguity when multiple images share the same name
+    id: "{{ item.id }}"
+    cloud: "{{ cloud_name | default(omit) }}"
+  loop: "{{ _image_info.images }}"
+  when:
+    - glance_image_varify_format | default(false)
+    - _image_info.images | length > 0
+    - ((item.disk_format | lower) != glance_image_disk_format) or ((item.container_format | lower) != glance_image_container_format)  # noqa yaml[line-length]
 
 - name: Download image and upload into Glance
   run_once: true
