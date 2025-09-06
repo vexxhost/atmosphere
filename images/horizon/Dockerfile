@@ -12,7 +12,7 @@ ARG DESIGNATE_DASHBOARD_GIT_REF=901c7521ac4135c155bbb8e698f87f537793868e
 ADD --keep-git-dir=true https://github.com/openstack/designate-dashboard.git#${DESIGNATE_DASHBOARD_GIT_REF} /src/designate-dashboard
 RUN git -C /src/designate-dashboard fetch --unshallow
 # renovate: name=openstack/heat-dashboard repo=https://github.com/openstack/heat-dashboard.git branch=unmaintained/2023.1
-ARG HEAT_DASHBOARD_GIT_REF=007a7a5a3b338543dd6e3badd04967324e8f0e9b
+ARG HEAT_DASHBOARD_GIT_REF=013accbfd179753bc3f0d1f4e5bed07a4fd9f771
 ADD --keep-git-dir=true https://github.com/openstack/heat-dashboard.git#${HEAT_DASHBOARD_GIT_REF} /src/heat-dashboard
 RUN git -C /src/heat-dashboard fetch --unshallow
 # renovate: name=openstack/ironic-ui repo=https://github.com/openstack/ironic-ui.git branch=unmaintained/2023.1
