@@ -3,9 +3,9 @@
 # Atmosphere-Rebuild-Time: 2024-06-26T17:38:39Z
 
 FROM openstack-venv-builder AS build
-# renovate: name=openstack/keystone repo=https://opendev.org/openstack/keystone.git branch=unmaintained/zed
+# renovate: name=openstack/keystone repo=https://github.com/openstack/keystone.git branch=unmaintained/zed
 ARG KEYSTONE_GIT_REF=2b77d93b167a93c3899c6abb912d7a6bb65f1f16
-ADD --keep-git-dir=true https://opendev.org/openstack/keystone.git#${KEYSTONE_GIT_REF} /src/keystone
+ADD --keep-git-dir=true https://github.com/openstack/keystone.git#${KEYSTONE_GIT_REF} /src/keystone
 RUN git -C /src/keystone fetch --unshallow
 COPY patches/keystone /patches/keystone
 RUN git -C /src/keystone apply --verbose /patches/keystone/*

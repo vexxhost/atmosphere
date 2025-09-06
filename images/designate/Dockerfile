@@ -3,9 +3,9 @@
 # Atmosphere-Rebuild-Time: 2024-06-26T17:38:39Z
 
 FROM openstack-venv-builder AS build
-# renovate: name=openstack/designate repo=https://opendev.org/openstack/designate.git branch=unmaintained/zed
+# renovate: name=openstack/designate repo=https://github.com/openstack/designate.git branch=unmaintained/zed
 ARG DESIGNATE_GIT_REF=f84acb20aba00eb5a584dcbb25e2abb5968bb427
-ADD --keep-git-dir=true https://opendev.org/openstack/designate.git#${DESIGNATE_GIT_REF} /src/designate
+ADD --keep-git-dir=true https://github.com/openstack/designate.git#${DESIGNATE_GIT_REF} /src/designate
 RUN git -C /src/designate fetch --unshallow
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
 pip3 install \

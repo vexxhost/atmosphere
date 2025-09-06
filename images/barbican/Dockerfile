@@ -3,9 +3,9 @@
 # Atmosphere-Rebuild-Time: 2024-06-26T17:38:39Z
 
 FROM openstack-venv-builder AS build
-# renovate: name=openstack/barbican repo=https://opendev.org/openstack/barbican.git branch=unmaintained/zed
+# renovate: name=openstack/barbican repo=https://github.com/openstack/barbican.git branch=unmaintained/zed
 ARG BARBICAN_GIT_REF=07f0a8cdb375ee438e409e943b9a30bf20a9aa45
-ADD --keep-git-dir=true https://opendev.org/openstack/barbican.git#${BARBICAN_GIT_REF} /src/barbican
+ADD --keep-git-dir=true https://github.com/openstack/barbican.git#${BARBICAN_GIT_REF} /src/barbican
 RUN git -C /src/barbican fetch --unshallow
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
 pip3 install \
