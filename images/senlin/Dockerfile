@@ -3,7 +3,9 @@
 # Atmosphere-Rebuild-Time: 2024-06-26T17:38:39Z
 
 FROM openstack-venv-builder AS build
-ADD --keep-git-dir=true https://github.com/openstack/senlin.git#2023.1-eol /src/senlin
+# renovate: name=openstack/senlin repo=https://github.com/openstack/senlin.git branch=table/2023.1
+ARG SENLIN_GIT_REF=22fd77946723e25e595676e61893c1f645709b2f
+ADD --keep-git-dir=true https://github.com/openstack/senlin.git#${SENLIN_GIT_REF} /src/senlin
 RUN git -C /src/senlin fetch --unshallow
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
 pip3 install \
