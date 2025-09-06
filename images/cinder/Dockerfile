@@ -3,9 +3,9 @@
 # Atmosphere-Rebuild-Time: 2024-06-26T17:38:39Z
 
 FROM openstack-venv-builder AS build
-# renovate: name=openstack/cinder repo=https://opendev.org/openstack/cinder.git branch=unmaintained/2023.1
+# renovate: name=openstack/cinder repo=https://github.com/openstack/cinder.git branch=unmaintained/2023.1
 ARG CINDER_GIT_REF=ae2d250aadca31aaef38498c3fb010635821abf5
-ADD --keep-git-dir=true https://opendev.org/openstack/cinder.git#${CINDER_GIT_REF} /src/cinder
+ADD --keep-git-dir=true https://github.com/openstack/cinder.git#${CINDER_GIT_REF} /src/cinder
 RUN git -C /src/cinder fetch --unshallow
 COPY patches/cinder /patches/cinder
 RUN git -C /src/cinder apply --verbose /patches/cinder/*
