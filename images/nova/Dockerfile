@@ -3,9 +3,9 @@
 # Atmosphere-Rebuild-Time: 2025-02-18T16:06:32Z
 
 FROM openstack-venv-builder AS build
-# renovate: name=openstack/nova repo=https://opendev.org/openstack/nova.git branch=unmaintained/zed
+# renovate: name=openstack/nova repo=https://github.com/openstack/nova.git branch=unmaintained/zed
 ARG NOVA_GIT_REF=94f01f262ff78aeafbe127c6ee6273669fa2a79e
-ADD --keep-git-dir=true https://opendev.org/openstack/nova.git#${NOVA_GIT_REF} /src/nova
+ADD --keep-git-dir=true https://github.com/openstack/nova.git#${NOVA_GIT_REF} /src/nova
 RUN git -C /src/nova fetch --unshallow
 COPY patches/nova /patches/nova
 RUN git -C /src/nova apply --verbose /patches/nova/*
