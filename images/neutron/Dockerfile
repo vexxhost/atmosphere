@@ -3,13 +3,13 @@
 # Atmosphere-Rebuild-Time: 2025-01-24T11:51:19Z
 
 FROM openstack-venv-builder AS build
-ADD --keep-git-dir=true https://opendev.org/openstack/neutron.git#2023.2-eol /src/neutron
+ADD --keep-git-dir=true https://github.com/openstack/neutron.git#2023.2-eol /src/neutron
 RUN git -C /src/neutron fetch --unshallow
 COPY patches/neutron /patches/neutron
 RUN git -C /src/neutron apply --verbose /patches/neutron/*
-ADD --keep-git-dir=true https://opendev.org/openstack/neutron-vpnaas.git#2023.2-eol /src/neutron-vpnaas
+ADD --keep-git-dir=true https://github.com/openstack/neutron-vpnaas.git#2023.2-eol /src/neutron-vpnaas
 RUN git -C /src/neutron-vpnaas fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/networking-baremetal.git#2023.2-eol /src/networking-baremetal
+ADD --keep-git-dir=true https://github.com/openstack/networking-baremetal.git#2023.2-eol /src/networking-baremetal
 RUN git -C /src/networking-baremetal fetch --unshallow
 # renovate: name=vexxhost/neutron-policy-server repo=https://github.com/vexxhost/neutron-policy-server.git branch=main
 ARG POLICY_SERVER_GIT_REF=41c862a7e15955195ebac56a48ae98137aac146d

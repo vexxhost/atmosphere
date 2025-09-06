@@ -3,7 +3,7 @@
 # Atmosphere-Rebuild-Time: 2024-06-26T17:38:39Z
 
 FROM openstack-venv-builder AS build
-ADD --keep-git-dir=true https://opendev.org/openstack/cinder.git#2023.2-eol /src/cinder
+ADD --keep-git-dir=true https://github.com/openstack/cinder.git#2023.2-eol /src/cinder
 RUN git -C /src/cinder fetch --unshallow
 COPY patches/cinder /patches/cinder
 RUN git -C /src/cinder apply --verbose /patches/cinder/*

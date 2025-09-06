@@ -3,7 +3,7 @@
 # Atmosphere-Rebuild-Time: 2024-06-26T17:38:39Z
 
 FROM openstack-venv-builder AS build
-ADD --keep-git-dir=true https://opendev.org/openstack/manila.git#2023.2-eol /src/manila
+ADD --keep-git-dir=true https://github.com/openstack/manila.git#2023.2-eol /src/manila
 RUN git -C /src/manila fetch --unshallow
 COPY patches/manila /patches/manila
 RUN git -C /src/manila apply --verbose /patches/manila/*
