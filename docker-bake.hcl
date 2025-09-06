@@ -6,29 +6,6 @@ variable "TAG" {
     default = "main"
 }
 
-target "cluster-api-provider-openstack-source" {
-    context = "images/source-patch"
-    platforms = ["linux/amd64", "linux/arm64"]
-
-    contexts = {
-        "git" = "https://github.com/kubernetes-sigs/cluster-api-provider-openstack.git#v0.11.6"
-        "patches" = "patches/kubernetes-sigs/cluster-api-provider-openstack"
-    }
-}
-
-target "cluster-api-provider-openstack" {
-    context = "images/cluster-api-provider-openstack"
-    platforms = ["linux/amd64", "linux/arm64"]
-
-    contexts = {
-        "source" = "target:cluster-api-provider-openstack-source"
-    }
-
-    tags = [
-        "${REGISTRY}/capi-openstack-controller:${TAG}"
-    ]
-}
-
 target "ubuntu" {
     context = "images/ubuntu"
     platforms = ["linux/amd64", "linux/arm64"]
@@ -214,19 +191,8 @@ target "neutron-source" {
     platforms = ["linux/amd64", "linux/arm64"]
 
     contexts = {
-        "git" = "https://opendev.org/openstack/neutron.git#c45a27ee6739743509ad6e83079d9a90f8fa497a" # renovate: branch=master
+        "git" = "https://github.com/openstack/neutron.git#1cf5b6de7c964b17913d4ade9a8c7485aff8a2db" # renovate: branch=master
         "patches" = "patches/openstack/neutron"
-    }
-}
-
-target "networking-generic-switch-source" {
-    context = "images/source-patch"
-    target = "unshallow"
-    platforms = ["linux/amd64", "linux/arm64"]
-
-    contexts = {
-        "git" = "https://opendev.org/openstack/networking-generic-switch.git#ced747b10e5ab7797f82a9306614c866b4398e4f" # renovate: branch=master
-        "patches" = "patches/openstack/networking-generic-switch"
     }
 }
 
@@ -240,7 +206,6 @@ target "neutron" {
 
     contexts = {
         "neutron-source" = "target:neutron-source"
-        "networking-generic-switch-source" = "target:networking-generic-switch-source"
         "openstack-python-runtime" = "target:openstack-python-runtime"
         "openstack-venv-builder" = "target:openstack-venv-builder"
         "ovsinit" = "target:ovsinit"
@@ -294,7 +259,6 @@ target "openstack" {
 
 group "default" {
     targets = [
-        "cluster-api-provider-openstack",
         "keepalived",
         "libvirtd",
         "netoffload",
