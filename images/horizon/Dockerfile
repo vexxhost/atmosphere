@@ -33,7 +33,7 @@ RUN git -C /src/neutron-vpnaas-dashboard fetch --unshallow
 ARG OCTAVIA_DASHBOARD_REF=c3cec4d27756601aff32d0fd560166e65a2e1547
 ADD --keep-git-dir=true https://github.com/openstack/octavia-dashboard.git#${OCTAVIA_DASHBOARD_REF} /src/octavia-dashboard
 RUN git -C /src/octavia-dashboard fetch --unshallow
-ADD --keep-git-dir=true https://github.com/openstack/senlin-dashboard.git#zed-eol /src/senlin-dashboard
+ADD --keep-git-dir=true https://github.com/openstack/senlin-dashboard.git#zed-eom /src/senlin-dashboard
 RUN git -C /src/senlin-dashboard fetch --unshallow
 COPY patches/horizon /patches/horizon
 RUN git -C /src/horizon apply --verbose /patches/horizon/*
