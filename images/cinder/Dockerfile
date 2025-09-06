@@ -4,7 +4,7 @@
 
 FROM openstack-venv-builder AS build
 # renovate: name=openstack/cinder repo=https://github.com/openstack/cinder.git branch=stable/2025.1
-ARG CINDER_GIT_REF=8df631859da80f224f45d2b1aeb866d4e12eb33b
+ARG CINDER_GIT_REF=677cc07bb5ec96f917e6afeba5da13214be24d84
 ADD --keep-git-dir=true https://github.com/openstack/cinder.git#${CINDER_GIT_REF} /src/cinder
 RUN git -C /src/cinder fetch --unshallow
 COPY patches/cinder /patches/cinder
