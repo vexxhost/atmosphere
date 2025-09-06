@@ -3,21 +3,21 @@
 # Atmosphere-Rebuild-Time: 2025-01-24T11:51:19Z
 
 FROM openstack-venv-builder AS build
-# renovate: name=openstack/neutron-dynamic-routing repo=https://opendev.org/openstack/neutron-dynamic-routing.git branch=stable/2024.1
+# renovate: name=openstack/neutron-dynamic-routing repo=https://github.com/openstack/neutron-dynamic-routing.git branch=stable/2024.1
 ARG NEUTRON_DYNAMIC_ROUTING_GIT_REF=4f6b9f262f44d532b8120507eef688c57cf28ec1
-ADD --keep-git-dir=true https://opendev.org/openstack/neutron-dynamic-routing.git#${NEUTRON_DYNAMIC_ROUTING_GIT_REF} /src/neutron-dynamic-routing
+ADD --keep-git-dir=true https://github.com/openstack/neutron-dynamic-routing.git#${NEUTRON_DYNAMIC_ROUTING_GIT_REF} /src/neutron-dynamic-routing
 RUN git -C /src/neutron-dynamic-routing fetch --unshallow
-# renovate: name=openstack/neutron-vpnaas repo=https://opendev.org/openstack/neutron-vpnaas.git branch=stable/2024.1
+# renovate: name=openstack/neutron-vpnaas repo=https://github.com/openstack/neutron-vpnaas.git branch=stable/2024.1
 ARG NEUTRON_VPNAAS_GIT_REF=8655ef2b0f95a600639636665dd4b83b0a107bc7
-ADD --keep-git-dir=true https://opendev.org/openstack/neutron-vpnaas.git#${NEUTRON_VPNAAS_GIT_REF} /src/neutron-vpnaas
+ADD --keep-git-dir=true https://github.com/openstack/neutron-vpnaas.git#${NEUTRON_VPNAAS_GIT_REF} /src/neutron-vpnaas
 RUN git -C /src/neutron-vpnaas fetch --unshallow
-# renovate: name=openstack/networking-baremetal repo=https://opendev.org/openstack/networking-baremetal.git branch=stable/2024.1
+# renovate: name=openstack/networking-baremetal repo=https://github.com/openstack/networking-baremetal.git branch=stable/2024.1
 ARG NETWORKING_BAREMETAL_GIT_REF=8dc6edadce564ad4896ecfd5d2bca68396d1d7e6
-ADD --keep-git-dir=true https://opendev.org/openstack/networking-baremetal.git#${NETWORKING_BAREMETAL_GIT_REF} /src/networking-baremetal
+ADD --keep-git-dir=true https://github.com/openstack/networking-baremetal.git#${NETWORKING_BAREMETAL_GIT_REF} /src/networking-baremetal
 RUN git -C /src/networking-baremetal fetch --unshallow
-# renovate: name=openstack/networking-generic-switch repo=https://opendev.org/openstack/networking-generic-switch.git branch=stable/2024.1
+# renovate: name=openstack/networking-generic-switch repo=https://github.com/openstack/networking-generic-switch.git branch=stable/2024.1
 ARG NETWORKING_GENERIC_SWITCH_GIT_REF=dc142ec17910ebb0855f9cc21b77af2c554a7bbe
-ADD --keep-git-dir=true https://opendev.org/openstack/networking-generic-switch.git#${NETWORKING_GENERIC_SWITCH_GIT_REF} /src/networking-generic-switch
+ADD --keep-git-dir=true https://github.com/openstack/networking-generic-switch.git#${NETWORKING_GENERIC_SWITCH_GIT_REF} /src/networking-generic-switch
 RUN git -C /src/networking-generic-switch fetch --unshallow
 # renovate: name=vexxhost/neutron-policy-server repo=https://github.com/vexxhost/neutron-policy-server.git branch=main
 ARG POLICY_SERVER_GIT_REF=41c862a7e15955195ebac56a48ae98137aac146d

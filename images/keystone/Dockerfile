@@ -3,9 +3,9 @@
 # Atmosphere-Rebuild-Time: 2024-06-26T17:38:39Z
 
 FROM openstack-venv-builder AS build
-# renovate: name=openstack/keystone repo=https://opendev.org/openstack/keystone.git branch=stable/2024.1
+# renovate: name=openstack/keystone repo=https://github.com/openstack/keystone.git branch=stable/2024.1
 ARG KEYSTONE_GIT_REF=4e2e36ad7767a459277987d21f748cec54ac09e0
-ADD --keep-git-dir=true https://opendev.org/openstack/keystone.git#${KEYSTONE_GIT_REF} /src/keystone
+ADD --keep-git-dir=true https://github.com/openstack/keystone.git#${KEYSTONE_GIT_REF} /src/keystone
 RUN git -C /src/keystone fetch --unshallow
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
 pip3 install \
