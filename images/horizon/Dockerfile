@@ -3,37 +3,37 @@
 # Atmosphere-Rebuild-Time: 2025-02-20T21:42:46Z
 
 FROM openstack-venv-builder AS build
-# renovate: name=openstack/horizon repo=https://opendev.org/openstack/horizon.git branch=stable/2024.2
+# renovate: name=openstack/horizon repo=https://github.com/openstack/horizon.git branch=stable/2024.2
 ARG HORIZON_GIT_REF=1d2f6735e02f57b45978ea845ef501f082835f54
-ADD --keep-git-dir=true https://opendev.org/openstack/horizon.git#${HORIZON_GIT_REF} /src/horizon
+ADD --keep-git-dir=true https://github.com/openstack/horizon.git#${HORIZON_GIT_REF} /src/horizon
 RUN git -C /src/horizon fetch --unshallow
-# renovate: name=openstack/designate-dashboard repo=https://opendev.org/openstack/designate-dashboard.git branch=stable/2024.2
+# renovate: name=openstack/designate-dashboard repo=https://github.com/openstack/designate-dashboard.git branch=stable/2024.2
 ARG DESIGNATE_DASHBOARD_GIT_REF=e7f1583643792b858142bcd4a7d99950646e6ffd
-ADD --keep-git-dir=true https://opendev.org/openstack/designate-dashboard.git#${DESIGNATE_DASHBOARD_GIT_REF} /src/designate-dashboard
+ADD --keep-git-dir=true https://github.com/openstack/designate-dashboard.git#${DESIGNATE_DASHBOARD_GIT_REF} /src/designate-dashboard
 RUN git -C /src/designate-dashboard fetch --unshallow
-# renovate: name=openstack/heat-dashboard repo=https://opendev.org/openstack/heat-dashboard.git branch=stable/2024.2
+# renovate: name=openstack/heat-dashboard repo=https://github.com/openstack/heat-dashboard.git branch=stable/2024.2
 ARG HEAT_DASHBOARD_GIT_REF=f6dc92a972c36f9e8258a16ec0891845ef8accca
-ADD --keep-git-dir=true https://opendev.org/openstack/heat-dashboard.git#${HEAT_DASHBOARD_GIT_REF} /src/heat-dashboard
+ADD --keep-git-dir=true https://github.com/openstack/heat-dashboard.git#${HEAT_DASHBOARD_GIT_REF} /src/heat-dashboard
 RUN git -C /src/heat-dashboard fetch --unshallow
-# renovate: name=openstack/ironic-ui repo=https://opendev.org/openstack/ironic-ui.git branch=stable/2024.2
+# renovate: name=openstack/ironic-ui repo=https://github.com/openstack/ironic-ui.git branch=stable/2024.2
 ARG IRONIC_UI_REF=40d8f907334c113cf2fe43bd2a5bbbef6baadbab
-ADD --keep-git-dir=true https://opendev.org/openstack/ironic-ui.git#${IRONIC_UI_REF} /src/ironic-ui
+ADD --keep-git-dir=true https://github.com/openstack/ironic-ui.git#${IRONIC_UI_REF} /src/ironic-ui
 RUN git -C /src/ironic-ui fetch --unshallow
-# renovate: name=openstack/magnum-ui repo=https://opendev.org/openstack/magnum-ui.git branch=stable/2024.2
+# renovate: name=openstack/magnum-ui repo=https://github.com/openstack/magnum-ui.git branch=stable/2024.2
 ARG MAGNUM_UI_REF=c9fdb537eaded73e81ea296d893e45d753337dc7
-ADD --keep-git-dir=true https://opendev.org/openstack/magnum-ui.git#${MAGNUM_UI_REF} /src/magnum-ui
+ADD --keep-git-dir=true https://github.com/openstack/magnum-ui.git#${MAGNUM_UI_REF} /src/magnum-ui
 RUN git -C /src/magnum-ui fetch --unshallow
-# renovate: name=openstack/manila-ui repo=https://opendev.org/openstack/manila-ui.git branch=stable/2024.2
+# renovate: name=openstack/manila-ui repo=https://github.com/openstack/manila-ui.git branch=stable/2024.2
 ARG MANILA_UI_REF=55945d56a479790e5443299fa4991e7728a6f89d
-ADD --keep-git-dir=true https://opendev.org/openstack/manila-ui.git#${MANILA_UI_REF} /src/manila-ui
+ADD --keep-git-dir=true https://github.com/openstack/manila-ui.git#${MANILA_UI_REF} /src/manila-ui
 RUN git -C /src/manila-ui fetch --unshallow
-# renovate: name=openstack/neutron-vpnaas-dashboard repo=https://opendev.org/openstack/neutron-vpnaas-dashboard.git branch=stable/2024.2
+# renovate: name=openstack/neutron-vpnaas-dashboard repo=https://github.com/openstack/neutron-vpnaas-dashboard.git branch=stable/2024.2
 ARG NEUTRON_VPNAAS_DASHBOARD_REF=6207d9a20b2f3c53a50d767a364aa8c448a2c923
-ADD --keep-git-dir=true https://opendev.org/openstack/neutron-vpnaas-dashboard.git#${NEUTRON_VPNAAS_DASHBOARD_REF} /src/neutron-vpnaas-dashboard
+ADD --keep-git-dir=true https://github.com/openstack/neutron-vpnaas-dashboard.git#${NEUTRON_VPNAAS_DASHBOARD_REF} /src/neutron-vpnaas-dashboard
 RUN git -C /src/neutron-vpnaas-dashboard fetch --unshallow
-# renovate: name=openstack/octavia-dashboard repo=https://opendev.org/openstack/octavia-dashboard.git branch=stable/2024.2
+# renovate: name=openstack/octavia-dashboard repo=https://github.com/openstack/octavia-dashboard.git branch=stable/2024.2
 ARG OCTAVIA_DASHBOARD_REF=1d4b034669c819217a0f58a394dae4340661bdeb
-ADD --keep-git-dir=true https://opendev.org/openstack/octavia-dashboard.git#${OCTAVIA_DASHBOARD_REF} /src/octavia-dashboard
+ADD --keep-git-dir=true https://github.com/openstack/octavia-dashboard.git#${OCTAVIA_DASHBOARD_REF} /src/octavia-dashboard
 RUN git -C /src/octavia-dashboard fetch --unshallow
 COPY patches/horizon /patches/horizon
 RUN git -C /src/horizon apply --verbose /patches/horizon/*
