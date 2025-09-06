@@ -3,7 +3,7 @@
 # Atmosphere-Rebuild-Time: 2024-06-26T17:38:39Z
 
 FROM openstack-venv-builder AS build
-ADD --keep-git-dir=true https://opendev.org/openstack/keystone.git#2023.2-eol /src/keystone
+ADD --keep-git-dir=true https://github.com/openstack/keystone.git#2023.2-eol /src/keystone
 RUN git -C /src/keystone fetch --unshallow
 COPY patches/keystone /patches/keystone
 RUN git -C /src/keystone apply --verbose /patches/keystone/*

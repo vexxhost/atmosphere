@@ -3,21 +3,21 @@
 # Atmosphere-Rebuild-Time: 2024-06-26T17:38:39Z
 
 FROM openstack-venv-builder AS build
-ADD --keep-git-dir=true https://opendev.org/openstack/horizon.git#2023.2-eol /src/horizon
+ADD --keep-git-dir=true https://github.com/openstack/horizon.git#2023.2-eol /src/horizon
 RUN git -C /src/horizon fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/designate-dashboard.git#2023.2-eol /src/designate-dashboard
+ADD --keep-git-dir=true https://github.com/openstack/designate-dashboard.git#2023.2-eol /src/designate-dashboard
 RUN git -C /src/designate-dashboard fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/heat-dashboard.git#2023.2-eol /src/heat-dashboard
+ADD --keep-git-dir=true https://github.com/openstack/heat-dashboard.git#2023.2-eol /src/heat-dashboard
 RUN git -C /src/heat-dashboard fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/ironic-ui.git#2023.2-eol /src/ironic-ui
+ADD --keep-git-dir=true https://github.com/openstack/ironic-ui.git#2023.2-eol /src/ironic-ui
 RUN git -C /src/ironic-ui fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/magnum-ui.git#2023.2-eol /src/magnum-ui
+ADD --keep-git-dir=true https://github.com/openstack/magnum-ui.git#2023.2-eol /src/magnum-ui
 RUN git -C /src/magnum-ui fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/manila-ui.git#2023.2-eol /src/manila-ui
+ADD --keep-git-dir=true https://github.com/openstack/manila-ui.git#2023.2-eol /src/manila-ui
 RUN git -C /src/manila-ui fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/neutron-vpnaas-dashboard.git#2023.2-eol /src/neutron-vpnaas-dashboard
+ADD --keep-git-dir=true https://github.com/openstack/neutron-vpnaas-dashboard.git#2023.2-eol /src/neutron-vpnaas-dashboard
 RUN git -C /src/neutron-vpnaas-dashboard fetch --unshallow
-ADD --keep-git-dir=true https://opendev.org/openstack/octavia-dashboard.git#2023.2-eol /src/octavia-dashboard
+ADD --keep-git-dir=true https://github.com/openstack/octavia-dashboard.git#2023.2-eol /src/octavia-dashboard
 RUN git -C /src/octavia-dashboard fetch --unshallow
 COPY patches/horizon /patches/horizon
 RUN git -C /src/horizon apply --verbose /patches/horizon/*

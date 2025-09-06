@@ -3,7 +3,7 @@
 # Atmosphere-Rebuild-Time: 2024-06-26T17:38:39Z
 
 FROM openstack-venv-builder AS build
-ADD --keep-git-dir=true https://opendev.org/openstack/designate.git#2023.2-eol /src/designate
+ADD --keep-git-dir=true https://github.com/openstack/designate.git#2023.2-eol /src/designate
 RUN git -C /src/designate fetch --unshallow
 COPY patches/designate /patches/designate
 RUN git -C /src/designate apply --verbose /patches/designate/*

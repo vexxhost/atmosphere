@@ -3,11 +3,11 @@
 # Atmosphere-Rebuild-Time: 2024-06-26T17:38:39Z
 
 FROM openstack-venv-builder AS build
-ADD --keep-git-dir=true https://opendev.org/openstack/octavia.git#2023.2-eol /src/octavia
+ADD --keep-git-dir=true https://github.com/openstack/octavia.git#2023.2-eol /src/octavia
 RUN git -C /src/octavia fetch --unshallow
 COPY patches/octavia /patches/octavia
 RUN git -C /src/octavia apply --verbose /patches/octavia/*
-ADD --keep-git-dir=true https://opendev.org/openstack/ovn-octavia-provider.git#2023.2-eol /src/ovn-octavia-provider
+ADD --keep-git-dir=true https://github.com/openstack/ovn-octavia-provider.git#2023.2-eol /src/ovn-octavia-provider
 RUN git -C /src/ovn-octavia-provider fetch --unshallow
 RUN <<EOF bash -xe
  sed -i 's/taskflow===.*/taskflow===5.5.0/g' /upper-constraints.txt
