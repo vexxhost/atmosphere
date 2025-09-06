@@ -3,9 +3,10 @@
 # Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
 
 FROM ubuntu-cloud-archive AS requirements
-# renovate: name=openstack/requirements repo=https://opendev.org/openstack/requirements.git branch=master
-ARG REQUIREMENTS_GIT_REF=d6733de49efe2c1cecce997516e7eaad3d29cd88
-ADD --keep-git-dir=true https://opendev.org/openstack/requirements.git#${REQUIREMENTS_GIT_REF} /src/requirements
+# renovate: name=openstack/requirements repo=https://github.com/openstack/requirements.git branch=master
+ARG REQUIREMENTS_GIT_REF=22ac488aa08324cebcb0eec124cf1dd759ca4222
+ADD --keep-git-dir=true https://github.com/openstack/requirements.git#${REQUIREMENTS_GIT_REF} /src/requirements
+
 RUN cp /src/requirements/upper-constraints.txt /upper-constraints.txt
 RUN <<EOF sh -xe
 sed -i '/glance_store/d' /upper-constraints.txt
@@ -36,6 +37,7 @@ uv cache clean uwsgi
 uv venv --system-site-packages /var/lib/openstack
 uv pip install \
     --constraint /upper-constraints.txt \
+        confluent-kafka \
         cryptography \
         pymysql \
         python-binary-memcached \
