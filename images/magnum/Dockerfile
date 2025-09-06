@@ -11,9 +11,9 @@ RUN tar -xzf /helm.tar.gz
 RUN mv /${TARGETOS}-${TARGETARCH}/helm /usr/bin/helm
 
 FROM openstack-venv-builder AS build
-# renovate: name=openstack/magnum repo=https://opendev.org/openstack/magnum.git branch=unmaintained/2023.1
+# renovate: name=openstack/magnum repo=https://github.com/openstack/magnum.git branch=unmaintained/2023.1
 ARG MAGNUM_GIT_REF=aa7b4a2ca6d9ea0e6d73f0a7fc9d2e6176821af7
-ADD --keep-git-dir=true https://opendev.org/openstack/magnum.git#${MAGNUM_GIT_REF} /src/magnum
+ADD --keep-git-dir=true https://github.com/openstack/magnum.git#${MAGNUM_GIT_REF} /src/magnum
 RUN git -C /src/magnum fetch --unshallow
 COPY patches/magnum /patches/magnum
 RUN git -C /src/magnum apply --verbose /patches/magnum/*
