@@ -10,7 +10,7 @@ TMPDIR=$(mktemp -d)
 trap "rm -rf $TMPDIR" EXIT
 
 # Clone the openstack/manila-image-elements repository
-git clone https://opendev.org/openstack/manila-image-elements $TMPDIR
+git clone https://github.com/openstack/manila-image-elements $TMPDIR
 
 # Build image
 export ELEMENTS_PATH=$TMPDIR/elements

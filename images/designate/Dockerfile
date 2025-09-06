@@ -3,9 +3,9 @@
 # Atmosphere-Rebuild-Time: 2024-06-26T17:38:39Z
 
 FROM openstack-venv-builder AS build
-# renovate: name=openstack/designate repo=https://opendev.org/openstack/designate.git branch=stable/2024.1
+# renovate: name=openstack/designate repo=https://github.com/openstack/designate.git branch=stable/2024.1
 ARG DESIGNATE_GIT_REF=a33f7376407c57d86963b7f763c4ded7b4e16d3a
-ADD --keep-git-dir=true https://opendev.org/openstack/designate.git#${DESIGNATE_GIT_REF} /src/designate
+ADD --keep-git-dir=true https://github.com/openstack/designate.git#${DESIGNATE_GIT_REF} /src/designate
 RUN git -C /src/designate fetch --unshallow
 COPY patches/designate /patches/designate
 RUN git -C /src/designate apply --verbose /patches/designate/*
