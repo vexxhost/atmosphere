@@ -4,7 +4,7 @@
 
 FROM openstack-venv-builder AS build
 # renovate: name=openstack/glance repo=https://github.com/openstack/glance.git branch=stable/2024.2
-ARG GLANCE_GIT_REF=a42105b13a3e3bcae9a96fef234a2b941ade47c2
+ARG GLANCE_GIT_REF=097f38158189efc5c7d52fd56467455a58442c73
 ADD --keep-git-dir=true https://github.com/openstack/glance.git#${GLANCE_GIT_REF} /src/glance
 RUN git -C /src/glance fetch --unshallow
 # renovate: name=openstack/glance_store repo=https://github.com/openstack/glance_store.git branch=stable/2024.2
