@@ -3,9 +3,9 @@
 # Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
 
 FROM ubuntu-cloud-archive AS requirements
-# renovate: name=openstack/requirements repo=https://opendev.org/openstack/requirements.git branch=stable/2025.1
+# renovate: name=openstack/requirements repo=https://github.com/openstack/requirements.git branch=stable/2025.1
 ARG REQUIREMENTS_GIT_REF=674d9681dad5c070dff8344ba07deead833e2500
-ADD --keep-git-dir=true https://opendev.org/openstack/requirements.git#${REQUIREMENTS_GIT_REF} /src/requirements
+ADD --keep-git-dir=true https://github.com/openstack/requirements.git#${REQUIREMENTS_GIT_REF} /src/requirements
 RUN cp /src/requirements/upper-constraints.txt /upper-constraints.txt
 RUN <<EOF sh -xe
 sed -i '/glance_store/d' /upper-constraints.txt
