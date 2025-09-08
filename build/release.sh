@@ -30,6 +30,8 @@ git pull --rebase
 
 CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 CURRENT_RELEASE=$(echo $CURRENT_BRANCH | grep -oE '[0-9]{4}\.[0-9]' || echo "")
+# NOTE(mnaser): Workaround for Zed releases.
+CURRENT_RELEASE=0
 
 if [ -z "$CURRENT_RELEASE" ]; then
   echo "Could not determine version from branch name: $CURRENT_RELEASE"
