@@ -4,35 +4,35 @@
 
 FROM openstack-venv-builder AS build
 # renovate: name=openstack/horizon repo=https://github.com/openstack/horizon.git branch=master
-ARG HORIZON_GIT_REF=c7e4095f9560f2244d067a62aa2e49d3759c67f2
+ARG HORIZON_GIT_REF=64c47ac369b35b42a17d7f6b00da81c6db46a843
 ADD --keep-git-dir=true https://github.com/openstack/horizon.git#${HORIZON_GIT_REF} /src/horizon
 RUN git -C /src/horizon fetch --unshallow
 # renovate: name=openstack/designate-dashboard repo=https://github.com/openstack/designate-dashboard.git branch=master
-ARG DESIGNATE_DASHBOARD_GIT_REF=8b8fffde20f2504c51052506c8f2590a45352962
+ARG DESIGNATE_DASHBOARD_GIT_REF=7ef1bf9a07c9ef13920d32316c9cb9a18b50a19e
 ADD --keep-git-dir=true https://github.com/openstack/designate-dashboard.git#${DESIGNATE_DASHBOARD_GIT_REF} /src/designate-dashboard
 RUN git -C /src/designate-dashboard fetch --unshallow
 # renovate: name=openstack/heat-dashboard repo=https://github.com/openstack/heat-dashboard.git branch=master
-ARG HEAT_DASHBOARD_GIT_REF=ad02530855411ea83af276cfee31848e28f1cf2f
+ARG HEAT_DASHBOARD_GIT_REF=8457c7b04c5dd068c9f08d6a1a62efd49a421ddf
 ADD --keep-git-dir=true https://github.com/openstack/heat-dashboard.git#${HEAT_DASHBOARD_GIT_REF} /src/heat-dashboard
 RUN git -C /src/heat-dashboard fetch --unshallow
 # renovate: name=openstack/ironic-ui repo=https://github.com/openstack/ironic-ui.git branch=master
-ARG IRONIC_UI_REF=40d8f907334c113cf2fe43bd2a5bbbef6baadbab
+ARG IRONIC_UI_REF=abd2400a0e40fff5b50d5b3490915b4a0f3ebcbd
 ADD --keep-git-dir=true https://github.com/openstack/ironic-ui.git#${IRONIC_UI_REF} /src/ironic-ui
 RUN git -C /src/ironic-ui fetch --unshallow
 # renovate: name=openstack/magnum-ui repo=https://github.com/openstack/magnum-ui.git branch=master
-ARG MAGNUM_UI_REF=c9fdb537eaded73e81ea296d893e45d753337dc7
+ARG MAGNUM_UI_REF=59d8a0864ef10d75baabbde1404f2386759fb2b6
 ADD --keep-git-dir=true https://github.com/openstack/magnum-ui.git#${MAGNUM_UI_REF} /src/magnum-ui
 RUN git -C /src/magnum-ui fetch --unshallow
 # renovate: name=openstack/manila-ui repo=https://github.com/openstack/manila-ui.git branch=master
-ARG MANILA_UI_REF=55945d56a479790e5443299fa4991e7728a6f89d
+ARG MANILA_UI_REF=40a8a1075c3bd0315c5b25b8a5caf6bdb1ef3c30
 ADD --keep-git-dir=true https://github.com/openstack/manila-ui.git#${MANILA_UI_REF} /src/manila-ui
 RUN git -C /src/manila-ui fetch --unshallow
 # renovate: name=openstack/neutron-vpnaas-dashboard repo=https://github.com/openstack/neutron-vpnaas-dashboard.git branch=master
-ARG NEUTRON_VPNAAS_DASHBOARD_REF=6207d9a20b2f3c53a50d767a364aa8c448a2c923
+ARG NEUTRON_VPNAAS_DASHBOARD_REF=823399e6187a8c365b1d64b9620f99fd949aadc1
 ADD --keep-git-dir=true https://github.com/openstack/neutron-vpnaas-dashboard.git#${NEUTRON_VPNAAS_DASHBOARD_REF} /src/neutron-vpnaas-dashboard
 RUN git -C /src/neutron-vpnaas-dashboard fetch --unshallow
 # renovate: name=openstack/octavia-dashboard repo=https://github.com/openstack/octavia-dashboard.git branch=master
-ARG OCTAVIA_DASHBOARD_REF=1d4b034669c819217a0f58a394dae4340661bdeb
+ARG OCTAVIA_DASHBOARD_REF=3386566c7c98a055a4e42797f6843f5a44f9e48e
 ADD --keep-git-dir=true https://github.com/openstack/octavia-dashboard.git#${OCTAVIA_DASHBOARD_REF} /src/octavia-dashboard
 RUN git -C /src/octavia-dashboard fetch --unshallow
 COPY patches/magnum-ui /patches/magnum-ui
