@@ -6,3 +6,4 @@ Architecture
    :maxdepth: 2
 
    images
+   diagrams
