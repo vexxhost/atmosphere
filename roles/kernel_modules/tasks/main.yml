@@ -1,0 +1,20 @@
+# SPDX-FileCopyrightText: © 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+- name: Load Necessary Kernel Modules
+  ansible.builtin.modprobe:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - nbd
+    - nvme
+
+- name: Ensure NBD and NVMe Modules Are Loaded at Boot
+  ansible.builtin.copy:
+    dest: /etc/modules-load.d/vexxhost.conf
+    content: |
+      nbd
+      nvme
+    owner: root
+    group: root
+    mode: '0644'
