@@ -5,6 +5,9 @@ Release Notes
 .. release-notes:: Development Release
    :branch: main
 
+.. release-notes:: OpenStack Eproxy (2025.1)
+   :branch: stable/2025.1
+
 .. release-notes:: OpenStack Dalmatian (2024.2)
    :branch: stable/2024.2
 
