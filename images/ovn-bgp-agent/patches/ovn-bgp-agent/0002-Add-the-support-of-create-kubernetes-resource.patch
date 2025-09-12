@@ -1,4 +1,4 @@
-From 12210bad20a8e2a8bab756cbba8d19b490759c19 Mon Sep 17 00:00:00 2001
+From 9736881a7765936128edfcf3805b4fef06f775d9 Mon Sep 17 00:00:00 2001
 From: Dong Ma <winterma.dong@gmail.com>
 Date: Tue, 10 Dec 2024 21:59:07 +0800
 Subject: [PATCH 2/2] Add the support of create kubernetes resource
@@ -26,10 +26,10 @@ Signed-off-by: Dong Ma <winterma.dong@gmail.com>
  create mode 100644 ovn_bgp_agent/tests/unit/drivers/openstack/utils/testdata/TestSingleVRFIBGP.golden
 
 diff --git a/ovn_bgp_agent/config.py b/ovn_bgp_agent/config.py
-index 3015021..be80a83 100644
+index 4f9155c..e459b5c 100644
 --- a/ovn_bgp_agent/config.py
 +++ b/ovn_bgp_agent/config.py
-@@ -251,6 +251,14 @@ local_ovn_cluster_opts = [
+@@ -228,6 +228,14 @@ local_ovn_cluster_opts = [
                      ' NB driver is used.'),
  ]
  
@@ -44,7 +44,7 @@ index 3015021..be80a83 100644
  CONF = cfg.CONF
  EXTRA_LOG_LEVEL_DEFAULTS = [
      'oslo.privsep.daemon=INFO'
-@@ -264,6 +272,7 @@ def register_opts():
+@@ -241,6 +249,7 @@ def register_opts():
      CONF.register_opts(root_helper_opts, "agent")
      CONF.register_opts(ovn_opts, "ovn")
      CONF.register_opts(local_ovn_cluster_opts, "local_ovn_cluster")
@@ -52,7 +52,7 @@ index 3015021..be80a83 100644
  
  
  def init(args, **kwargs):
-@@ -291,4 +300,5 @@ def list_opts():
+@@ -268,4 +277,5 @@ def list_opts():
          ("agent", root_helper_opts),
          ("ovn", ovn_opts),
          ("local_ovn_cluster", local_ovn_cluster_opts),
@@ -595,10 +595,10 @@ index 0000000..2487918
 +    "status": {}
 +}
 diff --git a/setup.cfg b/setup.cfg
-index af2cb5d..50fb37e 100644
+index ebc069f..aa4e4fb 100644
 --- a/setup.cfg
 +++ b/setup.cfg
-@@ -44,6 +44,11 @@ ovn_bgp_agent.drivers =
+@@ -38,6 +38,11 @@ ovn_bgp_agent.drivers =
  
  ovn_bgp_agent.bgp_drivers =
      frr = ovn_bgp_agent.drivers.openstack.utils.frr:FRRDriver
