@@ -1,0 +1,91 @@
+# Copyright (c) 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Prepare all hosts for migration
+  hosts: all
+  become: true
+  pre_tasks:
+    - name: Include defaults role
+      ansible.builtin.include_role:
+        name: vexxhost.atmosphere.defaults
+
+  tasks:
+    - name: Cache ovn-controller image before install or upgrade
+      block:
+        - name: Pull ovn-controller image
+          ansible.builtin.command: crictl pull {{ atmosphere_images['ovn_controller'] }}
+          register: pull_result
+          changed_when: false
+
+        - name: Verify ovn-controller image pull
+          ansible.builtin.assert:
+            that:
+              - pull_result.rc == 0
+              - "'Image is up to date' in pull_result.stdout or 'Image pulled' in pull_result.stdout"
+            fail_msg: "Failed to pull ovn-controller image"
+            success_msg: "Successfully pulled ovn-controller image"
+
+    - name: Deploy OVN without controllers
+      ansible.builtin.import_role:
+        name: vexxhost.atmosphere.ovn
+      vars:
+        ovn_helm_values:
+          manifests:
+            daemonset_controller: false
+
+    - name: Deploy Neutron with OVN enabled (data plane outage starts)
+      ansible.builtin.import_role:
+        name: vexxhost.atmosphere.neutron
+
+    - name: Wait for "neutron-server" deployment to complete
+      kubernetes.core.k8s_info:
+        namespace: openstack
+        kind: Deployment
+        name: neutron-server
+        wait: true
+
+    - name: Grab one of the "neutron-server" pods
+      kubernetes.core.k8s_info:
+        namespace: openstack
+        kind: Pod
+        label_selectors:
+          - application=neutron
+          - component=server
+      register: neutron_server_pods
+
+    - name: Run the OVN database migration
+      kubernetes.core.k8s_exec:
+        namespace: "{{ neutron_server_pods.resources[0].metadata.namespace }}"
+        pod: "{{ neutron_server_pods.resources[0].metadata.name }}"
+        command: neutron-ovn-db-sync-util --config-file /etc/neutron/neutron.conf --config-file /tmp/pod-shared/ovn.ini --config-file /etc/neutron/plugins/ml2/ml2_conf.ini --ovn-neutron_sync_mode repair
+      register: ovn_migration
+
+    - name: Print the migration logs
+      debug:
+        msg: "{{ ovn_migration.stdout_lines }}"
+
+    - name: Get all of the Open vSwitch pods
+      kubernetes.core.k8s_info:
+        namespace: openstack
+        kind: Pod
+        label_selectors:
+          - application=openvswitch
+      register: ovs_pods
+
+    - name: Delete the "br-tun" port and reset OpenFlow version for "br-int" and "br-ex"
+      kubernetes.core.k8s_exec:
+        namespace: "{{ item[0].metadata.namespace }}"
+        pod: "{{ item[0].metadata.name }}"
+        command: "{{ item[1] }}"
+      loop: "{{ ovs_pods.resources | product(commands) | list }}"
+      loop_control:
+        label: "{{ item[0].metadata.name }}: {{ item[1] }}"
+      vars:
+        commands:
+          - ovs-vsctl del-br br-tun
+          - ovs-vsctl set Bridge br-int protocols=[]
+          - ovs-vsctl set Bridge br-ex protocols=[]
+
+    - name: Deploy OVN
+      ansible.builtin.import_role:
+        name: vexxhost.atmosphere.ovn
