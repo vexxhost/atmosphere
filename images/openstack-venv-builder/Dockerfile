@@ -43,4 +43,5 @@ RUN pip3 install \
         pymysql \
         python-binary-memcached \
         python-memcached \
+        pymemcache \
         uwsgi
