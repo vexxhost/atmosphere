@@ -38,7 +38,8 @@ uv pip install \
         /src/networking-baremetal \
         /src/networking-generic-switch \
         /src/neutron-policy-server \
-        /src/neutron-ovn-network-logging-parser
+        /src/neutron-ovn-network-logging-parser \
+        pymemcache
 EOF
 
 FROM openstack-python-runtime
