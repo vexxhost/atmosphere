@@ -43,7 +43,8 @@ uv pip install \
         /src/networking-generic-switch \
         /src/neutron-policy-server \
         /src/neutron-ovn-network-logging-parser \
-        /src/tap-as-a-service
+        /src/tap-as-a-service \
+        pymemcache
 EOF
 
 FROM openstack-python-runtime
