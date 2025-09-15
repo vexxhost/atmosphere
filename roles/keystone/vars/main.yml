@@ -52,8 +52,7 @@ _keystone_helm_values:
           values:
             - "http://localhost:9990/auth/websso/"
             - "https://{{ openstack_helm_endpoints_horizon_api_host }}/auth/websso/"
-      oslo_messaging_notifications:
-        driver: noop
+      oslo_messaging_notifications: "{{ oslo_messaging_notifications }}"
     wsgi_keystone: |
       LoadModule headers_module /usr/lib/apache2/modules/mod_headers.so
       Listen 0.0.0.0:5000

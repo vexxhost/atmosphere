@@ -11,3 +11,13 @@ _kafka_cluster_operator_helm_values:
   resources:
     limits:
       cpu: 500m
+  topicOperator:
+    image:
+      registry: "{{ atmosphere_images['kafka_cluster_operator'] | vexxhost.kubernetes.docker_image('domain') }}"
+      repository: "{{ (atmosphere_images['kafka_cluster_operator'] | vexxhost.kubernetes.docker_image('path')).split('/')[0] }}"
+      tag: "{{ atmosphere_images['kafka_cluster_operator'] | vexxhost.kubernetes.docker_image('tag') }}"
+  userOperator:
+    image:
+      registry: "{{ atmosphere_images['kafka_cluster_operator'] | vexxhost.kubernetes.docker_image('domain') }}"
+      repository: "{{ (atmosphere_images['kafka_cluster_operator'] | vexxhost.kubernetes.docker_image('path')).split('/')[0] }}"
+      tag: "{{ atmosphere_images['kafka_cluster_operator'] | vexxhost.kubernetes.docker_image('tag') }}"

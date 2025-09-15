@@ -1,0 +1,106 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+#
+
+- name: Ensure Kafka topic for oslo_messaging_notifications exists
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: kafka.strimzi.io/v1beta2
+      kind: KafkaTopic
+      metadata:
+        name: "{{ oslo_messaging_notifications_kafka_topic }}"
+        namespace: openstack
+        labels:
+          strimzi.io/cluster: "{{ oslo_messaging_notifications_kafka_cluster_name }}"
+      spec:
+        partitions: 6
+        replicas: 3
+        config:
+          retention.ms: 7200000
+          segment.bytes: 1073741824
+  run_once: true
+
+- name: Ensure a secret for kafka user password
+  run_once: true
+  block:
+    - name: Set the secret name for oslo_messaging_notifications user password
+      set_fact:
+        _oslo_messaging_notifications_password_secret_name: "oslo-messaging-notifications-{{ oslo_messaging_notifications_user_name | default('default') }}"
+      run_once: true
+
+    - name: Check if the secret exists
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Secret
+        name: "{{ _oslo_messaging_notifications_password_secret_name }}"
+        namespace: openstack
+      register: _oslo_messaging_notifications_password_secret
+      ignore_errors: true
+
+    - name: Create k8s secret for oslo_messaging_notifications user password
+      when: ( _oslo_messaging_notifications_password_secret.resources | length==0 )
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: "{{ _oslo_messaging_notifications_password_secret_name }}"
+            namespace: openstack
+          type: Opaque
+          data:
+            password: "{{ lookup('password', '/dev/null length=32 chars=ascii_letters,digits') }}"
+      run_once: true
+
+- name: Ensure Kafka user for oslo_messaging_notifications
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: kafka.strimzi.io/v1beta2
+      kind: KafkaUser
+      metadata:
+        name: oslo-messaging-notifications
+        namespace: openstack
+        labels:
+          strimzi.io/cluster: "{{ oslo_messaging_notifications_kafka_cluster_name }}"
+      spec:
+        authentication:
+          type: scram-sha-512
+          password:
+            valueFrom:
+              secretKeyRef:
+                name: "{{ _oslo_messaging_notifications_password_secret_name }}"
+                key: password
+        authorization:
+          type: simple
+          acls:
+            - resource:
+                type: topic
+                name: "{{ oslo_messaging_notifications_kafka_topic }}"
+                patternType: literal
+              operation: Read
+            - resource:
+                type: topic
+                name: "{{ oslo_messaging_notifications_kafka_topic }}"
+                patternType: literal
+              operation: Write
+  run_once: true
+
+- name: Configure oslo_notifications to use Kafka
+  set_fact:
+    oslo_messaging_notifications:
+      driver: messagingv2
+      transport_url: "kafka://{{ oslo_messaging_notifications_user_name }}:{{ oslo_messaging_notifications_password }}@{{ oslo_messaging_notifications_kafka_url }}/{{ oslo_messaging_notifications_kafka_topic }}"
+  run_once: true
