@@ -1,0 +1,43 @@
+# Copyright (c) 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Create kafka node pool
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: kafka.strimzi.io/v1beta2
+      kind: KafkaNodePool
+      metadata:
+        name: dual-role
+        namespace: openstack
+        labels:
+          strimzi.io/cluster: kafka-cluster
+      spec:
+        replicas: 1
+        roles:
+          - controller
+          - broker
+        storage:
+          type: jbod
+          volumes:
+            - id: 0
+              type: persistent-claim
+              size: 100Gi
+              deleteClaim: false
+              kraftMetadata: shared
+
+- name: Create kafka cluster
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: kafka.strimzi.io/v1beta2
+      kind: Kafka
+      metadata:
+        name: kafka-cluster
+        namespace: openstack
+        annotations:
+          strimzi.io/node-pools: enabled
+          strimzi.io/kraft: enabled
+      spec: "{{ _kafka_cluster_spec | combine(kafka_cluster_spec, recursive=True) }}"
