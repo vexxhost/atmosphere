@@ -1,0 +1,13 @@
+# Copyright (c) 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+_kafka_operator_helm_values:
+  image:
+    registry: "{{ atmosphere_images['kafka_operator'] | vexxhost.kubernetes.docker_image('domain') }}"
+    repository: "{{ (atmosphere_images['kafka_operator'] | vexxhost.kubernetes.docker_image('path')).split('/')[0] }}"
+    tag: "{{ atmosphere_images['kafka_operator'] | vexxhost.kubernetes.docker_image('tag') }}"
+  nodeSelector:
+    openstack-control-plane: enabled
+  resources:
+    limits:
+      cpu: 500m

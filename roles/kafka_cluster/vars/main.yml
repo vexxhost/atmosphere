@@ -1,0 +1,26 @@
+# Copyright (c) 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+_kafka_cluster_spec:
+  kafka:
+    version: 4.0.0
+    image: "{{ atmosphere_images['kafka_cluster'] | vexxhost.kubernetes.docker_image('ref') }}"
+    metadataVersion: 4.0-IV3
+    listeners:
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
+      - name: tls
+        port: 9093
+        type: internal
+        tls: true
+    config:
+      offsets.topic.replication.factor: 1
+      transaction.state.log.replication.factor: 1
+      transaction.state.log.min.isr: 1
+      default.replication.factor: 1
+      min.insync.replicas: 1
+  entityOperator:
+    topicOperator: {}
+    userOperator: {}
