@@ -98,6 +98,7 @@
                 name: "{{ oslo_messaging_notifications_kafka_topic }}"
                 patternType: literal
               operations:
+                - Describe
                 - Read
                 - Write
               host: "*"
@@ -117,5 +118,6 @@
       transport_url: "kafka://{{ oslo_messaging_notifications_user_name }}:{{ oslo_messaging_notifications_password }}@{{ oslo_messaging_notifications_kafka_url }}/{{ oslo_messaging_notifications_kafka_topic }}"
     oslo_messaging_kafka:
       security_protocol: SASL_SSL
+      sasl_mechanism: SCRAM-SHA-512
       ssl_cafile: /etc/pki/kafka/ca.crt
       consumer_group: "{{ oslo_messaging_notifications_user_name }}"
