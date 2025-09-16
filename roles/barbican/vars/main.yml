@@ -19,6 +19,16 @@ _barbican_helm_values:
   pod:
     replicas:
       api: 3
+    mounts:
+      barbican_api:
+        barbican_api:
+          volumeMounts:
+            - name: kafka-ca
+              mountPath: /etc/pki/kafka
+          volumes:
+            - name: kafka-ca
+              secret:
+                secretName: kafka-cluster-cluster-ca-cert
   conf:
     barbican:
       DEFAULT:
@@ -29,6 +39,7 @@ _barbican_helm_values:
         max_pool_size: 5
         pool_timeout: 30
       oslo_messaging_notifications: "{{ oslo_messaging_notifications }}"
+      oslo_messaging_kafka: "{{ oslo_messaging_kafka }}"
       simple_crypto_plugin:
         kek: "{{ barbican_kek }}"
     simple_crypto_kek_rewrap:

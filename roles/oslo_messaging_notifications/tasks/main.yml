@@ -1,19 +1,8 @@
-# Copyright (c) 2022 VEXXHOST, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"); you may
-# not use this file except in compliance with the License. You may obtain
-# a copy of the License at
-#
-#      http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-# License for the specific language governing permissions and limitations
-# under the License.
-#
+# Copyright (c) 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
 
 - name: Ensure Kafka topic for oslo_messaging_notifications exists
+  run_once: true
   kubernetes.core.k8s:
     state: present
     definition:
@@ -30,12 +19,11 @@
         config:
           retention.ms: 7200000
           segment.bytes: 1073741824
-  run_once: true
 
 - name: Set the secret name for oslo_messaging_notifications user password
+  run_once: true
   set_fact:
     _oslo_messaging_notifications_password_secret_name: "oslo-messaging-notifications-{{ oslo_messaging_notifications_user_name | default('default') }}"
-  run_once: true
 
 - name: Ensure secret for oslo_messaging_notifications user password exists
   run_once: true
@@ -83,13 +71,14 @@
         oslo_messaging_notifications_password: "{{ __oslo_messaging_notifications_password_secret.resources[0]['data']['password'] | b64decode }}"
 
 - name: Ensure Kafka user for oslo_messaging_notifications
+  run_once: true
   kubernetes.core.k8s:
     state: present
     definition:
       apiVersion: kafka.strimzi.io/v1beta2
       kind: KafkaUser
       metadata:
-        name: oslo-messaging-notifications
+        name: "{{ _oslo_messaging_notifications_password_secret_name }}"
         namespace: openstack
         labels:
           strimzi.io/cluster: "{{ oslo_messaging_notifications_kafka_cluster_name }}"
@@ -114,11 +103,13 @@
                 name: "{{ oslo_messaging_notifications_kafka_topic }}"
                 patternType: literal
               operation: Write
-  run_once: true
 
 - name: Configure oslo_notifications to use Kafka
+  run_once: true
   set_fact:
     oslo_messaging_notifications:
       driver: messagingv2
       transport_url: "kafka://{{ oslo_messaging_notifications_user_name }}:{{ oslo_messaging_notifications_password }}@{{ oslo_messaging_notifications_kafka_url }}/{{ oslo_messaging_notifications_kafka_topic }}"
-  run_once: true
+    oslo_messaging_kafka:
+      security_protocol: SSL
+      ssl_cafile: /etc/pki/kafka/ca.crt

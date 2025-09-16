@@ -33,6 +33,16 @@ _glance_helm_values:
       api: "{{ ('cinder' in glance_helm_values.get('conf', {}).get('glance', {}).get('glance_store', {}).get('stores', '')) | bool }}"
     replicas:
       api: 3
+    mounts:
+      glance_api:
+        glance_api:
+          volumeMounts:
+            - name: kafka-ca
+              mountPath: /etc/pki/kafka
+          volumes:
+            - name: kafka-ca
+              secret:
+                secretName: kafka-cluster-cluster-ca-cert
   conf:
     glance:
       DEFAULT:
@@ -51,6 +61,7 @@ _glance_helm_values:
       image_format:
         disk_formats: aki,ari,qcow2,raw
       oslo_messaging_notifications: "{{ oslo_messaging_notifications }}"
+      oslo_messaging_kafka: "{{ oslo_messaging_kafka }}"
   manifests:
     ingress_api: false
     service_ingress_api: false
