@@ -42,6 +42,43 @@ _nova_helm_values:
       scheduler: 3
       novncproxy: 3
       spiceproxy: 3
+    mounts:
+      nova_api_osapi:
+        nova_api_osapi:
+          volumeMounts:
+            - name: kafka-ca
+              mountPath: /etc/pki/kafka
+          volumes:
+            - name: kafka-ca
+              secret:
+                secretName: kafka-cluster-cluster-ca-cert
+      nova_compute:
+        nova_compute:
+          volumeMounts:
+            - name: kafka-ca
+              mountPath: /etc/pki/kafka
+          volumes:
+            - name: kafka-ca
+              secret:
+                secretName: kafka-cluster-cluster-ca-cert
+      nova_conductor:
+        nova_conductor:
+          volumeMounts:
+            - name: kafka-ca
+              mountPath: /etc/pki/kafka
+          volumes:
+            - name: kafka-ca
+              secret:
+                secretName: kafka-cluster-cluster-ca-cert
+      nova_scheduler:
+        nova_scheduler:
+          volumeMounts:
+            - name: kafka-ca
+              mountPath: /etc/pki/kafka
+          volumes:
+            - name: kafka-ca
+              secret:
+                secretName: kafka-cluster-cluster-ca-cert
   conf:
     ceph:
       enabled: "{{ atmosphere_ceph_enabled | default(true) | bool }}"
@@ -103,6 +140,7 @@ _nova_helm_values:
       neutron:
         metadata_proxy_shared_secret: "{{ openstack_helm_endpoints['compute_metadata']['secret'] }}"
       oslo_messaging_notifications: "{{ oslo_messaging_notifications }}"
+      oslo_messaging_kafka: "{{ oslo_messaging_kafka }}"
       os_vif_ovs:
         ovsdb_connection: unix:/run/openvswitch/db.sock
       privsep_osbrick:

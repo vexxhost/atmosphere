@@ -26,9 +26,32 @@ __cinder_helm_values:
           volumeMounts:
             - name: cinder-tmp
               mountPath: /var/lib/cinder/tmp
+            - name: kafka-ca
+              mountPath: /etc/pki/kafka
           volumes:
             - name: cinder-tmp
               emptyDir: {}
+            - name: kafka-ca
+              secret:
+                secretName: kafka-cluster-cluster-ca-cert
+      cinder_api:
+        cinder_api:
+          volumeMounts:
+            - name: kafka-ca
+              mountPath: /etc/pki/kafka
+          volumes:
+            - name: kafka-ca
+              secret:
+                secretName: kafka-cluster-cluster-ca-cert
+      cinder_scheduler:
+        cinder_scheduler:
+          volumeMounts:
+            - name: kafka-ca
+              mountPath: /etc/pki/kafka
+          volumes:
+            - name: kafka-ca
+              secret:
+                secretName: kafka-cluster-cluster-ca-cert
     security_context:
       cinder_volume:
         pod:
@@ -57,6 +80,7 @@ __cinder_helm_values:
         max_pool_size: 5
         pool_timeout: 30
       oslo_messaging_notifications: "{{ oslo_messaging_notifications }}"
+      oslo_messaging_kafka: "{{ oslo_messaging_kafka }}"
       privsep_osbrick:
         helper_command: sudo cinder-rootwrap /etc/cinder/rootwrap.conf privsep-helper --config-file /etc/cinder/cinder.conf
   manifests:

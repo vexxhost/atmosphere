@@ -22,6 +22,34 @@ _heat_helm_values:
       cfn: 3
       cloudwatch: 3
       engine: 3
+    mounts:
+      heat_api:
+        heat_api:
+          volumeMounts:
+            - name: kafka-ca
+              mountPath: /etc/pki/kafka
+          volumes:
+            - name: kafka-ca
+              secret:
+                secretName: kafka-cluster-cluster-ca-cert
+      heat_cfn:
+        heat_cfn:
+          volumeMounts:
+            - name: kafka-ca
+              mountPath: /etc/pki/kafka
+          volumes:
+            - name: kafka-ca
+              secret:
+                secretName: kafka-cluster-cluster-ca-cert
+      heat_engine:
+        heat_engine:
+          volumeMounts:
+            - name: kafka-ca
+              mountPath: /etc/pki/kafka
+          volumes:
+            - name: kafka-ca
+              secret:
+                secretName: kafka-cluster-cluster-ca-cert
   conf:
     heat:
       DEFAULT:
@@ -49,6 +77,7 @@ _heat_helm_values:
       heat_api_cloudwatch:
         workers: 8
       oslo_messaging_notifications: "{{ oslo_messaging_notifications }}"
+      oslo_messaging_kafka: "{{ oslo_messaging_kafka }}"
   manifests:
     ingress_api: false
     ingress_cfn: false

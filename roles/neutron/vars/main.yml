@@ -20,6 +20,16 @@ __neutron_helm_values:
     backend:
       - "{{ atmosphere_network_backend }}"
   pod:
+    mounts:
+      neutron_server:
+        neutron_server:
+          volumeMounts:
+            - name: kafka-ca
+              mountPath: /etc/pki/kafka
+          volumes:
+            - name: kafka-ca
+              secret:
+                secretName: kafka-cluster-cluster-ca-cert
     replicas:
       server: 3
       rpc_server: 3
@@ -59,6 +69,7 @@ __neutron_helm_values:
         username: "neutron-{{ openstack_helm_endpoints_neutron_region_name }}"
         password: "{{ openstack_helm_endpoints_neutron_keystone_password }}"
       oslo_messaging_notifications: "{{ oslo_messaging_notifications }}"
+      oslo_messaging_kafka: "{{ oslo_messaging_kafka }}"
       service_providers:
         service_provider: VPN:strongswan:neutron_vpnaas.services.vpn.service_drivers.ipsec.IPsecVPNDriver:default
     dhcp_agent:

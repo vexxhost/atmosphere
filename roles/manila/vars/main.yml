@@ -18,15 +18,47 @@ _manila_helm_values:
     tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('manila') }}"
   pod:
     mounts:
+      manila_api:
+        manila_api:
+          volumeMounts:
+            - name: kafka-ca
+              mountPath: /etc/pki/kafka
+          volumes:
+            - name: kafka-ca
+              secret:
+                secretName: kafka-cluster-cluster-ca-cert
       manila_share:
         manila_share:
           volumeMounts:
             - name: ssh-keys
               mountPath: /etc/manila/ssh-keys
+            - name: kafka-ca
+              mountPath: /etc/pki/kafka
           volumes:
             - name: ssh-keys
               secret:
                 secretName: "{{ manila_helm_release_name }}-ssh-keys"
+            - name: kafka-ca
+              secret:
+                secretName: kafka-cluster-cluster-ca-cert
+      manila_scheduler:
+        manila_scheduler:
+          volumeMounts:
+            - name: kafka-ca
+              mountPath: /etc/pki/kafka
+          volumes:
+            - name: kafka-ca
+              secret:
+                secretName: kafka-cluster-cluster-ca-cert
+      manila_data:
+        manila_data:
+          volumeMounts:
+            - name: kafka-ca
+              mountPath: /etc/pki/kafka
+          volumes:
+            - name: kafka-ca
+              secret:
+                secretName: kafka-cluster-cluster-ca-cert
     replicas:
       api: 3
       scheduler: 3
@@ -61,6 +93,7 @@ _manila_helm_values:
         service_instance_flavor_id: "{{ _manila_flavor.flavor.id }}"
         service_instance_security_group: manila-service-security-group
       oslo_messaging_notifications: "{{ oslo_messaging_notifications }}"
+      oslo_messaging_kafka: "{{ oslo_messaging_kafka }}"
       nova:
         api_microversion: 2.60
         endpoint_type: internalURL

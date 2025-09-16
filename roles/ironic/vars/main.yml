@@ -66,6 +66,7 @@ _ironic_helm_values:
         provisioning_network: "{{ ironic_bare_metal_network_name }}"
         rescuing_network: "{{ ironic_bare_metal_network_name }}"
       oslo_messaging_notifications: "{{ oslo_messaging_notifications }}"
+      oslo_messaging_kafka: "{{ oslo_messaging_kafka }}"
       pxe:
         kernel_append_params: "ipa-insecure=true systemd.journald.forward_to_console=yes"
       service_catalog:
@@ -78,6 +79,25 @@ _ironic_helm_values:
     replicas:
       api: 3
       conductor: 3
+    mounts:
+      ironic_api:
+        ironic_api:
+          volumeMounts:
+            - name: kafka-ca
+              mountPath: /etc/pki/kafka
+          volumes:
+            - name: kafka-ca
+              secret:
+                secretName: kafka-cluster-cluster-ca-cert
+      ironic_conductor:
+        ironic_conductor:
+          volumeMounts:
+            - name: kafka-ca
+              mountPath: /etc/pki/kafka
+          volumes:
+            - name: kafka-ca
+              secret:
+                secretName: kafka-cluster-cluster-ca-cert
   manifests:
     ingress_api: false
     service_ingress_api: false

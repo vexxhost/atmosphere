@@ -25,6 +25,8 @@ _octavia_helm_values:
               mountPath: /etc/octavia/certs/server
             - name: octavia-client-certs
               mountPath: /etc/octavia/certs/client
+            - name: kafka-ca
+              mountPath: /etc/pki/kafka
           volumes:
             - name: octavia-server-ca
               secret:
@@ -32,6 +34,9 @@ _octavia_helm_values:
             - name: octavia-client-certs
               secret:
                 secretName: octavia-client-certs
+            - name: kafka-ca
+              secret:
+                secretName: kafka-cluster-cluster-ca-cert
       octavia_worker:
         octavia_worker:
           volumeMounts:
@@ -46,6 +51,8 @@ _octavia_helm_values:
             - name: octavia-amphora-ssh-key
               mountPath: /var/lib/octavia/.ssh
               readOnly: true
+            - name: kafka-ca
+              mountPath: /etc/pki/kafka
           volumes:
             - name: octavia-jobboard-default-ca
               secret:
@@ -63,6 +70,9 @@ _octavia_helm_values:
               secret:
                 secretName: "{{ octavia_ssh_key_secret.resources[0]['metadata']['name'] }}"
                 defaultMode: 0444 # noqa: yaml[octal-values]
+            - name: kafka-ca
+              secret:
+                secretName: kafka-cluster-cluster-ca-cert
       octavia_housekeeping:
         octavia_housekeeping:
           volumeMounts:
@@ -70,6 +80,8 @@ _octavia_helm_values:
               mountPath: /etc/octavia/certs/server
             - name: octavia-client-certs
               mountPath: /etc/octavia/certs/client
+            - name: kafka-ca
+              mountPath: /etc/pki/kafka
           volumes:
             - name: octavia-server-ca
               secret:
@@ -77,6 +89,9 @@ _octavia_helm_values:
             - name: octavia-client-certs
               secret:
                 secretName: octavia-client-certs
+            - name: kafka-ca
+              secret:
+                secretName: kafka-cluster-cluster-ca-cert
       octavia_health_manager:
         octavia_health_manager:
           volumeMounts:
@@ -84,6 +99,8 @@ _octavia_helm_values:
               mountPath: /etc/octavia/certs/server
             - name: octavia-client-certs
               mountPath: /etc/octavia/certs/client
+            - name: kafka-ca
+              mountPath: /etc/pki/kafka
           volumes:
             - name: octavia-server-ca
               secret:
@@ -91,6 +108,9 @@ _octavia_helm_values:
             - name: octavia-client-certs
               secret:
                 secretName: octavia-client-certs
+            - name: kafka-ca
+              secret:
+                secretName: kafka-cluster-cluster-ca-cert
     replicas:
       api: 3
       worker: 3
@@ -132,6 +152,7 @@ _octavia_helm_values:
         controller_ip_port_list: "{{ _octavia_controller_ip_port_list | sort | join(',') }}"
         heartbeat_key: "{{ octavia_heartbeat_key }}"
       oslo_messaging_notifications: "{{ oslo_messaging_notifications }}"
+      oslo_messaging_kafka: "{{ oslo_messaging_kafka }}"
       neutron:
         endpoint_type: internalURL
         valid_interfaces: internal
