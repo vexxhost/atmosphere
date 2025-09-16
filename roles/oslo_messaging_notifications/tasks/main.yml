@@ -78,7 +78,7 @@
       apiVersion: kafka.strimzi.io/v1beta2
       kind: KafkaUser
       metadata:
-        name: "{{ _oslo_messaging_notifications_password_secret_name }}"
+        name: "{{ oslo_messaging_notifications_user_name }}"
         namespace: openstack
         labels:
           strimzi.io/cluster: "{{ oslo_messaging_notifications_kafka_cluster_name }}"
@@ -97,12 +97,17 @@
                 type: topic
                 name: "{{ oslo_messaging_notifications_kafka_topic }}"
                 patternType: literal
-              operation: Read
+              operations:
+                - Read
+                - Write
+              host: "*"
             - resource:
-                type: topic
-                name: "{{ oslo_messaging_notifications_kafka_topic }}"
+                type: group
+                name: "{{ oslo_messaging_notifications_user_name }}"
                 patternType: literal
-              operation: Write
+              operations:
+                - Read
+              host: "*"
 
 - name: Configure oslo_notifications to use Kafka
   run_once: true
@@ -111,5 +116,6 @@
       driver: messagingv2
       transport_url: "kafka://{{ oslo_messaging_notifications_user_name }}:{{ oslo_messaging_notifications_password }}@{{ oslo_messaging_notifications_kafka_url }}/{{ oslo_messaging_notifications_kafka_topic }}"
     oslo_messaging_kafka:
-      security_protocol: SSL
+      security_protocol: SASL_SSL
       ssl_cafile: /etc/pki/kafka/ca.crt
+      consumer_group: "{{ oslo_messaging_notifications_user_name }}"
