@@ -22,7 +22,7 @@
 
 - name: Set the secret name for oslo_messaging_notifications user password
   run_once: true
-  set_fact:
+  ansible.builtin.set_fact:
     _oslo_messaging_notifications_password_secret_name: "oslo-messaging-notifications-{{ oslo_messaging_notifications_user_name | default('default') }}"
 
 - name: Ensure secret for oslo_messaging_notifications user password exists
@@ -113,7 +113,7 @@
 
 - name: Configure oslo_notifications to use Kafka
   run_once: true
-  set_fact:
+  ansible.builtin.set_fact:
     oslo_messaging_notifications:
       driver: messagingv2
       transport_url: "kafka://{{ oslo_messaging_notifications_user_name }}:{{ oslo_messaging_notifications_password }}@{{ oslo_messaging_notifications_kafka_url }}"
