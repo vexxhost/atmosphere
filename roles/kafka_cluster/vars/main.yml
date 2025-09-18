@@ -21,6 +21,12 @@ _kafka_cluster_spec:
       min.insync.replicas: 2
     authorization:
       type: simple
+    metricsConfig:
+      type: jmxPrometheusExporter
+      valueFrom:
+        configMapKeyRef:
+          name: kafka-metrics
+          key: kafka-metrics-config.yml
   entityOperator:
     topicOperator: {}
     userOperator: {}
