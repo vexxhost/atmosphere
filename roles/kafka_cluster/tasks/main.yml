@@ -1,5 +1,17 @@
 # Copyright (c) 2025 VEXXHOST, Inc.
 # SPDX-License-Identifier: Apache-2.0
+- name: Create kafka metrics config
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: kafka-metrics
+        namespace: openstack
+      data:
+        kafka-metrics-config.yml: "{{ lookup('file', 'files/kafka-metrics-config.yml') }}"
 
 - name: Create Kafka node pool
   run_once: true
