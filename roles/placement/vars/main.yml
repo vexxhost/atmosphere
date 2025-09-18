@@ -19,6 +19,16 @@ _placement_helm_values:
   pod:
     replicas:
       api: 3
+    mounts:
+      placement:
+        placement:
+          volumeMounts:
+            - name: kafka-ca
+              mountPath: /etc/pki/kafka
+          volumes:
+            - name: kafka-ca
+              secret:
+                secretName: kafka-cluster-cluster-ca-cert
   conf:
     placement:
       DEFAULT:
@@ -29,8 +39,8 @@ _placement_helm_values:
         max_pool_size: 5
         max_retries: -1
         pool_timeout: 30
-      oslo_messaging_notifications:
-        driver: noop
+      oslo_messaging_notifications: "{{ oslo_messaging_notifications }}"
+      oslo_messaging_kafka: "{{ oslo_messaging_kafka }}"
   manifests:
     ingress: false
     service_ingress: false

@@ -1,0 +1,125 @@
+# Copyright (c) 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Ensure Kafka topic for oslo_messaging_notifications exists
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: kafka.strimzi.io/v1beta2
+      kind: KafkaTopic
+      metadata:
+        name: "{{ oslo_messaging_notifications_kafka_topic }}"
+        namespace: openstack
+        labels:
+          strimzi.io/cluster: "{{ oslo_messaging_notifications_kafka_cluster_name }}"
+      spec:
+        partitions: 6
+        replicas: 3
+        config:
+          retention.ms: 7200000
+          segment.bytes: 1073741824
+
+- name: Set the secret name for oslo_messaging_notifications user password
+  run_once: true
+  ansible.builtin.set_fact:
+    _oslo_messaging_notifications_password_secret_name: "oslo-messaging-notifications-{{ oslo_messaging_notifications_user_name | default('default') }}"
+
+- name: Ensure secret for oslo_messaging_notifications user password exists
+  run_once: true
+  block:
+    - name: Check if the secret exists
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Secret
+        name: "{{ _oslo_messaging_notifications_password_secret_name }}"
+        namespace: openstack
+      register: __oslo_messaging_notifications_password_secret
+      ignore_errors: true
+
+    - name: Create a secret for kafka user password
+      when: ( __oslo_messaging_notifications_password_secret.resources | length==0 )
+      run_once: true
+      block:
+        - name: Create k8s secret for oslo_messaging_notifications user password
+          kubernetes.core.k8s:
+            state: present
+            definition:
+              apiVersion: v1
+              kind: Secret
+              metadata:
+                name: "{{ _oslo_messaging_notifications_password_secret_name }}"
+                namespace: openstack
+              type: Opaque
+              stringData:
+                password: "{{ lookup('password', '/dev/null chars=ascii_lowercase,ascii_uppercase,digits length=32') }}"
+          run_once: true
+
+- name: Grab oslo messaging notifications user password
+  run_once: true
+  block:
+    - name: Grab oslo messaging notifications user password secret
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Secret
+        name: "{{ _oslo_messaging_notifications_password_secret_name }}"
+        namespace: openstack
+      register: __oslo_messaging_notifications_password_secret
+
+    - name: Cache fact with Percona XtraDB password
+      ansible.builtin.set_fact:
+        oslo_messaging_notifications_password: "{{ __oslo_messaging_notifications_password_secret.resources[0]['data']['password'] | b64decode }}"
+
+- name: Ensure Kafka user for oslo_messaging_notifications
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: kafka.strimzi.io/v1beta2
+      kind: KafkaUser
+      metadata:
+        name: "{{ oslo_messaging_notifications_user_name }}"
+        namespace: openstack
+        labels:
+          strimzi.io/cluster: "{{ oslo_messaging_notifications_kafka_cluster_name }}"
+      spec:
+        authentication:
+          type: scram-sha-512
+          password:
+            valueFrom:
+              secretKeyRef:
+                name: "{{ _oslo_messaging_notifications_password_secret_name }}"
+                key: password
+        authorization:
+          type: simple
+          acls:
+            - resource:
+                type: topic
+                name: "{{ oslo_messaging_notifications_kafka_topic }}"
+                patternType: prefix
+              operations:
+                - Create
+                - Describe
+                - Read
+                - Write
+              host: "*"
+            - resource:
+                type: group
+                name: "{{ oslo_messaging_notifications_user_name }}"
+                patternType: literal
+              operations:
+                - Read
+              host: "*"
+
+- name: Configure oslo_notifications to use Kafka
+  run_once: true
+  ansible.builtin.set_fact:
+    oslo_messaging_notifications:
+      driver: messagingv2
+      transport_url: "kafka://{{ oslo_messaging_notifications_user_name }}:{{ oslo_messaging_notifications_password }}@{{ oslo_messaging_notifications_kafka_url }}"
+      topics: "{{ oslo_messaging_notifications_kafka_topic }}"
+    oslo_messaging_kafka:
+      security_protocol: SASL_SSL
+      sasl_mechanism: SCRAM-SHA-512
+      ssl_cafile: /etc/pki/kafka/ca.crt
+      consumer_group: "{{ oslo_messaging_notifications_user_name }}"
