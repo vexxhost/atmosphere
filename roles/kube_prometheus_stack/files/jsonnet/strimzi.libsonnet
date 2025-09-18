@@ -9,7 +9,7 @@
             "expr": "kubelet_volume_stats_available_bytes{persistentvolumeclaim=~\"data(-[0-9]+)?-(.+)-kafka-[0-9]+\"} * 100 / kubelet_volume_stats_capacity_bytes{persistentvolumeclaim=~\"data(-[0-9]+)?-(.+)-kafka-[0-9]+\"} < 15",
             "for": "10s",
             "labels": {
-              "severity": "warning"
+              "severity": "P3"
             },
             "annotations": {
               "summary": "Kafka is running out of free disk space",
@@ -21,7 +21,7 @@
             "expr": "kafka_server_replicamanager_underreplicatedpartitions > 0",
             "for": "10s",
             "labels": {
-              "severity": "warning"
+              "severity": "P3"
             },
             "annotations": {
               "summary": "Kafka under replicated partitions",
@@ -33,7 +33,7 @@
             "expr": "sum(kafka_controller_kafkacontroller_activecontrollercount) by (strimzi_io_name) != 1",
             "for": "10s",
             "labels": {
-              "severity": "warning"
+              "severity": "P3"
             },
             "annotations": {
               "summary": "Kafka abnormal controller state",
@@ -45,7 +45,7 @@
             "expr": "sum(kafka_controller_kafkacontroller_offlinepartitionscount) > 0",
             "for": "10s",
             "labels": {
-              "severity": "warning"
+              "severity": "P3"
             },
             "annotations": {
               "summary": "Kafka offline partitions",
@@ -57,7 +57,7 @@
             "expr": "kafka_server_replicamanager_underminisrpartitioncount > 0",
             "for": "10s",
             "labels": {
-              "severity": "warning"
+              "severity": "P3"
             },
             "annotations": {
               "summary": "Kafka under min ISR partitions",
@@ -69,7 +69,7 @@
             "expr": "kafka_log_logmanager_offlinelogdirectorycount > 0",
             "for": "10s",
             "labels": {
-              "severity": "warning"
+              "severity": "P3"
             },
             "annotations": {
               "summary": "Kafka offline log directories",
@@ -81,7 +81,7 @@
             "expr": "up{kubernetes_namespace!~\"openshift-.+\",kubernetes_pod_name=~\".+-kafka-[0-9]+\"} == 0",
             "for": "3m",
             "labels": {
-              "severity": "major"
+              "severity": "P2"
             },
             "annotations": {
               "summary": "Prometheus unable to scrape metrics from {{ $labels.kubernetes_pod_name }}/{{ $labels.instance }}",
@@ -93,7 +93,7 @@
             "expr": "count((container_last_seen{container=\"strimzi-cluster-operator\"} > (time() - 90))) < 1 or absent(container_last_seen{container=\"strimzi-cluster-operator\"})",
             "for": "1m",
             "labels": {
-              "severity": "major"
+              "severity": "P2"
             },
             "annotations": {
               "summary": "Cluster Operator down",
@@ -105,7 +105,7 @@
             "expr": "absent(container_last_seen{container=\"kafka\",pod=~\".+-kafka-[0-9]+\"})",
             "for": "3m",
             "labels": {
-              "severity": "major"
+              "severity": "P2"
             },
             "annotations": {
               "summary": "All `kafka` containers down or in CrashLookBackOff status",
@@ -117,7 +117,7 @@
             "expr": "count(count_over_time(container_last_seen{container=\"kafka\"}[5m])) > 2 * count(container_last_seen{container=\"kafka\",pod=~\".+-kafka-[0-9]+\"})",
             "for": "5m",
             "labels": {
-              "severity": "warning"
+              "severity": "P3"
             },
             "annotations": {
               "summary": "One or more Kafka containers restarted too often",
@@ -134,7 +134,7 @@
             "expr": "absent(container_last_seen{container=\"topic-operator\",pod=~\".+-entity-operator-.+\"})",
             "for": "3m",
             "labels": {
-              "severity": "major"
+              "severity": "P2"
             },
             "annotations": {
               "summary": "Container topic-operator in Entity Operator pod down or in CrashLookBackOff status",
@@ -146,7 +146,7 @@
             "expr": "absent(container_last_seen{container=\"user-operator\",pod=~\".+-entity-operator-.+\"})",
             "for": "3m",
             "labels": {
-              "severity": "major"
+              "severity": "P2"
             },
             "annotations": {
               "summary": "Container user-operator in Entity Operator pod down or in CrashLookBackOff status",
@@ -163,7 +163,7 @@
             "expr": "absent(container_last_seen{container=~\".+-connect\",pod=~\".+-connect-.+\"})",
             "for": "3m",
             "labels": {
-              "severity": "major"
+              "severity": "P2"
             },
             "annotations": {
               "summary": "All Kafka Connect containers down or in CrashLookBackOff status",
@@ -175,7 +175,7 @@
             "expr": "sum(kafka_connect_connector_status{status=\"failed\"}) > 0",
             "for": "5m",
             "labels": {
-              "severity": "major"
+              "severity": "P2"
             },
             "annotations": {
               "summary": "Kafka Connect Connector Failure",
@@ -187,7 +187,7 @@
             "expr": "sum(kafka_connect_worker_connector_failed_task_count) > 0",
             "for": "5m",
             "labels": {
-              "severity": "major"
+              "severity": "P2"
             },
             "annotations": {
               "summary": "Kafka Connect Task Failure",
@@ -204,7 +204,7 @@
             "expr": "absent(container_last_seen{container=~\".+-bridge\",pod=~\".+-bridge-.+\"})",
             "for": "3m",
             "labels": {
-              "severity": "major"
+              "severity": "P2"
             },
             "annotations": {
               "summary": "All Kafka Bridge containers down or in CrashLookBackOff status",
@@ -216,7 +216,7 @@
             "expr": "strimzi_bridge_kafka_producer_request_latency_avg > 10",
             "for": "10s",
             "labels": {
-              "severity": "warning"
+              "severity": "P3"
             },
             "annotations": {
               "summary": "Kafka Bridge producer average request latency",
@@ -228,7 +228,7 @@
             "expr": "strimzi_bridge_kafka_consumer_fetch_latency_avg > 500",
             "for": "10s",
             "labels": {
-              "severity": "warning"
+              "severity": "P3"
             },
             "annotations": {
               "summary": "Kafka Bridge consumer average fetch latency",
@@ -240,7 +240,7 @@
             "expr": "strimzi_bridge_kafka_consumer_commit_latency_avg > 200",
             "for": "10s",
             "labels": {
-              "severity": "warning"
+              "severity": "P3"
             },
             "annotations": {
               "summary": "Kafka Bridge consumer average commit latency",
@@ -252,7 +252,7 @@
             "expr": "strimzi_bridge_http_server_requestCount_total{code=~\"^4..$\", container=~\"^.+-bridge\", path !=\"/favicon.ico\"} > 10",
             "for": "1m",
             "labels": {
-              "severity": "warning"
+              "severity": "P3"
             },
             "annotations": {
               "summary": "Kafka Bridge returns code 4xx too often",
@@ -264,7 +264,7 @@
             "expr": "strimzi_bridge_http_server_requestCount_total{code=~\"^5..$\", container=~\"^.+-bridge\"} > 10",
             "for": "1m",
             "labels": {
-              "severity": "warning"
+              "severity": "P3"
             },
             "annotations": {
               "summary": "Kafka Bridge returns code 5xx too often",
@@ -281,7 +281,7 @@
             "expr": "absent(container_last_seen{container=~\".+-mirrormaker2\",pod=~\".+-mirrormaker2-.+\"})",
             "for": "3m",
             "labels": {
-              "severity": "major"
+              "severity": "P2"
             },
             "annotations": {
               "summary": "All Kafka Mirror Maker 2 containers down or in CrashLookBackOff status",
@@ -298,7 +298,7 @@
             "expr": "kafka_topic_partition_under_replicated_partition > 0",
             "for": "10s",
             "labels": {
-              "severity": "warning"
+              "severity": "P3"
             },
             "annotations": {
               "summary": "Topic has under-replicated partitions",
@@ -310,7 +310,7 @@
             "expr": "kafka_consumergroup_lag > 1000",
             "for": "10s",
             "labels": {
-              "severity": "warning"
+              "severity": "P3"
             },
             "annotations": {
               "summary": "Consumer group lag is too big",
@@ -322,7 +322,7 @@
             "expr": "changes(kafka_topic_partition_current_offset[10m]) == 0",
             "for": "10s",
             "labels": {
-              "severity": "warning"
+              "severity": "P3"
             },
             "annotations": {
               "summary": "No message for 10 minutes",
@@ -340,7 +340,7 @@
             "expr": "strimzi_certificate_expiration_timestamp_ms/1000 - time() < 30 * 24 * 60 * 60",
             "for": "5m",
             "labels": {
-              "severity": "warning"
+              "severity": "P3"
             },
             "annotations": {
               "summary": "Certificate will expire in less than 30 days",
