@@ -52,3 +52,53 @@
     gigabytes: -1
     security_group: -1
     security_group_rule: -1
+
+- name: Create share types
+  when: manila_share_types | length > 0
+  block:
+    - name: Wait until share service ready
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: Deployment
+        name: manila-api
+        namespace: openstack
+        wait_sleep: 10
+        wait_timeout: 600
+        wait: true
+        wait_condition:
+          type: Available
+          status: true
+
+    - name: Create share types
+      changed_when: false
+      ansible.builtin.shell: |
+        set -o posix
+        source /etc/profile.d/atmosphere.sh
+        openstack share type show {{ item.name }} ||
+        openstack share type create \
+          --public {{ item.is_public | default(true) }} \
+          {{ item.name }} {{ item.driver_handles_share_servers | default(true) }}
+        # Set additional settings
+        {% if item.description is defined %}
+        openstack share type set {{ item.name }} \
+          --description "{{ item.description }}"
+        {% endif %}
+        openstack share type set {{ item.name }} \
+          --public {{ item.is_public | default(true) }}
+        # Set all extra specs
+        {% if item.extra_specs is defined %}
+        {% for key, value in item.extra_specs.items() %}
+        openstack share type set {{ item.name }} \
+          --extra-specs {{ key }}={{ value }}
+        {% endfor %}
+        {% endif %}
+      args:
+        executable: /bin/bash
+      environment:
+        OS_CLOUD: atmosphere
+      loop: "{{ manila_share_types }}"
+      register: configure_manila_share_types
+      retries: 60
+      delay: 5
+      until: configure_manila_share_types.rc == 0
+      failed_when: configure_manila_share_types.rc != 0
