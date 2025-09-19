@@ -1,5 +1,0 @@
-- Use "reno" to create release notes when creating any pull request
-- Use "vale" to verify that release notes follow proper prose linting and address any issues (including suggestions).
-- Make sure "pre-commit" runs on the code changes before pushing it up.
-- The file that includes all the extra vocabulary for Vale is located in .github/styles/config/vocabularies/Base/accept.txt
-- Make sure to not exceed 72 characters in the subject of the commit message.
