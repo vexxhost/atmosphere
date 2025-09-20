@@ -1,0 +1,3 @@
+- Use "reno" to create release notes when creating any pull request
+- Use "vale" to verify that release notes follow proper prose linting.
+- Make sure "pre-commit" runs on the code changes before pushing it up.
