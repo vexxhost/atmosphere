@@ -33,7 +33,7 @@ __neutron_helm_values:
         log_config_append: null
         rpc_workers: 8
         rpc_response_timeout: 600
-        service_plugins: qos,router,segments,trunk,vpnaas
+        service_plugins: qos,router,segments,trunk,vpnaas,taas,tapmirror
         external_dns_driver: "{{ _neutron_external_dns_driver | default(omit) }}"
       cors:
         allowed_origin: "*"
@@ -83,6 +83,12 @@ __neutron_helm_values:
           tunnel_id_ranges: 1:1000
         ml2_type_vlan:
           network_vlan_ranges: external:1:4094
+      taas:
+        taas:
+          enabled: true
+    taas_plugin:
+      service_providers:
+        service_provider: TAAS:TAAS:neutron_taas.services.taas.service_drivers.taas_rpc.TaasRpcDriver:default
   manifests:
     ingress_server: false
     service_ingress_server: false
@@ -91,7 +97,7 @@ __neutron_ovn_helm_values:
   conf:
     neutron:
       DEFAULT:
-        service_plugins: qos,ovn-router,segments,trunk,log,ovn-vpnaas
+        service_plugins: qos,ovn-router,segments,trunk,log,ovn-vpnaas,taas,tapmirror
       ovn:
         ovn_emit_need_to_frag: true
       service_providers:
@@ -114,6 +120,9 @@ __neutron_ovn_helm_values:
         ml2:
           type_drivers: flat,vlan,geneve
           tenant_network_types: geneve
+    taas_plugin:
+      service_providers:
+        service_provider: TAAS:TAAS:neutron_taas.services.taas.service_drivers.ovn.taas_ovn.TaasOvnDriver:default
   manifests:
     daemonset_dhcp_agent: false
     daemonset_l3_agent: false
