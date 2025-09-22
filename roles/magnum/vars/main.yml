@@ -76,21 +76,37 @@ _magnum_helm_values:
       octavia_client:
         endpoint_type: internalURL
         region_name: "{{ openstack_helm_endpoints_octavia_region_name }}"
+      oslo_messaging_notifications: "{{ oslo_messaging_notifications }}"
+      oslo_messaging_kafka: "{{ oslo_messaging_kafka }}"
   pod:
     replicas:
       api: 3
       conductor: 3
     mounts:
+      magnum_api:
+        magnum_api:
+          volumeMounts:
+            - name: kafka-ca
+              mountPath: /etc/pki/kafka
+          volumes:
+            - name: kafka-ca
+              secret:
+                secretName: kafka-cluster-cluster-ca-cert
       magnum_conductor:
         magnum_conductor:
           volumeMounts:
             - name: ca-certificates
               mountPath: /etc/ssl/certs/ca-certificates.crt
               readOnly: true
+            - name: kafka-ca
+              mountPath: /etc/pki/kafka
           volumes:
             - name: ca-certificates
               hostPath:
                 path: "{{ defaults_ca_certificates_path }}"
+            - name: kafka-ca
+              secret:
+                secretName: kafka-cluster-cluster-ca-cert
   manifests:
     ingress_api: false
     service_ingress_api: false

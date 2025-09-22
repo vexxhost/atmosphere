@@ -22,7 +22,7 @@ _keystone_helm_values:
     mounts:
       keystone_api:
         keystone_api:
-          volumeMounts: "{{ keystone_domains | vexxhost.atmosphere.keystone_domains_to_mounts + [{'name': 'ca-certificates', 'mountPath': '/etc/ssl/certs/ca-certificates.crt', 'readOnly': true}] }}"
+          volumeMounts: "{{ keystone_domains | vexxhost.atmosphere.keystone_domains_to_mounts + [{'name': 'ca-certificates','mountPath': '/etc/ssl/certs/ca-certificates.crt','readOnly': true},{'name': 'kafka-ca','mountPath': '/etc/pki/kafka','readOnly': true}] }}"
           volumes:
             - name: keystone-openid-metadata
               configMap:
@@ -30,6 +30,9 @@ _keystone_helm_values:
             - name: ca-certificates
               hostPath:
                 path: "{{ defaults_ca_certificates_path }}"
+            - name: kafka-ca
+              secret:
+                secretName: kafka-cluster-cluster-ca-cert
   conf:
     keystone:
       DEFAULT:
@@ -52,8 +55,8 @@ _keystone_helm_values:
           values:
             - "http://localhost:9990/auth/websso/"
             - "https://{{ openstack_helm_endpoints_horizon_api_host }}/auth/websso/"
-      oslo_messaging_notifications:
-        driver: noop
+      oslo_messaging_notifications: "{{ oslo_messaging_notifications }}"
+      oslo_messaging_kafka: "{{ oslo_messaging_kafka }}"
     wsgi_keystone: |
       LoadModule headers_module /usr/lib/apache2/modules/mod_headers.so
       Listen 0.0.0.0:5000
