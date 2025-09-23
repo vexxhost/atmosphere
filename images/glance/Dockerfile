@@ -3,13 +3,13 @@
 # Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
 
 FROM openstack-venv-builder AS build
-# renovate: name=openstack/glance repo=https://opendev.org/openstack/glance.git branch=master
-ARG GLANCE_GIT_REF=788172a6f7c7a214e87a80a27cb26ea33da67a58
-ADD --keep-git-dir=true https://opendev.org/openstack/glance.git#${GLANCE_GIT_REF} /src/glance
+# renovate: name=openstack/glance repo=https://github.com/openstack/glance.git branch=master
+ARG GLANCE_GIT_REF=60a2f055d54eb28413921c84afa7ed400bdb0695
+ADD --keep-git-dir=true https://github.com/openstack/glance.git#${GLANCE_GIT_REF} /src/glance
 RUN git -C /src/glance fetch --unshallow
-# renovate: name=openstack/glance_store repo=https://opendev.org/openstack/glance_store.git branch=master
-ARG GLANCE_STORE_GIT_REF=2fd7875820a531d26336a317d5c0841d452bc6f9
-ADD --keep-git-dir=true https://opendev.org/openstack/glance_store.git#${GLANCE_STORE_GIT_REF} /src/glance_store
+# renovate: name=openstack/glance_store repo=https://github.com/openstack/glance_store.git branch=master
+ARG GLANCE_STORE_GIT_REF=b320f11c8e6c0db495a0d0bd3d43c9406cea1667
+ADD --keep-git-dir=true https://github.com/openstack/glance_store.git#${GLANCE_STORE_GIT_REF} /src/glance_store
 RUN git -C /src/glance_store fetch --unshallow
 RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe
 uv pip install \

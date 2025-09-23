@@ -3,10 +3,10 @@ on:
   push:
     branches:
       - main
+      - stable/**
 
 concurrency:
-  group: ${{ github.ref }}
-  cancel-in-progress: true
+  group: docs
 
 jobs:
   pages:
@@ -20,6 +20,7 @@ jobs:
     steps:
     - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4
       with:
+        ref: main
         fetch-depth: 0
     - id: deployment
       uses: sphinx-notes/pages@v3
