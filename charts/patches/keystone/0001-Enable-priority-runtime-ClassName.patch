@@ -1,0 +1,104 @@
+diff --git a/keystone/templates/cron-job-credential-rotate.yaml b/keystone/templates/cron-job-credential-rotate.yaml
+index 59060796..bd45b2d1 100644
+--- a/keystone/templates/cron-job-credential-rotate.yaml
++++ b/keystone/templates/cron-job-credential-rotate.yaml
+@@ -70,6 +70,8 @@ spec:
+           labels:
+ {{ tuple $envAll "keystone" "credential-rotate" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 12 }}
+         spec:
++{{ tuple "keystone_credential_rotate" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 10 }}
++{{ tuple "keystone_credential_rotate" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 10 }}
+           serviceAccountName: {{ $serviceAccountName }}
+           initContainers:
+ {{ tuple $envAll "credential_rotate" $mounts_keystone_credential_rotate_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 12 }}
+diff --git a/keystone/templates/cron-job-fernet-rotate.yaml b/keystone/templates/cron-job-fernet-rotate.yaml
+index a059f929..742117d4 100644
+--- a/keystone/templates/cron-job-fernet-rotate.yaml
++++ b/keystone/templates/cron-job-fernet-rotate.yaml
+@@ -71,6 +71,8 @@ spec:
+           labels:
+ {{ tuple $envAll "keystone" "fernet-rotate" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 12 }}
+         spec:
++{{ tuple "keystone_fernet_rotate" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 10 }}
++{{ tuple "keystone_fernet_rotate" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 10 }}
+           serviceAccountName: {{ $serviceAccountName }}
+ {{ dict "envAll" $envAll "application" "fernet_rotate" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 10 }}
+           initContainers:
+diff --git a/keystone/templates/deployment-api.yaml b/keystone/templates/deployment-api.yaml
+index ee4e13c9..46df21fe 100644
+--- a/keystone/templates/deployment-api.yaml
++++ b/keystone/templates/deployment-api.yaml
+@@ -54,6 +54,8 @@ spec:
+ {{ dict "envAll" $envAll "podName" "keystone-api" "containerNames" (list "keystone-api") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+     spec:
+ {{ dict "envAll" $envAll "application" "keystone" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
++{{ tuple "keystone_api" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "keystone_api" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
+       serviceAccountName: {{ $serviceAccountName }}
+       affinity:
+ {{ tuple $envAll "keystone" "api" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
+diff --git a/keystone/templates/job-credential-cleanup.yaml b/keystone/templates/job-credential-cleanup.yaml
+index 9f268027..dff22c2d 100644
+--- a/keystone/templates/job-credential-cleanup.yaml
++++ b/keystone/templates/job-credential-cleanup.yaml
+@@ -45,6 +45,8 @@ spec:
+         configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
+ {{ dict "envAll" $envAll "podName" "keystone-credential-cleanup" "containerNames" (list "keystone-credential-cleanup") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+     spec:
++{{ tuple "keystone_credential_cleanup" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "keystone_credential_cleanup" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
+       serviceAccountName: {{ $serviceName }}
+       restartPolicy: Never
+ {{ if $envAll.Values.pod.tolerations.keystone.enabled }}
+diff --git a/keystone/templates/job-credential-setup.yaml b/keystone/templates/job-credential-setup.yaml
+index 38ff3c8b..c01de164 100644
+--- a/keystone/templates/job-credential-setup.yaml
++++ b/keystone/templates/job-credential-setup.yaml
+@@ -74,6 +74,8 @@ spec:
+         configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
+ {{ dict "envAll" $envAll "podName" "keystone-credential-setup" "containerNames" (list "keystone-credential-setup") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+     spec:
++{{ tuple "keystone_credential_setup" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "keystone_credential_setup" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
+       serviceAccountName: {{ $serviceAccountName }}
+ {{ dict "envAll" $envAll "application" "credential_setup" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+       initContainers:
+diff --git a/keystone/templates/job-domain-manage.yaml b/keystone/templates/job-domain-manage.yaml
+index 87c82ebd..dacf8a0d 100644
+--- a/keystone/templates/job-domain-manage.yaml
++++ b/keystone/templates/job-domain-manage.yaml
+@@ -42,6 +42,8 @@ spec:
+         configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
+ {{ dict "envAll" $envAll "podName" "keystone-domain-manage" "containerNames" (list "keystone-domain-manage" "keystone-domain-manage-init") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+     spec:
++{{ tuple "keystone_domain_manage" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "keystone_domain_manage" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
+       serviceAccountName: {{ $serviceAccountName }}
+ {{ dict "envAll" $envAll "application" "domain_manage" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+       restartPolicy: OnFailure
+diff --git a/keystone/templates/job-fernet-setup.yaml b/keystone/templates/job-fernet-setup.yaml
+index d52aa6ce..8c1511a2 100644
+--- a/keystone/templates/job-fernet-setup.yaml
++++ b/keystone/templates/job-fernet-setup.yaml
+@@ -74,6 +74,8 @@ spec:
+         configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
+ {{ dict "envAll" $envAll "podName" "keystone-fernet-setup" "containerNames" (list "keystone-fernet-setup") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+     spec:
++{{ tuple "keystone_fernet_setup" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "keystone_fernet_setup" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
+       serviceAccountName: {{ $serviceAccountName }}
+ {{ dict "envAll" $envAll "application" "fernet_setup" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+       initContainers:
+diff --git a/keystone/templates/pod-rally-test.yaml b/keystone/templates/pod-rally-test.yaml
+index ad5b23a0..0ee178f3 100644
+--- a/keystone/templates/pod-rally-test.yaml
++++ b/keystone/templates/pod-rally-test.yaml
+@@ -42,6 +42,8 @@ spec:
+ {{ dict "envAll" $envAll "application" "test" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 2 }}
+   nodeSelector:
+     {{ .Values.labels.test.node_selector_key }}: {{ .Values.labels.test.node_selector_value }}
++{{ tuple "keystone_tests" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 2 }}
++{{ tuple "keystone_tests" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 2 }}
+   serviceAccountName: {{ $serviceAccountName }}
+   initContainers:
+ {{ tuple $envAll "tests" $mounts_tests_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 4 }}
