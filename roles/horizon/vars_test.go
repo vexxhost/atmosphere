@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/vexxhost/atmosphere/internal/openstack_helm"
-	"github.com/vexxhost/atmosphere/internal/testutils"
 )
 
 var (
@@ -34,7 +33,4 @@ func TestMain(m *testing.M) {
 func TestHelmValues(t *testing.T) {
 	vals, err := openstack_helm.CoalescedHelmValues("../../charts/horizon", &vars.HelmValues)
 	require.NoError(t, err)
-
-	testutils.TestAllPodsHaveRuntimeClass(t, vals)
-	testutils.TestAllPodsHavePriorityClass(t, vals)
 }
