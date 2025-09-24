@@ -31,22 +31,6 @@
       tags:
         - always
 
-- hosts: "{{ target | default('all') }}"
-  become: true
-  gather_facts: false
-  tasks:
-    - name: Install PIP
-      ansible.builtin.package:
-        name: python3-pip
-
-    # (rico) there is dependency isuse with pyopenssl and cryptography before 22.1.0
-    # This make sure we have consist dependency between them.
-    - name: Upgrade pyopenssl in pip
-      ansible.builtin.pip:
-        name:
-          - pyopenssl>=22.1.0
-        extra_args: --upgrade
-
 - import_playbook: vexxhost.kubernetes.site
   vars:
     keepalived_image: "{{ atmosphere_images['keepalived'] }}"

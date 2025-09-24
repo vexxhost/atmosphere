@@ -1,0 +1,26 @@
+diff --git a/ironic/templates/deployment-api.yaml b/ironic/templates/deployment-api.yaml
+index 7d4b8387..491ae809 100644
+--- a/ironic/templates/deployment-api.yaml
++++ b/ironic/templates/deployment-api.yaml
+@@ -45,6 +45,8 @@ spec:
+         configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
+ {{ tuple "ironic_api" . | include "helm-toolkit.snippets.custom_pod_annotations" | indent 8 }}
+     spec:
++{{ tuple "ironic_api" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "ironic_api" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
+       serviceAccountName: {{ $serviceAccountName }}
+       affinity:
+ {{ tuple $envAll "ironic" "api" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
+diff --git a/ironic/templates/statefulset-conductor.yaml b/ironic/templates/statefulset-conductor.yaml
+index bcf6238c..920d4afc 100644
+--- a/ironic/templates/statefulset-conductor.yaml
++++ b/ironic/templates/statefulset-conductor.yaml
+@@ -44,6 +44,8 @@ spec:
+         configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
+         configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
+     spec:
++{{ tuple "ironic_conductor" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "ironic_conductor" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
+       serviceAccountName: {{ $serviceAccountName }}
+       affinity:
+ {{ tuple $envAll "ironic" "conductor" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}

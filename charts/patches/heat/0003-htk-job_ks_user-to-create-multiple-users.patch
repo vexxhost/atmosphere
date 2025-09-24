@@ -1,0 +1,140 @@
+From a7f921d10b9a52c2ed29519e0e97c9931150698b Mon Sep 17 00:00:00 2001
+From: Vladimir Kozhukalov <kozhukalov@gmail.com>
+Date: Wed, 30 Apr 2025 18:26:35 -0500
+Subject: [PATCH] [htk] job_ks_user to create multiple users
+
+There could be scenarios when a chart needs to
+create multiple service accounts. The PS modifies
+the helm-toolkit job-ks-user manifest so it deploys
+the job with multiple containers where every container
+manages a single service account.
+
+Also modify heat chart to align with the change.
+
+Depends-on: I12eb9341d5ff633ad4435f4938bf8c946ea388ee
+Change-Id: Icec59a93082ac213eed0531f129e8c44436e6ccc
+---
+ heat/templates/job-ks-user-trustee.yaml       | 31 ----------------
+ heat/templates/job-ks-user.yaml               |  2 +-
+ heat/values.yaml                              |  7 ----
+ .../templates/manifests/_job-ks-user.yaml.tpl | 36 +++++++------------
+ releasenotes/notes/heat-5e861ec1ee8e2784.yaml |  7 ++++
+ .../notes/helm-toolkit-a2810391532bd64a.yaml  |  5 +++
+ 6 files changed, 25 insertions(+), 63 deletions(-)
+ delete mode 100644 heat/templates/job-ks-user-trustee.yaml
+ create mode 100644 releasenotes/notes/heat-5e861ec1ee8e2784.yaml
+ create mode 100644 releasenotes/notes/helm-toolkit-a2810391532bd64a.yaml
+
+diff --git a/heat/templates/job-ks-user-trustee.yaml b/heat/templates/job-ks-user-trustee.yaml
+deleted file mode 100644
+index 665be8171..000000000
+--- a/heat/templates/job-ks-user-trustee.yaml
++++ /dev/null
+@@ -1,31 +0,0 @@
+-{{/*
+-Licensed under the Apache License, Version 2.0 (the "License");
+-you may not use this file except in compliance with the License.
+-You may obtain a copy of the License at
+-
+-   http://www.apache.org/licenses/LICENSE-2.0
+-
+-Unless required by applicable law or agreed to in writing, software
+-distributed under the License is distributed on an "AS IS" BASIS,
+-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-See the License for the specific language governing permissions and
+-limitations under the License.
+-*/}}
+-
+-{{- define "metadata.annotations.job.heat_trust" }}
+-helm.sh/hook: post-install,post-upgrade
+-{{- end }}
+-
+-{{- if .Values.manifests.job_ks_user_trustee }}
+-{{- $ksUserJob := dict "envAll" . "serviceName" "heat" "serviceUser" "heat_trustee" -}}
+-{{- if or .Values.manifests.certificates .Values.tls.identity -}}
+-{{- $_ := set $ksUserJob "tlsSecret" .Values.secrets.tls.orchestration.api.internal -}}
+-{{- end -}}
+-{{- if .Values.helm3_hook }}
+-{{- $_ := set $ksUserJob "jobAnnotations" (include "metadata.annotations.job.heat_trust" . | fromYaml) }}
+-{{- end }}
+-{{- if .Values.pod.tolerations.heat.enabled -}}
+-{{- $_ := set $ksUserJob "tolerationsEnabled" true -}}
+-{{- end -}}
+-{{ $ksUserJob | include "helm-toolkit.manifests.job_ks_user" }}
+-{{- end }}
+diff --git a/heat/templates/job-ks-user.yaml b/heat/templates/job-ks-user.yaml
+index c5be1fea9..e3fdd6b07 100644
+--- a/heat/templates/job-ks-user.yaml
++++ b/heat/templates/job-ks-user.yaml
+@@ -18,7 +18,7 @@ helm.sh/hook-weight: "-1"
+ {{- end }}
+ 
+ {{- if .Values.manifests.job_ks_user }}
+-{{- $ksUserJob := dict "envAll" . "serviceName" "heat" -}}
++{{- $ksUserJob := dict "envAll" . "serviceName" "heat" "serviceUsers" (tuple "heat" "heat_trustee") -}}
+ {{- if or .Values.manifests.certificates .Values.tls.identity -}}
+ {{- $_ := set $ksUserJob "tlsSecret" .Values.secrets.tls.orchestration.api.internal -}}
+ {{- end -}}
+diff --git a/heat/values.yaml b/heat/values.yaml
+index 9d33c6476..5075c7e0f 100644
+--- a/heat/values.yaml
++++ b/heat/values.yaml
+@@ -584,7 +584,6 @@ dependencies:
+         - heat-db-sync
+         - heat-rabbit-init
+         - heat-ks-user
+-        - heat-trustee-ks-user
+         - heat-domain-ks-user
+         - heat-ks-endpoints
+         - heat-bootstrap
+@@ -600,7 +599,6 @@ dependencies:
+         - heat-db-sync
+         - heat-rabbit-init
+         - heat-ks-user
+-        - heat-trustee-ks-user
+         - heat-domain-ks-user
+         - heat-ks-endpoints
+         - heat-bootstrap
+@@ -616,7 +614,6 @@ dependencies:
+         - heat-db-sync
+         - heat-rabbit-init
+         - heat-ks-user
+-        - heat-trustee-ks-user
+         - heat-domain-ks-user
+         - heat-ks-endpoints
+         - heat-bootstrap
+@@ -650,7 +647,6 @@ dependencies:
+         - heat-db-sync
+         - heat-rabbit-init
+         - heat-ks-user
+-        - heat-trustee-ks-user
+         - heat-domain-ks-user
+         - heat-ks-endpoints
+         - heat-bootstrap
+@@ -665,7 +661,6 @@ dependencies:
+       jobs:
+         - heat-db-sync
+         - heat-ks-user
+-        - heat-trustee-ks-user
+         - heat-domain-ks-user
+         - heat-ks-endpoints
+       services:
+@@ -679,7 +674,6 @@ dependencies:
+       jobs:
+         - heat-db-sync
+         - heat-ks-user
+-        - heat-trustee-ks-user
+         - heat-domain-ks-user
+         - heat-ks-endpoints
+       services:
+@@ -710,7 +704,6 @@ dependencies:
+     trusts:
+       jobs:
+         - heat-ks-user
+-        - heat-trustee-ks-user
+         - heat-domain-ks-user
+       services:
+         - endpoint: internal
+-- 
+2.25.1
+

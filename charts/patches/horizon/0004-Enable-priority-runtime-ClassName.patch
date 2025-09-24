@@ -1,0 +1,39 @@
+diff --git a/horizon/templates/deployment.yaml b/horizon/templates/deployment.yaml
+index 0037fef3..56ff0e98 100644
+--- a/horizon/templates/deployment.yaml
++++ b/horizon/templates/deployment.yaml
+@@ -48,6 +48,8 @@ spec:
+ {{- end }}
+ {{ dict "envAll" $envAll "podName" "horizon" "containerNames" (list "horizon" "init" ) | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+     spec:
++{{ tuple "horizon" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "horizon" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
+       serviceAccountName: {{ $serviceAccountName }}
+ {{ dict "envAll" $envAll "application" "horizon" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+       affinity:
+diff --git a/horizon/templates/job-db-sync.yaml b/horizon/templates/job-db-sync.yaml
+index c2229cdd..3058863c 100644
+--- a/horizon/templates/job-db-sync.yaml
++++ b/horizon/templates/job-db-sync.yaml
+@@ -41,6 +41,8 @@ spec:
+       annotations:
+ {{ dict "envAll" $envAll "podName" "horizon-db-sync" "containerNames" (list "horizon-db-sync" "init" ) | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+     spec:
++{{ tuple "db_sync" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "db_sync" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
+       serviceAccountName: {{ $serviceAccountName }}
+ {{ dict "envAll" $envAll "application" "db_sync" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+       restartPolicy: OnFailure
+diff --git a/horizon/templates/pod-helm-tests.yaml b/horizon/templates/pod-helm-tests.yaml
+index 7d163039..7c9d0a3b 100644
+--- a/horizon/templates/pod-helm-tests.yaml
++++ b/horizon/templates/pod-helm-tests.yaml
+@@ -34,6 +34,8 @@ metadata:
+ spec:
+ {{ dict "envAll" $envAll "application" "test" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 2 }}
+   restartPolicy: Never
++{{ tuple "horizon_tests" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 2 }}
++{{ tuple "horizon_tests" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 2 }}
+   serviceAccountName: {{ $serviceAccountName }}
+ {{ if $envAll.Values.pod.tolerations.horizon.enabled }}
+ {{ tuple $envAll "horizon" | include "helm-toolkit.snippets.kubernetes_tolerations" | indent 2 }}

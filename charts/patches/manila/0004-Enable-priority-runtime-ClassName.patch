@@ -1,0 +1,65 @@
+diff --git a/manila/templates/deployment-api.yaml b/manila/templates/deployment-api.yaml
+index bcc352f0..809f4e9f 100644
+--- a/manila/templates/deployment-api.yaml
++++ b/manila/templates/deployment-api.yaml
+@@ -46,6 +46,8 @@ spec:
+ {{ dict "envAll" $envAll "podName" "manila-api" "containerNames" (list "init" "manila-api") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+     spec:
+ {{ dict "envAll" $envAll "application" "manila" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
++{{ tuple "manila_api" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "manila_api" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
+       serviceAccountName: {{ $serviceAccountName }}
+       affinity:
+ {{ tuple $envAll "manila" "api" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
+diff --git a/manila/templates/deployment-data.yaml b/manila/templates/deployment-data.yaml
+index 21db299e..6c58ebce 100644
+--- a/manila/templates/deployment-data.yaml
++++ b/manila/templates/deployment-data.yaml
+@@ -46,6 +46,8 @@ spec:
+ {{ dict "envAll" $envAll "podName" "manila-data" "containerNames" (list "init" "manila-data") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+     spec:
+ {{ dict "envAll" $envAll "application" "manila" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
++{{ tuple "manila_data" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "manila_data" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
+       serviceAccountName: {{ $serviceAccountName }}
+       affinity:
+ {{ tuple $envAll "manila" "data" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
+diff --git a/manila/templates/deployment-scheduler.yaml b/manila/templates/deployment-scheduler.yaml
+index 4858dfce..b3a8008e 100644
+--- a/manila/templates/deployment-scheduler.yaml
++++ b/manila/templates/deployment-scheduler.yaml
+@@ -46,6 +46,8 @@ spec:
+ {{ dict "envAll" $envAll "podName" "manila-scheduler" "containerNames" (list "init" "manila-scheduler") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+     spec:
+ {{ dict "envAll" $envAll "application" "manila" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
++{{ tuple "manila_scheduler" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "manila_scheduler" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
+       serviceAccountName: {{ $serviceAccountName }}
+       affinity:
+ {{ tuple $envAll "manila" "scheduler" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
+diff --git a/manila/templates/deployment-share.yaml b/manila/templates/deployment-share.yaml
+index 87bff3b1..26b00390 100644
+--- a/manila/templates/deployment-share.yaml
++++ b/manila/templates/deployment-share.yaml
+@@ -46,6 +46,8 @@ spec:
+ {{ dict "envAll" $envAll "podName" "manila-share" "containerNames" (list "init" "manila-share" "manila-share-init") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+     spec:
+ {{ dict "envAll" $envAll "application" "manila" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
++{{ tuple "manila_share" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "manila_share" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
+       serviceAccountName: {{ $serviceAccountName }}
+       affinity:
+ {{ tuple $envAll "manila" "share" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
+diff --git a/manila/templates/pod-rally-test.yaml b/manila/templates/pod-rally-test.yaml
+index 928c1831..20bf09af 100644
+--- a/manila/templates/pod-rally-test.yaml
++++ b/manila/templates/pod-rally-test.yaml
+@@ -42,6 +42,8 @@ spec:
+ {{ dict "envAll" $envAll "application" "test" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 2 }}
+   nodeSelector:
+     {{ .Values.labels.test.node_selector_key }}: {{ .Values.labels.test.node_selector_value }}
++{{ tuple "manila_tests" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 2 }}
++{{ tuple "manila_tests" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 2 }}
+   serviceAccountName: {{ $serviceAccountName }}
+   initContainers:
+ {{ tuple $envAll "tests" $mounts_tests_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 4 }}
