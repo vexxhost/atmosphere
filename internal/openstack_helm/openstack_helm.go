@@ -16,6 +16,7 @@ type Conf struct {
 	Designate *DesignateConf `yaml:"designate,omitempty"`
 	Glance    *GlanceConf    `yaml:"glance,omitempty"`
 	Heat      *HeatConf      `yaml:"heat,omitempty"`
+	Ironic    *IronicConf    `yaml:"ironic,omitempty"`
 	Keystone  *KeystoneConf  `yaml:"keystone,omitempty"`
 	Magnum    *MagnumConf    `yaml:"magnum,omitempty"`
 	Manila    *ManilaConf    `yaml:"manila,omitempty"`
