@@ -29,6 +29,8 @@ _designate_helm_values:
         managed_resource_tenant_id: "{{ _designate_project_info.projects[0].id }}"
     pools: "{{ designate_pools | to_yaml }}"
   pod:
+    labels:
+      include_app_kubernetes_io: false
     replicas:
       api: 3
       central: 3
