@@ -31,6 +31,6 @@ func TestMain(m *testing.M) {
 }
 
 func TestHelmValues(t *testing.T) {
-	vals, err := openstack_helm.CoalescedHelmValues("../../charts/horizon", &vars.HelmValues)
+	_, err := openstack_helm.CoalescedHelmValues("../../charts/horizon", &vars.HelmValues)
 	require.NoError(t, err)
 }
