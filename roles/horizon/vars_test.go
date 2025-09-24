@@ -1,0 +1,36 @@
+package horizon
+
+import (
+	_ "embed"
+	"os"
+	"testing"
+
+	"github.com/goccy/go-yaml"
+	"github.com/stretchr/testify/require"
+
+	"github.com/vexxhost/atmosphere/internal/openstack_helm"
+)
+
+var (
+	//go:embed vars/main.yml
+	varsFile []byte
+	vars     Vars
+)
+
+type Vars struct {
+	openstack_helm.HelmValues `yaml:"_horizon_helm_values"`
+}
+
+func TestMain(m *testing.M) {
+	t := &testing.T{}
+	err := yaml.UnmarshalWithOptions(varsFile, &vars)
+	require.NoError(t, err)
+
+	code := m.Run()
+	os.Exit(code)
+}
+
+func TestHelmValues(t *testing.T) {
+	_, err := openstack_helm.CoalescedHelmValues("../../charts/horizon", &vars.HelmValues)
+	require.NoError(t, err)
+}
