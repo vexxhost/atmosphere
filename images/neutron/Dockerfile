@@ -28,7 +28,7 @@ ARG LOG_PASER_GIT_REF=3895d8f9d004e612c71b4f798d31c758e113946b
 ADD --keep-git-dir=true https://github.com/vexxhost/neutron-ovn-network-logging-parser.git#${LOG_PASER_GIT_REF} /src/neutron-ovn-network-logging-parser
 RUN git -C /src/neutron-ovn-network-logging-parser fetch --unshallow
 # renovate: name=openstack/tap-as-a-service repo=https://opendev.org/openstack/tap-as-a-service.git branch=master
-ARG TAP_AS_A_SERVICE_GIT_REF=7fb35455e056b08088291e048b35c185b2f8f208
+ARG TAP_AS_A_SERVICE_GIT_REF=c9abd1a6095240b65ebfd0a9b8dae6adfbea4982
 ADD --keep-git-dir=true https://opendev.org/openstack/tap-as-a-service.git#${TAP_AS_A_SERVICE_GIT_REF} /src/tap-as-a-service
 RUN git -C /src/tap-as-a-service fetch --unshallow
 RUN \
