@@ -115,6 +115,9 @@ __neutron_ovn_helm_values:
     neutron_vpnaas:
       service_providers:
         service_provider: VPN:strongswan:neutron_vpnaas.services.vpn.service_drivers.ovn_ipsec.IPsecOvnVPNDriver:default
+    dhcp_agent:
+      DEFAULT:
+        dnsmasq_dns_servers: "{{ neutron_coredns_cluster_ip | default('1.1.1.1') }}"        
     plugins:
       ml2_conf:
         agent:
