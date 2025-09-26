@@ -76,7 +76,6 @@
         source /etc/profile.d/atmosphere.sh
         openstack share type show {{ item.name }} ||
         openstack share type create \
-          --public {{ item.is_public | default(true) }} \
           {{ item.name }} {{ item.driver_handles_share_servers | default(true) }}
         # Set additional settings
         {% if item.description is defined %}
