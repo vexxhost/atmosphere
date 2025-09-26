@@ -20,7 +20,7 @@ ARG NETWORKING_GENERIC_SWITCH_GIT_REF=2f7f3e12369e46294a2be5c780db373ba831124c
 ADD --keep-git-dir=true https://github.com/openstack/networking-generic-switch.git#${NETWORKING_GENERIC_SWITCH_GIT_REF} /src/networking-generic-switch
 RUN git -C /src/networking-generic-switch fetch --unshallow
 # renovate: name=vexxhost/neutron-policy-server repo=https://github.com/vexxhost/neutron-policy-server.git branch=main
-ARG POLICY_SERVER_GIT_REF=41c862a7e15955195ebac56a48ae98137aac146d
+ARG POLICY_SERVER_GIT_REF=a215317bfa147f29dd4e85ff96a54982384c8ba1
 ADD --keep-git-dir=true https://github.com/vexxhost/neutron-policy-server.git#${POLICY_SERVER_GIT_REF} /src/neutron-policy-server
 RUN git -C /src/neutron-policy-server fetch --unshallow
 # renovate: name=vexxhost/neutron-ovn-network-logging-parser repo=https://github.com/vexxhost/neutron-ovn-network-logging-parser.git branch=main
