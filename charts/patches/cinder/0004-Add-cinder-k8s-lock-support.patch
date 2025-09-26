@@ -1,0 +1,214 @@
+From 4dbab5a75e727b840563a5a1c482a043bcb162e7 Mon Sep 17 00:00:00 2001
+From: ricolin <rlin@vexxhost.com>
+Date: Thu, 31 Jul 2025 14:42:08 +0800
+Subject: [PATCH] Add cinder k8s lock support
+
+Change-Id: Ic9794396a6cd59731870d16870980f521fb325e8
+Signed-off-by: ricolin <rlin@vexxhost.com>
+---
+ charts/cinder/templates/deployment-api.yaml   | 33 ++++++++++
+ .../cinder/templates/deployment-backup.yaml   | 33 ++++++++++
+ .../templates/deployment-scheduler.yaml       | 33 ++++++++++
+ .../cinder/templates/deployment-volume.yaml   | 33 ++++++++++
+ charts/cinder/values.yaml                     |  2 +-
+ images/cinder/Dockerfile                      |  2 +
+ .../cinder/0003.retype-for-get-lock.patch     | 62 +++++++++++++++++++
+ images/openstack-venv-builder/Dockerfile      |  2 +-
+ ...der-k8s-lock-support-c9f5ebdb23d46660.yaml |  6 ++
+ roles/cinder/vars/main.yml                    |  2 +
+ 10 files changed, 206 insertions(+), 2 deletions(-)
+ create mode 100644 images/cinder/patches/cinder/0003.retype-for-get-lock.patch
+ create mode 100644 releasenotes/notes/add-cinder-k8s-lock-support-c9f5ebdb23d46660.yaml
+
+diff --git a/cinder/templates/deployment-api.yaml b/cinder/templates/deployment-api.yaml
+index 117e5038..80f5e5b5 100644
+--- a/cinder/templates/deployment-api.yaml
++++ b/cinder/templates/deployment-api.yaml
+@@ -21,6 +21,39 @@ limitations under the License.
+ {{- $serviceAccountName := "cinder-api" }}
+ {{ tuple $envAll "api" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+ ---
++kind: Role
++apiVersion: rbac.authorization.k8s.io/v1
++metadata:
++  name: {{ $serviceAccountName }}
++rules:
++  - apiGroups:
++      - ''
++      - 'coordination.k8s.io'
++    resources:
++      - leases
++    verbs:
++      - get
++      - list
++      - watch
++      - create
++      - patch
++      - update
++      - delete
++      - deletecollection
++---
++apiVersion: rbac.authorization.k8s.io/v1
++kind: RoleBinding
++metadata:
++  name: {{ $serviceAccountName }}-leases
++subjects:
++  - kind: ServiceAccount
++    name: {{ $serviceAccountName }}
++    namespace: {{ $envAll.Release.Namespace }}
++roleRef:
++  kind: Role
++  name: {{ $serviceAccountName }}
++  apiGroup: rbac.authorization.k8s.io
++---
+ apiVersion: apps/v1
+ kind: Deployment
+ metadata:
+diff --git a/cinder/templates/deployment-backup.yaml b/cinder/templates/deployment-backup.yaml
+index c3abd3b2..9552a4c9 100644
+--- a/cinder/templates/deployment-backup.yaml
++++ b/cinder/templates/deployment-backup.yaml
+@@ -23,6 +23,39 @@ limitations under the License.
+ {{- $serviceAccountName := "cinder-backup" }}
+ {{ tuple $envAll "backup" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+ ---
++kind: Role
++apiVersion: rbac.authorization.k8s.io/v1
++metadata:
++  name: {{ $serviceAccountName }}
++rules:
++  - apiGroups:
++      - ''
++      - 'coordination.k8s.io'
++    resources:
++      - leases
++    verbs:
++      - get
++      - list
++      - watch
++      - create
++      - patch
++      - update
++      - delete
++      - deletecollection
++---
++apiVersion: rbac.authorization.k8s.io/v1
++kind: RoleBinding
++metadata:
++  name: {{ $serviceAccountName }}-leases
++subjects:
++  - kind: ServiceAccount
++    name: {{ $serviceAccountName }}
++    namespace: {{ $envAll.Release.Namespace }}
++roleRef:
++  kind: Role
++  name: {{ $serviceAccountName }}
++  apiGroup: rbac.authorization.k8s.io
++---
+ apiVersion: apps/v1
+ kind: Deployment
+ metadata:
+diff --git a/cinder/templates/deployment-scheduler.yaml b/cinder/templates/deployment-scheduler.yaml
+index f5b66385..52f2207f 100644
+--- a/cinder/templates/deployment-scheduler.yaml
++++ b/cinder/templates/deployment-scheduler.yaml
+@@ -21,6 +21,39 @@ limitations under the License.
+ {{- $serviceAccountName := "cinder-scheduler" }}
+ {{ tuple $envAll "scheduler" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+ ---
++kind: Role
++apiVersion: rbac.authorization.k8s.io/v1
++metadata:
++  name: {{ $serviceAccountName }}
++rules:
++  - apiGroups:
++      - ''
++      - 'coordination.k8s.io'
++    resources:
++      - leases
++    verbs:
++      - get
++      - list
++      - watch
++      - create
++      - patch
++      - update
++      - delete
++      - deletecollection
++---
++apiVersion: rbac.authorization.k8s.io/v1
++kind: RoleBinding
++metadata:
++  name: {{ $serviceAccountName }}-leases
++subjects:
++  - kind: ServiceAccount
++    name: {{ $serviceAccountName }}
++    namespace: {{ $envAll.Release.Namespace }}
++roleRef:
++  kind: Role
++  name: {{ $serviceAccountName }}
++  apiGroup: rbac.authorization.k8s.io
++---
+ apiVersion: apps/v1
+ kind: Deployment
+ metadata:
+diff --git a/cinder/templates/deployment-volume.yaml b/cinder/templates/deployment-volume.yaml
+index fb0d626a..3bb1482f 100644
+--- a/cinder/templates/deployment-volume.yaml
++++ b/cinder/templates/deployment-volume.yaml
+@@ -23,6 +23,39 @@ limitations under the License.
+ {{- $serviceAccountName := "cinder-volume" }}
+ {{ tuple $envAll "volume" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+ ---
++kind: Role
++apiVersion: rbac.authorization.k8s.io/v1
++metadata:
++  name: {{ $serviceAccountName }}
++rules:
++  - apiGroups:
++      - ''
++      - 'coordination.k8s.io'
++    resources:
++      - leases
++    verbs:
++      - get
++      - list
++      - watch
++      - create
++      - patch
++      - update
++      - delete
++      - deletecollection
++---
++apiVersion: rbac.authorization.k8s.io/v1
++kind: RoleBinding
++metadata:
++  name: {{ $serviceAccountName }}-leases
++subjects:
++  - kind: ServiceAccount
++    name: {{ $serviceAccountName }}
++    namespace: {{ $envAll.Release.Namespace }}
++roleRef:
++  kind: Role
++  name: {{ $serviceAccountName }}
++  apiGroup: rbac.authorization.k8s.io
++---
+ apiVersion: apps/v1
+ kind: Deployment
+ metadata:
+diff --git a/cinder/values.yaml b/cinder/values.yaml
+index 8a2299c2..cfd3fed5 100644
+--- a/cinder/values.yaml
++++ b/cinder/values.yaml
+@@ -863,7 +863,7 @@ conf:
+     oslo_messaging_rabbit:
+       rabbit_ha_queues: true
+     coordination:
+-      backend_url: file:///var/lib/cinder/coordination
++      backend_url: kubernetes://namespace=openstack
+     service_user:
+       auth_type: password
+       send_service_user_token: true
+-- 
+2.25.1
+
