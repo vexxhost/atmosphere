@@ -1,0 +1,83 @@
+diff --git a/ovn/templates/daemonset-controller.yaml b/ovn/templates/daemonset-controller.yaml
+index a0543381..661f3123 100644
+--- a/ovn/templates/daemonset-controller.yaml
++++ b/ovn/templates/daemonset-controller.yaml
+@@ -177,6 +177,34 @@ spec:
+               subPath: neutron-ovn-network-logging-parser-uwsgi.ini
+               readOnly: true
+         {{- end }}
++        {{- if .Values.pod.sidecars.openvswitch_exporter }}
++        - name: exporter
++{{ tuple $envAll "openvswitch_exporter" | include "helm-toolkit.snippets.image" | indent 10 }}
++{{ tuple $envAll $envAll.Values.pod.resources.exporter | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
++{{ dict "envAll" $envAll "application" "ovn_controller" "container" "exporter" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
++          args:
++            - --web.listen-address=:9273
++          ports:
++            - name: metrics
++              containerPort: 9273
++          readinessProbe:
++            failureThreshold: 3
++            httpGet:
++              path: /
++              port: metrics
++              scheme: HTTP
++          livenessProbe:
++            failureThreshold: 3
++            httpGet:
++              path: /
++              port: metrics
++              scheme: HTTP
++          volumeMounts:
++            - name: run-openvswitch
++              mountPath: /var/run/ovn
++            - name: run-openvswitch
++              mountPath: /var/run/openvswitch
++        {{- end }}
+       volumes:
+         - name: ovn-bin
+           configMap:
+diff --git a/ovn/values.yaml b/ovn/values.yaml
+index 7cd71d19..b6d6ffec 100644
+--- a/ovn/values.yaml
++++ b/ovn/values.yaml
+@@ -30,6 +30,7 @@ images:
+     vector: docker.io/timberio/vector:0.39.0-debian
+     ovn_logging_parser: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
+     ovn_bgp_agent: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
++    openvswitch_exporter: docker.io/openstackhelm/ovn:latest-ubuntu_focal
+   pull_policy: "IfNotPresent"
+   local_registry:
+     active: false
+@@ -222,6 +223,9 @@ pod:
+         vector:
+           allowPrivilegeEscalation: false
+           readOnlyRootFilesystem: true
++        exporter:
++          allowPrivilegeEscalation: false
++          readOnlyRootFilesystem: true
+     ovn_bgp_agent:
+       container:
+         ovn_bgp_agent_init:
+@@ -357,6 +361,13 @@ pod:
+       limits:
+         memory: "256Mi"
+         cpu: "500m"
++    exporter:
++      requests:
++        memory: "128Mi"
++        cpu: "100m"
++      limits:
++        memory: "256Mi"
++        cpu: "500m"
+     jobs:
+       image_repo_sync:
+         requests:
+@@ -369,6 +380,7 @@ pod:
+   sidecars:
+     ovn_logging_parser: false
+     vector: false
++    openvswitch_exporter: false
+ 
+ secrets:
+   oci_image_registry:
