@@ -20,28 +20,28 @@ Change-Id: I32ddfdd949305964d11cd5f9062bc0c41d152d83
  3 files changed, 26 insertions(+)
  create mode 100644 releasenotes/notes/neutron-96d95ffbdeaaf29a.yaml
 
-diff --git a/neutron/templates/bin/_neutron-server.sh.tpl b/neutron/templates/bin/_neutron-server.sh.tpl
-index be4b254a2..8763ffc38 100644
---- a/neutron/templates/bin/_neutron-server.sh.tpl
-+++ b/neutron/templates/bin/_neutron-server.sh.tpl
-@@ -34,6 +34,12 @@ function start_ovn () {
+diff --git a/charts/neutron/templates/bin/_neutron-server.sh.tpl b/charts/neutron/templates/bin/_neutron-server.sh.tpl
+index 157a3dc4..a6f2675b 100644
+--- a/charts/neutron/templates/bin/_neutron-server.sh.tpl
++++ b/charts/neutron/templates/bin/_neutron-server.sh.tpl
+@@ -22,6 +22,12 @@ function start () {
  {{- if ( has "ovn" .Values.network.backend ) }}
-         --config-file /tmp/pod-shared/ovn.ini \
+   confs+=" --config-file /tmp/pod-shared/ovn.ini"
  {{- end }}
 +{{- if contains "vpnaas" .Values.conf.neutron.DEFAULT.service_plugins }}
-+        --config-file /etc/neutron/neutron_vpnaas.conf \
++  confs+="--config-file /etc/neutron/neutron_vpnaas.conf" \
 +{{- end }}
 +{{- if contains "ovn-vpnaas" .Values.conf.neutron.DEFAULT.service_plugins }}
-+        --config-file /etc/neutron/neutron_ovn_vpn_agent.ini \
++  confs+="--config-file /etc/neutron/neutron_ovn_vpn_agent.ini" \
 +{{- end }}
  {{- if .Values.conf.plugins.taas.taas.enabled }}
-         --config-file /etc/neutron/taas_plugin.ini \
+   confs+=" --config-file /etc/neutron/taas_plugin.ini"
  {{- end }}
-diff --git a/neutron/templates/deployment-server.yaml b/neutron/templates/deployment-server.yaml
-index 7b49b7f9d..07de4e844 100644
---- a/neutron/templates/deployment-server.yaml
-+++ b/neutron/templates/deployment-server.yaml
-@@ -278,6 +278,18 @@ spec:
+diff --git a/charts/neutron/templates/deployment-server.yaml b/charts/neutron/templates/deployment-server.yaml
+index ebddaab1..9af4b413 100644
+--- a/charts/neutron/templates/deployment-server.yaml
++++ b/charts/neutron/templates/deployment-server.yaml
+@@ -273,6 +273,18 @@ spec:
                mountPath: /etc/neutron/policy.yaml
                subPath: policy.yaml
                readOnly: true
@@ -60,20 +60,6 @@ index 7b49b7f9d..07de4e844 100644
  {{- dict "enabled" .Values.manifests.certificates "name" .Values.endpoints.oslo_db.auth.admin.secret.tls.internal "path" "/etc/mysql/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
  {{- dict "enabled" (or .Values.manifests.certificates .Values.tls.identity) "name" .Values.secrets.tls.network.server.internal "path" "/etc/neutron/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
  {{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_messaging.auth.admin.secret.tls.internal "path" "/etc/rabbitmq/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
-diff --git a/releasenotes/notes/neutron-96d95ffbdeaaf29a.yaml b/releasenotes/notes/neutron-96d95ffbdeaaf29a.yaml
-new file mode 100644
-index 000000000..a2c3e3b09
---- /dev/null
-+++ b/releasenotes/notes/neutron-96d95ffbdeaaf29a.yaml
-@@ -0,0 +1,8 @@
-+---
-+neutron:
-+  - |
-+    Add required OVN VPN configuration files to Neutron server so VPN
-+    features behave as expected. The Neutron server receives RPC calls from the
-+    Neutron OVN VPN agent and executes VPN operations. Therefore, the VPN
-+    configuration must be present on the Neutron server.
-+...
 -- 
 2.25.1
 
