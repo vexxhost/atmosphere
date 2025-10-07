@@ -346,3 +346,17 @@
     create_namespace: true
     kubeconfig: "{{ kube_prometheus_stack_helm_kubeconfig }}"
     values: "{{ _kube_prometheus_stack_helm_values | combine(kube_prometheus_stack_helm_values, recursive=True) }}"
+
+- name: Create secret with Prometheus service account token
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: kube-prometheus-stack-prometheus-token
+        namespace: monitoring
+        annotations:
+          kubernetes.io/service-account.name: kube-prometheus-stack-prometheus
+      type: kubernetes.io/service-account-token

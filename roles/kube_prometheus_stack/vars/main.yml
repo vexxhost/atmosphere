@@ -517,6 +517,25 @@ _kube_prometheus_stack_helm_values:
                 replacement: default
                 targetLabel: instance
     additionalPodMonitors:
+      - name: capi
+        jobLabel: cluster.x-k8s.io/provider
+        namespaceSelector:
+          matchNames:
+            - capi-system
+        selector:
+          matchLabels:
+            cluster.x-k8s.io/provider: cluster-api
+        podMetricsEndpoints:
+          - port: metrics
+            scheme: https
+            authorization:
+              type: Bearer
+              credentials:
+                name: kube-prometheus-stack-prometheus-token
+                key: token
+            tlsConfig:
+              insecureSkipVerify: true
+            relabelings: *relabelings_instance_to_pod_name
       - name: ipmi-exporter
         jobLabel: job
         selector:
