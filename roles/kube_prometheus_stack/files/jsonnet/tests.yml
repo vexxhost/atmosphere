@@ -75,11 +75,11 @@ tests:
 
   - interval: 1m
     input_series:
-      - series: 'node_time_seconds{instance="instance1", job="node"}'
+      - series: 'node_time_seconds{instance="instance1", job="node-exporter"}'
         values: '0 60 120 180 240 300'
-      - series: 'node_time_seconds{instance="instance2", job="node"}'
+      - series: 'node_time_seconds{instance="instance2", job="node-exporter"}'
         values: '1 61 121 181 241 301'
-      - series: 'node_time_seconds{instance="instance3", job="node"}'
+      - series: 'node_time_seconds{instance="instance3", job="node-exporter"}'
         values: '2 62 122 182 242 302'
     alert_rule_test:
       - eval_time: 5m
@@ -88,18 +88,18 @@ tests:
           - exp_labels:
               severity: P3
               instance: instance3
-              job: node
+              job: node-exporter
             exp_annotations:
               summary: "Node instance3 has a time difference."
               description: "Node instance3 has a time difference 2."
 
   - interval: 1m
     input_series:
-      - series: 'node_time_seconds{instance="instance1", job="node"}'
+      - series: 'node_time_seconds{instance="instance1", job="node-exporter"}'
         values: '0 60 120 180 240 300'
-      - series: 'node_time_seconds{instance="instance2", job="node"}'
+      - series: 'node_time_seconds{instance="instance2", job="node-exporter"}'
         values: '0 60 120 180 240 300'
-      - series: 'node_time_seconds{instance="instance3", job="node"}'
+      - series: 'node_time_seconds{instance="instance3", job="node-exporter"}'
         values: '0 60 120 180 240 300'
     alert_rule_test:
       - eval_time: 5m
