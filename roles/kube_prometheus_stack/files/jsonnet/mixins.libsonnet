@@ -180,7 +180,12 @@ local mixins = {
       ],
     },
   },
-  node: (import 'vendor/github.com/prometheus/node_exporter/docs/node-mixin/mixin.libsonnet'),
+  node:
+    (import 'vendor/github.com/prometheus/node_exporter/docs/node-mixin/mixin.libsonnet') {
+      _config+:: {
+        nodeExporterSelector: 'job="node-exporter"',
+      },
+    },
   openstack: (import 'openstack.libsonnet'),
 } + (import 'legacy.libsonnet');
 
