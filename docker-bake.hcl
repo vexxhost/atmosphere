@@ -141,10 +141,6 @@ target "openvswitch" {
     contexts = {
         "centos" = "docker-image://quay.io/centos/centos:stream9"
     }
-
-    tags = [
-        "${REGISTRY}/openvswitch:${TAG}"
-    ]
 }
 
 target "ovn" {
