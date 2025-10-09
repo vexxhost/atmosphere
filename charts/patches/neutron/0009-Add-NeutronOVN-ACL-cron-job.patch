@@ -11,21 +11,6 @@ Signed-off-by: ricolin <rlin@vexxhost.com>
 Change-Id: If5c1e0b6cb18b0930a787e4a49423f70b1fc99c8
 Signed-off-by: ricolin <rlin@vexxhost.com>
 ---
- .../config/vocabularies/Base/accept.txt       |   3 +
- .../templates/bin/_neutron-ovn-db-sync.sh.tpl |  38 ++++
- charts/neutron/templates/configmap-bin.yaml   |   2 +
- .../templates/cron-job-ovn-db-sync.yaml       | 184 ++++++++++++++++++
- charts/neutron/values.yaml                    |  24 +++
- .../0007-Add-NeutronOVN-ACL-cron-job.patch    | 106 ++++++++++
- ...nOVNACLNotSync-alert-4b9c2f0f5aea19ed.yaml |   8 +
- roles/defaults/vars/main.yml                  |   1 +
- roles/neutron/vars/main.yml                   |   1 +
- 9 files changed, 367 insertions(+)
- create mode 100644 charts/neutron/templates/bin/_neutron-ovn-db-sync.sh.tpl
- create mode 100644 charts/neutron/templates/cron-job-ovn-db-sync.yaml
- create mode 100644 charts/patches/neutron/0007-Add-NeutronOVN-ACL-cron-job.patch
- create mode 100644 releasenotes/notes/add-NeutronOVNACLNotSync-alert-4b9c2f0f5aea19ed.yaml
-
 diff --git a/neutron/templates/bin/_neutron-ovn-db-sync.sh.tpl b/neutron/templates/bin/_neutron-ovn-db-sync.sh.tpl
 new file mode 100644
 index 00000000..f945ebdd
@@ -88,7 +73,7 @@ new file mode 100644
 index 00000000..636aa8bf
 --- /dev/null
 +++ b/neutron/templates/cron-job-ovn-db-sync.yaml
-@@ -0,0 +1,184 @@
+@@ -0,0 +1,180 @@
 +{{/*
 +Licensed under the Apache License, Version 2.0 (the "License");
 +you may not use this file except in compliance with the License.
@@ -141,12 +126,8 @@ index 00000000..636aa8bf
 +{{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 12 }}
 +{{ dict "envAll" $envAll "podName" "neutron-ovn-db-sync" "containerNames" (list "init" "neutron-ovn-db-sync" ) | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
 +        spec:
-+{{ with .Values.pod.priorityClassName.neutron_ovn_db_sync }}
-+          priorityClassName: {{ . }}
-+{{ end }}
-+{{ with .Values.pod.runtimeClassName.neutron_ovn_db_sync }}
-+          runtimeClassName: {{ . }}
-+{{ end }}
++{{ tuple "neutron_ovn_db_sync" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "neutron_ovn_db_sync" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
 +          serviceAccountName: {{ $serviceAccountName }}
 +          restartPolicy: OnFailure
 +{{ if $envAll.Values.pod.tolerations.neutron.enabled }}
@@ -274,7 +255,7 @@ index 00000000..636aa8bf
 +{{ if $mounts_neutron_ovn_db_sync.volumes }}{{ toYaml $mounts_neutron_ovn_db_sync.volumes | indent 12 }}{{ end }}
 +{{- end }}
 diff --git a/neutron/values.yaml b/neutron/values.yaml
-index 57cb3b70..85b49b5d 100644
+index 83e34c08..76f6bccd 100644
 --- a/neutron/values.yaml
 +++ b/neutron/values.yaml
 @@ -37,6 +37,7 @@ images:
@@ -285,23 +266,7 @@ index 57cb3b70..85b49b5d 100644
      neutron_ovn_vpn: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
      neutron_l3: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
      neutron_l2gw: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
-@@ -399,6 +400,7 @@ pod:
-     neutron_metadata_agent: null
-     neutron_netns_cleanup_cron: null
-     ovn_vpn_agent: null
-+    neutron_ovn_db_sync: null
-     neutron_ovn_metadata_agent: null
-     neutron_ovs_agent: null
-     neutron_sriov_agent: null
-@@ -418,6 +420,7 @@ pod:
-     neutron_metadata_agent: null
-     neutron_netns_cleanup_cron: null
-     ovn_vpn_agent: null
-+    neutron_ovn_db_sync: null
-     neutron_ovn_metadata_agent: null
-     neutron_ovs_agent: null
-     neutron_sriov_agent: null
-@@ -775,6 +778,11 @@ pod:
+@@ -737,6 +738,11 @@ pod:
        neutron_lb_agent:
          volumeMounts:
          volumes:
@@ -313,7 +278,7 @@ index 57cb3b70..85b49b5d 100644
      neutron_metadata_agent:
        init_container: null
        neutron_metadata_agent:
-@@ -1068,6 +1076,13 @@ pod:
+@@ -1030,6 +1036,13 @@ pod:
          limits:
            memory: "1024Mi"
            cpu: "2000m"
@@ -327,7 +292,7 @@ index 57cb3b70..85b49b5d 100644
        tests:
          requests:
            memory: "128Mi"
-@@ -2712,6 +2727,14 @@ health_probe:
+@@ -2674,6 +2687,14 @@ health_probe:
    logging:
      level: ERROR
  
@@ -342,7 +307,7 @@ index 57cb3b70..85b49b5d 100644
  tls:
    identity: false
    oslo_messaging: false
-@@ -2721,6 +2744,7 @@ manifests:
+@@ -2683,6 +2704,7 @@ manifests:
    certificates: false
    configmap_bin: true
    configmap_etc: true
@@ -352,4 +317,3 @@ index 57cb3b70..85b49b5d 100644
    daemonset_lb_agent: true
 -- 
 2.25.1
-
