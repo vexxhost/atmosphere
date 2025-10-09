@@ -71,6 +71,15 @@ _manila_helm_values:
       glance:
         endpoint_type: internalURL
         region_name: "{{ openstack_helm_endpoints_glance_region_name }}"
+    rabbitmq:
+      policies:
+        - vhost: "manila"
+          name: "ha_ttl_manila"
+          definition:
+            message-ttl: 70000
+          priority: 0
+          apply-to: all
+          pattern: '^(?!(amq\.|reply_)).*'
   manifests:
     ingress_api: false
     service_ingress_api: false
