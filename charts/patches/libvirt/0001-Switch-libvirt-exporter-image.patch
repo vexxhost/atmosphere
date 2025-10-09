@@ -1,0 +1,51 @@
+From 6db14abb42534f7b89f944af154e157cf875469f Mon Sep 17 00:00:00 2001
+From: ricolin <rlin@vexxhost.com>
+Date: Thu, 9 Oct 2025 10:53:56 +0800
+Subject: [PATCH] Switch libvirt exporter image
+
+Change-Id: I5423304cc3c41632304be801e571b39968519c45
+ref: https://review.opendev.org/c/openstack/openstack-helm/+/963478
+
+Signed-off-by: ricolin <rlin@vexxhost.com>
+---
+ libvirt/values.yaml                                 | 7 ++++---
+ .../notes/change-libvirt-exporter-27f39f5d0d62dea1.yaml    | 6 ++++++
+ roles/defaults/vars/main.yml                               | 2 +-
+ 3 files changed, 11 insertions(+), 4 deletions(-)
+ create mode 100644 releasenotes/notes/change-libvirt-exporter-27f39f5d0d62dea1.yaml
+
+diff --git a/libvirt/values.yaml b/libvirt/values.yaml
+index ece77e70..08ef0be2 100644
+--- a/libvirt/values.yaml
++++ b/libvirt/values.yaml
+@@ -28,7 +28,7 @@ images:
+   tags:
+     libvirt: docker.io/openstackhelm/libvirt:latest-ubuntu_focal
+     libvirt_tls_sidecar: ghcr.io/vexxhost/atmosphere/libvirt-tls-sidecar:latest
+-    libvirt_exporter: vexxhost/libvirtd-exporter:latest
++    libvirt_exporter: ghcr.io/inovex/prometheus-libvirt-exporter:2.2.0
+     ceph_config_helper: 'docker.io/openstackhelm/ceph-config-helper:ubuntu_jammy_19.2.3-1-20250805'
+     dep_check: quay.io/airshipit/kubernetes-entrypoint:latest-ubuntu_focal
+     image_repo_sync: docker.io/library/docker:17.07.0
+@@ -78,7 +78,7 @@ endpoints:
+   libvirt_exporter:
+     port:
+       metrics:
+-        default: 9474
++        default: 9177
+ 
+ network_policy:
+   libvirt:
+@@ -268,7 +268,8 @@ pod:
+     libvirt_exporter:
+       enabled: false
+       args:
+-        - "--libvirt.nova"
++        - "--libvirt.uri"
++        - "/run/libvirt/libvirt-sock-ro"
+ 
+   affinity:
+     anti:
+-- 
+2.25.1
+
