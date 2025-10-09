@@ -91,6 +91,15 @@ __neutron_helm_values:
     taas_plugin:
       service_providers:
         service_provider: TAAS:TAAS:neutron_taas.services.taas.service_drivers.taas_rpc.TaasRpcDriver:default
+    rabbitmq:
+      policies:
+        - vhost: "neutron"
+          name: "atmosphere"
+          definition:
+            message-ttl: 70000
+          priority: 0
+          apply-to: all
+          pattern: '^(?!(amq\.|reply_)).*'
   manifests:
     ingress_server: false
     service_ingress_server: false

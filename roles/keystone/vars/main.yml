@@ -101,6 +101,15 @@ _keystone_helm_values:
         {% endfor %}
       </VirtualHost>
     ks_domains: "{{ keystone_domains | vexxhost.atmosphere.to_ks_domains }}"
+    rabbitmq:
+      policies:
+        - vhost: "keystone"
+          name: "atmosphere"
+          definition:
+            message-ttl: 70000
+          priority: 0
+          apply-to: all
+          pattern: '^(?!(amq\.|reply_)).*'
   manifests:
     job_credential_cleanup: false
     ingress_api: false
