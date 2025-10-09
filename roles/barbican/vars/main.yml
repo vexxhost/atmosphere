@@ -36,6 +36,15 @@ _barbican_helm_values:
         kek: "{{ barbican_kek }}"
     simple_crypto_kek_rewrap:
       old_kek: "{{ barbican_kek }}"
+    rabbitmq:
+      policies:
+        - vhost: "barbican"
+          name: "ha_ttl_barbican"
+          definition:
+            message-ttl: 70000
+          priority: 0
+          apply-to: all
+          pattern: '^(?!(amq\.|reply_)).*'
 
   manifests:
     ingress_api: false

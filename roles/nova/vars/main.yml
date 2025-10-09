@@ -136,6 +136,15 @@ _nova_helm_values:
         http-raw-body: true
         need-app: true
         socket-timeout: 10
+    rabbitmq:
+      policies:
+        - vhost: "nova"
+          name: "ha_ttl_nova"
+          definition:
+            message-ttl: 70000
+          priority: 0
+          apply-to: all
+          pattern: '^(?!(amq\.|reply_)).*'
   manifests:
     deployment_consoleauth: false
     deployment_placement: false
