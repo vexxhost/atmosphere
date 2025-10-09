@@ -33,6 +33,15 @@ _placement_helm_values:
         pool_timeout: 30
       oslo_messaging_notifications:
         driver: noop
+    rabbitmq:
+      policies:
+        - vhost: "placement"
+          name: "ha_ttl_placement"
+          definition:
+            message-ttl: 70000
+          priority: 0
+          apply-to: all
+          pattern: '^(?!(amq\.|reply_)).*'
   manifests:
     ingress: false
     service_ingress: false

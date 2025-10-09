@@ -28,6 +28,15 @@ _designate_helm_values:
       service:central:
         managed_resource_tenant_id: "{{ _designate_project_info.projects[0].id }}"
     pools: "{{ designate_pools | to_yaml }}"
+    rabbitmq:
+      policies:
+        - vhost: "designate"
+          name: "ha_ttl_designate"
+          definition:
+            message-ttl: 70000
+          priority: 0
+          apply-to: all
+          pattern: '^(?!(amq\.|reply_)).*'
   pod:
     labels:
       include_app_kubernetes_io: false
