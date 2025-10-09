@@ -69,35 +69,19 @@
           type: Available
           status: true
 
+    # NOTE (fitbeard): Use copy of openstack.cloud.share_type module until
+    # new openstack collection release with the fix is out.
+    # https://review.opendev.org/c/openstack/ansible-collections-openstack/+/963259
     - name: Create share types
-      changed_when: false
-      ansible.builtin.shell: |
-        set -o posix
-        source /etc/profile.d/atmosphere.sh
-        openstack share type show {{ item.name }} ||
-        openstack share type create \
-          {{ item.name }} {{ item.driver_handles_share_servers | default(true) }}
-        # Set additional settings
-        {% if item.description is defined %}
-        openstack share type set {{ item.name }} \
-          --description "{{ item.description }}"
-        {% endif %}
-        openstack share type set {{ item.name }} \
-          --public {{ item.is_public | default(true) }}
-        # Set all extra specs
-        {% if item.extra_specs is defined %}
-        {% for key, value in item.extra_specs.items() %}
-        openstack share type set {{ item.name }} \
-          --extra-specs {{ key }}={{ value }}
-        {% endfor %}
-        {% endif %}
-      args:
-        executable: /bin/bash
-      environment:
-        OS_CLOUD: atmosphere
+      vexxhost.atmosphere.share_type:
+        cloud: atmosphere
+        name: "{{ item.name }}"
+        description: "{{ item.description | default(omit) }}"
+        driver_handles_share_servers: "{{ item.driver_handles_share_servers | default(omit) }}"
+        extra_specs: "{{ item.extra_specs | default(omit) }}"
+        is_public: "{{ item.is_public | default(omit) }}"
       loop: "{{ manila_share_types }}"
-      register: configure_manila_share_types
       retries: 60
       delay: 5
-      until: configure_manila_share_types.rc == 0
-      failed_when: configure_manila_share_types.rc != 0
+      register: _result
+      until: _result is not failed
