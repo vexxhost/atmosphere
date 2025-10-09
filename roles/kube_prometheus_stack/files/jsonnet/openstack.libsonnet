@@ -349,7 +349,7 @@
                 summary: 'Octavia Amphora not operational',
                 description: 'Amphora with ID {{ $labels.id }} stuck in non-operational state for more then 1 hour.',
               },
-              expr: 'count by (id,name) (openstack_loadbalancer_amphora_status{status!~"READY|ALLOCATED"}) > 0',
+              expr: 'count by (id,name) (openstack_loadbalancer_amphora_status{status!~"READY|ALLOCATED|DELETED"}) > 0',
               'for': '1h',
               labels: {
                 severity: 'P3',
