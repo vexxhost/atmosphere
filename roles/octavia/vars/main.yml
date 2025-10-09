@@ -27,6 +27,10 @@ _octavia_helm_values:
               mountPath: /etc/octavia/certs/server
             - name: octavia-client-certs
               mountPath: /etc/octavia/certs/client
+            - name: octavia-jobboard-default-ca
+              mountPath: /etc/octavia/certs/jobboard-default
+            - name: octavia-jobboard-sentinel-ca
+              mountPath: /etc/octavia/certs/jobboard-sentinel
           volumes:
             - name: octavia-server-ca
               secret:
@@ -34,6 +38,12 @@ _octavia_helm_values:
             - name: octavia-client-certs
               secret:
                 secretName: octavia-client-certs
+            - name: octavia-jobboard-default-ca
+              secret:
+                secretName: "{{ octavia_jobboard_default_secret_name }}"
+            - name: octavia-jobboard-sentinel-ca
+              secret:
+                secretName: "{{ octavia_jobboard_sentinel_secret_name }}"
       octavia_worker:
         octavia_worker:
           volumeMounts:
@@ -72,6 +82,10 @@ _octavia_helm_values:
               mountPath: /etc/octavia/certs/server
             - name: octavia-client-certs
               mountPath: /etc/octavia/certs/client
+            - name: octavia-jobboard-default-ca
+              mountPath: /etc/octavia/certs/jobboard-default
+            - name: octavia-jobboard-sentinel-ca
+              mountPath: /etc/octavia/certs/jobboard-sentinel
           volumes:
             - name: octavia-server-ca
               secret:
@@ -79,6 +93,12 @@ _octavia_helm_values:
             - name: octavia-client-certs
               secret:
                 secretName: octavia-client-certs
+            - name: octavia-jobboard-default-ca
+              secret:
+                secretName: "{{ octavia_jobboard_default_secret_name }}"
+            - name: octavia-jobboard-sentinel-ca
+              secret:
+                secretName: "{{ octavia_jobboard_sentinel_secret_name }}"
       octavia_health_manager:
         octavia_health_manager:
           volumeMounts:
@@ -86,6 +106,10 @@ _octavia_helm_values:
               mountPath: /etc/octavia/certs/server
             - name: octavia-client-certs
               mountPath: /etc/octavia/certs/client
+            - name: octavia-jobboard-default-ca
+              mountPath: /etc/octavia/certs/jobboard-default
+            - name: octavia-jobboard-sentinel-ca
+              mountPath: /etc/octavia/certs/jobboard-sentinel
           volumes:
             - name: octavia-server-ca
               secret:
@@ -93,6 +117,12 @@ _octavia_helm_values:
             - name: octavia-client-certs
               secret:
                 secretName: octavia-client-certs
+            - name: octavia-jobboard-default-ca
+              secret:
+                secretName: "{{ octavia_jobboard_default_secret_name }}"
+            - name: octavia-jobboard-sentinel-ca
+              secret:
+                secretName: "{{ octavia_jobboard_sentinel_secret_name }}"
     replicas:
       api: 3
       worker: 3
