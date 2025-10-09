@@ -37,11 +37,14 @@ _libvirt_helm_values:
     vencrypt:
       kind: Issuer
       name: libvirt-vnc
-  manifests:
-    role_cert_manager: true
   pod:
     labels:
       include_app_kubernetes_io: false
     sidecars:
       libvirt_exporter:
         enabled: true
+        args:
+          - --libvirt.uri
+          - /run/libvirt/libvirt-sock-ro
+  manifests:
+    role_cert_manager: true
