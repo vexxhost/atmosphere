@@ -177,6 +177,15 @@ _octavia_helm_values:
         jobboard_redis_sentinel: atmosphere
         jobboard_redis_backend_ssl_options: ssl:True,ssl_keyfile:/etc/octavia/certs/jobboard-default/tls.key,ssl_certfile:/etc/octavia/certs/jobboard-default/tls.crt,ssl_ca_certs:/etc/octavia/certs/jobboard-default/ca.crt,ssl_cert_reqs:required
         jobboard_redis_sentinel_ssl_options: ssl:True,ssl_keyfile:/etc/octavia/certs/jobboard-sentinel/tls.key,ssl_certfile:/etc/octavia/certs/jobboard-sentinel/tls.crt,ssl_ca_certs:/etc/octavia/certs/jobboard-sentinel/ca.crt,ssl_cert_reqs:required
+    rabbitmq:
+      policies:
+        - vhost: "octavia"
+          name: "ha_ttl_octavia"
+          definition:
+            message-ttl: 70000
+          priority: 0
+          apply-to: all
+          pattern: '^(?!(amq\.|reply_)).*'
   manifests:
     ingress_api: false
     service_ingress_api: false
