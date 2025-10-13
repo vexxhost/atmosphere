@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 _percona_xtradb_cluster_spec:
-  crVersion: "1.16.1"
+  crVersion: "1.17.0"
   secretsName: percona-xtradb
   enableVolumeExpansion: true
   pxc:
@@ -52,12 +52,12 @@ _percona_xtradb_cluster_spec:
     nodeSelector:
       openstack-control-plane: enabled
     # NOTE(fitbeard): The actual default configuration file can be found here:
-    # https://github.com/percona/percona-docker/blob/pxc-operator-1.16.1/haproxy/dockerdir/etc/haproxy/haproxy-global.cfg
+    # https://github.com/percona/percona-docker/blob/pxc-operator-1.17.0/haproxy/dockerdir/etc/haproxy/haproxy-global.cfg
     # Should be aligned with upstream example when bumping chart version
     configuration: |
       global
         log stdout format raw local0
-        maxconn 8192
+        maxconn 2048
         external-check
         insecure-fork-wanted
         hard-stop-after 10s
