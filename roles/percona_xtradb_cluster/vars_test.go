@@ -92,7 +92,7 @@ func TestPerconaXtraDBClusterPXCConfiguration(t *testing.T) {
 func TestPerconaXtraDBClusterPXCSidecarSpec(t *testing.T) {
 	sidecar := vars.PerconaXtraDBClusterSpec.PXC.Sidecars[0]
 	assert.Equal(t, "exporter", sidecar.Name)
-	defaults.AssertAtmosphereImage(t, "quay.io/prometheus/mysqld-exporter:v0.15.1", sidecar.Image)
+	defaults.AssertAtmosphereImage(t, "quay.io/prometheus/mysqld-exporter:v0.17.0", sidecar.Image)
 
 	assert.Equal(t, v1.EnvVar{
 		Name: "MYSQLD_EXPORTER_PASSWORD",
