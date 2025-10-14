@@ -3,7 +3,7 @@ variable "REGISTRY" {
 }
 
 variable "TAG" {
-    default = "main"
+    default = "2025.2"
 }
 
 target "ubuntu" {
@@ -11,7 +11,7 @@ target "ubuntu" {
     platforms = ["linux/amd64", "linux/arm64"]
 
     contexts = {
-        "ubuntu" = "docker-image://docker.io/library/ubuntu:noble-20250529"
+        "ubuntu" = "docker-image://docker.io/library/ubuntu:noble-20251001"
     }
 }
 
@@ -187,7 +187,7 @@ target "neutron-source" {
     platforms = ["linux/amd64", "linux/arm64"]
 
     contexts = {
-        "git" = "https://github.com/openstack/neutron.git#46f4ef447537d80bff2bb64da6a61fff40e8fcc3" # renovate: branch=master
+        "git" = "https://github.com/openstack/neutron.git#9ae85554a9fef62063a3b5cf16a105a765c2ebe7" # renovate: branch=stable/2025.2
         "patches" = "patches/openstack/neutron"
     }
 }
