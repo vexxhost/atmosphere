@@ -1,10 +1,10 @@
 # SPDX-FileCopyrightText: © 2025 VEXXHOST, Inc.
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
+# Atmosphere-Rebuild-Time: 2025-10-14T10:18:12Z
 
 FROM openstack-venv-builder AS build
-# renovate: name=openstack/placement repo=https://github.com/openstack/placement.git branch=master
-ARG PLACEMENT_GIT_REF=2df2316c370128ee3aaca2179b7a4b33d96f37ae
+# renovate: name=openstack/placement repo=https://github.com/openstack/placement.git branch=stable/2025.2
+ARG PLACEMENT_GIT_REF=fec9bf73894172f4d0577ab335e8d5ae302f92fc
 ADD --keep-git-dir=true https://github.com/openstack/placement.git#${PLACEMENT_GIT_REF} /src/placement
 RUN git -C /src/placement fetch --unshallow
 RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe

@@ -1,10 +1,10 @@
 # SPDX-FileCopyrightText: © 2025 VEXXHOST, Inc.
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
+# Atmosphere-Rebuild-Time: 2025-10-14T10:18:12Z
 
 FROM openstack-venv-builder AS build
-# renovate: name=openstack/ovn-bgp-agent repo=https://github.com/openstack/ovn-bgp-agent.git branch=master
-ARG OVN_BGP_AGENT_GIT_REF=36746cf1c18720e4a9ef45f779cd53c5a412bd6c
+# renovate: name=openstack/ovn-bgp-agent repo=https://github.com/openstack/ovn-bgp-agent.git branch=stable/2025.2
+ARG OVN_BGP_AGENT_GIT_REF=fe0d730b960dd9d0b6731a81bea148b36e63af8d
 ADD --keep-git-dir=true https://github.com/openstack/ovn-bgp-agent.git#${OVN_BGP_AGENT_GIT_REF} /src/ovn-bgp-agent
 RUN git -C /src/ovn-bgp-agent fetch --unshallow
 COPY patches/ovn-bgp-agent /patches/ovn-bgp-agent

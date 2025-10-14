@@ -1,10 +1,10 @@
 # SPDX-FileCopyrightText: © 2025 VEXXHOST, Inc.
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
+# Atmosphere-Rebuild-Time: 2025-10-14T10:18:12Z
 
 FROM openstack-venv-builder AS build
-# renovate: name=openstack/manila repo=https://github.com/openstack/manila.git branch=master
-ARG MANILA_GIT_REF=da85a864b83ef11a068c08f64e1955a45953dc03
+# renovate: name=openstack/manila repo=https://github.com/openstack/manila.git branch=stable/2025.2
+ARG MANILA_GIT_REF=1e090676e20fbbac3fa15e7b775a1b787fc40d17
 ADD --keep-git-dir=true https://github.com/openstack/manila.git#${MANILA_GIT_REF} /src/manila
 RUN git -C /src/manila fetch --unshallow
 RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe

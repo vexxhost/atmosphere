@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: © 2025 VEXXHOST, Inc.
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
+# Atmosphere-Rebuild-Time: 2025-10-14T10:18:12Z
 
 FROM ubuntu AS helm
 ARG TARGETOS
@@ -11,8 +11,8 @@ RUN tar -xzf /helm.tar.gz
 RUN mv /${TARGETOS}-${TARGETARCH}/helm /usr/bin/helm
 
 FROM openstack-venv-builder AS build
-# renovate: name=openstack/magnum repo=https://github.com/openstack/magnum.git branch=master
-ARG MAGNUM_GIT_REF=eb56e291ad68ff74c7abcc166b8a7092206d16b7
+# renovate: name=openstack/magnum repo=https://github.com/openstack/magnum.git branch=stable/2025.2
+ARG MAGNUM_GIT_REF=441b0866071d9e774cd842320243c96b2b39b909
 ADD --keep-git-dir=true https://github.com/openstack/magnum.git#${MAGNUM_GIT_REF} /src/magnum
 RUN git -C /src/magnum fetch --unshallow
 RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe

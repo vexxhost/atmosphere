@@ -1,14 +1,14 @@
 # SPDX-FileCopyrightText: © 2025 VEXXHOST, Inc.
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
+# Atmosphere-Rebuild-Time: 2025-10-14T10:18:12Z
 
 FROM openstack-venv-builder AS build
-# renovate: name=openstack/glance repo=https://github.com/openstack/glance.git branch=master
-ARG GLANCE_GIT_REF=60a2f055d54eb28413921c84afa7ed400bdb0695
+# renovate: name=openstack/glance repo=https://github.com/openstack/glance.git branch=stable/2025.2
+ARG GLANCE_GIT_REF=2ebeab5fca074cdd5ab194c1a0cdd079fd83d52a
 ADD --keep-git-dir=true https://github.com/openstack/glance.git#${GLANCE_GIT_REF} /src/glance
 RUN git -C /src/glance fetch --unshallow
-# renovate: name=openstack/glance_store repo=https://github.com/openstack/glance_store.git branch=master
-ARG GLANCE_STORE_GIT_REF=b320f11c8e6c0db495a0d0bd3d43c9406cea1667
+# renovate: name=openstack/glance_store repo=https://github.com/openstack/glance_store.git branch=stable/2025.2
+ARG GLANCE_STORE_GIT_REF=723dc3b261115667ef6d9526c304ff118b79cf70
 ADD --keep-git-dir=true https://github.com/openstack/glance_store.git#${GLANCE_STORE_GIT_REF} /src/glance_store
 RUN git -C /src/glance_store fetch --unshallow
 RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe
@@ -31,5 +31,5 @@ apt-get install -qq -y --no-install-recommends \
 apt-get clean
 rm -rf /var/lib/apt/lists/*
 EOF
-ADD --chmod=755 https://dl.k8s.io/release/v1.29.3/bin/linux/amd64/kubectl /usr/local/bin/kubectl
+ADD --chmod=755 https://dl.k8s.io/release/v1.34.1/bin/linux/amd64/kubectl /usr/local/bin/kubectl
 COPY --from=build --link /var/lib/openstack /var/lib/openstack

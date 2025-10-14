@@ -1,10 +1,10 @@
 # SPDX-FileCopyrightText: © 2025 VEXXHOST, Inc.
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
+# Atmosphere-Rebuild-Time: 2025-10-14T10:18:12Z
 
 FROM openstack-venv-builder AS build
-# renovate: name=openstack/designate repo=https://github.com/openstack/designate.git branch=master
-ARG DESIGNATE_GIT_REF=035453ffd1ba0f574a1d7f23b458222c0fd8fc68
+# renovate: name=openstack/designate repo=https://github.com/openstack/designate.git branch=stable/2025.2
+ARG DESIGNATE_GIT_REF=4e29c8308526cdb013aee09ff8f30e44b02f0911
 ADD --keep-git-dir=true https://github.com/openstack/designate.git#${DESIGNATE_GIT_REF} /src/designate
 RUN git -C /src/designate fetch --unshallow
 COPY patches/designate /patches/designate
