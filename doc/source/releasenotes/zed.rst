@@ -1,6 +1,6 @@
-===================
-1.x (OpenStack Zed)
-===================
+=========
+1.x (Zed)
+=========
 
 .. release-notes::
    :branch: stable/zed
