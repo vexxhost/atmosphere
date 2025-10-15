@@ -1,10 +1,10 @@
 # SPDX-FileCopyrightText: © 2025 VEXXHOST, Inc.
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
+# Atmosphere-Rebuild-Time: 2025-10-14T10:18:12Z
 
 FROM openstack-venv-builder AS build
-# renovate: name=openstack/cinder repo=https://github.com/openstack/cinder.git branch=master
-ARG CINDER_GIT_REF=d9a7d06907d7e3b21fc08d5311a69aa1e4bff951
+# renovate: name=openstack/cinder repo=https://github.com/openstack/cinder.git branch=stable/2025.2
+ARG CINDER_GIT_REF=6a813e30d04c001d78ec56610b959747f81f954c
 ADD --keep-git-dir=true https://github.com/openstack/cinder.git#${CINDER_GIT_REF} /src/cinder
 RUN git -C /src/cinder fetch --unshallow
 COPY patches/cinder /patches/cinder

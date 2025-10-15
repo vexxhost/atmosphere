@@ -3,20 +3,20 @@
 # Atmosphere-Rebuild-Time: 2025-01-24T11:51:19Z
 
 FROM openstack-venv-builder AS build
-# renovate: name=openstack/neutron-dynamic-routing repo=https://github.com/openstack/neutron-dynamic-routing.git branch=master
-ARG NEUTRON_DYNAMIC_ROUTING_GIT_REF=3cba8d7b3ad7b06414ddae8470b080a8479974a3
+# renovate: name=openstack/neutron-dynamic-routing repo=https://github.com/openstack/neutron-dynamic-routing.git branch=stable/2025.2
+ARG NEUTRON_DYNAMIC_ROUTING_GIT_REF=229ef20405f7767ebcb7a4e865ee11f874026306
 ADD --keep-git-dir=true https://github.com/openstack/neutron-dynamic-routing.git#${NEUTRON_DYNAMIC_ROUTING_GIT_REF} /src/neutron-dynamic-routing
 RUN git -C /src/neutron-dynamic-routing fetch --unshallow
-# renovate: name=openstack/neutron-vpnaas repo=https://github.com/openstack/neutron-vpnaas.git branch=master
-ARG NEUTRON_VPNAAS_GIT_REF=86ffcc8d43818689f2ad5defa94c93fef671064f
+# renovate: name=openstack/neutron-vpnaas repo=https://github.com/openstack/neutron-vpnaas.git branch=stable/2025.2
+ARG NEUTRON_VPNAAS_GIT_REF=7fbb8f3fa469d831beee216dae1c1829f0173be5
 ADD --keep-git-dir=true https://github.com/openstack/neutron-vpnaas.git#${NEUTRON_VPNAAS_GIT_REF} /src/neutron-vpnaas
 RUN git -C /src/neutron-vpnaas fetch --unshallow
-# renovate: name=openstack/networking-baremetal repo=https://github.com/openstack/networking-baremetal.git branch=master
-ARG NETWORKING_BAREMETAL_GIT_REF=81d40be9ef65c0fd68c83358e316728fdcc9a9ac
+# renovate: name=openstack/networking-baremetal repo=https://github.com/openstack/networking-baremetal.git branch=stable/2025.2
+ARG NETWORKING_BAREMETAL_GIT_REF=26e27854cba1e6c9134783161ca7818628d550cb
 ADD --keep-git-dir=true https://github.com/openstack/networking-baremetal.git#${NETWORKING_BAREMETAL_GIT_REF} /src/networking-baremetal
 RUN git -C /src/networking-baremetal fetch --unshallow
-# renovate: name=openstack/networking-generic-switch repo=https://github.com/openstack/networking-generic-switch.git branch=master
-ARG NETWORKING_GENERIC_SWITCH_GIT_REF=2f7f3e12369e46294a2be5c780db373ba831124c
+# renovate: name=openstack/networking-generic-switch repo=https://github.com/openstack/networking-generic-switch.git branch=stable/2025.2
+ARG NETWORKING_GENERIC_SWITCH_GIT_REF=a1bf021c4b55e30feeaa70b33e9f643875eb0784
 ADD --keep-git-dir=true https://github.com/openstack/networking-generic-switch.git#${NETWORKING_GENERIC_SWITCH_GIT_REF} /src/networking-generic-switch
 RUN git -C /src/networking-generic-switch fetch --unshallow
 # renovate: name=vexxhost/neutron-policy-server repo=https://github.com/vexxhost/neutron-policy-server.git branch=main
@@ -27,9 +27,9 @@ RUN git -C /src/neutron-policy-server fetch --unshallow
 ARG LOG_PASER_GIT_REF=3895d8f9d004e612c71b4f798d31c758e113946b
 ADD --keep-git-dir=true https://github.com/vexxhost/neutron-ovn-network-logging-parser.git#${LOG_PASER_GIT_REF} /src/neutron-ovn-network-logging-parser
 RUN git -C /src/neutron-ovn-network-logging-parser fetch --unshallow
-# renovate: name=openstack/tap-as-a-service repo=https://opendev.org/openstack/tap-as-a-service.git branch=master
-ARG TAP_AS_A_SERVICE_GIT_REF=7fb35455e056b08088291e048b35c185b2f8f208
-ADD --keep-git-dir=true https://opendev.org/openstack/tap-as-a-service.git#${TAP_AS_A_SERVICE_GIT_REF} /src/tap-as-a-service
+# renovate: name=openstack/tap-as-a-service repo=https://github.com/openstack/tap-as-a-service.git branch=stable/2025.2
+ARG TAP_AS_A_SERVICE_GIT_REF=b8f9c627fb45b4b3af0dd26c632de9341299531c
+ADD --keep-git-dir=true https://github.com/openstack/tap-as-a-service.git#${TAP_AS_A_SERVICE_GIT_REF} /src/tap-as-a-service
 RUN git -C /src/tap-as-a-service fetch --unshallow
 RUN \
   --mount=type=bind,from=neutron-source,source=/,target=/src/neutron,readwrite \

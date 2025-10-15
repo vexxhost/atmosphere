@@ -1,10 +1,10 @@
 # SPDX-FileCopyrightText: © 2025 VEXXHOST, Inc.
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Atmosphere-Rebuild-Time: 2024-12-17T01:27:44Z
+# Atmosphere-Rebuild-Time: 2025-10-14T10:18:12Z
 
 FROM openstack-venv-builder AS build
-# renovate: name=openstack/nova repo=https://github.com/openstack/nova.git branch=master
-ARG NOVA_GIT_REF=87bf7700b8e2adecdd854cd1607317048b6d86da
+# renovate: name=openstack/nova repo=https://github.com/openstack/nova.git branch=stable/2025.2
+ARG NOVA_GIT_REF=a9649137d61ff39be667fe093a2051fcca323ec8
 ADD --keep-git-dir=true https://github.com/openstack/nova.git#${NOVA_GIT_REF} /src/nova
 RUN git -C /src/nova fetch --unshallow
 # renovate: name=vexxhost/nova-scheduler-filters repo=https://github.com/vexxhost/nova-scheduler-filters.git branch=main
