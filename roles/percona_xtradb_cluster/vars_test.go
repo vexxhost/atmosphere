@@ -54,7 +54,7 @@ func TestPerconaXtraDBClusterSpec(t *testing.T) {
 func TestPerconaXtraDBClusterPXCSpec(t *testing.T) {
 	assert.Equal(t, int32(3), vars.PerconaXtraDBClusterSpec.PXC.Size)
 	assert.Equal(t, true, *vars.PerconaXtraDBClusterSpec.PXC.AutoRecovery)
-	defaults.AssertAtmosphereImage(t, "docker.io/percona/percona-xtradb-cluster:8.0.41-32.1", vars.PerconaXtraDBClusterSpec.PXC.Image)
+	defaults.AssertAtmosphereImage(t, "docker.io/percona/percona-xtradb-cluster:8.0.42-33.1", vars.PerconaXtraDBClusterSpec.PXC.Image)
 
 	assert.Equal(t, map[string]string{
 		"openstack-control-plane": "enabled",
@@ -116,7 +116,7 @@ func TestPerconaXtraDBClusterHAProxySpec(t *testing.T) {
 	assert.Equal(t, true, vars.PerconaXtraDBClusterSpec.HAProxy.Enabled)
 	assert.Equal(t, int32(3), vars.PerconaXtraDBClusterSpec.HAProxy.Size)
 
-	defaults.AssertAtmosphereImage(t, "docker.io/percona/haproxy:2.8.14", vars.PerconaXtraDBClusterSpec.HAProxy.Image)
+	defaults.AssertAtmosphereImage(t, "docker.io/percona/haproxy:2.8.15", vars.PerconaXtraDBClusterSpec.HAProxy.Image)
 
 	assert.Equal(t, map[string]string{
 		"openstack-control-plane": "enabled",
