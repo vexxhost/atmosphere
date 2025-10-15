@@ -36,7 +36,7 @@ example below:
 
   percona_xtradb_cluster_spec:
     backup:
-      image: percona/percona-xtradb-cluster-operator:1.14.0-pxc8.0-backup-pxb8.0.35
+      image: percona/percona-xtrabackup:8.0.35-33.1
       storages:
         fs-pvc:
           type: filesystem
@@ -50,7 +50,10 @@ example below:
       schedule:
         - name: daily
           schedule: 0 6 * * *
-          keep: 3
+          retention:
+            type: "count"
+            count: 3
+            deleteFromStorage: true
           storageName: fs-pvc
 
 Amazon S3 or s3-compatible storage
@@ -80,7 +83,7 @@ S3-compatible storage with 3 backups kept.
 
   percona_xtradb_cluster_spec:
     backup:
-      image: percona/percona-xtradb-cluster-operator:1.14.0-pxc8.0-backup-pxb8.0.35
+      image: percona/percona-xtrabackup:8.0.35-33.1
       storages:
         s3-bck:
           type: s3
@@ -98,7 +101,10 @@ S3-compatible storage with 3 backups kept.
       schedule:
         - name: daily
           schedule: 0 6 * * *
-          keep: 3
+          retention:
+            type: "count"
+            count: 3
+            deleteFromStorage: true
          storageName: s3-bck
 
 *****************
