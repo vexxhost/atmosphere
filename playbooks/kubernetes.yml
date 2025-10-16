@@ -46,6 +46,7 @@
     kube_vip_image: "{{ atmosphere_images['kube_vip'] }}"
 
 - hosts: "{{ target | default('all') }}"
+  strategy: ansible.builtin.linear
   become: true
   roles:
     - role: vexxhost.atmosphere.kubernetes_node_labels
