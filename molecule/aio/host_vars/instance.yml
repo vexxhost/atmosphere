@@ -1,6 +1,6 @@
 ansible_host: 127.0.0.1
-#ansible_user: "{{ lookup('env', 'USER') }}"
-ansible_user: runner
-ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
-ansible_ssh_private_key_file: /home/runner/.ssh/id_ed25519
-#ansible_ssh_private_key_file: "/home/{{ ansible_user }}/.ssh/id_ed25519"
+ansible_user: "{{ lookup('env', 'USER') }}"
+# ansible_user: runner
+# ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ControlMaster=auto -o ControlPersist=60s -o PreferredAuthentications=publickey'
+# ansible_ssh_private_key_file: /home/runner/.ssh/id_ed25519
+ansible_ssh_private_key_file: "/home/{{ ansible_user }}/.ssh/id_ed25519"
