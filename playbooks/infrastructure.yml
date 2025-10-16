@@ -14,6 +14,7 @@
 
 - name: Deploy Infrastructure
   hosts: controllers
+  strategy: ansible.builtin.linear
   become: true
   roles:
     - role: cert_manager
@@ -24,6 +25,10 @@
       tags:
         - cluster-issuer
 
+- name: Deploy Infrastructure
+  hosts: controllers
+  become: true
+  roles:
     - role: ingress_nginx
       tags:
         - ingress-nginx
