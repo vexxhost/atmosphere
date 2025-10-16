@@ -36,14 +36,19 @@
           ansible_user: {{ lookup('env', 'USER') }}
           ansible_ssh_private_key_file: /home/{{ lookup('env', 'USER') }}/.ssh/id_ed25519
 
+    - name: Get current username (if sudo)
+      ansible.builtin.shell: |
+        logname 2>/dev/null || echo $SUDO_USER || echo $USER
+      register: username_result
+
     - name: Evaluate and render the content
       set_fact:
         rendered_instance_vars: "{{ instance_vars }}"
       vars:
         instance_vars: |
           ansible_host: 127.0.0.1
-          ansible_user: {{ lookup('env', 'USER') }}
-          ansible_ssh_private_key_file: /home/{{ lookup('env', 'USER') }}/.ssh/id_ed25519
+          ansible_user: {{ username_result.stdout }}
+          ansible_ssh_private_key_file: /home/{{ username_result.stdout }}/.ssh/id_ed25519
 
     - name: Print rendered content (for debugging)
       debug:
