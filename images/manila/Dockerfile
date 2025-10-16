@@ -4,7 +4,7 @@
 
 FROM openstack-venv-builder AS build
 # renovate: name=openstack/manila repo=https://github.com/openstack/manila.git branch=stable/2025.1
-ARG MANILA_GIT_REF=cfc8ccef6605e4d79e9f7bd44ef0bb32897c5606
+ARG MANILA_GIT_REF=c7921409a299a7412b88e025fec126c5ed5bb6d2
 ADD --keep-git-dir=true https://github.com/openstack/manila.git#${MANILA_GIT_REF} /src/manila
 RUN git -C /src/manila fetch --unshallow
 RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe
