@@ -17,12 +17,11 @@ dependency:
   options:
     requirements-file: molecule/aio/requirements-poc.yaml
 driver:
-  name: default
+  name: delegated
   options:
-    managed: False
+    # managed: False
     ansible_connection_options:
       ansible_become: "true"
-      ansible_connection: ansible.builtin.ssh
 platforms:
   - name: instance
     groups:
@@ -47,6 +46,7 @@ provisioner:
       instance:
         ansible_host: 127.0.0.1
         ansible_user: "{{ lookup('env', 'USER') }}"
+        ansible_connection: ansible.builtin.ssh
         ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
     links:
       # host_vars: "${ATMOSPHERE_ANSIBLE_VARS_PATH-$MOLECULE_SCENARIO_DIRECTORY}/host_vars"
