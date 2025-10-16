@@ -14,7 +14,7 @@
 
 - name: Generate workspace for Atmosphere
   hosts: localhost
-  gather_facts: true
+  gather_facts: false
   tasks:
     - name: Create folders for workspace
       ansible.builtin.file:
@@ -33,8 +33,8 @@
         dest: "{{ workspace_path }}/host_vars/instance.yml"
         content: |
           ansible_host: 127.0.0.1
-          ansible_user: {{ ansible_user }}
-          ansible_ssh_private_key_file: /home/{{ ansible_user }}/.ssh/id_ed25519
+          ansible_user: {{ lookup('env', 'USER') }}
+          ansible_ssh_private_key_file: /home/{{ lookup('env', 'USER') }}/.ssh/id_ed25519
 
 - name: Generate Ceph control plane configuration for workspace
   hosts: localhost
