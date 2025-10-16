@@ -22,7 +22,7 @@ driver:
     managed: False
     ansible_connection_options:
       ansible_become: "true"
-      ansible_connection: ansible.builtin.local
+      ansible_connection: ansible.builtin.ssh
 platforms:
   - name: instance
     groups:
@@ -43,8 +43,13 @@ provisioner:
   options:
     skip-tags: "${ATMOSPHERE_ANSIBLE_SKIP_TAGS-molecule-notest,notest}"
   inventory:
+    host_vars:
+      instance:
+        ansible_connection: ssh
+        ansible_host: 127.0.0.1
+        ansible_user: "{{ lookup('env', 'USER') }}"
     links:
-      host_vars: "${ATMOSPHERE_ANSIBLE_VARS_PATH-$MOLECULE_SCENARIO_DIRECTORY}/host_vars"
+      # host_vars: "${ATMOSPHERE_ANSIBLE_VARS_PATH-$MOLECULE_SCENARIO_DIRECTORY}/host_vars"
       group_vars: "${ATMOSPHERE_ANSIBLE_VARS_PATH-$MOLECULE_SCENARIO_DIRECTORY}/group_vars"
 verifier:
   name: ansible
