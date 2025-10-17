@@ -25,7 +25,7 @@
     - kube_prometheus_stack_keycloak_service.resources[0].status.replicas == kube_prometheus_stack_keycloak_service.resources[0].status.readyReplicas # noqa: yaml[line-length]
 
 - name: Create Keycloak realm
-  no_log: false
+  no_log: true
   run_once: true
   changed_when: false
   community.general.keycloak_realm:
@@ -43,7 +43,7 @@
     enabled: true
 
 - name: Add client roles in "id_token"
-  no_log: false
+  no_log: true
   run_once: true
   changed_when: false
   community.general.keycloak_clientscope:
@@ -140,7 +140,7 @@
     loop_var: password
 
 - name: Create Keycloak clients
-  no_log: false
+  no_log: true
   run_once: true
   community.general.keycloak_client:
     # Keycloak settings
@@ -169,7 +169,7 @@
     loop_var: secret
 
 - name: Create Keycloak roles
-  no_log: false
+  no_log: true
   run_once: true
   community.general.keycloak_role:
     # Keycloak settings

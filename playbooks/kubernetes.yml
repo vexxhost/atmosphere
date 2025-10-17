@@ -13,7 +13,7 @@
 # under the License.
 
 - hosts: "{{ target | default('all') }}"
-  strategy: "{{ atmosphere_custom_ansible_strategy | default('ansible.builtin.linear') }}"
+  strategy: "{{ atmosphere_custom_ansible_strategy | default('serverscom.mitogen.mitogen_linear') }}"
   become: true
   roles:
     - role: defaults
@@ -57,7 +57,7 @@
 # NOTE(mnaser): Add task to uninstall "unattended-upgrades" to avoid system
 #               upgrades during the deployment
 - hosts: "{{ target | default('all') }}"
-  strategy: "{{ atmosphere_custom_ansible_strategy | default('ansible.builtin.linear') }}"
+  strategy: "{{ atmosphere_custom_ansible_strategy | default('serverscom.mitogen.mitogen_linear') }}"
   become: true
   gather_facts: false
   tasks:
