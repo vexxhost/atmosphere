@@ -37,10 +37,11 @@ provisioner:
       callbacks_enabled: ansible.posix.profile_tasks
       # strategy: serverscom.mitogen.mitogen_linear
       roles_path: "/root/.ansible/collections/ansible_collections/vexxhost/atmosphere/roles"
-      host_key_checking: false
+      host_key_checking: "False"
     ssh_connection:
-      ssh_args: "-o ControlMaster=auto -o ControlPersist=60s -o PreferredAuthentications=publickey"
-      pipelining: true
+      ssh_args: '-o ControlMaster=auto -o ControlPersist=60s'
+      pipelining: "True"
+      transport: ssh
     tags:
       run: ${ATMOSPHERE_ANSIBLE_TAGS-all}
   options:
