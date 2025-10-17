@@ -246,7 +246,6 @@ group "default" {
         "openstack-senlin",
         "openstack-staffeln",
         "openstack-tempest",
-        "openvswitch",
         "ovn-central",
         "ovn-host",
         "python-openstackclient",
