@@ -21,7 +21,9 @@ driver:
   options:
     managed: False
     ansible_connection_options:
-      ansible_become: "true"
+      ansible_connection: ssh
+      ansible_ssh_common_args: "-o ControlMaster=auto -o ControlPersist=60s"
+      pipelining: True
 platforms:
   - name: instance
     groups:
@@ -38,10 +40,6 @@ provisioner:
       # strategy: serverscom.mitogen.mitogen_linear
       roles_path: "/root/.ansible/collections/ansible_collections/vexxhost/atmosphere/roles"
       host_key_checking: False
-    ssh_connection:
-      ssh_args: '-o ControlMaster=auto -o ControlPersist=60s'
-      pipelining: True
-      transport: ssh
     tags:
       run: ${ATMOSPHERE_ANSIBLE_TAGS-all}
   options:
