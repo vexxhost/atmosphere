@@ -1,6 +1,6 @@
-========================
-Zed Series Release Notes
-========================
+=========
+1.x (Zed)
+=========
 
 .. release-notes::
    :branch: stable/zed

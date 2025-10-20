@@ -14,3 +14,28 @@
     helm install my-db percona/pxc-db --namespace={{ .Release.Namespace }}
 
 Read more in our documentation: https://docs.percona.com/percona-operator-for-mysql/pxc/
+
+{{- if .Release.IsUpgrade }}
+  {{- $ctx := dict "upgradeCrd" false }}
+  {{- $crdNames := list "perconaxtradbclusterbackups.pxc.percona.com" "perconaxtradbclusterrestores.pxc.percona.com" "perconaxtradbclusters.pxc.percona.com" }}
+  {{- range $name := $crdNames }}
+    {{- $crd := lookup "apiextensions.k8s.io/v1" "CustomResourceDefinition" "" $name }}
+    {{- if $crd }}
+      {{- $crdLabels := (($crd).metadata).labels | default dict }}
+      {{- $crdVersion := index $crdLabels "app.kubernetes.io/version" }}
+      {{- if or (not $crdVersion) (semverCompare (printf "< %s" $.Chart.AppVersion) (trimPrefix "v" $crdVersion)) }}
+        {{- $_ := set $ctx "upgradeCrd" true }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+  {{- if $ctx.upgradeCrd }}
+
+** WARNING ** During Helm upgrade CRDs are not automatically upgraded.
+
+Consider upgrading to the latest version of the CRDs using the command below:
+
+    kubectl apply --server-side --force-conflicts -f https://raw.githubusercontent.com/percona/percona-xtradb-cluster-operator/v{{ .Chart.AppVersion }}/deploy/crd.yaml
+
+Ensure all deprecated fields are reviewed as part of the upgrade process, especially when running multiple PXC Operator versions in the same cluster. Deprecated fields may be removed or unsupported in newer CRD versions.
+  {{- end }}
+{{- end }}
