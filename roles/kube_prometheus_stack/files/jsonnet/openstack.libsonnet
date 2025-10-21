@@ -320,6 +320,18 @@
         rules:
           [
             {
+              alert: 'OctaviaLoadBalancerMultipleMaster',
+              annotations: {
+                summary: 'Octavia load balancer has multiple MASTER Amphoras',
+                description: 'Load balancer with ID {{ $labels.loadbalancer_id }} has multiple MASTER Amphoras for more then 15 minutes.',
+              },
+              expr: 'count by(loadbalancer_id) (openstack_loadbalancer_amphora_status{role="MASTER"}) > 1',
+              'for': '15m',
+              labels: {
+                severity: 'P3',
+              },
+            },
+            {
               alert: 'OctaviaLoadBalancerNotActive',
               annotations: {
                 summary: 'Octavia load balancer not active',
