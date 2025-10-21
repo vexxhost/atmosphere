@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: © 2025 VEXXHOST, Inc.
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Atmosphere-Rebuild-Time: 2025-10-14T10:18:12Z
+# Atmosphere-Rebuild-Time: 2025-10-21T15:23:08Z
 
 FROM openstack-venv-builder AS build
 # renovate: name=openstack/keystone repo=https://github.com/openstack/keystone.git branch=stable/2025.2
@@ -24,7 +24,7 @@ apt-get install -qq -y --no-install-recommends \
 apt-get clean
 rm -rf /var/lib/apt/lists/*
 EOF
-ARG MOD_AUTH_OPENIDC_VERSION=2.4.17
+ARG MOD_AUTH_OPENIDC_VERSION=2.4.18.1
 ARG TARGETARCH
 RUN <<EOF bash -xe
 # TODO(mnaser): mod_auth_openidc does not have aarch64 builds

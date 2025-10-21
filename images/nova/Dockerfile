@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: © 2025 VEXXHOST, Inc.
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Atmosphere-Rebuild-Time: 2025-10-14T10:18:12Z
+# Atmosphere-Rebuild-Time: 2025-10-21T15:23:08Z
 
 FROM openstack-venv-builder AS build
 # renovate: name=openstack/nova repo=https://github.com/openstack/nova.git branch=stable/2025.2
@@ -25,7 +25,7 @@ ADD --chmod=644 \
     /var/lib/openstack/lib/python3.12/site-packages/os_brick/initiator/connectors/storpool.py
 
 FROM openstack-python-runtime
-ADD https://github.com/novnc/noVNC.git#v1.4.0 /usr/share/novnc
+ADD https://github.com/novnc/noVNC.git#v1.6.0 /usr/share/novnc
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \

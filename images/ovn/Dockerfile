@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: © 2025 VEXXHOST, Inc.
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Atmosphere-Rebuild-Time: 2025-10-14T10:18:12Z
+# Atmosphere-Rebuild-Time: 2025-10-21T15:23:08Z
 
 FROM golang AS ovn-kubernetes
 ARG OVN_KUBERNETES_REF=5359e7d7f872058b6e5bf884c9f19d1922451f29
@@ -15,7 +15,7 @@ EOF
 FROM openvswitch
 ENV OVS_USER_ID=42424
 ARG TARGETPLATFORM
-ADD --chmod=755 https://dl.k8s.io/release/v1.29.3/bin/${TARGETPLATFORM}/kubectl /usr/local/bin/kubectl
+ADD --chmod=755 https://dl.k8s.io/release/v1.34.1/bin/${TARGETPLATFORM}/kubectl /usr/local/bin/kubectl
 ARG OVN_SERIES=24.03
 ARG OVN_VERSION=${OVN_SERIES}.2-34
 RUN <<EOF sh -xe
