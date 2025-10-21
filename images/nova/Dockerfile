@@ -25,7 +25,7 @@ ADD --chmod=644 \
     /var/lib/openstack/lib/python3.12/site-packages/os_brick/initiator/connectors/storpool.py
 
 FROM openstack-python-runtime
-ADD https://github.com/novnc/noVNC.git#v1.4.0 /usr/share/novnc
+ADD https://github.com/novnc/noVNC.git#v1.6.0 /usr/share/novnc
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \
