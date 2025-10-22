@@ -134,6 +134,11 @@ spec:
           command:
             - /tmp/openvswitch-db-server.sh
             - start
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
           lifecycle:
             preStop:
               exec:
@@ -151,7 +156,7 @@ spec:
               mountPath: /run
         - name: openvswitch-vswitchd
 {{/* Run the container in priviledged mode due to the need for root
-permissions when using --user to specify non root user. */}}
+permissions when we specify --user to run in non-root. */}}
 {{- $_ := set $envAll.Values.pod.security_context.ovs.container.vswitchd "privileged" true -}}
 {{- if .Values.conf.ovs_dpdk.enabled }}
 {{/* Limiting CPU cores would severely affect packet throughput
@@ -181,6 +186,11 @@ It should be handled through lcore and pmd core masks. */}}
             - /tmp/openvswitch-vswitchd.sh
             - start
 {{- end }}
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
           lifecycle:
             postStart:
               exec:
