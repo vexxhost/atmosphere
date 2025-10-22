@@ -23,17 +23,8 @@ OVS_PID=/run/openvswitch/ovsdb-server.pid
 OVS_SOCKET=/run/openvswitch/db.sock
 
 function start () {
-  mkdir -p "$(dirname ${OVS_DB})"
-  if [[ ! -e "${OVS_DB}" ]]; then
-    ovsdb-tool create "${OVS_DB}"
-  fi
-
-  if [[ "$(ovsdb-tool needs-conversion ${OVS_DB} ${OVS_SCHEMA})" == 'yes' ]]; then
-      ovsdb-tool convert ${OVS_DB} ${OVS_SCHEMA}
-  fi
-
   umask 000
-  exec /usr/sbin/ovsdb-server ${OVS_DB} \
+  exec ovsinit --ovs-db ${OVS_DB} --ovs-schema ${OVS_SCHEMA} -- /usr/sbin/ovsdb-server ${OVS_DB} \
           -vconsole:emer \
           -vconsole:err \
           -vconsole:info \
@@ -49,8 +40,7 @@ function start () {
 }
 
 function stop () {
-  PID=$(cat $OVS_PID)
-  ovs-appctl -T1 -t /run/openvswitch/ovsdb-server.${PID}.ctl exit
+  echo skipped due to ovsinit
 }
 
 $COMMAND
