@@ -1,6 +1,10 @@
 .common:
   vexxhost_openstack_helm_repository: &vexxhost_openstack_helm_repository
     url: https://vexxhost.github.io/openstack-helm
+  vexxhost_openstack_helm_dependencies: &vexxhost_openstack_helm_dependencies
+    - name: helm-toolkit
+      repository: https://vexxhost.github.io/openstack-helm
+      version: 1.1.0
   openstack_helm_repository: &openstack_helm_repository
     url: https://tarballs.openstack.org/openstack-helm
   openstack_helm_infra_repository: &openstack_helm_infra_repository
@@ -167,9 +171,9 @@ charts:
         review.opendev.org:
           - 899918
   - name: openvswitch
-    version: 0.1.24
-    repository: *openstack_helm_infra_repository
-    dependencies: *openstack_helm_dependencies
+    version: 1.1.1
+    repository: *vexxhost_openstack_helm_repository
+    dependencies: *vexxhost_openstack_helm_dependencies
   - name: ovn
     version: 0.1.15
     repository: *openstack_helm_infra_repository
