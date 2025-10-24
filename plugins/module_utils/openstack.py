@@ -18,7 +18,13 @@ from ansible.template import Templar
 
 class OpenStackActionBase(ActionBase):
     def run(self, tmp=None, task_vars=None):
-        super(OpenStackActionBase, self).run(tmp, task_vars)
+        # Initialize task_vars if None
+        if task_vars is None:
+            task_vars = dict()
+
+        # DON'T call super().run() with tmp - this causes Mitogen issues
+        # Instead, just initialize the result dict
+        result = dict()
 
         templar = Templar(loader=self._loader, variables=task_vars)
 
@@ -49,11 +55,16 @@ class OpenStackActionBase(ActionBase):
             "validate_certs": validate_certs,
         }
 
-        return super(OpenStackActionBase, self)._execute_module(
-            module_name=self._task.action.replace(
-                "vexxhost.atmosphere", "openstack.cloud"
-            ),
-            module_args=openstack_args | module_args,
-            task_vars=task_vars,
-            tmp=tmp,
+        # Execute module without passing tmp to avoid Mitogen conflicts
+        result.update(
+            self._execute_module(
+                module_name=self._task.action.replace(
+                    "vexxhost.atmosphere", "openstack.cloud"
+                ),
+                module_args=openstack_args | module_args,
+                task_vars=task_vars,
+                tmp=None,  # Critical: Pass None instead of tmp
+            )
         )
+
+        return result
