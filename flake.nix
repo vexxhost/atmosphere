@@ -30,6 +30,8 @@
             docutils
             gh
             go
+            jsonnet
+            jsonnet-bundler
             kubernetes-helm
             patchutils
             pre-commit
