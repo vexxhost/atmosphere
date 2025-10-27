@@ -185,6 +185,29 @@ local mixins = {
       _config+:: {
         nodeExporterSelector: 'job="node-exporter"',
       },
+      prometheusAlerts+:: {
+        groups+: [
+          {
+            name: "node-exporter-extras",
+            rules: [
+              {
+                alert: 'NodeTimeSkewDetected',
+                expr: |||
+                  abs(timestamp(node_time_seconds{%(nodeExporterSelector)s}) - node_time_seconds{%(nodeExporterSelector)s}) > 1
+                ||| % mixins.node._config,
+                'for': '5m',
+                labels: {
+                  severity: 'warning',
+                },
+                annotations: {
+                  summary: 'Node {{ $labels.instance }} has a time difference.',
+                  description: 'Node {{ $labels.instance }} has a time difference {{ $value }}.',
+                },
+              },
+            ]
+          }
+        ],
+      },
     },
   openstack: (import 'openstack.libsonnet'),
 } + (import 'legacy.libsonnet');
