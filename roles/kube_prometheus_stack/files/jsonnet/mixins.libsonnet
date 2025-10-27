@@ -63,7 +63,7 @@ local getSeverity(rule) =
 local mixins = {
   alertmanager: (import 'vendor/github.com/prometheus/alertmanager/doc/alertmanager-mixin/mixin.libsonnet') + {
     _config+:: {
-      alertmanagerSelector: 'job="kube-prometheus-stack-alertmanager",namespace="monitoring"',
+      alertmanagerSelector: 'job="kube-prometheus-stack-alertmanager"',
       alertmanagerClusterLabels: 'namespace,service,cluster',
     },
   },
