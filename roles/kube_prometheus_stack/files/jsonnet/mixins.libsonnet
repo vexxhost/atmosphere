@@ -96,7 +96,7 @@ local mixins = {
           ],
         },
       ],
-    }
+    },
   },
   coredns: (import 'vendor/github.com/povilasv/coredns-mixin/mixin.libsonnet') + {
     _config+:: {
@@ -152,7 +152,7 @@ local mixins = {
               labels: { severity: 'info' },
               annotations: {
                 summary: 'Percona XtraDB Cluster replica is down',
-                description: "{{ $labels.instance }} replica is down.",
+                description: '{{ $labels.instance }} replica is down.',
               },
             },
             {
@@ -162,7 +162,7 @@ local mixins = {
               labels: { severity: 'warning' },
               annotations: {
                 summary: 'Percona XtraDB Cluster replicas are down',
-                description: "{{ $value }}% of replicas are online.",
+                description: '{{ $value }}% of replicas are online.',
               },
             },
             {
@@ -172,7 +172,7 @@ local mixins = {
               labels: { severity: 'critical' },
               annotations: {
                 summary: 'Percona XtraDB Cluster is down',
-                description: "All replicas are down.",
+                description: 'All replicas are down.',
               },
             },
           ],
@@ -188,7 +188,7 @@ local mixins = {
       prometheusAlerts+:: {
         groups+: [
           {
-            name: "node-exporter-extras",
+            name: 'node-exporter-extras',
             rules: [
               {
                 alert: 'NodeTimeSkewDetected',
@@ -204,8 +204,8 @@ local mixins = {
                   description: 'Node {{ $labels.instance }} has a time difference {{ $value }}.',
                 },
               },
-            ]
-          }
+            ],
+          },
         ],
       },
     },
