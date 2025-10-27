@@ -93,7 +93,7 @@ def step_impl(context, interval):
 def step_impl(context, eval_time):
     eval_time_without_unit, unit = resolve_time_and_unit(eval_time)
     if eval_time_without_unit is None:
-        raise ValueError(f'Invalid evalution time: {eval_time}. ' +
+        raise ValueError(f'Invalid evaluation time: {eval_time}. ' +
                            'A valid time looks like "1m" where you have a number plus a unit')
     global_context.promql_expr_test.set_eval_time(eval_time_without_unit, unit)
 
@@ -113,6 +113,7 @@ def step_impl(context, panel_name, legend):
         legend = ''
     query_id = panel_name + '-' + legend
     if query_id not in global_context.query_map:
+        print(f"QueryMap: {global_context.query_map}")
         raise KeyError((f'Query with legend {legend} in panel "{panel_name}"'
                            'couldn\'t be found'))
 
