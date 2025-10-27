@@ -313,7 +313,7 @@
               severity: 'P3',
             },
           },
-        ]
+        ],
       },
       {
         name: 'octavia',
