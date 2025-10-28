@@ -3,13 +3,13 @@
     corednsSelector: 'job="kube-dns"',
     instanceLabel: 'pod',
 
-    grafanaDashboardIDs: {
+    grafanaDashboardIDs+: {
       'coredns.json': 'thael1rie7ohG6OY3eMeisahtee2iGoo1gooGhuu',
     },
 
     pluginNameLabel: 'name',
     kubernetesPlugin: false,
-    grafana: {
+    grafana+: {
       dashboardNamePrefix: '',
       dashboardTags: ['coredns-mixin'],
 
