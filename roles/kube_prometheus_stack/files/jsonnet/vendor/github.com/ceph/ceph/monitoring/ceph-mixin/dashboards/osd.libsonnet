@@ -1,5 +1,6 @@
 local g = import 'grafonnet/grafana.libsonnet';
 
+
 (import 'utils.libsonnet') {
   'osds-overview.json':
     $.dashboardSchema(
@@ -23,6 +24,20 @@ local g = import 'grafonnet/grafana.libsonnet';
         'dashboard'
       )
     )
+    .addLinks([
+      $.addLinkSchema(
+        asDropdown=true,
+        icon='external link',
+        includeVars=true,
+        keepTime=true,
+        tags=[],
+        targetBlank=false,
+        title='Browse Dashboards',
+        tooltip='',
+        type='dashboards',
+        url=''
+      ),
+    ])
     .addRequired(
       type='grafana', id='grafana', name='Grafana', version='5.0.0'
     )
@@ -41,67 +56,113 @@ local g = import 'grafonnet/grafana.libsonnet';
     .addTemplate(
       $.addClusterTemplate()
     )
-    .addTemplate(
-      $.addJobTemplate()
-    )
     .addPanels([
-      $.simpleGraphPanel(
-        { '@95%ile': '#e0752d' },
-        'OSD Read Latencies',
-        '',
-        'ms',
-        null,
-        '0',
-        |||
-          avg (
-            rate(ceph_osd_op_r_latency_sum{%(matchers)s}[$__rate_interval]) /
-              on (ceph_daemon) rate(ceph_osd_op_r_latency_count{%(matchers)s}[$__rate_interval]) * 1000
-          )
-        ||| % $.matchers(),
-        'AVG read',
-        0,
-        0,
-        8,
-        8
+      $.timeSeriesPanel(
+        title='OSD Read Latencies',
+        datasource='$datasource',
+        gridPosition={ x: 0, y: 0, w: 8, h: 8 },
+        unit='ms',
+        drawStyle='line',
+        fillOpacity=8,
+        tooltip={ mode: 'multi', sort: 'none' },
+        colorMode='palette-classic',
+        spanNulls=true,
       )
-      .addTargets(
-        [
-          $.addTargetSchema(
-            |||
-              max(
+      .addTargets([
+        $.addTargetSchema(
+          |||
+            avg(
+              rate(ceph_osd_op_r_latency_sum{%(matchers)s}[$__rate_interval]) /
+              on (ceph_daemon) rate(ceph_osd_op_r_latency_count{%(matchers)s}[$__rate_interval]) * 1000
+            )
+          ||| % $.matchers(),
+          'AVG read'
+        ),
+        $.addTargetSchema(
+          |||
+            max(
+              rate(ceph_osd_op_r_latency_sum{%(matchers)s}[$__rate_interval]) /
+              on (ceph_daemon) rate(ceph_osd_op_r_latency_count{%(matchers)s}[$__rate_interval]) * 1000
+            )
+          ||| % $.matchers(),
+          'MAX read'
+        ),
+        $.addTargetSchema(
+          |||
+            quantile(0.95,
+              (
                 rate(ceph_osd_op_r_latency_sum{%(matchers)s}[$__rate_interval]) /
                 on (ceph_daemon) rate(ceph_osd_op_r_latency_count{%(matchers)s}[$__rate_interval]) * 1000
               )
-            ||| % $.matchers(),
-            'MAX read'
-          ),
-          $.addTargetSchema(
-            |||
-              quantile(0.95,
-                (
-                  rate(ceph_osd_op_r_latency_sum{%(matchers)s}[$__rate_interval]) /
-                    on (ceph_daemon) rate(ceph_osd_op_r_latency_count{%(matchers)s}[$__rate_interval])
-                    * 1000
-                )
-              )
-            ||| % $.matchers(),
-            '@95%ile'
-          ),
+            )
+          ||| % $.matchers(),
+          '@95%ile'
+        ),
+      ]),
+
+      $.addTableExtended(
+        datasource='${datasource}',
+        title='Highest READ Latencies',
+        gridPosition={ h: 8, w: 4, x: 8, y: 0 },
+        options={
+          footer: {
+            fields: '',
+            reducer: ['sum'],
+            countRows: false,
+            enablePagination: false,
+            show: false,
+          },
+          frameIndex: 1,
+          showHeader: true,
+        },
+        custom={ align: 'null', cellOptions: { type: 'auto' }, filterable: true, inspect: false },
+        thresholds={
+          mode: 'absolute',
+          steps: [
+            { color: 'green', value: null },
+            { color: 'red', value: 80 },
+          ],
+        },
+        overrides=[
+          {
+            matcher: { id: 'byName', options: 'ceph_daemon' },
+            properties: [
+              { id: 'displayName', value: 'OSD ID' },
+              { id: 'unit', value: 'short' },
+              { id: 'decimals', value: 2 },
+              { id: 'custom.align', value: null },
+            ],
+          },
+          {
+            matcher: { id: 'byName', options: 'Value' },
+            properties: [
+              { id: 'displayName', value: 'Latency (ms)' },
+              { id: 'unit', value: 'none' },
+              { id: 'decimals', value: 2 },
+              { id: 'custom.align', value: null },
+            ],
+          },
         ],
-      ),
-      $.addTableSchema(
-        '$datasource',
-        "This table shows the osd's that are delivering the 10 highest read latencies within the cluster",
-        { col: 2, desc: true },
-        [
-          $.overviewStyle('OSD ID', 'ceph_daemon', 'string', 'short'),
-          $.overviewStyle('Latency (ms)', 'Value', 'number', 'none'),
-          $.overviewStyle('', '/.*/', 'hidden', 'short'),
-        ],
-        'Highest READ Latencies',
-        'table'
+        pluginVersion='10.4.0'
       )
-      .addTarget(
+      .addTransformations([
+        {
+          id: 'merge',
+          options: { reducers: [] },
+        },
+        {
+          id: 'organize',
+          options: {
+            excludeByName: {
+              Time: true,
+              cluster: true,
+            },
+            indexByName: {},
+            renameByName: {},
+            includeByName: {},
+          },
+        },
+      ]).addTarget(
         $.addTargetSchema(
           |||
             topk(10,
@@ -119,66 +180,123 @@ local g = import 'grafonnet/grafana.libsonnet';
           1,
           true
         )
-      ) + { gridPos: { x: 8, y: 0, w: 4, h: 8 } },
-      $.simpleGraphPanel(
-        {
-          '@95%ile write': '#e0752d',
-        },
-        'OSD Write Latencies',
-        '',
-        'ms',
-        null,
-        '0',
-        |||
-          avg(
-            rate(ceph_osd_op_w_latency_sum{%(matchers)s}[$__rate_interval]) /
-              on (ceph_daemon) rate(ceph_osd_op_w_latency_count{%(matchers)s}[$__rate_interval])
-              * 1000
-          )
-        ||| % $.matchers(),
-        'AVG write',
-        12,
-        0,
-        8,
-        8
-      )
-      .addTargets(
-        [
-          $.addTargetSchema(
-            |||
-              max(
-                rate(ceph_osd_op_w_latency_sum{%(matchers)s}[$__rate_interval]) /
-                  on (ceph_daemon) rate(ceph_osd_op_w_latency_count{%(matchers)s}[$__rate_interval]) *
-                  1000
-              )
-            ||| % $.matchers(), 'MAX write'
-          ),
-          $.addTargetSchema(
-            |||
-              quantile(0.95, (
-                rate(ceph_osd_op_w_latency_sum{%(matchers)s}[$__rate_interval]) /
-                  on (ceph_daemon) rate(ceph_osd_op_w_latency_count{%(matchers)s}[$__rate_interval]) *
-                  1000
-              ))
-            ||| % $.matchers(), '@95%ile write'
-          ),
-        ],
       ),
-      $.addTableSchema(
-        '$datasource',
-        "This table shows the osd's that are delivering the 10 highest write latencies within the cluster",
-        { col: 2, desc: true },
-        [
-          $.overviewStyle(
-            'OSD ID', 'ceph_daemon', 'string', 'short'
-          ),
-          $.overviewStyle('Latency (ms)', 'Value', 'number', 'none'),
-          $.overviewStyle('', '/.*/', 'hidden', 'short'),
-        ],
-        'Highest WRITE Latencies',
-        'table'
+
+      $.timeSeriesPanel(
+        title='OSD Write Latencies',
+        datasource='$datasource',
+        gridPosition={ x: 12, y: 0, w: 8, h: 8 },
+        unit='ms',
+        drawStyle='line',
+        fillOpacity=8,
+        tooltip={ mode: 'multi', sort: 'none' },
+        colorMode='palette-classic',
+        spanNulls=true,
       )
-      .addTarget(
+      .addTargets([
+        $.addTargetSchema(
+          |||
+            avg(
+              rate(ceph_osd_op_w_latency_sum{%(matchers)s}[$__rate_interval]) /
+              on (ceph_daemon) rate(ceph_osd_op_w_latency_count{%(matchers)s}[$__rate_interval]) * 1000
+            )
+          ||| % $.matchers(),
+          'AVG write'
+        ),
+        $.addTargetSchema(
+          |||
+            max(
+              rate(ceph_osd_op_w_latency_sum{%(matchers)s}[$__rate_interval]) /
+              on (ceph_daemon) rate(ceph_osd_op_w_latency_count{%(matchers)s}[$__rate_interval]) * 1000
+            )
+          ||| % $.matchers(),
+          'MAX write'
+        ),
+        $.addTargetSchema(
+          |||
+            quantile(0.95,
+              (
+                rate(ceph_osd_op_w_latency_sum{%(matchers)s}[$__rate_interval]) /
+                on (ceph_daemon) rate(ceph_osd_op_w_latency_count{%(matchers)s}[$__rate_interval]) * 1000
+              )
+            )
+          ||| % $.matchers(),
+          '@95%ile write'
+        ),
+      ]),
+      $.addTableExtended(
+        datasource='${datasource}',
+        title='Highest WRITE Latencies',
+        description="This table shows the osd's that are delivering the 10 highest write latencies within the cluster",
+        gridPosition={ h: 8, w: 4, x: 20, y: 0 },
+        options={
+          footer: {
+            fields: '',
+            reducer: ['sum'],
+            countRows: false,
+            enablePagination: false,
+            show: false,
+          },
+          frameIndex: 1,
+          showHeader: true,
+        },
+        custom={ align: 'null', cellOptions: { type: 'auto' }, filterable: true, inspect: false },
+        thresholds={
+          mode: 'absolute',
+          steps: [
+            { color: 'green', value: null },
+            { color: 'red', value: 80 },
+          ],
+        },
+        overrides=[
+          {
+            matcher: { id: 'byName', options: 'ceph_daemon' },
+            properties: [
+              { id: 'displayName', value: 'OSD ID' },
+              { id: 'unit', value: 'short' },
+              { id: 'decimals', value: 2 },
+              { id: 'custom.align', value: null },
+            ],
+          },
+          {
+            matcher: { id: 'byName', options: 'Value' },
+            properties: [
+              { id: 'displayName', value: 'Latency (ms)' },
+              { id: 'unit', value: 'none' },
+              { id: 'decimals', value: 2 },
+              { id: 'custom.align', value: null },
+            ],
+          },
+          {
+            matcher: { id: 'byName', options: 'Value' },
+            properties: [
+              { id: 'mappings', value: [{ type: 'value', options: { NaN: { text: '0.00', index: 0 } } }] },
+              { id: 'unit', value: 'none' },
+              { id: 'decimals', value: 2 },
+              { id: 'custom.align', value: null },
+            ],
+          },
+        ],
+        pluginVersion='10.4.0'
+      )
+      .addTransformations([
+        {
+          id: 'merge',
+          options: { reducers: [] },
+        },
+        {
+          id: 'organize',
+          options: {
+            excludeByName: {
+              Time: true,
+              cluster: true,
+            },
+            indexByName: {},
+            renameByName: {},
+            includeByName: {},
+          },
+        },
+      ]).addTarget(
         $.addTargetSchema(
           |||
             topk(10,
@@ -194,29 +312,20 @@ local g = import 'grafonnet/grafana.libsonnet';
           1,
           true
         )
-      ) + { gridPos: { x: 20, y: 0, w: 4, h: 8 } },
-      $.simplePieChart(
-        {}, '', 'OSD Types Summary'
-      )
+      ),
+
+      $.pieChartPanel('OSD Types Summary', '', '$datasource', { x: 0, y: 8, w: 4, h: 8 }, 'table', 'bottom', true, ['percent'], { mode: 'single', sort: 'none' }, 'pie', ['percent', 'value'], 'palette-classic')
       .addTarget(
         $.addTargetSchema('count by (device_class) (ceph_osd_metadata{%(matchers)s})' % $.matchers(), '{{device_class}}')
-      ) + { gridPos: { x: 0, y: 8, w: 4, h: 8 } },
-      $.simplePieChart(
-        { 'Non-Encrypted': '#E5AC0E' }, '', 'OSD Objectstore Types'
-      )
-      .addTarget(
-        $.addTargetSchema(
-          'count(ceph_bluefs_wal_total_bytes{%(matchers)s})' % $.matchers(), 'bluestore', 'time_series', 2
-        )
-      )
-      .addTarget(
-        $.addTargetSchema(
-          'absent(ceph_bluefs_wal_total_bytes{%(matchers)s}) * count(ceph_osd_metadata{%(matchers)s})' % $.matchers(), 'filestore', 'time_series', 2
-        )
-      ) + { gridPos: { x: 4, y: 8, w: 4, h: 8 } },
-      $.simplePieChart(
-        {}, 'The pie chart shows the various OSD sizes used within the cluster', 'OSD Size Summary'
-      )
+      ),
+      $.pieChartPanel('OSD Objectstore Types', '', '$datasource', { x: 4, y: 8, w: 4, h: 8 }, 'table', 'bottom', true, ['percent'], { mode: 'single', sort: 'none' }, 'pie', ['percent', 'value'], 'palette-classic')
+      .addTarget($.addTargetSchema(
+        'count(ceph_bluefs_wal_total_bytes{%(matchers)s})' % $.matchers(), 'bluestore', 'time_series', 2
+      ))
+      .addTarget($.addTargetSchema(
+        'absent(ceph_bluefs_wal_total_bytes{%(matchers)s}) * count(ceph_osd_metadata{%(matchers)s})' % $.matchers(), 'filestore', 'time_series', 2
+      )),
+      $.pieChartPanel('OSD Size Summary', 'The pie chart shows the various OSD sizes used within the cluster', '$datasource', { x: 8, y: 8, w: 4, h: 8 }, 'table', 'bottom', true, ['percent'], { mode: 'single', sort: 'none' }, 'pie', ['percent', 'value'], 'palette-classic')
       .addTarget($.addTargetSchema(
         'count(ceph_osd_stat_bytes{%(matchers)s} < 1099511627776)' % $.matchers(), '<1TB', 'time_series', 2
       ))
@@ -243,7 +352,7 @@ local g = import 'grafonnet/grafana.libsonnet';
       ))
       .addTarget($.addTargetSchema(
         'count(ceph_osd_stat_bytes{%(matchers)s} >= 13194139533312)' % $.matchers(), '<12TB+', 'time_series', 2
-      )) + { gridPos: { x: 8, y: 8, w: 4, h: 8 } },
+      )),
       g.graphPanel.new(bars=true,
                        datasource='$datasource',
                        title='Distribution of PGs per OSD',
@@ -257,7 +366,7 @@ local g = import 'grafonnet/grafana.libsonnet';
                        nullPointMode='null')
       .addTarget($.addTargetSchema(
         'ceph_osd_numpg{%(matchers)s}' % $.matchers(), 'PGs per OSD', 'time_series', 1, true
-      )) + { gridPos: { x: 12, y: 8, w: 8, h: 8 } },
+      )) + { type: 'timeseries' } + { fieldConfig: { defaults: { unit: 'short', custom: { fillOpacity: 8, showPoints: 'never' } } } } + { gridPos: { x: 12, y: 8, w: 8, h: 8 } },
       $.gaugeSingleStatPanel(
         'percentunit',
         'OSD onode Hits Ratio',
@@ -283,23 +392,108 @@ local g = import 'grafonnet/grafana.libsonnet';
       $.addRowSchema(false,
                      true,
                      'R/W Profile') + { gridPos: { x: 0, y: 16, w: 24, h: 1 } },
-      $.simpleGraphPanel(
-        {},
-        'Read/Write Profile',
-        'Show the read/write workload profile overtime',
-        'short',
-        null,
-        null,
-        'round(sum(rate(ceph_pool_rd{%(matchers)s}[$__rate_interval])))' % $.matchers(),
-        'Reads',
-        0,
-        17,
-        24,
-        8
+      $.timeSeriesPanel(
+        title='Read/Write Profile',
+        datasource='$datasource',
+        gridPosition={ x: 0, y: 17, w: 24, h: 8 },
+        unit='short',
+        drawStyle='line',
+        fillOpacity=8,
+        tooltip={ mode: 'multi', sort: 'none' },
+        colorMode='palette-classic',
+        spanNulls=true,
       )
-      .addTargets([$.addTargetSchema(
-        'round(sum(rate(ceph_pool_wr{%(matchers)s}[$__rate_interval])))' % $.matchers(), 'Writes'
-      )]),
+      .addTargets([
+        $.addTargetSchema(
+          'round(sum(rate(ceph_pool_rd{%(matchers)s}[$__rate_interval])))' % $.matchers(),
+          'Reads'
+        ),
+        $.addTargetSchema(
+          'round(sum(rate(ceph_pool_wr{%(matchers)s}[$__rate_interval])))' % $.matchers(),
+          'Writes'
+        ),
+      ]),
+
+      $.addTableExtended(
+        datasource='${datasource}',
+        title='Top Slow Ops',
+        description='This table shows the 10 OSDs with the highest number of slow ops',
+        gridPosition={ h: 8, w: 5, x: 0, y: 25 },
+        options={
+          footer: {
+            fields: '',
+            reducer: ['sum'],
+            countRows: false,
+            enablePagination: false,
+            show: false,
+          },
+          frameIndex: 1,
+          showHeader: true,
+        },
+        custom={ align: 'null', cellOptions: { type: 'auto' }, filterable: true, inspect: false },
+        thresholds={
+          mode: 'absolute',
+          steps: [
+            { color: 'green', value: null },
+            { color: 'red', value: 80 },
+          ],
+        },
+        overrides=[
+          {
+            matcher: { id: 'byName', options: 'ceph_daemon' },
+            properties: [
+              { id: 'displayName', value: 'OSD ID' },
+              { id: 'unit', value: 'short' },
+              { id: 'decimals', value: 2 },
+              { id: 'custom.align', value: null },
+            ],
+          },
+          {
+            matcher: { id: 'byName', options: 'Value' },
+            properties: [
+              { id: 'displayName', value: 'Slow Ops' },
+              { id: 'unit', value: 'none' },
+              { id: 'decimals', value: 2 },
+              { id: 'custom.align', value: null },
+            ],
+          },
+        ],
+        pluginVersion='10.4.0'
+      )
+      .addTransformations([
+        {
+          id: 'merge',
+          options: { reducers: [] },
+        },
+        {
+          id: 'organize',
+          options: {
+            excludeByName: {
+              Time: true,
+              __name__: true,
+              instance: true,
+              job: true,
+              type: true,
+              cluster: true,
+            },
+            indexByName: {},
+            renameByName: {},
+            includeByName: {},
+          },
+        },
+      ]).addTarget(
+        $.addTargetSchema(
+          |||
+            topk(10,
+              (ceph_daemon_health_metrics{type="SLOW_OPS", ceph_daemon=~"osd.*"})
+            )
+          ||| % $.matchers(),
+          '',
+          'table',
+          1,
+          true
+        )
+      ),
     ]),
   'osd-device-details.json':
     local OsdDeviceDetailsPanel(title,
@@ -314,25 +508,22 @@ local g = import 'grafonnet/grafana.libsonnet';
                                 y,
                                 w,
                                 h) =
-      $.graphPanelSchema({},
-                         title,
-                         description,
-                         'null',
-                         false,
-                         formatY1,
-                         'short',
-                         labelY1,
-                         null,
-                         null,
-                         1,
-                         '$datasource')
-      .addTargets(
-        [
-          $.addTargetSchema(expr1,
-                            legendFormat1),
-          $.addTargetSchema(expr2, legendFormat2),
-        ]
-      ) + { gridPos: { x: x, y: y, w: w, h: h } };
+      $.timeSeriesPanel(
+        title=title,
+        datasource='$datasource',
+        gridPosition={ x: x, y: y, w: w, h: h },
+        unit=formatY1,
+        axisLabel=labelY1,
+        drawStyle='line',
+        fillOpacity=8,
+        tooltip={ mode: 'multi', sort: 'none' },
+        colorMode='palette-classic',
+        spanNulls=true,
+      )
+      .addTargets([
+        $.addTargetSchema(expr1, legendFormat1),
+        $.addTargetSchema(expr2, legendFormat2),
+      ]);
 
     $.dashboardSchema(
       'OSD device details',
@@ -355,6 +546,20 @@ local g = import 'grafonnet/grafana.libsonnet';
         'dashboard'
       )
     )
+    .addLinks([
+      $.addLinkSchema(
+        asDropdown=true,
+        icon='external link',
+        includeVars=true,
+        keepTime=true,
+        tags=[],
+        targetBlank=false,
+        title='Browse Dashboards',
+        tooltip='',
+        type='dashboards',
+        url=''
+      ),
+    ])
     .addRequired(
       type='grafana', id='grafana', name='Grafana', version='5.3.2'
     )
@@ -371,9 +576,6 @@ local g = import 'grafonnet/grafana.libsonnet';
       $.addClusterTemplate()
     )
     .addTemplate(
-      $.addJobTemplate()
-    )
-    .addTemplate(
       $.addTemplateSchema('osd',
                           '$datasource',
                           'label_values(ceph_osd_metadata{%(matchers)s}, ceph_daemon)' % $.matchers(),
@@ -387,207 +589,255 @@ local g = import 'grafonnet/grafana.libsonnet';
       $.addRowSchema(
         false, true, 'OSD Performance'
       ) + { gridPos: { x: 0, y: 0, w: 24, h: 1 } },
-      OsdDeviceDetailsPanel(
-        '$osd Latency',
-        '',
-        's',
-        'Read (-) / Write (+)',
-        |||
-          rate(ceph_osd_op_r_latency_sum{%(matchers)s, ceph_daemon=~"$osd"}[$__rate_interval]) /
-            on (ceph_daemon) rate(ceph_osd_op_r_latency_count{%(matchers)s}[$__rate_interval])
-        ||| % $.matchers(),
-        |||
-          rate(ceph_osd_op_w_latency_sum{%(matchers)s, ceph_daemon=~"$osd"}[$__rate_interval]) /
-            on (ceph_daemon) rate(ceph_osd_op_w_latency_count{%(matchers)s}[$__rate_interval])
-        ||| % $.matchers(),
-        'read',
-        'write',
-        0,
-        1,
-        6,
-        9
+      $.timeSeriesPanel(
+        title='$osd Latency',
+        datasource='$datasource',
+        gridPosition={ x: 0, y: 1, w: 6, h: 9 },
+        unit='s',
+        axisLabel='Read (-) / Write (+)',
+        drawStyle='line',
+        fillOpacity=8,
+        tooltip={ mode: 'multi', sort: 'none' },
+        colorMode='palette-classic',
+        spanNulls=true,
       )
-      .addSeriesOverride(
-        {
-          alias: 'read',
-          transform: 'negative-Y',
-        }
-      ),
-      OsdDeviceDetailsPanel(
-        '$osd R/W IOPS',
-        '',
-        'short',
-        'Read (-) / Write (+)',
-        'rate(ceph_osd_op_r{%(matchers)s, ceph_daemon=~"$osd"}[$__rate_interval])' % $.matchers(),
-        'rate(ceph_osd_op_w{%(matchers)s, ceph_daemon=~"$osd"}[$__rate_interval])' % $.matchers(),
-        'Reads',
-        'Writes',
-        6,
-        1,
-        6,
-        9
+      .addTargets([
+        $.addTargetSchema(
+          |||
+            rate(ceph_osd_op_r_latency_sum{ceph_daemon=~"$osd", %(matchers)s}[$__rate_interval]) /
+              on (ceph_daemon) rate(ceph_osd_op_r_latency_count{%(matchers)s}[$__rate_interval])
+          ||| % $.matchers(),
+          'read'
+        ),
+        $.addTargetSchema(
+          |||
+            rate(ceph_osd_op_w_latency_sum{ceph_daemon=~"$osd", %(matchers)s}[$__rate_interval]) /
+              on (ceph_daemon) rate(ceph_osd_op_w_latency_count{%(matchers)s}[$__rate_interval])
+          ||| % $.matchers(),
+          'write'
+        ),
+      ])
+      .addSeriesOverride({
+        alias: 'read',
+        transform: 'negative-Y',
+      }),
+      $.timeSeriesPanel(
+        title='$osd R/W IOPS',
+        datasource='$datasource',
+        gridPosition={ x: 6, y: 1, w: 6, h: 9 },
+        unit='short',
+        axisLabel='Read (-) / Write (+)',
+        drawStyle='line',
+        fillOpacity=8,
+        tooltip={ mode: 'multi', sort: 'none' },
+        colorMode='palette-classic',
+        spanNulls=true,
       )
-      .addSeriesOverride(
-        { alias: 'Reads', transform: 'negative-Y' }
-      ),
-      OsdDeviceDetailsPanel(
-        '$osd R/W Bytes',
-        '',
-        'bytes',
-        'Read (-) / Write (+)',
-        'rate(ceph_osd_op_r_out_bytes{%(matchers)s, ceph_daemon=~"$osd"}[$__rate_interval])' % $.matchers(),
-        'rate(ceph_osd_op_w_in_bytes{%(matchers)s, ceph_daemon=~"$osd"}[$__rate_interval])' % $.matchers(),
-        'Read Bytes',
-        'Write Bytes',
-        12,
-        1,
-        6,
-        9
+      .addTargets([
+        $.addTargetSchema(
+          'rate(ceph_osd_op_r{ceph_daemon=~"$osd", %(matchers)s}[$__rate_interval])' % $.matchers(),
+          'Reads'
+        ),
+        $.addTargetSchema(
+          'rate(ceph_osd_op_w{ceph_daemon=~"$osd", %(matchers)s}[$__rate_interval])' % $.matchers(),
+          'Writes'
+        ),
+      ])
+      .addSeriesOverride({
+        alias: 'Reads',
+        transform: 'negative-Y',
+      }),
+      $.timeSeriesPanel(
+        title='$osd R/W Bytes',
+        datasource='$datasource',
+        gridPosition={ x: 12, y: 1, w: 6, h: 9 },
+        unit='bytes',
+        axisLabel='Read (-) / Write (+)',
+        drawStyle='line',
+        fillOpacity=8,
+        tooltip={ mode: 'multi', sort: 'none' },
+        colorMode='palette-classic',
+        spanNulls=true,
       )
+      .addTargets([
+        $.addTargetSchema(
+          'rate(ceph_osd_op_r_out_bytes{ceph_daemon=~"$osd", %(matchers)s}[$__rate_interval])' % $.matchers(),
+          'Read Bytes'
+        ),
+        $.addTargetSchema(
+          'rate(ceph_osd_op_w_in_bytes{ceph_daemon=~"$osd", %(matchers)s}[$__rate_interval])' % $.matchers(),
+          'Write Bytes'
+        ),
+      ])
       .addSeriesOverride({ alias: 'Read Bytes', transform: 'negative-Y' }),
       $.addRowSchema(
         false, true, 'Physical Device Performance'
       ) + { gridPos: { x: 0, y: 10, w: 24, h: 1 } },
-      OsdDeviceDetailsPanel(
-        'Physical Device Latency for $osd',
-        '',
-        's',
-        'Read (-) / Write (+)',
-        |||
-          (
-            label_replace(
-              rate(node_disk_read_time_seconds_total{%(clusterMatcher)s}[$__rate_interval]) /
-                rate(node_disk_reads_completed_total{%(clusterMatcher)s}[$__rate_interval]),
-              "instance", "$1", "instance", "([^:.]*).*"
-            ) and on (instance, device) label_replace(
+      $.timeSeriesPanel(
+        title='Physical Device Latency for $osd',
+        datasource='$datasource',
+        gridPosition={ x: 0, y: 11, w: 6, h: 9 },
+        unit='s',
+        axisLabel='Read (-) / Write (+)',
+        drawStyle='line',
+        fillOpacity=8,
+        tooltip={ mode: 'multi', sort: 'none' },
+        colorMode='palette-classic',
+        spanNulls=true,
+      )
+      .addTargets([
+        $.addTargetSchema(
+          |||
+            (
               label_replace(
-                ceph_disk_occupation_human{%(matchers)s, ceph_daemon=~"$osd"},
-                "device", "$1", "device", "/dev/(.*)"
-              ), "instance", "$1", "instance", "([^:.]*).*"
-            )
-          )
-        ||| % $.matchers(),
-        |||
-          (
-            label_replace(
-              rate(node_disk_write_time_seconds_total{%(clusterMatcher)s}[$__rate_interval]) /
-                rate(node_disk_writes_completed_total{%(clusterMatcher)s}[$__rate_interval]),
-              "instance", "$1", "instance", "([^:.]*).*") and on (instance, device)
-              label_replace(
+                rate(node_disk_read_time_seconds_total[$__rate_interval]) /
+                  rate(node_disk_reads_completed_total[$__rate_interval]),
+                "instance", "$1", "instance", "([^:.]*).*"
+              ) and on (instance, device) label_replace(
                 label_replace(
-                  ceph_disk_occupation_human{%(matchers)s, ceph_daemon=~"$osd"}, "device", "$1", "device", "/dev/(.*)"
+                  ceph_disk_occupation_human{ceph_daemon=~"$osd", %(matchers)s},
+                  "device", "$1", "device", "/dev/(.*)"
                 ), "instance", "$1", "instance", "([^:.]*).*"
               )
             )
-        ||| % $.matchers(),
-        '{{instance}}/{{device}} Reads',
-        '{{instance}}/{{device}} Writes',
-        0,
-        11,
-        6,
-        9
-      )
+          ||| % $.matchers(),
+          '{{instance}}/{{device}} Reads'
+        ),
+        $.addTargetSchema(
+          |||
+            (
+              label_replace(
+                rate(node_disk_write_time_seconds_total[$__rate_interval]) /
+                  rate(node_disk_writes_completed_total[$__rate_interval]),
+                "instance", "$1", "instance", "([^:.]*).*") and on (instance, device)
+                label_replace(
+                  label_replace(
+                    ceph_disk_occupation_human{ceph_daemon=~"$osd", %(matchers)s}, "device", "$1", "device", "/dev/(.*)"
+                  ), "instance", "$1", "instance", "([^:.]*).*"
+                )
+            )
+          ||| % $.matchers(),
+          '{{instance}}/{{device}} Writes'
+        ),
+      ])
       .addSeriesOverride(
         { alias: '/.*Reads/', transform: 'negative-Y' }
       ),
-      OsdDeviceDetailsPanel(
-        'Physical Device R/W IOPS for $osd',
-        '',
-        'short',
-        'Read (-) / Write (+)',
-        |||
-          label_replace(
-            rate(node_disk_writes_completed_total{%(clusterMatcher)s}[$__rate_interval]),
-            "instance", "$1", "instance", "([^:.]*).*"
-          ) and on (instance, device) label_replace(
-            label_replace(
-              ceph_disk_occupation_human{%(matchers)s, ceph_daemon=~"$osd"},
-              "device", "$1", "device", "/dev/(.*)"
-            ), "instance", "$1", "instance", "([^:.]*).*"
-          )
-        ||| % $.matchers(),
-        |||
-          label_replace(
-            rate(node_disk_reads_completed_total{%(clusterMatcher)s}[$__rate_interval]),
-            "instance", "$1", "instance", "([^:.]*).*"
-          ) and on (instance, device) label_replace(
-            label_replace(
-              ceph_disk_occupation_human{%(matchers)s, ceph_daemon=~"$osd"},
-              "device", "$1", "device", "/dev/(.*)"
-            ), "instance", "$1", "instance", "([^:.]*).*"
-          )
-        ||| % $.matchers(),
-        '{{device}} on {{instance}} Writes',
-        '{{device}} on {{instance}} Reads',
-        6,
-        11,
-        6,
-        9
+      $.timeSeriesPanel(
+        title='Physical Device R/W IOPS for $osd',
+        datasource='$datasource',
+        gridPosition={ x: 6, y: 11, w: 6, h: 9 },
+        unit='short',
+        axisLabel='Read (-) / Write (+)',
+        drawStyle='line',
+        fillOpacity=8,
+        tooltip={ mode: 'multi', sort: 'none' },
+        colorMode='palette-classic',
+        spanNulls=true,
       )
+      .addTargets([
+        $.addTargetSchema(
+          |||
+            label_replace(
+              rate(node_disk_writes_completed_total[$__rate_interval]),
+              "instance", "$1", "instance", "([^:.]*).*"
+            ) and on (instance, device) label_replace(
+              label_replace(
+                ceph_disk_occupation_human{ceph_daemon=~"$osd", %(matchers)s},
+                "device", "$1", "device", "/dev/(.*)"
+              ), "instance", "$1", "instance", "([^:.]*).*"
+            )
+          ||| % $.matchers(),
+          '{{device}} on {{instance}} Writes'
+        ),
+        $.addTargetSchema(
+          |||
+            label_replace(
+              rate(node_disk_reads_completed_total[$__rate_interval]),
+              "instance", "$1", "instance", "([^:.]*).*"
+            ) and on (instance, device) label_replace(
+              label_replace(
+                ceph_disk_occupation_human{ceph_daemon=~"$osd", %(matchers)s},
+                "device", "$1", "device", "/dev/(.*)"
+              ), "instance", "$1", "instance", "([^:.]*).*"
+            )
+          ||| % $.matchers(),
+          '{{device}} on {{instance}} Reads'
+        ),
+      ])
       .addSeriesOverride(
         { alias: '/.*Reads/', transform: 'negative-Y' }
       ),
-      OsdDeviceDetailsPanel(
-        'Physical Device R/W Bytes for $osd',
-        '',
-        'Bps',
-        'Read (-) / Write (+)',
-        |||
-          label_replace(
-            rate(node_disk_read_bytes_total{%(clusterMatcher)s}[$__rate_interval]), "instance", "$1", "instance", "([^:.]*).*"
-          ) and on (instance, device) label_replace(
-            label_replace(
-              ceph_disk_occupation_human{%(matchers)s, ceph_daemon=~"$osd"},
-              "device", "$1", "device", "/dev/(.*)"
-            ), "instance", "$1", "instance", "([^:.]*).*"
-          )
-        ||| % $.matchers(),
-        |||
-          label_replace(
-            rate(node_disk_written_bytes_total{%(clusterMatcher)s}[$__rate_interval]), "instance", "$1", "instance", "([^:.]*).*"
-          ) and on (instance, device) label_replace(
-            label_replace(
-              ceph_disk_occupation_human{%(matchers)s, ceph_daemon=~"$osd"},
-              "device", "$1", "device", "/dev/(.*)"
-            ), "instance", "$1", "instance", "([^:.]*).*"
-          )
-        ||| % $.matchers(),
-        '{{instance}} {{device}} Reads',
-        '{{instance}} {{device}} Writes',
-        12,
-        11,
-        6,
-        9
+      $.timeSeriesPanel(
+        title='Physical Device R/W Bytes for $osd',
+        datasource='$datasource',
+        gridPosition={ x: 12, y: 11, w: 6, h: 9 },
+        unit='Bps',
+        axisLabel='Read (-) / Write (+)',
+        drawStyle='line',
+        fillOpacity=8,
+        tooltip={ mode: 'multi', sort: 'none' },
+        colorMode='palette-classic',
+        spanNulls=true,
       )
+      .addTargets([
+        $.addTargetSchema(
+          |||
+            label_replace(
+              rate(node_disk_read_bytes_total[$__rate_interval]), "instance", "$1", "instance", "([^:.]*).*"
+            ) and on (instance, device) label_replace(
+              label_replace(
+                ceph_disk_occupation_human{ceph_daemon=~"$osd", %(matchers)s},
+                "device", "$1", "device", "/dev/(.*)"
+              ), "instance", "$1", "instance", "([^:.]*).*"
+            )
+          ||| % $.matchers(),
+          '{{instance}} {{device}} Reads'
+        ),
+        $.addTargetSchema(
+          |||
+            label_replace(
+              rate(node_disk_written_bytes_total[$__rate_interval]), "instance", "$1", "instance", "([^:.]*).*"
+            ) and on (instance, device) label_replace(
+              label_replace(
+                ceph_disk_occupation_human{ceph_daemon=~"$osd", %(matchers)s},
+                "device", "$1", "device", "/dev/(.*)"
+              ), "instance", "$1", "instance", "([^:.]*).*"
+            )
+          ||| % $.matchers(),
+          '{{instance}} {{device}} Writes'
+        ),
+      ])
       .addSeriesOverride(
         { alias: '/.*Reads/', transform: 'negative-Y' }
       ),
-      $.graphPanelSchema(
-        {},
-        'Physical Device Util% for $osd',
-        '',
-        'null',
-        false,
-        'percentunit',
-        'short',
-        null,
-        null,
-        null,
-        1,
-        '$datasource'
+      $.timeSeriesPanel(
+        title='Physical Device Util% for $osd',
+        datasource='$datasource',
+        gridPosition={ x: 18, y: 11, w: 6, h: 9 },
+        unit='percentunit',
+        axisLabel='',
+        drawStyle='line',
+        fillOpacity=8,
+        showPoints='never',
+        tooltip={ mode: 'multi', sort: 'none' },
+        colorMode='palette-classic',
+        spanNulls=true,
       )
-      .addTarget($.addTargetSchema(
-        |||
-          label_replace(
-            rate(node_disk_io_time_seconds_total{%(clusterMatcher)s}[$__rate_interval]),
-            "instance", "$1", "instance", "([^:.]*).*"
-          ) and on (instance, device) label_replace(
+      .addTargets([
+        $.addTargetSchema(
+          |||
             label_replace(
-              ceph_disk_occupation_human{%(matchers)s, ceph_daemon=~"$osd"}, "device", "$1", "device", "/dev/(.*)"
-            ), "instance", "$1", "instance", "([^:.]*).*"
-          )
-        ||| % $.matchers(),
-        '{{device}} on {{instance}}'
-      )) + { gridPos: { x: 18, y: 11, w: 6, h: 9 } },
+              rate(node_disk_io_time_seconds_total[$__rate_interval]),
+              "instance", "$1", "instance", "([^:.]*).*"
+            ) and on (instance, device) label_replace(
+              label_replace(
+                ceph_disk_occupation_human{ceph_daemon=~"$osd", %(matchers)s}, "device", "$1", "device", "/dev/(.*)"
+              ), "instance", "$1", "instance", "([^:.]*).*"
+            )
+          ||| % $.matchers(),
+          '{{device}} on {{instance}}'
+        ),
+      ]),
     ]),
 }
