@@ -65,6 +65,7 @@
 
 - name: Configure operating system
   hosts: controllers:computes
+  strategy: "{{ atmosphere_custom_ansible_strategy | default('serverscom.mitogen.mitogen_linear') }}"
   become: true
   roles:
     - role: lpfc
@@ -152,6 +153,7 @@
         - openstack-exporter
 
 - hosts: controllers
+  strategy: "{{ atmosphere_custom_ansible_strategy | default('serverscom.mitogen.mitogen_linear') }}"
   become: true
   roles:
     - role: openstack_cli

@@ -28,6 +28,27 @@
         - group_vars/computes
         - host_vars
 
+    - name: Get current username (if sudo used)
+      ansible.builtin.shell: |
+        logname 2>/dev/null || echo $SUDO_USER || echo $USER
+      register: username_result
+
+    - name: Create host_vars for test instance
+      ansible.builtin.copy:
+        dest: "{{ workspace_path }}/host_vars/instance.yml"
+        content: |
+          ansible_host: 127.0.0.1
+          ansible_user: {{ username_result.stdout }}
+          ansible_ssh_private_key_file: /home/{{ username_result.stdout }}/.ssh/id_ed25519
+
+    - name: Create group_vars for ansible strategy
+      ansible.builtin.copy:
+        dest: "{{ workspace_path }}/group_vars/all/ansible_strategy.yml"
+        content: |
+          atmosphere_custom_ansible_strategy: serverscom.mitogen.mitogen_linear
+          ceph_custom_ansible_strategy: serverscom.mitogen.mitogen_linear
+          kubernetes_custom_ansible_strategy: serverscom.mitogen.mitogen_linear
+
 - name: Generate Ceph control plane configuration for workspace
   hosts: localhost
   gather_facts: false

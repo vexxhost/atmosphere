@@ -28,6 +28,7 @@
     containerd_pause_image: "{{ atmosphere_images['pause'] }}"
 
 - hosts: "{{ target | default('all') }}"
+  strategy: "{{ atmosphere_custom_ansible_strategy | default('serverscom.mitogen.mitogen_linear') }}"
   gather_facts: false
   tasks:
     - name: Ensure RBD kernel module is loaded

@@ -14,13 +14,15 @@
 
 dependency:
   name: galaxy
+  options:
+    requirements-file: molecule/aio/requirements-poc.yaml
 driver:
   name: default
   options:
     managed: False
     ansible_connection_options:
       ansible_become: "true"
-      ansible_connection: local
+      ansible_connection: ssh
 platforms:
   - name: instance
     groups:
@@ -34,6 +36,13 @@ provisioner:
   config_options:
     defaults:
       callbacks_enabled: ansible.posix.profile_tasks
+      # strategy: serverscom.mitogen.mitogen_linear
+      roles_path: "/root/.ansible/collections/ansible_collections/vexxhost/atmosphere/roles"
+      host_key_checking: False
+    ssh_connection:
+      ssh_args: "-o ControlMaster=auto -o ControlPersist=600"
+      control_path: "/tmp/ansible-ssh-%%r@%%h:%%p"
+      pipelining: True
     tags:
       run: ${ATMOSPHERE_ANSIBLE_TAGS-all}
   options:
