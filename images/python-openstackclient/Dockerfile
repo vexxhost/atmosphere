@@ -17,7 +17,8 @@ uv pip install \
         python-neutronclient \
         python-octaviaclient \
         python-openstackclient \
-        python-swiftclient
+        python-swiftclient \
+        tap-as-a-service
 EOF
 
 FROM python-base

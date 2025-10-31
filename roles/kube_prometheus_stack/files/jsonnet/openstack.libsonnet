@@ -313,12 +313,24 @@
               severity: 'P3',
             },
           },
-        ]
+        ],
       },
       {
         name: 'octavia',
         rules:
           [
+            {
+              alert: 'OctaviaLoadBalancerMultipleMaster',
+              annotations: {
+                summary: 'Octavia load balancer has multiple MASTER Amphorae',
+                description: 'Load balancer with ID {{ $labels.loadbalancer_id }} has multiple MASTER Amphorae for more then 15 minutes.',
+              },
+              expr: 'count by(loadbalancer_id) (openstack_loadbalancer_amphora_status{role="MASTER"}) > 1',
+              'for': '15m',
+              labels: {
+                severity: 'P3',
+              },
+            },
             {
               alert: 'OctaviaLoadBalancerNotActive',
               annotations: {
@@ -344,12 +356,12 @@
               },
             },
             {
-              alert: 'OctaviaAmphoraNotReady',
+              alert: 'OctaviaAmphoraNotOperational',
               annotations: {
-                summary: 'Octavia Amphora not ready',
-                description: 'Amphora with ID {{ $labels.id }} stuck in non-ready state for more then 1 hour.',
+                summary: 'Octavia Amphora not operational',
+                description: 'Amphora with ID {{ $labels.id }} stuck in non-operational state for more then 1 hour.',
               },
-              expr: 'count by (id,name) (openstack_loadbalancer_amphora_status{status!="READY"}) > 0',
+              expr: 'count by (id,name) (openstack_loadbalancer_amphora_status{status!~"READY|ALLOCATED|DELETED"}) > 0',
               'for': '1h',
               labels: {
                 severity: 'P3',

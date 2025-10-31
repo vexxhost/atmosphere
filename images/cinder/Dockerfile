@@ -3,9 +3,9 @@
 # Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
 
 FROM openstack-venv-builder AS build
-# renovate: name=openstack/cinder repo=https://opendev.org/openstack/cinder.git branch=master
-ARG CINDER_GIT_REF=a0b8f270e60606cf5ae1fe97fd1abe6030bb10c9
-ADD --keep-git-dir=true https://opendev.org/openstack/cinder.git#${CINDER_GIT_REF} /src/cinder
+# renovate: name=openstack/cinder repo=https://github.com/openstack/cinder.git branch=master
+ARG CINDER_GIT_REF=d9a7d06907d7e3b21fc08d5311a69aa1e4bff951
+ADD --keep-git-dir=true https://github.com/openstack/cinder.git#${CINDER_GIT_REF} /src/cinder
 RUN git -C /src/cinder fetch --unshallow
 COPY patches/cinder /patches/cinder
 RUN git -C /src/cinder apply --verbose /patches/cinder/*
@@ -33,5 +33,5 @@ apt-get install -qq -y --no-install-recommends \
 apt-get clean
 rm -rf /var/lib/apt/lists/*
 EOF
-ADD --chmod=755 https://dl.k8s.io/release/v1.29.3/bin/linux/amd64/kubectl /usr/local/bin/kubectl
+ADD --chmod=755 https://dl.k8s.io/release/v1.34.1/bin/linux/amd64/kubectl /usr/local/bin/kubectl
 COPY --from=build --link /var/lib/openstack /var/lib/openstack

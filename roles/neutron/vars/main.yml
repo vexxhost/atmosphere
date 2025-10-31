@@ -20,6 +20,8 @@ __neutron_helm_values:
     backend:
       - "{{ atmosphere_network_backend }}"
   pod:
+    labels:
+      include_app_kubernetes_io: false
     replicas:
       server: 3
       rpc_server: 3
@@ -33,7 +35,7 @@ __neutron_helm_values:
         log_config_append: null
         rpc_workers: 8
         rpc_response_timeout: 600
-        service_plugins: qos,router,segments,trunk,vpnaas
+        service_plugins: qos,router,segments,trunk,vpnaas,taas,tapmirror
         external_dns_driver: "{{ _neutron_external_dns_driver | default(omit) }}"
       cors:
         allowed_origin: "*"
@@ -48,6 +50,8 @@ __neutron_helm_values:
         region_name: "{{ openstack_helm_endpoints_neutron_region_name }}"
         username: "neutron-{{ openstack_helm_endpoints_neutron_region_name }}"
         password: "{{ openstack_helm_endpoints_neutron_keystone_password }}"
+      ngs_coordination:
+        backend_url: memcached://memcached.openstack.svc.cluster.local:11211
       nova:
         live_migration_events: true
       ironic:
@@ -81,6 +85,21 @@ __neutron_helm_values:
           tunnel_id_ranges: 1:1000
         ml2_type_vlan:
           network_vlan_ranges: external:1:4094
+      taas:
+        taas:
+          enabled: true
+    taas_plugin:
+      service_providers:
+        service_provider: TAAS:TAAS:neutron_taas.services.taas.service_drivers.taas_rpc.TaasRpcDriver:default
+    rabbitmq:
+      policies:
+        - vhost: "neutron"
+          name: "ha_ttl_neutron"
+          definition:
+            message-ttl: 70000
+          priority: 0
+          apply-to: all
+          pattern: '^(?!(amq\.|reply_)).*'
   manifests:
     ingress_server: false
     service_ingress_server: false
@@ -89,7 +108,7 @@ __neutron_ovn_helm_values:
   conf:
     neutron:
       DEFAULT:
-        service_plugins: qos,ovn-router,segments,trunk,log,ovn-vpnaas
+        service_plugins: qos,ovn-router,segments,trunk,log,ovn-vpnaas,taas,tapmirror
       ovn:
         ovn_emit_need_to_frag: true
       service_providers:
@@ -102,9 +121,6 @@ __neutron_ovn_helm_values:
         extensions: vpnaas
       vpnagent:
         vpn_device_driver: neutron_vpnaas.services.vpn.device_drivers.ovn_ipsec.OvnStrongSwanDriver
-    neutron_vpnaas:
-      service_providers:
-        service_provider: VPN:strongswan:neutron_vpnaas.services.vpn.service_drivers.ovn_ipsec.IPsecOvnVPNDriver:default
     plugins:
       ml2_conf:
         agent:
@@ -112,6 +128,9 @@ __neutron_ovn_helm_values:
         ml2:
           type_drivers: flat,vlan,geneve
           tenant_network_types: geneve
+    taas_plugin:
+      service_providers:
+        service_provider: TAAS:TAAS:neutron_taas.services.taas.service_drivers.ovn.taas_ovn.TaasOvnDriver:default
   manifests:
     daemonset_dhcp_agent: false
     daemonset_l3_agent: false

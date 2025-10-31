@@ -141,10 +141,6 @@ target "openvswitch" {
     contexts = {
         "centos" = "docker-image://quay.io/centos/centos:stream9"
     }
-
-    tags = [
-        "${REGISTRY}/openvswitch:${TAG}"
-    ]
 }
 
 target "ovn" {
@@ -191,19 +187,8 @@ target "neutron-source" {
     platforms = ["linux/amd64", "linux/arm64"]
 
     contexts = {
-        "git" = "https://opendev.org/openstack/neutron.git#c45a27ee6739743509ad6e83079d9a90f8fa497a" # renovate: branch=master
+        "git" = "https://github.com/openstack/neutron.git#46f4ef447537d80bff2bb64da6a61fff40e8fcc3" # renovate: branch=master
         "patches" = "patches/openstack/neutron"
-    }
-}
-
-target "networking-generic-switch-source" {
-    context = "images/source-patch"
-    target = "unshallow"
-    platforms = ["linux/amd64", "linux/arm64"]
-
-    contexts = {
-        "git" = "https://opendev.org/openstack/networking-generic-switch.git#ced747b10e5ab7797f82a9306614c866b4398e4f" # renovate: branch=master
-        "patches" = "patches/openstack/networking-generic-switch"
     }
 }
 
@@ -217,7 +202,6 @@ target "neutron" {
 
     contexts = {
         "neutron-source" = "target:neutron-source"
-        "networking-generic-switch-source" = "target:networking-generic-switch-source"
         "openstack-python-runtime" = "target:openstack-python-runtime"
         "openstack-venv-builder" = "target:openstack-venv-builder"
         "ovsinit" = "target:ovsinit"
@@ -292,7 +276,6 @@ group "default" {
         "openstack-placement",
         "openstack-staffeln",
         "openstack-tempest",
-        "openvswitch",
         "ovn-central",
         "ovn-host",
         "python-openstackclient",

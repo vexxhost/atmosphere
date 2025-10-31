@@ -3,9 +3,9 @@
 # Atmosphere-Rebuild-Time: 2024-12-17T01:27:44Z
 
 FROM openstack-venv-builder AS build
-# renovate: name=openstack/nova repo=https://opendev.org/openstack/nova.git branch=master
-ARG NOVA_GIT_REF=3e7017eb2952d5258d96e27b6c16aae1ed472b21
-ADD --keep-git-dir=true https://opendev.org/openstack/nova.git#${NOVA_GIT_REF} /src/nova
+# renovate: name=openstack/nova repo=https://github.com/openstack/nova.git branch=master
+ARG NOVA_GIT_REF=87bf7700b8e2adecdd854cd1607317048b6d86da
+ADD --keep-git-dir=true https://github.com/openstack/nova.git#${NOVA_GIT_REF} /src/nova
 RUN git -C /src/nova fetch --unshallow
 # renovate: name=vexxhost/nova-scheduler-filters repo=https://github.com/vexxhost/nova-scheduler-filters.git branch=main
 ARG SCHEDULER_FILTERS_GIT_REF=77ed1c2ca70f4166a6d0995c7d3d90822f0ca6c0
@@ -25,11 +25,11 @@ ADD --chmod=644 \
     /var/lib/openstack/lib/python3.12/site-packages/os_brick/initiator/connectors/storpool.py
 
 FROM openstack-python-runtime
-ADD https://github.com/novnc/noVNC.git#v1.4.0 /usr/share/novnc
+ADD https://github.com/novnc/noVNC.git#v1.6.0 /usr/share/novnc
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \
-    ceph-common dmidecode genisoimage iproute2 libosinfo-bin lsscsi ndctl nfs-common nvme-cli openssh-client ovmf python3-libvirt python3-rados python3-rbd qemu-efi-aarch64 qemu-block-extra qemu-utils sysfsutils udev util-linux swtpm swtpm-tools libtpms0
+    ceph-common dmidecode genisoimage iproute2 libosinfo-bin lsscsi mdevctl ndctl nfs-common nvme-cli openssh-client ovmf python3-libvirt python3-rados python3-rbd qemu-efi-aarch64 qemu-block-extra qemu-utils sysfsutils udev util-linux swtpm swtpm-tools libtpms0
 apt-get clean
 rm -rf /var/lib/apt/lists/*
 EOF

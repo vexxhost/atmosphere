@@ -75,11 +75,11 @@ tests:
 
   - interval: 1m
     input_series:
-      - series: 'node_time_seconds{instance="instance1", job="node"}'
+      - series: 'node_time_seconds{instance="instance1", job="node-exporter"}'
         values: '0 60 120 180 240 300'
-      - series: 'node_time_seconds{instance="instance2", job="node"}'
+      - series: 'node_time_seconds{instance="instance2", job="node-exporter"}'
         values: '1 61 121 181 241 301'
-      - series: 'node_time_seconds{instance="instance3", job="node"}'
+      - series: 'node_time_seconds{instance="instance3", job="node-exporter"}'
         values: '2 62 122 182 242 302'
     alert_rule_test:
       - eval_time: 5m
@@ -88,18 +88,18 @@ tests:
           - exp_labels:
               severity: P3
               instance: instance3
-              job: node
+              job: node-exporter
             exp_annotations:
               summary: "Node instance3 has a time difference."
               description: "Node instance3 has a time difference 2."
 
   - interval: 1m
     input_series:
-      - series: 'node_time_seconds{instance="instance1", job="node"}'
+      - series: 'node_time_seconds{instance="instance1", job="node-exporter"}'
         values: '0 60 120 180 240 300'
-      - series: 'node_time_seconds{instance="instance2", job="node"}'
+      - series: 'node_time_seconds{instance="instance2", job="node-exporter"}'
         values: '0 60 120 180 240 300'
-      - series: 'node_time_seconds{instance="instance3", job="node"}'
+      - series: 'node_time_seconds{instance="instance3", job="node-exporter"}'
         values: '0 60 120 180 240 300'
     alert_rule_test:
       - eval_time: 5m
@@ -211,6 +211,23 @@ tests:
     input_series:
       - series: 'openstack_loadbalancer_amphora_status{cert_expiration="2020-08-08T23:44:31Z",compute_id="667bb225-69aa-44b1-8908-694dc624c267",ha_ip="10.0.0.6",id="45f40289-0551-483a-b089-47214bc2a8a4",lb_network_ip="192.168.0.6",loadbalancer_id="882f2a9d-9d53-4bd0-b0e9-08e9d0de11f9",role="MASTER",status="READY"}'
         values: '2x15'
+      - series: 'openstack_loadbalancer_amphora_status{cert_expiration="2020-08-08T23:44:30Z",compute_id="9cd0f9a2-fe12-42fc-a7e3-5b6fbbe20395",ha_ip="10.0.0.6",id="7f890893-ced0-46ed-8697-33415d070e5a",lb_network_ip="192.168.0.17",loadbalancer_id="882f2a9d-9d53-4bd0-b0e9-08e9d0de11f9",role="MASTER",status="READY"}'
+        values: '6x15'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: OctaviaLoadBalancerMultipleMaster
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+              loadbalancer_id: 882f2a9d-9d53-4bd0-b0e9-08e9d0de11f9
+            exp_annotations:
+              summary: Octavia load balancer has multiple MASTER Amphorae
+              description: Load balancer with ID 882f2a9d-9d53-4bd0-b0e9-08e9d0de11f9 has multiple MASTER Amphorae for more then 15 minutes.
+
+  - interval: 1m
+    input_series:
+      - series: 'openstack_loadbalancer_amphora_status{cert_expiration="2020-08-08T23:44:31Z",compute_id="667bb225-69aa-44b1-8908-694dc624c267",ha_ip="10.0.0.6",id="45f40289-0551-483a-b089-47214bc2a8a4",lb_network_ip="192.168.0.6",loadbalancer_id="882f2a9d-9d53-4bd0-b0e9-08e9d0de11f9",role="MASTER",status="READY"}'
+        values: '2x15'
       - series: 'openstack_loadbalancer_amphora_status{cert_expiration="2020-08-08T23:44:30Z",compute_id="9cd0f9a2-fe12-42fc-a7e3-5b6fbbe20395",ha_ip="10.0.0.6",id="7f890893-ced0-46ed-8697-33415d070e5a",lb_network_ip="192.168.0.17",loadbalancer_id="882f2a9d-9d53-4bd0-b0e9-08e9d0de11f9",role="BACKUP",status="ERROR"}'
         values: '6x15'
     alert_rule_test:
@@ -232,11 +249,24 @@ tests:
         values: '3x60'
     alert_rule_test:
       - eval_time: 1h
-        alertname: OctaviaAmphoraNotReady
+        alertname: OctaviaAmphoraNotOperational
         exp_alerts:
           - exp_labels:
               severity: P3
               id: 7f890893-ced0-46ed-8697-33415d070e5a
             exp_annotations:
-              summary: Octavia Amphora not ready
-              description: Amphora with ID 7f890893-ced0-46ed-8697-33415d070e5a stuck in non-ready state for more then 1 hour.
+              summary: Octavia Amphora not operational
+              description: Amphora with ID 7f890893-ced0-46ed-8697-33415d070e5a stuck in non-operational state for more then 1 hour.
+
+  - interval: 1m
+    input_series:
+      - series: 'openstack_loadbalancer_amphora_status{cert_expiration="2020-08-08T23:44:31Z",compute_id="667bb225-69aa-44b1-8908-694dc624c267",ha_ip="10.0.0.6",id="45f40289-0551-483a-b089-47214bc2a8a4",lb_network_ip="192.168.0.6",loadbalancer_id="882f2a9d-9d53-4bd0-b0e9-08e9d0de11f9",role="MASTER",status="READY"}'
+        values: '2x60'
+      - series: 'openstack_loadbalancer_amphora_status{cert_expiration="2020-08-08T23:44:30Z",compute_id="9cd0f9a2-fe12-42fc-a7e3-5b6fbbe20395",ha_ip="10.0.0.6",id="7f890893-ced0-46ed-8697-33415d070e5a",lb_network_ip="192.168.0.17",loadbalancer_id="882f2a9d-9d53-4bd0-b0e9-08e9d0de11f9",role="BACKUP",status="ALLOCATED"}'
+        values: '3x60'
+      - series: 'openstack_loadbalancer_amphora_status{cert_expiration="2020-08-08T23:44:32Z",compute_id="b9c0f9a2-fe12-42fc-a7e3-5b6fbbe20397",ha_ip="10.0.0.6",id="e9e8ccf3-8249-4f7e-b58c-52ef864a4a13",lb_network_ip="192.168.0.18",loadbalancer_id="882f2a9d-9d53-4bd0-b0e9-08e9d0de11f9",role="BACKUP",status="DELETED"}'
+        values: '3x60'
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: OctaviaAmphoraNotOperational
+        exp_alerts: []

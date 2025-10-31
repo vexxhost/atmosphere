@@ -17,6 +17,8 @@ _barbican_helm_values:
   images:
     tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('barbican') }}"
   pod:
+    labels:
+      include_app_kubernetes_io: false
     replicas:
       api: 3
   conf:
@@ -34,6 +36,15 @@ _barbican_helm_values:
         kek: "{{ barbican_kek }}"
     simple_crypto_kek_rewrap:
       old_kek: "{{ barbican_kek }}"
+    rabbitmq:
+      policies:
+        - vhost: "barbican"
+          name: "ha_ttl_barbican"
+          definition:
+            message-ttl: 70000
+          priority: 0
+          apply-to: all
+          pattern: '^(?!(amq\.|reply_)).*'
 
   manifests:
     ingress_api: false

@@ -3,10 +3,12 @@
 # Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
 
 FROM openstack-venv-builder AS build
-# renovate: name=openstack/keystone repo=https://opendev.org/openstack/keystone.git branch=master
-ARG KEYSTONE_GIT_REF=1deab5faa2f7dc8079607b44f208fd6734bd2e58
-ADD --keep-git-dir=true https://opendev.org/openstack/keystone.git#${KEYSTONE_GIT_REF} /src/keystone
+# renovate: name=openstack/keystone repo=https://github.com/openstack/keystone.git branch=master
+ARG KEYSTONE_GIT_REF=a568938e0c967a56ade269c93f42718008487b14
+ADD --keep-git-dir=true https://github.com/openstack/keystone.git#${KEYSTONE_GIT_REF} /src/keystone
 RUN git -C /src/keystone fetch --unshallow
+COPY patches/keystone /patches/keystone
+RUN git -C /src/keystone apply --verbose /patches/keystone/*
 RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe
 uv pip install \
     --constraint /upper-constraints.txt \
@@ -22,7 +24,7 @@ apt-get install -qq -y --no-install-recommends \
 apt-get clean
 rm -rf /var/lib/apt/lists/*
 EOF
-ARG MOD_AUTH_OPENIDC_VERSION=2.4.17
+ARG MOD_AUTH_OPENIDC_VERSION=2.4.18.1
 ARG TARGETARCH
 RUN <<EOF bash -xe
 # TODO(mnaser): mod_auth_openidc does not have aarch64 builds
