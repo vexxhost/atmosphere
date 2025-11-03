@@ -1,0 +1,62 @@
+{% if inventory_hostname in groups[pacemaker_corosync_group] %}
+{%   set _pacemaker_corosync_bind_addr = ansible_facts[pacemaker_corosync_ring_interface | replace('-', '_')]['ipv4']['address'] %}
+{% elif pacemaker_remote_group in groups and inventory_hostname in groups[pacemaker_remote_group] %}
+{%   set _pacemaker_corosync_bind_addr = ansible_facts[pacemaker_remote_ring_interface | replace('-', '_')]['ipv4']['address'] %}
+{% endif %}
+
+totem {
+  version: 2
+  cluster_name: {{ pacemaker_corosync_group }}
+{% if pacemaker_enable_nodelist | default(true) %}
+  transport: udpu
+{% endif %}
+  interface {
+    ringnumber: 0
+    bindnetaddr: {{ _pacemaker_corosync_bind_addr }}
+    broadcast: yes
+    mcastport: 5405
+  }
+}
+
+quorum {
+  provider: corosync_votequorum
+{% if groups[pacemaker_corosync_group] | count == 2 %}
+  two_node: 1
+{% else %}
+  wait_for_all: 1
+  last_man_standing: 1
+{% endif %}
+{% if not pacemaker_enable_nodelist | default(true) %}
+  expected_votes: {{ groups[pacemaker_corosync_group] | count }}
+{% endif %}
+}
+
+{% if pacemaker_enable_nodelist | default(true) %}
+nodelist {
+
+{% set remote_nodes = (pacemaker_remote_group in groups) | ternary(groups[pacemaker_remote_group], []) %}
+{% set all_nodes = remote_nodes + groups[pacemaker_corosync_group] %}
+
+{% for node in all_nodes | sort %}
+{%   if node in groups[pacemaker_corosync_group] %}
+{%     set _pacemaker_corosync_ring_interface = pacemaker_corosync_ring_interface %}
+{%   elif pacemaker_remote_group in groups and node in groups[pacemaker_remote_group] %}
+{%     set _pacemaker_corosync_ring_interface = pacemaker_remote_ring_interface %}
+{%   endif %}
+  node {
+    ring0_addr: {{ hostvars[node]['ansible_facts'][_pacemaker_corosync_ring_interface | replace('-', '_')]['ipv4']['address'] }}
+    name: {{ pacemaker_corosync_fqdn | bool | ternary(hostvars[node]['ansible_facts']['fqdn'], node) }}
+    nodeid: {{ loop.index }}
+  }
+{% endfor %}
+}
+{% endif %}
+
+logging {
+  to_logfile: {{ (pacemaker_corosync_use_logfile | bool) | ternary('yes', 'no') }}
+  {% if pacemaker_corosync_use_logfile | bool %}
+  logfile: /var/log/corosync/corosync.log
+  {% endif %}
+  to_syslog: {{ (pacemaker_corosync_use_syslog | bool) | ternary('yes', 'no') }}
+  timestamp: on
+}

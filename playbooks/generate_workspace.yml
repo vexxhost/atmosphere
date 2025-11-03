@@ -229,6 +229,7 @@
           openstack_helm_endpoints_magnum_registry_host: "container-infra-registry.{{ domain_name }}"
           openstack_helm_endpoints_rgw_host: "object-store.{{ domain_name }}"
           openstack_helm_endpoints_manila_api_host: "share.{{ domain_name }}"
+          openstack_helm_endpoints_masakari_api_host: "instance-ha.{{ domain_name }}"
 
     - name: Write new endpoints file to disk
       ansible.builtin.copy:
@@ -335,6 +336,35 @@
       ansible.builtin.copy:
         content: "{{ nova | to_nice_yaml(indent=2, width=180) }}"
         dest: "{{ _nova_path }}"
+
+- name: Generate Masakari configuration for workspace
+  hosts: localhost
+  gather_facts: false
+  vars:
+    _masakari_path: "{{ workspace_path }}/group_vars/all/masakari.yml"
+    # Input variables
+  tasks:
+    - name: Ensure the Masakari configuration file exists
+      ansible.builtin.file:
+        path: "{{ _masakari_path }}"
+        state: touch
+
+    - name: Load the current Masakari configuration into a variable
+      ansible.builtin.include_vars:
+        file: "{{ _masakari_path }}"
+        name: masakari
+
+    - name: Generate Masakari values for missing variables
+      ansible.builtin.set_fact:
+        masakari: "{{ masakari | default({}) | combine({item.key: item.value}) }}"
+      when: item.key not in masakari
+      with_dict:
+        pacemaker_corosync_ring_interface: br-ex
+
+    - name: Write new Masakari configuration file to disk
+      ansible.builtin.copy:
+        content: "{{ masakari | to_nice_yaml(indent=2, width=180) }}"
+        dest: "{{ _masakari_path }}"
 
 - name: Generate secrets for workspace
   hosts: localhost
