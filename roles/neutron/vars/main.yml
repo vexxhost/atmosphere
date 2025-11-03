@@ -108,11 +108,12 @@ __neutron_ovn_helm_values:
   conf:
     neutron:
       DEFAULT:
-        service_plugins: qos,ovn-router,segments,trunk,log,ovn-vpnaas,taas,tapmirror
+        service_plugins: qos,ovn-router,segments,trunk,log,ovn-vpnaas,taas,tapmirror,firewall_v2
       ovn:
         ovn_emit_need_to_frag: true
-      service_providers:
-        service_provider: VPN:strongswan:neutron_vpnaas.services.vpn.service_drivers.ovn_ipsec.IPsecOvnVPNDriver:default
+      service_providers: |
+        service_provider = FIREWALL_V2:fwaas_db:neutron_fwaas.services.firewall.service_drivers.ovn.firewall_l3_driver.OVNFwaasDriver:default
+        service_provider =  VPN:strongswan:neutron_vpnaas.services.vpn.service_drivers.ovn_ipsec.IPsecOvnVPNDriver:default
     ovn_metadata_agent:
       DEFAULT:
         metadata_proxy_shared_secret: "{{ openstack_helm_endpoints['compute_metadata']['secret'] }}"
