@@ -69,8 +69,9 @@ runs:
       run: rm -rfv /usr/local/bin/helm || true
 
     - shell: bash
-      run: sudo --preserve-env=ANSIBLE_PYTHON_INTERPRETER,ATMOSPHERE_NETWORK_BACKEND,DEPOT_BUILD_ID,DEPOT_TOKEN,MOLECULE_CSI_DRIVER env "PATH=$PATH" molecule test -s ${{ inputs.scenario }}
+      run: sudo --preserve-env=ANSIBLE_PYTHON_INTERPRETER,ATMOSPHERE_DEBUG,ATMOSPHERE_NETWORK_BACKEND,DEPOT_BUILD_ID,DEPOT_TOKEN,MOLECULE_CSI_DRIVER env "PATH=$PATH" molecule -vvvvv test -s ${{ inputs.scenario }}
       env:
+        ATMOSPHERE_DEBUG: true
         ANSIBLE_PYTHON_INTERPRETER: /usr/bin/python3
         ATMOSPHERE_NETWORK_BACKEND: ${{ inputs.network_backend }}
         DEPOT_BUILD_ID: ${{ inputs.depot_build_id }}
