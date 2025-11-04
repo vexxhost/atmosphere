@@ -30,6 +30,9 @@ RUN git -C /src/neutron-ovn-network-logging-parser fetch --unshallow
 # renovate: name=openstack/tap-as-a-service repo=https://opendev.org/openstack/tap-as-a-service.git branch=master
 ARG TAP_AS_A_SERVICE_GIT_REF=7fb35455e056b08088291e048b35c185b2f8f208
 ADD --keep-git-dir=true https://opendev.org/openstack/tap-as-a-service.git#${TAP_AS_A_SERVICE_GIT_REF} /src/tap-as-a-service
+# renovate: name=openstack/neutron-fwaas repo=https://github.com/openstack/neutron-fwaas.git branch=master
+ARG NEUTRON_FWAAS=4dc261adb60f4052020ddfaeba753c2d81e83dc3
+ADD --keep-git-dir=true https://github.com/openstack/neutron-fwaas.git#${NEUTRON_FWAAS} /src/neutron-fwaas
 RUN git -C /src/tap-as-a-service fetch --unshallow
 RUN \
   --mount=type=bind,from=neutron-source,source=/,target=/src/neutron,readwrite \
