@@ -11,6 +11,49 @@
 # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 # License for the specific language governing permissions and limitations
 # under the License.
+#
+- name: Get cpu usage
+  shell: "top -bn1 | grep 'Cpu(s)'"
+  register: cpu_usage
+
+- name: Display current cpu_usage
+  debug:
+    msg: "Current cpu_usage: {{ cpu_usage.stdout }}"
+
+- name: Get all pod
+  shell: "kubectl get pod -A"
+
+
+- name: Get node
+  shell: "kubectl get node"
+
+- name: Get glance pod
+  shell: "kubectl -n openstack get pod -l application=glance,component=api"
+
+- name: Log for barbican
+  kubernetes.core.k8s_log:
+    namespace: openstack
+    label_selectors:
+      - application=barbican
+      - component=api
+  register: log
+
+- name: Show barbican log
+  debug:
+    msg: "LOG: {{ log.stdout }}"
+- name: Get barbican log
+  shell: "kubectl -n openstack logs  -l application=barbican,component=api"
+
+- name: Get glance log
+  shell: "kubectl -n openstack logs  -l application=glance,component=api"
+
+- name: Get disk usage
+  shell: "df -h / | awk 'NR==2{print $5}'"
+  register: disk_usage
+
+- name: Display current disk_usage
+  debug:
+    msg: "Current disk_usage: {{ disk_usage.stdout }}"
 
 - name: Check if image exists
   run_once: true
