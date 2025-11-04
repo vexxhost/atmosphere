@@ -36,10 +36,6 @@ example below:
 
   percona_xtradb_cluster_spec:
     backup:
-<<<<<<< HEAD
-      image: percona/percona-xtradb-cluster-operator:1.14.0-pxc8.0-backup-pxb8.0.35
-=======
->>>>>>> bdd5f6fb (fix: remove hardcoded backup image from database documentation (#3190))
       storages:
         fs-pvc:
           type: filesystem
@@ -83,10 +79,6 @@ S3-compatible storage with 3 backups kept.
 
   percona_xtradb_cluster_spec:
     backup:
-<<<<<<< HEAD
-      image: percona/percona-xtradb-cluster-operator:1.14.0-pxc8.0-backup-pxb8.0.35
-=======
->>>>>>> bdd5f6fb (fix: remove hardcoded backup image from database documentation (#3190))
       storages:
         s3-bck:
           type: s3
