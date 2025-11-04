@@ -25,7 +25,9 @@ apt-get install -qq -y --no-install-recommends \
     lsb-release \
     openssh-client \
     python3 \
-    python3-dev
+    python3-dev \
+    uwsgi-core \
+    uwsgi-plugin-python3
 apt-get clean
 rm -rf /var/lib/apt/lists/*
 EOF
@@ -33,6 +35,7 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 COPY --from=requirements --link /upper-constraints.txt /upper-constraints.txt
 RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe
 uv cache clean uwsgi
+uv cache prune
 uv venv --system-site-packages /var/lib/openstack
 uv pip install \
     --constraint /upper-constraints.txt \
@@ -40,6 +43,5 @@ uv pip install \
         cryptography \
         pymysql \
         python-binary-memcached \
-        python-memcached \
-        uwsgi
+        python-memcached
 EOF

@@ -18,7 +18,7 @@ set -ex
 COMMAND="${@:-start}"
 
 function start () {
-  exec uwsgi --ini /etc/barbican/barbican-api-uwsgi.ini
+  exec uwsgi --plugin python3 --ini /etc/barbican/barbican-api-uwsgi.ini
 }
 
 function stop () {
