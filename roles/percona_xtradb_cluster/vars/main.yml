@@ -5,6 +5,8 @@ _percona_xtradb_cluster_spec:
   crVersion: "1.17.0"
   secretsName: percona-xtradb
   enableVolumeExpansion: true
+  backup:
+    image: "{{ atmosphere_images['percona_xtradb_cluster_backup'] | vexxhost.kubernetes.docker_image('ref') }}"
   pxc:
     size: 3
     image: "{{ atmosphere_images['percona_xtradb_cluster'] | vexxhost.kubernetes.docker_image('ref') }}"
