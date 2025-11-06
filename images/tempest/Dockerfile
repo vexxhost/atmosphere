@@ -44,7 +44,8 @@ RUN git -C /src/neutron-tempest-plugin fetch --unshallow
 ARG OCTAVIA_TEMPEST_PLUGIN_GIT_REF=fd803099c2c602fc5e8df1d4bcf25b1e585e4b51
 ADD --keep-git-dir=true https://github.com/openstack/octavia-tempest-plugin.git#${OCTAVIA_TEMPEST_PLUGIN_GIT_REF} /src/octavia-tempest-plugin
 RUN git -C /src/octavia-tempest-plugin fetch --unshallow
-RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe
+ARG UV_CACHE_ID=uv-default
+RUN --mount=type=cache,id=${UV_CACHE_ID},target=/root/.cache/uv <<EOF bash -xe
 uv pip install \
     --constraint /src/requirements/upper-constraints.txt \
         /src/tempest \

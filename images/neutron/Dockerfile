@@ -27,9 +27,10 @@ RUN git -C /src/neutron-policy-server fetch --unshallow
 ARG LOG_PASER_GIT_REF=3895d8f9d004e612c71b4f798d31c758e113946b
 ADD --keep-git-dir=true https://github.com/vexxhost/neutron-ovn-network-logging-parser.git#${LOG_PASER_GIT_REF} /src/neutron-ovn-network-logging-parser
 RUN git -C /src/neutron-ovn-network-logging-parser fetch --unshallow
+ARG UV_CACHE_ID=uv-default
 RUN \
   --mount=type=bind,from=neutron-source,source=/,target=/src/neutron,readwrite \
-  --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe
+  --mount=type=cache,id=${UV_CACHE_ID},target=/root/.cache/uv <<EOF bash -xe
 uv pip install \
     --constraint /upper-constraints.txt \
         /src/neutron \

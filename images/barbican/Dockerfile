@@ -7,7 +7,8 @@ FROM openstack-venv-builder AS build
 ARG BARBICAN_GIT_REF=b5841df387e5ab38caf173950a1d98ab37a51453
 ADD --keep-git-dir=true https://github.com/openstack/barbican.git#${BARBICAN_GIT_REF} /src/barbican
 RUN git -C /src/barbican fetch --unshallow
-RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe
+ARG UV_CACHE_ID=uv-default
+RUN --mount=type=cache,id=${UV_CACHE_ID},target=/root/.cache/uv <<EOF bash -xe
 uv pip install \
     --constraint /upper-constraints.txt \
         /src/barbican \

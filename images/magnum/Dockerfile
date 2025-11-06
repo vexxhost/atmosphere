@@ -15,7 +15,8 @@ FROM openstack-venv-builder AS build
 ARG MAGNUM_GIT_REF=b8a351b99b40c0aa123be3d51a4d0b73e66aa2dc
 ADD --keep-git-dir=true https://github.com/openstack/magnum.git#${MAGNUM_GIT_REF} /src/magnum
 RUN git -C /src/magnum fetch --unshallow
-RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe
+ARG UV_CACHE_ID=uv-default
+RUN --mount=type=cache,id=${UV_CACHE_ID},target=/root/.cache/uv <<EOF bash -xe
 uv pip install \
     --constraint /upper-constraints.txt \
         /src/magnum \
