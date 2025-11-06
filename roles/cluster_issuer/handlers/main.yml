@@ -12,6 +12,13 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+- name: Install openssl-perl package
+  when: ansible_facts['os_family'] == 'RedHat'
+  ansible.builtin.package:
+    name: openssl-perl
+    state: present
+  listen: Update CA certificates on host
+
 - name: Update CA certificates
   changed_when: true
   listen: Update CA certificates on host

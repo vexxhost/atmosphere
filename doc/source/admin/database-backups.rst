@@ -36,7 +36,6 @@ example below:
 
   percona_xtradb_cluster_spec:
     backup:
-      image: percona/percona-xtrabackup:8.0.35-33.1
       storages:
         fs-pvc:
           type: filesystem
@@ -83,7 +82,6 @@ S3-compatible storage with 3 backups kept.
 
   percona_xtradb_cluster_spec:
     backup:
-      image: percona/percona-xtrabackup:8.0.35-33.1
       storages:
         s3-bck:
           type: s3

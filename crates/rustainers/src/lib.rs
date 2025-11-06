@@ -1,11 +1,11 @@
 extern crate tar;
 
+use bollard::Docker;
 use bollard::container::{Config, CreateContainerOptions, StartContainerOptions};
 use bollard::exec::{CreateExecOptions, StartExecResults};
-use bollard::Docker;
 use bytes::{BufMut, BytesMut};
-use futures_util::stream::StreamExt;
 use futures_util::TryStreamExt;
+use futures_util::stream::StreamExt;
 use passwd::PasswdEntry;
 use rand::Rng;
 use std::collections::HashMap;
