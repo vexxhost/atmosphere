@@ -7,7 +7,8 @@ FROM openstack-venv-builder AS build
 ARG KEYSTONE_GIT_REF=5a60aad8ab1790851057312400a0ce61f35c33a1
 ADD --keep-git-dir=true https://github.com/openstack/keystone.git#${KEYSTONE_GIT_REF} /src/keystone
 RUN git -C /src/keystone fetch --unshallow
-RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe
+ARG UV_CACHE_ID=uv-default
+RUN --mount=type=cache,id=${UV_CACHE_ID},target=/root/.cache/uv <<EOF bash -xe
 uv pip install \
     --constraint /upper-constraints.txt \
         /src/keystone[ldap] \
