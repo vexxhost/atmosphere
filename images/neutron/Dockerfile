@@ -31,9 +31,10 @@ RUN git -C /src/neutron-ovn-network-logging-parser fetch --unshallow
 ARG TAP_AS_A_SERVICE_GIT_REF=b8f9c627fb45b4b3af0dd26c632de9341299531c
 ADD --keep-git-dir=true https://github.com/openstack/tap-as-a-service.git#${TAP_AS_A_SERVICE_GIT_REF} /src/tap-as-a-service
 RUN git -C /src/tap-as-a-service fetch --unshallow
+ARG UV_CACHE_ID=uv-default
 RUN \
   --mount=type=bind,from=neutron-source,source=/,target=/src/neutron,readwrite \
-  --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe
+  --mount=type=cache,id=${UV_CACHE_ID},target=/root/.cache/uv <<EOF bash -xe
 uv pip install \
     --constraint /upper-constraints.txt \
         /src/neutron \
