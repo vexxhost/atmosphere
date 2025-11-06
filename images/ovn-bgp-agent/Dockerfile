@@ -9,7 +9,8 @@ ADD --keep-git-dir=true https://github.com/openstack/ovn-bgp-agent.git#${OVN_BGP
 RUN git -C /src/ovn-bgp-agent fetch --unshallow
 COPY patches/ovn-bgp-agent /patches/ovn-bgp-agent
 RUN git -C /src/ovn-bgp-agent apply --verbose /patches/ovn-bgp-agent/*
-RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe
+ARG UV_CACHE_ID=uv-default
+RUN --mount=type=cache,id=${UV_CACHE_ID},target=/root/.cache/uv <<EOF bash -xe
 uv pip install \
     --constraint /upper-constraints.txt \
         /src/ovn-bgp-agent[frr_k8s]
