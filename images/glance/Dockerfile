@@ -11,7 +11,8 @@ RUN git -C /src/glance fetch --unshallow
 ARG GLANCE_STORE_GIT_REF=b320f11c8e6c0db495a0d0bd3d43c9406cea1667
 ADD --keep-git-dir=true https://github.com/openstack/glance_store.git#${GLANCE_STORE_GIT_REF} /src/glance_store
 RUN git -C /src/glance_store fetch --unshallow
-RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe
+ARG UV_CACHE_ID=uv-default
+RUN --mount=type=cache,id=${UV_CACHE_ID},target=/root/.cache/uv <<EOF bash -xe
 uv pip install \
     --constraint /upper-constraints.txt \
         /src/glance \

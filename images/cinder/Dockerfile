@@ -9,7 +9,8 @@ ADD --keep-git-dir=true https://github.com/openstack/cinder.git#${CINDER_GIT_REF
 RUN git -C /src/cinder fetch --unshallow
 COPY patches/cinder /patches/cinder
 RUN git -C /src/cinder apply --verbose /patches/cinder/*
-RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe
+ARG UV_CACHE_ID=uv-default
+RUN --mount=type=cache,id=${UV_CACHE_ID},target=/root/.cache/uv <<EOF bash -xe
 uv pip install \
     --constraint /upper-constraints.txt \
         /src/cinder \

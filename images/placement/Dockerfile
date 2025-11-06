@@ -7,7 +7,8 @@ FROM openstack-venv-builder AS build
 ARG PLACEMENT_GIT_REF=2df2316c370128ee3aaca2179b7a4b33d96f37ae
 ADD --keep-git-dir=true https://github.com/openstack/placement.git#${PLACEMENT_GIT_REF} /src/placement
 RUN git -C /src/placement fetch --unshallow
-RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe
+ARG UV_CACHE_ID=uv-default
+RUN --mount=type=cache,id=${UV_CACHE_ID},target=/root/.cache/uv <<EOF bash -xe
 uv pip install \
     --constraint /upper-constraints.txt \
         /src/placement

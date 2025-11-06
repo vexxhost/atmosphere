@@ -9,7 +9,8 @@ ADD --keep-git-dir=true https://github.com/openstack/keystone.git#${KEYSTONE_GIT
 RUN git -C /src/keystone fetch --unshallow
 COPY patches/keystone /patches/keystone
 RUN git -C /src/keystone apply --verbose /patches/keystone/*
-RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe
+ARG UV_CACHE_ID=uv-default
+RUN --mount=type=cache,id=${UV_CACHE_ID},target=/root/.cache/uv <<EOF bash -xe
 uv pip install \
     --constraint /upper-constraints.txt \
         /src/keystone[ldap] \
