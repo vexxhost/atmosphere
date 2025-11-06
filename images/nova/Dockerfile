@@ -11,7 +11,8 @@ RUN git -C /src/nova fetch --unshallow
 ARG SCHEDULER_FILTERS_GIT_REF=77ed1c2ca70f4166a6d0995c7d3d90822f0ca6c0
 ADD --keep-git-dir=true https://github.com/vexxhost/nova-scheduler-filters.git#${SCHEDULER_FILTERS_GIT_REF} /src/nova-scheduler-filters
 RUN git -C /src/nova-scheduler-filters fetch --unshallow
-RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe
+ARG UV_CACHE_ID=uv-default
+RUN --mount=type=cache,id=${UV_CACHE_ID},target=/root/.cache/uv <<EOF bash -xe
 uv pip install \
     --constraint /upper-constraints.txt \
         /src/nova \
