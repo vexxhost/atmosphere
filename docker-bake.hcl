@@ -6,6 +6,10 @@ variable "TAG" {
     default = "main"
 }
 
+variable "UV_CACHE_ID" {
+    default = "uv-${TAG}"
+}
+
 target "ubuntu" {
     context = "images/ubuntu"
     platforms = ["linux/amd64", "linux/arm64"]
@@ -47,6 +51,10 @@ target "python-base" {
 target "openstack-venv-builder" {
     context = "images/openstack-venv-builder"
     platforms = ["linux/amd64", "linux/arm64"]
+
+    args = {
+        UV_CACHE_ID = "${UV_CACHE_ID}"
+    }
 
     contexts = {
         "ubuntu-cloud-archive" = "target:ubuntu-cloud-archive"
@@ -171,6 +179,10 @@ target "python-openstackclient" {
     context = "images/python-openstackclient"
     platforms = ["linux/amd64", "linux/arm64"]
 
+    args = {
+        UV_CACHE_ID = "${UV_CACHE_ID}"
+    }
+
     contexts = {
         "openstack-venv-builder" = "target:openstack-venv-builder"
         "python-base" = "target:python-base"
@@ -198,6 +210,7 @@ target "neutron" {
 
     args = {
         PROJECT = "neutron"
+        UV_CACHE_ID = "${UV_CACHE_ID}"
     }
 
     contexts = {
@@ -240,6 +253,7 @@ target "openstack" {
 
     args = {
         PROJECT = "${service}"
+        UV_CACHE_ID = "${UV_CACHE_ID}"
     }
 
     contexts = {
