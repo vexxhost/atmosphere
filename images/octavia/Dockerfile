@@ -11,7 +11,8 @@ RUN git -C /src/octavia fetch --unshallow
 ARG OVN_OCTAVIA_PROVIDER_GIT_REF=f86ecc7fb90db851dcece49344e22590e0807f89
 ADD --keep-git-dir=true https://github.com/openstack/ovn-octavia-provider.git#${OVN_OCTAVIA_PROVIDER_GIT_REF} /src/ovn-octavia-provider
 RUN git -C /src/ovn-octavia-provider fetch --unshallow
-RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe
+ARG UV_CACHE_ID=uv-default
+RUN --mount=type=cache,id=${UV_CACHE_ID},target=/root/.cache/uv <<EOF bash -xe
 uv pip install \
     --constraint /upper-constraints.txt \
         /src/octavia[redis] \

@@ -9,7 +9,8 @@ ADD --keep-git-dir=true https://github.com/openstack/designate.git#${DESIGNATE_G
 RUN git -C /src/designate fetch --unshallow
 COPY patches/designate /patches/designate
 RUN git -C /src/designate apply --verbose /patches/designate/*
-RUN --mount=type=cache,target=/root/.cache/uv <<EOF bash -xe
+ARG UV_CACHE_ID=uv-default
+RUN --mount=type=cache,id=${UV_CACHE_ID},target=/root/.cache/uv <<EOF bash -xe
 uv pip install \
     --constraint /upper-constraints.txt \
         /src/designate
