@@ -205,6 +205,8 @@ It should be handled through lcore and pmd core masks. */}}
           volumeMounts:
             - name: pod-tmp
               mountPath: /tmp
+            - name: var-tmp
+              mountPath: /var/tmp
             - name: openvswitch-bin
               mountPath: /tmp/openvswitch-vswitchd.sh
               subPath: openvswitch-vswitchd.sh
@@ -231,6 +233,8 @@ It should be handled through lcore and pmd core masks. */}}
 {{- end }}
       volumes:
         - name: pod-tmp
+          emptyDir: {}
+        - name: var-tmp
           emptyDir: {}
         - name: openvswitch-bin
           configMap:
