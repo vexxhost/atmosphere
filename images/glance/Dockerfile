@@ -8,7 +8,7 @@ ARG GLANCE_GIT_REF=d70e40e4cc993dacb88336a7a06fe57d4c670a22
 ADD --keep-git-dir=true https://github.com/openstack/glance.git#${GLANCE_GIT_REF} /src/glance
 RUN git -C /src/glance fetch --unshallow
 # renovate: name=openstack/glance_store repo=https://github.com/openstack/glance_store.git branch=stable/2025.1
-ARG GLANCE_STORE_GIT_REF=e7b3523e469921382fb4d8236dfedd80f3f7a68c
+ARG GLANCE_STORE_GIT_REF=5db60a4a979662d2a09d937cf460f8d72f8403dd
 ADD --keep-git-dir=true https://github.com/openstack/glance_store.git#${GLANCE_STORE_GIT_REF} /src/glance_store
 RUN git -C /src/glance_store fetch --unshallow
 ARG UV_CACHE_ID=uv-default
