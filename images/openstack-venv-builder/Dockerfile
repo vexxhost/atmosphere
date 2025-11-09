@@ -4,7 +4,7 @@
 
 FROM ubuntu-cloud-archive AS requirements
 # renovate: name=openstack/requirements repo=https://github.com/openstack/requirements.git branch=stable/2024.2
-ARG REQUIREMENTS_GIT_REF=d0226ef2de72687eed37f4f029e49582d625e284
+ARG REQUIREMENTS_GIT_REF=2c31269cffe9d6e5414822882d6158934df536ee
 ADD --keep-git-dir=true https://github.com/openstack/requirements.git#${REQUIREMENTS_GIT_REF} /src/requirements
 RUN cp /src/requirements/upper-constraints.txt /upper-constraints.txt
 RUN <<EOF sh -xe
