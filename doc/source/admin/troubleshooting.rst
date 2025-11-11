@@ -54,7 +54,7 @@ When you need to troubleshoot the customers network you can assign a Neutron por
 4. Change the values of HW_IP_ADDR
 5. Change the values of HW_IP_GW
 
-.. code-block:: text
+.. code-block:: console
 
     apiVersion: v1
     kind: Pod
