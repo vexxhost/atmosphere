@@ -199,7 +199,7 @@ target "neutron-source" {
     platforms = ["linux/amd64", "linux/arm64"]
 
     contexts = {
-        "git" = "https://github.com/openstack/neutron.git#bd50604f4b692567c4821ac5b9bb5f3a45fcd2e7" # renovate: branch=stable/2024.2
+        "git" = "https://github.com/openstack/neutron.git#872a1c5709ef83562eb00e821c5740173e52a6a0" # renovate: branch=stable/2024.2
         "patches" = "patches/openstack/neutron"
     }
 }
