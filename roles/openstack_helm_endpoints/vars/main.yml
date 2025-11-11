@@ -68,6 +68,9 @@ _openstack_helm_endpoints_identity:
         region_name: "{{ openstack_helm_endpoints_keystone_region_name }}"
         username: "admin-{{ openstack_helm_endpoints_keystone_region_name }}"
         password: "{{ openstack_helm_endpoints_keystone_admin_password }}"
+        project_name: admin
+        user_domain_name: default
+        project_domain_name: default
     hosts:
       default: keystone-api
     scheme:
@@ -99,6 +102,9 @@ _openstack_helm_endpoints_image:
         region_name: "{{ openstack_helm_endpoints_glance_region_name }}"
         username: "glance-{{ openstack_helm_endpoints_glance_region_name }}"
         password: "{{ openstack_helm_endpoints_glance_keystone_password }}"
+        project_domain_name: service
+        user_domain_name: service
+        project_name: service
   image:
     scheme:
       public: https
@@ -124,6 +130,9 @@ _openstack_helm_endpoints_volumev3:
         region_name: "{{ openstack_helm_endpoints_cinder_region_name }}"
         username: "cinder-{{ openstack_helm_endpoints_cinder_region_name }}"
         password: "{{ openstack_helm_endpoints_cinder_keystone_password }}"
+        project_domain_name: service
+        user_domain_name: service
+        project_name: service
   volumev3:
     scheme:
       public: https
