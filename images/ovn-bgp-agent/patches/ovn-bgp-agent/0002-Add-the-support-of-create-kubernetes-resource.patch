@@ -1,7 +1,7 @@
-From 77f21321779fa4d8611de2c7713093a8b7826b46 Mon Sep 17 00:00:00 2001
+From eb5759f0413d2af2d56723e3331d660ff5bc3d56 Mon Sep 17 00:00:00 2001
 From: Dong Ma <winterma.dong@gmail.com>
 Date: Tue, 10 Dec 2024 21:59:07 +0800
-Subject: [PATCH 2/2] Add the support of create kubernetes resource
+Subject: [PATCH 2/3] Add the support of create kubernetes resource
 
 Add support for the OVN BGP agent to create Kuberentes
 resources using the frr-k8s [1]
@@ -14,22 +14,22 @@ Closes-Bug: #2091374
 Change-Id: Iff5c965b9f67e49dae4dca5f1c590f5784c954ae
 Signed-off-by: Dong Ma <winterma.dong@gmail.com>
 ---
- ovn_bgp_agent/config.py                       |  10 +
- .../drivers/openstack/utils/frr_k8s.py        | 322 ++++++++++++++++++
+ ovn_bgp_agent/config.py                       |   8 +
+ .../drivers/openstack/utils/frr_k8s.py        | 319 ++++++++++++++++++
  .../drivers/openstack/utils/test_frr_k8s.py   | 161 +++++++++
  .../utils/testdata/TestSingleVRFIBGP.golden   |  35 ++
  setup.cfg                                     |   5 +
  test-requirements.txt                         |   1 +
- 6 files changed, 534 insertions(+)
+ 6 files changed, 529 insertions(+)
  create mode 100644 ovn_bgp_agent/drivers/openstack/utils/frr_k8s.py
  create mode 100644 ovn_bgp_agent/tests/unit/drivers/openstack/utils/test_frr_k8s.py
  create mode 100644 ovn_bgp_agent/tests/unit/drivers/openstack/utils/testdata/TestSingleVRFIBGP.golden
 
 diff --git a/ovn_bgp_agent/config.py b/ovn_bgp_agent/config.py
-index e43afc6..1a69b1e 100644
+index cbd5302..a12cbcd 100644
 --- a/ovn_bgp_agent/config.py
 +++ b/ovn_bgp_agent/config.py
-@@ -243,6 +243,14 @@ local_ovn_cluster_opts = [
+@@ -244,6 +244,12 @@ local_ovn_cluster_opts = [
                      ' NB driver is used.'),
  ]
  
@@ -37,14 +37,12 @@ index e43afc6..1a69b1e 100644
 +    cfg.StrOpt('namespace',
 +               help='namespace to config frr-k8s',
 +               default='frr-k8s-system'),
-+    cfg.StrOpt('node_name',
-+               help='Override the node name used for FRR-k8s configuration.',
-+               default=None),
++
 +]
  CONF = cfg.CONF
  EXTRA_LOG_LEVEL_DEFAULTS = [
      'oslo.privsep.daemon=INFO'
-@@ -256,6 +264,7 @@ def register_opts():
+@@ -257,6 +263,7 @@ def register_opts():
      CONF.register_opts(root_helper_opts, "agent")
      CONF.register_opts(ovn_opts, "ovn")
      CONF.register_opts(local_ovn_cluster_opts, "local_ovn_cluster")
@@ -52,7 +50,7 @@ index e43afc6..1a69b1e 100644
  
  
  def init(args, **kwargs):
-@@ -283,4 +292,5 @@ def list_opts():
+@@ -284,4 +291,5 @@ def list_opts():
          ("agent", root_helper_opts),
          ("ovn", ovn_opts),
          ("local_ovn_cluster", local_ovn_cluster_opts),
@@ -60,10 +58,10 @@ index e43afc6..1a69b1e 100644
      ]
 diff --git a/ovn_bgp_agent/drivers/openstack/utils/frr_k8s.py b/ovn_bgp_agent/drivers/openstack/utils/frr_k8s.py
 new file mode 100644
-index 0000000..850475f
+index 0000000..bf2cfa0
 --- /dev/null
 +++ b/ovn_bgp_agent/drivers/openstack/utils/frr_k8s.py
-@@ -0,0 +1,322 @@
+@@ -0,0 +1,319 @@
 +# Copyright 2024 VEXXHOST, Inc.
 +#
 +# Licensed under the Apache License, Version 2.0 (the "License");
@@ -170,7 +168,7 @@ index 0000000..850475f
 +'''
 +
 +
-+class FRRK8sDriver(driver_api.BGPDriverBase):
++class FRRK8sDriver(driver_api.RoutingDriverBase):
 +    def __init__(self):
 +        config.load_incluster_config()
 +
@@ -179,10 +177,7 @@ index 0000000..850475f
 +
 +        self.ovs_idl = ovs.OvsIdl()
 +        self.ovs_idl.start(CONF.ovsdb_connection)
-+        if CONF.frr_k8s.node_name:
-+            self.chassis = CONF.frr_k8s.node_name
-+        else:
-+            self.chassis = self.ovs_idl.get_own_chassis_name()
++        self.chassis = self.ovs_idl.get_own_chassis_name()
 +
 +    def nd_reconfigure(self, interface, prefix, opts):
 +        LOG.info('FRR IPv6 ND reconfiguration (intf %s, prefix %s)', interface,
@@ -595,12 +590,12 @@ index 0000000..2487918
 +    "status": {}
 +}
 diff --git a/setup.cfg b/setup.cfg
-index f0c43a7..707a9fc 100644
+index 91f0c8d..37ad8d4 100644
 --- a/setup.cfg
 +++ b/setup.cfg
 @@ -42,6 +42,11 @@ ovn_bgp_agent.drivers =
  
- ovn_bgp_agent.bgp_drivers =
+ ovn_bgp_agent.routing_drivers =
      frr = ovn_bgp_agent.drivers.openstack.utils.frr:FRRDriver
 +    frr_k8s = ovn_bgp_agent.drivers.openstack.utils.frr_k8s:FRRK8sDriver
  
@@ -620,5 +615,5 @@ index 8e2cc74..ef0486b 100644
  testtools>=1.4.0 # MIT
 +kubernetes>=24.2.0 # Apache-2.0
 -- 
-2.34.1
+2.51.0
 
