@@ -48,10 +48,11 @@ Troubleshooting the customers network
 
 When you need to troubleshoot the customers network you can assign a Neutron port to the network and create a port and namespace to troubleshoot the network
 
+1. Create a Netron network port inside the network that needs to be troubleshooted
 1. Select the node you want to run this pod on on the nodeSelectorTerms 
-2. Change the values of HM_PORT_ID
-3. Change the values of HW_PORT_MAC
-4. Change the values of HW_IP_ADDR
+2. Change the values of HM_PORT_ID and use the ID of the Neutron port
+3. Change the values of HW_PORT_MAC and use the MAC address of the Neutron port
+4. Change the values of HW_IP_ADDR and use the IP address of the Neutron port
 5. Change the values of HW_IP_GW
 
 .. code-block:: yaml 
