@@ -1,7 +1,7 @@
-From 687cba92140190c3d21d1f0dce07a93befa449df Mon Sep 17 00:00:00 2001
+From 6d78e034f0a639091557dfada7dd920c3e55f2b2 Mon Sep 17 00:00:00 2001
 From: Mohammed Naser <mnaser@vexxhost.com>
 Date: Thu, 13 Mar 2025 17:48:21 -0400
-Subject: [PATCH 1/2] Implement driver concept for BGP agent
+Subject: [PATCH 1/3] Implement driver concept for BGP agent
 
 This will allow users to plug in their own methods of exposing
 routes, even out of tree to avoid having additional maintenance
@@ -9,14 +9,16 @@ burden on upstream.
 
 Co-Authored-By: Dong Ma <winterma.dong@gmail.com>
 Change-Id: I97cc32d549fb9be53739331f30bfa61d381bda8b
+Signed-off-by: Dong Ma <winterma.dong@gmail.com>
+Signed-off-by: Mohammed Naser <mnaser@vexxhost.com>
 ---
- ovn_bgp_agent/config.py                       |   3 +
+ ovn_bgp_agent/config.py                       |   4 +
  ovn_bgp_agent/drivers/driver_api.py           |  33 +++
  .../drivers/openstack/ovn_evpn_driver.py      |   8 +-
  .../openstack/ovn_stretched_l2_bgp_driver.py  |   7 +-
  ovn_bgp_agent/drivers/openstack/utils/bgp.py  |  12 +-
- ovn_bgp_agent/drivers/openstack/utils/evpn.py |  12 +-
- ovn_bgp_agent/drivers/openstack/utils/frr.py  | 201 +++++++++---------
+ ovn_bgp_agent/drivers/openstack/utils/evpn.py |  13 +-
+ ovn_bgp_agent/drivers/openstack/utils/frr.py  | 207 +++++++++---------
  .../openstack/test_nb_ovn_bgp_driver.py       |  10 +-
  .../drivers/openstack/test_ovn_bgp_driver.py  |  10 +-
  .../drivers/openstack/test_ovn_evpn_driver.py |   4 +-
@@ -25,24 +27,25 @@ Change-Id: I97cc32d549fb9be53739331f30bfa61d381bda8b
  .../unit/drivers/openstack/utils/test_evpn.py |   7 +-
  .../unit/drivers/openstack/utils/test_frr.py  |  21 +-
  setup.cfg                                     |   3 +
- 15 files changed, 202 insertions(+), 146 deletions(-)
+ 15 files changed, 208 insertions(+), 148 deletions(-)
 
 diff --git a/ovn_bgp_agent/config.py b/ovn_bgp_agent/config.py
-index d704ecb..e43afc6 100644
+index d704ecb..cbd5302 100644
 --- a/ovn_bgp_agent/config.py
 +++ b/ovn_bgp_agent/config.py
-@@ -66,6 +66,9 @@ agent_opts = [
+@@ -66,6 +66,10 @@ agent_opts = [
                 choices=('ovn_bgp_driver', 'ovn_evpn_driver',
                          'ovn_stretched_l2_bgp_driver', 'nb_ovn_bgp_driver'),
                 default='ovn_bgp_driver'),
-+    cfg.StrOpt('bgp_driver',
-+               help='BGP Driver to be used for exposing/witdrawing routes',
++    cfg.StrOpt('routing_driver',
++               help='BGP routing driver to be used for exposing/witdrawing '
++                    'routes',
 +               default='frr'),
      cfg.StrOpt('ovsdb_connection',
                 default='unix:/usr/local/var/run/openvswitch/db.sock',
                 help='The connection string for the native OVSDB backend.\n'
 diff --git a/ovn_bgp_agent/drivers/driver_api.py b/ovn_bgp_agent/drivers/driver_api.py
-index 5a657a0..174f161 100644
+index 5a657a0..a8dc0d8 100644
 --- a/ovn_bgp_agent/drivers/driver_api.py
 +++ b/ovn_bgp_agent/drivers/driver_api.py
 @@ -1,4 +1,5 @@
@@ -57,20 +60,20 @@ index 5a657a0..174f161 100644
          raise NotImplementedError()
 +
 +
-+class BGPDriverBase(object, metaclass=abc.ABCMeta):
-+    """Base class for BGP drivers.
++class RoutingDriverBase(object, metaclass=abc.ABCMeta):
++    """Base class for BGP routing drivers.
 +
 +    """
 +
 +    @classmethod
 +    def get_instance(cls, specific_driver):
-+        bgp_driver = stevedore_driver.DriverManager(
-+            namespace='ovn_bgp_agent.bgp_drivers',
++        routing_driver = stevedore_driver.DriverManager(
++            namespace='ovn_bgp_agent.routing_drivers',
 +            name=specific_driver,
 +            invoke_on_load=True
 +        ).driver
 +
-+        return bgp_driver
++        return routing_driver
 +
 +    @abc.abstractmethod
 +    def nd_reconfigure(self, interface, prefix, opts):
@@ -88,7 +91,7 @@ index 5a657a0..174f161 100644
 +    def set_default_redistribute(self, redist_opts):
 +        raise NotImplementedError()
 diff --git a/ovn_bgp_agent/drivers/openstack/ovn_evpn_driver.py b/ovn_bgp_agent/drivers/openstack/ovn_evpn_driver.py
-index 49cb2aa..e4a7712 100644
+index 49cb2aa..6b6e33f 100644
 --- a/ovn_bgp_agent/drivers/openstack/ovn_evpn_driver.py
 +++ b/ovn_bgp_agent/drivers/openstack/ovn_evpn_driver.py
 @@ -22,7 +22,6 @@ from oslo_log import log as logging
@@ -103,8 +106,8 @@ index 49cb2aa..e4a7712 100644
  class OVNEVPNDriver(driver_api.AgentDriverBase):
  
      def __init__(self):
-+        self.bgp_driver = driver_api.BGPDriverBase.get_instance(
-+            CONF.bgp_driver)
++        self.routing_driver = driver_api.RoutingDriverBase.get_instance(
++            CONF.routing_driver)
 +
          self.ovn_bridge_mappings = {}  # {'public': 'br-ex'}
          self.ovn_local_cr_lrps = {}
@@ -114,7 +117,7 @@ index 49cb2aa..e4a7712 100644
          }
  
 -        frr.vrf_reconfigure(evpn_info, action="add-vrf")
-+        self.bgp_driver.vrf_reconfigure(evpn_info, action="add-vrf")
++        self.routing_driver.vrf_reconfigure(evpn_info, action="add-vrf")
  
          self._connect_evpn_to_ovn(evpn_devices.vrf_name, evpn_devices.veth_vrf,
                                    evpn_devices.veth_ovs, ips, datapath_bridge,
@@ -123,12 +126,12 @@ index 49cb2aa..e4a7712 100644
  
          evpn_info = {'vni': evpn_vni, 'bgp_as': cr_lrp_info.get('bgp_as')}
 -        frr.vrf_reconfigure(evpn_info, action="del-vrf")
-+        self.bgp_driver.vrf_reconfigure(evpn_info, action="del-vrf")
++        self.routing_driver.vrf_reconfigure(evpn_info, action="del-vrf")
  
          try:
              del self.ovn_local_cr_lrps[cr_lrp_port_name]
 diff --git a/ovn_bgp_agent/drivers/openstack/ovn_stretched_l2_bgp_driver.py b/ovn_bgp_agent/drivers/openstack/ovn_stretched_l2_bgp_driver.py
-index 9eec639..575bb8a 100644
+index 9eec639..3787427 100644
 --- a/ovn_bgp_agent/drivers/openstack/ovn_stretched_l2_bgp_driver.py
 +++ b/ovn_bgp_agent/drivers/openstack/ovn_stretched_l2_bgp_driver.py
 @@ -25,7 +25,6 @@ from ovn_bgp_agent import constants
@@ -143,8 +146,8 @@ index 9eec639..575bb8a 100644
  
  class OVNBGPStretchedL2Driver(driver_api.AgentDriverBase):
      def __init__(self):
-+        self.bgp_driver = driver_api.BGPDriverBase.get_instance(
-+            CONF.bgp_driver)
++        self.routing_driver = driver_api.RoutingDriverBase.get_instance(
++            CONF.routing_driver)
 +
          self.ovn_local_cr_lrps = {}
          self.vrf_routes = set()
@@ -155,12 +158,12 @@ index 9eec639..575bb8a 100644
          # Base BGP configuration
 -        # Ensure FRR is configured to leak only kernel routes by default
 -        frr.set_default_redistribute(['kernel'])
-+        self.bgp_driver.set_default_redistribute(['kernel'])
++        self.routing_driver.set_default_redistribute(['kernel'])
          bgp_utils.ensure_base_bgp_configuration()
  
          # Clear vrf routing table
 diff --git a/ovn_bgp_agent/drivers/openstack/utils/bgp.py b/ovn_bgp_agent/drivers/openstack/utils/bgp.py
-index e4a388c..658f540 100644
+index e4a388c..8abee84 100644
 --- a/ovn_bgp_agent/drivers/openstack/utils/bgp.py
 +++ b/ovn_bgp_agent/drivers/openstack/utils/bgp.py
 @@ -16,9 +16,9 @@ from oslo_config import cfg
@@ -185,8 +188,8 @@ index e4a388c..658f540 100644
                                      constants.EXPOSE_METHOD_OVN]:
          return
  
-+    bgp_driver = driver_api.BGPDriverBase.get_instance(
-+        CONF.bgp_driver)
++    routing_driver = driver_api.RoutingDriverBase.get_instance(
++        CONF.routing_driver)
 +
      # Create VRF
      linux_net.ensure_vrf(CONF.bgp_vrf, CONF.bgp_vrf_table_id)
@@ -194,20 +197,20 @@ index e4a388c..658f540 100644
      # If we expose subnet routes, we should add kernel routes too.
      if CONF.advertisement_method_tenant_networks == 'subnet':
 -        frr.set_default_redistribute(['connected', 'kernel'])
-+        bgp_driver.set_default_redistribute(['connected', 'kernel'])
++        routing_driver.set_default_redistribute(['connected', 'kernel'])
  
      # Ensure FRR is configure to leak the routes
 -    frr.vrf_leak(CONF.bgp_vrf, CONF.bgp_AS, CONF.bgp_router_id,
 -                 template=template)
-+    bgp_driver.vrf_leak(CONF.bgp_vrf, CONF.bgp_AS, CONF.bgp_router_id)
++    routing_driver.vrf_leak(CONF.bgp_vrf, CONF.bgp_AS, CONF.bgp_router_id)
  
      # Create OVN dummy device
      linux_net.ensure_ovn_device(CONF.bgp_nic, CONF.bgp_vrf)
 diff --git a/ovn_bgp_agent/drivers/openstack/utils/evpn.py b/ovn_bgp_agent/drivers/openstack/utils/evpn.py
-index 40def89..a4628d6 100644
+index 4b81130..4215255 100644
 --- a/ovn_bgp_agent/drivers/openstack/utils/evpn.py
 +++ b/ovn_bgp_agent/drivers/openstack/utils/evpn.py
-@@ -19,8 +19,8 @@ from oslo_config import cfg
+@@ -20,8 +20,8 @@ from oslo_config import cfg
  from oslo_log import log as logging
  
  from ovn_bgp_agent import constants
@@ -217,64 +220,73 @@ index 40def89..a4628d6 100644
  from ovn_bgp_agent.drivers.openstack.utils import ovs
  from ovn_bgp_agent import exceptions
  from ovn_bgp_agent.utils import linux_net
-@@ -44,6 +44,9 @@ class EvpnBridge:
+@@ -45,6 +45,9 @@ class EvpnBridge:
                        "VXLAN local ip")
              raise exceptions.ConfOptionRequired(option='evpn_local_ip')
  
-+        self.bgp_driver = driver_api.BGPDriverBase.get_instance(
-+            CONF.bgp_driver)
++        self.routing_driver = driver_api.RoutingDriverBase.get_instance(
++            CONF.routing_driver)
 +
          self.ovs_bridge = ovs_bridge
          self.vni = vni
          self.mode = mode
-@@ -84,7 +87,7 @@ class EvpnBridge:
+@@ -85,7 +88,7 @@ class EvpnBridge:
          linux_net.disable_learning_vxlan_intf(self.vxlan_name)
  
          LOG.debug('Configure FRR VRF (add)')
 -        frr.vrf_reconfigure(self.evpn_opts, 'add-vrf')
-+        self.bgp_driver.vrf_reconfigure(self.evpn_opts, 'add-vrf')
++        self.routing_driver.vrf_reconfigure(self.evpn_opts, 'add-vrf')
  
          if self.mode == constants.OVN_EVPN_TYPE_L3:
              LOG.debug('Create L3 EVPN devices')
-@@ -120,7 +123,7 @@ class EvpnBridge:
+@@ -121,7 +124,7 @@ class EvpnBridge:
          # otherwise, frr will throw an error that it can only delete
          # inactive vrf's
          LOG.debug('Configure FRR VRF (del)')
 -        frr.vrf_reconfigure(self.evpn_opts, action="del-vrf")
-+        self.bgp_driver.vrf_reconfigure(self.evpn_opts, action="del-vrf")
++        self.routing_driver.vrf_reconfigure, self.evpn_opts, action="del-vrf")
  
          self._setup_done = False
  
-@@ -342,7 +345,8 @@ class VlanDev:
+@@ -343,7 +346,9 @@ class VlanDev:
                  self.configure_nd(opt.cidr, opts=opt.options)
  
      def configure_nd(self, cidr, opts):
 -        self._run(frr.nd_reconfigure, self.veth_vrf, cidr, opts)
-+        bgp_driver = driver_api.BGPDriverBase.get_instance(CONF.bgp_driver)
-+        self._run(bgp_driver.nd_reconfigure, self.veth_vrf, cidr, opts)
++        routing_driver = driver_api.RoutingDriverBase.get_instance(
++            CONF.routing_driver)
++        self._run(routing_driver.nd_reconfigure, self.veth_vrf, cidr, opts)
  
      def add_ips(self, ips: list):
          self._custom_ips.update(ips)
 diff --git a/ovn_bgp_agent/drivers/openstack/utils/frr.py b/ovn_bgp_agent/drivers/openstack/utils/frr.py
-index e35e4b9..a5c8f07 100644
+index 5f82583..1c0b748 100644
 --- a/ovn_bgp_agent/drivers/openstack/utils/frr.py
 +++ b/ovn_bgp_agent/drivers/openstack/utils/frr.py
-@@ -20,6 +20,7 @@ from oslo_config import cfg
- from oslo_log import log as logging
+@@ -20,14 +20,13 @@ from oslo_log import log as logging
+ from oslo_serialization import jsonutils
  
  from ovn_bgp_agent import constants
 +from ovn_bgp_agent.drivers import driver_api
  import ovn_bgp_agent.privileged.vtysh
  
  CONF = cfg.CONF
-@@ -113,111 +114,111 @@ router bgp {{ bgp_as }} vrf {{ vrf_name }}
+ 
+ LOG = logging.getLogger(__name__)
+ 
+-DEFAULT_REDISTRIBUTE = {'connected'}
+-
+ CONFIGURE_ND_TEMPLATE = '''
+ interface {{ intf }}
+ {% if is_dhcpv6 %}
+@@ -113,111 +112,115 @@ router bgp {{ bgp_as }} vrf {{ vrf_name }}
  '''
  
  
 -def _get_router_id():
 -    output = ovn_bgp_agent.privileged.vtysh.run_vtysh_command(
 -        command='show ip bgp summary json')
--    return json.loads(output).get('ipv4Unicast', {}).get('routerId')
+-    return jsonutils.loads(output).get('ipv4Unicast', {}).get('routerId')
 -
 -
 -def _run_vtysh_config_with_tempfile(vrf_config):
@@ -317,11 +329,13 @@ index e35e4b9..a5c8f07 100644
 -    if (not opts.get('dhcpv6_stateless', False) or
 -            opts.get('dhcpv6_stateless', '') not in ('true', True)):
 -        prefix += ' no-autoconfig'
-+class FRRDriver(driver_api.BGPDriverBase):
++class FRRDriver(driver_api.RoutingDriverBase):
++    DEFAULT_REDISTRIBUTE = {'connected'}
++
 +    def _get_router_id(self):
 +        output = ovn_bgp_agent.privileged.vtysh.run_vtysh_command(
 +            command='show ip bgp summary json')
-+        return json.loads(output).get('ipv4Unicast', {}).get('routerId')
++        return jsonutils.loads(output).get('ipv4Unicast', {}).get('routerId')
 +
 +    def _run_vtysh_config_with_tempfile(self, vrf_config):
 +        try:
@@ -379,9 +393,11 @@ index e35e4b9..a5c8f07 100644
 +                return
 +
 +        vrf_template = Template(LEAK_VRF_TEMPLATE)
-+        vrf_config = vrf_template.render(vrf_name=vrf, bgp_as=bgp_as,
-+                                         redistribute=DEFAULT_REDISTRIBUTE,
-+                                         bgp_router_id=bgp_router_id)
++        vrf_config = vrf_template.render(
++            vrf_name=vrf,
++            bgp_as=bgp_as,
++            redistribute=self.DEFAULT_REDISTRIBUTE,
++            bgp_router_id=bgp_router_id)
 +        self._run_vtysh_config_with_tempfile(vrf_config)
 +
 +    def vrf_reconfigure(self, evpn_info, action):
@@ -406,7 +422,7 @@ index e35e4b9..a5c8f07 100644
 +        opts = dict(route_targets=[], route_distinguishers=[],
 +                    export_targets=[], import_targets=[],
 +                    local_ip=CONF.evpn_local_ip,
-+                    redistribute=DEFAULT_REDISTRIBUTE,
++                    redistribute=self.DEFAULT_REDISTRIBUTE,
 +                    bgp_as=CONF.bgp_AS, vrf_name='', vni=0)
 +        opts.update(evpn_info)
  
@@ -437,7 +453,7 @@ index e35e4b9..a5c8f07 100644
 -        bgp_router_id = _get_router_id()
 -        if not bgp_router_id:
 -            LOG.error("Unknown router-id, needed for route leaking")
-+        if redist_opts == DEFAULT_REDISTRIBUTE:
++        if redist_opts == self.DEFAULT_REDISTRIBUTE:
 +            # no update required.
              return
  
@@ -477,10 +493,10 @@ index e35e4b9..a5c8f07 100644
 -    vrf_config = vrf_template.render(**opts)
 -
 -    _run_vtysh_config_with_tempfile(vrf_config)
-+        DEFAULT_REDISTRIBUTE.clear()
-+        DEFAULT_REDISTRIBUTE.update(redist_opts)
++        self.DEFAULT_REDISTRIBUTE.clear()
++        self.DEFAULT_REDISTRIBUTE.update(redist_opts)
 diff --git a/ovn_bgp_agent/tests/unit/drivers/openstack/test_nb_ovn_bgp_driver.py b/ovn_bgp_agent/tests/unit/drivers/openstack/test_nb_ovn_bgp_driver.py
-index 1848c49..14274f8 100644
+index 62f52e4..4e800e4 100644
 --- a/ovn_bgp_agent/tests/unit/drivers/openstack/test_nb_ovn_bgp_driver.py
 +++ b/ovn_bgp_agent/tests/unit/drivers/openstack/test_nb_ovn_bgp_driver.py
 @@ -78,7 +78,7 @@ class TestNBOVNBGPDriver(test_base.TestCase):
@@ -634,7 +650,7 @@ index 896d4ac..feee7d6 100644
          # Assert connections were started
          self.mock_ovs_idl().start.assert_called_once_with(
 diff --git a/ovn_bgp_agent/tests/unit/drivers/openstack/utils/test_bgp.py b/ovn_bgp_agent/tests/unit/drivers/openstack/utils/test_bgp.py
-index ee3fb79..adcfce3 100644
+index ee3fb79..c4213df 100644
 --- a/ovn_bgp_agent/tests/unit/drivers/openstack/utils/test_bgp.py
 +++ b/ovn_bgp_agent/tests/unit/drivers/openstack/utils/test_bgp.py
 @@ -17,6 +17,7 @@ from oslo_config import cfg
@@ -653,7 +669,7 @@ index ee3fb79..adcfce3 100644
 +        self.mock_frr = mock.Mock()
          self.mock_linux_net = mock.patch.object(bgp_utils, 'linux_net').start()
  
-+        mock_get_instance = mock.patch.object(driver_api.BGPDriverBase,
++        mock_get_instance = mock.patch.object(driver_api.RoutingDriverBase,
 +                                              "get_instance").start()
 +        mock_get_instance.return_value = self.mock_frr
 +
@@ -661,7 +677,7 @@ index ee3fb79..adcfce3 100644
          CONF.set_override('exposing_method', exposing_method)
          self.addCleanup(CONF.clear_override, 'exposing_method')
 diff --git a/ovn_bgp_agent/tests/unit/drivers/openstack/utils/test_evpn.py b/ovn_bgp_agent/tests/unit/drivers/openstack/utils/test_evpn.py
-index 3e85931..9565b21 100644
+index bae7fe4..20ac3a7 100644
 --- a/ovn_bgp_agent/tests/unit/drivers/openstack/utils/test_evpn.py
 +++ b/ovn_bgp_agent/tests/unit/drivers/openstack/utils/test_evpn.py
 @@ -17,6 +17,7 @@ from oslo_config import cfg
@@ -680,7 +696,7 @@ index 3e85931..9565b21 100644
 +        self.mock_frr = mock.Mock()
          self.mock_linux_net = mock.patch.object(evpn, 'linux_net').start()
  
-+        mock_get_instance = mock.patch.object(driver_api.BGPDriverBase,
++        mock_get_instance = mock.patch.object(driver_api.RoutingDriverBase,
 +                                              "get_instance").start()
 +        mock_get_instance.return_value = self.mock_frr
 +
@@ -770,18 +786,18 @@ index ef1913b..047aa30 100644
          write_arg = mock_tf.return_value.write.call_args_list[0][0][0]
  
 diff --git a/setup.cfg b/setup.cfg
-index c4ea0af..f0c43a7 100644
+index c4ea0af..91f0c8d 100644
 --- a/setup.cfg
 +++ b/setup.cfg
 @@ -40,5 +40,8 @@ ovn_bgp_agent.drivers =
      ovn_evpn_driver = ovn_bgp_agent.drivers.openstack.ovn_evpn_driver:OVNEVPNDriver
      ovn_stretched_l2_bgp_driver = ovn_bgp_agent.drivers.openstack.ovn_stretched_l2_bgp_driver:OVNBGPStretchedL2Driver
  
-+ovn_bgp_agent.bgp_drivers =
++ovn_bgp_agent.routing_drivers =
 +    frr = ovn_bgp_agent.drivers.openstack.utils.frr:FRRDriver
 +
  oslo.config.opts =
      ovnbgpagent = ovn_bgp_agent.config:list_opts
 -- 
-2.34.1
+2.51.0
 
