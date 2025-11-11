@@ -4,7 +4,7 @@
 
 FROM openstack-venv-builder AS build
 # renovate: name=openstack/keystone repo=https://github.com/openstack/keystone.git branch=stable/2025.1
-ARG KEYSTONE_GIT_REF=5a60aad8ab1790851057312400a0ce61f35c33a1
+ARG KEYSTONE_GIT_REF=0d4625051dc6bff22ee13c4e5e0c6b80d7af1d26
 ADD --keep-git-dir=true https://github.com/openstack/keystone.git#${KEYSTONE_GIT_REF} /src/keystone
 RUN git -C /src/keystone fetch --unshallow
 ARG UV_CACHE_ID=uv-default
