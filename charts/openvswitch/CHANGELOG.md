@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/vexxhost/openstack-helm/compare/openvswitch-v1.1.1...openvswitch-v1.2.0) (2025-11-11)
+
+
+### Features
+
+* **openvswitch:** stage 1.2.0 ([f07d074](https://github.com/vexxhost/openstack-helm/commit/f07d074b04b8539f184ced0db05ad4d6bf425547))
+
 ## [1.1.1](https://github.com/vexxhost/openstack-helm/compare/openvswitch-v1.1.0...openvswitch-v1.1.1) (2025-10-17)
 
 
