@@ -201,6 +201,13 @@ limitations under the License.
 {{- $_ := set .Values.conf.neutron_api_uwsgi.uwsgi "http-socket" $http_socket -}}
 {{- end -}}
 
+{{- if empty $envAll.Values.conf.ovn_vpn_agent.DEFAULT.transport_url -}}
+{{- $_ := tuple "oslo_messaging" "internal" "neutron" "amqp" . | include "helm-toolkit.endpoints.authenticated_transport_endpoint_uri_lookup" | set $envAll.Values.conf.ovn_vpn_agent.DEFAULT "transport_url" -}}
+{{- end }}
+{{- if and (has "ovn" $envAll.Values.network.backend) (empty $envAll.Values.conf.ovn_vpn_agent.ovs.ovsdb_connection) -}}
+{{- $_ := set $envAll.Values.conf.ovn_vpn_agent.ovs "ovsdb_connection" "unix:/run/openvswitch/db.sock" -}}
+{{- end -}}
+
 {{- if empty .Values.conf.neutron_policy_server_uwsgi.uwsgi.processes -}}
 {{- $_ := set .Values.conf.neutron_policy_server_uwsgi.uwsgi "processes" .Values.conf.neutron.DEFAULT.api_workers -}}
 {{- end -}}

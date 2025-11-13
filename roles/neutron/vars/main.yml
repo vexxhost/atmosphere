@@ -62,8 +62,6 @@ __neutron_helm_values:
         password: "{{ openstack_helm_endpoints_neutron_keystone_password }}"
       oslo_messaging_notifications:
         driver: noop
-      service_providers:
-        service_provider: VPN:strongswan:neutron_vpnaas.services.vpn.service_drivers.ipsec.IPsecVPNDriver:default
     dhcp_agent:
       DEFAULT:
         dnsmasq_dns_servers: "{{ neutron_coredns_cluster_ip | default('10.96.0.20') }}"
@@ -111,14 +109,15 @@ __neutron_ovn_helm_values:
         service_plugins: qos,ovn-router,segments,trunk,log,ovn-vpnaas,taas,tapmirror
       ovn:
         ovn_emit_need_to_frag: true
-      service_providers:
-        service_provider: VPN:strongswan:neutron_vpnaas.services.vpn.service_drivers.ovn_ipsec.IPsecOvnVPNDriver
     ovn_metadata_agent:
       DEFAULT:
         metadata_proxy_shared_secret: "{{ openstack_helm_endpoints['compute_metadata']['secret'] }}"
+    neutron_vpnaas:
+      service_providers:
+        service_provider: VPN:strongswan:neutron_vpnaas.services.vpn.service_drivers.ovn_ipsec.IPsecOvnVPNDriver
     ovn_vpn_agent:
       DEFAULT:
-        interface_driver = neutron.agent.linux.interface.OVSInterfaceDriver
+        interface_driver: neutron.agent.linux.interface.OVSInterfaceDriver
       AGENT:
         extensions: vpnaas
       vpnagent:
