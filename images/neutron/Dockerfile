@@ -8,7 +8,7 @@ ARG NEUTRON_DYNAMIC_ROUTING_GIT_REF=3cba8d7b3ad7b06414ddae8470b080a8479974a3
 ADD --keep-git-dir=true https://github.com/openstack/neutron-dynamic-routing.git#${NEUTRON_DYNAMIC_ROUTING_GIT_REF} /src/neutron-dynamic-routing
 RUN git -C /src/neutron-dynamic-routing fetch --unshallow
 # renovate: name=openstack/neutron-vpnaas repo=https://github.com/openstack/neutron-vpnaas.git branch=master
-ARG NEUTRON_VPNAAS_GIT_REF=86ffcc8d43818689f2ad5defa94c93fef671064f
+ARG NEUTRON_VPNAAS_GIT_REF=da12cdc6c131c91ec84e577f961652d4d06632b2
 ADD --keep-git-dir=true https://github.com/openstack/neutron-vpnaas.git#${NEUTRON_VPNAAS_GIT_REF} /src/neutron-vpnaas
 RUN git -C /src/neutron-vpnaas fetch --unshallow
 # renovate: name=openstack/networking-baremetal repo=https://github.com/openstack/networking-baremetal.git branch=master
