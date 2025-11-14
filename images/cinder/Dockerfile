@@ -14,8 +14,10 @@ RUN --mount=type=cache,id=${UV_CACHE_ID},target=/root/.cache/uv <<EOF bash -xe
 uv pip install \
     --constraint /upper-constraints.txt \
         /src/cinder \
+        kubernetes \
         purestorage \
         python-3parclient \
+        sherlock \
         storpool \
         storpool.spopenstack
 EOF
