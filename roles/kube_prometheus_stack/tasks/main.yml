@@ -306,7 +306,7 @@
   run_once: true
   kubernetes.core.k8s:
     state: "{{ item.state }}"
-    template: configmap-dashboard.yaml.j2
+    definition: "{{ lookup('template', 'configmap-dashboard.yaml.j2') | from_yaml }}"
   loop:
     - name: haproxy
       state: present
