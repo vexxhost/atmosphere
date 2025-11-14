@@ -28,8 +28,8 @@ images:
     dep_check: quay.io/airshipit/kubernetes-entrypoint:latest-ubuntu_focal
     image_repo_sync: docker.io/library/docker:17.07.0
     vector: docker.io/timberio/vector:0.39.0-debian
-    ovn_logging_parser: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
-    ovn_bgp_agent: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
+    ovn_logging_parser: docker.io/openstackhelm/neutron:2025.1-ubuntu_noble
+    ovn_bgp_agent: docker.io/openstackhelm/neutron:2025.1-ubuntu_noble
   pull_policy: "IfNotPresent"
   local_registry:
     active: false
@@ -59,10 +59,12 @@ labels:
 
 volume:
   ovn_ovsdb_nb:
+    path: /var/lib/ovn
     enabled: true
     class_name: general
     size: 5Gi
   ovn_ovsdb_sb:
+    path: /var/lib/ovn
     enabled: true
     class_name: general
     size: 5Gi
@@ -202,6 +204,52 @@ pod:
   # NOTE: should be same as nova.pod.use_fqdn.compute
   use_fqdn:
     compute: true
+  envs:
+    common:
+      - name: OVN_DAEMONSET_VERSION
+        value: "3"
+      - name: OVN_KUBERNETES_NAMESPACE
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.namespace
+      - name: OVN_KUBERNETES_NB_STATEFULSET
+        value: ovn-ovsdb-nb
+      - name: OVN_KUBERNETES_SB_STATEFULSET
+        value: ovn-ovsdb-sb
+      - name: OVN_SSL_ENABLE
+        value: "no"
+    controller:
+      - name: OVN_LOGLEVEL_CONTROLLER
+        value: "-vconsole:info -vfile:info"
+    northd:
+      - name: OVN_LOGLEVEL_NORTHD
+        value: "-vconsole:info -vfile:info"
+    ovsdb_nb:
+      - name: OVN_LOGLEVEL_NB
+        value: "-vconsole:info -vfile:info"
+      - name: OVN_KUBERNETES_STATEFULSET
+        value: ovn-ovsdb-nb
+      - name: POD_NAME
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.name
+      - name: ENABLE_IPSEC
+        value: "false"
+      - name: OVN_NB_RAFT_ELECTION_TIMER
+        value: "1000"
+    ovsdb_sb:
+      - name: OVN_LOGLEVEL_SB
+        value: "-vconsole:info -vfile:info"
+      - name: OVN_KUBERNETES_STATEFULSET
+        value: ovn-ovsdb-sb
+      - name: POD_NAME
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.name
+      - name: ENABLE_IPSEC
+        value: "false"
+      - name: OVN_SB_RAFT_ELECTION_TIMER
+        value: "1000"
   security_context:
     ovn_northd:
       container:
@@ -375,7 +423,6 @@ secrets:
   oci_image_registry:
     ovn: ovn-oci-image-registry-key
 
-# TODO: Check these endpoints?!
 endpoints:
   cluster_domain_suffix: cluster.local
   local_image_registry:
@@ -395,7 +442,7 @@ endpoints:
     namespace: oci-image-registry
     auth:
       enabled: false
-      openvswitch:
+      ovn:
         username: openvswitch
         password: password
     hosts:
@@ -511,5 +558,4 @@ manifests:
   deployment_ovn_northd: true
   daemonset_ovn_controller: true
   job_image_repo_sync: true
-  daemonset_ovn_bgp_agent: true
 ...
