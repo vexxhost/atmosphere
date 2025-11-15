@@ -4,7 +4,7 @@
 
 FROM openstack-venv-builder AS build
 # renovate: name=openstack/heat repo=https://github.com/openstack/heat.git branch=master
-ARG HEAT_GIT_REF=7ffb5dd3c2d76299479d5b55041a021458e5f056
+ARG HEAT_GIT_REF=4134b05868f5105d82fcb3d986fac6b0f1487b25
 ADD --keep-git-dir=true https://github.com/openstack/heat.git#${HEAT_GIT_REF} /src/heat
 RUN git -C /src/heat fetch --unshallow
 ARG UV_CACHE_ID=uv-default
