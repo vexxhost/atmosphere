@@ -49,6 +49,7 @@ example below:
       schedule:
         - name: daily
           schedule: 0 6 * * *
+          # You may need to use different syntax for retention based on the PXC operator version
           retention:
             type: "count"
             count: 3
@@ -99,6 +100,7 @@ S3-compatible storage with 3 backups kept.
       schedule:
         - name: daily
           schedule: 0 6 * * *
+          # You may need to use different syntax for retention based on the PXC operator version
           retention:
             type: "count"
             count: 3
