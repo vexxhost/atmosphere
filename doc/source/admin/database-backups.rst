@@ -16,6 +16,15 @@ You can override the default backup settings by setting the
 ``percona_xtradb_cluster_spec`` variable inside your inventory. You can use the
 following examples as a starting point.
 
+.. admonition:: Version compatibility
+  :class: note
+
+  For retention configuration, you may need to use different syntax based on the PXC operator
+  version that you use:
+
+  * ``retention`` syntax: Used in newer PXC operator versions
+  * ``keep`` syntax: Used in older PXC operator versions
+
 Persistent volume
 =================
 
