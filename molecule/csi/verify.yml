@@ -43,6 +43,14 @@
       ansible.builtin.debug:
         msg: "{{ disk_info.stdout }}"
 
+    - name: Top 20 largest directories under /
+      ansible.builtin.command: du -h --max-depth=1 / | sort -hr | head -n 20
+      register: du_root
+
+    - name: Show largest directories under /
+      ansible.builtin.debug:
+      msg: "{{ du_root.stdout }}"
+
     - name: Get all node info
       kubernetes.core.k8s_info:
         api_version: v1
