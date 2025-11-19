@@ -33,6 +33,36 @@
                 storage: 5Gi
             storageClassName: general
 
+    - name: Disk Info
+      ansible.builtin.shell: |
+        df -h
+        df -i
+      register: disk_info
+
+    - name: Print disk info
+      ansible.builtin.debug:
+        msg: "{{ disk_info.stdout }}"
+
+    - name: Get all node info
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Node
+      register: node_info
+
+    - name: Show node detailed info
+      ansible.builtin.debug:
+        var: node_info.resources
+
+    - name: Show node taints
+      ansible.builtin.debug:
+        msg: "{{ item.metadata.name }} taints: {{ item.spec.taints | default([]) }}"
+      loop: "{{ node_info.resources }}"
+
+    - name: Show node conditions
+      ansible.builtin.debug:
+        msg: "{{ item.metadata.name }} conditions: {{ item.status.conditions }}"
+      loop: "{{ node_info.resources }}"
+
     - name: Create a pod
       kubernetes.core.k8s:
         state: present
