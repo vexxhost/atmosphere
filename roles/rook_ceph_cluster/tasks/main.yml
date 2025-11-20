@@ -109,6 +109,7 @@
     values: "{{ _rook_ceph_cluster_helm_values | combine(rook_ceph_cluster_helm_values, recursive=True) }}"
 
 - name: Create OpenStack user
+  no_log: true
   openstack.cloud.identity_user:
     cloud: atmosphere
     name: "{{ openstack_helm_endpoints.identity.auth.rgw.username }}"
