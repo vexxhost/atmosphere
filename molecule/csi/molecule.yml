@@ -1,1 +1,14 @@
-../aio/molecule.yml
+# Copyright (c) 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+ansible:
+  cfg:
+    defaults:
+      callbacks_enabled: ansible.posix.profile_tasks
+    connection:
+      pipelining: true
+  executor:
+    backend: ansible-playbook
+    args:
+      ansible_playbook:
+        - --inventory=${MOLECULE_PROJECT_DIRECTORY}/inventory.yaml
