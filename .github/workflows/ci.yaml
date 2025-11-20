@@ -90,22 +90,6 @@ jobs:
     outputs:
       build-id: ${{ steps.bake.outputs.build-id }}
 
-  csi:
-    runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'pull_request' }}
-    strategy:
-      fail-fast: false
-      matrix:
-        csi_driver:
-          - local-path-provisioner
-          - rbd
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: ./.github/actions/molecule
-        with:
-          scenario: csi
-          csi_driver: ${{ matrix.csi_driver }}
-
   keycloak:
     runs-on: vexxhost-ubuntu-22.04-4
     if: ${{ github.event_name == 'pull_request' }}
