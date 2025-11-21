@@ -12,10 +12,37 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Install openstacksdk
-  ansible.builtin.pip:
-    name: openstacksdk
-    version: "{{ openstacksdk_version | default(omit) }}"
+- name: Install openstacksdk using PIP
+  when: >
+    (ansible_facts['distribution'] == 'Ubuntu' and ansible_facts['distribution_major_version'] is version('22', '<=')) or
+    (ansible_facts['distribution'] == 'Debian' and ansible_facts['distribution_major_version'] is version('12', '<=')) or
+    (ansible_facts['distribution'] in ['AlmaLinux', 'RedHat', 'Rocky'] and ansible_facts['distribution_major_version'] is version('8', '<='))
+  block:
+    - name: Install PIP
+      ansible.builtin.package:
+        name:
+          - python3-pip
+          - python3-cryptography
+
+    - name: Install openstacksdk using pip
+      ansible.builtin.pip:
+        name: openstacksdk
+        version: "{{ openstacksdk_version | default(omit) }}"
+
+- name: Install openstacksdk using package manager
+  when: >
+    (ansible_facts['distribution'] == 'Ubuntu' and ansible_facts['distribution_major_version'] is version('22', '>')) or
+    (ansible_facts['distribution'] == 'Debian' and ansible_facts['distribution_major_version'] is version('12', '>')) or
+    (ansible_facts['distribution'] in ['AlmaLinux', 'RedHat', 'Rocky'] and ansible_facts['distribution_major_version'] is version('8', '>'))
+  block:
+    - name: Enable EPEL repository
+      ansible.builtin.package:
+        name: epel-release
+      when: ansible_facts['os_family'] == "RedHat"
+
+    - name: Install openstacksdk using package manager
+      ansible.builtin.package:
+        - python3-openstacksdk
 
 - name: Create openstack config directory
   become: true
