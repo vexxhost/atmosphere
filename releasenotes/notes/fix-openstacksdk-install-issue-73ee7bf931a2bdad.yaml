@@ -1,5 +1,9 @@
 ---
 fixes:
   - |
-    Fix ``openstacksdk`` install issue with pip, using ``Ansible.builtin.package``
-    instead of ``Ansible.builtin.pip``.
+    Fix ``openstacksdk`` installation failures on Ubuntu 24.04 caused by
+    PEP 668 ("Externally Managed Environments"). Ubuntu now prevents ``pip``
+    from modifying the system Python environment, which caused
+    ``ansible.builtin.pip`` tasks to fail. The role has been updated to use
+    ``ansible.builtin.package`` instead of the ``ansible.builtin.pip`` module,
+    ensuring compatibility with PEP 668–compliant systems.
