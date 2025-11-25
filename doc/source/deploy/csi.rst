@@ -22,13 +22,11 @@ If you are using the Ceph storage solution that Atmosphere deploys out of the
 box, no additional configuration is required. The necessary settings are
 automatically applied during the installation process.
 
-External Ceph Cluster
+External Ceph cluster
 =====================
 
-If you want to use an external Ceph cluster that is not managed by Atmosphere,
-you can configure the CSI driver to connect to it without requiring SSH access
-to the Ceph monitors. This is useful when integrating with existing Ceph
-deployments.
+You can configure the CSI driver to connect to an external Ceph cluster without
+requiring SSH access to the Ceph monitors.
 
 First, create a pool on your external Ceph cluster for Kubernetes storage:
 
@@ -47,7 +45,7 @@ Next, create a user with the appropriate capabilities for the CSI driver:
         mgr 'profile rbd pool=kube' \
         osd 'profile rbd pool=kube'
 
-Retrieve the cluster FSID:
+Retrieve the cluster ID:
 
 .. code-block:: bash
 
@@ -77,7 +75,7 @@ Finally, configure your Ansible inventory with the retrieved values:
     ceph_csi_rbd_keyring: "AQD...=="
 
 Replace the placeholder values with the actual values from your Ceph cluster.
-When these variables are defined, Atmosphere skips the SSH-based discovery and
+When you define these variables, Atmosphere skips the SSH-based discovery and
 user creation tasks.
 
 .. admonition:: Pool and user names
