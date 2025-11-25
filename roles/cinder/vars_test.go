@@ -38,6 +38,7 @@ func TestHelmValues(t *testing.T) {
 	// for the actual template. Like:
 	// {{ tuple "heat_api" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" }}
 	vars.HelmValues.Pod.PriorityClass = map[string]string{
+		"cinder_db_purge": "high-priority",
 		"cinder_scheduler": "high-priority",
 		"cinder_tests": "high-priority",
 		"cinder_volume": "high-priority",
@@ -52,6 +53,7 @@ func TestHelmValues(t *testing.T) {
 	// for the actual template. Like:
 	// {{ tuple "heat_api" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" }}
 	vars.HelmValues.Pod.RuntimeClass = map[string]string{
+		"cinder_db_purge": "kata-clh",
 		"cinder_scheduler": "kata-clh",
 		"cinder_tests": "kata-clh",
 		"cinder_volume": "kata-clh",
