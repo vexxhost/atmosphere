@@ -36,6 +36,7 @@ First, create a pool on your external Ceph cluster for Kubernetes storage:
 
     ceph osd pool create kube
     ceph osd pool application enable kube rbd
+    ceph osd pool set kube pg_autoscale_mode on
 
 Next, create a user with the appropriate capabilities for the CSI driver:
 
