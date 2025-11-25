@@ -22,6 +22,69 @@ If you are using the Ceph storage solution that Atmosphere deploys out of the
 box, no additional configuration is required. The necessary settings are
 automatically applied during the installation process.
 
+External Ceph cluster
+=====================
+
+You can configure the CSI driver to connect to an external Ceph cluster without
+requiring SSH access to the Ceph monitors.
+
+First, create a pool on your external Ceph cluster for Kubernetes storage:
+
+.. code-block:: bash
+
+    ceph osd pool create kube
+    ceph osd pool application enable kube rbd
+    ceph osd pool set kube pg_autoscale_mode on
+
+Next, create a user with the appropriate capabilities for the CSI driver:
+
+.. code-block:: bash
+
+    ceph auth get-or-create client.kube \
+        mon 'profile rbd' \
+        mgr 'profile rbd pool=kube' \
+        osd 'profile rbd pool=kube'
+
+Retrieve the cluster ID:
+
+.. code-block:: bash
+
+    ceph fsid
+
+Retrieve the monitor addresses:
+
+.. code-block:: bash
+
+    ceph mon dump -f json | jq -r '.mons[].addr | split(":")[0]'
+
+Retrieve the keyring for the user:
+
+.. code-block:: bash
+
+    ceph auth get-key client.kube
+
+Finally, configure your Ansible inventory with the retrieved values:
+
+.. code-block:: yaml
+
+    ceph_csi_rbd_ceph_fsid: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+    ceph_csi_rbd_monitors:
+      - "10.0.0.1"
+      - "10.0.0.2"
+      - "10.0.0.3"
+    ceph_csi_rbd_keyring: "AQD...=="
+
+Replace the placeholder values with the actual values from your Ceph cluster.
+When you define these variables, Atmosphere skips the SSH-based discovery and
+user creation tasks.
+
+.. admonition:: Pool and user names
+    :class: tip
+
+    If you want to use different names for the pool or user, you can set
+    ``ceph_csi_rbd_pool`` and ``ceph_csi_rbd_id`` respectively. Make sure the
+    user capabilities match the pool name you configure.
+
 ***************
 Dell PowerStore
 ***************
