@@ -34,6 +34,9 @@ RUN git -C /src/neutron-vpnaas-dashboard fetch --unshallow
 # renovate: name=openstack/octavia-dashboard repo=https://github.com/openstack/octavia-dashboard.git branch=master
 ARG OCTAVIA_DASHBOARD_REF=3386566c7c98a055a4e42797f6843f5a44f9e48e
 ADD --keep-git-dir=true https://github.com/openstack/octavia-dashboard.git#${OCTAVIA_DASHBOARD_REF} /src/octavia-dashboard
+# renovate: name=openstack/neutron-fwaas-dashboard repo=https://github.com/openstack/neutron-fwaas-dashboard.git branch=master
+ARG NEUTRON_FWAAS_DASHBOARD_REF=9a44be663379e9b0a0e1c9308a9e9a9da7edda6e
+ADD --keep-git-dir=true https://github.com/openstack/neutron-fwaas-dashboard.git#${NEUTRON_FWAAS_DASHBOARD_REF} /src/neutron-fwaas-dashboard
 RUN git -C /src/octavia-dashboard fetch --unshallow
 COPY patches/magnum-ui /patches/magnum-ui
 RUN git -C /src/magnum-ui apply --verbose /patches/magnum-ui/*
@@ -49,6 +52,7 @@ uv pip install \
         /src/manila-ui \
         /src/neutron-vpnaas-dashboard \
         /src/octavia-dashboard \
+        /src/neutron-fwaas-dashboard \
         pymemcache
 EOF
 
