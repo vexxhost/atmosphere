@@ -16,6 +16,15 @@ You can override the default backup settings by setting the
 ``percona_xtradb_cluster_spec`` variable inside your inventory. You can use the
 following examples as a starting point.
 
+.. admonition:: Version compatibility
+  :class: note
+
+  For retention configuration, you may need to use different syntax based on the PXC operator
+  version that you use:
+
+  * ``retention`` syntax: Used in newer PXC operator versions
+  * ``keep`` syntax: Used in older PXC operator versions
+
 Persistent volume
 =================
 
@@ -49,6 +58,7 @@ example below:
       schedule:
         - name: daily
           schedule: 0 6 * * *
+          # You may need to use different syntax for retention based on the PXC operator version
           retention:
             type: "count"
             count: 3
@@ -99,6 +109,7 @@ S3-compatible storage with 3 backups kept.
       schedule:
         - name: daily
           schedule: 0 6 * * *
+          # You may need to use different syntax for retention based on the PXC operator version
           retention:
             type: "count"
             count: 3
