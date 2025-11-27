@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
 
-FROM base
+FROM ghcr.io/vexxhost/python-base:main@sha256:4ab6c0c1a31e169d3b158e8ad70963b91ea933ae63a279640ded5d37e92815b7
 ONBUILD ARG PROJECT
 ONBUILD ARG SHELL=/usr/sbin/nologin
 ONBUILD RUN \

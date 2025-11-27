@@ -12,7 +12,7 @@ sed -i '/glance_store/d' /upper-constraints.txt
 sed -i '/horizon/d' /upper-constraints.txt
 EOF
 
-FROM python-base
+FROM ghcr.io/vexxhost/python-base:main@sha256:4ab6c0c1a31e169d3b158e8ad70963b91ea933ae63a279640ded5d37e92815b7
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \

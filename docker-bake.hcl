@@ -21,11 +21,6 @@ target "ovsinit" {
     }
 }
 
-target "python-base" {
-    context = "images/python-base"
-    platforms = ["linux/amd64", "linux/arm64"]
-}
-
 target "openstack-venv-builder" {
     context = "images/openstack-venv-builder"
     platforms = ["linux/amd64", "linux/arm64"]
@@ -33,19 +28,11 @@ target "openstack-venv-builder" {
     args = {
         UV_CACHE_ID = "${UV_CACHE_ID}"
     }
-
-    contexts = {
-        "python-base" = "target:python-base"
-    }
 }
 
 target "openstack-python-runtime" {
     context = "images/openstack-runtime"
     platforms = ["linux/amd64", "linux/arm64"]
-
-    contexts = {
-        "base" = "target:python-base"
-    }
 }
 
 target "libvirtd" {
@@ -109,7 +96,6 @@ target "python-openstackclient" {
 
     contexts = {
         "openstack-venv-builder" = "target:openstack-venv-builder"
-        "python-base" = "target:python-base"
     }
 
     tags = [
