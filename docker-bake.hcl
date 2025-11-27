@@ -30,22 +30,9 @@ target "ovsinit" {
     }
 }
 
-target "ubuntu-cloud-archive" {
-    context = "images/ubuntu-cloud-archive"
-    platforms = ["linux/amd64", "linux/arm64"]
-
-    contexts = {
-        "ubuntu" = "target:ubuntu"
-    }
-}
-
 target "python-base" {
     context = "images/python-base"
     platforms = ["linux/amd64", "linux/arm64"]
-
-    contexts = {
-        "ubuntu-cloud-archive" = "target:ubuntu-cloud-archive"
-    }
 }
 
 target "openstack-venv-builder" {
@@ -57,17 +44,7 @@ target "openstack-venv-builder" {
     }
 
     contexts = {
-        "ubuntu-cloud-archive" = "target:ubuntu-cloud-archive"
         "python-base" = "target:python-base"
-    }
-}
-
-target "openstack-runtime" {
-    context = "images/openstack-runtime"
-    platforms = ["linux/amd64", "linux/arm64"]
-
-    contexts = {
-        "base" = "target:ubuntu-cloud-archive"
     }
 }
 
@@ -97,14 +74,6 @@ target "libvirtd" {
     context = "images/libvirtd"
     platforms = ["linux/amd64", "linux/arm64"]
 
-    contexts = {
-        "openstack-runtime" = "target:openstack-runtime"
-    }
-
-    args = {
-        PROJECT = "nova"
-    }
-
     tags = [
         "${REGISTRY}/libvirtd:${TAG}"
     ]
@@ -127,15 +96,6 @@ target "netoffload" {
 target "nova-ssh" {
     context = "images/nova-ssh"
     platforms = ["linux/amd64", "linux/arm64"]
-
-    contexts = {
-        "openstack-runtime" = "target:openstack-runtime"
-    }
-
-    args = {
-        PROJECT = "nova"
-        SHELL = "/bin/bash"
-    }
 
     tags = [
         "${REGISTRY}/nova-ssh:${TAG}"

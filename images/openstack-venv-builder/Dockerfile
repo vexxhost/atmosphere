@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
 
-FROM ubuntu-cloud-archive AS requirements
+FROM ghcr.io/vexxhost/ubuntu-cloud-archive:2025.2@sha256:393e3d9c51fe69efb34cf629d2c9c1c80613b5f09d5c9919a2d959c0a84ab5ec AS requirements
 # renovate: name=openstack/requirements repo=https://github.com/openstack/requirements.git branch=master
 ARG REQUIREMENTS_GIT_REF=d953bdbff8c1357447e53e4230e88949745fa395
 ADD --keep-git-dir=true https://github.com/openstack/requirements.git#${REQUIREMENTS_GIT_REF} /src/requirements

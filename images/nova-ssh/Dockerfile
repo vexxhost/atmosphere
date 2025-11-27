@@ -2,7 +2,13 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
 
-FROM openstack-runtime
+FROM ghcr.io/vexxhost/ubuntu-cloud-archive:2025.2@sha256:393e3d9c51fe69efb34cf629d2c9c1c80613b5f09d5c9919a2d959c0a84ab5ec
+RUN <<EOF bash -xe
+groupadd -g 42424 nova
+useradd -u 42424 -g 42424 -M -d /var/lib/nova -s /bin/bash -c "nova User" nova
+mkdir -p /etc/nova /var/log/nova /var/lib/nova /var/cache/nova
+chown -Rv nova:nova /etc/nova /var/log/nova /var/lib/nova /var/cache/nova
+EOF
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \

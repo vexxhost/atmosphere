@@ -2,7 +2,13 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Atmosphere-Rebuild-Time: 2025-01-15T02:05:46Z
 
-FROM openstack-runtime
+FROM ghcr.io/vexxhost/ubuntu-cloud-archive:2025.2@sha256:393e3d9c51fe69efb34cf629d2c9c1c80613b5f09d5c9919a2d959c0a84ab5ec
+RUN <<EOF bash -xe
+groupadd -g 42424 nova
+useradd -u 42424 -g 42424 -M -d /var/lib/nova -s /usr/sbin/nologin -c "nova User" nova
+mkdir -p /etc/nova /var/log/nova /var/lib/nova /var/cache/nova
+chown -Rv nova:nova /etc/nova /var/log/nova /var/lib/nova /var/cache/nova
+EOF
 ADD --chmod=644 https://download.ceph.com/keys/release.gpg /etc/apt/trusted.gpg.d/ceph.gpg
 COPY <<EOF /etc/apt/sources.list.d/ceph.list
 deb http://download.ceph.com/debian-reef/ jammy main
