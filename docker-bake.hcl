@@ -21,15 +21,6 @@ target "ovsinit" {
     }
 }
 
-target "openstack-venv-builder" {
-    context = "images/openstack-venv-builder"
-    platforms = ["linux/amd64", "linux/arm64"]
-
-    args = {
-        UV_CACHE_ID = "${UV_CACHE_ID}"
-    }
-}
-
 target "openstack-python-runtime" {
     context = "images/openstack-runtime"
     platforms = ["linux/amd64", "linux/arm64"]
@@ -94,10 +85,6 @@ target "python-openstackclient" {
         UV_CACHE_ID = "${UV_CACHE_ID}"
     }
 
-    contexts = {
-        "openstack-venv-builder" = "target:openstack-venv-builder"
-    }
-
     tags = [
         "${REGISTRY}/python-openstackclient:${TAG}"
     ]
@@ -126,7 +113,6 @@ target "neutron" {
     contexts = {
         "neutron-source" = "target:neutron-source"
         "openstack-python-runtime" = "target:openstack-python-runtime"
-        "openstack-venv-builder" = "target:openstack-venv-builder"
         "ovsinit" = "target:ovsinit"
     }
 
@@ -168,7 +154,6 @@ target "openstack" {
 
     contexts = {
         "openstack-python-runtime" = "target:openstack-python-runtime"
-        "openstack-venv-builder" = "target:openstack-venv-builder"
         "ovsinit" = "target:ovsinit"
     }
 

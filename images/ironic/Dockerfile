@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Atmosphere-Rebuild-Time: 2024-06-25T22:49:25Z
 
-FROM openstack-venv-builder AS build
+FROM ghcr.io/vexxhost/openstack-venv-builder:main@sha256:bff09007027c2b6b908e2e970fe5cf06a4c025848e69bad73aa4970aff4978e2 AS build
 # renovate: name=openstack/ironic repo=https://github.com/openstack/ironic.git branch=master
 ARG IRONIC_GIT_REF=5b2dd69ae16cb3c18c6d21c73e7ad716f078e50e
 ADD --keep-git-dir=true https://github.com/openstack/ironic.git#${IRONIC_GIT_REF} /src/ironic
