@@ -10,15 +10,6 @@ variable "UV_CACHE_ID" {
     default = "uv-${TAG}"
 }
 
-target "ubuntu" {
-    context = "images/ubuntu"
-    platforms = ["linux/amd64", "linux/arm64"]
-
-    contexts = {
-        "ubuntu" = "docker-image://docker.io/library/ubuntu:noble-20250529"
-    }
-}
-
 target "ovsinit" {
     context = "images/ovsinit"
     platforms = ["linux/amd64", "linux/arm64"]
@@ -63,20 +54,6 @@ target "libvirtd" {
 
     tags = [
         "${REGISTRY}/libvirtd:${TAG}"
-    ]
-}
-
-target "netoffload" {
-    context = "images/netoffload"
-    platforms = ["linux/amd64", "linux/arm64"]
-
-    contexts = {
-        "golang" = "docker-image://docker.io/library/golang:1.24"
-        "ubuntu" = "target:ubuntu"
-    }
-
-    tags = [
-        "${REGISTRY}/netoffload:${TAG}"
     ]
 }
 
@@ -217,7 +194,6 @@ target "openstack" {
 group "default" {
     targets = [
         "libvirtd",
-        "netoffload",
         "neutron",
         "nova-ssh",
         "openstack-barbican",
