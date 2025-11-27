@@ -14,7 +14,12 @@ uv pip install \
         /src/heat
 EOF
 
-FROM openstack-python-runtime
+FROM ghcr.io/vexxhost/python-base:main@sha256:4ab6c0c1a31e169d3b158e8ad70963b91ea933ae63a279640ded5d37e92815b7
+RUN \
+    groupadd -g 42424 heat && \
+    useradd -u 42424 -g 42424 -M -d /var/lib/heat -s /usr/sbin/nologin -c "Heat User" heat && \
+    mkdir -p /etc/heat /var/log/heat /var/lib/heat /var/cache/heat && \
+    chown -Rv heat:heat /etc/heat /var/log/heat /var/lib/heat /var/cache/heat
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \

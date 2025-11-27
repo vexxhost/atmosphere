@@ -16,7 +16,12 @@ uv pip install \
         sushy
 EOF
 
-FROM openstack-python-runtime
+FROM ghcr.io/vexxhost/python-base:main@sha256:4ab6c0c1a31e169d3b158e8ad70963b91ea933ae63a279640ded5d37e92815b7
+RUN \
+    groupadd -g 42424 ironic && \
+    useradd -u 42424 -g 42424 -M -d /var/lib/ironic -s /usr/sbin/nologin -c "Ironic User" ironic && \
+    mkdir -p /etc/ironic /var/log/ironic /var/lib/ironic /var/cache/ironic && \
+    chown -Rv ironic:ironic /etc/ironic /var/log/ironic /var/lib/ironic /var/cache/ironic
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \

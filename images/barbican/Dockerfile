@@ -15,5 +15,10 @@ uv pip install \
         pykmip
 EOF
 
-FROM openstack-python-runtime
+FROM ghcr.io/vexxhost/python-base:main@sha256:4ab6c0c1a31e169d3b158e8ad70963b91ea933ae63a279640ded5d37e92815b7
+RUN \
+    groupadd -g 42424 barbican && \
+    useradd -u 42424 -g 42424 -M -d /var/lib/barbican -s /usr/sbin/nologin -c "Barbican User" barbican && \
+    mkdir -p /etc/barbican /var/log/barbican /var/lib/barbican /var/cache/barbican && \
+    chown -Rv barbican:barbican /etc/barbican /var/log/barbican /var/lib/barbican /var/cache/barbican
 COPY --from=build --link /var/lib/openstack /var/lib/openstack

@@ -25,7 +25,12 @@ ADD --chmod=644 \
     https://github.com/storpool/storpool-openstack-integration/raw/master/drivers/os_brick/openstack/caracal/storpool.py \
     /var/lib/openstack/lib/python3.12/site-packages/os_brick/initiator/connectors/storpool.py
 
-FROM openstack-python-runtime
+FROM ghcr.io/vexxhost/python-base:main@sha256:4ab6c0c1a31e169d3b158e8ad70963b91ea933ae63a279640ded5d37e92815b7
+RUN \
+    groupadd -g 42424 nova && \
+    useradd -u 42424 -g 42424 -M -d /var/lib/nova -s /usr/sbin/nologin -c "Nova User" nova && \
+    mkdir -p /etc/nova /var/log/nova /var/lib/nova /var/cache/nova && \
+    chown -Rv nova:nova /etc/nova /var/log/nova /var/lib/nova /var/cache/nova
 ADD https://github.com/novnc/noVNC.git#v1.6.0 /usr/share/novnc
 RUN <<EOF bash -xe
 apt-get update -qq

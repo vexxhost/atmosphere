@@ -17,7 +17,12 @@ uv pip install \
         keystone-keycloak-backend==0.2.0
 EOF
 
-FROM openstack-python-runtime
+FROM ghcr.io/vexxhost/python-base:main@sha256:4ab6c0c1a31e169d3b158e8ad70963b91ea933ae63a279640ded5d37e92815b7
+RUN \
+    groupadd -g 42424 keystone && \
+    useradd -u 42424 -g 42424 -M -d /var/lib/keystone -s /usr/sbin/nologin -c "Keystone User" keystone && \
+    mkdir -p /etc/keystone /var/log/keystone /var/lib/keystone /var/cache/keystone && \
+    chown -Rv keystone:keystone /etc/keystone /var/log/keystone /var/lib/keystone /var/cache/keystone
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \

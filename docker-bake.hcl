@@ -21,11 +21,6 @@ target "ovsinit" {
     }
 }
 
-target "openstack-python-runtime" {
-    context = "images/openstack-runtime"
-    platforms = ["linux/amd64", "linux/arm64"]
-}
-
 target "libvirtd" {
     context = "images/libvirtd"
     platforms = ["linux/amd64", "linux/arm64"]
@@ -106,13 +101,11 @@ target "neutron" {
     platforms = ["linux/amd64", "linux/arm64"]
 
     args = {
-        PROJECT = "neutron"
         UV_CACHE_ID = "${UV_CACHE_ID}"
     }
 
     contexts = {
         "neutron-source" = "target:neutron-source"
-        "openstack-python-runtime" = "target:openstack-python-runtime"
         "ovsinit" = "target:ovsinit"
     }
 
@@ -148,12 +141,10 @@ target "openstack" {
     platforms = ["linux/amd64", "linux/arm64"]
 
     args = {
-        PROJECT = "${service}"
         UV_CACHE_ID = "${UV_CACHE_ID}"
     }
 
     contexts = {
-        "openstack-python-runtime" = "target:openstack-python-runtime"
         "ovsinit" = "target:ovsinit"
     }
 

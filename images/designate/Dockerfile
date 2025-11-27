@@ -16,7 +16,12 @@ uv pip install \
         /src/designate
 EOF
 
-FROM openstack-python-runtime
+FROM ghcr.io/vexxhost/python-base:main@sha256:4ab6c0c1a31e169d3b158e8ad70963b91ea933ae63a279640ded5d37e92815b7
+RUN \
+    groupadd -g 42424 designate && \
+    useradd -u 42424 -g 42424 -M -d /var/lib/designate -s /usr/sbin/nologin -c "Designate User" designate && \
+    mkdir -p /etc/designate /var/log/designate /var/lib/designate /var/cache/designate && \
+    chown -Rv designate:designate /etc/designate /var/log/designate /var/lib/designate /var/cache/designate
 RUN <<EOF bash -xe
 apt-get update -qq
 apt-get install -qq -y --no-install-recommends \

@@ -13,5 +13,10 @@ uv pip install \
         /src/staffeln
 EOF
 
-FROM openstack-python-runtime
+FROM ghcr.io/vexxhost/python-base:main@sha256:4ab6c0c1a31e169d3b158e8ad70963b91ea933ae63a279640ded5d37e92815b7
+RUN \
+    groupadd -g 42424 staffeln && \
+    useradd -u 42424 -g 42424 -M -d /var/lib/staffeln -s /usr/sbin/nologin -c "Staffeln User" staffeln && \
+    mkdir -p /etc/staffeln /var/log/staffeln /var/lib/staffeln /var/cache/staffeln && \
+    chown -Rv staffeln:staffeln /etc/staffeln /var/log/staffeln /var/lib/staffeln /var/cache/staffeln
 COPY --from=build --link /var/lib/openstack /var/lib/openstack

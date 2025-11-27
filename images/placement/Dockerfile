@@ -14,5 +14,10 @@ uv pip install \
         /src/placement
 EOF
 
-FROM openstack-python-runtime
+FROM ghcr.io/vexxhost/python-base:main@sha256:4ab6c0c1a31e169d3b158e8ad70963b91ea933ae63a279640ded5d37e92815b7
+RUN \
+    groupadd -g 42424 placement && \
+    useradd -u 42424 -g 42424 -M -d /var/lib/placement -s /usr/sbin/nologin -c "Placement User" placement && \
+    mkdir -p /etc/placement /var/log/placement /var/lib/placement /var/cache/placement && \
+    chown -Rv placement:placement /etc/placement /var/log/placement /var/lib/placement /var/cache/placement
 COPY --from=build --link /var/lib/openstack /var/lib/openstack
