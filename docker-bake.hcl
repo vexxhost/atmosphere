@@ -57,19 +57,6 @@ target "openstack-python-runtime" {
     }
 }
 
-target "keepalived" {
-    context = "images/keepalived"
-    platforms = ["linux/amd64", "linux/arm64"]
-
-    contexts = {
-        "ubuntu" = "target:ubuntu"
-    }
-
-    tags = [
-        "${REGISTRY}/keepalived:${TAG}"
-    ]
-}
-
 target "libvirtd" {
     context = "images/libvirtd"
     platforms = ["linux/amd64", "linux/arm64"]
@@ -229,7 +216,6 @@ target "openstack" {
 
 group "default" {
     targets = [
-        "keepalived",
         "libvirtd",
         "netoffload",
         "neutron",
