@@ -72,8 +72,8 @@ target "ovn" {
     ]
 }
 
-target "python-openstackclient" {
-    context = "images/python-openstackclient"
+target "staffeln" {
+    context = "images/staffeln"
     platforms = ["linux/amd64", "linux/arm64"]
 
     args = {
@@ -81,101 +81,16 @@ target "python-openstackclient" {
     }
 
     tags = [
-        "${REGISTRY}/python-openstackclient:${TAG}"
-    ]
-}
-
-target "neutron-source" {
-    context = "images/source-patch"
-    target = "unshallow"
-    platforms = ["linux/amd64", "linux/arm64"]
-
-    contexts = {
-        "git" = "https://github.com/openstack/neutron.git#46f4ef447537d80bff2bb64da6a61fff40e8fcc3" # renovate: branch=master
-        "patches" = "patches/openstack/neutron"
-    }
-}
-
-target "neutron" {
-    context = "images/neutron"
-    platforms = ["linux/amd64", "linux/arm64"]
-
-    args = {
-        UV_CACHE_ID = "${UV_CACHE_ID}"
-    }
-
-    contexts = {
-        "neutron-source" = "target:neutron-source"
-        "ovsinit" = "target:ovsinit"
-    }
-
-    tags = [
-        "${REGISTRY}/neutron:${TAG}"
-    ]
-}
-
-target "openstack" {
-    name = "openstack-${service}"
-    matrix = {
-        service = [
-            "barbican",
-            "cinder",
-            "designate",
-            "glance",
-            "heat",
-            "horizon",
-            "ironic",
-            "keystone",
-            "magnum",
-            "manila",
-            "nova",
-            "octavia",
-            "ovn-bgp-agent",
-            "placement",
-            "staffeln",
-            "tempest",
-        ]
-    }
-
-    context = "images/${service}"
-    platforms = ["linux/amd64", "linux/arm64"]
-
-    args = {
-        UV_CACHE_ID = "${UV_CACHE_ID}"
-    }
-
-    contexts = {
-        "ovsinit" = "target:ovsinit"
-    }
-
-    tags = [
-        "${REGISTRY}/${service}:${TAG}"
+        "${REGISTRY}/staffeln:${TAG}"
     ]
 }
 
 group "default" {
     targets = [
         "libvirtd",
-        "neutron",
         "nova-ssh",
-        "openstack-barbican",
-        "openstack-cinder",
-        "openstack-designate",
-        "openstack-glance",
-        "openstack-heat",
-        "openstack-horizon",
-        "openstack-ironic",
-        "openstack-keystone",
-        "openstack-magnum",
-        "openstack-manila",
-        "openstack-nova",
-        "openstack-octavia",
-        "openstack-ovn-bgp-agent",
-        "openstack-placement",
-        "openstack-staffeln",
-        "openstack-tempest",
         "ovn-central",
         "ovn-host",
-        "python-openstackclient",
+        "staffeln",
     ]
 }
