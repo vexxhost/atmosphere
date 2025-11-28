@@ -26,15 +26,6 @@ target "libvirtd" {
     ]
 }
 
-target "nova-ssh" {
-    context = "images/nova-ssh"
-    platforms = ["linux/amd64", "linux/arm64"]
-
-    tags = [
-        "${REGISTRY}/nova-ssh:${TAG}"
-    ]
-}
-
 target "openvswitch" {
     context = "images/openvswitch"
     platforms = ["linux/amd64", "linux/arm64"]
@@ -71,7 +62,6 @@ target "ovn" {
 group "default" {
     targets = [
         "libvirtd",
-        "nova-ssh",
         "ovn-central",
         "ovn-host",
     ]
