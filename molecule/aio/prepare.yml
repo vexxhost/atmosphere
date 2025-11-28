@@ -25,56 +25,6 @@
         regexp: '^127\.0\.1\.1'
         line: 127.0.1.1 {{ inventory_hostname }} {{ inventory_hostname_short }}
 
-    - name: Pull built images in CI
-      when:
-        - lookup('env', 'DEPOT_TOKEN') is defined and lookup('env', 'DEPOT_TOKEN') != ''
-        - lookup('env', 'DEPOT_BUILD_ID') is defined and lookup('env', 'DEPOT_BUILD_ID') != ''
-      block:
-        - name: Install "containerd"
-          ansible.builtin.include_role:
-            name: vexxhost.containers.containerd
-
-        - name: Install "containerd"
-          ansible.builtin.include_role:
-            name: vexxhost.containers.containerd
-
-        - name: Get list of all Depot images for build
-          no_log: true
-          ansible.builtin.uri:
-            method: POST
-            url: https://api.depot.dev/depot.cli.v1.BuildService/GetPullInfo
-            body_format: json
-            headers:
-              Authorization: "Bearer {{ lookup('env', 'DEPOT_TOKEN') }}"
-            body:
-              build_id: "{{ lookup('env', 'DEPOT_BUILD_ID') }}"
-          register: depot_get_pull_info
-
-        - name: Pull all images to "containerd"
-          no_log: true
-          ansible.builtin.command:
-            cmd: ctr -n="k8s.io" image pull -u {{ depot_get_pull_info.json.username }}:{{ depot_get_pull_info.json.password }} {{ depot_get_pull_info.json.reference }}-{{ item.targetName }}
-          loop: "{{ depot_get_pull_info.json.options | selectattr('save', 'equalto', true) | selectattr('tags', 'defined') }}"
-          loop_control:
-            label: "{{ item.tags[0] }}"
-          register: depot_pull_images
-
-        - name: Tag pulled images
-          ansible.builtin.command:
-            cmd: ctr -n="k8s.io" image tag {{ depot_get_pull_info.json.reference }}-{{ item.targetName }} {{ item.tags[0] }} {{ item.tags[0] | replace('harbor.atmosphere.dev', 'registry.atmosphere.dev') }}
-          loop: "{{ depot_pull_images.results | map(attribute='item') }}"
-          loop_control:
-            label: "{{ item.tags[0] }}"
-
-        - name: Get list of all images
-          ansible.builtin.command:
-            cmd: ctr -n="k8s.io" image ls -q
-          register: image_list
-
-        - name: Print list of pulled images
-          ansible.builtin.debug:
-            msg: "{{ image_list.stdout_lines }}"
-
 - name: Create fake devices for Ceph
   ansible.builtin.import_playbook: vexxhost.ceph.create_fake_devices
 
