@@ -1,0 +1,53 @@
+From 8319172da0f8188162594c629190e43b098d10e5 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Harald=20Jens=C3=A5s?= <hjensas@redhat.com>
+Date: Tue, 11 Nov 2025 15:55:46 +0100
+Subject: [PATCH] Add `sata` to OS::Nova::Server disk_bus constraint
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+With this change the ``disk_bus`` property of
+``OS::Nova::Server`` resource's ``block_device_mapping_v2``
+now accepts 'sata' as a valid value.
+
+The SATA disk bus was added to Nova in the Queens release.
+
+Story: 2011600
+Task: 53096
+Change-Id: If666c2a594849f7a075a1ef5432a5f6673c4ed99
+Signed-off-by: Harald Jensås <hjensas@redhat.com>
+---
+ heat/engine/resources/openstack/nova/server.py             | 2 +-
+ ...ce-mapping-v2-disk-bus-allow-sata-d22c1dfe4f2f9a83.yaml | 7 +++++++
+ 2 files changed, 8 insertions(+), 1 deletion(-)
+ create mode 100644 releasenotes/notes/nova-server-block-device-mapping-v2-disk-bus-allow-sata-d22c1dfe4f2f9a83.yaml
+
+diff --git a/heat/engine/resources/openstack/nova/server.py b/heat/engine/resources/openstack/nova/server.py
+index 700527dee..9be33fe13 100644
+--- a/heat/engine/resources/openstack/nova/server.py
++++ b/heat/engine/resources/openstack/nova/server.py
+@@ -312,7 +312,7 @@ class Server(server_base.BaseServer, sh.SchedulerHintsMixin,
+                           'suitable default if omitted.'),
+                         constraints=[
+                             constraints.AllowedValues(['ide', 'lame_bus',
+-                                                       'scsi', 'usb',
++                                                       'sata', 'scsi', 'usb',
+                                                        'virtio']),
+                         ],
+                     ),
+diff --git a/releasenotes/notes/nova-server-block-device-mapping-v2-disk-bus-allow-sata-d22c1dfe4f2f9a83.yaml b/releasenotes/notes/nova-server-block-device-mapping-v2-disk-bus-allow-sata-d22c1dfe4f2f9a83.yaml
+new file mode 100644
+index 000000000..d3c65d154
+--- /dev/null
++++ b/releasenotes/notes/nova-server-block-device-mapping-v2-disk-bus-allow-sata-d22c1dfe4f2f9a83.yaml
+@@ -0,0 +1,7 @@
++---
++fixes:
++  - |
++    The ``disk_bus`` property of ``OS::Nova::Server`` resource's
++    ``block_device_mapping_v2`` now accepts 'sata' as a valid value.
++    The SATA disk bus was added to Nova in the Queens release.
++    See `story 2011600 <https://storyboard.openstack.org/#!/story/2011600>`_.
+-- 
+2.39.5 (Apple Git-154)
+

@@ -7,6 +7,8 @@ FROM openstack-venv-builder AS build
 ARG HEAT_GIT_REF=665ccfc2626f88b422d1c0db07d63556f208a908
 ADD --keep-git-dir=true https://github.com/openstack/heat.git#${HEAT_GIT_REF} /src/heat
 RUN git -C /src/heat fetch --unshallow
+COPY patches/heat /patches/heat
+RUN git -C /src/heat apply --verbose /patches/heat/*
 RUN --mount=type=cache,mode=0755,target=/root/.cache/pip,sharing=private <<EOF bash -xe
 pip3 install \
     --constraint /upper-constraints.txt \
