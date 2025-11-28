@@ -6,10 +6,6 @@ variable "TAG" {
     default = "main"
 }
 
-variable "UV_CACHE_ID" {
-    default = "uv-${TAG}"
-}
-
 target "ovsinit" {
     context = "images/ovsinit"
     platforms = ["linux/amd64", "linux/arm64"]
@@ -72,25 +68,11 @@ target "ovn" {
     ]
 }
 
-target "staffeln" {
-    context = "images/staffeln"
-    platforms = ["linux/amd64", "linux/arm64"]
-
-    args = {
-        UV_CACHE_ID = "${UV_CACHE_ID}"
-    }
-
-    tags = [
-        "${REGISTRY}/staffeln:${TAG}"
-    ]
-}
-
 group "default" {
     targets = [
         "libvirtd",
         "nova-ssh",
         "ovn-central",
         "ovn-host",
-        "staffeln",
     ]
 }
