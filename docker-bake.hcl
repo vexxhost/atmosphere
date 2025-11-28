@@ -17,15 +17,6 @@ target "ovsinit" {
     }
 }
 
-target "libvirtd" {
-    context = "images/libvirtd"
-    platforms = ["linux/amd64", "linux/arm64"]
-
-    tags = [
-        "${REGISTRY}/libvirtd:${TAG}"
-    ]
-}
-
 target "openvswitch" {
     context = "images/openvswitch"
     platforms = ["linux/amd64", "linux/arm64"]
@@ -61,7 +52,6 @@ target "ovn" {
 
 group "default" {
     targets = [
-        "libvirtd",
         "ovn-central",
         "ovn-host",
     ]
