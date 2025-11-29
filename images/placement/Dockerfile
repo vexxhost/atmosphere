@@ -4,7 +4,7 @@
 
 FROM openstack-venv-builder AS build
 # renovate: name=openstack/placement repo=https://github.com/openstack/placement.git branch=master
-ARG PLACEMENT_GIT_REF=2df2316c370128ee3aaca2179b7a4b33d96f37ae
+ARG PLACEMENT_GIT_REF=1c16485a11946441b0e4893ed9ee1cafadbe4527
 ADD --keep-git-dir=true https://github.com/openstack/placement.git#${PLACEMENT_GIT_REF} /src/placement
 RUN git -C /src/placement fetch --unshallow
 ARG UV_CACHE_ID=uv-default
