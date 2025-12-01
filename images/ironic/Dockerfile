@@ -4,7 +4,7 @@
 
 FROM openstack-venv-builder AS build
 # renovate: name=openstack/ironic repo=https://github.com/openstack/ironic.git branch=master
-ARG IRONIC_GIT_REF=5b2dd69ae16cb3c18c6d21c73e7ad716f078e50e
+ARG IRONIC_GIT_REF=2ba9e6b598daf063dff31ab73cf99c38a3d67794
 ADD --keep-git-dir=true https://github.com/openstack/ironic.git#${IRONIC_GIT_REF} /src/ironic
 RUN git -C /src/ironic fetch --unshallow
 ARG UV_CACHE_ID=uv-default

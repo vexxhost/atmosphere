@@ -4,15 +4,15 @@
 
 FROM openstack-venv-builder AS build
 # renovate: name=openstack/horizon repo=https://github.com/openstack/horizon.git branch=master
-ARG HORIZON_GIT_REF=54f710ff815a4f45615bd111bc7ca45f6beb562c
+ARG HORIZON_GIT_REF=11e5399389be87f386e07f9061d1705731115b57
 ADD --keep-git-dir=true https://github.com/openstack/horizon.git#${HORIZON_GIT_REF} /src/horizon
 RUN git -C /src/horizon fetch --unshallow
 # renovate: name=openstack/designate-dashboard repo=https://github.com/openstack/designate-dashboard.git branch=master
-ARG DESIGNATE_DASHBOARD_GIT_REF=5ae88cbc9c0d728ce94acc568b7c9394ad49f175
+ARG DESIGNATE_DASHBOARD_GIT_REF=412b8f0db05749c2274c20bb1fb157ac534901ef
 ADD --keep-git-dir=true https://github.com/openstack/designate-dashboard.git#${DESIGNATE_DASHBOARD_GIT_REF} /src/designate-dashboard
 RUN git -C /src/designate-dashboard fetch --unshallow
 # renovate: name=openstack/heat-dashboard repo=https://github.com/openstack/heat-dashboard.git branch=master
-ARG HEAT_DASHBOARD_GIT_REF=2a5ad239edb99f60ff401e9f4bcdb33f809cd77c
+ARG HEAT_DASHBOARD_GIT_REF=fbba593cb1270ede678c8e5bf40cad944b8609ad
 ADD --keep-git-dir=true https://github.com/openstack/heat-dashboard.git#${HEAT_DASHBOARD_GIT_REF} /src/heat-dashboard
 RUN git -C /src/heat-dashboard fetch --unshallow
 # renovate: name=openstack/ironic-ui repo=https://github.com/openstack/ironic-ui.git branch=master
