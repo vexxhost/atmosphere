@@ -1,0 +1,30 @@
+# Copyright (c) 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+cloudnative_pg_helm_release_name: cloudnative-pg
+cloudnative_pg_helm_chart_path: "../../charts/cloudnative-pg/"
+cloudnative_pg_helm_chart_ref: /usr/local/src/cloudnative-pg
+
+cloudnative_pg_helm_release_namespace: openstack
+cloudnative_pg_helm_kubeconfig: "{{ kubeconfig_path | default('/etc/kubernetes/admin.conf') }}"
+cloudnative_pg_helm_values: {}
+
+cloudnative_pg_barman_cloud_helm_release_name: cloudnative-pg-barman-cloud
+cloudnative_pg_barman_cloud_helm_chart_path: "../../charts/plugin-barman-cloud/"
+cloudnative_pg_barman_cloud_helm_chart_ref: /usr/local/src/plugin-barman-cloud
+
+cloudnative_pg_barman_cloud_helm_release_namespace: openstack
+cloudnative_pg_barman_cloud_helm_kubeconfig: "{{ kubeconfig_path | default('/etc/kubernetes/admin.conf') }}"
+cloudnative_pg_barman_cloud_helm_values: {}
+
+cloudnative_pg_kubectl_plugin_version: "{{ atmosphere_images['cloudnative_pg'] | vexxhost.kubernetes.docker_image('tag') }}"
+
+cloudnative_pg_kubectl_plugin_checksums:
+  x86_64:
+    1.27.1: 5bc2181d3d9b7e7dad26d66be22fdb44461674c12f1096c886731d9c7ef535e5
+  arm64:
+    1.27.1: 0d87bb6c976ca6b65f55d89852ba24c3b3faa087158390395c8464af5d398a3f
+
+cloudnative_pg_kubectl_plugin_download_url: "https://github.com/cloudnative-pg/cloudnative-pg/releases/download/v{{ cloudnative_pg_kubectl_plugin_version }}/kubectl-cnpg_{{ cloudnative_pg_kubectl_plugin_version }}_{{ ansible_facts['system'] | lower }}_{{ cloudnative_pg_kubectl_plugin_artifact_goarch }}.tar.gz" # noqa: yaml[line-length]
+cloudnative_pg_kubectl_plugin_download_dest: "{{ download_artifact_work_directory }}/cloudnative_pg_kubectl_plugin-{{ cloudnative_pg_kubectl_plugin_version }}-{{ ansible_facts['system'] | lower }}-{{ cloudnative_pg_kubectl_plugin_artifact_goarch }}.tar.gz" # noqa: yaml[line-length]
+cloudnative_pg_kubectl_plugin_archive_checksum: "{{ cloudnative_pg_kubectl_plugin_checksums[cloudnative_pg_kubectl_plugin_artifact_goarch][cloudnative_pg_kubectl_plugin_version] }}"

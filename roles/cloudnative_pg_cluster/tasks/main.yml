@@ -1,0 +1,61 @@
+# Copyright (c) 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Create a secret for CloudNativePG cluster superuser
+  run_once: true
+  block:
+    - name: Check if the CloudNativePG cluster secret exists
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Secret
+        name: cloudnative-pg-cluster-superuser
+        namespace: openstack
+      register: _cloudnative_pg_cluster_superuser_secret
+      ignore_errors: true
+
+    - name: Create a secret for superuser
+      when: ( _cloudnative_pg_cluster_superuser_secret.resources | length==0 )
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          stringData:
+            username: postgres
+            password: "{{ lookup('password', '/dev/null chars=ascii_lowercase,ascii_uppercase,digits length=32') }}"
+          kind: Secret
+          metadata:
+            name: cloudnative-pg-cluster-superuser
+            namespace: openstack
+            labels:
+              cnpg.io/reload: "true"
+          type: kubernetes.io/basic-auth
+
+- name: Create an ImageCatalog
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: postgresql.cnpg.io/v1
+      kind: ImageCatalog
+      metadata:
+        name: postgresql
+        namespace: openstack
+      spec: "{{ _cloudnative_pg_cluster_image_catalog_spec | combine(cloudnative_pg_cluster_image_catalog_spec, recursive=True) }}"
+
+- name: Apply CloudNativePG cluster
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: postgresql.cnpg.io/v1
+      kind: Cluster
+      metadata:
+        name: cnpg-db
+        namespace: openstack
+      spec: "{{ _cloudnative_pg_cluster_spec | combine(cloudnative_pg_cluster_spec, recursive=True) }}"
+    wait_sleep: 1
+    wait_timeout: 900
+    wait: true
+    wait_condition:
+      type: Ready
+      status: true
