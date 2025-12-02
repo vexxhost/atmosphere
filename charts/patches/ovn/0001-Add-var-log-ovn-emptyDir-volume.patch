@@ -2,7 +2,7 @@ diff --git a/ovn/templates/deployment-northd.yaml b/ovn/templates/deployment-nor
 index 1234567..abcdefg 100644
 --- a/ovn/templates/deployment-northd.yaml
 +++ b/ovn/templates/deployment-northd.yaml
-@@ -78,5 +78,11 @@ spec:
+@@ -78,5 +78,15 @@ spec:
              - name: OVN_KUBERNETES_SB_STATEFULSET
                value: ovn-ovsdb-sb
              - name: OVN_SSL_ENABLE
@@ -10,8 +10,12 @@ index 1234567..abcdefg 100644
 +          volumeMounts:
 +            - name: var-log-ovn
 +              mountPath: /var/log/ovn
++            - name: var-run-ovn
++              mountPath: /var/run/ovn
 +      volumes:
 +        - name: var-log-ovn
++          emptyDir: {}
++        - name: var-run-ovn
 +          emptyDir: {}
  {{- end }}
 diff --git a/ovn/templates/statefulset-ovsdb-nb.yaml b/ovn/templates/statefulset-ovsdb-nb.yaml
