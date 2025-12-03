@@ -156,6 +156,8 @@ nova_helm_values:
       scheduler: 1
       novncproxy: 1
       spiceproxy: 1
+  manifests:
+    statefulset_compute_ironic: true
 
 neutron_helm_values:
   conf:
@@ -240,3 +242,45 @@ horizon_helm_values:
   pod:
     replicas:
       server: 1
+
+ironic_helm_values:
+  conf:
+    ironic:
+      DEFAULT:
+        default_network_interface: neutron
+      conductor:
+        clean_step_priority_override:
+          - raid.delete_configuration:15
+          - deploy.erase_devices_express:10
+          - raid.create_configuration:5
+        # NOTE(mnaser): When BIOS configuration changes, the BMC ends up being
+        #               restarted and causing the whole operation to fail,
+        #               increasing this timeout should hopefully help.
+        power_state_change_timeout: 120
+      service_catalog:
+        endpoint_override: "http://172.24.6.254:31770"
+  pod:
+    replicas:
+      api: 1
+      conductor: 1
+
+ironic_bare_metal_network_manage: true
+ironic_bare_metal_network_name: baremetal
+ironic_bare_metal_network_provider_physical_network: external
+ironic_bare_metal_network_provider_network_type: vlan
+ironic_bare_metal_network_provider_segmentation_id: 4090
+ironic_bare_metal_subnet_name: baremetal
+ironic_bare_metal_subnet_cidr: 172.24.6.0/24
+
+# These IPA images were built applying the following patch:
+# https://review.opendev.org/c/openstack/ironic-python-agent/+/953122
+# That's how it was built:
+#     git clone https://github.com/openstack/ironic-python-agent.git
+#     git pull https://review.opendev.org/openstack/ironic-python-agent refs/changes/22/953122/2
+#     DIB_REPOLOCATION_ironic_python_agent=/root/dib/IPA-path/ironic-python-agent DIB_REPOREF_ironic_python_agent=master ironic-python-agent-builder -o test-ipa --release 9-stream centos
+# PS: these images should be public, but being uploaded as private. Ive seen this happening with private images: https://gist.github.com/guilhermesteinmuller/87ffd22d7546a179e183e03c6c356a54
+ironic_python_agent_deploy_kernel_name: ipa-centos9-zed-RAID-953122.kernel
+ironic_python_agent_deploy_kernel_url: https://object-storage.public.mtl1.vexxhost.net/swift/v1/cb977ab387744a86bf4145f3bf1308d4/IPA-raid-953122/ipa-centos9-zed-RAID-953122.kernel
+ironic_python_agent_deploy_ramdisk_name: ipa-centos9-zed-RAID-953122.initramfs
+# yamllint disable-line rule:line-length
+ironic_python_agent_deploy_ramdisk_url: https://object-storage.public.mtl1.vexxhost.net/swift/v1/cb977ab387744a86bf4145f3bf1308d4/IPA-raid-953122/ipa-centos9-zed-RAID-953122.initramfs
