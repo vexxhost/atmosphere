@@ -16,7 +16,7 @@
   when: >
     (ansible_facts['distribution'] == 'Ubuntu' and ansible_facts['distribution_major_version'] is version('22', '<=')) or
     (ansible_facts['distribution'] == 'Debian' and ansible_facts['distribution_major_version'] is version('12', '<=')) or
-    (ansible_facts['distribution'] in ['AlmaLinux', 'RedHat', 'Rocky'] and ansible_facts['distribution_major_version'] is version('8', '<='))
+    (ansible_facts['distribution'] in ['AlmaLinux', 'RedHat', 'Rocky'])
   ansible.builtin.pip:
     name: openstacksdk
     version: "{{ openstacksdk_version | default(omit) }}"
@@ -24,8 +24,7 @@
 - name: Install openstacksdk using package manager
   when: >
     (ansible_facts['distribution'] == 'Ubuntu' and ansible_facts['distribution_major_version'] is version('22', '>')) or
-    (ansible_facts['distribution'] == 'Debian' and ansible_facts['distribution_major_version'] is version('12', '>')) or
-    (ansible_facts['distribution'] in ['AlmaLinux', 'RedHat', 'Rocky'] and ansible_facts['distribution_major_version'] is version('8', '>'))
+    (ansible_facts['distribution'] == 'Debian' and ansible_facts['distribution_major_version'] is version('12', '>'))
   ansible.builtin.package:
     name: python3-openstacksdk
 
