@@ -69,8 +69,8 @@
 - name: Store keyring inside fact
   run_once: true
   ansible.builtin.set_fact:
-    _ceph_rbd_csi_ceph_keyring:
-      key: "{{ ceph_csi_rbd_keyring | default((_ceph_key.stdout | from_json | first).key) }}"
+    ceph_csi_rbd_keyring: "{{ (_ceph_key.stdout | from_json | first).key }}"
+  when: ceph_csi_rbd_keyring is not defined
 
 - name: Deploy Helm chart
   run_once: true
