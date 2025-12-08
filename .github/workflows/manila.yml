@@ -58,6 +58,10 @@ jobs:
           path: ~/.cache/image-create
           key: ${{ steps.cache-dib-image-cache.outputs.cache-primary-key }}
 
+      - name: Install uv
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event_name == 'release'
+        uses: astral-sh/setup-uv@v5
+
       - name: Publish image
         if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event_name == 'release'
         run: |
