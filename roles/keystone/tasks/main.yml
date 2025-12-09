@@ -83,7 +83,10 @@
     realm: "{{ item.keycloak_realm }}"
     client_id: "{{ item.keycloak_client_id }}"
     secret: "{{ item.keycloak_client_secret }}"
+    client_authenticator_type: client-secret
+    public_client: false
     service_accounts_enabled: true
+    direct_access_grants_enabled: false
     redirect_uris:
       - "{{ keystone_oidc_redirect_uri }}"
       - "https://{{ openstack_helm_endpoints_horizon_api_host }}/auth/logout/"
@@ -108,7 +111,6 @@
     client_id: realm-management
     roles:
       - name: view-users
-      - name: query-groups
   loop: "{{ keystone_domains }}"
   loop_control:
     label: "{{ item.name }}"
