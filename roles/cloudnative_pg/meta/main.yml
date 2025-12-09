@@ -1,0 +1,40 @@
+# Copyright (c) 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+galaxy_info:
+  author: VEXXHOST, Inc.
+  description: Ansible role for CloudNativePG operator
+  license: Apache-2.0
+  min_ansible_version: 5.5.0
+  standalone: false
+  platforms:
+    - name: EL
+      versions:
+        - "8"
+        - "9"
+    - name: Ubuntu
+      versions:
+        - focal
+        - jammy
+
+dependencies:
+  - role: defaults
+  - role: vexxhost.kubernetes.upload_helm_chart
+    vars:
+      upload_helm_chart_src: "{{ cloudnative_pg_helm_chart_path }}"
+      upload_helm_chart_dest: "{{ cloudnative_pg_helm_chart_ref }}"
+  - role: vexxhost.kubernetes.upload_helm_chart
+    vars:
+      upload_helm_chart_src: "{{ cloudnative_pg_barman_cloud_helm_chart_path }}"
+      upload_helm_chart_dest: "{{ cloudnative_pg_barman_cloud_helm_chart_ref }}"
+  - role: vexxhost.containers.download_artifact
+    vars:
+      download_artifact_url: "{{ cloudnative_pg_kubectl_plugin_download_url }}"
+      download_artifact_dest: "{{ cloudnative_pg_kubectl_plugin_download_dest }}"
+      download_artifact_checksum: "sha256:{{ cloudnative_pg_kubectl_plugin_archive_checksum }}"
+      download_artifact_owner: root
+      download_artifact_mode: "0755"
+      download_artifact_unarchive: true
+      download_artifact_unarchive_dest: /usr/bin
+      download_artifact_unarchive_include:
+        - kubectl-cnpg
