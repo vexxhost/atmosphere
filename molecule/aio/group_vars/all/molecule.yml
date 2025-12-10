@@ -253,12 +253,13 @@ ironic_helm_values:
           - raid.delete_configuration:15
           - deploy.erase_devices_express:10
           - raid.create_configuration:5
-        # NOTE(mnaser): When BIOS configuration changes, the BMC ends up being
-        #               restarted and causing the whole operation to fail,
-        #               increasing this timeout should hopefully help.
         power_state_change_timeout: 120
       service_catalog:
         endpoint_override: "http://172.24.6.254:31770"
+
+      # For virtual host
+      neutron:
+        port_setup_delay: 15
   pod:
     replicas:
       api: 1
