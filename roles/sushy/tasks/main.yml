@@ -49,9 +49,11 @@
                       value: openstack:nova-api
                     - name: DEPENDENCY_DAEMONSET
                       value: openstack:libvirt
-                  command: ["bash", "-ec"]
+                  command: ["/bin/bash"]
                   args:
                     - |
+                      set -ex
+
                       cat <<EOF > /etc/ironic/redfish/emulator.conf
                       SUSHY_EMULATOR_BOOT_LOADER_MAP = {
                           'UEFI': {
