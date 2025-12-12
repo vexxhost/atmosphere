@@ -58,6 +58,34 @@
               hostPID: true
               hostIPC: true
               dnsPolicy: ClusterFirstWithHostNet
+              initContainers:
+                - name: build-config
+                  image: "{{ atmosphere_images['bootstrap'] | vexxhost.kubernetes.docker_image('ref') }}"
+                  command: ["bash", "-ec"]
+                  args:
+                    - |
+                      cat <<EOF > /etc/openstack/clouds.yaml
+                      ---
+                      clouds:
+                        default:
+                          auth:
+                            auth_url: "$(OS_AUTH_URL)"
+                            project_domain_name: "$(OS_PROJECT_DOMAIN_NAME)"
+                            project_name: "$(OS_PROJECT_NAME)"
+                            user_domain_name: "$(OS_USER_DOMAIN_NAME)"
+                            username: "$(OS_USERNAME)"
+                            password: "$(OS_PASSWORD)"
+                          region_name: "$(OS_REGION_NAME)"
+                          interface: "$(OS_INTERFACE)"
+                          identity_api_version: 3
+                          identity_interface: "$(OS_INTERFACE)"
+                      EOF
+                  envFrom:
+                    - secretRef:
+                        name: keystone-keystone-admin
+                  volumeMounts:
+                    - name: openstack-config
+                      mountPath: /etc/openstack
               containers:
                 - name: build-emulation-vms
                   image: "{{ atmosphere_images['sushy'] | vexxhost.kubernetes.docker_image('ref') }}"
@@ -71,6 +99,8 @@
                       value: openstack:libvirt
                   command: ["/bin/sh", "-c", "cat /etc/ironic/redfish/emulator.conf"]
                   volumeMounts:
+                    - name: openstack-config
+                      mountPath: /etc/openstack
                     - name: config-sushy
                       mountPath: /etc/ironic/redfish/emulator.conf
                       subPath: emulator.config
@@ -125,8 +155,10 @@
                   command:
                     - /bin/bash
                     - -c
-                    - gunicorn sushy_tools.emulator.main:app --bind "{{ ansible_facts['default_ipv4'].address }}":9132 --env FLASK_DEBUG=1 --env SUSHY_EMULATOR_CONFIG=/etc/ironic/redfish/emulator.conf --workers 2 --threads 2 --timeout 90
+                    - exec gunicorn sushy_tools.emulator.main:app --bind 0.0.0.0:9132 --env FLASK_DEBUG=1 --env SUSHY_EMULATOR_CONFIG=/etc/ironic/redfish/emulator.conf --workers 1 --threads 1 --timeout 90 --libvirt-uri 'qemu+unix:///system?socket=/run/libvirt/libvirt-sock'
                   volumeMounts:
+                    - name: openstack-config
+                      mountPath: /etc/openstack
                     - name: config-sushy
                       mountPath: /etc/ironic/redfish/emulator.conf
                       subPath: emulator.config
@@ -159,6 +191,8 @@
                       mountPath: /etc/machine-id
                       readOnly: true
               volumes:
+                - name: openstack-config
+                  emptyDir: {}
                 - name: config-sushy
                   configMap:
                     name: sushy-config
