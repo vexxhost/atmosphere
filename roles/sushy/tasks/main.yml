@@ -69,7 +69,7 @@
                       value: openstack:nova-api
                     - name: DEPENDENCY_DAEMONSET
                       value: openstack:libvirt
-                  command: ["/bin/bash", "echo", "good"]
+                  command: ["/bin/sh", "-c", "cat /etc/ironic/redfish/emulator.conf"]
                   volumeMounts:
                     - name: pod-tmp
                       mountPath: /tmp
@@ -120,6 +120,8 @@
                     successThreshold: 1
                     timeoutSeconds: 1
                   command:
+                    - /bin/bash
+                    - -c
                     - gunicorn sushy_tools.emulator.main:app --bind "{{ ansible_facts['default_ipv4'].address }}":9132 --env FLASK_DEBUG=1 --env SUSHY_EMULATOR_CONFIG=/etc/ironic/redfish/emulator.conf --workers 2 --threads 2 --timeout 90
                   volumeMounts:
                     - name: config-sushy
