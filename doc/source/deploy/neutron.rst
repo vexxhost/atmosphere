@@ -200,3 +200,24 @@ virtual machine model such as Octavia and Manila.
     octavia_amphora_flavor_extra_specs:
       "hw:vif_multiqueue_enabled": 'true'
       "hw:mem_page_size": large
+
+Jumbo Frames
+************
+
+To configure networks with `Jumbo frames <https://docs.openstack.org/neutron/latest/admin/config-mtu.html#jumbo-frames>`_ in Neutron, use the following configuration:
+
+.. code-block:: yaml
+
+    neutron_helm_values:
+      conf:
+        neutron:
+          DEFAULT:
+            global_physnet_mtu: 9000
+        plugins:
+          ml2_conf:
+            ml2:
+              path_mtu: 9000
+
+If you want to enable Jumbo frames for existing Neutron networks, adjust their `mtu` attribute accordingly.
+
+Remember to also configure the physical network interfaces with MTU 9000 (for Ubuntu, see the `mtu` property in `netplan <https://netplan.readthedocs.io/en/latest/netplan-yaml>`_).
