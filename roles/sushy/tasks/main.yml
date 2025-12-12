@@ -18,7 +18,8 @@
       - apiVersion: v1
         kind: ConfigMap
         metadata:
-          name: emulator-config
+          namespace: openstack
+          name: sushy-config
         data:
           emulator.config: |
             SUSHY_EMULATOR_BOOT_LOADER_MAP = {
@@ -161,7 +162,7 @@
               volumes:
                 - name: config-volume
                   configMap:
-                    name: emulator-config
+                    name: sushy-config
                 - name: pod-tmp
                   emptyDir: {}
                 - name: libvirt-etc
