@@ -41,6 +41,9 @@
               initContainers:
                 - name: build-emulation-vms
                   image: "{{ atmosphere_images['sushy'] | vexxhost.kubernetes.docker_image('ref') }}"
+                  securityContext:
+                    privileged: true
+                    readOnlyRootFilesystem: false
                   env:
                     - name: DEPENDENCY_SERVICE
                       value: openstack:nova-api
