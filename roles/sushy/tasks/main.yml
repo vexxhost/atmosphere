@@ -11,6 +11,25 @@
 # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 # License for the specific language governing permissions and limitations
 # under the License.
+- name: Deploy Sushy (Redfish emulator) service
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      - apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: emulator-config
+        data:
+          emulator.config: |
+            SUSHY_EMULATOR_BOOT_LOADER_MAP = {
+                'UEFI': {
+                    'x86_64': '/var/lib/libvirt/images/OVMF_CODE_4M.fd'
+                },
+                'Legacy': {
+                    'x86_64': None
+                }
+            }
+            SUSHY_EMULATOR_FEATURE_SET = "full"
 
 - name: Deploy Sushy (Redfish emulator) service
   kubernetes.core.k8s:
@@ -55,15 +74,6 @@
                       set -ex
 
                       cat <<EOF > /tmp/emulator.conf
-                      SUSHY_EMULATOR_BOOT_LOADER_MAP = {
-                          'UEFI': {
-                              'x86_64': '/var/lib/libvirt/images/OVMF_CODE_4M.fd'
-                          },
-                          'Legacy': {
-                              'x86_64': None
-                          }
-                      }
-                      SUSHY_EMULATOR_FEATURE_SET = "full"
                       EOF
                   volumeMounts:
                     - name: pod-tmp
@@ -115,8 +125,11 @@
                     successThreshold: 1
                     timeoutSeconds: 1
                   command:
-                    - gunicorn sushy_tools.emulator.main:app --bind "{{ ansible_facts['default_ipv4'].address }}":9132 --env FLASK_DEBUG=1 --env SUSHY_EMULATOR_CONFIG=/tmp/emulator.conf --workers 2 --threads 2 --timeout 90
+                    - gunicorn sushy_tools.emulator.main:app --bind "{{ ansible_facts['default_ipv4'].address }}":9132 --env FLASK_DEBUG=1 --env SUSHY_EMULATOR_CONFIG=/etc/ironic/redfish/emulator.conf --workers 2 --threads 2 --timeout 90
                   volumeMounts:
+                    - name: config-emulator
+                      mountPath: /etc/ironic/redfish/emulator.conf
+                      subPath: emulator.config
                     - name: pod-tmp
                       mountPath: /tmp
                     - name: libvirt-etc
@@ -146,6 +159,9 @@
                       mountPath: /etc/machine-id
                       readOnly: true
               volumes:
+                - name: config-volume
+                  configMap:
+                    name: emulator-config
                 - name: pod-tmp
                   emptyDir: {}
                 - name: libvirt-etc
