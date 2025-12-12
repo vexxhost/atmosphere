@@ -128,7 +128,7 @@
                   command:
                     - gunicorn sushy_tools.emulator.main:app --bind "{{ ansible_facts['default_ipv4'].address }}":9132 --env FLASK_DEBUG=1 --env SUSHY_EMULATOR_CONFIG=/etc/ironic/redfish/emulator.conf --workers 2 --threads 2 --timeout 90
                   volumeMounts:
-                    - name: config-emulator
+                    - name: config-sushy
                       mountPath: /etc/ironic/redfish/emulator.conf
                       subPath: emulator.config
                     - name: pod-tmp
@@ -160,7 +160,7 @@
                       mountPath: /etc/machine-id
                       readOnly: true
               volumes:
-                - name: config-volume
+                - name: config-sushy
                   configMap:
                     name: sushy-config
                 - name: pod-tmp
