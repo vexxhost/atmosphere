@@ -76,6 +76,57 @@
         - br-mgmt
         - dummy0
 
+- name: Setup ironic-pxe networking
+  hosts: all
+  become: true
+  vars:
+    ironic_pxe_bridge: "ironic-pxe"
+    vlan_tag: 4090
+  tasks:
+    - name: Create bridge for ironic-pxe network
+      ignore_errors: true # noqa: ignore-errors
+      changed_when: false
+      ansible.builtin.command:
+        cmd: "ip link add name {{ ironic_pxe_bridge }} type bridge"
+
+    - name: Create fake interface for ironic-pxe bridge
+      ignore_errors: true # noqa: ignore-errors
+      changed_when: false
+      ansible.builtin.command:
+        cmd: "ip link add dummy1 type dummy"
+
+    # NOTE(rlin): this will help to prevent double flat networks exist
+    # as we already set neutron external network as flat.
+    - name: Create fake interface with vlan tag for ironic-pxe bridge
+      ignore_errors: true # noqa: ignore-errors
+      changed_when: false
+      ansible.builtin.command:
+        cmd: "ip link add link dummy1 name dummy1.{{ vlan_tag }} type vlan id {{ vlan_tag }}"
+
+    # NOTE(mnaser): The bridge will not go up until it has an interface
+    #             so we need to assign the dummy interface to the bridge
+    - name: Assign dummy interface to ironic-pxe bridge
+      ignore_errors: true # noqa: ignore-errors
+      changed_when: false
+      ansible.builtin.command:
+        cmd: "ip link set dummy1.{{ vlan_tag }} master {{ ironic_pxe_bridge }}"
+
+    - name: Assign IP address for ironic-pxe bridge
+      ignore_errors: true # noqa: ignore-errors
+      changed_when: false
+      ansible.builtin.command:
+        cmd: "ip addr add 172.24.6.254/24 dev {{ ironic_pxe_bridge }}"
+
+    - name: Bring up interfaces
+      ignore_errors: true # noqa: ignore-errors
+      changed_when: false
+      ansible.builtin.command:
+        cmd: "ip link set {{ item }} up"
+      loop:
+        - ironic-pxe
+        - dummy1
+        - dummy1.{{ vlan_tag }}
+
 - name: Setup host for deployment
   hosts: all
   become: true
