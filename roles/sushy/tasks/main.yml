@@ -54,7 +54,7 @@
                     - |
                       set -ex
 
-                      cat <<EOF > /etc/ironic/redfish/emulator.conf
+                      cat <<EOF > /tmp/emulator.conf
                       SUSHY_EMULATOR_BOOT_LOADER_MAP = {
                           'UEFI': {
                               'x86_64': '/var/lib/libvirt/images/OVMF_CODE_4M.fd'
@@ -66,8 +66,8 @@
                       SUSHY_EMULATOR_FEATURE_SET = "full"
                       EOF
                   volumeMounts:
-                    - name: redfish-etc
-                      mountPath: /etc/ironic/redfish
+                    - name: pod-tmp
+                      mountPath: /tmp
                     - name: libvirt-etc
                       mountPath: /etc/libvirt/qemu.conf
                       subPath: qemu.conf
@@ -115,10 +115,10 @@
                     successThreshold: 1
                     timeoutSeconds: 1
                   command:
-                    - gunicorn sushy_tools.emulator.main:app --bind "{{ ansible_facts['default_ipv4'].address }}":9132 --env FLASK_DEBUG=1 --env SUSHY_EMULATOR_CONFIG=/etc/ironic/redfish/emulator.conf --workers 2 --threads 2 --timeout 90
+                    - gunicorn sushy_tools.emulator.main:app --bind "{{ ansible_facts['default_ipv4'].address }}":9132 --env FLASK_DEBUG=1 --env SUSHY_EMULATOR_CONFIG=/tmp/emulator.conf --workers 2 --threads 2 --timeout 90
                   volumeMounts:
-                    - name: redfish-etc
-                      mountPath: /etc/ironic/redfish
+                    - name: pod-tmp
+                      mountPath: /tmp
                     - name: libvirt-etc
                       mountPath: /etc/libvirt/qemu.conf
                       subPath: qemu.conf
@@ -146,7 +146,7 @@
                       mountPath: /etc/machine-id
                       readOnly: true
               volumes:
-                - name: redfish-etc
+                - name: pod-tmp
                   emptyDir: {}
                 - name: libvirt-etc
                   secret:
