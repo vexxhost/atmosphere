@@ -38,7 +38,7 @@
               hostPID: true
               hostIPC: true
               dnsPolicy: ClusterFirstWithHostNet
-              initContainers:
+              containers:
                 - name: build-emulation-vms
                   image: "{{ atmosphere_images['sushy'] | vexxhost.kubernetes.docker_image('ref') }}"
                   securityContext:
@@ -92,7 +92,6 @@
                     - name: machine-id
                       mountPath: /etc/machine-id
                       readOnly: true
-              containers:
                 - name: sushy
                   image: "{{ atmosphere_images['sushy'] | vexxhost.kubernetes.docker_image('ref') }}"
                   securityContext:
