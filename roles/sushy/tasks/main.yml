@@ -140,13 +140,13 @@
                   readinessProbe:
                     failureThreshold: 3
                     httpGet:
-                      path: /
+                      path: /redfish/v1/
                       port: 9132
                       scheme: HTTP
                   livenessProbe:
                     failureThreshold: 3
                     httpGet:
-                      path: /
+                      path: /redfish/v1/
                       port: 9132
                       scheme: HTTP
                     periodSeconds: 10
@@ -155,7 +155,7 @@
                   command:
                     - /bin/bash
                     - -c
-                    - exec gunicorn sushy_tools.emulator.main:app --bind 0.0.0.0:9132 --env FLASK_DEBUG=1 --env SUSHY_EMULATOR_CONFIG=/etc/ironic/redfish/emulator.conf --workers 1 --threads 1 --timeout 90 --libvirt-uri 'qemu+unix:///system?socket=/run/libvirt/libvirt-sock'
+                    - exec gunicorn sushy_tools.emulator.main:app --bind 0.0.0.0:9132 --env FLASK_DEBUG=1 --env SUSHY_EMULATOR_CONFIG=/etc/ironic/redfish/emulator.conf --env SUSHY_EMULATOR_LIBVIRT_URI=qemu+unix:///system?socket=/run/libvirt/libvirt-sock --workers 1 --threads 1 --timeout 90
                   volumeMounts:
                     - name: openstack-config
                       mountPath: /etc/openstack
