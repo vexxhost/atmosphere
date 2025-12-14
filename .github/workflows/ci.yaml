@@ -28,6 +28,11 @@ jobs:
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
         with:
           go-version-file: go.mod
+      - name: Install promtool
+        env:
+          PROMTOOL_VERSION: "2.53.4"
+        run: |
+          curl -L -s https://github.com/prometheus/prometheus/releases/download/v${PROMTOOL_VERSION}/prometheus-${PROMTOOL_VERSION}.linux-amd64.tar.gz | sudo tar -xz -C /usr/local/bin --strip-components=1
       - uses: robherley/go-test-action@b19f6aadabfb1ad85079065b21aa2af132466468 # v0.6.0
 
   vale:
