@@ -2,6 +2,7 @@ package kube_prometheus_stack
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -13,67 +14,61 @@ import (
 )
 
 func TestPrometheusRules(t *testing.T) {
-	// Create a Jsonnet VM
 	vm := jsonnet.MakeVM()
-
-	// Set up the import path for vendor libraries
 	vm.Importer(&jsonnet.FileImporter{
-		JPaths: []string{
-			"files/jsonnet",
-			"files/jsonnet/vendor",
-		},
+		JPaths: []string{"files/jsonnet", "files/jsonnet/vendor"},
 	})
 
-	// Evaluate the rules.jsonnet file
 	jsonStr, err := vm.EvaluateFile("files/jsonnet/rules.jsonnet")
 	require.NoError(t, err, "failed to evaluate jsonnet file")
 
-	// Parse the JSON output into a map of rule groups
-	var rules map[string]interface{}
-	err = json.Unmarshal([]byte(jsonStr), &rules)
-	require.NoError(t, err, "failed to parse jsonnet output")
+	var rules map[string]any
+	require.NoError(t, json.Unmarshal([]byte(jsonStr), &rules), "failed to parse jsonnet output")
 
-	// Create a temporary directory for rule files
-	tempDir, err := os.MkdirTemp("", "prometheus-rules-*")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
+	tempDir := t.TempDir()
 
-	// Write each rule group to a separate YAML file
-	var ruleFiles []string
+	ruleFiles := make([]string, 0, len(rules))
 	for name, rule := range rules {
 		filePath := filepath.Join(tempDir, name+".yaml")
-
 		ruleData, err := yaml.Marshal(rule)
 		require.NoError(t, err, "failed to marshal rule %s", name)
-
-		err = os.WriteFile(filePath, ruleData, 0644)
-		require.NoError(t, err, "failed to write rule file %s", name)
-
+		require.NoError(t, os.WriteFile(filePath, ruleData, 0644), "failed to write rule file %s", name)
 		ruleFiles = append(ruleFiles, filePath)
 	}
 
-	// Read the tests.yml file
 	testsData, err := os.ReadFile("files/jsonnet/tests.yml")
 	require.NoError(t, err, "failed to read tests.yml")
 
-	// Parse tests.yml
-	var tests map[string]interface{}
-	err = yaml.Unmarshal(testsData, &tests)
-	require.NoError(t, err, "failed to parse tests.yml")
+	var testsConfig struct {
+		Tests []map[string]any `yaml:"tests"`
+	}
+	require.NoError(t, yaml.Unmarshal(testsData, &testsConfig), "failed to parse tests.yml")
 
-	// Add the rule_files to the tests config
-	tests["rule_files"] = ruleFiles
+	for i, testCase := range testsConfig.Tests {
+		testName := fmt.Sprintf("test_%d", i)
+		if alertTests, ok := testCase["alert_rule_test"].([]any); ok && len(alertTests) > 0 {
+			if firstAlert, ok := alertTests[0].(map[string]any); ok {
+				if name, ok := firstAlert["alertname"].(string); ok {
+					testName = name
+				}
+			}
+		}
 
-	// Write the complete tests config
-	testsFilePath := filepath.Join(tempDir, "tests.yaml")
-	testsOutput, err := yaml.Marshal(tests)
-	require.NoError(t, err, "failed to marshal tests config")
+		t.Run(testName, func(t *testing.T) {
+			t.Parallel()
 
-	err = os.WriteFile(testsFilePath, testsOutput, 0644)
-	require.NoError(t, err, "failed to write tests config")
+			testConfig := map[string]any{
+				"rule_files": ruleFiles,
+				"tests":      []map[string]any{testCase},
+			}
 
-	// Run promtool test rules
-	cmd := exec.Command("promtool", "test", "rules", testsFilePath)
-	output, err := cmd.CombinedOutput()
-	require.NoError(t, err, "promtool failed: %s", string(output))
+			testConfigPath := filepath.Join(tempDir, fmt.Sprintf("test_%d.yaml", i))
+			testOutput, err := yaml.Marshal(testConfig)
+			require.NoError(t, err, "failed to marshal test config")
+			require.NoError(t, os.WriteFile(testConfigPath, testOutput, 0644), "failed to write test config")
+
+			output, err := exec.Command("promtool", "test", "rules", testConfigPath).CombinedOutput()
+			require.NoError(t, err, "promtool failed: %s", string(output))
+		})
+	}
 }
