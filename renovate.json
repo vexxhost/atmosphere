@@ -1,25 +1,17 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "config:recommended"
-  ],
-  "baseBranches": [
-    "main",
-    "/^stable\\/.*/"
-  ],
-  "addLabels": [
-    "skip-release-notes"
-  ],
+  "extends": ["config:recommended"],
+  "baseBranches": ["main", "/^stable\\/.*/"],
+  "addLabels": ["skip-release-notes"],
   "prHourlyLimit": 10,
   "packageRules": [
     {
       "enabled": false,
-      "matchPackageNames": [
-        "*"
-      ]
+      "matchPackageNames": ["*"]
     },
     {
       "enabled": true,
+      "matchBaseBranches": "main",
       "matchManagers": ["cargo", "gomod"]
     },
     {
@@ -76,7 +68,9 @@
       "customType": "jsonata",
       "fileFormat": "yaml",
       "fileMatch": ["roles/percona_xtradb_cluster/vars/main.yml"],
-      "matchStrings": ["_percona_xtradb_cluster_spec.{ \"currentValue\": crVersion }"],
+      "matchStrings": [
+        "_percona_xtradb_cluster_spec.{ \"currentValue\": crVersion }"
+      ],
       "datasourceTemplate": "github-releases",
       "depNameTemplate": "percona/percona-xtradb-cluster-operator"
     }
