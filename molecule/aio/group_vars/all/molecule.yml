@@ -246,9 +246,11 @@ horizon_helm_values:
 ironic_helm_values:
   conf:
     ironic:
-      DEFAULT:
+      agent:
         # for virtual bmc
-        enabled_network_interfaces: flat, noop
+        deploy_logs_collect: always
+        deploy_logs_storage_backend: local
+        deploy_logs_local_path: /tmp/deploy_logs
       conductor:
         power_state_change_timeout: 120
         # for virtual bmc
