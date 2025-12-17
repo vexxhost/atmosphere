@@ -95,3 +95,24 @@
     openstack_helm_ingress_service_port: 6385
     openstack_helm_ingress_annotations: "{{ ironic_ingress_annotations }}"
     openstack_helm_ingress_class_name: "{{ ironic_ingress_class_name }}"
+
+- name: Expose Ironic API with node port
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      - apiVersion: v1
+        kind: Service
+        metadata:
+          name: ironic-api-nodeport
+          namespace: openstack
+        spec:
+          type: NodePort
+          selector:
+            application: ironic
+            component: api
+          ports:
+            - name: http
+              port: 6385
+              targetPort: 6385
+              nodePort: 32574
+              protocol: TCP
