@@ -135,6 +135,16 @@
       tags:
         - octavia
 
+    - role: ironic
+      when: ((atmosphere_baremetal_emulator_enabled | default(false)) or (atmosphere_baremetal_enabled | default(false)))
+      tags:
+        - ironic
+
+    - role: sushy
+      when: atmosphere_baremetal_emulator_enabled | default(false)
+      tags:
+        - sushy
+
     - role: magnum
       tags:
         - magnum
