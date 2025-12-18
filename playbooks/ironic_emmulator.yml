@@ -1,0 +1,26 @@
+# Copyright (c) 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Deploy Ironic emmulation environment
+  hosts: controllers[0]
+  become: true
+  roles:
+    - role: sushy
+      when: atmosphere_baremetal_emulator_enabled | default(false)
+      tags:
+        - sushy
+
+    - role: ironic-emmulator-network
+      when: atmosphere_baremetal_emulator_enabled | default(false)
+      tags:
+        - ironic-emmulator-network
+
+    - role: ironic
+      when: ((atmosphere_baremetal_emulator_enabled | default(false)) or (atmosphere_baremetal_enabled | default(false)))
+      tags:
+        - ironic
+
+    - role: ironic-emmulator-nodes
+      when: atmosphere_baremetal_emulator_enabled | default(false)
+      tags:
+        - ironic-emmulator-nodes
