@@ -47,10 +47,10 @@
     pod: "{{ ovs_pod.resources[0].metadata.name }}"
     command: >-
       ovs-vsctl
-      --no-wait add-port ironic-pxe ovs-node-0i1
-      -- --no-wait add-port ironic-pxe ovs-node-0i2
-      -- --no-wait add-port ironic-pxe ovs-node-1i1
-      -- --no-wait add-port ironic-pxe ovs-node-1i2
+      --may-exist add-port ironic-pxe ovs-node-0i1
+      -- --may-exist add-port ironic-pxe ovs-node-0i2
+      -- --may-exist add-port ironic-pxe ovs-node-1i1
+      --  --may-exist add-port ironic-pxe ovs-node-1i2
   when: ovs_pod.resources | length > 0
 
 - name: Add IP address to "ironic-pxe"
