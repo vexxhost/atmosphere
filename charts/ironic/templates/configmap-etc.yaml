@@ -128,7 +128,7 @@ limitations under the License.
 {{- end -}}
 
 {{- if empty .Values.conf.ironic.nova.url -}}
-{{- $_ := tuple "network" "internal" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup"| set .Values.conf.ironic.nova "url" -}}
+{{- $_ := tuple "compute" "internal" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup"| set .Values.conf.ironic.nova "url" -}}
 {{- end -}}
 {{- if empty .Values.conf.ironic.nova.auth_url -}}
 {{- $_ := tuple "identity" "internal" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup"| set .Values.conf.ironic.nova "auth_url" -}}
@@ -150,7 +150,7 @@ limitations under the License.
 {{- end -}}
 
 {{- if empty .Values.conf.ironic.cinder.url -}}
-{{- $_ := tuple "network" "internal" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup"| set .Values.conf.ironic.cinder "url" -}}
+{{- $_ := tuple "volumev3" "internal" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup"| set .Values.conf.ironic.cinder "url" -}}
 {{- end -}}
 {{- if empty .Values.conf.ironic.cinder.auth_url -}}
 {{- $_ := tuple "identity" "internal" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup"| set .Values.conf.ironic.cinder "auth_url" -}}
