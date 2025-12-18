@@ -11,6 +11,7 @@
   register: ovs_pod
 
 - name: Create "ironic-pxe" bridge
+  changed_when: false
   kubernetes.core.k8s_exec:
     namespace: openstack
     pod: "{{ ovs_pod.resources[0].metadata.name }}"
@@ -18,6 +19,7 @@
   when: ovs_pod.resources | length > 0
 
 - name: Create connection between "ironic-pxe" and "br-ex"
+  changed_when: false
   kubernetes.core.k8s_exec:
     namespace: openstack
     pod: "{{ ovs_pod.resources[0].metadata.name }}"
@@ -31,6 +33,7 @@
   when: ovs_pod.resources | length > 0
 
 - name: Create node ports on ironic-pxe
+  changed_when: false
   kubernetes.core.k8s_exec:
     namespace: openstack
     pod: "{{ ovs_pod.resources[0].metadata.name }}"
