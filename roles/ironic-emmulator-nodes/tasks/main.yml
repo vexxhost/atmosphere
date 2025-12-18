@@ -22,9 +22,8 @@
 
 - name: Wait until baremetal conductor ready
   kubernetes.core.k8s_info:
-    api_version: apps/v1
-    kind: StatefulSet
-    name: ironic-conductor
+    kind: Pod
+    name: ironic-conductor-0
     namespace: openstack
     wait_sleep: 5
     wait_timeout: 300
@@ -35,7 +34,6 @@
 
 - name: Get Libvirt pods info
   kubernetes.core.k8s_info:
-    api_version: apps/v1
     namespace: openstack
     kind: Pod
     label_selectors:
@@ -43,27 +41,36 @@
       - component=libvirt
   register: libvirt_pod
 
-- name: Expose "ironic-pxe" bridge for virtual baremetal nodes
+- name: Save "ironic-pxe" bridge for virtual baremetal nodes
   kubernetes.core.k8s_exec:
     namespace: openstack
     pod: "{{ libvirt_pod.resources[0].metadata.name }}"
     container: libvirt
-    command:
-      - "/bin/bash"
-      - "-c"
-      - |
-        cat > ironic-pxe.xml << END
-        <network>
-          <name>ironic-pxe</name>
-          <forward mode='bridge'/>
-          <bridge name='ironic-pxe'/>
-          <virtualport type='openvswitch'/>
-        </network>
-        END
-        virsh net-define ironic-pxe.xml
-        virsh net-autostart  ironic-pxe
-        virsh net-start ironic-pxe
+    command: >-
+      printf "%s\n" \
+        "<network>" \
+        "  <name>ironic-pxe</name>" \
+        "  <forward mode=\"bridge\"/>" \
+        "  <bridge name=\"ironic-pxe\"/>" \
+        "  <virtualport type=\"openvswitch\"/>" \
+        "</network>" > /tmp/ironic-pxe.xml
   when: libvirt_pod.resources | length > 0
+
+- name: Define "ironic-pxe" bridge
+  ignore_errors: true # noqa: ignore-errors
+  kubernetes.core.k8s_exec:
+    namespace: openstack
+    pod: "{{ libvirt_pod.resources[0].metadata.name }}"
+    container: libvirt
+    command: virsh net-define /tmp/ironic-pxe.xml
+
+- name: Start "ironic-pxe" bridge
+  ignore_errors: true # noqa: ignore-errors
+  kubernetes.core.k8s_exec:
+    namespace: openstack
+    pod: "{{ libvirt_pod.resources[0].metadata.name }}"
+    container: libvirt
+    command: virsh net-autostart ironic-pxe && virsh net-start ironic-pxe
 
 - name: Create storage for virtual baremetal nodes
   kubernetes.core.k8s_exec:
