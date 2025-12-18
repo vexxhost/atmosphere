@@ -8,6 +8,10 @@
     apt install ovmf -y
     mkdir -p /var/lib/libvirt/images/
     cp -r /usr/share/OVMF/* /var/lib/libvirt/images/
+    chown root:root /var/lib/libvirt/images/*
+    chmod 0644 /var/lib/libvirt/images/*
+    chmod 0711 /var/lib/libvirt
+    chmod 0711 /var/lib/libvirt/images
 
 - name: Wait until baremetal conductor ready
   kubernetes.core.k8s_info:
