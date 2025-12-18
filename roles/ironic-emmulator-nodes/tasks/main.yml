@@ -42,19 +42,19 @@
   register: libvirt_pod
 
 - name: Save "ironic-pxe" bridge for virtual baremetal nodes
-  kubernetes.core.k8s_exec:
-    namespace: openstack
-    pod: "{{ libvirt_pod.resources[0].metadata.name }}"
-    container: libvirt
-    command: >-
-      printf "%s\n" \
-        "<network>" \
-        "  <name>ironic-pxe</name>" \
-        "  <forward mode=\"bridge\"/>" \
-        "  <bridge name=\"ironic-pxe\"/>" \
-        "  <virtualport type=\"openvswitch\"/>" \
-        "</network>" > /tmp/ironic-pxe.xml
-  when: libvirt_pod.resources | length > 0
+  changed_when: false
+  run_once: true
+  ansible.builtin.shell: |
+    cat > /var/lib/libvirt/ironic-pxe.xml << END
+      <network>
+        <name>ironic-pxe</name>
+        <forward mode='bridge'/>
+        <bridge name='ironic-pxe'/>
+        <virtualport type='openvswitch'/>
+      </network>
+    END
+  args:
+    executable: /bin/bash
 
 - name: Define "ironic-pxe" bridge
   ignore_errors: true # noqa: ignore-errors
@@ -62,7 +62,15 @@
     namespace: openstack
     pod: "{{ libvirt_pod.resources[0].metadata.name }}"
     container: libvirt
-    command: virsh net-define /tmp/ironic-pxe.xml
+    command: virsh net-define /var/lib/libvirt/ironic-pxe.xml
+
+- name: Set auto start "ironic-pxe" bridge
+  ignore_errors: true # noqa: ignore-errors
+  kubernetes.core.k8s_exec:
+    namespace: openstack
+    pod: "{{ libvirt_pod.resources[0].metadata.name }}"
+    container: libvirt
+    command: virsh net-autostart ironic-pxe
 
 - name: Start "ironic-pxe" bridge
   ignore_errors: true # noqa: ignore-errors
@@ -70,36 +78,68 @@
     namespace: openstack
     pod: "{{ libvirt_pod.resources[0].metadata.name }}"
     container: libvirt
-    command: virsh net-autostart ironic-pxe && virsh net-start ironic-pxe
+    command: virsh net-start ironic-pxe
 
-- name: Create storage for virtual baremetal nodes
+- name: Create storage for virtual baremetal nodes - define pool
   kubernetes.core.k8s_exec:
     namespace: openstack
     pod: "{{ libvirt_pod.resources[0].metadata.name }}"
     container: libvirt
-    command:
-      - "/bin/bash"
-      - "-c"
-      - |
-        virsh pool-define-as --name default dir --target /var/lib/libvirt/images
-        virsh pool-autostart default
-        virsh pool-start default
-        virsh vol-create-as default node-0.raw 11G --allocation 0 --format raw
-        virsh vol-create-as default node-1.raw 11G --allocation 0 --format raw
-        virsh vol-path --pool default node-0.raw
-        virsh vol-path --pool default node-1.raw
+    command: virsh pool-define-as --name default dir --target /var/lib/libvirt/images
   when: libvirt_pod.resources | length > 0
 
-- name: Create node-0 virtual baremetal node
+- name: Create storage for virtual baremetal nodes - pool autostart
   kubernetes.core.k8s_exec:
     namespace: openstack
     pod: "{{ libvirt_pod.resources[0].metadata.name }}"
     container: libvirt
-    command:
-      - "/bin/bash"
-      - "-c"
-      - |
-        cat > node-0.xml << END
+    command: virsh pool-autostart default
+
+- name: Create storage for virtual baremetal nodes - pool start
+  kubernetes.core.k8s_exec:
+    namespace: openstack
+    pod: "{{ libvirt_pod.resources[0].metadata.name }}"
+    container: libvirt
+    command: virsh pool-start default
+  when: libvirt_pod.resources | length > 0
+
+- name: Create storage for virtual baremetal nodes - create node-0 volume
+  kubernetes.core.k8s_exec:
+    namespace: openstack
+    pod: "{{ libvirt_pod.resources[0].metadata.name }}"
+    container: libvirt
+    command: virsh vol-create-as default node-0.raw 11G --allocation 0 --format raw
+  when: libvirt_pod.resources | length > 0
+
+- name: Create storage for virtual baremetal nodes - create node-1 volume
+  kubernetes.core.k8s_exec:
+    namespace: openstack
+    pod: "{{ libvirt_pod.resources[0].metadata.name }}"
+    container: libvirt
+    command: virsh vol-create-as default node-1.raw 11G --allocation 0 --format raw
+  when: libvirt_pod.resources | length > 0
+
+- name: Create storage for virtual baremetal nodes - set volume path node-0
+  kubernetes.core.k8s_exec:
+    namespace: openstack
+    pod: "{{ libvirt_pod.resources[0].metadata.name }}"
+    container: libvirt
+    command: virsh vol-path --pool default node-0.raw
+  when: libvirt_pod.resources | length > 0
+
+- name: Create storage for virtual baremetal nodes - set volume path node-1
+  kubernetes.core.k8s_exec:
+    namespace: openstack
+    pod: "{{ libvirt_pod.resources[0].metadata.name }}"
+    container: libvirt
+    command: virsh vol-path --pool default node-1.raw
+  when: libvirt_pod.resources | length > 0
+
+- name: Save node defination for virtual baremetal nodes
+  changed_when: false
+  run_once: true
+  ansible.builtin.shell: |
+    cat > /var/lib/libvirt/node-0.xml << END
         <domain type='qemu'>
           <name>node-0</name>
           <uuid>fb3ed2f2-60f0-4e6b-b53e-6d8b40d6121d</uuid>
@@ -207,20 +247,8 @@
           </devices>
         </domain>
         END
-        virsh define node-0.xml
-        virsh start node-0
-  when: libvirt_pod.resources | length > 0
 
-- name: Create node-1 virtual baremetal node
-  kubernetes.core.k8s_exec:
-    namespace: openstack
-    pod: "{{ libvirt_pod.resources[0].metadata.name }}"
-    container: libvirt
-    command:
-      - "/bin/bash"
-      - "-c"
-      - |
-        cat > node-1.xml << END
+        cat > /var/lib/libvirt/node-1.xml << END
         <domain type='qemu'>
           <name>node-1</name>
           <uuid>e316d87c-ebc7-4c10-a9bb-316cd8dcfa55</uuid>
@@ -328,8 +356,39 @@
           </devices>
         </domain>
         END
-        virsh define node-1.xml
-        virsh start node-1
+  args:
+    executable: /bin/bash
+
+- name: Create virtual baremetal node - define node-0
+  kubernetes.core.k8s_exec:
+    namespace: openstack
+    pod: "{{ libvirt_pod.resources[0].metadata.name }}"
+    container: libvirt
+    command: virsh define node-0.xml
+  when: libvirt_pod.resources | length > 0
+
+- name: Create virtual baremetal node - start node-0
+  kubernetes.core.k8s_exec:
+    namespace: openstack
+    pod: "{{ libvirt_pod.resources[0].metadata.name }}"
+    container: libvirt
+    command: virsh start node-0
+  when: libvirt_pod.resources | length > 0
+
+- name: Create virtual baremetal node - define node-1
+  kubernetes.core.k8s_exec:
+    namespace: openstack
+    pod: "{{ libvirt_pod.resources[0].metadata.name }}"
+    container: libvirt
+    command: virsh define node-1.xml
+  when: libvirt_pod.resources | length > 0
+
+- name: Create virtual baremetal node - start node-1
+  kubernetes.core.k8s_exec:
+    namespace: openstack
+    pod: "{{ libvirt_pod.resources[0].metadata.name }}"
+    container: libvirt
+    command: virsh start node-1
   when: libvirt_pod.resources | length > 0
 
 - name: Prepare Ironic virtual nodes
