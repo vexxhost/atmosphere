@@ -32,6 +32,7 @@ _tempest_helm_values:
         neutron: true
         nova: true
         swift: true
+        ironic: true
       compute:
         endpoint_type: internal
         fixed_network_name: public
@@ -61,6 +62,33 @@ _tempest_helm_values:
         build_timeout: 60
         endpoint_type: internal
         reseller_admin_role: admin
+      baremetal_feature_enabled:
+        adoption: true
+        ipxe_enabled: true
+        fast_track_discovery: false
+      baremetal:
+        boot_mode: uefi
+        partition_image_ref: cirros
+        partition_netboot: true
+        ramdisk_iso_image_ref: http://mirrors.dotsrc.org/tinycorelinux/14.x/x86/release/Core-current.iso
+        enabled_drivers: ''
+        enabled_hardware_types: redfish
+        enabled_bios_interfaces: fake,no-bios
+        enabled_deploy_interfaces: fake,direct,ramdisk
+        enabled_boot_interfaces: redfish-https
+        enabled_rescue_interfaces: fake,no-rescue
+        enabled_inspect_interfaces: fake,agent,no-inspect
+        enabled_console_interfaces: fake-graphical,fake,no-console
+        driver: fake-hardware
+        default_boot_option: local
+        adjusted_root_disk_size_gb: 10
+        unprovision_timeout: 196
+        active_timeout: 196
+        deploywait_timeout: 196
+        power_timeout: 196
+        rescue_timeout: 196
+        unrescue_timeout: 196
+        inspect_timeout: 196
   pvc:
     enabled: false
 
