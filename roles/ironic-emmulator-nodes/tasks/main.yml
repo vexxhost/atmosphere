@@ -81,6 +81,7 @@
     command: virsh net-start ironic-pxe
 
 - name: Create storage for virtual baremetal nodes - define pool
+  ignore_errors: true # noqa: ignore-errors
   kubernetes.core.k8s_exec:
     namespace: openstack
     pod: "{{ libvirt_pod.resources[0].metadata.name }}"
@@ -89,6 +90,7 @@
   when: libvirt_pod.resources | length > 0
 
 - name: Create storage for virtual baremetal nodes - pool autostart
+  ignore_errors: true # noqa: ignore-errors
   kubernetes.core.k8s_exec:
     namespace: openstack
     pod: "{{ libvirt_pod.resources[0].metadata.name }}"
@@ -96,6 +98,7 @@
     command: virsh pool-autostart default
 
 - name: Create storage for virtual baremetal nodes - pool start
+  ignore_errors: true # noqa: ignore-errors
   kubernetes.core.k8s_exec:
     namespace: openstack
     pod: "{{ libvirt_pod.resources[0].metadata.name }}"
@@ -104,6 +107,7 @@
   when: libvirt_pod.resources | length > 0
 
 - name: Create storage for virtual baremetal nodes - create node-0 volume
+  ignore_errors: true # noqa: ignore-errors
   kubernetes.core.k8s_exec:
     namespace: openstack
     pod: "{{ libvirt_pod.resources[0].metadata.name }}"
@@ -112,6 +116,7 @@
   when: libvirt_pod.resources | length > 0
 
 - name: Create storage for virtual baremetal nodes - create node-1 volume
+  ignore_errors: true # noqa: ignore-errors
   kubernetes.core.k8s_exec:
     namespace: openstack
     pod: "{{ libvirt_pod.resources[0].metadata.name }}"
@@ -120,6 +125,7 @@
   when: libvirt_pod.resources | length > 0
 
 - name: Create storage for virtual baremetal nodes - set volume path node-0
+  ignore_errors: true # noqa: ignore-errors
   kubernetes.core.k8s_exec:
     namespace: openstack
     pod: "{{ libvirt_pod.resources[0].metadata.name }}"
@@ -128,6 +134,7 @@
   when: libvirt_pod.resources | length > 0
 
 - name: Create storage for virtual baremetal nodes - set volume path node-1
+  ignore_errors: true # noqa: ignore-errors
   kubernetes.core.k8s_exec:
     namespace: openstack
     pod: "{{ libvirt_pod.resources[0].metadata.name }}"
@@ -360,6 +367,7 @@
     executable: /bin/bash
 
 - name: Create virtual baremetal node - define node-0
+  ignore_errors: true # noqa: ignore-errors
   kubernetes.core.k8s_exec:
     namespace: openstack
     pod: "{{ libvirt_pod.resources[0].metadata.name }}"
@@ -368,6 +376,7 @@
   when: libvirt_pod.resources | length > 0
 
 - name: Create virtual baremetal node - start node-0
+  ignore_errors: true # noqa: ignore-errors
   kubernetes.core.k8s_exec:
     namespace: openstack
     pod: "{{ libvirt_pod.resources[0].metadata.name }}"
@@ -376,6 +385,7 @@
   when: libvirt_pod.resources | length > 0
 
 - name: Create virtual baremetal node - define node-1
+  ignore_errors: true # noqa: ignore-errors
   kubernetes.core.k8s_exec:
     namespace: openstack
     pod: "{{ libvirt_pod.resources[0].metadata.name }}"
@@ -384,6 +394,7 @@
   when: libvirt_pod.resources | length > 0
 
 - name: Create virtual baremetal node - start node-1
+  ignore_errors: true # noqa: ignore-errors
   kubernetes.core.k8s_exec:
     namespace: openstack
     pod: "{{ libvirt_pod.resources[0].metadata.name }}"
@@ -396,19 +407,23 @@
   ansible.builtin.shell: |
     set -o posix
     source /etc/profile.d/atmosphere.sh
-    chassis_id=$(openstack --os-cloud system baremetal chassis create --description 'ironic test chassis' -f value -c uuid)
-    openstack --os-cloud system baremetal node create  --uuid 43ef224b-6e77-495d-8702-0745fdcad579 --chassis $chassis_id --driver redfish --name node-0 --resource-class baremetal --property cpu_arch=x86_64 --property capabilities=boot_mode:uefi --driver-info redfish_address=http://0.0.0.0:9132  --driver-info redfish_username=admin --driver-info redfish_password=password --driver-info redfish_system_id=/redfish/v1/Systems/node-0
-    openstack --os-cloud system baremetal node add trait 43ef224b-6e77-495d-8702-0745fdcad579 CUSTOM_GOLD
-    openstack --os-cloud system baremetal node manage  43ef224b-6e77-495d-8702-0745fdcad579 --wait
-    openstack --os-cloud system baremetal port create --node 43ef224b-6e77-495d-8702-0745fdcad579 52:54:00:b9:0b:41
-    openstack --os-cloud system baremetal port create --node 43ef224b-6e77-495d-8702-0745fdcad579 52:54:00:98:d6:b8
-    openstack --os-cloud system baremetal node provide  43ef224b-6e77-495d-8702-0745fdcad579
-    openstack --os-cloud system baremetal node create  --uuid 6abb7cdf-66ab-441f-8f94-0dfa955a7716 --chassis $chassis_id --driver redfish --name node-1 --resource-class baremetal --property cpu_arch=x86_64 --property capabilities=boot_mode:uefi --driver-info redfish_address=http://0.0.0.0:9132  --driver-info redfish_username=admin --driver-info redfish_password=password --driver-info redfish_system_id=/redfish/v1/Systems/node-1
-    openstack --os-cloud system baremetal node add trait 6abb7cdf-66ab-441f-8f94-0dfa955a7716 CUSTOM_GOLD
-    openstack --os-cloud system baremetal node manage  6abb7cdf-66ab-441f-8f94-0dfa955a7716 --wait
-    openstack --os-cloud system baremetal port create --node 6abb7cdf-66ab-441f-8f94-0dfa955a7716 52:54:00:b7:de:53
-    openstack --os-cloud system baremetal port create --node 6abb7cdf-66ab-441f-8f94-0dfa955a7716 52:54:00:29:5d:5a
-    openstack --os-cloud system baremetal node provide  6abb7cdf-66ab-441f-8f94-0dfa955a7716
+    chassis_id=$(openstack baremetal chassis create --description 'ironic test chassis' -f value -c uuid)
+    if openstack baremetal node show node-0 >/dev/null 2>&1; then
+      openstack baremetal node create  --uuid 43ef224b-6e77-495d-8702-0745fdcad579 --chassis $chassis_id --driver redfish --name node-0 --resource-class baremetal --property cpu_arch=x86_64 --property capabilities=boot_mode:uefi --driver-info redfish_address=http://0.0.0.0:9132  --driver-info redfish_username=admin --driver-info redfish_password=password --driver-info redfish_system_id=/redfish/v1/Systems/node-0
+      openstack baremetal node add trait 43ef224b-6e77-495d-8702-0745fdcad579 CUSTOM_GOLD
+      openstack baremetal node manage  43ef224b-6e77-495d-8702-0745fdcad579 --wait
+      openstack baremetal port create --node 43ef224b-6e77-495d-8702-0745fdcad579 52:54:00:b9:0b:41
+      openstack baremetal port create --node 43ef224b-6e77-495d-8702-0745fdcad579 52:54:00:98:d6:b8
+      openstack baremetal node provide  43ef224b-6e77-495d-8702-0745fdcad579
+    fi
+    if openstack baremetal node show node-1 >/dev/null 2>&1; then
+      openstack baremetal node create  --uuid 6abb7cdf-66ab-441f-8f94-0dfa955a7716 --chassis $chassis_id --driver redfish --name node-1 --resource-class baremetal --property cpu_arch=x86_64 --property capabilities=boot_mode:uefi --driver-info redfish_address=http://0.0.0.0:9132  --driver-info redfish_username=admin --driver-info redfish_password=password --driver-info redfish_system_id=/redfish/v1/Systems/node-1
+      openstack baremetal node add trait 6abb7cdf-66ab-441f-8f94-0dfa955a7716 CUSTOM_GOLD
+      openstack baremetal node manage  6abb7cdf-66ab-441f-8f94-0dfa955a7716 --wait
+      openstack baremetal port create --node 6abb7cdf-66ab-441f-8f94-0dfa955a7716 52:54:00:b7:de:53
+      openstack baremetal port create --node 6abb7cdf-66ab-441f-8f94-0dfa955a7716 52:54:00:29:5d:5a
+      openstack baremetal node provide  6abb7cdf-66ab-441f-8f94-0dfa955a7716
+    fi
   args:
     executable: /bin/bash
   environment:
@@ -422,18 +437,20 @@
   ansible.builtin.shell: |
     set -o posix
     source /etc/profile.d/atmosphere.sh
-    openstack --os-cloud atmosphere flavor create --ephemeral 0 --ram 2500 --disk 10 --vcpus 1 baremetal
-    openstack --os-cloud atmosphere flavor set baremetal --property resources:CUSTOM_BAREMETAL=1
-    openstack --os-cloud atmosphere flavor set baremetal --property resources:DISK_GB=0
-    openstack --os-cloud atmosphere flavor set baremetal --property resources:MEMORY_MB=0
-    openstack --os-cloud atmosphere flavor set baremetal --property resources:VCPU=0
-    openstack --os-cloud atmosphere flavor set baremetal --property cpu_arch=x86_64
-    openstack --os-cloud atmosphere flavor set baremetal --property capabilities:boot_mode=uefi
-    openstack --os-cloud atmosphere flavor set baremetal --property trait:CUSTOM_GOLD=required
+    if openstack flavor show baremetal >/dev/null 2>&1; then
+      openstack flavor create --ephemeral 0 --ram 2500 --disk 10 --vcpus 1 baremetal
+      openstack flavor set baremetal --property resources:CUSTOM_BAREMETAL=1
+      openstack flavor set baremetal --property resources:DISK_GB=0
+      openstack flavor set baremetal --property resources:MEMORY_MB=0
+      openstack flavor set baremetal --property resources:VCPU=0
+      openstack flavor set baremetal --property cpu_arch=x86_64
+      openstack flavor set baremetal --property capabilities:boot_mode=uefi
+      openstack flavor set baremetal --property trait:CUSTOM_GOLD=required
+    fi
   args:
     executable: /bin/bash
   environment:
-    OS_CLOUD: system
-  register: _ironic_prepare_node
-  changed_when: _ironic_prepare_node.rc == 0
-  failed_when: _ironic_prepare_node.rc != 0
+    OS_CLOUD: atmosphere
+  register: _ironic_prepare_flavor
+  changed_when: _ironic_prepare_flavor.rc == 0
+  failed_when: _ironic_prepare_flavor.rc != 0
