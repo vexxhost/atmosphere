@@ -364,7 +364,7 @@
     namespace: openstack
     pod: "{{ libvirt_pod.resources[0].metadata.name }}"
     container: libvirt
-    command: virsh define node-0.xml
+    command: virsh define /var/lib/libvirt/node-0.xml
   when: libvirt_pod.resources | length > 0
 
 - name: Create virtual baremetal node - start node-0
@@ -380,7 +380,7 @@
     namespace: openstack
     pod: "{{ libvirt_pod.resources[0].metadata.name }}"
     container: libvirt
-    command: virsh define node-1.xml
+    command: virsh define /var/lib/libvirt/node-1.xml
   when: libvirt_pod.resources | length > 0
 
 - name: Create virtual baremetal node - start node-1
