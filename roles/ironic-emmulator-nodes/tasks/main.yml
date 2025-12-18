@@ -434,12 +434,12 @@
   ansible.builtin.shell: |
     set -o posix
     source /etc/profile.d/atmosphere.sh
-    if openstack flavor show baremetal_gold; then
-      echo "flavor baremetal_gold exists, skipping..."
+    if openstack flavor show baremetal; then
+      echo "flavor baremetal exists, skipping..."
     else
-      openstack flavor create --ephemeral 0 --ram 20480 --disk 20 --vcpus 2 baremetal_gold
+      openstack flavor create --ephemeral 0 --ram 2048 --disk 20 --vcpus 2 baremetal
       openstack flavor set baremetal --property resources:CUSTOM_BAREMETAL=1
-      openstack flavor set baremetal --property resources:DISK_GB=0
+      openstack flavor set baremetal --property resourees:DISK_GB=0
       openstack flavor set baremetal --property resources:MEMORY_MB=0
       openstack flavor set baremetal --property resources:VCPU=0
       openstack flavor set baremetal --property cpu_arch=x86_64
