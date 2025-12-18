@@ -412,6 +412,7 @@
   when: libvirt_pod.resources | length > 0
 
 - name: Prepare Ironic virtual nodes
+  changed_when: false
   run_once: true
   ansible.builtin.shell: |
     set -o posix
@@ -441,11 +442,9 @@
     executable: /bin/bash
   environment:
     OS_CLOUD: system
-  register: _ironic_prepare_node
-  changed_when: _ironic_prepare_node.rc == 0
-  failed_when: _ironic_prepare_node.rc != 0
 
 - name: Prepare Ironic baremetal flavor
+  changed_when: false
   run_once: true
   ansible.builtin.shell: |
     set -o posix
@@ -466,6 +465,3 @@
     executable: /bin/bash
   environment:
     OS_CLOUD: atmosphere
-  register: _ironic_prepare_flavor
-  changed_when: _ironic_prepare_flavor.rc == 0
-  failed_when: _ironic_prepare_flavor.rc != 0
