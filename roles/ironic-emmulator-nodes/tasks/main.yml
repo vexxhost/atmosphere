@@ -112,7 +112,7 @@
     namespace: openstack
     pod: "{{ libvirt_pod.resources[0].metadata.name }}"
     container: libvirt
-    command: virsh vol-create-as default node-0.raw 11G --allocation 0 --format raw
+    command: virsh vol-create-as default node-0.raw 21G --allocation 0 --format raw
   when: libvirt_pod.resources | length > 0
 
 - name: Create storage for virtual baremetal nodes - create node-1 volume
@@ -121,7 +121,7 @@
     namespace: openstack
     pod: "{{ libvirt_pod.resources[0].metadata.name }}"
     container: libvirt
-    command: virsh vol-create-as default node-1.raw 11G --allocation 0 --format raw
+    command: virsh vol-create-as default node-1.raw 21G --allocation 0 --format raw
   when: libvirt_pod.resources | length > 0
 
 - name: Create storage for virtual baremetal nodes - set volume path node-0
@@ -150,9 +150,9 @@
         <domain type='qemu'>
           <name>node-0</name>
           <uuid>fb3ed2f2-60f0-4e6b-b53e-6d8b40d6121d</uuid>
-          <memory unit='KiB'>2560000</memory>
-          <currentMemory unit='KiB'>2560000</currentMemory>
-          <vcpu placement='static'>1</vcpu>
+          <memory unit='KiB'>20480000</memory>
+          <currentMemory unit='KiB'>20480000</currentMemory>
+          <vcpu placement='static'>2</vcpu>
           <os>
             <type arch='x86_64' machine='pc-q35-6.2'>hvm</type>
             <loader readonly='yes' type='pflash'>/var/lib/libvirt/images/OVMF_CODE_4M.fd</loader>
@@ -259,9 +259,9 @@
         <domain type='qemu'>
           <name>node-1</name>
           <uuid>e316d87c-ebc7-4c10-a9bb-316cd8dcfa55</uuid>
-          <memory unit='KiB'>2560000</memory>
-          <currentMemory unit='KiB'>2560000</currentMemory>
-          <vcpu placement='static'>1</vcpu>
+          <memory unit='KiB'>20480000</memory>
+          <currentMemory unit='KiB'>20480000</currentMemory>
+          <vcpu placement='static'>2</vcpu>
           <os>
             <type arch='x86_64' machine='pc-q35-6.2'>hvm</type>
             <loader readonly='yes' type='pflash'>/var/lib/libvirt/images/OVMF_CODE_4M.fd</loader>
@@ -441,10 +441,10 @@
   ansible.builtin.shell: |
     set -o posix
     source /etc/profile.d/atmosphere.sh
-    if openstack flavor show baremetal; then
-      echo "flavor baremetal exists, skipping..."
+    if openstack flavor show baremetal_gold; then
+      echo "flavor baremetal_gold exists, skipping..."
     else
-      openstack flavor create --ephemeral 0 --ram 2500 --disk 10 --vcpus 1 baremetal
+      openstack flavor create --ephemeral 0 --ram 20480 --disk 20 --vcpus 2 baremetal_gold
       openstack flavor set baremetal --property resources:CUSTOM_BAREMETAL=1
       openstack flavor set baremetal --property resources:DISK_GB=0
       openstack flavor set baremetal --property resources:MEMORY_MB=0
