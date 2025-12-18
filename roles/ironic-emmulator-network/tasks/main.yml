@@ -1,0 +1,65 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Get OVS pods info
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    namespace: openstack
+    kind: Pod
+    label_selectors:
+      - application=openvswitch
+      - component=server
+  register: ovs_pod
+
+- name: Create "ironic-pxe" bridge
+  kubernetes.core.k8s_exec:
+    namespace: openstack
+    pod: "{{ ovs_pod.resources[0].metadata.name }}"
+    command: ovs-vsctl --may-exist add-br ironic-pxe
+  when: ovs_pod.resources | length > 0
+
+- name: Create connection between "ironic-pxe" and "br-ex"
+  kubernetes.core.k8s_exec:
+    namespace: openstack
+    pod: "{{ ovs_pod.resources[0].metadata.name }}"
+    command: >-
+      ovs-vsctl
+      --may-exist add-port br-ex patch-ex-ironic-pxe
+      -- set interface patch-ex-ironic-pxe type=patch options:peer=patch-ironic-pxe-ex
+      -- set port patch-ex-ironic-pxe tag=4090
+      -- --may-exist add-port ironic-pxe patch-ironic-pxe-ex
+      -- set interface patch-ironic-pxe-ex type=patch options:peer=patch-ex-ironic-pxe
+  when: ovs_pod.resources | length > 0
+
+- name: Create node ports on ironic-pxe
+  kubernetes.core.k8s_exec:
+    namespace: default
+    pod: "{{ ovs_pod.resources[0].metadata.name }}"
+    command: >-
+      ovs-vsctl
+      --no-wait add-port ironic-pxe ovs-node-0i1
+      -- --no-wait add-port ironic-pxe ovs-node-0i2
+      -- --no-wait add-port ironic-pxe ovs-node-1i1
+      -- --no-wait add-port ironic-pxe ovs-node-1i2
+  when: ovs_pod.resources | length > 0
+
+- name: Add IP address to "ironic-pxe"
+  changed_when: false
+  ansible.builtin.shell:
+    cmd: ip addr add 172.24.6.254/24 dev ironic-pxe || true
+
+- name: Set "ironic-pxe" interface to "up"
+  changed_when: false
+  ansible.builtin.shell:
+    cmd: ip link set ironic-pxe up || true

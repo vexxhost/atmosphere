@@ -140,10 +140,20 @@
       tags:
         - sushy
 
+    - role: ironic-emmulator-network
+      when: atmosphere_baremetal_emulator_enabled | default(false)
+      tags:
+        - ironic-emmulator-network
+
     - role: ironic
       when: ((atmosphere_baremetal_emulator_enabled | default(false)) or (atmosphere_baremetal_enabled | default(false)))
       tags:
         - ironic
+
+    - role: ironic-emmulator-node
+      when: atmosphere_baremetal_emulator_enabled | default(false)
+      tags:
+        - ironic-emmulator-node
 
     - role: magnum
       tags:
