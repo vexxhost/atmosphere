@@ -408,7 +408,9 @@
     set -o posix
     source /etc/profile.d/atmosphere.sh
     chassis_id=$(openstack baremetal chassis create --description 'ironic test chassis' -f value -c uuid)
-    if openstack baremetal node show node-0 >/dev/null 2>&1; then
+    if openstack baremetal node show node-0; then
+      echo "baremetal node node-0 exists, skipping..."
+    else
       openstack baremetal node create  --uuid 43ef224b-6e77-495d-8702-0745fdcad579 --chassis $chassis_id --driver redfish --name node-0 --resource-class baremetal --property cpu_arch=x86_64 --property capabilities=boot_mode:uefi --driver-info redfish_address=http://0.0.0.0:9132  --driver-info redfish_username=admin --driver-info redfish_password=password --driver-info redfish_system_id=/redfish/v1/Systems/node-0
       openstack baremetal node add trait 43ef224b-6e77-495d-8702-0745fdcad579 CUSTOM_GOLD
       openstack baremetal node manage  43ef224b-6e77-495d-8702-0745fdcad579 --wait
@@ -416,7 +418,9 @@
       openstack baremetal port create --node 43ef224b-6e77-495d-8702-0745fdcad579 52:54:00:98:d6:b8
       openstack baremetal node provide  43ef224b-6e77-495d-8702-0745fdcad579
     fi
-    if openstack baremetal node show node-1 >/dev/null 2>&1; then
+    if openstack baremetal node show node-1; then
+      echo "baremetal node node-1 exists, skipping..."
+    else
       openstack baremetal node create  --uuid 6abb7cdf-66ab-441f-8f94-0dfa955a7716 --chassis $chassis_id --driver redfish --name node-1 --resource-class baremetal --property cpu_arch=x86_64 --property capabilities=boot_mode:uefi --driver-info redfish_address=http://0.0.0.0:9132  --driver-info redfish_username=admin --driver-info redfish_password=password --driver-info redfish_system_id=/redfish/v1/Systems/node-1
       openstack baremetal node add trait 6abb7cdf-66ab-441f-8f94-0dfa955a7716 CUSTOM_GOLD
       openstack baremetal node manage  6abb7cdf-66ab-441f-8f94-0dfa955a7716 --wait
@@ -437,7 +441,9 @@
   ansible.builtin.shell: |
     set -o posix
     source /etc/profile.d/atmosphere.sh
-    if openstack flavor show baremetal >/dev/null 2>&1; then
+    if openstack flavor show baremetal; then
+      echo "flavor baremetal exists, skipping..."
+    else
       openstack flavor create --ephemeral 0 --ram 2500 --disk 10 --vcpus 1 baremetal
       openstack flavor set baremetal --property resources:CUSTOM_BAREMETAL=1
       openstack flavor set baremetal --property resources:DISK_GB=0
