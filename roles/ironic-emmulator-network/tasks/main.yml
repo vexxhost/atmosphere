@@ -14,7 +14,6 @@
 
 - name: Get OVS pods info
   kubernetes.core.k8s_info:
-    api_version: apps/v1
     namespace: openstack
     kind: Pod
     label_selectors:
@@ -44,7 +43,7 @@
 
 - name: Create node ports on ironic-pxe
   kubernetes.core.k8s_exec:
-    namespace: default
+    namespace: openstack
     pod: "{{ ovs_pod.resources[0].metadata.name }}"
     command: >-
       ovs-vsctl
