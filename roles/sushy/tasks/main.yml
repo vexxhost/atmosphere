@@ -1,0 +1,186 @@
+# Copyright (c) 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Deploy Sushy (Redfish emulator) service
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      - apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          namespace: openstack
+          name: sushy-config
+        data:
+          emulator.config: |
+            SUSHY_EMULATOR_BOOT_LOADER_MAP = {
+                'UEFI': {
+                    'x86_64': '/var/lib/libvirt/images/OVMF_CODE_4M.fd'
+                },
+                'Legacy': {
+                    'x86_64': None
+                }
+            }
+            SUSHY_EMULATOR_FEATURE_SET = "full"
+
+- name: Deploy Sushy (Redfish emulator) service
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      - apiVersion: apps/v1
+        kind: DaemonSet
+        metadata:
+          name: sushy
+          namespace: openstack
+          labels:
+            application: sushy
+        spec:
+          selector:
+            matchLabels:
+              application: sushy
+          template:
+            metadata:
+              labels:
+                application: sushy
+            spec:
+              nodeSelector:
+                openstack-control-plane: enabled
+              hostNetwork: true
+              hostPID: true
+              hostIPC: true
+              dnsPolicy: ClusterFirstWithHostNet
+              initContainers:
+                - name: build-config
+                  image: "{{ atmosphere_images['bootstrap'] | vexxhost.kubernetes.docker_image('ref') }}"
+                  command: ["bash", "-ec"]
+                  args:
+                    - |
+                      cat <<EOF > /etc/openstack/clouds.yaml
+                      ---
+                      clouds:
+                        default:
+                          auth:
+                            auth_url: "$(OS_AUTH_URL)"
+                            project_domain_name: "$(OS_PROJECT_DOMAIN_NAME)"
+                            project_name: "$(OS_PROJECT_NAME)"
+                            user_domain_name: "$(OS_USER_DOMAIN_NAME)"
+                            username: "$(OS_USERNAME)"
+                            password: "$(OS_PASSWORD)"
+                          region_name: "$(OS_REGION_NAME)"
+                          interface: "$(OS_INTERFACE)"
+                          identity_api_version: 3
+                          identity_interface: "$(OS_INTERFACE)"
+                      EOF
+                  envFrom:
+                    - secretRef:
+                        name: keystone-keystone-admin
+                  volumeMounts:
+                    - name: openstack-config
+                      mountPath: /etc/openstack
+              containers:
+                - name: sushy
+                  image: "{{ atmosphere_images['sushy'] | vexxhost.kubernetes.docker_image('ref') }}"
+                  securityContext:
+                    privileged: true
+                    readOnlyRootFilesystem: false
+                  readinessProbe:
+                    failureThreshold: 3
+                    httpGet:
+                      path: /redfish/v1/
+                      port: 9132
+                      scheme: HTTP
+                  livenessProbe:
+                    failureThreshold: 3
+                    httpGet:
+                      path: /redfish/v1/
+                      port: 9132
+                      scheme: HTTP
+                    periodSeconds: 10
+                    successThreshold: 1
+                    timeoutSeconds: 1
+                  command:
+                    - /bin/bash
+                    - -c
+                    - exec gunicorn sushy_tools.emulator.main:app --bind 0.0.0.0:9132 --env FLASK_DEBUG=1 --env SUSHY_EMULATOR_CONFIG=/etc/ironic/redfish/emulator.conf --env SUSHY_EMULATOR_LIBVIRT_URI=qemu+unix:///system?socket=/run/libvirt/libvirt-sock --workers 1 --threads 1 --timeout 90
+                  volumeMounts:
+                    - name: openstack-config
+                      mountPath: /etc/openstack
+                    - name: config-sushy
+                      mountPath: /etc/ironic/redfish/emulator.conf
+                      subPath: emulator.config
+                    - name: pod-tmp
+                      mountPath: /tmp
+                    - name: libvirt-etc
+                      mountPath: /etc/libvirt/qemu.conf
+                      subPath: qemu.conf
+                      readOnly: true
+                    - name: etc-libvirt-qemu
+                      mountPath: /etc/libvirt/qemu
+                    - mountPath: /lib/modules
+                      name: libmodules
+                      readOnly: true
+                    - name: var-lib-libvirt
+                      mountPath: /var/lib/libvirt
+                      mountPropagation: Bidirectional
+                    - name: var-lib-nova
+                      mountPath: /var/lib/nova
+                      mountPropagation: Bidirectional
+                    - name: run
+                      mountPath: /run
+                    - name: dev
+                      mountPath: /dev
+                    - name: cgroup
+                      mountPath: /sys/fs/cgroup
+                    - name: logs
+                      mountPath: /var/log/libvirt
+                    - name: machine-id
+                      mountPath: /etc/machine-id
+                      readOnly: true
+              volumes:
+                - name: openstack-config
+                  emptyDir: {}
+                - name: config-sushy
+                  configMap:
+                    name: sushy-config
+                - name: pod-tmp
+                  emptyDir: {}
+                - name: libvirt-etc
+                  secret:
+                    secretName: libvirt-libvirt-default-etc
+                    defaultMode: 0444 # noqa: yaml[octal-values]
+                - name: libmodules
+                  hostPath:
+                    path: /lib/modules
+                - name: var-lib-libvirt
+                  hostPath:
+                    path: /var/lib/libvirt
+                - name: var-lib-nova
+                  hostPath:
+                    path: /var/lib/nova
+                - name: run
+                  hostPath:
+                    path: /run
+                - name: run-libvirt
+                  hostPath:
+                    path: /run/libvirt
+                - name: dev
+                  hostPath:
+                    path: /dev
+                - name: logs
+                  hostPath:
+                    path: /var/log/libvirt
+                - name: cgroup
+                  hostPath:
+                    path: /sys/fs/cgroup
+                - name: machine-id
+                  hostPath:
+                    path: /etc/machine-id
+                - name: etc-libvirt-qemu
+                  hostPath:
+                    path: /etc/libvirt/qemu
+                - name: etc-modprobe-d
+                  hostPath:
+                    path: /etc/modprobe.d
+                - name: host-rootfs
+                  hostPath:
+                    path: /
+                    type: Directory
