@@ -1,0 +1,110 @@
+# Copyright (c) 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+#
+- name: Configure Ironic network
+  hosts: all
+  tasks:
+    - name: Get OVS pods info
+      kubernetes.core.k8s_info:
+        namespace: openstack
+        kind: Pod
+        label_selectors:
+          - application=openvswitch
+          - component=server
+      register: ovs_pod
+      when: atmosphere_baremetal_emulator_enabled | default(false)
+
+    - name: Create "ironic-pxe" bridge
+      changed_when: false
+      kubernetes.core.k8s_exec:
+        namespace: openstack
+        pod: "{{ ovs_pod.resources[0].metadata.name }}"
+        command: ovs-vsctl --may-exist add-br ironic-pxe
+      when: atmosphere_baremetal_emulator_enabled | default(false)
+
+    - name: Create connection between "ironic-pxe" and "br-ex"
+      changed_when: false
+      kubernetes.core.k8s_exec:
+        namespace: openstack
+        pod: "{{ ovs_pod.resources[0].metadata.name }}"
+        command: >-
+          ovs-vsctl
+          --may-exist add-port br-ex patch-ex-ironic-pxe
+          -- set interface patch-ex-ironic-pxe type=patch options:peer=patch-ironic-pxe-ex
+          -- set port patch-ex-ironic-pxe tag=4090
+          -- --may-exist add-port ironic-pxe patch-ironic-pxe-ex
+          -- set interface patch-ironic-pxe-ex type=patch options:peer=patch-ex-ironic-pxe
+      when: atmosphere_baremetal_emulator_enabled | default(false)
+
+    - name: Create node ports on ironic-pxe
+      changed_when: false
+      kubernetes.core.k8s_exec:
+        namespace: openstack
+        pod: "{{ ovs_pod.resources[0].metadata.name }}"
+        command: >-
+          ovs-vsctl
+          --may-exist add-port ironic-pxe ovs-node-0i1
+          -- --may-exist add-port ironic-pxe ovs-node-0i2
+          -- --may-exist add-port ironic-pxe ovs-node-1i1
+          --  --may-exist add-port ironic-pxe ovs-node-1i2
+      when: atmosphere_baremetal_emulator_enabled | default(false)
+
+    - name: Add IP address to "ironic-pxe"
+      changed_when: false
+      ansible.builtin.shell:
+        cmd: ip addr add 172.24.6.254/24 dev ironic-pxe || true
+      when: atmosphere_baremetal_emulator_enabled | default(false)
+
+    - name: Set "ironic-pxe" interface to "up"
+      changed_when: false
+      ansible.builtin.shell:
+        cmd: ip link set ironic-pxe up || true
+      when: atmosphere_baremetal_emulator_enabled | default(false)
+
+- name: Deploy Ironic emulation environment
+  hosts: controllers[0]
+  become: true
+  roles:
+    - role: sushy
+      when: atmosphere_baremetal_emulator_enabled | default(false)
+      tags:
+        - sushy
+
+    - role: ironic
+      when: atmosphere_baremetal_emulator_enabled | default(false)
+      tags:
+        - ironic
+
+- name: Expose Ironic API for clean network
+  hosts: all
+  tasks:
+    - name: Expose Ironic API with node port
+      when: atmosphere_baremetal_emulator_enabled | default(false)
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          - apiVersion: v1
+            kind: Service
+            metadata:
+              name: ironic-api-nodeport
+              namespace: openstack
+            spec:
+              type: NodePort
+              selector:
+                application: ironic
+                component: api
+              ports:
+                - name: http
+                  port: 6385
+                  targetPort: 6385
+                  nodePort: 32574
+                  protocol: TCP
+
+- name: Create Ironic virtual nodes
+  hosts: controllers[0]
+  become: true
+  roles:
+    - role: ironic_emulator_nodes
+      when: atmosphere_baremetal_emulator_enabled | default(false)
+      tags:
+        - ironic_emulator_nodes
