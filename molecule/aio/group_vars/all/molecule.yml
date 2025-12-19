@@ -157,7 +157,7 @@ nova_helm_values:
       novncproxy: 1
       spiceproxy: 1
   manifests:
-    statefulset_compute_ironic: true
+    statefulset_compute_ironic: "{{ lookup('env', 'ATMOSPHERE_BAREMETAL_EMULATOR_ENABLED') | default('false', True) }}"
 
 neutron_helm_values:
   conf:
@@ -271,7 +271,6 @@ ironic_helm_values:
       conductor: 1
 
 atmosphere_baremetal_emulator_enabled: "{{ lookup('env', 'ATMOSPHERE_BAREMETAL_EMULATOR_ENABLED') | default('false', True) }}"
-atmosphere_baremetal_enabled: "{{ lookup('env', 'ATMOSPHERE_BAREMETAL_ENABLED') | default('false', True) }}"
 
 ironic_bare_metal_network_manage: true
 ironic_bare_metal_network_name: baremetal
@@ -280,16 +279,7 @@ ironic_bare_metal_network_provider_network_type: vlan
 ironic_bare_metal_network_provider_segmentation_id: 4090
 ironic_bare_metal_subnet_name: baremetal
 ironic_bare_metal_subnet_cidr: 172.24.6.0/24
-
-# These IPA images were built applying the following patch:
-# https://review.opendev.org/c/openstack/ironic-python-agent/+/953122
-# That's how it was built:
-#     git clone https://github.com/openstack/ironic-python-agent.git
-#     git pull https://review.opendev.org/openstack/ironic-python-agent refs/changes/22/953122/2
-#     DIB_REPOLOCATION_ironic_python_agent=/root/dib/IPA-path/ironic-python-agent DIB_REPOREF_ironic_python_agent=master ironic-python-agent-builder -o test-ipa --release 9-stream centos
-# PS: these images should be public, but being uploaded as private. Ive seen this happening with private images: https://gist.github.com/guilhermesteinmuller/87ffd22d7546a179e183e03c6c356a54
 ironic_python_agent_deploy_kernel_name: ir-deploy-redfish.kernel
 ironic_python_agent_deploy_kernel_url: https://tarballs.openstack.org/ironic-python-agent/dib/files/ipa-centos9-master.kernel
 ironic_python_agent_deploy_ramdisk_name: ir-deploy-redfish.initramfs
-# yamllint disable-line rule:line-length
 ironic_python_agent_deploy_ramdisk_url: https://tarballs.openstack.org/ironic-python-agent/dib/files/ipa-centos9-master.initramfs
