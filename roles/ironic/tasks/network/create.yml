@@ -20,7 +20,9 @@
     name: "{{ ironic_bare_metal_network_name }}"
     provider_physical_network: "{{ ironic_bare_metal_network_provider_physical_network }}"
     provider_network_type: "{{ ironic_bare_metal_network_provider_network_type }}"
-    provider_segmentation_id: "{{ ironic_bare_metal_network_provider_segmentation_id }}"
+    provider_segmentation_id: >-
+      {{ (ironic_bare_metal_network_provider_network_type == 'flat')
+         | ternary(omit, ironic_bare_metal_network_provider_segmentation_id) }}
   register: ironic_bare_metal_network
 
 - name: Create bare metal network subnet
