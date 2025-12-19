@@ -253,20 +253,17 @@ ironic_helm_values:
       api:
         api_workers: 1
       agent:
-        # for virtual bmc
         deploy_logs_collect: always
         deploy_logs_storage_backend: local
         deploy_logs_local_path: /tmp/deploy_logs
       conductor:
         power_state_change_timeout: 120
-        # for virtual bmc
-        automated_clean: false
+        automated_clean: true
       service_catalog:
         # depends on which port your Nodeport pick
         endpoint_override: "http://172.24.6.254:32574"
-
-      # For virtual host
       neutron:
+        # For virtual host
         port_setup_delay: 15
   pod:
     replicas:
