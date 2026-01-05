@@ -1,0 +1,17 @@
+---
+fixes:
+  - |
+    Atmosphere now easier to configure for SSH access keys with the generic switch ML2 plugin
+    through the ``[genericswitch:<switch_name>]/key_file`` configuration option.
+    This change simplifies switch authentication by allowing operators to define
+    and control SSH keys through configuration instead of relying on passwords.
+    Atmosphere mounts SSH keys into the neutron server under
+    neutron etc path (``/etc/neutron/ssh-keys``),
+    where the ML2 generic switch driver can reference them directly.
+    An example configuration follows::
+
+      neutron_genericswitch_keys:
+        - name: switch1_key_file_name
+          key: <private ssh key content>
+        - name: switch2_key_file_name
+          key: <private ssh key content>
