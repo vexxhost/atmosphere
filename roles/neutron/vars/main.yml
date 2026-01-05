@@ -104,6 +104,19 @@ __neutron_helm_values:
     ingress_server: false
     service_ingress_server: false
 
+__neutron_generic_switch_keys_helm_values:
+  pod:
+    mounts:
+      neutron_server:
+        neutron_server:
+          volumeMounts:
+            - name: ssh-keys
+              mountPath: /etc/neutron/ssh-keys
+          volumes:
+            - name: ssh-keys
+              secret:
+                secretName: "{{ neutron_helm_release_name }}-ssh-keys"
+
 __neutron_ovn_helm_values:
   conf:
     neutron:
