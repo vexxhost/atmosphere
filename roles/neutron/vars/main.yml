@@ -112,10 +112,12 @@ __neutron_generic_switch_keys_helm_values:
           volumeMounts:
             - name: ssh-keys
               mountPath: /etc/neutron/ssh-keys
+              readOnly: true
           volumes:
             - name: ssh-keys
               secret:
                 secretName: "{{ neutron_helm_release_name }}-ssh-keys"
+                defaultMode: 0400 # noqa: yaml[octal-values]
 
 __neutron_ovn_helm_values:
   conf:
