@@ -25,13 +25,11 @@
         namespace: "{{ neutron_helm_release_namespace }}"
       type: Opaque
       data: >-
-        {{
-          dict(
-            neutron_genericswitch_keys
-            | map(attribute='name')
-            | zip(neutron_genericswitch_keys | map(attribute='key') | map('b64encode'))
-          )
-        }}
+        {%- set result = {} -%}
+        {%- for item in neutron_genericswitch_keys -%}
+          {%- set _ = result.update({item.name: item.key | b64encode}) -%}
+        {%- endfor -%}
+        {{ result }}
 
 - name: Set external_dns_driver
   ansible.builtin.set_fact:
