@@ -17,7 +17,8 @@ PR titles should follow conventional commits format (used for squash merge commi
 - Use `reno new <slug>` to generate a new release note
 - Keep notes brief and concise - detailed usage belongs in documentation
 - Categories: `features`, `issues`, `upgrade`, `deprecations`, `critical`, `security`, `fixes`, `other`
-- Avoid variable names or code examples
+- Write natural English, not technical jargon (e.g., "DHCP client" not "dhclient")
+- Wrap paths and technical terms in RST backticks (e.g., ``/etc/resolv.conf``)
 - Write from the project's perspective (e.g., "The default images..." not "Atmosphere default images...")
 - Must pass `vale` linting
 
@@ -59,5 +60,6 @@ To modify a chart: edit `charts/` and add corresponding patch to `charts/patches
 
 For `.github/styles/config/vocabularies/Base/accept.txt`:
 
-- Only add words/terms, not variable names
+- Only add words/terms, not variable names or command names
+- Use RST backticks for technical terms instead of adding to vocabulary
 - Capitalize proper nouns (e.g., `Neutron` not `neutron`)
