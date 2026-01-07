@@ -6,6 +6,12 @@ Use conventional commits: `type(scope): message`
 
 Types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `ci`
 
+All commits must have a DCO sign-off (`-s` flag).
+
+## Pull Requests
+
+PR titles should follow conventional commits format (used for squash merge commit).
+
 ## Release Notes
 
 - Use `reno new <slug>` to generate a new release note
