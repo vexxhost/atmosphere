@@ -6,6 +6,8 @@
 - Keep notes brief and concise - detailed usage belongs in documentation
 - Categories: `features`, `issues`, `upgrade`, `deprecations`, `critical`, `security`, `fixes`, `other`
 - Avoid variable names or code examples
+- Write from the project's perspective (e.g., "The default images..." not "Atmosphere default images...")
+- Must pass `vale` linting
 
 ## Ansible Role Defaults
 
