@@ -38,6 +38,23 @@ my_var: []
 
 Always update documentation when adding features or improvements.
 
+## Helm Charts
+
+The setup ensures reproducible, auditable chart modifications:
+
+1. Upstream charts are defined in `.charts.yml` (source of truth for versions)
+2. Patches in `charts/patches/` track all customizations as discrete, reviewable changes
+3. `charts/` contains the final result (upstream + patches applied)
+
+Why this matters:
+
+- When upstream releases a new version, update `.charts.yml` and re-run `chart-vendor`. It fetches the new upstream and re-applies patches
+- If patches don't apply cleanly to the new upstream, you know immediately what broke
+- All customizations are visible as patches rather than hidden in a large vendored directory
+- CI verifies that `charts/` = upstream + patches (no drift)
+
+To modify a chart: edit `charts/` and add corresponding patch to `charts/patches/`.
+
 ## Vale Vocabulary
 
 For `.github/styles/config/vocabularies/Base/accept.txt`:
