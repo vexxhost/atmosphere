@@ -1,5 +1,11 @@
 # Atmosphere Project Guidelines
 
+## Commits
+
+Use conventional commits: `type(scope): message`
+
+Types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `ci`
+
 ## Release Notes
 
 - Use `reno new <slug>` to generate a new release note
