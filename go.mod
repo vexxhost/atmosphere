@@ -8,6 +8,7 @@ require (
 	github.com/containers/image/v5 v5.35.0
 	github.com/erikgeiser/promptkit v0.9.0
 	github.com/goccy/go-yaml v1.18.0
+	github.com/google/go-jsonnet v0.21.0
 	github.com/nsf/jsondiff v0.0.0-20230430225905-43f6cf3098c1
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/percona/percona-xtradb-cluster-operator v1.16.1
@@ -72,7 +73,7 @@ require (
 	github.com/evanphx/json-patch v5.9.11+incompatible // indirect
 	github.com/evanphx/json-patch/v5 v5.9.0 // indirect
 	github.com/exponent-io/jsonpath v0.0.0-20210407135951-1de76d718b3f // indirect
-	github.com/fatih/color v1.16.0 // indirect
+	github.com/fatih/color v1.18.0 // indirect
 	github.com/flosch/pongo2/v6 v6.0.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.9.0 // indirect
 	github.com/go-errors/errors v1.4.2 // indirect
@@ -88,7 +89,6 @@ require (
 	github.com/google/btree v1.1.3 // indirect
 	github.com/google/gnostic-models v0.7.0 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
-	github.com/google/go-jsonnet v0.21.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/mux v1.8.1 // indirect
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674 // indirect
