@@ -1,0 +1,42 @@
+# Copyright (c) 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Deploy Helm charts
+  run_once: true
+  delegate_to: "{{ groups['controllers'][0] }}"
+  block:
+    - name: Deploy CloudNativePG Helm chart
+      kubernetes.core.helm:
+        name: "{{ cloudnative_pg_helm_release_name }}"
+        chart_ref: "{{ cloudnative_pg_helm_chart_ref }}"
+        release_namespace: "{{ cloudnative_pg_helm_release_namespace }}"
+        create_namespace: true
+        kubeconfig: "{{ cloudnative_pg_helm_kubeconfig }}"
+        values: "{{ _cloudnative_pg_helm_values | combine(cloudnative_pg_helm_values, recursive=True) }}"
+
+    - name: Deploy Barman Cloud Helm chart
+      kubernetes.core.helm:
+        name: "{{ cloudnative_pg_barman_cloud_helm_release_name }}"
+        chart_ref: "{{ cloudnative_pg_barman_cloud_helm_chart_ref }}"
+        release_namespace: "{{ cloudnative_pg_barman_cloud_helm_release_namespace }}"
+        create_namespace: true
+        kubeconfig: "{{ cloudnative_pg_barman_cloud_helm_kubeconfig }}"
+        values: "{{ _cloudnative_pg_barman_cloud_helm_values | combine(cloudnative_pg_barman_cloud_helm_values, recursive=True) }}"
+
+# NOTE(fitbeard): We need to wait for the deployment to be available
+#                 and mutating webhook to be ready before applying any
+#                 CloudNativePG custom resources.
+- name: Wait for 'cloudnative-pg' deployment to be available
+  run_once: true
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    name: "{{ cloudnative_pg_helm_release_name }}"
+    namespace: "{{ cloudnative_pg_helm_release_namespace }}"
+    kubeconfig: "{{ cloudnative_pg_helm_kubeconfig }}"
+    wait_sleep: 5
+    wait_timeout: 90
+    wait: true
+    wait_condition:
+      type: Available
+      status: true

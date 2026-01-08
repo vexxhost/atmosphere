@@ -1,0 +1,29 @@
+# Copyright (c) 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+_cloudnative_pg_cluster_spec:
+  instances: 3
+  imageCatalogRef:
+    apiGroup: postgresql.cnpg.io
+    kind: ImageCatalog
+    name: postgresql
+    major: 18
+  storage:
+    storageClass: general
+    size: 50Gi
+  postgresql:
+    parameters:
+      max_worker_processes: "60"
+    pg_hba:
+      - host all all all md5
+  enableSuperuserAccess: true
+  superuserSecret:
+    name: cloudnative-pg-cluster-superuser
+  affinity:
+    nodeSelector:
+      openstack-control-plane: enabled
+
+_cloudnative_pg_cluster_image_catalog_spec:
+  images:
+    - major: 18
+      image: "{{ atmosphere_images['cloudnative_pg_cluster'] | vexxhost.kubernetes.docker_image('ref') }}"
