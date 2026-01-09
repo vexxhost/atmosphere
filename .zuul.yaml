@@ -1,0 +1,80 @@
+- nodeset:
+    name: atmosphere-ubuntu-jammy-single-node
+    nodes:
+      - name: instance
+        label: ubuntu-jammy
+    groups: &single_node_groups
+      - name: controllers
+        nodes:
+          - instance
+      - name: cephs
+        nodes:
+          - instance
+      - name: computes
+        nodes:
+          - instance
+
+- job:
+    name: atmosphere-molecule
+    parent: molecule
+    abstract: true
+    nodeset: atmosphere-ubuntu-jammy-single-node
+    pre-run: test-playbooks/molecule/pre.yml
+    post-run: test-playbooks/molecule/post.yml
+    roles:
+      - zuul: opendev.org/openstack/openstack-helm
+    vars:
+      ceph_fsid: 4837cbf8-4f90-4300-b3f6-726c9b9f89b4
+      ceph_conf_overrides:
+        - section: global
+          option: mon allow pool size one
+          value: true
+        - section: global
+          option: osd crush chooseleaf type
+          value: 0
+        - section: mon
+          option: auth allow insecure global id reclaim
+          value: false
+      ceph_osd_devices:
+        - "/dev/ceph-{{ inventory_hostname_short }}-osd0/data"
+        - "/dev/ceph-{{ inventory_hostname_short }}-osd1/data"
+        - "/dev/ceph-{{ inventory_hostname_short }}-osd2/data"
+      kube_vip_interface: "{{ ansible_facts['default_ipv4'].interface }}"
+      kube_vip_address: 172.17.0.100
+      kubernetes_hostname: "{{ ansible_facts['default_ipv4'].address }}"
+      cilium_ipv4_cidr: 172.24.0.0/16
+      cilium_helm_values:
+        operator:
+          replicas: 1
+      ceph_csi_rbd_helm_values:
+        provisioner:
+          replicaCount: 1
+
+- job:
+    name: atmosphere-molecule-csi
+    parent: atmosphere-molecule
+    abstract: true
+    vars:
+      molecule_scenario: csi
+
+- job:
+    name: atmosphere-molecule-csi-local-path-provisioner
+    parent: atmosphere-molecule-csi
+    vars:
+      csi_driver: local-path-provisioner
+
+- job:
+    name: atmosphere-molecule-csi-rbd
+    parent: atmosphere-molecule-csi
+    vars:
+      csi_driver: rbd
+
+- project:
+    check:
+      jobs:
+        - atmosphere-molecule-csi-local-path-provisioner
+        - atmosphere-molecule-csi-rbd
+    gate:
+      jobs:
+        - atmosphere-molecule-csi-local-path-provisioner
+        - atmosphere-molecule-csi-rbd

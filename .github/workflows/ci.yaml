@@ -28,6 +28,11 @@ jobs:
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
         with:
           go-version-file: go.mod
+      - name: Install promtool
+        env:
+          PROMTOOL_VERSION: "2.53.4"
+        run: |
+          curl -L -s https://github.com/prometheus/prometheus/releases/download/v${PROMTOOL_VERSION}/prometheus-${PROMTOOL_VERSION}.linux-amd64.tar.gz | sudo tar -xz -C /usr/local/bin --strip-components=1
       - uses: robherley/go-test-action@b19f6aadabfb1ad85079065b21aa2af132466468 # v0.6.0
 
   vale:
@@ -60,52 +65,6 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/build
 
-  images:
-    runs-on: ubuntu-latest
-    concurrency:
-      group: images-push-${{ github.ref }}
-      cancel-in-progress: false
-    permissions:
-      id-token: write
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-      - uses: depot/setup-action@v1
-      - run: echo tag=$(echo ${{ github.event_name == 'pull_request' && github.base_ref || github.ref_name }} | cut -d'/' -f2) >> $GITHUB_OUTPUT
-        id: image_info
-      - uses: docker/login-action@v3
-        if: ${{ github.event_name != 'pull_request' }}
-        with:
-          registry: harbor.atmosphere.dev
-          username: ${{ secrets.HARBOR_USERNAME }}
-          password: ${{ secrets.HARBOR_PASSWORD }}
-      - uses: depot/bake-action@v1
-        id: bake
-        with:
-          project: jd10vkmkwv
-          save: ${{ github.event_name == 'pull_request' }}
-          push: ${{ github.event_name != 'pull_request' }}
-        env:
-          TAG: ${{ steps.image_info.outputs.tag }}
-    outputs:
-      build-id: ${{ steps.bake.outputs.build-id }}
-
-  csi:
-    runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'pull_request' }}
-    strategy:
-      fail-fast: false
-      matrix:
-        csi_driver:
-          - local-path-provisioner
-          - rbd
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: ./.github/actions/molecule
-        with:
-          scenario: csi
-          csi_driver: ${{ matrix.csi_driver }}
-
   keycloak:
     runs-on: vexxhost-ubuntu-22.04-4
     if: ${{ github.event_name == 'pull_request' }}
@@ -124,11 +83,6 @@ jobs:
     concurrency:
       group: ${{ github.job }}-${{ matrix.network_backend }}-${{ github.event.pull_request.number }}
       cancel-in-progress: true
-    permissions:
-      id-token: write
-      contents: read
-    needs:
-      - images
     strategy:
       fail-fast: false
       matrix:
@@ -141,4 +95,3 @@ jobs:
         with:
           scenario: aio
           network_backend: ${{ matrix.network_backend }}
-          depot_build_id: ${{ needs.images.outputs.build-id }}

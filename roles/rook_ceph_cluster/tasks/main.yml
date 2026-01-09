@@ -46,6 +46,25 @@
     output_format: json
   register: _rook_ceph_cluster_mon_auth_data
 
+- name: Create RGW user password secret
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: rook-ceph-rgw-{{ rook_ceph_cluster_name }}-creds
+        namespace: "{{ rook_ceph_cluster_helm_release_namespace }}"
+      stringData:
+        OS_AUTH_TYPE: "password"
+        OS_IDENTITY_API_VERSION: "3"
+        OS_PASSWORD: "{{ openstack_helm_endpoints.identity.auth.rgw.password }}"
+        OS_PROJECT_DOMAIN_NAME: "service"
+        OS_PROJECT_NAME: "service"
+        OS_USER_DOMAIN_NAME: "service"
+        OS_USERNAME: "{{ openstack_helm_endpoints.identity.auth.rgw.username }}"
+
 - name: Create Ceph cluster resource
   run_once: true
   kubernetes.core.k8s:
