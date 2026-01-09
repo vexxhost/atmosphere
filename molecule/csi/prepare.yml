@@ -1,1 +1,29 @@
-../aio/prepare.yml
+# Copyright (c) 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Prepare
+  hosts: all
+  become: true
+  tasks:
+    # NOTE(mnaser): We need to stop depending on `inventory_hostname` and
+    #               use the actual hostname of the system.
+    - name: Workaround system hostname
+      block:
+        - name: Configure short hostname
+          ansible.builtin.hostname:
+            name: "{{ inventory_hostname_short }}"
+        - name: Ensure hostname inside hosts file
+          ansible.builtin.lineinfile:
+            path: /etc/hosts
+            regexp: '^127\.0\.1\.1'
+            line: 127.0.1.1 {{ inventory_hostname }} {{ inventory_hostname_short }}
+
+    - name: Purge "snapd" package
+      when: ansible_distribution | lower == 'ubuntu'
+      ansible.builtin.apt:
+        name: snapd
+        state: absent
+        purge: true
+
+- name: Create fake devices for Ceph
+  ansible.builtin.import_playbook: vexxhost.ceph.create_fake_devices

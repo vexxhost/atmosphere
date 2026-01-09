@@ -15,7 +15,7 @@
 _ceph_csi_rbd_helm_values:
   csiConfig:
     - clusterID: "{{ ceph_csi_rbd_ceph_fsid }}"
-      monitors: "{{ ceph_monitors }}"
+      monitors: "{{ ceph_csi_rbd_monitors }}"
   nodeplugin:
     httpMetrics:
       containerPort: 8081
@@ -52,4 +52,4 @@ _ceph_csi_rbd_helm_values:
   secret:
     create: true
     userID: "{{ ceph_csi_rbd_id }}"
-    userKey: "{{ _ceph_rbd_csi_ceph_keyring.key }}"
+    userKey: "{{ ceph_csi_rbd_keyring }}"
