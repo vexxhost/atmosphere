@@ -104,7 +104,7 @@ is deployed as part of Atmosphere as an admin user.
 
 3. Click the "Add Silence" button and use the AlertManager format to create
    your silence, which you can test by seeing if it matches any alerts in the
-   list labeled "Affected alert instances".
+   list labeled "Affected alert instances."
 
 .. admonition:: Limit the number of labels
     :class: info
