@@ -32,11 +32,10 @@ _rabbitmq_spec:
       vm_memory_high_watermark.relative = 0.9
       management.tcp.ip = ::
     erlangInetConfig: |
-      {inet6, true}.
-      {tcp, inet6_tcp}.
+      {inet6, {{ rabbitmq_ipv6 }}}.
+      {tcp, {{ rabbitmq_ipv6 | ternary('inet6_tcp', 'inet_tcp') }}}.
     envConfig: |
-      SERVER_ADDITIONAL_ERL_ARGS="-kernel inetrc '/etc/rabbitmq/erl_inetrc'  -proto_dist inet6_tcp"
-      RABBITMQ_CTL_ERL_ARGS="-proto_dist inet6_tcp"
+      SERVER_ADDITIONAL_ERL_ARGS="-kernel inetrc '/etc/rabbitmq/erl_inetrc'  -proto_dist {{ rabbitmq_ipv6 | ternary('inet6_tcp', 'inet_tcp') }}"
   replicas: 1
   resources:
     requests:
