@@ -49,3 +49,26 @@ _barbican_helm_values:
   manifests:
     ingress_api: false
     service_ingress_api: false
+
+# Policy rules to allow admin role to access all secrets
+__barbican_admin_secret_access_helm_values:
+  conf:
+    policy:
+      secret:get: "rule:all_but_audit and (rule:secret_project_match or rule:secret_acl_read or rule:secret_project_admin)"
+      secret:decrypt: "rule:all_users and (rule:secret_project_match or rule:secret_acl_read or rule:secret_project_admin)"
+
+# Policy rules to allow Nova service user to access secrets for vTPM
+__barbican_nova_secret_access_helm_values:
+  conf:
+    policy:
+      secret_project_nova: "user_id:%(target.secret.creator_id)s or project_id:%(target.secret.project_id)s or role:service"
+      secret:get: "rule:all_but_audit and (rule:secret_project_match or rule:secret_acl_read or rule:secret_project_nova)"
+      secret:decrypt: "rule:all_users and (rule:secret_project_match or rule:secret_acl_read or rule:secret_project_nova)"
+
+# Combined policy rules when both admin and Nova access are enabled
+__barbican_admin_and_nova_secret_access_helm_values:
+  conf:
+    policy:
+      secret_project_nova: "user_id:%(target.secret.creator_id)s or project_id:%(target.secret.project_id)s or role:service"
+      secret:get: "rule:all_but_audit and (rule:secret_project_match or rule:secret_acl_read or rule:secret_project_admin or rule:secret_project_nova)"
+      secret:decrypt: "rule:all_users and (rule:secret_project_match or rule:secret_acl_read or rule:secret_project_admin or rule:secret_project_nova)"
