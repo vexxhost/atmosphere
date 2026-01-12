@@ -9,7 +9,7 @@ steps below to enable specific CSI drivers based on your storage requirements.
 .. admonition:: Storing secrets securely
     :class: tip
 
-    When configuring CSI drivers, it is important to store sensitive
+    When configuring CSI drivers, it's important to store sensitive
     information securely. You can use Ansible Vault to encrypt your inventory
     file and store it in a secure location. For more information on how to
     use Ansible Vault, refer to the `Ansible documentation <https://docs.ansible.com/ansible/latest/user_guide/vault.html>`_.
@@ -115,7 +115,7 @@ infrastructure.
 IBM Block
 *********
 
-If you're using a storage array that is compatible with the IBM Block CSI
+If you're using a storage array that's compatible with the IBM Block CSI
 driver, you can configure it by updating your Ansible inventory as follows:
 
 .. code-block:: yaml
@@ -128,7 +128,7 @@ driver, you can configure it by updating your Ansible inventory as follows:
     ibm_block_csi_driver_io_group: <FILL IN>
 
 Optionally, you can control the ``SpaceEfficiency`` setting which defaults to
-`thin` to enable thin provisioning.  To change it to any other value, you
+`thin` to enable thin provisioning. To change it to any other value, you
 can set the following variable:
 
 .. code-block:: yaml
@@ -136,7 +136,7 @@ can set the following variable:
     ibm_block_csi_driver_space_efficiency: <FILL IN>
 
 Ensure that you replace ``<FILL IN>`` with actual values relevant to your IBM
-Block configuration.  You can use the `Creating a StorageClass <https://www.ibm.com/docs/en/stg-block-csi-driver/1.11.3?topic=configuring-creating-storageclass>`_
+Block configuration. You can use the `Creating a StorageClass <https://www.ibm.com/docs/en/stg-block-csi-driver/1.11.3?topic=configuring-creating-storageclass>`_
 documentation to help you determine the values to use.
 
 ********
@@ -144,7 +144,7 @@ Portworx
 ********
 
 If you are using a Pure Storage array for your block storage, you can use the
-Portworx CSI driver to integrate it with your Kubernetes cluster.  Portworx
+Portworx CSI driver to integrate it with your Kubernetes cluster. Portworx
 automatically enables a custom license when integrated with Pure Storage
 arrays (FA/FB edition).
 

@@ -37,13 +37,13 @@ from Keycloak, which can then be used to authenticate with the OpenStack API.
        Client->>OpenStack: Use Keystone Token
        OpenStack-->>Client: OpenStack API Access Granted
 
-In order to get started with this process, you'll need a OpenID connect token
+In order to get started with this process, you'll need an OpenID connect token
 issued by an identity provider which exists in the Keycloak realm.
 
 1. **Exchange the OpenID connect (OIDC) Token with Keycloak**
 
    Use the *OpenID connect token* from your identity provider and exchange it for
-   a *Keycloak-issued token*.  The following ``curl`` command is provided as an
+   a *Keycloak-issued token*. The following ``curl`` command is provided as an
    example but you can use any tool that can make HTTP requests.
 
    You will need to replace the following placeholders in the example code:
@@ -62,7 +62,7 @@ issued by an identity provider which exists in the Keycloak realm.
         -d "subject_token=<OIDC_TOKEN>" \
         -d "subject_token_type=urn:ietf:params:oauth:token-type:access_token"
 
-   The response will return a token that is issued by Keycloak which you can use
+   The response will return a token that's issued by Keycloak which you can use
    to authenticate with the OpenStack API.
 
    .. code-block:: json
@@ -99,8 +99,8 @@ issued by an identity provider which exists in the Keycloak realm.
 
 3. **List projects using the Keystone Token** (optional, if you already know the project ID)
 
-   At this point, you have an unscoped token issued by Keystone which is not bound
-   to any project.  You will need to exchange that token for a project-scoped token
+   At this point, you have an unscoped token issued by Keystone which isn't bound
+   to any project. You'll need to exchange that token for a project-scoped token
    in order to be able to interact with the OpenStack APIs.
 
    You can choose to list what projects you have access to using the Keystone token

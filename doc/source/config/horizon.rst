@@ -6,7 +6,7 @@ The Horizon component serves as the web-based user interface for OpenStack,
 allowing users to interact with the cloud infrastructure.
 
 By default, Horizon is configured to work out of the box with minimal changes
-needed.  However, it can be extensively customized to fit the branding and
+needed. However, it can be extensively customized to fit the branding and
 requirements of your organization.
 
 .. admonition:: Deploying Horizon

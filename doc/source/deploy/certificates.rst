@@ -9,15 +9,15 @@ using `cert-manager <https://cert-manager.io>`_.
 Types
 =====
 
-There are two different ways of issuing certificates.  It can either issue
+There are two different ways of issuing certificates. It can either issue
 individual certificates for each API endpoint or it can issue a wildcard
 certificate for all of your API endpoints.
 
 Individual Certificates
 -----------------------
 
-If you want to issue individual certificates for each API endpoint, you do not
-need to do anything.  This is the default behavior of Atmosphere.
+If you want to issue individual certificates for each API endpoint, you don't
+need to do anything. This is the default behavior of Atmosphere.
 
 Wildcard Certificate
 --------------------
@@ -30,7 +30,7 @@ Automatically Issued
 ~~~~~~~~~~~~~~~~~~~~
 
 If you want to issue a wildcard certificate for all of your API endpoints using
-the certificate manager, you can configure it by setting the the following variable
+the certificate manager, you can configure it by setting the following variable
 in your inventory:
 
 .. code-block:: yaml
@@ -38,7 +38,7 @@ in your inventory:
   openstack_helm_ingress_wildcard_domain: cloud.atmosphere.dev
 
 This will issue a wildcard certificate for ``*.cloud.atmosphere.dev`` and all
-subdomains.  The certificate manager will automatically renew the certificate
+subdomains. The certificate manager will automatically renew the certificate
 before it expires.
 
 Existing Certificate
@@ -85,7 +85,7 @@ Issuers
 =======
 
 In order to be able to automatically issue certificates, you need to configure
-an issuer.  There are three different types of issuers that you can use with
+an issuer. There are three different types of issuers that you can use with
 Atmosphere.
 
 .. note::
@@ -129,7 +129,7 @@ HTTP-01 Challenge
 ~~~~~~~~~~~~~~~~~
 
 This is configured to work out of the box if your APIs are publicly accessible
-since it uses an HTTP-01 challenge to verify ownership of the domain.  You just
+since it uses an HTTP-01 challenge to verify ownership of the domain. You just
 need to configure an email address.
 
 DNS-01 Challenge
@@ -138,7 +138,7 @@ DNS-01 Challenge
 Atmosphere uses the ``HTTP-01`` solver by default, which means that as long as
 your ACME server can reach your API, you don't need to do anything else.
 
-If your ACME server cannot reach your API, you will need to use the ``DNS-01``
+If your ACME server can't reach your API, you will need to use the ``DNS-01``
 challenges which require you to configure your DNS provider.
 
 Azure DNS
@@ -251,7 +251,7 @@ Venafi
 ------
 
 Venafi is a commercial certificate authority which can be used with Atmosphere
-to issue certificates.  Regardless of the way that you authenticate to Venafi,
+to issue certificates. Regardless of the way that you authenticate to Venafi,
 you will need to configure the issuer.
 
 .. code-block:: yaml
@@ -276,14 +276,14 @@ you will need to configure the issuer.
 
    If your issuer is an intermediate certificate, you will need to ensure that
    the ``certificate`` key includes the full chain in the correct order of issuer,
-   intermediate(s), then root.
+   intermediates, then root.
 
 Authentication
 ~~~~~~~~~~~~~~
 
 There are two different ways to authenticate to Venafi to issue certificates,
-either using a username and password or using an access token.  The username and
-password method is phased out in newer versions of Venafi, so it is recommended
+either using a username and password or using an access token. The username and
+password method is phased out in newer versions of Venafi, so it's recommended
 to use the access token method.
 
 Username and Password
@@ -354,13 +354,13 @@ configure it by including the certificate and private key:
 
    If your issuer is an intermediate certificate, you will need to ensure that
    the ``certificate`` key includes the full chain in the correct order of issuer,
-   intermediate(s), then root.
+   intermediates, then root.
 
 Self-signed Certificates
 ------------------------
 
-If you are in an environment which does not have a trusted certificate authority
-and it does not have access to the internet to be able to use LetsEncrypt, you
+If you're in an environment which doesn't have a trusted certificate authority
+and it doesn't have access to the internet to be able to use LetsEncrypt, you
 can use self-signed certificates by adding the following to your inventory:
 
 .. code-block:: yaml
@@ -369,5 +369,5 @@ can use self-signed certificates by adding the following to your inventory:
 
 .. warning::
 
-   Self-signed certificates are not recommended for production environments.
-   They are only recommended for development and testing environments.
+   Self-signed certificates aren't recommended for production environments.
+   They're only recommended for development and testing environments.
