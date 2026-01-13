@@ -11,7 +11,7 @@ Open Virtual Network (OVN)
 Recovering clusters
 ===================
 
-If any of the OVN database pods fail, they will no longer be ready.  You can
+If any of the OVN database pods fail, they will no longer be healthy. You can
 recover the cluster by deleting the pods and allowing them to be recreated.
 
 For example, if the ``ovn-ovsdb-nb-0`` pod fails, you can recover the cluster by
@@ -22,7 +22,7 @@ deleting the pod:
     $ kubectl -n openstack delete pods/ovn-ovsdb-nb-0
 
 If the entire cluster fails, you can recover the cluster by deleting all of the
-pods.  For example, if the southbound database fails, you can recover the
+pods. For example, if the southbound database fails, you can recover the
 cluster with this command:
 
 .. code-block:: console
@@ -49,7 +49,7 @@ Compute Service (Nova)
 Provisioning Failure Due to ``downloading`` Volume
 ==================================================
 
-If you're trying to provision a new instance that is using a volume where the
+If you're trying to provision a new instance that's using a volume where the
 backend needs to download images directly from Glance (such as PowerStore for
 example) and it fails with the following error:
 
@@ -57,10 +57,10 @@ example) and it fails with the following error:
 
     Build of instance 54a41735-a4cb-4312-b812-52e4f3d8c500 aborted: Volume 728bdc40-fc22-4b65-b6b6-c94ee7f98ff0 did not finish being created even after we waited 187 seconds or 61 attempts. And its status is downloading.
 
-This means that the volume service could not download the image before the
-compute service timed out.  Out of the box, Atmosphere ships with the volume
-cache enabled to help offset this issue.  However, if you're using a backend
-that does not support the volume cache, you can increase the timeout by setting
+This means that the volume service couldn't download the image before the
+compute service timed out. Out of the box, Atmosphere ships with the volume
+cache enabled to help offset this issue. However, if you're using a backend
+that doesn't support the volume cache, you can increase the timeout by setting
 the following in your ``inventory/group_vars/all/nova.yml`` file:
 
 .. code-block:: yaml
@@ -79,8 +79,8 @@ Load Balancer Service (Octavia)
 Accessing Amphorae
 ==================
 
-Atmosphere configures an SSH keypair which allows you to login to the Amphorae
-for debugging purposes.  The ``octavia-worker`` containers are fully configured
+Atmosphere configures an SSH key pair which allows you to login to the Amphorae
+for debugging purposes. The ``octavia-worker`` containers are fully configured
 to allow you to SSH to the Amphorae.
 
 If you have an Amphora running with the IP address ``172.24.0.148``, you can login
@@ -150,6 +150,6 @@ the issue:
     :class: info
 
     We're trying to collect data with when these failures occur to better understand
-    the root cause.  If you encounter this issue, please reach out to the Atmosphere
+    the root cause. If you encounter this issue, please reach out to the Atmosphere
     team so we can better understand the issue by filing an issue with the output of
     the ``amphora-agent`` logs from the Amphora.

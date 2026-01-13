@@ -15,21 +15,21 @@ environment for Atmosphere.
 .. admonition:: Testing & Development Only
     :class: info
 
-    The quick start installation is not for production use, it's perfect
+    The quick start installation isn't for production use; it's perfect
     for testing and development.
 
 All-in-one
 ==========
 
 The easiest way to get started with Atmosphere is to deploy the all-in-one
-installation.  This will install an entire stack of Atmosphere, with Ceph
+installation. This will install an entire stack of Atmosphere, with Ceph
 and all the OpenStack services inside a single machine.
 
 .. admonition:: Non-reversible Changes
     :class: warning
 
     The all-in-one will fully take-over the machine by making system-level
-    changes.  It's recommended to run it inside a virtual machine or a
+    changes. It's recommended to run it inside a virtual machine or a
     physical machine that can be dedicated to this purpose.
 
 In order to get started, you'll need a **Ubuntu 22.04** system with the
@@ -48,7 +48,7 @@ is always better!):
 .. admonition:: Nested Virtualization
     :class: warning
 
-    If you're running this inside a virtual machine, it is **extremely**
+    If you're running this inside a virtual machine, it's **extremely**
     important that the virtual machines supported nested virtualization,
     otherwise the performance of the VMs will be un-usable.
 
@@ -91,7 +91,7 @@ Multi-node
 ==========
 
 The multi-node intends to provide the most near-production experience possible,
-as it is architected purely towards production-only environments. In order to
+as it's architected purely towards production-only environments. In order to
 get a quick production-ready experience of Atmosphere, this will deploy a full
 stack of Atmosphere, with Ceph and all the OpenStack services across multiple
 machines in a lab environment.
@@ -103,11 +103,11 @@ You can deploy Atmosphere on top of an existing OpenStack environment where many
 virtual machines will be deployed in the same way that you'd have multiple
 physical machines in a datacenter for a production environment.
 
-The quick start is powered by Molecule and it is used in continuous integration
+The quick start is powered by Molecule and it's used in continuous integration
 running against the VEXXHOST public cloud so that would be an easy target to
 use to try it out.
 
-ou will need the following quotas set up in your cloud account:
+You will need the following quotas set up in your cloud account:
 
 * 8 instances
 * 32 cores
@@ -128,10 +128,10 @@ system with `git` by running the following command:
 
     $ git clone https://github.com/vexxhost/atmosphere
 
-You will need ``tox`` installed on your operating system.  You will need to make
+You will need ``tox`` installed on your operating system. You will need to make
 sure that you have the appropriate OpenStack environment variables set (such
-as ``OS_CLOUD`` or ``OS_AUTH_URL``, etc.).  You can also use the following
-environment variables to tweak the behaviour of the Heat stack that is created:
+as ``OS_CLOUD`` or ``OS_AUTH_URL``, etc.). You can also use the following
+environment variables to tweak the behaviour of the Heat stack that's created:
 
 * ``ATMOSPHERE_STACK_NAME``: The name of the Heat stack to be created (defaults to
   `atmosphere`).
@@ -145,7 +145,7 @@ environment variables to tweak the behaviour of the Heat stack that is created:
   machine role using ``ATMOSPHERE_CONTROLLER_INSTANCE_TYPE``,
   ``ATMOSPHERE_COMPUTE_INSTANCE_TYPE``, and ``ATMOSPHERE_STORAGE_INSTANCE_TYPE``
   variables. For backwards compatibility, if variables specific to the machine roles
-  are not set and ``ATMOSPHERE_INSTANCE_TYPE`` is set, ``ATMOSPHERE_INSTANCE_TYPE`` value
+  aren't set and ``ATMOSPHERE_INSTANCE_TYPE`` is set, ``ATMOSPHERE_INSTANCE_TYPE`` value
   is used.
 * ``ATMOSPHERE_CONTROLLER_INSTANCE_TYPE``: The instance type used to deploy controller
   instances (defaults to ``v3-standard-16``).
@@ -155,15 +155,15 @@ environment variables to tweak the behaviour of the Heat stack that is created:
   instances (defaults to ``v3-standard-4``).
 * ``ATMOSPHERE_NAMESERVERS``: A comma-separated list of nameservers to be used for
   the instances (defaults to ``1.1.1.1``).
-* ``ATMOSPHERE_USERNAME``: The username what is used to login into the instances (
+* ``ATMOSPHERE_USERNAME``: The username what's used to login into the instances (
   defaults to ``ubuntu``).
-* ``ATMOSPHERE_DNS_SUFFIX_NAME``: The DNS domainname that is used for the API and
+* ``ATMOSPHERE_DNS_SUFFIX_NAME``: The DNS domainname that's used for the API and
   Horizon. (defaults to ``nip.io``).
-* ``ATMOSPHERE_ACME_SERVER``: The ACME server, currenly this is from LetsEncrypt,
-  with StepCA from SmallStep it is possible to run a internal ACME server.
+* ``ATMOSPHERE_ACME_SERVER``: The ACME server, currently this is from LetsEncrypt,
+  with StepCA from SmallStep it's possible to run a internal ACME server.
   The CA of that ACME server should be present in the instance image.
-* ``ATMOSPHERE_ANSIBLE_VARS_PATH``: The path for ansible group_vars and host_vars.
-  This to build a multinode development cluster with own configs, that are not
+* ``ATMOSPHERE_ANSIBLE_VARS_PATH``: The path for Ansible ``group_vars`` and ``host_vars``.
+  This to build a multinode development cluster with own configs, that aren't
   generated by molecule. This way you can test your configs before you bring
   them to production.
 
@@ -175,8 +175,8 @@ the Heat stack:
     $ tox -e molecule-venv -- converge
 
 This will create a Heat stack with the name `atmosphere` and start deploying
-the cloud.  Once it's complete, you can login to any of the systems by using
-the `login` sub-command.  For exampel, to login to the first controller node,
+the cloud. Once it's complete, you can login to any of the systems by using
+the `login` sub-command. For example, to login to the first controller node,
 you can run the following:
 
 .. code-block:: console
@@ -207,14 +207,14 @@ Command Line Interface (CLI)
 ============================
 
 When using the CLI, there are two different ways of authenticating
-to the OpenStack environment.  You can either use local credentials
+to the OpenStack environment. You can either use local credentials
 or you can use Single-Sign On (SSO) with the OpenStack CLI.
 
 Local Credentials
 -----------------
 
 On any of the control plane node, you can find the credentials in the
-``/root/openrc`` file.  In an all-in-one environment, this will be the
+``/root/openrc`` file. In an all-in-one environment, this will be the
 same machine where you deployed the environment.
 
 For example, if you want to list the networks, you can run the following
@@ -281,7 +281,7 @@ Local Credentials
 -----------------
 
 You can find the credentials to login to the dashboard reading the
-`/root/openrc` file on any of the control plane nodes.  You can use
+`/root/openrc` file on any of the control plane nodes. You can use
 the following variables to match the credentials:
 
 - Username: ``OS_USERNAME``

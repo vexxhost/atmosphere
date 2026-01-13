@@ -3,7 +3,7 @@ Monitoring and Operations
 #########################
 
 There is a Grafana deployment with a few dashboards that are created by default
-and a Prometheus deployment that is used to collect metrics from the cluster
+and a Prometheus deployment that's used to collect metrics from the cluster
 which sends alerts to AlertManager. In addition, Loki is deployed to collect
 logs from the cluster using Vector.
 
@@ -21,7 +21,7 @@ Alerting Philosophy
 ===================
 
 Our alerting philosophy aims to alert the right people at the right time. Most
-alerts, if they are affecting a single system, would trigger a lower priority
+alerts, if they're affecting a single system, would trigger a lower priority
 level (P4 or P5). However, if an issue is affecting the entire control plane of
 a specific service, it might escalate to a P3 or P2. And if the whole service
 is unavailable, it becomes a P1.
@@ -50,7 +50,7 @@ their impact on the system and users.
 **P2**: High
   This level is for incidents that affect a large group of users or critical
   system components. These incidents require swift attention and action,
-  regardless of business hours, but do not cause a total disruption.
+  regardless of business hours, but don't cause a total disruption.
 
 **P3**: Moderate
   This level is for incidents that affect a smaller group of users or a single
@@ -65,7 +65,7 @@ their impact on the system and users.
 **P5**: Informational
   This is the lowest level of severity, used for providing information about
   normal system activities or minor issues that don't significantly impact
-  users or system functionality. These incidents typically do not require
+  users or system functionality. These incidents typically don't require
   immediate attention or action and are addressed during standard business
   hours.
 
@@ -88,8 +88,8 @@ is deployed as part of Atmosphere as an admin user.
 
 2. Ensure that you select "AlertManager" on the top right corner of the page,
    this will make sure that you create a silence inside of the AlertManager
-   that is managed by the Prometheus operator instead of the built-in Grafana
-   AlertManager which is not used.
+   that's managed by the Prometheus operator instead of the built-in Grafana
+   AlertManager which isn't used.
 
     .. image:: images/monitoring-alertmanger-list.png
         :alt: AlertManager list
@@ -98,21 +98,21 @@ is deployed as part of Atmosphere as an admin user.
    .. admonition:: AlertManager selection
     :class: warning
 
-    It's important that you select the AlertManager that is managed by the
-    Prometheus operator, otherwise your silence will not be applied to the
-    Prometheus instance that is deployed as part of Atmosphere.
+    It's important that you select the AlertManager that's managed by the
+    Prometheus operator, otherwise your silence won't be applied to the
+    Prometheus instance that's deployed as part of Atmosphere.
 
 3. Click the "Add Silence" button and use the AlertManager format to create
    your silence, which you can test by seeing if it matches any alerts in the
-   list labeled "Affected alert instances".
+   list labeled "Affected alert instances."
 
 .. admonition:: Limit the number of labels
     :class: info
 
-    It is important to limit the number of labels that you use in your silence
+    It's important to limit the number of labels that you use in your silence
     to ensure that it will continue to work even if the alerts are modified.
 
-    For example, if you have an alert that is labeled with the following labels:
+    For example, if you have an alert that's labeled with the following labels:
 
     - ``alertname``
     - ``instance``
@@ -137,9 +137,9 @@ directly via the Helm chart values.
 .. admonition:: Avoid Manual Persistence Configurations!
     :class: warning
 
-    It is important to avoid manual persistence configurations, especially for
+    It's important to avoid manual persistence configurations, especially for
     services like Grafana, where dashboards and data sources can be saved. Such
-    practices are not captured in version control and pose a risk of data loss,
+    practices aren't captured in version control and pose a risk of data loss,
     configuration drift, and upgrade complications.
 
 To manage Grafana dashboards through Helm, you can include the dashboard
@@ -162,7 +162,7 @@ For example, a dashboard can be defined in the Helm values like this:
 
 This instructs Helm to fetch and configure the specified dashboard from
 `Grafana.com dashboards <https://grafana.com/grafana/dashboards/>`_, using
-Prometheus as the data source.  You can find more examples of how to do
+Prometheus as the data source. You can find more examples of how to do
 this in the Grafana Helm chart `Import Dashboards <https://github.com/grafana/helm-charts/tree/main/charts/grafana#import-dashboards>`_
 documentation.
 
@@ -170,15 +170,15 @@ documentation.
 Viewing data
 ************
 
-There are a few different ways to view the data that is collected by the
-monitoring stack.  The most common ways are through AlertManager, Grafana, and
+There are a few different ways to view the data that's collected by the
+monitoring stack. The most common ways are through AlertManager, Grafana, and
 Prometheus.
 
 Grafana dashboard
 =================
 
 By default, an ``Ingress`` is created for Grafana using the
-``kube_prometheus_stack_grafana_host`` variable.  The authentication is done
+``kube_prometheus_stack_grafana_host`` variable. The authentication is done
 using the Keycloak service which is deployed by default.
 
 Inside Keycloak, there are two client roles that are created for Grafana:
@@ -201,15 +201,15 @@ Prometheus
 ==========
 
 By default, Prometheus is exposed behind an ``Ingress`` using the
-``kube_prometheus_stack_prometheus_host`` variable.  In addition, it is also
+``kube_prometheus_stack_prometheus_host`` variable. In addition, it's also
 running behind the `oauth2-proxy` service which is used for authentication
 so that only authenticated users can access the Prometheus UI.
 
 Alternative Authentication
 --------------------------
 
-It is possible to by-pass the `oauth2-proxy` service and use an alternative
-authentication method to access the Prometheus UI.  In both cases, we will
+It's possible to by-pass the `oauth2-proxy` service and use an alternative
+authentication method to access the Prometheus UI. In both cases, we'll
 be overriding the ``servicePort`` on the ``Ingress`` to point to the port
 where Prometheus is running and not the `oauth2-proxy` service.
 
@@ -238,9 +238,9 @@ do so by making the following changes to your inventory:
           nginx.ingress.kubernetes.io/auth-type: basic
           nginx.ingress.kubernetes.io/auth-secret: basic-auth-secret-name
 
-In the example above, we are using the ``basic-auth-secret-name`` secret to
-authenticate users.  The secret should be created in the same namespace as the
-Prometheus deployment based on the `Ingress NGINX Annotations <https://github.com/kubernetes/ingress-nginx/blob/main/docs/user-guide/nginx-configuration/annotations.md#annotations>`_.
+In the example above, we're using the ``basic-auth-secret-name`` secret to
+authenticate users. The secret should be created in the same namespace as the
+Prometheus deployment based on the `Ingress nginx Annotations <https://github.com/kubernetes/ingress-nginx/blob/main/docs/user-guide/nginx-configuration/annotations.md#annotations>`_.
 
 IP Whitelisting
 ~~~~~~~~~~~~~~~
@@ -257,7 +257,7 @@ so by making the following changes to your inventory:
         annotations:
           nginx.ingress.kubernetes.io/whitelist-source-range: "10.0.0.0/24,172.10.0.1"
 
-In the example above, we are whitelisting the IP range ``10.0.0.0/24`` and the IP address
+In the example above, we're whitelisting the IP range ``10.0.0.0/24`` and the IP address
 ``172.10.0.1``.
 
 AlertManager
@@ -271,20 +271,20 @@ behind the `oauth2-proxy` service, protected by Keycloak similar to Prometheus.
 Integrations
 ************
 
-Since Atmosphere relies on AlertManager to send alerts, it is possible to
-integrate it with services like OpsGenie, PagerDuty, email and more.  To
+Since Atmosphere relies on AlertManager to send alerts, it's possible to
+integrate it with services like OpsGenie, PagerDuty, email and more. To
 receive monitoring alerts using your preferred notification tools, you'll
 need to integrate them with AlertManager.
 
 OpsGenie
 ========
 
-In order to get started, you will need to complete the following steps inside
+In order to get started, you'll need to complete the following steps inside
 OpsGenie:
 
 1. Create an integration inside OpsGenie, you can do this by going to
    *Settings* > *Integrations* > *Add Integration* and selecting *Prometheus*.
-2. Copy the API key that is generated for you and setup correct assignment
+2. Copy the API key that's generated for you and setup correct assignment
    rules inside OpsGenie.
 3. Create a new heartbeat inside OpsGenie, you can do this by going to
    *Settings* > *Heartbeats* > *Create Heartbeat*. Set the interval to 1 minute.
@@ -363,7 +363,7 @@ you can also verify that the heartbeat is listed as *ACTIVE*.
 PagerDuty
 =========
 
-To integrate with Pagerduty, first you need to prepare an *Integration key*. In
+To integrate with PagerDuty, first you need to prepare an *Integration key*. In
 order to do that, you must decide how you want to integrate with PagerDuty since
 there are two ways to do it:
 
@@ -392,8 +392,7 @@ options:
               - service_key: '<your integration key here>'
 
 You can find more details about
-`pagerduty_configs <https://prometheus.io/docs/alerting/latest/configuration/#pagerduty_config>`_
-in the Prometheus documentation.
+``pagerduty_configs`` in the `Prometheus documentation <https://prometheus.io/docs/alerting/latest/configuration/#pagerduty_config>`_.
 
 Email
 =====
@@ -418,8 +417,7 @@ inventory:
                   subject: 'Prometheus Mail Alerts'
 
 You can find more details about
-`email_configs <https://prometheus.io/docs/alerting/latest/configuration/#email_configs>`_
-in the Prometheus documentation.
+``email_configs`` in the `Prometheus documentation <https://prometheus.io/docs/alerting/latest/configuration/#email_configs>`_.
 
 ****************
 Alerts Reference
@@ -427,7 +425,7 @@ Alerts Reference
 
 ``etcdDatabaseHighFragmentationRatio``
   This alert is triggered when the etcd database has a high fragmentation ratio
-  which can cause performance issues on the cluster.  In order to resolve this
+  which can cause performance issues on the cluster. In order to resolve this
   issue, you can use the following command:
 
   .. code-block:: console
@@ -463,9 +461,9 @@ Alerts Reference
     openstack server list --all-projects --long -n --ip $IP
 
 ``EtcdMembersDown``
-  If any alarms are fired from Promethetus for ``etcd`` issues such as ``TargetDown``,
+  If any alarms are fired from Prometheus for ``etcd`` issues such as ``TargetDown``,
   ``etcdMembersDown``, or ``etcdInsufficientMembers``), it could be due to expired
-  certificates.  You can update the certificates that ``kube-prometheus-stack`` uses for
+  certificates. You can update the certificates that ``kube-prometheus-stack`` uses for
   talking with ``etcd`` with the following commands:
 
   .. code-block:: console

@@ -58,7 +58,7 @@ following these remaining steps:
 3. Record the **Client ID** and **Client Secret** provided, as they will be
    needed to configure Keycloak.
 
-At this point, you're ready to configure Keycloak with the Azure AD settings:
+At this point, you can configure Keycloak with the Azure AD settings:
 
 1. In the Keycloak admin console, navigate back to the `atmosphere` realm's
    **Identity Providers** section.
@@ -88,6 +88,6 @@ This service runs as a sidecar WSGI server that responds to ``oslo.policy`` ``Ht
 rules which are configured into the Neutron policy file.
 
 By default, the policy server is enabled and the Neutron policy is updated to include
-the necessary checks.  In order to disable the policy server, set the
+the necessary checks. In order to disable the policy server, set the
 ``neutron_policy_server_integration_enabled`` variable to ``false`` in the deployment
 configuration.

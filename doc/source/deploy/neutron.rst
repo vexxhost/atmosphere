@@ -12,7 +12,7 @@ Hardware Acceleration
 *********************
 
 Hardware acceleration can significantly improve network performance by
-offloading specific network functions to directly to the network interface
+offloading specific network functions directly to the network interface
 card (NIC). This reduces the load on the host CPU and improves network
 throughput and latency.
 
@@ -29,7 +29,7 @@ transparent to the host.
 Atmosphere uses the `netoffload <https://github.com/vexxhost/netoffload>`_
 project which takes care of validating and preparing the host for SR-IOV.
 
-It is recommended to follow the ``netoffload`` `BIOS, Kernel & NIC configuration <https://github.com/vexxhost/netoffload#bios-configuration>`_
+It's recommended to follow the ``netoffload`` `BIOS, Kernel & NIC configuration <https://github.com/vexxhost/netoffload#bios-configuration>`_
 steps documented before getting started.
 
 Open vSwitch configuration
@@ -73,7 +73,7 @@ ML2/OVN
 DPDK for provider & tenant networks
 -----------------------------------
 
-DPDK is a set of libraries and drivers for fast packet processing. It is
+DPDK is a set of libraries and drivers for fast packet processing. It's
 designed to run mostly in userspace, and can be used to accelerate network
 functions in OpenStack.
 
@@ -100,8 +100,8 @@ you deploy with the following configuration:
           driver: mlx5_core
           vhost_iommu_support: true
 
-For more details about configuring `socket_memory`, `lcore_mask`, and `driver`
-parameters, please refer to the `OpenvSwitch documentation <https://docs.openvswitch.org/en/latest/intro/install/dpdk/#setup-ovs>`_.
+For more details about configuring ``socket_memory``, ``lcore_mask``, and ``driver``
+parameters, refer to the `Open vSwitch documentation <https://docs.openvswitch.org/en/latest/intro/install/dpdk/#setup-ovs>`_.
 
 OVN configuration
 ^^^^^^^^^^^^^^^^^
@@ -171,7 +171,7 @@ DPDK interfaces for you.
 Flavor configuration
 ^^^^^^^^^^^^^^^^^^^^
 
-In order to use DPDK with OVN, you must create a flavor that supports DPDKw
+In order to use DPDK with OVN, you must create a flavor that supports DPDK
 which also includes making changes for the services that use the service
 virtual machine model such as Octavia and Manila.
 

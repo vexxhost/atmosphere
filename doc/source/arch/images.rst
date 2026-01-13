@@ -14,7 +14,7 @@ Multi-Stage Builds
 ==================
 
 The images are built using a multi-stage build process. This means that all
-build-time dependencies are included only in the intermediate stages and are not
+build-time dependencies are included only in the intermediate stages and aren't
 present in the final runtime images.
 
 Benefits

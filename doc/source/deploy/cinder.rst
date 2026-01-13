@@ -26,8 +26,8 @@ Dell PowerStore
 
 In order to be able to use Dell PowerStore, you'll need to make sure that you
 setup the hosts inside of your storage array. You'll also need to make sure
-that they are not inside a host group or otherwise individual attachments will
-not work.
+that they're not inside a host group or otherwise individual attachments won't
+work.
 
 You can enable the native PowerStore driver for Cinder with the following
 configuration inside your Ansible inventory:
@@ -107,9 +107,9 @@ available:
 Volume Driver (``volume_driver``)
   Use ``cinder.volume.drivers.pure.PureISCSIDriver`` for iSCSI,
   ``cinder.volume.drivers.pure.PureFCDriver`` for Fibre Channel or
-  ``cinder.volume.drivers.pure.PureNVMEDriver`` for NVME connectivity.
+  ``cinder.volume.drivers.pure.PureNVMEDriver`` for NVMe connectivity.
 
-  If using the NVME driver, specify the ``pure_nvme_transport`` value, which the
+  If using the NVMe driver, specify the ``pure_nvme_transport`` value, which the
   supported values are ``roce`` or ``tcp``.
 
 Pure API Endpoint (``san_ip``)

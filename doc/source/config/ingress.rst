@@ -3,14 +3,14 @@ Ingress
 =======
 
 The ingress component is the primary entry point for all traffic to the cluster,
-it is currently deployed as an instance of ``ingress-nginx``.  It is tuned to work
+it's currently deployed as an instance of ``ingress-nginx``. It's tuned to work
 out of the box and should require no changes
 
 .. admonition:: Warning
   :class: warning
 
   The ingress component is a critical part of the cluster, and should be
-  managed with care.  Any changes to the ingress configuration should be
+  managed with care. Any changes to the ingress configuration should be
   carefully reviewed and tested before being applied to the cluster.
 
   If you make any changes to the ingress configuration, you may see a small
@@ -53,7 +53,7 @@ you can use the [sslscan](https://github.com/rbsec/sslscan) tool:
 Legacy TLS
 ==========
 
-The default configuration, though secure, does not support some older browsers
+The default configuration, though secure, doesn't support some older browsers
 and operating systems.
 
 In order to change this behaviour, you can make to make the following changes

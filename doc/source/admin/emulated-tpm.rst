@@ -26,7 +26,7 @@ Configuring vTPM
 ================
 
 The vTPM can be configured using flavor extra specs (which requires an operator)
-or through image metadata properties which can be set by the user.  There are two
+or through image metadata properties which can be set by the user. There are two
 versions supported:
 
 - 1.2

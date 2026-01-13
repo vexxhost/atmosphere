@@ -32,9 +32,9 @@ The recommended layout is as follows:
     │   └── site.yml
     └── requirements.yml
 
-The ``requirements.yml`` file is used to specify the atmosphere ansible collection
-version that will be used to deploy the platform.  Please refer to the `Release Notes`
-for the version information.  The file contents should look like this:
+The ``requirements.yml`` file is used to specify the Atmosphere Ansible collection
+version that will be used to deploy the platform. Refer to the `Release Notes`
+for the version information. The file contents should look like this:
 
 .. code-block:: yaml
 
@@ -43,7 +43,7 @@ for the version information.  The file contents should look like this:
         version: 4.3.1
 
 To generate the inventory configuration files, you can use the ``generate_workspace``
-playbook to simplify the process.  The following command will generate the
+playbook to simplify the process. The following command will generate the
 inventory in the specified directory:
 
 .. code-block:: bash
@@ -74,7 +74,7 @@ The file contents should look like this:
 *************
 
 The ``hosts.ini`` file is the Ansible inventory file that will be used to deploy
-the platform. It is recommended to use the following layout:
+the platform. It's recommended to use the following layout:
 
 .. code-block:: ini
 
@@ -96,7 +96,7 @@ the platform. It is recommended to use the following layout:
 .. admonition:: FQDNs are required!
 
       The hostnames listed in the inventory file must be a FQDN that resolves to
-      the IP address of the host.  If they do not, you will have failures such
+      the IP address of the host. If they don't, you'll have failures such
       as agents failing to start, live migration failures and other transient
       and hard to diagnose issues.
 
@@ -104,7 +104,7 @@ the platform. It is recommended to use the following layout:
 HTTP proxy
 **********
 
-If you nodes can only access the internet through an HTTP proxy, you will need
+If your nodes can only access the internet through an HTTP proxy, you'll need
 to set the following variables within your inventory which will make sure that
 the ``containerd`` and ``dockerd`` services are able to pull images through
 this HTTP proxy, as well as the ``download_artifact`` role which is used to
