@@ -101,14 +101,50 @@ cinder_helm_values:
           replication: 1
         cinder.volumes:
           replication: 1
+      ec_pools:
+        cinder.volumes.ec:
+          metadata_pool:
+            replication: 1
+            crush_rule: replicated_rule
+            chunk_size: 8
+          data_pool:
+            ec_profile:
+              k: 2
+              m: 1
+              crush_device_class: ""
+              crush_failure_domain: osd
+          app_name: cinder-volume
     cinder:
       DEFAULT:
         debug: "{{ lookup('env', 'ATMOSPHERE_DEBUG') | default('false', True) }}"
         osapi_volume_workers: 2
+        enabled_backends: "rbd1,rbd_ec"
+        default_volume_type: "rbd1"
+    backends:
+      rbd_ec:
+        volume_driver: cinder.volume.drivers.rbd.RBDDriver
+        volume_backend_name: rbd_ec
+        rbd_pool: cinder.volumes.ec
+        rbd_ceph_conf: "/etc/ceph/ceph.conf"
+        rbd_flatten_volume_from_snapshot: false
+        report_discard_supported: true
+        rbd_max_clone_depth: 5
+        rbd_store_chunk_size: 4
+        rados_connect_timeout: -1
+        rbd_user: cinder
+        rbd_secret_uuid: 457eb676-33da-42ec-9a8c-9293d545c337
+        image_volume_cache_enabled: true
+        image_volume_cache_max_size_gb: 200
+        image_volume_cache_max_count: 50
   pod:
     replicas:
       api: 1
       scheduler: 1
+
+rook_ceph_cluster_helm_values:
+  configOverride: |
+    [client]
+    rbd default data pool = cinder.volumes.ec.data
 
 placement_helm_values:
   conf:

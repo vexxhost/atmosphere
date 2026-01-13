@@ -114,18 +114,46 @@ spec:
               value: {{ $backend.volume_driver | quote }}
             - name: RBD_POOL_NAME
               value: {{ $backend.rbd_pool | quote }}
-            - name: RBD_POOL_APP_NAME
-              value: {{ (index $envAll.Values.conf.ceph.pools $backend.rbd_pool).app_name | quote }}
             - name: RBD_POOL_USER
               value: {{ $backend.rbd_user | quote }}
+            - name: RBD_POOL_SECRET
+              value: {{ $envAll.Values.secrets.rbd.volume | quote }}
+            {{- $ec_pool := index $envAll.Values.conf.ceph.ec_pools $backend.rbd_pool }}
+            {{- if $ec_pool }}
+            - name: EC_ENABLED
+              value: "true"
+            - name: EC_PROFILE_NAME
+              value: "{{ $backend.rbd_pool | replace "." "_" }}_profile"
+            - name: EC_PROFILE_K
+              value: {{ $ec_pool.data_pool.ec_profile.k | quote }}
+            - name: EC_PROFILE_M
+              value: {{ $ec_pool.data_pool.ec_profile.m | quote }}
+            - name: EC_PROFILE_DEVICE_CLASS
+              value: {{ $ec_pool.data_pool.ec_profile.crush_device_class | quote }}
+            - name: EC_PROFILE_FAILURE_DOMAIN
+              value: {{ $ec_pool.data_pool.ec_profile.crush_failure_domain | quote }}
+            - name: EC_DATA_POOL_NAME
+              value: "{{ $backend.rbd_pool }}.data"
+            - name: EC_METADATA_POOL_CHUNK_SIZE
+              value: {{ $ec_pool.metadata_pool.chunk_size | quote }}
+            - name: EC_METADATA_POOL_REPLICATION
+              value: {{ $ec_pool.metadata_pool.replication | quote }}
+            - name: EC_METADATA_POOL_CRUSH_RULE
+              value: {{ $ec_pool.metadata_pool.crush_rule | quote }}
+            - name: EC_POOL_APP_NAME
+              value: {{ $ec_pool.app_name | quote }}
+            {{- else }}
+            - name: EC_ENABLED
+              value: "false"
+            - name: RBD_POOL_APP_NAME
+              value: {{ (index $envAll.Values.conf.ceph.pools $backend.rbd_pool).app_name | quote }}
             - name: RBD_POOL_CRUSH_RULE
               value: {{ (index $envAll.Values.conf.ceph.pools $backend.rbd_pool).crush_rule | quote }}
             - name: RBD_POOL_REPLICATION
               value: {{ (index $envAll.Values.conf.ceph.pools $backend.rbd_pool).replication | quote }}
             - name: RBD_POOL_CHUNK_SIZE
               value: {{ (index $envAll.Values.conf.ceph.pools $backend.rbd_pool).chunk_size | quote }}
-            - name: RBD_POOL_SECRET
-              value: {{ $envAll.Values.secrets.rbd.volume | quote }}
+            {{- end }}
           command:
             - /tmp/storage-init.sh
           volumeMounts:
