@@ -20,6 +20,65 @@ When using the integrated Ceph cluster provided with Atmosphere, no additional
 configuration is needed for Cinder. The deployment process automatically
 configures Cinder to use Ceph as the backend, simplifying setup and integration.
 
+Erasure coded pools
+===================
+
+For environments requiring improved storage efficiency, you can configure Cinder
+to use Ceph ``erasure coded`` pools. This provides better storage utilization
+compared to replicated pools, at the cost of slightly higher CPU overhead.
+
+To configure an erasure coded backend, add the pool configuration to
+``cinder_helm_values.conf.ceph.ec_pools`` and create a corresponding backend:
+
+.. code-block:: yaml
+
+    cinder_helm_values:
+      conf:
+        ceph:
+          ec_pools:
+            cinder.volumes.ec:
+              metadata_pool:
+                replication: 3
+                crush_rule: replicated_rule
+                chunk_size: 8
+              data_pool:
+                ec_profile:
+                  k: 4
+                  m: 2
+                  crush_device_class: hdd
+                  crush_failure_domain: host
+              app_name: cinder-volume
+        cinder:
+          DEFAULT:
+            enabled_backends: rbd1,rbd_ec
+        backends:
+          rbd_ec:
+            volume_driver: cinder.volume.drivers.rbd.RBDDriver
+            volume_backend_name: rbd_ec
+            rbd_pool: cinder.volumes.ec
+            rbd_ceph_conf: "/etc/ceph/ceph.conf"
+            rbd_flatten_volume_from_snapshot: false
+            report_discard_supported: true
+            rbd_max_clone_depth: 5
+            rbd_store_chunk_size: 4
+            rados_connect_timeout: -1
+            rbd_user: cinder
+            rbd_secret_uuid: 457eb676-33da-42ec-9a8c-9293d545c337
+
+The erasure coding profile parameters are:
+
+``k``
+  Number of data chunks. Higher values provide better storage efficiency.
+
+``m``
+  Number of parity chunks. Higher values provide better fault tolerance.
+
+``crush_device_class``
+  Target specific device types, for example ``hdd``, ``ssd``, or ``nvme``.
+
+``crush_failure_domain``
+  Failure domain for data placement, for example ``host``, ``rack``, or ``room``.
+
 ***************
 Dell PowerStore
 ***************
