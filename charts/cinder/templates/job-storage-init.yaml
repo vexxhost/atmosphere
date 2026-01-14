@@ -101,7 +101,7 @@ spec:
       containers:
         {{- range $name, $backend := .Values.conf.backends }}
           {{- if (eq "true" ( dict "backend" $backend | include "cinder.utils.is_ceph_backend" )) }}
-        - name: cinder-storage-init-{{ $name | lower }}
+        - name: cinder-storage-init-{{ $name | lower | replace "_" "-" }}
 {{ tuple $envAll "cinder_storage_init" | include "helm-toolkit.snippets.image" | indent 10 }}
 {{ tuple $envAll $envAll.Values.pod.resources.jobs.storage_init | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
           env:
