@@ -38,7 +38,62 @@ if [ "x$STORAGE_BACKEND" == "xcinder.volume.drivers.rbd.RBDDriver" ]; then
     ceph osd pool set $1 nosizechange ${size_protection}
     ceph osd pool set $1 crush_rule "${RBD_POOL_CRUSH_RULE}"
   }
-  ensure_pool ${RBD_POOL_NAME} ${RBD_POOL_CHUNK_SIZE} ${RBD_POOL_APP_NAME}
+
+  function ensure_ec_profile () {
+    local name=$1 k=$2 m=$3 device_class=$4 failure_domain=$5
+    if ceph osd erasure-code-profile get $name 2>/dev/null; then
+      echo "EC profile $name already exists"
+    else
+      ceph osd erasure-code-profile set $name \
+        k=$k m=$m \
+        crush-device-class=$device_class \
+        crush-failure-domain=$failure_domain
+    fi
+  }
+
+  function ensure_ec_data_pool () {
+    local pool_name=$1 profile=$2 app_name=$3
+    if ceph osd pool stats $pool_name 2>/dev/null; then
+      echo "EC data pool $pool_name already exists"
+    else
+      # Ceph auto-creates CRUSH rule from EC profile settings
+      ceph osd pool create $pool_name erasure $profile
+    fi
+
+    if [[ $(ceph mgr versions | awk '/version/{print $3}' | cut -d. -f1) -ge 12 ]]; then
+      ceph osd pool application enable $pool_name $app_name
+    fi
+
+    ceph osd pool set $pool_name allow_ec_overwrites true
+  }
+
+  function ensure_ec_metadata_pool () {
+    local pool_name=$1 chunk_size=$2 app_name=$3 replication=$4 crush_rule=$5
+
+    ceph osd pool stats $pool_name || ceph osd pool create $pool_name $chunk_size
+
+    if [[ $(ceph mgr versions | awk '/version/{print $3}' | cut -d. -f1) -ge 12 ]]; then
+      ceph osd pool application enable $pool_name $app_name
+    fi
+
+    size_protection=$(ceph osd pool get $pool_name nosizechange | cut -f2 -d: | tr -d '[:space:]')
+    ceph osd pool set $pool_name nosizechange 0
+    ceph osd pool set $pool_name size $replication --yes-i-really-mean-it
+    ceph osd pool set $pool_name nosizechange ${size_protection}
+    ceph osd pool set $pool_name crush_rule "$crush_rule"
+  }
+
+  if [ "x$EC_ENABLED" == "xtrue" ]; then
+    ensure_ec_profile "${EC_PROFILE_NAME}" "${EC_PROFILE_K}" "${EC_PROFILE_M}" \
+      "${EC_PROFILE_DEVICE_CLASS}" "${EC_PROFILE_FAILURE_DOMAIN}"
+
+    ensure_ec_data_pool "${EC_DATA_POOL_NAME}" "${EC_PROFILE_NAME}" "${EC_POOL_APP_NAME}"
+
+    ensure_ec_metadata_pool "${RBD_POOL_NAME}" "${EC_METADATA_POOL_CHUNK_SIZE}" \
+      "${EC_POOL_APP_NAME}" "${EC_METADATA_POOL_REPLICATION}" "${EC_METADATA_POOL_CRUSH_RULE}"
+  else
+    ensure_pool ${RBD_POOL_NAME} ${RBD_POOL_CHUNK_SIZE} ${RBD_POOL_APP_NAME}
+  fi
 
   if USERINFO=$(ceph auth get client.${RBD_POOL_USER}); then
     echo "Cephx user client.${RBD_POOL_USER} already exist."
