@@ -43,20 +43,21 @@ release_group: null
 images:
   tags:
     test: docker.io/xrally/xrally-openstack:2.0.0
-    db_init: docker.io/openstackhelm/heat:2024.1-ubuntu_jammy
-    cinder_db_sync: docker.io/openstackhelm/cinder:2024.1-ubuntu_jammy
-    db_drop: docker.io/openstackhelm/heat:2024.1-ubuntu_jammy
+    db_init: quay.io/airshipit/heat:2025.1-ubuntu_noble
+    cinder_db_sync: quay.io/airshipit/cinder:2025.1-ubuntu_noble
+    db_drop: quay.io/airshipit/heat:2025.1-ubuntu_noble
     rabbit_init: docker.io/rabbitmq:3.13-management
-    ks_user: docker.io/openstackhelm/heat:2024.1-ubuntu_jammy
-    ks_service: docker.io/openstackhelm/heat:2024.1-ubuntu_jammy
-    ks_endpoints: docker.io/openstackhelm/heat:2024.1-ubuntu_jammy
-    cinder_api: docker.io/openstackhelm/cinder:2024.1-ubuntu_jammy
-    bootstrap: docker.io/openstackhelm/heat:2024.1-ubuntu_jammy
-    cinder_scheduler: docker.io/openstackhelm/cinder:2024.1-ubuntu_jammy
-    cinder_volume: docker.io/openstackhelm/cinder:2024.1-ubuntu_jammy
-    cinder_volume_usage_audit: docker.io/openstackhelm/cinder:2024.1-ubuntu_jammy
+    ks_user: quay.io/airshipit/heat:2025.1-ubuntu_noble
+    ks_service: quay.io/airshipit/heat:2025.1-ubuntu_noble
+    ks_endpoints: quay.io/airshipit/heat:2025.1-ubuntu_noble
+    cinder_api: quay.io/airshipit/cinder:2025.1-ubuntu_noble
+    bootstrap: quay.io/airshipit/heat:2025.1-ubuntu_noble
+    cinder_scheduler: quay.io/airshipit/cinder:2025.1-ubuntu_noble
+    cinder_volume: quay.io/airshipit/cinder:2025.1-ubuntu_noble
+    cinder_volume_usage_audit: quay.io/airshipit/cinder:2025.1-ubuntu_noble
+    cinder_db_purge: quay.io/airshipit/cinder:2025.1-ubuntu_noble
     cinder_storage_init: docker.io/openstackhelm/ceph-config-helper:latest-ubuntu_jammy
-    cinder_backup: docker.io/openstackhelm/cinder:2024.1-ubuntu_jammy
+    cinder_backup: quay.io/airshipit/cinder:2025.1-ubuntu_noble
     cinder_backup_storage_init: docker.io/openstackhelm/ceph-config-helper:latest-ubuntu_jammy
     dep_check: quay.io/airshipit/kubernetes-entrypoint:latest-ubuntu_focal
     image_repo_sync: docker.io/docker:17.07.0
@@ -74,9 +75,37 @@ jobs:
     history:
       success: 3
       failed: 1
+  db_purge:
+    cron: "0 0 * * *"
+    starting_deadline: 600
+    history:
+      success: 3
+      failed: 1
 
 pod:
+  probes:
+    api:
+      cinder-api:
+        liveness:
+          enabled: True
+          params:
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 1
+            failureThreshold: 3
+            successThreshold: 1
+        readiness:
+          enabled: True
+          params:
+            initialDelaySeconds: 30
   security_context:
+    db_purge:
+      pod:
+        runAsUser: 42424
+      container:
+        cinder_db_purge:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
     volume_usage_audit:
       pod:
         runAsUser: 42424
@@ -140,9 +169,7 @@ pod:
           runAsUser: 0
           readOnlyRootFilesystem: true
         cinder_volume:
-          capabilities:
-            add:
-              - SYS_ADMIN
+          privileged: true
           readOnlyRootFilesystem: true
     storage_init:
       pod:
@@ -208,6 +235,11 @@ pod:
     cinder_volume_usage_audit:
       init_container: null
       cinder_volume_usage_audit:
+        volumeMounts:
+        volumes:
+    cinder_db_purge:
+      init_container: null
+      cinder_db_purge:
         volumeMounts:
         volumes:
     cinder_backup:
@@ -303,6 +335,13 @@ pod:
           memory: "1024Mi"
           cpu: "2000m"
       db_drop:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      db_purge:
         requests:
           memory: "128Mi"
           cpu: "100m"
@@ -437,6 +476,7 @@ conf:
     composite:osapi_volume:
       use: call:cinder.api:root_app_factory
       /: apiversions
+      /healthcheck: healthcheck
       /v1: openstack_volume_api_v1
       /v2: openstack_volume_api_v2
       /v3: openstack_volume_api_v3
@@ -476,6 +516,10 @@ conf:
       paste.app_factory: cinder.api.v2.router:APIRouter.factory
     app:apiv3:
       paste.app_factory: cinder.api.v3.router:APIRouter.factory
+    app:healthcheck:
+      paste.app_factory: oslo_middleware:Healthcheck.app_factory
+      backends: disable_by_file
+      disable_by_file_path: /etc/cinder/healthcheck_disable
     pipeline:apiversions:
       pipeline: cors http_proxy_to_wsgi faultwrap osvolumeversionapp
     app:osvolumeversionapp:
@@ -789,6 +833,7 @@ conf:
         app_name: cinder-volume
   cinder:
     DEFAULT:
+      state_path: /var/lib/cinder
       volume_usage_audit_period: hour
       resource_query_filters_file: /etc/cinder/resource_filters.json
       log_config_append: /etc/cinder/logging.conf
@@ -1011,6 +1056,8 @@ conf:
       - volume_type
     volume_type: []
   enable_iscsi: false
+  enable_conversion_tmpfs: false
+  conversion_tmpfs_size: "10Gi"
   cinder_api_uwsgi:
     uwsgi:
       add-header: "Connection: close"
@@ -1032,6 +1079,8 @@ conf:
       thunder-lock: true
       worker-reload-mercy: 80
       wsgi-file: /var/lib/openstack/bin/cinder-wsgi
+  db_purge:
+    before: 30
 
 backup:
   external_ceph_rbd:
@@ -1110,6 +1159,18 @@ dependencies:
       services:
         - endpoint: internal
           service: oslo_db
+    db_purge:
+      jobs:
+        - cinder-db-sync
+        - cinder-db-init
+        - cinder-ks-user
+        - cinder-ks-endpoints
+        - cinder-rabbit-init
+      services:
+        - endpoint: internal
+          service: oslo_db
+        - endpoint: internal
+          service: identity
     ks_endpoints:
       jobs:
         - cinder-ks-service
@@ -1186,6 +1247,9 @@ secrets:
   identity:
     admin: cinder-keystone-admin
     cinder: cinder-keystone-user
+    nova: cinder-keystone-nova
+    swift: cinder-keystone-swift
+    service: cinder-keystone-service
     test: cinder-keystone-test
   oslo_db:
     admin: cinder-db-admin
@@ -1198,7 +1262,7 @@ secrets:
     admin: cinder-rabbitmq-admin
     cinder: cinder-rabbitmq-user
   tls:
-    volume:
+    volumev3:
       api:
         public: cinder-tls-public
         internal: cinder-tls-api
@@ -1255,6 +1319,30 @@ endpoints:
         project_name: service
         user_domain_name: service
         project_domain_name: service
+      nova:
+        role: admin,service
+        region_name: RegionOne
+        project_name: service
+        username: cinder_nova
+        password: password
+        user_domain_name: service
+        project_domain_name: service
+      swift:
+        role: admin,service
+        region_name: RegionOne
+        project_name: service
+        username: cinder_swift
+        password: password
+        user_domain_name: service
+        project_domain_name: service
+      service:
+        role: admin,service
+        region_name: RegionOne
+        project_name: service
+        username: cinder_service_user
+        password: password
+        user_domain_name: service
+        project_domain_name: service
       test:
         role: admin
         region_name: RegionOne
@@ -1307,6 +1395,7 @@ endpoints:
       #     key: null
     path:
       default: '/v1/%(tenant_id)s'
+      healthcheck: /healthcheck
     scheme:
       default: 'http'
     port:
@@ -1329,6 +1418,7 @@ endpoints:
       #     key: null
     path:
       default: '/v2/%(tenant_id)s'
+      healthcheck: /healthcheck
     scheme:
       default: 'http'
     port:
@@ -1350,7 +1440,8 @@ endpoints:
       #     crt: null
       #     key: null
     path:
-      default: '/v3/%(tenant_id)s'
+      default: '/v3'
+      healthcheck: /healthcheck
     scheme:
       default: 'http'
     port:
@@ -1476,6 +1567,7 @@ manifests:
   configmap_bin: true
   configmap_etc: true
   cron_volume_usage_audit: true
+  cron_db_purge: false
   deployment_api: true
   deployment_backup: true
   deployment_scheduler: true

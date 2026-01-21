@@ -31,12 +31,6 @@ __cinder_helm_values:
           volumes:
             - name: cinder-tmp
               emptyDir: {}
-    security_context:
-      cinder_volume:
-        container:
-          cinder_volume:
-            privileged: true
-
   conf:
     policy: {}
     cinder:
@@ -71,6 +65,14 @@ __cinder_helm_values:
           priority: 0
           apply-to: all
           pattern: '^(?!(amq\.|reply_)).*'
+  secrets:
+    identity:
+      admin: cinder-keystone-admin
+      cinder: cinder-keystone-user
+      glance: cinder-keystone-glance
+      nova: cinder-keystone-nova
+      swift: cinder-keystone-swift
+      service: cinder-keystone-service
   manifests:
     ingress_api: false
     job_clean: false
