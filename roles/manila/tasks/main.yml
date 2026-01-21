@@ -52,3 +52,36 @@
     gigabytes: -1
     security_group: -1
     security_group_rule: -1
+
+- name: Create share types
+  when: manila_share_types | length > 0
+  block:
+    - name: Wait until share service ready
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: Deployment
+        name: manila-api
+        namespace: openstack
+        wait_sleep: 10
+        wait_timeout: 600
+        wait: true
+        wait_condition:
+          type: Available
+          status: true
+
+    # NOTE (fitbeard): Use copy of openstack.cloud.share_type module until
+    # new openstack collection release with the fix is out.
+    # https://review.opendev.org/c/openstack/ansible-collections-openstack/+/963259
+    - name: Create share types
+      vexxhost.atmosphere.share_type:
+        cloud: atmosphere
+        name: "{{ item.name }}"
+        description: "{{ item.description | default(omit) }}"
+        driver_handles_share_servers: "{{ item.driver_handles_share_servers | default(omit) }}"
+        extra_specs: "{{ item.extra_specs | default(omit) }}"
+        is_public: "{{ item.is_public | default(omit) }}"
+      loop: "{{ manila_share_types }}"
+      retries: 60
+      delay: 5
+      register: _result
+      until: _result is not failed
