@@ -1,3 +1,199 @@
+_kube_prometheus_stack_additional_service_monitors:
+  - name: goldpinger
+    jobLabel: app.kubernetes.io/instance
+    selector:
+      matchLabels:
+        app.kubernetes.io/instance: goldpinger
+        app.kubernetes.io/name: goldpinger
+    endpoints:
+      - port: http
+        relabelings: &relabelings_instance_to_node_name
+          - sourceLabels:
+              - __meta_kubernetes_pod_node_name
+            targetLabel: instance
+          - &relabeling_drop_all_kubernetes_labels
+            action: labeldrop
+            regex: ^(container|endpoint|namespace|pod|node|service)$
+  - name: ceph
+    jobLabel: application
+    namespaceSelector:
+      matchNames:
+        - openstack
+    selector:
+      matchLabels:
+        application: ceph
+    endpoints:
+      - port: metrics
+        honorLabels: true
+        relabelings:
+          - action: replace
+            regex: (.*)
+            replacement: ceph
+            targetLabel: cluster
+          - *relabeling_drop_all_kubernetes_labels
+  - name: coredns
+    jobLabel: app.kubernetes.io/name
+    namespaceSelector:
+      matchNames:
+        - openstack
+    selector:
+      matchLabels:
+        app.kubernetes.io/component: metrics
+        app.kubernetes.io/name: coredns
+    endpoints:
+      - port: metrics
+        relabelings:
+          - sourceLabels:
+              - __meta_kubernetes_pod_label_application
+            targetLabel: application
+          - &relabeling_set_pod_name_to_instance
+            sourceLabels:
+              - __meta_kubernetes_pod_name
+            targetLabel: instance
+          - *relabeling_drop_all_kubernetes_labels
+  - name: keycloak
+    jobLabel: application
+    namespaceSelector:
+      matchNames:
+        - auth-system
+    selector:
+      matchLabels:
+        app.kubernetes.io/component: metrics
+        app.kubernetes.io/name: keycloak
+    endpoints:
+      - port: http
+        relabelings: &relabelings_instance_to_pod_name
+          - *relabeling_set_pod_name_to_instance
+          - *relabeling_drop_all_kubernetes_labels
+  - name: memcached
+    jobLabel: application
+    namespaceSelector:
+      matchNames:
+        - openstack
+    selector:
+      matchLabels:
+        application: memcached
+        component: server
+    endpoints:
+      - port: metrics
+        relabelings: *relabelings_instance_to_pod_name
+  - name: ingress-nginx-controller
+    jobLabel: app.kubernetes.io/instance
+    namespaceSelector:
+      matchNames:
+        - ingress-nginx
+    selector:
+      matchLabels:
+        app.kubernetes.io/component: controller
+        app.kubernetes.io/instance: ingress-nginx
+        app.kubernetes.io/name: ingress-nginx
+    endpoints:
+      - port: metrics
+        relabelings: *relabelings_instance_to_node_name
+  - name: openstack-exporter
+    jobLabel: jobLabel
+    namespaceSelector:
+      matchNames:
+        - openstack
+    selector:
+      matchLabels:
+        application: openstack-exporter
+    endpoints:
+      - port: metrics
+        interval: 1m
+        relabelings:
+          - action: replace
+            regex: (.*)
+            replacement: default
+            targetLabel: instance
+        scrapeTimeout: 30s
+  - name: percona-xtradb-haproxy
+    jobLabel: app.kubernetes.io/component
+    namespaceSelector:
+      matchNames:
+        - openstack
+    selector:
+      matchLabels:
+        name: percona-xtradb-haproxy-metrics
+    endpoints:
+      - port: metrics
+        interval: 1m
+        relabelings:
+          - action: replace
+            regex: (.*)
+            replacement: default
+            targetLabel: instance
+
+_kube_prometheus_stack_additional_pod_monitors:
+  - name: ipmi-exporter
+    jobLabel: job
+    selector:
+      matchLabels:
+        application: ipmi-exporter
+    podMetricsEndpoints:
+      - interval: 60s
+        port: metrics
+        relabelings: *relabelings_instance_to_node_name
+  - name: libvirt-exporter
+    jobLabel: job
+    namespaceSelector:
+      matchNames:
+        - openstack
+    selector:
+      matchLabels:
+        application: libvirt
+        component: libvirt
+    podMetricsEndpoints:
+      - interval: 60s
+        port: metrics
+        relabelings: *relabelings_instance_to_node_name
+  - name: openstack-database-exporter
+    jobLabel: job
+    namespaceSelector:
+      matchNames:
+        - openstack
+    selector:
+      matchLabels:
+        application: openstack-database-exporter
+    podMetricsEndpoints:
+      - interval: 60s
+        port: metrics
+        relabelings: *relabelings_instance_to_pod_name
+  - name: percona-xtradb-pxc
+    jobLabel: app.kubernetes.io/component
+    namespaceSelector:
+      matchNames:
+        - openstack
+    selector:
+      matchLabels:
+        app.kubernetes.io/component: pxc
+        app.kubernetes.io/instance: percona-xtradb
+    podMetricsEndpoints:
+      - port: metrics
+        relabelings: *relabelings_instance_to_pod_name
+  - name: rabbitmq
+    jobLabel: app.kubernetes.io/component
+    namespaceSelector:
+      matchNames:
+        - openstack
+    selector:
+      matchLabels:
+        app.kubernetes.io/component: rabbitmq
+    podMetricsEndpoints:
+      - port: prometheus
+        relabelings: *relabelings_instance_to_pod_name
+  - name: valkey
+    jobLabel: app.kubernetes.io/name
+    namespaceSelector:
+      matchNames:
+        - openstack
+    selector:
+      matchLabels:
+        app.kubernetes.io/name: valkey
+    podMetricsEndpoints:
+      - port: metrics
+        relabelings: *relabelings_instance_to_pod_name
+
 _kube_prometheus_stack_helm_values:
   defaultRules:
     rules:
@@ -63,14 +259,7 @@ _kube_prometheus_stack_helm_values:
           port: 8082
           targetPort: 8082
     serviceMonitor:
-      relabelings: &relabelings_instance_to_pod_name
-        - &relabeling_set_pod_name_to_instance
-          sourceLabels:
-            - __meta_kubernetes_pod_name
-          targetLabel: instance
-        - &relabeling_drop_all_kubernetes_labels
-          action: labeldrop
-          regex: ^(container|endpoint|namespace|pod|node|service)$
+      relabelings: *relabelings_instance_to_pod_name
     ingress:
       enabled: true
       servicePort: 8081
@@ -229,11 +418,7 @@ _kube_prometheus_stack_helm_values:
     nodeSelector: *node_selector
   kubeApiServer:
     serviceMonitor:
-      relabelings: &relabelings_instance_to_node_name
-        - sourceLabels:
-            - __meta_kubernetes_pod_node_name
-          targetLabel: instance
-        - *relabeling_drop_all_kubernetes_labels
+      relabelings: *relabelings_instance_to_node_name
   kubelet:
     serviceMonitor:
       cAdvisorRelabelings: &relabelings_kubelet
@@ -402,189 +587,8 @@ _kube_prometheus_stack_helm_values:
       volumeMounts:
         - name: certs
           mountPath: /certs
-    additionalServiceMonitors:
-      - name: goldpinger
-        jobLabel: app.kubernetes.io/instance
-        selector:
-          matchLabels:
-            app.kubernetes.io/instance: goldpinger
-            app.kubernetes.io/name: goldpinger
-        endpoints:
-          - port: http
-            relabelings: *relabelings_instance_to_node_name
-      - name: ceph
-        jobLabel: application
-        namespaceSelector:
-          matchNames:
-            - openstack
-        selector:
-          matchLabels:
-            application: ceph
-        endpoints:
-          - port: metrics
-            honorLabels: true
-            relabelings:
-              - action: replace
-                regex: (.*)
-                replacement: ceph
-                targetLabel: cluster
-              - *relabeling_drop_all_kubernetes_labels
-      - name: coredns
-        jobLabel: app.kubernetes.io/name
-        namespaceSelector:
-          matchNames:
-            - openstack
-        selector:
-          matchLabels:
-            app.kubernetes.io/component: metrics
-            app.kubernetes.io/name: coredns
-        endpoints:
-          - port: metrics
-            relabelings:
-              - sourceLabels:
-                  - __meta_kubernetes_pod_label_application
-                targetLabel: application
-              - *relabeling_set_pod_name_to_instance
-              - *relabeling_drop_all_kubernetes_labels
-      - name: keycloak
-        jobLabel: application
-        namespaceSelector:
-          matchNames:
-            - auth-system
-        selector:
-          matchLabels:
-            app.kubernetes.io/component: metrics
-            app.kubernetes.io/name: keycloak
-        endpoints:
-          - port: http
-            relabelings: *relabelings_instance_to_pod_name
-      - name: memcached
-        jobLabel: application
-        namespaceSelector:
-          matchNames:
-            - openstack
-        selector:
-          matchLabels:
-            application: memcached
-            component: server
-        endpoints:
-          - port: metrics
-            relabelings: *relabelings_instance_to_pod_name
-      - name: ingress-nginx-controller
-        jobLabel: app.kubernetes.io/instance
-        namespaceSelector:
-          matchNames:
-            - ingress-nginx
-        selector:
-          matchLabels:
-            app.kubernetes.io/component: controller
-            app.kubernetes.io/instance: ingress-nginx
-            app.kubernetes.io/name: ingress-nginx
-        endpoints:
-          - port: metrics
-            relabelings: *relabelings_instance_to_node_name
-      - name: openstack-exporter
-        jobLabel: jobLabel
-        namespaceSelector:
-          matchNames:
-            - openstack
-        selector:
-          matchLabels:
-            application: openstack-exporter
-        endpoints:
-          - port: metrics
-            interval: 1m
-            relabelings:
-              - action: replace
-                regex: (.*)
-                replacement: default
-                targetLabel: instance
-            scrapeTimeout: 30s
-      - name: percona-xtradb-haproxy
-        jobLabel: app.kubernetes.io/component
-        namespaceSelector:
-          matchNames:
-            - openstack
-        selector:
-          matchLabels:
-            name: percona-xtradb-haproxy-metrics
-        endpoints:
-          - port: metrics
-            interval: 1m
-            relabelings:
-              - action: replace
-                regex: (.*)
-                replacement: default
-                targetLabel: instance
-    additionalPodMonitors:
-      - name: ipmi-exporter
-        jobLabel: job
-        selector:
-          matchLabels:
-            application: ipmi-exporter
-        podMetricsEndpoints:
-          - interval: 60s
-            port: metrics
-            relabelings: *relabelings_instance_to_node_name
-      - name: libvirt-exporter
-        jobLabel: job
-        namespaceSelector:
-          matchNames:
-            - openstack
-        selector:
-          matchLabels:
-            application: libvirt
-            component: libvirt
-        podMetricsEndpoints:
-          - interval: 60s
-            port: metrics
-            relabelings: *relabelings_instance_to_node_name
-      - name: openstack-database-exporter
-        jobLabel: job
-        namespaceSelector:
-          matchNames:
-            - openstack
-        selector:
-          matchLabels:
-            application: openstack-database-exporter
-        podMetricsEndpoints:
-          - interval: 60s
-            port: metrics
-            relabelings: *relabelings_instance_to_pod_name
-      - name: percona-xtradb-pxc
-        jobLabel: app.kubernetes.io/component
-        namespaceSelector:
-          matchNames:
-            - openstack
-        selector:
-          matchLabels:
-            app.kubernetes.io/component: pxc
-            app.kubernetes.io/instance: percona-xtradb
-        podMetricsEndpoints:
-          - port: metrics
-            relabelings: *relabelings_instance_to_pod_name
-      - name: rabbitmq
-        jobLabel: app.kubernetes.io/component
-        namespaceSelector:
-          matchNames:
-            - openstack
-        selector:
-          matchLabels:
-            app.kubernetes.io/component: rabbitmq
-        podMetricsEndpoints:
-          - port: prometheus
-            relabelings: *relabelings_instance_to_pod_name
-      - name: valkey
-        jobLabel: app.kubernetes.io/name
-        namespaceSelector:
-          matchNames:
-            - openstack
-        selector:
-          matchLabels:
-            app.kubernetes.io/name: valkey
-        podMetricsEndpoints:
-          - port: metrics
-            relabelings: *relabelings_instance_to_pod_name
+    additionalServiceMonitors: "{{ _kube_prometheus_stack_additional_service_monitors + kube_prometheus_stack_additional_service_monitors }}"
+    additionalPodMonitors: "{{ _kube_prometheus_stack_additional_pod_monitors + kube_prometheus_stack_additional_pod_monitors }}"
   prometheusOperator:
     admissionWebhooks:
       patch:
