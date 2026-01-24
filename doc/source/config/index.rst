@@ -7,3 +7,4 @@ Configuration Guide
 
    ingress
    horizon
+   rabbitmq
