@@ -91,8 +91,6 @@ data:
 {{- end }}
   neutron-server.sh: |
 {{ tuple "bin/_neutron-server.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
-  neutron-policy-server.sh: |
-{{ tuple "bin/_neutron-policy-server.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
   neutron-rpc-server.sh: |
 {{ tuple "bin/_neutron-rpc-server.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
   neutron-ironic-agent-init.sh: |
@@ -109,6 +107,8 @@ data:
   neutron-metadata-agent-init.sh: |
 {{ tuple "bin/_neutron-metadata-agent-init.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
 {{- if ( has "ovn" .Values.network.backend ) }}
+  neutron-ovn-db-sync.sh: |
+{{ tuple "bin/_neutron-ovn-db-sync.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
   neutron-ovn-metadata-agent.sh: |
 {{ tuple "bin/_neutron-ovn-metadata-agent.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
   neutron-ovn-init.sh: |

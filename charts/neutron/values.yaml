@@ -20,35 +20,35 @@ release_group: null
 
 images:
   tags:
-    bootstrap: docker.io/openstackhelm/heat:2024.1-ubuntu_jammy
+    bootstrap: quay.io/airshipit/heat:2025.1-ubuntu_noble
     test: docker.io/xrally/xrally-openstack:2.0.0
     purge_test: docker.io/openstackhelm/ospurge:latest
-    db_init: docker.io/openstackhelm/heat:2024.1-ubuntu_jammy
-    neutron_db_sync: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
-    db_drop: docker.io/openstackhelm/heat:2024.1-ubuntu_jammy
+    db_init: quay.io/airshipit/heat:2025.1-ubuntu_noble
+    neutron_db_sync: quay.io/airshipit/neutron:2025.1-ubuntu_noble
+    db_drop: quay.io/airshipit/heat:2025.1-ubuntu_noble
     rabbit_init: docker.io/rabbitmq:3.13-management
-    ks_user: docker.io/openstackhelm/heat:2024.1-ubuntu_jammy
-    ks_service: docker.io/openstackhelm/heat:2024.1-ubuntu_jammy
-    ks_endpoints: docker.io/openstackhelm/heat:2024.1-ubuntu_jammy
+    ks_user: quay.io/airshipit/heat:2025.1-ubuntu_noble
+    ks_service: quay.io/airshipit/heat:2025.1-ubuntu_noble
+    ks_endpoints: quay.io/airshipit/heat:2025.1-ubuntu_noble
     netoffload: ghcr.io/vexxhost/netoffload:v1.0.1
-    neutron_server: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
-    neutron_policy_server: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
-    neutron_rpc_server: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
-    neutron_dhcp: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
-    neutron_metadata: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
-    neutron_ovn_metadata: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
-    neutron_ovn_vpn: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
-    neutron_l3: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
-    neutron_l2gw: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
-    neutron_openvswitch_agent: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
-    neutron_linuxbridge_agent: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
-    neutron_sriov_agent: docker.io/openstackhelm/neutron:stein-18.04-sriov
-    neutron_sriov_agent_init: docker.io/openstackhelm/neutron:stein-18.04-sriov
-    neutron_bagpipe_bgp: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
-    neutron_bgp_dragent: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
-    neutron_ironic_agent_init: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
-    neutron_ironic_agent: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
-    neutron_netns_cleanup_cron: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
+    neutron_server: quay.io/airshipit/neutron:2025.1-ubuntu_noble
+    neutron_rpc_server: quay.io/airshipit/neutron:2025.1-ubuntu_noble
+    neutron_dhcp: quay.io/airshipit/neutron:2025.1-ubuntu_noble
+    neutron_metadata: quay.io/airshipit/neutron:2025.1-ubuntu_noble
+    neutron_ovn_metadata: quay.io/airshipit/neutron:2025.1-ubuntu_noble
+    neutron_ovn_db_sync: docker.io/openstackhelm/neutron:2025.1-ubuntu_noble
+    neutron_ovn_vpn: quay.io/airshipit/neutron:2025.1-ubuntu_noble
+    neutron_l3: quay.io/airshipit/neutron:2025.1-ubuntu_noble
+    neutron_l2gw: quay.io/airshipit/neutron:2025.1-ubuntu_noble
+    neutron_openvswitch_agent: quay.io/airshipit/neutron:2025.1-ubuntu_noble
+    neutron_linuxbridge_agent: quay.io/airshipit/neutron:2025.1-ubuntu_noble
+    neutron_sriov_agent: quay.io/airshipit/neutron:stein-18.04-sriov
+    neutron_sriov_agent_init: quay.io/airshipit/neutron:stein-18.04-sriov
+    neutron_bagpipe_bgp: quay.io/airshipit/neutron:2025.1-ubuntu_noble
+    neutron_bgp_dragent: quay.io/airshipit/neutron:2025.1-ubuntu_noble
+    neutron_ironic_agent_init: docker.io/openstackhelm/neutron:2025.1-ubuntu_noble
+    neutron_ironic_agent: quay.io/airshipit/neutron:2025.1-ubuntu_noble
+    neutron_netns_cleanup_cron: quay.io/airshipit/neutron:2025.1-ubuntu_noble
     dep_check: quay.io/airshipit/kubernetes-entrypoint:latest-ubuntu_focal
     image_repo_sync: docker.io/docker:17.07.0
   pull_policy: "IfNotPresent"
@@ -389,8 +389,6 @@ dependencies:
           service: local_image_registry
 
 pod:
-  sidecars:
-    neutron_policy_server: false
   use_fqdn:
     neutron_agent: true
   probes:
@@ -655,9 +653,6 @@ pod:
         neutron_server:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
-        neutron_policy_server:
-          allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: true
     neutron_rpc_server:
       pod:
         runAsUser: 42424
@@ -740,6 +735,11 @@ pod:
     neutron_metadata_agent:
       init_container: null
       neutron_metadata_agent:
+        volumeMounts:
+        volumes:
+    neutron_ovn_db_sync:
+      init_container: null
+      neutron_ovn_db_sync:
         volumeMounts:
         volumes:
     neutron_ovn_metadata_agent:
@@ -952,13 +952,6 @@ pod:
       limits:
         memory: "1024Mi"
         cpu: "2000m"
-    neutron_policy_server:
-      requests:
-        memory: "128Mi"
-        cpu: "100m"
-      limits:
-        memory: "256Mi"
-        cpu: "500m"
     ironic_agent:
       requests:
         memory: "128Mi"
@@ -1024,6 +1017,13 @@ pod:
           memory: "1024Mi"
           cpu: "2000m"
       ks_user:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      ovn_db_sync:
         requests:
           memory: "128Mi"
           cpu: "100m"
@@ -1387,22 +1387,6 @@ conf:
       thunder-lock: true
       worker-reload-mercy: 80
       wsgi-file: /var/lib/openstack/bin/neutron-api
-  neutron_policy_server_uwsgi:
-    uwsgi:
-      add-header: "Connection: close"
-      buffer-size: 65535
-      die-on-term: true
-      enable-threads: true
-      exit-on-reload: false
-      hook-master-start: unix_signal:15 gracefully_kill_them_all
-      lazy-apps: true
-      log-x-forwarded-for: true
-      master: true
-      procname-prefix-spaced: "neutron-policy-server:"
-      route-user-agent: '^kube-probe.* donotlog:'
-      thunder-lock: true
-      worker-reload-mercy: 80
-      wsgi-file: /var/lib/openstack/bin/neutron-policy-server-wsgi
   policy: {}
   api_audit_map:
     DEFAULT:
@@ -1463,13 +1447,6 @@ conf:
     # INFO means log all usage
     # ERROR means only log unsuccessful attempts
     syslog_log_level=ERROR
-
-    [xenapi]
-    # XenAPI configuration is only required by the L2 agent if it is to
-    # target a XenServer/XCP compute host's dom0.
-    xenapi_connection_url=<None>
-    xenapi_connection_username=root
-    xenapi_connection_password=<None>
   rootwrap_filters:
     debug:
       pods:
@@ -2185,6 +2162,7 @@ conf:
   metering_agent: null
   metadata_agent:
     DEFAULT:
+      log_config_append: /etc/neutron/logging.conf
       # we cannot change the proxy socket path as it is declared
       # as a hostPath volume from agent daemonsets
       metadata_proxy_socket: /var/lib/neutron/openstack-helm/metadata_proxy
@@ -2264,6 +2242,9 @@ conf:
     # must NOT be provided here.
     nics:
       - name: dpdk0
+        # Optionally, instead of using pci_id you can use the name of
+        # the interface. If both are used, pci_id has presedence.
+        # iface: eth0
         pci_id: '0000:05:00.0'
         # Set VF Index in case some particular VF(s) need to be
         # used with ovs-dpdk.
@@ -2306,6 +2287,9 @@ conf:
     #     ovs_options: "bond_mode=active-backup"
     #     nics:
     #       - name: dpdk_b0s0
+    #         # Optionally, instead of using pci_id you can use the name of
+    #         # the interface. If both are used, pci_id has presedence.
+    #         # iface: eth0
     #         pci_id: '0000:06:00.0'
     #         pmd_rxq_affinity: "0:3,1:27"
     #         # Set VF Index in case some particular VF(s) need to be
@@ -2332,6 +2316,10 @@ secrets:
   identity:
     admin: neutron-keystone-admin
     neutron: neutron-keystone-user
+    nova: neutron-keystone-nova
+    placement: neutron-keystone-placement
+    designate: neutron-keystone-designate
+    ironic: neutron-keystone-ironic
     test: neutron-keystone-test
   oslo_db:
     admin: neutron-db-admin
@@ -2493,30 +2481,34 @@ endpoints:
         user_domain_name: service
         project_domain_name: service
       nova:
+        role: admin,service
         region_name: RegionOne
         project_name: service
-        username: nova
+        username: neutron_nova
         password: password
         user_domain_name: service
         project_domain_name: service
       placement:
+        role: admin,service
         region_name: RegionOne
         project_name: service
-        username: placement
+        username: neutron_placement
         password: password
         user_domain_name: service
         project_domain_name: service
       designate:
+        role: admin,service
         region_name: RegionOne
         project_name: service
-        username: designate
+        username: neutron_designate
         password: password
         user_domain_name: service
         project_domain_name: service
       ironic:
+        role: admin,service
         region_name: RegionOne
         project_name: service
-        username: ironic
+        username: neutron_ironic
         password: password
         user_domain_name: service
         project_domain_name: service
@@ -2571,10 +2563,6 @@ endpoints:
         default: 9696
         public: 80
         service: 9696
-      policy_server:
-        default: 9697
-        public: 80
-        service: 9697
   load_balancer:
     name: octavia
     hosts:
@@ -2674,6 +2662,14 @@ health_probe:
   logging:
     level: ERROR
 
+jobs:
+  ovn_db_sync:
+    cron: "*/5 * * * *"
+    sync_mode: log
+    history:
+      success: 3
+      failed: 1
+
 tls:
   identity: false
   oslo_messaging: false
@@ -2681,6 +2677,7 @@ tls:
 
 manifests:
   certificates: false
+  cron_job_ovn_db_sync: false
   configmap_bin: true
   configmap_etc: true
   daemonset_dhcp_agent: true
@@ -2714,6 +2711,7 @@ manifests:
   secret_db: true
   secret_ingress_tls: true
   secret_keystone: true
+  secret_ks_etc: true
   secret_rabbitmq: true
   secret_registry: true
   service_ingress_server: true
