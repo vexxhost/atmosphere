@@ -270,3 +270,247 @@ tests:
       - eval_time: 1h
         alertname: OctaviaAmphoraNotOperational
         exp_alerts: []
+
+  # IPMI SEL Events - Critical alerts
+  - interval: 1m
+    input_series:
+      - series: 'ipmi_sel_events_count{instance="node1", name="memory_ecc_uncorrectable"}'
+        values: '0+1x60'
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: IpmiSelMemoryUncorrectableError
+        exp_alerts:
+          - exp_labels:
+              severity: P1
+              instance: node1
+              name: memory_ecc_uncorrectable
+            exp_annotations:
+              summary: "Uncorrectable memory error detected on node1"
+              description: "IPMI SEL has logged uncorrectable memory errors which may indicate imminent memory failure."
+
+  - interval: 1m
+    input_series:
+      - series: 'ipmi_sel_events_count{instance="node1", name="memory_ecc_uncorrectable"}'
+        values: '5x60'
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: IpmiSelMemoryUncorrectableError
+        exp_alerts: []
+
+  - interval: 1m
+    input_series:
+      - series: 'ipmi_sel_events_count{instance="node1", name="memory_dimm_failure"}'
+        values: '0+1x60'
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: IpmiSelMemoryFailure
+        exp_alerts:
+          - exp_labels:
+              severity: P1
+              instance: node1
+              name: memory_dimm_failure
+            exp_annotations:
+              summary: "Memory DIMM failure detected on node1"
+              description: "IPMI SEL has logged a memory DIMM failure event."
+
+  - interval: 1m
+    input_series:
+      - series: 'ipmi_sel_events_count{instance="node1", name="processor_thermal_trip"}'
+        values: '0+1x60'
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: IpmiSelProcessorThermalTrip
+        exp_alerts:
+          - exp_labels:
+              severity: P1
+              instance: node1
+              name: processor_thermal_trip
+            exp_annotations:
+              summary: "Processor thermal trip detected on node1"
+              description: "IPMI SEL has logged a processor thermal trip event indicating CPU overheating."
+
+  - interval: 1m
+    input_series:
+      - series: 'ipmi_sel_events_count{instance="node1", name="machine_check_exception"}'
+        values: '0+1x60'
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: IpmiSelMachineCheckException
+        exp_alerts:
+          - exp_labels:
+              severity: P1
+              instance: node1
+              name: machine_check_exception
+            exp_annotations:
+              summary: "Machine check exception detected on node1"
+              description: "IPMI SEL has logged a machine check exception (MCE) indicating a hardware error."
+
+  - interval: 1m
+    input_series:
+      - series: 'ipmi_sel_events_count{instance="node1", name="temperature_critical"}'
+        values: '0+1x60'
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: IpmiSelTemperatureCritical
+        exp_alerts:
+          - exp_labels:
+              severity: P1
+              instance: node1
+              name: temperature_critical
+            exp_annotations:
+              summary: "Critical temperature event on node1"
+              description: "IPMI SEL has logged a critical temperature threshold event."
+
+  - interval: 1m
+    input_series:
+      - series: 'ipmi_sel_events_count{instance="node1", name="psu_failure"}'
+        values: '0+1x60'
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: IpmiSelPsuFailure
+        exp_alerts:
+          - exp_labels:
+              severity: P1
+              instance: node1
+              name: psu_failure
+            exp_annotations:
+              summary: "Power supply failure detected on node1"
+              description: "IPMI SEL has logged a power supply failure event."
+
+  - interval: 1m
+    input_series:
+      - series: 'ipmi_sel_events_count{instance="node1", name="psu_redundancy_lost"}'
+        values: '0+1x60'
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: IpmiSelPsuRedundancyLost
+        exp_alerts:
+          - exp_labels:
+              severity: P1
+              instance: node1
+              name: psu_redundancy_lost
+            exp_annotations:
+              summary: "Power supply redundancy lost on node1"
+              description: "IPMI SEL has logged a power supply redundancy lost event."
+
+  # IPMI SEL Events - Warning alerts
+  - interval: 1m
+    input_series:
+      - series: 'ipmi_sel_events_count{instance="node1", name="memory_ecc_correctable"}'
+        values: '0+1x60'
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: IpmiSelMemoryCorrectableError
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+              instance: node1
+              name: memory_ecc_correctable
+            exp_annotations:
+              summary: "Correctable memory error detected on node1"
+              description: "IPMI SEL has logged correctable memory errors. Monitor for increasing frequency."
+
+  - interval: 1m
+    input_series:
+      - series: 'ipmi_sel_events_count{instance="node1", name="memory_ecc_correctable"}'
+        values: '10x60'
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: IpmiSelMemoryCorrectableError
+        exp_alerts: []
+
+  - interval: 1m
+    input_series:
+      - series: 'ipmi_sel_events_count{instance="node1", name="fan_failure"}'
+        values: '0+1x60'
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: IpmiSelFanFailure
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+              instance: node1
+              name: fan_failure
+            exp_annotations:
+              summary: "Fan failure detected on node1"
+              description: "IPMI SEL has logged a fan failure event."
+
+  - interval: 1m
+    input_series:
+      - series: 'ipmi_sel_events_count{instance="node1", name="drive_failure"}'
+        values: '0+1x60'
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: IpmiSelDriveFailure
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+              instance: node1
+              name: drive_failure
+            exp_annotations:
+              summary: "Drive failure detected on node1"
+              description: "IPMI SEL has logged a drive failure event."
+
+  - interval: 1m
+    input_series:
+      - series: 'ipmi_sel_events_count{instance="node1", name="drive_predictive_failure"}'
+        values: '0+1x60'
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: IpmiSelDrivePredictiveFailure
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+              instance: node1
+              name: drive_predictive_failure
+            exp_annotations:
+              summary: "Drive predictive failure on node1"
+              description: "IPMI SEL has logged a drive predictive failure event. Replace drive soon."
+
+  - interval: 1m
+    input_series:
+      - series: 'ipmi_sel_events_count{instance="node1", name="sel_full"}'
+        values: '0+1x60'
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: IpmiSelFull
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+              instance: node1
+              name: sel_full
+            exp_annotations:
+              summary: "SEL is full on node1"
+              description: "IPMI SEL is full and needs to be cleared to capture new events."
+
+  - interval: 1m
+    input_series:
+      - series: 'ipmi_sel_events_count{instance="node1", name="chassis_intrusion"}'
+        values: '0+1x60'
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: IpmiSelChassisIntrusion
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+              instance: node1
+              name: chassis_intrusion
+            exp_annotations:
+              summary: "Chassis intrusion detected on node1"
+              description: "IPMI SEL has logged a chassis intrusion event."
+
+  - interval: 1m
+    input_series:
+      - series: 'ipmi_sel_events_count{instance="node1", name="watchdog_reset"}'
+        values: '0+1x60'
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: IpmiSelWatchdogReset
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+              instance: node1
+              name: watchdog_reset
+            exp_annotations:
+              summary: "Watchdog reset on node1"
+              description: "IPMI SEL has logged a watchdog timer reset event."
