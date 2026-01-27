@@ -200,3 +200,32 @@ virtual machine model such as Octavia and Manila.
     octavia_amphora_flavor_extra_specs:
       "hw:vif_multiqueue_enabled": 'true'
       "hw:mem_page_size": large
+
+********************
+Generic Switch (ML2)
+********************
+
+The ML2 generic switch mechanism driver (``networking-generic-switch``) connects
+to a physical switch over SSH and configures VLANs on switch ports. This is
+commonly used with Ironic to program top-of-rack switches for bare metal ports.
+
+To use SSH key authentication, provide one or more private keys using
+``neutron_genericswitch_keys``:
+
+.. code-block:: yaml
+
+    neutron_genericswitch_keys:
+      - name: switch1_key
+        key: |
+          -----BEGIN OPENSSH PRIVATE KEY-----
+          ...
+          -----END OPENSSH PRIVATE KEY-----
+
+The ``name`` value becomes the filename under ``/etc/neutron/ssh-keys/`` inside
+the Neutron server container. Reference that path from your
+``networking-generic-switch`` device configuration.
+
+.. note::
+
+    Treat SSH private keys as secrets. Store them using Ansible Vault or another
+    secret backend.

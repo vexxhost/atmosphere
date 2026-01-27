@@ -12,11 +12,10 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Create secret with multiple generic switch access keys
-  when: neutron_genericswitch_keys | length > 0
+- name: Manage secret with generic switch access keys
   no_log: true
   kubernetes.core.k8s:
-    state: present
+    state: "{{ (neutron_genericswitch_keys | length > 0) | ternary('present', 'absent') }}"
     definition:
       apiVersion: v1
       kind: Secret
