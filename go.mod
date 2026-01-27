@@ -8,6 +8,7 @@ require (
 	github.com/containers/image/v5 v5.35.0
 	github.com/erikgeiser/promptkit v0.9.0
 	github.com/goccy/go-yaml v1.18.0
+	github.com/google/go-jsonnet v0.21.0
 	github.com/nsf/jsondiff v0.0.0-20230430225905-43f6cf3098c1
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/percona/percona-xtradb-cluster-operator v1.16.1
@@ -93,7 +94,6 @@ require (
 	github.com/google/btree v1.1.3 // indirect
 	github.com/google/gnostic-models v0.7.0 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
-	github.com/google/go-jsonnet v0.21.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/mux v1.8.1 // indirect
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674 // indirect
@@ -180,7 +180,7 @@ require (
 	k8s.io/apiserver v0.34.0 // indirect
 	k8s.io/component-base v0.34.0 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
-	k8s.io/kube-openapi v0.0.0-20250910181357-589584f1c912 // indirect
+	k8s.io/kube-openapi v0.0.0-20260127142750-a19766b6e2d4 // indirect
 	k8s.io/kubectl v0.34.0 // indirect
 	k8s.io/utils v0.0.0-20250604170112-4c0f3b243397 // indirect
 	oras.land/oras-go/v2 v2.6.0 // indirect
