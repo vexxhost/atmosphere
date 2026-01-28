@@ -1,0 +1,157 @@
+name: update-images
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Target branch (e.g., main, stable/2025.2)'
+        required: true
+        default: 'main'
+        type: choice
+        options:
+          - main
+          - stable/2025.2
+          - stable/2025.1
+          - stable/2024.2
+          - stable/2024.1
+          - stable/2023.2
+          - stable/2023.1
+          - stable/zed
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-images:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ inputs.branch }}
+          fetch-depth: 0
+
+      - name: Update image digests
+        id: update
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+
+          BRANCH="${{ inputs.branch }}"
+          VARS_FILE="roles/defaults/vars/main.yml"
+
+          # Convert branch name to tag (e.g., stable/2025.2 -> 2025.2, main -> main)
+          if [[ "$BRANCH" == stable/* ]]; then
+              TAG="${BRANCH#stable/}"
+          else
+              TAG="$BRANCH"
+          fi
+
+          echo "Updating image digests for branch: $BRANCH (tag: $TAG)"
+          echo "=========================================="
+
+          # List of OpenStack services and their docker repos
+          declare -A SERVICES=(
+              ["barbican"]="docker-barbican"
+              ["cinder"]="docker-cinder"
+              ["designate"]="docker-designate"
+              ["glance"]="docker-glance"
+              ["heat"]="docker-heat"
+              ["horizon"]="docker-horizon"
+              ["ironic"]="docker-ironic"
+              ["keystone"]="docker-keystone"
+              ["magnum"]="docker-magnum"
+              ["manila"]="docker-manila"
+              ["neutron"]="docker-neutron"
+              ["nova"]="docker-nova"
+              ["octavia"]="docker-octavia"
+              ["placement"]="docker-placement"
+          )
+
+          UPDATED_SERVICES=""
+          UPDATED_COUNT=0
+
+          for SERVICE in "${!SERVICES[@]}"; do
+              REPO="${SERVICES[$SERVICE]}"
+              echo -n "Fetching $SERVICE from vexxhost/$REPO... "
+
+              # Get the latest merged PR on the branch
+              PR_NUMBER=$(gh pr list -R "vexxhost/$REPO" \
+                  --state merged \
+                  --base "$BRANCH" \
+                  --limit 1 \
+                  --json number \
+                  --jq '.[0].number' 2>/dev/null || echo "")
+
+              if [ -z "$PR_NUMBER" ] || [ "$PR_NUMBER" == "null" ]; then
+                  echo "SKIP (no PRs found on $BRANCH)"
+                  continue
+              fi
+
+              # Get the digest from PR comments (posted by github-actions bot)
+              IMAGE_DIGEST=$(gh pr view "$PR_NUMBER" -R "vexxhost/$REPO" \
+                  --comments \
+                  --json comments \
+                  --jq '.comments[].body' 2>/dev/null | \
+                  grep -o 'sha256:[a-f0-9]*' | head -1 || echo "")
+
+              if [ -z "$IMAGE_DIGEST" ]; then
+                  echo "SKIP (no digest found in PR #$PR_NUMBER)"
+                  continue
+              fi
+
+              echo "$IMAGE_DIGEST"
+
+              # Check if update is needed
+              CURRENT_DIGEST=$(grep -o "ghcr.io/vexxhost/${SERVICE}:${TAG}@sha256:[a-f0-9]*" "$VARS_FILE" | head -1 | grep -o 'sha256:[a-f0-9]*' || echo "")
+
+              if [ "$CURRENT_DIGEST" == "$IMAGE_DIGEST" ]; then
+                  echo "  -> Already up to date"
+                  continue
+              fi
+
+              echo "  -> Updating from ${CURRENT_DIGEST:0:12}... to ${IMAGE_DIGEST:0:12}..."
+
+              # Update the vars file
+              sed -i "s|ghcr.io/vexxhost/${SERVICE}:${TAG}@sha256:[a-f0-9]*|ghcr.io/vexxhost/${SERVICE}:${TAG}@${IMAGE_DIGEST}|g" "$VARS_FILE"
+              UPDATED_SERVICES="${UPDATED_SERVICES}- ${SERVICE}\n"
+              UPDATED_COUNT=$((UPDATED_COUNT + 1))
+          done
+
+          echo ""
+          if [ "$UPDATED_COUNT" -eq 0 ]; then
+              echo "No updates needed - all images are up to date"
+              echo "updated=false" >> $GITHUB_OUTPUT
+          else
+              echo "Updated $UPDATED_COUNT service(s)"
+              echo "updated=true" >> $GITHUB_OUTPUT
+              echo "count=$UPDATED_COUNT" >> $GITHUB_OUTPUT
+              # Store services list for PR body
+              echo "services<<EOF" >> $GITHUB_OUTPUT
+              echo -e "$UPDATED_SERVICES" >> $GITHUB_OUTPUT
+              echo "EOF" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Pull Request
+        if: steps.update.outputs.updated == 'true'
+        uses: peter-evans/create-pull-request@5e914681df9dc83aa4e4905692ca88beb2f9e681 # v7.0.5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore(deps): update OpenStack image digests"
+          title: "chore(deps): update OpenStack image digests"
+          body: |
+            ## Summary
+
+            Automatically updated OpenStack image digests to latest versions.
+
+            ### Updated services (${{ steps.update.outputs.count }}):
+            ${{ steps.update.outputs.services }}
+
+            ---
+            This PR was created by the `update-images` workflow.
+            Run before creating a new release to ensure all images are up to date.
+          branch: chore/update-images-${{ inputs.branch }}
+          base: ${{ inputs.branch }}
+          labels: skip-release-notes
+          delete-branch: true
