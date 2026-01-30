@@ -29,11 +29,4 @@ cat <<EOF > /etc/ceph/ceph.client.${EXTERNAL_RBD_USER}.keyring
 EOF
 {{- end }}
 
-# Combine base ceph.conf with EC pool user overrides
-cp /tmp/ceph-base.conf /etc/ceph/ceph.conf
-if [ -f /tmp/ceph-ec-override.conf ]; then
-  echo "" >> /etc/ceph/ceph.conf
-  cat /tmp/ceph-ec-override.conf >> /etc/ceph/ceph.conf
-fi
-
 exit 0
