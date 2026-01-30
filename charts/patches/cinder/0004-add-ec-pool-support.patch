@@ -131,6 +131,67 @@ index 97bfe0f7..93b5e898 100644
  {{- end }}
  {{- range $key, $backend := .Values.conf.backends }}
  {{- if $backend.nfs_shares_config }}
+diff --git a/cinder/templates/deployment-backup.yaml b/cinder/templates/deployment-backup.yaml
+index 83437af2..1830e0c5 100644
+--- a/cinder/templates/deployment-backup.yaml
++++ b/cinder/templates/deployment-backup.yaml
+@@ -90,6 +90,16 @@ spec:
+               mountPath: /tmp/client-keyring
+               subPath: key
+               readOnly: true
++            - name: ceph-etc
++              mountPath: /tmp/ceph-base.conf
++              subPath: ceph.conf
++              readOnly: true
++            {{- if $envAll.Values.conf.ceph.ec_pools }}
++            - name: cinder-etc
++              mountPath: /tmp/ceph-ec-override.conf
++              subPath: ceph-ec-override.conf
++              readOnly: true
++            {{- end }}
+         {{ end }}
+         {{- range $name := rest (splitList "," (include "cinder.utils.ceph_backend_list" $envAll)) }}
+           {{- $backend := index $envAll.Values.conf.backends $name }}
+@@ -119,6 +129,16 @@ spec:
+               mountPath: /tmp/client-keyring
+               subPath: key
+               readOnly: true
++            - name: ceph-etc
++              mountPath: /tmp/ceph-base.conf
++              subPath: ceph.conf
++              readOnly: true
++            {{- if $envAll.Values.conf.ceph.ec_pools }}
++            - name: cinder-etc
++              mountPath: /tmp/ceph-ec-override.conf
++              subPath: ceph-ec-override.conf
++              readOnly: true
++            {{- end }}
+            {{- if and $envAll.Values.ceph_client.enable_external_ceph_backend $envAll.Values.ceph_client.external_ceph.rbd_user }}
+             - name: external-ceph-keyring
+               mountPath: /tmp/external-ceph-client-keyring
+@@ -187,12 +207,8 @@ spec:
+             {{ if or (contains "cinder.backup.drivers.ceph" .Values.conf.cinder.DEFAULT.backup_driver) (eq "true" (include "cinder.utils.has_ceph_backend" $envAll)) }}
+             - name: etcceph
+               mountPath: /etc/ceph
+-            {{- if not .Values.backup.external_ceph_rbd.enabled }}
+-            - name: ceph-etc
+-              mountPath: /etc/ceph/ceph.conf
+-              subPath: ceph.conf
+-              readOnly: true
+-            {{- else if .Values.backup.external_ceph_rbd.configmap }}
++            {{- if .Values.backup.external_ceph_rbd.enabled }}
++            {{- if .Values.backup.external_ceph_rbd.configmap }}
+             - name: external-backup-ceph-etc
+               mountPath: /etc/ceph/ceph.conf
+               subPath: ceph.conf
+@@ -203,6 +219,7 @@ spec:
+               subPath: external-backup-ceph.conf
+               readOnly: true
+             {{- end }}
++            {{- end }}
+             {{- if (contains "cinder.backup.drivers.ceph" .Values.conf.cinder.DEFAULT.backup_driver) }}
+             - name: ceph-backup-keyring
+               mountPath: /tmp/client-keyring
 diff --git a/cinder/templates/deployment-volume.yaml b/cinder/templates/deployment-volume.yaml
 index 80eb8247..e2608867 100644
 --- a/cinder/templates/deployment-volume.yaml
