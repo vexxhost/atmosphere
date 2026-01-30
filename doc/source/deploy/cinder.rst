@@ -27,8 +27,14 @@ For environments requiring improved storage efficiency, you can configure Cinder
 to use Ceph ``erasure coded`` pools. This provides better storage utilization
 compared to replicated pools, at the cost of slightly higher CPU overhead.
 
+Erasure coded pools require two components:
+
+1. A **metadata pool** (replicated) that stores RBD metadata
+2. A **data pool** (erasure coded) that stores the actual volume data
+
 To configure an erasure coded backend, add the pool configuration to
-``cinder_helm_values.conf.ceph.ec_pools`` and create a corresponding backend:
+``cinder_helm_values.conf.ceph.ec_pools`` and create a backend with a dedicated
+``rbd_user``:
 
 .. code-block:: yaml
 
@@ -62,8 +68,16 @@ To configure an erasure coded backend, add the pool configuration to
             rbd_max_clone_depth: 5
             rbd_store_chunk_size: 4
             rados_connect_timeout: -1
-            rbd_user: cinder
+            rbd_user: cinder-ec
             rbd_secret_uuid: 457eb676-33da-42ec-9a8c-9293d545c337
+
+.. admonition:: About ``rbd_user`` for erasure coded pools
+    :class: info
+
+    Each erasure coded backend requires a dedicated ``rbd_user`` because the
+    data pool routing is configured per-user in ``ceph.conf``. The Cinder chart
+    automatically generates the required ``ceph.conf`` sections and the
+    storage-init job grants the user access to both the metadata and data pools.
 
 The erasure coding profile parameters are:
 

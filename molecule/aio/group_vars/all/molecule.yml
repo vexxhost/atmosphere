@@ -131,7 +131,7 @@ cinder_helm_values:
         rbd_max_clone_depth: 5
         rbd_store_chunk_size: 4
         rados_connect_timeout: -1
-        rbd_user: cinder
+        rbd_user: cinder-ec
         rbd_secret_uuid: 457eb676-33da-42ec-9a8c-9293d545c337
         image_volume_cache_enabled: true
         image_volume_cache_max_size_gb: 200
@@ -140,11 +140,6 @@ cinder_helm_values:
     replicas:
       api: 1
       scheduler: 1
-
-rook_ceph_cluster_helm_values:
-  configOverride: |
-    [client]
-    rbd default data pool = cinder.volumes.ec.data
 
 placement_helm_values:
   conf:

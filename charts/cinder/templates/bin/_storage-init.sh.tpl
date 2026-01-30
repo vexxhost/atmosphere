@@ -95,18 +95,26 @@ if [ "x$STORAGE_BACKEND" == "xcinder.volume.drivers.rbd.RBDDriver" ]; then
     ensure_pool ${RBD_POOL_NAME} ${RBD_POOL_CHUNK_SIZE} ${RBD_POOL_APP_NAME}
   fi
 
+  # Set OSD caps based on whether EC is enabled
+  # EC backends need access to both metadata pool and data pool
+  if [ "x$EC_ENABLED" == "xtrue" ]; then
+    OSD_CAPS="profile rbd pool=${RBD_POOL_NAME}, profile rbd pool=${EC_DATA_POOL_NAME}"
+  else
+    OSD_CAPS="profile rbd"
+  fi
+
   if USERINFO=$(ceph auth get client.${RBD_POOL_USER}); then
     echo "Cephx user client.${RBD_POOL_USER} already exist."
     echo "Update its cephx caps"
     ceph auth caps client.${RBD_POOL_USER} \
       mon "profile rbd" \
-      osd "profile rbd"
+      osd "${OSD_CAPS}"
     ceph auth get client.${RBD_POOL_USER} -o ${KEYRING}
   else
     #NOTE(JCL): Restrict Cinder permissions to what is needed. MON Read only and RBD access to Cinder pool only.
     ceph auth get-or-create client.${RBD_POOL_USER} \
       mon "profile rbd" \
-      osd "profile rbd" \
+      osd "${OSD_CAPS}" \
       -o ${KEYRING}
   fi
 
