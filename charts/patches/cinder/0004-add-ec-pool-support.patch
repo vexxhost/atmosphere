@@ -1,8 +1,24 @@
+diff --git a/cinder/templates/bin/_ceph-keyring.sh.tpl b/cinder/templates/bin/_ceph-keyring.sh.tpl
+index 521a7484..6062c471 100644
+--- a/cinder/templates/bin/_ceph-keyring.sh.tpl
++++ b/cinder/templates/bin/_ceph-keyring.sh.tpl
+@@ -29,4 +29,11 @@ cat <<EOF > /etc/ceph/ceph.client.${EXTERNAL_RBD_USER}.keyring
+ EOF
+ {{- end }}
+ 
++# Combine base ceph.conf with EC pool user overrides
++cp /tmp/ceph-base.conf /etc/ceph/ceph.conf
++if [ -f /tmp/ceph-ec-override.conf ]; then
++  echo "" >> /etc/ceph/ceph.conf
++  cat /tmp/ceph-ec-override.conf >> /etc/ceph/ceph.conf
++fi
++
+ exit 0
 diff --git a/cinder/templates/bin/_storage-init.sh.tpl b/cinder/templates/bin/_storage-init.sh.tpl
-index 4f945e2c..9546db57 100644
+index 4f945e2c..66127c38 100644
 --- a/cinder/templates/bin/_storage-init.sh.tpl
 +++ b/cinder/templates/bin/_storage-init.sh.tpl
-@@ -38,7 +38,62 @@ if [ "x$STORAGE_BACKEND" == "xcinder.volume.drivers.rbd.RBDDriver" ]; then
+@@ -38,20 +38,83 @@ if [ "x$STORAGE_BACKEND" == "xcinder.volume.drivers.rbd.RBDDriver" ]; then
      ceph osd pool set $1 nosizechange ${size_protection}
      ceph osd pool set $1 crush_rule "${RBD_POOL_CRUSH_RULE}"
    }
@@ -63,9 +79,90 @@ index 4f945e2c..9546db57 100644
 +  else
 +    ensure_pool ${RBD_POOL_NAME} ${RBD_POOL_CHUNK_SIZE} ${RBD_POOL_APP_NAME}
 +  fi
++
++  # Set OSD caps based on whether EC is enabled
++  # EC backends need access to both metadata pool and data pool
++  if [ "x$EC_ENABLED" == "xtrue" ]; then
++    OSD_CAPS="profile rbd pool=${RBD_POOL_NAME}, profile rbd pool=${EC_DATA_POOL_NAME}"
++  else
++    OSD_CAPS="profile rbd"
++  fi
  
    if USERINFO=$(ceph auth get client.${RBD_POOL_USER}); then
      echo "Cephx user client.${RBD_POOL_USER} already exist."
+     echo "Update its cephx caps"
+     ceph auth caps client.${RBD_POOL_USER} \
+       mon "profile rbd" \
+-      osd "profile rbd"
++      osd "${OSD_CAPS}"
+     ceph auth get client.${RBD_POOL_USER} -o ${KEYRING}
+   else
+     #NOTE(JCL): Restrict Cinder permissions to what is needed. MON Read only and RBD access to Cinder pool only.
+     ceph auth get-or-create client.${RBD_POOL_USER} \
+       mon "profile rbd" \
+-      osd "profile rbd" \
++      osd "${OSD_CAPS}" \
+       -o ${KEYRING}
+   fi
+ 
+diff --git a/cinder/templates/configmap-etc.yaml b/cinder/templates/configmap-etc.yaml
+index 97bfe0f7..93b5e898 100644
+--- a/cinder/templates/configmap-etc.yaml
++++ b/cinder/templates/configmap-etc.yaml
+@@ -205,6 +205,21 @@ data:
+ {{- if and .Values.ceph_client.enable_external_ceph_backend (not .Values.ceph_client.external_ceph.configmap) }}
+   external-ceph.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.ceph_client.external_ceph.conf | b64enc }}
+ {{- end }}
++{{- /* Generate ceph.conf sections for EC pool users */ -}}
++{{- $ec_ceph_conf := dict -}}
++{{- range $name, $backend := .Values.conf.backends -}}
++{{- if and $backend.rbd_pool $backend.rbd_user -}}
++{{- $ec_pool := index $.Values.conf.ceph.ec_pools $backend.rbd_pool -}}
++{{- if $ec_pool -}}
++{{- $client_section := printf "client.%s" $backend.rbd_user -}}
++{{- $data_pool_name := printf "%s.data" $backend.rbd_pool -}}
++{{- $_ := set $ec_ceph_conf $client_section (dict "rbd default data pool" $data_pool_name) -}}
++{{- end -}}
++{{- end -}}
++{{- end -}}
++{{- if $ec_ceph_conf }}
++  ceph-ec-override.conf: {{ include "helm-toolkit.utils.to_ini" $ec_ceph_conf | b64enc }}
++{{- end }}
+ {{- end }}
+ {{- range $key, $backend := .Values.conf.backends }}
+ {{- if $backend.nfs_shares_config }}
+diff --git a/cinder/templates/deployment-volume.yaml b/cinder/templates/deployment-volume.yaml
+index 80eb8247..e2608867 100644
+--- a/cinder/templates/deployment-volume.yaml
++++ b/cinder/templates/deployment-volume.yaml
+@@ -96,6 +96,16 @@ spec:
+               mountPath: /tmp/client-keyring
+               subPath: key
+               readOnly: true
++            - name: ceph-etc
++              mountPath: /tmp/ceph-base.conf
++              subPath: ceph.conf
++              readOnly: true
++            {{- if $envAll.Values.conf.ceph.ec_pools }}
++            - name: cinder-etc
++              mountPath: /tmp/ceph-ec-override.conf
++              subPath: ceph-ec-override.conf
++              readOnly: true
++            {{- end }}
+             {{- if and $envAll.Values.ceph_client.enable_external_ceph_backend $envAll.Values.ceph_client.external_ceph.rbd_user }}
+             - name: external-ceph-keyring
+               mountPath: /tmp/external-ceph-client-keyring
+@@ -187,10 +197,6 @@ spec:
+             {{- if eq "true" (include "cinder.utils.has_ceph_backend" $envAll) }}
+             - name: etcceph
+               mountPath: /etc/ceph
+-            - name: ceph-etc
+-              mountPath: /etc/ceph/ceph.conf
+-              subPath: ceph.conf
+-              readOnly: true
+             - name: ceph-keyring
+               mountPath: /tmp/client-keyring
+               subPath: key
 diff --git a/cinder/templates/job-storage-init.yaml b/cinder/templates/job-storage-init.yaml
 index 350b013a..e0cfd78d 100644
 --- a/cinder/templates/job-storage-init.yaml
