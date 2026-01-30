@@ -96,16 +96,6 @@ spec:
               mountPath: /tmp/client-keyring
               subPath: key
               readOnly: true
-            - name: ceph-etc
-              mountPath: /tmp/ceph-base.conf
-              subPath: ceph.conf
-              readOnly: true
-            {{- if $envAll.Values.conf.ceph.ec_pools }}
-            - name: cinder-etc
-              mountPath: /tmp/ceph-ec-override.conf
-              subPath: ceph-ec-override.conf
-              readOnly: true
-            {{- end }}
             {{- if and $envAll.Values.ceph_client.enable_external_ceph_backend $envAll.Values.ceph_client.external_ceph.rbd_user }}
             - name: external-ceph-keyring
               mountPath: /tmp/external-ceph-client-keyring
@@ -197,6 +187,10 @@ spec:
             {{- if eq "true" (include "cinder.utils.has_ceph_backend" $envAll) }}
             - name: etcceph
               mountPath: /etc/ceph
+            - name: ceph-etc
+              mountPath: /etc/ceph/ceph.conf
+              subPath: ceph.conf
+              readOnly: true
             - name: ceph-keyring
               mountPath: /tmp/client-keyring
               subPath: key

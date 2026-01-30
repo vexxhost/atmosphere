@@ -205,21 +205,6 @@ data:
 {{- if and .Values.ceph_client.enable_external_ceph_backend (not .Values.ceph_client.external_ceph.configmap) }}
   external-ceph.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.ceph_client.external_ceph.conf | b64enc }}
 {{- end }}
-{{- /* Generate ceph.conf sections for EC pool users */ -}}
-{{- $ec_ceph_conf := dict -}}
-{{- range $name, $backend := .Values.conf.backends -}}
-{{- if and $backend.rbd_pool $backend.rbd_user -}}
-{{- $ec_pool := index $.Values.conf.ceph.ec_pools $backend.rbd_pool -}}
-{{- if $ec_pool -}}
-{{- $client_section := printf "client.%s" $backend.rbd_user -}}
-{{- $data_pool_name := printf "%s.data" $backend.rbd_pool -}}
-{{- $_ := set $ec_ceph_conf $client_section (dict "rbd default data pool" $data_pool_name) -}}
-{{- end -}}
-{{- end -}}
-{{- end -}}
-{{- if $ec_ceph_conf }}
-  ceph-ec-override.conf: {{ include "helm-toolkit.utils.to_ini" $ec_ceph_conf | b64enc }}
-{{- end }}
 {{- end }}
 {{- range $key, $backend := .Values.conf.backends }}
 {{- if $backend.nfs_shares_config }}
