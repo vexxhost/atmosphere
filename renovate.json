@@ -24,9 +24,9 @@
       "customType": "regex",
       "fileMatch": ["roles/defaults/vars/main.yml"],
       "matchStrings": [
-        "(?<=\\{\\{ atmosphere_image_prefix \\}\\})(?<depName>[^:]+):(?<currentValue>[^@\\s\"]+)(@(?<currentDigest>sha256:[a-f0-9]+))?"
+        "(?<prefix>\\{\\{ atmosphere_image_prefix \\}\\})(?<depName>[^:]+):(?<currentValue>[^@\\s\"]+)(@(?<currentDigest>sha256:[a-f0-9]+))?"
       ],
-      "autoReplaceStringTemplate": "{{{depName}}}:{{{newValue}}}@{{{newDigest}}}",
+      "autoReplaceStringTemplate": "{{{prefix}}}{{{depName}}}:{{{newValue}}}@{{{newDigest}}}",
       "datasourceTemplate": "docker"
     }
   ]
