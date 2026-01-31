@@ -1,78 +1,33 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended"],
+  "extends": ["local>vexxhost/.github"],
   "baseBranches": ["main", "/^stable\\/.*/"],
   "addLabels": ["skip-release-notes"],
   "prHourlyLimit": 10,
   "packageRules": [
     {
       "enabled": false,
-      "matchPackageNames": ["*"]
+      "matchDepNames": ["*"]
+    },
+    {
+      "matchDatasources": ["docker"],
+      "pinDigests": true
     },
     {
       "enabled": true,
-      "matchBaseBranches": "main",
-      "matchManagers": ["cargo", "gomod"]
-    },
-    {
-      "matchManagers": ["gomod"],
-      "groupName": "golang",
-      "matchUpdateTypes": ["minor", "patch"]
-    },
-    {
-      "groupName": "pxc",
-      "enabled": true,
-      "matchPackageNames": [
-        "docker.io/percona/haproxy",
-        "docker.io/percona/percona-xtradb-cluster-operator",
-        "github.com/percona/percona-xtradb-cluster-operator",
-        "percona/percona-xtradb-cluster-operator",
-        "pxc-operator",
-        "quay.io/prometheus/mysqld-exporter"
-      ]
-    },
-    {
-      "matchPackageNames": ["percona/percona-xtradb-cluster-operator"],
-      "extractVersion": "^v(?<version>.*)$"
-    },
-    {
-      "enabled": true,
-      "matchPackageNames": ["docker.io/percona/percona-xtradb-cluster"],
-      "versioning": "semver-coerced",
-      "separateMinorPatch": true,
-      "patch": {
-        "groupName": "pxc"
-      }
+      "groupName": "vexxhost images",
+      "matchDepPatterns": ["^ghcr\\.io/vexxhost/"]
     }
   ],
   "customManagers": [
     {
-      "customType": "jsonata",
-      "fileFormat": "yaml",
-      "fileMatch": [".charts.yml"],
-      "matchStrings": [
-        "charts.{ \"depName\": name, \"currentValue\": version, \"registryUrl\": repository.url }"
-      ],
-      "datasourceTemplate": "helm"
-    },
-    {
-      "customType": "jsonata",
-      "fileFormat": "yaml",
+      "customType": "regex",
       "fileMatch": ["roles/defaults/vars/main.yml"],
       "matchStrings": [
-        "$map($each(_atmosphere_images, function ($v) { $split($replace($replace($v, \"{{ atmosphere_image_prefix }}\", \"\"), \"{{ atmosphere_release }}\", atmosphere_release), \":\") }), function ($v) { { \"depName\": $v[0], \"currentValue\": $v[1] } })"
+        "(?<prefix>\\{\\{ atmosphere_image_prefix \\}\\})(?<depName>[^:]+):(?<currentValue>[^@\\s\"]+)(@(?<currentDigest>sha256:[a-f0-9]+))?"
       ],
+      "autoReplaceStringTemplate": "{{{prefix}}}{{{depName}}}:{{{currentValue}}}@{{{currentDigest}}}",
       "datasourceTemplate": "docker"
-    },
-    {
-      "customType": "jsonata",
-      "fileFormat": "yaml",
-      "fileMatch": ["roles/percona_xtradb_cluster/vars/main.yml"],
-      "matchStrings": [
-        "_percona_xtradb_cluster_spec.{ \"currentValue\": crVersion }"
-      ],
-      "datasourceTemplate": "github-releases",
-      "depNameTemplate": "percona/percona-xtradb-cluster-operator"
     }
   ]
 }
