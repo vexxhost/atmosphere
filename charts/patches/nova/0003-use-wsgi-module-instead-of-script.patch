@@ -1,0 +1,21 @@
+diff --git a/nova/values.yaml b/nova/values.yaml
+--- a/nova/values.yaml
++++ b/nova/values.yaml
+@@ -1583,7 +1583,7 @@
+       route-user-agent: '^kube-probe.* donotlog:'
+       thunder-lock: true
+       worker-reload-mercy: 80
+-      wsgi-file: /var/lib/openstack/bin/nova-api-wsgi
++      module: "nova.wsgi.osapi_compute:application"
+   nova_metadata_uwsgi:
+     uwsgi:
+       add-header: "Connection: close"
+@@ -1599,7 +1599,7 @@
+       route-user-agent: '^kube-probe.* donotlog:'
+       thunder-lock: true
+       worker-reload-mercy: 80
+-      wsgi-file: /var/lib/openstack/bin/nova-metadata-wsgi
++      module: "nova.wsgi.metadata:application"
+
+ # Names of secrets used by bootstrap and environmental checks
+ secrets:
