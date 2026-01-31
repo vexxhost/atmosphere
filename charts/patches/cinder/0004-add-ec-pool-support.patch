@@ -71,7 +71,7 @@ index 4f945e2c..66127c38 100644
 +  else
 +    OSD_CAPS="profile rbd"
 +  fi
- 
+
    if USERINFO=$(ceph auth get client.${RBD_POOL_USER}); then
      echo "Cephx user client.${RBD_POOL_USER} already exist."
      echo "Update its cephx caps"
@@ -88,9 +88,116 @@ index 4f945e2c..66127c38 100644
 +      osd "${OSD_CAPS}" \
        -o ${KEYRING}
    fi
- 
+
+diff --git a/cinder/templates/deployment-backup.yaml b/cinder/templates/deployment-backup.yaml
+index 83437af2..aced3688 100644
+--- a/cinder/templates/deployment-backup.yaml
++++ b/cinder/templates/deployment-backup.yaml
+@@ -93,8 +93,7 @@ spec:
+         {{ end }}
+         {{- range $name := rest (splitList "," (include "cinder.utils.ceph_backend_list" $envAll)) }}
+           {{- $backend := index $envAll.Values.conf.backends $name }}
+-            {{- if eq $internal_ceph_backend $name }}
+-        - name: ceph-keyring-placement-{{ $name | lower }}
++        - name: ceph-keyring-placement-{{ $name | lower | replace "_" "-" }}
+ {{ tuple $envAll "cinder_backup" | include "helm-toolkit.snippets.image" | indent 10 }}
+ {{ dict "envAll" $envAll "application" "cinder_backup" "container" "ceph_keyring_placement" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+           command:
+@@ -115,17 +114,23 @@ spec:
+               mountPath: /tmp/ceph-keyring.sh
+               subPath: ceph-keyring.sh
+               readOnly: true
++            {{- if eq $internal_ceph_backend $name }}
+             - name: ceph-keyring
+               mountPath: /tmp/client-keyring
+               subPath: key
+               readOnly: true
+-           {{- if and $envAll.Values.ceph_client.enable_external_ceph_backend $envAll.Values.ceph_client.external_ceph.rbd_user }}
++            {{- else }}
++            - name: ceph-keyring-{{ $name | lower | replace "_" "-" }}
++              mountPath: /tmp/client-keyring
++              subPath: key
++              readOnly: true
++            {{- end }}
++            {{- if and $envAll.Values.ceph_client.enable_external_ceph_backend $envAll.Values.ceph_client.external_ceph.rbd_user }}
+             - name: external-ceph-keyring
+               mountPath: /tmp/external-ceph-client-keyring
+               subPath: key
+               readOnly: true
+             {{- end }}
+-            {{- end }}
+         {{- end }}
+         {{- if (contains "cinder.backup.drivers.posix" .Values.conf.cinder.DEFAULT.backup_driver) }}
+         - name: ceph-backup-volume-perms
+@@ -330,6 +335,13 @@ spec:
+         - name: ceph-keyring
+           secret:
+             secretName: {{ .Values.secrets.rbd.volume | quote }}
++        {{- range $name := rest (splitList "," (include "cinder.utils.ceph_backend_list" $envAll)) }}
++        {{- if ne $internal_ceph_backend $name }}
++        - name: ceph-keyring-{{ $name | lower | replace "_" "-" }}
++          secret:
++            secretName: "{{ $envAll.Values.secrets.rbd.volume }}-{{ $name | lower | replace "_" "-" }}"
++        {{- end }}
++        {{- end }}
+         {{- if and .Values.ceph_client.enable_external_ceph_backend .Values.ceph_client.external_ceph.rbd_user }}
+         - name: external-ceph-keyring
+           secret:
+diff --git a/cinder/templates/deployment-volume.yaml b/cinder/templates/deployment-volume.yaml
+index 80eb8247..75572ef7 100644
+--- a/cinder/templates/deployment-volume.yaml
++++ b/cinder/templates/deployment-volume.yaml
+@@ -70,8 +70,7 @@ spec:
+ {{ tuple $envAll "volume" $mounts_cinder_volume_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+         {{- range $name := rest (splitList "," (include "cinder.utils.ceph_backend_list" $envAll)) }}
+           {{- $backend := index $envAll.Values.conf.backends $name }}
+-            {{- if eq $internal_ceph_backend $name }}
+-        - name: ceph-keyring-placement-{{ $name | lower }}
++        - name: ceph-keyring-placement-{{ $name | lower | replace "_" "-" }}
+ {{ tuple $envAll "cinder_volume" | include "helm-toolkit.snippets.image" | indent 10 }}
+ {{ dict "envAll" $envAll "application" "cinder_volume" "container" "ceph_keyring_placement" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+           command:
+@@ -92,17 +91,23 @@ spec:
+               mountPath: /tmp/ceph-keyring.sh
+               subPath: ceph-keyring.sh
+               readOnly: true
++            {{- if eq $internal_ceph_backend $name }}
+             - name: ceph-keyring
+               mountPath: /tmp/client-keyring
+               subPath: key
+               readOnly: true
++            {{- else }}
++            - name: ceph-keyring-{{ $name | lower | replace "_" "-" }}
++              mountPath: /tmp/client-keyring
++              subPath: key
++              readOnly: true
++            {{- end }}
+             {{- if and $envAll.Values.ceph_client.enable_external_ceph_backend $envAll.Values.ceph_client.external_ceph.rbd_user }}
+             - name: external-ceph-keyring
+               mountPath: /tmp/external-ceph-client-keyring
+               subPath: key
+               readOnly: true
+             {{- end }}
+-            {{- end }}
+         {{- end }}
+         {{- if eq ( split "://" .Values.conf.cinder.coordination.backend_url )._0 "file" }}
+         - name: ceph-coordination-volume-perms
+@@ -327,6 +332,13 @@ spec:
+         - name: ceph-keyring
+           secret:
+             secretName: {{ .Values.secrets.rbd.volume | quote }}
++        {{- range $name := rest (splitList "," (include "cinder.utils.ceph_backend_list" $envAll)) }}
++        {{- if ne $internal_ceph_backend $name }}
++        - name: ceph-keyring-{{ $name | lower | replace "_" "-" }}
++          secret:
++            secretName: "{{ $envAll.Values.secrets.rbd.volume }}-{{ $name | lower | replace "_" "-" }}"
++        {{- end }}
++        {{- end }}
+         {{- if and .Values.ceph_client.enable_external_ceph_backend .Values.ceph_client.external_ceph.rbd_user }}
+         - name: external-ceph-keyring
+           secret:
 diff --git a/cinder/templates/job-storage-init.yaml b/cinder/templates/job-storage-init.yaml
-index 350b013a..e0cfd78d 100644
+index 350b013a..51203f77 100644
 --- a/cinder/templates/job-storage-init.yaml
 +++ b/cinder/templates/job-storage-init.yaml
 @@ -101,8 +101,7 @@ spec:
@@ -103,7 +210,7 @@ index 350b013a..e0cfd78d 100644
  {{ tuple $envAll "cinder_storage_init" | include "helm-toolkit.snippets.image" | indent 10 }}
  {{ tuple $envAll $envAll.Values.pod.resources.jobs.storage_init | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
            env:
-@@ -114,18 +113,46 @@ spec:
+@@ -114,18 +113,51 @@ spec:
                value: {{ $backend.volume_driver | quote }}
              - name: RBD_POOL_NAME
                value: {{ $backend.rbd_pool | quote }}
@@ -111,8 +218,13 @@ index 350b013a..e0cfd78d 100644
 -              value: {{ (index $envAll.Values.conf.ceph.pools $backend.rbd_pool).app_name | quote }}
              - name: RBD_POOL_USER
                value: {{ $backend.rbd_user | quote }}
++            {{- if eq $internal_ceph_backend $name }}
 +            - name: RBD_POOL_SECRET
 +              value: {{ $envAll.Values.secrets.rbd.volume | quote }}
++            {{- else }}
++            - name: RBD_POOL_SECRET
++              value: "{{ $envAll.Values.secrets.rbd.volume }}-{{ $name | lower | replace "_" "-" }}"
++            {{- end }}
 +            {{- $ec_pool := index $envAll.Values.conf.ceph.ec_pools $backend.rbd_pool }}
 +            {{- if $ec_pool }}
 +            - name: EC_ENABLED
@@ -154,7 +266,7 @@ index 350b013a..e0cfd78d 100644
            command:
              - /tmp/storage-init.sh
            volumeMounts:
-@@ -147,7 +174,6 @@ spec:
+@@ -147,7 +179,6 @@ spec:
                subPath: key
                readOnly: true
              {{- end }}

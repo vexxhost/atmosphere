@@ -115,8 +115,13 @@ spec:
               value: {{ $backend.rbd_pool | quote }}
             - name: RBD_POOL_USER
               value: {{ $backend.rbd_user | quote }}
+            {{- if eq $internal_ceph_backend $name }}
             - name: RBD_POOL_SECRET
               value: {{ $envAll.Values.secrets.rbd.volume | quote }}
+            {{- else }}
+            - name: RBD_POOL_SECRET
+              value: "{{ $envAll.Values.secrets.rbd.volume }}-{{ $name | lower | replace "_" "-" }}"
+            {{- end }}
             {{- $ec_pool := index $envAll.Values.conf.ceph.ec_pools $backend.rbd_pool }}
             {{- if $ec_pool }}
             - name: EC_ENABLED
