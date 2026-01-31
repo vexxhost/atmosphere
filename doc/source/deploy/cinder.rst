@@ -82,8 +82,8 @@ To configure an erasure coded backend, you need to:
 .. admonition:: About ``rbd_user`` for erasure coded pools
     :class: info
 
-    Each erasure coded backend requires a dedicated ``rbd_user`` because the
-    data pool routing is configured per-user in ``ceph.conf``. The storage-init
+    Each erasure coded backend requires a dedicated ``rbd_user`` because Ceph
+    configures data pool routing per-user in ``ceph.conf``. The storage-init
     job automatically grants the user access to both the metadata and data pools.
 
 The erasure coding profile parameters are:
