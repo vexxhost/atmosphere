@@ -7,12 +7,15 @@ requires message queuing. This provides isolation between services and enables
 per-service resource tuning.
 
 ***********************
-Per-service tuning
+Per-service overrides
 ***********************
 
-To customize RabbitMQ resources for a specific OpenStack service, define a
-variable named ``<service>_rabbitmq_spec``. For example, to increase resources
-for Nova's RabbitMQ cluster:
+To customize the RabbitMQ cluster for a specific service, define a variable
+named ``<chart>_rabbitmq_spec`` in your inventory, where ``<chart>`` matches the
+chart name under ``charts/`` (for example: ``nova``, ``neutron``, ``glance``,
+``keystone``).
+
+Example (increase Nova RabbitMQ resources):
 
 .. code-block:: yaml
 
@@ -22,27 +25,16 @@ for Nova's RabbitMQ cluster:
          cpu: 500m
          memory: 4Gi
        limits:
-         cpu: 1
+         cpu: "1"
          memory: 4Gi
 
-The following services support per-service RabbitMQ overrides:
-
-- ``nova_rabbitmq_spec``
-- ``neutron_rabbitmq_spec``
-- ``cinder_rabbitmq_spec``
-- ``octavia_rabbitmq_spec``
-- ``heat_rabbitmq_spec``
-- ``barbican_rabbitmq_spec``
-- ``designate_rabbitmq_spec``
-- ``magnum_rabbitmq_spec``
-- ``manila_rabbitmq_spec``
-
 *********************
-Available options
+Common tuning options
 *********************
 
-The ``rabbitmq_spec`` dictionary merges with the default configuration and
-supports the following options:
+Overrides are merged into the default ``RabbitmqCluster`` spec (recursively).
+You may set any valid ``RabbitmqCluster.spec`` fields; common ones include
+resources, replicas, persistence, and additional configuration.
 
 .. code-block:: yaml
 
@@ -53,7 +45,7 @@ supports the following options:
          cpu: 500m
          memory: 4Gi
        limits:
-         cpu: 1
+         cpu: "1"
          memory: 4Gi
 
      # Number of RabbitMQ replicas (optional)
@@ -66,7 +58,13 @@ supports the following options:
      # Additional RabbitMQ configuration (optional)
      rabbitmq:
        additionalConfig: |
+         deprecated_features.permit.management_metrics_collection = true
          vm_memory_high_watermark.relative = 0.9
+
+.. note::
+
+   Setting ``rabbitmq.additionalConfig`` replaces the default value (it is not
+   appended). If you override it, include any defaults you still want applied.
 
 *****************************
 Skipping spec diff approval
@@ -79,3 +77,15 @@ overrides, set:
 .. code-block:: yaml
 
    rabbitmq_skip_spec_diff: true
+
+******************
+Verifying changes
+******************
+
+RabbitMQ clusters are deployed as ``RabbitmqCluster`` resources in the
+``openstack`` namespace and are named ``rabbitmq-<chart>``.
+
+.. code-block:: console
+
+   kubectl -n openstack get rabbitmqclusters
+   kubectl -n openstack get rabbitmqcluster rabbitmq-nova -o yaml
