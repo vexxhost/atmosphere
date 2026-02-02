@@ -63,7 +63,7 @@ resources, replicas, persistence, and additional configuration.
 
 .. note::
 
-   Setting ``rabbitmq.additionalConfig`` replaces the default value (it is not
+   Setting ``rabbitmq.additionalConfig`` replaces the default value (it's not
    appended). If you override it, include any defaults you still want applied.
 
 *****************************
