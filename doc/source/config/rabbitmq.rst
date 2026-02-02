@@ -32,8 +32,8 @@ Example (increase Nova RabbitMQ resources):
 Common tuning options
 *********************
 
-Overrides are merged into the default ``RabbitmqCluster`` spec (recursively).
-You may set any valid ``RabbitmqCluster.spec`` fields; common ones include
+Atmosphere merges overrides into the default ``RabbitmqCluster`` spec recursively.
+You can set any valid ``RabbitmqCluster.spec`` field. Common options include
 resources, replicas, persistence, and additional configuration.
 
 .. code-block:: yaml
@@ -82,8 +82,8 @@ overrides, set:
 Verifying changes
 ******************
 
-RabbitMQ clusters are deployed as ``RabbitmqCluster`` resources in the
-``openstack`` namespace and are named ``rabbitmq-<chart>``.
+Atmosphere deploys RabbitMQ clusters as ``RabbitmqCluster`` resources in the
+``openstack`` namespace with names following the pattern ``rabbitmq-<chart>``.
 
 .. code-block:: console
 
