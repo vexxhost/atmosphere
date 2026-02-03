@@ -64,6 +64,21 @@ rook_ceph_cluster_radosgw_spec:
   gateway:
     instances: 1
 
+# EC pools for Cinder managed by Rook
+rook_ceph_cluster_helm_values:
+  cephBlockPools:
+    - name: cinder-volumes-ec
+      spec:
+        failureDomain: osd
+        replicated:
+          size: 1
+    - name: cinder-volumes-ec-data
+      spec:
+        failureDomain: osd
+        erasureCoded:
+          dataChunks: 2
+          codingChunks: 1
+
 glance_helm_values:
   conf:
     glance:
@@ -101,19 +116,6 @@ cinder_helm_values:
           replication: 1
         cinder.volumes:
           replication: 1
-      ec_pools:
-        cinder.volumes.ec:
-          metadata_pool:
-            replication: 1
-            crush_rule: replicated_rule
-            chunk_size: 8
-          data_pool:
-            ec_profile:
-              k: 2
-              m: 1
-              crush_device_class: ""
-              crush_failure_domain: osd
-          app_name: cinder-volume
     cinder:
       DEFAULT:
         debug: "{{ lookup('env', 'ATMOSPHERE_DEBUG') | default('false', True) }}"
@@ -124,7 +126,8 @@ cinder_helm_values:
       rbd_ec:
         volume_driver: cinder.volume.drivers.rbd.RBDDriver
         volume_backend_name: rbd_ec
-        rbd_pool: cinder.volumes.ec
+        rbd_pool: cinder-volumes-ec
+        rbd_data_pool: cinder-volumes-ec-data
         rbd_ceph_conf: "/etc/ceph/ceph.conf"
         rbd_flatten_volume_from_snapshot: false
         report_discard_supported: true
@@ -145,7 +148,7 @@ ceph_provisioners_helm_values:
   conf:
     ceph:
       client.cinder-ec:
-        rbd default data pool: cinder.volumes.ec.data
+        rbd default data pool: cinder-volumes-ec-data
 
 placement_helm_values:
   conf:

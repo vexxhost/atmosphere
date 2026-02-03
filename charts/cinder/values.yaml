@@ -788,23 +788,16 @@ conf:
         chunk_size: 8
         app_name: cinder-volume
 
-    # Erasure coded pools for Cinder backends with device class targeting.
-    # Ceph auto-creates CRUSH rule from the EC profile settings.
+    # Erasure coded pools should be created via Rook CephBlockPool CRDs.
+    # Configure backends with rbd_data_pool to use EC pools:
     #
-    # ec_pools:
-    #   cinder.volumes.hdd:
-    #     metadata_pool:
-    #       replication: 3
-    #       crush_rule: replicated_hdd
-    #       chunk_size: 8
-    #     data_pool:
-    #       ec_profile:
-    #         k: 4
-    #         m: 2
-    #         crush_device_class: hdd
-    #         crush_failure_domain: host
-    #     app_name: cinder-volume
-    ec_pools: {}
+    # backends:
+    #   rbd_ec:
+    #     volume_driver: cinder.volume.drivers.rbd.RBDDriver
+    #     rbd_pool: cinder-volumes-ec           # metadata pool (replicated)
+    #     rbd_data_pool: cinder-volumes-ec-data # data pool (erasure coded)
+    #     rbd_user: cinder-ec
+    #     ...
   cinder:
     DEFAULT:
       volume_usage_audit_period: hour
