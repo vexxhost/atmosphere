@@ -34,28 +34,31 @@ Erasure coded pools require two components:
 
 To configure an erasure coded backend, you need to:
 
-1. Add the pool configuration to ``cinder_helm_values.conf.ceph.ec_pools``
-2. Create a backend with a dedicated ``rbd_user`` for the EC pool
-3. Configure ``ceph_provisioners_helm_values`` to set the data pool for that user
+1. Create the pools via Rook ``CephBlockPool`` in ``rook_ceph_cluster_helm_values``
+2. Create a Cinder backend with ``rbd_data_pool`` pointing to the EC data pool
+3. Configure ``ceph_provisioners_helm_values`` to set the default data pool for the user
 
 .. code-block:: yaml
 
+    # Step 1: Create EC pools via Rook
+    rook_ceph_cluster_helm_values:
+      cephBlockPools:
+        - name: cinder-volumes-ec        # metadata pool (replicated)
+          spec:
+            failureDomain: host
+            replicated:
+              size: 3
+        - name: cinder-volumes-ec-data   # data pool (erasure coded)
+          spec:
+            failureDomain: host
+            erasureCoded:
+              dataChunks: 4
+              codingChunks: 2
+            deviceClass: hdd             # optional: target specific device class
+
+    # Step 2: Configure Cinder backend with rbd_data_pool
     cinder_helm_values:
       conf:
-        ceph:
-          ec_pools:
-            cinder.volumes.ec:
-              metadata_pool:
-                replication: 3
-                crush_rule: replicated_rule
-                chunk_size: 8
-              data_pool:
-                ec_profile:
-                  k: 4
-                  m: 2
-                  crush_device_class: hdd
-                  crush_failure_domain: host
-              app_name: cinder-volume
         cinder:
           DEFAULT:
             enabled_backends: rbd1,rbd_ec
@@ -63,7 +66,8 @@ To configure an erasure coded backend, you need to:
           rbd_ec:
             volume_driver: cinder.volume.drivers.rbd.RBDDriver
             volume_backend_name: rbd_ec
-            rbd_pool: cinder.volumes.ec
+            rbd_pool: cinder-volumes-ec
+            rbd_data_pool: cinder-volumes-ec-data
             rbd_ceph_conf: "/etc/ceph/ceph.conf"
             rbd_flatten_volume_from_snapshot: false
             report_discard_supported: true
@@ -73,11 +77,12 @@ To configure an erasure coded backend, you need to:
             rbd_user: cinder-ec
             rbd_secret_uuid: 457eb676-33da-42ec-9a8c-9293d545c337
 
+    # Step 3: Configure ceph.conf for the EC user
     ceph_provisioners_helm_values:
       conf:
         ceph:
           client.cinder-ec:
-            rbd default data pool: cinder.volumes.ec.data
+            rbd default data pool: cinder-volumes-ec-data
 
 .. admonition:: About ``rbd_user`` for erasure coded pools
     :class: info
@@ -86,18 +91,18 @@ To configure an erasure coded backend, you need to:
     configures data pool routing per-user in ``ceph.conf``. The storage-init
     job automatically grants the user access to both the metadata and data pools.
 
-The erasure coding profile parameters are:
+The Rook ``CephBlockPool`` erasure coding parameters are:
 
-``k``
-  Number of data chunks. Higher values provide better storage efficiency.
+``dataChunks``
+  Number of data chunks (k). Higher values provide better storage efficiency.
 
-``m``
-  Number of parity chunks. Higher values provide better fault tolerance.
+``codingChunks``
+  Number of parity chunks (m). Higher values provide better fault tolerance.
 
-``crush_device_class``
+``deviceClass``
   Target specific device types, for example ``hdd``, ``ssd``, or ``nvme``.
 
-``crush_failure_domain``
+``failureDomain``
   Failure domain for data placement, for example ``host``, ``rack``, or ``room``.
 
 ***************
