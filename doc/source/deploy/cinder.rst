@@ -29,7 +29,7 @@ compared to replicated pools, at the cost of slightly higher CPU overhead.
 
 Erasure coded pools require two components:
 
-1. A **metadata pool** (replicated) that stores RBD metadata
+1. A **metadata pool** (replicated) that stores metadata
 2. A **data pool** (erasure coded) that stores the actual volume data
 
 To configure an erasure coded backend, you need to:
