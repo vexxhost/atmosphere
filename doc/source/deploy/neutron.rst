@@ -202,7 +202,7 @@ virtual machine model such as Octavia and Manila.
       "hw:mem_page_size": large
 
 ******************
-ML2 Generic Switch
+ML2 generic switch
 ******************
 
 The ML2 generic switch mechanism driver (``networking-generic-switch``) connects
