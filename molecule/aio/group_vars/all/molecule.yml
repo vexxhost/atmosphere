@@ -135,7 +135,7 @@ cinder_helm_values:
         rbd_store_chunk_size: 4
         rados_connect_timeout: -1
         rbd_user: cinder-ec
-        rbd_secret_uuid: 457eb676-33da-42ec-9a8c-9293d545c337
+        rbd_secret_uuid: 808c5658-7c46-4818-8f26-82a217e3a57a
         image_volume_cache_enabled: true
         image_volume_cache_max_size_gb: 200
         image_volume_cache_max_count: 50
@@ -149,6 +149,14 @@ ceph_provisioners_helm_values:
     ceph:
       client.cinder-ec:
         rbd default data pool: cinder-volumes-ec-data
+
+libvirt_helm_values:
+  conf:
+    ceph:
+      additional_users:
+        - user: cinder-ec
+          secret_uuid: 808c5658-7c46-4818-8f26-82a217e3a57a
+          secret_name: cinder-volume-rbd-keyring-rbd-ec
 
 placement_helm_values:
   conf:
