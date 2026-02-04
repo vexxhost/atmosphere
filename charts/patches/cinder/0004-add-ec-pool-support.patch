@@ -1,10 +1,22 @@
 diff --git a/cinder/templates/bin/_storage-init.sh.tpl b/cinder/templates/bin/_storage-init.sh.tpl
-index 4f945e2c..a1b2c3d4 100644
---- a/cinder/templates/bin/_storage-init.sh.tpl
-+++ b/cinder/templates/bin/_storage-init.sh.tpl
-@@ -28,6 +28,15 @@ set -ex
+--- a/cinder/templates/bin/_storage-init.sh.tpl	2026-02-04 19:23:59.438149067 +0000
++++ b/cinder/templates/bin/_storage-init.sh.tpl	2026-02-04 19:23:10.433253997 +0000
+@@ -27,31 +27,42 @@
+ set -ex
  if [ "x$STORAGE_BACKEND" == "xcinder.volume.drivers.rbd.RBDDriver" ]; then
    ceph -s
+-  function ensure_pool () {
+-    ceph osd pool stats $1 || ceph osd pool create $1 $2
+-    if [[ $(ceph mgr versions | awk '/version/{print $3}' | cut -d. -f1) -ge 12 ]]; then
+-        ceph osd pool application enable $1 $3
+-    fi
+-    size_protection=$(ceph osd pool get $1 nosizechange | cut -f2 -d: | tr -d '[:space:]')
+-    ceph osd pool set $1 nosizechange 0
+-    ceph osd pool set $1 size ${RBD_POOL_REPLICATION} --yes-i-really-mean-it
+-    ceph osd pool set $1 nosizechange ${size_protection}
+-    ceph osd pool set $1 crush_rule "${RBD_POOL_CRUSH_RULE}"
+-  }
+-  ensure_pool ${RBD_POOL_NAME} ${RBD_POOL_CHUNK_SIZE} ${RBD_POOL_APP_NAME}
 +
 +  # If RBD_DATA_POOL is set, pools are managed externally (e.g., by Rook)
 +  # Skip pool creation and only set up user with proper OSD caps
@@ -13,19 +25,22 @@ index 4f945e2c..a1b2c3d4 100644
 +    echo "Skipping pool creation, will only create user/keyring"
 +    OSD_CAPS="profile rbd pool=${RBD_POOL_NAME}, profile rbd pool=${RBD_DATA_POOL}"
 +  else
-   function ensure_pool () {
-     ceph osd pool stats $1 || ceph osd pool create $1 $2
-     if [[ $(ceph mgr versions | awk '/version/{print $3}' | cut -d. -f1) -ge 12 ]]; then
-@@ -38,20 +47,24 @@ if [ "x$STORAGE_BACKEND" == "xcinder.volume.drivers.rbd.RBDDriver" ]; then
-     ceph osd pool set $1 nosizechange ${size_protection}
-     ceph osd pool set $1 crush_rule "${RBD_POOL_CRUSH_RULE}"
-   }
--  ensure_pool ${RBD_POOL_NAME} ${RBD_POOL_CHUNK_SIZE} ${RBD_POOL_APP_NAME}
++    function ensure_pool () {
++      ceph osd pool stats $1 || ceph osd pool create $1 $2
++      if [[ $(ceph mgr versions | awk '/version/{print $3}' | cut -d. -f1) -ge 12 ]]; then
++          ceph osd pool application enable $1 $3
++      fi
++      size_protection=$(ceph osd pool get $1 nosizechange | cut -f2 -d: | tr -d '[:space:]')
++      ceph osd pool set $1 nosizechange 0
++      ceph osd pool set $1 size ${RBD_POOL_REPLICATION} --yes-i-really-mean-it
++      ceph osd pool set $1 nosizechange ${size_protection}
++      ceph osd pool set $1 crush_rule "${RBD_POOL_CRUSH_RULE}"
++    }
 +
 +    ensure_pool ${RBD_POOL_NAME} ${RBD_POOL_CHUNK_SIZE} ${RBD_POOL_APP_NAME}
 +    OSD_CAPS="profile rbd"
 +  fi
-
+ 
    if USERINFO=$(ceph auth get client.${RBD_POOL_USER}); then
      echo "Cephx user client.${RBD_POOL_USER} already exist."
      echo "Update its cephx caps"
@@ -42,12 +57,11 @@ index 4f945e2c..a1b2c3d4 100644
 +      osd "${OSD_CAPS}" \
        -o ${KEYRING}
    fi
-
+ 
 diff --git a/cinder/templates/deployment-backup.yaml b/cinder/templates/deployment-backup.yaml
-index 83437af2..aced3688 100644
---- a/cinder/templates/deployment-backup.yaml
-+++ b/cinder/templates/deployment-backup.yaml
-@@ -93,8 +93,7 @@ spec:
+--- a/cinder/templates/deployment-backup.yaml	2026-02-04 19:24:00.798173907 +0000
++++ b/cinder/templates/deployment-backup.yaml	2026-02-04 19:23:10.433253997 +0000
+@@ -93,8 +93,7 @@
          {{ end }}
          {{- range $name := rest (splitList "," (include "cinder.utils.ceph_backend_list" $envAll)) }}
            {{- $backend := index $envAll.Values.conf.backends $name }}
@@ -57,7 +71,7 @@ index 83437af2..aced3688 100644
  {{ tuple $envAll "cinder_backup" | include "helm-toolkit.snippets.image" | indent 10 }}
  {{ dict "envAll" $envAll "application" "cinder_backup" "container" "ceph_keyring_placement" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
            command:
-@@ -115,17 +114,23 @@ spec:
+@@ -115,17 +114,23 @@
                mountPath: /tmp/ceph-keyring.sh
                subPath: ceph-keyring.sh
                readOnly: true
@@ -83,7 +97,7 @@ index 83437af2..aced3688 100644
          {{- end }}
          {{- if (contains "cinder.backup.drivers.posix" .Values.conf.cinder.DEFAULT.backup_driver) }}
          - name: ceph-backup-volume-perms
-@@ -330,6 +335,13 @@ spec:
+@@ -330,6 +335,13 @@
          - name: ceph-keyring
            secret:
              secretName: {{ .Values.secrets.rbd.volume | quote }}
@@ -98,10 +112,9 @@ index 83437af2..aced3688 100644
          - name: external-ceph-keyring
            secret:
 diff --git a/cinder/templates/deployment-volume.yaml b/cinder/templates/deployment-volume.yaml
-index 80eb8247..75572ef7 100644
---- a/cinder/templates/deployment-volume.yaml
-+++ b/cinder/templates/deployment-volume.yaml
-@@ -70,8 +70,7 @@ spec:
+--- a/cinder/templates/deployment-volume.yaml	2026-02-04 19:24:00.798173907 +0000
++++ b/cinder/templates/deployment-volume.yaml	2026-02-04 19:23:10.433253997 +0000
+@@ -70,8 +70,7 @@
  {{ tuple $envAll "volume" $mounts_cinder_volume_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
          {{- range $name := rest (splitList "," (include "cinder.utils.ceph_backend_list" $envAll)) }}
            {{- $backend := index $envAll.Values.conf.backends $name }}
@@ -111,7 +124,7 @@ index 80eb8247..75572ef7 100644
  {{ tuple $envAll "cinder_volume" | include "helm-toolkit.snippets.image" | indent 10 }}
  {{ dict "envAll" $envAll "application" "cinder_volume" "container" "ceph_keyring_placement" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
            command:
-@@ -92,17 +91,23 @@ spec:
+@@ -92,17 +91,23 @@
                mountPath: /tmp/ceph-keyring.sh
                subPath: ceph-keyring.sh
                readOnly: true
@@ -136,7 +149,7 @@ index 80eb8247..75572ef7 100644
          {{- end }}
          {{- if eq ( split "://" .Values.conf.cinder.coordination.backend_url )._0 "file" }}
          - name: ceph-coordination-volume-perms
-@@ -327,6 +332,13 @@ spec:
+@@ -327,6 +332,13 @@
          - name: ceph-keyring
            secret:
              secretName: {{ .Values.secrets.rbd.volume | quote }}
@@ -151,10 +164,9 @@ index 80eb8247..75572ef7 100644
          - name: external-ceph-keyring
            secret:
 diff --git a/cinder/templates/job-storage-init.yaml b/cinder/templates/job-storage-init.yaml
-index 350b013a..8c2e4a1b 100644
---- a/cinder/templates/job-storage-init.yaml
-+++ b/cinder/templates/job-storage-init.yaml
-@@ -101,8 +101,7 @@ spec:
+--- a/cinder/templates/job-storage-init.yaml	2026-02-04 19:23:59.438149067 +0000
++++ b/cinder/templates/job-storage-init.yaml	2026-02-04 19:23:10.433253997 +0000
+@@ -101,8 +101,7 @@
        containers:
          {{- range $name, $backend := .Values.conf.backends }}
            {{- if (eq "true" ( dict "backend" $backend | include "cinder.utils.is_ceph_backend" )) }}
@@ -164,7 +176,7 @@ index 350b013a..8c2e4a1b 100644
  {{ tuple $envAll "cinder_storage_init" | include "helm-toolkit.snippets.image" | indent 10 }}
  {{ tuple $envAll $envAll.Values.pod.resources.jobs.storage_init | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
            env:
-@@ -114,18 +113,27 @@ spec:
+@@ -114,18 +113,28 @@
                value: {{ $backend.volume_driver | quote }}
              - name: RBD_POOL_NAME
                value: {{ $backend.rbd_pool | quote }}
@@ -197,7 +209,7 @@ index 350b013a..8c2e4a1b 100644
            command:
              - /tmp/storage-init.sh
            volumeMounts:
-@@ -147,7 +155,6 @@ spec:
+@@ -147,7 +156,6 @@
                subPath: key
                readOnly: true
              {{- end }}
@@ -206,10 +218,9 @@ index 350b013a..8c2e4a1b 100644
        {{- end }}
        volumes:
 diff --git a/cinder/values.yaml b/cinder/values.yaml
-index 6f1d32a3..b8c2e4a1 100644
---- a/cinder/values.yaml
-+++ b/cinder/values.yaml
-@@ -787,6 +787,16 @@ conf:
+--- a/cinder/values.yaml	2026-02-04 19:24:00.794173834 +0000
++++ b/cinder/values.yaml	2026-02-04 19:23:38.821772511 +0000
+@@ -787,6 +787,17 @@
          crush_rule: replicated_rule
          chunk_size: 8
          app_name: cinder-volume
