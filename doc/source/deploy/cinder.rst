@@ -36,19 +36,20 @@ To configure an erasure coded backend, you need to:
 
 1. Create the pools via Rook ``CephBlockPool`` in ``rook_ceph_cluster_helm_values``
 2. Create a Cinder backend with ``rbd_data_pool`` pointing to the EC data pool
-3. Configure ``ceph_provisioners_helm_values`` to set the default data pool for the user
+3. Configure ``ceph_provisioners_helm_values`` to set the default data pool for the ceph user
+4. Configure ``libvirt_helm_values`` to register the Ceph user secret for Nova
 
 .. code-block:: yaml
 
     # Step 1: Create EC pools via Rook
     rook_ceph_cluster_helm_values:
       cephBlockPools:
-        - name: cinder-volumes-ec        # metadata pool (replicated)
+        - name: cinder.volumes.ec        # metadata pool (replicated)
           spec:
             failureDomain: host
             replicated:
               size: 3
-        - name: cinder-volumes-ec-data   # data pool (erasure coded)
+        - name: cinder.volumes.ec.data   # data pool (erasure coded)
           spec:
             failureDomain: host
             erasureCoded:
@@ -66,8 +67,8 @@ To configure an erasure coded backend, you need to:
           rbd_ec:
             volume_driver: cinder.volume.drivers.rbd.RBDDriver
             volume_backend_name: rbd_ec
-            rbd_pool: cinder-volumes-ec
-            rbd_data_pool: cinder-volumes-ec-data
+            rbd_pool: cinder.volumes.ec
+            rbd_data_pool: cinder.volumes.ec.data
             rbd_ceph_conf: "/etc/ceph/ceph.conf"
             rbd_flatten_volume_from_snapshot: false
             report_discard_supported: true
@@ -75,14 +76,35 @@ To configure an erasure coded backend, you need to:
             rbd_store_chunk_size: 4
             rados_connect_timeout: -1
             rbd_user: cinder-ec
-            rbd_secret_uuid: 457eb676-33da-42ec-9a8c-9293d545c337
+            rbd_secret_uuid: 808c5658-7c46-4818-8f26-82a217e3a57a  # must be unique per user
 
     # Step 3: Configure ceph.conf for the EC user
     ceph_provisioners_helm_values:
       conf:
         ceph:
           client.cinder-ec:
-            rbd default data pool: cinder-volumes-ec-data
+            rbd default data pool: cinder.volumes.ec.data
+
+    # Step 4: Configure libvirt to register the EC user secret
+    libvirt_helm_values:
+      conf:
+        ceph:
+          additional_users:
+            - user: cinder-ec
+              secret_uuid: 808c5658-7c46-4818-8f26-82a217e3a57a
+              secret_name: cinder-volume-rbd-keyring-rbd-ec
+
+.. warning::
+
+    Each Ceph user requires a **unique** ``secret_uuid``. Don't reuse the default
+    Cinder user's UUID (``457eb676-33da-42ec-9a8c-9293d545c337``). Generate a new
+    UUID for each additional backend using ``uuidgen``.
+
+.. note::
+
+    The ``secret_uuid`` in ``libvirt_helm_values`` must match the ``rbd_secret_uuid``
+    configured in the Cinder backend. The ``secret_name`` follows the pattern
+    ``cinder-volume-rbd-keyring-<backend>`` (for example, ``rbd_ec``).
 
 .. admonition:: About ``rbd_user`` for erasure coded pools
     :class: info
