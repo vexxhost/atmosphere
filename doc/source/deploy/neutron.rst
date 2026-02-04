@@ -201,9 +201,9 @@ virtual machine model such as Octavia and Manila.
       "hw:vif_multiqueue_enabled": 'true'
       "hw:mem_page_size": large
 
-********************
-Generic switch (ML2)
-********************
+******************
+ML2 Generic Switch
+******************
 
 The ML2 generic switch mechanism driver (``networking-generic-switch``) connects
 to a physical switch over SSH and configures VLANs on switch ports. This is
