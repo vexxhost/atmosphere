@@ -165,6 +165,35 @@ spec:
               mountPath: /etc/ceph/ceph.conf.template
               subPath: ceph.conf
               readOnly: true
+{{- range $index, $user := .Values.conf.ceph.additional_users }}
+        - name: ceph-keyring-placement-{{ $user.user | replace "_" "-" }}
+{{ tuple $envAll "ceph_config_helper" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ dict "envAll" $envAll "application" "libvirt" "container" "ceph_keyring_placement" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          env:
+            - name: CEPH_CINDER_USER
+              value: "{{ $user.user }}"
+            - name: LIBVIRT_CEPH_CINDER_SECRET_UUID
+              value: "{{ $user.secret_uuid }}"
+          command:
+            - /tmp/ceph-keyring.sh
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: etcceph
+              mountPath: /etc/ceph
+            - name: libvirt-bin
+              mountPath: /tmp/ceph-keyring.sh
+              subPath: ceph-keyring.sh
+              readOnly: true
+            - name: ceph-etc
+              mountPath: /etc/ceph/ceph.conf.template
+              subPath: ceph.conf
+              readOnly: true
+            - name: ceph-keyring-{{ $user.user | replace "_" "-" }}
+              mountPath: /tmp/client-keyring
+              subPath: key
+              readOnly: true
+{{- end }}
 {{- end }}
       containers:
         - name: tls-sidecar
@@ -228,6 +257,10 @@ spec:
             - name: LIBVIRT_EXTERNAL_CEPH_CINDER_SECRET_UUID
               value: "{{ .Values.conf.ceph.cinder.external_ceph.secret_uuid }}"
             {{ end }}
+          {{- if .Values.conf.ceph.additional_users }}
+            - name: ADDITIONAL_CEPH_USERS
+              value: "{{ range $index, $user := .Values.conf.ceph.additional_users }}{{ if $index }},{{ end }}{{ $user.user }}:{{ $user.secret_uuid }}{{ end }}"
+          {{- end }}
 {{ dict "envAll" . "component" "libvirt" "container" "libvirt" "type" "readiness" "probeTemplate" (include "libvirtProbeTemplate" . | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
 {{ dict "envAll" . "component" "libvirt" "container" "libvirt" "type" "liveness" "probeTemplate" (include "libvirtProbeTemplate" . | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
           command:
@@ -383,6 +416,11 @@ spec:
           secret:
             secretName: {{ .Values.conf.ceph.cinder.external_ceph.user_secret_name }}
         {{ end }}
+        {{- range $index, $user := .Values.conf.ceph.additional_users }}
+        - name: ceph-keyring-{{ $user.user | replace "_" "-" }}
+          secret:
+            secretName: {{ $user.secret_name }}
+        {{- end }}
         - name: libmodules
           hostPath:
             path: /lib/modules
