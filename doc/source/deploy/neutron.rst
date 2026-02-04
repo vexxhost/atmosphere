@@ -201,13 +201,14 @@ virtual machine model such as Octavia and Manila.
       "hw:vif_multiqueue_enabled": 'true'
       "hw:mem_page_size": large
 
-******************
-ML2 generic switch
-******************
+**********************
+Neutron generic switch
+**********************
 
-The ML2 generic switch mechanism driver (``networking-generic-switch``) connects
-to a physical switch over SSH and configures VLANs on switch ports. This is
-commonly used with Ironic to program top-of-rack switches for bare metal ports.
+The Neutron ML2 generic switch mechanism driver (``networking-generic-switch``)
+connects to a physical switch over SSH and configures VLANs on switch ports.
+This is commonly used with Ironic to program top-of-rack switches for bare
+metal ports.
 
 To use SSH key authentication, provide one or more private keys using
 ``neutron_genericswitch_keys``:
