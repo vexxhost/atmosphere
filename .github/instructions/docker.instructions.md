@@ -1,3 +1,7 @@
+---
+applyTo: "roles/defaults/vars/main.yml"
+---
+
 # Docker image digest review (ghcr.io/vexxhost)
 
 ## Scope
