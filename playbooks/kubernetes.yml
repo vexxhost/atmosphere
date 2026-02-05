@@ -28,6 +28,7 @@
     - name: Set a fact with the "atmosphere_images" for other plays
       ansible.builtin.set_fact:
         atmosphere_images: "{{ atmosphere_images }}"
+        atmosphere_kubernetes_version: "{{ atmosphere_kubernetes_version }}"
       tags:
         - always
 
@@ -40,7 +41,7 @@
     haproxy_image: "{{ atmosphere_images['haproxy'] }}"
     containerd_pause_image: "{{ atmosphere_images['pause'] }}"
     kubernetes_image_repository: "{{ atmosphere_images['kube_apiserver'] | vexxhost.kubernetes.docker_image('prefix') }}"
-    kubernetes_version: 1.28.13
+    kubernetes_version: "{{ atmosphere_kubernetes_version }}"
     cilium_node_image: "{{ atmosphere_images['cilium_node'] }}"
     cilium_operator_image: "{{ atmosphere_images['cilium_operator'] }}"
     kube_vip_image: "{{ atmosphere_images['kube_vip'] }}"

@@ -20,11 +20,9 @@ def to_ks_domain(domain):
         "identity": {"driver": "keycloak"},
         "keycloak": {
             "server_url": domain["keycloak_server_internal_url"],
-            "user_realm_name": domain["keycloak_user_realm_name"],
-            "client_id": domain["keycloak_admin_client_id"],
-            "username": domain["keycloak_admin_user"],
-            "password": domain["keycloak_admin_password"],
             "realm_name": domain["keycloak_realm"],
+            "client_id": domain["keycloak_client_id"],
+            "client_secret_key": domain["keycloak_client_secret"],
         },
     }
 

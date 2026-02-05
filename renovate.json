@@ -1,208 +1,39 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "config:recommended"
-  ],
-  "baseBranches": [
-    "main",
-    "/^stable\\/.*/"
-  ],
-  "addLabels": [
-    "skip-release-notes"
-  ],
+  "extends": ["local>vexxhost/.github"],
+  "baseBranches": ["main", "/^stable\\/.*/"],
+  "addLabels": ["skip-release-notes"],
   "prHourlyLimit": 10,
-  "prBodyDefinitions": {
-    "GitHub Links": "[Compare changes](https://github.com/{{{depName}}}/compare/{{{currentDigest}}}...{{{newDigest}}})"
-  },
   "packageRules": [
     {
       "enabled": false,
-      "matchPackageNames": [
-        "*"
-      ]
+      "matchDepNames": ["*"]
+    },
+    {
+      "matchDatasources": ["docker"],
+      "pinDigests": true
     },
     {
       "enabled": true,
-      "matchDatasources": ["git-refs"]
+      "groupName": "vexxhost images",
+      "matchDepPatterns": ["^ghcr\\.io/vexxhost/"]
     },
     {
-      "enabled": true,
-      "matchManagers": ["cargo", "gomod"]
-    },
-    {
-      "matchManagers": ["gomod"],
-      "groupName": "golang",
-      "matchUpdateTypes": ["minor", "patch"]
-    },
-    {
-      "enabled": true,
-      "matchFileNames": [
-        "docker-bake.hcl"
-      ]
-    },
-    {
-      "enabled": true,
-      "matchDatasources": [
-        "pypi"
-      ],
-      "matchPackageNames": [
-        "magnum-cluster-api"
-      ]
-    },
-    {
-      "matchDatasources": [
-        "git-refs"
-      ],
-      "matchPackageNames": [
-        "https://opendev.org/openstack/**"
-      ],
-      "prBodyColumns": [
-        "Package",
-        "Update",
-        "Change",
-        "GitHub Links"
-      ]
-    },
-    {
-      "matchDatasources": [
-        "git-refs"
-      ],
-      "matchFileNames": [
-        "images/tempest/Dockerfile"
-      ],
-      "groupName": "tempest",
-      "schedule": ["* * * * 1"]
-    },
-    {
-      "matchDatasources": [
-        "git-refs"
-      ],
-      "matchPackageNames": [
-        "https://github.com/openstack/**"
-      ],
-      "matchFileNames": [
-        "!images/tempest/Dockerfile"
-      ],
-      "groupName": "openstack"
-    },
-    {
-      "matchDatasources": [
-        "git-refs"
-      ],
-      "matchPackageNames": [
-        "https://github.com/openstack/**"
-      ],
-      "matchBaseBranches": ["main"],
-      "schedule": ["* * * * 1"]
-    },
-
-    {
-      "groupName": "pxc",
-      "enabled": true,
-      "matchPackageNames": [
-        "docker.io/percona/haproxy",
-        "docker.io/percona/percona-xtradb-cluster-operator",
-        "github.com/percona/percona-xtradb-cluster-operator",
-        "percona/percona-xtradb-cluster-operator",
-        "pxc-operator",
-        "quay.io/prometheus/mysqld-exporter"
-      ]
-    },
-    {
-      "matchPackageNames": ["percona/percona-xtradb-cluster-operator"],
-      "extractVersion": "^v(?<version>.*)$"
-    },
-    {
-      "enabled": true,
-      "matchPackageNames": ["docker.io/percona/percona-xtradb-cluster"],
-      "versioning": "semver-coerced",
-      "separateMinorPatch": true,
-      "patch": {
-        "groupName": "pxc"
-      }
+      "description": "Only allow digest updates for vexxhost images (no version/tag changes)",
+      "matchDepPatterns": ["^ghcr\\.io/vexxhost/"],
+      "matchUpdateTypes": ["major", "minor", "patch"],
+      "enabled": false
     }
   ],
   "customManagers": [
     {
-      "customType": "jsonata",
-      "fileFormat": "yaml",
-      "fileMatch": [".charts.yml"],
-      "matchStrings": [
-        "charts.{ \"depName\": name, \"currentValue\": version, \"registryUrl\": repository.url }"
-      ],
-      "datasourceTemplate": "helm"
-    },
-    {
-      "customType": "jsonata",
-      "fileFormat": "yaml",
+      "customType": "regex",
       "fileMatch": ["roles/defaults/vars/main.yml"],
       "matchStrings": [
-        "$map($each(_atmosphere_images, function ($v) { $split($replace($replace($v, \"{{ atmosphere_image_prefix }}\", \"\"), \"{{ atmosphere_release }}\", atmosphere_release), \":\") }), function ($v) { { \"depName\": $v[0], \"currentValue\": $v[1] } })"
+        "(?<prefix>\\{\\{ atmosphere_image_prefix \\}\\})(?<depName>[^:]+):(?<currentValue>[^@\\s\"]+)(@(?<currentDigest>sha256:[a-f0-9]+))?"
       ],
+      "autoReplaceStringTemplate": "\\{{ atmosphere_image_prefix }}{{{depName}}}:{{{newValue}}}@{{{newDigest}}}",
       "datasourceTemplate": "docker"
-    },
-    {
-      "customType": "regex",
-      "fileMatch": [
-        "docker-bake.hcl"
-      ],
-      "matchStrings": [
-        "\"docker-image://(?<depName>.+?):(?<currentValue>.+?)\""
-      ],
-      "datasourceTemplate": "docker"
-    },
-    {
-      "customType": "regex",
-      "fileMatch": [
-        "docker-bake.hcl"
-      ],
-      "matchStrings": [
-        "\"git\" = \"(?<packageName>(.*\/(?<depName>.+\/.+)).git)#(?<currentDigest>.+)\" # renovate: branch=(?<currentValue>.+)"
-      ],
-      "datasourceTemplate": "git-refs"
-    },
-    {
-      "customType": "regex",
-      "fileMatch": [
-        "Dockerfile"
-      ],
-      "matchStrings": [
-        "# renovate: name=(?<depName>.+?) repo=(?<packageName>.+?) branch=(?<currentValue>.+?)\nARG .+?_GIT_REF=(?<currentDigest>.+?)\n"
-      ],
-      "datasourceTemplate": "git-refs"
-    },
-    {
-      "customType": "regex",
-      "fileMatch": [
-        "images/magnum/Dockerfile"
-      ],
-      "matchStrings": [
-        "magnum-cluster-api==(?<currentValue>.*?)\\s"
-      ],
-      "datasourceTemplate": "pypi",
-      "depNameTemplate": "magnum-cluster-api",
-      "versioningTemplate": "semver"
-    },
-    {
-      "customType": "regex",
-      "fileMatch": [
-        "images/neutron/Dockerfile"
-      ],
-      "matchStrings": [
-        "POLICY_SERVER_GIT_REF=(?<currentDigest>.*?)\\n"
-      ],
-      "datasourceTemplate": "git-refs",
-      "depNameTemplate": "neutron-policy-server",
-      "packageNameTemplate": "https://review.vexxhost.dev/neutron-policy-server",
-      "currentValueTemplate": "main"
-    },
-    {
-      "customType": "jsonata",
-      "fileFormat": "yaml",
-      "fileMatch": ["roles/percona_xtradb_cluster/vars/main.yml"],
-      "matchStrings": ["_percona_xtradb_cluster_spec.{ \"currentValue\": crVersion }"],
-      "datasourceTemplate": "github-releases",
-      "depNameTemplate": "percona/percona-xtradb-cluster-operator"
     }
   ]
 }
