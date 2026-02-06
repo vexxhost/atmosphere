@@ -12,6 +12,26 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+- name: Manage secret with generic switch access keys
+  no_log: true
+  kubernetes.core.k8s:
+    state: "{{ (neutron_genericswitch_keys | length > 0) | ternary('present', 'absent') }}"
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: "{{ neutron_helm_release_name }}-ssh-keys"
+        namespace: "{{ neutron_helm_release_namespace }}"
+      type: Opaque
+      data: >-
+        {{
+          dict(
+            neutron_genericswitch_keys
+            | map(attribute='name')
+            | zip(neutron_genericswitch_keys | map(attribute='key') | map('b64encode'))
+          )
+        }}
+
 - name: Set external_dns_driver
   ansible.builtin.set_fact:
     _neutron_external_dns_driver: "designate"
@@ -30,6 +50,11 @@
   when: neutron_policy_server_integration_enabled | bool
   ansible.builtin.set_fact:
     _neutron_helm_values: "{{ _neutron_helm_values | combine(__neutron_policy_server_helm_values, recursive=True) }}"
+
+- name: Append Helm values (mount neutron genericswitch keys)
+  when: neutron_genericswitch_keys | length > 0
+  ansible.builtin.set_fact:
+    _neutron_helm_values: "{{ _neutron_helm_values | combine(__neutron_generic_switch_keys_helm_values, recursive=True) }}"
 
 - name: Deploy Helm chart
   run_once: true
