@@ -1,5 +1,5 @@
 ###############################################
-Virtual persistent memory (vPMEM)
+Virtual persistent memory
 ###############################################
 
 Atmosphere includes support for virtual persistent memory (vPMEM), which
@@ -28,8 +28,8 @@ providers and traits on the compute nodes:
 In the preceding example, ``$HOST`` is the host name of the compute node where
 you want to verify that vPMEM support is active.
 
-Configure vPMEM
-===============
+Configure virtual persistent memory
+====================================
 
 Virtual persistent memory configuration uses flavor extra specs (which
 require operator access) or image metadata properties (which users can
