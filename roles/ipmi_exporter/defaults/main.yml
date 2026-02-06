@@ -17,7 +17,7 @@
 ipmi_exporter_config:
   modules:
     default:
-      collectors: ["bmc", "ipmi", "chassis", "sel"]
+      collectors: ["bmc", "ipmi", "dcmi", "chassis", "sel", "sel-events"]
       exclude_sensor_ids:
         - 42
         - 45 # Entity Presence (Dell PowerEdge servers)
@@ -42,5 +42,75 @@ ipmi_exporter_config:
         - 180 # TPM Presence (Dell PowerEdge servers)
         - 182 # Entity Presence (Dell PowerEdge servers)
         - 185 # Entity Presence (Dell PowerEdge servers)
+      # SEL Events Configuration - regex patterns to match critical hardware events
+      sel_events:
+        # Memory errors
+        - name: memory_ecc_correctable
+          regex: "Memory.*Correctable"
+        - name: memory_ecc_uncorrectable
+          regex: "Memory.*Uncorrectable"
+        - name: memory_dimm_failure
+          regex: "Memory.*Failure|DIMM.*Fail"
+        - name: memory_configuration_error
+          regex: "Memory.*Configuration"
+        # CPU/Processor events
+        - name: processor_thermal_trip
+          regex: "Processor.*Thermal|CPU.*Thermal"
+        - name: processor_ierr
+          regex: "Processor.*IERR|CPU.*IERR"
+        - name: processor_failure
+          regex: "Processor.*Fail|CPU.*Fail"
+        - name: machine_check_exception
+          regex: "Machine Check|MCE"
+        # Temperature events
+        - name: temperature_critical
+          regex: "Temperature.*Critical|Upper Critical"
+        - name: temperature_warning
+          regex: "Temperature.*Warning|Upper Non-critical"
+        - name: temperature_non_recoverable
+          regex: "Temperature.*Non-recoverable"
+        # Fan/Cooling events
+        - name: fan_failure
+          regex: "Fan.*Fail|Fan.*Lower Critical"
+        - name: fan_warning
+          regex: "Fan.*Warning|Fan.*Lower Non-critical"
+        - name: fan_redundancy_lost
+          regex: "Fan.*Redundancy.*Lost"
+        # Power supply events
+        - name: psu_failure
+          regex: "Power Supply.*Fail|PSU.*Fail"
+        - name: psu_redundancy_lost
+          regex: "Power Supply.*Redundancy|PSU.*Redundancy.*Lost"
+        - name: psu_ac_lost
+          regex: "Power Supply.*AC Lost|AC.*Lost"
+        - name: power_unit_failure
+          regex: "Power Unit.*Fail"
+        # Disk/Storage events
+        - name: drive_failure
+          regex: "Drive.*Fail|Disk.*Fail|HDD.*Fail|SSD.*Fail"
+        - name: drive_predictive_failure
+          regex: "Drive.*Predictive|Predictive Failure"
+        - name: nvme_temperature_critical
+          regex: "NVMe.*Critical|NVMe.*Temperature"
+        # Voltage events
+        - name: voltage_critical
+          regex: "Voltage.*Critical"
+        - name: voltage_warning
+          regex: "Voltage.*Warning|Voltage.*Non-critical"
+        # Chassis/Physical security
+        - name: chassis_intrusion
+          regex: "Chassis Intrusion|Physical Security"
+        # System events
+        - name: system_boot_failure
+          regex: "Boot.*Fail|POST.*Error"
+        - name: watchdog_reset
+          regex: "Watchdog.*Reset|Watchdog.*Timer"
+        - name: os_critical_stop
+          regex: "OS Critical Stop|OS.*Fail"
+        - name: system_firmware_error
+          regex: "Firmware.*Error|BIOS.*Error"
+        # SEL management
+        - name: sel_full
+          regex: "SEL.*Full|Event Log.*Full"
 
                                                                    # ]]]

@@ -109,6 +109,350 @@
             },
           ],
         },
+        {
+          name: 'sel-events-critical',
+          rules: [
+            // Memory errors - Critical
+            {
+              alert: 'IpmiSelMemoryUncorrectableError',
+              expr: 'increase(ipmi_sel_events_count{name="memory_ecc_uncorrectable"}[1h]) > 0',
+              labels: {
+                severity: 'critical',
+              },
+              annotations: {
+                summary: 'Uncorrectable memory error detected on {{ $labels.instance }}',
+                description: 'IPMI SEL has logged uncorrectable memory errors which may indicate imminent memory failure.',
+              },
+            },
+            {
+              alert: 'IpmiSelMemoryFailure',
+              expr: 'increase(ipmi_sel_events_count{name="memory_dimm_failure"}[1h]) > 0',
+              labels: {
+                severity: 'critical',
+              },
+              annotations: {
+                summary: 'Memory DIMM failure detected on {{ $labels.instance }}',
+                description: 'IPMI SEL has logged a memory DIMM failure event.',
+              },
+            },
+            // CPU/Processor events - Critical
+            {
+              alert: 'IpmiSelProcessorThermalTrip',
+              expr: 'increase(ipmi_sel_events_count{name="processor_thermal_trip"}[1h]) > 0',
+              labels: {
+                severity: 'critical',
+              },
+              annotations: {
+                summary: 'Processor thermal trip detected on {{ $labels.instance }}',
+                description: 'IPMI SEL has logged a processor thermal trip event indicating CPU overheating.',
+              },
+            },
+            {
+              alert: 'IpmiSelProcessorIerr',
+              expr: 'increase(ipmi_sel_events_count{name="processor_ierr"}[1h]) > 0',
+              labels: {
+                severity: 'critical',
+              },
+              annotations: {
+                summary: 'Processor IERR detected on {{ $labels.instance }}',
+                description: 'IPMI SEL has logged a processor internal error (IERR).',
+              },
+            },
+            {
+              alert: 'IpmiSelProcessorFailure',
+              expr: 'increase(ipmi_sel_events_count{name="processor_failure"}[1h]) > 0',
+              labels: {
+                severity: 'critical',
+              },
+              annotations: {
+                summary: 'Processor failure detected on {{ $labels.instance }}',
+                description: 'IPMI SEL has logged a processor failure event.',
+              },
+            },
+            {
+              alert: 'IpmiSelMachineCheckException',
+              expr: 'increase(ipmi_sel_events_count{name="machine_check_exception"}[1h]) > 0',
+              labels: {
+                severity: 'critical',
+              },
+              annotations: {
+                summary: 'Machine check exception detected on {{ $labels.instance }}',
+                description: 'IPMI SEL has logged a machine check exception (MCE) indicating a hardware error.',
+              },
+            },
+            // Temperature events - Critical
+            {
+              alert: 'IpmiSelTemperatureCritical',
+              expr: 'increase(ipmi_sel_events_count{name="temperature_critical"}[1h]) > 0',
+              labels: {
+                severity: 'critical',
+              },
+              annotations: {
+                summary: 'Critical temperature event on {{ $labels.instance }}',
+                description: 'IPMI SEL has logged a critical temperature threshold event.',
+              },
+            },
+            {
+              alert: 'IpmiSelTemperatureNonRecoverable',
+              expr: 'increase(ipmi_sel_events_count{name="temperature_non_recoverable"}[1h]) > 0',
+              labels: {
+                severity: 'critical',
+              },
+              annotations: {
+                summary: 'Non-recoverable temperature event on {{ $labels.instance }}',
+                description: 'IPMI SEL has logged a non-recoverable temperature event.',
+              },
+            },
+            // Power supply events - Critical
+            {
+              alert: 'IpmiSelPsuFailure',
+              expr: 'increase(ipmi_sel_events_count{name="psu_failure"}[1h]) > 0',
+              labels: {
+                severity: 'critical',
+              },
+              annotations: {
+                summary: 'Power supply failure detected on {{ $labels.instance }}',
+                description: 'IPMI SEL has logged a power supply failure event.',
+              },
+            },
+            {
+              alert: 'IpmiSelPsuRedundancyLost',
+              expr: 'increase(ipmi_sel_events_count{name="psu_redundancy_lost"}[1h]) > 0',
+              labels: {
+                severity: 'critical',
+              },
+              annotations: {
+                summary: 'Power supply redundancy lost on {{ $labels.instance }}',
+                description: 'IPMI SEL has logged a power supply redundancy lost event.',
+              },
+            },
+            {
+              alert: 'IpmiSelPowerUnitFailure',
+              expr: 'increase(ipmi_sel_events_count{name="power_unit_failure"}[1h]) > 0',
+              labels: {
+                severity: 'critical',
+              },
+              annotations: {
+                summary: 'Power unit failure detected on {{ $labels.instance }}',
+                description: 'IPMI SEL has logged a power unit failure event.',
+              },
+            },
+            // Voltage events - Critical
+            {
+              alert: 'IpmiSelVoltageCritical',
+              expr: 'increase(ipmi_sel_events_count{name="voltage_critical"}[1h]) > 0',
+              labels: {
+                severity: 'critical',
+              },
+              annotations: {
+                summary: 'Critical voltage event on {{ $labels.instance }}',
+                description: 'IPMI SEL has logged a critical voltage threshold event.',
+              },
+            },
+            // System events - Critical
+            {
+              alert: 'IpmiSelOsCriticalStop',
+              expr: 'increase(ipmi_sel_events_count{name="os_critical_stop"}[1h]) > 0',
+              labels: {
+                severity: 'critical',
+              },
+              annotations: {
+                summary: 'OS critical stop detected on {{ $labels.instance }}',
+                description: 'IPMI SEL has logged an operating system critical stop event.',
+              },
+            },
+          ],
+        },
+        {
+          name: 'sel-events-warning',
+          rules: [
+            // Memory errors - Warning
+            {
+              alert: 'IpmiSelMemoryCorrectableError',
+              expr: 'increase(ipmi_sel_events_count{name="memory_ecc_correctable"}[1h]) > 0',
+              labels: {
+                severity: 'warning',
+              },
+              annotations: {
+                summary: 'Correctable memory error detected on {{ $labels.instance }}',
+                description: 'IPMI SEL has logged correctable memory errors. Monitor for increasing frequency.',
+              },
+            },
+            {
+              alert: 'IpmiSelMemoryConfigurationError',
+              expr: 'increase(ipmi_sel_events_count{name="memory_configuration_error"}[1h]) > 0',
+              labels: {
+                severity: 'warning',
+              },
+              annotations: {
+                summary: 'Memory configuration error on {{ $labels.instance }}',
+                description: 'IPMI SEL has logged a memory configuration error event.',
+              },
+            },
+            // Temperature events - Warning
+            {
+              alert: 'IpmiSelTemperatureWarning',
+              expr: 'increase(ipmi_sel_events_count{name="temperature_warning"}[1h]) > 0',
+              labels: {
+                severity: 'warning',
+              },
+              annotations: {
+                summary: 'Temperature warning event on {{ $labels.instance }}',
+                description: 'IPMI SEL has logged a temperature warning threshold event.',
+              },
+            },
+            // Fan events - Warning
+            {
+              alert: 'IpmiSelFanFailure',
+              expr: 'increase(ipmi_sel_events_count{name="fan_failure"}[1h]) > 0',
+              labels: {
+                severity: 'warning',
+              },
+              annotations: {
+                summary: 'Fan failure detected on {{ $labels.instance }}',
+                description: 'IPMI SEL has logged a fan failure event.',
+              },
+            },
+            {
+              alert: 'IpmiSelFanWarning',
+              expr: 'increase(ipmi_sel_events_count{name="fan_warning"}[1h]) > 0',
+              labels: {
+                severity: 'warning',
+              },
+              annotations: {
+                summary: 'Fan warning event on {{ $labels.instance }}',
+                description: 'IPMI SEL has logged a fan speed warning event.',
+              },
+            },
+            {
+              alert: 'IpmiSelFanRedundancyLost',
+              expr: 'increase(ipmi_sel_events_count{name="fan_redundancy_lost"}[1h]) > 0',
+              labels: {
+                severity: 'warning',
+              },
+              annotations: {
+                summary: 'Fan redundancy lost on {{ $labels.instance }}',
+                description: 'IPMI SEL has logged a fan redundancy lost event.',
+              },
+            },
+            // Power supply events - Warning
+            {
+              alert: 'IpmiSelPsuAcLost',
+              expr: 'increase(ipmi_sel_events_count{name="psu_ac_lost"}[1h]) > 0',
+              labels: {
+                severity: 'warning',
+              },
+              annotations: {
+                summary: 'Power supply AC lost on {{ $labels.instance }}',
+                description: 'IPMI SEL has logged a power supply AC lost event.',
+              },
+            },
+            // Disk/Storage events - Warning
+            {
+              alert: 'IpmiSelDriveFailure',
+              expr: 'increase(ipmi_sel_events_count{name="drive_failure"}[1h]) > 0',
+              labels: {
+                severity: 'warning',
+              },
+              annotations: {
+                summary: 'Drive failure detected on {{ $labels.instance }}',
+                description: 'IPMI SEL has logged a drive failure event.',
+              },
+            },
+            {
+              alert: 'IpmiSelDrivePredictiveFailure',
+              expr: 'increase(ipmi_sel_events_count{name="drive_predictive_failure"}[1h]) > 0',
+              labels: {
+                severity: 'warning',
+              },
+              annotations: {
+                summary: 'Drive predictive failure on {{ $labels.instance }}',
+                description: 'IPMI SEL has logged a drive predictive failure event. Replace drive soon.',
+              },
+            },
+            {
+              alert: 'IpmiSelNvmeTemperatureCritical',
+              expr: 'increase(ipmi_sel_events_count{name="nvme_temperature_critical"}[1h]) > 0',
+              labels: {
+                severity: 'warning',
+              },
+              annotations: {
+                summary: 'NVMe critical temperature on {{ $labels.instance }}',
+                description: 'IPMI SEL has logged an NVMe critical temperature event.',
+              },
+            },
+            // Voltage events - Warning
+            {
+              alert: 'IpmiSelVoltageWarning',
+              expr: 'increase(ipmi_sel_events_count{name="voltage_warning"}[1h]) > 0',
+              labels: {
+                severity: 'warning',
+              },
+              annotations: {
+                summary: 'Voltage warning event on {{ $labels.instance }}',
+                description: 'IPMI SEL has logged a voltage warning threshold event.',
+              },
+            },
+            // Chassis events - Warning
+            {
+              alert: 'IpmiSelChassisIntrusion',
+              expr: 'increase(ipmi_sel_events_count{name="chassis_intrusion"}[1h]) > 0',
+              labels: {
+                severity: 'warning',
+              },
+              annotations: {
+                summary: 'Chassis intrusion detected on {{ $labels.instance }}',
+                description: 'IPMI SEL has logged a chassis intrusion event.',
+              },
+            },
+            // System events - Warning
+            {
+              alert: 'IpmiSelSystemBootFailure',
+              expr: 'increase(ipmi_sel_events_count{name="system_boot_failure"}[1h]) > 0',
+              labels: {
+                severity: 'warning',
+              },
+              annotations: {
+                summary: 'System boot failure on {{ $labels.instance }}',
+                description: 'IPMI SEL has logged a system boot failure or POST error event.',
+              },
+            },
+            {
+              alert: 'IpmiSelWatchdogReset',
+              expr: 'increase(ipmi_sel_events_count{name="watchdog_reset"}[1h]) > 0',
+              labels: {
+                severity: 'warning',
+              },
+              annotations: {
+                summary: 'Watchdog reset on {{ $labels.instance }}',
+                description: 'IPMI SEL has logged a watchdog timer reset event.',
+              },
+            },
+            {
+              alert: 'IpmiSelFirmwareError',
+              expr: 'increase(ipmi_sel_events_count{name="system_firmware_error"}[1h]) > 0',
+              labels: {
+                severity: 'warning',
+              },
+              annotations: {
+                summary: 'System firmware error on {{ $labels.instance }}',
+                description: 'IPMI SEL has logged a firmware or BIOS error event.',
+              },
+            },
+            // SEL management - Warning
+            {
+              alert: 'IpmiSelFull',
+              expr: 'increase(ipmi_sel_events_count{name="sel_full"}[1h]) > 0',
+              labels: {
+                severity: 'warning',
+              },
+              annotations: {
+                summary: 'SEL is full on {{ $labels.instance }}',
+                description: 'IPMI SEL is full and needs to be cleared to capture new events.',
+              },
+            },
+          ],
+        },
       ],
     },
   },
