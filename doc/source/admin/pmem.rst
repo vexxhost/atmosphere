@@ -34,7 +34,7 @@ Configure vPMEM
 Virtual persistent memory configuration uses flavor extra specs (which
 require operator access) or image metadata properties (which users can
 set). The configuration defines the size and label of the vPMEM device
-that attaches to instances.
+that will attach to instances.
 
 Flavor configuration
 --------------------
