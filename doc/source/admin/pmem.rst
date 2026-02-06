@@ -1,15 +1,12 @@
 ###############################################
-Virtual Persistent Memory (vPMEM)
+Virtual persistent memory (vPMEM)
 ###############################################
 
-Atmosphere includes support for virtual persistent memory (vPMEM), which allows
-instances to use persistent memory devices. This feature requires the ``ndctl``
-package to be installed on compute nodes, which is already included in the
-default images.
-
-Virtual persistent memory provides non-volatile memory that persists across
-instance reboots and can offer performance benefits for certain workloads that
-require low-latency access to persistent storage.
+Atmosphere includes support for virtual persistent memory (vPMEM), which
+provides instances with persistent memory devices. Virtual persistent memory
+provides non-volatile memory that persists across instance reboots and can
+offer performance benefits for certain workloads that require low-latency
+access to persistent storage.
 
 .. note::
 
@@ -17,17 +14,10 @@ require low-latency access to persistent storage.
     refer to the `OpenStack Nova documentation
     <https://docs.openstack.org/nova/latest/admin/virtual-persistent-memory.html>`_.
 
-Prerequisites
-=============
-
-The compute nodes must have the ``ndctl`` package installed. This package is
-included by default in Atmosphere Nova images, so no additional configuration
-is required on the compute hosts.
-
 Verify the configuration (optional)
 ====================================
 
-You can verify that vPMEM support is activated by checking the resource
+You can verify that vPMEM support is active by checking the resource
 providers and traits on the compute nodes:
 
 .. code-block:: console
@@ -35,16 +25,16 @@ providers and traits on the compute nodes:
  $ COMPUTE_UUID=$(openstack resource provider list --name $HOST -f value -c uuid)
  $ openstack resource provider trait list $COMPUTE_UUID | grep COMPUTE_PMEM
 
-In the example above, ``$HOST`` is the hostname of the compute node where you
-want to verify that vPMEM support is enabled.
+In the preceding example, ``$HOST`` is the host name of the compute node where
+you want to verify that vPMEM support is active.
 
-Configuring vPMEM
-=================
+Configure vPMEM
+===============
 
-Virtual persistent memory can be configured using flavor extra specs (which
-requires operator access) or through image metadata properties (which can be
-set by users). The configuration defines the size and label of the vPMEM device
-that will be attached to instances.
+Virtual persistent memory configuration uses flavor extra specs (which
+require operator access) or image metadata properties (which users can
+set). The configuration defines the size and label of the vPMEM device
+that attaches to instances.
 
 Flavor configuration
 --------------------
@@ -73,7 +63,8 @@ Image configuration
 -------------------
 
 You can also configure vPMEM on an image using the ``hw_pmem`` image metadata
-property. This allows users to request vPMEM without requiring operator access.
+property. This option lets users request vPMEM without requiring operator
+access.
 
 For example, to configure an image with 4GB of vPMEM:
 
@@ -108,13 +99,13 @@ Using an image:
  $ openstack server create --flavor <flavor-name> --image <image-name-or-uuid> test-instance
 
 The instance will have the vPMEM device available as a persistent memory device.
-Inside the guest operating system, the device will appear as ``/dev/pmem0`` (or
-``/dev/pmem1``, etc., for multiple devices).
+Inside the guest operating system, the device appears as ``/dev/pmem0`` (or
+``/dev/pmem1`` for multiple devices).
 
-Using vPMEM in the guest
-=========================
+Use vPMEM in the guest
+=======================
 
-Once the instance is created with vPMEM, the guest operating system needs to
+Once you create the instance with vPMEM, the guest operating system needs to
 configure and use the persistent memory device. The exact steps depend on the
 guest operating system.
 
@@ -132,9 +123,3 @@ memory devices:
  # Format and mount the device
  $ mkfs.ext4 /dev/pmem0
  $ mount /dev/pmem0 /mnt/pmem
-
-.. note::
-
-    The guest operating system must also have ``ndctl`` installed to manage
-    the vPMEM devices. This is separate from the ``ndctl`` package required
-    on the compute hosts.
