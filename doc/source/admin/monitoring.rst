@@ -479,7 +479,7 @@ following command:
 ===================
 
 If any alerts fire from Prometheus for ``etcd`` issues such as ``TargetDown``,
-``etcdMembersDown``, or ``etcdInsufficientMembers``), it could be due to expired
+``etcdMembersDown``, or ``etcdInsufficientMembers``, it could be due to expired
 certificates. You can update the certificates that ``kube-prometheus-stack`` uses for
 talking with ``etcd`` with the following commands:
 
