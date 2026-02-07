@@ -270,3 +270,258 @@ tests:
       - eval_time: 1h
         alertname: OctaviaAmphoraNotOperational
         exp_alerts: []
+
+  # GoldpingerHighUnhealthyRatio - should NOT fire when all nodes are healthy
+  - interval: 1m
+    input_series:
+      - series: 'goldpinger_nodes_health_total{status="healthy",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger"}'
+        values: '21x10'
+      - series: 'goldpinger_nodes_health_total{status="unhealthy",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger"}'
+        values: '0x10'
+      - series: 'goldpinger_nodes_health_total{status="healthy",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger"}'
+        values: '21x10'
+      - series: 'goldpinger_nodes_health_total{status="unhealthy",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger"}'
+        values: '0x10'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: GoldpingerHighUnhealthyRatio
+        exp_alerts: []
+
+  # GoldpingerHighUnhealthyRatio - should fire when >10% of nodes are unhealthy
+  - interval: 1m
+    input_series:
+      - series: 'goldpinger_nodes_health_total{status="healthy",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger"}'
+        values: '17x10'
+      - series: 'goldpinger_nodes_health_total{status="unhealthy",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger"}'
+        values: '4x10'
+      - series: 'goldpinger_nodes_health_total{status="healthy",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger"}'
+        values: '17x10'
+      - series: 'goldpinger_nodes_health_total{status="unhealthy",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger"}'
+        values: '4x10'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: GoldpingerHighUnhealthyRatio
+        exp_alerts:
+          - exp_labels:
+              severity: P2
+            exp_annotations:
+              summary: "Goldpinger: high percentage of cluster nodes unhealthy"
+              description: "More than 10% of nodes (current: 19.05%) are reporting as unhealthy for at least 5 minutes. Normal operation expects 0% unhealthy nodes."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#goldpingerhighunhealthyratio"
+
+  # GoldpingerNodeUnreachable - should NOT fire when all nodes have low latency
+  - interval: 1m
+    input_series:
+      # kvm1 pinging kvm2 (192.0.2.1) - all requests <5ms
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="0.005"}'
+        values: '0+1x10'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="0.01"}'
+        values: '0+1x10'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="0.025"}'
+        values: '0+1x10'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="0.05"}'
+        values: '0+1x10'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="0.1"}'
+        values: '0+1x10'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="0.25"}'
+        values: '0+1x10'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="0.5"}'
+        values: '0+1x10'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="1"}'
+        values: '0+1x10'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="2.5"}'
+        values: '0+1x10'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="5"}'
+        values: '0+1x10'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="10"}'
+        values: '0+1x10'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="30"}'
+        values: '0+1x10'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="+Inf"}'
+        values: '0+1x10'
+      - series: 'goldpinger_cluster_health_total{instance="kvm1",goldpinger_instance="kvm1",job="goldpinger"}'
+        values: '2x10'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: GoldpingerNodeUnreachable
+        exp_alerts: []
+
+  # GoldpingerNodeUnreachable - should fire when a node is unreachable by majority
+  - interval: 1m
+    input_series:
+      # kvm1 pinging kvm6 (192.0.2.2) - high latency (median >1s, lands in 2.5s bucket)
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.005"}'
+        values: '0+0x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.01"}'
+        values: '0+0x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.025"}'
+        values: '0+0x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.05"}'
+        values: '0+0x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.1"}'
+        values: '0+0x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.25"}'
+        values: '0+0x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.5"}'
+        values: '0+0x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="1"}'
+        values: '0+0x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="2.5"}'
+        values: '0+1x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="5"}'
+        values: '0+1x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="10"}'
+        values: '0+1x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="30"}'
+        values: '0+1x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="+Inf"}'
+        values: '0+1x15'
+      # kvm2 pinging kvm6 (192.0.2.2) - also high latency
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.005"}'
+        values: '0+0x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.01"}'
+        values: '0+0x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.025"}'
+        values: '0+0x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.05"}'
+        values: '0+0x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.1"}'
+        values: '0+0x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.25"}'
+        values: '0+0x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.5"}'
+        values: '0+0x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="1"}'
+        values: '0+0x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="2.5"}'
+        values: '0+1x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="5"}'
+        values: '0+1x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="10"}'
+        values: '0+1x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="30"}'
+        values: '0+1x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="+Inf"}'
+        values: '0+1x15'
+      # 2 total nodes in cluster
+      - series: 'goldpinger_cluster_health_total{instance="kvm1",goldpinger_instance="kvm1",job="goldpinger"}'
+        values: '2x15'
+      - series: 'goldpinger_cluster_health_total{instance="kvm2",goldpinger_instance="kvm2",job="goldpinger"}'
+        values: '2x15'
+    alert_rule_test:
+      - eval_time: 11m
+        alertname: GoldpingerNodeUnreachable
+        exp_alerts:
+          - exp_labels:
+              severity: P2
+              host_ip: "192.0.2.2"
+            exp_annotations:
+              summary: "Goldpinger: node unreachable by majority of cluster"
+              description: "Node with IP 192.0.2.2 has a median ping latency above 1s from more than 50% (current: 100%) of Goldpinger instances. Normal operation expects all nodes to be reachable with sub-10ms latency."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#goldpingernodeunreachable"
+
+  # GoldpingerHighPeerLatency - should NOT fire when latency is low
+  - interval: 1m
+    input_series:
+      # kvm1 pinging kvm2 - all requests complete within 5ms bucket
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="0.005"}'
+        values: '0+1x20'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="0.01"}'
+        values: '0+1x20'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="0.025"}'
+        values: '0+1x20'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="0.05"}'
+        values: '0+1x20'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="0.1"}'
+        values: '0+1x20'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="0.25"}'
+        values: '0+1x20'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="0.5"}'
+        values: '0+1x20'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="1"}'
+        values: '0+1x20'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="2.5"}'
+        values: '0+1x20'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="5"}'
+        values: '0+1x20'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="10"}'
+        values: '0+1x20'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="30"}'
+        values: '0+1x20'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="+Inf"}'
+        values: '0+1x20'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: GoldpingerHighPeerLatency
+        exp_alerts: []
+
+  # GoldpingerHighPeerLatency - should fire when p95 exceeds 500ms
+  - interval: 1m
+    input_series:
+      # kvm1 pinging kvm6 - all requests land between 0.5s and 1s
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.005"}'
+        values: '0+0x25'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.01"}'
+        values: '0+0x25'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.025"}'
+        values: '0+0x25'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.05"}'
+        values: '0+0x25'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.1"}'
+        values: '0+0x25'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.25"}'
+        values: '0+0x25'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.5"}'
+        values: '0+0x25'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="1"}'
+        values: '0+1x25'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="2.5"}'
+        values: '0+1x25'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="5"}'
+        values: '0+1x25'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="10"}'
+        values: '0+1x25'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="30"}'
+        values: '0+1x25'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="+Inf"}'
+        values: '0+1x25'
+    alert_rule_test:
+      - eval_time: 21m
+        alertname: GoldpingerHighPeerLatency
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+            exp_annotations:
+              summary: "Goldpinger: high cluster-wide peer latency"
+              description: "The 95th percentile of peer-to-peer latency is 975ms, which exceeds the threshold of 500ms. Normal latency is typically below 10ms."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#goldpingerhighpeerlatency"
+
+  # GoldpingerHighErrorRate - should NOT fire when error rate is low
+  - interval: 1m
+    input_series:
+      - series: 'goldpinger_errors_total{type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger"}'
+        values: '0+0x20'
+      - series: 'goldpinger_stats_total{action="ping",group="made",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger"}'
+        values: '0+100x20'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: GoldpingerHighErrorRate
+        exp_alerts: []
+
+  # GoldpingerHighErrorRate - should fire when error rate exceeds 5%
+  - interval: 1m
+    input_series:
+      - series: 'goldpinger_errors_total{type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger"}'
+        values: '0+10x25'
+      - series: 'goldpinger_stats_total{action="ping",group="made",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger"}'
+        values: '0+100x25'
+    alert_rule_test:
+      - eval_time: 21m
+        alertname: GoldpingerHighErrorRate
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+            exp_annotations:
+              summary: "Goldpinger: high ping error rate"
+              description: "More than 5% (current: 10%) of Goldpinger ping attempts are failing. Normal operation expects less than 0.1% error rate."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#goldpingerhigherrorrate"
