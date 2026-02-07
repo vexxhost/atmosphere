@@ -1,83 +1,123 @@
 #########################
-Monitoring and Operations
+Monitoring and operations
 #########################
 
-There is a Grafana deployment with a few dashboards that are created by default
-and a Prometheus deployment that is used to collect metrics from the cluster
-which sends alerts to AlertManager. In addition, Loki is deployed to collect
-logs from the cluster using Vector.
+Atmosphere includes a Grafana deployment with dashboards created by default and
+a Prometheus deployment that collects metrics from the cluster and sends alerts
+to AlertManager. Loki also collects logs from the cluster using Vector.
 
 ******************************
-Philosophy and Alerting Levels
+Philosophy and alerting levels
 ******************************
 
 Atmosphere's monitoring philosophy is strongly aligned with the principles
-outlined in the Google Site Reliability Engineering (SRE) book. Our approach
-focuses on alerting on conditions that are symptomatic of issues which directly
-impact the service or system health, rather than simply monitoring the state of
-individual components.
+outlined in the `Google Site Reliability Engineering (SRE) book <https://sre.google/sre-book/>`_.
+The approach focuses on alerting that's meaningful, practical, and directly
+tied to user-visible impact.
 
-Alerting Philosophy
+Alerting philosophy
 ===================
 
-Our alerting philosophy aims to alert the right people at the right time. Most
-alerts, if they are affecting a single system, would trigger a lower priority
-level (P4 or P5). However, if an issue is affecting the entire control plane of
-a specific service, it might escalate to a P3 or P2. And if the whole service
-is unavailable, it becomes a P1.
+Symptom-based alerting
+----------------------
 
-We believe in minimizing alert noise to ensure that alerts are meaningful and
-actionable. Our goal is to have every alert provide enough information to
-initiate an immediate and effective response, regardless of business hours for
-high priority alerts.
+Symptom-based alerts take priority over cause-based alerts. They focus on
+conditions that directly affect users or service health, such as elevated error
+rates or increased latency, rather than internal system state.
 
-We continue to refine our monitoring and alerting strategies to ensure that we
-are effectively identifying and responding to incidents. The ultimate goal is
-to provide a reliable and high-quality service to all our users.
+Cause-based alerts are acceptable only when no reasonable symptom-based proxy
+exists, or when they serve as leading indicators for capacity planning
+(typically P4 or P5).
 
-Severity Levels
+Error budget driven alerting
+----------------------------
+
+When service-level objectives (SLOs) exist for a service, burn-rate alerts
+work better than static threshold alerts. A burn-rate alert fires when the
+error budget depletes faster than expected, which accounts for baseline error
+rates and avoids alerting on acceptable levels of degradation.
+
+Escalation model
+-----------------
+
+The alerting system scales severity with impact. Most alerts affecting a single
+system trigger a lower priority level (P4 or P5). If an issue affects the
+entire control plane of a specific service, it escalates to a P3 or P2. If a
+service is entirely unavailable, it becomes a P1.
+
+Inhibition and grouping
+-----------------------
+
+Alerts have dependency awareness. When a parent component fails (for example, a
+node goes down), inhibition rules in AlertManager suppress child component
+alerts (for example, pods on that node) to avoid cascading alert storms.
+The system groups related alerts so that a single notification represents a
+coherent incident rather than dozens of individual symptoms.
+
+Minimizing noise
+-----------------
+
+Minimizing alert noise keeps every notification meaningful and worthy of
+action. Every alert should provide enough information to initiate an immediate
+and effective response, regardless of business hours for high priority alerts.
+
+Monitoring and alerting strategies improve over time to better identify and
+respond to incidents. The ultimate goal is to provide a reliable and
+high-quality service to all users.
+
+Severity levels
 ===============
 
-Our alerting system classifies incidents into different severity levels based on
+The alerting system classifies incidents into different severity levels based on
 their impact on the system and users.
 
 **P1**: Critical
-  This level is used for incidents causing a complete service disruption or
+  This level covers incidents causing a complete service disruption or
   significant loss of functionality across the entire Atmosphere platform.
   Immediate response, attention, and action are necessary regardless of
   business hours.
 
+  Notification: Page to on-call engineer with escalation.
+
 **P2**: High
   This level is for incidents that affect a large group of users or critical
   system components. These incidents require swift attention and action,
-  regardless of business hours, but do not cause a total disruption.
+  regardless of business hours, but don't cause a total disruption.
+
+  Notification: Page to on-call engineer.
 
 **P3**: Moderate
   This level is for incidents that affect a smaller group of users or a single
   system. These incidents require attention and may necessitate action during
   business hours.
 
+  Notification: Alert channel with mention.
+
 **P4**: Low
-  This level is used for minor issues that have a limited impact on a small
+  This level covers minor issues that have a limited impact on a small
   subset of users or system functionality. These incidents require attention
   and action, if necessary, during standard business hours.
+
+  Notification: Alert channel, no mention.
 
 **P5**: Informational
   This is the lowest level of severity, used for providing information about
   normal system activities or minor issues that don't significantly impact
-  users or system functionality. These incidents typically do not require
-  immediate attention or action and are addressed during standard business
-  hours.
+  users or system functionality. These incidents typically don't require
+  immediate attention or action and operators address them during standard
+  business hours.
+
+  Notification: Informational channel or email digest.
 
 **********************
-Operational Procedures
+Operational procedures
 **********************
 
 Creating silences
 =================
 
-In order to create a silence, you'll need to login to your Grafana instance that
-is deployed as part of Atmosphere as an admin user.
+To create a silence, log in to your Grafana instance that Atmosphere deploys
+as an admin user.
 
 1. Click on the hamburger menu in the top left corner and select "Alerting"
    and then "Silences" from the menu.
@@ -86,10 +126,10 @@ is deployed as part of Atmosphere as an admin user.
       :alt: Silences menu
       :width: 200
 
-2. Ensure that you select "AlertManager" on the top right corner of the page,
-   this will make sure that you create a silence inside of the AlertManager
-   that is managed by the Prometheus operator instead of the built-in Grafana
-   AlertManager which is not used.
+2. Make sure that you select "AlertManager" on the top right corner of the page,
+   this ensures that you create a silence inside of the AlertManager
+   that's managed by the Prometheus operator instead of the built-in Grafana
+   AlertManager which isn't used.
 
     .. image:: images/monitoring-alertmanger-list.png
         :alt: AlertManager list
@@ -98,9 +138,9 @@ is deployed as part of Atmosphere as an admin user.
    .. admonition:: AlertManager selection
     :class: warning
 
-    It's important that you select the AlertManager that is managed by the
-    Prometheus operator, otherwise your silence will not be applied to the
-    Prometheus instance that is deployed as part of Atmosphere.
+    It's important that you select the AlertManager that's managed by the
+    Prometheus operator, otherwise your silence won't apply to the
+    Prometheus instance that Atmosphere deploys.
 
 3. Click the "Add Silence" button and use the AlertManager format to create
    your silence, which you can test by seeing if it matches any alerts in the
@@ -109,10 +149,10 @@ is deployed as part of Atmosphere as an admin user.
 .. admonition:: Limit the number of labels
     :class: info
 
-    It is important to limit the number of labels that you use in your silence
-    to ensure that it will continue to work even if the alerts are modified.
+    It's important to limit the number of labels that you use in your silence
+    to make sure it continues to work even if the alerts change.
 
-    For example, if you have an alert that is labeled with the following labels:
+    For example, if you have an alert that carries the following labels:
 
     - ``alertname``
     - ``instance``
@@ -120,34 +160,34 @@ is deployed as part of Atmosphere as an admin user.
     - ``severity``
 
     You should only use the ``alertname`` and ``severity`` labels in your
-    silence to ensure that it will continue to work even if the ``instance``
-    or ``job`` labels are modified.
+    silence to make sure it continues to work even if the ``instance``
+    or ``job`` labels change.
 
 **************
 Configurations
 **************
 
-Dashboard Management
+Dashboard management
 ====================
 
 For Grafana, rather than enabling persistence through the application's user
-interface or manual Helm chart modifications, dashboards should be managed
-directly via the Helm chart values.
+interface or manual Helm chart modifications, manage dashboards directly via the
+Helm chart values.
 
 .. admonition:: Avoid Manual Persistence Configurations!
     :class: warning
 
-    It is important to avoid manual persistence configurations, especially for
-    services like Grafana, where dashboards and data sources can be saved. Such
-    practices are not captured in version control and pose a risk of data loss,
+    It's important to avoid manual persistence configurations, especially for
+    services like Grafana, where dashboards and data sources can persist. Such
+    practices aren't captured in version control and pose a risk of data loss,
     configuration drift, and upgrade complications.
 
-To manage Grafana dashboards through Helm, you can include the dashboard
-definitions within your configuration file. By doing so, you facilitate
-version-controlled dashboard configurations that can be replicated across
-different deployments without manual intervention.
+To manage Grafana dashboards through Helm, include the dashboard definitions
+within your configuration file. This approach enables version-controlled
+dashboard configurations that you can replicate across different deployments
+without manual intervention.
 
-For example, a dashboard can be defined in the Helm values like this:
+For example, you can define a dashboard in the Helm values like this:
 
 .. code-block:: yaml
 
@@ -162,7 +202,7 @@ For example, a dashboard can be defined in the Helm values like this:
 
 This instructs Helm to fetch and configure the specified dashboard from
 `Grafana.com dashboards <https://grafana.com/grafana/dashboards/>`_, using
-Prometheus as the data source.  You can find more examples of how to do
+Prometheus as the data source. You can find more examples of how to do
 this in the Grafana Helm chart `Import Dashboards <https://github.com/grafana/helm-charts/tree/main/charts/grafana#import-dashboards>`_
 documentation.
 
@@ -170,18 +210,17 @@ documentation.
 Viewing data
 ************
 
-There are a few different ways to view the data that is collected by the
-monitoring stack.  The most common ways are through AlertManager, Grafana, and
-Prometheus.
+The monitoring stack offers a few different ways to view collected data. The most
+common ways are through AlertManager, Grafana, and Prometheus.
 
 Grafana dashboard
 =================
 
-By default, an ``Ingress`` is created for Grafana using the
-``kube_prometheus_stack_grafana_host`` variable.  The authentication is done
-using the Keycloak service which is deployed by default.
+By default, Atmosphere creates an ``Ingress`` for Grafana using the
+``kube_prometheus_stack_grafana_host`` variable. Keycloak handles
+authentication, and Atmosphere deploys it by default.
 
-Inside Keycloak, there are two client roles that are created for Grafana:
+Inside Keycloak, Atmosphere creates two client roles for Grafana:
 
 ``grafana:admin``
   Has access to all organization resources, including dashboards, users, and
@@ -200,18 +239,18 @@ can also check any alerts that are currently firing by going to *Alerting* >
 Prometheus
 ==========
 
-By default, Prometheus is exposed behind an ``Ingress`` using the
-``kube_prometheus_stack_prometheus_host`` variable.  In addition, it is also
-running behind the `oauth2-proxy` service which is used for authentication
-so that only authenticated users can access the Prometheus UI.
+By default, Prometheus sits behind an ``Ingress`` using the
+``kube_prometheus_stack_prometheus_host`` variable. It also runs behind the
+`oauth2-proxy` service, which handles authentication so that only authenticated
+users can access the Prometheus UI.
 
-Alternative Authentication
+Alternative authentication
 --------------------------
 
-It is possible to by-pass the `oauth2-proxy` service and use an alternative
-authentication method to access the Prometheus UI.  In both cases, we will
-be overriding the ``servicePort`` on the ``Ingress`` to point to the port
-where Prometheus is running and not the `oauth2-proxy` service.
+You can bypass the `oauth2-proxy` service and use an alternative authentication
+method to access the Prometheus UI. In both cases, you override the
+``servicePort`` on the ``Ingress`` to point to the port where Prometheus runs
+instead of the `oauth2-proxy` service.
 
 .. admonition:: Advanced Usage Only
     :class: warning
@@ -221,12 +260,11 @@ where Prometheus is running and not the `oauth2-proxy` service.
     responsible for authenticating users and ensuring that only authenticated
     users can access the Prometheus UI.
 
-Basic Authentication
+Basic authentication
 ~~~~~~~~~~~~~~~~~~~~
 
-If you want to rely on basic authentication to access the Prometheus UI instead
-of using the `oauth2-proxy` service to expose it over single sign-on, you can
-do so by making the following changes to your inventory:
+To use basic authentication for the Prometheus UI instead of the `oauth2-proxy`
+service with single sign-on, make the following changes to your inventory:
 
 .. code-block:: yaml
 
@@ -238,15 +276,15 @@ do so by making the following changes to your inventory:
           nginx.ingress.kubernetes.io/auth-type: basic
           nginx.ingress.kubernetes.io/auth-secret: basic-auth-secret-name
 
-In the example above, we are using the ``basic-auth-secret-name`` secret to
-authenticate users.  The secret should be created in the same namespace as the
-Prometheus deployment based on the `Ingress NGINX Annotations <https://github.com/kubernetes/ingress-nginx/blob/main/docs/user-guide/nginx-configuration/annotations.md#annotations>`_.
+In this example, the ``basic-auth-secret-name`` secret handles user
+authentication. Create the secret in the same namespace as the Prometheus
+deployment based on the `Ingress NGINX annotations <https://github.com/kubernetes/ingress-nginx/blob/main/docs/user-guide/nginx-configuration/annotations.md#annotations>`_.
 
-IP Whitelisting
-~~~~~~~~~~~~~~~
+Restricting by address
+~~~~~~~~~~~~~~~~~~~~~
 
-If you want to whitelist specific IPs to access the Prometheus UI, you can do
-so by making the following changes to your inventory:
+To restrict Prometheus UI access to specific IP addresses, make the following
+changes to your inventory:
 
 .. code-block:: yaml
 
@@ -257,39 +295,38 @@ so by making the following changes to your inventory:
         annotations:
           nginx.ingress.kubernetes.io/whitelist-source-range: "10.0.0.0/24,172.10.0.1"
 
-In the example above, we are whitelisting the IP range ``10.0.0.0/24`` and the IP address
-``172.10.0.1``.
+In this example, the configuration restricts access to the IP range
+``10.0.0.0/24`` and the IP address ``172.10.0.1``.
 
 AlertManager
 ============
 
-By default, the AlertManager dashboard is pointing to the Ansible variable
-``kube_prometheus_stack_alertmanager_host`` and is exposed using an ``Ingress``
-behind the `oauth2-proxy` service, protected by Keycloak similar to Prometheus.
+By default, the AlertManager dashboard points to the Ansible variable
+``kube_prometheus_stack_alertmanager_host`` and sits behind an ``Ingress``
+with the `oauth2-proxy` service, protected by Keycloak similar to Prometheus.
 
 ************
 Integrations
 ************
 
-Since Atmosphere relies on AlertManager to send alerts, it is possible to
-integrate it with services like OpsGenie, PagerDuty, email and more.  To
-receive monitoring alerts using your preferred notification tools, you'll
-need to integrate them with AlertManager.
+Since Atmosphere relies on AlertManager to send alerts, you can integrate it
+with services like OpsGenie, PagerDuty, email, and more. To receive monitoring
+alerts using your preferred notification tools, integrate them with
+AlertManager.
 
 OpsGenie
 ========
 
-In order to get started, you will need to complete the following steps inside
-OpsGenie:
+To get started, complete the following steps inside OpsGenie:
 
 1. Create an integration inside OpsGenie, you can do this by going to
    *Settings* > *Integrations* > *Add Integration* and selecting *Prometheus*.
-2. Copy the API key that is generated for you and setup correct assignment
-   rules inside OpsGenie.
+2. Copy the API key that OpsGenie generates for you and set up correct
+   assignment rules inside OpsGenie.
 3. Create a new heartbeat inside OpsGenie, you can do this by going to
    *Settings* > *Heartbeats* > *Create Heartbeat*. Set the interval to 1 minute.
 
-Afterwards, you can configure the following options for the Atmosphere config,
+Afterward, configure the following options for the Atmosphere ``config``,
 making sure that you replace the placeholders with the correct values:
 
 ``API_KEY``
@@ -357,15 +394,14 @@ making sure that you replace the placeholders with the correct values:
                   basic_auth:
                     password: API_KEY
 
-Once this is done and deployed, you'll start to see alerts inside OpsGenie and
-you can also verify that the heartbeat is listed as *ACTIVE*.
+Once you deploy the changes, you'll start to see alerts inside OpsGenie and
+you can also verify that the heartbeat shows as *ACTIVE*.
 
 PagerDuty
 =========
 
-To integrate with Pagerduty, first you need to prepare an *Integration key*. In
-order to do that, you must decide how you want to integrate with PagerDuty since
-there are two ways to do it:
+To integrate with PagerDuty, first prepare an *Integration key*. To do that,
+decide how you want to integrate with PagerDuty since there are two ways:
 
 **Event Orchestration**
   This method is beneficial if you want to build different routing rules based
@@ -392,8 +428,7 @@ options:
               - service_key: '<your integration key here>'
 
 You can find more details about
-`pagerduty_configs <https://prometheus.io/docs/alerting/latest/configuration/#pagerduty_config>`_
-in the Prometheus documentation.
+``pagerduty_configs`` in the `Prometheus documentation <https://prometheus.io/docs/alerting/latest/configuration/#pagerduty_config>`_.
 
 Email
 =====
@@ -418,60 +453,262 @@ inventory:
                   subject: 'Prometheus Mail Alerts'
 
 You can find more details about
-`email_configs <https://prometheus.io/docs/alerting/latest/configuration/#email_configs>`_
-in the Prometheus documentation.
+``email_configs`` in the `Prometheus documentation <https://prometheus.io/docs/alerting/latest/configuration/#email_configs>`_.
 
 ****************
-Alerts Reference
+Alerts reference
 ****************
 
 ``etcdDatabaseHighFragmentationRatio``
-  This alert is triggered when the etcd database has a high fragmentation ratio
-  which can cause performance issues on the cluster.  In order to resolve this
-  issue, you can use the following command:
+======================================
 
-  .. code-block:: console
+This alert fires when the etcd database has a high fragmentation ratio that can
+cause performance issues on the cluster. To resolve this issue, use the
+following command:
 
-    kubectl -n kube-system exec svc/kube-prometheus-stack-kube-etcd -- \
-      etcdctl defrag \
-      --cluster \
-      --cacert /etc/kubernetes/pki/etcd/ca.crt \
-      --key /etc/kubernetes/pki/etcd/server.key \
-      --cert /etc/kubernetes/pki/etcd/server.crt
+.. code-block:: console
 
-``NodeNetworkMulticast``
-  This alert is triggered when a node is receiving large volumes of multicast
-  traffic which can be a sign of a misconfigured network or a malicious actor.
-
-  This can result in high CPU usage on the node and can cause the node to become
-  unresponsive. Also, it can be the cause of a very high amount of software
-  interrupts on the node.
-
-  In order to find the root cause of this issue, you can use the following
-  commands:
-
-  .. code-block:: console
-
-    iftop -ni $DEV -f 'multicast and not broadcast'
-
-  With the command above, you're able to see which IP addresses are sending the
-  multicast traffic. Once you have the IP address, you can use the following
-  command to find the server behind it:
-
-  .. code-block:: console
-
-    openstack server list --all-projects --long -n --ip $IP
+  kubectl -n kube-system exec svc/kube-prometheus-stack-kube-etcd -- \
+    etcdctl defrag \
+    --cluster \
+    --cacert /etc/kubernetes/pki/etcd/ca.crt \
+    --key /etc/kubernetes/pki/etcd/server.key \
+    --cert /etc/kubernetes/pki/etcd/server.crt
 
 ``EtcdMembersDown``
-  If any alarms are fired from Promethetus for ``etcd`` issues such as ``TargetDown``,
-  ``etcdMembersDown``, or ``etcdInsufficientMembers``), it could be due to expired
-  certificates.  You can update the certificates that ``kube-prometheus-stack`` uses for
-  talking with ``etcd`` with the following commands:
+===================
 
-  .. code-block:: console
+If any alerts fire from Prometheus for ``etcd`` issues such as ``TargetDown``,
+``etcdMembersDown``, or ``etcdInsufficientMembers``), it could be due to expired
+certificates. You can update the certificates that ``kube-prometheus-stack`` uses for
+talking with ``etcd`` with the following commands:
 
-    kubectl -n monitoring delete secret/kube-prometheus-stack-etcd-client-cert
-    kubectl -n monitoring create secret generic kube-prometheus-stack-etcd-client-cert \
-        --from-file=/etc/kubernetes/pki/etcd/ca.crt \
-        --from-file=/etc/kubernetes/pki/etcd/healthcheck-client.crt \
-        --from-file=/etc/kubernetes/pki/etcd/healthcheck-client.key
+.. code-block:: console
+
+  kubectl -n monitoring delete secret/kube-prometheus-stack-etcd-client-cert
+  kubectl -n monitoring create secret generic kube-prometheus-stack-etcd-client-cert \
+      --from-file=/etc/kubernetes/pki/etcd/ca.crt \
+      --from-file=/etc/kubernetes/pki/etcd/healthcheck-client.crt \
+      --from-file=/etc/kubernetes/pki/etcd/healthcheck-client.key
+
+``GoldpingerHighErrorRate``
+===========================
+
+This alert fires when more than 5% of Goldpinger ping attempts are failing for
+at least 15 minutes, indicating network connectivity issues across the cluster.
+
+**Likely Root Causes**
+
+- Intermittent network connectivity issues
+- DNS resolution failures
+- Firewall rules blocking ICMP or health check traffic
+- Goldpinger pods experiencing resource constraints
+- Node-level network stack issues
+
+**Diagnostic and Remediation Steps**
+
+1. Check error rates by node to identify patterns:
+
+   .. code-block:: console
+
+     kubectl -n monitoring exec svc/kube-prometheus-stack-prometheus -- \
+       promtool query instant http://localhost:9090 \
+       'sum by (instance) (rate(goldpinger_errors_total{type="ping"}[5m]))'
+
+2. Verify Goldpinger pods are healthy:
+
+   .. code-block:: console
+
+     kubectl -n monitoring get pods -l app.kubernetes.io/name=goldpinger
+     kubectl -n monitoring describe pods -l app.kubernetes.io/name=goldpinger
+
+3. Check for any network policies that might be blocking traffic:
+
+   .. code-block:: console
+
+     kubectl get networkpolicies --all-namespaces
+
+4. Review Goldpinger logs for specific error messages:
+
+   .. code-block:: console
+
+     kubectl -n monitoring logs -l app.kubernetes.io/name=goldpinger --tail=100
+
+5. Check if the errors correlate with specific target nodes by examining
+   which targets have high latency:
+
+   .. code-block:: console
+
+     kubectl -n monitoring exec svc/kube-prometheus-stack-prometheus -- \
+       promtool query instant http://localhost:9090 \
+       'topk(10, histogram_quantile(0.95, sum by (instance, host_ip, le) (rate(goldpinger_peers_response_time_s_bucket{call_type="ping"}[5m]))))'
+
+``GoldpingerHighPeerLatency``
+=============================
+
+This alert fires when the 95th percentile of Goldpinger peer-to-peer latency
+exceeds 500ms for at least 15 minutes, indicating network congestion or
+performance issues.
+
+**Likely Root Causes**
+
+- Network congestion on the cluster network
+- Overloaded network switches or routers
+- High CPU or I/O load on nodes causing delayed responses
+- Network interface saturation
+- Incorrect network Quality of Service (QoS) configuration
+
+**Diagnostic and Remediation Steps**
+
+1. Check which node pairs have the highest latency:
+
+   .. code-block:: console
+
+     kubectl -n monitoring exec svc/kube-prometheus-stack-prometheus -- \
+       promtool query instant http://localhost:9090 \
+       'topk(10, histogram_quantile(0.95, sum by (instance, host_ip, le) (rate(goldpinger_peers_response_time_s_bucket{call_type="ping"}[5m]))))'
+
+2. Check node-exporter metrics for network saturation:
+
+   .. code-block:: console
+
+     kubectl -n monitoring exec svc/kube-prometheus-stack-prometheus -- \
+       promtool query instant http://localhost:9090 \
+       'rate(node_network_transmit_bytes_total[5m])'
+
+3. Review CPU and I/O wait metrics on affected nodes:
+
+   .. code-block:: console
+
+     kubectl -n monitoring exec svc/kube-prometheus-stack-prometheus -- \
+       promtool query instant http://localhost:9090 \
+       'sum by (instance) (rate(node_cpu_seconds_total{mode="iowait"}[5m]))'
+
+4. Check for network drops which may indicate congestion:
+
+   .. code-block:: console
+
+     kubectl -n monitoring exec svc/kube-prometheus-stack-prometheus -- \
+       promtool query instant http://localhost:9090 \
+       'rate(node_network_receive_drop_total[5m]) > 0'
+
+5. If latency is consistently high between specific node pairs, investigate
+   the network path between them for hardware issues or configuration errors.
+
+``GoldpingerHighUnhealthyRatio``
+================================
+
+This alert fires when more than 10% of nodes in the cluster are reporting as
+unhealthy according to Goldpinger health checks for at least 5 minutes.
+
+**Likely Root Causes**
+
+- Widespread network connectivity issues affecting multiple nodes
+- A network partition isolating a segment of the cluster
+- Multiple nodes experiencing high load or resource exhaustion
+- Infrastructure-level network problems (switch failures, routing issues)
+
+**Diagnostic and Remediation Steps**
+
+1. Check the Goldpinger dashboard in Grafana to visualize which nodes are
+   affected and the connectivity patterns.
+
+2. Query Prometheus to identify which specific nodes are reporting unhealthy:
+
+   .. code-block:: console
+
+     kubectl -n monitoring exec svc/kube-prometheus-stack-prometheus -- \
+       promtool query instant http://localhost:9090 \
+       'goldpinger_nodes_health_total{status="unhealthy"} > 0'
+
+3. Check for network issues on the affected nodes:
+
+   .. code-block:: console
+
+     kubectl get nodes -o wide
+     kubectl describe node <affected-node>
+
+4. Review node-exporter metrics for network errors or drops:
+
+   .. code-block:: console
+
+     kubectl -n monitoring exec svc/kube-prometheus-stack-prometheus -- \
+       promtool query instant http://localhost:9090 \
+       'rate(node_network_receive_errs_total[5m]) > 0'
+
+5. If the issue affects only specific nodes, check their network
+   configuration and physical connectivity.
+
+``GoldpingerNodeUnreachable``
+=============================
+
+This alert fires when more than 50% of Goldpinger instances can't reach a
+specific node for at least 5 minutes. The target node may be down or
+experiencing network issues.
+
+**Likely Root Causes**
+
+- The target node is down or unresponsive
+- Network interface failure on the target node
+- Firewall or security group configuration error blocking traffic
+- The Goldpinger pod on the target node has crashed
+
+**Diagnostic and Remediation Steps**
+
+1. Identify the affected node by its IP address from the alert labels:
+
+   .. code-block:: console
+
+     kubectl get nodes -o wide | grep <host_ip>
+
+2. Check if the node is reachable and healthy:
+
+   .. code-block:: console
+
+     kubectl get node <node-name>
+     kubectl describe node <node-name>
+
+3. Verify the Goldpinger pod is running on the affected node:
+
+   .. code-block:: console
+
+     kubectl -n monitoring get pods -l app.kubernetes.io/name=goldpinger \
+       -o wide | grep <node-name>
+
+4. Check network connectivity from another node:
+
+   .. code-block:: console
+
+     kubectl debug node/<healthy-node> -it --image=busybox -- \
+       ping -c 3 <affected-node-ip>
+
+5. Review system logs on the affected node for network or kernel issues:
+
+   .. code-block:: console
+
+     kubectl debug node/<affected-node> -it --image=busybox -- \
+       cat /host/var/log/syslog | tail -100
+
+``NodeNetworkMulticast``
+========================
+
+This alert fires when a node receives large volumes of multicast traffic, which
+can indicate an incorrectly configured network or a malicious actor.
+
+This can result in high CPU usage on the node and can cause the node to become
+unresponsive. It can also cause a high amount of software interrupts on the
+node.
+
+To find the root cause of this issue, use the following commands:
+
+.. code-block:: console
+
+  iftop -ni $DEV -f 'multicast and not broadcast'
+
+With this command, you can see which IP addresses send the multicast traffic.
+Once you have the IP address, use the following command to find the server
+behind it:
+
+.. code-block:: console
+
+  openstack server list --all-projects --long -n --ip $IP
