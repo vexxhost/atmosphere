@@ -209,6 +209,7 @@ local mixins = {
         ],
       },
     },
+  goldpinger: (import 'goldpinger.libsonnet'),
   openstack: (import 'openstack.libsonnet'),
 } + (import 'legacy.libsonnet');
 
