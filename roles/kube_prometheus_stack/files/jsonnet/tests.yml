@@ -525,3 +525,69 @@ tests:
               summary: "Goldpinger: high ping error rate"
               description: "More than 5% (current: 10%) of Goldpinger ping attempts are failing. Normal operation expects less than 0.1% error rate."
               runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#goldpingerhigherrorrate"
+
+  # NginxIngressHighErrorRate - should NOT fire when error rate is low
+  - interval: 1m
+    input_series:
+      # Low error rate: 2 errors out of 200 requests per minute = 1%
+      - series: 'nginx_ingress_controller_requests{service="keystone-api",status="200"}'
+        values: '0+198x25'
+      - series: 'nginx_ingress_controller_requests{service="keystone-api",status="500"}'
+        values: '0+2x25'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: NginxIngressHighErrorRate
+        exp_alerts: []
+
+  # NginxIngressHighErrorRate - should fire when error rate exceeds 5%
+  - interval: 1m
+    input_series:
+      # High error rate: 12 errors out of 200 requests per minute = 6%
+      - series: 'nginx_ingress_controller_requests{service="nova-api",status="200"}'
+        values: '0+188x25'
+      - series: 'nginx_ingress_controller_requests{service="nova-api",status="500"}'
+        values: '0+12x25'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: NginxIngressHighErrorRate
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+              service: nova-api
+            exp_annotations:
+              summary: "NGINX Ingress: elevated error rate affecting service"
+              description: "The service nova-api is returning 5xx errors at 6% over the last 5 minutes, which exceeds the threshold of 5%. Normal operation expects error rates below 1%."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#nginxingresshigherrorrate"
+
+  # NginxIngressCriticalErrorRate - should NOT fire when error rate is below 20%
+  - interval: 1m
+    input_series:
+      # Error rate: 20 errors out of 200 requests per minute = 10%
+      - series: 'nginx_ingress_controller_requests{service="glance-api",status="200"}'
+        values: '0+180x15'
+      - series: 'nginx_ingress_controller_requests{service="glance-api",status="503"}'
+        values: '0+20x15'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: NginxIngressCriticalErrorRate
+        exp_alerts: []
+
+  # NginxIngressCriticalErrorRate - should fire when error rate exceeds 20%
+  - interval: 1m
+    input_series:
+      # Critical error rate: 50 errors out of 200 requests per minute = 25%
+      - series: 'nginx_ingress_controller_requests{service="cinder-api",status="200"}'
+        values: '0+150x15'
+      - series: 'nginx_ingress_controller_requests{service="cinder-api",status="502"}'
+        values: '0+50x15'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: NginxIngressCriticalErrorRate
+        exp_alerts:
+          - exp_labels:
+              severity: P2
+              service: cinder-api
+            exp_annotations:
+              summary: "NGINX Ingress: critical error rate affecting service availability"
+              description: "The service cinder-api is returning 5xx errors at 25% over the last 5 minutes, which exceeds the critical threshold of 20%. This indicates a severe service degradation."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#nginxingresscriticalerrorrate"

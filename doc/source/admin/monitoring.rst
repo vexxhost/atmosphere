@@ -689,6 +689,118 @@ experiencing network issues.
      kubectl debug node/<affected-node> -it --image=busybox -- \
        cat /host/var/log/syslog | tail -100
 
+``NginxIngressCriticalErrorRate``
+=================================
+
+This alert fires when a service behind NGINX Ingress is returning 5xx errors at
+a rate exceeding 20% for at least 5 minutes, indicating severe service
+degradation that requires immediate attention.
+
+**Likely Root Causes**
+
+- Backend service pods are crashing or in a crash loop
+- Database connection failures affecting all service replicas
+- Configuration errors in the service deployment
+- Resource exhaustion (CPU, memory, or file descriptors) on backend pods
+- Network issues between NGINX and backend services
+- Backend service code bugs causing widespread failures
+
+**Diagnostic and Remediation Steps**
+
+1. Identify which specific service is affected from the alert labels and check
+   the current error rate:
+
+   .. code-block:: console
+
+     kubectl -n monitoring exec svc/kube-prometheus-stack-prometheus -- \
+       promtool query instant http://localhost:9090 \
+       'sum by (service) (rate(nginx_ingress_controller_requests{status=~"5[0-9]{2}"}[5m])) / sum by (service) (rate(nginx_ingress_controller_requests[5m]))'
+
+2. Check the health and status of the backend service pods:
+
+   .. code-block:: console
+
+     kubectl get pods -A | grep <service-name>
+     kubectl describe pod <pod-name> -n <namespace>
+
+3. Review recent logs from the affected service pods:
+
+   .. code-block:: console
+
+     kubectl logs -n <namespace> <pod-name> --tail=100
+
+4. Check NGINX Ingress controller logs for upstream connection errors:
+
+   .. code-block:: console
+
+     kubectl logs -n ingress-nginx -l app.kubernetes.io/name=ingress-nginx --tail=200
+
+5. Verify resource usage on the backend service pods:
+
+   .. code-block:: console
+
+     kubectl top pods -n <namespace> | grep <service-name>
+
+6. If the issue persists, consider scaling the service or restarting affected
+   pods to attempt recovery while investigating the root cause.
+
+``NginxIngressHighErrorRate``
+=============================
+
+This alert fires when a service behind NGINX Ingress is returning 5xx errors at
+a rate exceeding 5% for at least 15 minutes. This indicates elevated error
+rates that may be affecting user experience but haven't reached critical levels.
+
+**Likely Root Causes**
+
+- Intermittent issues with a subset of backend service replicas
+- Occasional database query timeouts or connection pool exhaustion
+- Resource pressure on some backend pods
+- Networking issues affecting specific nodes or pods
+- Recent deployment causing partial service degradation
+- Cache or session storage issues
+
+**Diagnostic and Remediation Steps**
+
+1. Check the current error rate by service:
+
+   .. code-block:: console
+
+     kubectl -n monitoring exec svc/kube-prometheus-stack-prometheus -- \
+       promtool query instant http://localhost:9090 \
+       'sum by (service) (rate(nginx_ingress_controller_requests{status=~"5[0-9]{2}"}[5m])) / sum by (service) (rate(nginx_ingress_controller_requests[5m]))'
+
+2. Identify which specific HTTP error codes are being returned:
+
+   .. code-block:: console
+
+     kubectl -n monitoring exec svc/kube-prometheus-stack-prometheus -- \
+       promtool query instant http://localhost:9090 \
+       'sum by (service, status) (rate(nginx_ingress_controller_requests{status=~"5[0-9]{2}"}[5m]))'
+
+3. Check for unhealthy or recently restarted pods:
+
+   .. code-block:: console
+
+     kubectl get pods -A | grep <service-name>
+     kubectl get events -n <namespace> --sort-by='.lastTimestamp' | grep <service-name>
+
+4. Review application logs for errors:
+
+   .. code-block:: console
+
+     kubectl logs -n <namespace> -l app=<service-name> --tail=100 | grep -i error
+
+5. Check if the error rate correlates with increased load or specific API
+   endpoints by examining the NGINX Ingress metrics in Grafana.
+
+6. Verify database connectivity and performance if the service depends on a
+   database:
+
+   .. code-block:: console
+
+     kubectl exec -it <pod-name> -n <namespace> -- <database-client> -e "SHOW PROCESSLIST;"
+
 ``NodeNetworkMulticast``
 ========================
 
