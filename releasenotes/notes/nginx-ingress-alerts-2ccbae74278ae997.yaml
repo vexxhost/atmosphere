@@ -1,0 +1,22 @@
+---
+features:
+  - |
+    Replaced the basic ``HighInternalServerErrors`` alert with four
+    multi-window burn-rate alerts following the Google Site Reliability
+    Engineering (SRE) Workbook pattern, all based on a 99.9% availability
+    SLO: ``NginxIngressCriticalErrorBudgetBurn`` (P2, 14.4x burn rate),
+    ``NginxIngressHighErrorBudgetBurn`` (P2, 6x burn rate),
+    ``NginxIngressModerateErrorBudgetBurn`` (P3, 3x burn rate), and
+    ``NginxIngressLowErrorBudgetBurn`` (P4, 1x burn rate). Each alert
+    uses dual time windows to confirm issues are both sustained and
+    ongoing, and includes a minimum traffic guard to prevent false
+    positives on low-traffic services.
+upgrade:
+  - |
+    This release removes the ``HighInternalServerErrors`` alert and
+    replaces it with ``NginxIngressCriticalErrorBudgetBurn``,
+    ``NginxIngressHighErrorBudgetBurn``,
+    ``NginxIngressModerateErrorBudgetBurn``, and
+    ``NginxIngressLowErrorBudgetBurn``. Update any alert routing rules
+    or silences that reference ``HighInternalServerErrors`` to use the
+    new alert names.
