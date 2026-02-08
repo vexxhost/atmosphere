@@ -689,32 +689,35 @@ experiencing network issues.
      kubectl debug node/<affected-node> -it --image=busybox -- \
        cat /host/var/log/syslog | tail -100
 
-``NginxIngressCriticalErrorRate``
-=================================
+``NginxIngressCriticalErrorBudgetBurn``
+=======================================
 
-This alert fires when a service behind NGINX Ingress is returning 5xx errors at
-a rate exceeding 20% for at least 5 minutes, indicating severe service
-degradation that requires immediate attention.
+This alert fires when a service behind NGINX Ingress consumes its 30-day error
+budget at more than 14.4x the sustainable rate, based on a 99.9% availability
+SLO. It uses multi-window burn-rate detection with 1-hour and 5-minute windows
+to confirm the issue is both sustained and ongoing. At this burn rate, the
+entire 30-day error budget exhausts in under 2.1 days. A minimum traffic guard
+of 1 request per second prevents false positives on low-traffic services.
 
 **Likely Root Causes**
 
-- Backend service pods are crashing or in a crash loop
+- Service pods are crashing or in a crash loop
 - Database connection failures affecting all service replicas
 - Configuration errors in the service deployment
-- Resource exhaustion (CPU, memory, or file descriptors) on backend pods
-- Network issues between NGINX and backend services
-- Backend service code bugs causing widespread failures
+- Resource exhaustion (CPU, memory, or file descriptors) on service pods
+- Network connectivity failures between NGINX and service pods
+- Service code bugs causing widespread failures
 
 **Diagnostic and Remediation Steps**
 
-1. Identify which specific service is affected from the alert labels and check
-   the current error rate:
+1. Check the alert labels to identify the affected service and query the
+   current error rate:
 
    .. code-block:: console
 
      kubectl -n monitoring exec svc/kube-prometheus-stack-prometheus -- \
        promtool query instant http://localhost:9090 \
-       'sum by (service) (rate(nginx_ingress_controller_requests{status=~"5[0-9]{2}"}[5m])) / sum by (service) (rate(nginx_ingress_controller_requests[5m]))'
+       'sum by (service) (rate(nginx_ingress_controller_requests{status=~"5[0-9]{2}"}[1h])) / sum by (service) (rate(nginx_ingress_controller_requests[1h]))'
 
 2. Check the health and status of the backend service pods:
 
@@ -744,18 +747,21 @@ degradation that requires immediate attention.
 6. If the issue persists, consider scaling the service or restarting affected
    pods to attempt recovery while investigating the root cause.
 
-``NginxIngressHighErrorRate``
-=============================
+``NginxIngressHighErrorBudgetBurn``
+====================================
 
-This alert fires when a service behind NGINX Ingress is returning 5xx errors at
-a rate exceeding 5% for at least 15 minutes. This indicates elevated error
-rates that may be affecting user experience but haven't reached critical levels.
+This alert fires when a service behind NGINX Ingress consumes its 30-day error
+budget at more than 6x the sustainable rate, based on a 99.9% availability SLO.
+It uses multi-window burn-rate detection with 6-hour and 30-minute windows to
+confirm the issue is both sustained and ongoing. At this burn rate, the entire
+30-day error budget exhausts in under 5 days. A minimum traffic guard of
+1 request per second prevents false positives on low-traffic services.
 
 **Likely Root Causes**
 
-- Intermittent issues with a subset of backend service replicas
+- Intermittent issues with a subset of service replicas
 - Occasional database query timeouts or connection pool exhaustion
-- Resource pressure on some backend pods
+- Resource pressure on some service pods
 - Networking issues affecting specific nodes or pods
 - Recent deployment causing partial service degradation
 - Cache or session storage issues
@@ -768,15 +774,15 @@ rates that may be affecting user experience but haven't reached critical levels.
 
      kubectl -n monitoring exec svc/kube-prometheus-stack-prometheus -- \
        promtool query instant http://localhost:9090 \
-       'sum by (service) (rate(nginx_ingress_controller_requests{status=~"5[0-9]{2}"}[5m])) / sum by (service) (rate(nginx_ingress_controller_requests[5m]))'
+       'sum by (service) (rate(nginx_ingress_controller_requests{status=~"5[0-9]{2}"}[6h])) / sum by (service) (rate(nginx_ingress_controller_requests[6h]))'
 
-2. Identify which specific HTTP error codes are being returned:
+2. Identify which specific HTTP error codes the service returns:
 
    .. code-block:: console
 
      kubectl -n monitoring exec svc/kube-prometheus-stack-prometheus -- \
        promtool query instant http://localhost:9090 \
-       'sum by (service, status) (rate(nginx_ingress_controller_requests{status=~"5[0-9]{2}"}[5m]))'
+       'sum by (service, status) (rate(nginx_ingress_controller_requests{status=~"5[0-9]{2}"}[30m]))'
 
 3. Check for unhealthy or recently restarted pods:
 
@@ -800,6 +806,109 @@ rates that may be affecting user experience but haven't reached critical levels.
    .. code-block:: console
 
      kubectl exec -it <pod-name> -n <namespace> -- <database-client> -e "SHOW PROCESSLIST;"
+
+``NginxIngressLowErrorBudgetBurn``
+===================================
+
+This alert fires when a service behind NGINX Ingress consumes its 30-day error
+budget at the sustainable rate or faster, based on a 99.9% availability SLO. It
+uses multi-window burn-rate detection with 3-day and 6-hour windows to confirm
+the issue is both sustained and ongoing. At this burn rate, the 30-day error
+budget exhausts before the window resets. A minimum traffic guard of 1 request
+per second prevents false positives on low-traffic services.
+
+**Likely Root Causes**
+
+- Degrading dependency (database, cache, or external service)
+- Gradual resource leak causing occasional failures
+- Configuration drift across replicas
+- Intermittent infrastructure issues during off-peak hours
+- Elevated baseline error rate after a deployment
+
+**Diagnostic and Remediation Steps**
+
+1. Check the error rate trend over the last 3 days:
+
+   .. code-block:: console
+
+     kubectl -n monitoring exec svc/kube-prometheus-stack-prometheus -- \
+       promtool query instant http://localhost:9090 \
+       'sum by (service) (rate(nginx_ingress_controller_requests{status=~"5[0-9]{2}"}[3d])) / sum by (service) (rate(nginx_ingress_controller_requests[3d]))'
+
+2. Compare the error rate with the previous period to identify when it started
+   increasing by examining trends in Grafana dashboards.
+
+3. Review recent deployments or configuration changes that correlate with the
+   error rate increase:
+
+   .. code-block:: console
+
+     kubectl get events -n <namespace> --sort-by='.lastTimestamp' | head -50
+
+4. Check if specific error codes dominate:
+
+   .. code-block:: console
+
+     kubectl -n monitoring exec svc/kube-prometheus-stack-prometheus -- \
+       promtool query instant http://localhost:9090 \
+       'sum by (service, status) (rate(nginx_ingress_controller_requests{status=~"5[0-9]{2}"}[6h]))'
+
+5. Investigate resource usage and dependency health for the affected service.
+
+``NginxIngressModerateErrorBudgetBurn``
+========================================
+
+This alert fires when a service behind NGINX Ingress consumes its 30-day error
+budget at more than 3x the sustainable rate, based on a 99.9% availability SLO.
+It uses multi-window burn-rate detection with 1-day and 2-hour windows to
+confirm the issue is both sustained and ongoing. At this burn rate, the entire
+30-day error budget exhausts in under 10 days. A minimum traffic guard of
+1 request per second prevents false positives on low-traffic services.
+
+**Likely Root Causes**
+
+- A subset of service replicas returning errors intermittently
+- Slow database queries causing periodic timeouts
+- Resource contention during peak traffic periods
+- Partial deployment with a faulty version still in rotation
+- Upstream dependency experiencing intermittent issues
+
+**Diagnostic and Remediation Steps**
+
+1. Check the error rate over the last day:
+
+   .. code-block:: console
+
+     kubectl -n monitoring exec svc/kube-prometheus-stack-prometheus -- \
+       promtool query instant http://localhost:9090 \
+       'sum by (service) (rate(nginx_ingress_controller_requests{status=~"5[0-9]{2}"}[1d])) / sum by (service) (rate(nginx_ingress_controller_requests[1d]))'
+
+2. Identify which error codes the service returns:
+
+   .. code-block:: console
+
+     kubectl -n monitoring exec svc/kube-prometheus-stack-prometheus -- \
+       promtool query instant http://localhost:9090 \
+       'sum by (service, status) (rate(nginx_ingress_controller_requests{status=~"5[0-9]{2}"}[2h]))'
+
+3. Check for unhealthy pods or recent restarts:
+
+   .. code-block:: console
+
+     kubectl get pods -A | grep <service-name>
+     kubectl get events -n <namespace> --sort-by='.lastTimestamp' | grep <service-name>
+
+4. Review application logs for recurring errors:
+
+   .. code-block:: console
+
+     kubectl logs -n <namespace> -l app=<service-name> --tail=200 | grep -i error
+
+5. Check if errors correlate with traffic patterns or specific time windows in
+   Grafana.
+
+6. Review recent deployments or configuration changes that might have
+   introduced the issue.
 
 ``NodeNetworkMulticast``
 ========================
