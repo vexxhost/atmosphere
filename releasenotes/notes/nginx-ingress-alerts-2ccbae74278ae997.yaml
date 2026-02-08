@@ -1,0 +1,17 @@
+---
+features:
+  - |
+    Replaced the basic ``HighInternalServerErrors`` alert with two
+    SLO-based NGINX Ingress alerts that provide better signal and reduce
+    noise: ``NginxIngressHighErrorRate`` (fires when error rate exceeds
+    5%) and ``NginxIngressCriticalErrorRate`` (fires when error rate
+    exceeds 20%). These alerts follow the SRE alerting philosophy with
+    proper severity levels, detailed annotations, and comprehensive
+    runbook documentation.
+upgrade:
+  - |
+    This release removes the ``HighInternalServerErrors`` alert and
+    replaces it with ``NginxIngressHighErrorRate`` and
+    ``NginxIngressCriticalErrorRate``. Update any alert routing rules or
+    silences that reference ``HighInternalServerErrors`` to use the new
+    alert names.
