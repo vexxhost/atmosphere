@@ -61,7 +61,30 @@ runs:
       run: rm -rfv /usr/local/bin/helm || true
 
     - shell: bash
-      run: sudo --preserve-env=ANSIBLE_PYTHON_INTERPRETER,ATMOSPHERE_NETWORK_BACKEND,MOLECULE_CSI_DRIVER env "PATH=$PATH" molecule test -s ${{ inputs.scenario }}
+      run: |
+        # Retry logic for handling transient Galaxy API failures
+        MAX_RETRIES=3
+        RETRY_DELAY=30
+        ATTEMPT=1
+        
+        while [ $ATTEMPT -le $MAX_RETRIES ]; do
+          echo "Attempt $ATTEMPT of $MAX_RETRIES..."
+          
+          if sudo --preserve-env=ANSIBLE_PYTHON_INTERPRETER,ATMOSPHERE_NETWORK_BACKEND,MOLECULE_CSI_DRIVER env "PATH=$PATH" molecule test -s ${{ inputs.scenario }}; then
+            echo "Success on attempt $ATTEMPT"
+            exit 0
+          fi
+          
+          EXIT_CODE=$?
+          if [ $ATTEMPT -lt $MAX_RETRIES ]; then
+            echo "Attempt $ATTEMPT failed with exit code $EXIT_CODE. Retrying in ${RETRY_DELAY}s..."
+            sleep $RETRY_DELAY
+            ATTEMPT=$((ATTEMPT + 1))
+          else
+            echo "All $MAX_RETRIES attempts failed. Giving up."
+            exit $EXIT_CODE
+          fi
+        done
       env:
         ANSIBLE_PYTHON_INTERPRETER: /usr/bin/python3
         ATMOSPHERE_NETWORK_BACKEND: ${{ inputs.network_backend }}
