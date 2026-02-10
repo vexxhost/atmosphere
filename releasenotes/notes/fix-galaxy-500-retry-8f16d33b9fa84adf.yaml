@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Added retry logic to handle transient failures when Galaxy API returns 500
+    errors during collection installation. The molecule test workflow now
+    retries up to 3 times with a 30-second delay between attempts. Also added
+    ``ansible.cfg`` to configure increased timeout (180 seconds) for Galaxy API
+    requests to better handle slow or overloaded servers.
