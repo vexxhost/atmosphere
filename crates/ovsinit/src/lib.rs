@@ -6,9 +6,9 @@ use futures_util::stream::TryStreamExt;
 use ipnet::IpNet;
 use log::{error, info};
 use netlink_packet_route::{
+    AddressFamily,
     address::{AddressAttribute, AddressMessage},
     route::{RouteAttribute, RouteMessage, RouteScope},
-    AddressFamily,
 };
 use rtnetlink::{Handle, IpVersion};
 use std::net::IpAddr;

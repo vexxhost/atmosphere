@@ -17,6 +17,8 @@ __cinder_helm_values:
   images:
     tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('cinder') }}"
   pod:
+    labels:
+      include_app_kubernetes_io: false
     replicas:
       api: 3
       scheduler: 3
@@ -29,6 +31,12 @@ __cinder_helm_values:
           volumes:
             - name: cinder-tmp
               emptyDir: {}
+    security_context:
+      cinder_volume:
+        container:
+          cinder_volume:
+            privileged: true
+
   conf:
     policy: {}
     cinder:
@@ -54,6 +62,15 @@ __cinder_helm_values:
         driver: noop
       privsep_osbrick:
         helper_command: sudo cinder-rootwrap /etc/cinder/rootwrap.conf privsep-helper --config-file /etc/cinder/cinder.conf
+    rabbitmq:
+      policies:
+        - vhost: "cinder"
+          name: "ha_ttl_cinder"
+          definition:
+            message-ttl: 70000
+          priority: 0
+          apply-to: all
+          pattern: '^(?!(amq\.|reply_)).*'
   manifests:
     ingress_api: false
     job_clean: false

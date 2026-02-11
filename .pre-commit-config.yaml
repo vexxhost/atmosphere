@@ -1,4 +1,4 @@
-exclude: "^(roles/kube_prometheus_stack/files/jsonnet|charts|plugins/modules/subnet.py|.github)"
+exclude: "^(roles/kube_prometheus_stack/files/jsonnet|charts|plugins/modules/subnet.py|patches/)"
 
 repos:
   - repo: local
@@ -21,8 +21,12 @@ repos:
     hooks:
       - id: end-of-file-fixer
         exclude: ^images/.*/patches/.*\.patch$
+      - id: file-contents-sorter
+        files: ^.github/styles/config/vocabularies/Base/accept.txt$
       - id: trailing-whitespace
         exclude: ^images/.*/patches/.*\.patch$
+      - id: mixed-line-ending
+        args: ['--fix=lf']
 
   - repo: https://github.com/psf/black
     rev: 24.4.0
@@ -41,6 +45,6 @@ repos:
         args: ["--profile", "black", "--filter-files"]
 
   - repo: https://github.com/ansible/ansible-lint.git
-    rev: v25.1.2
+    rev: v25.6.1
     hooks:
       - id: ansible-lint

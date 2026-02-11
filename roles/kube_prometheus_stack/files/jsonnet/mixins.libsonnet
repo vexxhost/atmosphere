@@ -63,7 +63,7 @@ local getSeverity(rule) =
 local mixins = {
   alertmanager: (import 'vendor/github.com/prometheus/alertmanager/doc/alertmanager-mixin/mixin.libsonnet') + {
     _config+:: {
-      alertmanagerSelector: 'job="kube-prometheus-stack-alertmanager",namespace="monitoring"',
+      alertmanagerSelector: 'job="kube-prometheus-stack-alertmanager"',
       alertmanagerClusterLabels: 'namespace,service,cluster',
     },
   },
@@ -96,7 +96,7 @@ local mixins = {
           ],
         },
       ],
-    }
+    },
   },
   coredns: (import 'vendor/github.com/povilasv/coredns-mixin/mixin.libsonnet') + {
     _config+:: {
@@ -152,7 +152,7 @@ local mixins = {
               labels: { severity: 'info' },
               annotations: {
                 summary: 'Percona XtraDB Cluster replica is down',
-                description: "{{ $labels.instance }} replica is down.",
+                description: '{{ $labels.instance }} replica is down.',
               },
             },
             {
@@ -162,7 +162,7 @@ local mixins = {
               labels: { severity: 'warning' },
               annotations: {
                 summary: 'Percona XtraDB Cluster replicas are down',
-                description: "{{ $value }}% of replicas are online.",
+                description: '{{ $value }}% of replicas are online.',
               },
             },
             {
@@ -172,7 +172,7 @@ local mixins = {
               labels: { severity: 'critical' },
               annotations: {
                 summary: 'Percona XtraDB Cluster is down',
-                description: "All replicas are down.",
+                description: 'All replicas are down.',
               },
             },
           ],
@@ -180,7 +180,37 @@ local mixins = {
       ],
     },
   },
-  node: (import 'vendor/github.com/prometheus/node_exporter/docs/node-mixin/mixin.libsonnet'),
+  node:
+    (import 'vendor/github.com/prometheus/node_exporter/docs/node-mixin/mixin.libsonnet') {
+      _config+:: {
+        nodeExporterSelector: 'job="node-exporter"',
+      },
+      prometheusAlerts+:: {
+        groups+: [
+          {
+            name: 'node-exporter-extras',
+            rules: [
+              {
+                alert: 'NodeTimeSkewDetected',
+                expr: |||
+                  abs(timestamp(node_time_seconds{%(nodeExporterSelector)s}) - node_time_seconds{%(nodeExporterSelector)s}) > 1
+                ||| % mixins.node._config,
+                'for': '5m',
+                labels: {
+                  severity: 'warning',
+                },
+                annotations: {
+                  summary: 'Node {{ $labels.instance }} has a time difference.',
+                  description: 'Node {{ $labels.instance }} has a time difference {{ $value }}.',
+                },
+              },
+            ],
+          },
+        ],
+      },
+    },
+  goldpinger: (import 'goldpinger.libsonnet'),
+  nginx: (import 'nginx.libsonnet'),
   openstack: (import 'openstack.libsonnet'),
 } + (import 'legacy.libsonnet');
 

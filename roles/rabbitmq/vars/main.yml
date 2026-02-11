@@ -29,6 +29,7 @@ _rabbitmq_spec:
     storage: 10Gi
   rabbitmq:
     additionalConfig: |
+      deprecated_features.permit.management_metrics_collection = true
       vm_memory_high_watermark.relative = 0.9
   replicas: 1
   resources:
@@ -36,7 +37,9 @@ _rabbitmq_spec:
       cpu: 500m
       memory: 1Gi
   secretBackend:
-    externalSecret: {}
+    externalSecret: {
+      name: ""
+    }
   service:
     type: ClusterIP
   terminationGracePeriodSeconds: 15

@@ -27,10 +27,10 @@ labels:
 images:
   tags:
     libvirt: docker.io/openstackhelm/libvirt:latest-ubuntu_focal
-    libvirt_tls_sidecar: ghcr.io/vexxhost/atmosphere/libvirt-tls-sidecar:latest
+    libvirt_tls_sidecar: ghcr.io/vexxhost/libvirt-tls-sidecar:v1.0.0
     libvirt_exporter: vexxhost/libvirtd-exporter:latest
-    ceph_config_helper: 'docker.io/openstackhelm/ceph-config-helper:ubuntu_focal_18.2.0-1-20231013'
-    dep_check: quay.io/airshipit/kubernetes-entrypoint:v1.0.0
+    ceph_config_helper: 'docker.io/openstackhelm/ceph-config-helper:ubuntu_jammy_19.2.3-1-20250805'
+    dep_check: quay.io/airshipit/kubernetes-entrypoint:latest-ubuntu_focal
     image_repo_sync: docker.io/library/docker:17.07.0
     kubectl: docker.io/bitnami/kubectl:latest
   pull_policy: "IfNotPresent"
@@ -124,9 +124,37 @@ conf:
     cert_file: "/etc/pki/libvirt/servercert.pem"
     key_file: "/etc/pki/libvirt/private/serverkey.pem"
     auth_unix_rw: "none"
-    listen_addr: 127.0.0.1
+    listen_addr: "${LISTEN_IP_ADDRESS}"
     log_level: "3"
     log_outputs: "1:file:/var/log/libvirt/libvirtd.log"
+  # Modifies the config in which value is specified as the name of a variable
+  # that is computed in the script.
+  dynamic_options:
+    libvirt:
+      listen_interface: null
+      listen_address: 127.0.0.1
+    script: |
+      #!/bin/bash
+      set -ex
+
+      LIBVIRT_CONF_PATH=/tmp/pod-shared/libvirtd.conf
+
+      {{- if .Values.conf.dynamic_options.libvirt.listen_interface }}
+
+      LISTEN_INTERFACE="{{ .Values.conf.dynamic_options.libvirt.listen_interface }}"
+      LISTEN_IP_ADDRESS=$(ip address show $LISTEN_INTERFACE | grep 'inet ' | awk '{print $2}' | awk -F "/" '{print $1}')
+      {{- else if .Values.conf.dynamic_options.libvirt.listen_address }}
+      LISTEN_IP_ADDRESS={{ .Values.conf.dynamic_options.libvirt.listen_address }}
+      {{- end }}
+
+      if [[ -z $LISTEN_IP_ADDRESS ]]; then
+          echo "LISTEN_IP_ADDRESS is not set."
+          exit 1
+      fi
+
+      tee > ${LIBVIRT_CONF_PATH} << EOF
+      {{ include "libvirt.utils.to_libvirt_conf" .Values.conf.libvirt }}
+      EOF
   qemu:
     vnc_tls: "0"
     vnc_tls_x509_verify: "0"
@@ -136,11 +164,66 @@ conf:
     default_tls_x509_cert_dir: /etc/pki/qemu
   kubernetes:
     cgroup: "kubepods.slice"
+    # List of cgroup controller we want to use when breaking out of
+    # Kubernetes defined groups
+    cgroup_controllers:
+      - blkio
+      - cpu
+      - devices
+      - freezer
+      - hugetlb
+      - memory
+      - net_cls
+      - perf_event
+      - rdma
+      - misc
+      - pids
+  init_modules:
+    enabled: false
+    script: |
+      #!/bin/bash
+
+      set -ex
+      export HOME=/tmp
+      KVM_QEMU_CONF_HOST="/etc/modprobe.d_host/qemu-system-x86.conf"
+
+      if [[ ! -f "${KVM_QEMU_CONF_HOST}" ]]; then
+        if grep vmx /proc/cpuinfo; then
+          cat << EOF > ${KVM_QEMU_CONF_HOST}
+      options kvm_intel nested=1
+      options kvm_intel enable_apicv=1
+      options kvm_intel ept=1
+      EOF
+          modprobe -r kvm_intel || true
+          modprobe kvm_intel nested=1
+        elif grep svm /proc/cpuinfo; then
+          cat << EOF > ${KVM_QEMU_CONF_HOST}
+      options kvm_amd nested=1
+      EOF
+          modprobe -r kvm_amd || true
+          modprobe kvm_amd nested=1
+        else
+          echo "Nested virtualization is not supported"
+        fi
+      fi
 
 pod:
   probes:
     libvirt:
       libvirt:
+        liveness:
+          enabled: true
+          params:
+            initialDelaySeconds: 30
+            periodSeconds: 60
+            timeoutSeconds: 5
+        readiness:
+          enabled: true
+          params:
+            initialDelaySeconds: 15
+            periodSeconds: 60
+            timeoutSeconds: 5
+      libvirt_exporter:
         liveness:
           enabled: true
           params:
@@ -167,8 +250,25 @@ pod:
           readOnlyRootFilesystem: false
         libvirt_exporter:
           privileged: true
+        libvirt_init_modules:
+          readOnlyRootFilesystem: true
+          privileged: true
+          capabilities:
+            drop:
+              - ALL
+        init_dynamic_options:
+          runAsUser: 65534
+          runAsNonRoot: true
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
   sidecars:
-    libvirt_exporter: false
+    libvirt_exporter:
+      enabled: false
+      args:
+        - "--libvirt.nova"
 
   affinity:
     anti:
@@ -280,6 +380,7 @@ manifests:
   network_policy: false
   role_cert_manager: false
   secret_registry: true
+  podmonitor: false
 
 secrets:
   oci_image_registry:
@@ -287,5 +388,4 @@ secrets:
   tls:
     server: libvirt-tls-server
     client: libvirt-tls-client
-
 ...

@@ -12,13 +12,16 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-atmosphere_version: 5.0.0-beta.1 # x-release-please-version
+atmosphere_version: 6.0.0-beta.3 # x-release-please-version
 
 # Ingress
 atmosphere_ingress_class_name: atmosphere
 atmosphere_ingress_cluster_issuer: atmosphere
 atmosphere_ingress_annotations: {}
 atmosphere_image_prefix: ""
+
+# Kubernetes
+atmosphere_kubernetes_version: "1.28.13"
 
 # Network backend
 atmosphere_network_backend: openvswitch
@@ -27,4 +30,4 @@ atmosphere_network_backend: openvswitch
 atmosphere_image_overrides: {}
 
 defaults_ca_certificates_path: >-
-  {{ '/etc/ssl/certs/ca-certificates.crt' if ansible_facts['os_family'] in ['Debian'] else '/etc/pki/ca-trust/extracted/openssl/ca-bundle.trust.crt' }}
+  {{ '/etc/ssl/certs/ca-certificates.crt' if ansible_facts['os_family'] in ['Debian'] else '/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem' }}

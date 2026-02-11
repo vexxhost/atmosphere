@@ -1,0 +1,156 @@
+diff --git a/nova/templates/cron-job-archive-deleted-rows.yaml b/nova/templates/cron-job-archive-deleted-rows.yaml
+index 7316b3ac..cfaba7af 100644
+--- a/nova/templates/cron-job-archive-deleted-rows.yaml
++++ b/nova/templates/cron-job-archive-deleted-rows.yaml
+@@ -42,6 +42,8 @@ spec:
+           labels:
+ {{ tuple $envAll "nova" "archive-deleted-rows" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 12 }}
+         spec:
++{{ tuple "nova_archive_deleted_rows" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 10 }}
++{{ tuple "nova_archive_deleted_rows" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 10 }}
+           serviceAccountName: {{ $serviceAccountName }}
+ {{ dict "envAll" $envAll "application" "archive_deleted_rows" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 10 }}
+           restartPolicy: OnFailure
+diff --git a/nova/templates/cron-job-cell-setup.yaml b/nova/templates/cron-job-cell-setup.yaml
+index b90b84e8..a129cba9 100644
+--- a/nova/templates/cron-job-cell-setup.yaml
++++ b/nova/templates/cron-job-cell-setup.yaml
+@@ -42,6 +42,8 @@ spec:
+           labels:
+ {{ tuple $envAll "nova" "cell-setup" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 12 }}
+         spec:
++{{ tuple "nova_cell_setup" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 10 }}
++{{ tuple "nova_cell_setup" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 10 }}
+           serviceAccountName: {{ $serviceAccountName }}
+ {{ dict "envAll" $envAll "application" "cell_setup" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 10 }}
+           restartPolicy: OnFailure
+diff --git a/nova/templates/cron-job-service-cleaner.yaml b/nova/templates/cron-job-service-cleaner.yaml
+index dd61db79..89adca00 100644
+--- a/nova/templates/cron-job-service-cleaner.yaml
++++ b/nova/templates/cron-job-service-cleaner.yaml
+@@ -42,6 +42,8 @@ spec:
+           labels:
+ {{ tuple $envAll "nova" "service-cleaner" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 12 }}
+         spec:
++{{ tuple "nova_service_cleaner" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 10 }}
++{{ tuple "nova_service_cleaner" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 10 }}
+           serviceAccountName: {{ $serviceAccountName }}
+ {{ dict "envAll" $envAll "application" "service_cleaner" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 10 }}
+           restartPolicy: OnFailure
+diff --git a/nova/templates/daemonset-compute.yaml b/nova/templates/daemonset-compute.yaml
+index 3ad00ff2..928be37a 100644
+--- a/nova/templates/daemonset-compute.yaml
++++ b/nova/templates/daemonset-compute.yaml
+@@ -90,6 +90,8 @@ spec:
+ {{ tuple "nova_compute" . | include "helm-toolkit.snippets.custom_pod_annotations" | indent 8 }}
+ {{ dict "envAll" $envAll "podName" "nova-compute-default" "containerNames" (list "nova-compute" "init" "nova-compute-init" "nova-compute-vnc-init") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+     spec:
++{{ tuple "nova_compute" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "nova_compute" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
+       serviceAccountName: {{ $serviceAccountName }}
+ {{ dict "envAll" $envAll "application" "nova" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+       nodeSelector:
+diff --git a/nova/templates/deployment-api-metadata.yaml b/nova/templates/deployment-api-metadata.yaml
+index 51e30c9d..8d7a3a76 100644
+--- a/nova/templates/deployment-api-metadata.yaml
++++ b/nova/templates/deployment-api-metadata.yaml
+@@ -60,6 +60,8 @@ spec:
+ {{ tuple "nova_api_metadata" . | include "helm-toolkit.snippets.custom_pod_annotations" | indent 8 }}
+ {{ dict "envAll" $envAll "podName" "nova-api-metadata" "containerNames" (list "nova-api-metadata-init" "nova-api" "init") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+     spec:
++{{ tuple "nova_api_metadata" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "nova_api_metadata" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
+       serviceAccountName: {{ $serviceAccountName }}
+ {{ dict "envAll" $envAll "application" "nova" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+       affinity:
+diff --git a/nova/templates/deployment-api-osapi.yaml b/nova/templates/deployment-api-osapi.yaml
+index b203ba6c..10f50d72 100644
+--- a/nova/templates/deployment-api-osapi.yaml
++++ b/nova/templates/deployment-api-osapi.yaml
+@@ -60,6 +60,8 @@ spec:
+ {{ tuple "nova_api_osapi" . | include "helm-toolkit.snippets.custom_pod_annotations" | indent 8 }}
+ {{ dict "envAll" $envAll "podName" "nova-api-osapi" "containerNames" (list "nova-osapi" "init") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+     spec:
++{{ tuple "nova_api_osapi" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "nova_api_osapi" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
+       serviceAccountName: {{ $serviceAccountName }}
+ {{ dict "envAll" $envAll "application" "nova" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+       affinity:
+diff --git a/nova/templates/deployment-conductor.yaml b/nova/templates/deployment-conductor.yaml
+index b58b3855..662028de 100644
+--- a/nova/templates/deployment-conductor.yaml
++++ b/nova/templates/deployment-conductor.yaml
+@@ -69,6 +69,8 @@ spec:
+ {{ tuple "nova_conductor" . | include "helm-toolkit.snippets.custom_pod_annotations" | indent 8 }}
+ {{ dict "envAll" $envAll "podName" "nova-conductor" "containerNames" (list "nova-conductor" "init") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+     spec:
++{{ tuple "nova_conductor" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "nova_conductor" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
+       serviceAccountName: {{ $serviceAccountName }}
+ {{ dict "envAll" $envAll "application" "nova" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+       affinity:
+diff --git a/nova/templates/deployment-novncproxy.yaml b/nova/templates/deployment-novncproxy.yaml
+index f4c1d8ba..5cd435d3 100644
+--- a/nova/templates/deployment-novncproxy.yaml
++++ b/nova/templates/deployment-novncproxy.yaml
+@@ -58,6 +58,8 @@ spec:
+ {{ tuple "nova_novncproxy" . | include "helm-toolkit.snippets.custom_pod_annotations" | indent 8 }}
+ {{ dict "envAll" $envAll "podName" "nova-novncproxy" "containerNames" (list "nova-novncproxy" "nova-novncproxy-init-assets" "nova-novncproxy-init" "init") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+     spec:
++{{ tuple "nova_novncproxy" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "nova_novncproxy" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
+       serviceAccountName: {{ $serviceAccountName }}
+ {{ dict "envAll" $envAll "application" "nova" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+       affinity:
+diff --git a/nova/templates/deployment-scheduler.yaml b/nova/templates/deployment-scheduler.yaml
+index bba444c9..f760c01a 100644
+--- a/nova/templates/deployment-scheduler.yaml
++++ b/nova/templates/deployment-scheduler.yaml
+@@ -69,6 +69,8 @@ spec:
+ {{ tuple "nova_scheduler" . | include "helm-toolkit.snippets.custom_pod_annotations" | indent 8 }}
+ {{ dict "envAll" $envAll "podName" "nova-scheduler" "containerNames" (list "nova-scheduler" "init") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+     spec:
++{{ tuple "nova_scheduler" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "nova_scheduler" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
+       serviceAccountName: {{ $serviceAccountName }}
+ {{ dict "envAll" $envAll "application" "nova" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+       affinity:
+diff --git a/nova/templates/deployment-spiceproxy.yaml b/nova/templates/deployment-spiceproxy.yaml
+index eca1628e..5c99dfb7 100644
+--- a/nova/templates/deployment-spiceproxy.yaml
++++ b/nova/templates/deployment-spiceproxy.yaml
+@@ -55,6 +55,8 @@ spec:
+         configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
+ {{ tuple "nova_spiceproxy" . | include "helm-toolkit.snippets.custom_pod_annotations" | indent 8 }}
+     spec:
++{{ tuple "nova_spiceproxy" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "nova_spiceproxy" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
+       serviceAccountName: {{ $serviceAccountName }}
+ {{ dict "envAll" $envAll "application" "nova" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+       affinity:
+diff --git a/nova/templates/pod-rally-test.yaml b/nova/templates/pod-rally-test.yaml
+index d53f2047..55c955b3 100644
+--- a/nova/templates/pod-rally-test.yaml
++++ b/nova/templates/pod-rally-test.yaml
+@@ -44,6 +44,8 @@ spec:
+ {{ tuple $envAll "nova" | include "helm-toolkit.snippets.kubernetes_tolerations" | indent 2 }}
+ {{ end }}
+   restartPolicy: Never
++{{ tuple "nova_tests" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 2 }}
++{{ tuple "nova_tests" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 2 }}
+   serviceAccountName: {{ $serviceAccountName }}
+   initContainers:
+ {{ tuple $envAll "tests" $mounts_tests_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 4 }}
+diff --git a/nova/templates/statefulset-compute-ironic.yaml b/nova/templates/statefulset-compute-ironic.yaml
+index 37d3fc5a..51b761c2 100644
+--- a/nova/templates/statefulset-compute-ironic.yaml
++++ b/nova/templates/statefulset-compute-ironic.yaml
+@@ -45,6 +45,8 @@ spec:
+         configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
+ {{ dict "envAll" $envAll "podName" "nova-compute-default" "containerNames" (list "nova-compute") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+     spec:
++{{ tuple "nova_compute_ironic" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "nova_compute_ironic" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
+       serviceAccountName: {{ $serviceAccountName }}
+ {{ dict "envAll" $envAll "application" "nova" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+       affinity:

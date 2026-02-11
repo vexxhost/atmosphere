@@ -26,6 +26,7 @@ _libvirt_helm_values:
       listen_tcp: "0"
       listen_tls: "1"
       listen_addr: 0.0.0.0
+      tls_priority: "NORMAL:-VERS-TLS1.0:-VERS-TLS1.1:-VERS-TLS1.2"
     qemu:
       default_tls_x509_verify: "1"
       vnc_tls: "1"
@@ -36,8 +37,14 @@ _libvirt_helm_values:
     vencrypt:
       kind: Issuer
       name: libvirt-vnc
+  pod:
+    labels:
+      include_app_kubernetes_io: false
+    sidecars:
+      libvirt_exporter:
+        enabled: true
+        args:
+          - --libvirt.uri
+          - /run/libvirt/libvirt-sock-ro
   manifests:
     role_cert_manager: true
-  pod:
-    sidecars:
-      libvirt_exporter: true

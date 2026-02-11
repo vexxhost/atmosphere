@@ -134,6 +134,8 @@ DPDK interfaces for you.
         neutron:
           DEFAULT:
             global_physnet_mtu: 9100
+          ovn:
+            vhost_sock_dir: /run/openvswitch/vhostuser
         plugins:
           ml2_conf:
             ml2:

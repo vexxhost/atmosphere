@@ -1,0 +1,12 @@
+# Copyright (c) 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- hosts: all
+  become: true
+  tasks:
+    - name: Install "jq" for log collection
+      ansible.builtin.apt:
+        name: jq
+        update_cache: true
+      when:
+        - ansible_facts['os_family'] | lower == 'debian'

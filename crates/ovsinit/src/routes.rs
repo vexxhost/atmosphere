@@ -1,8 +1,7 @@
 use ipnet::IpNet;
-use log::error;
 use netlink_packet_route::{
-    route::{RouteAddress, RouteAttribute, RouteMessage, RouteProtocol},
     AddressFamily,
+    route::{RouteAddress, RouteAttribute, RouteMessage, RouteProtocol},
 };
 use std::{
     fmt,

@@ -48,12 +48,13 @@ func TestPerconaXtraDBClusterSpec(t *testing.T) {
 
 	assert.Equal(t, chart.AppVersion(), vars.PerconaXtraDBClusterSpec.CRVersion)
 	assert.Equal(t, "percona-xtradb", vars.PerconaXtraDBClusterSpec.SecretsName)
+	assert.Equal(t, true, vars.PerconaXtraDBClusterSpec.VolumeExpansionEnabled)
 }
 
 func TestPerconaXtraDBClusterPXCSpec(t *testing.T) {
 	assert.Equal(t, int32(3), vars.PerconaXtraDBClusterSpec.PXC.Size)
 	assert.Equal(t, true, *vars.PerconaXtraDBClusterSpec.PXC.AutoRecovery)
-	defaults.AssertAtmosphereImage(t, "docker.io/percona/percona-xtradb-cluster:8.0.36-28.1", vars.PerconaXtraDBClusterSpec.PXC.Image)
+	defaults.AssertAtmosphereImage(t, "docker.io/percona/percona-xtradb-cluster:8.0.42-33.1", vars.PerconaXtraDBClusterSpec.PXC.Image)
 
 	assert.Equal(t, map[string]string{
 		"openstack-control-plane": "enabled",
@@ -85,14 +86,13 @@ func TestPerconaXtraDBClusterPXCConfiguration(t *testing.T) {
 	section := cfg.Section("mysqld")
 	assert.Equal(t, 8192, section.Key("max_connections").MustInt())
 	assert.Equal(t, "4096M", section.Key("innodb_buffer_pool_size").String())
-	assert.Equal(t, "16M", section.Key("max_allowed_packet").String())
 	assert.Equal(t, true, section.Key("skip-name-resolve").MustBool())
 }
 
 func TestPerconaXtraDBClusterPXCSidecarSpec(t *testing.T) {
 	sidecar := vars.PerconaXtraDBClusterSpec.PXC.Sidecars[0]
 	assert.Equal(t, "exporter", sidecar.Name)
-	defaults.AssertAtmosphereImage(t, "quay.io/prometheus/mysqld-exporter:v0.15.1", sidecar.Image)
+	defaults.AssertAtmosphereImage(t, "quay.io/prometheus/mysqld-exporter:v0.17.0", sidecar.Image)
 
 	assert.Equal(t, v1.EnvVar{
 		Name: "MYSQLD_EXPORTER_PASSWORD",
@@ -116,10 +116,7 @@ func TestPerconaXtraDBClusterHAProxySpec(t *testing.T) {
 	assert.Equal(t, true, vars.PerconaXtraDBClusterSpec.HAProxy.Enabled)
 	assert.Equal(t, int32(3), vars.PerconaXtraDBClusterSpec.HAProxy.Size)
 
-	defaults.AssertAtmosphereImage(t,
-		fmt.Sprintf("docker.io/percona/percona-xtradb-cluster-operator:%s-haproxy", vars.PerconaXtraDBClusterSpec.CRVersion),
-		vars.PerconaXtraDBClusterSpec.HAProxy.Image,
-	)
+	defaults.AssertAtmosphereImage(t, "docker.io/percona/haproxy:2.8.15", vars.PerconaXtraDBClusterSpec.HAProxy.Image)
 
 	assert.Equal(t, map[string]string{
 		"openstack-control-plane": "enabled",

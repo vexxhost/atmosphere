@@ -41,7 +41,20 @@
    "graphTooltip": 0,
    "hideControls": false,
    "id": null,
-   "links": [ ],
+   "links": [
+      {
+         "asDropdown": true,
+         "icon": "external link",
+         "includeVars": true,
+         "keepTime": true,
+         "tags": [ ],
+         "targetBlank": false,
+         "title": "Browse Dashboards",
+         "tooltip": "",
+         "type": "dashboards",
+         "url": ""
+      }
+   ],
    "panels": [
       {
          "cacheTimeout": null,
@@ -104,7 +117,7 @@
          "tableColumn": "",
          "targets": [
             {
-               "expr": "count(sum by (hostname) (ceph_osd_metadata{job=~\"$job\"}))",
+               "expr": "count(sum by (hostname) (ceph_osd_metadata{cluster=~\"$cluster\", }))",
                "format": "time_series",
                "instant": true,
                "intervalFactor": 1,
@@ -436,7 +449,7 @@
          "tableColumn": "",
          "targets": [
             {
-               "expr": "avg (\n  label_replace(\n    (rate(node_disk_io_time_ms[$__rate_interval]) / 10 ) or\n      (rate(node_disk_io_time_seconds_total[$__rate_interval]) * 100),\n    \"instance\", \"$1\", \"instance\", \"([^.:]*).*\"\n  ) * on(instance, device) group_left(ceph_daemon) label_replace(\n    label_replace(\n      ceph_disk_occupation_human{job=~\"$job\", instance=~\"($osd_hosts).*\"},\n      \"device\", \"$1\", \"device\", \"/dev/(.*)\"\n    ), \"instance\", \"$1\", \"instance\", \"([^.:]*).*\"\n  )\n)\n",
+               "expr": "avg (\n  label_replace(\n    (rate(node_disk_io_time_ms[$__rate_interval]) / 10 ) or\n      (rate(node_disk_io_time_seconds_total[$__rate_interval]) * 100),\n    \"instance\", \"$1\", \"instance\", \"([^.:]*).*\"\n  ) * on(instance, device) group_left(ceph_daemon) label_replace(\n    label_replace(\n      ceph_disk_occupation_human{instance=~\"($osd_hosts).*\", cluster=~\"$cluster\", },\n      \"device\", \"$1\", \"device\", \"/dev/(.*)\"\n    ), \"instance\", \"$1\", \"instance\", \"([^.:]*).*\"\n  )\n)\n",
                "format": "time_series",
                "instant": true,
                "intervalFactor": 1,
@@ -519,7 +532,7 @@
          "tableColumn": "",
          "targets": [
             {
-               "expr": "sum (\n  (\n    rate(node_network_receive_bytes{instance=~\"($osd_hosts|mon_hosts|mds_hosts|rgw_hosts).*\",device!=\"lo\"}[$__rate_interval]) or\n    rate(node_network_receive_bytes_total{instance=~\"($osd_hosts|mon_hosts|mds_hosts|rgw_hosts).*\",device!=\"lo\"}[$__rate_interval])\n  ) unless on (device, instance)\n  label_replace((bonding_slaves > 0), \"device\", \"$1\", \"master\", \"(.+)\")\n) +\nsum (\n  (\n    rate(node_network_transmit_bytes{instance=~\"($osd_hosts|mon_hosts|mds_hosts|rgw_hosts).*\",device!=\"lo\"}[$__rate_interval]) or\n    rate(node_network_transmit_bytes_total{instance=~\"($osd_hosts|mon_hosts|mds_hosts|rgw_hosts).*\",device!=\"lo\"}[$__rate_interval])\n  ) unless on (device, instance)\n  label_replace((bonding_slaves > 0), \"device\", \"$1\", \"master\", \"(.+)\")\n)\n",
+               "expr": "sum (\n  (\n    rate(node_network_receive_bytes{instance=~\"($osd_hosts|$mon_hosts|$mds_hosts|$rgw_hosts).*\",device!=\"lo\"}[$__rate_interval]) or\n    rate(node_network_receive_bytes_total{instance=~\"($osd_hosts|$mon_hosts|$mds_hosts|$rgw_hosts).*\",device!=\"lo\"}[$__rate_interval])\n  ) unless on (device, instance)\n  label_replace((node_bonding_slaves > 0), \"device\", \"$1\", \"master\", \"(.+)\")\n) +\nsum (\n  (\n    rate(node_network_transmit_bytes{instance=~\"($osd_hosts|$mon_hosts|$mds_hosts|$rgw_hosts).*\",device!=\"lo\"}[$__rate_interval]) or\n    rate(node_network_transmit_bytes_total{instance=~\"($osd_hosts|$mon_hosts|$mds_hosts|$rgw_hosts).*\",device!=\"lo\"}[$__rate_interval])\n  ) unless on (device, instance)\n  label_replace((node_bonding_slaves > 0), \"device\", \"$1\", \"master\", \"(.+)\")\n)\n",
                "format": "time_series",
                "instant": true,
                "intervalFactor": 1,
@@ -541,14 +554,52 @@
          "valueName": "current"
       },
       {
-         "aliasColors": { },
-         "bars": false,
-         "dashLength": 10,
-         "dashes": false,
          "datasource": "$datasource",
-         "description": "Show the top 10 busiest hosts by cpu",
-         "fill": 1,
-         "fillGradient": 0,
+         "description": "",
+         "fieldConfig": {
+            "defaults": {
+               "color": {
+                  "mode": "palette-classic"
+               },
+               "custom": {
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "barAlignment": 0,
+                  "drawStyle": "line",
+                  "fillOpacity": 8,
+                  "gradientMode": "none",
+                  "hideFrom": {
+                     "legend": false,
+                     "tooltip": false,
+                     "viz": false
+                  },
+                  "lineInterpolation": "linear",
+                  "lineWidth": 1,
+                  "pointSize": 0,
+                  "scaleDistribution": {
+                     "type": "linear"
+                  },
+                  "showPoints": "never",
+                  "spanNulls": true,
+                  "stacking": {
+                     "group": "A",
+                     "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                     "mode": "off"
+                  }
+               },
+               "min": 0,
+               "thresholds": {
+                  "mode": "absolute",
+                  "steps": [ ]
+               },
+               "unit": "percent"
+            },
+            "overrides": [ ]
+         },
          "gridPos": {
             "h": 9,
             "w": 12,
@@ -556,85 +607,79 @@
             "y": 5
          },
          "id": 8,
-         "legend": {
-            "alignAsTable": false,
-            "avg": false,
-            "current": false,
-            "max": false,
-            "min": false,
-            "rightSide": false,
-            "show": true,
-            "sideWidth": null,
-            "total": false,
-            "values": false
+         "options": {
+            "legend": {
+               "calcs": [ ],
+               "displayMode": "list",
+               "placement": "bottom",
+               "showLegend": true
+            },
+            "tooltip": {
+               "mode": "multi",
+               "sort": "none"
+            }
          },
-         "lines": true,
-         "linewidth": 1,
-         "links": [ ],
-         "nullPointMode": "null",
-         "percentage": false,
-         "pointradius": 5,
-         "points": false,
-         "renderer": "flot",
-         "repeat": null,
+         "pluginVersion": "9.1.3",
          "seriesOverrides": [ ],
-         "spaceLength": 10,
-         "stack": false,
-         "steppedLine": false,
          "targets": [
             {
-               "expr": "topk(10,\n  100 * (\n    1 - (\n      avg by(instance) (\n        rate(node_cpu_seconds_total{mode='idle',instance=~\"($osd_hosts|$mon_hosts|$mds_hosts|$rgw_hosts).*\"}[$__rate_interval]) or\n          rate(node_cpu{mode='idle',instance=~\"($osd_hosts|$mon_hosts|$mds_hosts|$rgw_hosts).*\"}[$__rate_interval])\n      )\n    )\n  )\n)\n",
+               "expr": "topk(10,\n  100 * (\n    1 - (\n      avg by(instance) (\n        rate(node_cpu_seconds_total{mode='idle',instance=~\"($osd_hosts|$mon_hosts|$mds_hosts|$rgw_hosts).*\"}[$__rate_interval]) or\n        rate(node_cpu{mode='idle',instance=~\"($osd_hosts|$mon_hosts|$mds_hosts|$rgw_hosts).*\"}[$__rate_interval])\n      )\n    )\n  )\n)\n",
                "format": "time_series",
                "intervalFactor": 1,
                "legendFormat": "{{instance}}",
                "refId": "A"
             }
          ],
-         "thresholds": [ ],
-         "timeFrom": null,
-         "timeShift": null,
          "title": "CPU Busy - Top 10 Hosts",
-         "tooltip": {
-            "shared": true,
-            "sort": 0,
-            "value_type": "individual"
-         },
-         "type": "graph",
-         "xaxis": {
-            "buckets": null,
-            "mode": "time",
-            "name": null,
-            "show": true,
-            "values": [ ]
-         },
-         "yaxes": [
-            {
-               "format": "percent",
-               "label": null,
-               "logBase": 1,
-               "max": null,
-               "min": 0,
-               "show": true
-            },
-            {
-               "format": "short",
-               "label": null,
-               "logBase": 1,
-               "max": null,
-               "min": 0,
-               "show": true
-            }
-         ]
+         "type": "timeseries"
       },
       {
-         "aliasColors": { },
-         "bars": false,
-         "dashLength": 10,
-         "dashes": false,
          "datasource": "$datasource",
-         "description": "Top 10 hosts by network load",
-         "fill": 1,
-         "fillGradient": 0,
+         "description": "",
+         "fieldConfig": {
+            "defaults": {
+               "color": {
+                  "mode": "palette-classic"
+               },
+               "custom": {
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "barAlignment": 0,
+                  "drawStyle": "line",
+                  "fillOpacity": 8,
+                  "gradientMode": "none",
+                  "hideFrom": {
+                     "legend": false,
+                     "tooltip": false,
+                     "viz": false
+                  },
+                  "lineInterpolation": "linear",
+                  "lineWidth": 1,
+                  "pointSize": 0,
+                  "scaleDistribution": {
+                     "type": "linear"
+                  },
+                  "showPoints": "never",
+                  "spanNulls": true,
+                  "stacking": {
+                     "group": "A",
+                     "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                     "mode": "off"
+                  }
+               },
+               "min": 0,
+               "thresholds": {
+                  "mode": "absolute",
+                  "steps": [ ]
+               },
+               "unit": "Bps"
+            },
+            "overrides": [ ]
+         },
          "gridPos": {
             "h": 9,
             "w": 12,
@@ -642,75 +687,31 @@
             "y": 5
          },
          "id": 9,
-         "legend": {
-            "alignAsTable": false,
-            "avg": false,
-            "current": false,
-            "max": false,
-            "min": false,
-            "rightSide": false,
-            "show": true,
-            "sideWidth": null,
-            "total": false,
-            "values": false
+         "options": {
+            "legend": {
+               "calcs": [ ],
+               "displayMode": "list",
+               "placement": "bottom",
+               "showLegend": true
+            },
+            "tooltip": {
+               "mode": "multi",
+               "sort": "none"
+            }
          },
-         "lines": true,
-         "linewidth": 1,
-         "links": [ ],
-         "nullPointMode": "null",
-         "percentage": false,
-         "pointradius": 5,
-         "points": false,
-         "renderer": "flot",
-         "repeat": null,
+         "pluginVersion": "9.1.3",
          "seriesOverrides": [ ],
-         "spaceLength": 10,
-         "stack": false,
-         "steppedLine": false,
          "targets": [
             {
-               "expr": "topk(10, (sum by(instance) (\n(\n  rate(node_network_receive_bytes{instance=~\"($osd_hosts|$mon_hosts|$mds_hosts|$rgw_hosts).*\",device!=\"lo\"}[$__rate_interval]) or\n  rate(node_network_receive_bytes_total{instance=~\"($osd_hosts|$mon_hosts|$mds_hosts|$rgw_hosts).*\",device!=\"lo\"}[$__rate_interval])\n) +\n(\n  rate(node_network_transmit_bytes{instance=~\"($osd_hosts|$mon_hosts|$mds_hosts|$rgw_hosts).*\",device!=\"lo\"}[$__rate_interval]) or\n  rate(node_network_transmit_bytes_total{instance=~\"($osd_hosts|$mon_hosts|$mds_hosts|$rgw_hosts).*\",device!=\"lo\"}[$__rate_interval])\n) unless on (device, instance)\n  label_replace((bonding_slaves > 0), \"device\", \"$1\", \"master\", \"(.+)\"))\n))\n",
+               "expr": "topk(10, (sum by(instance) (\n  (\n    rate(node_network_receive_bytes{instance=~\"($osd_hosts|$mon_hosts|$mds_hosts|$rgw_hosts).*\",device!=\"lo\"}[$__rate_interval]) or\n    rate(node_network_receive_bytes_total{instance=~\"($osd_hosts|$mon_hosts|$mds_hosts|$rgw_hosts).*\",device!=\"lo\"}[$__rate_interval])\n  ) +\n  (\n    rate(node_network_transmit_bytes{instance=~\"($osd_hosts|$mon_hosts|$mds_hosts|$rgw_hosts).*\",device!=\"lo\"}[$__rate_interval]) or\n    rate(node_network_transmit_bytes_total{instance=~\"($osd_hosts|$mon_hosts|$mds_hosts|$rgw_hosts).*\",device!=\"lo\"}[$__rate_interval])\n  ) unless on (device, instance)\n    label_replace((node_bonding_slaves > 0), \"device\", \"$1\", \"master\", \"(.+)\"))\n))\n",
                "format": "time_series",
                "intervalFactor": 1,
                "legendFormat": "{{instance}}",
                "refId": "A"
             }
          ],
-         "thresholds": [ ],
-         "timeFrom": null,
-         "timeShift": null,
          "title": "Network Load - Top 10 Hosts",
-         "tooltip": {
-            "shared": true,
-            "sort": 0,
-            "value_type": "individual"
-         },
-         "type": "graph",
-         "xaxis": {
-            "buckets": null,
-            "mode": "time",
-            "name": null,
-            "show": true,
-            "values": [ ]
-         },
-         "yaxes": [
-            {
-               "format": "Bps",
-               "label": null,
-               "logBase": 1,
-               "max": null,
-               "min": 0,
-               "show": true
-            },
-            {
-               "format": "short",
-               "label": null,
-               "logBase": 1,
-               "max": null,
-               "min": 0,
-               "show": true
-            }
-         ]
+         "type": "timeseries"
       }
    ],
    "refresh": "30s",
@@ -737,36 +738,16 @@
             "type": "datasource"
          },
          {
-            "allValue": ".+",
-            "current": { },
-            "datasource": "$datasource",
-            "hide": 2,
-            "includeAll": true,
-            "label": "cluster",
-            "multi": true,
-            "name": "cluster",
-            "options": [ ],
-            "query": "label_values(ceph_osd_metadata, cluster)",
-            "refresh": 1,
-            "regex": "(.*)",
-            "sort": 1,
-            "tagValuesQuery": "",
-            "tags": [ ],
-            "tagsQuery": "",
-            "type": "query",
-            "useTags": false
-         },
-         {
-            "allValue": ".+",
+            "allValue": null,
             "current": { },
             "datasource": "$datasource",
             "hide": 0,
-            "includeAll": true,
-            "label": "job",
-            "multi": true,
-            "name": "job",
+            "includeAll": false,
+            "label": "cluster",
+            "multi": false,
+            "name": "cluster",
             "options": [ ],
-            "query": "label_values(ceph_osd_metadata{}, job)",
+            "query": "label_values(ceph_health_status, cluster)",
             "refresh": 1,
             "regex": "(.*)",
             "sort": 1,
@@ -786,7 +767,7 @@
             "multi": false,
             "name": "osd_hosts",
             "options": [ ],
-            "query": "label_values(ceph_disk_occupation{job=~\"$job\"}, exported_instance)",
+            "query": "label_values(ceph_osd_metadata{cluster=~\"$cluster\", }, hostname)",
             "refresh": 1,
             "regex": "([^.]*).*",
             "sort": 1,
@@ -806,7 +787,7 @@
             "multi": false,
             "name": "mon_hosts",
             "options": [ ],
-            "query": "label_values(ceph_mon_metadata{job=~\"$job\"}, ceph_daemon)",
+            "query": "label_values(ceph_mon_metadata{cluster=~\"$cluster\", }, hostname)",
             "refresh": 1,
             "regex": "mon.(.*)",
             "sort": 1,
@@ -826,7 +807,7 @@
             "multi": false,
             "name": "mds_hosts",
             "options": [ ],
-            "query": "label_values(ceph_mds_inodes{job=~\"$job\"}, ceph_daemon)",
+            "query": "label_values(ceph_mds_inodes{cluster=~\"$cluster\"}, hostname)",
             "refresh": 1,
             "regex": "mds.(.*)",
             "sort": 1,
@@ -846,7 +827,7 @@
             "multi": false,
             "name": "rgw_hosts",
             "options": [ ],
-            "query": "label_values(ceph_rgw_metadata{job=~\"$job\"}, ceph_daemon)",
+            "query": "label_values(ceph_rgw_metadata{cluster=~\"$cluster\"}, hostname)",
             "refresh": 1,
             "regex": "rgw.(.*)",
             "sort": 1,

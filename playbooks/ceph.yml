@@ -26,3 +26,12 @@
 - import_playbook: vexxhost.ceph.site
   vars:
     containerd_pause_image: "{{ atmosphere_images['pause'] }}"
+
+- hosts: "{{ target | default('all') }}"
+  gather_facts: false
+  tasks:
+    - name: Ensure RBD kernel module is loaded
+      become: true
+      community.general.modprobe:
+        name: rbd
+        persistent: present

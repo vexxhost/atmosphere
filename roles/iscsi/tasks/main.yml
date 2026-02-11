@@ -1,5 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 
+- name: Install iscsi package
+  ansible.builtin.package:
+    name: "{{ 'iscsi-initiator-utils' if ansible_os_family == 'RedHat' else 'open-iscsi' }}"
+    state: present
+
 - name: Ensure iscsid is started
   ansible.builtin.service:
     name: iscsid

@@ -17,6 +17,8 @@ _manila_helm_values:
   images:
     tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('manila') }}"
   pod:
+    labels:
+      include_app_kubernetes_io: false
     mounts:
       manila_share:
         manila_share:
@@ -62,6 +64,22 @@ _manila_helm_values:
         service_instance_security_group: manila-service-security-group
       oslo_messaging_notifications:
         driver: noop
+      nova:
+        api_microversion: 2.60
+        endpoint_type: internalURL
+        region_name: "{{ openstack_helm_endpoints_nova_region_name }}"
+      glance:
+        endpoint_type: internalURL
+        region_name: "{{ openstack_helm_endpoints_glance_region_name }}"
+    rabbitmq:
+      policies:
+        - vhost: "manila"
+          name: "ha_ttl_manila"
+          definition:
+            message-ttl: 70000
+          priority: 0
+          apply-to: all
+          pattern: '^(?!(amq\.|reply_)).*'
   manifests:
     ingress_api: false
     service_ingress_api: false

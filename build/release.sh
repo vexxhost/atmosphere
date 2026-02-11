@@ -3,6 +3,10 @@
 # Use reno to suggest the next version
 SUGGESTED_VERSION=$(reno semver-next)
 
+# Prompt user for input
+echo "Suggested version: $SUGGESTED_VERSION"
+read -p "Use suggested version? [Y/n] (or enter custom version): " USER_INPUT
+
 # Process user input
 if [[ "$USER_INPUT" == "" || "$USER_INPUT" == "Y" || "$USER_INPUT" == "y" ]]; then
     VERSION=$SUGGESTED_VERSION

@@ -13,10 +13,15 @@
 # under the License.
 
 _octavia_helm_values:
+  # NOTE(okozachenko): remove this line once https://review.opendev.org/c/openstack/openstack-helm/+/965887
+  #                    is merged.
+  helm3_hook: true
   endpoints: "{{ openstack_helm_endpoints }}"
   images:
     tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('octavia') }}"
   pod:
+    labels:
+      include_app_kubernetes_io: false
     mounts:
       octavia_api:
         octavia_api:
@@ -25,6 +30,10 @@ _octavia_helm_values:
               mountPath: /etc/octavia/certs/server
             - name: octavia-client-certs
               mountPath: /etc/octavia/certs/client
+            - name: octavia-jobboard-default-ca
+              mountPath: /etc/octavia/certs/jobboard-default
+            - name: octavia-jobboard-sentinel-ca
+              mountPath: /etc/octavia/certs/jobboard-sentinel
           volumes:
             - name: octavia-server-ca
               secret:
@@ -32,6 +41,12 @@ _octavia_helm_values:
             - name: octavia-client-certs
               secret:
                 secretName: octavia-client-certs
+            - name: octavia-jobboard-default-ca
+              secret:
+                secretName: "{{ octavia_jobboard_default_secret_name }}"
+            - name: octavia-jobboard-sentinel-ca
+              secret:
+                secretName: "{{ octavia_jobboard_sentinel_secret_name }}"
       octavia_worker:
         octavia_worker:
           volumeMounts:
@@ -70,6 +85,10 @@ _octavia_helm_values:
               mountPath: /etc/octavia/certs/server
             - name: octavia-client-certs
               mountPath: /etc/octavia/certs/client
+            - name: octavia-jobboard-default-ca
+              mountPath: /etc/octavia/certs/jobboard-default
+            - name: octavia-jobboard-sentinel-ca
+              mountPath: /etc/octavia/certs/jobboard-sentinel
           volumes:
             - name: octavia-server-ca
               secret:
@@ -77,6 +96,12 @@ _octavia_helm_values:
             - name: octavia-client-certs
               secret:
                 secretName: octavia-client-certs
+            - name: octavia-jobboard-default-ca
+              secret:
+                secretName: "{{ octavia_jobboard_default_secret_name }}"
+            - name: octavia-jobboard-sentinel-ca
+              secret:
+                secretName: "{{ octavia_jobboard_sentinel_secret_name }}"
       octavia_health_manager:
         octavia_health_manager:
           volumeMounts:
@@ -84,6 +109,10 @@ _octavia_helm_values:
               mountPath: /etc/octavia/certs/server
             - name: octavia-client-certs
               mountPath: /etc/octavia/certs/client
+            - name: octavia-jobboard-default-ca
+              mountPath: /etc/octavia/certs/jobboard-default
+            - name: octavia-jobboard-sentinel-ca
+              mountPath: /etc/octavia/certs/jobboard-sentinel
           volumes:
             - name: octavia-server-ca
               secret:
@@ -91,6 +120,12 @@ _octavia_helm_values:
             - name: octavia-client-certs
               secret:
                 secretName: octavia-client-certs
+            - name: octavia-jobboard-default-ca
+              secret:
+                secretName: "{{ octavia_jobboard_default_secret_name }}"
+            - name: octavia-jobboard-sentinel-ca
+              secret:
+                secretName: "{{ octavia_jobboard_sentinel_secret_name }}"
     replicas:
       api: 3
       worker: 3
@@ -145,6 +180,15 @@ _octavia_helm_values:
         jobboard_redis_sentinel: atmosphere
         jobboard_redis_backend_ssl_options: ssl:True,ssl_keyfile:/etc/octavia/certs/jobboard-default/tls.key,ssl_certfile:/etc/octavia/certs/jobboard-default/tls.crt,ssl_ca_certs:/etc/octavia/certs/jobboard-default/ca.crt,ssl_cert_reqs:required
         jobboard_redis_sentinel_ssl_options: ssl:True,ssl_keyfile:/etc/octavia/certs/jobboard-sentinel/tls.key,ssl_certfile:/etc/octavia/certs/jobboard-sentinel/tls.crt,ssl_ca_certs:/etc/octavia/certs/jobboard-sentinel/ca.crt,ssl_cert_reqs:required
+    rabbitmq:
+      policies:
+        - vhost: "octavia"
+          name: "ha_ttl_octavia"
+          definition:
+            message-ttl: 70000
+          priority: 0
+          apply-to: all
+          pattern: '^(?!(amq\.|reply_)).*'
   manifests:
     ingress_api: false
     service_ingress_api: false

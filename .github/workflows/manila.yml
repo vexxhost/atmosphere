@@ -40,8 +40,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y debootstrap tox qemu-utils
-          pipx install python-swiftclient
-          pipx inject python-swiftclient python-keystoneclient
 
       - name: Cache DIB_IMAGE_CACHE
         id: cache-dib-image-cache
@@ -60,11 +58,15 @@ jobs:
           path: ~/.cache/image-create
           key: ${{ steps.cache-dib-image-cache.outputs.cache-primary-key }}
 
+      - name: Install uv
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event_name == 'release'
+        uses: astral-sh/setup-uv@v5
+
       - name: Publish image
         if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event_name == 'release'
         run: |
-          swift post -r '.r:*,.rlistings' atmosphere-images
-          swift upload atmosphere-images manila-*.qcow2
+          uv run --group manila swift post -r '.r:*,.rlistings' atmosphere-images
+          uv run --group manila swift upload atmosphere-images manila-*.qcow2
         env:
           OS_AUTH_URL: https://auth.vexxhost.net/v3
           OS_REGION_NAME: ca-ymq-1

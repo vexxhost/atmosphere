@@ -40,12 +40,6 @@ spec:
 {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
     spec:
 {{ dict "envAll" $envAll "application" "bootstrap" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
-{{ with .Values.pod.priorityClassName.bootstrap }}
-      priorityClassName: {{ . }}
-{{ end }}
-{{ with .Values.pod.runtimeClassName.bootstrap }}
-      runtimeClassName: {{ . }}
-{{ end }}
       serviceAccountName: {{ $serviceAccountName }}
       restartPolicy: OnFailure
       nodeSelector:

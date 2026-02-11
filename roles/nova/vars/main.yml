@@ -33,6 +33,8 @@ _nova_helm_values:
       flavors:
         enabled: false
   pod:
+    labels:
+      include_app_kubernetes_io: false
     useHostNetwork:
       novncproxy: false
     replicas:
@@ -61,8 +63,6 @@ _nova_helm_values:
         barbican_endpoint_type: internal
       cache:
         backend: oslo_cache.memcache_pool
-      cinder:
-        auth_type: password
       conductor:
         workers: 8
       compute:
@@ -136,6 +136,15 @@ _nova_helm_values:
         http-raw-body: true
         need-app: true
         socket-timeout: 10
+    rabbitmq:
+      policies:
+        - vhost: "nova"
+          name: "ha_ttl_nova"
+          definition:
+            message-ttl: 70000
+          priority: 0
+          apply-to: all
+          pattern: '^(?!(amq\.|reply_)).*'
   manifests:
     deployment_consoleauth: false
     deployment_placement: false

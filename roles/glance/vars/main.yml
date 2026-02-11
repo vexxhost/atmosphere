@@ -20,6 +20,8 @@ _glance_helm_values:
   bootstrap:
     enabled: false
   pod:
+    labels:
+      include_app_kubernetes_io: false
     security_context:
       glance:
         container:
@@ -52,6 +54,15 @@ _glance_helm_values:
         disk_formats: aki,ari,qcow2,raw
       oslo_messaging_notifications:
         driver: noop
+    rabbitmq:
+      policies:
+        - vhost: "glance"
+          name: "ha_ttl_glance"
+          definition:
+            message-ttl: 70000
+          priority: 0
+          apply-to: all
+          pattern: '^(?!(amq\.|reply_)).*'
   manifests:
     ingress_api: false
     service_ingress_api: false

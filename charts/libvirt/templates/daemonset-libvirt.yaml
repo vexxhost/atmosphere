@@ -12,19 +12,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */}}
 
-{{- define "libvirtReadinessProbeTemplate" }}
+{{- define "libvirtProbeTemplate" }}
 exec:
   command:
     - bash
     - -c
-    - /usr/bin/virsh list
+    - /usr/bin/virsh connect
 {{- end }}
-{{- define "libvirtLivenessProbeTemplate" }}
-exec:
-  command:
-    - bash
-    - -c
-    - /usr/bin/virsh list
+
+{{- define "libvirtExporterProbeTemplate" }}
+httpGet:
+  path: /
+  port: metrics
+  scheme: HTTP
 {{- end }}
 
 {{- define "libvirt.daemonset" }}
@@ -32,6 +32,10 @@ exec:
 {{- $configMapName := index . 1 }}
 {{- $serviceAccountName := index . 2 }}
 {{- $envAll := index . 3 }}
+{{- $ssl_enabled := false }}
+{{- if eq $envAll.Values.conf.libvirt.listen_tls "1" }}
+{{- $ssl_enabled = true }}
+{{- end }}
 {{- with $envAll }}
 
 {{- $mounts_libvirt := .Values.pod.mounts.libvirt.libvirt }}
@@ -56,7 +60,6 @@ spec:
       labels:
 {{ tuple $envAll .Chart.Name $daemonset | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
       annotations:
-        kubectl.kubernetes.io/default-container: libvirt
 {{- dict "envAll" $envAll "podName" "libvirt-libvirt-default" "containerNames" (list "libvirt") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
 {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
         configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
@@ -76,6 +79,42 @@ spec:
       initContainers:
 {{ tuple $envAll "pod_dependency" $mounts_libvirt_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
 {{ dict "envAll" $envAll | include "helm-toolkit.snippets.kubernetes_apparmor_loader_init_container" | indent 8 }}
+{{- if .Values.conf.init_modules.enabled }}
+        - name: libvirt-init-modules
+{{ tuple $envAll "libvirt" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ dict "envAll" $envAll "application" "libvirt" "container" "libvirt_init_modules" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          terminationMessagePath: /var/log/termination-log
+          command:
+            - /tmp/libvirt-init-modules.sh
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: etc-modprobe-d
+              mountPath: /etc/modprobe.d_host
+            - name: host-rootfs
+              mountPath: /mnt/host-rootfs
+              mountPropagation: HostToContainer
+              readOnly: true
+            - name: libvirt-bin
+              mountPath: /tmp/libvirt-init-modules.sh
+              subPath: libvirt-init-modules.sh
+              readOnly: true
+{{- end }}
+        - name: init-dynamic-options
+{{ tuple $envAll "libvirt" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ dict "envAll" $envAll "application" "libvirt" "container" "init_dynamic_options" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          terminationMessagePath: /var/log/termination-log
+          command:
+            - /tmp/init-dynamic-options.sh
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: pod-shared
+              mountPath: /tmp/pod-shared
+            - name: libvirt-bin
+              mountPath: /tmp/init-dynamic-options.sh
+              subPath: init-dynamic-options.sh
+              readOnly: true
 {{- if .Values.conf.ceph.enabled }}
         {{- if empty .Values.conf.ceph.cinder.keyring }}
         - name: ceph-admin-keyring-placement
@@ -166,6 +205,8 @@ spec:
               mountPath: /etc/pki/libvirt
             - name: etc-pki-libvirt-vnc
               mountPath: /etc/pki/libvirt-vnc
+            - name: run-libvirt
+              mountPath: /run/libvirt
         - name: libvirt
 {{ tuple $envAll "libvirt" | include "helm-toolkit.snippets.image" | indent 10 }}
 {{ tuple $envAll $envAll.Values.pod.resources.libvirt | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
@@ -187,8 +228,8 @@ spec:
             - name: LIBVIRT_EXTERNAL_CEPH_CINDER_SECRET_UUID
               value: "{{ .Values.conf.ceph.cinder.external_ceph.secret_uuid }}"
             {{ end }}
-{{ dict "envAll" . "component" "libvirt" "container" "libvirt" "type" "readiness" "probeTemplate" (include "libvirtReadinessProbeTemplate" . | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
-{{ dict "envAll" . "component" "libvirt" "container" "libvirt" "type" "liveness" "probeTemplate" (include "libvirtLivenessProbeTemplate" . | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ dict "envAll" . "component" "libvirt" "container" "libvirt" "type" "readiness" "probeTemplate" (include "libvirtProbeTemplate" . | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ dict "envAll" . "component" "libvirt" "container" "libvirt" "type" "liveness" "probeTemplate" (include "libvirtProbeTemplate" . | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
           command:
             - /tmp/libvirt.sh
           lifecycle:
@@ -222,7 +263,7 @@ spec:
               mountPath: /tmp/wait-for-libvirt.sh
               subPath: wait-for-libvirt.sh
               readOnly: true
-            - name: libvirt-etc
+            - name: pod-shared
               mountPath: /etc/libvirt/libvirtd.conf
               subPath: libvirtd.conf
               readOnly: true
@@ -276,25 +317,25 @@ spec:
               readOnly: true
             {{- end }}
 {{ if $mounts_libvirt.volumeMounts }}{{ toYaml $mounts_libvirt.volumeMounts | indent 12 }}{{ end }}
-        {{- if .Values.pod.sidecars.libvirt_exporter }}
+        {{- if .Values.pod.sidecars.libvirt_exporter.enabled }}
         - name: libvirt-exporter
 {{ tuple $envAll "libvirt_exporter" | include "helm-toolkit.snippets.image" | indent 10 }}
 {{ tuple $envAll $envAll.Values.pod.resources.libvirt_exporter | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
 {{ dict "envAll" $envAll "application" "libvirt" "container" "libvirt_exporter" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          {{- with .Values.pod.sidecars.libvirt_exporter }}
+            {{- if and (hasKey . "args") (gt (len .args) 0) }}
           args:
-            - "--libvirt.nova"
+              {{- range .args }}
+            - {{ . | quote }}
+              {{- end }}
+            {{- end }}
+          {{- end }}
           ports:
             - name: metrics
               protocol: TCP
               containerPort: {{ tuple "libvirt_exporter" "direct" "metrics" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
-          livenessProbe:
-            httpGet:
-              path: /
-              port: metrics
-          readinessProbe:
-            httpGet:
-              path: /
-              port: metrics
+{{ dict "envAll" . "component" "libvirt" "container" "libvirt_exporter" "type" "readiness" "probeTemplate" (include "libvirtExporterProbeTemplate" . | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ dict "envAll" . "component" "libvirt" "container" "libvirt_exporter" "type" "liveness" "probeTemplate" (include "libvirtExporterProbeTemplate" . | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
           volumeMounts:
             - name: run
               mountPath: /run
@@ -354,6 +395,9 @@ spec:
         - name: run
           hostPath:
             path: /run
+        - name: run-libvirt
+          hostPath:
+            path: /run/libvirt
         - name: dev
           hostPath:
             path: /dev
@@ -369,6 +413,15 @@ spec:
         - name: etc-libvirt-qemu
           hostPath:
             path: /etc/libvirt/qemu
+        - name: etc-modprobe-d
+          hostPath:
+            path: /etc/modprobe.d
+        - name: host-rootfs
+          hostPath:
+            path: /
+            type: Directory
+        - name: pod-shared
+          emptyDir: {}
 {{ dict "envAll" $envAll "component" "libvirt" "requireSys" true | include "helm-toolkit.snippets.kubernetes_apparmor_volumes" | indent 8 }}
 {{ if $mounts_libvirt.volumes }}{{ toYaml $mounts_libvirt.volumes | indent 8 }}{{ end }}
 {{- end }}
@@ -385,8 +438,8 @@ spec:
 {{- $_ := include "helm-toolkit.utils.dependency_resolver" $dependencyOpts | toString | fromYaml }}
 
 {{ tuple $envAll "pod_dependency" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
-{{- $daemonset_yaml := list $daemonset $configMapName $serviceAccountName . | include "libvirt.daemonset" | toString | fromYaml }}
 {{- $configmap_yaml := "libvirt.configmap.etc" }}
-{{- list $daemonset $daemonset_yaml $configmap_yaml $configMapName . | include "helm-toolkit.utils.daemonset_overrides" }}
 
+{{/* Preffer using .Values.overrides rather than .Values.conf.overrides */}}
+{{- list $daemonset "libvirt.daemonset" $serviceAccountName $configmap_yaml $configMapName "libvirt.configmap.bin" "libvirt-bin" . | include "helm-toolkit.utils.daemonset_overrides_root" }}
 {{- end }}

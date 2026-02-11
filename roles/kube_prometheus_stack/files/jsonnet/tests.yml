@@ -75,11 +75,11 @@ tests:
 
   - interval: 1m
     input_series:
-      - series: 'node_time_seconds{instance="instance1", job="node"}'
+      - series: 'node_time_seconds{instance="instance1", job="node-exporter"}'
         values: '0 60 120 180 240 300'
-      - series: 'node_time_seconds{instance="instance2", job="node"}'
+      - series: 'node_time_seconds{instance="instance2", job="node-exporter"}'
         values: '1 61 121 181 241 301'
-      - series: 'node_time_seconds{instance="instance3", job="node"}'
+      - series: 'node_time_seconds{instance="instance3", job="node-exporter"}'
         values: '2 62 122 182 242 302'
     alert_rule_test:
       - eval_time: 5m
@@ -88,18 +88,18 @@ tests:
           - exp_labels:
               severity: P3
               instance: instance3
-              job: node
+              job: node-exporter
             exp_annotations:
               summary: "Node instance3 has a time difference."
               description: "Node instance3 has a time difference 2."
 
   - interval: 1m
     input_series:
-      - series: 'node_time_seconds{instance="instance1", job="node"}'
+      - series: 'node_time_seconds{instance="instance1", job="node-exporter"}'
         values: '0 60 120 180 240 300'
-      - series: 'node_time_seconds{instance="instance2", job="node"}'
+      - series: 'node_time_seconds{instance="instance2", job="node-exporter"}'
         values: '0 60 120 180 240 300'
-      - series: 'node_time_seconds{instance="instance3", job="node"}'
+      - series: 'node_time_seconds{instance="instance3", job="node-exporter"}'
         values: '0 60 120 180 240 300'
     alert_rule_test:
       - eval_time: 5m
@@ -211,6 +211,23 @@ tests:
     input_series:
       - series: 'openstack_loadbalancer_amphora_status{cert_expiration="2020-08-08T23:44:31Z",compute_id="667bb225-69aa-44b1-8908-694dc624c267",ha_ip="10.0.0.6",id="45f40289-0551-483a-b089-47214bc2a8a4",lb_network_ip="192.168.0.6",loadbalancer_id="882f2a9d-9d53-4bd0-b0e9-08e9d0de11f9",role="MASTER",status="READY"}'
         values: '2x15'
+      - series: 'openstack_loadbalancer_amphora_status{cert_expiration="2020-08-08T23:44:30Z",compute_id="9cd0f9a2-fe12-42fc-a7e3-5b6fbbe20395",ha_ip="10.0.0.6",id="7f890893-ced0-46ed-8697-33415d070e5a",lb_network_ip="192.168.0.17",loadbalancer_id="882f2a9d-9d53-4bd0-b0e9-08e9d0de11f9",role="MASTER",status="READY"}'
+        values: '6x15'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: OctaviaLoadBalancerMultipleMaster
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+              loadbalancer_id: 882f2a9d-9d53-4bd0-b0e9-08e9d0de11f9
+            exp_annotations:
+              summary: Octavia load balancer has multiple MASTER Amphorae
+              description: Load balancer with ID 882f2a9d-9d53-4bd0-b0e9-08e9d0de11f9 has multiple MASTER Amphorae for more then 15 minutes.
+
+  - interval: 1m
+    input_series:
+      - series: 'openstack_loadbalancer_amphora_status{cert_expiration="2020-08-08T23:44:31Z",compute_id="667bb225-69aa-44b1-8908-694dc624c267",ha_ip="10.0.0.6",id="45f40289-0551-483a-b089-47214bc2a8a4",lb_network_ip="192.168.0.6",loadbalancer_id="882f2a9d-9d53-4bd0-b0e9-08e9d0de11f9",role="MASTER",status="READY"}'
+        values: '2x15'
       - series: 'openstack_loadbalancer_amphora_status{cert_expiration="2020-08-08T23:44:30Z",compute_id="9cd0f9a2-fe12-42fc-a7e3-5b6fbbe20395",ha_ip="10.0.0.6",id="7f890893-ced0-46ed-8697-33415d070e5a",lb_network_ip="192.168.0.17",loadbalancer_id="882f2a9d-9d53-4bd0-b0e9-08e9d0de11f9",role="BACKUP",status="ERROR"}'
         values: '6x15'
     alert_rule_test:
@@ -232,11 +249,463 @@ tests:
         values: '3x60'
     alert_rule_test:
       - eval_time: 1h
-        alertname: OctaviaAmphoraNotReady
+        alertname: OctaviaAmphoraNotOperational
         exp_alerts:
           - exp_labels:
               severity: P3
               id: 7f890893-ced0-46ed-8697-33415d070e5a
             exp_annotations:
-              summary: Octavia Amphora not ready
-              description: Amphora with ID 7f890893-ced0-46ed-8697-33415d070e5a stuck in non-ready state for more then 1 hour.
+              summary: Octavia Amphora not operational
+              description: Amphora with ID 7f890893-ced0-46ed-8697-33415d070e5a stuck in non-operational state for more then 1 hour.
+
+  - interval: 1m
+    input_series:
+      - series: 'openstack_loadbalancer_amphora_status{cert_expiration="2020-08-08T23:44:31Z",compute_id="667bb225-69aa-44b1-8908-694dc624c267",ha_ip="10.0.0.6",id="45f40289-0551-483a-b089-47214bc2a8a4",lb_network_ip="192.168.0.6",loadbalancer_id="882f2a9d-9d53-4bd0-b0e9-08e9d0de11f9",role="MASTER",status="READY"}'
+        values: '2x60'
+      - series: 'openstack_loadbalancer_amphora_status{cert_expiration="2020-08-08T23:44:30Z",compute_id="9cd0f9a2-fe12-42fc-a7e3-5b6fbbe20395",ha_ip="10.0.0.6",id="7f890893-ced0-46ed-8697-33415d070e5a",lb_network_ip="192.168.0.17",loadbalancer_id="882f2a9d-9d53-4bd0-b0e9-08e9d0de11f9",role="BACKUP",status="ALLOCATED"}'
+        values: '3x60'
+      - series: 'openstack_loadbalancer_amphora_status{cert_expiration="2020-08-08T23:44:32Z",compute_id="b9c0f9a2-fe12-42fc-a7e3-5b6fbbe20397",ha_ip="10.0.0.6",id="e9e8ccf3-8249-4f7e-b58c-52ef864a4a13",lb_network_ip="192.168.0.18",loadbalancer_id="882f2a9d-9d53-4bd0-b0e9-08e9d0de11f9",role="BACKUP",status="DELETED"}'
+        values: '3x60'
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: OctaviaAmphoraNotOperational
+        exp_alerts: []
+
+  # GoldpingerHighUnhealthyRatio - should NOT fire when all nodes are healthy
+  - interval: 1m
+    input_series:
+      - series: 'goldpinger_nodes_health_total{status="healthy",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger"}'
+        values: '21x10'
+      - series: 'goldpinger_nodes_health_total{status="unhealthy",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger"}'
+        values: '0x10'
+      - series: 'goldpinger_nodes_health_total{status="healthy",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger"}'
+        values: '21x10'
+      - series: 'goldpinger_nodes_health_total{status="unhealthy",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger"}'
+        values: '0x10'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: GoldpingerHighUnhealthyRatio
+        exp_alerts: []
+
+  # GoldpingerHighUnhealthyRatio - should fire when >10% of nodes are unhealthy
+  - interval: 1m
+    input_series:
+      - series: 'goldpinger_nodes_health_total{status="healthy",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger"}'
+        values: '17x10'
+      - series: 'goldpinger_nodes_health_total{status="unhealthy",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger"}'
+        values: '4x10'
+      - series: 'goldpinger_nodes_health_total{status="healthy",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger"}'
+        values: '17x10'
+      - series: 'goldpinger_nodes_health_total{status="unhealthy",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger"}'
+        values: '4x10'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: GoldpingerHighUnhealthyRatio
+        exp_alerts:
+          - exp_labels:
+              severity: P2
+            exp_annotations:
+              summary: "Goldpinger: high percentage of cluster nodes unhealthy"
+              description: "More than 10% of nodes (current: 19.05%) are reporting as unhealthy for at least 5 minutes. Normal operation expects 0% unhealthy nodes."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#goldpingerhighunhealthyratio"
+
+  # GoldpingerNodeUnreachable - should NOT fire when all nodes have low latency
+  - interval: 1m
+    input_series:
+      # kvm1 pinging kvm2 (192.0.2.1) - all requests <5ms
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="0.005"}'
+        values: '0+1x10'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="0.01"}'
+        values: '0+1x10'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="0.025"}'
+        values: '0+1x10'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="0.05"}'
+        values: '0+1x10'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="0.1"}'
+        values: '0+1x10'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="0.25"}'
+        values: '0+1x10'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="0.5"}'
+        values: '0+1x10'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="1"}'
+        values: '0+1x10'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="2.5"}'
+        values: '0+1x10'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="5"}'
+        values: '0+1x10'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="10"}'
+        values: '0+1x10'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="30"}'
+        values: '0+1x10'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="+Inf"}'
+        values: '0+1x10'
+      - series: 'goldpinger_cluster_health_total{instance="kvm1",goldpinger_instance="kvm1",job="goldpinger"}'
+        values: '2x10'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: GoldpingerNodeUnreachable
+        exp_alerts: []
+
+  # GoldpingerNodeUnreachable - should fire when a node is unreachable by majority
+  - interval: 1m
+    input_series:
+      # kvm1 pinging kvm6 (192.0.2.2) - high latency (median >1s, lands in 2.5s bucket)
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.005"}'
+        values: '0+0x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.01"}'
+        values: '0+0x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.025"}'
+        values: '0+0x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.05"}'
+        values: '0+0x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.1"}'
+        values: '0+0x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.25"}'
+        values: '0+0x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.5"}'
+        values: '0+0x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="1"}'
+        values: '0+0x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="2.5"}'
+        values: '0+1x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="5"}'
+        values: '0+1x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="10"}'
+        values: '0+1x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="30"}'
+        values: '0+1x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="+Inf"}'
+        values: '0+1x15'
+      # kvm2 pinging kvm6 (192.0.2.2) - also high latency
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.005"}'
+        values: '0+0x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.01"}'
+        values: '0+0x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.025"}'
+        values: '0+0x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.05"}'
+        values: '0+0x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.1"}'
+        values: '0+0x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.25"}'
+        values: '0+0x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.5"}'
+        values: '0+0x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="1"}'
+        values: '0+0x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="2.5"}'
+        values: '0+1x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="5"}'
+        values: '0+1x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="10"}'
+        values: '0+1x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="30"}'
+        values: '0+1x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="+Inf"}'
+        values: '0+1x15'
+      # 2 total nodes in cluster
+      - series: 'goldpinger_cluster_health_total{instance="kvm1",goldpinger_instance="kvm1",job="goldpinger"}'
+        values: '2x15'
+      - series: 'goldpinger_cluster_health_total{instance="kvm2",goldpinger_instance="kvm2",job="goldpinger"}'
+        values: '2x15'
+    alert_rule_test:
+      - eval_time: 11m
+        alertname: GoldpingerNodeUnreachable
+        exp_alerts:
+          - exp_labels:
+              severity: P2
+              host_ip: "192.0.2.2"
+            exp_annotations:
+              summary: "Goldpinger: node unreachable by majority of cluster"
+              description: "Node with IP 192.0.2.2 has a median ping latency above 1s from more than 50% (current: 100%) of Goldpinger instances. Normal operation expects all nodes to be reachable with sub-10ms latency."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#goldpingernodeunreachable"
+
+  # GoldpingerHighPeerLatency - should NOT fire when latency is low
+  - interval: 1m
+    input_series:
+      # kvm1 pinging kvm2 - all requests complete within 5ms bucket
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="0.005"}'
+        values: '0+1x20'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="0.01"}'
+        values: '0+1x20'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="0.025"}'
+        values: '0+1x20'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="0.05"}'
+        values: '0+1x20'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="0.1"}'
+        values: '0+1x20'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="0.25"}'
+        values: '0+1x20'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="0.5"}'
+        values: '0+1x20'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="1"}'
+        values: '0+1x20'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="2.5"}'
+        values: '0+1x20'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="5"}'
+        values: '0+1x20'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="10"}'
+        values: '0+1x20'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="30"}'
+        values: '0+1x20'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="+Inf"}'
+        values: '0+1x20'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: GoldpingerHighPeerLatency
+        exp_alerts: []
+
+  # GoldpingerHighPeerLatency - should fire when p95 exceeds 500ms
+  - interval: 1m
+    input_series:
+      # kvm1 pinging kvm6 - all requests land between 0.5s and 1s
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.005"}'
+        values: '0+0x25'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.01"}'
+        values: '0+0x25'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.025"}'
+        values: '0+0x25'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.05"}'
+        values: '0+0x25'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.1"}'
+        values: '0+0x25'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.25"}'
+        values: '0+0x25'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.5"}'
+        values: '0+0x25'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="1"}'
+        values: '0+1x25'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="2.5"}'
+        values: '0+1x25'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="5"}'
+        values: '0+1x25'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="10"}'
+        values: '0+1x25'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="30"}'
+        values: '0+1x25'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="+Inf"}'
+        values: '0+1x25'
+    alert_rule_test:
+      - eval_time: 21m
+        alertname: GoldpingerHighPeerLatency
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+            exp_annotations:
+              summary: "Goldpinger: high cluster-wide peer latency"
+              description: "The 95th percentile of peer-to-peer latency is 975ms, which exceeds the threshold of 500ms. Normal latency is typically below 10ms."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#goldpingerhighpeerlatency"
+
+  # GoldpingerHighErrorRate - should NOT fire when error rate is low
+  - interval: 1m
+    input_series:
+      - series: 'goldpinger_errors_total{type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger"}'
+        values: '0+0x20'
+      - series: 'goldpinger_stats_total{action="ping",group="made",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger"}'
+        values: '0+100x20'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: GoldpingerHighErrorRate
+        exp_alerts: []
+
+  # GoldpingerHighErrorRate - should fire when error rate exceeds 5%
+  - interval: 1m
+    input_series:
+      - series: 'goldpinger_errors_total{type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger"}'
+        values: '0+10x25'
+      - series: 'goldpinger_stats_total{action="ping",group="made",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger"}'
+        values: '0+100x25'
+    alert_rule_test:
+      - eval_time: 21m
+        alertname: GoldpingerHighErrorRate
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+            exp_annotations:
+              summary: "Goldpinger: high ping error rate"
+              description: "More than 5% (current: 10%) of Goldpinger ping attempts are failing. Normal operation expects less than 0.1% error rate."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#goldpingerhigherrorrate"
+
+  # NginxIngressCriticalErrorBudgetBurn - should NOT fire when error rate is below burn-rate threshold
+  - interval: 1m
+    input_series:
+      # Low error rate: 1 error out of 200 requests per minute = 0.5% (below 1.44% threshold)
+      - series: 'nginx_ingress_controller_requests{service="keystone-api",status="200"}'
+        values: '0+199x80'
+      - series: 'nginx_ingress_controller_requests{service="keystone-api",status="500"}'
+        values: '0+1x80'
+    alert_rule_test:
+      - eval_time: 70m
+        alertname: NginxIngressCriticalErrorBudgetBurn
+        exp_alerts: []
+
+  # NginxIngressCriticalErrorBudgetBurn - should fire when error rate exceeds 14.4x burn-rate threshold
+  - interval: 1m
+    input_series:
+      # Error rate: 4 errors out of 200 requests per minute = 2% (above 1.44% threshold)
+      - series: 'nginx_ingress_controller_requests{service="nova-api",status="200"}'
+        values: '0+196x80'
+      - series: 'nginx_ingress_controller_requests{service="nova-api",status="500"}'
+        values: '0+4x80'
+    alert_rule_test:
+      - eval_time: 70m
+        alertname: NginxIngressCriticalErrorBudgetBurn
+        exp_alerts:
+          - exp_labels:
+              severity: P2
+              service: nova-api
+            exp_annotations:
+              summary: "NGINX Ingress: elevated 5xx errors rapidly consuming error budget"
+              description: "The service nova-api error rate is 2% over the last hour, which exceeds the 1.44% burn-rate threshold (14.4x against 99.9% SLO). At this rate, the 30-day error budget exhausts in under 2.1 days."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#nginxingresscriticalerrorbudgetburn"
+
+  # NginxIngressCriticalErrorBudgetBurn - should NOT fire when long window above threshold but short window below
+  - interval: 1m
+    input_series:
+      # High error rate for the first 60 min (long window), then drop to zero errors (short window recovers)
+      - series: 'nginx_ingress_controller_requests{service="barbican-api",status="200"}'
+        values: '0+196x60 0+200x20'
+      - series: 'nginx_ingress_controller_requests{service="barbican-api",status="500"}'
+        values: '0+4x60 0+0x20'
+    alert_rule_test:
+      - eval_time: 70m
+        alertname: NginxIngressCriticalErrorBudgetBurn
+        exp_alerts: []
+
+  # NginxIngressCriticalErrorBudgetBurn - should NOT fire when traffic is too low
+  - interval: 1m
+    input_series:
+      # High error rate but very low traffic: 1 error, 0 success per minute
+      - series: 'nginx_ingress_controller_requests{service="test-api",status="200"}'
+        values: '0+0x80'
+      - series: 'nginx_ingress_controller_requests{service="test-api",status="500"}'
+        values: '0+1x80'
+    alert_rule_test:
+      - eval_time: 70m
+        alertname: NginxIngressCriticalErrorBudgetBurn
+        exp_alerts: []
+
+  # NginxIngressHighErrorBudgetBurn - should NOT fire when error rate is below burn-rate threshold
+  - interval: 1m
+    input_series:
+      # Low error rate: 1 error out of 500 requests per minute = 0.2% (below 0.6% threshold)
+      - series: 'nginx_ingress_controller_requests{service="glance-api",status="200"}'
+        values: '0+499x400'
+      - series: 'nginx_ingress_controller_requests{service="glance-api",status="503"}'
+        values: '0+1x400'
+    alert_rule_test:
+      - eval_time: 390m
+        alertname: NginxIngressHighErrorBudgetBurn
+        exp_alerts: []
+
+  # NginxIngressHighErrorBudgetBurn - should fire when error rate exceeds 6x burn-rate threshold
+  - interval: 1m
+    input_series:
+      # Error rate: 2 errors out of 200 requests per minute = 1% (above 0.6% threshold)
+      - series: 'nginx_ingress_controller_requests{service="cinder-api",status="200"}'
+        values: '0+198x400'
+      - series: 'nginx_ingress_controller_requests{service="cinder-api",status="502"}'
+        values: '0+2x400'
+    alert_rule_test:
+      - eval_time: 390m
+        alertname: NginxIngressHighErrorBudgetBurn
+        exp_alerts:
+          - exp_labels:
+              severity: P2
+              service: cinder-api
+            exp_annotations:
+              summary: "NGINX Ingress: sustained 5xx errors depleting error budget"
+              description: "The service cinder-api error rate is 1% over the last 6 hours, which exceeds the 0.6% burn-rate threshold (6x against 99.9% SLO). At this rate, the 30-day error budget exhausts in under 5 days."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#nginxingresshigherrorbudgetburn"
+
+  # NginxIngressHighErrorBudgetBurn - should NOT fire when long window above threshold but short window below
+  - interval: 1m
+    input_series:
+      # High error rate for the first 360 min (long window), then drop to zero errors (short window recovers)
+      - series: 'nginx_ingress_controller_requests{service="magnum-api",status="200"}'
+        values: '0+198x360 0+200x40'
+      - series: 'nginx_ingress_controller_requests{service="magnum-api",status="502"}'
+        values: '0+2x360 0+0x40'
+    alert_rule_test:
+      - eval_time: 390m
+        alertname: NginxIngressHighErrorBudgetBurn
+        exp_alerts: []
+
+  # NginxIngressHighErrorBudgetBurn - should NOT fire when traffic is too low
+  - interval: 1m
+    input_series:
+      # High error rate but very low traffic: 1 error, 0 success per minute
+      - series: 'nginx_ingress_controller_requests{service="test-api",status="200"}'
+        values: '0+0x400'
+      - series: 'nginx_ingress_controller_requests{service="test-api",status="500"}'
+        values: '0+1x400'
+    alert_rule_test:
+      - eval_time: 390m
+        alertname: NginxIngressHighErrorBudgetBurn
+        exp_alerts: []
+
+  # NginxIngressModerateErrorBudgetBurn - should NOT fire when error rate is below burn-rate threshold
+  - interval: 1m
+    input_series:
+      # Low error rate: 1 error out of 1000 requests per minute = 0.1% (below 0.3% threshold)
+      - series: 'nginx_ingress_controller_requests{service="heat-api",status="200"}'
+        values: '0+999x1500'
+      - series: 'nginx_ingress_controller_requests{service="heat-api",status="500"}'
+        values: '0+1x1500'
+    alert_rule_test:
+      - eval_time: 1480m
+        alertname: NginxIngressModerateErrorBudgetBurn
+        exp_alerts: []
+
+  # NginxIngressModerateErrorBudgetBurn - should fire when error rate exceeds 3x burn-rate threshold
+  - interval: 1m
+    input_series:
+      # Error rate: 1 error out of 200 requests per minute = 0.5% (above 0.3% threshold)
+      - series: 'nginx_ingress_controller_requests{service="designate-api",status="200"}'
+        values: '0+199x1500'
+      - series: 'nginx_ingress_controller_requests{service="designate-api",status="500"}'
+        values: '0+1x1500'
+    alert_rule_test:
+      - eval_time: 1480m
+        alertname: NginxIngressModerateErrorBudgetBurn
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+              service: designate-api
+            exp_annotations:
+              summary: "NGINX Ingress: ongoing 5xx errors steadily consuming error budget"
+              description: "The service designate-api error rate is 0.5% over the last day, which exceeds the 0.3% burn-rate threshold (3x against 99.9% SLO). At this rate, the 30-day error budget exhausts in under 10 days."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#nginxingressmoderateerrorbudgetburn"
+
+  # NginxIngressLowErrorBudgetBurn - should NOT fire when error rate is below burn-rate threshold
+  - interval: 1m
+    input_series:
+      # Very low error rate: 1 error out of 2000 requests per minute = 0.05% (below 0.1% threshold)
+      - series: 'nginx_ingress_controller_requests{service="octavia-api",status="200"}'
+        values: '0+1999x4800'
+      - series: 'nginx_ingress_controller_requests{service="octavia-api",status="500"}'
+        values: '0+1x4800'
+    alert_rule_test:
+      - eval_time: 4740m
+        alertname: NginxIngressLowErrorBudgetBurn
+        exp_alerts: []
+
+  # NginxIngressLowErrorBudgetBurn - should fire when error rate exceeds 1x burn-rate threshold
+  - interval: 1m
+    input_series:
+      # Error rate: 1 error out of 500 requests per minute = 0.2% (above 0.1% threshold)
+      - series: 'nginx_ingress_controller_requests{service="placement-api",status="200"}'
+        values: '0+499x4800'
+      - series: 'nginx_ingress_controller_requests{service="placement-api",status="500"}'
+        values: '0+1x4800'
+    alert_rule_test:
+      - eval_time: 4740m
+        alertname: NginxIngressLowErrorBudgetBurn
+        exp_alerts:
+          - exp_labels:
+              severity: P4
+              service: placement-api
+            exp_annotations:
+              summary: "NGINX Ingress: low-level 5xx errors eroding error budget"
+              description: "The service placement-api error rate is 0.2% over the last 3 days, which exceeds the 0.1% burn-rate threshold (1x against 99.9% SLO). At this rate, the 30-day error budget exhausts before the window resets."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#nginxingresslowerrorbudgetburn"

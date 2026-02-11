@@ -15,12 +15,12 @@ func TestGetImageNameToPull(t *testing.T) {
 		{
 			image:   "{{ atmosphere_image_prefix }}quay.io/ceph/ceph:v18.2.2",
 			release: "2024.1",
-			want:    "harbor.atmosphere.dev/quay.io/ceph/ceph:v18.2.2",
+			want:    "quay.io/ceph/ceph:v18.2.2",
 		},
 		{
 			image:   "{{ atmosphere_image_prefix }}registry.atmosphere.dev/library/glance:{{ atmosphere_release }}",
 			release: "2024.1",
-			want:    "harbor.atmosphere.dev/library/glance:2024.1",
+			want:    "registry.atmosphere.dev/library/glance:2024.1",
 		},
 	}
 

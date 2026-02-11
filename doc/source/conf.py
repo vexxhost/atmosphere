@@ -20,7 +20,6 @@ author = "VEXXHOST, Inc."
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
-    "pbr.sphinxext",
     "reno.sphinxext",
     "sphinx_copybutton",
     "sphinxcontrib.mermaid",

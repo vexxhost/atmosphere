@@ -16,48 +16,6 @@
   prometheusAlerts+: {
     groups+: [
       {
-        name: 'api',
-        rules: [
-          {
-            alert: 'HighInternalServerErrors',
-            expr: |||
-              (
-                  sum(rate(nginx_ingress_controller_requests{status=~"5[0-9]{2}"}[5m])) by (service)
-                  /
-                  sum(rate(nginx_ingress_controller_requests[5m])) by (service)
-              ) > 0.01
-            |||,
-            'for': '2m',
-            labels: {
-              severity: 'P2',
-            },
-            annotations: {
-              summary: 'High percentage of HTTP 500 errors',
-              description: 'The service {{ $labels.service }} is returning HTTP 500 errors above the configured threshold.',
-            },
-          },
-        ],
-      },
-      {
-        name: 'goldpinger',
-        rules: [
-          {
-            alert: 'GoldpingerNodesUnhealthy',
-            expr: |||
-              sum(goldpinger_nodes_health_total{status="unhealthy"}) BY (instance, goldpinger_instance) > 0
-            |||,
-            'for': '1m',
-            labels: {
-              severity: 'P2',
-            },
-            annotations: {
-              summary: 'Instance {{ $labels.instance }} down',
-              description: 'Goldpinger instance {{ $labels.goldpinger_instance }} has been reporting unhealthy nodes for at least 5 minutes.',
-            },
-          },
-        ],
-      },
-      {
         name: 'cinder',
         rules: [
           {
@@ -313,12 +271,24 @@
               severity: 'P3',
             },
           },
-        ]
+        ],
       },
       {
         name: 'octavia',
         rules:
           [
+            {
+              alert: 'OctaviaLoadBalancerMultipleMaster',
+              annotations: {
+                summary: 'Octavia load balancer has multiple MASTER Amphorae',
+                description: 'Load balancer with ID {{ $labels.loadbalancer_id }} has multiple MASTER Amphorae for more then 15 minutes.',
+              },
+              expr: 'count by(loadbalancer_id) (openstack_loadbalancer_amphora_status{role="MASTER"}) > 1',
+              'for': '15m',
+              labels: {
+                severity: 'P3',
+              },
+            },
             {
               alert: 'OctaviaLoadBalancerNotActive',
               annotations: {
@@ -344,12 +314,12 @@
               },
             },
             {
-              alert: 'OctaviaAmphoraNotReady',
+              alert: 'OctaviaAmphoraNotOperational',
               annotations: {
-                summary: 'Octavia Amphora not ready',
-                description: 'Amphora with ID {{ $labels.id }} stuck in non-ready state for more then 1 hour.',
+                summary: 'Octavia Amphora not operational',
+                description: 'Amphora with ID {{ $labels.id }} stuck in non-operational state for more then 1 hour.',
               },
-              expr: 'count by (id,name) (openstack_loadbalancer_amphora_status{status!="READY"}) > 0',
+              expr: 'count by (id,name) (openstack_loadbalancer_amphora_status{status!~"READY|ALLOCATED|DELETED"}) > 0',
               'for': '1h',
               labels: {
                 severity: 'P3',

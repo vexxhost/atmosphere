@@ -53,16 +53,6 @@ func GetImageNameToPull(image string, release string) string {
 	image = strings.ReplaceAll(image, "{{ atmosphere_image_prefix }}", "")
 	image = strings.ReplaceAll(image, "{{ atmosphere_release }}", release)
 
-	// Add mirror if the image is not hosted with us
-	if !strings.HasPrefix(image, "registry.atmosphere.dev") {
-		image = fmt.Sprintf("harbor.atmosphere.dev/%s", image)
-	}
-
-	// Switch out of the CDN since we are in CI
-	if strings.HasPrefix(image, "registry.atmosphere.dev") {
-		image = strings.ReplaceAll(image, "registry.atmosphere.dev", "harbor.atmosphere.dev")
-	}
-
 	return image
 }
 

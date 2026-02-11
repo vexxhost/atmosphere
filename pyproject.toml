@@ -1,0 +1,59 @@
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[project]
+name = "atmosphere"
+dynamic = ["version"]
+authors = [{ name = "VEXXHOST, Inc.", email = "support@vexxhost.com" }]
+description = "Simple & easy private cloud platform featuring VMs, Kubernetes & bare-metal"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Environment :: OpenStack",
+  "Intended Audience :: Information Technology",
+  "Intended Audience :: System Administrators",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: Implementation :: CPython",
+]
+dependencies = [
+  "ansible-core>=2.15.9",
+  "docker-image-py>=0.1.12",
+  "jmespath>=1.0.1",
+  "netaddr>=0.8.0",
+  "openstacksdk>1",
+  "rjsonnet>=0.5.2",
+]
+
+[dependency-groups]
+dev = [
+  "kubernetes",
+  "molecule>=25.11.0",
+  "oslotest>=5.0.1",
+  "stestr>=4.2.0",
+  "testscenarios>=0.5.0",
+]
+manila = [
+  "python-keystoneclient",
+  "python-swiftclient",
+  # NOTE(mnaser): urllib3 2.6.0 removed getheader() which python-swiftclient still uses
+  "urllib3<2.6.0",
+]
+
+[project.urls]
+source = "https://github.com/vexxhost/atmosphere"
+documentation = "https://vexxhost.github.io/atmosphere/"
+issues = "https://github.com/vexxhost/atmosphere/issues"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "atmosphere/_version.py"

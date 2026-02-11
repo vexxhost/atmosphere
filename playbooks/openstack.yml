@@ -60,7 +60,7 @@
       tags:
         - placement
   environment:
-    CEPH_CONTAINER_IMAGE: "{{ cephadm_image | default('quay.io/ceph/ceph:v' + (ceph_version | default('18.2.1'))) }}"
+    CEPH_CONTAINER_IMAGE: "{{ cephadm_image | default('quay.io/ceph/ceph:v' + (ceph_version | default('18.2.7'))) }}"
     CEPH_CONTAINER_BINARY: docker
 
 - name: Configure operating system
@@ -78,6 +78,10 @@
     - role: iscsi
       tags:
         - iscsi
+
+    - role: udev
+      tags:
+        - udev
 
 - name: Deploy SDN
   hosts: controllers:computes
