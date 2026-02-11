@@ -298,15 +298,15 @@ changes to your inventory:
 In this example, the configuration restricts access to the IP range
 ``10.0.0.0/24`` and the IP address ``172.10.0.1``.
 
-Override Rules
+Override rules
 ~~~~~~~~~~~~~~
 
-It's possible to override existing prometheus rules
-by using ``kube_prometheus_stack_rules_jsonnet_path`` variable (default to `jsonnet/rules.jsonnet` ).
+It's possible to override existing Prometheus rules
+by using ``kube_prometheus_stack_rules_jsonnet_path`` variable (default to ``jsonnet/rules.jsonnet``).
 Point it to the new jsonnet file path to override existing or create new PrometheusRules.
-You can also create your own mixin by importing jsonnet/rules.jsonnet into your own file using
+You can also create your own mixin by importing ``jsonnet/rules.jsonnet`` into your own file using
 jsonnet import existing rules.
-To override rules, making the following changes to your inventory:
+To override rules, make the following changes to your inventory:
 
 .. code-block:: yaml
 
@@ -324,7 +324,7 @@ Here is an example to include all existing rules in new jsonnet file:
       } for mixin in std.objectFields(mixins)
     }
 
-And you can also override specific alerts groups if you needs:
+You can also override specific alert groups if needed:
 
 .. code-block:: text
 
