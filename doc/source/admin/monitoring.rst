@@ -298,7 +298,7 @@ changes to your inventory:
 In this example, the configuration restricts access to the IP range
 ``10.0.0.0/24`` and the IP address ``172.10.0.1``.
 
-Override Rules
+Override rules
 ~~~~~~~~~~~~~~
 
 It's possible to override existing prometheus rules
