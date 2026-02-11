@@ -1,0 +1,844 @@
+From 1f65b734ac8a8a45c0690035f385f15da346d455 Mon Sep 17 00:00:00 2001
+From: Copilot Agent <copilot@vexxhost.com>
+Date: Wed, 11 Feb 2026 02:48:27 +0000
+Subject: [PATCH] feat(chart): add Helm chart for ceph-osd-exporter
+
+This commit adds a Helm chart for deploying ceph-osd-exporter as a
+DaemonSet on Kubernetes clusters. The chart includes:
+
+- DaemonSet deployment configuration
+- RBAC resources (ClusterRole, ClusterRoleBinding, Role, RoleBinding)
+- ServiceAccount
+- Service for metrics endpoint
+- ServiceMonitor for Prometheus Operator integration
+- PrometheusRule for alerting
+- Ingress configuration (optional)
+- Comprehensive values.yaml with all configurable options
+- README.md with installation and configuration instructions
+
+Additionally, this commit includes GitHub Actions workflow for
+automated chart releases using chart-releaser.
+
+Related to: https://github.com/vexxhost/atmosphere/pull/2457
+
+Signed-off-by: Copilot Agent <copilot@vexxhost.com>
+---
+ .github/cr.yaml                         |   6 ++
+ .github/workflows/release.yaml          |  42 ++++++++
+ chart/.helmignore                       |  23 ++++
+ chart/Chart.yaml                        |  13 +++
+ chart/README.md                         | 111 +++++++++++++++++++
+ chart/templates/_helpers.tpl            |  62 +++++++++++
+ chart/templates/clusterrole.yaml        |  12 +++
+ chart/templates/clusterrolebinding.yaml |  16 +++
+ chart/templates/daemonset.yaml          |  81 ++++++++++++++
+ chart/templates/ingress.yaml            |  61 +++++++++++
+ chart/templates/prometheusrule.yaml     |  19 ++++
+ chart/templates/role.yaml               |  20 ++++
+ chart/templates/rolebinding.yaml        |  16 +++
+ chart/templates/service.yaml            |  25 +++++
+ chart/templates/serviceaccount.yaml     |   8 ++
+ chart/templates/servicemonitor.yaml     |  28 +++++
+ chart/values.yaml                       | 135 ++++++++++++++++++++++++
+ 17 files changed, 678 insertions(+)
+ create mode 100644 .github/cr.yaml
+ create mode 100644 .github/workflows/release.yaml
+ create mode 100644 chart/.helmignore
+ create mode 100644 chart/Chart.yaml
+ create mode 100644 chart/README.md
+ create mode 100644 chart/templates/_helpers.tpl
+ create mode 100644 chart/templates/clusterrole.yaml
+ create mode 100644 chart/templates/clusterrolebinding.yaml
+ create mode 100644 chart/templates/daemonset.yaml
+ create mode 100644 chart/templates/ingress.yaml
+ create mode 100644 chart/templates/prometheusrule.yaml
+ create mode 100644 chart/templates/role.yaml
+ create mode 100644 chart/templates/rolebinding.yaml
+ create mode 100644 chart/templates/service.yaml
+ create mode 100644 chart/templates/serviceaccount.yaml
+ create mode 100644 chart/templates/servicemonitor.yaml
+ create mode 100644 chart/values.yaml
+
+diff --git a/.github/cr.yaml b/.github/cr.yaml
+new file mode 100644
+index 0000000..3a62f95
+--- /dev/null
++++ b/.github/cr.yaml
+@@ -0,0 +1,6 @@
++# Copyright (c) 2024 VEXXHOST, Inc.
++# SPDX-License-Identifier: Apache-2.0
++
++owner: vexxhost
++git-repo: ceph_osd_exporter
++charts-repo-url: https://vexxhost.github.io/ceph_osd_exporter
+diff --git a/.github/workflows/release.yaml b/.github/workflows/release.yaml
+new file mode 100644
+index 0000000..8c4e1ce
+--- /dev/null
++++ b/.github/workflows/release.yaml
+@@ -0,0 +1,42 @@
++# Copyright (c) 2024 VEXXHOST, Inc.
++# SPDX-License-Identifier: Apache-2.0
++
++name: Release Charts
++
++on:
++  push:
++    branches:
++      - main
++    paths:
++      - 'chart/**'
++
++permissions:
++  contents: write
++  pages: write
++
++jobs:
++  release:
++    runs-on: ubuntu-latest
++    steps:
++      - name: Checkout
++        uses: actions/checkout@v4
++        with:
++          fetch-depth: 0
++
++      - name: Configure Git
++        run: |
++          git config user.name "$GITHUB_ACTOR"
++          git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
++
++      - name: Install Helm
++        uses: azure/setup-helm@v4
++        with:
++          version: v3.14.0
++
++      - name: Run chart-releaser
++        uses: helm/chart-releaser-action@v1.6.0
++        with:
++          charts_dir: .
++          config: .github/cr.yaml
++        env:
++          CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+diff --git a/chart/.helmignore b/chart/.helmignore
+new file mode 100644
+index 0000000..825c007
+--- /dev/null
++++ b/chart/.helmignore
+@@ -0,0 +1,23 @@
++# Patterns to ignore when building packages.
++# This supports shell glob matching, relative path matching, and
++# negation (prefixed with !). Only one pattern per line.
++.DS_Store
++# Common VCS dirs
++.git/
++.gitignore
++.bzr/
++.bzrignore
++.hg/
++.hgignore
++.svn/
++# Common backup files
++*.swp
++*.bak
++*.tmp
++*~
++# Various IDEs
++.project
++.idea/
++*.tmproj
++
++OWNERS
+diff --git a/chart/Chart.yaml b/chart/Chart.yaml
+new file mode 100644
+index 0000000..9c0f13a
+--- /dev/null
++++ b/chart/Chart.yaml
+@@ -0,0 +1,13 @@
++# Copyright (c) 2024 VEXXHOST, Inc.
++# SPDX-License-Identifier: Apache-2.0
++
++apiVersion: v1
++appVersion: 0.1.0
++description: Vexxhost Ceph OSD exporter
++name: ceph-osd-exporter
++version: 0.1.0
++home: https://github.com/vexxhost/ceph_osd_exporter
++sources:
++  - https://github.com/vexxhost/ceph_osd_exporter
++maintainers:
++  - name: Vexxhost
+diff --git a/chart/README.md b/chart/README.md
+new file mode 100644
+index 0000000..bb3daca
+--- /dev/null
++++ b/chart/README.md
+@@ -0,0 +1,111 @@
++# Ceph OSD Exporter Helm Chart
++
++This Helm chart deploys the Ceph OSD Exporter as a DaemonSet on a Kubernetes cluster.
++
++## Introduction
++
++This chart bootstraps a [Ceph OSD Exporter](https://github.com/vexxhost/ceph_osd_exporter) deployment on a [Kubernetes](https://kubernetes.io) cluster using the [Helm](https://helm.sh) package manager.
++
++## Prerequisites
++
++- Kubernetes 1.19+
++- Helm 3.0+
++
++## Installing the Chart
++
++To install the chart with the release name `ceph-osd-exporter`:
++
++```bash
++helm install ceph-osd-exporter ./chart
++```
++
++The command deploys Ceph OSD Exporter on the Kubernetes cluster in the default configuration. The [Parameters](#parameters) section lists the parameters that can be configured during installation.
++
++## Uninstalling the Chart
++
++To uninstall/delete the `ceph-osd-exporter` deployment:
++
++```bash
++helm uninstall ceph-osd-exporter
++```
++
++The command removes all the Kubernetes components associated with the chart and deletes the release.
++
++## Parameters
++
++### Common parameters
++
++| Name                | Description                                        | Value                                                      |
++| ------------------- | -------------------------------------------------- | ---------------------------------------------------------- |
++| `image.repository`  | Ceph OSD Exporter image repository                 | `registry.atmosphere.dev/library/ceph-osd-exporter`        |
++| `image.tag`         | Ceph OSD Exporter image tag                        | `latest`                                                   |
++| `image.pullPolicy`  | Image pull policy                                  | `IfNotPresent`                                             |
++
++### RBAC parameters
++
++| Name                  | Description                                | Value   |
++| --------------------- | ------------------------------------------ | ------- |
++| `rbac.create`         | Create RBAC resources                      | `true`  |
++| `rbac.clusterscoped`  | Create cluster-scoped RBAC resources       | `true`  |
++
++### Service parameters
++
++| Name              | Description                      | Value   |
++| ----------------- | -------------------------------- | ------- |
++| `service.port`    | Service port                     | `9282`  |
++
++### ServiceAccount parameters
++
++| Name                    | Description                          | Value   |
++| ----------------------- | ------------------------------------ | ------- |
++| `serviceAccount.create` | Create a ServiceAccount              | `true`  |
++| `serviceAccount.name`   | ServiceAccount name                  | `""`    |
++
++### Monitoring parameters
++
++| Name                      | Description                            | Value   |
++| ------------------------- | -------------------------------------- | ------- |
++| `serviceMonitor.enabled`  | Create ServiceMonitor resource         | `false` |
++| `prometheusRule.enabled`  | Create PrometheusRule resource         | `false` |
++
++### Other parameters
++
++| Name                           | Description                                       | Value                         |
++| ------------------------------ | ------------------------------------------------- | ----------------------------- |
++| `nodeSelector`                 | Node labels for pod assignment                    | `{ceph-osd-exporter: enabled}`|
++| `tolerations`                  | Tolerations for pod assignment                    | `[]`                          |
++| `affinity`                     | Affinity for pod assignment                       | `{}`                          |
++| `resources`                    | Resource requests and limits                      | `{}`                          |
++| `containerSecurityContext`     | Security context for the container                | See `values.yaml`             |
++
++## Configuration
++
++Specify each parameter using the `--set key=value[,key=value]` argument to `helm install`. For example,
++
++```bash
++helm install ceph-osd-exporter \
++  --set image.tag=v0.1.0 \
++  ./chart
++```
++
++Alternatively, a YAML file that specifies the values for the parameters can be provided while installing the chart. For example,
++
++```bash
++helm install ceph-osd-exporter -f values.yaml ./chart
++```
++
++## License
++
++Copyright © 2024 VEXXHOST, Inc.
++
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++    http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
+diff --git a/chart/templates/_helpers.tpl b/chart/templates/_helpers.tpl
+new file mode 100644
+index 0000000..5b4f409
+--- /dev/null
++++ b/chart/templates/_helpers.tpl
+@@ -0,0 +1,62 @@
++{{/*
++Expand the name of the chart.
++*/}}
++{{- define "ceph_osd_exporter.name" -}}
++{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
++{{- end }}
++
++{{/*
++Create a default fully qualified app name.
++We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
++If release name contains chart name it will be used as a full name.
++*/}}
++{{- define "ceph_osd_exporter.fullname" -}}
++{{- if .Values.fullnameOverride }}
++{{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
++{{- else }}
++{{- $name := default .Chart.Name .Values.nameOverride }}
++{{- if contains $name .Release.Name }}
++{{- .Release.Name | trunc 63 | trimSuffix "-" }}
++{{- else }}
++{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" }}
++{{- end }}
++{{- end }}
++{{- end }}
++
++{{/*
++Create chart name and version as used by the chart label.
++*/}}
++{{- define "ceph_osd_exporter.chart" -}}
++{{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
++{{- end }}
++
++{{/*
++Common labels
++*/}}
++{{- define "ceph_osd_exporter.labels" -}}
++helm.sh/chart: {{ include "ceph_osd_exporter.chart" . }}
++{{ include "ceph_osd_exporter.selectorLabels" . }}
++{{- if .Chart.AppVersion }}
++app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
++{{- end }}
++app.kubernetes.io/managed-by: {{ .Release.Service }}
++{{- end }}
++
++{{/*
++Selector labels
++*/}}
++{{- define "ceph_osd_exporter.selectorLabels" -}}
++app.kubernetes.io/name: {{ include "ceph_osd_exporter.name" . }}
++app.kubernetes.io/instance: {{ .Release.Name }}
++{{- end }}
++
++{{/*
++Create the name of the service account to use
++*/}}
++{{- define "ceph_osd_exporter.serviceAccountName" -}}
++{{- if .Values.serviceAccount.create }}
++{{- default (include "ceph_osd_exporter.fullname" .) .Values.serviceAccount.name }}
++{{- else }}
++{{- default "default" .Values.serviceAccount.name }}
++{{- end }}
++{{- end }}
+diff --git a/chart/templates/clusterrole.yaml b/chart/templates/clusterrole.yaml
+new file mode 100644
+index 0000000..dc8486d
+--- /dev/null
++++ b/chart/templates/clusterrole.yaml
+@@ -0,0 +1,12 @@
++{{- if and .Values.rbac.create .Values.rbac.clusterscoped }}
++kind: ClusterRole
++apiVersion: rbac.authorization.k8s.io/v1
++metadata:
++  name: {{ include "ceph_osd_exporter.fullname" . }}-clusterrole
++  labels:
++    {{- include "ceph_osd_exporter.labels" . | nindent 4 }}
++rules:
++  - apiGroups: [""]
++    resources: ["pods"]
++    verbs: ["list"]
++{{- end }}
+diff --git a/chart/templates/clusterrolebinding.yaml b/chart/templates/clusterrolebinding.yaml
+new file mode 100644
+index 0000000..fec6afb
+--- /dev/null
++++ b/chart/templates/clusterrolebinding.yaml
+@@ -0,0 +1,16 @@
++{{- if and .Values.rbac.create .Values.rbac.clusterscoped }}
++kind: ClusterRoleBinding
++apiVersion: rbac.authorization.k8s.io/v1
++metadata:
++  name: {{ include "ceph_osd_exporter.fullname" . }}-clusterrolebinding
++  labels:
++    {{- include "ceph_osd_exporter.labels" . | nindent 4 }}
++subjects:
++  - kind: ServiceAccount
++    name: {{ include "ceph_osd_exporter.serviceAccountName" . }}
++    namespace: {{ .Release.Namespace }}
++roleRef:
++  kind: ClusterRole
++  name: {{ include "ceph_osd_exporter.fullname" . }}-clusterrole
++  apiGroup: rbac.authorization.k8s.io
++{{- end }}
+diff --git a/chart/templates/daemonset.yaml b/chart/templates/daemonset.yaml
+new file mode 100644
+index 0000000..7183452
+--- /dev/null
++++ b/chart/templates/daemonset.yaml
+@@ -0,0 +1,81 @@
++# Copyright (c) 2024 VEXXHOST, Inc.
++# SPDX-License-Identifier: Apache-2.0
++
++{{- $mounts_ceph_osd_exporter := .Values.pod.mounts.ceph_osd_exporter.ceph_osd_exporter }}
++
++---
++apiVersion: apps/v1
++kind: DaemonSet
++metadata:
++  name: {{ include "ceph_osd_exporter.fullname" . }}
++  namespace: monitoring
++  labels:
++    {{- include "ceph_osd_exporter.labels" . | nindent 4 }}
++spec:
++  {{- with .Values.updateStrategy }}
++  updateStrategy:
++    {{- toYaml . | nindent 4 }}
++  {{- end }}
++  selector:
++    matchLabels:
++      {{- include "ceph_osd_exporter.selectorLabels" . | nindent 6 }}
++  template:
++    metadata:
++      {{- with .Values.podAnnotations }}
++      annotations:
++        {{ toYaml . | nindent 8 }}
++      {{- end }}
++      labels:
++        {{- include "ceph_osd_exporter.selectorLabels" . | nindent 8 }}
++      {{- with .Values.podLabels }}
++        {{ toYaml . | nindent 8 }}
++      {{- end }}
++    spec:
++      serviceAccountName: {{ include "ceph_osd_exporter.serviceAccountName" . }}
++      {{- with .Values.nodeSelector }}
++      nodeSelector:
++        {{- toYaml . | nindent 8 }}
++      {{- end }}
++      {{- with .Values.affinity }}
++      affinity:
++        {{- toYaml . | nindent 8 }}
++      {{- end }}
++      {{- with .Values.tolerations }}
++      tolerations:
++        {{- toYaml . | nindent 8 }}
++      {{- end }}
++      containers:
++        - name: ceph-osd-exporter
++          {{- with .Values.containerSecurityContext }}
++          securityContext:
++            {{- toYaml . | nindent 12 }}
++          {{- end }}
++          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
++          imagePullPolicy: {{ .Values.image.pullPolicy }}
++          ports:
++            - name: metrics
++              containerPort: {{ .Values.ceph_osd_exporter.port }}
++          volumeMounts:
++            - name: run-ceph
++              mountPath: /var/run/ceph
++{{ if $mounts_ceph_osd_exporter.volumeMounts }}{{ toYaml $mounts_ceph_osd_exporter.volumeMounts | indent 12 }}{{ end }}
++          readinessProbe:
++            failureThreshold: 3
++            httpGet:
++              path: /
++              port: {{ .Values.ceph_osd_exporter.port }}
++              scheme: HTTP
++          livenessProbe:
++            failureThreshold: 3
++            httpGet:
++              path: /
++              port: {{ .Values.ceph_osd_exporter.port }}
++              scheme: HTTP
++            periodSeconds: 10
++            successThreshold: 1
++            timeoutSeconds: 1
++      volumes:
++        - name: run-ceph
++          hostPath:
++            path: /var/run/ceph
++{{ if $mounts_ceph_osd_exporter.volumes }}{{ toYaml $mounts_ceph_osd_exporter.volumes | indent 8 }}{{ end }}
+diff --git a/chart/templates/ingress.yaml b/chart/templates/ingress.yaml
+new file mode 100644
+index 0000000..2a85dce
+--- /dev/null
++++ b/chart/templates/ingress.yaml
+@@ -0,0 +1,61 @@
++{{- if .Values.ingress.enabled -}}
++{{- $fullName := include "ceph_osd_exporter.fullname" . -}}
++{{- $svcPort := .Values.service.port -}}
++{{- if and .Values.ingress.className (not (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion)) }}
++  {{- if not (hasKey .Values.ingress.annotations "kubernetes.io/ingress.class") }}
++  {{- $_ := set .Values.ingress.annotations "kubernetes.io/ingress.class" .Values.ingress.className}}
++  {{- end }}
++{{- end }}
++{{- if semverCompare ">=1.19-0" .Capabilities.KubeVersion.GitVersion -}}
++apiVersion: networking.k8s.io/v1
++{{- else if semverCompare ">=1.14-0" .Capabilities.KubeVersion.GitVersion -}}
++apiVersion: networking.k8s.io/v1beta1
++{{- else -}}
++apiVersion: extensions/v1beta1
++{{- end }}
++kind: Ingress
++metadata:
++  name: {{ $fullName }}
++  labels:
++    {{- include "ceph_osd_exporter.labels" . | nindent 4 }}
++  {{- with .Values.ingress.annotations }}
++  annotations:
++    {{- toYaml . | nindent 4 }}
++  {{- end }}
++spec:
++  {{- if and .Values.ingress.className (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion) }}
++  ingressClassName: {{ .Values.ingress.className }}
++  {{- end }}
++  {{- if .Values.ingress.tls }}
++  tls:
++    {{- range .Values.ingress.tls }}
++    - hosts:
++        {{- range .hosts }}
++        - {{ . | quote }}
++        {{- end }}
++      secretName: {{ .secretName }}
++    {{- end }}
++  {{- end }}
++  rules:
++    {{- range .Values.ingress.hosts }}
++    - host: {{ .host | quote }}
++      http:
++        paths:
++          {{- range .paths }}
++          - path: {{ .path }}
++            {{- if and .pathType (semverCompare ">=1.18-0" $.Capabilities.KubeVersion.GitVersion) }}
++            pathType: {{ .pathType }}
++            {{- end }}
++            backend:
++              {{- if semverCompare ">=1.19-0" $.Capabilities.KubeVersion.GitVersion }}
++              service:
++                name: {{ $fullName }}
++                port:
++                  number: {{ $svcPort }}
++              {{- else }}
++              serviceName: {{ $fullName }}
++              servicePort: {{ $svcPort }}
++              {{- end }}
++          {{- end }}
++    {{- end }}
++{{- end }}
+diff --git a/chart/templates/prometheusrule.yaml b/chart/templates/prometheusrule.yaml
+new file mode 100644
+index 0000000..3fce8ca
+--- /dev/null
++++ b/chart/templates/prometheusrule.yaml
+@@ -0,0 +1,19 @@
++{{- if .Values.prometheusRule.enabled }}
++apiVersion: monitoring.coreos.com/v1
++kind: PrometheusRule
++metadata:
++  name: {{ template "ceph_osd_exporter.fullname" . }}
++  {{- if .Values.prometheusRule.namespace }}
++  namespace: {{ .Values.prometheusRule.namespace }}
++  {{- else }}
++  namespace: {{ .Release.Namespace | quote }}
++  {{- end }}
++  labels:
++    {{- include "ceph_osd_exporter.labels" . | nindent 4 }}
++spec:
++  {{- with .Values.prometheusRule.rules }}
++  groups:
++    - name: {{ template "ceph_osd_exporter.name" $ }}
++      rules: {{- tpl (toYaml .) $ | nindent 8 }}
++  {{- end }}
++{{- end }}
+diff --git a/chart/templates/role.yaml b/chart/templates/role.yaml
+new file mode 100644
+index 0000000..699ffa6
+--- /dev/null
++++ b/chart/templates/role.yaml
+@@ -0,0 +1,20 @@
++{{- if or .Values.podSecurityPolicy.enabled (not .Values.rbac.clusterscoped) }}
++kind: Role
++apiVersion: rbac.authorization.k8s.io/v1
++metadata:
++  name: {{ include "ceph_osd_exporter.fullname" . }}-pod-security-policy
++  labels:
++    {{- include "ceph_osd_exporter.labels" . | nindent 4 }}
++rules:
++{{- if not .Values.rbac.clusterscoped }}
++  - apiGroups: [""]
++    resources: ["pods"]
++    verbs: ["list"]
++{{- end }}
++{{- if .Values.podSecurityPolicy.enabled }}
++  - apiGroups: ["extensions"]
++    resources: ["podsecuritypolicies"]
++    resourceNames: [{{ .Values.podSecurityPolicy.policyName | quote }}]
++    verbs: ["use"]
++{{- end }}
++{{- end }}
+diff --git a/chart/templates/rolebinding.yaml b/chart/templates/rolebinding.yaml
+new file mode 100644
+index 0000000..c358278
+--- /dev/null
++++ b/chart/templates/rolebinding.yaml
+@@ -0,0 +1,16 @@
++{{- if or .Values.podSecurityPolicy.enabled (not .Values.rbac.clusterscoped) }}
++kind: RoleBinding
++apiVersion: rbac.authorization.k8s.io/v1
++metadata:
++  name: {{ include "ceph_osd_exporter.fullname" . }}-pod-security-policy
++  labels:
++    {{- include "ceph_osd_exporter.labels" . | nindent 4 }}
++roleRef:
++  kind: Role
++  name: {{ include "ceph_osd_exporter.fullname" . }}-pod-security-policy
++  apiGroup: rbac.authorization.k8s.io
++subjects:
++  - kind: ServiceAccount
++    name: {{ include "ceph_osd_exporter.serviceAccountName" . }}
++    namespace: {{ .Release.Namespace }}
++{{- end }}
+diff --git a/chart/templates/service.yaml b/chart/templates/service.yaml
+new file mode 100644
+index 0000000..5f8c52b
+--- /dev/null
++++ b/chart/templates/service.yaml
+@@ -0,0 +1,25 @@
++# Copyright (c) 2024 VEXXHOST, Inc.
++# SPDX-License-Identifier: Apache-2.0
++
++apiVersion: v1
++kind: Service
++metadata:
++  name: {{ include "ceph_osd_exporter.fullname" . }}
++  namespace: monitoring
++  labels:
++    {{- include "ceph_osd_exporter.labels" . | nindent 4 }}
++{{- with .Values.service.labels }}
++{{ toYaml . | indent 4 }}
++{{- end }}
++{{- with .Values.service.annotations }}
++  annotations:
++{{ toYaml . | indent 4 }}
++{{- end }}
++spec:
++  clusterIP: None
++  ports:
++    - name: metrics
++      port: {{ .Values.ceph_osd_exporter.port }}
++      targetPort: metrics
++  selector:
++    {{- include "ceph_osd_exporter.selectorLabels" . | nindent 4 }}
+diff --git a/chart/templates/serviceaccount.yaml b/chart/templates/serviceaccount.yaml
+new file mode 100644
+index 0000000..4555abd
+--- /dev/null
++++ b/chart/templates/serviceaccount.yaml
+@@ -0,0 +1,8 @@
++{{- if .Values.serviceAccount.create }}
++apiVersion: v1
++kind: ServiceAccount
++metadata:
++  name: {{ include "ceph_osd_exporter.serviceAccountName" . }}
++  labels:
++    {{- include "ceph_osd_exporter.labels" . | nindent 4 }}
++{{- end }}
+diff --git a/chart/templates/servicemonitor.yaml b/chart/templates/servicemonitor.yaml
+new file mode 100644
+index 0000000..f8a3111
+--- /dev/null
++++ b/chart/templates/servicemonitor.yaml
+@@ -0,0 +1,28 @@
++{{- if .Values.serviceMonitor.enabled }}
++apiVersion: monitoring.coreos.com/v1
++kind: ServiceMonitor
++metadata:
++  name: {{ include "ceph_osd_exporter.fullname" . }}
++  {{- if .Values.serviceMonitor.namespace }}
++  namespace: {{ .Values.serviceMonitor.namespace }}
++  {{- end }}
++  labels:
++    {{- include "ceph_osd_exporter.labels" . | nindent 4 }}
++    {{- range $key, $value := .Values.serviceMonitor.selector }}
++    {{ $key }}: {{ $value | quote }}
++    {{- end }}
++spec:
++  endpoints:
++    - port: http
++      interval: {{ .Values.serviceMonitor.interval }}
++      {{- if .Values.serviceMonitor.honorLabels }}
++      honorLabels: true
++      {{- end }}
++  jobLabel: name
++  namespaceSelector:
++    matchNames:
++      - {{ .Release.Namespace }}
++  selector:
++    matchLabels:
++      {{- include "ceph_osd_exporter.selectorLabels" . | nindent 6 }}
++{{- end -}}
+diff --git a/chart/values.yaml b/chart/values.yaml
+new file mode 100644
+index 0000000..59646a8
+--- /dev/null
++++ b/chart/values.yaml
+@@ -0,0 +1,135 @@
++# Copyright (c) 2024 VEXXHOST, Inc.
++# SPDX-License-Identifier: Apache-2.0
++
++image:
++  repository: registry.atmosphere.dev/library/ceph-osd-exporter
++  # Overrides the image tag whose default is the chart appVersion.
++  tag: "latest"
++  pullPolicy: IfNotPresent
++  ## Optionally specify an array of imagePullSecrets.
++  ## Secrets must be manually created in the namespace.
++  ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
++  ##
++  # pullSecrets:
++  #   - myRegistryKeySecretName
++
++rbac:
++  create: true
++  clusterscoped: true
++
++service:
++  port: 9282
++  annotations: {}
++  labels: {}
++
++ingress:
++  enabled: false
++  className: ""
++  annotations: {}
++    # kubernetes.io/ingress.class: nginx
++    # kubernetes.io/tls-acme: "true"
++  hosts:
++    - host: chart-example.local
++      paths:
++        - path: /
++          pathType: ImplementationSpecific
++  tls: []
++  #  - secretName: chart-example-tls
++  #    hosts:
++  #      - chart-example.local
++
++serviceAccount:
++  create: true
++  name:
++
++ceph_osd_exporter:
++  port: 9282
++
++extraEnv: []
++
++## Set a priorityClassName for the pod. If left blank a default priority will be set.
++priorityClassName:
++
++resources: {}
++  # We usually recommend not to specify default resources and to leave this as a conscious
++  # choice for the user. This also increases chances charts run on environments with little
++  # resources, such as Minikube. If you do want to specify resources, uncomment the following
++  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
++  # limits:
++  #  cpu: 100m
++  #  memory: 128Mi
++  # requests:
++  #  cpu: 100m
++  #  memory: 128Mi
++
++podAnnotations: {}
++
++podLabels: {}
++
++updateStrategy: {}
++  # type: RollingUpdate
++  # rollingUpdate:
++  #   maxUnavailable: 1
++
++## Node labels for pod assignment
++## Ref: https://kubernetes.io/docs/user-guide/node-selection/
++##
++nodeSelector:
++  ceph-osd-exporter: enabled
++
++## Tolerations for pod assignment
++## Ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
++##
++tolerations: []
++
++## Affinity for pod assignment
++## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
++##
++affinity: {}
++
++## Enable this if pod security policy enabled in your cluster
++## It will bind ServiceAccount with unrestricted podSecurityPolicy
++## Ref: https://kubernetes.io/docs/concepts/policy/pod-security-policy/
++podSecurityPolicy:
++  enabled: false
++  policyName: unrestricted-psp
++
++## Set security context of the ceph_osd_exporter container
++## Ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
++containerSecurityContext:
++  runAsUser: 0
++  allowPrivilegeEscalation: false
++  readOnlyRootFilesystem: true
++
++pod:
++  mounts:
++    ceph_osd_exporter:
++      init_container: null
++      ceph_osd_exporter:
++        volumeMounts:
++        volumes:
++
++serviceMonitor:
++  enabled: false
++  selector:
++    prometheus: "kube-prometheus"
++  # namespace: monitoring
++  interval: 30s
++  # honorLabels: true
++
++## Custom PrometheusRule to be defined
++## ref: https://github.com/coreos/prometheus-operator#customresourcedefinitions
++prometheusRule:
++  enabled: false
++  rules:
++    - alert: ceph_osd_exporter_nodes_unhealthy
++      expr: |
++        sum(ceph_osd_exporter_nodes_health_total{job="{{ template "ceph_osd_exporter.fullname" . }}", status="unhealthy"})
++        BY (instance, ceph_osd_exporter_instance) > 0
++      for: 5m
++      annotations:
++        description: |
++          Goldpinger instance {{ "{{ $labels.ceph_osd_exporter_instance }}" }} has been reporting unhealthy nodes for at least 5 minutes.
++        summary: Instance {{ "{{ $labels.instance }}" }} down
++      labels:
++        severity: warning
+-- 
+2.52.0
+
