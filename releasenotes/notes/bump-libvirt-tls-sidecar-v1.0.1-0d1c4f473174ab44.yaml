@@ -1,4 +1,8 @@
 ---
-other:
+fixes:
   - |
-    The ``libvirt-tls-sidecar`` image updated from v1.0.0 to v1.0.1.
+    The ``libvirt-tls-sidecar`` image updated from v1.0.0 to v1.0.1, which
+    adds a missing package required for the certificate renewal hook. Without
+    this package, the hook that signals QEMU processes to reread their TLS
+    certificates can't execute, causing VM consoles to stop working when
+    certificates expire and aren't reloaded.
