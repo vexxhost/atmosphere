@@ -166,7 +166,7 @@ spec:
               subPath: ceph.conf
               readOnly: true
 {{- range $index, $user := .Values.conf.ceph.additional_users }}
-        - name: ceph-keyring-placement-{{ $user.user | replace "_" "-" }}
+        - name: ceph-keyring-placement-{{ $user.user | lower | replace "_" "-" | replace "." "-" }}
 {{ tuple $envAll "ceph_config_helper" | include "helm-toolkit.snippets.image" | indent 10 }}
 {{ dict "envAll" $envAll "application" "libvirt" "container" "ceph_keyring_placement" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
           env:
@@ -189,7 +189,7 @@ spec:
               mountPath: /etc/ceph/ceph.conf.template
               subPath: ceph.conf
               readOnly: true
-            - name: ceph-keyring-{{ $user.user | replace "_" "-" }}
+            - name: ceph-keyring-{{ $user.user | lower | replace "_" "-" | replace "." "-" }}
               mountPath: /tmp/client-keyring
               subPath: key
               readOnly: true
@@ -417,7 +417,7 @@ spec:
             secretName: {{ .Values.conf.ceph.cinder.external_ceph.user_secret_name }}
         {{ end }}
         {{- range $index, $user := .Values.conf.ceph.additional_users }}
-        - name: ceph-keyring-{{ $user.user | replace "_" "-" }}
+        - name: ceph-keyring-{{ $user.user | lower | replace "_" "-" | replace "." "-" }}
           secret:
             secretName: {{ $user.secret_name }}
         {{- end }}
