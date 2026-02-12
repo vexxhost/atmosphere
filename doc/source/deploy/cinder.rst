@@ -20,6 +20,113 @@ When using the integrated Ceph cluster provided with Atmosphere, no additional
 configuration is needed for Cinder. The deployment process automatically
 configures Cinder to use Ceph as the backend, simplifying setup and integration.
 
+Erasure-coded pools
+===================
+
+For environments requiring improved storage efficiency, you can configure Cinder
+to use Ceph erasure-coded (EC) pools. EC pools provide better storage utilization
+compared to replicated pools, at the cost of slightly higher CPU overhead.
+
+EC pools require two components:
+
+1. A **metadata pool** (replicated) that stores metadata
+2. A **data pool** (EC) that stores the actual volume data
+
+To configure an EC backend, you need to:
+
+1. Create the pools via Rook ``CephBlockPool`` in ``rook_ceph_cluster_helm_values``
+2. Create a Cinder backend with ``rbd_data_pool`` pointing to the EC data pool
+3. Configure ``ceph_provisioners_helm_values`` to set the default data pool for the ceph user
+4. Configure ``libvirt_helm_values`` to register the Ceph user secret for Nova
+
+.. code-block:: yaml
+
+    # Step 1: Create EC pools via Rook
+    rook_ceph_cluster_helm_values:
+      cephBlockPools:
+        - name: cinder.volumes.ec        # metadata pool (replicated)
+          spec:
+            failureDomain: host
+            replicated:
+              size: 3
+        - name: cinder.volumes.ec.data   # data pool (erasure-coded)
+          spec:
+            failureDomain: host
+            erasureCoded:
+              dataChunks: 4
+              codingChunks: 2
+            deviceClass: hdd             # optional: target specific device class
+
+    # Step 2: Configure Cinder backend with rbd_data_pool
+    cinder_helm_values:
+      conf:
+        cinder:
+          DEFAULT:
+            enabled_backends: rbd1,rbd_ec
+        backends:
+          rbd_ec:
+            volume_driver: cinder.volume.drivers.rbd.RBDDriver
+            volume_backend_name: rbd_ec
+            rbd_pool: cinder.volumes.ec
+            rbd_data_pool: cinder.volumes.ec.data
+            rbd_ceph_conf: "/etc/ceph/ceph.conf"
+            rbd_flatten_volume_from_snapshot: false
+            report_discard_supported: true
+            rbd_max_clone_depth: 5
+            rbd_store_chunk_size: 4
+            rados_connect_timeout: -1
+            rbd_user: cinder-ec
+            rbd_secret_uuid: 808c5658-7c46-4818-8f26-82a217e3a57a  # must be unique per user
+
+    # Step 3: Configure ceph.conf for the EC user
+    ceph_provisioners_helm_values:
+      conf:
+        ceph:
+          client.cinder-ec:
+            rbd default data pool: cinder.volumes.ec.data
+
+    # Step 4: Configure libvirt to register the EC user secret
+    libvirt_helm_values:
+      conf:
+        ceph:
+          additional_users:
+            - user: cinder-ec
+              secret_uuid: 808c5658-7c46-4818-8f26-82a217e3a57a
+              secret_name: cinder-volume-rbd-keyring-rbd-ec
+
+.. warning::
+
+    Each Ceph user requires a **unique** ``secret_uuid``. Don't reuse the default
+    Cinder user's UUID (``457eb676-33da-42ec-9a8c-9293d545c337``). Generate a new
+    UUID for each additional backend using ``uuidgen``.
+
+.. note::
+
+    The ``secret_uuid`` in ``libvirt_helm_values`` must match the ``rbd_secret_uuid``
+    configured in the Cinder backend. The ``secret_name`` follows the pattern
+    ``cinder-volume-rbd-keyring-<backend>`` (for example, ``rbd_ec``).
+
+.. admonition:: About ``rbd_user`` for erasure-coded pools
+    :class: info
+
+    Each erasure-coded backend requires a dedicated ``rbd_user`` because Ceph
+    configures data pool routing per-user in ``ceph.conf``. The storage-init
+    job automatically grants the user access to both the metadata and data pools.
+
+The Rook ``CephBlockPool`` erasure coding parameters are:
+
+``dataChunks``
+  Number of data chunks (k). Higher values provide better storage efficiency.
+
+``codingChunks``
+  Number of parity chunks (m). Higher values provide better fault tolerance.
+
+``deviceClass``
+  Target specific device types, for example ``hdd``, ``ssd``, or ``nvme``.
+
+``failureDomain``
+  Failure domain for data placement, for example ``host``, ``rack``, or ``room``.
+
 ***************
 Dell PowerStore
 ***************
