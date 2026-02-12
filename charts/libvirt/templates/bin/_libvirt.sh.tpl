@@ -165,13 +165,14 @@ EOF
 
   # Process additional Ceph users (format: "user1:uuid1,user2:uuid2,...")
   if [ -n "${ADDITIONAL_CEPH_USERS}" ] ; then
-    IFS=',' read -ra USER_ENTRIES <<< "${ADDITIONAL_CEPH_USERS}"
-    for entry in "${USER_ENTRIES[@]}"; do
-      IFS=':' read -r add_user add_uuid <<< "${entry}"
+    additional_ceph_entries=$(printf '%s\n' "${ADDITIONAL_CEPH_USERS}" | tr ',' ' ')
+    for entry in ${additional_ceph_entries}; do
+      add_user=${entry%%:*}
+      add_uuid=${entry#*:}
       if [ -n "${add_user}" ] && [ -n "${add_uuid}" ]; then
-        add_keyring=$(awk '/key/{print $3}' /etc/ceph/ceph.client.${add_user}.keyring)
+        add_keyring=$(awk '/key/{print $3}' "/etc/ceph/ceph.client.${add_user}.keyring")
         if [ -n "${add_keyring}" ]; then
-          create_virsh_libvirt_secret ${add_user} ${add_uuid} ${add_keyring}
+          create_virsh_libvirt_secret "${add_user}" "${add_uuid}" "${add_keyring}"
         else
           echo "WARNING: Keyring not found for additional user ${add_user}"
         fi

@@ -20,19 +20,19 @@ When using the integrated Ceph cluster provided with Atmosphere, no additional
 configuration is needed for Cinder. The deployment process automatically
 configures Cinder to use Ceph as the backend, simplifying setup and integration.
 
-Erasure coded pools
+Erasure-coded pools
 ===================
 
 For environments requiring improved storage efficiency, you can configure Cinder
-to use Ceph ``erasure coded`` pools. This provides better storage utilization
+to use Ceph erasure-coded (EC) pools. EC pools provide better storage utilization
 compared to replicated pools, at the cost of slightly higher CPU overhead.
 
-Erasure coded pools require two components:
+EC pools require two components:
 
 1. A **metadata pool** (replicated) that stores metadata
-2. A **data pool** (erasure coded) that stores the actual volume data
+2. A **data pool** (EC) that stores the actual volume data
 
-To configure an erasure coded backend, you need to:
+To configure an EC backend, you need to:
 
 1. Create the pools via Rook ``CephBlockPool`` in ``rook_ceph_cluster_helm_values``
 2. Create a Cinder backend with ``rbd_data_pool`` pointing to the EC data pool
@@ -49,7 +49,7 @@ To configure an erasure coded backend, you need to:
             failureDomain: host
             replicated:
               size: 3
-        - name: cinder.volumes.ec.data   # data pool (erasure coded)
+        - name: cinder.volumes.ec.data   # data pool (erasure-coded)
           spec:
             failureDomain: host
             erasureCoded:
@@ -106,10 +106,10 @@ To configure an erasure coded backend, you need to:
     configured in the Cinder backend. The ``secret_name`` follows the pattern
     ``cinder-volume-rbd-keyring-<backend>`` (for example, ``rbd_ec``).
 
-.. admonition:: About ``rbd_user`` for erasure coded pools
+.. admonition:: About ``rbd_user`` for erasure-coded pools
     :class: info
 
-    Each erasure coded backend requires a dedicated ``rbd_user`` because Ceph
+    Each erasure-coded backend requires a dedicated ``rbd_user`` because Ceph
     configures data pool routing per-user in ``ceph.conf``. The storage-init
     job automatically grants the user access to both the metadata and data pools.
 

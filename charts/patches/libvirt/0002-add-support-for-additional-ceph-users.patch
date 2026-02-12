@@ -58,19 +58,20 @@ diff --git a/libvirt/templates/bin/_libvirt.sh.tpl b/libvirt/templates/bin/_libv
 index d0754333..4a8d654d 100644
 --- a/libvirt/templates/bin/_libvirt.sh.tpl
 +++ b/libvirt/templates/bin/_libvirt.sh.tpl
-@@ -163,6 +163,22 @@ EOF
+@@ -163,6 +163,23 @@ EOF
      create_virsh_libvirt_secret ${EXTERNAL_CEPH_CINDER_USER} ${LIBVIRT_EXTERNAL_CEPH_CINDER_SECRET_UUID} ${EXTERNAL_CEPH_CINDER_KEYRING}
    fi
  
 +  # Process additional Ceph users (format: "user1:uuid1,user2:uuid2,...")
 +  if [ -n "${ADDITIONAL_CEPH_USERS}" ] ; then
-+    IFS=',' read -ra USER_ENTRIES <<< "${ADDITIONAL_CEPH_USERS}"
-+    for entry in "${USER_ENTRIES[@]}"; do
-+      IFS=':' read -r add_user add_uuid <<< "${entry}"
++    additional_ceph_entries=$(printf '%s\n' "${ADDITIONAL_CEPH_USERS}" | tr ',' ' ')
++    for entry in ${additional_ceph_entries}; do
++      add_user=${entry%%:*}
++      add_uuid=${entry#*:}
 +      if [ -n "${add_user}" ] && [ -n "${add_uuid}" ]; then
-+        add_keyring=$(awk '/key/{print $3}' /etc/ceph/ceph.client.${add_user}.keyring)
++        add_keyring=$(awk '/key/{print $3}' "/etc/ceph/ceph.client.${add_user}.keyring")
 +        if [ -n "${add_keyring}" ]; then
-+          create_virsh_libvirt_secret ${add_user} ${add_uuid} ${add_keyring}
++          create_virsh_libvirt_secret "${add_user}" "${add_uuid}" "${add_keyring}"
 +        else
 +          echo "WARNING: Keyring not found for additional user ${add_user}"
 +        fi
@@ -90,7 +91,7 @@ index bccc3957..ba61c200 100644
                subPath: ceph.conf
                readOnly: true
 +{{- range $index, $user := .Values.conf.ceph.additional_users }}
-+        - name: ceph-keyring-placement-{{ $user.user | replace "_" "-" }}
++        - name: ceph-keyring-placement-{{ $user.user | lower | replace "_" "-" | replace "." "-" }}
 +{{ tuple $envAll "ceph_config_helper" | include "helm-toolkit.snippets.image" | indent 10 }}
 +{{ dict "envAll" $envAll "application" "libvirt" "container" "ceph_keyring_placement" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
 +          env:
@@ -113,7 +114,7 @@ index bccc3957..ba61c200 100644
 +              mountPath: /etc/ceph/ceph.conf.template
 +              subPath: ceph.conf
 +              readOnly: true
-+            - name: ceph-keyring-{{ $user.user | replace "_" "-" }}
++            - name: ceph-keyring-{{ $user.user | lower | replace "_" "-" | replace "." "-" }}
 +              mountPath: /tmp/client-keyring
 +              subPath: key
 +              readOnly: true
@@ -137,7 +138,7 @@ index bccc3957..ba61c200 100644
              secretName: {{ .Values.conf.ceph.cinder.external_ceph.user_secret_name }}
          {{ end }}
 +        {{- range $index, $user := .Values.conf.ceph.additional_users }}
-+        - name: ceph-keyring-{{ $user.user | replace "_" "-" }}
++        - name: ceph-keyring-{{ $user.user | lower | replace "_" "-" | replace "." "-" }}
 +          secret:
 +            secretName: {{ $user.secret_name }}
 +        {{- end }}
