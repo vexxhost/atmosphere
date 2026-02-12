@@ -15,6 +15,10 @@ Configuration is in `.vale.ini` at the repository root.  The minimum
 alert level is `suggestion`, meaning all suggestions are treated as
 failures.
 
+**Note:** Vale linting only applies to files matching the patterns in
+`.vale.ini` (currently `*.{rst,yaml}`).  Files in `.github/instructions/`
+are markdown files and are not subject to Vale linting.
+
 ## Common rules to follow
 
 - Use single spaces between sentences, not double spaces.
