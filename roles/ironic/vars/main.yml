@@ -46,7 +46,7 @@ _ironic_helm_values:
       DEFAULT:
         log_config_append: null
         enabled_network_interfaces: flat,neutron
-        default_network_interface: flat
+        default_network_interface: neutron
         rbac_service_role_elevated_access: true
       conductor:
         clean_step_priority_override: deploy.erase_devices_express:5
@@ -66,7 +66,9 @@ _ironic_helm_values:
         provisioning_network: "{{ ironic_bare_metal_network_name }}"
         rescuing_network: "{{ ironic_bare_metal_network_name }}"
       pxe:
-        kernel_append_params: "ipa-insecure=true systemd.journald.forward_to_console=yes"
+        kernel_append_params: "nofb ipa-insecure=true console=ttyS0,115200 systemd.journald.forward_to_console=yes"
+      redfish:
+        kernel_append_params: "nofb ipa-insecure=true console=ttyS0,115200 systemd.journald.forward_to_console=yes"
       service_catalog:
         valid_interfaces: public
     rabbitmq:
