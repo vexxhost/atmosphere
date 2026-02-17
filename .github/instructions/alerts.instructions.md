@@ -110,6 +110,14 @@ inhibit_rules:
 The `equal` field must list all labels that identify the same resource
 instance (e.g., `service`, `namespace`, `instance`).
 
+**Important:** Consider including `namespace` in the `equal` field to
+prevent accidental suppression when the same alert fires for resources
+with the same name in different namespaces. For example, if a service
+named `api` exists in both `production` and `staging` namespaces,
+omitting `namespace` would cause a Critical alert in `production` to
+suppress a High alert in `staging`, which is likely not the desired
+behavior.
+
 ## Runbook and Documentation Requirements
 
 Every alert must have a corresponding entry in the Alerts Reference
