@@ -42,18 +42,21 @@ _kube_prometheus_stack_helm_values:
             - alertname =~ "NginxIngress(High|Moderate|Low)ErrorBudgetBurn"
           equal:
             - service
+            - namespace
         - source_matchers:
             - alertname = "NginxIngressHighErrorBudgetBurn"
           target_matchers:
             - alertname =~ "NginxIngress(Moderate|Low)ErrorBudgetBurn"
           equal:
             - service
+            - namespace
         - source_matchers:
             - alertname = "NginxIngressModerateErrorBudgetBurn"
           target_matchers:
             - alertname = "NginxIngressLowErrorBudgetBurn"
           equal:
             - service
+            - namespace
       route:
         group_by:
           - alertname
