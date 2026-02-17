@@ -109,42 +109,64 @@ local mixins = {
     },
   },
   memcached: (import 'vendor/github.com/grafana/jsonnet-libs/memcached-mixin/mixin.libsonnet'),
-  mysqld: (import 'vendor/github.com/prometheus/mysqld_exporter/mysqld-mixin/mixin.libsonnet') + {
-    prometheusAlerts+:: {
-      groups+: [
-        {
-          name: 'mysqld-extras',
-          rules: [
-            {
-              alert: 'MysqlTooManyConnections',
-              'for': '1m',
-              expr: |||
-                max_over_time(mysql_global_status_threads_connected[1m]) / mysql_global_variables_max_connections * 100 > 80
-              |||,
-              labels: {
-                severity: 'warning',
+  mysqld:
+    local base = (import 'vendor/github.com/prometheus/mysqld_exporter/mysqld-mixin/mixin.libsonnet');
+    base {
+      prometheusAlerts:: {
+        groups: [
+          if group.name == 'GaleraAlerts' then group {
+            rules: [
+              if rule.alert == 'MySQLGaleraOutOfSync' then {
+                alert: 'MySQLGaleraOutOfSync',
+                'for': '15m',
+                expr: |||
+                  (mysql_global_status_wsrep_local_state != 4 and mysql_global_status_wsrep_local_state != 2 and mysql_global_variables_wsrep_desync == 0)
+                |||,
+                labels: { severity: 'warning' },
+                annotations: {
+                  summary: 'Percona XtraDB Cluster: Galera node not in sync with cluster',
+                  description: 'The Galera node {{ $labels.instance }} has wsrep_local_state={{ $value }} which is not the expected value of 4 (Synced).  The node is not in Donor state (2) and wsrep_desync is not enabled, indicating an unexpected loss of cluster sync.  Normal behavior is wsrep_local_state=4 for all nodes not actively serving as SST donors.',
+                  runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#mysqlgaleraoutofsync',
+                },
+              } else rule
+              for rule in group.rules
+            ],
+          } else group
+          for group in base.prometheusAlerts.groups
+        ] + [
+          {
+            name: 'mysqld-extras',
+            rules: [
+              {
+                alert: 'MysqlTooManyConnections',
+                'for': '1m',
+                expr: |||
+                  max_over_time(mysql_global_status_threads_connected[1m]) / mysql_global_variables_max_connections * 100 > 80
+                |||,
+                labels: {
+                  severity: 'warning',
+                },
               },
-            },
-            {
-              alert: 'MysqlHighThreadsRunning',
-              'for': '1m',
-              expr: |||
-                max_over_time(mysql_global_status_threads_running[1m]) / mysql_global_variables_max_connections * 100 > 60
-              |||,
-              labels: {
-                severity: 'warning',
+              {
+                alert: 'MysqlHighThreadsRunning',
+                'for': '1m',
+                expr: |||
+                  max_over_time(mysql_global_status_threads_running[1m]) / mysql_global_variables_max_connections * 100 > 60
+                |||,
+                labels: {
+                  severity: 'warning',
+                },
               },
-            },
-            {
-              alert: 'MysqlSlowQueries',
-              'for': '2m',
-              expr: |||
-                increase(mysql_global_status_slow_queries[1m]) > 0
-              |||,
-              labels: {
-                severity: 'warning',
+              {
+                alert: 'MysqlSlowQueries',
+                'for': '2m',
+                expr: |||
+                  increase(mysql_global_status_slow_queries[1m]) > 0
+                |||,
+                labels: {
+                  severity: 'warning',
+                },
               },
-            },
             {
               alert: 'MysqlClusterDown',
               'for': '5m',
