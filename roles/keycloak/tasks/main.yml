@@ -23,6 +23,11 @@
 - name: Install MySQL python package
   ansible.builtin.pip:
     name: PyMySQL
+    extra_args: --no-cache-dir
+  register: _pymysql_install
+  retries: 3
+  delay: 5
+  until: _pymysql_install is succeeded
 
 - name: Check MySQL ready
   run_once: true

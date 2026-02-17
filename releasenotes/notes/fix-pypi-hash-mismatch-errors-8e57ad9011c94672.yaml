@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixes intermittent PyPI hash mismatch errors during package installation
+    that caused job failures. The implementation adds retry logic with
+    ``--no-cache-dir`` to avoid corrupted pip cache and automatically
+    retries up to 3 times with a 5-second delay between attempts. This
+    addresses transient network issues and corrupted downloads from PyPI
+    that could previously cause entire jobs to fail.
