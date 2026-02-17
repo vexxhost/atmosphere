@@ -98,11 +98,7 @@ local mixins = {
       ],
     },
   },
-  coredns: (import 'vendor/github.com/povilasv/coredns-mixin/mixin.libsonnet') + {
-    _config+:: {
-      corednsSelector: 'job="coredns"',
-    },
-  },
+  coredns: (import 'coredns.libsonnet'),
   kube: (import 'vendor/github.com/kubernetes-monitoring/kubernetes-mixin/mixin.libsonnet') + {
     _config+:: {
       kubeApiserverSelector: 'job="apiserver"',

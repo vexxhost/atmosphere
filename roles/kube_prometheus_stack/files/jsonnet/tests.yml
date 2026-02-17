@@ -765,3 +765,157 @@ tests:
               summary: "Percona XtraDB Cluster: Galera node not in sync with cluster"
               description: "The Galera node percona-xtradb-pxc-1 has wsrep_local_state=1 which is not the expected value of 4 (Synced).  The node is not in Donor state (2) and wsrep_desync is not enabled, indicating an unexpected loss of cluster sync.  Normal behavior is wsrep_local_state=4 for all nodes not actively serving as SST donors."
               runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#mysqlgaleraoutofsync"
+
+  # CoreDNSCriticalErrorBudgetBurn - should NOT fire when error rate is below burn-rate threshold
+  - interval: 1m
+    input_series:
+      # Low error rate: 1 SERVFAIL out of 200 total per minute = 0.5% (below 1.44% threshold)
+      - series: 'coredns_dns_responses_total{job="coredns",rcode="SERVFAIL",instance="192.0.2.1:9153"}'
+        values: '0+1x80'
+      - series: 'coredns_dns_responses_total{job="coredns",rcode="NOERROR",instance="192.0.2.1:9153"}'
+        values: '0+199x80'
+    alert_rule_test:
+      - eval_time: 70m
+        alertname: CoreDNSCriticalErrorBudgetBurn
+        exp_alerts: []
+
+  # CoreDNSCriticalErrorBudgetBurn - should fire when error rate exceeds 14.4x burn-rate threshold
+  - interval: 1m
+    input_series:
+      # Error rate: 4 SERVFAIL out of 200 total per minute = 2% (above 1.44% threshold)
+      - series: 'coredns_dns_responses_total{job="coredns",rcode="SERVFAIL",instance="192.0.2.1:9153"}'
+        values: '0+4x80'
+      - series: 'coredns_dns_responses_total{job="coredns",rcode="NOERROR",instance="192.0.2.1:9153"}'
+        values: '0+196x80'
+    alert_rule_test:
+      - eval_time: 70m
+        alertname: CoreDNSCriticalErrorBudgetBurn
+        exp_alerts:
+          - exp_labels:
+              severity: P1
+            exp_annotations:
+              summary: "CoreDNS: SERVFAIL rate rapidly consuming error budget"
+              description: "The CoreDNS SERVFAIL rate is 2% over the last hour, which exceeds the 1.44% burn-rate threshold (14.4x against 99.9% SLO). At this rate, the 30-day error budget exhausts in under 2.1 days."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#corednscriticalerrorbudgetburn"
+
+  # CoreDNSHighErrorBudgetBurn - should NOT fire when error rate is below burn-rate threshold
+  - interval: 1m
+    input_series:
+      # Low error rate: 1 SERVFAIL out of 500 total per minute = 0.2% (below 0.6% threshold)
+      - series: 'coredns_dns_responses_total{job="coredns",rcode="SERVFAIL",instance="198.51.100.1:9153"}'
+        values: '0+1x400'
+      - series: 'coredns_dns_responses_total{job="coredns",rcode="NOERROR",instance="198.51.100.1:9153"}'
+        values: '0+499x400'
+    alert_rule_test:
+      - eval_time: 390m
+        alertname: CoreDNSHighErrorBudgetBurn
+        exp_alerts: []
+
+  # CoreDNSHighErrorBudgetBurn - should fire when error rate exceeds 6x burn-rate threshold
+  - interval: 1m
+    input_series:
+      # Error rate: 2 SERVFAIL out of 200 total per minute = 1% (above 0.6% threshold)
+      - series: 'coredns_dns_responses_total{job="coredns",rcode="SERVFAIL",instance="198.51.100.1:9153"}'
+        values: '0+2x400'
+      - series: 'coredns_dns_responses_total{job="coredns",rcode="NOERROR",instance="198.51.100.1:9153"}'
+        values: '0+198x400'
+    alert_rule_test:
+      - eval_time: 390m
+        alertname: CoreDNSHighErrorBudgetBurn
+        exp_alerts:
+          - exp_labels:
+              severity: P2
+            exp_annotations:
+              summary: "CoreDNS: sustained SERVFAIL rate depleting error budget"
+              description: "The CoreDNS SERVFAIL rate is 1% over the last 6 hours, which exceeds the 0.6% burn-rate threshold (6x against 99.9% SLO). At this rate, the 30-day error budget exhausts in under 5 days."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#corednshigherrorbudgetburn"
+
+  # CoreDNSModerateErrorBudgetBurn - should NOT fire when error rate is below burn-rate threshold
+  - interval: 1m
+    input_series:
+      # Low error rate: 1 SERVFAIL out of 1000 total per minute = 0.1% (below 0.3% threshold)
+      - series: 'coredns_dns_responses_total{job="coredns",rcode="SERVFAIL",instance="203.0.113.1:9153"}'
+        values: '0+1x1500'
+      - series: 'coredns_dns_responses_total{job="coredns",rcode="NOERROR",instance="203.0.113.1:9153"}'
+        values: '0+999x1500'
+    alert_rule_test:
+      - eval_time: 1455m
+        alertname: CoreDNSModerateErrorBudgetBurn
+        exp_alerts: []
+
+  # CoreDNSModerateErrorBudgetBurn - should fire when error rate exceeds 3x burn-rate threshold
+  - interval: 1m
+    input_series:
+      # Error rate: 1 SERVFAIL out of 200 total per minute = 0.5% (above 0.3% threshold)
+      - series: 'coredns_dns_responses_total{job="coredns",rcode="SERVFAIL",instance="203.0.113.1:9153"}'
+        values: '0+1x1500'
+      - series: 'coredns_dns_responses_total{job="coredns",rcode="NOERROR",instance="203.0.113.1:9153"}'
+        values: '0+199x1500'
+    alert_rule_test:
+      - eval_time: 1455m
+        alertname: CoreDNSModerateErrorBudgetBurn
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+            exp_annotations:
+              summary: "CoreDNS: ongoing SERVFAIL rate steadily consuming error budget"
+              description: "The CoreDNS SERVFAIL rate is 0.5% over the last day, which exceeds the 0.3% burn-rate threshold (3x against 99.9% SLO). At this rate, the 30-day error budget exhausts in under 10 days."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#corednsmoderateerrorbudgetburn"
+
+  # CoreDNSLowErrorBudgetBurn - should NOT fire when error rate is below burn-rate threshold
+  - interval: 1m
+    input_series:
+      # Low error rate: 1 SERVFAIL out of 5000 total per minute = 0.02% (below 0.1% threshold)
+      - series: 'coredns_dns_responses_total{job="coredns",rcode="SERVFAIL",instance="192.0.2.10:9153"}'
+        values: '0+1x4400'
+      - series: 'coredns_dns_responses_total{job="coredns",rcode="NOERROR",instance="192.0.2.10:9153"}'
+        values: '0+4999x4400'
+    alert_rule_test:
+      - eval_time: 4380m
+        alertname: CoreDNSLowErrorBudgetBurn
+        exp_alerts: []
+
+  # CoreDNSLowErrorBudgetBurn - should fire when error rate exceeds 1x burn-rate threshold
+  - interval: 1m
+    input_series:
+      # Error rate: 1 SERVFAIL out of 500 total per minute = 0.2% (above 0.1% threshold)
+      - series: 'coredns_dns_responses_total{job="coredns",rcode="SERVFAIL",instance="192.0.2.10:9153"}'
+        values: '0+1x4400'
+      - series: 'coredns_dns_responses_total{job="coredns",rcode="NOERROR",instance="192.0.2.10:9153"}'
+        values: '0+499x4400'
+    alert_rule_test:
+      - eval_time: 4380m
+        alertname: CoreDNSLowErrorBudgetBurn
+        exp_alerts:
+          - exp_labels:
+              severity: P4
+            exp_annotations:
+              summary: "CoreDNS: low-level SERVFAIL rate eroding error budget"
+              description: "The CoreDNS SERVFAIL rate is 0.2% over the last 3 days, which exceeds the 0.1% burn-rate threshold (1x against 99.9% SLO). At this rate, the 30-day error budget exhausts before the window resets."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#corednslowerrorbudgetburn"
+
+  # CoreDNSDown - should NOT fire when CoreDNS is up
+  - interval: 1m
+    input_series:
+      - series: 'up{job="coredns",instance="192.0.2.1:9153"}'
+        values: '1x20'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: CoreDNSDown
+        exp_alerts: []
+
+  # CoreDNSDown - should fire when CoreDNS disappears
+  - interval: 1m
+    input_series:
+      - series: 'up{job="coredns",instance="192.0.2.1:9153"}'
+        values: '0x20'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: CoreDNSDown
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+            exp_annotations:
+              summary: "CoreDNS: instance has disappeared from Prometheus target discovery"
+              description: "CoreDNS has disappeared from Prometheus target discovery for more than 15 minutes. This could indicate a crashed CoreDNS pod or a misconfigured scrape target."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#corednsdown"
