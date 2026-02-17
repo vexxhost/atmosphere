@@ -709,3 +709,59 @@ tests:
               summary: "NGINX Ingress: low-level 5xx errors eroding error budget"
               description: "The service placement-api error rate is 0.2% over the last 3 days, which exceeds the 0.1% burn-rate threshold (1x against 99.9% SLO). At this rate, the 30-day error budget exhausts before the window resets."
               runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#nginxingresslowerrorbudgetburn"
+
+  # MySQLGaleraOutOfSync - should NOT fire when node is in Synced state (4)
+  - interval: 1m
+    input_series:
+      - series: 'mysql_global_status_wsrep_local_state{instance="percona-xtradb-pxc-0",job="pxc"}'
+        values: '4x20'
+      - series: 'mysql_global_variables_wsrep_desync{instance="percona-xtradb-pxc-0",job="pxc"}'
+        values: '0x20'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: MySQLGaleraOutOfSync
+        exp_alerts: []
+
+  # MySQLGaleraOutOfSync - should NOT fire when node is in Donor state (2) during backup
+  - interval: 1m
+    input_series:
+      - series: 'mysql_global_status_wsrep_local_state{instance="percona-xtradb-pxc-2",job="pxc"}'
+        values: '2x20'
+      - series: 'mysql_global_variables_wsrep_desync{instance="percona-xtradb-pxc-2",job="pxc"}'
+        values: '0x20'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: MySQLGaleraOutOfSync
+        exp_alerts: []
+
+  # MySQLGaleraOutOfSync - should NOT fire when wsrep_desync is enabled
+  - interval: 1m
+    input_series:
+      - series: 'mysql_global_status_wsrep_local_state{instance="percona-xtradb-pxc-1",job="pxc"}'
+        values: '1x20'
+      - series: 'mysql_global_variables_wsrep_desync{instance="percona-xtradb-pxc-1",job="pxc"}'
+        values: '1x20'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: MySQLGaleraOutOfSync
+        exp_alerts: []
+
+  # MySQLGaleraOutOfSync - should fire when node is in Joining state (1)
+  - interval: 1m
+    input_series:
+      - series: 'mysql_global_status_wsrep_local_state{instance="percona-xtradb-pxc-1",job="pxc"}'
+        values: '1x20'
+      - series: 'mysql_global_variables_wsrep_desync{instance="percona-xtradb-pxc-1",job="pxc"}'
+        values: '0x20'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: MySQLGaleraOutOfSync
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+              instance: percona-xtradb-pxc-1
+              job: pxc
+            exp_annotations:
+              summary: "Percona XtraDB Cluster: Galera node not in sync with cluster"
+              description: "The Galera node percona-xtradb-pxc-1 has wsrep_local_state=1 which is not the expected value of 4 (Synced).  The node is not in Donor state (2) and wsrep_desync is not enabled, indicating an unexpected loss of cluster sync.  Normal behavior is wsrep_local_state=4 for all nodes not actively serving as SST donors."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#mysqlgaleraoutofsync"
