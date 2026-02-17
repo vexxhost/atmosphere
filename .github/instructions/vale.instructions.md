@@ -51,6 +51,9 @@ When adding words to the vocabulary:
 - Capitalize proper nouns (e.g., `Neutron` not `neutron`).
 - Entries must be sorted in lexicographic (byte) order.  The
   `file-contents-sorter` pre-commit hook enforces this automatically.
+  In byte order, all uppercase letters sort before all lowercase
+  letters (e.g., `Z` before `a`), and within the same case, entries
+  sort alphabetically (e.g., `Galera` before `Glance`).
 
 ## Release notes
 

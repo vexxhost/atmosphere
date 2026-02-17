@@ -689,6 +689,66 @@ experiencing network issues.
      kubectl debug node/<affected-node> -it --image=busybox -- \
        cat /host/var/log/syslog | tail -100
 
+``MySQLGaleraOutOfSync``
+========================
+
+This alert fires when a Percona XtraDB Cluster (PXC) Galera node has a
+``wsrep_local_state`` that's not 4 (Synced) and not 2 (Donor), while
+``wsrep_desync`` isn't enabled. The alert excludes state 2 (Donor) because
+it's a normal transient state during donor operations for State Snapshot
+Transfer (SST) or PXC operator backups. The separate
+``MySQLGaleraDonorFallingBehind`` alert covers problematic donor
+scenarios.
+
+This is a cause-based alert because no reasonable symptom-based proxy exists
+for a Galera node losing cluster sync. The cluster may continue to serve
+requests with the remaining nodes, but the reduced quorum margin increases
+the risk of a full outage if another node fails.
+
+**Likely Root Causes**
+
+- A node remains in the Joining state (1) and can't complete SST.
+- A node completed SST but hasn't finished catching up (state 3,
+  Joined) for an extended period.
+- Network partitioning prevents the node from rejoining the cluster.
+- Corrupted Galera cache or write-set replication failure.
+
+**Diagnostic and Remediation Steps**
+
+1. Check the current ``wsrep_local_state`` on the affected node:
+
+   .. code-block:: console
+
+     kubectl -n openstack exec -it percona-xtradb-pxc-0 -- \
+       mysql -e "SHOW STATUS LIKE 'wsrep_local_state%';"
+
+2. Check overall cluster status:
+
+   .. code-block:: console
+
+     kubectl -n openstack exec -it percona-xtradb-pxc-0 -- \
+       mysql -e "SHOW STATUS LIKE 'wsrep_cluster%';"
+
+3. Review the PXC pod logs for the affected replica:
+
+   .. code-block:: console
+
+     kubectl -n openstack logs percona-xtradb-pxc-<N> --tail=200
+
+4. If the node remains in Joining state, it may need an SST restart.
+   Delete the affected pod to trigger a fresh SST:
+
+   .. code-block:: console
+
+     kubectl -n openstack delete pod percona-xtradb-pxc-<N>
+
+5. Verify that no PXC backup runs at the moment (a backup puts a node
+   into Donor state, which the ``MySQLGaleraDonorFallingBehind`` alert covers):
+
+   .. code-block:: console
+
+     kubectl -n openstack get pxc-backup
+
 ``NginxIngressCriticalErrorBudgetBurn``
 =======================================
 
@@ -933,63 +993,3 @@ behind it:
 .. code-block:: console
 
   openstack server list --all-projects --long -n --ip $IP
-
-``MySQLGaleraOutOfSync``
-========================
-
-This alert fires when a Percona XtraDB Cluster (PXC) Galera node has a
-``wsrep_local_state`` that's not 4 (Synced) and not 2 (Donor), while
-``wsrep_desync`` isn't enabled. The alert excludes state 2 (Donor) because
-it's a normal transient state during donor operations for State Snapshot
-Transfer (SST) or PXC operator backups. The separate
-``MySQLGaleraDonorFallingBehind`` alert covers problematic donor
-scenarios.
-
-This is a cause-based alert because no reasonable symptom-based proxy exists
-for a Galera node losing cluster sync. The cluster may continue to serve
-requests with the remaining nodes, but the reduced quorum margin increases
-the risk of a full outage if another node fails.
-
-**Likely Root Causes**
-
-- A node remains in the Joining state (1) and can't complete SST.
-- A node completed SST but hasn't finished catching up (state 3,
-  Joined) for an extended period.
-- Network partitioning prevents the node from rejoining the cluster.
-- Corrupted Galera cache or write-set replication failure.
-
-**Diagnostic and Remediation Steps**
-
-1. Check the current ``wsrep_local_state`` on the affected node:
-
-   .. code-block:: console
-
-     kubectl -n openstack exec -it percona-xtradb-pxc-0 -- \
-       mysql -e "SHOW STATUS LIKE 'wsrep_local_state%';"
-
-2. Check overall cluster status:
-
-   .. code-block:: console
-
-     kubectl -n openstack exec -it percona-xtradb-pxc-0 -- \
-       mysql -e "SHOW STATUS LIKE 'wsrep_cluster%';"
-
-3. Review the PXC pod logs for the affected replica:
-
-   .. code-block:: console
-
-     kubectl -n openstack logs percona-xtradb-pxc-<N> --tail=200
-
-4. If the node remains in Joining state, it may need an SST restart.
-   Delete the affected pod to trigger a fresh SST:
-
-   .. code-block:: console
-
-     kubectl -n openstack delete pod percona-xtradb-pxc-<N>
-
-5. Verify that no PXC backup runs at the moment (a backup puts a node
-   into Donor state, which the ``MySQLGaleraDonorFallingBehind`` alert covers):
-
-   .. code-block:: console
-
-     kubectl -n openstack get pxc-backup
