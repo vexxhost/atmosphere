@@ -459,6 +459,225 @@ You can find more details about
 Alerts reference
 ****************
 
+``CoreDNSCriticalErrorBudgetBurn``
+==================================
+
+This alert fires when the CoreDNS SERVFAIL rate exceeds 14.4x the
+burn rate for a 99.9% SLO. At this rate, the 30-day error budget
+exhausts in under 2.1 days. It uses multi-window burn-rate detection
+with 1-hour and 5-minute windows.
+
+**Likely root causes**
+
+- Upstream DNS servers are unreachable or returning errors
+- CoreDNS configuration errors after a recent change
+- Network connectivity issues between CoreDNS and upstream resolvers
+- Resource exhaustion (CPU or memory) on CoreDNS pods
+
+**Diagnostic and remediation steps**
+
+1. Check CoreDNS pod health and logs:
+
+   .. code-block:: console
+
+     kubectl -n kube-system get pods -l k8s-app=kube-dns
+     kubectl -n kube-system logs -l k8s-app=kube-dns --tail=100
+
+2. Verify upstream DNS server connectivity:
+
+   .. code-block:: console
+
+     kubectl -n kube-system exec -it deploy/coredns -- nslookup example.com
+
+3. Check the current SERVFAIL rate:
+
+   .. code-block:: console
+
+     kubectl -n monitoring exec svc/kube-prometheus-stack-prometheus -- \
+       promtool query instant http://localhost:9090 \
+       'sum(rate(coredns_dns_responses_total{rcode="SERVFAIL"}[5m])) / sum(rate(coredns_dns_responses_total[5m]))'
+
+4. Review CoreDNS ConfigMap for configuration issues:
+
+   .. code-block:: console
+
+     kubectl -n kube-system get configmap coredns -o yaml
+
+5. Restart CoreDNS pods if configuration looks correct:
+
+   .. code-block:: console
+
+     kubectl -n kube-system rollout restart deployment coredns
+
+``CoreDNSDown``
+===============
+
+This alert fires when CoreDNS disappears from Prometheus target discovery for
+more than 15 minutes. This could indicate crashed pods or an incorrectly
+configured scrape target.
+
+**Likely root causes**
+
+- CoreDNS pods crashed or aren't scheduling
+- Prometheus scrape configuration changed
+- Node-level issues preventing pod scheduling
+- Resource limits causing out-of-memory termination
+
+**Diagnostic and remediation steps**
+
+1. Check CoreDNS pod status:
+
+   .. code-block:: console
+
+     kubectl -n kube-system get pods -l k8s-app=kube-dns
+     kubectl -n kube-system describe pods -l k8s-app=kube-dns
+
+2. Check for out-of-memory events:
+
+   .. code-block:: console
+
+     kubectl -n kube-system get events --field-selector reason=OOMKilling
+
+3. Verify Prometheus can reach the CoreDNS metrics endpoint:
+
+   .. code-block:: console
+
+     kubectl -n monitoring exec svc/kube-prometheus-stack-prometheus -- \
+       promtool query instant http://localhost:9090 'up{job="coredns"}'
+
+4. Check node availability if pods aren't scheduling:
+
+   .. code-block:: console
+
+     kubectl get nodes -o wide
+
+``CoreDNSHighErrorBudgetBurn``
+==============================
+
+This alert fires when the CoreDNS SERVFAIL rate exceeds 6x the burn rate
+for a 99.9% SLO. At this rate, the 30-day error budget exhausts in under
+5 days. It uses multi-window burn-rate detection with 6-hour and 30-minute
+windows.
+
+**Likely root causes**
+
+- Intermittent upstream DNS server issues
+- Partial network connectivity problems
+- DNS zone transfer failures
+- Upstream rate limiting
+
+**Diagnostic and remediation steps**
+
+1. Check CoreDNS logs for recurring errors:
+
+   .. code-block:: console
+
+     kubectl -n kube-system logs -l k8s-app=kube-dns --tail=200 | grep -i error
+
+2. Check the SERVFAIL rate broken down over time:
+
+   .. code-block:: console
+
+     kubectl -n monitoring exec svc/kube-prometheus-stack-prometheus -- \
+       promtool query instant http://localhost:9090 \
+       'sum(rate(coredns_dns_responses_total{rcode="SERVFAIL"}[30m])) / sum(rate(coredns_dns_responses_total[30m]))'
+
+3. Verify upstream DNS server health by testing resolution:
+
+   .. code-block:: console
+
+     kubectl -n kube-system exec -it deploy/coredns -- nslookup example.com
+
+4. Review CoreDNS forward plugin configuration:
+
+   .. code-block:: console
+
+     kubectl -n kube-system get configmap coredns -o yaml
+
+``CoreDNSLowErrorBudgetBurn``
+=============================
+
+This alert fires when the CoreDNS SERVFAIL rate exceeds 1x the burn rate
+for a 99.9% SLO. At this rate, the error budget exhausts before the 30-day
+window resets. It uses multi-window burn-rate detection with 3-day and 6-hour
+windows.
+
+**Likely root causes**
+
+- Chronic low-level DNS resolution failures
+- Specific zones or domains consistently failing
+- Degraded upstream DNS server performance
+- Incorrectly configured DNS records causing intermittent failures
+
+**Diagnostic and remediation steps**
+
+1. Identify which DNS queries are failing:
+
+   .. code-block:: console
+
+     kubectl -n kube-system logs -l k8s-app=kube-dns --tail=500 | grep SERVFAIL
+
+2. Check the long-term SERVFAIL trend:
+
+   .. code-block:: console
+
+     kubectl -n monitoring exec svc/kube-prometheus-stack-prometheus -- \
+       promtool query instant http://localhost:9090 \
+       'sum(rate(coredns_dns_responses_total{rcode="SERVFAIL"}[6h])) / sum(rate(coredns_dns_responses_total[6h]))'
+
+3. Review if specific upstream servers are consistently problematic:
+
+   .. code-block:: console
+
+     kubectl -n monitoring exec svc/kube-prometheus-stack-prometheus -- \
+       promtool query instant http://localhost:9090 \
+       'sum by (to) (rate(coredns_forward_responses_total{rcode="SERVFAIL"}[6h]))'
+
+``CoreDNSModerateErrorBudgetBurn``
+==================================
+
+This alert fires when the CoreDNS SERVFAIL rate exceeds 3x the burn rate
+for a 99.9% SLO. At this rate, the 30-day error budget exhausts in under
+10 days. It uses multi-window burn-rate detection with 1-day and 2-hour
+windows.
+
+**Likely root causes**
+
+- Degraded upstream DNS server responding with errors
+- Network path issues causing intermittent resolution failures
+- DNS zone configuration errors causing partial failures
+- Resource pressure on CoreDNS pods
+
+**Diagnostic and remediation steps**
+
+1. Check CoreDNS resource usage:
+
+   .. code-block:: console
+
+     kubectl -n kube-system top pods -l k8s-app=kube-dns
+
+2. Review the SERVFAIL rate trend over the last day:
+
+   .. code-block:: console
+
+     kubectl -n monitoring exec svc/kube-prometheus-stack-prometheus -- \
+       promtool query instant http://localhost:9090 \
+       'sum(rate(coredns_dns_responses_total{rcode="SERVFAIL"}[2h])) / sum(rate(coredns_dns_responses_total[2h]))'
+
+3. Check forward plugin health:
+
+   .. code-block:: console
+
+     kubectl -n monitoring exec svc/kube-prometheus-stack-prometheus -- \
+       promtool query instant http://localhost:9090 \
+       'sum(rate(coredns_forward_healthcheck_failures_total[2h]))'
+
+4. Review CoreDNS logs for patterns:
+
+   .. code-block:: console
+
+     kubectl -n kube-system logs -l k8s-app=kube-dns --tail=300 | grep -i "error\|fail"
+
 ``etcdDatabaseHighFragmentationRatio``
 ======================================
 
