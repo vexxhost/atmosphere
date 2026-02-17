@@ -57,6 +57,18 @@ _kube_prometheus_stack_helm_values:
           equal:
             - service
             - namespace
+        - source_matchers:
+            - alertname = "CoreDNSCriticalErrorBudgetBurn"
+          target_matchers:
+            - alertname =~ "CoreDNSHighErrorBudgetBurn|CoreDNSModerateErrorBudgetBurn|CoreDNSLowErrorBudgetBurn"
+        - source_matchers:
+            - alertname = "CoreDNSHighErrorBudgetBurn"
+          target_matchers:
+            - alertname =~ "CoreDNSModerateErrorBudgetBurn|CoreDNSLowErrorBudgetBurn"
+        - source_matchers:
+            - alertname = "CoreDNSModerateErrorBudgetBurn"
+          target_matchers:
+            - alertname = "CoreDNSLowErrorBudgetBurn"
       route:
         group_by:
           - alertname
