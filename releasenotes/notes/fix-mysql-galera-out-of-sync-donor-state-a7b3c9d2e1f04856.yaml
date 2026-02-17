@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    The ``MySQLGaleraOutOfSync`` alert no longer fires false positives during
+    Percona XtraDB Cluster (PXC) operator backups. The patched expression
+    excludes Galera Donor state
+    (``wsrep_local_state=2``), which is a normal transient state when a node
+    serves as a donor for State Snapshot Transfer. The separate
+    ``MySQLGaleraDonorFallingBehind`` alert still covers problematic donor
+    scenarios.
