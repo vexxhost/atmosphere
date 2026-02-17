@@ -35,6 +35,25 @@ _kube_prometheus_stack_helm_values:
       etcdHighNumberOfFailedGRPCRequests: true
   alertmanager:
     config:
+      inhibit_rules:
+        - source_matchers:
+            - alertname = "NginxIngressCriticalErrorBudgetBurn"
+          target_matchers:
+            - alertname =~ "NginxIngress(High|Moderate|Low)ErrorBudgetBurn"
+          equal:
+            - service
+        - source_matchers:
+            - alertname = "NginxIngressHighErrorBudgetBurn"
+          target_matchers:
+            - alertname =~ "NginxIngress(Moderate|Low)ErrorBudgetBurn"
+          equal:
+            - service
+        - source_matchers:
+            - alertname = "NginxIngressModerateErrorBudgetBurn"
+          target_matchers:
+            - alertname = "NginxIngressLowErrorBudgetBurn"
+          equal:
+            - service
       route:
         group_by:
           - alertname

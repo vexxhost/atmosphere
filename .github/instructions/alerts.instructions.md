@@ -70,6 +70,46 @@ follow these conventions:
   Example: `The API error rate is {{ $value }}% over the last 5 minutes,
   which exceeds the threshold of 1%.  Normal error rate is below 0.1%.`
 
+## Inhibition Rules
+
+When creating alerts that belong to a tiered or graduated set (for
+example, multi-window burn-rate alerts like Critical/High/Moderate/Low),
+always add Alertmanager inhibition rules so that higher-severity tiers
+suppress lower-severity tiers for the same resource.  This prevents
+redundant notifications when a faster-burn alert already covers the
+incident.
+
+Inhibition rules live in
+`roles/kube_prometheus_stack/vars/main.yml` under
+`alertmanager.config.inhibit_rules`.
+
+### When to add an inhibition rule
+
+- **Burn-rate tiers**: If a component has multiple burn-rate alerts
+  (e.g., Critical, High, Moderate, Low), the faster-burn alert should
+  suppress all slower-burn alerts for the same identifying labels
+  (e.g., `service`, `namespace`).
+- **Parent-child dependencies**: If a parent component failure (e.g.,
+  node down) makes a child alert redundant (e.g., pod on that node),
+  add an inhibition rule.
+- **Same-component escalations**: If a component has both a degraded
+  and a down alert, the down alert should suppress the degraded alert.
+
+### Format
+
+```yaml
+inhibit_rules:
+  - source_matchers:
+      - alertname = "ComponentCriticalAlert"
+    target_matchers:
+      - alertname =~ "Component(High|Moderate|Low)Alert"
+    equal:
+      - <identifying-label>
+```
+
+The `equal` field must list all labels that identify the same resource
+instance (e.g., `service`, `namespace`, `instance`).
+
 ## Runbook and Documentation Requirements
 
 Every alert must have a corresponding entry in the Alerts Reference
@@ -148,3 +188,4 @@ When adding or modifying an alert, ensure the following:
 - [ ] The `summary` and `description` annotations follow the format above
 - [ ] The alert has negative and positive test cases in `tests.yml`
 - [ ] Test expectations include all annotations (summary, description, runbook_url)
+- [ ] Tiered or graduated alerts have inhibition rules so higher-severity tiers suppress lower ones
