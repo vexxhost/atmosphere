@@ -1,0 +1,89 @@
+--- a/cinder/templates/cephblockpool.yaml	2026-02-03 13:56:36.692000000 +0000
++++ b/cinder/templates/cephblockpool.yaml	2026-02-18 14:11:54.765316685 +0000
+@@ -0,0 +1,46 @@
++{{/*
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++   http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++*/}}
++
++{{- range $pool_name, $pool_config := .Values.conf.ceph.pools }}
++{{- if $pool_config.erasure_coded }}
++{{- $data_pool_name := printf "%s.data" $pool_name }}
++{{- if $pool_config.erasure_coded.data_pool_name }}
++{{- $data_pool_name = $pool_config.erasure_coded.data_pool_name }}
++{{- end }}
++---
++apiVersion: ceph.rook.io/v1
++kind: CephBlockPool
++metadata:
++  name: {{ $data_pool_name }}
++  namespace: {{ $.Release.Namespace }}
++spec:
++  failureDomain: {{ $pool_config.erasure_coded.failure_domain }}
++  erasureCoded:
++    dataChunks: {{ $pool_config.erasure_coded.k }}
++    codingChunks: {{ $pool_config.erasure_coded.m }}
++  {{- if $pool_config.erasure_coded.device_class }}
++  deviceClass: {{ $pool_config.erasure_coded.device_class }}
++  {{- end }}
++---
++apiVersion: ceph.rook.io/v1
++kind: CephBlockPool
++metadata:
++  name: {{ $pool_name }}
++  namespace: {{ $.Release.Namespace }}
++spec:
++  failureDomain: {{ $pool_config.erasure_coded.failure_domain }}
++  replicated:
++    size: {{ $pool_config.metadata.replication }}
++{{- end }}
++{{- end }}
+
+--- a/cinder/values.yaml
++++ b/cinder/values.yaml
+@@ -788,14 +788,33 @@
+         chunk_size: 8
+         app_name: cinder-volume
+ 
+-    # Erasure-coded pools should be created via Rook CephBlockPool CRDs.
+-    # Configure backends with rbd_data_pool to use EC pools:
++    # Erasure-coded (EC) pool support:
++    # Any pool with an "erasure_coded" key automatically gets two
++    # CephBlockPool CRDs created via Rook:
++    #   - A replicated metadata pool named after the pool key
++    #   - An erasure-coded data pool named "<pool_key>.data" by default
++    #
++    # The data pool name can be overridden with "data_pool_name".
++    #
++    # pools:
++    #   cinder.volumes.ec:
++    #     app_name: cinder-volume
++    #     erasure_coded:
++    #       k: 4                       # data chunks
++    #       m: 2                       # coding chunks
++    #       device_class: hdd          # optional: target device class
++    #       failure_domain: host
++    #       data_pool_name: my-custom-data-pool  # optional: override
++    #     metadata:
++    #       replication: 3
++    #
++    # Then configure the backend to reference the derived names:
+     #
+     # backends:
+     #   rbd_ec:
+     #     volume_driver: cinder.volume.drivers.rbd.RBDDriver
+     #     rbd_pool: cinder.volumes.ec           # metadata pool (replicated)
+-    #     rbd_data_pool: cinder.volumes.ec.data # data pool (erasure-coded)
++    #     rbd_data_pool: cinder.volumes.ec.data  # data pool (auto-derived)
+     #     rbd_user: cinder-ec
+     #     ...
+   cinder:
