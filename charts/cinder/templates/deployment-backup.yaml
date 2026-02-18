@@ -93,8 +93,7 @@ spec:
         {{ end }}
         {{- range $name := rest (splitList "," (include "cinder.utils.ceph_backend_list" $envAll)) }}
           {{- $backend := index $envAll.Values.conf.backends $name }}
-            {{- if eq $internal_ceph_backend $name }}
-        - name: ceph-keyring-placement-{{ $name | lower }}
+        - name: ceph-keyring-placement-{{ $name | lower | replace "_" "-" }}
 {{ tuple $envAll "cinder_backup" | include "helm-toolkit.snippets.image" | indent 10 }}
 {{ dict "envAll" $envAll "application" "cinder_backup" "container" "ceph_keyring_placement" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
           command:
@@ -115,16 +114,22 @@ spec:
               mountPath: /tmp/ceph-keyring.sh
               subPath: ceph-keyring.sh
               readOnly: true
+            {{- if eq $internal_ceph_backend $name }}
             - name: ceph-keyring
               mountPath: /tmp/client-keyring
               subPath: key
               readOnly: true
-           {{- if and $envAll.Values.ceph_client.enable_external_ceph_backend $envAll.Values.ceph_client.external_ceph.rbd_user }}
+            {{- else }}
+            - name: ceph-keyring-{{ $name | lower | replace "_" "-" }}
+              mountPath: /tmp/client-keyring
+              subPath: key
+              readOnly: true
+            {{- end }}
+            {{- if and $envAll.Values.ceph_client.enable_external_ceph_backend $envAll.Values.ceph_client.external_ceph.rbd_user }}
             - name: external-ceph-keyring
               mountPath: /tmp/external-ceph-client-keyring
               subPath: key
               readOnly: true
-            {{- end }}
             {{- end }}
         {{- end }}
         {{- if (contains "cinder.backup.drivers.posix" .Values.conf.cinder.DEFAULT.backup_driver) }}
@@ -330,6 +335,13 @@ spec:
         - name: ceph-keyring
           secret:
             secretName: {{ .Values.secrets.rbd.volume | quote }}
+        {{- range $name := rest (splitList "," (include "cinder.utils.ceph_backend_list" $envAll)) }}
+        {{- if ne $internal_ceph_backend $name }}
+        - name: ceph-keyring-{{ $name | lower | replace "_" "-" }}
+          secret:
+            secretName: "{{ $envAll.Values.secrets.rbd.volume }}-{{ $name | lower | replace "_" "-" }}"
+        {{- end }}
+        {{- end }}
         {{- if and .Values.ceph_client.enable_external_ceph_backend .Values.ceph_client.external_ceph.rbd_user }}
         - name: external-ceph-keyring
           secret:

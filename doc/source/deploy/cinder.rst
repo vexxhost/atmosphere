@@ -20,6 +20,120 @@ When using the integrated Ceph cluster provided with Atmosphere, no additional
 configuration is needed for Cinder. The deployment process automatically
 configures Cinder to use Ceph as the backend, simplifying setup and integration.
 
+Erasure-coded pools
+===================
+
+For environments requiring improved storage efficiency, you can configure Cinder
+to use Ceph erasure-coded (EC) pools. EC pools provide better storage utilization
+compared to replicated pools, at the cost of slightly higher CPU overhead.
+
+EC pools require two components:
+
+1. A **metadata pool** (replicated) that stores metadata
+2. A **data pool** (EC) that stores the actual volume data
+
+The Cinder chart automatically creates ``CephBlockPool`` custom resources via
+Rook for any pool that has an ``erasure_coded`` key in ``conf.ceph.pools``. The chart
+automatically derives the data pool name as ``<pool_name>.data`` (e.g. a pool called
+``cinder.volumes.ec`` produces a data pool called ``cinder.volumes.ec.data``).
+You can override this with the ``data_pool_name`` option.
+
+To configure an EC backend, you need to:
+
+1. Define the EC pool in ``cinder_helm_values.conf.ceph.pools``
+2. Create a Cinder backend referencing the derived pool names
+3. Configure ``ceph_provisioners_helm_values`` to set the default data pool for the Ceph user
+4. Configure ``libvirt_helm_values`` to register the Ceph user secret for Nova
+
+.. code-block:: yaml
+
+    # Step 1 & 2: Define EC pool and configure Cinder backend
+    cinder_helm_values:
+      conf:
+        ceph:
+          pools:
+            cinder.volumes.ec:
+              app_name: cinder-volume
+              erasure_coded:
+                k: 4                       # data chunks
+                m: 2                       # coding chunks
+                device_class: hdd          # optional: target specific device class
+                failure_domain: host
+                # data_pool_name: custom   # optional: override auto-derived name
+              metadata:
+                replication: 3
+        cinder:
+          DEFAULT:
+            enabled_backends: rbd1,rbd_ec
+        backends:
+          rbd_ec:
+            volume_driver: cinder.volume.drivers.rbd.RBDDriver
+            volume_backend_name: rbd_ec
+            rbd_pool: cinder.volumes.ec            # metadata pool (replicated)
+            rbd_data_pool: cinder.volumes.ec.data  # data pool (auto-derived)
+            rbd_ceph_conf: "/etc/ceph/ceph.conf"
+            rbd_flatten_volume_from_snapshot: false
+            report_discard_supported: true
+            rbd_max_clone_depth: 5
+            rbd_store_chunk_size: 4
+            rados_connect_timeout: -1
+            rbd_user: cinder-ec
+            rbd_secret_uuid: 808c5658-7c46-4818-8f26-82a217e3a57a  # must be unique per user
+
+    # Step 3: Configure ceph.conf for the EC user
+    ceph_provisioners_helm_values:
+      conf:
+        ceph:
+          client.cinder-ec:
+            rbd default data pool: cinder.volumes.ec.data
+
+    # Step 4: Configure libvirt to register the EC user secret
+    libvirt_helm_values:
+      conf:
+        ceph:
+          additional_users:
+            - user: cinder-ec
+              secret_uuid: 808c5658-7c46-4818-8f26-82a217e3a57a
+              secret_name: cinder-volume-rbd-keyring-rbd-ec
+
+.. warning::
+
+    Each Ceph user requires a **unique** ``secret_uuid``. Don't reuse the default
+    Cinder user's UUID (``457eb676-33da-42ec-9a8c-9293d545c337``). Generate a new
+    UUID for each additional backend using ``uuidgen``.
+
+.. note::
+
+    The ``secret_uuid`` in ``libvirt_helm_values`` must match the ``rbd_secret_uuid``
+    configured in the Cinder backend. The ``secret_name`` follows the pattern
+    ``cinder-volume-rbd-keyring-<backend>`` (for example, ``rbd_ec``).
+
+.. admonition:: About ``rbd_user`` for erasure-coded pools
+    :class: info
+
+    Each erasure-coded backend requires a dedicated ``rbd_user`` because Ceph
+    configures data pool routing per-user in ``ceph.conf``. The storage-init
+    job automatically grants the user access to both the metadata and data pools.
+
+The EC pool configuration parameters are:
+
+``k``
+  Number of data chunks. Higher values provide better storage efficiency.
+
+``m``
+  Number of coding (parity) chunks. Higher values provide better fault tolerance.
+
+``device_class``
+  Target specific device types, for example ``hdd``, ``ssd``, or ``nvme``.
+
+``failure_domain``
+  Failure domain for data placement, for example ``host``, ``rack``, or ``room``.
+
+``data_pool_name``
+  Override the automatically derived data pool name. By default, the chart names
+  the data pool ``<pool_key>.data`` (e.g. ``cinder.volumes.ec.data``). Set this to use a
+  custom name instead.
+
 ***************
 Dell PowerStore
 ***************

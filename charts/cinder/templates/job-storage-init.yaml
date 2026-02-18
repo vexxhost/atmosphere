@@ -101,8 +101,7 @@ spec:
       containers:
         {{- range $name, $backend := .Values.conf.backends }}
           {{- if (eq "true" ( dict "backend" $backend | include "cinder.utils.is_ceph_backend" )) }}
-            {{- if eq $internal_ceph_backend $name }}
-        - name: cinder-storage-init-{{ $name | lower }}
+        - name: cinder-storage-init-{{ $name | lower | replace "_" "-" }}
 {{ tuple $envAll "cinder_storage_init" | include "helm-toolkit.snippets.image" | indent 10 }}
 {{ tuple $envAll $envAll.Values.pod.resources.jobs.storage_init | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
           env:
@@ -114,18 +113,28 @@ spec:
               value: {{ $backend.volume_driver | quote }}
             - name: RBD_POOL_NAME
               value: {{ $backend.rbd_pool | quote }}
-            - name: RBD_POOL_APP_NAME
-              value: {{ (index $envAll.Values.conf.ceph.pools $backend.rbd_pool).app_name | quote }}
             - name: RBD_POOL_USER
               value: {{ $backend.rbd_user | quote }}
+            {{- if eq $internal_ceph_backend $name }}
+            - name: RBD_POOL_SECRET
+              value: {{ $envAll.Values.secrets.rbd.volume | quote }}
+            {{- else }}
+            - name: RBD_POOL_SECRET
+              value: "{{ $envAll.Values.secrets.rbd.volume }}-{{ $name | lower | replace "_" "-" }}"
+            {{- end }}
+            {{- if $backend.rbd_data_pool }}
+            - name: RBD_DATA_POOL
+              value: {{ $backend.rbd_data_pool | quote }}
+            {{- else }}
+            - name: RBD_POOL_APP_NAME
+              value: {{ (index $envAll.Values.conf.ceph.pools $backend.rbd_pool).app_name | quote }}
             - name: RBD_POOL_CRUSH_RULE
               value: {{ (index $envAll.Values.conf.ceph.pools $backend.rbd_pool).crush_rule | quote }}
             - name: RBD_POOL_REPLICATION
               value: {{ (index $envAll.Values.conf.ceph.pools $backend.rbd_pool).replication | quote }}
             - name: RBD_POOL_CHUNK_SIZE
               value: {{ (index $envAll.Values.conf.ceph.pools $backend.rbd_pool).chunk_size | quote }}
-            - name: RBD_POOL_SECRET
-              value: {{ $envAll.Values.secrets.rbd.volume | quote }}
+            {{- end }}
           command:
             - /tmp/storage-init.sh
           volumeMounts:
@@ -146,7 +155,6 @@ spec:
               mountPath: /tmp/client-keyring
               subPath: key
               readOnly: true
-            {{- end }}
             {{- end }}
         {{- end }}
       {{- end }}
