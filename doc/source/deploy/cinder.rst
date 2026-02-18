@@ -32,34 +32,36 @@ EC pools require two components:
 1. A **metadata pool** (replicated) that stores metadata
 2. A **data pool** (EC) that stores the actual volume data
 
+The Cinder chart automatically creates ``CephBlockPool`` custom resources via
+Rook for any pool that has an ``erasure_coded`` key in ``conf.ceph.pools``. The chart
+automatically derives the data pool name as ``<pool_name>.data`` (e.g. a pool called
+``cinder.volumes.ec`` produces a data pool called ``cinder.volumes.ec.data``).
+You can override this with the ``data_pool_name`` option.
+
 To configure an EC backend, you need to:
 
-1. Create the pools via Rook ``CephBlockPool`` in ``rook_ceph_cluster_helm_values``
-2. Create a Cinder backend with ``rbd_data_pool`` pointing to the EC data pool
-3. Configure ``ceph_provisioners_helm_values`` to set the default data pool for the ceph user
+1. Define the EC pool in ``cinder_helm_values.conf.ceph.pools``
+2. Create a Cinder backend referencing the derived pool names
+3. Configure ``ceph_provisioners_helm_values`` to set the default data pool for the Ceph user
 4. Configure ``libvirt_helm_values`` to register the Ceph user secret for Nova
 
 .. code-block:: yaml
 
-    # Step 1: Create EC pools via Rook
-    rook_ceph_cluster_helm_values:
-      cephBlockPools:
-        - name: cinder.volumes.ec        # metadata pool (replicated)
-          spec:
-            failureDomain: host
-            replicated:
-              size: 3
-        - name: cinder.volumes.ec.data   # data pool (erasure-coded)
-          spec:
-            failureDomain: host
-            erasureCoded:
-              dataChunks: 4
-              codingChunks: 2
-            deviceClass: hdd             # optional: target specific device class
-
-    # Step 2: Configure Cinder backend with rbd_data_pool
+    # Step 1 & 2: Define EC pool and configure Cinder backend
     cinder_helm_values:
       conf:
+        ceph:
+          pools:
+            cinder.volumes.ec:
+              app_name: cinder-volume
+              erasure_coded:
+                k: 4                       # data chunks
+                m: 2                       # coding chunks
+                device_class: hdd          # optional: target specific device class
+                failure_domain: host
+                # data_pool_name: custom   # optional: override auto-derived name
+              metadata:
+                replication: 3
         cinder:
           DEFAULT:
             enabled_backends: rbd1,rbd_ec
@@ -67,8 +69,8 @@ To configure an EC backend, you need to:
           rbd_ec:
             volume_driver: cinder.volume.drivers.rbd.RBDDriver
             volume_backend_name: rbd_ec
-            rbd_pool: cinder.volumes.ec
-            rbd_data_pool: cinder.volumes.ec.data
+            rbd_pool: cinder.volumes.ec            # metadata pool (replicated)
+            rbd_data_pool: cinder.volumes.ec.data  # data pool (auto-derived)
             rbd_ceph_conf: "/etc/ceph/ceph.conf"
             rbd_flatten_volume_from_snapshot: false
             report_discard_supported: true
@@ -113,19 +115,24 @@ To configure an EC backend, you need to:
     configures data pool routing per-user in ``ceph.conf``. The storage-init
     job automatically grants the user access to both the metadata and data pools.
 
-The Rook ``CephBlockPool`` erasure coding parameters are:
+The EC pool configuration parameters are:
 
-``dataChunks``
-  Number of data chunks (k). Higher values provide better storage efficiency.
+``k``
+  Number of data chunks. Higher values provide better storage efficiency.
 
-``codingChunks``
-  Number of parity chunks (m). Higher values provide better fault tolerance.
+``m``
+  Number of coding (parity) chunks. Higher values provide better fault tolerance.
 
-``deviceClass``
+``device_class``
   Target specific device types, for example ``hdd``, ``ssd``, or ``nvme``.
 
-``failureDomain``
+``failure_domain``
   Failure domain for data placement, for example ``host``, ``rack``, or ``room``.
+
+``data_pool_name``
+  Override the automatically derived data pool name. By default, the chart names
+  the data pool ``<pool_key>.data`` (e.g. ``cinder.volumes.ec.data``). Set this to use a
+  custom name instead.
 
 ***************
 Dell PowerStore
