@@ -1,0 +1,97 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "transceiver-exporter.fullname" . }}
+  labels:
+    {{- include "transceiver-exporter.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "transceiver-exporter.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "transceiver-exporter.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "transceiver-exporter.serviceAccountName" . }}
+      {{- if .Values.hostNetwork }}
+      hostNetwork: true
+      {{- end }}
+      {{- if .Values.dnsPolicy }}
+      dnsPolicy: {{ .Values.dnsPolicy }}
+      {{- end }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - "-web.listen-address=[::]:{{ .Values.service.port }}"
+            - "-web.telemetry-path=/metrics"
+            - "-collector.interface-features.enable={{ .Values.config.collectInterfaceFeatures }}"
+            - "-collector.optical-power-in-dbm={{ .Values.config.opticalPowerInDbm }}"
+            {{- if .Values.config.excludeInterfaces }}
+            - "-exclude.interfaces={{ .Values.config.excludeInterfaces }}"
+            {{- end }}
+            {{- if .Values.config.excludeInterfacesRegex }}
+            - "-exclude.interfaces-regex={{ .Values.config.excludeInterfacesRegex }}"
+            {{- end }}
+            {{- if .Values.config.excludeInterfacesDown }}
+            - "-exclude.interfaces-down"
+            {{- end }}
+            {{- if .Values.config.includeInterfaces }}
+            - "-include.interfaces={{ .Values.config.includeInterfaces }}"
+            {{- end }}
+            {{- if .Values.config.includeInterfacesRegex }}
+            - "-include.interfaces-regex={{ .Values.config.includeInterfacesRegex }}"
+            {{- end }}
+          ports:
+            - name: http-metrics
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http-metrics
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http-metrics
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
