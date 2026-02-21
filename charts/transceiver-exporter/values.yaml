@@ -1,0 +1,67 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/yaguangtang/transceiver-exporter
+  pullPolicy: IfNotPresent
+  tag: "main"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# Transceiver exporter configuration
+config:
+  # Collect interface features (may result in many timeseries)
+  collectInterfaceFeatures: true
+  # Report optical powers in dBm instead of mW
+  opticalPowerInDbm: false
+  # Comma separated list of interfaces to exclude
+  excludeInterfaces: ""
+  # Regex of interfaces to exclude
+  excludeInterfacesRegex: ""
+  # Don't report on interfaces being management DOWN
+  excludeInterfacesDown: false
+  # Comma separated list of interfaces to include
+  includeInterfaces: ""
+  # Regex of interfaces to include
+  includeInterfacesRegex: ""
+
+service:
+  port: 9458
+
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext: {}
+
+# The container needs NET_ADMIN capability to read transceiver EEPROM
+securityContext:
+  capabilities:
+    add:
+      - NET_ADMIN
+
+resources: {}
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# Prometheus ServiceMonitor configuration
+serviceMonitor:
+  enabled: false
+  interval: 30s
+  scrapeTimeout: 10s
+  labels: {}
+  annotations: {}
+
+# Use hostNetwork to access host network interfaces
+hostNetwork: true
+dnsPolicy: ClusterFirstWithHostNet

@@ -1,0 +1,12 @@
+# Copyright (c) 2024 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Deploy Helm chart
+  run_once: true
+  kubernetes.core.helm:
+    name: "{{ transceiver_exporter_helm_release_name }}"
+    chart_ref: "{{ transceiver_exporter_helm_chart_ref }}"
+    release_namespace: "{{ transceiver_exporter_helm_release_namespace }}"
+    create_namespace: true
+    kubeconfig: "{{ transceiver_exporter_helm_kubeconfig }}"
+    values: "{{ _transceiver_exporter_helm_values | combine(transceiver_exporter_helm_values, recursive=True) }}"
