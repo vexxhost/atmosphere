@@ -1,0 +1,467 @@
+# Copyright (c) 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Prepare ovmf images
+  changed_when: false
+  run_once: true
+  ansible.builtin.shell: |
+    # make sure ovmf files exists in image path
+    apt install ovmf -y
+    mkdir -p /var/lib/libvirt/images/
+    cp -r /usr/share/OVMF/* /var/lib/libvirt/images/
+    chown root:root /var/lib/libvirt/images/*
+    chmod 0644 /var/lib/libvirt/images/*
+    chmod 0711 /var/lib/libvirt
+    chmod 0711 /var/lib/libvirt/images
+
+- name: Wait until baremetal conductor ready
+  changed_when: false
+  kubernetes.core.k8s_info:
+    kind: Pod
+    name: ironic-conductor-0
+    namespace: openstack
+    wait_sleep: 5
+    wait_timeout: 300
+    wait: true
+    wait_condition:
+      type: Ready
+      status: true
+
+- name: Get Libvirt pods info
+  kubernetes.core.k8s_info:
+    namespace: openstack
+    kind: Pod
+    label_selectors:
+      - application=libvirt
+      - component=libvirt
+  register: libvirt_pod
+
+- name: Save "ironic-pxe" bridge for virtual baremetal nodes
+  changed_when: false
+  run_once: true
+  ansible.builtin.shell: |
+    cat > /var/lib/libvirt/ironic-pxe.xml << END
+      <network>
+        <name>ironic-pxe</name>
+        <forward mode='bridge'/>
+        <bridge name='ironic-pxe'/>
+        <virtualport type='openvswitch'/>
+      </network>
+    END
+  args:
+    executable: /bin/bash
+
+- name: Define "ironic-pxe" bridge
+  changed_when: false
+  ignore_errors: true # noqa: ignore-errors
+  kubernetes.core.k8s_exec:
+    namespace: openstack
+    pod: "{{ libvirt_pod.resources[0].metadata.name }}"
+    container: libvirt
+    command: virsh net-define /var/lib/libvirt/ironic-pxe.xml
+
+- name: Set auto start "ironic-pxe" bridge
+  changed_when: false
+  ignore_errors: true # noqa: ignore-errors
+  kubernetes.core.k8s_exec:
+    namespace: openstack
+    pod: "{{ libvirt_pod.resources[0].metadata.name }}"
+    container: libvirt
+    command: virsh net-autostart ironic-pxe
+
+- name: Start "ironic-pxe" bridge
+  changed_when: false
+  ignore_errors: true # noqa: ignore-errors
+  kubernetes.core.k8s_exec:
+    namespace: openstack
+    pod: "{{ libvirt_pod.resources[0].metadata.name }}"
+    container: libvirt
+    command: virsh net-start ironic-pxe
+
+- name: Create storage for virtual baremetal nodes - define pool
+  changed_when: false
+  ignore_errors: true # noqa: ignore-errors
+  kubernetes.core.k8s_exec:
+    namespace: openstack
+    pod: "{{ libvirt_pod.resources[0].metadata.name }}"
+    container: libvirt
+    command: virsh pool-define-as --name default dir --target /var/lib/libvirt/images
+  when: libvirt_pod.resources | length > 0
+
+- name: Create storage for virtual baremetal nodes - pool autostart
+  changed_when: false
+  ignore_errors: true # noqa: ignore-errors
+  kubernetes.core.k8s_exec:
+    namespace: openstack
+    pod: "{{ libvirt_pod.resources[0].metadata.name }}"
+    container: libvirt
+    command: virsh pool-autostart default
+
+- name: Create storage for virtual baremetal nodes - pool start
+  changed_when: false
+  ignore_errors: true # noqa: ignore-errors
+  kubernetes.core.k8s_exec:
+    namespace: openstack
+    pod: "{{ libvirt_pod.resources[0].metadata.name }}"
+    container: libvirt
+    command: virsh pool-start default
+  when: libvirt_pod.resources | length > 0
+
+- name: Create storage for virtual baremetal nodes - create node-0 volume
+  changed_when: false
+  ignore_errors: true # noqa: ignore-errors
+  kubernetes.core.k8s_exec:
+    namespace: openstack
+    pod: "{{ libvirt_pod.resources[0].metadata.name }}"
+    container: libvirt
+    command: virsh vol-create-as default node-0.raw 21G --allocation 0 --format raw
+  when: libvirt_pod.resources | length > 0
+
+- name: Create storage for virtual baremetal nodes - create node-1 volume
+  changed_when: false
+  ignore_errors: true # noqa: ignore-errors
+  kubernetes.core.k8s_exec:
+    namespace: openstack
+    pod: "{{ libvirt_pod.resources[0].metadata.name }}"
+    container: libvirt
+    command: virsh vol-create-as default node-1.raw 21G --allocation 0 --format raw
+  when: libvirt_pod.resources | length > 0
+
+- name: Create storage for virtual baremetal nodes - set volume path node-0
+  changed_when: false
+  ignore_errors: true # noqa: ignore-errors
+  kubernetes.core.k8s_exec:
+    namespace: openstack
+    pod: "{{ libvirt_pod.resources[0].metadata.name }}"
+    container: libvirt
+    command: virsh vol-path --pool default node-0.raw
+  when: libvirt_pod.resources | length > 0
+
+- name: Create storage for virtual baremetal nodes - set volume path node-1
+  changed_when: false
+  ignore_errors: true # noqa: ignore-errors
+  kubernetes.core.k8s_exec:
+    namespace: openstack
+    pod: "{{ libvirt_pod.resources[0].metadata.name }}"
+    container: libvirt
+    command: virsh vol-path --pool default node-1.raw
+  when: libvirt_pod.resources | length > 0
+
+- name: Save node defination for virtual baremetal nodes
+  changed_when: false
+  run_once: true
+  ansible.builtin.shell: |
+    cat > /var/lib/libvirt/node-0.xml << END
+        <domain type='qemu'>
+          <name>node-0</name>
+          <uuid>fb3ed2f2-60f0-4e6b-b53e-6d8b40d6121d</uuid>
+          <memory unit='KiB'>20480000</memory>
+          <currentMemory unit='KiB'>20480000</currentMemory>
+          <vcpu placement='static'>2</vcpu>
+          <os>
+            <type arch='x86_64' machine='pc-q35-6.2'>hvm</type>
+            <loader readonly='yes' type='pflash'>/var/lib/libvirt/images/OVMF_CODE_4M.fd</loader>
+            <nvram template='/var/lib/libvirt/images/OVMF_VARS_4M.fd'>/var/lib/libvirt/images/OVMF_VARS_4M.fd-node-0</nvram>
+            <bootmenu enable='no'/>
+            <bios useserial='yes'/>
+          </os>
+          <features>
+            <acpi/>
+            <apic/>
+            <pae/>
+          </features>
+          <cpu mode='host-model' check='partial'/>
+          <clock offset='utc'/>
+          <on_poweroff>destroy</on_poweroff>
+          <on_reboot>destroy</on_reboot>
+          <on_crash>restart</on_crash>
+          <devices>
+            <emulator>/usr/bin/qemu-system-x86_64</emulator>
+            <disk type='file' device='disk'>
+              <driver name='qemu' type='raw' cache='unsafe'/>
+              <source file='/var/lib/libvirt/images/node-0.raw'/>
+              <blockio logical_block_size='512' physical_block_size='512'/>
+              <target dev='vda' bus='virtio'/>
+              <address type='pci' domain='0x0000' bus='0x04' slot='0x00' function='0x0'/>
+            </disk>
+            <controller type='usb' index='0' model='qemu-xhci'>
+              <address type='pci' domain='0x0000' bus='0x03' slot='0x00' function='0x0'/>
+            </controller>
+            <controller type='sata' index='0'>
+              <address type='pci' domain='0x0000' bus='0x00' slot='0x1f' function='0x2'/>
+            </controller>
+            <controller type='pci' index='0' model='pcie-root'/>
+            <controller type='pci' index='1' model='pcie-root-port'>
+              <model name='pcie-root-port'/>
+              <target chassis='1' port='0x8'/>
+              <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x0' multifunction='on'/>
+            </controller>
+            <controller type='pci' index='2' model='pcie-root-port'>
+              <model name='pcie-root-port'/>
+              <target chassis='2' port='0x9'/>
+              <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x1'/>
+            </controller>
+            <controller type='pci' index='3' model='pcie-root-port'>
+              <model name='pcie-root-port'/>
+              <target chassis='3' port='0xa'/>
+              <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x2'/>
+            </controller>
+            <controller type='pci' index='4' model='pcie-root-port'>
+              <model name='pcie-root-port'/>
+              <target chassis='4' port='0xb'/>
+              <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x3'/>
+            </controller>
+            <controller type='pci' index='5' model='pcie-root-port'>
+              <model name='pcie-root-port'/>
+              <target chassis='5' port='0xc'/>
+              <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x4'/>
+            </controller>
+            <controller type='pci' index='6' model='pcie-root-port'>
+              <model name='pcie-root-port'/>
+              <target chassis='6' port='0xd'/>
+              <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x5'/>
+            </controller>
+            <interface type='ethernet'>
+              <mac address='52:54:00:b9:0b:41'/>
+              <target dev='ovs-node-0i1'/>
+              <model type='virtio'/>
+              <boot order='1'/>
+              <address type='pci' domain='0x0000' bus='0x01' slot='0x00' function='0x0'/>
+            </interface>
+            <interface type='ethernet'>
+              <mac address='52:54:00:98:d6:b8'/>
+              <target dev='ovs-node-0i2'/>
+              <model type='virtio'/>
+              <boot order='2'/>
+              <address type='pci' domain='0x0000' bus='0x02' slot='0x00' function='0x0'/>
+            </interface>
+            <serial type='file'>
+              <source path='/tmp/node-0_console.log'/>
+              <target type='isa-serial' port='0'>
+                <model name='isa-serial'/>
+              </target>
+            </serial>
+            <serial type='pty'>
+              <target type='isa-serial' port='1'>
+                <model name='isa-serial'/>
+              </target>
+            </serial>
+            <console type='file'>
+              <source path='/tmp/node-0_console.log'/>
+              <target type='serial' port='0'/>
+            </console>
+            <input type='mouse' bus='ps2'/>
+            <input type='keyboard' bus='ps2'/>
+            <audio id='1' type='none'/>
+            <memballoon model='virtio'>
+              <address type='pci' domain='0x0000' bus='0x05' slot='0x00' function='0x0'/>
+            </memballoon>
+          </devices>
+        </domain>
+    END
+
+    cat > /var/lib/libvirt/node-1.xml << END
+        <domain type='qemu'>
+          <name>node-1</name>
+          <uuid>e316d87c-ebc7-4c10-a9bb-316cd8dcfa55</uuid>
+          <memory unit='KiB'>20480000</memory>
+          <currentMemory unit='KiB'>20480000</currentMemory>
+          <vcpu placement='static'>2</vcpu>
+          <os>
+            <type arch='x86_64' machine='pc-q35-6.2'>hvm</type>
+            <loader readonly='yes' type='pflash'>/var/lib/libvirt/images/OVMF_CODE_4M.fd</loader>
+            <nvram template='/var/lib/libvirt/images/OVMF_VARS_4M.fd'>/var/lib/libvirt/images/OVMF_VARS_4M.fd-node-1</nvram>
+            <bootmenu enable='no'/>
+            <bios useserial='yes'/>
+          </os>
+          <features>
+            <acpi/>
+            <apic/>
+            <pae/>
+          </features>
+          <cpu mode='host-model' check='partial'/>
+          <clock offset='utc'/>
+          <on_poweroff>destroy</on_poweroff>
+          <on_reboot>destroy</on_reboot>
+          <on_crash>restart</on_crash>
+          <devices>
+            <emulator>/usr/bin/qemu-system-x86_64</emulator>
+            <disk type='file' device='disk'>
+              <driver name='qemu' type='raw' cache='unsafe'/>
+              <source file='/var/lib/libvirt/images/node-1.raw'/>
+              <blockio logical_block_size='512' physical_block_size='512'/>
+              <target dev='vda' bus='virtio'/>
+              <address type='pci' domain='0x0000' bus='0x04' slot='0x00' function='0x0'/>
+            </disk>
+            <controller type='usb' index='0' model='qemu-xhci'>
+              <address type='pci' domain='0x0000' bus='0x03' slot='0x00' function='0x0'/>
+            </controller>
+            <controller type='sata' index='0'>
+              <address type='pci' domain='0x0000' bus='0x00' slot='0x1f' function='0x2'/>
+            </controller>
+            <controller type='pci' index='0' model='pcie-root'/>
+            <controller type='pci' index='1' model='pcie-root-port'>
+              <model name='pcie-root-port'/>
+              <target chassis='1' port='0x8'/>
+              <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x0' multifunction='on'/>
+            </controller>
+            <controller type='pci' index='2' model='pcie-root-port'>
+              <model name='pcie-root-port'/>
+              <target chassis='2' port='0x9'/>
+              <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x1'/>
+            </controller>
+            <controller type='pci' index='3' model='pcie-root-port'>
+              <model name='pcie-root-port'/>
+              <target chassis='3' port='0xa'/>
+              <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x2'/>
+            </controller>
+            <controller type='pci' index='4' model='pcie-root-port'>
+              <model name='pcie-root-port'/>
+              <target chassis='4' port='0xb'/>
+              <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x3'/>
+            </controller>
+            <controller type='pci' index='5' model='pcie-root-port'>
+              <model name='pcie-root-port'/>
+              <target chassis='5' port='0xc'/>
+              <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x4'/>
+            </controller>
+            <controller type='pci' index='6' model='pcie-root-port'>
+              <model name='pcie-root-port'/>
+              <target chassis='6' port='0xd'/>
+              <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x5'/>
+            </controller>
+            <interface type='ethernet'>
+              <mac address='52:54:00:b7:de:53'/>
+              <target dev='ovs-node-1i1'/>
+              <model type='virtio'/>
+              <boot order='1'/>
+              <address type='pci' domain='0x0000' bus='0x01' slot='0x00' function='0x0'/>
+            </interface>
+            <interface type='ethernet'>
+              <mac address='52:54:00:29:5d:5a'/>
+              <target dev='ovs-node-1i2'/>
+              <model type='virtio'/>
+              <boot order='2'/>
+              <address type='pci' domain='0x0000' bus='0x02' slot='0x00' function='0x0'/>
+            </interface>
+            <serial type='file'>
+              <source path='/tmp/node-1_console.log'/>
+              <target type='isa-serial' port='0'>
+                <model name='isa-serial'/>
+              </target>
+            </serial>
+            <serial type='pty'>
+              <target type='isa-serial' port='1'>
+                <model name='isa-serial'/>
+              </target>
+            </serial>
+            <console type='file'>
+              <source path='/tmp/node-1_console.log'/>
+              <target type='serial' port='0'/>
+            </console>
+            <input type='mouse' bus='ps2'/>
+            <input type='keyboard' bus='ps2'/>
+            <audio id='1' type='none'/>
+            <memballoon model='virtio'>
+              <address type='pci' domain='0x0000' bus='0x05' slot='0x00' function='0x0'/>
+            </memballoon>
+          </devices>
+        </domain>
+    END
+  args:
+    executable: /bin/bash
+
+- name: Create virtual baremetal node - define node-0
+  changed_when: false
+  ignore_errors: true # noqa: ignore-errors
+  kubernetes.core.k8s_exec:
+    namespace: openstack
+    pod: "{{ libvirt_pod.resources[0].metadata.name }}"
+    container: libvirt
+    command: virsh define /var/lib/libvirt/node-0.xml
+  when: libvirt_pod.resources | length > 0
+
+- name: Create virtual baremetal node - start node-0
+  changed_when: false
+  ignore_errors: true # noqa: ignore-errors
+  kubernetes.core.k8s_exec:
+    namespace: openstack
+    pod: "{{ libvirt_pod.resources[0].metadata.name }}"
+    container: libvirt
+    command: virsh start node-0
+  when: libvirt_pod.resources | length > 0
+
+- name: Create virtual baremetal node - define node-1
+  changed_when: false
+  ignore_errors: true # noqa: ignore-errors
+  kubernetes.core.k8s_exec:
+    namespace: openstack
+    pod: "{{ libvirt_pod.resources[0].metadata.name }}"
+    container: libvirt
+    command: virsh define /var/lib/libvirt/node-1.xml
+  when: libvirt_pod.resources | length > 0
+
+- name: Create virtual baremetal node - start node-1
+  changed_when: false
+  ignore_errors: true # noqa: ignore-errors
+  kubernetes.core.k8s_exec:
+    namespace: openstack
+    pod: "{{ libvirt_pod.resources[0].metadata.name }}"
+    container: libvirt
+    command: virsh start node-1
+  when: libvirt_pod.resources | length > 0
+
+- name: Prepare Ironic virtual nodes
+  changed_when: false
+  run_once: true
+  ansible.builtin.shell: |
+    set -o posix
+    source /etc/profile.d/atmosphere.sh
+    chassis_id=$(openstack baremetal chassis create --description 'ironic test chassis' -f value -c uuid)
+    if openstack baremetal node show node-0; then
+      echo "baremetal node node-0 exists, skipping..."
+    else
+      openstack baremetal node create  --uuid 43ef224b-6e77-495d-8702-0745fdcad579 --chassis $chassis_id --driver redfish --name node-0 --resource-class baremetal --property cpu_arch=x86_64 --property capabilities=boot_mode:uefi --driver-info redfish_address=http://0.0.0.0:9132  --driver-info redfish_username=admin --driver-info redfish_password=password --driver-info redfish_system_id=/redfish/v1/Systems/node-0
+      openstack baremetal node add trait 43ef224b-6e77-495d-8702-0745fdcad579 CUSTOM_GOLD
+      openstack baremetal node manage  43ef224b-6e77-495d-8702-0745fdcad579 --wait
+      openstack baremetal port create --node 43ef224b-6e77-495d-8702-0745fdcad579 52:54:00:b9:0b:41
+      openstack baremetal port create --node 43ef224b-6e77-495d-8702-0745fdcad579 52:54:00:98:d6:b8
+      openstack baremetal node provide  43ef224b-6e77-495d-8702-0745fdcad579
+    fi
+    if openstack baremetal node show node-1; then
+      echo "baremetal node node-1 exists, skipping..."
+    else
+      openstack baremetal node create  --uuid 6abb7cdf-66ab-441f-8f94-0dfa955a7716 --chassis $chassis_id --driver redfish --name node-1 --resource-class baremetal --property cpu_arch=x86_64 --property capabilities=boot_mode:uefi --driver-info redfish_address=http://0.0.0.0:9132  --driver-info redfish_username=admin --driver-info redfish_password=password --driver-info redfish_system_id=/redfish/v1/Systems/node-1
+      openstack baremetal node add trait 6abb7cdf-66ab-441f-8f94-0dfa955a7716 CUSTOM_GOLD
+      openstack baremetal node manage  6abb7cdf-66ab-441f-8f94-0dfa955a7716 --wait
+      openstack baremetal port create --node 6abb7cdf-66ab-441f-8f94-0dfa955a7716 52:54:00:b7:de:53
+      openstack baremetal port create --node 6abb7cdf-66ab-441f-8f94-0dfa955a7716 52:54:00:29:5d:5a
+      openstack baremetal node provide  6abb7cdf-66ab-441f-8f94-0dfa955a7716
+    fi
+  args:
+    executable: /bin/bash
+  environment:
+    OS_CLOUD: system
+
+- name: Prepare Ironic baremetal flavor
+  changed_when: false
+  run_once: true
+  ansible.builtin.shell: |
+    set -o posix
+    source /etc/profile.d/atmosphere.sh
+    if openstack flavor show baremetal; then
+      echo "flavor baremetal exists, skipping..."
+    else
+      openstack flavor create --ephemeral 0 --ram 2048 --disk 20 --vcpus 2 baremetal
+      openstack flavor set baremetal --property resources:CUSTOM_BAREMETAL=1
+      openstack flavor set baremetal --property resourees:DISK_GB=0
+      openstack flavor set baremetal --property resources:MEMORY_MB=0
+      openstack flavor set baremetal --property resources:VCPU=0
+      openstack flavor set baremetal --property cpu_arch=x86_64
+      openstack flavor set baremetal --property capabilities:boot_mode=uefi
+      openstack flavor set baremetal --property trait:CUSTOM_GOLD=required
+    fi
+  args:
+    executable: /bin/bash
+  environment:
+    OS_CLOUD: atmosphere
