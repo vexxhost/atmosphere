@@ -54,6 +54,10 @@
     - libvirt-vnc
     - libvirt-api
 
+- name: Generate Helm values (storage)
+  ansible.builtin.set_fact:
+    _libvirt_helm_values: "{{ _libvirt_helm_values | combine(atmosphere_storage | vexxhost.atmosphere.storage_to_libvirt_helm_values, recursive=True) }}"
+
 - name: Deploy Helm chart
   run_once: true
   kubernetes.core.helm:

@@ -1,0 +1,17 @@
+---
+features:
+  - |
+    Storage configuration is now unified under a single
+    ``atmosphere_storage`` variable. Instead of configuring storage across
+    multiple per-service variables, all backend definitions live in one
+    place organized by purpose (images, volumes, backups, ephemeral).
+    The system automatically derives the required Helm values for Cinder,
+    Glance, Nova, libvirt, and Ceph Provisioners. Both Cinder and Glance
+    support multiple backends. See the ``storage`` documentation page for
+    the full configuration reference.
+upgrade:
+  - |
+    The ``atmosphere_storage`` variable now provides defaults for all
+    storage-related Helm values. Existing per-service overrides (for
+    example, ``cinder_helm_values``) continue to work and take precedence
+    over the derived values.

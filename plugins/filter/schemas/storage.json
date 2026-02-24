@@ -1,0 +1,366 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Atmosphere Storage Configuration",
+  "description": "Unified storage configuration for all OpenStack services in Atmosphere.",
+  "type": "object",
+  "properties": {
+    "images": {
+      "description": "Image storage configuration for Glance. Supports multiple backends.",
+      "type": "object",
+      "properties": {
+        "default": {
+          "description": "Name of the default image backend.",
+          "type": "string"
+        },
+        "backends": {
+          "description": "Map of backend name to backend configuration.",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/image_backend"
+          },
+          "minProperties": 1
+        }
+      },
+      "required": ["default", "backends"]
+    },
+    "volumes": {
+      "description": "Block storage configuration for Cinder. Supports multiple backends.",
+      "type": "object",
+      "properties": {
+        "default": {
+          "description": "Name of the default volume backend.",
+          "type": "string"
+        },
+        "backends": {
+          "description": "Map of backend name to backend configuration.",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/volume_backend"
+          },
+          "minProperties": 1
+        }
+      },
+      "required": ["default", "backends"]
+    },
+    "backups": {
+      "description": "Backup storage configuration for Cinder backup.",
+      "$ref": "#/definitions/backup_backend"
+    },
+    "ephemeral": {
+      "description": "Ephemeral disk storage configuration for Nova/libvirt.",
+      "$ref": "#/definitions/ephemeral_backend"
+    }
+  },
+  "required": ["images", "volumes", "backups", "ephemeral"],
+  "additionalProperties": false,
+  "definitions": {
+    "image_backend": {
+      "description": "A Glance image storage backend.",
+      "type": "object",
+      "oneOf": [
+        { "$ref": "#/definitions/image_backend_ceph_rbd" },
+        { "$ref": "#/definitions/image_backend_cinder" }
+      ]
+    },
+    "image_backend_ceph_rbd": {
+      "description": "Ceph RBD backend for Glance images.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "ceph_rbd" },
+        "pool": {
+          "description": "Ceph RBD pool name for storing images.",
+          "type": "string"
+        },
+        "replication": {
+          "description": "Number of replicas for the pool.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "crush_rule": {
+          "description": "CRUSH rule for data placement.",
+          "type": "string"
+        },
+        "chunk_size": {
+          "description": "RBD store chunk size in MiB.",
+          "type": "integer",
+          "default": 8
+        },
+        "ceph_user": {
+          "description": "Ceph user for accessing the pool.",
+          "type": "string"
+        }
+      },
+      "required": ["type", "pool", "ceph_user"],
+      "additionalProperties": false
+    },
+    "image_backend_cinder": {
+      "description": "Cinder-backed Glance store.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "cinder" }
+      },
+      "required": ["type"],
+      "additionalProperties": false
+    },
+    "volume_backend": {
+      "description": "A Cinder volume storage backend.",
+      "type": "object",
+      "oneOf": [
+        { "$ref": "#/definitions/volume_backend_ceph_rbd" },
+        { "$ref": "#/definitions/volume_backend_ceph_rbd_ec" },
+        { "$ref": "#/definitions/volume_backend_powerstore" },
+        { "$ref": "#/definitions/volume_backend_pure" },
+        { "$ref": "#/definitions/volume_backend_storpool" }
+      ]
+    },
+    "volume_backend_ceph_rbd": {
+      "description": "Ceph RBD replicated backend for Cinder volumes.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "ceph_rbd" },
+        "pool": {
+          "description": "Ceph RBD pool name for storing volumes.",
+          "type": "string"
+        },
+        "replication": {
+          "description": "Number of replicas for the pool.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "crush_rule": {
+          "description": "CRUSH rule for data placement.",
+          "type": "string"
+        },
+        "ceph_user": {
+          "description": "Ceph user for accessing the pool.",
+          "type": "string"
+        },
+        "secret_uuid": {
+          "description": "UUID for the libvirt secret used by Nova to access Ceph.",
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        }
+      },
+      "required": ["type", "pool", "ceph_user", "secret_uuid"],
+      "additionalProperties": false
+    },
+    "volume_backend_ceph_rbd_ec": {
+      "description": "Ceph RBD erasure-coded backend for Cinder volumes.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "ceph_rbd_ec" },
+        "pool": {
+          "description": "Ceph RBD metadata pool name (replicated).",
+          "type": "string"
+        },
+        "data_pool_name": {
+          "description": "Override the auto-derived data pool name. Default: <pool>.data.",
+          "type": "string"
+        },
+        "erasure_coded": {
+          "description": "Erasure coding parameters.",
+          "type": "object",
+          "properties": {
+            "k": {
+              "description": "Number of data chunks.",
+              "type": "integer",
+              "minimum": 2
+            },
+            "m": {
+              "description": "Number of coding (parity) chunks.",
+              "type": "integer",
+              "minimum": 1
+            },
+            "failure_domain": {
+              "description": "Failure domain for data placement (e.g., host, rack, room).",
+              "type": "string"
+            },
+            "device_class": {
+              "description": "Target device class (e.g., hdd, ssd, nvme).",
+              "type": "string"
+            }
+          },
+          "required": ["k", "m", "failure_domain"],
+          "additionalProperties": false
+        },
+        "metadata_replication": {
+          "description": "Number of replicas for the metadata pool.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "ceph_user": {
+          "description": "Dedicated Ceph user for this EC backend (must be unique per EC backend).",
+          "type": "string"
+        },
+        "secret_uuid": {
+          "description": "UUID for the libvirt secret (must be unique per Ceph user).",
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        }
+      },
+      "required": ["type", "pool", "erasure_coded", "metadata_replication", "ceph_user", "secret_uuid"],
+      "additionalProperties": false
+    },
+    "volume_backend_powerstore": {
+      "description": "Dell PowerStore backend for Cinder volumes.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "powerstore" },
+        "san_ip": {
+          "description": "IP address of the PowerStore management interface.",
+          "type": "string"
+        },
+        "san_login": {
+          "description": "Login username for the PowerStore array.",
+          "type": "string"
+        },
+        "san_password": {
+          "description": "Login password for the PowerStore array.",
+          "type": "string"
+        },
+        "storage_protocol": {
+          "description": "Storage protocol to use.",
+          "type": "string",
+          "enum": ["FC", "iSCSI"]
+        }
+      },
+      "required": ["type", "san_ip", "san_login", "san_password", "storage_protocol"],
+      "additionalProperties": false
+    },
+    "volume_backend_pure": {
+      "description": "Pure Storage backend for Cinder volumes.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "pure" },
+        "volume_driver": {
+          "description": "Cinder volume driver class.",
+          "type": "string",
+          "enum": [
+            "cinder.volume.drivers.pure.PureISCSIDriver",
+            "cinder.volume.drivers.pure.PureFCDriver",
+            "cinder.volume.drivers.pure.PureNVMEDriver"
+          ]
+        },
+        "san_ip": {
+          "description": "IP address of the Pure Storage management interface.",
+          "type": "string"
+        },
+        "pure_api_token": {
+          "description": "API token for authenticating with the Pure Storage array.",
+          "type": "string"
+        },
+        "pure_nvme_transport": {
+          "description": "NVMe transport type (only for PureNVMEDriver).",
+          "type": "string",
+          "enum": ["roce", "tcp"]
+        }
+      },
+      "required": ["type", "volume_driver", "san_ip", "pure_api_token"],
+      "additionalProperties": false
+    },
+    "volume_backend_storpool": {
+      "description": "StorPool backend for Cinder volumes.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "storpool" },
+        "storpool_template": {
+          "description": "StorPool template name.",
+          "type": "string"
+        }
+      },
+      "required": ["type", "storpool_template"],
+      "additionalProperties": false
+    },
+    "backup_backend": {
+      "description": "Backup storage backend configuration.",
+      "type": "object",
+      "oneOf": [
+        { "$ref": "#/definitions/backup_backend_ceph_rbd" },
+        { "$ref": "#/definitions/backup_backend_none" }
+      ]
+    },
+    "backup_backend_ceph_rbd": {
+      "description": "Ceph RBD backend for Cinder backups.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "ceph_rbd" },
+        "pool": {
+          "description": "Ceph RBD pool name for storing backups.",
+          "type": "string"
+        },
+        "replication": {
+          "description": "Number of replicas for the pool.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "crush_rule": {
+          "description": "CRUSH rule for data placement.",
+          "type": "string"
+        },
+        "ceph_user": {
+          "description": "Ceph user for accessing the backup pool.",
+          "type": "string"
+        }
+      },
+      "required": ["type", "pool", "ceph_user"],
+      "additionalProperties": false
+    },
+    "backup_backend_none": {
+      "description": "No backup storage (disables Cinder backup).",
+      "type": "object",
+      "properties": {
+        "type": { "const": "none" }
+      },
+      "required": ["type"],
+      "additionalProperties": false
+    },
+    "ephemeral_backend": {
+      "description": "Ephemeral disk storage backend configuration.",
+      "type": "object",
+      "oneOf": [
+        { "$ref": "#/definitions/ephemeral_backend_ceph_rbd" },
+        { "$ref": "#/definitions/ephemeral_backend_local" }
+      ]
+    },
+    "ephemeral_backend_ceph_rbd": {
+      "description": "Ceph RBD backend for Nova ephemeral disks.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "ceph_rbd" },
+        "pool": {
+          "description": "Ceph RBD pool name for ephemeral disks.",
+          "type": "string"
+        },
+        "replication": {
+          "description": "Number of replicas for the pool.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "crush_rule": {
+          "description": "CRUSH rule for data placement.",
+          "type": "string"
+        },
+        "ceph_user": {
+          "description": "Ceph user for accessing the pool.",
+          "type": "string"
+        },
+        "secret_uuid": {
+          "description": "UUID for the libvirt secret.",
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        }
+      },
+      "required": ["type", "pool", "ceph_user", "secret_uuid"],
+      "additionalProperties": false
+    },
+    "ephemeral_backend_local": {
+      "description": "Local disk storage for Nova ephemeral disks.",
+      "type": "object",
+      "properties": {
+        "type": { "const": "local" }
+      },
+      "required": ["type"],
+      "additionalProperties": false
+    }
+  }
+}

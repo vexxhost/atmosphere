@@ -31,6 +31,10 @@
     - nova-bootstrap
     - nova-cell-setup
 
+- name: Generate Helm values (storage)
+  ansible.builtin.set_fact:
+    _nova_helm_values: "{{ _nova_helm_values | combine(atmosphere_storage | vexxhost.atmosphere.storage_to_nova_helm_values, recursive=True) }}"
+
 - name: Deploy Helm chart
   run_once: true
   kubernetes.core.helm:

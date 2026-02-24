@@ -14,6 +14,7 @@ and setup.
    :maxdepth: 2
 
    inventory
+   storage
    csi
    certificates
    cinder

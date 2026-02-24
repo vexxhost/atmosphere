@@ -7,10 +7,10 @@ variety of storage backends. This section guides you through setting up Cinder
 with different backend technologies, each of which might require specific
 configuration steps.
 
-Cinder can be configured with multiple backends which would all be configured
-inside of ``cinder_helm_values.conf.backends``.   The documentation below explains
-how to configure a specific backend, but you can add multiple backends by
-adding additional entries to the ``cinder_helm_values.conf.backends`` dictionary.
+Cinder can be configured with multiple backends using the unified
+``atmosphere_storage`` variable. See :doc:`storage` for the full
+configuration reference.  The documentation below explains how to configure
+specific backend types.
 
 ********
 Ceph RBD
@@ -32,88 +32,31 @@ EC pools require two components:
 1. A **metadata pool** (replicated) that stores metadata
 2. A **data pool** (EC) that stores the actual volume data
 
-The Cinder chart automatically creates ``CephBlockPool`` custom resources via
-Rook for any pool that has an ``erasure_coded`` key in ``conf.ceph.pools``. The chart
-automatically derives the data pool name as ``<pool_name>.data`` (e.g. a pool called
-``cinder.volumes.ec`` produces a data pool called ``cinder.volumes.ec.data``).
-You can override this with the ``data_pool_name`` option.
-
-To configure an EC backend, you need to:
-
-1. Define the EC pool in ``cinder_helm_values.conf.ceph.pools``
-2. Create a Cinder backend referencing the derived pool names
-3. Configure ``ceph_provisioners_helm_values`` to set the default data pool for the Ceph user
-4. Configure ``libvirt_helm_values`` to register the Ceph user secret for Nova
+To add an EC backend, add a new entry under
+``atmosphere_storage.volumes.backends``. The system automatically configures
+all required services (Cinder, libvirt, and Ceph Provisioners):
 
 .. code-block:: yaml
 
-    # Step 1 & 2: Define EC pool and configure Cinder backend
-    cinder_helm_values:
-      conf:
-        ceph:
-          pools:
-            cinder.volumes.ec:
-              app_name: cinder-volume
-              erasure_coded:
-                k: 4                       # data chunks
-                m: 2                       # coding chunks
-                device_class: hdd          # optional: target specific device class
-                failure_domain: host
-                # data_pool_name: custom   # optional: override auto-derived name
-              metadata:
-                replication: 3
-        cinder:
-          DEFAULT:
-            enabled_backends: rbd1,rbd_ec
+    atmosphere_storage:
+      volumes:
         backends:
           rbd_ec:
-            volume_driver: cinder.volume.drivers.rbd.RBDDriver
-            volume_backend_name: rbd_ec
-            rbd_pool: cinder.volumes.ec            # metadata pool (replicated)
-            rbd_data_pool: cinder.volumes.ec.data  # data pool (auto-derived)
-            rbd_ceph_conf: "/etc/ceph/ceph.conf"
-            rbd_flatten_volume_from_snapshot: false
-            report_discard_supported: true
-            rbd_max_clone_depth: 5
-            rbd_store_chunk_size: 4
-            rados_connect_timeout: -1
-            rbd_user: cinder-ec
-            rbd_secret_uuid: 808c5658-7c46-4818-8f26-82a217e3a57a  # must be unique per user
-
-    # Step 3: Configure ceph.conf for the EC user
-    ceph_provisioners_helm_values:
-      conf:
-        ceph:
-          client.cinder-ec:
-            rbd default data pool: cinder.volumes.ec.data
-
-    # Step 4: Configure libvirt to register the EC user secret
-    libvirt_helm_values:
-      conf:
-        ceph:
-          additional_users:
-            - user: cinder-ec
-              secret_uuid: 808c5658-7c46-4818-8f26-82a217e3a57a
-              secret_name: cinder-volume-rbd-keyring-rbd-ec
+            type: ceph_rbd_ec
+            pool: cinder.volumes.ec
+            erasure_coded:
+              k: 4                       # data chunks
+              m: 2                       # coding chunks
+              failure_domain: host
+              device_class: hdd          # optional: target specific device class
+            metadata_replication: 3
+            ceph_user: cinder-ec
+            secret_uuid: 808c5658-7c46-4818-8f26-82a217e3a57a
 
 .. warning::
 
-    Each Ceph user requires a **unique** ``secret_uuid``. Don't reuse the default
-    Cinder user's UUID (``457eb676-33da-42ec-9a8c-9293d545c337``). Generate a new
-    UUID for each additional backend using ``uuidgen``.
-
-.. note::
-
-    The ``secret_uuid`` in ``libvirt_helm_values`` must match the ``rbd_secret_uuid``
-    configured in the Cinder backend. The ``secret_name`` follows the pattern
-    ``cinder-volume-rbd-keyring-<backend>`` (for example, ``rbd_ec``).
-
-.. admonition:: About ``rbd_user`` for erasure-coded pools
-    :class: info
-
-    Each erasure-coded backend requires a dedicated ``rbd_user`` because Ceph
-    configures data pool routing per-user in ``ceph.conf``. The storage-init
-    job automatically grants the user access to both the metadata and data pools.
+    Each erasure-coded backend requires a **dedicated** ``ceph_user`` and a
+    **unique** ``secret_uuid``. Generate new UUIDs with ``uuidgen``.
 
 The EC pool configuration parameters are:
 
@@ -129,10 +72,7 @@ The EC pool configuration parameters are:
 ``failure_domain``
   Failure domain for data placement, for example ``host``, ``rack``, or ``room``.
 
-``data_pool_name``
-  Override the automatically derived data pool name. By default, the chart names
-  the data pool ``<pool_key>.data`` (e.g. ``cinder.volumes.ec.data``). Set this to use a
-  custom name instead.
+For more details on storage configuration, see :doc:`storage`.
 
 ***************
 Dell PowerStore
@@ -148,64 +88,25 @@ configuration inside your Ansible inventory:
 
 .. code-block:: yaml
 
-    cinder_helm_values:
-      storage: powerstore
-      dependencies:
-        static:
-          api:
-            jobs:
-              - cinder-db-sync
-              - cinder-ks-user
-              - cinder-ks-endpoints
-              - cinder-rabbit-init
-          scheduler:
-            jobs:
-              - cinder-db-sync
-              - cinder-ks-user
-              - cinder-ks-endpoints
-              - cinder-rabbit-init
-          volume:
-            jobs:
-              - cinder-db-sync
-              - cinder-ks-user
-              - cinder-ks-endpoints
-              - cinder-rabbit-init
-          volume_usage_audit:
-            jobs:
-              - cinder-db-sync
-              - cinder-ks-user
-              - cinder-ks-endpoints
-              - cinder-rabbit-init
-      conf:
-        cinder:
-          DEFAULT:
-            enabled_backends: powerstore
-            default_volume_type: powerstore
+    atmosphere_storage:
+      volumes:
+        default: powerstore
         backends:
-          rbd1: null
           powerstore:
-            volume_backend_name: powerstore
-            volume_driver: cinder.volume.drivers.dell_emc.powerstore.driver.PowerStoreDriver
+            type: powerstore
             san_ip: <FILL IN>
             san_login: <FILL IN>
             san_password: <FILL IN>
-            storage_protocol: <FILL IN> # FC or iSCSI
-      manifests:
-        deployment_backup: true
-        job_backup_storage_init: true
-        job_storage_init: false
+            storage_protocol: <FILL IN>  # FC or iSCSI
+      backups:
+        type: none
+      ephemeral:
+        type: local
 
-    nova_helm_values:
-      conf:
-        enable_iscsi: true
+The system automatically configures iSCSI device access, dependencies, and
+manifest settings for non-Ceph backends.
 
-.. admonition:: About ``conf.enable_iscsi``
-    :class: info
-
-    The ``enable_iscsi`` setting is required to allow the Nova instances to
-    expose volumes by making the `/dev` devices available to the containers,
-    not necessarily to use iSCSI as the storage protocol. In this case, the
-    PowerStore driver will use the storage protocol specified inside Cinder,
+For more details on storage configuration, see :doc:`storage`.
 
 ************
 Pure Storage
@@ -239,86 +140,21 @@ by referencing the `Cinder Pure Storage documentation <https://docs.openstack.or
 
 .. code-block:: yaml
 
-    cinder_helm_values:
-      storage: pure
-      pod:
-        useHostNetwork:
-          volume: true
-          backup: true
-        security_context:
-          cinder_volume:
-            container:
-              cinder_volume:
-                readOnlyRootFilesystem: true
-                privileged: true
-          cinder_backup:
-            container:
-              cinder_backup:
-                privileged: true
-      dependencies:
-        static:
-          api:
-            jobs:
-              - cinder-db-sync
-              - cinder-ks-user
-              - cinder-ks-endpoints
-              - cinder-rabbit-init
-          backup:
-            jobs:
-              - cinder-db-sync
-              - cinder-ks-user
-              - cinder-ks-endpoints
-              - cinder-rabbit-init
-          scheduler:
-            jobs:
-              - cinder-db-sync
-              - cinder-ks-user
-              - cinder-ks-endpoints
-              - cinder-rabbit-init
-          volume:
-            jobs:
-              - cinder-db-sync
-              - cinder-ks-user
-              - cinder-ks-endpoints
-              - cinder-rabbit-init
-          volume_usage_audit:
-            jobs:
-              - cinder-db-sync
-              - cinder-ks-user
-              - cinder-ks-endpoints
-              - cinder-rabbit-init
-      conf:
-        enable_iscsi: true
-        cinder:
-          DEFAULT:
-            default_volume_type: purestorage
-            enabled_backends: purestorage
+    atmosphere_storage:
+      volumes:
+        default: purestorage
         backends:
-          rbd1: null
           purestorage:
-            volume_backend_name: purestorage
+            type: pure
             volume_driver: <FILL IN>
             san_ip: <FILL IN>
             pure_api_token: <FILL IN>
-            # pure_nvme_transport:
-            use_multipath_for_image_xfer: true
-            pure_eradicate_on_delete: true
-      manifests:
-        deployment_backup: false
-        job_backup_storage_init: false
-        job_storage_init: false
+      backups:
+        type: none
+      ephemeral:
+        type: local
 
-    nova_helm_values:
-      conf:
-        enable_iscsi: true
-
-.. admonition:: About ``conf.enable_iscsi``
-    :class: info
-
-    The ``enable_iscsi`` setting is required to allow the Nova instances to
-    expose volumes by making the `/dev` devices available to the containers,
-    not necessarily to use iSCSI as the storage protocol. In this case, the
-    Cinder instances will use the volume driver specified in ``volume_driver``.
+For more details on storage configuration, see :doc:`storage`.
 
 ********
 StorPool
@@ -331,80 +167,16 @@ Configure Cinder to use StorPool by implementing the following settings:
 
 .. code-block:: yaml
 
-    cinder_helm_values:
-      storage: storpool
-      pod:
-        useHostNetwork:
-          volume: true
-        mounts:
-          cinder_volume:
-            volumeMounts:
-              - name: etc-storpool-conf
-                mountPath: /etc/storpool.conf
-                readOnly: true
-              - name: etc-storpool-conf-d
-                mountPath: /etc/storpool.conf.d
-                readOnly: true
-            volumes:
-              - name: etc-storpool-conf
-                hostPath:
-                  type: File
-                  path: /etc/storpool.conf
-              - name: etc-storpool-conf-d
-                hostPath:
-                  type: Directory
-                  path: /etc/storpool.conf.d
-      dependencies:
-        static:
-          api:
-            jobs:
-              - cinder-db-sync
-              - cinder-ks-user
-              - cinder-ks-endpoints
-              - cinder-rabbit-init
-          scheduler:
-            jobs:
-              - cinder-db-sync
-              - cinder-ks-user
-              - cinder-ks-endpoints
-              - cinder-rabbit-init
-          volume:
-            jobs:
-              - cinder-db-sync
-              - cinder-ks-user
-              - cinder-ks-endpoints
-              - cinder-rabbit-init
-          volume_usage_audit:
-            jobs:
-              - cinder-db-sync
-              - cinder-ks-user
-              - cinder-ks-endpoints
-              - cinder-rabbit-init
-      conf:
-        cinder:
-          DEFAULT:
-            enabled_backends: hybrid-2ssd
-            default_volume_type: hybrid-2ssd
+    atmosphere_storage:
+      volumes:
+        default: storpool
         backends:
-          rbd1: null
-          hybrid-2ssd:
-            volume_backend_name: hybrid-2ssd
-            volume_driver: cinder.volume.drivers.storpool.StorPoolDriver
+          storpool:
+            type: storpool
             storpool_template: hybrid-2ssd
-            report_discard_supported: true
-      manifests:
-        deployment_backup: false
-        job_backup_storage_init: false
-        job_storage_init: false
+      backups:
+        type: none
+      ephemeral:
+        type: local
 
-    nova_helm_values:
-      conf:
-        enable_iscsi: true
-
-.. admonition:: About ``conf.enable_iscsi``
-    :class: info
-
-    The ``enable_iscsi`` setting is required to allow the Nova instances to
-    expose volumes by making the `/dev` devices available to the containers,
-    not necessarily to use iSCSI as the storage protocol. In this case, the
-    StorPool devices will be exposed as block devices to the containers.
+For more details on storage configuration, see :doc:`storage`.
