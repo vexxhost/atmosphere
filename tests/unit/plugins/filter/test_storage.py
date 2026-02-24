@@ -73,15 +73,14 @@ class TestValidateStorage:
         result = validate_storage(DEFAULT_STORAGE)
         assert result == DEFAULT_STORAGE
 
-    def test_missing_required_field(self):
-        invalid = {
+    def test_partial_config_valid(self):
+        partial = {
             "images": DEFAULT_STORAGE["images"],
             "volumes": DEFAULT_STORAGE["volumes"],
             "backups": DEFAULT_STORAGE["backups"],
-            # missing ephemeral
         }
-        with pytest.raises(AnsibleFilterError, match="validation error"):
-            validate_storage(invalid)
+        result = validate_storage(partial)
+        assert result == partial
 
     def test_invalid_backend_type(self):
         invalid = {
@@ -257,6 +256,36 @@ class TestStorageToCinderHelmValues:
         result = storage_to_cinder_helm_values(storage)
         assert result["manifests"]["deployment_backup"] is False
 
+    def test_mixed_ceph_and_non_ceph_backends(self):
+        storage = {
+            **DEFAULT_STORAGE,
+            "volumes": {
+                "default": "rbd1",
+                "backends": {
+                    "rbd1": DEFAULT_STORAGE["volumes"]["backends"]["rbd1"],
+                    "powerstore": {
+                        "type": "powerstore",
+                        "san_ip": "10.0.0.1",
+                        "san_login": "admin",
+                        "san_password": "secret",
+                        "storage_protocol": "iSCSI",
+                    },
+                },
+            },
+        }
+        result = storage_to_cinder_helm_values(storage)
+
+        # Mixed: Ceph wins as storage type
+        assert result["storage"] == "ceph"
+        assert "rbd1" in result["conf"]["backends"]
+        assert "powerstore" in result["conf"]["backends"]
+        assert result["conf"]["enable_iscsi"] is True
+        assert result["conf"]["cinder"]["DEFAULT"]["enabled_backends"] == "rbd1,powerstore"
+        # Ceph pools still generated for the rbd backend
+        assert "cinder.volumes" in result["conf"]["ceph"]["pools"]
+        # storage-init NOT disabled (has ceph backends)
+        assert result.get("manifests", {}).get("job_storage_init") is not False
+
 
 class TestStorageToGlanceHelmValues:
     def test_single_ceph_rbd_backend(self):
@@ -350,6 +379,30 @@ class TestStorageToNovaHelmValues:
         result = storage_to_nova_helm_values(storage)
         assert result["conf"]["enable_iscsi"] is True
 
+    def test_mixed_ceph_ephemeral_and_non_ceph_volumes(self):
+        storage = {
+            **DEFAULT_STORAGE,
+            "volumes": {
+                "default": "rbd1",
+                "backends": {
+                    "rbd1": DEFAULT_STORAGE["volumes"]["backends"]["rbd1"],
+                    "powerstore": {
+                        "type": "powerstore",
+                        "san_ip": "10.0.0.1",
+                        "san_login": "admin",
+                        "san_password": "secret",
+                        "storage_protocol": "iSCSI",
+                    },
+                },
+            },
+        }
+        result = storage_to_nova_helm_values(storage)
+        # Ceph ephemeral still enabled
+        assert result["conf"]["ceph"]["enabled"] is True
+        assert result["conf"]["nova"]["libvirt"]["images_type"] == "rbd"
+        # iSCSI also enabled for non-Ceph volume backend
+        assert result["conf"]["enable_iscsi"] is True
+
 
 class TestStorageToLibvirtHelmValues:
     def test_default_ceph(self):
@@ -406,6 +459,28 @@ class TestStorageToLibvirtHelmValues:
         }
         result = storage_to_libvirt_helm_values(storage)
         assert result["conf"]["ceph"]["enabled"] is False
+
+    def test_mixed_ceph_and_non_ceph_volumes(self):
+        storage = {
+            **DEFAULT_STORAGE,
+            "volumes": {
+                "default": "rbd1",
+                "backends": {
+                    "rbd1": DEFAULT_STORAGE["volumes"]["backends"]["rbd1"],
+                    "powerstore": {
+                        "type": "powerstore",
+                        "san_ip": "10.0.0.1",
+                        "san_login": "admin",
+                        "san_password": "secret",
+                        "storage_protocol": "iSCSI",
+                    },
+                },
+            },
+        }
+        result = storage_to_libvirt_helm_values(storage)
+        # Ceph enabled because default volume backend is Ceph
+        assert result["conf"]["ceph"]["enabled"] is True
+        assert result["conf"]["ceph"]["cinder"]["user"] == "cinder"
 
 
 class TestStorageToCephProvisionersHelmValues:

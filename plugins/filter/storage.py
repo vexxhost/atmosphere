@@ -226,15 +226,13 @@ def storage_to_cinder_helm_values(storage):
     has_ceph = _has_any_ceph_volume_backend(storage)
     has_non_ceph = _has_any_non_ceph_volume_backend(storage)
 
-    if has_ceph and not has_non_ceph:
+    if has_ceph:
         result["storage"] = "ceph"
-    elif has_non_ceph and not has_ceph:
-        # Use first non-ceph backend type as storage type
+    elif has_non_ceph:
         for b in backends_config.values():
             if b["type"] in ("powerstore", "pure", "storpool"):
-                result["storage"] = b["type"] if b["type"] != "pure" else "pure"
+                result["storage"] = b["type"]
                 break
-    # Mixed: keep ceph as storage type, individual backends handle their own
 
     # Generate backends
     backends = {}
