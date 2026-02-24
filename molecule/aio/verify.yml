@@ -18,11 +18,12 @@
   tasks:
     - name: Run "stestr" tests
       become: true
-      ansible.builtin.shell: stestr run
+      ansible.builtin.shell: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}/.venv/bin/stestr run"
       args:
         chdir: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}"
       environment:
         KUBECONFIG: /root/.kube/config
+        ATMOSPHERE_NETWORK_BACKEND: "{{ atmosphere_network_backend }}"
 
 - name: Run Tempest tests
   ansible.builtin.import_playbook: vexxhost.atmosphere.tempest
