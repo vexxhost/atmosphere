@@ -60,7 +60,7 @@ def main():
 
     failed = [(p, s) for p, s in files if "/failed-pods/" in p and s > 0]
     if failed:
-        print(f"\n=== Failed pod logs (non-empty) ===")
+        print("\n=== Failed pod logs (non-empty) ===")
         for p, s in failed:
             print(f"  {s:>10}  {p}")
 
