@@ -45,6 +45,20 @@ the artifact directory structure, see `.github/skills/zuul/logs.md`.
    with the actual system state from artifacts — tasks can report
    success while the underlying command silently fails.
 
+## Comparing variants in the same buildset
+
+When a buildset has multiple job variants (for example OVN vs OVS, or
+different CSI backends), and only one variant fails:
+
+1. Check whether the same test passed in the other variant — this
+   narrows the root cause to what differs between them (networking
+   backend, storage driver, node configuration).
+2. Compare system-level artifacts (routes, interfaces, bridge config)
+   between the passing and failing jobs to spot environmental
+   differences.
+3. A failure in only one variant often points to an infrastructure or
+   configuration issue rather than a code bug.
+
 ## Analyzing tempest failures
 
 Tempest is the OpenStack integration test suite used in the verify
@@ -64,6 +78,12 @@ stage. When tempest tests fail:
 3. Use the scan-manifest script to find pod logs for the service under
    test and look for errors or crashes around the timestamp of the
    failure.
+4. When a test fails with a timeout waiting for a resource, trace
+   through the chain: check the service worker logs first, then the
+   compute logs (Nova) to verify the underlying VM state, then the
+   host networking artifacts (routes, interfaces). A resource stuck in
+   a pending state often means the control plane cannot reach the data
+   plane — verify connectivity, not just that the VM exists.
 
 ## Analyzing service failures
 
