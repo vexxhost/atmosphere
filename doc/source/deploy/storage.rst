@@ -1,5 +1,5 @@
 #####################
-Storage Configuration
+Storage configuration
 #####################
 
 Atmosphere uses a unified storage configuration variable ``atmosphere_storage``
@@ -11,7 +11,7 @@ multiple places.
 Overview
 ********
 
-The ``atmosphere_storage`` variable is organized by storage purpose:
+The ``atmosphere_storage`` variable organizes storage by purpose:
 
 ``images``
   Image storage for Glance. Supports multiple backends.
@@ -28,9 +28,9 @@ The ``atmosphere_storage`` variable is organized by storage purpose:
 The system automatically derives per-service Helm values from this single
 variable for Cinder, Glance, Nova, libvirt, and Ceph Provisioners.
 
-***************
-Default Configuration
-***************
+*********************
+Default configuration
+*********************
 
 By default, Atmosphere configures all services to use the integrated Ceph
 cluster:
@@ -72,11 +72,11 @@ cluster:
         ceph_user: cinder
         secret_uuid: 457eb676-33da-42ec-9a8c-9293d545c337
 
-No additional configuration is needed when using the integrated Ceph cluster.
+The integrated Ceph cluster works without additional configuration.
 
-*************
-Backend Types
-*************
+***********************
+Supported backend types
+***********************
 
 Ceph RBD (``ceph_rbd``)
 ========================
@@ -93,7 +93,7 @@ ephemeral storage.
     ceph_user: <username>
     secret_uuid: <uuid>       # required for volumes and ephemeral
 
-Ceph RBD Erasure-Coded (``ceph_rbd_ec``)
+Ceph RBD erasure-coded (``ceph_rbd_ec``)
 =========================================
 
 Erasure-coded Ceph RBD backend for improved storage efficiency. Only supported
@@ -115,7 +115,7 @@ for volume backends.
 .. warning::
 
     Each erasure-coded backend requires a **dedicated** ``ceph_user`` and a
-    **unique** ``secret_uuid``. Generate new UUIDs with ``uuidgen``.
+    **unique** ``secret_uuid``. Generate new UUID's with ``uuidgen``.
 
 Dell PowerStore (``powerstore``)
 ================================
@@ -128,7 +128,7 @@ Dell PowerStore (``powerstore``)
     san_password: <password>
     storage_protocol: iSCSI    # or FC
 
-Pure Storage (``pure``)
+Pure storage (``pure``)
 =======================
 
 .. code-block:: yaml
@@ -223,7 +223,7 @@ Glance with multiple backends
             type: cinder
 
 *******************
-Advanced Overrides
+Advanced overrides
 *******************
 
 The ``atmosphere_storage`` variable generates base Helm values. You can still
