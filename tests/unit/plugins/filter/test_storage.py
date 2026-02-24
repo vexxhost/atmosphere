@@ -12,15 +12,12 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-import pytest
-from ansible.errors import AnsibleFilterError
 from ansible_collections.vexxhost.atmosphere.plugins.filter.storage import (
     storage_to_ceph_provisioners_helm_values,
     storage_to_cinder_helm_values,
     storage_to_glance_helm_values,
     storage_to_libvirt_helm_values,
     storage_to_nova_helm_values,
-    validate_storage,
 )
 
 DEFAULT_STORAGE = {
@@ -28,7 +25,7 @@ DEFAULT_STORAGE = {
         "default": "rbd1",
         "backends": {
             "rbd1": {
-                "type": "ceph_rbd",
+                "type": "rbd",
                 "pool": "glance.images",
                 "replication": 3,
                 "crush_rule": "replicated_rule",
@@ -41,7 +38,7 @@ DEFAULT_STORAGE = {
         "default": "rbd1",
         "backends": {
             "rbd1": {
-                "type": "ceph_rbd",
+                "type": "rbd",
                 "pool": "cinder.volumes",
                 "replication": 3,
                 "crush_rule": "replicated_rule",
@@ -51,14 +48,14 @@ DEFAULT_STORAGE = {
         },
     },
     "backups": {
-        "type": "ceph_rbd",
+        "type": "rbd",
         "pool": "cinder.backups",
         "replication": 3,
         "crush_rule": "replicated_rule",
         "ceph_user": "cinderbackup",
     },
     "ephemeral": {
-        "type": "ceph_rbd",
+        "type": "rbd",
         "pool": "vms",
         "replication": 3,
         "crush_rule": "replicated_rule",
@@ -68,57 +65,8 @@ DEFAULT_STORAGE = {
 }
 
 
-class TestValidateStorage:
-    def test_valid_default_config(self):
-        result = validate_storage(DEFAULT_STORAGE)
-        assert result == DEFAULT_STORAGE
-
-    def test_partial_config_valid(self):
-        partial = {
-            "images": DEFAULT_STORAGE["images"],
-            "volumes": DEFAULT_STORAGE["volumes"],
-            "backups": DEFAULT_STORAGE["backups"],
-        }
-        result = validate_storage(partial)
-        assert result == partial
-
-    def test_invalid_backend_type(self):
-        invalid = {
-            **DEFAULT_STORAGE,
-            "volumes": {
-                "default": "bad",
-                "backends": {
-                    "bad": {
-                        "type": "invalid_type",
-                        "pool": "test",
-                    }
-                },
-            },
-        }
-        with pytest.raises(AnsibleFilterError, match="validation error"):
-            validate_storage(invalid)
-
-    def test_invalid_secret_uuid_format(self):
-        invalid = {
-            **DEFAULT_STORAGE,
-            "volumes": {
-                "default": "rbd1",
-                "backends": {
-                    "rbd1": {
-                        "type": "ceph_rbd",
-                        "pool": "cinder.volumes",
-                        "ceph_user": "cinder",
-                        "secret_uuid": "not-a-uuid",
-                    }
-                },
-            },
-        }
-        with pytest.raises(AnsibleFilterError, match="validation error"):
-            validate_storage(invalid)
-
-
 class TestStorageToCinderHelmValues:
-    def test_default_ceph_rbd(self):
+    def test_default_rbd(self):
         result = storage_to_cinder_helm_values(DEFAULT_STORAGE)
         assert result["storage"] == "ceph"
         assert "rbd1" in result["conf"]["backends"]
@@ -151,7 +99,7 @@ class TestStorageToCinderHelmValues:
                 "backends": {
                     "rbd1": DEFAULT_STORAGE["volumes"]["backends"]["rbd1"],
                     "rbd_ec": {
-                        "type": "ceph_rbd_ec",
+                        "type": "rbd-ec",
                         "pool": "cinder.volumes.ec",
                         "erasure_coded": {
                             "k": 4,
@@ -186,10 +134,10 @@ class TestStorageToCinderHelmValues:
                 "backends": {
                     "powerstore": {
                         "type": "powerstore",
-                        "san_ip": "10.0.0.1",
-                        "san_login": "admin",
-                        "san_password": "secret",
-                        "storage_protocol": "iSCSI",
+                        "ip": "10.0.0.1",
+                        "login": "admin",
+                        "password": "secret",
+                        "protocol": "iscsi",
                     }
                 },
             },
@@ -212,9 +160,9 @@ class TestStorageToCinderHelmValues:
                 "backends": {
                     "purestorage": {
                         "type": "pure",
-                        "volume_driver": "cinder.volume.drivers.pure.PureISCSIDriver",
-                        "san_ip": "10.0.0.2",
-                        "pure_api_token": "token123",
+                        "protocol": "iscsi",
+                        "ip": "10.0.0.2",
+                        "api_token": "token123",
                     }
                 },
             },
@@ -235,7 +183,7 @@ class TestStorageToCinderHelmValues:
                 "backends": {
                     "storpool": {
                         "type": "storpool",
-                        "storpool_template": "hybrid-2ssd",
+                        "template": "hybrid-2ssd",
                     }
                 },
             },
@@ -265,10 +213,10 @@ class TestStorageToCinderHelmValues:
                     "rbd1": DEFAULT_STORAGE["volumes"]["backends"]["rbd1"],
                     "powerstore": {
                         "type": "powerstore",
-                        "san_ip": "10.0.0.1",
-                        "san_login": "admin",
-                        "san_password": "secret",
-                        "storage_protocol": "iSCSI",
+                        "ip": "10.0.0.1",
+                        "login": "admin",
+                        "password": "secret",
+                        "protocol": "iscsi",
                     },
                 },
             },
@@ -294,10 +242,10 @@ class TestStorageToCinderHelmValues:
                 "backends": {
                     "powerstore": {
                         "type": "powerstore",
-                        "san_ip": "10.0.0.1",
-                        "san_login": "admin",
-                        "san_password": "secret",
-                        "storage_protocol": "iSCSI",
+                        "ip": "10.0.0.1",
+                        "login": "admin",
+                        "password": "secret",
+                        "protocol": "iscsi",
                     }
                 },
             },
@@ -315,7 +263,7 @@ class TestStorageToCinderHelmValues:
 
 
 class TestStorageToGlanceHelmValues:
-    def test_single_ceph_rbd_backend(self):
+    def test_single_rbd_backend(self):
         result = storage_to_glance_helm_values(DEFAULT_STORAGE)
         assert result["storage"] == "rbd"
         glance_store = result["conf"]["glance"]["glance_store"]
@@ -329,7 +277,7 @@ class TestStorageToGlanceHelmValues:
                 "default": "rbd1",
                 "backends": {
                     "rbd1": {
-                        "type": "ceph_rbd",
+                        "type": "rbd",
                         "pool": "glance.images",
                         "ceph_user": "glance",
                     },
@@ -369,7 +317,7 @@ class TestStorageToGlanceHelmValues:
 
 
 class TestStorageToNovaHelmValues:
-    def test_ceph_rbd_ephemeral(self):
+    def test_rbd_ephemeral(self):
         result = storage_to_nova_helm_values(DEFAULT_STORAGE)
         assert result["conf"]["ceph"]["enabled"] is True
         libvirt = result["conf"]["nova"]["libvirt"]
@@ -395,10 +343,10 @@ class TestStorageToNovaHelmValues:
                 "backends": {
                     "powerstore": {
                         "type": "powerstore",
-                        "san_ip": "10.0.0.1",
-                        "san_login": "admin",
-                        "san_password": "secret",
-                        "storage_protocol": "iSCSI",
+                        "ip": "10.0.0.1",
+                        "login": "admin",
+                        "password": "secret",
+                        "protocol": "iscsi",
                     }
                 },
             },
@@ -415,10 +363,10 @@ class TestStorageToNovaHelmValues:
                     "rbd1": DEFAULT_STORAGE["volumes"]["backends"]["rbd1"],
                     "powerstore": {
                         "type": "powerstore",
-                        "san_ip": "10.0.0.1",
-                        "san_login": "admin",
-                        "san_password": "secret",
-                        "storage_protocol": "iSCSI",
+                        "ip": "10.0.0.1",
+                        "login": "admin",
+                        "password": "secret",
+                        "protocol": "iscsi",
                     },
                 },
             },
@@ -446,7 +394,7 @@ class TestStorageToLibvirtHelmValues:
                 "backends": {
                     "rbd1": DEFAULT_STORAGE["volumes"]["backends"]["rbd1"],
                     "rbd_ec": {
-                        "type": "ceph_rbd_ec",
+                        "type": "rbd-ec",
                         "pool": "cinder.volumes.ec",
                         "erasure_coded": {
                             "k": 4,
@@ -475,10 +423,10 @@ class TestStorageToLibvirtHelmValues:
                 "backends": {
                     "powerstore": {
                         "type": "powerstore",
-                        "san_ip": "10.0.0.1",
-                        "san_login": "admin",
-                        "san_password": "secret",
-                        "storage_protocol": "iSCSI",
+                        "ip": "10.0.0.1",
+                        "login": "admin",
+                        "password": "secret",
+                        "protocol": "iscsi",
                     }
                 },
             },
@@ -496,10 +444,10 @@ class TestStorageToLibvirtHelmValues:
                     "rbd1": DEFAULT_STORAGE["volumes"]["backends"]["rbd1"],
                     "powerstore": {
                         "type": "powerstore",
-                        "san_ip": "10.0.0.1",
-                        "san_login": "admin",
-                        "san_password": "secret",
-                        "storage_protocol": "iSCSI",
+                        "ip": "10.0.0.1",
+                        "login": "admin",
+                        "password": "secret",
+                        "protocol": "iscsi",
                     },
                 },
             },
@@ -523,7 +471,7 @@ class TestStorageToCephProvisionersHelmValues:
                 "backends": {
                     "rbd1": DEFAULT_STORAGE["volumes"]["backends"]["rbd1"],
                     "rbd_ec": {
-                        "type": "ceph_rbd_ec",
+                        "type": "rbd-ec",
                         "pool": "cinder.volumes.ec",
                         "erasure_coded": {
                             "k": 4,
@@ -541,7 +489,7 @@ class TestStorageToCephProvisionersHelmValues:
         client = result["conf"]["ceph"]["client.cinder-ec"]
         assert client["rbd default data pool"] == "cinder.volumes.ec.data"
 
-    def test_ec_custom_data_pool_name(self):
+    def test_ec_custom_data_pool(self):
         storage = {
             **DEFAULT_STORAGE,
             "volumes": {
@@ -549,9 +497,9 @@ class TestStorageToCephProvisionersHelmValues:
                 "backends": {
                     "rbd1": DEFAULT_STORAGE["volumes"]["backends"]["rbd1"],
                     "rbd_ec": {
-                        "type": "ceph_rbd_ec",
+                        "type": "rbd-ec",
                         "pool": "cinder.volumes.ec",
-                        "data_pool_name": "custom-data",
+                        "data_pool": "custom-data",
                         "erasure_coded": {
                             "k": 4,
                             "m": 2,
