@@ -12,10 +12,6 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-from __future__ import absolute_import, division, print_function
-
-__metaclass__ = type
-
 import json
 import os
 
@@ -34,6 +30,9 @@ DOCUMENTATION = """
 """
 
 _SCHEMA = None
+
+_CEPH_TYPES = frozenset({"ceph_rbd", "ceph_rbd_ec"})
+_NON_CEPH_TYPES = frozenset({"powerstore", "pure", "storpool"})
 
 
 def _load_schema():
@@ -68,26 +67,29 @@ def validate_storage(storage):
     return storage
 
 
+def _get_volume_backends(storage):
+    """Get the volume backends dict from storage config."""
+    return storage.get("volumes", {}).get("backends", {})
+
+
 def _has_any_ceph_volume_backend(storage):
     """Check if any volume backend uses Ceph."""
-    backends = storage.get("volumes", {}).get("backends", {})
     return any(
-        b.get("type") in ("ceph_rbd", "ceph_rbd_ec") for b in backends.values()
+        b.get("type") in _CEPH_TYPES for b in _get_volume_backends(storage).values()
     )
 
 
 def _has_any_non_ceph_volume_backend(storage):
     """Check if any volume backend is non-Ceph (requires iSCSI/device access)."""
-    backends = storage.get("volumes", {}).get("backends", {})
     return any(
-        b.get("type") in ("powerstore", "pure", "storpool")
-        for b in backends.values()
+        b.get("type") in _NON_CEPH_TYPES
+        for b in _get_volume_backends(storage).values()
     )
 
 
 def _ceph_rbd_cinder_backend(name, backend):
-    """Generate Cinder backend config for a ceph_rbd backend."""
-    return {
+    """Generate Cinder backend config for a Ceph RBD backend (replicated or EC)."""
+    config = {
         "volume_driver": "cinder.volume.drivers.rbd.RBDDriver",
         "volume_backend_name": name,
         "rbd_pool": backend["pool"],
@@ -103,28 +105,11 @@ def _ceph_rbd_cinder_backend(name, backend):
         "image_volume_cache_max_size_gb": 200,
         "image_volume_cache_max_count": 50,
     }
-
-
-def _ceph_rbd_ec_cinder_backend(name, backend):
-    """Generate Cinder backend config for a ceph_rbd_ec backend."""
-    data_pool = backend.get("data_pool_name", f"{backend['pool']}.data")
-    return {
-        "volume_driver": "cinder.volume.drivers.rbd.RBDDriver",
-        "volume_backend_name": name,
-        "rbd_pool": backend["pool"],
-        "rbd_data_pool": data_pool,
-        "rbd_ceph_conf": "/etc/ceph/ceph.conf",
-        "rbd_flatten_volume_from_snapshot": False,
-        "report_discard_supported": True,
-        "rbd_max_clone_depth": 5,
-        "rbd_store_chunk_size": 4,
-        "rados_connect_timeout": -1,
-        "rbd_user": backend["ceph_user"],
-        "rbd_secret_uuid": backend["secret_uuid"],
-        "image_volume_cache_enabled": True,
-        "image_volume_cache_max_size_gb": 200,
-        "image_volume_cache_max_count": 50,
-    }
+    if backend["type"] == "ceph_rbd_ec":
+        config["rbd_data_pool"] = backend.get(
+            "data_pool_name", f"{backend['pool']}.data"
+        )
+    return config
 
 
 def _powerstore_cinder_backend(name, backend):
@@ -166,49 +151,112 @@ def _storpool_cinder_backend(name, backend):
 
 _CINDER_BACKEND_GENERATORS = {
     "ceph_rbd": _ceph_rbd_cinder_backend,
-    "ceph_rbd_ec": _ceph_rbd_ec_cinder_backend,
+    "ceph_rbd_ec": _ceph_rbd_cinder_backend,
     "powerstore": _powerstore_cinder_backend,
     "pure": _pure_cinder_backend,
     "storpool": _storpool_cinder_backend,
 }
 
-# Dependencies for non-Ceph storage backends (no ceph init jobs)
+_NON_CEPH_INIT_JOBS = [
+    "cinder-db-sync",
+    "cinder-ks-user",
+    "cinder-ks-endpoints",
+    "cinder-rabbit-init",
+]
 _NON_CEPH_DEPENDENCIES = {
     "static": {
-        "api": {
-            "jobs": [
-                "cinder-db-sync",
-                "cinder-ks-user",
-                "cinder-ks-endpoints",
-                "cinder-rabbit-init",
-            ]
-        },
-        "scheduler": {
-            "jobs": [
-                "cinder-db-sync",
-                "cinder-ks-user",
-                "cinder-ks-endpoints",
-                "cinder-rabbit-init",
-            ]
-        },
-        "volume": {
-            "jobs": [
-                "cinder-db-sync",
-                "cinder-ks-user",
-                "cinder-ks-endpoints",
-                "cinder-rabbit-init",
-            ]
-        },
-        "volume_usage_audit": {
-            "jobs": [
-                "cinder-db-sync",
-                "cinder-ks-user",
-                "cinder-ks-endpoints",
-                "cinder-rabbit-init",
-            ]
-        },
+        name: {"jobs": list(_NON_CEPH_INIT_JOBS)}
+        for name in ("api", "scheduler", "volume", "volume_usage_audit")
     }
 }
+
+
+def _generate_cinder_pools(backends_config):
+    """Generate Ceph pool definitions from volume backend configuration."""
+    pools = {}
+    for name, backend in backends_config.items():
+        if backend["type"] == "ceph_rbd":
+            pools[backend["pool"]] = {
+                "replication": backend.get("replication", 3),
+                "crush_rule": backend.get("crush_rule", "replicated_rule"),
+                "chunk_size": backend.get("chunk_size", 8),
+                "app_name": "cinder-volume",
+            }
+        elif backend["type"] == "ceph_rbd_ec":
+            ec = backend["erasure_coded"]
+            pool_config = {
+                "app_name": "cinder-volume",
+                "erasure_coded": {
+                    "k": ec["k"],
+                    "m": ec["m"],
+                    "failure_domain": ec["failure_domain"],
+                },
+                "metadata": {
+                    "replication": backend.get("metadata_replication", 3),
+                },
+            }
+            if ec.get("device_class"):
+                pool_config["erasure_coded"]["device_class"] = ec["device_class"]
+            data_pool_name = backend.get("data_pool_name")
+            if data_pool_name:
+                pool_config["erasure_coded"]["data_pool_name"] = data_pool_name
+            pools[backend["pool"]] = pool_config
+    return pools
+
+
+def _apply_vendor_pod_config(result, backends_config):
+    """Apply vendor-specific pod configuration for StorPool and Pure backends."""
+    if any(b["type"] == "storpool" for b in backends_config.values()):
+        result.setdefault("pod", {})
+        result["pod"]["useHostNetwork"] = {"volume": True}
+        result["pod"]["mounts"] = {
+            "cinder_volume": {
+                "volumeMounts": [
+                    {
+                        "name": "etc-storpool-conf",
+                        "mountPath": "/etc/storpool.conf",
+                        "readOnly": True,
+                    },
+                    {
+                        "name": "etc-storpool-conf-d",
+                        "mountPath": "/etc/storpool.conf.d",
+                        "readOnly": True,
+                    },
+                ],
+                "volumes": [
+                    {
+                        "name": "etc-storpool-conf",
+                        "hostPath": {"type": "File", "path": "/etc/storpool.conf"},
+                    },
+                    {
+                        "name": "etc-storpool-conf-d",
+                        "hostPath": {
+                            "type": "Directory",
+                            "path": "/etc/storpool.conf.d",
+                        },
+                    },
+                ],
+            }
+        }
+
+    if any(b["type"] == "pure" for b in backends_config.values()):
+        result.setdefault("pod", {})
+        result["pod"]["useHostNetwork"] = {"volume": True, "backup": True}
+        result["pod"]["security_context"] = {
+            "cinder_volume": {
+                "container": {
+                    "cinder_volume": {
+                        "readOnlyRootFilesystem": True,
+                        "privileged": True,
+                    }
+                }
+            },
+            "cinder_backup": {
+                "container": {
+                    "cinder_backup": {"privileged": True}
+                }
+            },
+        }
 
 
 def storage_to_cinder_helm_values(storage):
@@ -229,57 +277,26 @@ def storage_to_cinder_helm_values(storage):
     if has_ceph:
         result["storage"] = "ceph"
     elif has_non_ceph:
-        for b in backends_config.values():
-            if b["type"] in ("powerstore", "pure", "storpool"):
-                result["storage"] = b["type"]
-                break
+        first_type = next(
+            b["type"] for b in backends_config.values()
+            if b["type"] in _NON_CEPH_TYPES
+        )
+        result["storage"] = first_type
 
     # Generate backends
     backends = {}
     for name, backend in backends_config.items():
-        backend_type = backend["type"]
-        generator = _CINDER_BACKEND_GENERATORS.get(backend_type)
+        generator = _CINDER_BACKEND_GENERATORS.get(backend["type"])
         if generator:
             backends[name] = generator(name, backend)
 
-    # Generate Ceph pools for Ceph backends
-    pools = {}
-    for name, backend in backends_config.items():
-        if backend["type"] == "ceph_rbd":
-            pools[backend["pool"]] = {
-                "replication": backend.get("replication", 3),
-                "crush_rule": backend.get("crush_rule", "replicated_rule"),
-                "chunk_size": backend.get("chunk_size", 8),
-                "app_name": "cinder-volume",
-            }
-        elif backend["type"] == "ceph_rbd_ec":
-            ec = backend["erasure_coded"]
-            data_pool_name = backend.get("data_pool_name")
-            pool_config = {
-                "app_name": "cinder-volume",
-                "erasure_coded": {
-                    "k": ec["k"],
-                    "m": ec["m"],
-                    "failure_domain": ec["failure_domain"],
-                },
-                "metadata": {
-                    "replication": backend.get("metadata_replication", 3),
-                },
-            }
-            if ec.get("device_class"):
-                pool_config["erasure_coded"]["device_class"] = ec["device_class"]
-            if data_pool_name:
-                pool_config["erasure_coded"]["data_pool_name"] = data_pool_name
-            pools[backend["pool"]] = pool_config
-
-    # Build enabled_backends list
-    enabled_backends = ",".join(backends_config.keys())
+    pools = _generate_cinder_pools(backends_config)
 
     result["conf"] = {
         "backends": backends,
         "cinder": {
             "DEFAULT": {
-                "enabled_backends": enabled_backends,
+                "enabled_backends": ",".join(backends_config.keys()),
                 "default_volume_type": default_backend,
             }
         },
@@ -297,13 +314,13 @@ def storage_to_cinder_helm_values(storage):
         result["conf"]["cinder"]["DEFAULT"]["backup_ceph_user"] = backups["ceph_user"]
         result["conf"]["cinder"]["DEFAULT"]["backup_ceph_pool"] = backups["pool"]
 
-        if pools:
-            result["conf"]["ceph"]["pools"]["backup"] = {
-                "replication": backups.get("replication", 3),
-                "crush_rule": backups.get("crush_rule", "replicated_rule"),
-                "chunk_size": backups.get("chunk_size", 8),
-                "app_name": "cinder-backup",
-            }
+        result["conf"].setdefault("ceph", {}).setdefault("pools", {})
+        result["conf"]["ceph"]["pools"]["backup"] = {
+            "replication": backups.get("replication", 3),
+            "crush_rule": backups.get("crush_rule", "replicated_rule"),
+            "chunk_size": backups.get("chunk_size", 8),
+            "app_name": "cinder-backup",
+        }
     elif backups.get("type") == "none":
         result["manifests"] = {
             "deployment_backup": False,
@@ -315,70 +332,49 @@ def storage_to_cinder_helm_values(storage):
         result["conf"]["enable_iscsi"] = True
         result["dependencies"] = _NON_CEPH_DEPENDENCIES
 
-        # If there are NO ceph backends, disable storage-init
         if not has_ceph:
             result.setdefault("manifests", {})
             result["manifests"]["job_storage_init"] = False
 
-    # StorPool volume mounts
-    for name, backend in backends_config.items():
-        if backend["type"] == "storpool":
-            result.setdefault("pod", {})
-            result["pod"]["useHostNetwork"] = {"volume": True}
-            result["pod"]["mounts"] = {
-                "cinder_volume": {
-                    "volumeMounts": [
-                        {
-                            "name": "etc-storpool-conf",
-                            "mountPath": "/etc/storpool.conf",
-                            "readOnly": True,
-                        },
-                        {
-                            "name": "etc-storpool-conf-d",
-                            "mountPath": "/etc/storpool.conf.d",
-                            "readOnly": True,
-                        },
-                    ],
-                    "volumes": [
-                        {
-                            "name": "etc-storpool-conf",
-                            "hostPath": {"type": "File", "path": "/etc/storpool.conf"},
-                        },
-                        {
-                            "name": "etc-storpool-conf-d",
-                            "hostPath": {
-                                "type": "Directory",
-                                "path": "/etc/storpool.conf.d",
-                            },
-                        },
-                    ],
-                }
-            }
-            break
-
-    # Pure Storage pod config
-    for name, backend in backends_config.items():
-        if backend["type"] == "pure":
-            result.setdefault("pod", {})
-            result["pod"]["useHostNetwork"] = {"volume": True, "backup": True}
-            result["pod"]["security_context"] = {
-                "cinder_volume": {
-                    "container": {
-                        "cinder_volume": {
-                            "readOnlyRootFilesystem": True,
-                            "privileged": True,
-                        }
-                    }
-                },
-                "cinder_backup": {
-                    "container": {
-                        "cinder_backup": {"privileged": True}
-                    }
-                },
-            }
-            break
+    _apply_vendor_pod_config(result, backends_config)
 
     return result
+
+
+def _glance_store_type(backend_type):
+    """Map atmosphere backend type to Glance store type string."""
+    mapping = {
+        "ceph_rbd": "rbd",
+        "cinder": "cinder",
+    }
+    return mapping.get(backend_type, backend_type)
+
+
+def _glance_backend_config(backend, include_pool_settings=False):
+    """Generate per-backend Glance config section.
+
+    When ``include_pool_settings`` is True, pool-level settings (replication,
+    crush_rule) are included.  This is used for the legacy single-backend
+    ``glance_store`` path which embeds them directly.
+    """
+    if backend["type"] == "ceph_rbd":
+        config = {
+            "rbd_store_pool": backend["pool"],
+            "rbd_store_user": backend["ceph_user"],
+            "rbd_store_ceph_conf": "/etc/ceph/ceph.conf",
+            "rbd_store_chunk_size": backend.get("chunk_size", 8),
+        }
+        if include_pool_settings:
+            config["rbd_store_replication"] = backend.get("replication", 3)
+            config["rbd_store_crush_rule"] = backend.get(
+                "crush_rule", "replicated_rule"
+            )
+        return config
+    elif backend["type"] == "cinder":
+        return {
+            "cinder_catalog_info": "volumev3::internalURL",
+        }
+    return {}
 
 
 def storage_to_glance_helm_values(storage):
@@ -391,7 +387,6 @@ def storage_to_glance_helm_values(storage):
 
     result = {}
 
-    # Check if any backend is Ceph
     has_ceph = any(
         b.get("type") == "ceph_rbd" for b in backends_config.values()
     )
@@ -402,7 +397,6 @@ def storage_to_glance_helm_values(storage):
     if has_ceph:
         result["storage"] = "rbd"
 
-    # Build Glance config
     glance_conf = {}
 
     if len(backends_config) > 1:
@@ -419,23 +413,15 @@ def storage_to_glance_helm_values(storage):
             "default_backend": default_backend,
         }
 
-        # Per-backend sections
         for name, backend in backends_config.items():
             glance_conf[name] = _glance_backend_config(backend)
     else:
         # Single backend: use legacy glance_store config
         for name, backend in backends_config.items():
             if backend["type"] == "ceph_rbd":
-                glance_conf["glance_store"] = {
-                    "rbd_store_pool": backend["pool"],
-                    "rbd_store_user": backend["ceph_user"],
-                    "rbd_store_ceph_conf": "/etc/ceph/ceph.conf",
-                    "rbd_store_chunk_size": backend.get("chunk_size", 8),
-                    "rbd_store_replication": backend.get("replication", 3),
-                    "rbd_store_crush_rule": backend.get(
-                        "crush_rule", "replicated_rule"
-                    ),
-                }
+                glance_conf["glance_store"] = _glance_backend_config(
+                    backend, include_pool_settings=True
+                )
 
     if glance_conf:
         result["conf"] = {"glance": glance_conf}
@@ -458,31 +444,6 @@ def storage_to_glance_helm_values(storage):
         result["pod"]["useHostNetwork"] = {"api": True}
 
     return result
-
-
-def _glance_store_type(backend_type):
-    """Map atmosphere backend type to Glance store type string."""
-    mapping = {
-        "ceph_rbd": "rbd",
-        "cinder": "cinder",
-    }
-    return mapping.get(backend_type, backend_type)
-
-
-def _glance_backend_config(backend):
-    """Generate per-backend Glance config section."""
-    if backend["type"] == "ceph_rbd":
-        return {
-            "rbd_store_pool": backend["pool"],
-            "rbd_store_user": backend["ceph_user"],
-            "rbd_store_ceph_conf": "/etc/ceph/ceph.conf",
-            "rbd_store_chunk_size": backend.get("chunk_size", 8),
-        }
-    elif backend["type"] == "cinder":
-        return {
-            "cinder_catalog_info": "volumev3::internalURL",
-        }
-    return {}
 
 
 def storage_to_nova_helm_values(storage):
@@ -534,7 +495,6 @@ def storage_to_libvirt_helm_values(storage):
 
     result = {}
 
-    # Check if Ceph is used at all
     has_ceph = (
         _has_any_ceph_volume_backend(storage)
         or ephemeral.get("type") == "ceph_rbd"
@@ -543,20 +503,18 @@ def storage_to_libvirt_helm_values(storage):
     ceph_conf = {"enabled": has_ceph}
 
     if has_ceph:
-        # Primary cinder user from the default volume backend
         default_backend = backends_config.get(default_backend_name, {})
-        if default_backend.get("type") in ("ceph_rbd", "ceph_rbd_ec"):
+        if default_backend.get("type") in _CEPH_TYPES:
             ceph_conf["cinder"] = {
                 "user": default_backend["ceph_user"],
                 "secret_uuid": default_backend["secret_uuid"],
             }
 
-        # Additional users for non-default Ceph volume backends
         additional_users = []
         for name, backend in backends_config.items():
             if name == default_backend_name:
                 continue
-            if backend.get("type") in ("ceph_rbd", "ceph_rbd_ec"):
+            if backend.get("type") in _CEPH_TYPES:
                 additional_users.append(
                     {
                         "user": backend["ceph_user"],
@@ -577,11 +535,9 @@ def storage_to_ceph_provisioners_helm_values(storage):
     """Derive Ceph Provisioners Helm values from atmosphere_storage."""
     validate_storage(storage)
 
-    volumes = storage.get("volumes", {})
-    backends_config = volumes.get("backends", {})
+    backends_config = _get_volume_backends(storage)
 
     client_conf = {}
-
     for name, backend in backends_config.items():
         if backend.get("type") == "ceph_rbd_ec":
             data_pool = backend.get("data_pool_name", f"{backend['pool']}.data")

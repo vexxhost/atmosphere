@@ -286,6 +286,33 @@ class TestStorageToCinderHelmValues:
         # storage-init NOT disabled (has ceph backends)
         assert result.get("manifests", {}).get("job_storage_init") is not False
 
+    def test_non_ceph_volumes_with_ceph_backup(self):
+        storage = {
+            **DEFAULT_STORAGE,
+            "volumes": {
+                "default": "powerstore",
+                "backends": {
+                    "powerstore": {
+                        "type": "powerstore",
+                        "san_ip": "10.0.0.1",
+                        "san_login": "admin",
+                        "san_password": "secret",
+                        "storage_protocol": "iSCSI",
+                    }
+                },
+            },
+            "backups": DEFAULT_STORAGE["backups"],
+        }
+        result = storage_to_cinder_helm_values(storage)
+
+        # Backup pool generated even without Ceph volume backends
+        assert "ceph" in result["conf"]
+        assert "backup" in result["conf"]["ceph"]["pools"]
+        assert result["conf"]["ceph"]["pools"]["backup"]["app_name"] == "cinder-backup"
+        assert result["conf"]["cinder"]["DEFAULT"]["backup_driver"] == (
+            "cinder.backup.drivers.ceph.CephBackupDriver"
+        )
+
 
 class TestStorageToGlanceHelmValues:
     def test_single_ceph_rbd_backend(self):
