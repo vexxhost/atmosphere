@@ -1,20 +1,9 @@
-# Copyright (c) 2025 VEXXHOST, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"); you may
-# not use this file except in compliance with the License. You may obtain
-# a copy of the License at
-#
-#      http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-# License for the specific language governing permissions and limitations
-# under the License.
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
 
 from __future__ import annotations
 
-from typing import Annotated, Any, Callable, ClassVar, Literal, Self, Union
+from typing import Annotated, Any, Literal, Self, Union
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -31,10 +20,7 @@ DOCUMENTATION = """
     - VEXXHOST, Inc.
 """
 
-
-# ---------------------------------------------------------------------------
-# Pydantic models
-# ---------------------------------------------------------------------------
+HelmValues = dict[str, Any]
 
 
 class _StrictBase(BaseModel):
@@ -98,15 +84,67 @@ class LibvirtSecretSpec(_StrictBase):
     )
 
 
-# -- Image backends --
-
-
 class ImageBackendRbd(ReplicatedRbdPoolSpec):
     type: Literal["rbd"]
+
+    def glance_backend_config(
+        self, include_pool_settings: bool = False
+    ) -> dict[str, Any]:
+        """Generate per-backend Glance config section."""
+        config: dict[str, Any] = {
+            "rbd_store_pool": self.pool,
+            "rbd_store_user": self.ceph_user,
+            "rbd_store_ceph_conf": "/etc/ceph/ceph.conf",
+            "rbd_store_chunk_size": self.chunk_size,
+        }
+        if include_pool_settings:
+            config["rbd_store_replication"] = self.replication
+            config["rbd_store_crush_rule"] = self.crush_rule
+        return config
+
+    def amend_glance(
+        self, result: HelmValues, name: str, multi_backend: bool
+    ) -> None:
+        """Amend Glance Helm values for an RBD image backend."""
+        result["storage"] = "rbd"
+        glance = result["conf"]["glance"]
+        if multi_backend:
+            glance[name] = self.glance_backend_config()
+        else:
+            glance["glance_store"] = self.glance_backend_config(
+                include_pool_settings=True
+            )
 
 
 class ImageBackendCinder(_StrictBase):
     type: Literal["cinder"]
+
+    def glance_backend_config(
+        self, include_pool_settings: bool = False
+    ) -> dict[str, Any]:
+        """Generate per-backend Glance config section."""
+        return {"cinder_catalog_info": "volumev3::internalURL"}
+
+    def amend_glance(
+        self, result: HelmValues, name: str, multi_backend: bool
+    ) -> None:
+        """Amend Glance Helm values for a Cinder image backend."""
+        if multi_backend:
+            result["conf"]["glance"][name] = self.glance_backend_config()
+        result.setdefault("pod", {})
+        result["pod"]["security_context"] = {
+            "glance": {
+                "container": {
+                    "glance_api": {
+                        "allowPrivilegeEscalation": True,
+                        "readOnlyRootFilesystem": False,
+                        "privileged": True,
+                        "capabilities": {"add": ["SYS_ADMIN"]},
+                    }
+                }
+            }
+        }
+        result["pod"]["useHostNetwork"] = {"api": True}
 
 
 ImageBackend = Annotated[
@@ -115,58 +153,226 @@ ImageBackend = Annotated[
 ]
 
 
-# -- Volume backends --
+class _HostAttachedVolumeBackend(_StrictBase):
+    """Base for volume backends where volumes are attached directly to the host.
+
+    Provides common Cinder amendments (iSCSI enablement, trimmed dependency
+    graph) shared by all non-Ceph volume backends.
+    """
+
+    _NON_CEPH_INIT_JOBS: list[str] = [
+        "cinder-db-sync",
+        "cinder-ks-user",
+        "cinder-ks-endpoints",
+        "cinder-rabbit-init",
+    ]
+
+    def amend_cinder(self, result: HelmValues, name: str) -> None:
+        """Apply common non-Ceph Cinder amendments."""
+        result.setdefault("storage", self.type)
+        result["conf"]["enable_iscsi"] = True
+        result["dependencies"] = {
+            "static": {
+                svc: {"jobs": list(self._NON_CEPH_INIT_JOBS)}
+                for svc in ("api", "scheduler", "volume", "volume_usage_audit")
+            }
+        }
 
 
 class VolumeBackendRbd(ReplicatedRbdPoolSpec, LibvirtSecretSpec):
+    """Ceph RBD replicated volume backend."""
+
     type: Literal["rbd"]
-    host_attached: ClassVar[bool] = False
-    cinder_driver: ClassVar[str] = "cinder.volume.drivers.rbd.RBDDriver"
+
+    def cinder_backend_config(self, name: str) -> dict[str, Any]:
+        """Generate Cinder backend config for a Ceph RBD replicated backend."""
+        return {
+            "volume_driver": "cinder.volume.drivers.rbd.RBDDriver",
+            "volume_backend_name": name,
+            "rbd_pool": self.pool,
+            "rbd_ceph_conf": "/etc/ceph/ceph.conf",
+            "rbd_flatten_volume_from_snapshot": False,
+            "report_discard_supported": True,
+            "rbd_max_clone_depth": 5,
+            "rbd_store_chunk_size": self.chunk_size,
+            "rados_connect_timeout": -1,
+            "rbd_user": self.ceph_user,
+            "rbd_secret_uuid": str(self.secret_uuid),
+            "image_volume_cache_enabled": True,
+            "image_volume_cache_max_size_gb": 200,
+            "image_volume_cache_max_count": 50,
+        }
+
+    def amend_cinder(self, result: HelmValues, name: str) -> None:
+        """Amend Cinder Helm values for an RBD volume backend."""
+        result["storage"] = "ceph"
+        result["conf"]["backends"][name] = self.cinder_backend_config(name)
+        pools = result["conf"].setdefault("ceph", {}).setdefault("pools", {})
+        pools[self.pool] = {
+            "replication": self.replication,
+            "crush_rule": self.crush_rule,
+            "chunk_size": self.chunk_size,
+            "app_name": "cinder-volume",
+        }
 
 
 class VolumeBackendRbdEc(ErasureCodedRbdPoolSpec, LibvirtSecretSpec):
+    """Ceph RBD erasure-coded volume backend."""
+
     type: Literal["rbd-ec"]
-    host_attached: ClassVar[bool] = False
-    cinder_driver: ClassVar[str] = "cinder.volume.drivers.rbd.RBDDriver"
+
+    def cinder_backend_config(self, name: str) -> dict[str, Any]:
+        """Generate Cinder backend config for a Ceph RBD erasure-coded backend."""
+        return {
+            "volume_driver": "cinder.volume.drivers.rbd.RBDDriver",
+            "volume_backend_name": name,
+            "rbd_pool": self.pool,
+            "rbd_ceph_conf": "/etc/ceph/ceph.conf",
+            "rbd_flatten_volume_from_snapshot": False,
+            "report_discard_supported": True,
+            "rbd_max_clone_depth": 5,
+            "rbd_store_chunk_size": self.chunk_size,
+            "rados_connect_timeout": -1,
+            "rbd_user": self.ceph_user,
+            "rbd_secret_uuid": str(self.secret_uuid),
+            "image_volume_cache_enabled": True,
+            "image_volume_cache_max_size_gb": 200,
+            "image_volume_cache_max_count": 50,
+            "rbd_data_pool": (
+                self.data_pool if self.data_pool else f"{self.pool}.data"
+            ),
+        }
+
+    def amend_cinder(self, result: HelmValues, name: str) -> None:
+        """Amend Cinder Helm values for an RBD-EC volume backend."""
+        result["storage"] = "ceph"
+        result["conf"]["backends"][name] = self.cinder_backend_config(name)
+        pools = result["conf"].setdefault("ceph", {}).setdefault("pools", {})
+        ec = self.erasure_coded
+        pool_config: dict[str, Any] = {
+            "app_name": "cinder-volume",
+            "erasure_coded": {
+                "k": ec.k,
+                "m": ec.m,
+                "failure_domain": ec.failure_domain,
+            },
+            "metadata": {
+                "replication": self.metadata_replication,
+            },
+        }
+        if ec.device_class is not None:
+            pool_config["erasure_coded"]["device_class"] = ec.device_class
+        if self.data_pool is not None:
+            pool_config["erasure_coded"]["data_pool_name"] = self.data_pool
+        pools[self.pool] = pool_config
 
 
-class VolumeBackendPowerstore(_StrictBase):
+class VolumeBackendPowerstore(_HostAttachedVolumeBackend):
+    """Dell PowerStore volume backend."""
+
     type: Literal["powerstore"]
-    host_attached: ClassVar[bool] = True
-    cinder_driver: ClassVar[str] = (
-        "cinder.volume.drivers.dell_emc.powerstore.driver.PowerStoreDriver"
-    )
-    ip: str = Field(description="PowerStore management IP address.")
-    login: str = Field(description="PowerStore management login.")
-    password: str = Field(description="PowerStore management password.")
+    ip: str = Field(description="Management IP address.")
+    login: str = Field(description="Login credential.")
+    password: str = Field(description="Password credential.")
     protocol: Literal["fc", "iscsi"] = Field(
-        description="Storage transport protocol."
+        description="Transport protocol."
     )
 
+    def cinder_backend_config(self, name: str) -> dict[str, Any]:
+        """Generate Cinder backend config for PowerStore."""
+        protocol_map = {"fc": "FC", "iscsi": "iSCSI"}
+        return {
+            "volume_backend_name": name,
+            "volume_driver": "cinder.volume.drivers.dell_emc.powerstore.driver.PowerStoreDriver",
+            "san_ip": self.ip,
+            "san_login": self.login,
+            "san_password": self.password,
+            "storage_protocol": protocol_map[self.protocol],
+        }
 
-class _VolumeBackendPureBase(_StrictBase):
+    def amend_cinder(self, result: HelmValues, name: str) -> None:
+        """Amend Cinder Helm values for a PowerStore volume backend."""
+        super().amend_cinder(result, name)
+        result["conf"]["backends"][name] = self.cinder_backend_config(name)
+
+
+class _VolumeBackendPureBase(_HostAttachedVolumeBackend):
+    """Pure Storage FlashArray volume backend."""
+
     type: Literal["pure"]
-    host_attached: ClassVar[bool] = True
-    ip: str = Field(description="Pure Storage management IP address.")
-    api_token: str = Field(description="Pure Storage API token.")
+    ip: str = Field(description="Management IP address.")
+    api_token: str = Field(description="API token.")
+
+    @property
+    def cinder_driver(self) -> str:
+        raise NotImplementedError
+
+    def cinder_backend_config(self, name: str) -> dict[str, Any]:
+        """Generate Cinder backend config for Pure Storage."""
+        return {
+            "volume_backend_name": name,
+            "volume_driver": self.cinder_driver,
+            "san_ip": self.ip,
+            "pure_api_token": self.api_token,
+            "use_multipath_for_image_xfer": True,
+            "pure_eradicate_on_delete": True,
+        }
+
+    def amend_cinder(self, result: HelmValues, name: str) -> None:
+        """Amend Cinder Helm values for a Pure Storage volume backend."""
+        super().amend_cinder(result, name)
+        result["conf"]["backends"][name] = self.cinder_backend_config(name)
+        result.setdefault("pod", {})
+        result["pod"]["useHostNetwork"] = {"volume": True, "backup": True}
+        result["pod"]["security_context"] = {
+            "cinder_volume": {
+                "container": {
+                    "cinder_volume": {
+                        "readOnlyRootFilesystem": True,
+                        "privileged": True,
+                    }
+                }
+            },
+            "cinder_backup": {
+                "container": {
+                    "cinder_backup": {"privileged": True}
+                }
+            },
+        }
 
 
 class VolumeBackendPureISCSI(_VolumeBackendPureBase):
     protocol: Literal["iscsi"]
-    cinder_driver: ClassVar[str] = "cinder.volume.drivers.pure.PureISCSIDriver"
+
+    @property
+    def cinder_driver(self) -> str:
+        return "cinder.volume.drivers.pure.PureISCSIDriver"
 
 
 class VolumeBackendPureFC(_VolumeBackendPureBase):
     protocol: Literal["fc"]
-    cinder_driver: ClassVar[str] = "cinder.volume.drivers.pure.PureFCDriver"
+
+    @property
+    def cinder_driver(self) -> str:
+        return "cinder.volume.drivers.pure.PureFCDriver"
 
 
 class VolumeBackendPureNVME(_VolumeBackendPureBase):
     protocol: Literal["nvme"]
-    cinder_driver: ClassVar[str] = "cinder.volume.drivers.pure.PureNVMEDriver"
     transport: Literal["roce", "tcp"] | None = Field(
         default=None, description="NVMe transport type."
     )
+
+    @property
+    def cinder_driver(self) -> str:
+        return "cinder.volume.drivers.pure.PureNVMEDriver"
+
+    def cinder_backend_config(self, name: str) -> dict[str, Any]:
+        """Generate Cinder backend config for Pure Storage NVMe."""
+        config = super().cinder_backend_config(name)
+        if self.transport is not None:
+            config["pure_nvme_transport"] = self.transport
+        return config
 
 
 VolumeBackendPure = Annotated[
@@ -175,13 +381,56 @@ VolumeBackendPure = Annotated[
 ]
 
 
-class VolumeBackendStorpool(_StrictBase):
+class VolumeBackendStorpool(_HostAttachedVolumeBackend):
+    """StorPool distributed storage volume backend."""
+
     type: Literal["storpool"]
-    host_attached: ClassVar[bool] = True
-    cinder_driver: ClassVar[str] = (
-        "cinder.volume.drivers.storpool.StorPoolDriver"
-    )
-    template: str = Field(description="StorPool volume template name.")
+    template: str = Field(description="Volume template name.")
+
+    def cinder_backend_config(self, name: str) -> dict[str, Any]:
+        """Generate Cinder backend config for StorPool."""
+        return {
+            "volume_backend_name": name,
+            "volume_driver": "cinder.volume.drivers.storpool.StorPoolDriver",
+            "storpool_template": self.template,
+            "report_discard_supported": True,
+        }
+
+    def amend_cinder(self, result: HelmValues, name: str) -> None:
+        """Amend Cinder Helm values for a StorPool volume backend."""
+        super().amend_cinder(result, name)
+        result["conf"]["backends"][name] = self.cinder_backend_config(name)
+        result.setdefault("pod", {})
+        result["pod"]["useHostNetwork"] = {"volume": True}
+        result["pod"]["mounts"] = {
+            "cinder_volume": {
+                "volumeMounts": [
+                    {
+                        "name": "etc-storpool-conf",
+                        "mountPath": "/etc/storpool.conf",
+                        "readOnly": True,
+                    },
+                    {
+                        "name": "etc-storpool-conf-d",
+                        "mountPath": "/etc/storpool.conf.d",
+                        "readOnly": True,
+                    },
+                ],
+                "volumes": [
+                    {
+                        "name": "etc-storpool-conf",
+                        "hostPath": {"type": "File", "path": "/etc/storpool.conf"},
+                    },
+                    {
+                        "name": "etc-storpool-conf-d",
+                        "hostPath": {
+                            "type": "Directory",
+                            "path": "/etc/storpool.conf.d",
+                        },
+                    },
+                ],
+            }
+        }
 
 
 VolumeBackend = Annotated[
@@ -195,23 +444,42 @@ VolumeBackend = Annotated[
     Field(discriminator="type"),
 ]
 
-# -- Backup backends --
-
 
 class BackupBackendRbd(ReplicatedRbdPoolSpec):
     type: Literal["rbd"]
 
+    def amend_cinder_backup(self, result: HelmValues) -> None:
+        """Amend Cinder Helm values with RBD backup configuration."""
+        result["conf"]["cinder"]["DEFAULT"]["backup_driver"] = (
+            "cinder.backup.drivers.ceph.CephBackupDriver"
+        )
+        result["conf"]["cinder"]["DEFAULT"]["backup_ceph_conf"] = "/etc/ceph/ceph.conf"
+        result["conf"]["cinder"]["DEFAULT"]["backup_ceph_user"] = self.ceph_user
+        result["conf"]["cinder"]["DEFAULT"]["backup_ceph_pool"] = self.pool
+
+        pools = result["conf"].setdefault("ceph", {}).setdefault("pools", {})
+        pools["backup"] = {
+            "replication": self.replication,
+            "crush_rule": self.crush_rule,
+            "chunk_size": self.chunk_size,
+            "app_name": "cinder-backup",
+        }
+
 
 class BackupBackendNone(_StrictBase):
     type: Literal["none"]
+
+    def amend_cinder_backup(self, result: HelmValues) -> None:
+        """Amend Cinder Helm values to disable backups."""
+        result.setdefault("manifests", {})
+        result["manifests"]["deployment_backup"] = False
+        result["manifests"]["job_backup_storage_init"] = False
 
 
 BackupBackend = Annotated[
     Union[BackupBackendRbd, BackupBackendNone],
     Field(discriminator="type"),
 ]
-
-# -- Ephemeral backends --
 
 
 class EphemeralBackendRbd(ReplicatedRbdPoolSpec, LibvirtSecretSpec):
@@ -226,9 +494,6 @@ EphemeralBackend = Annotated[
     Union[EphemeralBackendRbd, EphemeralBackendLocal],
     Field(discriminator="type"),
 ]
-
-
-# -- Top-level configuration --
 
 
 class ImageStorageConfig(_StrictBase):
@@ -293,283 +558,22 @@ class StorageConfig(_StrictBase):
     """
 
     images: ImageStorageConfig | None = Field(
-        default=None, description="Glance image storage configuration."
+        default=None, description="Image configuration (Glance)."
     )
     volumes: VolumeStorageConfig | None = Field(
-        default=None, description="Cinder volume storage configuration."
+        default=None, description="Volume configuration (Cinder)."
     )
     backups: BackupBackend | None = Field(
-        default=None, description="Cinder backup backend configuration."
+        default=None, description="Backup configuration (Cinder)."
     )
     ephemeral: EphemeralBackend | None = Field(
-        default=None, description="Nova ephemeral disk backend configuration."
+        default=None, description="Ephemeral disk configuration (Nova)."
     )
 
-
-# ---------------------------------------------------------------------------
-# Internal helpers
-# ---------------------------------------------------------------------------
-
-HelmValues = dict[str, Any]
-
-CinderAmender = Callable[..., None]
-GlanceAmender = Callable[..., None]
 
 def _parse(raw: Any) -> StorageConfig:
     """Validate and parse raw Ansible input into a StorageConfig."""
     return StorageConfig.model_validate(raw)
-
-
-# -- Cinder per-backend config generators --
-
-
-def _ceph_rbd_cinder_backend(
-    name: str,
-    backend: VolumeBackendRbd | VolumeBackendRbdEc,
-) -> dict[str, Any]:
-    """Generate Cinder backend config for a Ceph RBD backend (replicated or EC)."""
-    config: dict[str, Any] = {
-        "volume_driver": backend.cinder_driver,
-        "volume_backend_name": name,
-        "rbd_pool": backend.pool,
-        "rbd_ceph_conf": "/etc/ceph/ceph.conf",
-        "rbd_flatten_volume_from_snapshot": False,
-        "report_discard_supported": True,
-        "rbd_max_clone_depth": 5,
-        "rbd_store_chunk_size": backend.chunk_size,
-        "rados_connect_timeout": -1,
-        "rbd_user": backend.ceph_user,
-        "rbd_secret_uuid": str(backend.secret_uuid),
-        "image_volume_cache_enabled": True,
-        "image_volume_cache_max_size_gb": 200,
-        "image_volume_cache_max_count": 50,
-    }
-    if isinstance(backend, VolumeBackendRbdEc):
-        config["rbd_data_pool"] = (
-            backend.data_pool
-            if backend.data_pool
-            else f"{backend.pool}.data"
-        )
-    return config
-
-
-_POWERSTORE_PROTOCOL_MAP: dict[str, str] = {
-    "fc": "FC",
-    "iscsi": "iSCSI",
-}
-
-
-def _powerstore_cinder_backend(
-    name: str, backend: VolumeBackendPowerstore
-) -> dict[str, Any]:
-    """Generate Cinder backend config for PowerStore."""
-    return {
-        "volume_backend_name": name,
-        "volume_driver": backend.cinder_driver,
-        "san_ip": backend.ip,
-        "san_login": backend.login,
-        "san_password": backend.password,
-        "storage_protocol": _POWERSTORE_PROTOCOL_MAP[backend.protocol],
-    }
-
-
-def _pure_cinder_backend(
-    name: str,
-    backend: VolumeBackendPureISCSI | VolumeBackendPureFC | VolumeBackendPureNVME,
-) -> dict[str, Any]:
-    """Generate Cinder backend config for Pure Storage."""
-    config: dict[str, Any] = {
-        "volume_backend_name": name,
-        "volume_driver": backend.cinder_driver,
-        "san_ip": backend.ip,
-        "pure_api_token": backend.api_token,
-        "use_multipath_for_image_xfer": True,
-        "pure_eradicate_on_delete": True,
-    }
-    if isinstance(backend, VolumeBackendPureNVME) and backend.transport is not None:
-        config["pure_nvme_transport"] = backend.transport
-    return config
-
-
-def _storpool_cinder_backend(
-    name: str, backend: VolumeBackendStorpool
-) -> dict[str, Any]:
-    """Generate Cinder backend config for StorPool."""
-    return {
-        "volume_backend_name": name,
-        "volume_driver": backend.cinder_driver,
-        "storpool_template": backend.template,
-        "report_discard_supported": True,
-    }
-
-
-_NON_CEPH_INIT_JOBS: list[str] = [
-    "cinder-db-sync",
-    "cinder-ks-user",
-    "cinder-ks-endpoints",
-    "cinder-rabbit-init",
-]
-_NON_CEPH_DEPENDENCIES: dict[str, Any] = {
-    "static": {
-        name: {"jobs": list(_NON_CEPH_INIT_JOBS)}
-        for name in ("api", "scheduler", "volume", "volume_usage_audit")
-    }
-}
-
-
-# -- Cinder amend functions --
-
-
-def _amend_cinder_rbd(result: HelmValues, name: str, backend: VolumeBackendRbd) -> None:
-    """Amend Cinder result for an rbd volume backend."""
-    result["storage"] = "ceph"
-    result["conf"]["backends"][name] = _ceph_rbd_cinder_backend(name, backend)
-    pools = result["conf"].setdefault("ceph", {}).setdefault("pools", {})
-    pools[backend.pool] = {
-        "replication": backend.replication,
-        "crush_rule": backend.crush_rule,
-        "chunk_size": backend.chunk_size,
-        "app_name": "cinder-volume",
-    }
-
-
-def _amend_cinder_rbd_ec(result: HelmValues, name: str, backend: VolumeBackendRbdEc) -> None:
-    """Amend Cinder result for an rbd-ec volume backend."""
-    result["storage"] = "ceph"
-    result["conf"]["backends"][name] = _ceph_rbd_cinder_backend(name, backend)
-    pools = result["conf"].setdefault("ceph", {}).setdefault("pools", {})
-    ec = backend.erasure_coded
-    pool_config: dict[str, Any] = {
-        "app_name": "cinder-volume",
-        "erasure_coded": {
-            "k": ec.k,
-            "m": ec.m,
-            "failure_domain": ec.failure_domain,
-        },
-        "metadata": {
-            "replication": backend.metadata_replication,
-        },
-    }
-    if ec.device_class is not None:
-        pool_config["erasure_coded"]["device_class"] = ec.device_class
-    if backend.data_pool is not None:
-        pool_config["erasure_coded"]["data_pool_name"] = backend.data_pool
-    pools[backend.pool] = pool_config
-
-
-def _amend_cinder_non_ceph(
-    result: HelmValues,
-    name: str,
-    backend: VolumeBackendPowerstore | VolumeBackendPureISCSI | VolumeBackendPureFC | VolumeBackendPureNVME | VolumeBackendStorpool,
-) -> None:
-    """Common amendments for non-Ceph volume backends."""
-    result.setdefault("storage", backend.type)
-    result["conf"]["enable_iscsi"] = True
-    result["dependencies"] = _NON_CEPH_DEPENDENCIES
-
-
-def _amend_cinder_powerstore(result: HelmValues, name: str, backend: VolumeBackendPowerstore) -> None:
-    """Amend Cinder result for a PowerStore volume backend."""
-    _amend_cinder_non_ceph(result, name, backend)
-    result["conf"]["backends"][name] = _powerstore_cinder_backend(name, backend)
-
-
-def _amend_cinder_pure(
-    result: HelmValues,
-    name: str,
-    backend: VolumeBackendPureISCSI | VolumeBackendPureFC | VolumeBackendPureNVME,
-) -> None:
-    """Amend Cinder result for a Pure Storage volume backend."""
-    _amend_cinder_non_ceph(result, name, backend)
-    result["conf"]["backends"][name] = _pure_cinder_backend(name, backend)
-    result.setdefault("pod", {})
-    result["pod"]["useHostNetwork"] = {"volume": True, "backup": True}
-    result["pod"]["security_context"] = {
-        "cinder_volume": {
-            "container": {
-                "cinder_volume": {
-                    "readOnlyRootFilesystem": True,
-                    "privileged": True,
-                }
-            }
-        },
-        "cinder_backup": {
-            "container": {
-                "cinder_backup": {"privileged": True}
-            }
-        },
-    }
-
-
-def _amend_cinder_storpool(result: HelmValues, name: str, backend: VolumeBackendStorpool) -> None:
-    """Amend Cinder result for a StorPool volume backend."""
-    _amend_cinder_non_ceph(result, name, backend)
-    result["conf"]["backends"][name] = _storpool_cinder_backend(name, backend)
-    result.setdefault("pod", {})
-    result["pod"]["useHostNetwork"] = {"volume": True}
-    result["pod"]["mounts"] = {
-        "cinder_volume": {
-            "volumeMounts": [
-                {
-                    "name": "etc-storpool-conf",
-                    "mountPath": "/etc/storpool.conf",
-                    "readOnly": True,
-                },
-                {
-                    "name": "etc-storpool-conf-d",
-                    "mountPath": "/etc/storpool.conf.d",
-                    "readOnly": True,
-                },
-            ],
-            "volumes": [
-                {
-                    "name": "etc-storpool-conf",
-                    "hostPath": {"type": "File", "path": "/etc/storpool.conf"},
-                },
-                {
-                    "name": "etc-storpool-conf-d",
-                    "hostPath": {
-                        "type": "Directory",
-                        "path": "/etc/storpool.conf.d",
-                    },
-                },
-            ],
-        }
-    }
-
-
-_CINDER_AMENDERS: dict[str, CinderAmender] = {
-    "rbd": _amend_cinder_rbd,
-    "rbd-ec": _amend_cinder_rbd_ec,
-    "powerstore": _amend_cinder_powerstore,
-    "pure": _amend_cinder_pure,
-    "storpool": _amend_cinder_storpool,
-}
-
-
-def _amend_cinder_backup(
-    result: HelmValues, backups: BackupBackendRbd | BackupBackendNone | None
-) -> None:
-    """Amend Cinder result with backup configuration."""
-    if isinstance(backups, BackupBackendRbd):
-        result["conf"]["cinder"]["DEFAULT"]["backup_driver"] = (
-            "cinder.backup.drivers.ceph.CephBackupDriver"
-        )
-        result["conf"]["cinder"]["DEFAULT"]["backup_ceph_conf"] = "/etc/ceph/ceph.conf"
-        result["conf"]["cinder"]["DEFAULT"]["backup_ceph_user"] = backups.ceph_user
-        result["conf"]["cinder"]["DEFAULT"]["backup_ceph_pool"] = backups.pool
-
-        pools = result["conf"].setdefault("ceph", {}).setdefault("pools", {})
-        pools["backup"] = {
-            "replication": backups.replication,
-            "crush_rule": backups.crush_rule,
-            "chunk_size": backups.chunk_size,
-            "app_name": "cinder-backup",
-        }
-    elif isinstance(backups, BackupBackendNone):
-        result.setdefault("manifests", {})
-        result["manifests"]["deployment_backup"] = False
-        result["manifests"]["job_backup_storage_init"] = False
 
 
 def storage_to_cinder_helm_values(raw: Any) -> HelmValues:
@@ -584,107 +588,21 @@ def storage_to_cinder_helm_values(raw: Any) -> HelmValues:
     result: HelmValues = {"conf": {"backends": {}, "cinder": {"DEFAULT": {}}}}
 
     for name, backend in backends_config.items():
-        _CINDER_AMENDERS[backend.type](result, name, backend)
+        backend.amend_cinder(result, name)
 
     result["conf"]["cinder"]["DEFAULT"]["enabled_backends"] = ",".join(
         backends_config.keys()
     )
     result["conf"]["cinder"]["DEFAULT"]["default_volume_type"] = default_backend
 
-    _amend_cinder_backup(result, backups)
+    if backups is not None:
+        backups.amend_cinder_backup(result)
 
-    # Disable storage init when only non-Ceph volume backends are present
     if result["conf"].get("enable_iscsi") and result.get("storage") != "ceph":
         result.setdefault("manifests", {})
         result["manifests"]["job_storage_init"] = False
 
     return result
-
-
-# -- Glance helpers --
-
-
-def _glance_store_type(backend_type: str) -> str:
-    """Map atmosphere backend type to Glance store type string."""
-    mapping = {
-        "rbd": "rbd",
-        "cinder": "cinder",
-    }
-    return mapping.get(backend_type, backend_type)
-
-
-def _glance_backend_config(
-    backend: ImageBackendRbd | ImageBackendCinder,
-    include_pool_settings: bool = False,
-) -> dict[str, Any]:
-    """Generate per-backend Glance config section.
-
-    When ``include_pool_settings`` is True, pool-level settings (replication,
-    crush_rule) are included.  This is used for the legacy single-backend
-    ``glance_store`` path which embeds them directly.
-    """
-    if isinstance(backend, ImageBackendRbd):
-        config: dict[str, Any] = {
-            "rbd_store_pool": backend.pool,
-            "rbd_store_user": backend.ceph_user,
-            "rbd_store_ceph_conf": "/etc/ceph/ceph.conf",
-            "rbd_store_chunk_size": backend.chunk_size,
-        }
-        if include_pool_settings:
-            config["rbd_store_replication"] = backend.replication
-            config["rbd_store_crush_rule"] = backend.crush_rule
-        return config
-    elif isinstance(backend, ImageBackendCinder):
-        return {
-            "cinder_catalog_info": "volumev3::internalURL",
-        }
-    return {}
-
-
-# -- Glance amend functions --
-
-
-def _amend_glance_rbd(
-    result: HelmValues, name: str, backend: ImageBackendRbd, multi_backend: bool
-) -> None:
-    """Amend Glance result for an rbd backend."""
-    result["storage"] = "rbd"
-    glance = result["conf"]["glance"]
-    if multi_backend:
-        glance[name] = _glance_backend_config(backend)
-    else:
-        glance["glance_store"] = _glance_backend_config(
-            backend, include_pool_settings=True
-        )
-
-
-def _amend_glance_cinder(
-    result: HelmValues, name: str, backend: ImageBackendCinder, multi_backend: bool
-) -> None:
-    """Amend Glance result for a cinder backend."""
-    if multi_backend:
-        result["conf"]["glance"][name] = _glance_backend_config(backend)
-
-    result.setdefault("pod", {})
-    result["pod"]["security_context"] = {
-        "glance": {
-            "container": {
-                "glance_api": {
-                    "allowPrivilegeEscalation": True,
-                    "readOnlyRootFilesystem": False,
-                    "privileged": True,
-                    "capabilities": {"add": ["SYS_ADMIN"]},
-                }
-            }
-        }
-    }
-    result["pod"]["useHostNetwork"] = {"api": True}
-
-
-_GLANCE_AMENDERS: dict[str, GlanceAmender] = {
-    "rbd": _amend_glance_rbd,
-    "cinder": _amend_glance_cinder,
-}
 
 
 def storage_to_glance_helm_values(raw: Any) -> HelmValues:
@@ -701,8 +619,7 @@ def storage_to_glance_helm_values(raw: Any) -> HelmValues:
     if multi_backend:
         enabled_parts: list[str] = []
         for name, backend in backends_config.items():
-            store_type = _glance_store_type(backend.type)
-            enabled_parts.append(f"{name}:{store_type}")
+            enabled_parts.append(f"{name}:{backend.type}")
 
         result["conf"]["glance"]["DEFAULT"] = {
             "enabled_backends": ",".join(enabled_parts),
@@ -712,7 +629,7 @@ def storage_to_glance_helm_values(raw: Any) -> HelmValues:
         }
 
     for name, backend in backends_config.items():
-        _GLANCE_AMENDERS[backend.type](result, name, backend, multi_backend)
+        backend.amend_glance(result, name, multi_backend)
 
     if not result["conf"]["glance"]:
         del result["conf"]
@@ -750,11 +667,10 @@ def storage_to_nova_helm_values(raw: Any) -> HelmValues:
             },
         }
 
-    # Amend for volume backends that attach block devices to the host
     volumes = storage.volumes
     if volumes:
         for backend in volumes.backends.values():
-            if backend.host_attached:
+            if isinstance(backend, _HostAttachedVolumeBackend):
                 result.setdefault("conf", {})
                 result["conf"]["enable_iscsi"] = True
                 break
