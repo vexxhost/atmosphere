@@ -3,7 +3,9 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Any, Literal, Self, Union
+from typing import Annotated, Any, Literal, Union
+
+from typing_extensions import Self
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
