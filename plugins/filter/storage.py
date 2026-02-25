@@ -34,15 +34,11 @@ class RbdPoolSpec(_StrictBase):
         description="CRUSH rule applied to the pool.",
     )
     user: str = Field(description="Ceph client user name.")
-    chunk_size: int = Field(
-        default=8, description="RBD stripe unit size in MiB."
-    )
+    chunk_size: int = Field(default=8, description="RBD stripe unit size in MiB.")
 
 
 class ReplicatedRbdPoolSpec(RbdPoolSpec):
-    replication: int = Field(
-        default=3, description="Number of replicas for the pool."
-    )
+    replication: int = Field(default=3, description="Number of replicas for the pool.")
 
 
 class ErasureCodedSpec(_StrictBase):
@@ -59,9 +55,7 @@ class ErasureCodedSpec(_StrictBase):
     @model_validator(mode="after")
     def _validate_coding_params(self) -> Self:
         if self.m >= self.k:
-            raise ValueError(
-                f"m ({self.m}) must be less than k ({self.k})"
-            )
+            raise ValueError(f"m ({self.m}) must be less than k ({self.k})")
         return self
 
 
@@ -102,9 +96,7 @@ class ImageBackendRbd(ReplicatedRbdPoolSpec):
             config["rbd_store_crush_rule"] = self.crush_rule
         return config
 
-    def amend_glance(
-        self, result: HelmValues, name: str, multi_backend: bool
-    ) -> None:
+    def amend_glance(self, result: HelmValues, name: str, multi_backend: bool) -> None:
         """Amend Glance Helm values for an RBD image backend."""
         result["storage"] = "rbd"
         glance = result["conf"]["glance"]
@@ -125,9 +117,7 @@ class ImageBackendCinder(_StrictBase):
         """Generate per-backend Glance config section."""
         return {"cinder_catalog_info": "volumev3::internalURL"}
 
-    def amend_glance(
-        self, result: HelmValues, name: str, multi_backend: bool
-    ) -> None:
+    def amend_glance(self, result: HelmValues, name: str, multi_backend: bool) -> None:
         """Amend Glance Helm values for a Cinder image backend."""
         if multi_backend:
             result["conf"]["glance"][name] = self.glance_backend_config()
@@ -274,9 +264,7 @@ class VolumeBackendPowerstore(_HostAttachedVolumeBackend):
     address: str = Field(description="Management address (IP or hostname).")
     username: str = Field(description="Username credential.")
     password: str = Field(description="Password credential.")
-    protocol: Literal["fc", "iscsi"] = Field(
-        description="Transport protocol."
-    )
+    protocol: Literal["fc", "iscsi"] = Field(description="Transport protocol.")
 
     def cinder_backend_config(self, name: str) -> dict[str, Any]:
         """Generate Cinder backend config for PowerStore."""
@@ -333,11 +321,7 @@ class _VolumeBackendPureBase(_HostAttachedVolumeBackend):
                     }
                 }
             },
-            "cinder_backup": {
-                "container": {
-                    "cinder_backup": {"privileged": True}
-                }
-            },
+            "cinder_backup": {"container": {"cinder_backup": {"privileged": True}}},
         }
 
 
@@ -450,9 +434,9 @@ class BackupBackendRbd(ReplicatedRbdPoolSpec):
 
     def amend_cinder_backup(self, result: HelmValues) -> None:
         """Amend Cinder Helm values with RBD backup configuration."""
-        result["conf"]["cinder"]["DEFAULT"]["backup_driver"] = (
-            "cinder.backup.drivers.ceph.CephBackupDriver"
-        )
+        result["conf"]["cinder"]["DEFAULT"][
+            "backup_driver"
+        ] = "cinder.backup.drivers.ceph.CephBackupDriver"
         result["conf"]["cinder"]["DEFAULT"]["backup_ceph_conf"] = "/etc/ceph/ceph.conf"
         result["conf"]["cinder"]["DEFAULT"]["backup_ceph_user"] = self.user
         result["conf"]["cinder"]["DEFAULT"]["backup_ceph_pool"] = self.pool
@@ -724,9 +708,7 @@ def storage_to_ceph_provisioners_helm_values(raw: Any) -> HelmValues:
     for _name, backend in backends_config.items():
         if isinstance(backend, VolumeBackendRbdEc):
             data_pool = (
-                backend.data_pool
-                if backend.data_pool
-                else f"{backend.pool}.data"
+                backend.data_pool if backend.data_pool else f"{backend.pool}.data"
             )
             client_key = f"client.{backend.user}"
             client_conf[client_key] = {

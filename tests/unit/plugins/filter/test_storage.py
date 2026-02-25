@@ -1,29 +1,12 @@
-# Copyright (c) 2025 VEXXHOST, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"); you may
-# not use this file except in compliance with the License. You may obtain
-# a copy of the License at
-#
-#      http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-# License for the specific language governing permissions and limitations
-# under the License.
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
 
 import pytest
-from pydantic import ValidationError
-
 from ansible_collections.vexxhost.atmosphere.plugins.filter.storage import (
-    FilterModule,
-    StorageConfig,
-    storage_to_ceph_provisioners_helm_values,
-    storage_to_cinder_helm_values,
-    storage_to_glance_helm_values,
-    storage_to_libvirt_helm_values,
-    storage_to_nova_helm_values,
-)
+    FilterModule, StorageConfig, storage_to_ceph_provisioners_helm_values,
+    storage_to_cinder_helm_values, storage_to_glance_helm_values,
+    storage_to_libvirt_helm_values, storage_to_nova_helm_values)
+from pydantic import ValidationError
 
 DEFAULT_STORAGE = {
     "images": {
@@ -117,159 +100,179 @@ class TestValidation:
 
     def test_extra_field_in_volume_backend_rejected(self):
         with pytest.raises(ValidationError):
-            StorageConfig.model_validate({
-                "volumes": {
-                    "default": "rbd1",
-                    "backends": {
-                        "rbd1": {
-                            **DEFAULT_STORAGE["volumes"]["backends"]["rbd1"],
-                            "extra": True,
-                        }
-                    },
+            StorageConfig.model_validate(
+                {
+                    "volumes": {
+                        "default": "rbd1",
+                        "backends": {
+                            "rbd1": {
+                                **DEFAULT_STORAGE["volumes"]["backends"]["rbd1"],
+                                "extra": True,
+                            }
+                        },
+                    }
                 }
-            })
+            )
 
     def test_erasure_coded_m_ge_k_rejected(self):
         with pytest.raises(ValidationError, match="m.*must be less than k"):
-            StorageConfig.model_validate({
-                "volumes": {
-                    "default": "ec1",
-                    "backends": {
-                        "ec1": {
-                            "type": "rbd-ec",
-                            "pool": "test",
-                            "erasure_coded": {
-                                "k": 2,
-                                "m": 3,
-                                "failure_domain": "host",
-                            },
-                            "metadata_replication": 3,
-                            "user": "cinder",
-                            "secret_uuid": "457eb676-33da-42ec-9a8c-9293d545c337",
-                        }
-                    },
+            StorageConfig.model_validate(
+                {
+                    "volumes": {
+                        "default": "ec1",
+                        "backends": {
+                            "ec1": {
+                                "type": "rbd-ec",
+                                "pool": "test",
+                                "erasure_coded": {
+                                    "k": 2,
+                                    "m": 3,
+                                    "failure_domain": "host",
+                                },
+                                "metadata_replication": 3,
+                                "user": "cinder",
+                                "secret_uuid": "457eb676-33da-42ec-9a8c-9293d545c337",
+                            }
+                        },
+                    }
                 }
-            })
+            )
 
     def test_erasure_coded_m_equal_k_rejected(self):
         with pytest.raises(ValidationError, match="m.*must be less than k"):
-            StorageConfig.model_validate({
-                "volumes": {
-                    "default": "ec1",
-                    "backends": {
-                        "ec1": {
-                            "type": "rbd-ec",
-                            "pool": "test",
-                            "erasure_coded": {
-                                "k": 3,
-                                "m": 3,
-                                "failure_domain": "host",
-                            },
-                            "metadata_replication": 3,
-                            "user": "cinder",
-                            "secret_uuid": "457eb676-33da-42ec-9a8c-9293d545c337",
-                        }
-                    },
+            StorageConfig.model_validate(
+                {
+                    "volumes": {
+                        "default": "ec1",
+                        "backends": {
+                            "ec1": {
+                                "type": "rbd-ec",
+                                "pool": "test",
+                                "erasure_coded": {
+                                    "k": 3,
+                                    "m": 3,
+                                    "failure_domain": "host",
+                                },
+                                "metadata_replication": 3,
+                                "user": "cinder",
+                                "secret_uuid": "457eb676-33da-42ec-9a8c-9293d545c337",
+                            }
+                        },
+                    }
                 }
-            })
+            )
 
     def test_image_default_not_in_backends(self):
         with pytest.raises(ValidationError, match="default.*not in backends"):
-            StorageConfig.model_validate({
-                "images": {
-                    "default": "missing",
-                    "backends": {
-                        "rbd1": {
-                            "type": "rbd",
-                            "pool": "glance.images",
-                            "user": "glance",
+            StorageConfig.model_validate(
+                {
+                    "images": {
+                        "default": "missing",
+                        "backends": {
+                            "rbd1": {
+                                "type": "rbd",
+                                "pool": "glance.images",
+                                "user": "glance",
+                            },
                         },
-                    },
+                    }
                 }
-            })
+            )
 
     def test_volume_default_not_in_backends(self):
         with pytest.raises(ValidationError, match="default.*not in backends"):
-            StorageConfig.model_validate({
-                "volumes": {
-                    "default": "missing",
-                    "backends": {
-                        "rbd1": DEFAULT_STORAGE["volumes"]["backends"]["rbd1"],
-                    },
+            StorageConfig.model_validate(
+                {
+                    "volumes": {
+                        "default": "missing",
+                        "backends": {
+                            "rbd1": DEFAULT_STORAGE["volumes"]["backends"]["rbd1"],
+                        },
+                    }
                 }
-            })
+            )
 
     def test_empty_backends_rejected(self):
         with pytest.raises(ValidationError):
-            StorageConfig.model_validate({
-                "volumes": {
-                    "default": "rbd1",
-                    "backends": {},
+            StorageConfig.model_validate(
+                {
+                    "volumes": {
+                        "default": "rbd1",
+                        "backends": {},
+                    }
                 }
-            })
+            )
 
     def test_invalid_backend_type_rejected(self):
         with pytest.raises(ValidationError):
-            StorageConfig.model_validate({
-                "volumes": {
-                    "default": "bad",
-                    "backends": {
-                        "bad": {"type": "nonexistent"},
-                    },
+            StorageConfig.model_validate(
+                {
+                    "volumes": {
+                        "default": "bad",
+                        "backends": {
+                            "bad": {"type": "nonexistent"},
+                        },
+                    }
                 }
-            })
+            )
 
     def test_invalid_secret_uuid_rejected(self):
         with pytest.raises(ValidationError):
-            StorageConfig.model_validate({
+            StorageConfig.model_validate(
+                {
+                    "volumes": {
+                        "default": "rbd1",
+                        "backends": {
+                            "rbd1": {
+                                **DEFAULT_STORAGE["volumes"]["backends"]["rbd1"],
+                                "secret_uuid": "not-a-uuid",
+                            }
+                        },
+                    }
+                }
+            )
+
+    def test_erasure_coded_k_below_minimum_rejected(self):
+        with pytest.raises(ValidationError):
+            StorageConfig.model_validate(
+                {
+                    "volumes": {
+                        "default": "ec1",
+                        "backends": {
+                            "ec1": {
+                                "type": "rbd-ec",
+                                "pool": "test",
+                                "erasure_coded": {
+                                    "k": 1,
+                                    "m": 1,
+                                    "failure_domain": "host",
+                                },
+                                "metadata_replication": 3,
+                                "user": "cinder",
+                                "secret_uuid": "457eb676-33da-42ec-9a8c-9293d545c337",
+                            }
+                        },
+                    }
+                }
+            )
+
+    def test_defaults_applied(self):
+        """Verify optional fields use their defaults when omitted."""
+        cfg = StorageConfig.model_validate(
+            {
                 "volumes": {
                     "default": "rbd1",
                     "backends": {
                         "rbd1": {
-                            **DEFAULT_STORAGE["volumes"]["backends"]["rbd1"],
-                            "secret_uuid": "not-a-uuid",
-                        }
-                    },
-                }
-            })
-
-    def test_erasure_coded_k_below_minimum_rejected(self):
-        with pytest.raises(ValidationError):
-            StorageConfig.model_validate({
-                "volumes": {
-                    "default": "ec1",
-                    "backends": {
-                        "ec1": {
-                            "type": "rbd-ec",
+                            "type": "rbd",
                             "pool": "test",
-                            "erasure_coded": {
-                                "k": 1,
-                                "m": 1,
-                                "failure_domain": "host",
-                            },
-                            "metadata_replication": 3,
                             "user": "cinder",
                             "secret_uuid": "457eb676-33da-42ec-9a8c-9293d545c337",
                         }
                     },
                 }
-            })
-
-    def test_defaults_applied(self):
-        """Verify optional fields use their defaults when omitted."""
-        cfg = StorageConfig.model_validate({
-            "volumes": {
-                "default": "rbd1",
-                "backends": {
-                    "rbd1": {
-                        "type": "rbd",
-                        "pool": "test",
-                        "user": "cinder",
-                        "secret_uuid": "457eb676-33da-42ec-9a8c-9293d545c337",
-                    }
-                },
             }
-        })
+        )
         backend = cfg.volumes.backends["rbd1"]
         assert backend.replication == 3
         assert backend.crush_rule == "replicated_rule"
@@ -348,7 +351,10 @@ class TestStorageToCinderHelmValues:
     def test_ceph_backup_config(self):
         result = storage_to_cinder_helm_values(DEFAULT_STORAGE)
         cinder_default = result["conf"]["cinder"]["DEFAULT"]
-        assert cinder_default["backup_driver"] == "cinder.backup.drivers.ceph.CephBackupDriver"
+        assert (
+            cinder_default["backup_driver"]
+            == "cinder.backup.drivers.ceph.CephBackupDriver"
+        )
         assert cinder_default["backup_ceph_conf"] == "/etc/ceph/ceph.conf"
         assert cinder_default["backup_ceph_user"] == "cinderbackup"
         assert cinder_default["backup_ceph_pool"] == "cinder.backups"
@@ -554,7 +560,9 @@ class TestStorageToCinderHelmValues:
         result = storage_to_cinder_helm_values(storage)
 
         backend = result["conf"]["backends"]["sp"]
-        assert backend["volume_driver"] == "cinder.volume.drivers.storpool.StorPoolDriver"
+        assert (
+            backend["volume_driver"] == "cinder.volume.drivers.storpool.StorPoolDriver"
+        )
         assert backend["storpool_template"] == "hybrid-2ssd"
         assert backend["report_discard_supported"] is True
         assert result["pod"]["useHostNetwork"] == {"volume": True}
@@ -605,7 +613,9 @@ class TestStorageToCinderHelmValues:
         assert "rbd1" in result["conf"]["backends"]
         assert "powerstore" in result["conf"]["backends"]
         assert result["conf"]["enable_iscsi"] is True
-        assert result["conf"]["cinder"]["DEFAULT"]["enabled_backends"] == "rbd1,powerstore"
+        assert (
+            result["conf"]["cinder"]["DEFAULT"]["enabled_backends"] == "rbd1,powerstore"
+        )
         assert "cinder.volumes" in result["conf"]["ceph"]["pools"]
         # storage-init NOT disabled when ceph is present
         assert result.get("manifests", {}).get("job_storage_init") is not False
@@ -714,8 +724,16 @@ class TestStorageToGlanceHelmValues:
         # Multi-backend rbd config does NOT include pool settings
         assert "rbd_store_replication" not in glance_conf["rbd1"]
         assert "rbd_store_crush_rule" not in glance_conf["rbd1"]
-        assert glance_conf["cinder_store"]["cinder_catalog_info"] == "volumev3::internalURL"
-        assert result["pod"]["security_context"]["glance"]["container"]["glance_api"]["privileged"] is True
+        assert (
+            glance_conf["cinder_store"]["cinder_catalog_info"]
+            == "volumev3::internalURL"
+        )
+        assert (
+            result["pod"]["security_context"]["glance"]["container"]["glance_api"][
+                "privileged"
+            ]
+            is True
+        )
 
     def test_multi_backend_rbd_only(self):
         """Multiple RBD backends still use multi-backend mode."""
@@ -792,9 +810,11 @@ class TestStorageToNovaHelmValues:
 
     def test_no_ephemeral_config(self):
         """When ephemeral is omitted and volumes are all Ceph, no conf set."""
-        result = storage_to_nova_helm_values({
-            "volumes": DEFAULT_STORAGE["volumes"],
-        })
+        result = storage_to_nova_helm_values(
+            {
+                "volumes": DEFAULT_STORAGE["volumes"],
+            }
+        )
         assert "ceph" not in result.get("conf", {})
         assert "nova" not in result.get("conf", {})
 
@@ -855,7 +875,10 @@ class TestStorageToLibvirtHelmValues:
         result = storage_to_libvirt_helm_values(DEFAULT_STORAGE)
         assert result["conf"]["ceph"]["enabled"] is True
         assert result["conf"]["ceph"]["cinder"]["user"] == "cinder"
-        assert result["conf"]["ceph"]["cinder"]["secret_uuid"] == "457eb676-33da-42ec-9a8c-9293d545c337"
+        assert (
+            result["conf"]["ceph"]["cinder"]["secret_uuid"]
+            == "457eb676-33da-42ec-9a8c-9293d545c337"
+        )
 
     def test_additional_users_for_ec_backend(self):
         storage = {
