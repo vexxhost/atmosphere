@@ -39,40 +39,40 @@ atmosphere_storage:
     default: rbd1
     backends:
       rbd1:
-        type: ceph_rbd
+        type: rbd
         pool: glance.images
         replication: 3
         crush_rule: replicated_rule
         chunk_size: 8
-        ceph_user: glance
+        user: glance
 
   # Block storage (Cinder) — supports multiple backends
   volumes:
     default: rbd1
     backends:
       rbd1:
-        type: ceph_rbd
+        type: rbd
         pool: cinder.volumes
         replication: 3
         crush_rule: replicated_rule
-        ceph_user: cinder
+        user: cinder
         secret_uuid: 457eb676-33da-42ec-9a8c-9293d545c337
 
   # Backup storage (Cinder backup)
-  backups:
-    type: ceph_rbd
+  backup:
+    type: rbd
     pool: cinder.backups
     replication: 3
     crush_rule: replicated_rule
-    ceph_user: cinderbackup
+    user: cinderbackup
 
   # Ephemeral disk storage (Nova/libvirt)
   ephemeral:
-    type: ceph_rbd
+    type: rbd
     pool: vms
     replication: 3
     crush_rule: replicated_rule
-    ceph_user: cinder
+    user: cinder
     secret_uuid: 457eb676-33da-42ec-9a8c-9293d545c337
 
 defaults_ca_certificates_path: >-

@@ -19,7 +19,7 @@ The ``atmosphere_storage`` variable organizes storage by purpose:
 ``volumes``
   Block storage for Cinder. Supports multiple backends.
 
-``backups``
+``backup``
   Backup storage for Cinder backup.
 
 ``ephemeral``
@@ -42,34 +42,34 @@ cluster:
         default: rbd1
         backends:
           rbd1:
-            type: ceph_rbd
+            type: rbd
             pool: glance.images
             replication: 3
             crush_rule: replicated_rule
             chunk_size: 8
-            ceph_user: glance
+            user: glance
       volumes:
         default: rbd1
         backends:
           rbd1:
-            type: ceph_rbd
+            type: rbd
             pool: cinder.volumes
             replication: 3
             crush_rule: replicated_rule
-            ceph_user: cinder
+            user: cinder
             secret_uuid: 457eb676-33da-42ec-9a8c-9293d545c337
-      backups:
-        type: ceph_rbd
+      backup:
+        type: rbd
         pool: cinder.backups
         replication: 3
         crush_rule: replicated_rule
-        ceph_user: cinderbackup
+        user: cinderbackup
       ephemeral:
-        type: ceph_rbd
+        type: rbd
         pool: vms
         replication: 3
         crush_rule: replicated_rule
-        ceph_user: cinder
+        user: cinder
         secret_uuid: 457eb676-33da-42ec-9a8c-9293d545c337
 
 The integrated Ceph cluster works without additional configuration.
@@ -78,7 +78,7 @@ The integrated Ceph cluster works without additional configuration.
 Supported backend types
 ***********************
 
-Ceph RBD (``ceph_rbd``)
+Ceph RBD (``rbd``)
 ========================
 
 Standard replicated Ceph RBD backend. Used for images, volumes, backups, and
@@ -86,22 +86,28 @@ ephemeral storage.
 
 .. code-block:: yaml
 
-    type: ceph_rbd
+    type: rbd
     pool: <pool_name>
     replication: 3
     crush_rule: replicated_rule
-    ceph_user: <username>
+    user: <username>
     secret_uuid: <uuid>       # required for volumes and ephemeral
 
-Ceph RBD erasure-coded (``ceph_rbd_ec``)
+Ceph RBD erasure-coded (``rbd-ec``)
 =========================================
 
 Erasure-coded Ceph RBD backend for improved storage efficiency. Only supported
-for volume backends.
+for volume backends. EC pools provide better storage utilization compared to
+replicated pools, at the cost of slightly higher CPU overhead.
+
+EC pools require two components:
+
+1. A **metadata pool** (replicated) that stores metadata
+2. A **data pool** (EC) that stores the actual volume data
 
 .. code-block:: yaml
 
-    type: ceph_rbd_ec
+    type: rbd-ec
     pool: cinder.volumes.ec
     erasure_coded:
       k: 4                     # data chunks
@@ -109,42 +115,73 @@ for volume backends.
       failure_domain: host
       device_class: hdd        # optional
     metadata_replication: 3
-    ceph_user: cinder-ec       # must be unique per EC backend
+    user: cinder-ec       # must be unique per EC backend
     secret_uuid: <unique-uuid>
+
+The EC pool configuration parameters are:
+
+``k``
+  Number of data chunks. Higher values provide better storage efficiency.
+
+``m``
+  Number of coding (parity) chunks. Higher values provide better fault
+  tolerance.
+
+``device_class``
+  Target specific device types, for example ``hdd``, ``ssd``, or ``nvme``.
+
+``failure_domain``
+  Failure domain for data placement, for example ``host``, ``rack``, or
+  ``room``.
 
 .. warning::
 
-    Each erasure-coded backend requires a **dedicated** ``ceph_user`` and a
+    Each erasure-coded backend requires a **dedicated** ``user`` and a
     **unique** ``secret_uuid``. Generate new UUID's with ``uuidgen``.
 
 Dell PowerStore (``powerstore``)
 ================================
 
+.. warning::
+
+    Make sure that you set up the hosts inside of your storage array. They must
+    **not** be inside a host group, or individual attachments will not work.
+
 .. code-block:: yaml
 
     type: powerstore
-    san_ip: <management_ip>
-    san_login: <username>
-    san_password: <password>
-    storage_protocol: iSCSI    # or FC
+    address: <management_ip_or_hostname>
+    username: <username>
+    password: <password>
+    protocol: iscsi    # or fc
 
-Pure storage (``pure``)
+Pure Storage (``pure``)
 =======================
+
+Pure Storage FlashArray integration. When using the NVMe protocol, you can
+optionally set ``transport`` to ``roce`` or ``tcp``.
+
+For additional options, see the `Cinder Pure Storage documentation
+<https://docs.openstack.org/cinder/latest/configuration/block-storage/drivers/pure-storage-driver.html>`_.
 
 .. code-block:: yaml
 
     type: pure
-    volume_driver: cinder.volume.drivers.pure.PureISCSIDriver
-    san_ip: <management_ip>
-    pure_api_token: <token>
+    protocol: iscsi    # or fc, nvme
+    address: <management_ip_or_hostname>
+    api_token: <token>
+    transport: roce    # optional, only for nvme protocol
 
 StorPool (``storpool``)
 =======================
 
+StorPool distributed storage backend. Network settings and file system mounts
+are configured automatically.
+
 .. code-block:: yaml
 
     type: storpool
-    storpool_template: hybrid-2ssd
+    template: hybrid-2ssd
 
 Cinder (``cinder``)
 ====================
@@ -171,14 +208,14 @@ under ``atmosphere_storage.volumes.backends``:
       volumes:
         backends:
           rbd_ec:
-            type: ceph_rbd_ec
+            type: rbd-ec
             pool: cinder.volumes.ec
             erasure_coded:
               k: 4
               m: 2
               failure_domain: host
             metadata_replication: 3
-            ceph_user: cinder-ec
+            user: cinder-ec
             secret_uuid: 808c5658-7c46-4818-8f26-82a217e3a57a
 
 The system automatically configures all required services: Cinder backend
@@ -196,11 +233,11 @@ Using Dell PowerStore
         backends:
           powerstore:
             type: powerstore
-            san_ip: 10.0.0.1
-            san_login: admin
-            san_password: secret
-            storage_protocol: iSCSI
-      backups:
+            address: 10.0.0.1
+            username: admin
+            password: secret
+            protocol: iscsi
+      backup:
         type: none
       ephemeral:
         type: local
@@ -215,10 +252,10 @@ Glance with multiple backends
         default: rbd1
         backends:
           rbd1:
-            type: ceph_rbd
+            type: rbd
             pool: glance.images
             replication: 3
-            ceph_user: glance
+            user: glance
           cinder_store:
             type: cinder
 

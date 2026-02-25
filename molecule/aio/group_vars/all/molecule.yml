@@ -98,43 +98,43 @@ atmosphere_storage:
     default: rbd1
     backends:
       rbd1:
-        type: ceph_rbd
+        type: rbd
         pool: cinder.volumes
         replication: 1
         crush_rule: replicated_rule
-        ceph_user: cinder
+        user: cinder
         secret_uuid: 457eb676-33da-42ec-9a8c-9293d545c337
       rbd_ec:
-        type: ceph_rbd_ec
+        type: rbd-ec
         pool: cinder.volumes.ec
         erasure_coded:
           k: 2
           m: 1
           failure_domain: osd
         metadata_replication: 1
-        ceph_user: cinder-ec
+        user: cinder-ec
         secret_uuid: 808c5658-7c46-4818-8f26-82a217e3a57a
-  backups:
-    type: ceph_rbd
+  backup:
+    type: rbd
     pool: cinder.backups
     replication: 1
     crush_rule: replicated_rule
-    ceph_user: cinderbackup
+    user: cinderbackup
   images:
     default: rbd1
     backends:
       rbd1:
-        type: ceph_rbd
+        type: rbd
         pool: glance.images
         replication: 1
         crush_rule: replicated_rule
-        ceph_user: glance
+        user: glance
   ephemeral:
-    type: ceph_rbd
+    type: rbd
     pool: vms
     replication: 1
     crush_rule: replicated_rule
-    ceph_user: cinder
+    user: cinder
     secret_uuid: 457eb676-33da-42ec-9a8c-9293d545c337
 
 cinder_helm_values:

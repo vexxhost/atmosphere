@@ -17,7 +17,6 @@ and setup.
    storage
    csi
    certificates
-   cinder
    glance
    neutron
    deployment

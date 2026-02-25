@@ -33,7 +33,7 @@ class RbdPoolSpec(_StrictBase):
         default="replicated_rule",
         description="CRUSH rule applied to the pool.",
     )
-    ceph_user: str = Field(description="Ceph client user name.")
+    user: str = Field(description="Ceph client user name.")
     chunk_size: int = Field(
         default=8, description="RBD stripe unit size in MiB."
     )
@@ -93,7 +93,7 @@ class ImageBackendRbd(ReplicatedRbdPoolSpec):
         """Generate per-backend Glance config section."""
         config: dict[str, Any] = {
             "rbd_store_pool": self.pool,
-            "rbd_store_user": self.ceph_user,
+            "rbd_store_user": self.user,
             "rbd_store_ceph_conf": "/etc/ceph/ceph.conf",
             "rbd_store_chunk_size": self.chunk_size,
         }
@@ -196,7 +196,7 @@ class VolumeBackendRbd(ReplicatedRbdPoolSpec, LibvirtSecretSpec):
             "rbd_max_clone_depth": 5,
             "rbd_store_chunk_size": self.chunk_size,
             "rados_connect_timeout": -1,
-            "rbd_user": self.ceph_user,
+            "rbd_user": self.user,
             "rbd_secret_uuid": str(self.secret_uuid),
             "image_volume_cache_enabled": True,
             "image_volume_cache_max_size_gb": 200,
@@ -233,7 +233,7 @@ class VolumeBackendRbdEc(ErasureCodedRbdPoolSpec, LibvirtSecretSpec):
             "rbd_max_clone_depth": 5,
             "rbd_store_chunk_size": self.chunk_size,
             "rados_connect_timeout": -1,
-            "rbd_user": self.ceph_user,
+            "rbd_user": self.user,
             "rbd_secret_uuid": str(self.secret_uuid),
             "image_volume_cache_enabled": True,
             "image_volume_cache_max_size_gb": 200,
@@ -271,8 +271,8 @@ class VolumeBackendPowerstore(_HostAttachedVolumeBackend):
     """Dell PowerStore volume backend."""
 
     type: Literal["powerstore"]
-    ip: str = Field(description="Management IP address.")
-    login: str = Field(description="Login credential.")
+    address: str = Field(description="Management address (IP or hostname).")
+    username: str = Field(description="Username credential.")
     password: str = Field(description="Password credential.")
     protocol: Literal["fc", "iscsi"] = Field(
         description="Transport protocol."
@@ -284,8 +284,8 @@ class VolumeBackendPowerstore(_HostAttachedVolumeBackend):
         return {
             "volume_backend_name": name,
             "volume_driver": "cinder.volume.drivers.dell_emc.powerstore.driver.PowerStoreDriver",
-            "san_ip": self.ip,
-            "san_login": self.login,
+            "san_ip": self.address,
+            "san_login": self.username,
             "san_password": self.password,
             "storage_protocol": protocol_map[self.protocol],
         }
@@ -300,7 +300,7 @@ class _VolumeBackendPureBase(_HostAttachedVolumeBackend):
     """Pure Storage FlashArray volume backend."""
 
     type: Literal["pure"]
-    ip: str = Field(description="Management IP address.")
+    address: str = Field(description="Management address (IP or hostname).")
     api_token: str = Field(description="API token.")
 
     @property
@@ -312,7 +312,7 @@ class _VolumeBackendPureBase(_HostAttachedVolumeBackend):
         return {
             "volume_backend_name": name,
             "volume_driver": self.cinder_driver,
-            "san_ip": self.ip,
+            "san_ip": self.address,
             "pure_api_token": self.api_token,
             "use_multipath_for_image_xfer": True,
             "pure_eradicate_on_delete": True,
@@ -357,7 +357,7 @@ class VolumeBackendPureFC(_VolumeBackendPureBase):
         return "cinder.volume.drivers.pure.PureFCDriver"
 
 
-class VolumeBackendPureNVME(_VolumeBackendPureBase):
+class VolumeBackendPureNVMe(_VolumeBackendPureBase):
     protocol: Literal["nvme"]
     transport: Literal["roce", "tcp"] | None = Field(
         default=None, description="NVMe transport type."
@@ -376,7 +376,7 @@ class VolumeBackendPureNVME(_VolumeBackendPureBase):
 
 
 VolumeBackendPure = Annotated[
-    Union[VolumeBackendPureISCSI, VolumeBackendPureFC, VolumeBackendPureNVME],
+    Union[VolumeBackendPureISCSI, VolumeBackendPureFC, VolumeBackendPureNVMe],
     Field(discriminator="protocol"),
 ]
 
@@ -454,7 +454,7 @@ class BackupBackendRbd(ReplicatedRbdPoolSpec):
             "cinder.backup.drivers.ceph.CephBackupDriver"
         )
         result["conf"]["cinder"]["DEFAULT"]["backup_ceph_conf"] = "/etc/ceph/ceph.conf"
-        result["conf"]["cinder"]["DEFAULT"]["backup_ceph_user"] = self.ceph_user
+        result["conf"]["cinder"]["DEFAULT"]["backup_ceph_user"] = self.user
         result["conf"]["cinder"]["DEFAULT"]["backup_ceph_pool"] = self.pool
 
         pools = result["conf"].setdefault("ceph", {}).setdefault("pools", {})
@@ -537,23 +537,23 @@ class StorageConfig(_StrictBase):
             rbd1:
               type: rbd
               pool: glance.images
-              ceph_user: glance
+              user: glance
         volumes:
           default: rbd1
           backends:
             rbd1:
               type: rbd
               pool: cinder.volumes
-              ceph_user: cinder
+              user: cinder
               secret_uuid: 457eb676-33da-42ec-9a8c-9293d545c337
-        backups:
+        backup:
           type: rbd
           pool: cinder.backups
-          ceph_user: cinderbackup
+          user: cinderbackup
         ephemeral:
           type: rbd
           pool: vms
-          ceph_user: cinder
+          user: cinder
           secret_uuid: 457eb676-33da-42ec-9a8c-9293d545c337
     """
 
@@ -563,7 +563,7 @@ class StorageConfig(_StrictBase):
     volumes: VolumeStorageConfig | None = Field(
         default=None, description="Volume configuration (Cinder)."
     )
-    backups: BackupBackend | None = Field(
+    backup: BackupBackend | None = Field(
         default=None, description="Backup configuration (Cinder)."
     )
     ephemeral: EphemeralBackend | None = Field(
@@ -581,7 +581,7 @@ def storage_to_cinder_helm_values(raw: Any) -> HelmValues:
 
     storage = _parse(raw)
     volumes = storage.volumes
-    backups = storage.backups
+    backup = storage.backup
     default_backend = volumes.default if volumes else None
     backends_config = volumes.backends if volumes else {}
 
@@ -595,8 +595,8 @@ def storage_to_cinder_helm_values(raw: Any) -> HelmValues:
     )
     result["conf"]["cinder"]["DEFAULT"]["default_volume_type"] = default_backend
 
-    if backups is not None:
-        backups.amend_cinder_backup(result)
+    if backup is not None:
+        backup.amend_cinder_backup(result)
 
     if result["conf"].get("enable_iscsi") and result.get("storage") != "ceph":
         result.setdefault("manifests", {})
@@ -652,7 +652,7 @@ def storage_to_nova_helm_values(raw: Any) -> HelmValues:
                     "images_type": "rbd",
                     "images_rbd_pool": ephemeral.pool,
                     "images_rbd_ceph_conf": "/etc/ceph/ceph.conf",
-                    "rbd_user": ephemeral.ceph_user,
+                    "rbd_user": ephemeral.user,
                     "rbd_secret_uuid": str(ephemeral.secret_uuid),
                 }
             },
@@ -698,13 +698,13 @@ def storage_to_libvirt_helm_values(raw: Any) -> HelmValues:
         ceph_conf["enabled"] = True
         if name == default_backend_name:
             ceph_conf["cinder"] = {
-                "user": backend.ceph_user,
+                "user": backend.user,
                 "secret_uuid": str(backend.secret_uuid),
             }
         else:
             ceph_conf.setdefault("additional_users", []).append(
                 {
-                    "user": backend.ceph_user,
+                    "user": backend.user,
                     "secret_uuid": str(backend.secret_uuid),
                     "secret_name": f"cinder-volume-rbd-keyring-{name}",
                 }
@@ -728,7 +728,7 @@ def storage_to_ceph_provisioners_helm_values(raw: Any) -> HelmValues:
                 if backend.data_pool
                 else f"{backend.pool}.data"
             )
-            client_key = f"client.{backend.ceph_user}"
+            client_key = f"client.{backend.user}"
             client_conf[client_key] = {
                 "rbd default data pool": data_pool,
             }
