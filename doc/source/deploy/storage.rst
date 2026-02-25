@@ -145,7 +145,7 @@ Dell PowerStore (``powerstore``)
 .. warning::
 
     Make sure that you set up the hosts inside of your storage array. They must
-    **not** be inside a host group, or individual attachments will not work.
+    **not** be inside a host group, or individual attachments won't work.
 
 .. code-block:: yaml
 
@@ -155,7 +155,7 @@ Dell PowerStore (``powerstore``)
     password: <password>
     protocol: iscsi    # or fc
 
-Pure Storage (``pure``)
+Pure storage (``pure``)
 =======================
 
 Pure Storage FlashArray integration. When using the NVMe protocol, you can
@@ -175,8 +175,8 @@ For additional options, see the `Cinder Pure Storage documentation
 StorPool (``storpool``)
 =======================
 
-StorPool distributed storage backend. Network settings and file system mounts
-are configured automatically.
+StorPool distributed storage backend. The system configures network settings
+and file system mounts automatically.
 
 .. code-block:: yaml
 
