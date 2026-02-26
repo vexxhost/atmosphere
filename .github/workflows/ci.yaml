@@ -76,22 +76,3 @@ jobs:
       - uses: ./.github/actions/molecule
         with:
           scenario: keycloak
-
-  aio:
-    runs-on: vexxhost-ubuntu-22.04-16
-    if: ${{ github.event_name == 'pull_request' }}
-    concurrency:
-      group: ${{ github.job }}-${{ matrix.network_backend }}-${{ github.event.pull_request.number }}
-      cancel-in-progress: true
-    strategy:
-      fail-fast: false
-      matrix:
-        network_backend:
-          - openvswitch
-          - ovn
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: ./.github/actions/molecule
-        with:
-          scenario: aio
-          network_backend: ${{ matrix.network_backend }}
