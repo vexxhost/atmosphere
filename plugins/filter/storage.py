@@ -692,7 +692,7 @@ def storage_to_libvirt_helm_values(raw: Any) -> HelmValues:
                 {
                     "user": backend.user,
                     "secret_uuid": str(backend.secret_uuid),
-                    "secret_name": f"cinder-volume-rbd-keyring-{name}",
+                    "secret_name": f"cinder-volume-rbd-keyring-{name.replace('_', '-')}",
                 }
             )
 

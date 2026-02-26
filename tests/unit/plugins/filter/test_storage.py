@@ -896,7 +896,7 @@ class TestStorageToLibvirtHelmValues:
         assert len(additional) == 1
         assert additional[0]["user"] == "cinder-ec"
         assert additional[0]["secret_uuid"] == "808c5658-7c46-4818-8f26-82a217e3a57a"
-        assert additional[0]["secret_name"] == "cinder-volume-rbd-keyring-rbd_ec"
+        assert additional[0]["secret_name"] == "cinder-volume-rbd-keyring-rbd-ec"
 
     def test_multiple_additional_users(self):
         """Multiple non-default RBD backends produce multiple additional_users."""
