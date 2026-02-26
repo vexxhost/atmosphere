@@ -4,11 +4,10 @@
 from __future__ import annotations
 
 from typing import Annotated, Any, Literal, Union
-
-from typing_extensions import Self
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from typing_extensions import Self
 
 DOCUMENTATION = """
   name: storage
@@ -642,6 +641,13 @@ def storage_to_nova_helm_values(raw: Any) -> HelmValues:
                     "rbd_secret_uuid": str(ephemeral.secret_uuid),
                 }
             },
+        }
+        result["manifests"] = {"job_storage_init": True}
+        result["rbd_pool"] = {
+            "app_name": "nova-vms",
+            "replication": ephemeral.replication,
+            "crush_rule": ephemeral.crush_rule,
+            "chunk_size": ephemeral.chunk_size,
         }
     elif isinstance(ephemeral, EphemeralBackendLocal):
         result["conf"] = {

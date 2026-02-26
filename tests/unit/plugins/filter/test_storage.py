@@ -3,9 +3,14 @@
 
 import pytest
 from ansible_collections.vexxhost.atmosphere.plugins.filter.storage import (
-    FilterModule, StorageConfig, storage_to_ceph_provisioners_helm_values,
-    storage_to_cinder_helm_values, storage_to_glance_helm_values,
-    storage_to_libvirt_helm_values, storage_to_nova_helm_values)
+    FilterModule,
+    StorageConfig,
+    storage_to_ceph_provisioners_helm_values,
+    storage_to_cinder_helm_values,
+    storage_to_glance_helm_values,
+    storage_to_libvirt_helm_values,
+    storage_to_nova_helm_values,
+)
 from pydantic import ValidationError
 
 DEFAULT_STORAGE = {
@@ -798,6 +803,11 @@ class TestStorageToNovaHelmValues:
         assert libvirt["images_rbd_ceph_conf"] == "/etc/ceph/ceph.conf"
         assert libvirt["rbd_user"] == "cinder"
         assert libvirt["rbd_secret_uuid"] == "457eb676-33da-42ec-9a8c-9293d545c337"
+        assert result["manifests"]["job_storage_init"] is True
+        assert result["rbd_pool"]["app_name"] == "nova-vms"
+        assert result["rbd_pool"]["replication"] == 3
+        assert result["rbd_pool"]["crush_rule"] == "replicated_rule"
+        assert result["rbd_pool"]["chunk_size"] == 8
 
     def test_local_ephemeral(self):
         storage = {
@@ -807,6 +817,8 @@ class TestStorageToNovaHelmValues:
         result = storage_to_nova_helm_values(storage)
         assert result["conf"]["ceph"]["enabled"] is False
         assert result["conf"]["nova"]["libvirt"]["images_type"] == "qcow2"
+        assert "manifests" not in result
+        assert "rbd_pool" not in result
 
     def test_no_ephemeral_config(self):
         """When ephemeral is omitted and volumes are all Ceph, no conf set."""
