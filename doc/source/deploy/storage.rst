@@ -32,38 +32,60 @@ variable for Cinder, Glance, Nova, libvirt, and Ceph Provisioners.
 Default configuration
 *********************
 
-By default, Atmosphere configures all services to use the integrated Ceph
-cluster:
+By default, Atmosphere configures image and volume storage to use the
+integrated Ceph cluster, with local (qcow2) ephemeral disks for Nova.
+The ``atmosphere_storage`` variable defaults to an empty dictionary
+(``{}``), and the built-in defaults provide sensible starting values.
+
+You can override any part of the configuration by setting
+``atmosphere_storage`` in your inventory. Your overrides merge on top of
+the built-in defaults using a recursive merge, so you only need to
+specify the parts you want to change.
+
+The built-in defaults are equivalent to:
+
+.. code-block:: yaml
+
+    images:
+      default: rbd1
+      backends:
+        rbd1:
+          type: rbd
+          pool: glance.images
+          replication: 3
+          crush_rule: replicated_rule
+          chunk_size: 8
+          user: glance
+    volumes:
+      default: rbd1
+      backends:
+        rbd1:
+          type: rbd
+          pool: cinder.volumes
+          replication: 3
+          crush_rule: replicated_rule
+          user: cinder
+          secret_uuid: 457eb676-33da-42ec-9a8c-9293d545c337
+    backup:
+      type: rbd
+      pool: cinder.backups
+      replication: 3
+      crush_rule: replicated_rule
+      user: cinderbackup
+    ephemeral:
+      type: local
+
+The integrated Ceph cluster works without additional configuration.
+
+Enabling RBD ephemeral storage
+==============================
+
+To use Ceph RBD for Nova ephemeral disks instead of local storage, set
+the ``ephemeral`` section in your ``atmosphere_storage`` override:
 
 .. code-block:: yaml
 
     atmosphere_storage:
-      images:
-        default: rbd1
-        backends:
-          rbd1:
-            type: rbd
-            pool: glance.images
-            replication: 3
-            crush_rule: replicated_rule
-            chunk_size: 8
-            user: glance
-      volumes:
-        default: rbd1
-        backends:
-          rbd1:
-            type: rbd
-            pool: cinder.volumes
-            replication: 3
-            crush_rule: replicated_rule
-            user: cinder
-            secret_uuid: 457eb676-33da-42ec-9a8c-9293d545c337
-      backup:
-        type: rbd
-        pool: cinder.backups
-        replication: 3
-        crush_rule: replicated_rule
-        user: cinderbackup
       ephemeral:
         type: rbd
         pool: vms
@@ -71,8 +93,6 @@ cluster:
         crush_rule: replicated_rule
         user: cinder
         secret_uuid: 457eb676-33da-42ec-9a8c-9293d545c337
-
-The integrated Ceph cluster works without additional configuration.
 
 ***********************
 Supported backend types

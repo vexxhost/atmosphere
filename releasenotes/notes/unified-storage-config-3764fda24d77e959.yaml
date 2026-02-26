@@ -11,7 +11,10 @@ features:
     the full configuration reference.
 upgrade:
   - |
-    The ``atmosphere_storage`` variable now provides defaults for all
-    storage-related Helm values. Existing per-service overrides (for
+    The ``atmosphere_storage`` variable provides sensible defaults using
+    the integrated Ceph cluster for images, volumes, and backups, with
+    local (qcow2) ephemeral disks for Nova. Override any part by setting
+    ``atmosphere_storage`` in your inventory. Your overrides merge on top
+    of the built-in defaults. Existing per-service overrides (for
     example, ``cinder_helm_values``) continue to work and take precedence
     over the derived values.

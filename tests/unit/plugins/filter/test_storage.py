@@ -815,7 +815,7 @@ class TestStorageToNovaHelmValues:
             "ephemeral": {"type": "local"},
         }
         result = storage_to_nova_helm_values(storage)
-        assert result["conf"]["ceph"]["enabled"] is False
+        assert result["conf"]["ceph"]["enabled"] is True
         assert result["conf"]["nova"]["libvirt"]["images_type"] == "qcow2"
         assert "manifests" not in result
         assert "rbd_pool" not in result

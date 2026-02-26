@@ -627,7 +627,12 @@ def storage_to_nova_helm_values(raw: Any) -> HelmValues:
 
     storage = _parse(raw)
     ephemeral = storage.ephemeral
+    volumes = storage.volumes
     result: HelmValues = {}
+
+    has_rbd_volumes = volumes is not None and any(
+        isinstance(b, LibvirtSecretSpec) for b in volumes.backends.values()
+    )
 
     if isinstance(ephemeral, EphemeralBackendRbd):
         result["conf"] = {
@@ -651,7 +656,7 @@ def storage_to_nova_helm_values(raw: Any) -> HelmValues:
         }
     elif isinstance(ephemeral, EphemeralBackendLocal):
         result["conf"] = {
-            "ceph": {"enabled": False},
+            "ceph": {"enabled": has_rbd_volumes},
             "nova": {
                 "libvirt": {
                     "images_type": "qcow2",
@@ -659,7 +664,6 @@ def storage_to_nova_helm_values(raw: Any) -> HelmValues:
             },
         }
 
-    volumes = storage.volumes
     if volumes:
         for backend in volumes.backends.values():
             if isinstance(backend, _HostAttachedVolumeBackend):
