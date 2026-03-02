@@ -234,3 +234,35 @@ _atmosphere_images:
   vector: "{{ atmosphere_image_prefix }}docker.io/timberio/vector:0.38.0-debian"
 
 atmosphere_images: '{{ _atmosphere_images | combine(atmosphere_image_overrides, recursive=True) }}'
+
+_atmosphere_storage:
+  images:
+    default: rbd1
+    backends:
+      rbd1:
+        type: rbd
+        pool: glance.images
+        replication: 3
+        crush_rule: replicated_rule
+        chunk_size: 8
+        user: glance
+  volumes:
+    default: rbd1
+    backends:
+      rbd1:
+        type: rbd
+        pool: cinder.volumes
+        replication: 3
+        crush_rule: replicated_rule
+        user: cinder
+        secret_uuid: 457eb676-33da-42ec-9a8c-9293d545c337
+  backup:
+    type: rbd
+    pool: cinder.backups
+    replication: 3
+    crush_rule: replicated_rule
+    user: cinderbackup
+  ephemeral:
+    type: local
+
+_atmosphere_storage_config: "{{ _atmosphere_storage | combine(atmosphere_storage, recursive=True) }}"
