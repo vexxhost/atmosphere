@@ -12,6 +12,15 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+- name: Fail if atmosphere_ceph_enabled is set
+  ansible.builtin.fail:
+    msg: >-
+      The "atmosphere_ceph_enabled" variable is no longer supported.
+      Please use the "atmosphere_storage" variable to configure storage
+      backends instead. Refer to the storage configuration documentation
+      for migration instructions.
+  when: atmosphere_ceph_enabled is defined
+
 - name: Create CA certificates
   kubernetes.core.k8s:
     state: present

@@ -18,3 +18,12 @@ upgrade:
     of the built-in defaults. Existing per-service overrides (for
     example, ``cinder_helm_values``) continue to work and take precedence
     over the derived values.
+  - |
+    The ``atmosphere_ceph_enabled`` variable is no longer supported.
+    Deployments that set this variable will fail with an error message
+    during the playbook run. Remove ``atmosphere_ceph_enabled`` from your
+    inventory and configure ``atmosphere_storage`` instead. If you
+    previously set ``atmosphere_ceph_enabled: true``, the defaults
+    already use Ceph, so no further action is necessary. If you set it to
+    ``false``, define ``atmosphere_storage`` with your non-Ceph backends.
+    See the storage documentation for migration instructions.

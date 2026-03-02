@@ -287,3 +287,57 @@ The ``atmosphere_storage`` variable generates base Helm values. You can still
 use per-service ``*_helm_values`` variables (such as ``cinder_helm_values`` or
 ``glance_helm_values``) to override specific settings. The per-service overrides
 always take precedence.
+
+*********************************************
+Migrating from ``atmosphere_ceph_enabled``
+*********************************************
+
+The ``atmosphere_ceph_enabled`` variable is no longer supported. Storage
+configuration now uses the unified ``atmosphere_storage`` variable. If your
+inventory sets ``atmosphere_ceph_enabled``, remove it and configure
+``atmosphere_storage`` instead.
+
+If you previously set ``atmosphere_ceph_enabled: true``
+=======================================================
+
+No action beyond removing the variable is necessary. The built-in defaults
+already configure Ceph RBD for images and volumes, which matches the
+previous behavior.
+
+.. code-block:: yaml
+
+    # Remove this from your inventory:
+    # atmosphere_ceph_enabled: true
+
+If you previously set ``atmosphere_ceph_enabled: false``
+========================================================
+
+Remove the variable and configure ``atmosphere_storage`` to match your
+environment. For example, if you use Dell PowerStore for volumes and local
+ephemeral storage:
+
+.. code-block:: yaml
+
+    # Remove this from your inventory:
+    # atmosphere_ceph_enabled: false
+
+    # Add this instead:
+    atmosphere_storage:
+      images:
+        default: cinder_store
+        backends:
+          cinder_store:
+            type: cinder
+      volumes:
+        default: powerstore
+        backends:
+          powerstore:
+            type: powerstore
+            address: 10.0.0.1
+            username: admin
+            password: secret
+            protocol: iscsi
+      backup:
+        type: none
+      ephemeral:
+        type: local
