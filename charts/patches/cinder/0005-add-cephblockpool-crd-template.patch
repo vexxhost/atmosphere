@@ -1,6 +1,6 @@
 --- a/cinder/templates/cephblockpool.yaml	2026-02-03 13:56:36.692000000 +0000
 +++ b/cinder/templates/cephblockpool.yaml	2026-02-18 14:11:54.765316685 +0000
-@@ -0,0 +1,46 @@
+@@ -0,0 +1,50 @@
 +{{/*
 +Licensed under the Apache License, Version 2.0 (the "License");
 +you may not use this file except in compliance with the License.
@@ -27,6 +27,8 @@
 +metadata:
 +  name: {{ $data_pool_name }}
 +  namespace: {{ $.Release.Namespace }}
++  annotations:
++    helm.sh/resource-policy: keep
 +spec:
 +  failureDomain: {{ $pool_config.erasure_coded.failure_domain }}
 +  erasureCoded:
@@ -41,6 +43,8 @@
 +metadata:
 +  name: {{ $pool_name }}
 +  namespace: {{ $.Release.Namespace }}
++  annotations:
++    helm.sh/resource-policy: keep
 +spec:
 +  failureDomain: {{ $pool_config.erasure_coded.failure_domain }}
 +  replicated:

@@ -24,6 +24,8 @@ kind: CephBlockPool
 metadata:
   name: {{ $data_pool_name }}
   namespace: {{ $.Release.Namespace }}
+  annotations:
+    helm.sh/resource-policy: keep
 spec:
   failureDomain: {{ $pool_config.erasure_coded.failure_domain }}
   erasureCoded:
@@ -38,6 +40,8 @@ kind: CephBlockPool
 metadata:
   name: {{ $pool_name }}
   namespace: {{ $.Release.Namespace }}
+  annotations:
+    helm.sh/resource-policy: keep
 spec:
   failureDomain: {{ $pool_config.erasure_coded.failure_domain }}
   replicated:
