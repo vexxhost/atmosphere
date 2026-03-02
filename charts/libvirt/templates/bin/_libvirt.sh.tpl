@@ -163,6 +163,23 @@ EOF
     create_virsh_libvirt_secret ${EXTERNAL_CEPH_CINDER_USER} ${LIBVIRT_EXTERNAL_CEPH_CINDER_SECRET_UUID} ${EXTERNAL_CEPH_CINDER_KEYRING}
   fi
 
+  # Process additional Ceph users (format: "user1:uuid1,user2:uuid2,...")
+  if [ -n "${ADDITIONAL_CEPH_USERS}" ] ; then
+    additional_ceph_entries=$(printf '%s\n' "${ADDITIONAL_CEPH_USERS}" | tr ',' ' ')
+    for entry in ${additional_ceph_entries}; do
+      add_user=${entry%%:*}
+      add_uuid=${entry#*:}
+      if [ -n "${add_user}" ] && [ -n "${add_uuid}" ]; then
+        add_keyring=$(awk '/key/{print $3}' "/etc/ceph/ceph.client.${add_user}.keyring")
+        if [ -n "${add_keyring}" ]; then
+          create_virsh_libvirt_secret "${add_user}" "${add_uuid}" "${add_keyring}"
+        else
+          echo "WARNING: Keyring not found for additional user ${add_user}"
+        fi
+      fi
+    done
+  fi
+
   cleanup
 
   # stop libvirtd; we needed it up to create secrets

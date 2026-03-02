@@ -12,6 +12,15 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+- name: Fail if atmosphere_ceph_enabled is set
+  ansible.builtin.fail:
+    msg: >-
+      The "atmosphere_ceph_enabled" variable is no longer supported.
+      Please use the "atmosphere_storage" variable to configure storage
+      backends instead. Refer to the storage configuration documentation
+      for migration instructions.
+  when: atmosphere_ceph_enabled is defined
+
 - name: Generate public key for SSH private key
   ansible.builtin.import_tasks:
     file: generate_public_key.yml
@@ -30,6 +39,10 @@
   loop:
     - nova-bootstrap
     - nova-cell-setup
+
+- name: Generate Helm values (storage)
+  ansible.builtin.set_fact:
+    _nova_helm_values: "{{ _nova_helm_values | combine(_atmosphere_storage_config | vexxhost.atmosphere.storage_to_nova_helm_values, recursive=True) }}"
 
 - name: Deploy Helm chart
   run_once: true
