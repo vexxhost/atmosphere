@@ -1,0 +1,51 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Yaguang Tang <yaguang.tang@gmail.com>
+Date: Tue, 03 Mar 2026 10:27:00 +0000
+Subject: [PATCH] Add neutron-fwaas support
+
+Add support for Neutron Firewall as a Service (FWaaS) by adding the
+neutron_fwaas.conf config file to the configmap and conditionally
+mounting it in the server deployment when firewall_v2 is in the
+service plugins list.
+
+diff --git a/neutron/templates/configmap-etc.yaml b/neutron/templates/configmap-etc.yaml
+index 9d001304..5355d7c6 100644
+--- a/neutron/templates/configmap-etc.yaml
++++ b/neutron/templates/configmap-etc.yaml
+@@ -333,6 +333,7 @@ data:
+   neutron_sudoers: {{ $envAll.Values.conf.neutron_sudoers | b64enc }}
+   rootwrap.conf: {{ $envAll.Values.conf.rootwrap | b64enc }}
+   auto_bridge_add: {{ toJson $envAll.Values.conf.auto_bridge_add | b64enc }}
++  neutron_fwaas.conf: {{ default "\"\"" (include "helm-toolkit.utils.to_oslo_conf" $envAll.Values.conf.neutron_fwaas | b64enc) }}
+   neutron_vpnaas.conf: {{ default "\"\"" (include "helm-toolkit.utils.to_oslo_conf" $envAll.Values.conf.neutron_vpnaas | b64enc) }}
+ {{- if .Values.conf.netoffload.enabled }}
+   netoffload: {{ toJson $envAll.Values.conf.netoffload | b64enc }}
+diff --git a/neutron/templates/deployment-server.yaml b/neutron/templates/deployment-server.yaml
+index 9af4b413..5007d67e 100644
+--- a/neutron/templates/deployment-server.yaml
++++ b/neutron/templates/deployment-server.yaml
+@@ -273,6 +273,12 @@ spec:
+               mountPath: /etc/neutron/policy.yaml
+               subPath: policy.yaml
+               readOnly: true
++            {{- if contains "firewall_v2" .Values.conf.neutron.DEFAULT.service_plugins }}
++            - name: neutron-etc
++              mountPath: /etc/neutron/neutron_fwaas.conf
++              subPath: neutron_fwaas.conf
++              readOnly: true
++            {{- end }}
+             {{- if contains "vpnaas" .Values.conf.neutron.DEFAULT.service_plugins }}
+             - name: neutron-etc
+               mountPath: /etc/neutron/neutron_vpnaas.conf
+diff --git a/neutron/values.yaml b/neutron/values.yaml
+index 83e34c08..27b7e798 100644
+--- a/neutron/values.yaml
++++ b/neutron/values.yaml
+@@ -2168,6 +2168,7 @@ conf:
+       #dhcp-option=3,10.10.10.1
+       #dhcp-option-force=26,1450
+ 
++  neutron_fwaas: null
+   neutron_vpnaas: null
+   ovn_vpn_agent:
+     DEFAULT:
