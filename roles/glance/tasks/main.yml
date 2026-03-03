@@ -12,6 +12,10 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+- name: Generate Helm values (storage)
+  ansible.builtin.set_fact:
+    _glance_helm_values: "{{ _glance_helm_values | combine(_atmosphere_storage_config | vexxhost.atmosphere.storage_to_glance_helm_values, recursive=True) }}"
+
 - name: Deploy Helm chart
   run_once: true
   kubernetes.core.helm:
