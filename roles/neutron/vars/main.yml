@@ -140,6 +140,18 @@ __neutron_ovn_helm_values:
     daemonset_ovs_agent: false
     deployment_rpc_server: false
 
+__neutron_fwaas_helm_values:
+  conf:
+    neutron:
+      DEFAULT:
+        service_plugins: qos,ovn-router,segments,trunk,log,ovn-vpnaas,firewall_v2,taas,tapmirror
+    neutron_fwaas:
+      fwaas:
+        driver: neutron_fwaas.services.firewall.service_drivers.ovn.firewall_l3_driver.OVNFirewallL3Driver
+        enabled: true
+      service_providers:
+        service_provider: "FIREWALL_V2:fwaas_db:neutron_fwaas.services.firewall.service_drivers.ovn.firewall_l3_driver.OVNFirewallL3Driver:default"
+
 __neutron_policy_server_helm_values:
   conf:
     policy:
