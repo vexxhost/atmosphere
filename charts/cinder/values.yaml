@@ -787,6 +787,36 @@ conf:
         crush_rule: replicated_rule
         chunk_size: 8
         app_name: cinder-volume
+
+    # Erasure-coded (EC) pool support:
+    # Any pool with an "erasure_coded" key automatically gets two
+    # CephBlockPool CRDs created via Rook:
+    #   - A replicated metadata pool named after the pool key
+    #   - An erasure-coded data pool named "<pool_key>.data" by default
+    #
+    # The data pool name can be overridden with "data_pool_name".
+    #
+    # pools:
+    #   cinder.volumes.ec:
+    #     app_name: cinder-volume
+    #     erasure_coded:
+    #       k: 4                       # data chunks
+    #       m: 2                       # coding chunks
+    #       device_class: hdd          # optional: target device class
+    #       failure_domain: host
+    #       data_pool_name: my-custom-data-pool  # optional: override
+    #     metadata:
+    #       replication: 3
+    #
+    # Then configure the backend to reference the derived names:
+    #
+    # backends:
+    #   rbd_ec:
+    #     volume_driver: cinder.volume.drivers.rbd.RBDDriver
+    #     rbd_pool: cinder.volumes.ec           # metadata pool (replicated)
+    #     rbd_data_pool: cinder.volumes.ec.data  # data pool (auto-derived)
+    #     rbd_user: cinder-ec
+    #     ...
   cinder:
     DEFAULT:
       volume_usage_audit_period: hour
