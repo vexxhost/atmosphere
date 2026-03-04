@@ -968,6 +968,61 @@ the risk of a full outage if another node fails.
 
      kubectl -n openstack get pxc-backup
 
+``NodeDiskHighLatency``
+=======================
+
+This alert fires when the average IO latency on a disk device exceeds 20ms for
+at least 1 hour. It measures the time the kernel spends servicing reads and
+writes divided by the number of completed operations, which represents the
+true per-operation latency at the block device layer.
+
+**Likely root causes:**
+
+- Failing or degraded SSD or HDD (wear-out, bad sectors, firmware issues)
+- RAID array running in degraded mode after a disk failure
+- Storage controller problems
+- Severely overloaded storage subsystem (too many concurrent IO operations)
+- Incorrect IO scheduler for the workload type
+
+**Diagnostic and remediation steps:**
+
+1. Identify the affected host and device from the alert labels (``instance``
+   and ``device``).
+
+2. Check the current IO latency and throughput on the affected device:
+
+   .. code-block:: console
+
+      iostat -xz 1 5
+
+3. Check for disk errors in the kernel log:
+
+   .. code-block:: console
+
+      dmesg | grep -i -E "error|fault|reset|i/o" | tail -30
+
+4. If the device is part of a RAID array, check the array status:
+
+   .. code-block:: console
+
+      cat /proc/mdstat
+
+5. Check the SMART health status of the underlying drives:
+
+   .. code-block:: console
+
+      smartctl -a /dev/<device>
+
+6. Review whether the host is under unusual IO load:
+
+   .. code-block:: console
+
+      iotop -aoP
+
+7. If the disk shows degradation or failure, plan a replacement. For RAID arrays,
+   replace the failed member. For standalone disks, migrate workloads before
+   the disk fails completely.
+
 ``NginxIngressCriticalErrorBudgetBurn``
 =======================================
 
