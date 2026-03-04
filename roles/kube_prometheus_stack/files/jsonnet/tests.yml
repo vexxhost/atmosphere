@@ -106,6 +106,47 @@ tests:
         alertname: NodeTimeSkewDetected
         exp_alerts: []
 
+  # NodeDiskHighLatency - negative test (normal latency, no alert)
+  - interval: 1m
+    input_series:
+      - series: 'node_disk_read_time_seconds_total{instance="192.0.2.1:9100", job="node-exporter", device="sda"}'
+        values: '0+0.001x70'
+      - series: 'node_disk_write_time_seconds_total{instance="192.0.2.1:9100", job="node-exporter", device="sda"}'
+        values: '0+0.001x70'
+      - series: 'node_disk_reads_completed_total{instance="192.0.2.1:9100", job="node-exporter", device="sda"}'
+        values: '0+100x70'
+      - series: 'node_disk_writes_completed_total{instance="192.0.2.1:9100", job="node-exporter", device="sda"}'
+        values: '0+100x70'
+    alert_rule_test:
+      - eval_time: 65m
+        alertname: NodeDiskHighLatency
+        exp_alerts: []
+
+  # NodeDiskHighLatency - positive test (high latency, alert fires)
+  - interval: 1m
+    input_series:
+      - series: 'node_disk_read_time_seconds_total{instance="192.0.2.2:9100", job="node-exporter", device="nvme0n1"}'
+        values: '0+5x70'
+      - series: 'node_disk_write_time_seconds_total{instance="192.0.2.2:9100", job="node-exporter", device="nvme0n1"}'
+        values: '0+5x70'
+      - series: 'node_disk_reads_completed_total{instance="192.0.2.2:9100", job="node-exporter", device="nvme0n1"}'
+        values: '0+100x70'
+      - series: 'node_disk_writes_completed_total{instance="192.0.2.2:9100", job="node-exporter", device="nvme0n1"}'
+        values: '0+100x70'
+    alert_rule_test:
+      - eval_time: 65m
+        alertname: NodeDiskHighLatency
+        exp_alerts:
+          - exp_labels:
+              severity: P4
+              instance: "192.0.2.2:9100"
+              job: node-exporter
+              device: nvme0n1
+            exp_annotations:
+              summary: "Node disk: high IO latency affecting workloads"
+              description: "Average IO latency on nvme0n1 at 192.0.2.2:9100 is 50ms over the last 5 minutes, which exceeds the threshold of 20ms. Normal SSD latency is below 1ms and normal HDD latency is below 15ms."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#nodediskhighlatency"
+
   - interval: 1m
     input_series:
       - series: 'mysql_up{instance="percona-xtradb-pxc-0", job="pxc"}'

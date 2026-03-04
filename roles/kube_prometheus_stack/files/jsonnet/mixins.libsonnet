@@ -20,6 +20,10 @@ local disabledAlerts = [
   // * Dropped `MySQLDown` due to noisy alerts even
   //   the replication still more than minimum
   'MySQLDown',
+
+  // Superseded by NodeDiskHighLatency which measures actual IO latency
+  // instead of queue depth, which is misleading on SSDs and RAID arrays.
+  'NodeDiskIOSaturation',
 ];
 
 // NOTE(mnaser): This is the default mapping for severities:
@@ -202,6 +206,7 @@ local mixins = {
     (import 'vendor/github.com/prometheus/node_exporter/docs/node-mixin/mixin.libsonnet') {
       _config+:: {
         nodeExporterSelector: 'job="node-exporter"',
+        diskDeviceSelector: 'device=~"(/dev/)?(mmcblk.p.+|nvme.+|rbd.+|sd.+|vd.+|xvd.+|dm-.+|md.+|dasd.+)"',
       },
       prometheusAlerts+:: {
         groups+: [
@@ -220,6 +225,39 @@ local mixins = {
                 annotations: {
                   summary: 'Node {{ $labels.instance }} has a time difference.',
                   description: 'Node {{ $labels.instance }} has a time difference {{ $value }}.',
+                },
+              },
+              {
+                alert: 'NodeDiskHighLatency',
+                expr: |||
+                  (
+                    (
+                      rate(node_disk_read_time_seconds_total{%(nodeExporterSelector)s, %(diskDeviceSelector)s}[5m])
+                      +
+                      rate(node_disk_write_time_seconds_total{%(nodeExporterSelector)s, %(diskDeviceSelector)s}[5m])
+                    )
+                    /
+                    (
+                      rate(node_disk_reads_completed_total{%(nodeExporterSelector)s, %(diskDeviceSelector)s}[5m])
+                      +
+                      rate(node_disk_writes_completed_total{%(nodeExporterSelector)s, %(diskDeviceSelector)s}[5m])
+                    )
+                  ) > 0.02
+                  and
+                  (
+                    rate(node_disk_reads_completed_total{%(nodeExporterSelector)s, %(diskDeviceSelector)s}[5m])
+                    +
+                    rate(node_disk_writes_completed_total{%(nodeExporterSelector)s, %(diskDeviceSelector)s}[5m])
+                  ) > 0
+                ||| % mixins.node._config,
+                'for': '1h',
+                labels: {
+                  severity: 'P4',
+                },
+                annotations: {
+                  summary: 'Node disk: high IO latency affecting workloads',
+                  description: 'Average IO latency on {{ $labels.device }} at {{ $labels.instance }} is {{ $value | humanizeDuration }} over the last 5 minutes, which exceeds the threshold of 20ms. Normal SSD latency is below 1ms and normal HDD latency is below 15ms.',
+                  runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#nodediskhighlatency',
                 },
               },
             ],
