@@ -80,4 +80,14 @@ spec:
               value: ovn-ovsdb-sb
             - name: OVN_SSL_ENABLE
               value: "no"
+          volumeMounts:
+            - name: var-log-ovn
+              mountPath: /var/log/ovn
+            - name: var-run-ovn
+              mountPath: /var/run/ovn
+      volumes:
+        - name: var-log-ovn
+          emptyDir: {}
+        - name: var-run-ovn
+          emptyDir: {}
 {{- end }}

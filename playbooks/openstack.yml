@@ -15,6 +15,15 @@
 - name: Deploy OpenStack
   hosts: controllers[0]
   become: true
+  pre_tasks:
+    - name: Fail if atmosphere_ceph_enabled is set
+      ansible.builtin.fail:
+        msg: >-
+          The "atmosphere_ceph_enabled" variable is no longer supported.
+          Please use the "atmosphere_storage" variable to configure storage
+          backends instead. Refer to the storage configuration documentation
+          for migration instructions.
+      when: atmosphere_ceph_enabled is defined
   roles:
     - role: memcached
       tags:
@@ -29,17 +38,14 @@
         - barbican
 
     - role: rook_ceph
-      when: atmosphere_ceph_enabled | default(true)
       tags:
         - rook-ceph
 
     - role: rook_ceph_cluster
-      when: atmosphere_ceph_enabled | default(true)
       tags:
         - rook-ceph-cluster
 
     - role: ceph_provisioners
-      when: atmosphere_ceph_enabled | default(true)
       tags:
         - ceph-provisioners
 

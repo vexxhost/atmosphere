@@ -33,7 +33,7 @@ __cinder_helm_values:
               emptyDir: {}
     security_context:
       cinder_volume:
-        pod:
+        container:
           cinder_volume:
             privileged: true
 
@@ -42,7 +42,6 @@ __cinder_helm_values:
     cinder:
       DEFAULT:
         allowed_direct_url_schemes: cinder
-        backup_driver: cinder.backup.drivers.ceph.CephBackupDriver
         log_config_append: null
         os_region_name: "{{ openstack_helm_endpoints['identity']['auth']['cinder']['region_name'] }}"
         volume_usage_audit_period: hour

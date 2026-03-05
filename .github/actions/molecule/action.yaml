@@ -11,9 +11,6 @@ inputs:
   network_backend:
     description: Network backend to use for the test
     default: openvswitch
-  depot_build_id:
-    description: Depot build ID to use for the test
-    default: ''
   use_mirrors:
     description: Use mirrors for container images
     default: "true"
@@ -44,11 +41,6 @@ runs:
         UV_PYTHON_DOWNLOADS: never
         UV_PYTHON_PREFERENCE: only-system
 
-    - uses: depot/setup-action@v1
-      if: ${{ inputs.depot_build_id != '' }}
-      with:
-        oidc: true
-
     - shell: bash
       if: ${{ inputs.use_mirrors == 'true' }}
       run: |
@@ -69,9 +61,8 @@ runs:
       run: rm -rfv /usr/local/bin/helm || true
 
     - shell: bash
-      run: sudo --preserve-env=ANSIBLE_PYTHON_INTERPRETER,ATMOSPHERE_NETWORK_BACKEND,DEPOT_BUILD_ID,DEPOT_TOKEN,MOLECULE_CSI_DRIVER env "PATH=$PATH" molecule test -s ${{ inputs.scenario }}
+      run: sudo --preserve-env=ANSIBLE_PYTHON_INTERPRETER,ATMOSPHERE_NETWORK_BACKEND,MOLECULE_CSI_DRIVER env "PATH=$PATH" molecule test -s ${{ inputs.scenario }}
       env:
         ANSIBLE_PYTHON_INTERPRETER: /usr/bin/python3
         ATMOSPHERE_NETWORK_BACKEND: ${{ inputs.network_backend }}
-        DEPOT_BUILD_ID: ${{ inputs.depot_build_id }}
         MOLECULE_CSI_DRIVER: ${{ inputs.csi_driver }}
