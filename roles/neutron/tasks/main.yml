@@ -31,6 +31,13 @@
   ansible.builtin.set_fact:
     _neutron_helm_values: "{{ _neutron_helm_values | combine(__neutron_policy_server_helm_values, recursive=True) }}"
 
+- name: Append Helm values (neutron_fwaas)
+  when:
+    - neutron_fwaas_enabled | bool
+    - atmosphere_network_backend == 'ovn'
+  ansible.builtin.set_fact:
+    _neutron_helm_values: "{{ _neutron_helm_values | combine(__neutron_fwaas_helm_values, recursive=True) }}"
+
 - name: Deploy Helm chart
   run_once: true
   kubernetes.core.helm:
