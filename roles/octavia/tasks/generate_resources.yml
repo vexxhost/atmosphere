@@ -104,7 +104,7 @@
 - name: Get health manager networking ports
   openstack.cloud.port_info:
     cloud: atmosphere
-    port: "octavia-health-manager-port-{{ hostvars[item]['ansible_fqdn'] | split('.') | first }}"
+    port: "octavia-health-manager-port-{{ hostvars[item]['inventory_hostname_short'] }}"
   loop: "{{ groups['controllers'] }}"
   register: _octavia_health_manager_ports
 
