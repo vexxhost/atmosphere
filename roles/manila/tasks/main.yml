@@ -69,11 +69,8 @@
           type: Available
           status: true
 
-    # NOTE (fitbeard): Use copy of openstack.cloud.share_type module until
-    # new openstack collection release with the fix is out.
-    # https://review.opendev.org/c/openstack/ansible-collections-openstack/+/963259
     - name: Create share types
-      vexxhost.atmosphere.share_type:
+      openstack.cloud.share_type:
         cloud: atmosphere
         name: "{{ item.name }}"
         description: "{{ item.description | default(omit) }}"
