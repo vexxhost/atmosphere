@@ -1,7 +1,7 @@
 diff --git a/magnum/values.yaml b/magnum/values.yaml
 --- a/magnum/values.yaml
 +++ b/magnum/values.yaml
-@@ -171,18 +171,23 @@
+@@ -171,18 +171,24 @@
    magnum_api_uwsgi:
      uwsgi:
        add-header: "Connection: close"
@@ -17,13 +17,14 @@ diff --git a/magnum/values.yaml b/magnum/values.yaml
        log-x-forwarded-for: true
        master: true
 +      need-app: true
++      processes: 4
        procname-prefix-spaced: "magnum-api:"
        route-user-agent: '^kube-probe.* donotlog:'
 +      socket-timeout: 10
        thunder-lock: true
        worker-reload-mercy: 80
 -      wsgi-file: /var/lib/openstack/bin/magnum-api-wsgi
-+      module: "magnum.api.app:build_wsgi_app"
++      module: "magnum.wsgi.api:application"
 
  network:
    api:
