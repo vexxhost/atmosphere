@@ -1,0 +1,15 @@
+# Copyright (c) 2024 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+_transceiver_exporter_helm_values:
+  image:
+    repository: "{{ atmosphere_images['transceiver_exporter'] | vexxhost.kubernetes.docker_image('name') }}"
+    tag: "{{ atmosphere_images['transceiver_exporter'] | vexxhost.kubernetes.docker_image('tag') }}"
+  config:
+    collectInterfaceFeatures: false
+    excludeInterfacesDown: true
+    includeInterfacesRegex: "^(ens|enp|eno).*"
+  tolerations:
+    - operator: Exists
+  serviceMonitor:
+    enabled: false
