@@ -109,6 +109,37 @@
             },
           ],
         },
+        {
+          name: 'ipmi-exporter-sel',
+          rules: [
+            {
+              alert: 'IpmiUncorrectableMemoryError',
+              expr: 'time() - max by (instance) (ipmi_sel_events_latest_timestamp{name="uncorrectable_memory_error"}) < 86400',
+              'for': '2m',
+              labels: {
+                severity: 'P1',
+              },
+              annotations: {
+                summary: 'IPMI: uncorrectable memory error on {{ $labels.instance }}',
+                description: 'The latest IPMI SEL event ipmi_sel_events_latest_timestamp{name="uncorrectable_memory_error"} on {{ $labels.instance }} is {{ $value | humanizeDuration }} old (threshold: 24h).',
+                runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#ipmiuncorrectablememoryerror',
+              },
+            },
+            {
+              alert: 'IpmiUnrecoverableCpuError',
+              expr: 'time() - max by (instance) (ipmi_sel_events_latest_timestamp{name="unrecoverable_cpu_error"}) < 86400',
+              'for': '2m',
+              labels: {
+                severity: 'P1',
+              },
+              annotations: {
+                summary: 'IPMI: unrecoverable CPU error on {{ $labels.instance }}',
+                description: 'The latest IPMI SEL event ipmi_sel_events_latest_timestamp{name="unrecoverable_cpu_error"} on {{ $labels.instance }} is {{ $value | humanizeDuration }} old (threshold: 24h).',
+                runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#ipmiunrecoverablecpuerror',
+              },
+            },
+          ],
+        },
       ],
     },
   },
