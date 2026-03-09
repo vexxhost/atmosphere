@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout project
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
 
@@ -43,7 +43,7 @@ jobs:
 
       - name: Cache DIB_IMAGE_CACHE
         id: cache-dib-image-cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ~/.cache/image-create
           key: dib-image-cache
@@ -53,14 +53,14 @@ jobs:
 
       - name: Save DIB_IMAGE_CACHE
         id: dib-image-cache-save
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ~/.cache/image-create
           key: ${{ steps.cache-dib-image-cache.outputs.cache-primary-key }}
 
       - name: Install uv
         if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event_name == 'release'
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
 
       - name: Publish image
         if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event_name == 'release'
