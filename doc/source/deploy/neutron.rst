@@ -201,7 +201,7 @@ virtual machine model such as Octavia and Manila.
       "hw:vif_multiqueue_enabled": 'true'
       "hw:mem_page_size": large
 
-Jumbo Frames
+Jumbo frames
 ************
 
 To configure networks with `Jumbo frames <https://docs.openstack.org/neutron/latest/admin/config-mtu.html#jumbo-frames>`_ in Neutron, use the following configuration:
@@ -218,6 +218,6 @@ To configure networks with `Jumbo frames <https://docs.openstack.org/neutron/lat
             ml2:
               path_mtu: 9000
 
-If you want to enable Jumbo frames for existing Neutron networks, adjust their `mtu` attribute accordingly.
+If you want to enable Jumbo frames for existing Neutron networks, adjust their ``mtu`` attribute accordingly.
 
-Remember to also configure the physical network interfaces with MTU 9000 (for Ubuntu, see the `mtu` property in `netplan <https://netplan.readthedocs.io/en/latest/netplan-yaml>`_).
+Remember to also configure the physical network interfaces with MTU 9000 (for Ubuntu, see the ``mtu`` property in `Netplan <https://netplan.readthedocs.io/en/latest/netplan-yaml>`_).
