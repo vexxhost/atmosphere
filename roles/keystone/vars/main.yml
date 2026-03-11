@@ -17,6 +17,8 @@ _keystone_helm_values:
   images:
     tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('keystone') }}"
   pod:
+    labels:
+      include_app_kubernetes_io: false
     replicas:
       api: 3
     mounts:
@@ -99,7 +101,20 @@ _keystone_helm_values:
         {% endfor %}
       </VirtualHost>
     ks_domains: "{{ keystone_domains | vexxhost.atmosphere.to_ks_domains }}"
+    rabbitmq:
+      policies:
+        - vhost: "keystone"
+          name: "ha_ttl_keystone"
+          definition:
+            message-ttl: 70000
+          priority: 0
+          apply-to: all
+          pattern: '^(?!(amq\.|reply_)).*'
   manifests:
     job_credential_cleanup: false
     ingress_api: false
     service_ingress_api: false
+
+_keystone_ingress_annotations:
+  nginx.ingress.kubernetes.io/proxy-body-size: 2m
+  nginx.ingress.kubernetes.io/proxy-read-timeout: "120"

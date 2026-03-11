@@ -23,6 +23,22 @@ _rook_ceph_cluster_spec:
     metricsDisabled: true
 
 _rook_ceph_cluster_radosgw_spec:
+  auth:
+    keystone:
+      acceptedRoles:
+        - admin
+        - member
+        - service
+      implicitTenants: "true"
+      serviceUserSecretName: rook-ceph-rgw-{{ rook_ceph_cluster_name }}-creds
+      url: http://keystone-api.openstack.svc.cluster.local:5000
+  protocols:
+    swift:
+      accountInUrl: true
+      versioningEnabled: true
+    s3:
+      enabled: true
+      authUseKeystone: true
   preservePoolsOnDelete: true
   metadataPool:
     failureDomain: host
@@ -46,23 +62,9 @@ _rook_ceph_cluster_radosgw_spec:
 
 _rook_ceph_cluster_helm_values:
   clusterName: "{{ rook_ceph_cluster_name }}"
-  # NOTE(mnaser): We need to disable the token cache until the the backported
-  #               fix https://tracker.ceph.com/issues/64094 is released.
   configOverride: |
     [client]
-    rgw keystone api version = 3
-    rgw keystone url =  http://keystone-api.openstack.svc.cluster.local:5000
-    rgw keystone admin user = "{{ openstack_helm_endpoints.identity.auth.rgw.username }}"
-    rgw keystone admin password = "{{ openstack_helm_endpoints.identity.auth.rgw.password }}"
-    rgw_keystone admin domain = service
-    rgw_keystone admin project = service
-    rgw keystone implicit tenants = true
-    rgw keystone accepted roles = member,admin,reader
     rgw_keystone accepted admin roles = admin
-    rgw keystone token cache size = 0
-    rgw s3 auth use keystone = true
-    rgw swift account in url = true
-    rgw swift versioning enabled = true
   cephClusterSpec: "{{ _rook_ceph_cluster_spec | combine(rook_ceph_cluster_spec, recursive=True) }}"
   cephBlockPools: []
   cephFileSystems: []

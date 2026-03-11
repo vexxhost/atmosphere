@@ -143,14 +143,6 @@
               },
             },
             {
-              alert: 'NodeHighMemoryUsage',
-              expr: '(node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 < 2.5',
-              'for': '2m',
-              labels: {
-                severity: 'critical',
-              },
-            },
-            {
               alert: 'NodeHighCpuUsage',
               expr: "sum by(instance)(irate(node_cpu_seconds_total{mode='idle'}[5m])) < 1",
               'for': '2m',

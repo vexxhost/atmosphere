@@ -24,6 +24,18 @@ rules:
   - apiGroups: ["apiextensions.k8s.io"]
     resources: ["customresourcedefinitions"]
     verbs: ["get"]
+  - apiGroups: ["csi.ceph.io"]
+    resources: ["cephconnections"]
+    verbs: ["create", "delete", "get", "list","update", "watch"]
+  - apiGroups: ["csi.ceph.io"]
+    resources: ["clientprofiles"]
+    verbs: ["create", "delete", "get", "list", "update", "watch"]
+  - apiGroups: ["csi.ceph.io"]
+    resources: ["operatorconfigs"]
+    verbs: ["create", "delete", "get", "list" ,"update", "watch"]
+  - apiGroups: ["csi.ceph.io"]
+    resources: ["drivers"]
+    verbs: ["create", "delete", "get", "list" ,"update", "watch"]
 ---
 # The cluster role for managing all the cluster-specific resources in a namespace
 apiVersion: rbac.authorization.k8s.io/v1
@@ -397,6 +409,18 @@ rules:
   - apiGroups: [""]
     resources: ["nodes"]
     verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["serviceaccounts"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["serviceaccounts/token"]
+    verbs: ["create"]
 ---
 {{- if .Values.csi.nfs.enabled }}
 kind: ClusterRole
@@ -475,7 +499,13 @@ rules:
     resources: ["secrets"]
     verbs: ["get", "list"]
   - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get"]
+  - apiGroups: [""]
     resources: ["nodes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["csinodes"]
     verbs: ["get", "list", "watch"]
   - apiGroups: [""]
     resources: ["persistentvolumes"]
@@ -519,6 +549,12 @@ rules:
   - apiGroups: ["groupsnapshot.storage.k8s.io"]
     resources: ["volumegroupsnapshotcontents/status"]
     verbs: ["update", "patch"]
+  - apiGroups: [""]
+    resources: ["serviceaccounts"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["serviceaccounts/token"]
+    verbs: ["create"]
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
@@ -618,9 +654,6 @@ rules:
     verbs: ["create"]
   - apiGroups: [""]
     resources: ["nodes"]
-    verbs: ["get", "list", "watch"]
-  - apiGroups: ["storage.k8s.io"]
-    resources: ["csinodes"]
     verbs: ["get", "list", "watch"]
 ---
 kind: ClusterRole

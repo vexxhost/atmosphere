@@ -30,7 +30,7 @@ curated by years of experience from our team alongside other features such as:
    admin/index
    user/index
    developer
-   release-notes
+   releasenotes/index
 
 
 

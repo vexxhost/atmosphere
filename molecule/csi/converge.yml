@@ -12,6 +12,15 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+# NOTE(mnaser): This play is required for csi_driver to be evaluated properly
+#               so the when condition on import_playbook works correctly
+- name: Debug CSI driver value
+  hosts: all
+  tasks:
+    - name: Display CSI driver value and environment variable
+      ansible.builtin.debug:
+        msg: "csi_driver={{ csi_driver }}, MOLECULE_CSI_DRIVER={{ lookup('env', 'MOLECULE_CSI_DRIVER') }}"
+
 - name: Install Ceph
   ansible.builtin.import_playbook: vexxhost.atmosphere.ceph
   when: csi_driver == 'rbd'

@@ -11,10 +11,27 @@ import (
 var (
 	//go:embed vars/main.yml
 	varsFile []byte
+
+	//go:embed defaults/main.yml
+	defaultsFile []byte
 )
 
 // Define a global variable for the release value.
 var release = "main"
+
+func getKubernetesVersion() (string, error) {
+	path, err := yaml.PathString("$.atmosphere_kubernetes_version")
+	if err != nil {
+		return "", err
+	}
+
+	var version string
+	if err := path.Read(bytes.NewReader(defaultsFile), &version); err != nil {
+		return "", err
+	}
+
+	return version, nil
+}
 
 func GetImages() (map[string]string, error) {
 	// Replace {{ release }} with the actual release value
@@ -22,6 +39,13 @@ func GetImages() (map[string]string, error) {
 
 	// Fix prefixes for images to allow tests to run
 	modifiedVarsFile = []byte(strings.ReplaceAll(string(modifiedVarsFile), "{{ atmosphere_image_prefix }}", ""))
+
+	// Replace {{ atmosphere_kubernetes_version }} with the actual Kubernetes version
+	kubernetesVersion, err := getKubernetesVersion()
+	if err != nil {
+		return nil, err
+	}
+	modifiedVarsFile = []byte(strings.ReplaceAll(string(modifiedVarsFile), "{{ atmosphere_kubernetes_version }}", kubernetesVersion))
 
 	path, err := yaml.PathString("$._atmosphere_images")
 	if err != nil {

@@ -69,7 +69,18 @@ _ironic_helm_values:
         kernel_append_params: "ipa-insecure=true systemd.journald.forward_to_console=yes"
       service_catalog:
         valid_interfaces: public
+    rabbitmq:
+      policies:
+        - vhost: "ironic"
+          name: "ha_ttl_ironic"
+          definition:
+            message-ttl: 70000
+          priority: 0
+          apply-to: all
+          pattern: '^(?!(amq\.|reply_)).*'
   pod:
+    labels:
+      include_app_kubernetes_io: false
     affinity:
       anti:
         type:

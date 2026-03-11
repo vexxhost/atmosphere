@@ -14,9 +14,11 @@ information to ensure stable and efficient operation of the system.
    :maxdepth: 2
 
    ceph
+   database-backups
    emulated-tpm
    integration
    maintenance
    monitoring
+   pmem
    troubleshooting
    upgrading

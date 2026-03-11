@@ -18,12 +18,19 @@
   ansible.builtin.command: cephadm shell -- ceph mon dump -f json
   changed_when: false
   register: _ceph_mon_dump
+  when: ceph_csi_rbd_ceph_fsid is not defined or ceph_csi_rbd_monitors is not defined
+
+- name: Generate fact with Ceph FSID
+  run_once: true
+  ansible.builtin.set_fact:
+    ceph_csi_rbd_ceph_fsid: "{{ _ceph_mon_dump.stdout | from_json | community.general.json_query('fsid') }}"
+  when: ceph_csi_rbd_ceph_fsid is not defined
 
 - name: Generate fact with list of Ceph monitors
   run_once: true
   ansible.builtin.set_fact:
-    ceph_csi_rbd_ceph_fsid: "{{ _ceph_mon_dump.stdout | from_json | community.general.json_query('fsid') }}"
-    ceph_monitors: "{{ _ceph_mon_dump.stdout | from_json | community.general.json_query('mons[*].addr') | map('regex_replace', '(.*):(.*)', '\\1') }}"
+    ceph_csi_rbd_monitors: "{{ _ceph_mon_dump.stdout | from_json | community.general.json_query('mons[*].addr') | map('regex_replace', '(.*):(.*)', '\\1') }}"
+  when: ceph_csi_rbd_monitors is not defined
 
 - name: Create Ceph pool
   delegate_to: "{{ groups[ceph_csi_rbd_mons_group][0] }}"
@@ -33,6 +40,8 @@
     rule_name: "{{ ceph_csi_rbd_rule_name | default(omit) }}"
     application: rbd
     pg_autoscale_mode: "on"
+  when:
+    - ceph_csi_rbd_keyring is not defined
 
 - name: Create user {{ ceph_csi_rbd_user }}
   delegate_to: "{{ groups[ceph_csi_rbd_mons_group][0] }}"
@@ -43,6 +52,8 @@
       mon: profile rbd
       mgr: profile rbd pool={{ ceph_csi_rbd_pool }}
       osd: profile rbd pool={{ ceph_csi_rbd_pool }}
+  when:
+    - ceph_csi_rbd_keyring is not defined
 
 - name: Retrieve keyring for {{ ceph_csi_rbd_user }}
   delegate_to: "{{ groups[ceph_csi_rbd_mons_group][0] }}"
@@ -52,11 +63,14 @@
     state: info
     output_format: json
   register: _ceph_key
+  when:
+    - ceph_csi_rbd_keyring is not defined
 
 - name: Store keyring inside fact
   run_once: true
   ansible.builtin.set_fact:
-    _ceph_rbd_csi_ceph_keyring: "{{ _ceph_key.stdout | from_json | first }}"
+    ceph_csi_rbd_keyring: "{{ (_ceph_key.stdout | from_json | first).key }}"
+  when: ceph_csi_rbd_keyring is not defined
 
 - name: Deploy Helm chart
   run_once: true

@@ -1,12 +1,18 @@
 .common:
+  vexxhost_openstack_helm_repository: &vexxhost_openstack_helm_repository
+    url: https://vexxhost.github.io/openstack-helm
+  vexxhost_openstack_helm_dependencies: &vexxhost_openstack_helm_dependencies
+    - name: helm-toolkit
+      repository: https://vexxhost.github.io/openstack-helm
+      version: 1.1.0
   openstack_helm_repository: &openstack_helm_repository
     url: https://tarballs.openstack.org/openstack-helm
   openstack_helm_infra_repository: &openstack_helm_infra_repository
     url: https://tarballs.openstack.org/openstack-helm-infra
   openstack_helm_dependencies: &openstack_helm_dependencies
     - name: helm-toolkit
-      repository: https://tarballs.openstack.org/openstack-helm-infra
-      version: 0.2.69
+      repository: https://tarballs.openstack.org/openstack-helm
+      version: 2025.1.8
 
 charts:
   - name: barbican
@@ -99,6 +105,7 @@ charts:
       gerrit:
         review.opendev.org:
           - 925931
+          - 955851
   - name: keycloak
     version: 21.4.1
     repository:
@@ -117,8 +124,8 @@ charts:
     repository:
       url: https://prometheus-community.github.io/helm-charts
   - name: libvirt
-    version: 0.1.27
-    repository: *openstack_helm_infra_repository
+    version: 1.1.0
+    repository: *vexxhost_openstack_helm_repository
     dependencies: *openstack_helm_dependencies
   - name: loki
     version: 6.6.3
@@ -141,6 +148,7 @@ charts:
         review.opendev.org:
           - 883168
           - 899923
+          - 960009
   - name: memcached
     version: 0.1.12
     repository: *openstack_helm_infra_repository
@@ -161,6 +169,10 @@ charts:
     version: 0.3.46
     repository: *openstack_helm_repository
     dependencies: *openstack_helm_dependencies
+    patches:
+      gerrit:
+        review.opendev.org:
+          - 954211
   - name: octavia
     version: 0.2.9
     repository: *openstack_helm_repository
@@ -170,18 +182,15 @@ charts:
         review.opendev.org:
           - 899918
           - 918447
+          - 960142
   - name: openvswitch
-    version: 0.1.24
-    repository: *openstack_helm_infra_repository
-    dependencies: *openstack_helm_dependencies
+    version: 1.2.0
+    repository: *vexxhost_openstack_helm_repository
+    dependencies: *vexxhost_openstack_helm_dependencies
   - name: ovn
-    version: 0.1.15
-    repository: *openstack_helm_infra_repository
-    dependencies: *openstack_helm_dependencies
-    patches:
-      gerrit:
-        review.opendev.org:
-          - 934929
+    version: 1.1.0
+    repository: *vexxhost_openstack_helm_repository
+    dependencies: *vexxhost_openstack_helm_dependencies
   - name: placement
     version: 0.3.9
     repository: *openstack_helm_repository
@@ -195,19 +204,19 @@ charts:
     repository:
       url: https://prometheus-community.github.io/helm-charts
   - name: pxc-operator
-    version: 1.14.1
+    version: 1.18.0
     repository:
       url: https://percona.github.io/percona-helm-charts
   - name: rabbitmq-cluster-operator
-    version: 4.3.6
+    version: 4.4.34
     repository:
       url: https://charts.bitnami.com/bitnami
   - name: rook-ceph
-    version: 1.14.5
+    version: 1.15.9
     repository:
       url: https://charts.rook.io/release
   - name: rook-ceph-cluster
-    version: 1.14.5
+    version: 1.15.9
     repository:
       url: https://charts.rook.io/release
   - name: tempest

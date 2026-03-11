@@ -38,10 +38,14 @@ dependencies:
       upload_helm_chart_dest: "{{ magnum_helm_chart_ref }}"
   - role: vexxhost.kubernetes.cluster_api
     vars:
-      clusterctl_version: 1.8.4
+      clusterctl_version: 1.10.5
       clusterctl_config: "{{ magnum_clusterctl_config }}"
-      cluster_api_version: 1.8.4
+      cluster_api_version: 1.10.5
       cluster_api_infrastructure_provider: openstack
-      cluster_api_infrastructure_version: 0.11.2
+      cluster_api_infrastructure_version: 0.12.4
       cluster_api_node_selector:
+        openstack-control-plane: enabled
+      openstack_resource_controller_image: "{{ atmosphere_images['openstack_resource_controller'] | vexxhost.kubernetes.docker_image('name') }}"
+      openstack_resource_controller_image_tag: "{{ atmosphere_images['openstack_resource_controller'] | vexxhost.kubernetes.docker_image('tag') }}"
+      openstack_resource_controller_node_selector:
         openstack-control-plane: enabled

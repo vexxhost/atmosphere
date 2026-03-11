@@ -17,6 +17,8 @@ _placement_helm_values:
   images:
     tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('placement') }}"
   pod:
+    labels:
+      include_app_kubernetes_io: false
     replicas:
       api: 3
   conf:
@@ -31,6 +33,18 @@ _placement_helm_values:
         pool_timeout: 30
       oslo_messaging_notifications:
         driver: noop
+    rabbitmq:
+      policies:
+        - vhost: "placement"
+          name: "ha_ttl_placement"
+          definition:
+            message-ttl: 70000
+          priority: 0
+          apply-to: all
+          pattern: '^(?!(amq\.|reply_)).*'
+    placement_api_uwsgi:
+      uwsgi:
+        processes: 4
   manifests:
     ingress: false
     service_ingress: false

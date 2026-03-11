@@ -1,0 +1,68 @@
+name: Run Molecule Tests
+description: Run Molecule tests for Atmosphere collection
+
+inputs:
+  scenario:
+    description: Molecule scenario to run
+    required: true
+  csi_driver:
+    description: CSI driver to use for the test
+    default: local-path-provisioner
+  network_backend:
+    description: Network backend to use for the test
+    default: openvswitch
+  use_mirrors:
+    description: Use mirrors for container images
+    default: "true"
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: sudo swapoff -a
+
+    - shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y openssh-server
+
+    - shell: bash
+      run: |
+        sudo mkdir -p /var/lib/etcd
+        sudo mount -t tmpfs -o nodev,nosuid,size=512M tmpfs /var/lib/etcd
+
+    - uses: astral-sh/setup-uv@v6
+
+    - shell: bash
+      run: |
+        uv sync --dev
+        echo ${{ github.workspace }}/.venv/bin >> $GITHUB_PATH
+      env:
+        UV_PYTHON_DOWNLOADS: never
+        UV_PYTHON_PREFERENCE: only-system
+
+    - shell: bash
+      if: ${{ inputs.use_mirrors == 'true' }}
+      run: |
+        FILE="roles/defaults/vars/main.yml"
+        if [[ -f "$FILE" ]]; then
+          sed -i -E \
+            -e "s|\{\{\s*atmosphere_image_prefix\s*\}\}registry\.atmosphere\.dev|harbor.atmosphere.dev|g" \
+            -e "s|\{\{\s*atmosphere_image_prefix\s*\}\}|harbor.atmosphere.dev/|g" \
+            "$FILE"
+        else
+          echo "File $FILE not found, skipping replacement."
+        fi
+
+    # NOTE(mnaser): The newer versions of Helm have introduced more strict handling of
+    #               spacing that breaks some of the Helm charts, so we remove it here
+    #               for now so that Ansible installs it.
+    - shell: bash
+      run: rm -rfv /usr/local/bin/helm || true
+
+    - shell: bash
+      run: sudo --preserve-env=ANSIBLE_PYTHON_INTERPRETER,ATMOSPHERE_NETWORK_BACKEND,MOLECULE_CSI_DRIVER env "PATH=$PATH" molecule test -s ${{ inputs.scenario }}
+      env:
+        ANSIBLE_PYTHON_INTERPRETER: /usr/bin/python3
+        ATMOSPHERE_NETWORK_BACKEND: ${{ inputs.network_backend }}
+        MOLECULE_CSI_DRIVER: ${{ inputs.csi_driver }}

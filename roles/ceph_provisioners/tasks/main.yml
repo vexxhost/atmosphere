@@ -105,6 +105,10 @@
       stringData:
         key: "{{ _ceph_provisioners_keyring.key }}"
 
+- name: Generate Helm values (storage)
+  ansible.builtin.set_fact:
+    _ceph_provisioners_helm_values: "{{ _ceph_provisioners_helm_values | combine(_atmosphere_storage_config | vexxhost.atmosphere.storage_to_ceph_provisioners_helm_values, recursive=True) }}"
+
 - name: Deploy Helm chart
   run_once: true
   kubernetes.core.helm:
