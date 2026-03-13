@@ -10,6 +10,9 @@ on:
 concurrency:
   group: docs
 
+permissions:
+  contents: read
+
 jobs:
   pages:
     runs-on: ubuntu-latest
@@ -20,12 +23,17 @@ jobs:
       pages: write
       id-token: write
     steps:
+    - name: Harden the runner (Audit all outbound calls)
+      uses: step-security/harden-runner@a90bcbc6539c36a85cdfeb73f7e2f433735f215b # v2.15.0
+      with:
+        egress-policy: audit
+
     - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4
       with:
         ref: main
         fetch-depth: 0
     - id: deployment
-      uses: sphinx-notes/pages@v3
+      uses: sphinx-notes/pages@e9c8f79f285fb41a150ba6e08a3c2a29635e7ee1 # v3
       with:
         documentation_path: doc/source
         requirements_path: doc/requirements.txt
