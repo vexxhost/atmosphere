@@ -249,6 +249,7 @@ class VolumeBackendRbdEc(ErasureCodedRbdPoolSpec, LibvirtSecretSpec):
             },
             "metadata": {
                 "replication": self.metadata_replication,
+                "crush_rule": self.crush_rule,
             },
         }
         if ec.device_class is not None:
