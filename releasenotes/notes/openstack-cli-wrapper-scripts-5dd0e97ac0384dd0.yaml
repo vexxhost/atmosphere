@@ -1,0 +1,16 @@
+---
+features:
+  - |
+    The ``openstack_cli`` role now installs executable wrapper scripts
+    for ``osc`` and the OpenStack CLI at ``/usr/local/bin`` to replace
+    shell aliases. This makes the OpenStack CLI available in
+    non-interactive contexts such as ``sudo bash -c``, SSH commands,
+    and Ansible tasks without requiring ``set -o posix`` or sourcing
+    ``/etc/profile.d/atmosphere.sh``.
+upgrade:
+  - |
+    Ansible tasks that previously used the shell module with
+    ``source /etc/profile.d/atmosphere.sh`` now use the command module
+    directly. The ``/etc/profile.d/atmosphere.sh`` file no longer
+    defines the ``osc`` or OpenStack CLI aliases and doesn't export
+    any environment variables automatically.
