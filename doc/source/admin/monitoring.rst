@@ -908,6 +908,82 @@ experiencing network issues.
      kubectl debug node/<affected-node> -it --image=busybox -- \
        cat /host/var/log/syslog | tail -100
 
+``IpmiUncorrectableMemoryError``
+================================
+
+This alert fires when the Intelligent Platform Management Interface (IPMI)
+exporter reports a recent ``uncorrectable_memory_error`` System Event Log
+(SEL) event. These events
+indicate a non-recoverable memory error on the host and often require
+hardware intervention.
+
+**Likely root causes**
+
+- Failing dual in-line memory module (DIMM) or memory controller
+- Unstable firmware or Basic Input/Output System (BIOS) configuration
+- Recent hardware changes or maintenance introducing faulty memory
+
+**Diagnostic and remediation steps**
+
+1. Identify the affected host from the alert ``instance`` label.
+
+2. Check the SEL (System Event Log) on the host for uncorrectable memory errors:
+
+   .. code-block:: console
+
+     ipmitool sel list | grep -i "uncorrectable"
+
+3. Review system logs for error-correcting code (ECC) or memory errors:
+
+   .. code-block:: console
+
+     journalctl -k | grep -i -e ecc -e memory -e edac
+
+4. If the error recurs, replace the failing DIMM (dual in-line memory module)
+   and run a memory test
+   (for example, ``memtest86``) before returning the host to service.
+
+``IpmiUnrecoverableCpuError``
+=============================
+
+This alert fires when the IPMI (Intelligent Platform Management Interface)
+exporter reports a recent ``unrecoverable_cpu_error`` SEL (System Event Log)
+event. These events
+indicate a fatal CPU error that typically requires hardware
+intervention and may precede a crash.
+
+**Likely root causes**
+
+- Failing CPU or socket
+- Hardware instability due to power or thermal issues
+- Firmware or microcode issues
+
+**Diagnostic and remediation steps**
+
+1. Identify the affected host from the alert ``instance`` label.
+
+2. Check the SEL (System Event Log) on the host for CPU errors:
+
+   .. code-block:: console
+
+     ipmitool sel list | grep -i -e "processor" -e "err"
+
+3. Review system logs for machine check or CPU errors:
+
+   .. code-block:: console
+
+     journalctl -k | grep -i -e mce -e machine -e cpu
+
+4. Check CPU temperatures and system health:
+
+   .. code-block:: console
+
+     ipmitool sdr type temperature
+     ipmitool sdr type processor
+
+5. If the error recurs, schedule hardware maintenance and replace the
+   affected CPU or motherboard as needed.
+
 ``MySQLGaleraOutOfSync``
 ========================
 
