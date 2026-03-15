@@ -37,6 +37,7 @@ images:
     neutron_dhcp: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
     neutron_metadata: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
     neutron_ovn_metadata: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
+    neutron_ovn_db_sync: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
     neutron_ovn_vpn: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
     neutron_l3: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
     neutron_l2gw: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
@@ -737,6 +738,11 @@ pod:
       neutron_lb_agent:
         volumeMounts:
         volumes:
+    neutron_ovn_db_sync:
+      init_container: null
+      neutron_ovn_db_sync:
+        volumeMounts:
+        volumes:
     neutron_metadata_agent:
       init_container: null
       neutron_metadata_agent:
@@ -1024,6 +1030,13 @@ pod:
           memory: "1024Mi"
           cpu: "2000m"
       ks_user:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      ovn_db_sync:
         requests:
           memory: "128Mi"
           cpu: "100m"
@@ -2674,6 +2687,14 @@ health_probe:
   logging:
     level: ERROR
 
+jobs:
+  ovn_db_sync:
+    cron: "*/5 * * * *"
+    sync_mode: log
+    history:
+      success: 3
+      failed: 1
+
 tls:
   identity: false
   oslo_messaging: false
@@ -2683,6 +2704,7 @@ manifests:
   certificates: false
   configmap_bin: true
   configmap_etc: true
+  cron_job_ovn_db_sync: false
   daemonset_dhcp_agent: true
   daemonset_l3_agent: true
   daemonset_lb_agent: true
