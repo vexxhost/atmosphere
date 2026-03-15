@@ -550,6 +550,18 @@ _kube_prometheus_stack_helm_values:
                 regex: (.*)
                 replacement: default
                 targetLabel: instance
+      - name: transceiver-exporter
+        jobLabel: app.kubernetes.io/instance
+        namespaceSelector:
+          matchNames:
+            - monitoring
+        selector:
+          matchLabels:
+            app.kubernetes.io/name: transceiver-exporter
+        endpoints:
+          - port: http-metrics
+            interval: 60s
+            relabelings: *relabelings_instance_to_node_name
     additionalPodMonitors:
       - name: ipmi-exporter
         jobLabel: job

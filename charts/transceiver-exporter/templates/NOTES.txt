@@ -1,0 +1,18 @@
+transceiver-exporter has been deployed as a DaemonSet.
+
+To verify the deployment:
+  kubectl get pods -l "app.kubernetes.io/name={{ include "transceiver-exporter.name" . }},app.kubernetes.io/instance={{ .Release.Name }}"
+
+To access the metrics endpoint:
+  kubectl port-forward svc/{{ include "transceiver-exporter.fullname" . }} {{ .Values.service.port }}:{{ .Values.service.port }}
+  curl http://localhost:{{ .Values.service.port }}/metrics
+
+{{- if .Values.serviceMonitor.enabled }}
+
+ServiceMonitor is enabled. Prometheus Operator will automatically discover and scrape metrics.
+{{- else }}
+
+To enable Prometheus Operator ServiceMonitor, set serviceMonitor.enabled=true
+{{- end }}
+
+Note: This exporter requires NET_ADMIN capability and hostNetwork access to read transceiver EEPROM data.
