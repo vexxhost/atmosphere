@@ -1,0 +1,63 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Deploy service
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      - apiVersion: apps/v1
+        kind: DaemonSet
+        metadata:
+          name: smartctl-exporter
+          namespace: monitoring
+          labels:
+            application: smartctl-exporter
+        spec:
+          selector:
+            matchLabels:
+              application: smartctl-exporter
+          template:
+            metadata:
+              labels:
+                application: smartctl-exporter
+                job: smartctl
+            spec:
+              containers:
+                - name: exporter
+                  image: "{{ atmosphere_images['prometheus_smartctl_exporter'] | vexxhost.kubernetes.docker_image('ref') }}"
+                  args: >-
+                    {{
+                      ['--smartctl.interval=60s'] +
+                      (['--smartctl.device-exclude=' + smartctl_exporter_smartctl_device_exclude]
+                       if smartctl_exporter_smartctl_device_exclude
+                       else [])
+                    }}
+                  ports:
+                    - name: metrics
+                      containerPort: 9633
+                  securityContext:
+                    privileged: true
+                  volumeMounts:
+                    - name: dev
+                      mountPath: /dev
+                    - name: sys
+                      mountPath: /host/sys
+                      readOnly: true
+              hostNetwork: true
+              volumes:
+                - name: dev
+                  hostPath:
+                    path: /dev
+                - name: sys
+                  hostPath:
+                    path: /sys
+              affinity:
+                nodeAffinity:
+                  requiredDuringSchedulingIgnoredDuringExecution:
+                    nodeSelectorTerms:
+                      - matchExpressions:
+                          - key: feature.node.kubernetes.io/cpu-cpuid.HYPERVISOR
+                            operator: NotIn
+                            values: ["true"]
+              tolerations:
+                - operator: Exists

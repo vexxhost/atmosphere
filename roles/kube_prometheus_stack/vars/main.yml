@@ -69,6 +69,14 @@ _kube_prometheus_stack_helm_values:
             - alertname = "CoreDNSModerateErrorBudgetBurn"
           target_matchers:
             - alertname = "CoreDNSLowErrorBudgetBurn"
+        - source_matchers:
+            - alertname = "SmartctlDiskWearoutCritical"
+          target_matchers:
+            - alertname = "SmartctlDiskWearoutWarning"
+          equal:
+            - instance
+            - device
+            - namespace
       route:
         group_by:
           - alertname
@@ -556,6 +564,15 @@ _kube_prometheus_stack_helm_values:
         selector:
           matchLabels:
             application: ipmi-exporter
+        podMetricsEndpoints:
+          - interval: 60s
+            port: metrics
+            relabelings: *relabelings_instance_to_node_name
+      - name: smartctl-exporter
+        jobLabel: job
+        selector:
+          matchLabels:
+            application: smartctl-exporter
         podMetricsEndpoints:
           - interval: 60s
             port: metrics

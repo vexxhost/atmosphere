@@ -960,3 +960,175 @@ tests:
               summary: "CoreDNS: instance has disappeared from Prometheus target discovery"
               description: "CoreDNS has disappeared from Prometheus target discovery for more than 15 minutes. This could indicate a crashed CoreDNS pod or a misconfigured scrape target."
               runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#corednsdown"
+
+  # SmartctlDiskUnhealthy - should NOT fire when SMART status is healthy (1)
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_smart_status{device="/dev/sda",model_name="Samsung SSD 860",instance="node1"}'
+        values: '1x10'
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: SmartctlDiskUnhealthy
+        exp_alerts: []
+
+  # SmartctlDiskUnhealthy - should fire when SMART status is 0 (failed)
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_smart_status{device="/dev/sda",model_name="Samsung SSD 860",instance="node1"}'
+        values: '0x10'
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: SmartctlDiskUnhealthy
+        exp_alerts:
+          - exp_labels:
+              severity: P2
+              device: /dev/sda
+              model_name: Samsung SSD 860
+              instance: node1
+            exp_annotations:
+              summary: "Disk: SMART health check failed"
+              description: 'The disk /dev/sda (model: Samsung SSD 860) on node node1 has failed its SMART health self-assessment test. This indicates imminent disk failure and the disk should be replaced immediately.'
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskunhealthy"
+
+  # SmartctlDiskWearoutCritical - should NOT fire when wear is below 90%
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_percentage_used{device="/dev/sda",model_name="Samsung SSD 860",instance="node1"}'
+        values: '85x10'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: SmartctlDiskWearoutCritical
+        exp_alerts: []
+
+  # SmartctlDiskWearoutCritical - should fire when wear exceeds 90%
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_percentage_used{device="/dev/sda",model_name="Samsung SSD 860",instance="node1"}'
+        values: '95x10'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: SmartctlDiskWearoutCritical
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+              device: /dev/sda
+              model_name: Samsung SSD 860
+              instance: node1
+            exp_annotations:
+              summary: "Disk: wear level critical"
+              description: 'The disk /dev/sda (model: Samsung SSD 860) on node node1 has 95% wear. The disk has exceeded 90% of its rated endurance and should be replaced soon to avoid data loss.'
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskwearoutcritical"
+
+  # SmartctlDiskWearoutWarning - should NOT fire when wear is below 75%
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_percentage_used{device="/dev/sda",model_name="Samsung SSD 860",instance="node1"}'
+        values: '70x20'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: SmartctlDiskWearoutWarning
+        exp_alerts: []
+
+  # SmartctlDiskWearoutWarning - should fire when wear exceeds 75%
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_percentage_used{device="/dev/sda",model_name="Samsung SSD 860",instance="node1"}'
+        values: '80x20'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: SmartctlDiskWearoutWarning
+        exp_alerts:
+          - exp_labels:
+              severity: P4
+              device: /dev/sda
+              model_name: Samsung SSD 860
+              instance: node1
+            exp_annotations:
+              summary: "Disk: wear level elevated"
+              description: 'The disk /dev/sda (model: Samsung SSD 860) on node node1 has 80% wear. The disk has exceeded 75% of its rated endurance. Plan a replacement during the next maintenance window.'
+
+  # SmartctlDiskTemperatureHigh - should NOT fire when temperature is normal
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_temperature{device="/dev/sda",model_name="Samsung SSD 860",instance="node1",temperature_type="current"}'
+        values: '40x20'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: SmartctlDiskTemperatureHigh
+        exp_alerts: []
+
+  # SmartctlDiskTemperatureHigh - should fire when temperature exceeds 60°C
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_temperature{device="/dev/sda",model_name="Samsung SSD 860",instance="node1",temperature_type="current"}'
+        values: '65x20'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: SmartctlDiskTemperatureHigh
+        exp_alerts:
+          - exp_labels:
+              severity: P4
+              device: /dev/sda
+              model_name: Samsung SSD 860
+              instance: node1
+              temperature_type: current
+            exp_annotations:
+              summary: "Disk: temperature high"
+              description: 'The disk /dev/sda (model: Samsung SSD 860) on node node1 has a temperature of 65°C, which exceeds the 60°C threshold. Normal operating temperature is below 45°C. Check cooling and airflow.'
+
+  # SmartctlDiskReallocatedSectors - should NOT fire when count is 0
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_smart_attribute{device="/dev/sda",model_name="Samsung SSD 860",instance="node1",smart_attribute_name="Reallocated_Sector_Ct",smart_attribute_type="raw"}'
+        values: '0x10'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: SmartctlDiskReallocatedSectors
+        exp_alerts: []
+
+  # SmartctlDiskReallocatedSectors - should fire when reallocated sectors > 0
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_smart_attribute{device="/dev/sda",model_name="Samsung SSD 860",instance="node1",smart_attribute_name="Reallocated_Sector_Ct",smart_attribute_type="raw"}'
+        values: '5x10'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: SmartctlDiskReallocatedSectors
+        exp_alerts:
+          - exp_labels:
+              severity: P4
+              device: /dev/sda
+              model_name: Samsung SSD 860
+              instance: node1
+              smart_attribute_name: Reallocated_Sector_Ct
+              smart_attribute_type: raw
+            exp_annotations:
+              summary: "Disk: reallocated sectors detected"
+              description: 'The disk /dev/sda (model: Samsung SSD 860) on node node1 has 5 reallocated sectors. This indicates the disk has remapped bad sectors to spare areas. Monitor the trend and plan replacement if the count increases.'
+
+  # SmartctlExporterDown - should NOT fire when exporter is up
+  - interval: 1m
+    input_series:
+      - series: 'up{job="smartctl",instance="node1"}'
+        values: '1x20'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: SmartctlExporterDown
+        exp_alerts: []
+
+  # SmartctlExporterDown - should fire when exporter is down
+  - interval: 1m
+    input_series:
+      - series: 'up{job="smartctl",instance="node1"}'
+        values: '0x20'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: SmartctlExporterDown
+        exp_alerts:
+          - exp_labels:
+              severity: P5
+              instance: node1
+              job: smartctl
+            exp_annotations:
+              summary: "smartctl exporter: unreachable"
+              description: 'The smartctl exporter on node node1 has been unreachable for more than 15 minutes. Disk health monitoring is unavailable for this node.'
