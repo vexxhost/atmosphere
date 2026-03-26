@@ -1047,6 +1047,16 @@ tests:
               summary: "Disk: wear level elevated"
               description: 'The disk /dev/sda (model: Samsung SSD 860) on node node1 has 80% wear. The disk has exceeded 75% of its rated endurance. Plan a replacement during the next maintenance window.'
 
+  # SmartctlDiskWearoutWarning - should NOT fire when wear exceeds 90% (Critical fires instead)
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_percentage_used{device="/dev/sda",model_name="Samsung SSD 860",instance="node1"}'
+        values: '95x20'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: SmartctlDiskWearoutWarning
+        exp_alerts: []
+
   # SmartctlDiskTemperatureHigh - should NOT fire when temperature is normal
   - interval: 1m
     input_series:

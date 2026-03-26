@@ -1,6 +1,6 @@
 {
-  prometheusAlerts+:: {
-    groups: [
+  prometheusAlerts+: {
+    groups+: [
       {
         name: 'smartctl-health',
         rules: [
@@ -32,7 +32,7 @@
           },
           {
             alert: 'SmartctlDiskWearoutWarning',
-            expr: 'smartctl_device_percentage_used > 75',
+            expr: 'smartctl_device_percentage_used > 75 and smartctl_device_percentage_used <= 90',
             'for': '15m',
             labels: {
               severity: 'P4',
