@@ -1,8 +1,7 @@
-diff --git b/heat/values.yaml a/charts/heat/values.yaml
-index c9b8cdd9..1cf8bdc4 100644
---- b/heat/values.yaml
-+++ a/heat/values.yaml
-@@ -494,15 +494,20 @@ conf:
+diff --git a/heat/values.yaml b/heat/values.yaml
+--- a/heat/values.yaml
++++ b/heat/values.yaml
+@@ -494,34 +494,44 @@
      uwsgi:
        add-header: "Connection: close"
        buffer-size: 65535
@@ -22,8 +21,9 @@ index c9b8cdd9..1cf8bdc4 100644
 +      socket-timeout: 10
        thunder-lock: true
        worker-reload-mercy: 80
-       wsgi-file: /var/lib/openstack/bin/heat-wsgi-api
-@@ -510,15 +515,20 @@ conf:
+-      wsgi-file: /var/lib/openstack/bin/heat-wsgi-api
++      module: "heat.wsgi.api:application"
+   heat_api_cfn_uwsgi:
      uwsgi:
        add-header: "Connection: close"
        buffer-size: 65535
@@ -43,4 +43,8 @@ index c9b8cdd9..1cf8bdc4 100644
 +      socket-timeout: 10
        thunder-lock: true
        worker-reload-mercy: 80
-       wsgi-file: /var/lib/openstack/bin/heat-wsgi-api-cfn
+-      wsgi-file: /var/lib/openstack/bin/heat-wsgi-api-cfn
++      module: "heat.wsgi.cfn:application"
+ 
+ network:
+   api:

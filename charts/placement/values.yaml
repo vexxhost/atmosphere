@@ -138,7 +138,7 @@ conf:
       datefmt: "%Y-%m-%d %H:%M:%S"
   placement_api_uwsgi:
     uwsgi:
-      processes: 1
+      processes: 4
       add-header: "Connection: close"
       buffer-size: 65535
       chunked-input-limit: "4096000"
@@ -157,7 +157,7 @@ conf:
       socket-timeout: 10
       thunder-lock: true
       worker-reload-mercy: 80
-      wsgi-file: /var/lib/openstack/bin/placement-api
+      module: "placement.wsgi.api:application"
 endpoints:
   cluster_domain_suffix: cluster.local
   local_image_registry:
