@@ -346,3 +346,53 @@
     create_namespace: true
     kubeconfig: "{{ kube_prometheus_stack_helm_kubeconfig }}"
     values: "{{ _kube_prometheus_stack_helm_values | combine(kube_prometheus_stack_helm_values, recursive=True) }}"
+
+# NOTE: Calls the gateway role directly (not through openstack_helm_gateway),
+#       so policy vars are derived from the combined gateway config dict.
+- name: Create Alertmanager gateway route
+  ansible.builtin.include_role:
+    name: gateway
+    apply:
+      tags:
+        - gateway-routes
+  tags:
+    - gateway-routes
+  vars:
+    gateway_route_name: alertmanager
+    gateway_route_namespace: "{{ kube_prometheus_stack_helm_release_namespace }}"
+    gateway_route_host: "{{ kube_prometheus_stack_alertmanager_host }}"
+    gateway_route_service_name: "{{ kube_prometheus_stack_helm_release_name }}-alertmanager"
+    gateway_route_service_port: 8081
+    gateway_route_config: "{{ _kube_prometheus_stack_alertmanager_gateway_config | combine(kube_prometheus_stack_alertmanager_gateway_config) }}"
+
+- name: Create Grafana gateway route
+  ansible.builtin.include_role:
+    name: gateway
+    apply:
+      tags:
+        - gateway-routes
+  tags:
+    - gateway-routes
+  vars:
+    gateway_route_name: grafana
+    gateway_route_namespace: "{{ kube_prometheus_stack_helm_release_namespace }}"
+    gateway_route_host: "{{ kube_prometheus_stack_grafana_host }}"
+    gateway_route_service_name: "{{ kube_prometheus_stack_helm_release_name }}-grafana"
+    gateway_route_service_port: 80
+    gateway_route_config: "{{ _kube_prometheus_stack_grafana_gateway_config | combine(kube_prometheus_stack_grafana_gateway_config) }}"
+
+- name: Create Prometheus gateway route
+  ansible.builtin.include_role:
+    name: gateway
+    apply:
+      tags:
+        - gateway-routes
+  tags:
+    - gateway-routes
+  vars:
+    gateway_route_name: prometheus
+    gateway_route_namespace: "{{ kube_prometheus_stack_helm_release_namespace }}"
+    gateway_route_host: "{{ kube_prometheus_stack_prometheus_host }}"
+    gateway_route_service_name: "{{ kube_prometheus_stack_helm_release_name }}-prometheus"
+    gateway_route_service_port: 8081
+    gateway_route_config: "{{ _kube_prometheus_stack_prometheus_gateway_config | combine(kube_prometheus_stack_prometheus_gateway_config) }}"

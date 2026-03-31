@@ -1,0 +1,24 @@
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: {{ gateway_route_name }}
+  namespace: {{ gateway_route_namespace }}
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: {{ gateway_route_name }}
+{% if gateway_route_config.backend_traffic_policy_request_timeout is defined or gateway_route_config.backend_traffic_policy_idle_timeout is defined %}
+  timeout:
+    http:
+{% if gateway_route_config.backend_traffic_policy_request_timeout is defined %}
+      requestTimeout: {{ gateway_route_config.backend_traffic_policy_request_timeout }}
+{% endif %}
+{% if gateway_route_config.backend_traffic_policy_idle_timeout is defined %}
+      connectionIdleTimeout: {{ gateway_route_config.backend_traffic_policy_idle_timeout }}
+{% endif %}
+{% endif %}
+{% if gateway_route_config.backend_traffic_policy_request_buffer_limit is defined %}
+  requestBuffer:
+    limit: {{ gateway_route_config.backend_traffic_policy_request_buffer_limit }}
+{% endif %}

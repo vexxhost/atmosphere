@@ -1,0 +1,131 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+gateway_class_name: "{{ atmosphere_gateway_class_name }}"
+
+gateway_name: "{{ atmosphere_gateway_name }}"
+
+gateway_namespace: "{{ atmosphere_gateway_namespace }}"
+
+# Annotations for the Gateway resource
+#
+# gateway_annotations:
+#   cert-manager.io/cluster-issuer: my-issuer
+gateway_annotations: {}
+
+# Default annotations applied to the Gateway resource
+gateway_default_annotations:
+  cert-manager.io/cluster-issuer: "{{ atmosphere_ingress_cluster_issuer }}"
+
+# Gateway listeners configuration
+#
+# Each listener defines a port/protocol pair with optional TLS and hostname
+# filtering. Override this to add listeners with different certificates or
+# hostnames.
+#
+# gateway_listeners:
+#   - name: https
+#     protocol: HTTPS
+#     port: 443
+#     tls:
+#       mode: Terminate
+#       certificateRefs:
+#         - kind: Secret
+#           name: gateway-tls
+#   - name: https-internal
+#     protocol: HTTPS
+#     port: 443
+#     hostname: "*.internal.example.com"
+#     tls:
+#       mode: Terminate
+#       certificateRefs:
+#         - kind: Secret
+#           name: internal-tls
+#   - name: http
+#     protocol: HTTP
+#     port: 80
+
+# Just for PoC disscusion:
+# Ports used with additional prefix '4' to not overlap with ingress-nginx listeners.
+# 'domain_name' is for example with Molecule only
+
+gateway_listeners:
+  - name: https
+    hostname: "{{ domain_name }}"
+    protocol: HTTPS
+    port: 4443
+    tls:
+      mode: Terminate
+      certificateRefs:
+        - name: gateway-tls
+  - name: https-wildcard
+    hostname: "*.{{ domain_name }}"
+    protocol: HTTPS
+    port: 4443
+    tls:
+      mode: Terminate
+      certificateRefs:
+        - name: gateway-tls
+  - name: http
+    protocol: HTTP
+    port: 480
+  - name: minidns-tcp
+    protocol: TCP
+    port: 45354
+  - name: minidns-udp
+    protocol: UDP
+    port: 45354
+
+# Connection buffer limit applied to the Gateway
+gateway_connection_buffer_limit: 16Ki
+
+# Route type to create (HTTPRoute, TLSRoute, GRPCRoute, TCPRoute, UDPRoute)
+gateway_route_kind: HTTPRoute
+
+# gateway_route_name: string
+
+# gateway_route_namespace: string
+
+# gateway_route_host: string
+
+# gateway_route_service_name: string
+
+# gateway_route_service_port: number
+
+# Optional: listener name for TCP/UDP routes (sectionName in parentRefs)
+# gateway_route_listener_name: string
+
+# Gateway route configuration dict
+#
+# All policy settings are passed as a single dict. Keys are prefixed by
+# the Gateway API resource they configure so the origin is unambiguous.
+#
+# gateway_route_config:
+#   backend_traffic_policy_request_timeout: 120s
+#   backend_traffic_policy_idle_timeout: 30s
+#   backend_traffic_policy_request_buffer_limit: "0"
+#   httproute_timeout_backend_request: 3600s
+#   security_policy_cors_allow_origins:
+#     - https://example.com
+#   security_policy_cors_allow_methods:
+#     - GET
+#   security_policy_cors_allow_headers:
+#     - "*"
+gateway_route_config: {}
+
+# EnvoyProxy data plane configuration
+gateway_proxy_node_selector:
+  openstack-control-plane: enabled
+
+gateway_proxy_drain_timeout: 60s

@@ -1,0 +1,15 @@
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: ClientTrafficPolicy
+metadata:
+  name: {{ gateway_route_name }}
+  namespace: {{ gateway_route_namespace }}
+spec:
+  targetRef:
+    group: gateway.networking.k8s.io
+    kind: HTTPRoute
+    name: {{ gateway_route_name }}
+{% if gateway_route_config.client_traffic_policy_max_request_body_size is defined %}
+  http:
+    requestBodySize:
+      maxBytes: {{ gateway_route_config.client_traffic_policy_max_request_body_size }}
+{% endif %}

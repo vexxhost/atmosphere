@@ -29,5 +29,8 @@
             name: "{{ cluster_issuer_acme_private_key_secret_name }}"
           solvers:
             - http01:
-                ingress:
-                  class: "{{ cluster_issuer_acme_http01_ingress_class }}"
+                gatewayHTTPRoute:
+                  parentRefs:
+                    - kind: Gateway
+                      name: "{{ atmosphere_gateway_name }}"
+                      namespace: "{{ atmosphere_gateway_namespace }}"

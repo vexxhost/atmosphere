@@ -130,6 +130,20 @@
     openstack_helm_ingress_annotations: "{{ magnum_ingress_annotations }}"
     openstack_helm_ingress_class_name: "{{ magnum_ingress_class_name }}"
 
+- name: Create gateway route
+  ansible.builtin.include_role:
+    name: openstack_helm_gateway
+    apply:
+      tags:
+        - gateway-routes
+  tags:
+    - gateway-routes
+  vars:
+    openstack_helm_gateway_endpoint: container_infra
+    openstack_helm_gateway_service_name: magnum-api
+    openstack_helm_gateway_service_port: 9511
+    openstack_helm_gateway_config: "{{ _magnum_gateway_config | combine(magnum_gateway_config) }}"
+
 - name: Deploy magnum registry
   run_once: true
   kubernetes.core.k8s:
@@ -206,6 +220,20 @@
     openstack_helm_ingress_service_port: 5000
     openstack_helm_ingress_annotations: "{{ _magnum_registry_ingress_annotations | combine(magnum_registry_ingress_annotations) }}"
     openstack_helm_ingress_class_name: "{{ magnum_registry_ingress_class_name }}"
+
+- name: Create magnum registry gateway route
+  ansible.builtin.include_role:
+    name: openstack_helm_gateway
+    apply:
+      tags:
+        - gateway-routes
+  tags:
+    - gateway-routes
+  vars:
+    openstack_helm_gateway_endpoint: container_infra_registry
+    openstack_helm_gateway_service_name: magnum-registry
+    openstack_helm_gateway_service_port: 5000
+    openstack_helm_gateway_config: "{{ _magnum_registry_gateway_config | combine(magnum_registry_gateway_config) }}"
 
 - name: Upload images
   ansible.builtin.include_role:

@@ -1,0 +1,14 @@
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: TCPRoute
+metadata:
+  name: {{ gateway_route_name }}
+  namespace: {{ gateway_route_namespace }}
+spec:
+  parentRefs:
+    - name: {{ gateway_name }}
+      namespace: {{ gateway_namespace }}
+      sectionName: {{ gateway_route_listener_name }}
+  rules:
+    - backendRefs:
+        - name: {{ gateway_route_service_name }}
+          port: {{ gateway_route_service_port }}

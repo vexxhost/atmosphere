@@ -1,0 +1,12 @@
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: ClientTrafficPolicy
+metadata:
+  name: {{ gateway_name }}
+  namespace: {{ gateway_namespace }}
+spec:
+  targetRef:
+    group: gateway.networking.k8s.io
+    kind: Gateway
+    name: {{ gateway_name }}
+  connection:
+    bufferLimit: {{ gateway_connection_buffer_limit }}
