@@ -1,0 +1,67 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Add HPE Storage Helm repository
+  run_once: true
+  kubernetes.core.helm_repository:
+    name: hpe-storage
+    repo_url: "{{ hpe_nimble_csi_helm_chart_repo }}"
+
+- name: Create Secret
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: hpe-nimble-csi-secret
+        namespace: kube-system
+      stringData:
+        serviceName: nimble-csp-svc
+        servicePort: "8080"
+        backend: "{{ hpe_nimble_csi_backend }}"
+        username: "{{ hpe_nimble_csi_username }}"
+        password: "{{ hpe_nimble_csi_password }}"
+
+- name: Create StorageClass
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: storage.k8s.io/v1
+      kind: StorageClass
+      metadata:
+        name: general
+        annotations:
+          storageclass.kubernetes.io/is-default-class: "true"
+      provisioner: csi.hpe.com
+      reclaimPolicy: Delete
+      allowVolumeExpansion: true
+      volumeBindingMode: Immediate
+      parameters:
+        csi.storage.k8s.io/fstype: xfs
+        csi.storage.k8s.io/controller-publish-secret-name: hpe-nimble-csi-secret
+        csi.storage.k8s.io/controller-publish-secret-namespace: kube-system
+        csi.storage.k8s.io/node-publish-secret-name: hpe-nimble-csi-secret
+        csi.storage.k8s.io/node-publish-secret-namespace: kube-system
+        csi.storage.k8s.io/node-stage-secret-name: hpe-nimble-csi-secret
+        csi.storage.k8s.io/node-stage-secret-namespace: kube-system
+        csi.storage.k8s.io/provisioner-secret-name: hpe-nimble-csi-secret
+        csi.storage.k8s.io/provisioner-secret-namespace: kube-system
+
+- name: Deploy Helm chart
+  run_once: true
+  kubernetes.core.helm:
+    name: hpe-csi-driver
+    chart_ref: hpe-storage/hpe-csi-driver
+    chart_version: "{{ hpe_nimble_csi_helm_chart_version }}"
+    release_namespace: kube-system
+    kubeconfig: "{{ hpe_nimble_csi_helm_kubeconfig }}"
+    values:
+      disable:
+        nimble: false
+        alletra6000: true
+        primera: true
+        alletra9000: true
+        alletraStorageMP: true
