@@ -189,7 +189,7 @@ follows:
 .. code-block:: yaml
 
     csi_driver: hpe-nimble
-    hpe_nimble_csi_backend: <FILL IN>   # Nimble array management IP
+    hpe_nimble_csi_backend: <FILL IN>
     hpe_nimble_csi_username: <FILL IN>
     hpe_nimble_csi_password: <FILL IN>
 
