@@ -418,6 +418,68 @@ class VolumeBackendStorpool(_HostAttachedVolumeBackend):
         }
 
 
+class _VolumeBackendNimbleBase(_HostAttachedVolumeBackend):
+    """HPE Nimble Storage volume backend."""
+
+    type: Literal["nimble"]
+    address: str = Field(description="Management address (IP or hostname).")
+    username: str = Field(description="Username credential.")
+    password: str = Field(description="Password credential.")
+
+    @property
+    def cinder_driver(self) -> str:
+        raise NotImplementedError
+
+    def cinder_backend_config(self, name: str) -> dict[str, Any]:
+        """Generate Cinder backend config for HPE Nimble Storage."""
+        return {
+            "volume_backend_name": name,
+            "volume_driver": self.cinder_driver,
+            "san_ip": self.address,
+            "san_login": self.username,
+            "san_password": self.password,
+            "use_multipath_for_image_xfer": True,
+        }
+
+    def amend_cinder(self, result: HelmValues, name: str) -> None:
+        """Amend Cinder Helm values for an HPE Nimble volume backend."""
+        super().amend_cinder(result, name)
+        result["conf"]["backends"][name] = self.cinder_backend_config(name)
+        result.setdefault("pod", {})
+        result["pod"]["useHostNetwork"] = {"volume": True}
+        result["pod"]["security_context"] = {
+            "cinder_volume": {
+                "container": {
+                    "cinder_volume": {
+                        "privileged": True,
+                    }
+                }
+            },
+        }
+
+
+class VolumeBackendNimbleISCSI(_VolumeBackendNimbleBase):
+    protocol: Literal["iscsi"]
+
+    @property
+    def cinder_driver(self) -> str:
+        return "cinder.volume.drivers.nimble.NimbleISCSIDriver"
+
+
+class VolumeBackendNimbleFC(_VolumeBackendNimbleBase):
+    protocol: Literal["fc"]
+
+    @property
+    def cinder_driver(self) -> str:
+        return "cinder.volume.drivers.nimble.NimbleFCDriver"
+
+
+VolumeBackendNimble = Annotated[
+    Union[VolumeBackendNimbleISCSI, VolumeBackendNimbleFC],
+    Field(discriminator="protocol"),
+]
+
+
 VolumeBackend = Annotated[
     Union[
         VolumeBackendRbd,
@@ -425,6 +487,7 @@ VolumeBackend = Annotated[
         VolumeBackendPowerstore,
         VolumeBackendPure,
         VolumeBackendStorpool,
+        VolumeBackendNimble,
     ],
     Field(discriminator="type"),
 ]

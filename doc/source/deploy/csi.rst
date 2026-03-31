@@ -177,3 +177,37 @@ the StorPool CSI driver by updating your Ansible inventory as follows:
 
 The ``storpool_csi_template`` variable specifies the StorPool template to use
 for the deployment which is set to ``k8s`` in the example above.
+
+*******************
+HPE Nimble Storage
+*******************
+
+For environments using HPE Nimble Storage (including HPE Alletra 5000/6000),
+configure the HPE Nimble CSI driver by updating your Ansible inventory as
+follows:
+
+.. code-block:: yaml
+
+    csi_driver: hpe-nimble
+    hpe_nimble_csi_backend: <FILL IN>   # Nimble array management IP
+    hpe_nimble_csi_username: <FILL IN>
+    hpe_nimble_csi_password: <FILL IN>
+
+Ensure that you replace ``<FILL IN>`` with actual values relevant to your HPE
+Nimble configuration. The backend address should be the management IP or
+host name of your Nimble storage array.
+
+.. admonition:: Prerequisites
+    :class: important
+
+    The HPE Nimble CSI driver requires:
+
+    - Nimble OS 5.x or later on the storage array
+    - iSCSI initiator software installed on compute nodes (automatically
+      handled by the ``iscsi`` role)
+    - Network connectivity between compute nodes and the Nimble array on a flat
+      network (the driver doesn't support iSCSI traffic routing)
+    - A user account on the Nimble array with at least ``poweruser`` role
+
+For more information about the HPE CSI Driver, refer to the `HPE Storage
+Container Orchestrator Documentation <https://scod.hpedev.io/csi_driver/index.html>`_.
