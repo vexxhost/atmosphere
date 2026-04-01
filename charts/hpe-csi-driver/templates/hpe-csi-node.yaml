@@ -1,0 +1,272 @@
+---
+
+#######################################
+############  Node driver  ############
+#######################################
+
+kind: DaemonSet
+apiVersion: apps/v1
+metadata:
+  name: hpe-csi-node
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    matchLabels:
+      app: hpe-csi-node
+  template:
+    metadata:
+      labels:
+        app: hpe-csi-node
+        role: hpe-csi
+        {{- if .Values.node.labels }}
+{{ toYaml .Values.node.labels | indent 8 }}
+        {{- end }}
+      annotations:
+        kubectl.kubernetes.io/default-container: hpe-csi-driver
+    spec:
+      serviceAccountName: hpe-csi-node-sa
+      priorityClassName: system-node-critical
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      dnsConfig:
+        options:
+          - name: ndots
+            value: "1"
+      initContainers:
+        - name: hpe-csi-node-init
+          image: {{ .Values.images.csiNodeDriver | quote }}
+          resources:
+            {{- toYaml .Values.node.resources | nindent 12 }}
+          args:
+            - --node-init
+            - --endpoint=$(CSI_ENDPOINT)
+            - --flavor=kubernetes
+          volumeMounts:
+            - name: root-dir
+              mountPath: /host
+              mountPropagation: "Bidirectional"
+            - name: device-dir
+              mountPath: /dev
+            - name: sys
+              mountPath: /sys
+            - name: etc-hpe-storage-dir
+              mountPath: /etc/hpe-storage
+            - name: runsystemd
+              mountPath: /run/systemd
+            - name: etcsystemd
+              mountPath: /etc/systemd/system
+            - name: plugin-dir
+              mountPath: /csi
+            - name: pods-mount-dir
+              {{ if .Values.kubeletRootDir }}
+              mountPath: {{ .Values.kubeletRootDir }}
+              {{- else }}
+              mountPath: /var/lib/kubelet
+              {{- end }}
+            - name: log-dir
+              mountPath: /var/log
+          env:
+            - name: CSI_ENDPOINT
+              value: unix:///csi/csi.sock
+            {{- if .Values.disableNodeConformance }}
+            - name: DISABLE_NODE_CONFORMANCE
+              value: "true"
+            {{- end }}
+            {{- if .Values.disableNodeConfiguration }}
+            - name: DISABLE_NODE_CONFIGURATION
+              value: "true"
+            {{- end }}
+            {{- if .Values.disableNodeMonitor }}
+            - name: DISABLE_NODE_MONITOR
+              value: "true"
+            {{- end }}
+            - name: LOG_LEVEL
+              value: {{ .Values.logLevel }}
+          imagePullPolicy: {{ .Values.imagePullPolicy | quote }}
+          securityContext:
+            privileged: true
+            capabilities:
+              add: ["SYS_ADMIN"]
+            allowPrivilegeEscalation: true
+      containers:
+        - name: csi-node-driver-registrar
+          image: {{ .Values.images.csiNodeDriverRegistrar | quote }}
+          resources:
+            {{- toYaml .Values.node.resources | nindent 12 }}
+          args:
+            - "--csi-address=$(ADDRESS)"
+            - "--kubelet-registration-path=$(DRIVER_REG_SOCK_PATH)"
+            - "--v=5"
+          env:
+            - name: ADDRESS
+              value: /csi/csi.sock
+            - name: DRIVER_REG_SOCK_PATH
+              {{- if .Values.kubeletRootDir }}
+              value: {{ .Values.kubeletRootDir }}/plugins/csi.hpe.com/csi.sock
+              {{- else }}
+              value: /var/lib/kubelet/plugins/csi.hpe.com/csi.sock
+              {{- end }}
+            - name: KUBE_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: spec.nodeName
+          imagePullPolicy: {{ .Values.imagePullPolicy | quote }}
+          volumeMounts:
+            - name: plugin-dir
+              mountPath: /csi
+            - name: registration-dir
+              mountPath: /registration
+        - name: hpe-csi-driver
+          image: {{ .Values.images.csiNodeDriver | quote }}
+          resources:
+            {{- toYaml .Values.node.resources | nindent 12 }}
+          args :
+            - "--endpoint=$(CSI_ENDPOINT)"
+            - "--node-service"
+            - "--flavor=kubernetes"
+            - "--node-monitor"
+            - "--node-monitor-interval=90"
+          env:
+            - name: CSI_ENDPOINT
+              value: unix:///csi/csi.sock
+            - name: LOG_LEVEL
+              value: {{ .Values.logLevel }}
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            {{- if .Values.iscsi.chapSecretName }}
+            - name: CHAP_SECRET_NAME
+              value: {{ .Values.iscsi.chapSecretName }}
+            - name: CHAP_SECRET_NAMESPACE
+              value: {{ .Release.Namespace }}
+            {{- end }}
+            {{- if .Values.disableNodeConformance }}
+            - name: DISABLE_NODE_CONFORMANCE
+              value: "true"
+            {{- end }}
+            {{- if .Values.disableNodeConfiguration }}
+            - name: DISABLE_NODE_CONFIGURATION
+              value: "true"
+            {{- end }}
+            {{- if .Values.disableNodeMonitor }}
+            - name: DISABLE_NODE_MONITOR
+              value: "true"
+            {{- end }}
+            {{- if .Values.maxVolumesPerNode }}
+            - name: MAX_VOLUMES_PER_NODE
+              value: "{{ .Values.maxVolumesPerNode }}"
+            {{- end }}
+            {{- if .Values.kubeletRootDir }}
+            - name: KUBELET_ROOT_DIR
+              value: {{ .Values.kubeletRootDir }}
+            {{- end }}
+            {{- if .Values.disableNodeGetVolumeStats }}
+            - name: DISABLE_NODE_GET_VOLUMESTATS
+              value: "true"
+            {{- end }}
+          imagePullPolicy: {{ .Values.imagePullPolicy | quote }}
+          securityContext:
+            privileged: true
+            capabilities:
+              add: ["SYS_ADMIN"]
+            allowPrivilegeEscalation: true
+          volumeMounts:
+            - name: plugin-dir
+              mountPath: /csi
+            - name: pods-mount-dir
+            {{- if .Values.kubeletRootDir }}
+              mountPath:  {{ .Values.kubeletRootDir }}
+            {{- else }}
+              mountPath: /var/lib/kubelet
+            {{- end }}
+              # needed so that any mounts setup inside this container are
+              # propagated back to the host machine.
+              mountPropagation: "Bidirectional"
+            - name: root-dir
+              mountPath: /host
+              mountPropagation: "Bidirectional"
+            - name: device-dir
+              mountPath: /dev
+            - name: log-dir
+              mountPath: /var/log
+            - name: etc-hpe-storage-dir
+              mountPath: /etc/hpe-storage
+            - name: etc-kubernetes
+              mountPath: /etc/kubernetes
+            - name: sys
+              mountPath: /sys
+            - name: runsystemd
+              mountPath: /run/systemd
+            - name: etcsystemd
+              mountPath: /etc/systemd/system
+            - name: linux-config-file
+              mountPath: /opt/hpe-storage/nimbletune/config.json
+              subPath: config.json
+      volumes:
+        - name: registration-dir
+          hostPath:
+          {{ if .Values.kubeletRootDir }}
+            path: {{ .Values.kubeletRootDir }}/plugins_registry
+          {{- else }}
+            path: /var/lib/kubelet/plugins_registry
+          {{- end }}
+            type: Directory
+        - name: plugin-dir
+          hostPath:
+          {{ if .Values.kubeletRootDir }}
+            path: {{ .Values.kubeletRootDir }}/plugins/csi.hpe.com
+          {{- else }}
+            path: /var/lib/kubelet/plugins/csi.hpe.com
+          {{- end }}
+            type: DirectoryOrCreate
+        - name: pods-mount-dir
+          hostPath:
+          {{ if .Values.kubeletRootDir }}
+            path: {{ .Values.kubeletRootDir }}
+          {{- else }}
+            path: /var/lib/kubelet
+          {{- end }}
+        - name: root-dir
+          hostPath:
+            path: /
+        - name: device-dir
+          hostPath:
+            path: /dev
+        - name: log-dir
+          hostPath:
+            path: /var/log
+        - name: etc-hpe-storage-dir
+          hostPath:
+            path: /etc/hpe-storage
+        - name: etc-kubernetes
+          hostPath:
+            path: /etc/kubernetes
+        - name: runsystemd
+          hostPath:
+            path: /run/systemd
+        - name: etcsystemd
+          hostPath:
+            path: /etc/systemd/system
+        - name: sys
+          hostPath:
+            path: /sys
+        - name: linux-config-file
+          configMap:
+            name: hpe-linux-config
+      {{- if .Values.node.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.node.nodeSelector | indent 8 }}
+      {{- end }}
+      tolerations:
+        - effect: NoSchedule
+          key: csi.hpe.com/hpe-nfs
+          operator: Exists
+      {{- if .Values.node.tolerations }}
+{{ toYaml .Values.node.tolerations | indent 8 }}
+      {{- end }}
+      {{- if .Values.node.affinity }}
+      affinity:
+{{ toYaml .Values.node.affinity | indent 8 }}
+      {{- end }}
