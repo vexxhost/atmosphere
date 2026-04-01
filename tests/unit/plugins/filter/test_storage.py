@@ -596,8 +596,7 @@ class TestStorageToCinderHelmValues:
 
         backend = result["conf"]["backends"]["nimble"]
         assert (
-            backend["volume_driver"]
-            == "cinder.volume.drivers.nimble.NimbleISCSIDriver"
+            backend["volume_driver"] == "cinder.volume.drivers.nimble.NimbleISCSIDriver"
         )
         assert backend["san_ip"] == "10.0.0.3"
         assert backend["san_login"] == "admin"
