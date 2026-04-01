@@ -1,0 +1,219 @@
+---
+
+#############################################
+############  Controller driver  ############
+#############################################
+
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: hpe-csi-controller
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hpe-csi-controller
+  template:
+    metadata:
+      labels:
+        app: hpe-csi-controller
+        role: hpe-csi
+        {{- if .Values.controller.labels }}
+{{ toYaml .Values.controller.labels | indent 8 }}
+        {{- end }}
+      annotations:
+        kubectl.kubernetes.io/default-container: hpe-csi-driver
+    spec:
+      serviceAccountName: hpe-csi-controller-sa
+      priorityClassName: system-cluster-critical
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      dnsConfig:
+        options:
+          - name: ndots
+            value: "1"
+      containers:
+        - name: csi-provisioner
+          image: {{ .Values.images.csiProvisioner | quote }}
+          resources:
+            {{- toYaml .Values.controller.resources | nindent 12 }}
+          args:
+            - "--csi-address=$(ADDRESS)"
+            - "--v=5"
+            - "--extra-create-metadata"
+            - "--timeout=30s"
+            - "--worker-threads=16"
+            - "--feature-gates=Topology=true"
+            - "--immediate-topology=false"
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          imagePullPolicy: {{ .Values.imagePullPolicy | quote }}
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy
+        - name: csi-attacher
+          image: {{ .Values.images.csiAttacher | quote }}
+          resources:
+            {{- toYaml .Values.controller.resources | nindent 12 }}
+          args:
+            - "--v=5"
+            - "--csi-address=$(ADDRESS)"
+            {{- if and ( or (eq .Values.disable.primera false) (eq .Values.disable.alletra9000 false) ) ( or (eq .Values.disable.nimble true) (eq .Values.disable.alletra6000 true) ) }}
+            - "--timeout=180s"
+            {{- end }}
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          imagePullPolicy: {{ .Values.imagePullPolicy | quote }}
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy
+        - name: csi-snapshotter
+          image: {{ .Values.images.csiSnapshotter | quote }}
+          resources:
+            {{- toYaml .Values.controller.resources | nindent 12 }}
+          args:
+            - "--v=5"
+            - "--csi-address=$(ADDRESS)"
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          imagePullPolicy: {{ .Values.imagePullPolicy | quote }}
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+        - name: csi-resizer
+          image: {{ .Values.images.csiResizer | quote }}
+          resources:
+            {{- toYaml .Values.controller.resources | nindent 12 }}
+          args:
+            - "--csi-address=$(ADDRESS)"
+            - "--v=5"
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          imagePullPolicy: {{ .Values.imagePullPolicy | quote }}
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy
+        - name: hpe-csi-driver
+          image: {{ .Values.images.csiControllerDriver | quote }}
+          resources:
+            {{- toYaml .Values.controller.resources | nindent 12 }}
+          args :
+            - "--endpoint=$(CSI_ENDPOINT)"
+            - "--flavor=kubernetes"
+            - "--pod-monitor"
+            - "--pod-monitor-interval=30"
+          env:
+            - name: CSI_ENDPOINT
+              value: unix:///var/lib/csi/sockets/pluginproxy/csi.sock
+            - name: LOG_LEVEL
+              value: {{ .Values.logLevel }}
+            - name: RUNTIME_NFS_IMAGE
+              value: {{ .Values.images.nfsProvisioner }}
+            {{- if .Values.iscsi.chapSecretName }}
+            - name: CHAP_SECRET_NAME
+              value: {{ .Values.iscsi.chapSecretName }}
+            - name: CHAP_SECRET_NAMESPACE
+              value: {{ .Release.Namespace }}
+            {{- end }}
+          imagePullPolicy: {{ .Values.imagePullPolicy | quote }}
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy
+            - name: log-dir
+              mountPath: /var/log
+            - name: k8s
+              mountPath: /etc/kubernetes
+            - name: hpeconfig
+              mountPath: /etc/hpe-storage
+            - name: root-dir
+              mountPath: /host
+        - name: csi-volume-mutator
+          image: {{ .Values.images.csiVolumeMutator | quote}}
+          resources:
+            {{- toYaml .Values.controller.resources | nindent 12 }}
+          args:
+            - "--v=5"
+            - "--csi-address=$(ADDRESS)"
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi-extensions.sock
+          imagePullPolicy: {{ .Values.imagePullPolicy | quote }}
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+        - name: csi-volume-group-snapshotter
+          image: {{ .Values.images.csiVolumeGroupSnapshotter | quote }}
+          resources:
+            {{- toYaml .Values.controller.resources | nindent 12 }}
+          args:
+            - "--v=5"
+            - "--csi-address=$(ADDRESS)"
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi-extensions.sock
+          imagePullPolicy: {{ .Values.imagePullPolicy | quote }}
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+        - name: csi-volume-group-provisioner
+          image: {{ .Values.images.csiVolumeGroupProvisioner | quote }}
+          resources:
+            {{- toYaml .Values.controller.resources | nindent 12 }}
+          args:
+            - "--v=5"
+            - "--csi-address=$(ADDRESS)"
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi-extensions.sock
+          imagePullPolicy: {{ .Values.imagePullPolicy | quote }}
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+        - name: csi-extensions
+          image: {{ .Values.images.csiExtensions | quote }}
+          resources:
+            {{- toYaml .Values.controller.resources | nindent 12 }}
+          args:
+            - "--v=5"
+            - "--endpoint=$(CSI_ENDPOINT)"
+          env:
+            - name: CSI_ENDPOINT
+              value: unix:///var/lib/csi/sockets/pluginproxy/csi-extensions.sock
+            - name: LOG_LEVEL
+              value: {{ .Values.logLevel }}
+          imagePullPolicy: {{ .Values.imagePullPolicy | quote }}
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+      volumes:
+        - name: socket-dir
+          emptyDir: {}
+        - name: log-dir
+          hostPath:
+            path: /var/log
+        - name: k8s
+          hostPath:
+            path: /etc/kubernetes
+        - name: hpeconfig
+          hostPath:
+            path: /etc/hpe-storage
+        - name: root-dir
+          hostPath:
+            path: /
+      {{- if .Values.controller.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.controller.nodeSelector | indent 8 }}
+      {{- end }}
+      {{- if .Values.controller.tolerations }}
+      tolerations:
+{{ toYaml .Values.controller.tolerations | indent 8 }}
+      {{- end }}
+      {{- if .Values.controller.affinity }}
+      affinity:
+{{ toYaml .Values.controller.affinity | indent 8 }}
+      {{- end }}
