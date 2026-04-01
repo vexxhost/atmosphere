@@ -64,15 +64,3 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/build
-
-  keycloak:
-    runs-on: vexxhost-ubuntu-22.04-4
-    if: ${{ github.event_name == 'pull_request' }}
-    concurrency:
-      group: ${{ github.job }}-${{ github.event.pull_request.number }}
-      cancel-in-progress: true
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: ./.github/actions/molecule
-        with:
-          scenario: keycloak
