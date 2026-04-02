@@ -206,10 +206,10 @@ and file system mounts automatically.
 HPE Nimble Storage (``nimble``)
 ===============================
 
-HPE Nimble Storage (including Alletra 5000/6000) integration with support for
+HPE Nimble storage (including Alletra 5000/6000) integration with support for
 iSCSI and Fibre Channel protocols.
 
-For additional options, see the `Cinder HPE Nimble Storage documentation
+For additional options, see the `Cinder HPE Nimble storage documentation
 <https://docs.openstack.org/cinder/latest/configuration/block-storage/drivers/nimble-volume-driver.html>`_.
 
 .. code-block:: yaml
