@@ -179,10 +179,10 @@ The ``storpool_csi_template`` variable specifies the StorPool template to use
 for the deployment which is set to ``k8s`` in the example above.
 
 *******************
-HPE Nimble Storage
+HPE Nimble storage
 *******************
 
-For environments using HPE Nimble Storage (including HPE Alletra 5000/6000),
+For environments using HPE Nimble storage (including HPE Alletra 5000/6000),
 configure the HPE Nimble CSI driver by updating your Ansible inventory as
 follows:
 
@@ -193,7 +193,7 @@ follows:
     hpe_nimble_csi_username: <FILL IN>
     hpe_nimble_csi_password: <FILL IN>
 
-Ensure that you replace ``<FILL IN>`` with actual values relevant to your HPE
+Make sure that you replace ``<FILL IN>`` with actual values relevant to your HPE
 Nimble configuration. The backend address should be the management IP or
 host name of your Nimble storage array.
 

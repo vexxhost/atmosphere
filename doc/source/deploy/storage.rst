@@ -203,7 +203,7 @@ and file system mounts automatically.
     type: storpool
     template: hybrid-2ssd
 
-HPE Nimble Storage (``nimble``)
+HPE Nimble storage (``nimble``)
 ===============================
 
 HPE Nimble storage (including Alletra 5000/6000) integration with support for
@@ -279,7 +279,7 @@ Using Dell PowerStore
       ephemeral:
         type: local
 
-Using HPE Nimble Storage
+Using HPE Nimble storage
 ========================
 
 .. code-block:: yaml
