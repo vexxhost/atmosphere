@@ -16,9 +16,14 @@
   hosts: localhost
   gather_facts: false
   tasks:
+    - name: Check for .venv stestr
+      ansible.builtin.stat:
+        path: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}/.venv/bin/stestr"
+      register: _venv_stestr
+
     - name: Run "stestr" tests
       become: true
-      ansible.builtin.shell: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}/.venv/bin/stestr run"
+      ansible.builtin.shell: "{{ _venv_stestr.stat.path if _venv_stestr.stat.exists else 'stestr' }} run"
       args:
         chdir: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}"
       environment:
