@@ -1,0 +1,220 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Deploy Cluster API for Magnum RBAC
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      - apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: magnum-system
+
+      # TODO(mnaser): This should be removed once we have a proper Helm chart
+      #               for Cluster API for Magnum.
+      - apiVersion: rbac.authorization.k8s.io/v1
+        kind: ClusterRoleBinding
+        metadata:
+          name: magnum-cluster-api
+        roleRef:
+          apiGroup: rbac.authorization.k8s.io
+          kind: ClusterRole
+          name: cluster-admin
+        subjects:
+          - kind: ServiceAccount
+            name: magnum-conductor
+            namespace: "{{ magnum_helm_release_namespace }}"
+
+- name: Deploy Helm chart
+  run_once: true
+  kubernetes.core.helm:
+    name: "{{ magnum_helm_release_name }}"
+    chart_ref: "{{ magnum_helm_chart_ref }}"
+    release_namespace: "{{ magnum_helm_release_namespace }}"
+    create_namespace: true
+    kubeconfig: "{{ magnum_helm_kubeconfig }}"
+    values: "{{ _magnum_helm_values | combine(magnum_helm_values, recursive=True) }}"
+
+- name: Deploy "magnum-cluster-api-proxy"
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      - apiVerison: v1
+        kind: ConfigMap
+        metadata:
+          name: magnum-cluster-api-proxy-config
+          namespace: "{{ magnum_helm_release_namespace }}"
+        data:
+          magnum_capi_sudoers: |
+            Defaults !requiretty
+            Defaults secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin:/var/lib/openstack/bin:/var/lib/kolla/venv/bin"
+            magnum ALL = (root) NOPASSWD: /var/lib/openstack/bin/privsep-helper
+
+      - apiVersion: apps/v1
+        kind: DaemonSet
+        metadata:
+          name: magnum-cluster-api-proxy
+          namespace: openstack
+          labels:
+            application: magnum
+            component: cluster-api-proxy
+        spec:
+          selector:
+            matchLabels:
+              application: magnum
+              component: cluster-api-proxy
+          template:
+            metadata:
+              labels:
+                application: magnum
+                component: cluster-api-proxy
+            spec:
+              containers:
+                - name: magnum-cluster-api-proxy
+                  command: ["magnum-cluster-api-proxy"]
+                  image: "{{ atmosphere_images['magnum_cluster_api_proxy'] | vexxhost.kubernetes.docker_image('ref') }}"
+                  securityContext:
+                    privileged: true
+                    readOnlyRootFilesystem: true
+                  volumeMounts:
+                    - name: pod-tmp
+                      mountPath: /tmp
+                    - name: pod-run
+                      mountPath: /run
+                    - name: config
+                      mountPath: /etc/sudoers.d/magnum_capi_sudoers
+                      subPath: magnum_capi_sudoers
+                      readOnly: true
+                    - name: haproxy-state
+                      mountPath: /var/lib/magnum/.magnum-cluster-api-proxy
+                    - name: host-run-netns
+                      mountPath: /run/netns
+                      mountPropagation: Bidirectional
+              nodeSelector: "{{ magnum_cluster_api_proxy_ovn_node_selector if atmosphere_network_backend == 'ovn' else magnum_cluster_api_proxy_ovs_node_selector }}"  # noqa: yaml[line-length]
+              securityContext:
+                runAsUser: 42424
+              serviceAccountName: magnum-conductor
+              volumes:
+                - name: pod-tmp
+                  emptyDir: {}
+                - name: pod-run
+                  emptyDir: {}
+                - name: config
+                  configMap:
+                    name: magnum-cluster-api-proxy-config
+                - name: haproxy-state
+                  emptyDir: {}
+                - name: host-run-netns
+                  hostPath:
+                    path: /run/netns
+
+- name: Create Ingress
+  ansible.builtin.include_role:
+    name: openstack_helm_ingress
+  vars:
+    openstack_helm_ingress_endpoint: container_infra
+    openstack_helm_ingress_service_name: magnum-api
+    openstack_helm_ingress_service_port: 9511
+    openstack_helm_ingress_annotations: "{{ magnum_ingress_annotations }}"
+    openstack_helm_ingress_class_name: "{{ magnum_ingress_class_name }}"
+
+- name: Deploy magnum registry
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      - apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: magnum-registry
+          namespace: "{{ magnum_helm_release_namespace }}"
+          labels:
+            application: magnum
+            component: registry
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              application: magnum
+              component: registry
+          template:
+            metadata:
+              labels:
+                application: magnum
+                component: registry
+            spec:
+              containers:
+                - name: registry
+                  image: "{{ atmosphere_images['magnum_registry'] | vexxhost.kubernetes.docker_image('ref') }}"
+                  env:
+                    - name: REGISTRY_STORAGE_MAINTENANCE_READONLY
+                      value: '{"enabled": true}'
+                  ports:
+                    - name: registry
+                      containerPort: 5000
+                      protocol: TCP
+                  livenessProbe:
+                    httpGet:
+                      path: /
+                      port: 5000
+                      scheme: HTTP
+                  readinessProbe:
+                    httpGet:
+                      path: /
+                      port: 5000
+                      scheme: HTTP
+              nodeSelector:
+                openstack-control-plane: enabled
+
+      - apiVersion: v1
+        kind: Service
+        metadata:
+          name: magnum-registry
+          namespace: "{{ magnum_helm_release_namespace }}"
+          labels:
+            application: magnum
+            component: registry
+        spec:
+          type: ClusterIP
+          ports:
+            - name: magnum
+              port: 5000
+              protocol: TCP
+              targetPort: 5000
+          selector:
+            application: magnum
+            component: registry
+
+- name: Create magnum registry Ingress
+  ansible.builtin.include_role:
+    name: openstack_helm_ingress
+  vars:
+    openstack_helm_ingress_endpoint: container_infra_registry
+    openstack_helm_ingress_service_name: magnum-registry
+    openstack_helm_ingress_service_port: 5000
+    openstack_helm_ingress_annotations: "{{ _magnum_registry_ingress_annotations | combine(magnum_registry_ingress_annotations) }}"
+    openstack_helm_ingress_class_name: "{{ magnum_registry_ingress_class_name }}"
+
+- name: Upload images
+  ansible.builtin.include_role:
+    name: glance_image
+  loop: "{{ magnum_images }}"
+  vars:
+    glance_image_name: "{{ item.name }}"
+    glance_image_url: "{{ item.url }}"
+    glance_image_container_format: "{{ magnum_image_container_format }}"
+    glance_image_disk_format: "{{ magnum_image_disk_format }}"
+    glance_image_properties:
+      os_distro: "{{ item.distro }}"

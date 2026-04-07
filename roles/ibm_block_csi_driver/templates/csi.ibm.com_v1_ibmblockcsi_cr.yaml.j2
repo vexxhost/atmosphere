@@ -1,0 +1,89 @@
+apiVersion: csi.ibm.com/v1
+kind: IBMBlockCSI
+metadata:
+  name: ibm-block-csi
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: ibm-block-csi
+    app.kubernetes.io/instance: ibm-block-csi
+    app.kubernetes.io/managed-by: ibm-block-csi-operator
+    release: v1.11.3
+spec:
+  # controller is a statefulSet with ibm-block-csi-controller container
+  # and csi-provisioner, csi-attacher, csi-snapshotter and livenessprobe sidecars.
+  controller:
+    repository: "{{ atmosphere_images['ibm_block_csi_driver_controller'] | vexxhost.kubernetes.docker_image('name') }}"
+    tag: "{{ atmosphere_images['ibm_block_csi_driver_controller'] | vexxhost.kubernetes.docker_image('tag') }}"
+    imagePullPolicy: IfNotPresent
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: kubernetes.io/arch
+                  operator: In
+                  values:
+                    - amd64
+                    - s390x
+                    - ppc64le
+
+  # node is a daemonSet with ibm-block-csi-node container
+  # and csi-node-driver-registrar and livenessprobe sidecars.
+  node:
+    repository: "{{ atmosphere_images['ibm_block_csi_driver_node'] | vexxhost.kubernetes.docker_image('name') }}"
+    tag: "{{ atmosphere_images['ibm_block_csi_driver_node'] | vexxhost.kubernetes.docker_image('tag') }}"
+    imagePullPolicy: IfNotPresent
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: kubernetes.io/arch
+                  operator: In
+                  values:
+                    - amd64
+                    - s390x
+                    - ppc64le
+
+#    tolerations:
+#    - effect: NoSchedule
+#      key: node-role.kubernetes.io/master
+#      operator: Exists
+
+  sidecars:
+  - name: csi-node-driver-registrar
+    repository: "{{ atmosphere_images['ibm_block_csi_node_driver_registrar'] | vexxhost.kubernetes.docker_image('name') }}"
+    tag: "{{ atmosphere_images['ibm_block_csi_node_driver_registrar'] | vexxhost.kubernetes.docker_image('tag') }}"
+    imagePullPolicy: IfNotPresent
+  - name: csi-provisioner
+    repository: "{{ atmosphere_images['ibm_block_csi_provisioner'] | vexxhost.kubernetes.docker_image('name') }}"
+    tag: "{{ atmosphere_images['ibm_block_csi_provisioner'] | vexxhost.kubernetes.docker_image('tag') }}"
+    imagePullPolicy: IfNotPresent
+  - name: csi-attacher
+    repository: "{{ atmosphere_images['ibm_block_csi_attacher'] | vexxhost.kubernetes.docker_image('name') }}"
+    tag: "{{ atmosphere_images['ibm_block_csi_attacher'] | vexxhost.kubernetes.docker_image('tag') }}"
+    imagePullPolicy: IfNotPresent
+  - name: csi-snapshotter
+    repository: "{{ atmosphere_images['ibm_block_csi_snapshotter'] | vexxhost.kubernetes.docker_image('name') }}"
+    tag: "{{ atmosphere_images['ibm_block_csi_snapshotter'] | vexxhost.kubernetes.docker_image('tag') }}"
+    imagePullPolicy: IfNotPresent
+  - name: csi-resizer
+    repository: "{{ atmosphere_images['ibm_block_csi_resizer'] | vexxhost.kubernetes.docker_image('name') }}"
+    tag: "{{ atmosphere_images['ibm_block_csi_resizer'] | vexxhost.kubernetes.docker_image('tag') }}"
+    imagePullPolicy: IfNotPresent
+  - name: csi-addons-replicator
+    repository: "{{ atmosphere_images['ibm_block_csi_addons_replicator'] | vexxhost.kubernetes.docker_image('name') }}"
+    tag: "{{ atmosphere_images['ibm_block_csi_addons_replicator'] | vexxhost.kubernetes.docker_image('tag') }}"
+    imagePullPolicy: IfNotPresent
+  - name: csi-volume-group
+    repository: "{{ atmosphere_images['ibm_block_csi_volume_group'] | vexxhost.kubernetes.docker_image('name') }}"
+    tag: "{{ atmosphere_images['ibm_block_csi_volume_group'] | vexxhost.kubernetes.docker_image('tag') }}"
+    imagePullPolicy: IfNotPresent
+  - name: livenessprobe
+    repository: "{{ atmosphere_images['ibm_block_csi_livenessprobe'] | vexxhost.kubernetes.docker_image('name') }}"
+    tag: "{{ atmosphere_images['ibm_block_csi_livenessprobe'] | vexxhost.kubernetes.docker_image('tag') }}"
+    imagePullPolicy: IfNotPresent
+
+#  healthPort: 9808
+#  imagePullSecrets:
+#  - "secretName"

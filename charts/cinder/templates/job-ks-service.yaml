@@ -1,0 +1,45 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- define "metadata.annotations.job.ks_service" }}
+helm.sh/hook: post-install,post-upgrade
+helm.sh/hook-weight: "-3"
+{{- end }}
+
+{{- if .Values.manifests.job_ks_service }}
+{{- $serviceTypes := list }}
+{{- range $_, $v := keys .Values.endpoints | sortAlpha }}
+{{- if $v | hasPrefix "volume" }}
+{{- $serviceTypes = append $serviceTypes $v }}
+{{- end }}
+{{- end }}
+{{- $volTypes := list "volumev3" -}}
+{{- if .Values.conf.cinder.DEFAULT.enable_v1_api }}
+{{- $volTypes = append $volTypes "volume" }}
+{{- end }}
+{{- if .Values.conf.cinder.DEFAULT.enable_v2_api }}
+{{- $volTypes = append $volTypes "volumev2" }}
+{{- end }}
+{{- $ksServiceJob := dict "envAll" . "serviceName" "cinder" "serviceTypes" ( $volTypes ) -}}
+{{- if or .Values.manifests.certificates .Values.tls.identity -}}
+{{- $_ := set $ksServiceJob "tlsSecret" .Values.secrets.tls.volume.api.internal -}}
+{{- end -}}
+{{- if .Values.helm3_hook }}
+{{- $_ := set $ksServiceJob "jobAnnotations" (include "metadata.annotations.job.ks_service" . | fromYaml) }}
+{{- end }}
+{{- if .Values.pod.tolerations.cinder.enabled -}}
+{{- $_ := set $ksServiceJob "tolerationsEnabled" true -}}
+{{- end -}}
+{{ $ksServiceJob | include "helm-toolkit.manifests.job_ks_service" }}
+{{- end }}

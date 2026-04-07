@@ -1,0 +1,49 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- define "metadata.annotations.job.bootstrap" }}
+helm.sh/hook: post-install,post-upgrade
+helm.sh/hook-weight: "5"
+{{- end }}
+
+{{- define "glance.templates._job_bootstrap.pod_volumes" -}}
+{{- $envAll := index . 0 -}}
+volumeMounts:
+  - name: imagedir
+    mountPath: /tmp/images
+volumes:
+  - name: imagedir
+    emptyDir: {}
+{{- end }}
+
+{{- if and .Values.manifests.job_bootstrap .Values.bootstrap.enabled }}
+{{- $podVolumes := tuple . | include "glance.templates._job_bootstrap.pod_volumes" | toString | fromYaml }}
+{{- $bootstrapJob := dict "envAll" . "serviceName" "glance" "keystoneUser" .Values.bootstrap.ks_user "logConfigFile" .Values.conf.glance.DEFAULT.log_config_append "podVolMounts" $podVolumes.volumeMounts "podVols" $podVolumes.volumes -}}
+{{- if or .Values.manifests.certificates .Values.tls.identity -}}
+{{- $_ := set $bootstrapJob "tlsSecret" .Values.secrets.tls.image.api.internal -}}
+{{- end -}}
+{{- if .Values.helm3_hook }}
+{{- $_ := set $bootstrapJob "jobAnnotations" (include "metadata.annotations.job.bootstrap" . | fromYaml) }}
+{{- end }}
+{{- if .Values.pod.tolerations.glance.enabled -}}
+{{- $_ := set $bootstrapJob "tolerationsEnabled" true -}}
+{{- end -}}
+# The configFile path shouble be /etc/glance/glance-api.conf
+# not default /etc/glance/glance.conf defined by helm-toolkit,
+# since secrets mounted in '/etc/glance' have glance-api.conf not glance.conf in it.
+# The wrong path '/etc/glance/glance.conf' would be dir in bootstarp container,
+# and lead to all config files in '/etc/glance' dir unreachable.
+{{- $_ := set $bootstrapJob "configFile" "/etc/glance/glance-api.conf" -}}
+{{ $bootstrapJob | include "helm-toolkit.manifests.job_bootstrap" }}
+{{- end }}

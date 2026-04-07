@@ -1,0 +1,80 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Deploy service
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      - apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ipmi-exporter
+          namespace: monitoring
+          labels:
+            application: ipmi-exporter
+        data:
+          config.yml: "{{ ipmi_exporter_config | to_nice_yaml(indent=2) }}"
+
+      - apiVersion: apps/v1
+        kind: DaemonSet
+        metadata:
+          name: ipmi-exporter
+          namespace: monitoring
+          labels:
+            application: ipmi-exporter
+        spec:
+          selector:
+            matchLabels:
+              application: ipmi-exporter
+          template:
+            metadata:
+              annotations:
+                config-hash: "{{ ipmi_exporter_config | to_nice_yaml(indent=2) | hash('md5') }}"
+              labels:
+                application: ipmi-exporter
+                job: ipmi
+            spec:
+              containers:
+                - name: exporter
+                  args:
+                    - --config.file=/config.yml
+                  image: "{{ atmosphere_images['prometheus_ipmi_exporter'] | vexxhost.kubernetes.docker_image('ref') }}"
+                  ports:
+                    - name: metrics
+                      containerPort: 9290
+                  securityContext:
+                    privileged: true
+                    runAsUser: 0
+                    runAsGroup: 0
+                  volumeMounts:
+                    - name: dev-ipmi0
+                      mountPath: /dev/ipmi0
+                    - name: ipmi-exporter
+                      mountPath: /config.yml
+                      subPath: config.yml
+              volumes:
+                - name: dev-ipmi0
+                  hostPath:
+                    path: /dev/ipmi0
+                - name: ipmi-exporter
+                  configMap:
+                    name: ipmi-exporter
+              affinity:
+                nodeAffinity:
+                  requiredDuringSchedulingIgnoredDuringExecution:
+                    nodeSelectorTerms:
+                      - matchExpressions:
+                          - key: feature.node.kubernetes.io/cpu-cpuid.HYPERVISOR
+                            operator: NotIn
+                            values: ["true"]

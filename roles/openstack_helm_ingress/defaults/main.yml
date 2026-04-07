@@ -1,0 +1,26 @@
+# Name of the OpenStack-Helm Ingress to create
+openstack_helm_ingress_name: "{{ openstack_helm_ingress_endpoint | replace('_', '-') }}"
+
+# List of annotations to apply to the Ingress
+openstack_helm_ingress_annotations: {}
+
+# Hostname to expose for the Ingress
+openstack_helm_ingress_host: "{{ openstack_helm_endpoints[openstack_helm_ingress_endpoint]['host_fqdn_override']['public']['host'] }}"
+
+# Name of the "cert-manager" ClusterIssuer to use for TLS certificates
+openstack_helm_ingress_cluster_issuer: "{{ atmosphere_ingress_cluster_issuer }}"
+
+# Secret containing the TLS certificate to use for the Ingress, overriding this
+# value globally should allow to point towards a secret containing the custom
+# certificate.
+#
+# See: https://kubernetes.io/docs/concepts/services-networking/ingress/#tls
+# openstack_helm_ingress_secret_name: wildcard-certs
+
+# Domain to use to issue a wildcard certificate and use for all ingress objects,
+# this is useful when you want to use a single certificate for all services and
+# use DNS-01 challenge to issue the certificate.
+# openstack_helm_ingress_wildcard_domain: cloud.atmosphere.dev
+
+# Ingress class to use for the Ingress
+openstack_helm_ingress_class_name: "{{ atmosphere_ingress_class_name }}"

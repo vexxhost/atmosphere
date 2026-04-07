@@ -1,0 +1,32 @@
+From 3e0120d8457faf947f6f5d3ed79a1f08a0d271cd Mon Sep 17 00:00:00 2001
+From: Mohammed Naser <mnaser@vexxhost.com>
+Date: Mon, 17 Feb 2025 10:58:17 -0500
+Subject: [PATCH] Switch Neutron to ovsinit
+
+---
+ neutron/templates/bin/_neutron-openvswitch-agent-init.sh.tpl | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/neutron/templates/bin/_neutron-openvswitch-agent-init.sh.tpl b/neutron/templates/bin/_neutron-openvswitch-agent-init.sh.tpl
+index bd0a64ac..c15e40a5 100644
+--- a/neutron/templates/bin/_neutron-openvswitch-agent-init.sh.tpl
++++ b/neutron/templates/bin/_neutron-openvswitch-agent-init.sh.tpl
+@@ -435,13 +435,14 @@ do
+   if [ -n "$iface" ] && [ "$iface" != "null" ] && ( ip link show $iface 1>/dev/null 2>&1 );
+   then
+     ovs-vsctl --db=unix:${OVS_SOCKET} --may-exist add-port $bridge $iface
+-    migrate_ip_from_nic $iface $bridge
+     if [[ "${DPDK_ENABLED}" != "true" ]]; then
+       ip link set dev $iface up
+     fi
+   fi
+ done
+ 
++/usr/local/bin/ovsinit /tmp/auto_bridge_add
++
+ tunnel_types="{{- .Values.conf.plugins.openvswitch_agent.agent.tunnel_types -}}"
+ if [[ -n "${tunnel_types}" ]] ; then
+     tunnel_interface="{{- .Values.network.interface.tunnel -}}"
+-- 
+2.47.0
+

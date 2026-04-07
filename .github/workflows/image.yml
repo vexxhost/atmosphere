@@ -1,0 +1,74 @@
+name: image
+
+on:
+  pull_request:
+    paths-ignore:
+      - images/**
+      - go.mod
+      - go.sum
+  push:
+    branches:
+      - main
+      - stable/*
+  release:
+    types:
+      - published
+
+permissions:
+  packages: write
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@a90bcbc6539c36a85cdfeb73f7e2f433735f215b # v2.15.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout project
+        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4
+
+      - name: Install Earthly
+        uses: earthly/actions-setup@43211c7a0eae5344d6d79fb4aaf209c8f8866203 # v1.0.13
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Login to GitHub Container Registry
+        uses: step-security/docker-login-action@c3e677aae8393bc9c81cfdf9709648720ea4bd4d # v3.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build image
+        run: earthly +image --tag ${{ github.sha }}
+        env:
+          EARTHLY_CI: true
+          EARTHLY_PUSH: "${{ github.event_name == 'push' || github.event_name == 'release' }}"
+          EARTHLY_REMOTE_CACHE: ghcr.io/vexxhost/atmosphere:cache
+
+  publish:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+    needs:
+      - build
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@a90bcbc6539c36a85cdfeb73f7e2f433735f215b # v2.15.0
+        with:
+          egress-policy: audit
+
+      - name: Login to GitHub Container Registry
+        uses: step-security/docker-login-action@c3e677aae8393bc9c81cfdf9709648720ea4bd4d # v3.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Promote image
+        uses: step-security/tag-push-action@3816dac78b3f61b986acdf67bd01277d10f42a7c # v2.2.0
+        with:
+          src: ghcr.io/vexxhost/atmosphere:${{ github.sha }}
+          dst: ghcr.io/vexxhost/atmosphere:${{ github.event.release.tag_name }}

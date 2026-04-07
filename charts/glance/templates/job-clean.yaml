@@ -1,0 +1,121 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- if .Values.manifests.job_clean }}
+{{- $envAll := . }}
+{{- if .Values.bootstrap.enabled }}
+
+{{- $serviceAccountName := print "glance-clean" }}
+{{ tuple $envAll "clean" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ $serviceAccountName }}
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - get
+      - delete
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $serviceAccountName }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ $serviceAccountName }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ $serviceAccountName }}
+    namespace: {{ $envAll.Release.Namespace }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ print "glance-clean" }}
+  labels:
+{{ tuple $envAll "glance" "clean" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+  annotations:
+    "helm.sh/hook": pre-delete
+    "helm.sh/hook-delete-policy": hook-succeeded
+    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
+spec:
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll "glance" "clean" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+    spec:
+      serviceAccountName: {{ $serviceAccountName }}
+{{ dict "envAll" $envAll "application" "clean" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+      restartPolicy: OnFailure
+{{ if $envAll.Values.pod.tolerations.glance.enabled }}
+{{ tuple $envAll "glance" | include "helm-toolkit.snippets.kubernetes_tolerations" | indent 6 }}
+{{ end }}
+      nodeSelector:
+        {{ .Values.labels.job.node_selector_key }}: {{ .Values.labels.job.node_selector_value }}
+      initContainers:
+{{ tuple $envAll "clean" list | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+      containers:
+        {{- if eq .Values.storage "rbd" }}
+        - name: glance-secret-clean
+{{ tuple $envAll "glance_storage_init" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.jobs.bootstrap | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "clean" "container" "glance_secret_clean" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          env:
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: RBD_POOL_SECRET
+              value: {{ .Values.secrets.rbd | quote }}
+          command:
+            - /tmp/clean-secrets.sh
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: glance-bin
+              mountPath: /tmp/clean-secrets.sh
+              subPath: clean-secrets.sh
+              readOnly: true
+        {{ end }}
+        - name: glance-image-clean
+{{ tuple $envAll "bootstrap" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.jobs.bootstrap | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+          env:
+{{- with $env := dict "ksUserSecret" .Values.secrets.identity.admin }}
+{{- include "helm-toolkit.snippets.keystone_openrc_env_vars" $env | indent 12 }}
+{{- end }}
+          command:
+            - /tmp/clean-image.sh
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: glance-bin
+              mountPath: /tmp/clean-image.sh
+              subPath: clean-image.sh
+              readOnly: true
+      volumes:
+        - name: pod-tmp
+          emptyDir: {}
+        - name: glance-bin
+          configMap:
+            name: glance-bin
+            defaultMode: 0555
+{{- end }}
+{{- end }}

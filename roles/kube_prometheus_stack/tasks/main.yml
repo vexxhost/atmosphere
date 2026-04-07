@@ -1,0 +1,348 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Wait until Keycloak service is ready
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: StatefulSet
+    name: keycloak
+    namespace: auth-system
+  register: kube_prometheus_stack_keycloak_service
+  retries: 120
+  delay: 5
+  until:
+    - kube_prometheus_stack_keycloak_service.resources[0].status.replicas == kube_prometheus_stack_keycloak_service.resources[0].status.readyReplicas # noqa: yaml[line-length]
+
+- name: Create Keycloak realm
+  no_log: true
+  run_once: true
+  changed_when: false
+  community.general.keycloak_realm:
+    # Keycloak settings
+    auth_keycloak_url: "{{ kube_prometheus_stack_keycloak_server_url }}"
+    auth_realm: "{{ kube_prometheus_stack_keycloak_admin_realm_name }}"
+    auth_client_id: "{{ kube_prometheus_stack_keycloak_admin_client_id }}"
+    auth_username: "{{ kube_prometheus_stack_keycloak_admin_user }}"
+    auth_password: "{{ kube_prometheus_stack_keycloak_admin_password }}"
+    validate_certs: "{{ cluster_issuer_type != 'self-signed' }}"
+    # Realm settings
+    id: "{{ kube_prometheus_stack_keycloak_realm }}"
+    realm: "{{ kube_prometheus_stack_keycloak_realm }}"
+    display_name: "{{ kube_prometheus_stack_keycloak_realm_name }}"
+    enabled: true
+
+- name: Add client roles in "id_token"
+  no_log: true
+  run_once: true
+  changed_when: false
+  community.general.keycloak_clientscope:
+    # Keycloak settings
+    auth_keycloak_url: "{{ kube_prometheus_stack_keycloak_server_url }}"
+    auth_realm: "{{ kube_prometheus_stack_keycloak_admin_realm_name }}"
+    auth_client_id: "{{ kube_prometheus_stack_keycloak_admin_client_id }}"
+    auth_username: "{{ kube_prometheus_stack_keycloak_admin_user }}"
+    auth_password: "{{ kube_prometheus_stack_keycloak_admin_password }}"
+    validate_certs: "{{ cluster_issuer_type != 'self-signed' }}"
+    # Client scope settings
+    name: roles
+    realm: "{{ kube_prometheus_stack_keycloak_realm }}"
+    protocol_mappers:
+      - name: client roles
+        protocol: openid-connect
+        protocolMapper: oidc-usermodel-client-role-mapper
+        config:
+          claim.name: "resource_access.${client_id}.roles"
+          access.token.claim: true
+          id.token.claim: true
+          multivalued: true
+
+- name: Retrieve "etcd" CA certificate
+  run_once: true
+  ansible.builtin.slurp:
+    src: /etc/kubernetes/pki/etcd/ca.crt
+  register: _etcd_ca_crt
+
+- name: Retrieve "etcd" client certificate
+  run_once: true
+  ansible.builtin.slurp:
+    src: /etc/kubernetes/pki/etcd/healthcheck-client.crt
+  register: _etcd_healthcheck_client_crt
+
+- name: Retrieve "etcd" client key
+  run_once: true
+  ansible.builtin.slurp:
+    src: /etc/kubernetes/pki/etcd/healthcheck-client.key
+  register: _etcd_healthcheck_client_key
+
+- name: Create secrets for monitoring
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      - apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: "{{ kube_prometheus_stack_helm_release_namespace }}"
+
+      - apiVersion: v1
+        kind: Secret
+        metadata:
+          name: kube-prometheus-stack-etcd-client-cert
+          namespace: monitoring
+        data:
+          ca.crt: "{{ _etcd_ca_crt.content }}"
+          healthcheck-client.crt: "{{ _etcd_healthcheck_client_crt.content }}"
+          healthcheck-client.key: "{{ _etcd_healthcheck_client_key.content }}"
+
+- name: Generate client secret passwords
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: secretgen.k14s.io/v1alpha1
+      kind: Password
+      metadata:
+        name: "{{ kube_prometheus_stack_helm_release_name }}-{{ item.id }}-client-secret"
+        namespace: "{{ kube_prometheus_stack_helm_release_namespace }}"
+      spec:
+        length: 64
+    wait: true
+    wait_timeout: 60
+    wait_condition:
+      type: ReconcileSucceeded
+      status: true
+  register: kube_prometheus_stack_client_secret_passwords
+  loop: "{{ kube_prometheus_stack_keycloak_clients }}"
+  loop_control:
+    label: "{{ item.id }}"
+
+- name: Collect all client secrets
+  run_once: true
+  kubernetes.core.k8s_info:
+    kind: Secret
+    namespace: "{{ kube_prometheus_stack_helm_release_namespace }}"
+    name: "{{ password.result.metadata.name }}"
+  register: kube_prometheus_stack_client_secrets
+  loop: "{{ kube_prometheus_stack_client_secret_passwords.results }}"
+  loop_control:
+    label: "{{ password.item.id }}"
+    loop_var: password
+
+- name: Create Keycloak clients
+  no_log: true
+  run_once: true
+  community.general.keycloak_client:
+    # Keycloak settings
+    auth_keycloak_url: "{{ kube_prometheus_stack_keycloak_server_url }}"
+    auth_realm: "{{ kube_prometheus_stack_keycloak_admin_realm_name }}"
+    auth_client_id: "{{ kube_prometheus_stack_keycloak_admin_client_id }}"
+    auth_username: "{{ kube_prometheus_stack_keycloak_admin_user }}"
+    auth_password: "{{ kube_prometheus_stack_keycloak_admin_password }}"
+    validate_certs: "{{ cluster_issuer_type != 'self-signed' }}"
+    # Realm settings
+    realm: "{{ kube_prometheus_stack_keycloak_realm }}"
+    client_id: "{{ secret.password.item.id }}"
+    secret: "{{ secret.resources[0].data.password | b64decode }}"
+    redirect_uris: "{{ secret.password.item.redirect_uris }}"
+    protocol_mappers:
+      - name: "aud-mapper-{{ secret.password.item.id }}"
+        protocol: openid-connect
+        protocolMapper: oidc-audience-mapper
+        config:
+          included.client.audience: "{{ secret.password.item.id }}"
+          access.token.claim: true
+
+  loop: "{{ kube_prometheus_stack_client_secrets.results }}"
+  loop_control:
+    label: "{{ secret.password.item.id }}"
+    loop_var: secret
+
+- name: Create Keycloak roles
+  no_log: true
+  run_once: true
+  community.general.keycloak_role:
+    # Keycloak settings
+    auth_keycloak_url: "{{ kube_prometheus_stack_keycloak_server_url }}"
+    auth_realm: "{{ kube_prometheus_stack_keycloak_admin_realm_name }}"
+    auth_client_id: "{{ kube_prometheus_stack_keycloak_admin_client_id }}"
+    auth_username: "{{ kube_prometheus_stack_keycloak_admin_user }}"
+    auth_password: "{{ kube_prometheus_stack_keycloak_admin_password }}"
+    validate_certs: "{{ cluster_issuer_type != 'self-signed' }}"
+    # Realm settings
+    realm: "{{ kube_prometheus_stack_keycloak_realm }}"
+    client_id: "{{ item.0.id }}"
+    name: "{{ item.1 }}"
+  loop: "{{ kube_prometheus_stack_keycloak_clients | subelements('roles') }}"
+  loop_control:
+    label: "{{ item.0.id }}-{{ item.1 }}"
+
+- name: Generate cookie secrets
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: secretgen.k14s.io/v1alpha1
+      kind: Password
+      metadata:
+        name: "{{ kube_prometheus_stack_helm_release_name }}-{{ item.id }}-cookie-secret"
+        namespace: "{{ kube_prometheus_stack_helm_release_namespace }}"
+      spec:
+        length: 32
+    wait: true
+    wait_timeout: 60
+    wait_condition:
+      type: ReconcileSucceeded
+      status: true
+  loop: "{{ kube_prometheus_stack_keycloak_clients | selectattr('oauth2_proxy', 'equalto', true) }}"
+  loop_control:
+    label: "{{ item.id }}"
+
+- name: Generate OAuth2 proxy configuration
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: secretgen.carvel.dev/v1alpha1
+      kind: SecretTemplate
+      metadata:
+        name: "{{ kube_prometheus_stack_helm_release_name }}-{{ item.id }}-oauth2-proxy"
+        namespace: "{{ kube_prometheus_stack_helm_release_namespace }}"
+      spec:
+        inputResources:
+          - name: client-secret
+            ref:
+              apiVersion: v1
+              kind: Secret
+              name: "{{ kube_prometheus_stack_helm_release_name }}-{{ item.id }}-client-secret"
+          - name: cookie-secret
+            ref:
+              apiVersion: v1
+              kind: Secret
+              name: "{{ kube_prometheus_stack_helm_release_name }}-{{ item.id }}-cookie-secret"
+        template:
+          stringData:
+            OAUTH2_PROXY_UPSTREAMS: "http://127.0.0.1:{{ item.port }}"
+            OAUTH2_PROXY_HTTP_ADDRESS: "0.0.0.0:8081"
+            OAUTH2_PROXY_METRICS_ADDRESS: "0.0.0.0:8082"
+            OAUTH2_PROXY_EMAIL_DOMAINS: "*"
+            OAUTH2_PROXY_REVERSE_PROXY: "true"
+            OAUTH2_PROXY_SKIP_PROVIDER_BUTTON: "true"
+            OAUTH2_PROXY_SSL_INSECURE_SKIP_VERIFY: "{{ (cluster_issuer_type == 'self-signed') | string }}"
+            OAUTH2_PROXY_PROVIDER: "keycloak-oidc"
+            OAUTH2_PROXY_CLIENT_ID: "{{ item.id }}"
+            OAUTH2_PROXY_REDIRECT_URL: "{{ item.redirect_uris.0 }}"
+            OAUTH2_PROXY_OIDC_ISSUER_URL: "{{ kube_prometheus_stack_keycloak_server_url }}/realms/{{ kube_prometheus_stack_keycloak_realm }}"
+            OAUTH2_PROXY_ALLOWED_ROLE: "{{ item.id }}:{{ item.roles[0] }}"
+            OAUTH2_PROXY_CODE_CHALLENGE_METHOD: "S256"
+            OAUTH2_PROXY_SKIP_JWT_BEARER_TOKENS: "true"
+          data:
+            OAUTH2_PROXY_COOKIE_SECRET: "$(.cookie-secret.data.password)"
+            OAUTH2_PROXY_CLIENT_SECRET: "$(.client-secret.data.password)"
+    wait: true
+    wait_timeout: 60
+    wait_condition:
+      type: ReconcileSucceeded
+      status: true
+  loop: "{{ kube_prometheus_stack_keycloak_clients | selectattr('oauth2_proxy', 'equalto', true) }}"
+  loop_control:
+    label: "{{ item.id }}"
+
+- name: Create certificate issuer
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      - apiVersion: cert-manager.io/v1
+        kind: Certificate
+        metadata:
+          name: kube-prometheus-stack-ca
+          namespace: cert-manager
+        spec:
+          commonName: kube-prometheus-stack
+          duration: 87600h0m0s
+          isCA: true
+          issuerRef:
+            group: cert-manager.io
+            kind: ClusterIssuer
+            name: self-signed
+          privateKey:
+            algorithm: ECDSA
+            size: 256
+          renewBefore: 720h0m0s
+          secretName: kube-prometheus-stack-ca
+
+      - apiVersion: cert-manager.io/v1
+        kind: ClusterIssuer
+        metadata:
+          name: kube-prometheus-stack
+        spec:
+          ca:
+            secretName: kube-prometheus-stack-ca
+
+- name: Install all CRDs
+  run_once: true
+  changed_when: false
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('pipe', 'cat ' + role_path + '/../../charts/kube-prometheus-stack/charts/crds/crds/crd-*.yaml') | regex_replace('- =$', '- \"=\"', multiline=True) | from_yaml_all }}" # noqa: yaml[line-length]
+    apply: true
+    server_side_apply:
+      field_manager: atmosphere
+      force_conflicts: true
+  tags:
+    - kube-prometheus-stack-crds
+
+- name: Deploy additional dashboards
+  run_once: true
+  kubernetes.core.k8s:
+    state: "{{ item.state }}"
+    template: configmap-dashboard.yaml.j2
+  loop:
+    - name: haproxy
+      state: present
+    - name: goldpinger
+      state: present
+    - name: node-exporter-full
+      state: present
+    - name: ceph-cluster
+      state: present
+    - name: ceph-cluster-advanced
+      state: present
+    - name: hosts-overview
+      state: present
+    - name: host-details
+      state: present
+    - name: pool-overview
+      state: present
+    - name: pool-detail
+      state: present
+    - name: osds-overview
+      state: present
+    - name: osd-device-details
+      state: present
+    - name: rbd-overview
+      state: present
+    - name: rbd-details
+      state: present
+  tags:
+    - kube-prometheus-stack-dashboards
+
+- name: Deploy Helm chart
+  run_once: true
+  kubernetes.core.helm:
+    name: "{{ kube_prometheus_stack_helm_release_name }}"
+    chart_ref: "{{ kube_prometheus_stack_helm_chart_ref }}"
+    release_namespace: "{{ kube_prometheus_stack_helm_release_namespace }}"
+    create_namespace: true
+    kubeconfig: "{{ kube_prometheus_stack_helm_kubeconfig }}"
+    values: "{{ _kube_prometheus_stack_helm_values | combine(kube_prometheus_stack_helm_values, recursive=True) }}"

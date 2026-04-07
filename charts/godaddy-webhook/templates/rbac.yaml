@@ -1,0 +1,140 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "godaddy-webhook.fullname" . }}
+  labels:
+{{ include "godaddy-webhook.labels" . | indent 4 }}
+---
+# Grant the webhook permission to read the ConfigMap containing the Kubernetes
+# apiserver's requestheader-ca-certificate.
+# This ConfigMap is automatically created by the Kubernetes apiserver.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "godaddy-webhook.fullname" . }}:webhook-authentication-reader
+  namespace: kube-system
+  labels:
+{{ include "godaddy-webhook.labels" . | indent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: extension-apiserver-authentication-reader
+subjects:
+  - apiGroup: ""
+    kind: ServiceAccount
+    name: {{ include "godaddy-webhook.fullname" . }}
+    namespace: {{ .Release.Namespace }}
+---
+# apiserver gets the auth-delegator role to delegate auth decisions to
+# the core apiserver
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "godaddy-webhook.fullname" . }}:auth-delegator
+  labels:
+{{ include "godaddy-webhook.labels" . | indent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:auth-delegator
+subjects:
+  - apiGroup: ""
+    kind: ServiceAccount
+    name: {{ include "godaddy-webhook.fullname" . }}
+    namespace: {{ .Release.Namespace }}
+---
+# Grant cert-manager permission to validate using our apiserver
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "godaddy-webhook.fullname" . }}:domain-solver
+  labels:
+{{ include "godaddy-webhook.labels" . | indent 4 }}
+rules:
+  - apiGroups:
+      - {{ .Values.groupName }}
+    resources:
+      - '*'
+    verbs:
+      - 'create'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "godaddy-webhook.fullname" . }}:domain-solver
+  labels:
+{{ include "godaddy-webhook.labels" . | indent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "godaddy-webhook.fullname" . }}:domain-solver
+subjects:
+  - apiGroup: ""
+    kind: ServiceAccount
+    name: {{ .Values.certManager.serviceAccountName }}
+    namespace: {{ .Values.certManager.namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "godaddy-webhook.fullname" . }}
+  labels:
+{{ include "godaddy-webhook.labels" . | indent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "godaddy-webhook.fullname" . }}
+subjects:
+  - apiGroup: ""
+    kind: ServiceAccount
+    name: {{ include "godaddy-webhook.fullname" . }}
+    namespace: {{ .Release.Namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "godaddy-webhook.fullname" . }}
+  labels:
+{{ include "godaddy-webhook.labels" . | indent 4 }}
+rules:
+  - apiGroups:
+      - ''
+    resources:
+      - 'secrets'
+    verbs:
+      - 'get'
+---
+# Grant cert-manager-webhook-gandi permission to read the flow control mechanism (APF)
+# API Priority and Fairness is enabled by default in Kubernetes 1.20
+# https://kubernetes.io/docs/concepts/cluster-administration/flow-control/
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "godaddy-webhook.fullname" . }}:flowcontrol-solver
+  labels:
+{{ include "godaddy-webhook.labels" . | indent 4 }}
+rules:
+  - apiGroups:
+      - "flowcontrol.apiserver.k8s.io"
+    resources:
+      - "prioritylevelconfigurations"
+      - "flowschemas"
+    verbs:
+      - "list"
+      - "watch"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "godaddy-webhook.fullname" . }}:flowcontrol-solver
+  labels:
+{{ include "godaddy-webhook.labels" . | indent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "godaddy-webhook.fullname" . }}:flowcontrol-solver
+subjects:
+  - apiGroup: ""
+    kind: ServiceAccount
+    name: {{ include "godaddy-webhook.fullname" . }}
+    namespace: {{ .Release.Namespace }}

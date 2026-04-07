@@ -1,0 +1,74 @@
+# Copyright (c) 2024 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Uninstall OpenStack client system packages
+  ansible.builtin.package:
+    name: "{{ openstack_cli_packages }}"
+    state: absent
+  when: ansible_facts['os_family'] in ['Debian']
+
+- name: Uninstall Ubuntu Cloud Archive keyring
+  ansible.builtin.apt:
+    name: ubuntu-cloud-keyring
+    state: absent
+  when: ansible_facts['os_family'] in ['Debian']
+
+- name: Remove Ubuntu Cloud Archive repository
+  ansible.builtin.apt_repository:
+    filename: ubuntu-cloud-archive
+    repo: "{{ openstack_cli_cloud_archive_repo }}"
+    state: absent
+  when: ansible_facts['os_family'] in ['Debian']
+
+- name: Generate OpenStack-Helm endpoints
+  ansible.builtin.include_role:
+    name: openstack_helm_endpoints
+  vars:
+    openstack_helm_endpoints_list: ["identity"]
+
+- name: Generate openrc file
+  become: true
+  ansible.builtin.template:
+    src: openrc.j2
+    dest: /root/openrc
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: Install osc wrapper script
+  become: true
+  ansible.builtin.template:
+    src: osc.sh.j2
+    dest: /usr/local/bin/osc
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install openstack wrapper script
+  become: true
+  ansible.builtin.template:
+    src: openstack.sh.j2
+    dest: /usr/local/bin/openstack
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Generate openstack aliases
+  become: true
+  ansible.builtin.template:
+    src: atmosphere.sh.j2
+    dest: /etc/profile.d/atmosphere.sh
+    owner: root
+    group: root
+    mode: "0644"

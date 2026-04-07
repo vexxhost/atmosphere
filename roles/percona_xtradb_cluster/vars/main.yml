@@ -1,0 +1,110 @@
+# Copyright (c) 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+_percona_xtradb_cluster_spec:
+  crVersion: "1.18.0"
+  secretsName: percona-xtradb
+  enableVolumeExpansion: true
+  backup:
+    image: "{{ atmosphere_images['percona_xtradb_cluster_backup'] | vexxhost.kubernetes.docker_image('ref') }}"
+  pxc:
+    size: 3
+    image: "{{ atmosphere_images['percona_xtradb_cluster'] | vexxhost.kubernetes.docker_image('ref') }}"
+    autoRecovery: true
+    configuration: |
+      [mysqld]
+      max_connections=8192
+      innodb_buffer_pool_size=4096M
+      # Skip reverse DNS lookup of clients
+      skip-name-resolve
+      pxc_strict_mode=MASTER
+    sidecars:
+      - name: exporter
+        image: "{{ atmosphere_images['prometheus_mysqld_exporter'] | vexxhost.kubernetes.docker_image('ref') }}"
+        args:
+          - --mysqld.username=monitor
+          - --collect.info_schema.processlist
+        env:
+          - name: MYSQLD_EXPORTER_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: percona-xtradb
+                key: monitor
+        ports:
+          - name: metrics
+            containerPort: 9104
+        readinessProbe:
+          httpGet:
+            port: metrics
+            path: /
+    nodeSelector:
+      openstack-control-plane: enabled
+    livenessProbes:
+      timeoutSeconds: 60
+      failureThreshold: 100
+    volumeSpec:
+      persistentVolumeClaim:
+        resources:
+          requests:
+            storage: 160Gi
+  haproxy:
+    enabled: true
+    size: 3
+    image: "{{ atmosphere_images['percona_xtradb_cluster_haproxy'] | vexxhost.kubernetes.docker_image('ref') }}"
+    nodeSelector:
+      openstack-control-plane: enabled
+    # NOTE(fitbeard): The actual default configuration file can be found here:
+    # https://github.com/percona/percona-docker/blob/pxc-operator-1.18.0/haproxy/dockerdir/etc/haproxy/haproxy-global.cfg
+    # Should be aligned with upstream example when bumping chart version
+    configuration: |
+      global
+        log stdout format raw local0
+        maxconn 8192
+        external-check
+        insecure-fork-wanted
+        hard-stop-after 10s
+        stats socket /etc/haproxy/pxc/haproxy.sock mode 600 expose-fd listeners level admin
+
+      defaults
+        no option dontlognull
+        log-format '{"time":"%t", "client_ip": "%ci", "client_port":"%cp", "backend_source_ip": "%bi", "backend_source_port": "%bp",  "frontend_name": "%ft", "backend_name": "%b", "server_name":"%s", "tw": "%Tw", "tc": "%Tc", "Tt": "%Tt", "bytes_read": "%B", "termination_state": "%ts", "actconn": "%ac", "feconn" :"%fc", "beconn": "%bc", "srv_conn": "%sc", "retries": "%rc", "srv_queue": "%sq", "backend_queue": "%bq" }'
+        default-server init-addr last,libc,none
+        log global
+        mode tcp
+        retries 10
+        timeout client 28800s
+        timeout connect 100500
+        timeout server 28800s
+
+      resolvers kubernetes
+        parse-resolv-conf
+
+      frontend galera-in
+        bind *:3309 accept-proxy
+        bind *:3306
+        mode tcp
+        option clitcpka
+        default_backend galera-nodes
+
+      frontend galera-admin-in
+        bind *:33062
+        mode tcp
+        option clitcpka
+        default_backend galera-admin-nodes
+
+      frontend galera-replica-in
+        bind *:3307
+        mode tcp
+        option clitcpka
+        default_backend galera-replica-nodes
+
+      frontend galera-mysqlx-in
+        bind *:33060
+        mode tcp
+        option clitcpka
+        default_backend galera-mysqlx-nodes
+
+      frontend stats
+        bind *:8404
+        mode http
+        http-request use-service prometheus-exporter if { path /metrics }

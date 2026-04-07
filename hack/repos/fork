@@ -1,0 +1,32 @@
+#!/bin/bash -xe
+
+gh repo fork ${1} --org vexxhost
+
+REPOSITORY_ID_QUERY="{repository(owner: \"vexxhost\", name: \"${1##*/}\"){id}}"
+REPOSITORY_ID=$(gh api graphql -f query="${REPOSITORY_ID_QUERY}" -q .data.repository.id)
+
+gh api graphql -f query='
+mutation($repositoryId:ID!) {
+  createBranchProtectionRule(input: {
+    repositoryId: $repositoryId
+    pattern: "master"
+    requiresApprovingReviews: true
+    requiredApprovingReviewCount: 1
+    requiresConversationResolution: true
+    requiresLinearHistory: true
+    isAdminEnforced: false
+  }) { clientMutationId }
+}' -f repositoryId=${REPOSITORY_ID}
+
+gh api graphql -f query='
+mutation($repositoryId:ID!) {
+  createBranchProtectionRule(input: {
+    repositoryId: $repositoryId
+    pattern: "stable/*"
+    requiresApprovingReviews: true
+    requiredApprovingReviewCount: 1
+    requiresConversationResolution: true
+    requiresLinearHistory: true
+    isAdminEnforced: false
+  }) { clientMutationId }
+}' -f repositoryId=${REPOSITORY_ID}

@@ -1,0 +1,194 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+_octavia_helm_values:
+  # NOTE(okozachenko): remove this line once https://review.opendev.org/c/openstack/openstack-helm/+/965887
+  #                    is merged.
+  helm3_hook: true
+  endpoints: "{{ openstack_helm_endpoints }}"
+  images:
+    tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('octavia') }}"
+  pod:
+    labels:
+      include_app_kubernetes_io: false
+    mounts:
+      octavia_api:
+        octavia_api:
+          volumeMounts:
+            - name: octavia-server-ca
+              mountPath: /etc/octavia/certs/server
+            - name: octavia-client-certs
+              mountPath: /etc/octavia/certs/client
+            - name: octavia-jobboard-default-ca
+              mountPath: /etc/octavia/certs/jobboard-default
+            - name: octavia-jobboard-sentinel-ca
+              mountPath: /etc/octavia/certs/jobboard-sentinel
+          volumes:
+            - name: octavia-server-ca
+              secret:
+                secretName: octavia-server-ca
+            - name: octavia-client-certs
+              secret:
+                secretName: octavia-client-certs
+            - name: octavia-jobboard-default-ca
+              secret:
+                secretName: "{{ octavia_jobboard_default_secret_name }}"
+            - name: octavia-jobboard-sentinel-ca
+              secret:
+                secretName: "{{ octavia_jobboard_sentinel_secret_name }}"
+      octavia_worker:
+        octavia_worker:
+          volumeMounts:
+            - name: octavia-server-ca
+              mountPath: /etc/octavia/certs/server
+            - name: octavia-jobboard-default-ca
+              mountPath: /etc/octavia/certs/jobboard-default
+            - name: octavia-jobboard-sentinel-ca
+              mountPath: /etc/octavia/certs/jobboard-sentinel
+            - name: octavia-client-certs
+              mountPath: /etc/octavia/certs/client
+            - name: octavia-amphora-ssh-key
+              mountPath: /var/lib/octavia/.ssh
+              readOnly: true
+          volumes:
+            - name: octavia-jobboard-default-ca
+              secret:
+                secretName: "{{ octavia_jobboard_default_secret_name }}"
+            - name: octavia-jobboard-sentinel-ca
+              secret:
+                secretName: "{{ octavia_jobboard_sentinel_secret_name }}"
+            - name: octavia-server-ca
+              secret:
+                secretName: octavia-server-ca
+            - name: octavia-client-certs
+              secret:
+                secretName: octavia-client-certs
+            - name: octavia-amphora-ssh-key
+              secret:
+                secretName: "{{ octavia_ssh_key_secret.resources[0]['metadata']['name'] }}"
+                defaultMode: 0444 # noqa: yaml[octal-values]
+      octavia_housekeeping:
+        octavia_housekeeping:
+          volumeMounts:
+            - name: octavia-server-ca
+              mountPath: /etc/octavia/certs/server
+            - name: octavia-client-certs
+              mountPath: /etc/octavia/certs/client
+            - name: octavia-jobboard-default-ca
+              mountPath: /etc/octavia/certs/jobboard-default
+            - name: octavia-jobboard-sentinel-ca
+              mountPath: /etc/octavia/certs/jobboard-sentinel
+          volumes:
+            - name: octavia-server-ca
+              secret:
+                secretName: octavia-server-ca
+            - name: octavia-client-certs
+              secret:
+                secretName: octavia-client-certs
+            - name: octavia-jobboard-default-ca
+              secret:
+                secretName: "{{ octavia_jobboard_default_secret_name }}"
+            - name: octavia-jobboard-sentinel-ca
+              secret:
+                secretName: "{{ octavia_jobboard_sentinel_secret_name }}"
+      octavia_health_manager:
+        octavia_health_manager:
+          volumeMounts:
+            - name: octavia-server-ca
+              mountPath: /etc/octavia/certs/server
+            - name: octavia-client-certs
+              mountPath: /etc/octavia/certs/client
+            - name: octavia-jobboard-default-ca
+              mountPath: /etc/octavia/certs/jobboard-default
+            - name: octavia-jobboard-sentinel-ca
+              mountPath: /etc/octavia/certs/jobboard-sentinel
+          volumes:
+            - name: octavia-server-ca
+              secret:
+                secretName: octavia-server-ca
+            - name: octavia-client-certs
+              secret:
+                secretName: octavia-client-certs
+            - name: octavia-jobboard-default-ca
+              secret:
+                secretName: "{{ octavia_jobboard_default_secret_name }}"
+            - name: octavia-jobboard-sentinel-ca
+              secret:
+                secretName: "{{ octavia_jobboard_sentinel_secret_name }}"
+    replicas:
+      api: 3
+      worker: 3
+      housekeeping: 3
+  conf:
+    octavia:
+      DEFAULT:
+        log_config_append: null
+      api_settings:
+        default_provider_driver: amphorav2
+        enabled_provider_drivers: amphorav2:'The v2 amphora driver.',amphora:'The Octavia Amphora driver.',octavia:'Deprecated name of Amphora driver.'
+      certificates:
+        ca_certificate: /etc/octavia/certs/server/ca.crt
+        ca_private_key: /etc/octavia/certs/server/tls.key
+        ca_private_key_passphrase: null
+        endpoint_type: internalURL
+      cinder:
+        endpoint_type: internalURL
+      controller_worker:
+        amp_boot_network_list: "{{ _octavia_management_network.id }}"
+        amp_flavor_id: "{{ _octavia_amphora_flavor.flavor.id }}"
+        amp_image_owner_id: "{{ _octavia_amphora_image.images.0.owner }}"
+        amp_secgroup_list: "{{ _octavia_amphora_sg.security_group.id }}"
+        amp_ssh_key_name: "{{ octavia_amphora_ssh_keypair.keypair.name }}"
+        client_ca: /etc/octavia/certs/client/ca.crt
+        volume_driver: volume_cinder_driver
+        workers: 4
+      database:
+        connection_recycle_time: 600
+        max_overflow: 50
+        max_pool_size: 5
+        pool_timeout: 30
+      glance:
+        endpoint_type: internalURL
+      haproxy_amphora:
+        client_cert: /etc/octavia/certs/client/tls-combined.pem
+        server_ca: /etc/octavia/certs/server/ca.crt
+      health_manager:
+        controller_ip_port_list: "{{ _octavia_controller_ip_port_list | sort | join(',') }}"
+        heartbeat_key: "{{ octavia_heartbeat_key }}"
+      oslo_messaging_notifications:
+        driver: noop
+      neutron:
+        endpoint_type: internalURL
+        valid_interfaces: internal
+      nova:
+        endpoint_type: internalURL
+      service_auth:
+        endpoint_type: internalURL
+      task_flow:
+        jobboard_expiration_time: 100
+        jobboard_redis_sentinel: atmosphere
+        jobboard_redis_backend_ssl_options: ssl:True,ssl_keyfile:/etc/octavia/certs/jobboard-default/tls.key,ssl_certfile:/etc/octavia/certs/jobboard-default/tls.crt,ssl_ca_certs:/etc/octavia/certs/jobboard-default/ca.crt,ssl_cert_reqs:required
+        jobboard_redis_sentinel_ssl_options: ssl:True,ssl_keyfile:/etc/octavia/certs/jobboard-sentinel/tls.key,ssl_certfile:/etc/octavia/certs/jobboard-sentinel/tls.crt,ssl_ca_certs:/etc/octavia/certs/jobboard-sentinel/ca.crt,ssl_cert_reqs:required
+    rabbitmq:
+      policies:
+        - vhost: "octavia"
+          name: "ha_ttl_octavia"
+          definition:
+            message-ttl: 70000
+          priority: 0
+          apply-to: all
+          pattern: '^(?!(amq\.|reply_)).*'
+  manifests:
+    ingress_api: false
+    service_ingress_api: false

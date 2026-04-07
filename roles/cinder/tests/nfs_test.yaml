@@ -1,0 +1,96 @@
+suite: nfs
+tests:
+  - it: should support a single nfs backend with a single share
+    templates:
+      - templates/configmap-etc.yaml
+      - templates/deployment-volume.yaml
+    set:
+      conf:
+        backends:
+          nfs:
+            nfs_shares_config: test_content_1
+    asserts:
+      - template: templates/configmap-etc.yaml
+        equal:
+          path: data.nfs-nfs
+          decodeBase64: true
+          value: test_content_1
+      - template: templates/deployment-volume.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.containers[?(@.name=='cinder-volume')].volumeMounts[?(@.subPath=='nfs-nfs')]
+          value:
+            name: cinder-etc
+            mountPath: /etc/cinder/nfs/nfs
+            readOnly: true
+            subPath: nfs-nfs
+
+  - it: should support a single nfs backend with multiple shares
+    templates:
+      - templates/configmap-etc.yaml
+      - templates/deployment-volume.yaml
+    set:
+      conf:
+        backends:
+          nfs:
+            nfs_shares_config:
+              - test_content_1
+              - test_content_2
+    asserts:
+      - template: templates/configmap-etc.yaml
+        equal:
+          path: data.nfs-nfs
+          decodeBase64: true
+          value: |-
+            test_content_1
+            test_content_2
+      - template: templates/deployment-volume.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.containers[?(@.name=='cinder-volume')].volumeMounts[?(@.subPath=='nfs-nfs')]
+          value:
+            name: cinder-etc
+            mountPath: /etc/cinder/nfs/nfs
+            readOnly: true
+            subPath: nfs-nfs
+
+  - it: should support multiple nfs backends
+    templates:
+      - templates/configmap-etc.yaml
+      - templates/deployment-volume.yaml
+    set:
+      conf:
+        backends:
+          nfs1:
+            nfs_shares_config: test_content_1
+          nfs2:
+            nfs_shares_config: test_content_2
+    asserts:
+      - template: templates/configmap-etc.yaml
+        equal:
+          path: data.nfs-nfs1
+          decodeBase64: true
+          value: test_content_1
+      - template: templates/configmap-etc.yaml
+        equal:
+          path: data.nfs-nfs2
+          decodeBase64: true
+          value: test_content_2
+      - template: templates/deployment-volume.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.containers[?(@.name=='cinder-volume')].volumeMounts[?(@.subPath=='nfs-nfs1')]
+          value:
+            name: cinder-etc
+            mountPath: /etc/cinder/nfs/nfs1
+            readOnly: true
+            subPath: nfs-nfs1
+      - template: templates/deployment-volume.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.containers[?(@.name=='cinder-volume')].volumeMounts[?(@.subPath=='nfs-nfs2')]
+          value:
+            name: cinder-etc
+            mountPath: /etc/cinder/nfs/nfs2
+            readOnly: true
+            subPath: nfs-nfs2

@@ -1,0 +1,74 @@
+# Copyright (c) 2024 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Create secret (username/password)
+  run_once: true
+  when:
+    - cluster_issuer_venafi_username is defined
+    - cluster_issuer_venafi_password is defined
+    - cluster_issuer_venafi_access_token is not defined
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      - apiVersion: v1
+        kind: Secret
+        metadata:
+          name: "{{ cluster_issuer_venafi_secret_name }}"
+          namespace: cert-manager
+        stringData:
+          username: "{{ cluster_issuer_venafi_username }}"
+          password: "{{ cluster_issuer_venafi_password }}"
+
+- name: Create secret (access token)
+  run_once: true
+  when:
+    - cluster_issuer_venafi_username is not defined
+    - cluster_issuer_venafi_password is not defined
+    - cluster_issuer_venafi_access_token is defined
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      - apiVersion: v1
+        kind: Secret
+        metadata:
+          name: "{{ cluster_issuer_venafi_secret_name }}"
+          namespace: cert-manager
+        stringData:
+          access-token: "{{ cluster_issuer_venafi_access_token }}"
+
+- name: Create ClusterIssuer
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: cert-manager.io/v1
+      kind: ClusterIssuer
+      metadata:
+        name: "{{ cluster_issuer_name }}"
+      spec:
+        venafi:
+          zone: "{{ cluster_issuer_venafi_zone }}"
+          tpp:
+            url: "{{ cluster_issuer_venafi_tpp_url }}"
+            caBundle: "{{ cluster_issuer_venafi_tpp_ca_bundle }}"
+            credentialsRef:
+              name: "{{ cluster_issuer_venafi_secret_name }}"
+
+- name: Copy CA certificate on host
+  ansible.builtin.copy:
+    content: "{{ cluster_issuer_venafi_ca }}"
+    dest: "{{ '/usr/local/share/ca-certificates' if ansible_facts['os_family'] in ['Debian'] else '/etc/pki/ca-trust/source/anchors' }}/atmosphere.crt"
+    mode: "0644"
+  notify:
+    - Update CA certificates on host

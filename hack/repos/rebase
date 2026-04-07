@@ -1,0 +1,36 @@
+#!/bin/bash -xe
+
+# Clone the repository in a temporary directory if it doesn't exist
+if [ ! -d "/tmp/vexxhost-${1}" ]; then
+  gh repo clone vexxhost/${1} /tmp/vexxhost-${1}
+fi
+
+# Switch to the repository
+cd /tmp/vexxhost-${1}
+
+# Allow all branches to be rebased
+git remote set-branches upstream '*'
+git fetch --all
+
+# Update the repository
+git fetch origin
+git fetch upstream
+
+# Loop over all of the upstream branches
+for i in $(git branch -r | grep upstream); do
+  # Extract the branch name
+  branch=$(echo $i | sed 's/upstream\///g')
+
+  # Checkout the branch from origin if it exists, otherwise create from upstream
+  if git branch -r | grep -q origin/${branch}; then
+    git checkout -B ${branch} origin/${branch}
+  else
+    git checkout -B ${branch} upstream/${branch}
+  fi
+
+  # Rebase the branch from the upstream branch
+  git rebase upstream/${branch}
+
+  # Push this branch to the remote
+  git push -fu origin ${branch}
+done

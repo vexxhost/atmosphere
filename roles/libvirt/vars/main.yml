@@ -1,0 +1,48 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+_libvirt_helm_values:
+  endpoints: "{{ openstack_helm_endpoints }}"
+  network:
+    backend:
+      - "{{ atmosphere_network_backend | default('openvswitch') }}"
+  images:
+    tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('libvirt') }}"
+  conf:
+    libvirt:
+      listen_tcp: "0"
+      listen_tls: "1"
+      listen_addr: 0.0.0.0
+      tls_priority: "NORMAL:-VERS-TLS1.0:-VERS-TLS1.1:-VERS-TLS1.2"
+    qemu:
+      default_tls_x509_verify: "1"
+      vnc_tls: "1"
+  issuers:
+    libvirt:
+      kind: Issuer
+      name: libvirt-api
+    vencrypt:
+      kind: Issuer
+      name: libvirt-vnc
+  pod:
+    labels:
+      include_app_kubernetes_io: false
+    sidecars:
+      libvirt_exporter:
+        enabled: true
+        args:
+          - --libvirt.uri
+          - /run/libvirt/libvirt-sock-ro
+  manifests:
+    role_cert_manager: true

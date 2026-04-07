@@ -1,0 +1,96 @@
+suite: priorityclass
+tests:
+  - it: should support not having a priority class
+    templates:
+      - templates/deployment-api.yaml
+      - templates/deployment-scheduler.yaml
+      - templates/deployment-volume.yaml
+      - templates/cron-job-cinder-volume-usage-audit.yaml
+      - templates/deployment-backup.yaml
+      - templates/pod-rally-test.yaml
+      - templates/job-db-sync.yaml
+    asserts:
+      - template: templates/deployment-api.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.priorityClassName
+      - template: templates/deployment-scheduler.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.priorityClassName
+      - template: templates/deployment-volume.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.priorityClassName
+      - template: templates/cron-job-cinder-volume-usage-audit.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.jobTemplate.spec.template.spec.priorityClassName
+      - template: templates/deployment-backup.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.priorityClassName
+      - template: templates/pod-rally-test.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.priorityClassName
+      - template: templates/job-db-sync.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.priorityClassName
+
+  - it: should support setting a priority class
+    templates:
+      - templates/deployment-api.yaml
+      - templates/deployment-scheduler.yaml
+      - templates/deployment-volume.yaml
+      - templates/cron-job-cinder-volume-usage-audit.yaml
+      - templates/deployment-backup.yaml
+      - templates/pod-rally-test.yaml
+      - templates/job-db-sync.yaml
+    set:
+      pod:
+        priorityClassName:
+          cinder_api: platform
+          cinder_backup: platform
+          cinder_scheduler: platform
+          cinder_tests: platform
+          cinder_volume_usage_audit: platform
+          cinder_volume: platform
+          db_sync: platform
+    asserts:
+      - template: templates/deployment-api.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/deployment-scheduler.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/deployment-volume.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/cron-job-cinder-volume-usage-audit.yaml
+        documentIndex: 3
+        equal:
+          path: spec.jobTemplate.spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/deployment-backup.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/pod-rally-test.yaml
+        documentIndex: 3
+        equal:
+          path: spec.priorityClassName
+          value: platform
+      - template: templates/job-db-sync.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform

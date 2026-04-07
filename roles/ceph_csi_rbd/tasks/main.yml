@@ -1,0 +1,83 @@
+# Copyright (c) 2023 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Collect "ceph mon dump" output from a monitor
+  delegate_to: "{{ groups[ceph_csi_rbd_mons_group][0] }}"
+  run_once: true
+  ansible.builtin.command: cephadm shell -- ceph mon dump -f json
+  changed_when: false
+  register: _ceph_mon_dump
+  when: ceph_csi_rbd_ceph_fsid is not defined or ceph_csi_rbd_monitors is not defined
+
+- name: Generate fact with Ceph FSID
+  run_once: true
+  ansible.builtin.set_fact:
+    ceph_csi_rbd_ceph_fsid: "{{ _ceph_mon_dump.stdout | from_json | community.general.json_query('fsid') }}"
+  when: ceph_csi_rbd_ceph_fsid is not defined
+
+- name: Generate fact with list of Ceph monitors
+  run_once: true
+  ansible.builtin.set_fact:
+    ceph_csi_rbd_monitors: "{{ _ceph_mon_dump.stdout | from_json | community.general.json_query('mons[*].addr') | map('regex_replace', '(.*):(.*)', '\\1') }}"
+  when: ceph_csi_rbd_monitors is not defined
+
+- name: Create Ceph pool
+  delegate_to: "{{ groups[ceph_csi_rbd_mons_group][0] }}"
+  run_once: true
+  vexxhost.ceph.pool:
+    name: "{{ ceph_csi_rbd_pool }}"
+    rule_name: "{{ ceph_csi_rbd_rule_name | default(omit) }}"
+    application: rbd
+    pg_autoscale_mode: "on"
+  when:
+    - ceph_csi_rbd_keyring is not defined
+
+- name: Create user {{ ceph_csi_rbd_user }}
+  delegate_to: "{{ groups[ceph_csi_rbd_mons_group][0] }}"
+  run_once: true
+  vexxhost.ceph.key:
+    name: "{{ ceph_csi_rbd_user }}"
+    caps:
+      mon: profile rbd
+      mgr: profile rbd pool={{ ceph_csi_rbd_pool }}
+      osd: profile rbd pool={{ ceph_csi_rbd_pool }}
+  when:
+    - ceph_csi_rbd_keyring is not defined
+
+- name: Retrieve keyring for {{ ceph_csi_rbd_user }}
+  delegate_to: "{{ groups[ceph_csi_rbd_mons_group][0] }}"
+  run_once: true
+  vexxhost.ceph.key:
+    name: "{{ ceph_csi_rbd_user }}"
+    state: info
+    output_format: json
+  register: _ceph_key
+  when:
+    - ceph_csi_rbd_keyring is not defined
+
+- name: Store keyring inside fact
+  run_once: true
+  ansible.builtin.set_fact:
+    ceph_csi_rbd_keyring: "{{ (_ceph_key.stdout | from_json | first).key }}"
+  when: ceph_csi_rbd_keyring is not defined
+
+- name: Deploy Helm chart
+  run_once: true
+  kubernetes.core.helm:
+    name: "{{ ceph_csi_rbd_helm_release_name }}"
+    chart_ref: "{{ ceph_csi_rbd_helm_chart_ref }}"
+    release_namespace: "{{ ceph_csi_rbd_helm_release_namespace }}"
+    create_namespace: true
+    kubeconfig: "{{ ceph_csi_rbd_helm_kubeconfig }}"
+    values: "{{ _ceph_csi_rbd_helm_values | combine(ceph_csi_rbd_helm_values, recursive=True) }}"

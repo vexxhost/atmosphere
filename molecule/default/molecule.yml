@@ -1,0 +1,55 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+dependency:
+  name: galaxy
+driver:
+  name: default
+  ssh_connection_options:
+    - -o ControlMaster=auto
+    - -o ControlPersist=270s
+    - -o ServerAliveInterval=15
+platforms:
+  - name: ctl1
+    groups: &controller_groups
+      - controllers
+  - name: ctl2
+    groups: *controller_groups
+  - name: ctl3
+    groups: *controller_groups
+  - name: nvme1
+    groups: &nvme_groups
+      - cephs
+  - name: nvme2
+    groups: *nvme_groups
+  - name: nvme3
+    groups: *nvme_groups
+  - name: kvm1
+    groups: &kvm_groups
+      - computes
+  - name: kvm2
+    groups: *kvm_groups
+provisioner:
+  name: ansible
+  options:
+    inventory: "${MOLECULE_EPHEMERAL_DIRECTORY}/workspace"
+  config_options:
+    connection:
+      pipelining: true
+  inventory:
+    links:
+      host_vars: "${ATMOSPHERE_ANSIBLE_VARS_PATH-$MOLECULE_SCENARIO_DIRECTORY}/host_vars"
+      group_vars: "${ATMOSPHERE_ANSIBLE_VARS_PATH-$MOLECULE_SCENARIO_DIRECTORY}/group_vars"
+verifier:
+  name: ansible

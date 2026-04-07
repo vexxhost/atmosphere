@@ -1,0 +1,126 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- if .Values.manifests.job_clean }}
+{{- $envAll := . }}
+{{ if or (contains "cinder.backup.drivers.ceph" .Values.conf.cinder.DEFAULT.backup_driver) (eq "true" (include "cinder.utils.has_ceph_backend" $envAll)) }}
+
+{{- $serviceAccountName := print "cinder-clean" }}
+{{ tuple $envAll "clean" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ $serviceAccountName }}
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - get
+      - delete
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $serviceAccountName }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ $serviceAccountName }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ $serviceAccountName }}
+    namespace: {{ $envAll.Release.Namespace }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ print "cinder-clean" }}
+  labels:
+{{ tuple $envAll "cinder" "clean" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+  annotations:
+    "helm.sh/hook": pre-delete
+    "helm.sh/hook-delete-policy": hook-succeeded
+    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
+spec:
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll "cinder" "clean" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+    spec:
+      serviceAccountName: {{ $serviceAccountName }}
+{{ dict "envAll" $envAll "application" "clean" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+      restartPolicy: OnFailure
+{{ if $envAll.Values.pod.tolerations.cinder.enabled }}
+{{ tuple $envAll "cinder" | include "helm-toolkit.snippets.kubernetes_tolerations" | indent 6 }}
+{{ end }}
+      nodeSelector:
+        {{ .Values.labels.job.node_selector_key }}: {{ .Values.labels.job.node_selector_value }}
+      initContainers:
+{{ tuple $envAll "clean" list | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+      containers:
+        {{- if eq "true" (include "cinder.utils.has_ceph_backend" $envAll) }}
+        - name: cinder-volume-rbd-secret-clean
+{{ tuple $envAll "cinder_storage_init" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.jobs.clean | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "clean" "container" "cinder_volume_rbd_secret_clean" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          env:
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: RBD_POOL_SECRET
+              value: {{ .Values.secrets.rbd.volume | quote }}
+          command:
+            - /tmp/clean-secrets.sh
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: cinder-bin
+              mountPath: /tmp/clean-secrets.sh
+              subPath: clean-secrets.sh
+              readOnly: true
+        {{ end }}
+        {{- if (contains "cinder.backup.drivers.ceph" .Values.conf.cinder.DEFAULT.backup_driver) }}
+        - name: cinder-volume-backup-secret-clean
+{{ tuple $envAll "cinder_backup_storage_init" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.jobs.clean | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+          env:
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: RBD_POOL_SECRET
+              value: {{ .Values.secrets.rbd.backup | quote }}
+          command:
+            - /tmp/clean-secrets.sh
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: cinder-bin
+              mountPath: /tmp/clean-secrets.sh
+              subPath: clean-secrets.sh
+              readOnly: true
+        {{ end }}
+      volumes:
+        - name: pod-tmp
+          emptyDir: {}
+        - name: cinder-bin
+          configMap:
+            name: cinder-bin
+            defaultMode: 0555
+{{- end }}
+{{- end }}

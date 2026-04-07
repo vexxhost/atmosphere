@@ -1,0 +1,87 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+_manila_helm_values:
+  endpoints: "{{ openstack_helm_endpoints }}"
+  images:
+    tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('manila') }}"
+  pod:
+    labels:
+      include_app_kubernetes_io: false
+    mounts:
+      manila_share:
+        manila_share:
+          volumeMounts:
+            - name: ssh-keys
+              mountPath: /etc/manila/ssh-keys
+          volumes:
+            - name: ssh-keys
+              secret:
+                secretName: "{{ manila_helm_release_name }}-ssh-keys"
+    replicas:
+      api: 3
+      scheduler: 3
+  bootstrap:
+    structured:
+      flavors: null
+      images: null
+  dependencies:
+    static:
+      share:
+        pod:
+          - requireSameNode: true
+            labels:
+              application: openvswitch
+              component: server
+  conf:
+    manila:
+      DEFAULT:
+        host: manila-share-worker
+        osapi_share_workers: 4
+      database:
+        connection_recycle_time: 600
+        max_overflow: 50
+        max_pool_size: 5
+        pool_timeout: 30
+      generic:
+        connect_share_server_to_tenant_network: true
+        limit_ssh_access: true
+        path_to_private_key: /etc/manila/ssh-keys/id_rsa
+        path_to_public_key: /etc/manila/ssh-keys/id_rsa.pub
+        service_image_name: "{{ manila_image_name }}"
+        service_instance_boot_from_volume: true
+        service_instance_boot_volume_size: 20
+        service_instance_flavor_id: "{{ _manila_flavor.flavor.id }}"
+        service_instance_security_group: manila-service-security-group
+      oslo_messaging_notifications:
+        driver: noop
+      nova:
+        api_microversion: 2.60
+        endpoint_type: internalURL
+        region_name: "{{ openstack_helm_endpoints_nova_region_name }}"
+      glance:
+        endpoint_type: internalURL
+        region_name: "{{ openstack_helm_endpoints_glance_region_name }}"
+    rabbitmq:
+      policies:
+        - vhost: "manila"
+          name: "ha_ttl_manila"
+          definition:
+            message-ttl: 70000
+          priority: 0
+          apply-to: all
+          pattern: '^(?!(amq\.|reply_)).*'
+  manifests:
+    ingress_api: false
+    service_ingress_api: false

@@ -1,0 +1,192 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- if .Values.manifests.job_backup_storage_init }}
+{{- $envAll := . }}
+
+{{- $serviceAccountName := "cinder-backup-storage-init" }}
+{{ tuple $envAll "backup_storage_init" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ $serviceAccountName }}
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - get
+      - create
+      - update
+      - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $serviceAccountName }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ $serviceAccountName }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ $serviceAccountName }}
+    namespace: {{ $envAll.Release.Namespace }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: cinder-backup-storage-init
+  labels:
+{{ tuple $envAll "cinder" "backup-storage-init" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+  annotations:
+{{- if .Values.helm3_hook }}
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation
+{{- end }}
+    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
+spec:
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll "cinder" "storage-init" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+      annotations:
+{{ dict "envAll" $envAll "podName" "cinder-backup-storage-init" "containerNames" (list "cinder-backup-storage-init" "init") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+    spec:
+      serviceAccountName: {{ $serviceAccountName }}
+{{ dict "envAll" $envAll "application" "storage_init" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+      restartPolicy: OnFailure
+{{ if $envAll.Values.pod.tolerations.cinder.enabled }}
+{{ tuple $envAll "cinder" | include "helm-toolkit.snippets.kubernetes_tolerations" | indent 6 }}
+{{ end }}
+      nodeSelector:
+        {{ .Values.labels.job.node_selector_key }}: {{ .Values.labels.job.node_selector_value }}
+      initContainers:
+{{ tuple $envAll "backup_storage_init" list | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+        {{- if (contains "cinder.backup.drivers.ceph" .Values.conf.cinder.DEFAULT.backup_driver) }}
+        - name: ceph-keyring-placement
+{{ tuple $envAll "cinder_backup_storage_init" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ dict "envAll" $envAll "application" "storage_init" "container" "ceph_keyring_placement" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - /tmp/ceph-admin-keyring.sh
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: etcceph
+              mountPath: /etc/ceph
+            {{- if not .Values.backup.external_ceph_rbd.enabled }}
+            - name: cinder-bin
+              mountPath: /tmp/ceph-admin-keyring.sh
+              subPath: ceph-admin-keyring.sh
+              readOnly: true
+            {{- else }}
+            - name: cinder-bin
+              mountPath: /tmp/ceph-admin-keyring.sh
+              subPath: external-ceph-rbd-admin-keyring.sh
+              readOnly: true
+            {{ end }}
+            {{- if empty .Values.conf.ceph.admin_keyring }}
+            - name: ceph-keyring
+              mountPath: /tmp/client-keyring
+              subPath: key
+              readOnly: true
+            {{ end }}
+        {{ end }}
+      containers:
+        - name: cinder-backup-storage-init
+{{ tuple $envAll "cinder_backup_storage_init" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.jobs.backup_storage_init | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "storage_init" "container" "cinder_backup_storage_init" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          env:
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: STORAGE_BACKEND
+              value: {{ .Values.conf.cinder.DEFAULT.backup_driver | quote }}
+            {{- if (contains "cinder.backup.drivers.ceph" .Values.conf.cinder.DEFAULT.backup_driver) }}
+            - name: RBD_POOL_NAME
+              value: {{ .Values.conf.cinder.DEFAULT.backup_ceph_pool | quote }}
+            - name: RBD_POOL_APP_NAME
+              value: {{ .Values.conf.ceph.pools.backup.app_name | quote }}
+            - name: RBD_POOL_USER
+              value: {{ .Values.conf.cinder.DEFAULT.backup_ceph_user | quote }}
+            - name: RBD_POOL_CRUSH_RULE
+              value: {{ .Values.conf.ceph.pools.backup.crush_rule | quote }}
+            - name: RBD_POOL_REPLICATION
+              value: {{ .Values.conf.ceph.pools.backup.replication | quote }}
+            - name: RBD_POOL_CHUNK_SIZE
+              value: {{ .Values.conf.ceph.pools.backup.chunk_size | quote }}
+            - name: RBD_POOL_SECRET
+              value: {{ .Values.secrets.rbd.backup | quote }}
+            {{ end }}
+          command:
+            - /tmp/backup-storage-init.sh
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: cinder-bin
+              mountPath: /tmp/backup-storage-init.sh
+              subPath: backup-storage-init.sh
+              readOnly: true
+            {{- if (contains "cinder.backup.drivers.ceph" .Values.conf.cinder.DEFAULT.backup_driver) }}
+            - name: etcceph
+              mountPath: /etc/ceph
+            {{- if not .Values.backup.external_ceph_rbd.enabled }}
+            - name: ceph-etc
+              mountPath: /etc/ceph/ceph.conf
+              subPath: ceph.conf
+              readOnly: true
+            {{- else }}
+            - name: cinder-etc
+              mountPath: /etc/ceph/ceph.conf
+              subPath: external-backup-ceph.conf
+              readOnly: true
+            {{- end }}
+            {{- if empty .Values.conf.ceph.admin_keyring }}
+            - name: ceph-keyring
+              mountPath: /tmp/client-keyring
+              subPath: key
+              readOnly: true
+            {{- end }}
+            {{- end }}
+      volumes:
+        - name: pod-tmp
+          emptyDir: {}
+        - name: cinder-bin
+          configMap:
+            name: cinder-bin
+            defaultMode: 0555
+        {{- if (contains "cinder.backup.drivers.ceph" .Values.conf.cinder.DEFAULT.backup_driver) }}
+        - name: etcceph
+          emptyDir: {}
+        - name: ceph-etc
+          configMap:
+            name: {{ .Values.ceph_client.configmap }}
+            defaultMode: 0444
+        {{- if .Values.backup.external_ceph_rbd.enabled }}
+        - name: cinder-etc
+          secret:
+            secretName: cinder-etc
+            defaultMode: 0444
+        {{- end }}
+        {{- if empty .Values.conf.ceph.admin_keyring }}
+        - name: ceph-keyring
+          secret:
+            secretName: {{ .Values.ceph_client.user_secret_name }}
+        {{ end }}
+        {{ end }}
+{{- end }}

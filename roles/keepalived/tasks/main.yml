@@ -1,0 +1,182 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Deploy service
+  run_once: true
+  when: keepalived_enabled | bool
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      - apiVersion: v1
+        kind: Secret
+        metadata:
+          name: keepalived-etc
+          namespace: openstack
+        stringData:
+          keepalived.conf: |
+            global_defs {
+              default_interface {{ keepalived_interface }}
+            }
+
+            vrrp_instance VI_1 {
+              interface {{ keepalived_interface }}
+
+              state BACKUP
+              virtual_router_id {{ keepalived_vrid }}
+              priority 150
+              nopreempt
+
+              virtual_ipaddress {
+                {{ keepalived_vip }}
+              }
+
+              authentication {
+                auth_type PASS
+                auth_pass {{ keepalived_password }}
+              }
+            }
+
+      - apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: keepalived-bin
+          namespace: openstack
+        data:
+          wait-for-ip.sh: |
+            #!/bin/sh -x
+
+            while true; do
+                ip -4 addr list dev {{ keepalived_interface }} | grep {{ keepalived_interface }}
+
+                # We detected an IP address
+                if [ $? -eq 0 ]; then
+                    break
+                fi
+
+                sleep 1
+            done
+
+      - apiVersion: rbac.authorization.k8s.io/v1
+        kind: Role
+        metadata:
+          name: keepalived
+          namespace: openstack
+        rules:
+          - apiGroups:
+              - ""
+            resources:
+              - pods
+            verbs:
+              - list
+              - get
+
+      - apiVersion: v1
+        automountServiceAccountToken: true
+        kind: ServiceAccount
+        metadata:
+          name: keepalived
+          namespace: openstack
+
+      - apiVersion: rbac.authorization.k8s.io/v1
+        kind: RoleBinding
+        metadata:
+          name: keepalived
+          namespace: openstack
+        roleRef:
+          apiGroup: rbac.authorization.k8s.io
+          kind: Role
+          name: keepalived
+        subjects:
+          - kind: ServiceAccount
+            name: keepalived
+            namespace: openstack
+
+      - apiVersion: apps/v1
+        kind: DaemonSet
+        metadata:
+          name: keepalived
+          namespace: openstack
+        spec:
+          selector:
+            matchLabels:
+              application: keepalived
+          template:
+            metadata:
+              labels:
+                application: keepalived
+            spec:
+              automountServiceAccountToken: true
+              initContainers:
+                - name: init
+                  image: "{{ atmosphere_images['dep_check'] | vexxhost.kubernetes.docker_image('ref') }}"
+                  env:
+                    - name: NAMESPACE
+                      valueFrom:
+                        fieldRef:
+                          apiVersion: v1
+                          fieldPath: metadata.namespace
+                    - name: POD_NAME
+                      valueFrom:
+                        fieldRef:
+                          apiVersion: v1
+                          fieldPath: metadata.name
+                    - name: DEPENDENCY_POD_JSON
+                      value: "{{ keepalived_pod_dependency[atmosphere_network_backend] | to_json }}"
+                - name: wait-for-ip
+                  image: "{{ atmosphere_images['keepalived'] | vexxhost.kubernetes.docker_image('ref') }}"
+                  command:
+                    - /bin/wait-for-ip.sh
+                  volumeMounts:
+                    - mountPath: /bin/wait-for-ip.sh
+                      mountPropagation: None
+                      name: keepalived-bin
+                      readOnly: true
+                      subPath: wait-for-ip.sh
+              containers:
+                - name: keepalived
+                  image: "{{ atmosphere_images['keepalived'] | vexxhost.kubernetes.docker_image('ref') }}"
+                  command:
+                    - keepalived
+                    - -f
+                    - /etc/keepalived/keepalived.conf
+                    - --dont-fork
+                    - --log-console
+                    - --log-detail
+                    - --dump-conf
+                  securityContext:
+                    allowPrivilegeEscalation: true
+                    capabilities:
+                      add:
+                        - NET_ADMIN
+                        - NET_BROADCAST
+                        - NET_RAW
+                  volumeMounts:
+                    - mountPath: /etc/keepalived
+                      mountPropagation: None
+                      name: keepalived-etc
+                      readOnly: true
+              hostNetwork: true
+              nodeSelector:
+                openstack-control-plane: enabled
+              serviceAccountName: keepalived
+              volumes:
+                - name: keepalived-etc
+                  secret:
+                    optional: false
+                    secretName: keepalived-etc
+                - configMap:
+                    defaultMode: 0755 # noqa: yaml[octal-values]
+                    name: keepalived-bin
+                    optional: false
+                  name: keepalived-bin

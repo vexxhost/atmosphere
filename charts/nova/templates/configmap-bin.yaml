@@ -1,0 +1,112 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- if .Values.manifests.configmap_bin }}
+{{- $envAll := . }}
+{{- $rallyTests := .Values.conf.rally_tests }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nova-bin
+data:
+{{- if .Values.conf.enable_iscsi }}
+  iscsiadm: |
+{{ tuple "bin/_iscsiadm.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  multipath: |
+{{ tuple "bin/_multipath.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  multipathd: |
+{{ tuple "bin/_multipathd.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+{{- end }}
+{{- if .Values.images.local_registry.active }}
+  image-repo-sync.sh: |
+{{- include "helm-toolkit.scripts.image_repo_sync" . | indent 4 }}
+{{- end }}
+{{- if .Values.bootstrap.enabled }}
+  bootstrap.sh: |
+{{ tuple "bin/_bootstrap.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+{{- end }}
+  rally-test.sh: |
+{{ tuple $rallyTests | include "helm-toolkit.scripts.rally_test" | indent 4 }}
+  storage-init.sh: |
+{{ tuple "bin/_storage-init.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  db-init.py: |
+{{- include "helm-toolkit.scripts.db_init" . | indent 4 }}
+  db-sync.sh: |
+{{ tuple "bin/_db-sync.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  db-drop.py: |
+{{- include "helm-toolkit.scripts.db_drop" . | indent 4 }}
+  ks-service.sh: |
+{{- include "helm-toolkit.scripts.keystone_service" . | indent 4 }}
+  ks-endpoints.sh: |
+{{- include "helm-toolkit.scripts.keystone_endpoints" . | indent 4 }}
+  ks-user.sh: |
+{{- include "helm-toolkit.scripts.keystone_user" . | indent 4 }}
+{{- if .Values.conf.ceph.enabled }}
+  ceph-keyring.sh: |
+{{ tuple "bin/_ceph-keyring.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  ceph-admin-keyring.sh: |
+{{ tuple "bin/_ceph-admin-keyring.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+{{- end }}
+{{- if .Values.manifests.cron_job_archive_deleted_rows }}
+  archive-deleted-rows.sh: |
+{{ tuple "bin/_db-archive-deleted-row.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+{{- end }}
+  health-probe.py: |
+{{ tuple "bin/_health-probe.py.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  nova-api.sh: |
+{{ tuple "bin/_nova-api.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  nova-api-metadata.sh: |
+{{ tuple "bin/_nova-api-metadata.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  nova-api-metadata-init.sh: |
+{{ tuple "bin/_nova-api-metadata-init.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  nova-compute.sh: |
+{{ tuple "bin/_nova-compute.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  nova-compute-init.sh: |
+{{ tuple "bin/_nova-compute-init.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  nova-compute-ironic.sh: |
+{{ tuple "bin/_nova-compute-ironic.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  nova-conductor.sh: |
+{{ tuple "bin/_nova-conductor.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  nova-scheduler.sh: |
+{{ tuple "bin/_nova-scheduler.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  fake-iptables.sh: |
+{{ tuple "bin/_fake-iptables.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  nova-console-compute-init.sh: |
+{{ tuple "bin/_nova-console-compute-init.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  nova-console-proxy.sh: |
+{{ tuple "bin/_nova-console-proxy.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  nova-console-proxy-init.sh: |
+{{ tuple "bin/_nova-console-proxy-init.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  nova-console-proxy-init-assets.sh: |
+{{ tuple "bin/_nova-console-proxy-init-assets.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  ssh-init.sh: |
+{{ tuple "bin/_ssh-init.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  ssh-start.sh: |
+{{ tuple "bin/_ssh-start.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  cell-setup.sh: |
+{{ tuple "bin/_cell-setup.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  cell-setup-init.sh: |
+{{ tuple "bin/_cell-setup-init.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  nova-service-cleaner.sh: |
+{{ tuple "bin/_nova-service-cleaner.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  rabbit-init.sh: |
+{{- include "helm-toolkit.scripts.rabbit_init" . | indent 4 }}
+  wait-for-computes-init.sh: |
+{{ tuple "bin/_wait-for-computes-init.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+{{- if ( has "tungstenfabric" .Values.network.backend ) }}
+  tf-plugin.pth: |
+    /opt/plugin/site-packages
+{{- end }}
+{{- end }}

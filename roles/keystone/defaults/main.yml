@@ -1,0 +1,77 @@
+# Copyright (c) 2023 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+keystone_helm_release_name: keystone
+keystone_helm_chart_path: "../../charts/keystone/"
+keystone_helm_chart_ref: /usr/local/src/keystone
+
+keystone_helm_release_namespace: openstack
+keystone_helm_kubeconfig: "{{ kubeconfig_path | default('/etc/kubernetes/admin.conf') }}"
+keystone_helm_values: {}
+
+# Class name to use for the Ingress
+keystone_ingress_class_name: "{{ atmosphere_ingress_class_name }}"
+
+# List of annotations to apply to the Ingress
+keystone_ingress_annotations: {}
+
+# The following set of variables can be used for simple setups where you can
+# only need a single domain and realm.  You can use the `keystone_domains`
+# variable to configure more complex setups.
+keystone_keycloak_server_url: "https://{{ keycloak_host }}"
+keystone_keycloak_server_internal_url: http://keycloak.auth-system.svc
+keystone_keycloak_user_realm_name: master
+keystone_keycloak_admin_client_id: admin-cli
+keystone_keycloak_admin_user: admin
+keystone_keycloak_admin_password: "{{ keycloak_admin_password }}"
+keystone_keycloak_realm: atmosphere
+keystone_keycloak_realm_name: Atmosphere
+# keystone_keycloak_realm_default_password_policy:
+# keystone_keycloak_realm_default_brute_force_protected:
+# keystone_keycloak_realm_default_brute_force_failure_factor:
+# keystone_keycloak_realm_default_brute_force_wait_increment_seconds:
+# keystone_keycloak_realm_default_brute_force_max_failure_wait_seconds:
+# keystone_keycloak_realm_default_brute_force_max_delta_time_seconds:
+# keystone_keycloak_realm_default_minimum_quick_login_wait_seconds:
+# keystone_keycloak_realm_default_quick_login_check_milli_seconds:
+# keystone_keycloak_realm_default_totp_default_action:
+
+keystone_keycloak_client_id: keystone
+# keystone_keycloak_client_secret:
+keystone_keycloak_scopes: "openid email profile"
+
+# This variable can be used for more complex setups that require multiple
+# domains that are mapped to multiple realms.  If you are looking to use a
+# single domain and realm, you can skip this section.
+keystone_domains:
+  - name: "{{ keystone_keycloak_realm }}"                                       # Domain name
+    label: "{{ keystone_keycloak_realm_name }}"                                 # Realm display name + Horizon label
+    keycloak_server_url: "{{ keystone_keycloak_server_url }}"                   # Public Keycloak URL
+    keycloak_server_internal_url: "{{ keystone_keycloak_server_internal_url }}" # Internal Keycloak URL
+    keycloak_user_realm_name: "{{ keystone_keycloak_user_realm_name }}"         # Keycloak realm name
+    keycloak_admin_client_id: "{{ keystone_keycloak_admin_client_id }}"         # Keycloak admin client ID
+    keycloak_admin_user: "{{ keystone_keycloak_admin_user }}"                   # Keycloak admin username
+    keycloak_admin_password: "{{ keystone_keycloak_admin_password }}"           # Keycloak admin password
+    keycloak_realm: "{{ keystone_keycloak_realm }}"                             # Keycloak realm name
+    keycloak_client_id: "{{ keystone_keycloak_client_id }}"                     # Keycloak client ID
+    keycloak_client_secret: "{{ keystone_keycloak_client_secret }}"             # Keycloak client secret
+    keycloak_scopes: "{{ keystone_keycloak_scopes }}"                           # Keycloak scopes
+
+# Keystone OpenID Connect settings (defaults to Keycloak for Atmosphere)
+keystone_oidc_ssl_validate_server: "{{ (cluster_issuer_type == 'self-signed') | ternary('Off', 'On') }}"
+keystone_oidc_crypto_passphrase: "{{ undef('You must specify a Keystone OIDC client secret using keystone_oidc_crypto_passphrase') }}"
+keystone_oidc_redirect_uri: "https://{{ openstack_helm_endpoints_keystone_api_host }}/v3/auth/OS-FEDERATION/identity_providers/redirect"
+keystone_oidc_redirect_urls_allowed:
+  - "^https://{{ openstack_helm_endpoints_keystone_api_host }}/v3/auth/OS-FEDERATION/identity_providers/({{ keystone_domains | map(attribute='name') | join('|') }})/protocols/openid/websso" # noqa: yaml[line-length]
+  - "^https://{{ openstack_helm_endpoints_horizon_api_host }}/auth/logout/$"

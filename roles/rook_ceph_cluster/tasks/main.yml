@@ -1,0 +1,159 @@
+# Copyright (c) 2023 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+# (rlin) This is because rgw will be managed by rook operator. We need to mute
+# CEPHADM_STRAY_DAEMON until we have all daemon managed by cephadm
+- name: Set mgr/cephadm/warn_on_stray_daemons to false
+  run_once: true
+  delegate_to: "{{ groups[rook_ceph_cluster_mon_group][0] }}"
+  ansible.builtin.command: cephadm shell -- ceph config set mgr mgr/cephadm/warn_on_stray_daemons false
+  failed_when: false
+  changed_when: false
+
+- name: Collect "ceph quorum_status" output from a monitor
+  run_once: true
+  delegate_to: "{{ groups[rook_ceph_cluster_mon_group][0] }}"
+  ansible.builtin.command: cephadm shell -- ceph quorum_status -f json
+  changed_when: false
+  register: _rook_ceph_cluster_quorum_status_data
+
+- name: Retrieve keyring for client.admin
+  run_once: true
+  delegate_to: "{{ groups[rook_ceph_cluster_mon_group][0] }}"
+  vexxhost.ceph.key:
+    name: client.admin
+    state: info
+    output_format: json
+  register: _rook_ceph_cluster_admin_auth_data
+
+- name: Retrieve keyring for monitors
+  run_once: true
+  delegate_to: "{{ groups[rook_ceph_cluster_mon_group][0] }}"
+  vexxhost.ceph.key:
+    name: mon.
+    state: info
+    output_format: json
+  register: _rook_ceph_cluster_mon_auth_data
+
+- name: Create RGW user password secret
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: rook-ceph-rgw-{{ rook_ceph_cluster_name }}-creds
+        namespace: "{{ rook_ceph_cluster_helm_release_namespace }}"
+      stringData:
+        OS_AUTH_TYPE: "password"
+        OS_IDENTITY_API_VERSION: "3"
+        OS_PASSWORD: "{{ openstack_helm_endpoints.identity.auth.rgw.password }}"
+        OS_PROJECT_DOMAIN_NAME: "service"
+        OS_PROJECT_NAME: "service"
+        OS_USER_DOMAIN_NAME: "service"
+        OS_USERNAME: "{{ openstack_helm_endpoints.identity.auth.rgw.username }}"
+
+- name: Create Ceph cluster resource
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      - apiVersion: v1
+        kind: Secret
+        metadata:
+          name: rook-ceph-mon
+          namespace: "{{ rook_ceph_cluster_helm_release_namespace }}"
+        stringData:
+          cluster-name: "{{ rook_ceph_cluster_name }}"
+          fsid: "{{ _rook_ceph_cluster_quorum_status.monmap.fsid }}"
+          admin-secret: "{{ _rook_ceph_cluster_admin_auth.key }}"
+          mon-secret: "{{ _rook_ceph_cluster_mon_auth.key }}"
+
+      - apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: rook-ceph-mon-endpoints
+          namespace: "{{ rook_ceph_cluster_helm_release_namespace }}"
+        data:
+          data: "{{ _rook_ceph_cluster_leader_name }}={{ _rook_ceph_cluster_leader_addr }}"
+          maxMonId: "0"
+          mapping: "{}"
+  vars:
+    _rook_ceph_cluster_quorum_status: "{{ _rook_ceph_cluster_quorum_status_data.stdout | from_json }}"
+    _rook_ceph_cluster_admin_auth: "{{ _rook_ceph_cluster_admin_auth_data.stdout | from_json | first }}"
+    _rook_ceph_cluster_mon_auth: "{{ _rook_ceph_cluster_mon_auth_data.stdout | from_json | first }}"
+    _rook_ceph_cluster_leader_name: "{{ _rook_ceph_cluster_quorum_status.quorum_leader_name }}"
+    _rook_ceph_cluster_leader_mon: "{{ (_rook_ceph_cluster_quorum_status.monmap.mons | selectattr('name', 'equalto', _rook_ceph_cluster_leader_name) | list | first) }}" # noqa: yaml[line-length]
+    _rook_ceph_cluster_leader_addr: "{{ _rook_ceph_cluster_leader_mon.public_addr.split('/')[0] }}"
+
+- name: Deploy Helm chart
+  run_once: true
+  kubernetes.core.helm:
+    name: "{{ rook_ceph_cluster_helm_release_name }}"
+    chart_ref: "{{ rook_ceph_cluster_helm_chart_ref }}"
+    release_namespace: "{{ rook_ceph_cluster_helm_release_namespace }}"
+    create_namespace: true
+    kubeconfig: "{{ rook_ceph_cluster_helm_kubeconfig }}"
+    values: "{{ _rook_ceph_cluster_helm_values | combine(rook_ceph_cluster_helm_values, recursive=True) }}"
+
+- name: Create OpenStack user
+  openstack.cloud.identity_user:
+    cloud: atmosphere
+    name: "{{ openstack_helm_endpoints.identity.auth.rgw.username }}"
+    password: "{{ openstack_helm_endpoints.identity.auth.rgw.password }}"
+    domain: service
+
+# NOTE(mnaser): https://storyboard.openstack.org/#!/story/2010579
+- name: Grant access to "service" project
+  changed_when: false
+  ansible.builtin.command:
+    cmd: >-
+      openstack role add
+      --user-domain service
+      --project service
+      --user {{ openstack_helm_endpoints.identity.auth.rgw.username }}
+      admin
+  environment:
+    OS_CLOUD: atmosphere
+
+- name: Create OpenStack service
+  openstack.cloud.catalog_service:
+    cloud: atmosphere
+    name: swift
+    service_type: object-store
+    description: OpenStack Object Storage
+
+- name: Create OpenStack endpoints
+  openstack.cloud.endpoint:
+    cloud: atmosphere
+    service: swift
+    endpoint_interface: "{{ item.interface }}"
+    url: "{{ item.url }}"
+    region: "{{ openstack_helm_endpoints.identity.auth.rgw.region_name }}"
+  loop:
+    - interface: public
+      url: "https://{{ openstack_helm_endpoints.rook_ceph_cluster.host_fqdn_override.public.host }}/swift/v1/%(tenant_id)s"
+    - interface: internal
+      url: "http://rook-ceph-rgw-{{ rook_ceph_cluster_name }}.openstack.svc.cluster.local/swift/v1/%(tenant_id)s"
+
+- name: Create Ingress
+  ansible.builtin.include_role:
+    name: openstack_helm_ingress
+  vars:
+    openstack_helm_ingress_endpoint: rook_ceph_cluster
+    openstack_helm_ingress_service_name: rook-ceph-rgw-{{ rook_ceph_cluster_name }}
+    openstack_helm_ingress_service_port: 80
+    openstack_helm_ingress_annotations: "{{ _rook_ceph_cluster_radosgw_annotations | combine(rook_ceph_cluster_radosgw_annotations, recursive=True) }}"
+    openstack_helm_ingress_class_name: "{{ rook_ceph_cluster_ingress_class_name }}"

@@ -1,0 +1,213 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Deploy service
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      - apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: openstack-exporter
+          namespace: openstack
+          labels:
+            application: openstack-exporter
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              application: openstack-exporter
+          template:
+            metadata:
+              labels:
+                application: openstack-exporter
+            spec:
+              nodeSelector:
+                openstack-control-plane: enabled
+              initContainers:
+                - name: build-config
+                  image: "{{ atmosphere_images['bootstrap'] | vexxhost.kubernetes.docker_image('ref') }}"
+                  command: ["bash", "-ec"]
+                  args:
+                    - |
+                      cat <<EOF > /etc/openstack/clouds.yaml
+                      ---
+                      clouds:
+                        default:
+                          auth:
+                            auth_url: "$(OS_AUTH_URL)"
+                            project_domain_name: "$(OS_PROJECT_DOMAIN_NAME)"
+                            project_name: "$(OS_PROJECT_NAME)"
+                            user_domain_name: "$(OS_USER_DOMAIN_NAME)"
+                            username: "$(OS_USERNAME)"
+                            password: "$(OS_PASSWORD)"
+                          region_name: "$(OS_REGION_NAME)"
+                          interface: "$(OS_INTERFACE)"
+                          identity_api_version: 3
+                          identity_interface: "$(OS_INTERFACE)"
+                      EOF
+                  envFrom:
+                    - secretRef:
+                        name: keystone-keystone-admin
+                  volumeMounts:
+                    - name: openstack-config
+                      mountPath: /etc/openstack
+              containers:
+                - name: openstack-exporter
+                  image: "{{ atmosphere_images['prometheus_openstack_exporter'] | vexxhost.kubernetes.docker_image('ref') }}"
+                  args: >-
+                    {{ openstack_exporter_args +
+                       (openstack_exporter_neutron_disabled_metrics
+                        if atmosphere_network_backend == 'ovn'
+                        else ['--disable-service.network']) }}
+                  ports:
+                    - name: metrics
+                      containerPort: 9180
+                  env:
+                    - name: OS_COMPUTE_API_VERSION
+                      value: "2.87"
+                  volumeMounts:
+                    - name: openstack-config
+                      mountPath: /etc/openstack
+                  readinessProbe:
+                    failureThreshold: 3
+                    httpGet:
+                      path: /
+                      port: 9180
+                      scheme: HTTP
+                  livenessProbe:
+                    failureThreshold: 3
+                    httpGet:
+                      path: /
+                      port: 9180
+                      scheme: HTTP
+                    periodSeconds: 10
+                    successThreshold: 1
+                    timeoutSeconds: 1
+              volumes:
+                - name: openstack-config
+                  emptyDir: {}
+
+      - apiVersion: v1
+        kind: Service
+        metadata:
+          name: openstack-exporter
+          namespace: openstack
+          labels:
+            application: openstack-exporter
+        spec:
+          clusterIP: None
+          ports:
+            - name: metrics
+              port: 9180
+              targetPort: metrics
+          selector:
+            application: openstack-exporter
+
+- name: Fetch OpenStack DB secrets
+  run_once: true
+  no_log: true
+  kubernetes.core.k8s_info:
+    kind: Secret
+    namespace: openstack
+    name: "{{ item }}"
+  register: _db_secrets
+  loop:
+    - cinder-db-user
+    - glance-db-user
+    - heat-db-user
+    - ironic-db-user
+    - keystone-db-user
+    - magnum-db-user
+    - manila-db-user
+    - neutron-db-user
+    - nova-db-user
+    - nova-db-api-user
+    - octavia-db-user
+    - placement-db-user
+  ignore_errors: true
+
+- name: Build database URLs dict
+  run_once: true
+  ansible.builtin.set_fact:
+    _database_urls: "{{ _database_urls | default({}) | combine({item.item | regex_replace('-db-', '-') | regex_replace('-user$', '') | regex_replace('-', '_') | upper + '_DATABASE_URL': item.resources.0.data.DB_CONNECTION | b64decode}) }}" # noqa: yaml[line-length]
+  loop: "{{ _db_secrets.results }}"
+  when: item.resources | length > 0
+  no_log: true
+
+- name: Create "openstack-database-exporter-dsn" secret
+  run_once: true
+  no_log: true
+  kubernetes.core.k8s:
+    state: present
+    force: true
+    definition:
+      apiVersion: v1
+      kind: Secret
+      type: Opaque
+      metadata:
+        name: openstack-database-exporter-dsn
+        namespace: openstack
+        labels:
+          application: openstack-database-exporter
+      stringData: "{{ _database_urls }}"
+
+- name: Deploy service
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      - apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: openstack-database-exporter
+          namespace: openstack
+          labels:
+            application: openstack-database-exporter
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              application: openstack-database-exporter
+          template:
+            metadata:
+              labels:
+                application: openstack-database-exporter
+            spec:
+              nodeSelector:
+                openstack-control-plane: enabled
+              containers:
+                - name: openstack-database-exporter
+                  image: "{{ atmosphere_images['prometheus_openstack_database_exporter'] | vexxhost.kubernetes.docker_image('ref') }}"
+                  envFrom:
+                    - secretRef:
+                        name: openstack-database-exporter-dsn
+                  ports:
+                    - name: metrics
+                      containerPort: 9180
+                  readinessProbe:
+                    failureThreshold: 3
+                    httpGet:
+                      path: /
+                      port: 9180
+                      scheme: HTTP
+                  livenessProbe:
+                    failureThreshold: 3
+                    httpGet:
+                      path: /
+                      port: 9180
+                      scheme: HTTP
+                    periodSeconds: 10
+                    successThreshold: 1
+                    timeoutSeconds: 1

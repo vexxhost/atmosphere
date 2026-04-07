@@ -1,0 +1,65 @@
+# Copyright (c) 2024 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- hosts: "{{ target | default('all') }}"
+  become: true
+  roles:
+    - role: defaults
+    - role: sysctl
+      tags:
+        - sysctl
+    - role: ethtool
+      tags:
+        - ethtool
+     # NOTE(fitbeard) networkd-dispatcher is not available for EL distros
+      when: ansible_facts['os_family'] in ['Debian']
+  post_tasks:
+    - name: Set a fact with the "atmosphere_images" for other plays
+      ansible.builtin.set_fact:
+        atmosphere_images: "{{ atmosphere_images }}"
+        atmosphere_kubernetes_version: "{{ atmosphere_kubernetes_version }}"
+      tags:
+        - always
+
+- import_playbook: vexxhost.kubernetes.site
+  vars:
+    keepalived_image: "{{ atmosphere_images['keepalived'] }}"
+    keepalived_vrid: "{{ kubernetes_keepalived_vrid }}"
+    keepalived_interface: "{{ kubernetes_keepalived_interface }}"
+    keepalived_vip: "{{ kubernetes_keepalived_vip }}"
+    haproxy_image: "{{ atmosphere_images['haproxy'] }}"
+    containerd_pause_image: "{{ atmosphere_images['pause'] }}"
+    kubernetes_image_repository: "{{ atmosphere_images['kube_apiserver'] | vexxhost.kubernetes.docker_image('prefix') }}"
+    kubernetes_version: "{{ atmosphere_kubernetes_version }}"
+    cilium_node_image: "{{ atmosphere_images['cilium_node'] }}"
+    cilium_operator_image: "{{ atmosphere_images['cilium_operator'] }}"
+    kube_vip_image: "{{ atmosphere_images['kube_vip'] }}"
+
+- hosts: "{{ target | default('all') }}"
+  become: true
+  roles:
+    - role: vexxhost.atmosphere.kubernetes_node_labels
+      tags:
+        - kubernetes-node-labels
+
+# NOTE(mnaser): Add task to uninstall "unattended-upgrades" to avoid system
+#               upgrades during the deployment
+- hosts: "{{ target | default('all') }}"
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Uninstall unattended-upgrades
+      ansible.builtin.package:
+        name: unattended-upgrades
+        state: absent

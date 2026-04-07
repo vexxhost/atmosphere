@@ -1,0 +1,120 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+_keystone_helm_values:
+  endpoints: "{{ openstack_helm_endpoints }}"
+  images:
+    tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('keystone') }}"
+  pod:
+    labels:
+      include_app_kubernetes_io: false
+    replicas:
+      api: 3
+    mounts:
+      keystone_api:
+        keystone_api:
+          volumeMounts: "{{ keystone_domains | vexxhost.atmosphere.keystone_domains_to_mounts + [{'name': 'ca-certificates', 'mountPath': '/etc/ssl/certs/ca-certificates.crt', 'readOnly': true}] }}"
+          volumes:
+            - name: keystone-openid-metadata
+              configMap:
+                name: keystone-openid-metadata
+            - name: ca-certificates
+              hostPath:
+                path: "{{ defaults_ca_certificates_path }}"
+  conf:
+    keystone:
+      DEFAULT:
+        log_config_append: null
+      auth:
+        methods: password,token,openid,application_credential
+      cors:
+        allowed_origins: "*"
+      database:
+        connection_recycle_time: 600
+        max_overflow: 50
+        max_pool_size: 5
+        pool_timeout: 30
+      openid:
+        remote_id_attribute: HTTP_OIDC_ISS
+      federation:
+        # TODO(mnaser): Lookup using openstack_helm_endpoints
+        trusted_dashboard:
+          type: multistring
+          values:
+            - "http://localhost:9990/auth/websso/"
+            - "https://{{ openstack_helm_endpoints_horizon_api_host }}/auth/websso/"
+      oslo_messaging_notifications:
+        driver: noop
+    wsgi_keystone: |
+      LoadModule headers_module /usr/lib/apache2/modules/mod_headers.so
+      Listen 0.0.0.0:5000
+      TransferLog /dev/stdout
+      ErrorLog /dev/stderr
+      <VirtualHost *:5000>
+        # WSGI
+        WSGIDaemonProcess keystone-public processes=4 threads=1 user=keystone group=keystone display-name=%{GROUP}
+        WSGIProcessGroup keystone-public
+        WSGIScriptAlias / /var/www/cgi-bin/keystone/keystone-wsgi-public
+        WSGIApplicationGroup %{GLOBAL}
+        WSGIPassAuthorization On
+        # NOTE(mnaser): This is to by-pass large header limits for large tokens
+        LimitRequestFieldSize 16384
+        # OIDC
+        OIDCClaimPrefix "OIDC-"
+        OIDCMetadataDir /var/lib/apache2/oidc
+        OIDCSSLValidateServer "{{ keystone_oidc_ssl_validate_server }}"
+        OIDCCryptoPassphrase {{ keystone_oidc_crypto_passphrase }}
+        OIDCRedirectURI {{ keystone_oidc_redirect_uri }}
+        OIDCRedirectURLsAllowed {{ keystone_oidc_redirect_urls_allowed | join(' ') }}
+        # NOTE(mnaser): These are Atmosphere specific settings.
+        OIDCSessionType client-cookie:store_id_token
+        OIDCXForwardedHeaders X-Forwarded-Host X-Forwarded-Proto
+        <Location /v3/auth/OS-FEDERATION/identity_providers/redirect>
+          AuthType openid-connect
+          Require valid-user
+        </Location>
+        <Location /v3/auth/OS-FEDERATION/websso/openid>
+          Require valid-user
+          AuthType openid-connect
+        </Location>
+        {% for domain in keystone_domains %}
+        <Location /v3/OS-FEDERATION/identity_providers/{{ domain.name }}/protocols/openid/auth>
+          Require valid-user
+          AuthType oauth20
+        </Location>
+        <Location /v3/auth/OS-FEDERATION/identity_providers/{{ domain.name }}/protocols/openid/websso>
+          Require valid-user
+          AuthType openid-connect
+          OIDCDiscoverURL {{ keystone_oidc_redirect_uri }}?iss={{ domain | vexxhost.atmosphere.urlencoded_issuer_from_domain }}
+        </Location>
+        {% endfor %}
+      </VirtualHost>
+    ks_domains: "{{ keystone_domains | vexxhost.atmosphere.to_ks_domains }}"
+    rabbitmq:
+      policies:
+        - vhost: "keystone"
+          name: "ha_ttl_keystone"
+          definition:
+            message-ttl: 70000
+          priority: 0
+          apply-to: all
+          pattern: '^(?!(amq\.|reply_)).*'
+  manifests:
+    job_credential_cleanup: false
+    ingress_api: false
+    service_ingress_api: false
+
+_keystone_ingress_annotations:
+  nginx.ingress.kubernetes.io/proxy-body-size: 2m
+  nginx.ingress.kubernetes.io/proxy-read-timeout: "120"

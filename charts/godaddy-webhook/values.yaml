@@ -1,0 +1,29 @@
+# Default values for godaddy-webhook.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+image:
+  repository: quay.io/snowdrop/cert-manager-webhook-godaddy
+  tag: 0.3.0
+  pullPolicy: IfNotPresent
+pod:
+  securePort:
+logging:
+  level: info # Log level (trace, debug, info, warn, error, fatal, panic)
+  format: color # Log format (text, color, json)
+  timestamp: false # Timestamp in log output: true/false
+groupName: acme.mycompany.com
+certManager:
+  namespace: cert-manager
+  serviceAccountName: cert-manager
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+service:
+  type: ClusterIP
+  port: 443
+resources: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}

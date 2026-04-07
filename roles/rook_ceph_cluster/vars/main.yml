@@ -1,0 +1,79 @@
+# Copyright (c) 2023 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+_rook_ceph_cluster_spec:
+  cephVersion:
+    image: "{{ atmosphere_images['ceph'] | vexxhost.kubernetes.docker_image('ref') }}"
+  external:
+    enable: true
+  # NOTE(yaguang): As we are using external ceph cluster, so we can safely disable
+  # rook operator monitoring related metrics collection.
+  monitoring:
+    metricsDisabled: true
+
+_rook_ceph_cluster_radosgw_spec:
+  auth:
+    keystone:
+      acceptedRoles:
+        - admin
+        - member
+        - service
+      implicitTenants: "true"
+      serviceUserSecretName: rook-ceph-rgw-{{ rook_ceph_cluster_name }}-creds
+      url: http://keystone-api.openstack.svc.cluster.local:5000
+  protocols:
+    swift:
+      accountInUrl: true
+      versioningEnabled: true
+    s3:
+      enabled: true
+      authUseKeystone: true
+  preservePoolsOnDelete: true
+  metadataPool:
+    failureDomain: host
+    replicated:
+      size: 3
+  dataPool:
+    failureDomain: host
+    replicated:
+      size: 3
+  gateway:
+    port: 80
+    instances: 3
+    placement:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: openstack-control-plane
+                  operator: In
+                  values: ["enabled"]
+
+_rook_ceph_cluster_helm_values:
+  clusterName: "{{ rook_ceph_cluster_name }}"
+  configOverride: |
+    [client]
+    rgw_keystone accepted admin roles = admin
+  cephClusterSpec: "{{ _rook_ceph_cluster_spec | combine(rook_ceph_cluster_spec, recursive=True) }}"
+  cephBlockPools: []
+  cephFileSystems: []
+  cephObjectStores:
+    - name: "{{ rook_ceph_cluster_name }}"
+      spec: "{{ _rook_ceph_cluster_radosgw_spec | combine(rook_ceph_cluster_radosgw_spec, recursive=True) }}"
+      storageClass:
+        enabled: false
+
+_rook_ceph_cluster_radosgw_annotations:
+  nginx.ingress.kubernetes.io/proxy-body-size: "0"
+  nginx.ingress.kubernetes.io/proxy-request-buffering: "off"

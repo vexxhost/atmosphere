@@ -1,0 +1,55 @@
+# Copyright (c) 2023 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+magnum_helm_release_name: magnum
+magnum_helm_chart_path: "../../charts/magnum/"
+magnum_helm_chart_ref: /usr/local/src/magnum
+
+magnum_helm_release_namespace: openstack
+magnum_helm_kubeconfig: "{{ kubeconfig_path | default('/etc/kubernetes/admin.conf') }}"
+magnum_helm_values: {}
+
+# Class name to use for the Ingress
+magnum_ingress_class_name: "{{ atmosphere_ingress_class_name }}"
+magnum_registry_ingress_class_name: "{{ atmosphere_ingress_class_name }}"
+
+# List of annotations to apply to the Ingress
+magnum_ingress_annotations: {}
+magnum_registry_ingress_annotations: {}
+
+# Cluster API configuration
+magnum_clusterctl_config:
+  images:
+    cluster-api/cluster-api-controller:
+      repository: "{{ atmosphere_images['cluster_api_controller'] | vexxhost.kubernetes.docker_image('prefix') }}"
+      tag: "{{ atmosphere_images['cluster_api_controller'] | vexxhost.kubernetes.docker_image('tag') }}"
+    bootstrap-kubeadm/kubeadm-bootstrap-controller:
+      repository: "{{ atmosphere_images['cluster_api_kubeadm_bootstrap_controller'] | vexxhost.kubernetes.docker_image('prefix') }}"
+      tag: "{{ atmosphere_images['cluster_api_kubeadm_bootstrap_controller'] | vexxhost.kubernetes.docker_image('tag') }}"
+    control-plane-kubeadm/kubeadm-control-plane-controller:
+      repository: "{{ atmosphere_images['cluster_api_kubeadm_control_plane_controller'] | vexxhost.kubernetes.docker_image('prefix') }}"
+      tag: "{{ atmosphere_images['cluster_api_kubeadm_control_plane_controller'] | vexxhost.kubernetes.docker_image('tag') }}"
+    infrastructure-openstack/capi-openstack-controller:
+      repository: "{{ atmosphere_images['cluster_api_openstack_controller'] | vexxhost.kubernetes.docker_image('prefix') }}"
+      tag: "{{ atmosphere_images['cluster_api_openstack_controller'] | vexxhost.kubernetes.docker_image('tag') }}"
+
+# List of images to load into OpenStack for Magnum
+magnum_image_container_format: bare
+magnum_image_disk_format: raw
+magnum_images: "{{ _magnum_images }}"
+
+magnum_cluster_api_proxy_ovs_node_selector:
+  openstack-control-plane: enabled
+magnum_cluster_api_proxy_ovn_node_selector:
+  openvswitch: enabled

@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: Ingress
+metadata:
+  name: {{ ingress_name }}
+  namespace: {{ ingress_namespace | default('default') }}
+  annotations:
+    cert-manager.io/common-name: {{ ingress_host }}
+{% if (ingress_annotations|length) > 0 or (ingress_default_annotations|length) > 0 %}
+    {{ ingress_annotations | combine(ingress_default_annotations, recursive=True) | to_nice_yaml | indent(4) }}
+{% endif %}
+spec:
+  ingressClassName: {{ ingress_class_name }}
+  rules:
+    - host: {{ ingress_host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ ingress_service_name }}
+                port:
+                  number: {{ ingress_service_port }}
+{% if not ingress_use_default_tls_certificate %}
+  tls:
+    - secretName: {{ ingress_secret_name | default(ingress_service_name ~ '-certs') }}
+      hosts:
+        - {{ ingress_host }}
+{% endif %}

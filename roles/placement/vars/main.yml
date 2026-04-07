@@ -1,0 +1,50 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+_placement_helm_values:
+  endpoints: "{{ openstack_helm_endpoints }}"
+  images:
+    tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('placement') }}"
+  pod:
+    labels:
+      include_app_kubernetes_io: false
+    replicas:
+      api: 3
+  conf:
+    placement:
+      DEFAULT:
+        log_config_append: null
+      database:
+        connection_recycle_time: 600
+        max_overflow: 50
+        max_pool_size: 5
+        max_retries: -1
+        pool_timeout: 30
+      oslo_messaging_notifications:
+        driver: noop
+    rabbitmq:
+      policies:
+        - vhost: "placement"
+          name: "ha_ttl_placement"
+          definition:
+            message-ttl: 70000
+          priority: 0
+          apply-to: all
+          pattern: '^(?!(amq\.|reply_)).*'
+    placement_api_uwsgi:
+      uwsgi:
+        processes: 4
+  manifests:
+    ingress: false
+    service_ingress: false

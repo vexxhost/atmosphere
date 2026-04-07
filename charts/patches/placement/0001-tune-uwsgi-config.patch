@@ -1,0 +1,32 @@
+diff --git a/placement/values.yaml b/placement/values.yaml
+--- a/placement/values.yaml
++++ b/placement/values.yaml
+@@ -138,21 +138,26 @@
+       datefmt: "%Y-%m-%d %H:%M:%S"
+   placement_api_uwsgi:
+     uwsgi:
+-      processes: 1
++      processes: 4
+       add-header: "Connection: close"
+       buffer-size: 65535
++      chunked-input-limit: "4096000"
+       die-on-term: true
+       enable-threads: true
+       exit-on-reload: false
+       hook-master-start: unix_signal:15 gracefully_kill_them_all
++      http-auto-chunked: true
++      http-raw-body: true
+       lazy-apps: true
+       log-x-forwarded-for: true
+       master: true
++      need-app: true
+       procname-prefix-spaced: "placement-api:"
+       route-user-agent: '^kube-probe.* donotlog:'
++      socket-timeout: 10
+       thunder-lock: true
+       worker-reload-mercy: 80
+-      wsgi-file: /var/lib/openstack/bin/placement-api
++      module: "placement.wsgi.api:application"
+ endpoints:
+   cluster_domain_suffix: cluster.local
+   local_image_registry:

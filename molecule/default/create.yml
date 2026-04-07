@@ -1,0 +1,117 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- import_playbook: vexxhost.atmosphere.generate_workspace
+  vars:
+    workspace_path: "{{ lookup('env', 'MOLECULE_SCENARIO_DIRECTORY') }}"
+    domain_name: "{{ '{{' }} hostvars['ctl1']['ansible_host'].replace('.', '-') {{ '}}' }}.{{ lookup('env', 'ATMOSPHERE_DNS_SUFFIX_NAME') | default('nip.io', True) }}"
+
+- hosts: localhost
+  connection: local
+  gather_facts: false
+  no_log: "{{ molecule_no_log }}"
+  vars:
+    ssh_port: 22
+    identity_file: "{{ lookup('env', 'MOLECULE_EPHEMERAL_DIRECTORY') }}/id_rsa"
+
+    stack_name: "{{ lookup('env', 'ATMOSPHERE_STACK_NAME') | default('atmosphere', True) }}"
+    public_network: "{{ lookup('env', 'ATMOSPHERE_PUBLIC_NETWORK') | default('public', True) }}"
+    image: "{{ lookup('env', 'ATMOSPHERE_IMAGE') | default('Ubuntu 20.04.3 LTS (x86_64) [2021-10-04]', True) }}"
+    bastion_instance_type: "{{ lookup('env', 'ATMOSPHERE_BASTION_INSTANCE_TYPE', default=lookup('env', 'ATMOSPHERE_INSTANCE_TYPE', default='v3-standard-4')) }}"
+    controller_instance_type: "{{ lookup('env', 'ATMOSPHERE_CONTROLLER_INSTANCE_TYPE', default=lookup('env', 'ATMOSPHERE_INSTANCE_TYPE', default='v3-standard-16')) }}"
+    compute_instance_type: "{{ lookup('env', 'ATMOSPHERE_COMPUTE_INSTANCE_TYPE', default=lookup('env', 'ATMOSPHERE_INSTANCE_TYPE', default='v3-standard-4')) }}"
+    storage_instance_type: "{{ lookup('env', 'ATMOSPHERE_STORAGE_INSTANCE_TYPE', default=lookup('env', 'ATMOSPHERE_INSTANCE_TYPE', default='v3-standard-4')) }}"
+    nameservers: "{{ lookup('env', 'ATMOSPHERE_NAMESERVERS') | default('1.1.1.1', True) }}"
+    boot_from_volume: "{{ lookup('env', 'ATMOSPHERE_BOOT_FROM_VOLUME') | bool }}"
+    create_bastion_host: "{{ lookup('env', 'ATMOSPHERE_CREATE_BASTION_HOST') | bool }}"
+  tasks:
+    - name: Generate a SSH key for stack
+      community.crypto.openssh_keypair:
+        path: "{{ identity_file }}"
+        regenerate: full_idempotence
+      register: _os_stack_keypair
+
+    - name: create stack
+      openstack.cloud.stack:
+        name: "{{ stack_name }}"
+        template: heat/stack.yaml
+        parameters:
+          public_network: "{{ public_network }}"
+          image: "{{ image }}"
+          bastion_instance_type: "{{ bastion_instance_type }}"
+          controller_instance_type: "{{ controller_instance_type }}"
+          compute_instance_type: "{{ compute_instance_type }}"
+          storage_instance_type: "{{ storage_instance_type }}"
+          nameservers: "{{ nameservers }}"
+          boot_from_volume: "{{  boot_from_volume }}"
+          create_bastion_host: "{{ create_bastion_host }}"
+          public_key_pair: "{{ _os_stack_keypair.public_key }}"
+      register: _os_stack
+    - debug:
+        msg: "{{ _os_stack.stack }}"
+
+    - name: grab list of all ip addresses
+      ansible.builtin.set_fact:
+        controller_ips: "{{ _os_stack.stack.outputs | community.general.json_query(controller_query) | first }}"
+        storage_ips: "{{ _os_stack.stack.outputs | community.general.json_query(storage_query) | first }}"
+        compute_ips: "{{ _os_stack.stack.outputs | community.general.json_query(compute_query) | first }}"
+      vars:
+        controller_query: "[?output_key=='controller_floating_ip_addresses'].output_value"
+        storage_query: "[?output_key=='storage_floating_ip_addresses'].output_value"
+        compute_query: "[?output_key=='compute_floating_ip_addresses'].output_value"
+
+    - name: wait for systems to go up
+      ansible.builtin.wait_for:
+        port: "22"
+        host: "{{ item }}"
+        search_regex: SSH
+        timeout: 600
+      retries: 15
+      delay: 10
+      loop: "{{ controller_ips + storage_ips + compute_ips }}"
+
+    - name: generate instance config file
+      copy:
+        content: "{{ instance_config | to_yaml }}"
+        dest: "{{ molecule_instance_config }}"
+      vars:
+        base_instance_config: &instance_config
+          user: "{{ lookup('env', 'ATMOSPHERE_USERNAME') | default('ubuntu', True) }}"
+          port: "{{ ssh_port }}"
+          identity_file: "{{ identity_file }}"
+        instance_config:
+          - <<: *instance_config
+            instance: "ctl1"
+            address: "{{ controller_ips[0] }}"
+          - <<: *instance_config
+            instance: "ctl2"
+            address: "{{ controller_ips[1] }}"
+          - <<: *instance_config
+            instance: "ctl3"
+            address: "{{ controller_ips[2] }}"
+          - <<: *instance_config
+            instance: "nvme1"
+            address: "{{ storage_ips[0] }}"
+          - <<: *instance_config
+            instance: "nvme2"
+            address: "{{ storage_ips[1] }}"
+          - <<: *instance_config
+            instance: "nvme3"
+            address: "{{ storage_ips[2] }}"
+          - <<: *instance_config
+            instance: "kvm1"
+            address: "{{ compute_ips[0] }}"
+          - <<: *instance_config
+            instance: "kvm2"
+            address: "{{ compute_ips[1] }}"

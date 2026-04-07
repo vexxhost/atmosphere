@@ -1,0 +1,165 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Deploy OpenStack
+  hosts: controllers[0]
+  become: true
+  pre_tasks:
+    - name: Fail if atmosphere_ceph_enabled is set
+      ansible.builtin.fail:
+        msg: >-
+          The "atmosphere_ceph_enabled" variable is no longer supported.
+          Please use the "atmosphere_storage" variable to configure storage
+          backends instead. Refer to the storage configuration documentation
+          for migration instructions.
+      when: atmosphere_ceph_enabled is defined
+  roles:
+    - role: memcached
+      tags:
+        - memcached
+
+    - role: keystone
+      tags:
+        - keystone
+
+    - role: barbican
+      tags:
+        - barbican
+
+    - role: rook_ceph
+      tags:
+        - rook-ceph
+
+    - role: rook_ceph_cluster
+      tags:
+        - rook-ceph-cluster
+
+    - role: ceph_provisioners
+      tags:
+        - ceph-provisioners
+
+    - role: glance
+      tags:
+        - glance
+
+    - role: staffeln
+      when: atmosphere_staffeln_enabled | default(true)
+      tags:
+        - staffeln
+
+    - role: cinder
+      tags:
+        - cinder
+
+    - role: placement
+      tags:
+        - placement
+  environment:
+    CEPH_CONTAINER_IMAGE: "{{ cephadm_image | default('quay.io/ceph/ceph:v' + (ceph_version | default('18.2.7'))) }}"
+    CEPH_CONTAINER_BINARY: docker
+
+- name: Configure operating system
+  hosts: controllers:computes
+  become: true
+  roles:
+    - role: lpfc
+      tags:
+        - lpfc
+
+    - role: multipathd
+      tags:
+        - multipathd
+
+    - role: iscsi
+      tags:
+        - iscsi
+
+    - role: udev
+      tags:
+        - udev
+
+- name: Deploy SDN
+  hosts: controllers:computes
+  become: true
+  gather_facts: false
+  roles:
+    - role: openvswitch
+      tags:
+        - openvswitch
+
+    - role: frr_k8s
+      when: ovn_bgp_agent_enabled | default(false)
+      tags:
+        - frr_k8s
+
+    - role: ovn
+      tags:
+        - ovn
+
+- hosts: controllers[0]
+  become: true
+  roles:
+    - role: libvirt
+      tags:
+        - libvirt
+
+    - role: coredns
+      tags:
+        - coredns
+
+    - role: nova
+      tags:
+        - nova
+
+    - role: neutron
+      tags:
+        - neutron
+
+    # NOTE(mnaser): This is disabled out of the box until we have a native way
+    #               of configuring it with a pre-configured backend out of the
+    #               box.
+    # - role: designate
+    #   tags:
+    #     - designate
+
+    - role: heat
+      tags:
+        - heat
+
+    - role: octavia
+      tags:
+        - octavia
+
+    - role: magnum
+      tags:
+        - magnum
+
+    - role: manila
+      tags:
+        - manila
+
+    - role: horizon
+      tags:
+        - horizon
+
+    - role: openstack_exporter
+      tags:
+        - openstack-exporter
+
+- hosts: controllers
+  become: true
+  roles:
+    - role: openstack_cli
+      tags:
+        - openstack-cli

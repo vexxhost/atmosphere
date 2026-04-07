@@ -1,0 +1,128 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- if .Values.manifests.daemonset_ovn_bgp_agent }}
+{{- $envAll := . }}
+
+{{- $configMapName := "ovn-etc" }}
+{{- $serviceAccountName := "ovn-bgp-agent" }}
+{{- $serviceAccountNamespace := $envAll.Release.Namespace }}
+{{ tuple $envAll "ovn_bgp_agent" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+
+---
+kind: DaemonSet
+apiVersion: apps/v1
+metadata:
+  name: ovn-bgp-agent
+  annotations:
+    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
+    configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
+  labels:
+{{ tuple $envAll "ovn" "ovn-bgp-agent" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+spec:
+  selector:
+    matchLabels:
+{{ tuple $envAll "ovn" "ovn-bgp-agent" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 6 }}
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll "ovn" "ovn-bgp-agent" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+      annotations:
+{{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
+        configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
+        configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
+    spec:
+      serviceAccountName: {{ $serviceAccountName }}
+      hostNetwork: true
+      hostPID: true
+      hostIPC: true
+      dnsPolicy: {{ .Values.pod.dns_policy }}
+      nodeSelector:
+        {{ .Values.labels.ovn_bgp_agent.node_selector_key }}: {{ .Values.labels.ovn_bgp_agent.node_selector_value }}
+      initContainers:
+        - name: ovn-bgp-agent-init
+{{ dict "envAll" $envAll "application" "ovn_bgp_agent" "container" "ovn_bgp_agent_init" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+{{ tuple $envAll "ovn_bgp_agent" | include "helm-toolkit.snippets.image" | indent 10 }}
+          command:
+            - /tmp/ovn-bgp-agent-init.sh
+          env:
+            - name: NODE_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          volumeMounts:
+          - name: pod-tmp
+            mountPath: /tmp
+          - name: ovn-bin
+            mountPath: /tmp/ovn-bgp-agent-init.sh
+            subPath: ovn-bgp-agent-init.sh
+            readOnly: true
+      containers:
+        - name: ovn-bgp-agent
+{{ tuple $envAll "ovn_bgp_agent" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.server | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "ovn_bgp_agent" "container" "ovn_bgp_agent" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - /tmp/ovn-bgp-agent.sh
+          volumeMounts:
+            - name: run-openvswitch
+              mountPath: /run/openvswitch
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: ovn-bin
+              mountPath: /tmp/ovn-bgp-agent.sh
+              subPath: ovn-bgp-agent.sh
+              readOnly: true
+            - name: ovn-etc
+              mountPath: /etc/ovn-bgp-agent/ovn-bgp-agent.conf
+              subPath: ovn-bgp-agent.conf
+              readOnly: true
+            - name: ovn-etc
+              mountPath: /etc/sudoers.d/kolla_ovn_bgp_agent_sudoers
+              subPath: ovn_bgp_agent_sudoers
+              readOnly: true
+            - name: ovn-etc
+              mountPath: /etc/ovn-bgp-agent/rootwrap.conf
+              subPath: rootwrap.conf
+              readOnly: true
+            {{- range $key, $value := $envAll.Values.conf.rootwrap_filters }}
+            {{- if ( has "ovn_bgp_agent" $value.pods ) }}
+            {{- $filePrefix := replace "_" "-"  $key }}
+            {{- $rootwrapFile := printf "/etc/ovn-bgp-agent/rootwrap.d/%s.filters" $filePrefix }}
+            - name: ovn-etc
+              mountPath: {{ $rootwrapFile }}
+              subPath: {{ base $rootwrapFile }}
+              readOnly: true
+            {{- end }}
+            {{- end }}
+      volumes:
+        - name: ovn-bin
+          configMap:
+            name: ovn-bin
+            defaultMode: 0777
+        - name: run-openvswitch
+          hostPath:
+            path: /run/openvswitch
+            type: DirectoryOrCreate
+        - name: ovn-etc
+          secret:
+            secretName: {{ $configMapName }}
+            defaultMode: 0444
+        - name: pod-tmp
+          emptyDir: {}
+{{- end }}

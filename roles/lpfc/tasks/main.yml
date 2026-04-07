@@ -1,0 +1,66 @@
+# Copyright (c) 2023 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Detect if the "lpfc" module is loaded
+  ansible.builtin.stat:
+    path: /sys/module/lpfc
+  register: _lpfc_module
+
+- name: Install the configuration file and reboot if necessary
+  when: _lpfc_module.stat.exists
+  block:
+    - name: Install the configuration file
+      ansible.builtin.template:
+        src: lpfc.conf.j2
+        dest: /etc/modprobe.d/lpfc.conf
+        owner: root
+        group: root
+        mode: "0644"
+      register: _lpfc_module_conf
+
+    - name: Get the values for the module parameters
+      ansible.builtin.slurp:
+        src: /sys/module/lpfc/parameters/{{ item }}
+      register: _lpfc_module_parameters
+      loop:
+        - lpfc_lun_queue_depth
+        - lpfc_sg_seg_cnt
+        - lpfc_max_luns
+        - lpfc_enable_fc4_type
+
+    - name: Detect if the run-time module parameters are set correctly
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - item.content | b64decode | trim | int == lookup('vars', item.item)
+        fail_msg: >-
+          The module parameter {{ item.item }} is not set correctly, expected:
+          {{ lookup('vars', item.item) }}, got: {{ item.content | b64decode | trim }}
+      loop: "{{ _lpfc_module_parameters.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+      register: _lpfc_module_parameters_assert
+      failed_when: false
+      changed_when: _lpfc_module_parameters_assert.failed
+
+    - name: Update "initramfs" if the configuration file has changed
+      ansible.builtin.command:
+        cmd: update-initramfs -k all -u
+      changed_when: _lpfc_module_conf.changed or _lpfc_module_parameters_assert.changed
+      when: _lpfc_module_conf.changed or _lpfc_module_parameters_assert.changed
+
+    - name: Reboot the system if the configuration file has changed
+      ansible.builtin.include_role:
+        name: reboot
+      when: _lpfc_module_conf.changed or _lpfc_module_parameters_assert.changed

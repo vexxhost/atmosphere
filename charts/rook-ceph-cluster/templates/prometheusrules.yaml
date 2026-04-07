@@ -1,0 +1,40 @@
+{{- if .Values.monitoring }}
+{{- if .Values.monitoring.createPrometheusRules }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  labels:
+    prometheus: rook-prometheus
+    role: alert-rules
+{{- if  .Values.monitoring.prometheusRule.labels }}
+{{ toYaml .Values.monitoring.prometheusRule.labels | indent 4 }}
+{{- end }}
+{{- if .Values.monitoring.prometheusRule.annotations }}
+  annotations:
+{{ toYaml .Values.monitoring.prometheusRule.annotations | indent 4 }}
+{{- end }}
+  name: prometheus-ceph-rules
+  namespace: {{ default .Release.Namespace .Values.monitoring.rulesNamespaceOverride }}
+spec:
+# Import the raw prometheus rules since they have descriptions that should not be processed with the helm templates
+{{- $root := . }}
+{{- if .Values.cephClusterSpec.external }}
+{{- if .Values.cephClusterSpec.external.enable }}
+  {{- range $path, $bytes := .Files.Glob "prometheus/externalrules.yaml" }}
+  {{ $root.Files.Get $path }}
+  {{- end }}
+{{- else }}
+  # The local rules are included in two different else statements because helm does not short-circuit
+  # the checks to allow the check for external settings in a single if statement.
+  {{- range $path, $bytes := .Files.Glob "prometheus/localrules.yaml" }}
+  {{ $root.Files.Get $path | indent 2 }}
+  {{- end }}
+{{- end }}
+{{- else }}
+  {{- range $path, $bytes := .Files.Glob "prometheus/localrules.yaml" }}
+  {{ $root.Files.Get $path | indent 2 }}
+  {{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

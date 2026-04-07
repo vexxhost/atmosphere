@@ -1,0 +1,22 @@
+cluster_issuer_type: self-signed
+
+kubernetes_keepalived_interface: ens3
+
+glance_images:
+  - name: cirros
+    url: http://download.cirros-cloud.net/0.6.1/cirros-0.6.1-x86_64-disk.img
+    min_disk: 1
+    disk_format: raw
+    container_format: bare
+    is_public: true
+
+atmosphere_network_backend: "{{ lookup('env', 'ATMOSPHERE_NETWORK_BACKEND') | default('openvswitch', True) }}"
+ovn_helm_values:
+  conf:
+    auto_bridge_add:
+      br-ex: ens4
+
+neutron_helm_values:
+  conf:
+    auto_bridge_add:
+      br-ex: ens4

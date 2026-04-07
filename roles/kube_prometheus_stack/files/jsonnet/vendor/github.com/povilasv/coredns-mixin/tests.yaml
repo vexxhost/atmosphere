@@ -1,0 +1,75 @@
+rule_files:
+  - prometheus_alerts.yaml
+
+evaluation_interval: 1m
+
+tests:
+- interval: 1m
+  input_series:
+  - series: 'coredns_dns_responses_total{instance="1.2.3.4:9153",job="kube-dns",kubernetes_name="coredns-kube-metrics",kubernetes_namespace="kube-system",pod="coredns-65b6759cb4-qgdxp",rcode="NOERROR",server="dns://:53",zone="."}'
+    values: '0 100 200 300 400 500 600 700 800 900 1000 1100 1200'
+  - series: 'coredns_dns_responses_total{instance="1.2.3.4:9153",job="kube-dns",kubernetes_name="coredns-kube-metrics",kubernetes_namespace="kube-system",pod="coredns-65b6759cb4-qgdxp",rcode="SERVFAIL",server="dns://:53",zone="."}'
+    values: '0 100 200 300 400 500 600 700 800 900 1000 1100 1200'
+  alert_rule_test:
+  - eval_time: 11m
+    alertname: CoreDNSErrorsHigh
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+      exp_annotations:
+        message: "CoreDNS is returning SERVFAIL for 50% of requests."
+        runbook_url: "https://github.com/povilasv/coredns-mixin/tree/master/runbook.md#alert-name-corednserrorshigh"
+    - exp_labels:
+        severity: critical
+      exp_annotations:
+        message: "CoreDNS is returning SERVFAIL for 50% of requests."
+        runbook_url: "https://github.com/povilasv/coredns-mixin/tree/master/runbook.md#alert-name-corednserrorshigh"
+
+- interval: 1m
+  input_series:
+  - series: 'coredns_dns_request_duration_seconds_bucket{instance="1.2.3.4:9153",job="kube-dns",kubernetes_name="coredns-kube-metrics",kubernetes_namespace="kube-system",pod="coredns-65b6759cb4-qgdxp",le="0.001",server="dns://:53",zone="."}'
+    values: '0 1 2 3 4 5 6 7 8 9 10 11 12'
+  - series: 'coredns_dns_request_duration_seconds_bucket{instance="1.2.3.4:9153",job="kube-dns",kubernetes_name="coredns-kube-metrics",kubernetes_namespace="kube-system",pod="coredns-65b6759cb4-qgdxp",le="8.192",server="dns://:53",zone="."}'
+    values: '0 100 200 300 400 500 600 700 800 900 1000 1100 1200'
+  - series: 'coredns_dns_request_duration_seconds_bucket{instance="1.2.3.4:9153",job="kube-dns",kubernetes_name="coredns-kube-metrics",kubernetes_namespace="kube-system",pod="coredns-65b6759cb4-qgdxp",le="+Inf",server="dns://:53",zone="."}'
+    values: '0 100 200 300 400 500 600 700 800 900 1000 1100 1200'
+  alert_rule_test:
+  - eval_time: 11m
+    alertname: CoreDNSLatencyHigh
+    exp_alerts:
+    - exp_labels:
+        severity: critical
+        server: "dns://:53"
+        zone: "."
+      exp_annotations:
+        message: "CoreDNS has 99th percentile latency of 8.109262626262627 seconds for server dns://:53 zone . ."
+        runbook_url: "https://github.com/povilasv/coredns-mixin/tree/master/runbook.md#alert-name-corednslatencyhigh"
+
+- interval: 1m
+  input_series:
+  - series: 'coredns_forward_healthcheck_failures_total{instance="1.2.3.4:9153",job="kube-dns",kubernetes_name="coredns-kube-metrics",kubernetes_namespace="kube-system",pod="coredns-65b6759cb4-qgdxp",server="dns://:53",zone=".",to="5.6.7.8"}'
+    values: '0 1 2 3 4 5 6 7 8 9 10 11 12'
+  alert_rule_test:
+    - eval_time: 11m
+      alertname: CoreDNSForwardHealthcheckFailureCount
+      exp_alerts:
+        - exp_labels:
+            severity: warning
+            to: "5.6.7.8"
+          exp_annotations:
+            message: "CoreDNS health checks have failed to upstream server 5.6.7.8."
+            runbook_url: "https://github.com/povilasv/coredns-mixin/tree/master/runbook.md#alert-name-corednsforwardhealthcheckfailurecount"
+
+- interval: 1m
+  input_series:
+  - series: 'coredns_forward_healthcheck_broken_total{instance="1.2.3.4:9153",job="kube-dns",kubernetes_name="coredns-kube-metrics",kubernetes_namespace="kube-system",pod="coredns-65b6759cb4-qgdxp",server="dns://:53",zone=".",to="5.6.7.8"}'
+    values: '0 1 2 3 4 5 6 7 8 9 10 11 12'
+  alert_rule_test:
+    - eval_time: 11m
+      alertname: CoreDNSForwardHealthcheckBrokenCount
+      exp_alerts:
+        - exp_labels:
+            severity: warning
+          exp_annotations:
+            message: "CoreDNS health checks have failed for all upstream servers."
+            runbook_url: "https://github.com/povilasv/coredns-mixin/tree/master/runbook.md#alert-name-corednsforwardhealthcheckbrokencount"

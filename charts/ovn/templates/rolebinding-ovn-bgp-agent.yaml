@@ -1,0 +1,13 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ovn-bgp-agent
+  namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: ovn-bgp-agent
+subjects:
+- kind: ServiceAccount
+  name: ovn-bgp-agent
+  namespace: {{ .Release.Namespace }}

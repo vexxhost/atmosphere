@@ -1,0 +1,110 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Get the Kuberentes service for Percona XtraDB Cluster
+  run_once: true
+  kubernetes.core.k8s_info:
+    kind: Service
+    name: "{{ openstack_helm_endpoints.oslo_db.hosts.default }}"
+    namespace: openstack
+  register: _pxc_service
+
+- name: Install MySQL python package
+  ansible.builtin.pip:
+    name: PyMySQL
+
+- name: Check MySQL ready
+  run_once: true
+  community.mysql.mysql_info:
+    login_host: "{{ _pxc_service.resources[0].spec.clusterIP }}"
+    login_user: root
+    login_password: "{{ openstack_helm_endpoints.oslo_db.auth.admin.password }}"
+    filter:
+      - version
+  register: mysql_ready
+  until: mysql_ready is not failed
+  retries: 120
+  delay: 5
+
+- name: Create Keycloak database
+  run_once: true
+  community.mysql.mysql_db:
+    login_host: "{{ _pxc_service.resources[0].spec.clusterIP }}"
+    login_user: root
+    login_password: "{{ openstack_helm_endpoints.oslo_db.auth.admin.password }}"
+    name: "{{ keycloak_database_name }}"
+
+- name: Create a Keycloak user
+  run_once: true
+  community.mysql.mysql_user:
+    login_host: "{{ _pxc_service.resources[0].spec.clusterIP }}"
+    login_user: root
+    login_password: "{{ openstack_helm_endpoints.oslo_db.auth.admin.password }}"
+    name: "{{ keycloak_database_username }}"
+    password: "{{ keycloak_database_password }}"
+    host: "%"
+    priv: "{{ keycloak_database_name }}.*:ALL"
+
+- name: Disable pxc strict mode
+  run_once: true
+  community.mysql.mysql_query:
+    login_host: "{{ _pxc_service.resources[0].spec.clusterIP }}"
+    login_user: root
+    login_password: "{{ openstack_helm_endpoints.oslo_db.auth.admin.password }}"
+    query: "set global pxc_strict_mode='PERMISSIVE'"
+
+- name: Deploy Helm chart
+  run_once: true
+  kubernetes.core.helm:
+    name: "{{ keycloak_helm_release_name }}"
+    chart_ref: "{{ keycloak_helm_chart_ref }}"
+    release_namespace: "{{ keycloak_helm_release_namespace }}"
+    create_namespace: true
+    kubeconfig: "{{ keycloak_helm_kubeconfig }}"
+    wait: true
+    timeout: 10m
+    values: "{{ _keycloak_helm_values | combine(keycloak_helm_values, recursive=True) }}"
+
+- name: Wait until keycloak ready
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: StatefulSet
+    name: "{{ keycloak_helm_release_name }}"
+    namespace: "{{ keycloak_helm_release_namespace }}"
+  register: _keycloak_sts
+  retries: 120
+  delay: 5
+  until:
+    - _keycloak_sts.resources[0].status.replicas == _keycloak_sts.resources[0].status.readyReplicas
+
+- name: Create Keycloak Ingress
+  ansible.builtin.include_role:
+    name: ingress
+  vars:
+    ingress_name: keycloak
+    ingress_namespace: "{{ keycloak_helm_release_namespace }}"
+    ingress_class_name: "{{ keycloak_ingress_class_name }}"
+    ingress_host: "{{ keycloak_host }}"
+    ingress_service_name: "{{ keycloak_helm_release_name }}"
+    ingress_service_port: 80
+    ingress_secret_name: "{{ keycloak_host_tls_secret_name }}"
+    ingress_annotations: "{{ _keycloak_ingress_annotations | combine(keycloak_ingress_annotations, recursive=True) }}"
+
+- name: Enable pxc strict mode
+  run_once: true
+  community.mysql.mysql_query:
+    login_host: "{{ _pxc_service.resources[0].spec.clusterIP }}"
+    login_user: root
+    login_password: "{{ openstack_helm_endpoints.oslo_db.auth.admin.password }}"
+    query: "set global pxc_strict_mode='MASTER'"

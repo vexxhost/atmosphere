@@ -1,0 +1,150 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+__neutron_helm_values:
+  endpoints: "{{ openstack_helm_endpoints }}"
+  images:
+    tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('neutron') }}"
+  network:
+    backend:
+      - "{{ atmosphere_network_backend }}"
+  pod:
+    labels:
+      include_app_kubernetes_io: false
+    replicas:
+      server: 3
+      rpc_server: 3
+    sidecars:
+      neutron_policy_server: true
+  conf:
+    neutron:
+      DEFAULT:
+        api_workers: 8
+        dhcp_agents_per_network: 3
+        log_config_append: null
+        rpc_workers: 8
+        rpc_response_timeout: 600
+        service_plugins: qos,router,segments,trunk,vpnaas,taas,tapmirror
+        external_dns_driver: "{{ _neutron_external_dns_driver | default(omit) }}"
+      cors:
+        allowed_origin: "*"
+      database:
+        connection_recycle_time: 600
+        max_overflow: 50
+        max_pool_size: 5
+        pool_timeout: 30
+      designate:
+        url: http://designate-api.openstack.svc.cluster.local:9001/v2
+        auth_url: http://keystone-api.openstack.svc.cluster.local:5000
+        region_name: "{{ openstack_helm_endpoints_neutron_region_name }}"
+        username: "neutron-{{ openstack_helm_endpoints_neutron_region_name }}"
+        password: "{{ openstack_helm_endpoints_neutron_keystone_password }}"
+      ngs_coordination:
+        backend_url: memcached://memcached.openstack.svc.cluster.local:11211
+      nova:
+        live_migration_events: true
+      ironic:
+        valid_interfaces: internal
+      placement:
+        region_name: "{{ openstack_helm_endpoints_neutron_region_name }}"
+        username: "neutron-{{ openstack_helm_endpoints_neutron_region_name }}"
+        password: "{{ openstack_helm_endpoints_neutron_keystone_password }}"
+      oslo_messaging_notifications:
+        driver: noop
+      service_providers:
+        service_provider: VPN:strongswan:neutron_vpnaas.services.vpn.service_drivers.ipsec.IPsecVPNDriver:default
+    dhcp_agent:
+      DEFAULT:
+        dnsmasq_dns_servers: "{{ neutron_coredns_cluster_ip | default('10.96.0.20') }}"
+        enable_isolated_metadata: true
+    l3_agent:
+      AGENT:
+        extensions: vpnaas
+      vpnagent:
+        vpn_device_driver: neutron_vpnaas.services.vpn.device_drivers.strongswan_ipsec.StrongSwanDriver
+    metadata_agent:
+      DEFAULT:
+        metadata_proxy_shared_secret: "{{ openstack_helm_endpoints['compute_metadata']['secret'] }}"
+    plugins:
+      ml2_conf:
+        ml2:
+          extension_drivers: dns_domain_ports,port_security,qos
+          type_drivers: flat,gre,vlan,vxlan
+        ml2_type_gre:
+          tunnel_id_ranges: 1:1000
+        ml2_type_vlan:
+          network_vlan_ranges: external:1:4094
+      taas:
+        taas:
+          enabled: true
+    taas_plugin:
+      service_providers:
+        service_provider: TAAS:TAAS:neutron_taas.services.taas.service_drivers.taas_rpc.TaasRpcDriver:default
+    rabbitmq:
+      policies:
+        - vhost: "neutron"
+          name: "ha_ttl_neutron"
+          definition:
+            message-ttl: 70000
+          priority: 0
+          apply-to: all
+          pattern: '^(?!(amq\.|reply_)).*'
+  manifests:
+    ingress_server: false
+    service_ingress_server: false
+
+__neutron_ovn_helm_values:
+  conf:
+    neutron:
+      DEFAULT:
+        service_plugins: qos,ovn-router,segments,trunk,log,ovn-vpnaas,taas,tapmirror
+      ovn:
+        ovn_emit_need_to_frag: true
+      service_providers:
+        service_provider: VPN:strongswan:neutron_vpnaas.services.vpn.service_drivers.ovn_ipsec.IPsecOvnVPNDriver:default
+    ovn_metadata_agent:
+      DEFAULT:
+        metadata_proxy_shared_secret: "{{ openstack_helm_endpoints['compute_metadata']['secret'] }}"
+    ovn_vpn_agent:
+      AGENT:
+        extensions: vpnaas
+      vpnagent:
+        vpn_device_driver: neutron_vpnaas.services.vpn.device_drivers.ovn_ipsec.OvnStrongSwanDriver
+    plugins:
+      ml2_conf:
+        agent:
+          extensions: "log"
+        ml2:
+          type_drivers: flat,vlan,geneve
+          tenant_network_types: geneve
+    taas_plugin:
+      service_providers:
+        service_provider: TAAS:TAAS:neutron_taas.services.taas.service_drivers.ovn.taas_ovn.TaasOvnDriver:default
+  manifests:
+    daemonset_dhcp_agent: false
+    daemonset_l3_agent: false
+    daemonset_metadata_agent: false
+    daemonset_ovn_metadata_agent: true
+    daemonset_ovn_vpn_agent: true
+    daemonset_ovs_agent: false
+
+__neutron_policy_server_helm_values:
+  conf:
+    policy:
+      delete_port: "((rule:admin_only) or (rule:service_api) or role:member and rule:network_owner or role:member and project_id:%(project_id)s) and http://neutron-server:9697/port-delete"
+      update_port:mac_address: "((rule:admin_only) or (rule:service_api) or role:manager and project_id:%(project_id)s) and http://neutron-server:9697/port-update"
+      update_port:fixed_ips: "((rule:admin_only) or (rule:service_api) or role:manager and project_id:%(project_id)s or role:member and rule:network_owner) and http://neutron-server:9697/port-update"
+      update_port:allowed_address_pairs: "((rule:admin_only) or (role:member and rule:network_owner) or role:manager and project_id:%(project_id)s) or (role:member and project_id:%(project_id)s and http://neutron-server:9697/address-pair )"
+      update_port:allowed_address_pairs:ip_address: "((rule:admin_only) or (role:member and rule:network_owner) or role:manager and project_id:%(project_id)s) or (role:member and project_id:%(project_id)s)"
+      update_port:allowed_address_pairs:mac_address: "((rule:admin_only) or (role:member and rule:network_owner) or role:manager and project_id:%(project_id)s) or (role:member and project_id:%(project_id)s)"

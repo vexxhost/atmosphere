@@ -1,0 +1,150 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: storpool-csi-controllerplugin
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      name: storpool-csi-controllerplugin
+  template:
+    metadata:
+      labels:
+        name: storpool-csi-controllerplugin
+    spec:
+      serviceAccountName: storpool-csi-controller-sa
+      containers:
+        - name: storpool-csi-plugin
+          image: cts.storpool.com/storpool-csi/release:1.0.0
+          env:
+            - name: CSI_ENDPOINT
+              value: unix:///csi/csi.sock
+            - name: SP_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          imagePullPolicy: "IfNotPresent"
+          ports:
+            - containerPort: 9808
+              name: healthz
+              protocol: TCP
+          livenessProbe:
+            failureThreshold: 5
+            httpGet:
+              path: /healthz
+              port: healthz
+            initialDelaySeconds: 10
+            timeoutSeconds: 3
+            periodSeconds: 10
+          volumeMounts:
+            - name: storpool-conf
+              mountPath: /etc/storpool.conf
+              readOnly: true
+            - name: storpool-dir
+              mountPath: /usr/lib/storpool
+              readOnly: true
+            - name: socket-dir
+              mountPath: /csi
+        - name: csi-provisioner
+          image: registry.k8s.io/sig-storage/csi-provisioner:v3.6.0
+          args:
+            - "--csi-address=$(ADDRESS)"
+            - "--default-fstype=ext4"
+            - "--extra-create-metadata"
+            - '--leader-election'
+            - '--http-endpoint=:8080'
+          ports:
+            - name: http-endpoint
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          imagePullPolicy: "IfNotPresent"
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+          livenessProbe:
+            httpGet:
+              path: /healthz/leader-election
+              port: http-endpoint
+              scheme: HTTP
+            initialDelaySeconds: 10
+            timeoutSeconds: 10
+            periodSeconds: 20
+            successThreshold: 1
+            failureThreshold: 1
+        - name: csi-attacher
+          image: registry.k8s.io/sig-storage/csi-attacher:v4.4.0
+          args:
+            - "--csi-address=$(ADDRESS)"
+            - '--leader-election'
+            - '--http-endpoint=:8081'
+          ports:
+            - name: http-endpoint
+              containerPort: 8081
+              protocol: TCP
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          imagePullPolicy: "IfNotPresent"
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+          livenessProbe:
+            httpGet:
+              path: /healthz/leader-election
+              port: http-endpoint
+              scheme: HTTP
+            initialDelaySeconds: 10
+            timeoutSeconds: 10
+            periodSeconds: 20
+            successThreshold: 1
+            failureThreshold: 1
+        - name: csi-resizer
+          image: registry.k8s.io/sig-storage/csi-resizer:v1.8.0
+          args:
+            - '--csi-address=$(ADDRESS)'
+            - '--leader-election'
+            - '--http-endpoint=:8082'
+          ports:
+            - name: http-endpoint
+              containerPort: 8082
+              protocol: TCP
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+          livenessProbe:
+            httpGet:
+              path: /healthz/leader-election
+              port: http-endpoint
+              scheme: HTTP
+            initialDelaySeconds: 10
+            timeoutSeconds: 10
+            periodSeconds: 20
+            successThreshold: 1
+            failureThreshold: 1
+        - name: liveness-probe
+          image: registry.k8s.io/sig-storage/livenessprobe:v2.11.0
+          args:
+            - "--csi-address=$(ADDRESS)"
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+      volumes:
+        - name: storpool-conf
+          hostPath:
+            path: /etc/storpool.conf
+            type: File
+        - name: storpool-dir
+          hostPath:
+            path: /usr/lib/storpool
+            type: Directory
+        - name: socket-dir
+          emptyDir: {}

@@ -1,0 +1,138 @@
+# Vector
+
+{{ template "chart.versionBadge" . }}{{ template "chart.typeBadge" . }}{{ template "chart.appVersionBadge" . }}
+
+[Vector](https://vector.dev/) is a high-performance, end-to-end observability data pipeline that puts you in control of your observability data. Collect, transform, and route all your logs, metrics, and traces to any vendors you want today and any other vendors you may want tomorrow. Vector enables dramatic cost reduction, novel data enrichment, and data security where you need it, not where is most convenient for your vendors.
+
+## How to use Vector Helm repository
+
+You need to add this repository to your Helm repositories:
+
+```
+helm repo add vector https://helm.vector.dev
+helm repo update
+```
+
+{{ template "chart.requirementsSection" . }}
+
+## Quick start
+
+By default, Vector runs as a `StatefulSet` in the "Aggregator" role. It can alternatively run as a `Deployment` for the "Stateless-Aggregator" role or a `DaemonSet` for the "Agent" role.
+
+### Installing the Vector chart
+
+To install the chart with the release name `<RELEASE_NAME>` run:
+
+```bash
+helm install --name <RELEASE_NAME> \
+  vector/vector
+```
+
+### Upgrading
+
+#### From original charts
+
+* [Migrate from the `vector-agent` chart](docs/Migrate_from_vector-agent.md)
+* [Migrate from the `vector-aggregator` chart](docs/Migrate_from_vector-aggregator.md)
+
+### Uninstalling the chart
+
+To uninstall/delete the `<RELEASE_NAME>` deployment:
+
+```bash
+helm delete <RELEASE_NAME>
+```
+
+The command removes all the Kubernetes components associated with the chart and deletes the release.
+
+## Configuration
+
+1. Using our [`default-values.yaml`](values.yaml) configuration file as a reference, create your own `values.yaml`.
+2. Upgrade the Vector chart with your new `values.yaml` file:
+
+```bash
+helm upgrade -f values.yaml <RELEASE_NAME> vector/vector
+```
+
+**Vector recommends that your `values.yaml` only contain values that need to be overridden, as it allows a smoother experience when upgrading chart versions.**
+
+See the [configuration options](#all-configuration-options) section to discover all possibilities offered by the Vector chart.
+
+### Running on control plane nodes
+
+Depending on your Kubernetes distribution, you may need to configure `tolerations` to run Vector on nodes acting as the control plane.
+
+For example to run Vector on [Openshift](https://www.redhat.com/en/technologies/cloud-computing/openshift) control plane nodes you can set:
+
+```yaml
+tolerations:
+  - effect: NoSchedule
+    key: node-role.kubernetes.io/master
+    operator: Exists
+  - effect: NoSchedule
+    key: node-role.kubernetes.io/infra
+    operator: Exists
+```
+
+Or for [RKE](https://rancher.com/products/rke) control plane nodes set:
+
+```yaml
+tolerations:
+  - effect: NoSchedule
+    key: node-role.kubernetes.io/controlplane
+    operator: Exists
+  - effect: NoExecute
+    key: node-role.kubernetes.io/etcd
+    operator: Exists
+```
+
+### Using template syntax in `customConfig`
+
+As Vector's [template syntax](https://vector.dev/docs/reference/configuration/template-syntax/) shares the same syntax as Helm templates, explicit handling is required
+if you are using Vector's template syntax in the `customConfig` option. To avoid Helm templating configuration intended for Vector you can supply configuration like so:
+
+```yaml
+customConfig:
+  #...
+  sinks:
+    loki:
+      #...
+      labels:
+        foo: bar
+        host: |-
+          {{ print "{{ print \"{{ host }}\" }}" }}
+        source: |-
+          {{ print "{{ print \"{{ source_type }}\" }}" }}
+```
+
+## All configuration options
+
+The following table lists the configurable parameters of the Vector chart and their default values. Specify each parameter using the `--set key=value[,key=value]` argument to `helm install`. For example,
+
+```bash
+helm install --name <RELEASE_NAME> \
+  --set role=Agent \
+  vector/vector
+```
+
+{{ template "chart.valuesHeader" . }}
+
+### Vector values
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+{{- range .Values }}
+  {{- if not (contains "haproxy" .Key) }}
+| {{ .Key }} | {{ .Type }} | {{ if .Default }}{{ .Default }}{{ else }}{{ .AutoDefault }}{{ end }} | {{ if .Description }}{{ .Description }}{{ else }}{{ .AutoDescription }}{{ end }} |
+  {{- end }}
+{{- end }}
+
+### HAProxy values
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+{{- range .Values }}
+  {{- if (contains "haproxy" .Key) }}
+| {{ .Key }} | {{ .Type }} | {{ if .Default }}{{ .Default }}{{ else }}{{ .AutoDefault }}{{ end }} | {{ if .Description }}{{ .Description }}{{ else }}{{ .AutoDescription }}{{ end }} |
+  {{- end }}
+{{- end }}

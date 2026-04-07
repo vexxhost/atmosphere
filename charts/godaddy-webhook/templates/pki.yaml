@@ -1,0 +1,64 @@
+---
+# Create a selfsigned Issuer, in order to create a root CA certificate for
+# signing webhook serving certificates
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: {{ include "godaddy-webhook.selfSignedIssuer" . }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+{{ include "godaddy-webhook.labels" . | indent 4 }}
+spec:
+  selfSigned: {}
+
+---
+
+# Generate a CA Certificate used to sign certificates for the webhook
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "godaddy-webhook.rootCACertificate" . }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+{{ include "godaddy-webhook.labels" . | indent 4 }}
+spec:
+  secretName: {{ include "godaddy-webhook.rootCACertificate" . }}
+  duration: 43800h # 5y
+  issuerRef:
+    name: {{ include "godaddy-webhook.selfSignedIssuer" . }}
+  commonName: "ca.godaddy-webhook.cert-manager"
+  isCA: true
+
+---
+
+# Create an Issuer that uses the above generated CA certificate to issue certs
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: {{ include "godaddy-webhook.rootCAIssuer" . }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+{{ include "godaddy-webhook.labels" . | indent 4 }}
+spec:
+  ca:
+    secretName: {{ include "godaddy-webhook.rootCACertificate" . }}
+
+---
+
+# Finally, generate a serving certificate for the webhook to use
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "godaddy-webhook.servingCertificate" . }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+{{ include "godaddy-webhook.labels" . | indent 4 }}
+spec:
+  secretName: {{ include "godaddy-webhook.servingCertificate" . }}
+  duration: 8760h # 1y
+  issuerRef:
+    name: {{ include "godaddy-webhook.rootCAIssuer" . }}
+  dnsNames:
+  - {{ include "godaddy-webhook.fullname" . }}
+  - {{ include "godaddy-webhook.fullname" . }}.{{ .Release.Namespace }}
+  - {{ include "godaddy-webhook.fullname" . }}.{{ .Release.Namespace }}.svc

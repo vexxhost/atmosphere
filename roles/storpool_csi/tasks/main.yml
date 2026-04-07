@@ -1,0 +1,33 @@
+---
+- name: Deploy CSI RBAC
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('file', 'storpool-csi-' ~ item.name ~ '-rbac.yaml') | from_yaml_all }}"
+  loop:
+    - name: controllerplugin
+    - name: nodeplugin
+
+- name: Deploy CSI
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      - "{{ lookup('file', 'storpool-csi-controllerplugin.yaml') | from_yaml }}"
+      - "{{ lookup('file', 'storpool-csi-driver.yaml') | from_yaml }}"
+      - "{{ lookup('file', 'storpool-csi-nodeplugin.yaml') | from_yaml }}"
+
+- name: Create StorageClass
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: storage.k8s.io/v1
+      kind: StorageClass
+      metadata:
+        name: general
+        annotations:
+          storageclass.kubernetes.io/is-default-class: "true"
+      provisioner: csi.storpool.com
+      allowVolumeExpansion: true
+      volumeBindingMode: WaitForFirstConsumer
+      reclaimPolicy: Delete
+      parameters:
+        template: "{{ storpool_csi_template }}"

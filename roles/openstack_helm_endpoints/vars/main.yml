@@ -1,0 +1,541 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+_openstack_helm_endpoints_ignore:
+  - ceph_mon
+  - ceph_object_store
+  - cloudwatch
+  - cluster_domain_suffix
+  - compute_novnc_vencrypt
+  - compute_spice_proxy
+  - fluentd
+  - ingress
+  - kube_dns
+  - ldap
+  - local_image_registry
+  - monitoring
+  - object_store
+  - oci_image_registry
+  - prometheus_rabbitmq_exporter
+  - volume
+  - volumev2
+  - share
+
+_openstack_helm_endpoints_oslo_db:
+  oslo_db:
+    auth:
+      admin:
+        password: "{{ openstack_helm_endpoints_mariadb_admin_password }}"
+    hosts:
+      default: percona-xtradb-haproxy
+
+_openstack_helm_endpoints_oslo_messaging:
+  oslo_messaging:
+    auth:
+      user:
+        username: "{{ _openstack_helm_endpoints_rabbitmq_cluster_username }}"
+        password: "{{ _openstack_helm_endpoints_rabbitmq_cluster_password }}"
+      # NOTE(mnaser): The following is not actually used by the chart, however,
+      #               since we are actually doing dynamic lookups to generate
+      #               endpoints, we add it here.
+      admin:
+        username: "{{ _openstack_helm_endpoints_rabbitmq_cluster_username }}"
+        password: "{{ _openstack_helm_endpoints_rabbitmq_cluster_password }}"
+    statefulset: null
+    hosts:
+      default: "rabbitmq-{{ openstack_helm_endpoints_chart }}"
+
+_openstack_helm_endpoints_oslo_cache:
+  oslo_cache:
+    auth:
+      memcache_secret_key: "{{ openstack_helm_endpoints_memcached_secret_key }}"
+
+_openstack_helm_endpoints_identity:
+  identity:
+    auth:
+      admin:
+        region_name: "{{ openstack_helm_endpoints_keystone_region_name }}"
+        username: "admin-{{ openstack_helm_endpoints_keystone_region_name }}"
+        password: "{{ openstack_helm_endpoints_keystone_admin_password }}"
+    hosts:
+      default: keystone-api
+    scheme:
+      public: https
+    host_fqdn_override:
+      public:
+        host: "{{ openstack_helm_endpoints_keystone_api_host }}"
+    path:
+      # NOTE(mnaser): Heat uses the catalog and blindly adds a /v3 to the end of
+      #               the endpoint.  This is a workaround to make it work.
+      default: /
+    port:
+      api:
+        default: 5000
+        public: 443
+  oslo_db:
+    auth:
+      keystone:
+        password: "{{ openstack_helm_endpoints_keystone_mariadb_password }}"
+  oslo_messaging:
+    auth:
+      keystone:
+        password: "{{ openstack_helm_endpoints_keystone_rabbitmq_password }}"
+
+_openstack_helm_endpoints_image:
+  identity:
+    auth:
+      glance:
+        region_name: "{{ openstack_helm_endpoints_glance_region_name }}"
+        username: "glance-{{ openstack_helm_endpoints_glance_region_name }}"
+        password: "{{ openstack_helm_endpoints_glance_keystone_password }}"
+  image:
+    scheme:
+      public: https
+    host_fqdn_override:
+      public:
+        host: "{{ openstack_helm_endpoints_glance_api_host }}"
+    port:
+      api:
+        public: 443
+  oslo_db:
+    auth:
+      glance:
+        password: "{{ openstack_helm_endpoints_glance_mariadb_password }}"
+  oslo_messaging:
+    auth:
+      glance:
+        password: "{{ openstack_helm_endpoints_glance_rabbitmq_password }}"
+
+_openstack_helm_endpoints_volumev3:
+  identity:
+    auth:
+      cinder:
+        region_name: "{{ openstack_helm_endpoints_cinder_region_name }}"
+        username: "cinder-{{ openstack_helm_endpoints_cinder_region_name }}"
+        password: "{{ openstack_helm_endpoints_cinder_keystone_password }}"
+  volumev3:
+    scheme:
+      public: https
+    host_fqdn_override:
+      public:
+        host: "{{ openstack_helm_endpoints_cinder_api_host }}"
+    port:
+      api:
+        public: 443
+  oslo_db:
+    auth:
+      cinder:
+        password: "{{ openstack_helm_endpoints_cinder_mariadb_password }}"
+  oslo_messaging:
+    auth:
+      cinder:
+        password: "{{ openstack_helm_endpoints_cinder_rabbitmq_password }}"
+
+_openstack_helm_endpoints_placement:
+  identity:
+    auth:
+      placement:
+        region_name: "{{ openstack_helm_endpoints_placement_region_name }}"
+        username: "placement-{{ openstack_helm_endpoints_placement_region_name }}"
+        password: "{{ openstack_helm_endpoints_placement_keystone_password }}"
+  oslo_db:
+    auth:
+      placement:
+        password: "{{ openstack_helm_endpoints_placement_mariadb_password }}"
+  placement:
+    scheme:
+      public: https
+    host_fqdn_override:
+      public:
+        host: "{{ openstack_helm_endpoints_placement_api_host }}"
+    port:
+      api:
+        public: 443
+
+_openstack_helm_endpoints_key_manager:
+  identity:
+    auth:
+      barbican:
+        region_name: "{{ openstack_helm_endpoints_barbican_region_name }}"
+        username: "barbican-{{ openstack_helm_endpoints_barbican_region_name }}"
+        password: "{{ openstack_helm_endpoints_barbican_keystone_password }}"
+  oslo_db:
+    auth:
+      barbican:
+        password: "{{ openstack_helm_endpoints_barbican_mariadb_password }}"
+  key_manager:
+    scheme:
+      public: https
+    host_fqdn_override:
+      public:
+        host: "{{ openstack_helm_endpoints_barbican_api_host }}"
+    port:
+      api:
+        public: 443
+
+_openstack_helm_endpoints_network:
+  identity:
+    auth:
+      neutron:
+        region_name: "{{ openstack_helm_endpoints_neutron_region_name }}"
+        username: "neutron-{{ openstack_helm_endpoints_neutron_region_name }}"
+        password: "{{ openstack_helm_endpoints_neutron_keystone_password }}"
+  network:
+    scheme:
+      public: https
+    host_fqdn_override:
+      public:
+        host: "{{ openstack_helm_endpoints_neutron_api_host }}"
+    port:
+      api:
+        public: 443
+  oslo_db:
+    auth:
+      neutron:
+        password: "{{ openstack_helm_endpoints_neutron_mariadb_password }}"
+  oslo_messaging:
+    auth:
+      neutron:
+        password: "{{ openstack_helm_endpoints_neutron_rabbitmq_password }}"
+
+_openstack_helm_endpoints_compute:
+  identity:
+    auth:
+      nova:
+        region_name: "{{ openstack_helm_endpoints_nova_region_name }}"
+        username: "nova-{{ openstack_helm_endpoints_nova_region_name }}"
+        password: "{{ openstack_helm_endpoints_nova_keystone_password }}"
+  compute:
+    scheme:
+      public: https
+    host_fqdn_override:
+      public:
+        host: "{{ openstack_helm_endpoints_nova_api_host }}"
+    path:
+      default: "/v2.1"
+    port:
+      api:
+        public: 443
+  oslo_db:
+    auth:
+      nova:
+        password: "{{ openstack_helm_endpoints_nova_mariadb_password }}"
+  oslo_messaging:
+    auth:
+      nova:
+        password: "{{ openstack_helm_endpoints_nova_rabbitmq_password }}"
+
+_openstack_helm_endpoints_oslo_db_api:
+  oslo_db_api:
+    auth:
+      admin:
+        password: "{{ openstack_helm_endpoints_mariadb_admin_password }}"
+      nova:
+        password: "{{ openstack_helm_endpoints_nova_mariadb_password }}"
+    hosts:
+      default: percona-xtradb-haproxy
+
+_openstack_helm_endpoints_oslo_db_cell0:
+  oslo_db_cell0:
+    auth:
+      admin:
+        password: "{{ openstack_helm_endpoints_mariadb_admin_password }}"
+      nova:
+        password: "{{ openstack_helm_endpoints_nova_mariadb_password }}"
+    hosts:
+      default: percona-xtradb-haproxy
+
+_openstack_helm_endpoints_compute_metadata:
+  compute_metadata:
+    secret: "{{ openstack_helm_endpoints_neutron_metadata_secret }}"
+    hosts:
+      public: nova-metadata
+    port:
+      metadata:
+        public: 8775
+
+_openstack_helm_endpoints_compute_novnc_proxy:
+  compute_novnc_proxy:
+    scheme:
+      public: https
+    host_fqdn_override:
+      public:
+        host: "{{ openstack_helm_endpoints_nova_novnc_host }}"
+    port:
+      novnc_proxy:
+        public: 443
+    path:
+      default: /vnc_lite.html
+
+_openstack_helm_endpoints_baremetal:
+  identity:
+    auth:
+      ironic:
+        region_name: "{{ openstack_helm_endpoints_ironic_region_name }}"
+        username: "ironic-{{ openstack_helm_endpoints_ironic_region_name }}"
+        password: "{{ openstack_helm_endpoints_ironic_keystone_password }}"
+  baremetal:
+    scheme:
+      public: https
+    host_fqdn_override:
+      public:
+        host: "{{ openstack_helm_endpoints_ironic_api_host }}"
+    port:
+      api:
+        public: 443
+  oslo_db:
+    auth:
+      ironic:
+        password: "{{ openstack_helm_endpoints_ironic_mariadb_password }}"
+  oslo_messaging:
+    auth:
+      ironic:
+        password: "{{ openstack_helm_endpoints_ironic_rabbitmq_password }}"
+
+_openstack_helm_endpoints_dns:
+  identity:
+    auth:
+      designate:
+        region_name: "{{ openstack_helm_endpoints_designate_region_name }}"
+        username: "desigante-{{ openstack_helm_endpoints_designate_region_name }}"
+        password: "{{ openstack_helm_endpoints_designate_keystone_password }}"
+  dns:
+    scheme:
+      public: https
+    host_fqdn_override:
+      public:
+        host: "{{ openstack_helm_endpoints_designate_api_host }}"
+    port:
+      api:
+        public: 443
+  oslo_db:
+    auth:
+      designate:
+        password: "{{ openstack_helm_endpoints_designate_mariadb_password }}"
+  oslo_messaging:
+    auth:
+      designate:
+        password: "{{ openstack_helm_endpoints_designate_rabbitmq_password }}"
+
+_openstack_helm_endpoints_mdns:
+  mdns:
+    name: minidns
+    hosts:
+      default: minidns
+      public: designate-mdns
+    host_fqdn_override:
+      default: "{{ openstack_helm_endpoints_designate_api_host }}"
+    path:
+      default: /
+    scheme:
+      default: 'tcp'
+    port:
+      ipc:
+        default: 5354
+
+# NOTE(oleks): Once we deploy powerdns using osh chart, we will define this.
+_openstack_helm_endpoints_powerdns: {}
+
+_openstack_helm_endpoints_valkey: {}
+
+_openstack_helm_endpoints_load_balancer:
+  identity:
+    auth:
+      octavia:
+        region_name: "{{ openstack_helm_endpoints_octavia_region_name }}"
+        username: "octavia-{{ openstack_helm_endpoints_octavia_region_name }}"
+        password: "{{ openstack_helm_endpoints_octavia_keystone_password }}"
+  load_balancer:
+    scheme:
+      public: https
+    host_fqdn_override:
+      public:
+        host: "{{ openstack_helm_endpoints_octavia_api_host }}"
+    port:
+      api:
+        public: 443
+  valkey:
+    hosts:
+      default: valkey
+  oslo_db:
+    auth:
+      octavia:
+        password: "{{ openstack_helm_endpoints_octavia_mariadb_password }}"
+  oslo_db_persistence:
+    auth:
+      octavia:
+        password: "{{ openstack_helm_endpoints_octavia_mariadb_password }}"
+  oslo_messaging:
+    auth:
+      octavia:
+        password: "{{ openstack_helm_endpoints_octavia_rabbitmq_password }}"
+
+_openstack_helm_endpoints_oslo_db_persistence:
+  oslo_db_persistence:
+    auth:
+      admin:
+        password: "{{ openstack_helm_endpoints_mariadb_admin_password }}"
+      octavia:
+        password: "{{ openstack_helm_endpoints_octavia_mariadb_password }}"
+    hosts:
+      default: percona-xtradb-haproxy
+
+_openstack_helm_endpoints_cloudformation:
+  cloudformation:
+    scheme:
+      public: https
+    host_fqdn_override:
+      public:
+        host: "{{ openstack_helm_endpoints_heat_cfn_api_host }}"
+    port:
+      api:
+        public: 443
+
+_openstack_helm_endpoints_orchestration:
+  identity:
+    auth:
+      heat:
+        region_name: "{{ openstack_helm_endpoints_heat_region_name }}"
+        username: "heat-{{ openstack_helm_endpoints_heat_region_name }}"
+        password: "{{ openstack_helm_endpoints_heat_keystone_password }}"
+      heat_trustee:
+        region_name: "{{ openstack_helm_endpoints_heat_region_name }}"
+        username: "heat-trustee-{{ openstack_helm_endpoints_heat_region_name }}"
+        password: "{{ openstack_helm_endpoints_heat_trustee_keystone_password }}"
+      heat_stack_user:
+        region_name: "{{ openstack_helm_endpoints_heat_region_name }}"
+        username: "heat-stack-user-{{ openstack_helm_endpoints_heat_region_name }}"
+        password: "{{ openstack_helm_endpoints_heat_stack_user_keystone_password }}"
+    path:
+      public: /v3
+  orchestration:
+    scheme:
+      public: https
+    host_fqdn_override:
+      public:
+        host: "{{ openstack_helm_endpoints_heat_api_host }}"
+    port:
+      api:
+        public: 443
+  oslo_db:
+    auth:
+      heat:
+        password: "{{ openstack_helm_endpoints_heat_mariadb_password }}"
+  oslo_messaging:
+    auth:
+      heat:
+        password: "{{ openstack_helm_endpoints_heat_rabbitmq_password }}"
+
+_openstack_helm_endpoints_dashboard:
+  dashboard:
+    scheme:
+      public: https
+    host_fqdn_override:
+      public:
+        host: "{{ openstack_helm_endpoints_horizon_api_host }}"
+    port:
+      api:
+        public: 443
+  oslo_db:
+    auth:
+      horizon:
+        password: "{{ openstack_helm_endpoints_horizon_mariadb_password }}"
+
+_openstack_helm_endpoints_container_infra:
+  identity:
+    auth:
+      magnum:
+        region_name: "{{ openstack_helm_endpoints_magnum_region_name }}"
+        username: "magnum-{{ openstack_helm_endpoints_magnum_region_name }}"
+        password: "{{ openstack_helm_endpoints_magnum_keystone_password }}"
+      magnum_stack_user:
+        region_name: "{{ openstack_helm_endpoints_magnum_region_name }}"
+        username: "magnum-domain-{{ openstack_helm_endpoints_magnum_region_name }}"
+        password: "{{ openstack_helm_endpoints_magnum_keystone_password }}"
+  container_infra:
+    scheme:
+      public: https
+    host_fqdn_override:
+      public:
+        host: "{{ openstack_helm_endpoints_magnum_api_host }}"
+    port:
+      api:
+        public: 443
+  container_infra_registry:
+    scheme:
+      public: https
+    host_fqdn_override:
+      public:
+        host: "{{ openstack_helm_endpoints_magnum_registry_host }}"
+    port:
+      api:
+        public: 443
+  oslo_db:
+    auth:
+      magnum:
+        password: "{{ openstack_helm_endpoints_magnum_mariadb_password }}"
+  oslo_messaging:
+    auth:
+      magnum:
+        password: "{{ openstack_helm_endpoints_magnum_rabbitmq_password }}"
+
+_openstack_helm_endpoints_rook_ceph_cluster:
+  identity:
+    auth:
+      rgw:
+        region_name: "{{ openstack_helm_endpoints_rgw_region_name }}"
+        username: "rgw-{{ openstack_helm_endpoints_rgw_region_name }}"
+        password: "{{ openstack_helm_endpoints_rgw_keystone_password }}"
+  rook_ceph_cluster:
+    scheme:
+      public: https
+    host_fqdn_override:
+      public:
+        host: "{{ openstack_helm_endpoints_rgw_host }}"
+    port:
+      api:
+        public: 443
+
+_openstack_helm_endpoints_sharev2:
+  identity:
+    auth:
+      manila:
+        region_name: "{{ openstack_helm_endpoints_manila_region_name }}"
+        username: "manila-{{ openstack_helm_endpoints_manila_region_name }}"
+        password: "{{ openstack_helm_endpoints_manila_keystone_password }}"
+  oslo_db:
+    auth:
+      manila:
+        password: "{{ openstack_helm_endpoints_manila_mariadb_password }}"
+  sharev2:
+    scheme:
+      public: https
+    host_fqdn_override:
+      public:
+        host: "{{ openstack_helm_endpoints_manila_api_host }}"
+    port:
+      api:
+        public: 443
+
+_openstack_helm_endpoints_staffeln:
+  oslo_db:
+    auth:
+      staffeln:
+        password: "{{ openstack_helm_endpoints_staffeln_mariadb_password }}"
+
+_openstack_helm_endpoints_libvirt_exporter:
+  libvirt_exporter:
+    port:
+      metrics:
+        default: 9177

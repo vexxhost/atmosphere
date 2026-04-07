@@ -1,0 +1,388 @@
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Default values for tempest.
+# This is a YAML-formatted file.
+# Declare name/value pairs to be passed into your templates.
+# name: value
+
+---
+labels:
+  job:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
+
+images:
+  tags:
+    dep_check: quay.io/airshipit/kubernetes-entrypoint:v1.0.0
+    tempest_run_tests: docker.io/openstackhelm/tempest:latest-ubuntu_focal
+    ks_user: docker.io/openstackhelm/heat:wallaby-ubuntu_focal
+    image_repo_sync: docker.io/docker:17.07.0
+  pull_policy: "IfNotPresent"
+  local_registry:
+    active: false
+    exclude:
+      - dep_check
+      - image_repo_sync
+
+jobs:
+  run_tests:
+    backoffLimit: 6
+    restartPolicy: OnFailure
+
+pod:
+  user:
+    tempest:
+      uid: 1000
+  resources:
+    enabled: false
+    jobs:
+      ks_user:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      run_tests:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      image_repo_sync:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+
+dependencies:
+  dynamic:
+    common:
+      local_image_registry:
+        jobs:
+          - tempest-image-repo-sync
+        services:
+          - endpoint: node
+            service: local_image_registry
+  static:
+    ks_user:
+      services:
+      - service: identity
+        endpoint: internal
+    run_tests:
+      jobs:
+      - tempest-ks-user
+      services:
+      - service: identity
+        endpoint: internal
+    image_repo_sync:
+      services:
+        - endpoint: internal
+          service: local_image_registry
+
+helm3_hook: true
+
+conf:
+  script: |
+    tempest run --config-file /etc/tempest/tempest.conf -w 4 --smoke
+  # The following sections can be used to blacklist and whitelist specific tests.
+  # If either section is not empty, it will be used to create an entry in the
+  # tempest-etc configmap and will be mounted into the tempest-run-tests pod
+  # blacklist:
+  #   - (?:tempest\.api\.identity\.admin\.v3\.test_groups\.GroupsV3TestJSON\.test_list_groups)
+  #   - (?:tempest\.api\.image\.v2\.test_images\.ListSharedImagesTest\.test_list_images_param_member_status)
+  #   - (?:tempest\.scenario\.test_encrypted_cinder_volumes\.TestEncryptedCinderVolumes\.test_encrypted_cinder_volumes_cryptsetup)
+  #   - (?:tempest\.scenario\.test_encrypted_cinder_volumes\.TestEncryptedCinderVolumes\.test_encrypted_cinder_volumes_luks)
+  #   - (?:tempest\.api\.network\.test_networks\.NetworksIpV6Test\.test_external_network_visibility)
+  #   - (?:tempest\.api\.network\.test_networks\.NetworksTest\.test_external_network_visibility)
+  #   - (?:tempest\.scenario\.test_network_v6\.TestGettingAddress\.test_dualnet_multi_prefix_slaac)
+  #   - (?:tempest\.scenario\.test_network_v6\.TestGettingAddress\.test_dualnet_multi_prefix_dhcpv6_stateless)
+  #   - (?:tempest\.scenario\.test_network_basic_ops\.TestNetworkBasicOps\.test_update_router_admin_state)
+  #   - (?:tempest\.scenario\.test_network_basic_ops\.TestNetworkBasicOps\.test_router_rescheduling)
+  #   - (?:tempest\.scenario\.test_network_basic_ops\.TestNetworkBasicOps\.test_update_instance_port_admin_state)
+  # whitelist:
+  #   - (?:tempest\.api\.identity\.admin\.v3\.test_groups\.GroupsV3TestJSON\.test_list_groups)
+  #   - (?:tempest\.api\.image\.v2\.test_images\.ListSharedImagesTest\.test_list_images_param_member_status)
+  #   - (?:tempest\.scenario\.test_encrypted_cinder_volumes\.TestEncryptedCinderVolumes\.test_encrypted_cinder_volumes_cryptsetup)
+  #   - (?:tempest\.scenario\.test_encrypted_cinder_volumes\.TestEncryptedCinderVolumes\.test_encrypted_cinder_volumes_luks)
+  #   - (?:tempest\.api\.network\.test_networks\.NetworksIpV6Test\.test_external_network_visibility)
+  #   - (?:tempest\.api\.network\.test_networks\.NetworksTest\.test_external_network_visibility)
+  #   - (?:tempest\.scenario\.test_network_v6\.TestGettingAddress\.test_dualnet_multi_prefix_slaac)
+  #   - (?:tempest\.scenario\.test_network_v6\.TestGettingAddress\.test_dualnet_multi_prefix_dhcpv6_stateless)
+  #   - (?:tempest\.scenario\.test_network_basic_ops\.TestNetworkBasicOps\.test_update_router_admin_state)
+  #   - (?:tempest\.scenario\.test_network_basic_ops\.TestNetworkBasicOps\.test_router_rescheduling)
+  #   - (?:tempest\.scenario\.test_network_basic_ops\.TestNetworkBasicOps\.test_update_instance_port_admin_state)
+  tempest:
+    auth:
+      # admin_username value set by configmap-etc
+      admin_username: null
+      # admin_password value set by configmap-etc
+      admin_password: null
+      # admin_project_name value set by configmap-etc
+      admin_project_name: null
+      # admin_domain_name value set by configmap-etc
+      admin_domain_name: null
+      use_dynamic_credentials: true
+    dashboard: {}
+    heat_plugin:
+      # Username to use for non admin API requests
+      username: null
+      # Non admin API key to use when authenticating.
+      password: null
+      project_name: null
+      # Username to use for admin API requests
+      admin_username: null
+      # Admin API key to use when authentication
+      admin_password: null
+      # Admin project name to use for admin API requests
+      admin_project_name: null
+      auth_version: 3
+      auth_url: null
+      user_domain_name: null
+      project_domain_name: null
+      region: null
+    identity:
+      admin_domain_scope: false
+      auth_version: v3
+      # region value set by configmap-etc
+      region: null
+      # uri_v3 value set by configmap-etc
+      uri_v3: null
+    identity-feature-enabled:
+      api_v3: true
+      # this value should be the same as the keystone chart conf.keystone.identity.domain_specific_drivers_enabled
+      domain_specific_drivers: true
+    image:
+      http_image: "http://download.cirros-cloud.net/0.6.2/cirros-0.6.2-x86_64-disk.img"
+      container_formats: bare
+      disk_formats: raw
+    network:
+      project_networks_reachable: false
+      shared_physical_network: true
+    network-feature-enabled:
+      floating_ips: true
+      api_extensions:
+        - default-subnetpools
+        - network-ip-availability
+        - network_availability_zone
+        - auto-allocated-topology
+        - ext-gw-mode
+        - binding
+        - agent
+        - subnet_allocation
+        - l3_agent_scheduler
+        - tag
+        - external-net
+        - flavors
+        - net-mtu
+        - availability_zone
+        - quotas
+        - l3-ha
+        - provider
+        - multi-provider
+        - address-scope
+        - extraroute
+        - subnet-service-types
+        - standard-attr-timestamp
+        - service-type
+        - l3-flavors
+        - port-security
+        - extra_dhcp_opt
+        - standard-attr-revisions
+        - pagination
+        - sorting
+        - security-group
+        - dhcp_agent_scheduler
+        - router_availability_zone
+        - rbac-policies
+        - standard-attr-description
+        - router
+        - allowed-address-pairs
+        - project-id
+        - dvr
+    service_available:
+      cinder: true
+      glance: true
+      # The following services are marked as unavailable by default. The default
+      # tempest image used includes a bug resulting in failed network tests that
+      # wasn't fixed in newton. Swift is disabled by default as the swift chart
+      # isn't complete
+      heat: false
+      neutron: false
+      nova: false
+      swift: false
+    validation:
+      connect_method: floating
+    volume:
+      disk_formats: raw
+      backend_names: rbd1
+      storage_protocol: rbd
+      catalog_type: volumev3
+  cleanup:
+    force: false
+    enabled: true
+  tempest_logging:
+    loggers:
+      keys:
+        - root
+        - tempest
+    handlers:
+      keys:
+        - stdout
+        - "null"
+    formatters:
+      keys:
+        - tests
+        - default
+    logger_root:
+      level: DEBUG
+      handlers:
+        - 'null'
+    logger_tempest:
+      level: WARN
+      propagate: 0
+      handlers:
+        - stdout
+      qualname: tempest
+    handler_stdout:
+      class: StreamHandler
+      level: WARN
+      args: (sys.stdout,)
+      formatter: tests
+    handler_null:
+      class: logging.NullHandler
+      formatter: default
+      args: ()
+    formatter_tests:
+      class: oslo_log.formatters.ContextFormatter
+      datefmt: "%Y-%m-%d %H:%M:%S"
+    formatter_default:
+      format: "%(message)s"
+      datefmt: "%Y-%m-%d %H:%M:%S"
+
+
+pvc:
+  enabled: true
+  name: pvc-tempest
+  requests:
+    storage: 2Gi
+  storage_class: general
+
+secrets:
+  identity:
+    admin: tempest-keystone-admin
+    tempest: tempest-keystone-user
+  oci_image_registry:
+    tempest: tempest-oci-image-registry
+  tls:
+    identity:
+      api:
+        public: keystone-tls-public
+        internal: keystone-tls-api
+
+endpoints:
+  cluster_domain_suffix: cluster.local
+  local_image_registry:
+    name: docker-registry
+    namespace: docker-registry
+    hosts:
+      default: localhost
+      internal: docker-registry
+      node: localhost
+    host_fqdn_override:
+      default: null
+    port:
+      registry:
+        node: 5000
+  oci_image_registry:
+    name: oci-image-registry
+    namespace: oci-image-registry
+    auth:
+      enabled: false
+      tempest:
+        username: tempest
+        password: password
+    hosts:
+      default: localhost
+    host_fqdn_override:
+      default: null
+    port:
+      registry:
+        default: null
+  identity:
+    name: keystone
+    auth:
+      admin:
+        region_name: RegionOne
+        username: admin
+        password: password
+        project_name: admin
+        user_domain_name: default
+        project_domain_name: default
+      tempest:
+        role: admin
+        region_name: RegionOne
+        username: tempest
+        password: password
+        project_name: service
+        user_domain_name: service
+        project_domain_name: service
+    hosts:
+      default: keystone
+      internal: keystone-api
+    host_fqdn_override:
+      default: null
+    path:
+      default: /v3
+    scheme:
+      default: http
+    port:
+      api:
+        default: 80
+        internal: 5000
+  dashboard:
+    name: horizon
+    hosts:
+      default: horizon-int
+      public: horizon
+    host_fqdn_override:
+      default: null
+      # NOTE(portdirect): this chart supports TLS for fqdn over-ridden public
+      # endpoints using the following format:
+      # public:
+      #   host: null
+      #   tls:
+      #     crt: null
+      #     key: null
+    path:
+      default: null
+    scheme:
+      default: http
+    port:
+      web:
+        default: 80
+tls:
+  identity: false
+
+manifests:
+  configmap_bin: true
+  configmap_etc: true
+  job_image_repo_sync: true
+  job_ks_user: true
+  job_run_tests: true
+  secret_keystone: true
+  secret_registry: true
+...

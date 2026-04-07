@@ -1,0 +1,359 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+{{- if (.Values.global).subchart_release_name }}
+{{- $_ := set . "deployment_name" .Chart.Name }}
+{{- else }}
+{{- $_ := set . "deployment_name" .Release.Name }}
+{{- end }}
+
+{{- define "nova.configmap.etc" }}
+{{- $configMapName := index . 0 }}
+{{- $envAll := index . 1 }}
+{{- with $envAll }}
+
+{{- if empty .Values.conf.nova.keystone_authtoken.auth_uri -}}
+{{- $_ := tuple "identity" "internal" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup" | set .Values.conf.nova.keystone_authtoken "auth_uri" -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.keystone_authtoken.auth_url -}}
+{{- $_ := tuple "identity" "internal" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup" | set .Values.conf.nova.keystone_authtoken "auth_url" -}}
+{{- end -}}
+
+{{- if empty .Values.conf.nova.keystone_authtoken.region_name -}}
+{{- $_ := set .Values.conf.nova.keystone_authtoken "region_name" .Values.endpoints.identity.auth.nova.region_name -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.keystone_authtoken.project_name -}}
+{{- $_ := set .Values.conf.nova.keystone_authtoken "project_name" .Values.endpoints.identity.auth.nova.project_name -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.keystone_authtoken.project_domain_name -}}
+{{- $_ := set .Values.conf.nova.keystone_authtoken "project_domain_name" .Values.endpoints.identity.auth.nova.project_domain_name -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.keystone_authtoken.user_domain_name -}}
+{{- $_ := set .Values.conf.nova.keystone_authtoken "user_domain_name" .Values.endpoints.identity.auth.nova.user_domain_name -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.keystone_authtoken.username -}}
+{{- $_ := set .Values.conf.nova.keystone_authtoken "username" .Values.endpoints.identity.auth.nova.username -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.keystone_authtoken.password -}}
+{{- $_ := set .Values.conf.nova.keystone_authtoken "password" .Values.endpoints.identity.auth.nova.password -}}
+{{- end -}}
+
+{{- if empty .Values.conf.nova.keystone_authtoken.memcached_servers -}}
+{{- $_ := tuple "oslo_cache" "internal" "memcache" . | include "helm-toolkit.endpoints.host_and_port_endpoint_uri_lookup" | set .Values.conf.nova.keystone_authtoken "memcached_servers" -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.keystone_authtoken.memcache_secret_key -}}
+{{- $_ := set .Values.conf.nova.keystone_authtoken "memcache_secret_key" ( default ( randAlphaNum 64 ) .Values.endpoints.oslo_cache.auth.memcache_secret_key ) -}}
+{{- end -}}
+
+{{- if .Values.conf.nova.service_user.send_service_user_token -}}
+
+{{- if empty .Values.conf.nova.service_user.auth_url -}}
+{{- $_ := tuple "identity" "internal" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup" | set .Values.conf.nova.service_user "auth_url" -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.service_user.region_name -}}
+{{- $_ := set .Values.conf.nova.service_user "region_name" .Values.endpoints.identity.auth.nova.region_name -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.service_user.project_name -}}
+{{- $_ := set .Values.conf.nova.service_user "project_name" .Values.endpoints.identity.auth.nova.project_name -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.service_user.project_domain_name -}}
+{{- $_ := set .Values.conf.nova.service_user "project_domain_name" .Values.endpoints.identity.auth.nova.project_domain_name -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.service_user.user_domain_name -}}
+{{- $_ := set .Values.conf.nova.service_user "user_domain_name" .Values.endpoints.identity.auth.nova.user_domain_name -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.service_user.username -}}
+{{- $_ := set .Values.conf.nova.service_user "username" .Values.endpoints.identity.auth.nova.username -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.service_user.password -}}
+{{- $_ := set .Values.conf.nova.service_user "password" .Values.endpoints.identity.auth.nova.password -}}
+{{- end -}}
+
+{{- end -}}
+
+{{- if empty .Values.conf.nova.database.connection -}}
+{{- $connection := tuple "oslo_db" "internal" "nova" "mysql" . | include "helm-toolkit.endpoints.authenticated_endpoint_uri_lookup" -}}
+{{- if .Values.manifests.certificates -}}
+{{- $_ := (printf "%s?charset=utf8&ssl_ca=/etc/mysql/certs/ca.crt&ssl_key=/etc/mysql/certs/tls.key&ssl_cert=/etc/mysql/certs/tls.crt&ssl_verify_cert" $connection ) | set .Values.conf.nova.database "connection" -}}
+{{- else -}}
+{{- $_ := set .Values.conf.nova.database "connection" $connection -}}
+{{- end -}}
+{{- end -}}
+
+{{- if empty .Values.conf.nova.api_database.connection -}}
+{{- $connection := tuple "oslo_db_api" "internal" "nova" "mysql" . | include "helm-toolkit.endpoints.authenticated_endpoint_uri_lookup" -}}
+{{- if .Values.manifests.certificates -}}
+{{- $_ := (printf "%s?charset=utf8&ssl_ca=/etc/mysql/certs/ca.crt&ssl_key=/etc/mysql/certs/tls.key&ssl_cert=/etc/mysql/certs/tls.crt&ssl_verify_cert" $connection ) | set .Values.conf.nova.api_database "connection" -}}
+{{- else -}}
+{{- $_ := set .Values.conf.nova.api_database "connection" $connection -}}
+{{- end -}}
+{{- end -}}
+
+{{- if empty .Values.conf.nova.cell0_database.connection -}}
+{{- $connection := tuple "oslo_db_cell0" "internal" "nova" "mysql" . | include "helm-toolkit.endpoints.authenticated_endpoint_uri_lookup" -}}
+{{- if .Values.manifests.certificates -}}
+{{- $_ := (printf "%s?charset=utf8&ssl_ca=/etc/mysql/certs/ca.crt&ssl_key=/etc/mysql/certs/tls.key&ssl_cert=/etc/mysql/certs/tls.crt&ssl_verify_cert" $connection ) | set .Values.conf.nova.cell0_database "connection" -}}
+{{- else -}}
+{{- $_ := set .Values.conf.nova.cell0_database "connection" $connection -}}
+{{- end -}}
+{{- end -}}
+
+{{- if empty .Values.conf.nova.DEFAULT.transport_url -}}
+{{- $_ := tuple "oslo_messaging" "internal" "nova" "amqp" . | include "helm-toolkit.endpoints.authenticated_transport_endpoint_uri_lookup" | set .Values.conf.nova.DEFAULT "transport_url" -}}
+{{- end -}}
+
+{{- if empty .Values.conf.nova.glance.api_servers -}}
+{{- $_ := tuple "image" "internal" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup" | set .Values.conf.nova.glance "api_servers" -}}
+{{- end -}}
+
+{{- if empty .Values.conf.nova.neutron.url -}}
+{{- $_ := tuple "network" "internal" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup" | set .Values.conf.nova.neutron "url" -}}
+{{- end -}}
+
+{{- if empty .Values.conf.nova.neutron.auth_url -}}
+{{- $_ := tuple "identity" "internal" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup" | set .Values.conf.nova.neutron "auth_url" -}}
+{{- end -}}
+
+{{- if empty .Values.conf.nova.neutron.region_name -}}
+{{- $_ := set .Values.conf.nova.neutron "region_name" .Values.endpoints.identity.auth.neutron.region_name -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.neutron.project_name -}}
+{{- $_ := set .Values.conf.nova.neutron "project_name" .Values.endpoints.identity.auth.neutron.project_name -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.neutron.project_domain_name -}}
+{{- $_ := set .Values.conf.nova.neutron "project_domain_name" .Values.endpoints.identity.auth.neutron.project_domain_name -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.neutron.user_domain_name -}}
+{{- $_ := set .Values.conf.nova.neutron "user_domain_name" .Values.endpoints.identity.auth.neutron.user_domain_name -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.neutron.username -}}
+{{- $_ := set .Values.conf.nova.neutron "username" .Values.endpoints.identity.auth.neutron.username -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.neutron.password -}}
+{{- $_ := set .Values.conf.nova.neutron "password" .Values.endpoints.identity.auth.neutron.password -}}
+{{- end -}}
+
+{{- if empty .Values.conf.nova.cache.memcache_servers -}}
+{{- $_ := tuple "oslo_cache" "internal" "memcache" . | include "helm-toolkit.endpoints.host_and_port_endpoint_uri_lookup" | set .Values.conf.nova.cache "memcache_servers" -}}
+{{- end -}}
+
+{{- if and (empty .Values.conf.nova.DEFAULT.metadata_host) .Values.endpoints.compute_metadata.ip.ingress -}}
+{{- $_ := set .Values.conf.nova.DEFAULT "metadata_host" .Values.endpoints.compute_metadata.ip.ingress -}}
+{{- end -}}
+
+{{- if empty .Values.conf.nova.DEFAULT.metadata_listen_port -}}
+{{- $_ := tuple "compute_metadata" "internal" "metadata" . | include "helm-toolkit.endpoints.endpoint_port_lookup" | set .Values.conf.nova.DEFAULT "metadata_listen_port" -}}
+{{- end -}}
+
+{{- if empty .Values.conf.nova.placement.auth_url -}}
+{{- $_ := tuple "identity" "internal" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup"| set .Values.conf.nova.placement "auth_url" -}}
+{{- end -}}
+
+{{- if empty .Values.conf.nova.placement.region_name -}}
+{{- $_ := set .Values.conf.nova.placement "region_name" .Values.endpoints.identity.auth.placement.region_name -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.placement.project_name -}}
+{{- $_ := set .Values.conf.nova.placement "project_name" .Values.endpoints.identity.auth.placement.project_name -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.placement.project_domain_name -}}
+{{- $_ := set .Values.conf.nova.placement "project_domain_name" .Values.endpoints.identity.auth.placement.project_domain_name -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.placement.user_domain_name -}}
+{{- $_ := set .Values.conf.nova.placement "user_domain_name" .Values.endpoints.identity.auth.placement.user_domain_name -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.placement.username -}}
+{{- $_ := set .Values.conf.nova.placement "username" .Values.endpoints.identity.auth.placement.username -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.placement.password -}}
+{{- $_ := set .Values.conf.nova.placement "password" .Values.endpoints.identity.auth.placement.password -}}
+{{- end -}}
+
+{{- if eq .Values.console.console_kind "novnc"}}
+{{- $_ := "true" | set .Values.conf.nova.vnc "enabled" -}}
+{{- if empty .Values.conf.nova.vnc.novncproxy_base_url -}}
+{{- $_ := tuple "compute_novnc_proxy" "public" "novnc_proxy" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup" | set .Values.conf.nova.vnc "novncproxy_base_url" -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.vnc.novncproxy_port -}}
+{{- $_ := tuple "compute_novnc_proxy" "internal" "novnc_proxy" . | include "helm-toolkit.endpoints.endpoint_port_lookup" | set .Values.conf.nova.vnc "novncproxy_port" -}}
+{{- end -}}
+{{- end -}}
+
+{{- if (contains "vencrypt" .Values.conf.nova.vnc.auth_schemes) -}}
+{{- if empty .Values.conf.nova.vnc.vencrypt_client_key }}
+{{- $_ := set $envAll.Values.conf.nova.vnc "vencrypt_client_key" "/etc/pki/nova-novncproxy/tls.key" -}}
+{{- end }}
+{{- if empty .Values.conf.nova.vnc.vencrypt_client_cert }}
+{{- $_ := set $envAll.Values.conf.nova.vnc "vencrypt_client_cert" "/etc/pki/nova-novncproxy/tls.crt" -}}
+{{- end }}
+{{- if empty .Values.conf.nova.vnc.vencrypt_ca_certs }}
+{{- $_ := set $envAll.Values.conf.nova.vnc "vencrypt_ca_certs" "/etc/pki/nova-novncproxy/ca.crt" -}}
+{{- end }}
+{{- end }}
+
+{{- if eq .Values.console.console_kind "spice"}}
+{{- $_ := "false" | set .Values.conf.nova.vnc "enabled" -}}
+{{- $_ := "true" | set .Values.conf.nova.spice "enabled" -}}
+{{- if empty .Values.conf.nova.spice.html5proxy_base_url -}}
+{{- $_ := tuple "compute_spice_proxy" "public" "spice_proxy" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup" | set .Values.conf.nova.spice "html5proxy_base_url" -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.spice.html5proxy_port -}}
+{{- $_ := tuple "compute_spice_proxy" "internal" "spice_proxy" . | include "helm-toolkit.endpoints.endpoint_port_lookup" | set .Values.conf.nova.spice "html5proxy_port" -}}
+{{- end -}}
+{{- end -}}
+
+{{- if empty .Values.conf.nova.ironic.api_endpoint -}}
+{{- $_ := tuple "baremetal" "internal" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup" | set .Values.conf.nova.ironic "api_endpoint" -}}
+{{- end -}}
+
+{{- if empty .Values.conf.nova.ironic.auth_url -}}
+{{- $_ := tuple "identity" "internal" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup" | set .Values.conf.nova.ironic "auth_url" -}}
+{{- end -}}
+
+{{- if empty .Values.conf.nova.ironic.region_name -}}
+{{- $_ := set .Values.conf.nova.ironic "region_name" .Values.endpoints.identity.auth.ironic.region_name -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.ironic.project_name -}}
+{{- $_ := set .Values.conf.nova.ironic "project_name" .Values.endpoints.identity.auth.ironic.project_name -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.ironic.project_domain_name -}}
+{{- $_ := set .Values.conf.nova.ironic "project_domain_name" .Values.endpoints.identity.auth.ironic.project_domain_name -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.ironic.user_domain_name -}}
+{{- $_ := set .Values.conf.nova.ironic "user_domain_name" .Values.endpoints.identity.auth.ironic.user_domain_name -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.ironic.username -}}
+{{- $_ := set .Values.conf.nova.ironic "username" .Values.endpoints.identity.auth.ironic.username -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.ironic.password -}}
+{{- $_ := set .Values.conf.nova.ironic "password" .Values.endpoints.identity.auth.ironic.password -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.ironic.auth_type -}}
+{{- $_ := set .Values.conf.nova.ironic "auth_type" .Values.endpoints.identity.auth.ironic.auth_type -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.ironic.auth_version -}}
+{{- $_ := set .Values.conf.nova.ironic "auth_version" .Values.endpoints.identity.auth.ironic.auth_version -}}
+{{- end -}}
+
+{{- if empty .Values.conf.nova.ironic.memcache_secret_key -}}
+{{- $_ := (default (randAlphaNum 64) .Values.endpoints.oslo_cache.auth.memcache_secret_key) | set .Values.conf.nova.ironic "memcache_secret_key" -}}
+{{- end -}}
+
+{{- if empty .Values.conf.nova.ironic.memcache_servers -}}
+{{- $_ := tuple "oslo_cache" "internal" "memcache" . | include "helm-toolkit.endpoints.host_and_port_endpoint_uri_lookup" | set .Values.conf.nova.ironic "memcache_servers" -}}
+{{- end -}}
+
+{{- if .Values.conf.nova.cinder.auth_type -}}
+{{- if eq .Values.conf.nova.cinder.auth_type "password" -}}
+
+{{- if empty .Values.conf.nova.cinder.auth_url -}}
+{{- $_ := tuple "identity" "internal" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup" | set .Values.conf.nova.cinder "auth_url" -}}
+{{- end -}}
+
+{{- if empty .Values.conf.nova.cinder.os_region_name -}}
+{{- $_ := set .Values.conf.nova.cinder "os_region_name" .Values.endpoints.identity.auth.cinder.region_name -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.cinder.project_name -}}
+{{- $_ := set .Values.conf.nova.cinder "project_name" .Values.endpoints.identity.auth.cinder.project_name -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.cinder.project_domain_name -}}
+{{- $_ := set .Values.conf.nova.cinder "project_domain_name" .Values.endpoints.identity.auth.cinder.project_domain_name -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.cinder.user_domain_name -}}
+{{- $_ := set .Values.conf.nova.cinder "user_domain_name" .Values.endpoints.identity.auth.cinder.user_domain_name -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.cinder.username -}}
+{{- $_ := set .Values.conf.nova.cinder "username" .Values.endpoints.identity.auth.cinder.username -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.cinder.password -}}
+{{- $_ := set .Values.conf.nova.cinder "password" .Values.endpoints.identity.auth.cinder.password -}}
+{{- end -}}
+
+{{- end -}}
+{{- end -}}
+
+{{- if empty .Values.conf.nova.DEFAULT.osapi_compute_listen_port -}}
+{{- $_ := tuple "compute" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" | set .Values.conf.nova.DEFAULT "osapi_compute_listen_port" -}}
+{{- end -}}
+
+{{- if empty .Values.conf.nova_api_uwsgi.uwsgi.processes -}}
+{{- $_ := set .Values.conf.nova_api_uwsgi.uwsgi "processes" .Values.conf.nova.DEFAULT.osapi_compute_workers -}}
+{{- end -}}
+{{- if empty (index .Values.conf.nova_api_uwsgi.uwsgi "http-socket") -}}
+{{- $http_socket_port := tuple "compute" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" | toString }}
+{{- $http_socket := printf "0.0.0.0:%s" $http_socket_port }}
+{{- $_ := set .Values.conf.nova_api_uwsgi.uwsgi "http-socket" $http_socket -}}
+{{- end -}}
+
+{{- if empty .Values.conf.nova_metadata_uwsgi.uwsgi.processes -}}
+{{- $_ := set .Values.conf.nova_metadata_uwsgi.uwsgi "processes" .Values.conf.nova.DEFAULT.metadata_workers -}}
+{{- end -}}
+{{- if empty (index .Values.conf.nova_metadata_uwsgi.uwsgi "http-socket") -}}
+{{- $http_socket_port := .Values.network.metadata.port | toString }}
+{{- $http_socket := printf "0.0.0.0:%s" $http_socket_port }}
+{{- $_ := set .Values.conf.nova_metadata_uwsgi.uwsgi "http-socket" $http_socket -}}
+{{- end -}}
+
+{{- if and (empty .Values.conf.logging.handler_fluent) (has "fluent" .Values.conf.logging.handlers.keys) -}}
+{{- $fluentd_host := tuple "fluentd" "internal" $envAll | include "helm-toolkit.endpoints.hostname_namespaced_endpoint_lookup" }}
+{{- $fluentd_port := tuple "fluentd" "internal" "service" $envAll | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+{{- $fluent_args := printf "('%s.%s', '%s', %s)" .Release.Namespace .deployment_name $fluentd_host $fluentd_port }}
+{{- $handler_fluent := dict "class" "fluent.handler.FluentHandler" "formatter" "fluent" "args" $fluent_args -}}
+{{- $_ := set .Values.conf.logging "handler_fluent" $handler_fluent -}}
+{{- end -}}
+
+{{- if and (empty .Values.conf.logging.formatter_fluent) (has "fluent" .Values.conf.logging.formatters.keys) -}}
+{{- $formatter_fluent := dict "class" "oslo_log.formatters.FluentFormatter" -}}
+{{- $_ := set .Values.conf.logging "formatter_fluent" $formatter_fluent -}}
+{{- end -}}
+
+{{ $__nova_compute := dict }}
+{{ $_ := set $__nova_compute "config" .Values.conf.nova  }}
+{{ range .Values.conf.nova_compute_redactions }}
+{{   $_ := set $__nova_compute "config" (omit $__nova_compute.config .) }}
+{{ end }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $configMapName }}
+type: Opaque
+data:
+  rally_tests.yaml: {{ toYaml .Values.conf.rally_tests.tests | b64enc }}
+  api-paste.ini: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.paste | b64enc }}
+  policy.yaml: {{ toYaml .Values.conf.policy | b64enc }}
+  nova_sudoers: {{ $envAll.Values.conf.nova_sudoers | b64enc }}
+  rootwrap.conf: {{ .Values.conf.rootwrap | b64enc }}
+{{- range $key, $value := $envAll.Values.conf.rootwrap_filters }}
+{{- $filePrefix := replace "_" "-"  $key }}
+  {{ printf "%s.filters" $filePrefix }}: {{ $value.content | b64enc }}
+{{- end }}
+  nova.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.nova | b64enc }}
+  nova-compute.conf: {{ include "helm-toolkit.utils.to_oslo_conf" $__nova_compute.config | b64enc }}
+  logging.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.logging | b64enc }}
+  api_audit_map.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.api_audit_map | b64enc }}
+  nova-ironic.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.nova_ironic | b64enc }}
+  nova-api-uwsgi.ini: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.nova_api_uwsgi | b64enc }}
+  nova-metadata-uwsgi.ini: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.nova_metadata_uwsgi | b64enc }}
+{{- if .Values.manifests.certificates }}
+{{- include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conf.mpm_event "key" "mpm_event.conf" "format" "Secret" ) | indent 2 }}
+{{- include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conf.wsgi_nova_api "key" "wsgi-api.conf" "format" "Secret" ) | indent 2 }}
+{{- include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conf.wsgi_nova_metadata "key" "wsgi-metadata.conf" "format" "Secret" ) | indent 2 }}
+{{- end }}
+{{- if .Values.conf.security }}
+{{- include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conf.security "key" "security.conf" "format" "Secret" ) | indent 2 }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- if .Values.manifests.configmap_etc }}
+{{- list "nova-etc" . | include "nova.configmap.etc" }}
+{{- end }}

@@ -1,0 +1,56 @@
+---
+# .. vim: foldmarker=[[[,]]]:foldmethod=marker
+
+# .. Copyright (C) 2022 VEXXHOST, Inc.
+# .. SPDX-License-Identifier: Apache-2.0
+
+# Default variables
+# =================
+
+# .. contents:: Sections
+#    :local:
+
+
+# .. envvar:: keepalived_enabled [[[
+#
+# Enable Keepalived for the Atmosphere cluster.  You can disable this if you
+# are forwarding ports directly into the cluster from an external network.
+keepalived_enabled: true
+
+                                                                   # ]]]
+# .. envvar:: keepalived_password [[[
+#
+# Keepalived password
+keepalived_password: "{{ undef(hint='You must specify a Keepalived password') }}"
+
+                                                                   # ]]]
+# .. envvar:: keepalived_vip [[[
+#
+# Keepalived virtual IP address
+keepalived_vip: "{{ undef(hint='You must specify a Keepalived virtual IP address') }}"
+
+                                                                   # ]]]
+# .. envvar:: keepalived_interface [[[
+#
+# Keepalived virtual IP interface
+keepalived_interface: "{{ undef(hint='You must specify a Keepalived virtual IP interface') }}"
+
+                                                                   # ]]]
+# .. envvar:: keepalived_vrid [[[
+#
+# Keepalived virtual router id
+keepalived_vrid: 51
+
+                                                                   # ]]]
+
+keepalived_pod_dependency:
+  openvswitch:
+    - requireSameNode: true
+      labels:
+        application: neutron
+        component: neutron-ovs-agent
+  ovn:
+    - requireSameNode: true
+      labels:
+        application: ovn
+        component: ovn-controller

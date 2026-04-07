@@ -1,0 +1,118 @@
+# Default values for local-path-provisioner.
+
+replicaCount: 1
+
+image:
+  repository: rancher/local-path-provisioner
+  tag: v0.0.24
+  pullPolicy: IfNotPresent
+
+helperImage:
+  repository: busybox
+  tag: latest
+
+defaultSettings:
+  registrySecret: ~
+
+privateRegistry:
+  registryUrl: ~
+  registryUser: ~
+  registryPasswd: ~
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+## For creating the StorageClass automatically:
+storageClass:
+  create: true
+
+  ## Set a provisioner name. If unset, a name will be generated.
+  # provisionerName: rancher.io/local-path
+
+  ## Set StorageClass as the default StorageClass
+  ## Ignored if storageClass.create is false
+  defaultClass: false
+
+  ## Set a StorageClass name
+  ## Ignored if storageClass.create is false
+  name: local-path
+
+  ## ReclaimPolicy field of the class, which can be either Delete or Retain
+  reclaimPolicy: Delete
+
+# nodePathMap is the place user can customize where to store the data on each node.
+# 1. If one node is not listed on the nodePathMap, and Kubernetes wants to create volume on it, the paths specified in
+#    DEFAULT_PATH_FOR_NON_LISTED_NODES will be used for provisioning.
+# 2. If one node is listed on the nodePathMap, the specified paths will be used for provisioning.
+#     1. If one node is listed but with paths set to [], the provisioner will refuse to provision on this node.
+#     2. If more than one path was specified, the path would be chosen randomly when provisioning.
+#
+# The configuration must obey following rules:
+# 1. A path must start with /, a.k.a an absolute path.
+# 2. Root directory (/) is prohibited.
+# 3. No duplicate paths allowed for one node.
+# 4. No duplicate node allowed.
+nodePathMap:
+  - node: DEFAULT_PATH_FOR_NON_LISTED_NODES
+    paths:
+      - /opt/local-path-provisioner
+
+# `sharedFileSystemPath` allows the provisioner to use a filesystem that is mounted on all
+# nodes at the same time. In this case all access modes are supported: `ReadWriteOnce`,
+# `ReadOnlyMany` and `ReadWriteMany` for storage claims. In addition
+# `volumeBindingMode: Immediate` can be used in  StorageClass definition.
+# Please note that `nodePathMap` and `sharedFileSystemPath` are mutually exclusive.
+# If `sharedFileSystemPath` is used, then `nodePathMap` must be set to `[]`.
+# sharedFileSystemPath: ""
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+rbac:
+  # Specifies whether RBAC resources should be created
+  create: true
+
+serviceAccount:
+  # Specifies whether a ServiceAccount should be created
+  create: true
+  # The name of the ServiceAccount to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name:
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+configmap:
+  # specify the config map name
+  name: local-path-config
+  # specify the custom script for setup and teardown
+  setup: |-
+    #!/bin/sh
+    set -eu
+    mkdir -m 0777 -p "$VOL_DIR"
+  teardown: |-
+    #!/bin/sh
+    set -eu
+    rm -rf "$VOL_DIR"
+
+# Number of provisioner worker threads to call provision/delete simultaneously.
+# workerThreads: 4
+
+# Number of retries of failed volume provisioning. 0 means retry indefinitely.
+# provisioningRetryCount: 15
+
+# Number of retries of failed volume deletion. 0 means retry indefinitely.
+# deletionRetryCount: 15

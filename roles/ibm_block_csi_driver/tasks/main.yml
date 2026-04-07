@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Deploy CSI
+  kubernetes.core.k8s:
+    state: present
+    template:
+      - path: ibm-block-csi-operator.yaml.j2
+      - path: csi.ibm.com_v1_ibmblockcsi_cr.yaml.j2
+
+- name: Create Secret
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: ibm-block-csi-credentials
+        namespace: kube-system
+      type: Opaque
+      stringData:
+        management_address: "{{ ibm_block_csi_driver_management_address }}"
+        username: "{{ ibm_block_csi_driver_username }}"
+        password: "{{ ibm_block_csi_driver_password }}"
+
+- name: Create StorageClass
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      kind: StorageClass
+      apiVersion: storage.k8s.io/v1
+      metadata:
+        name: general
+        annotations:
+          storageclass.kubernetes.io/is-default-class: "true"
+      provisioner: block.csi.ibm.com
+      allowVolumeExpansion: true
+      parameters:
+        pool: "{{ ibm_block_csi_driver_pool }}"
+        io_group: "{{ ibm_block_csi_driver_io_group }}"
+        SpaceEfficiency: "{{ ibm_block_csi_driver_space_efficiency }}"
+        csi.storage.k8s.io/secret-name: ibm-block-csi-credentials
+        csi.storage.k8s.io/secret-namespace: kube-system

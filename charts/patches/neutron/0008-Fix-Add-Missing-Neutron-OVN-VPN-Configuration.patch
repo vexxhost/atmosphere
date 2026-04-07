@@ -1,0 +1,65 @@
+From 76f92ac44a181be79ffc2d657e3b4c48cbb31289 Mon Sep 17 00:00:00 2001
+From: ricolin <rlin@vexxhost.com>
+Date: Fri, 22 Aug 2025 14:39:06 +0800
+Subject: [PATCH] Fix: Add Missing Neutron OVN VPN Configuration
+
+Add the required OVN VPN configuration files to the Neutron server so VPN
+features behave as expected.
+The Neutron server receives RPC calls from the Neutron OVN VPN agent and
+executes OVN-VPN operations; therefore, the VPN configuration must be present
+on the server.
+
+ref https://review.opendev.org/c/openstack/openstack-helm/+/958261
+
+Signed-off-by: ricolin <rlin@vexxhost.com>
+Change-Id: I32ddfdd949305964d11cd5f9062bc0c41d152d83
+---
+ neutron/templates/bin/_neutron-server.sh.tpl     |  6 ++++++
+ neutron/templates/deployment-server.yaml         | 12 ++++++++++++
+ releasenotes/notes/neutron-96d95ffbdeaaf29a.yaml |  8 ++++++++
+ 3 files changed, 26 insertions(+)
+ create mode 100644 releasenotes/notes/neutron-96d95ffbdeaaf29a.yaml
+
+diff --git a/neutron/templates/bin/_neutron-server.sh.tpl b/neutron/templates/bin/_neutron-server.sh.tpl
+index 157a3dc4..a6f2675b 100644
+--- a/neutron/templates/bin/_neutron-server.sh.tpl
++++ b/neutron/templates/bin/_neutron-server.sh.tpl
+@@ -22,6 +22,12 @@ function start () {
+ {{- if ( has "ovn" .Values.network.backend ) }}
+   confs+=" --config-file /tmp/pod-shared/ovn.ini"
+ {{- end }}
++{{- if contains "vpnaas" .Values.conf.neutron.DEFAULT.service_plugins }}
++  confs+=" --config-file /etc/neutron/neutron_vpnaas.conf" \
++{{- end }}
++{{- if contains "ovn-vpnaas" .Values.conf.neutron.DEFAULT.service_plugins }}
++  confs+=" --config-file /etc/neutron/neutron_ovn_vpn_agent.ini" \
++{{- end }}
+ {{- if .Values.conf.plugins.taas.taas.enabled }}
+   confs+=" --config-file /etc/neutron/taas_plugin.ini"
+ {{- end }}
+diff --git a/neutron/templates/deployment-server.yaml b/neutron/templates/deployment-server.yaml
+index ebddaab1..9af4b413 100644
+--- a/neutron/templates/deployment-server.yaml
++++ b/neutron/templates/deployment-server.yaml
+@@ -273,6 +273,18 @@ spec:
+               mountPath: /etc/neutron/policy.yaml
+               subPath: policy.yaml
+               readOnly: true
++            {{- if contains "vpnaas" .Values.conf.neutron.DEFAULT.service_plugins }}
++            - name: neutron-etc
++              mountPath: /etc/neutron/neutron_vpnaas.conf
++              subPath: neutron_vpnaas.conf
++              readOnly: true
++            {{- end }}
++            {{- if contains "ovn-vpnaas" .Values.conf.neutron.DEFAULT.service_plugins }}
++            - name: neutron-etc
++              mountPath: /etc/neutron/neutron_ovn_vpn_agent.ini
++              subPath: neutron_ovn_vpn_agent.ini
++              readOnly: true
++            {{- end }}
+ {{- dict "enabled" .Values.manifests.certificates "name" .Values.endpoints.oslo_db.auth.admin.secret.tls.internal "path" "/etc/mysql/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
+ {{- dict "enabled" (or .Values.manifests.certificates .Values.tls.identity) "name" .Values.secrets.tls.network.server.internal "path" "/etc/neutron/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
+ {{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_messaging.auth.admin.secret.tls.internal "path" "/etc/rabbitmq/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
+-- 
+2.25.1
+

@@ -1,0 +1,86 @@
+# Copyright (c) 2023 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Reset the value of facts used for generating the configuration
+  run_once: true
+  ansible.builtin.set_fact:
+    _osa_config_diff_osa: {}
+    _osa_config_diff_atmosphere: {}
+
+- name: Slurp the configuration files for the service
+  run_once: true
+  delegate_to: "{{ hostvars[container]['physical_host'] }}"
+  ansible.builtin.slurp:
+    path: "{{ prefix }}{{ item.value }}"
+  register: _osa_config_diff_file
+  loop: "{{ osa_config_diff_config_files | dict2items }}"
+  vars:
+    container: "{{ groups[osa_config_diff_containers_group][0] }}"
+    prefix: "{% if hostvars[container].get('is_metal', False) == False %}/var/lib/lxc/{{ container }}/rootfs{% endif %}"
+
+- name: Generate dictionary with all OpenStack Ansible configuration files (INI)
+  run_once: true
+  when: item.item.key.endswith('.conf') or item.item.key.endswith('.ini')
+  ansible.builtin.set_fact:
+    _osa_config_diff_osa: "{{ _osa_config_diff_osa | combine({ item.item.key: item.content | b64decode | vexxhost.atmosphere.from_ini }) }}"
+  loop: "{{ _osa_config_diff_file.results }}"
+  loop_control:
+    label: "{{ item.item.key }}"
+
+- name: Generate dictionary with all OpenStack Ansible configuration files (YAML)
+  run_once: true
+  when: item.item.key.endswith('.yaml')
+  ansible.builtin.set_fact:
+    _osa_config_diff_osa: "{{ _osa_config_diff_osa | combine({ item.item.key: item.content | b64decode | from_yaml }) }}"
+  loop: "{{ _osa_config_diff_file.results }}"
+  loop_control:
+    label: "{{ item.item.key }}"
+
+- name: Generate configuration using Atmosphere
+  run_once: true
+  changed_when: false
+  kubernetes.core.helm_template:
+    chart_ref: "{{ osa_config_diff_chart_ref }}"
+    release_namespace: "{{ osa_config_diff_release_namespace }}"
+    release_values: "{{ osa_config_diff_release_values }}"
+    show_only:
+      - templates/configmap-etc.yaml
+  register: _osa_config_diff_helm
+
+- name: Generate dictionary with all Atmosphere configuration files (INI)
+  run_once: true
+  when: item.key.endswith('.conf') or item.key.endswith('.ini')
+  ansible.builtin.set_fact:
+    _osa_config_diff_atmosphere: "{{ _osa_config_diff_atmosphere | combine({item.key: _file_contents | vexxhost.atmosphere.from_ini }) }}"
+  loop: "{{ osa_config_diff_config_files | dict2items }}"
+  vars:
+    _file_contents: "{{ (_osa_config_diff_helm.stdout | from_yaml).data[item.key] | b64decode }}"
+
+- name: Generate dictionary with all Atmosphere configuration files (YAML)
+  run_once: true
+  when: item.key.endswith('.yaml')
+  ansible.builtin.set_fact:
+    _osa_config_diff_atmosphere: "{{ _osa_config_diff_atmosphere | combine({item.key: _file_contents | from_yaml }) }}"
+  loop: "{{ osa_config_diff_config_files | dict2items }}"
+  vars:
+    _file_contents: "{{ (_osa_config_diff_helm.stdout | from_yaml).data[item.key] | b64decode }}"
+
+- name: Print difference between Atmosphere and OpenStack Ansible
+  run_once: true
+  ansible.utils.fact_diff:
+    before: "{{ _osa_config_diff_osa }}"
+    after: "{{ _osa_config_diff_atmosphere }}"
+
+- name: Pause to verify the configuration
+  ansible.builtin.pause:

@@ -1,0 +1,59 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Create wildcard certificate
+  run_once: true
+  when: openstack_helm_ingress_wildcard_domain is defined
+  block:
+    - name: Create certificate
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: cert-manager.io/v1
+          kind: Certificate
+          metadata:
+            name: atmosphere-wildcard
+            namespace: openstack
+          spec:
+            secretName: atmosphere-wildcard
+            issuerRef:
+              kind: ClusterIssuer
+              name: "{{ openstack_helm_ingress_cluster_issuer }}"
+            dnsNames:
+              - "*.{{ openstack_helm_ingress_wildcard_domain }}"
+    - name: Set fact with wildcard certificate
+      ansible.builtin.set_fact:
+        openstack_helm_ingress_secret_name: atmosphere-wildcard
+
+- name: Add ClusterIssuer annotations
+  run_once: true
+  ansible.builtin.set_fact:
+    _openstack_helm_ingress_annotations: "{{ _openstack_helm_ingress_annotations | combine(annotations, recursive=True) }}"
+  vars:
+    annotations:
+      cert-manager.io/cluster-issuer: "{{ openstack_helm_ingress_cluster_issuer }}"
+  when: openstack_helm_ingress_secret_name is not defined
+
+- name: Create Ingress {{ openstack_helm_ingress_name }}
+  ansible.builtin.include_role:
+    name: ingress
+  vars:
+    ingress_annotations: "{{ _openstack_helm_ingress_annotations | combine(openstack_helm_ingress_annotations, recursive=True) }}"
+    ingress_name: "{{ openstack_helm_ingress_name }}"
+    ingress_namespace: openstack
+    ingress_host: "{{ openstack_helm_ingress_host }}"
+    ingress_service_name: "{{ openstack_helm_ingress_service_name }}"
+    ingress_service_port: "{{ openstack_helm_ingress_service_port }}"
+    ingress_secret_name: "{{ openstack_helm_ingress_secret_name | default(openstack_helm_ingress_service_name ~ '-certs') }}"
+    ingress_class_name: "{{ openstack_helm_ingress_class_name }}"

@@ -1,0 +1,78 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Fail if atmosphere_ceph_enabled is set
+  ansible.builtin.fail:
+    msg: >-
+      The "atmosphere_ceph_enabled" variable is no longer supported.
+      Please use the "atmosphere_storage" variable to configure storage
+      backends instead. Refer to the storage configuration documentation
+      for migration instructions.
+  when: atmosphere_ceph_enabled is defined
+
+- name: Create CA certificates
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      - apiVersion: cert-manager.io/v1
+        kind: Certificate
+        metadata:
+          name: "{{ item }}-ca"
+          namespace: openstack
+        spec:
+          commonName: libvirt
+          duration: 87600h0m0s
+          isCA: true
+          issuerRef:
+            group: cert-manager.io
+            kind: ClusterIssuer
+            name: self-signed
+          privateKey:
+            algorithm: ECDSA
+            size: 256
+          renewBefore: 720h0m0s
+          secretName: "{{ item }}-ca"
+  loop:
+    - libvirt-vnc
+    - libvirt-api
+
+- name: Create Issuers
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      - apiVersion: cert-manager.io/v1
+        kind: Issuer
+        metadata:
+          name: "{{ item }}"
+          namespace: openstack
+        spec:
+          ca:
+            secretName: "{{ item }}-ca"
+  loop:
+    - libvirt-vnc
+    - libvirt-api
+
+- name: Generate Helm values (storage)
+  ansible.builtin.set_fact:
+    _libvirt_helm_values: "{{ _libvirt_helm_values | combine(_atmosphere_storage_config | vexxhost.atmosphere.storage_to_libvirt_helm_values, recursive=True) }}"
+
+- name: Deploy Helm chart
+  run_once: true
+  kubernetes.core.helm:
+    name: "{{ libvirt_helm_release_name }}"
+    chart_ref: "{{ libvirt_helm_chart_ref }}"
+    release_namespace: "{{ libvirt_helm_release_namespace }}"
+    create_namespace: true
+    kubeconfig: "{{ libvirt_helm_kubeconfig }}"
+    values: "{{ _libvirt_helm_values | combine(libvirt_helm_values, recursive=True) }}"

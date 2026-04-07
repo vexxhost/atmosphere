@@ -1,0 +1,792 @@
+_kube_prometheus_stack_helm_values:
+  defaultRules:
+    rules:
+      alertmanager: false
+      etcd: true
+      configReloaders: true
+      general: true
+      k8s: false
+      kubeApiserverAvailability: false
+      kubeApiserverBurnrate: false
+      kubeApiserverHistogram: false
+      kubeApiserverSlos: false
+      kubeControllerManager: false
+      kubelet: false
+      kubeProxy: false
+      kubePrometheusGeneral: true
+      kubePrometheusNodeRecording: true
+      kubernetesApps: false
+      kubernetesResources: false
+      kubernetesStorage: false
+      kubernetesSystem: false
+      kubeSchedulerAlerting: false
+      kubeSchedulerRecording: false
+      kubeStateMetrics: true
+      network: true
+      node: false
+      nodeExporterAlerting: false
+      nodeExporterRecording: false
+      prometheus: true
+      prometheusOperator: true
+      windows: false
+    disabled:
+      # NOTE(mnaser): https://github.com/prometheus-community/helm-charts/issues/144
+      #               https://github.com/openshift/cluster-monitoring-operator/issues/248
+      etcdHighNumberOfFailedGRPCRequests: true
+  alertmanager:
+    config:
+      inhibit_rules:
+        - source_matchers:
+            - alertname = "NginxIngressCriticalErrorBudgetBurn"
+          target_matchers:
+            - alertname =~ "NginxIngress(High|Moderate|Low)ErrorBudgetBurn"
+          equal:
+            - service
+            - namespace
+        - source_matchers:
+            - alertname = "NginxIngressHighErrorBudgetBurn"
+          target_matchers:
+            - alertname =~ "NginxIngress(Moderate|Low)ErrorBudgetBurn"
+          equal:
+            - service
+            - namespace
+        - source_matchers:
+            - alertname = "NginxIngressModerateErrorBudgetBurn"
+          target_matchers:
+            - alertname = "NginxIngressLowErrorBudgetBurn"
+          equal:
+            - service
+            - namespace
+        - source_matchers:
+            - alertname = "CoreDNSCriticalErrorBudgetBurn"
+          target_matchers:
+            - alertname =~ "CoreDNSHighErrorBudgetBurn|CoreDNSModerateErrorBudgetBurn|CoreDNSLowErrorBudgetBurn"
+        - source_matchers:
+            - alertname = "CoreDNSHighErrorBudgetBurn"
+          target_matchers:
+            - alertname =~ "CoreDNSModerateErrorBudgetBurn|CoreDNSLowErrorBudgetBurn"
+        - source_matchers:
+            - alertname = "CoreDNSModerateErrorBudgetBurn"
+          target_matchers:
+            - alertname = "CoreDNSLowErrorBudgetBurn"
+      route:
+        group_by:
+          - alertname
+          - severity
+        receiver: notifier
+        routes:
+          - receiver: "null"
+            matchers:
+              - alertname = "InfoInhibitor"
+          - receiver: heartbeat
+            group_wait: 0s
+            group_interval: 30s
+            repeat_interval: 15s
+            matchers:
+              - alertname = "Watchdog"
+      receivers:
+        - name: "null"
+        - name: notifier
+        - name: heartbeat
+    service:
+      additionalPorts:
+        - name: oauth2-proxy
+          port: 8081
+          targetPort: 8081
+        - name: oauth2-metrics
+          port: 8082
+          targetPort: 8082
+    serviceMonitor:
+      relabelings: &relabelings_instance_to_pod_name
+        - &relabeling_set_pod_name_to_instance
+          sourceLabels:
+            - __meta_kubernetes_pod_name
+          targetLabel: instance
+        - &relabeling_drop_all_kubernetes_labels
+          action: labeldrop
+          regex: ^(container|namespace|pod|node|service)$
+    ingress:
+      enabled: true
+      servicePort: 8081
+      ingressClassName: "{{ kube_prometheus_stack_ingress_class_name }}"
+      annotations: "{{ kube_prometheus_stack_alertmanager_ingress_annotations | combine(atmosphere_ingress_annotations, recursive=True) }}"
+      hosts:
+        - "{{ kube_prometheus_stack_alertmanager_host }}"
+      tls:
+        - secretName: "{{ openstack_helm_ingress_secret_name | default('alertmanager-tls')}}"
+          hosts:
+            - "{{ kube_prometheus_stack_alertmanager_host }}"
+    alertmanagerSpec:
+      image:
+        registry: "{{ atmosphere_images['alertmanager'] | vexxhost.kubernetes.docker_image('domain') }}"
+        repository: "{{ atmosphere_images['alertmanager'] | vexxhost.kubernetes.docker_image('path') }}"
+        tag: "{{ atmosphere_images['alertmanager'] | vexxhost.kubernetes.docker_image('tag') }}"
+      storage:
+        volumeClaimTemplate:
+          spec:
+            storageClassName: general
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 40Gi
+      nodeSelector: &node_selector
+        openstack-control-plane: enabled
+      containers:
+        - name: oauth2-proxy
+          image: "{{ atmosphere_images['oauth2_proxy'] }}"
+          envFrom:
+            - secretRef:
+                name: "{{ kube_prometheus_stack_helm_release_name }}-alertmanager-oauth2-proxy"
+          resources:
+            limits:
+              cpu: 100m
+              memory: 300Mi
+            requests:
+              cpu: 100m
+              memory: 300Mi
+          livenessProbe:
+            httpGet:
+              port: oauth2-proxy
+              path: /ping
+            initialDelaySeconds: 0
+            timeoutSeconds: 1
+          readinessProbe:
+            httpGet:
+              port: oauth2-proxy
+              path: /ready
+            initialDelaySeconds: 0
+            timeoutSeconds: 5
+            successThreshold: 1
+            periodSeconds: 10
+          ports:
+            - containerPort: 8081
+              name: oauth2-proxy
+              protocol: TCP
+            - containerPort: 8082
+              name: oauth2-metrics
+              protocol: TCP
+          volumeMounts:
+            - name: ca-certificates
+              mountPath: /etc/ssl/certs/ca-certificates.crt
+              readOnly: true
+      volumes:
+        - name: ca-certificates
+          hostPath:
+            path: "{{ defaults_ca_certificates_path }}"
+  grafana:
+    adminPassword: "{{ kube_prometheus_stack_grafana_admin_password }}"
+    extraSecretMounts:
+      - name: auth-generic-oauth-secret-mount
+        secretName: "{{ kube_prometheus_stack_helm_release_name }}-grafana-client-secret"
+        defaultMode: "0440"
+        mountPath: /etc/secrets/auth_generic_oauth
+        readOnly: true
+    grafana.ini:
+      server:
+        root_url: https://{{ kube_prometheus_stack_grafana_host }}
+      auth:
+        oauth_allow_insecure_email_lookup: true
+        oauth_skip_org_role_update_sync: false
+        disable_login_form: true
+        signout_redirect_url: "{{ kube_prometheus_stack_keycloak_server_url }}/realms/{{ kube_prometheus_stack_keycloak_realm }}/protocol/openid-connect/logout?post_logout_redirect_uri=https://{{ kube_prometheus_stack_grafana_host }}/login"
+      auth.generic_oauth:
+        enabled: true
+        name: Atmosphere
+        allow_sign_up: true
+        client_id: grafana
+        client_secret: "$__file{/etc/secrets/auth_generic_oauth/password}"
+        scopes: openid email profile offline_access roles
+        email_attribute_path: email
+        login_attribute_path: username
+        name_attribute_path: full_name
+        auth_url: "{{ kube_prometheus_stack_keycloak_server_url }}/realms/{{ kube_prometheus_stack_keycloak_realm }}/protocol/openid-connect/auth"
+        token_url: "{{ kube_prometheus_stack_keycloak_server_url }}/realms/{{ kube_prometheus_stack_keycloak_realm }}/protocol/openid-connect/token"
+        api_url: "{{ kube_prometheus_stack_keycloak_server_url }}/realms/{{ kube_prometheus_stack_keycloak_realm }}/protocol/openid-connect/userinfo"
+        tls_skip_verify_insecure: true
+        # yamllint disable-line rule:line-length
+        role_attribute_path: "contains(resource_access.grafana.roles[*], 'admin') && 'Admin' || contains(resource_access.grafana.roles[*], 'editor') && 'Editor' || contains(resource_access.grafana.roles[*], 'viewer') && 'Viewer'"
+        role_attribute_strict: true
+        skip_org_role_sync: false
+    image:
+      registry: "{{ atmosphere_images['grafana'] | vexxhost.kubernetes.docker_image('domain') }}"
+      repository: "{{ atmosphere_images['grafana'] | vexxhost.kubernetes.docker_image('path') }}"
+      tag: "{{ atmosphere_images['grafana'] | vexxhost.kubernetes.docker_image('tag') }}"
+    ingress:
+      enabled: true
+      ingressClassName: "{{ kube_prometheus_stack_ingress_class_name }}"
+      annotations: "{{ kube_prometheus_stack_grafana_ingress_annotations | combine(atmosphere_ingress_annotations, recursive=True) }}"
+      hosts:
+        - "{{ kube_prometheus_stack_grafana_host }}"
+      tls:
+        - secretName: "{{ openstack_helm_ingress_secret_name | default('grafana-tls')}}"
+          hosts:
+            - "{{ kube_prometheus_stack_grafana_host }}"
+    sidecar:
+      image:
+        registry: "{{ atmosphere_images['grafana_sidecar'] | vexxhost.kubernetes.docker_image('domain') }}"
+        repository: "{{ atmosphere_images['grafana_sidecar'] | vexxhost.kubernetes.docker_image('path') }}"
+        tag: "{{ atmosphere_images['grafana_sidecar'] | vexxhost.kubernetes.docker_image('tag') }}"
+      datasources:
+        defaultDatasourceEnabled: false
+    additionalDataSources:
+      - name: AlertManager
+        type: alertmanager
+        uid: alertmanager
+        url: '{% raw %}http://{{ printf "%s-alertmanager.%s" .Release.Name .Release.Namespace }}:9093{% endraw %}'
+        access: proxy
+        editable: false
+        jsonData:
+          implementation: prometheus
+          handleGrafanaManagedAlerts: true
+      - name: Prometheus
+        type: prometheus
+        uid: prometheus
+        url: '{% raw %}http://{{ printf "%s-prometheus.%s" .Release.Name .Release.Namespace }}:9090{% endraw %}'
+        access: proxy
+        isDefault: true
+        editable: false
+        jsonData:
+          timeInterval: 30s
+          alertmanagerUid: alertmanager
+      - name: Loki
+        type: loki
+        uid: loki
+        access: proxy
+        url: http://loki-gateway
+        version: 1
+        editable: false
+        jsonData:
+          alertmanagerUid: alertmanager
+    serviceMonitor:
+      relabelings: *relabelings_instance_to_pod_name
+    nodeSelector: *node_selector
+  kubeApiServer:
+    serviceMonitor:
+      relabelings: &relabelings_instance_to_node_name
+        - sourceLabels:
+            - __meta_kubernetes_pod_node_name
+          targetLabel: instance
+        - *relabeling_drop_all_kubernetes_labels
+  kubelet:
+    serviceMonitor:
+      cAdvisorRelabelings: &relabelings_kubelet
+        - sourceLabels:
+            - __metrics_path__
+          targetLabel: metrics_path
+        - sourceLabels:
+            - node
+          targetLabel: instance
+        - *relabeling_drop_all_kubernetes_labels
+      probesRelabelings: *relabelings_kubelet
+      relabelings: *relabelings_kubelet
+  kubeControllerManager:
+    serviceMonitor:
+      relabelings: *relabelings_instance_to_node_name
+  coreDns:
+    serviceMonitor:
+      relabelings: *relabelings_instance_to_pod_name
+  kubeEtcd:
+    service:
+      port: 2379
+      targetPort: 2379
+    serviceMonitor:
+      scheme: https
+      serverName: localhost
+      insecureSkipVerify: false
+      caFile: /etc/prometheus/secrets/kube-prometheus-stack-etcd-client-cert/ca.crt
+      certFile: /etc/prometheus/secrets/kube-prometheus-stack-etcd-client-cert/healthcheck-client.crt
+      keyFile: /etc/prometheus/secrets/kube-prometheus-stack-etcd-client-cert/healthcheck-client.key
+      relabelings: *relabelings_instance_to_node_name
+  kubeScheduler:
+    service:
+      port: 10259
+      targetPort: 10259
+    serviceMonitor:
+      https: true
+      insecureSkipVerify: true
+      relabelings: *relabelings_instance_to_node_name
+  kubeProxy:
+    serviceMonitor:
+      relabelings: *relabelings_instance_to_node_name
+  kube-state-metrics:
+    image:
+      registry: "{{ atmosphere_images['kube_state_metrics'] | vexxhost.kubernetes.docker_image('domain') }}"
+      repository: "{{ atmosphere_images['kube_state_metrics'] | vexxhost.kubernetes.docker_image('path') }}"
+      tag: "{{ atmosphere_images['kube_state_metrics'] | vexxhost.kubernetes.docker_image('tag') }}"
+    prometheus:
+      monitor:
+        relabelings: *relabelings_instance_to_pod_name
+    nodeSelector: *node_selector
+  prometheus:
+    service:
+      additionalPorts:
+        - name: oauth2-proxy
+          port: 8081
+          targetPort: 8081
+        - name: oauth2-metrics
+          port: 8082
+          targetPort: 8082
+    serviceMonitor:
+      relabelings: *relabelings_instance_to_pod_name
+    ingress:
+      enabled: true
+      servicePort: 8081
+      ingressClassName: "{{ kube_prometheus_stack_ingress_class_name }}"
+      annotations: "{{ kube_prometheus_stack_prometheus_ingress_annotations | combine(atmosphere_ingress_annotations, recursive=True) }}"
+      hosts:
+        - "{{ kube_prometheus_stack_prometheus_host }}"
+      tls:
+        - secretName: "{{ openstack_helm_ingress_secret_name | default('prometheus-tls')}}"
+          hosts:
+            - "{{ kube_prometheus_stack_prometheus_host }}"
+    prometheusSpec:
+      image:
+        registry: "{{ atmosphere_images['prometheus'] | vexxhost.kubernetes.docker_image('domain') }}"
+        repository: "{{ atmosphere_images['prometheus'] | vexxhost.kubernetes.docker_image('path') }}"
+        tag: "{{ atmosphere_images['prometheus'] | vexxhost.kubernetes.docker_image('tag') }}"
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            storageClassName: general
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 100Gi
+      nodeSelector: *node_selector
+      secrets:
+        - kube-prometheus-stack-etcd-client-cert
+      containers:
+        - name: pod-tls-sidecar
+          image: "{{ atmosphere_images['pod_tls_sidecar'] }}"
+          args:
+            - --template=/config/certificate-template.yml
+            - --ca-path=/certs/ca.crt
+            - --cert-path=/certs/tls.crt
+            - --key-path=/certs/tls.key
+          env:
+            - name: POD_UID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.uid
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          volumeMounts:
+            - name: kube-prometheus-stack-prometheus-tls
+              mountPath: /config
+            - name: certs
+              mountPath: /certs
+        - name: oauth2-proxy
+          image: "{{ atmosphere_images['oauth2_proxy'] }}"
+          envFrom:
+            - secretRef:
+                name: "{{ kube_prometheus_stack_helm_release_name }}-prometheus-oauth2-proxy"
+          resources:
+            limits:
+              cpu: 100m
+              memory: 300Mi
+            requests:
+              cpu: 100m
+              memory: 300Mi
+          livenessProbe:
+            httpGet:
+              port: oauth2-proxy
+              path: /ping
+            initialDelaySeconds: 0
+            timeoutSeconds: 1
+          readinessProbe:
+            httpGet:
+              port: oauth2-proxy
+              path: /ready
+            initialDelaySeconds: 0
+            timeoutSeconds: 5
+            successThreshold: 1
+            periodSeconds: 10
+          ports:
+            - containerPort: 8081
+              name: oauth2-proxy
+              protocol: TCP
+            - containerPort: 8082
+              name: oauth2-metrics
+              protocol: TCP
+          volumeMounts:
+            - name: ca-certificates
+              mountPath: /etc/ssl/certs/ca-certificates.crt
+              readOnly: true
+      volumes:
+        - name: ca-certificates
+          hostPath:
+            path: "{{ defaults_ca_certificates_path }}"
+        - name: certs
+          emptyDir:
+            medium: Memory
+        - name: kube-prometheus-stack-prometheus-tls
+          configMap:
+            name: kube-prometheus-stack-prometheus-tls
+      volumeMounts:
+        - name: certs
+          mountPath: /certs
+    additionalServiceMonitors:
+      - name: goldpinger
+        jobLabel: app.kubernetes.io/instance
+        selector:
+          matchLabels:
+            app.kubernetes.io/instance: goldpinger
+            app.kubernetes.io/name: goldpinger
+        endpoints:
+          - port: http
+            relabelings: *relabelings_instance_to_node_name
+      - name: ceph
+        jobLabel: application
+        namespaceSelector:
+          matchNames:
+            - openstack
+        selector:
+          matchLabels:
+            application: ceph
+        endpoints:
+          - port: metrics
+            honorLabels: true
+            relabelings:
+              - action: replace
+                regex: (.*)
+                replacement: ceph
+                targetLabel: cluster
+              - *relabeling_drop_all_kubernetes_labels
+      - name: coredns
+        jobLabel: app.kubernetes.io/name
+        namespaceSelector:
+          matchNames:
+            - openstack
+        selector:
+          matchLabels:
+            app.kubernetes.io/component: metrics
+            app.kubernetes.io/name: coredns
+        endpoints:
+          - port: metrics
+            relabelings:
+              - sourceLabels:
+                  - __meta_kubernetes_pod_label_application
+                targetLabel: application
+              - *relabeling_set_pod_name_to_instance
+              - *relabeling_drop_all_kubernetes_labels
+      - name: keycloak
+        jobLabel: application
+        namespaceSelector:
+          matchNames:
+            - auth-system
+        selector:
+          matchLabels:
+            app.kubernetes.io/component: metrics
+            app.kubernetes.io/name: keycloak
+        endpoints:
+          - port: http
+            relabelings: *relabelings_instance_to_pod_name
+      - name: memcached
+        jobLabel: application
+        namespaceSelector:
+          matchNames:
+            - openstack
+        selector:
+          matchLabels:
+            application: memcached
+            component: server
+        endpoints:
+          - port: metrics
+            relabelings: *relabelings_instance_to_pod_name
+      - name: ingress-nginx-controller
+        jobLabel: app.kubernetes.io/instance
+        namespaceSelector:
+          matchNames:
+            - ingress-nginx
+        selector:
+          matchLabels:
+            app.kubernetes.io/component: controller
+            app.kubernetes.io/instance: ingress-nginx
+            app.kubernetes.io/name: ingress-nginx
+        endpoints:
+          - port: metrics
+            relabelings: *relabelings_instance_to_node_name
+      - name: openstack-exporter
+        jobLabel: jobLabel
+        namespaceSelector:
+          matchNames:
+            - openstack
+        selector:
+          matchLabels:
+            application: openstack-exporter
+        endpoints:
+          - port: metrics
+            interval: 1m
+            relabelings:
+              - action: replace
+                regex: (.*)
+                replacement: default
+                targetLabel: instance
+            scrapeTimeout: 30s
+      - name: percona-xtradb-haproxy
+        jobLabel: app.kubernetes.io/component
+        namespaceSelector:
+          matchNames:
+            - openstack
+        selector:
+          matchLabels:
+            name: percona-xtradb-haproxy-metrics
+        endpoints:
+          - port: metrics
+            interval: 1m
+            relabelings:
+              - action: replace
+                regex: (.*)
+                replacement: default
+                targetLabel: instance
+    additionalPodMonitors:
+      - name: ipmi-exporter
+        jobLabel: job
+        selector:
+          matchLabels:
+            application: ipmi-exporter
+        podMetricsEndpoints:
+          - interval: 60s
+            port: metrics
+            relabelings: *relabelings_instance_to_node_name
+      - name: libvirt-exporter
+        jobLabel: job
+        namespaceSelector:
+          matchNames:
+            - openstack
+        selector:
+          matchLabels:
+            application: libvirt
+            component: libvirt
+        podMetricsEndpoints:
+          - interval: 60s
+            port: metrics
+            relabelings: *relabelings_instance_to_node_name
+      - name: openstack-database-exporter
+        jobLabel: job
+        namespaceSelector:
+          matchNames:
+            - openstack
+        selector:
+          matchLabels:
+            application: openstack-database-exporter
+        podMetricsEndpoints:
+          - interval: 60s
+            port: metrics
+            relabelings: *relabelings_instance_to_pod_name
+      - name: percona-xtradb-pxc
+        jobLabel: app.kubernetes.io/component
+        namespaceSelector:
+          matchNames:
+            - openstack
+        selector:
+          matchLabels:
+            app.kubernetes.io/component: pxc
+            app.kubernetes.io/instance: percona-xtradb
+        podMetricsEndpoints:
+          - port: metrics
+            relabelings: *relabelings_instance_to_pod_name
+      - name: rabbitmq
+        jobLabel: app.kubernetes.io/component
+        namespaceSelector:
+          matchNames:
+            - openstack
+        selector:
+          matchLabels:
+            app.kubernetes.io/component: rabbitmq
+        podMetricsEndpoints:
+          - port: prometheus
+            relabelings: *relabelings_instance_to_pod_name
+      - name: valkey
+        jobLabel: app.kubernetes.io/name
+        namespaceSelector:
+          matchNames:
+            - openstack
+        selector:
+          matchLabels:
+            app.kubernetes.io/name: valkey
+        podMetricsEndpoints:
+          - port: metrics
+            relabelings: *relabelings_instance_to_pod_name
+  prometheusOperator:
+    admissionWebhooks:
+      patch:
+        image:
+          registry: "{{ atmosphere_images['prometheus_operator_kube_webhook_certgen'] | vexxhost.kubernetes.docker_image('domain') }}"
+          repository: "{{ atmosphere_images['prometheus_operator_kube_webhook_certgen'] | vexxhost.kubernetes.docker_image('path') }}"
+          tag: "{{ atmosphere_images['prometheus_operator_kube_webhook_certgen'] | vexxhost.kubernetes.docker_image('tag') }}"
+        nodeSelector: *node_selector
+    serviceMonitor:
+      relabelings: *relabelings_instance_to_pod_name
+    nodeSelector: *node_selector
+    image:
+      registry: "{{ atmosphere_images['prometheus_operator'] | vexxhost.kubernetes.docker_image('domain') }}"
+      repository: "{{ atmosphere_images['prometheus_operator'] | vexxhost.kubernetes.docker_image('path') }}"
+      tag: "{{ atmosphere_images['prometheus_operator'] | vexxhost.kubernetes.docker_image('tag') }}"
+    prometheusConfigReloader:
+      image:
+        registry: "{{ atmosphere_images['prometheus_config_reloader'] | vexxhost.kubernetes.docker_image('domain') }}"
+        repository: "{{ atmosphere_images['prometheus_config_reloader'] | vexxhost.kubernetes.docker_image('path') }}"
+        tag: "{{ atmosphere_images['prometheus_config_reloader'] | vexxhost.kubernetes.docker_image('tag') }}"
+  prometheus-node-exporter:
+    podAnnotations:
+      container.apparmor.security.beta.kubernetes.io/node-exporter: unconfined
+    securityContext:
+      appArmorProfile:
+        type: Unconfined
+    image:
+      registry: "{{ atmosphere_images['prometheus_node_exporter'] | vexxhost.kubernetes.docker_image('domain') }}"
+      repository: "{{ atmosphere_images['prometheus_node_exporter'] | vexxhost.kubernetes.docker_image('path') }}"
+      tag: "{{ atmosphere_images['prometheus_node_exporter'] | vexxhost.kubernetes.docker_image('tag') }}"
+    prometheus:
+      monitor:
+        scheme: https
+        tlsConfig:
+          caFile: /certs/ca.crt
+          certFile: /certs/tls.crt
+          keyFile: /certs/tls.key
+        relabelings: *relabelings_instance_to_node_name
+    serviceAccount:
+      automountServiceAccountToken: true
+    extraArgs:
+      - --collector.diskstats.ignored-devices=^(ram|loop|nbd|fd|(h|s|v|xv)d[a-z]|nvme\\d+n\\d+p)\\d+$
+      - --collector.filesystem.fs-types-exclude=^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|fusectl|fuse.squashfuse_ll|hugetlbfs|iso9660|mqueue|nsfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|sysfs|tracefs)$
+      - --collector.filesystem.mount-points-exclude=^/(dev|proc|run/credentials/.+|sys|var/lib/docker/.+|var/lib/kubelet/pods/.+|var/lib/kubelet/plugins/kubernetes.io/csi/.+|run/containerd/.+)($|/)
+      - --collector.netclass.ignored-devices=^(lxc|cilium_|qbr|qvb|qvo|tap|ovs-system|br|tbr|gre_sys|[0-9a-f]+_eth|vxlan).*$
+      - --collector.netdev.device-exclude=^(lxc|cilium_|qbr|qvb|qvo|tap|ovs-system|br|tbr|gre_sys|[0-9a-f]+_eth|vxlan).*$
+      - --collector.processes
+      - --collector.systemd
+      - --collector.stat.softirq
+      - --web.config.file=/config/node-exporter.yml
+    configmaps:
+      - name: kube-prometheus-stack-node-exporter
+        mountPath: /config
+    sidecars:
+      - name: pod-tls-sidecar
+        image: "{{ atmosphere_images['pod_tls_sidecar'] }}"
+        args:
+          - --template=/config/certificate-template.yml
+          - --ca-path=/certs/ca.crt
+          - --cert-path=/certs/tls.crt
+          - --key-path=/certs/tls.key
+        env:
+          - name: POD_UID
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.uid
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+        volumeMounts:
+          - name: kube-prometheus-stack-node-exporter
+            mountPath: /config
+    sidecarVolumeMount:
+      - name: certs
+        mountPath: /certs
+    livenessProbe:
+      httpGet:
+        scheme: https
+    readinessProbe:
+      httpGet:
+        scheme: https
+    extraManifests:
+      - |
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: kube-prometheus-stack-node-exporter
+        data:
+          node-exporter.yml: |
+            {{ kube_prometheus_stack_node_exporter_config | to_nice_yaml | indent(4) }}
+          certificate-template.yml: |
+            {{ kube_prometheus_stack_node_exporter_tls_template | to_nice_yaml | indent(4) }}
+  additionalPrometheusRulesMap: "{{ lookup('vexxhost.atmosphere.jsonnet', 'jsonnet/rules.jsonnet') }}"
+  extraManifests:
+    - apiVersion: rbac.authorization.k8s.io/v1
+      kind: Role
+      metadata:
+        name: "{{ kube_prometheus_stack_helm_release_name }}-pod-tls-sidecar"
+        namespace: "{{ kube_prometheus_stack_helm_release_namespace }}"
+      rules:
+        - apiGroups:
+            - cert-manager.io
+          verbs:
+            - get
+            - list
+            - create
+            - watch
+          resources:
+            - certificates
+        - apiGroups:
+            - ""
+          verbs:
+            - get
+            - list
+            - patch
+            - watch
+          resources:
+            - secrets
+    - apiVersion: rbac.authorization.k8s.io/v1
+      kind: RoleBinding
+      metadata:
+        name: "{{ kube_prometheus_stack_helm_release_name }}-pod-tls-sidecar"
+        namespace: "{{ kube_prometheus_stack_helm_release_namespace }}"
+      roleRef:
+        apiGroup: rbac.authorization.k8s.io
+        kind: Role
+        name: "{{ kube_prometheus_stack_helm_release_name }}-pod-tls-sidecar"
+      subjects:
+        - kind: ServiceAccount
+          name: "{{ kube_prometheus_stack_helm_release_name }}-prometheus-node-exporter"
+          namespace: "{{ kube_prometheus_stack_helm_release_namespace }}"
+        - kind: ServiceAccount
+          name: "{{ kube_prometheus_stack_helm_release_name }}-prometheus"
+          namespace: "{{ kube_prometheus_stack_helm_release_namespace }}"
+    - apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: "{{ kube_prometheus_stack_helm_release_name }}-prometheus-tls"
+      data:
+        certificate-template.yml: |
+          {{ kube_prometheus_stack_prometheus_tls_template | to_nice_yaml }}
+
+_kube_prometheus_stack_tls_template:
+  apiVersion: cert-manager.io/v1
+  kind: Certificate
+  metadata:
+    name: "{{ '{{`{{ .PodInfo.Name }}`}}' ~ '-tls' }}"
+    namespace: "{{ '{{`{{ .PodInfo.Namespace }}`}}' }}"
+  spec:
+    commonName: "{{ '{{`{{ .Hostname }}`}}' }}"
+    dnsNames:
+      - "{{ '{{`{{ .Hostname }}`}}' }}"
+      - "{{ '{{`{{ .FQDN }}`}}' }}"
+    ipAddresses:
+      - "{{ '{{`{{ .PodInfo.IP }}`}}' }}"
+    issuerRef:
+      kind: ClusterIssuer
+      name: kube-prometheus-stack
+    usages:
+      - client auth
+      - server auth
+    secretName: "{{ '{{`{{ .PodInfo.Name }}`}}' ~ '-tls' }}"

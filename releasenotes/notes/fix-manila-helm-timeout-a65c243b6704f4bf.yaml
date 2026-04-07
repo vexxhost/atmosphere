@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Increased Manila Helm deploy timeout from 300s (default) to 600s. On fresh
+    installs, Manila's db-sync hook runs 174 database migrations which can take
+    over 5 minutes, causing Helm to time out before the remaining post-install
+    hooks (rabbit-init, ks-service, ks-endpoints, ks-user) can run.

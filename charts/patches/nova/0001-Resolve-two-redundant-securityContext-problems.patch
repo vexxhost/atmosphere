@@ -1,0 +1,25 @@
+From f2940941f44ee41bc631941ea5fc316ac8b8253b Mon Sep 17 00:00:00 2001
+From: Dong Ma <dong.ma@vexxhost.com>
+Date: Tue, 11 Feb 2025 15:19:31 +0000
+Subject: [PATCH] Resolve two redundant securityContext problems
+
+---
+ nova/templates/statefulset-compute-ironic.yaml | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/nova/templates/statefulset-compute-ironic.yaml b/nova/templates/statefulset-compute-ironic.yaml
+index 377555d6..37d3fc5a 100644
+--- a/nova/templates/statefulset-compute-ironic.yaml
++++ b/nova/templates/statefulset-compute-ironic.yaml
+@@ -51,8 +51,6 @@ spec:
+ {{ tuple $envAll "nova" "compute-ironic" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
+       nodeSelector:
+         {{ .Values.labels.agent.compute_ironic.node_selector_key }}: {{ .Values.labels.agent.compute_ironic.node_selector_value }}
+-      securityContext:
+-        runAsUser: 0
+       hostPID: true
+       dnsPolicy: ClusterFirstWithHostNet
+       initContainers:
+-- 
+2.34.1
+

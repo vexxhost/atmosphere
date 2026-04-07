@@ -1,0 +1,88 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Retrieve list of all the needed endpoints
+  ansible.builtin.set_fact:
+    openstack_helm_endpoints_list: |-
+      {{ lookup('ansible.builtin.file', '../../../charts/' ~ openstack_helm_endpoints_chart ~ '/values.yaml', split_lines=False) | from_yaml | community.general.json_query('keys(endpoints)') | difference(_openstack_helm_endpoints_ignore) }}
+  when:
+    - openstack_helm_endpoints_chart is defined
+
+# NOTE(mnaser): Since we manage one-RabbitMQ per service, we create the RabbitMQ
+#               cluster here and then append the necessary values to be used
+#               inside the `oslo_messaging` section.
+- name: Configure "oslo.messaging"
+  when:
+    - '"oslo_messaging" in openstack_helm_endpoints_list'
+  block:
+    - name: Create RabbitMQ cluster
+      ansible.builtin.include_role:
+        name: rabbitmq
+      vars:
+        rabbitmq_cluster_name: "{{ openstack_helm_endpoints_chart }}"
+        rabbitmq_spec: "{{ lookup('vars', openstack_helm_endpoints_chart ~ '_rabbitmq_spec', default={}) }}"
+
+    - name: Grab RabbitMQ cluster secret
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Secret
+        name: "rabbitmq-{{ openstack_helm_endpoints_chart }}-default-user"
+        namespace: openstack
+      register: _openstack_helm_endpoints_rabbitmq_cluster_secret
+
+    - name: Cache fact with RabbitMQ cluster credentials
+      ansible.builtin.set_fact:
+        _openstack_helm_endpoints_rabbitmq_cluster_username: |-
+          {{ _openstack_helm_endpoints_rabbitmq_cluster_secret.resources[0]['data']['username'] | b64decode }}
+        _openstack_helm_endpoints_rabbitmq_cluster_password: |-
+          {{ _openstack_helm_endpoints_rabbitmq_cluster_secret.resources[0]['data']['password'] | b64decode }}
+
+# NOTE(mnaser): Since we deploy the database using the operator and we let it
+#               generate the root password, we look it up if the fact has not
+#               been cached from a previous run.
+- name: Configure "oslo.db"
+  when:
+    - '"oslo_db" in openstack_helm_endpoints_list'
+    - openstack_helm_endpoints_mariadb_admin_password is not defined
+  block:
+    - name: Grab Percona XtraDB cluster secret
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Secret
+        name: percona-xtradb
+        namespace: openstack
+      register: _openstack_helm_endpoints_oslo_db_secret
+
+    - name: Cache fact with Percona XtraDB password
+      ansible.builtin.set_fact:
+        openstack_helm_endpoints_mariadb_admin_password: "{{ _openstack_helm_endpoints_oslo_db_secret.resources[0]['data']['root'] | b64decode }}"
+
+- name: Reset value for OpenStack_Helm endpoints
+  ansible.builtin.set_fact:
+    openstack_helm_endpoints: "{{ openstack_helm_endpoints_config }}"
+
+- name: Generate OpenStack-Helm endpoints
+  ansible.builtin.set_fact:
+    openstack_helm_endpoints: |
+      {{ openstack_helm_endpoints | combine(lookup('vars', '_openstack_helm_endpoints_' + service), recursive=True) }}
+  loop: "{{ openstack_helm_endpoints_list }}"
+  loop_control:
+    loop_var: service
+
+# NOTE(mnaser): Since we use `openstack_helm_endpoints_list` to ensure that we
+#               have a common entry for endpoints and stay DRY, we need to
+#               reset the fact so it works for follow-up requests.
+- name: Clean-up facts
+  ansible.builtin.set_fact:
+    openstack_helm_endpoints_list:

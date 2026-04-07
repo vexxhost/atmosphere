@@ -1,0 +1,171 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+_nova_helm_values:
+  endpoints: "{{ openstack_helm_endpoints }}"
+  labels:
+    agent:
+      compute_ironic:
+        node_selector_key: openstack-control-plane
+        node_selector_value: enabled
+  images:
+    tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('nova') }}"
+  network:
+    backend:
+      - "{{ atmosphere_network_backend | default('openvswitch') }}"
+    ssh:
+      enabled: true
+      public_key: "{{ _nova_ssh_publickey.public_key }}"
+      private_key: "{{ nova_ssh_key | regex_replace('([^\n])$', '\\1\n') }}"
+  bootstrap:
+    structured:
+      flavors:
+        enabled: false
+  pod:
+    labels:
+      include_app_kubernetes_io: false
+    useHostNetwork:
+      novncproxy: false
+    replicas:
+      api_metadata: 3
+      osapi: 3
+      conductor: 3
+      scheduler: 3
+      novncproxy: 3
+      spiceproxy: 3
+  conf:
+    nova:
+      DEFAULT:
+        log_config_append: null
+        allow_resize_to_same_host: true
+        cpu_allocation_ratio: 4.5
+        ram_allocation_ratio: 0.9
+        disk_allocation_ratio: 3.0
+        resume_guests_state_on_host_boot: true
+        osapi_compute_workers: 8
+        metadata_workers: 8
+      api:
+        list_records_by_skipping_down_cells: false
+      barbican:
+        barbican_endpoint_type: internal
+      cache:
+        backend: oslo_cache.memcache_pool
+      conductor:
+        workers: 8
+      compute:
+        consecutive_build_service_disable_threshold: 0
+      cors:
+        allowed_origin: "*"
+        allow_headers: "X-Auth-Token,X-OpenStack-Nova-API-Version"
+      database:
+        connection_recycle_time: 600
+        max_overflow: 50
+        max_pool_size: 5
+        pool_timeout: 30
+      filter_scheduler:
+        available_filters:
+          type: multistring
+          values:
+            - nova.scheduler.filters.all_filters
+            - nova_scheduler_filters.failure_domain_filter.FailureDomainFilter
+        enabled_filters:
+          ComputeFilter,
+          AggregateTypeAffinityFilter,
+          ComputeCapabilitiesFilter,
+          PciPassthroughFilter,
+          ImagePropertiesFilter,
+          ServerGroupAntiAffinityFilter,
+          ServerGroupAffinityFilter,
+          FailureDomainFilter
+        image_properties_default_architecture: x86_64
+        max_instances_per_host: 200
+      glance:
+        enable_rbd_download: true
+      libvirt:
+        live_migration_scheme: tls
+        # TODO(mnaser): We should enable this once we figure out how to "inject"
+        #               the certificates into the existing "qemu-kvm" processes.
+        # live_migration_with_native_tls: true
+        swtpm_enabled: true
+        swtpm_user: swtpm
+        swtpm_group: swtpm
+      neutron:
+        metadata_proxy_shared_secret: "{{ openstack_helm_endpoints['compute_metadata']['secret'] }}"
+      oslo_messaging_notifications:
+        driver: noop
+      os_vif_ovs:
+        ovsdb_connection: unix:/run/openvswitch/db.sock
+      privsep_osbrick:
+        helper_command: sudo nova-rootwrap /etc/nova/rootwrap.conf privsep-helper --config-file /etc/nova/nova.conf
+      scheduler:
+        max_attempts: 3
+        workers: 8
+        discover_hosts_in_cells_interval: 30
+      vnc:
+        auth_schemes: vencrypt,none
+      # NOTE(yaguang): This is not safe but a workaround before upstream bug 2039803 is fixed.
+      workarounds:
+        skip_cpu_compare_on_dest: true
+    nova_ironic:
+      DEFAULT:
+        force_config_drive: true
+    nova_api_uwsgi:
+      uwsgi:
+        chunked-input-limit: "4096000"
+        http-auto-chunked: true
+        http-raw-body: true
+        need-app: true
+        socket-timeout: 10
+    nova_metadata_uwsgi:
+      uwsgi:
+        chunked-input-limit: "4096000"
+        http-auto-chunked: true
+        http-raw-body: true
+        need-app: true
+        socket-timeout: 10
+    rabbitmq:
+      policies:
+        - vhost: "nova"
+          name: "ha_ttl_nova"
+          definition:
+            message-ttl: 70000
+          priority: 0
+          apply-to: all
+          pattern: '^(?!(amq\.|reply_)).*'
+  manifests:
+    deployment_consoleauth: false
+    deployment_placement: false
+    ingress_metadata: false
+    ingress_novncproxy: false
+    ingress_osapi: false
+    ingress_placement: false
+    ingress_spiceproxy: false
+    job_db_init_placement: false
+    job_ks_placement_endpoints: false
+    job_ks_placement_service: false
+    job_ks_placement_user: false
+    job_storage_init: false
+    secret_keystone_placement: false
+    service_ingress_metadata: false
+    service_ingress_novncproxy: false
+    service_ingress_osapi: false
+    service_ingress_placement: false
+    service_placement: false
+    service_ingress_spiceproxy: false
+    # NOTE(mnaser): Enable this once we've got Ironic deployed.
+    statefulset_compute_ironic: false
+
+_nova_novnc_ingress_annotations:
+  nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+  nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"

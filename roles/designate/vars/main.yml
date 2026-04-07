@@ -1,0 +1,53 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+_designate_helm_values:
+  endpoints: "{{ openstack_helm_endpoints }}"
+  images:
+    tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('designate') }}"
+  conf:
+    designate:
+      DEFAULT:
+        log_config_append: null
+      database:
+        connection_recycle_time: 600
+        max_overflow: 50
+        max_pool_size: 5
+        pool_timeout: 30
+      service:central:
+        managed_resource_tenant_id: "{{ _designate_project_info.projects[0].id }}"
+    pools: "{{ designate_pools | to_yaml }}"
+    rabbitmq:
+      policies:
+        - vhost: "designate"
+          name: "ha_ttl_designate"
+          definition:
+            message-ttl: 70000
+          priority: 0
+          apply-to: all
+          pattern: '^(?!(amq\.|reply_)).*'
+  pod:
+    labels:
+      include_app_kubernetes_io: false
+    replicas:
+      api: 3
+      central: 3
+      mdns: 3
+      # NOTE(mnaser): https://github.com/vexxhost/atmosphere/issues/2824
+      producer: 1
+      sink: 3
+      worker: 3
+  manifests:
+    ingress_api: false
+    service_ingress_api: false

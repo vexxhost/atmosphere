@@ -1,0 +1,60 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+_glance_helm_values:
+  endpoints: "{{ openstack_helm_endpoints }}"
+  images:
+    tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('glance') }}"
+  bootstrap:
+    enabled: false
+  pod:
+    labels:
+      include_app_kubernetes_io: false
+    replicas:
+      api: 3
+  conf:
+    glance:
+      DEFAULT:
+        log_config_append: null
+        show_image_direct_url: true
+        show_multiple_locations: true
+        enable_import_methods: "[]"
+        workers: 8
+      cors:
+        allowed_origins: "*"
+      database:
+        connection_recycle_time: 600
+        max_overflow: 50
+        max_pool_size: 5
+        pool_timeout: 30
+      image_format:
+        disk_formats: aki,ari,qcow2,raw
+      oslo_messaging_notifications:
+        driver: noop
+    rabbitmq:
+      policies:
+        - vhost: "glance"
+          name: "ha_ttl_glance"
+          definition:
+            message-ttl: 70000
+          priority: 0
+          apply-to: all
+          pattern: '^(?!(amq\.|reply_)).*'
+  manifests:
+    ingress_api: false
+    service_ingress_api: false
+
+_glance_ingress_annotations:
+  nginx.ingress.kubernetes.io/proxy-body-size: "0"
+  nginx.ingress.kubernetes.io/proxy-request-buffering: "off"

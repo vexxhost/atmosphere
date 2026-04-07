@@ -1,0 +1,198 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+_tempest_helm_values:
+  endpoints: "{{ openstack_helm_endpoints | combine(_tempest_endpoint_values, recursive=True) }}"
+  images:
+    tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('tempest') }}"
+  jobs:
+    run_tests:
+      restartPolicy: Never
+      backoffLimit: 0
+  pod:
+    labels:
+      include_app_kubernetes_io: false
+  conf:
+    tempest:
+      service_available:
+        cinder: true
+        glance: true
+        horizon: true
+        neutron: true
+        nova: true
+        swift: true
+      compute:
+        endpoint_type: internal
+        fixed_network_name: public
+      dashboard:
+        dashboard_url: "https://{{ openstack_helm_endpoints_horizon_api_host }}"
+        disable_ssl_certificate_validation: "{{ cluster_issuer_type == 'self-signed' }}"
+      identity:
+        v3_endpoint_type: internal
+      image:
+        endpoint_type: internal
+      load_balancer:
+        endpoint_type: internal
+        enable_security_groups: true
+      network:
+        endpoint_type: internal
+        floating_network_name: public
+        shared_physical_network: false
+      network-feature-enabled:
+        port_security: true
+      placement:
+        endpoint_type: internal
+      validation:
+        image_ssh_user: cirros
+      volume:
+        endpoint_type: internal
+      object-storage:
+        build_timeout: 60
+        endpoint_type: internal
+        reseller_admin_role: admin
+  pvc:
+    enabled: false
+
+_tempest_endpoint_values:
+  identity:
+    auth:
+      tempest:
+        region_name: "{{ openstack_helm_endpoints_tempest_region_name }}"
+        username: "tempest-{{ openstack_helm_endpoints_tempest_region_name }}"
+        password: "{{ openstack_helm_endpoints_tempest_keystone_password }}"
+    path:
+      # NOTE(mnaser): Heat uses the catalog and blindly adds a /v3 to the end of
+      #               the endpoint.  This is a workaround to make it work.
+      default: /v3
+
+_tempest_network_backend_settings:
+  openvswitch:
+    conf:
+      tempest:
+        network-feature-enabled:
+          api_extensions:
+            - address-scope
+            - agent
+            - allowed-address-pairs
+            - auto-allocated-topology
+            - availability_zone
+            - binding
+            - default-subnetpools
+            - dhcp_agent_scheduler
+            - dvr
+            - ext-gw-mode
+            - external-net
+            - extra_dhcp_opt
+            - extraroute
+            - flavors
+            - l3_agent_scheduler
+            - l3-flavors
+            - l3-ha
+            - multi-provider
+            - net-mtu
+            - network_availability_zone
+            - network-ip-availability
+            - pagination
+            - port-security
+            - project-id
+            - provider
+            - qos
+            - qos-bw-limit-direction
+            - qos-bw-minimum-ingress
+            - qos-default
+            - qos-fip
+            - qos-gateway-ip
+            - qos-port-network-policy
+            - qos-pps
+            - qos-pps-minimum
+            - qos-pps-minimum-rule-alias
+            - qos-rule-type-details
+            - qos-rule-type-filter
+            - qos-rules-alias
+            - qos-specs
+            - quotas
+            - rbac-policies
+            - router
+            - router_availability_zone
+            - security-group
+            - service-type
+            - sorting
+            - standard-attr-description
+            - standard-attr-revisions
+            - standard-attr-tag
+            - standard-attr-timestamp
+            - subnet_allocation
+            - subnet-service-types
+            - tag
+            - trunk
+            - trunk-details
+  ovn:
+    conf:
+      tempest:
+        network-feature-enabled:
+          api_extensions:
+            - address-scope
+            - agent
+            - allowed-address-pairs
+            - auto-allocated-topology
+            - availability_zone
+            - binding
+            - default-subnetpools
+            - ext-gw-mode
+            - external-net
+            - extra_dhcp_opt
+            - extraroute
+            - flavors
+            - l3-flavors
+            - l3-ha
+            - multi-provider
+            - net-mtu
+            - network_availability_zone
+            - network-ip-availability
+            - pagination
+            - port-security
+            - project-id
+            - provider
+            - qos
+            - qos-bw-limit-direction
+            - qos-bw-minimum-ingress
+            - qos-default
+            - qos-fip
+            - qos-gateway-ip
+            - qos-port-network-policy
+            - qos-pps
+            - qos-pps-minimum
+            - qos-pps-minimum-rule-alias
+            - qos-rule-type-details
+            - qos-rule-type-filter
+            - qos-rules-alias
+            - qos-specs
+            - quotas
+            - rbac-policies
+            - router
+            - router_availability_zone
+            - security-group
+            - service-type
+            - sorting
+            - standard-attr-description
+            - standard-attr-revisions
+            - standard-attr-tag
+            - standard-attr-timestamp
+            - subnet_allocation
+            - subnet-service-types
+            - tag
+            - trunk
+            - trunk-details
+            - vpnaas
+            - vpn-endpoint-groups

@@ -1,0 +1,226 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+heat_template_version: 2016-10-14
+
+parameters:
+  internal_cidr:
+    type: string
+    default: 10.96.240.0/24
+    constraints:
+      - custom_constraint: net_cidr
+
+  nameservers:
+    type: comma_delimited_list
+
+  external_cidr:
+    type: string
+    default: 10.96.250.0/24
+    constraints:
+      - custom_constraint: net_cidr
+
+  public_network:
+    type: string
+    constraints:
+      - custom_constraint: neutron.network
+
+  public_key_pair:
+    type: string
+
+  image:
+    type: string
+    constraints:
+      - custom_constraint: glance.image
+
+  boot_from_volume:
+    type: boolean
+    default: false
+
+  create_bastion_host:
+    type: boolean
+    default: false
+
+  bastion_instance_type:
+    type: string
+    constraints:
+      - custom_constraint: nova.flavor
+
+  controller_instance_type:
+    type: string
+    constraints:
+      - custom_constraint: nova.flavor
+
+  compute_instance_type:
+    type: string
+    constraints:
+      - custom_constraint: nova.flavor
+
+  storage_instance_type:
+    type: string
+    constraints:
+      - custom_constraint: nova.flavor
+
+conditions:
+  create_bastion_host:
+    equals:
+      - get_param: create_bastion_host
+      - true
+
+resources:
+  router:
+    type: OS::Neutron::Router
+    properties:
+      external_gateway_info:
+        network: { get_param: public_network }
+
+  internal_network:
+    type: OS::Neutron::Net
+
+  internal_subnet:
+    type: OS::Neutron::Subnet
+    properties:
+      network: { get_resource: internal_network }
+      cidr: { get_param: internal_cidr }
+      dns_nameservers: { get_param: nameservers }
+
+  internal_network_router_interface:
+    type: OS::Neutron::RouterInterface
+    properties:
+      router: { get_resource: router }
+      subnet: { get_resource: internal_subnet }
+
+  internal_network_vip:
+    type: OS::Neutron::Port
+    properties:
+      network: { get_resource: internal_network }
+
+  internal_network_vip_floating_ip:
+    type: OS::Neutron::FloatingIP
+    depends_on:
+      - internal_network_router_interface
+    properties:
+      floating_network: { get_param: public_network }
+      port_id: { get_resource: internal_network_vip }
+
+  external_network:
+    type: OS::Neutron::Net
+
+  external_subnet:
+    type: OS::Neutron::Subnet
+    properties:
+      network: { get_resource: external_network }
+      cidr: { get_param: external_cidr }
+      dns_nameservers: { get_param: nameservers }
+      gateway_ip: null
+      allocation_pools:
+        - start: 10.96.250.100
+          end: 10.96.250.150
+
+  external_network_vip:
+    type: OS::Neutron::Port
+    properties:
+      network: { get_resource: external_network }
+
+  key_pair:
+    type: OS::Nova::KeyPair
+    properties:
+      name: { get_param: OS::stack_id }
+      public_key: { get_param: public_key_pair }
+
+  bastion_host:
+    type: server.yaml
+    condition: create_bastion_host
+    depends_on:
+      - internal_network_router_interface
+    properties:
+      name: bastion
+      index: -1
+      image: { get_param: image }
+      instance_type: { get_param: bastion_instance_type }
+      key_name: { get_resource: key_pair }
+      internal_network: { get_resource: internal_network }
+      public_network: { get_param: public_network }
+      external_network: { get_resource: external_network }
+      boot_volumes_size: 40
+      boot_from_volume: { get_param: boot_from_volume  }
+
+  controller:
+    type: OS::Heat::ResourceGroup
+    depends_on:
+      - internal_network_router_interface
+    properties:
+      count: 3
+      resource_def:
+        type: server.yaml
+        properties:
+          name: ctl
+          index: "%index%"
+          image: { get_param: image }
+          instance_type: { get_param: controller_instance_type }
+          key_name: { get_resource: key_pair }
+          internal_network: { get_resource: internal_network }
+          public_network: { get_param: public_network }
+          external_network: { get_resource: external_network }
+          boot_volumes_size: 40
+          boot_from_volume: { get_param: boot_from_volume  }
+
+  storage:
+    type: OS::Heat::ResourceGroup
+    depends_on:
+      - internal_network_router_interface
+    properties:
+      count: 3
+      resource_def:
+        type: server.yaml
+        properties:
+          name: nvme
+          index: "%index%"
+          image: { get_param: image }
+          instance_type: { get_param: storage_instance_type }
+          key_name: { get_resource: key_pair }
+          internal_network: { get_resource: internal_network }
+          public_network: { get_param: public_network }
+          external_network: { get_resource: external_network }
+          extra_volumes_count: 3
+          extra_volumes_size: 40
+          boot_volumes_size: 40
+          boot_from_volume: { get_param: boot_from_volume  }
+
+  compute:
+    type: OS::Heat::ResourceGroup
+    depends_on:
+      - internal_network_router_interface
+    properties:
+      count: 2
+      resource_def:
+        type: server.yaml
+        properties:
+          name: kvm
+          index: "%index%"
+          image: { get_param: image }
+          instance_type: { get_param: compute_instance_type }
+          key_name: { get_resource: key_pair }
+          internal_network: { get_resource: internal_network }
+          public_network: { get_param: public_network }
+          external_network: { get_resource: external_network }
+          boot_volumes_size: 40
+          boot_from_volume: { get_param: boot_from_volume  }
+
+outputs:
+  controller_floating_ip_addresses:
+    value: { get_attr: [controller, floating_ip_address] }
+  storage_floating_ip_addresses:
+    value: { get_attr: [storage, floating_ip_address] }
+  compute_floating_ip_addresses:
+    value: { get_attr: [compute, floating_ip_address] }

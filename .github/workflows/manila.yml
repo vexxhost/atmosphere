@@ -1,0 +1,82 @@
+# Copyright (c) 2023 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+name: manila
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/manila.yml
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/manila.yml
+    tags:
+      - v*
+  workflow_dispatch:
+
+jobs:
+  build-image:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@a90bcbc6539c36a85cdfeb73f7e2f433735f215b # v2.15.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout project
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y debootstrap tox qemu-utils
+
+      - name: Cache DIB_IMAGE_CACHE
+        id: cache-dib-image-cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.cache/image-create
+          key: dib-image-cache
+
+      - name: Build image
+        run: tox -ebuild-manila-image
+
+      - name: Save DIB_IMAGE_CACHE
+        id: dib-image-cache-save
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.cache/image-create
+          key: ${{ steps.cache-dib-image-cache.outputs.cache-primary-key }}
+
+      - name: Install uv
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event_name == 'release'
+        uses: step-security/setup-uv@ccf0a26ce9117d9e99292b0ce953ea5d9ffe778e # v7.3.0
+
+      - name: Publish image
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event_name == 'release'
+        run: |
+          uv run --group manila swift post -r '.r:*,.rlistings' atmosphere-images
+          uv run --group manila swift upload atmosphere-images manila-*.qcow2
+        env:
+          OS_AUTH_URL: https://auth.vexxhost.net/v3
+          OS_REGION_NAME: ca-ymq-1
+          OS_USER_DOMAIN_NAME: Default
+          OS_USERNAME: ${{ secrets.OS_USERNAME }}
+          OS_PASSWORD: ${{ secrets.OS_PASSWORD }}
+          OS_PROJECT_DOMAIN_NAME: Default
+          OS_PROJECT_NAME: ${{ secrets.OS_PROJECT_NAME }}

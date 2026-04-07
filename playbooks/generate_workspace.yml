@@ -1,0 +1,436 @@
+# Copyright (c) 2022 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Generate workspace for Atmosphere
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Create folders for workspace
+      ansible.builtin.file:
+        path: "{{ workspace_path }}/{{ item }}"
+        state: directory
+      loop:
+        - group_vars
+        - group_vars/all
+        - group_vars/controllers
+        - group_vars/cephs
+        - group_vars/computes
+        - host_vars
+
+- name: Generate Ceph control plane configuration for workspace
+  hosts: localhost
+  gather_facts: false
+  vars:
+    _ceph_path: "{{ workspace_path }}/group_vars/all/ceph.yml"
+    # Input variables
+    ceph_fsid: "{{ lookup('password', '/dev/null chars=ascii_letters,digits') | to_uuid }}"
+    ceph_public_network: 10.96.240.0/24
+  tasks:
+    - name: Ensure the Ceph control plane configuration file exists
+      ansible.builtin.file:
+        path: "{{ _ceph_path }}"
+        state: touch
+
+    - name: Load the current Ceph control plane configuration into a variable
+      ansible.builtin.include_vars:
+        file: "{{ _ceph_path }}"
+        name: ceph
+
+    - name: Generate Ceph control plane values for missing variables
+      ansible.builtin.set_fact:
+        ceph: "{{ ceph | default({}) | combine({item.key: item.value}) }}"
+      # NOTE(mnaser): We don't want to override existing Ceph configurations,
+      #               so we generate a stub one if and only if it doesn't exist
+      when: item.key not in ceph
+      # NOTE(mnaser): This is absolutely hideous but there's no clean way of
+      #               doing this using `with_fileglob` or `with_filetree`
+      with_dict:
+        ceph_fsid: "{{ ceph_fsid }}"
+        ceph_mon_public_network: "{{ ceph_public_network }}"
+
+    - name: Write new Ceph control plane configuration file to disk
+      ansible.builtin.copy:
+        content: "{{ ceph | to_nice_yaml(indent=2, width=180) }}"
+        dest: "{{ _ceph_path }}"
+
+- name: Generate Ceph OSD configuration for workspace
+  hosts: localhost
+  gather_facts: false
+  vars:
+    _ceph_osd_path: "{{ workspace_path }}/group_vars/cephs/osds.yml"
+  tasks:
+    - name: Ensure the Ceph OSDs configuration file exists
+      ansible.builtin.file:
+        path: "{{ _ceph_osd_path }}"
+        state: touch
+
+    - name: Load the current Ceph OSDs configuration into a variable
+      ansible.builtin.include_vars:
+        file: "{{ _ceph_osd_path }}"
+        name: ceph_osd
+
+    - name: Generate Ceph OSDs values for missing variables
+      ansible.builtin.set_fact:
+        ceph_osd: "{{ ceph_osd | default({}) | combine({item.key: item.value}) }}"
+      # NOTE(mnaser): We don't want to override existing Ceph configurations,
+      #               so we generate a stub one if and only if it doesn't exist
+      when: item.key not in ceph_osd
+      # NOTE(mnaser): This is absolutely hideous but there's no clean way of
+      #               doing this using `with_fileglob` or `with_filetree`
+      with_dict:
+        ceph_osd_devices:
+          - /dev/vdb
+          - /dev/vdc
+          - /dev/vdd
+
+    - name: Write new Ceph OSDs configuration file to disk
+      ansible.builtin.copy:
+        content: "{{ ceph_osd | to_nice_yaml(indent=2, width=180) }}"
+        dest: "{{ _ceph_osd_path }}"
+
+- name: Generate Kubernetes configuration for workspace
+  hosts: localhost
+  gather_facts: false
+  vars:
+    _kubernetes_path: "{{ workspace_path }}/group_vars/all/kubernetes.yml"
+  tasks:
+    - name: Ensure the Kubernetes configuration file exists
+      ansible.builtin.file:
+        path: "{{ _kubernetes_path }}"
+        state: touch
+
+    - name: Load the current Kubernetes configuration into a variable
+      ansible.builtin.include_vars:
+        file: "{{ _kubernetes_path }}"
+        name: kubernetes
+
+    - name: Generate Kubernetes values for missing variables
+      ansible.builtin.set_fact:
+        kubernetes: "{{ kubernetes | default({}) | combine({item.key: item.value}) }}"
+      # NOTE(mnaser): We don't want to override existing Ceph configurations,
+      #               so we generate a stub one if and only if it doesn't exist
+      when: item.key not in kubernetes
+      # NOTE(mnaser): This is absolutely hideous but there's no clean way of
+      #               doing this using `with_fileglob` or `with_filetree`
+      with_dict:
+        kubernetes_hostname: 10.96.240.10
+        kubernetes_keepalived_vrid: 42
+        kubernetes_keepalived_vip: 10.96.240.10
+
+    - name: Write new Kubernetes configuration file to disk
+      ansible.builtin.copy:
+        content: "{{ kubernetes | to_nice_yaml(indent=2, width=180) }}"
+        dest: "{{ _kubernetes_path }}"
+
+- name: Generate Keepalived configuration for workspace
+  hosts: localhost
+  gather_facts: false
+  vars:
+    _keepalived_path: "{{ workspace_path }}/group_vars/all/keepalived.yml"
+  tasks:
+    - name: Ensure the Keeaplived configuration file exists
+      ansible.builtin.file:
+        path: "{{ _keepalived_path }}"
+        state: touch
+
+    - name: Load the current Keepalived configuration into a variable
+      ansible.builtin.include_vars:
+        file: "{{ _keepalived_path }}"
+        name: keepalived
+
+    - name: Generate Keepalived values for missing variables
+      ansible.builtin.set_fact:
+        keepalived: "{{ keepalived | default({}) | combine({item.key: item.value}) }}"
+      # NOTE(mnaser): We don't want to override existing Keepalived configurations,
+      #               so we generate a stub one if and only if it doesn't exist
+      when: item.key not in keepalived
+      # NOTE(mnaser): This is absolutely hideous but there's no clean way of
+      #               doing this using `with_fileglob` or `with_filetree`
+      with_dict:
+        keepalived_interface: br-ex
+        keepalived_vip: 10.96.250.10
+
+    - name: Write new Keepalived configuration file to disk
+      ansible.builtin.copy:
+        content: "{{ keepalived | to_nice_yaml(indent=2, width=180) }}"
+        dest: "{{ _keepalived_path }}"
+
+- name: Generate endpoints for workspace
+  hosts: localhost
+  vars:
+    _endpoints_path: "{{ workspace_path }}/group_vars/all/endpoints.yml"
+    # Input variables
+    region_name: RegionOne
+    domain_name: vexxhost.cloud
+  tasks:
+    - name: Ensure the endpoints file exists
+      ansible.builtin.file:
+        path: "{{ _endpoints_path }}"
+        state: touch
+
+    - name: Load the current endpoints into a variable
+      ansible.builtin.include_vars:
+        file: "{{ _endpoints_path }}"
+        name: endpoints
+
+    - name: Generate endpoint skeleton for missing variables
+      ansible.builtin.set_fact:
+        endpoints: |
+          {{
+            endpoints |
+              default({}) |
+                combine({item: default_map[item]})
+          }}
+      # NOTE(mnaser): We don't want to override existing endpoints, so we generate
+      #               a stub one if and only if it doesn't exist
+      when: item not in endpoints
+      # NOTE(mnaser): This is absolutely hideous but there's no clean way of
+      #               doing this using `with_fileglob` or `with_filetree`
+      with_lines: >
+        ls {{ playbook_dir }}/../roles/*/defaults/main.yml |
+          xargs grep undef |
+            egrep '(_host|region_name)' |
+              cut -d':' -f2
+      # NOTE(mnaser): We use these variables to generate map of service name to
+      #               service type in order to generate the URLs
+      vars:
+        default_map:
+          keycloak_host: "keycloak.{{ domain_name }}"
+          kube_prometheus_stack_prometheus_host: "prometheus.{{ domain_name }}"
+          kube_prometheus_stack_alertmanager_host: "alertmanager.{{ domain_name }}"
+          kube_prometheus_stack_grafana_host: "grafana.{{ domain_name }}"
+          openstack_helm_endpoints_region_name: "{{ region_name }}"
+          openstack_helm_endpoints_barbican_api_host: "key-manager.{{ domain_name }}"
+          openstack_helm_endpoints_cinder_api_host: "volume.{{ domain_name }}"
+          openstack_helm_endpoints_designate_api_host: "dns.{{ domain_name }}"
+          openstack_helm_endpoints_glance_api_host: "image.{{ domain_name }}"
+          openstack_helm_endpoints_heat_api_host: "orchestration.{{ domain_name }}"
+          openstack_helm_endpoints_heat_cfn_api_host: "cloudformation.{{ domain_name }}"
+          openstack_helm_endpoints_horizon_api_host: "dashboard.{{ domain_name }}"
+          openstack_helm_endpoints_ironic_api_host: "baremetal.{{ domain_name }}"
+          openstack_helm_endpoints_keystone_api_host: "identity.{{ domain_name }}"
+          openstack_helm_endpoints_neutron_api_host: "network.{{ domain_name }}"
+          openstack_helm_endpoints_nova_api_host: "compute.{{ domain_name }}"
+          openstack_helm_endpoints_nova_novnc_host: "vnc.{{ domain_name }}"
+          openstack_helm_endpoints_octavia_api_host: "load-balancer.{{ domain_name }}"
+          openstack_helm_endpoints_placement_api_host: "placement.{{ domain_name }}"
+          openstack_helm_endpoints_magnum_api_host: "container-infra.{{ domain_name }}"
+          openstack_helm_endpoints_magnum_registry_host: "container-infra-registry.{{ domain_name }}"
+          openstack_helm_endpoints_rgw_host: "object-store.{{ domain_name }}"
+          openstack_helm_endpoints_manila_api_host: "share.{{ domain_name }}"
+
+    - name: Write new endpoints file to disk
+      ansible.builtin.copy:
+        content: "{{ endpoints | to_nice_yaml(indent=2, width=180) }}"
+        dest: "{{ _endpoints_path }}"
+
+    - name: Ensure the endpoints file exists
+      ansible.builtin.file:
+        path: "{{ _endpoints_path }}"
+        state: touch
+
+- name: Generate Neutron configuration for workspace
+  hosts: localhost
+  gather_facts: false
+  vars:
+    _neutron_path: "{{ workspace_path }}/group_vars/all/neutron.yml"
+    # Input variables
+  tasks:
+    - name: Ensure the Neutron configuration file exists
+      ansible.builtin.file:
+        path: "{{ _neutron_path }}"
+        state: touch
+
+    - name: Load the current Neutron configuration into a variable
+      ansible.builtin.include_vars:
+        file: "{{ _neutron_path }}"
+        name: neutron
+
+    - name: Generate Neutron values for missing variables
+      ansible.builtin.set_fact:
+        neutron: "{{ neutron | default({}) | combine({item.key: item.value}) }}"
+      # NOTE(mnaser): We don't want to override existing Ceph configurations,
+      #               so we generate a stub one if and only if it doesn't exist
+      when: item.key not in neutron
+      with_dict:
+        neutron_networks:
+          - name: public
+            external: true
+            shared: true
+            mtu_size: 1500
+            port_security_enabled: true
+            provider_network_type: flat
+            provider_physical_network: external
+            subnets:
+              - name: public-subnet
+                cidr: 10.96.250.0/24
+                gateway_ip: 10.96.250.10
+                allocation_pool_start: 10.96.250.200
+                allocation_pool_end: 10.96.250.220
+                enable_dhcp: true
+
+    - name: Write new Neutron configuration file to disk
+      ansible.builtin.copy:
+        content: "{{ neutron | to_nice_yaml(indent=2, width=180) }}"
+        dest: "{{ _neutron_path }}"
+
+- name: Generate Nova configuration for workspace
+  hosts: localhost
+  gather_facts: false
+  vars:
+    _nova_path: "{{ workspace_path }}/group_vars/all/nova.yml"
+    # Input variables
+  tasks:
+    - name: Ensure the Nova configuration file exists
+      ansible.builtin.file:
+        path: "{{ _nova_path }}"
+        state: touch
+
+    - name: Load the current Nova configuration into a variable
+      ansible.builtin.include_vars:
+        file: "{{ _nova_path }}"
+        name: nova
+
+    - name: Generate Nova values for missing variables
+      ansible.builtin.set_fact:
+        nova: "{{ nova | default({}) | combine({item.key: item.value}) }}"
+      # NOTE(mnaser): We don't want to override existing Nova configurations,
+      #               so we generate a stub one if and only if it doesn't exist
+      when: item.key not in nova
+      with_dict:
+        nova_flavors:
+          - name: m1.tiny
+            ram: 512
+            disk: 1
+            vcpus: 1
+          - name: m1.small
+            ram: 2048
+            disk: 20
+            vcpus: 1
+          - name: "m1.medium"
+            ram: 4096
+            disk: 40
+            vcpus: 2
+          - name: "m1.large"
+            ram: 8192
+            disk: 80
+            vcpus: 4
+          - name: "m1.xlarge"
+            ram: 16384
+            disk: 160
+            vcpus: 8
+
+    - name: Write new Nova configuration file to disk
+      ansible.builtin.copy:
+        content: "{{ nova | to_nice_yaml(indent=2, width=180) }}"
+        dest: "{{ _nova_path }}"
+
+- name: Generate secrets for workspace
+  hosts: localhost
+  gather_facts: false
+  vars:
+    secrets_path: "{{ workspace_path }}/group_vars/all/secrets.yml"
+  tasks:
+    - name: Ensure the secrets file exists
+      ansible.builtin.file:
+        path: "{{ secrets_path }}"
+        state: touch
+
+    - name: Load the current secrets into a variable
+      ansible.builtin.include_vars:
+        file: "{{ secrets_path }}"
+        name: secrets
+
+    - name: Generate secrets for missing variables
+      ansible.builtin.set_fact:
+        secrets: "{{ secrets | default({}) | combine({item: lookup('password', '/dev/null chars=ascii_lowercase,ascii_uppercase,digits length=32')}) }}"
+      # NOTE(mnaser): We don't want to override existing secrets, so we generate
+      #               a new one if and only if it doesn't exist
+      when: item not in secrets
+      # NOTE(mnaser): This is absolutely hideous but there's no clean way of
+      #               doing this using `with_fileglob` or `with_filetree`
+      with_lines: >
+        ls {{ playbook_dir }}/../roles/*/defaults/main.yml |
+          xargs egrep '(undef|^# \w+_keycloak_client_secret)' |
+            egrep -v '(_host|region_name|_ssh_key|_vip|_interface|_kek)' |
+              cut -d':' -f2 |
+                sed 's/^# //'
+
+    - name: Generate base64 encoded secrets
+      ansible.builtin.set_fact:
+        secrets: "{{ secrets | default({}) | combine({item: lookup('password', '/dev/null chars=ascii_lowercase,ascii_uppercase,digits length=32') | b64encode}) }}"
+      # NOTE(mnaser): We don't want to override existing secrets, so we generate
+      #               a new one if and only if it doesn't exist
+      when: item not in secrets
+      # NOTE(mnaser): This is absolutely hideous but there's no clean way of
+      #               doing this using `with_fileglob` or `with_filetree`
+      with_lines: >
+        ls {{ playbook_dir }}/../roles/*/defaults/main.yml |
+          xargs grep undef |
+            egrep '(_kek)' |
+              cut -d':' -f2
+
+    - name: Generate temporary files for generating keys for missing variables
+      ansible.builtin.tempfile:
+        state: file
+        prefix: "{{ item }}"
+      register: _ssh_key_file
+      # NOTE(mnaser): We don't want to override existing secrets, so we generate
+      #               a new one if and only if it doesn't exist
+      when: item not in secrets
+      # NOTE(mnaser): This is absolutely hideous but there's no clean way of
+      #               doing this using `with_fileglob` or `with_filetree`
+      with_lines: >
+        ls {{ playbook_dir }}/../roles/*/defaults/main.yml |
+          xargs grep undef |
+            egrep '(_ssh_key)' |
+              cut -d':' -f2
+
+    - name: Generate SSH keys for missing variables
+      when: item.path is defined
+      community.crypto.openssh_keypair:
+        path: "{{ item.path }}"
+        regenerate: full_idempotence
+      register: _openssh_keypair
+      loop: "{{ _ssh_key_file.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+    - name: Set values for SSH keys
+      when: item.path is defined
+      ansible.builtin.set_fact:
+        secrets: "{{ secrets | default({}) | combine({item.item: lookup('file', item.path) + '\n'}) }}"
+      loop: "{{ _ssh_key_file.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+    - name: Delete the temporary files generated for SSH keys
+      when: item.path is defined
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ _ssh_key_file.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+    - name: Write new secrets file to disk
+      ansible.builtin.copy:
+        content: "{{ secrets | to_nice_yaml }}"
+        dest: "{{ secrets_path }}"
+
+    - name: Encrypt secrets file with Vault password
+      ansible.builtin.shell:
+        ansible-vault encrypt --vault-password-file {{ secrets_vault_password_file }} {{ secrets_path }}
+      when:
+        - secrets_vault_password_file is defined
