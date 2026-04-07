@@ -31,7 +31,7 @@
 - name: Generate workspace
   ansible.builtin.import_playbook: vexxhost.atmosphere.generate_workspace
   vars:
-    workspace_path: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}"
+    workspace_path: "{{ atmosphere_workspace_path | default(lookup('env', 'ATMOSPHERE_WORKSPACE_PATH')) | default(lookup('env', 'MOLECULE_SCENARIO_DIRECTORY'), true) }}"
     domain_name: "{{ ansible_default_ipv4['address'].replace('.', '-') }}.nip.io"
 
 - name: Setup networking
