@@ -31,6 +31,8 @@
     roles:
       - zuul: opendev.org/openstack/openstack-helm
     vars:
+      molecule_environment:
+        ATMOSPHERE_ZUUL_INVENTORY: "{{ ansible_user_dir }}/{{ zuul.project.src_dir }}/inventory.yaml"
       atmosphere_image_prefix: "harbor.atmosphere.dev/"
       ceph_fsid: 4837cbf8-4f90-4300-b3f6-726c9b9f89b4
       ceph_conf_overrides:
@@ -84,7 +86,7 @@
     nodeset: atmosphere-ubuntu-jammy-single-node-16
     vars:
       molecule_scenario: aio
-      atmosphere_workspace_path: "{{ MOLECULE_PROJECT_DIRECTORY }}"
+      atmosphere_workspace_path: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}"
       ceph_version: 18.2.7
       ceph_osd_devices:
         - /dev/vdb
