@@ -34,6 +34,8 @@ provisioner:
   config_options:
     defaults:
       callbacks_enabled: ansible.posix.profile_tasks
+    connection:
+      pipelining: true
     tags:
       run: ${ATMOSPHERE_ANSIBLE_TAGS-all}
   options:
@@ -42,5 +44,11 @@ provisioner:
     links:
       host_vars: "${ATMOSPHERE_ANSIBLE_VARS_PATH-$MOLECULE_SCENARIO_DIRECTORY}/host_vars"
       group_vars: "${ATMOSPHERE_ANSIBLE_VARS_PATH-$MOLECULE_SCENARIO_DIRECTORY}/group_vars"
+ansible:
+  executor:
+    backend: ansible-playbook
+    args:
+      ansible_playbook:
+        - --inventory=${ATMOSPHERE_ZUUL_INVENTORY:-/dev/null}
 verifier:
   name: ansible
