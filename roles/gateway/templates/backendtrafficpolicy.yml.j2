@@ -22,3 +22,11 @@ spec:
   requestBuffer:
     limit: {{ gateway_route_config.backend_traffic_policy_request_buffer_limit }}
 {% endif %}
+{% if gateway_route_config.backend_traffic_policy_session_persistence is defined %}
+   sessionPersistence:
+     type: Cookie
+     absoluteTimeout: {{ gateway_route_config.backend_traffic_policy_session_persistence.timeout | default('24h') }}
+     cookieConfig:
+       name: {{ gateway_route_config.backend_traffic_policy_session_persistence.cookie_name | default('ENVOY_SESSION') }}
+       lifetimeType: {{ gateway_route_config.backend_traffic_policy_session_persistence.lifetime_type | default('Session') }}
+{% endif %}

@@ -82,6 +82,6 @@ _horizon_ingress_annotations:
   nginx.ingress.kubernetes.io/cors-allow-origin: "{{ openstack_helm_endpoints_horizon_api_host }}"
 
 _horizon_gateway_config:
-  backend_traffic_policy_request_buffer_limit: 5000Mi
+  backend_traffic_policy_request_buffer_limit: 4000Mi # uint32 max (4,294,967,295 bytes = 4GiB (Gibibytes))
   security_policy_cors_allow_origins:
     - "https://{{ openstack_helm_endpoints_horizon_api_host }}"

@@ -1,0 +1,22 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ gateway_name }}-http-redirect
+  namespace: {{ gateway_namespace }}
+spec:
+  parentRefs:
+    - kind: Gateway
+      group: gateway.networking.k8s.io
+      name: {{ gateway_name }}
+      namespace: {{ gateway_namespace }}
+      sectionName: http # We assume the listener name for HTTP is 'http' as defined in gateway_listeners
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      filters:
+        - type: RequestRedirect
+          requestRedirect:
+            scheme: https
+            statusCode: 308
