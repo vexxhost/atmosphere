@@ -1,0 +1,158 @@
+package deploy
+
+import (
+	"context"
+	"fmt"
+	"io"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"sync"
+)
+
+// Orchestrator coordinates the parallel deployment of Atmosphere components.
+type Orchestrator struct {
+	// Deployer is the deployment backend (e.g., AnsibleDeployer).
+	Deployer Deployer
+	// Inventory is the path to the Ansible inventory file.
+	Inventory string
+	// PlaybookDir is the directory containing playbook files.
+	PlaybookDir string
+	// Output is the writer for status messages (defaults to os.Stdout).
+	Output io.Writer
+	// Concurrency limits parallel deployments per wave (0 = unlimited).
+	Concurrency int
+}
+
+// Deploy runs the deployment based on the provided tags.
+// - No tags: full DAG, all components, parallel waves
+// - Single tag: pass-through to ansible-playbook site.yml --tags <tag>
+// - Multiple tags: extract subgraph, resolve DAG ordering, parallel waves
+func (o *Orchestrator) Deploy(ctx context.Context, tags []string) error {
+	output := o.Output
+	if output == nil {
+		output = os.Stdout
+	}
+
+	switch len(tags) {
+	case 0:
+		return o.deployFullDAG(ctx, output)
+	case 1:
+		return o.deploySingleTag(ctx, tags[0], output)
+	default:
+		return o.deployMultipleTags(ctx, tags, output)
+	}
+}
+
+// deployFullDAG runs all components in parallel waves.
+func (o *Orchestrator) deployFullDAG(ctx context.Context, output io.Writer) error {
+	// Step 1: Run prerequisite (openstacksdk) before parallel waves
+	fmt.Fprintln(output, "==> Running prerequisite: openstacksdk")
+	prereq := Component{
+		Name:     "prerequisite-openstacksdk",
+		Type:     RoleType,
+		RoleName: "openstacksdk",
+		Hosts:    "controllers[0]",
+	}
+	if err := o.Deployer.Deploy(ctx, prereq); err != nil {
+		return fmt.Errorf("prerequisite openstacksdk failed: %w", err)
+	}
+	fmt.Fprintln(output, "==> Prerequisite complete")
+
+	// Step 2: Build and run full DAG
+	g, err := BuildGraph()
+	if err != nil {
+		return fmt.Errorf("building dependency graph: %w", err)
+	}
+
+	fmt.Fprintln(output, "==> Starting parallel deployment")
+	return g.Run(ctx, o.Concurrency, func(ctx context.Context, id string, comp Component) error {
+		fmt.Fprintf(output, "==> [%s] Starting deployment\n", id)
+		if err := o.Deployer.Deploy(ctx, comp); err != nil {
+			return fmt.Errorf("component %s failed: %w", id, err)
+		}
+		fmt.Fprintf(output, "==> [%s] Deployment complete\n", id)
+		return nil
+	})
+}
+
+// deploySingleTag passes through to ansible-playbook with the tag.
+// This is identical to running: ansible-playbook site.yml --tags <tag>
+func (o *Orchestrator) deploySingleTag(ctx context.Context, tag string, output io.Writer) error {
+	fmt.Fprintf(output, "==> Single tag mode: %s\n", tag)
+
+	sitePlaybook := filepath.Join(o.PlaybookDir, "site.yml")
+	cmd := exec.CommandContext(ctx, "ansible-playbook", sitePlaybook,
+		"--inventory", o.Inventory,
+		"--tags", tag)
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return fmt.Errorf("stdout pipe: %w", err)
+	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return fmt.Errorf("stderr pipe: %w", err)
+	}
+
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("starting ansible-playbook: %w", err)
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		prefixOutput(tag, stdout, output)
+	}()
+	go func() {
+		defer wg.Done()
+		prefixOutput(tag, stderr, output)
+	}()
+	wg.Wait()
+
+	if err := cmd.Wait(); err != nil {
+		return fmt.Errorf("ansible-playbook --tags %s failed: %w", tag, err)
+	}
+
+	return nil
+}
+
+// deployMultipleTags extracts a subgraph for the specified tags and runs them
+// in DAG order with parallel waves.
+func (o *Orchestrator) deployMultipleTags(ctx context.Context, tags []string, output io.Writer) error {
+	fmt.Fprintf(output, "==> Multi-tag mode: %s\n", strings.Join(tags, ", "))
+
+	// Resolve tag names to component names
+	componentNames := make([]string, 0, len(tags))
+	for _, tag := range tags {
+		comp, ok := FindComponent(tag)
+		if !ok {
+			return fmt.Errorf("unknown component or tag: %q", tag)
+		}
+		componentNames = append(componentNames, comp.Name)
+	}
+
+	// Build full graph, then extract subgraph
+	fullGraph, err := BuildGraph()
+	if err != nil {
+		return fmt.Errorf("building dependency graph: %w", err)
+	}
+
+	subGraph, err := fullGraph.Subgraph(componentNames)
+	if err != nil {
+		return fmt.Errorf("extracting subgraph: %w", err)
+	}
+
+	fmt.Fprintln(output, "==> Starting parallel deployment (subgraph)")
+	return subGraph.Run(ctx, o.Concurrency, func(ctx context.Context, id string, comp Component) error {
+		fmt.Fprintf(output, "==> [%s] Starting deployment\n", id)
+		if err := o.Deployer.Deploy(ctx, comp); err != nil {
+			return fmt.Errorf("component %s failed: %w", id, err)
+		}
+		fmt.Fprintf(output, "==> [%s] Deployment complete\n", id)
+		return nil
+	})
+}
+
