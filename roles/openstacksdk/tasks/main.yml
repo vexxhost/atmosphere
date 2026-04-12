@@ -17,8 +17,8 @@
     name: openstacksdk
     version: "{{ openstacksdk_version | default(omit) }}"
   register: _openstacksdk_pip_install
-  retries: "{{ openstacksdk_pip_install_retries }}"
-  delay: "{{ openstacksdk_pip_install_retry_delay }}"
+  retries: 3
+  delay: 5
   until: _openstacksdk_pip_install is not failed
 
 - name: Create openstack config directory

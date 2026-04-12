@@ -24,8 +24,8 @@
   ansible.builtin.pip:
     name: PyMySQL
   register: _keycloak_pip_install
-  retries: "{{ keycloak_pip_install_retries }}"
-  delay: "{{ keycloak_pip_install_retry_delay }}"
+  retries: 3
+  delay: 5
   until: _keycloak_pip_install is not failed
 
 - name: Check MySQL ready
