@@ -1,34 +1,22 @@
-# Copyright (c) 2024 VEXXHOST, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"); you may
-# not use this file except in compliance with the License. You may obtain
-# a copy of the License at
-#
-#      http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-# License for the specific language governing permissions and limitations
-# under the License.
+---
+- hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Build atmosphere binary
+      ansible.builtin.command:
+        cmd: go build -o ./bin/atmosphere ./cmd/atmosphere
+        chdir: "{{ playbook_dir }}/../../"
+      delegate_to: localhost
+      changed_when: true
 
-- name: Install Ceph
-  ansible.builtin.import_playbook: vexxhost.atmosphere.ceph
-
-- name: Install Kubernetes
-  ansible.builtin.import_playbook: vexxhost.atmosphere.kubernetes
-
-- name: Install CSI
-  ansible.builtin.import_playbook: vexxhost.atmosphere.csi
-
-- name: Deploy Infrastructure
-  ansible.builtin.import_playbook: vexxhost.atmosphere.infrastructure
-
-- name: Deploy Monitoring stack
-  ansible.builtin.import_playbook: vexxhost.atmosphere.monitoring
-
-- name: Deploy OpenStack
-  ansible.builtin.import_playbook: vexxhost.atmosphere.openstack
+    - name: Deploy with parallel orchestrator
+      ansible.builtin.command:
+        cmd: >-
+          {{ playbook_dir }}/../../bin/atmosphere deploy
+          --inventory {{ inventory_file }}
+          --playbook-dir {{ playbook_dir }}/../../playbooks
+      delegate_to: localhost
+      changed_when: true
 
 - name: Configure networking
   hosts: all
