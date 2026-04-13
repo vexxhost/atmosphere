@@ -13,7 +13,6 @@ func newDeployCmd() *cobra.Command {
 	var (
 		inventory   string
 		tags        string
-		playbookDir string
 		concurrency int
 	)
 
@@ -32,21 +31,14 @@ and runs them in parallel where possible.`,
 				return fmt.Errorf("--inventory is required")
 			}
 
-			// Resolve playbook directory
-			if playbookDir == "" {
-				playbookDir = "playbooks"
-			}
-
 			deployer := &deploy.AnsibleDeployer{
-				Inventory:   inventory,
-				PlaybookDir: playbookDir,
-				Output:      os.Stdout,
+				Inventory: inventory,
+				Output:    os.Stdout,
 			}
 
 			orchestrator := &deploy.Orchestrator{
 				Deployer:    deployer,
 				Inventory:   inventory,
-				PlaybookDir: playbookDir,
 				Output:      os.Stdout,
 				Concurrency: concurrency,
 			}
@@ -66,7 +58,6 @@ and runs them in parallel where possible.`,
 
 	cmd.Flags().StringVarP(&inventory, "inventory", "i", "", "Path to Ansible inventory file (required)")
 	cmd.Flags().StringVarP(&tags, "tags", "t", "", "Comma-separated list of component tags to deploy")
-	cmd.Flags().StringVar(&playbookDir, "playbook-dir", "", "Directory containing playbook files (default: playbooks)")
 	cmd.Flags().IntVar(&concurrency, "concurrency", 0, "Max concurrent deployments per wave (0 = unlimited)")
 
 	return cmd
