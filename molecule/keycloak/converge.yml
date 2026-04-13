@@ -12,21 +12,22 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- hosts: controllers
-  become: true
-  roles:
-    - vexxhost.atmosphere.cert_manager
-    - vexxhost.atmosphere.cluster_issuer
-    - vexxhost.atmosphere.ingress_nginx
-    - vexxhost.atmosphere.rabbitmq_cluster_operator
-    - vexxhost.atmosphere.percona_xtradb_cluster_operator
-    - vexxhost.atmosphere.percona_xtradb_cluster
-    - vexxhost.atmosphere.memcached
+- hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Build atmosphere binary
+      ansible.builtin.command:
+        cmd: go build -o ./bin/atmosphere ./cmd/atmosphere
+        chdir: "{{ playbook_dir }}/../../"
+      delegate_to: localhost
+      changed_when: true
 
-- hosts: controllers
-  become: true
-  roles:
-    - vexxhost.atmosphere.keycloak
-    - vexxhost.atmosphere.kube_prometheus_stack
-    - vexxhost.atmosphere.keystone
-    - vexxhost.atmosphere.horizon
+    - name: Deploy with parallel orchestrator
+      ansible.builtin.command:
+        cmd: >-
+          {{ playbook_dir }}/../../bin/atmosphere deploy
+          --inventory {{ inventory_file }}
+          --playbook-dir {{ playbook_dir }}/../../playbooks
+          --tags cert-manager,cluster-issuer,ingress-nginx,rabbitmq-cluster-operator,percona-xtradb-cluster-operator,percona-xtradb-cluster,memcached,keycloak,kube-prometheus-stack,keystone,horizon
+      delegate_to: localhost
+      changed_when: true

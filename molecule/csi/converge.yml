@@ -21,12 +21,34 @@
       ansible.builtin.debug:
         msg: "csi_driver={{ csi_driver }}, MOLECULE_CSI_DRIVER={{ lookup('env', 'MOLECULE_CSI_DRIVER') }}"
 
-- name: Install Ceph
-  ansible.builtin.import_playbook: vexxhost.atmosphere.ceph
-  when: csi_driver == 'rbd'
+- hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Build atmosphere binary
+      ansible.builtin.command:
+        cmd: go build -o ./bin/atmosphere ./cmd/atmosphere
+        chdir: "{{ playbook_dir }}/../../"
+      delegate_to: localhost
+      changed_when: true
 
-- name: Install Kubernetes
-  ansible.builtin.import_playbook: vexxhost.atmosphere.kubernetes
+    - name: Deploy with parallel orchestrator (with ceph)
+      ansible.builtin.command:
+        cmd: >-
+          {{ playbook_dir }}/../../bin/atmosphere deploy
+          --inventory {{ inventory_file }}
+          --playbook-dir {{ playbook_dir }}/../../playbooks
+          --tags ceph,kubernetes,csi
+      delegate_to: localhost
+      changed_when: true
+      when: hostvars[groups['all'][0]]['csi_driver'] == 'rbd'
 
-- name: Install CSI
-  ansible.builtin.import_playbook: vexxhost.atmosphere.csi
+    - name: Deploy with parallel orchestrator (without ceph)
+      ansible.builtin.command:
+        cmd: >-
+          {{ playbook_dir }}/../../bin/atmosphere deploy
+          --inventory {{ inventory_file }}
+          --playbook-dir {{ playbook_dir }}/../../playbooks
+          --tags kubernetes,csi
+      delegate_to: localhost
+      changed_when: true
+      when: hostvars[groups['all'][0]]['csi_driver'] != 'rbd'
