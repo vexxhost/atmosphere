@@ -17,6 +17,7 @@
         cmd: >-
           {{ playbook_dir }}/../../bin/atmosphere deploy
           --inventory {{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}/inventory.yaml
+          {% if atmosphere_deploy_tags is defined %}--tags {{ atmosphere_deploy_tags }}{% endif %}
       delegate_to: localhost
       changed_when: false
 
