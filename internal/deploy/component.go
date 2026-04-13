@@ -197,7 +197,7 @@ var Components = []Component{
 		Type:      RoleType,
 		RoleName:  "prometheus_pushgateway",
 		Hosts:     "controllers[0]",
-		DependsOn: []string{"kubernetes"},
+		DependsOn: []string{"kube-prometheus-stack"},
 	},
 
 	// OS Configuration (RoleType, Hosts: "controllers:computes")
