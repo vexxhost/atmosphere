@@ -5,8 +5,8 @@
     - name: Build atmosphere binary
       ansible.builtin.command:
         cmd: go build -o ./bin/atmosphere ./cmd/atmosphere
-        chdir: "{{ playbook_dir }}/../../"
-      delegate_to: localhost
+      args:
+        chdir: "{{ zuul.project.src_dir | default(playbook_dir + '/../..') }}"
       run_once: true
       changed_when: false
       environment:
@@ -16,10 +16,11 @@
     - name: Deploy with parallel orchestrator
       ansible.builtin.command:
         cmd: >-
-          {{ playbook_dir }}/../../bin/atmosphere deploy
+          {{ zuul.project.src_dir | default(playbook_dir + '/../..') }}/bin/atmosphere deploy
           --inventory {{ zuul.project.src_dir | default(lookup('env', 'MOLECULE_PROJECT_DIRECTORY')) }}/inventory.yaml
           {% if atmosphere_deploy_tags is defined %}--tags {{ atmosphere_deploy_tags }}{% endif %}
-      delegate_to: localhost
+      args:
+        chdir: "{{ zuul.project.src_dir | default(playbook_dir + '/../..') }}"
       run_once: true
       changed_when: false
 
