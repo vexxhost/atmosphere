@@ -25,3 +25,27 @@
   roles:
     - role: ensure-go
       go_version: "1.24.4"
+
+- hosts: all
+  tasks:
+    - name: Copy inventory file for Zuul
+      run_once: true
+      ansible.builtin.copy:
+        src: "{{ zuul.executor.inventory_file }}"
+        dest: "{{ zuul.project.src_dir }}"
+        mode: "0644"
+
+    - name: Switch "ansible_host" to private IP
+      run_once: true
+      ansible.builtin.replace:
+        path: "{{ zuul.project.src_dir }}/inventory.yaml"
+        regexp: '(^\s*ansible_host:\s*).*$'
+        replace: '\1"{% raw %}{{ nodepool.private_ipv4 }}{% endraw %}"'
+
+    - name: Run molecule prepare
+      run_once: true
+      ansible.builtin.command:
+        cmd: uv run molecule prepare -s {{ molecule_scenario }}
+      environment: "{{ molecule_environment | default({}) }}"
+      args:
+        chdir: "{{ zuul.project.src_dir }}"
