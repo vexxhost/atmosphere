@@ -295,7 +295,7 @@ var Components = []Component{
 		Type:      RoleType,
 		RoleName:  "cinder",
 		Hosts:     "controllers[0]",
-		DependsOn: []string{"keystone"},
+		DependsOn: []string{"keystone", "ceph-provisioners"},
 	},
 	{
 		Name:      "placement",
