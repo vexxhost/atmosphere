@@ -27,14 +27,14 @@
         PATH: "/usr/local/go/bin:{{ ansible_env.PATH | default(lookup('env', 'PATH')) }}"
 
     - name: Deploy with parallel orchestrator
-      ansible.builtin.command:
-        cmd: >-
+      ansible.builtin.shell:
+        cmd: >
+          . .venv/bin/activate &&
           ./bin/atmosphere deploy
           --inventory {{ lookup('env', 'MOLECULE_INVENTORY_FILE') }}
-          {% if atmosphere_deploy_tags is defined %}--tags {{ atmosphere_deploy_tags }}{% endif %}
+          {{ '--tags ' + atmosphere_deploy_tags if atmosphere_deploy_tags is defined else '' }}
+        executable: /bin/bash
       args:
         chdir: "{{ zuul.project.src_dir | default(playbook_dir + '/../..') }}"
-      environment:
-        PATH: ".venv/bin:{{ ansible_env.PATH | default(lookup('env', 'PATH')) }}"
       run_once: true
       changed_when: false
