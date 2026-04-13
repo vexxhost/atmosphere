@@ -25,33 +25,11 @@
       args:
         chdir: "{{ zuul.project.src_dir }}"
 
-    - name: Deploy with parallel orchestrator
-      run_once: true
-      ansible.builtin.command:
-        cmd: >-
-          {{ zuul.project.src_dir }}/bin/atmosphere deploy
-          --inventory {{ zuul.project.src_dir }}/inventory.yaml
-          {% if atmosphere_deploy_tags is defined %}--tags {{ atmosphere_deploy_tags }}{% endif %}
-      args:
-        chdir: "{{ zuul.project.src_dir }}"
+- name: Run converge
+  ansible.builtin.import_playbook: "molecule/{{ molecule_scenario }}/converge.yml"
 
 # TODO: Capture atmosphere deploy exit code to detect changes for
 #       idempotence testing without a full second run.
-
-- hosts: all
-  become: true
-  tasks:
-    - name: Add IP address to "br-ex"
-      when: molecule_scenario in ['aio']
-      changed_when: false
-      ansible.builtin.shell:
-        cmd: ip addr add 10.96.250.10/24 dev br-ex || true
-
-    - name: Set "br-ex" interface to "up"
-      when: molecule_scenario in ['aio']
-      changed_when: false
-      ansible.builtin.shell:
-        cmd: ip link set br-ex up || true
 
 - hosts: all
   tasks:

@@ -12,15 +12,6 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-# NOTE(mnaser): This play is required for csi_driver to be evaluated properly
-#               so the when condition on import_playbook works correctly
-- name: Debug CSI driver value
-  hosts: all
-  tasks:
-    - name: Display CSI driver value and environment variable
-      ansible.builtin.debug:
-        msg: "csi_driver={{ csi_driver }}, MOLECULE_CSI_DRIVER={{ lookup('env', 'MOLECULE_CSI_DRIVER') }}"
-
 - hosts: localhost
   gather_facts: false
   tasks:
@@ -34,22 +25,11 @@
         CGO_ENABLED: "0"
         PATH: "/usr/local/go/bin:{{ ansible_env.PATH | default(lookup('env', 'PATH')) }}"
 
-    - name: Deploy with parallel orchestrator (with ceph)
+    - name: Deploy with parallel orchestrator
       ansible.builtin.command:
         cmd: >-
           {{ playbook_dir }}/../../bin/atmosphere deploy
           --inventory {{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}/inventory.yaml
-          --tags ceph,kubernetes,csi
+          {% if atmosphere_deploy_tags is defined %}--tags {{ atmosphere_deploy_tags }}{% endif %}
       delegate_to: localhost
       changed_when: false
-      when: hostvars[groups['all'][0]]['csi_driver'] == 'rbd'
-
-    - name: Deploy with parallel orchestrator (without ceph)
-      ansible.builtin.command:
-        cmd: >-
-          {{ playbook_dir }}/../../bin/atmosphere deploy
-          --inventory {{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}/inventory.yaml
-          --tags kubernetes,csi
-      delegate_to: localhost
-      changed_when: false
-      when: hostvars[groups['all'][0]]['csi_driver'] != 'rbd'
