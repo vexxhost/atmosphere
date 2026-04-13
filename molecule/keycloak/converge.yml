@@ -30,6 +30,6 @@
         cmd: >-
           {{ playbook_dir }}/../../bin/atmosphere deploy
           --inventory {{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}/inventory.yaml
-          --tags kubernetes,csi,cert-manager,cluster-issuer,ingress-nginx,rabbitmq-cluster-operator,percona-xtradb-cluster-operator,percona-xtradb-cluster,valkey,memcached,keycloak,kube-prometheus-stack,keystone,horizon
+          {% if atmosphere_deploy_tags is defined %}--tags {{ atmosphere_deploy_tags }}{% endif %}
       delegate_to: localhost
       changed_when: false
