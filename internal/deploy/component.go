@@ -132,7 +132,7 @@ var Components = []Component{
 		Type:      RoleType,
 		RoleName:  "valkey",
 		Hosts:     "controllers",
-		DependsOn: []string{"kubernetes", "csi"},
+		DependsOn: []string{"kubernetes", "csi", "cluster-issuer"},
 	},
 	{
 		Name:      "keycloak",
@@ -162,7 +162,7 @@ var Components = []Component{
 		Type:      RoleType,
 		RoleName:  "kube_prometheus_stack",
 		Hosts:     "controllers[0]",
-		DependsOn: []string{"kubernetes", "csi"},
+		DependsOn: []string{"kubernetes", "csi", "cluster-issuer"},
 	},
 	{
 		Name:      "loki",
@@ -339,7 +339,7 @@ var Components = []Component{
 		Type:      RoleType,
 		RoleName:  "libvirt",
 		Hosts:     "controllers[0]",
-		DependsOn: []string{"kubernetes"},
+		DependsOn: []string{"kubernetes", "cluster-issuer"},
 	},
 	{
 		Name:      "coredns",
