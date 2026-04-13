@@ -162,7 +162,7 @@ var Components = []Component{
 		Type:      RoleType,
 		RoleName:  "kube_prometheus_stack",
 		Hosts:     "controllers[0]",
-		DependsOn: []string{"kubernetes", "csi", "cluster-issuer"},
+		DependsOn: []string{"kubernetes", "csi", "cluster-issuer", "keycloak"},
 	},
 	{
 		Name:      "loki",
