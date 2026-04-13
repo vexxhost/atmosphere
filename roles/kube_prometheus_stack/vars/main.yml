@@ -35,6 +35,40 @@ _kube_prometheus_stack_helm_values:
       etcdHighNumberOfFailedGRPCRequests: true
   alertmanager:
     config:
+      inhibit_rules:
+        - source_matchers:
+            - alertname = "NginxIngressCriticalErrorBudgetBurn"
+          target_matchers:
+            - alertname =~ "NginxIngress(High|Moderate|Low)ErrorBudgetBurn"
+          equal:
+            - service
+            - namespace
+        - source_matchers:
+            - alertname = "NginxIngressHighErrorBudgetBurn"
+          target_matchers:
+            - alertname =~ "NginxIngress(Moderate|Low)ErrorBudgetBurn"
+          equal:
+            - service
+            - namespace
+        - source_matchers:
+            - alertname = "NginxIngressModerateErrorBudgetBurn"
+          target_matchers:
+            - alertname = "NginxIngressLowErrorBudgetBurn"
+          equal:
+            - service
+            - namespace
+        - source_matchers:
+            - alertname = "CoreDNSCriticalErrorBudgetBurn"
+          target_matchers:
+            - alertname =~ "CoreDNSHighErrorBudgetBurn|CoreDNSModerateErrorBudgetBurn|CoreDNSLowErrorBudgetBurn"
+        - source_matchers:
+            - alertname = "CoreDNSHighErrorBudgetBurn"
+          target_matchers:
+            - alertname =~ "CoreDNSModerateErrorBudgetBurn|CoreDNSLowErrorBudgetBurn"
+        - source_matchers:
+            - alertname = "CoreDNSModerateErrorBudgetBurn"
+          target_matchers:
+            - alertname = "CoreDNSLowErrorBudgetBurn"
       route:
         group_by:
           - alertname
@@ -70,7 +104,7 @@ _kube_prometheus_stack_helm_values:
           targetLabel: instance
         - &relabeling_drop_all_kubernetes_labels
           action: labeldrop
-          regex: ^(container|endpoint|namespace|pod|node|service)$
+          regex: ^(container|namespace|pod|node|service)$
     ingress:
       enabled: true
       servicePort: 8081
@@ -606,6 +640,11 @@ _kube_prometheus_stack_helm_values:
         repository: "{{ atmosphere_images['prometheus_config_reloader'] | vexxhost.kubernetes.docker_image('path') }}"
         tag: "{{ atmosphere_images['prometheus_config_reloader'] | vexxhost.kubernetes.docker_image('tag') }}"
   prometheus-node-exporter:
+    podAnnotations:
+      container.apparmor.security.beta.kubernetes.io/node-exporter: unconfined
+    securityContext:
+      appArmorProfile:
+        type: Unconfined
     image:
       registry: "{{ atmosphere_images['prometheus_node_exporter'] | vexxhost.kubernetes.docker_image('domain') }}"
       repository: "{{ atmosphere_images['prometheus_node_exporter'] | vexxhost.kubernetes.docker_image('path') }}"

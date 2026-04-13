@@ -55,11 +55,3 @@ Why this matters:
 - CI verifies that `charts/` = upstream + patches (no drift)
 
 To modify a chart: edit `charts/` and add corresponding patch to `charts/patches/`.
-
-## Vale Vocabulary
-
-For `.github/styles/config/vocabularies/Base/accept.txt`:
-
-- Only add words/terms, not variable names or command names
-- Use RST backticks for technical terms instead of adding to vocabulary
-- Capitalize proper nouns (e.g., `Neutron` not `neutron`)
