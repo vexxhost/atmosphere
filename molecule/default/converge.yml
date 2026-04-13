@@ -21,12 +21,15 @@
         chdir: "{{ playbook_dir }}/../../"
       delegate_to: localhost
       changed_when: true
+      environment:
+        CGO_ENABLED: "0"
+        PATH: "/usr/local/go/bin:{{ ansible_env.PATH | default(lookup('env', 'PATH')) }}"
 
     - name: Deploy with parallel orchestrator
       ansible.builtin.command:
         cmd: >-
           {{ playbook_dir }}/../../bin/atmosphere deploy
-          --inventory {{ inventory_file }}
+          --inventory {{ lookup('env', 'MOLECULE_EPHEMERAL_DIRECTORY') }}/workspace
           --playbook-dir {{ playbook_dir }}/../../playbooks
       delegate_to: localhost
       changed_when: true
