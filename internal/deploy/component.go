@@ -38,6 +38,10 @@ type Component struct {
 	Environment map[string]string
 	// GatherFacts controls fact gathering. nil = default (true), ptr to false = skip
 	GatherFacts *bool
+	// Resources lists named resources this component requires exclusive access to.
+	// Components sharing a resource are serialized even if the DAG allows parallelism.
+	// Example: []string{"apt"} serializes all components that use package management.
+	Resources []string
 }
 
 // EffectiveTag returns the Ansible tag for this component.
@@ -62,14 +66,16 @@ var cephEnvironment = map[string]string{
 var Components = []Component{
 	// Foundation (PlaybookType)
 	{
-		Name:     "ceph",
-		Type:     PlaybookType,
-		Playbook: "ceph",
+		Name:      "ceph",
+		Type:      PlaybookType,
+		Playbook:  "ceph",
+		Resources: []string{"apt"},
 	},
 	{
-		Name:     "kubernetes",
-		Type:     PlaybookType,
-		Playbook: "kubernetes",
+		Name:      "kubernetes",
+		Type:      PlaybookType,
+		Playbook:  "kubernetes",
+		Resources: []string{"apt"},
 	},
 	{
 		Name:      "csi",
