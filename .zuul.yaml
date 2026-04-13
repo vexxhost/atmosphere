@@ -27,6 +27,7 @@
     abstract: true
     nodeset: atmosphere-ubuntu-jammy-single-node
     pre-run: test-playbooks/molecule/pre.yml
+    run: test-playbooks/molecule/run.yml
     post-run: test-playbooks/molecule/post.yml
     roles:
       - zuul: opendev.org/openstack/openstack-helm
@@ -69,12 +70,14 @@
     parent: atmosphere-molecule-csi
     vars:
       csi_driver: local-path-provisioner
+      atmosphere_deploy_tags: kubernetes,csi
 
 - job:
     name: atmosphere-molecule-csi-rbd
     parent: atmosphere-molecule-csi
     vars:
       csi_driver: rbd
+      atmosphere_deploy_tags: ceph,kubernetes,csi
 
 - job:
     name: atmosphere-molecule-aio
@@ -277,6 +280,7 @@
       molecule_scenario: keycloak
       csi_driver: local-path-provisioner
       cluster_issuer_type: self-signed
+      atmosphere_deploy_tags: kubernetes,csi,cert-manager,cluster-issuer,ingress-nginx,rabbitmq-cluster-operator,percona-xtradb-cluster-operator,percona-xtradb-cluster,valkey,memcached,keycloak,kube-prometheus-stack,keystone,horizon
       percona_xtradb_cluster_spec:
         allowUnsafeConfigurations: true
         pxc:
