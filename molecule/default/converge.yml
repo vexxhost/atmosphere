@@ -29,7 +29,7 @@
     - name: Deploy with parallel orchestrator
       ansible.builtin.command:
         cmd: >-
-          {{ zuul.project.src_dir | default(playbook_dir + '/../..') }}/bin/atmosphere deploy
+          ./bin/atmosphere deploy
           --inventory {{ lookup('env', 'MOLECULE_EPHEMERAL_DIRECTORY') }}/workspace
           {% if atmosphere_deploy_tags is defined %}--tags {{ atmosphere_deploy_tags }}{% endif %}
       args:
