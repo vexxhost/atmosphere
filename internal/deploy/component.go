@@ -272,7 +272,7 @@ var Components = []Component{
 		Type:        RoleType,
 		RoleName:    "ceph_provisioners",
 		Hosts:       "controllers[0]",
-		DependsOn:   []string{"ceph", "csi"},
+		DependsOn:   []string{"ceph"},
 		Environment: cephEnvironment,
 	},
 	{
