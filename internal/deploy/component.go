@@ -98,7 +98,7 @@ var Components = []Component{
 		Type:      RoleType,
 		RoleName:  "ingress_nginx",
 		Hosts:     "controllers",
-		DependsOn: []string{"cluster-issuer"},
+		DependsOn: []string{"kubernetes"},
 	},
 	{
 		Name:      "rabbitmq-cluster-operator",
@@ -119,14 +119,14 @@ var Components = []Component{
 		Type:      RoleType,
 		RoleName:  "percona_xtradb_cluster",
 		Hosts:     "controllers",
-		DependsOn: []string{"percona-xtradb-cluster-operator"},
+		DependsOn: []string{"percona-xtradb-cluster-operator", "csi"},
 	},
 	{
 		Name:      "valkey",
 		Type:      RoleType,
 		RoleName:  "valkey",
 		Hosts:     "controllers",
-		DependsOn: []string{"kubernetes"},
+		DependsOn: []string{"kubernetes", "csi"},
 	},
 	{
 		Name:      "keycloak",
@@ -156,14 +156,14 @@ var Components = []Component{
 		Type:      RoleType,
 		RoleName:  "kube_prometheus_stack",
 		Hosts:     "controllers[0]",
-		DependsOn: []string{"kubernetes"},
+		DependsOn: []string{"kubernetes", "csi"},
 	},
 	{
 		Name:      "loki",
 		Type:      RoleType,
 		RoleName:  "loki",
 		Hosts:     "controllers[0]",
-		DependsOn: []string{"kubernetes"},
+		DependsOn: []string{"kubernetes", "csi"},
 	},
 	{
 		Name:      "vector",
@@ -195,33 +195,30 @@ var Components = []Component{
 	},
 
 	// OS Configuration (RoleType, Hosts: "controllers:computes")
+	// These are pure host config — no K8s dependency.
 	{
-		Name:      "lpfc",
-		Type:      RoleType,
-		RoleName:  "lpfc",
-		Hosts:     "controllers:computes",
-		DependsOn: []string{"kubernetes"},
+		Name:     "lpfc",
+		Type:     RoleType,
+		RoleName: "lpfc",
+		Hosts:    "controllers:computes",
 	},
 	{
-		Name:      "multipathd",
-		Type:      RoleType,
-		RoleName:  "multipathd",
-		Hosts:     "controllers:computes",
-		DependsOn: []string{"kubernetes"},
+		Name:     "multipathd",
+		Type:     RoleType,
+		RoleName: "multipathd",
+		Hosts:    "controllers:computes",
 	},
 	{
-		Name:      "iscsi",
-		Type:      RoleType,
-		RoleName:  "iscsi",
-		Hosts:     "controllers:computes",
-		DependsOn: []string{"kubernetes"},
+		Name:     "iscsi",
+		Type:     RoleType,
+		RoleName: "iscsi",
+		Hosts:    "controllers:computes",
 	},
 	{
-		Name:      "udev",
-		Type:      RoleType,
-		RoleName:  "udev",
-		Hosts:     "controllers:computes",
-		DependsOn: []string{"kubernetes"},
+		Name:     "udev",
+		Type:     RoleType,
+		RoleName: "udev",
+		Hosts:    "controllers:computes",
 	},
 
 	// OpenStack (RoleType, Hosts: "controllers[0]")
@@ -251,7 +248,7 @@ var Components = []Component{
 		Type:        RoleType,
 		RoleName:    "rook_ceph",
 		Hosts:       "controllers[0]",
-		DependsOn:   []string{"csi"},
+		DependsOn:   []string{"kubernetes"},
 		Environment: cephEnvironment,
 	},
 	{
@@ -259,7 +256,7 @@ var Components = []Component{
 		Type:        RoleType,
 		RoleName:    "rook_ceph_cluster",
 		Hosts:       "controllers[0]",
-		DependsOn:   []string{"rook-ceph"},
+		DependsOn:   []string{"rook-ceph", "ceph"},
 		Environment: cephEnvironment,
 	},
 	{
@@ -348,14 +345,14 @@ var Components = []Component{
 		Type:      RoleType,
 		RoleName:  "nova",
 		Hosts:     "controllers[0]",
-		DependsOn: []string{"placement", "glance", "ovn", "libvirt", "coredns"},
+		DependsOn: []string{"placement", "glance", "neutron", "libvirt"},
 	},
 	{
 		Name:      "neutron",
 		Type:      RoleType,
 		RoleName:  "neutron",
 		Hosts:     "controllers[0]",
-		DependsOn: []string{"keystone", "ovn"},
+		DependsOn: []string{"keystone", "ovn", "coredns"},
 	},
 	{
 		Name:      "heat",
@@ -376,7 +373,7 @@ var Components = []Component{
 		Type:      RoleType,
 		RoleName:  "magnum",
 		Hosts:     "controllers[0]",
-		DependsOn: []string{"keystone"},
+		DependsOn: []string{"octavia", "barbican", "heat"},
 	},
 	{
 		Name:      "manila",
@@ -397,7 +394,7 @@ var Components = []Component{
 		Type:      RoleType,
 		RoleName:  "openstack_exporter",
 		Hosts:     "controllers[0]",
-		DependsOn: []string{"octavia"},
+		DependsOn: []string{"cinder", "neutron"},
 	},
 	{
 		Name:      "openstack-cli",
