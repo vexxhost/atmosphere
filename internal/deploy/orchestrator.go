@@ -49,9 +49,15 @@ func (o *Orchestrator) deployFullDAG(ctx context.Context, output io.Writer) erro
 		return fmt.Errorf("building dependency graph: %w", err)
 	}
 
+	rc := NewResourceCoordinator(Components)
+
 	fmt.Fprintln(output, "==> Starting parallel deployment")
 	return g.Run(ctx, o.Concurrency, func(ctx context.Context, id string, comp Component) error {
 		fmt.Fprintf(output, "==> [%s] Starting deployment\n", id)
+
+		release := rc.Acquire(comp)
+		defer release()
+
 		if err := o.Deployer.Deploy(ctx, comp); err != nil {
 			return fmt.Errorf("component %s failed: %w", id, err)
 		}
@@ -127,9 +133,15 @@ func (o *Orchestrator) deployMultipleTags(ctx context.Context, tags []string, ou
 		return fmt.Errorf("extracting subgraph: %w", err)
 	}
 
+	rc := NewResourceCoordinator(Components)
+
 	fmt.Fprintln(output, "==> Starting parallel deployment (subgraph)")
 	return subGraph.Run(ctx, o.Concurrency, func(ctx context.Context, id string, comp Component) error {
 		fmt.Fprintf(output, "==> [%s] Starting deployment\n", id)
+
+		release := rc.Acquire(comp)
+		defer release()
+
 		if err := o.Deployer.Deploy(ctx, comp); err != nil {
 			return fmt.Errorf("component %s failed: %w", id, err)
 		}
