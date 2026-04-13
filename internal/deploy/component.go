@@ -190,7 +190,7 @@ var Components = []Component{
 		Type:      RoleType,
 		RoleName:  "ipmi_exporter",
 		Hosts:     "controllers[0]",
-		DependsOn: []string{"kubernetes"},
+		DependsOn: []string{"kube-prometheus-stack"},
 	},
 	{
 		Name:      "prometheus-pushgateway",
