@@ -16,12 +16,20 @@
   ansible.builtin.package:
     name: "{{ openstack_cli_packages }}"
     state: absent
+  register: _uninstall_osc
+  retries: 5
+  delay: 10
+  until: _uninstall_osc is not failed
   when: ansible_facts['os_family'] in ['Debian']
 
 - name: Uninstall Ubuntu Cloud Archive keyring
   ansible.builtin.apt:
     name: ubuntu-cloud-keyring
     state: absent
+  register: _uninstall_uca_keyring
+  retries: 5
+  delay: 10
+  until: _uninstall_uca_keyring is not failed
   when: ansible_facts['os_family'] in ['Debian']
 
 - name: Remove Ubuntu Cloud Archive repository
@@ -29,6 +37,10 @@
     filename: ubuntu-cloud-archive
     repo: "{{ openstack_cli_cloud_archive_repo }}"
     state: absent
+  register: _remove_uca_repo
+  retries: 5
+  delay: 10
+  until: _remove_uca_repo is not failed
   when: ansible_facts['os_family'] in ['Debian']
 
 - name: Generate OpenStack-Helm endpoints

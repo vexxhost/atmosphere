@@ -16,3 +16,7 @@
   ansible.builtin.package:
     name: "{{ 'qemu-utils' if ansible_facts['os_family'] in ['Debian'] else 'qemu-img' }}"
     state: present
+  register: _install_qemu_utils
+  retries: 5
+  delay: 10
+  until: _install_qemu_utils is not failed
