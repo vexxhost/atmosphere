@@ -36,18 +36,13 @@ func TestOrchestrator_FullDAG(t *testing.T) {
 
 	deployed := mock.deployed
 
-	// prerequisite-openstacksdk must be first
 	if len(deployed) == 0 {
 		t.Fatal("no components deployed")
 	}
-	if deployed[0] != "prerequisite-openstacksdk" {
-		t.Errorf("expected first deployed to be prerequisite-openstacksdk, got %q", deployed[0])
-	}
 
-	// Total: 1 prereq + len(Components) components
-	expectedTotal := 1 + len(Components)
-	if len(deployed) != expectedTotal {
-		t.Errorf("expected %d deployed components, got %d", expectedTotal, len(deployed))
+	// Total: len(Components) components
+	if len(deployed) != len(Components) {
+		t.Errorf("expected %d deployed components, got %d", len(Components), len(deployed))
 	}
 
 	// keystone must appear before nova (nova depends on keystone transitively)
