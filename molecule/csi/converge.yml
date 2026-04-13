@@ -29,7 +29,7 @@
         cmd: go build -o ./bin/atmosphere ./cmd/atmosphere
         chdir: "{{ playbook_dir }}/../../"
       delegate_to: localhost
-      changed_when: true
+      changed_when: false
       environment:
         CGO_ENABLED: "0"
         PATH: "/usr/local/go/bin:{{ ansible_env.PATH | default(lookup('env', 'PATH')) }}"
@@ -41,7 +41,7 @@
           --inventory {{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}/inventory.yaml
           --tags ceph,kubernetes,csi
       delegate_to: localhost
-      changed_when: true
+      changed_when: false
       when: hostvars[groups['all'][0]]['csi_driver'] == 'rbd'
 
     - name: Deploy with parallel orchestrator (without ceph)
@@ -51,5 +51,5 @@
           --inventory {{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}/inventory.yaml
           --tags kubernetes,csi
       delegate_to: localhost
-      changed_when: true
+      changed_when: false
       when: hostvars[groups['all'][0]]['csi_driver'] != 'rbd'

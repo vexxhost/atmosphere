@@ -20,7 +20,7 @@
         cmd: go build -o ./bin/atmosphere ./cmd/atmosphere
         chdir: "{{ playbook_dir }}/../../"
       delegate_to: localhost
-      changed_when: true
+      changed_when: false
       environment:
         CGO_ENABLED: "0"
         PATH: "/usr/local/go/bin:{{ ansible_env.PATH | default(lookup('env', 'PATH')) }}"
@@ -31,4 +31,4 @@
           {{ playbook_dir }}/../../bin/atmosphere deploy
           --inventory {{ lookup('env', 'MOLECULE_EPHEMERAL_DIRECTORY') }}/workspace
       delegate_to: localhost
-      changed_when: true
+      changed_when: false
