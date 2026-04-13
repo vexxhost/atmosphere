@@ -388,7 +388,7 @@ var Components = []Component{
 		Type:      RoleType,
 		RoleName:  "manila",
 		Hosts:     "controllers[0]",
-		DependsOn: []string{"keystone"},
+		DependsOn: []string{"keystone", "nova", "neutron", "cinder"},
 	},
 	{
 		Name:      "horizon",
