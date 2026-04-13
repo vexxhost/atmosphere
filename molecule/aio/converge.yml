@@ -1,5 +1,5 @@
 ---
-- hosts: localhost
+- hosts: all
   gather_facts: false
   tasks:
     - name: Build atmosphere binary
@@ -7,6 +7,7 @@
         cmd: go build -o ./bin/atmosphere ./cmd/atmosphere
         chdir: "{{ playbook_dir }}/../../"
       delegate_to: localhost
+      run_once: true
       changed_when: false
       environment:
         CGO_ENABLED: "0"
@@ -16,9 +17,10 @@
       ansible.builtin.command:
         cmd: >-
           {{ playbook_dir }}/../../bin/atmosphere deploy
-          --inventory {{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}/inventory.yaml
+          --inventory {{ zuul.project.src_dir | default(lookup('env', 'MOLECULE_PROJECT_DIRECTORY')) }}/inventory.yaml
           {% if atmosphere_deploy_tags is defined %}--tags {{ atmosphere_deploy_tags }}{% endif %}
       delegate_to: localhost
+      run_once: true
       changed_when: false
 
 - name: Configure networking

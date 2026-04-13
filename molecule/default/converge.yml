@@ -12,7 +12,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- hosts: localhost
+- hosts: all
   gather_facts: false
   tasks:
     - name: Build atmosphere binary
@@ -20,6 +20,7 @@
         cmd: go build -o ./bin/atmosphere ./cmd/atmosphere
         chdir: "{{ playbook_dir }}/../../"
       delegate_to: localhost
+      run_once: true
       changed_when: false
       environment:
         CGO_ENABLED: "0"
@@ -32,4 +33,5 @@
           --inventory {{ lookup('env', 'MOLECULE_EPHEMERAL_DIRECTORY') }}/workspace
           {% if atmosphere_deploy_tags is defined %}--tags {{ atmosphere_deploy_tags }}{% endif %}
       delegate_to: localhost
+      run_once: true
       changed_when: false

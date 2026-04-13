@@ -27,7 +27,6 @@
     abstract: true
     nodeset: atmosphere-ubuntu-jammy-single-node
     pre-run: test-playbooks/molecule/pre.yml
-    run: test-playbooks/molecule/run.yml
     post-run: test-playbooks/molecule/post.yml
     roles:
       - zuul: opendev.org/openstack/openstack-helm
@@ -68,6 +67,9 @@
 - job:
     name: atmosphere-molecule-csi-local-path-provisioner
     parent: atmosphere-molecule-csi
+    run:
+      - molecule/csi/converge.yml
+      - test-playbooks/molecule/run.yml
     vars:
       csi_driver: local-path-provisioner
       atmosphere_deploy_tags: kubernetes,csi
@@ -75,6 +77,9 @@
 - job:
     name: atmosphere-molecule-csi-rbd
     parent: atmosphere-molecule-csi
+    run:
+      - molecule/csi/converge.yml
+      - test-playbooks/molecule/run.yml
     vars:
       csi_driver: rbd
       atmosphere_deploy_tags: ceph,kubernetes,csi
@@ -264,18 +269,27 @@
 - job:
     name: atmosphere-molecule-aio-openvswitch
     parent: atmosphere-molecule-aio
+    run:
+      - molecule/aio/converge.yml
+      - test-playbooks/molecule/run.yml
     vars:
       atmosphere_network_backend: openvswitch
 
 - job:
     name: atmosphere-molecule-aio-ovn
     parent: atmosphere-molecule-aio
+    run:
+      - molecule/aio/converge.yml
+      - test-playbooks/molecule/run.yml
     vars:
       atmosphere_network_backend: ovn
 
 - job:
     name: atmosphere-molecule-keycloak
     parent: atmosphere-molecule
+    run:
+      - molecule/keycloak/converge.yml
+      - test-playbooks/molecule/run.yml
     vars:
       molecule_scenario: keycloak
       csi_driver: local-path-provisioner
