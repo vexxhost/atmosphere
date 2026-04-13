@@ -264,7 +264,7 @@ var Components = []Component{
 		Type:        RoleType,
 		RoleName:    "rook_ceph_cluster",
 		Hosts:       "controllers[0]",
-		DependsOn:   []string{"rook-ceph", "ceph"},
+		DependsOn:   []string{"rook-ceph", "ceph", "keystone"},
 		Environment: cephEnvironment,
 	},
 	{
