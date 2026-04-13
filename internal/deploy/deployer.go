@@ -98,7 +98,7 @@ func renderPlaybook(c Component) string {
 		}
 		sort.Strings(keys)
 		for _, k := range keys {
-			b.WriteString(fmt.Sprintf("    %s: '%s'\n", k, c.Environment[k]))
+			b.WriteString(fmt.Sprintf("    %s: %q\n", k, c.Environment[k]))
 		}
 	}
 
