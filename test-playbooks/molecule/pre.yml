@@ -25,16 +25,3 @@
   roles:
     - role: ensure-go
       go_version: "1.24.4"
-
-- hosts: all
-  tasks:
-    - name: Build atmosphere binary
-      ansible.builtin.command:
-        cmd: go build -o ./bin/atmosphere ./cmd/atmosphere
-        chdir: "{{ zuul.project.src_dir }}"
-      delegate_to: localhost
-      run_once: true
-      changed_when: false
-      environment:
-        CGO_ENABLED: "0"
-        PATH: "/usr/local/go/bin:{{ ansible_env.PATH | default(lookup('env', 'PATH')) }}"
