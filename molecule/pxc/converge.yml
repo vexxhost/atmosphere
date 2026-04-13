@@ -12,7 +12,22 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- hosts: controllers
-  become: true
-  roles:
-    - vexxhost.atmosphere.percona_xtradb_cluster
+- hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Build atmosphere binary
+      ansible.builtin.command:
+        cmd: go build -o ./bin/atmosphere ./cmd/atmosphere
+        chdir: "{{ playbook_dir }}/../../"
+      delegate_to: localhost
+      changed_when: true
+
+    - name: Deploy with parallel orchestrator
+      ansible.builtin.command:
+        cmd: >-
+          {{ playbook_dir }}/../../bin/atmosphere deploy
+          --inventory {{ inventory_file }}
+          --playbook-dir {{ playbook_dir }}/../../playbooks
+          --tags percona-xtradb-cluster
+      delegate_to: localhost
+      changed_when: true
