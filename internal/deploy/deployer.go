@@ -7,7 +7,6 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -22,8 +21,6 @@ type Deployer interface {
 type AnsibleDeployer struct {
 	// Inventory is the path to the Ansible inventory file.
 	Inventory string
-	// PlaybookDir is the directory containing playbook files (for PlaybookType).
-	PlaybookDir string
 	// Output is the writer for prefixed output (defaults to os.Stdout).
 	Output io.Writer
 }
@@ -38,8 +35,8 @@ func (a *AnsibleDeployer) Deploy(ctx context.Context, component Component) error
 
 	switch component.Type {
 	case PlaybookType:
-		playbookPath := filepath.Join(a.PlaybookDir, component.Playbook+".yml")
-		cmd = exec.CommandContext(ctx, "ansible-playbook", playbookPath,
+		playbookRef := "vexxhost.atmosphere." + component.Playbook
+		cmd = exec.CommandContext(ctx, "ansible-playbook", playbookRef,
 			"--inventory", a.Inventory)
 	case RoleType:
 		playbook := renderPlaybook(component)

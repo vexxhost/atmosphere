@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"sync"
 )
@@ -17,8 +16,6 @@ type Orchestrator struct {
 	Deployer Deployer
 	// Inventory is the path to the Ansible inventory file.
 	Inventory string
-	// PlaybookDir is the directory containing playbook files.
-	PlaybookDir string
 	// Output is the writer for status messages (defaults to os.Stdout).
 	Output io.Writer
 	// Concurrency limits parallel deployments per wave (0 = unlimited).
@@ -47,20 +44,6 @@ func (o *Orchestrator) Deploy(ctx context.Context, tags []string) error {
 
 // deployFullDAG runs all components in parallel waves.
 func (o *Orchestrator) deployFullDAG(ctx context.Context, output io.Writer) error {
-	// Step 1: Run prerequisite (openstacksdk) before parallel waves
-	fmt.Fprintln(output, "==> Running prerequisite: openstacksdk")
-	prereq := Component{
-		Name:     "prerequisite-openstacksdk",
-		Type:     RoleType,
-		RoleName: "openstacksdk",
-		Hosts:    "controllers[0]",
-	}
-	if err := o.Deployer.Deploy(ctx, prereq); err != nil {
-		return fmt.Errorf("prerequisite openstacksdk failed: %w", err)
-	}
-	fmt.Fprintln(output, "==> Prerequisite complete")
-
-	// Step 2: Build and run full DAG
 	g, err := BuildGraph()
 	if err != nil {
 		return fmt.Errorf("building dependency graph: %w", err)
@@ -78,12 +61,11 @@ func (o *Orchestrator) deployFullDAG(ctx context.Context, output io.Writer) erro
 }
 
 // deploySingleTag passes through to ansible-playbook with the tag.
-// This is identical to running: ansible-playbook site.yml --tags <tag>
+// This is identical to running: ansible-playbook vexxhost.atmosphere.site --tags <tag>
 func (o *Orchestrator) deploySingleTag(ctx context.Context, tag string, output io.Writer) error {
 	fmt.Fprintf(output, "==> Single tag mode: %s\n", tag)
 
-	sitePlaybook := filepath.Join(o.PlaybookDir, "site.yml")
-	cmd := exec.CommandContext(ctx, "ansible-playbook", sitePlaybook,
+	cmd := exec.CommandContext(ctx, "ansible-playbook", "vexxhost.atmosphere.site",
 		"--inventory", o.Inventory,
 		"--tags", tag)
 
