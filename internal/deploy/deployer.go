@@ -106,7 +106,11 @@ func renderPlaybook(c Component) string {
 	}
 
 	b.WriteString("  roles:\n")
-	b.WriteString(fmt.Sprintf("    - role: %s\n", c.RoleName))
+	roleName := c.RoleName
+	if !strings.Contains(roleName, ".") {
+		roleName = "vexxhost.atmosphere." + roleName
+	}
+	b.WriteString(fmt.Sprintf("    - role: %s\n", roleName))
 	if c.When != "" {
 		b.WriteString(fmt.Sprintf("      when: %q\n", c.When))
 	}
