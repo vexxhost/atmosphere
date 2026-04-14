@@ -10,6 +10,27 @@ import (
 	"sync"
 )
 
+// preflightPlaybook contains validation checks that mirror pre_tasks from the
+// original sequential playbooks (e.g., playbooks/openstack.yml). The parallel
+// orchestrator generates minimal single-role playbooks for RoleType components,
+// which bypasses pre_tasks defined in the original playbook files. Running these
+// checks before the DAG ensures configuration errors are caught early.
+const preflightPlaybook = `---
+- name: Preflight checks
+  hosts: controllers[0]
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Fail if atmosphere_ceph_enabled is set
+      ansible.builtin.fail:
+        msg: >-
+          The "atmosphere_ceph_enabled" variable is no longer supported.
+          Please use the "atmosphere_storage" variable to configure storage
+          backends instead. Refer to the storage configuration documentation
+          for migration instructions.
+      when: atmosphere_ceph_enabled is defined
+`
+
 // Orchestrator coordinates the parallel deployment of Atmosphere components.
 type Orchestrator struct {
 	// Deployer is the deployment backend (e.g., AnsibleDeployer).
@@ -42,8 +63,55 @@ func (o *Orchestrator) Deploy(ctx context.Context, tags []string) error {
 	}
 }
 
+// runPreflightChecks runs validation checks before any component deployment.
+// This ensures that deprecated or invalid configuration is caught early, mirroring
+// the pre_tasks from the original sequential playbooks (e.g., playbooks/openstack.yml).
+func (o *Orchestrator) runPreflightChecks(ctx context.Context, output io.Writer) error {
+	fmt.Fprintln(output, "==> Running preflight checks")
+
+	cmd := exec.CommandContext(ctx, "ansible-playbook", "/dev/stdin",
+		"--inventory", o.Inventory)
+	cmd.Stdin = strings.NewReader(preflightPlaybook)
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return fmt.Errorf("stdout pipe: %w", err)
+	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return fmt.Errorf("stderr pipe: %w", err)
+	}
+
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("starting preflight checks: %w", err)
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		prefixOutput("preflight", stdout, output)
+	}()
+	go func() {
+		defer wg.Done()
+		prefixOutput("preflight", stderr, output)
+	}()
+	wg.Wait()
+
+	if err := cmd.Wait(); err != nil {
+		return fmt.Errorf("preflight checks failed: %w", err)
+	}
+
+	fmt.Fprintln(output, "==> Preflight checks passed")
+	return nil
+}
+
 // deployFullDAG runs all components in parallel waves.
 func (o *Orchestrator) deployFullDAG(ctx context.Context, output io.Writer) error {
+	if err := o.runPreflightChecks(ctx, output); err != nil {
+		return err
+	}
+
 	g, err := BuildGraph()
 	if err != nil {
 		return fmt.Errorf("building dependency graph: %w", err)
@@ -111,6 +179,10 @@ func (o *Orchestrator) deploySingleTag(ctx context.Context, tag string, output i
 // in DAG order with parallel waves.
 func (o *Orchestrator) deployMultipleTags(ctx context.Context, tags []string, output io.Writer) error {
 	fmt.Fprintf(output, "==> Multi-tag mode: %s\n", strings.Join(tags, ", "))
+
+	if err := o.runPreflightChecks(ctx, output); err != nil {
+		return err
+	}
 
 	// Resolve tag names to component names
 	componentNames := make([]string, 0, len(tags))
