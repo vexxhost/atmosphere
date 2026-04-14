@@ -23,6 +23,10 @@
 - name: Install MySQL python package
   ansible.builtin.pip:
     name: PyMySQL
+  register: _keycloak_pip_install
+  retries: 3
+  delay: 5
+  until: _keycloak_pip_install is not failed
 
 - name: Check MySQL ready
   run_once: true
