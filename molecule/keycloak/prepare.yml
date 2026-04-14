@@ -12,19 +12,41 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+- name: Prepare
+  hosts: all
+  become: true
+  tasks:
+    - name: Workaround system hostname
+      block:
+        - name: Configure short hostname
+          ansible.builtin.hostname:
+            name: "{{ inventory_hostname_short }}"
+        - name: Ensure hostname inside hosts file
+          ansible.builtin.lineinfile:
+            path: /etc/hosts
+            regexp: '^127\.0\.1\.1'
+            line: 127.0.1.1 {{ inventory_hostname }} {{ inventory_hostname_short }}
+
+    - name: Install "dirmngr" for GPG keyserver operations
+      ansible.builtin.apt:
+        name: dirmngr
+        state: present
+
+    - name: Purge "snapd" package
+      when: ansible_distribution | lower == 'ubuntu'
+      ansible.builtin.apt:
+        name: snapd
+        state: absent
+        purge: true
+
+- name: Generate workspace
+  ansible.builtin.import_playbook: vexxhost.atmosphere.generate_workspace
+  vars:
+    workspace_path: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}"
+    domain_name: "{{ ansible_default_ipv4['address'].replace('.', '-') }}.nip.io"
+
 - name: Install Kubernetes
   ansible.builtin.import_playbook: vexxhost.atmosphere.kubernetes
 
 - name: Install CSI
   ansible.builtin.import_playbook: vexxhost.atmosphere.csi
-
-- hosts: controllers
-  become: true
-  roles:
-    - vexxhost.atmosphere.cert_manager
-    - vexxhost.atmosphere.cluster_issuer
-    - vexxhost.atmosphere.ingress_nginx
-    - vexxhost.atmosphere.rabbitmq_cluster_operator
-    - vexxhost.atmosphere.percona_xtradb_cluster_operator
-    - vexxhost.atmosphere.percona_xtradb_cluster
-    - vexxhost.atmosphere.memcached
