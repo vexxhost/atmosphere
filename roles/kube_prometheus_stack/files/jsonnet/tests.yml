@@ -232,6 +232,34 @@ tests:
 
   - interval: 1m
     input_series:
+      - series: 'openstack_neutron_l3_agent_of_router{ha_state="active",l3_agent_id="agent-1",router_id="router-1"}'
+        values: '1x10'
+      - series: 'openstack_neutron_l3_agent_of_router{ha_state="active",l3_agent_id="agent-1",router_id="router-1",service="neutron-metadata"}'
+        values: '1x10'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: NeutronRouterMultipleActiveL3Agents
+        exp_alerts: []
+
+  - interval: 1m
+    input_series:
+      - series: 'openstack_neutron_l3_agent_of_router{ha_state="active",l3_agent_id="agent-1",router_id="router-1"}'
+        values: '1x10'
+      - series: 'openstack_neutron_l3_agent_of_router{ha_state="active",l3_agent_id="agent-2",router_id="router-1"}'
+        values: '1x10'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: NeutronRouterMultipleActiveL3Agents
+        exp_alerts:
+          - exp_labels:
+              router_id: router-1
+              severity: P3
+            exp_annotations:
+              summary: "Neutron HA router has multiple active L3 agents"
+              description: "The router with ID router-1 has 2 L3 agents in active state which can cause network resets and traffic drops."
+
+  - interval: 1m
+    input_series:
       - series: 'openstack_loadbalancer_loadbalancer_status{id="d4e449ad-fad5-4d9e-a039-f71c773ec999", job="openstack-exporter", name="test-lb", operating_status="ONLINE", provisioning_status="PENDING_UPDATE"}'
         values: '0x15'
       - series: 'openstack_loadbalancer_loadbalancer_status{id="25dcf79f-b09d-4d0c-9e29-b69ded2ec734", job="openstack-exporter", name="test-lb-2", operating_status="ONLINE", provisioning_status="ACTIVE"}'
