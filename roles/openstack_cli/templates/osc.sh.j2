@@ -1,0 +1,18 @@
+#!/bin/bash
+
+exec nerdctl run --rm --network host \
+    --volume "$PWD":/opt --volume /tmp:/tmp \
+    --volume /etc/openstack:/etc/openstack:ro \
+{% if cluster_issuer_type is defined and cluster_issuer_type in ('self-signed', 'ca', 'venafi') %}
+    --volume {{ '/usr/local/share/ca-certificates/atmosphere.crt:/usr/local/share/ca-certificates/atmosphere.crt:ro' if ansible_facts['os_family']
+    in ['Debian'] else '/etc/pki/ca-trust/source/anchors/atmosphere.crt:/usr/local/share/ca-certificates/atmosphere.crt:ro' }} \
+{% elif cluster_issuer_acme_private_ca is defined and cluster_issuer_acme_private_ca | bool %}
+    --volume {{ '/etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro' if ansible_facts['os_family']
+    in ['Debian'] else '/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem:/etc/ssl/certs/ca-certificates.crt:ro' }} \
+{% endif %}
+{% if ansible_facts['distribution_version'] is ansible.builtin.version('20.04', '<=') %}
+    --env OS_CLOUD=atmosphere \
+{% else %}
+    --env-file <(env | grep OS_) \
+{% endif %}
+    {{ atmosphere_images['openstack_cli'] }} "$@"
