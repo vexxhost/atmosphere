@@ -16,6 +16,10 @@
   ansible.builtin.pip:
     name: openstacksdk
     version: "{{ openstacksdk_version }}"
+  register: _openstacksdk_pip_install
+  retries: 3
+  delay: 5
+  until: _openstacksdk_pip_install is not failed
 
 - name: Create openstack config directory
   become: true
