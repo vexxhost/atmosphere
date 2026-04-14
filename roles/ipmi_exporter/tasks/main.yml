@@ -24,7 +24,7 @@
           labels:
             application: ipmi-exporter
         data:
-          config.yml: "{{ ipmi_exporter_config | to_yaml }}"
+          config.yml: "{{ ipmi_exporter_config | to_nice_yaml(indent=2) }}"
 
       - apiVersion: apps/v1
         kind: DaemonSet
@@ -40,19 +40,23 @@
           template:
             metadata:
               annotations:
-                config-hash: "{{ ipmi_exporter_config | to_yaml | hash('md5') }}"
+                config-hash: "{{ ipmi_exporter_config | to_nice_yaml(indent=2) | hash('md5') }}"
               labels:
                 application: ipmi-exporter
                 job: ipmi
             spec:
               containers:
                 - name: exporter
+                  args:
+                    - --config.file=/config.yml
                   image: "{{ atmosphere_images['prometheus_ipmi_exporter'] | vexxhost.kubernetes.docker_image('ref') }}"
                   ports:
                     - name: metrics
                       containerPort: 9290
                   securityContext:
                     privileged: true
+                    runAsUser: 0
+                    runAsGroup: 0
                   volumeMounts:
                     - name: dev-ipmi0
                       mountPath: /dev/ipmi0
