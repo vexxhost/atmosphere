@@ -84,6 +84,22 @@ var Components = []Component{
 		DependsOn: []string{"ceph", "kubernetes"},
 	},
 
+	// Pre-download (upload charts and pull images early to avoid per-component overhead)
+	{
+		Name:      "upload-charts",
+		Type:      RoleType,
+		RoleName:  "upload_helm_charts",
+		Hosts:     "controllers[0]",
+		DependsOn: []string{"kubernetes"},
+	},
+	{
+		Name:      "prepull-images",
+		Type:      RoleType,
+		RoleName:  "prepull_images",
+		Hosts:     "controllers:computes",
+		DependsOn: []string{"kubernetes"},
+	},
+
 	// Infrastructure (RoleType, Hosts: "controllers")
 	{
 		Name:      "cert-manager",
