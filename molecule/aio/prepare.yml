@@ -16,11 +16,6 @@
             regexp: '^127\.0\.1\.1'
             line: 127.0.1.1 {{ inventory_hostname }} {{ inventory_hostname_short }}
 
-    - name: Install "dirmngr" for GPG keyserver operations
-      ansible.builtin.apt:
-        name: dirmngr
-        state: present
-
     - name: Purge "snapd" package
       when: ansible_distribution | lower == 'ubuntu'
       ansible.builtin.apt:
