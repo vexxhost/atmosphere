@@ -123,7 +123,10 @@ func (o *Orchestrator) deployFullDAG(ctx context.Context, output io.Writer) erro
 	return g.Run(ctx, o.Concurrency, func(ctx context.Context, id string, comp Component) error {
 		fmt.Fprintf(output, "==> [%s] Starting deployment\n", id)
 
-		release := rc.Acquire(comp)
+		release, err := rc.Acquire(ctx, comp)
+		if err != nil {
+			return fmt.Errorf("component %s: %w", id, err)
+		}
 		defer release()
 
 		if err := o.Deployer.Deploy(ctx, comp); err != nil {
@@ -211,7 +214,10 @@ func (o *Orchestrator) deployMultipleTags(ctx context.Context, tags []string, ou
 	return subGraph.Run(ctx, o.Concurrency, func(ctx context.Context, id string, comp Component) error {
 		fmt.Fprintf(output, "==> [%s] Starting deployment\n", id)
 
-		release := rc.Acquire(comp)
+		release, err := rc.Acquire(ctx, comp)
+		if err != nil {
+			return fmt.Errorf("component %s: %w", id, err)
+		}
 		defer release()
 
 		if err := o.Deployer.Deploy(ctx, comp); err != nil {
