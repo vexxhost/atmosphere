@@ -1,0 +1,32 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Create destination directories for Helm charts
+  run_once: true
+  ansible.builtin.file:
+    path: "{{ item.dest }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop: "{{ upload_helm_charts_list }}"
+  loop_control:
+    label: "{{ item.dest | basename }}"
+
+- name: Upload all Helm charts
+  run_once: true
+  vexxhost.kubernetes.synchronize:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    archive: false
+    recursive: true
+    checksum: true
+    delete: true
+    use_ssh_args: true
+  loop: "{{ upload_helm_charts_list }}"
+  loop_control:
+    label: "{{ item.dest | basename }}"
+  register: _upload_helm_charts
+  retries: "{{ upload_helm_charts_retries }}"
+  delay: "{{ upload_helm_charts_retry_delay }}"
+  until: _upload_helm_charts is not failed
