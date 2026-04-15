@@ -2,21 +2,10 @@
 # Copyright (c) 2026 VEXXHOST, Inc.
 # SPDX-License-Identifier: Apache-2.0
 
-# Default variables
-# =================
+smartctl_exporter_helm_release_name: prometheus-smartctl-exporter
+smartctl_exporter_helm_chart_path: "../../charts/prometheus-smartctl-exporter/"
+smartctl_exporter_helm_chart_ref: /usr/local/src/prometheus-smartctl-exporter
 
-# .. contents:: Sections
-#    :local:
-
-
-# .. envvar:: smartctl_exporter_smartctl_device_exclude [[[
-#
-# Regular expression of devices to exclude from SMART monitoring.
-#
-# .. code-block:: yaml
-#    :linenos:
-#
-#    smartctl_exporter_smartctl_device_exclude: ""
-#
-smartctl_exporter_smartctl_device_exclude: ""
-                                                                    # ]]]
+smartctl_exporter_helm_release_namespace: monitoring
+smartctl_exporter_helm_kubeconfig: "{{ kubeconfig_path | default('/etc/kubernetes/admin.conf') }}"
+smartctl_exporter_helm_values: {}
