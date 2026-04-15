@@ -26,12 +26,14 @@
         update_cache: true
 
     - name: Enable iscsid service
-      ansible.builtin.shell: systemctl enable iscsid
-      changed_when: false
+      ansible.builtin.systemd:
+        name: iscsid
+        enabled: true
 
     - name: Enable multipathd service
-      ansible.builtin.shell: systemctl enable multipathd
-      changed_when: false
+      ansible.builtin.systemd:
+        name: multipathd
+        enabled: true
 
     - name: Install Helm 3.14.4
       ansible.builtin.shell: |
