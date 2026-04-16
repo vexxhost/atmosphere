@@ -135,27 +135,14 @@
     openstack_helm_ingress_annotations: "{{ _keystone_ingress_annotations | combine(keystone_ingress_annotations) }}"
     openstack_helm_ingress_class_name: "{{ keystone_ingress_class_name }}"
 
-- name: Validate if ingress is reachable
-  ansible.builtin.uri:
-    url: "https://{{ openstack_helm_endpoints_keystone_api_host }}"
-    status_code: [300]
-  register: keystone_ingress_validate
-  until: keystone_ingress_validate.status == 300
-  retries: 120
-  delay: 1
-
 - name: Wait until identity service ready
-  kubernetes.core.k8s_info:
-    api_version: apps/v1
-    kind: Deployment
-    name: keystone-api
-    namespace: openstack
-    wait_sleep: 10
-    wait_timeout: 600
-    wait: true
-    wait_condition:
-      type: Available
-      status: true
+  changed_when: false
+  ansible.builtin.command:
+    cmd: >-
+      atmosphere-wait deployment keystone-api
+      -n openstack
+      --for=condition=Available
+      --timeout=600s
 
 - name: Create Keystone domains
   run_once: true
