@@ -1,0 +1,73 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+# Base arguments for the OpenStack exporter.
+openstack_exporter_args:
+  - --endpoint-type
+  - internal
+  - default
+  - --collect-metric-time
+  - -d cinder-agent_state
+  - -d cinder-limits_backup_max_gb
+  - -d cinder-limits_backup_used_gb
+  - -d cinder-limits_volume_max_gb
+  - -d cinder-limits_volume_used_gb
+  - -d cinder-snapshots
+  - -d cinder-volume_gb
+  - -d cinder-volume_status
+  - -d cinder-volume_status_counter
+  - -d cinder-volume_type_quota_gigabytes
+  - -d cinder-volumes
+  - --disable-service.identity
+  - --disable-service.image
+  - --disable-service.placement
+  - --disable-service.compute
+  - --disable-service.object-store
+  - --disable-service.load-balancer
+  - --disable-service.container-infra
+  - --disable-service.dns
+  - --disable-service.baremetal
+  - --disable-service.gnocchi
+  - --disable-service.database
+  - --disable-service.orchestration
+
+# Neutron metrics to disable when using the OVN network backend.
+openstack_exporter_neutron_disabled_metrics:
+  - -d neutron-l3_agent_of_router
+  - -d neutron-floating_ip
+  - -d neutron-floating_ips
+  - -d neutron-floating_ips_associated_not_active
+  - -d neutron-network
+  - -d neutron-network_ip_availabilities_total
+  - -d neutron-network_ip_availabilities_used
+  - -d neutron-networks
+  - -d neutron-port
+  - -d neutron-ports
+  - -d neutron-ports_lb_not_active
+  - -d neutron-ports_no_ips
+  - -d neutron-quota_floatingip
+  - -d neutron-quota_network
+  - -d neutron-quota_port
+  - -d neutron-quota_rbac_policy
+  - -d neutron-quota_router
+  - -d neutron-quota_security_group
+  - -d neutron-quota_security_group_rule
+  - -d neutron-quota_subnet
+  - -d neutron-quota_subnetpool
+  - -d neutron-router
+  - -d neutron-routers
+  - -d neutron-routers_not_active
+  - -d neutron-security_groups
+  - -d neutron-subnet
+  - -d neutron-subnets
