@@ -106,7 +106,7 @@ var Components = []Component{
 		Type:      RoleType,
 		RoleName:  "cert_manager",
 		Hosts:     "controllers",
-		DependsOn: []string{"kubernetes"},
+		DependsOn: []string{"upload-charts", "prepull-images"},
 	},
 	{
 		Name:      "cluster-issuer",
@@ -120,21 +120,21 @@ var Components = []Component{
 		Type:      RoleType,
 		RoleName:  "ingress_nginx",
 		Hosts:     "controllers",
-		DependsOn: []string{"kubernetes"},
+		DependsOn: []string{"upload-charts", "prepull-images"},
 	},
 	{
 		Name:      "rabbitmq-cluster-operator",
 		Type:      RoleType,
 		RoleName:  "rabbitmq_cluster_operator",
 		Hosts:     "controllers",
-		DependsOn: []string{"cert-manager"},
+		DependsOn: []string{"cert-manager", "upload-charts", "prepull-images"},
 	},
 	{
 		Name:      "percona-xtradb-cluster-operator",
 		Type:      RoleType,
 		RoleName:  "percona_xtradb_cluster_operator",
 		Hosts:     "controllers",
-		DependsOn: []string{"cert-manager"},
+		DependsOn: []string{"cert-manager", "upload-charts", "prepull-images"},
 	},
 	{
 		Name:      "percona-xtradb-cluster",
@@ -148,7 +148,7 @@ var Components = []Component{
 		Type:      RoleType,
 		RoleName:  "valkey",
 		Hosts:     "controllers",
-		DependsOn: []string{"kubernetes", "csi", "cluster-issuer"},
+		DependsOn: []string{"upload-charts", "prepull-images", "csi", "cluster-issuer"},
 	},
 	{
 		Name:      "keycloak",
@@ -171,7 +171,7 @@ var Components = []Component{
 		Type:      RoleType,
 		RoleName:  "node_feature_discovery",
 		Hosts:     "controllers[0]",
-		DependsOn: []string{"kubernetes"},
+		DependsOn: []string{"upload-charts", "prepull-images"},
 	},
 	{
 		Name:      "kube-prometheus-stack",
@@ -185,7 +185,7 @@ var Components = []Component{
 		Type:      RoleType,
 		RoleName:  "loki",
 		Hosts:     "controllers[0]",
-		DependsOn: []string{"kubernetes", "csi"},
+		DependsOn: []string{"upload-charts", "prepull-images", "csi"},
 	},
 	{
 		Name:      "vector",
@@ -199,7 +199,7 @@ var Components = []Component{
 		Type:      RoleType,
 		RoleName:  "goldpinger",
 		Hosts:     "controllers[0]",
-		DependsOn: []string{"kubernetes"},
+		DependsOn: []string{"upload-charts", "prepull-images"},
 	},
 	{
 		Name:      "ipmi-exporter",
@@ -251,7 +251,7 @@ var Components = []Component{
 		Type:      RoleType,
 		RoleName:  "memcached",
 		Hosts:     "controllers[0]",
-		DependsOn: []string{"kubernetes"},
+		DependsOn: []string{"upload-charts", "prepull-images"},
 	},
 	{
 		Name:      "keystone",
@@ -272,7 +272,7 @@ var Components = []Component{
 		Type:        RoleType,
 		RoleName:    "rook_ceph",
 		Hosts:       "controllers[0]",
-		DependsOn:   []string{"kubernetes"},
+		DependsOn:   []string{"upload-charts", "prepull-images"},
 		Environment: cephEnvironment,
 	},
 	{
@@ -288,7 +288,7 @@ var Components = []Component{
 		Type:        RoleType,
 		RoleName:    "ceph_provisioners",
 		Hosts:       "controllers[0]",
-		DependsOn:   []string{"ceph"},
+		DependsOn:   []string{"ceph", "upload-charts", "prepull-images"},
 		Environment: cephEnvironment,
 	},
 	{
@@ -327,7 +327,7 @@ var Components = []Component{
 		Type:        RoleType,
 		RoleName:    "openvswitch",
 		Hosts:       "controllers:computes",
-		DependsOn:   []string{"kubernetes"},
+		DependsOn:   []string{"upload-charts", "prepull-images"},
 		GatherFacts: boolPtr(false),
 	},
 	{
@@ -336,7 +336,7 @@ var Components = []Component{
 		RoleName:    "frr_k8s",
 		Tag:         "frr_k8s",
 		Hosts:       "controllers:computes",
-		DependsOn:   []string{"kubernetes"},
+		DependsOn:   []string{"upload-charts", "prepull-images"},
 		When:        `ovn_bgp_agent_enabled | default(false)`,
 		GatherFacts: boolPtr(false),
 	},
@@ -355,14 +355,14 @@ var Components = []Component{
 		Type:      RoleType,
 		RoleName:  "libvirt",
 		Hosts:     "controllers[0]",
-		DependsOn: []string{"kubernetes", "cluster-issuer"},
+		DependsOn: []string{"upload-charts", "prepull-images", "cluster-issuer"},
 	},
 	{
 		Name:      "coredns",
 		Type:      RoleType,
 		RoleName:  "coredns",
 		Hosts:     "controllers[0]",
-		DependsOn: []string{"kubernetes"},
+		DependsOn: []string{"upload-charts", "prepull-images"},
 	},
 	{
 		Name:      "nova",
