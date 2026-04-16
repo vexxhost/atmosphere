@@ -1,4 +1,4 @@
-# Copyright (c) 2022 VEXXHOST, Inc.
+# Copyright (c) 2025 VEXXHOST, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -12,12 +12,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Generate resources
-  ansible.builtin.import_tasks:
-    file: generate_resources.yml
-
 - name: Create CAs & Issuers
-  when: not (_pre_role_active | default(false))
   kubernetes.core.k8s:
     state: present
     definition:
@@ -57,7 +52,6 @@
     - octavia-server
 
 - name: Create certificate for Octavia clients
-  when: not (_pre_role_active | default(false))
   kubernetes.core.k8s:
     state: present
     definition:
@@ -86,7 +80,6 @@
       size: {{ octavia_tls_client_private_key_size }}
 
 - name: Create admin compute quotaset
-  when: not (_pre_role_active | default(false))
   openstack.cloud.quota:
     cloud: atmosphere
     # NOTE(okozachenko): It uses project name instead of id.
@@ -98,44 +91,3 @@
     gigabytes: -1
     security_group: -1
     security_group_rule: -1
-
-- name: Deploy Helm chart
-  run_once: true
-  kubernetes.core.helm:
-    name: "{{ octavia_helm_release_name }}"
-    chart_ref: "{{ octavia_helm_chart_ref }}"
-    release_namespace: "{{ octavia_helm_release_namespace }}"
-    create_namespace: true
-    kubeconfig: "{{ octavia_helm_kubeconfig }}"
-    values: "{{ _octavia_helm_values | combine(octavia_helm_values, recursive=True) }}"
-
-- name: Add implied roles
-  run_once: true
-  ansible.builtin.command:
-    cmd: >-
-      openstack implied role create
-      --implied-role {{ item.implies }}
-      {{ item.role }}
-  loop:
-    - role: member
-      implies: load-balancer_member
-    - role: reader
-      implies: load-balancer_observer
-  environment:
-    OS_CLOUD: atmosphere
-  register: _octavia_implied_role_create
-  changed_when: _octavia_implied_role_create.rc == 0
-  failed_when: _octavia_implied_role_create.rc != 0 and 'Duplicate entry.' not in _octavia_implied_role_create.stderr
-  retries: 10
-  delay: 1
-  until: _octavia_implied_role_create.rc == 0 or 'Duplicate entry.' in _octavia_implied_role_create.stderr
-
-- name: Create Ingress
-  ansible.builtin.include_role:
-    name: openstack_helm_ingress
-  vars:
-    openstack_helm_ingress_endpoint: load_balancer
-    openstack_helm_ingress_service_name: octavia-api
-    openstack_helm_ingress_service_port: 9876
-    openstack_helm_ingress_annotations: "{{ octavia_ingress_annotations }}"
-    openstack_helm_ingress_class_name: "{{ octavia_ingress_class_name }}"
