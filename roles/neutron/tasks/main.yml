@@ -55,17 +55,13 @@
   when: neutron_networks | length > 0
   block:
     - name: Wait until network service ready
-      kubernetes.core.k8s_info:
-        api_version: apps/v1
-        kind: Deployment
-        name: neutron-server
-        namespace: openstack
-        wait_sleep: 10
-        wait_timeout: 600
-        wait: true
-        wait_condition:
-          type: Available
-          status: true
+      changed_when: false
+      ansible.builtin.command:
+        cmd: >-
+          atmosphere-wait deployment neutron-server
+          -n openstack
+          --for=condition=Available
+          --timeout=600s
 
     - name: Create networks
       openstack.cloud.network:

@@ -78,17 +78,13 @@
   when: nova_flavors | length > 0
   block:
     - name: Wait until compute api service ready
-      kubernetes.core.k8s_info:
-        api_version: apps/v1
-        kind: Deployment
-        name: nova-api-osapi
-        namespace: openstack
-        wait_sleep: 10
-        wait_timeout: 600
-        wait: true
-        wait_condition:
-          type: Available
-          status: true
+      changed_when: false
+      ansible.builtin.command:
+        cmd: >-
+          atmosphere-wait deployment nova-api-osapi
+          -n openstack
+          --for=condition=Available
+          --timeout=600s
 
     - name: Create flavors
       openstack.cloud.compute_flavor:
