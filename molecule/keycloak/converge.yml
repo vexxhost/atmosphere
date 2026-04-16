@@ -26,6 +26,26 @@
         CGO_ENABLED: "0"
         PATH: "/usr/local/go/bin:{{ ansible_env.PATH | default(lookup('env', 'PATH')) }}"
 
+    - name: Build atmosphere-wait binary
+      ansible.builtin.command:
+        cmd: go build -o ./bin/atmosphere-wait ./cmd/atmosphere-wait
+      args:
+        chdir: "{{ zuul.project.src_dir | default(playbook_dir + '/../..') }}"
+      run_once: true
+      changed_when: false
+      environment:
+        CGO_ENABLED: "0"
+        PATH: "/usr/local/go/bin:{{ ansible_env.PATH | default(lookup('env', 'PATH')) }}"
+
+    - name: Install atmosphere-wait to PATH
+      become: true
+      ansible.builtin.copy:
+        src: "{{ zuul.project.src_dir | default(playbook_dir + '/../..') }}/bin/atmosphere-wait"
+        dest: /usr/local/bin/atmosphere-wait
+        mode: "0755"
+        remote_src: true
+      run_once: true
+
     - name: Deploy with parallel orchestrator
       ansible.builtin.shell:
         cmd: >

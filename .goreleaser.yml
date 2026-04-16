@@ -13,11 +13,24 @@ builds:
       - arm64
     ldflags:
       - -s -w
+  - id: atmosphere-wait
+    main: ./cmd/atmosphere-wait
+    binary: atmosphere-wait
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
 
 archives:
   - id: atmosphere
     builds:
       - atmosphere
+      - atmosphere-wait
     format: tar.gz
     name_template: "atmosphere_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
 
