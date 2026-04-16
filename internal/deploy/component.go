@@ -84,19 +84,12 @@ var Components = []Component{
 		DependsOn: []string{"ceph", "kubernetes"},
 	},
 
-	// Pre-download (upload charts and pull images early to avoid per-component overhead)
+	// Pre-download (upload charts early to avoid per-component overhead)
 	{
 		Name:      "upload-charts",
 		Type:      RoleType,
 		RoleName:  "upload_helm_charts",
 		Hosts:     "controllers[0]",
-		DependsOn: []string{"kubernetes"},
-	},
-	{
-		Name:      "prepull-images",
-		Type:      RoleType,
-		RoleName:  "prepull_images",
-		Hosts:     "controllers:computes",
 		DependsOn: []string{"kubernetes"},
 	},
 
@@ -106,7 +99,7 @@ var Components = []Component{
 		Type:      RoleType,
 		RoleName:  "cert_manager",
 		Hosts:     "controllers",
-		DependsOn: []string{"upload-charts", "prepull-images"},
+		DependsOn: []string{"upload-charts"},
 	},
 	{
 		Name:      "cluster-issuer",
@@ -120,21 +113,21 @@ var Components = []Component{
 		Type:      RoleType,
 		RoleName:  "ingress_nginx",
 		Hosts:     "controllers",
-		DependsOn: []string{"upload-charts", "prepull-images"},
+		DependsOn: []string{"upload-charts"},
 	},
 	{
 		Name:      "rabbitmq-cluster-operator",
 		Type:      RoleType,
 		RoleName:  "rabbitmq_cluster_operator",
 		Hosts:     "controllers",
-		DependsOn: []string{"cert-manager", "upload-charts", "prepull-images"},
+		DependsOn: []string{"cert-manager", "upload-charts"},
 	},
 	{
 		Name:      "percona-xtradb-cluster-operator",
 		Type:      RoleType,
 		RoleName:  "percona_xtradb_cluster_operator",
 		Hosts:     "controllers",
-		DependsOn: []string{"cert-manager", "upload-charts", "prepull-images"},
+		DependsOn: []string{"cert-manager", "upload-charts"},
 	},
 	{
 		Name:      "percona-xtradb-cluster",
@@ -148,7 +141,7 @@ var Components = []Component{
 		Type:      RoleType,
 		RoleName:  "valkey",
 		Hosts:     "controllers",
-		DependsOn: []string{"upload-charts", "prepull-images", "csi", "cluster-issuer"},
+		DependsOn: []string{"upload-charts", "csi", "cluster-issuer"},
 	},
 	{
 		Name:      "keycloak",
@@ -171,7 +164,7 @@ var Components = []Component{
 		Type:      RoleType,
 		RoleName:  "node_feature_discovery",
 		Hosts:     "controllers[0]",
-		DependsOn: []string{"upload-charts", "prepull-images"},
+		DependsOn: []string{"upload-charts"},
 	},
 	{
 		Name:      "kube-prometheus-stack",
@@ -185,7 +178,7 @@ var Components = []Component{
 		Type:      RoleType,
 		RoleName:  "loki",
 		Hosts:     "controllers[0]",
-		DependsOn: []string{"upload-charts", "prepull-images", "csi"},
+		DependsOn: []string{"upload-charts", "csi"},
 	},
 	{
 		Name:      "vector",
@@ -199,7 +192,7 @@ var Components = []Component{
 		Type:      RoleType,
 		RoleName:  "goldpinger",
 		Hosts:     "controllers[0]",
-		DependsOn: []string{"upload-charts", "prepull-images"},
+		DependsOn: []string{"upload-charts"},
 	},
 	{
 		Name:      "ipmi-exporter",
@@ -251,7 +244,7 @@ var Components = []Component{
 		Type:      RoleType,
 		RoleName:  "memcached",
 		Hosts:     "controllers[0]",
-		DependsOn: []string{"upload-charts", "prepull-images"},
+		DependsOn: []string{"upload-charts"},
 	},
 	{
 		Name:      "keystone",
@@ -272,7 +265,7 @@ var Components = []Component{
 		Type:        RoleType,
 		RoleName:    "rook_ceph",
 		Hosts:       "controllers[0]",
-		DependsOn:   []string{"upload-charts", "prepull-images"},
+		DependsOn:   []string{"upload-charts"},
 		Environment: cephEnvironment,
 	},
 	{
@@ -288,7 +281,7 @@ var Components = []Component{
 		Type:        RoleType,
 		RoleName:    "ceph_provisioners",
 		Hosts:       "controllers[0]",
-		DependsOn:   []string{"ceph", "upload-charts", "prepull-images"},
+		DependsOn:   []string{"ceph", "upload-charts"},
 		Environment: cephEnvironment,
 	},
 	{
@@ -327,7 +320,7 @@ var Components = []Component{
 		Type:        RoleType,
 		RoleName:    "openvswitch",
 		Hosts:       "controllers:computes",
-		DependsOn:   []string{"upload-charts", "prepull-images"},
+		DependsOn:   []string{"upload-charts"},
 		GatherFacts: boolPtr(false),
 	},
 	{
@@ -336,7 +329,7 @@ var Components = []Component{
 		RoleName:    "frr_k8s",
 		Tag:         "frr_k8s",
 		Hosts:       "controllers:computes",
-		DependsOn:   []string{"upload-charts", "prepull-images"},
+		DependsOn:   []string{"upload-charts"},
 		When:        `ovn_bgp_agent_enabled | default(false)`,
 		GatherFacts: boolPtr(false),
 	},
@@ -355,14 +348,14 @@ var Components = []Component{
 		Type:      RoleType,
 		RoleName:  "libvirt",
 		Hosts:     "controllers[0]",
-		DependsOn: []string{"upload-charts", "prepull-images", "cluster-issuer"},
+		DependsOn: []string{"upload-charts", "cluster-issuer"},
 	},
 	{
 		Name:      "coredns",
 		Type:      RoleType,
 		RoleName:  "coredns",
 		Hosts:     "controllers[0]",
-		DependsOn: []string{"upload-charts", "prepull-images"},
+		DependsOn: []string{"upload-charts"},
 	},
 	{
 		Name:      "nova",
