@@ -10,6 +10,8 @@ import (
 	"sort"
 	"strings"
 	"sync"
+
+	"golang.org/x/sync/errgroup"
 )
 
 // Deployer deploys a single component.
@@ -26,6 +28,24 @@ type AnsibleDeployer struct {
 }
 
 func (a *AnsibleDeployer) Deploy(ctx context.Context, component Component) error {
+	if component.PreRoleName == "" {
+		return a.runRole(ctx, component, component.RoleName)
+	}
+
+	g, ctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		return a.runRole(ctx, component, component.PreRoleName)
+	})
+
+	g.Go(func() error {
+		return a.runRole(ctx, component, component.RoleName)
+	})
+
+	return g.Wait()
+}
+
+func (a *AnsibleDeployer) runRole(ctx context.Context, component Component, roleName string) error {
 	output := a.Output
 	if output == nil {
 		output = os.Stdout
@@ -39,7 +59,7 @@ func (a *AnsibleDeployer) Deploy(ctx context.Context, component Component) error
 		cmd = exec.CommandContext(ctx, "ansible-playbook", playbookRef,
 			"--inventory", a.Inventory)
 	case RoleType:
-		playbook := renderPlaybook(component)
+		playbook := renderPlaybook(component, roleName)
 		cmd = exec.CommandContext(ctx, "ansible-playbook", "/dev/stdin",
 			"--inventory", a.Inventory)
 		cmd.Stdin = strings.NewReader(playbook)
@@ -57,30 +77,34 @@ func (a *AnsibleDeployer) Deploy(ctx context.Context, component Component) error
 	}
 
 	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("starting ansible-playbook for %s: %w", component.Name, err)
+		return fmt.Errorf("starting ansible-playbook for %s/%s: %w", component.Name, roleName, err)
 	}
+
+	prefix := component.Name + "/" + roleName
 
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() {
 		defer wg.Done()
-		prefixOutput(component.Name, stdout, output)
+		prefixOutput(prefix, stdout, output)
 	}()
 	go func() {
 		defer wg.Done()
-		prefixOutput(component.Name, stderr, output)
+		prefixOutput(prefix, stderr, output)
 	}()
 
 	wg.Wait()
 
 	if err := cmd.Wait(); err != nil {
-		return fmt.Errorf("ansible-playbook failed for %s: %w", component.Name, err)
+		return fmt.Errorf("ansible-playbook failed for %s/%s: %w", component.Name, roleName, err)
 	}
 
 	return nil
 }
 
-func renderPlaybook(c Component) string {
+func renderPlaybook(c Component, roleName string) string {
+	isMainWithPreRole := c.PreRoleName != "" && roleName == c.RoleName
+
 	var b strings.Builder
 	b.WriteString("---\n")
 	b.WriteString(fmt.Sprintf("- hosts: %s\n", c.Hosts))
@@ -103,13 +127,17 @@ func renderPlaybook(c Component) string {
 	}
 
 	b.WriteString("  roles:\n")
-	roleName := c.RoleName
-	if !strings.Contains(roleName, ".") {
-		roleName = "vexxhost.atmosphere." + roleName
+	fqRoleName := roleName
+	if !strings.Contains(fqRoleName, ".") {
+		fqRoleName = "vexxhost.atmosphere." + fqRoleName
 	}
-	b.WriteString(fmt.Sprintf("    - role: %s\n", roleName))
+	b.WriteString(fmt.Sprintf("    - role: %s\n", fqRoleName))
 	if c.When != "" {
 		b.WriteString(fmt.Sprintf("      when: %q\n", c.When))
+	}
+	if isMainWithPreRole {
+		b.WriteString("      vars:\n")
+		b.WriteString("        _pre_role_active: true\n")
 	}
 
 	return b.String()
