@@ -25,6 +25,18 @@
       when: atmosphere_ceph_enabled is defined
   roles:
     - role: defaults
+  tasks:
+    - name: Pre-install AppArmor packages
+      ansible.builtin.package:
+        state: present
+        name:
+          - apparmor
+          - apparmor-utils
+      register: _install_apparmor
+      retries: 5
+      delay: 10
+      until: _install_apparmor is not failed
+      when: ansible_facts['os_family'] == "Debian"
   post_tasks:
     - name: Set a fact with the "atmosphere_images" for other plays
       ansible.builtin.set_fact:
