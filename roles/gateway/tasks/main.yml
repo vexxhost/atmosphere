@@ -68,6 +68,9 @@
   when:
     - gateway_route_name is defined
     - gateway_route_config.security_policy_cors_allow_origins is defined
+      or gateway_route_config.security_policy_oidc is defined
+      or gateway_route_config.security_policy_jwt is defined
+      or gateway_route_config.security_policy_authorization is defined
   run_once: true
   kubernetes.core.k8s:
     state: present

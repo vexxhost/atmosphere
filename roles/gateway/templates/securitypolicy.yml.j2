@@ -4,10 +4,11 @@ metadata:
   name: {{ gateway_route_name }}
   namespace: {{ gateway_route_namespace }}
 spec:
-  targetRef:
-    group: gateway.networking.k8s.io
-    kind: HTTPRoute
-    name: {{ gateway_route_name }}
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: {{ gateway_route_name }}
+{% if gateway_route_config.security_policy_cors_allow_origins is defined %}
   cors:
     allowOrigins:
 {% for origin in gateway_route_config.security_policy_cors_allow_origins %}
@@ -23,3 +24,16 @@ spec:
 {% endfor %}
     exposeHeaders:
       - "*"
+{% endif %}
+{% if gateway_route_config.security_policy_oidc is defined %}
+  oidc:
+{{ gateway_route_config.security_policy_oidc | to_nice_yaml(indent=2) | indent(4, first=true) }}
+{% endif %}
+{% if gateway_route_config.security_policy_jwt is defined %}
+  jwt:
+{{ gateway_route_config.security_policy_jwt | to_nice_yaml(indent=2) | indent(4, first=true) }}
+{% endif %}
+{% if gateway_route_config.security_policy_authorization is defined %}
+  authorization:
+{{ gateway_route_config.security_policy_authorization | to_nice_yaml(indent=2) | indent(4, first=true) }}
+{% endif %}
