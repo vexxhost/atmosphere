@@ -1,28 +1,55 @@
 ---
 - hosts: all
   gather_facts: false
+  vars:
+    _project_dir: "{{ zuul.project.src_dir | default(playbook_dir + '/../..') }}"
   tasks:
     - name: Build atmosphere binary
       ansible.builtin.command:
         cmd: go build -o ./bin/atmosphere ./cmd/atmosphere
       args:
-        chdir: "{{ zuul.project.src_dir | default(playbook_dir + '/../..') }}"
+        chdir: "{{ _project_dir }}"
       run_once: true
       changed_when: false
       environment:
         CGO_ENABLED: "0"
         PATH: "/usr/local/go/bin:{{ ansible_env.PATH | default(lookup('env', 'PATH')) }}"
 
+    - name: Create local inventory
+      when: zuul is not defined
+      ansible.builtin.copy:
+        dest: "{{ _project_dir }}/inventory.yaml"
+        mode: "0644"
+        content: |
+          all:
+            hosts:
+              instance:
+                ansible_connection: local
+                ansible_become: true
+            children:
+              controllers:
+                hosts:
+                  instance: {}
+              cephs:
+                hosts:
+                  instance: {}
+              computes:
+                hosts:
+                  instance: {}
+      run_once: true
+
     - name: Deploy with parallel orchestrator
       ansible.builtin.shell:
         cmd: >
-          . .venv/bin/activate &&
+          {% if zuul is defined %}. .venv/bin/activate && {% endif %}
           ./bin/atmosphere deploy
           --inventory ./inventory.yaml
           {{ '--tags ' + atmosphere_deploy_tags if atmosphere_deploy_tags is defined else '' }}
         executable: /bin/bash
       args:
-        chdir: "{{ zuul.project.src_dir | default(playbook_dir + '/../..') }}"
+        chdir: "{{ _project_dir }}"
+      environment:
+        ATMOSPHERE_NETWORK_BACKEND: "{{ atmosphere_network_backend | default(lookup('env', 'ATMOSPHERE_NETWORK_BACKEND')) | default('openvswitch', true) }}"
       run_once: true
       changed_when: false
 
