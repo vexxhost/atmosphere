@@ -32,6 +32,7 @@
           . .venv/bin/activate &&
           ./bin/atmosphere deploy
           --inventory {{ lookup('env', 'MOLECULE_EPHEMERAL_DIRECTORY') }}/workspace
+          --prepull
           {{ '--tags ' + atmosphere_deploy_tags if atmosphere_deploy_tags is defined else '' }}
         executable: /bin/bash
       args:

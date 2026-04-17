@@ -14,6 +14,7 @@ func newDeployCmd() *cobra.Command {
 		inventory   string
 		tags        string
 		concurrency int
+		prepull     bool
 	)
 
 	cmd := &cobra.Command{
@@ -37,10 +38,11 @@ and runs them in parallel where possible.`,
 			}
 
 			orchestrator := &deploy.Orchestrator{
-				Deployer:    deployer,
-				Inventory:   inventory,
-				Output:      os.Stdout,
-				Concurrency: concurrency,
+				Deployer:      deployer,
+				Inventory:     inventory,
+				Output:        os.Stdout,
+				Concurrency:   concurrency,
+				PrepullImages: prepull,
 			}
 
 			// Parse tags
@@ -59,6 +61,7 @@ and runs them in parallel where possible.`,
 	cmd.Flags().StringVarP(&inventory, "inventory", "i", "", "Path to Ansible inventory file (required)")
 	cmd.Flags().StringVarP(&tags, "tags", "t", "", "Comma-separated list of component tags to deploy")
 	cmd.Flags().IntVar(&concurrency, "concurrency", 0, "Max concurrent deployments per wave (0 = unlimited)")
+	cmd.Flags().BoolVar(&prepull, "prepull", false, "Pre-pull all container images after foundation wave")
 
 	return cmd
 }

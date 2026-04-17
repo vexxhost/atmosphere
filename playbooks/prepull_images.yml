@@ -1,0 +1,49 @@
+# Copyright (c) 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+# Pre-pull all container images required by Atmosphere components.
+# Run this after Kubernetes (containerd) is available to warm the image
+# cache so that subsequent parallel deployments don't block on pulls.
+
+- name: Pre-pull container images
+  hosts: all
+  become: true
+  roles:
+    - role: vexxhost.atmosphere.defaults
+  tasks:
+    - name: Build unique image list
+      ansible.builtin.set_fact:
+        _prepull_images: "{{ atmosphere_images.values() | unique | sort }}"
+
+    - name: Pull all container images in parallel
+      ansible.builtin.command:
+        cmd: "crictl pull {{ item }}"
+      loop: "{{ _prepull_images }}"
+      loop_control:
+        label: "{{ item | regex_replace('.*/', '') | truncate(60, True) }}"
+      async: 900
+      poll: 0
+      register: _prepull_jobs
+      changed_when: false
+      failed_when: false
+
+    - name: Wait for all image pulls to complete
+      ansible.builtin.async_status:
+        jid: "{{ item.ansible_job_id }}"
+      loop: "{{ _prepull_jobs.results }}"
+      loop_control:
+        label: "{{ item.item | default('') | regex_replace('.*/', '') | truncate(60, True) }}"
+      register: _prepull_results
+      until: _prepull_results.finished
+      retries: 90
+      delay: 10
+      changed_when: false
+      failed_when: false
+
+    - name: Report pre-pull summary
+      ansible.builtin.debug:
+        msg: >-
+          Pre-pulled {{ _prepull_results.results | selectattr('finished', 'defined')
+            | selectattr('finished') | list | length }}/{{ _prepull_images | length }} images
+          ({{ _prepull_results.results | selectattr('rc', 'defined')
+            | selectattr('rc', 'ne', 0) | list | length }} failures ignored)
