@@ -34,6 +34,31 @@
     workspace_path: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}"
     domain_name: "{{ ansible_default_ipv4['address'].replace('.', '-') }}.nip.io"
 
+- name: Copy AIO overrides to workspace
+  hosts: all
+  become: true
+  tasks:
+    - name: Copy molecule.yml overrides to project group_vars
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/group_vars/all/molecule.yml"
+        dest: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}/group_vars/all/molecule.yml"
+        mode: "0644"
+      run_once: true
+
+- name: Overwrite OSD devices with LVM-backed paths
+  hosts: all
+  become: true
+  tasks:
+    - name: Overwrite existing osds.yml file
+      ansible.builtin.copy:
+        dest: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}/group_vars/cephs/osds.yml"
+        mode: '0644'
+        content: |
+          ceph_osd_devices:
+            - "/dev/ceph-{{ inventory_hostname_short }}-osd0/data"
+            - "/dev/ceph-{{ inventory_hostname_short }}-osd1/data"
+            - "/dev/ceph-{{ inventory_hostname_short }}-osd2/data"
+
 - name: Setup networking
   hosts: all
   become: true
