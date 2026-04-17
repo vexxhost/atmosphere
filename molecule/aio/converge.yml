@@ -50,6 +50,8 @@
         chdir: "{{ _project_dir }}"
       environment:
         ATMOSPHERE_NETWORK_BACKEND: "{{ atmosphere_network_backend | default(lookup('env', 'ATMOSPHERE_NETWORK_BACKEND')) | default('openvswitch', true) }}"
+        PATH: "{{ ansible_env.PATH | default(lookup('env', 'PATH')) }}"
+        ANSIBLE_COLLECTIONS_PATH: "{{ lookup('env', 'ANSIBLE_COLLECTIONS_PATH') | default(lookup('env', 'HOME') + '/.ansible/collections', true) }}"
       run_once: true
       changed_when: false
 
