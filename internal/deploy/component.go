@@ -388,7 +388,7 @@ var Components = []Component{
 		RoleName:    "magnum",
 		PreRoleName: "magnum_pre",
 		Hosts:       "controllers[0]",
-		DependsOn:   []string{"octavia", "barbican", "heat"},
+		DependsOn:   []string{"barbican", "heat"},
 	},
 	{
 		Name:      "manila",
