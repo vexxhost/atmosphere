@@ -224,12 +224,18 @@ var Components = []Component{
 		Type:     RoleType,
 		RoleName: "multipathd",
 		Hosts:    "controllers:computes",
+		// TODO: Remove apt resource once vexxhost/ansible-collection-kubernetes#262
+		// and vexxhost/ansible-collection-containers#114 merge with retry logic.
+		Resources: []string{"apt"},
 	},
 	{
 		Name:     "iscsi",
 		Type:     RoleType,
 		RoleName: "iscsi",
 		Hosts:    "controllers:computes",
+		// TODO: Remove apt resource once vexxhost/ansible-collection-kubernetes#262
+		// and vexxhost/ansible-collection-containers#114 merge with retry logic.
+		Resources: []string{"apt"},
 	},
 	{
 		Name:     "udev",
