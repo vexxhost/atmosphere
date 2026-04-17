@@ -77,10 +77,10 @@ func (a *AnsibleDeployer) runRole(ctx context.Context, component Component, role
 	}
 
 	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("starting ansible-playbook for %s/%s: %w", component.Name, roleName, err)
+		return fmt.Errorf("starting ansible-playbook for %s/%s: %w", component.Name, executionLabel(component, roleName), err)
 	}
 
-	prefix := component.Name + "/" + roleName
+	prefix := component.Name + "/" + executionLabel(component, roleName)
 
 	var wg sync.WaitGroup
 	wg.Add(2)
@@ -96,10 +96,25 @@ func (a *AnsibleDeployer) runRole(ctx context.Context, component Component, role
 	wg.Wait()
 
 	if err := cmd.Wait(); err != nil {
-		return fmt.Errorf("ansible-playbook failed for %s/%s: %w", component.Name, roleName, err)
+		return fmt.Errorf("ansible-playbook failed for %s/%s: %w", component.Name, executionLabel(component, roleName), err)
 	}
 
 	return nil
+}
+
+func executionLabel(component Component, roleName string) string {
+	if roleName != "" {
+		return roleName
+	}
+
+	if component.Type == PlaybookType {
+		if component.Playbook != "" {
+			return component.Playbook
+		}
+		return component.Name
+	}
+
+	return component.Name
 }
 
 func renderPlaybook(c Component, roleName string) string {

@@ -25,8 +25,8 @@ type deployEvent struct {
 }
 
 func (d *trackingDeployer) Deploy(ctx context.Context, component Component) error {
-	// Use the real AnsibleDeployer logic for PreRoleName handling
-	// but stub out the actual ansible-playbook execution.
+	// Mirror only the PreRoleName branching needed by this test helper;
+	// this doesn't exercise AnsibleDeployer internals.
 	if component.PreRoleName == "" {
 		d.recordRole(component.Name, component.RoleName)
 		return nil
@@ -151,13 +151,15 @@ func TestDeploy_PreRoleRunsInParallel(t *testing.T) {
 		t.Fatal("expected both magnum_pre and magnum events")
 	}
 
-	// Verify they overlapped (started within 10ms of each other)
-	startDiff := preEvent.startedAt.Sub(mainEvent.startedAt)
-	if startDiff < 0 {
-		startDiff = -startDiff
-	}
-	if startDiff > 20*time.Millisecond {
-		t.Errorf("pre-role and main role should start near-simultaneously, got %v apart", startDiff)
+	// Verify the two deployments overlapped in time.
+	if preEvent.endedAt.Before(mainEvent.startedAt) || mainEvent.endedAt.Before(preEvent.startedAt) {
+		t.Errorf(
+			"pre-role and main role should overlap: pre=[%v,%v] main=[%v,%v]",
+			preEvent.startedAt,
+			preEvent.endedAt,
+			mainEvent.startedAt,
+			mainEvent.endedAt,
+		)
 	}
 }
 
