@@ -71,10 +71,16 @@ var cephEnvironment = map[string]string{
 var Components = []Component{
 	// Foundation (PlaybookType)
 	{
+		Name:      "ceph-packages",
+		Type:      PlaybookType,
+		Playbook:  "ceph_packages",
+		Resources: []string{"apt"},
+	},
+	{
 		Name:      "ceph",
 		Type:      PlaybookType,
 		Playbook:  "ceph",
-		Resources: []string{"apt"},
+		DependsOn: []string{"ceph-packages"},
 	},
 	{
 		Name:      "kubernetes",
