@@ -28,6 +28,24 @@
         state: absent
         purge: true
 
+    - name: Install Go toolchain for local builds
+      when: zuul is not defined
+      block:
+        - name: Download Go toolchain
+          ansible.builtin.get_url:
+            url: https://go.dev/dl/go1.24.4.linux-amd64.tar.gz
+            dest: /tmp/go.tar.gz
+            mode: "0644"
+        - name: Remove any existing Go installation
+          ansible.builtin.file:
+            path: /usr/local/go
+            state: absent
+        - name: Extract Go toolchain
+          ansible.builtin.unarchive:
+            src: /tmp/go.tar.gz
+            dest: /usr/local
+            remote_src: true
+
 - name: Generate workspace
   ansible.builtin.import_playbook: vexxhost.atmosphere.generate_workspace
   vars:
