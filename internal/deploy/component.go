@@ -124,7 +124,7 @@ var Components = []Component{
 		Type:      RoleType,
 		RoleName:  "percona_xtradb_cluster",
 		Hosts:     "controllers",
-		DependsOn: []string{"percona-xtradb-cluster-operator", "csi", "memcached"},
+		DependsOn: []string{"percona-xtradb-cluster-operator", "csi"},
 	},
 	{
 		Name:      "valkey",
