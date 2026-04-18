@@ -138,7 +138,7 @@ var Components = []Component{
 		Type:      RoleType,
 		RoleName:  "keycloak",
 		Hosts:     "controllers",
-		DependsOn: []string{"percona-xtradb-cluster", "ingress-nginx", "valkey"},
+		DependsOn: []string{"percona-xtradb-cluster", "ingress-nginx"},
 	},
 	{
 		Name:      "keepalived",
