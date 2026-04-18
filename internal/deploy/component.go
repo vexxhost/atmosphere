@@ -69,7 +69,6 @@ var Components = []Component{
 		Name:      "ceph",
 		Type:      PlaybookType,
 		Playbook:  "ceph",
-		Resources: []string{"apt"},
 	},
 	{
 		Name:      "kubernetes",
