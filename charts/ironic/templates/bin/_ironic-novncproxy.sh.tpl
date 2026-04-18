@@ -16,5 +16,4 @@ limitations under the License.
 
 set -ex
 
-exec ironic-novncproxy --config-file /etc/ironic/ironic.conf \
-      --config-dir /etc/ironic/ironic.conf.d
+exec ironic-novncproxy --config-file /etc/ironic/ironic.conf

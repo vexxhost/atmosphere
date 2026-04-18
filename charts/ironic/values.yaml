@@ -18,6 +18,8 @@
 ---
 release_group: null
 
+helm3_hook: true
+
 labels:
   api:
     node_selector_key: openstack-control-plane
@@ -34,24 +36,25 @@ labels:
 
 images:
   tags:
-    ironic_manage_cleaning_network: quay.io/airshipit/openstack-client:2025.1-ubuntu_noble
-    ironic_retrive_swift_config: quay.io/airshipit/openstack-client:2025.1-ubuntu_noble
+    ironic_manage_cleaning_network: docker.io/openstackhelm/heat:2024.1-ubuntu_jammy
+    ironic_retrive_cleaning_network: docker.io/openstackhelm/heat:2024.1-ubuntu_jammy
+    ironic_retrive_swift_config: docker.io/openstackhelm/heat:2024.1-ubuntu_jammy
     # Bootstrap image requires curl
-    bootstrap: quay.io/airshipit/openstack-client:2025.1-ubuntu_noble
-    db_drop: quay.io/airshipit/openstack-client:2025.1-ubuntu_noble
-    db_init: quay.io/airshipit/openstack-client:2025.1-ubuntu_noble
-    ironic_db_sync: quay.io/airshipit/ironic:2025.1-ubuntu_noble
-    ks_user: quay.io/airshipit/openstack-client:2025.1-ubuntu_noble
-    ks_service: quay.io/airshipit/openstack-client:2025.1-ubuntu_noble
-    ks_endpoints: quay.io/airshipit/openstack-client:2025.1-ubuntu_noble
+    bootstrap: docker.io/openstackhelm/heat:2024.1-ubuntu_jammy
+    db_drop: docker.io/openstackhelm/heat:2024.1-ubuntu_jammy
+    db_init: docker.io/openstackhelm/heat:2024.1-ubuntu_jammy
+    ironic_db_sync: docker.io/openstackhelm/ironic:2024.1-ubuntu_jammy
+    ks_user: docker.io/openstackhelm/heat:2024.1-ubuntu_jammy
+    ks_service: docker.io/openstackhelm/heat:2024.1-ubuntu_jammy
+    ks_endpoints: docker.io/openstackhelm/heat:2024.1-ubuntu_jammy
     rabbit_init: docker.io/rabbitmq:3.13-management
-    ironic_api: quay.io/airshipit/ironic:2025.1-ubuntu_noble
-    ironic_conductor: quay.io/airshipit/ironic:2025.1-ubuntu_noble
-    ironic_novncproxy: quay.io/airshipit/ironic:2025.1-ubuntu_noble
-    ironic_pxe: quay.io/airshipit/ironic:2025.1-ubuntu_noble
-    ironic_pxe_init: quay.io/airshipit/ironic:2025.1-ubuntu_noble
-    ironic_pxe_http: docker.io/nginx:1.29.8
-    dep_check: quay.io/airshipit/kubernetes-entrypoint:latest-ubuntu_noble
+    ironic_api: docker.io/openstackhelm/ironic:2024.1-ubuntu_jammy
+    ironic_conductor: docker.io/openstackhelm/ironic:2024.1-ubuntu_jammy
+    ironic_pxe: docker.io/openstackhelm/ironic:2024.1-ubuntu_jammy
+    ironic_pxe_init: docker.io/openstackhelm/ironic:2024.1-ubuntu_jammy
+    ironic_pxe_http: docker.io/nginx:1.13.3
+    ironic_novncproxy: docker.io/openstackhelm/ironic:2024.1-ubuntu_jammy
+    dep_check: quay.io/airshipit/kubernetes-entrypoint:latest-ubuntu_focal
     image_repo_sync: docker.io/docker:17.07.0
   pull_policy: "IfNotPresent"
   local_registry:
@@ -102,26 +105,15 @@ conf:
   ironic:
     DEFAULT:
       log_config_append: /etc/ironic/logging.conf
-      # conductor may use hardlinks to images for certain boot modes so the default path needs
-      # to be on the same filesystem
-      tempdir: /var/lib/openstack-helm/tmp
     api:
       port: null
     conductor:
       api_url: null
     database:
       max_retries: -1
-      # -- Database connection URI. When empty the URI is auto-generated
-      ## from endpoints.oslo_db. Set to null to disable auto-generation,
-      ## e.g. when using an operator such as mariadb-operator that supplies
-      ## the connection string via a mounted configuration snippet.
-      connection: ""
+      connection: null
     deploy:
       http_root: /var/lib/openstack-helm/httpboot
-    nova:
-      auth_type: password
-    cinder:
-      auth_type: password
     glance:
       auth_type: password
       swift_temp_url_duration: 86400
@@ -158,8 +150,6 @@ conf:
       auth_url: null
     oslo_policy:
       policy_file: /etc/ironic/policy.yaml
-    oslo_concurrency:
-      lock_path: /var/lock
   logging:
     loggers:
       keys:
@@ -220,30 +210,8 @@ conf:
     formatter_default:
       format: "%(message)s"
       datefmt: "%Y-%m-%d %H:%M:%S"
-  ironic_api_uwsgi:
-    uwsgi:
-      add-header: "Connection: close"
-      buffer-size: 65535
-      die-on-term: true
-      enable-threads: true
-      exit-on-reload: false
-      hook-master-start: unix_signal:15 gracefully_kill_them_all
-      lazy-apps: true
-      log-x-forwarded-for: true
-      master: true
-      procname-prefix-spaced: "ironic-api:"
-      route-user-agent: '^kube-probe.* donotlog:'
-      thunder-lock: true
-      worker-reload-mercy: 80
-      wsgi-file: /var/lib/openstack/bin/ironic-api-wsgi
 
 conductor:
-  # -- Additional containers to add to the conductor pods
-  ## Note: Supports use of custom Helm templates
-  extraContainers: []
-  # -- Additional init containers to add to the conductor pods
-  ## Note: Supports use of custom Helm templates
-  initContainers: []
   http:
     enabled: true
     init_script: |
@@ -331,11 +299,10 @@ network:
     ingress:
       public: true
       classes:
-        namespace: "ingress-openstack"
-        cluster: "ingress-cluster"
+        namespace: "nginx"
+        cluster: "nginx-cluster"
       annotations:
         nginx.ingress.kubernetes.io/rewrite-target: /
-        haproxy.org/path-rewrite: /
     node_port:
       enabled: false
       port: 30511
@@ -343,11 +310,10 @@ network:
     ingress:
       public: true
       classes:
-        namespace: "ingress-openstack"
-        cluster: "ingress-cluster"
+        namespace: "nginx"
+        cluster: "nginx-cluster"
       annotations:
         nginx.ingress.kubernetes.io/rewrite-target: /
-        haproxy.org/path-rewrite: /
     node_port:
       enabled: false
       port: 30690
@@ -362,13 +328,17 @@ bootstrap:
     source_base: http://tarballs.openstack.org/ironic-python-agent/tinyipa/files
     structured:
       ironic-agent.initramfs:
-        source: tinyipa-stable-2025.1.gz
+        source: tinyipa-stable-wallaby.gz
         disk_format: ari
         container_format: ari
       ironic-agent.kernel:
-        source: tinyipa-stable-2025.1.vmlinuz
+        source: tinyipa-stable-wallaby.vmlinuz
         disk_format: aki
         container_format: aki
+  network:
+    enabled: true
+    openstack:
+      enabled: true
   object_store:
     enabled: true
     openstack:
@@ -491,11 +461,6 @@ secrets:
     ironic: ironic-rabbitmq-user
   oci_image_registry:
     ironic: ironic-oci-image-registry
-  tls:
-    baremetal:
-      api:
-        public: ironic-tls-public
-        internal: ironic-tls-api
 
 # typically overridden by environmental
 # values, but should include all endpoints
@@ -585,54 +550,6 @@ endpoints:
         public: 80
       pxe_http:
         default: 8080
-  baremetal_vnc_proxy:
-    name: ironic-novncproxy
-    hosts:
-      default: ironic-novncproxy
-      public: ironic-novncproxy
-    host_fqdn_override:
-      default: null
-    path:
-      default: /vnc_auto.html
-    scheme:
-      default: http
-    port:
-      novncproxy:
-        default: 6090
-        public: 80
-  volumev3:
-    name: cinderv3
-    hosts:
-      default: cinder-api
-      public: cinder
-    host_fqdn_override:
-      default: null
-    path:
-      default: '/v3/%(tenant_id)s'
-      healthcheck: /healthcheck
-    scheme:
-      default: http
-    port:
-      api:
-        default: 8776
-        public: 80
-  compute:
-    name: nova
-    hosts:
-      default: nova-api
-      public: nova
-    host_fqdn_override:
-      default: null
-    path:
-      default: "/v2.1/%(tenant_id)s"
-    scheme:
-      default: 'http'
-    port:
-      api:
-        default: 8774
-        public: 80
-      novncproxy:
-        default: 6080
   image:
     name: glance
     hosts:
@@ -734,6 +651,21 @@ endpoints:
     port:
       api:
         default: 8088
+  baremetal_vnc_proxy:
+    name: ironic
+    hosts:
+      default: ironic-novncproxy
+      public: ironic-novncproxy
+    host_fqdn_override:
+      default: null
+    path:
+      default: null
+    scheme:
+      default: http
+    port:
+      novncproxy:
+        default: 6090
+        public: 80
   fluentd:
     namespace: null
     name: fluentd
@@ -794,14 +726,6 @@ pod:
       ironic_novncproxy:
         volumeMounts:
         volumes:
-  # -- This allows users to add Kubernetes Projected Volumes to be mounted at /etc/ironic/ironic.conf.d/
-  ## This is a list of projected volume source objects for each deployment/statefulset/daemonset/cronjob
-  ## https://kubernetes.io/docs/concepts/storage/projected-volumes/
-  etcSources:
-    ironic_api: []
-    ironic_conductor: []
-    ironic_db_sync: []
-    ironic_novncproxy: []
   replicas:
     api: 1
     conductor: 1
@@ -922,7 +846,7 @@ pod:
     conductor: true
     novncproxy: false
   useHostIPC:
-    conductor: false
+    conductor: true
 
 network_policy:
   ironic:
@@ -935,7 +859,6 @@ manifests:
   configmap_bin: true
   configmap_etc: true
   deployment_api: true
-  deployment_novncproxy: false
   ingress_api: true
   job_bootstrap: true
   job_db_drop: false
@@ -947,45 +870,17 @@ manifests:
   job_ks_user: true
   job_manage_cleaning_network: true
   job_rabbit_init: true
-  network_policy: false
   pdb_api: true
-  role_console_pods: false
-  rolebinding_console_pods: false
+  network_policy: false
   secret_db: true
   secret_keystone: true
   secret_rabbitmq: true
   secret_registry: true
   service_api: true
   service_ingress_api: true
-  service_novncproxy: false
   statefulset_conductor: true
-
-# -- Array of extra K8s manifests to deploy
-## Note: Supports use of custom Helm templates
-extraObjects: []
-  # - apiVersion: secrets-store.csi.x-k8s.io/v1
-  #   kind: SecretProviderClass
-  #   metadata:
-  #     name: osh-secrets-store
-  #   spec:
-  #     provider: aws
-  #     parameters:
-  #       objects: |
-  #         - objectName: "osh"
-  #           objectType: "secretsmanager"
-  #           jmesPath:
-  #               - path: "client_id"
-  #                 objectAlias: "client_id"
-  #               - path: "client_secret"
-  #                 objectAlias: "client_secret"
-  #     secretObjects:
-  #     - data:
-  #       - key: client_id
-  #         objectName: client_id
-  #       - key: client_secret
-  #         objectName: client_secret
-  #       secretName: osh-secrets-store
-  #       type: Opaque
-  #       labels:
-  #         app.kubernetes.io/part-of: osh
+  deployment_novncproxy: false
+  service_novncproxy: false
+  role_console_pods: false
+  rolebinding_console_pods: false
 ...
