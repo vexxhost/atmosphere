@@ -145,7 +145,7 @@ var Components = []Component{
 		Type:      RoleType,
 		RoleName:  "keepalived",
 		Hosts:     "controllers",
-		DependsOn: []string{"memcached"},
+		DependsOn: []string{"kubernetes"},
 	},
 
 	// Monitoring (RoleType, Hosts: "controllers[0]")
