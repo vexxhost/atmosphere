@@ -38,9 +38,9 @@ func TestHelmValues(t *testing.T) {
 	// for the actual template. Like:
 	// {{ tuple "heat_api" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" }}
 	vars.HelmValues.Pod.PriorityClass = map[string]string{
-		"bootstrap": "high-priority",
-		"db_sync": "high-priority",
-		"ironic_api": "high-priority",
+		"bootstrap":         "high-priority",
+		"db_sync":           "high-priority",
+		"ironic_api":        "high-priority",
 		"ironic_conductor":  "high-priority",
 		"ironic_novncproxy": "high-priority",
 	}
@@ -50,9 +50,9 @@ func TestHelmValues(t *testing.T) {
 	// for the actual template. Like:
 	// {{ tuple "heat_api" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" }}
 	vars.HelmValues.Pod.RuntimeClass = map[string]string{
-		"bootstrap": "kata-clh",
-		"db_sync": "kata-clh",
-		"ironic_api": "kata-clh",
+		"bootstrap":         "kata-clh",
+		"db_sync":           "kata-clh",
+		"ironic_api":        "kata-clh",
 		"ironic_conductor":  "kata-clh",
 		"ironic_novncproxy": "kata-clh",
 	}
