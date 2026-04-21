@@ -232,6 +232,56 @@ tests:
 
   - interval: 1m
     input_series:
+      - series: 'ipmi_sel_events_latest_timestamp{instance="192.0.2.10",name="uncorrectable_memory_error"}'
+        values: '0x2880'
+    alert_rule_test:
+      - eval_time: 2d
+        alertname: IpmiUncorrectableMemoryError
+        exp_alerts: []
+
+  - interval: 1m
+    input_series:
+      - series: 'ipmi_sel_events_latest_timestamp{instance="192.0.2.10",name="uncorrectable_memory_error"}'
+        values: '172740x2880'
+    alert_rule_test:
+      - eval_time: 2d
+        alertname: IpmiUncorrectableMemoryError
+        exp_alerts:
+          - exp_labels:
+              instance: 192.0.2.10
+              severity: P1
+            exp_annotations:
+              summary: "IPMI: recent uncorrectable memory error may affect host stability on 192.0.2.10"
+              description: "The metric ipmi_sel_events_latest_timestamp{name=\"uncorrectable_memory_error\"} for 192.0.2.10 indicates the most recent uncorrectable memory SEL event is 1m 0s old, which is within the alert window of 24 hours. Normal behavior is that no uncorrectable memory SEL events occur, or the latest such event is older than 24 hours."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#ipmiuncorrectablememoryerror"
+
+  - interval: 1m
+    input_series:
+      - series: 'ipmi_sel_events_latest_timestamp{instance="192.0.2.11",name="unrecoverable_cpu_error"}'
+        values: '0x2880'
+    alert_rule_test:
+      - eval_time: 2d
+        alertname: IpmiUnrecoverableCpuError
+        exp_alerts: []
+
+  - interval: 1m
+    input_series:
+      - series: 'ipmi_sel_events_latest_timestamp{instance="192.0.2.11",name="unrecoverable_cpu_error"}'
+        values: '172740x2880'
+    alert_rule_test:
+      - eval_time: 2d
+        alertname: IpmiUnrecoverableCpuError
+        exp_alerts:
+          - exp_labels:
+              instance: 192.0.2.11
+              severity: P1
+            exp_annotations:
+              summary: "IPMI: recent unrecoverable CPU error may affect host stability on 192.0.2.11"
+              description: "The metric ipmi_sel_events_latest_timestamp{name=\"unrecoverable_cpu_error\"} for 192.0.2.11 indicates the most recent unrecoverable CPU SEL event is 1m 0s old, which is within the alert window of 24 hours. Normal behavior is that no unrecoverable CPU SEL events occur, or the latest such event is older than 24 hours."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#ipmiunrecoverablecpuerror"
+
+  - interval: 1m
+    input_series:
       - series: 'openstack_loadbalancer_loadbalancer_status{id="d4e449ad-fad5-4d9e-a039-f71c773ec999", job="openstack-exporter", name="test-lb", operating_status="ONLINE", provisioning_status="PENDING_UPDATE"}'
         values: '0x15'
       - series: 'openstack_loadbalancer_loadbalancer_status{id="25dcf79f-b09d-4d0c-9e29-b69ded2ec734", job="openstack-exporter", name="test-lb-2", operating_status="ONLINE", provisioning_status="ACTIVE"}'
