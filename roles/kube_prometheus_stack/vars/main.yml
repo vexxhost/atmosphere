@@ -69,6 +69,14 @@ _kube_prometheus_stack_helm_values:
             - alertname = "CoreDNSModerateErrorBudgetBurn"
           target_matchers:
             - alertname = "CoreDNSLowErrorBudgetBurn"
+        - source_matchers:
+            - alertname = "SmartctlDiskWearoutCritical"
+          target_matchers:
+            - alertname = "SmartctlDiskWearoutWarning"
+          equal:
+            - instance
+            - device
+            - namespace
       route:
         group_by:
           - alertname

@@ -1,0 +1,27 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+_smartctl_exporter_helm_values:
+  image:
+    repository: "{{ atmosphere_images['prometheus_smartctl_exporter'] | vexxhost.kubernetes.docker_image('name') }}"
+    tag: "{{ atmosphere_images['prometheus_smartctl_exporter'] | vexxhost.kubernetes.docker_image('tag') }}"
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: feature.node.kubernetes.io/cpu-cpuid.HYPERVISOR
+                operator: NotIn
+                values:
+                  - "true"
+  serviceMonitor:
+    enabled: true
+    extraLabels:
+      release: kube-prometheus-stack
+    interval: 60s
+    relabelings:
+      - sourceLabels:
+          - __meta_kubernetes_pod_node_name
+        targetLabel: instance
+      - action: labeldrop
+        regex: ^(container|namespace|pod|node|service)$
