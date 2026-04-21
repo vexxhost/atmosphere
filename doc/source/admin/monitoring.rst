@@ -559,14 +559,14 @@ for a 99.9% SLO. At this rate, the 30-day error budget exhausts in under
 5 days. It uses multi-window burn-rate detection with 6-hour and 30-minute
 windows.
 
-**Likely root causes**
+**Likely Root Causes**
 
 - Intermittent upstream DNS server issues
 - Partial network connectivity problems
 - DNS zone transfer failures
 - Upstream rate limiting
 
-**Diagnostic and remediation steps**
+**Diagnostic and Remediation Steps**
 
 1. Check CoreDNS logs for recurring errors:
 
@@ -602,14 +602,14 @@ for a 99.9% SLO. At this rate, the error budget exhausts before the 30-day
 window resets. It uses multi-window burn-rate detection with 3-day and 6-hour
 windows.
 
-**Likely root causes**
+**Likely Root Causes**
 
 - Chronic low-level DNS resolution failures
 - Specific zones or domains consistently failing
 - Degraded upstream DNS server performance
 - Incorrectly configured DNS records causing intermittent failures
 
-**Diagnostic and remediation steps**
+**Diagnostic and Remediation Steps**
 
 1. Identify which DNS queries are failing:
 

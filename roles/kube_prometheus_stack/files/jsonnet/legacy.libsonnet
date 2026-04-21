@@ -120,8 +120,8 @@
                 severity: 'P1',
               },
               annotations: {
-                summary: 'IPMI: uncorrectable memory error on {{ $labels.instance }}',
-                description: 'The latest IPMI SEL event ipmi_sel_events_latest_timestamp{name="uncorrectable_memory_error"} on {{ $labels.instance }} is {{ $value | humanizeDuration }} old (threshold: 24h).',
+                summary: 'IPMI: recent uncorrectable memory error may affect host stability on {{ $labels.instance }}',
+                description: 'The metric ipmi_sel_events_latest_timestamp{name="uncorrectable_memory_error"} for {{ $labels.instance }} indicates the most recent uncorrectable memory SEL event is {{ $value | humanizeDuration }} old, which is within the alert window of 24 hours. Normal behavior is that no uncorrectable memory SEL events occur, or the latest such event is older than 24 hours.',
                 runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#ipmiuncorrectablememoryerror',
               },
             },
@@ -133,8 +133,8 @@
                 severity: 'P1',
               },
               annotations: {
-                summary: 'IPMI: unrecoverable CPU error on {{ $labels.instance }}',
-                description: 'The latest IPMI SEL event ipmi_sel_events_latest_timestamp{name="unrecoverable_cpu_error"} on {{ $labels.instance }} is {{ $value | humanizeDuration }} old (threshold: 24h).',
+                summary: 'IPMI: recent unrecoverable CPU error may affect host stability on {{ $labels.instance }}',
+                description: 'The metric ipmi_sel_events_latest_timestamp{name="unrecoverable_cpu_error"} for {{ $labels.instance }} indicates the most recent unrecoverable CPU SEL event is {{ $value | humanizeDuration }} old, which is within the alert window of 24 hours. Normal behavior is that no unrecoverable CPU SEL events occur, or the latest such event is older than 24 hours.',
                 runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#ipmiunrecoverablecpuerror',
               },
             },
