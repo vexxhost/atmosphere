@@ -98,8 +98,16 @@
         # Subnet settings
         network_name: "{{ item.0.name }}"
         name: "{{ item.1.name }}"
-        allocation_pool_end: "{{ item.1.allocation_pool_end | default(omit) }}"
-        allocation_pool_start: "{{ item.1.allocation_pool_start | default(omit) }}"
+        allocation_pool_end: >-
+          {{
+            omit if item.1.allocation_pools is defined
+            else item.1.allocation_pool_end | default(omit)
+          }}
+        allocation_pool_start: >-
+          {{
+            omit if item.1.allocation_pools is defined
+            else item.1.allocation_pool_start | default(omit)
+          }}
         allocation_pools: "{{ item.1.allocation_pools | default(omit) }}"
         cidr: "{{ item.1.cidr | default(omit) }}"
         description: "{{ item.1.description | default(omit) }}"
