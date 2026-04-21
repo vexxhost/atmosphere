@@ -90,6 +90,23 @@ _STORPOOL_BACKEND = {
     "template": "hybrid-2ssd",
 }
 
+_VAST_BACKEND_WITH_TOKEN = {
+    "type": "vast",
+    "address": "10.0.0.5",
+    "api_token": "vast-api-token",
+    "subsystem": "openstack-subsystem",
+    "vippool_name": "openstack-vips",
+}
+
+_VAST_BACKEND_WITH_USERPASS = {
+    "type": "vast",
+    "address": "10.0.0.5",
+    "username": "admin",
+    "password": "secret",
+    "subsystem": "openstack-subsystem",
+    "vippool_name": "openstack-vips",
+}
+
 
 class TestValidation:
     def test_empty_storage_is_valid(self):
@@ -574,6 +591,80 @@ class TestStorageToCinderHelmValues:
         mounts = result["pod"]["mounts"]["cinder_volume"]
         assert len(mounts["volumeMounts"]) == 2
         assert len(mounts["volumes"]) == 2
+
+    def test_vast_backend_with_api_token(self):
+        storage = {
+            **DEFAULT_STORAGE,
+            "volumes": {
+                "default": "vast",
+                "backends": {"vast": _VAST_BACKEND_WITH_TOKEN},
+            },
+            "backup": {"type": "none"},
+        }
+        result = storage_to_cinder_helm_values(storage)
+
+        backend = result["conf"]["backends"]["vast"]
+        assert (
+            backend["volume_driver"]
+            == "cinder.volume.drivers.vastdata.driver.VASTVolumeDriver"
+        )
+        assert backend["san_ip"] == "10.0.0.5"
+        assert backend["vast_api_token"] == "vast-api-token"
+        assert backend["vast_subsystem"] == "openstack-subsystem"
+        assert backend["vast_vippool_name"] == "openstack-vips"
+        assert "san_login" not in backend
+        assert "san_password" not in backend
+        assert "vast_tenant_name" not in backend
+        assert result["conf"]["enable_iscsi"] is True
+
+    def test_vast_backend_with_username_password(self):
+        storage = {
+            **DEFAULT_STORAGE,
+            "volumes": {
+                "default": "vast",
+                "backends": {"vast": _VAST_BACKEND_WITH_USERPASS},
+            },
+            "backup": {"type": "none"},
+        }
+        result = storage_to_cinder_helm_values(storage)
+
+        backend = result["conf"]["backends"]["vast"]
+        assert backend["san_login"] == "admin"
+        assert backend["san_password"] == "secret"
+        assert "vast_api_token" not in backend
+
+    def test_vast_backend_with_tenant_name(self):
+        storage = {
+            **DEFAULT_STORAGE,
+            "volumes": {
+                "default": "vast",
+                "backends": {
+                    "vast": {**_VAST_BACKEND_WITH_TOKEN, "tenant_name": "my-tenant"}
+                },
+            },
+            "backup": {"type": "none"},
+        }
+        result = storage_to_cinder_helm_values(storage)
+        assert result["conf"]["backends"]["vast"]["vast_tenant_name"] == "my-tenant"
+
+    def test_vast_backend_missing_credentials_raises(self):
+        with pytest.raises(Exception):
+            StorageConfig.model_validate(
+                {
+                    **DEFAULT_STORAGE,
+                    "volumes": {
+                        "default": "vast",
+                        "backends": {
+                            "vast": {
+                                "type": "vast",
+                                "address": "10.0.0.5",
+                                "subsystem": "openstack-subsystem",
+                                "vippool_name": "openstack-vips",
+                            }
+                        },
+                    },
+                }
+            )
 
     def test_no_backup(self):
         storage = {
