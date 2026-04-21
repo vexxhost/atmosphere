@@ -559,14 +559,14 @@ for a 99.9% SLO. At this rate, the 30-day error budget exhausts in under
 5 days. It uses multi-window burn-rate detection with 6-hour and 30-minute
 windows.
 
-**Likely Root Causes**
+**Likely root causes**
 
 - Intermittent upstream DNS server issues
 - Partial network connectivity problems
 - DNS zone transfer failures
 - Upstream rate limiting
 
-**Diagnostic and Remediation Steps**
+**Diagnostic and remediation steps**
 
 1. Check CoreDNS logs for recurring errors:
 
@@ -602,14 +602,14 @@ for a 99.9% SLO. At this rate, the error budget exhausts before the 30-day
 window resets. It uses multi-window burn-rate detection with 3-day and 6-hour
 windows.
 
-**Likely Root Causes**
+**Likely root causes**
 
 - Chronic low-level DNS resolution failures
 - Specific zones or domains consistently failing
 - Degraded upstream DNS server performance
 - Incorrectly configured DNS records causing intermittent failures
 
-**Diagnostic and Remediation Steps**
+**Diagnostic and remediation steps**
 
 1. Identify which DNS queries are failing:
 
@@ -917,13 +917,13 @@ exporter reports a recent ``uncorrectable_memory_error`` System Event Log
 indicate a non-recoverable memory error on the host and often require
 hardware intervention.
 
-**Likely root causes**
+**Likely Root Causes**
 
 - Failing dual in-line memory module (DIMM) or memory controller
 - Unstable firmware or Basic Input/Output System (BIOS) configuration
 - Recent hardware changes or maintenance introducing faulty memory
 
-**Diagnostic and remediation steps**
+**Diagnostic and Remediation Steps**
 
 1. Identify the affected host from the alert ``instance`` label.
 
@@ -952,13 +952,13 @@ event. These events
 indicate a fatal CPU error that typically requires hardware
 intervention and may precede a crash.
 
-**Likely root causes**
+**Likely Root Causes**
 
 - Failing CPU or socket
 - Hardware instability due to power or thermal issues
 - Firmware or microcode issues
 
-**Diagnostic and remediation steps**
+**Diagnostic and Remediation Steps**
 
 1. Identify the affected host from the alert ``instance`` label.
 
