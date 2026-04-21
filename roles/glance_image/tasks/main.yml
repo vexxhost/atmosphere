@@ -134,7 +134,7 @@
       openstack.cloud.image:
         cloud: atmosphere
         id: "{{ _glance_image_existing.id }}"
-        name: "{{ glance_image_name }}-{{ _existing_suffix | default('legacy', true) }}"
+        name: "{{ glance_image_name }}-{{ _existing_suffix }}"
         visibility: "{{ _glance_image_existing.visibility | default(omit) }}"
         tags:
           - atmosphere:obsolete
@@ -168,6 +168,6 @@
   always:
     - name: Remove work directory
       ansible.builtin.file:
-        path: "{{ _workdir.path | default('') }}"
+        path: "{{ _workdir.path }}"
         state: absent
       when: _workdir.path is defined

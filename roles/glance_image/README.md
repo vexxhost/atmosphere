@@ -10,7 +10,9 @@ On every run, the role sends an HTTP ``HEAD`` request to
 then compares that value against the ``atmosphere:image:etag`` property
 stored on any existing image with the same name. When the ``ETag`` or
 ``atmosphere:image:url`` property differs, the role downloads the new
-image, renames the outdated one to ``<name>-<short-etag>``, replaces its
+image, renames the outdated one to ``<name>-<short-etag>`` (or to
+``<name>-<short-id>`` when the existing image was uploaded by an older
+version of Atmosphere and carries no stored ``ETag``), replaces its
 tags with ``atmosphere:obsolete``, and uploads the new image under the
 original name.
 
