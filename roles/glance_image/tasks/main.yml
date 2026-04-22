@@ -28,11 +28,6 @@
     https_proxy: "{{ glance_image_https_proxy }}"
     no_proxy: "{{ glance_image_no_proxy }}"
 
-- name: Capture source ETag
-  run_once: true
-  ansible.builtin.set_fact:
-    _glance_image_source_etag: "{{ (_glance_image_source_head.etag | default('')) | regex_replace('^W/', '') | regex_replace('^\"(.*)\"$', '\\1') }}"
-
 - name: Fail when source URL does not return an ETag
   run_once: true
   ansible.builtin.fail:
@@ -40,7 +35,12 @@
       The source URL {{ glance_image_url }} did not return an ETag
       header. The glance_image role requires an ETag to detect upstream
       image changes. Use a source that exposes an ETag header.
-  when: _glance_image_source_etag | length == 0
+  when: _glance_image_source_head.etag is not defined
+
+- name: Capture source ETag
+  run_once: true
+  ansible.builtin.set_fact:
+    _glance_image_source_etag: "{{ _glance_image_source_head.etag }}"
 
 - name: Check if image exists
   run_once: true
