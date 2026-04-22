@@ -12,3 +12,12 @@ fixes:
     ``atmosphere_storage`` input. Ansible-core 2.20, which Ubuntu 26.04
     requires, wraps rendered values in lazy containers that previously
     broke the Pydantic discriminated-union check.
+  - |
+    Pinned ``containerd_limit_open_file_num`` to ``1048576`` when importing
+    the Kubernetes and Ceph playbooks. Ubuntu 26.04 resolves
+    ``LimitNOFILE=infinity`` to ``2147483584``, which every container
+    inherits. Workloads that iterate through inherited file descriptors
+    before ``execve``, such as HAProxy external-check scripts spawned by
+    the Percona XtraDB cluster, then spend tens of seconds in the close
+    loop and time out.
+
