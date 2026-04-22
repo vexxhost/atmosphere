@@ -27,4 +27,10 @@ fixes:
     preset to complete before its HTTP port becomes reachable; smaller
     presets trigger an ``OOMKilled``. Operators can still override the
     preset through ``keycloak_helm_values``.
+  - |
+    Defined the default ``magnum_images`` list directly in the Magnum
+    and ``magnum_pre`` role defaults, removing the ``_magnum_images``
+    variable indirection. Ansible-core 2.20 wraps the rendered template
+    in a lazy container that the ``loop`` keyword rejects with ``must
+    resolve to a 'list', not 'str'``.
 
