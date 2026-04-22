@@ -22,6 +22,11 @@
       ansible.builtin.tempfile:
         state: file
         prefix: manila_ssh_key_
+        # NOTE(rlin): Use /var/tmp (disk-backed) instead of the system default,
+        #             which is tmpfs on Ubuntu 24.04+. The openssh_keypair
+        #             module calls chattr on the file, which tmpfs doesn't
+        #             support.
+        path: /var/tmp
       register: _manila_ssh_key_tempfile
     # NOTE(mnaser): It's important to add a trailing newline at the end of this
     #               string or else `ssh-keygen` will not be happy.

@@ -1,0 +1,15 @@
+---
+fixes:
+  - |
+    Fixed the ``generate_workspace`` playbook and the Nova and Manila
+    ``generate_public_key`` tasks failing to generate SSH keys on Ubuntu
+    24.04 and later, where systemd mounts ``/tmp`` as ``tmpfs`` by default.
+    The ``community.crypto.openssh_keypair`` module invokes ``chattr`` on
+    the generated files, which ``tmpfs`` doesn't support. These tasks now
+    create temporary files under a disk-backed directory instead.
+  - |
+    Bumped the pinned Ansible core version to 2.20 or later and bumped
+    the pinned Ansible collections to newer major versions. These
+    bumps let Atmosphere run on Python 3.14, which Ubuntu 26.04 ships.
+    The older collections failed with ``JMESPathError`` under the new
+    template engine introduced in Ansible 2.19.
