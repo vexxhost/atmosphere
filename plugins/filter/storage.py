@@ -556,9 +556,31 @@ class StorageConfig(_StrictBase):
     )
 
 
+def _deep_unwrap(obj: Any) -> Any:
+    """Recursively unwrap Ansible lazy templating wrappers into plain types.
+
+    Ansible-core 2.20 introduced ``_LazyValue`` wrappers and lazy container
+    types that are not transparent to Pydantic discriminated unions. This
+    helper converts them into plain ``dict``/``list``/scalar values so
+    ``model_validate`` can correctly resolve the discriminator tag.
+    """
+    cls_name = obj.__class__.__name__
+    if cls_name == "_LazyValue":
+        for attr in ("_value", "value"):
+            if hasattr(obj, attr):
+                obj = getattr(obj, attr)
+                break
+        cls_name = obj.__class__.__name__
+    if isinstance(obj, dict) or cls_name == "_AnsibleLazyTemplateDict":
+        return {_deep_unwrap(k): _deep_unwrap(v) for k, v in obj.items()}
+    if isinstance(obj, list) or cls_name == "_AnsibleLazyTemplateList":
+        return [_deep_unwrap(x) for x in obj]
+    return obj
+
+
 def _parse(raw: Any) -> StorageConfig:
     """Validate and parse raw Ansible input into a StorageConfig."""
-    return StorageConfig.model_validate(raw)
+    return StorageConfig.model_validate(_deep_unwrap(raw))
 
 
 def storage_to_cinder_helm_values(raw: Any) -> HelmValues:
