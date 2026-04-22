@@ -20,4 +20,11 @@ fixes:
     before ``execve``, such as HAProxy external-check scripts spawned by
     the Percona XtraDB cluster, then spend tens of seconds in the close
     loop and time out.
+  - |
+    Raised the default Keycloak ``resourcesPreset`` from ``small`` to
+    ``large``. Keycloak 24 runs its Quarkus augmentation step on first
+    boot and needs more than the 1536 MiB allowed by the ``medium``
+    preset to complete before its HTTP port becomes reachable; smaller
+    presets trigger an ``OOMKilled``. Operators can still override the
+    preset through ``keycloak_helm_values``.
 
