@@ -13,7 +13,7 @@ stored on any existing image with the same name. When the ``ETag`` or
 image, renames the outdated one to ``<name>-<short-etag>`` (or to
 ``<name>-<short-id>`` when the existing image was uploaded by an older
 version of Atmosphere and carries no stored ``ETag``), replaces its
-tags with ``atmosphere:obsolete``, and uploads the new image under the
+tags with ``atmosphere:image:obsolete``, and uploads the new image under the
 original name.
 
 The source URL must return an ``ETag`` header. If it does not, the role
