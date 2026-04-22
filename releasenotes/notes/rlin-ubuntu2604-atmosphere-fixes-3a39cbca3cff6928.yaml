@@ -1,0 +1,14 @@
+---
+fixes:
+  - |
+    Fixed the ``ceph_provisioners``, ``ceph_csi_rbd``, and
+    ``rook_ceph_cluster`` roles to call the new ``vexxhost.ceph.key_info``
+    module when reading existing CephX keys. Recent versions of the
+    ``vexxhost.ceph`` collection removed ``state: info`` from the
+    ``vexxhost.ceph.key`` module.
+  - |
+    Fixed the ``storage_to_ceph_provisioners_helm_values`` filter plugin so
+    it unwraps Ansible lazy value wrappers before validating the
+    ``atmosphere_storage`` input. Ansible-core 2.20, which Ubuntu 26.04
+    requires, wraps rendered values in lazy containers that previously
+    broke the Pydantic discriminated-union check.
