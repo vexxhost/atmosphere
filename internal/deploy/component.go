@@ -374,11 +374,12 @@ var Components = []Component{
 		DependsOn: []string{"keystone"},
 	},
 	{
-		Name:      "octavia",
-		Type:      RoleType,
-		RoleName:  "octavia",
-		Hosts:     "controllers[0]",
-		DependsOn: []string{"keystone", "nova", "neutron"},
+		Name:        "octavia",
+		Type:        RoleType,
+		RoleName:    "octavia",
+		PreRoleName: "octavia_pre",
+		Hosts:       "controllers[0]",
+		DependsOn:   []string{"keystone", "nova", "neutron"},
 	},
 	{
 		Name:        "magnum",
