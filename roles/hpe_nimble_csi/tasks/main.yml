@@ -1,6 +1,19 @@
 # Copyright (c) 2026 VEXXHOST, Inc.
 # SPDX-License-Identifier: Apache-2.0
 
+- name: Assert required variables are defined
+  run_once: true
+  ansible.builtin.assert:
+    quiet: true
+    that:
+      - hpe_nimble_csi_backend is defined and hpe_nimble_csi_backend | length > 0
+      - hpe_nimble_csi_username is defined and hpe_nimble_csi_username | length > 0
+      - hpe_nimble_csi_password is defined and hpe_nimble_csi_password | length > 0
+    fail_msg: >-
+      The following variables must be defined to deploy the HPE Nimble CSI
+      driver: hpe_nimble_csi_backend, hpe_nimble_csi_username,
+      hpe_nimble_csi_password.
+
 - name: Create Secret
   run_once: true
   kubernetes.core.k8s:

@@ -2,6 +2,10 @@
 # SPDX-License-Identifier: Apache-2.0
 
 _hpe_nimble_csi_helm_values:
+  # The role doesn't expose iscsi.chapSecretName, so the pre-install hook
+  # would only print "Validation successful." on every install/upgrade.
+  # Disable it to avoid spawning an unnecessary Job.
+  disablePreInstallHooks: true
   disable:
     nimble: false
     alletra6000: true
