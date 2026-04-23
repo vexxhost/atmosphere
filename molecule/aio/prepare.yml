@@ -50,7 +50,7 @@
   ansible.builtin.import_playbook: vexxhost.atmosphere.generate_workspace
   vars:
     workspace_path: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}"
-    domain_name: "{{ ansible_default_ipv4['address'].replace('.', '-') }}.nip.io"
+    domain_name: "{{ ansible_facts['default_ipv4']['address'].replace('.', '-') }}.nip.io"
 
 - name: Copy AIO overrides to workspace
   hosts: all

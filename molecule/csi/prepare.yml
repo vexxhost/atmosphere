@@ -19,7 +19,7 @@
             line: 127.0.1.1 {{ inventory_hostname }} {{ inventory_hostname_short }}
 
     - name: Purge "snapd" package
-      when: ansible_distribution | lower == 'ubuntu'
+      when: ansible_facts['distribution'] | lower == 'ubuntu'
       ansible.builtin.apt:
         name: snapd
         state: absent
