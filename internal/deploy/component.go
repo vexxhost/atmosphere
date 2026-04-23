@@ -263,7 +263,7 @@ var Components = []Component{
 		Type:        RoleType,
 		RoleName:    "rook_ceph_cluster",
 		Hosts:       "controllers[0]",
-		DependsOn:   []string{"rook-ceph", "ceph", "barbican"},
+		DependsOn:   []string{"rook-ceph", "ceph", "keystone"},
 		Environment: cephEnvironment,
 	},
 	{
@@ -380,7 +380,7 @@ var Components = []Component{
 		Type:      RoleType,
 		RoleName:  "magnum",
 		Hosts:     "controllers[0]",
-		DependsOn: []string{"octavia", "barbican", "heat"},
+		DependsOn: []string{"keystone", "glance"},
 	},
 	{
 		Name:      "manila",
