@@ -203,6 +203,23 @@ and file system mounts automatically.
     type: storpool
     template: hybrid-2ssd
 
+HPE Nimble storage (``nimble``)
+===============================
+
+HPE Nimble storage (including Alletra 5000/6000) integration with support for
+iSCSI and Fibre Channel protocols.
+
+For additional options, see the `Cinder HPE Nimble storage documentation
+<https://docs.openstack.org/cinder/latest/configuration/block-storage/drivers/nimble-volume-driver.html>`_.
+
+.. code-block:: yaml
+
+    type: nimble
+    protocol: iscsi    # or fc
+    address: <management_ip_or_hostname>
+    username: <username>
+    password: <password>
+
 Cinder (``cinder``)
 ====================
 
@@ -253,6 +270,26 @@ Using Dell PowerStore
         backends:
           powerstore:
             type: powerstore
+            address: 10.0.0.1
+            username: admin
+            password: secret
+            protocol: iscsi
+      backup:
+        type: none
+      ephemeral:
+        type: local
+
+Using HPE Nimble storage
+========================
+
+.. code-block:: yaml
+
+    atmosphere_storage:
+      volumes:
+        default: nimble1
+        backends:
+          nimble1:
+            type: nimble
             address: 10.0.0.1
             username: admin
             password: secret

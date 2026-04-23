@@ -94,22 +94,23 @@ func TestKubeconform(t *testing.T) {
 
 					t.Parallel()
 
-					rel, err := client.Run(
-						chart,
-						// NOTE(okozachenko1203): loki helm chart default values doesn't work.
-						map[string]interface{}{
-							"loki": map[string]interface{}{
-								"storage": map[string]interface{}{
-									"bucketNames": map[string]string{
-										"chunks": "FIXME",
-										"ruler":  "FIXME",
-										"admin":  "FIXME",
-									},
+					values := map[string]interface{}{}
+
+					// NOTE(okozachenko1203): loki helm chart default values doesn't work.
+					if chart.Name() == "loki" {
+						values["loki"] = map[string]interface{}{
+							"storage": map[string]interface{}{
+								"bucketNames": map[string]string{
+									"chunks": "FIXME",
+									"ruler":  "FIXME",
+									"admin":  "FIXME",
 								},
-								"useTestSchema": true,
 							},
-						},
-					)
+							"useTestSchema": true,
+						}
+					}
+
+					rel, err := client.Run(chart, values)
 					require.NoError(t, err)
 
 					manifests := io.NopCloser(strings.NewReader(rel.Manifest))

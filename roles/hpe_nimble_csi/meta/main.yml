@@ -1,4 +1,4 @@
-# Copyright (c) 2024 VEXXHOST, Inc.
+# Copyright (c) 2026 VEXXHOST, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -14,7 +14,7 @@
 
 galaxy_info:
   author: VEXXHOST, Inc.
-  description: Meta role for managing CSI
+  description: Ansible role for HPE Nimble CSI
   license: Apache-2.0
   min_ansible_version: 5.5.0
   standalone: false
@@ -30,17 +30,7 @@ galaxy_info:
 
 dependencies:
   - role: defaults
-  - role: local_path_provisioner
-    when: csi_driver == "local-path-provisioner"
-  - role: ceph_csi_rbd
-    when: csi_driver == "rbd"
-  - role: powerstore_csi
-    when: csi_driver == "powerstore"
-  - role: portworx
-    when: csi_driver == "portworx"
-  - role: storpool_csi
-    when: csi_driver == "storpool"
-  - role: ibm_block_csi_driver
-    when: csi_driver == "ibm-block"
-  - role: hpe_nimble_csi
-    when: csi_driver == "hpe-nimble"
+  - role: vexxhost.kubernetes.upload_helm_chart
+    vars:
+      upload_helm_chart_src: "{{ hpe_nimble_csi_helm_chart_path }}"
+      upload_helm_chart_dest: "{{ hpe_nimble_csi_helm_chart_ref }}"

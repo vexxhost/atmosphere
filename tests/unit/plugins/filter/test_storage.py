@@ -90,6 +90,32 @@ _STORPOOL_BACKEND = {
     "template": "hybrid-2ssd",
 }
 
+_NIMBLE_ISCSI_BACKEND = {
+    "type": "nimble",
+    "protocol": "iscsi",
+    "address": "10.0.0.3",
+    "username": "admin",
+    "password": "secret",
+}
+
+_NIMBLE_FC_BACKEND = {
+    "type": "nimble",
+    "protocol": "fc",
+    "address": "10.0.0.3",
+    "username": "admin",
+    "password": "secret",
+}
+
+_NIMBLE_POD_SECURITY_CONTEXT = {
+    "cinder_volume": {
+        "container": {
+            "cinder_volume": {
+                "privileged": True,
+            }
+        }
+    }
+}
+
 
 class TestValidation:
     def test_empty_storage_is_valid(self):
@@ -574,6 +600,53 @@ class TestStorageToCinderHelmValues:
         mounts = result["pod"]["mounts"]["cinder_volume"]
         assert len(mounts["volumeMounts"]) == 2
         assert len(mounts["volumes"]) == 2
+
+    def test_nimble_iscsi_backend(self):
+        storage = {
+            **DEFAULT_STORAGE,
+            "volumes": {
+                "default": "nimble",
+                "backends": {"nimble": _NIMBLE_ISCSI_BACKEND},
+            },
+            "backup": {"type": "none"},
+        }
+        result = storage_to_cinder_helm_values(storage)
+
+        backend = result["conf"]["backends"]["nimble"]
+        assert (
+            backend["volume_driver"]
+            == "cinder.volume.drivers.hpe.nimble.NimbleISCSIDriver"
+        )
+        assert backend["san_ip"] == "10.0.0.3"
+        assert backend["san_login"] == "admin"
+        assert backend["san_password"] == "secret"
+        assert backend["use_multipath_for_image_xfer"] is True
+        assert result["conf"]["enable_iscsi"] is True
+        assert result["pod"]["useHostNetwork"] == {"volume": True}
+        assert result["pod"]["security_context"] == _NIMBLE_POD_SECURITY_CONTEXT
+
+    def test_nimble_fc_backend(self):
+        storage = {
+            **DEFAULT_STORAGE,
+            "volumes": {
+                "default": "nimble",
+                "backends": {"nimble": _NIMBLE_FC_BACKEND},
+            },
+            "backup": {"type": "none"},
+        }
+        result = storage_to_cinder_helm_values(storage)
+
+        backend = result["conf"]["backends"]["nimble"]
+        assert backend["volume_driver"] == (
+            "cinder.volume.drivers.hpe.nimble.NimbleFCDriver"
+        )
+        assert backend["san_ip"] == "10.0.0.3"
+        assert backend["san_login"] == "admin"
+        assert backend["san_password"] == "secret"
+        assert backend["use_multipath_for_image_xfer"] is True
+        assert result["conf"]["enable_iscsi"] is True
+        assert result["pod"]["useHostNetwork"] == {"volume": True}
+        assert result["pod"]["security_context"] == _NIMBLE_POD_SECURITY_CONTEXT
 
     def test_no_backup(self):
         storage = {

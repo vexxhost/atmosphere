@@ -1,0 +1,78 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Assert required variables are defined
+  run_once: true
+  ansible.builtin.assert:
+    quiet: true
+    that:
+      - hpe_nimble_csi_backend is defined and hpe_nimble_csi_backend | length > 0
+      - hpe_nimble_csi_username is defined and hpe_nimble_csi_username | length > 0
+      - hpe_nimble_csi_password is defined and hpe_nimble_csi_password | length > 0
+    fail_msg: >-
+      The following variables must be defined to deploy the HPE Nimble CSI
+      driver: hpe_nimble_csi_backend, hpe_nimble_csi_username,
+      hpe_nimble_csi_password.
+
+- name: Assert access protocol is valid
+  run_once: true
+  ansible.builtin.assert:
+    quiet: true
+    that:
+      - hpe_nimble_csi_access_protocol in ["iscsi", "fc"]
+    fail_msg: >-
+      hpe_nimble_csi_access_protocol must be set to either "iscsi" or "fc".
+
+- name: Create Secret
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: hpe-nimble-csi-secret
+        namespace: "{{ hpe_nimble_csi_helm_release_namespace }}"
+      stringData:
+        serviceName: nimble-csp-svc
+        servicePort: "8080"
+        backend: "{{ hpe_nimble_csi_backend }}"
+        username: "{{ hpe_nimble_csi_username }}"
+        password: "{{ hpe_nimble_csi_password }}"
+
+- name: Create StorageClass
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: storage.k8s.io/v1
+      kind: StorageClass
+      metadata:
+        name: general
+        annotations:
+          storageclass.kubernetes.io/is-default-class: "true"
+      provisioner: csi.hpe.com
+      reclaimPolicy: Delete
+      allowVolumeExpansion: true
+      volumeBindingMode: Immediate
+      parameters:
+        csi.storage.k8s.io/fstype: xfs
+        accessProtocol: "{{ hpe_nimble_csi_access_protocol }}"
+        csi.storage.k8s.io/controller-publish-secret-name: hpe-nimble-csi-secret
+        csi.storage.k8s.io/controller-publish-secret-namespace: "{{ hpe_nimble_csi_helm_release_namespace }}"
+        csi.storage.k8s.io/node-publish-secret-name: hpe-nimble-csi-secret
+        csi.storage.k8s.io/node-publish-secret-namespace: "{{ hpe_nimble_csi_helm_release_namespace }}"
+        csi.storage.k8s.io/node-stage-secret-name: hpe-nimble-csi-secret
+        csi.storage.k8s.io/node-stage-secret-namespace: "{{ hpe_nimble_csi_helm_release_namespace }}"
+        csi.storage.k8s.io/provisioner-secret-name: hpe-nimble-csi-secret
+        csi.storage.k8s.io/provisioner-secret-namespace: "{{ hpe_nimble_csi_helm_release_namespace }}"
+
+- name: Deploy Helm chart
+  run_once: true
+  kubernetes.core.helm:
+    name: "{{ hpe_nimble_csi_helm_release_name }}"
+    chart_ref: "{{ hpe_nimble_csi_helm_chart_ref }}"
+    release_namespace: "{{ hpe_nimble_csi_helm_release_namespace }}"
+    create_namespace: true
+    kubeconfig: "{{ hpe_nimble_csi_helm_kubeconfig }}"
+    values: "{{ _hpe_nimble_csi_helm_values | combine(hpe_nimble_csi_helm_values, recursive=True) }}"

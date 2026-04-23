@@ -1,0 +1,127 @@
+{{- if not .Values.disable.alletraStorageMP }}
+---
+### Alletra Storage MP B10000 CSP Service ###
+kind: Service
+apiVersion: v1
+metadata:
+  name: alletrastoragemp-csp-svc
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: alletrastoragemp-csp-svc
+spec:
+  ports:
+  - port: 8080
+    protocol: TCP
+  selector:
+    app: primera3par-csp
+
+{{- end }}
+
+{{- if not .Values.disable.alletra9000 }}
+---
+### Alletra9000 CSP Service ###
+kind: Service
+apiVersion: v1
+metadata:
+  name: alletra9000-csp-svc
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: alletra9000-csp-svc
+spec:
+  ports:
+  - port: 8080
+    protocol: TCP
+  selector:
+    app: primera3par-csp
+
+{{- end }}
+
+{{- if not .Values.disable.primera }}
+---
+### Primera3par CSP Service ###
+kind: Service
+apiVersion: v1
+metadata:
+  name: primera3par-csp-svc
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: primera3par-csp-svc
+spec:
+  ports:
+  - port: 8080
+    protocol: TCP
+  selector:
+    app: primera3par-csp
+{{- end }}
+
+{{- if or (not .Values.disable.alletraStorageMP) (not .Values.disable.alletra9000) (not .Values.disable.primera) }}
+
+---
+### CSP deployment ###
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: primera3par-csp
+  labels:
+    app: primera3par-csp
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    matchLabels:
+      app: primera3par-csp
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: primera3par-csp
+        {{- if .Values.csp.labels }}
+{{ toYaml .Values.csp.labels | indent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: hpe-csp-sa
+      priorityClassName: system-cluster-critical
+      containers:
+        - name: primera3par-csp
+          image: {{ .Values.images.primera3parCSP | quote }}
+          resources:
+            {{- toYaml .Values.csp.resources | nindent 12 }}
+          imagePullPolicy: {{ .Values.imagePullPolicy | quote }}
+          env:
+            - name: CRD_CLIENT_CONFIG_QPS
+              value: "35"
+            - name: CRD_CLIENT_CONFIG_BURST
+              value: "20"
+            {{- if .Values.iscsi.chapSecretName }}
+            - name: CHAP_SECRET_NAME
+              value: {{ .Values.iscsi.chapSecretName }}
+            - name: CHAP_SECRET_NAMESPACE
+              value: {{ .Release.Namespace }}
+            {{- end }}
+            {{- if .Values.disableHostDeletion }}
+            - name: DISABLE_HOST_DELETION
+              value: "true"
+            {{- end }}
+            - name: LOG_LEVEL
+              value: {{ .Values.logLevel }}
+          ports:
+            - containerPort: 8080
+          volumeMounts:
+            - name: log-dir
+              mountPath: /var/log
+      volumes:
+        - name: log-dir
+          hostPath:
+            path: /var/log
+      {{- if .Values.csp.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.csp.nodeSelector | indent 8 }}
+      {{- end }}
+      {{- if .Values.csp.tolerations }}
+      tolerations:
+{{ toYaml .Values.csp.tolerations | indent 8 }}
+      {{- end }}
+      {{- if .Values.csp.affinity }}
+      affinity:
+{{ toYaml .Values.csp.affinity | indent 8 }}
+      {{- end }}
+{{- end }}
