@@ -38,4 +38,15 @@ fixes:
     variable indirection. Ansible-core 2.20 wraps the rendered template
     in a lazy container that the ``loop`` keyword rejects with ``must
     resolve to a 'list', not 'str'``.
+  - |
+    Migrated the molecule scenarios to access Ansible facts through
+    ``ansible_facts['fact_name']`` instead of the legacy top-level
+    ``ansible_*`` variables. Ansible-core 2.20 deprecates automatic
+    injection of these variables and removes the behaviour in 2.24.
+  - |
+    Raised the Helm timeout for the Tempest release to 30 minutes and
+    added a polling retry loop on the Tempest Job lookup. The Tempest
+    suite now takes longer than the previous 20-minute Helm wait on
+    Ubuntu 26.04, which caused the Job status check to race the
+    Kubernetes controller and fail even when every test passed.
 
