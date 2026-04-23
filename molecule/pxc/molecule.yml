@@ -95,7 +95,7 @@ provisioner:
           haproxy:
             size: 1
         # Common
-        domain_name: "{{ (lookup('env', 'HOST_IP') | default(ansible_default_ipv4.address, true)).replace('.', '-') }}.nip.io"
+        domain_name: "{{ (lookup('env', 'HOST_IP') | default(ansible_facts['default_ipv4']['address'], true)).replace('.', '-') }}.nip.io"
         openstack_helm_endpoints_region_name: RegionOne
       cephs:
         ceph_osd_devices:

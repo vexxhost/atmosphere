@@ -13,7 +13,7 @@
       changed_when: false
       environment:
         CGO_ENABLED: "0"
-        PATH: "/usr/local/go/bin:{{ ansible_env.PATH | default(lookup('env', 'PATH')) }}"
+        PATH: "/usr/local/go/bin:{{ ansible_facts['env']['PATH'] | default(lookup('env', 'PATH')) }}"
 
     - name: Create local inventory
       when: zuul is not defined
@@ -52,7 +52,7 @@
         {{
           {'ATMOSPHERE_NETWORK_BACKEND': atmosphere_network_backend | default(lookup('env', 'ATMOSPHERE_NETWORK_BACKEND')) | default('openvswitch', true)}
           | combine(
-            {'PATH': ansible_env.PATH | default(lookup('env', 'PATH')),
+            {'PATH': ansible_facts['env']['PATH'] | default(lookup('env', 'PATH')),
              'ANSIBLE_COLLECTIONS_PATH': lookup('env', 'ANSIBLE_COLLECTIONS_PATH') | default(lookup('env', 'HOME') + '/.ansible/collections', true)}
             if zuul is not defined else {}
           )

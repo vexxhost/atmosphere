@@ -24,7 +24,7 @@
       changed_when: false
       environment:
         CGO_ENABLED: "0"
-        PATH: "/usr/local/go/bin:{{ ansible_env.PATH | default(lookup('env', 'PATH')) }}"
+        PATH: "/usr/local/go/bin:{{ ansible_facts['env']['PATH'] | default(lookup('env', 'PATH')) }}"
 
     - name: Deploy with parallel orchestrator
       ansible.builtin.shell:
