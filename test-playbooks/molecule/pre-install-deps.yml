@@ -1,0 +1,57 @@
+# Copyright (c) 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- hosts: all
+  become: true
+  tasks:
+    - name: Install system packages
+      ansible.builtin.apt:
+        name:
+          - open-iscsi
+          - multipath-tools
+          - sg3-utils
+          - openssh-server
+          - dirmngr
+          - jq
+          - gpg
+          - gpg-agent
+          - socat
+          - conntrack
+          - ipset
+          - ethtool
+          - ebtables
+          - python3-venv
+          - python3-pip
+        state: present
+        update_cache: true
+
+    - name: Enable iscsid service
+      ansible.builtin.systemd:
+        name: iscsid
+        enabled: true
+
+    - name: Enable multipathd service
+      ansible.builtin.systemd:
+        name: multipathd
+        enabled: true
+
+    - name: Install Helm 3.14.4
+      ansible.builtin.shell: |
+        curl -fsSL https://get.helm.sh/helm-v3.14.4-linux-amd64.tar.gz | tar -xz -C /usr/local/bin --strip-components=1 linux-amd64/helm
+      args:
+        creates: /usr/local/bin/helm
+
+    - name: Install Go 1.24.2
+      ansible.builtin.shell: |
+        curl -fsSL https://go.dev/dl/go1.24.2.linux-amd64.tar.gz | tar -xz -C /usr/local
+      args:
+        creates: /usr/local/go/bin/go
+
+    - name: Create Python venv and install openstacksdk
+      ansible.builtin.pip:
+        name:
+          - openstacksdk
+          - python-openstackclient
+        virtualenv: /opt/atmosphere-venv
+        virtualenv_command: python3 -m venv
+        extra_args: --no-cache-dir
