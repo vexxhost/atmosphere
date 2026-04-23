@@ -38,3 +38,36 @@ atmosphere_storage: {}
 
 defaults_ca_certificates_path: >-
   {{ '/etc/ssl/certs/ca-certificates.crt' if ansible_facts['os_family'] in ['Debian'] else '/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem' }}
+
+# Maximum number of concurrent `crictl pull` calls per host during the
+# container image pre-pull step run by the deploy orchestrator.
+#
+# atmosphere_prepull_concurrency: 8
+atmosphere_prepull_concurrency: 8
+
+# Keys from `atmosphere_images` that compute-only hosts (members of the
+# `computes` group that are not also in `controllers`) should pre-pull.
+# Control-plane images are skipped on these hosts to save bandwidth and
+# disk.
+#
+# atmosphere_prepull_compute_keys:
+#   - libvirt
+#   - nova_compute
+atmosphere_prepull_compute_keys:
+  - ceph
+  - ceph_config_helper
+  - cilium_node
+  - libvirt
+  - netoffload
+  - neutron_openvswitch_agent
+  - neutron_sriov_agent
+  - node_exporter
+  - nova_compute
+  - nova_compute_ssh
+  - ovn_controller
+  - ovn_controller_gw
+  - ovn_ovsdb_nb
+  - ovn_ovsdb_sb
+  - ovn_northd
+  - openvswitch_db_server
+  - openvswitch_vswitchd
