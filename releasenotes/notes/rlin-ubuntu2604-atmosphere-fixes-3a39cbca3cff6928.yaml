@@ -1,6 +1,13 @@
 ---
 fixes:
   - |
+    Lowered the Ansible-core floor in ``pyproject.toml`` from
+    ``>=2.20`` back to ``>=2.15.9`` so that Atmosphere remains
+    installable on Ubuntu 22.04, whose Python 3.10 interpreter can't
+    satisfy the Python 3.12 requirement of Ansible-core 2.20. On
+    Ubuntu 26.04 pip still resolves to the newest compatible release,
+    preserving the Python 3.14 deployment path.
+  - |
     Fixed the ``ceph_provisioners``, ``ceph_csi_rbd``, and
     ``rook_ceph_cluster`` roles to call the new ``vexxhost.ceph.key_info``
     module when reading existing CephX keys. Recent versions of the
