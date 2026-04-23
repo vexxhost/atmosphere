@@ -463,7 +463,7 @@ class VolumeBackendNimbleISCSI(_VolumeBackendNimbleBase):
 
     @property
     def cinder_driver(self) -> str:
-        return "cinder.volume.drivers.nimble.NimbleISCSIDriver"
+        return "cinder.volume.drivers.hpe.nimble.NimbleISCSIDriver"
 
 
 class VolumeBackendNimbleFC(_VolumeBackendNimbleBase):
@@ -471,7 +471,7 @@ class VolumeBackendNimbleFC(_VolumeBackendNimbleBase):
 
     @property
     def cinder_driver(self) -> str:
-        return "cinder.volume.drivers.nimble.NimbleFCDriver"
+        return "cinder.volume.drivers.hpe.nimble.NimbleFCDriver"
 
 
 VolumeBackendNimble = Annotated[
