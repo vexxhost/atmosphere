@@ -23,8 +23,10 @@ runs:
 
     - shell: bash
       run: |
-        sudo apt-get update
-        sudo apt-get install -y openssh-server
+        if ! dpkg -s openssh-server &>/dev/null; then
+          sudo apt-get update
+          sudo apt-get install -y openssh-server
+        fi
 
     - shell: bash
       run: |
@@ -58,7 +60,10 @@ runs:
     #               spacing that breaks some of the Helm charts, so we remove it here
     #               for now so that Ansible installs it.
     - shell: bash
-      run: rm -rfv /usr/local/bin/helm || true
+      run: |
+        if ! helm version --short 2>/dev/null | grep -q "v3.14"; then
+          rm -rfv /usr/local/bin/helm || true
+        fi
 
     - shell: bash
       run: sudo --preserve-env=ANSIBLE_PYTHON_INTERPRETER,ATMOSPHERE_NETWORK_BACKEND,MOLECULE_CSI_DRIVER env "PATH=$PATH" molecule test -s ${{ inputs.scenario }}
