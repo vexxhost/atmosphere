@@ -108,12 +108,56 @@
     kubeconfig: "{{ rook_ceph_cluster_helm_kubeconfig }}"
     values: "{{ _rook_ceph_cluster_helm_values | combine(rook_ceph_cluster_helm_values, recursive=True) }}"
 
+# When the parallel orchestrator schedules rook-ceph-cluster shortly after
+# keystone's Helm release is reported complete, the keystone-api pods can
+# still be completing their rolling update. Wait explicitly so the
+# subsequent openstack.cloud.* calls do not race keystone readiness.
+- name: Wait for keystone API to be Available
+  run_once: true
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    name: keystone-api
+    namespace: openstack
+    wait: true
+    wait_sleep: 5
+    wait_timeout: 600
+    wait_condition:
+      type: Available
+      status: "True"
+
+# The "service" domain is normally created on-demand by the first
+# openstack-helm service chart's ks-user job.  When rook-ceph-cluster
+# runs in parallel with those charts, the domain might not yet exist,
+# so create it idempotently here.
+- name: Ensure "service" domain exists
+  run_once: true
+  openstack.cloud.identity_domain:
+    cloud: atmosphere
+    name: service
+    description: Service Domain
+  register: _rook_ceph_cluster_service_domain
+  until: _rook_ceph_cluster_service_domain is not failed
+  retries: 60
+  delay: 5
+
 - name: Create OpenStack user
   openstack.cloud.identity_user:
     cloud: atmosphere
     name: "{{ openstack_helm_endpoints.identity.auth.rgw.username }}"
     password: "{{ openstack_helm_endpoints.identity.auth.rgw.password }}"
     domain: service
+
+# The "service" project in the "service" domain is likewise created by
+# the first openstack-helm ks-user job.  Create it here so rook-ceph-cluster
+# doesn't depend on another chart having run first.
+- name: Ensure "service" project exists
+  run_once: true
+  openstack.cloud.project:
+    cloud: atmosphere
+    name: service
+    domain: service
+    description: Service Project
 
 # NOTE(mnaser): https://storyboard.openstack.org/#!/story/2010579
 - name: Grant access to "service" project
