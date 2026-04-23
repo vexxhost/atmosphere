@@ -1,0 +1,19 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ gateway_route_name }}
+  namespace: {{ gateway_route_namespace }}
+spec:
+  parentRefs:
+    - name: {{ gateway_name }}
+      namespace: {{ gateway_namespace }}
+  hostnames:
+    - {{ gateway_route_host }}
+  rules:
+    - backendRefs:
+        - name: {{ gateway_route_service_name }}
+          port: {{ gateway_route_service_port }}
+{% if gateway_route_config.httproute_timeout_backend_request is defined %}
+      timeouts:
+        backendRequest: {{ gateway_route_config.httproute_timeout_backend_request }}
+{% endif %}

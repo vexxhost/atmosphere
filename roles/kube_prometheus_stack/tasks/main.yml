@@ -187,28 +187,7 @@
   loop_control:
     label: "{{ item.0.id }}-{{ item.1 }}"
 
-- name: Generate cookie secrets
-  run_once: true
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: secretgen.k14s.io/v1alpha1
-      kind: Password
-      metadata:
-        name: "{{ kube_prometheus_stack_helm_release_name }}-{{ item.id }}-cookie-secret"
-        namespace: "{{ kube_prometheus_stack_helm_release_namespace }}"
-      spec:
-        length: 32
-    wait: true
-    wait_timeout: 60
-    wait_condition:
-      type: ReconcileSucceeded
-      status: true
-  loop: "{{ kube_prometheus_stack_keycloak_clients | selectattr('oauth2_proxy', 'equalto', true) }}"
-  loop_control:
-    label: "{{ item.id }}"
-
-- name: Generate OAuth2 proxy configuration
+- name: Generate OIDC client secrets for Envoy Gateway
   run_once: true
   kubernetes.core.k8s:
     state: present
@@ -216,7 +195,7 @@
       apiVersion: secretgen.carvel.dev/v1alpha1
       kind: SecretTemplate
       metadata:
-        name: "{{ kube_prometheus_stack_helm_release_name }}-{{ item.id }}-oauth2-proxy"
+        name: "{{ kube_prometheus_stack_helm_release_name }}-{{ item.id }}-oidc-client-secret"
         namespace: "{{ kube_prometheus_stack_helm_release_namespace }}"
       spec:
         inputResources:
@@ -225,36 +204,15 @@
               apiVersion: v1
               kind: Secret
               name: "{{ kube_prometheus_stack_helm_release_name }}-{{ item.id }}-client-secret"
-          - name: cookie-secret
-            ref:
-              apiVersion: v1
-              kind: Secret
-              name: "{{ kube_prometheus_stack_helm_release_name }}-{{ item.id }}-cookie-secret"
         template:
-          stringData:
-            OAUTH2_PROXY_UPSTREAMS: "http://127.0.0.1:{{ item.port }}"
-            OAUTH2_PROXY_HTTP_ADDRESS: "0.0.0.0:8081"
-            OAUTH2_PROXY_METRICS_ADDRESS: "0.0.0.0:8082"
-            OAUTH2_PROXY_EMAIL_DOMAINS: "*"
-            OAUTH2_PROXY_REVERSE_PROXY: "true"
-            OAUTH2_PROXY_SKIP_PROVIDER_BUTTON: "true"
-            OAUTH2_PROXY_SSL_INSECURE_SKIP_VERIFY: "{{ (cluster_issuer_type == 'self-signed') | string }}"
-            OAUTH2_PROXY_PROVIDER: "keycloak-oidc"
-            OAUTH2_PROXY_CLIENT_ID: "{{ item.id }}"
-            OAUTH2_PROXY_REDIRECT_URL: "{{ item.redirect_uris.0 }}"
-            OAUTH2_PROXY_OIDC_ISSUER_URL: "{{ kube_prometheus_stack_keycloak_server_url }}/realms/{{ kube_prometheus_stack_keycloak_realm }}"
-            OAUTH2_PROXY_ALLOWED_ROLE: "{{ item.id }}:{{ item.roles[0] }}"
-            OAUTH2_PROXY_CODE_CHALLENGE_METHOD: "S256"
-            OAUTH2_PROXY_SKIP_JWT_BEARER_TOKENS: "true"
           data:
-            OAUTH2_PROXY_COOKIE_SECRET: "$(.cookie-secret.data.password)"
-            OAUTH2_PROXY_CLIENT_SECRET: "$(.client-secret.data.password)"
+            client-secret: "$(.client-secret.data.password)"
     wait: true
     wait_timeout: 60
     wait_condition:
       type: ReconcileSucceeded
       status: true
-  loop: "{{ kube_prometheus_stack_keycloak_clients | selectattr('oauth2_proxy', 'equalto', true) }}"
+  loop: "{{ kube_prometheus_stack_keycloak_clients | selectattr('oidc_gateway', 'defined') | selectattr('oidc_gateway', 'equalto', true) }}"
   loop_control:
     label: "{{ item.id }}"
 
@@ -346,3 +304,53 @@
     create_namespace: true
     kubeconfig: "{{ kube_prometheus_stack_helm_kubeconfig }}"
     values: "{{ _kube_prometheus_stack_helm_values | combine(kube_prometheus_stack_helm_values, recursive=True) }}"
+
+# NOTE: Calls the gateway role directly (not through openstack_helm_gateway),
+#       so policy vars are derived from the combined gateway config dict.
+- name: Create Alertmanager gateway route
+  ansible.builtin.include_role:
+    name: gateway
+    apply:
+      tags:
+        - gateway-routes
+  tags:
+    - gateway-routes
+  vars:
+    gateway_route_name: alertmanager
+    gateway_route_namespace: "{{ kube_prometheus_stack_helm_release_namespace }}"
+    gateway_route_host: "{{ kube_prometheus_stack_alertmanager_host }}"
+    gateway_route_service_name: "{{ kube_prometheus_stack_helm_release_name }}-alertmanager"
+    gateway_route_service_port: 9093
+    gateway_route_config: "{{ _kube_prometheus_stack_alertmanager_gateway_config | combine(kube_prometheus_stack_alertmanager_gateway_config) }}"
+
+- name: Create Grafana gateway route
+  ansible.builtin.include_role:
+    name: gateway
+    apply:
+      tags:
+        - gateway-routes
+  tags:
+    - gateway-routes
+  vars:
+    gateway_route_name: grafana
+    gateway_route_namespace: "{{ kube_prometheus_stack_helm_release_namespace }}"
+    gateway_route_host: "{{ kube_prometheus_stack_grafana_host }}"
+    gateway_route_service_name: "{{ kube_prometheus_stack_helm_release_name }}-grafana"
+    gateway_route_service_port: 80
+    gateway_route_config: "{{ _kube_prometheus_stack_grafana_gateway_config | combine(kube_prometheus_stack_grafana_gateway_config) }}"
+
+- name: Create Prometheus gateway route
+  ansible.builtin.include_role:
+    name: gateway
+    apply:
+      tags:
+        - gateway-routes
+  tags:
+    - gateway-routes
+  vars:
+    gateway_route_name: prometheus
+    gateway_route_namespace: "{{ kube_prometheus_stack_helm_release_namespace }}"
+    gateway_route_host: "{{ kube_prometheus_stack_prometheus_host }}"
+    gateway_route_service_name: "{{ kube_prometheus_stack_helm_release_name }}-prometheus"
+    gateway_route_service_port: 9090
+    gateway_route_config: "{{ _kube_prometheus_stack_prometheus_gateway_config | combine(kube_prometheus_stack_prometheus_gateway_config) }}"

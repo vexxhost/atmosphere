@@ -136,3 +136,17 @@
     openstack_helm_ingress_service_port: 9876
     openstack_helm_ingress_annotations: "{{ octavia_ingress_annotations }}"
     openstack_helm_ingress_class_name: "{{ octavia_ingress_class_name }}"
+
+- name: Create gateway route
+  ansible.builtin.include_role:
+    name: openstack_helm_gateway
+    apply:
+      tags:
+        - gateway-routes
+  tags:
+    - gateway-routes
+  vars:
+    openstack_helm_gateway_endpoint: load_balancer
+    openstack_helm_gateway_service_name: octavia-api
+    openstack_helm_gateway_service_port: 9876
+    openstack_helm_gateway_config: "{{ _octavia_gateway_config | combine(octavia_gateway_config) }}"

@@ -1,0 +1,33 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: {{ gateway_name }}
+  namespace: {{ gateway_namespace }}
+{% set _annotations = gateway_default_annotations | combine(gateway_annotations, recursive=True) %}
+{% if _annotations | length > 0 %}
+  annotations:
+    {{ _annotations | to_nice_yaml | indent(4) }}
+{% endif %}
+spec:
+  gatewayClassName: {{ gateway_class_name }}
+  listeners:
+{% for listener in gateway_listeners %}
+    - name: {{ listener.name }}
+      protocol: {{ listener.protocol }}
+      port: {{ listener.port }}
+{% if listener.hostname is defined %}
+      hostname: {{ listener.hostname | quote }}
+{% endif %}
+      allowedRoutes:
+        namespaces:
+          from: All
+{% if listener.tls is defined %}
+      tls:
+        mode: {{ listener.tls.mode }}
+        certificateRefs:
+{% for ref in listener.tls.certificateRefs %}
+          - kind: {{ ref.kind | default('Secret') }}
+            name: {{ ref.name }}
+{% endfor %}
+{% endif %}
+{% endfor %}

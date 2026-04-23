@@ -31,3 +31,17 @@
     openstack_helm_ingress_service_port: 80
     openstack_helm_ingress_annotations: "{{ _horizon_ingress_annotations | combine(horizon_ingress_annotations) }}"
     openstack_helm_ingress_class_name: "{{ horizon_ingress_class_name }}"
+
+- name: Create gateway route
+  ansible.builtin.include_role:
+    name: openstack_helm_gateway
+    apply:
+      tags:
+        - gateway-routes
+  tags:
+    - gateway-routes
+  vars:
+    openstack_helm_gateway_endpoint: dashboard
+    openstack_helm_gateway_service_name: horizon-int
+    openstack_helm_gateway_service_port: 80
+    openstack_helm_gateway_config: "{{ _horizon_gateway_config | combine(horizon_gateway_config) }}"

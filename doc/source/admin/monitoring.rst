@@ -239,71 +239,18 @@ can also check any alerts that are currently firing by going to *Alerting* >
 Prometheus
 ==========
 
-By default, Prometheus sits behind an ``Ingress`` using the
-``kube_prometheus_stack_prometheus_host`` variable. It also runs behind the
-`oauth2-proxy` service, which handles authentication so that only authenticated
-users can access the Prometheus UI.
+By default, Prometheus sits behind a ``Gateway`` route using the
+``kube_prometheus_stack_prometheus_host`` variable.  Envoy Gateway's native
+OIDC authentication protects the Prometheus UI through a ``SecurityPolicy``
+so that only authenticated users can access it.
 
-Alternative authentication
---------------------------
-
-You can bypass the `oauth2-proxy` service and use an alternative authentication
-method to access the Prometheus UI. In both cases, you override the
-``servicePort`` on the ``Ingress`` to point to the port where Prometheus runs
-instead of the `oauth2-proxy` service.
-
-.. admonition:: Advanced Usage Only
-    :class: warning
-
-    It's strongly recommended that you stick to keeping the `oauth2-proxy`
-    service in front of the Prometheus UI.  The `oauth2-proxy` service is
-    responsible for authenticating users and ensuring that only authenticated
-    users can access the Prometheus UI.
-
-Basic authentication
-~~~~~~~~~~~~~~~~~~~~
-
-To use basic authentication for the Prometheus UI instead of the `oauth2-proxy`
-service with single sign-on, make the following changes to your inventory:
-
-.. code-block:: yaml
-
-  kube_prometheus_stack_helm_values:
-    prometheus:
-      ingress:
-        servicePort: 8080
-        annotations:
-          nginx.ingress.kubernetes.io/auth-type: basic
-          nginx.ingress.kubernetes.io/auth-secret: basic-auth-secret-name
-
-In this example, the ``basic-auth-secret-name`` secret handles user
-authentication. Create the secret in the same namespace as the Prometheus
-deployment based on the `Ingress NGINX annotations <https://github.com/kubernetes/ingress-nginx/blob/main/docs/user-guide/nginx-configuration/annotations.md#annotations>`_.
-
-Restricting by address
-~~~~~~~~~~~~~~~~~~~~~
-
-To restrict Prometheus UI access to specific IP addresses, make the following
-changes to your inventory:
-
-.. code-block:: yaml
-
-  kube_prometheus_stack_helm_values:
-    prometheus:
-      ingress:
-        servicePort: 8080
-        annotations:
-          nginx.ingress.kubernetes.io/whitelist-source-range: "10.0.0.0/24,172.10.0.1"
-
-In this example, the configuration restricts access to the IP range
-``10.0.0.0/24`` and the IP address ``172.10.0.1``.
-
-AlertManager
+Alertmanager
 ============
 
-By default, the AlertManager dashboard points to the Ansible variable
-``kube_prometheus_stack_alertmanager_host`` and sits behind an ``Ingress``
-with the `oauth2-proxy` service, protected by Keycloak similar to Prometheus.
+By default, the Alertmanager dashboard points to the Ansible variable
+``kube_prometheus_stack_alertmanager_host`` and sits behind a ``Gateway``
+route with Envoy Gateway's native OIDC authentication, protected by
+Keycloak similar to Prometheus.
 
 ************
 Integrations
