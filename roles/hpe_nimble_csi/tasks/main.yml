@@ -14,6 +14,15 @@
       driver: hpe_nimble_csi_backend, hpe_nimble_csi_username,
       hpe_nimble_csi_password.
 
+- name: Assert access protocol is valid
+  run_once: true
+  ansible.builtin.assert:
+    quiet: true
+    that:
+      - hpe_nimble_csi_access_protocol in ["iscsi", "fc"]
+    fail_msg: >-
+      hpe_nimble_csi_access_protocol must be set to either "iscsi" or "fc".
+
 - name: Create Secret
   run_once: true
   kubernetes.core.k8s:
@@ -48,6 +57,7 @@
       volumeBindingMode: Immediate
       parameters:
         csi.storage.k8s.io/fstype: xfs
+        accessProtocol: "{{ hpe_nimble_csi_access_protocol }}"
         csi.storage.k8s.io/controller-publish-secret-name: hpe-nimble-csi-secret
         csi.storage.k8s.io/controller-publish-secret-namespace: "{{ hpe_nimble_csi_helm_release_namespace }}"
         csi.storage.k8s.io/node-publish-secret-name: hpe-nimble-csi-secret
