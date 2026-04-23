@@ -71,14 +71,17 @@
       openstack.cloud.network:
         cloud: atmosphere
         # Network settings
-        name: "{{ item.name }}"
+        admin_state_up: "{{ item.admin_state_up | default(omit) }}"
+        dns_domain: "{{ item.dns_domain | default(omit) }}"
         external: "{{ item.external | default(omit) }}"
-        shared: "{{ item.shared | default(omit) }}"
         mtu_size: "{{ item.mtu_size | default(omit) }}"
+        name: "{{ item.name }}"
         port_security_enabled: "{{ item.port_security_enabled | default(omit) }}"
+        project: "{{ item.project | default(omit) }}"
         provider_network_type: "{{ item.provider_network_type | default(omit) }}"
         provider_physical_network: "{{ item.provider_physical_network | default(omit) }}"
         provider_segmentation_id: "{{ item.provider_segmentation_id | default(omit) }}"
+        shared: "{{ item.shared | default(omit) }}"
       loop: "{{ neutron_networks }}"
       # NOTE(mnaser): This often fails since the SSL certificates are not
       #               ready yet. We need to wait for them to be ready.
