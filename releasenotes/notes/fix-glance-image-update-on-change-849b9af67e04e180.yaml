@@ -1,0 +1,12 @@
+---
+fixes:
+  - |
+    Fixed an issue where the ``glance_image`` role skipped uploading an
+    image whenever a name match existed, even when the upstream source
+    had changed. The role now sends an HTTP ``HEAD`` to the source
+    address, captures the ``ETag``, and stores it on the image as the
+    ``atmosphere:image:etag`` property alongside the source address in
+    ``atmosphere:image:url``. When either value changes on a later run,
+    the role renames the outdated image to ``<name>-<short-etag>``,
+    replaces its tags with ``atmosphere:image:obsolete``, and uploads the new
+    image under the original name.

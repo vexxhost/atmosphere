@@ -12,6 +12,36 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+- name: Fetch source image metadata from URL
+  run_once: true
+  ansible.builtin.uri:
+    url: "{{ glance_image_url }}"
+    method: HEAD
+    follow_redirects: all
+    status_code: [200]
+  register: _glance_image_source_head
+  retries: 3
+  delay: "{{ 15 | random + 3 }}"
+  until: _glance_image_source_head is not failed
+  environment:
+    http_proxy: "{{ glance_image_http_proxy }}"
+    https_proxy: "{{ glance_image_https_proxy }}"
+    no_proxy: "{{ glance_image_no_proxy }}"
+
+- name: Fail when source URL does not return an ETag
+  run_once: true
+  ansible.builtin.fail:
+    msg: >-
+      The source URL {{ glance_image_url }} did not return an ETag
+      header. The glance_image role requires an ETag to detect upstream
+      image changes. Use a source that exposes an ETag header.
+  when: _glance_image_source_head.etag is not defined
+
+- name: Capture source ETag
+  run_once: true
+  ansible.builtin.set_fact:
+    _glance_image_source_etag: "{{ _glance_image_source_head.etag }}"
+
 - name: Check if image exists
   run_once: true
   openstack.cloud.image_info:
@@ -24,9 +54,23 @@
   delay: 1
   until: _image_info is not failed
 
+- name: Capture existing image and its Atmosphere metadata
+  run_once: true
+  ansible.builtin.set_fact:
+    _glance_image_existing: "{{ _image_info.images[0] | default({}) }}"
+    _glance_image_existing_props: "{{ (_image_info.images[0] | default({})).properties | default({}) }}"
+
+- name: Decide whether image upload is required
+  run_once: true
+  ansible.builtin.set_fact:
+    _glance_image_needs_upload: "{{
+      (_image_info.images | length == 0)
+      or ((_glance_image_existing_props['atmosphere:image:url'] | default('')) != glance_image_url)
+      or ((_glance_image_existing_props['atmosphere:image:etag'] | default('')) != _glance_image_source_etag) }}"
+
 - name: Download image and upload into Glance
   run_once: true
-  when: _image_info.images | length == 0
+  when: _glance_image_needs_upload
   block:
     - name: Generate temporary work directory
       ansible.builtin.tempfile:
@@ -80,6 +124,25 @@
           type: Available
           status: true
 
+    - name: Rename outdated image to preserve audit trail
+      when: _image_info.images | length > 0
+      vars:
+        _existing_etag_raw: "{{ _glance_image_existing_props['atmosphere:image:etag'] | default('') }}"
+        _existing_etag_short: "{{ (_existing_etag_raw | regex_replace('[^A-Za-z0-9]', ''))[:12] }}"
+        _existing_id_short: "{{ (_glance_image_existing.id | default('') | regex_replace('-', ''))[:12] }}"
+        _existing_suffix: "{{ _existing_etag_short if _existing_etag_short | length > 0 else _existing_id_short }}"
+      openstack.cloud.image:
+        cloud: atmosphere
+        id: "{{ _glance_image_existing.id }}"
+        name: "{{ glance_image_name }}-{{ _existing_suffix }}"
+        visibility: "{{ _glance_image_existing.visibility | default(omit) }}"
+        tags:
+          - atmosphere:image:obsolete
+      retries: "{{ glance_image_retries | default(60) }}"
+      delay: 5
+      register: _rename_result
+      until: _rename_result is not failed
+
     - name: Upload image into Glance
       openstack.cloud.image:
         cloud: atmosphere
@@ -89,7 +152,7 @@
         min_ram: "{{ glance_image_min_ram | default(omit) }}"
         container_format: "{{ glance_image_container_format | default(omit) }}"
         disk_format: "{{ glance_image_disk_format | default(omit) }}"
-        properties: "{{ glance_image_properties | default(omit) }}"
+        properties: "{{ (glance_image_properties | default({})) | combine({'atmosphere:image:url': glance_image_url, 'atmosphere:image:etag': _glance_image_source_etag}) }}"
         kernel: "{{ glance_image_kernel | default(omit) }}"
         ramdisk: "{{ glance_image_ramdisk | default(omit) }}"
         is_public: "{{ glance_image_is_public | default(omit) }}"
@@ -107,3 +170,4 @@
       ansible.builtin.file:
         path: "{{ _workdir.path }}"
         state: absent
+      when: _workdir.path is defined
