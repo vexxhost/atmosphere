@@ -17,7 +17,7 @@
 ipmi_exporter_config:
   modules:
     default:
-      collectors: ["bmc", "ipmi", "chassis", "sel"]
+      collectors: ["bmc", "ipmi", "chassis", "sel", "sel-events"]
       exclude_sensor_ids:
         - 42
         - 45 # Entity Presence (Dell PowerEdge servers)
@@ -45,5 +45,10 @@ ipmi_exporter_config:
       custom_args:
         ipmi:
           - "--entity-sensor-names"
+      sel_events:
+        - name: uncorrectable_memory_error
+          regex: Uncorrectable memory error
+        - name: unrecoverable_cpu_error
+          regex: IERR
 
                                                                    # ]]]
