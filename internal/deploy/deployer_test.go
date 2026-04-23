@@ -3,6 +3,7 @@ package deploy
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"strings"
 	"sync"
 	"testing"
@@ -202,4 +203,30 @@ func TestRenderPlaybook_WithEnvironmentAndPreRole(t *testing.T) {
 	if !strings.Contains(mainPlaybook, "_pre_role_active: true") {
 		t.Error("main playbook should include _pre_role_active")
 	}
+}
+
+func TestComponentRegistry_PreRoleComponents(t *testing.T) {
+preRoleComponents := []string{}
+for _, c := range Components {
+if c.PreRoleName != "" {
+preRoleComponents = append(preRoleComponents, fmt.Sprintf("%s (pre: %s)", c.Name, c.PreRoleName))
+}
+}
+
+if len(preRoleComponents) == 0 {
+t.Fatal("expected at least one component with PreRoleName")
+}
+
+// Verify known components have pre-roles
+found := map[string]bool{}
+for _, c := range Components {
+found[c.Name] = c.PreRoleName != ""
+}
+
+if !found["octavia"] {
+t.Error("octavia should have a pre-role")
+}
+if !found["magnum"] {
+t.Error("magnum should have a pre-role")
+}
 }
