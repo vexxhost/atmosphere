@@ -596,7 +596,8 @@ class TestStorageToCinderHelmValues:
 
         backend = result["conf"]["backends"]["nimble"]
         assert (
-            backend["volume_driver"] == "cinder.volume.drivers.nimble.NimbleISCSIDriver"
+            backend["volume_driver"]
+            == "cinder.volume.drivers.hpe.nimble.NimbleISCSIDriver"
         )
         assert backend["san_ip"] == "10.0.0.3"
         assert backend["san_login"] == "admin"
@@ -624,7 +625,7 @@ class TestStorageToCinderHelmValues:
         }
         result = storage_to_cinder_helm_values(storage)
         assert result["conf"]["backends"]["nimble"]["volume_driver"] == (
-            "cinder.volume.drivers.nimble.NimbleFCDriver"
+            "cinder.volume.drivers.hpe.nimble.NimbleFCDriver"
         )
 
     def test_no_backup(self):
