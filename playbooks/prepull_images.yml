@@ -1,0 +1,57 @@
+# Copyright (c) 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+# Pre-pull all container images required by Atmosphere components.
+# Run this after Kubernetes (containerd) is available to warm the image
+# cache so that subsequent parallel deployments don't block on pulls.
+#
+# Control-plane and compute-only hosts pull different sets so that each
+# node fetches only the images it will actually run. Concurrency is
+# throttled to avoid saturating the registry or the host network.
+
+- name: Pre-pull container images
+  hosts: all
+  become: true
+  roles:
+    - role: vexxhost.atmosphere.defaults
+  tasks:
+    - name: Build image list for this host
+      vars:
+        _is_compute_only: "{{ inventory_hostname in groups.get('computes', [])
+                              and inventory_hostname not in groups.get('controllers', []) }}"
+        _compute_values: "{{ atmosphere_images | dict2items
+                             | selectattr('key', 'in', atmosphere_prepull_compute_keys)
+                             | map(attribute='value') | list }}"
+        _all_values: "{{ atmosphere_images.values() | list }}"
+      ansible.builtin.set_fact:
+        _prepull_images: "{{ (_compute_values if _is_compute_only else _all_values) | unique | sort }}"
+
+    - name: Pull container images (parallel, bounded concurrency)
+      # `xargs -P` caps the concurrent `crictl pull` calls per host so a
+      # large image set doesn't saturate the network or trip registry
+      # rate limits. Failures are tolerated: missing images will be
+      # pulled lazily during the subsequent Helm install.
+      ansible.builtin.shell:
+        cmd: >-
+          printf '%s\n' {{ _prepull_images | map('quote') | join(' ') }}
+          | xargs -r -n1 -P {{ atmosphere_prepull_concurrency }}
+          -I{} sh -c 'crictl pull "$1" || echo "FAILED: $1" >&2' _ {}
+        executable: /bin/bash
+      register: _prepull_result
+      changed_when: false
+      failed_when: false
+      async: 1800
+      poll: 15
+
+    - name: Report pre-pull summary
+      vars:
+        _failed: "{{ _prepull_result.stderr_lines
+                     | default([]) | select('match', '^FAILED: ') | list }}"
+      ansible.builtin.debug:
+        msg: >-
+          Pre-pulled {{ _prepull_images | length - (_failed | length) }}/{{
+            _prepull_images | length }} images
+          ({{ _failed | length }} failures, non-fatal).
+          {% if _failed | length > 0 %}Failed:
+          {{ _failed | map('regex_replace', '^FAILED: ', '') | list | join(', ') }}
+          {% endif %}
