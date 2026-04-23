@@ -4,19 +4,6 @@
 - hosts: all
   become: true
   tasks:
-    - name: Install "jq" for log collection
-      ansible.builtin.apt:
-        name: jq
-        update_cache: true
-      when:
-        - ansible_facts['os_family'] | lower == 'debian'
-
-    - name: Install pip3 for Python package management
-      ansible.builtin.apt:
-        name: python3-pip
-      when:
-        - ansible_facts['os_family'] | lower == 'debian'
-
     - name: Install Python "kubernetes" library for kubernetes.core modules
       ansible.builtin.pip:
         name: kubernetes

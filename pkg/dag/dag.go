@@ -90,6 +90,13 @@ func (g *Graph[T]) Waves() ([][]string, error) {
 	return waves, nil
 }
 
+// Node returns the value associated with the given node ID.
+// The second return value is false if the ID does not exist.
+func (g *Graph[T]) Node(id string) (T, bool) {
+	val, ok := g.nodes[id]
+	return val, ok
+}
+
 // Subgraph extracts a new graph containing only the specified nodes, preserving
 // edges between them. Returns an error if any node ID is not found.
 func (g *Graph[T]) Subgraph(nodeIDs []string) (*Graph[T], error) {

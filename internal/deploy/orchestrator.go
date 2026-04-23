@@ -8,6 +8,8 @@ import (
 	"os/exec"
 	"strings"
 	"sync"
+
+	"golang.org/x/sync/errgroup"
 )
 
 // preflightPlaybook contains validation checks that mirror pre_tasks from the
@@ -41,6 +43,9 @@ type Orchestrator struct {
 	Output io.Writer
 	// Concurrency limits parallel deployments per wave (0 = unlimited).
 	Concurrency int
+	// PrepullImages enables pre-pulling all container images after the
+	// foundation wave (kubernetes) completes but before service deployments.
+	PrepullImages bool
 }
 
 // Deploy runs the deployment based on the provided tags.
@@ -107,6 +112,9 @@ func (o *Orchestrator) runPreflightChecks(ctx context.Context, output io.Writer)
 }
 
 // deployFullDAG runs all components in parallel waves.
+// When PrepullImages is enabled, it injects an image prepull step after the
+// first wave (foundation: kubernetes, ceph) so that subsequent parallel
+// deployments don't block on image pulls.
 func (o *Orchestrator) deployFullDAG(ctx context.Context, output io.Writer) error {
 	if err := o.runPreflightChecks(ctx, output); err != nil {
 		return err
@@ -117,24 +125,106 @@ func (o *Orchestrator) deployFullDAG(ctx context.Context, output io.Writer) erro
 		return fmt.Errorf("building dependency graph: %w", err)
 	}
 
+	waves, err := g.Waves()
+	if err != nil {
+		return fmt.Errorf("computing wave schedule: %w", err)
+	}
+
 	rc := NewResourceCoordinator(Components)
+	prepullDone := false
 
-	fmt.Fprintln(output, "==> Starting parallel deployment")
-	return g.Run(ctx, o.Concurrency, func(ctx context.Context, id string, comp Component) error {
-		fmt.Fprintf(output, "==> [%s] Starting deployment\n", id)
-
-		release, err := rc.Acquire(ctx, comp)
-		if err != nil {
-			return fmt.Errorf("component %s: %w", id, err)
+	fmt.Fprintf(output, "==> Starting parallel deployment (%d waves)\n", len(waves))
+	for i, wave := range waves {
+		// After the foundation wave completes (kubernetes/ceph are ready),
+		// pre-pull all container images so later waves don't block on pulls.
+		if o.PrepullImages && !prepullDone && i > 0 {
+			if err := o.runImagePrepull(ctx, output); err != nil {
+				// Log warning but don't fail the deployment for prepull errors
+				fmt.Fprintf(output, "==> WARNING: Image pre-pull failed (continuing): %v\n", err)
+			}
+			prepullDone = true
 		}
-		defer release()
 
-		if err := o.Deployer.Deploy(ctx, comp); err != nil {
-			return fmt.Errorf("component %s failed: %w", id, err)
+		fmt.Fprintf(output, "==> Wave %d: %s\n", i, strings.Join(wave, ", "))
+
+		eg, waveCtx := errgroup.WithContext(ctx)
+		if o.Concurrency > 0 {
+			eg.SetLimit(o.Concurrency)
 		}
-		fmt.Fprintf(output, "==> [%s] Deployment complete\n", id)
-		return nil
-	})
+
+		for _, id := range wave {
+			comp, ok := g.Node(id)
+			if !ok {
+				return fmt.Errorf("component %s not found in graph", id)
+			}
+
+			eg.Go(func() error {
+				fmt.Fprintf(output, "==> [%s] Starting deployment\n", id)
+
+				release, err := rc.Acquire(waveCtx, comp)
+				if err != nil {
+					return fmt.Errorf("component %s: %w", id, err)
+				}
+				defer release()
+
+				if err := o.Deployer.Deploy(waveCtx, comp); err != nil {
+					return fmt.Errorf("component %s failed: %w", id, err)
+				}
+				fmt.Fprintf(output, "==> [%s] Deployment complete\n", id)
+				return nil
+			})
+		}
+
+		if err := eg.Wait(); err != nil {
+			return err
+		}
+	}
+
+	fmt.Fprintln(output, "==> Parallel deployment complete")
+	return nil
+}
+
+// runImagePrepull pre-pulls all container images defined in atmosphere_images
+// by invoking the prepull_images playbook. This warms the containerd image
+// cache so parallel deployments don't compete for bandwidth.
+func (o *Orchestrator) runImagePrepull(ctx context.Context, output io.Writer) error {
+	fmt.Fprintln(output, "==> Pre-pulling container images")
+
+	cmd := exec.CommandContext(ctx, "ansible-playbook",
+		"vexxhost.atmosphere.prepull_images",
+		"--inventory", o.Inventory)
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return fmt.Errorf("stdout pipe: %w", err)
+	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return fmt.Errorf("stderr pipe: %w", err)
+	}
+
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("starting image prepull: %w", err)
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		prefixOutput("prepull", stdout, output)
+	}()
+	go func() {
+		defer wg.Done()
+		prefixOutput("prepull", stderr, output)
+	}()
+	wg.Wait()
+
+	if err := cmd.Wait(); err != nil {
+		return fmt.Errorf("image prepull failed: %w", err)
+	}
+
+	fmt.Fprintln(output, "==> Image pre-pull complete")
+	return nil
 }
 
 // deploySingleTag passes through to ansible-playbook with the tag.
