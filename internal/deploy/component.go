@@ -42,6 +42,11 @@ type Component struct {
 	// Components sharing a resource are serialized even if the DAG allows parallelism.
 	// Example: []string{"apt"} serializes all components that use package management.
 	Resources []string
+	// PreRoleName is an optional Ansible role to run concurrently with the main
+	// role. This enables intra-component parallelism: pre-work (e.g., creating
+	// OpenStack resources, downloading images) overlaps with the Helm install.
+	// Both must complete before the component is considered done.
+	PreRoleName string
 }
 
 // EffectiveTag returns the Ansible tag for this component.
