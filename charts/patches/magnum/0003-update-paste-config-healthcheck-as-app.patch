@@ -1,0 +1,33 @@
+diff --git a/magnum/values.yaml b/magnum/values.yaml
+--- a/magnum/values.yaml
++++ b/magnum/values.yaml
+@@ -52,8 +52,16 @@ images:
+ 
+ conf:
+   paste:
+-    pipeline:main:
+-      pipeline: cors healthcheck request_id authtoken api_v1
++    composite:main:
++      use: egg:Paste#urlmap
++      /healthcheck: healthcheck
++      /: api
++    pipeline:api:
++      pipeline: cors request_id authtoken api_v1
++    app:healthcheck:
++      paste.app_factory: oslo_middleware:Healthcheck.app_factory
++      backends: disable_by_file
++      disable_by_file_path: /etc/magnum/healthcheck_disable
+     app:api_v1:
+       paste.app_factory: magnum.api.app:app_factory
+     filter:authtoken:
+@@ -64,10 +72,6 @@ conf:
+     filter:cors:
+       paste.filter_factory: oslo_middleware.cors:filter_factory
+       oslo_config_project: magnum
+-    filter:healthcheck:
+-      paste.filter_factory: oslo_middleware:Healthcheck.factory
+-      backends: disable_by_file
+-      disable_by_file_path: /etc/magnum/healthcheck_disable
+   policy: {}
+   magnum:
+     DEFAULT:

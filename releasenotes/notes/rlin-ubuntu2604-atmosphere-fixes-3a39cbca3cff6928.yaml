@@ -56,4 +56,10 @@ fixes:
     suite now takes longer than the previous 20-minute Helm wait on
     Ubuntu 26.04, which caused the Job status check to race the
     Kubernetes controller and fail even when every test passed.
+  - |
+    Rewrote the Magnum ``api-paste.ini`` so that it mounts the
+    oslo.middleware health check as an app under ``/healthcheck``
+    instead of as a pipeline filter. The Magnum ``main`` image ships
+    oslo.middleware 8.0, which refuses the legacy filter form and
+    crashes ``magnum-api`` on startup.
 
