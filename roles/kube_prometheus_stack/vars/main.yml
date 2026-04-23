@@ -720,7 +720,7 @@ _kube_prometheus_stack_helm_values:
             {{ kube_prometheus_stack_node_exporter_config | to_nice_yaml | indent(4) }}
           certificate-template.yml: |
             {{ kube_prometheus_stack_node_exporter_tls_template | to_nice_yaml | indent(4) }}
-  additionalPrometheusRulesMap: "{{ lookup('vexxhost.atmosphere.jsonnet', 'jsonnet/rules.jsonnet') }}"
+  additionalPrometheusRulesMap: "{{ lookup('vexxhost.atmosphere.jsonnet', kube_prometheus_stack_rules_jsonnet_path) }}"
   extraManifests:
     - apiVersion: rbac.authorization.k8s.io/v1
       kind: Role
