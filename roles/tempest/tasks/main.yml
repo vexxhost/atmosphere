@@ -87,7 +87,7 @@
     kubeconfig: "{{ tempest_helm_kubeconfig }}"
     values: "{{ _tempest_helm_values | combine(_tempest_network_backend_settings[atmosphere_network_backend], recursive=True) | combine(tempest_helm_values, recursive=True) }}" # noqa: yaml[line-length]
     wait: true
-    wait_timeout: 20m
+    wait_timeout: 30m
 
 - name: Get tempest job object
   kubernetes.core.k8s_info:
@@ -96,6 +96,10 @@
     name: tempest-run-tests
     namespace: openstack
   register: _tempest_job_obj
+  until: _tempest_job_obj.resources[0].status.succeeded is defined or
+         _tempest_job_obj.resources[0].status.failed is defined
+  retries: 30
+  delay: 10
 
 - name: Get tempest log
   kubernetes.core.k8s_log:
