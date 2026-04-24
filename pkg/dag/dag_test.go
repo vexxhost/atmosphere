@@ -266,110 +266,227 @@ func sortedCopy(s []string) []string {
 // scheduler lets a short node start as soon as its own deps are done, even
 // if another (unrelated) node in the same Kahn wave is still running.
 func TestRunShortNodeNotBlockedByUnrelatedLongNode(t *testing.T) {
-g := NewGraph[string]()
-for _, n := range []string{"root", "long", "short_dep", "short"} {
-_ = g.AddNode(n, n)
-}
-// Both "long" and "short_dep" depend on "root" -> same wave.
-_ = g.AddEdge("long", "root")
-_ = g.AddEdge("short_dep", "root")
-// "short" depends on "short_dep" only; it is in the next wave, but its
-// single dep completes quickly. Under wave-barrier scheduling it would
-// still wait for "long" to finish.
-_ = g.AddEdge("short", "short_dep")
+	g := NewGraph[string]()
+	for _, n := range []string{"root", "long", "short_dep", "short"} {
+		_ = g.AddNode(n, n)
+	}
+	// Both "long" and "short_dep" depend on "root" -> same wave.
+	_ = g.AddEdge("long", "root")
+	_ = g.AddEdge("short_dep", "root")
+	// "short" depends on "short_dep" only; it is in the next wave, but its
+	// single dep completes quickly. Under wave-barrier scheduling it would
+	// still wait for "long" to finish.
+	_ = g.AddEdge("short", "short_dep")
 
-var longEnd, shortStart time.Time
-var mu sync.Mutex
+	var longEnd, shortStart time.Time
+	var mu sync.Mutex
 
-err := g.Run(context.Background(), 0, func(_ context.Context, id string, _ string) error {
-switch id {
-case "long":
-time.Sleep(200 * time.Millisecond)
-mu.Lock()
-longEnd = time.Now()
-mu.Unlock()
-case "short_dep":
-time.Sleep(20 * time.Millisecond)
-case "short":
-mu.Lock()
-shortStart = time.Now()
-mu.Unlock()
-}
-return nil
-})
-if err != nil {
-t.Fatalf("unexpected error: %v", err)
-}
+	err := g.Run(context.Background(), 0, func(_ context.Context, id string, _ string) error {
+		switch id {
+		case "long":
+			time.Sleep(200 * time.Millisecond)
+			mu.Lock()
+			longEnd = time.Now()
+			mu.Unlock()
+		case "short_dep":
+			time.Sleep(20 * time.Millisecond)
+		case "short":
+			mu.Lock()
+			shortStart = time.Now()
+			mu.Unlock()
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
-mu.Lock()
-defer mu.Unlock()
-if shortStart.IsZero() || longEnd.IsZero() {
-t.Fatal("timestamps not captured")
-}
-// "short" must start before "long" ends; otherwise we still have a
-// wave barrier.
-if !shortStart.Before(longEnd) {
-t.Errorf("short started at %v, expected before longEnd %v (wave barrier still in effect)",
-shortStart, longEnd)
-}
+	mu.Lock()
+	defer mu.Unlock()
+	if shortStart.IsZero() || longEnd.IsZero() {
+		t.Fatal("timestamps not captured")
+	}
+	// "short" must start before "long" ends; otherwise we still have a
+	// wave barrier.
+	if !shortStart.Before(longEnd) {
+		t.Errorf("short started at %v, expected before longEnd %v (wave barrier still in effect)",
+			shortStart, longEnd)
+	}
 }
 
 // TestRunStopsDependentsOnError asserts that when a node fails, nodes that
 // (transitively) depend on it are cancelled via context instead of hanging.
 func TestRunStopsDependentsOnError(t *testing.T) {
-g := NewGraph[string]()
-for _, n := range []string{"a", "b", "c"} {
-_ = g.AddNode(n, n)
-}
-_ = g.AddEdge("b", "a")
-_ = g.AddEdge("c", "b")
+	g := NewGraph[string]()
+	for _, n := range []string{"a", "b", "c"} {
+		_ = g.AddNode(n, n)
+	}
+	_ = g.AddEdge("b", "a")
+	_ = g.AddEdge("c", "b")
 
-var ran atomic.Int32
-wantErr := errors.New("boom")
+	var ran atomic.Int32
+	wantErr := errors.New("boom")
 
-err := g.Run(context.Background(), 0, func(ctx context.Context, id string, _ string) error {
-ran.Add(1)
-if id == "a" {
-return wantErr
-}
-// b and c should never reach here.
-return nil
-})
-if !errors.Is(err, wantErr) {
-t.Fatalf("expected wantErr, got %v", err)
-}
-if ran.Load() != 1 {
-t.Errorf("expected only 'a' to run, got %d runs", ran.Load())
-}
-_ = strings.TrimSpace // keep strings import used if trimmed in future
+	err := g.Run(context.Background(), 0, func(ctx context.Context, id string, _ string) error {
+		ran.Add(1)
+		if id == "a" {
+			return wantErr
+		}
+		// b and c should never reach here.
+		return nil
+	})
+	if !errors.Is(err, wantErr) {
+		t.Fatalf("expected wantErr, got %v", err)
+	}
+	if ran.Load() != 1 {
+		t.Errorf("expected only 'a' to run, got %d runs", ran.Load())
+	}
+	_ = strings.TrimSpace // keep strings import used if trimmed in future
 }
 
 // TestRunConcurrencyCap asserts the global concurrency cap limits in-flight
 // nodes across the whole graph (not just within one wave).
 func TestRunConcurrencyCap(t *testing.T) {
-g := NewGraph[string]()
-// 5 independent nodes — all roots, all ready at once.
-for _, n := range []string{"a", "b", "c", "d", "e"} {
-_ = g.AddNode(n, n)
+	g := NewGraph[string]()
+	// 5 independent nodes — all roots, all ready at once.
+	for _, n := range []string{"a", "b", "c", "d", "e"} {
+		_ = g.AddNode(n, n)
+	}
+
+	var inflight, peak atomic.Int32
+	err := g.Run(context.Background(), 2, func(_ context.Context, _ string, _ string) error {
+		cur := inflight.Add(1)
+		for {
+			p := peak.Load()
+			if cur <= p || peak.CompareAndSwap(p, cur) {
+				break
+			}
+		}
+		time.Sleep(30 * time.Millisecond)
+		inflight.Add(-1)
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if peak.Load() > 2 {
+		t.Errorf("expected peak in-flight <= 2, got %d", peak.Load())
+	}
 }
 
-var inflight, peak atomic.Int32
-err := g.Run(context.Background(), 2, func(_ context.Context, _ string, _ string) error {
-cur := inflight.Add(1)
-for {
-p := peak.Load()
-if cur <= p || peak.CompareAndSwap(p, cur) {
-break
+func TestCriticalPath(t *testing.T) {
+	// Graph:
+	//
+	//	a -> b -> c -> d   (chain of length 4)
+	//	a -> e             (side branch of length 2)
+	//
+	// Depths (longest chain of dependents starting at node, including self):
+	//
+	//	d=1, c=2, b=3, e=1, a=4
+	g := NewGraph[string]()
+	for _, n := range []string{"a", "b", "c", "d", "e"} {
+		_ = g.AddNode(n, n)
+	}
+	_ = g.AddEdge("b", "a")
+	_ = g.AddEdge("c", "b")
+	_ = g.AddEdge("d", "c")
+	_ = g.AddEdge("e", "a")
+
+	got := g.CriticalPath()
+	want := map[string]int{"a": 4, "b": 3, "c": 2, "d": 1, "e": 1}
+	for k, v := range want {
+		if got[k] != v {
+			t.Errorf("CriticalPath[%s] = %d, want %d", k, got[k], v)
+		}
+	}
 }
+
+func TestRunPriorityUnderConcurrencyCap(t *testing.T) {
+	// Test the priority scheduler directly: prime it so capacity is held,
+	// queue waiters with distinct priorities in a non-priority order, then
+	// release the held slot. Admission order must be priority-descending.
+	s := newPrioScheduler(1)
+	defer s.stop()
+
+	ctx := context.Background()
+	if err := s.acquire(ctx, 0); err != nil {
+		t.Fatalf("prime acquire: %v", err)
+	}
+
+	admitted := make(chan int, 3)
+	release := make(chan struct{})
+	var wg sync.WaitGroup
+	queued := 0
+	for _, p := range []int{1, 3, 2} {
+		p := p
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := s.acquire(ctx, p); err != nil {
+				t.Errorf("waiter p=%d acquire: %v", p, err)
+				return
+			}
+			admitted <- p
+			<-release
+			s.release()
+		}()
+		queued++
+		// Wait for this waiter to enter the heap before queueing the next,
+		// so heap ordering rather than goroutine-start order decides admission.
+		for {
+			s.mu.Lock()
+			n := s.heap.Len()
+			s.mu.Unlock()
+			if n >= queued {
+				break
+			}
+			time.Sleep(time.Millisecond)
+		}
+	}
+
+	// Release the primed slot so admission begins.
+	s.release()
+
+	got := make([]int, 0, 3)
+	for i := 0; i < 3; i++ {
+		select {
+		case p := <-admitted:
+			got = append(got, p)
+		case <-time.After(time.Second):
+			t.Fatalf("timed out waiting for admission %d; got so far %v", i, got)
+		}
+		release <- struct{}{}
+	}
+	wg.Wait()
+
+	want := []int{3, 2, 1}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("admission order = %v, want %v", got, want)
+		}
+	}
 }
-time.Sleep(30 * time.Millisecond)
-inflight.Add(-1)
-return nil
-})
-if err != nil {
-t.Fatalf("unexpected error: %v", err)
-}
-if peak.Load() > 2 {
-t.Errorf("expected peak in-flight <= 2, got %d", peak.Load())
-}
+
+func TestRunPriorityDoesNotBlockIndependentChains(t *testing.T) {
+	// Even with priority scheduling, once a higher-priority node is running
+	// a lower-priority ready node must be admitted as soon as capacity
+	// frees up; this guards against a deadlock where the scheduler only
+	// considers priority order and not current capacity.
+	g := NewGraph[string]()
+	for _, n := range []string{"x", "y"} {
+		_ = g.AddNode(n, n)
+	}
+	// no edges: both x and y are independent and ready immediately.
+
+	var count atomic.Int32
+	fn := func(_ context.Context, _ string, _ string) error {
+		count.Add(1)
+		return nil
+	}
+	if err := g.Run(context.Background(), 2, fn); err != nil {
+		t.Fatalf("Run failed: %v", err)
+	}
+	if count.Load() != 2 {
+		t.Fatalf("expected 2 runs, got %d", count.Load())
+	}
 }
