@@ -135,11 +135,13 @@ func (o *Orchestrator) deployFullDAG(ctx context.Context, output io.Writer) erro
 		return fmt.Errorf("building dependency graph: %w", err)
 	}
 
-	rc := NewResourceCoordinator(Components)
+	rc := NewResourceCoordinator(Components, nil)
+	tracker := newCompletionTracker(allComponentNames(Components))
 
 	fmt.Fprintln(output, "==> Starting parallel deployment")
 	return g.Run(ctx, o.Concurrency, func(ctx context.Context, id string, comp Component) error {
 		fmt.Fprintf(output, "==> [%s] Starting deployment\n", id)
+		defer tracker.MarkDone(id)
 
 		release, err := rc.Acquire(ctx, comp)
 		if err != nil {
@@ -147,7 +149,8 @@ func (o *Orchestrator) deployFullDAG(ctx context.Context, output io.Writer) erro
 		}
 		defer release()
 
-		if err := o.Deployer.Deploy(ctx, comp); err != nil {
+		preGate := buildPreGate(comp, tracker)
+		if err := o.Deployer.Deploy(ctx, comp, preGate); err != nil {
 			return fmt.Errorf("component %s failed: %w", id, err)
 		}
 		fmt.Fprintf(output, "==> [%s] Deployment complete\n", id)
@@ -226,11 +229,13 @@ func (o *Orchestrator) deployMultipleTags(ctx context.Context, tags []string, ou
 		return fmt.Errorf("extracting subgraph: %w", err)
 	}
 
-	rc := NewResourceCoordinator(Components)
+	rc := NewResourceCoordinator(Components, nil)
+	tracker := newCompletionTracker(allComponentNames(Components))
 
 	fmt.Fprintln(output, "==> Starting parallel deployment (subgraph)")
 	return subGraph.Run(ctx, o.Concurrency, func(ctx context.Context, id string, comp Component) error {
 		fmt.Fprintf(output, "==> [%s] Starting deployment\n", id)
+		defer tracker.MarkDone(id)
 
 		release, err := rc.Acquire(ctx, comp)
 		if err != nil {
@@ -238,10 +243,33 @@ func (o *Orchestrator) deployMultipleTags(ctx context.Context, tags []string, ou
 		}
 		defer release()
 
-		if err := o.Deployer.Deploy(ctx, comp); err != nil {
+		preGate := buildPreGate(comp, tracker)
+		if err := o.Deployer.Deploy(ctx, comp, preGate); err != nil {
 			return fmt.Errorf("component %s failed: %w", id, err)
 		}
 		fmt.Fprintf(output, "==> [%s] Deployment complete\n", id)
 		return nil
 	})
+}
+
+// allComponentNames extracts the Name field from each component for
+// preallocating the completion tracker.
+func allComponentNames(comps []Component) []string {
+	names := make([]string, 0, len(comps))
+	for _, c := range comps {
+		names = append(names, c.Name)
+	}
+	return names
+}
+
+// buildPreGate returns a preGate closure for the deployer, or nil when the
+// component has no asymmetric pre-role dependency.
+func buildPreGate(comp Component, tracker *completionTracker) func(context.Context) error {
+	if comp.PreRoleName == "" || len(comp.PreRoleDependsOn) == 0 {
+		return nil
+	}
+	deps := comp.PreRoleDependsOn
+	return func(ctx context.Context) error {
+		return tracker.Wait(ctx, deps)
+	}
 }

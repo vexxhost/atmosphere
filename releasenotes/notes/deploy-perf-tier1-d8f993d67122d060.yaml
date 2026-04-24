@@ -1,0 +1,22 @@
+---
+features:
+  - |
+    Added ``PreRoleDependsOn`` to the parallel deploy orchestrator so a
+    component's pre-role can wait for different dependencies than the main
+    role. This lets the Keycloak realm setup gate the pre-role while
+    the Keystone Helm install runs in parallel with Keycloak startup.
+  - |
+    Split Keystone's Keycloak realm and OpenID configuration into a new
+    ``keystone_pre`` role. Under the parallel orchestrator this runs
+    concurrently with the Keystone Helm install.
+  - |
+    Extended the ``ResourceCoordinator`` in the parallel deploy
+    orchestrator with per-resource concurrency caps. A new ``k8s-api``
+    resource (default cap ``6``) smooths the load on the Kubernetes API
+    server during wave fan-out without serializing OpenStack components.
+  - |
+    Added a ``keycloak-admin`` resource (cap ``1``) so components that
+    drive the Keycloak admin HTTP endpoint (``keystone`` and
+    ``kube-prometheus-stack``) are serialized. Concurrent realm/client
+    creates against the same Keycloak race and fail.
+upgrade: []

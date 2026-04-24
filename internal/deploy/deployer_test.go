@@ -27,7 +27,7 @@ type deployEvent struct {
 	endedAt   time.Time
 }
 
-func (d *trackingDeployer) Deploy(ctx context.Context, component Component) error {
+func (d *trackingDeployer) Deploy(ctx context.Context, component Component, preGate func(context.Context) error) error {
 	// Mirror only the PreRoleName branching needed by this test helper;
 	// this doesn't exercise AnsibleDeployer internals.
 	if component.PreRoleName == "" {
@@ -41,6 +41,11 @@ func (d *trackingDeployer) Deploy(ctx context.Context, component Component) erro
 
 	go func() {
 		defer wg.Done()
+		if preGate != nil {
+			if err := preGate(ctx); err != nil {
+				return
+			}
+		}
 		d.recordRole(component.Name, component.PreRoleName)
 	}()
 
@@ -135,7 +140,7 @@ func TestDeploy_PreRoleRunsInParallel(t *testing.T) {
 		Hosts:       "controllers[0]",
 	}
 
-	deployer.Deploy(context.Background(), component)
+	deployer.Deploy(context.Background(), component, nil)
 
 	if len(deployer.events) != 2 {
 		t.Fatalf("expected 2 deploy events, got %d", len(deployer.events))
@@ -176,7 +181,7 @@ func TestDeploy_NoPreRoleRunsSingle(t *testing.T) {
 		Hosts:    "controllers[0]",
 	}
 
-	deployer.Deploy(context.Background(), component)
+	deployer.Deploy(context.Background(), component, nil)
 
 	if len(deployer.events) != 1 {
 		t.Fatalf("expected 1 deploy event, got %d", len(deployer.events))
