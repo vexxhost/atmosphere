@@ -18,7 +18,7 @@ func TestResourceCoordinator_Serializes(t *testing.T) {
 		{Name: "c"},
 	}
 
-	rc := NewResourceCoordinator(components)
+	rc := NewResourceCoordinator(components, nil)
 	ctx := context.Background()
 
 	var concurrent int64
@@ -62,7 +62,7 @@ func TestResourceCoordinator_NoResource(t *testing.T) {
 		{Name: "b"},
 	}
 
-	rc := NewResourceCoordinator(components)
+	rc := NewResourceCoordinator(components, nil)
 	ctx := context.Background()
 
 	release, err := rc.Acquire(ctx, components[0])
@@ -83,7 +83,7 @@ func TestResourceCoordinator_DifferentResources(t *testing.T) {
 		{Name: "b", Resources: []string{"helm"}},
 	}
 
-	rc := NewResourceCoordinator(components)
+	rc := NewResourceCoordinator(components, nil)
 	ctx := context.Background()
 
 	var concurrent int64
@@ -127,7 +127,7 @@ func TestResourceCoordinator_ContextCancellation(t *testing.T) {
 		{Name: "b", Resources: []string{"apt"}},
 	}
 
-	rc := NewResourceCoordinator(components)
+	rc := NewResourceCoordinator(components, nil)
 	ctx := context.Background()
 
 	// Acquire the resource with component a
