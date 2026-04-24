@@ -3,9 +3,14 @@ package deploy
 import (
 	"bytes"
 	"context"
+	"io"
 	"sync"
 	"testing"
 )
+
+// noopPreflight is injected into Orchestrator under test so unit tests do not
+// shell out to ansible-playbook for the preflight checks.
+func noopPreflight(_ context.Context, _ io.Writer) error { return nil }
 
 // mockDeployer records which components were deployed and in what order.
 type mockDeployer struct {
@@ -28,6 +33,7 @@ func TestOrchestrator_FullDAG(t *testing.T) {
 		Deployer:    mock,
 		Concurrency: 1, // serial execution for deterministic ordering
 		Output:      out,
+		Preflight:   noopPreflight,
 	}
 
 	if err := orch.Deploy(context.Background(), nil); err != nil {
@@ -75,6 +81,7 @@ func TestOrchestrator_MultipleTags(t *testing.T) {
 		Deployer:    mock,
 		Concurrency: 1,
 		Output:      out,
+		Preflight:   noopPreflight,
 	}
 
 	if err := orch.Deploy(context.Background(), []string{"nova", "keystone"}); err != nil {
@@ -111,6 +118,7 @@ func TestOrchestrator_MultipleTags_UnknownTag(t *testing.T) {
 		Deployer:    mock,
 		Concurrency: 1,
 		Output:      out,
+		Preflight:   noopPreflight,
 	}
 
 	err := orch.Deploy(context.Background(), []string{"keystone", "nonexistent-component"})

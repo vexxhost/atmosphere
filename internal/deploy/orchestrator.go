@@ -41,6 +41,21 @@ type Orchestrator struct {
 	Output io.Writer
 	// Concurrency limits parallel deployments per wave (0 = unlimited).
 	Concurrency int
+	// Preflight is invoked before any component deployment and is expected
+	// to return an error if the environment is misconfigured. When nil, the
+	// default implementation shells out to ansible-playbook with the
+	// preflightPlaybook defined in this file. Tests inject a no-op to
+	// keep the unit tests hermetic.
+	Preflight func(ctx context.Context, output io.Writer) error
+}
+
+// preflight dispatches to a caller-supplied Preflight hook when set, falling
+// back to the ansible-playbook-based implementation otherwise.
+func (o *Orchestrator) preflight(ctx context.Context, output io.Writer) error {
+	if o.Preflight != nil {
+		return o.Preflight(ctx, output)
+	}
+	return o.runPreflightChecks(ctx, output)
 }
 
 // Deploy runs the deployment based on the provided tags.
@@ -108,7 +123,7 @@ func (o *Orchestrator) runPreflightChecks(ctx context.Context, output io.Writer)
 
 // deployFullDAG runs all components in parallel waves.
 func (o *Orchestrator) deployFullDAG(ctx context.Context, output io.Writer) error {
-	if err := o.runPreflightChecks(ctx, output); err != nil {
+	if err := o.preflight(ctx, output); err != nil {
 		return err
 	}
 
@@ -183,7 +198,7 @@ func (o *Orchestrator) deploySingleTag(ctx context.Context, tag string, output i
 func (o *Orchestrator) deployMultipleTags(ctx context.Context, tags []string, output io.Writer) error {
 	fmt.Fprintf(output, "==> Multi-tag mode: %s\n", strings.Join(tags, ", "))
 
-	if err := o.runPreflightChecks(ctx, output); err != nil {
+	if err := o.preflight(ctx, output); err != nil {
 		return err
 	}
 
