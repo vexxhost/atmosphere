@@ -22,6 +22,16 @@
     groups: *single_node_groups
 
 - job:
+    name: atmosphere-go-test
+    parent: base
+    nodeset: atmosphere-ubuntu-jammy-single-node
+    description: |
+      Runs Go unit tests for the atmosphere deploy orchestrator
+      (pkg/dag, internal/deploy, cmd/atmosphere).
+    run:
+      - test-playbooks/go-test/run.yml
+
+- job:
     name: atmosphere-molecule
     parent: molecule
     abstract: true
@@ -327,6 +337,7 @@
 - project:
     check:
       jobs:
+        - atmosphere-go-test
         - atmosphere-molecule-aio-openvswitch
         - atmosphere-molecule-aio-ovn
         - atmosphere-molecule-csi-local-path-provisioner
@@ -334,6 +345,7 @@
         - atmosphere-molecule-keycloak
     gate:
       jobs:
+        - atmosphere-go-test
         - atmosphere-molecule-aio-openvswitch
         - atmosphere-molecule-aio-ovn
         - atmosphere-molecule-csi-local-path-provisioner
