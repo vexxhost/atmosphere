@@ -1,12 +1,14 @@
 # Copyright (c) 2026 VEXXHOST, Inc.
 # SPDX-License-Identifier: Apache-2.0
 
-- hosts: all
+- name: Install Go runtime on test host
+  hosts: all
   roles:
     - role: ensure-go
       go_version: "1.24.4"
 
-- hosts: all
+- name: Run Atmosphere Go unit tests
+  hosts: all
   tasks:
     - name: Run Go unit tests
       ansible.builtin.command:
