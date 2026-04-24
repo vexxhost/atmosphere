@@ -31,8 +31,22 @@
 - name: Generate workspace
   ansible.builtin.import_playbook: vexxhost.atmosphere.generate_workspace
   vars:
-    workspace_path: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}"
+    workspace_path: "{{ atmosphere_workspace_path | default(lookup('env', 'ATMOSPHERE_WORKSPACE_PATH'), true) | default(lookup('env', 'MOLECULE_SCENARIO_DIRECTORY'), true) }}"
     domain_name: "{{ ansible_default_ipv4['address'].replace('.', '-') }}.nip.io"
+
+- name: Overwrite OSD devices with LVM-backed paths
+  hosts: all
+  become: true
+  tasks:
+    - name: Overwrite existing osds.yml file
+      ansible.builtin.copy:
+        dest: "{{ atmosphere_workspace_path | default(lookup('env', 'ATMOSPHERE_WORKSPACE_PATH'), true) | default(lookup('env', 'MOLECULE_SCENARIO_DIRECTORY'), true) }}/group_vars/cephs/osds.yml"
+        mode: '0644'
+        content: |
+          ceph_osd_devices:
+            - "/dev/ceph-{{ inventory_hostname_short }}-osd0/data"
+            - "/dev/ceph-{{ inventory_hostname_short }}-osd1/data"
+            - "/dev/ceph-{{ inventory_hostname_short }}-osd2/data"
 
 - name: Setup networking
   hosts: all
