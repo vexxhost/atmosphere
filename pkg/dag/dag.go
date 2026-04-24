@@ -1,8 +1,10 @@
 package dag
 
 import (
+	"container/heap"
 	"context"
 	"fmt"
+	"sync"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -122,6 +124,34 @@ func (g *Graph[T]) Subgraph(nodeIDs []string) (*Graph[T], error) {
 	return sub, nil
 }
 
+// CriticalPath returns, for every node, the length (in unit-weighted node
+// count including the node itself) of the longest downstream chain. Leaves
+// have a value of 1. The result is stable across calls on the same graph
+// and is used by Run to prioritise ready nodes when concurrency is capped:
+// starting nodes with more work behind them first shortens the makespan
+// under classic list-scheduling (HEFT) heuristics.
+func (g *Graph[T]) CriticalPath() map[string]int {
+	memo := make(map[string]int, len(g.nodes))
+	var visit func(id string) int
+	visit = func(id string) int {
+		if v, ok := memo[id]; ok {
+			return v
+		}
+		best := 0
+		for _, dep := range g.reverse[id] {
+			if d := visit(dep); d > best {
+				best = d
+			}
+		}
+		memo[id] = best + 1
+		return memo[id]
+	}
+	for id := range g.nodes {
+		visit(id)
+	}
+	return memo
+}
+
 // Run executes fn for every node in topological order. Each node starts as
 // soon as all of its direct dependencies have completed successfully, without
 // waiting for the rest of its topological "wave" to finish. The concurrency
@@ -130,11 +160,10 @@ func (g *Graph[T]) Subgraph(nodeIDs []string) (*Graph[T], error) {
 // nodes already running continue, but dependents of any node (failed or not
 // yet started) are cancelled via the context.
 //
-// This is event-driven (per-node readiness) rather than wave-barrier based.
-// A short node whose dependencies all complete early will start immediately,
-// even when other nodes in the same Kahn wave are still running. In
-// practice this closes the "wave gap" where an unrelated long node would
-// otherwise delay the start of a short one.
+// When concurrency is bounded and multiple nodes are simultaneously ready to
+// run, admission order follows CriticalPath: the ready node with the longest
+// downstream chain is admitted first. This reduces tail latency compared to
+// the arbitrary FIFO a plain channel semaphore would give.
 func (g *Graph[T]) Run(ctx context.Context, concurrency int, fn func(ctx context.Context, id string, value T) error) error {
 	if _, err := g.Waves(); err != nil {
 		return err
@@ -145,10 +174,13 @@ func (g *Graph[T]) Run(ctx context.Context, concurrency int, fn func(ctx context
 		done[id] = make(chan struct{})
 	}
 
-	var sem chan struct{}
+	var sched *prioScheduler
 	if concurrency > 0 {
-		sem = make(chan struct{}, concurrency)
+		sched = newPrioScheduler(concurrency)
+		defer sched.stop()
 	}
+
+	priorities := g.CriticalPath()
 
 	eg, ctx := errgroup.WithContext(ctx)
 	for id, val := range g.nodes {
@@ -162,13 +194,11 @@ func (g *Graph[T]) Run(ctx context.Context, concurrency int, fn func(ctx context
 				}
 			}
 
-			if sem != nil {
-				select {
-				case sem <- struct{}{}:
-				case <-ctx.Done():
-					return ctx.Err()
+			if sched != nil {
+				if err := sched.acquire(ctx, priorities[id]); err != nil {
+					return err
 				}
-				defer func() { <-sem }()
+				defer sched.release()
 			}
 
 			if err := fn(ctx, id, val); err != nil {
@@ -179,4 +209,139 @@ func (g *Graph[T]) Run(ctx context.Context, concurrency int, fn func(ctx context
 		})
 	}
 	return eg.Wait()
+}
+
+// prioScheduler is a priority-aware concurrency limiter. Waiters register
+// themselves with a priority; a single scheduler goroutine admits the
+// highest-priority waiter whenever capacity becomes available. Ties are
+// broken by arrival sequence so ordering remains deterministic under equal
+// priorities.
+type prioScheduler struct {
+	mu       sync.Mutex
+	cap      int
+	inFlight int
+	heap     waiterHeap
+	seq      uint64
+	wake     chan struct{}
+	quit     chan struct{}
+}
+
+func newPrioScheduler(capacity int) *prioScheduler {
+	s := &prioScheduler{
+		cap:  capacity,
+		wake: make(chan struct{}, 1),
+		quit: make(chan struct{}),
+	}
+	go s.loop()
+	return s
+}
+
+func (s *prioScheduler) stop() {
+	close(s.quit)
+}
+
+func (s *prioScheduler) acquire(ctx context.Context, priority int) error {
+	ready := make(chan struct{})
+	w := &waiter{priority: priority, ready: ready}
+
+	s.mu.Lock()
+	s.seq++
+	w.seq = s.seq
+	heap.Push(&s.heap, w)
+	s.mu.Unlock()
+	s.signal()
+
+	select {
+	case <-ready:
+		return nil
+	case <-ctx.Done():
+		s.mu.Lock()
+		w.cancelled = true
+		// If the scheduler already admitted us concurrently, honour it
+		// and immediately release so capacity is not leaked.
+		select {
+		case <-ready:
+			s.inFlight--
+			s.mu.Unlock()
+			s.signal()
+		default:
+			s.mu.Unlock()
+		}
+		return ctx.Err()
+	}
+}
+
+func (s *prioScheduler) release() {
+	s.mu.Lock()
+	s.inFlight--
+	s.mu.Unlock()
+	s.signal()
+}
+
+func (s *prioScheduler) signal() {
+	select {
+	case s.wake <- struct{}{}:
+	default:
+	}
+}
+
+func (s *prioScheduler) loop() {
+	for {
+		select {
+		case <-s.quit:
+			return
+		case <-s.wake:
+		}
+		s.mu.Lock()
+		for s.inFlight < s.cap && s.heap.Len() > 0 {
+			w := heap.Pop(&s.heap).(*waiter)
+			if w.cancelled {
+				continue
+			}
+			s.inFlight++
+			close(w.ready)
+		}
+		s.mu.Unlock()
+	}
+}
+
+type waiter struct {
+	priority  int
+	seq       uint64
+	ready     chan struct{}
+	cancelled bool
+	index     int
+}
+
+type waiterHeap []*waiter
+
+func (h waiterHeap) Len() int { return len(h) }
+
+func (h waiterHeap) Less(i, j int) bool {
+	if h[i].priority != h[j].priority {
+		return h[i].priority > h[j].priority
+	}
+	return h[i].seq < h[j].seq
+}
+
+func (h waiterHeap) Swap(i, j int) {
+	h[i], h[j] = h[j], h[i]
+	h[i].index = i
+	h[j].index = j
+}
+
+func (h *waiterHeap) Push(x any) {
+	w := x.(*waiter)
+	w.index = len(*h)
+	*h = append(*h, w)
+}
+
+func (h *waiterHeap) Pop() any {
+	old := *h
+	n := len(old)
+	w := old[n-1]
+	old[n-1] = nil
+	w.index = -1
+	*h = old[:n-1]
+	return w
 }
