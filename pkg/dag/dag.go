@@ -122,30 +122,61 @@ func (g *Graph[T]) Subgraph(nodeIDs []string) (*Graph[T], error) {
 	return sub, nil
 }
 
-// Run executes fn for every node in topological order, running nodes within
-// the same wave concurrently. The concurrency parameter limits the number of
-// goroutines per wave; if <= 0 there is no limit. Execution stops on the first
-// error.
+// Run executes fn for every node in topological order. Each node starts as
+// soon as all of its direct dependencies have completed successfully, without
+// waiting for the rest of its topological "wave" to finish. The concurrency
+// parameter caps the number of nodes running at the same time across the
+// whole graph; if <= 0 there is no limit. Execution stops on the first error:
+// nodes already running continue, but dependents of any node (failed or not
+// yet started) are cancelled via the context.
+//
+// This is event-driven (per-node readiness) rather than wave-barrier based.
+// A short node whose dependencies all complete early will start immediately,
+// even when other nodes in the same Kahn wave are still running. In
+// practice this closes the "wave gap" where an unrelated long node would
+// otherwise delay the start of a short one.
 func (g *Graph[T]) Run(ctx context.Context, concurrency int, fn func(ctx context.Context, id string, value T) error) error {
-	waves, err := g.Waves()
-	if err != nil {
+	if _, err := g.Waves(); err != nil {
 		return err
 	}
 
-	for _, wave := range waves {
-		eg, ctx := errgroup.WithContext(ctx)
-		if concurrency > 0 {
-			eg.SetLimit(concurrency)
-		}
-		for _, id := range wave {
-			val := g.nodes[id]
-			eg.Go(func() error {
-				return fn(ctx, id, val)
-			})
-		}
-		if err := eg.Wait(); err != nil {
-			return err
-		}
+	done := make(map[string]chan struct{}, len(g.nodes))
+	for id := range g.nodes {
+		done[id] = make(chan struct{})
 	}
-	return nil
+
+	var sem chan struct{}
+	if concurrency > 0 {
+		sem = make(chan struct{}, concurrency)
+	}
+
+	eg, ctx := errgroup.WithContext(ctx)
+	for id, val := range g.nodes {
+		id, val := id, val
+		eg.Go(func() error {
+			for _, dep := range g.edges[id] {
+				select {
+				case <-done[dep]:
+				case <-ctx.Done():
+					return ctx.Err()
+				}
+			}
+
+			if sem != nil {
+				select {
+				case sem <- struct{}{}:
+				case <-ctx.Done():
+					return ctx.Err()
+				}
+				defer func() { <-sem }()
+			}
+
+			if err := fn(ctx, id, val); err != nil {
+				return err
+			}
+			close(done[id])
+			return nil
+		})
+	}
+	return eg.Wait()
 }
