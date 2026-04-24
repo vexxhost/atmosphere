@@ -261,3 +261,115 @@ func sortedCopy(s []string) []string {
 	sort.Strings(c)
 	return c
 }
+
+// TestRunShortNodeNotBlockedByUnrelatedLongNode asserts the event-driven
+// scheduler lets a short node start as soon as its own deps are done, even
+// if another (unrelated) node in the same Kahn wave is still running.
+func TestRunShortNodeNotBlockedByUnrelatedLongNode(t *testing.T) {
+g := NewGraph[string]()
+for _, n := range []string{"root", "long", "short_dep", "short"} {
+_ = g.AddNode(n, n)
+}
+// Both "long" and "short_dep" depend on "root" -> same wave.
+_ = g.AddEdge("long", "root")
+_ = g.AddEdge("short_dep", "root")
+// "short" depends on "short_dep" only; it is in the next wave, but its
+// single dep completes quickly. Under wave-barrier scheduling it would
+// still wait for "long" to finish.
+_ = g.AddEdge("short", "short_dep")
+
+var longEnd, shortStart time.Time
+var mu sync.Mutex
+
+err := g.Run(context.Background(), 0, func(_ context.Context, id string, _ string) error {
+switch id {
+case "long":
+time.Sleep(200 * time.Millisecond)
+mu.Lock()
+longEnd = time.Now()
+mu.Unlock()
+case "short_dep":
+time.Sleep(20 * time.Millisecond)
+case "short":
+mu.Lock()
+shortStart = time.Now()
+mu.Unlock()
+}
+return nil
+})
+if err != nil {
+t.Fatalf("unexpected error: %v", err)
+}
+
+mu.Lock()
+defer mu.Unlock()
+if shortStart.IsZero() || longEnd.IsZero() {
+t.Fatal("timestamps not captured")
+}
+// "short" must start before "long" ends; otherwise we still have a
+// wave barrier.
+if !shortStart.Before(longEnd) {
+t.Errorf("short started at %v, expected before longEnd %v (wave barrier still in effect)",
+shortStart, longEnd)
+}
+}
+
+// TestRunStopsDependentsOnError asserts that when a node fails, nodes that
+// (transitively) depend on it are cancelled via context instead of hanging.
+func TestRunStopsDependentsOnError(t *testing.T) {
+g := NewGraph[string]()
+for _, n := range []string{"a", "b", "c"} {
+_ = g.AddNode(n, n)
+}
+_ = g.AddEdge("b", "a")
+_ = g.AddEdge("c", "b")
+
+var ran atomic.Int32
+wantErr := errors.New("boom")
+
+err := g.Run(context.Background(), 0, func(ctx context.Context, id string, _ string) error {
+ran.Add(1)
+if id == "a" {
+return wantErr
+}
+// b and c should never reach here.
+return nil
+})
+if !errors.Is(err, wantErr) {
+t.Fatalf("expected wantErr, got %v", err)
+}
+if ran.Load() != 1 {
+t.Errorf("expected only 'a' to run, got %d runs", ran.Load())
+}
+_ = strings.TrimSpace // keep strings import used if trimmed in future
+}
+
+// TestRunConcurrencyCap asserts the global concurrency cap limits in-flight
+// nodes across the whole graph (not just within one wave).
+func TestRunConcurrencyCap(t *testing.T) {
+g := NewGraph[string]()
+// 5 independent nodes — all roots, all ready at once.
+for _, n := range []string{"a", "b", "c", "d", "e"} {
+_ = g.AddNode(n, n)
+}
+
+var inflight, peak atomic.Int32
+err := g.Run(context.Background(), 2, func(_ context.Context, _ string, _ string) error {
+cur := inflight.Add(1)
+for {
+p := peak.Load()
+if cur <= p || peak.CompareAndSwap(p, cur) {
+break
+}
+}
+time.Sleep(30 * time.Millisecond)
+inflight.Add(-1)
+return nil
+})
+if err != nil {
+t.Fatalf("unexpected error: %v", err)
+}
+if peak.Load() > 2 {
+t.Errorf("expected peak in-flight <= 2, got %d", peak.Load())
+}
+}
