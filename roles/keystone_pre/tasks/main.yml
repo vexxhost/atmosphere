@@ -1,22 +1,10 @@
-# Copyright (c) 2022 VEXXHOST, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"); you may
-# not use this file except in compliance with the License. You may obtain
-# a copy of the License at
-#
-#      http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-# License for the specific language governing permissions and limitations
-# under the License.
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
 
 - name: Create Keycloak realms
   no_log: true
   run_once: true
   changed_when: false
-  when: not (_pre_role_active | default(false))
   community.general.keycloak_realm:
     # Keycloak settings
     auth_keycloak_url: "{{ item.keycloak_server_url }}"
@@ -43,7 +31,6 @@
     label: "{{ item.name }}"
 
 - name: Setup Keycloak Authentication Required Actions (MFA)
-  when: not (_pre_role_active | default(false))
   community.general.keycloak_authentication_required_actions:
     # Keycloak settings
     auth_keycloak_url: "{{ item.keycloak_server_url }}"
@@ -67,14 +54,12 @@
 
 - name: Create ConfigMap with all OpenID connect configurations
   run_once: true
-  when: not (_pre_role_active | default(false))
   kubernetes.core.k8s:
     template: configmap-openid-metadata.yml.j2
 
 - name: Create Keycloak clients
   no_log: true
   run_once: true
-  when: not (_pre_role_active | default(false))
   community.general.keycloak_client:
     # Keycloak settings
     auth_keycloak_url: "{{ item.keycloak_server_url }}"
@@ -101,7 +86,6 @@
 - name: Assign realm-management roles to service account
   no_log: true
   run_once: true
-  when: not (_pre_role_active | default(false))
   community.general.keycloak_user_rolemapping:
     # Keycloak settings
     auth_keycloak_url: "{{ item.keycloak_server_url }}"
@@ -116,102 +100,6 @@
     client_id: realm-management
     roles:
       - name: view-users
-  loop: "{{ keystone_domains }}"
-  loop_control:
-    label: "{{ item.name }}"
-
-- name: Deploy Helm chart
-  run_once: true
-  kubernetes.core.helm:
-    name: "{{ keystone_helm_release_name }}"
-    chart_ref: "{{ keystone_helm_chart_ref }}"
-    release_namespace: "{{ keystone_helm_release_namespace }}"
-    create_namespace: true
-    kubeconfig: "{{ keystone_helm_kubeconfig }}"
-    values: "{{ _keystone_helm_values | combine(keystone_helm_values, recursive=True) }}"
-
-- name: Create Ingress
-  ansible.builtin.include_role:
-    name: openstack_helm_ingress
-  vars:
-    openstack_helm_ingress_endpoint: identity
-    openstack_helm_ingress_service_name: keystone-api
-    openstack_helm_ingress_service_port: 5000
-    openstack_helm_ingress_annotations: "{{ _keystone_ingress_annotations | combine(keystone_ingress_annotations) }}"
-    openstack_helm_ingress_class_name: "{{ keystone_ingress_class_name }}"
-
-- name: Validate if ingress is reachable
-  ansible.builtin.uri:
-    url: "https://{{ openstack_helm_endpoints_keystone_api_host }}"
-    status_code: [300]
-  register: keystone_ingress_validate
-  until: keystone_ingress_validate.status == 300
-  retries: 120
-  delay: 1
-
-- name: Wait until identity service ready
-  kubernetes.core.k8s_info:
-    api_version: apps/v1
-    kind: Deployment
-    name: keystone-api
-    namespace: openstack
-    wait_sleep: 10
-    wait_timeout: 600
-    wait: true
-    wait_condition:
-      type: Available
-      status: true
-
-- name: Create Keystone domains
-  run_once: true
-  vexxhost.atmosphere.identity_domain:
-    name: "{{ item.name }}"
-  loop: "{{ keystone_domains }}"
-  loop_control:
-    label: "{{ item.name }}"
-  # NOTE: This often fails since it takes time for the keystone api ready.
-  retries: 60
-  delay: 5
-  register: keystone_domains_result
-  until: keystone_domains_result is not failed
-
-- name: Create Keystone identity providers
-  run_once: true
-  vexxhost.atmosphere.federation_idp:
-    name: "{{ item.domain.name }}"
-    domain_id: "{{ item.domain.id }}"
-    is_enabled: true
-    remote_ids:
-      - "{{ item.item | vexxhost.atmosphere.issuer_from_domain }}"
-  loop: "{{ keystone_domains_result.results }}"
-  loop_control:
-    label: "{{ item.domain.name }}"
-
-- name: Create Keystone federation mappings
-  run_once: true
-  vexxhost.atmosphere.federation_mapping:
-    name: "{{ item.name }}-openid"
-    rules:
-      - local:
-          - user:
-              type: local
-              id: "{0}"
-              name: "{1}"
-              domain:
-                name: "{{ item.name }}"
-        remote:
-          - type: OIDC-sub
-          - type: OIDC-preferred_username
-  loop: "{{ keystone_domains }}"
-  loop_control:
-    label: "{{ item.name }}"
-
-- name: Create Keystone federation protocols
-  run_once: true
-  vexxhost.atmosphere.keystone_federation_protocol:
-    name: openid
-    idp_id: "{{ item.name }}"
-    mapping_id: "{{ item.name }}-openid"
   loop: "{{ keystone_domains }}"
   loop_control:
     label: "{{ item.name }}"
