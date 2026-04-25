@@ -24,4 +24,9 @@ features:
     parallel orchestrator. The install now overlaps with Nova; only the
     post-install network creation, which hits an availability zone
     check on the Neutron API, still waits on Nova.
+  - |
+    Split Glance image uploads into a separate component. Downstream
+    services that depended on Glance (Nova, Magnum, and others) now
+    wait only for the Glance API to be deployed; image downloads
+    continue in parallel off the critical path.
 upgrade: []
