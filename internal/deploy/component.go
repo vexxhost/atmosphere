@@ -304,6 +304,16 @@ var Components = []Component{
 		Resources: []string{"k8s-api"},
 	},
 	{
+		// Image uploads run as a separate component so they do not block
+		// downstream services (Nova, Magnum, etc.) which only need the
+		// Glance API to be deployed.
+		Name:      "glance-images",
+		Type:      RoleType,
+		RoleName:  "glance_images",
+		Hosts:     "controllers[0]",
+		DependsOn: []string{"glance"},
+	},
+	{
 		Name:      "staffeln",
 		Type:      RoleType,
 		RoleName:  "staffeln",
