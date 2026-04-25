@@ -380,16 +380,21 @@ var Components = []Component{
 		Resources: []string{"k8s-api"},
 	},
 	{
-		// Note: nova stays a dependency. Although neutron's Helm install
-		// does not call Nova, the post-install "Create networks" task hits
-		// neutron-server's AZ check, which only succeeds once Nova's compute
-		// has registered the default availability zone "nova".
-		Name:      "neutron",
-		Type:      RoleType,
-		RoleName:  "neutron",
-		Hosts:     "controllers[0]",
-		DependsOn: []string{"keystone", "nova", "ovn", "coredns"},
-		Resources: []string{"k8s-api"},
+		// The pre-role does the Helm install (heavy, ~5 min) and only
+		// requires keystone/OVN/coredns. The main role's only remaining
+		// work is the post-install "Create networks" task, which hits
+		// neutron-server's AZ check that needs Nova compute to have
+		// registered the default availability zone "nova". Splitting
+		// the role lets the install overlap with Nova while the cheap
+		// network creation continues to wait on Nova.
+		Name:             "neutron",
+		Type:             RoleType,
+		RoleName:         "neutron",
+		PreRoleName:      "neutron_pre",
+		Hosts:            "controllers[0]",
+		DependsOn:        []string{"nova"},
+		PreRoleDependsOn: []string{"keystone", "ovn", "coredns"},
+		Resources:        []string{"k8s-api"},
 	},
 	{
 		Name:      "heat",

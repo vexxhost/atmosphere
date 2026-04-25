@@ -33,6 +33,7 @@
 
 - name: Deploy Helm chart
   run_once: true
+  when: not (_pre_role_active | default(false))
   kubernetes.core.helm:
     name: "{{ neutron_helm_release_name }}"
     chart_ref: "{{ neutron_helm_chart_ref }}"
@@ -42,6 +43,7 @@
     values: "{{ _neutron_helm_values | combine(neutron_helm_values, recursive=True) }}"
 
 - name: Create Ingress
+  when: not (_pre_role_active | default(false))
   ansible.builtin.include_role:
     name: openstack_helm_ingress
   vars:

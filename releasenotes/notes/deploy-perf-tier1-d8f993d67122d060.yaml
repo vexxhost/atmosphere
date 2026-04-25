@@ -15,8 +15,13 @@ features:
     resource (default cap ``6``) smooths the load on the Kubernetes API
     server during wave fan-out without serializing OpenStack components.
   - |
-    Added a ``keycloak-admin`` resource (cap ``1``) so components that
-    drive the Keycloak admin HTTP endpoint (``keystone`` and
-    ``kube-prometheus-stack``) are serialized. Concurrent realm/client
-    creates against the same Keycloak race and fail.
+    Added a dedicated semaphore (cap ``1``) for the Keycloak admin HTTP
+    endpoint. The orchestrator now serializes ``keystone`` and
+    ``kube-prometheus-stack`` whenever they create realms or clients, so
+    concurrent admin calls on the same Keycloak no longer race and fail.
+  - |
+    Moved Neutron's Helm install into a separate pre-role under the
+    parallel orchestrator. The install now overlaps with Nova; only the
+    post-install network creation, which hits an availability zone
+    check on the Neutron API, still waits on Nova.
 upgrade: []
