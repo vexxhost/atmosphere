@@ -247,6 +247,18 @@ var Components = []Component{
 
 	// OpenStack (RoleType, Hosts: "controllers[0]")
 	{
+		// Pre-pull all known Atmosphere container images on every node
+		// so later component Helm installs do not stall in
+		// ImagePulling. Best-effort: failures are non-fatal because
+		// the kubelet falls back to on-demand pulls.
+		Name:        "image-warmup",
+		Type:        RoleType,
+		RoleName:    "image_warmup",
+		Hosts:       "controllers:computes",
+		DependsOn:   []string{"kubernetes"},
+		GatherFacts: boolPtr(false),
+	},
+	{
 		Name:      "memcached",
 		Type:      RoleType,
 		RoleName:  "memcached",
