@@ -28,11 +28,54 @@
         state: absent
         purge: true
 
+    - name: Install Go toolchain for local builds
+      when: zuul is not defined
+      block:
+        - name: Download Go toolchain
+          ansible.builtin.get_url:
+            url: https://go.dev/dl/go1.24.4.linux-amd64.tar.gz
+            dest: /tmp/go.tar.gz
+            mode: "0644"
+        - name: Remove any existing Go installation
+          ansible.builtin.file:
+            path: /usr/local/go
+            state: absent
+        - name: Extract Go toolchain
+          ansible.builtin.unarchive:
+            src: /tmp/go.tar.gz
+            dest: /usr/local
+            remote_src: true
+
 - name: Generate workspace
   ansible.builtin.import_playbook: vexxhost.atmosphere.generate_workspace
   vars:
     workspace_path: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}"
     domain_name: "{{ ansible_default_ipv4['address'].replace('.', '-') }}.nip.io"
+
+- name: Copy AIO overrides to workspace
+  hosts: all
+  become: true
+  tasks:
+    - name: Copy molecule.yml overrides to project group_vars
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/group_vars/all/molecule.yml"
+        dest: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}/group_vars/all/molecule.yml"
+        mode: "0644"
+      run_once: true
+
+- name: Overwrite OSD devices with LVM-backed paths
+  hosts: all
+  become: true
+  tasks:
+    - name: Overwrite existing osds.yml file
+      ansible.builtin.copy:
+        dest: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}/group_vars/cephs/osds.yml"
+        mode: '0644'
+        content: |
+          ceph_osd_devices:
+            - "/dev/ceph-{{ inventory_hostname_short }}-osd0/data"
+            - "/dev/ceph-{{ inventory_hostname_short }}-osd1/data"
+            - "/dev/ceph-{{ inventory_hostname_short }}-osd2/data"
 
 - name: Setup networking
   hosts: all
