@@ -90,6 +90,7 @@ func (o *Orchestrator) runPreflightChecks(ctx context.Context, output io.Writer)
 	cmd := exec.CommandContext(ctx, "ansible-playbook", "/dev/stdin",
 		"--inventory", o.Inventory)
 	cmd.Stdin = strings.NewReader(preflightPlaybook)
+	configureSubprocess(cmd)
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -166,6 +167,7 @@ func (o *Orchestrator) deploySingleTag(ctx context.Context, tag string, output i
 	cmd := exec.CommandContext(ctx, "ansible-playbook", "vexxhost.atmosphere.site",
 		"--inventory", o.Inventory,
 		"--tags", tag)
+	configureSubprocess(cmd)
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
