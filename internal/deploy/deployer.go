@@ -13,9 +13,36 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"syscall"
+	"time"
 
 	"golang.org/x/sync/errgroup"
 )
+
+// subprocessCancelGracePeriod is the time the runtime gives a cancelled
+// subprocess to exit and release its stdout/stderr pipes before forcibly
+// closing them and reaping the process. It exists because ansible-playbook
+// frequently spawns long-lived helpers (ssh, python) that inherit our pipes;
+// SIGKILL on the direct child does not always reach them, so without a
+// fallback the parent's pipe-reading goroutines block forever.
+const subprocessCancelGracePeriod = 10 * time.Second
+
+// configureSubprocess prepares cmd so that context cancellation reliably tears
+// down ansible-playbook *and* every descendant it spawned. Without this,
+// long-running grandchild processes keep the pipes open and prevent
+// prefixOutput's scanners (and therefore cmd.Wait) from ever returning.
+func configureSubprocess(cmd *exec.Cmd) {
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	cmd.Cancel = func() error {
+		if cmd.Process == nil {
+			return os.ErrProcessDone
+		}
+		// Negative PID targets the entire process group created via Setpgid,
+		// so descendants of ansible-playbook are signalled too.
+		return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+	}
+	cmd.WaitDelay = subprocessCancelGracePeriod
+}
 
 // Deployer deploys a single component. When preGate is non-nil, it gates the
 // pre-role: the pre-role goroutine waits for preGate to return nil (typically
@@ -78,6 +105,8 @@ func (a *AnsibleDeployer) runRole(ctx context.Context, component Component, role
 	default:
 		return fmt.Errorf("unknown component type: %d", component.Type)
 	}
+
+	configureSubprocess(cmd)
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
