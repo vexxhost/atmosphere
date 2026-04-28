@@ -1,0 +1,21 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Install Go runtime on test host
+  hosts: all
+  roles:
+    - role: ensure-go
+      go_version: "1.24.4"
+
+- name: Run Atmosphere Go unit tests
+  hosts: all
+  tasks:
+    - name: Run Go unit tests
+      ansible.builtin.command:
+        cmd: go test ./pkg/... ./internal/... ./cmd/...
+      args:
+        chdir: "{{ zuul.project.src_dir }}"
+      environment:
+        CGO_ENABLED: "0"
+        PATH: "/usr/local/go/bin:{{ ansible_env.PATH | default(lookup('env', 'PATH')) }}"
+      changed_when: false

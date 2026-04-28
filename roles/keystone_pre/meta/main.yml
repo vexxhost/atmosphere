@@ -1,0 +1,28 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+galaxy_info:
+  author: VEXXHOST, Inc.
+  description: >-
+    Pre-tasks for Keystone that configure Keycloak realms, MFA, OIDC
+    clients, and the OpenID metadata ConfigMap. Runs in parallel with the
+    main `keystone` role under the parallel deploy orchestrator.
+  license: Apache-2.0
+  min_ansible_version: 5.5.0
+  standalone: false
+  platforms:
+    - name: EL
+      versions:
+        - "8"
+        - "9"
+    - name: Ubuntu
+      versions:
+        - focal
+        - jammy
+
+dependencies:
+  - role: defaults
+  - role: openstack_helm_endpoints
+    vars:
+      openstack_helm_endpoints_chart: keystone
+      openstack_helm_endpoints_skip_cluster_creation: true

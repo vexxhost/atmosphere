@@ -1,0 +1,9 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+# Thin shim that runs the octavia tasks safe to execute in parallel
+# with the rest of the octavia role. The actual task list lives in the
+# octavia role at `tasks/_pre.yml` to avoid duplication.
+- name: Run parallelizable octavia tasks
+  ansible.builtin.include_tasks:
+    file: "{{ role_path }}/../octavia/tasks/_pre.yml"

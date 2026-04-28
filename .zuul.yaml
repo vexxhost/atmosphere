@@ -22,6 +22,16 @@
     groups: *single_node_groups
 
 - job:
+    name: atmosphere-go-test
+    parent: base
+    nodeset: atmosphere-ubuntu-jammy-single-node
+    description: |
+      Runs Go unit tests for the atmosphere deploy orchestrator
+      (pkg/dag, internal/deploy, cmd/atmosphere).
+    run:
+      - test-playbooks/go-test/run.yml
+
+- job:
     name: atmosphere-molecule
     parent: molecule
     abstract: true
@@ -33,6 +43,7 @@
     vars:
       atmosphere_image_prefix: "harbor.atmosphere.dev/"
       ceph_fsid: 4837cbf8-4f90-4300-b3f6-726c9b9f89b4
+      ceph_public_network: "{{ ansible_facts['default_ipv4']['network'] + '/' + (ansible_facts['default_ipv4']['prefix'] | string) }}"
       ceph_conf_overrides:
         - section: global
           option: mon allow pool size one
@@ -67,14 +78,22 @@
 - job:
     name: atmosphere-molecule-csi-local-path-provisioner
     parent: atmosphere-molecule-csi
+    run:
+      - molecule/csi/converge.yml
+      - test-playbooks/molecule/run.yml
     vars:
       csi_driver: local-path-provisioner
+      atmosphere_deploy_tags: kubernetes,csi
 
 - job:
     name: atmosphere-molecule-csi-rbd
     parent: atmosphere-molecule-csi
+    run:
+      - molecule/csi/converge.yml
+      - test-playbooks/molecule/run.yml
     vars:
       csi_driver: rbd
+      atmosphere_deploy_tags: ceph,kubernetes,csi
 
 - job:
     name: atmosphere-molecule-aio
@@ -261,22 +280,32 @@
 - job:
     name: atmosphere-molecule-aio-openvswitch
     parent: atmosphere-molecule-aio
+    run:
+      - molecule/aio/converge.yml
+      - test-playbooks/molecule/run.yml
     vars:
       atmosphere_network_backend: openvswitch
 
 - job:
     name: atmosphere-molecule-aio-ovn
     parent: atmosphere-molecule-aio
+    run:
+      - molecule/aio/converge.yml
+      - test-playbooks/molecule/run.yml
     vars:
       atmosphere_network_backend: ovn
 
 - job:
     name: atmosphere-molecule-keycloak
     parent: atmosphere-molecule
+    run:
+      - molecule/keycloak/converge.yml
+      - test-playbooks/molecule/run.yml
     vars:
       molecule_scenario: keycloak
       csi_driver: local-path-provisioner
       cluster_issuer_type: self-signed
+      atmosphere_deploy_tags: kubernetes,csi,cert-manager,cluster-issuer,ingress-nginx,rabbitmq-cluster-operator,percona-xtradb-cluster-operator,percona-xtradb-cluster,valkey,memcached,keycloak,kube-prometheus-stack,keystone,horizon
       percona_xtradb_cluster_spec:
         allowUnsafeConfigurations: true
         pxc:
@@ -295,6 +324,7 @@
 - project:
     check:
       jobs:
+        - atmosphere-go-test
         - atmosphere-molecule-aio-openvswitch
         - atmosphere-molecule-aio-ovn
         - atmosphere-molecule-csi-local-path-provisioner
@@ -302,6 +332,7 @@
         - atmosphere-molecule-keycloak
     gate:
       jobs:
+        - atmosphere-go-test
         - atmosphere-molecule-aio-openvswitch
         - atmosphere-molecule-aio-ovn
         - atmosphere-molecule-csi-local-path-provisioner

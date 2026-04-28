@@ -1,0 +1,18 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Create images
+  ansible.builtin.include_role:
+    name: glance_image
+  loop: "{{ glance_images }}"
+  vars:
+    glance_image_name: "{{ item.name }}"
+    glance_image_url: "{{ item.url }}"
+    glance_image_min_disk: "{{ item.min_disk | default(omit) }}"
+    glance_image_min_ram: "{{ item.min_ram | default(omit) }}"
+    glance_image_container_format: "{{ item.container_format | default(omit) }}"
+    glance_image_disk_format: "{{ item.disk_format | default(omit) }}"
+    glance_image_properties: "{{ item.properties | default(omit) }}"
+    glance_image_kernel: "{{ item.kernel | default(omit) }}"
+    glance_image_ramdisk: "{{ item.ramdisk | default(omit) }}"
+    glance_image_is_public: "{{ item.is_public | default(omit) }}"
