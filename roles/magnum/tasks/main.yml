@@ -207,15 +207,6 @@
     openstack_helm_ingress_annotations: "{{ _magnum_registry_ingress_annotations | combine(magnum_registry_ingress_annotations) }}"
     openstack_helm_ingress_class_name: "{{ magnum_registry_ingress_class_name }}"
 
-- name: Upload images
-  ansible.builtin.include_role:
-    name: glance_image
-  loop: "{{ magnum_images }}"
-  vars:
-    glance_image_name: "{{ item.name }}"
-    glance_image_url: "{{ item.url }}"
-    glance_image_container_format: "{{ magnum_image_container_format }}"
-    glance_image_disk_format: "{{ magnum_image_disk_format }}"
-    glance_image_properties:
-      os_distro: "{{ item.distro }}"
+- name: Run parallelizable pre-tasks (sequential mode only)
+  ansible.builtin.import_tasks: _pre.yml
   when: not (_pre_role_active | default(false))

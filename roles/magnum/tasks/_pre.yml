@@ -1,0 +1,18 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+# Tasks shared between the `magnum` main role and the `magnum_pre` shim
+# role used by the parallel deploy orchestrator. Keep idempotent and
+# free of dependencies on tasks earlier in `main.yml`.
+
+- name: Upload images
+  ansible.builtin.include_role:
+    name: glance_image
+  loop: "{{ magnum_images }}"
+  vars:
+    glance_image_name: "{{ item.name }}"
+    glance_image_url: "{{ item.url }}"
+    glance_image_container_format: "{{ magnum_image_container_format }}"
+    glance_image_disk_format: "{{ magnum_image_disk_format }}"
+    glance_image_properties:
+      os_distro: "{{ item.distro }}"
