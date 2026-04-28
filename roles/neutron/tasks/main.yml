@@ -12,46 +12,9 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Set external_dns_driver
-  ansible.builtin.set_fact:
-    _neutron_external_dns_driver: "designate"
-  when: neutron_designate_integration_enabled | bool
-
-- name: Generate Helm values
-  ansible.builtin.set_fact:
-    _neutron_helm_values: "{{ __neutron_helm_values }}"
-
-- name: Append Helm values
-  when: atmosphere_network_backend == 'ovn'
-  ansible.builtin.set_fact:
-    _neutron_helm_values: "{{ _neutron_helm_values | combine(__neutron_ovn_helm_values, recursive=True) }}"
-
-- name: Append Helm values (neutron_policy_server)
-  when: neutron_policy_server_integration_enabled | bool
-  ansible.builtin.set_fact:
-    _neutron_helm_values: "{{ _neutron_helm_values | combine(__neutron_policy_server_helm_values, recursive=True) }}"
-
-- name: Deploy Helm chart
-  run_once: true
+- name: Run parallelizable pre-tasks (sequential mode only)
+  ansible.builtin.import_tasks: _pre.yml
   when: not (_pre_role_active | default(false))
-  kubernetes.core.helm:
-    name: "{{ neutron_helm_release_name }}"
-    chart_ref: "{{ neutron_helm_chart_ref }}"
-    release_namespace: "{{ neutron_helm_release_namespace }}"
-    create_namespace: true
-    kubeconfig: "{{ neutron_helm_kubeconfig }}"
-    values: "{{ _neutron_helm_values | combine(neutron_helm_values, recursive=True) }}"
-
-- name: Create Ingress
-  when: not (_pre_role_active | default(false))
-  ansible.builtin.include_role:
-    name: openstack_helm_ingress
-  vars:
-    openstack_helm_ingress_endpoint: network
-    openstack_helm_ingress_service_name: neutron-server
-    openstack_helm_ingress_service_port: 9696
-    openstack_helm_ingress_annotations: "{{ neutron_ingress_annotations }}"
-    openstack_helm_ingress_class_name: "{{ neutron_ingress_class_name }}"
 
 - name: Create networks
   when: neutron_networks | length > 0
