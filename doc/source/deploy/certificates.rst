@@ -175,8 +175,14 @@ challenges with the following configuration:
 Route53
 *******
 
-If you are using Route53 to host the DNS for your domains, you can use the
-following configuration:
+If you are using Route53 to host the DNS for your domains, the ``cluster_issuer``
+role supports three authentication modes, selected with
+``cluster_issuer_acme_route53_auth``.
+
+Static access key (default)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Authenticate with a long-lived IAM user access key and secret access key:
 
 .. code-block:: yaml
 
@@ -191,6 +197,69 @@ following configuration:
 
    You'll need to make sure that your AWS credentials have the correct
    permissions to update the Route53 zone.
+
+Ambient credentials
+~~~~~~~~~~~~~~~~~~~
+
+Let ``cert-manager`` pick up credentials from its pod environment (for
+example, the EC2 instance metadata service or a credentials file mounted into
+the controller pod). No secrets are stored in the cluster.
+
+.. code-block:: yaml
+
+  cluster_issuer_acme_email: user@example.com
+  cluster_issuer_acme_solver: route53
+  cluster_issuer_acme_route53_auth: ambient
+  cluster_issuer_acme_route53_region: <REGION>
+  cluster_issuer_acme_route53_hosted_zone_id: <HOSTED_ZONE_ID>
+  # Optional: role to assume once ambient credentials are resolved.
+  cluster_issuer_acme_route53_role_arn: <IAM_ROLE_ARN>
+
+This mode needs the environment hosting ``cert-manager`` to already expose
+AWS credentials through the default AWS SDK credential chain, which
+typically means running on AWS infrastructure. Ambient mode also enables
+IAM Roles Anywhere when the ``cert-manager`` pod is augmented with the
+``aws_signing_helper`` binary and an ``~/.aws/config`` entry pointing at it
+via ``credential_process``. That wiring is out of scope for the
+``cluster_issuer`` role.
+
+OIDC (keyless)
+~~~~~~~~~~~~~~
+
+For operators whose policy forbids long-lived AWS keys, ``cert-manager`` can
+assume an IAM role using a projected ServiceAccount token. This works with any
+Kubernetes cluster, including on-premises, and doesn't require the cluster to
+run on AWS.
+
+.. code-block:: yaml
+
+  cluster_issuer_acme_email: user@example.com
+  cluster_issuer_acme_solver: route53
+  cluster_issuer_acme_route53_auth: kubernetes
+  cluster_issuer_acme_route53_region: <REGION>
+  cluster_issuer_acme_route53_hosted_zone_id: <HOSTED_ZONE_ID>
+  cluster_issuer_acme_route53_role_arn: <IAM_ROLE_ARN>
+  # Optional; defaults to "cert-manager-route53".
+  cluster_issuer_acme_route53_service_account_name: cert-manager-route53
+
+The role creates a ``ServiceAccount`` in the ``cert-manager`` namespace and
+configures the solver to reference it. ``cert-manager`` then mints a
+short-lived projected token for that ServiceAccount and exchanges it for
+temporary AWS credentials via ``sts:AssumeRoleWithWebIdentity``.
+
+Prerequisites (one-time, per cluster):
+
+#. Configure the Kubernetes API server with a ``--service-account-issuer``
+   URL whose OpenID discovery document (``/.well-known/openid-configuration``)
+   and JWKS (``/openid/v1/jwks``) are reachable from AWS. The API server
+   itself doesn't need to be public; publishing the two static files to
+   any public HTTPS location is enough.
+#. Register that issuer address as an OIDC identity provider in AWS IAM.
+#. Create an IAM role whose trust policy lets the OIDC provider assume it,
+   pinned to ``system:serviceaccount:cert-manager:cert-manager-route53``
+   (or the configured ServiceAccount name) with the ``sts.amazonaws.com``
+   audience. The role needs ``route53:GetChange``,
+   ``route53:ChangeResourceRecordSets``, and ``route53:ListHostedZonesByName``.
 
 Cloudflare
 **********
