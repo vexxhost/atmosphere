@@ -191,7 +191,51 @@ defaultRules:
 
 ## Provide custom recording or alerting rules to be deployed into the cluster.
 ##
-additionalPrometheusRulesMap: {}
+additionalPrometheusRulesMap:
+  atmosphere-network-drift:
+    groups:
+      - name: atmosphere-network-drift
+        rules:
+          # Catches a compute node's bond0 silently dropping inner Geneve
+          # frames because its MTU drifted away from the fleet-canonical
+          # value (typically 9216 bytes on jumbo deployments: 9000 inner +
+          # 4 B 802.1Q tag + 50 B Geneve overhead, with headroom). The
+          # threshold is intentionally low so transient spikes don't fire,
+          # but a node that is steadily dropping or erroring on the
+          # overlay device gets flagged within 10 minutes.
+          - alert: GeneveTransmitErrors
+            annotations:
+              summary: Geneve overlay interface is reporting transmit errors.
+              description: '{{ $labels.instance }} interface {{ $labels.device }} has averaged {{ printf "%.2f" $value }} transmit errors per second over the last 5 minutes (threshold > 1.67/s, ~100/min). This typically indicates an MTU mismatch on the underlay (bond) below the Geneve VTEP.'
+            expr: rate(node_network_transmit_errs_total{job="node-exporter",device=~"genev_sys_.*"}[5m]) > 1.67
+            for: 10m
+            labels:
+              severity: warning
+          - alert: GeneveTransmitDrops
+            annotations:
+              summary: Geneve overlay interface is dropping transmitted packets.
+              description: '{{ $labels.instance }} interface {{ $labels.device }} has averaged {{ printf "%.2f" $value }} transmit drops per second over the last 5 minutes (threshold > 10/s). Sustained drops on the Geneve VTEP indicate underlay MTU mismatch or kernel datapath pressure.'
+            expr: rate(node_network_transmit_drop_total{job="node-exporter",device=~"genev_sys_.*"}[5m]) > 10
+            for: 10m
+            labels:
+              severity: warning
+          # Catches MTU drift on the bond underlay. We do not hardcode the
+          # expected value; instead we alert when a node's bond0 MTU
+          # disagrees with the median bond0 MTU across the fleet (same
+          # technique kube-prometheus uses for Ceph host MTU consistency).
+          # This catches both "node provisioned with the wrong MTU" and
+          # "node rebooted and netplan reset to default" failure modes.
+          - alert: NodeBondMTUInconsistent
+            annotations:
+              summary: bond0 MTU differs from the fleet median.
+              description: '{{ $labels.instance }} bond0 MTU is {{ $value }} bytes, which differs from the median across the fleet. Geneve overlay traffic will be silently dropped on this node if the bond is too small.'
+            expr: |
+              node_network_mtu_bytes{device="bond0"}
+                != on() group_left()
+              quantile(0.5, node_network_mtu_bytes{device="bond0"})
+            for: 30m
+            labels:
+              severity: warning
 #  rule-name:
 #    groups:
 #    - name: my_group
