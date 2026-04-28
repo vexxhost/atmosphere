@@ -12,36 +12,79 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Create ClusterIssuer
+- name: Validate Route53 authentication mode
   run_once: true
+  ansible.builtin.assert:
+    that:
+      - cluster_issuer_acme_route53_auth in ["static", "ambient", "kubernetes"]
+    fail_msg: >-
+      cluster_issuer_acme_route53_auth must be one of:
+      "static", "ambient", "kubernetes".
+
+- name: Create Route53 credentials Secret
+  run_once: true
+  when: cluster_issuer_acme_route53_auth == "static"
   kubernetes.core.k8s:
     state: present
     definition:
-      - apiVersion: v1
-        kind: Secret
-        metadata:
-          name: "{{ cluster_issuer_acme_route53_secret_name }}"
-          namespace: cert-manager
-        type: Opaque
-        stringData:
-          secret-access-key: "{{ cluster_issuer_acme_route53_secret_access_key }}"
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: "{{ cluster_issuer_acme_route53_secret_name }}"
+        namespace: cert-manager
+      type: Opaque
+      stringData:
+        secret-access-key: "{{ cluster_issuer_acme_route53_secret_access_key }}"
 
-      - apiVersion: cert-manager.io/v1
-        kind: ClusterIssuer
-        metadata:
-          name: "{{ cluster_issuer_name }}"
-        spec:
-          acme:
-            email: "{{ cluster_issuer_acme_email }}"
-            server: "{{ cluster_issuer_acme_server }}"
-            privateKeySecretRef:
-              name: "{{ cluster_issuer_acme_private_key_secret_name }}"
-            solvers:
-              - dns01:
-                  route53:
-                    region: "{{ cluster_issuer_acme_route53_region }}"
-                    hostedZoneID: "{{ cluster_issuer_acme_route53_hosted_zone_id }}"
-                    accessKeyID: "{{ cluster_issuer_acme_route53_access_key_id }}"
-                    secretAccessKeySecretRef:
-                      name: "{{ cluster_issuer_acme_route53_secret_name }}"
-                      key: secret-access-key
+- name: Create Route53 ServiceAccount for AssumeRoleWithWebIdentity
+  run_once: true
+  when: cluster_issuer_acme_route53_auth == "kubernetes"
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: ServiceAccount
+      metadata:
+        name: "{{ cluster_issuer_acme_route53_service_account_name }}"
+        namespace: cert-manager
+
+- name: Create ClusterIssuer
+  run_once: true
+  vars:
+    _route53_common:
+      region: "{{ cluster_issuer_acme_route53_region }}"
+      hostedZoneID: "{{ cluster_issuer_acme_route53_hosted_zone_id }}"
+    _route53_role_arn: "{{ cluster_issuer_acme_route53_role_arn | default('') }}"
+    _route53_role: "{{ {'role': _route53_role_arn} if _route53_role_arn else {} }}"
+    _route53_static:
+      accessKeyID: "{{ cluster_issuer_acme_route53_access_key_id | default('') }}"
+      secretAccessKeySecretRef:
+        name: "{{ cluster_issuer_acme_route53_secret_name }}"
+        key: secret-access-key
+    _route53_kubernetes:
+      auth:
+        kubernetes:
+          serviceAccountRef:
+            name: "{{ cluster_issuer_acme_route53_service_account_name }}"
+    _route53_auth: >-
+      {{
+        _route53_static if cluster_issuer_acme_route53_auth == "static"
+        else (_route53_kubernetes if cluster_issuer_acme_route53_auth == "kubernetes"
+              else {})
+      }}
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: cert-manager.io/v1
+      kind: ClusterIssuer
+      metadata:
+        name: "{{ cluster_issuer_name }}"
+      spec:
+        acme:
+          email: "{{ cluster_issuer_acme_email }}"
+          server: "{{ cluster_issuer_acme_server }}"
+          privateKeySecretRef:
+            name: "{{ cluster_issuer_acme_private_key_secret_name }}"
+          solvers:
+            - dns01:
+                route53: "{{ _route53_common | combine(_route53_role) | combine(_route53_auth) }}"
