@@ -25,6 +25,10 @@
   ansible.builtin.package:
     name: "{{ 'multipath-tools' if ansible_os_family == 'Debian' else 'device-mapper-multipath' }}"
     state: latest # noqa: package-latest
+  register: _install_multipathd
+  retries: 5
+  delay: 10
+  until: _install_multipathd is not failed
   notify:
     - Restart "multipathd"
 

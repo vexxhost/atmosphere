@@ -1,0 +1,10 @@
+---
+features:
+  - |
+    Added the ``image_warmup`` role and component, which pre-pulls every
+    image listed in ``_atmosphere_images`` on every Kubernetes node once
+    the cluster reports READY. Subsequent component Helm installs
+    schedule pods that find their images already cached, eliminating
+    most ``ImagePulling`` waits from the critical path. Failures are
+    non-fatal: the ``kubelet`` falls back to on-demand pulls.
+upgrade: []

@@ -1,0 +1,39 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+# Path to the containerd CRI socket used for `crictl pull`.
+#
+# image_warmup_containerd_socket: unix:///run/containerd/containerd.sock
+image_warmup_containerd_socket: unix:///run/containerd/containerd.sock
+
+# Per-image pull timeout in seconds for `crictl pull`. The kubelet will pull
+# on demand if warmup is slower, so this is purely a guard against runaway
+# stuck pulls.
+#
+# image_warmup_pull_timeout: 600
+image_warmup_pull_timeout: 600
+
+# Maximum number of parallel pulls per host. Containerd handles its own
+# layer-level deduplication, but capping concurrency avoids saturating the
+# image registry from every node at once.
+#
+# image_warmup_concurrency: 4
+image_warmup_concurrency: 4
+
+# Optional explicit list of image references to pre-pull. When empty
+# (default), the role pulls every value from `_atmosphere_images`.
+#
+# image_warmup_images:
+#   - quay.io/ceph/ceph:v18.2.7
+image_warmup_images: []

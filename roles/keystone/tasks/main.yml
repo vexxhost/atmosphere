@@ -16,6 +16,7 @@
   no_log: true
   run_once: true
   changed_when: false
+  when: not (_pre_role_active | default(false))
   community.general.keycloak_realm:
     # Keycloak settings
     auth_keycloak_url: "{{ item.keycloak_server_url }}"
@@ -42,6 +43,7 @@
     label: "{{ item.name }}"
 
 - name: Setup Keycloak Authentication Required Actions (MFA)
+  when: not (_pre_role_active | default(false))
   community.general.keycloak_authentication_required_actions:
     # Keycloak settings
     auth_keycloak_url: "{{ item.keycloak_server_url }}"
@@ -65,12 +67,14 @@
 
 - name: Create ConfigMap with all OpenID connect configurations
   run_once: true
+  when: not (_pre_role_active | default(false))
   kubernetes.core.k8s:
     template: configmap-openid-metadata.yml.j2
 
 - name: Create Keycloak clients
   no_log: true
   run_once: true
+  when: not (_pre_role_active | default(false))
   community.general.keycloak_client:
     # Keycloak settings
     auth_keycloak_url: "{{ item.keycloak_server_url }}"
@@ -97,6 +101,7 @@
 - name: Assign realm-management roles to service account
   no_log: true
   run_once: true
+  when: not (_pre_role_active | default(false))
   community.general.keycloak_user_rolemapping:
     # Keycloak settings
     auth_keycloak_url: "{{ item.keycloak_server_url }}"
