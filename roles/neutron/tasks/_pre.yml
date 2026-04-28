@@ -2,9 +2,19 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # Tasks shared between the `neutron` main role and the `neutron_pre`
-# shim role used by the parallel deploy orchestrator. Both roles list
-# `openstack_helm_endpoints` as a meta dependency, so the endpoint
-# generation runs before this file is included.
+# shim role used by the parallel deploy orchestrator.
+#
+# Both roles list `openstack_helm_endpoints` as a meta dependency, but
+# the `neutron_pre` shim sets `openstack_helm_endpoints_skip_cluster_creation`
+# to avoid racing with the main role on RabbitMQ / DB secret creation.
+# That skip flag also bypasses the `openstack_helm_endpoints` fact, so
+# we re-invoke the role here without the skip flag to materialize it.
+
+- name: Configure OpenStack-Helm endpoints
+  ansible.builtin.include_role:
+    name: openstack_helm_endpoints
+  vars:
+    openstack_helm_endpoints_chart: neutron
 
 - name: Set external_dns_driver
   ansible.builtin.set_fact:
