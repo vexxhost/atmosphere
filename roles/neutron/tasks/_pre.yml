@@ -8,9 +8,13 @@
 # the `neutron_pre` shim sets `openstack_helm_endpoints_skip_cluster_creation`
 # to avoid racing with the main role on RabbitMQ / DB secret creation.
 # That skip flag also bypasses the `openstack_helm_endpoints` fact, so
-# we re-invoke the role here without the skip flag to materialize it.
+# when this file is included from `neutron_pre` we re-invoke the role
+# without the skip flag to materialize it. In sequential mode the main
+# role's own meta dependency already populated the fact, so we skip
+# this re-include there.
 
 - name: Configure OpenStack-Helm endpoints
+  when: (openstack_helm_endpoints | default(None)) is not mapping
   ansible.builtin.include_role:
     name: openstack_helm_endpoints
   vars:
