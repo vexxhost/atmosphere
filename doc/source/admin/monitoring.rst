@@ -984,6 +984,101 @@ intervention and may precede a crash.
 5. If the error recurs, schedule hardware maintenance and replace the
    affected CPU or motherboard as needed.
 
+``LibvirtDomainInterfaceReceiveDrops``
+======================================
+
+This alert fires when libvirt reports that a virtual machine network
+interface has dropped one or more inbound packets in the last five
+minutes, sustained for at least five minutes. Sustained packet drops
+on the receive path can degrade tenant connectivity and indicate an
+overloaded guest, hypervisor, or network path.
+
+**Likely Root Causes**
+
+- Guest receive queue is overrun because the workload inside the
+  instance can't keep up with incoming traffic
+- Insufficient virtual processors or interrupt steering for the guest
+- Hypervisor host under network or CPU pressure
+- Incorrect offload or queue settings on the tap interface
+- Upstream network sending malformed or unexpected traffic
+
+**Diagnostic and Remediation Steps**
+
+1. Identify the affected instance and tap interface from the
+   ``domain`` and ``target_device`` labels on the alert.
+
+2. On the hypervisor hosting the domain, inspect interface counters
+   for the tap device:
+
+   .. code-block:: console
+
+     ip -s link show <target_device>
+
+3. Check the guest for kernel messages or driver errors:
+
+   .. code-block:: console
+
+     dmesg -T | tail
+     ethtool -S <guest-interface>
+
+4. Review hypervisor load and ``softirq`` activity:
+
+   .. code-block:: console
+
+     top
+     cat /proc/softirqs
+
+5. If drops persist, consider migrating the instance, resizing
+   it to a larger flavor, or investigating upstream network health.
+
+``LibvirtDomainInterfaceTransmitDrops``
+=======================================
+
+This alert fires when libvirt reports that a virtual machine network
+interface has dropped one or more outbound packets in the last five
+minutes, sustained for at least five minutes. Sustained packet drops
+on the transmit path can degrade tenant connectivity and signal
+back pressure between the guest, the hypervisor, and the network
+fabric.
+
+**Likely Root Causes**
+
+- Hypervisor transmit queue is full because the upstream network or
+  ``br-int``/``br-ex`` cannot accept packets fast enough
+- Open vSwitch or the underlying network adapter has reached saturation or is experiencing
+  packet processing errors
+- QoS policy or rate limit is shaping traffic below what the guest is
+  trying to send
+- Misbehaving guest sending malformed frames
+
+**Diagnostic and Remediation Steps**
+
+1. Identify the affected instance and tap interface from the
+   ``domain`` and ``target_device`` labels on the alert.
+
+2. On the hypervisor, inspect transmit counters and queue state:
+
+   .. code-block:: console
+
+     ip -s link show <target_device>
+     ovs-ofctl dump-ports br-int <target_device>
+
+3. Inspect upstream network adapter counters and any reported errors:
+
+   .. code-block:: console
+
+     ethtool -S <upstream-interface>
+
+4. Check whether the port has QoS or rate limiting applied:
+
+   .. code-block:: console
+
+     openstack port show <port-id>
+
+5. If drops persist, correlate with hypervisor CPU and network
+   utilization, and consider migrating the instance or scaling the
+   underlying network capacity.
+
 ``MySQLGaleraOutOfSync``
 ========================
 
