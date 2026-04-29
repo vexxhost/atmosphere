@@ -1010,3 +1010,61 @@ tests:
               summary: "CoreDNS: instance has disappeared from Prometheus target discovery"
               description: "CoreDNS has disappeared from Prometheus target discovery for more than 15 minutes. This could indicate a crashed CoreDNS pod or a misconfigured scrape target."
               runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#corednsdown"
+
+  - interval: 1m
+    input_series:
+      - series: 'libvirt_domain_interface_stats_receive_drops_total{domain="instance-0001e06e",target_device="tapab672ce4-11"}'
+        values: '0x15'
+      - series: 'libvirt_domain_interface_stats_transmit_drops_total{domain="instance-0001e06e",target_device="tapab672ce4-11"}'
+        values: '0x15'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: LibvirtDomainInterfaceReceiveDrops
+        exp_alerts: []
+      - eval_time: 10m
+        alertname: LibvirtDomainInterfaceTransmitDrops
+        exp_alerts: []
+
+  - interval: 1m
+    input_series:
+      - series: 'libvirt_domain_interface_stats_receive_drops_total{domain="instance-0001e06e",target_device="tapab672ce4-11"}'
+        values: '0+1x15'
+      - series: 'libvirt_domain_interface_stats_transmit_drops_total{domain="instance-0001e06e",target_device="tapab672ce4-11"}'
+        values: '0x15'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: LibvirtDomainInterfaceReceiveDrops
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+              domain: instance-0001e06e
+              target_device: tapab672ce4-11
+            exp_annotations:
+              summary: "Libvirt: virtual machine network interface dropping receive packets"
+              description: "Domain instance-0001e06e interface tapab672ce4-11 has dropped 5 receive packets in the last 5 minutes. Sustained packet drops can degrade tenant connectivity. Normal behavior is zero drops."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#libvirtdomaininterfacereceivedrops"
+      - eval_time: 10m
+        alertname: LibvirtDomainInterfaceTransmitDrops
+        exp_alerts: []
+
+  - interval: 1m
+    input_series:
+      - series: 'libvirt_domain_interface_stats_receive_drops_total{domain="instance-0001e06e",target_device="tapab672ce4-11"}'
+        values: '0x15'
+      - series: 'libvirt_domain_interface_stats_transmit_drops_total{domain="instance-0001e06e",target_device="tapab672ce4-11"}'
+        values: '0+1x15'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: LibvirtDomainInterfaceTransmitDrops
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+              domain: instance-0001e06e
+              target_device: tapab672ce4-11
+            exp_annotations:
+              summary: "Libvirt: virtual machine network interface dropping transmit packets"
+              description: "Domain instance-0001e06e interface tapab672ce4-11 has dropped 5 transmit packets in the last 5 minutes. Sustained packet drops can degrade tenant connectivity. Normal behavior is zero drops."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#libvirtdomaininterfacetransmitdrops"
+      - eval_time: 10m
+        alertname: LibvirtDomainInterfaceReceiveDrops
+        exp_alerts: []
