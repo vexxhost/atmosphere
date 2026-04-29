@@ -270,6 +270,28 @@
     vars:
       atmosphere_network_backend: ovn
 
+- job:
+    name: atmosphere-molecule-keycloak
+    parent: atmosphere-molecule
+    vars:
+      molecule_scenario: keycloak
+      csi_driver: local-path-provisioner
+      cluster_issuer_type: self-signed
+      percona_xtradb_cluster_spec:
+        allowUnsafeConfigurations: true
+        pxc:
+          size: 1
+        haproxy:
+          size: 1
+      keystone_helm_values:
+        pod:
+          replicas:
+            api: 1
+      ingress_nginx_helm_values:
+        controller:
+          config:
+            worker-processes: 2
+
 - project:
     check:
       jobs:
@@ -277,9 +299,11 @@
         - atmosphere-molecule-aio-ovn
         - atmosphere-molecule-csi-local-path-provisioner
         - atmosphere-molecule-csi-rbd
+        - atmosphere-molecule-keycloak
     gate:
       jobs:
         - atmosphere-molecule-aio-openvswitch
         - atmosphere-molecule-aio-ovn
         - atmosphere-molecule-csi-local-path-provisioner
         - atmosphere-molecule-csi-rbd
+        - atmosphere-molecule-keycloak

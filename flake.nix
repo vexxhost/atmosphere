@@ -68,6 +68,8 @@
             packages =
               with pkgs;
               [
+                crane
+                jq
                 cargo
                 clippy
                 docutils
@@ -77,7 +79,7 @@
                 kubernetes-helm
                 patchutils
                 pre-commit
-                python311Packages.tox
+                python312Packages.tox
                 reno
                 renovate
                 rust-analyzer
