@@ -9,3 +9,12 @@
   ansible.builtin.service:
     name: iscsid
     state: started
+
+- name: Configure LVM to blacklist all devices
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/lvm/lvm.conf
+        regexp: '^\s*global_filter\s*='
+        line: '    global_filter = [ "r|.*|" ]'
+        insertafter: '^\s*devices\s*{'
+        backup: true
