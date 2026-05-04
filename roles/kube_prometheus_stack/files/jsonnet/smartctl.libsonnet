@@ -181,8 +181,8 @@
               severity: 'P4',
             },
             annotations: {
-              summary: 'Disk: SMART self-test reported errors',
-              description: 'The disk {{ $labels.device }} on node {{ $labels.instance }} has {{ $value }} entries in its SMART self-test error log (self_test_log_type={{ $labels.self_test_log_type }}). Normal is 0. Even one failed self-test indicates the drive could not complete an internal integrity check.',
+              summary: 'Disk: SATA SMART self-test reported errors',
+              description: 'The SATA disk {{ $labels.device }} on node {{ $labels.instance }} has {{ $value }} entries in its SMART self-test error log (self_test_log_type={{ $labels.self_test_log_type }}). Normal is 0. Even one failed self-test indicates the drive could not complete an internal integrity check. (SATA-only; the upstream exporter does not surface NVMe self-test results.)',
               runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskselftestfailed',
             },
           },

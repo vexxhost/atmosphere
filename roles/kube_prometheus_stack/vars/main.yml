@@ -77,16 +77,30 @@ _kube_prometheus_stack_helm_values:
             - instance
             - device
         - source_matchers:
-            - alertname = "SmartctlDiskCriticalWarning"
+            - alertname = "SmartctlDiskAvailableSpareLow"
           target_matchers:
-            - alertname =~ "SmartctlDisk(AvailableSpareLow|WearoutCritical|WearoutWarning|TemperatureHigh|MediaErrorsGrowing|SelfTestFailed)"
+            - alertname =~ "SmartctlDisk(CriticalWarning|WearoutCritical|WearoutWarning)"
           equal:
             - instance
             - device
         - source_matchers:
-            - alertname = "SmartctlDiskAvailableSpareLow"
+            - alertname = "SmartctlDiskMediaErrorsGrowing"
           target_matchers:
-            - alertname =~ "SmartctlDiskWearout(Critical|Warning)"
+            - alertname = "SmartctlDiskCriticalWarning"
+          equal:
+            - instance
+            - device
+        - source_matchers:
+            - alertname = "SmartctlDiskTemperatureHigh"
+          target_matchers:
+            - alertname = "SmartctlDiskCriticalWarning"
+          equal:
+            - instance
+            - device
+        - source_matchers:
+            - alertname = "SmartctlDiskAttributeFailing"
+          target_matchers:
+            - alertname =~ "SmartctlDisk(PendingSectors|UncorrectableSectors|ReallocatedSectorsGrowing)"
           equal:
             - instance
             - device

@@ -1351,12 +1351,12 @@ behind it:
 This alert fires when a SMART attribute's normalized value drops at or
 below the per-attribute failure threshold the drive firmware itself
 defines (``smartctl_device_attribute{attribute_value_type="value"}`` is
-``<=`` the matching ``thresh``, where ``thresh > 0``). This is the
-drive's own declaration that one of its prefailure attributes has
-crossed into the failing zone — common cases are end-of-life wear
-indicators on SATA SSDs and reallocation/pending-sector counters whose
-normalized values have decayed below the firmware threshold. Suppressed
-when ``SmartctlDiskUnhealthy`` already fires for the same disk.
+``<=`` the matching ``thresh``, where ``thresh > 0``). The drive itself
+declares one of its prefailure attributes has crossed into the failing
+zone. Common cases are end-of-life wear indicators on SATA SSDs and
+reallocation or pending-sector counters whose normalized values have
+decayed below the firmware threshold. Suppressed when
+``SmartctlDiskUnhealthy`` already fires for the same disk.
 
 **Likely Root Causes**
 
@@ -1376,8 +1376,8 @@ when ``SmartctlDiskUnhealthy`` already fires for the same disk.
 
      smartctl -A /dev/<device>
 
-3. Cross-check against ``SmartctlDiskUnhealthy``: if both fire, the
-   overall SMART status is also failing — replace immediately.
+3. Cross-check with ``SmartctlDiskUnhealthy``: if both fire, the
+   overall SMART status is also failing. Replace the drive immediately.
 
 4. If only this alert fires, the drive is still functional but the
    firmware predicts the attribute will continue to degrade. Plan
@@ -1388,7 +1388,7 @@ when ``SmartctlDiskUnhealthy`` already fires for the same disk.
 
 This alert fires when an NVMe drive's ``available_spare`` percentage drops
 below the manufacturer-defined ``available_spare_threshold``. NVMe drives
-maintain a pool of spare blocks for media defects; once that pool nears
+maintain a pool of spare blocks for media defects. Once that pool nears
 exhaustion the controller marks the drive at risk of imminent failure.
 
 **Likely Root Causes**
@@ -1423,7 +1423,7 @@ exhaustion the controller marks the drive at risk of imminent failure.
 
 This alert fires when an NVMe drive's ``critical_warning`` bitfield is
 non-zero. The controller sets bits to indicate available spare below
-threshold, temperature above critical, NVM subsystem reliability degraded,
+threshold, temperature over critical, NVM subsystem reliability degraded,
 media in read-only mode, or volatile-memory backup failed. Any non-zero
 value is the manufacturer's own signal that the drive is unsafe.
 
@@ -1440,7 +1440,7 @@ value is the manufacturer's own signal that the drive is unsafe.
 1. Identify the affected disk from the alert labels (``instance`` and
    ``device``).
 
-2. Decode which bit is set:
+2. Decode the active bit:
 
    .. code-block:: console
 
@@ -1457,7 +1457,7 @@ value is the manufacturer's own signal that the drive is unsafe.
 
 This alert fires when an NVMe drive's ``media_errors`` counter increased
 over the last 24 hours. The counter records occurrences where the
-controller could not recover data via ECC. A stable non-zero count from
+controller couldn't recover data via ECC. A stable non-zero count from
 historical events is harmless, but ongoing growth means the media is
 actively degrading.
 
@@ -1478,7 +1478,7 @@ actively degrading.
 
      smartctl -a /dev/<device> | grep -i 'media.*errors'
 
-3. Compare against ``smartctl_device_percentage_used`` to decide whether
+3. Compare with ``smartctl_device_percentage_used`` to decide whether
    wear-out or a localized fault is the cause.
 
 4. Schedule replacement during the next maintenance window. If the rate
@@ -1489,15 +1489,15 @@ actively degrading.
 
 This alert fires when a SATA drive reports one or more sectors awaiting
 reallocation (``Current_Pending_Sector``, attribute 197). These are
-sectors the drive could not read or write reliably; they will be remapped
-to spare areas on the next write attempt. A persistent non-zero value
-indicates active media degradation.
+sectors the drive couldn't read or write reliably. The drive will remap
+them to spare areas on the next write attempt. A persistent non-zero
+value indicates active media degradation.
 
 **Likely Root Causes**
 
 - Physical wear on platters or NAND cells
 - Mechanical shock or vibration
-- Read disturb errors on heavily-used SSD blocks
+- Read disturb errors on busy SSD blocks
 
 **Diagnostic and Remediation Steps**
 
@@ -1523,9 +1523,9 @@ indicates active media degradation.
 ==========================================
 
 This alert fires when a SATA drive's ``Reallocated_Sector_Ct`` (attribute
-5) grew over the last 24 hours. A stable non-zero value (e.g., factory
-remapping) is harmless, but ongoing growth means the drive is actively
-remapping new bad sectors.
+5) grew over the last 24 hours. A stable non-zero value (for example,
+factory remapping) is harmless, but ongoing growth means the drive is
+actively remapping new bad sectors.
 
 **Likely Root Causes**
 
@@ -1552,9 +1552,9 @@ remapping new bad sectors.
 
 This alert fires when a SCSI/SAS drive's grown defect list
 (``smartctl_scsi_grown_defect_list``) gains entries over the last 24
-hours. A stable non-zero count is harmless; ongoing growth means the
-drive is actively reallocating bad blocks and is the SAS analog of
-``SmartctlDiskReallocatedSectorsGrowing``.
+hours. A stable non-zero count is harmless. Ongoing growth means the
+drive is actively reallocating bad blocks. This alert is the SAS analog
+of ``SmartctlDiskReallocatedSectorsGrowing``.
 
 **Likely Root Causes**
 
@@ -1584,8 +1584,8 @@ This alert fires when a SCSI/SAS drive's read or write
 total-uncorrected-error counter
 (``smartctl_read_total_uncorrected_errors`` /
 ``smartctl_write_total_uncorrected_errors``) increases over the last 24
-hours. Any non-zero growth means the drive could not recover I/O via
-on-disk ECC — confirmed data loss for the affected blocks.
+hours. Any non-zero growth means the drive couldn't recover I/O via
+on-disk ECC, confirming data loss in the affected blocks.
 
 **Likely Root Causes**
 
@@ -1611,9 +1611,11 @@ on-disk ECC — confirmed data loss for the affected blocks.
 ``SmartctlDiskSelfTestFailed``
 ===============================
 
-This alert fires when a drive reports one or more entries in its SMART
-self-test error log. Even one failed self-test indicates the drive could
-not complete an internal integrity check.
+This alert fires when a SATA drive reports one or more entries in its
+SMART self-test error log. Even one failed self-test indicates the
+drive couldn't complete an internal integrity check. The upstream
+``smartctl_exporter`` only emits this metric for ATA/SATA drives. NVMe
+self-test results aren't surfaced.
 
 **Likely Root Causes**
 
@@ -1683,7 +1685,7 @@ flash memory wear and can cause data loss or mechanical failure.
 
 This alert fires when a SATA drive reports one or more offline-uncorrectable
 sectors (``Offline_Uncorrectable``, attribute 198). These are sectors the
-drive could not recover during background scans, indicating confirmed
+drive couldn't recover during background scans, indicating confirmed
 unrecoverable data loss in those LBAs.
 
 **Likely Root Causes**
@@ -1749,9 +1751,9 @@ prevent data loss.
 This alert fires when an NVMe drive reports more than 90% of its rated
 endurance used (``smartctl_device_percentage_used > 90``) sustained for
 at least 15 minutes. At this wear level the manufacturer considers
-near-term failure likely. SATA drives are covered by
-``SmartctlDiskAttributeFailing`` instead, since they expose wear via
-vendor-specific normalized attributes rather than ``percentage_used``.
+near-term failure likely. ``SmartctlDiskAttributeFailing`` covers SATA
+drives instead, since they expose wear via vendor-specific normalized
+attributes rather than ``percentage_used``.
 
 **Likely Root Causes**
 
@@ -1770,8 +1772,8 @@ vendor-specific normalized attributes rather than ``percentage_used``.
 
      smartctl -a /dev/<device> | grep -i percentage_used
 
-3. Review workload sizing. If the disk was undersized for its workload,
-   plan a higher-endurance class for the replacement.
+3. Review workload sizing. If the workload exceeded the disk's rated
+   endurance, plan a higher-endurance class for the replacement.
 
 4. Order a replacement. Schedule replacement during the next maintenance
    window, sooner if ``SmartctlDiskUnhealthy`` also fires.
@@ -1783,8 +1785,8 @@ This alert fires when an NVMe drive reports more than 75% of its rated
 endurance used (``smartctl_device_percentage_used > 75``) sustained for
 at least one hour. The drive still operates within specification but is
 approaching end of life. Suppressed automatically when
-``SmartctlDiskWearoutCritical`` fires for the same disk. SATA drives are
-covered by ``SmartctlDiskAttributeFailing`` instead.
+``SmartctlDiskWearoutCritical`` fires for the same disk.
+``SmartctlDiskAttributeFailing`` covers SATA drives instead.
 
 **Likely Root Causes**
 
