@@ -58,7 +58,7 @@
           },
           {
             alert: 'SmartctlDiskAttributeFailing',
-            expr: '(smartctl_device_attribute{attribute_value_type="value"} <= on(instance, device, attribute_id) smartctl_device_attribute{attribute_value_type="thresh"}) and on(instance, device, attribute_id) (smartctl_device_attribute{attribute_value_type="thresh"} > 0)',
+            expr: '(smartctl_device_attribute{attribute_value_type="value"} <= ignoring(attribute_value_type) smartctl_device_attribute{attribute_value_type="thresh"}) and ignoring(attribute_value_type) (smartctl_device_attribute{attribute_value_type="thresh"} > 0)',
             'for': '5m',
             labels: {
               severity: 'P2',

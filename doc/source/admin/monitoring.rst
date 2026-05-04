@@ -1488,8 +1488,8 @@ actively degrading.
 ======================================
 
 This alert fires when a SATA drive's ``Current_Pending_Sector`` (attribute
-197) grew over the last 24 hours. A stable non-zero count is harmless
-(those sectors will be remapped on the next write attempt), but ongoing
+197) grew over the last 24 hours. A stable non-zero count is harmless.
+The drive remaps those sectors on the next write attempt. Ongoing
 growth indicates active media degradation: the drive is encountering new
 sectors it can't read or write reliably.
 
@@ -1684,10 +1684,10 @@ flash memory wear and can cause data loss or mechanical failure.
 ============================================
 
 This alert fires when a SATA drive's ``Offline_Uncorrectable`` (attribute
-198) grew over the last 24 hours. A stable non-zero count is harmless
-(those sectors represent already-acknowledged bad blocks), but ongoing
-growth means the drive is finding new sectors it can't recover during
-background scans — confirmed unrecoverable data loss in newly affected
+198) grew over the last 24 hours. A stable non-zero count is harmless;
+those sectors represent already-acknowledged bad blocks. Ongoing growth
+means the drive is finding new sectors it can't recover during background
+scans, indicating confirmed unrecoverable data loss in newly affected
 LBAs.
 
 **Likely Root Causes**
