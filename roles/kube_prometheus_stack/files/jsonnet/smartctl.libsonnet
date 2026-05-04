@@ -7,80 +7,144 @@
           {
             alert: 'SmartctlDiskUnhealthy',
             expr: 'smartctl_device_smart_status == 0',
-            'for': '2m',
+            'for': '5m',
             labels: {
               severity: 'P2',
             },
             annotations: {
-              summary: 'Disk: SMART health check failed',
-              description: 'The disk {{ $labels.device }} (model: {{ $labels.model_name }}) on node {{ $labels.instance }} has failed its SMART health self-assessment test. This indicates imminent disk failure and the disk should be replaced immediately.',
+              summary: 'Disk: SMART overall health check failed',
+              description: 'The SMART overall-health self-assessment for disk {{ $labels.device }} on node {{ $labels.instance }} is reporting failure (smartctl_device_smart_status=0). The drive firmware predicts imminent failure. Normal value is 1.',
               runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskunhealthy',
+            },
+          },
+          {
+            alert: 'SmartctlDiskCriticalWarning',
+            expr: 'smartctl_device_critical_warning != 0',
+            'for': '5m',
+            labels: {
+              severity: 'P2',
+            },
+            annotations: {
+              summary: 'Disk: NVMe critical warning bit set',
+              description: 'The NVMe critical_warning bitfield for disk {{ $labels.device }} on node {{ $labels.instance }} is {{ $value }} (normal is 0). Bits indicate available spare below threshold, temperature above critical, NVM subsystem reliability degraded, media in read-only mode, or volatile memory backup failed.',
+              runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskcriticalwarning',
+            },
+          },
+          {
+            alert: 'SmartctlDiskAvailableSpareLow',
+            expr: 'smartctl_device_available_spare < smartctl_device_available_spare_threshold',
+            'for': '5m',
+            labels: {
+              severity: 'P2',
+            },
+            annotations: {
+              summary: 'Disk: NVMe available spare below manufacturer threshold',
+              description: 'The NVMe available spare on disk {{ $labels.device }} on node {{ $labels.instance }} is {{ $value }}%, which is below the manufacturer-defined threshold. The drive has nearly exhausted its reserve blocks; failure is imminent. Normal is well above the threshold (typically 100% on a healthy drive).',
+              runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskavailablesparelow',
             },
           },
           {
             alert: 'SmartctlDiskWearoutCritical',
             expr: 'smartctl_device_percentage_used > 90',
-            'for': '5m',
+            'for': '15m',
             labels: {
               severity: 'P3',
             },
             annotations: {
               summary: 'Disk: wear level critical',
-              description: 'The disk {{ $labels.device }} (model: {{ $labels.model_name }}) on node {{ $labels.instance }} has {{ $value }}% wear. The disk has exceeded 90% of its rated endurance and should be replaced soon to avoid data loss.',
+              description: 'The disk {{ $labels.device }} on node {{ $labels.instance }} reports {{ $value }}% of its rated endurance used (smartctl_device_percentage_used), exceeding the 90% threshold. Plan immediate replacement. Normal operating range is below 75%.',
               runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskwearoutcritical',
             },
           },
           {
-            alert: 'SmartctlDiskWearoutWarning',
-            expr: 'smartctl_device_percentage_used > 75 and smartctl_device_percentage_used <= 90',
+            alert: 'SmartctlDiskPendingSectors',
+            expr: 'smartctl_device_attribute{attribute_id="197",attribute_value_type="raw"} > 0',
+            'for': '30m',
+            labels: {
+              severity: 'P3',
+            },
+            annotations: {
+              summary: 'Disk: pending sectors detected',
+              description: 'The SATA disk {{ $labels.device }} on node {{ $labels.instance }} reports {{ $value }} sectors awaiting reallocation (Current_Pending_Sector, attribute 197). Normal is 0. These sectors have failed I/O and will be remapped to spare areas on next write attempt; persistent non-zero values indicate active media degradation.',
+              runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskpendingsectors',
+            },
+          },
+          {
+            alert: 'SmartctlDiskUncorrectableSectors',
+            expr: 'smartctl_device_attribute{attribute_id="198",attribute_value_type="raw"} > 0',
+            'for': '30m',
+            labels: {
+              severity: 'P3',
+            },
+            annotations: {
+              summary: 'Disk: uncorrectable sectors detected',
+              description: 'The SATA disk {{ $labels.device }} on node {{ $labels.instance }} reports {{ $value }} offline-uncorrectable sectors (Offline_Uncorrectable, attribute 198). Normal is 0. These are sectors the drive could not recover during background scans, indicating confirmed unrecoverable data loss in those LBAs.',
+              runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskuncorrectablesectors',
+            },
+          },
+          {
+            alert: 'SmartctlDiskMediaErrorsGrowing',
+            expr: 'increase(smartctl_device_media_errors[24h]) > 0',
             'for': '15m',
+            labels: {
+              severity: 'P3',
+            },
+            annotations: {
+              summary: 'Disk: NVMe media errors increasing',
+              description: 'The NVMe disk {{ $labels.device }} on node {{ $labels.instance }} accumulated {{ $value }} new media errors in the last 24 hours (smartctl_device_media_errors). Normal is zero growth over time. New errors indicate active uncorrectable ECC failures or LBA tag mismatches.',
+              runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskmediaerrorsgrowing',
+            },
+          },
+          {
+            alert: 'SmartctlDiskWearoutWarning',
+            expr: 'smartctl_device_percentage_used > 75',
+            'for': '1h',
             labels: {
               severity: 'P4',
             },
             annotations: {
               summary: 'Disk: wear level elevated',
-              description: 'The disk {{ $labels.device }} (model: {{ $labels.model_name }}) on node {{ $labels.instance }} has {{ $value }}% wear. The disk has exceeded 75% of its rated endurance. Plan a replacement during the next maintenance window.',
+              description: 'The disk {{ $labels.device }} on node {{ $labels.instance }} reports {{ $value }}% of its rated endurance used (smartctl_device_percentage_used), exceeding the 75% threshold. Plan replacement during the next maintenance window. Normal operating range is below 75%.',
+              runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskwearoutwarning',
             },
           },
           {
             alert: 'SmartctlDiskTemperatureHigh',
-            expr: 'smartctl_device_temperature{temperature_type="current"} > 60',
-            'for': '15m',
+            expr: 'smartctl_device_temperature{temperature_type="current"} > 65',
+            'for': '1h',
             labels: {
               severity: 'P4',
             },
             annotations: {
-              summary: 'Disk: temperature high',
-              description: 'The disk {{ $labels.device }} (model: {{ $labels.model_name }}) on node {{ $labels.instance }} has a temperature of {{ $value }}°C, which exceeds the 60°C threshold. Normal operating temperature is below 45°C. Check cooling and airflow.',
+              summary: 'Disk: temperature sustained high',
+              description: 'The disk {{ $labels.device }} on node {{ $labels.instance }} has run at {{ $value }}°C for over an hour, exceeding the 65°C threshold. Normal operating temperature is below 50°C for HDDs and below 60°C for SSDs. Check chassis cooling and airflow.',
+              runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldisktemperaturehigh',
             },
           },
           {
-            alert: 'SmartctlDiskReallocatedSectors',
-            expr: 'smartctl_device_smart_attribute{smart_attribute_name="Reallocated_Sector_Ct", smart_attribute_type="raw"} > 0',
-            'for': '5m',
+            alert: 'SmartctlDiskReallocatedSectorsGrowing',
+            expr: 'increase(smartctl_device_attribute{attribute_id="5",attribute_value_type="raw"}[24h]) > 0',
+            'for': '1h',
             labels: {
               severity: 'P4',
             },
             annotations: {
-              summary: 'Disk: reallocated sectors detected',
-              description: 'The disk {{ $labels.device }} (model: {{ $labels.model_name }}) on node {{ $labels.instance }} has {{ $value }} reallocated sectors. This indicates the disk has remapped bad sectors to spare areas. Monitor the trend and plan replacement if the count increases.',
+              summary: 'Disk: reallocated sector count growing',
+              description: 'The SATA disk {{ $labels.device }} on node {{ $labels.instance }} reallocated {{ $value }} additional sectors in the last 24 hours (Reallocated_Sector_Ct, attribute 5). Normal is zero growth: a stable non-zero count is harmless, but ongoing reallocation indicates active media degradation.',
+              runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskreallocatedsectorsgrowing',
             },
           },
-        ],
-      },
-      {
-        name: 'smartctl-exporter',
-        rules: [
           {
-            alert: 'SmartctlExporterDown',
-            expr: 'up{job="smartctl"} == 0',
-            'for': '15m',
+            alert: 'SmartctlDiskSelfTestFailed',
+            expr: 'smartctl_device_self_test_log_error_count > 0',
+            'for': '1h',
             labels: {
-              severity: 'P5',
+              severity: 'P4',
             },
             annotations: {
-              summary: 'smartctl exporter: unreachable',
-              description: 'The smartctl exporter on node {{ $labels.instance }} has been unreachable for more than 15 minutes. Disk health monitoring is unavailable for this node.',
+              summary: 'Disk: SMART self-test reported errors',
+              description: 'The disk {{ $labels.device }} on node {{ $labels.instance }} has {{ $value }} entries in its SMART self-test error log (self_test_log_type={{ $labels.self_test_log_type }}). Normal is 0. Even one failed self-test indicates the drive could not complete an internal integrity check.',
+              runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskselftestfailed',
             },
           },
         ],

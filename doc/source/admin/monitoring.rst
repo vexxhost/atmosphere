@@ -1344,19 +1344,155 @@ behind it:
 
   openstack server list --all-projects --long -n --ip $IP
 
-``SmartctlDiskReallocatedSectors``
-===================================
 
-This alert fires when a disk reports one or more reallocated sectors, meaning
-the drive has remapped bad sectors to spare areas in the drive's reserved pool.
-Any non-zero count indicates that the disk has encountered unrecoverable read
-errors and has permanently retired the affected sectors.
+``SmartctlDiskAvailableSpareLow``
+==================================
+
+This alert fires when an NVMe drive's ``available_spare`` percentage drops
+below the manufacturer-defined ``available_spare_threshold``. NVMe drives
+maintain a pool of spare blocks for media defects; once that pool nears
+exhaustion the controller marks the drive at risk of imminent failure.
 
 **Likely Root Causes**
 
-- Physical wear or age-related degradation of the disk platters or flash memory cells
-- Mechanical shock or vibration damaging the disk
-- Firmware issues causing false sector-level errors
+- The drive is at end-of-life from sustained writes
+- The drive has experienced an unusually high number of bad blocks
+- Firmware degradation tracking the drive itself classifies as critical
+
+**Diagnostic and Remediation Steps**
+
+1. Identify the affected disk from the alert labels (``instance`` and
+   ``device``).
+
+2. Review the spare and threshold values:
+
+   .. code-block:: console
+
+     smartctl -a /dev/<device> | grep -iE 'available_spare'
+
+3. Cross-check the NVMe ``critical_warning`` field, which the controller
+   sets in parallel:
+
+   .. code-block:: console
+
+     smartctl -a /dev/<device> | grep -i 'critical warning'
+
+4. Migrate any data off the disk and order an emergency replacement. Don't
+   wait for the next maintenance window.
+
+``SmartctlDiskCriticalWarning``
+================================
+
+This alert fires when an NVMe drive's ``critical_warning`` bitfield is
+non-zero. The controller sets bits to indicate available spare below
+threshold, temperature above critical, NVM subsystem reliability degraded,
+media in read-only mode, or volatile-memory backup failed. Any non-zero
+value is the manufacturer's own signal that the drive is unsafe.
+
+**Likely Root Causes**
+
+- Available spare exhausted (bit 0)
+- Temperature exceeded the drive's own critical threshold (bit 1)
+- NVM subsystem reliability degraded (bit 2)
+- Media in read-only mode (bit 3)
+- Volatile-memory backup device failed (bit 4)
+
+**Diagnostic and Remediation Steps**
+
+1. Identify the affected disk from the alert labels (``instance`` and
+   ``device``).
+
+2. Decode which bit is set:
+
+   .. code-block:: console
+
+     smartctl -a /dev/<device> | grep -iA1 'critical warning'
+
+3. Address the underlying cause: cooling for temperature, replacement for
+   reliability/media-read-only/spare-exhausted.
+
+4. Migrate data and replace the drive. Treat any non-zero
+   ``critical_warning`` as an imminent-failure signal.
+
+``SmartctlDiskMediaErrorsGrowing``
+===================================
+
+This alert fires when an NVMe drive's ``media_errors`` counter increased
+over the last 24 hours. The counter records occurrences where the
+controller could not recover data via ECC. A stable non-zero count from
+historical events is harmless, but ongoing growth means the media is
+actively degrading.
+
+**Likely Root Causes**
+
+- Media wear at end-of-life
+- A bad NAND die or controller bug
+- Sustained high temperatures damaging cells
+
+**Diagnostic and Remediation Steps**
+
+1. Identify the affected disk from the alert labels (``instance`` and
+   ``device``).
+
+2. Confirm the current count and trend:
+
+   .. code-block:: console
+
+     smartctl -a /dev/<device> | grep -i 'media.*errors'
+
+3. Compare against ``smartctl_device_percentage_used`` to decide whether
+   wear-out or a localized fault is the cause.
+
+4. Schedule replacement during the next maintenance window. If the rate
+   of growth is high, escalate to immediate replacement.
+
+``SmartctlDiskPendingSectors``
+===============================
+
+This alert fires when a SATA drive reports one or more sectors awaiting
+reallocation (``Current_Pending_Sector``, attribute 197). These are
+sectors the drive could not read or write reliably; they will be remapped
+to spare areas on the next write attempt. A persistent non-zero value
+indicates active media degradation.
+
+**Likely Root Causes**
+
+- Physical wear on platters or NAND cells
+- Mechanical shock or vibration
+- Read disturb errors on heavily-used SSD blocks
+
+**Diagnostic and Remediation Steps**
+
+1. Identify the affected disk from the alert labels (``instance`` and
+   ``device``).
+
+2. Check the current pending count and other reallocation attributes:
+
+   .. code-block:: console
+
+     smartctl -A /dev/<device> | grep -iE 'pending|reallocated|uncorrectable'
+
+3. Run a long self-test to force reallocation attempts:
+
+   .. code-block:: console
+
+     smartctl -t long /dev/<device>
+
+4. Re-check after the test completes (typically a few hours). If pending
+   sectors remain or grow, schedule replacement.
+
+``SmartctlDiskReallocatedSectorsGrowing``
+==========================================
+
+This alert fires when a SATA drive's ``Reallocated_Sector_Ct`` (attribute
+5) grew over the last 24 hours. A stable non-zero value (e.g., factory
+remapping) is harmless, but ongoing growth means the drive is actively
+remapping new bad sectors.
+
+**Likely Root Causes**
+
+- Physical wear or age-related degradation
+- Mechanical shock or vibration
 - Overheating causing intermittent write failures
 
 **Diagnostic and Remediation Steps**
@@ -1364,78 +1500,132 @@ errors and has permanently retired the affected sectors.
 1. Identify the affected disk from the alert labels (``instance`` and
    ``device``).
 
-2. Check the current reallocated sector count and other SMART attributes:
+2. Check the current count and trend:
 
    .. code-block:: console
 
-     smartctl -a /dev/<device>
+     smartctl -A /dev/<device> | grep -iE 'reallocated|pending'
 
-3. Monitor whether the count is growing:
+3. Plan replacement during the next maintenance window. If the count is
+   accelerating, escalate to an unplanned replacement.
 
-   .. code-block:: console
+``SmartctlDiskSelfTestFailed``
+===============================
 
-     kubectl -n monitoring exec svc/kube-prometheus-stack-prometheus -- \
-       promtool query instant http://localhost:9090 \
-       'smartctl_device_smart_attribute{smart_attribute_name="Reallocated_Sector_Ct", smart_attribute_type="raw"}'
-
-4. If the count is increasing, schedule the disk for replacement during the
-   next maintenance window. A growing count indicates active sector failures.
-
-5. If the count is stable and low (1-5), monitor the trend and plan a
-   replacement within the next quarter.
-
-``SmartctlDiskTemperatureHigh``
-================================
-
-This alert fires when a disk's current temperature exceeds 60°C for at least
-15 minutes. Sustained high temperatures accelerate flash memory wear on solid-state drives and can
-cause data loss or mechanical failure on hard drives.
+This alert fires when a drive reports one or more entries in its SMART
+self-test error log. Even one failed self-test indicates the drive could
+not complete an internal integrity check.
 
 **Likely Root Causes**
 
-- Inadequate server cooling or airflow around the disk bay
-- Failed or degraded cooling fans
-- High ambient temperature in the data center
-- Disk running a sustained heavy workload with insufficient cooling
+- Bad sectors detected during the self-test
+- Mechanical or electronics fault
+- Drive firmware or controller errors
 
 **Diagnostic and Remediation Steps**
 
 1. Identify the affected disk from the alert labels (``instance`` and
    ``device``).
 
-2. Check the current and historical temperatures:
+2. Review the self-test log:
+
+   .. code-block:: console
+
+     smartctl -l selftest /dev/<device>
+
+3. Run a fresh self-test to confirm the failure:
+
+   .. code-block:: console
+
+     smartctl -t long /dev/<device>
+
+4. If failures persist, plan replacement during the next maintenance
+   window.
+
+``SmartctlDiskTemperatureHigh``
+================================
+
+This alert fires when a disk's current temperature exceeds 65°C sustained
+for at least one hour. Brief spikes during heavy I/O are normal,
+especially on NVMe drives, but sustained high temperatures accelerate
+flash memory wear and can cause data loss or mechanical failure.
+
+**Likely Root Causes**
+
+- Inadequate server cooling or airflow around the disk bay
+- Failed or degraded cooling fans
+- High ambient temperature in the data center
+- Sustained heavy workload with insufficient cooling
+
+**Diagnostic and Remediation Steps**
+
+1. Identify the affected disk from the alert labels (``instance`` and
+   ``device``).
+
+2. Check current and historical temperatures:
 
    .. code-block:: console
 
      smartctl -a /dev/<device> | grep -i temperature
 
-3. Check the server's fan speeds and cooling status using IPMI:
+3. Check the server's fan speeds via IPMI:
 
    .. code-block:: console
 
      ipmitool sdr type Fan
 
 4. Inspect airflow paths for obstruction. Verify that the disk bay isn't
-   blocked and that cooling is adequate.
+   blocked.
 
-5. If the server room ambient temperature has risen, escalate to facilities.
+5. If ambient temperature has risen, escalate to facilities.
 
-6. If cooling is adequate but the disk consistently runs hot, consider
-   replacing it with a model rated for higher operating temperatures.
+``SmartctlDiskUncorrectableSectors``
+=====================================
+
+This alert fires when a SATA drive reports one or more offline-uncorrectable
+sectors (``Offline_Uncorrectable``, attribute 198). These are sectors the
+drive could not recover during background scans, indicating confirmed
+unrecoverable data loss in those LBAs.
+
+**Likely Root Causes**
+
+- Physical damage to platters
+- Severe NAND wear
+- Mechanical shock
+
+**Diagnostic and Remediation Steps**
+
+1. Identify the affected disk from the alert labels (``instance`` and
+   ``device``).
+
+2. Determine which files (if any) live on the affected sectors:
+
+   .. code-block:: console
+
+     smartctl -a /dev/<device>
+
+3. Check filesystem integrity (offline if necessary):
+
+   .. code-block:: console
+
+     fsck -nv /dev/<device>
+
+4. Migrate any data off the disk and replace it. Don't return the drive
+   to service.
 
 ``SmartctlDiskUnhealthy``
 ==========================
 
-This alert fires when a disk fails its SMART overall health self-assessment
-test (``smartctl_device_smart_status == 0``). A failed health test indicates
-that the drive's own firmware predicts imminent failure. Replace the disk
-immediately to prevent data loss.
+This alert fires when a disk fails its SMART overall-health
+self-assessment (``smartctl_device_smart_status == 0``). The drive
+firmware predicts imminent failure. Replace the disk immediately to
+prevent data loss.
 
 **Likely Root Causes**
 
-- The disk has exceeded its rated endurance (SSD wear-out)
-- The number of reallocated, pending, or uncorrectable sectors has crossed
-  the threshold the drive manufacturer considers critical
+- The disk has exceeded its rated endurance
+- Reallocated, pending, or uncorrectable sector counts crossed the
+  manufacturer's critical threshold
 - Catastrophic hardware failure or firmware corruption
 
 **Diagnostic and Remediation Steps**
@@ -1443,39 +1633,29 @@ immediately to prevent data loss.
 1. Identify the affected disk from the alert labels (``instance`` and
    ``device``).
 
-2. Verify the SMART health status and review all SMART attributes:
+2. Verify SMART health and review all attributes:
 
    .. code-block:: console
 
      smartctl -H /dev/<device>
      smartctl -a /dev/<device>
 
-3. Check for reallocated, pending, and uncorrectable sectors:
+3. Migrate data immediately to a healthy replica. Don't defer.
 
-   .. code-block:: console
-
-     kubectl -n monitoring exec svc/kube-prometheus-stack-prometheus -- \
-       promtool query instant http://localhost:9090 \
-       'smartctl_device_smart_attribute{smart_attribute_name=~"Reallocated_Sector_Ct|Current_Pending_Sector|Offline_Uncorrectable", smart_attribute_type="raw"}'
-
-4. Immediately migrate any data stored on the affected disk to a healthy
-   disk or replica. Don't defer this step.
-
-5. Order a replacement disk and schedule an emergency replacement. Don't
-   wait for a maintenance window when a health test has failed.
+4. Order an emergency replacement; don't wait for a maintenance window.
 
 ``SmartctlDiskWearoutCritical``
 ================================
 
 This alert fires when a disk reports more than 90% of its rated endurance
-used (``smartctl_device_percentage_used > 90``), sustained for at least 5
-minutes. At this wear level, the drive's manufacturer considers failure likely
-in the near term. Plan immediate replacement.
+used (``smartctl_device_percentage_used > 90``) sustained for at least
+15 minutes. At this wear level the manufacturer considers near-term
+failure likely.
 
 **Likely Root Causes**
 
 - The disk has been in heavy write workloads for an extended period
-- The disk had a write workload that exceeded its capacity (write amplification)
+- A workload exceeded the disk's rated endurance (write amplification)
 - The disk is approaching end of its rated lifetime
 
 **Diagnostic and Remediation Steps**
@@ -1483,88 +1663,38 @@ in the near term. Plan immediate replacement.
 1. Identify the affected disk from the alert labels (``instance`` and
    ``device``).
 
-2. Check the current wear level:
+2. Confirm the wear level:
 
    .. code-block:: console
 
      smartctl -a /dev/<device> | grep -i percentage_used
 
-3. Review write workload on the affected node to determine whether the disk
-   was appropriately sized.
+3. Review workload sizing. If the disk was undersized for its workload,
+   plan a higher-endurance class for the replacement.
 
-4. Order a replacement disk immediately. Schedule replacement during the next
-   maintenance window, or sooner if the disk also triggers
-   ``SmartctlDiskUnhealthy``.
+4. Order a replacement. Schedule replacement during the next maintenance
+   window, sooner if ``SmartctlDiskUnhealthy`` also fires.
 
 ``SmartctlDiskWearoutWarning``
 ================================
 
 This alert fires when a disk reports more than 75% of its rated endurance
-used (``smartctl_device_percentage_used > 75``), sustained for at least 15
-minutes. At this wear level, the disk still operates within specification but
-is approaching the end of its rated lifetime.
+used (``smartctl_device_percentage_used > 75``) sustained for at least
+one hour. The disk still operates within specification but is approaching
+end of life. Suppressed automatically when ``SmartctlDiskWearoutCritical``
+fires for the same disk.
 
 **Likely Root Causes**
 
 - The disk has been in heavy write workloads for an extended period
-- The disk had a write workload that exceeded its capacity (write amplification)
+- A workload exceeded the disk's rated endurance (write amplification)
 
 **Diagnostic and Remediation Steps**
 
 1. Identify the affected disk from the alert labels (``instance`` and
    ``device``).
 
-2. Check the current wear level and trend over time in Grafana dashboards or
-   via Prometheus:
+2. Check the wear trend in Grafana or Prometheus to estimate time to
+   failure.
 
-   .. code-block:: console
-
-     kubectl -n monitoring exec svc/kube-prometheus-stack-prometheus -- \
-       promtool query instant http://localhost:9090 \
-       'smartctl_device_percentage_used'
-
-3. Plan a disk replacement during the next scheduled maintenance window.
-
-4. If the wear level is increasing fast, escalate to
-   ``SmartctlDiskWearoutCritical`` urgency and replace sooner.
-
-``SmartctlExporterDown``
-=========================
-
-This alert fires when the Smartctl exporter on a bare-metal node has been
-unreachable by Prometheus for more than 15 minutes. While the node itself may
-still be running, disk health monitoring is unavailable, creating a blind spot
-for early disk failure detection.
-
-**Likely Root Causes**
-
-- The ``smartctl-exporter`` DaemonSet pod has crashed or been evicted
-- A network policy is blocking Prometheus from reaching the exporter port
-- The node is under heavy load and the exporter is unresponsive
-
-**Diagnostic and Remediation Steps**
-
-1. Identify the affected node from the alert label (``instance``).
-
-2. Check the status of the ``smartctl-exporter`` pod on the affected node:
-
-   .. code-block:: console
-
-     kubectl -n monitoring get pods -l application=smartctl-exporter \
-       -o wide | grep <node-name>
-
-3. Review the pod logs for errors:
-
-   .. code-block:: console
-
-     kubectl -n monitoring logs -l application=smartctl-exporter \
-       --field-selector spec.nodeName=<node-name>
-
-4. If the pod is crashing, describe it to see events:
-
-   .. code-block:: console
-
-     kubectl -n monitoring describe pod <pod-name>
-
-5. If the pod is healthy but unreachable, verify that Prometheus can access
-   port 9633 on the node. Check network policies and firewall rules.
+3. Plan a replacement during the next scheduled maintenance window.

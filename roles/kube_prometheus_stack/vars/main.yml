@@ -70,13 +70,39 @@ _kube_prometheus_stack_helm_values:
           target_matchers:
             - alertname = "CoreDNSLowErrorBudgetBurn"
         - source_matchers:
+            - alertname =~ "KubeNodeNotReady|KubeNodeUnreachable|NodeDown"
+          target_matchers:
+            - alertname =~ "Smartctl.*"
+          equal:
+            - instance
+        - source_matchers:
+            - alertname = "SmartctlDiskUnhealthy"
+          target_matchers:
+            - alertname =~ "SmartctlDisk(CriticalWarning|AvailableSpareLow|WearoutCritical|WearoutWarning|PendingSectors|UncorrectableSectors|MediaErrorsGrowing|ReallocatedSectorsGrowing|TemperatureHigh|SelfTestFailed)"
+          equal:
+            - instance
+            - device
+        - source_matchers:
+            - alertname = "SmartctlDiskCriticalWarning"
+          target_matchers:
+            - alertname =~ "SmartctlDisk(AvailableSpareLow|WearoutCritical|WearoutWarning|TemperatureHigh|MediaErrorsGrowing|SelfTestFailed)"
+          equal:
+            - instance
+            - device
+        - source_matchers:
+            - alertname = "SmartctlDiskAvailableSpareLow"
+          target_matchers:
+            - alertname =~ "SmartctlDiskWearout(Critical|Warning)"
+          equal:
+            - instance
+            - device
+        - source_matchers:
             - alertname = "SmartctlDiskWearoutCritical"
           target_matchers:
             - alertname = "SmartctlDiskWearoutWarning"
           equal:
             - instance
             - device
-            - namespace
       route:
         group_by:
           - alertname
