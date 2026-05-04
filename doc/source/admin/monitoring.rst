@@ -1684,11 +1684,11 @@ flash memory wear and can cause data loss or mechanical failure.
 ============================================
 
 This alert fires when a SATA drive's ``Offline_Uncorrectable`` (attribute
-198) grew over the last 24 hours. A stable non-zero count is harmless;
-those sectors represent already-acknowledged bad blocks. Ongoing growth
-means the drive is finding new sectors it can't recover during background
-scans, indicating confirmed unrecoverable data loss in newly affected
-LBAs.
+198) grew over the last 24 hours. A stable non-zero count is harmless
+because those sectors represent already-acknowledged bad blocks. Ongoing
+growth means the drive is finding new sectors it can't recover during
+background scans, indicating confirmed unrecoverable data loss in newly
+affected LBAs.
 
 **Likely Root Causes**
 
