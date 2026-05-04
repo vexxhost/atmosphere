@@ -51,9 +51,35 @@
               severity: 'P3',
             },
             annotations: {
-              summary: 'Disk: wear level critical',
-              description: 'The disk {{ $labels.device }} on node {{ $labels.instance }} reports {{ $value }}% of its rated endurance used (smartctl_device_percentage_used), exceeding the 90% threshold. Plan immediate replacement. Normal operating range is below 75%.',
+              summary: 'Disk: NVMe wear level critical',
+              description: 'The NVMe disk {{ $labels.device }} on node {{ $labels.instance }} reports {{ $value }}% of its rated endurance used (smartctl_device_percentage_used), exceeding the 90% threshold. Plan immediate replacement. Normal operating range is below 75%. (NVMe-only; SATA drives are covered by SmartctlDiskAttributeFailing.)',
               runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskwearoutcritical',
+            },
+          },
+          {
+            alert: 'SmartctlDiskAttributeFailing',
+            expr: '(smartctl_device_attribute{attribute_value_type="value"} <= on(instance, device, attribute_id) smartctl_device_attribute{attribute_value_type="thresh"}) and on(instance, device, attribute_id) (smartctl_device_attribute{attribute_value_type="thresh"} > 0)',
+            'for': '5m',
+            labels: {
+              severity: 'P2',
+            },
+            annotations: {
+              summary: 'Disk: SMART attribute below failure threshold',
+              description: 'The SMART attribute {{ $labels.attribute_name }} (id {{ $labels.attribute_id }}) on disk {{ $labels.device }} on node {{ $labels.instance }} has dropped to a normalized value of {{ $value }}, at or below the threshold the drive firmware uses to declare the attribute failing. Normal is for the value to stay well above its threshold. The drive itself is signalling imminent failure of this attribute (e.g., wear-leveling, reallocation, or a vendor-specific prefailure indicator).',
+              runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskattributefailing',
+            },
+          },
+          {
+            alert: 'SmartctlDiskScsiUncorrectedErrors',
+            expr: 'increase(smartctl_read_total_uncorrected_errors[24h]) > 0 or increase(smartctl_write_total_uncorrected_errors[24h]) > 0',
+            'for': '15m',
+            labels: {
+              severity: 'P3',
+            },
+            annotations: {
+              summary: 'Disk: SCSI/SAS uncorrected I/O errors',
+              description: 'The SCSI/SAS disk {{ $labels.device }} on node {{ $labels.instance }} accumulated {{ $value }} new uncorrected read/write errors in the last 24 hours. Normal is zero growth: any non-zero increase indicates the drive could not recover I/O via on-disk ECC, which means data loss or imminent failure.',
+              runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskscsiuncorrectederrors',
             },
           },
           {
@@ -103,9 +129,22 @@
               severity: 'P4',
             },
             annotations: {
-              summary: 'Disk: wear level elevated',
-              description: 'The disk {{ $labels.device }} on node {{ $labels.instance }} reports {{ $value }}% of its rated endurance used (smartctl_device_percentage_used), exceeding the 75% threshold. Plan replacement during the next maintenance window. Normal operating range is below 75%.',
+              summary: 'Disk: NVMe wear level elevated',
+              description: 'The NVMe disk {{ $labels.device }} on node {{ $labels.instance }} reports {{ $value }}% of its rated endurance used (smartctl_device_percentage_used), exceeding the 75% threshold. Plan replacement during the next maintenance window. Normal operating range is below 75%. (NVMe-only; SATA drives are covered by SmartctlDiskAttributeFailing.)',
               runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskwearoutwarning',
+            },
+          },
+          {
+            alert: 'SmartctlDiskScsiGrownDefectsGrowing',
+            expr: 'increase(smartctl_scsi_grown_defect_list[24h]) > 0',
+            'for': '1h',
+            labels: {
+              severity: 'P4',
+            },
+            annotations: {
+              summary: 'Disk: SCSI/SAS grown defect list growing',
+              description: 'The SCSI/SAS disk {{ $labels.device }} on node {{ $labels.instance }} added {{ $value }} entries to its grown defect list in the last 24 hours. Normal is zero growth: a stable non-zero count is harmless, but ongoing growth means the drive is actively reallocating bad blocks.',
+              runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskscsigrowndefectsgrowing',
             },
           },
           {

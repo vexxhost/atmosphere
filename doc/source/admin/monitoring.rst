@@ -1345,6 +1345,44 @@ behind it:
   openstack server list --all-projects --long -n --ip $IP
 
 
+``SmartctlDiskAttributeFailing``
+=================================
+
+This alert fires when a SMART attribute's normalized value drops at or
+below the per-attribute failure threshold the drive firmware itself
+defines (``smartctl_device_attribute{attribute_value_type="value"}`` is
+``<=`` the matching ``thresh``, where ``thresh > 0``). This is the
+drive's own declaration that one of its prefailure attributes has
+crossed into the failing zone — common cases are end-of-life wear
+indicators on SATA SSDs and reallocation/pending-sector counters whose
+normalized values have decayed below the firmware threshold. Suppressed
+when ``SmartctlDiskUnhealthy`` already fires for the same disk.
+
+**Likely Root Causes**
+
+- SATA SSD wear-out (vendor wearout indicator below threshold)
+- Sustained reallocation pressure dropping the normalized
+  ``Reallocated_Sector_Ct`` value
+- Any vendor-specific prefailure attribute the drive deems failing
+
+**Diagnostic and Remediation Steps**
+
+1. Identify the affected disk and attribute from the alert labels
+   (``instance``, ``device``, ``attribute_id``, ``attribute_name``).
+
+2. Inspect all SMART attributes and note any flagged ``FAILING_NOW``:
+
+   .. code-block:: console
+
+     smartctl -A /dev/<device>
+
+3. Cross-check against ``SmartctlDiskUnhealthy``: if both fire, the
+   overall SMART status is also failing — replace immediately.
+
+4. If only this alert fires, the drive is still functional but the
+   firmware predicts the attribute will continue to degrade. Plan
+   replacement during the next maintenance window.
+
 ``SmartctlDiskAvailableSpareLow``
 ==================================
 
@@ -1509,6 +1547,67 @@ remapping new bad sectors.
 3. Plan replacement during the next maintenance window. If the count is
    accelerating, escalate to an unplanned replacement.
 
+``SmartctlDiskScsiGrownDefectsGrowing``
+========================================
+
+This alert fires when a SCSI/SAS drive's grown defect list
+(``smartctl_scsi_grown_defect_list``) gains entries over the last 24
+hours. A stable non-zero count is harmless; ongoing growth means the
+drive is actively reallocating bad blocks and is the SAS analog of
+``SmartctlDiskReallocatedSectorsGrowing``.
+
+**Likely Root Causes**
+
+- Mechanical wear on SAS HDD platters
+- Vibration or shock damage
+- Approaching end of rated life
+
+**Diagnostic and Remediation Steps**
+
+1. Identify the affected disk from the alert labels (``instance`` and
+   ``device``).
+
+2. Review the defect list and SMART attributes:
+
+   .. code-block:: console
+
+     smartctl -a /dev/<device>
+
+3. Plan replacement during the next maintenance window. Escalate if
+   growth is accelerating or if ``SmartctlDiskScsiUncorrectedErrors``
+   also fires for the same drive.
+
+``SmartctlDiskScsiUncorrectedErrors``
+======================================
+
+This alert fires when a SCSI/SAS drive's read or write
+total-uncorrected-error counter
+(``smartctl_read_total_uncorrected_errors`` /
+``smartctl_write_total_uncorrected_errors``) increases over the last 24
+hours. Any non-zero growth means the drive could not recover I/O via
+on-disk ECC — confirmed data loss for the affected blocks.
+
+**Likely Root Causes**
+
+- Severe media degradation
+- Mechanical or electronics fault
+- SAS bus errors hammering the drive
+
+**Diagnostic and Remediation Steps**
+
+1. Identify the affected disk from the alert labels (``instance`` and
+   ``device``).
+
+2. Inspect the SCSI error counter log and overall health:
+
+   .. code-block:: console
+
+     smartctl -l error /dev/<device>
+     smartctl -a /dev/<device>
+
+3. Migrate any data off the disk and replace it. Don't return the drive
+   to service.
+
 ``SmartctlDiskSelfTestFailed``
 ===============================
 
@@ -1647,10 +1746,12 @@ prevent data loss.
 ``SmartctlDiskWearoutCritical``
 ================================
 
-This alert fires when a disk reports more than 90% of its rated endurance
-used (``smartctl_device_percentage_used > 90``) sustained for at least
-15 minutes. At this wear level the manufacturer considers near-term
-failure likely.
+This alert fires when an NVMe drive reports more than 90% of its rated
+endurance used (``smartctl_device_percentage_used > 90``) sustained for
+at least 15 minutes. At this wear level the manufacturer considers
+near-term failure likely. SATA drives are covered by
+``SmartctlDiskAttributeFailing`` instead, since they expose wear via
+vendor-specific normalized attributes rather than ``percentage_used``.
 
 **Likely Root Causes**
 
@@ -1678,11 +1779,12 @@ failure likely.
 ``SmartctlDiskWearoutWarning``
 ================================
 
-This alert fires when a disk reports more than 75% of its rated endurance
-used (``smartctl_device_percentage_used > 75``) sustained for at least
-one hour. The disk still operates within specification but is approaching
-end of life. Suppressed automatically when ``SmartctlDiskWearoutCritical``
-fires for the same disk.
+This alert fires when an NVMe drive reports more than 75% of its rated
+endurance used (``smartctl_device_percentage_used > 75``) sustained for
+at least one hour. The drive still operates within specification but is
+approaching end of life. Suppressed automatically when
+``SmartctlDiskWearoutCritical`` fires for the same disk. SATA drives are
+covered by ``SmartctlDiskAttributeFailing`` instead.
 
 **Likely Root Causes**
 
