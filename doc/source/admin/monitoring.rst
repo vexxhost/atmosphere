@@ -1484,14 +1484,14 @@ actively degrading.
 4. Schedule replacement during the next maintenance window. If the rate
    of growth is high, escalate to immediate replacement.
 
-``SmartctlDiskPendingSectors``
-===============================
+``SmartctlDiskPendingSectorsGrowing``
+======================================
 
-This alert fires when a SATA drive reports one or more sectors awaiting
-reallocation (``Current_Pending_Sector``, attribute 197). These are
-sectors the drive couldn't read or write reliably. The drive will remap
-them to spare areas on the next write attempt. A persistent non-zero
-value indicates active media degradation.
+This alert fires when a SATA drive's ``Current_Pending_Sector`` (attribute
+197) grew over the last 24 hours. A stable non-zero count is harmless
+(those sectors will be remapped on the next write attempt), but ongoing
+growth indicates active media degradation: the drive is encountering new
+sectors it can't read or write reliably.
 
 **Likely Root Causes**
 
@@ -1517,7 +1517,7 @@ value indicates active media degradation.
      smartctl -t long /dev/<device>
 
 4. Re-check after the test completes (typically a few hours). If pending
-   sectors remain or grow, schedule replacement.
+   sectors continue to grow, schedule replacement.
 
 ``SmartctlDiskReallocatedSectorsGrowing``
 ==========================================
@@ -1680,13 +1680,15 @@ flash memory wear and can cause data loss or mechanical failure.
 
 5. If ambient temperature has risen, escalate to facilities.
 
-``SmartctlDiskUncorrectableSectors``
-=====================================
+``SmartctlDiskUncorrectableSectorsGrowing``
+============================================
 
-This alert fires when a SATA drive reports one or more offline-uncorrectable
-sectors (``Offline_Uncorrectable``, attribute 198). These are sectors the
-drive couldn't recover during background scans, indicating confirmed
-unrecoverable data loss in those LBAs.
+This alert fires when a SATA drive's ``Offline_Uncorrectable`` (attribute
+198) grew over the last 24 hours. A stable non-zero count is harmless
+(those sectors represent already-acknowledged bad blocks), but ongoing
+growth means the drive is finding new sectors it can't recover during
+background scans — confirmed unrecoverable data loss in newly affected
+LBAs.
 
 **Likely Root Causes**
 

@@ -83,29 +83,29 @@
             },
           },
           {
-            alert: 'SmartctlDiskPendingSectors',
-            expr: 'smartctl_device_attribute{attribute_id="197",attribute_value_type="raw"} > 0',
-            'for': '30m',
+            alert: 'SmartctlDiskPendingSectorsGrowing',
+            expr: 'increase(smartctl_device_attribute{attribute_id="197",attribute_value_type="raw"}[24h]) > 0',
+            'for': '1h',
             labels: {
               severity: 'P3',
             },
             annotations: {
-              summary: 'Disk: pending sectors detected',
-              description: 'The SATA disk {{ $labels.device }} on node {{ $labels.instance }} reports {{ $value }} sectors awaiting reallocation (Current_Pending_Sector, attribute 197). Normal is 0. These sectors have failed I/O and will be remapped to spare areas on next write attempt; persistent non-zero values indicate active media degradation.',
-              runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskpendingsectors',
+              summary: 'Disk: pending sector count growing',
+              description: 'The SATA disk {{ $labels.device }} on node {{ $labels.instance }} added {{ $value }} sectors awaiting reallocation in the last 24 hours (Current_Pending_Sector, attribute 197). Normal is zero growth: a stable non-zero count is harmless (those sectors will be remapped on next write), but ongoing growth indicates active media degradation.',
+              runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskpendingsectorsgrowing',
             },
           },
           {
-            alert: 'SmartctlDiskUncorrectableSectors',
-            expr: 'smartctl_device_attribute{attribute_id="198",attribute_value_type="raw"} > 0',
-            'for': '30m',
+            alert: 'SmartctlDiskUncorrectableSectorsGrowing',
+            expr: 'increase(smartctl_device_attribute{attribute_id="198",attribute_value_type="raw"}[24h]) > 0',
+            'for': '1h',
             labels: {
               severity: 'P3',
             },
             annotations: {
-              summary: 'Disk: uncorrectable sectors detected',
-              description: 'The SATA disk {{ $labels.device }} on node {{ $labels.instance }} reports {{ $value }} offline-uncorrectable sectors (Offline_Uncorrectable, attribute 198). Normal is 0. These are sectors the drive could not recover during background scans, indicating confirmed unrecoverable data loss in those LBAs.',
-              runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskuncorrectablesectors',
+              summary: 'Disk: uncorrectable sector count growing',
+              description: 'The SATA disk {{ $labels.device }} on node {{ $labels.instance }} added {{ $value }} offline-uncorrectable sectors in the last 24 hours (Offline_Uncorrectable, attribute 198). Normal is zero growth: a stable non-zero count is harmless, but ongoing growth indicates confirmed unrecoverable data loss in newly affected LBAs.',
+              runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskuncorrectablesectorsgrowing',
             },
           },
           {

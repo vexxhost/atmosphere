@@ -1127,24 +1127,24 @@ tests:
               description: 'The NVMe disk /dev/sda on node 192.0.2.10 reports 95% of its rated endurance used (smartctl_device_percentage_used), exceeding the 90% threshold. Plan immediate replacement. Normal operating range is below 75%. (NVMe-only; SATA drives are covered by SmartctlDiskAttributeFailing.)'
               runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskwearoutcritical"
 
-  # SmartctlDiskPendingSectors - should NOT fire when count is 0
+  # SmartctlDiskPendingSectorsGrowing - should NOT fire when count is stable (no growth)
   - interval: 1m
     input_series:
       - series: 'smartctl_device_attribute{device="/dev/sda",instance="192.0.2.10",attribute_id="197",attribute_name="Current_Pending_Sector",attribute_value_type="raw"}'
-        values: '0x40'
+        values: '4x1500'
     alert_rule_test:
-      - eval_time: 31m
-        alertname: SmartctlDiskPendingSectors
+      - eval_time: 25h
+        alertname: SmartctlDiskPendingSectorsGrowing
         exp_alerts: []
 
-  # SmartctlDiskPendingSectors - should fire when count > 0
+  # SmartctlDiskPendingSectorsGrowing - should fire when count grows over 24h
   - interval: 1m
     input_series:
       - series: 'smartctl_device_attribute{device="/dev/sda",instance="192.0.2.10",attribute_id="197",attribute_name="Current_Pending_Sector",attribute_value_type="raw"}'
-        values: '3x40'
+        values: '0+1x1500'
     alert_rule_test:
-      - eval_time: 31m
-        alertname: SmartctlDiskPendingSectors
+      - eval_time: 25h
+        alertname: SmartctlDiskPendingSectorsGrowing
         exp_alerts:
           - exp_labels:
               severity: P3
@@ -1154,28 +1154,28 @@ tests:
               attribute_name: Current_Pending_Sector
               attribute_value_type: raw
             exp_annotations:
-              summary: "Disk: pending sectors detected"
-              description: 'The SATA disk /dev/sda on node 192.0.2.10 reports 3 sectors awaiting reallocation (Current_Pending_Sector, attribute 197). Normal is 0. These sectors have failed I/O and will be remapped to spare areas on next write attempt; persistent non-zero values indicate active media degradation.'
-              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskpendingsectors"
+              summary: "Disk: pending sector count growing"
+              description: 'The SATA disk /dev/sda on node 192.0.2.10 added 1440 sectors awaiting reallocation in the last 24 hours (Current_Pending_Sector, attribute 197). Normal is zero growth: a stable non-zero count is harmless (those sectors will be remapped on next write), but ongoing growth indicates active media degradation.'
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskpendingsectorsgrowing"
 
-  # SmartctlDiskUncorrectableSectors - should NOT fire when count is 0
+  # SmartctlDiskUncorrectableSectorsGrowing - should NOT fire when count is stable (no growth)
   - interval: 1m
     input_series:
       - series: 'smartctl_device_attribute{device="/dev/sda",instance="192.0.2.10",attribute_id="198",attribute_name="Offline_Uncorrectable",attribute_value_type="raw"}'
-        values: '0x40'
+        values: '2x1500'
     alert_rule_test:
-      - eval_time: 31m
-        alertname: SmartctlDiskUncorrectableSectors
+      - eval_time: 25h
+        alertname: SmartctlDiskUncorrectableSectorsGrowing
         exp_alerts: []
 
-  # SmartctlDiskUncorrectableSectors - should fire when count > 0
+  # SmartctlDiskUncorrectableSectorsGrowing - should fire when count grows over 24h
   - interval: 1m
     input_series:
       - series: 'smartctl_device_attribute{device="/dev/sda",instance="192.0.2.10",attribute_id="198",attribute_name="Offline_Uncorrectable",attribute_value_type="raw"}'
-        values: '2x40'
+        values: '0+1x1500'
     alert_rule_test:
-      - eval_time: 31m
-        alertname: SmartctlDiskUncorrectableSectors
+      - eval_time: 25h
+        alertname: SmartctlDiskUncorrectableSectorsGrowing
         exp_alerts:
           - exp_labels:
               severity: P3
@@ -1185,9 +1185,9 @@ tests:
               attribute_name: Offline_Uncorrectable
               attribute_value_type: raw
             exp_annotations:
-              summary: "Disk: uncorrectable sectors detected"
-              description: 'The SATA disk /dev/sda on node 192.0.2.10 reports 2 offline-uncorrectable sectors (Offline_Uncorrectable, attribute 198). Normal is 0. These are sectors the drive could not recover during background scans, indicating confirmed unrecoverable data loss in those LBAs.'
-              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskuncorrectablesectors"
+              summary: "Disk: uncorrectable sector count growing"
+              description: 'The SATA disk /dev/sda on node 192.0.2.10 added 1440 offline-uncorrectable sectors in the last 24 hours (Offline_Uncorrectable, attribute 198). Normal is zero growth: a stable non-zero count is harmless, but ongoing growth indicates confirmed unrecoverable data loss in newly affected LBAs.'
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskuncorrectablesectorsgrowing"
 
   # SmartctlDiskMediaErrorsGrowing - should NOT fire when count is stable (no growth)
   - interval: 1m
