@@ -56,6 +56,15 @@ which gives you the most granular control.
 
     $ ansible-playbook -i hosts.ini playbooks/site.yml
 
+Alternatively, run the parallel orchestrator, which deploys independent
+components concurrently:
+
+.. code-block:: console
+
+    $ atmosphere deploy --inventory hosts.ini
+
+For details, see :doc:`/deploy/parallel`.
+
 You can also run the Atmosphere provided playbooks by pointing to a specific
 playbook of the Ansible collection, in this case, the Ceph playbook:
 
