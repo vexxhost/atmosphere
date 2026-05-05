@@ -25,14 +25,27 @@ To verify the chain is wired up correctly, after the deployment
 finishes:
 
 ```bash
-# 1. Create a Magnum cluster pinned to the GPU-flavored BM nodes.
+# 1. Create a Magnum cluster pinned to the BM nodes.
+#
+# IMPORTANT — flavor choice:
+#   * --master-flavor MUST be a baremetal flavor (e.g. ``baremetal``) so the
+#     control plane lands on an Ironic node, NOT on the AIO host as a Nova
+#     KVM VM. If you omit ``--master-flavor`` Magnum will pick the Heat
+#     default (typically ``m1.small``/``m1.large``), which silently puts
+#     kube-apiserver on a VM and the cluster will *appear* to work but the
+#     emulation isn't end-to-end BM.
+#   * --flavor (worker) is ``baremetal-gpu`` so the GPU trait is consumed
+#     where the workload pods land. With only 2 emulated BM nodes this
+#     gives 1 BM master + 1 BM-GPU worker, which fits exactly.
+#   * If you want the master on GPU too, use ``baremetal-gpu`` for both
+#     and bump ``bm_emulator_node_count`` (or add a 3rd node manually).
 openstack coe cluster template create k8s-bm-gpu \
-    --image ubuntu-2204-kube-v1.34.3 \
-    --flavor baremetal-gpu --master-flavor baremetal-gpu \
+    --image ubuntu-2204-kube-v1.34.3-raw \
+    --flavor baremetal-gpu --master-flavor baremetal \
     --external-network public --network-driver calico \
     --keypair bmkey \
     --coe kubernetes --docker-storage-driver overlay2 \
-    --labels kube_tag=v1.34.3,boot_volume_size=0
+    --labels kube_tag=v1.34.3,boot_volume_size=20,octavia_provider=ovn
 openstack coe cluster create gpu-test --cluster-template k8s-bm-gpu \
     --master-count 1 --node-count 1
 openstack coe cluster config gpu-test --dir /tmp/gpu-test
