@@ -53,6 +53,42 @@
       tags:
         - kubernetes-node-labels
 
+# NOTE(rlin): AIO-BM with Magnum/CAPI + Ironic emulator pushes well past
+#             the kubelet default of maxPods=110 (sushy + ironic + magnum
+#             control plane + nova-compute-ironic + emulated BM workloads).
+#             Bump to 250 so the single AIO node can schedule everything.
+- hosts: "{{ target | default('all') }}"
+  become: true
+  gather_facts: false
+  tags:
+    - kubelet-max-pods
+  tasks:
+    - name: Set kubelet maxPods=250 in /var/lib/kubelet/config.yaml
+      ansible.builtin.lineinfile:
+        path: /var/lib/kubelet/config.yaml
+        regexp: '^maxPods:'
+        line: 'maxPods: 250'
+        create: false
+        state: present
+      register: _kubelet_max_pods
+      when: atmosphere_baremetal_emulator_enabled | default(false) | bool
+
+    - name: Ensure maxPods=250 is appended if missing
+      ansible.builtin.shell: |
+        grep -q '^maxPods:' /var/lib/kubelet/config.yaml || echo 'maxPods: 250' >> /var/lib/kubelet/config.yaml
+      args:
+        executable: /bin/bash
+      changed_when: false
+      when: atmosphere_baremetal_emulator_enabled | default(false) | bool
+
+    - name: Restart kubelet if maxPods changed
+      ansible.builtin.systemd:
+        name: kubelet
+        state: restarted
+      when:
+        - atmosphere_baremetal_emulator_enabled | default(false) | bool
+        - _kubelet_max_pods is changed
+
 # NOTE(mnaser): Add task to uninstall "unattended-upgrades" to avoid system
 #               upgrades during the deployment
 - hosts: "{{ target | default('all') }}"
