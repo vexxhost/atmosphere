@@ -256,11 +256,11 @@
             <memballoon model='virtio'>
               <address type='pci' domain='0x0000' bus='0x05' slot='0x00' function='0x0'/>
             </memballoon>
-{% if bm_emulator_gpu_enabled | default(false) | bool %}
+    {% if bm_emulator_gpu_enabled | default(false) | bool %}
             <video>
               <model type='virtio' heads='1' primary='no'/>
             </video>
-{% endif %}
+    {% endif %}
           </devices>
         </domain>
     END
@@ -370,11 +370,11 @@
             <memballoon model='virtio'>
               <address type='pci' domain='0x0000' bus='0x05' slot='0x00' function='0x0'/>
             </memballoon>
-{% if bm_emulator_gpu_enabled | default(false) | bool %}
+    {% if bm_emulator_gpu_enabled | default(false) | bool %}
             <video>
               <model type='virtio' heads='1' primary='no'/>
             </video>
-{% endif %}
+    {% endif %}
           </devices>
         </domain>
     END
@@ -433,9 +433,9 @@
     else
       openstack baremetal node create  --uuid 43ef224b-6e77-495d-8702-0745fdcad579 --chassis $chassis_id --driver redfish --name node-0 --resource-class baremetal --property cpu_arch=x86_64 --property capabilities=boot_mode:uefi --driver-info redfish_address=http://0.0.0.0:9132  --driver-info redfish_username=admin --driver-info redfish_password=password --driver-info redfish_system_id=/redfish/v1/Systems/node-0
       openstack baremetal node add trait 43ef224b-6e77-495d-8702-0745fdcad579 CUSTOM_GOLD
-{% if bm_emulator_gpu_enabled | default(false) | bool %}
+    {% if bm_emulator_gpu_enabled | default(false) | bool %}
       openstack baremetal node add trait 43ef224b-6e77-495d-8702-0745fdcad579 CUSTOM_GPU
-{% endif %}
+    {% endif %}
       openstack baremetal node manage  43ef224b-6e77-495d-8702-0745fdcad579 --wait
       openstack baremetal port create --node 43ef224b-6e77-495d-8702-0745fdcad579 52:54:00:b9:0b:41
       openstack baremetal port create --node 43ef224b-6e77-495d-8702-0745fdcad579 52:54:00:98:d6:b8
@@ -446,9 +446,9 @@
     else
       openstack baremetal node create  --uuid 6abb7cdf-66ab-441f-8f94-0dfa955a7716 --chassis $chassis_id --driver redfish --name node-1 --resource-class baremetal --property cpu_arch=x86_64 --property capabilities=boot_mode:uefi --driver-info redfish_address=http://0.0.0.0:9132  --driver-info redfish_username=admin --driver-info redfish_password=password --driver-info redfish_system_id=/redfish/v1/Systems/node-1
       openstack baremetal node add trait 6abb7cdf-66ab-441f-8f94-0dfa955a7716 CUSTOM_GOLD
-{% if bm_emulator_gpu_enabled | default(false) | bool %}
+    {% if bm_emulator_gpu_enabled | default(false) | bool %}
       openstack baremetal node add trait 6abb7cdf-66ab-441f-8f94-0dfa955a7716 CUSTOM_GPU
-{% endif %}
+    {% endif %}
       openstack baremetal node manage  6abb7cdf-66ab-441f-8f94-0dfa955a7716 --wait
       openstack baremetal port create --node 6abb7cdf-66ab-441f-8f94-0dfa955a7716 52:54:00:b7:de:53
       openstack baremetal port create --node 6abb7cdf-66ab-441f-8f94-0dfa955a7716 52:54:00:29:5d:5a
@@ -477,7 +477,7 @@
       openstack flavor set baremetal --property capabilities:boot_mode=uefi
       openstack flavor set baremetal --property trait:CUSTOM_GOLD=required
     fi
-{% if bm_emulator_gpu_enabled | default(false) | bool %}
+    {% if bm_emulator_gpu_enabled | default(false) | bool %}
     if openstack flavor show baremetal-gpu; then
       echo "flavor baremetal-gpu exists, skipping..."
     else
@@ -490,7 +490,7 @@
       openstack flavor set baremetal-gpu --property capabilities:boot_mode=uefi
       openstack flavor set baremetal-gpu --property trait:CUSTOM_GPU=required
     fi
-{% endif %}
+    {% endif %}
   args:
     executable: /bin/bash
   environment:
