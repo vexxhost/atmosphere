@@ -474,6 +474,19 @@ var Components = []Component{
 		Hosts:     "controllers",
 		DependsOn: []string{"keystone"},
 	},
+
+	// Ironic emulator (PlaybookType): runs the full PR 3385 playbook —
+	// OVS bridge wiring on every host, then sushy + ironic + emulator
+	// nodes on the controller, and finally a NodePort service for the
+	// Ironic API. Each task inside the playbook is gated by
+	// atmosphere_baremetal_emulator_enabled so it is a no-op when the
+	// emulator is disabled.
+	{
+		Name:      "ironic-emulator",
+		Type:      PlaybookType,
+		Playbook:  "ironic_emulator",
+		DependsOn: []string{"ovn", "nova", "neutron", "magnum", "openstack-cli"},
+	},
 }
 
 // BuildGraph constructs a DAG from the component registry.

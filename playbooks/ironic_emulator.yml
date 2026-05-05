@@ -1,41 +1,115 @@
 # Copyright (c) 2025 VEXXHOST, Inc.
 # SPDX-License-Identifier: Apache-2.0
 
-# Deploy Ironic itself via the parallel orchestrator pass-through so it picks
-# up the workspace-generated group_vars (endpoints.yml, secrets.yml, ...).
-- name: Deploy Ironic helm chart via atmosphere orchestrator
-  hosts: controllers[0]
+# Full Ironic emulator deployment, mirroring PR 3385.
+# Wired into the parallel orchestrator as a single PlaybookType
+# component (see internal/deploy/component.go: "ironic-emulator").
+
+- name: Configure Ironic network
+  hosts: all
   become: true
   tasks:
-    - name: Run ironic helm deploy through atmosphere binary
-      ansible.builtin.shell:
-        cmd: ./bin/atmosphere deploy --inventory ./inventory.yaml --tags ironic
-        chdir: "{{ playbook_dir }}/.."
-        executable: /bin/bash
+    - name: Get OVS pods info
+      kubernetes.core.k8s_info:
+        namespace: openstack
+        kind: Pod
+        label_selectors:
+          - application=openvswitch
+          - component=server
+      register: ovs_pod
+      when: atmosphere_baremetal_emulator_enabled | default(false) | bool
+
+    - name: Create "ironic-pxe" bridge
       changed_when: false
-      when:
-        - atmosphere_baremetal_emulator_enabled | default(false) | bool
+      kubernetes.core.k8s_exec:
+        namespace: openstack
+        pod: "{{ ovs_pod.resources[0].metadata.name }}"
+        command: ovs-vsctl --may-exist add-br ironic-pxe
+      when: atmosphere_baremetal_emulator_enabled | default(false) | bool
+
+    - name: Create connection between "ironic-pxe" and "br-ex"
+      changed_when: false
+      kubernetes.core.k8s_exec:
+        namespace: openstack
+        pod: "{{ ovs_pod.resources[0].metadata.name }}"
+        command: >-
+          ovs-vsctl
+          --may-exist add-port br-ex patch-ex-ironic-pxe
+          -- set interface patch-ex-ironic-pxe type=patch options:peer=patch-ironic-pxe-ex
+          -- set port patch-ex-ironic-pxe tag=4090
+          -- --may-exist add-port ironic-pxe patch-ironic-pxe-ex
+          -- set interface patch-ironic-pxe-ex type=patch options:peer=patch-ex-ironic-pxe
+      when: atmosphere_baremetal_emulator_enabled | default(false) | bool
+
+    - name: Create node ports on ironic-pxe
+      changed_when: false
+      kubernetes.core.k8s_exec:
+        namespace: openstack
+        pod: "{{ ovs_pod.resources[0].metadata.name }}"
+        command: >-
+          ovs-vsctl
+          --may-exist add-port ironic-pxe ovs-node-0i1
+          -- --may-exist add-port ironic-pxe ovs-node-0i2
+          -- --may-exist add-port ironic-pxe ovs-node-1i1
+          -- --may-exist add-port ironic-pxe ovs-node-1i2
+      when: atmosphere_baremetal_emulator_enabled | default(false) | bool
+
+    - name: Add IP address to "ironic-pxe"
+      changed_when: false
+      ansible.builtin.shell:
+        cmd: ip addr add 172.24.6.254/24 dev ironic-pxe || true
+      when: atmosphere_baremetal_emulator_enabled | default(false) | bool
+
+    - name: Set "ironic-pxe" interface to "up"
+      changed_when: false
+      ansible.builtin.shell:
+        cmd: ip link set ironic-pxe up || true
+      when: atmosphere_baremetal_emulator_enabled | default(false) | bool
+
+- name: Deploy Ironic, sushy, and emulator nodes
+  hosts: controllers[0]
+  become: true
+  roles:
+    - role: ironic
+      when: atmosphere_baremetal_emulator_enabled | default(false) | bool
       tags:
         - ironic
         - ironic-emulator
 
-- name: Deploy Ironic emulator (libvirt-backed BM nodes + sushy)
-  hosts: controllers[0]
-  become: true
-  tasks:
-    - name: Run sushy (Redfish emulator) role
-      ansible.builtin.import_role:
-        name: sushy
-      when:
-        - atmosphere_baremetal_emulator_enabled | default(false) | bool
+    - role: sushy
+      when: atmosphere_baremetal_emulator_enabled | default(false) | bool
       tags:
         - sushy
         - ironic-emulator
 
-    - name: Run ironic_emulator_nodes role
-      ansible.builtin.import_role:
-        name: ironic_emulator_nodes
-      when:
-        - atmosphere_baremetal_emulator_enabled | default(false) | bool
+    - role: ironic_emulator_nodes
+      when: atmosphere_baremetal_emulator_enabled | default(false) | bool
       tags:
+        - ironic-emulator-nodes
         - ironic-emulator
+
+- name: Expose Ironic API for clean network
+  hosts: all
+  become: true
+  tasks:
+    - name: Expose Ironic API with node port
+      when: atmosphere_baremetal_emulator_enabled | default(false) | bool
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          - apiVersion: v1
+            kind: Service
+            metadata:
+              name: ironic-api-nodeport
+              namespace: openstack
+            spec:
+              type: NodePort
+              selector:
+                application: ironic
+                component: api
+              ports:
+                - name: http
+                  port: 6385
+                  targetPort: 6385
+                  nodePort: 32574
+                  protocol: TCP
