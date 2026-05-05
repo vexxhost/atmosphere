@@ -69,12 +69,20 @@ of these workarounds until they land.
    external `vexxhost.ceph` collection, not this repo. Workaround:
    strip the task on the host before re-running. See the atmosphere
    skill's "Deployment Debugging" section.
-2. **mcapi BM driver.** `magnum-cluster-api` advertises only
+2. **mcapi BM driver.** Upstream `magnum-cluster-api` advertises only
    `server_type=vm`. To land BM clusters we currently set the
    cluster-template flavor to `baremetal` so Nova routes via
-   `nova-compute-ironic`. A proper fix is to add `server_type=bm` in
-   the mcapi driver's `provides()` (external repo
-   `vexxhost/magnum-cluster-api`).
+   `nova-compute-ironic`. A proper fix that adds `server_type=bm` to
+   each driver's `provides()` is staged on branch
+   [`add-server-type-bm`](https://github.com/vexxhost/magnum-cluster-api/tree/add-server-type-bm)
+   in `vexxhost/magnum-cluster-api` (commit `a73063a`). Until it
+   merges, install mcapi from that branch when redeploying this AIO,
+   e.g.:
+
+   ```bash
+   pip install \
+       git+https://github.com/vexxhost/magnum-cluster-api@add-server-type-bm
+   ```
 3. **k8s-keystone-auth chicken-and-egg.** Magnum cluster cloud-init
    wires `--authentication-token-webhook-config-file` and
    `--authorization-webhook-config-file` into the kube-apiserver
