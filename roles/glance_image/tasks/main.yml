@@ -40,7 +40,7 @@
 - name: Capture source ETag
   run_once: true
   ansible.builtin.set_fact:
-    _glance_image_source_etag: "{{ _glance_image_source_head.etag }}"
+    _glance_image_source_etag: "{{ _glance_image_source_head.etag | regex_replace('\"', '') }}"
 
 - name: Check if image exists
   run_once: true
