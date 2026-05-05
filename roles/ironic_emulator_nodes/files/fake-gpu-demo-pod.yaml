@@ -1,0 +1,48 @@
+# Demo pod proving end-to-end "GPU" passthrough on the emulator.
+#
+# Requires fake-gpu-device-plugin.yaml to already be applied to the
+# workload cluster.
+#
+# After ``kubectl apply -f fake-gpu-demo-pod.yaml``, run::
+#
+#   kubectl logs fake-gpu-demo
+#
+# Expected output (proving the chain libvirt -> ironic -> nova ->
+# kubelet -> pod works):
+#
+#   == lspci ==
+#   00:01.0 ... Virtio GPU
+#   == /dev/dri ==
+#   crw-rw---- 1 root video ... /dev/dri/card0
+#   == device file injected by kubelet ==
+#   /dev/dri/card0
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: fake-gpu-demo
+  namespace: default
+spec:
+  restartPolicy: Never
+  containers:
+    - name: demo
+      image: docker.io/library/alpine:3.20
+      command:
+        - sh
+        - -c
+        - |
+          set -ex
+          apk add --no-cache pciutils >/dev/null
+          echo "== lspci =="
+          lspci | grep -iE "vga|display|gpu" || true
+          echo "== /dev/dri =="
+          ls -l /dev/dri || true
+          echo "== /proc/self/status DEVICES env =="
+          env | grep -iE "DEVICE|GPU" || true
+          echo "== sleeping so kubectl describe still shows the device =="
+          sleep 600
+      resources:
+        limits:
+          vexxhost.com/fake-gpu: 1
+      securityContext:
+        privileged: false

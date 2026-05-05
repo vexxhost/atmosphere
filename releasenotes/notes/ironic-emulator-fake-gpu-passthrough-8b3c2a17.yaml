@@ -1,0 +1,16 @@
+---
+features:
+  - |
+    Added a ``bm_emulator_gpu_enabled`` toggle to the
+    ``ironic_emulator_nodes`` role for end-to-end testing of GPU
+    passthrough on the AIO Ironic emulator. When enabled, each
+    emulated bare metal libvirt domain is given a virtio-gpu device,
+    the Ironic nodes are tagged with the ``CUSTOM_GPU`` trait, and an
+    additional ``baremetal-gpu`` Nova flavor is created that requires
+    that trait. A reusable ``fake-gpu-device-plugin`` DaemonSet
+    manifest (using ``squat/generic-device-plugin``) and a demo pod
+    are also provided in ``roles/ironic_emulator_nodes/files/`` so the
+    full chain — Magnum cluster create -> Nova/Ironic deploy ->
+    libvirt virtio-gpu -> kubelet device plugin -> pod — can be
+    verified inside a Magnum/CAPI workload cluster without real GPU
+    hardware. See the role README for the full walkthrough.

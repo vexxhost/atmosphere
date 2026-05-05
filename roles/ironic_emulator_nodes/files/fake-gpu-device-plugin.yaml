@@ -1,0 +1,73 @@
+# Fake GPU device plugin for the Ironic emulator on Atmosphere AIO.
+#
+# This is meant to run *inside* a Magnum/CAPI Kubernetes cluster whose
+# worker nodes are emulated baremetal VMs created by the
+# ``ironic_emulator_nodes`` role with ``bm_emulator_gpu_enabled: true``.
+# Each such VM has a virtio-gpu device exposed via QEMU/libvirt, which
+# the Ubuntu kernel surfaces as ``/dev/dri/cardN``. This DaemonSet uses
+# squat/generic-device-plugin to advertise that file as the
+# ``vexxhost.com/fake-gpu`` extended resource so pods can request it
+# and have the device file mounted in.
+#
+# Apply with::
+#
+#   kubectl --kubeconfig=<workload-cluster-kubeconfig> \
+#       apply -f fake-gpu-device-plugin.yaml
+#
+# Then schedule any pod that requests ``vexxhost.com/fake-gpu: 1`` to
+# verify end-to-end passthrough (see ``fake-gpu-demo-pod.yaml``).
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: fake-gpu-device-plugin
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: fake-gpu-device-plugin
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: fake-gpu-device-plugin
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: fake-gpu-device-plugin
+    spec:
+      priorityClassName: system-node-critical
+      tolerations:
+        - operator: Exists
+      containers:
+        - name: generic-device-plugin
+          image: squat/generic-device-plugin:latest
+          args:
+            - --domain=vexxhost.com
+            - --device
+            - |
+              name: fake-gpu
+              groups:
+                - paths:
+                    - path: /dev/dri/card*
+          ports:
+            - containerPort: 8080
+              name: http
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: device-plugin
+              mountPath: /var/lib/kubelet/device-plugins
+            - name: dev
+              mountPath: /dev
+      volumes:
+        - name: device-plugin
+          hostPath:
+            path: /var/lib/kubelet/device-plugins
+        - name: dev
+          hostPath:
+            path: /dev
