@@ -5,6 +5,15 @@
   hosts: controllers[0]
   become: true
   tasks:
+    - name: Run sushy (Redfish emulator) role
+      ansible.builtin.import_role:
+        name: sushy
+      when:
+        - atmosphere_baremetal_emulator_enabled | default(false) | bool
+      tags:
+        - sushy
+        - ironic-emulator
+
     - name: Run ironic_emulator_nodes role
       ansible.builtin.import_role:
         name: ironic_emulator_nodes
