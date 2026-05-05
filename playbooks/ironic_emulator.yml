@@ -1,9 +1,16 @@
 # Copyright (c) 2025 VEXXHOST, Inc.
 # SPDX-License-Identifier: Apache-2.0
 
-# Full Ironic emulator deployment, mirroring PR 3385.
-# Wired into the parallel orchestrator as a single PlaybookType
-# component (see internal/deploy/component.go: "ironic-emulator").
+# Full Ironic emulator deployment from PR 3385, wired into the parallel
+# orchestrator as a single PlaybookType component (see
+# internal/deploy/component.go: "ironic-emulator").
+#
+# Play ordering matches PR 3385:
+#   1. OVS bridges on every host
+#   2. Ironic helm chart + sushy emulator on controllers[0]
+#   3. Ironic API NodePort service so emulated BM nodes can reach it
+#      through the clean network (172.24.6.254:32574)
+#   4. Register emulated baremetal nodes via openstack CLI
 
 - name: Configure Ironic network
   hosts: all
@@ -66,7 +73,7 @@
         cmd: ip link set ironic-pxe up || true
       when: atmosphere_baremetal_emulator_enabled | default(false) | bool
 
-- name: Deploy Ironic, sushy, and emulator nodes
+- name: Deploy Ironic helm chart and sushy emulator
   hosts: controllers[0]
   become: true
   roles:
@@ -80,12 +87,6 @@
       when: atmosphere_baremetal_emulator_enabled | default(false) | bool
       tags:
         - sushy
-        - ironic-emulator
-
-    - role: ironic_emulator_nodes
-      when: atmosphere_baremetal_emulator_enabled | default(false) | bool
-      tags:
-        - ironic-emulator-nodes
         - ironic-emulator
 
 - name: Expose Ironic API for clean network
@@ -113,3 +114,13 @@
                   targetPort: 6385
                   nodePort: 32574
                   protocol: TCP
+
+- name: Create Ironic virtual nodes
+  hosts: controllers[0]
+  become: true
+  roles:
+    - role: ironic_emulator_nodes
+      when: atmosphere_baremetal_emulator_enabled | default(false) | bool
+      tags:
+        - ironic-emulator-nodes
+        - ironic-emulator
