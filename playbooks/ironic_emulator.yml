@@ -1,0 +1,14 @@
+# Copyright (c) 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Deploy Ironic emulator (libvirt-backed BM nodes + sushy)
+  hosts: controllers[0]
+  become: true
+  tasks:
+    - name: Run ironic_emulator_nodes role
+      ansible.builtin.import_role:
+        name: ironic_emulator_nodes
+      when:
+        - atmosphere_baremetal_emulator_enabled | default(false) | bool
+      tags:
+        - ironic-emulator
