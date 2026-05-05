@@ -1044,6 +1044,62 @@ the risk of a full outage if another node fails.
 
      kubectl -n openstack get pxc-backup
 
+``HostNICSpeedUnknown``
+=======================
+
+This alert fires when ``node_network_speed_bytes`` reports a negative value for
+a network interface for at least 5 minutes. ``node_exporter`` returns a
+negative value when the kernel cannot read the interface speed via ethtool
+(``Speed: Unknown!``), which typically indicates a silent data-plane failure:
+the OS keeps the link administratively up but the transceiver, cable, or
+switch port is degraded so no link speed can be negotiated. Bonded interfaces
+will not detect this state because MII status remains up, so the underlying
+slave can stay in the bond as a "zombie" carrying no traffic.
+
+**Likely root causes:**
+
+- Failed or marginal transceiver, DAC/AOC cable, or fiber patch
+- Switch port disabled, errdisabled, or in an unexpected operational state
+- NIC firmware bug after a host or switch reboot
+- NIC hardware fault (queue or PHY failure) that does not raise a carrier event
+
+**Diagnostic and remediation steps:**
+
+1. Identify the affected host and interface from the alert labels (``instance``
+   and ``device``).
+
+2. Confirm the speed is unknown on the host:
+
+   .. code-block:: console
+
+      ethtool <device> | grep -E "Speed|Link detected"
+
+3. Check whether the interface is part of a bond and how traffic is split
+   across slaves:
+
+   .. code-block:: console
+
+      cat /proc/net/bonding/<bond>
+      ip -s link show <device>
+
+4. Inspect the kernel log for transceiver, link, or driver events:
+
+   .. code-block:: console
+
+      dmesg -T | grep -i -E "<device>|link|sfp|phy|transceiver" | tail -50
+
+5. If the interface is connected to a managed switch, validate the peer port
+   state, optics, and counters from the switch side. Compare with the healthy
+   slave on the same host.
+
+6. If the speed remains unknown after checks, schedule a maintenance window
+   to:
+
+   - Reseat or replace the transceiver and cable.
+   - Move the connection to a known-good switch port.
+   - Reboot the host to reload the NIC driver and firmware (this often clears
+     the condition when the root cause is a firmware glitch).
+
 ``NodeDiskHighLatency``
 =======================
 

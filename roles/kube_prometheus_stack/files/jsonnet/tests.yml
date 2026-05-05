@@ -106,6 +106,39 @@ tests:
         alertname: NodeTimeSkewDetected
         exp_alerts: []
 
+  # HostNICSpeedUnknown - negative test (normal positive speed, no alert)
+  - interval: 1m
+    input_series:
+      - series: 'node_network_speed_bytes{instance="192.0.2.1:9100", job="node-exporter", device="ens3f0np0"}'
+        values: '25000000000x10'
+      - series: 'node_network_speed_bytes{instance="192.0.2.1:9100", job="node-exporter", device="ens3f1np1"}'
+        values: '25000000000x10'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: HostNICSpeedUnknown
+        exp_alerts: []
+
+  # HostNICSpeedUnknown - positive test (negative speed indicates ethtool "Speed: Unknown!")
+  - interval: 1m
+    input_series:
+      - series: 'node_network_speed_bytes{instance="192.0.2.2:9100", job="node-exporter", device="ens3f0np0"}'
+        values: '-125000x10'
+      - series: 'node_network_speed_bytes{instance="192.0.2.2:9100", job="node-exporter", device="ens3f1np1"}'
+        values: '25000000000x10'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: HostNICSpeedUnknown
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+              instance: "192.0.2.2:9100"
+              job: node-exporter
+              device: ens3f0np0
+            exp_annotations:
+              summary: "NIC link speed is unknown"
+              description: 'Interface ens3f0np0 on 192.0.2.2:9100 is reporting an unknown link speed (ethtool "Speed: Unknown!") for more than 5 minutes. This typically indicates a silent data-plane failure where the OS keeps the link administratively up while the underlying transceiver, cable, or switch port is degraded, so the kernel cannot negotiate or read the speed. Bonded interfaces will not detect this condition because MII status remains up.'
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#hostnicspeedunknown"
+
   # NodeDiskHighLatency - negative test (normal latency, no alert)
   - interval: 1m
     input_series:

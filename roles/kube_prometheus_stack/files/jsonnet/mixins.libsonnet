@@ -228,6 +228,21 @@ local mixins = {
                 },
               },
               {
+                alert: 'HostNICSpeedUnknown',
+                expr: |||
+                  node_network_speed_bytes{%(nodeExporterSelector)s} < 0
+                ||| % mixins.node._config,
+                'for': '5m',
+                labels: {
+                  severity: 'warning',
+                },
+                annotations: {
+                  summary: 'NIC link speed is unknown',
+                  description: 'Interface {{ $labels.device }} on {{ $labels.instance }} is reporting an unknown link speed (ethtool "Speed: Unknown!") for more than 5 minutes. This typically indicates a silent data-plane failure where the OS keeps the link administratively up while the underlying transceiver, cable, or switch port is degraded, so the kernel cannot negotiate or read the speed. Bonded interfaces will not detect this condition because MII status remains up.',
+                  runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#hostnicspeedunknown',
+                },
+              },
+              {
                 alert: 'NodeDiskHighLatency',
                 expr: |||
                   (
