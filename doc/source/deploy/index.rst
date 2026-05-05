@@ -20,3 +20,4 @@ and setup.
    glance
    neutron
    deployment
+   parallel
