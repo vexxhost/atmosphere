@@ -5,6 +5,15 @@
   hosts: controllers[0]
   become: true
   tasks:
+    - name: Run ironic role (deploys ironic-api + ironic-conductor via helm)
+      ansible.builtin.import_role:
+        name: ironic
+      when:
+        - atmosphere_baremetal_emulator_enabled | default(false) | bool
+      tags:
+        - ironic
+        - ironic-emulator
+
     - name: Run sushy (Redfish emulator) role
       ansible.builtin.import_role:
         name: sushy
