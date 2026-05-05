@@ -1,0 +1,21 @@
+---
+features:
+  - |
+    Bumped Ironic emulator BM node sizing for AIO testing: each emulated
+    node now provides 8 vCPUs and ~40 GB RAM (libvirt domain), and the
+    ``baremetal`` Nova flavor now reserves 8 vCPU / 16 GB RAM / 60 GB
+    disk to give a Magnum/CAPI Kubernetes cluster room to bootstrap.
+  - |
+    The Ironic baremetal tenant subnet now ships with sane public DNS
+    nameservers (``8.8.8.8`` / ``1.1.1.1``) by default and a router
+    is auto-created connecting it to the ``public`` external network,
+    so Magnum/CAPI Kubernetes clusters scheduled on emulated bare metal
+    can reach the OpenStack APIs and pull container images.
+fixes:
+  - |
+    Fixed a typo in the ``ironic_emulator_nodes`` role where the
+    ``baremetal`` flavor's ``DISK_GB`` resource property was set under a
+    misspelt ``resourees`` key, causing Nova to ignore it.
+  - |
+    Pinned ``sushy-emulator`` to ``docker.io/rico/sushy:1.0`` — the
+    previous default ``ghcr.io/vexxhost/sushy`` tag was missing.

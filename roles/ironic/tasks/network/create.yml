@@ -33,3 +33,14 @@
     cidr: "{{ ironic_bare_metal_subnet_cidr }}"
     allocation_pool_start: "{{ ironic_bare_metal_subnet_allocation_pool_start | default(omit) }}"
     allocation_pool_end: "{{ ironic_bare_metal_subnet_allocation_pool_end | default(omit) }}"
+    dns_nameservers: "{{ ironic_bare_metal_subnet_dns_nameservers | default(omit) }}"
+
+- name: Create bare metal router to public network
+  run_once: true
+  openstack.cloud.router:
+    cloud: atmosphere
+    name: "{{ ironic_bare_metal_subnet_name }}-router"
+    network: public
+    interfaces:
+      - "{{ ironic_bare_metal_subnet_name }}"
+  when: ironic_bare_metal_router_enabled | default(true) | bool

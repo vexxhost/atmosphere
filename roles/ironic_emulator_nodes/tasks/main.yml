@@ -155,9 +155,9 @@
         <domain type='qemu'>
           <name>node-0</name>
           <uuid>fb3ed2f2-60f0-4e6b-b53e-6d8b40d6121d</uuid>
-          <memory unit='KiB'>20480000</memory>
-          <currentMemory unit='KiB'>20480000</currentMemory>
-          <vcpu placement='static'>2</vcpu>
+          <memory unit='KiB'>40960000</memory>
+          <currentMemory unit='KiB'>40960000</currentMemory>
+          <vcpu placement='static'>8</vcpu>
           <os>
             <type arch='x86_64' machine='pc-q35-6.2'>hvm</type>
             <loader readonly='yes' type='pflash'>/var/lib/libvirt/images/OVMF_CODE_4M.fd</loader>
@@ -264,9 +264,9 @@
         <domain type='qemu'>
           <name>node-1</name>
           <uuid>e316d87c-ebc7-4c10-a9bb-316cd8dcfa55</uuid>
-          <memory unit='KiB'>20480000</memory>
-          <currentMemory unit='KiB'>20480000</currentMemory>
-          <vcpu placement='static'>2</vcpu>
+          <memory unit='KiB'>40960000</memory>
+          <currentMemory unit='KiB'>40960000</currentMemory>
+          <vcpu placement='static'>8</vcpu>
           <os>
             <type arch='x86_64' machine='pc-q35-6.2'>hvm</type>
             <loader readonly='yes' type='pflash'>/var/lib/libvirt/images/OVMF_CODE_4M.fd</loader>
@@ -452,9 +452,9 @@
     if openstack flavor show baremetal; then
       echo "flavor baremetal exists, skipping..."
     else
-      openstack flavor create --ephemeral 0 --ram 2048 --disk 20 --vcpus 2 baremetal
+      openstack flavor create --ephemeral 0 --ram 16384 --disk 60 --vcpus 8 baremetal
       openstack flavor set baremetal --property resources:CUSTOM_BAREMETAL=1
-      openstack flavor set baremetal --property resourees:DISK_GB=0
+      openstack flavor set baremetal --property resources:DISK_GB=0
       openstack flavor set baremetal --property resources:MEMORY_MB=0
       openstack flavor set baremetal --property resources:VCPU=0
       openstack flavor set baremetal --property cpu_arch=x86_64
