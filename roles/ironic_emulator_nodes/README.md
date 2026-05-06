@@ -230,13 +230,28 @@ template MUST end up with `boot_volume_size=0` so Magnum boots the
 BM node directly from the Glance image (which is what `noop`
 supports).
 
-- **mcapi `add-server-type-bm` branch (commit `e61ca8d`) and newer:**
+- **mcapi `add-server-type-bm` branch (commit `e61ca8d`) and newer
+  ([draft PR #1014](https://github.com/vexxhost/magnum-cluster-api/pull/1014)):**
   if the cluster_template has `server_type=bm` and the operator does
   NOT pass `boot_volume_size` explicitly, mcapi auto-defaults it to
   `0`. The example below relies on this — no label needed.
 - **older mcapi:** add `boot_volume_size=0` to the `--labels` list
   explicitly, otherwise the chart renders a Cinder root volume
   request that Ironic refuses.
+
+**IMPORTANT — `max_pods` for high-density BM/GPU node groups (gap #4):**
+the kubelet default is 110, which is too low for BM/GPU node groups
+hosting many sidecars and DaemonSets. The walkthrough below sets
+`--labels max_pods=250` to demonstrate the upstream knob.
+
+- **mcapi `kubelet-config-from-labels` branch and newer
+  ([draft PR #1013](https://github.com/vexxhost/magnum-cluster-api/pull/1013)):**
+  the `max_pods` cluster label is wired into kubelet `--max-pods` at
+  all 3 CAPI sites (KCP init, KCP join, worker join). The example
+  below relies on this — no manual `kubeadm-config-patch` needed.
+- **older mcapi:** the label is silently ignored. Bump
+  `maxPods: <N>` manually on each kubelet config and restart kubelet,
+  OR pin the cluster template at 110 pods.
 
 ```bash
 # 1.1 — Cluster template
@@ -246,7 +261,7 @@ openstack coe cluster template create k8s-bm-gpu \
     --external-network public --network-driver calico \
     --keypair bmkey \
     --coe kubernetes --docker-storage-driver overlay2 \
-    --labels kube_tag=v1.34.3,octavia_provider=ovn
+    --labels kube_tag=v1.34.3,octavia_provider=ovn,max_pods=250
 
 # 1.2 — Cluster (1 BM master + 1 BM-GPU worker)
 openstack coe cluster create gpu-test \
@@ -410,7 +425,7 @@ Phase 0.
 | BM node deploys, then crashes on second power cycle with `guest CPU doesn't match specification` | #19 | confirm `<cpu mode='host-passthrough'/>` (Phase 0.3) |
 | `kubeadm init` hangs, kube-apiserver crashloops on master | #3 | run "Master VM recovery" procedure below |
 | KCP stays `WaitingForKubeadmInit` forever after fixing apiserver | #5 | run "Master VM recovery" procedure below |
-| Pods scheduled but kubelet refuses extra ones with "no allocatable …" | #4 | bump `maxPods: 250` on the kubelet config and restart kubelet |
+| Pods scheduled but kubelet refuses extra ones with "no allocatable …" | #4 | upgrade mcapi to `kubelet-config-from-labels` branch ([PR #1013](https://github.com/vexxhost/magnum-cluster-api/pull/1013)) and recreate the cluster template with `--labels max_pods=250,...`, OR (older mcapi) bump `maxPods: 250` on the kubelet config and restart kubelet |
 | Worker Ready but `fake-gpu=0` | #20 | strip `nomodeset` from `/etc/default/grub`, reboot, recycle plugin pod |
 | `coe cluster create` fails because nodes never went `available` | #13 | `openstack baremetal node list`; rerun the `Prepare Ironic virtual nodes` task or `commands.md §5` |
 | BM node fails to bind VIF with "not enough free physical ports" | #16 | confirm `network_interface=flat` on the node (now default in this branch) |
@@ -531,11 +546,18 @@ of these workarounds until they land.
    phases by hand. Proper fix: pre-deploy `k8s-keystone-auth` as a
    static pod via cloud-init so the webhook endpoints exist before the
    apiserver starts.
-4. **Kubelet `maxPods=250` for AIO-BM.** The host kubelet defaults
-   (110) cap pod density on the AIO controller when running BM
-   workloads + Magnum control plane + system pods. Bump
-   `maxPods: 250` in the kubeadm/kubelet config template applied
-   during the AIO bootstrap.
+4. **Kubelet `maxPods=250` for AIO-BM (gap #4).**
+
+   - **Upstream draft PR landed** in `vexxhost/magnum-cluster-api`
+     `kubelet-config-from-labels` branch
+     ([draft PR #1013](https://github.com/vexxhost/magnum-cluster-api/pull/1013)):
+     adds a `kubeletConfig` ClusterClass feature, exposes `max_pods`
+     via `--labels max_pods=<N>` and patches kubelet `--max-pods` at
+     all 3 CAPI sites (KCP init, KCP join, worker join).
+   - **Operator workaround for older mcapi:** bump `maxPods: 250` in
+     the kubeadm/kubelet config template applied during the AIO
+     bootstrap, or edit `/var/lib/kubelet/config.yaml` per node and
+     restart kubelet.
 5. **Idempotent kubeadm finalize.** When cloud-init's `kubeadm init`
    crashes mid-bootstrap (typically due to gap #3), it never retries
    the finalize phases on its own. Make the cloud-init template detect
