@@ -39,13 +39,27 @@ finishes:
 #     gives 1 BM master + 1 BM-GPU worker, which fits exactly.
 #   * If you want the master on GPU too, use ``baremetal-gpu`` for both
 #     and bump ``bm_emulator_node_count`` (or add a 3rd node manually).
+#
+# IMPORTANT — boot_volume_size MUST be 0 on this AIO:
+#   The default Magnum cluster template uses a non-zero ``boot_volume_size``,
+#   which tells Nova to boot the BM instance from a Cinder volume. The AIO
+#   ironic-conductor here is deployed with ``storage_interface=noop`` and is
+#   NOT wired to Cinder, so volume-backed boot fails at spawn time with::
+#
+#     Missing parameters: ['instance_info.image_source']
+#
+#   Setting ``boot_volume_size=0`` makes Magnum skip Cinder entirely and
+#   boot the BM node directly from the Glance image (image_source path),
+#   which is what the default ``noop`` storage_interface supports. Always
+#   pass it in ``--labels`` until ironic-conductor here gains
+#   ``storage_interface=cinder`` support and per-node Cinder volume targets.
 openstack coe cluster template create k8s-bm-gpu \
     --image ubuntu-2204-kube-v1.34.3-raw \
     --flavor baremetal-gpu --master-flavor baremetal \
     --external-network public --network-driver calico \
     --keypair bmkey \
     --coe kubernetes --docker-storage-driver overlay2 \
-    --labels kube_tag=v1.34.3,boot_volume_size=20,octavia_provider=ovn
+    --labels kube_tag=v1.34.3,boot_volume_size=0,octavia_provider=ovn
 openstack coe cluster create gpu-test --cluster-template k8s-bm-gpu \
     --master-count 1 --node-count 1
 openstack coe cluster config gpu-test --dir /tmp/gpu-test
@@ -117,3 +131,15 @@ of these workarounds until they land.
    the finalize phases on its own. Make the cloud-init template detect
    partial state and re-run the missing phases automatically so the
    master comes up clean without operator intervention.
+6. **Cinder-backed boot for BM nodes (`storage_interface=cinder`).**
+   The Magnum default cluster template requests Cinder volume-backed
+   boot (`boot_volume_size > 0`), but this role's ironic-conductor is
+   deployed with `storage_interface=noop` and not wired to Cinder, so
+   volume boot fails at Nova spawn with
+   `Missing parameters: ['instance_info.image_source']`. Operator
+   workaround (and what this README now uses): always pass
+   `--labels boot_volume_size=0,...` so Magnum boots the BM node
+   directly from the Glance image. Proper fix: enable
+   `enabled_storage_interfaces=cinder,noop` on ironic-conductor, set
+   `--storage-interface cinder` per BM node, and attach Cinder volume
+   targets — then `boot_volume_size>0` would actually work.
