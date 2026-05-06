@@ -52,8 +52,10 @@ Then reference `ubuntu-2204-kube-v1.34.3-raw` (not the qcow2 name) in
 
 ### 2. Strip `nomodeset` from the image's GRUB cmdline — gap #20
 
-The upstream `ubuntu-2204-kube-vX.Y.Z` cloud images (at least up to
-v1.34.3) bake the following into `GRUB_CMDLINE_LINUX_DEFAULT`:
+The upstream `ubuntu-2204-kube-vX.Y.Z` cloud images produced by
+[`vexxhost/capo-image-elements`][capo-image-elements] (verified through
+release `2026.04-6` / `v1.34.7`) bake the following into
+`GRUB_CMDLINE_LINUX_DEFAULT`:
 
 ```
 nomodeset nofb gfxpayload=text
@@ -68,6 +70,15 @@ true`), this means:
 - The fake-GPU device-plugin advertises `vexxhost.com/fake-gpu = 0` on
   the node, so workloads requesting the GPU resource sit Pending
   forever.
+
+Tracked upstream as
+[`vexxhost/capo-image-elements#159`][capo-image-elements-159] —
+the persistent fix is to strip these flags at image build time. The
+workaround below stays here as the operator stop-gap until that
+lands.
+
+[capo-image-elements]: https://github.com/vexxhost/capo-image-elements
+[capo-image-elements-159]: https://github.com/vexxhost/capo-image-elements/issues/159
 
 There are two ways to fix it:
 
