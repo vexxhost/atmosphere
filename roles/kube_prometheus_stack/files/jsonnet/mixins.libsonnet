@@ -231,14 +231,16 @@ local mixins = {
                 alert: 'HostNICSpeedUnknown',
                 expr: |||
                   node_network_speed_bytes{%(nodeExporterSelector)s} < 0
+                    and on(instance, device) node_network_protocol_type{%(nodeExporterSelector)s} == 1
+                    and on(instance, device) node_network_carrier{%(nodeExporterSelector)s} == 1
                 ||| % mixins.node._config,
                 'for': '5m',
                 labels: {
                   severity: 'warning',
                 },
                 annotations: {
-                  summary: 'NIC link speed is unknown',
-                  description: 'Interface {{ $labels.device }} on {{ $labels.instance }} is reporting an unknown link speed (ethtool "Speed: Unknown!") for more than 5 minutes. This typically indicates a silent data-plane failure where the OS keeps the link administratively up while the underlying transceiver, cable, or switch port is degraded, so the kernel cannot negotiate or read the speed. Bonded interfaces will not detect this condition because MII status remains up.',
+                  summary: 'Host NIC: link is up but speed cannot be negotiated on {{ $labels.device }}',
+                  description: 'Interface {{ $labels.device }} on {{ $labels.instance }} reports node_network_speed_bytes={{ $value }} for more than 5 minutes while the link carrier is still up and the device is a physical Ethernet interface. A value below 0 (typically -125000) means the kernel cannot read the interface speed via ethtool ("Speed: Unknown!"); the threshold is < 0 bytes/sec. Normal behaviour is the negotiated link speed in bytes/sec (for example 3125000000 for 25 Gbps or 1250000000 for 10 Gbps). Bonded interfaces will not detect this state because MII status remains up, so the slave can stay in the bond as a "zombie" carrying no traffic.',
                   runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#hostnicspeedunknown',
                 },
               },

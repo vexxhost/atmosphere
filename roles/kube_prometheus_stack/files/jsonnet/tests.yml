@@ -113,18 +113,62 @@ tests:
         values: '25000000000x10'
       - series: 'node_network_speed_bytes{instance="192.0.2.1:9100", job="node-exporter", device="ens3f1np1"}'
         values: '25000000000x10'
+      - series: 'node_network_protocol_type{instance="192.0.2.1:9100", job="node-exporter", device="ens3f0np0"}'
+        values: '1x10'
+      - series: 'node_network_protocol_type{instance="192.0.2.1:9100", job="node-exporter", device="ens3f1np1"}'
+        values: '1x10'
+      - series: 'node_network_carrier{instance="192.0.2.1:9100", job="node-exporter", device="ens3f0np0"}'
+        values: '1x10'
+      - series: 'node_network_carrier{instance="192.0.2.1:9100", job="node-exporter", device="ens3f1np1"}'
+        values: '1x10'
     alert_rule_test:
       - eval_time: 10m
         alertname: HostNICSpeedUnknown
         exp_alerts: []
 
-  # HostNICSpeedUnknown - positive test (negative speed indicates ethtool "Speed: Unknown!")
+  # HostNICSpeedUnknown - negative test (virtual interface with unknown speed, no alert)
+  - interval: 1m
+    input_series:
+      - series: 'node_network_speed_bytes{instance="192.0.2.3:9100", job="node-exporter", device="genev_sys_6081"}'
+        values: '-125000x10'
+      - series: 'node_network_protocol_type{instance="192.0.2.3:9100", job="node-exporter", device="genev_sys_6081"}'
+        values: '65534x10'
+      - series: 'node_network_carrier{instance="192.0.2.3:9100", job="node-exporter", device="genev_sys_6081"}'
+        values: '1x10'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: HostNICSpeedUnknown
+        exp_alerts: []
+
+  # HostNICSpeedUnknown - negative test (physical Ethernet, link down with carrier=0, no alert)
+  - interval: 1m
+    input_series:
+      - series: 'node_network_speed_bytes{instance="192.0.2.4:9100", job="node-exporter", device="ens5f0np0"}'
+        values: '-125000x10'
+      - series: 'node_network_protocol_type{instance="192.0.2.4:9100", job="node-exporter", device="ens5f0np0"}'
+        values: '1x10'
+      - series: 'node_network_carrier{instance="192.0.2.4:9100", job="node-exporter", device="ens5f0np0"}'
+        values: '0x10'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: HostNICSpeedUnknown
+        exp_alerts: []
+
+  # HostNICSpeedUnknown - positive test (physical Ethernet, negative speed, carrier still up)
   - interval: 1m
     input_series:
       - series: 'node_network_speed_bytes{instance="192.0.2.2:9100", job="node-exporter", device="ens3f0np0"}'
         values: '-125000x10'
       - series: 'node_network_speed_bytes{instance="192.0.2.2:9100", job="node-exporter", device="ens3f1np1"}'
         values: '25000000000x10'
+      - series: 'node_network_protocol_type{instance="192.0.2.2:9100", job="node-exporter", device="ens3f0np0"}'
+        values: '1x10'
+      - series: 'node_network_protocol_type{instance="192.0.2.2:9100", job="node-exporter", device="ens3f1np1"}'
+        values: '1x10'
+      - series: 'node_network_carrier{instance="192.0.2.2:9100", job="node-exporter", device="ens3f0np0"}'
+        values: '1x10'
+      - series: 'node_network_carrier{instance="192.0.2.2:9100", job="node-exporter", device="ens3f1np1"}'
+        values: '1x10'
     alert_rule_test:
       - eval_time: 10m
         alertname: HostNICSpeedUnknown
@@ -135,8 +179,8 @@ tests:
               job: node-exporter
               device: ens3f0np0
             exp_annotations:
-              summary: "NIC link speed is unknown"
-              description: 'Interface ens3f0np0 on 192.0.2.2:9100 is reporting an unknown link speed (ethtool "Speed: Unknown!") for more than 5 minutes. This typically indicates a silent data-plane failure where the OS keeps the link administratively up while the underlying transceiver, cable, or switch port is degraded, so the kernel cannot negotiate or read the speed. Bonded interfaces will not detect this condition because MII status remains up.'
+              summary: "Host NIC: link is up but speed cannot be negotiated on ens3f0np0"
+              description: 'Interface ens3f0np0 on 192.0.2.2:9100 reports node_network_speed_bytes=-125000 for more than 5 minutes while the link carrier is still up and the device is a physical Ethernet interface. A value below 0 (typically -125000) means the kernel cannot read the interface speed via ethtool ("Speed: Unknown!"); the threshold is < 0 bytes/sec. Normal behaviour is the negotiated link speed in bytes/sec (for example 3125000000 for 25 Gbps or 1250000000 for 10 Gbps). Bonded interfaces will not detect this state because MII status remains up, so the slave can stay in the bond as a "zombie" carrying no traffic.'
               runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#hostnicspeedunknown"
 
   # NodeDiskHighLatency - negative test (normal latency, no alert)
