@@ -28,17 +28,9 @@
     https_proxy: "{{ glance_image_https_proxy }}"
     no_proxy: "{{ glance_image_no_proxy }}"
 
-- name: Fail when source URL does not return an ETag
+- name: Capture source ETag when available
   run_once: true
-  ansible.builtin.fail:
-    msg: >-
-      The source URL {{ glance_image_url }} did not return an ETag
-      header. The glance_image role requires an ETag to detect upstream
-      image changes. Use a source that exposes an ETag header.
-  when: _glance_image_source_head.etag is not defined
-
-- name: Capture source ETag
-  run_once: true
+  when: _glance_image_source_head.etag is defined
   ansible.builtin.set_fact:
     _glance_image_source_etag: "{{ _glance_image_source_head.etag | regex_replace('\"', '') }}"
 
@@ -66,7 +58,8 @@
     _glance_image_needs_upload: "{{
       (_image_info.images | length == 0)
       or ((_glance_image_existing_props['atmosphere:image:url'] | default('')) != glance_image_url)
-      or ((_glance_image_existing_props['atmosphere:image:etag'] | default('')) != _glance_image_source_etag) }}"
+      or (_glance_image_source_etag is defined
+          and (_glance_image_existing_props['atmosphere:image:etag'] | default('')) != _glance_image_source_etag) }}"
 
 - name: Download image and upload into Glance
   run_once: true
@@ -124,6 +117,34 @@
           type: Available
           status: true
 
+    - name: Upload image into Glance
+      openstack.cloud.image:
+        cloud: atmosphere
+        name: "{{ glance_image_name }}"
+        filename: "{{ _get_url.dest }}{% if glance_image_conversion is not skipped %}.converted{% endif %}"
+        min_disk: "{{ glance_image_min_disk | default(omit) }}"
+        min_ram: "{{ glance_image_min_ram | default(omit) }}"
+        container_format: "{{ glance_image_container_format | default(omit) }}"
+        disk_format: "{{ glance_image_disk_format | default(omit) }}"
+        properties: >-
+          {{
+            (glance_image_properties | default({}))
+            | combine({'atmosphere:image:url': glance_image_url})
+            | combine({'atmosphere:image:etag': _glance_image_source_etag} if _glance_image_source_etag is defined else {})
+          }}
+        kernel: "{{ glance_image_kernel | default(omit) }}"
+        ramdisk: "{{ glance_image_ramdisk | default(omit) }}"
+        is_public: "{{ glance_image_is_public | default(omit) }}"
+        tags: "{{ glance_image_tags | default(omit) }}"
+        wait: true
+        timeout: 600
+      # NOTE(mnaser): This often fails since the SSL certificates are not
+      #               ready yet. We need to wait for them to be ready.
+      retries: "{{ glance_image_retries | default(60) }}"
+      delay: 5
+      register: _result
+      until: _result is not failed
+
     - name: Rename outdated image to preserve audit trail
       when: _image_info.images | length > 0
       vars:
@@ -142,29 +163,6 @@
       delay: 5
       register: _rename_result
       until: _rename_result is not failed
-
-    - name: Upload image into Glance
-      openstack.cloud.image:
-        cloud: atmosphere
-        name: "{{ glance_image_name }}"
-        filename: "{{ _get_url.dest }}{% if glance_image_conversion is not skipped %}.converted{% endif %}"
-        min_disk: "{{ glance_image_min_disk | default(omit) }}"
-        min_ram: "{{ glance_image_min_ram | default(omit) }}"
-        container_format: "{{ glance_image_container_format | default(omit) }}"
-        disk_format: "{{ glance_image_disk_format | default(omit) }}"
-        properties: "{{ (glance_image_properties | default({})) | combine({'atmosphere:image:url': glance_image_url, 'atmosphere:image:etag': _glance_image_source_etag}) }}"
-        kernel: "{{ glance_image_kernel | default(omit) }}"
-        ramdisk: "{{ glance_image_ramdisk | default(omit) }}"
-        is_public: "{{ glance_image_is_public | default(omit) }}"
-        tags: "{{ glance_image_tags | default(omit) }}"
-        wait: true
-        timeout: 600
-      # NOTE(mnaser): This often fails since the SSL certificates are not
-      #               ready yet. We need to wait for them to be ready.
-      retries: "{{ glance_image_retries | default(60) }}"
-      delay: 5
-      register: _result
-      until: _result is not failed
   always:
     - name: Remove work directory
       ansible.builtin.file:
