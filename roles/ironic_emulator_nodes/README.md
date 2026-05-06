@@ -399,12 +399,89 @@ Phase 0.
 | Cluster stuck `CREATE_IN_PROGRESS`, `Missing parameters: ['instance_info.image_source']` in nova-compute logs | #17 | recreate cluster template with `--labels boot_volume_size=0,...` |
 | Cluster stuck `CREATE_IN_PROGRESS`, BM node stays `wait call-back`, libvirt VM has died | #18 | confirm `<domain type='kvm'>` (Phase 0.3) |
 | BM node deploys, then crashes on second power cycle with `guest CPU doesn't match specification` | #19 | confirm `<cpu mode='host-passthrough'/>` (Phase 0.3) |
-| `kubeadm init` hangs, kube-apiserver crashloops on master | #3 | strip webhook flags + run `kubeadm init phase upload-config\|bootstrap-token\|mark-control-plane\|kubelet-finalize` by hand |
-| KCP stays `WaitingForKubeadmInit` forever after fixing apiserver | #5 | run the missing `kubeadm init phase` commands manually |
+| `kubeadm init` hangs, kube-apiserver crashloops on master | #3 | run "Master VM recovery" procedure below |
+| KCP stays `WaitingForKubeadmInit` forever after fixing apiserver | #5 | run "Master VM recovery" procedure below |
 | Pods scheduled but kubelet refuses extra ones with "no allocatable …" | #4 | bump `maxPods: 250` on the kubelet config and restart kubelet |
 | Worker Ready but `fake-gpu=0` | #20 | strip `nomodeset` from `/etc/default/grub`, reboot, recycle plugin pod |
 | `coe cluster create` fails because nodes never went `available` | #13 | `openstack baremetal node list`; rerun the `Prepare Ironic virtual nodes` task or `commands.md §5` |
 | BM node fails to bind VIF with "not enough free physical ports" | #16 | confirm `network_interface=flat` on the node (now default in this branch) |
+
+### Master VM recovery — gaps #3 and #5
+
+Symptoms (any one is enough to suspect this):
+
+- `openstack coe cluster show gpu-test` sits in `CREATE_IN_PROGRESS`
+  for >15 min after the master VM is `ACTIVE`.
+- On the management AIO: `kubectl -n magnum-system get
+  kubeadmcontrolplane -A` shows `INITIALIZED=false` and
+  `Conditions[*].Reason=WaitingForKubeadmInit`.
+- SSH to the master, `sudo crictl ps -a | grep apiserver` shows
+  `kube-apiserver` restarting every ~10s.
+- `sudo crictl logs <apiserver-id>` contains `unable to load
+  configuration from "…/keystone-auth/webhook.kubeconfig": no such
+  file or directory`.
+
+This means cloud-init hit gap #3 (kube-apiserver crashloops on
+missing k8s-keystone-auth webhook config), kubeadm aborted, and gap
+#5 means kubeadm doesn't auto-resume on its own.
+
+**Recovery procedure (run on the master VM as root):**
+
+```bash
+# From the AIO host:
+ssh -i /root/.ssh/bmkey ubuntu@<master-fip>
+sudo -i
+
+# 1. Strip the webhook flags from the static apiserver manifest.
+#    Kubelet auto-restarts the static pod when this file changes.
+sed -i \
+  -e '/--authentication-token-webhook-config-file/d' \
+  -e '/--authorization-webhook-config-file/d' \
+  -e 's/--authorization-mode=Node,RBAC,Webhook/--authorization-mode=Node,RBAC/' \
+  /etc/kubernetes/manifests/kube-apiserver.yaml
+
+# 2. Wait for kube-apiserver to come up clean.
+until crictl ps | grep -q kube-apiserver; do sleep 5; done
+KUBECONFIG=/etc/kubernetes/admin.conf kubectl get --raw='/healthz'
+# expect: ok
+
+# 3. Run the kubeadm finalize phases that cloud-init never reached.
+#    /run/kubeadm/kubeadm.yaml is preserved by cloud-init.
+export KUBECONFIG=/etc/kubernetes/admin.conf
+kubeadm init phase upload-config kubeadm   --config /run/kubeadm/kubeadm.yaml
+kubeadm init phase upload-config kubelet   --config /run/kubeadm/kubeadm.yaml
+kubeadm init phase bootstrap-token         --config /run/kubeadm/kubeadm.yaml
+kubeadm init phase mark-control-plane      --config /run/kubeadm/kubeadm.yaml
+kubeadm init phase kubelet-finalize all    --config /run/kubeadm/kubeadm.yaml
+kubeadm init phase addon all               --config /run/kubeadm/kubeadm.yaml
+
+# 4. Sanity check on the workload cluster
+kubectl get nodes                                  # master should show Ready
+kubectl -n kube-system get pods                    # kube-proxy + coredns Running
+```
+
+Back on the management AIO, KCP flips to `Initialized=true` within a
+minute, CAPI starts bootstrapping the worker, and the cluster reaches
+`CREATE_COMPLETE` shortly after.
+
+**Note on Keystone authn:** stripping the webhook flags disables
+Keystone-backed authn/authz on the cluster. For the fake-GPU demo
+this is fine (we use the cluster-admin kubeconfig from
+`coe cluster config`). If you actually need Keystone authn, deploy
+`k8s-keystone-auth` Helm chart (`magnum-cluster-api` chart `cloud-provider-openstack/k8s-keystone-auth`)
+manually after the cluster is up, then re-add the two flags to
+`/etc/kubernetes/manifests/kube-apiserver.yaml`.
+
+**Permanent fixes (out-of-tree, in mcapi cloud-init template):**
+
+- Gap #3: pre-stage `k8s-keystone-auth` as a static pod manifest
+  written by cloud-init **before** `kubeadm init` runs, so the
+  webhook endpoints exist when kube-apiserver starts.
+- Gap #5: wrap `kubeadm init` in a retry loop that detects partial
+  state and re-runs only the missing phases, OR ship a one-shot
+  `kubeadm-finalize.service` that runs the missing phases on every
+  boot until they succeed and then disables itself.
+
 
 ## Known gaps (not yet automated in this branch)
 
