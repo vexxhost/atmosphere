@@ -423,38 +423,83 @@
 
 - name: Prepare Ironic virtual nodes
   changed_when: false
-  failed_when: false
   run_once: true
   ansible.builtin.shell: |
-    set -o posix
+    set -euo pipefail
     source /etc/profile.d/atmosphere.sh
-    chassis_id=$(openstack baremetal chassis create --description 'ironic test chassis' -f value -c uuid)
-    if openstack baremetal node show node-0; then
-      echo "baremetal node node-0 exists, skipping..."
-    else
-      openstack baremetal node create  --uuid 43ef224b-6e77-495d-8702-0745fdcad579 --chassis $chassis_id --driver redfish --network-interface flat --name node-0 --resource-class baremetal --property cpu_arch=x86_64 --property capabilities=boot_mode:uefi --driver-info redfish_address=http://0.0.0.0:9132  --driver-info redfish_username=admin --driver-info redfish_password=password --driver-info redfish_system_id=/redfish/v1/Systems/node-0
-      openstack baremetal node add trait 43ef224b-6e77-495d-8702-0745fdcad579 CUSTOM_GOLD
-    {% if bm_emulator_gpu_enabled | default(false) | bool %}
-      openstack baremetal node add trait 43ef224b-6e77-495d-8702-0745fdcad579 CUSTOM_GPU
-    {% endif %}
-      openstack baremetal node manage  43ef224b-6e77-495d-8702-0745fdcad579 --wait
-      openstack baremetal port create --node 43ef224b-6e77-495d-8702-0745fdcad579 52:54:00:b9:0b:41
-      openstack baremetal port create --node 43ef224b-6e77-495d-8702-0745fdcad579 52:54:00:98:d6:b8
-      openstack baremetal node provide  43ef224b-6e77-495d-8702-0745fdcad579
+
+    # Idempotent chassis: reuse existing if one is already present.
+    chassis_id="$(openstack baremetal chassis list -f value -c UUID | head -n1 || true)"
+    if [ -z "$chassis_id" ]; then
+      chassis_id="$(openstack baremetal chassis create \
+        --description 'ironic test chassis' -f value -c uuid)"
     fi
-    if openstack baremetal node show node-1; then
-      echo "baremetal node node-1 exists, skipping..."
-    else
-      openstack baremetal node create  --uuid 6abb7cdf-66ab-441f-8f94-0dfa955a7716 --chassis $chassis_id --driver redfish --network-interface flat --name node-1 --resource-class baremetal --property cpu_arch=x86_64 --property capabilities=boot_mode:uefi --driver-info redfish_address=http://0.0.0.0:9132  --driver-info redfish_username=admin --driver-info redfish_password=password --driver-info redfish_system_id=/redfish/v1/Systems/node-1
-      openstack baremetal node add trait 6abb7cdf-66ab-441f-8f94-0dfa955a7716 CUSTOM_GOLD
-    {% if bm_emulator_gpu_enabled | default(false) | bool %}
-      openstack baremetal node add trait 6abb7cdf-66ab-441f-8f94-0dfa955a7716 CUSTOM_GPU
-    {% endif %}
-      openstack baremetal node manage  6abb7cdf-66ab-441f-8f94-0dfa955a7716 --wait
-      openstack baremetal port create --node 6abb7cdf-66ab-441f-8f94-0dfa955a7716 52:54:00:b7:de:53
-      openstack baremetal port create --node 6abb7cdf-66ab-441f-8f94-0dfa955a7716 52:54:00:29:5d:5a
-      openstack baremetal node provide  6abb7cdf-66ab-441f-8f94-0dfa955a7716
-    fi
+
+    gpu_enabled={{ bm_emulator_gpu_enabled | default(false) | bool | string | lower }}
+
+    enroll_node() {
+      local uuid="$1" name="$2" mac1="$3" mac2="$4"
+
+      if openstack baremetal node show "$name" >/dev/null 2>&1; then
+        echo "baremetal node ${name} already exists, skipping create"
+      else
+        openstack baremetal node create \
+          --uuid "$uuid" --chassis "$chassis_id" \
+          --driver redfish --network-interface flat \
+          --name "$name" --resource-class baremetal \
+          --property cpu_arch=x86_64 \
+          --property capabilities=boot_mode:uefi \
+          --driver-info redfish_address=http://0.0.0.0:9132 \
+          --driver-info redfish_username=admin \
+          --driver-info redfish_password=password \
+          --driver-info "redfish_system_id=/redfish/v1/Systems/${name}"
+      fi
+
+      # Idempotent traits.
+      local existing_traits
+      existing_traits="$(openstack baremetal node show "$uuid" -f value -c traits || echo '')"
+      if ! echo "$existing_traits" | grep -q CUSTOM_GOLD; then
+        openstack baremetal node add trait "$uuid" CUSTOM_GOLD
+      fi
+      if [ "$gpu_enabled" = "true" ] && ! echo "$existing_traits" | grep -q CUSTOM_GPU; then
+        openstack baremetal node add trait "$uuid" CUSTOM_GPU
+      fi
+
+      # Idempotent ports (skip MACs already attached to this node).
+      for mac in "$mac1" "$mac2"; do
+        if ! openstack baremetal port list --address "$mac" -f value -c UUID | grep -q .; then
+          openstack baremetal port create --node "$uuid" "$mac"
+        fi
+      done
+
+      # Drive provision_state to available; fail loud on unexpected states.
+      local state
+      state="$(openstack baremetal node show "$uuid" -f value -c provision_state)"
+      case "$state" in
+        enroll)
+          openstack baremetal node manage  "$uuid" --wait
+          openstack baremetal node provide "$uuid"
+          ;;
+        manageable)
+          openstack baremetal node provide "$uuid"
+          ;;
+        available|active|"clean wait"|cleaning|"verifying")
+          echo "node ${name} in provision_state=${state}, leaving as-is"
+          ;;
+        *)
+          echo "ERROR: node ${name} in unexpected provision_state=${state}" >&2
+          exit 1
+          ;;
+      esac
+    }
+
+    enroll_node 43ef224b-6e77-495d-8702-0745fdcad579 node-0 52:54:00:b9:0b:41 52:54:00:98:d6:b8
+    enroll_node 6abb7cdf-66ab-441f-8f94-0dfa955a7716 node-1 52:54:00:b7:de:53 52:54:00:29:5d:5a
+
+    # Final assertion: every node we just enrolled must be addressable.
+    for n in node-0 node-1; do
+      openstack baremetal node show "$n" -f value -c provision_state >/dev/null
+    done
   args:
     executable: /bin/bash
   environment:
