@@ -1,7 +1,7 @@
 # `ironic_emulator_nodes`
 
-Stands up two libvirt-backed emulated bare-metal nodes (`node-0`,
-`node-1`) on the AIO host so that Ironic, Nova
+Stands up three libvirt-backed emulated bare-metal nodes (`node-0`,
+`node-1`, `node-2`) on the AIO host so that Ironic, Nova
 (`nova-compute-ironic`), and Magnum/CAPI can be exercised end-to-end
 without real hardware.
 
@@ -146,13 +146,14 @@ openstack baremetal driver list                       # redfish must appear
 openstack hypervisor list                             # ironic hypervisor present
 ```
 
-**0.2. Confirm both BM nodes are enrolled and `available` (gap #13).**
+**0.2. Confirm all three BM nodes are enrolled and `available` (gap #13).**
 
 ```bash
 openstack baremetal node list
 # expect:
 #   node-0  available  power off
 #   node-1  available  power off
+#   node-2  available  power off
 ```
 
 If the list is empty or partial, the `Prepare Ironic virtual nodes`
@@ -411,8 +412,8 @@ The `enroll_node` task is idempotent (gap #13 fix), so you can repeat
 Phases 1–3 without re-running the whole role.
 
 If you need to fully re-prepare the libvirt domains (e.g. you're
-testing the role itself), `virsh destroy node-0 node-1; virsh undefine
-node-0 node-1; ironic-emulator-nodes` re-creates them; then resume at
+testing the role itself), `virsh destroy node-0 node-1 node-2; virsh undefine
+node-0 node-1 node-2; ironic-emulator-nodes` re-creates them; then resume at
 Phase 0.
 
 ### Troubleshooting matrix

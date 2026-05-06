@@ -147,6 +147,26 @@
     command: virsh vol-path --pool default node-1.raw
   when: libvirt_pod.resources | length > 0
 
+- name: Create storage for virtual baremetal nodes - create node-2 volume
+  changed_when: false
+  ignore_errors: true # noqa: ignore-errors
+  kubernetes.core.k8s_exec:
+    namespace: openstack
+    pod: "{{ libvirt_pod.resources[0].metadata.name }}"
+    container: libvirt
+    command: virsh vol-create-as default node-2.raw 21G --allocation 0 --format raw
+  when: libvirt_pod.resources | length > 0
+
+- name: Create storage for virtual baremetal nodes - set volume path node-2
+  changed_when: false
+  ignore_errors: true # noqa: ignore-errors
+  kubernetes.core.k8s_exec:
+    namespace: openstack
+    pod: "{{ libvirt_pod.resources[0].metadata.name }}"
+    container: libvirt
+    command: virsh vol-path --pool default node-2.raw
+  when: libvirt_pod.resources | length > 0
+
 - name: Save node defination for virtual baremetal nodes
   changed_when: false
   run_once: true
@@ -378,6 +398,120 @@
           </devices>
         </domain>
     END
+
+    cat > /var/lib/libvirt/node-2.xml << END
+        <domain type='kvm'>
+          <name>node-2</name>
+          <uuid>8a4b8b28-0c92-4f1e-9f35-4d2f8e4a3b22</uuid>
+          <memory unit='KiB'>40960000</memory>
+          <currentMemory unit='KiB'>40960000</currentMemory>
+          <vcpu placement='static'>8</vcpu>
+          <os>
+            <type arch='x86_64' machine='pc-q35-6.2'>hvm</type>
+            <loader readonly='yes' type='pflash'>/var/lib/libvirt/images/OVMF_CODE_4M.fd</loader>
+            <nvram template='/var/lib/libvirt/images/OVMF_VARS_4M.fd'>/var/lib/libvirt/images/OVMF_VARS_4M.fd-node-2</nvram>
+            <bootmenu enable='no'/>
+            <bios useserial='yes'/>
+          </os>
+          <features>
+            <acpi/>
+            <apic/>
+            <pae/>
+          </features>
+          <cpu mode='host-passthrough'/>
+          <clock offset='utc'/>
+          <on_poweroff>destroy</on_poweroff>
+          <on_reboot>destroy</on_reboot>
+          <on_crash>restart</on_crash>
+          <devices>
+            <emulator>/usr/bin/qemu-system-x86_64</emulator>
+            <disk type='file' device='disk'>
+              <driver name='qemu' type='raw' cache='unsafe'/>
+              <source file='/var/lib/libvirt/images/node-2.raw'/>
+              <blockio logical_block_size='512' physical_block_size='512'/>
+              <target dev='vda' bus='virtio'/>
+              <address type='pci' domain='0x0000' bus='0x04' slot='0x00' function='0x0'/>
+            </disk>
+            <controller type='usb' index='0' model='qemu-xhci'>
+              <address type='pci' domain='0x0000' bus='0x03' slot='0x00' function='0x0'/>
+            </controller>
+            <controller type='sata' index='0'>
+              <address type='pci' domain='0x0000' bus='0x00' slot='0x1f' function='0x2'/>
+            </controller>
+            <controller type='pci' index='0' model='pcie-root'/>
+            <controller type='pci' index='1' model='pcie-root-port'>
+              <model name='pcie-root-port'/>
+              <target chassis='1' port='0x8'/>
+              <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x0' multifunction='on'/>
+            </controller>
+            <controller type='pci' index='2' model='pcie-root-port'>
+              <model name='pcie-root-port'/>
+              <target chassis='2' port='0x9'/>
+              <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x1'/>
+            </controller>
+            <controller type='pci' index='3' model='pcie-root-port'>
+              <model name='pcie-root-port'/>
+              <target chassis='3' port='0xa'/>
+              <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x2'/>
+            </controller>
+            <controller type='pci' index='4' model='pcie-root-port'>
+              <model name='pcie-root-port'/>
+              <target chassis='4' port='0xb'/>
+              <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x3'/>
+            </controller>
+            <controller type='pci' index='5' model='pcie-root-port'>
+              <model name='pcie-root-port'/>
+              <target chassis='5' port='0xc'/>
+              <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x4'/>
+            </controller>
+            <controller type='pci' index='6' model='pcie-root-port'>
+              <model name='pcie-root-port'/>
+              <target chassis='6' port='0xd'/>
+              <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x5'/>
+            </controller>
+            <interface type='ethernet'>
+              <mac address='52:54:00:c5:4a:11'/>
+              <target dev='ovs-node-2i1'/>
+              <model type='virtio'/>
+              <boot order='1'/>
+              <address type='pci' domain='0x0000' bus='0x01' slot='0x00' function='0x0'/>
+            </interface>
+            <interface type='ethernet'>
+              <mac address='52:54:00:e8:7f:22'/>
+              <target dev='ovs-node-2i2'/>
+              <model type='virtio'/>
+              <boot order='2'/>
+              <address type='pci' domain='0x0000' bus='0x02' slot='0x00' function='0x0'/>
+            </interface>
+            <serial type='file'>
+              <source path='/tmp/node-2_console.log'/>
+              <target type='isa-serial' port='0'>
+                <model name='isa-serial'/>
+              </target>
+            </serial>
+            <serial type='pty'>
+              <target type='isa-serial' port='1'>
+                <model name='isa-serial'/>
+              </target>
+            </serial>
+            <console type='file'>
+              <source path='/tmp/node-2_console.log'/>
+              <target type='serial' port='0'/>
+            </console>
+            <input type='mouse' bus='ps2'/>
+            <input type='keyboard' bus='ps2'/>
+            <audio id='1' type='none'/>
+            <memballoon model='virtio'>
+              <address type='pci' domain='0x0000' bus='0x05' slot='0x00' function='0x0'/>
+            </memballoon>
+    {% if bm_emulator_gpu_enabled | default(false) | bool %}
+            <video>
+              <model type='virtio' heads='1' primary='no'/>
+            </video>
+    {% endif %}
+          </devices>
+        </domain>
+    END
   args:
     executable: /bin/bash
 
@@ -419,6 +553,26 @@
     pod: "{{ libvirt_pod.resources[0].metadata.name }}"
     container: libvirt
     command: virsh start node-1
+  when: libvirt_pod.resources | length > 0
+
+- name: Create virtual baremetal node - define node-2
+  changed_when: false
+  ignore_errors: true # noqa: ignore-errors
+  kubernetes.core.k8s_exec:
+    namespace: openstack
+    pod: "{{ libvirt_pod.resources[0].metadata.name }}"
+    container: libvirt
+    command: virsh define /var/lib/libvirt/node-2.xml
+  when: libvirt_pod.resources | length > 0
+
+- name: Create virtual baremetal node - start node-2
+  changed_when: false
+  ignore_errors: true # noqa: ignore-errors
+  kubernetes.core.k8s_exec:
+    namespace: openstack
+    pod: "{{ libvirt_pod.resources[0].metadata.name }}"
+    container: libvirt
+    command: virsh start node-2
   when: libvirt_pod.resources | length > 0
 
 - name: Prepare Ironic virtual nodes
@@ -495,9 +649,10 @@
 
     enroll_node 43ef224b-6e77-495d-8702-0745fdcad579 node-0 52:54:00:b9:0b:41 52:54:00:98:d6:b8
     enroll_node 6abb7cdf-66ab-441f-8f94-0dfa955a7716 node-1 52:54:00:b7:de:53 52:54:00:29:5d:5a
+    enroll_node 8a4b8b28-0c92-4f1e-9f35-4d2f8e4a3b22 node-2 52:54:00:c5:4a:11 52:54:00:e8:7f:22
 
     # Final assertion: every node we just enrolled must be addressable.
-    for n in node-0 node-1; do
+    for n in node-0 node-1 node-2; do
       openstack baremetal node show "$n" -f value -c provision_state >/dev/null
     done
   args:
