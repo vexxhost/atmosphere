@@ -114,48 +114,123 @@ will schedule.
 > strips the tokens before the post-bootstrap reboot. Both are
 > out-of-tree relative to atmosphere.
 
-## End-to-end fake-GPU passthrough
+## End-to-end fake-GPU passthrough — full walkthrough
+
+This section is the canonical step-by-step procedure to take a freshly
+deployed AIO (with `bm_emulator_gpu_enabled: true`) all the way to a
+running pod that consumes `vexxhost.com/fake-gpu` and sees a real
+`/dev/dri/cardN` device.
 
 When `bm_emulator_gpu_enabled: true` is set, the role:
 
 1. Adds `<video><model type='virtio'/></video>` to each libvirt domain
    so the BM VM sees a Virtio GPU PCI device (`/dev/dri/cardN` inside).
-2. Tags the corresponding Ironic node with the `CUSTOM_GPU` trait.
+2. Tags each Ironic node with the `CUSTOM_GPU` trait.
 3. Creates an additional `baremetal-gpu` Nova flavor with
    `trait:CUSTOM_GPU=required`.
 
-To verify the chain is wired up correctly, after the deployment
-finishes:
+The walkthrough below assumes you've already run the AIO deploy and
+have shell on the AIO host as `root` with `OS_CLOUD=system` available.
+
+### Phase 0 — Preflight (do these BEFORE `coe cluster create`)
+
+These steps avoid the gaps documented earlier in this README. Do them
+in order. Skipping any of them will leave the cluster in a broken
+state that is hard to recover from later.
+
+**0.1. Confirm the AIO base is healthy.**
 
 ```bash
-# 1. Create a Magnum cluster pinned to the BM nodes.
-#
-# IMPORTANT — flavor choice:
-#   * --master-flavor MUST be a baremetal flavor (e.g. ``baremetal``) so the
-#     control plane lands on an Ironic node, NOT on the AIO host as a Nova
-#     KVM VM. If you omit ``--master-flavor`` Magnum will pick the Heat
-#     default (typically ``m1.small``/``m1.large``), which silently puts
-#     kube-apiserver on a VM and the cluster will *appear* to work but the
-#     emulation isn't end-to-end BM.
-#   * --flavor (worker) is ``baremetal-gpu`` so the GPU trait is consumed
-#     where the workload pods land. With only 2 emulated BM nodes this
-#     gives 1 BM master + 1 BM-GPU worker, which fits exactly.
-#   * If you want the master on GPU too, use ``baremetal-gpu`` for both
-#     and bump ``bm_emulator_node_count`` (or add a 3rd node manually).
-#
-# IMPORTANT — boot_volume_size MUST be 0 on this AIO:
-#   The default Magnum cluster template uses a non-zero ``boot_volume_size``,
-#   which tells Nova to boot the BM instance from a Cinder volume. The AIO
-#   ironic-conductor here is deployed with ``storage_interface=noop`` and is
-#   NOT wired to Cinder, so volume-backed boot fails at spawn time with::
-#
-#     Missing parameters: ['instance_info.image_source']
-#
-#   Setting ``boot_volume_size=0`` makes Magnum skip Cinder entirely and
-#   boot the BM node directly from the Glance image (image_source path),
-#   which is what the default ``noop`` storage_interface supports. Always
-#   pass it in ``--labels`` until ironic-conductor here gains
-#   ``storage_interface=cinder`` support and per-node Cinder volume targets.
+kubectl -n openstack get pods | grep -E 'ironic|nova|magnum'
+openstack baremetal driver list                       # redfish must appear
+openstack hypervisor list                             # ironic hypervisor present
+```
+
+**0.2. Confirm both BM nodes are enrolled and `available` (gap #13).**
+
+```bash
+openstack baremetal node list
+# expect:
+#   node-0  available  power off
+#   node-1  available  power off
+```
+
+If the list is empty or partial, the `Prepare Ironic virtual nodes`
+task (now idempotent and fail-loud — gap #13 fix on this branch)
+either errored out or hasn't been re-run. Re-run the role with the
+`ironic-emulator` tag, or fall back to the manual `enroll_node` recipe
+in `~/notes/logs/ironic/mcapi-bm/commands.md` §5.
+
+**0.3. Confirm libvirt domains use KVM + host-passthrough (gaps #18, #19).**
+
+```bash
+kubectl -n openstack exec -it -c libvirt \
+  $(kubectl -n openstack get pod -l application=libvirt -o name | head -1) \
+  -- virsh dumpxml --inactive node-0 | head -20
+# expect:  <domain type='kvm'>  and  <cpu mode='host-passthrough'/>
+```
+
+If you see `type='qemu'` or `mode='host-model'`, the role pre-dates
+the `bm-mcapi-fixes` patches — re-run the role or apply the live
+recipes in `~/notes/logs/ironic/mcapi-bm/commands.md` §2.
+
+**0.4. Prepare the kube image (gaps #14 and #20).**
+
+See "Prerequisite: kube image preparation" above. In short:
+
+```bash
+# (gap #14) Convert qcow2 → raw
+qemu-img convert -f qcow2 -O raw \
+    ubuntu-2204-kube-v1.34.3.qcow2 ubuntu-2204-kube-v1.34.3.raw
+
+# (gap #20) Strip nomodeset before upload
+virt-customize -a ubuntu-2204-kube-v1.34.3.raw \
+  --run-command "sed -i 's/ nomodeset//g; s/ nofb//g; s/ gfxpayload=text//g' \
+                  /etc/default/grub && update-grub"
+
+# Upload as raw
+openstack image create ubuntu-2204-kube-v1.34.3-raw \
+    --disk-format raw --container-format bare \
+    --file ubuntu-2204-kube-v1.34.3.raw \
+    --property os_distro=ubuntu --property os_version=22.04
+```
+
+**0.5. Create the network + keypair the cluster will use.**
+
+```bash
+# External network 'public' should already exist from the AIO deploy.
+openstack network show public >/dev/null
+
+# Cluster needs a keypair so the master VM is reachable for any
+# manual recovery (see Phase 3 troubleshooting).
+ssh-keygen -t ed25519 -N '' -f /root/.ssh/bmkey -C bmkey
+openstack keypair create --public-key /root/.ssh/bmkey.pub bmkey
+```
+
+### Phase 1 — Create the BM Magnum cluster
+
+**IMPORTANT — flavor choice (gap #15):**
+- `--master-flavor` MUST be a baremetal flavor (e.g. `baremetal`) so
+  the control plane lands on an Ironic node, NOT on the AIO host as a
+  Nova KVM VM. If you omit `--master-flavor` Magnum will pick the Heat
+  default (typically `m1.small`/`m1.large`), which silently puts
+  kube-apiserver on a VM and the cluster will *appear* to work but
+  the emulation isn't end-to-end BM.
+- `--flavor` (worker) is `baremetal-gpu` so the GPU trait is consumed
+  where the workload pods land. With only 2 emulated BM nodes this
+  gives 1 BM master + 1 BM-GPU worker, which fits exactly.
+- If you want the master on GPU too, use `baremetal-gpu` for both and
+  bump `bm_emulator_node_count` (or add a 3rd node manually).
+
+**IMPORTANT — `boot_volume_size` MUST be `0` on this AIO (gap #17):**
+the AIO ironic-conductor is deployed with `storage_interface=noop`,
+not wired to Cinder. Volume-backed boot fails at spawn time with
+`Missing parameters: ['instance_info.image_source']`. Setting
+`boot_volume_size=0` boots directly from the Glance image, which is
+what `noop` supports.
+
+```bash
+# 1.1 — Cluster template
 openstack coe cluster template create k8s-bm-gpu \
     --image ubuntu-2204-kube-v1.34.3-raw \
     --flavor baremetal-gpu --master-flavor baremetal \
@@ -163,27 +238,173 @@ openstack coe cluster template create k8s-bm-gpu \
     --keypair bmkey \
     --coe kubernetes --docker-storage-driver overlay2 \
     --labels kube_tag=v1.34.3,boot_volume_size=0,octavia_provider=ovn
-openstack coe cluster create gpu-test --cluster-template k8s-bm-gpu \
+
+# 1.2 — Cluster (1 BM master + 1 BM-GPU worker)
+openstack coe cluster create gpu-test \
+    --cluster-template k8s-bm-gpu \
     --master-count 1 --node-count 1
-openstack coe cluster config gpu-test --dir /tmp/gpu-test
+
+# 1.3 — Watch progress
+watch -n 10 'openstack coe cluster show gpu-test \
+    -f value -c status -c health_status; \
+    openstack baremetal node list'
+```
+
+Expected sequence:
+- both Ironic nodes go `available → deploying → wait call-back → active`
+- master Nova instance becomes `ACTIVE` first, then worker
+- `coe cluster show` reaches `CREATE_COMPLETE` / `HEALTHY`
+- typical end-to-end time on this AIO: 12–18 minutes
+
+If the cluster is stuck in `CREATE_IN_PROGRESS` for more than ~25
+minutes, jump to "Phase 3 — Troubleshooting" below.
+
+**Verify both nodes really landed on BM (gap #15 sanity check):**
+
+```bash
+for srv in $(openstack server list -f value -c ID); do
+  openstack server show "$srv" -f value -c name -c flavor
+done
+# both should show flavor=baremetal or baremetal-gpu
+# if any shows m1.* the master/worker is on a Nova VM, NOT BM.
+```
+
+### Phase 2 — Validate the GPU passthrough
+
+**2.1. Get the workload kubeconfig.**
+
+```bash
+openstack coe cluster config gpu-test --dir /tmp/gpu-test --force
 export KUBECONFIG=/tmp/gpu-test/config
 
-# 2. Apply the fake GPU device plugin to the workload cluster.
+kubectl get nodes -o wide
+# expect: 1 master (control-plane) + 1 worker, both Ready, v1.34.x
+```
+
+**2.2. Apply the fake-GPU device plugin.**
+
+```bash
 kubectl apply -f roles/ironic_emulator_nodes/files/fake-gpu-device-plugin.yaml
 
-# 3. Wait for the resource to appear on the worker.
-kubectl get nodes -o json | \
-    jq '.items[].status.allocatable["vexxhost.com/fake-gpu"]'
+# wait for the DaemonSet to be Running on every node
+kubectl -n kube-system get pods \
+  -l app.kubernetes.io/name=fake-gpu-device-plugin -o wide
+```
 
-# 4. Run the demo pod and inspect the device passthrough.
+**2.3. Confirm the GPU resource is advertised on the worker.**
+
+```bash
+kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}: \
+fake-gpu={.status.allocatable.vexxhost\.com/fake-gpu}{"\n"}{end}'
+
+# expect:
+#   <master-node>:fake-gpu=0
+#   <worker-node>:fake-gpu=1
+```
+
+If the worker shows `fake-gpu=0`, you almost certainly skipped step
+0.4 (gap #20). On the worker:
+
+```bash
+ls /dev/dri/                # /dev/dri/card0 must exist
+dmesg | grep -i virtio_gpu  # must NOT show "probe failed with error -22"
+```
+
+If `/dev/dri` is empty, apply the in-node `nomodeset` workaround from
+the prerequisites section, reboot the node, and then:
+
+```bash
+kubectl -n kube-system delete pod \
+  -l app.kubernetes.io/name=fake-gpu-device-plugin \
+  --field-selector spec.nodeName=<worker-node-name>
+```
+
+so kubelet re-enumerates devices.
+
+**2.4. Run the demo pod.**
+
+```bash
 kubectl apply -f roles/ironic_emulator_nodes/files/fake-gpu-demo-pod.yaml
+
+# wait for the pod to start (it will sleep 600s after probing)
+kubectl get pod fake-gpu-demo -o wide
 kubectl logs fake-gpu-demo
 ```
 
-The demo pod's logs will show the Virtio GPU PCI device via `lspci`,
-the `/dev/dri/cardN` device file injected by kubelet, and confirm the
-pod was scheduled because of the requested `vexxhost.com/fake-gpu`
-extended resource.
+The demo pod's logs will show:
+
+- `lspci` output containing `VGA compatible controller: Red Hat, Inc.
+  Virtio 1.0 GPU` — the virtio-gpu PCI device this role attached to
+  the libvirt domain.
+- `/dev/dri/card0` listed under `/dev/dri` — the device file kubelet
+  injected via the device-plugin contract.
+- `vexxhost.com/fake-gpu` accounted in the pod's resource request, so
+  the fact that it Scheduled at all proves the resource was advertised
+  and consumed end-to-end.
+
+`kubectl describe node <worker>` should show `vexxhost.com/fake-gpu`
+under both `Capacity` and `Allocatable`, and `1` under `Allocated
+resources` while `fake-gpu-demo` is Running.
+
+### Phase 3 — Health checks (self-serve)
+
+Quick sanity script you can rerun any time:
+
+```bash
+echo "== cluster ==";    openstack coe cluster show gpu-test \
+    -f value -c status -c health_status
+echo "== BM nodes ==";   openstack baremetal node list
+echo "== nova ==";       openstack server list --long \
+    -f value -c Name -c Status -c Flavor -c Networks
+echo "== k8s nodes =="; KUBECONFIG=/tmp/gpu-test/config \
+    kubectl get nodes -o wide
+echo "== readyz ==";    KUBECONFIG=/tmp/gpu-test/config \
+    kubectl get --raw='/readyz?verbose' | tail -5
+echo "== gpu ==";       KUBECONFIG=/tmp/gpu-test/config \
+    kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}: \
+fake-gpu={.status.allocatable.vexxhost\.com/fake-gpu}{"\n"}{end}'
+echo "== demo ==";      KUBECONFIG=/tmp/gpu-test/config \
+    kubectl get pod fake-gpu-demo -o wide
+```
+
+Healthy output:
+- cluster `CREATE_COMPLETE` / `HEALTHY`
+- both BM nodes `active`, both Nova servers `ACTIVE` with BM flavors
+- both k8s nodes `Ready`
+- `readyz check passed`
+- worker advertises `fake-gpu=1`
+- `fake-gpu-demo` `Running` (or `Completed` if 10 min after start)
+
+### Phase 4 — Teardown / re-test
+
+```bash
+openstack coe cluster delete gpu-test
+# wait until DELETE_COMPLETE, then nodes flip back to available
+openstack baremetal node list
+```
+
+The `enroll_node` task is idempotent (gap #13 fix), so you can repeat
+Phases 1–3 without re-running the whole role.
+
+If you need to fully re-prepare the libvirt domains (e.g. you're
+testing the role itself), `virsh destroy node-0 node-1; virsh undefine
+node-0 node-1; ironic-emulator-nodes` re-creates them; then resume at
+Phase 0.
+
+### Troubleshooting matrix
+
+| Symptom | Most likely gap | Fix |
+| --- | --- | --- |
+| `coe cluster create` fails `NoValidDriver` | #2 | install mcapi from `add-server-type-bm` branch |
+| Cluster stuck `CREATE_IN_PROGRESS`, `Missing parameters: ['instance_info.image_source']` in nova-compute logs | #17 | recreate cluster template with `--labels boot_volume_size=0,...` |
+| Cluster stuck `CREATE_IN_PROGRESS`, BM node stays `wait call-back`, libvirt VM has died | #18 | confirm `<domain type='kvm'>` (Phase 0.3) |
+| BM node deploys, then crashes on second power cycle with `guest CPU doesn't match specification` | #19 | confirm `<cpu mode='host-passthrough'/>` (Phase 0.3) |
+| `kubeadm init` hangs, kube-apiserver crashloops on master | #3 | strip webhook flags + run `kubeadm init phase upload-config\|bootstrap-token\|mark-control-plane\|kubelet-finalize` by hand |
+| KCP stays `WaitingForKubeadmInit` forever after fixing apiserver | #5 | run the missing `kubeadm init phase` commands manually |
+| Pods scheduled but kubelet refuses extra ones with "no allocatable …" | #4 | bump `maxPods: 250` on the kubelet config and restart kubelet |
+| Worker Ready but `fake-gpu=0` | #20 | strip `nomodeset` from `/etc/default/grub`, reboot, recycle plugin pod |
+| `coe cluster create` fails because nodes never went `available` | #13 | `openstack baremetal node list`; rerun the `Prepare Ironic virtual nodes` task or `commands.md §5` |
+| BM node fails to bind VIF with "not enough free physical ports" | #16 | confirm `network_interface=flat` on the node (now default in this branch) |
 
 ## Known gaps (not yet automated in this branch)
 
