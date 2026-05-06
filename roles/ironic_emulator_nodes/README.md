@@ -429,6 +429,54 @@ Phase 0.
 | Worker Ready but `fake-gpu=0` | #20 | strip `nomodeset` from `/etc/default/grub`, reboot, recycle plugin pod |
 | `coe cluster create` fails because nodes never went `available` | #13 | `openstack baremetal node list`; rerun the `Prepare Ironic virtual nodes` task or `commands.md §5` |
 | BM node fails to bind VIF with "not enough free physical ports" | #16 | confirm `network_interface=flat` on the node (now default in this branch) |
+| `CREATE_FAILED` instantly with `[Errno 2] No such file or directory: '.../magnum_cluster_api/manifests/calico/v3.31.X.yaml'` | mcapi overlay drift | The patched `resources.py` from a newer mcapi branch (e.g. `add-server-type-bm` head) references a `CALICO_TAG` whose manifest YAML does **not** exist in the deployed mcapi image. See "Overlay caveat" below. |
+
+### Overlay caveat — `CALICO_TAG` / manifest version drift
+
+When you overlay `resources.py` from a feature branch (e.g. `add-server-type-bm`,
+`kubelet-config-from-labels`) onto a running mcapi pod via configMap subPath
+mounts, the overlay only replaces the Python files you mount. The
+`magnum_cluster_api/manifests/calico/v*.yaml` files — and any other shipped data
+files — still come from the **installed image**.
+
+If the feature branch has bumped `CALICO_TAG` (or any other version constant
+that selects a manifest file from disk) past what the deployed image ships,
+cluster creation will fail immediately with a message like:
+
+```
+[Errno 2] No such file or directory:
+'/var/lib/openstack/lib/python3.12/site-packages/magnum_cluster_api/manifests/calico/v3.31.5.yaml'
+```
+
+**Quick fix (overlay-only, do NOT push upstream):** patch the local copy of
+`resources.py` to use a `CALICO_TAG` that *is* shipped by the deployed image
+before re-creating the configMap. Example:
+
+```bash
+# inspect what the deployed image actually ships
+kubectl -n openstack exec magnum-conductor-0 -- \
+  ls /var/lib/openstack/lib/python3.12/site-packages/magnum_cluster_api/manifests/calico/
+
+# patch local overlay copy down to a shipped version
+sed -i 's/^CALICO_TAG = "v3.31.5"$/CALICO_TAG = "v3.31.3"/' resources.py
+
+# re-apply the configMap and roll
+kubectl -n openstack create configmap mcapi-patch \
+  --from-file=utils.py=utils.py \
+  --from-file=resources.py=resources.py \
+  --from-file=driver.py=driver.py \
+  --dry-run=client -o yaml | kubectl apply -f -
+kubectl -n openstack rollout restart sts/magnum-conductor deploy/magnum-api
+```
+
+**Proper fix (full image rebuild path):** rebuild and roll out a new mcapi
+image whose `manifests/` matches the branch's `CALICO_TAG`, or add the missing
+`v3.31.X.yaml` to the configMap and mount it via an extra subPath at
+`.../manifests/calico/v3.31.X.yaml`.
+
+This same pattern can bite for any data-file lookup keyed off a Python-side
+constant — keep an eye on `CALICO_TAG`, `CILIUM_TAG`, image manifests, and
+ClusterClass JSON/YAML embedded in the mcapi package.
 
 ### Master VM recovery — gaps #3 and #5
 
