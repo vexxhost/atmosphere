@@ -130,7 +130,7 @@
           {{
             (glance_image_properties | default({}))
             | combine({'atmosphere:image:url': glance_image_url})
-            | combine({'atmosphere:image:etag': _glance_image_source_etag} if _glance_image_source_etag is defined else {})
+            | combine({'atmosphere:image:etag': _glance_image_source_etag} if _glance_image_source_head.etag is defined else {})
           }}
         kernel: "{{ glance_image_kernel | default(omit) }}"
         ramdisk: "{{ glance_image_ramdisk | default(omit) }}"

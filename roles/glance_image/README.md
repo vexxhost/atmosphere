@@ -5,7 +5,9 @@ the upstream source URL.
 
 ## Change detection
 
-On every run, the role sends an HTTP ``HEAD`` request to ``glance_image_url``.
+On every run, the role sends an HTTP ``HEAD`` request to ``glance_image_url``
+to check for changes.  The download and upload steps are skipped when no
+change is detected.
 
 If the server returns an ``ETag`` header, the role captures it and compares it
 against the ``atmosphere:image:etag`` property stored on any existing image
