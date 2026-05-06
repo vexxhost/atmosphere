@@ -222,12 +222,24 @@ openstack keypair create --public-key /root/.ssh/bmkey.pub bmkey
 - If you want the master on GPU too, use `baremetal-gpu` for both and
   bump `bm_emulator_node_count` (or add a 3rd node manually).
 
-**IMPORTANT — `boot_volume_size` MUST be `0` on this AIO (gap #17):**
+**IMPORTANT — `boot_volume_size` and `server_type=bm` (gap #17):**
 the AIO ironic-conductor is deployed with `storage_interface=noop`,
-not wired to Cinder. Volume-backed boot fails at spawn time with
-`Missing parameters: ['instance_info.image_source']`. Setting
-`boot_volume_size=0` boots directly from the Glance image, which is
-what `noop` supports.
+not wired to Cinder, so volume-backed boot fails at spawn time with
+`Missing parameters: ['instance_info.image_source']`. The cluster
+template MUST end up with `boot_volume_size=0` so Magnum boots the
+BM node directly from the Glance image (which is what `noop`
+supports).
+
+- **mcapi `add-server-type-bm` branch (commit `e61ca8d`) and newer:**
+  if the cluster_template has `server_type=bm` and the operator does
+  NOT pass `boot_volume_size` explicitly, mcapi auto-defaults it to
+  `0`. You can omit the label.
+- **older mcapi:** you MUST pass `--labels boot_volume_size=0`
+  explicitly, otherwise the chart renders a Cinder root volume
+  request that Ironic refuses.
+
+The example below passes `boot_volume_size=0` explicitly so it works
+on both old and new mcapi.
 
 ```bash
 # 1.1 — Cluster template
@@ -396,7 +408,7 @@ Phase 0.
 | Symptom | Most likely gap | Fix |
 | --- | --- | --- |
 | `coe cluster create` fails `NoValidDriver` | #2 | install mcapi from `add-server-type-bm` branch |
-| Cluster stuck `CREATE_IN_PROGRESS`, `Missing parameters: ['instance_info.image_source']` in nova-compute logs | #17 | recreate cluster template with `--labels boot_volume_size=0,...` |
+| Cluster stuck `CREATE_IN_PROGRESS`, `Missing parameters: ['instance_info.image_source']` in nova-compute logs | #17 | upgrade mcapi to `add-server-type-bm` branch (auto-defaults to `0` for `server_type=bm`), OR recreate cluster template with `--labels boot_volume_size=0,...` |
 | Cluster stuck `CREATE_IN_PROGRESS`, BM node stays `wait call-back`, libvirt VM has died | #18 | confirm `<domain type='kvm'>` (Phase 0.3) |
 | BM node deploys, then crashes on second power cycle with `guest CPU doesn't match specification` | #19 | confirm `<cpu mode='host-passthrough'/>` (Phase 0.3) |
 | `kubeadm init` hangs, kube-apiserver crashloops on master | #3 | run "Master VM recovery" procedure below |
@@ -533,17 +545,26 @@ of these workarounds until they land.
    partial state and re-run the missing phases automatically so the
    master comes up clean without operator intervention.
 6. **Cinder-backed boot for BM nodes (`storage_interface=cinder`).**
-   The Magnum default cluster template requests Cinder volume-backed
-   boot (`boot_volume_size > 0`), but this role's ironic-conductor is
-   deployed with `storage_interface=noop` and not wired to Cinder, so
-   volume boot fails at Nova spawn with
-   `Missing parameters: ['instance_info.image_source']`. Operator
-   workaround (and what this README now uses): always pass
-   `--labels boot_volume_size=0,...` so Magnum boots the BM node
-   directly from the Glance image. Proper fix: enable
-   `enabled_storage_interfaces=cinder,noop` on ironic-conductor, set
-   `--storage-interface cinder` per BM node, and attach Cinder volume
-   targets — then `boot_volume_size>0` would actually work.
+   The Magnum default cluster template used to request Cinder
+   volume-backed boot (`boot_volume_size > 0`) regardless of
+   `server_type`, but this role's ironic-conductor is deployed with
+   `storage_interface=noop` and not wired to Cinder, so volume boot
+   failed at Nova spawn with `Missing parameters:
+   ['instance_info.image_source']`.
+
+   - **Upstream fix landed** in `vexxhost/magnum-cluster-api`
+     `add-server-type-bm` branch (commit `e61ca8d`): when
+     `server_type=bm` and the operator does not pass
+     `boot_volume_size` explicitly, mcapi auto-defaults it to `0`.
+     Operators on this branch can drop the label.
+   - **Operator workaround for older mcapi** (and what this README's
+     example uses for compatibility): pass
+     `--labels boot_volume_size=0,...` so Magnum boots the BM node
+     directly from the Glance image.
+   - **Longer-term proper fix:** enable
+     `enabled_storage_interfaces=cinder,noop` on ironic-conductor,
+     set `--storage-interface cinder` per BM node, and attach Cinder
+     volume targets — then `boot_volume_size>0` would actually work.
 7. **Kube image must be RAW for Ceph RBD backend.** The atmosphere AIO
    uses Ceph RBD as the Glance/Cinder backend, which requires `raw`
    source images. The upstream `ubuntu-2204-kube-vX.Y.Z` cloud images
