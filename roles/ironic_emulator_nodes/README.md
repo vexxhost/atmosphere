@@ -233,13 +233,10 @@ supports).
 - **mcapi `add-server-type-bm` branch (commit `e61ca8d`) and newer:**
   if the cluster_template has `server_type=bm` and the operator does
   NOT pass `boot_volume_size` explicitly, mcapi auto-defaults it to
-  `0`. You can omit the label.
-- **older mcapi:** you MUST pass `--labels boot_volume_size=0`
+  `0`. The example below relies on this — no label needed.
+- **older mcapi:** add `boot_volume_size=0` to the `--labels` list
   explicitly, otherwise the chart renders a Cinder root volume
   request that Ironic refuses.
-
-The example below passes `boot_volume_size=0` explicitly so it works
-on both old and new mcapi.
 
 ```bash
 # 1.1 — Cluster template
@@ -249,7 +246,7 @@ openstack coe cluster template create k8s-bm-gpu \
     --external-network public --network-driver calico \
     --keypair bmkey \
     --coe kubernetes --docker-storage-driver overlay2 \
-    --labels kube_tag=v1.34.3,boot_volume_size=0,octavia_provider=ovn
+    --labels kube_tag=v1.34.3,octavia_provider=ovn
 
 # 1.2 — Cluster (1 BM master + 1 BM-GPU worker)
 openstack coe cluster create gpu-test \
