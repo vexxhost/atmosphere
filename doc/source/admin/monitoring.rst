@@ -916,7 +916,7 @@ a physical Ethernet interface whose carrier is still up, for at least 5
 minutes. The expression also requires ``node_network_protocol_type == 1``
 (ARPHRD_ETHER) and ``node_network_carrier == 1`` so that virtual tunnel
 devices and simply disconnected ports are excluded. ``node_exporter`` returns
-a negative value (typically ``-125000``) when the kernel cannot read the
+a negative value (typically ``-125000``) when the kernel can't read the
 interface speed via ethtool (``Speed: Unknown!``), which typically indicates a
 silent data-plane failure: the OS keeps the link administratively up but the
 transceiver, cable, or switch port is degraded so no link speed can be
@@ -929,7 +929,7 @@ carrying no traffic.
 - Failed or marginal transceiver, DAC/AOC cable, or fiber patch
 - Switch port disabled, errdisabled, or in an unexpected operational state
 - NIC firmware bug after a host or switch reboot
-- NIC hardware fault (queue or PHY failure) that does not raise a carrier event
+- NIC hardware fault (queue or PHY failure) that doesn't raise a carrier event
 
 **Diagnostic and remediation steps:**
 
