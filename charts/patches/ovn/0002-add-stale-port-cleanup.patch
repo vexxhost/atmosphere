@@ -1,0 +1,417 @@
+diff --git a/ovn/templates/bin/_ovn-stale-port-cleanup.sh.tpl b/ovn/templates/bin/_ovn-stale-port-cleanup.sh.tpl
+new file mode 100644
+index 00000000..bcb70392
+--- /dev/null
++++ b/ovn/templates/bin/_ovn-stale-port-cleanup.sh.tpl
+@@ -0,0 +1,207 @@
++#!/bin/bash
++
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#     http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++
++# Periodically remove stale OVS ports from the integration bridge.
++#
++# A "stale" port is an OVS Port whose attached Interface has no corresponding
++# kernel netdev. This commonly happens because libvirt removes the tap device
++# when a VM is destroyed but the matching OVS port entry is left behind on
++# br-int. Accumulation of these orphans causes ovn-controller poll-loop
++# stalls, OVS disconnections, and packet drops.
++#
++# Detection criteria (all must hold):
++#   * Port lives on the configured integration bridge (default: br-int).
++#   * Interface has the "iface-id" external_id (it is/was a Neutron VIF).
++#   * Either the Interface "error" column is non-empty (typically
++#     "could not open network device tapXXXX (No such device)") or the
++#     kernel netdev for the Interface "name" is not visible to `ip link`.
++#
++# Anti-race protection:
++#   The Neutron OVS agent creates the OVS port with iface-id set BEFORE
++#   libvirt creates the tap device. To avoid deleting a brand-new VIF
++#   that has not finished plugging, every candidate must remain stale
++#   across MIN_STALE_OBSERVATIONS consecutive cycles (default: 2) before
++#   deletion. The observation state lives in /var/run inside the pod
++#   and is reset whenever the port becomes healthy again.
++#
++# Operator opt-out:
++#   Interfaces with external_ids:skip_cleanup="true" are never deleted.
++
++set -o pipefail
++
++INTEGRATION_BRIDGE="${INTEGRATION_BRIDGE:-br-int}"
++OVS_DB_SOCKET="${OVS_DB_SOCKET:-/run/openvswitch/db.sock}"
++INTERVAL_SECONDS="${INTERVAL_SECONDS:-3600}"
++MAX_DELETIONS_PER_CYCLE="${MAX_DELETIONS_PER_CYCLE:-200}"
++MIN_STALE_OBSERVATIONS="${MIN_STALE_OBSERVATIONS:-2}"
++DRY_RUN="${DRY_RUN:-0}"
++
++STATE_DIR="${STATE_DIR:-/var/run/ovn-stale-port-cleanup}"
++mkdir -p "${STATE_DIR}"
++
++OVS_VSCTL="ovs-vsctl --db=unix:${OVS_DB_SOCKET} --timeout=10"
++
++log() {
++    echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) [stale-port-cleanup] $*"
++}
++
++# True (0) if the kernel netdev exists in the host network namespace.
++# We rely on `ip link show` because the pod runs with hostNetwork=true,
++# so netlink reflects the host. This is more accurate than reading
++# /sys/class/net (which is a per-netns view that may not be mounted
++# from the host).
++netdev_exists() {
++    ip -o link show dev "$1" &>/dev/null
++}
++
++# Persist that we observed `iface` as stale at least once. Returns the
++# updated observation count via stdout.
++record_stale_observation() {
++    local iface="$1"
++    local f="${STATE_DIR}/${iface}.count"
++    local n=0
++    [[ -r "${f}" ]] && n="$(cat "${f}" 2>/dev/null || echo 0)"
++    n=$((n + 1))
++    echo "${n}" > "${f}"
++    echo "${n}"
++}
++
++clear_stale_observation() {
++    rm -f "${STATE_DIR}/$1.count"
++}
++
++# Drop state files for interfaces no longer present so the directory
++# does not grow unbounded.
++gc_state_dir() {
++    local known="$1"  # newline-separated iface names currently in OVSDB
++    local f base
++    shopt -s nullglob
++    for f in "${STATE_DIR}"/*.count; do
++        base="$(basename "${f}" .count)"
++        if ! grep -Fxq "${base}" <<< "${known}"; then
++            rm -f "${f}"
++        fi
++    done
++    shopt -u nullglob
++}
++
++cleanup_cycle() {
++    local bridge="$1"
++    local deletions=0
++    local candidates=0
++    local confirmed=0
++
++    if ! ${OVS_VSCTL} br-exists "${bridge}" 2>/dev/null; then
++        log "bridge ${bridge} does not exist; skipping cycle"
++        return 0
++    fi
++
++    # Pre-fetch the set of interface names currently attached to br-int.
++    # Doing this once avoids an O(n) iface-to-br call per Interface row.
++    local br_ifaces
++    br_ifaces="$(${OVS_VSCTL} list-ports "${bridge}" 2>/dev/null || true)"
++    if [[ -z "${br_ifaces}" ]]; then
++        log "no ports on ${bridge}; nothing to do"
++        gc_state_dir ""
++        return 0
++    fi
++
++    # Snapshot Interface rows that look like Neutron VIFs (iface-id set).
++    # Only ask for the name column so we never have to parse the comma-
++    # heavy external_ids map at the CSV layer.
++    local vif_ifaces
++    vif_ifaces="$(${OVS_VSCTL} --columns=name --no-headings --data=bare \
++        find Interface external_ids:iface-id\!=\"\" 2>/dev/null \
++        | awk 'NF>0 {print $1}' || true)"
++
++    if [[ -z "${vif_ifaces}" ]]; then
++        log "no Neutron VIF interfaces in OVSDB"
++        gc_state_dir ""
++        return 0
++    fi
++
++    # Intersect: VIF interfaces actually attached to the integration bridge.
++    local target_ifaces
++    target_ifaces="$(grep -Fxf <(printf '%s\n' "${br_ifaces}") <<< "${vif_ifaces}" || true)"
++
++    gc_state_dir "${target_ifaces}"
++
++    [[ -z "${target_ifaces}" ]] && { log "no VIF interfaces on ${bridge}"; return 0; }
++
++    while IFS= read -r iface_name; do
++        [[ -z "${iface_name}" ]] && continue
++
++        # Per-interface get is safe regardless of map content.
++        local iface_error iface_ext
++        iface_error="$(${OVS_VSCTL} --if-exists get Interface "${iface_name}" error 2>/dev/null || echo '[]')"
++        iface_ext="$(${OVS_VSCTL} --if-exists get Interface "${iface_name}" external_ids 2>/dev/null || echo '{}')"
++
++        local stale_reason=""
++        if [[ -n "${iface_error}" && "${iface_error}" != "[]" && "${iface_error}" != '""' ]]; then
++            stale_reason="interface error: ${iface_error}"
++        elif ! netdev_exists "${iface_name}"; then
++            stale_reason="kernel netdev missing"
++        else
++            # Healthy now; clear any prior observation count.
++            clear_stale_observation "${iface_name}"
++            continue
++        fi
++
++        if [[ "${iface_ext}" == *'skip_cleanup="true"'* ]]; then
++            log "skipping ${iface_name} (skip_cleanup=true)"
++            continue
++        fi
++
++        candidates=$((candidates + 1))
++        local count
++        count="$(record_stale_observation "${iface_name}")"
++
++        if (( count < MIN_STALE_OBSERVATIONS )); then
++            log "candidate ${iface_name} (${stale_reason}); observation ${count}/${MIN_STALE_OBSERVATIONS}, deferring"
++            continue
++        fi
++
++        confirmed=$((confirmed + 1))
++        log "stale port confirmed on ${bridge}: ${iface_name} (${stale_reason}, observed ${count}x)"
++
++        if [[ "${DRY_RUN}" == "1" ]]; then
++            continue
++        fi
++
++        if (( deletions >= MAX_DELETIONS_PER_CYCLE )); then
++            log "deletion cap (${MAX_DELETIONS_PER_CYCLE}) reached; deferring remainder to next cycle"
++            break
++        fi
++
++        if ${OVS_VSCTL} --if-exists del-port "${bridge}" "${iface_name}"; then
++            deletions=$((deletions + 1))
++            clear_stale_observation "${iface_name}"
++            log "deleted stale port ${iface_name} from ${bridge}"
++        else
++            log "WARNING: failed to delete port ${iface_name} from ${bridge}"
++        fi
++    done <<< "${target_ifaces}"
++
++    log "cycle complete: candidates=${candidates} confirmed=${confirmed} deletions=${deletions} dry_run=${DRY_RUN}"
++}
++
++log "starting (bridge=${INTEGRATION_BRIDGE} interval=${INTERVAL_SECONDS}s max_per_cycle=${MAX_DELETIONS_PER_CYCLE} min_obs=${MIN_STALE_OBSERVATIONS} dry_run=${DRY_RUN})"
++
++trap 'log "received termination signal, exiting"; exit 0' SIGTERM SIGINT
++
++while true; do
++    cleanup_cycle "${INTEGRATION_BRIDGE}" || log "cycle failed (continuing)"
++    sleep "${INTERVAL_SECONDS}" &
++    wait $!
++done
+diff --git a/ovn/templates/configmap-bin.yaml b/ovn/templates/configmap-bin.yaml
+index a44fb870..1f08f0f3 100644
+--- a/ovn/templates/configmap-bin.yaml
++++ b/ovn/templates/configmap-bin.yaml
+@@ -30,6 +30,8 @@ data:
+ {{ tuple "bin/_ovn-controller-init.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+   ovn-network-logging-parser.sh: |
+ {{ tuple "bin/_ovn-network-logging-parser.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
++  ovn-stale-port-cleanup.sh: |
++{{ tuple "bin/_ovn-stale-port-cleanup.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+   ovn-bgp-agent-init.sh: |
+ {{ tuple "bin/_ovn-bgp-agent-init.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+   ovn-bgp-agent.sh: |
+diff --git a/ovn/templates/daemonset-ovn-stale-port-cleanup.yaml b/ovn/templates/daemonset-ovn-stale-port-cleanup.yaml
+new file mode 100644
+index 00000000..155d6849
+--- /dev/null
++++ b/ovn/templates/daemonset-ovn-stale-port-cleanup.yaml
+@@ -0,0 +1,95 @@
++{{/*
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++   http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++*/}}
++
++{{- if .Values.manifests.daemonset_ovn_stale_port_cleanup }}
++{{- $envAll := . }}
++{{- $serviceAccountName := "ovn-stale-port-cleanup" }}
++
++{{ tuple $envAll "ovn_stale_port_cleanup" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
++
++---
++kind: DaemonSet
++apiVersion: apps/v1
++metadata:
++  name: ovn-stale-port-cleanup
++  annotations:
++    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
++    configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
++  labels:
++{{ tuple $envAll "ovn" "stale-port-cleanup" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
++spec:
++  selector:
++    matchLabels:
++{{ tuple $envAll "ovn" "stale-port-cleanup" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 6 }}
++  template:
++    metadata:
++      labels:
++{{ tuple $envAll "ovn" "stale-port-cleanup" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
++      annotations:
++{{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
++        configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
++    spec:
++      serviceAccountName: {{ $serviceAccountName }}
++      hostNetwork: true
++      dnsPolicy: {{ .Values.pod.dns_policy }}
++      nodeSelector:
++        {{ .Values.labels.ovn_controller.node_selector_key }}: {{ .Values.labels.ovn_controller.node_selector_value }}
++      {{- if .Values.pod.tolerations.ovn_stale_port_cleanup.enabled }}
++{{ tuple $envAll "ovn_stale_port_cleanup" | include "helm-toolkit.snippets.kubernetes_tolerations" | indent 6 }}
++      {{- end }}
++      initContainers:
++{{- tuple $envAll "ovn_stale_port_cleanup" list | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
++      containers:
++        - name: ovn-stale-port-cleanup
++{{ tuple $envAll "ovn_stale_port_cleanup" | include "helm-toolkit.snippets.image" | indent 10 }}
++{{ tuple $envAll $envAll.Values.pod.resources.ovn_stale_port_cleanup | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
++          securityContext:
++            runAsUser: 0
++            privileged: true
++          command:
++            - /tmp/ovn-stale-port-cleanup.sh
++          env:
++            - name: INTEGRATION_BRIDGE
++              value: {{ .Values.conf.ovn_bridge | quote }}
++            - name: OVS_DB_SOCKET
++              value: {{ .Values.conf.stale_port_cleanup.ovs_db_socket | quote }}
++            - name: INTERVAL_SECONDS
++              value: {{ .Values.conf.stale_port_cleanup.interval_seconds | quote }}
++            - name: MAX_DELETIONS_PER_CYCLE
++              value: {{ .Values.conf.stale_port_cleanup.max_deletions_per_cycle | quote }}
++            - name: MIN_STALE_OBSERVATIONS
++              value: {{ .Values.conf.stale_port_cleanup.min_stale_observations | quote }}
++            - name: DRY_RUN
++              value: {{ .Values.conf.stale_port_cleanup.dry_run | quote }}
++          volumeMounts:
++            - name: ovn-bin
++              mountPath: /tmp/ovn-stale-port-cleanup.sh
++              subPath: ovn-stale-port-cleanup.sh
++              readOnly: true
++            - name: run-openvswitch
++              mountPath: /run/openvswitch
++            - name: state
++              mountPath: /var/run/ovn-stale-port-cleanup
++      volumes:
++        - name: ovn-bin
++          configMap:
++            name: ovn-bin
++            defaultMode: 0555
++        - name: run-openvswitch
++          hostPath:
++            path: /run/openvswitch
++            type: DirectoryOrCreate
++        - name: state
++          emptyDir: {}
++{{- end }}
+diff --git a/ovn/values.yaml b/ovn/values.yaml
+index 3870252e..0e98865e 100644
+--- a/ovn/values.yaml
++++ b/ovn/values.yaml
+@@ -30,6 +30,7 @@ images:
+     vector: docker.io/timberio/vector:0.39.0-debian
+     ovn_logging_parser: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
+     ovn_bgp_agent: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
++    ovn_stale_port_cleanup: docker.io/openstackhelm/ovn:ubuntu_focal
+   pull_policy: "IfNotPresent"
+   local_registry:
+     active: false
+@@ -56,6 +57,9 @@ labels:
+   ovn_bgp_agent:
+     node_selector_key: openvswitch
+     node_selector_value: enabled
++  ovn_stale_port_cleanup:
++    node_selector_key: openvswitch
++    node_selector_value: enabled
+ 
+ volume:
+   ovn_ovsdb_nb:
+@@ -80,6 +84,23 @@ conf:
+   ovn_cms_options_gw_enabled: "enable-chassis-as-gw,availability-zones=nova"
+   ovn_encap_type: geneve
+   ovn_bridge: br-int
++  # Periodic cleanup of stale OVS ports on the integration bridge. Stale
++  # ports accumulate when libvirt removes a tap device but the matching
++  # OVS Port entry is left behind, eventually causing ovn-controller poll
++  # loop stalls. See vexxhost/atmosphere#369906.
++  stale_port_cleanup:
++    ovs_db_socket: /run/openvswitch/db.sock
++    interval_seconds: 3600
++    # Cap deletions per pass. Operators recovering an already-degraded
++    # fleet (thousands of orphans per host) may want to raise this for
++    # the first few cycles, then return it to a safe steady-state value.
++    max_deletions_per_cycle: 200
++    # A candidate must remain stale across this many consecutive cycles
++    # before it is removed. This guards against the race where the
++    # Neutron OVS agent has created the port but libvirt has not yet
++    # created the tap device.
++    min_stale_observations: 2
++    dry_run: 0
+   ovn_bridge_mappings: external:br-ex
+   # For DPDK enabled environments, enable netdev datapath type for br-int
+   # ovn_bridge_datapath_type: netdev
+@@ -239,6 +260,8 @@ pod:
+       enabled: false
+     ovn_controller:
+       enabled: false
++    ovn_stale_port_cleanup:
++      enabled: false
+   affinity:
+     anti:
+       type:
+@@ -358,6 +381,13 @@ pod:
+       limits:
+         memory: "256Mi"
+         cpu: "500m"
++    ovn_stale_port_cleanup:
++      requests:
++        memory: "32Mi"
++        cpu: "10m"
++      limits:
++        memory: "128Mi"
++        cpu: "200m"
+     jobs:
+       image_repo_sync:
+         requests:
+@@ -495,6 +525,12 @@ dependencies:
+           labels:
+             application: openvswitch
+             component: server
++    ovn_stale_port_cleanup:
++      pod:
++        - requireSameNode: true
++          labels:
++            application: openvswitch
++            component: server
+     image_repo_sync:
+       services:
+         - endpoint: internal
+@@ -510,6 +546,7 @@ manifests:
+   statefulset_ovn_ovsdb_sb: true
+   deployment_ovn_northd: true
+   daemonset_ovn_controller: true
++  daemonset_ovn_stale_port_cleanup: true
+   job_image_repo_sync: true
+   daemonset_ovn_bgp_agent: true
+ ...

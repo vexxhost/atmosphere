@@ -1,0 +1,33 @@
+---
+features:
+  - |
+    Adds a new stale port cleanup DaemonSet to the OVN chart that
+    periodically removes stale Open vSwitch ports from the integration
+    bridge (``br-int``) on every node running the OVN controller.
+
+    Stale ports accumulate when ``libvirt`` removes a virtual machine tap
+    device but the matching Open vSwitch ``Port`` / ``Interface`` row
+    remains on ``br-int``. Over time these orphaned entries cause OVN
+    controller poll-loop stalls of tens of seconds, Open vSwitch
+    disconnections, and packet drops on healthy virtual machines sharing
+    the same hypervisor.
+
+    Detection only considers Neutron virtual interfaces that carry
+    ``external_ids:iface-id`` and attach to the configured integration
+    bridge whose Interface row either reports a non-empty ``error`` column
+    (for example, when the kernel device for ``tapXXXX`` fails to open)
+    or has no corresponding kernel network device under
+    ``/sys/class/net``. Interfaces tagged with
+    ``external_ids:skip_cleanup=true`` always remain in place.
+
+    The cadence, deletion cap per cycle, and dry-run mode are configurable
+    via ``conf.stale_port_cleanup`` in ``values.yaml``. The DaemonSet
+    runs by default and inherits the ``openvswitch=enabled`` node selector
+    used by the OVN controller.
+
+upgrade:
+  - |
+    Operators who don't want the new cleanup DaemonSet can disable it by
+    setting its manifest toggle to ``false`` in the chart values, or run
+    it in observation-only mode by setting ``conf.stale_port_cleanup.dry_run``
+    to ``1``.
