@@ -11,6 +11,109 @@ without real hardware.
 | --- | --- | --- |
 | `bm_emulator_gpu_enabled` | `false` | Attach a virtio-gpu device to each emulated BM VM, register a `CUSTOM_GPU` trait on each Ironic node, and create a `baremetal-gpu` Nova flavor that requires the trait. Used to test GPU "passthrough" all the way to a pod on a Magnum/CAPI Kubernetes cluster. |
 
+## Prerequisite: kube image preparation
+
+Before creating any Magnum cluster against these emulated BM nodes, the
+Kubernetes image you upload to Glance MUST be prepared for two
+constraints baked into this AIO:
+
+### 1. Image must be RAW (not qcow2) — gap #14
+
+Atmosphere's AIO uses Ceph RBD as the Glance/Cinder backend. Ceph RBD
+requires the source image to be in **raw** format; if you upload the
+upstream `ubuntu-2204-kube-vX.Y.Z` qcow2 directly, Glance accepts it
+but Nova/Ironic spawn fails when copying it onto the BM node.
+
+Convert qcow2 → raw before upload:
+
+```bash
+# Download the upstream image
+wget https://object-storage.public.mtl1.vexxhost.net/swift/v1/.../\
+ubuntu-2204-kube-v1.34.3.qcow2
+
+# Convert to raw on the AIO host
+qemu-img convert -f qcow2 -O raw \
+    ubuntu-2204-kube-v1.34.3.qcow2 \
+    ubuntu-2204-kube-v1.34.3.raw
+
+# Upload as raw to Glance
+openstack image create ubuntu-2204-kube-v1.34.3-raw \
+    --disk-format raw --container-format bare \
+    --file ubuntu-2204-kube-v1.34.3.raw \
+    --property os_distro=ubuntu --property os_version=22.04
+```
+
+Then reference `ubuntu-2204-kube-v1.34.3-raw` (not the qcow2 name) in
+`coe cluster template create --image …`.
+
+> Permanent fix would be to add a `roles/glance_images` task that
+> uploads the raw form by default. Until that lands, do the conversion
+> by hand on the AIO host before cluster create.
+
+### 2. Strip `nomodeset` from the image's GRUB cmdline — gap #20
+
+The upstream `ubuntu-2204-kube-vX.Y.Z` cloud images (at least up to
+v1.34.3) bake the following into `GRUB_CMDLINE_LINUX_DEFAULT`:
+
+```
+nomodeset nofb gfxpayload=text
+```
+
+`nomodeset` tells the kernel to refuse loading any KMS GPU driver. On
+a BM VM with a virtio-gpu attached (i.e. `bm_emulator_gpu_enabled:
+true`), this means:
+
+- `virtio_gpu` probe fails with `error -22` (visible in `dmesg`).
+- `/dev/dri/card0` is **never** created.
+- The fake-GPU device-plugin advertises `vexxhost.com/fake-gpu = 0` on
+  the node, so workloads requesting the GPU resource sit Pending
+  forever.
+
+There are two ways to fix it:
+
+**a) Image-side (preferred, persistent across reboots and rebuilds)**
+
+Strip the tokens out of `/etc/default/grub` *inside the image* before
+uploading, e.g. via `virt-customize`:
+
+```bash
+virt-customize -a ubuntu-2204-kube-v1.34.3.raw \
+  --run-command "sed -i 's/ nomodeset//g; s/ nofb//g; s/ gfxpayload=text//g' \
+                  /etc/default/grub && update-grub"
+```
+
+Then upload the modified raw image to Glance.
+
+**b) Per-node workaround (one-shot, after the BM node is already up)**
+
+If you only realise after `coe cluster create` that the worker has no
+GPU device, fix it on the booted node and reboot it once:
+
+```bash
+# From the AIO host (or any pod with kubectl + privileges), run:
+sed -i 's/ nomodeset//g; s/ nofb//g; s/ gfxpayload=text//g' \
+    /etc/default/grub
+update-grub
+reboot
+```
+
+After the node comes back, delete the fake-GPU device-plugin pod on
+that node so kubelet re-enumerates devices:
+
+```bash
+kubectl -n kube-system delete pod \
+  -l app.kubernetes.io/name=fake-gpu-device-plugin \
+  --field-selector spec.nodeName=<worker-node-name>
+```
+
+`vexxhost.com/fake-gpu` should flip from `0` to `1` and the demo pod
+will schedule.
+
+> Permanent fix is to either rebuild the kube image with the cleaned
+> cmdline (option a) or add a Magnum cluster cloud-init `runcmd` that
+> strips the tokens before the post-bootstrap reboot. Both are
+> out-of-tree relative to atmosphere.
+
 ## End-to-end fake-GPU passthrough
 
 When `bm_emulator_gpu_enabled: true` is set, the role:
@@ -143,3 +246,22 @@ of these workarounds until they land.
    `enabled_storage_interfaces=cinder,noop` on ironic-conductor, set
    `--storage-interface cinder` per BM node, and attach Cinder volume
    targets — then `boot_volume_size>0` would actually work.
+7. **Kube image must be RAW for Ceph RBD backend.** The atmosphere AIO
+   uses Ceph RBD as the Glance/Cinder backend, which requires `raw`
+   source images. The upstream `ubuntu-2204-kube-vX.Y.Z` cloud images
+   ship as qcow2; uploading them as-is causes Nova/Ironic spawn to
+   fail. Operator workaround: convert `qemu-img convert -f qcow2 -O
+   raw …` and upload the raw form — see "Prerequisite: kube image
+   preparation" §1 above. Proper fix: add a `roles/glance_images` task
+   that uploads the raw form by default.
+8. **Upstream kube image bakes `nomodeset` into GRUB.** The upstream
+   `ubuntu-2204-kube-vX.Y.Z` cloud images set
+   `GRUB_CMDLINE_LINUX_DEFAULT=… nomodeset nofb gfxpayload=text …`,
+   which prevents `virtio_gpu` from probing on emulated BM nodes
+   (`/dev/dri/cardN` never appears) and the fake-GPU device-plugin
+   advertises `0`. Operator workaround: strip the tokens out of the
+   image before upload (`virt-customize` recipe in §2 above) or, if
+   already booted, edit `/etc/default/grub` on the node + `update-grub`
+   + reboot. Proper fix: rebuild the kube image with the cleaned
+   cmdline, OR add a Magnum cluster cloud-init `runcmd` that strips
+   the tokens before the post-bootstrap reboot.
