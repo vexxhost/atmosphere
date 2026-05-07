@@ -716,7 +716,7 @@ talking with ``etcd`` with the following commands:
 This alert fires when a Geneve overlay interface (``genev_sys_*``) on a compute
 host averages more than 10 transmit drops per second over a 5-minute window,
 sustained for 10 minutes. Sustained drops on the overlay device usually mean
-the underlay bond cannot fit the encapsulated frame and the kernel datapath
+the underlay bond can't fit the encapsulated frame and the kernel datapath
 discards traffic.
 
 **Likely Root Causes**
@@ -757,13 +757,13 @@ discards traffic.
 This alert fires when a Geneve overlay interface (``genev_sys_*``) on a compute
 host averages more than 1.67 transmit errors per second (about 100 per minute)
 over a 5-minute window, sustained for 10 minutes. This is the canonical
-signal for an MTU mismatch between the Geneve VTEP and the underlay bond.
+signal that the Geneve VTEP MTU exceeds what the underlay bond can carry.
 
 **Likely Root Causes**
 
 - Underlay bond MTU is smaller than the Geneve VTEP MTU plus 50 bytes of
   Geneve overhead.
-- Path MTU discovery is broken across an intermediate switch.
+- An intermediate switch breaks path MTU discovery.
 - NIC driver or firmware issue on the underlay link.
 
 **Diagnostic and Remediation Steps**
@@ -1054,16 +1054,16 @@ the risk of a full outage if another node fails.
 
 This alert fires when a node's bond interface MTU disagrees with the median
 bond MTU across the fleet for at least 30 minutes. It catches both initial
-misconfiguration (a node provisioned with the wrong MTU) and post-reboot
-drift (a node that came back up with the default 1500 instead of the
-declared jumbo value).
+misconfiguration (the wrong MTU at provisioning time) and post-reboot drift
+(the bond comes back up at the default 1500 instead of the declared jumbo
+value).
 
 **Likely Root Causes**
 
-- A node was provisioned with the wrong netplan or interfaces MTU.
-- The interface configuration was applied as a runtime override and did
-  not persist across reboot.
-- A NIC driver does not honour the requested MTU.
+- The node's netplan or interfaces file declares the wrong MTU.
+- An operator applied the MTU as a runtime override that didn't persist
+  across reboot.
+- The NIC driver doesn't honour the requested MTU.
 
 **Diagnostic and Remediation Steps**
 
