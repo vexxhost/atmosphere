@@ -55,17 +55,7 @@
       reclaimPolicy: Delete
       allowVolumeExpansion: true
       volumeBindingMode: Immediate
-      parameters:
-        csi.storage.k8s.io/fstype: xfs
-        accessProtocol: "{{ hpe_nimble_csi_access_protocol }}"
-        csi.storage.k8s.io/controller-publish-secret-name: hpe-nimble-csi-secret
-        csi.storage.k8s.io/controller-publish-secret-namespace: "{{ hpe_nimble_csi_helm_release_namespace }}"
-        csi.storage.k8s.io/node-publish-secret-name: hpe-nimble-csi-secret
-        csi.storage.k8s.io/node-publish-secret-namespace: "{{ hpe_nimble_csi_helm_release_namespace }}"
-        csi.storage.k8s.io/node-stage-secret-name: hpe-nimble-csi-secret
-        csi.storage.k8s.io/node-stage-secret-namespace: "{{ hpe_nimble_csi_helm_release_namespace }}"
-        csi.storage.k8s.io/provisioner-secret-name: hpe-nimble-csi-secret
-        csi.storage.k8s.io/provisioner-secret-namespace: "{{ hpe_nimble_csi_helm_release_namespace }}"
+      parameters: "{{ _hpe_nimble_csi_storageclass_parameters | combine(hpe_nimble_csi_storageclass_parameters, recursive=True) }}"
 
 - name: Deploy Helm chart
   run_once: true
