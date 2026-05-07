@@ -713,25 +713,31 @@ talking with ``etcd`` with the following commands:
 ``GeneveTransmitErrors``
 ========================
 
-This alert fires when any node-exporter device reported by the ethtool
-collector as a Geneve interface, and exported by the netdev collector, averages
-more than 1.67 transmit errors per second over a 5-minute window, sustained for
-15 minutes. That rate equates to about 100 errors per minute.
+This alert fires when a ``node-exporter`` device meets both of these
+conditions:
 
-This is a symptom proxy for tenant-overlay transmit failures on a compute host.
-It is not specific to one root cause: the Linux Geneve transmit path increments
-errors when encapsulation or underlay transmit fails.
+- The ``ethtool`` collector reports it as a ``Geneve`` interface.
+- The ``netdev`` collector reports more than 1.67 transmit errors per second
+  over a 5-minute window, sustained for 15 minutes.
+
+That rate equates to about 100 errors per minute.
+
+This is a symptom proxy for tenant overlay transmit failures on a compute host.
+It's not specific to one root cause: the Linux ``Geneve`` transmit path
+increments errors when encapsulation or underlay transmit fails.
 
 **Likely Root Causes**
 
-- Underlay bond or path MTU is too small for encapsulated Geneve traffic.
-- Route lookup or underlay reachability failure for the tunnel destination.
-- Geneve socket or Open vSwitch datapath problem on the affected host.
-- NIC driver, firmware, or offload issue on the underlay link.
+- Underlay bond or path ``MTU`` is too small for encapsulated ``Geneve``
+  traffic.
+- Route lookup or underlay connectivity failure for the tunnel destination.
+- ``Geneve`` socket or ``Open vSwitch`` ``datapath`` problem on the affected
+  host.
+- ``NIC`` driver, firmware, or offload issue on the underlay link.
 
 **Diagnostic and Remediation Steps**
 
-1. Identify the affected node, Geneve device, and error rate:
+1. Identify the affected node, ``Geneve`` device, and error rate:
 
    .. code-block:: console
 
@@ -741,35 +747,35 @@ errors when encapsulation or underlay transmit fails.
          * on(instance, device) group_left(driver)
          node_ethtool_info{driver="geneve"})'
 
-2. On the node, inspect the Geneve interface reported by the alert:
+2. On the node, inspect the ``Geneve`` interface reported by the alert:
 
    .. code-block:: console
 
      ip -d link show <geneve-device>
 
-   For OVN/Open vSwitch, the system Geneve device usually appears as
-   ``genev_sys_<udp-port>`` and shows ``geneve external``. Other Geneve
-   interfaces, such as Cilium tunnel devices, may also match this alert because
-   the selector intentionally uses the ethtool ``driver="geneve"`` label rather
-   than an interface-name convention.
+   For ``OVN``/``Open vSwitch``, the system ``Geneve`` device usually appears as
+   ``genev_sys_<udp-port>`` and shows ``geneve external``. Other ``Geneve``
+   interfaces, such as ``Cilium`` tunnel devices, may also match this alert
+   because the selector intentionally uses the ``ethtool`` ``driver="geneve"``
+   label rather than an interface-name convention.
 
-3. Confirm the underlay MTU is large enough for the encapsulated traffic:
+3. Confirm the underlay ``MTU`` is large enough for the encapsulated traffic:
 
    .. code-block:: console
 
      ip -d link show bond0
      ip -d link show bond0.4092
 
-   If the bond MTU is below the fleet-canonical value (typically 9216 on
-   jumbo deployments), correct the netplan or interfaces configuration and
+   If the bond ``MTU`` is below the fleet-canonical value (typically 9216 on
+   jumbo deployments), correct the ``netplan`` or interfaces configuration and
    reapply, then verify with ``ip -d link show bond0``.
 
-4. Check for an existing MTU consistency alert, such as
+4. Check for an existing ``MTU`` consistency alert, such as
    ``CephNodeInconsistentMTU``, and compare ``node_network_mtu_bytes`` across
    peers if multiple hosts show the same symptoms.
 
-5. If MTU is correct, inspect Open vSwitch and the underlay device for datapath
-   or offload failures:
+5. If ``MTU`` is correct, inspect ``Open vSwitch`` and the underlay device for
+   ``datapath`` or offload failures:
 
    .. code-block:: console
 

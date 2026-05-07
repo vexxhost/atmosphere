@@ -1,15 +1,5 @@
 ---
 features:
   - |
-    Enables the node-exporter ``ethtool`` collector, allows Cilium Geneve
-    devices through the node-exporter network collector filters, and adds a
-    Prometheus alert for sustained transmit errors on Geneve tunnel interfaces:
-
-    * ``GeneveTransmitErrors`` fires when a Geneve overlay device
-      (identified by ``node_ethtool_info{driver="geneve"}``) reports more
-      than ~100 transmit errors per minute sustained for 15 minutes.
-
-    The alert targets a class of incident where a compute host's Geneve
-    encapsulation or underlay transmit path fails, with MTU mismatch as one
-    likely cause. The downstream symptoms can include tenant traffic loss, TLS
-    handshake stalls, and noisy live-migration events.
+    Enables the ``node-exporter`` ``ethtool`` collector and updates network
+    collector filters to export ``Geneve`` tunnel interfaces.
