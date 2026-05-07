@@ -1010,3 +1010,42 @@ tests:
               summary: "CoreDNS: instance has disappeared from Prometheus target discovery"
               description: "CoreDNS has disappeared from Prometheus target discovery for more than 15 minutes. This could indicate a crashed CoreDNS pod or a misconfigured scrape target."
               runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#corednsdown"
+
+  # GeneveTransmitErrors - should NOT fire when error rate is below threshold
+  - interval: 1m
+    input_series:
+      - series: 'node_network_transmit_errs_total{job="node-exporter",instance="192.0.2.10:9100",device="tenant-geneve0"}'
+        values: '0+0x30'
+      - series: 'node_ethtool_info{job="node-exporter",instance="192.0.2.10:9100",device="tenant-geneve0",driver="geneve"}'
+        values: '1x30'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: GeneveTransmitErrors
+        exp_alerts: []
+
+  # GeneveTransmitErrors - should fire when sustained error rate exceeds 1.67/s for 15m
+  # Counter increments by 200/min = 3.33/s, well above 1.67/s threshold.
+  - interval: 1m
+    input_series:
+      - series: 'node_network_transmit_errs_total{job="node-exporter",instance="192.0.2.10:9100",device="tenant-geneve0"}'
+        values: '0+200x30'
+      - series: 'node_ethtool_info{job="node-exporter",instance="192.0.2.10:9100",device="tenant-geneve0",driver="geneve"}'
+        values: '1x30'
+      - series: 'node_network_transmit_errs_total{job="node-exporter",instance="192.0.2.11:9100",device="eth0"}'
+        values: '0+200x30'
+      - series: 'node_ethtool_info{job="node-exporter",instance="192.0.2.11:9100",device="eth0",driver="mlx5_core"}'
+        values: '1x30'
+    alert_rule_test:
+      - eval_time: 25m
+        alertname: GeneveTransmitErrors
+        exp_alerts:
+          - exp_labels:
+              job: node-exporter
+              instance: 192.0.2.10:9100
+              device: tenant-geneve0
+              driver: geneve
+              severity: P3
+            exp_annotations:
+              summary: "Geneve overlay: transmit failures may affect tenant traffic on a compute host"
+              description: "192.0.2.10:9100 interface tenant-geneve0 has averaged 3.33 transmit errors per second over the last 5 minutes (threshold > 1.67/s, ~100/min). Normal behavior is zero sustained transmit errors on Geneve tunnel interfaces."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#genevetransmiterrors"
