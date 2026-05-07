@@ -117,10 +117,19 @@
           type: Available
           status: true
 
+    - name: Compute pending image name
+      vars:
+        _new_etag_short: "{{ (_glance_image_source_etag | default('') | regex_replace('[^A-Za-z0-9]', ''))[:12] }}"
+        _new_suffix: "{{ _new_etag_short if _new_etag_short | length > 0 else (ansible_date_time.epoch | default(lookup('pipe', 'date +%s'))) }}"
+      ansible.builtin.set_fact:
+        _glance_image_pending_name: >-
+          {{ glance_image_name if (_image_info.images | length == 0)
+             else glance_image_name ~ '-pending-' ~ _new_suffix }}
+
     - name: Upload image into Glance
       openstack.cloud.image:
         cloud: atmosphere
-        name: "{{ glance_image_name }}"
+        name: "{{ _glance_image_pending_name }}"
         filename: "{{ _get_url.dest }}{% if glance_image_conversion is not skipped %}.converted{% endif %}"
         min_disk: "{{ glance_image_min_disk | default(omit) }}"
         min_ram: "{{ glance_image_min_ram | default(omit) }}"
@@ -163,6 +172,17 @@
       delay: 5
       register: _rename_result
       until: _rename_result is not failed
+
+    - name: Promote newly uploaded image to canonical name
+      when: _glance_image_pending_name != glance_image_name
+      openstack.cloud.image:
+        cloud: atmosphere
+        id: "{{ _result.image.id }}"
+        name: "{{ glance_image_name }}"
+      retries: "{{ glance_image_retries | default(60) }}"
+      delay: 5
+      register: _promote_result
+      until: _promote_result is not failed
   always:
     - name: Remove work directory
       ansible.builtin.file:
