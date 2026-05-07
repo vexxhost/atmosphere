@@ -911,25 +911,34 @@ experiencing network issues.
 ``HostNICSpeedUnknown``
 =======================
 
-This alert fires when ``node_network_speed_bytes`` reports a negative value for
-a physical Ethernet interface whose carrier is still up, for at least 5
-minutes. The expression also requires ``node_network_protocol_type == 1``
-(ARPHRD_ETHER) and ``node_network_carrier == 1`` so that virtual tunnel
-devices and simply disconnected ports are excluded. ``node_exporter`` returns
-a negative value (typically ``-125000``) when the kernel can't read the
-interface speed via ethtool (``Speed: Unknown!``), which typically indicates a
-silent data-plane failure: the OS keeps the link administratively up but the
-transceiver, cable, or switch port is degraded so no link speed can be
-negotiated. Bonded interfaces will not detect this state because MII status
-remains up, so the underlying slave can stay in the bond as a "zombie"
-carrying no traffic.
+This alert fires when ``node_network_speed_bytes`` reports a negative value
+for a physical Ethernet interface whose carrier is still up, for at least
+5 minutes.
+
+The expression also requires ``node_network_protocol_type == 1``
+(``ARPHRD_ETHER``) and ``node_network_carrier == 1``. This filter skips
+virtual tunnel devices and physical ports that the operator has shut.
+
+``node_exporter`` returns a negative value (typically ``-125000``) when the
+kernel can't read the interface speed via ``ethtool``
+(``Speed: Unknown!``). A negative value typically points to a silent
+data-plane failure. The OS keeps the link administratively up, but a fault
+on the transceiver, cable, or switch port prevents the kernel from
+negotiating a link speed.
+
+Bonded interfaces won't detect this state because the Media-Independent
+Interface (MII) status remains up. The underlying slave then stays in the
+bond as a "zombie" carrying no traffic.
 
 **Likely root causes:**
 
-- Failed or marginal transceiver, DAC/AOC cable, or fiber patch
-- Switch port disabled, errdisabled, or in an unexpected operational state
-- NIC firmware bug after a host or switch reboot
-- NIC hardware fault (queue or PHY failure) that doesn't raise a carrier event
+- Failed or marginal transceiver, Direct Attach Copper (DAC) or Active
+  Optical Cable (AOC), or fiber patch
+- Switch port that the operator has shut, an ``err-disabled`` port, or a
+  port in an unexpected operational state
+- Network Interface Card (NIC) firmware bug after a host or switch reboot
+- NIC hardware fault, such as a queue or Physical Layer (PHY) failure that
+  doesn't raise a carrier event
 
 **Diagnostic and remediation steps:**
 
@@ -942,8 +951,8 @@ carrying no traffic.
 
       ethtool <device> | grep -E "Speed|Link detected"
 
-3. Check whether the interface is part of a bond and how traffic is split
-   across slaves:
+3. Check whether the interface is part of a bond and how the bond splits
+   traffic across slaves:
 
    .. code-block:: console
 
@@ -956,7 +965,7 @@ carrying no traffic.
 
       dmesg -T | grep -i -E "<device>|link|sfp|phy|transceiver" | tail -50
 
-5. If the interface is connected to a managed switch, validate the peer port
+5. If the interface connects to a managed switch, validate the peer port
    state, optics, and counters from the switch side. Compare with the healthy
    slave on the same host.
 
@@ -965,8 +974,8 @@ carrying no traffic.
 
    - Reseat or replace the transceiver and cable.
    - Move the connection to a known-good switch port.
-   - Reboot the host to reload the NIC driver and firmware (this often clears
-     the condition when the root cause is a firmware glitch).
+   - Reboot the host to reload the NIC driver and firmware. This often clears
+     the condition when the root cause is a firmware glitch.
 
 ``IpmiUncorrectableMemoryError``
 ================================
