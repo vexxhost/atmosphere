@@ -327,4 +327,68 @@
       ],
     },
   },
+  'atmosphere-network-drift': {
+    prometheusAlerts+:: {
+      groups: [
+        {
+          name: 'atmosphere-network-drift',
+          rules: [
+            // Catches a compute node's Geneve overlay device silently
+            // dropping inner frames because the underlay bond MTU
+            // drifted away from the fleet-canonical value (typically
+            // 9216 bytes on jumbo deployments: 9000 inner + 4 B 802.1Q
+            // tag + 50 B Geneve overhead, with headroom). The
+            // threshold is intentionally low so transient spikes do
+            // not fire, but a node that is steadily dropping or
+            // erroring on the overlay device gets flagged within 10
+            // minutes.
+            {
+              alert: 'GeneveTransmitErrors',
+              expr: 'rate(node_network_transmit_errs_total{job="node-exporter",device=~"genev_sys_.*"}[5m]) > 1.67',
+              'for': '10m',
+              labels: { severity: 'warning' },
+              annotations: {
+                summary: 'Geneve overlay interface is reporting transmit errors.',
+                description: '{{ $labels.instance }} interface {{ $labels.device }} has averaged {{ printf "%.2f" $value }} transmit errors per second over the last 5 minutes (threshold > 1.67/s, ~100/min). This typically indicates an MTU mismatch on the underlay bond below the Geneve VTEP.',
+                runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#genevetransmiterrors',
+              },
+            },
+            {
+              alert: 'GeneveTransmitDrops',
+              expr: 'rate(node_network_transmit_drop_total{job="node-exporter",device=~"genev_sys_.*"}[5m]) > 10',
+              'for': '10m',
+              labels: { severity: 'warning' },
+              annotations: {
+                summary: 'Geneve overlay interface is dropping transmitted packets.',
+                description: '{{ $labels.instance }} interface {{ $labels.device }} has averaged {{ printf "%.2f" $value }} transmit drops per second over the last 5 minutes (threshold > 10/s). Sustained drops on the Geneve VTEP indicate underlay MTU mismatch or kernel datapath pressure.',
+                runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#genevetransmitdrops',
+              },
+            },
+            // Catches MTU drift on the bond underlay. The expected
+            // value is not hardcoded; instead the alert fires when a
+            // node's bond MTU disagrees with the median bond MTU
+            // across the fleet (the same technique kube-prometheus
+            // uses for Ceph host MTU consistency). This catches both
+            // "node provisioned with the wrong MTU" and "node rebooted
+            // and netplan reset to default" failure modes.
+            {
+              alert: 'NodeBondMTUInconsistent',
+              expr: |||
+                node_network_mtu_bytes{device=~"bond.*"}
+                  != on() group_left()
+                quantile(0.5, node_network_mtu_bytes{device=~"bond.*"})
+              |||,
+              'for': '30m',
+              labels: { severity: 'warning' },
+              annotations: {
+                summary: 'Bond MTU differs from the fleet median.',
+                description: '{{ $labels.instance }} interface {{ $labels.device }} MTU is {{ $value }} bytes, which differs from the median across the fleet. Geneve overlay traffic will be dropped on this node if the bond MTU is too small.',
+                runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#nodebondmtuinconsistent',
+              },
+            },
+          ],
+        },
+      ],
+    },
+  },
 }
