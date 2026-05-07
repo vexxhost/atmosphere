@@ -755,9 +755,10 @@ discards traffic.
 ========================
 
 This alert fires when a Geneve overlay interface (``genev_sys_*``) on a compute
-host averages more than 1.67 transmit errors per second (about 100 per minute)
-over a 5-minute window, sustained for 10 minutes. This is the canonical
-signal that the Geneve VTEP MTU exceeds what the underlay bond can carry.
+host averages more than 1.67 transmit errors per second over a 5-minute
+window, sustained for 10 minutes. That rate equates to about 100 errors
+per minute. It's the canonical signal that the Geneve VTEP MTU exceeds
+what the underlay bond can carry.
 
 **Likely Root Causes**
 
