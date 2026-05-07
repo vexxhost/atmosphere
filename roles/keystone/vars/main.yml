@@ -85,18 +85,20 @@ _keystone_helm_values:
           Require valid-user
         </Location>
         <Location /v3/auth/OS-FEDERATION/websso/openid>
-          Require valid-user
           AuthType openid-connect
+          Require valid-user
         </Location>
         {% for domain in keystone_domains %}
         <Location /v3/OS-FEDERATION/identity_providers/{{ domain.name }}/protocols/openid/auth>
+          AuthType oauth2
+          OAuth2TokenVerify jwks_uri {{ domain.keycloak_server_url }}/realms/{{ domain.keycloak_realm }}/protocol/openid-connect/certs
+          OAuth2TargetPass prefix=OIDC-
           Require valid-user
-          AuthType oauth20
         </Location>
         <Location /v3/auth/OS-FEDERATION/identity_providers/{{ domain.name }}/protocols/openid/websso>
-          Require valid-user
           AuthType openid-connect
           OIDCDiscoverURL {{ keystone_oidc_redirect_uri }}?iss={{ domain | vexxhost.atmosphere.urlencoded_issuer_from_domain }}
+          Require valid-user
         </Location>
         {% endfor %}
       </VirtualHost>
