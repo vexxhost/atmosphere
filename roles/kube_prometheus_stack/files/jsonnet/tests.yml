@@ -964,95 +964,38 @@ tests:
   # GeneveTransmitErrors - should NOT fire when error rate is below threshold
   - interval: 1m
     input_series:
-      - series: 'node_network_transmit_errs_total{job="node-exporter",instance="192.0.2.10:9100",device="genev_sys_6081"}'
+      - series: 'node_network_transmit_errs_total{job="node-exporter",instance="192.0.2.10:9100",device="tenant-geneve0"}'
         values: '0+0x30'
+      - series: 'node_ethtool_info{job="node-exporter",instance="192.0.2.10:9100",device="tenant-geneve0",driver="geneve"}'
+        values: '1x30'
     alert_rule_test:
-      - eval_time: 15m
+      - eval_time: 20m
         alertname: GeneveTransmitErrors
         exp_alerts: []
 
-  # GeneveTransmitErrors - should fire when sustained error rate exceeds 1.67/s for 10m
+  # GeneveTransmitErrors - should fire when sustained error rate exceeds 1.67/s for 15m
   # Counter increments by 200/min = 3.33/s, well above 1.67/s threshold.
   - interval: 1m
     input_series:
-      - series: 'node_network_transmit_errs_total{job="node-exporter",instance="192.0.2.10:9100",device="genev_sys_6081"}'
+      - series: 'node_network_transmit_errs_total{job="node-exporter",instance="192.0.2.10:9100",device="tenant-geneve0"}'
         values: '0+200x30'
+      - series: 'node_ethtool_info{job="node-exporter",instance="192.0.2.10:9100",device="tenant-geneve0",driver="geneve"}'
+        values: '1x30'
+      - series: 'node_network_transmit_errs_total{job="node-exporter",instance="192.0.2.11:9100",device="eth0"}'
+        values: '0+200x30'
+      - series: 'node_ethtool_info{job="node-exporter",instance="192.0.2.11:9100",device="eth0",driver="mlx5_core"}'
+        values: '1x30'
     alert_rule_test:
-      - eval_time: 20m
+      - eval_time: 25m
         alertname: GeneveTransmitErrors
         exp_alerts:
           - exp_labels:
               job: node-exporter
               instance: 192.0.2.10:9100
-              device: genev_sys_6081
+              device: tenant-geneve0
+              driver: geneve
               severity: P3
             exp_annotations:
-              summary: "Geneve overlay interface is reporting transmit errors."
-              description: '192.0.2.10:9100 interface genev_sys_6081 has averaged 3.33 transmit errors per second over the last 5 minutes (threshold > 1.67/s, ~100/min). This typically indicates an MTU mismatch on the underlay bond below the Geneve VTEP.'
+              summary: "Geneve overlay: transmit failures may affect tenant traffic on a compute host"
+              description: "192.0.2.10:9100 interface tenant-geneve0 has averaged 3.33 transmit errors per second over the last 5 minutes (threshold > 1.67/s, ~100/min). Normal behavior is zero sustained transmit errors on Geneve tunnel interfaces."
               runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#genevetransmiterrors"
-
-  # GeneveTransmitDrops - should NOT fire when drop rate is below threshold
-  - interval: 1m
-    input_series:
-      - series: 'node_network_transmit_drop_total{job="node-exporter",instance="192.0.2.10:9100",device="genev_sys_6081"}'
-        values: '0+0x30'
-    alert_rule_test:
-      - eval_time: 15m
-        alertname: GeneveTransmitDrops
-        exp_alerts: []
-
-  # GeneveTransmitDrops - should fire when sustained drop rate exceeds 10/s for 10m
-  # Counter increments by 1200/min = 20/s, well above 10/s threshold.
-  - interval: 1m
-    input_series:
-      - series: 'node_network_transmit_drop_total{job="node-exporter",instance="192.0.2.10:9100",device="genev_sys_6081"}'
-        values: '0+1200x30'
-    alert_rule_test:
-      - eval_time: 20m
-        alertname: GeneveTransmitDrops
-        exp_alerts:
-          - exp_labels:
-              job: node-exporter
-              instance: 192.0.2.10:9100
-              device: genev_sys_6081
-              severity: P3
-            exp_annotations:
-              summary: "Geneve overlay interface is dropping transmitted packets."
-              description: '192.0.2.10:9100 interface genev_sys_6081 has averaged 20.00 transmit drops per second over the last 5 minutes (threshold > 10/s). Sustained drops on the Geneve VTEP indicate underlay MTU mismatch or kernel datapath pressure.'
-              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#genevetransmitdrops"
-
-  # NodeBondMTUInconsistent - should NOT fire when all nodes share the same bond MTU
-  - interval: 1m
-    input_series:
-      - series: 'node_network_mtu_bytes{instance="192.0.2.10:9100",device="bond0"}'
-        values: '9216x60'
-      - series: 'node_network_mtu_bytes{instance="192.0.2.11:9100",device="bond0"}'
-        values: '9216x60'
-      - series: 'node_network_mtu_bytes{instance="192.0.2.12:9100",device="bond0"}'
-        values: '9216x60'
-    alert_rule_test:
-      - eval_time: 45m
-        alertname: NodeBondMTUInconsistent
-        exp_alerts: []
-
-  # NodeBondMTUInconsistent - should fire when one node's bond MTU drifts from the fleet median
-  - interval: 1m
-    input_series:
-      - series: 'node_network_mtu_bytes{instance="192.0.2.10:9100",device="bond0"}'
-        values: '9000x60'
-      - series: 'node_network_mtu_bytes{instance="192.0.2.11:9100",device="bond0"}'
-        values: '9216x60'
-      - series: 'node_network_mtu_bytes{instance="192.0.2.12:9100",device="bond0"}'
-        values: '9216x60'
-    alert_rule_test:
-      - eval_time: 45m
-        alertname: NodeBondMTUInconsistent
-        exp_alerts:
-          - exp_labels:
-              instance: 192.0.2.10:9100
-              device: bond0
-              severity: P3
-            exp_annotations:
-              summary: "Bond MTU differs from the fleet median."
-              description: '192.0.2.10:9100 interface bond0 MTU is 9000 bytes, which differs from the median across the fleet. Geneve overlay traffic will be dropped on this node if the bond MTU is too small.'
-              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#nodebondmtuinconsistent"

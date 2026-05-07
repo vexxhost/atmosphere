@@ -710,87 +710,72 @@ talking with ``etcd`` with the following commands:
       --from-file=/etc/kubernetes/pki/etcd/healthcheck-client.crt \
       --from-file=/etc/kubernetes/pki/etcd/healthcheck-client.key
 
-``GeneveTransmitDrops``
-=======================
-
-This alert fires when a Geneve overlay interface (``genev_sys_*``) on a compute
-host averages more than 10 transmit drops per second over a 5-minute window,
-sustained for 10 minutes. Sustained drops on the overlay device usually mean
-the underlay bond can't fit the encapsulated frame and the kernel datapath
-discards traffic.
-
-**Likely Root Causes**
-
-- Underlay bond MTU is smaller than the Geneve VTEP MTU plus 50 bytes of
-  Geneve overhead.
-- Kernel datapath pressure (CPU starvation, OVS upcall storms, or NIC ring
-  buffer exhaustion).
-- Hardware offload misbehaviour on the underlay NIC.
-
-**Diagnostic and Remediation Steps**
-
-1. Identify the affected node and overlay device:
-
-   .. code-block:: console
-
-     kubectl -n monitoring exec svc/kube-prometheus-stack-prometheus -- \
-       promtool query instant http://localhost:9090 \
-       'rate(node_network_transmit_drop_total{device=~"genev_sys_.*"}[5m])'
-
-2. On the node, compare the Geneve and bond MTUs:
-
-   .. code-block:: console
-
-     ip -d link show genev_sys_6081
-     ip -d link show bond0
-
-3. The bond MTU must be at least the Geneve MTU plus 50 bytes. Re-apply the
-   netplan or interfaces configuration if the running value drifted from the
-   declared one.
-
-4. If MTUs match, inspect ``ovs-appctl dpctl/show -s`` for upcall lost counts
-   and ``ethtool -S bond0`` for ring buffer drops.
-
 ``GeneveTransmitErrors``
 ========================
 
-This alert fires when a Geneve overlay interface (``genev_sys_*``) on a compute
-host averages more than 1.67 transmit errors per second over a 5-minute
-window, sustained for 10 minutes. That rate equates to about 100 errors
-per minute. It's the canonical signal that the Geneve VTEP MTU exceeds
-what the underlay bond can carry.
+This alert fires when any node-exporter device reported by the ethtool
+collector as a Geneve interface, and exported by the netdev collector, averages
+more than 1.67 transmit errors per second over a 5-minute window, sustained for
+15 minutes. That rate equates to about 100 errors per minute.
+
+This is a symptom proxy for tenant-overlay transmit failures on a compute host.
+It is not specific to one root cause: the Linux Geneve transmit path increments
+errors when encapsulation or underlay transmit fails.
 
 **Likely Root Causes**
 
-- Underlay bond MTU is smaller than the Geneve VTEP MTU plus 50 bytes of
-  Geneve overhead.
-- An intermediate switch breaks path MTU discovery.
-- NIC driver or firmware issue on the underlay link.
+- Underlay bond or path MTU is too small for encapsulated Geneve traffic.
+- Route lookup or underlay reachability failure for the tunnel destination.
+- Geneve socket or Open vSwitch datapath problem on the affected host.
+- NIC driver, firmware, or offload issue on the underlay link.
 
 **Diagnostic and Remediation Steps**
 
-1. Identify the affected node and the error rate:
+1. Identify the affected node, Geneve device, and error rate:
 
    .. code-block:: console
 
      kubectl -n monitoring exec svc/kube-prometheus-stack-prometheus -- \
        promtool query instant http://localhost:9090 \
-       'rate(node_network_transmit_errs_total{device=~"genev_sys_.*"}[5m])'
+       '(rate(node_network_transmit_errs_total[5m])
+         * on(instance, device) group_left(driver)
+         node_ethtool_info{driver="geneve"})'
 
-2. On the node, confirm the underlay bond MTU is large enough:
+2. On the node, inspect the Geneve interface reported by the alert:
+
+   .. code-block:: console
+
+     ip -d link show <geneve-device>
+
+   For OVN/Open vSwitch, the system Geneve device usually appears as
+   ``genev_sys_<udp-port>`` and shows ``geneve external``. Other Geneve
+   interfaces, such as Cilium tunnel devices, may also match this alert because
+   the selector intentionally uses the ethtool ``driver="geneve"`` label rather
+   than an interface-name convention.
+
+3. Confirm the underlay MTU is large enough for the encapsulated traffic:
 
    .. code-block:: console
 
      ip -d link show bond0
-     ip -d link show genev_sys_6081
+     ip -d link show bond0.4092
 
-3. If the bond MTU is below the fleet-canonical value (typically 9216 on
+   If the bond MTU is below the fleet-canonical value (typically 9216 on
    jumbo deployments), correct the netplan or interfaces configuration and
    reapply, then verify with ``ip -d link show bond0``.
 
-4. Cross-reference with ``NodeBondMTUInconsistent`` if multiple nodes show
-   the same symptoms; that alert identifies the outlier node directly
-   from ``node_network_mtu_bytes``.
+4. Check for an existing MTU consistency alert, such as
+   ``CephNodeInconsistentMTU``, and compare ``node_network_mtu_bytes`` across
+   peers if multiple hosts show the same symptoms.
+
+5. If MTU is correct, inspect Open vSwitch and the underlay device for datapath
+   or offload failures:
+
+   .. code-block:: console
+
+     ovs-appctl dpctl/show -s
+     ovs-vsctl show
+     ethtool -S bond0
 
 ``GoldpingerHighErrorRate``
 ===========================
@@ -1049,49 +1034,6 @@ the risk of a full outage if another node fails.
    .. code-block:: console
 
      kubectl -n openstack get pxc-backup
-
-``NodeBondMTUInconsistent``
-===========================
-
-This alert fires when a node's bond interface MTU disagrees with the median
-bond MTU across the fleet for at least 30 minutes. It catches both initial
-misconfiguration (the wrong MTU at provisioning time) and post-reboot drift
-(the bond comes back up at the default 1500 instead of the declared jumbo
-value).
-
-**Likely Root Causes**
-
-- The node's netplan or interfaces file declares the wrong MTU.
-- An operator applied the MTU as a runtime override that didn't persist
-  across reboot.
-- The NIC driver doesn't honour the requested MTU.
-
-**Diagnostic and Remediation Steps**
-
-1. Identify the outlier node and the observed MTU:
-
-   .. code-block:: console
-
-     kubectl -n monitoring exec svc/kube-prometheus-stack-prometheus -- \
-       promtool query instant http://localhost:9090 \
-       'node_network_mtu_bytes{device=~"bond.*"}
-        != on() group_left()
-        quantile(0.5, node_network_mtu_bytes{device=~"bond.*"})'
-
-2. On the node, confirm the running MTU matches the persisted configuration:
-
-   .. code-block:: console
-
-     ip -d link show bond0
-     cat /etc/netplan/*.yaml
-
-3. Re-apply the configuration with ``netplan apply`` (or the equivalent for
-   the host's network manager), then verify the MTU and confirm the alert
-   clears on the next evaluation interval.
-
-4. If the alert recurs after a reboot, capture ``journalctl -b 0 -u
-   systemd-networkd`` (or the relevant network unit) and check for driver
-   errors that prevent the MTU from being applied at boot.
 
 ``NodeDiskHighLatency``
 =======================

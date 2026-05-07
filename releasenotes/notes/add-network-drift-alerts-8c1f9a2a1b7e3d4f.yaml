@@ -1,21 +1,15 @@
 ---
 features:
   - |
-    Adds three Prometheus alerts that catch network underlay drift on
-    compute hosts:
+    Enables the node-exporter ``ethtool`` collector, allows Cilium Geneve
+    devices through the node-exporter network collector filters, and adds a
+    Prometheus alert for sustained transmit errors on Geneve tunnel interfaces:
 
     * ``GeneveTransmitErrors`` fires when a Geneve overlay device
-      (``genev_sys_*``) reports more than ~100 transmit errors per minute
-      sustained for 10 minutes. This is the canonical signal for an MTU
-      (maximum transmission unit) mismatch between the Geneve VTEP
-      (virtual tunnel endpoint) and the underlay bond.
-    * ``GeneveTransmitDrops`` fires on >10 transmit drops/s sustained for
-      10 minutes on the Geneve overlay device.
-    * ``NodeBondMTUInconsistent`` fires when a node's bond MTU differs
-      from the median across the fleet, catching both initial
-      misconfiguration and post-reboot drift.
+      (identified by ``node_ethtool_info{driver="geneve"}``) reports more
+      than ~100 transmit errors per minute sustained for 15 minutes.
 
-    These alerts target a class of incident where a single compute host's
-    bond MTU drifts below the fleet value, causing the underlay to drop
-    jumbo Geneve frames. The downstream symptoms include TLS handshake
-    stalls and noisy live-migration events.
+    The alert targets a class of incident where a compute host's Geneve
+    encapsulation or underlay transmit path fails, with MTU mismatch as one
+    likely cause. The downstream symptoms can include tenant traffic loss, TLS
+    handshake stalls, and noisy live-migration events.
