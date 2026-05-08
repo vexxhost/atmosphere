@@ -145,6 +145,47 @@ class TestValidation:
                 }
             )
 
+    def test_backup_none_drops_rbd_keys_from_recursive_combine(self):
+        """Mimic Ansible's ``combine(recursive=True)`` of role defaults
+        with a non-Ceph user override that flips ``backup.type`` to
+        ``none``. The rbd keys leaked from defaults must not cause
+        validation to fail.
+        """
+        cfg = StorageConfig.model_validate(
+            {
+                **DEFAULT_STORAGE,
+                "backup": {
+                    **DEFAULT_STORAGE["backup"],
+                    "type": "none",
+                },
+            }
+        )
+        assert cfg.backup is not None
+        assert cfg.backup.type == "none"
+
+    def test_ephemeral_local_drops_rbd_keys_from_recursive_combine(self):
+        cfg = StorageConfig.model_validate(
+            {
+                **DEFAULT_STORAGE,
+                "ephemeral": {
+                    **DEFAULT_STORAGE["ephemeral"],
+                    "type": "local",
+                },
+            }
+        )
+        assert cfg.ephemeral is not None
+        assert cfg.ephemeral.type == "local"
+
+    def test_typo_in_backup_none_still_rejected(self):
+        """Pruning only drops keys that belong to *another* variant of
+        the same union. Genuine typos within the chosen variant must
+        still trigger ``extra="forbid"``.
+        """
+        with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+            StorageConfig.model_validate(
+                {"backup": {"type": "none", "typo": "value"}}
+            )
+
     def test_erasure_coded_m_ge_k_rejected(self):
         with pytest.raises(ValidationError, match="m.*must be less than k"):
             StorageConfig.model_validate(
