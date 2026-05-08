@@ -544,11 +544,35 @@ EphemeralBackend = Annotated[
 ]
 
 
+def _drop_none_backends(data: Any) -> Any:
+    """Drop backend entries explicitly set to ``None``.
+
+    The role-default ``_atmosphere_storage`` ships an ``rbd1`` backend
+    under both ``images.backends`` and ``volumes.backends`` so Ceph
+    deployments work out of the box. Non-Ceph deployments need a way
+    to opt out without overriding every role default. This validator
+    lets users disable a default backend by setting it to ``null`` in
+    their ``atmosphere_storage`` override (for example
+    ``volumes.backends.rbd1: null``). After Ansible's
+    ``combine(recursive=True)`` merges the override on top of the
+    defaults, the entry has a ``None`` value which is dropped here
+    before pydantic tries to validate it as a backend.
+    """
+    if not isinstance(data, dict):
+        return data
+    backends = data.get("backends")
+    if isinstance(backends, dict):
+        data["backends"] = {k: v for k, v in backends.items() if v is not None}
+    return data
+
+
 class ImageStorageConfig(_StrictBase):
     default: str = Field(description="Name of the default image backend.")
     backends: dict[str, ImageBackend] = Field(
         min_length=1, description="Mapping of backend name to image backend config."
     )
+
+    _drop_none_backends = model_validator(mode="before")(_drop_none_backends)
 
     @model_validator(mode="after")
     def _validate_default_in_backends(self) -> Self:
@@ -564,6 +588,8 @@ class VolumeStorageConfig(_StrictBase):
     backends: dict[str, VolumeBackend] = Field(
         min_length=1, description="Mapping of backend name to volume backend config."
     )
+
+    _drop_none_backends = model_validator(mode="before")(_drop_none_backends)
 
     @model_validator(mode="after")
     def _validate_default_in_backends(self) -> Self:

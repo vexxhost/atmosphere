@@ -186,6 +186,70 @@ class TestValidation:
                 {"backup": {"type": "none", "typo": "value"}}
             )
 
+    def test_volumes_backend_set_to_none_is_dropped(self):
+        """Users disable the role-default ``rbd1`` backend by setting
+        ``volumes.backends.rbd1: null`` in their override. After
+        ``combine(recursive=True)`` merges this on top of the defaults,
+        the entry has a ``None`` value which would fail backend
+        validation. The validator drops it before that happens.
+        """
+        config = StorageConfig.model_validate(
+            {
+                "volumes": {
+                    "default": "nimble1",
+                    "backends": {
+                        "rbd1": None,
+                        "nimble1": {
+                            "type": "nimble",
+                            "protocol": "iscsi",
+                            "address": "10.0.0.1",
+                            "username": "admin",
+                            "password": "secret",
+                        },
+                    },
+                }
+            }
+        )
+        assert set(config.volumes.backends) == {"nimble1"}
+
+    def test_images_backend_set_to_none_is_dropped(self):
+        """Same opt-out semantics apply to ``images.backends``."""
+        config = StorageConfig.model_validate(
+            {
+                "images": {
+                    "default": "cinder_store",
+                    "backends": {
+                        "rbd1": None,
+                        "cinder_store": {"type": "cinder"},
+                    },
+                }
+            }
+        )
+        assert set(config.images.backends) == {"cinder_store"}
+
+    def test_default_backend_set_to_none_still_rejected(self):
+        """Setting the ``default`` backend itself to ``None`` must still
+        fail, since dropping it would leave no default at all.
+        """
+        with pytest.raises(ValidationError, match="default 'rbd1' is not in backends"):
+            StorageConfig.model_validate(
+                {
+                    "volumes": {
+                        "default": "rbd1",
+                        "backends": {
+                            "rbd1": None,
+                            "nimble1": {
+                                "type": "nimble",
+                                "protocol": "iscsi",
+                                "address": "10.0.0.1",
+                                "username": "admin",
+                                "password": "secret",
+                            },
+                        },
+                    }
+                }
+            )
+
     def test_erasure_coded_m_ge_k_rejected(self):
         with pytest.raises(ValidationError, match="m.*must be less than k"):
             StorageConfig.model_validate(
@@ -665,6 +729,37 @@ class TestStorageToCinderHelmValues:
         assert result["conf"]["enable_iscsi"] is True
         assert result["pod"]["useHostNetwork"] == {"volume": True}
         assert result["pod"]["security_context"] == _NIMBLE_POD_SECURITY_CONTEXT
+
+    def test_nimble_with_rbd1_default_nulled_out(self):
+        """End-to-end: simulate the post-``combine(recursive=True)``
+        state where the role-default ``rbd1`` backends are nulled out
+        in the user override. The non-Ceph code path must be selected
+        (no ceph storage assignment, ``job_storage_init`` disabled)
+        instead of the rbd1 leak forcing ``storage="ceph"``.
+        """
+        storage = {
+            "images": {
+                "default": "cinder_store",
+                "backends": {
+                    "rbd1": None,
+                    "cinder_store": {"type": "cinder"},
+                },
+            },
+            "volumes": {
+                "default": "nimble1",
+                "backends": {
+                    "rbd1": None,
+                    "nimble1": _NIMBLE_ISCSI_BACKEND,
+                },
+            },
+            "backup": {"type": "none"},
+        }
+        result = storage_to_cinder_helm_values(storage)
+
+        assert "rbd1" not in result["conf"]["backends"]
+        assert result["storage"] == "nimble"
+        assert result["manifests"]["job_storage_init"] is False
+        assert result["conf"]["enable_iscsi"] is True
 
     def test_nimble_fc_backend(self):
         storage = {
