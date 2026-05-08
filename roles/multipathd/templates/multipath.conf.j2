@@ -36,6 +36,22 @@ devices {
         dev_loss_tmo             600
         find_multipaths          yes
     }
+    device {
+        vendor               "Nimble"
+        product              "Server"
+        path_grouping_policy group_by_prio
+        prio                 "alua"
+        hardware_handler     "1 alua"
+        path_selector        "service-time 0"
+        path_checker         tur
+        features             "1 queue_if_no_path"
+        no_path_retry        30
+        failback             immediate
+        fast_io_fail_tmo     5
+        dev_loss_tmo         infinity
+        rr_min_io_rq         1
+        rr_weight            uniform
+    }
 }
 
 blacklist {
