@@ -17,9 +17,9 @@ fixes:
     ``combine`` of ``atmosphere_storage.images.backends`` and
     ``atmosphere_storage.volumes.backends``. With ``rbd1`` still
     present, the storage filter forced ``storage: ceph`` and rendered
-    the ``cinder-storage-init`` post-upgrade Job with no containers,
-    causing ``helm upgrade`` to fail. Operators can now opt out of a
-    role-default backend by setting it to ``null`` in their override
-    (for example ``atmosphere_storage.volumes.backends.rbd1: null``);
-    the storage filter drops the entry before validation so the
-    correct non-Ceph code path is selected.
+    an empty post-upgrade storage-init Job, causing ``helm upgrade``
+    to fail. Operators can now opt out of a role-default backend by
+    setting it to ``null`` in their override (for example
+    ``atmosphere_storage.volumes.backends.rbd1: null``); the storage
+    filter drops the entry before validation, so the non-Ceph code
+    path takes over.
