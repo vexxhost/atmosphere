@@ -60,5 +60,71 @@
       run_once: true
       changed_when: false
 
+- name: Apply R7 host-side fixes for OVN tenant traffic on br-ex
+  hosts: all
+  become: true
+  tags: aio-vlan-r7
+  vars:
+    _r7_external_iface: "{{ ansible_default_ipv4.interface }}"
+    _r7_vlan_internal_ports:
+      - { name: bond0.103,  tag: 103,  addrs: ["10.103.0.10/24",  "10.103.0.1/24"] }
+      - { name: bond0.4094, tag: 4094, addrs: ["10.96.240.200/24"] }
+      - { name: bond0.4090, tag: 4090, addrs: ["172.24.6.254/24"] }
+    _r7_nat_sources:
+      - 10.103.0.0/24
+      - 172.24.6.0/24
+  tasks:
+    # The Phase B systemd unit creates kernel-type bond0.<vlan> sub-IFs. Once
+    # OVN attaches bond0 to br-ex via auto_bridge_add, frames OVS sends out via
+    # the bond trunk are consumed by the kernel bond device and never bubble
+    # up through the kernel sub-IF. Replace each sub-IF with an OVS internal
+    # port of the same name, tagged on br-ex, so host kernel and OVS share the
+    # broadcast domain.
+    - name: R7a — drop kernel-type VLAN sub-IFs (if present)
+      ansible.builtin.shell: |
+        set -e
+        for n in {{ _r7_vlan_internal_ports | map(attribute='name') | join(' ') }}; do
+          if ip -o link show "$n" 2>/dev/null | grep -qv 'master ovs-system'; then
+            ip link delete "$n" || true
+          fi
+        done
+      changed_when: false
+
+    - name: R7b — create OVS internal sub-IFs on br-ex (tagged)
+      ansible.builtin.command: >
+        ovs-vsctl --may-exist add-port br-ex {{ item.name }}
+          tag={{ item.tag }} -- set interface {{ item.name }} type=internal
+      loop: "{{ _r7_vlan_internal_ports }}"
+      register: _r7_add
+      changed_when: "'already exists' not in (_r7_add.stderr | default(''))"
+
+    - name: R7c — bring sub-IFs up
+      ansible.builtin.command: "ip link set {{ item.name }} up"
+      loop: "{{ _r7_vlan_internal_ports }}"
+      changed_when: false
+
+    - name: R7d — assign IPs (incl. 10.103.0.1 ARP responder)
+      ansible.builtin.command: "ip -4 addr replace {{ item.1 }} dev {{ item.0.name }}"
+      loop: "{{ _r7_vlan_internal_ports | subelements('addrs') }}"
+      changed_when: false
+
+    - name: R7e — enable IPv4 forwarding
+      ansible.posix.sysctl:
+        name: net.ipv4.ip_forward
+        value: "1"
+        state: present
+        sysctl_set: true
+        reload: true
+
+    - name: R7f — MASQUERADE OVN tenant subnets out the uplink
+      ansible.builtin.iptables:
+        table: nat
+        chain: POSTROUTING
+        source: "{{ item }}"
+        out_interface: "{{ _r7_external_iface }}"
+        jump: MASQUERADE
+        comment: aio-vlan R7 NAT for {{ item }}
+      loop: "{{ _r7_nat_sources }}"
+
 - name: Deploy Ironic Emulation Environment
   ansible.builtin.import_playbook: vexxhost.atmosphere.ironic_emulator
