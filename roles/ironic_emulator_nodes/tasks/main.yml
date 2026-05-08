@@ -50,6 +50,7 @@
     END
   args:
     executable: /bin/bash
+  when: atmosphere_baremetal_pxe_use_internal_bridge | default(true) | bool
 
 - name: Define "ironic-pxe" bridge
   changed_when: false
@@ -59,6 +60,7 @@
     pod: "{{ libvirt_pod.resources[0].metadata.name }}"
     container: libvirt
     command: virsh net-define /var/lib/libvirt/ironic-pxe.xml
+  when: atmosphere_baremetal_pxe_use_internal_bridge | default(true) | bool
 
 - name: Set auto start "ironic-pxe" bridge
   changed_when: false
@@ -68,6 +70,7 @@
     pod: "{{ libvirt_pod.resources[0].metadata.name }}"
     container: libvirt
     command: virsh net-autostart ironic-pxe
+  when: atmosphere_baremetal_pxe_use_internal_bridge | default(true) | bool
 
 - name: Start "ironic-pxe" bridge
   changed_when: false
@@ -77,6 +80,7 @@
     pod: "{{ libvirt_pod.resources[0].metadata.name }}"
     container: libvirt
     command: virsh net-start ironic-pxe
+  when: atmosphere_baremetal_pxe_use_internal_bridge | default(true) | bool
 
 - name: Create storage for virtual baremetal nodes - define pool
   changed_when: false

@@ -1,0 +1,47 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+#
+# VLAN-trunked variant of the `aio` scenario.  Requires Phase B host
+# setup (synthetic bond0 + bond0.{103,4094,4090}); see
+# notes/logs/ironic/mcapi-bm-vlan/README.md for the full procedure.
+
+dependency:
+  name: galaxy
+driver:
+  name: default
+  options:
+    managed: False
+    ansible_connection_options:
+      ansible_become: "true"
+      ansible_connection: local
+platforms:
+  - name: instance
+    groups:
+      - controllers
+      - cephs
+      - computes
+provisioner:
+  name: ansible
+  env:
+    DOCKER_TIMEOUT: 600
+  config_options:
+    defaults:
+      callbacks_enabled: ansible.posix.profile_tasks
+    connection:
+      pipelining: true
+    tags:
+      run: ${ATMOSPHERE_ANSIBLE_TAGS-all}
+  options:
+    skip-tags: "${ATMOSPHERE_ANSIBLE_SKIP_TAGS-molecule-notest,notest}"
+  inventory:
+    links:
+      host_vars: "${ATMOSPHERE_ANSIBLE_VARS_PATH-$MOLECULE_SCENARIO_DIRECTORY}/host_vars"
+      group_vars: "${ATMOSPHERE_ANSIBLE_VARS_PATH-$MOLECULE_SCENARIO_DIRECTORY}/group_vars"
+ansible:
+  executor:
+    backend: ansible-playbook
+    args:
+      ansible_playbook:
+        - --inventory=${ATMOSPHERE_MOLECULE_INVENTORY:-/dev/null}
+verifier:
+  name: ansible

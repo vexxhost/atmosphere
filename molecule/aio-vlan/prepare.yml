@@ -1,0 +1,133 @@
+# Copyright (c) 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Prepare
+  hosts: all
+  become: true
+  tasks:
+    - name: Workaround system hostname
+      block:
+        - name: Configure short hostname
+          ansible.builtin.hostname:
+            name: "{{ inventory_hostname_short }}"
+        - name: Ensure hostname inside hosts file
+          ansible.builtin.lineinfile:
+            path: /etc/hosts
+            regexp: '^127\.0\.1\.1'
+            line: 127.0.1.1 {{ inventory_hostname }} {{ inventory_hostname_short }}
+
+    - name: Install "dirmngr" for GPG keyserver operations
+      ansible.builtin.apt:
+        name: dirmngr
+        state: present
+
+    - name: Purge "snapd" package
+      when: ansible_distribution | lower == 'ubuntu'
+      ansible.builtin.apt:
+        name: snapd
+        state: absent
+        purge: true
+
+    - name: Install Go toolchain for local builds
+      when: zuul is not defined
+      block:
+        - name: Download Go toolchain
+          ansible.builtin.get_url:
+            url: https://go.dev/dl/go1.24.4.linux-amd64.tar.gz
+            dest: /tmp/go.tar.gz
+            mode: "0644"
+        - name: Remove any existing Go installation
+          ansible.builtin.file:
+            path: /usr/local/go
+            state: absent
+        - name: Extract Go toolchain
+          ansible.builtin.unarchive:
+            src: /tmp/go.tar.gz
+            dest: /usr/local
+            remote_src: true
+
+- name: Generate workspace
+  ansible.builtin.import_playbook: vexxhost.atmosphere.generate_workspace
+  vars:
+    workspace_path: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}"
+    domain_name: "{{ ansible_default_ipv4['address'].replace('.', '-') }}.nip.io"
+
+- name: Copy AIO overrides to workspace
+  hosts: all
+  become: true
+  tasks:
+    - name: Copy molecule.yml overrides to project group_vars
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/group_vars/all/molecule.yml"
+        dest: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}/group_vars/all/molecule.yml"
+        mode: "0644"
+      run_once: true
+
+- name: Overwrite OSD devices with LVM-backed paths
+  hosts: all
+  become: true
+  tasks:
+    - name: Overwrite existing osds.yml file
+      ansible.builtin.copy:
+        dest: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}/group_vars/cephs/osds.yml"
+        mode: '0644'
+        content: |
+          ceph_osd_devices:
+            - "/dev/ceph-{{ inventory_hostname_short }}-osd0/data"
+            - "/dev/ceph-{{ inventory_hostname_short }}-osd1/data"
+            - "/dev/ceph-{{ inventory_hostname_short }}-osd2/data"
+
+- name: Verify Phase B VLAN trunk (bond0 + sub-IFs)
+  hosts: all
+  become: true
+  vars:
+    required_links:
+      - bond0
+      - bond0.103
+      - bond0.4094
+      - bond0.4090
+  tasks:
+    - name: Probe required interfaces
+      ansible.builtin.command:
+        cmd: "ip -o link show {{ item }}"
+      register: _link_probe
+      changed_when: false
+      failed_when: _link_probe.rc != 0
+      loop: "{{ required_links }}"
+
+    - name: Show probe results
+      ansible.builtin.debug:
+        var: _link_probe.results | map(attribute='stdout') | list
+
+- name: Override workspace neutron.yml with VLAN 103 public network
+  hosts: all
+  become: true
+  tasks:
+    - name: Write neutron.yml override (V5 — must run after generate_workspace)
+      ansible.builtin.copy:
+        dest: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}/group_vars/all/neutron.yml"
+        mode: "0644"
+        content: |
+          neutron_networks:
+            - name: public
+              external: true
+              shared: true
+              mtu_size: 1500
+              port_security_enabled: true
+              provider_network_type: vlan
+              provider_physical_network: external
+              provider_segmentation_id: 103
+              subnets:
+                - name: public-subnet
+                  cidr: 10.103.0.0/24
+                  gateway_ip: 10.103.0.1
+                  allocation_pool_start: 10.103.0.100
+                  allocation_pool_end: 10.103.0.200
+                  enable_dhcp: false
+      run_once: true
+
+- name: Create fake devices for Ceph
+  ansible.builtin.import_playbook: vexxhost.ceph.create_fake_devices
+
+- name: Prepare system for Neutron
+  ansible.builtin.import_playbook: ../shared/prepare/neutron.yml

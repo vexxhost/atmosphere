@@ -32,7 +32,9 @@
         namespace: openstack
         pod: "{{ ovs_pod.resources[0].metadata.name }}"
         command: ovs-vsctl --may-exist add-br ironic-pxe
-      when: atmosphere_baremetal_emulator_enabled | default(false) | bool
+      when: >-
+        (atmosphere_baremetal_emulator_enabled | default(false) | bool)
+        and (atmosphere_baremetal_pxe_use_internal_bridge | default(true) | bool)
 
     - name: Create connection between "ironic-pxe" and "br-ex"
       changed_when: false
@@ -46,7 +48,9 @@
           -- set port patch-ex-ironic-pxe tag=4090
           -- --may-exist add-port ironic-pxe patch-ironic-pxe-ex
           -- set interface patch-ironic-pxe-ex type=patch options:peer=patch-ex-ironic-pxe
-      when: atmosphere_baremetal_emulator_enabled | default(false) | bool
+      when: >-
+        (atmosphere_baremetal_emulator_enabled | default(false) | bool)
+        and (atmosphere_baremetal_pxe_use_internal_bridge | default(true) | bool)
 
     - name: Create node ports on ironic-pxe
       changed_when: false
@@ -61,19 +65,42 @@
           -- --may-exist add-port ironic-pxe ovs-node-1i2
           -- --may-exist add-port ironic-pxe ovs-node-2i1
           -- --may-exist add-port ironic-pxe ovs-node-2i2
-      when: atmosphere_baremetal_emulator_enabled | default(false) | bool
+      when: >-
+        (atmosphere_baremetal_emulator_enabled | default(false) | bool)
+        and (atmosphere_baremetal_pxe_use_internal_bridge | default(true) | bool)
+
+    - name: Wire BM emulator taps directly into br-ex (VLAN 4090)
+      changed_when: false
+      kubernetes.core.k8s_exec:
+        namespace: openstack
+        pod: "{{ ovs_pod.resources[0].metadata.name }}"
+        command: >-
+          ovs-vsctl
+          --may-exist add-port br-ex ovs-node-0i1 tag=4090
+          -- --may-exist add-port br-ex ovs-node-0i2 tag=4090
+          -- --may-exist add-port br-ex ovs-node-1i1 tag=4090
+          -- --may-exist add-port br-ex ovs-node-1i2 tag=4090
+          -- --may-exist add-port br-ex ovs-node-2i1 tag=4090
+          -- --may-exist add-port br-ex ovs-node-2i2 tag=4090
+      when: >-
+        (atmosphere_baremetal_emulator_enabled | default(false) | bool)
+        and not (atmosphere_baremetal_pxe_use_internal_bridge | default(true) | bool)
 
     - name: Add IP address to "ironic-pxe"
       changed_when: false
       ansible.builtin.shell:
         cmd: ip addr add 172.24.6.254/24 dev ironic-pxe || true
-      when: atmosphere_baremetal_emulator_enabled | default(false) | bool
+      when: >-
+        (atmosphere_baremetal_emulator_enabled | default(false) | bool)
+        and (atmosphere_baremetal_pxe_use_internal_bridge | default(true) | bool)
 
     - name: Set "ironic-pxe" interface to "up"
       changed_when: false
       ansible.builtin.shell:
         cmd: ip link set ironic-pxe up || true
-      when: atmosphere_baremetal_emulator_enabled | default(false) | bool
+      when: >-
+        (atmosphere_baremetal_emulator_enabled | default(false) | bool)
+        and (atmosphere_baremetal_pxe_use_internal_bridge | default(true) | bool)
 
 - name: Deploy Ironic helm chart and sushy emulator
   hosts: controllers[0]
