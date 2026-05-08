@@ -1,33 +1,32 @@
 ---
 features:
   - |
-    Adds a new stale port cleanup DaemonSet to the OVN chart that
-    periodically removes stale Open vSwitch ports from the integration
-    bridge (``br-int``) on every node running the OVN controller.
-
-    Stale ports accumulate when ``libvirt`` removes a virtual machine tap
-    device but the matching Open vSwitch ``Port`` / ``Interface`` row
-    remains on ``br-int``. Over time these orphaned entries cause OVN
-    controller poll-loop stalls of tens of seconds, Open vSwitch
-    disconnections, and packet drops on healthy virtual machines sharing
-    the same hypervisor.
-
-    Detection only considers Neutron virtual interfaces that carry
-    ``external_ids:iface-id`` and attach to the configured integration
-    bridge whose Interface row either reports a non-empty ``error`` column
-    (for example, when the kernel device for ``tapXXXX`` fails to open)
-    or has no corresponding kernel network device under
-    ``/sys/class/net``. Interfaces tagged with
+    Adds an opt-in DaemonSet to the OVN chart that periodically cleans
+    up stale Open vSwitch ports on the integration bridge (``br-int``)
+    on every node running OVN controller. The cleaner targets
+    Neutron tap interfaces whose Open vSwitch ``Interface`` row either
+    reports a non-empty ``error`` column or has no matching kernel
+    network device under ``/sys/class/net``. Interfaces tagged with
     ``external_ids:skip_cleanup=true`` always remain in place.
 
-    The cadence, deletion cap per cycle, and dry-run mode are configurable
-    via ``conf.stale_port_cleanup`` in ``values.yaml``. The DaemonSet
-    runs by default and inherits the ``openvswitch=enabled`` node selector
-    used by the OVN controller.
+    Stale ports accumulate when Nova compute and ``os-vif`` can't
+    finish unplugging a tap because libvirt becomes transiently
+    unresponsive (``HypervisorUnavailable``) or because Neutron deletes
+    the port out from under a running instance. Over time these
+    orphaned entries cause OVN controller poll-loop stalls of tens
+    of seconds, Open vSwitch disconnections, and packet drops on
+    healthy virtual machines that share the same hypervisor.
 
+    Configure cadence, deletion cap per cycle, and dry-run mode through
+    ``conf.stale_port_cleanup`` in ``values.yaml``. The DaemonSet
+    inherits the ``openvswitch=enabled`` node selector used by
+    OVN controller.
 upgrade:
   - |
-    Operators who don't want the new cleanup DaemonSet can disable it by
-    setting its manifest toggle to ``false`` in the chart values, or run
-    it in observation-only mode by setting ``conf.stale_port_cleanup.dry_run``
-    to ``1``.
+    The cleanup DaemonSet ships turned off by default
+    (``manifests.daemonset_ovn_stale_port_cleanup: false``) so that
+    operators can roll it out gradually. To enable it in observation
+    mode first, set the manifest toggle to ``true`` and
+    ``conf.stale_port_cleanup.dry_run`` to ``1``; review the cleaner
+    logs to confirm only stale ports match before flipping ``dry_run``
+    back to ``0`` for active deletion.
