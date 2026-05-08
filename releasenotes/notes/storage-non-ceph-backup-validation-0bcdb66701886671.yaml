@@ -1,0 +1,13 @@
+---
+fixes:
+  - |
+    Fixed a validation error that prevented non-Ceph deployments from
+    setting ``atmosphere_storage.backup.type: none`` (or
+    ``atmosphere_storage.ephemeral.type: local``). The role-default
+    storage configuration ships Ceph-specific keys (``pool``,
+    ``replication``, ``crush_rule``, ``user``) under those blocks, and
+    Ansible's recursive ``combine`` filter merged them into the user
+    override, which the strict pydantic model then rejected. The
+    storage filter now drops keys belonging to a different
+    discriminator variant before validation, so non-Ceph overrides
+    succeed while typos within the chosen variant are still flagged.
