@@ -1,0 +1,36 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+# Whether to deploy the bond0 + br-ex VLAN sub-IF setup on the host.
+# This is the synthetic VLAN-trunked AIO topology used by the mcapi-bm
+# and ib-bm scenarios. Default is false so that standard AIO/HCI
+# deployments are unaffected.
+host_bond0_vlan_setup_enabled: false
+
+# Uplink interface used as MASQUERADE egress for OVN tenant subnets and
+# the ironic provisioning subnet. Auto-detected from the default route
+# if left empty.
+host_bond0_vlan_setup_uplink: ""
+
+# VLAN sub-IF specs. Each entry becomes an OVS internal port on br-ex
+# tagged with `vid`, with the listed addresses applied. Override per
+# environment (see molecule/aio-vlan for the canonical values).
+host_bond0_vlan_setup_subifs:
+  - name: bond0.103
+    vid: 103
+    addrs:
+      - 10.103.0.10/24
+      - 10.103.0.1/24       # OVN router-gw ARP responder
+  - name: bond0.4094
+    vid: 4094
+    addrs:
+      - 10.96.240.200/24    # kube control-plane subnet
+  - name: bond0.4090
+    vid: 4090
+    addrs:
+      - 172.24.6.254/24     # ironic provisioning subnet
+
+# Source CIDRs for MASQUERADE.
+host_bond0_vlan_setup_masquerade_sources:
+  - 10.103.0.0/24
+  - 172.24.6.0/24

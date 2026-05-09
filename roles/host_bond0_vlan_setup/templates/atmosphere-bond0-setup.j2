@@ -1,0 +1,77 @@
+#!/bin/bash
+# {{ ansible_managed }}
+#
+# VLAN-trunked AIO bond0 + br-ex sub-IF setup.
+#
+# Lifecycle:
+#   1) First boot before br-ex exists  → creates bond0 + dummy0 slave,
+#                                        sysctl + iptables; OVS block is
+#                                        a no-op until OVN brings up
+#                                        br-ex via auto_bridge_add.
+#   2) Post-converge / boot with br-ex → creates OVS internal sub-IFs
+#                                        (bond0.<vid>) on br-ex, tagged.
+#   3) Every boot                      → re-applies all of the above
+#                                        idempotently.
+#
+# Fix #9 (ib-bm session, 2026-05-09): when a kernel-type VLAN sub-IF
+# named `bond0.<vid>` (i.e. `bond0.<vid>@bond0`) already exists, the
+# subsequent `ovs-vsctl --may-exist add-port br-ex bond0.<vid>
+# type=internal` silently no-ops because of the netlink name collision.
+# The kernel sub-IF then sits on a bond device that OVS owns; OVS
+# forwards VLAN frames out the bond trunk to the wire and they never
+# reach the host kernel. Anything bound to the host VLAN IP becomes
+# unreachable from the OVS-attached side (PXE-E18 timeouts on ironic
+# deploys, OVN router-gw ARP failures). Pre-delete kernel-type sub-IFs
+# (detected via the `@bond0:` token in `ip -o link show`) before the
+# ovs-vsctl add-port to make the script idempotent across first boot,
+# post-converge, and post-netplan-refresh.
+
+set -e
+
+modprobe dummy
+ip link show dummy0 >/dev/null 2>&1 || ip link add dummy0 type dummy
+ip link show bond0  >/dev/null 2>&1 || \
+  ip link add bond0 type bond mode active-backup miimon 0 arp_interval 0 use_carrier 0
+
+ip link set bond0 mtu 9000
+ip link set dummy0 down 2>/dev/null || true
+ip link show dummy0 | grep -q 'master bond0' || ip link set dummy0 master bond0
+ip link set dummy0 up
+ip link set bond0  up
+
+# br-ex has bond0 attached via OVN auto_bridge_add. Create OVS internal
+# sub-IFs for the tagged VLANs (kernel sub-IFs do NOT receive frames OVS
+# sends out via bond — see Fix #9 above).
+if command -v ovs-vsctl >/dev/null && ovs-vsctl br-exists br-ex 2>/dev/null; then
+{% for sub in host_bond0_vlan_setup_subifs %}
+  iface="{{ sub.name }}"
+  vid="{{ sub.vid }}"
+  if ip -o link show "$iface" 2>/dev/null | grep -q '@bond0:'; then
+    ip -4 addr flush dev "$iface" 2>/dev/null || true
+    ip link delete "$iface" || true
+  fi
+  ovs-vsctl --may-exist add-port br-ex "$iface" tag=$vid \
+    -- set interface "$iface" type=internal
+  ip link set "$iface" up
+{% endfor %}
+fi
+
+# Sub-IF address assignment (idempotent; survives reboots).
+{% for sub in host_bond0_vlan_setup_subifs %}
+{% for addr in sub.addrs %}
+ip -4 addr replace {{ addr }} dev {{ sub.name }} 2>/dev/null || true
+{% endfor %}
+{% endfor %}
+
+sysctl -w net.ipv4.ip_forward=1 >/dev/null
+
+# MASQUERADE for OVN tenant + ironic provisioning subnets.
+UPLINK="${UPLINK:-{{ host_bond0_vlan_setup_uplink or "$(ip route get 8.8.8.8 2>/dev/null | awk '/dev/ {print $5; exit}')" }}}"
+if [ -z "$UPLINK" ]; then
+  echo "atmosphere-bond0-setup: cannot determine UPLINK; skipping MASQUERADE" >&2
+else
+{% for src in host_bond0_vlan_setup_masquerade_sources %}
+  iptables -t nat -C POSTROUTING -s {{ src }} -o "$UPLINK" -j MASQUERADE 2>/dev/null \
+    || iptables -t nat -A POSTROUTING -s {{ src }} -o "$UPLINK" -j MASQUERADE
+{% endfor %}
+fi

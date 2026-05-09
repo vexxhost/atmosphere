@@ -1,0 +1,16 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+# Top-level playbook for the synthetic VLAN-trunked AIO host setup
+# (mcapi-bm / ib-bm scenarios). See roles/host_bond0_vlan_setup/README.md
+# for the full lifecycle and Fix #9 background.
+#
+# Activated by setting `host_bond0_vlan_setup_enabled: true` in your
+# inventory / group_vars. No-op by default so standard AIO/HCI
+# deployments are unaffected.
+
+- name: Configure synthetic VLAN-trunked bond0 + br-ex sub-IFs
+  hosts: all
+  become: true
+  roles:
+    - role: host_bond0_vlan_setup

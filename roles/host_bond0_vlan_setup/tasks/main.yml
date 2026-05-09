@@ -1,0 +1,35 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Skip when host_bond0_vlan_setup_enabled is false
+  ansible.builtin.meta: end_play
+  when: not (host_bond0_vlan_setup_enabled | bool)
+
+- name: Install atmosphere-bond0-setup script
+  ansible.builtin.template:
+    src: atmosphere-bond0-setup.j2
+    dest: /usr/local/sbin/atmosphere-bond0-setup
+    mode: "0755"
+    owner: root
+    group: root
+  notify: run atmosphere-bond0-setup
+
+- name: Install atmosphere-bond0.service systemd unit
+  ansible.builtin.template:
+    src: atmosphere-bond0.service.j2
+    dest: /etc/systemd/system/atmosphere-bond0.service
+    mode: "0644"
+    owner: root
+    group: root
+  notify:
+    - reload systemd
+    - run atmosphere-bond0-setup
+
+- name: Enable atmosphere-bond0.service
+  ansible.builtin.systemd:
+    name: atmosphere-bond0.service
+    enabled: true
+    daemon_reload: true
+
+- name: Trigger any pending handlers (script changed → re-run now)
+  ansible.builtin.meta: flush_handlers

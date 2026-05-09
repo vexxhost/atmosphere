@@ -1,0 +1,13 @@
+# {{ ansible_managed }}
+[Unit]
+Description=VLAN-trunked AIO bond0 + br-ex sub-IFs (atmosphere host_bond0_vlan_setup)
+After=network-online.target openvswitch-switch.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/atmosphere-bond0-setup
+RemainAfterExit=true
+
+[Install]
+WantedBy=multi-user.target
