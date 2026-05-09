@@ -1,0 +1,23 @@
+# {{ ansible_managed }}
+#
+# Re-trigger atmosphere-bond0.service whenever br-ex appears.
+#
+# Fix #9 lifecycle gap: host_bond0_vlan_setup runs early in converge,
+# before OVN's auto_bridge_add has created br-ex. The OVS block of
+# atmosphere-bond0-setup is a no-op on that first run, leaving the
+# kernel-type bond0.<vid>@bond0 sub-IF in place. When OVN later brings
+# br-ex up, this path unit fires the service so the OVS internal
+# sub-IFs get created (and the kernel sub-IFs get replaced).
+#
+# Also covers boot lifecycle: if br-ex is recreated (OVN restart, host
+# reboot), the service re-runs idempotently.
+
+[Unit]
+Description=Watch for br-ex to (re)trigger atmosphere-bond0-setup
+
+[Path]
+PathExists=/sys/class/net/br-ex
+Unit=atmosphere-bond0.service
+
+[Install]
+WantedBy=multi-user.target

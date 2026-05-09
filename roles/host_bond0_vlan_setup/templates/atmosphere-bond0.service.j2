@@ -5,9 +5,13 @@ After=network-online.target openvswitch-switch.service
 Wants=network-online.target
 
 [Service]
+# RemainAfterExit is intentionally false: atmosphere-bond0.path watches
+# for /sys/class/net/br-ex and re-fires this unit when br-ex (re)appears
+# (e.g. OVN restart, host reboot). systemctl start on an already-active
+# oneshot+RemainAfterExit unit is a no-op, which would silently break
+# the path-unit retrigger semantics. The script is fully idempotent.
 Type=oneshot
 ExecStart=/usr/local/sbin/atmosphere-bond0-setup
-RemainAfterExit=true
 
 [Install]
 WantedBy=multi-user.target

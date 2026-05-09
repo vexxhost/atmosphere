@@ -38,10 +38,31 @@
     - reload systemd
     - run atmosphere-bond0-setup
 
+- name: Install atmosphere-bond0.path systemd unit
+  # Fix #9 follow-up: this role runs early in converge, before OVN has
+  # created br-ex via auto_bridge_add. The path unit re-fires the
+  # service whenever /sys/class/net/br-ex appears, so OVS sub-IFs get
+  # created on first OVN bring-up AND on subsequent reboots.
+  ansible.builtin.template:
+    src: atmosphere-bond0.path.j2
+    dest: /etc/systemd/system/atmosphere-bond0.path
+    mode: "0644"
+    owner: root
+    group: root
+  notify:
+    - reload systemd
+
 - name: Enable atmosphere-bond0.service
   ansible.builtin.systemd:
     name: atmosphere-bond0.service
     enabled: true
+    daemon_reload: true
+
+- name: Enable and start atmosphere-bond0.path
+  ansible.builtin.systemd:
+    name: atmosphere-bond0.path
+    enabled: true
+    state: started
     daemon_reload: true
 
 - name: Trigger any pending handlers (script changed → re-run now)
