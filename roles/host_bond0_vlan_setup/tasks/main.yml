@@ -5,6 +5,19 @@
   ansible.builtin.meta: end_play
   when: not (host_bond0_vlan_setup_enabled | bool)
 
+- name: Install openvswitch-switch userspace tools on host
+  # Fix #9 follow-up: atmosphere-bond0-setup needs ovs-vsctl on the host
+  # to manage br-ex sub-IFs. On AIO/OSH-style deploys OVS runs in a DS,
+  # but the OVS db socket is hostpath-mounted, so the host's ovs-vsctl
+  # talks to the same database. Without this package the OVS block of
+  # atmosphere-bond0-setup silently no-ops (`command -v ovs-vsctl`
+  # returns non-zero).
+  ansible.builtin.apt:
+    name: openvswitch-switch
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
 - name: Install atmosphere-bond0-setup script
   ansible.builtin.template:
     src: atmosphere-bond0-setup.j2
