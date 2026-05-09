@@ -425,6 +425,10 @@ class _VolumeBackendNimbleBase(_HostAttachedVolumeBackend):
     address: str = Field(description="Management address (IP or hostname).")
     username: str = Field(description="Username credential.")
     password: str = Field(description="Password credential.")
+    nimble_subnet_label: str = Field(
+        default="*",
+        description="Subnet label used by the HPE Nimble driver.",
+    )
 
     @property
     def cinder_driver(self) -> str:
@@ -438,6 +442,7 @@ class _VolumeBackendNimbleBase(_HostAttachedVolumeBackend):
             "san_ip": self.address,
             "san_login": self.username,
             "san_password": self.password,
+            "nimble_subnet_label": self.nimble_subnet_label,
             "use_multipath_for_image_xfer": True,
         }
 

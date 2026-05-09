@@ -182,9 +182,7 @@ class TestValidation:
         still trigger ``extra="forbid"``.
         """
         with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
-            StorageConfig.model_validate(
-                {"backup": {"type": "none", "typo": "value"}}
-            )
+            StorageConfig.model_validate({"backup": {"type": "none", "typo": "value"}})
 
     def test_volumes_backend_set_to_none_is_dropped(self):
         """Users disable the role-default ``rbd1`` backend by setting
@@ -725,10 +723,30 @@ class TestStorageToCinderHelmValues:
         assert backend["san_ip"] == "10.0.0.3"
         assert backend["san_login"] == "admin"
         assert backend["san_password"] == "secret"
+        assert backend["nimble_subnet_label"] == "*"
         assert backend["use_multipath_for_image_xfer"] is True
         assert result["conf"]["enable_iscsi"] is True
         assert result["pod"]["useHostNetwork"] == {"volume": True}
         assert result["pod"]["security_context"] == _NIMBLE_POD_SECURITY_CONTEXT
+
+    def test_nimble_backend_custom_subnet_label(self):
+        storage = {
+            **DEFAULT_STORAGE,
+            "volumes": {
+                "default": "nimble",
+                "backends": {
+                    "nimble": {
+                        **_NIMBLE_ISCSI_BACKEND,
+                        "nimble_subnet_label": "storage-prod",
+                    }
+                },
+            },
+            "backup": {"type": "none"},
+        }
+        result = storage_to_cinder_helm_values(storage)
+
+        backend = result["conf"]["backends"]["nimble"]
+        assert backend["nimble_subnet_label"] == "storage-prod"
 
     def test_nimble_with_rbd1_default_nulled_out(self):
         """End-to-end: simulate the post-``combine(recursive=True)``
@@ -779,6 +797,7 @@ class TestStorageToCinderHelmValues:
         assert backend["san_ip"] == "10.0.0.3"
         assert backend["san_login"] == "admin"
         assert backend["san_password"] == "secret"
+        assert backend["nimble_subnet_label"] == "*"
         assert backend["use_multipath_for_image_xfer"] is True
         assert result["conf"]["enable_iscsi"] is True
         assert result["pod"]["useHostNetwork"] == {"volume": True}

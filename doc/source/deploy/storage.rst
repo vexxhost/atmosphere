@@ -219,6 +219,9 @@ For additional options, see the `Cinder HPE Nimble storage documentation
     address: <management_ip_or_hostname>
     username: <username>
     password: <password>
+    nimble_subnet_label: "*"  # optional
+
+The ``nimble_subnet_label`` option defaults to ``"*"``.
 
 Cinder (``cinder``)
 ====================
@@ -294,6 +297,7 @@ Using HPE Nimble storage
             username: admin
             password: secret
             protocol: iscsi
+            nimble_subnet_label: "*"
       backup:
         type: none
       ephemeral:
