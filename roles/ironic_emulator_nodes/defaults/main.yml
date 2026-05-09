@@ -1,0 +1,30 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+# Master switch for IB-shape (IPoIB-emulation) topology on the BM emulator
+# nodes. When true:
+#   * each libvirt domain has exactly ONE virtio-net (the "ib0" stand-in)
+#     instead of the stock pair, with <mtu size='{{ bm_emulator_ib_mtu }}'/>
+#     pinned on the surviving NIC;
+#   * the second ironic baremetal port (mac2) is NOT created;
+#   * the surviving ironic port is tagged with extra={ipoib:true,
+#     mtu:<bm_emulator_ib_mtu>, ib_emulation:virtio-net} so downstream
+#     consumers (and future readers) can tell this is the IPoIB-emulation
+#     shape and not real IB hardware;
+#   * the corresponding OVS ports (ovs-node-Ni1) get mtu_request bumped to
+#     bm_emulator_ib_mtu.
+#
+# What this does NOT do:
+#   * It does NOT give the guest a real (or fake) IB device — QEMU has no
+#     IB device model. The shape (single NIC, MTU 2044, no-vmedia) is what
+#     is being emulated. To exercise true IB code paths, replace the
+#     virtio-net <interface> with a <hostdev> SR-IOV passthrough of an IB
+#     VF on real hardware.
+#
+# Validated end-to-end in the ib-bm session (2026-05-09, host
+# 38.108.68.45) — see notes/logs/ironic/ib-bm/ in ricolin/rico-utils.
+bm_emulator_ib_shape_enabled: false
+
+# IPoIB datagram-mode default. IPoIB connected mode is 65520; we keep the
+# boot path at the smaller MTU because PXE/iPXE/HTTP are happiest there.
+bm_emulator_ib_mtu: 2044

@@ -86,6 +86,20 @@
         (atmosphere_baremetal_emulator_enabled | default(false) | bool)
         and not (atmosphere_baremetal_pxe_use_internal_bridge | default(true) | bool)
 
+    - name: Bump OVS port MTU on BM emulator i1 taps for IB-shape
+      changed_when: false
+      kubernetes.core.k8s_exec:
+        namespace: openstack
+        pod: "{{ ovs_pod.resources[0].metadata.name }}"
+        command: >-
+          ovs-vsctl
+          set Interface ovs-node-0i1 mtu_request={{ bm_emulator_ib_mtu | default(2044) }}
+          -- set Interface ovs-node-1i1 mtu_request={{ bm_emulator_ib_mtu | default(2044) }}
+          -- set Interface ovs-node-2i1 mtu_request={{ bm_emulator_ib_mtu | default(2044) }}
+      when: >-
+        (atmosphere_baremetal_emulator_enabled | default(false) | bool)
+        and (bm_emulator_ib_shape_enabled | default(false) | bool)
+
     - name: Add IP address to "ironic-pxe"
       changed_when: false
       ansible.builtin.shell:

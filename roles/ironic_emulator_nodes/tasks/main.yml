@@ -248,10 +248,14 @@
             <interface type='ethernet'>
               <mac address='52:54:00:b9:0b:41'/>
               <target dev='ovs-node-0i1'/>
+    {% if bm_emulator_ib_shape_enabled | default(false) | bool %}
+              <mtu size='{{ bm_emulator_ib_mtu | default(2044) }}'/>
+    {% endif %}
               <model type='virtio'/>
               <boot order='1'/>
               <address type='pci' domain='0x0000' bus='0x01' slot='0x00' function='0x0'/>
             </interface>
+    {% if not (bm_emulator_ib_shape_enabled | default(false) | bool) %}
             <interface type='ethernet'>
               <mac address='52:54:00:98:d6:b8'/>
               <target dev='ovs-node-0i2'/>
@@ -259,6 +263,7 @@
               <boot order='2'/>
               <address type='pci' domain='0x0000' bus='0x02' slot='0x00' function='0x0'/>
             </interface>
+    {% endif %}
             <serial type='file'>
               <source path='/tmp/node-0_console.log'/>
               <target type='isa-serial' port='0'>
@@ -362,10 +367,14 @@
             <interface type='ethernet'>
               <mac address='52:54:00:b7:de:53'/>
               <target dev='ovs-node-1i1'/>
+    {% if bm_emulator_ib_shape_enabled | default(false) | bool %}
+              <mtu size='{{ bm_emulator_ib_mtu | default(2044) }}'/>
+    {% endif %}
               <model type='virtio'/>
               <boot order='1'/>
               <address type='pci' domain='0x0000' bus='0x01' slot='0x00' function='0x0'/>
             </interface>
+    {% if not (bm_emulator_ib_shape_enabled | default(false) | bool) %}
             <interface type='ethernet'>
               <mac address='52:54:00:29:5d:5a'/>
               <target dev='ovs-node-1i2'/>
@@ -373,6 +382,7 @@
               <boot order='2'/>
               <address type='pci' domain='0x0000' bus='0x02' slot='0x00' function='0x0'/>
             </interface>
+    {% endif %}
             <serial type='file'>
               <source path='/tmp/node-1_console.log'/>
               <target type='isa-serial' port='0'>
@@ -476,10 +486,14 @@
             <interface type='ethernet'>
               <mac address='52:54:00:c5:4a:11'/>
               <target dev='ovs-node-2i1'/>
+    {% if bm_emulator_ib_shape_enabled | default(false) | bool %}
+              <mtu size='{{ bm_emulator_ib_mtu | default(2044) }}'/>
+    {% endif %}
               <model type='virtio'/>
               <boot order='1'/>
               <address type='pci' domain='0x0000' bus='0x01' slot='0x00' function='0x0'/>
             </interface>
+    {% if not (bm_emulator_ib_shape_enabled | default(false) | bool) %}
             <interface type='ethernet'>
               <mac address='52:54:00:e8:7f:22'/>
               <target dev='ovs-node-2i2'/>
@@ -487,6 +501,7 @@
               <boot order='2'/>
               <address type='pci' domain='0x0000' bus='0x02' slot='0x00' function='0x0'/>
             </interface>
+    {% endif %}
             <serial type='file'>
               <source path='/tmp/node-2_console.log'/>
               <target type='isa-serial' port='0'>
@@ -594,6 +609,8 @@
     fi
 
     gpu_enabled={{ bm_emulator_gpu_enabled | default(false) | bool | string | lower }}
+    ib_shape_enabled={{ bm_emulator_ib_shape_enabled | default(false) | bool | string | lower }}
+    ib_mtu={{ bm_emulator_ib_mtu | default(2044) }}
 
     enroll_node() {
       local uuid="$1" name="$2" mac1="$3" mac2="$4"
@@ -623,12 +640,37 @@
         openstack baremetal node add trait "$uuid" CUSTOM_GPU
       fi
 
-      # Idempotent ports (skip MACs already attached to this node).
-      for mac in "$mac1" "$mac2"; do
+      # Idempotent ports. In ib-shape mode the libvirt domain has only the
+      # i1 NIC, so we skip mac2 entirely; the surviving i1 port is tagged
+      # with extra={ipoib:true,mtu:<ib_mtu>,ib_emulation:virtio-net}.
+      local macs
+      if [ "$ib_shape_enabled" = "true" ]; then
+        macs="$mac1"
+      else
+        macs="$mac1 $mac2"
+      fi
+      for mac in $macs; do
         if ! openstack baremetal port list --address "$mac" -f value -c UUID | grep -q .; then
           openstack baremetal port create --node "$uuid" "$mac"
         fi
       done
+
+      if [ "$ib_shape_enabled" = "true" ]; then
+        local i1_uuid
+        i1_uuid="$(openstack baremetal port list --address "$mac1" -f value -c UUID)"
+        if [ -n "$i1_uuid" ]; then
+          openstack baremetal port set "$i1_uuid" \
+            --extra ipoib=true \
+            --extra mtu="$ib_mtu" \
+            --extra ib_emulation=virtio-net
+        fi
+        # Drop a stale mac2 port if it was created by an earlier non-IB run.
+        local stale_uuid
+        stale_uuid="$(openstack baremetal port list --address "$mac2" -f value -c UUID 2>/dev/null || true)"
+        if [ -n "$stale_uuid" ]; then
+          openstack baremetal port delete "$stale_uuid"
+        fi
+      fi
 
       # Drive provision_state to available; fail loud on unexpected states.
       local state
