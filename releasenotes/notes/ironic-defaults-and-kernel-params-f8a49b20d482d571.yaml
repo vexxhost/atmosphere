@@ -1,28 +1,29 @@
 ---
 upgrade:
   - |
-    The default Ironic ``default_network_interface`` is now ``neutron`` instead
-    of ``flat``. The ``flat`` interface remains enabled via
+    The default Ironic ``default_network_interface`` is now ``neutron``
+    instead of ``flat``. The ``flat`` interface remains enabled via
     ``enabled_network_interfaces``, so existing nodes that explicitly use
-    ``--network-interface flat`` continue to work. Operators who relied on the
-    implicit ``flat`` default for newly enrolled bare metal nodes should set
-    ``--network-interface flat`` on enrollment, or override
-    ``ironic_helm_values.conf.ironic.DEFAULT.default_network_interface`` back
-    to ``flat`` in their inventory.
+    ``--network-interface flat`` continue to work. Operators who relied on
+    the implicit ``flat`` default for newly enrolled bare metal nodes
+    should set ``--network-interface flat`` on enrollment, or override the
+    ``default_network_interface`` option under
+    ``ironic_helm_values.conf.ironic`` back to ``flat`` in their inventory.
   - |
-    The default ``kernel_append_params`` for the Ironic Python Agent (IPA)
-    ramdisk is now set explicitly for both the PXE and Redfish boot drivers
-    to ``nofb vga=normal ipa-insecure=true console=ttyS0,115200
-    systemd.journald.forward_to_console=yes``. Previously only the
-    ``[pxe]/kernel_append_params`` value was overridden by Atmosphere; the
-    Redfish virtual-media boot path fell through to the upstream Ironic
-    default (``nofb vga=normal``) because ``[redfish]/kernel_append_params``
-    is an independent option that does not inherit from ``[pxe]``. As a
-    result, IPA boot output for Redfish-driven deploys now lands on the
-    serial console, matching the PXE behaviour. Operators with custom
+    The default ``kernel_append_params`` for the Ironic Python agent
+    ramdisk is now set explicitly for both the ``pxe`` and ``redfish`` boot
+    drivers to ``nofb vga=normal ipa-insecure=true console=ttyS0,115200
+    systemd.journald.forward_to_console=yes``. Previously Atmosphere only
+    overrode the ``[pxe]/kernel_append_params`` value; the redfish
+    virtual-media boot path fell through to the upstream Ironic default
+    (``nofb vga=normal``) because ``[redfish]/kernel_append_params`` is an
+    independent option that doesn't inherit from ``[pxe]``. As a result,
+    agent boot output for redfish-driven deploys now lands on the serial
+    console, matching the ``pxe`` driver behaviour. Custom
     ``ironic_helm_values.conf.ironic.pxe.kernel_append_params`` overrides
-    are unaffected; operators relying on Atmosphere's previous defaults for
-    Redfish nodes will see different kernel cmdlines on the next deploy.
+    keep working unchanged; operators relying on Atmosphere's previous
+    defaults for redfish nodes will see different kernel cmdlines on the
+    next deploy.
 features:
   - |
     The ``neutron`` network interface is now the default for new Ironic
@@ -31,9 +32,10 @@ features:
     enrollment.
 fixes:
   - |
-    Ironic Python Agent boot output is now visible on the serial console
-    (``console=ttyS0,115200``) for both PXE-booted and Redfish-virtual-media
-    booted nodes, allowing operators to debug deploy failures over IPMI or
-    Redfish Serial-over-LAN. The ``nofb vga=normal`` parameters suppress
-    framebuffer console initialisation that can hang or scribble on serial
-    output on common BMC graphics controllers (Aspeed, Matrox).
+    Ironic Python agent boot output is now visible on the serial console
+    (``console=ttyS0,115200``) for both ``pxe``-booted and
+    ``redfish``-virtual-media-booted nodes, letting operators debug deploy
+    failures over the management controller's serial console. The
+    ``nofb vga=normal`` parameters suppress framebuffer console
+    initialisation that can hang or scribble on serial output on common
+    server graphics controllers (Aspeed, Matrox).
