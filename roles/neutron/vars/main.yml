@@ -54,8 +54,6 @@ __neutron_helm_values:
         backend_url: memcached://memcached.openstack.svc.cluster.local:11211
       nova:
         live_migration_events: true
-      ironic:
-        valid_interfaces: internal
       placement:
         region_name: "{{ openstack_helm_endpoints_neutron_region_name }}"
         username: "neutron-{{ openstack_helm_endpoints_neutron_region_name }}"
@@ -138,6 +136,26 @@ __neutron_ovn_helm_values:
     daemonset_ovn_metadata_agent: true
     daemonset_ovn_vpn_agent: true
     daemonset_ovs_agent: false
+
+__neutron_ironic_helm_values:
+  network:
+    backend:
+      - "{{ atmosphere_network_backend }}"
+      - baremetal
+  manifests:
+    deployment_ironic_agent: true
+  conf:
+    neutron:
+      ironic:
+        auth_type: password
+        auth_url: http://keystone-api.openstack.svc.cluster.local:5000
+        region_name: "{{ openstack_helm_endpoints_ironic_region_name }}"
+        project_name: service
+        project_domain_name: service
+        user_domain_name: service
+        username: "ironic-{{ openstack_helm_endpoints_ironic_region_name }}"
+        password: "{{ openstack_helm_endpoints_ironic_keystone_password }}"
+        valid_interfaces: internal
 
 __neutron_policy_server_helm_values:
   conf:

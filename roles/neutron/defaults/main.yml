@@ -35,3 +35,11 @@ neutron_designate_integration_enabled: false
 # Enable neutron policy server to force external
 # policy check neutron port and address pairs actions.
 neutron_policy_server_integration_enabled: true
+
+# Enable integration with Ironic.  Adds the ``baremetal`` ML2 mechanism
+# driver, deploys the ``ironic-neutron-agent`` and configures the
+# ``[ironic]`` keystone credentials so neutron can talk to ironic for
+# port-binding of ``vnic_type=baremetal`` ports.  Defaults to the same
+# gate that controls the ironic role so the AIO baremetal emulator
+# picks it up automatically.
+neutron_ironic_integration_enabled: "{{ atmosphere_baremetal_emulator_enabled | default(false) | bool }}"
