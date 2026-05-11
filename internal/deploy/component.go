@@ -136,6 +136,9 @@ var Components = []Component{
 		RoleName:  "ingress_nginx",
 		Hosts:     "controllers",
 		DependsOn: []string{"kubernetes"},
+		// Helm install talks to apiserver; counts toward k8s-api cap to
+		// prevent Wave 2 fan-out from overloading a single-node apiserver.
+		Resources: []string{"k8s-api"},
 	},
 	{
 		Name:      "rabbitmq-cluster-operator",
@@ -143,6 +146,7 @@ var Components = []Component{
 		RoleName:  "rabbitmq_cluster_operator",
 		Hosts:     "controllers",
 		DependsOn: []string{"cert-manager"},
+		Resources: []string{"k8s-api"},
 	},
 	{
 		Name:      "percona-xtradb-cluster-operator",
@@ -150,6 +154,7 @@ var Components = []Component{
 		RoleName:  "percona_xtradb_cluster_operator",
 		Hosts:     "controllers",
 		DependsOn: []string{"cert-manager"},
+		Resources: []string{"k8s-api"},
 	},
 	{
 		Name:      "percona-xtradb-cluster",
@@ -157,6 +162,7 @@ var Components = []Component{
 		RoleName:  "percona_xtradb_cluster",
 		Hosts:     "controllers",
 		DependsOn: []string{"percona-xtradb-cluster-operator", "csi"},
+		Resources: []string{"k8s-api"},
 	},
 	{
 		Name:      "valkey",
@@ -164,6 +170,7 @@ var Components = []Component{
 		RoleName:  "valkey",
 		Hosts:     "controllers",
 		DependsOn: []string{"kubernetes", "csi", "cluster-issuer"},
+		Resources: []string{"k8s-api"},
 	},
 	{
 		Name:      "keycloak",
@@ -171,6 +178,7 @@ var Components = []Component{
 		RoleName:  "keycloak",
 		Hosts:     "controllers",
 		DependsOn: []string{"percona-xtradb-cluster", "ingress-nginx"},
+		Resources: []string{"k8s-api"},
 	},
 	{
 		Name:      "keepalived",
@@ -187,6 +195,7 @@ var Components = []Component{
 		RoleName:  "node_feature_discovery",
 		Hosts:     "controllers[0]",
 		DependsOn: []string{"kubernetes"},
+		Resources: []string{"k8s-api"},
 	},
 	{
 		Name:      "kube-prometheus-stack",
@@ -194,7 +203,7 @@ var Components = []Component{
 		RoleName:  "kube_prometheus_stack",
 		Hosts:     "controllers[0]",
 		DependsOn: []string{"kubernetes", "csi", "cluster-issuer", "keycloak"},
-		Resources: []string{"keycloak-admin"},
+		Resources: []string{"k8s-api", "keycloak-admin"},
 	},
 	{
 		Name:      "loki",
@@ -202,6 +211,7 @@ var Components = []Component{
 		RoleName:  "loki",
 		Hosts:     "controllers[0]",
 		DependsOn: []string{"kubernetes", "csi"},
+		Resources: []string{"k8s-api"},
 	},
 	{
 		Name:      "vector",
@@ -209,6 +219,7 @@ var Components = []Component{
 		RoleName:  "vector",
 		Hosts:     "controllers[0]",
 		DependsOn: []string{"loki"},
+		Resources: []string{"k8s-api"},
 	},
 	{
 		Name:      "goldpinger",
@@ -216,6 +227,7 @@ var Components = []Component{
 		RoleName:  "goldpinger",
 		Hosts:     "controllers[0]",
 		DependsOn: []string{"kubernetes"},
+		Resources: []string{"k8s-api"},
 	},
 	{
 		Name:      "ipmi-exporter",
@@ -223,6 +235,7 @@ var Components = []Component{
 		RoleName:  "ipmi_exporter",
 		Hosts:     "controllers[0]",
 		DependsOn: []string{"kube-prometheus-stack"},
+		Resources: []string{"k8s-api"},
 	},
 	{
 		Name:      "prometheus-pushgateway",
@@ -230,6 +243,7 @@ var Components = []Component{
 		RoleName:  "prometheus_pushgateway",
 		Hosts:     "controllers[0]",
 		DependsOn: []string{"kube-prometheus-stack"},
+		Resources: []string{"k8s-api"},
 	},
 
 	// OS Configuration (RoleType, Hosts: "controllers:computes")
@@ -280,6 +294,7 @@ var Components = []Component{
 		RoleName:  "memcached",
 		Hosts:     "controllers[0]",
 		DependsOn: []string{"kubernetes"},
+		Resources: []string{"k8s-api"},
 	},
 	{
 		Name:             "keystone",
@@ -306,6 +321,7 @@ var Components = []Component{
 		Hosts:       "controllers[0]",
 		DependsOn:   []string{"kubernetes"},
 		Environment: cephEnvironment,
+		Resources:   []string{"k8s-api"},
 	},
 	{
 		Name:        "rook-ceph-cluster",
@@ -314,6 +330,7 @@ var Components = []Component{
 		Hosts:       "controllers[0]",
 		DependsOn:   []string{"rook-ceph", "ceph", "keystone"},
 		Environment: cephEnvironment,
+		Resources:   []string{"k8s-api"},
 	},
 	{
 		Name:        "ceph-provisioners",
@@ -322,6 +339,7 @@ var Components = []Component{
 		Hosts:       "controllers[0]",
 		DependsOn:   []string{"ceph", "kubernetes"},
 		Environment: cephEnvironment,
+		Resources:   []string{"k8s-api"},
 	},
 	{
 		Name:      "glance",
