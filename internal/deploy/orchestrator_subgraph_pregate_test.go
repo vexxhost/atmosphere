@@ -53,9 +53,19 @@ func TestDeployMultipleTags_PreRoleDependencyOutsideSubgraph(t *testing.T) {
 	}
 }
 
-// TestDeployMultipleTags_KeystoneAlone covers the keystone variant
-// (PreRoleDependsOn=[keycloak]).
-func TestDeployMultipleTags_KeystoneAlone(t *testing.T) {
+// TestDeployMultipleTags_KeystoneSubgraph covers the keystone variant of
+// the C1 hang (PreRoleDependsOn=[keycloak]).
+//
+// The orchestrator only routes through deployMultipleTags — and therefore
+// only exercises the buggy pre-role gating path — when **two or more**
+// distinct tags are selected. A single tag falls into the Mode 2
+// pass-through path, which shells out to a real ansible-playbook and
+// ignores o.Deployer entirely, making it unusable for unit testing.
+//
+// We pair keystone with barbican (which DependsOn=[keystone]) so the
+// subgraph contains keystone+barbican but NOT keycloak, reproducing
+// the original hang condition.
+func TestDeployMultipleTags_KeystoneSubgraph(t *testing.T) {
 	o := &Orchestrator{
 		Deployer:  &gateAwareDeployer{},
 		Inventory: "/dev/null",
@@ -64,8 +74,11 @@ func TestDeployMultipleTags_KeystoneAlone(t *testing.T) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	if err := o.Deploy(ctx, []string{"keystone"}); err != nil {
+	if err := o.Deploy(ctx, []string{"keystone", "barbican"}); err != nil {
 		t.Fatalf("Deploy returned error: %v", err)
+	}
+	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+		t.Fatal("context deadline exceeded - subgraph deployment hung")
 	}
 }
 
