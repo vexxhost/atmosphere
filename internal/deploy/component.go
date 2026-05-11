@@ -496,7 +496,9 @@ var Components = []Component{
 func BuildGraph() (*dag.Graph[Component], error) {
 	g := dag.NewGraph[Component]()
 	for _, c := range Components {
-		g.AddNode(c.Name, c)
+		if err := g.AddNode(c.Name, c); err != nil {
+			return nil, fmt.Errorf("adding node %s: %w", c.Name, err)
+		}
 	}
 	for _, c := range Components {
 		for _, dep := range c.DependsOn {

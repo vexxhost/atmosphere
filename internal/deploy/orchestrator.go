@@ -142,7 +142,6 @@ func (o *Orchestrator) deployFullDAG(ctx context.Context, output io.Writer) erro
 	fmt.Fprintln(output, "==> Starting parallel deployment")
 	return g.Run(ctx, o.Concurrency, func(ctx context.Context, id string, comp Component) error {
 		fmt.Fprintf(output, "==> [%s] Starting deployment\n", id)
-		defer tracker.MarkDone(id)
 
 		release, err := rc.Acquire(ctx, comp)
 		if err != nil {
@@ -154,6 +153,10 @@ func (o *Orchestrator) deployFullDAG(ctx context.Context, output io.Writer) erro
 		if err := o.Deployer.Deploy(ctx, comp, preGate); err != nil {
 			return fmt.Errorf("component %s failed: %w", id, err)
 		}
+		// Only mark done on success; on failure, downstream pre-roles
+		// must not be unblocked because the dependency is not actually
+		// ready. errgroup cancellation will tear them down promptly.
+		tracker.MarkDone(id)
 		fmt.Fprintf(output, "==> [%s] Deployment complete\n", id)
 		return nil
 	})
@@ -232,12 +235,17 @@ func (o *Orchestrator) deployMultipleTags(ctx context.Context, tags []string, ou
 	}
 
 	rc := NewResourceCoordinator(Components, nil)
-	tracker := newCompletionTracker(allComponentNames(Components))
+	// Only allocate tracker channels for components actually in the
+	// subgraph. Components outside the subgraph are treated as
+	// already-complete by completionTracker.Wait (it skips unknown
+	// names), matching the semantic that --tags assumes everything
+	// not selected is already deployed. Without this, a pre-role
+	// gated on an out-of-subgraph component would block forever.
+	tracker := newCompletionTracker(componentNames)
 
 	fmt.Fprintln(output, "==> Starting parallel deployment (subgraph)")
 	return subGraph.Run(ctx, o.Concurrency, func(ctx context.Context, id string, comp Component) error {
 		fmt.Fprintf(output, "==> [%s] Starting deployment\n", id)
-		defer tracker.MarkDone(id)
 
 		release, err := rc.Acquire(ctx, comp)
 		if err != nil {
@@ -249,6 +257,8 @@ func (o *Orchestrator) deployMultipleTags(ctx context.Context, tags []string, ou
 		if err := o.Deployer.Deploy(ctx, comp, preGate); err != nil {
 			return fmt.Errorf("component %s failed: %w", id, err)
 		}
+		// Only mark done on success; see comment in deployFullGraph.
+		tracker.MarkDone(id)
 		fmt.Fprintf(output, "==> [%s] Deployment complete\n", id)
 		return nil
 	})
