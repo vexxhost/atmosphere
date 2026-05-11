@@ -82,15 +82,31 @@ var cephEnvironment = map[string]string{
 var Components = []Component{
 	// Foundation (PlaybookType)
 	{
-		Name:      "ceph",
-		Type:      PlaybookType,
-		Playbook:  "ceph",
+		Name:     "ceph",
+		Type:     PlaybookType,
+		Playbook: "ceph",
+		// "containerd": both the ceph and kubernetes playbooks include
+		// the vexxhost.containers.containerd role, which calls
+		// systemctl daemon-reload + enable on containerd.service.
+		// When run in parallel, the two enable calls race on dbus and
+		// intermittently fail with:
+		//   "Unable to enable service containerd: Failed to enable
+		//    unit: Message recipient disconnected from message bus
+		//    without replying"
+		// Serialize via a dedicated "containerd" resource (cap=1) so
+		// ceph stays parallel with other apt users (multipathd, iscsi)
+		// and only blocks against kubernetes for the systemd setup.
+		Resources: []string{"containerd"},
 	},
 	{
-		Name:      "kubernetes",
-		Type:      PlaybookType,
-		Playbook:  "kubernetes",
-		Resources: []string{"apt"},
+		Name:     "kubernetes",
+		Type:     PlaybookType,
+		Playbook: "kubernetes",
+		// "apt": kubernetes installs apt packages; serialize against
+		// other apt consumers to avoid dpkg lock contention.
+		// "containerd": shares vexxhost.containers.containerd with the
+		// ceph playbook — see ceph above for the dbus race details.
+		Resources: []string{"apt", "containerd"},
 	},
 	{
 		Name:      "csi",

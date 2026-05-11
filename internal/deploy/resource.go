@@ -32,6 +32,13 @@ var defaultResourceConcurrency = map[string]int{
 	// keycloak_* modules rebuild auth state per call; concurrent realm/client
 	// creates race and fail. Serialize globally (cap=1).
 	"keycloak-admin": 1,
+	// containerd: the vexxhost.containers.containerd role calls
+	// systemctl daemon-reload + enable on containerd.service. Two
+	// concurrent enable calls race on dbus and intermittently fail
+	// with "Message recipient disconnected from message bus without
+	// replying". Serialize globally (cap=1) so any pair of
+	// components touching the role can't collide on systemd.
+	"containerd": 1,
 }
 
 // NewResourceCoordinator builds semaphores for every resource declared across
