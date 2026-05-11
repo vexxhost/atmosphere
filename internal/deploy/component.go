@@ -295,7 +295,7 @@ var Components = []Component{
 		Type:        RoleType,
 		RoleName:    "ceph_provisioners",
 		Hosts:       "controllers[0]",
-		DependsOn:   []string{"ceph"},
+		DependsOn:   []string{"ceph", "kubernetes"},
 		Environment: cephEnvironment,
 	},
 	{
