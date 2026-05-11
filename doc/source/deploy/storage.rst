@@ -77,6 +77,52 @@ The built-in defaults are equivalent to:
 
 The integrated Ceph cluster works without additional configuration.
 
+Using non-Ceph storage
+======================
+
+The built-in defaults include Ceph-backed ``rbd1`` entries for both
+``images.backends`` and ``volumes.backends``. Because
+``atmosphere_storage`` overrides merge recursively, defining a new backend
+doesn't remove those defaults.
+
+To replace the default Ceph backends with a non-Ceph layout, explicitly set
+the inherited ``rbd1`` entries to ``null``. This keeps the storage
+configuration on the non-Ceph path instead of running with both the default
+Ceph backend and the new backend.
+
+For a fully non-Ceph deployment:
+
+1. Set ``images.default`` and ``volumes.default`` to your non-Ceph backends.
+2. Set ``images.backends.rbd1: null`` and ``volumes.backends.rbd1: null``.
+3. Set ``backup.type: none`` unless you want to keep Cinder backup on Ceph
+   RBD.
+4. Keep ``ephemeral.type: local`` unless you want Nova ephemeral disks on
+   Ceph RBD.
+
+.. code-block:: yaml
+
+    atmosphere_storage:
+      images:
+        default: cinder_store
+        backends:
+          rbd1: null
+          cinder_store:
+            type: cinder
+      volumes:
+        default: powerstore
+        backends:
+          rbd1: null
+          powerstore:
+            type: powerstore
+            address: 10.0.0.1
+            username: admin
+            password: secret
+            protocol: iscsi
+      backup:
+        type: none
+      ephemeral:
+        type: local
+
 Enabling RBD ephemeral storage
 ==============================
 
@@ -232,6 +278,35 @@ Cinder-backed Glance store. Only used for image backends.
 
     type: cinder
 
+Backup configuration
+====================
+
+The ``backup`` section controls Cinder backup storage. Atmosphere supports
+these values:
+
+``type: rbd``
+  Store Cinder backups in Ceph. This is the built-in default.
+
+``type: none``
+  Disable the Cinder backup service and its storage-init job.
+
+For non-Ceph volume backends such as PowerStore, Pure Storage, StorPool, or
+Nimble, set ``backup.type: none`` unless you still plan to use Ceph for
+backups.
+
+If you keep Ceph backups while using a non-Ceph volume backend, define the
+backup block explicitly:
+
+.. code-block:: yaml
+
+    atmosphere_storage:
+      backup:
+        type: rbd
+        pool: cinder.backups
+        replication: 3
+        crush_rule: replicated_rule
+        user: cinderbackup
+
 ********
 Examples
 ********
@@ -268,9 +343,16 @@ Using Dell PowerStore
 .. code-block:: yaml
 
     atmosphere_storage:
+      images:
+        default: cinder_store
+        backends:
+          rbd1: null
+          cinder_store:
+            type: cinder
       volumes:
         default: powerstore
         backends:
+          rbd1: null
           powerstore:
             type: powerstore
             address: 10.0.0.1
@@ -288,9 +370,16 @@ Using HPE Nimble storage
 .. code-block:: yaml
 
     atmosphere_storage:
+      images:
+        default: cinder_store
+        backends:
+          rbd1: null
+          cinder_store:
+            type: cinder
       volumes:
         default: nimble1
         backends:
+          rbd1: null
           nimble1:
             type: nimble
             address: 10.0.0.1
@@ -355,7 +444,8 @@ If you previously set ``atmosphere_ceph_enabled: false``
 
 Remove the variable and configure ``atmosphere_storage`` to match your
 environment. For example, if you use Dell PowerStore for volumes and local
-ephemeral storage:
+ephemeral storage, make sure that you also null out the inherited ``rbd1``
+backends:
 
 .. code-block:: yaml
 
