@@ -6,7 +6,9 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 
 	"github.com/spf13/cobra"
 	"github.com/vexxhost/atmosphere/internal/deploy"
@@ -55,7 +57,14 @@ and runs them in parallel where possible.`,
 				}
 			}
 
-			return orchestrator.Deploy(cmd.Context(), tagList)
+			// Cancel the context on SIGINT/SIGTERM so in-flight
+			// ansible-playbook/helm/ssh subprocesses (started with
+			// exec.CommandContext) are torn down instead of being
+			// orphaned when the user hits Ctrl-C.
+			ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)
+			defer stop()
+
+			return orchestrator.Deploy(ctx, tagList)
 		},
 	}
 
