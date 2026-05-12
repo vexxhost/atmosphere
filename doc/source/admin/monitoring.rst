@@ -4,7 +4,7 @@ Monitoring and operations
 
 Atmosphere includes a Grafana deployment with dashboards created by default and
 a Prometheus deployment that collects metrics from the cluster and sends alerts
-to AlertManager. Loki also collects logs from the cluster using Vector.
+to Alertmanager. Loki also collects logs from the cluster using Vector.
 
 ******************************
 Philosophy and alerting levels
@@ -49,7 +49,7 @@ Inhibition and grouping
 -----------------------
 
 Alerts have dependency awareness. When a parent component fails (for example, a
-node goes down), inhibition rules in AlertManager suppress child component
+node goes down), inhibition rules in Alertmanager suppress child component
 alerts (for example, pods on that node) to avoid cascading alert storms.
 The system groups related alerts so that a single notification represents a
 coherent incident rather than dozens of individual symptoms.
@@ -126,23 +126,23 @@ as an admin user.
       :alt: Silences menu
       :width: 200
 
-2. Make sure that you select "AlertManager" on the top right corner of the page,
-   this ensures that you create a silence inside of the AlertManager
+2. Make sure that you select "Alertmanager" on the top right corner of the page,
+   this ensures that you create a silence inside of the Alertmanager
    that's managed by the Prometheus operator instead of the built-in Grafana
-   AlertManager which isn't used.
+   Alertmanager which isn't used.
 
     .. image:: images/monitoring-alertmanger-list.png
-        :alt: AlertManager list
+        :alt: Alertmanager list
         :width: 200
 
-   .. admonition:: AlertManager selection
+   .. admonition:: Alertmanager selection
     :class: warning
 
-    It's important that you select the AlertManager that's managed by the
+    It's important that you select the Alertmanager that's managed by the
     Prometheus operator, otherwise your silence won't apply to the
     Prometheus instance that Atmosphere deploys.
 
-3. Click the "Add Silence" button and use the AlertManager format to create
+3. Click the "Add Silence" button and use the Alertmanager format to create
    your silence, which you can test by seeing if it matches any alerts in the
    list labeled "Affected alert instances".
 
@@ -211,7 +211,7 @@ Viewing data
 ************
 
 The monitoring stack offers a few different ways to view collected data. The most
-common ways are through AlertManager, Grafana, and Prometheus.
+common ways are through Alertmanager, Grafana, and Prometheus.
 
 Grafana dashboard
 =================
@@ -298,10 +298,10 @@ changes to your inventory:
 In this example, the configuration restricts access to the IP range
 ``10.0.0.0/24`` and the IP address ``172.10.0.1``.
 
-AlertManager
+Alertmanager
 ============
 
-By default, the AlertManager dashboard points to the Ansible variable
+By default, the Alertmanager dashboard points to the Ansible variable
 ``kube_prometheus_stack_alertmanager_host`` and sits behind an ``Ingress``
 with the `oauth2-proxy` service, protected by Keycloak similar to Prometheus.
 
@@ -309,10 +309,10 @@ with the `oauth2-proxy` service, protected by Keycloak similar to Prometheus.
 Integrations
 ************
 
-Since Atmosphere relies on AlertManager to send alerts, you can integrate it
+Since Atmosphere relies on Alertmanager to send alerts, you can integrate it
 with services like OpsGenie, PagerDuty, email, and more. To receive monitoring
 alerts using your preferred notification tools, integrate them with
-AlertManager.
+Alertmanager.
 
 OpsGenie
 ========
@@ -980,6 +980,79 @@ experiencing network issues.
 
      kubectl debug node/<affected-node> -it --image=busybox -- \
        cat /host/var/log/syslog | tail -100
+
+``HostNICSpeedUnknown``
+=======================
+
+This alert fires when ``node_network_speed_bytes`` reports a negative value
+for a candidate physical Ethernet interface whose carrier is still up, for at
+least 1 hour.
+
+The expression also requires ``node_network_protocol_type == 1``
+(``ARPHRD_ETHER``) and ``node_network_carrier == 1``. It excludes common
+virtual interface prefixes such as ``bond``, ``veth``, ``team``, ``macvlan``,
+bridge, tap, Open vSwitch, and overlay tunnel devices. This filter skips
+virtual network plumbing and physical ports that the operator has shut.
+
+``node_exporter`` returns a negative value (typically ``-125000``) when the
+kernel can't read the interface speed via ``ethtool``
+(``Speed: Unknown!``). A negative value can point to a silent data-plane
+failure. The OS keeps the link administratively up, but a fault on the
+transceiver, cable, or switch port prevents the kernel from negotiating a link
+speed.
+
+This is a cause-based P4 early warning because it affects one host interface
+and may reduce data-plane capacity or redundancy before a user-visible
+symptom appears. Bonded interfaces may not detect this state because the
+Media-Independent Interface (MII) status can remain up while the underlying
+slave carries no traffic.
+
+**Likely root causes:**
+
+- Failed or marginal transceiver, Direct Attach Copper (DAC) or Active
+  Optical Cable (AOC), or fiber patch
+- Switch port that the operator has shut, an ``err-disabled`` port, or a
+  port in an unexpected operational state
+- Network Interface Card (NIC) firmware bug after a host or switch reboot
+- NIC hardware fault, such as a queue or Physical Layer (PHY) failure that
+  doesn't raise a carrier event
+
+**Diagnostic and remediation steps:**
+
+1. Identify the affected host and interface from the alert labels (``instance``
+   and ``device``).
+
+2. Confirm the speed is unknown on the host:
+
+   .. code-block:: console
+
+      ethtool <device> | grep -E "Speed|Link detected"
+
+3. Check whether the interface is part of a bond and how the bond splits
+   traffic across slaves:
+
+   .. code-block:: console
+
+      cat /proc/net/bonding/<bond>
+      ip -s link show <device>
+
+4. Inspect the kernel log for transceiver, link, or driver events:
+
+   .. code-block:: console
+
+      dmesg -T | grep -i -E "<device>|link|sfp|phy|transceiver" | tail -50
+
+5. If the interface connects to a managed switch, validate the peer port
+   state, optics, and counters from the switch side. Compare with the healthy
+   slave on the same host.
+
+6. If the speed remains unknown after checks, schedule a maintenance window
+   to:
+
+   - Reseat or replace the transceiver and cable.
+   - Move the connection to a known-good switch port.
+   - Reboot the host to reload the NIC driver and firmware. This often clears
+     the condition when the root cause is a firmware glitch.
 
 ``IpmiUncorrectableMemoryError``
 ================================

@@ -1,0 +1,11 @@
+---
+features:
+  - |
+    Add a new ``HostNICSpeedUnknown`` alert that fires when
+    ``node_network_speed_bytes`` reports a negative value (ethtool
+    ``Speed: Unknown!``) on a candidate physical network interface for more
+    than 1 hour. This catches possible silent data-plane failures where the link
+    stays administratively up but can't negotiate a speed, while filtering
+    common virtual Ethernet, bridge, tap, Open vSwitch, and overlay interfaces.
+    The alert is P4 because it's a cause-based early warning for reduced host
+    data-plane capacity or redundancy.

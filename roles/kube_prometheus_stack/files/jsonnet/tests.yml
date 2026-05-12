@@ -106,6 +106,129 @@ tests:
         alertname: NodeTimeSkewDetected
         exp_alerts: []
 
+  # HostNICSpeedUnknown - negative test (normal positive speed, no alert)
+  - interval: 1m
+    input_series:
+      - series: 'node_network_speed_bytes{instance="192.0.2.1:9100", job="node-exporter", device="ens3f0np0"}'
+        values: '3125000000x70'
+      - series: 'node_network_speed_bytes{instance="192.0.2.1:9100", job="node-exporter", device="ens3f1np1"}'
+        values: '3125000000x70'
+      - series: 'node_network_protocol_type{instance="192.0.2.1:9100", job="node-exporter", device="ens3f0np0"}'
+        values: '1x70'
+      - series: 'node_network_protocol_type{instance="192.0.2.1:9100", job="node-exporter", device="ens3f1np1"}'
+        values: '1x70'
+      - series: 'node_network_carrier{instance="192.0.2.1:9100", job="node-exporter", device="ens3f0np0"}'
+        values: '1x70'
+      - series: 'node_network_carrier{instance="192.0.2.1:9100", job="node-exporter", device="ens3f1np1"}'
+        values: '1x70'
+    alert_rule_test:
+      - eval_time: 65m
+        alertname: HostNICSpeedUnknown
+        exp_alerts: []
+
+  # HostNICSpeedUnknown - negative test (virtual interface with unknown speed, no alert)
+  - interval: 1m
+    input_series:
+      - series: 'node_network_speed_bytes{instance="192.0.2.3:9100", job="node-exporter", device="genev_sys_6081"}'
+        values: '-125000x70'
+      - series: 'node_network_protocol_type{instance="192.0.2.3:9100", job="node-exporter", device="genev_sys_6081"}'
+        values: '65534x70'
+      - series: 'node_network_carrier{instance="192.0.2.3:9100", job="node-exporter", device="genev_sys_6081"}'
+        values: '1x70'
+    alert_rule_test:
+      - eval_time: 65m
+        alertname: HostNICSpeedUnknown
+        exp_alerts: []
+
+  # HostNICSpeedUnknown - negative test (virtual Ethernet-style interfaces, no alert)
+  - interval: 1m
+    input_series:
+      - series: 'node_network_speed_bytes{instance="192.0.2.5:9100", job="node-exporter", device="bond0"}'
+        values: '-125000x70'
+      - series: 'node_network_protocol_type{instance="192.0.2.5:9100", job="node-exporter", device="bond0"}'
+        values: '1x70'
+      - series: 'node_network_carrier{instance="192.0.2.5:9100", job="node-exporter", device="bond0"}'
+        values: '1x70'
+      - series: 'node_network_speed_bytes{instance="192.0.2.5:9100", job="node-exporter", device="vethabcd123"}'
+        values: '-125000x70'
+      - series: 'node_network_protocol_type{instance="192.0.2.5:9100", job="node-exporter", device="vethabcd123"}'
+        values: '1x70'
+      - series: 'node_network_carrier{instance="192.0.2.5:9100", job="node-exporter", device="vethabcd123"}'
+        values: '1x70'
+      - series: 'node_network_speed_bytes{instance="192.0.2.5:9100", job="node-exporter", device="team0"}'
+        values: '-125000x70'
+      - series: 'node_network_protocol_type{instance="192.0.2.5:9100", job="node-exporter", device="team0"}'
+        values: '1x70'
+      - series: 'node_network_carrier{instance="192.0.2.5:9100", job="node-exporter", device="team0"}'
+        values: '1x70'
+      - series: 'node_network_speed_bytes{instance="192.0.2.5:9100", job="node-exporter", device="macvlan0"}'
+        values: '-125000x70'
+      - series: 'node_network_protocol_type{instance="192.0.2.5:9100", job="node-exporter", device="macvlan0"}'
+        values: '1x70'
+      - series: 'node_network_carrier{instance="192.0.2.5:9100", job="node-exporter", device="macvlan0"}'
+        values: '1x70'
+    alert_rule_test:
+      - eval_time: 65m
+        alertname: HostNICSpeedUnknown
+        exp_alerts: []
+
+  # HostNICSpeedUnknown - negative test (physical Ethernet, link down with carrier=0, no alert)
+  - interval: 1m
+    input_series:
+      - series: 'node_network_speed_bytes{instance="192.0.2.4:9100", job="node-exporter", device="ens5f0np0"}'
+        values: '-125000x70'
+      - series: 'node_network_protocol_type{instance="192.0.2.4:9100", job="node-exporter", device="ens5f0np0"}'
+        values: '1x70'
+      - series: 'node_network_carrier{instance="192.0.2.4:9100", job="node-exporter", device="ens5f0np0"}'
+        values: '0x70'
+    alert_rule_test:
+      - eval_time: 65m
+        alertname: HostNICSpeedUnknown
+        exp_alerts: []
+
+  # HostNICSpeedUnknown - negative test (condition clears before one hour, no alert)
+  - interval: 1m
+    input_series:
+      - series: 'node_network_speed_bytes{instance="192.0.2.6:9100", job="node-exporter", device="ens6f0np0"}'
+        values: '-125000x30 3125000000x40'
+      - series: 'node_network_protocol_type{instance="192.0.2.6:9100", job="node-exporter", device="ens6f0np0"}'
+        values: '1x70'
+      - series: 'node_network_carrier{instance="192.0.2.6:9100", job="node-exporter", device="ens6f0np0"}'
+        values: '1x70'
+    alert_rule_test:
+      - eval_time: 65m
+        alertname: HostNICSpeedUnknown
+        exp_alerts: []
+
+  # HostNICSpeedUnknown - positive test (physical Ethernet, negative speed, carrier still up)
+  - interval: 1m
+    input_series:
+      - series: 'node_network_speed_bytes{instance="192.0.2.2:9100", job="node-exporter", device="ens3f0np0"}'
+        values: '-125000x70'
+      - series: 'node_network_speed_bytes{instance="192.0.2.2:9100", job="node-exporter", device="ens3f1np1"}'
+        values: '3125000000x70'
+      - series: 'node_network_protocol_type{instance="192.0.2.2:9100", job="node-exporter", device="ens3f0np0"}'
+        values: '1x70'
+      - series: 'node_network_protocol_type{instance="192.0.2.2:9100", job="node-exporter", device="ens3f1np1"}'
+        values: '1x70'
+      - series: 'node_network_carrier{instance="192.0.2.2:9100", job="node-exporter", device="ens3f0np0"}'
+        values: '1x70'
+      - series: 'node_network_carrier{instance="192.0.2.2:9100", job="node-exporter", device="ens3f1np1"}'
+        values: '1x70'
+    alert_rule_test:
+      - eval_time: 65m
+        alertname: HostNICSpeedUnknown
+        exp_alerts:
+          - exp_labels:
+              severity: P4
+              instance: "192.0.2.2:9100"
+              job: node-exporter
+              device: ens3f0np0
+            exp_annotations:
+              summary: "Host NIC: reduced data-plane capacity on 192.0.2.2:9100 ens3f0np0"
+              description: 'Interface ens3f0np0 on 192.0.2.2:9100 reports node_network_speed_bytes=-125000 for more than 1 hour while the link carrier is still up and the device passes the physical Ethernet interface filters. A value below 0 (typically -125000) means the kernel cannot read the interface speed via ethtool ("Speed: Unknown!"); the threshold is < 0 bytes/sec. Normal behaviour is the negotiated link speed in bytes/sec (for example 3125000000 for 25 Gbps or 1250000000 for 10 Gbps). This is a cause-based early warning for reduced host data-plane capacity or redundancy; bonded interfaces may not detect this state because MII status can remain up while the slave carries no traffic.'
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#hostnicspeedunknown"
+
   # NodeDiskHighLatency - negative test (normal latency, no alert)
   - interval: 1m
     input_series:

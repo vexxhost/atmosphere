@@ -208,6 +208,7 @@ local mixins = {
       _config+:: {
         nodeExporterSelector: 'job="node-exporter"',
         diskDeviceSelector: 'device=~"(/dev/)?(mmcblk.p.+|nvme.+|rbd.+|sd.+|vd.+|xvd.+|dm-.+|md.+|dasd.+)"',
+        physicalNetworkDeviceSelector: 'device!~"^(bond|br|cilium_|docker|dummy|flannel|genev_sys|gre_sys|gretap|ifb|lxc|macvlan|macvtap|ovs-system|qbr|qvb|qvo|tap|tbr|team|tun|veth|vlan|vrf|vxlan|[0-9a-f]+_eth).*$"',
       },
       prometheusAlerts+:: {
         groups+: [
@@ -226,6 +227,23 @@ local mixins = {
                 annotations: {
                   summary: 'Node {{ $labels.instance }} has a time difference.',
                   description: 'Node {{ $labels.instance }} has a time difference {{ $value }}.',
+                },
+              },
+              {
+                alert: 'HostNICSpeedUnknown',
+                expr: |||
+                  node_network_speed_bytes{%(nodeExporterSelector)s, %(physicalNetworkDeviceSelector)s} < 0
+                    and on(instance, device) node_network_protocol_type{%(nodeExporterSelector)s} == 1
+                    and on(instance, device) node_network_carrier{%(nodeExporterSelector)s} == 1
+                ||| % mixins.node._config,
+                'for': '1h',
+                labels: {
+                  severity: 'P4',
+                },
+                annotations: {
+                  summary: 'Host NIC: reduced data-plane capacity on {{ $labels.instance }} {{ $labels.device }}',
+                  description: 'Interface {{ $labels.device }} on {{ $labels.instance }} reports node_network_speed_bytes={{ $value }} for more than 1 hour while the link carrier is still up and the device passes the physical Ethernet interface filters. A value below 0 (typically -125000) means the kernel cannot read the interface speed via ethtool ("Speed: Unknown!"); the threshold is < 0 bytes/sec. Normal behaviour is the negotiated link speed in bytes/sec (for example 3125000000 for 25 Gbps or 1250000000 for 10 Gbps). This is a cause-based early warning for reduced host data-plane capacity or redundancy; bonded interfaces may not detect this state because MII status can remain up while the slave carries no traffic.',
+                  runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#hostnicspeedunknown',
                 },
               },
               {
