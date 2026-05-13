@@ -418,6 +418,62 @@ class VolumeBackendStorpool(_HostAttachedVolumeBackend):
         }
 
 
+class VolumeBackendVast(_HostAttachedVolumeBackend):
+    """VAST Data volume backend."""
+
+    type: Literal["vast"]
+    address: str = Field(description="Management address (IP or hostname).")
+    username: str | None = Field(
+        default=None, description="Username credential for REST API access."
+    )
+    password: str | None = Field(
+        default=None, description="Password credential for REST API access."
+    )
+    api_token: str | None = Field(
+        default=None,
+        description="API token for REST API access. Takes precedence over username/password.",
+    )
+    subsystem: str = Field(description="VAST subsystem name.")
+    vippool_name: str = Field(description="Name of the Virtual IP pool.")
+    tenant_name: str | None = Field(
+        default=None,
+        description="VAST tenant name for filtering when multiple subsystems share the same name.",
+    )
+
+    @model_validator(mode="after")
+    def _validate_credentials(self) -> Self:
+        has_userpass = self.username is not None and self.password is not None
+        has_token = self.api_token is not None
+        if not has_userpass and not has_token:
+            raise ValueError(
+                "Either 'api_token' or both 'username' and 'password' must be provided."
+            )
+        return self
+
+    def cinder_backend_config(self, name: str) -> dict[str, Any]:
+        """Generate Cinder backend config for VAST Data."""
+        config: dict[str, Any] = {
+            "volume_backend_name": name,
+            "volume_driver": "cinder.volume.drivers.vastdata.driver.VASTVolumeDriver",
+            "san_ip": self.address,
+            "vast_subsystem": self.subsystem,
+            "vast_vippool_name": self.vippool_name,
+        }
+        if self.api_token is not None:
+            config["vast_api_token"] = self.api_token
+        else:
+            config["san_login"] = self.username
+            config["san_password"] = self.password
+        if self.tenant_name is not None:
+            config["vast_tenant_name"] = self.tenant_name
+        return config
+
+    def amend_cinder(self, result: HelmValues, name: str) -> None:
+        """Amend Cinder Helm values for a VAST Data volume backend."""
+        super().amend_cinder(result, name)
+        result["conf"]["backends"][name] = self.cinder_backend_config(name)
+
+
 VolumeBackend = Annotated[
     Union[
         VolumeBackendRbd,
@@ -425,6 +481,7 @@ VolumeBackend = Annotated[
         VolumeBackendPowerstore,
         VolumeBackendPure,
         VolumeBackendStorpool,
+        VolumeBackendVast,
     ],
     Field(discriminator="type"),
 ]

@@ -203,6 +203,21 @@ and file system mounts automatically.
     type: storpool
     template: hybrid-2ssd
 
+VAST data (``vast``)
+====================
+
+VAST Data volume backend. Supports authentication via API token or username
+and password. You must provide ``subsystem`` and ``vippool_name``.
+
+.. code-block:: yaml
+
+    type: vast
+    address: <management_ip_or_hostname>
+    api_token: <api_token>          # or use username + password
+    subsystem: <subsystem_name>
+    vippool_name: <vippool_name>
+    tenant_name: <tenant_name>      # optional
+
 Cinder (``cinder``)
 ====================
 
