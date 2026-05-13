@@ -274,6 +274,14 @@ var Components = []Component{
 		RoleName: "udev",
 		Hosts:    "controllers:computes",
 	},
+	{
+		Name:        "host-libvirt-sockets",
+		Type:        RoleType,
+		RoleName:    "host_libvirt_sockets",
+		Hosts:       "controllers:computes",
+		GatherFacts: boolPtr(false),
+		Resources:   []string{"apt"},
+	},
 
 	// OpenStack (RoleType, Hosts: "controllers[0]")
 	{
@@ -418,7 +426,7 @@ var Components = []Component{
 		Type:      RoleType,
 		RoleName:  "libvirt",
 		Hosts:     "controllers[0]",
-		DependsOn: []string{"kubernetes", "cluster-issuer"},
+		DependsOn: []string{"kubernetes", "cluster-issuer", "host-libvirt-sockets"},
 	},
 	{
 		Name:      "coredns",

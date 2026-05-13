@@ -1,0 +1,29 @@
+---
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Stop host libvirt units
+  ansible.builtin.command: # noqa: command-instead-of-module
+    argv:
+      - systemctl
+      - stop
+      - "{{ item }}"
+  loop: "{{ host_libvirt_sockets_units }}"
+  changed_when: false
+  failed_when: false
+  when: host_libvirt_sockets_enabled | bool
+
+- name: Mask host libvirt units
+  ansible.builtin.command: # noqa: command-instead-of-module
+    argv:
+      - systemctl
+      - mask
+      - "{{ item }}"
+  loop: "{{ host_libvirt_sockets_units }}"
+  register: _host_libvirt_sockets_mask
+  changed_when: >-
+    'Created symlink' in
+    (_host_libvirt_sockets_mask.stdout ~ _host_libvirt_sockets_mask.stderr)
+  failed_when: false
+  notify: Reload systemd
+  when: host_libvirt_sockets_enabled | bool

@@ -134,58 +134,91 @@ func TestOrchestrator_MultipleTags_UnknownTag(t *testing.T) {
 	}
 }
 
+func TestComponents_LibvirtDependsOnHostLibvirtSockets(t *testing.T) {
+	hostLibvirtSockets, ok := FindComponent("host-libvirt-sockets")
+	if !ok {
+		t.Fatal("host-libvirt-sockets component not found")
+	}
+	if hostLibvirtSockets.RoleName != "host_libvirt_sockets" {
+		t.Errorf("unexpected role name: %q", hostLibvirtSockets.RoleName)
+	}
+	if hostLibvirtSockets.Hosts != "controllers:computes" {
+		t.Errorf("unexpected hosts: %q", hostLibvirtSockets.Hosts)
+	}
+
+	libvirt, ok := FindComponent("libvirt")
+	if !ok {
+		t.Fatal("libvirt component not found")
+	}
+
+	found := false
+	for _, dep := range libvirt.DependsOn {
+		if dep == "host-libvirt-sockets" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("libvirt dependencies %v do not include host-libvirt-sockets", libvirt.DependsOn)
+	}
+
+	if _, err := BuildGraph(); err != nil {
+		t.Fatalf("dependency graph is invalid: %v", err)
+	}
+}
+
 // preGateRecorder captures whether preGate was invoked and what it returned
 // for each component deployed, allowing tests to assert pre-role gating.
 type preGateRecorder struct {
-mu      sync.Mutex
-gates   map[string]bool // component name -> gate was invoked
-gateErr map[string]error
+	mu      sync.Mutex
+	gates   map[string]bool // component name -> gate was invoked
+	gateErr map[string]error
 }
 
 func newPreGateRecorder() *preGateRecorder {
-return &preGateRecorder{
-gates:   map[string]bool{},
-gateErr: map[string]error{},
-}
+	return &preGateRecorder{
+		gates:   map[string]bool{},
+		gateErr: map[string]error{},
+	}
 }
 
 func (p *preGateRecorder) Deploy(ctx context.Context, component Component, preGate func(context.Context) error) error {
-if preGate != nil {
-err := preGate(ctx)
-p.mu.Lock()
-p.gates[component.Name] = true
-p.gateErr[component.Name] = err
-p.mu.Unlock()
-if err != nil {
-return err
-}
-} else {
-p.mu.Lock()
-p.gates[component.Name] = false
-p.mu.Unlock()
-}
-return nil
+	if preGate != nil {
+		err := preGate(ctx)
+		p.mu.Lock()
+		p.gates[component.Name] = true
+		p.gateErr[component.Name] = err
+		p.mu.Unlock()
+		if err != nil {
+			return err
+		}
+	} else {
+		p.mu.Lock()
+		p.gates[component.Name] = false
+		p.mu.Unlock()
+	}
+	return nil
 }
 
 func TestOrchestrator_BuildPreGate(t *testing.T) {
-tracker := newCompletionTracker([]string{"x", "y"})
+	tracker := newCompletionTracker([]string{"x", "y"})
 
-withPre := Component{
-Name:             "withpre",
-PreRoleName:      "withpre_pre",
-PreRoleDependsOn: []string{"x"},
-}
-if gate := buildPreGate(withPre, tracker); gate == nil {
-t.Fatal("expected non-nil gate for component with PreRoleDependsOn")
-}
+	withPre := Component{
+		Name:             "withpre",
+		PreRoleName:      "withpre_pre",
+		PreRoleDependsOn: []string{"x"},
+	}
+	if gate := buildPreGate(withPre, tracker); gate == nil {
+		t.Fatal("expected non-nil gate for component with PreRoleDependsOn")
+	}
 
-noPreDeps := Component{Name: "n1", PreRoleName: "n1_pre"}
-if gate := buildPreGate(noPreDeps, tracker); gate != nil {
-t.Errorf("expected nil gate when PreRoleDependsOn is empty")
-}
+	noPreDeps := Component{Name: "n1", PreRoleName: "n1_pre"}
+	if gate := buildPreGate(noPreDeps, tracker); gate != nil {
+		t.Errorf("expected nil gate when PreRoleDependsOn is empty")
+	}
 
-noPreRole := Component{Name: "n2", PreRoleDependsOn: []string{"x"}}
-if gate := buildPreGate(noPreRole, tracker); gate != nil {
-t.Errorf("expected nil gate when PreRoleName is empty")
-}
+	noPreRole := Component{Name: "n2", PreRoleDependsOn: []string{"x"}}
+	if gate := buildPreGate(noPreRole, tracker); gate != nil {
+		t.Errorf("expected nil gate when PreRoleName is empty")
+	}
 }
