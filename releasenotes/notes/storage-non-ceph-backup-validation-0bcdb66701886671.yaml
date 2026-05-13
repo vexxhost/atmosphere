@@ -1,0 +1,25 @@
+---
+fixes:
+  - |
+    Fixed a validation error that prevented non-Ceph deployments from
+    setting ``atmosphere_storage.backup.type: none`` (or
+    ``atmosphere_storage.ephemeral.type: local``). The role-default
+    storage configuration ships Ceph-specific keys (``pool``,
+    ``replication``, ``crush_rule``, ``user``) under those blocks, and
+    Ansible's recursive ``combine`` filter merged them into the user
+    override, which the strict pydantic model then rejected. The
+    storage filter now drops keys belonging to a different
+    discriminator variant before validation, so non-Ceph overrides
+    succeed while typos within the chosen variant are still flagged.
+  - |
+    Fixed Cinder Helm rendering on non-Ceph deployments where the
+    role-default ``rbd1`` backend leaked through Ansible's recursive
+    ``combine`` of ``atmosphere_storage.images.backends`` and
+    ``atmosphere_storage.volumes.backends``. With ``rbd1`` still
+    present, the storage filter forced ``storage: ceph`` and rendered
+    an empty post-upgrade storage-init Job, causing ``helm upgrade``
+    to fail. Operators can now opt out of a role-default backend by
+    setting it to ``null`` in their override (for example
+    ``atmosphere_storage.volumes.backends.rbd1: null``); the storage
+    filter drops the entry before validation, so the non-Ceph code
+    path takes over.

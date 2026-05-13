@@ -1,0 +1,94 @@
+{{- if not .Values.disable.alletra6000 }}
+
+---
+### Alletra 5000/6000 CSP Service ###
+kind: Service
+apiVersion: v1
+metadata:
+  name: alletra6000-csp-svc
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: alletra6000-csp-svc
+spec:
+  ports:
+  - port: 8080
+    protocol: TCP
+  selector:
+    app:  nimble-csp
+{{- end }}
+
+{{- if not .Values.disable.nimble }}
+---
+### Nimble CSP Service ###
+kind: Service
+apiVersion: v1
+metadata:
+  name: nimble-csp-svc
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: nimble-csp-svc
+spec:
+  ports:
+  - port: 8080
+    protocol: TCP
+  selector:
+    app: nimble-csp
+{{- end }}
+
+
+{{- if or (not .Values.disable.alletra6000) (not .Values.disable.nimble) }}
+---
+### CSP deployment ###
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: nimble-csp
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    matchLabels:
+      app: nimble-csp
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: nimble-csp
+        {{- if .Values.csp.labels }}
+{{ toYaml .Values.csp.labels | indent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: hpe-csp-sa
+      priorityClassName: system-cluster-critical
+      containers:
+        - name: nimble-csp
+          image: {{ .Values.images.nimbleCSP | quote }}
+          resources:
+            {{- toYaml .Values.csp.resources | nindent 12 }}
+          imagePullPolicy: {{ .Values.imagePullPolicy | quote }}
+          env:
+            {{- if .Values.disableHostDeletion }}
+            - name: DISABLE_HOST_DELETION
+              value: "true"
+            {{- end }}
+          ports:
+            - containerPort: 8080
+          volumeMounts:
+            - name: log-dir
+              mountPath: /var/log
+      volumes:
+        - name: log-dir
+          hostPath:
+            path: /var/log
+      {{- if .Values.csp.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.csp.nodeSelector | indent 8 }}
+      {{- end }}
+      {{- if .Values.csp.tolerations }}
+      tolerations:
+{{ toYaml .Values.csp.tolerations | indent 8 }}
+      {{- end }}
+      {{- if .Values.csp.affinity }}
+      affinity:
+{{ toYaml .Values.csp.affinity | indent 8 }}
+      {{- end }}
+{{- end }}
