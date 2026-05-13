@@ -710,6 +710,79 @@ talking with ``etcd`` with the following commands:
       --from-file=/etc/kubernetes/pki/etcd/healthcheck-client.crt \
       --from-file=/etc/kubernetes/pki/etcd/healthcheck-client.key
 
+``GeneveTransmitErrors``
+========================
+
+This alert fires when a ``node-exporter`` device meets both of these
+conditions:
+
+- The ``ethtool`` collector reports it as a ``Geneve`` interface.
+- The ``netdev`` collector reports more than 1.67 transmit errors per second
+  over a 5-minute window, sustained for 15 minutes.
+
+That rate equates to about 100 errors per minute.
+
+This is a symptom proxy for tenant overlay transmit failures on a compute host.
+It's not specific to one root cause: the Linux ``Geneve`` transmit path
+increments errors when encapsulation or underlay transmit fails.
+
+**Likely Root Causes**
+
+- Underlay bond or path ``MTU`` is too small for encapsulated ``Geneve``
+  traffic.
+- Route lookup or underlay connectivity failure for the tunnel destination.
+- ``Geneve`` socket or ``Open vSwitch`` ``datapath`` problem on the affected
+  host.
+- ``NIC`` driver, firmware, or offload issue on the underlay link.
+
+**Diagnostic and Remediation Steps**
+
+1. Identify the affected node, ``Geneve`` device, and error rate:
+
+   .. code-block:: console
+
+     kubectl -n monitoring exec svc/kube-prometheus-stack-prometheus -- \
+       promtool query instant http://localhost:9090 \
+       '(rate(node_network_transmit_errs_total[5m])
+         * on(instance, device) group_left(driver)
+         node_ethtool_info{driver="geneve"})'
+
+2. On the node, inspect the ``Geneve`` interface reported by the alert:
+
+   .. code-block:: console
+
+     ip -d link show <geneve-device>
+
+   For ``OVN``/``Open vSwitch``, the system ``Geneve`` device usually appears as
+   ``genev_sys_<udp-port>`` and shows ``geneve external``. Other ``Geneve``
+   interfaces, such as ``Cilium`` tunnel devices, may also match this alert
+   because the selector intentionally uses the ``ethtool`` ``driver="geneve"``
+   label rather than an interface-name convention.
+
+3. Confirm the underlay ``MTU`` is large enough for the encapsulated traffic:
+
+   .. code-block:: console
+
+     ip -d link show bond0
+     ip -d link show bond0.4092
+
+   If the bond ``MTU`` is below the fleet-canonical value (typically 9216 on
+   jumbo deployments), correct the ``netplan`` or interfaces configuration and
+   reapply, then verify with ``ip -d link show bond0``.
+
+4. Check for an existing ``MTU`` consistency alert, such as
+   ``CephNodeInconsistentMTU``, and compare ``node_network_mtu_bytes`` across
+   peers if multiple hosts show the same symptoms.
+
+5. If ``MTU`` is correct, inspect ``Open vSwitch`` and the underlay device for
+   ``datapath`` or offload failures:
+
+   .. code-block:: console
+
+     ovs-appctl dpctl/show -s
+     ovs-vsctl show
+     ethtool -S bond0
+
 ``GoldpingerHighErrorRate``
 ===========================
 
@@ -907,6 +980,82 @@ experiencing network issues.
 
      kubectl debug node/<affected-node> -it --image=busybox -- \
        cat /host/var/log/syslog | tail -100
+
+``IpmiUncorrectableMemoryError``
+================================
+
+This alert fires when the Intelligent Platform Management Interface (IPMI)
+exporter reports a recent ``uncorrectable_memory_error`` System Event Log
+(SEL) event. These events
+indicate a non-recoverable memory error on the host and often require
+hardware intervention.
+
+**Likely Root Causes**
+
+- Failing dual in-line memory module (DIMM) or memory controller
+- Unstable firmware or Basic Input/Output System (BIOS) configuration
+- Recent hardware changes or maintenance introducing faulty memory
+
+**Diagnostic and Remediation Steps**
+
+1. Identify the affected host from the alert ``instance`` label.
+
+2. Check the SEL (System Event Log) on the host for uncorrectable memory errors:
+
+   .. code-block:: console
+
+     ipmitool sel list | grep -i "uncorrectable"
+
+3. Review system logs for error-correcting code (ECC) or memory errors:
+
+   .. code-block:: console
+
+     journalctl -k | grep -i -e ecc -e memory -e edac
+
+4. If the error recurs, replace the failing DIMM (dual in-line memory module)
+   and run a memory test
+   (for example, ``memtest86``) before returning the host to service.
+
+``IpmiUnrecoverableCpuError``
+=============================
+
+This alert fires when the IPMI (Intelligent Platform Management Interface)
+exporter reports a recent ``unrecoverable_cpu_error`` SEL (System Event Log)
+event. These events
+indicate a fatal CPU error that typically requires hardware
+intervention and may precede a crash.
+
+**Likely Root Causes**
+
+- Failing CPU or socket
+- Hardware instability due to power or thermal issues
+- Firmware or microcode issues
+
+**Diagnostic and Remediation Steps**
+
+1. Identify the affected host from the alert ``instance`` label.
+
+2. Check the SEL (System Event Log) on the host for CPU errors:
+
+   .. code-block:: console
+
+     ipmitool sel list | grep -i -e "processor" -e "err"
+
+3. Review system logs for machine check or CPU errors:
+
+   .. code-block:: console
+
+     journalctl -k | grep -i -e mce -e machine -e cpu
+
+4. Check CPU temperatures and system health:
+
+   .. code-block:: console
+
+     ipmitool sdr type temperature
+     ipmitool sdr type processor
+
+5. If the error recurs, schedule hardware maintenance and replace the
+   affected CPU or motherboard as needed.
 
 ``MySQLGaleraOutOfSync``
 ========================

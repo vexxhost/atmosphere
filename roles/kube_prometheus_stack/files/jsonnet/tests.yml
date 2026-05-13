@@ -232,6 +232,56 @@ tests:
 
   - interval: 1m
     input_series:
+      - series: 'ipmi_sel_events_latest_timestamp{instance="192.0.2.10",name="uncorrectable_memory_error"}'
+        values: '0x2880'
+    alert_rule_test:
+      - eval_time: 2d
+        alertname: IpmiUncorrectableMemoryError
+        exp_alerts: []
+
+  - interval: 1m
+    input_series:
+      - series: 'ipmi_sel_events_latest_timestamp{instance="192.0.2.10",name="uncorrectable_memory_error"}'
+        values: '172740x2880'
+    alert_rule_test:
+      - eval_time: 2d
+        alertname: IpmiUncorrectableMemoryError
+        exp_alerts:
+          - exp_labels:
+              instance: 192.0.2.10
+              severity: P1
+            exp_annotations:
+              summary: "IPMI: recent uncorrectable memory error may affect host stability on 192.0.2.10"
+              description: "The metric ipmi_sel_events_latest_timestamp{name=\"uncorrectable_memory_error\"} for 192.0.2.10 indicates the most recent uncorrectable memory SEL event is 1m 0s old, which is within the alert window of 24 hours. Normal behavior is that no uncorrectable memory SEL events occur, or the latest such event is older than 24 hours."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#ipmiuncorrectablememoryerror"
+
+  - interval: 1m
+    input_series:
+      - series: 'ipmi_sel_events_latest_timestamp{instance="192.0.2.11",name="unrecoverable_cpu_error"}'
+        values: '0x2880'
+    alert_rule_test:
+      - eval_time: 2d
+        alertname: IpmiUnrecoverableCpuError
+        exp_alerts: []
+
+  - interval: 1m
+    input_series:
+      - series: 'ipmi_sel_events_latest_timestamp{instance="192.0.2.11",name="unrecoverable_cpu_error"}'
+        values: '172740x2880'
+    alert_rule_test:
+      - eval_time: 2d
+        alertname: IpmiUnrecoverableCpuError
+        exp_alerts:
+          - exp_labels:
+              instance: 192.0.2.11
+              severity: P1
+            exp_annotations:
+              summary: "IPMI: recent unrecoverable CPU error may affect host stability on 192.0.2.11"
+              description: "The metric ipmi_sel_events_latest_timestamp{name=\"unrecoverable_cpu_error\"} for 192.0.2.11 indicates the most recent unrecoverable CPU SEL event is 1m 0s old, which is within the alert window of 24 hours. Normal behavior is that no unrecoverable CPU SEL events occur, or the latest such event is older than 24 hours."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#ipmiunrecoverablecpuerror"
+
+  - interval: 1m
+    input_series:
       - series: 'openstack_loadbalancer_loadbalancer_status{id="d4e449ad-fad5-4d9e-a039-f71c773ec999", job="openstack-exporter", name="test-lb", operating_status="ONLINE", provisioning_status="PENDING_UPDATE"}'
         values: '0x15'
       - series: 'openstack_loadbalancer_loadbalancer_status{id="25dcf79f-b09d-4d0c-9e29-b69ded2ec734", job="openstack-exporter", name="test-lb-2", operating_status="ONLINE", provisioning_status="ACTIVE"}'
@@ -960,3 +1010,42 @@ tests:
               summary: "CoreDNS: instance has disappeared from Prometheus target discovery"
               description: "CoreDNS has disappeared from Prometheus target discovery for more than 15 minutes. This could indicate a crashed CoreDNS pod or a misconfigured scrape target."
               runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#corednsdown"
+
+  # GeneveTransmitErrors - should NOT fire when error rate is below threshold
+  - interval: 1m
+    input_series:
+      - series: 'node_network_transmit_errs_total{job="node-exporter",instance="192.0.2.10:9100",device="tenant-geneve0"}'
+        values: '0+0x30'
+      - series: 'node_ethtool_info{job="node-exporter",instance="192.0.2.10:9100",device="tenant-geneve0",driver="geneve"}'
+        values: '1x30'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: GeneveTransmitErrors
+        exp_alerts: []
+
+  # GeneveTransmitErrors - should fire when sustained error rate exceeds 1.67/s for 15m
+  # Counter increments by 200/min = 3.33/s, well above 1.67/s threshold.
+  - interval: 1m
+    input_series:
+      - series: 'node_network_transmit_errs_total{job="node-exporter",instance="192.0.2.10:9100",device="tenant-geneve0"}'
+        values: '0+200x30'
+      - series: 'node_ethtool_info{job="node-exporter",instance="192.0.2.10:9100",device="tenant-geneve0",driver="geneve"}'
+        values: '1x30'
+      - series: 'node_network_transmit_errs_total{job="node-exporter",instance="192.0.2.11:9100",device="eth0"}'
+        values: '0+200x30'
+      - series: 'node_ethtool_info{job="node-exporter",instance="192.0.2.11:9100",device="eth0",driver="mlx5_core"}'
+        values: '1x30'
+    alert_rule_test:
+      - eval_time: 25m
+        alertname: GeneveTransmitErrors
+        exp_alerts:
+          - exp_labels:
+              job: node-exporter
+              instance: 192.0.2.10:9100
+              device: tenant-geneve0
+              driver: geneve
+              severity: P3
+            exp_annotations:
+              summary: "Geneve overlay: transmit failures may affect tenant traffic on a compute host"
+              description: "192.0.2.10:9100 interface tenant-geneve0 has averaged 3.33 transmit errors per second over the last 5 minutes (threshold > 1.67/s, ~100/min). Normal behavior is zero sustained transmit errors on Geneve tunnel interfaces."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#genevetransmiterrors"
