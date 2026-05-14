@@ -122,3 +122,15 @@
     owner_domain: "{{ glance_image_owner_domain | default(omit) }}"
     wait: true
     timeout: 600
+
+- name: Update image visibility
+  run_once: true
+  when:
+    - _image_info.images | length > 0
+    - glance_image_is_public is defined
+  openstack.cloud.image:
+    cloud: "{{ glance_image_cloud }}"
+    name: "{{ glance_image_name }}"
+    is_public: "{{ glance_image_is_public | bool }}"
+    wait: true
+    timeout: 600
