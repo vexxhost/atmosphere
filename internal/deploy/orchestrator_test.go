@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"strings"
 	"sync"
 	"testing"
 )
@@ -164,6 +165,15 @@ func TestComponents_LibvirtDependsOnHostLibvirtSockets(t *testing.T) {
 
 	if _, err := BuildGraph(); err != nil {
 		t.Fatalf("dependency graph is invalid: %v", err)
+	}
+}
+
+func TestPreflightPlaybook_ConfiguresAptLockTimeout(t *testing.T) {
+	if !strings.Contains(preflightPlaybook, `DPkg::Lock::Timeout "120";`) {
+		t.Fatal("preflight playbook does not configure apt lock timeout")
+	}
+	if !strings.Contains(preflightPlaybook, "/etc/apt/apt.conf.d/99dpkg-lock-timeout") {
+		t.Fatal("preflight playbook does not write the apt lock timeout config")
 	}
 }
 

@@ -19,6 +19,26 @@ import (
 // which bypasses pre_tasks defined in the original playbook files. Running these
 // checks before the DAG ensures configuration errors are caught early.
 const preflightPlaybook = `---
+- name: Configure apt lock timeout
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Check if apt configuration directory exists
+      ansible.builtin.stat:
+        path: /etc/apt/apt.conf.d
+      register: _apt_conf_dir
+
+    - name: Configure dpkg lock timeout
+      ansible.builtin.copy:
+        dest: /etc/apt/apt.conf.d/99dpkg-lock-timeout
+        content: |
+          DPkg::Lock::Timeout "120";
+        owner: root
+        group: root
+        mode: "0644"
+      when: _apt_conf_dir.stat.isdir | default(false)
+
 - name: Preflight checks
   hosts: controllers[0]
   become: true

@@ -280,7 +280,6 @@ var Components = []Component{
 		RoleName:    "host_libvirt_sockets",
 		Hosts:       "controllers:computes",
 		GatherFacts: boolPtr(false),
-		Resources:   []string{"apt"},
 	},
 
 	// OpenStack (RoleType, Hosts: "controllers[0]")
