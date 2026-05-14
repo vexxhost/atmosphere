@@ -55,6 +55,9 @@ __neutron_helm_values:
       nova:
         live_migration_events: true
       ironic:
+        region_name: "{{ openstack_helm_endpoints_ironic_region_name }}"
+        username: "ironic-{{ openstack_helm_endpoints_ironic_region_name }}"
+        password: "{{ openstack_helm_endpoints_ironic_keystone_password }}"
         valid_interfaces: internal
       placement:
         region_name: "{{ openstack_helm_endpoints_neutron_region_name }}"
@@ -138,6 +141,12 @@ __neutron_ovn_helm_values:
     daemonset_ovn_metadata_agent: true
     daemonset_ovn_vpn_agent: true
     daemonset_ovs_agent: false
+
+__neutron_ironic_helm_values:
+  network:
+    backend:
+      - "{{ atmosphere_network_backend }}"
+      - baremetal
 
 __neutron_policy_server_helm_values:
   conf:
