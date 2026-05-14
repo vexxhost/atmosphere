@@ -56,6 +56,11 @@
   ansible.builtin.set_fact:
     _neutron_helm_values: "{{ _neutron_helm_values | combine(__neutron_generic_switch_keys_helm_values, recursive=True) }}"
 
+- name: Append Helm values (ironic agent)
+  when: (_neutron_helm_values | combine(neutron_helm_values, recursive=True)).manifests.deployment_ironic_agent | bool
+  ansible.builtin.set_fact:
+    _neutron_helm_values: "{{ _neutron_helm_values | combine(__neutron_ironic_helm_values, recursive=True) }}"
+
 - name: Deploy Helm chart
   run_once: true
   kubernetes.core.helm:
