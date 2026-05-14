@@ -15,7 +15,7 @@
 - name: Check if image exists
   run_once: true
   openstack.cloud.image_info:
-    cloud: atmosphere
+    cloud: "{{ glance_image_cloud }}"
     image: "{{ glance_image_name }}"
   register: _image_info
   # NOTE(mnaser): This often fails since the SSL certificates are not
@@ -82,7 +82,7 @@
 
     - name: Upload image into Glance
       openstack.cloud.image:
-        cloud: atmosphere
+        cloud: "{{ glance_image_cloud }}"
         name: "{{ glance_image_name }}"
         filename: "{{ _get_url.dest }}{% if glance_image_conversion is not skipped %}.converted{% endif %}"
         min_disk: "{{ glance_image_min_disk | default(omit) }}"
@@ -92,6 +92,8 @@
         properties: "{{ glance_image_properties | default(omit) }}"
         kernel: "{{ glance_image_kernel | default(omit) }}"
         ramdisk: "{{ glance_image_ramdisk | default(omit) }}"
+        owner: "{{ glance_image_owner | default(omit) }}"
+        owner_domain: "{{ glance_image_owner_domain | default(omit) }}"
         is_public: "{{ glance_image_is_public | default(omit) }}"
         tags: "{{ glance_image_tags | default(omit) }}"
         wait: true
@@ -107,3 +109,28 @@
       ansible.builtin.file:
         path: "{{ _workdir.path }}"
         state: absent
+
+- name: Update image owner
+  run_once: true
+  when:
+    - _image_info.images | length > 0
+    - glance_image_owner is defined
+  openstack.cloud.image:
+    cloud: "{{ glance_image_cloud }}"
+    name: "{{ glance_image_name }}"
+    owner: "{{ glance_image_owner }}"
+    owner_domain: "{{ glance_image_owner_domain | default(omit) }}"
+    wait: true
+    timeout: 600
+
+- name: Update image visibility
+  run_once: true
+  when:
+    - _image_info.images | length > 0
+    - glance_image_is_public is defined
+  openstack.cloud.image:
+    cloud: "{{ glance_image_cloud }}"
+    name: "{{ glance_image_name }}"
+    is_public: "{{ glance_image_is_public | bool }}"
+    wait: true
+    timeout: 600
