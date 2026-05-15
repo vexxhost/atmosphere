@@ -35,3 +35,49 @@
     openstack_helm_ingress_service_port: 9001
     openstack_helm_ingress_annotations: "{{ designate_ingress_annotations }}"
     openstack_helm_ingress_class_name: "{{ designate_ingress_class_name }}"
+
+- name: Create gateway route
+  ansible.builtin.include_role:
+    name: openstack_helm_gateway
+    apply:
+      tags:
+        - gateway-routes
+  tags:
+    - gateway-routes
+  vars:
+    openstack_helm_gateway_endpoint: dns
+    openstack_helm_gateway_service_name: designate-api
+    openstack_helm_gateway_service_port: 9001
+    openstack_helm_gateway_config: "{{ _designate_gateway_config | combine(designate_gateway_config) }}"
+
+- name: Create minidns TCP gateway route
+  ansible.builtin.include_role:
+    name: gateway
+    apply:
+      tags:
+        - gateway-routes
+  tags:
+    - gateway-routes
+  vars:
+    gateway_route_kind: TCPRoute
+    gateway_route_name: minidns-tcp
+    gateway_route_namespace: openstack
+    gateway_route_service_name: minidns
+    gateway_route_service_port: 5354
+    gateway_route_listener_name: minidns-tcp
+
+- name: Create minidns UDP gateway route
+  ansible.builtin.include_role:
+    name: gateway
+    apply:
+      tags:
+        - gateway-routes
+  tags:
+    - gateway-routes
+  vars:
+    gateway_route_kind: UDPRoute
+    gateway_route_name: minidns-udp
+    gateway_route_namespace: openstack
+    gateway_route_service_name: minidns
+    gateway_route_service_port: 5354
+    gateway_route_listener_name: minidns-udp

@@ -32,6 +32,20 @@
     openstack_helm_ingress_annotations: "{{ barbican_ingress_annotations }}"
     openstack_helm_ingress_class_name: "{{ barbican_ingress_class_name }}"
 
+- name: Create gateway route
+  ansible.builtin.include_role:
+    name: openstack_helm_gateway
+    apply:
+      tags:
+        - gateway-routes
+  tags:
+    - gateway-routes
+  vars:
+    openstack_helm_gateway_endpoint: key_manager
+    openstack_helm_gateway_service_name: barbican-api
+    openstack_helm_gateway_service_port: 9311
+    openstack_helm_gateway_config: "{{ _barbican_gateway_config | combine(barbican_gateway_config) }}"
+
 - name: Create creator role
   openstack.cloud.identity_role:
     cloud: atmosphere

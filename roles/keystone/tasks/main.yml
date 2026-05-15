@@ -135,6 +135,20 @@
     openstack_helm_ingress_annotations: "{{ _keystone_ingress_annotations | combine(keystone_ingress_annotations) }}"
     openstack_helm_ingress_class_name: "{{ keystone_ingress_class_name }}"
 
+- name: Create gateway route
+  ansible.builtin.include_role:
+    name: openstack_helm_gateway
+    apply:
+      tags:
+        - gateway-routes
+  tags:
+    - gateway-routes
+  vars:
+    openstack_helm_gateway_endpoint: identity
+    openstack_helm_gateway_service_name: keystone-api
+    openstack_helm_gateway_service_port: 5000
+    openstack_helm_gateway_config: "{{ _keystone_gateway_config | combine(keystone_gateway_config) }}"
+
 - name: Validate if ingress is reachable
   ansible.builtin.uri:
     url: "https://{{ openstack_helm_endpoints_keystone_api_host }}"

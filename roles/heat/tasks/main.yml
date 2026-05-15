@@ -32,6 +32,20 @@
     openstack_helm_ingress_annotations: "{{ _heat_ingress_annotations | combine(heat_ingress_annotations, recursive=True) }}"
     openstack_helm_ingress_class_name: "{{ heat_ingress_class_name }}"
 
+- name: Create gateway route
+  ansible.builtin.include_role:
+    name: openstack_helm_gateway
+    apply:
+      tags:
+        - gateway-routes
+  tags:
+    - gateway-routes
+  vars:
+    openstack_helm_gateway_endpoint: orchestration
+    openstack_helm_gateway_service_name: heat-api
+    openstack_helm_gateway_service_port: 8004
+    openstack_helm_gateway_config: "{{ _heat_gateway_config | combine(heat_gateway_config) }}"
+
 - name: Create Ingress
   ansible.builtin.include_role:
     name: openstack_helm_ingress
@@ -41,3 +55,17 @@
     openstack_helm_ingress_service_port: 8000
     openstack_helm_ingress_annotations: "{{ _heat_ingress_annotations | combine(heat_ingress_annotations, recursive=True) }}"
     openstack_helm_ingress_class_name: "{{ heat_ingress_class_name }}"
+
+- name: Create gateway route
+  ansible.builtin.include_role:
+    name: openstack_helm_gateway
+    apply:
+      tags:
+        - gateway-routes
+  tags:
+    - gateway-routes
+  vars:
+    openstack_helm_gateway_endpoint: cloudformation
+    openstack_helm_gateway_service_name: heat-cfn
+    openstack_helm_gateway_service_port: 8000
+    openstack_helm_gateway_config: "{{ _heat_gateway_config | combine(heat_gateway_config) }}"

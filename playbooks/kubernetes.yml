@@ -25,10 +25,14 @@
      # NOTE(fitbeard) networkd-dispatcher is not available for EL distros
       when: ansible_facts['os_family'] in ['Debian']
   post_tasks:
-    - name: Set a fact with the "atmosphere_images" for other plays
+    - name: Set a facts for other plays
       ansible.builtin.set_fact:
         atmosphere_images: "{{ atmosphere_images }}"
         atmosphere_kubernetes_version: "{{ atmosphere_kubernetes_version }}"
+        atmosphere_gateway_class_name: "{{ atmosphere_gateway_class_name }}"
+        atmosphere_envoy_gateway_helm_values: "{{ atmosphere_envoy_gateway_helm_values }}"
+        atmosphere_gateway_name: "{{ atmosphere_gateway_name }}"
+        atmosphere_gateway_namespace: "{{ atmosphere_gateway_namespace }}"
       tags:
         - always
 
@@ -45,6 +49,18 @@
     cilium_node_image: "{{ atmosphere_images['cilium_node'] }}"
     cilium_operator_image: "{{ atmosphere_images['cilium_operator'] }}"
     kube_vip_image: "{{ atmosphere_images['kube_vip'] }}"
+    envoy_gateway_image: "{{ atmosphere_images['envoy_gateway'] }}"
+    envoy_gateway_ratelimit_image: "{{ atmosphere_images['envoy_gateway_ratelimit'] }}"
+    envoy_gateway_gateway_class_name: "{{ atmosphere_gateway_class_name }}"
+    envoy_gateway_node_selector:
+      openstack-control-plane: enabled
+    envoy_gateway_helm_values: "{{ atmosphere_envoy_gateway_helm_values }}"
+    envoy_gateway_gateway_class_spec:
+      parametersRef:
+        group: gateway.envoyproxy.io
+        kind: EnvoyProxy
+        name: "{{ atmosphere_gateway_name }}-proxy"
+        namespace: "{{ atmosphere_gateway_namespace }}"
 
 - hosts: "{{ target | default('all') }}"
   become: true

@@ -105,6 +105,24 @@
     ingress_secret_name: "{{ keycloak_host_tls_secret_name }}"
     ingress_annotations: "{{ _keycloak_ingress_annotations | combine(keycloak_ingress_annotations, recursive=True) }}"
 
+# NOTE: Calls the gateway role directly (not through openstack_helm_gateway),
+#       so policy vars are derived from the combined gateway config dict.
+- name: Create Keycloak gateway route
+  ansible.builtin.include_role:
+    name: gateway
+    apply:
+      tags:
+        - gateway-routes
+  tags:
+    - gateway-routes
+  vars:
+    gateway_route_name: keycloak
+    gateway_route_namespace: "{{ keycloak_helm_release_namespace }}"
+    gateway_route_host: "{{ keycloak_host }}"
+    gateway_route_service_name: "{{ keycloak_helm_release_name }}"
+    gateway_route_service_port: 80
+    gateway_route_config: "{{ _keycloak_gateway_config | combine(keycloak_gateway_config) }}"
+
 - name: Enable pxc strict mode
   run_once: true
   community.mysql.mysql_query:

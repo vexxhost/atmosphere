@@ -42,15 +42,24 @@ kube_prometheus_stack_grafana_ingress_annotations:
   cert-manager.io/cluster-issuer: "{{ kube_prometheus_stack_ingress_cluster_issuer }}"
   cert-manager.io/common-name: "{{ kube_prometheus_stack_grafana_host }}"
 
+# Gateway configuration overrides
+kube_prometheus_stack_grafana_gateway_config: {}
+
 kube_prometheus_stack_alertmanager_host: "{{ undef('You must specify a Alertmanager host using kube_prometheus_stack_alertmanager_host') }}"
 kube_prometheus_stack_alertmanager_ingress_annotations:
   cert-manager.io/cluster-issuer: "{{ kube_prometheus_stack_ingress_cluster_issuer }}"
   cert-manager.io/common-name: "{{ kube_prometheus_stack_alertmanager_host }}"
 
+# Gateway configuration overrides
+kube_prometheus_stack_alertmanager_gateway_config: {}
+
 kube_prometheus_stack_prometheus_host: "{{ undef('You must specify a Prometheus host using kube_prometheus_stack_prometheus_host') }}"
 kube_prometheus_stack_prometheus_ingress_annotations:
   cert-manager.io/cluster-issuer: "{{ kube_prometheus_stack_ingress_cluster_issuer }}"
   cert-manager.io/common-name: "{{ kube_prometheus_stack_prometheus_host }}"
+
+# Gateway configuration overrides
+kube_prometheus_stack_prometheus_gateway_config: {}
 kube_prometheus_stack_prometheus_tls_template: "{{ _kube_prometheus_stack_tls_template }}"
 
 kube_prometheus_stack_keycloak_server_url: "https://{{ keycloak_host }}"
@@ -63,20 +72,20 @@ kube_prometheus_stack_keycloak_realm_name: Atmosphere
 
 kube_prometheus_stack_keycloak_clients:
   - id: alertmanager
-    port: 9093
     roles: ["member"]
-    oauth2_proxy: true
+    oidc_gateway: true
     redirect_uris:
       - "https://{{ kube_prometheus_stack_alertmanager_host }}/oauth2/callback"
+      - "https://{{ kube_prometheus_stack_alertmanager_host }}/"
   - id: grafana
     roles: ["admin", "editor", "viewer"]
-    oauth2_proxy: false
+    oidc_gateway: false
     redirect_uris:
       - "https://{{ kube_prometheus_stack_grafana_host }}/login"
       - "https://{{ kube_prometheus_stack_grafana_host }}/login/generic_oauth"
   - id: prometheus
-    port: 9090
     roles: ["member"]
-    oauth2_proxy: true
+    oidc_gateway: true
     redirect_uris:
       - "https://{{ kube_prometheus_stack_prometheus_host }}/oauth2/callback"
+      - "https://{{ kube_prometheus_stack_prometheus_host }}/"

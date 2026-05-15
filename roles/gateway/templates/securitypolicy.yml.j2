@@ -1,0 +1,39 @@
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: {{ gateway_route_name }}
+  namespace: {{ gateway_route_namespace }}
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: {{ gateway_route_name }}
+{% if gateway_route_config.security_policy_cors_allow_origins is defined %}
+  cors:
+    allowOrigins:
+{% for origin in gateway_route_config.security_policy_cors_allow_origins %}
+      - "{{ origin }}"
+{% endfor %}
+    allowMethods:
+{% for method in gateway_route_config.security_policy_cors_allow_methods | default(_gateway_route_default_cors_allow_methods) %}
+      - {{ method }}
+{% endfor %}
+    allowHeaders:
+{% for header in gateway_route_config.security_policy_cors_allow_headers | default(_gateway_route_default_cors_allow_headers) %}
+      - "{{ header }}"
+{% endfor %}
+    exposeHeaders:
+      - "*"
+{% endif %}
+{% if gateway_route_config.security_policy_oidc is defined %}
+  oidc:
+{{ gateway_route_config.security_policy_oidc | to_nice_yaml(indent=2) | indent(4, first=true) }}
+{% endif %}
+{% if gateway_route_config.security_policy_jwt is defined %}
+  jwt:
+{{ gateway_route_config.security_policy_jwt | to_nice_yaml(indent=2) | indent(4, first=true) }}
+{% endif %}
+{% if gateway_route_config.security_policy_authorization is defined %}
+  authorization:
+{{ gateway_route_config.security_policy_authorization | to_nice_yaml(indent=2) | indent(4, first=true) }}
+{% endif %}

@@ -1,0 +1,77 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Create EnvoyProxy {{ gateway_name }}-proxy # noqa: name[template]
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    template: envoyproxy.yml.j2
+
+- name: Create Gateway {{ gateway_name }}
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    template: gateway.yml.j2
+
+- name: Create global HTTP to HTTPS redirect for Gateway {{ gateway_name }}
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    template: http-redirect.yml.j2
+
+- name: Create ClientTrafficPolicy for Gateway {{ gateway_name }}
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    template: gateway-clienttrafficpolicy.yml.j2
+
+- name: Create {{ gateway_route_kind }} {{ gateway_route_name }} # noqa: name[template]
+  when: gateway_route_name is defined
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    template: "{{ gateway_route_kind | lower }}.yml.j2"
+
+- name: Create BackendTrafficPolicy {{ gateway_route_name }}
+  when:
+    - gateway_route_name is defined
+    - gateway_route_config.backend_traffic_policy_request_timeout is defined
+      or gateway_route_config.backend_traffic_policy_idle_timeout is defined
+      or gateway_route_config.backend_traffic_policy_request_buffer_limit is defined
+      or gateway_route_config.backend_traffic_policy_session_persistence is defined
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    template: backendtrafficpolicy.yml.j2
+
+- name: Create ClientTrafficPolicy {{ gateway_route_name }}
+  when:
+    - gateway_route_name is defined
+    - gateway_route_config.client_traffic_policy_max_request_body_size is defined
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    template: clienttrafficpolicy.yml.j2
+
+- name: Create SecurityPolicy {{ gateway_route_name }}
+  when:
+    - gateway_route_name is defined
+    - gateway_route_config.security_policy_cors_allow_origins is defined
+      or gateway_route_config.security_policy_oidc is defined
+      or gateway_route_config.security_policy_jwt is defined
+      or gateway_route_config.security_policy_authorization is defined
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    template: securitypolicy.yml.j2

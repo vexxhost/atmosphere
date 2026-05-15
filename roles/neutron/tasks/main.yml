@@ -51,6 +51,20 @@
     openstack_helm_ingress_annotations: "{{ neutron_ingress_annotations }}"
     openstack_helm_ingress_class_name: "{{ neutron_ingress_class_name }}"
 
+- name: Create gateway route
+  ansible.builtin.include_role:
+    name: openstack_helm_gateway
+    apply:
+      tags:
+        - gateway-routes
+  tags:
+    - gateway-routes
+  vars:
+    openstack_helm_gateway_endpoint: network
+    openstack_helm_gateway_service_name: neutron-server
+    openstack_helm_gateway_service_port: 9696
+    openstack_helm_gateway_config: "{{ _neutron_gateway_config | combine(neutron_gateway_config) }}"
+
 - name: Create networks
   when: neutron_networks | length > 0
   block:

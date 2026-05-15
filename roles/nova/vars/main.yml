@@ -169,3 +169,14 @@ _nova_helm_values:
 _nova_novnc_ingress_annotations:
   nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
   nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+
+_nova_api_gateway_config: {}
+
+_nova_novnc_gateway_config:
+  httproute_timeout_backend_request: 3600s
+  backend_traffic_policy_request_timeout: 3600s
+  backend_traffic_policy_idle_timeout: 3600s
+  backend_traffic_policy_session_persistence:
+    name: NOVNC_SESSION
+    timeout: 24h
+    lifetime_type: Session # cookie dies when browser closes
