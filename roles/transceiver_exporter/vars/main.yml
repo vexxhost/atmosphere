@@ -12,4 +12,12 @@ _transceiver_exporter_helm_values:
   tolerations:
     - operator: Exists
   serviceMonitor:
-    enabled: false
+    enabled: true
+    interval: 60s
+    scrapeTimeout: 10s
+    relabelings:
+      - sourceLabels:
+          - __meta_kubernetes_pod_node_name
+        targetLabel: instance
+    labels:
+      release: "kube-prometheus-stack"
