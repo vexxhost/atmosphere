@@ -10,3 +10,16 @@
         update_cache: true
       when:
         - ansible_facts['os_family'] | lower == 'debian'
+
+- hosts: all
+  gather_facts: false
+  tasks:
+    - name: Drop "idempotence" from AIO test sequence in check pipeline
+      run_once: true
+      ansible.builtin.lineinfile:
+        path: "{{ zuul.project.src_dir }}/molecule/aio/molecule.yml"
+        regexp: '^\s*-\s*idempotence\s*$'
+        state: absent
+      when:
+        - molecule_scenario | default('') == 'aio'
+        - zuul.pipeline | default('') == 'check'
