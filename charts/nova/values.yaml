@@ -1437,6 +1437,12 @@ conf:
     cinder:
       auth_type: password
       catalog_info: volumev3::internalURL
+    barbican:
+      barbican_endpoint_type: internal
+      barbican_endpoint: http://barbican-api.openstack.svc.cluster.local:9311/
+      send_service_user_token: true
+    barbican_service_user:
+      auth_type: password
     database:
       max_retries: -1
     api_database:
@@ -1818,6 +1824,15 @@ endpoints:
         role: admin,service
         region_name: RegionOne
         username: cinder
+        password: password
+        project_name: service
+        user_domain_name: service
+        project_domain_name: service
+      # NOTE(yaguang): the barbican user is not managed by the nova chart
+      # these values should match those set in the barbican chart.
+      barbican:
+        region_name: RegionOne
+        username: barbican
         password: password
         project_name: service
         user_domain_name: service

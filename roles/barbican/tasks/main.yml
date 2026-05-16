@@ -12,6 +12,31 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+- name: Generate Helm values
+  ansible.builtin.set_fact:
+    __barbican_helm_values: "{{ _barbican_helm_values }}"
+
+- name: Append Helm values (admin secret access)
+  when:
+    - barbican_policy_admin_secret_access | bool
+    - not (barbican_policy_nova_secret_access | bool)
+  ansible.builtin.set_fact:
+    __barbican_helm_values: "{{ __barbican_helm_values | combine(__barbican_admin_secret_access_helm_values, recursive=True) }}"
+
+- name: Append Helm values (Nova secret access)
+  when:
+    - barbican_policy_nova_secret_access | bool
+    - not (barbican_policy_admin_secret_access | bool)
+  ansible.builtin.set_fact:
+    __barbican_helm_values: "{{ __barbican_helm_values | combine(__barbican_nova_secret_access_helm_values, recursive=True) }}"
+
+- name: Append Helm values (admin and Nova secret access)
+  when:
+    - barbican_policy_admin_secret_access | bool
+    - barbican_policy_nova_secret_access | bool
+  ansible.builtin.set_fact:
+    __barbican_helm_values: "{{ __barbican_helm_values | combine(__barbican_admin_and_nova_secret_access_helm_values, recursive=True) }}"
+
 - name: Deploy Helm chart
   run_once: true
   kubernetes.core.helm:
@@ -20,7 +45,7 @@
     release_namespace: "{{ barbican_helm_release_namespace }}"
     create_namespace: true
     kubeconfig: "{{ barbican_helm_kubeconfig }}"
-    values: "{{ _barbican_helm_values | combine(barbican_helm_values, recursive=True) }}"
+    values: "{{ __barbican_helm_values | combine(barbican_helm_values, recursive=True) }}"
 
 - name: Create Ingress
   ansible.builtin.include_role:
