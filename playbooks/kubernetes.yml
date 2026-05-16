@@ -63,3 +63,7 @@
       ansible.builtin.package:
         name: unattended-upgrades
         state: absent
+      register: _uninstall_unattended
+      retries: 5
+      delay: 10
+      until: _uninstall_unattended is not failed

@@ -1,0 +1,32 @@
+---
+features:
+  - |
+    Added ``PreRoleDependsOn`` to the parallel deploy orchestrator so a
+    component's pre-role can wait for different dependencies than the main
+    role. This lets the Keycloak realm setup gate the pre-role while
+    the Keystone Helm install runs in parallel with Keycloak startup.
+  - |
+    Split Keystone's Keycloak realm and OpenID configuration into a new
+    ``keystone_pre`` role. Under the parallel orchestrator this runs
+    concurrently with the Keystone Helm install.
+  - |
+    Extended the ``ResourceCoordinator`` in the parallel deploy
+    orchestrator with per-resource concurrency caps. A new ``k8s-api``
+    resource (default cap ``6``) smooths the load on the Kubernetes API
+    server during wave fan-out without serializing OpenStack components.
+  - |
+    Added a dedicated semaphore (cap ``1``) for the Keycloak admin HTTP
+    endpoint. The orchestrator now serializes ``keystone`` and
+    ``kube-prometheus-stack`` whenever they create realms or clients, so
+    concurrent admin calls on the same Keycloak no longer race and fail.
+  - |
+    Moved Neutron's Helm install into a separate pre-role under the
+    parallel orchestrator. The install now overlaps with Nova; only the
+    post-install network creation, which hits an availability zone
+    check on the Neutron API, still waits on Nova.
+  - |
+    Split Glance image uploads into a separate component. Downstream
+    services that depend on Glance (Nova, Magnum, and others) now
+    wait only for the Glance API; image downloads continue in
+    parallel off the critical path.
+upgrade: []

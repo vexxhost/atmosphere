@@ -1,0 +1,9 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+# Thin shim that runs the neutron tasks safe to execute in parallel
+# with the rest of the neutron role. The actual task list lives in the
+# neutron role at `tasks/_pre.yml` to avoid duplication.
+- name: Run parallelizable neutron tasks
+  ansible.builtin.include_tasks:
+    file: "{{ role_path }}/../neutron/tasks/_pre.yml"

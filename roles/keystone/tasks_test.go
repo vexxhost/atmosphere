@@ -13,7 +13,7 @@ import (
 // Create Keycloak realms
 
 var (
-	//go:embed tasks/main.yml
+	//go:embed tasks/_pre.yml
 	tasksFile []byte
 	tasks     []map[string]interface{}
 )

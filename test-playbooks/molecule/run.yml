@@ -1,0 +1,27 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- hosts: all
+  become: true
+  tasks:
+    - name: Add IP address to "br-ex"
+      when: molecule_scenario | default('') in ['aio']
+      changed_when: false
+      ansible.builtin.shell:
+        cmd: ip addr add 10.96.250.10/24 dev br-ex || true
+
+    - name: Set "br-ex" interface to "up"
+      when: molecule_scenario | default('') in ['aio']
+      changed_when: false
+      ansible.builtin.shell:
+        cmd: ip link set br-ex up || true
+
+- hosts: all
+  tasks:
+    - name: Run molecule verify
+      run_once: true
+      ansible.builtin.command:
+        cmd: uv run molecule verify -s {{ molecule_scenario }}
+      environment: "{{ molecule_environment | default({}) }}"
+      args:
+        chdir: "{{ zuul.project.src_dir }}"
