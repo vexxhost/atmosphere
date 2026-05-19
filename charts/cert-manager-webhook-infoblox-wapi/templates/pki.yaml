@@ -34,6 +34,8 @@ spec:
     name: {{ include "webhook.selfSignedIssuer" . }}
   commonName: "ca.webhook.cert-manager"
   isCA: true
+  privateKey:
+    rotationPolicy: Never
 
 ---
 
@@ -74,3 +76,5 @@ spec:
   - {{ include "webhook.fullname" . }}
   - {{ include "webhook.fullname" . }}.{{ .Release.Namespace }}
   - {{ include "webhook.fullname" . }}.{{ .Release.Namespace }}.svc
+  privateKey:
+    rotationPolicy: Never
