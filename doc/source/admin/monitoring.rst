@@ -4,7 +4,7 @@ Monitoring and operations
 
 Atmosphere includes a Grafana deployment with dashboards created by default and
 a Prometheus deployment that collects metrics from the cluster and sends alerts
-to AlertManager. Loki also collects logs from the cluster using Vector.
+to Alertmanager. Loki also collects logs from the cluster using Vector.
 
 ******************************
 Philosophy and alerting levels
@@ -49,7 +49,7 @@ Inhibition and grouping
 -----------------------
 
 Alerts have dependency awareness. When a parent component fails (for example, a
-node goes down), inhibition rules in AlertManager suppress child component
+node goes down), inhibition rules in Alertmanager suppress child component
 alerts (for example, pods on that node) to avoid cascading alert storms.
 The system groups related alerts so that a single notification represents a
 coherent incident rather than dozens of individual symptoms.
@@ -126,23 +126,23 @@ as an admin user.
       :alt: Silences menu
       :width: 200
 
-2. Make sure that you select "AlertManager" on the top right corner of the page,
-   this ensures that you create a silence inside of the AlertManager
+2. Make sure that you select "Alertmanager" on the top right corner of the page,
+   this ensures that you create a silence inside of the Alertmanager
    that's managed by the Prometheus operator instead of the built-in Grafana
-   AlertManager which isn't used.
+   Alertmanager which isn't used.
 
     .. image:: images/monitoring-alertmanger-list.png
-        :alt: AlertManager list
+        :alt: Alertmanager list
         :width: 200
 
-   .. admonition:: AlertManager selection
+   .. admonition:: Alertmanager selection
     :class: warning
 
-    It's important that you select the AlertManager that's managed by the
+    It's important that you select the Alertmanager that's managed by the
     Prometheus operator, otherwise your silence won't apply to the
     Prometheus instance that Atmosphere deploys.
 
-3. Click the "Add Silence" button and use the AlertManager format to create
+3. Click the "Add Silence" button and use the Alertmanager format to create
    your silence, which you can test by seeing if it matches any alerts in the
    list labeled "Affected alert instances".
 
@@ -211,7 +211,7 @@ Viewing data
 ************
 
 The monitoring stack offers a few different ways to view collected data. The most
-common ways are through AlertManager, Grafana, and Prometheus.
+common ways are through Alertmanager, Grafana, and Prometheus.
 
 Grafana dashboard
 =================
@@ -298,10 +298,10 @@ changes to your inventory:
 In this example, the configuration restricts access to the IP range
 ``10.0.0.0/24`` and the IP address ``172.10.0.1``.
 
-AlertManager
+Alertmanager
 ============
 
-By default, the AlertManager dashboard points to the Ansible variable
+By default, the Alertmanager dashboard points to the Ansible variable
 ``kube_prometheus_stack_alertmanager_host`` and sits behind an ``Ingress``
 with the `oauth2-proxy` service, protected by Keycloak similar to Prometheus.
 
@@ -309,10 +309,10 @@ with the `oauth2-proxy` service, protected by Keycloak similar to Prometheus.
 Integrations
 ************
 
-Since Atmosphere relies on AlertManager to send alerts, you can integrate it
+Since Atmosphere relies on Alertmanager to send alerts, you can integrate it
 with services like OpsGenie, PagerDuty, email, and more. To receive monitoring
 alerts using your preferred notification tools, integrate them with
-AlertManager.
+Alertmanager.
 
 OpsGenie
 ========
@@ -1171,6 +1171,55 @@ true per-operation latency at the block device layer.
 7. If the disk shows degradation or failure, plan a replacement. For RAID arrays,
    replace the failed member. For standalone disks, migrate workloads before
    the disk fails completely.
+
+``NodeMemoryHighUtilization``
+=============================
+
+This alert fires when computed node memory utilization exceeds 90% for at
+least 15 minutes. The calculation uses normal available memory
+(``node_memory_MemAvailable_bytes``) plus free huge page capacity
+(``node_memory_HugePages_Free * node_memory_Hugepagesize_bytes``), then compares
+it with total memory. If huge page metrics are absent on a node, the alert
+automatically falls back to ``MemAvailable``-only behavior. This avoids false
+positives on compute nodes that intentionally reserve large huge page pools for
+VM workloads while preserving normal behavior elsewhere.
+
+**Likely Root Causes**
+
+- Real host-level memory pressure from application or system processes.
+- Workload density increase that reduced both normal free memory and free huge
+  pages.
+- Memory leak in host services, virtualization daemons, or VM workloads.
+- Unexpected huge page consumption reducing the free huge page pool.
+
+**Diagnostic and Remediation Steps**
+
+1. Identify the affected node from the alert ``instance`` label.
+
+2. Validate memory pressure from Prometheus metrics:
+
+   .. code-block:: console
+
+      kubectl -n monitoring exec svc/kube-prometheus-stack-prometheus -- \
+        promtool query instant http://localhost:9090 \
+        '(1 - ((node_memory_MemAvailable_bytes{instance="<instance>",job="node-exporter"} + (node_memory_HugePages_Free{instance="<instance>",job="node-exporter"} * node_memory_Hugepagesize_bytes{instance="<instance>",job="node-exporter"})) / node_memory_MemTotal_bytes{instance="<instance>",job="node-exporter"})) * 100'
+
+3. Inspect current host memory and huge page usage:
+
+   .. code-block:: console
+
+      free -h
+      grep -E 'HugePages_(Total|Free|Rsvd|Surp)|Hugepagesize' /proc/meminfo
+
+4. Identify the top memory consumers on the host:
+
+   .. code-block:: console
+
+      ps aux --sort=-rss | head -20
+
+5. If huge page usage depletes the free pool, investigate VM placement and
+   compute scheduling changes. If normal memory runs out, move workloads,
+   increase host capacity, or resolve memory leaks.
 
 ``NginxIngressCriticalErrorBudgetBurn``
 =======================================
