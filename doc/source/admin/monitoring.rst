@@ -1172,6 +1172,55 @@ true per-operation latency at the block device layer.
    replace the failed member. For standalone disks, migrate workloads before
    the disk fails completely.
 
+``NodeMemoryHighUtilization``
+=============================
+
+This alert fires when computed node memory utilization exceeds 90% for at
+least 15 minutes. The calculation uses normal available memory
+(``node_memory_MemAvailable_bytes``) plus free huge page capacity
+(``node_memory_HugePages_Free * node_memory_Hugepagesize_bytes``), then compares
+it with total memory. If huge page metrics are absent on a node, the alert
+automatically falls back to ``MemAvailable``-only behavior. This avoids false
+positives on compute nodes that intentionally reserve large huge page pools for
+VM workloads while preserving normal behavior elsewhere.
+
+**Likely Root Causes**
+
+- Real host-level memory pressure from application or system processes.
+- Workload density increase that reduced both normal free memory and free huge
+  pages.
+- Memory leak in host services, virtualization daemons, or VM workloads.
+- Unexpected huge page consumption reducing the free huge page pool.
+
+**Diagnostic and Remediation Steps**
+
+1. Identify the affected node from the alert ``instance`` label.
+
+2. Validate memory pressure from Prometheus metrics:
+
+   .. code-block:: console
+
+      kubectl -n monitoring exec svc/kube-prometheus-stack-prometheus -- \
+        promtool query instant http://localhost:9090 \
+        '(1 - ((node_memory_MemAvailable_bytes{instance="<instance>",job="node-exporter"} + (node_memory_HugePages_Free{instance="<instance>",job="node-exporter"} * node_memory_Hugepagesize_bytes{instance="<instance>",job="node-exporter"})) / node_memory_MemTotal_bytes{instance="<instance>",job="node-exporter"})) * 100'
+
+3. Inspect current host memory and huge page usage:
+
+   .. code-block:: console
+
+      free -h
+      grep -E 'HugePages_(Total|Free|Rsvd|Surp)|Hugepagesize' /proc/meminfo
+
+4. Identify the top memory consumers on the host:
+
+   .. code-block:: console
+
+      ps aux --sort=-rss | head -20
+
+5. If huge page usage depletes the free pool, investigate VM placement and
+   compute scheduling changes. If normal memory runs out, move workloads,
+   increase host capacity, or resolve memory leaks.
+
 ``NginxIngressCriticalErrorBudgetBurn``
 =======================================
 
