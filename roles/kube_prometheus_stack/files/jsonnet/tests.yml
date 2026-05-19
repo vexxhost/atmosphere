@@ -106,6 +106,42 @@ tests:
         alertname: NodeTimeSkewDetected
         exp_alerts: []
 
+  # NodeMemoryHighUtilization - hugepage-backed compute node, no alert
+  - interval: 1m
+    input_series:
+      - series: 'node_memory_MemTotal_bytes{instance="compute1", job="node-exporter"}'
+        values: '810889825280x20'
+      - series: 'node_memory_MemAvailable_bytes{instance="compute1", job="node-exporter"}'
+        values: '18253611008x20'
+      - series: 'node_memory_HugePages_Free{instance="compute1", job="node-exporter"}'
+        values: '720x20'
+      - series: 'node_memory_Hugepagesize_bytes{instance="compute1", job="node-exporter"}'
+        values: '1073741824x20'
+    alert_rule_test:
+      - eval_time: 16m
+        alertname: NodeMemoryHighUtilization
+        exp_alerts: []
+
+  # NodeMemoryHighUtilization - low normal memory, alert fires
+  - interval: 1m
+    input_series:
+      - series: 'node_memory_MemTotal_bytes{instance="node1", job="node-exporter"}'
+        values: '135063486464x20'
+      - series: 'node_memory_MemAvailable_bytes{instance="node1", job="node-exporter"}'
+        values: '5368709120x20'
+    alert_rule_test:
+      - eval_time: 16m
+        alertname: NodeMemoryHighUtilization
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+              instance: node1
+              job: node-exporter
+            exp_annotations:
+              summary: "Node memory: high utilization affecting host workloads"
+              description: "Memory utilization at node1 is 96.03%, which exceeds the threshold of 90%. Free hugepage capacity is counted as available memory to avoid alerting on intentionally reserved VM memory."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#nodememoryhighutilization"
+
   # NodeDiskHighLatency - negative test (normal latency, no alert)
   - interval: 1m
     input_series:

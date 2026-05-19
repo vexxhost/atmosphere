@@ -1393,6 +1393,46 @@ confirm the issue is both sustained and ongoing. At this burn rate, the entire
 6. Review recent deployments or configuration changes that might have
    introduced the issue.
 
+``NodeMemoryHighUtilization``
+=============================
+
+This alert fires when a node has more than 90% memory utilization for at least
+15 minutes. The alert counts free huge page capacity as available memory. It
+avoids alerts on compute nodes that reserve huge pages for virtual machines.
+Linux removes that memory from normal memory accounting.
+
+**Likely root causes:**
+
+- A runaway process or memory leak on the node
+- Memory pressure from virtual machine workloads
+- Too much memory reserved for huge pages compared to workload requirements
+- Host services or Kubernetes pods consuming more memory than expected
+
+**Diagnostic and remediation steps:**
+
+1. Identify the affected host from the ``instance`` label.
+
+2. Check normal and huge page memory accounting:
+
+   .. code-block:: console
+
+      free -h
+      grep -E "MemTotal|MemAvailable|HugePages|Hugepagesize" /proc/meminfo
+
+3. Check whether the alert comes from normal memory pressure or reserved
+   huge pages:
+
+   .. code-block:: console
+
+      ps -eo pid,comm,rss,%mem --sort=-rss | head -20
+
+4. If most huge pages are free, confirm the expected reservation for
+   Nova/libvirt workloads. Confirm that it doesn't exceed the capacity needed
+   by the flavors scheduled to the host.
+
+5. If normal memory is genuinely low, reduce workload pressure, migrate
+   instances away from the host, or investigate the largest resident processes.
+
 ``NodeNetworkMulticast``
 ========================
 

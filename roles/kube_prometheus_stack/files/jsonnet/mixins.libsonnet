@@ -204,13 +204,46 @@ local mixins = {
     },
   },
   node:
-    (import 'vendor/github.com/prometheus/node_exporter/docs/node-mixin/mixin.libsonnet') {
+    local base = (import 'vendor/github.com/prometheus/node_exporter/docs/node-mixin/mixin.libsonnet') {
       _config+:: {
         nodeExporterSelector: 'job="node-exporter"',
         diskDeviceSelector: 'device=~"(/dev/)?(mmcblk.p.+|nvme.+|rbd.+|sd.+|vd.+|xvd.+|dm-.+|md.+|dasd.+)"',
       },
-      prometheusAlerts+:: {
-        groups+: [
+    };
+    base {
+      prometheusAlerts:: {
+        groups: [
+          if group.name == 'node-exporter' then group {
+            rules: [
+              if rule.alert == 'NodeMemoryHighUtilization' then rule {
+                expr: |||
+                  100 - (
+                    (
+                      node_memory_MemAvailable_bytes{%(nodeExporterSelector)s}
+                      +
+                      (
+                        (
+                          node_memory_HugePages_Free{%(nodeExporterSelector)s}
+                          *
+                          node_memory_Hugepagesize_bytes{%(nodeExporterSelector)s}
+                        )
+                        or
+                        (node_memory_MemAvailable_bytes{%(nodeExporterSelector)s} * 0)
+                      )
+                    ) / node_memory_MemTotal_bytes{%(nodeExporterSelector)s} * 100
+                  ) > %(memoryHighUtilizationThreshold)d
+                ||| % base._config,
+                annotations+: {
+                  summary: 'Node memory: high utilization affecting host workloads',
+                  description: 'Memory utilization at {{ $labels.instance }} is {{ printf "%%.2f" $value }}%%, which exceeds the threshold of %(memoryHighUtilizationThreshold)d%%. Free hugepage capacity is counted as available memory to avoid alerting on intentionally reserved VM memory.' % base._config,
+                  runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#nodememoryhighutilization',
+                },
+              } else rule
+              for rule in group.rules
+            ],
+          } else group
+          for group in base.prometheusAlerts.groups
+        ] + [
           {
             name: 'node-exporter-extras',
             rules: [
@@ -218,7 +251,7 @@ local mixins = {
                 alert: 'NodeTimeSkewDetected',
                 expr: |||
                   abs(timestamp(node_time_seconds{%(nodeExporterSelector)s}) - node_time_seconds{%(nodeExporterSelector)s}) > 1
-                ||| % mixins.node._config,
+                ||| % base._config,
                 'for': '5m',
                 labels: {
                   severity: 'warning',
@@ -250,7 +283,7 @@ local mixins = {
                     +
                     rate(node_disk_writes_completed_total{%(nodeExporterSelector)s, %(diskDeviceSelector)s}[5m])
                   ) > 0
-                ||| % mixins.node._config,
+                ||| % base._config,
                 'for': '1h',
                 labels: {
                   severity: 'P4',
