@@ -210,7 +210,38 @@ local mixins = {
         diskDeviceSelector: 'device=~"(/dev/)?(mmcblk.p.+|nvme.+|rbd.+|sd.+|vd.+|xvd.+|dm-.+|md.+|dasd.+)"',
       },
       prometheusAlerts+:: {
-        groups+: [
+        groups: [
+          if group.name == 'node-exporter' then group {
+            rules: [
+              if rule.alert == 'NodeMemoryHighUtilization' then rule {
+                expr: |||
+                  100 - (
+                    (
+                      node_memory_MemAvailable_bytes{%(nodeExporterSelector)s}
+                      +
+                      (
+                        (
+                          node_memory_HugePages_Free{%(nodeExporterSelector)s}
+                          * on(instance, job) group_left()
+                          node_memory_Hugepagesize_bytes{%(nodeExporterSelector)s}
+                        )
+                        or on(instance, job)
+                        (0 * node_memory_MemAvailable_bytes{%(nodeExporterSelector)s})
+                      )
+                    ) / node_memory_MemTotal_bytes{%(nodeExporterSelector)s} * 100
+                  ) > %(memoryHighUtilizationThreshold)d
+                ||| % mixins.node._config,
+                annotations+: {
+                  summary: 'Node memory: high utilization can affect host and workload stability',
+                  description: 'Computed node memory utilization at {{ $labels.instance }} is {{ printf "%.2f" $value }}%, exceeding the threshold of 90% for 15 minutes. This computation includes free huge page capacity (node_memory_HugePages_Free * node_memory_Hugepagesize_bytes) in available memory to avoid false positives on compute nodes backed by huge pages. Normal behavior is below 90% sustained utilization.',
+                  runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#nodememoryhighutilization',
+                },
+              } else rule
+              for rule in group.rules
+            ],
+          } else group
+          for group in super.groups
+        ] + [
           {
             name: 'node-exporter-extras',
             rules: [
