@@ -4,7 +4,7 @@ Monitoring and operations
 
 Atmosphere includes a Grafana deployment with dashboards created by default and
 a Prometheus deployment that collects metrics from the cluster and sends alerts
-to AlertManager. Loki also collects logs from the cluster using Vector.
+to Alertmanager. Loki also collects logs from the cluster using Vector.
 
 ******************************
 Philosophy and alerting levels
@@ -49,7 +49,7 @@ Inhibition and grouping
 -----------------------
 
 Alerts have dependency awareness. When a parent component fails (for example, a
-node goes down), inhibition rules in AlertManager suppress child component
+node goes down), inhibition rules in Alertmanager suppress child component
 alerts (for example, pods on that node) to avoid cascading alert storms.
 The system groups related alerts so that a single notification represents a
 coherent incident rather than dozens of individual symptoms.
@@ -126,23 +126,23 @@ as an admin user.
       :alt: Silences menu
       :width: 200
 
-2. Make sure that you select "AlertManager" on the top right corner of the page,
-   this ensures that you create a silence inside of the AlertManager
+2. Make sure that you select "Alertmanager" on the top right corner of the page,
+   this ensures that you create a silence inside of the Alertmanager
    that's managed by the Prometheus operator instead of the built-in Grafana
-   AlertManager which isn't used.
+   Alertmanager which isn't used.
 
     .. image:: images/monitoring-alertmanger-list.png
-        :alt: AlertManager list
+        :alt: Alertmanager list
         :width: 200
 
-   .. admonition:: AlertManager selection
+   .. admonition:: Alertmanager selection
     :class: warning
 
-    It's important that you select the AlertManager that's managed by the
+    It's important that you select the Alertmanager that's managed by the
     Prometheus operator, otherwise your silence won't apply to the
     Prometheus instance that Atmosphere deploys.
 
-3. Click the "Add Silence" button and use the AlertManager format to create
+3. Click the "Add Silence" button and use the Alertmanager format to create
    your silence, which you can test by seeing if it matches any alerts in the
    list labeled "Affected alert instances".
 
@@ -211,7 +211,7 @@ Viewing data
 ************
 
 The monitoring stack offers a few different ways to view collected data. The most
-common ways are through AlertManager, Grafana, and Prometheus.
+common ways are through Alertmanager, Grafana, and Prometheus.
 
 Grafana dashboard
 =================
@@ -298,10 +298,10 @@ changes to your inventory:
 In this example, the configuration restricts access to the IP range
 ``10.0.0.0/24`` and the IP address ``172.10.0.1``.
 
-AlertManager
+Alertmanager
 ============
 
-By default, the AlertManager dashboard points to the Ansible variable
+By default, the Alertmanager dashboard points to the Ansible variable
 ``kube_prometheus_stack_alertmanager_host`` and sits behind an ``Ingress``
 with the `oauth2-proxy` service, protected by Keycloak similar to Prometheus.
 
@@ -309,10 +309,10 @@ with the `oauth2-proxy` service, protected by Keycloak similar to Prometheus.
 Integrations
 ************
 
-Since Atmosphere relies on AlertManager to send alerts, you can integrate it
+Since Atmosphere relies on Alertmanager to send alerts, you can integrate it
 with services like OpsGenie, PagerDuty, email, and more. To receive monitoring
 alerts using your preferred notification tools, integrate them with
-AlertManager.
+Alertmanager.
 
 OpsGenie
 ========
