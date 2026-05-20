@@ -20,3 +20,7 @@ has ssh access to all the hosts in the inventory file.
 
 You can edit the site.yml to include only the roles that you need to deploy
 if you want to deploy only a subset of the platform at a time.
+
+For faster deployments, Atmosphere also ships a parallel orchestrator
+that runs independent components concurrently. See
+:doc:`parallel` for details.

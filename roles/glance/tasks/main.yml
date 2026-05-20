@@ -35,19 +35,3 @@
     openstack_helm_ingress_service_port: 9292
     openstack_helm_ingress_annotations: "{{ _glance_ingress_annotations | combine(glance_ingress_annotations) }}"
     openstack_helm_ingress_class_name: "{{ glance_ingress_class_name }}"
-
-- name: Create images
-  ansible.builtin.include_role:
-    name: glance_image
-  loop: "{{ glance_images }}"
-  vars:
-    glance_image_name: "{{ item.name }}"
-    glance_image_url: "{{ item.url }}"
-    glance_image_min_disk: "{{ item.min_disk | default(omit) }}"
-    glance_image_min_ram: "{{ item.min_ram | default(omit) }}"
-    glance_image_container_format: "{{ item.container_format | default(omit) }}"
-    glance_image_disk_format: "{{ item.disk_format | default(omit) }}"
-    glance_image_properties: "{{ item.properties | default(omit) }}"
-    glance_image_kernel: "{{ item.kernel | default(omit) }}"
-    glance_image_ramdisk: "{{ item.ramdisk | default(omit) }}"
-    glance_image_is_public: "{{ item.is_public | default(omit) }}"

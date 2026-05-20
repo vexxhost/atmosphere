@@ -1,0 +1,31 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+version: 2
+
+builds:
+  - id: atmosphere
+    main: ./cmd/atmosphere
+    binary: atmosphere
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+
+archives:
+  - id: atmosphere
+    builds:
+      - atmosphere
+    format: tar.gz
+    name_template: "atmosphere_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  sort: asc

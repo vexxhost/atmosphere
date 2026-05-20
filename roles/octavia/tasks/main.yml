@@ -17,6 +17,7 @@
     file: generate_resources.yml
 
 - name: Create CAs & Issuers
+  when: not (_pre_role_active | default(false))
   kubernetes.core.k8s:
     state: present
     definition:
@@ -56,6 +57,7 @@
     - octavia-server
 
 - name: Create certificate for Octavia clients
+  when: not (_pre_role_active | default(false))
   kubernetes.core.k8s:
     state: present
     definition:
@@ -84,6 +86,7 @@
       size: {{ octavia_tls_client_private_key_size }}
 
 - name: Create admin compute quotaset
+  when: not (_pre_role_active | default(false))
   openstack.cloud.quota:
     cloud: atmosphere
     # NOTE(okozachenko): It uses project name instead of id.
@@ -95,6 +98,26 @@
     gigabytes: -1
     security_group: -1
     security_group_rule: -1
+
+- name: Wait for Octavia client certificate secret
+  # The Certificate resources above are issued asynchronously by cert-manager.
+  # When the pre-role runs in parallel with the main role, the Helm install
+  # below mounts these secrets and will stall pods in ContainerCreating if
+  # they are not present yet. Wait explicitly so the deploy is deterministic
+  # in both sequential and parallel modes.
+  run_once: true
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Secret
+    name: "{{ item }}"
+    namespace: "{{ octavia_helm_release_namespace }}"
+    wait: true
+    wait_sleep: 2
+    wait_timeout: 600
+  loop:
+    - octavia-client-certs
+    - octavia-server-ca
+    - octavia-client-ca
 
 - name: Deploy Helm chart
   run_once: true
