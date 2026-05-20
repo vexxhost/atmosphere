@@ -1,0 +1,23 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+_transceiver_exporter_helm_values:
+  image:
+    repository: "{{ atmosphere_images['transceiver_exporter'] | vexxhost.kubernetes.docker_image('name') }}"
+    tag: "{{ atmosphere_images['transceiver_exporter'] | vexxhost.kubernetes.docker_image('tag') }}"
+  config:
+    collectInterfaceFeatures: false
+    excludeInterfacesDown: true
+    includeInterfacesRegex: "^(ens|enp|eno).*"
+  tolerations:
+    - operator: Exists
+  serviceMonitor:
+    enabled: true
+    interval: 60s
+    scrapeTimeout: 10s
+    relabelings:
+      - sourceLabels:
+          - __meta_kubernetes_pod_node_name
+        targetLabel: instance
+    labels:
+      release: "kube-prometheus-stack"
