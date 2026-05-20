@@ -120,6 +120,18 @@
   loop_control:
     label: "{{ item.name }}"
 
+- name: Wait for OpenID metadata ConfigMap
+  run_once: true
+  when: _pre_role_active | default(false)
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: ConfigMap
+    name: keystone-openid-metadata
+    namespace: "{{ keystone_helm_release_namespace }}"
+    wait: true
+    wait_sleep: 2
+    wait_timeout: 600
+
 - name: Deploy Helm chart
   run_once: true
   kubernetes.core.helm:
