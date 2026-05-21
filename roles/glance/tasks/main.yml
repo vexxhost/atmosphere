@@ -33,7 +33,7 @@
 
 - name: Create images
   ansible.builtin.include_role:
-    name: glance_image
+    name: atmosphere.common.glance_image
   loop: "{{ glance_images }}"
   vars:
     glance_image_name: "{{ item.name }}"
@@ -42,7 +42,7 @@
     glance_image_min_ram: "{{ item.min_ram | default(omit) }}"
     glance_image_container_format: "{{ item.container_format | default(omit) }}"
     glance_image_disk_format: "{{ item.disk_format | default(omit) }}"
-    glance_image_properties: "{{ item.properties | default(omit) }}"
+    glance_image_properties: "{{ item.properties | default({}) }}"
     glance_image_kernel: "{{ item.kernel | default(omit) }}"
     glance_image_ramdisk: "{{ item.ramdisk | default(omit) }}"
     glance_image_is_public: "{{ item.is_public | default(omit) }}"
