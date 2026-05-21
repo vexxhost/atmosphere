@@ -135,6 +135,7 @@ EC pools require two components:
       failure_domain: host
       device_class: hdd        # optional
     metadata_replication: 3
+    crush_rule: replicated_rule  # optional: CRUSH rule for metadata pool
     user: cinder-ec       # must be unique per EC backend
     secret_uuid: <unique-uuid>
 
@@ -153,6 +154,10 @@ The EC pool configuration parameters are:
 ``failure_domain``
   Failure domain for data placement, for example ``host``, ``rack``, or
   ``room``.
+
+``crush_rule``
+  CRUSH rule for the replicated metadata pool. Defaults to
+  ``replicated_rule``.
 
 .. warning::
 
