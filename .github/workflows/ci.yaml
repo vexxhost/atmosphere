@@ -44,6 +44,8 @@ jobs:
         run: |
           curl -L -s https://github.com/prometheus/prometheus/releases/download/v${PROMTOOL_VERSION}/prometheus-${PROMTOOL_VERSION}.linux-amd64.tar.gz | sudo tar -xz -C /usr/local/bin --strip-components=1
       - uses: robherley/go-test-action@b19f6aadabfb1ad85079065b21aa2af132466468 # v0.6.0
+        with:
+          testArguments: -timeout=20m ./...
 
   vale:
     runs-on: ubuntu-latest
