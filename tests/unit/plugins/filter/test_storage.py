@@ -402,6 +402,7 @@ class TestStorageToCinderHelmValues:
         assert ec_pool["erasure_coded"]["m"] == 2
         assert ec_pool["erasure_coded"]["failure_domain"] == "host"
         assert ec_pool["metadata"]["replication"] == 3
+        assert ec_pool["metadata"]["crush_rule"] == "replicated_rule"
         assert ec_pool["app_name"] == "cinder-volume"
 
     def test_ec_with_device_class(self):
@@ -433,6 +434,19 @@ class TestStorageToCinderHelmValues:
         assert result["conf"]["backends"]["ec1"]["rbd_data_pool"] == "custom-data-pool"
         pool = result["conf"]["ceph"]["pools"]["cinder.volumes.ec"]
         assert pool["erasure_coded"]["data_pool_name"] == "custom-data-pool"
+
+    def test_ec_with_custom_metadata_crush_rule(self):
+        ec_backend = {**_EC_BACKEND, "crush_rule": "ssd_rule"}
+        storage = {
+            **DEFAULT_STORAGE,
+            "volumes": {
+                "default": "ec1",
+                "backends": {"ec1": ec_backend},
+            },
+        }
+        result = storage_to_cinder_helm_values(storage)
+        pool = result["conf"]["ceph"]["pools"]["cinder.volumes.ec"]
+        assert pool["metadata"]["crush_rule"] == "ssd_rule"
 
     def test_powerstore_backend_iscsi(self):
         storage = {
