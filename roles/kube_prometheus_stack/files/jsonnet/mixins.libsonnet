@@ -73,7 +73,38 @@ local mixins = {
   },
   ceph: (import 'vendor/github.com/ceph/ceph/monitoring/ceph-mixin/mixin.libsonnet') + {
     prometheusAlerts+:: {
-      groups+: [
+      groups: [
+        if group.name == 'nodes' then group {
+          rules: [
+            if rule.alert == 'CephNodeNetworkPacketErrors' then rule {
+              'for': '5m',
+              expr: |||
+                (
+                  (
+                    (
+                      rate(node_network_receive_errs_total{device!="lo"}[1m]) +
+                      rate(node_network_transmit_errs_total{device!="lo"}[1m])
+                    ) / (
+                      rate(node_network_receive_packets_total{device!="lo"}[1m]) +
+                      rate(node_network_transmit_packets_total{device!="lo"}[1m])
+                    ) >= 0.0001
+                  ) or (
+                    (
+                      rate(node_network_receive_errs_total{device!="lo"}[1m]) +
+                      rate(node_network_transmit_errs_total{device!="lo"}[1m])
+                    ) >= 10
+                  )
+                ) unless on(instance, device) node_ethtool_info{driver="geneve"}
+              |||,
+              annotations+: {
+                description: 'Node {{ $labels.instance }} experiences sustained packet errors > 0.01% or > 10 packets/s on interface {{ $labels.device }}.',
+              },
+            } else rule
+            for rule in group.rules
+          ],
+        } else group
+        for group in super.groups
+      ] + [
         {
           name: 'cluster health detail',
           rules: [
