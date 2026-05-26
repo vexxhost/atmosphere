@@ -77,6 +77,8 @@ var Components = []Component{
 		Name:     "ceph",
 		Type:     PlaybookType,
 		Playbook: "ceph",
+		// "apt": ceph installs packages; serialize against other apt
+		// consumers to avoid dpkg lock contention.
 		// "containerd": both the ceph and kubernetes playbooks include
 		// the vexxhost.containers.containerd role, which calls
 		// systemctl daemon-reload + enable on containerd.service.
@@ -85,10 +87,7 @@ var Components = []Component{
 		//   "Unable to enable service containerd: Failed to enable
 		//    unit: Message recipient disconnected from message bus
 		//    without replying"
-		// Serialize via a dedicated "containerd" resource (cap=1) so
-		// ceph stays parallel with other apt users (multipathd, iscsi)
-		// and only blocks against kubernetes for the systemd setup.
-		Resources: []string{"containerd"},
+		Resources: []string{"apt", "containerd"},
 	},
 	{
 		Name:     "kubernetes",
@@ -169,7 +168,8 @@ var Components = []Component{
 		Type:      RoleType,
 		RoleName:  "keepalived",
 		Hosts:     "controllers",
-		DependsOn: []string{"kubernetes"},
+		// memcached creates the openstack namespace that keepalived uses.
+		DependsOn: []string{"memcached"},
 	},
 
 	// Monitoring (RoleType, Hosts: "controllers[0]")
@@ -411,7 +411,10 @@ var Components = []Component{
 		Type:      RoleType,
 		RoleName:  "manila",
 		Hosts:     "controllers[0]",
-		DependsOn: []string{"keystone", "nova", "neutron", "cinder"},
+		// The Manila role uses the combined openstack.cloud.quota module,
+		// which reads Octavia load-balancer quotas before updating compute,
+		// volume, and network limits.
+		DependsOn: []string{"keystone", "nova", "neutron", "cinder", "octavia"},
 	},
 	{
 		Name:      "horizon",
