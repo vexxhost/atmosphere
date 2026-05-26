@@ -106,9 +106,9 @@ control plane nodes:
     $ sudo kubeadm certs renew all
 
 Once the certificates have been renewed, you will need to restart the
-Kubernetes control plane components to pick up the new certificates.  This
+Kubernetes control plane components to pick up the new certificates. This
 includes ``kube-vip``, which mounts ``/etc/kubernetes/admin.conf`` and will
-continue using the old client certificate until it is restarted.  You need to
+continue using the old client certificate until it restarts. You need to
 do this on each one of your control plane nodes by running the following
 command one at a time on each node:
 
@@ -117,7 +117,7 @@ command one at a time on each node:
     $ ps auxf | egrep '(kube-(apiserver|controller-manager|scheduler|vip)|etcd)' | awk '{ print $2 }' | xargs sudo kill
 
 The ``kube-prometheus-stack`` chart also stores a copy of the etcd healthcheck
-client certificate in a Kubernetes Secret.  Refresh that Secret after renewing
+client certificate in a Kubernetes Secret. Refresh that Secret after renewing
 the certificates so Prometheus can continue scraping etcd:
 
 .. code-block:: console
