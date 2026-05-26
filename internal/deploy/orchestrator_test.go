@@ -21,7 +21,7 @@ type mockDeployer struct {
 	deployed []string
 }
 
-func (m *mockDeployer) Deploy(_ context.Context, component Component) error {
+func (m *mockDeployer) Deploy(_ context.Context, component Component, _ func(context.Context) error) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.deployed = append(m.deployed, component.Name)
@@ -132,4 +132,60 @@ func TestOrchestrator_MultipleTags_UnknownTag(t *testing.T) {
 	if len(mock.deployed) != 0 {
 		t.Errorf("expected no deployments on error, got %d", len(mock.deployed))
 	}
+}
+
+// preGateRecorder captures whether preGate was invoked and what it returned
+// for each component deployed, allowing tests to assert pre-role gating.
+type preGateRecorder struct {
+mu      sync.Mutex
+gates   map[string]bool // component name -> gate was invoked
+gateErr map[string]error
+}
+
+func newPreGateRecorder() *preGateRecorder {
+return &preGateRecorder{
+gates:   map[string]bool{},
+gateErr: map[string]error{},
+}
+}
+
+func (p *preGateRecorder) Deploy(ctx context.Context, component Component, preGate func(context.Context) error) error {
+if preGate != nil {
+err := preGate(ctx)
+p.mu.Lock()
+p.gates[component.Name] = true
+p.gateErr[component.Name] = err
+p.mu.Unlock()
+if err != nil {
+return err
+}
+} else {
+p.mu.Lock()
+p.gates[component.Name] = false
+p.mu.Unlock()
+}
+return nil
+}
+
+func TestOrchestrator_BuildPreGate(t *testing.T) {
+tracker := newCompletionTracker([]string{"x", "y"})
+
+withPre := Component{
+Name:             "withpre",
+PreRoleName:      "withpre_pre",
+PreRoleDependsOn: []string{"x"},
+}
+if gate := buildPreGate(withPre, tracker); gate == nil {
+t.Fatal("expected non-nil gate for component with PreRoleDependsOn")
+}
+
+noPreDeps := Component{Name: "n1", PreRoleName: "n1_pre"}
+if gate := buildPreGate(noPreDeps, tracker); gate != nil {
+t.Errorf("expected nil gate when PreRoleDependsOn is empty")
+}
+
+noPreRole := Component{Name: "n2", PreRoleDependsOn: []string{"x"}}
+if gate := buildPreGate(noPreRole, tracker); gate != nil {
+t.Errorf("expected nil gate when PreRoleName is empty")
+}
 }

@@ -15,6 +15,10 @@
 - name: Install package for "community.general.pids"
   ansible.builtin.package:
     name: python3-psutil
+  register: _install_psutil
+  retries: 5
+  delay: 10
+  until: _install_psutil is not failed
 
 # NOTE(mnaser): These are all processes that we do not currently have a way to
 #               safely evacuate *yet*.  We should remove these as we add ways
