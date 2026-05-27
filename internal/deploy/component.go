@@ -383,7 +383,7 @@ var Components = []Component{
 		Type:      RoleType,
 		RoleName:  "neutron",
 		Hosts:     "controllers[0]",
-		DependsOn: []string{"keystone", "nova", "ovn", "coredns"},
+		DependsOn: []string{"keystone", "ovn", "coredns"},
 	},
 	{
 		Name:      "heat",
