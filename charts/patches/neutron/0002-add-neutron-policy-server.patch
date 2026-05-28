@@ -145,6 +145,22 @@ index 07de4e8..a83eaa1 100644
        volumes:
          - name: pod-tmp
            emptyDir: {}
+diff --git a/neutron/templates/service-server.yaml b/neutron/templates/service-server.yaml
+index e8bdb0b..e3ee49f 100644
+--- a/neutron/templates/service-server.yaml
++++ b/neutron/templates/service-server.yaml
+@@ -26,6 +26,11 @@ spec:
+     {{ if .Values.network.server.node_port.enabled }}
+       nodePort: {{ .Values.network.server.node_port.port }}
+     {{ end }}
++    {{- if .Values.pod.sidecars.neutron_policy_server }}
++    - name: q-policy
++      port: {{ tuple "network" "service" "policy_server" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
++      targetPort: q-policy
++    {{- end }}
+   selector:
+ {{ tuple $envAll "neutron" "server" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+   {{ if .Values.network.server.node_port.enabled }}
 diff --git a/neutron/values.yaml b/neutron/values.yaml
 index fb9ca87..fc89b06 100644
 --- a/neutron/values.yaml
