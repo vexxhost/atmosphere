@@ -100,7 +100,7 @@
                   command:
                     - /bin/bash
                     - -c
-                    - exec gunicorn sushy_tools.emulator.main:app --bind 0.0.0.0:9132 --env FLASK_DEBUG=1 --env SUSHY_EMULATOR_CONFIG=/etc/ironic/redfish/emulator.conf --env SUSHY_EMULATOR_LIBVIRT_URI=qemu+unix:///system?socket=/run/libvirt/libvirt-sock --workers 1 --threads 1 --timeout 90
+                    - exec sushy-emulator --config /etc/ironic/redfish/emulator.conf --interface 0.0.0.0 --port 9132 --libvirt-uri 'qemu+unix:///system?socket=/run/libvirt/libvirt-sock'
                   volumeMounts:
                     - name: openstack-config
                       mountPath: /etc/openstack
