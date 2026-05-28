@@ -96,12 +96,12 @@ func TestHelmValues(t *testing.T) {
 	testutils.TestAllPodsHavePriorityClass(t, vals)
 }
 
-func TestPolicyServerCallbacksUseLocalSidecar(t *testing.T) {
+func TestPolicyServerCallbacksUseServiceEndpoint(t *testing.T) {
 	policy := vars.PolicyServerHelmValues.Conf.Policy
 	require.NotEmpty(t, policy)
 
 	for rule, expression := range policy {
-		require.NotContains(t, expression, "http://neutron-server:9697", rule)
+		require.NotContains(t, expression, "http://127.0.0.1:9697", rule)
 	}
 
 	for _, rule := range []string{
@@ -110,7 +110,7 @@ func TestPolicyServerCallbacksUseLocalSidecar(t *testing.T) {
 		"update_port:fixed_ips",
 		"update_port:allowed_address_pairs",
 	} {
-		require.Contains(t, policy[rule], "http://127.0.0.1:9697/", rule)
+		require.Contains(t, policy[rule], "http://neutron-server:9697/", rule)
 		require.True(t, strings.Contains(policy[rule], "port-") || strings.Contains(policy[rule], "address-pair"), rule)
 	}
 }
