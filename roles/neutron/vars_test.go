@@ -114,3 +114,22 @@ func TestPolicyServerCallbacksUseLocalSidecar(t *testing.T) {
 		require.True(t, strings.Contains(policy[rule], "port-") || strings.Contains(policy[rule], "address-pair"), rule)
 	}
 }
+
+func TestMetadataAgentDoesNotRequireUnmountedLogConfig(t *testing.T) {
+	var rawVars struct {
+		NeutronHelmValues struct {
+			Conf struct {
+				MetadataAgent struct {
+					Default map[string]*string `yaml:"DEFAULT"`
+				} `yaml:"metadata_agent"`
+			} `yaml:"conf"`
+		} `yaml:"__neutron_helm_values"`
+	}
+
+	err := yaml.UnmarshalWithOptions(varsFile, &rawVars)
+	require.NoError(t, err)
+
+	logConfigAppend, ok := rawVars.NeutronHelmValues.Conf.MetadataAgent.Default["log_config_append"]
+	require.True(t, ok)
+	require.Nil(t, logConfigAppend)
+}
