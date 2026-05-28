@@ -20,6 +20,17 @@ kube_prometheus_stack_helm_release_namespace: monitoring
 kube_prometheus_stack_helm_kubeconfig: "{{ kubeconfig_path | default('/etc/kubernetes/admin.conf') }}"
 kube_prometheus_stack_helm_values: {}
 
+kube_prometheus_stack_prometheus_additional_scrape_configs: []
+
+# The Ceph mgr/prometheus ServiceMonitor remains enabled by default. Populate
+# this with cephadm service discovery endpoints to scrape ceph-exporter targets
+# in parallel, while keeping mgr perf-counter collection available as a fallback.
+kube_prometheus_stack_ceph_exporter_http_sd_configs: []
+kube_prometheus_stack_ceph_exporter_job_name: ceph-exporter
+kube_prometheus_stack_ceph_exporter_cluster_label: ceph
+kube_prometheus_stack_ceph_exporter_scrape_interval: 15s
+kube_prometheus_stack_ceph_exporter_scrape_timeout: 10s
+
 kube_prometheus_stack_node_exporter_tls_template: "{{ _kube_prometheus_stack_tls_template }}"
 kube_prometheus_stack_node_exporter_config:
   tls_server_config:

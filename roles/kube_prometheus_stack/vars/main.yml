@@ -1,3 +1,15 @@
+_kube_prometheus_stack_ceph_exporter_scrape_config:
+  job_name: "{{ kube_prometheus_stack_ceph_exporter_job_name }}"
+  honor_labels: true
+  scrape_interval: "{{ kube_prometheus_stack_ceph_exporter_scrape_interval }}"
+  scrape_timeout: "{{ kube_prometheus_stack_ceph_exporter_scrape_timeout }}"
+  http_sd_configs: "{{ kube_prometheus_stack_ceph_exporter_http_sd_configs }}"
+  relabel_configs:
+    - target_label: cluster
+      replacement: "{{ kube_prometheus_stack_ceph_exporter_cluster_label }}"
+
+_kube_prometheus_stack_ceph_exporter_scrape_configs: "{{ [_kube_prometheus_stack_ceph_exporter_scrape_config] if kube_prometheus_stack_ceph_exporter_http_sd_configs | length > 0 else [] }}"
+
 _kube_prometheus_stack_helm_values:
   defaultRules:
     rules:
@@ -478,6 +490,7 @@ _kube_prometheus_stack_helm_values:
       volumeMounts:
         - name: certs
           mountPath: /certs
+      additionalScrapeConfigs: "{{ kube_prometheus_stack_prometheus_additional_scrape_configs + _kube_prometheus_stack_ceph_exporter_scrape_configs }}"
     additionalServiceMonitors:
       - name: goldpinger
         jobLabel: app.kubernetes.io/instance
