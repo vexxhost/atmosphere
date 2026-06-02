@@ -70,6 +70,16 @@ cluster_issuer_acme_route53_role_arn: arn:aws:iam::123456789012:role/cert-manage
 cluster_issuer_acme_route53_service_account_name: cert-manager-route53
 ```
 
+Atmosphere creates this ServiceAccount in the `cert-manager` namespace and
+grants the cert-manager controller permission to request projected tokens for
+it. The AWS IAM OIDC provider, trust policy, and Route53 permissions remain
+external prerequisites.
+
+This configuration requires cert-manager v1.15.0 or newer CRDs. Older
+cert-manager CRDs do not include the Route53
+`auth.kubernetes.serviceAccountRef` schema, so the cert-manager deployment must
+be upgraded before applying this solver configuration.
+
 ### Prerequisites (One-Time Setup)
 
 Before applying the Atmosphere configuration above, you must complete these
