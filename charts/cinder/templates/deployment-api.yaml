@@ -100,13 +100,13 @@ spec:
           readinessProbe:
             httpGet:
               scheme: {{ tuple "volume" "service" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_scheme_lookup" | upper }}
-              path: /
+              path: /healthcheck
               port: {{ tuple "volume" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
             initialDelaySeconds: 30
           livenessProbe:
             httpGet:
               scheme: {{ tuple "volume" "service" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_scheme_lookup" | upper }}
-              path: /
+              path: /healthcheck
               port: {{ tuple "volume" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
             initialDelaySeconds: 5
             failureThreshold: 3
