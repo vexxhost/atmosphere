@@ -1,9 +1,10 @@
 # roles/AGENTS.md
 
-## Cluster API version changes
+## Review guidelines
 
-When changing Cluster API, kubeadm bootstrap/control-plane, `clusterctl`, or
-CAPO/OpenStack provider versions under `roles/`:
+Apply these rules both when making changes and when reviewing PRs that change
+Cluster API, kubeadm bootstrap/control-plane, `clusterctl`, or CAPO/OpenStack
+provider versions under `roles/`:
 
 - Keep Atmosphere defaults and Magnum dependencies in sync:
   `clusterctl_version` and `cluster_api_version` in
