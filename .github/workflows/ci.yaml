@@ -56,10 +56,25 @@ jobs:
           egress-policy: audit
 
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-      - run: sudo apt-get install -y docutils
-      - uses: errata-ai/vale-action@d89dee975228ae261d22c15adcd03578634d429c # v2.1.1
         with:
-          files: doc,releasenotes
+          fetch-depth: 0
+      - run: sudo apt-get install -y docutils
+      - name: Find changed documentation files
+        id: changed-docs
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            range="origin/${{ github.base_ref }}...HEAD"
+          else
+            range="${{ github.event.before }}...HEAD"
+          fi
+
+          files="$(git diff --name-only --diff-filter=ACMRT "$range" -- doc releasenotes | paste -sd, -)"
+          echo "files=${files}" >> "$GITHUB_OUTPUT"
+      - uses: errata-ai/vale-action@d89dee975228ae261d22c15adcd03578634d429c # v2.1.1
+        if: steps.changed-docs.outputs.files != ''
+        with:
+          files: ${{ steps.changed-docs.outputs.files }}
           separator: ","
           fail_on_error: true
 
