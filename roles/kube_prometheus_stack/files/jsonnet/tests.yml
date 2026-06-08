@@ -1550,3 +1550,265 @@ tests:
               summary: "Geneve overlay: transmit failures may affect tenant traffic on a compute host"
               description: "192.0.2.10:9100 interface tenant-geneve0 has averaged 3.33 transmit errors per second over the last 5 minutes (threshold > 1.67/s, ~100/min). Normal behavior is zero sustained transmit errors on Geneve tunnel interfaces."
               runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#genevetransmiterrors"
+
+  # LibvirtPodRestarts - should NOT fire when libvirt has no restarts
+  - interval: 1m
+    input_series:
+      - series: 'kube_pod_container_status_restarts_total{namespace="openstack",pod="libvirt-abcde",container="libvirt"}'
+        values: '0x80'
+      - series: 'kube_pod_info{namespace="openstack",pod="libvirt-abcde",node="compute-01"}'
+        values: '1x80'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: LibvirtPodRestarts
+        exp_alerts: []
+
+  # LibvirtPodRestarts - should fire when libvirt restarts repeatedly
+  - interval: 1m
+    input_series:
+      - series: 'kube_pod_container_status_restarts_total{namespace="openstack",pod="libvirt-abcde",container="libvirt"}'
+        values: '0 5x80'
+      - series: 'kube_pod_info{namespace="openstack",pod="libvirt-abcde",node="compute-01"}'
+        values: '1x80'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: LibvirtPodRestarts
+        exp_alerts:
+          - exp_labels:
+              severity: P4
+              node: compute-01
+            exp_annotations:
+              summary: "Libvirt: repeated pod restarts may cause stale mounts on compute-01"
+              description: "The expression based on increase(kube_pod_container_status_restarts_total[1h]) reports 5 libvirt container restarts on compute-01 in the last hour, which exceeds the threshold of 3. Normal behavior is zero or only rare libvirt restarts. Repeated restarts can recreate Kubernetes subPath bind mounts under /etc/ceph and may lead to stale host mounts."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#libvirtpodrestarts"
+
+  # NodeFilesystemMountsHigh - should NOT fire below the warning threshold
+  - interval: 1m
+    input_series:
+      - series: 'node_filesystem_device_error{instance="192.0.2.19:9100",job="node-exporter",device="/dev/root",mountpoint="/",fstype="xfs"}'
+        values: '0x40'
+    alert_rule_test:
+      - eval_time: 35m
+        alertname: NodeFilesystemMountsHigh
+        exp_alerts: []
+
+  # NodeFilesystemMountsHigh - should fire when filesystem mount count is high
+  - interval: 1m
+    input_series:
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test000",mountpoint="/mnt/test000",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test001",mountpoint="/mnt/test001",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test002",mountpoint="/mnt/test002",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test003",mountpoint="/mnt/test003",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test004",mountpoint="/mnt/test004",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test005",mountpoint="/mnt/test005",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test006",mountpoint="/mnt/test006",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test007",mountpoint="/mnt/test007",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test008",mountpoint="/mnt/test008",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test009",mountpoint="/mnt/test009",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test010",mountpoint="/mnt/test010",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test011",mountpoint="/mnt/test011",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test012",mountpoint="/mnt/test012",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test013",mountpoint="/mnt/test013",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test014",mountpoint="/mnt/test014",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test015",mountpoint="/mnt/test015",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test016",mountpoint="/mnt/test016",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test017",mountpoint="/mnt/test017",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test018",mountpoint="/mnt/test018",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test019",mountpoint="/mnt/test019",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test020",mountpoint="/mnt/test020",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test021",mountpoint="/mnt/test021",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test022",mountpoint="/mnt/test022",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test023",mountpoint="/mnt/test023",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test024",mountpoint="/mnt/test024",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test025",mountpoint="/mnt/test025",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test026",mountpoint="/mnt/test026",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test027",mountpoint="/mnt/test027",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test028",mountpoint="/mnt/test028",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test029",mountpoint="/mnt/test029",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test030",mountpoint="/mnt/test030",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test031",mountpoint="/mnt/test031",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test032",mountpoint="/mnt/test032",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test033",mountpoint="/mnt/test033",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test034",mountpoint="/mnt/test034",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test035",mountpoint="/mnt/test035",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test036",mountpoint="/mnt/test036",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test037",mountpoint="/mnt/test037",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test038",mountpoint="/mnt/test038",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test039",mountpoint="/mnt/test039",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test040",mountpoint="/mnt/test040",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test041",mountpoint="/mnt/test041",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test042",mountpoint="/mnt/test042",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test043",mountpoint="/mnt/test043",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test044",mountpoint="/mnt/test044",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test045",mountpoint="/mnt/test045",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test046",mountpoint="/mnt/test046",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test047",mountpoint="/mnt/test047",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test048",mountpoint="/mnt/test048",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test049",mountpoint="/mnt/test049",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test050",mountpoint="/mnt/test050",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test051",mountpoint="/mnt/test051",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test052",mountpoint="/mnt/test052",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test053",mountpoint="/mnt/test053",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test054",mountpoint="/mnt/test054",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test055",mountpoint="/mnt/test055",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test056",mountpoint="/mnt/test056",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test057",mountpoint="/mnt/test057",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test058",mountpoint="/mnt/test058",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test059",mountpoint="/mnt/test059",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test060",mountpoint="/mnt/test060",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test061",mountpoint="/mnt/test061",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test062",mountpoint="/mnt/test062",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test063",mountpoint="/mnt/test063",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test064",mountpoint="/mnt/test064",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test065",mountpoint="/mnt/test065",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test066",mountpoint="/mnt/test066",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test067",mountpoint="/mnt/test067",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test068",mountpoint="/mnt/test068",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test069",mountpoint="/mnt/test069",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test070",mountpoint="/mnt/test070",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test071",mountpoint="/mnt/test071",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test072",mountpoint="/mnt/test072",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test073",mountpoint="/mnt/test073",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test074",mountpoint="/mnt/test074",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test075",mountpoint="/mnt/test075",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test076",mountpoint="/mnt/test076",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test077",mountpoint="/mnt/test077",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test078",mountpoint="/mnt/test078",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test079",mountpoint="/mnt/test079",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test080",mountpoint="/mnt/test080",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test081",mountpoint="/mnt/test081",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test082",mountpoint="/mnt/test082",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test083",mountpoint="/mnt/test083",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test084",mountpoint="/mnt/test084",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test085",mountpoint="/mnt/test085",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test086",mountpoint="/mnt/test086",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test087",mountpoint="/mnt/test087",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test088",mountpoint="/mnt/test088",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test089",mountpoint="/mnt/test089",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test090",mountpoint="/mnt/test090",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test091",mountpoint="/mnt/test091",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test092",mountpoint="/mnt/test092",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test093",mountpoint="/mnt/test093",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test094",mountpoint="/mnt/test094",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test095",mountpoint="/mnt/test095",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test096",mountpoint="/mnt/test096",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test097",mountpoint="/mnt/test097",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test098",mountpoint="/mnt/test098",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test099",mountpoint="/mnt/test099",fstype="xfs"}'
+        values: '0x40'
+      - series: 'node_filesystem_device_error{instance="192.0.2.20:9100",job="node-exporter",device="/dev/test100",mountpoint="/mnt/test100",fstype="xfs"}'
+        values: '0x40'
+    alert_rule_test:
+      - eval_time: 35m
+        alertname: NodeFilesystemMountsHigh
+        exp_alerts:
+          - exp_labels:
+              severity: P4
+              instance: "192.0.2.20:9100"
+              job: node-exporter
+            exp_annotations:
+              summary: "Node filesystem: high mount count on 192.0.2.20:9100"
+              description: "Node-exporter reports 101 filesystem mount entries for 192.0.2.20:9100, exceeding the threshold of 100 for 30 minutes. A high mount count can make host mount-scanning tasks expensive and may indicate stale bind mounts, including libvirt/Ceph mounts left behind after repeated pod restarts."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#nodefilesystemmountshigh"
+      - eval_time: 35m
+        alertname: NodeFilesystemMountsVeryHigh
+        exp_alerts: []
