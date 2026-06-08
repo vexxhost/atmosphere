@@ -203,6 +203,8 @@
             scheduler: 1
             novncproxy: 1
             spiceproxy: 1
+        manifests:
+          statefulset_compute_ironic: "{{ lookup('env', 'ATMOSPHERE_BAREMETAL_EMULATOR_ENABLED') | default('false', true) }}"
       neutron_helm_values:
         conf:
           neutron:
@@ -270,6 +272,44 @@
         pod:
           replicas:
             server: 1
+      ironic_helm_values:
+        conf:
+          ironic:
+            DEFAULT:
+              debug: "{{ lookup('env', 'ATMOSPHERE_DEBUG') | default('false', true) }}"
+              debug_tracebacks_in_api: "{{ lookup('env', 'ATMOSPHERE_DEBUG') | default('false', true) }}"
+              pecan_debug: "{{ lookup('env', 'ATMOSPHERE_DEBUG') | default('false', true) }}"
+            api:
+              api_workers: 1
+              public_endpoint: "http://172.24.6.254:32574"
+            agent:
+              deploy_logs_collect: always
+              deploy_logs_storage_backend: local
+              deploy_logs_local_path: /tmp/deploy_logs
+            conductor:
+              power_state_change_timeout: 120
+              automated_clean: true
+              api_url: "http://172.24.6.254:32574"
+            service_catalog:
+              endpoint_override: "http://172.24.6.254:32574"
+            neutron:
+              port_setup_delay: 15
+        pod:
+          replicas:
+            api: 1
+            conductor: 1
+      atmosphere_baremetal_emulator_enabled: "{{ lookup('env', 'ATMOSPHERE_BAREMETAL_EMULATOR_ENABLED') | default('false', true) }}"
+      ironic_bare_metal_network_manage: true
+      ironic_bare_metal_network_name: baremetal
+      ironic_bare_metal_network_provider_physical_network: external
+      ironic_bare_metal_network_provider_network_type: vlan
+      ironic_bare_metal_network_provider_segmentation_id: 4090
+      ironic_bare_metal_subnet_name: baremetal
+      ironic_bare_metal_subnet_cidr: 172.24.6.0/24
+      ironic_python_agent_deploy_kernel_name: ir-deploy-redfish.kernel
+      ironic_python_agent_deploy_kernel_url: https://tarballs.openstack.org/ironic-python-agent/dib/files/ipa-centos9-master.kernel
+      ironic_python_agent_deploy_ramdisk_name: ir-deploy-redfish.initramfs
+      ironic_python_agent_deploy_ramdisk_url: https://tarballs.openstack.org/ironic-python-agent/dib/files/ipa-centos9-master.initramfs
 
 - job:
     name: atmosphere-molecule-aio-openvswitch
