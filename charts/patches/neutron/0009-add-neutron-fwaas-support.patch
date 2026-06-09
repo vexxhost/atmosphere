@@ -4,9 +4,24 @@ Date: Tue, 03 Mar 2026 10:27:00 +0000
 Subject: [PATCH] Add neutron-fwaas support
 
 Add support for Neutron Firewall as a Service (FWaaS) by adding the
-neutron_fwaas.conf config file to the configmap and conditionally
-mounting it in the server deployment when firewall_v2 is in the
+neutron_fwaas.conf config file to the configmap, mounting it in the
+server deployment, and loading it when firewall_v2 is enabled in the
 service plugins list.
+
+diff --git a/neutron/templates/bin/_neutron-server.sh.tpl b/neutron/templates/bin/_neutron-server.sh.tpl
+index a6f2675b..b23e1f40 100644
+--- a/neutron/templates/bin/_neutron-server.sh.tpl
++++ b/neutron/templates/bin/_neutron-server.sh.tpl
+@@ -28,6 +28,9 @@ function start () {
+ {{- if contains "ovn-vpnaas" .Values.conf.neutron.DEFAULT.service_plugins }}
+   confs+=" --config-file /etc/neutron/neutron_ovn_vpn_agent.ini" \
+ {{- end }}
++{{- if contains "firewall_v2" .Values.conf.neutron.DEFAULT.service_plugins }}
++  confs+=" --config-file /etc/neutron/neutron_fwaas.conf" \
++{{- end }}
+ {{- if .Values.conf.plugins.taas.taas.enabled }}
+   confs+=" --config-file /etc/neutron/taas_plugin.ini"
+ {{- end }}
 
 diff --git a/neutron/templates/configmap-etc.yaml b/neutron/templates/configmap-etc.yaml
 index 9d001304..5355d7c6 100644
