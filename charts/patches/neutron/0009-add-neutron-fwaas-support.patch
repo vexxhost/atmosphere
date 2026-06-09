@@ -5,8 +5,8 @@ Subject: [PATCH] Add neutron-fwaas support
 
 Add support for Neutron Firewall as a Service (FWaaS) by adding the
 neutron_fwaas.conf config file to the configmap, mounting it in the
-server deployment, and loading it when firewall_v2 is enabled in the
-service plugins list.
+server and RPC server deployments, and loading it when firewall_v2 is
+enabled in the service plugins list.
 
 diff --git a/neutron/templates/bin/_neutron-server.sh.tpl b/neutron/templates/bin/_neutron-server.sh.tpl
 index a6f2675b..b23e1f40 100644
@@ -21,6 +21,21 @@ index a6f2675b..b23e1f40 100644
 +{{- end }}
  {{- if .Values.conf.plugins.taas.taas.enabled }}
    confs+=" --config-file /etc/neutron/taas_plugin.ini"
+ {{- end }}
+
+diff --git a/neutron/templates/bin/_neutron-rpc-server.sh.tpl b/neutron/templates/bin/_neutron-rpc-server.sh.tpl
+index 4dc058c8..af47b535 100644
+--- a/neutron/templates/bin/_neutron-rpc-server.sh.tpl
++++ b/neutron/templates/bin/_neutron-rpc-server.sh.tpl
+@@ -28,6 +28,9 @@ function start () {
+ {{- if contains "ovn-vpnaas" .Values.conf.neutron.DEFAULT.service_plugins }}
+         --config-file /etc/neutron/neutron_ovn_vpn_agent.ini \
+ {{- end }}
++{{- if contains "firewall_v2" .Values.conf.neutron.DEFAULT.service_plugins }}
++        --config-file /etc/neutron/neutron_fwaas.conf \
++{{- end }}
+ {{- if .Values.conf.plugins.taas.taas.enabled }}
+         --config-file /etc/neutron/taas_plugin.ini \
  {{- end }}
 
 diff --git a/neutron/templates/configmap-etc.yaml b/neutron/templates/configmap-etc.yaml
@@ -52,6 +67,23 @@ index 9af4b413..5007d67e 100644
              {{- if contains "vpnaas" .Values.conf.neutron.DEFAULT.service_plugins }}
              - name: neutron-etc
                mountPath: /etc/neutron/neutron_vpnaas.conf
+diff --git a/neutron/templates/deployment-rpc_server.yaml b/neutron/templates/deployment-rpc_server.yaml
+index b3a32907..9bfb1969 100644
+--- a/neutron/templates/deployment-rpc_server.yaml
++++ b/neutron/templates/deployment-rpc_server.yaml
+@@ -194,6 +194,12 @@ spec:
+             - name: neutron-etc
+               mountPath: /etc/neutron/policy.yaml
+               subPath: policy.yaml
++            {{- if contains "firewall_v2" .Values.conf.neutron.DEFAULT.service_plugins }}
++            - name: neutron-etc
++              mountPath: /etc/neutron/neutron_fwaas.conf
++              subPath: neutron_fwaas.conf
++              readOnly: true
++            {{- end }}
+ {{- dict "enabled" .Values.manifests.certificates "name" .Values.endpoints.oslo_db.auth.admin.secret.tls.internal "path" "/etc/mysql/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
+ {{- dict "enabled" (or .Values.manifests.certificates .Values.tls.identity) "name" .Values.secrets.tls.network.server.internal "path" "/etc/neutron/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
+ {{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_messaging.auth.admin.secret.tls.internal "path" "/etc/rabbitmq/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
 diff --git a/neutron/values.yaml b/neutron/values.yaml
 index 83e34c08..27b7e798 100644
 --- a/neutron/values.yaml

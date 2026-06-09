@@ -1,0 +1,51 @@
+suite: fwaas
+
+tests:
+  - it: should load neutron_fwaas.conf in neutron-server and neutron-rpc-server scripts
+    templates:
+      - templates/configmap-bin.yaml
+    set:
+      network:
+        backend:
+          - ovn
+      conf:
+        neutron:
+          DEFAULT:
+            service_plugins: qos,ovn-router,segments,trunk,log,ovn-vpnaas,firewall_v2,taas,tapmirror
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ConfigMap
+      - matchRegex:
+          path: data["neutron-server.sh"]
+          pattern: --config-file /etc/neutron/neutron_fwaas\\.conf
+      - matchRegex:
+          path: data["neutron-rpc-server.sh"]
+          pattern: --config-file /etc/neutron/neutron_fwaas\\.conf
+
+  - it: should mount neutron_fwaas.conf in neutron-rpc-server when firewall_v2 is enabled
+    templates:
+      - templates/deployment-rpc_server.yaml
+    set:
+      manifests:
+        deployment_rpc_server: true
+      network:
+        backend:
+          - ovn
+      conf:
+        neutron:
+          DEFAULT:
+            service_plugins: qos,ovn-router,segments,trunk,log,ovn-vpnaas,firewall_v2,taas,tapmirror
+    asserts:
+      - hasDocuments:
+          count: 2
+      - template: templates/deployment-rpc_server.yaml
+        documentIndex: 1
+        contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: neutron-etc
+            mountPath: /etc/neutron/neutron_fwaas.conf
+            subPath: neutron_fwaas.conf
+            readOnly: true
