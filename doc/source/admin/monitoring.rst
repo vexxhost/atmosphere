@@ -281,7 +281,7 @@ authentication. Create the secret in the same namespace as the Prometheus
 deployment based on the `Ingress NGINX annotations <https://github.com/kubernetes/ingress-nginx/blob/main/docs/user-guide/nginx-configuration/annotations.md#annotations>`_.
 
 Restricting by address
-~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
 
 To restrict Prometheus UI access to specific IP addresses, make the following
 changes to your inventory:
@@ -313,6 +313,87 @@ Since Atmosphere relies on Alertmanager to send alerts, you can integrate it
 with services like OpsGenie, PagerDuty, email, and more. To receive monitoring
 alerts using your preferred notification tools, integrate them with
 Alertmanager.
+
+incident.io
+===========
+
+Atmosphere supports incident.io through the native Alertmanager
+``incidentio_configs`` notifier. This notifier requires Alertmanager v0.32.0 or
+later and Prometheus Operator v0.88.0 or later. Atmosphere ships both versions
+by default.
+
+Prerequisites
+-------------
+
+Before you configure incident.io, create the following resources:
+
+- An incident.io alert source with the *Prometheus Alertmanager* type.
+- An incident.io heartbeat for dead man's switch monitoring.
+- The following credentials from incident.io:
+
+  - ``incident_io_alert_source_key``: the key part of the alert source URL.
+  - ``incident_io_alert_source_token``: the alert source token.
+  - ``incident_io_heartbeat_key``: the heartbeat key.
+  - ``incident_io_heartbeat_token``: the heartbeat authentication token from
+    the *Query authentication* tab.
+
+Configuration
+-------------
+
+Add the following values to your inventory under
+``kube_prometheus_stack_helm_values``:
+
+.. code-block:: yaml
+
+  kube_prometheus_stack_helm_values:
+    alertmanager:
+      config:
+        route:
+          group_by:
+            - region
+            - env
+            - job
+            - alertname
+            - instance
+            - severity
+          receiver: notifier
+          routes:
+            - matchers:
+                - alertname = "Watchdog"
+              receiver: heartbeat
+              group_wait: 0s
+              group_interval: 1m
+              repeat_interval: 50s
+        receivers:
+          - name: "null"
+          - name: notifier
+            incidentio_configs:
+              - url: "https://api.incident.io/v2/alert_events/alertmanager/{{ incident_io_alert_source_key }}"
+                alert_source_token: "{{ incident_io_alert_source_token }}"
+          - name: heartbeat
+            webhook_configs:
+              - url: "https://api.incident.io/v2/heartbeat/{{ incident_io_heartbeat_key }}/ping?token={{ incident_io_heartbeat_token }}"
+                send_resolved: false
+
+Store the credentials in your secrets.yml:
+
+.. code-block:: yaml
+
+  incident_io_alert_source_key: <from the incident.io alert source URL>
+  incident_io_alert_source_token: <from the incident.io alert source connection page>
+  incident_io_heartbeat_key: <from the incident.io heartbeat URL>
+  incident_io_heartbeat_token: <from the incident.io heartbeat Query authentication tab>
+
+How it works
+------------
+
+- Alertmanager sends all Prometheus alerts to incident.io through the native
+  ``incidentio_configs`` notifier.
+- The always-firing ``Watchdog`` alert routes to the ``heartbeat`` receiver,
+  which pings incident.io every minute for dead man's switch monitoring.
+- If Alertmanager stops sending heartbeat pings, incident.io creates an alert
+  after the configured grace period.
+- incident.io maps Prometheus alert severity labels to priority levels.
 
 OpsGenie
 ========

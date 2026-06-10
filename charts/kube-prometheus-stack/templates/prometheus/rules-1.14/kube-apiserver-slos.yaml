@@ -1,5 +1,5 @@
 {{- /*
-Generated from 'kube-apiserver-slos' group from https://raw.githubusercontent.com/prometheus-operator/kube-prometheus/65922b9fd8c3869c06686b44f5f3aa9f96560666/manifests/kubernetesControlPlane-prometheusRule.yaml
+Generated from 'kube-apiserver-slos' group from https://github.com/prometheus-operator/kube-prometheus.git
 Do not change in-place! In order to change this file first read following link:
 https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack/hack
 */ -}}
@@ -33,13 +33,13 @@ spec:
 {{- if .Values.defaultRules.additionalRuleGroupAnnotations.kubeApiserverSlos }}
 {{ toYaml .Values.defaultRules.additionalRuleGroupAnnotations.kubeApiserverSlos | indent 8 }}
 {{- end }}
-        description: The API server is burning too much error budget.
+        description: The API server is burning too much error budget on cluster {{`{{`}} $labels.cluster {{`}}`}}.
         runbook_url: {{ .Values.defaultRules.runbookUrl }}/kubernetes/kubeapierrorbudgetburn
         summary: The API server is burning too much error budget.
       expr: |-
-        sum(apiserver_request:burnrate1h) > (14.40 * 0.01000)
-        and
-        sum(apiserver_request:burnrate5m) > (14.40 * 0.01000)
+        sum by ({{ range $.Values.defaultRules.additionalAggregationLabels }}{{ . }},{{ end }}cluster) (apiserver_request:burnrate1h) > (14.40 * 0.01000)
+        and on ({{ range $.Values.defaultRules.additionalAggregationLabels }}{{ . }},{{ end }}cluster)
+        sum by ({{ range $.Values.defaultRules.additionalAggregationLabels }}{{ . }},{{ end }}cluster) (apiserver_request:burnrate5m) > (14.40 * 0.01000)
       for: {{ dig "KubeAPIErrorBudgetBurn" "for" "2m" .Values.customRules }}
       {{- with .Values.defaultRules.keepFiringFor }}
       keep_firing_for: "{{ . }}"
@@ -66,13 +66,13 @@ spec:
 {{- if .Values.defaultRules.additionalRuleGroupAnnotations.kubeApiserverSlos }}
 {{ toYaml .Values.defaultRules.additionalRuleGroupAnnotations.kubeApiserverSlos | indent 8 }}
 {{- end }}
-        description: The API server is burning too much error budget.
+        description: The API server is burning too much error budget on cluster {{`{{`}} $labels.cluster {{`}}`}}.
         runbook_url: {{ .Values.defaultRules.runbookUrl }}/kubernetes/kubeapierrorbudgetburn
         summary: The API server is burning too much error budget.
       expr: |-
-        sum(apiserver_request:burnrate6h) > (6.00 * 0.01000)
-        and
-        sum(apiserver_request:burnrate30m) > (6.00 * 0.01000)
+        sum by ({{ range $.Values.defaultRules.additionalAggregationLabels }}{{ . }},{{ end }}cluster) (apiserver_request:burnrate6h) > (6.00 * 0.01000)
+        and on ({{ range $.Values.defaultRules.additionalAggregationLabels }}{{ . }},{{ end }}cluster)
+        sum by ({{ range $.Values.defaultRules.additionalAggregationLabels }}{{ . }},{{ end }}cluster) (apiserver_request:burnrate30m) > (6.00 * 0.01000)
       for: {{ dig "KubeAPIErrorBudgetBurn" "for" "15m" .Values.customRules }}
       {{- with .Values.defaultRules.keepFiringFor }}
       keep_firing_for: "{{ . }}"
@@ -99,13 +99,13 @@ spec:
 {{- if .Values.defaultRules.additionalRuleGroupAnnotations.kubeApiserverSlos }}
 {{ toYaml .Values.defaultRules.additionalRuleGroupAnnotations.kubeApiserverSlos | indent 8 }}
 {{- end }}
-        description: The API server is burning too much error budget.
+        description: The API server is burning too much error budget on cluster {{`{{`}} $labels.cluster {{`}}`}}.
         runbook_url: {{ .Values.defaultRules.runbookUrl }}/kubernetes/kubeapierrorbudgetburn
         summary: The API server is burning too much error budget.
       expr: |-
-        sum(apiserver_request:burnrate1d) > (3.00 * 0.01000)
-        and
-        sum(apiserver_request:burnrate2h) > (3.00 * 0.01000)
+        sum by ({{ range $.Values.defaultRules.additionalAggregationLabels }}{{ . }},{{ end }}cluster) (apiserver_request:burnrate1d) > (3.00 * 0.01000)
+        and on ({{ range $.Values.defaultRules.additionalAggregationLabels }}{{ . }},{{ end }}cluster)
+        sum by ({{ range $.Values.defaultRules.additionalAggregationLabels }}{{ . }},{{ end }}cluster) (apiserver_request:burnrate2h) > (3.00 * 0.01000)
       for: {{ dig "KubeAPIErrorBudgetBurn" "for" "1h" .Values.customRules }}
       {{- with .Values.defaultRules.keepFiringFor }}
       keep_firing_for: "{{ . }}"
@@ -132,13 +132,13 @@ spec:
 {{- if .Values.defaultRules.additionalRuleGroupAnnotations.kubeApiserverSlos }}
 {{ toYaml .Values.defaultRules.additionalRuleGroupAnnotations.kubeApiserverSlos | indent 8 }}
 {{- end }}
-        description: The API server is burning too much error budget.
+        description: The API server is burning too much error budget on cluster {{`{{`}} $labels.cluster {{`}}`}}.
         runbook_url: {{ .Values.defaultRules.runbookUrl }}/kubernetes/kubeapierrorbudgetburn
         summary: The API server is burning too much error budget.
       expr: |-
-        sum(apiserver_request:burnrate3d) > (1.00 * 0.01000)
-        and
-        sum(apiserver_request:burnrate6h) > (1.00 * 0.01000)
+        sum by ({{ range $.Values.defaultRules.additionalAggregationLabels }}{{ . }},{{ end }}cluster) (apiserver_request:burnrate3d) > (1.00 * 0.01000)
+        and on ({{ range $.Values.defaultRules.additionalAggregationLabels }}{{ . }},{{ end }}cluster)
+        sum by ({{ range $.Values.defaultRules.additionalAggregationLabels }}{{ . }},{{ end }}cluster) (apiserver_request:burnrate6h) > (1.00 * 0.01000)
       for: {{ dig "KubeAPIErrorBudgetBurn" "for" "3h" .Values.customRules }}
       {{- with .Values.defaultRules.keepFiringFor }}
       keep_firing_for: "{{ . }}"
