@@ -139,12 +139,12 @@
                     - -d
                     - --sock-dir=/var/run/ceph
                     - --addrs=0.0.0.0
-                    - "--port={{ kube_prometheus_stack_ceph_exporter_port }}"
+                    - --port=9926
                     - "--prio-limit={{ kube_prometheus_stack_ceph_exporter_prio_limit }}"
                     - "--stats-period={{ kube_prometheus_stack_ceph_exporter_stats_period }}"
                   ports:
                     - name: metrics
-                      containerPort: "{{ kube_prometheus_stack_ceph_exporter_port | int }}"
+                      containerPort: 9926
                   resources: "{{ kube_prometheus_stack_ceph_exporter_resources }}"
                   securityContext:
                     runAsUser: 0
@@ -188,7 +188,7 @@
           clusterIP: None
           ports:
             - name: metrics
-              port: "{{ kube_prometheus_stack_ceph_exporter_port | int }}"
+              port: 9926
               targetPort: metrics
           selector:
             application: "{{ kube_prometheus_stack_ceph_exporter_job_name }}"
