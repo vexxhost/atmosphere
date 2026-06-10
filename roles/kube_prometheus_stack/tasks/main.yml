@@ -105,6 +105,94 @@
           healthcheck-client.crt: "{{ _etcd_healthcheck_client_crt.content }}"
           healthcheck-client.key: "{{ _etcd_healthcheck_client_key.content }}"
 
+- name: Deploy Ceph exporter
+  run_once: true
+  kubernetes.core.k8s:
+    state: "{{ kube_prometheus_stack_ceph_exporter_enabled | bool | ternary('present', 'absent') }}"
+    definition:
+      - apiVersion: apps/v1
+        kind: DaemonSet
+        metadata:
+          name: "{{ kube_prometheus_stack_ceph_exporter_job_name }}"
+          namespace: "{{ kube_prometheus_stack_helm_release_namespace }}"
+          labels:
+            application: "{{ kube_prometheus_stack_ceph_exporter_job_name }}"
+        spec:
+          selector:
+            matchLabels:
+              application: "{{ kube_prometheus_stack_ceph_exporter_job_name }}"
+          template:
+            metadata:
+              labels:
+                application: "{{ kube_prometheus_stack_ceph_exporter_job_name }}"
+            spec:
+              nodeSelector: "{{ kube_prometheus_stack_ceph_exporter_node_selector }}"
+              tolerations: "{{ kube_prometheus_stack_ceph_exporter_tolerations }}"
+              containers:
+                - name: ceph-exporter
+                  image: "{{ atmosphere_images['ceph'] | vexxhost.kubernetes.docker_image('ref') }}"
+                  command:
+                    - /usr/bin/ceph-exporter
+                  args:
+                    - -n
+                    - "{{ kube_prometheus_stack_ceph_exporter_client_name }}"
+                    - -d
+                    - --sock-dir=/var/run/ceph
+                    - --addrs=0.0.0.0
+                    - "--port={{ kube_prometheus_stack_ceph_exporter_port }}"
+                    - "--prio-limit={{ kube_prometheus_stack_ceph_exporter_prio_limit }}"
+                    - "--stats-period={{ kube_prometheus_stack_ceph_exporter_stats_period }}"
+                  ports:
+                    - name: metrics
+                      containerPort: "{{ kube_prometheus_stack_ceph_exporter_port | int }}"
+                  resources: "{{ kube_prometheus_stack_ceph_exporter_resources }}"
+                  securityContext:
+                    runAsUser: 0
+                    runAsGroup: 0
+                  readinessProbe:
+                    httpGet:
+                      path: /metrics
+                      port: metrics
+                    periodSeconds: 10
+                    timeoutSeconds: 5
+                  livenessProbe:
+                    httpGet:
+                      path: /metrics
+                      port: metrics
+                    periodSeconds: 30
+                    timeoutSeconds: 5
+                  volumeMounts:
+                    - name: ceph-config
+                      mountPath: /etc/ceph
+                      readOnly: true
+                    - name: ceph-sockets
+                      mountPath: /var/run/ceph
+              volumes:
+                - name: ceph-config
+                  hostPath:
+                    path: "{{ kube_prometheus_stack_ceph_exporter_config_host_path }}"
+                    type: Directory
+                - name: ceph-sockets
+                  hostPath:
+                    path: "{{ kube_prometheus_stack_ceph_exporter_socket_host_path }}"
+                    type: Directory
+
+      - apiVersion: v1
+        kind: Service
+        metadata:
+          name: "{{ kube_prometheus_stack_ceph_exporter_job_name }}"
+          namespace: "{{ kube_prometheus_stack_helm_release_namespace }}"
+          labels:
+            application: "{{ kube_prometheus_stack_ceph_exporter_job_name }}"
+        spec:
+          clusterIP: None
+          ports:
+            - name: metrics
+              port: "{{ kube_prometheus_stack_ceph_exporter_port | int }}"
+              targetPort: metrics
+          selector:
+            application: "{{ kube_prometheus_stack_ceph_exporter_job_name }}"
+
 - name: Generate client secret passwords
   run_once: true
   kubernetes.core.k8s:
