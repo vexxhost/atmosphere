@@ -2,11 +2,10 @@ diff --git a/ovn/templates/deployment-northd.yaml b/ovn/templates/deployment-nor
 index 1234567..abcdefg 100644
 --- a/ovn/templates/deployment-northd.yaml
 +++ b/ovn/templates/deployment-northd.yaml
-@@ -78,5 +78,15 @@ spec:
-             - name: OVN_KUBERNETES_SB_STATEFULSET
-               value: ovn-ovsdb-sb
-             - name: OVN_SSL_ENABLE
-               value: "no"
+@@ -71,4 +71,14 @@ spec:
+           env:
+ {{ if $env_ovn.common }}{{ toYaml $env_ovn.common | indent 12 }}{{ end }}
+ {{ if $env_ovn.northd }}{{ toYaml $env_ovn.northd | indent 12 }}{{ end }}
 +          volumeMounts:
 +            - name: var-log-ovn
 +              mountPath: /var/log/ovn
@@ -22,10 +21,10 @@ diff --git a/ovn/templates/statefulset-ovsdb-nb.yaml b/ovn/templates/statefulset
 index d19d5105..f964c4b6 100644
 --- a/ovn/templates/statefulset-ovsdb-nb.yaml
 +++ b/ovn/templates/statefulset-ovsdb-nb.yaml
-@@ -108,11 +108,15 @@ spec:
+@@ -93,11 +93,15 @@ spec:
                mountPath: /var/run/ovn
              - name: data
-               mountPath: /etc/ovn
+               mountPath: {{ $envAll.Values.volume.ovn_ovsdb_nb.path }}
 +            - name: var-log-ovn
 +              mountPath: /var/log/ovn
        volumes:
@@ -42,10 +41,10 @@ diff --git a/ovn/templates/statefulset-ovsdb-sb.yaml b/ovn/templates/statefulset
 index a6180aaa..31174aa5 100644
 --- a/ovn/templates/statefulset-ovsdb-sb.yaml
 +++ b/ovn/templates/statefulset-ovsdb-sb.yaml
-@@ -108,11 +108,15 @@ spec:
+@@ -93,11 +93,15 @@ spec:
                mountPath: /var/run/ovn
              - name: data
-               mountPath: /etc/ovn
+               mountPath: {{ $envAll.Values.volume.ovn_ovsdb_sb.path }}
 +            - name: var-log-ovn
 +              mountPath: /var/log/ovn
        volumes:
