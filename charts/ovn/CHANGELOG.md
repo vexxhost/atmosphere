@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/vexxhost/openstack-helm/compare/ovn-v1.1.0...ovn-v1.2.0) (2025-11-11)
+
+
+### Features
+
+* **ovn:** stage 1.2.0 ([5cd579b](https://github.com/vexxhost/openstack-helm/commit/5cd579be51c34e2c26c978fd6605847720e3d219))
+
 ## [1.1.0](https://github.com/vexxhost/openstack-helm/compare/ovn-v1.0.1...ovn-v1.1.0) (2025-11-09)
 
 
