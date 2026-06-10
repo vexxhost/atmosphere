@@ -5,8 +5,36 @@ Subject: [PATCH] Add neutron-fwaas support
 
 Add support for Neutron Firewall as a Service (FWaaS) by adding the
 neutron_fwaas.conf config file to the configmap, mounting it in the
-server and RPC server deployments, and loading it when firewall_v2 is
-enabled in the service plugins list.
+server, RPC server, and DB sync job, and loading it when firewall_v2 is
+enabled in the service plugins list. Also run the neutron-fwaas
+subproject migrations so the FWaaS tables exist before the API uses
+them.
+
+diff --git a/neutron/templates/bin/_db-sync.sh.tpl b/neutron/templates/bin/_db-sync.sh.tpl
+index f089fc2f..4ae65bdb 100644
+--- a/neutron/templates/bin/_db-sync.sh.tpl
++++ b/neutron/templates/bin/_db-sync.sh.tpl
+@@ -22,8 +22,18 @@ neutron-db-manage \
+ {{- else }}
+   --config-file /etc/neutron/plugins/ml2/ml2_conf.ini \
+ {{- end }}
++{{- if contains "firewall_v2" .Values.conf.neutron.DEFAULT.service_plugins }}
++  --config-file /etc/neutron/neutron_fwaas.conf \
++{{- end }}
+   upgrade head
+
++{{- if contains "firewall_v2" .Values.conf.neutron.DEFAULT.service_plugins }}
++neutron-db-manage \
++  --config-file /etc/neutron/neutron.conf \
++  --config-file /etc/neutron/plugins/ml2/ml2_conf.ini \
++  --config-file /etc/neutron/neutron_fwaas.conf \
++  --subproject neutron-fwaas \
++  upgrade head
++{{- end }}
++
+ {{- if .Values.conf.plugins.taas.taas.enabled }}
+ neutron-db-manage \
+   --config-file /etc/neutron/neutron.conf \
 
 diff --git a/neutron/templates/bin/_neutron-server.sh.tpl b/neutron/templates/bin/_neutron-server.sh.tpl
 index a6f2675b..b23e1f40 100644
@@ -85,10 +113,23 @@ index b3a32907..9bfb1969 100644
  {{- dict "enabled" (or .Values.manifests.certificates .Values.tls.identity) "name" .Values.secrets.tls.network.server.internal "path" "/etc/neutron/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
  {{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_messaging.auth.admin.secret.tls.internal "path" "/etc/rabbitmq/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
 diff --git a/neutron/values.yaml b/neutron/values.yaml
-index 83e34c08..27b7e798 100644
+index 83e34c08..2af17e58 100644
 --- a/neutron/values.yaml
 +++ b/neutron/values.yaml
-@@ -2168,6 +2168,7 @@ conf:
+@@ -803,6 +803,10 @@ pod:
+         volumeMounts:
+           - name: db-sync-conf
+             mountPath: /etc/neutron/plugins/ml2/ml2_conf.ini
+             subPath: ml2_conf.ini
+             readOnly: true
++          - name: db-sync-conf
++            mountPath: /etc/neutron/neutron_fwaas.conf
++            subPath: neutron_fwaas.conf
++            readOnly: true
+         volumes:
+   replicas:
+     server: 1
+@@ -2168,6 +2172,7 @@ conf:
        #dhcp-option=3,10.10.10.1
        #dhcp-option-force=26,1450
  

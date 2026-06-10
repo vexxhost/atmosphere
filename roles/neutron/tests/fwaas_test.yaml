@@ -1,7 +1,7 @@
 suite: fwaas
 
 tests:
-  - it: should load neutron_fwaas.conf in neutron-server and neutron-rpc-server scripts
+  - it: should load neutron_fwaas.conf in neutron-server, neutron-rpc-server, and db-sync scripts
     templates:
       - templates/configmap-bin.yaml
     set:
@@ -23,6 +23,12 @@ tests:
       - matchRegex:
           path: data["neutron-rpc-server.sh"]
           pattern: --config-file /etc/neutron/neutron_fwaas\\.conf
+      - matchRegex:
+          path: data["db-sync.sh"]
+          pattern: --config-file /etc/neutron/neutron_fwaas\\.conf
+      - matchRegex:
+          path: data["db-sync.sh"]
+          pattern: --subproject neutron-fwaas
 
   - it: should mount neutron_fwaas.conf in neutron-rpc-server when firewall_v2 is enabled
     templates:
@@ -46,6 +52,32 @@ tests:
           path: spec.template.spec.containers[0].volumeMounts
           content:
             name: neutron-etc
+            mountPath: /etc/neutron/neutron_fwaas.conf
+            subPath: neutron_fwaas.conf
+            readOnly: true
+
+  - it: should mount neutron_fwaas.conf in neutron-db-sync
+    templates:
+      - templates/job-db-sync.yaml
+    set:
+      manifests:
+        job_db_sync: true
+      network:
+        backend:
+          - ovn
+      conf:
+        neutron:
+          DEFAULT:
+            service_plugins: qos,ovn-router,segments,trunk,log,ovn-vpnaas,firewall_v2,taas,tapmirror
+    asserts:
+      - hasDocuments:
+          count: 4
+      - template: templates/job-db-sync.yaml
+        documentIndex: 3
+        contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: db-sync-conf
             mountPath: /etc/neutron/neutron_fwaas.conf
             subPath: neutron_fwaas.conf
             readOnly: true

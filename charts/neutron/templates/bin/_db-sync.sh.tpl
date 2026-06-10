@@ -23,7 +23,19 @@ neutron-db-manage \
 {{- else }}
   --config-file /etc/neutron/plugins/ml2/ml2_conf.ini \
 {{- end }}
+{{- if contains "firewall_v2" .Values.conf.neutron.DEFAULT.service_plugins }}
+  --config-file /etc/neutron/neutron_fwaas.conf \
+{{- end }}
   upgrade head
+
+{{- if contains "firewall_v2" .Values.conf.neutron.DEFAULT.service_plugins }}
+neutron-db-manage \
+  --config-file /etc/neutron/neutron.conf \
+  --config-file /etc/neutron/plugins/ml2/ml2_conf.ini \
+  --config-file /etc/neutron/neutron_fwaas.conf \
+  --subproject neutron-fwaas \
+  upgrade head
+{{- end }}
 
 {{- if .Values.conf.plugins.taas.taas.enabled }}
 neutron-db-manage \
