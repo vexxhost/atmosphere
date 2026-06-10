@@ -1,0 +1,60 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Rico Lin <rico@vexxhost.com>
+Date: Wed, 10 Jun 2026 17:55:00 +0800
+Subject: [PATCH] Load VPNaaS config in Neutron RPC server
+
+The Neutron RPC server also initializes service plugins.  When VPNaaS
+service provider options are stored in neutron_vpnaas.conf, the RPC
+server must load that file or it exits with no provider configured for
+the VPN service.
+
+Signed-off-by: Rico Lin <rico@vexxhost.com>
+Change-Id: I1e4001225b6d688e7dbbe4f13f63582c24302c50
+---
+ neutron/templates/bin/_neutron-rpc-server.sh.tpl |  6 ++++++
+ neutron/templates/deployment-rpc_server.yaml     | 12 ++++++++++++
+ 2 files changed, 18 insertions(+)
+
+diff --git a/neutron/templates/bin/_neutron-rpc-server.sh.tpl b/neutron/templates/bin/_neutron-rpc-server.sh.tpl
+index b20d04ee7..6c64c138f 100644
+--- a/neutron/templates/bin/_neutron-rpc-server.sh.tpl
++++ b/neutron/templates/bin/_neutron-rpc-server.sh.tpl
+@@ -23,6 +23,12 @@ function start () {
+ {{- if ( has "ovn" .Values.network.backend ) }}
+         --config-file /tmp/pod-shared/ovn.ini \
+ {{- end }}
++{{- if contains "vpnaas" .Values.conf.neutron.DEFAULT.service_plugins }}
++        --config-file /etc/neutron/neutron_vpnaas.conf \
++{{- end }}
++{{- if contains "ovn-vpnaas" .Values.conf.neutron.DEFAULT.service_plugins }}
++        --config-file /etc/neutron/neutron_ovn_vpn_agent.ini \
++{{- end }}
+ {{- if .Values.conf.plugins.taas.taas.enabled }}
+         --config-file /etc/neutron/taas_plugin.ini \
+ {{- end }}
+diff --git a/neutron/templates/deployment-rpc_server.yaml b/neutron/templates/deployment-rpc_server.yaml
+index 363b899bc..7d997f8ab 100644
+--- a/neutron/templates/deployment-rpc_server.yaml
++++ b/neutron/templates/deployment-rpc_server.yaml
+@@ -187,6 +187,18 @@ spec:
+               subPath: l2gw_plugin.ini
+               readOnly: true
+             {{ end }}
++            {{- if contains "vpnaas" .Values.conf.neutron.DEFAULT.service_plugins }}
++            - name: neutron-etc
++              mountPath: /etc/neutron/neutron_vpnaas.conf
++              subPath: neutron_vpnaas.conf
++              readOnly: true
++            {{- end }}
++            {{- if contains "ovn-vpnaas" .Values.conf.neutron.DEFAULT.service_plugins }}
++            - name: neutron-etc
++              mountPath: /etc/neutron/neutron_ovn_vpn_agent.ini
++              subPath: neutron_ovn_vpn_agent.ini
++              readOnly: true
++            {{- end }}
+             - name: neutron-etc
+               mountPath: /etc/neutron/api-paste.ini
+               subPath: api-paste.ini
+-- 
+2.54.0
+
