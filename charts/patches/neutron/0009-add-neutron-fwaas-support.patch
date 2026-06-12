@@ -1,29 +1,8 @@
-From 8ba350b72c1532265cd9ef882ac939a69c619594 Mon Sep 17 00:00:00 2001
-From: Yaguang Tang <yaguang.tang@gmail.com>
-Date: Fri, 12 Jun 2026 14:18:55 +0800
-Subject: [PATCH] Add neutron-fwaas support
-
-Add support for Neutron Firewall as a Service (FWaaS) by adding the
-neutron_fwaas.conf config file to the configmap, mounting it in the
-server, RPC server, and DB sync job, and loading it when firewall_v2 is
-enabled in the service plugins list. Also run the neutron-fwaas
-subproject migrations so the FWaaS tables exist before the API uses
-them.
----
- neutron/templates/bin/_db-sync.sh.tpl            | 11 +++++++++++
- neutron/templates/bin/_neutron-rpc-server.sh.tpl |  3 +++
- neutron/templates/bin/_neutron-server.sh.tpl     |  3 +++
- neutron/templates/configmap-etc.yaml             |  1 +
- neutron/templates/deployment-rpc_server.yaml     |  6 ++++++
- neutron/templates/deployment-server.yaml         |  6 ++++++
- neutron/values.yaml                              |  5 +++++
- 7 files changed, 35 insertions(+)
-
 diff --git a/neutron/templates/bin/_db-sync.sh.tpl b/neutron/templates/bin/_db-sync.sh.tpl
-index 7fb03bf..89d1859 100644
+index 58edecf..89d1859 100644
 --- a/neutron/templates/bin/_db-sync.sh.tpl
 +++ b/neutron/templates/bin/_db-sync.sh.tpl
-@@ -22,9 +22,20 @@ neutron-db-manage \
+@@ -22,9 +22,21 @@ neutron-db-manage \
    --config-file /etc/neutron/plugins/tungstenfabric/tf_plugin.ini \
  {{- else }}
    --config-file /etc/neutron/plugins/ml2/ml2_conf.ini \
@@ -41,9 +20,10 @@ index 7fb03bf..89d1859 100644
 +  --subproject neutron-fwaas \
 +  upgrade head
 +{{- end }}
- 
++
  {{- if .Values.conf.plugins.taas.taas.enabled }}
  neutron-db-manage \
+   --config-file /etc/neutron/neutron.conf \
 diff --git a/neutron/templates/bin/_neutron-rpc-server.sh.tpl b/neutron/templates/bin/_neutron-rpc-server.sh.tpl
 index 6c64c13..8a7fce5 100644
 --- a/neutron/templates/bin/_neutron-rpc-server.sh.tpl
@@ -141,5 +121,3 @@ index 0f3c1ea..0f2fcd1 100644
    neutron_vpnaas: null
    ovn_vpn_agent:
      DEFAULT:
--- 
-2.50.1 (Apple Git-155)
