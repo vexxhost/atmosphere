@@ -83,7 +83,6 @@
                 rust-analyzer
                 rustc
                 uv
-                vale
               ]
               ++ (builtins.attrValues config.treefmt.build.programs);
           };
