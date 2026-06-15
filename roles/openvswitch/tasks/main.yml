@@ -33,6 +33,9 @@
       ansible.builtin.command: crictl pull {{ atmosphere_images['openvswitch_vswitchd'] }}
       register: pull_result
       changed_when: false
+      retries: 5
+      delay: 10
+      until: pull_result.rc == 0
 
     - name: Verify openvswitch image pull
       ansible.builtin.assert:
