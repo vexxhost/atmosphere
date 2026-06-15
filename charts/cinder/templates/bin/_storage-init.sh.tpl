@@ -28,11 +28,11 @@ set -ex
 if [ "x$STORAGE_BACKEND" == "xcinder.volume.drivers.rbd.RBDDriver" ]; then
   ceph -s
 
-  # If RBD_DATA_POOL is set, pools are managed externally (e.g., by Rook)
-  # Skip pool creation and only set up user with proper OSD caps
+  # If RBD_DATA_POOL is set, pools are managed externally (for example by Rook).
+  # Skip pool creation and only set up the user with the required OSD caps.
   if [ -n "${RBD_DATA_POOL:-}" ]; then
-    echo "RBD_DATA_POOL is set, assuming pools are managed externally (Rook)"
-    echo "Skipping pool creation, will only create user/keyring"
+    echo "RBD_DATA_POOL is set, assuming pools are managed externally"
+    echo "Skipping pool creation and only creating the user keyring"
     OSD_CAPS="profile rbd pool=${RBD_POOL_NAME}, profile rbd pool=${RBD_DATA_POOL}"
   else
     function ensure_pool () {
