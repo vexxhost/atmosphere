@@ -17,6 +17,10 @@
   ansible.builtin.package:
     name: openssl-perl
     state: present
+  register: _install_openssl_perl
+  retries: 5
+  delay: 10
+  until: _install_openssl_perl is not failed
   listen: Update CA certificates on host
 
 - name: Update CA certificates

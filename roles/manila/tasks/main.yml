@@ -40,15 +40,39 @@
     openstack_helm_ingress_annotations: "{{ manila_ingress_annotations }}"
     openstack_helm_ingress_class_name: "{{ manila_ingress_class_name }}"
 
-- name: Update service tenant quotas
-  openstack.cloud.quota:
-    cloud: atmosphere
-    # NOTE(okozachenko): It uses project name instead of id.
-    name: service
-    instances: -1
-    cores: -1
-    ram: -1
-    volumes: -1
-    gigabytes: -1
-    security_group: -1
-    security_group_rule: -1
+- name: Update service tenant compute quotas
+  ansible.builtin.command:
+    cmd: >-
+      openstack quota set
+      --instances -1
+      --cores -1
+      --ram -1
+      service
+  environment:
+    OS_CLOUD: atmosphere
+  register: _manila_compute_quota_set
+  changed_when: _manila_compute_quota_set.rc == 0
+
+- name: Update service tenant volume quotas
+  ansible.builtin.command:
+    cmd: >-
+      openstack quota set
+      --volumes -1
+      --gigabytes -1
+      service
+  environment:
+    OS_CLOUD: atmosphere
+  register: _manila_volume_quota_set
+  changed_when: _manila_volume_quota_set.rc == 0
+
+- name: Update service tenant network quotas
+  ansible.builtin.command:
+    cmd: >-
+      openstack quota set
+      --secgroups -1
+      --secgroup-rules -1
+      service
+  environment:
+    OS_CLOUD: atmosphere
+  register: _manila_network_quota_set
+  changed_when: _manila_network_quota_set.rc == 0
