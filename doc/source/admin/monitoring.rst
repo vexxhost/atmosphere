@@ -710,6 +710,125 @@ talking with ``etcd`` with the following commands:
       --from-file=/etc/kubernetes/pki/etcd/healthcheck-client.crt \
       --from-file=/etc/kubernetes/pki/etcd/healthcheck-client.key
 
+``NodeBondingDegraded``
+=======================
+
+This alert fires when ``node-exporter`` reports that a bonded interface has
+fewer active slaves than configured slaves for more than 1 minute:
+
+.. code-block:: text
+
+  node_bonding_slaves - node_bonding_active != 0
+
+This is an early host-network signal. If the affected bond carries management,
+storage, or tenant underlay traffic, it can precede downstream alerts such as
+``KubeNodeNotReady``, ``KubeNodeUnreachable``, ``CephOSDDownHigh``, or Ceph
+heartbeat failures.
+
+**Likely Root Causes**
+
+- Physical ``NIC`` carrier loss, switch port failure, cable or optic issue.
+- ``NIC`` driver or firmware failure that causes a slave to stop transmitting.
+- ``PCIe`` device hang or host hardware fault affecting the ``NIC``.
+- Intentional maintenance on one side of a redundant bond.
+
+**Diagnostic and Remediation Steps**
+
+1. Identify the affected node and bond:
+
+   .. code-block:: console
+
+     kubectl -n monitoring exec svc/kube-prometheus-stack-prometheus -- \
+       promtool query instant http://localhost:9090 \
+       'node_bonding_slaves{job="node-exporter"} - node_bonding_active{job="node-exporter"}'
+
+2. On the node, inspect bond state and slave status:
+
+   .. code-block:: console
+
+     cat /proc/net/bonding/<bond-name>
+     ip -d link show <bond-name>
+     ip -d link show <slave-interface>
+
+3. Check the kernel log for driver, queue timeout, carrier, or bond events:
+
+   .. code-block:: console
+
+     journalctl -k --since "30 minutes ago" | \
+       egrep -i 'NETDEV WATCHDOG|tx_timeout|link status|lost carrier|bond|i40e|ice|ixgbe|mlx5'
+
+4. Check physical ``NIC`` counters and driver details:
+
+   .. code-block:: console
+
+     ethtool -i <slave-interface>
+     ethtool -S <slave-interface> | \
+       egrep -i 'timeout|error|drop|reset|link|tx|rx'
+
+5. If this is not planned maintenance, move traffic away from the host before
+   invasive actions. For compute/storage nodes, cordon or drain workloads as
+   appropriate, confirm Ceph placement state, then reseat/replace cabling,
+   switch ports, optics, or update ``NIC`` firmware/driver according to the
+   failure evidence.
+
+``NodePhysicalNetworkTransmitErrors``
+=====================================
+
+This alert fires when a physical interface, identified through
+``node_ethtool_info``, records any transmit errors over a 5-minute window for
+more than 5 minutes. The alert excludes virtual and aggregate drivers such as
+``bonding``, ``geneve``, ``veth``, ``bridge``, ``vxlan``, and ``dummy`` so that
+it focuses on the underlay ``NIC`` device.
+
+Transmit errors on production underlay interfaces should be zero. Even a small
+burst can be an early warning for the same failure class that later appears as
+bond degradation, missed Ceph heartbeats, or Kubernetes node reachability loss.
+
+**Likely Root Causes**
+
+- ``NIC`` driver or firmware queue timeout.
+- Link partner, switch port, optic, or cable fault.
+- ``PCIe`` or hardware fault affecting the adapter.
+- Bad offload interaction or device reset under load.
+
+**Diagnostic and Remediation Steps**
+
+1. Identify the affected node, interface, driver, and error count:
+
+   .. code-block:: console
+
+     kubectl -n monitoring exec svc/kube-prometheus-stack-prometheus -- \
+       promtool query instant http://localhost:9090 \
+       '(increase(node_network_transmit_errs_total{job="node-exporter"}[5m])
+         * on(instance, device) group_left(driver)
+         node_ethtool_info{job="node-exporter"})'
+
+2. On the node, inspect the interface driver, firmware, and statistics:
+
+   .. code-block:: console
+
+     ethtool -i <interface>
+     ethtool -S <interface> | \
+       egrep -i 'timeout|error|drop|reset|link|tx|rx'
+
+3. Correlate with kernel and bond logs:
+
+   .. code-block:: console
+
+     journalctl -k --since "30 minutes ago" | \
+       egrep -i 'NETDEV WATCHDOG|tx_timeout|disable timeout|lost carrier|bond|i40e|ice|ixgbe|mlx5'
+
+4. If the interface is a bond slave, inspect the bond:
+
+   .. code-block:: console
+
+     grep -R . /proc/net/bonding/
+
+5. If errors continue or the host also shows bond degradation, treat it as an
+   underlay-host fault. Move workloads away where possible, preserve logs, then
+   remediate the physical path, switch port, ``NIC`` firmware/driver, or host
+   hardware based on the evidence.
+
 ``GeneveTransmitErrors``
 ========================
 
