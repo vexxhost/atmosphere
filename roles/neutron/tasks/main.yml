@@ -92,6 +92,23 @@
           type: Available
           status: true
 
+    - name: Wait until network availability zones are ready
+      ansible.builtin.command:
+        cmd: >-
+          {{ ansible_playbook_python }} -c
+          'import openstack;
+          conn = openstack.connect(cloud="atmosphere");
+          print("\n".join(zone.name for zone in conn.network.availability_zones()))'
+      changed_when: false
+      register: _neutron_network_availability_zones
+      retries: 60
+      delay: 5
+      until: >-
+        neutron_network_availability_zones |
+        difference(_neutron_network_availability_zones.stdout_lines) |
+        length == 0
+      when: neutron_network_availability_zones | length > 0
+
     - name: Create networks
       openstack.cloud.network:
         cloud: atmosphere

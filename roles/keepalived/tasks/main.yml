@@ -57,9 +57,9 @@
             #!/bin/sh -x
 
             while true; do
-                ip -4 addr list dev {{ keepalived_interface }} | grep {{ keepalived_interface }}
+                ip link show dev {{ keepalived_interface }} >/dev/null 2>&1
 
-                # We detected an IP address
+                # We detected the interface that keepalived will manage.
                 if [ $? -eq 0 ]; then
                     break
                 fi
