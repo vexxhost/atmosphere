@@ -1,6 +1,6 @@
 --- a/cinder/templates/cephblockpool.yaml	2026-02-03 13:56:36.692000000 +0000
 +++ b/cinder/templates/cephblockpool.yaml	2026-02-18 14:11:54.765316685 +0000
-@@ -0,0 +1,50 @@
+@@ -0,0 +1,52 @@
 +{{/*
 +Licensed under the Apache License, Version 2.0 (the "License");
 +you may not use this file except in compliance with the License.
@@ -49,12 +49,14 @@
 +  failureDomain: {{ $pool_config.erasure_coded.failure_domain }}
 +  replicated:
 +    size: {{ $pool_config.metadata.replication }}
++  parameters:
++    crush_rule: {{ $pool_config.metadata.crush_rule }}
 +{{- end }}
 +{{- end }}
 
 --- a/cinder/values.yaml
 +++ b/cinder/values.yaml
-@@ -788,14 +788,33 @@
+@@ -788,14 +788,34 @@
          chunk_size: 8
          app_name: cinder-volume
  
@@ -79,6 +81,7 @@
 +    #       data_pool_name: my-custom-data-pool  # optional: override
 +    #     metadata:
 +    #       replication: 3
++    #       crush_rule: replicated_rule
 +    #
 +    # Then configure the backend to reference the derived names:
      #
