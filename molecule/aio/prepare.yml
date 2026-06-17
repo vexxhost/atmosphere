@@ -31,47 +31,8 @@
 - name: Generate workspace
   ansible.builtin.import_playbook: vexxhost.atmosphere.generate_workspace
   vars:
-    workspace_path: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}"
+    workspace_path: "{{ lookup('env', 'MOLECULE_SCENARIO_DIRECTORY') }}/inventory"
     domain_name: "{{ ansible_default_ipv4['address'].replace('.', '-') }}.nip.io"
-
-- name: Setup networking
-  hosts: all
-  become: true
-  vars:
-    management_bridge: "br-mgmt"
-  tasks:
-    - name: Create bridge for management network
-      ignore_errors: true # noqa: ignore-errors
-      changed_when: false
-      ansible.builtin.command:
-        cmd: "ip link add name {{ management_bridge }} type bridge"
-
-    - name: Create fake interface for management bridge
-      ignore_errors: true # noqa: ignore-errors
-      changed_when: false
-      ansible.builtin.command:
-        cmd: "ip link add dummy0 type dummy"
-
-    - name: Assign dummy interface to management bridge
-      ignore_errors: true # noqa: ignore-errors
-      changed_when: false
-      ansible.builtin.command:
-        cmd: "ip link set dummy0 master {{ management_bridge }}"
-
-    - name: Assign IP address for management bridge
-      ignore_errors: true # noqa: ignore-errors
-      changed_when: false
-      ansible.builtin.command:
-        cmd: "ip addr add 10.96.240.200/24 dev {{ management_bridge }}"
-
-    - name: Bring up interfaces
-      ignore_errors: true # noqa: ignore-errors
-      changed_when: false
-      ansible.builtin.command:
-        cmd: "ip link set {{ item }} up"
-      loop:
-        - br-mgmt
-        - dummy0
 
 - name: Create fake devices for Ceph
   ansible.builtin.import_playbook: vexxhost.ceph.create_fake_devices
