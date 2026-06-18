@@ -54,7 +54,7 @@ echo "Latest version: $LATEST_RELEASE"
 echo "Setting latest flag to: $LATEST_FLAG"
 
 # Generate release notes
-RELEASE_NOTES=$(reno report 2>/dev/null | uv run --isolated --with rst-to-myst rst2myst stream --no-sphinx - | egrep -v '^(%|\(release-notes|# Release Notes)' | awk '/^## /{if(count==1) exit; if(count==0) {count++; next}} count==1')
+RELEASE_NOTES=$(reno report --no-show-source 2>/dev/null | pandoc -f rst -t gfm --wrap=none | grep -Ev '^(%|\(release-notes|# Release Notes)' | awk '/^## /{if(count==1) exit; if(count==0) {count++; next}} count==1')
 
 # Show release notes to user
 echo "====================== RELEASE NOTES ======================"
