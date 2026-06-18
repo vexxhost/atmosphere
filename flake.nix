@@ -75,6 +75,7 @@
                 go
                 jsonnet-bundler
                 kubernetes-helm
+                pandoc
                 patchutils
                 pre-commit
                 python311Packages.tox
