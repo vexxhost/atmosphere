@@ -106,10 +106,32 @@ control plane nodes:
     $ sudo kubeadm certs renew all
 
 Once the certificates have been renewed, you will need to restart the
-Kubernetes control plane components to pick up the new certificates.  You need
-to do this on each one of your control plane nodes by running the following
+Kubernetes control plane components to pick up the new certificates. This
+includes ``kube-vip``, which mounts ``/etc/kubernetes/admin.conf`` and will
+continue using the old client certificate until it restarts. You need to
+do this on each one of your control plane nodes by running the following
 command one at a time on each node:
 
 .. code-block:: console
 
-    $ ps auxf | egrep '(kube-(apiserver|controller-manager|scheduler)|etcd)' | awk '{ print $2 }' | xargs sudo kill
+    $ ps auxf | egrep '(kube-(apiserver|controller-manager|scheduler|vip)|etcd)' | awk '{ print $2 }' | xargs sudo kill
+
+The ``kube-prometheus-stack`` chart also stores a copy of the etcd healthcheck
+client certificate in a Kubernetes Secret. Refresh that Secret after renewing
+the certificates so Prometheus can continue scraping etcd:
+
+.. code-block:: console
+
+    $ kubectl -n monitoring create secret generic kube-prometheus-stack-etcd-client-cert \
+        --from-file=ca.crt=/etc/kubernetes/pki/etcd/ca.crt \
+        --from-file=healthcheck-client.crt=/etc/kubernetes/pki/etcd/healthcheck-client.crt \
+        --from-file=healthcheck-client.key=/etc/kubernetes/pki/etcd/healthcheck-client.key \
+        --dry-run=client -o yaml | kubectl apply -f -
+
+Finally, verify that all renewed certificates are in use:
+
+.. code-block:: console
+
+    $ sudo kubeadm certs check-expiration
+    $ kubectl get --raw='/readyz?verbose'
+    $ kubectl -n kube-system logs kube-apiserver-$(hostname) --since=5m | grep 'certificate has expired'

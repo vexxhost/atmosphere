@@ -44,6 +44,9 @@
       ansible.builtin.command: crictl pull {{ atmosphere_images['ovn_controller'] }}
       register: pull_result
       changed_when: false
+      retries: 5
+      delay: 10
+      until: pull_result.rc == 0
 
     - name: Verify ovn-controller image pull
       ansible.builtin.assert:
