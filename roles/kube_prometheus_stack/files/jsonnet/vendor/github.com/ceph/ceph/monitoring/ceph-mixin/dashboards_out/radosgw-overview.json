@@ -35,7 +35,20 @@
    "graphTooltip": 0,
    "hideControls": false,
    "id": null,
-   "links": [ ],
+   "links": [
+      {
+         "asDropdown": true,
+         "icon": "external link",
+         "includeVars": true,
+         "keepTime": true,
+         "tags": [ ],
+         "targetBlank": false,
+         "title": "Browse Dashboards",
+         "tooltip": "",
+         "type": "dashboards",
+         "url": ""
+      }
+   ],
    "panels": [
       {
          "collapse": false,
@@ -63,6 +76,15 @@
          "dashes": false,
          "datasource": "$datasource",
          "description": "",
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "fillOpacity": 8,
+                  "showPoints": "never"
+               },
+               "unit": "s"
+            }
+         },
          "fill": 1,
          "fillGradient": 0,
          "gridPos": {
@@ -87,7 +109,7 @@
          "lines": true,
          "linewidth": 1,
          "links": [ ],
-         "nullPointMode": "null",
+         "nullPointMode": "null as zero",
          "percentage": false,
          "pointradius": 5,
          "points": false,
@@ -99,14 +121,14 @@
          "steppedLine": false,
          "targets": [
             {
-               "expr": "label_replace(\n  rate(ceph_rgw_get_initial_lat_sum{job=~\"$job\"}[$__rate_interval]) /\n    rate(ceph_rgw_get_initial_lat_count{job=~\"$job\"}[$__rate_interval]) *\n    on (instance_id) group_left (ceph_daemon) ceph_rgw_metadata{job=~\"$job\"},\n  \"rgw_host\", \"$1\", \"ceph_daemon\", \"rgw.(.*)\"\n)\n",
+               "expr": "label_replace(\n  rate(ceph_rgw_op_get_obj_lat_sum{cluster=~\"$cluster\", }[$__rate_interval]) /\n    rate(ceph_rgw_op_get_obj_lat_count{cluster=~\"$cluster\", }[$__rate_interval]) *\n    on (instance_id) group_left (ceph_daemon) ceph_rgw_metadata{ceph_daemon=~\"$rgw_servers\", cluster=~\"$cluster\", },\n  \"rgw_host\", \"$1\", \"ceph_daemon\", \"rgw.(.*)\"\n)\n",
                "format": "time_series",
                "intervalFactor": 1,
                "legendFormat": "GET {{rgw_host}}",
                "refId": "A"
             },
             {
-               "expr": "label_replace(\n  rate(ceph_rgw_put_initial_lat_sum{job=~\"$job\"}[$__rate_interval]) /\n    rate(ceph_rgw_put_initial_lat_count{job=~\"$job\"}[$__rate_interval]) *\n    on (instance_id) group_left (ceph_daemon) ceph_rgw_metadata{job=~\"$job\"},\n  \"rgw_host\", \"$1\", \"ceph_daemon\", \"rgw.(.*)\"\n)\n",
+               "expr": "label_replace(\n  rate(ceph_rgw_op_put_obj_lat_sum{cluster=~\"$cluster\", }[$__rate_interval]) /\n    rate(ceph_rgw_op_put_obj_lat_count{cluster=~\"$cluster\", }[$__rate_interval]) *\n    on (instance_id) group_left (ceph_daemon) ceph_rgw_metadata{ceph_daemon=~\"$rgw_servers\", cluster=~\"$cluster\", },\n  \"rgw_host\", \"$1\", \"ceph_daemon\", \"rgw.(.*)\"\n)\n",
                "format": "time_series",
                "intervalFactor": 1,
                "legendFormat": "PUT {{rgw_host}}",
@@ -122,7 +144,7 @@
             "sort": 0,
             "value_type": "individual"
          },
-         "type": "graph",
+         "type": "timeseries",
          "xaxis": {
             "buckets": null,
             "mode": "time",
@@ -156,6 +178,15 @@
          "dashes": false,
          "datasource": "$datasource",
          "description": "",
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "fillOpacity": 8,
+                  "showPoints": "never"
+               },
+               "unit": "none"
+            }
+         },
          "fill": 1,
          "fillGradient": 0,
          "gridPos": {
@@ -180,7 +211,7 @@
          "lines": true,
          "linewidth": 1,
          "links": [ ],
-         "nullPointMode": "null",
+         "nullPointMode": "null as zero",
          "percentage": false,
          "pointradius": 5,
          "points": false,
@@ -192,7 +223,7 @@
          "steppedLine": false,
          "targets": [
             {
-               "expr": "sum by (rgw_host) (\n  label_replace(\n    rate(ceph_rgw_req{job=~\"$job\"}[$__rate_interval]) *\n      on (instance_id) group_left (ceph_daemon) ceph_rgw_metadata{job=~\"$job\"},\n    \"rgw_host\", \"$1\", \"ceph_daemon\", \"rgw.(.*)\"\n  )\n)\n",
+               "expr": "sum by (rgw_host) (\n  label_replace(\n    rate(ceph_rgw_req{cluster=~\"$cluster\", }[$__rate_interval]) *\n      on (instance_id) group_left (ceph_daemon) ceph_rgw_metadata{ceph_daemon=~\"$rgw_servers\", cluster=~\"$cluster\", },\n    \"rgw_host\", \"$1\", \"ceph_daemon\", \"rgw.(.*)\"\n  )\n)\n",
                "format": "time_series",
                "intervalFactor": 1,
                "legendFormat": "{{rgw_host}}",
@@ -208,7 +239,7 @@
             "sort": 0,
             "value_type": "individual"
          },
-         "type": "graph",
+         "type": "timeseries",
          "xaxis": {
             "buckets": null,
             "mode": "time",
@@ -242,6 +273,15 @@
          "dashes": false,
          "datasource": "$datasource",
          "description": "Latencies are shown stacked, without a yaxis to provide a visual indication of GET latency imbalance across RGW hosts",
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "fillOpacity": 8,
+                  "showPoints": "never"
+               },
+               "unit": "s"
+            }
+         },
          "fill": 1,
          "fillGradient": 0,
          "gridPos": {
@@ -266,7 +306,7 @@
          "lines": true,
          "linewidth": 1,
          "links": [ ],
-         "nullPointMode": "null",
+         "nullPointMode": "null as zero",
          "percentage": false,
          "pointradius": 5,
          "points": false,
@@ -278,7 +318,7 @@
          "steppedLine": false,
          "targets": [
             {
-               "expr": "label_replace(\n  rate(ceph_rgw_get_initial_lat_sum{job=~\"$job\"}[$__rate_interval]) /\n    rate(ceph_rgw_get_initial_lat_count{job=~\"$job\"}[$__rate_interval]) *\n    on (instance_id) group_left (ceph_daemon) ceph_rgw_metadata{job=~\"$job\"},\n  \"rgw_host\", \"$1\", \"ceph_daemon\", \"rgw.(.*)\"\n)\n",
+               "expr": "label_replace(\n  rate(ceph_rgw_op_get_obj_lat_sum{cluster=~\"$cluster\", }[$__rate_interval]) /\n    rate(ceph_rgw_op_get_obj_lat_count{cluster=~\"$cluster\", }[$__rate_interval]) *\n    on (instance_id) group_left (ceph_daemon) ceph_rgw_metadata{ceph_daemon=~\"$rgw_servers\", cluster=~\"$cluster\", },\n  \"rgw_host\", \"$1\", \"ceph_daemon\", \"rgw.(.*)\"\n)\n",
                "format": "time_series",
                "intervalFactor": 1,
                "legendFormat": "{{rgw_host}}",
@@ -294,7 +334,7 @@
             "sort": 0,
             "value_type": "individual"
          },
-         "type": "graph",
+         "type": "timeseries",
          "xaxis": {
             "buckets": null,
             "mode": "time",
@@ -328,6 +368,15 @@
          "dashes": false,
          "datasource": "$datasource",
          "description": "Total bytes transferred in/out of all radosgw instances within the cluster",
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "fillOpacity": 8,
+                  "showPoints": "never"
+               },
+               "unit": "bytes"
+            }
+         },
          "fill": 1,
          "fillGradient": 0,
          "gridPos": {
@@ -352,7 +401,7 @@
          "lines": true,
          "linewidth": 1,
          "links": [ ],
-         "nullPointMode": "null",
+         "nullPointMode": "null as zero",
          "percentage": false,
          "pointradius": 5,
          "points": false,
@@ -364,14 +413,14 @@
          "steppedLine": false,
          "targets": [
             {
-               "expr": "sum(rate(ceph_rgw_get_b{job=~\"$job\"}[$__rate_interval]))",
+               "expr": "sum(rate(ceph_rgw_op_get_obj_bytes{cluster=~\"$cluster\", }[$__rate_interval]))",
                "format": "time_series",
                "intervalFactor": 1,
                "legendFormat": "GETs",
                "refId": "A"
             },
             {
-               "expr": "sum(rate(ceph_rgw_put_b{job=~\"$job\"}[$__rate_interval]))",
+               "expr": "sum(rate(ceph_rgw_op_put_obj_bytes{cluster=~\"$cluster\", }[$__rate_interval]))",
                "format": "time_series",
                "intervalFactor": 1,
                "legendFormat": "PUTs",
@@ -387,7 +436,7 @@
             "sort": 0,
             "value_type": "individual"
          },
-         "type": "graph",
+         "type": "timeseries",
          "xaxis": {
             "buckets": null,
             "mode": "time",
@@ -421,6 +470,15 @@
          "dashes": false,
          "datasource": "$datasource",
          "description": "Total bytes transferred in/out through get/put operations, by radosgw instance",
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "fillOpacity": 8,
+                  "showPoints": "never"
+               },
+               "unit": "bytes"
+            }
+         },
          "fill": 1,
          "fillGradient": 0,
          "gridPos": {
@@ -445,7 +503,7 @@
          "lines": true,
          "linewidth": 1,
          "links": [ ],
-         "nullPointMode": "null",
+         "nullPointMode": "null as zero",
          "percentage": false,
          "pointradius": 5,
          "points": false,
@@ -457,7 +515,7 @@
          "steppedLine": false,
          "targets": [
             {
-               "expr": "label_replace(sum by (instance_id) (\n  rate(ceph_rgw_get_b{job=~\"$job\"}[$__rate_interval]) +\n    rate(ceph_rgw_put_b{job=~\"$job\"}[$__rate_interval])) *\n    on (instance_id) group_left (ceph_daemon) ceph_rgw_metadata{job=~\"$job\"},\n  \"rgw_host\", \"$1\", \"ceph_daemon\", \"rgw.(.*)\"\n)\n",
+               "expr": "label_replace(sum by (instance_id) (\n  rate(ceph_rgw_op_get_obj_bytes{cluster=~\"$cluster\", }[$__rate_interval]) +\n    rate(ceph_rgw_op_put_obj_bytes{cluster=~\"$cluster\", }[$__rate_interval])) *\n    on (instance_id) group_left (ceph_daemon) ceph_rgw_metadata{ceph_daemon=~\"$rgw_servers\", cluster=~\"$cluster\", },\n  \"rgw_host\", \"$1\", \"ceph_daemon\", \"rgw.(.*)\"\n)\n",
                "format": "time_series",
                "intervalFactor": 1,
                "legendFormat": "{{rgw_host}}",
@@ -473,7 +531,7 @@
             "sort": 0,
             "value_type": "individual"
          },
-         "type": "graph",
+         "type": "timeseries",
          "xaxis": {
             "buckets": null,
             "mode": "time",
@@ -507,6 +565,15 @@
          "dashes": false,
          "datasource": "$datasource",
          "description": "Latencies are shown stacked, without a yaxis to provide a visual indication of PUT latency imbalance across RGW hosts",
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "fillOpacity": 8,
+                  "showPoints": "never"
+               },
+               "unit": "s"
+            }
+         },
          "fill": 1,
          "fillGradient": 0,
          "gridPos": {
@@ -531,7 +598,7 @@
          "lines": true,
          "linewidth": 1,
          "links": [ ],
-         "nullPointMode": "null",
+         "nullPointMode": "null as zero",
          "percentage": false,
          "pointradius": 5,
          "points": false,
@@ -543,7 +610,7 @@
          "steppedLine": false,
          "targets": [
             {
-               "expr": "label_replace(\n  rate(ceph_rgw_put_initial_lat_sum{job=~\"$job\"}[$__rate_interval]) /\n    rate(ceph_rgw_put_initial_lat_count{job=~\"$job\"}[$__rate_interval]) *\n    on (instance_id) group_left (ceph_daemon) ceph_rgw_metadata{job=~\"$job\"},\n  \"rgw_host\", \"$1\", \"ceph_daemon\", \"rgw.(.*)\"\n)\n",
+               "expr": "label_replace(\n  rate(ceph_rgw_op_put_obj_lat_sum{cluster=~\"$cluster\", }[$__rate_interval]) /\n    rate(ceph_rgw_op_put_obj_lat_count{cluster=~\"$cluster\", }[$__rate_interval]) *\n    on (instance_id) group_left (ceph_daemon) ceph_rgw_metadata{ceph_daemon=~\"$rgw_servers\", cluster=~\"$cluster\", },\n  \"rgw_host\", \"$1\", \"ceph_daemon\", \"rgw.(.*)\"\n)\n",
                "format": "time_series",
                "intervalFactor": 1,
                "legendFormat": "{{rgw_host}}",
@@ -559,7 +626,7 @@
             "sort": 0,
             "value_type": "individual"
          },
-         "type": "graph",
+         "type": "timeseries",
          "xaxis": {
             "buckets": null,
             "mode": "time",
@@ -612,6 +679,15 @@
          "dashes": false,
          "datasource": "$datasource",
          "description": "",
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "fillOpacity": 8,
+                  "showPoints": "never"
+               },
+               "unit": "short"
+            }
+         },
          "fill": 1,
          "fillGradient": 0,
          "gridPos": {
@@ -636,7 +712,7 @@
          "lines": true,
          "linewidth": 1,
          "links": [ ],
-         "nullPointMode": "null",
+         "nullPointMode": "null as zero",
          "percentage": false,
          "pointradius": 5,
          "points": false,
@@ -696,7 +772,7 @@
             "sort": 0,
             "value_type": "individual"
          },
-         "type": "graph",
+         "type": "timeseries",
          "xaxis": {
             "buckets": null,
             "mode": "time",
@@ -730,6 +806,15 @@
          "dashes": false,
          "datasource": "$datasource",
          "description": "",
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "fillOpacity": 8,
+                  "showPoints": "never"
+               },
+               "unit": "short"
+            }
+         },
          "fill": 1,
          "fillGradient": 0,
          "gridPos": {
@@ -754,7 +839,7 @@
          "lines": true,
          "linewidth": 1,
          "links": [ ],
-         "nullPointMode": "null",
+         "nullPointMode": "null as zero",
          "percentage": false,
          "pointradius": 5,
          "points": false,
@@ -835,7 +920,7 @@
             "sort": 0,
             "value_type": "individual"
          },
-         "type": "graph",
+         "type": "timeseries",
          "xaxis": {
             "buckets": null,
             "mode": "time",
@@ -869,6 +954,15 @@
          "dashes": false,
          "datasource": "$datasource",
          "description": "",
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "fillOpacity": 8,
+                  "showPoints": "never"
+               },
+               "unit": "short"
+            }
+         },
          "fill": 1,
          "fillGradient": 0,
          "gridPos": {
@@ -893,7 +987,7 @@
          "lines": true,
          "linewidth": 1,
          "links": [ ],
-         "nullPointMode": "null",
+         "nullPointMode": "null as zero",
          "percentage": false,
          "pointradius": 5,
          "points": false,
@@ -942,7 +1036,7 @@
             "sort": 0,
             "value_type": "individual"
          },
-         "type": "graph",
+         "type": "timeseries",
          "xaxis": {
             "buckets": null,
             "mode": "time",
@@ -976,6 +1070,15 @@
          "dashes": false,
          "datasource": "$datasource",
          "description": "",
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "fillOpacity": 8,
+                  "showPoints": "never"
+               },
+               "unit": "short"
+            }
+         },
          "fill": 1,
          "fillGradient": 0,
          "gridPos": {
@@ -1000,7 +1103,7 @@
          "lines": true,
          "linewidth": 1,
          "links": [ ],
-         "nullPointMode": "null",
+         "nullPointMode": "null as zero",
          "percentage": false,
          "pointradius": 5,
          "points": false,
@@ -1056,7 +1159,7 @@
             "sort": 0,
             "value_type": "individual"
          },
-         "type": "graph",
+         "type": "timeseries",
          "xaxis": {
             "buckets": null,
             "mode": "time",
@@ -1067,6 +1170,237 @@
          "yaxes": [
             {
                "format": "short",
+               "label": null,
+               "logBase": 1,
+               "max": null,
+               "min": 0,
+               "show": true
+            },
+            {
+               "format": "short",
+               "label": null,
+               "logBase": 1,
+               "max": null,
+               "min": 0,
+               "show": true
+            }
+         ]
+      },
+      {
+         "collapse": false,
+         "collapsed": false,
+         "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 27
+         },
+         "id": 14,
+         "panels": [ ],
+         "repeat": null,
+         "repeatIteration": null,
+         "repeatRowId": null,
+         "showTitle": true,
+         "title": "RGW Overview - Bucket Notification",
+         "titleSize": "h6",
+         "type": "row"
+      },
+      {
+         "aliasColors": { },
+         "bars": false,
+         "dashLength": 10,
+         "dashes": false,
+         "datasource": "$datasource",
+         "description": "Shows the number of pending notifications in each Object topic queue, indicating how many messages are waiting to be delivered",
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "fillOpacity": 8,
+                  "showPoints": "never"
+               },
+               "unit": ""
+            }
+         },
+         "fill": 1,
+         "fillGradient": 0,
+         "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 28
+         },
+         "id": 15,
+         "legend": {
+            "alignAsTable": false,
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "rightSide": false,
+            "show": true,
+            "sideWidth": null,
+            "total": false,
+            "values": false
+         },
+         "lines": true,
+         "linewidth": 1,
+         "links": [ ],
+         "nullPointMode": "null as zero",
+         "options": {
+            "legend": {
+               "calcs": [
+                  "lastNotNull"
+               ],
+               "displayMode": "list",
+               "placement": "right",
+               "showLegend": true,
+               "sortDesc": true
+            }
+         },
+         "percentage": false,
+         "pointradius": 5,
+         "points": false,
+         "renderer": "flot",
+         "repeat": null,
+         "seriesOverrides": [ ],
+         "spaceLength": 10,
+         "stack": false,
+         "steppedLine": false,
+         "targets": [
+            {
+               "expr": "(\n ceph_rgw_topic_persistent_topic_len\n)\n",
+               "format": "time_series",
+               "intervalFactor": 1,
+               "legendFormat": "{{topic}}",
+               "refId": "A"
+            }
+         ],
+         "thresholds": [ ],
+         "timeFrom": null,
+         "timeShift": null,
+         "title": "Pending Notifications by Topic",
+         "tooltip": {
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+         },
+         "type": "timeseries",
+         "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": [ ]
+         },
+         "yaxes": [
+            {
+               "format": "",
+               "label": null,
+               "logBase": 1,
+               "max": null,
+               "min": 0,
+               "show": true
+            },
+            {
+               "format": "short",
+               "label": null,
+               "logBase": 1,
+               "max": null,
+               "min": 0,
+               "show": true
+            }
+         ]
+      },
+      {
+         "aliasColors": { },
+         "bars": false,
+         "dashLength": 10,
+         "dashes": false,
+         "datasource": "$datasource",
+         "description": "Shows the total size of pending notifications stored per Object topic, reflecting how much data is waiting to be delivered.",
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "fillOpacity": 8,
+                  "showPoints": "never"
+               },
+               "unit": "bytes"
+            }
+         },
+         "fill": 1,
+         "fillGradient": 0,
+         "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 28
+         },
+         "id": 16,
+         "legend": {
+            "alignAsTable": false,
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "rightSide": false,
+            "show": true,
+            "sideWidth": null,
+            "total": false,
+            "values": false
+         },
+         "lines": true,
+         "linewidth": 1,
+         "links": [ ],
+         "nullPointMode": "null as zero",
+         "options": {
+            "legend": {
+               "calcs": [
+                  "lastNotNull"
+               ],
+               "displayMode": "list",
+               "placement": "right",
+               "showLegend": true,
+               "sortDesc": true
+            }
+         },
+         "percentage": false,
+         "pointradius": 5,
+         "points": false,
+         "renderer": "flot",
+         "repeat": null,
+         "seriesOverrides": [ ],
+         "spaceLength": 10,
+         "stack": false,
+         "steppedLine": false,
+         "targets": [
+            {
+               "expr": "(\n ceph_rgw_topic_persistent_topic_size\n)\n",
+               "format": "time_series",
+               "intervalFactor": 1,
+               "legendFormat": "{{topic}}",
+               "refId": "A"
+            }
+         ],
+         "thresholds": [ ],
+         "timeFrom": null,
+         "timeShift": null,
+         "title": "Pending Notifications Size by Topic",
+         "tooltip": {
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+         },
+         "type": "timeseries",
+         "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": [ ]
+         },
+         "yaxes": [
+            {
+               "format": "bytes",
                "label": null,
                "logBase": 1,
                "max": null,
@@ -1109,36 +1443,16 @@
             "type": "datasource"
          },
          {
-            "allValue": ".+",
-            "current": { },
-            "datasource": "$datasource",
-            "hide": 2,
-            "includeAll": true,
-            "label": "cluster",
-            "multi": true,
-            "name": "cluster",
-            "options": [ ],
-            "query": "label_values(ceph_osd_metadata, cluster)",
-            "refresh": 1,
-            "regex": "(.*)",
-            "sort": 1,
-            "tagValuesQuery": "",
-            "tags": [ ],
-            "tagsQuery": "",
-            "type": "query",
-            "useTags": false
-         },
-         {
-            "allValue": ".+",
+            "allValue": null,
             "current": { },
             "datasource": "$datasource",
             "hide": 0,
-            "includeAll": true,
-            "label": "job",
-            "multi": true,
-            "name": "job",
+            "includeAll": false,
+            "label": "cluster",
+            "multi": false,
+            "name": "cluster",
             "options": [ ],
-            "query": "label_values(ceph_osd_metadata{}, job)",
+            "query": "label_values(ceph_health_status, cluster)",
             "refresh": 1,
             "regex": "(.*)",
             "sort": 1,
@@ -1158,9 +1472,9 @@
             "multi": false,
             "name": "rgw_servers",
             "options": [ ],
-            "query": "label_values(ceph_rgw_metadata{job=~\"$job\"}, ceph_daemon)",
+            "query": "label_values(ceph_rgw_metadata{cluster=~\"$cluster\", }, ceph_daemon)",
             "refresh": 1,
-            "regex": "RGW Server",
+            "regex": ".*",
             "sort": 1,
             "tagValuesQuery": "",
             "tags": [ ],

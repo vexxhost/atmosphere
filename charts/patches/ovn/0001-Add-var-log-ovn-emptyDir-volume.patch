@@ -1,0 +1,60 @@
+diff --git a/ovn/templates/deployment-northd.yaml b/ovn/templates/deployment-northd.yaml
+index 1234567..abcdefg 100644
+--- a/ovn/templates/deployment-northd.yaml
++++ b/ovn/templates/deployment-northd.yaml
+@@ -78,5 +78,15 @@ spec:
+             - name: OVN_KUBERNETES_SB_STATEFULSET
+               value: ovn-ovsdb-sb
+             - name: OVN_SSL_ENABLE
+               value: "no"
++          volumeMounts:
++            - name: var-log-ovn
++              mountPath: /var/log/ovn
++            - name: var-run-ovn
++              mountPath: /var/run/ovn
++      volumes:
++        - name: var-log-ovn
++          emptyDir: {}
++        - name: var-run-ovn
++          emptyDir: {}
+ {{- end }}
+diff --git a/ovn/templates/statefulset-ovsdb-nb.yaml b/ovn/templates/statefulset-ovsdb-nb.yaml
+index d19d5105..f964c4b6 100644
+--- a/ovn/templates/statefulset-ovsdb-nb.yaml
++++ b/ovn/templates/statefulset-ovsdb-nb.yaml
+@@ -108,11 +108,15 @@ spec:
+               mountPath: /var/run/ovn
+             - name: data
+               mountPath: /etc/ovn
++            - name: var-log-ovn
++              mountPath: /var/log/ovn
+       volumes:
+         - name: run-openvswitch
+           hostPath:
+             path: /run/openvswitch
+             type: DirectoryOrCreate
++        - name: var-log-ovn
++          emptyDir: {}
+ {{- if not .Values.volume.ovn_ovsdb_nb.enabled }}
+         - name: data
+           emptyDir: {}
+diff --git a/ovn/templates/statefulset-ovsdb-sb.yaml b/ovn/templates/statefulset-ovsdb-sb.yaml
+index a6180aaa..31174aa5 100644
+--- a/ovn/templates/statefulset-ovsdb-sb.yaml
++++ b/ovn/templates/statefulset-ovsdb-sb.yaml
+@@ -108,11 +108,15 @@ spec:
+               mountPath: /var/run/ovn
+             - name: data
+               mountPath: /etc/ovn
++            - name: var-log-ovn
++              mountPath: /var/log/ovn
+       volumes:
+         - name: run-openvswitch
+           hostPath:
+             path: /run/openvswitch
+             type: DirectoryOrCreate
++        - name: var-log-ovn
++          emptyDir: {}
+ {{- if not .Values.volume.ovn_ovsdb_sb.enabled }}
+         - name: data
+           emptyDir: {}

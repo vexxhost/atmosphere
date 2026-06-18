@@ -32,6 +32,28 @@ func TestMain(m *testing.M) {
 }
 
 func TestHelmValues(t *testing.T) {
+	// (rlin): Before you add any new priority class here.
+	// Make sure we do use snippets tool
+	// helm-toolkit.snippets.kubernetes_pod_priority_class
+	// for the actual template. Like:
+	// {{ tuple "heat_api" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" }}
+	vars.HelmValues.Pod.PriorityClass = map[string]string{
+		"bootstrap": "high-priority",
+		"db_sync": "high-priority",
+		"magnum_api": "high-priority",
+		"magnum_conductor": "high-priority",
+	}
+	// (rlin): Before you add any new runtime class here.
+	// Make sure we do use snippets tool
+	// helm-toolkit.snippets.kubernetes_pod_runtime_class
+	// for the actual template. Like:
+	// {{ tuple "heat_api" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" }}
+	vars.HelmValues.Pod.RuntimeClass = map[string]string{
+		"bootstrap": "kata-clh",
+		"db_sync": "kata-clh",
+		"magnum_api": "kata-clh",
+		"magnum_conductor": "kata-clh",
+	}
 	vals, err := openstack_helm.CoalescedHelmValues("../../charts/magnum", &vars.HelmValues)
 	require.NoError(t, err)
 

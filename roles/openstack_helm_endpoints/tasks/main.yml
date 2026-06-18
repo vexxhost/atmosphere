@@ -31,6 +31,7 @@
         name: rabbitmq
       vars:
         rabbitmq_cluster_name: "{{ openstack_helm_endpoints_chart }}"
+        rabbitmq_spec: "{{ lookup('vars', openstack_helm_endpoints_chart ~ '_rabbitmq_spec', default={}) }}"
 
     - name: Grab RabbitMQ cluster secret
       kubernetes.core.k8s_info:

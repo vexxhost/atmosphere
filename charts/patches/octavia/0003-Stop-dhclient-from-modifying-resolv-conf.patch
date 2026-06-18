@@ -1,0 +1,18 @@
+diff --git a/octavia/templates/bin/_octavia-health-manager.sh.tpl b/octavia/templates/bin/_octavia-health-manager.sh.tpl
+index 3a420668..220597eb 100644
+--- a/octavia/templates/bin/_octavia-health-manager.sh.tpl
++++ b/octavia/templates/bin/_octavia-health-manager.sh.tpl
+@@ -20,6 +20,13 @@ set -ex
+ COMMAND="${@:-start}"
+
+ function start () {
++  # Prevent dhclient from modifying /etc/resolv.conf (preserves K8s DNS)
++  mkdir -p /etc/dhcp/dhclient-enter-hooks.d
++  cat > /etc/dhcp/dhclient-enter-hooks.d/nodns <<'HOOK'
++make_resolv_conf() { :; }
++HOOK
++  chmod +x /etc/dhcp/dhclient-enter-hooks.d/nodns
++
+   cat > /tmp/dhclient.conf <<EOF
+ request subnet-mask,broadcast-address,interface-mtu;
+ do-forward-updates false;

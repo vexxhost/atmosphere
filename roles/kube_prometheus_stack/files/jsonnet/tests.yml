@@ -75,11 +75,11 @@ tests:
 
   - interval: 1m
     input_series:
-      - series: 'node_time_seconds{instance="instance1", job="node"}'
+      - series: 'node_time_seconds{instance="instance1", job="node-exporter"}'
         values: '0 60 120 180 240 300'
-      - series: 'node_time_seconds{instance="instance2", job="node"}'
+      - series: 'node_time_seconds{instance="instance2", job="node-exporter"}'
         values: '1 61 121 181 241 301'
-      - series: 'node_time_seconds{instance="instance3", job="node"}'
+      - series: 'node_time_seconds{instance="instance3", job="node-exporter"}'
         values: '2 62 122 182 242 302'
     alert_rule_test:
       - eval_time: 5m
@@ -88,23 +88,136 @@ tests:
           - exp_labels:
               severity: P3
               instance: instance3
-              job: node
+              job: node-exporter
             exp_annotations:
               summary: "Node instance3 has a time difference."
               description: "Node instance3 has a time difference 2."
 
   - interval: 1m
     input_series:
-      - series: 'node_time_seconds{instance="instance1", job="node"}'
+      - series: 'node_time_seconds{instance="instance1", job="node-exporter"}'
         values: '0 60 120 180 240 300'
-      - series: 'node_time_seconds{instance="instance2", job="node"}'
+      - series: 'node_time_seconds{instance="instance2", job="node-exporter"}'
         values: '0 60 120 180 240 300'
-      - series: 'node_time_seconds{instance="instance3", job="node"}'
+      - series: 'node_time_seconds{instance="instance3", job="node-exporter"}'
         values: '0 60 120 180 240 300'
     alert_rule_test:
       - eval_time: 5m
         alertname: NodeTimeSkewDetected
         exp_alerts: []
+
+  # NodeDiskHighLatency - negative test (normal latency, no alert)
+  - interval: 1m
+    input_series:
+      - series: 'node_disk_read_time_seconds_total{instance="192.0.2.1:9100", job="node-exporter", device="sda"}'
+        values: '0+0.001x70'
+      - series: 'node_disk_write_time_seconds_total{instance="192.0.2.1:9100", job="node-exporter", device="sda"}'
+        values: '0+0.001x70'
+      - series: 'node_disk_reads_completed_total{instance="192.0.2.1:9100", job="node-exporter", device="sda"}'
+        values: '0+100x70'
+      - series: 'node_disk_writes_completed_total{instance="192.0.2.1:9100", job="node-exporter", device="sda"}'
+        values: '0+100x70'
+    alert_rule_test:
+      - eval_time: 65m
+        alertname: NodeDiskHighLatency
+        exp_alerts: []
+
+  # NodeDiskHighLatency - positive test (high latency, alert fires)
+  - interval: 1m
+    input_series:
+      - series: 'node_disk_read_time_seconds_total{instance="192.0.2.2:9100", job="node-exporter", device="nvme0n1"}'
+        values: '0+5x70'
+      - series: 'node_disk_write_time_seconds_total{instance="192.0.2.2:9100", job="node-exporter", device="nvme0n1"}'
+        values: '0+5x70'
+      - series: 'node_disk_reads_completed_total{instance="192.0.2.2:9100", job="node-exporter", device="nvme0n1"}'
+        values: '0+100x70'
+      - series: 'node_disk_writes_completed_total{instance="192.0.2.2:9100", job="node-exporter", device="nvme0n1"}'
+        values: '0+100x70'
+    alert_rule_test:
+      - eval_time: 65m
+        alertname: NodeDiskHighLatency
+        exp_alerts:
+          - exp_labels:
+              severity: P4
+              instance: "192.0.2.2:9100"
+              job: node-exporter
+              device: nvme0n1
+            exp_annotations:
+              summary: "Node disk: high IO latency affecting workloads"
+              description: "Average IO latency on nvme0n1 at 192.0.2.2:9100 is 50ms over the last 5 minutes, which exceeds the threshold of 20ms. Normal SSD latency is below 1ms and normal HDD latency is below 15ms."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#nodediskhighlatency"
+
+  # NodeMemoryHighUtilization - negative test (huge pages reserved but free)
+  - interval: 1m
+    input_series:
+      - series: 'node_memory_MemTotal_bytes{instance="192.0.2.3:9100", job="node-exporter"}'
+        values: '1000x20'
+      - series: 'node_memory_MemAvailable_bytes{instance="192.0.2.3:9100", job="node-exporter"}'
+        values: '50x20'
+      - series: 'node_memory_HugePages_Free{instance="192.0.2.3:9100", job="node-exporter"}'
+        values: '200x20'
+      - series: 'node_memory_Hugepagesize_bytes{instance="192.0.2.3:9100", job="node-exporter"}'
+        values: '4x20'
+    alert_rule_test:
+      - eval_time: 16m
+        alertname: NodeMemoryHighUtilization
+        exp_alerts: []
+
+  # NodeMemoryHighUtilization - positive test (real high utilization, alert fires)
+  - interval: 1m
+    input_series:
+      - series: 'node_memory_MemTotal_bytes{instance="192.0.2.4:9100", job="node-exporter"}'
+        values: '1000x20'
+      - series: 'node_memory_MemAvailable_bytes{instance="192.0.2.4:9100", job="node-exporter"}'
+        values: '50x20'
+      - series: 'node_memory_HugePages_Free{instance="192.0.2.4:9100", job="node-exporter"}'
+        values: '20x20'
+      - series: 'node_memory_Hugepagesize_bytes{instance="192.0.2.4:9100", job="node-exporter"}'
+        values: '1x20'
+    alert_rule_test:
+      - eval_time: 16m
+        alertname: NodeMemoryHighUtilization
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+              instance: "192.0.2.4:9100"
+              job: node-exporter
+            exp_annotations:
+              summary: "Node memory: high utilization can affect host and workload stability"
+              description: "Computed node memory utilization at 192.0.2.4:9100 is 93.00%, exceeding the threshold of 90% for 15 minutes. This computation includes free huge page capacity (node_memory_HugePages_Free * node_memory_Hugepagesize_bytes) in available memory to avoid false positives on compute nodes backed by huge pages. Normal behavior is below 90% sustained utilization."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#nodememoryhighutilization"
+
+  # NodeMemoryHighUtilization - negative test (no huge page metrics, normal memory usage)
+  - interval: 1m
+    input_series:
+      - series: 'node_memory_MemTotal_bytes{instance="192.0.2.5:9100", job="node-exporter"}'
+        values: '1000x20'
+      - series: 'node_memory_MemAvailable_bytes{instance="192.0.2.5:9100", job="node-exporter"}'
+        values: '150x20'
+    alert_rule_test:
+      - eval_time: 16m
+        alertname: NodeMemoryHighUtilization
+        exp_alerts: []
+
+  # NodeMemoryHighUtilization - positive test (no huge page metrics, high memory usage)
+  - interval: 1m
+    input_series:
+      - series: 'node_memory_MemTotal_bytes{instance="192.0.2.6:9100", job="node-exporter"}'
+        values: '1000x20'
+      - series: 'node_memory_MemAvailable_bytes{instance="192.0.2.6:9100", job="node-exporter"}'
+        values: '50x20'
+    alert_rule_test:
+      - eval_time: 16m
+        alertname: NodeMemoryHighUtilization
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+              instance: "192.0.2.6:9100"
+              job: node-exporter
+            exp_annotations:
+              summary: "Node memory: high utilization can affect host and workload stability"
+              description: "Computed node memory utilization at 192.0.2.6:9100 is 95.00%, exceeding the threshold of 90% for 15 minutes. This computation includes free huge page capacity (node_memory_HugePages_Free * node_memory_Hugepagesize_bytes) in available memory to avoid false positives on compute nodes backed by huge pages. Normal behavior is below 90% sustained utilization."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#nodememoryhighutilization"
 
   - interval: 1m
     input_series:
@@ -191,6 +304,56 @@ tests:
 
   - interval: 1m
     input_series:
+      - series: 'ipmi_sel_events_latest_timestamp{instance="192.0.2.10",name="uncorrectable_memory_error"}'
+        values: '0x2880'
+    alert_rule_test:
+      - eval_time: 2d
+        alertname: IpmiUncorrectableMemoryError
+        exp_alerts: []
+
+  - interval: 1m
+    input_series:
+      - series: 'ipmi_sel_events_latest_timestamp{instance="192.0.2.10",name="uncorrectable_memory_error"}'
+        values: '172740x2880'
+    alert_rule_test:
+      - eval_time: 2d
+        alertname: IpmiUncorrectableMemoryError
+        exp_alerts:
+          - exp_labels:
+              instance: 192.0.2.10
+              severity: P1
+            exp_annotations:
+              summary: "IPMI: recent uncorrectable memory error may affect host stability on 192.0.2.10"
+              description: "The metric ipmi_sel_events_latest_timestamp{name=\"uncorrectable_memory_error\"} for 192.0.2.10 indicates the most recent uncorrectable memory SEL event is 1m 0s old, which is within the alert window of 24 hours. Normal behavior is that no uncorrectable memory SEL events occur, or the latest such event is older than 24 hours."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#ipmiuncorrectablememoryerror"
+
+  - interval: 1m
+    input_series:
+      - series: 'ipmi_sel_events_latest_timestamp{instance="192.0.2.11",name="unrecoverable_cpu_error"}'
+        values: '0x2880'
+    alert_rule_test:
+      - eval_time: 2d
+        alertname: IpmiUnrecoverableCpuError
+        exp_alerts: []
+
+  - interval: 1m
+    input_series:
+      - series: 'ipmi_sel_events_latest_timestamp{instance="192.0.2.11",name="unrecoverable_cpu_error"}'
+        values: '172740x2880'
+    alert_rule_test:
+      - eval_time: 2d
+        alertname: IpmiUnrecoverableCpuError
+        exp_alerts:
+          - exp_labels:
+              instance: 192.0.2.11
+              severity: P1
+            exp_annotations:
+              summary: "IPMI: recent unrecoverable CPU error may affect host stability on 192.0.2.11"
+              description: "The metric ipmi_sel_events_latest_timestamp{name=\"unrecoverable_cpu_error\"} for 192.0.2.11 indicates the most recent unrecoverable CPU SEL event is 1m 0s old, which is within the alert window of 24 hours. Normal behavior is that no unrecoverable CPU SEL events occur, or the latest such event is older than 24 hours."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#ipmiunrecoverablecpuerror"
+
+  - interval: 1m
+    input_series:
       - series: 'openstack_loadbalancer_loadbalancer_status{id="d4e449ad-fad5-4d9e-a039-f71c773ec999", job="openstack-exporter", name="test-lb", operating_status="ONLINE", provisioning_status="PENDING_UPDATE"}'
         values: '0x15'
       - series: 'openstack_loadbalancer_loadbalancer_status{id="25dcf79f-b09d-4d0c-9e29-b69ded2ec734", job="openstack-exporter", name="test-lb-2", operating_status="ONLINE", provisioning_status="ACTIVE"}'
@@ -206,6 +369,23 @@ tests:
             exp_annotations:
               summary: Octavia load balancer not active
               description: Load balancer with ID d4e449ad-fad5-4d9e-a039-f71c773ec999 stuck in non-active state for more then 15 minutes.
+
+  - interval: 1m
+    input_series:
+      - series: 'openstack_loadbalancer_amphora_status{cert_expiration="2020-08-08T23:44:31Z",compute_id="667bb225-69aa-44b1-8908-694dc624c267",ha_ip="10.0.0.6",id="45f40289-0551-483a-b089-47214bc2a8a4",lb_network_ip="192.168.0.6",loadbalancer_id="882f2a9d-9d53-4bd0-b0e9-08e9d0de11f9",role="MASTER",status="READY"}'
+        values: '2x15'
+      - series: 'openstack_loadbalancer_amphora_status{cert_expiration="2020-08-08T23:44:30Z",compute_id="9cd0f9a2-fe12-42fc-a7e3-5b6fbbe20395",ha_ip="10.0.0.6",id="7f890893-ced0-46ed-8697-33415d070e5a",lb_network_ip="192.168.0.17",loadbalancer_id="882f2a9d-9d53-4bd0-b0e9-08e9d0de11f9",role="MASTER",status="READY"}'
+        values: '6x15'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: OctaviaLoadBalancerMultipleMaster
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+              loadbalancer_id: 882f2a9d-9d53-4bd0-b0e9-08e9d0de11f9
+            exp_annotations:
+              summary: Octavia load balancer has multiple MASTER Amphorae
+              description: Load balancer with ID 882f2a9d-9d53-4bd0-b0e9-08e9d0de11f9 has multiple MASTER Amphorae for more then 15 minutes.
 
   - interval: 1m
     input_series:
@@ -232,11 +412,1141 @@ tests:
         values: '3x60'
     alert_rule_test:
       - eval_time: 1h
-        alertname: OctaviaAmphoraNotReady
+        alertname: OctaviaAmphoraNotOperational
         exp_alerts:
           - exp_labels:
               severity: P3
               id: 7f890893-ced0-46ed-8697-33415d070e5a
             exp_annotations:
-              summary: Octavia Amphora not ready
-              description: Amphora with ID 7f890893-ced0-46ed-8697-33415d070e5a stuck in non-ready state for more then 1 hour.
+              summary: Octavia Amphora not operational
+              description: Amphora with ID 7f890893-ced0-46ed-8697-33415d070e5a stuck in non-operational state for more then 1 hour.
+
+  - interval: 1m
+    input_series:
+      - series: 'openstack_loadbalancer_amphora_status{cert_expiration="2020-08-08T23:44:31Z",compute_id="667bb225-69aa-44b1-8908-694dc624c267",ha_ip="10.0.0.6",id="45f40289-0551-483a-b089-47214bc2a8a4",lb_network_ip="192.168.0.6",loadbalancer_id="882f2a9d-9d53-4bd0-b0e9-08e9d0de11f9",role="MASTER",status="READY"}'
+        values: '2x60'
+      - series: 'openstack_loadbalancer_amphora_status{cert_expiration="2020-08-08T23:44:30Z",compute_id="9cd0f9a2-fe12-42fc-a7e3-5b6fbbe20395",ha_ip="10.0.0.6",id="7f890893-ced0-46ed-8697-33415d070e5a",lb_network_ip="192.168.0.17",loadbalancer_id="882f2a9d-9d53-4bd0-b0e9-08e9d0de11f9",role="BACKUP",status="ALLOCATED"}'
+        values: '3x60'
+      - series: 'openstack_loadbalancer_amphora_status{cert_expiration="2020-08-08T23:44:32Z",compute_id="b9c0f9a2-fe12-42fc-a7e3-5b6fbbe20397",ha_ip="10.0.0.6",id="e9e8ccf3-8249-4f7e-b58c-52ef864a4a13",lb_network_ip="192.168.0.18",loadbalancer_id="882f2a9d-9d53-4bd0-b0e9-08e9d0de11f9",role="BACKUP",status="DELETED"}'
+        values: '3x60'
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: OctaviaAmphoraNotOperational
+        exp_alerts: []
+
+  # GoldpingerHighUnhealthyRatio - should NOT fire when all nodes are healthy
+  - interval: 1m
+    input_series:
+      - series: 'goldpinger_nodes_health_total{status="healthy",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger"}'
+        values: '21x10'
+      - series: 'goldpinger_nodes_health_total{status="unhealthy",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger"}'
+        values: '0x10'
+      - series: 'goldpinger_nodes_health_total{status="healthy",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger"}'
+        values: '21x10'
+      - series: 'goldpinger_nodes_health_total{status="unhealthy",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger"}'
+        values: '0x10'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: GoldpingerHighUnhealthyRatio
+        exp_alerts: []
+
+  # GoldpingerHighUnhealthyRatio - should fire when >10% of nodes are unhealthy
+  - interval: 1m
+    input_series:
+      - series: 'goldpinger_nodes_health_total{status="healthy",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger"}'
+        values: '17x10'
+      - series: 'goldpinger_nodes_health_total{status="unhealthy",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger"}'
+        values: '4x10'
+      - series: 'goldpinger_nodes_health_total{status="healthy",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger"}'
+        values: '17x10'
+      - series: 'goldpinger_nodes_health_total{status="unhealthy",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger"}'
+        values: '4x10'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: GoldpingerHighUnhealthyRatio
+        exp_alerts:
+          - exp_labels:
+              severity: P2
+            exp_annotations:
+              summary: "Goldpinger: high percentage of cluster nodes unhealthy"
+              description: "More than 10% of nodes (current: 19.05%) are reporting as unhealthy for at least 5 minutes. Normal operation expects 0% unhealthy nodes."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#goldpingerhighunhealthyratio"
+
+  # GoldpingerNodeUnreachable - should NOT fire when all nodes have low latency
+  - interval: 1m
+    input_series:
+      # kvm1 pinging kvm2 (192.0.2.1) - all requests <5ms
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="0.005"}'
+        values: '0+1x10'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="0.01"}'
+        values: '0+1x10'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="0.025"}'
+        values: '0+1x10'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="0.05"}'
+        values: '0+1x10'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="0.1"}'
+        values: '0+1x10'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="0.25"}'
+        values: '0+1x10'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="0.5"}'
+        values: '0+1x10'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="1"}'
+        values: '0+1x10'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="2.5"}'
+        values: '0+1x10'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="5"}'
+        values: '0+1x10'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="10"}'
+        values: '0+1x10'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="30"}'
+        values: '0+1x10'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="+Inf"}'
+        values: '0+1x10'
+      - series: 'goldpinger_cluster_health_total{instance="kvm1",goldpinger_instance="kvm1",job="goldpinger"}'
+        values: '2x10'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: GoldpingerNodeUnreachable
+        exp_alerts: []
+
+  # GoldpingerNodeUnreachable - should fire when a node is unreachable by majority
+  - interval: 1m
+    input_series:
+      # kvm1 pinging kvm6 (192.0.2.2) - high latency (median >1s, lands in 2.5s bucket)
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.005"}'
+        values: '0+0x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.01"}'
+        values: '0+0x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.025"}'
+        values: '0+0x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.05"}'
+        values: '0+0x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.1"}'
+        values: '0+0x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.25"}'
+        values: '0+0x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.5"}'
+        values: '0+0x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="1"}'
+        values: '0+0x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="2.5"}'
+        values: '0+1x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="5"}'
+        values: '0+1x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="10"}'
+        values: '0+1x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="30"}'
+        values: '0+1x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="+Inf"}'
+        values: '0+1x15'
+      # kvm2 pinging kvm6 (192.0.2.2) - also high latency
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.005"}'
+        values: '0+0x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.01"}'
+        values: '0+0x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.025"}'
+        values: '0+0x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.05"}'
+        values: '0+0x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.1"}'
+        values: '0+0x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.25"}'
+        values: '0+0x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.5"}'
+        values: '0+0x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="1"}'
+        values: '0+0x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="2.5"}'
+        values: '0+1x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="5"}'
+        values: '0+1x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="10"}'
+        values: '0+1x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="30"}'
+        values: '0+1x15'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm2",goldpinger_instance="kvm2",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="+Inf"}'
+        values: '0+1x15'
+      # 2 total nodes in cluster
+      - series: 'goldpinger_cluster_health_total{instance="kvm1",goldpinger_instance="kvm1",job="goldpinger"}'
+        values: '2x15'
+      - series: 'goldpinger_cluster_health_total{instance="kvm2",goldpinger_instance="kvm2",job="goldpinger"}'
+        values: '2x15'
+    alert_rule_test:
+      - eval_time: 11m
+        alertname: GoldpingerNodeUnreachable
+        exp_alerts:
+          - exp_labels:
+              severity: P2
+              host_ip: "192.0.2.2"
+            exp_annotations:
+              summary: "Goldpinger: node unreachable by majority of cluster"
+              description: "Node with IP 192.0.2.2 has a median ping latency above 1s from more than 50% (current: 100%) of Goldpinger instances. Normal operation expects all nodes to be reachable with sub-10ms latency."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#goldpingernodeunreachable"
+
+  # GoldpingerHighPeerLatency - should NOT fire when latency is low
+  - interval: 1m
+    input_series:
+      # kvm1 pinging kvm2 - all requests complete within 5ms bucket
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="0.005"}'
+        values: '0+1x20'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="0.01"}'
+        values: '0+1x20'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="0.025"}'
+        values: '0+1x20'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="0.05"}'
+        values: '0+1x20'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="0.1"}'
+        values: '0+1x20'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="0.25"}'
+        values: '0+1x20'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="0.5"}'
+        values: '0+1x20'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="1"}'
+        values: '0+1x20'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="2.5"}'
+        values: '0+1x20'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="5"}'
+        values: '0+1x20'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="10"}'
+        values: '0+1x20'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="30"}'
+        values: '0+1x20'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.1",pod_ip="192.0.2.1",le="+Inf"}'
+        values: '0+1x20'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: GoldpingerHighPeerLatency
+        exp_alerts: []
+
+  # GoldpingerHighPeerLatency - should fire when p95 exceeds 500ms
+  - interval: 1m
+    input_series:
+      # kvm1 pinging kvm6 - all requests land between 0.5s and 1s
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.005"}'
+        values: '0+0x25'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.01"}'
+        values: '0+0x25'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.025"}'
+        values: '0+0x25'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.05"}'
+        values: '0+0x25'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.1"}'
+        values: '0+0x25'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.25"}'
+        values: '0+0x25'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="0.5"}'
+        values: '0+0x25'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="1"}'
+        values: '0+1x25'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="2.5"}'
+        values: '0+1x25'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="5"}'
+        values: '0+1x25'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="10"}'
+        values: '0+1x25'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="30"}'
+        values: '0+1x25'
+      - series: 'goldpinger_peers_response_time_s_bucket{call_type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger",host_ip="192.0.2.2",pod_ip="192.0.2.2",le="+Inf"}'
+        values: '0+1x25'
+    alert_rule_test:
+      - eval_time: 21m
+        alertname: GoldpingerHighPeerLatency
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+            exp_annotations:
+              summary: "Goldpinger: high cluster-wide peer latency"
+              description: "The 95th percentile of peer-to-peer latency is 975ms, which exceeds the threshold of 500ms. Normal latency is typically below 10ms."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#goldpingerhighpeerlatency"
+
+  # GoldpingerHighErrorRate - should NOT fire when error rate is low
+  - interval: 1m
+    input_series:
+      - series: 'goldpinger_errors_total{type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger"}'
+        values: '0+0x20'
+      - series: 'goldpinger_stats_total{action="ping",group="made",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger"}'
+        values: '0+100x20'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: GoldpingerHighErrorRate
+        exp_alerts: []
+
+  # GoldpingerHighErrorRate - should fire when error rate exceeds 5%
+  - interval: 1m
+    input_series:
+      - series: 'goldpinger_errors_total{type="ping",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger"}'
+        values: '0+10x25'
+      - series: 'goldpinger_stats_total{action="ping",group="made",instance="kvm1",goldpinger_instance="kvm1",job="goldpinger"}'
+        values: '0+100x25'
+    alert_rule_test:
+      - eval_time: 21m
+        alertname: GoldpingerHighErrorRate
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+            exp_annotations:
+              summary: "Goldpinger: high ping error rate"
+              description: "More than 5% (current: 10%) of Goldpinger ping attempts are failing. Normal operation expects less than 0.1% error rate."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#goldpingerhigherrorrate"
+
+  # NginxIngressCriticalErrorBudgetBurn - should NOT fire when error rate is below burn-rate threshold
+  - interval: 1m
+    input_series:
+      # Low error rate: 1 error out of 200 requests per minute = 0.5% (below 1.44% threshold)
+      - series: 'nginx_ingress_controller_requests{service="keystone-api",status="200"}'
+        values: '0+199x80'
+      - series: 'nginx_ingress_controller_requests{service="keystone-api",status="500"}'
+        values: '0+1x80'
+    alert_rule_test:
+      - eval_time: 70m
+        alertname: NginxIngressCriticalErrorBudgetBurn
+        exp_alerts: []
+
+  # NginxIngressCriticalErrorBudgetBurn - should fire when error rate exceeds 14.4x burn-rate threshold
+  - interval: 1m
+    input_series:
+      # Error rate: 4 errors out of 200 requests per minute = 2% (above 1.44% threshold)
+      - series: 'nginx_ingress_controller_requests{service="nova-api",status="200"}'
+        values: '0+196x80'
+      - series: 'nginx_ingress_controller_requests{service="nova-api",status="500"}'
+        values: '0+4x80'
+    alert_rule_test:
+      - eval_time: 70m
+        alertname: NginxIngressCriticalErrorBudgetBurn
+        exp_alerts:
+          - exp_labels:
+              severity: P2
+              service: nova-api
+            exp_annotations:
+              summary: "NGINX Ingress: elevated 5xx errors rapidly consuming error budget"
+              description: "The service nova-api error rate is 2% over the last hour, which exceeds the 1.44% burn-rate threshold (14.4x against 99.9% SLO). At this rate, the 30-day error budget exhausts in under 2.1 days."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#nginxingresscriticalerrorbudgetburn"
+
+  # NginxIngressCriticalErrorBudgetBurn - should NOT fire when long window above threshold but short window below
+  - interval: 1m
+    input_series:
+      # High error rate for the first 60 min (long window), then drop to zero errors (short window recovers)
+      - series: 'nginx_ingress_controller_requests{service="barbican-api",status="200"}'
+        values: '0+196x60 0+200x20'
+      - series: 'nginx_ingress_controller_requests{service="barbican-api",status="500"}'
+        values: '0+4x60 0+0x20'
+    alert_rule_test:
+      - eval_time: 70m
+        alertname: NginxIngressCriticalErrorBudgetBurn
+        exp_alerts: []
+
+  # NginxIngressCriticalErrorBudgetBurn - should NOT fire when traffic is too low
+  - interval: 1m
+    input_series:
+      # High error rate but very low traffic: 1 error, 0 success per minute
+      - series: 'nginx_ingress_controller_requests{service="test-api",status="200"}'
+        values: '0+0x80'
+      - series: 'nginx_ingress_controller_requests{service="test-api",status="500"}'
+        values: '0+1x80'
+    alert_rule_test:
+      - eval_time: 70m
+        alertname: NginxIngressCriticalErrorBudgetBurn
+        exp_alerts: []
+
+  # NginxIngressHighErrorBudgetBurn - should NOT fire when error rate is below burn-rate threshold
+  - interval: 1m
+    input_series:
+      # Low error rate: 1 error out of 500 requests per minute = 0.2% (below 0.6% threshold)
+      - series: 'nginx_ingress_controller_requests{service="glance-api",status="200"}'
+        values: '0+499x400'
+      - series: 'nginx_ingress_controller_requests{service="glance-api",status="503"}'
+        values: '0+1x400'
+    alert_rule_test:
+      - eval_time: 390m
+        alertname: NginxIngressHighErrorBudgetBurn
+        exp_alerts: []
+
+  # NginxIngressHighErrorBudgetBurn - should fire when error rate exceeds 6x burn-rate threshold
+  - interval: 1m
+    input_series:
+      # Error rate: 2 errors out of 200 requests per minute = 1% (above 0.6% threshold)
+      - series: 'nginx_ingress_controller_requests{service="cinder-api",status="200"}'
+        values: '0+198x400'
+      - series: 'nginx_ingress_controller_requests{service="cinder-api",status="502"}'
+        values: '0+2x400'
+    alert_rule_test:
+      - eval_time: 390m
+        alertname: NginxIngressHighErrorBudgetBurn
+        exp_alerts:
+          - exp_labels:
+              severity: P2
+              service: cinder-api
+            exp_annotations:
+              summary: "NGINX Ingress: sustained 5xx errors depleting error budget"
+              description: "The service cinder-api error rate is 1% over the last 6 hours, which exceeds the 0.6% burn-rate threshold (6x against 99.9% SLO). At this rate, the 30-day error budget exhausts in under 5 days."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#nginxingresshigherrorbudgetburn"
+
+  # NginxIngressHighErrorBudgetBurn - should NOT fire when long window above threshold but short window below
+  - interval: 1m
+    input_series:
+      # High error rate for the first 360 min (long window), then drop to zero errors (short window recovers)
+      - series: 'nginx_ingress_controller_requests{service="magnum-api",status="200"}'
+        values: '0+198x360 0+200x40'
+      - series: 'nginx_ingress_controller_requests{service="magnum-api",status="502"}'
+        values: '0+2x360 0+0x40'
+    alert_rule_test:
+      - eval_time: 390m
+        alertname: NginxIngressHighErrorBudgetBurn
+        exp_alerts: []
+
+  # NginxIngressHighErrorBudgetBurn - should NOT fire when traffic is too low
+  - interval: 1m
+    input_series:
+      # High error rate but very low traffic: 1 error, 0 success per minute
+      - series: 'nginx_ingress_controller_requests{service="test-api",status="200"}'
+        values: '0+0x400'
+      - series: 'nginx_ingress_controller_requests{service="test-api",status="500"}'
+        values: '0+1x400'
+    alert_rule_test:
+      - eval_time: 390m
+        alertname: NginxIngressHighErrorBudgetBurn
+        exp_alerts: []
+
+  # NginxIngressModerateErrorBudgetBurn - should NOT fire when error rate is below burn-rate threshold
+  - interval: 1m
+    input_series:
+      # Low error rate: 1 error out of 1000 requests per minute = 0.1% (below 0.3% threshold)
+      - series: 'nginx_ingress_controller_requests{service="heat-api",status="200"}'
+        values: '0+999x1500'
+      - series: 'nginx_ingress_controller_requests{service="heat-api",status="500"}'
+        values: '0+1x1500'
+    alert_rule_test:
+      - eval_time: 1480m
+        alertname: NginxIngressModerateErrorBudgetBurn
+        exp_alerts: []
+
+  # NginxIngressModerateErrorBudgetBurn - should fire when error rate exceeds 3x burn-rate threshold
+  - interval: 1m
+    input_series:
+      # Error rate: 1 error out of 200 requests per minute = 0.5% (above 0.3% threshold)
+      - series: 'nginx_ingress_controller_requests{service="designate-api",status="200"}'
+        values: '0+199x1500'
+      - series: 'nginx_ingress_controller_requests{service="designate-api",status="500"}'
+        values: '0+1x1500'
+    alert_rule_test:
+      - eval_time: 1480m
+        alertname: NginxIngressModerateErrorBudgetBurn
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+              service: designate-api
+            exp_annotations:
+              summary: "NGINX Ingress: ongoing 5xx errors steadily consuming error budget"
+              description: "The service designate-api error rate is 0.5% over the last day, which exceeds the 0.3% burn-rate threshold (3x against 99.9% SLO). At this rate, the 30-day error budget exhausts in under 10 days."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#nginxingressmoderateerrorbudgetburn"
+
+  # NginxIngressLowErrorBudgetBurn - should NOT fire when error rate is below burn-rate threshold
+  - interval: 1m
+    input_series:
+      # Very low error rate: 1 error out of 2000 requests per minute = 0.05% (below 0.1% threshold)
+      - series: 'nginx_ingress_controller_requests{service="octavia-api",status="200"}'
+        values: '0+1999x4800'
+      - series: 'nginx_ingress_controller_requests{service="octavia-api",status="500"}'
+        values: '0+1x4800'
+    alert_rule_test:
+      - eval_time: 4740m
+        alertname: NginxIngressLowErrorBudgetBurn
+        exp_alerts: []
+
+  # NginxIngressLowErrorBudgetBurn - should fire when error rate exceeds 1x burn-rate threshold
+  - interval: 1m
+    input_series:
+      # Error rate: 1 error out of 500 requests per minute = 0.2% (above 0.1% threshold)
+      - series: 'nginx_ingress_controller_requests{service="placement-api",status="200"}'
+        values: '0+499x4800'
+      - series: 'nginx_ingress_controller_requests{service="placement-api",status="500"}'
+        values: '0+1x4800'
+    alert_rule_test:
+      - eval_time: 4740m
+        alertname: NginxIngressLowErrorBudgetBurn
+        exp_alerts:
+          - exp_labels:
+              severity: P4
+              service: placement-api
+            exp_annotations:
+              summary: "NGINX Ingress: low-level 5xx errors eroding error budget"
+              description: "The service placement-api error rate is 0.2% over the last 3 days, which exceeds the 0.1% burn-rate threshold (1x against 99.9% SLO). At this rate, the 30-day error budget exhausts before the window resets."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#nginxingresslowerrorbudgetburn"
+
+  # MySQLGaleraOutOfSync - should NOT fire when node is in Synced state (4)
+  - interval: 1m
+    input_series:
+      - series: 'mysql_global_status_wsrep_local_state{instance="percona-xtradb-pxc-0",job="pxc"}'
+        values: '4x20'
+      - series: 'mysql_global_variables_wsrep_desync{instance="percona-xtradb-pxc-0",job="pxc"}'
+        values: '0x20'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: MySQLGaleraOutOfSync
+        exp_alerts: []
+
+  # MySQLGaleraOutOfSync - should NOT fire when node is in Donor state (2) during backup
+  - interval: 1m
+    input_series:
+      - series: 'mysql_global_status_wsrep_local_state{instance="percona-xtradb-pxc-2",job="pxc"}'
+        values: '2x20'
+      - series: 'mysql_global_variables_wsrep_desync{instance="percona-xtradb-pxc-2",job="pxc"}'
+        values: '0x20'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: MySQLGaleraOutOfSync
+        exp_alerts: []
+
+  # MySQLGaleraOutOfSync - should NOT fire when wsrep_desync is enabled
+  - interval: 1m
+    input_series:
+      - series: 'mysql_global_status_wsrep_local_state{instance="percona-xtradb-pxc-1",job="pxc"}'
+        values: '1x20'
+      - series: 'mysql_global_variables_wsrep_desync{instance="percona-xtradb-pxc-1",job="pxc"}'
+        values: '1x20'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: MySQLGaleraOutOfSync
+        exp_alerts: []
+
+  # MySQLGaleraOutOfSync - should fire when node is in Joining state (1)
+  - interval: 1m
+    input_series:
+      - series: 'mysql_global_status_wsrep_local_state{instance="percona-xtradb-pxc-1",job="pxc"}'
+        values: '1x20'
+      - series: 'mysql_global_variables_wsrep_desync{instance="percona-xtradb-pxc-1",job="pxc"}'
+        values: '0x20'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: MySQLGaleraOutOfSync
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+              instance: percona-xtradb-pxc-1
+              job: pxc
+            exp_annotations:
+              summary: "Percona XtraDB Cluster: Galera node not in sync with cluster"
+              description: "The Galera node percona-xtradb-pxc-1 has wsrep_local_state=1 which is not the expected value of 4 (Synced).  The node is not in Donor state (2) and wsrep_desync is not enabled, indicating an unexpected loss of cluster sync.  Normal behavior is wsrep_local_state=4 for all nodes not actively serving as SST donors."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#mysqlgaleraoutofsync"
+
+  # CoreDNSCriticalErrorBudgetBurn - should NOT fire when error rate is below burn-rate threshold
+  - interval: 1m
+    input_series:
+      # Low error rate: 1 SERVFAIL out of 200 total per minute = 0.5% (below 1.44% threshold)
+      - series: 'coredns_dns_responses_total{job="coredns",rcode="SERVFAIL",instance="192.0.2.1:9153"}'
+        values: '0+1x80'
+      - series: 'coredns_dns_responses_total{job="coredns",rcode="NOERROR",instance="192.0.2.1:9153"}'
+        values: '0+199x80'
+    alert_rule_test:
+      - eval_time: 70m
+        alertname: CoreDNSCriticalErrorBudgetBurn
+        exp_alerts: []
+
+  # CoreDNSCriticalErrorBudgetBurn - should fire when error rate exceeds 14.4x burn-rate threshold
+  - interval: 1m
+    input_series:
+      # Error rate: 4 SERVFAIL out of 200 total per minute = 2% (above 1.44% threshold)
+      - series: 'coredns_dns_responses_total{job="coredns",rcode="SERVFAIL",instance="192.0.2.1:9153"}'
+        values: '0+4x80'
+      - series: 'coredns_dns_responses_total{job="coredns",rcode="NOERROR",instance="192.0.2.1:9153"}'
+        values: '0+196x80'
+    alert_rule_test:
+      - eval_time: 70m
+        alertname: CoreDNSCriticalErrorBudgetBurn
+        exp_alerts:
+          - exp_labels:
+              severity: P1
+            exp_annotations:
+              summary: "CoreDNS: SERVFAIL rate rapidly consuming error budget"
+              description: "The CoreDNS SERVFAIL rate is 2% over the last hour, which exceeds the 1.44% burn-rate threshold (14.4x against 99.9% SLO). At this rate, the 30-day error budget exhausts in under 2.1 days."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#corednscriticalerrorbudgetburn"
+
+  # CoreDNSHighErrorBudgetBurn - should NOT fire when error rate is below burn-rate threshold
+  - interval: 1m
+    input_series:
+      # Low error rate: 1 SERVFAIL out of 500 total per minute = 0.2% (below 0.6% threshold)
+      - series: 'coredns_dns_responses_total{job="coredns",rcode="SERVFAIL",instance="198.51.100.1:9153"}'
+        values: '0+1x400'
+      - series: 'coredns_dns_responses_total{job="coredns",rcode="NOERROR",instance="198.51.100.1:9153"}'
+        values: '0+499x400'
+    alert_rule_test:
+      - eval_time: 390m
+        alertname: CoreDNSHighErrorBudgetBurn
+        exp_alerts: []
+
+  # CoreDNSHighErrorBudgetBurn - should fire when error rate exceeds 6x burn-rate threshold
+  - interval: 1m
+    input_series:
+      # Error rate: 2 SERVFAIL out of 200 total per minute = 1% (above 0.6% threshold)
+      - series: 'coredns_dns_responses_total{job="coredns",rcode="SERVFAIL",instance="198.51.100.1:9153"}'
+        values: '0+2x400'
+      - series: 'coredns_dns_responses_total{job="coredns",rcode="NOERROR",instance="198.51.100.1:9153"}'
+        values: '0+198x400'
+    alert_rule_test:
+      - eval_time: 390m
+        alertname: CoreDNSHighErrorBudgetBurn
+        exp_alerts:
+          - exp_labels:
+              severity: P2
+            exp_annotations:
+              summary: "CoreDNS: sustained SERVFAIL rate depleting error budget"
+              description: "The CoreDNS SERVFAIL rate is 1% over the last 6 hours, which exceeds the 0.6% burn-rate threshold (6x against 99.9% SLO). At this rate, the 30-day error budget exhausts in under 5 days."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#corednshigherrorbudgetburn"
+
+  # CoreDNSModerateErrorBudgetBurn - should NOT fire when error rate is below burn-rate threshold
+  - interval: 1m
+    input_series:
+      # Low error rate: 1 SERVFAIL out of 1000 total per minute = 0.1% (below 0.3% threshold)
+      - series: 'coredns_dns_responses_total{job="coredns",rcode="SERVFAIL",instance="203.0.113.1:9153"}'
+        values: '0+1x1500'
+      - series: 'coredns_dns_responses_total{job="coredns",rcode="NOERROR",instance="203.0.113.1:9153"}'
+        values: '0+999x1500'
+    alert_rule_test:
+      - eval_time: 1455m
+        alertname: CoreDNSModerateErrorBudgetBurn
+        exp_alerts: []
+
+  # CoreDNSModerateErrorBudgetBurn - should fire when error rate exceeds 3x burn-rate threshold
+  - interval: 1m
+    input_series:
+      # Error rate: 1 SERVFAIL out of 200 total per minute = 0.5% (above 0.3% threshold)
+      - series: 'coredns_dns_responses_total{job="coredns",rcode="SERVFAIL",instance="203.0.113.1:9153"}'
+        values: '0+1x1500'
+      - series: 'coredns_dns_responses_total{job="coredns",rcode="NOERROR",instance="203.0.113.1:9153"}'
+        values: '0+199x1500'
+    alert_rule_test:
+      - eval_time: 1455m
+        alertname: CoreDNSModerateErrorBudgetBurn
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+            exp_annotations:
+              summary: "CoreDNS: ongoing SERVFAIL rate steadily consuming error budget"
+              description: "The CoreDNS SERVFAIL rate is 0.5% over the last day, which exceeds the 0.3% burn-rate threshold (3x against 99.9% SLO). At this rate, the 30-day error budget exhausts in under 10 days."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#corednsmoderateerrorbudgetburn"
+
+  # CoreDNSLowErrorBudgetBurn - should NOT fire when error rate is below burn-rate threshold
+  - interval: 1m
+    input_series:
+      # Low error rate: 1 SERVFAIL out of 5000 total per minute = 0.02% (below 0.1% threshold)
+      - series: 'coredns_dns_responses_total{job="coredns",rcode="SERVFAIL",instance="192.0.2.10:9153"}'
+        values: '0+1x4400'
+      - series: 'coredns_dns_responses_total{job="coredns",rcode="NOERROR",instance="192.0.2.10:9153"}'
+        values: '0+4999x4400'
+    alert_rule_test:
+      - eval_time: 4380m
+        alertname: CoreDNSLowErrorBudgetBurn
+        exp_alerts: []
+
+  # CoreDNSLowErrorBudgetBurn - should fire when error rate exceeds 1x burn-rate threshold
+  - interval: 1m
+    input_series:
+      # Error rate: 1 SERVFAIL out of 500 total per minute = 0.2% (above 0.1% threshold)
+      - series: 'coredns_dns_responses_total{job="coredns",rcode="SERVFAIL",instance="192.0.2.10:9153"}'
+        values: '0+1x4400'
+      - series: 'coredns_dns_responses_total{job="coredns",rcode="NOERROR",instance="192.0.2.10:9153"}'
+        values: '0+499x4400'
+    alert_rule_test:
+      - eval_time: 4380m
+        alertname: CoreDNSLowErrorBudgetBurn
+        exp_alerts:
+          - exp_labels:
+              severity: P4
+            exp_annotations:
+              summary: "CoreDNS: low-level SERVFAIL rate eroding error budget"
+              description: "The CoreDNS SERVFAIL rate is 0.2% over the last 3 days, which exceeds the 0.1% burn-rate threshold (1x against 99.9% SLO). At this rate, the 30-day error budget exhausts before the window resets."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#corednslowerrorbudgetburn"
+
+  # CoreDNSDown - should NOT fire when CoreDNS is up
+  - interval: 1m
+    input_series:
+      - series: 'up{job="coredns",instance="192.0.2.1:9153"}'
+        values: '1x20'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: CoreDNSDown
+        exp_alerts: []
+
+  # CoreDNSDown - should fire when CoreDNS disappears
+  - interval: 1m
+    input_series:
+      - series: 'up{job="coredns",instance="192.0.2.1:9153"}'
+        values: '0x20'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: CoreDNSDown
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+            exp_annotations:
+              summary: "CoreDNS: instance has disappeared from Prometheus target discovery"
+              description: "CoreDNS has disappeared from Prometheus target discovery for more than 15 minutes. This could indicate a crashed CoreDNS pod or a misconfigured scrape target."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#corednsdown"
+
+  # SmartctlDiskUnhealthy - should NOT fire when SMART status is healthy
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_smart_status{device="/dev/sda",instance="192.0.2.10"}'
+        values: '1x10'
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: SmartctlDiskUnhealthy
+        exp_alerts: []
+
+  # SmartctlDiskUnhealthy - should fire when SMART status is 0
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_smart_status{device="/dev/sda",instance="192.0.2.10"}'
+        values: '0x10'
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: SmartctlDiskUnhealthy
+        exp_alerts:
+          - exp_labels:
+              severity: P2
+              device: /dev/sda
+              instance: 192.0.2.10
+            exp_annotations:
+              summary: "Disk: SMART overall health check failed"
+              description: 'The SMART overall-health self-assessment for disk /dev/sda on node 192.0.2.10 is reporting failure (smartctl_device_smart_status=0). The drive firmware predicts imminent failure. Normal value is 1.'
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskunhealthy"
+
+  # SmartctlDiskCriticalWarning - should NOT fire when bitfield is 0
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_critical_warning{device="/dev/nvme0",instance="192.0.2.10"}'
+        values: '0x10'
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: SmartctlDiskCriticalWarning
+        exp_alerts: []
+
+  # SmartctlDiskCriticalWarning - should fire when bitfield is set
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_critical_warning{device="/dev/nvme0",instance="192.0.2.10"}'
+        values: '4x10'
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: SmartctlDiskCriticalWarning
+        exp_alerts:
+          - exp_labels:
+              severity: P2
+              device: /dev/nvme0
+              instance: 192.0.2.10
+            exp_annotations:
+              summary: "Disk: NVMe critical warning bit set"
+              description: 'The NVMe critical_warning bitfield for disk /dev/nvme0 on node 192.0.2.10 is 4 (normal is 0). Bits indicate available spare below threshold, temperature above critical, NVM subsystem reliability degraded, media in read-only mode, or volatile memory backup failed.'
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskcriticalwarning"
+
+  # SmartctlDiskAvailableSpareLow - should NOT fire when spare is above threshold
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_available_spare{device="/dev/nvme0",instance="192.0.2.10"}'
+        values: '90x10'
+      - series: 'smartctl_device_available_spare_threshold{device="/dev/nvme0",instance="192.0.2.10"}'
+        values: '10x10'
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: SmartctlDiskAvailableSpareLow
+        exp_alerts: []
+
+  # SmartctlDiskAvailableSpareLow - should fire when spare drops below threshold
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_available_spare{device="/dev/nvme0",instance="192.0.2.10"}'
+        values: '5x10'
+      - series: 'smartctl_device_available_spare_threshold{device="/dev/nvme0",instance="192.0.2.10"}'
+        values: '10x10'
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: SmartctlDiskAvailableSpareLow
+        exp_alerts:
+          - exp_labels:
+              severity: P2
+              device: /dev/nvme0
+              instance: 192.0.2.10
+            exp_annotations:
+              summary: "Disk: NVMe available spare below manufacturer threshold"
+              description: 'The NVMe available spare on disk /dev/nvme0 on node 192.0.2.10 is 5%, which is below the manufacturer-defined threshold. The drive has nearly exhausted its reserve blocks; failure is imminent. Normal is well above the threshold (typically 100% on a healthy drive).'
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskavailablesparelow"
+
+  # SmartctlDiskWearoutCritical - should NOT fire when wear is below 90%
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_percentage_used{device="/dev/sda",instance="192.0.2.10"}'
+        values: '85x20'
+    alert_rule_test:
+      - eval_time: 16m
+        alertname: SmartctlDiskWearoutCritical
+        exp_alerts: []
+
+  # SmartctlDiskWearoutCritical - should fire when wear exceeds 90%
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_percentage_used{device="/dev/sda",instance="192.0.2.10"}'
+        values: '95x20'
+    alert_rule_test:
+      - eval_time: 16m
+        alertname: SmartctlDiskWearoutCritical
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+              device: /dev/sda
+              instance: 192.0.2.10
+            exp_annotations:
+              summary: "Disk: NVMe wear level critical"
+              description: 'The NVMe disk /dev/sda on node 192.0.2.10 reports 95% of its rated endurance used (smartctl_device_percentage_used), exceeding the 90% threshold. Plan immediate replacement. Normal operating range is below 75%. (NVMe-only; SATA drives are covered by SmartctlDiskAttributeFailing.)'
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskwearoutcritical"
+
+  # SmartctlDiskPendingSectorsGrowing - should NOT fire when count is stable (no growth)
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_attribute{device="/dev/sda",instance="192.0.2.10",attribute_id="197",attribute_name="Current_Pending_Sector",attribute_value_type="raw"}'
+        values: '4x1500'
+    alert_rule_test:
+      - eval_time: 25h
+        alertname: SmartctlDiskPendingSectorsGrowing
+        exp_alerts: []
+
+  # SmartctlDiskPendingSectorsGrowing - should fire when count grows over 24h
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_attribute{device="/dev/sda",instance="192.0.2.10",attribute_id="197",attribute_name="Current_Pending_Sector",attribute_value_type="raw"}'
+        values: '0+1x1500'
+    alert_rule_test:
+      - eval_time: 25h
+        alertname: SmartctlDiskPendingSectorsGrowing
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+              device: /dev/sda
+              instance: 192.0.2.10
+              attribute_id: "197"
+              attribute_name: Current_Pending_Sector
+              attribute_value_type: raw
+            exp_annotations:
+              summary: "Disk: pending sector count growing"
+              description: 'The SATA disk /dev/sda on node 192.0.2.10 added 1440 sectors awaiting reallocation in the last 24 hours (Current_Pending_Sector, attribute 197). Normal is zero growth: a stable non-zero count is harmless (those sectors will be remapped on next write), but ongoing growth indicates active media degradation.'
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskpendingsectorsgrowing"
+
+  # SmartctlDiskUncorrectableSectorsGrowing - should NOT fire when count is stable (no growth)
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_attribute{device="/dev/sda",instance="192.0.2.10",attribute_id="198",attribute_name="Offline_Uncorrectable",attribute_value_type="raw"}'
+        values: '2x1500'
+    alert_rule_test:
+      - eval_time: 25h
+        alertname: SmartctlDiskUncorrectableSectorsGrowing
+        exp_alerts: []
+
+  # SmartctlDiskUncorrectableSectorsGrowing - should fire when count grows over 24h
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_attribute{device="/dev/sda",instance="192.0.2.10",attribute_id="198",attribute_name="Offline_Uncorrectable",attribute_value_type="raw"}'
+        values: '0+1x1500'
+    alert_rule_test:
+      - eval_time: 25h
+        alertname: SmartctlDiskUncorrectableSectorsGrowing
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+              device: /dev/sda
+              instance: 192.0.2.10
+              attribute_id: "198"
+              attribute_name: Offline_Uncorrectable
+              attribute_value_type: raw
+            exp_annotations:
+              summary: "Disk: uncorrectable sector count growing"
+              description: 'The SATA disk /dev/sda on node 192.0.2.10 added 1440 offline-uncorrectable sectors in the last 24 hours (Offline_Uncorrectable, attribute 198). Normal is zero growth: a stable non-zero count is harmless, but ongoing growth indicates confirmed unrecoverable data loss in newly affected LBAs.'
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskuncorrectablesectorsgrowing"
+
+  # SmartctlDiskMediaErrorsGrowing - should NOT fire when count is stable (no growth)
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_media_errors{device="/dev/nvme0",instance="192.0.2.10"}'
+        values: '5x1500'
+    alert_rule_test:
+      - eval_time: 25h
+        alertname: SmartctlDiskMediaErrorsGrowing
+        exp_alerts: []
+
+  # SmartctlDiskMediaErrorsGrowing - should fire when count grows over 24h
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_media_errors{device="/dev/nvme0",instance="192.0.2.10"}'
+        values: '0+1x1500'
+    alert_rule_test:
+      - eval_time: 25h
+        alertname: SmartctlDiskMediaErrorsGrowing
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+              device: /dev/nvme0
+              instance: 192.0.2.10
+            exp_annotations:
+              summary: "Disk: NVMe media errors increasing"
+              description: 'The NVMe disk /dev/nvme0 on node 192.0.2.10 accumulated 1440 new media errors in the last 24 hours (smartctl_device_media_errors). Normal is zero growth over time. New errors indicate active uncorrectable ECC failures or LBA tag mismatches.'
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskmediaerrorsgrowing"
+
+  # SmartctlDiskWearoutWarning - should NOT fire when wear is below 75%
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_percentage_used{device="/dev/sda",instance="192.0.2.10"}'
+        values: '70x80'
+    alert_rule_test:
+      - eval_time: 1h5m
+        alertname: SmartctlDiskWearoutWarning
+        exp_alerts: []
+
+  # SmartctlDiskWearoutWarning - should fire when wear exceeds 75%
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_percentage_used{device="/dev/sda",instance="192.0.2.10"}'
+        values: '80x80'
+    alert_rule_test:
+      - eval_time: 1h5m
+        alertname: SmartctlDiskWearoutWarning
+        exp_alerts:
+          - exp_labels:
+              severity: P4
+              device: /dev/sda
+              instance: 192.0.2.10
+            exp_annotations:
+              summary: "Disk: NVMe wear level elevated"
+              description: 'The NVMe disk /dev/sda on node 192.0.2.10 reports 80% of its rated endurance used (smartctl_device_percentage_used), exceeding the 75% threshold. Plan replacement during the next maintenance window. Normal operating range is below 75%. (NVMe-only; SATA drives are covered by SmartctlDiskAttributeFailing.)'
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskwearoutwarning"
+
+  # SmartctlDiskTemperatureHigh - should NOT fire when temperature is normal
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_temperature{device="/dev/sda",instance="192.0.2.10",temperature_type="current"}'
+        values: '45x80'
+    alert_rule_test:
+      - eval_time: 1h5m
+        alertname: SmartctlDiskTemperatureHigh
+        exp_alerts: []
+
+  # SmartctlDiskTemperatureHigh - should fire when temperature exceeds 65°C
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_temperature{device="/dev/sda",instance="192.0.2.10",temperature_type="current"}'
+        values: '70x80'
+    alert_rule_test:
+      - eval_time: 1h5m
+        alertname: SmartctlDiskTemperatureHigh
+        exp_alerts:
+          - exp_labels:
+              severity: P4
+              device: /dev/sda
+              instance: 192.0.2.10
+              temperature_type: current
+            exp_annotations:
+              summary: "Disk: temperature sustained high"
+              description: 'The disk /dev/sda on node 192.0.2.10 has run at 70°C for over an hour, exceeding the 65°C threshold. Normal operating temperature is below 50°C for HDDs and below 60°C for SSDs. Check chassis cooling and airflow.'
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldisktemperaturehigh"
+
+  # SmartctlDiskReallocatedSectorsGrowing - should NOT fire when count is stable
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_attribute{device="/dev/sda",instance="192.0.2.10",attribute_id="5",attribute_name="Reallocated_Sector_Ct",attribute_value_type="raw"}'
+        values: '12x1500'
+    alert_rule_test:
+      - eval_time: 25h
+        alertname: SmartctlDiskReallocatedSectorsGrowing
+        exp_alerts: []
+
+  # SmartctlDiskReallocatedSectorsGrowing - should fire when count grows over 24h
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_attribute{device="/dev/sda",instance="192.0.2.10",attribute_id="5",attribute_name="Reallocated_Sector_Ct",attribute_value_type="raw"}'
+        values: '0+1x1500'
+    alert_rule_test:
+      - eval_time: 25h
+        alertname: SmartctlDiskReallocatedSectorsGrowing
+        exp_alerts:
+          - exp_labels:
+              severity: P4
+              device: /dev/sda
+              instance: 192.0.2.10
+              attribute_id: "5"
+              attribute_name: Reallocated_Sector_Ct
+              attribute_value_type: raw
+            exp_annotations:
+              summary: "Disk: reallocated sector count growing"
+              description: 'The SATA disk /dev/sda on node 192.0.2.10 reallocated 1440 additional sectors in the last 24 hours (Reallocated_Sector_Ct, attribute 5). Normal is zero growth: a stable non-zero count is harmless, but ongoing reallocation indicates active media degradation.'
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskreallocatedsectorsgrowing"
+
+  # SmartctlDiskSelfTestFailed - should NOT fire when error count is 0
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_self_test_log_error_count{device="/dev/sda",instance="192.0.2.10",self_test_log_type="standard"}'
+        values: '0x80'
+    alert_rule_test:
+      - eval_time: 1h5m
+        alertname: SmartctlDiskSelfTestFailed
+        exp_alerts: []
+
+  # SmartctlDiskSelfTestFailed - should fire when error count > 0
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_self_test_log_error_count{device="/dev/sda",instance="192.0.2.10",self_test_log_type="standard"}'
+        values: '1x80'
+    alert_rule_test:
+      - eval_time: 1h5m
+        alertname: SmartctlDiskSelfTestFailed
+        exp_alerts:
+          - exp_labels:
+              severity: P4
+              device: /dev/sda
+              instance: 192.0.2.10
+              self_test_log_type: standard
+            exp_annotations:
+              summary: "Disk: SATA SMART self-test reported errors"
+              description: 'The SATA disk /dev/sda on node 192.0.2.10 has 1 entries in its SMART self-test error log (self_test_log_type=standard). Normal is 0. Even one failed self-test indicates the drive could not complete an internal integrity check. (SATA-only; the upstream exporter does not surface NVMe self-test results.)'
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskselftestfailed"
+
+  # SmartctlDiskAttributeFailing - should NOT fire when value is above thresh
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_attribute{device="/dev/sda",instance="192.0.2.10",attribute_id="5",attribute_name="Reallocated_Sector_Ct",attribute_value_type="value"}'
+        values: '100x20'
+      - series: 'smartctl_device_attribute{device="/dev/sda",instance="192.0.2.10",attribute_id="5",attribute_name="Reallocated_Sector_Ct",attribute_value_type="thresh"}'
+        values: '10x20'
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: SmartctlDiskAttributeFailing
+        exp_alerts: []
+
+  # SmartctlDiskAttributeFailing - should NOT fire when thresh is 0 (informational attribute)
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_attribute{device="/dev/sda",instance="192.0.2.10",attribute_id="194",attribute_name="Temperature_Celsius",attribute_value_type="value"}'
+        values: '0x20'
+      - series: 'smartctl_device_attribute{device="/dev/sda",instance="192.0.2.10",attribute_id="194",attribute_name="Temperature_Celsius",attribute_value_type="thresh"}'
+        values: '0x20'
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: SmartctlDiskAttributeFailing
+        exp_alerts: []
+
+  # SmartctlDiskAttributeFailing - should fire when value drops to/below thresh
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_attribute{device="/dev/sda",instance="192.0.2.10",attribute_id="233",attribute_name="Media_Wearout_Indicator",attribute_value_type="value"}'
+        values: '8x20'
+      - series: 'smartctl_device_attribute{device="/dev/sda",instance="192.0.2.10",attribute_id="233",attribute_name="Media_Wearout_Indicator",attribute_value_type="thresh"}'
+        values: '10x20'
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: SmartctlDiskAttributeFailing
+        exp_alerts:
+          - exp_labels:
+              severity: P2
+              device: /dev/sda
+              instance: 192.0.2.10
+              attribute_id: "233"
+              attribute_name: Media_Wearout_Indicator
+            exp_annotations:
+              summary: "Disk: SMART attribute below failure threshold"
+              description: 'The SMART attribute Media_Wearout_Indicator (id 233) on disk /dev/sda on node 192.0.2.10 has dropped to a normalized value of 8, at or below the threshold the drive firmware uses to declare the attribute failing. Normal is for the value to stay well above its threshold. The drive itself is signalling imminent failure of this attribute (e.g., wear-leveling, reallocation, or a vendor-specific prefailure indicator).'
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskattributefailing"
+
+  # SmartctlDiskScsiUncorrectedErrors - should NOT fire when error counters are flat
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_read_total_uncorrected_errors{device="/dev/sdb",instance="192.0.2.10"}'
+        values: '0x1500'
+      - series: 'smartctl_write_total_uncorrected_errors{device="/dev/sdb",instance="192.0.2.10"}'
+        values: '0x1500'
+    alert_rule_test:
+      - eval_time: 25h
+        alertname: SmartctlDiskScsiUncorrectedErrors
+        exp_alerts: []
+
+  # SmartctlDiskScsiUncorrectedErrors - should fire when read errors grow
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_read_total_uncorrected_errors{device="/dev/sdb",instance="192.0.2.10"}'
+        values: '0+1x1500'
+      - series: 'smartctl_write_total_uncorrected_errors{device="/dev/sdb",instance="192.0.2.10"}'
+        values: '0x1500'
+    alert_rule_test:
+      - eval_time: 25h
+        alertname: SmartctlDiskScsiUncorrectedErrors
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+              device: /dev/sdb
+              instance: 192.0.2.10
+            exp_annotations:
+              summary: "Disk: SCSI/SAS uncorrected I/O errors"
+              description: 'The SCSI/SAS disk /dev/sdb on node 192.0.2.10 accumulated 1440 new uncorrected read/write errors in the last 24 hours. Normal is zero growth: any non-zero increase indicates the drive could not recover I/O via on-disk ECC, which means data loss or imminent failure.'
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskscsiuncorrectederrors"
+
+  # SmartctlDiskScsiGrownDefectsGrowing - should NOT fire when count is stable
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_scsi_grown_defect_list{device="/dev/sdb",instance="192.0.2.10"}'
+        values: '7x1500'
+    alert_rule_test:
+      - eval_time: 25h
+        alertname: SmartctlDiskScsiGrownDefectsGrowing
+        exp_alerts: []
+
+  # SmartctlDiskScsiGrownDefectsGrowing - should fire when count grows over 24h
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_scsi_grown_defect_list{device="/dev/sdb",instance="192.0.2.10"}'
+        values: '0+1x1500'
+    alert_rule_test:
+      - eval_time: 25h
+        alertname: SmartctlDiskScsiGrownDefectsGrowing
+        exp_alerts:
+          - exp_labels:
+              severity: P4
+              device: /dev/sdb
+              instance: 192.0.2.10
+            exp_annotations:
+              summary: "Disk: SCSI/SAS grown defect list growing"
+              description: 'The SCSI/SAS disk /dev/sdb on node 192.0.2.10 added 1440 entries to its grown defect list in the last 24 hours. Normal is zero growth: a stable non-zero count is harmless, but ongoing growth means the drive is actively reallocating bad blocks.'
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskscsigrowndefectsgrowing"
+
+  # GeneveTransmitErrors - should NOT fire when error rate is below threshold
+  - interval: 1m
+    input_series:
+      - series: 'node_network_transmit_errs_total{job="node-exporter",instance="192.0.2.10:9100",device="tenant-geneve0"}'
+        values: '0+0x30'
+      - series: 'node_ethtool_info{job="node-exporter",instance="192.0.2.10:9100",device="tenant-geneve0",driver="geneve"}'
+        values: '1x30'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: GeneveTransmitErrors
+        exp_alerts: []
+
+  # GeneveTransmitErrors - should fire when sustained error rate exceeds 1.67/s for 15m
+  # Counter increments by 200/min = 3.33/s, well above 1.67/s threshold.
+  - interval: 1m
+    input_series:
+      - series: 'node_network_transmit_errs_total{job="node-exporter",instance="192.0.2.10:9100",device="tenant-geneve0"}'
+        values: '0+200x30'
+      - series: 'node_ethtool_info{job="node-exporter",instance="192.0.2.10:9100",device="tenant-geneve0",driver="geneve"}'
+        values: '1x30'
+      - series: 'node_network_transmit_errs_total{job="node-exporter",instance="192.0.2.11:9100",device="eth0"}'
+        values: '0+200x30'
+      - series: 'node_ethtool_info{job="node-exporter",instance="192.0.2.11:9100",device="eth0",driver="mlx5_core"}'
+        values: '1x30'
+    alert_rule_test:
+      - eval_time: 25m
+        alertname: GeneveTransmitErrors
+        exp_alerts:
+          - exp_labels:
+              job: node-exporter
+              instance: 192.0.2.10:9100
+              device: tenant-geneve0
+              driver: geneve
+              severity: P3
+            exp_annotations:
+              summary: "Geneve overlay: transmit failures may affect tenant traffic on a compute host"
+              description: "192.0.2.10:9100 interface tenant-geneve0 has averaged 3.33 transmit errors per second over the last 5 minutes (threshold > 1.67/s, ~100/min). Normal behavior is zero sustained transmit errors on Geneve tunnel interfaces."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#genevetransmiterrors"

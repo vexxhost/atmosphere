@@ -41,12 +41,8 @@ spec:
         configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
         configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
     spec:
-{{ with .Values.pod.priorityClassName.designate_sink }}
-      priorityClassName: {{ . }}
-{{ end }}
-{{ with .Values.pod.runtimeClassName.designate_sink }}
-      runtimeClassName: {{ . }}
-{{ end }}
+{{ tuple "designate_sink" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
+{{ tuple "designate_sink" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
       serviceAccountName: {{ $serviceAccountName }}
       affinity:
 {{ tuple $envAll "designate" "sink" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}

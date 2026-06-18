@@ -42,12 +42,8 @@ spec:
 {{ dict "envAll" $envAll "application" "test" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 2 }}
   nodeSelector:
     {{ .Values.labels.test.node_selector_key }}: {{ .Values.labels.test.node_selector_value }}
-{{ with .Values.pod.priorityClassName.manila_tests }}
-  priorityClassName: {{ . }}
-{{ end }}
-{{ with .Values.pod.runtimeClassName.manila_tests }}
-  runtimeClassName: {{ . }}
-{{ end }}
+{{ tuple "manila_tests" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 2 }}
+{{ tuple "manila_tests" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 2 }}
   serviceAccountName: {{ $serviceAccountName }}
   initContainers:
 {{ tuple $envAll "tests" $mounts_tests_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 4 }}
@@ -68,27 +64,27 @@ spec:
 {{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.share.api.internal | include "helm-toolkit.snippets.tls_volume_mount"  | indent 8 }}
 {{- end }}
       env:
-{{- with $env := dict "ksUserSecret" .Values.secrets.identity.admin "useCA" (and .Values.manifests.certificates .Values.secrets.tls.share.api.internal) }}
-{{- include "helm-toolkit.snippets.keystone_openrc_env_vars" $env | indent 8 }}
+{{- with $env := dict "ksUserSecret" .Values.secrets.share.admin "useCA" (and .Values.manifests.certificates .Values.secrets.tls.share.api.internal) }}
+{{- include "helm-toolkit.snippets.manila_openrc_env_vars" $env | indent 8 }}
 {{- end }}
         - name: SERVICE_OS_SERVICE_NAME
           value: "test"
-{{- with $env := dict "ksUserSecret" .Values.secrets.identity.test }}
-{{- include "helm-toolkit.snippets.keystone_user_create_env_vars" $env | indent 8 }}
+{{- with $env := dict "ksUserSecret" .Values.secrets.share.test }}
+{{- include "helm-toolkit.snippets.manila_user_create_env_vars" $env | indent 8 }}
 {{- end }}
         - name: SERVICE_OS_ROLE
-          value: {{ .Values.endpoints.identity.auth.test.role | quote }}
+          value: {{ .Values.endpoints.share.auth.test.role | quote }}
   containers:
     - name: manila-test
 {{ tuple $envAll "test" | include "helm-toolkit.snippets.image" | indent 6 }}
 {{ tuple $envAll $envAll.Values.pod.resources.jobs.tests | include "helm-toolkit.snippets.kubernetes_resources" | indent 6 }}
 {{ dict "envAll" $envAll "application" "test" "container" "manila_test" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 6}}
       env:
-{{- with $env := dict "ksUserSecret" .Values.secrets.identity.admin "useCA" (and .Values.manifests.certificates .Values.secrets.tls.share.api.internal) }}
-{{- include "helm-toolkit.snippets.keystone_openrc_env_vars" $env | indent 8 }}
+{{- with $env := dict "ksUserSecret" .Values.secrets.share.admin "useCA" (and .Values.manifests.certificates .Values.secrets.tls.share.api.internal) }}
+{{- include "helm-toolkit.snippets.manila_openrc_env_vars" $env | indent 8 }}
 {{- end }}
-{{- with $env := dict "ksUserSecret" .Values.secrets.identity.test }}
-{{- include "helm-toolkit.snippets.keystone_user_create_env_vars" $env | indent 8 }}
+{{- with $env := dict "ksUserSecret" .Values.secrets.share.test }}
+{{- include "helm-toolkit.snippets.manila_user_create_env_vars" $env | indent 8 }}
 {{- end }}
         - name: RALLY_ENV_NAME
           value: {{.deployment_name}}

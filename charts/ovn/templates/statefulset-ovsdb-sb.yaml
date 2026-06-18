@@ -108,11 +108,15 @@ spec:
               mountPath: /var/run/ovn
             - name: data
               mountPath: /etc/ovn
+            - name: var-log-ovn
+              mountPath: /var/log/ovn
       volumes:
         - name: run-openvswitch
           hostPath:
             path: /run/openvswitch
             type: DirectoryOrCreate
+        - name: var-log-ovn
+          emptyDir: {}
 {{- if not .Values.volume.ovn_ovsdb_sb.enabled }}
         - name: data
           emptyDir: {}
