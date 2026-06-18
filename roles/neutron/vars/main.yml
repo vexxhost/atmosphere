@@ -89,6 +89,25 @@ __neutron_helm_values:
     ingress_server: false
     service_ingress_server: false
 
+__neutron_generic_switch_keys_helm_values:
+  pod:
+    security_context:
+      neutron_server:
+        pod:
+          fsGroup: 42424
+    mounts:
+      neutron_server:
+        neutron_server:
+          volumeMounts:
+            - name: ssh-keys
+              mountPath: /etc/neutron/ssh-keys
+              readOnly: true
+          volumes:
+            - name: ssh-keys
+              secret:
+                secretName: "{{ neutron_helm_release_name }}-ssh-keys"
+                defaultMode: 0400 # noqa: yaml[octal-values]
+
 __neutron_ovn_helm_values:
   conf:
     neutron:
@@ -106,9 +125,6 @@ __neutron_ovn_helm_values:
         extensions: vpnaas
       vpnagent:
         vpn_device_driver: neutron_vpnaas.services.vpn.device_drivers.ovn_ipsec.OvnStrongSwanDriver
-    neutron_vpnaas:
-      service_providers:
-        service_provider: VPN:strongswan:neutron_vpnaas.services.vpn.service_drivers.ovn_ipsec.IPsecOvnVPNDriver:default
     plugins:
       ml2_conf:
         agent:

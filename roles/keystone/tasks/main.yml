@@ -83,9 +83,34 @@
     realm: "{{ item.keycloak_realm }}"
     client_id: "{{ item.keycloak_client_id }}"
     secret: "{{ item.keycloak_client_secret }}"
+    client_authenticator_type: client-secret
+    public_client: false
+    service_accounts_enabled: true
+    direct_access_grants_enabled: false
     redirect_uris:
       - "{{ keystone_oidc_redirect_uri }}"
       - "https://{{ openstack_helm_endpoints_horizon_api_host }}/auth/logout/"
+  loop: "{{ keystone_domains }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Assign realm-management roles to service account
+  no_log: true
+  run_once: true
+  community.general.keycloak_user_rolemapping:
+    # Keycloak settings
+    auth_keycloak_url: "{{ item.keycloak_server_url }}"
+    auth_realm: "{{ item.keycloak_user_realm_name }}"
+    auth_client_id: "{{ item.keycloak_admin_client_id }}"
+    auth_username: "{{ item.keycloak_admin_user }}"
+    auth_password: "{{ item.keycloak_admin_password }}"
+    validate_certs: "{{ cluster_issuer_type != 'self-signed' }}"
+    # Role mapping settings
+    realm: "{{ item.keycloak_realm }}"
+    service_account_user_client_id: "{{ item.keycloak_client_id }}"
+    client_id: realm-management
+    roles:
+      - name: view-users
   loop: "{{ keystone_domains }}"
   loop_control:
     label: "{{ item.name }}"
@@ -107,7 +132,7 @@
     openstack_helm_ingress_endpoint: identity
     openstack_helm_ingress_service_name: keystone-api
     openstack_helm_ingress_service_port: 5000
-    openstack_helm_ingress_annotations: "{{ keystone_ingress_annotations }}"
+    openstack_helm_ingress_annotations: "{{ _keystone_ingress_annotations | combine(keystone_ingress_annotations) }}"
     openstack_helm_ingress_class_name: "{{ keystone_ingress_class_name }}"
 
 - name: Validate if ingress is reachable

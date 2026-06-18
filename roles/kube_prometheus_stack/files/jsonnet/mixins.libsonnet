@@ -20,6 +20,10 @@ local disabledAlerts = [
   // * Dropped `MySQLDown` due to noisy alerts even
   //   the replication still more than minimum
   'MySQLDown',
+
+  // Superseded by NodeDiskHighLatency which measures actual IO latency
+  // instead of queue depth, which is misleading on SSDs and RAID arrays.
+  'NodeDiskIOSaturation',
 ];
 
 // NOTE(mnaser): This is the default mapping for severities:
@@ -63,7 +67,7 @@ local getSeverity(rule) =
 local mixins = {
   alertmanager: (import 'vendor/github.com/prometheus/alertmanager/doc/alertmanager-mixin/mixin.libsonnet') + {
     _config+:: {
-      alertmanagerSelector: 'job="kube-prometheus-stack-alertmanager",namespace="monitoring"',
+      alertmanagerSelector: 'job="kube-prometheus-stack-alertmanager"',
       alertmanagerClusterLabels: 'namespace,service,cluster',
     },
   },
@@ -96,55 +100,74 @@ local mixins = {
           ],
         },
       ],
-    }
-  },
-  coredns: (import 'vendor/github.com/povilasv/coredns-mixin/mixin.libsonnet') + {
-    _config+:: {
-      corednsSelector: 'job="coredns"',
     },
   },
+  coredns: (import 'coredns.libsonnet'),
+  geneve: (import 'geneve.libsonnet'),
   kube: (import 'vendor/github.com/kubernetes-monitoring/kubernetes-mixin/mixin.libsonnet') + {
     _config+:: {
       kubeApiserverSelector: 'job="apiserver"',
     },
   },
   memcached: (import 'vendor/github.com/grafana/jsonnet-libs/memcached-mixin/mixin.libsonnet'),
-  mysqld: (import 'vendor/github.com/prometheus/mysqld_exporter/mysqld-mixin/mixin.libsonnet') + {
-    prometheusAlerts+:: {
-      groups+: [
-        {
-          name: 'mysqld-extras',
-          rules: [
-            {
-              alert: 'MysqlTooManyConnections',
-              'for': '1m',
-              expr: |||
-                max_over_time(mysql_global_status_threads_connected[1m]) / mysql_global_variables_max_connections * 100 > 80
-              |||,
-              labels: {
-                severity: 'warning',
+  mysqld:
+    local base = (import 'vendor/github.com/prometheus/mysqld_exporter/mysqld-mixin/mixin.libsonnet');
+    base {
+      prometheusAlerts:: {
+        groups: [
+          if group.name == 'GaleraAlerts' then group {
+            rules: [
+              if rule.alert == 'MySQLGaleraOutOfSync' then {
+                alert: 'MySQLGaleraOutOfSync',
+                'for': '15m',
+                expr: |||
+                  (mysql_global_status_wsrep_local_state != 4 and mysql_global_status_wsrep_local_state != 2 and mysql_global_variables_wsrep_desync == 0)
+                |||,
+                labels: { severity: 'warning' },
+                annotations: {
+                  summary: 'Percona XtraDB Cluster: Galera node not in sync with cluster',
+                  description: 'The Galera node {{ $labels.instance }} has wsrep_local_state={{ $value }} which is not the expected value of 4 (Synced).  The node is not in Donor state (2) and wsrep_desync is not enabled, indicating an unexpected loss of cluster sync.  Normal behavior is wsrep_local_state=4 for all nodes not actively serving as SST donors.',
+                  runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#mysqlgaleraoutofsync',
+                },
+              } else rule
+              for rule in group.rules
+            ],
+          } else group
+          for group in base.prometheusAlerts.groups
+        ] + [
+          {
+            name: 'mysqld-extras',
+            rules: [
+              {
+                alert: 'MysqlTooManyConnections',
+                'for': '1m',
+                expr: |||
+                  max_over_time(mysql_global_status_threads_connected[1m]) / mysql_global_variables_max_connections * 100 > 80
+                |||,
+                labels: {
+                  severity: 'warning',
+                },
               },
-            },
-            {
-              alert: 'MysqlHighThreadsRunning',
-              'for': '1m',
-              expr: |||
-                max_over_time(mysql_global_status_threads_running[1m]) / mysql_global_variables_max_connections * 100 > 60
-              |||,
-              labels: {
-                severity: 'warning',
+              {
+                alert: 'MysqlHighThreadsRunning',
+                'for': '1m',
+                expr: |||
+                  max_over_time(mysql_global_status_threads_running[1m]) / mysql_global_variables_max_connections * 100 > 60
+                |||,
+                labels: {
+                  severity: 'warning',
+                },
               },
-            },
-            {
-              alert: 'MysqlSlowQueries',
-              'for': '2m',
-              expr: |||
-                increase(mysql_global_status_slow_queries[1m]) > 0
-              |||,
-              labels: {
-                severity: 'warning',
+              {
+                alert: 'MysqlSlowQueries',
+                'for': '2m',
+                expr: |||
+                  increase(mysql_global_status_slow_queries[1m]) > 0
+                |||,
+                labels: {
+                  severity: 'warning',
+                },
               },
-            },
             {
               alert: 'MysqlClusterDown',
               'for': '5m',
@@ -152,7 +175,7 @@ local mixins = {
               labels: { severity: 'info' },
               annotations: {
                 summary: 'Percona XtraDB Cluster replica is down',
-                description: "{{ $labels.instance }} replica is down.",
+                description: '{{ $labels.instance }} replica is down.',
               },
             },
             {
@@ -162,7 +185,7 @@ local mixins = {
               labels: { severity: 'warning' },
               annotations: {
                 summary: 'Percona XtraDB Cluster replicas are down',
-                description: "{{ $value }}% of replicas are online.",
+                description: '{{ $value }}% of replicas are online.',
               },
             },
             {
@@ -172,7 +195,7 @@ local mixins = {
               labels: { severity: 'critical' },
               annotations: {
                 summary: 'Percona XtraDB Cluster is down',
-                description: "All replicas are down.",
+                description: 'All replicas are down.',
               },
             },
           ],
@@ -180,8 +203,104 @@ local mixins = {
       ],
     },
   },
-  node: (import 'vendor/github.com/prometheus/node_exporter/docs/node-mixin/mixin.libsonnet'),
+  node:
+    (import 'vendor/github.com/prometheus/node_exporter/docs/node-mixin/mixin.libsonnet') {
+      _config+:: {
+        nodeExporterSelector: 'job="node-exporter"',
+        diskDeviceSelector: 'device=~"(/dev/)?(mmcblk.p.+|nvme.+|rbd.+|sd.+|vd.+|xvd.+|dm-.+|md.+|dasd.+)"',
+      },
+      prometheusAlerts+:: {
+        groups: [
+          if group.name == 'node-exporter' then group {
+            rules: [
+              if rule.alert == 'NodeMemoryHighUtilization' then rule {
+                expr: |||
+                  100 - (
+                    (
+                      node_memory_MemAvailable_bytes{%(nodeExporterSelector)s}
+                      +
+                      (
+                        (
+                          node_memory_HugePages_Free{%(nodeExporterSelector)s}
+                          * on(instance, job) group_left()
+                          node_memory_Hugepagesize_bytes{%(nodeExporterSelector)s}
+                        )
+                        or on(instance, job)
+                        (0 * node_memory_MemAvailable_bytes{%(nodeExporterSelector)s})
+                      )
+                    ) / node_memory_MemTotal_bytes{%(nodeExporterSelector)s} * 100
+                  ) > %(memoryHighUtilizationThreshold)d
+                ||| % mixins.node._config,
+                annotations+: {
+                  summary: 'Node memory: high utilization can affect host and workload stability',
+                  description: 'Computed node memory utilization at {{ $labels.instance }} is {{ printf "%.2f" $value }}%, exceeding the threshold of 90% for 15 minutes. This computation includes free huge page capacity (node_memory_HugePages_Free * node_memory_Hugepagesize_bytes) in available memory to avoid false positives on compute nodes backed by huge pages. Normal behavior is below 90% sustained utilization.',
+                  runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#nodememoryhighutilization',
+                },
+              } else rule
+              for rule in group.rules
+            ],
+          } else group
+          for group in super.groups
+        ] + [
+          {
+            name: 'node-exporter-extras',
+            rules: [
+              {
+                alert: 'NodeTimeSkewDetected',
+                expr: |||
+                  abs(timestamp(node_time_seconds{%(nodeExporterSelector)s}) - node_time_seconds{%(nodeExporterSelector)s}) > 1
+                ||| % mixins.node._config,
+                'for': '5m',
+                labels: {
+                  severity: 'warning',
+                },
+                annotations: {
+                  summary: 'Node {{ $labels.instance }} has a time difference.',
+                  description: 'Node {{ $labels.instance }} has a time difference {{ $value }}.',
+                },
+              },
+              {
+                alert: 'NodeDiskHighLatency',
+                expr: |||
+                  (
+                    (
+                      rate(node_disk_read_time_seconds_total{%(nodeExporterSelector)s, %(diskDeviceSelector)s}[5m])
+                      +
+                      rate(node_disk_write_time_seconds_total{%(nodeExporterSelector)s, %(diskDeviceSelector)s}[5m])
+                    )
+                    /
+                    (
+                      rate(node_disk_reads_completed_total{%(nodeExporterSelector)s, %(diskDeviceSelector)s}[5m])
+                      +
+                      rate(node_disk_writes_completed_total{%(nodeExporterSelector)s, %(diskDeviceSelector)s}[5m])
+                    )
+                  ) > 0.02
+                  and
+                  (
+                    rate(node_disk_reads_completed_total{%(nodeExporterSelector)s, %(diskDeviceSelector)s}[5m])
+                    +
+                    rate(node_disk_writes_completed_total{%(nodeExporterSelector)s, %(diskDeviceSelector)s}[5m])
+                  ) > 0
+                ||| % mixins.node._config,
+                'for': '1h',
+                labels: {
+                  severity: 'P4',
+                },
+                annotations: {
+                  summary: 'Node disk: high IO latency affecting workloads',
+                  description: 'Average IO latency on {{ $labels.device }} at {{ $labels.instance }} is {{ $value | humanizeDuration }} over the last 5 minutes, which exceeds the threshold of 20ms. Normal SSD latency is below 1ms and normal HDD latency is below 15ms.',
+                  runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#nodediskhighlatency',
+                },
+              },
+            ],
+          },
+        ],
+      },
+    },
+  goldpinger: (import 'goldpinger.libsonnet'),
+  nginx: (import 'nginx.libsonnet'),
   openstack: (import 'openstack.libsonnet'),
+  smartctl: (import 'smartctl.libsonnet'),
 } + (import 'legacy.libsonnet');
 
 {

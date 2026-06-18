@@ -35,7 +35,20 @@
    "graphTooltip": 0,
    "hideControls": false,
    "id": null,
-   "links": [ ],
+   "links": [
+      {
+         "asDropdown": true,
+         "icon": "external link",
+         "includeVars": true,
+         "keepTime": true,
+         "tags": [ ],
+         "targetBlank": false,
+         "title": "Browse Dashboards",
+         "tooltip": "",
+         "type": "dashboards",
+         "url": ""
+      }
+   ],
    "panels": [
       {
          "aliasColors": { },
@@ -44,6 +57,15 @@
          "dashes": false,
          "datasource": "$datasource",
          "description": "",
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "fillOpacity": 8,
+                  "showPoints": "never"
+               },
+               "unit": "Bps"
+            }
+         },
          "fill": 1,
          "fillGradient": 0,
          "gridPos": {
@@ -80,7 +102,7 @@
          "steppedLine": false,
          "targets": [
             {
-               "expr": "sum by (source_zone) (rate(ceph_data_sync_from_zone_fetch_bytes_sum{job=~\"$job\"}[$__rate_interval]))",
+               "expr": "sum by (source_zone) (rate(ceph_data_sync_from_zone_fetch_bytes_sum{cluster=~\"$cluster\", }[$__rate_interval]))",
                "format": "time_series",
                "intervalFactor": 1,
                "legendFormat": "{{source_zone}}",
@@ -96,7 +118,7 @@
             "sort": 0,
             "value_type": "individual"
          },
-         "type": "graph",
+         "type": "timeseries",
          "xaxis": {
             "buckets": null,
             "mode": "time",
@@ -130,6 +152,15 @@
          "dashes": false,
          "datasource": "$datasource",
          "description": "",
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "fillOpacity": 8,
+                  "showPoints": "never"
+               },
+               "unit": "short"
+            }
+         },
          "fill": 1,
          "fillGradient": 0,
          "gridPos": {
@@ -166,7 +197,7 @@
          "steppedLine": false,
          "targets": [
             {
-               "expr": "sum by (source_zone) (rate(ceph_data_sync_from_zone_fetch_bytes_count{job=~\"$job\"}[$__rate_interval]))",
+               "expr": "sum by (source_zone) (rate(ceph_data_sync_from_zone_fetch_bytes_count{cluster=~\"$cluster\", }[$__rate_interval]))",
                "format": "time_series",
                "intervalFactor": 1,
                "legendFormat": "{{source_zone}}",
@@ -182,7 +213,7 @@
             "sort": 0,
             "value_type": "individual"
          },
-         "type": "graph",
+         "type": "timeseries",
          "xaxis": {
             "buckets": null,
             "mode": "time",
@@ -216,6 +247,15 @@
          "dashes": false,
          "datasource": "$datasource",
          "description": "",
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "fillOpacity": 8,
+                  "showPoints": "never"
+               },
+               "unit": "ms"
+            }
+         },
          "fill": 1,
          "fillGradient": 0,
          "gridPos": {
@@ -252,7 +292,7 @@
          "steppedLine": false,
          "targets": [
             {
-               "expr": "sum by (source_zone) (rate(ceph_data_sync_from_zone_poll_latency_sum{job=~\"$job\"}[$__rate_interval]))",
+               "expr": "sum by (source_zone) (rate(ceph_data_sync_from_zone_poll_latency_sum{cluster=~\"$cluster\", }[$__rate_interval]))",
                "format": "time_series",
                "intervalFactor": 1,
                "legendFormat": "{{source_zone}}",
@@ -268,7 +308,7 @@
             "sort": 0,
             "value_type": "individual"
          },
-         "type": "graph",
+         "type": "timeseries",
          "xaxis": {
             "buckets": null,
             "mode": "time",
@@ -302,6 +342,15 @@
          "dashes": false,
          "datasource": "$datasource",
          "description": "",
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "fillOpacity": 8,
+                  "showPoints": "never"
+               },
+               "unit": "short"
+            }
+         },
          "fill": 1,
          "fillGradient": 0,
          "gridPos": {
@@ -338,7 +387,7 @@
          "steppedLine": false,
          "targets": [
             {
-               "expr": "sum by (source_zone) (rate(ceph_data_sync_from_zone_fetch_errors{job=~\"$job\"}[$__rate_interval]))",
+               "expr": "sum by (source_zone) (rate(ceph_data_sync_from_zone_fetch_errors{cluster=~\"$cluster\", }[$__rate_interval]))",
                "format": "time_series",
                "intervalFactor": 1,
                "legendFormat": "{{source_zone}}",
@@ -354,7 +403,7 @@
             "sort": 0,
             "value_type": "individual"
          },
-         "type": "graph",
+         "type": "timeseries",
          "xaxis": {
             "buckets": null,
             "mode": "time",
@@ -380,6 +429,102 @@
                "show": true
             }
          ]
+      },
+      {
+         "datasource": "$datasource",
+         "description": "",
+         "fieldConfig": {
+            "defaults": {
+               "color": {
+                  "mode": "palette-classic"
+               },
+               "custom": {
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "barAlignment": 0,
+                  "drawStyle": "line",
+                  "fillOpacity": 0,
+                  "gradientMode": "none",
+                  "hideFrom": {
+                     "legend": false,
+                     "tooltip": false,
+                     "viz": false
+                  },
+                  "lineInterpolation": "linear",
+                  "lineWidth": 1,
+                  "pointSize": 5,
+                  "scaleDistribution": {
+                     "type": "linear"
+                  },
+                  "showPoints": "auto",
+                  "spanNulls": false,
+                  "stacking": {
+                     "group": "A",
+                     "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                     "mode": "off"
+                  }
+               },
+               "decimals": 2,
+               "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                     {
+                        "color": "green",
+                        "value": null
+                     },
+                     {
+                        "color": "red",
+                        "value": 80
+                     }
+                  ]
+               },
+               "unit": "s"
+            },
+            "overrides": [ ]
+         },
+         "gridPos": {
+            "h": 7,
+            "w": 16,
+            "x": 8,
+            "y": 7
+         },
+         "id": 6,
+         "options": {
+            "legend": {
+               "calcs": [
+                  "lastNotNull"
+               ],
+               "displayMode": "table",
+               "placement": "right",
+               "showLegend": true,
+               "sortBy": "Last *",
+               "sortDesc": true
+            },
+            "tooltip": {
+               "mode": "multi",
+               "sort": "desc"
+            }
+         },
+         "pluginVersion": "9.1.3",
+         "seriesOverrides": [ ],
+         "targets": [
+            {
+               "datasource": "$datasource",
+               "expr": "rate(ceph_rgw_sync_delta_sync_delta[$__rate_interval])",
+               "format": "time_series",
+               "instant": false,
+               "intervalFactor": 1,
+               "legendFormat": "{{instance_id}} - {{shard_id}}",
+               "range": true,
+               "refId": "A"
+            }
+         ],
+         "title": "Replication(Time) Delta per shard",
+         "type": "timeseries"
       }
    ],
    "refresh": "30s",
@@ -407,36 +552,16 @@
             "type": "datasource"
          },
          {
-            "allValue": ".+",
-            "current": { },
-            "datasource": "$datasource",
-            "hide": 2,
-            "includeAll": true,
-            "label": "cluster",
-            "multi": true,
-            "name": "cluster",
-            "options": [ ],
-            "query": "label_values(ceph_osd_metadata, cluster)",
-            "refresh": 1,
-            "regex": "(.*)",
-            "sort": 1,
-            "tagValuesQuery": "",
-            "tags": [ ],
-            "tagsQuery": "",
-            "type": "query",
-            "useTags": false
-         },
-         {
-            "allValue": ".+",
+            "allValue": null,
             "current": { },
             "datasource": "$datasource",
             "hide": 0,
-            "includeAll": true,
-            "label": "job",
-            "multi": true,
-            "name": "job",
+            "includeAll": false,
+            "label": "cluster",
+            "multi": false,
+            "name": "cluster",
             "options": [ ],
-            "query": "label_values(ceph_osd_metadata{}, job)",
+            "query": "label_values(ceph_health_status, cluster)",
             "refresh": 1,
             "regex": "(.*)",
             "sort": 1,
@@ -452,13 +577,13 @@
             "datasource": "$datasource",
             "hide": 0,
             "includeAll": true,
-            "label": "",
+            "label": null,
             "multi": false,
             "name": "rgw_servers",
             "options": [ ],
-            "query": "label_values(ceph_rgw_metadata{job=~\"$job\"}, ceph_daemon)",
+            "query": "label_values(ceph_rgw_metadata{cluster=~\"$cluster\", }, ceph_daemon)",
             "refresh": 1,
-            "regex": "RGW Server",
+            "regex": "rgw.(.*)",
             "sort": 1,
             "tagValuesQuery": "",
             "tags": [ ],

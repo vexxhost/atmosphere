@@ -14,8 +14,14 @@
 
 - name: Install openstacksdk
   ansible.builtin.pip:
-    name: openstacksdk
-    version: "{{ openstacksdk_version | default(omit) }}"
+    name: >-
+      {{ 'openstacksdk==' + openstacksdk_version
+         if openstacksdk_version is defined
+         else 'openstacksdk>1' }}
+  register: _openstacksdk_pip_install
+  retries: 3
+  delay: 5
+  until: _openstacksdk_pip_install is not failed
 
 - name: Create openstack config directory
   become: true

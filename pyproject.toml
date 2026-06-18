@@ -35,10 +35,16 @@ dependencies = [
 [dependency-groups]
 dev = [
   "kubernetes",
-  "molecule>=25.5.0",
+  "molecule>=25.11.0",
   "oslotest>=5.0.1",
   "stestr>=4.2.0",
   "testscenarios>=0.5.0",
+]
+manila = [
+  "python-keystoneclient",
+  "python-swiftclient",
+  # NOTE(mnaser): urllib3 2.6.0 removed getheader() which python-swiftclient still uses
+  "urllib3<2.6.0",
 ]
 
 [project.urls]

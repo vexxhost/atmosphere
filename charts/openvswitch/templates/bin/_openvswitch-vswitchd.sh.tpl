@@ -114,23 +114,19 @@ function start () {
   fi
 {{- end }}
 
-  # Remove the pid file if it exists
-  if [ -f $OVS_PID ]; then
-      rm -f $OVS_PID
-  fi
-
-  exec /usr/sbin/ovs-vswitchd unix:${OVS_SOCKET} \
+  exec ovsinit -- /usr/sbin/ovs-vswitchd unix:${OVS_SOCKET} \
           -vconsole:emer \
           -vconsole:err \
           -vconsole:info \
           --pidfile=${OVS_PID} \
-          --mlockall \
-          --user={{ .Values.conf.ovs_user_name }}
+          {{- if .Values.conf.ovs_user_name }}
+          --user="{{ .Values.conf.ovs_user_name }}" \
+          {{- end }}
+          --mlockall
 }
 
 function stop () {
-  PID=$(cat $OVS_PID)
-  ovs-appctl -T1 -t /run/openvswitch/ovs-vswitchd.${PID}.ctl exit
+  echo skipped due to ovsinit
 }
 
 find_latest_ctl_file() {
