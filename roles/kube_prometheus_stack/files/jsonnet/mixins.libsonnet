@@ -292,12 +292,47 @@ local mixins = {
                   runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#nodediskhighlatency',
                 },
               },
+              {
+                alert: 'NodeFilesystemMountsHigh',
+                expr: |||
+                  count by (instance, job) (
+                    node_filesystem_device_error{%(nodeExporterSelector)s}
+                  ) > 100
+                ||| % mixins.node._config,
+                'for': '30m',
+                labels: {
+                  severity: 'P4',
+                },
+                annotations: {
+                  summary: 'Node filesystem: high mount count on {{ $labels.instance }}',
+                  description: 'Node-exporter reports {{ printf "%.0f" $value }} filesystem mount entries for {{ $labels.instance }}, exceeding the threshold of 100 for 30 minutes. A high mount count can make host mount-scanning tasks expensive and may indicate stale bind mounts, including libvirt/Ceph mounts left behind after repeated pod restarts.',
+                  runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#nodefilesystemmountshigh',
+                },
+              },
+              {
+                alert: 'NodeFilesystemMountsVeryHigh',
+                expr: |||
+                  count by (instance, job) (
+                    node_filesystem_device_error{%(nodeExporterSelector)s}
+                  ) > 1000
+                ||| % mixins.node._config,
+                'for': '10m',
+                labels: {
+                  severity: 'P3',
+                },
+                annotations: {
+                  summary: 'Node filesystem: very high mount count on {{ $labels.instance }}',
+                  description: 'Node-exporter reports {{ printf "%.0f" $value }} filesystem mount entries for {{ $labels.instance }}, exceeding the threshold of 1000 for 10 minutes. At this level host processes that scan mounted filesystems can consume elevated CPU and node responsiveness may degrade.',
+                  runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#nodefilesystemmountsveryhigh',
+                },
+              },
             ],
           },
         ],
       },
-    },
+  },
   goldpinger: (import 'goldpinger.libsonnet'),
+  libvirt: (import 'libvirt.libsonnet'),
   nginx: (import 'nginx.libsonnet'),
   openstack: (import 'openstack.libsonnet'),
   smartctl: (import 'smartctl.libsonnet'),
