@@ -28,8 +28,8 @@ _keycloak_helm_values:
   extraEnvVars:
     - name: KC_FEATURES
       value: "token-exchange,admin-fine-grained-authz"
-    - name: KC_PROXY
-      value: edge
+    - name: KC_PROXY_HEADERS
+      value: xforwarded
     - name: KC_DB
       value: mysql
     - name: KC_DB_URL
@@ -48,6 +48,7 @@ _keycloak_helm_values:
     - --health-enabled=true
     - --http-enabled=true
     - --http-port=8080
+    - --proxy-headers=xforwarded
     - --hostname-strict=false
     - --spi-events-listener-jboss-logging-success-level=info
     - --spi-events-listener-jboss-logging-error-level=warn
@@ -66,15 +67,35 @@ _keycloak_helm_values:
     registry: "{{ atmosphere_images['keycloak'] | vexxhost.kubernetes.docker_image('domain') }}"
     repository: "{{ atmosphere_images['keycloak'] | vexxhost.kubernetes.docker_image('path') }}"
     tag: "{{ atmosphere_images['keycloak'] | vexxhost.kubernetes.docker_image('tag') }}"
+    digest: "{{ atmosphere_images['keycloak'] | vexxhost.kubernetes.docker_image('digest') }}"
   postgresql:
     enabled: false
   production: true
-  proxy: edge
+  proxyHeaders: xforwarded
+  extraContainerPorts:
+    - name: management
+      containerPort: 9000
+      protocol: TCP
   startupProbe:
     enabled: true
     initialDelaySeconds: 5
     failureThreshold: 120
   nodeSelector:
     openstack-control-plane: enabled
+  networkPolicy:
+    extraIngress:
+      - ports:
+          - port: 9000
+            protocol: TCP
   metrics:
     enabled: true
+    service:
+      annotations:
+        prometheus.io/scrape: "false"
+      extraPorts:
+        - name: http-management
+          port: 9000
+          protocol: TCP
+          targetPort: management
+    serviceMonitor:
+      enabled: false
