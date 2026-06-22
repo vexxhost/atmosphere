@@ -235,11 +235,11 @@ tests:
   - interval: 1m
     input_series:
       - series: 'mysql_up{instance="percona-xtradb-pxc-0", job="pxc"}'
-        values: '1'
+        values: '1x6'
       - series: 'mysql_up{instance="percona-xtradb-pxc-1", job="pxc"}'
-        values: '1'
+        values: '1x6'
       - series: 'mysql_up{instance="percona-xtradb-pxc-2", job="pxc"}'
-        values: '0'
+        values: '0x6'
     alert_rule_test:
       - eval_time: 5m
         alertname: MysqlClusterDown
@@ -255,11 +255,11 @@ tests:
   - interval: 1m
     input_series:
       - series: 'mysql_up{instance="percona-xtradb-pxc-0", job="pxc"}'
-        values: '1'
+        values: '1x6'
       - series: 'mysql_up{instance="percona-xtradb-pxc-1", job="pxc"}'
-        values: '0'
+        values: '0x6'
       - series: 'mysql_up{instance="percona-xtradb-pxc-2", job="pxc"}'
-        values: '0'
+        values: '0x6'
     alert_rule_test:
       - eval_time: 5m
         alertname: MysqlClusterDown
@@ -1550,3 +1550,78 @@ tests:
               summary: "Geneve overlay: transmit failures may affect tenant traffic on a compute host"
               description: "192.0.2.10:9100 interface tenant-geneve0 has averaged 3.33 transmit errors per second over the last 5 minutes (threshold > 1.67/s, ~100/min). Normal behavior is zero sustained transmit errors on Geneve tunnel interfaces."
               runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#genevetransmiterrors"
+
+  # NodeBondingDegraded - should NOT fire when all slaves are active
+  - interval: 1m
+    input_series:
+      - series: 'node_bonding_slaves{job="node-exporter",instance="192.0.2.20:9100",master="bond0"}'
+        values: '2x5'
+      - series: 'node_bonding_active{job="node-exporter",instance="192.0.2.20:9100",master="bond0"}'
+        values: '2x5'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: NodeBondingDegraded
+        exp_alerts: []
+
+  # NodeBondingDegraded - should fire quickly when a bonded uplink loses a slave
+  - interval: 1m
+    input_series:
+      - series: 'node_bonding_slaves{job="node-exporter",instance="192.0.2.21:9100",master="bond0"}'
+        values: '2x5'
+      - series: 'node_bonding_active{job="node-exporter",instance="192.0.2.21:9100",master="bond0"}'
+        values: '1x5'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: NodeBondingDegraded
+        exp_alerts:
+          - exp_labels:
+              job: node-exporter
+              instance: 192.0.2.21:9100
+              master: bond0
+              severity: P3
+            exp_annotations:
+              summary: "Node network: bond interface degraded"
+              description: "Bond bond0 on 192.0.2.21:9100 has fewer active slaves than configured slaves for more than 1 minute. This can precede node unreachable, Ceph heartbeat, and Kubernetes NotReady alerts when the bond carries management or storage traffic."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#nodebondingdegraded"
+
+  # NodePhysicalNetworkTransmitErrors - should NOT fire for virtual devices or idle physical devices
+  - interval: 1m
+    input_series:
+      - series: 'node_network_transmit_errs_total{job="node-exporter",instance="192.0.2.30:9100",device="genev_sys_6081"}'
+        values: '0+10x10'
+      - series: 'node_ethtool_info{job="node-exporter",instance="192.0.2.30:9100",device="genev_sys_6081",driver="geneve"}'
+        values: '1x10'
+      - series: 'node_network_transmit_errs_total{job="node-exporter",instance="192.0.2.31:9100",device="enp1s0f0"}'
+        values: '0+0x10'
+      - series: 'node_ethtool_info{job="node-exporter",instance="192.0.2.31:9100",device="enp1s0f0",driver="i40e"}'
+        values: '1x10'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: NodePhysicalNetworkTransmitErrors
+        exp_alerts: []
+
+  # NodePhysicalNetworkTransmitErrors - should fire for physical NIC transmit errors
+  - interval: 1m
+    input_series:
+      - series: 'node_network_transmit_errs_total{job="node-exporter",instance="192.0.2.32:9100",device="enp69s0f0"}'
+        values: '0+10x10'
+      - series: 'node_ethtool_info{job="node-exporter",instance="192.0.2.32:9100",device="enp69s0f0",driver="i40e"}'
+        values: '1x10'
+      - series: 'node_network_transmit_errs_total{job="node-exporter",instance="192.0.2.33:9100",device="bond0"}'
+        values: '0+10x10'
+      - series: 'node_ethtool_info{job="node-exporter",instance="192.0.2.33:9100",device="bond0",driver="bonding"}'
+        values: '1x10'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: NodePhysicalNetworkTransmitErrors
+        exp_alerts:
+          - exp_labels:
+              job: node-exporter
+              instance: 192.0.2.32:9100
+              device: enp69s0f0
+              driver: i40e
+              severity: P3
+            exp_annotations:
+              summary: "Node network: physical interface transmit errors"
+              description: "192.0.2.32:9100 physical interface enp69s0f0 using driver i40e recorded 50 transmit errors in the last 5 minutes. Normal behavior is zero transmit errors on production underlay interfaces; driver, firmware, cable, switch port, or PCIe issues can make the host unreachable before Kubernetes or Ceph alerts fire."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#nodephysicalnetworktransmiterrors"
