@@ -2,6 +2,7 @@
     vars:
       atmosphere_workspace_path: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}"
       molecule_environment:
+        ATMOSPHERE_IMAGE_PREFIX: "{{ atmosphere_image_prefix | default('') }}"
         ATMOSPHERE_NETWORK_BACKEND: "{{ atmosphere_network_backend | default('openvswitch') }}"
         ATMOSPHERE_ZUUL_INVENTORY: "{{ ansible_user_dir }}/{{ zuul.project.src_dir }}/inventory.yaml"
     templates:
