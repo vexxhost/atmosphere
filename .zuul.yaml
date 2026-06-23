@@ -1,3 +1,48 @@
+- nodeset:
+    name: atmosphere-ubuntu-noble-single-node
+    nodes:
+      - name: instance
+        label: ubuntu-noble
+    groups: &single_node_groups
+      - name: controllers
+        nodes:
+          - instance
+      - name: cephs
+        nodes:
+          - instance
+      - name: computes
+        nodes:
+          - instance
+
+- nodeset:
+    name: atmosphere-ubuntu-noble-single-node-16
+    nodes:
+      - name: instance
+        label: ubuntu-noble-16
+    groups: *single_node_groups
+
 - project:
-    templates:
-      - atmosphere-molecule-jobs
+    check:
+      jobs:
+        - atmosphere-molecule-aio-openvswitch:
+            nodeset: atmosphere-ubuntu-noble-single-node-16
+        - atmosphere-molecule-aio-ovn:
+            nodeset: atmosphere-ubuntu-noble-single-node-16
+        - atmosphere-molecule-csi-local-path-provisioner:
+            nodeset: atmosphere-ubuntu-noble-single-node
+        - atmosphere-molecule-csi-rbd:
+            nodeset: atmosphere-ubuntu-noble-single-node
+        - atmosphere-molecule-keycloak:
+            nodeset: atmosphere-ubuntu-noble-single-node
+    gate:
+      jobs:
+        - atmosphere-molecule-aio-openvswitch:
+            nodeset: atmosphere-ubuntu-noble-single-node-16
+        - atmosphere-molecule-aio-ovn:
+            nodeset: atmosphere-ubuntu-noble-single-node-16
+        - atmosphere-molecule-csi-local-path-provisioner:
+            nodeset: atmosphere-ubuntu-noble-single-node
+        - atmosphere-molecule-csi-rbd:
+            nodeset: atmosphere-ubuntu-noble-single-node
+        - atmosphere-molecule-keycloak:
+            nodeset: atmosphere-ubuntu-noble-single-node
