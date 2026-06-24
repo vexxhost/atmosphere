@@ -1,0 +1,30 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+---
+_trident_csi_storage_class_base_parameters:
+  backendType: "{{ trident_csi_storage_driver }}"
+
+_trident_csi_storage_class_fs_type_parameters: >-
+  {{
+    (trident_csi_fs_type | string | length > 0) |
+    ternary({'fsType': trident_csi_fs_type}, {})
+  }}
+
+_trident_csi_storage_class_parameters: >-
+  {{
+    _trident_csi_storage_class_base_parameters |
+    combine(_trident_csi_storage_class_fs_type_parameters) |
+    combine(trident_csi_storage_class_parameters)
+  }}
