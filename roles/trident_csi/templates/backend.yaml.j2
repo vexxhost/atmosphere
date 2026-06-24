@@ -1,0 +1,23 @@
+apiVersion: trident.netapp.io/v1
+kind: TridentBackendConfig
+metadata:
+  name: "{{ trident_csi_backend_config_name }}"
+  namespace: "{{ trident_csi_namespace }}"
+spec:
+  version: {{ trident_csi_backend_version }}
+  backendName: "{{ trident_csi_backend_name }}"
+  storageDriverName: "{{ trident_csi_storage_driver }}"
+  managementLIF: "{{ trident_csi_management_lif }}"
+{% if trident_csi_data_lif is defined and trident_csi_data_lif | string | length > 0 %}
+  dataLIF: "{{ trident_csi_data_lif }}"
+{% endif %}
+  svm: "{{ trident_csi_svm }}"
+{% if trident_csi_storage_prefix | string | length > 0 %}
+  storagePrefix: "{{ trident_csi_storage_prefix }}"
+{% endif %}
+  deletionPolicy: "{{ trident_csi_backend_deletion_policy }}"
+  credentials:
+    name: "{{ trident_csi_backend_secret_name }}"
+{% if trident_csi_backend_options | length > 0 %}
+{{ trident_csi_backend_options | to_nice_yaml(indent=2) | indent(2, true) }}
+{% endif %}
