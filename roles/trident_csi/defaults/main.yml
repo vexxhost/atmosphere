@@ -1,0 +1,103 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+---
+trident_csi_version: "26.02.0"
+trident_csi_installer_url: >-
+  {{
+    'https://github.com/NetApp/trident/releases/download/v' ~
+    trident_csi_version ~
+    '/trident-installer-' ~
+    trident_csi_version ~
+    '.tar.gz'
+  }}
+trident_csi_installer_checksum: ""
+trident_csi_installer_archive: >-
+  /var/lib/trident-installer-{{ trident_csi_version }}.tar.gz
+trident_csi_installer_directory: >-
+  /var/lib/trident-installer-{{ trident_csi_version }}
+trident_csi_orchestrator_crd: >-
+  trident.netapp.io_tridentorchestrators_crd_post1.16.yaml
+trident_csi_operator_bundle: bundle.yaml
+
+trident_csi_namespace: trident
+trident_csi_kubeconfig: >-
+  {{ kubeconfig_path | default('/etc/kubernetes/admin.conf') }}
+trident_csi_orchestrator_name: trident
+trident_csi_orchestrator_options: {}
+trident_csi_orchestrator_wait_retries: 120
+trident_csi_orchestrator_wait_delay: 10
+
+trident_csi_supported_storage_drivers:
+  - ontap-san
+  - ontap-san-economy
+  - ontap-nas
+  - ontap-nas-economy
+  - ontap-nas-flexgroup
+trident_csi_san_storage_drivers:
+  - ontap-san
+  - ontap-san-economy
+
+trident_csi_storage_driver: ontap-san
+trident_csi_backend_version: 1
+trident_csi_backend_config_name: ontap-san
+trident_csi_backend_name: "{{ trident_csi_backend_config_name }}"
+trident_csi_backend_secret_name: "{{ trident_csi_backend_config_name }}-secret"
+trident_csi_backend_deletion_policy: retain
+trident_csi_backend_options: {}
+trident_csi_wait_for_backend: true
+trident_csi_backend_wait_retries: 60
+trident_csi_backend_wait_delay: 10
+trident_csi_storage_prefix: atmosphere_
+# trident_csi_management_lif:
+# trident_csi_data_lif:
+# trident_csi_svm:
+# trident_csi_username:
+# trident_csi_password:
+
+trident_csi_configure_san: >-
+  {{ trident_csi_storage_driver in trident_csi_san_storage_drivers }}
+trident_csi_san_packages:
+  Debian:
+    - open-iscsi
+    - multipath-tools
+  RedHat:
+    - iscsi-initiator-utils
+    - device-mapper-multipath
+  default:
+    - open-iscsi
+    - multipath-tools
+trident_csi_san_services:
+  Debian:
+    - iscsid
+    - open-iscsi
+    - multipathd
+  RedHat:
+    - iscsid
+    - multipathd
+  default:
+    - iscsid
+    - multipathd
+trident_csi_initiator_name_path: /etc/iscsi/initiatorname.iscsi
+trident_csi_configure_multipath: true
+trident_csi_multipath_conf_path: /etc/multipath.conf
+trident_csi_multipath_find_multipaths: "no"
+
+trident_csi_storage_class_name: general
+trident_csi_storage_class_default: true
+trident_csi_storage_class_reclaim_policy: Delete
+trident_csi_storage_class_volume_binding_mode: WaitForFirstConsumer
+trident_csi_storage_class_allow_volume_expansion: true
+trident_csi_fs_type: ext4
+trident_csi_storage_class_parameters: {}
