@@ -219,6 +219,46 @@ tests:
               description: "Computed node memory utilization at 192.0.2.6:9100 is 95.00%, exceeding the threshold of 90% for 15 minutes. This computation includes free huge page capacity (node_memory_HugePages_Free * node_memory_Hugepagesize_bytes) in available memory to avoid false positives on compute nodes backed by huge pages. Normal behavior is below 90% sustained utilization."
               runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#nodememoryhighutilization"
 
+  # NodeNetworkReceiveErrs - positive test (annotation reports error rate, not count)
+  - interval: 1m
+    input_series:
+      - series: 'node_network_receive_errs_total{instance="192.0.2.7:9100", job="node-exporter", device="bond0"}'
+        values: '0+2x70'
+      - series: 'node_network_receive_packets_total{instance="192.0.2.7:9100", job="node-exporter", device="bond0"}'
+        values: '0+100x70'
+    alert_rule_test:
+      - eval_time: 65m
+        alertname: NodeNetworkReceiveErrs
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+              instance: "192.0.2.7:9100"
+              job: node-exporter
+              device: bond0
+            exp_annotations:
+              summary: "Network interface is reporting many receive errors."
+              description: "192.0.2.7:9100 interface bond0 has a receive error rate of 2% over the last two minutes, exceeding the 1.00% threshold."
+
+  # NodeNetworkTransmitErrs - positive test (annotation reports error rate, not count)
+  - interval: 1m
+    input_series:
+      - series: 'node_network_transmit_errs_total{instance="192.0.2.8:9100", job="node-exporter", device="bond0"}'
+        values: '0+2x70'
+      - series: 'node_network_transmit_packets_total{instance="192.0.2.8:9100", job="node-exporter", device="bond0"}'
+        values: '0+100x70'
+    alert_rule_test:
+      - eval_time: 65m
+        alertname: NodeNetworkTransmitErrs
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+              instance: "192.0.2.8:9100"
+              job: node-exporter
+              device: bond0
+            exp_annotations:
+              summary: "Network interface is reporting many transmit errors."
+              description: "192.0.2.8:9100 interface bond0 has a transmit error rate of 2% over the last two minutes, exceeding the 1.00% threshold."
+
   - interval: 1m
     input_series:
       - series: 'mysql_up{instance="percona-xtradb-pxc-0", job="pxc"}'
