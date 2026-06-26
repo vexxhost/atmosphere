@@ -1,0 +1,11 @@
+---
+features:
+  - |
+    Added a Kubernetes-native ``ceph-exporter`` DaemonSet in the
+    ``kube_prometheus_stack`` role. The exporter runs in the monitoring
+    namespace on nodes labeled ``ceph=enabled`` and is scraped through a
+    ServiceMonitor.
+
+    The existing Ceph mgr ServiceMonitor remains enabled so deployments can
+    continue to rely on mgr perf-counter collection while the exporter path is
+    being rolled out.

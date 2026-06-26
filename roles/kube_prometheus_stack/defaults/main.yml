@@ -20,6 +20,28 @@ kube_prometheus_stack_helm_release_namespace: monitoring
 kube_prometheus_stack_helm_kubeconfig: "{{ kubeconfig_path | default('/etc/kubernetes/admin.conf') }}"
 kube_prometheus_stack_helm_values: {}
 
+kube_prometheus_stack_prometheus_additional_scrape_configs: []
+
+kube_prometheus_stack_ceph_exporter_enabled: true
+kube_prometheus_stack_ceph_exporter_job_name: ceph-exporter
+kube_prometheus_stack_ceph_exporter_cluster_label: ceph
+kube_prometheus_stack_ceph_exporter_node_selector:
+  ceph: enabled
+kube_prometheus_stack_ceph_exporter_config_host_path: /etc/ceph
+kube_prometheus_stack_ceph_exporter_socket_host_path: "{{ '/var/run/ceph/' + ceph_fsid if ceph_fsid is defined else '/var/run/ceph' }}"
+kube_prometheus_stack_ceph_exporter_client_name: client.admin
+kube_prometheus_stack_ceph_exporter_scrape_interval: 15s
+kube_prometheus_stack_ceph_exporter_scrape_timeout: 10s
+kube_prometheus_stack_ceph_exporter_prio_limit: 5
+kube_prometheus_stack_ceph_exporter_stats_period: 5
+kube_prometheus_stack_ceph_exporter_resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    memory: 512Mi
+kube_prometheus_stack_ceph_exporter_tolerations: []
+
 kube_prometheus_stack_node_exporter_tls_template: "{{ _kube_prometheus_stack_tls_template }}"
 kube_prometheus_stack_node_exporter_config:
   tls_server_config:
