@@ -211,6 +211,43 @@ class TestValidation:
                 }
             )
 
+    def test_volume_backend_set_to_none_is_dropped(self):
+        cfg = StorageConfig.model_validate(
+            {
+                "volumes": {
+                    "default": "ceph",
+                    "backends": {
+                        "rbd1": None,
+                        "ceph": {
+                            "type": "rbd",
+                            "pool": "vms",
+                            "user": "cinder",
+                            "secret_uuid": "af49f2ad-75fc-4a0c-8ec0-f6e35bac5413",
+                        },
+                    },
+                },
+            }
+        )
+
+        assert cfg.volumes is not None
+        assert set(cfg.volumes.backends) == {"ceph"}
+
+    def test_image_backend_set_to_none_is_dropped(self):
+        cfg = StorageConfig.model_validate(
+            {
+                "images": {
+                    "default": "cinder_store",
+                    "backends": {
+                        "rbd1": None,
+                        "cinder_store": {"type": "cinder"},
+                    },
+                },
+            }
+        )
+
+        assert cfg.images is not None
+        assert set(cfg.images.backends) == {"cinder_store"}
+
     def test_invalid_backend_type_rejected(self):
         with pytest.raises(ValidationError):
             StorageConfig.model_validate(
@@ -308,6 +345,44 @@ class TestStorageToCinderHelmValues:
         assert backend["image_volume_cache_max_count"] == 50
         assert result["conf"]["cinder"]["DEFAULT"]["enabled_backends"] == "rbd1"
         assert result["conf"]["cinder"]["DEFAULT"]["default_volume_type"] == "rbd1"
+        assert result["ceph_client"]["internal_ceph_backend"] == "rbd1"
+
+    def test_renamed_default_rbd_masks_rbd1(self):
+        storage = {
+            **DEFAULT_STORAGE,
+            "volumes": {
+                "default": "ceph",
+                "backends": {
+                    "rbd1": None,
+                    "ceph": {
+                        "type": "rbd",
+                        "pool": "vms",
+                        "user": "cinder",
+                        "secret_uuid": "af49f2ad-75fc-4a0c-8ec0-f6e35bac5413",
+                    },
+                    "ecpool": {
+                        "type": "rbd-ec",
+                        "pool": "ecpool_metadata",
+                        "data_pool": "ecpool",
+                        "user": "ec-pool",
+                        "secret_uuid": "0a5880da-fae4-469e-9d3c-b64c12030c9d",
+                        "metadata_replication": 3,
+                        "erasure_coded": {
+                            "k": 2,
+                            "m": 2,
+                            "failure_domain": "host",
+                        },
+                    },
+                },
+            },
+        }
+
+        result = storage_to_cinder_helm_values(storage)
+
+        assert set(result["conf"]["backends"]) == {"ceph", "ecpool"}
+        assert result["conf"]["cinder"]["DEFAULT"]["enabled_backends"] == "ceph,ecpool"
+        assert result["conf"]["cinder"]["DEFAULT"]["default_volume_type"] == "ceph"
+        assert result["ceph_client"]["internal_ceph_backend"] == "ceph"
 
     def test_rbd_custom_chunk_size(self):
         storage = {
@@ -986,6 +1061,43 @@ class TestStorageToLibvirtHelmValues:
                         "pool": "vms_hdd",
                         "user": "cinder",
                         "secret_uuid": "af49f2ad-75fc-4a0c-8ec0-f6e35bac5413",
+                    },
+                },
+            },
+        }
+
+        result = storage_to_libvirt_helm_values(storage)
+
+        assert result["conf"]["ceph"]["cinder"]["user"] == "cinder"
+        additional = result["conf"]["ceph"]["additional_users"]
+        assert len(additional) == 1
+        assert additional[0]["user"] == "ec-pool"
+        assert additional[0]["secret_name"] == "cinder-volume-rbd-keyring-ecpool"
+
+    def test_libvirt_renamed_default_rbd_masks_rbd1(self):
+        storage = {
+            "volumes": {
+                "default": "ceph",
+                "backends": {
+                    "rbd1": None,
+                    "ceph": {
+                        "type": "rbd",
+                        "pool": "vms",
+                        "user": "cinder",
+                        "secret_uuid": "af49f2ad-75fc-4a0c-8ec0-f6e35bac5413",
+                    },
+                    "ecpool": {
+                        "type": "rbd-ec",
+                        "pool": "ecpool_metadata",
+                        "data_pool": "ecpool",
+                        "user": "ec-pool",
+                        "secret_uuid": "0a5880da-fae4-469e-9d3c-b64c12030c9d",
+                        "metadata_replication": 3,
+                        "erasure_coded": {
+                            "k": 2,
+                            "m": 2,
+                            "failure_domain": "host",
+                        },
                     },
                 },
             },
