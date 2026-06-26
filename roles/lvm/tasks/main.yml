@@ -1,0 +1,27 @@
+# Copyright (c) 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Discover multipath devices
+  ansible.builtin.shell: |
+    multipath -l -v1
+  register: multipath_devices
+  changed_when: false
+
+- name: Ensure "/etc/lvm" directory
+  ansible.builtin.file:
+    state: "directory"
+    path: "/etc/lvm"
+    mode: "0755"
+  when: multipath_devices.rc == 0
+
+- name: Update lvm Config
+  ansible.builtin.blockinfile:
+    path: "/etc/lvm/lvm.conf"
+    block: "{{ lookup('template', 'lvm.conf.j2') }}"
+    insertbefore: '^devices {'
+    create: "yes"
+    owner: "root"
+    group: "root"
+    backup: "yes"
+    mode: "0644"
+  when: multipath_devices.rc == 0
