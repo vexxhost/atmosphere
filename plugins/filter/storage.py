@@ -55,8 +55,8 @@ class ErasureCodedSpec(_StrictBase):
 
     @model_validator(mode="after")
     def _validate_coding_params(self) -> Self:
-        if self.m >= self.k:
-            raise ValueError(f"m ({self.m}) must be less than k ({self.k})")
+        if self.m > self.k:
+            raise ValueError(f"m ({self.m}) must not exceed k ({self.k})")
         return self
 
 
@@ -683,29 +683,43 @@ def storage_to_libvirt_helm_values(raw: Any) -> HelmValues:
     ephemeral = storage.ephemeral
     default_backend_name = volumes.default if volumes else None
     backends_config = volumes.backends if volumes else {}
+    seen_ceph_secrets: set[tuple[str, str]] = set()
 
     ceph_conf: dict[str, Any] = {"enabled": False}
 
     if isinstance(ephemeral, EphemeralBackendRbd):
         ceph_conf["enabled"] = True
 
+    default_backend = (
+        backends_config.get(default_backend_name) if default_backend_name else None
+    )
+    if isinstance(default_backend, LibvirtSecretSpec):
+        secret_uuid = str(default_backend.secret_uuid)
+        ceph_conf["enabled"] = True
+        ceph_conf["cinder"] = {
+            "user": default_backend.user,
+            "secret_uuid": secret_uuid,
+        }
+        seen_ceph_secrets.add((default_backend.user, secret_uuid))
+
     for name, backend in backends_config.items():
         if not isinstance(backend, LibvirtSecretSpec):
             continue
-        ceph_conf["enabled"] = True
         if name == default_backend_name:
-            ceph_conf["cinder"] = {
+            continue
+        ceph_conf["enabled"] = True
+        secret_uuid = str(backend.secret_uuid)
+        ceph_secret = (backend.user, secret_uuid)
+        if ceph_secret in seen_ceph_secrets:
+            continue
+        seen_ceph_secrets.add(ceph_secret)
+        ceph_conf.setdefault("additional_users", []).append(
+            {
                 "user": backend.user,
-                "secret_uuid": str(backend.secret_uuid),
+                "secret_uuid": secret_uuid,
+                "secret_name": f"cinder-volume-rbd-keyring-{name.replace('_', '-')}",
             }
-        else:
-            ceph_conf.setdefault("additional_users", []).append(
-                {
-                    "user": backend.user,
-                    "secret_uuid": str(backend.secret_uuid),
-                    "secret_name": f"cinder-volume-rbd-keyring-{name.replace('_', '-')}",
-                }
-            )
+        )
 
     return {"conf": {"ceph": ceph_conf}}
 
