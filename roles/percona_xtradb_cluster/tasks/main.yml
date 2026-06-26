@@ -143,6 +143,10 @@
     wait_condition:
       type: ready
       status: true
+  register: _percona_xtradb_cluster_apply
+  retries: 3
+  delay: 10
+  until: _percona_xtradb_cluster_apply is succeeded
 
 - name: Create percona haproxy metric service
   run_once: true
