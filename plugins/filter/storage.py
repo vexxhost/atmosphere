@@ -482,11 +482,30 @@ EphemeralBackend = Annotated[
 ]
 
 
+def _drop_none_backends(data: Any) -> Any:
+    """Drop backend entries explicitly set to ``None``.
+
+    Role defaults include an ``rbd1`` backend for Ceph deployments.  When a
+    config repo replaces that backend set, Ansible's recursive combine leaves
+    the default entry in place unless the repo can explicitly null it out.
+    """
+    if not isinstance(data, dict):
+        return data
+    backends = data.get("backends")
+    if isinstance(backends, dict):
+        data["backends"] = {
+            name: spec for name, spec in backends.items() if spec is not None
+        }
+    return data
+
+
 class ImageStorageConfig(_StrictBase):
     default: str = Field(description="Name of the default image backend.")
     backends: dict[str, ImageBackend] = Field(
         min_length=1, description="Mapping of backend name to image backend config."
     )
+
+    _drop_none_backends = model_validator(mode="before")(_drop_none_backends)
 
     @model_validator(mode="after")
     def _validate_default_in_backends(self) -> Self:
@@ -502,6 +521,8 @@ class VolumeStorageConfig(_StrictBase):
     backends: dict[str, VolumeBackend] = Field(
         min_length=1, description="Mapping of backend name to volume backend config."
     )
+
+    _drop_none_backends = model_validator(mode="before")(_drop_none_backends)
 
     @model_validator(mode="after")
     def _validate_default_in_backends(self) -> Self:
@@ -580,6 +601,11 @@ def storage_to_cinder_helm_values(raw: Any) -> HelmValues:
         backends_config.keys()
     )
     result["conf"]["cinder"]["DEFAULT"]["default_volume_type"] = default_backend
+    if isinstance(
+        backends_config.get(default_backend),
+        (VolumeBackendRbd, VolumeBackendRbdEc),
+    ):
+        result["ceph_client"] = {"internal_ceph_backend": default_backend}
 
     if backup is not None:
         backup.amend_cinder_backup(result)
