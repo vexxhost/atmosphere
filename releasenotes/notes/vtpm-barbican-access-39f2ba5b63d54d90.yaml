@@ -1,0 +1,17 @@
+---
+features:
+  - |
+    Add options to configure Barbican policy for vTPM support. When a compute
+    node reboots, Nova needs to access Barbican secrets to start vTPM-enabled
+    virtual machines automatically. Two new variables control this behavior:
+    ``barbican_policy_nova_secret_access`` enables the Nova service account to
+    read secrets, and ``barbican_policy_admin_secret_access`` enables admin
+    users to access all secrets. Both default to false.
+security:
+  - |
+    When ``barbican_policy_nova_secret_access`` or
+    ``barbican_policy_admin_secret_access`` is set to true, secret isolation
+    between projects is reduced. The Nova service account or admin users
+    can access any secret in Barbican, not just vTPM-related secrets.
+    Enable these options only if you require automatic vTPM virtual machine
+    restart after compute node reboots.
