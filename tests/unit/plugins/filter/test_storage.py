@@ -119,8 +119,8 @@ class TestValidation:
                 }
             )
 
-    def test_erasure_coded_m_ge_k_rejected(self):
-        with pytest.raises(ValidationError, match="m.*must be less than k"):
+    def test_erasure_coded_m_gt_k_rejected(self):
+        with pytest.raises(ValidationError, match="m.*must not exceed k"):
             StorageConfig.model_validate(
                 {
                     "volumes": {
@@ -143,29 +143,32 @@ class TestValidation:
                 }
             )
 
-    def test_erasure_coded_m_equal_k_rejected(self):
-        with pytest.raises(ValidationError, match="m.*must be less than k"):
-            StorageConfig.model_validate(
-                {
-                    "volumes": {
-                        "default": "ec1",
-                        "backends": {
-                            "ec1": {
-                                "type": "rbd-ec",
-                                "pool": "test",
-                                "erasure_coded": {
-                                    "k": 3,
-                                    "m": 3,
-                                    "failure_domain": "host",
-                                },
-                                "metadata_replication": 3,
-                                "user": "cinder",
-                                "secret_uuid": "457eb676-33da-42ec-9a8c-9293d545c337",
-                            }
-                        },
-                    }
+    def test_erasure_coded_m_equal_k_valid(self):
+        cfg = StorageConfig.model_validate(
+            {
+                "volumes": {
+                    "default": "ec1",
+                    "backends": {
+                        "ec1": {
+                            "type": "rbd-ec",
+                            "pool": "test",
+                            "erasure_coded": {
+                                "k": 3,
+                                "m": 3,
+                                "failure_domain": "host",
+                            },
+                            "metadata_replication": 3,
+                            "user": "cinder",
+                            "secret_uuid": "457eb676-33da-42ec-9a8c-9293d545c337",
+                        }
+                    },
                 }
-            )
+            }
+        )
+
+        assert cfg.volumes is not None
+        backend = cfg.volumes.backends["ec1"]
+        assert getattr(backend, "erasure_coded").m == 3
 
     def test_image_default_not_in_backends(self):
         with pytest.raises(ValidationError, match="default.*not in backends"):
@@ -953,6 +956,48 @@ class TestStorageToLibvirtHelmValues:
         assert len(additional) == 2
         users = {u["user"] for u in additional}
         assert users == {"cinder-ssd", "cinder-nvme"}
+
+    def test_duplicate_libvirt_secret_is_not_repeated(self):
+        storage = {
+            "volumes": {
+                "default": "ceph",
+                "backends": {
+                    "ceph": {
+                        "type": "rbd",
+                        "pool": "vms",
+                        "user": "cinder",
+                        "secret_uuid": "af49f2ad-75fc-4a0c-8ec0-f6e35bac5413",
+                    },
+                    "ecpool": {
+                        "type": "rbd-ec",
+                        "pool": "ecpool_metadata",
+                        "data_pool": "ecpool",
+                        "user": "ec-pool",
+                        "secret_uuid": "0a5880da-fae4-469e-9d3c-b64c12030c9d",
+                        "metadata_replication": 3,
+                        "erasure_coded": {
+                            "k": 3,
+                            "m": 2,
+                            "failure_domain": "host",
+                        },
+                    },
+                    "rust": {
+                        "type": "rbd",
+                        "pool": "vms_hdd",
+                        "user": "cinder",
+                        "secret_uuid": "af49f2ad-75fc-4a0c-8ec0-f6e35bac5413",
+                    },
+                },
+            },
+        }
+
+        result = storage_to_libvirt_helm_values(storage)
+
+        assert result["conf"]["ceph"]["cinder"]["user"] == "cinder"
+        additional = result["conf"]["ceph"]["additional_users"]
+        assert len(additional) == 1
+        assert additional[0]["user"] == "ec-pool"
+        assert additional[0]["secret_name"] == "cinder-volume-rbd-keyring-ecpool"
 
     def test_no_ceph(self):
         storage = {
