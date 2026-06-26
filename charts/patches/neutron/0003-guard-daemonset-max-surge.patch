@@ -1,0 +1,14 @@
+diff --git a/neutron/charts/helm-toolkit/templates/snippets/_kubernetes_upgrades_daemonset.tpl b/neutron/charts/helm-toolkit/templates/snippets/_kubernetes_upgrades_daemonset.tpl
+index 43821f5..6e6e633 100644
+--- a/neutron/charts/helm-toolkit/templates/snippets/_kubernetes_upgrades_daemonset.tpl
++++ b/neutron/charts/helm-toolkit/templates/snippets/_kubernetes_upgrades_daemonset.tpl
+@@ -26,7 +26,9 @@ updateStrategy:
+   {{- if eq $pod_replacement_strategy "RollingUpdate" }}
+   rollingUpdate:
+     maxUnavailable: {{ .max_unavailable }}
++    {{- if hasKey . "max_surge" }}
+     maxSurge: {{ .max_surge }}
++    {{- end }}
+   {{- end }}
+   {{- end }}
+ {{- end }}

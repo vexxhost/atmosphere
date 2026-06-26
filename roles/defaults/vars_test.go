@@ -33,6 +33,13 @@ func TestImageHasPrefix(t *testing.T) {
 	}
 }
 
+func TestNeutronOvnDbSyncImage(t *testing.T) {
+	images, err := GetImages()
+	require.NoError(t, err)
+
+	require.Equal(t, images["neutron_db_sync"], images["neutron_ovn_db_sync"])
+}
+
 func TestImageExist(t *testing.T) {
 	images, err := GetImages()
 	require.NoError(t, err)

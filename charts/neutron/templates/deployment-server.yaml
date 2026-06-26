@@ -186,9 +186,11 @@ spec:
                 command:
                   - /tmp/neutron-server.sh
                   - stop
+{{- if not $envAll.Values.manifests.certificates }}
           ports:
             - name: q-api
               containerPort: {{ tuple "network" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+{{- end }}
           volumeMounts:
             - name: pod-tmp
               mountPath: /tmp
@@ -203,6 +205,9 @@ spec:
             - name: neutron-etc
               mountPath: /etc/neutron/neutron.conf
               subPath: neutron.conf
+              readOnly: true
+            - name: neutron-etc-snippets
+              mountPath: /etc/neutron/neutron.conf.d/
               readOnly: true
             - name: neutron-etc
               mountPath: /etc/neutron/neutron-api-uwsgi.ini
@@ -317,6 +322,9 @@ spec:
               mountPath: /etc/neutron/neutron.conf
               subPath: neutron.conf
               readOnly: true
+            - name: neutron-etc-snippets
+              mountPath: /etc/neutron/neutron.conf.d/
+              readOnly: true
             {{- if( has "tungstenfabric" .Values.network.backend ) }}
             - name: neutron-etc
               mountPath: /etc/neutron/plugins/tungstenfabric/tf_plugin.ini
@@ -366,6 +374,11 @@ spec:
           secret:
             secretName: neutron-etc
             defaultMode: 0444
+        - name: neutron-etc-snippets
+          projected:
+            sources:
+              - secret:
+                  name: neutron-ks-etc
         {{- if ( has "tungstenfabric" .Values.network.backend ) }}
         - name: neutron-plugin-shared
           emptyDir: {}

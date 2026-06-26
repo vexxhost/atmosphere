@@ -26,6 +26,9 @@ updateStrategy:
   {{- if eq $pod_replacement_strategy "RollingUpdate" }}
   rollingUpdate:
     maxUnavailable: {{ .max_unavailable }}
+    {{- if hasKey . "max_surge" }}
+    maxSurge: {{ .max_surge }}
+    {{- end }}
   {{- end }}
   {{- end }}
 {{- end }}
