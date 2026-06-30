@@ -640,6 +640,57 @@ class StorageConfig(_StrictBase):
         default=None, description="Ephemeral disk configuration (Nova)."
     )
 
+    @model_validator(mode="before")
+    @classmethod
+    def _drop_inactive_discriminator_fields(cls, data: Any) -> Any:
+        """Trim fields that belong to a different discriminator variant.
+
+        The role-default ``_atmosphere_storage`` ships rbd-specific keys
+        (``pool``, ``replication``, ``crush_rule``, ``user``) under the
+        top-level ``backup`` (and, for symmetry, ``ephemeral``) blocks so
+        Ceph deployments work out of the box. Non-Ceph deployments
+        override these blocks via ``atmosphere_storage`` (for example
+        ``backup: {type: none}``). Ansible's ``combine(recursive=True)``
+        merges the rbd-specific keys into the user override, and the
+        resulting non-rbd variant rejects them via ``extra="forbid"``
+        with a confusing pydantic error referencing keys the user never
+        set.
+
+        Drop keys that the active variant does not declare *and* that
+        another variant of the same discriminated union does declare,
+        so the merge succeeds. Keys belonging to no variant (genuine
+        typos within the chosen variant) are left untouched so strict
+        validation still flags them.
+        """
+        if not isinstance(data, dict):
+            return data
+        for field, variants in (
+            ("backup", (BackupBackendRbd, BackupBackendNone)),
+            ("ephemeral", (EphemeralBackendRbd, EphemeralBackendLocal)),
+        ):
+            block = data.get(field)
+            if not isinstance(block, dict):
+                continue
+            chosen_type = block.get("type")
+            target = next(
+                (
+                    v
+                    for v in variants
+                    if v.model_fields["type"].annotation.__args__[0] == chosen_type
+                ),
+                None,
+            )
+            if target is None:
+                continue
+            allowed = set(target.model_fields)
+            other_variant_only = {
+                key for v in variants if v is not target for key in v.model_fields
+            } - allowed
+            data[field] = {
+                k: v for k, v in block.items() if k not in other_variant_only
+            }
+        return data
+
 
 def _parse(raw: Any) -> StorageConfig:
     """Validate and parse raw Ansible input into a StorageConfig."""
