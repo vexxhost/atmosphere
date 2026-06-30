@@ -23,40 +23,6 @@
     fail_msg: >-
       hpe_nimble_csi_access_protocol must be set to either "iscsi" or "fc".
 
-- name: Create Secret
-  run_once: true
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: v1
-      kind: Secret
-      metadata:
-        name: hpe-nimble-csi-secret
-        namespace: "{{ hpe_nimble_csi_helm_release_namespace }}"
-      stringData:
-        serviceName: nimble-csp-svc
-        servicePort: "8080"
-        backend: "{{ hpe_nimble_csi_backend }}"
-        username: "{{ hpe_nimble_csi_username }}"
-        password: "{{ hpe_nimble_csi_password }}"
-
-- name: Create StorageClass
-  run_once: true
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: storage.k8s.io/v1
-      kind: StorageClass
-      metadata:
-        name: general
-        annotations:
-          storageclass.kubernetes.io/is-default-class: "true"
-      provisioner: csi.hpe.com
-      reclaimPolicy: Delete
-      allowVolumeExpansion: true
-      volumeBindingMode: Immediate
-      parameters: "{{ _hpe_nimble_csi_storageclass_parameters | combine(hpe_nimble_csi_storageclass_parameters, recursive=True) }}"
-
 - name: Deploy Helm chart
   run_once: true
   kubernetes.core.helm:
@@ -66,3 +32,31 @@
     create_namespace: true
     kubeconfig: "{{ hpe_nimble_csi_helm_kubeconfig }}"
     values: "{{ _hpe_nimble_csi_helm_values | combine(hpe_nimble_csi_helm_values, recursive=True) }}"
+
+- name: Create Secret and StorageClass
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      - apiVersion: v1
+        kind: Secret
+        metadata:
+          name: hpe-nimble-csi-secret
+          namespace: "{{ hpe_nimble_csi_helm_release_namespace }}"
+        stringData:
+          serviceName: nimble-csp-svc
+          servicePort: "8080"
+          backend: "{{ hpe_nimble_csi_backend }}"
+          username: "{{ hpe_nimble_csi_username }}"
+          password: "{{ hpe_nimble_csi_password }}"
+      - apiVersion: storage.k8s.io/v1
+        kind: StorageClass
+        metadata:
+          name: general
+          annotations:
+            storageclass.kubernetes.io/is-default-class: "true"
+        provisioner: csi.hpe.com
+        reclaimPolicy: Delete
+        allowVolumeExpansion: true
+        volumeBindingMode: Immediate
+        parameters: "{{ _hpe_nimble_csi_storageclass_parameters | combine(hpe_nimble_csi_storageclass_parameters, recursive=True) }}"
