@@ -12,12 +12,21 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Install openstacksdk
+- name: Install pip
+  when: ansible_facts['os_family'] == 'Debian'
+  ansible.builtin.package:
+    name: python3-pip
+    state: present
+
+- name: Install openstacksdk with pip
   ansible.builtin.pip:
     name: >-
       {{ 'openstacksdk==' + openstacksdk_version
          if openstacksdk_version is defined
          else 'openstacksdk>1' }}
+    break_system_packages: >-
+      {{ ansible_facts['distribution'] == 'Ubuntu' and
+         ansible_facts['distribution_version'] is version('24.04', '>=') }}
   register: _openstacksdk_pip_install
   retries: 3
   delay: 5

@@ -22,7 +22,7 @@
         state: present
 
     - name: Purge "snapd" package
-      when: ansible_distribution | lower == 'ubuntu'
+      when: ansible_facts['distribution'] | lower == 'ubuntu'
       ansible.builtin.apt:
         name: snapd
         state: absent
@@ -32,7 +32,7 @@
   ansible.builtin.import_playbook: vexxhost.atmosphere.generate_workspace
   vars:
     workspace_path: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}"
-    domain_name: "{{ ansible_default_ipv4['address'].replace('.', '-') }}.nip.io"
+    domain_name: "{{ ansible_facts['default_ipv4']['address'].replace('.', '-') }}.nip.io"
 
 - name: Setup networking
   hosts: all
