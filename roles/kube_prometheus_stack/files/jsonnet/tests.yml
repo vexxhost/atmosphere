@@ -1550,3 +1550,53 @@ tests:
               summary: "Geneve overlay: transmit failures may affect tenant traffic on a compute host"
               description: "192.0.2.10:9100 interface tenant-geneve0 has averaged 3.33 transmit errors per second over the last 5 minutes (threshold > 1.67/s, ~100/min). Normal behavior is zero sustained transmit errors on Geneve tunnel interfaces."
               runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#genevetransmiterrors"
+
+  # CephNodeNetworkPacketErrors - should wait 5m before alerting on a physical interface
+  - interval: 30s
+    input_series:
+      - series: 'node_network_receive_errs_total{job="node-exporter",instance="192.0.2.12:9100",device="eth0",cluster="mycluster"}'
+        values: '0+0x40'
+      - series: 'node_network_transmit_errs_total{job="node-exporter",instance="192.0.2.12:9100",device="eth0",cluster="mycluster"}'
+        values: '0+1x40'
+      - series: 'node_network_receive_packets_total{job="node-exporter",instance="192.0.2.12:9100",device="eth0",cluster="mycluster"}'
+        values: '0+1500x40'
+      - series: 'node_network_transmit_packets_total{job="node-exporter",instance="192.0.2.12:9100",device="eth0",cluster="mycluster"}'
+        values: '0+1500x40'
+      - series: 'node_ethtool_info{job="node-exporter",instance="192.0.2.12:9100",device="eth0",driver="mlx5_core"}'
+        values: '1x40'
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: CephNodeNetworkPacketErrors
+        exp_alerts: []
+      - eval_time: 10m
+        alertname: CephNodeNetworkPacketErrors
+        exp_alerts:
+          - exp_labels:
+              cluster: mycluster
+              device: eth0
+              instance: 192.0.2.12:9100
+              job: node-exporter
+              oid: 1.3.6.1.4.1.50495.1.2.1.8.3
+              severity: P3
+              type: ceph_default
+            exp_annotations:
+              summary: "One or more NICs reports packet errors on cluster mycluster"
+              description: "Node 192.0.2.12:9100 experiences sustained packet errors > 0.01% or > 10 packets/s on interface eth0."
+
+  # CephNodeNetworkPacketErrors - should ignore Geneve tunnel interfaces that have a dedicated alert
+  - interval: 30s
+    input_series:
+      - series: 'node_network_receive_errs_total{job="node-exporter",instance="192.0.2.13:9100",device="genev_sys_6081",cluster="mycluster"}'
+        values: '0+0x40'
+      - series: 'node_network_transmit_errs_total{job="node-exporter",instance="192.0.2.13:9100",device="genev_sys_6081",cluster="mycluster"}'
+        values: '0+1x40'
+      - series: 'node_network_receive_packets_total{job="node-exporter",instance="192.0.2.13:9100",device="genev_sys_6081",cluster="mycluster"}'
+        values: '0+1500x40'
+      - series: 'node_network_transmit_packets_total{job="node-exporter",instance="192.0.2.13:9100",device="genev_sys_6081",cluster="mycluster"}'
+        values: '0+1500x40'
+      - series: 'node_ethtool_info{job="node-exporter",instance="192.0.2.13:9100",device="genev_sys_6081",driver="geneve"}'
+        values: '1x40'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: CephNodeNetworkPacketErrors
+        exp_alerts: []
