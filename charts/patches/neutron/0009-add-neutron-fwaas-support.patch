@@ -1,0 +1,123 @@
+diff --git a/neutron/templates/bin/_db-sync.sh.tpl b/neutron/templates/bin/_db-sync.sh.tpl
+index 58edecf..89d1859 100644
+--- a/neutron/templates/bin/_db-sync.sh.tpl
++++ b/neutron/templates/bin/_db-sync.sh.tpl
+@@ -22,9 +22,21 @@ neutron-db-manage \
+   --config-file /etc/neutron/plugins/tungstenfabric/tf_plugin.ini \
+ {{- else }}
+   --config-file /etc/neutron/plugins/ml2/ml2_conf.ini \
++{{- end }}
++{{- if contains "firewall_v2" .Values.conf.neutron.DEFAULT.service_plugins }}
++  --config-file /etc/neutron/neutron_fwaas.conf \
+ {{- end }}
+   upgrade head
+ 
++{{- if contains "firewall_v2" .Values.conf.neutron.DEFAULT.service_plugins }}
++neutron-db-manage \
++  --config-file /etc/neutron/neutron.conf \
++  --config-file /etc/neutron/plugins/ml2/ml2_conf.ini \
++  --config-file /etc/neutron/neutron_fwaas.conf \
++  --subproject neutron-fwaas \
++  upgrade head
++{{- end }}
++
+ {{- if .Values.conf.plugins.taas.taas.enabled }}
+ neutron-db-manage \
+   --config-file /etc/neutron/neutron.conf \
+diff --git a/neutron/templates/bin/_neutron-rpc-server.sh.tpl b/neutron/templates/bin/_neutron-rpc-server.sh.tpl
+index 6c64c13..8a7fce5 100644
+--- a/neutron/templates/bin/_neutron-rpc-server.sh.tpl
++++ b/neutron/templates/bin/_neutron-rpc-server.sh.tpl
+@@ -29,6 +29,9 @@ function start () {
+ {{- if contains "ovn-vpnaas" .Values.conf.neutron.DEFAULT.service_plugins }}
+         --config-file /etc/neutron/neutron_ovn_vpn_agent.ini \
+ {{- end }}
++{{- if contains "firewall_v2" .Values.conf.neutron.DEFAULT.service_plugins }}
++        --config-file /etc/neutron/neutron_fwaas.conf \
++{{- end }}
+ {{- if .Values.conf.plugins.taas.taas.enabled }}
+         --config-file /etc/neutron/taas_plugin.ini \
+ {{- end }}
+diff --git a/neutron/templates/bin/_neutron-server.sh.tpl b/neutron/templates/bin/_neutron-server.sh.tpl
+index 687ff3c..e000e93 100644
+--- a/neutron/templates/bin/_neutron-server.sh.tpl
++++ b/neutron/templates/bin/_neutron-server.sh.tpl
+@@ -28,6 +28,9 @@ function start () {
+ {{- if contains "ovn-vpnaas" .Values.conf.neutron.DEFAULT.service_plugins }}
+   confs+=" --config-file /etc/neutron/neutron_ovn_vpn_agent.ini" \
+ {{- end }}
++{{- if contains "firewall_v2" .Values.conf.neutron.DEFAULT.service_plugins }}
++  confs+=" --config-file /etc/neutron/neutron_fwaas.conf" \
++{{- end }}
+ {{- if .Values.conf.plugins.taas.taas.enabled }}
+   confs+=" --config-file /etc/neutron/taas_plugin.ini"
+ {{- end }}
+diff --git a/neutron/templates/configmap-etc.yaml b/neutron/templates/configmap-etc.yaml
+index 9d00130..5355d7c 100644
+--- a/neutron/templates/configmap-etc.yaml
++++ b/neutron/templates/configmap-etc.yaml
+@@ -333,6 +333,7 @@ data:
+   neutron_sudoers: {{ $envAll.Values.conf.neutron_sudoers | b64enc }}
+   rootwrap.conf: {{ $envAll.Values.conf.rootwrap | b64enc }}
+   auto_bridge_add: {{ toJson $envAll.Values.conf.auto_bridge_add | b64enc }}
++  neutron_fwaas.conf: {{ default "\"\"" (include "helm-toolkit.utils.to_oslo_conf" $envAll.Values.conf.neutron_fwaas | b64enc) }}
+   neutron_vpnaas.conf: {{ default "\"\"" (include "helm-toolkit.utils.to_oslo_conf" $envAll.Values.conf.neutron_vpnaas | b64enc) }}
+ {{- if .Values.conf.netoffload.enabled }}
+   netoffload: {{ toJson $envAll.Values.conf.netoffload | b64enc }}
+diff --git a/neutron/templates/deployment-rpc_server.yaml b/neutron/templates/deployment-rpc_server.yaml
+index a006611..04f62aa 100644
+--- a/neutron/templates/deployment-rpc_server.yaml
++++ b/neutron/templates/deployment-rpc_server.yaml
+@@ -195,6 +195,12 @@ spec:
+               mountPath: /etc/neutron/policy.yaml
+               subPath: policy.yaml
+               readOnly: true
++            {{- if contains "firewall_v2" .Values.conf.neutron.DEFAULT.service_plugins }}
++            - name: neutron-etc
++              mountPath: /etc/neutron/neutron_fwaas.conf
++              subPath: neutron_fwaas.conf
++              readOnly: true
++            {{- end }}
+             {{- if contains "vpnaas" .Values.conf.neutron.DEFAULT.service_plugins }}
+             - name: neutron-etc
+               mountPath: /etc/neutron/neutron_vpnaas.conf
+diff --git a/neutron/templates/deployment-server.yaml b/neutron/templates/deployment-server.yaml
+index 9af4b41..5007d67 100644
+--- a/neutron/templates/deployment-server.yaml
++++ b/neutron/templates/deployment-server.yaml
+@@ -273,6 +273,12 @@ spec:
+               mountPath: /etc/neutron/policy.yaml
+               subPath: policy.yaml
+               readOnly: true
++            {{- if contains "firewall_v2" .Values.conf.neutron.DEFAULT.service_plugins }}
++            - name: neutron-etc
++              mountPath: /etc/neutron/neutron_fwaas.conf
++              subPath: neutron_fwaas.conf
++              readOnly: true
++            {{- end }}
+             {{- if contains "vpnaas" .Values.conf.neutron.DEFAULT.service_plugins }}
+             - name: neutron-etc
+               mountPath: /etc/neutron/neutron_vpnaas.conf
+diff --git a/neutron/values.yaml b/neutron/values.yaml
+index 0f3c1ea..0f2fcd1 100644
+--- a/neutron/values.yaml
++++ b/neutron/values.yaml
+@@ -804,6 +804,10 @@ pod:
+             mountPath: /etc/neutron/plugins/ml2/ml2_conf.ini
+             subPath: ml2_conf.ini
+             readOnly: true
++          - name: db-sync-conf
++            mountPath: /etc/neutron/neutron_fwaas.conf
++            subPath: neutron_fwaas.conf
++            readOnly: true
+         volumes:
+   replicas:
+     server: 1
+@@ -2168,6 +2172,7 @@ conf:
+       #dhcp-option=3,10.10.10.1
+       #dhcp-option-force=26,1450
+ 
++  neutron_fwaas: null
+   neutron_vpnaas: null
+   ovn_vpn_agent:
+     DEFAULT:
