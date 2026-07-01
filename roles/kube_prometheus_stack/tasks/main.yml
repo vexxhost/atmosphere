@@ -142,6 +142,9 @@
 - name: Create Keycloak clients
   no_log: true
   run_once: true
+  # Keycloak 26 reorders client scope data on update, and the pinned
+  # community.general module reports that representation-only drift as changed.
+  changed_when: false
   community.general.keycloak_client:
     # Keycloak settings
     auth_keycloak_url: "{{ kube_prometheus_stack_keycloak_server_url }}"
