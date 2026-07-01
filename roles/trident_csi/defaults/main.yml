@@ -45,11 +45,21 @@ trident_csi_supported_storage_drivers:
   - ontap-nas
   - ontap-nas-economy
   - ontap-nas-flexgroup
+trident_csi_supported_access_protocols:
+  - iscsi
+  - fc
 trident_csi_san_storage_drivers:
   - ontap-san
   - ontap-san-economy
+trident_csi_fc_storage_drivers:
+  - ontap-san
 
 trident_csi_storage_driver: ontap-san
+# SAN access protocol for ``ontap-san`` volumes.
+# Use ``fc`` only with ``trident_csi_storage_driver: ontap-san``.
+#
+# trident_csi_access_protocol: iscsi
+trident_csi_access_protocol: iscsi
 trident_csi_backend_version: 1
 trident_csi_backend_config_name: ontap-san
 trident_csi_backend_name: "{{ trident_csi_backend_config_name }}"
@@ -68,27 +78,61 @@ trident_csi_storage_prefix: atmosphere_
 
 trident_csi_configure_san: >-
   {{ trident_csi_storage_driver in trident_csi_san_storage_drivers }}
+trident_csi_configure_iscsi: >-
+  {{ trident_csi_configure_san and trident_csi_access_protocol == 'iscsi' }}
+trident_csi_configure_fc: >-
+  {{ trident_csi_configure_san and trident_csi_access_protocol == 'fc' }}
 trident_csi_san_packages:
-  Debian:
-    - open-iscsi
-    - multipath-tools
-  RedHat:
-    - iscsi-initiator-utils
-    - device-mapper-multipath
-  default:
-    - open-iscsi
-    - multipath-tools
+  iscsi:
+    Debian:
+      - open-iscsi
+      - lsscsi
+      - sg3-utils
+      - multipath-tools
+      - scsitools
+    RedHat:
+      - lsscsi
+      - iscsi-initiator-utils
+      - device-mapper-multipath
+    default:
+      - open-iscsi
+      - lsscsi
+      - sg3-utils
+      - multipath-tools
+      - scsitools
+  fc:
+    Debian:
+      - lsscsi
+      - sg3-utils
+      - multipath-tools
+      - scsitools
+    RedHat:
+      - lsscsi
+      - device-mapper-multipath
+    default:
+      - lsscsi
+      - sg3-utils
+      - multipath-tools
+      - scsitools
 trident_csi_san_services:
-  Debian:
-    - iscsid
-    - open-iscsi
-    - multipathd
-  RedHat:
-    - iscsid
-    - multipathd
-  default:
-    - iscsid
-    - multipathd
+  iscsi:
+    Debian:
+      - iscsid
+      - open-iscsi
+      - multipathd
+    RedHat:
+      - iscsid
+      - multipathd
+    default:
+      - iscsid
+      - multipathd
+  fc:
+    Debian:
+      - multipathd
+    RedHat:
+      - multipathd
+    default:
+      - multipathd
 trident_csi_initiator_name_path: /etc/iscsi/initiatorname.iscsi
 trident_csi_configure_multipath: true
 trident_csi_multipath_conf_path: /etc/multipath.conf
