@@ -17,6 +17,7 @@
   ansible.builtin.assert:
     that:
       - trident_csi_storage_driver in trident_csi_supported_storage_drivers
+      - trident_csi_access_protocol in trident_csi_supported_access_protocols
       - trident_csi_management_lif is defined
       - trident_csi_svm is defined
       - trident_csi_username is defined
@@ -24,7 +25,18 @@
     fail_msg: >-
       Trident CSI requires trident_csi_management_lif, trident_csi_svm,
       trident_csi_username, trident_csi_password, and a supported
-      trident_csi_storage_driver.
+      trident_csi_storage_driver and trident_csi_access_protocol.
+
+- name: Validate Trident SAN access protocol
+  ansible.builtin.assert:
+    that:
+      - >-
+        trident_csi_access_protocol != 'fc' or
+        trident_csi_storage_driver in trident_csi_fc_storage_drivers
+    fail_msg: >-
+      trident_csi_access_protocol: fc is supported only when
+      trident_csi_storage_driver is set to one of
+      {{ trident_csi_fc_storage_drivers | join(', ') }}.
 
 - name: Install Trident SAN host packages
   ansible.builtin.package:
@@ -34,8 +46,8 @@
   vars:
     _trident_csi_san_package_names: >-
       {{
-        trident_csi_san_packages[ansible_os_family] |
-        default(trident_csi_san_packages.default)
+        trident_csi_san_packages[trident_csi_access_protocol][ansible_os_family] |
+        default(trident_csi_san_packages[trident_csi_access_protocol].default)
       }}
 
 - name: Start Trident SAN services
@@ -48,27 +60,27 @@
   vars:
     _trident_csi_san_service_names: >-
       {{
-        trident_csi_san_services[ansible_os_family] |
-        default(trident_csi_san_services.default)
+        trident_csi_san_services[trident_csi_access_protocol][ansible_os_family] |
+        default(trident_csi_san_services[trident_csi_access_protocol].default)
       }}
 
 - name: Check iSCSI initiator name file
   ansible.builtin.stat:
     path: "{{ trident_csi_initiator_name_path }}"
   register: _trident_csi_initiator_name
-  when: trident_csi_configure_san | bool
+  when: trident_csi_configure_iscsi | bool
 
 - name: Read iSCSI initiator name file
   ansible.builtin.slurp:
     src: "{{ trident_csi_initiator_name_path }}"
   register: _trident_csi_initiator_name_content
   when:
-    - trident_csi_configure_san | bool
+    - trident_csi_configure_iscsi | bool
     - _trident_csi_initiator_name.stat.exists
 
 - name: Configure iSCSI initiator name
   when:
-    - trident_csi_configure_san | bool
+    - trident_csi_configure_iscsi | bool
     - >-
       not _trident_csi_initiator_name.stat.exists or
       'InitiatorName=' not in
