@@ -1,0 +1,474 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema",
+    "$id": "http://example.com/example.json",
+    "title": "HPE CSI Driver for Kubernetes Helm Chart JSON Schema",
+    "type": "object",
+    "default": 
+        {
+            "disable": {
+                "nimble": false,
+                "primera": false,
+                "alletra6000": false,
+                "alletra9000": false,
+                "alletraStorageMP": false,
+                "b10000FileService": false
+            },
+            "disableNodeConformance": false,
+            "disableNodeConfiguration": false,
+            "disableHostDeletion": false,
+            "disablePreInstallHooks": false,
+            "imagePullPolicy": "IfNotPresent",
+            "iscsi": {
+                "chapSecretName": ""
+            },
+            "logLevel": "info",
+            "kubeletRootDir": "/var/lib/kubelet/",
+            "disableNodeGetVolumeStats": false,
+            "disableNodeMonitor": false,
+	    "maxVolumesPerNode": 100,
+            "csp": {
+                "nodeSelector": {},
+                "tolerations": [],
+                "affinity": {},
+                "labels": {},
+		"resources": {}
+            },
+            "controller": {
+                "nodeSelector": {},
+                "tolerations": [],
+                "affinity": {},
+                "labels": {},
+		"resources": {}
+            },
+            "node": {
+                "nodeSelector": {},
+                "tolerations": [],
+                "affinity": {},
+                "labels": {},
+		"resources": {}
+            },
+	    "images": {}
+        },
+    "required": [
+        "disable",
+        "disableNodeConformance",
+        "disableNodeConfiguration",
+        "disableHostDeletion",
+        "imagePullPolicy",
+        "iscsi",
+        "logLevel",
+        "kubeletRootDir",
+        "disableNodeGetVolumeStats",
+        "disableNodeMonitor",
+	"maxVolumesPerNode",
+        "csp",
+        "controller",
+        "node",
+	"images"
+    ],
+    "properties": {
+        "disable": {
+            "$id": "#/properties/disable",
+            "title": "CSP Deployment and Service backend exclusion",
+            "description": "All backend Deployments and Services are installed by default.",
+            "type": "object",
+            "default":
+                {
+                    "nimble": false,
+                    "primera": false,
+                    "alletra6000": false,
+                    "alletra9000": false,
+                    "alletraStorageMP": false,
+                    "b10000FileService": false
+                },
+            "required": [
+                "nimble",
+                "primera",
+                "alletra6000",
+                "alletra9000",
+                "alletraStorageMP",
+                "b10000FileService"
+            ],
+            "properties": {
+                "nimble": {
+                    "$id": "#/properties/disable/properties/nimble",
+                    "title": "HPE Nimble Storage",
+                    "type": "boolean",
+                    "default": false
+                },
+                "primera": {
+                    "$id": "#/properties/disable/properties/primera",
+                    "title": "HPE Primera",
+                    "type": "boolean",
+                    "default": false
+                },
+                "alletra6000": {
+                    "$id": "#/properties/disable/properties/alletra6000",
+                    "title": "HPE Alletra 5000/6000",
+                    "type": "boolean",
+                    "default": false
+                },
+                "alletra9000": {
+                    "$id": "#/properties/disable/properties/alletra9000",
+                    "title": "HPE Alletra 9000",
+                    "type": "boolean",
+                    "default": false
+                },
+                "alletraStorageMP": {
+                    "$id": "#/properties/disable/properties/alletraStorageMP",
+                    "title": "HPE Alletra Storage MP B10000",
+                    "type": "boolean",
+                    "default": false
+                },
+                "b10000FileService": {
+                    "$id": "#/properties/disable/properties/b10000FileService",
+                    "title": "HPE Alletra Storage MP B10000 File Service",
+                    "type": "boolean",
+                    "default": false
+                }
+            },
+            "additionalProperties": false
+        },
+        "disableNodeConformance": {
+            "$id": "#/properties/disableNodeConformance",
+            "title": "Disable node conformance",
+            "description": "Disabling node conformance forces the cluster administrator to install required packages and ensure the correct node services are started to use external block storage.",
+            "type": "boolean",
+            "default": false
+        },
+        "disableNodeConfiguration": {
+            "$id": "#/properties/disableNodeConfiguration",
+            "title": "Disable node configuration",
+            "description": "Disabling node configuration forces the cluster administrator to ensure all node services are configured and started to use external block storage.",
+            "type": "boolean",
+            "default": false
+        },
+        "disableHostDeletion": {
+            "$id": "#/properties/disableHostDeletion",
+            "title": "Disable host deletion",
+            "description": "Disables host deletion by the CSP when no volumes are associated with the host.",
+            "type": "boolean",
+            "default": false
+        },
+        "disablePreInstallHooks": {
+            "$id": "#/properties/disablePreInstallHooks",
+            "title": "Disable pre-install hooks",
+            "description": "Disable pre-install hooks when the chart is rendered outside of Kubernetes, such as CI/CD systems.",
+            "type": "boolean",
+            "default": false
+        },
+        "imagePullPolicy": {
+            "$id": "#/properties/imagePullPolicy",
+            "title": "CSI driver image pull policy",
+            "type": "string",
+            "default": "IfNotPresent",
+            "enum": [ "Always", "IfNotPresent", "Never" ]
+        },
+        "iscsi": {
+            "$id": "#/properties/iscsi",
+            "title": "iSCSI CHAP secret name",
+            "type": "object",
+            "default":
+                {
+                    "chapSecretName": ""
+                },
+            "required": [
+                "chapSecretName"
+            ],
+            "properties": {
+                "chapSecretName": {
+                    "$id": "#/properties/iscsi/properties/chapSecretName",
+                    "title": "CHAP secret name",
+                    "type": "string",
+                    "default": ""
+                }
+            },
+            "additionalProperties": false
+        },
+        "logLevel": {
+            "$id": "#/properties/logLevel",
+            "title": "Set the log level of the HPE CSI Driver images",
+            "type": "string",
+            "default": "info",
+            "enum": [ "info", "debug", "trace", "warn", "error" ]
+        },
+        "kubeletRootDir": {
+            "$id": "#/properties/kubeletRootDir",
+            "title": "Kubelet root directory",
+            "description": "Only change this if the kubelet root dir has been altered by the Kubernetes platform installer.",
+            "type": "string",
+            "default": "/var/lib/kubelet",
+            "pattern": "^/"
+        },
+        "disableNodeGetVolumeStats": {
+            "$id": "#/properties/disableNodeGetVolumeStats",
+            "title": "Disable the CSI nodeGetVolumeStats call",
+            "description": "In very large environments, disabling this feature may alleviate pressure on the CSP.",
+            "type": "boolean",
+            "default": false
+        },
+        "disableNodeMonitor": {
+            "$id": "#/properties/disableNodeMonitor",
+            "title": "Disable the Node Monitor",
+            "description": "The Node Monitor watches for and acts on stale storage resources.",
+            "type": "boolean",
+            "default": false
+        },
+	"maxVolumesPerNode": {
+            "$id": "#/properties/maxVolumesPerNode",
+            "title": "Max volumes per node",
+            "description": "The maximum amount of volumes the CSI controller will publish to a node.",
+            "type": "integer",
+            "default": 100
+	},
+        "csp": {
+            "nodeSelector": {
+                "$id": "#/properties/csp/properties/nodeSelector",
+                "title": "Node selector to control the selection of nodes (optional).",
+                "description": "Selector which must match a node's labels for the pod to be scheduled on that node.",
+                "type": "object",
+                "default": {}
+            },
+            "tolerations": {
+                "$id": "#/properties/csp/properties/tolerations",
+                "title": "Set tolerations for the csp pods(optional).",
+                "description": "Tolerations is the list of tolerations for the csp pods.",
+                "type": "array",
+                "default": []
+            },
+            "affinity": {
+                "$id": "#/properties/csp/properties/affinity",
+                "title": "Node affinity for csp plugin (optional).",
+                "description": "Describes node affinity scheduling rules for the pod.",
+                "type": "object",
+                "default": {}
+            },
+            "labels": {
+                "$id": "#/properties/csp/properties/labels",
+                "title": "labels",
+                "description": "Labels to apply to the CSPs.",
+                "type": "object",
+                "default": {}
+            },
+	    "resources": {
+                "$id": "#/properties/csp/properties/resources",
+                "type": "object",
+	        "title": "resource requests and limits",
+	        "additionalProperties": false,
+                "required": ["limits", "requests"],
+                "description": "See https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
+                "properties": {
+                    "limits": {
+                        "type": "object",
+                        "title": "resource limits",
+                        "default": {}
+	            },
+                    "requests": {
+                        "type": "object",
+                        "title": "resource requests",
+                        "default": {} }
+                }
+            }
+	},
+        "controller": {
+            "nodeSelector": {
+                "$id": "#/properties/controller/properties/nodeSelector",
+                "title": "Node selector to control the selection of nodes (optional).",
+                "description": "Selector which must match a node's labels for the pod to be scheduled on that node.",
+                "type": "object",
+                "default": {}
+            },
+            "tolerations": {
+                "$id": "#/properties/controller/properties/tolerations",
+                "title": "Set tolerations for the driver pods(optional)",
+                "description": "Tolerations is the list of tolerations for the driver pods.",
+                "type": "array",
+                "default": []
+            },
+            "affinity": {
+                "$id": "#/properties/controller/properties/affinity",
+                "title": "Node affinity for controller plugin (optional).",
+                "description": "Describes node affinity scheduling rules for the pod.",
+                "type": "object",
+                "default": {}
+            },
+            "labels": {
+                "$id": "#/properties/controller/properties/labels",
+                "title": "labels",
+                "description": "Labels to apply to the controller driver.",
+                "type": "object",
+                "default": {}
+            },
+	    "resources": {
+                "$id": "#/properties/controller/properties/resources",
+                "type": "object",
+	        "title": "resource requests and limits",
+	        "additionalProperties": false,
+                "required": ["limits", "requests"],
+                "description": "See https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
+                "properties": {
+                    "limits": {
+                        "type": "object",
+                        "title": "resource limits",
+                        "default": {}
+	            },
+                    "requests": {
+                        "type": "object",
+                        "title": "resource requests",
+                        "default": {} }
+                }
+	    }
+        },
+        "node": {
+            "nodeSelector": {
+                "$id": "#/properties/node/properties/nodeSelector",
+                "title": "Node selector to control the selection of nodes (optional).",
+                "description": "Selector which must match a node's labels for the pod to be scheduled on that node.",
+                "type": "object",
+                "default": {}
+            },
+            "tolerations": {
+                "$id": "#/properties/node/properties/tolerations",
+                "title": "Set tolerations for the node pods(optional).",
+                "description": "Tolerations is the list of tolerations for the node pods.",
+                "type": "array",
+                "default": []
+            },
+            "affinity": {
+                "$id": "#/properties/node/properties/affinity",
+                "title": "Node affinity for node plugin (optional).",
+                "description": "Describes node affinity scheduling rules for the pod.",
+                "type": "object",
+                "default": {}
+            },
+            "labels": {
+                "$id": "#/properties/node/properties/labels",
+                "title": "labels",
+                "description": "Labels to apply to the node driver.",
+                "type": "object",
+                "default": {}
+            },
+	    "resources": {
+                "$id": "#/properties/node/properties/resources",
+                "type": "object",
+	        "title": "resource requests and limits",
+	        "additionalProperties": false,
+                "required": ["limits", "requests"],
+                "description": "See https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
+                "properties": {
+                    "limits": {
+                        "type": "object",
+                        "title": "resource limits",
+                        "default": {}
+	            },
+                    "requests": {
+                        "type": "object",
+                        "title": "resource requests",
+                        "default": {} }
+                }
+            }
+        },
+        "images": {
+            "$id": "#/properties/images",
+            "title": "images",
+            "description": "Runtime images.",
+            "type": "object",
+            "required": [
+                "csiNodeDriver",
+                "csiControllerDriver",
+                "nimbleCSP",
+                "primera3parCSP",
+                "b10000FileServiceCSP",
+                "nfsProvisioner",
+                "csiExtensions",
+                "csiVolumeGroupProvisioner",
+                "csiVolumeGroupSnapshotter",
+                "csiVolumeMutator",
+                "csiAttacher",
+                "csiNodeDriverRegistrar",
+                "csiProvisioner",
+                "csiResizer",
+                "csiSnapshotter"
+            ],
+            "properties": {
+                "csiNodeDriver": {
+                    "$id": "#/properties/images/properties/csiNodeDriver",
+                    "title": "CSI Node Driver",
+                    "type": "string"
+                },
+                "csiControllerDriver": {
+                    "$id": "#/properties/images/properties/csiControllerDriver",
+                    "title": "CSI Controller Driver",
+                    "type": "string"
+                },
+                "nimbleCSP": {
+                    "$id": "#/properties/images/properties/nimbleCSP",
+                    "title": "Nimble and Alletra 5000/6000 CSP",
+                    "type": "string"
+                },
+                "primera3parCSP": {
+                    "$id": "#/properties/images/properties/primera3parCSP",
+                    "title": "3PAR, Primera, Alletra 9000 and Alletra Storage MP B10000 Block Storage CSP",
+                    "type": "string"
+                },
+                "b10000FileServiceCSP": {
+                    "$id": "#/properties/images/properties/b10000FileServiceCSP",
+                    "title": "Alletra Storage MP B10000 File Service CSP",
+                    "type": "string"
+                },
+                "nfsProvisioner": {
+                    "$id": "#/properties/images/properties/nfsProvisioner",
+                    "title": "NFS Server Provisioner",
+                    "type": "string"
+                },
+                "csiExtensions": {
+                    "$id": "#/properties/images/properties/csiExtensions",
+                    "title": "HPE CSI Extensions",
+                    "type": "string"
+                },
+                "csiVolumeGroupProvisioner": {
+                    "$id": "#/properties/images/properties/csiVolumeGroupProvisioner",
+                    "title": "HPE CSI Volume Group Provisioner",
+                    "type": "string"
+                },
+                "csiVolumeGroupSnapshotter": {
+                    "$id": "#/properties/images/properties/csiVolumeGroupSnapshotter",
+                    "title": "HPE CSI Volume Group Snapshotter",
+                    "type": "string"
+                },
+                "csiVolumeMutator": {
+                    "$id": "#/properties/images/properties/csiVolumeMutator",
+                    "title": "HPE CSI Volume Mutator",
+                    "type": "string"
+                },
+                "csiAttacher": {
+                    "$id": "#/properties/images/properties/csiAttacher",
+                    "title": "SIG Storage CSI Attacher",
+                    "type": "string"
+                },
+                "csiNodeDriverRegistrar": {
+                    "$id": "#/properties/images/properties/csiNodeDriverRegistrar",
+                    "title": "SIG Storage CSI Driver Registrar",
+                    "type": "string"
+                },
+                "csiProvisioner": {
+                    "$id": "#/properties/images/properties/csiProvisioner",
+                    "title": "SIG Storage CSI Provisioner",
+                    "type": "string"
+                },
+                "csiResizer": {
+                    "$id": "#/properties/images/properties/csiResizer",
+                    "title": "SIG Storage CSI Resizer",
+                    "type": "string"
+                },
+                "csiSnapshotter": {
+                    "$id": "#/properties/images/properties/csiSnapshotter",
+                    "title": "SIG Storage CSI Snapshotter",
+                    "type": "string"
+                }
+	    }
+        },
+        "global": {}
+    },
+    "additionalProperties": false
+}
