@@ -111,6 +111,85 @@ PowerStore configuration. This includes specifying the block protocol, which
 can either be Fibre Channel (FC) or iSCSI, depending on your network
 infrastructure.
 
+**************
+NetApp Trident
+**************
+
+For environments using NetApp ONTAP storage such as AFF arrays, configure the
+Trident CSI driver by updating your Ansible inventory as follows:
+
+.. code-block:: yaml
+
+    csi_driver: trident
+    trident_csi_management_lif: <FILL IN>
+    trident_csi_svm: <FILL IN>
+    trident_csi_username: <FILL IN>
+    trident_csi_password: <FILL IN>
+
+Use ``trident`` as the Atmosphere ``csi_driver`` value.  The Kubernetes CSI
+provisioner remains ``csi.trident.netapp.io``, and the backend driver is
+selected separately with values such as ``ontap-san``,
+``ontap-san-economy``, or ``ontap-nas``.
+
+By default, Atmosphere configures Trident with the ``ontap-san`` storage driver
+and ``trident_csi_access_protocol: iscsi``. It creates the ``general``
+StorageClass using the ``csi.trident.netapp.io`` provisioner. This is
+appropriate for ``ReadWriteOnce`` PVCs backed by iSCSI LUNs.
+
+To use Fibre Channel with the ``ontap-san`` driver, set
+``trident_csi_access_protocol: fc``:
+
+.. code-block:: yaml
+
+    csi_driver: trident
+    trident_csi_storage_driver: ontap-san
+    trident_csi_access_protocol: fc
+    trident_csi_management_lif: <FILL IN>
+    trident_csi_svm: <FILL IN>
+    trident_csi_username: <FILL IN>
+    trident_csi_password: <FILL IN>
+
+The ``ontap-san-economy`` driver supports iSCSI only.
+
+If you need shared ``ReadWriteMany`` PVCs, use an ONTAP NAS backend instead:
+
+.. code-block:: yaml
+
+    csi_driver: trident
+    trident_csi_storage_driver: ontap-nas
+    trident_csi_management_lif: <FILL IN>
+    trident_csi_data_lif: <FILL IN>
+    trident_csi_svm: <FILL IN>
+    trident_csi_username: <FILL IN>
+    trident_csi_password: <FILL IN>
+    trident_csi_fs_type: ""
+
+You can pass additional backend options through
+``trident_csi_backend_options`` and additional StorageClass parameters through
+``trident_csi_storage_class_parameters``.
+
+For test environments that do not have access to ONTAP yet, set
+``trident_csi_wait_for_backend: false`` so the role can validate the operator,
+backend object, and StorageClass without waiting for a successful backend bind.
+
+.. admonition:: SAN multipathing
+    :class: warning
+
+    For ``ontap-san`` backends, Trident requires working SAN host preparation
+    and multipath configuration on every Kubernetes node. Atmosphere
+    configures ``find_multipaths no`` by default.
+
+    For iSCSI, Atmosphere installs the Trident iSCSI host packages, starts the
+    required services, and ensures an initiator name exists.
+
+    For Fibre Channel, Atmosphere installs the FC helper and multipath
+    packages that Trident expects. FC switch zoning and host HBA presentation
+    still need to be in place before you deploy the role.
+
+    You can disable the multipath edit by setting
+    ``trident_csi_configure_multipath: false`` if your hosts already manage
+    that configuration elsewhere.
+
 *********
 IBM Block
 *********

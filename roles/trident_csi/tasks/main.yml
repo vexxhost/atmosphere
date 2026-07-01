@@ -1,0 +1,341 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+---
+- name: Validate Trident CSI configuration
+  ansible.builtin.assert:
+    that:
+      - trident_csi_storage_driver in trident_csi_supported_storage_drivers
+      - trident_csi_access_protocol in trident_csi_supported_access_protocols
+      - trident_csi_management_lif is defined
+      - trident_csi_svm is defined
+      - trident_csi_username is defined
+      - trident_csi_password is defined
+    fail_msg: >-
+      Trident CSI requires trident_csi_management_lif, trident_csi_svm,
+      trident_csi_username, trident_csi_password, and a supported
+      trident_csi_storage_driver and trident_csi_access_protocol.
+
+- name: Validate Trident SAN access protocol
+  ansible.builtin.assert:
+    that:
+      - >-
+        trident_csi_access_protocol != 'fc' or
+        trident_csi_storage_driver in trident_csi_fc_storage_drivers
+    fail_msg: >-
+      trident_csi_access_protocol: fc is supported only when
+      trident_csi_storage_driver is set to one of
+      {{ trident_csi_fc_storage_drivers | join(', ') }}.
+
+- name: Install Trident SAN host packages
+  ansible.builtin.package:
+    name: "{{ _trident_csi_san_package_names }}"
+    state: present
+  when: trident_csi_configure_san | bool
+  vars:
+    _trident_csi_san_package_names: >-
+      {{
+        trident_csi_san_packages[trident_csi_access_protocol][ansible_os_family] |
+        default(trident_csi_san_packages[trident_csi_access_protocol].default)
+      }}
+
+- name: Start Trident SAN services
+  ansible.builtin.service:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+  loop: "{{ _trident_csi_san_service_names }}"
+  when: trident_csi_configure_san | bool
+  vars:
+    _trident_csi_san_service_names: >-
+      {{
+        trident_csi_san_services[trident_csi_access_protocol][ansible_os_family] |
+        default(trident_csi_san_services[trident_csi_access_protocol].default)
+      }}
+
+- name: Check iSCSI initiator name file
+  ansible.builtin.stat:
+    path: "{{ trident_csi_initiator_name_path }}"
+  register: _trident_csi_initiator_name
+  when: trident_csi_configure_iscsi | bool
+
+- name: Read iSCSI initiator name file
+  ansible.builtin.slurp:
+    src: "{{ trident_csi_initiator_name_path }}"
+  register: _trident_csi_initiator_name_content
+  when:
+    - trident_csi_configure_iscsi | bool
+    - _trident_csi_initiator_name.stat.exists
+
+- name: Configure iSCSI initiator name
+  when:
+    - trident_csi_configure_iscsi | bool
+    - >-
+      not _trident_csi_initiator_name.stat.exists or
+      'InitiatorName=' not in
+      (_trident_csi_initiator_name_content.content | default('') | b64decode)
+  block:
+    - name: Generate iSCSI initiator name
+      changed_when: true
+      ansible.builtin.command:
+        cmd: iscsi-iname
+      register: _trident_csi_iscsi_iname
+
+    - name: Write iSCSI initiator name
+      ansible.builtin.copy:
+        content: "InitiatorName={{ _trident_csi_iscsi_iname.stdout }}\n"
+        dest: "{{ trident_csi_initiator_name_path }}"
+        owner: root
+        group: root
+        mode: "0644"
+
+- name: Check multipath configuration
+  ansible.builtin.stat:
+    path: "{{ trident_csi_multipath_conf_path }}"
+  register: _trident_csi_multipath_conf
+  when:
+    - trident_csi_configure_san | bool
+    - trident_csi_configure_multipath | bool
+
+- name: Read multipath configuration
+  ansible.builtin.slurp:
+    src: "{{ trident_csi_multipath_conf_path }}"
+  register: _trident_csi_multipath_conf_content
+  when:
+    - trident_csi_configure_san | bool
+    - trident_csi_configure_multipath | bool
+    - _trident_csi_multipath_conf.stat.exists
+
+- name: Set multipath configuration content fact
+  ansible.builtin.set_fact:
+    _trident_csi_multipath_conf_text: >-
+      {{
+        _trident_csi_multipath_conf_content.content |
+        default('') |
+        b64decode
+      }}
+  when:
+    - trident_csi_configure_san | bool
+    - trident_csi_configure_multipath | bool
+
+- name: Update existing find_multipaths setting
+  ansible.builtin.lineinfile:
+    path: "{{ trident_csi_multipath_conf_path }}"
+    regexp: '^\s*find_multipaths\s+'
+    line: "    find_multipaths {{ trident_csi_multipath_find_multipaths }}"
+  register: _trident_csi_multipath_line
+  when:
+    - trident_csi_configure_san | bool
+    - trident_csi_configure_multipath | bool
+    - >-
+      'find_multipaths' in
+      (_trident_csi_multipath_conf_text | default(''))
+
+- name: Add Trident multipath defaults
+  ansible.builtin.blockinfile:
+    path: "{{ trident_csi_multipath_conf_path }}"
+    create: true
+    owner: root
+    group: root
+    mode: "0644"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK: NetApp Trident CSI"
+    block: |
+      defaults {
+          find_multipaths {{ trident_csi_multipath_find_multipaths }}
+      }
+  register: _trident_csi_multipath_block
+  when:
+    - trident_csi_configure_san | bool
+    - trident_csi_configure_multipath | bool
+    - >-
+      'find_multipaths' not in
+      (_trident_csi_multipath_conf_text | default(''))
+
+- name: Restart multipathd after Trident multipath changes
+  ansible.builtin.service:
+    name: multipathd
+    state: restarted
+  when:
+    - trident_csi_configure_san | bool
+    - trident_csi_configure_multipath | bool
+    - >-
+      (_trident_csi_multipath_line.changed | default(false)) or
+      (_trident_csi_multipath_block.changed | default(false))
+
+- name: Create Trident namespace
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ trident_csi_kubeconfig }}"
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ trident_csi_namespace }}"
+
+- name: Create Trident installer directory
+  run_once: true
+  ansible.builtin.file:
+    path: "{{ trident_csi_installer_directory }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Download Trident installer package
+  run_once: true
+  ansible.builtin.get_url:
+    url: "{{ trident_csi_installer_url }}"
+    dest: "{{ trident_csi_installer_archive }}"
+    checksum: "{{ trident_csi_installer_checksum | default(omit, true) }}"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Extract Trident installer package
+  run_once: true
+  ansible.builtin.unarchive:
+    src: "{{ trident_csi_installer_archive }}"
+    dest: "{{ trident_csi_installer_directory }}"
+    remote_src: true
+    extra_opts:
+      - --strip-components=1
+    creates: "{{ trident_csi_installer_directory }}/deploy"
+
+- name: Create TridentOrchestrator CRD
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ trident_csi_kubeconfig }}"
+    src: >-
+      {{
+        trident_csi_installer_directory ~
+        '/deploy/crds/' ~
+        trident_csi_orchestrator_crd
+      }}
+
+- name: Wait for TridentOrchestrator CRD
+  run_once: true
+  kubernetes.core.k8s_info:
+    api_version: apiextensions.k8s.io/v1
+    kind: CustomResourceDefinition
+    kubeconfig: "{{ trident_csi_kubeconfig }}"
+    name: tridentorchestrators.trident.netapp.io
+  register: _trident_csi_orchestrator_crd
+  retries: 60
+  delay: 5
+  until: _trident_csi_orchestrator_crd.resources | length > 0
+
+- name: Deploy Trident operator
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ trident_csi_kubeconfig }}"
+    src: >-
+      {{
+        trident_csi_installer_directory ~
+        '/deploy/' ~
+        trident_csi_operator_bundle
+      }}
+
+- name: Create TridentOrchestrator
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ trident_csi_kubeconfig }}"
+    template:
+      - path: tridentorchestrator.yaml.j2
+
+- name: Wait for Trident installation
+  run_once: true
+  kubernetes.core.k8s_info:
+    api_version: trident.netapp.io/v1
+    kind: TridentOrchestrator
+    kubeconfig: "{{ trident_csi_kubeconfig }}"
+    name: "{{ trident_csi_orchestrator_name }}"
+  register: _trident_csi_orchestrator
+  retries: "{{ trident_csi_orchestrator_wait_retries }}"
+  delay: "{{ trident_csi_orchestrator_wait_delay }}"
+  until:
+    - _trident_csi_orchestrator.resources | length > 0
+    - >-
+      (_trident_csi_orchestrator.resources[0].status.status | default('')) ==
+      'Installed'
+
+- name: Wait for TridentBackendConfig CRD
+  run_once: true
+  kubernetes.core.k8s_info:
+    api_version: apiextensions.k8s.io/v1
+    kind: CustomResourceDefinition
+    kubeconfig: "{{ trident_csi_kubeconfig }}"
+    name: tridentbackendconfigs.trident.netapp.io
+  register: _trident_csi_backend_config_crd
+  retries: 60
+  delay: 5
+  until: _trident_csi_backend_config_crd.resources | length > 0
+
+- name: Create Trident backend credentials
+  run_once: true
+  no_log: true
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ trident_csi_kubeconfig }}"
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: "{{ trident_csi_backend_secret_name }}"
+        namespace: "{{ trident_csi_namespace }}"
+      type: Opaque
+      stringData:
+        username: "{{ trident_csi_username }}"
+        password: "{{ trident_csi_password }}"
+
+- name: Create Trident backend
+  run_once: true
+  no_log: true
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ trident_csi_kubeconfig }}"
+    template:
+      - path: backend.yaml.j2
+
+- name: Wait for Trident backend binding
+  run_once: true
+  kubernetes.core.k8s_info:
+    api_version: trident.netapp.io/v1
+    kind: TridentBackendConfig
+    kubeconfig: "{{ trident_csi_kubeconfig }}"
+    name: "{{ trident_csi_backend_config_name }}"
+    namespace: "{{ trident_csi_namespace }}"
+  register: _trident_csi_backend_config
+  retries: "{{ trident_csi_backend_wait_retries }}"
+  delay: "{{ trident_csi_backend_wait_delay }}"
+  until:
+    - _trident_csi_backend_config.resources | length > 0
+    - >-
+      (_trident_csi_backend_config.resources[0].status.phase |
+      default('')) == 'Bound'
+    - >-
+      (_trident_csi_backend_config.resources[0].status.lastOperationStatus |
+      default('')) == 'Success'
+  when: trident_csi_wait_for_backend | bool
+
+- name: Create Trident StorageClass
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ trident_csi_kubeconfig }}"
+    template:
+      - path: storageclass.yaml.j2
