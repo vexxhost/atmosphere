@@ -1,0 +1,70 @@
+diff --git a/nova/templates/deployment-api-metadata.yaml b/nova/templates/deployment-api-metadata.yaml
+--- a/nova/templates/deployment-api-metadata.yaml
++++ b/nova/templates/deployment-api-metadata.yaml
+@@ -15,14 +15,14 @@ limitations under the License.
+ {{- define "novaApiMetadataLivenessProbeTemplate" }}
+ httpGet:
+   scheme: {{ tuple "compute_metadata" "service" "metadata" . | include "helm-toolkit.endpoints.keystone_endpoint_scheme_lookup" | upper }}
+-  path: /
++  path: /healthcheck
+   port: {{ .Values.network.metadata.port }}
+ {{- end }}
+ 
+ {{- define "novaApiMetadataReadinessProbeTemplate" }}
+ httpGet:
+   scheme: {{ tuple "compute_metadata" "service" "metadata" . | include "helm-toolkit.endpoints.keystone_endpoint_scheme_lookup" | upper }}
+-  path: /
++  path: /healthcheck
+   port: {{ .Values.network.metadata.port }}
+ {{- end }}
+ 
+diff --git a/nova/templates/deployment-api-osapi.yaml b/nova/templates/deployment-api-osapi.yaml
+--- a/nova/templates/deployment-api-osapi.yaml
++++ b/nova/templates/deployment-api-osapi.yaml
+@@ -15,14 +15,14 @@ limitations under the License.
+ {{- define "novaApiOsapiLivenessProbeTemplate" }}
+ httpGet:
+   scheme: {{ tuple "compute" "service" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_scheme_lookup" | upper }}
+-  path: /
++  path: /healthcheck
+   port: {{ tuple "compute" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+ {{- end }}
+ 
+ {{- define "novaApiOsapiReadinessProbeTemplate" }}
+ httpGet:
+   scheme: {{ tuple "compute" "service" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_scheme_lookup" | upper }}
+-  path: /
++  path: /healthcheck
+   port: {{ tuple "compute" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+ {{- end }}
+ 
+diff --git a/nova/values.yaml b/nova/values.yaml
+--- a/nova/values.yaml
++++ b/nova/values.yaml
+@@ -832,6 +832,7 @@ conf:
+     composite:metadata:
+       use: egg:Paste#urlmap
+       /: meta
++      /healthcheck: healthcheck
+     pipeline:meta:
+       pipeline: cors metaapp
+     app:metaapp:
+@@ -841,6 +842,7 @@ conf:
+       /: oscomputeversions
+       /v2: openstack_compute_api_v21_legacy_v2_compatible
+       /v2.1: openstack_compute_api_v21
++      /healthcheck: healthcheck
+     composite:openstack_compute_api_v21:
+       use: call:nova.api.auth:pipeline_factory_v21
+       noauth2: cors http_proxy_to_wsgi compute_req_id faultwrap sizelimit noauth2 osapi_compute_app_v21
+@@ -869,6 +871,10 @@ conf:
+       pipeline: faultwrap http_proxy_to_wsgi oscomputeversionapp
+     app:oscomputeversionapp:
+       paste.app_factory: nova.api.openstack.compute.versions:Versions.factory
++    app:healthcheck:
++      paste.app_factory: oslo_middleware:Healthcheck.app_factory
++      backends: disable_by_file
++      disable_by_file_path: /var/run/nova/healthcheck_disable
+     filter:cors:
+       paste.filter_factory: oslo_middleware.cors:filter_factory
+       oslo_config_project: nova

@@ -440,6 +440,7 @@ conf:
       /v1: openstack_volume_api_v1
       /v2: openstack_volume_api_v2
       /v3: openstack_volume_api_v3
+      /healthcheck: healthcheck
     composite:openstack_volume_api_v1:
       use: call:cinder.api.middleware.auth:pipeline_factory
       noauth: cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler noauth apiv1
@@ -480,6 +481,10 @@ conf:
       pipeline: cors http_proxy_to_wsgi faultwrap osvolumeversionapp
     app:osvolumeversionapp:
       paste.app_factory: cinder.api.versions:Versions.factory
+    app:healthcheck:
+      paste.app_factory: oslo_middleware:Healthcheck.app_factory
+      backends: disable_by_file
+      disable_by_file_path: /var/run/cinder/healthcheck_disable
     filter:keystonecontext:
       paste.filter_factory: cinder.api.middleware.auth:CinderKeystoneContext.factory
     filter:authtoken:
