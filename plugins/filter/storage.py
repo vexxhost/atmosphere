@@ -286,6 +286,84 @@ class VolumeBackendPowerstore(_HostAttachedVolumeBackend):
         result["conf"]["backends"][name] = self.cinder_backend_config(name)
 
 
+class VolumeBackendNetApp(_HostAttachedVolumeBackend):
+    """NetApp ONTAP volume backend."""
+
+    type: Literal["netapp"]
+    protocol: Literal["iscsi", "fc", "nfs", "nvme"] = Field(
+        description="Storage protocol."
+    )
+    address: str = Field(description="Cluster management address (IP or hostname).")
+    username: str = Field(description="Username credential.")
+    password: str = Field(description="Password credential.")
+    vserver: str = Field(description="ONTAP SVM name.")
+    transport_type: Literal["http", "https"] = Field(
+        default="https", description="Transport protocol for ONTAP management API."
+    )
+    server_port: int = Field(default=443, description="ONTAP management API port.")
+    nfs_shares_config: str | list[str] | None = Field(
+        default=None,
+        description="NFS shares content for NetApp NFS Cinder backends.",
+    )
+    use_multipath_for_image_xfer: bool = Field(
+        default=True,
+        description="Enable multipath for Cinder image transfers.",
+    )
+    netapp_options: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Additional Cinder NetApp driver options.",
+    )
+
+    @model_validator(mode="after")
+    def _validate_nfs_shares_config(self) -> Self:
+        if (
+            self.protocol == "nfs"
+            and self.nfs_shares_config is None
+            and "nfs_shares_config" not in self.netapp_options
+        ):
+            raise ValueError(
+                "NetApp NFS backends require nfs_shares_config or "
+                "netapp_options.nfs_shares_config"
+            )
+        return self
+
+    def cinder_backend_config(self, name: str) -> dict[str, Any]:
+        """Generate Cinder backend config for NetApp ONTAP."""
+        config: dict[str, Any] = {
+            "volume_backend_name": name,
+            "volume_driver": "cinder.volume.drivers.netapp.common.NetAppDriver",
+            "netapp_storage_family": "ontap_cluster",
+            "netapp_storage_protocol": self.protocol,
+            "netapp_server_hostname": self.address,
+            "netapp_server_port": self.server_port,
+            "netapp_login": self.username,
+            "netapp_password": self.password,
+            "netapp_vserver": self.vserver,
+            "netapp_transport_type": self.transport_type,
+            "use_multipath_for_image_xfer": self.use_multipath_for_image_xfer,
+        }
+        if self.nfs_shares_config is not None:
+            config["nfs_shares_config"] = self.nfs_shares_config
+        config.update(self.netapp_options)
+        return config
+
+    def amend_cinder(self, result: HelmValues, name: str) -> None:
+        """Amend Cinder Helm values for a NetApp ONTAP volume backend."""
+        super().amend_cinder(result, name)
+        result["conf"]["backends"][name] = self.cinder_backend_config(name)
+        result.setdefault("pod", {})
+        result["pod"]["useHostNetwork"] = {"volume": True}
+        result["pod"]["security_context"] = {
+            "cinder_volume": {
+                "container": {
+                    "cinder_volume": {
+                        "privileged": True,
+                    }
+                }
+            },
+        }
+
+
 class _VolumeBackendPureBase(_HostAttachedVolumeBackend):
     """Pure Storage FlashArray volume backend."""
 
@@ -491,6 +569,7 @@ VolumeBackend = Annotated[
         VolumeBackendRbd,
         VolumeBackendRbdEc,
         VolumeBackendPowerstore,
+        VolumeBackendNetApp,
         VolumeBackendPure,
         VolumeBackendStorpool,
         VolumeBackendNimble,
