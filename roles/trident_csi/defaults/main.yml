@@ -48,15 +48,39 @@ trident_csi_supported_storage_drivers:
 trident_csi_supported_access_protocols:
   - iscsi
   - fc
+  - nvme
+  - nfs
+  - smb
 trident_csi_san_storage_drivers:
   - ontap-san
   - ontap-san-economy
+trident_csi_nas_storage_drivers:
+  - ontap-nas
+  - ontap-nas-economy
+  - ontap-nas-flexgroup
+trident_csi_san_access_protocols:
+  - iscsi
+  - fc
+  - nvme
+trident_csi_nas_access_protocols:
+  - nfs
+  - smb
 trident_csi_fc_storage_drivers:
   - ontap-san
+trident_csi_nvme_storage_drivers:
+  - ontap-san
+trident_csi_san_type_map:
+  iscsi: iscsi
+  fc: fcp
+  nvme: nvme
+trident_csi_nas_type_map:
+  nfs: nfs
+  smb: smb
 
 trident_csi_storage_driver: ontap-san
 # SAN access protocol for ``ontap-san`` volumes.
-# Use ``fc`` only with ``trident_csi_storage_driver: ontap-san``.
+# Use ``fc`` or ``nvme`` only with ``trident_csi_storage_driver: ontap-san``.
+# Use ``nfs`` or ``smb`` with the ONTAP NAS drivers.
 #
 # trident_csi_access_protocol: iscsi
 trident_csi_access_protocol: iscsi
@@ -65,6 +89,9 @@ trident_csi_backend_config_name: ontap-san
 trident_csi_backend_name: "{{ trident_csi_backend_config_name }}"
 trident_csi_backend_secret_name: "{{ trident_csi_backend_config_name }}-secret"
 trident_csi_backend_deletion_policy: retain
+trident_csi_use_rest: false
+trident_csi_name_template: !unsafe >-
+  {{ .volume.Name }}_{{ .volume.Namespace }}_{{ .volume.RequestName }}
 trident_csi_backend_options: {}
 trident_csi_wait_for_backend: true
 trident_csi_backend_wait_retries: 60
@@ -100,6 +127,16 @@ trident_csi_san_packages:
       - sg3-utils
       - multipath-tools
       - scsitools
+  nvme:
+    Debian:
+      - nvme-cli
+      - multipath-tools
+    RedHat:
+      - nvme-cli
+      - device-mapper-multipath
+    default:
+      - nvme-cli
+      - multipath-tools
   fc:
     Debian:
       - lsscsi
@@ -127,6 +164,13 @@ trident_csi_san_services:
       - iscsid
       - multipathd
   fc:
+    Debian:
+      - multipathd
+    RedHat:
+      - multipathd
+    default:
+      - multipathd
+  nvme:
     Debian:
       - multipathd
     RedHat:

@@ -8,16 +8,29 @@ spec:
   backendName: "{{ trident_csi_backend_name }}"
   storageDriverName: "{{ trident_csi_storage_driver }}"
   managementLIF: "{{ trident_csi_management_lif }}"
-{% if trident_csi_data_lif is defined and trident_csi_data_lif | string | length > 0 %}
+{% set _trident_csi_render_data_lif = (
+  trident_csi_storage_driver in trident_csi_nas_storage_drivers and
+  trident_csi_data_lif is defined and
+  trident_csi_data_lif | string | length > 0
+) %}
+{% if _trident_csi_render_data_lif %}
   dataLIF: "{{ trident_csi_data_lif }}"
 {% endif %}
+{% if trident_csi_svm is defined and trident_csi_svm | string | length > 0 %}
   svm: "{{ trident_csi_svm }}"
+{% endif %}
+{% if trident_csi_storage_driver in trident_csi_san_storage_drivers %}
+  sanType: "{{ trident_csi_san_type_map[trident_csi_access_protocol] }}"
+{% endif %}
+{% if trident_csi_storage_driver in trident_csi_nas_storage_drivers %}
+  nasType: "{{ trident_csi_nas_type_map[trident_csi_access_protocol] }}"
+{% endif %}
 {% if trident_csi_storage_prefix | string | length > 0 %}
   storagePrefix: "{{ trident_csi_storage_prefix }}"
 {% endif %}
   deletionPolicy: "{{ trident_csi_backend_deletion_policy }}"
   credentials:
     name: "{{ trident_csi_backend_secret_name }}"
-{% if trident_csi_backend_options | length > 0 %}
-{{ trident_csi_backend_options | to_nice_yaml(indent=2) | indent(2, true) }}
+{% if _trident_csi_backend_options | length > 0 %}
+{{ _trident_csi_backend_options | to_nice_yaml(indent=2) | indent(2, true) }}
 {% endif %}
