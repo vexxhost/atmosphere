@@ -13,6 +13,17 @@
 # under the License.
 
 ---
+_trident_csi_backend_default_options:
+  useREST: "{{ trident_csi_use_rest | bool }}"
+  defaults:
+    nameTemplate: "{{ trident_csi_name_template }}"
+
+_trident_csi_backend_options: >-
+  {{
+    _trident_csi_backend_default_options |
+    combine(trident_csi_backend_options, recursive=True)
+  }}
+
 _trident_csi_storage_class_base_parameters:
   backendType: "{{ trident_csi_storage_driver }}"
 
