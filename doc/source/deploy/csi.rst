@@ -122,9 +122,9 @@ Trident CSI driver by updating your Ansible inventory as follows:
 
     csi_driver: trident
     trident_csi_management_lif: <FILL IN>
-    trident_csi_svm: <FILL IN>
     trident_csi_username: <FILL IN>
     trident_csi_password: <FILL IN>
+    trident_csi_fs_type: ext4
 
 Use ``trident`` as the Atmosphere ``csi_driver`` value.  The Kubernetes CSI
 provisioner remains ``csi.trident.netapp.io``, and the backend driver is
@@ -136,8 +136,16 @@ and ``trident_csi_access_protocol: iscsi``. It creates the ``general``
 StorageClass using the ``csi.trident.netapp.io`` provisioner. This is
 appropriate for ``ReadWriteOnce`` PVCs backed by iSCSI LUNs.
 
+Atmosphere sets ``trident_csi_fs_type: ext4`` by default so Kubernetes
+``fsGroup`` handling works for block-backed PVCs. Valid values are ``ext3``,
+``ext4``, and ``xfs``.
+
+For deployments that expect a large number of PVCs, consider using
+``trident_csi_storage_driver: ontap-san-economy``.
+
 To use Fibre Channel with the ``ontap-san`` driver, set
-``trident_csi_access_protocol: fc``:
+``trident_csi_access_protocol: fc``. FC should only be used for bare-metal
+Kubernetes nodes with host HBA presentation and switch zoning already in place:
 
 .. code-block:: yaml
 
@@ -145,11 +153,13 @@ To use Fibre Channel with the ``ontap-san`` driver, set
     trident_csi_storage_driver: ontap-san
     trident_csi_access_protocol: fc
     trident_csi_management_lif: <FILL IN>
-    trident_csi_svm: <FILL IN>
     trident_csi_username: <FILL IN>
     trident_csi_password: <FILL IN>
+    trident_csi_fs_type: ext4
 
-The ``ontap-san-economy`` driver supports iSCSI only.
+The ``ontap-san`` driver also supports NVMe/TCP by setting
+``trident_csi_access_protocol: nvme``. The ``ontap-san-economy`` driver
+supports iSCSI only.
 
 If you need shared ``ReadWriteMany`` PVCs, use an ONTAP NAS backend instead:
 
@@ -157,12 +167,28 @@ If you need shared ``ReadWriteMany`` PVCs, use an ONTAP NAS backend instead:
 
     csi_driver: trident
     trident_csi_storage_driver: ontap-nas
+    trident_csi_access_protocol: nfs
     trident_csi_management_lif: <FILL IN>
-    trident_csi_data_lif: <FILL IN>
-    trident_csi_svm: <FILL IN>
     trident_csi_username: <FILL IN>
     trident_csi_password: <FILL IN>
-    trident_csi_fs_type: ""
+    trident_csi_fs_type: ext4
+
+The ONTAP NAS drivers also support SMB for Windows nodes by setting
+``trident_csi_access_protocol: smb``.
+
+Atmosphere does not set ``trident_csi_svm`` or ``trident_csi_data_lif`` by
+default.  Set ``trident_csi_svm`` only when using cluster-scoped credentials
+and the backend must target a specific SVM. Set ``trident_csi_data_lif`` only
+for NAS backends when a specific data LIF must be selected. Do not set
+``trident_csi_data_lif`` for SAN backends.
+
+By default, Atmosphere sets the following backend options:
+
+.. code-block:: yaml
+
+    trident_csi_use_rest: false
+    trident_csi_name_template: >-
+      {{ .volume.Name }}_{{ .volume.Namespace }}_{{ .volume.RequestName }}
 
 You can pass additional backend options through
 ``trident_csi_backend_options`` and additional StorageClass parameters through
