@@ -46,16 +46,14 @@
         namespace: "{{ kube_prometheus_stack_helm_release_namespace }}"
 
 - name: Wait until Keycloak service is ready
-  kubernetes.core.k8s_info:
-    api_version: apps/v1
-    kind: StatefulSet
-    name: keycloak
-    namespace: auth-system
+  ansible.builtin.uri:
+    url: "{{ kube_prometheus_stack_keycloak_server_url }}/realms/{{ kube_prometheus_stack_keycloak_admin_realm_name }}"
+    status_code: 200
+    validate_certs: "{{ cluster_issuer_type != 'self-signed' }}"
   register: kube_prometheus_stack_keycloak_service
   retries: 120
   delay: 5
-  until:
-    - kube_prometheus_stack_keycloak_service.resources[0].status.replicas == kube_prometheus_stack_keycloak_service.resources[0].status.readyReplicas # noqa: yaml[line-length]
+  until: kube_prometheus_stack_keycloak_service.status == 200
 
 - name: Create Keycloak realm
   no_log: true
