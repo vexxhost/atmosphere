@@ -220,7 +220,7 @@ _kube_prometheus_stack_helm_values:
     adminPassword: "{{ kube_prometheus_stack_grafana_admin_password }}"
     extraSecretMounts:
       - name: auth-generic-oauth-secret-mount
-        secretName: "{{ kube_prometheus_stack_helm_release_name }}-grafana-client-secret"
+        secretName: "{{ kube_prometheus_stack_grafana_client_secret_name }}"
         defaultMode: "0440"
         mountPath: /etc/secrets/auth_generic_oauth
         readOnly: true
@@ -236,7 +236,7 @@ _kube_prometheus_stack_helm_values:
         enabled: true
         name: Atmosphere
         allow_sign_up: true
-        client_id: grafana
+        client_id: "{{ kube_prometheus_stack_grafana_client_id }}"
         client_secret: "$__file{/etc/secrets/auth_generic_oauth/password}"
         scopes: openid email profile offline_access roles
         email_attribute_path: email
@@ -247,7 +247,7 @@ _kube_prometheus_stack_helm_values:
         api_url: "{{ kube_prometheus_stack_keycloak_server_url }}/realms/{{ kube_prometheus_stack_keycloak_realm }}/protocol/openid-connect/userinfo"
         tls_skip_verify_insecure: true
         # yamllint disable-line rule:line-length
-        role_attribute_path: "contains(resource_access.grafana.roles[*], 'admin') && 'Admin' || contains(resource_access.grafana.roles[*], 'editor') && 'Editor' || contains(resource_access.grafana.roles[*], 'viewer') && 'Viewer'"
+        role_attribute_path: "contains(resource_access.\"{{ kube_prometheus_stack_grafana_client_id }}\".roles[*], 'admin') && 'Admin' || contains(resource_access.\"{{ kube_prometheus_stack_grafana_client_id }}\".roles[*], 'editor') && 'Editor' || contains(resource_access.\"{{ kube_prometheus_stack_grafana_client_id }}\".roles[*], 'viewer') && 'Viewer'"
         role_attribute_strict: true
         skip_org_role_sync: false
     image:

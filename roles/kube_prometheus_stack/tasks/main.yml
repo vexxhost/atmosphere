@@ -39,6 +39,7 @@
     realm: "{{ kube_prometheus_stack_keycloak_realm }}"
     display_name: "{{ kube_prometheus_stack_keycloak_realm_name }}"
     enabled: true
+  when: kube_prometheus_stack_keycloak_manage | bool
 
 - name: Add client roles in "id_token"
   no_log: true
@@ -64,6 +65,7 @@
           access.token.claim: true
           id.token.claim: true
           multivalued: true
+  when: kube_prometheus_stack_keycloak_manage | bool
 
 - name: Retrieve "etcd" CA certificate
   run_once: true
@@ -111,7 +113,9 @@
       apiVersion: secretgen.k14s.io/v1alpha1
       kind: Password
       metadata:
-        name: "{{ kube_prometheus_stack_helm_release_name }}-{{ item.id }}-client-secret"
+        name: >-
+          {{ item.client_secret_name
+          | default(kube_prometheus_stack_helm_release_name ~ '-' ~ item.id ~ '-client-secret') }}
         namespace: "{{ kube_prometheus_stack_helm_release_namespace }}"
       spec:
         length: 64
@@ -124,6 +128,7 @@
   loop: "{{ kube_prometheus_stack_keycloak_clients }}"
   loop_control:
     label: "{{ item.id }}"
+  when: kube_prometheus_stack_keycloak_manage | bool
 
 - name: Collect all client secrets
   run_once: true
@@ -136,6 +141,28 @@
   loop_control:
     label: "{{ password.item.id }}"
     loop_var: password
+  when: kube_prometheus_stack_keycloak_manage | bool
+
+- name: Validate externally managed client secrets
+  run_once: true
+  kubernetes.core.k8s_info:
+    kind: Secret
+    namespace: "{{ kube_prometheus_stack_helm_release_namespace }}"
+    name: >-
+      {{ item.client_secret_name
+      | default(kube_prometheus_stack_helm_release_name ~ '-' ~ item.id ~ '-client-secret') }}
+  register: kube_prometheus_stack_external_client_secret
+  failed_when: >-
+    kube_prometheus_stack_external_client_secret.resources | length == 0 or
+    kube_prometheus_stack_external_client_secret.resources[0].data.password
+    is not defined
+  loop: "{{ kube_prometheus_stack_keycloak_clients }}"
+  loop_control:
+    label: >-
+      {{ item.id }}
+      ({{ item.client_secret_name
+      | default(kube_prometheus_stack_helm_release_name ~ '-' ~ item.id ~ '-client-secret') }})
+  when: not (kube_prometheus_stack_keycloak_manage | bool)
 
 - name: Create Keycloak clients
   no_log: true
@@ -165,6 +192,7 @@
   loop_control:
     label: "{{ secret.password.item.id }}"
     loop_var: secret
+  when: kube_prometheus_stack_keycloak_manage | bool
 
 - name: Create Keycloak roles
   no_log: true
@@ -184,6 +212,7 @@
   loop: "{{ kube_prometheus_stack_keycloak_clients | subelements('roles') }}"
   loop_control:
     label: "{{ item.0.id }}-{{ item.1 }}"
+  when: kube_prometheus_stack_keycloak_manage | bool
 
 - name: Generate cookie secrets
   run_once: true
@@ -222,7 +251,9 @@
             ref:
               apiVersion: v1
               kind: Secret
-              name: "{{ kube_prometheus_stack_helm_release_name }}-{{ item.id }}-client-secret"
+              name: >-
+                {{ item.client_secret_name
+                | default(kube_prometheus_stack_helm_release_name ~ '-' ~ item.id ~ '-client-secret') }}
           - name: cookie-secret
             ref:
               apiVersion: v1

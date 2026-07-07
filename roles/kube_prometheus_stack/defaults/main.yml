@@ -53,6 +53,7 @@ kube_prometheus_stack_prometheus_ingress_annotations:
   cert-manager.io/common-name: "{{ kube_prometheus_stack_prometheus_host }}"
 kube_prometheus_stack_prometheus_tls_template: "{{ _kube_prometheus_stack_tls_template }}"
 
+kube_prometheus_stack_keycloak_manage: true
 kube_prometheus_stack_keycloak_server_url: "https://{{ keycloak_host }}"
 kube_prometheus_stack_keycloak_admin_realm_name: master
 kube_prometheus_stack_keycloak_admin_client_id: admin-cli
@@ -61,20 +62,33 @@ kube_prometheus_stack_keycloak_admin_password: "{{ keycloak_admin_password }}"
 kube_prometheus_stack_keycloak_realm: atmosphere
 kube_prometheus_stack_keycloak_realm_name: Atmosphere
 
+kube_prometheus_stack_alertmanager_client_id: alertmanager
+kube_prometheus_stack_alertmanager_client_secret_name: >-
+  {{ kube_prometheus_stack_helm_release_name }}-{{ kube_prometheus_stack_alertmanager_client_id }}-client-secret
+kube_prometheus_stack_grafana_client_id: grafana
+kube_prometheus_stack_grafana_client_secret_name: >-
+  {{ kube_prometheus_stack_helm_release_name }}-{{ kube_prometheus_stack_grafana_client_id }}-client-secret
+kube_prometheus_stack_prometheus_client_id: prometheus
+kube_prometheus_stack_prometheus_client_secret_name: >-
+  {{ kube_prometheus_stack_helm_release_name }}-{{ kube_prometheus_stack_prometheus_client_id }}-client-secret
+
 kube_prometheus_stack_keycloak_clients:
-  - id: alertmanager
+  - id: "{{ kube_prometheus_stack_alertmanager_client_id }}"
+    client_secret_name: "{{ kube_prometheus_stack_alertmanager_client_secret_name }}"
     port: 9093
     roles: ["member"]
     oauth2_proxy: true
     redirect_uris:
       - "https://{{ kube_prometheus_stack_alertmanager_host }}/oauth2/callback"
-  - id: grafana
+  - id: "{{ kube_prometheus_stack_grafana_client_id }}"
+    client_secret_name: "{{ kube_prometheus_stack_grafana_client_secret_name }}"
     roles: ["admin", "editor", "viewer"]
     oauth2_proxy: false
     redirect_uris:
       - "https://{{ kube_prometheus_stack_grafana_host }}/login"
       - "https://{{ kube_prometheus_stack_grafana_host }}/login/generic_oauth"
-  - id: prometheus
+  - id: "{{ kube_prometheus_stack_prometheus_client_id }}"
+    client_secret_name: "{{ kube_prometheus_stack_prometheus_client_secret_name }}"
     port: 9090
     roles: ["member"]
     oauth2_proxy: true

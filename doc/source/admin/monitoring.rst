@@ -206,6 +206,76 @@ Prometheus as the data source. You can find more examples of how to do
 this in the Grafana Helm chart `Import Dashboards <https://github.com/grafana/helm-charts/tree/main/charts/grafana#import-dashboards>`_
 documentation.
 
+Externally managed Keycloak
+===========================
+
+By default, Atmosphere manages the Keycloak resources needed by monitoring: the
+realm, client scope mapper, clients, client roles, and generated client
+secrets.
+
+For multi-region environments where Keycloak is shared and owned outside of the
+regional monitoring deployment, disable Keycloak management:
+
+.. code-block:: yaml
+
+  kube_prometheus_stack_keycloak_manage: false
+
+This does not disable Keycloak authentication for Grafana, Prometheus, or
+Alertmanager. It only stops the monitoring role from calling the Keycloak admin
+API. The role still waits for ``kube_prometheus_stack_keycloak_server_url`` and
+expects the referenced clients and Kubernetes secrets to exist before it deploys
+the monitoring resources.
+
+When using a shared Keycloak, override the Keycloak endpoint to point at the
+region that owns authentication. You can either set ``keycloak_host`` or override
+the full URL:
+
+.. code-block:: yaml
+
+  keycloak_host: auth.primary.example.com
+  # or:
+  kube_prometheus_stack_keycloak_server_url: https://auth.primary.example.com
+
+You must also set the local monitoring endpoints for the region being deployed:
+
+.. code-block:: yaml
+
+  kube_prometheus_stack_alertmanager_host: alertmanager.region.example.com
+  kube_prometheus_stack_grafana_host: grafana.region.example.com
+  kube_prometheus_stack_prometheus_host: prometheus.region.example.com
+
+Use region-specific client IDs when the shared Keycloak serves more than one
+monitoring deployment:
+
+.. code-block:: yaml
+
+  kube_prometheus_stack_alertmanager_client_id: alertmanager-region
+  kube_prometheus_stack_grafana_client_id: grafana-region
+  kube_prometheus_stack_prometheus_client_id: prometheus-region
+
+Each client must have a Kubernetes ``Secret`` in
+``kube_prometheus_stack_helm_release_namespace`` containing a ``password`` key.
+The namespace defaults to ``monitoring``. Override the secret names when they do
+not match the role defaults:
+
+.. code-block:: yaml
+
+  kube_prometheus_stack_alertmanager_client_secret_name: alertmanager-region-client-secret
+  kube_prometheus_stack_grafana_client_secret_name: grafana-region-client-secret
+  kube_prometheus_stack_prometheus_client_secret_name: prometheus-region-client-secret
+
+The shared Keycloak must already contain matching clients, client roles, client
+secrets, and redirect URIs. Alertmanager and Prometheus require a ``member``
+client role. Grafana requires ``admin``, ``editor``, and ``viewer`` client
+roles. The role mapper that exposes client roles in the token must also exist.
+
+The required redirect URIs are based on the endpoint variables:
+
+- ``https://{{ kube_prometheus_stack_alertmanager_host }}/oauth2/callback``
+- ``https://{{ kube_prometheus_stack_grafana_host }}/login``
+- ``https://{{ kube_prometheus_stack_grafana_host }}/login/generic_oauth``
+- ``https://{{ kube_prometheus_stack_prometheus_host }}/oauth2/callback``
+
 ************
 Viewing data
 ************

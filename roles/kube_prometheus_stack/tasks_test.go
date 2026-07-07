@@ -42,6 +42,8 @@ func TestCreateKeycloakRealmTask(t *testing.T) {
 	require.NotNil(t, task)
 
 	assert.Equal(t, true, task["no_log"])
+	assert.Equal(t, "kube_prometheus_stack_keycloak_manage | bool",
+		task["when"])
 }
 
 func TestAddClientRolesInIdTokenTask(t *testing.T) {
@@ -49,6 +51,8 @@ func TestAddClientRolesInIdTokenTask(t *testing.T) {
 	require.NotNil(t, task)
 
 	assert.Equal(t, true, task["no_log"])
+	assert.Equal(t, "kube_prometheus_stack_keycloak_manage | bool",
+		task["when"])
 }
 
 func TestCreateKeycloakClientsTask(t *testing.T) {
@@ -56,6 +60,8 @@ func TestCreateKeycloakClientsTask(t *testing.T) {
 	require.NotNil(t, task)
 
 	assert.Equal(t, true, task["no_log"])
+	assert.Equal(t, "kube_prometheus_stack_keycloak_manage | bool",
+		task["when"])
 }
 
 func TestCreateKeycloakRolesTask(t *testing.T) {
@@ -63,4 +69,11 @@ func TestCreateKeycloakRolesTask(t *testing.T) {
 	require.NotNil(t, task)
 
 	assert.Equal(t, true, task["no_log"])
+	assert.Equal(t, "kube_prometheus_stack_keycloak_manage | bool",
+		task["when"])
+}
+
+func TestValidateExternallyManagedClientSecretsTask(t *testing.T) {
+	task := getTaskByName("Validate externally managed client secrets")
+	require.NotNil(t, task)
 }
