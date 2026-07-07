@@ -13,7 +13,7 @@
 # under the License.
 
 - name: Append Helm values (neutron_fwaas)
-  when: neutron_fwaas_enabled | bool
+  when: neutron_fwaas_enabled | default(false) | bool
   ansible.builtin.set_fact:
     _horizon_helm_values: "{{ _horizon_helm_values | combine(__horizon_fwaas_helm_values, recursive=True) }}"
 

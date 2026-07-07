@@ -13,6 +13,9 @@ import (
 )
 
 var (
+	//go:embed defaults/main.yml
+	defaultsFile []byte
+
 	//go:embed vars/main.yml
 	varsFile []byte
 	vars     Vars
@@ -33,6 +36,10 @@ type HorizonPanelsVars struct {
 type HorizonBaseAndFwaasVars struct {
 	Base  HorizonPanelsVars `yaml:"_horizon_helm_values"`
 	Fwaas HorizonPanelsVars `yaml:"__horizon_fwaas_helm_values"`
+}
+
+type Defaults struct {
+	NeutronFwaasEnabled *bool `yaml:"neutron_fwaas_enabled"`
 }
 
 func TestMain(m *testing.M) {
@@ -84,4 +91,13 @@ func TestExtraPanels(t *testing.T) {
 
 	require.Contains(t, panelVars.Fwaas.Conf.Horizon.ExtraPanels, "neutron_vpnaas_dashboard")
 	require.Contains(t, panelVars.Fwaas.Conf.Horizon.ExtraPanels, "neutron_fwaas_dashboard")
+}
+
+func TestDefaults(t *testing.T) {
+	var defaults Defaults
+	err := yaml.UnmarshalWithOptions(defaultsFile, &defaults)
+	require.NoError(t, err)
+
+	require.NotNil(t, defaults.NeutronFwaasEnabled)
+	require.False(t, *defaults.NeutronFwaasEnabled)
 }
