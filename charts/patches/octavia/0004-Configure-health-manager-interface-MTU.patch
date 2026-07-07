@@ -1,0 +1,55 @@
+diff --git a/octavia/templates/bin/_octavia-health-manager-nic-init.sh.tpl b/octavia/templates/bin/_octavia-health-manager-nic-init.sh.tpl
+index 0317c3d33..4db18c606 100644
+--- a/octavia/templates/bin/_octavia-health-manager-nic-init.sh.tpl
++++ b/octavia/templates/bin/_octavia-health-manager-nic-init.sh.tpl
+@@ -28,8 +28,12 @@ ovs-vsctl --may-exist add-port br-int o-hm0 \
+         -- set Interface o-hm0 external-ids:iface-status=active \
+         -- set Interface o-hm0 external-ids:attached-mac=$HM_PORT_MAC \
+         -- set Interface o-hm0 external-ids:iface-id=$HM_PORT_ID \
+-        -- set Interface o-hm0 external-ids:skip_cleanup=true
++        -- set Interface o-hm0 external-ids:skip_cleanup=true{{- if .Values.network.health_manager.interface_mtu }} \
++        -- set Interface o-hm0 mtu_request={{ .Values.network.health_manager.interface_mtu }}{{- end }}
+ 
+ ip link set dev o-hm0 address $HM_PORT_MAC
++{{- if .Values.network.health_manager.interface_mtu }}
++ip link set dev o-hm0 mtu {{ .Values.network.health_manager.interface_mtu }}
++{{- end }}
+ 
+ iptables -I INPUT -i o-hm0 -p udp --dport {{ .Values.conf.octavia.health_manager.bind_port }} -j ACCEPT
+diff --git a/octavia/templates/bin/_octavia-health-manager.sh.tpl b/octavia/templates/bin/_octavia-health-manager.sh.tpl
+index 220597eb7..345d9d4cb 100644
+--- a/octavia/templates/bin/_octavia-health-manager.sh.tpl
++++ b/octavia/templates/bin/_octavia-health-manager.sh.tpl
+@@ -28,11 +28,19 @@ HOOK
+   chmod +x /etc/dhcp/dhclient-enter-hooks.d/nodns
+ 
+   cat > /tmp/dhclient.conf <<EOF
++{{- if .Values.network.health_manager.interface_mtu }}
++request subnet-mask,broadcast-address;
++supersede interface-mtu {{ .Values.network.health_manager.interface_mtu }};
++{{- else }}
+ request subnet-mask,broadcast-address,interface-mtu;
++{{- end }}
+ do-forward-updates false;
+ EOF
+ 
+   dhclient -v o-hm0 -cf /tmp/dhclient.conf
++{{- if .Values.network.health_manager.interface_mtu }}
++  ip link set dev o-hm0 mtu {{ .Values.network.health_manager.interface_mtu }}
++{{- end }}
+ 
+   exec octavia-health-manager \
+         --config-file /etc/octavia/octavia.conf
+diff --git a/octavia/values.yaml b/octavia/values.yaml
+index 2fb67563e..0dc2c9428 100644
+--- a/octavia/values.yaml
++++ b/octavia/values.yaml
+@@ -86,6 +86,8 @@ network:
+     node_port:
+       enabled: false
+       port: 30826
++  health_manager:
++    interface_mtu: null
+ 
+ dependencies:
+   dynamic:
