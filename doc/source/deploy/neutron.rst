@@ -199,6 +199,18 @@ virtual machine model such as Octavia and Manila.
       "hw:vif_multiqueue_enabled": 'true'
       "hw:mem_page_size": large
 
+Firewall as a Service
+^^^^^^^^^^^^^^^^^^^^^
+
+Atmosphere enables Neutron Firewall as a Service (FWaaS) automatically when
+you deploy Neutron with the OVN backend. The deployment adds the
+``firewall_v2`` service plugin, configures the OVN FWaaS driver, runs the
+``neutron-fwaas`` database migrations, and exposes the Horizon dashboard.
+
+No extra role variables are required. If you override
+``neutron_helm_values.conf.neutron.DEFAULT.service_plugins``, keep
+``firewall_v2`` in the list so the FWaaS configuration stays active.
+
 **********************
 Neutron generic switch
 **********************
