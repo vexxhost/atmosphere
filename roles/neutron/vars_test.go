@@ -3,6 +3,7 @@ package neutron
 import (
 	_ "embed"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/goccy/go-yaml"
@@ -20,6 +21,26 @@ var (
 
 type Vars struct {
 	openstack_helm.HelmValues `yaml:"__neutron_helm_values"`
+}
+
+type OvnVars struct {
+	HelmValues struct {
+		Conf struct {
+			Neutron struct {
+				Default struct {
+					ServicePlugins string `yaml:"service_plugins"`
+				} `yaml:"DEFAULT"`
+			} `yaml:"neutron"`
+			NeutronFwaas struct {
+				Fwaas struct {
+					Driver string `yaml:"driver"`
+				} `yaml:"fwaas"`
+				ServiceProviders struct {
+					ServiceProvider string `yaml:"service_provider"`
+				} `yaml:"service_providers"`
+			} `yaml:"neutron_fwaas"`
+		} `yaml:"conf"`
+	} `yaml:"__neutron_ovn_helm_values"`
 }
 
 func TestMain(m *testing.M) {
@@ -88,4 +109,28 @@ func TestHelmValues(t *testing.T) {
 	testutils.TestDatabaseConf(t, vals.Conf.Neutron.Database)
 	testutils.TestAllPodsHaveRuntimeClass(t, vals)
 	testutils.TestAllPodsHavePriorityClass(t, vals)
+}
+
+func TestOvnDefaultsIncludeFwaas(t *testing.T) {
+	var ovnVars OvnVars
+	err := yaml.Unmarshal(varsFile, &ovnVars)
+	require.NoError(t, err)
+
+	require.Contains(
+		t,
+		ovnVars.HelmValues.Conf.Neutron.Default.ServicePlugins,
+		"firewall_v2",
+	)
+	require.Equal(
+		t,
+		"neutron_fwaas.services.firewall.service_drivers.ovn.firewall_l3_driver.OVNFwaasDriver",
+		ovnVars.HelmValues.Conf.NeutronFwaas.Fwaas.Driver,
+	)
+	require.True(
+		t,
+		strings.Contains(
+			ovnVars.HelmValues.Conf.NeutronFwaas.ServiceProviders.ServiceProvider,
+			".OVNFwaasDriver:default",
+		),
+	)
 }
