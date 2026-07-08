@@ -139,7 +139,14 @@ _tempest_network_backend_settings:
             - trunk-details
   ovn:
     conf:
+      script: |
+        tempest run --config-file /etc/tempest/tempest.conf -w 4 --whitelist-file /etc/tempest/test-whitelist
+      whitelist:
+        - smoke
+        - ^neutron_tempest_plugin\.fwaas\.api\.test_fwaasv2_extensions.*
       tempest:
+        fwaas:
+          driver: ovn
         network-feature-enabled:
           api_extensions:
             - address-scope
@@ -154,6 +161,7 @@ _tempest_network_backend_settings:
             - extra_dhcp_opt
             - extraroute
             - flavors
+            - fwaas_v2
             - l3-flavors
             - l3-ha
             - multi-provider
