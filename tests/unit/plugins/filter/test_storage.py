@@ -90,6 +90,32 @@ _STORPOOL_BACKEND = {
     "template": "hybrid-2ssd",
 }
 
+_NIMBLE_ISCSI_BACKEND = {
+    "type": "nimble",
+    "protocol": "iscsi",
+    "address": "10.0.0.3",
+    "username": "admin",
+    "password": "secret",
+}
+
+_NIMBLE_FC_BACKEND = {
+    "type": "nimble",
+    "protocol": "fc",
+    "address": "10.0.0.3",
+    "username": "admin",
+    "password": "secret",
+}
+
+_NIMBLE_POD_SECURITY_CONTEXT = {
+    "cinder_volume": {
+        "container": {
+            "cinder_volume": {
+                "privileged": True,
+            }
+        }
+    }
+}
+
 
 class TestValidation:
     def test_empty_storage_is_valid(self):
@@ -118,6 +144,45 @@ class TestValidation:
                     }
                 }
             )
+
+    def test_backup_none_drops_rbd_keys_from_recursive_combine(self):
+        """Mimic Ansible's ``combine(recursive=True)`` of role defaults
+        with a non-Ceph user override that flips ``backup.type`` to
+        ``none``. The rbd keys leaked from defaults must not cause
+        validation to fail.
+        """
+        cfg = StorageConfig.model_validate(
+            {
+                **DEFAULT_STORAGE,
+                "backup": {
+                    **DEFAULT_STORAGE["backup"],
+                    "type": "none",
+                },
+            }
+        )
+        assert cfg.backup is not None
+        assert cfg.backup.type == "none"
+
+    def test_ephemeral_local_drops_rbd_keys_from_recursive_combine(self):
+        cfg = StorageConfig.model_validate(
+            {
+                **DEFAULT_STORAGE,
+                "ephemeral": {
+                    **DEFAULT_STORAGE["ephemeral"],
+                    "type": "local",
+                },
+            }
+        )
+        assert cfg.ephemeral is not None
+        assert cfg.ephemeral.type == "local"
+
+    def test_typo_in_backup_none_still_rejected(self):
+        """Pruning only drops keys that belong to *another* variant of
+        the same union. Genuine typos within the chosen variant must
+        still trigger ``extra="forbid"``.
+        """
+        with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+            StorageConfig.model_validate({"backup": {"type": "none", "typo": "value"}})
 
     def test_erasure_coded_m_gt_k_rejected(self):
         with pytest.raises(ValidationError, match="m.*must not exceed k"):
@@ -666,6 +731,99 @@ class TestStorageToCinderHelmValues:
         mounts = result["pod"]["mounts"]["cinder_volume"]
         assert len(mounts["volumeMounts"]) == 2
         assert len(mounts["volumes"]) == 2
+
+    def test_nimble_iscsi_backend(self):
+        storage = {
+            **DEFAULT_STORAGE,
+            "volumes": {
+                "default": "nimble",
+                "backends": {"nimble": _NIMBLE_ISCSI_BACKEND},
+            },
+            "backup": {"type": "none"},
+        }
+        result = storage_to_cinder_helm_values(storage)
+
+        backend = result["conf"]["backends"]["nimble"]
+        assert (
+            backend["volume_driver"]
+            == "cinder.volume.drivers.hpe.nimble.NimbleISCSIDriver"
+        )
+        assert backend["san_ip"] == "10.0.0.3"
+        assert backend["san_login"] == "admin"
+        assert backend["san_password"] == "secret"
+        assert backend["nimble_subnet_label"] == "*"
+        assert backend["use_multipath_for_image_xfer"] is True
+        assert result["conf"]["enable_iscsi"] is True
+        assert result["pod"]["useHostNetwork"] == {"volume": True}
+        assert result["pod"]["security_context"] == _NIMBLE_POD_SECURITY_CONTEXT
+
+    def test_nimble_backend_custom_subnet_label(self):
+        storage = {
+            **DEFAULT_STORAGE,
+            "volumes": {
+                "default": "nimble",
+                "backends": {
+                    "nimble": {
+                        **_NIMBLE_ISCSI_BACKEND,
+                        "nimble_subnet_label": "storage-prod",
+                    }
+                },
+            },
+            "backup": {"type": "none"},
+        }
+        result = storage_to_cinder_helm_values(storage)
+
+        backend = result["conf"]["backends"]["nimble"]
+        assert backend["nimble_subnet_label"] == "storage-prod"
+
+    def test_nimble_with_rbd1_default_nulled_out(self):
+        storage = {
+            "images": {
+                "default": "cinder_store",
+                "backends": {
+                    "rbd1": None,
+                    "cinder_store": {"type": "cinder"},
+                },
+            },
+            "volumes": {
+                "default": "nimble1",
+                "backends": {
+                    "rbd1": None,
+                    "nimble1": _NIMBLE_ISCSI_BACKEND,
+                },
+            },
+            "backup": {"type": "none"},
+        }
+        result = storage_to_cinder_helm_values(storage)
+
+        assert "rbd1" not in result["conf"]["backends"]
+        assert result["storage"] == "nimble"
+        assert result["manifests"]["job_storage_init"] is False
+        assert result["conf"]["enable_iscsi"] is True
+
+    def test_nimble_fc_backend(self):
+        storage = {
+            **DEFAULT_STORAGE,
+            "volumes": {
+                "default": "nimble",
+                "backends": {"nimble": _NIMBLE_FC_BACKEND},
+            },
+            "backup": {"type": "none"},
+        }
+        result = storage_to_cinder_helm_values(storage)
+
+        backend = result["conf"]["backends"]["nimble"]
+        assert backend["volume_driver"] == (
+            "cinder.volume.drivers.hpe.nimble.NimbleFCDriver"
+        )
+        assert backend["san_ip"] == "10.0.0.3"
+        assert backend["san_login"] == "admin"
+        assert backend["san_password"] == "secret"
+        assert backend["nimble_subnet_label"] == "*"
+        assert backend["use_multipath_for_image_xfer"] is True
+        assert result["conf"]["enable_iscsi"] is True
+        assert result["pod"]["useHostNetwork"] == {"volume": True}
+        assert result["pod"]["security_context"] == _NIMBLE_POD_SECURITY_CONTEXT
 
     def test_no_backup(self):
         storage = {
