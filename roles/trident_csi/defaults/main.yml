@@ -187,5 +187,12 @@ trident_csi_storage_class_default: true
 trident_csi_storage_class_reclaim_policy: Delete
 trident_csi_storage_class_volume_binding_mode: WaitForFirstConsumer
 trident_csi_storage_class_allow_volume_expansion: true
-trident_csi_fs_type: ext4
+trident_csi_default_fs_type_map:
+  iscsi: ext4
+  fc: ext4
+  nvme: ext4
+  nfs: nfs
+  smb: ""
+trident_csi_fs_type: >-
+  {{ trident_csi_default_fs_type_map[trident_csi_access_protocol] }}
 trident_csi_storage_class_parameters: {}
