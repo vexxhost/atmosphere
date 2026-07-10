@@ -60,7 +60,7 @@ rm -f /var/run/libvirtd.pid
 
 if [[ -c /dev/kvm ]]; then
     chmod 660 /dev/kvm
-    chown root:kvm /dev/kvm
+    chown {{ .Values.conf.qemu.user }}:{{ .Values.conf.qemu.group }} /dev/kvm
 fi
 
 #Setup Cgroups to use when breaking out of Kubernetes defined groups
