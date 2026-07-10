@@ -958,8 +958,9 @@ class TestStorageToCinderHelmValues:
         }
         result = storage_to_cinder_helm_values(storage)
 
-        assert "rbd1" not in result["conf"]["backends"]
+        assert result["conf"]["backends"]["rbd1"] is None
         assert result["storage"] == "nimble"
+        assert result["conf"]["cinder"]["DEFAULT"]["enabled_backends"] == "nimble1"
         assert result["manifests"]["job_storage_init"] is False
         assert result["conf"]["enable_iscsi"] is True
 
