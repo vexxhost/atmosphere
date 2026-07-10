@@ -136,9 +136,9 @@ and ``trident_csi_access_protocol: iscsi``. It creates the ``general``
 StorageClass using the ``csi.trident.netapp.io`` provisioner. This is
 appropriate for ``ReadWriteOnce`` PVCs backed by iSCSI LUNs.
 
-Atmosphere sets ``trident_csi_fs_type: ext4`` by default so Kubernetes
-``fsGroup`` handling works for block-backed PVCs. Valid values are ``ext3``,
-``ext4``, and ``xfs``.
+Atmosphere sets ``trident_csi_fs_type: ext4`` by default for block-backed PVCs
+so Kubernetes ``fsGroup`` handling works as expected. Valid block filesystem
+values are ``ext3``, ``ext4``, and ``xfs``.
 
 For deployments that expect a large number of PVCs, consider using
 ``trident_csi_storage_driver: ontap-san-economy``.
@@ -171,10 +171,15 @@ If you need shared ``ReadWriteMany`` PVCs, use an ONTAP NAS backend instead:
     trident_csi_management_lif: <FILL IN>
     trident_csi_username: <FILL IN>
     trident_csi_password: <FILL IN>
-    trident_csi_fs_type: ext4
+    trident_csi_fs_type: nfs
 
 The ONTAP NAS drivers also support SMB for Windows nodes by setting
 ``trident_csi_access_protocol: smb``.
+
+For ``trident_csi_access_protocol: nfs``, Atmosphere defaults
+``trident_csi_fs_type`` to ``nfs`` because Trident will always present an NFS
+filesystem for ONTAP NAS volumes. For ``trident_csi_access_protocol: smb``,
+Atmosphere omits ``trident_csi_fs_type`` by default.
 
 Atmosphere does not set ``trident_csi_svm`` or ``trident_csi_data_lif`` by
 default.  Set ``trident_csi_svm`` only when using cluster-scoped credentials
