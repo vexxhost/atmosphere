@@ -1,0 +1,35 @@
+Subject: [PATCH] Add EndpointSlice permissions for CloudNativePG 1.28.4
+
+CloudNativePG 1.28.4 backports the CNPG-I plugin EndpointSlice watcher
+from https://github.com/cloudnative-pg/cloudnative-pg/pull/10836. The
+official 1.28.4 manifest includes the required get, list, and watch
+permissions:
+https://github.com/cloudnative-pg/cloudnative-pg/releases/download/v1.28.4/cnpg-1.28.4.yaml
+
+Chart 0.27.1 predates this backport, and no 0.27.x chart containing the
+permissions was published. The permissions first appear in chart
+0.29.0; the published 0.28.x charts through 0.28.3 also lack them. The
+missing chart backports are tracked at:
+https://github.com/cloudnative-pg/charts/issues/939
+
+Remove this patch when upgrading to a chart version that includes the
+EndpointSlice permissions.
+---
+diff --git a/cloudnative-pg/templates/_helpers.tpl b/cloudnative-pg/templates/_helpers.tpl
+--- a/cloudnative-pg/templates/_helpers.tpl
++++ b/cloudnative-pg/templates/_helpers.tpl
+@@ -168,6 +168,14 @@ namespace scope or clusterwide
+   - create
+   - get
+   - update
++- apiGroups:
++  - discovery.k8s.io
++  resources:
++  - endpointslices
++  verbs:
++  - get
++  - list
++  - watch
+ - apiGroups:
+   - monitoring.coreos.com
+   resources:
