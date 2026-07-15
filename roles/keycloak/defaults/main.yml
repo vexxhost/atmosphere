@@ -20,6 +20,12 @@ keycloak_helm_release_namespace: auth-system
 keycloak_helm_kubeconfig: "{{ kubeconfig_path | default('/etc/kubernetes/admin.conf') }}"
 keycloak_helm_values: {}
 
+keycloak_operator_namespace: auth-system
+keycloak_operator_kubeconfig: "{{ kubeconfig_path | default('/etc/kubernetes/admin.conf') }}"
+
+keycloak_operator_node_selector:
+  openstack-control-plane: enabled
+
 keycloak_host: "{{ undef('You must specify a Keycloak host using keycloak_host') }}"
 keycloak_ingress_annotations: {}
 keycloak_ingress_class_name: "{{ atmosphere_ingress_class_name }}"
