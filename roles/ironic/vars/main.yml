@@ -65,8 +65,9 @@ _ironic_helm_values:
     ironic:
       DEFAULT:
         log_config_append: null
+        enabled_hardware_types: "{{ ironic_enabled_hardware_types if ironic_enabled_hardware_types else omit }}"
         enabled_console_interfaces: "{{ 'redfish-graphical,no-console' if ironic_baremetal_console_enabled | bool else omit }}"
-        enabled_network_interfaces: flat,neutron
+        enabled_network_interfaces: "{{ ironic_enabled_network_interfaces }}"
         default_network_interface: flat
         rbac_service_role_elevated_access: true
       conductor:

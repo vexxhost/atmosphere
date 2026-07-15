@@ -61,6 +61,11 @@ tests:
         matchRegex:
           path: stringData["ironic-console-pod.yaml"]
           pattern: "namespace: test-console"
+      - template: templates/configmap-etc.yaml
+        documentIndex: 0
+        matchRegex:
+          path: stringData["ironic-console-pod.yaml"]
+          pattern: 'imagePullPolicy: "IfNotPresent"'
       - template: templates/statefulset-conductor.yaml
         documentIndex: 3
         equal:

@@ -37,7 +37,7 @@ spec:
   containers:
     - name: x11vnc
       image: "{{ "{{ image }}" }}"
-      imagePullPolicy: Always
+      imagePullPolicy: {{ .Values.images.pull_policy | quote }}
       ports:
         - containerPort: 5900
       resources:
