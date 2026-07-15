@@ -1,0 +1,783 @@
+Subject: [PATCH] Align the vendored chart CRDs with CloudNativePG 1.28.4
+
+The 0.27.1 chart bundles the CloudNativePG 1.28.1 CRDs, while Atmosphere
+deploys the 1.28.4 operator image and kubectl plugin. Replace all ten
+bundled CRD definitions with those from the official 1.28.4 release
+manifest:
+https://github.com/cloudnative-pg/cloudnative-pg/releases/download/v1.28.4/cnpg-1.28.4.yaml
+
+The CRD schemas and controller-gen annotations match the release
+manifest exactly. The chart-specific `.Values.crds.create` conditional
+and `helm.sh/resource-policy: keep` annotations remain in place.
+
+The chart metadata stays at its upstream application version, 1.28.1,
+because chart-vendor deliberately excludes `Chart.yaml` from downstream
+patches. Atmosphere explicitly overrides the operator image tag to 1.28.4,
+so the deployed operator and kubectl plugin remain aligned with these CRDs.
+
+Keep the upstream chart version at 0.27.1 so the vendor source remains
+auditable. Remove this patch when upgrading to a chart that natively
+includes the CloudNativePG 1.28.4 or newer compatible CRDs.
+---
+diff --git a/cloudnative-pg/templates/crds/crds.yaml b/cloudnative-pg/templates/crds/crds.yaml
+index 7982b5e1..ca571f0a 100644
+--- a/cloudnative-pg/templates/crds/crds.yaml
++++ b/cloudnative-pg/templates/crds/crds.yaml
+@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
+ kind: CustomResourceDefinition
+ metadata:
+   annotations:
+-    controller-gen.kubebuilder.io/version: v0.20.0
++    controller-gen.kubebuilder.io/version: v0.21.0
+     helm.sh/resource-policy: keep
+   name: backups.postgresql.cnpg.io
+ spec:
+@@ -466,7 +466,7 @@ apiVersion: apiextensions.k8s.io/v1
+ kind: CustomResourceDefinition
+ metadata:
+   annotations:
+-    controller-gen.kubebuilder.io/version: v0.20.0
++    controller-gen.kubebuilder.io/version: v0.21.0
+     helm.sh/resource-policy: keep
+   name: clusterimagecatalogs.postgresql.cnpg.io
+ spec:
+@@ -510,11 +510,146 @@ spec:
+               Specification of the desired behavior of the ClusterImageCatalog.
+               More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
+             properties:
++              componentImages:
++                description: |-
++                  ComponentImages is a list of named images for components other than PostgreSQL
++                  (e.g. pgbouncer). Keys must be unique within a catalog.
++                items:
++                  description: CatalogComponentImage is a named image entry for a
++                    non-PostgreSQL component.
++                  properties:
++                    image:
++                      description: Image is the container image reference.
++                      type: string
++                    key:
++                      description: Key is the unique identifier for this image within
++                        the catalog.
++                      maxLength: 63
++                      pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
++                      type: string
++                  required:
++                  - image
++                  - key
++                  type: object
++                maxItems: 32
++                type: array
++                x-kubernetes-list-map-keys:
++                - key
++                x-kubernetes-list-type: map
++                x-kubernetes-validations:
++                - message: Component image keys must be unique
++                  rule: self.all(e, self.filter(f, f.key==e.key).size() == 1)
+               images:
+                 description: List of CatalogImages available in the catalog
+                 items:
+                   description: CatalogImage defines the image and major version
+                   properties:
++                    extensions:
++                      description: The configuration of the extensions to be added
++                      items:
++                        description: |-
++                          ExtensionConfiguration is the configuration used to add
++                          PostgreSQL extensions to the Cluster.
++                        properties:
++                          bin_path:
++                            description: |-
++                              A list of directories within the image to be appended to the
++                              PostgreSQL process's `PATH` environment variable.
++                            items:
++                              type: string
++                            type: array
++                          dynamic_library_path:
++                            description: |-
++                              The list of directories inside the image which should be added to dynamic_library_path.
++                              If not defined, defaults to "/lib".
++                            items:
++                              type: string
++                            type: array
++                          env:
++                            description: |-
++                              Env is a list of custom environment variables to be set in the
++                              PostgreSQL process for this extension. It is the responsibility of the
++                              cluster administrator to ensure the variables are correct for the
++                              specific extension. Note that changes to these variables require
++                              a manual cluster restart to take effect.
++                            items:
++                              description: |-
++                                ExtensionEnvVar defines an environment variable for a specific extension
++                                image volume.
++                              properties:
++                                name:
++                                  description: |-
++                                    Name of the environment variable to be injected into the
++                                    PostgreSQL process.
++                                  minLength: 1
++                                  pattern: ^[a-zA-Z_][a-zA-Z0-9_]*$
++                                  type: string
++                                value:
++                                  description: |-
++                                    Value of the environment variable. CloudNativePG performs a direct
++                                    replacement of this value, with support for placeholder expansion.
++                                    The ${`image_root`} placeholder resolves to the absolute mount path
++                                    of the extension's volume (e.g., `/extensions/my-extension`). This
++                                    is particularly useful for allowing applications or libraries to
++                                    locate specific directories within the mounted image.
++                                    Unrecognized placeholders are rejected. To include a literal ${...}
++                                    in the value, escape it as $${...}.
++                                  minLength: 1
++                                  type: string
++                              required:
++                              - name
++                              - value
++                              type: object
++                            type: array
++                            x-kubernetes-list-map-keys:
++                            - name
++                            x-kubernetes-list-type: map
++                          extension_control_path:
++                            description: |-
++                              The list of directories inside the image which should be added to extension_control_path.
++                              If not defined, defaults to "/share".
++                            items:
++                              type: string
++                            type: array
++                          image:
++                            description: The image containing the extension.
++                            properties:
++                              pullPolicy:
++                                description: |-
++                                  Policy for pulling OCI objects. Possible values are:
++                                  Always: the kubelet always attempts to pull the reference. Container creation will fail If the pull fails.
++                                  Never: the kubelet never pulls the reference and only uses a local image or artifact. Container creation will fail if the reference isn't present.
++                                  IfNotPresent: the kubelet pulls if the reference isn't already present on disk. Container creation will fail if the reference isn't present and the pull fails.
++                                  Defaults to Always if :latest tag is specified, or IfNotPresent otherwise.
++                                type: string
++                              reference:
++                                description: |-
++                                  Required: Image or artifact reference to be used.
++                                  Behaves in the same way as pod.spec.containers[*].image.
++                                  Pull secrets will be assembled in the same way as for the container image by looking up node credentials, SA image pull secrets, and pod spec image pull secrets.
++                                  More info: https://kubernetes.io/docs/concepts/containers/images
++                                  This field is optional to allow higher level config management to default or override
++                                  container images in workload controllers like Deployments and StatefulSets.
++                                type: string
++                            type: object
++                          ld_library_path:
++                            description: The list of directories inside the image
++                              which should be added to ld_library_path.
++                            items:
++                              type: string
++                            type: array
++                          name:
++                            description: The name of the extension, required
++                            minLength: 1
++                            pattern: ^[a-z0-9]([-a-z0-9_]*[a-z0-9])?$
++                            type: string
++                        required:
++                        - name
++                        type: object
++                      type: array
++                      x-kubernetes-list-map-keys:
++                      - name
++                      x-kubernetes-list-type: map
+                     image:
+                       description: The image reference
+                       type: string
+@@ -548,7 +683,7 @@ apiVersion: apiextensions.k8s.io/v1
+ kind: CustomResourceDefinition
+ metadata:
+   annotations:
+-    controller-gen.kubebuilder.io/version: v0.20.0
++    controller-gen.kubebuilder.io/version: v0.21.0
+     helm.sh/resource-policy: keep
+   name: clusters.postgresql.cnpg.io
+ spec:
+@@ -1698,10 +1833,11 @@ spec:
+                             description: |-
+                               Compress a backup file (a tar file per tablespace) while streaming it
+                               to the object store. Available options are empty string (no
+-                              compression, default), `gzip`, `bzip2`, and `snappy`.
++                              compression, default), `gzip`, `bzip2`, `lz4`, and `snappy`.
+                             enum:
+                             - bzip2
+                             - gzip
++                            - lz4
+                             - snappy
+                             type: string
+                           encryption:
+@@ -3290,10 +3426,11 @@ spec:
+                               description: |-
+                                 Compress a backup file (a tar file per tablespace) while streaming it
+                                 to the object store. Available options are empty string (no
+-                                compression, default), `gzip`, `bzip2`, and `snappy`.
++                                compression, default), `gzip`, `bzip2`, `lz4`, and `snappy`.
+                               enum:
+                               - bzip2
+                               - gzip
++                              - lz4
+                               - snappy
+                               type: string
+                             encryption:
+@@ -3865,8 +4002,10 @@ spec:
+                           type: string
+                         passwordSecret:
+                           description: |-
+-                            Secret containing the password of the role (if present)
+-                            If null, the password will be ignored unless DisablePassword is set
++                            Secret containing the password of the role (if present).
++                            If null, the password will be ignored unless DisablePassword is set.
++                            When set, the secret must follow the `kubernetes.io/basic-auth` format
++                            and contain both a `username` and a `password` field.
+                           properties:
+                             name:
+                               description: Name of the referent.
+@@ -4913,6 +5052,13 @@ spec:
+                         ExtensionConfiguration is the configuration used to add
+                         PostgreSQL extensions to the Cluster.
+                       properties:
++                        bin_path:
++                          description: |-
++                            A list of directories within the image to be appended to the
++                            PostgreSQL process's `PATH` environment variable.
++                          items:
++                            type: string
++                          type: array
+                         dynamic_library_path:
+                           description: |-
+                             The list of directories inside the image which should be added to dynamic_library_path.
+@@ -4920,6 +5066,45 @@ spec:
+                           items:
+                             type: string
+                           type: array
++                        env:
++                          description: |-
++                            Env is a list of custom environment variables to be set in the
++                            PostgreSQL process for this extension. It is the responsibility of the
++                            cluster administrator to ensure the variables are correct for the
++                            specific extension. Note that changes to these variables require
++                            a manual cluster restart to take effect.
++                          items:
++                            description: |-
++                              ExtensionEnvVar defines an environment variable for a specific extension
++                              image volume.
++                            properties:
++                              name:
++                                description: |-
++                                  Name of the environment variable to be injected into the
++                                  PostgreSQL process.
++                                minLength: 1
++                                pattern: ^[a-zA-Z_][a-zA-Z0-9_]*$
++                                type: string
++                              value:
++                                description: |-
++                                  Value of the environment variable. CloudNativePG performs a direct
++                                  replacement of this value, with support for placeholder expansion.
++                                  The ${`image_root`} placeholder resolves to the absolute mount path
++                                  of the extension's volume (e.g., `/extensions/my-extension`). This
++                                  is particularly useful for allowing applications or libraries to
++                                  locate specific directories within the mounted image.
++                                  Unrecognized placeholders are rejected. To include a literal ${...}
++                                  in the value, escape it as $${...}.
++                                minLength: 1
++                                type: string
++                            required:
++                            - name
++                            - value
++                            type: object
++                          type: array
++                          x-kubernetes-list-map-keys:
++                          - name
++                          x-kubernetes-list-type: map
+                         extension_control_path:
+                           description: |-
+                             The list of directories inside the image which should be added to extension_control_path.
+@@ -4928,7 +5113,7 @@ spec:
+                             type: string
+                           type: array
+                         image:
+-                          description: The image containing the extension, required
++                          description: The image containing the extension.
+                           properties:
+                             pullPolicy:
+                               description: |-
+@@ -4948,9 +5133,6 @@ spec:
+                                 container images in workload controllers like Deployments and StatefulSets.
+                               type: string
+                           type: object
+-                          x-kubernetes-validations:
+-                          - message: An image reference is required
+-                            rule: has(self.reference)
+                         ld_library_path:
+                           description: The list of directories inside the image which
+                             should be added to ld_library_path.
+@@ -4963,7 +5145,6 @@ spec:
+                           pattern: ^[a-z0-9]([-a-z0-9_]*[a-z0-9])?$
+                           type: string
+                       required:
+-                      - image
+                       - name
+                       type: object
+                     type: array
+@@ -6135,7 +6316,6 @@ spec:
+                       procMount denotes the type of proc mount to use for the containers.
+                       The default value is Default which uses the container runtime defaults for
+                       readonly paths and masked paths.
+-                      This requires the ProcMountType feature flag to be enabled.
+                       Note that this field cannot be set when spec.os.name is windows.
+                     type: string
+                   readOnlyRootFilesystem:
+@@ -7501,8 +7681,10 @@ spec:
+                         type: string
+                       type: array
+                     description: |-
+-                      CannotReconcile lists roles that cannot be reconciled in PostgreSQL,
+-                      with an explanation of the cause
++                      CannotReconcile lists roles that cannot be reconciled, with an
++                      explanation of the cause. Failures may originate in PostgreSQL
++                      (e.g. dropping a role that owns objects) or in Kubernetes (e.g.
++                      the referenced password Secret cannot be fetched).
+                     type: object
+                   passwordStatus:
+                     additionalProperties:
+@@ -7686,6 +7868,13 @@ spec:
+                     description: The resource version of the "postgres" user secret
+                     type: string
+                 type: object
++              selector:
++                description: |-
++                  Selector is the serialized form of the label selector that identifies
++                  the pods managed by this cluster. Populated by the operator and exposed
++                  through the scale sub-resource so an autoscaler (such as HPA or VPA)
++                  can discover the managed instance pods.
++                type: string
+               switchReplicaClusterStatus:
+                 description: SwitchReplicaClusterStatus is the status of the switch
+                   to replica cluster
+@@ -7779,6 +7968,7 @@ spec:
+     storage: true
+     subresources:
+       scale:
++        labelSelectorPath: .status.selector
+         specReplicasPath: .spec.instances
+         statusReplicasPath: .status.instances
+       status: {}
+@@ -7787,7 +7977,7 @@ apiVersion: apiextensions.k8s.io/v1
+ kind: CustomResourceDefinition
+ metadata:
+   annotations:
+-    controller-gen.kubebuilder.io/version: v0.20.0
++    controller-gen.kubebuilder.io/version: v0.21.0
+     helm.sh/resource-policy: keep
+   name: databases.postgresql.cnpg.io
+ spec:
+@@ -7872,6 +8062,9 @@ spec:
+                     type: string
+                 type: object
+                 x-kubernetes-map-type: atomic
++                x-kubernetes-validations:
++                - message: cluster reference is immutable after creation
++                  rule: self == oldSelf
+               collationVersion:
+                 description: |-
+                   Maps to the `COLLATION_VERSION` parameter of `CREATE DATABASE`. This
+@@ -8382,7 +8575,7 @@ apiVersion: apiextensions.k8s.io/v1
+ kind: CustomResourceDefinition
+ metadata:
+   annotations:
+-    controller-gen.kubebuilder.io/version: v0.20.0
++    controller-gen.kubebuilder.io/version: v0.21.0
+     helm.sh/resource-policy: keep
+   name: failoverquorums.postgresql.cnpg.io
+ spec:
+@@ -8460,7 +8653,7 @@ apiVersion: apiextensions.k8s.io/v1
+ kind: CustomResourceDefinition
+ metadata:
+   annotations:
+-    controller-gen.kubebuilder.io/version: v0.20.0
++    controller-gen.kubebuilder.io/version: v0.21.0
+     helm.sh/resource-policy: keep
+   name: imagecatalogs.postgresql.cnpg.io
+ spec:
+@@ -8503,11 +8696,146 @@ spec:
+               Specification of the desired behavior of the ImageCatalog.
+               More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
+             properties:
++              componentImages:
++                description: |-
++                  ComponentImages is a list of named images for components other than PostgreSQL
++                  (e.g. pgbouncer). Keys must be unique within a catalog.
++                items:
++                  description: CatalogComponentImage is a named image entry for a
++                    non-PostgreSQL component.
++                  properties:
++                    image:
++                      description: Image is the container image reference.
++                      type: string
++                    key:
++                      description: Key is the unique identifier for this image within
++                        the catalog.
++                      maxLength: 63
++                      pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
++                      type: string
++                  required:
++                  - image
++                  - key
++                  type: object
++                maxItems: 32
++                type: array
++                x-kubernetes-list-map-keys:
++                - key
++                x-kubernetes-list-type: map
++                x-kubernetes-validations:
++                - message: Component image keys must be unique
++                  rule: self.all(e, self.filter(f, f.key==e.key).size() == 1)
+               images:
+                 description: List of CatalogImages available in the catalog
+                 items:
+                   description: CatalogImage defines the image and major version
+                   properties:
++                    extensions:
++                      description: The configuration of the extensions to be added
++                      items:
++                        description: |-
++                          ExtensionConfiguration is the configuration used to add
++                          PostgreSQL extensions to the Cluster.
++                        properties:
++                          bin_path:
++                            description: |-
++                              A list of directories within the image to be appended to the
++                              PostgreSQL process's `PATH` environment variable.
++                            items:
++                              type: string
++                            type: array
++                          dynamic_library_path:
++                            description: |-
++                              The list of directories inside the image which should be added to dynamic_library_path.
++                              If not defined, defaults to "/lib".
++                            items:
++                              type: string
++                            type: array
++                          env:
++                            description: |-
++                              Env is a list of custom environment variables to be set in the
++                              PostgreSQL process for this extension. It is the responsibility of the
++                              cluster administrator to ensure the variables are correct for the
++                              specific extension. Note that changes to these variables require
++                              a manual cluster restart to take effect.
++                            items:
++                              description: |-
++                                ExtensionEnvVar defines an environment variable for a specific extension
++                                image volume.
++                              properties:
++                                name:
++                                  description: |-
++                                    Name of the environment variable to be injected into the
++                                    PostgreSQL process.
++                                  minLength: 1
++                                  pattern: ^[a-zA-Z_][a-zA-Z0-9_]*$
++                                  type: string
++                                value:
++                                  description: |-
++                                    Value of the environment variable. CloudNativePG performs a direct
++                                    replacement of this value, with support for placeholder expansion.
++                                    The ${`image_root`} placeholder resolves to the absolute mount path
++                                    of the extension's volume (e.g., `/extensions/my-extension`). This
++                                    is particularly useful for allowing applications or libraries to
++                                    locate specific directories within the mounted image.
++                                    Unrecognized placeholders are rejected. To include a literal ${...}
++                                    in the value, escape it as $${...}.
++                                  minLength: 1
++                                  type: string
++                              required:
++                              - name
++                              - value
++                              type: object
++                            type: array
++                            x-kubernetes-list-map-keys:
++                            - name
++                            x-kubernetes-list-type: map
++                          extension_control_path:
++                            description: |-
++                              The list of directories inside the image which should be added to extension_control_path.
++                              If not defined, defaults to "/share".
++                            items:
++                              type: string
++                            type: array
++                          image:
++                            description: The image containing the extension.
++                            properties:
++                              pullPolicy:
++                                description: |-
++                                  Policy for pulling OCI objects. Possible values are:
++                                  Always: the kubelet always attempts to pull the reference. Container creation will fail If the pull fails.
++                                  Never: the kubelet never pulls the reference and only uses a local image or artifact. Container creation will fail if the reference isn't present.
++                                  IfNotPresent: the kubelet pulls if the reference isn't already present on disk. Container creation will fail if the reference isn't present and the pull fails.
++                                  Defaults to Always if :latest tag is specified, or IfNotPresent otherwise.
++                                type: string
++                              reference:
++                                description: |-
++                                  Required: Image or artifact reference to be used.
++                                  Behaves in the same way as pod.spec.containers[*].image.
++                                  Pull secrets will be assembled in the same way as for the container image by looking up node credentials, SA image pull secrets, and pod spec image pull secrets.
++                                  More info: https://kubernetes.io/docs/concepts/containers/images
++                                  This field is optional to allow higher level config management to default or override
++                                  container images in workload controllers like Deployments and StatefulSets.
++                                type: string
++                            type: object
++                          ld_library_path:
++                            description: The list of directories inside the image
++                              which should be added to ld_library_path.
++                            items:
++                              type: string
++                            type: array
++                          name:
++                            description: The name of the extension, required
++                            minLength: 1
++                            pattern: ^[a-z0-9]([-a-z0-9_]*[a-z0-9])?$
++                            type: string
++                        required:
++                        - name
++                        type: object
++                      type: array
++                      x-kubernetes-list-map-keys:
++                      - name
++                      x-kubernetes-list-type: map
+                     image:
+                       description: The image reference
+                       type: string
+@@ -8541,7 +8869,7 @@ apiVersion: apiextensions.k8s.io/v1
+ kind: CustomResourceDefinition
+ metadata:
+   annotations:
+-    controller-gen.kubebuilder.io/version: v0.20.0
++    controller-gen.kubebuilder.io/version: v0.21.0
+     helm.sh/resource-policy: keep
+   name: poolers.postgresql.cnpg.io
+ spec:
+@@ -8601,6 +8929,9 @@ spec:
+                 required:
+                 - name
+                 type: object
++                x-kubernetes-validations:
++                - message: cluster reference is immutable after creation
++                  rule: self == oldSelf
+               deploymentStrategy:
+                 description: The deployment strategy to use for pgbouncer to replace
+                   existing pods with new ones
+@@ -11405,7 +11736,6 @@ spec:
+                                     procMount denotes the type of proc mount to use for the containers.
+                                     The default value is Default which uses the container runtime defaults for
+                                     readonly paths and masked paths.
+-                                    This requires the ProcMountType feature flag to be enabled.
+                                     Note that this field cannot be set when spec.os.name is windows.
+                                   type: string
+                                 readOnlyRootFilesystem:
+@@ -12976,7 +13306,6 @@ spec:
+                                     procMount denotes the type of proc mount to use for the containers.
+                                     The default value is Default which uses the container runtime defaults for
+                                     readonly paths and masked paths.
+-                                    This requires the ProcMountType feature flag to be enabled.
+                                     Note that this field cannot be set when spec.os.name is windows.
+                                   type: string
+                                 readOnlyRootFilesystem:
+@@ -13460,7 +13789,6 @@ spec:
+                           When set to false, a new userns is created for the pod. Setting false is useful for
+                           mitigating container breakout vulnerabilities even allowing users to run their
+                           containers as root without actually having root privileges on the host.
+-                          This field is alpha-level and is only honored by servers that enable the UserNamespacesSupport feature.
+                         type: boolean
+                       hostname:
+                         description: |-
+@@ -14630,7 +14958,6 @@ spec:
+                                     procMount denotes the type of proc mount to use for the containers.
+                                     The default value is Default which uses the container runtime defaults for
+                                     readonly paths and masked paths.
+-                                    This requires the ProcMountType feature flag to be enabled.
+                                     Note that this field cannot be set when spec.os.name is windows.
+                                   type: string
+                                 readOnlyRootFilesystem:
+@@ -15199,6 +15526,14 @@ spec:
+ 
+                             It adds a name to it that uniquely identifies the ResourceClaim inside the Pod.
+                             Containers that need access to the ResourceClaim reference it with this name.
++
++                            When the DRAWorkloadResourceClaims feature gate is enabled and this Pod
++                            belongs to a PodGroup, a PodResourceClaim is matched to a
++                            PodGroupResourceClaim if all of their fields are equal (Name,
++                            ResourceClaimName, and ResourceClaimTemplateName). A matched claim references
++                            a single ResourceClaim shared across all Pods in the PodGroup, reserved for
++                            the PodGroup in ResourceClaimStatus.ReservedFor rather than for individual
++                            Pods.
+                           properties:
+                             name:
+                               description: |-
+@@ -15224,6 +15559,16 @@ spec:
+                                 generated component, will be used to form a unique name for the
+                                 ResourceClaim, which will be recorded in pod.status.resourceClaimStatuses.
+ 
++                                When the DRAWorkloadResourceClaims feature gate is enabled and the pod
++                                belongs to a PodGroup that defines a PodGroupResourceClaim with the same
++                                Name and ResourceClaimTemplateName, this PodResourceClaim resolves to the
++                                ResourceClaim generated for the PodGroup. All pods in the group that
++                                define an equivalent PodResourceClaim matching the
++                                PodGroupResourceClaim's Name and ResourceClaimTemplateName share the same
++                                generated ResourceClaim. ResourceClaims generated for a PodGroup are
++                                owned by the PodGroup and their lifecycles are tied to the PodGroup
++                                instead of any individual pod.
++
+                                 This field is immutable and no changes will be made to the
+                                 corresponding ResourceClaim by the control plane after creating the
+                                 ResourceClaim.
+@@ -15349,6 +15694,28 @@ spec:
+                         x-kubernetes-list-map-keys:
+                         - name
+                         x-kubernetes-list-type: map
++                      schedulingGroup:
++                        description: |-
++                          SchedulingGroup provides a reference to the immediate scheduling runtime
++                          grouping object that this Pod belongs to.
++                          This field is used by the scheduler to identify the group and apply the
++                          correct group scheduling policies. The association with a group also
++                          impacts other lifecycle aspects of a Pod that are relevant in a wider context
++                          of scheduling like preemption, resource attachment, etc. If not specified,
++                          the Pod is treated as a single unit in all of these aspects.
++                          The group object referenced by this field may not exist at the time the
++                          Pod is created.
++                          This field is immutable, but a group object with the same name may be
++                          recreated with different policies. Doing this during pod scheduling
++                          may result in the placement not conforming to the expected policies.
++                        properties:
++                          podGroupName:
++                            description: |-
++                              PodGroupName specifies the name of the standalone PodGroup object
++                              that represents the runtime instance of this group.
++                              Must be a DNS subdomain.
++                            type: string
++                        type: object
+                       securityContext:
+                         description: |-
+                           SecurityContext holds pod-level security attributes and common container settings.
+@@ -16777,7 +17144,7 @@ spec:
+                                 A failure to resolve or pull the image during pod startup will block containers from starting and may add significant latency. Failures will be retried using normal volume backoff and will be reported on the pod reason and message.
+                                 The types of objects that may be mounted by this volume are defined by the container runtime implementation on a host machine and at minimum must include all valid types supported by the container image field.
+                                 The OCI object gets mounted in a single directory (spec.containers[*].volumeMounts.mountPath) by merging the manifest layers in the same way as for container images.
+-                                The volume will be mounted read-only (ro) and non-executable files (noexec).
++                                The volume will be mounted read-only (ro).
+                                 Sub path mounts for containers are not supported (spec.containers[*].volumeMounts.subpath) before 1.33.
+                                 The field spec.securityContext.fsGroupChangePolicy has no effect on this volume type.
+                               properties:
+@@ -16949,8 +17316,7 @@ spec:
+                               description: |-
+                                 portworxVolume represents a portworx volume attached and mounted on kubelets host machine.
+                                 Deprecated: PortworxVolume is deprecated. All operations for the in-tree portworxVolume type
+-                                are redirected to the pxd.portworx.com CSI driver when the CSIMigrationPortworx feature-gate
+-                                is on.
++                                are redirected to the pxd.portworx.com CSI driver.
+                               properties:
+                                 fsType:
+                                   description: |-
+@@ -17773,42 +18139,6 @@ spec:
+                         x-kubernetes-list-map-keys:
+                         - name
+                         x-kubernetes-list-type: map
+-                      workloadRef:
+-                        description: |-
+-                          WorkloadRef provides a reference to the Workload object that this Pod belongs to.
+-                          This field is used by the scheduler to identify the PodGroup and apply the
+-                          correct group scheduling policies. The Workload object referenced
+-                          by this field may not exist at the time the Pod is created.
+-                          This field is immutable, but a Workload object with the same name
+-                          may be recreated with different policies. Doing this during pod scheduling
+-                          may result in the placement not conforming to the expected policies.
+-                        properties:
+-                          name:
+-                            description: |-
+-                              Name defines the name of the Workload object this Pod belongs to.
+-                              Workload must be in the same namespace as the Pod.
+-                              If it doesn't match any existing Workload, the Pod will remain unschedulable
+-                              until a Workload object is created and observed by the kube-scheduler.
+-                              It must be a DNS subdomain.
+-                            type: string
+-                          podGroup:
+-                            description: |-
+-                              PodGroup is the name of the PodGroup within the Workload that this Pod
+-                              belongs to. If it doesn't match any existing PodGroup within the Workload,
+-                              the Pod will remain unschedulable until the Workload object is recreated
+-                              and observed by the kube-scheduler. It must be a DNS label.
+-                            type: string
+-                          podGroupReplicaKey:
+-                            description: |-
+-                              PodGroupReplicaKey specifies the replica key of the PodGroup to which this
+-                              Pod belongs. It is used to distinguish pods belonging to different replicas
+-                              of the same pod group. The pod group policy is applied separately to each replica.
+-                              When set, it must be a DNS label.
+-                            type: string
+-                        required:
+-                        - name
+-                        - podGroup
+-                        type: object
+                     required:
+                     - containers
+                     type: object
+@@ -17910,7 +18240,7 @@ apiVersion: apiextensions.k8s.io/v1
+ kind: CustomResourceDefinition
+ metadata:
+   annotations:
+-    controller-gen.kubebuilder.io/version: v0.20.0
++    controller-gen.kubebuilder.io/version: v0.21.0
+     helm.sh/resource-policy: keep
+   name: publications.postgresql.cnpg.io
+ spec:
+@@ -17979,6 +18309,9 @@ spec:
+                     type: string
+                 type: object
+                 x-kubernetes-map-type: atomic
++                x-kubernetes-validations:
++                - message: cluster reference is immutable after creation
++                  rule: self == oldSelf
+               dbname:
+                 description: |-
+                   The name of the database where the publication will be installed in
+@@ -18106,7 +18439,7 @@ apiVersion: apiextensions.k8s.io/v1
+ kind: CustomResourceDefinition
+ metadata:
+   annotations:
+-    controller-gen.kubebuilder.io/version: v0.20.0
++    controller-gen.kubebuilder.io/version: v0.21.0
+     helm.sh/resource-policy: keep
+   name: scheduledbackups.postgresql.cnpg.io
+ spec:
+@@ -18176,6 +18509,9 @@ spec:
+                 required:
+                 - name
+                 type: object
++                x-kubernetes-validations:
++                - message: cluster reference is immutable after creation
++                  rule: self == oldSelf
+               immediate:
+                 description: If the first backup has to be immediately start after
+                   creation or not
+@@ -18298,7 +18634,7 @@ apiVersion: apiextensions.k8s.io/v1
+ kind: CustomResourceDefinition
+ metadata:
+   annotations:
+-    controller-gen.kubebuilder.io/version: v0.20.0
++    controller-gen.kubebuilder.io/version: v0.21.0
+     helm.sh/resource-policy: keep
+   name: subscriptions.postgresql.cnpg.io
+ spec:
+@@ -18367,6 +18703,9 @@ spec:
+                     type: string
+                 type: object
+                 x-kubernetes-map-type: atomic
++                x-kubernetes-validations:
++                - message: cluster reference is immutable after creation
++                  rule: self == oldSelf
+               dbname:
+                 description: |-
+                   The name of the database where the publication will be installed in
