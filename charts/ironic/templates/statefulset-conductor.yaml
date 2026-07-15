@@ -65,6 +65,17 @@ spec:
 {{ end }}
       initContainers:
 {{ tuple $envAll "conductor" $mounts_ironic_conductor_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+{{- if and .Values.conf.ironic.vnc.enabled (eq .Values.conf.ironic.vnc.container_provider "kubernetes") }}
+        - name: ironic-conductor-kubectl-init
+{{ tuple $envAll "ironic_kubectl" | include "helm-toolkit.snippets.image" | indent 10 }}
+          command:
+            - /bin/sh
+            - -c
+            - cp /usr/bin/kubectl /tmp/kubectl/kubectl
+          volumeMounts:
+            - name: pod-kubectl-bin
+              mountPath: /tmp/kubectl
+{{- end }}
 {{- if $envAll.Values.conductor.pxe.enabled }}
         - name: ironic-conductor-pxe-init
 {{ tuple $envAll "ironic_pxe_init" | include "helm-toolkit.snippets.image" | indent 10 }}
@@ -197,6 +208,16 @@ spec:
               mountPath: /etc/ironic/policy.yaml
               subPath: policy.yaml
               readOnly: true
+{{- if and .Values.conf.ironic.vnc.enabled (eq .Values.conf.ironic.vnc.container_provider "kubernetes") }}
+            - name: ironic-etc
+              mountPath: /etc/ironic/ironic-console-pod.yaml
+              subPath: ironic-console-pod.yaml
+              readOnly: true
+            - name: pod-kubectl-bin
+              mountPath: /usr/local/bin/kubectl
+              subPath: kubectl
+              readOnly: true
+{{- end }}
             - name: host-var-lib-ironic
               mountPath: /var/lib/ironic
             - name: host-run
@@ -260,6 +281,10 @@ spec:
           emptyDir: {}
         - name: pod-var-cache-ironic
           emptyDir: {}
+{{- if and .Values.conf.ironic.vnc.enabled (eq .Values.conf.ironic.vnc.container_provider "kubernetes") }}
+        - name: pod-kubectl-bin
+          emptyDir: {}
+{{- end }}
         - name: ironic-bin
           configMap:
             name: ironic-bin

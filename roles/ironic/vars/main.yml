@@ -12,10 +12,30 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+_ironic_default_image_tags: >-
+  {{
+    atmosphere_images
+    | vexxhost.atmosphere.openstack_helm_image_tags('ironic')
+  }}
+
+_ironic_baremetal_console_image_tags:
+  ironic_api: "{{ ironic_baremetal_console_ironic_image }}"
+  ironic_conductor: "{{ ironic_baremetal_console_ironic_image }}"
+  ironic_db_sync: "{{ ironic_baremetal_console_ironic_image }}"
+  ironic_novncproxy: "{{ ironic_baremetal_console_ironic_image }}"
+
 _ironic_helm_values:
   endpoints: "{{ openstack_helm_endpoints }}"
   images:
-    tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('ironic') }}"
+    tags: >-
+      {{
+        _ironic_default_image_tags
+        | combine(
+          _ironic_baremetal_console_image_tags
+          if ironic_baremetal_console_enabled | bool
+          else {}
+        )
+      }}
   bootstrap:
     image:
       enabled: false
@@ -45,6 +65,8 @@ _ironic_helm_values:
     ironic:
       DEFAULT:
         log_config_append: null
+        enabled_console_interfaces: "{{ 'redfish-graphical,no-console' if ironic_baremetal_console_enabled | bool else omit }}"
+        default_console_interface: "{{ 'redfish-graphical' if ironic_baremetal_console_enabled | bool else omit }}"
         enabled_network_interfaces: flat,neutron
         default_network_interface: flat
         rbac_service_role_elevated_access: true
@@ -69,6 +91,30 @@ _ironic_helm_values:
         kernel_append_params: "ipa-insecure=true systemd.journald.forward_to_console=yes"
       service_catalog:
         valid_interfaces: public
+      vnc:
+        enabled: "{{ ironic_baremetal_console_enabled | bool }}"
+        public_url: "{{ ironic_baremetal_console_public_url if ironic_baremetal_console_enabled | bool else omit }}"
+        novnc_web: "{{ ironic_baremetal_console_novnc_web }}"
+        container_provider: "{{ ironic_baremetal_console_container_provider }}"
+        console_image: "{{ ironic_baremetal_console_image if ironic_baremetal_console_image else omit }}"
+        kubernetes_container_template: >-
+          {{
+            '/etc/ironic/ironic-console-pod.yaml'
+            if (
+              ironic_baremetal_console_enabled | bool
+              and ironic_baremetal_console_container_provider == 'kubernetes'
+            )
+            else omit
+          }}
+        kubernetes_pod_timeout: >-
+          {{
+            ironic_baremetal_console_kubernetes_pod_timeout
+            if (
+              ironic_baremetal_console_enabled | bool
+              and ironic_baremetal_console_container_provider == 'kubernetes'
+            )
+            else omit
+          }}
     rabbitmq:
       policies:
         - vhost: "ironic"
@@ -89,7 +135,20 @@ _ironic_helm_values:
       api: 3
       conductor: 3
   manifests:
+    deployment_novncproxy: "{{ ironic_baremetal_console_enabled | bool }}"
     ingress_api: false
+    ingress_novncproxy: false
+    role_conductor_console: >-
+      {{
+        (ironic_baremetal_console_enabled | bool)
+        and ironic_baremetal_console_container_provider == 'kubernetes'
+      }}
     service_ingress_api: false
+    service_ingress_novncproxy: false
+    service_novncproxy: "{{ ironic_baremetal_console_enabled | bool }}"
     # NOTE(mnaser): We're managing all the networks via Ansible.
     job_manage_cleaning_network: false
+
+_ironic_novncproxy_ingress_annotations:
+  nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+  nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"

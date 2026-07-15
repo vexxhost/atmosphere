@@ -1,0 +1,113 @@
+suite: baremetal console
+tests:
+  - it: should not deploy baremetal console by default
+    templates:
+      - templates/deployment-novncproxy.yaml
+      - templates/service-novncproxy.yaml
+      - templates/role-conductor-console.yaml
+    asserts:
+      - template: templates/deployment-novncproxy.yaml
+        hasDocuments:
+          count: 0
+      - template: templates/service-novncproxy.yaml
+        hasDocuments:
+          count: 0
+      - template: templates/role-conductor-console.yaml
+        hasDocuments:
+          count: 0
+
+  - it: should deploy baremetal console proxy and conductor RBAC
+    release:
+      namespace: test-console
+    templates:
+      - templates/configmap-etc.yaml
+      - templates/deployment-novncproxy.yaml
+      - templates/ingress-novncproxy.yaml
+      - templates/service-ingress-novncproxy.yaml
+      - templates/service-novncproxy.yaml
+      - templates/role-conductor-console.yaml
+      - templates/statefulset-conductor.yaml
+    set:
+      conf:
+        ironic:
+          vnc:
+            enabled: true
+            public_url: http://baremetal-console.example.com/vnc_auto.html
+            console_image: example.com/ironic-console:latest
+      manifests:
+        deployment_novncproxy: true
+        ingress_novncproxy: true
+        service_ingress_novncproxy: true
+        service_novncproxy: true
+        role_conductor_console: true
+    asserts:
+      - template: templates/deployment-novncproxy.yaml
+        documentIndex: 1
+        equal:
+          path: metadata.name
+          value: ironic-novncproxy
+      - template: templates/deployment-novncproxy.yaml
+        documentIndex: 1
+        equal:
+          path: spec.template.spec.containers[0].ports[0].containerPort
+          value: 6090
+      - template: templates/deployment-novncproxy.yaml
+        documentIndex: 1
+        equal:
+          path: spec.template.spec.containers[0].volumeMounts[2].mountPath
+          value: /etc/ironic/ironic.conf
+      - template: templates/configmap-etc.yaml
+        documentIndex: 0
+        matchRegex:
+          path: stringData["ironic-console-pod.yaml"]
+          pattern: "namespace: test-console"
+      - template: templates/statefulset-conductor.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.initContainers[1].name
+          value: ironic-conductor-kubectl-init
+      - template: templates/statefulset-conductor.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.initContainers[1].command[2]
+          value: cp /usr/bin/kubectl /tmp/kubectl/kubectl
+      - template: templates/statefulset-conductor.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.containers[0].volumeMounts[7].mountPath
+          value: /etc/ironic/ironic-console-pod.yaml
+      - template: templates/statefulset-conductor.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.containers[0].volumeMounts[8].mountPath
+          value: /usr/local/bin/kubectl
+      - template: templates/ingress-novncproxy.yaml
+        documentIndex: 0
+        equal:
+          path: spec.rules[0].http.paths[0].backend.service.name
+          value: ironic-novncproxy
+      - template: templates/service-ingress-novncproxy.yaml
+        documentIndex: 0
+        equal:
+          path: metadata.name
+          value: novncproxy
+      - template: templates/service-novncproxy.yaml
+        documentIndex: 0
+        equal:
+          path: metadata.name
+          value: ironic-novncproxy
+      - template: templates/service-novncproxy.yaml
+        documentIndex: 0
+        equal:
+          path: spec.ports[0].port
+          value: 6090
+      - template: templates/role-conductor-console.yaml
+        documentIndex: 0
+        equal:
+          path: metadata.name
+          value: ironic-conductor-console
+      - template: templates/role-conductor-console.yaml
+        documentIndex: 1
+        equal:
+          path: subjects[0].name
+          value: ironic-conductor

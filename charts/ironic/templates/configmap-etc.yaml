@@ -208,6 +208,15 @@ limitations under the License.
 {{- $_ := set .Values.conf.ironic.api "port" (tuple "baremetal" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup") -}}
 {{- end -}}
 
+{{- if and .Values.conf.ironic.vnc.enabled (eq .Values.conf.ironic.vnc.container_provider "kubernetes") -}}
+{{- if empty .Values.conf.ironic.vnc.kubernetes_container_template -}}
+{{- $_ := set .Values.conf.ironic.vnc "kubernetes_container_template" "/etc/ironic/ironic-console-pod.yaml" -}}
+{{- end -}}
+{{- if empty .Values.conf.ironic.vnc.kubernetes_pod_timeout -}}
+{{- $_ := set .Values.conf.ironic.vnc "kubernetes_pod_timeout" 120 -}}
+{{- end -}}
+{{- end -}}
+
 {{- if and (empty .Values.conf.logging.handler_fluent) (has "fluent" .Values.conf.logging.handlers.keys) -}}
 {{- $fluentd_host := tuple "fluentd" "internal" $envAll | include "helm-toolkit.endpoints.hostname_namespaced_endpoint_lookup" }}
 {{- $fluentd_port := tuple "fluentd" "internal" "service" $envAll | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
@@ -232,4 +241,7 @@ data:
   policy.yaml: {{ toYaml .Values.conf.policy | b64enc }}
 {{- include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conf.tftp_map_file "key" "tftp-map-file" "format" "Secret" ) | indent 2 }}
 {{- include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conf.nginx "key" "nginx.conf" "format" "Secret" ) | indent 2 }}
+stringData:
+  ironic-console-pod.yaml: |
+{{ tuple "etc/_ironic-console-pod.yaml.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
 {{- end }}

@@ -76,6 +76,17 @@
     image: "{{ ironic_python_agent_deploy_ramdisk_name }}"
   register: ironic_python_agent_deploy_ramdisk
 
+- name: Fail if bare metal console image is not configured
+  when:
+    - ironic_baremetal_console_enabled | bool
+    - not ironic_baremetal_console_image
+  ansible.builtin.fail:
+    msg: >-
+      ironic_baremetal_console_image must be set when
+      ironic_baremetal_console_enabled is true. Ironic's console container
+      providers require [vnc]console_image to create per-node console
+      containers.
+
 - name: Deploy Helm chart
   run_once: true
   kubernetes.core.helm:
@@ -95,3 +106,14 @@
     openstack_helm_ingress_service_port: 6385
     openstack_helm_ingress_annotations: "{{ ironic_ingress_annotations }}"
     openstack_helm_ingress_class_name: "{{ ironic_ingress_class_name }}"
+
+- name: Create noVNC Ingress
+  when: ironic_baremetal_console_enabled | bool
+  ansible.builtin.include_role:
+    name: openstack_helm_ingress
+  vars:
+    openstack_helm_ingress_endpoint: baremetal_novnc_proxy
+    openstack_helm_ingress_service_name: ironic-novncproxy
+    openstack_helm_ingress_service_port: 6090
+    openstack_helm_ingress_annotations: "{{ _ironic_novncproxy_ingress_annotations | combine(ironic_baremetal_console_ingress_annotations) }}"
+    openstack_helm_ingress_class_name: "{{ ironic_baremetal_console_ingress_class_name }}"

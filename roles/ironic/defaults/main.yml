@@ -26,6 +26,19 @@ ironic_ingress_class_name: "{{ atmosphere_ingress_class_name }}"
 # List of annotations to apply to the Ingress
 ironic_ingress_annotations: {}
 
+# Enable Ironic bare metal graphical console support. This deploys
+# ironic-novncproxy and grants ironic-conductor the RBAC required by Ironic's
+# built-in Kubernetes console container provider.
+ironic_baremetal_console_enabled: false
+ironic_baremetal_console_container_provider: kubernetes
+ironic_baremetal_console_image: null
+ironic_baremetal_console_ironic_image: "{{ atmosphere_image_prefix }}ghcr.io/vexxhost/ironic:main@sha256:94f675687ab0a9a0661f82729e0e1bce939c9cc892e82ba49098a0484b8918fb"
+ironic_baremetal_console_novnc_web: /usr/share/novnc
+ironic_baremetal_console_public_url: "https://{{ openstack_helm_endpoints_ironic_novnc_host }}/vnc_auto.html"
+ironic_baremetal_console_ingress_class_name: "{{ atmosphere_ingress_class_name }}"
+ironic_baremetal_console_ingress_annotations: {}
+ironic_baremetal_console_kubernetes_pod_timeout: 120
+
 # Ironic bare metal network used for PXE
 ironic_bare_metal_network_manage: true
 ironic_bare_metal_network_name: baremetal
