@@ -26,6 +26,17 @@ keycloak_operator_kubeconfig: "{{ kubeconfig_path | default('/etc/kubernetes/adm
 keycloak_operator_node_selector:
   openstack-control-plane: enabled
 
+# Container image for the Keycloak PostgreSQL cluster.
+#
+# keycloak_cloudnative_pg_image: ghcr.io/cloudnative-pg/postgresql:18
+keycloak_cloudnative_pg_image: "{{ atmosphere_images['cloudnative_pg_cluster'] | vexxhost.kubernetes.docker_image('ref') }}"
+
+# Additional CloudNativePG cluster configuration.
+#
+# keycloak_cloudnative_pg_cluster_spec:
+#   instances: 3
+keycloak_cloudnative_pg_cluster_spec: {}
+
 keycloak_host: "{{ undef('You must specify a Keycloak host using keycloak_host') }}"
 keycloak_ingress_annotations: {}
 keycloak_ingress_class_name: "{{ atmosphere_ingress_class_name }}"

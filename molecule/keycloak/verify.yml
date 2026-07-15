@@ -15,6 +15,63 @@
 - name: Create user and assert it exists inside Keystone
   hosts: all
   tasks:
+    - name: Get Keycloak PostgreSQL cluster
+      run_once: true
+      kubernetes.core.k8s_info:
+        api_version: postgresql.cnpg.io/v1
+        kind: Cluster
+        name: keycloak-db
+        namespace: auth-system
+      register: _keycloak_postgresql_cluster
+
+    - name: Assert Keycloak PostgreSQL cluster is ready
+      run_once: true
+      ansible.builtin.assert:
+        that:
+          - _keycloak_postgresql_cluster.resources | length == 1
+          - _keycloak_postgresql_cluster.resources[0].spec.imageName is defined
+          - _keycloak_postgresql_cluster.resources[0].spec.managed.roles[0].name == 'keycloak'
+          - _keycloak_postgresql_cluster.resources[0].spec.managed.roles[0].passwordSecret.name == 'keycloak-db-user'
+          - _keycloak_postgresql_cluster.resources[0].status.conditions | selectattr('type', 'equalto', 'Ready') | map(attribute='status') | list == ['True']
+
+    - name: Get Keycloak database credentials
+      run_once: true
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Secret
+        name: keycloak-db-user
+        namespace: auth-system
+      register: _keycloak_database_credentials
+
+    - name: Assert Keycloak database credentials exist
+      run_once: true
+      ansible.builtin.assert:
+        that:
+          - _keycloak_database_credentials.resources | length == 1
+          - _keycloak_database_credentials.resources[0].type == 'kubernetes.io/basic-auth'
+          - _keycloak_database_credentials.resources[0].metadata.labels['cnpg.io/reload'] == 'true'
+          - _keycloak_database_credentials.resources[0].data.username is defined
+          - _keycloak_database_credentials.resources[0].data.password is defined
+
+    - name: Get Keycloak database
+      run_once: true
+      kubernetes.core.k8s_info:
+        api_version: postgresql.cnpg.io/v1
+        kind: Database
+        name: keycloak
+        namespace: auth-system
+      register: _keycloak_database
+
+    - name: Assert Keycloak database is ready
+      run_once: true
+      ansible.builtin.assert:
+        that:
+          - _keycloak_database.resources | length == 1
+          - _keycloak_database.resources[0].spec.name == 'keycloak'
+          - _keycloak_database.resources[0].spec.owner == 'keycloak'
+          - _keycloak_database.resources[0].spec.cluster.name == 'keycloak-db'
+          - _keycloak_database.resources[0].status.applied
+
     - name: Get Keycloak Operator CRDs
       run_once: true
       kubernetes.core.k8s_info:
