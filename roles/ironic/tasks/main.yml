@@ -112,7 +112,12 @@
   ansible.builtin.include_role:
     name: openstack_helm_ingress
   vars:
-    openstack_helm_ingress_endpoint: baremetal_novnc_proxy
+    openstack_helm_ingress_endpoint: >-
+      {{
+        'baremetal_vnc_proxy'
+        if 'baremetal_vnc_proxy' in openstack_helm_endpoints
+        else 'baremetal_novnc_proxy'
+      }}
     openstack_helm_ingress_service_name: ironic-novncproxy
     openstack_helm_ingress_service_port: 6090
     openstack_helm_ingress_annotations: "{{ _ironic_novncproxy_ingress_annotations | combine(ironic_baremetal_console_ingress_annotations) }}"
