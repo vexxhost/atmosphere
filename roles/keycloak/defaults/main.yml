@@ -1,4 +1,4 @@
-# Copyright (c) 2023 VEXXHOST, Inc.
+# Copyright (c) 2026 VEXXHOST, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -26,6 +26,22 @@ keycloak_operator_kubeconfig: "{{ kubeconfig_path | default('/etc/kubernetes/adm
 keycloak_operator_node_selector:
   openstack-control-plane: enabled
 
+# Name of the operator-managed Keycloak instance.
+#
+# keycloak_operator_instance_name: atmosphere-keycloak
+keycloak_operator_instance_name: keycloak
+
+# Temporary Keycloak instance used to validate a migrated database.
+#
+# keycloak_operator_migration_instance_name: keycloak-migration-test
+keycloak_operator_migration_instance_name: keycloak-migration
+
+# Additional operator-managed Keycloak configuration.
+#
+# keycloak_spec:
+#   instances: 5
+keycloak_spec: {}
+
 # Container image for the Keycloak PostgreSQL cluster.
 #
 # keycloak_cloudnative_pg_image: ghcr.io/cloudnative-pg/postgresql:18
@@ -48,4 +64,30 @@ keycloak_admin_password: "{{ undef(hint='You must specify a Keycloak admin passw
 keycloak_database_username: keycloak
 keycloak_database_password: "{{ undef('You must specify a Keycloak database password using keycloak_database_password') }}"
 keycloak_database_name: keycloak
+
+# Maximum time in seconds allowed for the database migration Job.
+#
+# keycloak_database_migration_timeout: 7200
+keycloak_database_migration_timeout: 3600
+
+# Size of the in-memory volume used for Keycloak exports.
+#
+# keycloak_database_migration_volume_size: 8Gi
+keycloak_database_migration_volume_size: 4Gi
+
+# Memory requested by the Keycloak export and import containers.
+#
+# keycloak_database_migration_memory_request: 2Gi
+keycloak_database_migration_memory_request: 1Gi
+
+# Memory limit for the Keycloak export and import containers.
+#
+# keycloak_database_migration_memory_limit: 8Gi
+keycloak_database_migration_memory_limit: 4Gi
+
+# Node labels used to schedule the database migration Job.
+#
+# keycloak_database_migration_node_selector:
+#   openstack-control-plane: enabled
+keycloak_database_migration_node_selector: "{{ keycloak_operator_node_selector }}"
 keycloak_host_tls_secret_name: "{{ openstack_helm_ingress_secret_name | default(keycloak_host + '-tls')}}"

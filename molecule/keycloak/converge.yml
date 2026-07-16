@@ -1,4 +1,4 @@
-# Copyright (c) 2023 VEXXHOST, Inc.
+# Copyright (c) 2026 VEXXHOST, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -24,10 +24,42 @@
     - vexxhost.atmosphere.percona_xtradb_cluster
     - vexxhost.atmosphere.memcached
 
-- hosts: controllers
+- name: Deploy Keycloak
+  hosts: controllers[0]
+  become: true
+  tasks:
+    - name: Get existing Keycloak StatefulSet
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ kubeconfig_path | default('/etc/kubernetes/admin.conf') }}"
+        api_version: apps/v1
+        kind: StatefulSet
+        name: keycloak
+        namespace: auth-system
+      register: _keycloak_existing_statefulset
+
+    - name: Detect operator-managed Keycloak StatefulSet
+      ansible.builtin.set_fact:
+        _keycloak_operator_instance_exists: >-
+          {{
+            _keycloak_existing_statefulset.resources | length == 1 and
+            _keycloak_existing_statefulset.resources[0].metadata.ownerReferences | default([]) |
+            selectattr('kind', 'equalto', 'Keycloak') | list | length == 1
+          }}
+
+    - name: Deploy Keycloak with PXC
+      when: not _keycloak_operator_instance_exists
+      ansible.builtin.import_role:
+        name: vexxhost.atmosphere.keycloak
+        tasks_from: database_before_migration
+
+    - name: Deploy current Keycloak role
+      ansible.builtin.import_role:
+        name: vexxhost.atmosphere.keycloak
+
+- name: Deploy OpenStack services
+  hosts: controllers
   become: true
   roles:
-    - vexxhost.atmosphere.keycloak
     - vexxhost.atmosphere.kube_prometheus_stack
     - vexxhost.atmosphere.keystone
     - vexxhost.atmosphere.horizon

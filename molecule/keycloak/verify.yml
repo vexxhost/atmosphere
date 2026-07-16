@@ -1,4 +1,4 @@
-# Copyright (c) 2023 VEXXHOST, Inc.
+# Copyright (c) 2026 VEXXHOST, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -114,6 +114,118 @@
         that:
           - _keycloak_operator_deployment.resources | length == 1
           - _keycloak_operator_deployment.resources[0].status.availableReplicas == 1
+
+    - name: Get operator-managed Keycloak instance
+      run_once: true
+      become: true
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ kubeconfig_path | default('/etc/kubernetes/admin.conf') }}"
+        api_version: k8s.keycloak.org/v2beta1
+        kind: Keycloak
+        name: keycloak
+        namespace: auth-system
+      register: _keycloak_instance
+
+    - name: Assert operator-managed Keycloak instance is ready
+      run_once: true
+      ansible.builtin.assert:
+        that:
+          - _keycloak_instance.resources | length == 1
+          - _keycloak_instance.resources[0].status.instances == 3
+          - _keycloak_instance.resources[0].spec.bootstrapAdmin.user.secret == 'keycloak-admin'
+          - _keycloak_instance.resources[0].status.conditions | selectattr('type', 'equalto', 'Ready') | map(attribute='status') | map('lower') | list == ['true']
+
+    - name: Get Keycloak bootstrap administrator secret
+      run_once: true
+      become: true
+      no_log: true
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ kubeconfig_path | default('/etc/kubernetes/admin.conf') }}"
+        api_version: v1
+        kind: Secret
+        name: keycloak-admin
+        namespace: auth-system
+      register: _keycloak_bootstrap_admin_secret
+
+    - name: Assert Keycloak bootstrap administrator secret
+      run_once: true
+      no_log: true
+      ansible.builtin.assert:
+        that:
+          - _keycloak_bootstrap_admin_secret.resources | length == 1
+          - _keycloak_bootstrap_admin_secret.resources[0].data.username | b64decode == keycloak_admin_username
+          - _keycloak_bootstrap_admin_secret.resources[0].data.password | b64decode == keycloak_admin_password
+
+    - name: Get temporary operator-managed Keycloak instance
+      run_once: true
+      become: true
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ kubeconfig_path | default('/etc/kubernetes/admin.conf') }}"
+        api_version: k8s.keycloak.org/v2beta1
+        kind: Keycloak
+        name: keycloak-migration
+        namespace: auth-system
+      register: _keycloak_temporary_instance
+
+    - name: Assert temporary Keycloak instance was removed
+      run_once: true
+      ansible.builtin.assert:
+        that:
+          - _keycloak_temporary_instance.resources | length == 0
+
+    - name: Get final Keycloak StatefulSet
+      run_once: true
+      become: true
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ kubeconfig_path | default('/etc/kubernetes/admin.conf') }}"
+        api_version: apps/v1
+        kind: StatefulSet
+        name: keycloak
+        namespace: auth-system
+      register: _keycloak_instance_statefulset
+
+    - name: Assert final Keycloak StatefulSet is operator-managed
+      run_once: true
+      ansible.builtin.assert:
+        that:
+          - _keycloak_instance_statefulset.resources | length == 1
+          - _keycloak_instance_statefulset.resources[0].metadata.ownerReferences | selectattr('kind', 'equalto', 'Keycloak') | map(attribute='name') | list == ['keycloak']
+
+    - name: Get Keycloak services
+      run_once: true
+      become: true
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ kubeconfig_path | default('/etc/kubernetes/admin.conf') }}"
+        api_version: v1
+        kind: Service
+        namespace: auth-system
+      register: _keycloak_services
+
+    - name: Assert only the operator Keycloak service remains
+      run_once: true
+      ansible.builtin.assert:
+        that:
+          - _keycloak_services.resources | selectattr('metadata.name', 'equalto', 'keycloak') | list | length == 0
+          - _keycloak_services.resources | selectattr('metadata.name', 'equalto', 'keycloak-service') | list | length == 1
+
+    - name: Get Keycloak Ingress
+      run_once: true
+      become: true
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ kubeconfig_path | default('/etc/kubernetes/admin.conf') }}"
+        api_version: networking.k8s.io/v1
+        kind: Ingress
+        name: keycloak
+        namespace: auth-system
+      register: _keycloak_ingress
+
+    - name: Assert Keycloak Ingress uses the operator service
+      run_once: true
+      ansible.builtin.assert:
+        that:
+          - _keycloak_ingress.resources | length == 1
+          - _keycloak_ingress.resources[0].spec.rules[0].http.paths[0].backend.service.name == 'keycloak-service'
+          - _keycloak_ingress.resources[0].spec.rules[0].http.paths[0].backend.service.port.number == 8080
 
 - name: Create user and assert it exists inside Keystone
   hosts: all
