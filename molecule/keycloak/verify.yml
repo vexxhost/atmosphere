@@ -12,12 +12,14 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Create user and assert it exists inside Keystone
+- name: Check components status
   hosts: all
   tasks:
     - name: Get Keycloak PostgreSQL cluster
       run_once: true
+      become: true
       kubernetes.core.k8s_info:
+        kubeconfig: "{{ kubeconfig_path | default('/etc/kubernetes/admin.conf') }}"
         api_version: postgresql.cnpg.io/v1
         kind: Cluster
         name: keycloak-db
@@ -36,7 +38,9 @@
 
     - name: Get Keycloak database credentials
       run_once: true
+      become: true
       kubernetes.core.k8s_info:
+        kubeconfig: "{{ kubeconfig_path | default('/etc/kubernetes/admin.conf') }}"
         api_version: v1
         kind: Secret
         name: keycloak-db-user
@@ -55,7 +59,9 @@
 
     - name: Get Keycloak database
       run_once: true
+      become: true
       kubernetes.core.k8s_info:
+        kubeconfig: "{{ kubeconfig_path | default('/etc/kubernetes/admin.conf') }}"
         api_version: postgresql.cnpg.io/v1
         kind: Database
         name: keycloak
@@ -109,6 +115,9 @@
           - _keycloak_operator_deployment.resources | length == 1
           - _keycloak_operator_deployment.resources[0].status.availableReplicas == 1
 
+- name: Create user and assert it exists inside Keystone
+  hosts: all
+  tasks:
     - name: Create Keycloak user
       run_once: true
       delegate_to: localhost
