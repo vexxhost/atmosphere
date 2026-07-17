@@ -271,7 +271,9 @@
       #              see the federated Keycloak user.
       retries: 30
       delay: 10
-      until: identity_user_info_result.users | length > 0
+      until: >-
+        not identity_user_info_result.get('failed', false) and
+        identity_user_info_result.get('users', []) | length > 0
 
     - name: Assert that the user exists
       run_once: true
