@@ -110,6 +110,25 @@ func TestKubeconform(t *testing.T) {
 						}
 					}
 
+					if chart.Name() == "thanos" {
+						values["existingObjstoreSecret"] = "thanos-object-storage"
+						values["queryFrontend"] = map[string]interface{}{
+							"enabled": true,
+						}
+						values["compactor"] = map[string]interface{}{
+							"enabled": true,
+							"persistence": map[string]interface{}{
+								"enabled": true,
+							},
+						}
+						values["storegateway"] = map[string]interface{}{
+							"enabled": true,
+							"persistence": map[string]interface{}{
+								"enabled": true,
+							},
+						}
+					}
+
 					rel, err := client.Run(chart, values)
 					require.NoError(t, err)
 

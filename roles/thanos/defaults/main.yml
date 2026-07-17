@@ -52,6 +52,48 @@ thanos_query_frontend_replicas: 2
 # Number of Thanos Store Gateway replicas.
 thanos_store_gateway_replicas: 2
 
+# Pod anti-affinity preset for replicated Thanos components.
+thanos_pod_anti_affinity_preset: hard
+
+# Minimum number of replicas that must remain available during disruptions.
+thanos_pdb_min_available: 1
+
+# Resource requests and limits for Thanos Query.
+thanos_query_resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+# Resource requests and limits for Thanos Query Frontend.
+thanos_query_frontend_resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Resource requests and limits for each Thanos Store Gateway.
+thanos_store_gateway_resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  limits:
+    cpu: 2000m
+    memory: 4Gi
+
+# Resource requests and limits for Thanos Compactor.
+thanos_compactor_resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  limits:
+    cpu: 2000m
+    memory: 4Gi
+
 # Storage class used by Thanos stateful components.
 thanos_storage_class: general
 

@@ -37,13 +37,23 @@ _thanos_helm_values:
       - prometheus_replica
     dnsDiscovery:
       enabled: true
-      sidecarsService: kube-prometheus-stack-thanos-discovery
-      sidecarsNamespace: "{{ thanos_helm_release_namespace }}"
+      sidecarsService: "{{ kube_prometheus_stack_helm_release_name }}-thanos-discovery"
+      sidecarsNamespace: "{{ kube_prometheus_stack_helm_release_namespace }}"
     nodeSelector: *thanos_node_selector
+    podAntiAffinityPreset: "{{ thanos_pod_anti_affinity_preset }}"
+    pdb:
+      create: true
+      minAvailable: "{{ thanos_pdb_min_available }}"
+    resources: "{{ thanos_query_resources }}"
   queryFrontend:
     enabled: true
     replicaCount: "{{ thanos_query_frontend_replicas }}"
     nodeSelector: *thanos_node_selector
+    podAntiAffinityPreset: "{{ thanos_pod_anti_affinity_preset }}"
+    pdb:
+      create: true
+      minAvailable: "{{ thanos_pdb_min_available }}"
+    resources: "{{ thanos_query_frontend_resources }}"
   bucketweb:
     enabled: false
   compactor:
@@ -52,6 +62,7 @@ _thanos_helm_values:
     retentionResolution5m: "{{ thanos_compactor_retention_resolution_5m }}"
     retentionResolution1h: "{{ thanos_compactor_retention_resolution_1h }}"
     nodeSelector: *thanos_node_selector
+    resources: "{{ thanos_compactor_resources }}"
     persistence:
       enabled: true
       storageClass: "{{ thanos_storage_class }}"
@@ -60,6 +71,11 @@ _thanos_helm_values:
     enabled: true
     replicaCount: "{{ thanos_store_gateway_replicas }}"
     nodeSelector: *thanos_node_selector
+    podAntiAffinityPreset: "{{ thanos_pod_anti_affinity_preset }}"
+    pdb:
+      create: true
+      minAvailable: "{{ thanos_pdb_min_available }}"
+    resources: "{{ thanos_store_gateway_resources }}"
     persistence:
       enabled: true
       storageClass: "{{ thanos_storage_class }}"
@@ -76,7 +92,7 @@ _thanos_helm_values:
       enabled: true
       namespace: "{{ thanos_helm_release_namespace }}"
       labels:
-        release: kube-prometheus-stack
+        release: "{{ kube_prometheus_stack_helm_release_name }}"
   minio:
     enabled: false
     image:
