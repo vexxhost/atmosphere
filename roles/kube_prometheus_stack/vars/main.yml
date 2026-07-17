@@ -529,10 +529,15 @@ _kube_prometheus_stack_helm_values:
             - auth-system
         selector:
           matchLabels:
-            app.kubernetes.io/component: metrics
-            app.kubernetes.io/name: keycloak
+            app: keycloak
+            app.kubernetes.io/instance: keycloak
+            app.kubernetes.io/managed-by: keycloak-operator
         endpoints:
-          - port: http
+          - port: management
+            path: /metrics
+            scheme: http
+            interval: 30s
+            scrapeTimeout: 10s
             relabelings: *relabelings_instance_to_pod_name
       - name: memcached
         jobLabel: application
