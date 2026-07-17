@@ -131,9 +131,16 @@
       ansible.builtin.assert:
         that:
           - _keycloak_instance.resources | length == 1
-          - _keycloak_instance.resources[0].status.instances == 3
+          - >-
+            _keycloak_instance.resources[0].get('status', {}).get('instances', 0) | int ==
+            _keycloak_instance.resources[0].spec.instances | int
           - _keycloak_instance.resources[0].spec.bootstrapAdmin.user.secret == 'keycloak-admin'
-          - _keycloak_instance.resources[0].status.conditions | selectattr('type', 'equalto', 'Ready') | map(attribute='status') | map('lower') | list == ['true']
+          - >-
+            _keycloak_instance.resources[0].get('status', {}).get('conditions', []) |
+            selectattr('type', 'equalto', 'Ready') |
+            map(attribute='status') |
+            map('lower') |
+            list == ['true']
 
     - name: Get Keycloak bootstrap administrator secret
       run_once: true
