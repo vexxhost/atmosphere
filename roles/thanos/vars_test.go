@@ -23,16 +23,27 @@ type resources struct {
 	Limits   map[string]string `yaml:"limits"`
 }
 
+type rollingUpdate struct {
+	MaxSurge       int `yaml:"maxSurge"`
+	MaxUnavailable int `yaml:"maxUnavailable"`
+}
+
+type updateStrategy struct {
+	Type          string        `yaml:"type"`
+	RollingUpdate rollingUpdate `yaml:"rollingUpdate"`
+}
+
 type defaults struct {
-	QueryReplicas          int       `yaml:"thanos_query_replicas"`
-	QueryFrontendReplicas  int       `yaml:"thanos_query_frontend_replicas"`
-	StoreGatewayReplicas   int       `yaml:"thanos_store_gateway_replicas"`
-	PodAntiAffinityPreset  string    `yaml:"thanos_pod_anti_affinity_preset"`
-	PDBMinAvailable        int       `yaml:"thanos_pdb_min_available"`
-	QueryResources         resources `yaml:"thanos_query_resources"`
-	QueryFrontendResources resources `yaml:"thanos_query_frontend_resources"`
-	StoreGatewayResources  resources `yaml:"thanos_store_gateway_resources"`
-	CompactorResources     resources `yaml:"thanos_compactor_resources"`
+	QueryReplicas            int            `yaml:"thanos_query_replicas"`
+	QueryFrontendReplicas    int            `yaml:"thanos_query_frontend_replicas"`
+	StoreGatewayReplicas     int            `yaml:"thanos_store_gateway_replicas"`
+	PodAntiAffinityPreset    string         `yaml:"thanos_pod_anti_affinity_preset"`
+	PDBMinAvailable          int            `yaml:"thanos_pdb_min_available"`
+	DeploymentUpdateStrategy updateStrategy `yaml:"thanos_deployment_update_strategy"`
+	QueryResources           resources      `yaml:"thanos_query_resources"`
+	QueryFrontendResources   resources      `yaml:"thanos_query_frontend_resources"`
+	StoreGatewayResources    resources      `yaml:"thanos_store_gateway_resources"`
+	CompactorResources       resources      `yaml:"thanos_compactor_resources"`
 }
 
 func nestedMap(t *testing.T, value map[string]interface{}, key string) map[string]interface{} {
@@ -48,11 +59,14 @@ func TestProductionDefaults(t *testing.T) {
 	var values defaults
 	require.NoError(t, yaml.Unmarshal(defaultsFile, &values))
 
-	assert.Equal(t, 2, values.QueryReplicas)
-	assert.Equal(t, 2, values.QueryFrontendReplicas)
-	assert.Equal(t, 2, values.StoreGatewayReplicas)
+	assert.Equal(t, 3, values.QueryReplicas)
+	assert.Equal(t, 3, values.QueryFrontendReplicas)
+	assert.Equal(t, 3, values.StoreGatewayReplicas)
 	assert.Equal(t, "hard", values.PodAntiAffinityPreset)
-	assert.Equal(t, 1, values.PDBMinAvailable)
+	assert.Equal(t, 2, values.PDBMinAvailable)
+	assert.Equal(t, "RollingUpdate", values.DeploymentUpdateStrategy.Type)
+	assert.Equal(t, 0, values.DeploymentUpdateStrategy.RollingUpdate.MaxSurge)
+	assert.Equal(t, 1, values.DeploymentUpdateStrategy.RollingUpdate.MaxUnavailable)
 
 	for name, resources := range map[string]resources{
 		"query":          values.QueryResources,
@@ -95,6 +109,11 @@ func TestProductionDefaultsAreWiredIntoHelmValues(t *testing.T) {
 			assert.Equal(t, true, pdb["create"])
 			assert.Equal(t, "{{ thanos_pdb_min_available }}", pdb["minAvailable"])
 		})
+	}
+
+	for _, name := range []string{"query", "queryFrontend"} {
+		component := nestedMap(t, values, name)
+		assert.Equal(t, "{{ thanos_deployment_update_strategy }}", component["updateStrategy"])
 	}
 }
 

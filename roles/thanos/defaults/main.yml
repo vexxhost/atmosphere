@@ -44,19 +44,27 @@ thanos_object_storage_secret_key: objstore.yml
 thanos_object_storage_config: {}
 
 # Number of Thanos Query replicas.
-thanos_query_replicas: 2
+thanos_query_replicas: 3
 
 # Number of Thanos Query Frontend replicas.
-thanos_query_frontend_replicas: 2
+thanos_query_frontend_replicas: 3
 
 # Number of Thanos Store Gateway replicas.
-thanos_store_gateway_replicas: 2
+thanos_store_gateway_replicas: 3
 
 # Pod anti-affinity preset for replicated Thanos components.
 thanos_pod_anti_affinity_preset: hard
 
 # Minimum number of replicas that must remain available during disruptions.
-thanos_pdb_min_available: 1
+thanos_pdb_min_available: 2
+
+# Rolling update strategy for stateless Thanos Deployments. Disabling surge
+# allows three hard anti-affinity replicas to roll across three eligible nodes.
+thanos_deployment_update_strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 0
+    maxUnavailable: 1
 
 # Resource requests and limits for Thanos Query.
 thanos_query_resources:

@@ -259,11 +259,12 @@ days, and one-hour samples for 10 years. Override these periods with
 Production placement and all-in-one deployments
 ------------------------------------------------
 
-The production defaults run two Query, Query Frontend, and Store Gateway
-replicas with hard pod anti-affinity, disruption budgets, and explicit resource
-requests and limits. This requires at least two Kubernetes nodes labelled
-``openstack-control-plane=enabled`` for availability and three eligible nodes
-to provide surge capacity during rolling updates.
+The production defaults run three Query, Query Frontend, and Store Gateway
+replicas with hard pod anti-affinity, disruption budgets that keep two replicas
+available, and explicit resource requests and limits. This requires three
+Kubernetes nodes labelled ``openstack-control-plane=enabled``. Query and Query
+Frontend use a no-surge rolling strategy that makes one replica unavailable at
+a time, allowing them to update across the same three eligible nodes.
 
 An all-in-one deployment has only one eligible node, so it must reduce the
 replicated components to one replica. Smaller cache and Compactor volumes also
@@ -279,14 +280,12 @@ avoid consuming production-sized storage in a disposable environment:
   thanos_store_gateway_storage_size: 5Gi
   thanos_compactor_storage_size: 10Gi
 
-The soft anti-affinity override is required even with one replica. Kubernetes
-creates a replacement Deployment pod before deleting the old pod during a
-rolling update, and hard anti-affinity prevents both pods from temporarily
-sharing the all-in-one node. An all-in-one environment also needs an
+The soft anti-affinity override avoids imposing a production topology rule on
+the single-node environment. An all-in-one environment also needs an
 S3-compatible endpoint; a test-only MinIO deployment can be supplied through
 ``thanos_helm_values``, but production deployments should use external, durable
-object storage. Setting the disruption budget to zero is also required if the
-single node needs to be drained voluntarily.
+object storage. Setting the disruption budget to zero is required if the single
+node needs to be drained voluntarily.
 
 Thanos and kube-prometheus-stack must use the same release namespace because
 both workloads mount the same object-storage Secret. Their release names may be

@@ -33,6 +33,7 @@ _thanos_helm_values:
       path: objstore.yml
   query:
     replicaCount: "{{ thanos_query_replicas }}"
+    updateStrategy: "{{ thanos_deployment_update_strategy }}"
     replicaLabel:
       - prometheus_replica
     dnsDiscovery:
@@ -48,6 +49,7 @@ _thanos_helm_values:
   queryFrontend:
     enabled: true
     replicaCount: "{{ thanos_query_frontend_replicas }}"
+    updateStrategy: "{{ thanos_deployment_update_strategy }}"
     nodeSelector: *thanos_node_selector
     podAntiAffinityPreset: "{{ thanos_pod_anti_affinity_preset }}"
     pdb:
