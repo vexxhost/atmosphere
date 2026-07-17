@@ -31,9 +31,7 @@ class OpenStackActionBase(ActionBase):
         admin_password = templar.template(
             task_vars.get("openstack_helm_endpoints_keystone_admin_password")
         )
-        cluster_issuer_type = templar.template(
-            task_vars.get("cluster_issuer_type")
-        )
+        cluster_issuer_type = templar.template(task_vars.get("cluster_issuer_type"))
         validate_certs = cluster_issuer_type != "self-signed"
 
         module_args = self._task.args.copy()
