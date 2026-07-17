@@ -1,0 +1,85 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+_thanos_object_storage_secret_name: >-
+  {{
+    thanos_object_storage_existing_secret
+    if thanos_object_storage_existing_secret | length > 0
+    else thanos_object_storage_secret_name
+  }}
+
+_thanos_node_selector: &thanos_node_selector
+  openstack-control-plane: enabled
+
+_thanos_helm_values:
+  image:
+    registry: "{{ atmosphere_images['thanos_chart'] | vexxhost.kubernetes.docker_image('domain') }}"
+    repository: "{{ atmosphere_images['thanos_chart'] | vexxhost.kubernetes.docker_image('path') }}"
+    tag: "{{ atmosphere_images['thanos_chart'] | vexxhost.kubernetes.docker_image('tag') }}"
+  existingObjstoreSecret: "{{ _thanos_object_storage_secret_name }}"
+  existingObjstoreSecretItems:
+    - key: "{{ thanos_object_storage_secret_key }}"
+      path: objstore.yml
+  query:
+    replicaCount: "{{ thanos_query_replicas }}"
+    replicaLabel:
+      - prometheus_replica
+    dnsDiscovery:
+      enabled: true
+      sidecarsService: kube-prometheus-stack-thanos-discovery
+      sidecarsNamespace: "{{ thanos_helm_release_namespace }}"
+    nodeSelector: *thanos_node_selector
+  queryFrontend:
+    enabled: true
+    replicaCount: "{{ thanos_query_frontend_replicas }}"
+    nodeSelector: *thanos_node_selector
+  bucketweb:
+    enabled: false
+  compactor:
+    enabled: true
+    retentionResolutionRaw: "{{ thanos_compactor_retention_resolution_raw }}"
+    retentionResolution5m: "{{ thanos_compactor_retention_resolution_5m }}"
+    retentionResolution1h: "{{ thanos_compactor_retention_resolution_1h }}"
+    nodeSelector: *thanos_node_selector
+    persistence:
+      enabled: true
+      storageClass: "{{ thanos_storage_class }}"
+      size: "{{ thanos_compactor_storage_size }}"
+  storegateway:
+    enabled: true
+    replicaCount: "{{ thanos_store_gateway_replicas }}"
+    nodeSelector: *thanos_node_selector
+    persistence:
+      enabled: true
+      storageClass: "{{ thanos_storage_class }}"
+      size: "{{ thanos_store_gateway_storage_size }}"
+  ruler:
+    enabled: false
+  receive:
+    enabled: false
+  receiveDistributor:
+    enabled: false
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      namespace: "{{ thanos_helm_release_namespace }}"
+      labels:
+        release: kube-prometheus-stack
+  minio:
+    enabled: false
+    image:
+      registry: "{{ atmosphere_images['thanos_minio'] | vexxhost.kubernetes.docker_image('domain') }}"
+      repository: "{{ atmosphere_images['thanos_minio'] | vexxhost.kubernetes.docker_image('path') }}"
+      tag: "{{ atmosphere_images['thanos_minio'] | vexxhost.kubernetes.docker_image('tag') }}"

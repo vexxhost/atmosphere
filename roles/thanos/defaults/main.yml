@@ -1,0 +1,79 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+# Enable long-term Prometheus storage with Thanos.
+thanos_enabled: false
+
+thanos_helm_release_name: thanos
+thanos_helm_chart_path: "../../charts/thanos/"
+thanos_helm_chart_ref: /usr/local/src/thanos
+thanos_helm_release_namespace: monitoring
+thanos_helm_kubeconfig: "{{ kubeconfig_path | default('/etc/kubernetes/admin.conf') }}"
+
+# Name of an existing Secret that contains the Thanos object store configuration.
+#
+# thanos_object_storage_existing_secret: thanos-object-storage
+thanos_object_storage_existing_secret: ""
+
+# Name of the Secret to create when object store configuration is supplied inline.
+thanos_object_storage_secret_name: thanos-object-storage
+
+# Key containing the Thanos object store configuration in the Secret.
+thanos_object_storage_secret_key: objstore.yml
+
+# Thanos object store configuration used to create the Secret.
+#
+# thanos_object_storage_config:
+#   type: S3
+#   config:
+#     bucket: atmosphere-metrics
+#     endpoint: s3.example.com
+#     access_key: ACCESS_KEY
+#     secret_key: SECRET_KEY
+thanos_object_storage_config: {}
+
+# Number of Thanos Query replicas.
+thanos_query_replicas: 2
+
+# Number of Thanos Query Frontend replicas.
+thanos_query_frontend_replicas: 2
+
+# Number of Thanos Store Gateway replicas.
+thanos_store_gateway_replicas: 2
+
+# Storage class used by Thanos stateful components.
+thanos_storage_class: general
+
+# Persistent cache size for each Thanos Store Gateway replica.
+thanos_store_gateway_storage_size: 20Gi
+
+# Working space allocated to Thanos Compactor.
+thanos_compactor_storage_size: 100Gi
+
+# Retention for raw Prometheus samples.
+thanos_compactor_retention_resolution_raw: 30d
+
+# Retention for samples downsampled to five-minute resolution.
+thanos_compactor_retention_resolution_5m: 180d
+
+# Retention for samples downsampled to one-hour resolution.
+thanos_compactor_retention_resolution_1h: 10y
+
+# URL used by Grafana for its Prometheus-compatible data source.
+thanos_query_frontend_url: "http://{{ thanos_helm_release_name }}-query-frontend.{{ thanos_helm_release_namespace }}.svc.cluster.local:9090"
+
+# Additional Helm values merged into the Thanos chart configuration.
+#
+# thanos_helm_values: {}
+thanos_helm_values: {}

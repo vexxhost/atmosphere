@@ -206,6 +206,56 @@ Prometheus as the data source. You can find more examples of how to do
 this in the Grafana Helm chart `Import Dashboards <https://github.com/grafana/helm-charts/tree/main/charts/grafana#import-dashboards>`_
 documentation.
 
+Long-term metrics storage
+=========================
+
+Atmosphere can archive Prometheus metrics in S3-compatible object storage with
+Thanos. This deployment adds a Thanos sidecar to Prometheus and deploys Query,
+Query Frontend, Store Gateway, and Compactor. Grafana uses Query Frontend as its
+Prometheus-compatible data source so dashboards can query both recent and
+archived metrics.
+
+Thanos is disabled by default. Before enabling it, create the object storage
+bucket and either provide its configuration in the inventory or create a
+Secret in the ``monitoring`` namespace. The bucket must be dedicated to Thanos.
+
+The following example configures an S3-compatible endpoint directly in the
+inventory:
+
+.. code-block:: yaml
+
+  thanos_enabled: true
+  thanos_object_storage_config:
+    type: S3
+    config:
+      bucket: atmosphere-metrics
+      endpoint: s3.example.com
+      access_key: ACCESS_KEY
+      secret_key: SECRET_KEY
+      insecure: false
+
+Store credentials in an encrypted inventory file. Atmosphere writes this
+configuration to the ``thanos-object-storage`` Secret without logging its
+contents.
+
+To use a Secret that is managed outside Atmosphere, set its name instead:
+
+.. code-block:: yaml
+
+  thanos_enabled: true
+  thanos_object_storage_existing_secret: thanos-object-storage
+
+The Secret must contain the object storage configuration under the
+``objstore.yml`` key. Use ``thanos_object_storage_secret_key`` when the Secret
+uses a different key.
+
+By default, Thanos keeps raw samples for 30 days, five-minute samples for 180
+days, and one-hour samples for 10 years. Override these periods with
+``thanos_compactor_retention_resolution_raw``,
+``thanos_compactor_retention_resolution_5m``, and
+``thanos_compactor_retention_resolution_1h``. The
+``thanos_helm_values`` variable can override any other chart value.
+
 ************
 Viewing data
 ************
