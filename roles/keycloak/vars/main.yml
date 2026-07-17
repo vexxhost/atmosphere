@@ -1,4 +1,4 @@
-# Copyright (c) 2022 VEXXHOST, Inc.
+# Copyright (c) 2026 VEXXHOST, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -11,6 +11,66 @@
 # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 # License for the specific language governing permissions and limitations
 # under the License.
+
+_keycloak_cloudnative_pg_cluster_spec:
+  instances: 3
+  imageName: "{{ keycloak_cloudnative_pg_image }}"
+  managed:
+    roles:
+      - name: "{{ keycloak_database_username }}"
+        ensure: present
+        comment: Keycloak
+        login: true
+        passwordSecret:
+          name: keycloak-db-user
+  storage:
+    storageClass: general
+    size: 50Gi
+  postgresql:
+    parameters:
+      max_worker_processes: "60"
+    pg_hba:
+      - host all all all md5
+  affinity:
+    nodeSelector:
+      openstack-control-plane: enabled
+
+_keycloak_spec:
+  instances: 3
+  bootstrapAdmin:
+    user:
+      secret: keycloak-admin
+  db:
+    vendor: postgres
+    host: keycloak-db-rw
+    usernameSecret:
+      name: keycloak-db-user
+      key: username
+    passwordSecret:
+      name: keycloak-db-user
+      key: password
+  http:
+    httpEnabled: true
+  ingress:
+    enabled: false
+  hostname:
+    strict: false
+  proxy:
+    headers: xforwarded
+  features:
+    enabled:
+      - token-exchange
+  transaction:
+    xaEnabled: false
+  serviceMonitor:
+    enabled: true
+  additionalOptions:
+    - name: metrics-enabled
+      value: "true"
+    - name: spi-events-listener-jboss-logging-success-level
+      value: info
+    - name: spi-events-listener-jboss-logging-error-level
+      value: warn
 
 _keycloak_ingress_annotations:
   cert-manager.io/cluster-issuer: "{{ keycloak_ingress_cluster_issuer }}"

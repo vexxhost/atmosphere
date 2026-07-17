@@ -1,0 +1,504 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Get Keycloak StatefulSet
+  run_once: true
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ keycloak_helm_kubeconfig }}"
+    api_version: apps/v1
+    kind: StatefulSet
+    name: "{{ keycloak_helm_release_name }}"
+    namespace: "{{ keycloak_helm_release_namespace }}"
+  register: _keycloak_database_migration_statefulset
+
+- name: Get operator-managed Keycloak instance
+  run_once: true
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ keycloak_operator_kubeconfig }}"
+    api_version: k8s.keycloak.org/v2beta1
+    kind: Keycloak
+    name: "{{ keycloak_operator_instance_name }}"
+    namespace: "{{ keycloak_operator_namespace }}"
+  register: _keycloak_database_migration_keycloak
+
+- name: Get temporary operator-managed Keycloak instance
+  run_once: true
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ keycloak_operator_kubeconfig }}"
+    api_version: k8s.keycloak.org/v2beta1
+    kind: Keycloak
+    name: "{{ keycloak_operator_migration_instance_name }}"
+    namespace: "{{ keycloak_operator_namespace }}"
+  register: _keycloak_database_migration_temporary_keycloak
+
+- name: Remove stale temporary Keycloak instance
+  run_once: true
+  when:
+    - _keycloak_database_migration_temporary_keycloak.resources | length == 1
+    - >-
+      _keycloak_database_migration_keycloak.resources | length == 1 or
+      _keycloak_database_migration_statefulset.resources | length == 0
+  kubernetes.core.k8s:
+    kubeconfig: "{{ keycloak_operator_kubeconfig }}"
+    state: absent
+    api_version: k8s.keycloak.org/v2beta1
+    kind: Keycloak
+    name: "{{ keycloak_operator_migration_instance_name }}"
+    namespace: "{{ keycloak_operator_namespace }}"
+    wait: true
+    wait_timeout: 600
+    delete_options:
+      propagationPolicy: Foreground
+
+- name: Get Keycloak PostgreSQL cluster
+  run_once: true
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ keycloak_operator_kubeconfig }}"
+    api_version: postgresql.cnpg.io/v1
+    kind: Cluster
+    name: keycloak-db
+    namespace: "{{ keycloak_operator_namespace }}"
+  register: _keycloak_database_migration_cluster
+
+- name: Assert Keycloak PostgreSQL cluster is ready for inspection
+  run_once: true
+  ansible.builtin.assert:
+    that:
+      - _keycloak_database_migration_cluster.resources | length == 1
+      - _keycloak_database_migration_cluster.resources[0].status.currentPrimary is defined
+      - _keycloak_database_migration_cluster.resources[0].status.conditions | selectattr('type', 'equalto', 'Ready') | map(attribute='status') | list == ['True']
+
+- name: Inspect Keycloak PostgreSQL tables
+  run_once: true
+  changed_when: false
+  kubernetes.core.k8s_exec:
+    kubeconfig: "{{ keycloak_operator_kubeconfig }}"
+    namespace: "{{ keycloak_operator_namespace }}"
+    pod: "{{ _keycloak_database_migration_cluster.resources[0].status.currentPrimary }}"
+    container: postgres
+    command: >-
+      psql
+      --dbname={{ keycloak_database_name }}
+      --tuples-only
+      --no-align
+      --field-separator='|'
+      --command="SELECT count(*), count(*) FILTER (WHERE tablename = 'realm') FROM pg_catalog.pg_tables WHERE schemaname = 'public'"
+  register: _keycloak_database_migration_table_query
+  failed_when: _keycloak_database_migration_table_query.rc != 0
+
+- name: Assert Keycloak PostgreSQL table query result
+  run_once: true
+  ansible.builtin.assert:
+    that:
+      - _keycloak_database_migration_table_query.stdout | trim is match('^[0-9]+\|[0-9]+$')
+
+- name: Record Keycloak PostgreSQL table state
+  run_once: true
+  ansible.builtin.set_fact:
+    _keycloak_database_migration_target_table_count: "{{ (_keycloak_database_migration_table_query.stdout | trim).split('|')[0] | int }}"
+    _keycloak_database_migration_target_realm_table_count: "{{ (_keycloak_database_migration_table_query.stdout | trim).split('|')[1] | int }}"
+
+- name: Inspect Keycloak PostgreSQL realms
+  run_once: true
+  when: _keycloak_database_migration_target_realm_table_count | int == 1
+  changed_when: false
+  kubernetes.core.k8s_exec:
+    kubeconfig: "{{ keycloak_operator_kubeconfig }}"
+    namespace: "{{ keycloak_operator_namespace }}"
+    pod: "{{ _keycloak_database_migration_cluster.resources[0].status.currentPrimary }}"
+    container: postgres
+    command: >-
+      psql
+      --dbname={{ keycloak_database_name }}
+      --tuples-only
+      --no-align
+      --command="SELECT count(*) FROM public.realm"
+  register: _keycloak_database_migration_realm_query
+  failed_when: _keycloak_database_migration_realm_query.rc != 0
+
+- name: Record Keycloak deployment state
+  run_once: true
+  ansible.builtin.set_fact:
+    _keycloak_database_migration_statefulset_operator_managed: >-
+      {{
+        _keycloak_database_migration_statefulset.resources | length == 1 and
+        _keycloak_database_migration_statefulset.resources[0].metadata.ownerReferences | default([]) |
+        selectattr('kind', 'equalto', 'Keycloak') |
+        selectattr('name', 'equalto', keycloak_operator_instance_name) |
+        list | length == 1
+      }}
+    _keycloak_database_migration_target_empty: "{{ _keycloak_database_migration_target_table_count | int == 0 }}"
+    _keycloak_database_migration_target_populated: >-
+      {{
+        _keycloak_database_migration_target_table_count | int > 0 and
+        _keycloak_database_migration_target_realm_table_count | int == 1 and
+        _keycloak_database_migration_realm_query.stdout | default('0') | trim | int > 0
+      }}
+
+- name: Record Keycloak workload type
+  run_once: true
+  ansible.builtin.set_fact:
+    _keycloak_database_migration_legacy_exists: >-
+      {{
+        _keycloak_database_migration_statefulset.resources | length == 1 and
+        not _keycloak_database_migration_statefulset_operator_managed
+      }}
+
+- name: Record Keycloak database migration action
+  run_once: true
+  ansible.builtin.set_fact:
+    _keycloak_database_migration_required: >-
+      {{
+        _keycloak_database_migration_legacy_exists and
+        _keycloak_database_migration_target_empty
+      }}
+    _keycloak_database_migration_verification_required: >-
+      {{
+        _keycloak_database_migration_legacy_exists and
+        _keycloak_database_migration_target_populated
+      }}
+
+- name: Assert Keycloak deployment state is supported
+  run_once: true
+  ansible.builtin.assert:
+    that:
+      - keycloak_operator_instance_name != keycloak_operator_migration_instance_name
+      - keycloak_helm_release_name != keycloak_operator_migration_instance_name
+      - _keycloak_database_migration_target_empty or _keycloak_database_migration_target_populated
+    fail_msg: >-
+      The detected Keycloak deployment state cannot be upgraded safely. The
+      PostgreSQL database must be empty or contain a populated Keycloak schema,
+      and the temporary Keycloak instance must not use either production
+      workload name.
+
+- name: Report Keycloak database migration state
+  run_once: true
+  when: not _keycloak_database_migration_legacy_exists
+  ansible.builtin.debug:
+    msg: No legacy Keycloak deployment requires database migration.
+
+- name: Remove Keycloak instance conflicting with legacy StatefulSet
+  run_once: true
+  when:
+    - _keycloak_database_migration_legacy_exists
+    - _keycloak_database_migration_keycloak.resources | length == 1
+  kubernetes.core.k8s:
+    kubeconfig: "{{ keycloak_operator_kubeconfig }}"
+    state: absent
+    api_version: k8s.keycloak.org/v2beta1
+    kind: Keycloak
+    name: "{{ keycloak_operator_instance_name }}"
+    namespace: "{{ keycloak_operator_namespace }}"
+    wait: true
+    wait_timeout: 600
+    delete_options:
+      propagationPolicy: Foreground
+
+- name: Upgrade legacy Keycloak deployment
+  run_once: true
+  when: _keycloak_database_migration_legacy_exists
+  block:
+    - name: Record that Keycloak cutover has not started
+      ansible.builtin.set_fact:
+        _keycloak_database_migration_started: false
+
+    - name: Get legacy Keycloak database credentials
+      no_log: true
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ keycloak_helm_kubeconfig }}"
+        api_version: v1
+        kind: Secret
+        name: "{{ keycloak_helm_release_name }}-externaldb"
+        namespace: "{{ keycloak_helm_release_namespace }}"
+      register: _keycloak_database_migration_source_credentials
+
+    - name: Get Keycloak PostgreSQL credentials
+      no_log: true
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ keycloak_operator_kubeconfig }}"
+        api_version: v1
+        kind: Secret
+        name: keycloak-db-user
+        namespace: "{{ keycloak_operator_namespace }}"
+      register: _keycloak_database_migration_target_credentials
+
+    - name: Get Keycloak PostgreSQL database
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ keycloak_operator_kubeconfig }}"
+        api_version: postgresql.cnpg.io/v1
+        kind: Database
+        name: "{{ keycloak_database_name }}"
+        namespace: "{{ keycloak_operator_namespace }}"
+      register: _keycloak_database_migration_database
+
+    - name: Assert Keycloak database migration is ready
+      ansible.builtin.assert:
+        that:
+          - keycloak_helm_release_namespace == keycloak_operator_namespace
+          - _keycloak_database_migration_statefulset.resources[0].spec.template.spec.containers | selectattr('name', 'equalto', 'keycloak') | list | length == 1
+          - _keycloak_database_migration_statefulset.resources[0].spec.replicas | int == 0 or _keycloak_database_migration_statefulset.resources[0].status.readyReplicas | default(0) | int == _keycloak_database_migration_statefulset.resources[0].spec.replicas | int
+          - _keycloak_database_migration_source_credentials.resources | length == 1
+          - _keycloak_database_migration_source_credentials.resources[0].data['db-password'] is defined
+          - _keycloak_database_migration_target_credentials.resources | length == 1
+          - _keycloak_database_migration_target_credentials.resources[0].data.username is defined
+          - _keycloak_database_migration_target_credentials.resources[0].data.password is defined
+          - _keycloak_database_migration_database.resources | length == 1
+          - _keycloak_database_migration_database.resources[0].status.applied | default(false)
+
+    - name: Record legacy Keycloak state
+      ansible.builtin.set_fact:
+        _keycloak_database_migration_original_replicas_candidate: >-
+          {{
+            (_keycloak_database_migration_statefulset.resources[0].metadata.annotations | default({}, true)).get(
+              'atmosphere.vexxhost.cloud/keycloak-original-replicas',
+              _keycloak_database_migration_statefulset.resources[0].spec.replicas | int
+            ) | int
+          }}
+        _keycloak_database_migration_keycloak_image: "{{ (_keycloak_database_migration_statefulset.resources[0].spec.template.spec.containers | selectattr('name', 'equalto', 'keycloak') | first).image }}"
+
+    - name: Record legacy Keycloak replica count
+      ansible.builtin.set_fact:
+        _keycloak_database_migration_original_replicas: >-
+          {{
+            _keycloak_database_migration_original_replicas_candidate
+            if _keycloak_database_migration_original_replicas_candidate | int > 0
+            else keycloak_helm_values.replicaCount | default(1)
+          }}
+
+    - name: Record that Keycloak cutover has started
+      ansible.builtin.set_fact:
+        _keycloak_database_migration_started: true
+
+    - name: Preserve legacy Keycloak replica count
+      kubernetes.core.k8s:
+        kubeconfig: "{{ keycloak_helm_kubeconfig }}"
+        state: present
+        definition:
+          apiVersion: apps/v1
+          kind: StatefulSet
+          metadata:
+            name: "{{ keycloak_helm_release_name }}"
+            namespace: "{{ keycloak_helm_release_namespace }}"
+            annotations:
+              atmosphere.vexxhost.cloud/keycloak-original-replicas: "{{ _keycloak_database_migration_original_replicas | string }}"
+
+    - name: Stop legacy Keycloak
+      kubernetes.core.k8s_scale:
+        kubeconfig: "{{ keycloak_helm_kubeconfig }}"
+        api_version: apps/v1
+        kind: StatefulSet
+        name: "{{ keycloak_helm_release_name }}"
+        namespace: "{{ keycloak_helm_release_namespace }}"
+        replicas: 0
+        wait_timeout: 300
+
+    - name: Wait for legacy Keycloak to stop
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ keycloak_helm_kubeconfig }}"
+        api_version: apps/v1
+        kind: StatefulSet
+        name: "{{ keycloak_helm_release_name }}"
+        namespace: "{{ keycloak_helm_release_namespace }}"
+      register: _keycloak_database_migration_stopped_statefulset
+      retries: 60
+      delay: 5
+      until:
+        - _keycloak_database_migration_stopped_statefulset.resources | length == 1
+        - _keycloak_database_migration_stopped_statefulset.resources[0].status.replicas | default(0) | int == 0
+
+    - name: Export and verify the Keycloak database
+      ansible.builtin.script:
+        cmd: "{{ role_path }}/files/migrate-keycloak-k8s.sh"
+      changed_when: _keycloak_database_migration_required
+      environment:
+        KUBECONFIG: "{{ keycloak_operator_kubeconfig }}"
+        NAMESPACE: "{{ keycloak_operator_namespace }}"
+        KEYCLOAK_IMAGE: "{{ _keycloak_database_migration_keycloak_image }}"
+        SOURCE_DB_HOST: "{{ openstack_helm_endpoints.oslo_db.hosts.default }}.openstack"
+        SOURCE_DB_SECRET: "{{ keycloak_helm_release_name }}-externaldb"
+        SOURCE_DB_NAME: "{{ keycloak_database_name }}"
+        SOURCE_DB_USERNAME: "{{ keycloak_database_username }}"
+        SOURCE_DB_PASSWORD_KEY: db-password
+        TARGET_DB_HOST: "keycloak-db-rw.{{ keycloak_operator_namespace }}.svc"
+        TARGET_DB_SECRET: keycloak-db-user
+        TARGET_DB_NAME: "{{ keycloak_database_name }}"
+        TARGET_DB_USERNAME_KEY: username
+        TARGET_DB_PASSWORD_KEY: password
+        VERIFY_ONLY: "{{ _keycloak_database_migration_verification_required | ternary('true', 'false') }}"
+        MIGRATION_VOLUME_SIZE: "{{ keycloak_database_migration_volume_size }}"
+        MIGRATION_NODE_SELECTOR_YAML: "{{ keycloak_database_migration_node_selector | to_nice_yaml(indent=2) }}"
+        KEYCLOAK_MEMORY_REQUEST: "{{ keycloak_database_migration_memory_request }}"
+        KEYCLOAK_MEMORY_LIMIT: "{{ keycloak_database_migration_memory_limit }}"
+        JOB_TIMEOUT_SECONDS: "{{ keycloak_database_migration_timeout | string }}"
+        FAIL_ON_UNEXPECTED_VERIFICATION_DIFFERENCES: "true"
+        ALLOW_KNOWN_KEYCLOAK_DIFFERENCES: "true"
+        POSTGRES_CLIENT_IMAGE: "{{ atmosphere_images['keycloak_database_migration_postgresql_client'] | vexxhost.kubernetes.docker_image('ref') }}"
+        VERIFIER_IMAGE: "{{ atmosphere_images['keycloak_database_migration_verifier'] | vexxhost.kubernetes.docker_image('ref') }}"
+
+    - name: Test migrated database with a temporary Keycloak instance
+      ansible.builtin.include_tasks: instance.yml
+      vars:
+        _keycloak_instance_name: "{{ keycloak_operator_migration_instance_name }}"
+        _keycloak_instance_update_ingress: false
+
+    - name: Remove temporary Keycloak instance
+      kubernetes.core.k8s:
+        kubeconfig: "{{ keycloak_operator_kubeconfig }}"
+        state: absent
+        api_version: k8s.keycloak.org/v2beta1
+        kind: Keycloak
+        name: "{{ keycloak_operator_migration_instance_name }}"
+        namespace: "{{ keycloak_operator_namespace }}"
+        wait: true
+        wait_timeout: 600
+        delete_options:
+          propagationPolicy: Foreground
+
+    - name: Wait for temporary Keycloak resources to be removed
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ keycloak_operator_kubeconfig }}"
+        api_version: "{{ item.api_version }}"
+        kind: "{{ item.kind }}"
+        name: "{{ item.name }}"
+        namespace: "{{ keycloak_operator_namespace }}"
+      loop:
+        - api_version: apps/v1
+          kind: StatefulSet
+          name: "{{ keycloak_operator_migration_instance_name }}"
+        - api_version: v1
+          kind: Service
+          name: "{{ keycloak_operator_migration_instance_name }}-service"
+      register: _keycloak_database_migration_temporary_resource
+      retries: 120
+      delay: 5
+      until: _keycloak_database_migration_temporary_resource.resources | length == 0
+
+    - name: Remove legacy Keycloak Helm release
+      kubernetes.core.helm:
+        kubeconfig: "{{ keycloak_helm_kubeconfig }}"
+        name: "{{ keycloak_helm_release_name }}"
+        release_namespace: "{{ keycloak_helm_release_namespace }}"
+        release_state: absent
+        wait: true
+        timeout: 10m
+
+    - name: Wait for legacy Keycloak StatefulSet to be removed
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ keycloak_helm_kubeconfig }}"
+        api_version: apps/v1
+        kind: StatefulSet
+        name: "{{ keycloak_helm_release_name }}"
+        namespace: "{{ keycloak_helm_release_namespace }}"
+      register: _keycloak_database_migration_removed_statefulset
+      retries: 120
+      delay: 5
+      until: _keycloak_database_migration_removed_statefulset.resources | length == 0
+
+    - name: Deploy final operator-managed Keycloak instance
+      ansible.builtin.include_tasks: instance.yml
+
+  rescue:
+    - name: Remove operator-managed Keycloak instances
+      when: _keycloak_database_migration_started | default(false)
+      kubernetes.core.k8s:
+        kubeconfig: "{{ keycloak_operator_kubeconfig }}"
+        state: absent
+        api_version: k8s.keycloak.org/v2beta1
+        kind: Keycloak
+        name: "{{ item }}"
+        namespace: "{{ keycloak_operator_namespace }}"
+        wait: true
+        wait_timeout: 600
+        delete_options:
+          propagationPolicy: Foreground
+      loop:
+        - "{{ keycloak_operator_migration_instance_name }}"
+        - "{{ keycloak_operator_instance_name }}"
+
+    - name: Remove operator-managed Keycloak StatefulSets
+      when: _keycloak_database_migration_started | default(false)
+      kubernetes.core.k8s:
+        kubeconfig: "{{ keycloak_operator_kubeconfig }}"
+        state: absent
+        api_version: apps/v1
+        kind: StatefulSet
+        name: "{{ item }}"
+        namespace: "{{ keycloak_operator_namespace }}"
+        wait: true
+        wait_timeout: 600
+      loop:
+        - "{{ keycloak_operator_migration_instance_name }}"
+        - "{{ keycloak_operator_instance_name }}"
+
+    - name: Remove incomplete legacy Keycloak Helm release
+      when: _keycloak_database_migration_started | default(false)
+      kubernetes.core.helm:
+        kubeconfig: "{{ keycloak_helm_kubeconfig }}"
+        name: "{{ keycloak_helm_release_name }}"
+        release_namespace: "{{ keycloak_helm_release_namespace }}"
+        release_state: absent
+        wait: true
+        timeout: 10m
+
+    - name: Recreate legacy Keycloak Helm release
+      when: _keycloak_database_migration_started | default(false)
+      kubernetes.core.helm:
+        kubeconfig: "{{ keycloak_helm_kubeconfig }}"
+        name: "{{ keycloak_helm_release_name }}"
+        chart_ref: "{{ keycloak_helm_chart_ref }}"
+        release_namespace: "{{ keycloak_helm_release_namespace }}"
+        create_namespace: true
+        release_state: present
+        wait: true
+        timeout: 10m
+        values: >-
+          {{
+            _keycloak_helm_values |
+            combine(keycloak_helm_values, recursive=True) |
+            combine({'replicaCount': _keycloak_database_migration_original_replicas | int}, recursive=True)
+          }}
+
+    - name: Restore legacy Keycloak Ingress
+      when: _keycloak_database_migration_started | default(false)
+      ansible.builtin.include_role:
+        name: ingress
+      vars:
+        ingress_name: keycloak
+        ingress_namespace: "{{ keycloak_helm_release_namespace }}"
+        ingress_class_name: "{{ keycloak_ingress_class_name }}"
+        ingress_host: "{{ keycloak_host }}"
+        ingress_service_name: "{{ keycloak_helm_release_name }}"
+        ingress_service_port: 80
+        ingress_secret_name: "{{ keycloak_host_tls_secret_name }}"
+        ingress_annotations: "{{ _keycloak_ingress_annotations | combine(keycloak_ingress_annotations, recursive=True) }}"
+
+    - name: Reset Keycloak PostgreSQL database
+      when: _keycloak_database_migration_started | default(false)
+      kubernetes.core.k8s_exec:
+        kubeconfig: "{{ keycloak_operator_kubeconfig }}"
+        namespace: "{{ keycloak_operator_namespace }}"
+        pod: "{{ _keycloak_database_migration_cluster.resources[0].status.currentPrimary }}"
+        container: postgres
+        command: "dropdb --if-exists --force {{ keycloak_database_name }}"
+
+    - name: Recreate empty Keycloak PostgreSQL database
+      when: _keycloak_database_migration_started | default(false)
+      kubernetes.core.k8s_exec:
+        kubeconfig: "{{ keycloak_operator_kubeconfig }}"
+        namespace: "{{ keycloak_operator_namespace }}"
+        pod: "{{ _keycloak_database_migration_cluster.resources[0].status.currentPrimary }}"
+        container: postgres
+        command: "createdb --owner={{ keycloak_database_username }} {{ keycloak_database_name }}"
+      register: _keycloak_database_migration_recreate_database
+      failed_when:
+        - _keycloak_database_migration_recreate_database.rc != 0
+        - "'already exists' not in _keycloak_database_migration_recreate_database.stderr | default('')"
+
+    - name: Report Keycloak rollback
+      ansible.builtin.fail:
+        msg: >-
+          {{
+            'The operator-managed Keycloak cutover failed. The legacy Helm release and ingress were restored, and PostgreSQL was reset for a later retry.'
+            if _keycloak_database_migration_started | default(false)
+            else 'Keycloak migration preflight checks failed before the legacy deployment was changed.'
+          }}

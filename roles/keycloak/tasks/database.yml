@@ -1,0 +1,72 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Create Keycloak database credentials
+  run_once: true
+  no_log: true
+  kubernetes.core.k8s:
+    kubeconfig: "{{ keycloak_operator_kubeconfig }}"
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: keycloak-db-user
+        namespace: "{{ keycloak_operator_namespace }}"
+        labels:
+          cnpg.io/reload: "true"
+      type: kubernetes.io/basic-auth
+      data:
+        username: "{{ keycloak_database_username | b64encode }}"
+        password: "{{ keycloak_database_password | b64encode }}"
+
+- name: Create Keycloak PostgreSQL cluster
+  run_once: true
+  kubernetes.core.k8s:
+    kubeconfig: "{{ keycloak_operator_kubeconfig }}"
+    state: present
+    definition:
+      apiVersion: postgresql.cnpg.io/v1
+      kind: Cluster
+      metadata:
+        name: keycloak-db
+        namespace: "{{ keycloak_operator_namespace }}"
+      spec: "{{ _keycloak_cloudnative_pg_cluster_spec | combine(keycloak_cloudnative_pg_cluster_spec, recursive=True) }}"
+    wait_sleep: 1
+    wait_timeout: 900
+    wait: true
+    wait_condition:
+      type: Ready
+      status: "True"
+
+- name: Create Keycloak database
+  run_once: true
+  kubernetes.core.k8s:
+    kubeconfig: "{{ keycloak_operator_kubeconfig }}"
+    state: present
+    definition:
+      apiVersion: postgresql.cnpg.io/v1
+      kind: Database
+      metadata:
+        name: "{{ keycloak_database_name }}"
+        namespace: "{{ keycloak_operator_namespace }}"
+      spec:
+        name: "{{ keycloak_database_name }}"
+        owner: "{{ keycloak_database_username }}"
+        cluster:
+          name: keycloak-db
+
+- name: Wait for Keycloak database
+  run_once: true
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ keycloak_operator_kubeconfig }}"
+    api_version: postgresql.cnpg.io/v1
+    kind: Database
+    name: "{{ keycloak_database_name }}"
+    namespace: "{{ keycloak_operator_namespace }}"
+  register: _keycloak_database
+  retries: 900
+  delay: 1
+  until:
+    - _keycloak_database.resources | length == 1
+    - _keycloak_database.resources[0].status.applied | default(false)
