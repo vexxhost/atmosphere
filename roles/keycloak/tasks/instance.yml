@@ -42,9 +42,15 @@
   register: _keycloak_instance
   retries: 180
   delay: 5
-  until:
-    - _keycloak_instance.resources | length == 1
-    - _keycloak_instance.resources[0].status.conditions | selectattr('type', 'equalto', 'Ready') | map(attribute='status') | map('lower') | list == ['true']
+  until: >-
+    _keycloak_instance.resources | length == 1 and
+    (
+      _keycloak_instance.resources[0].get('status', {}).get('conditions', []) |
+      selectattr('type', 'equalto', 'Ready') |
+      map(attribute='status') |
+      map('lower') |
+      list
+    ) == ['true']
 
 - name: Create Keycloak Ingress
   when: _keycloak_instance_update_ingress | default(true)
