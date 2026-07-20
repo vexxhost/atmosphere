@@ -1369,26 +1369,79 @@ confirm the issue is both sustained and ongoing. At this burn rate, the entire
 ``NodeNetworkMulticast``
 ========================
 
-This alert fires when a node receives large volumes of multicast traffic, which
-can indicate an incorrectly configured network or a malicious actor.
+This P5 capacity-planning alert fires when an interface receives more than
+1,000 multicast or broadcast packets per second for 24 hours. The underlying
+``node_network_receive_multicast_total`` counter is driver-provided and can
+include layer-2 broadcast traffic such as ARP. The alert therefore does not, by
+itself, indicate a multicast application, a network attack, or user-visible
+impact.
 
-This can result in high CPU usage on the node and can cause the node to become
-unresponsive. It can also cause a high amount of software interrupts on the
-node.
+Common causes include expected multicast protocols, ARP or neighbour discovery
+on a shared provider network, broadcast unknown multicast (BUM) replication in
+an EVPN/VXLAN fabric, a layer-2 loop, or a misconfigured or malicious sender.
+Shared OpenStack provider networks can amplify normal gateway ARP requests to
+every compute host, so the same traffic can produce one alert per node without
+overloading any node.
 
-To find the root cause of this issue, use the following commands:
+This alert is informational and must not be escalated based on packet rate
+alone. Page-worthy impact is covered by the softnet backlog and drop alerts,
+network interface errors, and node CPU alerts. Investigate during business
+hours to establish a baseline and determine whether capacity work is needed.
 
-.. code-block:: console
+1. Identify the affected interface and confirm its packet and error counters:
 
-  iftop -ni $DEV -f 'multicast and not broadcast'
+   .. code-block:: console
 
-With this command, you can see which IP addresses send the multicast traffic.
-Once you have the IP address, use the following command to find the server
-behind it:
+     DEV=<interface-from-alert>
+     ip -s link show dev "$DEV"
+     ethtool -S "$DEV" | grep -Ei 'multicast|broadcast|drop|error|miss'
 
-.. code-block:: console
+2. Capture a bounded sample before deciding that the traffic is multicast.
+   Preserve Ethernet headers so that broadcast ARP can be distinguished from
+   IPv4 or IPv6 multicast:
 
-  openstack server list --all-projects --long -n --ip $IP
+   .. code-block:: console
+
+     timeout 30 tcpdump -nn -e -i "$DEV" 'ether multicast' -c 5000
+
+3. Check whether the node is experiencing packet-processing impact. A high
+   packet rate without increasing drops, ``time_squeeze``, or sustained CPU
+   pressure is a capacity signal rather than an incident:
+
+   .. code-block:: console
+
+     mpstat -P ALL 1 10
+     watch -n 1 cat /proc/net/softnet_stat
+     ip -s link show dev "$DEV"
+
+4. If the capture shows tenant traffic, map the source IP or MAC address to an
+   OpenStack port and server:
+
+   .. code-block:: console
+
+     openstack port list --all-projects --mac-address <source-mac>
+     openstack server list --all-projects --long --ip <source-ip>
+
+5. If the capture shows ARP or neighbour discovery from a gateway, inspect the
+   gateway neighbour table and the VXLAN flood list. Failed or incomplete
+   neighbours across unallocated addresses commonly indicate Internet scans
+   causing otherwise normal resolution attempts:
+
+   .. code-block:: console
+
+     ip neigh show dev <provider-bridge> nud failed
+     ip neigh show dev <provider-bridge> nud incomplete
+     bridge -d link show dev <vxlan-interface>
+     bridge fdb show dev <vxlan-interface>
+
+6. Compare the measured rate with node CPU, softnet, interface-drop, and VXLAN
+   counters. If there is no impact, record the source and baseline; do not
+   change neighbour retry settings or apply storm control solely to clear this
+   alert. If impact is present, stop a loop or malicious sender when identified,
+   or filter unwanted traffic at the ingress gateway after verifying that the
+   policy cannot block dynamically allocated OpenStack addresses. Longer-term
+   EVPN ARP/ND suppression or routed host prefixes require complete,
+   automatically maintained control-plane bindings.
 
 
 ``SmartctlDiskAttributeFailing``
