@@ -2,6 +2,37 @@
 # SPDX-License-Identifier: Apache-2.0
 
 tests:
+  # NodeNetworkMulticast - should NOT fire for sustained traffic below the
+  # capacity-planning threshold.
+  - interval: 1m
+    input_series:
+      - series: 'node_network_receive_multicast_total{device="bond0",instance="192.0.2.10:9100",job="node-exporter"}'
+        values: '0+30000x1500'
+    alert_rule_test:
+      - eval_time: 25h
+        alertname: NodeNetworkMulticast
+        exp_alerts: []
+
+  # NodeNetworkMulticast - should fire only after the high rate is sustained
+  # for the full 24-hour capacity-planning window.
+  - interval: 1m
+    input_series:
+      - series: 'node_network_receive_multicast_total{device="bond0",instance="192.0.2.10:9100",job="node-exporter"}'
+        values: '0+120000x1500'
+    alert_rule_test:
+      - eval_time: 25h
+        alertname: NodeNetworkMulticast
+        exp_alerts:
+          - exp_labels:
+              device: bond0
+              instance: 192.0.2.10:9100
+              job: node-exporter
+              severity: P5
+            exp_annotations:
+              summary: "Node network: sustained multicast or broadcast traffic is increasing packet-processing load"
+              description: "192.0.2.10:9100 interface bond0 has received 2000.00 multicast or broadcast packets per second over the last 5 minutes, above the 1,000 packets per second capacity-planning threshold for 24 hours. Normal behavior is below 1,000 packets per second or limited to short bursts."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#nodenetworkmulticast"
+
   - interval: 1m
     input_series:
       - series: 'openstack_neutron_network{id="4cf895c9-c3d1-489e-b02e-59b5c8976809",is_external="false",is_shared="false",name="public",provider_network_type="vlan",provider_physical_network="external",provider_segmentation_id="3",status="ACTIVE",subnets="54d6f61d-db07-451c-9ab3-b9609b6b6f0b",tags="tag1,tag2",tenant_id="4fd44f30292945e481c7b8a0c8908869"} 0'
