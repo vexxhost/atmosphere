@@ -19,6 +19,9 @@ _octavia_helm_values:
   endpoints: "{{ openstack_helm_endpoints }}"
   images:
     tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('octavia') }}"
+  network:
+    health_manager:
+      interface_mtu: "{{ octavia_health_manager_interface_mtu }}"
   pod:
     labels:
       include_app_kubernetes_io: false
