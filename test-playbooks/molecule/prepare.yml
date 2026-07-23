@@ -1,0 +1,18 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Prepare Molecule dependencies
+  hosts: all
+  become: true
+  tasks:
+    - name: Install jq for log collection
+      when: ansible_facts["os_family"] | lower == "debian"
+      ansible.builtin.apt:
+        name: jq
+        update_cache: true
+
+- name: Install Go for the Atmosphere deployment binary
+  hosts: all
+  roles:
+    - role: ensure-go
+      go_version: "1.24.4"

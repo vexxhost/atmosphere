@@ -4,3 +4,37 @@
     vars:
       atmosphere_ci_plan_shadow: true
       atmosphere_ci_plan_base: "origin/{{ zuul.branch }}"
+    check:
+      jobs:
+        - atmosphere-molecule-aio-openvswitch:
+            pre-run:
+              - test-playbooks/molecule/prepare.yml
+        - atmosphere-molecule-aio-ovn:
+            pre-run:
+              - test-playbooks/molecule/prepare.yml
+        - atmosphere-molecule-csi-local-path-provisioner:
+            pre-run:
+              - test-playbooks/molecule/prepare.yml
+        - atmosphere-molecule-csi-rbd:
+            pre-run:
+              - test-playbooks/molecule/prepare.yml
+        - atmosphere-molecule-keycloak:
+            pre-run:
+              - test-playbooks/molecule/prepare.yml
+    gate:
+      jobs:
+        - atmosphere-molecule-aio-openvswitch:
+            pre-run:
+              - test-playbooks/molecule/prepare.yml
+        - atmosphere-molecule-aio-ovn:
+            pre-run:
+              - test-playbooks/molecule/prepare.yml
+        - atmosphere-molecule-csi-local-path-provisioner:
+            pre-run:
+              - test-playbooks/molecule/prepare.yml
+        - atmosphere-molecule-csi-rbd:
+            pre-run:
+              - test-playbooks/molecule/prepare.yml
+        - atmosphere-molecule-keycloak:
+            pre-run:
+              - test-playbooks/molecule/prepare.yml
