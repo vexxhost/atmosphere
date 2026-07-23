@@ -1,0 +1,198 @@
+---
+version: 1
+
+# Ordinary service changes use the current Atmosphere default backend. Direct
+# networking changes can opt into both variants below.
+canonical_network_backend: openvswitch
+full_network_backends:
+  - openvswitch
+  - ovn
+
+# The AIO Molecule inventory uses local-path storage for Kubernetes workloads.
+# OpenStack services which require Ceph still pull it into their closure through
+# ceph-provisioners and their service dependencies.
+dependency_options:
+  csi_driver: local-path-provisioner
+
+full_verification_profiles:
+  - full
+
+rules:
+  - name: planner-policy
+    action: full
+    reason: CI selection policy changed and must validate its conservative fallback
+    paths:
+      - ci/molecule-plan.yaml
+      - cmd/atmosphere/ci.go
+      - cmd/atmosphere/deploy.go
+      - cmd/atmosphere/main.go
+      - internal/ciplan/**
+      - internal/deploy/component.go
+      - internal/deploy/orchestrator.go
+      - pkg/dag/**
+      - molecule/aio/**
+      - test-playbooks/molecule/**
+      - .zuul.yaml
+      - tox.ini
+
+  - name: shared-deployment-code
+    action: full
+    reason: shared deployment code can affect multiple unrelated components
+    paths:
+      - .charts.yml
+      - galaxy.yml
+      - go.mod
+      - go.sum
+      - pyproject.toml
+      - requirements.txt
+      - uv.lock
+      - playbooks/generate_workspace.yml
+      - playbooks/infrastructure.yml
+      - playbooks/monitoring.yml
+      - playbooks/openstack.yml
+      - playbooks/site.yml
+      - molecule/shared/**
+      - plugins/**
+      - roles/defaults/**
+      - roles/ingress/**
+      - roles/openstack_helm_endpoints/**
+      - roles/openstack_helm_ingress/**
+      - roles/openstacksdk/**
+      - roles/rabbitmq/**
+      - roles/tempest/**
+      - charts/tempest/**
+      - charts/patches/tempest/**
+
+  - name: openvswitch-runtime
+    action: targets
+    targets:
+      - openvswitch
+    verification_profiles:
+      - openvswitch
+    network_backends:
+      - openvswitch
+    paths:
+      - Cargo.lock
+      - Cargo.toml
+      - crates/ovsinit/**
+
+  - name: non-runtime
+    action: ignore
+    paths:
+      - .agents/**
+      - .github/**
+      - .gitignore
+      - .gitreview
+      - .pre-commit-config.yaml
+      - .vale.ini
+      - AGENTS.md
+      - CLAUDE.md
+      - CODEOWNERS
+      - LICENSE
+      - README.md
+      - doc/**
+      - releasenotes/**
+      - reno.yaml
+      - renovate.json
+
+components:
+  cert-manager:
+    paths:
+      - charts/cert-manager-webhook-infoblox-wapi/**
+      - charts/patches/cert-manager-webhook-infoblox-wapi/**
+      - charts/godaddy-webhook/**
+      - charts/patches/godaddy-webhook/**
+    verification_profiles:
+      - cert-manager
+
+  csi:
+    paths:
+      - roles/ceph_csi_rbd/**
+      - roles/local_path_provisioner/**
+      - roles/powerstore_csi/**
+      - roles/portworx/**
+      - roles/storpool_csi/**
+      - roles/ibm_block_csi_driver/**
+      - charts/ceph-csi-rbd/**
+      - charts/local-path-provisioner/**
+    verification_profiles:
+      - csi
+
+  percona-xtradb-cluster-operator:
+    paths:
+      - charts/pxc-operator/**
+      - charts/patches/pxc-operator/**
+    verification_profiles:
+      - percona-xtradb-cluster
+
+  keycloak:
+    test_requires:
+      - keystone
+    verification_profiles:
+      - keycloak-federation
+
+  keystone:
+    verification_profiles:
+      - identity
+
+  glance:
+    verification_profiles:
+      - image
+
+  cinder:
+    verification_profiles:
+      - volume
+
+  placement:
+    verification_profiles:
+      - placement
+
+  nova:
+    test_requires:
+      - glance-images
+      - neutron
+    verification_profiles:
+      - compute
+    network_backends:
+      - canonical
+
+  neutron:
+    verification_profiles:
+      - network
+    network_backends:
+      - openvswitch
+      - ovn
+
+  heat:
+    test_requires:
+      - glance-images
+      - neutron
+    verification_profiles:
+      - orchestration
+    network_backends:
+      - canonical
+
+  octavia:
+    verification_profiles:
+      - load-balancer
+    network_backends:
+      - canonical
+
+  manila:
+    verification_profiles:
+      - shared-file-system
+    network_backends:
+      - canonical
+
+  magnum:
+    test_requires:
+      - barbican
+      - cinder
+      - glance-images
+      - heat
+      - neutron
+      - octavia
+    verification_profiles:
+      - container-infrastructure
+    network_backends:
+      - canonical

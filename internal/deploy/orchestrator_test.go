@@ -175,17 +175,17 @@ Name:             "withpre",
 PreRoleName:      "withpre_pre",
 PreRoleDependsOn: []string{"x"},
 }
-if gate := buildPreGate(withPre, tracker); gate == nil {
+if gate := buildPreGate(withPre, tracker, nil); gate == nil {
 t.Fatal("expected non-nil gate for component with PreRoleDependsOn")
 }
 
 noPreDeps := Component{Name: "n1", PreRoleName: "n1_pre"}
-if gate := buildPreGate(noPreDeps, tracker); gate != nil {
+if gate := buildPreGate(noPreDeps, tracker, nil); gate != nil {
 t.Errorf("expected nil gate when PreRoleDependsOn is empty")
 }
 
 noPreRole := Component{Name: "n2", PreRoleDependsOn: []string{"x"}}
-if gate := buildPreGate(noPreRole, tracker); gate != nil {
+if gate := buildPreGate(noPreRole, tracker, nil); gate != nil {
 t.Errorf("expected nil gate when PreRoleName is empty")
 }
 }

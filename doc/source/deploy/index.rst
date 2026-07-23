@@ -20,3 +20,4 @@ post-deployment verification, ensuring a successful installation and setup.
    neutron
    deployment
    parallel
+   selective-ci

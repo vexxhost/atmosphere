@@ -13,6 +13,64 @@
         CGO_ENABLED: "0"
         PATH: "/usr/local/go/bin:{{ ansible_env.PATH | default(lookup('env', 'PATH')) }}"
 
+    - name: Generate selective CI plan artifact
+      when: atmosphere_ci_plan_shadow | default(false) | bool
+      ansible.builtin.command:
+        argv:
+          - ./bin/atmosphere
+          - ci
+          - plan
+          - --base
+          - "{{ atmosphere_ci_plan_base }}"
+          - --head
+          - "{{ atmosphere_ci_plan_head | default('HEAD') }}"
+          - --format
+          - json
+          - --output
+          - ./ci-plan.json
+      args:
+        chdir: "{{ zuul.project.src_dir | default(playbook_dir + '/../..') }}"
+      run_once: true
+      changed_when: false
+      failed_when: false
+      register: _atmosphere_ci_plan_artifact
+
+    - name: Explain selective CI plan
+      when:
+        - atmosphere_ci_plan_shadow | default(false) | bool
+        - _atmosphere_ci_plan_artifact.rc == 0
+      ansible.builtin.command:
+        argv:
+          - ./bin/atmosphere
+          - ci
+          - plan
+          - --base
+          - "{{ atmosphere_ci_plan_base }}"
+          - --head
+          - "{{ atmosphere_ci_plan_head | default('HEAD') }}"
+      args:
+        chdir: "{{ zuul.project.src_dir | default(playbook_dir + '/../..') }}"
+      run_once: true
+      changed_when: false
+      failed_when: false
+      register: _atmosphere_ci_plan_explanation
+
+    - name: Print selective CI plan
+      when:
+        - atmosphere_ci_plan_shadow | default(false) | bool
+        - _atmosphere_ci_plan_artifact.rc == 0
+      ansible.builtin.debug:
+        var: _atmosphere_ci_plan_explanation.stdout_lines
+
+    - name: Report selective CI shadow planning failure
+      when:
+        - atmosphere_ci_plan_shadow | default(false) | bool
+        - _atmosphere_ci_plan_artifact.rc != 0
+      ansible.builtin.debug:
+        msg: >-
+          Selective CI shadow planning failed and the complete deployment will
+          continue: {{ _atmosphere_ci_plan_artifact.stderr }}
+
     - name: Deploy with parallel orchestrator
       ansible.builtin.shell:
         cmd: >
@@ -20,6 +78,8 @@
           ./bin/atmosphere deploy
           --inventory ./inventory.yaml
           {{ '--tags ' + atmosphere_deploy_tags if atmosphere_deploy_tags is defined else '' }}
+          --dependency-option csi_driver={{ csi_driver | default('rbd') | quote }}
+          --dependency-option network_backend={{ atmosphere_network_backend | default('openvswitch') | quote }}
         executable: /bin/bash
       args:
         chdir: "{{ zuul.project.src_dir | default(playbook_dir + '/../..') }}"

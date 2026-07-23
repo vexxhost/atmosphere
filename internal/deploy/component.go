@@ -5,6 +5,9 @@ package deploy
 
 import (
 	"fmt"
+	"slices"
+	"sort"
+	"strings"
 
 	"github.com/vexxhost/atmosphere/pkg/dag"
 )
@@ -18,6 +21,55 @@ const (
 	// PlaybookType: full multi-play playbook → runs the file directly
 	PlaybookType
 )
+
+// DependencyOptions contains runtime values which affect the component graph.
+// Defaults preserve the behavior of a normal production deployment.
+type DependencyOptions map[string]string
+
+const (
+	DependencyOptionCSIDriver      = "csi_driver"
+	DependencyOptionNetworkBackend = "network_backend"
+)
+
+// DefaultDependencyOptions returns dependency option defaults matching the
+// defaults used by the Ansible roles.
+func DefaultDependencyOptions() DependencyOptions {
+	return DependencyOptions{
+		DependencyOptionCSIDriver:      "rbd",
+		DependencyOptionNetworkBackend: "openvswitch",
+	}
+}
+
+// ValidateDependencyOptions rejects misspelled or unsupported graph options.
+func ValidateDependencyOptions(options DependencyOptions) error {
+	for key, value := range options {
+		if value == "" {
+			return fmt.Errorf("dependency option %q must not be empty", key)
+		}
+		switch key {
+		case DependencyOptionCSIDriver:
+		case DependencyOptionNetworkBackend:
+			if value != "openvswitch" && value != "ovn" {
+				return fmt.Errorf("unsupported network backend %q", value)
+			}
+		default:
+			return fmt.Errorf("unknown dependency option %q", key)
+		}
+	}
+	return nil
+}
+
+// ConditionalDependency is enabled only when a dependency option has one of
+// the configured values.
+type ConditionalDependency struct {
+	Name   string
+	Option string
+	Values []string
+}
+
+func (d ConditionalDependency) enabled(options DependencyOptions) bool {
+	return slices.Contains(d.Values, options[d.Option])
+}
 
 // Component represents a deployable unit in the Atmosphere platform.
 type Component struct {
@@ -35,6 +87,9 @@ type Component struct {
 	Hosts string
 	// DependsOn lists component Names that must complete before this one
 	DependsOn []string
+	// ConditionalDependsOn lists main-role dependencies which vary with
+	// deployment configuration, such as the selected CSI driver.
+	ConditionalDependsOn []ConditionalDependency
 	// When is an optional Ansible conditional expression
 	When string
 	// Environment contains optional play-level environment variables
@@ -58,6 +113,9 @@ type Component struct {
 	// creation (pre-role) waits for keycloak while the keystone Helm install
 	// (main role) runs in parallel with keycloak startup.
 	PreRoleDependsOn []string
+	// ConditionalPreRoleDependsOn lists configuration-dependent dependencies
+	// which must complete before the pre-role starts.
+	ConditionalPreRoleDependsOn []ConditionalDependency
 }
 
 // EffectiveTag returns the Ansible tag for this component.
@@ -111,7 +169,14 @@ var Components = []Component{
 		Name:      "csi",
 		Type:      PlaybookType,
 		Playbook:  "csi",
-		DependsOn: []string{"ceph", "kubernetes"},
+		DependsOn: []string{"kubernetes"},
+		ConditionalDependsOn: []ConditionalDependency{
+			{
+				Name:   "ceph",
+				Option: DependencyOptionCSIDriver,
+				Values: []string{"rbd"},
+			},
+		},
 	},
 
 	// Infrastructure (RoleType, Hosts: "controllers")
@@ -176,7 +241,7 @@ var Components = []Component{
 		Type:      RoleType,
 		RoleName:  "keycloak",
 		Hosts:     "controllers",
-		DependsOn: []string{"percona-xtradb-cluster", "ingress-nginx"},
+		DependsOn: []string{"percona-xtradb-cluster", "ingress-nginx", "cluster-issuer"},
 		Resources: []string{"k8s-api"},
 	},
 	{
@@ -345,7 +410,7 @@ var Components = []Component{
 		Type:      RoleType,
 		RoleName:  "glance",
 		Hosts:     "controllers[0]",
-		DependsOn: []string{"keystone"},
+		DependsOn: []string{"keystone", "ceph-provisioners"},
 		Resources: []string{"k8s-api"},
 	},
 	{
@@ -436,7 +501,8 @@ var Components = []Component{
 	},
 	{
 		// The pre-role does the Helm install (heavy, ~5 min) and only
-		// requires keystone/OVN/coredns. The main role's only remaining
+		// requires Keystone and the configured network backend. The main
+		// role's only remaining
 		// work is the post-install "Create networks" task, which hits
 		// neutron-server's AZ check that needs Nova compute to have
 		// registered the default availability zone "nova". Splitting
@@ -448,8 +514,20 @@ var Components = []Component{
 		PreRoleName:      "neutron_pre",
 		Hosts:            "controllers[0]",
 		DependsOn:        []string{"nova"},
-		PreRoleDependsOn: []string{"keystone", "ovn", "coredns"},
-		Resources:        []string{"k8s-api"},
+		PreRoleDependsOn: []string{"keystone", "openvswitch"},
+		ConditionalPreRoleDependsOn: []ConditionalDependency{
+			{
+				Name:   "coredns",
+				Option: DependencyOptionNetworkBackend,
+				Values: []string{"openvswitch"},
+			},
+			{
+				Name:   "ovn",
+				Option: DependencyOptionNetworkBackend,
+				Values: []string{"ovn"},
+			},
+		},
+		Resources: []string{"k8s-api"},
 	},
 	{
 		Name:      "heat",
@@ -511,6 +589,17 @@ var Components = []Component{
 
 // BuildGraph constructs a DAG from the component registry.
 func BuildGraph() (*dag.Graph[Component], error) {
+	return BuildGraphWithOptions(nil)
+}
+
+// BuildGraphWithOptions constructs a DAG using configuration-dependent
+// component relationships.
+func BuildGraphWithOptions(options DependencyOptions) (*dag.Graph[Component], error) {
+	if err := ValidateDependencyOptions(options); err != nil {
+		return nil, err
+	}
+	options = dependencyOptionsWithDefaults(options)
+
 	g := dag.NewGraph[Component]()
 	for _, c := range Components {
 		if err := g.AddNode(c.Name, c); err != nil {
@@ -518,13 +607,115 @@ func BuildGraph() (*dag.Graph[Component], error) {
 		}
 	}
 	for _, c := range Components {
-		for _, dep := range c.DependsOn {
+		for _, dep := range mainDependencies(c, options) {
 			if err := g.AddEdge(c.Name, dep); err != nil {
 				return nil, fmt.Errorf("adding edge %s -> %s: %w", c.Name, dep, err)
 			}
 		}
 	}
 	return g, nil
+}
+
+// BootstrapComponentNames returns the requested components and every
+// transitive dependency required to deploy them in a fresh environment.
+// Pre-role dependencies are included because, unlike normal --tags behavior,
+// a fresh environment cannot assume that they are already available.
+func BootstrapComponentNames(targets []string, options DependencyOptions) ([]string, error) {
+	if err := ValidateDependencyOptions(options); err != nil {
+		return nil, err
+	}
+	options = dependencyOptionsWithDefaults(options)
+
+	registry := make(map[string]Component, len(Components))
+	for _, component := range Components {
+		registry[component.Name] = component
+	}
+
+	const (
+		unvisited = iota
+		visiting
+		visited
+	)
+	state := make(map[string]int, len(Components))
+	selected := make(map[string]bool, len(Components))
+	var stack []string
+
+	var visit func(string) error
+	visit = func(name string) error {
+		component, ok := registry[name]
+		if !ok {
+			return fmt.Errorf("component %q not found", name)
+		}
+
+		switch state[name] {
+		case visiting:
+			cycleStart := slices.Index(stack, name)
+			cycle := append(slices.Clone(stack[cycleStart:]), name)
+			return fmt.Errorf("dependency cycle detected: %s", strings.Join(cycle, " -> "))
+		case visited:
+			return nil
+		}
+
+		state[name] = visiting
+		stack = append(stack, name)
+		for _, dependency := range bootstrapDependencies(component, options) {
+			if err := visit(dependency); err != nil {
+				return err
+			}
+		}
+		stack = stack[:len(stack)-1]
+		state[name] = visited
+		selected[name] = true
+		return nil
+	}
+
+	for _, target := range targets {
+		if err := visit(target); err != nil {
+			return nil, err
+		}
+	}
+
+	names := make([]string, 0, len(selected))
+	for name := range selected {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names, nil
+}
+
+func dependencyOptionsWithDefaults(options DependencyOptions) DependencyOptions {
+	resolved := DefaultDependencyOptions()
+	for key, value := range options {
+		resolved[key] = value
+	}
+	return resolved
+}
+
+func mainDependencies(component Component, options DependencyOptions) []string {
+	dependencies := slices.Clone(component.DependsOn)
+	for _, dependency := range component.ConditionalDependsOn {
+		if dependency.enabled(options) {
+			dependencies = append(dependencies, dependency.Name)
+		}
+	}
+	return dependencies
+}
+
+func preRoleDependencies(component Component, options DependencyOptions) []string {
+	dependencies := slices.Clone(component.PreRoleDependsOn)
+	for _, dependency := range component.ConditionalPreRoleDependsOn {
+		if dependency.enabled(options) {
+			dependencies = append(dependencies, dependency.Name)
+		}
+	}
+	return dependencies
+}
+
+func bootstrapDependencies(component Component, options DependencyOptions) []string {
+	return append(
+		mainDependencies(component, options),
+		preRoleDependencies(component, options)...,
+	)
 }
 
 // FindComponent looks up a component by name or tag.

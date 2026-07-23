@@ -56,11 +56,30 @@ Single tag
   delegates to ``ansible-playbook site.yml --tags keystone``. The
   behavior matches the existing tag-based flow.
 
-Multiple tags
+Multiple tags in an existing environment
   With several comma-separated tags, for example
   ``--tags nova,keystone``, the orchestrator builds a subgraph that
-  contains the requested components plus their transitive
-  dependencies, then runs them in parallel waves.
+  contains only the requested components, then runs them in parallel
+  waves. This mode assumes that dependencies outside the selected
+  subgraph are already deployed.
+
+Fresh environment
+  Add ``--with-dependencies`` when selected components must be
+  bootstrapped in a fresh environment:
+
+  .. code-block:: console
+
+    $ atmosphere deploy --inventory ./inventory.yaml \
+        --tags manila \
+        --with-dependencies \
+        --dependency-option csi_driver=local-path-provisioner \
+        --dependency-option network_backend=openvswitch
+
+  This mode includes all transitive main-role and pre-role dependencies.
+  Dependency options select conditional relationships. For example, the
+  ``rbd`` CSI driver requires Ceph, while ``local-path-provisioner`` does
+  not. Neutron selects CoreDNS for Open vSwitch and OVN for the OVN
+  backend.
 
 Concurrency control
 ===================

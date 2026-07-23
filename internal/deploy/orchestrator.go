@@ -44,6 +44,11 @@ type Orchestrator struct {
 	Output io.Writer
 	// Concurrency limits parallel deployments per wave (0 = unlimited).
 	Concurrency int
+	// WithDependencies expands selected tags to the transitive dependency
+	// closure required for bootstrapping a fresh environment.
+	WithDependencies bool
+	// DependencyOptions controls configuration-dependent graph edges.
+	DependencyOptions DependencyOptions
 	// Preflight is invoked before any component deployment and is expected
 	// to return an error if the environment is misconfigured. When nil, the
 	// default implementation shells out to ansible-playbook with the
@@ -69,6 +74,10 @@ func (o *Orchestrator) Deploy(ctx context.Context, tags []string) error {
 	output := o.Output
 	if output == nil {
 		output = os.Stdout
+	}
+
+	if len(tags) > 0 && o.WithDependencies {
+		return o.deployTagsWithDependencies(ctx, tags, output)
 	}
 
 	switch len(tags) {
@@ -131,7 +140,7 @@ func (o *Orchestrator) deployFullDAG(ctx context.Context, output io.Writer) erro
 		return err
 	}
 
-	g, err := BuildGraph()
+	g, err := BuildGraphWithOptions(o.DependencyOptions)
 	if err != nil {
 		return fmt.Errorf("building dependency graph: %w", err)
 	}
@@ -149,7 +158,7 @@ func (o *Orchestrator) deployFullDAG(ctx context.Context, output io.Writer) erro
 		}
 		defer release()
 
-		preGate := buildPreGate(comp, tracker)
+		preGate := buildPreGate(comp, tracker, o.DependencyOptions)
 		if err := o.Deployer.Deploy(ctx, comp, preGate); err != nil {
 			return fmt.Errorf("component %s failed: %w", id, err)
 		}
@@ -224,7 +233,7 @@ func (o *Orchestrator) deployMultipleTags(ctx context.Context, tags []string, ou
 	}
 
 	// Build full graph, then extract subgraph
-	fullGraph, err := BuildGraph()
+	fullGraph, err := BuildGraphWithOptions(o.DependencyOptions)
 	if err != nil {
 		return fmt.Errorf("building dependency graph: %w", err)
 	}
@@ -253,11 +262,66 @@ func (o *Orchestrator) deployMultipleTags(ctx context.Context, tags []string, ou
 		}
 		defer release()
 
-		preGate := buildPreGate(comp, tracker)
+		preGate := buildPreGate(comp, tracker, o.DependencyOptions)
 		if err := o.Deployer.Deploy(ctx, comp, preGate); err != nil {
 			return fmt.Errorf("component %s failed: %w", id, err)
 		}
 		// Only mark done on success; see comment in deployFullGraph.
+		tracker.MarkDone(id)
+		fmt.Fprintf(output, "==> [%s] Deployment complete\n", id)
+		return nil
+	})
+}
+
+// deployTagsWithDependencies expands selected components to everything needed
+// to bootstrap them in a fresh environment, then deploys that subgraph.
+func (o *Orchestrator) deployTagsWithDependencies(ctx context.Context, tags []string, output io.Writer) error {
+	fmt.Fprintf(output, "==> Fresh-environment mode: %s\n", strings.Join(tags, ", "))
+
+	if err := o.preflight(ctx, output); err != nil {
+		return err
+	}
+
+	targets := make([]string, 0, len(tags))
+	for _, tag := range tags {
+		component, ok := FindComponent(tag)
+		if !ok {
+			return fmt.Errorf("unknown component or tag: %q", tag)
+		}
+		targets = append(targets, component.Name)
+	}
+
+	componentNames, err := BootstrapComponentNames(targets, o.DependencyOptions)
+	if err != nil {
+		return fmt.Errorf("resolving bootstrap dependencies: %w", err)
+	}
+
+	fullGraph, err := BuildGraphWithOptions(o.DependencyOptions)
+	if err != nil {
+		return fmt.Errorf("building dependency graph: %w", err)
+	}
+	subGraph, err := fullGraph.Subgraph(componentNames)
+	if err != nil {
+		return fmt.Errorf("extracting bootstrap subgraph: %w", err)
+	}
+
+	rc := NewResourceCoordinator(Components, nil)
+	tracker := newCompletionTracker(componentNames)
+
+	fmt.Fprintln(output, "==> Starting parallel deployment (fresh dependency closure)")
+	return subGraph.Run(ctx, o.Concurrency, func(ctx context.Context, id string, comp Component) error {
+		fmt.Fprintf(output, "==> [%s] Starting deployment\n", id)
+
+		release, err := rc.Acquire(ctx, comp)
+		if err != nil {
+			return fmt.Errorf("component %s: %w", id, err)
+		}
+		defer release()
+
+		preGate := buildPreGate(comp, tracker, o.DependencyOptions)
+		if err := o.Deployer.Deploy(ctx, comp, preGate); err != nil {
+			return fmt.Errorf("component %s failed: %w", id, err)
+		}
 		tracker.MarkDone(id)
 		fmt.Fprintf(output, "==> [%s] Deployment complete\n", id)
 		return nil
@@ -276,12 +340,12 @@ func allComponentNames(comps []Component) []string {
 
 // buildPreGate returns a preGate closure for the deployer, or nil when the
 // component has no asymmetric pre-role dependency.
-func buildPreGate(comp Component, tracker *completionTracker) func(context.Context) error {
-	if comp.PreRoleName == "" || len(comp.PreRoleDependsOn) == 0 {
+func buildPreGate(comp Component, tracker *completionTracker, options DependencyOptions) func(context.Context) error {
+	dependencies := preRoleDependencies(comp, dependencyOptionsWithDefaults(options))
+	if comp.PreRoleName == "" || len(dependencies) == 0 {
 		return nil
 	}
-	deps := comp.PreRoleDependsOn
 	return func(ctx context.Context) error {
-		return tracker.Wait(ctx, deps)
+		return tracker.Wait(ctx, dependencies)
 	}
 }

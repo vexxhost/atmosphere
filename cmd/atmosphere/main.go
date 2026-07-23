@@ -18,6 +18,7 @@ func main() {
 	}
 
 	rootCmd.AddCommand(newDeployCmd())
+	rootCmd.AddCommand(newCICmd())
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
