@@ -15,12 +15,18 @@
         - atmosphere-molecule-csi-local-path-provisioner:
             pre-run:
               - test-playbooks/molecule/prepare.yml
+            vars:
+              atmosphere_deploy_tags: kubernetes,csi
         - atmosphere-molecule-csi-rbd:
             pre-run:
               - test-playbooks/molecule/prepare.yml
+            vars:
+              atmosphere_deploy_tags: ceph,kubernetes,csi
         - atmosphere-molecule-keycloak:
             pre-run:
               - test-playbooks/molecule/prepare.yml
+            vars:
+              atmosphere_deploy_tags: "kubernetes,csi,cert-manager,cluster-issuer,ingress-nginx,rabbitmq-cluster-operator,percona-xtradb-cluster-operator,percona-xtradb-cluster,valkey,memcached,keycloak,kube-prometheus-stack,keystone,horizon"
     gate:
       jobs:
         - atmosphere-molecule-aio-openvswitch:
@@ -32,9 +38,15 @@
         - atmosphere-molecule-csi-local-path-provisioner:
             pre-run:
               - test-playbooks/molecule/prepare.yml
+            vars:
+              atmosphere_deploy_tags: kubernetes,csi
         - atmosphere-molecule-csi-rbd:
             pre-run:
               - test-playbooks/molecule/prepare.yml
+            vars:
+              atmosphere_deploy_tags: ceph,kubernetes,csi
         - atmosphere-molecule-keycloak:
             pre-run:
               - test-playbooks/molecule/prepare.yml
+            vars:
+              atmosphere_deploy_tags: "kubernetes,csi,cert-manager,cluster-issuer,ingress-nginx,rabbitmq-cluster-operator,percona-xtradb-cluster-operator,percona-xtradb-cluster,valkey,memcached,keycloak,kube-prometheus-stack,keystone,horizon"
