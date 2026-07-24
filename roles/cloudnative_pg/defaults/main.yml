@@ -1,0 +1,30 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+cloudnative_pg_helm_release_name: cloudnative-pg
+cloudnative_pg_helm_chart_path: "../../charts/cloudnative-pg/"
+cloudnative_pg_helm_chart_ref: /usr/local/src/cloudnative-pg
+
+cloudnative_pg_helm_release_namespace: cnpg-system
+cloudnative_pg_helm_kubeconfig: "{{ kubeconfig_path | default('/etc/kubernetes/admin.conf') }}"
+cloudnative_pg_helm_values: {}
+
+cloudnative_pg_barman_cloud_helm_release_name: cloudnative-pg-barman-cloud
+cloudnative_pg_barman_cloud_helm_chart_path: "../../charts/plugin-barman-cloud/"
+cloudnative_pg_barman_cloud_helm_chart_ref: /usr/local/src/plugin-barman-cloud
+
+cloudnative_pg_barman_cloud_helm_release_namespace: cnpg-system
+cloudnative_pg_barman_cloud_helm_kubeconfig: "{{ kubeconfig_path | default('/etc/kubernetes/admin.conf') }}"
+cloudnative_pg_barman_cloud_helm_values: {}
+
+cloudnative_pg_kubectl_plugin_version: "{{ atmosphere_images['cloudnative_pg'] | vexxhost.kubernetes.docker_image('tag') }}"
+
+cloudnative_pg_kubectl_plugin_checksums:
+  x86_64:
+    1.28.4: 9c7d206ee5872c411f693f2c6ff4402a22acaf415aae60c98fb2e2de034a532f
+  arm64:
+    1.28.4: 71a1b4243bf6e7f6ae425c5e6e74cd7dbd67123d65fdb2e7dbe1c9975beb4bbd
+
+cloudnative_pg_kubectl_plugin_download_url: "https://github.com/cloudnative-pg/cloudnative-pg/releases/download/v{{ cloudnative_pg_kubectl_plugin_version }}/kubectl-cnpg_{{ cloudnative_pg_kubectl_plugin_version }}_{{ ansible_facts['system'] | lower }}_{{ cloudnative_pg_kubectl_plugin_artifact_goarch }}.tar.gz" # noqa: yaml[line-length]
+cloudnative_pg_kubectl_plugin_download_dest: "{{ download_artifact_work_directory }}/cloudnative_pg_kubectl_plugin-{{ cloudnative_pg_kubectl_plugin_version }}-{{ ansible_facts['system'] | lower }}-{{ cloudnative_pg_kubectl_plugin_artifact_goarch }}.tar.gz" # noqa: yaml[line-length]
+cloudnative_pg_kubectl_plugin_archive_checksum: "{{ cloudnative_pg_kubectl_plugin_checksums[cloudnative_pg_kubectl_plugin_artifact_goarch][cloudnative_pg_kubectl_plugin_version] }}"
