@@ -1,3 +1,5 @@
+#!/bin/bash
+
 {{/*
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,12 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */}}
 
-{{- if and .Values.manifests.ingress_api .Values.network.api.ingress.public }}
-{{- $envAll := . -}}
-{{- $ingressOpts := dict "envAll" $envAll "backendServiceType" "volumev3" "backendPort" "c-api" -}}
-{{- $secretName := $envAll.Values.secrets.tls.volumev3.api.internal -}}
-{{- if and .Values.manifests.certificates $secretName -}}
-{{- $_ := set $ingressOpts "certIssuer" .Values.endpoints.volume.host_fqdn_override.default.tls.issuerRef.name -}}
-{{- end -}}
-{{ $ingressOpts | include "helm-toolkit.manifests.ingress" }}
-{{- end }}
+set -ex
+
+exec cinder-manage db purge {{ .Values.conf.db_purge.before }}
