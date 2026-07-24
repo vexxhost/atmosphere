@@ -60,7 +60,7 @@
         - atmosphere_ci_plan_shadow | default(false) | bool
         - _atmosphere_ci_plan_artifact.rc == 0
       ansible.builtin.file:
-        path: /tmp/logs
+        path: /tmp/logs/system
         state: directory
         mode: "0755"
 
@@ -70,7 +70,7 @@
         - _atmosphere_ci_plan_artifact.rc == 0
       ansible.builtin.copy:
         src: "{{ zuul.project.src_dir | default(playbook_dir + '/../..') }}/ci-plan.json"
-        dest: /tmp/logs/ci-plan.json
+        dest: /tmp/logs/system/ci-plan.json
         remote_src: true
         mode: "0644"
 
