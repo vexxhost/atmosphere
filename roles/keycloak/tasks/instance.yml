@@ -1,0 +1,67 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Create Keycloak bootstrap administrator secret
+  run_once: true
+  no_log: true
+  kubernetes.core.k8s:
+    kubeconfig: "{{ keycloak_operator_kubeconfig }}"
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: keycloak-admin
+        namespace: "{{ keycloak_operator_namespace }}"
+      data:
+        username: "{{ keycloak_admin_username | b64encode }}"
+        password: "{{ keycloak_admin_password | b64encode }}"
+      type: Opaque
+
+- name: Deploy operator-managed Keycloak instance
+  run_once: true
+  kubernetes.core.k8s:
+    kubeconfig: "{{ keycloak_operator_kubeconfig }}"
+    state: present
+    definition:
+      apiVersion: k8s.keycloak.org/v2beta1
+      kind: Keycloak
+      metadata:
+        name: "{{ _keycloak_instance_name | default(keycloak_operator_instance_name) }}"
+        namespace: "{{ keycloak_operator_namespace }}"
+      spec: "{{ _keycloak_spec | combine(keycloak_spec, recursive=True) }}"
+
+- name: Wait for operator-managed Keycloak instance
+  run_once: true
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ keycloak_operator_kubeconfig }}"
+    api_version: k8s.keycloak.org/v2beta1
+    kind: Keycloak
+    name: "{{ _keycloak_instance_name | default(keycloak_operator_instance_name) }}"
+    namespace: "{{ keycloak_operator_namespace }}"
+  register: _keycloak_instance
+  retries: 180
+  delay: 5
+  until: >-
+    _keycloak_instance.resources | length == 1 and
+    (
+      _keycloak_instance.resources[0].get('status', {}).get('conditions', []) |
+      selectattr('type', 'equalto', 'Ready') |
+      map(attribute='status') |
+      map('lower') |
+      list
+    ) == ['true']
+
+- name: Create Keycloak Ingress
+  when: _keycloak_instance_update_ingress | default(true)
+  ansible.builtin.include_role:
+    name: ingress
+  vars:
+    ingress_name: keycloak
+    ingress_namespace: "{{ keycloak_operator_namespace }}"
+    ingress_class_name: "{{ keycloak_ingress_class_name }}"
+    ingress_host: "{{ keycloak_host }}"
+    ingress_service_name: "{{ _keycloak_instance_name | default(keycloak_operator_instance_name) }}-service"
+    ingress_service_port: 8080
+    ingress_secret_name: "{{ keycloak_host_tls_secret_name }}"
+    ingress_annotations: "{{ _keycloak_ingress_annotations | combine(keycloak_ingress_annotations, recursive=True) }}"

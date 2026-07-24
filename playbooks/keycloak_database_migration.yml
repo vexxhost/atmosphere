@@ -1,0 +1,13 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Test Keycloak database migration
+  hosts: controllers[0]
+  become: true
+  tasks:
+    - name: Export, import and verify the Keycloak database
+      ansible.builtin.import_role:
+        name: keycloak
+        tasks_from: database_migration
+      tags:
+        - keycloak
