@@ -5,6 +5,7 @@ package deploy
 
 import (
 	"reflect"
+	"slices"
 	"testing"
 )
 
@@ -33,5 +34,19 @@ func TestNeutronInstallDoesNotDependOnNova(t *testing.T) {
 		if dep == "nova" {
 			t.Fatal("neutron must not depend on nova")
 		}
+	}
+}
+
+func TestMagnumImageUploadWaitsForGlanceImages(t *testing.T) {
+	magnum, ok := FindComponent("magnum")
+	if !ok {
+		t.Fatal("magnum component not found")
+	}
+
+	if !slices.Contains(magnum.PreRoleDependsOn, "glance-images") {
+		t.Fatal("magnum pre-role must wait for glance-images to avoid concurrent image preparation")
+	}
+	if slices.Contains(magnum.DependsOn, "glance-images") {
+		t.Fatal("magnum main role must remain independent from glance-images")
 	}
 }
