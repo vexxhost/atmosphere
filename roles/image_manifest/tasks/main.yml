@@ -11,8 +11,27 @@
         msg: "File {{ image_manifest_path }} already exists, use -e image_manifest_force=true to overwrite"
       when: _stat.stat.exists
 
+- name: Get image digest
+  ansible.builtin.command: |
+    crane digest {{ atmosphere_images[item] }}
+  register: digests
+  when: atmosphere_images[item].find('@sha256') == -1 and ( image_manifest_digest | bool )
+  changed_when: false
+  loop: |
+    {%- if image_manifest_images is string -%}
+    {{ image_manifest_images | split(',') }}
+    {%- else -%}
+    {{ image_manifest_images }}
+    {%- endif -%}
+
+- name: Add digest to atmophere_images
+  ansible.builtin.set_fact:
+    atmosphere_images: "{{ atmosphere_images | combine( { item.item: atmosphere_images[item.item]+'@'+item['stdout'] } ) }}"
+  loop: "{{ digests.results }}"
+  when: atmosphere_images[item.item].find('@sha256') == -1 and ( image_manifest_digest | bool )
+
 - name: Mirror images
-  when: image_manifest_mirror
+  when: image_manifest_mirror | bool
   changed_when: false
   ansible.builtin.command:
     crane copy {{ atmosphere_images[item] }} {{ image_manifest_data['atmosphere_images'][item] | regex_replace('@sha256:[a-z0-9]+', '') }}
