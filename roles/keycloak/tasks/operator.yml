@@ -1,0 +1,58 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Create Keycloak Operator namespace
+  run_once: true
+  kubernetes.core.k8s:
+    kubeconfig: "{{ keycloak_operator_kubeconfig }}"
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ keycloak_operator_namespace }}"
+
+- name: Install Keycloak Operator CRDs
+  run_once: true
+  kubernetes.core.k8s:
+    kubeconfig: "{{ keycloak_operator_kubeconfig }}"
+    state: present
+    definition: "{{ lookup('file', role_path + '/files/crds/' + item) | from_yaml }}"
+    apply: true
+    server_side_apply:
+      field_manager: atmosphere
+      force_conflicts: true
+    wait: true
+    wait_condition:
+      type: Established
+      status: "True"
+    wait_timeout: 300
+  loop:
+    - keycloaks.k8s.keycloak.org-v1.yml
+    - keycloakrealmimports.k8s.keycloak.org-v1.yml
+
+- name: Deploy Keycloak Operator
+  run_once: true
+  kubernetes.core.k8s:
+    kubeconfig: "{{ keycloak_operator_kubeconfig }}"
+    state: present
+    definition: "{{ lookup('template', 'kubernetes.yml.j2') | from_yaml_all | list }}"
+    apply: true
+    server_side_apply:
+      field_manager: atmosphere
+      force_conflicts: true
+
+- name: Wait for Keycloak Operator deployment
+  run_once: true
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ keycloak_operator_kubeconfig }}"
+    api_version: apps/v1
+    kind: Deployment
+    name: keycloak-operator
+    namespace: "{{ keycloak_operator_namespace }}"
+    wait: true
+    wait_condition:
+      type: Available
+      status: "True"
+    wait_sleep: 5
+    wait_timeout: 300

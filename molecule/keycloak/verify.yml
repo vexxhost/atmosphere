@@ -15,6 +15,43 @@
 - name: Create user and assert it exists inside Keystone
   hosts: all
   tasks:
+    - name: Get Keycloak Operator CRDs
+      run_once: true
+      become: true
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ kubeconfig_path | default('/etc/kubernetes/admin.conf') }}"
+        api_version: apiextensions.k8s.io/v1
+        kind: CustomResourceDefinition
+        name: "{{ item }}"
+      loop:
+        - keycloaks.k8s.keycloak.org
+        - keycloakrealmimports.k8s.keycloak.org
+      register: _keycloak_operator_crds
+
+    - name: Assert Keycloak Operator CRDs are installed
+      run_once: true
+      ansible.builtin.assert:
+        that:
+          - _keycloak_operator_crds.results | map(attribute='resources') | map('length') | list == [1, 1]
+
+    - name: Get Keycloak Operator deployment
+      run_once: true
+      become: true
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ kubeconfig_path | default('/etc/kubernetes/admin.conf') }}"
+        api_version: apps/v1
+        kind: Deployment
+        name: keycloak-operator
+        namespace: auth-system
+      register: _keycloak_operator_deployment
+
+    - name: Assert Keycloak Operator is ready
+      run_once: true
+      ansible.builtin.assert:
+        that:
+          - _keycloak_operator_deployment.resources | length == 1
+          - _keycloak_operator_deployment.resources[0].status.availableReplicas == 1
+
     - name: Create Keycloak user
       run_once: true
       delegate_to: localhost
