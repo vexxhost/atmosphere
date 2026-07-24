@@ -12,8 +12,63 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+_cinder_endpoint_values:
+  identity:
+    auth:
+      admin:
+        region_name: "{{ openstack_helm_endpoints_keystone_region_name }}"
+        username: "admin-{{ openstack_helm_endpoints_keystone_region_name }}"
+        password: "{{ openstack_helm_endpoints_keystone_admin_password }}"
+        project_name: admin
+        user_domain_name: default
+        project_domain_name: default
+      cinder:
+        role: admin,service
+        region_name: "{{ openstack_helm_endpoints_cinder_region_name }}"
+        username: "cinder-{{ openstack_helm_endpoints_cinder_region_name }}"
+        password: "{{ openstack_helm_endpoints_cinder_keystone_password }}"
+        project_name: service
+        user_domain_name: service
+        project_domain_name: service
+      nova:
+        role: admin,service
+        region_name: "{{ openstack_helm_endpoints_cinder_region_name }}"
+        username: cinder_nova
+        password: "{{ openstack_helm_endpoints_cinder_keystone_password }}"
+        project_name: service
+        user_domain_name: service
+        project_domain_name: service
+      swift:
+        role: admin,service
+        region_name: "{{ openstack_helm_endpoints_cinder_region_name }}"
+        username: cinder_swift
+        password: "{{ openstack_helm_endpoints_cinder_keystone_password }}"
+        project_name: service
+        user_domain_name: service
+        project_domain_name: service
+      service:
+        role: admin,service
+        region_name: "{{ openstack_helm_endpoints_cinder_region_name }}"
+        username: cinder_service_user
+        password: "{{ openstack_helm_endpoints_cinder_keystone_password }}"
+        project_name: service
+        user_domain_name: service
+        project_domain_name: service
+      test:
+        role: admin
+        region_name: "{{ openstack_helm_endpoints_cinder_region_name }}"
+        username: cinder-test
+        password: "{{ openstack_helm_endpoints_tempest_keystone_password | default(openstack_helm_endpoints_cinder_keystone_password) }}"
+        project_name: test
+        user_domain_name: service
+        project_domain_name: service
+
+# Replace the generic identity auth map so cinder does not inherit unrelated
+# service users such as glance from openstack_helm_endpoints.
+_cinder_identity_endpoint_values: "{{ openstack_helm_endpoints['identity'] | combine(_cinder_endpoint_values['identity']) }}"
+
 __cinder_helm_values:
-  endpoints: "{{ openstack_helm_endpoints }}"
+  endpoints: "{{ openstack_helm_endpoints | combine({'identity': _cinder_identity_endpoint_values}) }}"
   images:
     tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('cinder') }}"
   pod:
