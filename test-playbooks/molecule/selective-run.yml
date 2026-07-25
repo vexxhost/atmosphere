@@ -182,6 +182,17 @@
                   else []
                 )
               }}
+            _atmosphere_ci_deploy_environment: >-
+              {{
+                molecule_environment
+                | default({})
+                | combine({
+                    'PATH':
+                      zuul.project.src_dir
+                      + '/.venv/bin:'
+                      + (ansible_env.PATH | default(lookup('env', 'PATH')))
+                  })
+              }}
 
         - name: Deploy with parallel orchestrator
           run_once: true
@@ -190,8 +201,7 @@
             argv: "{{ _atmosphere_ci_deploy_argv }}"
           args:
             chdir: "{{ zuul.project.src_dir }}"
-          environment:
-            PATH: "{{ zuul.project.src_dir }}/.venv/bin:{{ ansible_env.PATH | default(lookup('env', 'PATH')) }}"
+          environment: "{{ _atmosphere_ci_deploy_environment }}"
 
         - name: Re-deploy to verify idempotent execution
           run_once: true
@@ -200,8 +210,7 @@
             argv: "{{ _atmosphere_ci_deploy_argv }}"
           args:
             chdir: "{{ zuul.project.src_dir }}"
-          environment:
-            PATH: "{{ zuul.project.src_dir }}/.venv/bin:{{ ansible_env.PATH | default(lookup('env', 'PATH')) }}"
+          environment: "{{ _atmosphere_ci_deploy_environment }}"
 
         - name: Add IP address to br-ex
           when: molecule_scenario == 'aio'
