@@ -19,3 +19,20 @@ tempest_helm_chart_ref: /usr/local/src/tempest
 tempest_helm_release_namespace: openstack
 tempest_helm_kubeconfig: "{{ kubeconfig_path | default('/etc/kubernetes/admin.conf') }}"
 tempest_helm_values: {}
+
+# CI deployment mode used to limit Tempest to deployed services.
+#
+# tempest_ci_mode: selective
+tempest_ci_mode: "{{ lookup('env', 'ATMOSPHERE_CI_MODE') | default('full', true) }}"
+
+# Components available to Tempest during a selective CI deployment.
+#
+# tempest_ci_components:
+#   - keystone
+tempest_ci_components: >-
+  {{
+    lookup('env', 'ATMOSPHERE_CI_COMPONENTS')
+    .split(',')
+    | reject('equalto', '')
+    | list
+  }}

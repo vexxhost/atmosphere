@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/goccy/go-yaml"
 	"github.com/vexxhost/atmosphere/internal/deploy"
 )
 
@@ -37,6 +38,68 @@ func planForPath(t *testing.T, changedPath string) Plan {
 		t.Fatalf("planning %q: %v", changedPath, err)
 	}
 	return plan
+}
+
+func jobForName(t *testing.T, plan Plan, name string) JobPlan {
+	t.Helper()
+	for _, job := range plan.Jobs {
+		if job.Name == name {
+			return job
+		}
+	}
+	t.Fatalf("plan does not contain job %q: %#v", name, plan.Jobs)
+	return JobPlan{}
+}
+
+func TestZuulSelectiveJobsMatchPolicy(t *testing.T) {
+	configData, err := os.ReadFile("../../ci/molecule-plan.yaml")
+	if err != nil {
+		t.Fatalf("reading planner configuration: %v", err)
+	}
+	config, err := ParseConfig(configData)
+	if err != nil {
+		t.Fatalf("parsing planner configuration: %v", err)
+	}
+
+	zuulData, err := os.ReadFile("../../.zuul.yaml")
+	if err != nil {
+		t.Fatalf("reading Zuul configuration: %v", err)
+	}
+	var entries []struct {
+		Job struct {
+			Name string         `yaml:"name"`
+			Vars map[string]any `yaml:"vars"`
+		} `yaml:"job"`
+	}
+	if err := yaml.Unmarshal(zuulData, &entries); err != nil {
+		t.Fatalf("parsing Zuul configuration: %v", err)
+	}
+
+	configuredJobs := make([]string, 0, len(config.Jobs))
+	for name := range config.Jobs {
+		configuredJobs = append(configuredJobs, name)
+	}
+	slices.Sort(configuredJobs)
+
+	var zuulJobs []string
+	for _, entry := range entries {
+		if entry.Job.Vars == nil {
+			continue
+		}
+		name, ok := entry.Job.Vars["atmosphere_ci_job"].(string)
+		if !ok {
+			continue
+		}
+		if !strings.HasSuffix(entry.Job.Name, "-selective") {
+			t.Errorf("selective policy job %q uses unexpected Zuul job %q", name, entry.Job.Name)
+		}
+		zuulJobs = append(zuulJobs, name)
+	}
+	slices.Sort(zuulJobs)
+
+	if !slices.Equal(zuulJobs, configuredJobs) {
+		t.Fatalf("Zuul policy jobs = %v, want %v", zuulJobs, configuredJobs)
+	}
 }
 
 func TestPlanKeystoneUsesSmallLocalPathClosure(t *testing.T) {
@@ -68,6 +131,17 @@ func TestPlanKeystoneUsesSmallLocalPathClosure(t *testing.T) {
 	for _, excluded := range []string{"ceph", "glance", "nova", "neutron", "manila", "magnum"} {
 		if slices.Contains(components, excluded) {
 			t.Errorf("Keystone closure unexpectedly contains %q: %v", excluded, components)
+		}
+	}
+
+	for _, name := range []string{"aio-openvswitch", "keycloak"} {
+		if job := jobForName(t, plan, name); !job.Run {
+			t.Errorf("Keystone plan skips required job %q: %#v", name, job)
+		}
+	}
+	for _, name := range []string{"aio-ovn", "csi-local-path-provisioner", "csi-rbd"} {
+		if job := jobForName(t, plan, name); job.Run {
+			t.Errorf("Keystone plan unexpectedly runs job %q: %#v", name, job)
 		}
 	}
 }
@@ -102,6 +176,13 @@ func TestPlanManilaIncludesFunctionalDependencies(t *testing.T) {
 			t.Errorf("Manila closure unexpectedly contains %q: %v", excluded, components)
 		}
 	}
+
+	if job := jobForName(t, plan, "aio-openvswitch"); !job.Run {
+		t.Errorf("Manila plan skips canonical AIO job: %#v", job)
+	}
+	if job := jobForName(t, plan, "aio-ovn"); job.Run {
+		t.Errorf("Manila plan unexpectedly runs OVN AIO job: %#v", job)
+	}
 }
 
 func TestPlanMagnumUsesBroadTestEnvironment(t *testing.T) {
@@ -125,6 +206,20 @@ func TestPlanMagnumUsesBroadTestEnvironment(t *testing.T) {
 	for _, excluded := range []string{"horizon", "manila", "openstack-exporter"} {
 		if slices.Contains(components, excluded) {
 			t.Errorf("Magnum closure unexpectedly contains %q: %v", excluded, components)
+		}
+	}
+
+	if job := jobForName(t, plan, "aio-openvswitch"); !job.Run {
+		t.Errorf("Magnum plan skips canonical AIO job: %#v", job)
+	}
+	for _, name := range []string{
+		"aio-ovn",
+		"csi-local-path-provisioner",
+		"csi-rbd",
+		"keycloak",
+	} {
+		if job := jobForName(t, plan, name); job.Run {
+			t.Errorf("Magnum plan unexpectedly runs job %q: %#v", name, job)
 		}
 	}
 }
@@ -159,12 +254,37 @@ func TestPlanNeutronCreatesBackendSpecificVariants(t *testing.T) {
 	if slices.Contains(ovn.Components, "coredns") {
 		t.Errorf("OVN variant unexpectedly contains CoreDNS: %v", ovn.Components)
 	}
+	for _, name := range []string{"aio-openvswitch", "aio-ovn"} {
+		if job := jobForName(t, plan, name); !job.Run {
+			t.Errorf("Neutron plan skips required backend job %q: %#v", name, job)
+		}
+	}
+}
+
+func TestPlanCSIRunsOnlyDedicatedScenarios(t *testing.T) {
+	plan := planForPath(t, "roles/ceph_csi_rbd/tasks/main.yml")
+
+	for _, name := range []string{"csi-local-path-provisioner", "csi-rbd"} {
+		if job := jobForName(t, plan, name); !job.Run {
+			t.Errorf("CSI plan skips dedicated job %q: %#v", name, job)
+		}
+	}
+	for _, name := range []string{"aio-openvswitch", "aio-ovn", "keycloak"} {
+		if job := jobForName(t, plan, name); job.Run {
+			t.Errorf("CSI plan unexpectedly runs job %q: %#v", name, job)
+		}
+	}
 }
 
 func TestPlanIgnoredFilesIsNoop(t *testing.T) {
 	plan := planForPath(t, "doc/source/deploy/parallel.rst")
 	if plan.Mode != ModeNoop {
 		t.Fatalf("mode = %q, want noop: %#v", plan.Mode, plan)
+	}
+	for _, job := range plan.Jobs {
+		if job.Run {
+			t.Errorf("noop plan unexpectedly runs job %q: %#v", job.Name, job)
+		}
 	}
 }
 
@@ -183,6 +303,11 @@ func TestPlanUnknownPathFallsBackToFull(t *testing.T) {
 				len(variant.Components),
 				len(deploy.Components),
 			)
+		}
+	}
+	for _, job := range plan.Jobs {
+		if !job.Run {
+			t.Errorf("full fallback skips job %q: %#v", job.Name, job)
 		}
 	}
 }

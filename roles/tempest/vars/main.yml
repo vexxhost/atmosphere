@@ -12,6 +12,28 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+_tempest_full_service_availability:
+  cinder: true
+  glance: true
+  horizon: true
+  neutron: true
+  nova: true
+  swift: true
+
+_tempest_ci_service_availability:
+  barbican: "{{ 'barbican' in tempest_ci_components }}"
+  cinder: "{{ 'cinder' in tempest_ci_components }}"
+  glance: "{{ 'glance' in tempest_ci_components }}"
+  heat: "{{ 'heat' in tempest_ci_components }}"
+  horizon: "{{ 'horizon' in tempest_ci_components }}"
+  load_balancer: "{{ 'octavia' in tempest_ci_components }}"
+  magnum: "{{ 'magnum' in tempest_ci_components }}"
+  manila: "{{ 'manila' in tempest_ci_components }}"
+  neutron: "{{ 'neutron' in tempest_ci_components }}"
+  nova: "{{ 'nova' in tempest_ci_components }}"
+  placement: "{{ 'placement' in tempest_ci_components }}"
+  swift: false
+
 _tempest_helm_values:
   endpoints: "{{ openstack_helm_endpoints | combine(_tempest_endpoint_values, recursive=True) }}"
   images:
@@ -25,13 +47,15 @@ _tempest_helm_values:
       include_app_kubernetes_io: false
   conf:
     tempest:
-      service_available:
-        cinder: true
-        glance: true
-        horizon: true
-        neutron: true
-        nova: true
-        swift: true
+      service_available: >-
+        {{
+          _tempest_full_service_availability
+          | combine(
+              _tempest_ci_service_availability
+              if tempest_ci_mode == 'selective'
+              else {}
+            )
+        }}
       compute:
         endpoint_type: internal
         fixed_network_name: public

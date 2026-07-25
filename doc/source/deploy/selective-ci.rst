@@ -14,7 +14,8 @@ The planner keeps change impact separate from deployment dependencies:
 The policy lives in ``ci/molecule-plan.yaml``. The Go deployment registry
 supplies component role and chart paths. The policy contains additional paths,
 shared-code rules, functional test requirements, backend selection, and
-verification profiles.
+verification profiles. It also maps the static Zuul jobs to the variants or
+verification profiles they can execute.
 
 Creating a plan
 ===============
@@ -65,6 +66,70 @@ Plan modes
 The policy fails safely. Unknown runtime paths, shared deployment code, CI
 policy changes, and planner changes select ``full`` rather than silently
 omitting tests. Renames and copies evaluate both the old and new paths.
+Failure to generate or read a plan in Zuul also runs every Molecule job with
+its complete deployment.
+
+Job selection
+=============
+
+Zuul still declares every Molecule job statically so that its configuration is
+easy to inspect. At runtime each job reads its decision from ``ci-plan.json``:
+
+* An AIO job runs only when the plan contains its network backend.
+* Dedicated CSI and Keycloak jobs run only when their verification profile is
+  requested.
+* A documentation-only plan skips every Molecule scenario.
+* A complete fallback runs every job.
+
+The ``jobs`` mapping controls this behavior:
+
+.. code-block:: yaml
+
+  jobs:
+    aio-openvswitch:
+      scenario: aio
+      network_backend: openvswitch
+      skip_if_only_verification_profiles:
+        - csi
+        - keycloak-federation
+
+    keycloak:
+      scenario: keycloak
+      verification_profiles:
+        - keycloak-federation
+
+For a selective AIO job, the deployment variant becomes the comma-separated
+``atmosphere deploy --tags`` list. Tempest receives the same component list and
+marks services that were not deployed as unavailable. This keeps focused
+verification from querying unrelated services.
+
+The deployment runs directly as a Zuul ``command`` task rather than as a
+nested Molecule Ansible process. This makes the deployment's Ansible output
+visible in the live Zuul console. The same deployment is run a second time to
+retain the idempotence check before Molecule verification.
+
+Selection examples
+==================
+
+The current policy produces these representative job decisions:
+
+``roles/keystone/**``
+  Run the Open vSwitch AIO closure and the dedicated Keycloak federation job.
+  Skip OVN and both CSI jobs.
+
+``roles/manila/**``
+  Run only the Open vSwitch AIO closure, including Manila's storage, image,
+  compute, placement, and network test requirements.
+
+``roles/magnum/**``
+  Run only the Open vSwitch AIO job with Magnum's broader orchestration,
+  secrets, storage, compute, network, and load-balancing environment.
+
+``roles/neutron/**``
+  Run both AIO network variants.
+
+``roles/ceph_csi_rbd/**``
+  Run the two dedicated CSI scenarios and skip both AIO jobs.
 
 Extending the policy
 ====================
@@ -105,10 +170,10 @@ Validate the policy directly with:
 
   $ atmosphere ci validate
 
-Zuul rollout
-============
+Zuul execution
+==============
 
-The AIO job initially runs the planner in shadow mode. It writes
-``ci-plan.json`` and prints the explanation, while the existing complete
-deployment still runs. This allows reviewers to compare proposed closures with
-real build results before they control Molecule deployment and verification.
+The pre-run playbook writes ``ci-plan.json`` into the build logs and prints the
+human-readable explanation. Every job then reports its run or skip decision,
+reason, component closure, and verification profiles before doing any
+deployment work.

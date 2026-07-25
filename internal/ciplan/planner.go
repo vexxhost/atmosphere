@@ -179,6 +179,7 @@ func (p *Planner) Plan(changes []Change) (Plan, error) {
 	if len(targets) == 0 {
 		plan.Mode = ModeNoop
 		plan.Reasons = appendUnique(plan.Reasons, "all changed paths are ignored by the Molecule policy")
+		plan.Jobs = p.planJobs(plan)
 		return plan, nil
 	}
 
@@ -242,6 +243,7 @@ func (p *Planner) Plan(changes []Change) (Plan, error) {
 		})
 	}
 
+	plan.Jobs = p.planJobs(plan)
 	return plan, nil
 }
 
@@ -264,7 +266,116 @@ func (p *Planner) fullPlan(plan Plan) Plan {
 			Components:        slices.Clone(components),
 		})
 	}
+	plan.Jobs = p.planJobs(plan)
 	return plan
+}
+
+func (p *Planner) planJobs(plan Plan) []JobPlan {
+	names := make([]string, 0, len(p.config.Jobs))
+	for name := range p.config.Jobs {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	jobs := make([]JobPlan, 0, len(names))
+	for _, name := range names {
+		policy := p.config.Jobs[name]
+		job := JobPlan{
+			Name:                 name,
+			Scenario:             policy.Scenario,
+			NetworkBackend:       policy.NetworkBackend,
+			VerificationProfiles: slices.Clone(plan.VerificationProfiles),
+		}
+
+		switch plan.Mode {
+		case ModeFull:
+			job.Run = true
+			job.Reason = "full fallback runs every Molecule job"
+		case ModeNoop:
+			job.Reason = "no runtime changes require Molecule"
+		case ModeSelective:
+			if policy.NetworkBackend != "" {
+				variant, found := findVariant(plan.Variants, policy.NetworkBackend)
+				if !found {
+					job.Reason = fmt.Sprintf(
+						"plan has no %s deployment variant",
+						policy.NetworkBackend,
+					)
+					break
+				}
+				job.Components = slices.Clone(variant.Components)
+				if profilesOnly(
+					plan.VerificationProfiles,
+					policy.SkipIfOnlyVerificationProfiles,
+				) {
+					job.Reason = fmt.Sprintf(
+						"verification is handled by dedicated profiles: %s",
+						strings.Join(plan.VerificationProfiles, ", "),
+					)
+					break
+				}
+				job.Run = true
+				job.Reason = fmt.Sprintf(
+					"executes the %s deployment variant",
+					policy.NetworkBackend,
+				)
+				break
+			}
+
+			matchedProfiles := intersect(
+				plan.VerificationProfiles,
+				policy.VerificationProfiles,
+			)
+			if len(matchedProfiles) == 0 {
+				job.Reason = "none of the job's verification profiles were requested"
+				break
+			}
+			job.Run = true
+			job.Reason = fmt.Sprintf(
+				"requested verification profiles: %s",
+				strings.Join(matchedProfiles, ", "),
+			)
+		}
+
+		if job.Run && policy.NetworkBackend != "" && len(job.Components) == 0 {
+			if variant, found := findVariant(plan.Variants, policy.NetworkBackend); found {
+				job.Components = slices.Clone(variant.Components)
+			}
+		}
+		jobs = append(jobs, job)
+	}
+	return jobs
+}
+
+func findVariant(variants []Variant, backend string) (Variant, bool) {
+	for _, variant := range variants {
+		if variant.NetworkBackend == backend {
+			return variant, true
+		}
+	}
+	return Variant{}, false
+}
+
+func profilesOnly(requested, dedicated []string) bool {
+	if len(requested) == 0 || len(dedicated) == 0 {
+		return false
+	}
+	for _, profile := range requested {
+		if !slices.Contains(dedicated, profile) {
+			return false
+		}
+	}
+	return true
+}
+
+func intersect(left, right []string) []string {
+	var values []string
+	for _, value := range left {
+		if slices.Contains(right, value) {
+			values = append(values, value)
+		}
+	}
+	return values
 }
 
 func (p *Planner) matchComponents(changedPath string) []string {

@@ -17,6 +17,39 @@ dependency_options:
 full_verification_profiles:
   - full
 
+# Zuul jobs are static, but each job consumes an explicit decision from the
+# plan. Backend jobs run the matching AIO variant. Dedicated scenario jobs run
+# only when one of their verification profiles is requested.
+jobs:
+  aio-openvswitch:
+    scenario: aio
+    network_backend: openvswitch
+    skip_if_only_verification_profiles:
+      - csi
+      - keycloak-federation
+
+  aio-ovn:
+    scenario: aio
+    network_backend: ovn
+    skip_if_only_verification_profiles:
+      - csi
+      - keycloak-federation
+
+  csi-local-path-provisioner:
+    scenario: csi
+    verification_profiles:
+      - csi
+
+  csi-rbd:
+    scenario: csi
+    verification_profiles:
+      - csi
+
+  keycloak:
+    scenario: keycloak
+    verification_profiles:
+      - keycloak-federation
+
 rules:
   - name: planner-policy
     action: full
@@ -129,11 +162,13 @@ components:
     test_requires:
       - keystone
     verification_profiles:
+      - identity
       - keycloak-federation
 
   keystone:
     verification_profiles:
       - identity
+      - keycloak-federation
 
   glance:
     verification_profiles:

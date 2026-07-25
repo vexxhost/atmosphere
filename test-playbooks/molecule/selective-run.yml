@@ -1,0 +1,251 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Run selected Molecule deployment and verification
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Check for selective CI plan
+      run_once: true
+      ansible.builtin.stat:
+        path: "{{ zuul.project.src_dir }}/ci-plan.json"
+      register: _atmosphere_ci_plan_file
+
+    - name: Validate selective CI plan
+      when: _atmosphere_ci_plan_file.stat.exists
+      run_once: true
+      changed_when: false
+      failed_when: false
+      ansible.builtin.command:
+        argv:
+          - jq
+          - empty
+          - "{{ zuul.project.src_dir }}/ci-plan.json"
+      register: _atmosphere_ci_plan_validation
+
+    - name: Resolve selective CI plan availability
+      run_once: true
+      ansible.builtin.set_fact:
+        _atmosphere_ci_plan_available: >-
+          {{
+            _atmosphere_ci_plan_file.stat.exists
+            and (_atmosphere_ci_plan_validation.rc | default(1)) == 0
+          }}
+
+    - name: Read selective CI plan
+      when: _atmosphere_ci_plan_available
+      run_once: true
+      ansible.builtin.slurp:
+        path: "{{ zuul.project.src_dir }}/ci-plan.json"
+      register: _atmosphere_ci_plan_raw
+
+    - name: Load selective CI plan or full fallback
+      run_once: true
+      ansible.builtin.set_fact:
+        _atmosphere_ci_plan: >-
+          {{
+            (_atmosphere_ci_plan_raw.content | b64decode | from_json)
+            if _atmosphere_ci_plan_available
+            else {'mode': 'full', 'jobs': []}
+          }}
+
+    - name: Find this job in the selective CI plan
+      run_once: true
+      ansible.builtin.set_fact:
+        _atmosphere_ci_job_matches: >-
+          {{
+            _atmosphere_ci_plan.jobs
+            | default([])
+            | selectattr('name', 'equalto', atmosphere_ci_job)
+            | list
+          }}
+
+    - name: Resolve this job or use full fallback
+      run_once: true
+      ansible.builtin.set_fact:
+        _atmosphere_ci_job_plan: >-
+          {{
+            (_atmosphere_ci_job_matches | first)
+            if _atmosphere_ci_job_matches | length == 1
+            else {
+              'name': atmosphere_ci_job,
+              'run': true,
+              'components': [],
+              'verification_profiles': ['full'],
+              'reason': 'job decision is missing; running the full fallback'
+            }
+          }}
+
+    - name: Resolve deployment and verification inputs
+      run_once: true
+      ansible.builtin.set_fact:
+        _atmosphere_ci_components: >-
+          {{ _atmosphere_ci_job_plan.components | default([]) }}
+        _atmosphere_ci_profiles: >-
+          {{
+            _atmosphere_ci_job_plan.verification_profiles
+            | default(_atmosphere_ci_plan.verification_profiles | default(['full']))
+          }}
+        _atmosphere_ci_mode: >-
+          {{ _atmosphere_ci_plan.mode | default('full') }}
+        _atmosphere_ci_network_backend: >-
+          {{
+            _atmosphere_ci_job_plan.network_backend
+            | default(atmosphere_network_backend | default('openvswitch'), true)
+          }}
+        _atmosphere_ci_run: "{{ _atmosphere_ci_job_plan.run | default(true) | bool }}"
+
+    - name: Resolve deployment tags
+      run_once: true
+      ansible.builtin.set_fact:
+        _atmosphere_ci_deploy_tags: >-
+          {{
+            _atmosphere_ci_components
+            if (
+              _atmosphere_ci_mode == 'selective'
+              and molecule_scenario == 'aio'
+            )
+            else (atmosphere_deploy_tags | default([]))
+          }}
+
+    - name: Report Molecule job decision
+      run_once: true
+      ansible.builtin.debug:
+        msg:
+          job: "{{ atmosphere_ci_job }}"
+          mode: "{{ _atmosphere_ci_mode }}"
+          run: "{{ _atmosphere_ci_run }}"
+          reason: "{{ _atmosphere_ci_job_plan.reason }}"
+          network_backend: "{{ _atmosphere_ci_network_backend }}"
+          components: "{{ _atmosphere_ci_components }}"
+          verification_profiles: "{{ _atmosphere_ci_profiles }}"
+
+    - name: Run selected Molecule scenario
+      when: _atmosphere_ci_run
+      block:
+        - name: Copy inventory file for Zuul
+          run_once: true
+          ansible.builtin.copy:
+            src: "{{ zuul.executor.inventory_file }}"
+            dest: "{{ zuul.project.src_dir }}/inventory.yaml"
+            mode: "0644"
+
+        - name: Switch ansible_host to private IP
+          run_once: true
+          ansible.builtin.replace:
+            path: "{{ zuul.project.src_dir }}/inventory.yaml"
+            regexp: '(^\s*ansible_host:\s*).*$'
+            replace: '\1"{% raw %}{{ nodepool.private_ipv4 }}{% endraw %}"'
+
+        - name: Prepare Molecule scenario
+          run_once: true
+          changed_when: false
+          ansible.builtin.command:
+            argv:
+              - uv
+              - run
+              - molecule
+              - prepare
+              - -s
+              - "{{ molecule_scenario }}"
+          environment: "{{ molecule_environment | default({}) }}"
+          args:
+            chdir: "{{ zuul.project.src_dir }}"
+
+        - name: Build deployment command
+          run_once: true
+          ansible.builtin.set_fact:
+            _atmosphere_ci_deploy_argv: >-
+              {{
+                [
+                  './bin/atmosphere',
+                  'deploy',
+                  '--inventory',
+                  './inventory.yaml',
+                  '--concurrency',
+                  (
+                    atmosphere_deploy_concurrency
+                    | default((molecule_scenario == 'aio') | ternary(3, 0))
+                    | string
+                  ),
+                  '--dependency-option',
+                  'csi_driver=' + (csi_driver | default('rbd')),
+                  '--dependency-option',
+                  'network_backend='
+                    + _atmosphere_ci_network_backend
+                ]
+                + (
+                  ['--tags', _atmosphere_ci_deploy_tags | join(',')]
+                  if _atmosphere_ci_deploy_tags | length > 0
+                  else []
+                )
+              }}
+
+        - name: Deploy with parallel orchestrator
+          run_once: true
+          changed_when: false
+          ansible.builtin.command:
+            argv: "{{ _atmosphere_ci_deploy_argv }}"
+          args:
+            chdir: "{{ zuul.project.src_dir }}"
+          environment:
+            PATH: "{{ zuul.project.src_dir }}/.venv/bin:{{ ansible_env.PATH | default(lookup('env', 'PATH')) }}"
+
+        - name: Re-deploy to verify idempotent execution
+          run_once: true
+          changed_when: false
+          ansible.builtin.command:
+            argv: "{{ _atmosphere_ci_deploy_argv }}"
+          args:
+            chdir: "{{ zuul.project.src_dir }}"
+          environment:
+            PATH: "{{ zuul.project.src_dir }}/.venv/bin:{{ ansible_env.PATH | default(lookup('env', 'PATH')) }}"
+
+        - name: Add IP address to br-ex
+          when: molecule_scenario == 'aio'
+          become: true
+          changed_when: false
+          ansible.builtin.command:
+            argv:
+              - ip
+              - address
+              - replace
+              - 10.96.250.10/24
+              - dev
+              - br-ex
+
+        - name: Set br-ex interface up
+          when: molecule_scenario == 'aio'
+          become: true
+          changed_when: false
+          ansible.builtin.command:
+            argv:
+              - ip
+              - link
+              - set
+              - br-ex
+              - up
+
+        - name: Verify Molecule scenario
+          run_once: true
+          changed_when: false
+          ansible.builtin.command:
+            argv:
+              - uv
+              - run
+              - molecule
+              - verify
+              - -s
+              - "{{ molecule_scenario }}"
+          environment: >-
+            {{
+              molecule_environment
+              | default({})
+              | combine({
+                  'ATMOSPHERE_CI_MODE': _atmosphere_ci_mode,
+                  'ATMOSPHERE_CI_COMPONENTS': _atmosphere_ci_components | join(','),
+                  'ATMOSPHERE_CI_VERIFICATION_PROFILES': _atmosphere_ci_profiles | join(',')
+                })
+            }}
+          args:
+            chdir: "{{ zuul.project.src_dir }}"

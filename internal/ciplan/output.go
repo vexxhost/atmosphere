@@ -94,6 +94,32 @@ func WriteText(writer io.Writer, plan Plan) error {
 		}
 	}
 
+	if len(plan.Jobs) > 0 {
+		if _, err := fmt.Fprintln(writer, "Molecule jobs:"); err != nil {
+			return err
+		}
+		for _, job := range plan.Jobs {
+			action := "skip"
+			if job.Run {
+				action = "run"
+			}
+			components := ""
+			if len(job.Components) > 0 {
+				components = fmt.Sprintf(" (%d components)", len(job.Components))
+			}
+			if _, err := fmt.Fprintf(
+				writer,
+				"  %s: %s%s - %s\n",
+				job.Name,
+				action,
+				components,
+				job.Reason,
+			); err != nil {
+				return err
+			}
+		}
+	}
+
 	if len(plan.Reasons) > 0 {
 		if _, err := fmt.Fprintln(writer, "Reasons:"); err != nil {
 			return err

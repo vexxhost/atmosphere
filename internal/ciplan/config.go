@@ -115,9 +115,52 @@ func (c Config) Validate() error {
 		}
 	}
 
+	if len(c.Jobs) == 0 {
+		return fmt.Errorf("jobs must not be empty")
+	}
+	verificationProfiles := configuredVerificationProfiles(c)
+	for name, policy := range c.Jobs {
+		if name == "" {
+			return fmt.Errorf("job name must not be empty")
+		}
+		if policy.Scenario == "" {
+			return fmt.Errorf("job %q scenario must not be empty", name)
+		}
+		if policy.NetworkBackend == "" && len(policy.VerificationProfiles) == 0 {
+			return fmt.Errorf(
+				"job %q must define network_backend or verification_profiles",
+				name,
+			)
+		}
+		if policy.NetworkBackend != "" && len(policy.VerificationProfiles) > 0 {
+			return fmt.Errorf(
+				"job %q cannot define both network_backend and verification_profiles",
+				name,
+			)
+		}
+		if policy.NetworkBackend == "" && len(policy.SkipIfOnlyVerificationProfiles) > 0 {
+			return fmt.Errorf(
+				"job %q cannot skip profiles without a network_backend",
+				name,
+			)
+		}
+		for _, profile := range append(
+			slices.Clone(policy.VerificationProfiles),
+			policy.SkipIfOnlyVerificationProfiles...,
+		) {
+			if !verificationProfiles[profile] {
+				return fmt.Errorf(
+					"job %q references unknown verification profile %q",
+					name,
+					profile,
+				)
+			}
+		}
+	}
+
 	for _, backend := range append(
 		slices.Clone(c.FullNetworkBackends),
-		configuredBackends(c.Rules, c.Components)...,
+		configuredBackends(c.Rules, c.Components, c.Jobs)...,
 	) {
 		if backend == "canonical" {
 			continue
@@ -154,7 +197,11 @@ func (c Config) Validate() error {
 	return nil
 }
 
-func configuredBackends(rules []Rule, policies map[string]ComponentPolicy) []string {
+func configuredBackends(
+	rules []Rule,
+	policies map[string]ComponentPolicy,
+	jobs map[string]JobPolicy,
+) []string {
 	var backends []string
 	for _, rule := range rules {
 		backends = append(backends, rule.NetworkBackends...)
@@ -162,7 +209,24 @@ func configuredBackends(rules []Rule, policies map[string]ComponentPolicy) []str
 	for _, policy := range policies {
 		backends = append(backends, policy.NetworkBackends...)
 	}
+	for _, job := range jobs {
+		if job.NetworkBackend != "" {
+			backends = append(backends, job.NetworkBackend)
+		}
+	}
 	return backends
+}
+
+func configuredVerificationProfiles(config Config) map[string]bool {
+	profiles := make(map[string]bool)
+	addAll(profiles, config.FullVerificationProfiles)
+	for _, rule := range config.Rules {
+		addAll(profiles, rule.VerificationProfiles)
+	}
+	for _, policy := range config.Components {
+		addAll(profiles, policy.VerificationProfiles)
+	}
+	return profiles
 }
 
 func cloneOptions(options map[string]string) map[string]string {

@@ -16,3 +16,90 @@
   roles:
     - role: ensure-go
       go_version: "1.24.4"
+
+- name: Prepare selective Molecule execution plan
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Build atmosphere binary
+      run_once: true
+      changed_when: false
+      ansible.builtin.command:
+        argv:
+          - go
+          - build
+          - -o
+          - ./bin/atmosphere
+          - ./cmd/atmosphere
+      args:
+        chdir: "{{ zuul.project.src_dir }}"
+      environment:
+        CGO_ENABLED: "0"
+        PATH: "/usr/local/go/bin:{{ ansible_env.PATH | default(lookup('env', 'PATH')) }}"
+
+    - name: Generate selective CI plan
+      run_once: true
+      changed_when: false
+      failed_when: false
+      ansible.builtin.command:
+        argv:
+          - ./bin/atmosphere
+          - ci
+          - plan
+          - --base
+          - "{{ atmosphere_ci_plan_base }}"
+          - --head
+          - "{{ atmosphere_ci_plan_head | default('HEAD') }}"
+          - --format
+          - json
+          - --output
+          - ./ci-plan.json
+      args:
+        chdir: "{{ zuul.project.src_dir }}"
+      register: _atmosphere_ci_plan
+
+    - name: Explain selective CI plan
+      when: _atmosphere_ci_plan.rc == 0
+      run_once: true
+      changed_when: false
+      ansible.builtin.command:
+        argv:
+          - ./bin/atmosphere
+          - ci
+          - plan
+          - --base
+          - "{{ atmosphere_ci_plan_base }}"
+          - --head
+          - "{{ atmosphere_ci_plan_head | default('HEAD') }}"
+      args:
+        chdir: "{{ zuul.project.src_dir }}"
+      register: _atmosphere_ci_plan_explanation
+
+    - name: Print selective CI plan
+      when: _atmosphere_ci_plan.rc == 0
+      run_once: true
+      ansible.builtin.debug:
+        var: _atmosphere_ci_plan_explanation.stdout_lines
+
+    - name: Report conservative fallback
+      when: _atmosphere_ci_plan.rc != 0
+      run_once: true
+      ansible.builtin.debug:
+        msg: >-
+          Selective CI planning failed. Every Molecule job will run its
+          complete fallback: {{ _atmosphere_ci_plan.stderr }}
+
+    - name: Create selective CI plan log directory
+      when: _atmosphere_ci_plan.rc == 0
+      ansible.builtin.file:
+        path: /tmp/logs/system
+        state: directory
+        mode: "0755"
+
+    - name: Publish selective CI plan with job logs
+      when: _atmosphere_ci_plan.rc == 0
+      ansible.builtin.copy:
+        src: "{{ zuul.project.src_dir }}/ci-plan.json"
+        dest: /tmp/logs/system/ci-plan.json
+        remote_src: true
+        mode: "0644"

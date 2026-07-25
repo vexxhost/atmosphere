@@ -1,52 +1,89 @@
-- project:
-    templates:
-      - atmosphere-molecule-jobs
+- job:
+    name: atmosphere-molecule-aio-openvswitch-selective
+    parent: atmosphere-molecule-aio-openvswitch
+    pre-run:
+      - test-playbooks/molecule/prepare.yml
+    run:
+      - test-playbooks/molecule/selective-run.yml
     vars:
-      atmosphere_ci_plan_shadow: true
+      atmosphere_ci_job: aio-openvswitch
+
+- job:
+    name: atmosphere-molecule-aio-ovn-selective
+    parent: atmosphere-molecule-aio-ovn
+    pre-run:
+      - test-playbooks/molecule/prepare.yml
+    run:
+      - test-playbooks/molecule/selective-run.yml
+    vars:
+      atmosphere_ci_job: aio-ovn
+
+- job:
+    name: atmosphere-molecule-csi-local-path-provisioner-selective
+    parent: atmosphere-molecule-csi-local-path-provisioner
+    pre-run:
+      - test-playbooks/molecule/prepare.yml
+    run:
+      - test-playbooks/molecule/selective-run.yml
+    vars:
+      atmosphere_ci_job: csi-local-path-provisioner
+      atmosphere_deploy_tags:
+        - kubernetes
+        - csi
+
+- job:
+    name: atmosphere-molecule-csi-rbd-selective
+    parent: atmosphere-molecule-csi-rbd
+    pre-run:
+      - test-playbooks/molecule/prepare.yml
+    run:
+      - test-playbooks/molecule/selective-run.yml
+    vars:
+      atmosphere_ci_job: csi-rbd
+      atmosphere_deploy_tags:
+        - ceph
+        - kubernetes
+        - csi
+
+- job:
+    name: atmosphere-molecule-keycloak-selective
+    parent: atmosphere-molecule-keycloak
+    pre-run:
+      - test-playbooks/molecule/prepare.yml
+    run:
+      - test-playbooks/molecule/selective-run.yml
+    vars:
+      atmosphere_ci_job: keycloak
+      atmosphere_deploy_tags:
+        - kubernetes
+        - csi
+        - cert-manager
+        - cluster-issuer
+        - ingress-nginx
+        - rabbitmq-cluster-operator
+        - percona-xtradb-cluster-operator
+        - percona-xtradb-cluster
+        - valkey
+        - memcached
+        - keycloak
+        - kube-prometheus-stack
+        - keystone
+        - horizon
+
+- project:
+    vars:
       atmosphere_ci_plan_base: "origin/{{ zuul.branch }}"
     check:
       jobs:
-        - atmosphere-molecule-aio-openvswitch:
-            pre-run:
-              - test-playbooks/molecule/prepare.yml
-        - atmosphere-molecule-aio-ovn:
-            pre-run:
-              - test-playbooks/molecule/prepare.yml
-        - atmosphere-molecule-csi-local-path-provisioner:
-            pre-run:
-              - test-playbooks/molecule/prepare.yml
-            vars:
-              atmosphere_deploy_tags: kubernetes,csi
-        - atmosphere-molecule-csi-rbd:
-            pre-run:
-              - test-playbooks/molecule/prepare.yml
-            vars:
-              atmosphere_deploy_tags: ceph,kubernetes,csi
-        - atmosphere-molecule-keycloak:
-            pre-run:
-              - test-playbooks/molecule/prepare.yml
-            vars:
-              atmosphere_deploy_tags: "kubernetes,csi,cert-manager,cluster-issuer,ingress-nginx,rabbitmq-cluster-operator,percona-xtradb-cluster-operator,percona-xtradb-cluster,valkey,memcached,keycloak,kube-prometheus-stack,keystone,horizon"
+        - atmosphere-molecule-aio-openvswitch-selective
+        - atmosphere-molecule-aio-ovn-selective
+        - atmosphere-molecule-csi-local-path-provisioner-selective
+        - atmosphere-molecule-csi-rbd-selective
+        - atmosphere-molecule-keycloak-selective
     gate:
       jobs:
-        - atmosphere-molecule-aio-openvswitch:
-            pre-run:
-              - test-playbooks/molecule/prepare.yml
-        - atmosphere-molecule-aio-ovn:
-            pre-run:
-              - test-playbooks/molecule/prepare.yml
-        - atmosphere-molecule-csi-local-path-provisioner:
-            pre-run:
-              - test-playbooks/molecule/prepare.yml
-            vars:
-              atmosphere_deploy_tags: kubernetes,csi
-        - atmosphere-molecule-csi-rbd:
-            pre-run:
-              - test-playbooks/molecule/prepare.yml
-            vars:
-              atmosphere_deploy_tags: ceph,kubernetes,csi
-        - atmosphere-molecule-keycloak:
-            pre-run:
-              - test-playbooks/molecule/prepare.yml
-            vars:
-              atmosphere_deploy_tags: "kubernetes,csi,cert-manager,cluster-issuer,ingress-nginx,rabbitmq-cluster-operator,percona-xtradb-cluster-operator,percona-xtradb-cluster,valkey,memcached,keycloak,kube-prometheus-stack,keystone,horizon"
+        - atmosphere-molecule-aio-openvswitch-selective
+        - atmosphere-molecule-aio-ovn-selective
+        - atmosphere-molecule-csi-local-path-provisioner-selective
+        - atmosphere-molecule-csi-rbd-selective
+        - atmosphere-molecule-keycloak-selective

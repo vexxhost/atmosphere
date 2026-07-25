@@ -21,6 +21,7 @@ type Config struct {
 	DependencyOptions        map[string]string          `yaml:"dependency_options"`
 	Rules                    []Rule                     `yaml:"rules"`
 	Components               map[string]ComponentPolicy `yaml:"components"`
+	Jobs                     map[string]JobPolicy       `yaml:"jobs"`
 	FullVerificationProfiles []string                   `yaml:"full_verification_profiles"`
 }
 
@@ -44,6 +45,16 @@ type ComponentPolicy struct {
 	NetworkBackends      []string `yaml:"network_backends"`
 }
 
+// JobPolicy maps a static Zuul job to the part of a CI plan it can execute.
+// Backend jobs consume a matching deployment variant. Profile jobs run when
+// any listed verification profile is requested.
+type JobPolicy struct {
+	Scenario                       string   `yaml:"scenario"`
+	NetworkBackend                 string   `yaml:"network_backend"`
+	VerificationProfiles           []string `yaml:"verification_profiles"`
+	SkipIfOnlyVerificationProfiles []string `yaml:"skip_if_only_verification_profiles"`
+}
+
 // Match explains why one changed path affected the plan.
 type Match struct {
 	Path    string   `json:"path"`
@@ -59,6 +70,17 @@ type Variant struct {
 	Components        []string          `json:"components"`
 }
 
+// JobPlan is the executable decision for one static Zuul Molecule job.
+type JobPlan struct {
+	Name                 string   `json:"name"`
+	Scenario             string   `json:"scenario"`
+	Run                  bool     `json:"run"`
+	NetworkBackend       string   `json:"network_backend,omitempty"`
+	Components           []string `json:"components,omitempty"`
+	VerificationProfiles []string `json:"verification_profiles,omitempty"`
+	Reason               string   `json:"reason"`
+}
+
 // Plan is both machine-readable CI input and an explainable build artifact.
 type Plan struct {
 	Mode                 string    `json:"mode"`
@@ -68,6 +90,7 @@ type Plan struct {
 	DeploymentRoots      []string  `json:"deployment_roots,omitempty"`
 	VerificationProfiles []string  `json:"verification_profiles,omitempty"`
 	Variants             []Variant `json:"variants,omitempty"`
+	Jobs                 []JobPlan `json:"jobs"`
 	Reasons              []string  `json:"reasons,omitempty"`
 }
 
