@@ -128,9 +128,10 @@
     kind: ConfigMap
     name: keystone-openid-metadata
     namespace: "{{ keystone_helm_release_namespace }}"
-    wait: true
-    wait_sleep: 2
-    wait_timeout: 600
+  register: _keystone_openid_metadata
+  retries: 300
+  delay: 2
+  until: _keystone_openid_metadata.resources | length > 0
 
 - name: Deploy Helm chart
   run_once: true
