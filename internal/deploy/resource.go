@@ -39,6 +39,11 @@ var defaultResourceConcurrency = map[string]int{
 	// replying". Serialize globally (cap=1) so any pair of
 	// components touching the role can't collide on systemd.
 	"containerd": 1,
+	// ca-certificates: the cluster issuer updates and rehashes the host CA
+	// store. Serialize that mutation with components which download over TLS
+	// during deployment, otherwise an in-flight certificate verification can
+	// observe the trust store between updates and fail intermittently.
+	"ca-certificates": 1,
 }
 
 // NewResourceCoordinator builds semaphores for every resource declared across

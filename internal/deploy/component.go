@@ -153,7 +153,7 @@ var Components = []Component{
 		//   "Unable to enable service containerd: Failed to enable
 		//    unit: Message recipient disconnected from message bus
 		//    without replying"
-		Resources: []string{"apt", "containerd"},
+		Resources: []string{"apt", "containerd", "ca-certificates"},
 	},
 	{
 		Name:     "kubernetes",
@@ -193,6 +193,9 @@ var Components = []Component{
 		RoleName:  "cluster_issuer",
 		Hosts:     "controllers",
 		DependsOn: []string{"cert-manager"},
+		// Updating the host CA trust while another component is opening a TLS
+		// connection can produce transient certificate verification failures.
+		Resources: []string{"ca-certificates"},
 	},
 	{
 		Name:      "ingress-nginx",

@@ -50,3 +50,16 @@ func TestMagnumImageUploadWaitsForGlanceImages(t *testing.T) {
 		t.Fatal("magnum main role must remain independent from glance-images")
 	}
 }
+
+func TestCephAndClusterIssuerSerializeCAStoreAccess(t *testing.T) {
+	for _, componentName := range []string{"ceph", "cluster-issuer"} {
+		component, ok := FindComponent(componentName)
+		if !ok {
+			t.Fatalf("%s component not found", componentName)
+		}
+
+		if !slices.Contains(component.Resources, "ca-certificates") {
+			t.Fatalf("%s must serialize access to the host CA store", componentName)
+		}
+	}
+}
