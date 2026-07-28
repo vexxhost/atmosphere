@@ -85,4 +85,6 @@ moving change classification into trusted Zuul configuration.
 The selective AIO jobs allow fifteen minutes for Keycloak and ten minutes for
 the Nova, Neutron, and Octavia Helm operations. Clean database migrations and
 initial service rollouts can exceed their normal timeouts on a busy test node
-even when they complete successfully.
+even when they complete successfully. The complete AIO Molecule lifecycle has
+a 150-minute command limit so full fallback runs have enough time to finish
+idempotence and verification.
