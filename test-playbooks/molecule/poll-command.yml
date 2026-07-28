@@ -1,0 +1,105 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Wait before polling {{ _atmosphere_ci_phase }}
+  when: not (_atmosphere_ci_phase_result.finished | default(false) | bool)
+  run_once: true # noqa: run-once[task]
+  ansible.builtin.pause:
+    seconds: "{{ _atmosphere_ci_phase_poll_interval }}"
+
+- name: Count progress poll for {{ _atmosphere_ci_phase }}
+  when: not (_atmosphere_ci_phase_result.finished | default(false) | bool)
+  run_once: true # noqa: run-once[task]
+  ansible.builtin.set_fact:
+    _atmosphere_ci_phase_poll_count: >-
+      {{ (_atmosphere_ci_phase_poll_count | int) + 1 }}
+
+- name: Poll status for {{ _atmosphere_ci_phase }}
+  when: not (_atmosphere_ci_phase_result.finished | default(false) | bool)
+  run_once: true # noqa: run-once[task]
+  changed_when: false
+  failed_when: false
+  ansible.builtin.async_status:
+    jid: "{{ _atmosphere_ci_phase_started.ansible_job_id }}"
+  register: _atmosphere_ci_phase_result
+
+- name: Inspect live log for {{ _atmosphere_ci_phase }}
+  run_once: true # noqa: run-once[task]
+  ansible.builtin.stat:
+    path: "{{ _atmosphere_ci_phase_log }}"
+  register: _atmosphere_ci_phase_log_state
+
+- name: Calculate new output for {{ _atmosphere_ci_phase }}
+  run_once: true # noqa: run-once[task]
+  ansible.builtin.set_fact:
+    _atmosphere_ci_phase_log_bytes: >-
+      {{
+        (_atmosphere_ci_phase_log_state.stat.size | default(0) | int)
+        - (_atmosphere_ci_phase_log_offset | int)
+      }}
+
+- name: Read new output for {{ _atmosphere_ci_phase }}
+  when: (_atmosphere_ci_phase_log_bytes | int) > 0
+  run_once: true # noqa: run-once[task]
+  changed_when: false
+  ansible.builtin.shell:
+    cmd: >-
+      set -o pipefail;
+      tail
+      -c +{{ (_atmosphere_ci_phase_log_offset | int) + 1 }}
+      {{ _atmosphere_ci_phase_log | quote }}
+      | head -c {{ _atmosphere_ci_phase_log_bytes | int }}
+    executable: /bin/bash
+  register: _atmosphere_ci_phase_log_chunk
+
+- name: Track last task for {{ _atmosphere_ci_phase }}
+  when:
+    - (_atmosphere_ci_phase_log_bytes | int) > 0
+    - >-
+      _atmosphere_ci_phase_log_chunk.stdout_lines
+      | default([])
+      | select('match', '^TASK \[.*\]\s+\*+$')
+      | list
+      | length > 0
+  run_once: true # noqa: run-once[task]
+  ansible.builtin.set_fact:
+    _atmosphere_ci_phase_last_task: >-
+      {{
+        (
+          _atmosphere_ci_phase_log_chunk.stdout_lines
+          | select('match', '^TASK \[.*\]\s+\*+$')
+          | list
+          | last
+        )
+        | regex_replace('\s+\*+$', '')
+      }}
+
+- name: Advance live log offset for {{ _atmosphere_ci_phase }}
+  run_once: true # noqa: run-once[task]
+  ansible.builtin.set_fact:
+    _atmosphere_ci_phase_log_offset: >-
+      {{ _atmosphere_ci_phase_log_state.stat.size | default(0) }}
+
+- name: Report progress heartbeat for {{ _atmosphere_ci_phase }}
+  when: not (_atmosphere_ci_phase_result.finished | default(false) | bool)
+  run_once: true # noqa: run-once[task]
+  ansible.builtin.debug:
+    msg: |-
+      {{ _atmosphere_ci_phase }} is still running after {{
+        (_atmosphere_ci_phase_poll_count | int)
+        * (_atmosphere_ci_phase_poll_interval | int)
+      }} seconds.
+      Last task: {{ _atmosphere_ci_phase_last_task }}
+
+- name: Continue monitoring {{ _atmosphere_ci_phase }}
+  when:
+    - not (_atmosphere_ci_phase_result.finished | default(false) | bool)
+    - >-
+      (_atmosphere_ci_phase_poll_count | int)
+      < (_atmosphere_ci_phase_max_polls | int)
+    - >-
+      (
+        (_atmosphere_ci_phase_poll_count | int)
+        % (_atmosphere_ci_phase_poll_chunk_size | int)
+      ) != 0
+  ansible.builtin.include_tasks: poll-command.yml

@@ -1,0 +1,721 @@
+---
+version: 1
+
+# Zuul schedules these jobs statically. The planner decides which scheduled
+# jobs need to execute after inspecting the exact pull request diff.
+jobs:
+  aio-openvswitch:
+    scenario: aio
+    network_backend: openvswitch
+  aio-ovn:
+    scenario: aio
+    network_backend: ovn
+  csi-local-path-provisioner:
+    scenario: csi
+  csi-rbd:
+    scenario: csi
+  keycloak:
+    scenario: keycloak
+
+# An unclassified runtime path and a policy change use the conservative suite.
+full_jobs:
+  - aio-openvswitch
+  - aio-ovn
+  - csi-local-path-provisioner
+  - csi-rbd
+  - keycloak
+
+rules:
+  - name: planner-policy
+    action: full
+    reason: the CI selection policy changed
+    paths:
+      - .zuul.yaml
+      - ci/molecule-plan.yaml
+      - atmosphere/ci/**
+      - tests/unit/ci/**
+      - test-playbooks/molecule/**
+      - molecule/aio/**
+      - pyproject.toml
+      - uv.lock
+
+  - name: shared-deployment-code
+    action: full
+    reason: shared deployment code can affect unrelated components
+    paths:
+      - .charts.yml
+      - galaxy.yml
+      - requirements.txt
+      - playbooks/generate_workspace.yml
+      - playbooks/infrastructure.yml
+      - playbooks/monitoring.yml
+      - playbooks/openstack.yml
+      - playbooks/site.yml
+      - molecule/shared/**
+      - plugins/**
+      - roles/defaults/**
+      - roles/ingress/**
+      - roles/openstack_helm_endpoints/**
+      - roles/openstack_helm_ingress/**
+      - roles/openstacksdk/**
+      - roles/rabbitmq/**
+      - roles/tempest/**
+      - charts/tempest/**
+      - charts/patches/tempest/**
+
+  - name: ceph-playbook
+    action: targets
+    targets:
+      - ceph
+    jobs:
+      - aio-openvswitch
+      - csi-rbd
+    paths:
+      - playbooks/ceph.yml
+
+  - name: kubernetes-playbook
+    action: targets
+    targets:
+      - kubernetes
+    jobs:
+      - aio-openvswitch
+      - aio-ovn
+      - csi-local-path-provisioner
+      - csi-rbd
+      - keycloak
+    paths:
+      - playbooks/kubernetes.yml
+
+  - name: csi-playbook
+    action: targets
+    targets:
+      - csi
+    jobs:
+      - csi-local-path-provisioner
+      - csi-rbd
+    paths:
+      - playbooks/csi.yml
+      - molecule/csi/**
+
+  - name: keycloak-scenario
+    action: targets
+    targets:
+      - keycloak
+    jobs:
+      - keycloak
+    paths:
+      - molecule/keycloak/**
+
+  - name: csi-local-path-provisioner
+    action: targets
+    targets:
+      - csi
+    jobs:
+      - csi-local-path-provisioner
+    paths:
+      - roles/local_path_provisioner/**
+      - charts/local-path-provisioner/**
+      - charts/patches/local-path-provisioner/**
+
+  - name: csi-rbd
+    action: targets
+    targets:
+      - csi
+    jobs:
+      - csi-rbd
+    paths:
+      - roles/ceph_csi_rbd/**
+      - charts/ceph-csi-rbd/**
+      - charts/patches/ceph-csi-rbd/**
+
+  - name: openvswitch-runtime
+    action: targets
+    targets:
+      - openvswitch
+    jobs:
+      - aio-openvswitch
+    paths:
+      - Cargo.lock
+      - Cargo.toml
+      - crates/ovsinit/**
+
+  - name: inactive-openstack-services
+    action: full
+    reason: the service is not enabled by the AIO scenario
+    paths:
+      - roles/designate/**
+      - roles/ironic/**
+      - charts/designate/**
+      - charts/patches/designate/**
+      - charts/ironic/**
+      - charts/patches/ironic/**
+
+  - name: operational-workflows
+    action: full
+    reason: operational workflows need the complete integration environment
+    paths:
+      - playbooks/image_manifest.yml
+      - playbooks/migrate_from_osa.yml
+      - playbooks/suspend_project.yml
+      - playbooks/tempest.yml
+      - playbooks/terminate_project.yml
+      - roles/image_manifest/**
+      - roles/migrate_db_from_osa/**
+      - roles/migrate_haproxy_from_osa/**
+      - roles/osa_config_diff/**
+      - roles/reboot/**
+
+  - name: non-runtime
+    action: ignore
+    paths:
+      - .agents/**
+      - .github/**
+      - .gitignore
+      - .gitreview
+      - .pre-commit-config.yaml
+      - .vale.ini
+      - AGENTS.md
+      - CLAUDE.md
+      - CODEOWNERS
+      - LICENSE
+      - README.md
+      - doc/**
+      - releasenotes/**
+      - reno.yaml
+      - renovate.json
+
+# Dependencies below are CI test-environment requirements. They are deliberately
+# independent from any deployment orchestrator and resolve only to tags already
+# present in the sequential playbooks on main.
+components:
+  ceph:
+    roles: []
+    charts: []
+    jobs:
+      - aio-openvswitch
+      - csi-rbd
+    verification_profiles:
+      - foundation
+      - storage
+
+  kubernetes:
+    roles:
+      - ethtool
+      - kubernetes_node_labels
+      - sysctl
+    charts: []
+    jobs:
+      - aio-openvswitch
+      - aio-ovn
+      - csi-local-path-provisioner
+      - csi-rbd
+      - keycloak
+    verification_profiles:
+      - foundation
+
+  csi:
+    roles:
+      - csi
+      - hpe_nimble_csi
+      - powerstore_csi
+      - portworx
+      - storpool_csi
+      - ibm_block_csi_driver
+    charts:
+      - hpe-csi-driver
+    requires:
+      - ceph
+      - kubernetes
+    jobs:
+      - csi-local-path-provisioner
+      - csi-rbd
+    verification_profiles:
+      - csi
+
+  cert-manager:
+    roles:
+      - cert_manager
+    charts:
+      - cert-manager
+      - cert-manager-webhook-infoblox-wapi
+      - godaddy-webhook
+    requires:
+      - kubernetes
+    jobs:
+      - keycloak
+    verification_profiles:
+      - infrastructure
+
+  cluster-issuer:
+    roles:
+      - cluster_issuer
+    charts: []
+    requires:
+      - cert-manager
+    jobs:
+      - keycloak
+    verification_profiles:
+      - infrastructure
+
+  ingress-nginx:
+    roles:
+      - ingress_nginx
+    charts:
+      - ingress-nginx
+    requires:
+      - kubernetes
+    jobs:
+      - keycloak
+    verification_profiles:
+      - infrastructure
+
+  rabbitmq-cluster-operator:
+    roles:
+      - rabbitmq_cluster_operator
+    charts:
+      - rabbitmq-cluster-operator
+    requires:
+      - cert-manager
+    jobs:
+      - keycloak
+    verification_profiles:
+      - messaging
+
+  percona-xtradb-cluster-operator:
+    roles:
+      - percona_xtradb_cluster_operator
+    charts:
+      - pxc-operator
+    requires:
+      - cert-manager
+    jobs:
+      - keycloak
+    verification_profiles:
+      - database
+
+  percona-xtradb-cluster:
+    roles:
+      - percona_xtradb_cluster
+    charts:
+      - pxc-db
+    requires:
+      - csi
+      - percona-xtradb-cluster-operator
+    jobs:
+      - keycloak
+    verification_profiles:
+      - database
+
+  valkey:
+    requires:
+      - cluster-issuer
+      - csi
+    jobs:
+      - aio-openvswitch
+    verification_profiles:
+      - cache
+
+  keycloak:
+    requires:
+      - cluster-issuer
+      - ingress-nginx
+      - percona-xtradb-cluster
+    jobs:
+      - keycloak
+    verification_profiles:
+      - keycloak-federation
+
+  keepalived:
+    requires:
+      - kubernetes
+    jobs:
+      - aio-openvswitch
+    verification_profiles:
+      - infrastructure
+
+  node-feature-discovery:
+    roles:
+      - node_feature_discovery
+    charts:
+      - node-feature-discovery
+    requires:
+      - kubernetes
+    jobs:
+      - aio-openvswitch
+    verification_profiles:
+      - monitoring
+
+  kube-prometheus-stack:
+    roles:
+      - kube_prometheus_stack
+    charts:
+      - kube-prometheus-stack
+    requires:
+      - cluster-issuer
+      - csi
+      - keycloak
+    jobs:
+      - aio-openvswitch
+    verification_profiles:
+      - monitoring
+
+  loki:
+    requires:
+      - csi
+    jobs:
+      - aio-openvswitch
+    verification_profiles:
+      - observability
+
+  vector:
+    requires:
+      - loki
+    jobs:
+      - aio-openvswitch
+    verification_profiles:
+      - observability
+
+  goldpinger:
+    requires:
+      - kubernetes
+    jobs:
+      - aio-openvswitch
+    verification_profiles:
+      - monitoring
+
+  ipmi-exporter:
+    roles:
+      - ipmi_exporter
+    charts:
+      - prometheus-ipmi-exporter
+    requires:
+      - kube-prometheus-stack
+    jobs:
+      - aio-openvswitch
+    verification_profiles:
+      - monitoring
+
+  smartctl-exporter:
+    roles:
+      - smartctl_exporter
+    charts:
+      - prometheus-smartctl-exporter
+    requires:
+      - kube-prometheus-stack
+    jobs:
+      - aio-openvswitch
+    verification_profiles:
+      - monitoring
+
+  prometheus-pushgateway:
+    roles:
+      - prometheus_pushgateway
+    charts:
+      - prometheus-pushgateway
+    requires:
+      - kube-prometheus-stack
+    jobs:
+      - aio-openvswitch
+    verification_profiles:
+      - monitoring
+
+  lpfc:
+    charts: []
+    jobs:
+      - aio-openvswitch
+    verification_profiles:
+      - host-storage
+
+  multipathd:
+    charts: []
+    jobs:
+      - aio-openvswitch
+    verification_profiles:
+      - host-storage
+
+  iscsi:
+    charts: []
+    jobs:
+      - aio-openvswitch
+    verification_profiles:
+      - host-storage
+
+  udev:
+    charts: []
+    jobs:
+      - aio-openvswitch
+    verification_profiles:
+      - host-storage
+
+  memcached:
+    requires:
+      - kubernetes
+    jobs:
+      - aio-openvswitch
+    verification_profiles:
+      - cache
+
+  keystone:
+    requires:
+      - ingress-nginx
+      - keycloak
+      - memcached
+      - percona-xtradb-cluster
+      - rabbitmq-cluster-operator
+    jobs:
+      - aio-openvswitch
+    verification_profiles:
+      - identity
+    tempest_tests:
+      - '^tempest\.api\.identity\.'
+
+  barbican:
+    requires:
+      - keystone
+    jobs:
+      - aio-openvswitch
+    verification_profiles:
+      - secrets
+
+  rook-ceph:
+    roles:
+      - rook_ceph
+    charts:
+      - rook-ceph
+    requires:
+      - kubernetes
+    jobs:
+      - aio-openvswitch
+    verification_profiles:
+      - storage
+
+  rook-ceph-cluster:
+    roles:
+      - rook_ceph_cluster
+    charts:
+      - rook-ceph-cluster
+    requires:
+      - ceph
+      - keystone
+      - rook-ceph
+    jobs:
+      - aio-openvswitch
+    verification_profiles:
+      - storage
+
+  ceph-provisioners:
+    roles:
+      - ceph_provisioners
+    charts:
+      - ceph-provisioners
+    requires:
+      - ceph
+      - kubernetes
+    jobs:
+      - aio-openvswitch
+    verification_profiles:
+      - storage
+
+  glance:
+    requires:
+      - ceph-provisioners
+      - keystone
+    jobs:
+      - aio-openvswitch
+    verification_profiles:
+      - image
+    tempest_tests:
+      - '^tempest\.api\.image\.'
+
+  staffeln:
+    requires:
+      - keystone
+    jobs:
+      - aio-openvswitch
+    verification_profiles:
+      - volume
+
+  cinder:
+    requires:
+      - ceph-provisioners
+      - keystone
+    jobs:
+      - aio-openvswitch
+    verification_profiles:
+      - volume
+    tempest_tests:
+      - '^tempest\.api\.volume\.'
+
+  placement:
+    requires:
+      - keystone
+    jobs:
+      - aio-openvswitch
+    verification_profiles:
+      - placement
+
+  openvswitch:
+    requires:
+      - kubernetes
+    jobs:
+      - aio-openvswitch
+    verification_profiles:
+      - network
+
+  frr-k8s:
+    roles:
+      - frr_k8s
+    charts:
+      - frr-k8s
+    tag: frr_k8s
+    requires:
+      - kubernetes
+      - ovn
+    jobs:
+      - aio-ovn
+    verification_profiles:
+      - network
+
+  ovn:
+    requires:
+      - openvswitch
+    jobs:
+      - aio-ovn
+    verification_profiles:
+      - network
+
+  libvirt:
+    requires:
+      - cluster-issuer
+      - kubernetes
+    jobs:
+      - aio-openvswitch
+    verification_profiles:
+      - compute
+
+  coredns:
+    requires:
+      - kubernetes
+    jobs:
+      - aio-openvswitch
+    verification_profiles:
+      - network
+
+  nova:
+    requires:
+      - glance
+      - libvirt
+      - placement
+    test_requires:
+      - neutron
+    jobs:
+      - aio-openvswitch
+    verification_profiles:
+      - compute
+    tempest_tests:
+      - '^tempest\.api\.compute\.'
+      - '^tempest\.scenario\.test_server_'
+
+  neutron:
+    requires:
+      - nova
+    backend_requires:
+      openvswitch:
+        - coredns
+        - openvswitch
+      ovn:
+        - ovn
+    jobs:
+      - aio-openvswitch
+      - aio-ovn
+    verification_profiles:
+      - network
+    tempest_tests:
+      - '^tempest\.api\.network\.'
+      - '^neutron_tempest_plugin\.'
+      - '^tempest\.scenario\.test_network_'
+
+  heat:
+    requires:
+      - keystone
+    test_requires:
+      - glance
+      - neutron
+    jobs:
+      - aio-openvswitch
+    verification_profiles:
+      - orchestration
+
+  octavia:
+    requires:
+      - barbican
+      - neutron
+      - nova
+    jobs:
+      - aio-openvswitch
+    verification_profiles:
+      - load-balancer
+    tempest_tests:
+      - '^octavia_tempest_plugin\.'
+
+  magnum:
+    requires:
+      - glance
+      - keystone
+    test_requires:
+      - barbican
+      - cinder
+      - glance
+      - heat
+      - neutron
+      - octavia
+    jobs:
+      - aio-openvswitch
+    verification_profiles:
+      - container-infrastructure
+
+  manila:
+    requires:
+      - cinder
+      - neutron
+      - nova
+    jobs:
+      - aio-openvswitch
+    verification_profiles:
+      - shared-file-system
+
+  horizon:
+    requires:
+      - keystone
+    test_requires:
+      - nova
+    jobs:
+      - aio-openvswitch
+    verification_profiles:
+      - dashboard
+    tempest_tests:
+      - '^tempest\.scenario\.test_dashboard_basic_ops\.'
+
+  openstack-exporter:
+    roles:
+      - openstack_exporter
+    charts:
+      - openstack-exporter
+    requires:
+      - cinder
+      - neutron
+    jobs:
+      - aio-openvswitch
+    verification_profiles:
+      - monitoring
+
+  openstack-cli:
+    roles:
+      - openstack_cli
+    charts: []
+    requires:
+      - keystone
+    jobs:
+      - aio-openvswitch
+    verification_profiles:
+      - identity-client

@@ -1,0 +1,110 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Create Molecule log directory
+  run_once: true # noqa: run-once[task]
+  ansible.builtin.file:
+    path: /tmp/logs
+    state: directory
+    mode: "0755"
+
+- name: Resolve live Molecule log path
+  run_once: true # noqa: run-once[task]
+  ansible.builtin.set_fact:
+    _atmosphere_ci_phase_log: >-
+      /tmp/logs/molecule-{{ atmosphere_ci_job }}.log
+
+- name: Start {{ _atmosphere_ci_phase }}
+  run_once: true # noqa: run-once[task]
+  changed_when: true
+  ansible.builtin.shell:
+    cmd: >-
+      set -o pipefail;
+      {{
+        _atmosphere_ci_phase_argv
+        | map('quote')
+        | join(' ')
+      }}
+      > {{ _atmosphere_ci_phase_log | quote }} 2>&1
+    executable: /bin/bash
+  args:
+    chdir: "{{ zuul.project.src_dir }}"
+  environment: >-
+    {{
+      _atmosphere_ci_phase_environment
+      | default({})
+      | combine({'PYTHONUNBUFFERED': '1'})
+    }}
+  async: "{{ _atmosphere_ci_phase_timeout }}"
+  poll: 0
+  register: _atmosphere_ci_phase_started
+
+- name: Initialize progress monitor for {{ _atmosphere_ci_phase }}
+  run_once: true # noqa: run-once[task]
+  ansible.builtin.set_fact:
+    _atmosphere_ci_phase_result: "{{ _atmosphere_ci_phase_started }}"
+    _atmosphere_ci_phase_log_offset: 0
+    _atmosphere_ci_phase_poll_count: 0
+    _atmosphere_ci_phase_last_task: Waiting for Molecule output
+    _atmosphere_ci_phase_poll_interval: >-
+      {{ atmosphere_ci_progress_interval | default(20) }}
+    _atmosphere_ci_phase_max_polls: >-
+      {{
+        (
+          (_atmosphere_ci_phase_timeout | int)
+          // (atmosphere_ci_progress_interval | default(20) | int)
+        )
+        + 1
+      }}
+
+- name: Bound progress monitor recursion for {{ _atmosphere_ci_phase }}
+  run_once: true # noqa: run-once[task]
+  ansible.builtin.set_fact:
+    _atmosphere_ci_phase_poll_chunk_size: 100
+
+- name: Calculate progress monitor chunks for {{ _atmosphere_ci_phase }}
+  run_once: true # noqa: run-once[task]
+  ansible.builtin.set_fact:
+    _atmosphere_ci_phase_poll_chunks: >-
+      {{
+        (
+          (_atmosphere_ci_phase_max_polls | int)
+          + (_atmosphere_ci_phase_poll_chunk_size | int)
+          - 1
+        )
+        // (_atmosphere_ci_phase_poll_chunk_size | int)
+      }}
+
+- name: Monitor {{ _atmosphere_ci_phase }}
+  ansible.builtin.include_tasks: poll-chunk.yml
+  loop: >-
+    {{
+      range(
+        1,
+        (_atmosphere_ci_phase_poll_chunks | int) + 1
+      )
+      | list
+    }}
+  loop_control:
+    label: "chunk {{ _atmosphere_ci_poll_chunk_number }}"
+    loop_var: _atmosphere_ci_poll_chunk_number
+
+- name: Clean up async state for {{ _atmosphere_ci_phase }}
+  run_once: true # noqa: run-once[task]
+  changed_when: false
+  ansible.builtin.async_status:
+    jid: "{{ _atmosphere_ci_phase_started.ansible_job_id }}"
+    mode: cleanup
+
+- name: Assert success for {{ _atmosphere_ci_phase }}
+  run_once: true # noqa: run-once[task]
+  ansible.builtin.assert:
+    that:
+      - _atmosphere_ci_phase_result.finished | default(false) | bool
+      - (_atmosphere_ci_phase_result.rc | default(1) | int) == 0
+    fail_msg: >-
+      {{ _atmosphere_ci_phase }} failed with exit code
+      {{ _atmosphere_ci_phase_result.rc | default('unknown') }}.
+      Command stderr:
+      {{ _atmosphere_ci_phase_result.stderr | default('(none)', true) }}
+      Complete output is in {{ _atmosphere_ci_phase_log }}.

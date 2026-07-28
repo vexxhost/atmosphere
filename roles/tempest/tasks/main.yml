@@ -18,6 +18,33 @@
   vars:
     openstack_helm_endpoints_chart: tempest
 
+- name: Trust cluster issuer CA in Tempest
+  when: tempest_cluster_issuer_ca_enabled | bool
+  block:
+    - name: Read cluster issuer CA secret
+      run_once: true
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Secret
+        name: "{{ tempest_cluster_issuer_ca_source_secret_name }}"
+        namespace: "{{ tempest_cluster_issuer_ca_namespace }}"
+      register: _tempest_cluster_issuer_ca_secret
+
+    - name: Copy cluster issuer CA into Tempest namespace
+      run_once: true
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: "{{ tempest_cluster_issuer_ca_secret_name }}"
+            namespace: "{{ tempest_helm_release_namespace }}"
+          type: Opaque
+          data:
+            ca.crt: >-
+              {{ _tempest_cluster_issuer_ca_secret.resources[0].data['tls.crt'] }}
+
 - name: Configure tempest
   block:
     - name: Get test image object
@@ -25,7 +52,9 @@
         cloud: atmosphere
         image: cirros
       register: _tempest_test_image
-      when: tempest_helm_values.conf.tempest.compute.image_ref is not defined
+      when:
+        - tempest_ci_mode != 'selective' or 'glance' in tempest_ci_components
+        - tempest_helm_values.conf.tempest.compute.image_ref is not defined
 
     - name: Configure test image ref
       ansible.builtin.set_fact:
@@ -36,6 +65,7 @@
             compute:
               image_ref: "{{ _tempest_test_image.images.0.id }}"
       when:
+        - tempest_ci_mode != 'selective' or 'glance' in tempest_ci_components
         - tempest_helm_values.conf.tempest.compute.image_ref is not defined
         - _tempest_test_image.images | length > 0
 
@@ -44,7 +74,9 @@
         cloud: atmosphere
         name: m1.tiny
       register: _tempest_test_flavor
-      when: tempest_helm_values.conf.tempest.compute.flavor_ref is not defined
+      when:
+        - tempest_ci_mode != 'selective' or 'nova' in tempest_ci_components
+        - tempest_helm_values.conf.tempest.compute.flavor_ref is not defined
 
     - name: Set test flavor ref
       ansible.builtin.set_fact:
@@ -55,6 +87,7 @@
             compute:
               flavor_ref: "{{ _tempest_test_flavor.flavors[0].id }}"
       when:
+        - tempest_ci_mode != 'selective' or 'nova' in tempest_ci_components
         - tempest_helm_values.conf.tempest.compute.flavor_ref is not defined
         - _tempest_test_flavor.flavors[0].id is defined
 
@@ -63,7 +96,9 @@
         cloud: atmosphere
         name: public
       register: _tempest_test_network
-      when: tempest_helm_values.conf.tempest.network.public_network_id is not defined
+      when:
+        - tempest_ci_mode != 'selective' or 'neutron' in tempest_ci_components
+        - tempest_helm_values.conf.tempest.network.public_network_id is not defined
 
     - name: Set test network ref
       ansible.builtin.set_fact:
@@ -74,6 +109,7 @@
             network:
               public_network_id: "{{ _tempest_test_network.networks[0].id }}"
       when:
+        - tempest_ci_mode != 'selective' or 'neutron' in tempest_ci_components
         - tempest_helm_values.conf.tempest.network.public_network_id is not defined
         - _tempest_test_network.networks[0].id is defined
 

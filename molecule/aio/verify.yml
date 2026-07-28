@@ -15,8 +15,16 @@
 - name: Run tests
   hosts: localhost
   gather_facts: false
+  tags:
+    - always
   tasks:
     - name: Run "stestr" tests
+      when: >-
+        {{
+          lookup('env', 'ATMOSPHERE_CI_RUN_STESTR')
+          | default('true', true)
+          | bool
+        }}
       become: true
       ansible.builtin.shell: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}/.venv/bin/stestr run"
       args:
@@ -27,3 +35,5 @@
 
 - name: Run Tempest tests
   ansible.builtin.import_playbook: vexxhost.atmosphere.tempest
+  tags:
+    - always

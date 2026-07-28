@@ -1,0 +1,161 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Run selected Molecule scenario
+  hosts: all
+  gather_facts: false
+  vars:
+    _atmosphere_ci_work_dir: "{{ zuul.project.src_dir }}"
+  tasks:
+    - name: Read selective Molecule plan
+      run_once: true # noqa: run-once[task]
+      ansible.builtin.slurp:
+        src: "{{ _atmosphere_ci_work_dir }}/ci-plan.json"
+      register: _atmosphere_ci_plan_file
+
+    - name: Resolve this job decision
+      run_once: true # noqa: run-once[task]
+      ansible.builtin.set_fact:
+        _atmosphere_ci_plan: >-
+          {{ _atmosphere_ci_plan_file.content | b64decode | from_json }}
+
+    - name: Assert this job exists in the plan
+      run_once: true # noqa: run-once[task]
+      ansible.builtin.assert:
+        that:
+          - atmosphere_ci_job in _atmosphere_ci_plan.job_decisions
+        fail_msg: >-
+          Selective CI policy has no decision for {{ atmosphere_ci_job }}.
+
+    - name: Resolve selected scenario inputs
+      run_once: true # noqa: run-once[task]
+      ansible.builtin.set_fact:
+        _atmosphere_ci_decision: >-
+          {{ _atmosphere_ci_plan.job_decisions[atmosphere_ci_job] }}
+
+    - name: Report this job decision
+      run_once: true # noqa: run-once[task]
+      ansible.builtin.debug:
+        msg: |-
+          Selective Molecule job: {{ atmosphere_ci_job }}
+          Decision: {{ 'RUN' if _atmosphere_ci_decision.run else 'SKIP' }}
+          Reason: {{ _atmosphere_ci_decision.reason }}
+          Scenario: {{ _atmosphere_ci_decision.scenario }}
+          Targets: {{ _atmosphere_ci_decision.targets | join(', ') | default('(none)', true) }}
+          Components: {{ _atmosphere_ci_decision.components | join(', ') | default('(full scenario)', true) }}
+
+    - name: Check Molecule inventory directories
+      when: _atmosphere_ci_decision.run | bool
+      run_once: true # noqa: run-once[task]
+      ansible.builtin.stat:
+        path: "{{ item }}"
+        follow: true
+      loop:
+        - "{{ _atmosphere_ci_work_dir }}"
+        - >-
+          {{ _atmosphere_ci_work_dir }}/molecule/{{
+            _atmosphere_ci_decision.scenario
+          }}/inventory
+        - >-
+          {{ _atmosphere_ci_work_dir }}/extensions/molecule/{{
+            _atmosphere_ci_decision.scenario
+          }}/inventory
+      register: _atmosphere_ci_inventory_paths
+
+    - name: Copy Zuul inventory for Molecule
+      when:
+        - _atmosphere_ci_decision.run | bool
+        - item.stat.isdir | default(false)
+      run_once: true # noqa: run-once[task]
+      ansible.builtin.copy:
+        src: "{{ zuul.executor.inventory_file }}"
+        dest: "{{ item.item }}/inventory.yaml"
+        mode: "0644"
+      loop: "{{ _atmosphere_ci_inventory_paths.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+    - name: Use private addresses in Molecule inventory
+      when:
+        - _atmosphere_ci_decision.run | bool
+        - item.stat.isdir | default(false)
+      run_once: true # noqa: run-once[task]
+      ansible.builtin.replace:
+        path: "{{ item.item }}/inventory.yaml"
+        regexp: '(^\s*ansible_host:\s*).*$'
+        replace: '\1"{% raw %}{{ nodepool.private_ipv4 }}{% endraw %}"'
+      loop: "{{ _atmosphere_ci_inventory_paths.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+    - name: Prepare Molecule command
+      when: _atmosphere_ci_decision.run | bool
+      run_once: true # noqa: run-once[task]
+      ansible.builtin.set_fact:
+        _atmosphere_ci_molecule_argv: >-
+          {{
+            [
+              'uv',
+              'run',
+              'molecule',
+              'test',
+              '--destroy',
+              'never',
+              '-s',
+              _atmosphere_ci_decision.scenario
+            ]
+            + (
+              [
+                '--',
+                '--tags',
+                _atmosphere_ci_decision.ansible_tags | join(',')
+              ]
+              if (
+                _atmosphere_ci_plan.mode == 'selective'
+                and _atmosphere_ci_decision.scenario == 'aio'
+                and _atmosphere_ci_decision.ansible_tags | length > 0
+              )
+              else []
+            )
+          }}
+        _atmosphere_ci_molecule_environment: >-
+          {{
+            molecule_environment
+            | default({})
+            | combine({
+                'ATMOSPHERE_CI_MODE': (
+                  _atmosphere_ci_plan.mode
+                  if _atmosphere_ci_decision.scenario == 'aio'
+                  else 'full'
+                ),
+                'ATMOSPHERE_CI_COMPONENTS':
+                  _atmosphere_ci_decision.components | join(','),
+                'ATMOSPHERE_CI_VERIFICATION_PROFILES':
+                  _atmosphere_ci_decision.verification_profiles | join(','),
+                'ATMOSPHERE_CI_TEMPEST_INCLUDE':
+                  _atmosphere_ci_decision.tempest_tests | to_json,
+                'ATMOSPHERE_CI_RUN_STESTR': (
+                  _atmosphere_ci_plan.mode != 'selective'
+                  or 'openvswitch' in _atmosphere_ci_decision.components
+                  or 'ovn' in _atmosphere_ci_decision.components
+                ) | ternary('true', 'false'),
+                'ATMOSPHERE_CI_RUN_TEMPEST': (
+                  _atmosphere_ci_plan.mode != 'selective'
+                  or 'keystone' in _atmosphere_ci_decision.components
+                ) | ternary('true', 'false'),
+                'MOLECULE_ANSIBLE_ARGS_STRICT_MODE': '1'
+              })
+          }}
+
+    - name: Run standard Molecule lifecycle with progress output
+      when: _atmosphere_ci_decision.run | bool
+      ansible.builtin.include_tasks: run-command.yml
+      vars:
+        _atmosphere_ci_phase: >-
+          Molecule {{ _atmosphere_ci_decision.scenario }}
+          ({{ atmosphere_ci_job }})
+        _atmosphere_ci_phase_argv: "{{ _atmosphere_ci_molecule_argv }}"
+        _atmosphere_ci_phase_environment: >-
+          {{ _atmosphere_ci_molecule_environment }}
+        _atmosphere_ci_phase_timeout: >-
+          {{ atmosphere_ci_molecule_timeout | default(7000) }}

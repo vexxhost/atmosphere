@@ -1,0 +1,12 @@
+diff --git a/tempest/templates/job-run-tests.yaml b/tempest/templates/job-run-tests.yaml
+--- a/tempest/templates/job-run-tests.yaml
++++ b/tempest/templates/job-run-tests.yaml
+@@ -64,6 +64,8 @@ spec:
+ {{- if or .Values.manifests.certificates .Values.tls.identity }}
+             - name: REQUESTS_CA_BUNDLE
+               value: "/etc/tempest/certs/ca.crt"
++            - name: SSL_CERT_FILE
++              value: "/etc/tempest/certs/ca.crt"
+ {{- end }}
+ {{- with $env := dict "ksUserSecret" .Values.secrets.identity.admin }}
+ {{- include "helm-toolkit.snippets.keystone_openrc_env_vars" $env | indent 12 }}
