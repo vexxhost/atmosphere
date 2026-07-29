@@ -68,11 +68,13 @@ targets.
 
 During selective AIO verification, Tempest receives the union of
 ``tempest_tests`` for the changed components. The expressions are passed
-through Tempest's ``include-list`` support and combined with ``--smoke``. A
-component without expressions, including any such component in a multi-target
-change, uses the ordinary smoke selection against the services available in
-its deployment closure. This provides a conservative fallback for services
-whose image has no dedicated smoke-test namespace.
+to one Tempest regular expression which also requires the ``smoke`` test
+attribute. This selects the intersection of the component namespaces and the
+smoke suite instead of adding unrelated smoke tests. A component without
+expressions, including any such component in a multi-target change, uses the
+ordinary smoke selection against the services available in its deployment
+closure. This provides a conservative fallback for services whose image has no
+dedicated smoke-test namespace.
 
 Zuul artifacts
 ==============
