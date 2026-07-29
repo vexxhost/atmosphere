@@ -513,6 +513,7 @@ def test_full_aio_jobs_have_timeout_headroom() -> None:
         "atmosphere-molecule-aio-openvswitch-selective",
         "atmosphere-molecule-aio-ovn-selective",
     ):
+        assert jobs[job_name]["timeout"] == 10800
         assert jobs[job_name]["vars"]["atmosphere_ci_molecule_timeout"] == 9000
         assert jobs[job_name]["vars"]["manila_helm_timeout"] == "10m0s"
 

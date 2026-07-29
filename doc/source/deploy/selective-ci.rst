@@ -115,4 +115,6 @@ the Nova, Neutron, Octavia, and Manila Helm operations. Clean database
 migrations and initial service rollouts can exceed their normal timeouts on a
 busy test node even when they complete successfully. The complete AIO Molecule
 lifecycle has a 150-minute command limit so full fallback runs have enough time
-to finish idempotence and verification.
+to finish idempotence and verification. The enclosing Zuul job has a
+180-minute limit, reserving another thirty minutes for preparation and
+post-run artifact collection.
