@@ -89,7 +89,8 @@ A component with neither Tempest expressions nor a resource check uses the
 ordinary smoke selection against the services available in its deployment
 closure. This is the conservative fallback. In a multi-target change, resource
 checks cover their own components without disabling focused Tempest expressions
-from other targets.
+from other targets. Full-fallback AIO jobs execute every declared resource
+check.
 
 Zuul artifacts
 ==============

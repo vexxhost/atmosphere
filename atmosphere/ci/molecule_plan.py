@@ -792,10 +792,14 @@ class Planner:
         reasons: list[str],
     ) -> dict[str, Any]:
         full_jobs = set(_strings(self.policy["full_jobs"], "full_jobs"))
+        full_verification_checks = self._verification_checks(self.components)
         decisions: dict[str, dict[str, Any]] = {}
         for job_name, job_value in self.jobs.items():
             job = _mapping(job_value, f"jobs.{job_name}")
             if job_name in full_jobs:
+                verification_checks = (
+                    full_verification_checks if job["scenario"] == "aio" else []
+                )
                 decisions[job_name] = {
                     "run": True,
                     "reason": "full fallback",
@@ -805,7 +809,7 @@ class Planner:
                     "components": [],
                     "ansible_tags": [],
                     "verification_profiles": ["full"],
-                    "verification_checks": [],
+                    "verification_checks": verification_checks,
                     "tempest_tests": [],
                     "run_tempest": job["scenario"] == "aio",
                 }
@@ -820,7 +824,7 @@ class Planner:
             "matches": matches,
             "targets": [],
             "verification_profiles": ["full"],
-            "verification_checks": [],
+            "verification_checks": full_verification_checks,
             "tempest_tests": [],
             "variants": [],
             "job_decisions": decisions,

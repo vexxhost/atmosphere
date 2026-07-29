@@ -278,6 +278,20 @@ def test_unknown_runtime_path_falls_back_to_every_job(
 
     assert plan["mode"] == "full"
     assert all(decision["run"] for decision in plan["job_decisions"].values())
+    expected_checks = {
+        ("container_infrastructure_management", "cluster"),
+        ("key_manager", "secret"),
+        ("load_balancer", "load_balancer"),
+        ("orchestration", "stack"),
+        ("placement", "resource_provider"),
+        ("shared_file_system", "share"),
+    }
+    for job_name in ("aio-openvswitch", "aio-ovn"):
+        assert {
+            (check["service"], check["type"])
+            for check in plan["job_decisions"][job_name]["verification_checks"]
+        } == expected_checks
+    assert plan["job_decisions"]["csi-rbd"]["verification_checks"] == []
 
 
 def test_empty_change_list_falls_back_to_every_job(
