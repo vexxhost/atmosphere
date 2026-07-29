@@ -1,8 +1,9 @@
 ---
 version: 1
 
-# Zuul schedules these jobs statically. The planner decides which scheduled
-# jobs need to execute after inspecting the exact pull request diff.
+# These jobs form the selector's complete execution set. Zuul uses generated
+# irrelevant-files filters to omit jobs assigned exclusively to other paths,
+# then the runtime planner validates every job that remains.
 jobs:
   aio-openvswitch:
     scenario: aio
@@ -539,6 +540,8 @@ components:
     requires:
       - ceph-provisioners
       - keystone
+    test_requires:
+      - glance
     jobs:
       - aio-openvswitch
     verification_profiles:
