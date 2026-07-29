@@ -400,11 +400,7 @@ def test_full_aio_jobs_have_timeout_headroom() -> None:
     zuul_config = yaml.safe_load(
         (repository / ".zuul.yaml").read_text(encoding="utf-8")
     )
-    jobs = {
-        item["job"]["name"]: item["job"]
-        for item in zuul_config
-        if "job" in item
-    }
+    jobs = {item["job"]["name"]: item["job"] for item in zuul_config if "job" in item}
 
     for job_name in (
         "atmosphere-molecule-aio-openvswitch-selective",
