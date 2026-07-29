@@ -88,7 +88,9 @@ assigns exclusively to other components. The matchers are checked into
 ``.zuul.yaml`` and unit tests ensure they stay synchronized with
 ``ci/molecule-plan.yaml``. Unclassified runtime paths match no exclusion and
 therefore retain the complete fallback. The planner still validates every
-scheduled job at runtime and reports its exact decision.
+scheduled job at runtime and reports its exact decision. The selective jobs
+disable Zuul's implicit configuration-update override because the planner,
+policy, playbook, and Zuul configuration paths already bypass every exclusion.
 
 The selective AIO jobs allow fifteen minutes for Keycloak and ten minutes for
 the Nova, Neutron, and Octavia Helm operations. Clean database migrations and

@@ -458,6 +458,10 @@ def test_scheduler_filters_match_policy(planner: Planner) -> None:
         if "job" in item
         for job in [item["job"]]
     }
+    for item in zuul_config:
+        if "job" in item:
+            assert item["job"]["match-on-config-updates"] is False
+
     samples = {"new-runtime-area/config.yaml"}
     for rule in planner.rules:
         samples.update(
