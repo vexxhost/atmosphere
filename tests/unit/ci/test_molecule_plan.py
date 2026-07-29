@@ -409,6 +409,17 @@ def test_full_aio_jobs_have_timeout_headroom() -> None:
         assert jobs[job_name]["vars"]["atmosphere_ci_molecule_timeout"] == 9000
 
 
+def test_zuul_plan_uses_speculative_parent() -> None:
+    repository = POLICY_PATH.parents[1]
+    zuul_config = yaml.safe_load(
+        (repository / ".zuul.yaml").read_text(encoding="utf-8")
+    )
+    project = next(item["project"] for item in zuul_config if "project" in item)
+
+    assert project["vars"]["atmosphere_ci_plan_base"] == "HEAD^1"
+    assert project["vars"]["atmosphere_ci_plan_head"] == "HEAD"
+
+
 def test_text_output_is_compact_and_readable(planner: Planner) -> None:
     output = render_plan(plan_path(planner, "roles/glance/tasks/main.yml"))
 
