@@ -98,11 +98,15 @@ def test_manila_includes_functional_dependencies(
     assert decision["tempest_tests"] == []
     assert decision["run_tempest"] is False
     assert decision["verification_checks"] == [
-        {"service": "shared_file_system", "type": "share"}
+        {
+            "kind": "openstack-resource",
+            "service": "shared_file_system",
+            "type": "share",
+        }
     ]
 
 
-def test_unmapped_tempest_target_disables_filter_for_combined_change(
+def test_cli_check_keeps_mapped_tempest_filter_for_combined_change(
     planner: Planner,
 ) -> None:
     plan = planner.plan(
@@ -111,9 +115,16 @@ def test_unmapped_tempest_target_disables_filter_for_combined_change(
             Change(status="M", path="roles/openstack_cli/tasks/main.yml"),
         ]
     )
+    decision = plan["job_decisions"]["aio-openvswitch"]
 
-    assert plan["job_decisions"]["aio-openvswitch"]["tempest_tests"] == []
-    assert plan["job_decisions"]["aio-openvswitch"]["run_tempest"] is True
+    assert decision["tempest_tests"] == [r"^tempest\.api\.image\."]
+    assert decision["run_tempest"] is True
+    assert decision["verification_checks"] == [
+        {
+            "arguments": ["token", "issue"],
+            "kind": "openstack-cli",
+        }
+    ]
 
 
 def test_api_check_keeps_mapped_tempest_filter_for_combined_change(
@@ -130,7 +141,11 @@ def test_api_check_keeps_mapped_tempest_filter_for_combined_change(
     assert decision["tempest_tests"] == [r"^tempest\.api\.image\."]
     assert decision["run_tempest"] is True
     assert decision["verification_checks"] == [
-        {"service": "shared_file_system", "type": "share"}
+        {
+            "kind": "openstack-resource",
+            "service": "shared_file_system",
+            "type": "share",
+        }
     ]
 
 
@@ -159,7 +174,43 @@ def test_service_without_tempest_plugin_uses_read_only_api_check(
     assert decision["run_tempest"] is False
     assert decision["tempest_tests"] == []
     assert decision["verification_checks"] == [
-        {"service": service, "type": resource_type}
+        {
+            "kind": "openstack-resource",
+            "service": service,
+            "type": resource_type,
+        }
+    ]
+
+
+def test_openstack_cli_uses_focused_client_check(planner: Planner) -> None:
+    plan = plan_path(planner, "roles/openstack_cli/tasks/main.yml")
+    decision = plan["job_decisions"]["aio-openvswitch"]
+
+    assert decision["run_tempest"] is False
+    assert decision["verification_checks"] == [
+        {
+            "arguments": ["token", "issue"],
+            "kind": "openstack-cli",
+        }
+    ]
+
+
+def test_openstack_exporter_waits_for_both_deployments(planner: Planner) -> None:
+    plan = plan_path(planner, "roles/openstack_exporter/tasks/main.yml")
+    decision = plan["job_decisions"]["aio-openvswitch"]
+
+    assert decision["run_tempest"] is False
+    assert decision["verification_checks"] == [
+        {
+            "kind": "kubernetes-deployment",
+            "name": "openstack-database-exporter",
+            "namespace": "openstack",
+        },
+        {
+            "kind": "kubernetes-deployment",
+            "name": "openstack-exporter",
+            "namespace": "openstack",
+        },
     ]
 
 
@@ -287,10 +338,25 @@ def test_unknown_runtime_path_falls_back_to_every_job(
         ("shared_file_system", "share"),
     }
     for job_name in ("aio-openvswitch", "aio-ovn"):
+        checks = plan["job_decisions"][job_name]["verification_checks"]
         assert {
             (check["service"], check["type"])
-            for check in plan["job_decisions"][job_name]["verification_checks"]
+            for check in checks
+            if check["kind"] == "openstack-resource"
         } == expected_checks
+        assert {
+            tuple(check["arguments"])
+            for check in checks
+            if check["kind"] == "openstack-cli"
+        } == {("token", "issue")}
+        assert {
+            (check["namespace"], check["name"])
+            for check in checks
+            if check["kind"] == "kubernetes-deployment"
+        } == {
+            ("openstack", "openstack-database-exporter"),
+            ("openstack", "openstack-exporter"),
+        }
     assert plan["job_decisions"]["csi-rbd"]["verification_checks"] == []
 
 
@@ -378,11 +444,46 @@ def test_invalid_tempest_test_regular_expression_is_rejected() -> None:
 def test_malformed_verification_check_is_rejected() -> None:
     policy = yaml.safe_load(POLICY_PATH.read_text(encoding="utf-8"))
     invalid = copy.deepcopy(policy)
-    invalid["verification_checks"]["secrets"] = [{"service": "key_manager"}]
+    invalid["verification_checks"]["secrets"] = [
+        {
+            "kind": "openstack-resource",
+            "service": "key_manager",
+        }
+    ]
 
     with pytest.raises(
         PolicyError,
         match=r"verification_checks\.secrets\[0\]\.type must be a string",
+    ):
+        Planner(invalid)
+
+
+def test_unknown_verification_check_kind_is_rejected() -> None:
+    policy = yaml.safe_load(POLICY_PATH.read_text(encoding="utf-8"))
+    invalid = copy.deepcopy(policy)
+    invalid["verification_checks"]["secrets"] = [{"kind": "shell"}]
+
+    with pytest.raises(
+        PolicyError,
+        match=r"verification_checks\.secrets\[0\]\.kind must be one of",
+    ):
+        Planner(invalid)
+
+
+def test_empty_openstack_cli_arguments_are_rejected() -> None:
+    policy = yaml.safe_load(POLICY_PATH.read_text(encoding="utf-8"))
+    invalid = copy.deepcopy(policy)
+    invalid["verification_checks"]["identity-client"] = [
+        {
+            "arguments": [],
+            "kind": "openstack-cli",
+        }
+    ]
+
+    with pytest.raises(
+        PolicyError,
+        match=r"verification_checks\.identity-client\[0\]\.arguments must be "
+        r"a non-empty list of strings",
     ):
         Planner(invalid)
 
@@ -494,9 +595,12 @@ def test_selective_ci_uses_main_sequential_molecule_flow() -> None:
     assert "image_ref_alt" in tempest_tasks
     assert "flavor_ref_alt" in tempest_tasks
     assert "ATMOSPHERE_CI_VERIFICATION_CHECKS" in runner
-    assert "openstack.cloud.resources" in (
-        repository / "molecule" / "aio" / "verify.yml"
-    ).read_text(encoding="utf-8")
+    verifier = (repository / "molecule" / "aio" / "verify.yml").read_text(
+        encoding="utf-8"
+    )
+    assert "openstack.cloud.resources" in verifier
+    assert "Run selected OpenStack client commands" in verifier
+    assert "Wait for selected Kubernetes deployments" in verifier
     assert "go build" not in converge
     assert "./bin/atmosphere" not in runner
     assert "dependency_options" not in policy
@@ -613,4 +717,4 @@ def test_text_output_is_compact_and_readable(planner: Planner) -> None:
     assert "RUN  aio-openvswitch" in output
     assert "SKIP aio-ovn" in output
     assert "components:" in output
-    assert "API checks: shared_file_system/share" in output
+    assert "verification: openstack-resource:shared_file_system/share" in output

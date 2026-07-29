@@ -26,9 +26,9 @@ The policy is stored in ``ci/molecule-plan.yaml`` and has four sections:
   full-suite fallbacks.
 
 ``verification_checks``
-  Read-only OpenStack resource queries keyed by verification profile. These
-  provide focused API coverage when the Tempest image does not contain a
-  service plugin.
+  Focused, read-only checks keyed by verification profile. Supported check
+  kinds query OpenStack resources, run OpenStack client commands, or wait for
+  Kubernetes deployments.
 
 ``components``
   Role and chart ownership, direct CI dependencies, verification profiles, and
@@ -77,20 +77,28 @@ to one Tempest regular expression which also requires the ``smoke`` test
 attribute. This selects the intersection of the component namespaces and the
 smoke suite instead of adding unrelated smoke tests.
 
-Verification profiles can also resolve to ``verification_checks``. The AIO
-verifier runs each selected check with ``openstack.cloud.resources`` against
-the deployed public API and its configured certificate authority. A successful
+Verification profiles can also resolve to ``verification_checks``. An
+``openstack-resource`` check uses ``openstack.cloud.resources`` against the
+deployed public API and its configured certificate authority. A successful
 query proves that authentication, service discovery, TLS, and the target API
 are working even when the result is empty. Barbican, Placement, Heat, Magnum,
-and Manila use this mechanism. Octavia keeps its plugin tests and also receives
+and Manila use these checks. Octavia keeps its plugin tests and also receives
 an API check.
 
-A component with neither Tempest expressions nor a resource check uses the
+An ``openstack-cli`` check runs an argument list through the deployed
+``openstack`` wrapper and generated ``openrc`` file. The OpenStack CLI
+component requests a token this way, covering the wrapper container,
+authentication, and certificate configuration. A ``kubernetes-deployment``
+check waits until the named deployment is Available. The OpenStack exporter
+component waits for both its API and database exporters; their readiness probes
+exercise the metrics endpoints.
+
+A component with neither Tempest expressions nor a verification check uses the
 ordinary smoke selection against the services available in its deployment
-closure. This is the conservative fallback. In a multi-target change, resource
-checks cover their own components without disabling focused Tempest expressions
-from other targets. Full-fallback AIO jobs execute every declared resource
-check.
+closure. This is the conservative fallback. In a multi-target change,
+verification checks cover their own components without disabling focused
+Tempest expressions from other targets. Full-fallback AIO jobs execute every
+declared verification check.
 
 Zuul artifacts
 ==============

@@ -16,6 +16,12 @@ from typing import Any, Iterable, Sequence
 
 import yaml
 
+_VERIFICATION_CHECK_FIELDS = {
+    "kubernetes-deployment": {"kind", "name", "namespace"},
+    "openstack-cli": {"arguments", "kind"},
+    "openstack-resource": {"kind", "service", "type"},
+}
+
 
 class PolicyError(ValueError):
     """Raised when the selective CI policy is invalid."""
@@ -208,15 +214,35 @@ class Planner:
             for index, check_value in enumerate(checks):
                 field = f"verification_checks.{profile}[{index}]"
                 check = _mapping(check_value, field)
-                unexpected = sorted(set(check) - {"service", "type"})
+                kind = check.get("kind")
+                if not isinstance(kind, str) or kind not in _VERIFICATION_CHECK_FIELDS:
+                    raise PolicyError(
+                        f"{field}.kind must be one of: "
+                        f"{', '.join(sorted(_VERIFICATION_CHECK_FIELDS))}"
+                    )
+                expected = _VERIFICATION_CHECK_FIELDS[kind]
+                unexpected = sorted(set(check) - expected)
                 if unexpected:
                     raise PolicyError(
                         f"{field} contains unsupported keys: "
                         f"{', '.join(unexpected)}"
                     )
-                for key in ("service", "type"):
+                for key in sorted(expected - {"arguments", "kind"}):
                     if not isinstance(check.get(key), str) or not check[key]:
                         raise PolicyError(f"{field}.{key} must be a string")
+                if kind == "openstack-cli":
+                    arguments = check.get("arguments")
+                    if (
+                        not isinstance(arguments, list)
+                        or not arguments
+                        or not all(
+                            isinstance(argument, str) and argument
+                            for argument in arguments
+                        )
+                    ):
+                        raise PolicyError(
+                            f"{field}.arguments must be a non-empty list of strings"
+                        )
 
         owners: dict[tuple[str, str], str] = {}
         for component_name, component_value in self.components.items():
@@ -754,8 +780,8 @@ class Planner:
     def _verification_checks(
         self,
         targets: Iterable[str],
-    ) -> list[dict[str, str]]:
-        checks: dict[tuple[str, str], dict[str, str]] = {}
+    ) -> list[dict[str, Any]]:
+        checks: dict[str, dict[str, Any]] = {}
         for target in targets:
             profiles = _strings(
                 self.components[target].get("verification_profiles"),
@@ -767,11 +793,8 @@ class Planner:
                         check_value,
                         f"verification_checks.{profile}",
                     )
-                    key = (check["service"], check["type"])
-                    checks[key] = {
-                        "service": check["service"],
-                        "type": check["type"],
-                    }
+                    key = json.dumps(check, sort_keys=True)
+                    checks[key] = dict(check)
         return [checks[key] for key in sorted(checks)]
 
     def _tempest_required(self, targets: Iterable[str]) -> bool:
@@ -906,11 +929,16 @@ def render_plan(plan: dict[str, Any]) -> str:
                 "       Tempest include: " + ", ".join(decision["tempest_tests"])
             )
         if decision["run"] and decision.get("verification_checks"):
-            checks = (
-                f"{check['service']}/{check['type']}"
-                for check in decision["verification_checks"]
-            )
-            lines.append("       API checks: " + ", ".join(checks))
+            checks = []
+            for check in decision["verification_checks"]:
+                if check["kind"] == "openstack-resource":
+                    label = f"{check['service']}/{check['type']}"
+                elif check["kind"] == "openstack-cli":
+                    label = "openstack " + " ".join(check["arguments"])
+                else:
+                    label = f"{check['namespace']}/{check['name']}"
+                checks.append(f"{check['kind']}:{label}")
+            lines.append("       verification: " + ", ".join(checks))
     for reason in plan.get("reasons", []):
         lines.append(f"Reason: {reason}")
     return "\n".join(lines)
