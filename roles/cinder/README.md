@@ -3,6 +3,7 @@
 This role deploys the OpenStack Block Storage service using the vendored Cinder
 Helm chart. It configures the API, scheduler, and volume services used by the
 deployment.
+Backend-specific chart values can be supplied through the role variables.
 
 ## Operations
 
