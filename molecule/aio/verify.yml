@@ -33,6 +33,27 @@
         KUBECONFIG: /root/.kube/config
         ATMOSPHERE_NETWORK_BACKEND: "{{ atmosphere_network_backend }}"
 
+- name: Verify selected OpenStack APIs
+  hosts: controllers[0]
+  gather_facts: false
+  become: true
+  vars:
+    _atmosphere_ci_verification_checks: >-
+      {{
+        lookup('env', 'ATMOSPHERE_CI_VERIFICATION_CHECKS')
+        | default('[]', true)
+        | from_json
+      }}
+  tasks:
+    - name: Query selected OpenStack service resources
+      openstack.cloud.resources:
+        cloud: atmosphere
+        service: "{{ item.service }}"
+        type: "{{ item.type }}"
+      loop: "{{ _atmosphere_ci_verification_checks }}"
+      loop_control:
+        label: "{{ item.service }}/{{ item.type }}"
+
 - name: Run Tempest tests
   ansible.builtin.import_playbook: vexxhost.atmosphere.tempest
   tags:

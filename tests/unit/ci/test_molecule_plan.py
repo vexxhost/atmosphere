@@ -96,6 +96,10 @@ def test_manila_includes_functional_dependencies(
         {"heat", "horizon", "magnum", "openstack-exporter"}
     )
     assert decision["tempest_tests"] == []
+    assert decision["run_tempest"] is False
+    assert decision["verification_checks"] == [
+        {"service": "shared_file_system", "type": "share"}
+    ]
 
 
 def test_unmapped_tempest_target_disables_filter_for_combined_change(
@@ -104,11 +108,59 @@ def test_unmapped_tempest_target_disables_filter_for_combined_change(
     plan = planner.plan(
         [
             Change(status="M", path="roles/glance/tasks/main.yml"),
-            Change(status="M", path="roles/manila/tasks/main.yml"),
+            Change(status="M", path="roles/openstack_cli/tasks/main.yml"),
         ]
     )
 
     assert plan["job_decisions"]["aio-openvswitch"]["tempest_tests"] == []
+    assert plan["job_decisions"]["aio-openvswitch"]["run_tempest"] is True
+
+
+def test_api_check_keeps_mapped_tempest_filter_for_combined_change(
+    planner: Planner,
+) -> None:
+    plan = planner.plan(
+        [
+            Change(status="M", path="roles/glance/tasks/main.yml"),
+            Change(status="M", path="roles/manila/tasks/main.yml"),
+        ]
+    )
+    decision = plan["job_decisions"]["aio-openvswitch"]
+
+    assert decision["tempest_tests"] == [r"^tempest\.api\.image\."]
+    assert decision["run_tempest"] is True
+    assert decision["verification_checks"] == [
+        {"service": "shared_file_system", "type": "share"}
+    ]
+
+
+@pytest.mark.parametrize(
+    ("role", "service", "resource_type"),
+    [
+        ("barbican", "key_manager", "secret"),
+        ("placement", "placement", "resource_provider"),
+        ("heat", "orchestration", "stack"),
+        ("magnum", "container_infrastructure_management", "cluster"),
+        ("manila", "shared_file_system", "share"),
+    ],
+)
+def test_service_without_tempest_plugin_uses_read_only_api_check(
+    planner: Planner,
+    role: str,
+    service: str,
+    resource_type: str,
+) -> None:
+    plan = plan_path(
+        planner,
+        f"roles/{role}/tasks/main.yml",
+    )
+    decision = plan["job_decisions"]["aio-openvswitch"]
+
+    assert decision["run_tempest"] is False
+    assert decision["tempest_tests"] == []
+    assert decision["verification_checks"] == [
+        {"service": service, "type": resource_type}
+    ]
 
 
 def test_magnum_uses_broad_openstack_environment(
@@ -309,6 +361,18 @@ def test_invalid_tempest_test_regular_expression_is_rejected() -> None:
         Planner(invalid)
 
 
+def test_malformed_verification_check_is_rejected() -> None:
+    policy = yaml.safe_load(POLICY_PATH.read_text(encoding="utf-8"))
+    invalid = copy.deepcopy(policy)
+    invalid["verification_checks"]["secrets"] = [{"service": "key_manager"}]
+
+    with pytest.raises(
+        PolicyError,
+        match=r"verification_checks\.secrets\[0\]\.type must be a string",
+    ):
+        Planner(invalid)
+
+
 def test_every_declared_role_maps_to_its_component(
     planner: Planner,
 ) -> None:
@@ -415,6 +479,10 @@ def test_selective_ci_uses_main_sequential_molecule_flow() -> None:
     assert "--include-list" not in tempest_vars
     assert "image_ref_alt" in tempest_tasks
     assert "flavor_ref_alt" in tempest_tasks
+    assert "ATMOSPHERE_CI_VERIFICATION_CHECKS" in runner
+    assert "openstack.cloud.resources" in (
+        repository / "molecule" / "aio" / "verify.yml"
+    ).read_text(encoding="utf-8")
     assert "go build" not in converge
     assert "./bin/atmosphere" not in runner
     assert "dependency_options" not in policy
@@ -524,9 +592,10 @@ def test_scheduler_filters_select_only_glance_job(planner: Planner) -> None:
 
 
 def test_text_output_is_compact_and_readable(planner: Planner) -> None:
-    output = render_plan(plan_path(planner, "roles/glance/tasks/main.yml"))
+    output = render_plan(plan_path(planner, "roles/manila/tasks/main.yml"))
 
     assert "Selective Molecule plan: selective" in output
     assert "RUN  aio-openvswitch" in output
     assert "SKIP aio-ovn" in output
     assert "components:" in output
+    assert "API checks: shared_file_system/share" in output

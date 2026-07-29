@@ -159,6 +159,10 @@ class Planner:
         self.policy = policy
         self.jobs = _mapping(policy.get("jobs"), "jobs")
         self.components = _mapping(policy.get("components"), "components")
+        self.verification_checks = _mapping(
+            policy.get("verification_checks", {}),
+            "verification_checks",
+        )
         rules = policy.get("rules")
         if not isinstance(rules, list):
             raise PolicyError("rules must be a list")
@@ -195,6 +199,24 @@ class Planner:
         if not full_jobs:
             raise PolicyError("full_jobs must not be empty")
         self._check_jobs(full_jobs, "full_jobs")
+
+        for profile, checks in self.verification_checks.items():
+            if not isinstance(checks, list):
+                raise PolicyError(
+                    f"verification_checks.{profile} must be a list of mappings"
+                )
+            for index, check_value in enumerate(checks):
+                field = f"verification_checks.{profile}[{index}]"
+                check = _mapping(check_value, field)
+                unexpected = sorted(set(check) - {"service", "type"})
+                if unexpected:
+                    raise PolicyError(
+                        f"{field} contains unsupported keys: "
+                        f"{', '.join(unexpected)}"
+                    )
+                for key in ("service", "type"):
+                    if not isinstance(check.get(key), str) or not check[key]:
+                        raise PolicyError(f"{field}.{key} must be a string")
 
         owners: dict[tuple[str, str], str] = {}
         for component_name, component_value in self.components.items():
@@ -465,6 +487,7 @@ class Planner:
                 )
             )
         all_tempest_tests = self._tempest_test_patterns(targets)
+        all_verification_checks = self._verification_checks(targets)
 
         for job_name, job_value in self.jobs.items():
             job = _mapping(job_value, f"jobs.{job_name}")
@@ -492,6 +515,7 @@ class Planner:
                     }
                 )
                 tempest_tests = self._tempest_test_patterns(roots)
+                verification_checks = self._verification_checks(roots)
                 decision = {
                     "run": True,
                     "reason": "selected by changed components",
@@ -501,7 +525,9 @@ class Planner:
                     "components": components,
                     "ansible_tags": tags,
                     "verification_profiles": profiles,
+                    "verification_checks": verification_checks,
                     "tempest_tests": tempest_tests,
+                    "run_tempest": self._tempest_required(roots),
                 }
                 variants.append(
                     {
@@ -512,7 +538,9 @@ class Planner:
                         "components": components,
                         "ansible_tags": tags,
                         "verification_profiles": profiles,
+                        "verification_checks": verification_checks,
                         "tempest_tests": tempest_tests,
+                        "run_tempest": self._tempest_required(roots),
                     }
                 )
             else:
@@ -525,7 +553,9 @@ class Planner:
                     "components": [],
                     "ansible_tags": [],
                     "verification_profiles": sorted(all_profiles),
+                    "verification_checks": all_verification_checks,
                     "tempest_tests": all_tempest_tests,
+                    "run_tempest": False,
                 }
             decisions[job_name] = decision
 
@@ -536,6 +566,7 @@ class Planner:
             "matches": matches,
             "targets": sorted(targets),
             "verification_profiles": sorted(all_profiles),
+            "verification_checks": all_verification_checks,
             "tempest_tests": all_tempest_tests,
             "variants": variants,
             "job_decisions": decisions,
@@ -715,10 +746,44 @@ class Planner:
                 self.components[target].get("tempest_tests"),
                 f"components.{target}.tempest_tests",
             )
-            if not target_patterns:
+            if not target_patterns and not self._verification_checks([target]):
                 return []
             patterns.update(target_patterns)
         return sorted(patterns)
+
+    def _verification_checks(
+        self,
+        targets: Iterable[str],
+    ) -> list[dict[str, str]]:
+        checks: dict[tuple[str, str], dict[str, str]] = {}
+        for target in targets:
+            profiles = _strings(
+                self.components[target].get("verification_profiles"),
+                f"components.{target}.verification_profiles",
+            )
+            for profile in profiles:
+                for check_value in self.verification_checks.get(profile, []):
+                    check = _mapping(
+                        check_value,
+                        f"verification_checks.{profile}",
+                    )
+                    key = (check["service"], check["type"])
+                    checks[key] = {
+                        "service": check["service"],
+                        "type": check["type"],
+                    }
+        return [checks[key] for key in sorted(checks)]
+
+    def _tempest_required(self, targets: Iterable[str]) -> bool:
+        for target in targets:
+            if _strings(
+                self.components[target].get("tempest_tests"),
+                f"components.{target}.tempest_tests",
+            ):
+                return True
+            if not self._verification_checks([target]):
+                return True
+        return False
 
     def _full_plan(
         self,
@@ -740,7 +805,9 @@ class Planner:
                     "components": [],
                     "ansible_tags": [],
                     "verification_profiles": ["full"],
+                    "verification_checks": [],
                     "tempest_tests": [],
+                    "run_tempest": job["scenario"] == "aio",
                 }
             else:
                 decisions[job_name] = self._skip_decision(
@@ -753,6 +820,7 @@ class Planner:
             "matches": matches,
             "targets": [],
             "verification_profiles": ["full"],
+            "verification_checks": [],
             "tempest_tests": [],
             "variants": [],
             "job_decisions": decisions,
@@ -779,6 +847,7 @@ class Planner:
             "matches": matches,
             "targets": [],
             "verification_profiles": [],
+            "verification_checks": [],
             "tempest_tests": [],
             "variants": [],
             "job_decisions": decisions,
@@ -799,7 +868,9 @@ class Planner:
             "components": [],
             "ansible_tags": [],
             "verification_profiles": [],
+            "verification_checks": [],
             "tempest_tests": [],
+            "run_tempest": False,
         }
 
 
@@ -830,6 +901,12 @@ def render_plan(plan: dict[str, Any]) -> str:
             lines.append(
                 "       Tempest include: " + ", ".join(decision["tempest_tests"])
             )
+        if decision["run"] and decision.get("verification_checks"):
+            checks = (
+                f"{check['service']}/{check['type']}"
+                for check in decision["verification_checks"]
+            )
+            lines.append("       API checks: " + ", ".join(checks))
     for reason in plan.get("reasons", []):
         lines.append(f"Reason: {reason}")
     return "\n".join(lines)

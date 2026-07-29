@@ -16,7 +16,7 @@ idempotence actions.
 Policy
 ======
 
-The policy is stored in ``ci/molecule-plan.yaml`` and has three sections:
+The policy is stored in ``ci/molecule-plan.yaml`` and has four sections:
 
 ``jobs``
   Static Zuul jobs which can consume a decision.
@@ -24,6 +24,11 @@ The policy is stored in ``ci/molecule-plan.yaml`` and has three sections:
 ``rules``
   Shared paths, ignored paths, focused scenario paths, and conservative
   full-suite fallbacks.
+
+``verification_checks``
+  Read-only OpenStack resource queries keyed by verification profile. These
+  provide focused API coverage when the Tempest image does not contain a
+  service plugin.
 
 ``components``
   Role and chart ownership, direct CI dependencies, verification profiles, and
@@ -70,11 +75,21 @@ During selective AIO verification, Tempest receives the union of
 ``tempest_tests`` for the changed components. The expressions are passed
 to one Tempest regular expression which also requires the ``smoke`` test
 attribute. This selects the intersection of the component namespaces and the
-smoke suite instead of adding unrelated smoke tests. A component without
-expressions, including any such component in a multi-target change, uses the
+smoke suite instead of adding unrelated smoke tests.
+
+Verification profiles can also resolve to ``verification_checks``. The AIO
+verifier runs each selected check with ``openstack.cloud.resources`` against
+the deployed public API and its configured certificate authority. A successful
+query proves that authentication, service discovery, TLS, and the target API
+are working even when the result is empty. Barbican, Placement, Heat, Magnum,
+and Manila use this mechanism. Octavia keeps its plugin tests and also receives
+an API check.
+
+A component with neither Tempest expressions nor a resource check uses the
 ordinary smoke selection against the services available in its deployment
-closure. This provides a conservative fallback for services whose image has no
-dedicated smoke-test namespace.
+closure. This is the conservative fallback. In a multi-target change, resource
+checks cover their own components without disabling focused Tempest expressions
+from other targets.
 
 Zuul artifacts
 ==============
@@ -95,8 +110,8 @@ disable Zuul's implicit configuration-update override because the planner,
 policy, playbook, and Zuul configuration paths already bypass every exclusion.
 
 The selective AIO jobs allow fifteen minutes for Keycloak and ten minutes for
-the Nova, Neutron, and Octavia Helm operations. Clean database migrations and
-initial service rollouts can exceed their normal timeouts on a busy test node
-even when they complete successfully. The complete AIO Molecule lifecycle has
-a 150-minute command limit so full fallback runs have enough time to finish
-idempotence and verification.
+the Nova, Neutron, Octavia, and Manila Helm operations. Clean database
+migrations and initial service rollouts can exceed their normal timeouts on a
+busy test node even when they complete successfully. The complete AIO Molecule
+lifecycle has a 150-minute command limit so full fallback runs have enough time
+to finish idempotence and verification.
