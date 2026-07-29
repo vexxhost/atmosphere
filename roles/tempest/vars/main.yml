@@ -41,6 +41,15 @@ _tempest_ci_test_patterns: >-
     else []
   }}
 
+_tempest_ci_test_regex: >-
+  {{
+    '('
+    ~ (_tempest_ci_test_patterns | join('|'))
+    ~ ').*\[.*\bsmoke\b.*\]'
+    if _tempest_ci_test_patterns | length > 0
+    else ''
+  }}
+
 _tempest_helm_values:
   endpoints: "{{ openstack_helm_endpoints | combine(_tempest_endpoint_values, recursive=True) }}"
   images:
@@ -58,12 +67,11 @@ _tempest_helm_values:
       include_app_kubernetes_io: false
   conf:
     script: >-
-      tempest run --config-file /etc/tempest/tempest.conf -w 4 --smoke{{
-        ' --include-list /etc/tempest/test-whitelist'
-        if _tempest_ci_test_patterns | length > 0
-        else ''
+      tempest run --config-file /etc/tempest/tempest.conf -w 4{{
+        ' --regex ' ~ (_tempest_ci_test_regex | quote)
+        if _tempest_ci_test_regex | length > 0
+        else ' --smoke'
       }}
-    whitelist: "{{ _tempest_ci_test_patterns }}"
     tempest:
       service_available: >-
         {{
@@ -83,6 +91,7 @@ _tempest_helm_values:
       identity:
         v3_endpoint_type: internal
       image:
+        disk_formats: aki,ari,qcow2,raw
         endpoint_type: internal
       load_balancer:
         endpoint_type: internal
@@ -99,6 +108,9 @@ _tempest_helm_values:
         image_ssh_user: cirros
       volume:
         endpoint_type: internal
+        storage_protocol: ceph
+      volume-feature-enabled:
+        backup: false
       object-storage:
         build_timeout: 60
         endpoint_type: internal
