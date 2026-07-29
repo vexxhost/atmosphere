@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import copy
+import re
 from pathlib import Path
 
 import pytest
@@ -155,6 +156,19 @@ def test_nova_adds_neutron_as_a_functional_test_requirement(
         "nova",
         "openvswitch",
         "placement",
+    }
+
+
+def test_cinder_adds_glance_as_a_functional_test_requirement(
+    planner: Planner,
+) -> None:
+    plan = plan_path(planner, "roles/cinder/tasks/main.yml")
+
+    assert components(plan) >= {
+        "ceph-provisioners",
+        "cinder",
+        "glance",
+        "keystone",
     }
 
 
@@ -381,6 +395,12 @@ def test_selective_ci_uses_main_sequential_molecule_flow() -> None:
     runner = (
         repository / "test-playbooks" / "molecule" / "selective-run.yml"
     ).read_text(encoding="utf-8")
+    tempest_tasks = (repository / "roles" / "tempest" / "tasks" / "main.yml").read_text(
+        encoding="utf-8"
+    )
+    tempest_vars = (repository / "roles" / "tempest" / "vars" / "main.yml").read_text(
+        encoding="utf-8"
+    )
     policy = POLICY_PATH.read_text(encoding="utf-8")
 
     assert "vexxhost.atmosphere.ceph" in converge
@@ -390,6 +410,11 @@ def test_selective_ci_uses_main_sequential_molecule_flow() -> None:
     assert "CEPH_CONTAINER_BINARY" in openstack
     assert "'molecule'," in runner
     assert "'test'," in runner
+    assert "--regex" in tempest_vars
+    assert r"\bsmoke\b" in tempest_vars
+    assert "--include-list" not in tempest_vars
+    assert "image_ref_alt" in tempest_tasks
+    assert "flavor_ref_alt" in tempest_tasks
     assert "go build" not in converge
     assert "./bin/atmosphere" not in runner
     assert "dependency_options" not in policy
@@ -407,6 +432,94 @@ def test_full_aio_jobs_have_timeout_headroom() -> None:
         "atmosphere-molecule-aio-ovn-selective",
     ):
         assert jobs[job_name]["vars"]["atmosphere_ci_molecule_timeout"] == 9000
+
+
+def test_zuul_plan_uses_speculative_parent() -> None:
+    repository = POLICY_PATH.parents[1]
+    zuul_config = yaml.safe_load(
+        (repository / ".zuul.yaml").read_text(encoding="utf-8")
+    )
+    project = next(item["project"] for item in zuul_config if "project" in item)
+
+    assert project["vars"]["atmosphere_ci_plan_base"] == "HEAD^1"
+    assert project["vars"]["atmosphere_ci_plan_head"] == "HEAD"
+
+
+def test_scheduler_filters_match_policy(planner: Planner) -> None:
+    repository = POLICY_PATH.parents[1]
+    zuul_config = yaml.safe_load(
+        (repository / ".zuul.yaml").read_text(encoding="utf-8")
+    )
+    configured = {
+        job["name"]
+        .removeprefix("atmosphere-molecule-")
+        .removesuffix("-selective"): job["irrelevant-files"]
+        for item in zuul_config
+        if "job" in item
+        for job in [item["job"]]
+    }
+    for item in zuul_config:
+        if "job" in item:
+            assert item["job"]["match-on-config-updates"] is False
+
+    samples = {"new-runtime-area/config.yaml"}
+    for rule in planner.rules:
+        samples.update(
+            pattern.replace("**", "example/file.yml")
+            .replace("*", "example")
+            .replace("?", "x")
+            for pattern in rule["paths"]
+        )
+    for component_name, component in planner.components.items():
+        samples.update(
+            f"roles/{role}/tasks/main.yml"
+            for role in component.get("roles", [component_name.replace("-", "_")])
+        )
+        for chart in component.get("charts", [component_name]):
+            samples.add(f"charts/{chart}/Chart.yaml")
+            samples.add(f"charts/patches/{chart}/0001-change.patch")
+        samples.update(
+            pattern.replace("**", "example/file.yml")
+            .replace("*", "example")
+            .replace("?", "x")
+            for pattern in component.get("paths", [])
+        )
+
+    for changed_path in samples:
+        plan = plan_path(planner, changed_path)
+        expected = {
+            job_name
+            for job_name, decision in plan["job_decisions"].items()
+            if decision["run"]
+        }
+        scheduled = {
+            job_name
+            for job_name, patterns in configured.items()
+            if not any(re.match(pattern, changed_path) for pattern in patterns)
+        }
+        assert scheduled == expected, changed_path
+
+
+def test_scheduler_filters_preserve_full_fallback(planner: Planner) -> None:
+    filters = planner.scheduler_irrelevant_files()
+
+    for patterns in filters.values():
+        assert not any(
+            re.match(pattern, "new-runtime-area/config.yaml") for pattern in patterns
+        )
+
+
+def test_scheduler_filters_select_only_glance_job(planner: Planner) -> None:
+    filters = planner.scheduler_irrelevant_files()
+    changed_path = "roles/glance/README.md"
+
+    scheduled = {
+        job_name
+        for job_name, patterns in filters.items()
+        if not any(re.match(pattern, changed_path) for pattern in patterns)
+    }
+
+    assert scheduled == {"aio-openvswitch"}
 
 
 def test_text_output_is_compact_and_readable(planner: Planner) -> None:

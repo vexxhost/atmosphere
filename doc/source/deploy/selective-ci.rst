@@ -53,11 +53,18 @@ Validate the policy and inspect representative plans locally:
      --changed-file roles/glance/tasks/main.yml
    uv run python -m atmosphere.ci.molecule_plan plan \
      --changed-file roles/neutron/tasks/main.yml
+   uv run python -m atmosphere.ci.molecule_plan scheduler-files
 
 The planner evaluates both sides of renames and copies. Documentation and
 release-note-only changes produce a no-op plan. A path which matches no rule or
 component produces a full plan so a new runtime area cannot silently lose test
 coverage.
+
+In Zuul, the planner compares the speculative merge commit at ``HEAD`` with its
+first parent at ``HEAD^1``. For an ordinary pull request, the first parent is
+the target branch. For a pull request with ``Depends-On`` changes, it also
+contains those dependencies, so only the current pull request selects test
+targets.
 
 During selective AIO verification, Tempest receives the union of
 ``tempest_tests`` for the changed components. The expressions are passed
@@ -76,11 +83,14 @@ printed throughout the deployment. Progress heartbeats report the last
 observed Molecule task, while the complete stream is retained as
 ``molecule-<job>.log``.
 
-Zuul constructs the job graph before a project job can inspect the pull request
-diff, so all five consumer jobs are scheduled statically. Jobs which are not
-selected report ``SKIP`` and exit without running Molecule, but still require a
-node for their inherited preparation. Avoiding that allocation would require
-moving change classification into trusted Zuul configuration.
+Zuul uses generated ``irrelevant-files`` matchers to omit jobs which the policy
+assigns exclusively to other components. The matchers are checked into
+``.zuul.yaml`` and unit tests ensure they stay synchronized with
+``ci/molecule-plan.yaml``. Unclassified runtime paths match no exclusion and
+therefore retain the complete fallback. The planner still validates every
+scheduled job at runtime and reports its exact decision. The selective jobs
+disable Zuul's implicit configuration-update override because the planner,
+policy, playbook, and Zuul configuration paths already bypass every exclusion.
 
 The selective AIO jobs allow fifteen minutes for Keycloak and ten minutes for
 the Nova, Neutron, and Octavia Helm operations. Clean database migrations and
