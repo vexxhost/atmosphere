@@ -71,10 +71,37 @@ def _compile_glob(pattern: str) -> re.Pattern[str]:
         elif character == "?":
             output.append("[^/]")
         else:
-            output.append(re.escape(character))
+            output.append(re.escape(character).replace(r"\-", "-"))
         index += 1
     output.append("$")
     return re.compile("".join(output))
+
+
+def _unique(values: Iterable[str]) -> list[str]:
+    """Return values in their original order without duplicates."""
+
+    return list(dict.fromkeys(values))
+
+
+def _grouped_regexes(
+    prefix: str,
+    values: Iterable[str],
+    suffix: str,
+    max_length: int = 100,
+) -> list[str]:
+    """Group escaped alternatives into readable regular expressions."""
+
+    groups: list[list[str]] = []
+    for value in sorted(values):
+        escaped = re.escape(value).replace(r"\-", "-")
+        if (
+            groups
+            and len(prefix + "|".join(groups[-1] + [escaped]) + suffix) <= max_length
+        ):
+            groups[-1].append(escaped)
+        else:
+            groups.append([escaped])
+    return [prefix + "|".join(group) + suffix for group in groups]
 
 
 def parse_changes(lines: Iterable[str]) -> list[Change]:
@@ -515,6 +542,93 @@ class Planner:
             "reasons": reasons,
         }
 
+    def scheduler_irrelevant_files(self) -> dict[str, list[str]]:
+        """Build conservative Zuul filters from the impact policy.
+
+        An unclassified path is intentionally absent from every list so it
+        still schedules the complete fallback. A path is irrelevant to a job
+        only when the policy explicitly ignores it or assigns it exclusively
+        to other jobs.
+        """
+
+        irrelevant: dict[str, list[str]] = {job_name: [] for job_name in self.jobs}
+        unrelated_roles: dict[str, set[str]] = {
+            job_name: set() for job_name in self.jobs
+        }
+        unrelated_charts: dict[str, set[str]] = {
+            job_name: set() for job_name in self.jobs
+        }
+
+        def add(job_names: Iterable[str], patterns: Iterable[str]) -> None:
+            compiled = [_compile_glob(pattern).pattern for pattern in patterns]
+            for job_name in job_names:
+                irrelevant[job_name].extend(compiled)
+
+        all_jobs = set(self.jobs)
+        for rule in self.rules:
+            action = rule["action"]
+            if action == "ignore":
+                irrelevant_jobs = all_jobs
+            elif action == "targets":
+                relevant_jobs = set(
+                    _strings(rule.get("jobs"), f"rules.{rule['name']}.jobs")
+                )
+                irrelevant_jobs = all_jobs - relevant_jobs
+            else:
+                continue
+            add(
+                sorted(irrelevant_jobs),
+                _strings(rule.get("paths"), f"rules.{rule['name']}.paths"),
+            )
+
+        for component_name, component_value in self.components.items():
+            component = _mapping(component_value, f"components.{component_name}")
+            relevant_jobs = set(
+                _strings(
+                    component.get("jobs"),
+                    f"components.{component_name}.jobs",
+                )
+            )
+            irrelevant_jobs = all_jobs - relevant_jobs
+            add(
+                sorted(irrelevant_jobs),
+                _strings(
+                    component.get("paths"),
+                    f"components.{component_name}.paths",
+                ),
+            )
+            roles = _strings(
+                component.get("roles", [component_name.replace("-", "_")]),
+                f"components.{component_name}.roles",
+            )
+            charts = _strings(
+                component.get("charts", [component_name]),
+                f"components.{component_name}.charts",
+            )
+            for job_name in irrelevant_jobs:
+                unrelated_roles[job_name].update(roles)
+                unrelated_charts[job_name].update(charts)
+
+        for job_name in self.jobs:
+            if unrelated_roles[job_name]:
+                irrelevant[job_name].extend(
+                    _grouped_regexes(
+                        "^roles/(",
+                        unrelated_roles[job_name],
+                        ")/.*$",
+                    )
+                )
+            if unrelated_charts[job_name]:
+                irrelevant[job_name].extend(
+                    _grouped_regexes(
+                        "^charts/(patches/)?(",
+                        unrelated_charts[job_name],
+                        ")/.*$",
+                    )
+                )
+            irrelevant[job_name] = _unique(irrelevant[job_name])
+        return irrelevant
+
     def _match_components(self, path: str) -> list[str]:
         matched: set[str] = set()
         parts = path.split("/")
@@ -786,6 +900,10 @@ def _parser() -> argparse.ArgumentParser:
 
     render = subparsers.add_parser("render", help="render a JSON plan")
     render.add_argument("plan")
+    subparsers.add_parser(
+        "scheduler-files",
+        help="render Zuul irrelevant-files derived from the policy",
+    )
     return parser
 
 
@@ -800,6 +918,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         planner = Planner.load(args.config)
         if args.command == "validate":
             print(f"Selective CI policy {args.config} is valid")
+            return 0
+        if args.command == "scheduler-files":
+            print(
+                yaml.safe_dump(
+                    planner.scheduler_irrelevant_files(),
+                    sort_keys=False,
+                ).rstrip()
+            )
             return 0
 
         plan = planner.plan(_collect_changes(args))

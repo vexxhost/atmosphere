@@ -64,6 +64,7 @@
           tempest:
             compute:
               image_ref: "{{ _tempest_test_image.images.0.id }}"
+              image_ref_alt: "{{ _tempest_test_image.images.0.id }}"
       when:
         - tempest_ci_mode != 'selective' or 'glance' in tempest_ci_components
         - tempest_helm_values.conf.tempest.compute.image_ref is not defined
@@ -86,6 +87,7 @@
           tempest:
             compute:
               flavor_ref: "{{ _tempest_test_flavor.flavors[0].id }}"
+              flavor_ref_alt: "{{ _tempest_test_flavor.flavors[0].id }}"
       when:
         - tempest_ci_mode != 'selective' or 'nova' in tempest_ci_components
         - tempest_helm_values.conf.tempest.compute.flavor_ref is not defined
