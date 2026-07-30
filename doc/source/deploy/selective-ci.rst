@@ -63,6 +63,8 @@ Low-level network targets such as Open vSwitch, OVN, FRR, and CoreDNS deploy
 Neutron as a test-only requirement and run the focused network Tempest tests.
 Components without a Tempest namespace can instead declare focused readiness
 checks; Staffeln, for example, waits for its API and conductor deployments.
+Octavia requires Valkey explicitly because its API and worker pods mount the
+Valkey jobboard certificate secret.
 Designate and Ironic are not enabled by the AIO scenario, so their paths retain
 the complete fallback instead of claiming focused coverage which the scenario
 cannot provide.
