@@ -132,6 +132,8 @@
                   _atmosphere_ci_decision.components | join(','),
                 'ATMOSPHERE_CI_VERIFICATION_PROFILES':
                   _atmosphere_ci_decision.verification_profiles | join(','),
+                'ATMOSPHERE_CI_VERIFICATION_CHECKS':
+                  _atmosphere_ci_decision.verification_checks | to_json,
                 'ATMOSPHERE_CI_TEMPEST_INCLUDE':
                   _atmosphere_ci_decision.tempest_tests | to_json,
                 'ATMOSPHERE_CI_RUN_STESTR': (
@@ -139,10 +141,9 @@
                   or 'openvswitch' in _atmosphere_ci_decision.components
                   or 'ovn' in _atmosphere_ci_decision.components
                 ) | ternary('true', 'false'),
-                'ATMOSPHERE_CI_RUN_TEMPEST': (
-                  _atmosphere_ci_plan.mode != 'selective'
-                  or 'keystone' in _atmosphere_ci_decision.components
-                ) | ternary('true', 'false'),
+                'ATMOSPHERE_CI_RUN_TEMPEST':
+                  _atmosphere_ci_decision.run_tempest
+                  | ternary('true', 'false'),
                 'MOLECULE_ANSIBLE_ARGS_STRICT_MODE': '1'
               })
           }}

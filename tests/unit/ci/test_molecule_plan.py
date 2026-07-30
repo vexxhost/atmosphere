@@ -96,9 +96,38 @@ def test_manila_includes_functional_dependencies(
         {"heat", "horizon", "magnum", "openstack-exporter"}
     )
     assert decision["tempest_tests"] == []
+    assert decision["run_tempest"] is False
+    assert decision["verification_checks"] == [
+        {
+            "kind": "openstack-resource",
+            "service": "shared_file_system",
+            "type": "share",
+        }
+    ]
 
 
-def test_unmapped_tempest_target_disables_filter_for_combined_change(
+def test_cli_check_keeps_mapped_tempest_filter_for_combined_change(
+    planner: Planner,
+) -> None:
+    plan = planner.plan(
+        [
+            Change(status="M", path="roles/glance/tasks/main.yml"),
+            Change(status="M", path="roles/openstack_cli/tasks/main.yml"),
+        ]
+    )
+    decision = plan["job_decisions"]["aio-openvswitch"]
+
+    assert decision["tempest_tests"] == [r"^tempest\.api\.image\."]
+    assert decision["run_tempest"] is True
+    assert decision["verification_checks"] == [
+        {
+            "arguments": ["token", "issue"],
+            "kind": "openstack-cli",
+        }
+    ]
+
+
+def test_api_check_keeps_mapped_tempest_filter_for_combined_change(
     planner: Planner,
 ) -> None:
     plan = planner.plan(
@@ -107,8 +136,82 @@ def test_unmapped_tempest_target_disables_filter_for_combined_change(
             Change(status="M", path="roles/manila/tasks/main.yml"),
         ]
     )
+    decision = plan["job_decisions"]["aio-openvswitch"]
 
-    assert plan["job_decisions"]["aio-openvswitch"]["tempest_tests"] == []
+    assert decision["tempest_tests"] == [r"^tempest\.api\.image\."]
+    assert decision["run_tempest"] is True
+    assert decision["verification_checks"] == [
+        {
+            "kind": "openstack-resource",
+            "service": "shared_file_system",
+            "type": "share",
+        }
+    ]
+
+
+@pytest.mark.parametrize(
+    ("role", "service", "resource_type"),
+    [
+        ("barbican", "key_manager", "secret"),
+        ("placement", "placement", "resource_provider"),
+        ("heat", "orchestration", "stack"),
+        ("magnum", "container_infrastructure_management", "cluster"),
+        ("manila", "shared_file_system", "share"),
+    ],
+)
+def test_service_without_tempest_plugin_uses_read_only_api_check(
+    planner: Planner,
+    role: str,
+    service: str,
+    resource_type: str,
+) -> None:
+    plan = plan_path(
+        planner,
+        f"roles/{role}/tasks/main.yml",
+    )
+    decision = plan["job_decisions"]["aio-openvswitch"]
+
+    assert decision["run_tempest"] is False
+    assert decision["tempest_tests"] == []
+    assert decision["verification_checks"] == [
+        {
+            "kind": "openstack-resource",
+            "service": service,
+            "type": resource_type,
+        }
+    ]
+
+
+def test_openstack_cli_uses_focused_client_check(planner: Planner) -> None:
+    plan = plan_path(planner, "roles/openstack_cli/tasks/main.yml")
+    decision = plan["job_decisions"]["aio-openvswitch"]
+
+    assert decision["run_tempest"] is False
+    assert decision["verification_checks"] == [
+        {
+            "arguments": ["token", "issue"],
+            "kind": "openstack-cli",
+        }
+    ]
+
+
+def test_openstack_exporter_waits_for_both_deployments(planner: Planner) -> None:
+    plan = plan_path(planner, "roles/openstack_exporter/tasks/main.yml")
+    decision = plan["job_decisions"]["aio-openvswitch"]
+
+    assert decision["run_tempest"] is False
+    assert decision["verification_checks"] == [
+        {
+            "kind": "kubernetes-deployment",
+            "name": "openstack-database-exporter",
+            "namespace": "openstack",
+        },
+        {
+            "kind": "kubernetes-deployment",
+            "name": "openstack-exporter",
+            "namespace": "openstack",
+        },
+    ]
 
 
 def test_magnum_uses_broad_openstack_environment(
@@ -226,6 +329,35 @@ def test_unknown_runtime_path_falls_back_to_every_job(
 
     assert plan["mode"] == "full"
     assert all(decision["run"] for decision in plan["job_decisions"].values())
+    expected_checks = {
+        ("container_infrastructure_management", "cluster"),
+        ("key_manager", "secret"),
+        ("load_balancer", "load_balancer"),
+        ("orchestration", "stack"),
+        ("placement", "resource_provider"),
+        ("shared_file_system", "share"),
+    }
+    for job_name in ("aio-openvswitch", "aio-ovn"):
+        checks = plan["job_decisions"][job_name]["verification_checks"]
+        assert {
+            (check["service"], check["type"])
+            for check in checks
+            if check["kind"] == "openstack-resource"
+        } == expected_checks
+        assert {
+            tuple(check["arguments"])
+            for check in checks
+            if check["kind"] == "openstack-cli"
+        } == {("token", "issue")}
+        assert {
+            (check["namespace"], check["name"])
+            for check in checks
+            if check["kind"] == "kubernetes-deployment"
+        } == {
+            ("openstack", "openstack-database-exporter"),
+            ("openstack", "openstack-exporter"),
+        }
+    assert plan["job_decisions"]["csi-rbd"]["verification_checks"] == []
 
 
 def test_empty_change_list_falls_back_to_every_job(
@@ -305,6 +437,53 @@ def test_invalid_tempest_test_regular_expression_is_rejected() -> None:
         PolicyError,
         match=r"components\.keystone\.tempest_tests\[0\] "
         r"is not a valid regular expression",
+    ):
+        Planner(invalid)
+
+
+def test_malformed_verification_check_is_rejected() -> None:
+    policy = yaml.safe_load(POLICY_PATH.read_text(encoding="utf-8"))
+    invalid = copy.deepcopy(policy)
+    invalid["verification_checks"]["secrets"] = [
+        {
+            "kind": "openstack-resource",
+            "service": "key_manager",
+        }
+    ]
+
+    with pytest.raises(
+        PolicyError,
+        match=r"verification_checks\.secrets\[0\]\.type must be a string",
+    ):
+        Planner(invalid)
+
+
+def test_unknown_verification_check_kind_is_rejected() -> None:
+    policy = yaml.safe_load(POLICY_PATH.read_text(encoding="utf-8"))
+    invalid = copy.deepcopy(policy)
+    invalid["verification_checks"]["secrets"] = [{"kind": "shell"}]
+
+    with pytest.raises(
+        PolicyError,
+        match=r"verification_checks\.secrets\[0\]\.kind must be one of",
+    ):
+        Planner(invalid)
+
+
+def test_empty_openstack_cli_arguments_are_rejected() -> None:
+    policy = yaml.safe_load(POLICY_PATH.read_text(encoding="utf-8"))
+    invalid = copy.deepcopy(policy)
+    invalid["verification_checks"]["identity-client"] = [
+        {
+            "arguments": [],
+            "kind": "openstack-cli",
+        }
+    ]
+
+    with pytest.raises(
+        PolicyError,
+        match=r"verification_checks\.identity-client\[0\]\.arguments must be "
+        r"a non-empty list of strings",
     ):
         Planner(invalid)
 
@@ -415,6 +594,13 @@ def test_selective_ci_uses_main_sequential_molecule_flow() -> None:
     assert "--include-list" not in tempest_vars
     assert "image_ref_alt" in tempest_tasks
     assert "flavor_ref_alt" in tempest_tasks
+    assert "ATMOSPHERE_CI_VERIFICATION_CHECKS" in runner
+    verifier = (repository / "molecule" / "aio" / "verify.yml").read_text(
+        encoding="utf-8"
+    )
+    assert "openstack.cloud.resources" in verifier
+    assert "Run selected OpenStack client commands" in verifier
+    assert "Wait for selected Kubernetes deployments" in verifier
     assert "go build" not in converge
     assert "./bin/atmosphere" not in runner
     assert "dependency_options" not in policy
@@ -431,7 +617,13 @@ def test_full_aio_jobs_have_timeout_headroom() -> None:
         "atmosphere-molecule-aio-openvswitch-selective",
         "atmosphere-molecule-aio-ovn-selective",
     ):
+        assert jobs[job_name]["timeout"] == 10800
         assert jobs[job_name]["vars"]["atmosphere_ci_molecule_timeout"] == 9000
+        assert jobs[job_name]["vars"]["keycloak_helm_timeout"] == "30m0s"
+        assert jobs[job_name]["vars"]["keycloak_helm_values"] == {
+            "startupProbe": {"failureThreshold": 300}
+        }
+        assert jobs[job_name]["vars"]["manila_helm_timeout"] == "10m0s"
 
 
 def test_zuul_plan_uses_speculative_parent() -> None:
@@ -523,9 +715,10 @@ def test_scheduler_filters_select_only_glance_job(planner: Planner) -> None:
 
 
 def test_text_output_is_compact_and_readable(planner: Planner) -> None:
-    output = render_plan(plan_path(planner, "roles/glance/tasks/main.yml"))
+    output = render_plan(plan_path(planner, "roles/manila/tasks/main.yml"))
 
     assert "Selective Molecule plan: selective" in output
     assert "RUN  aio-openvswitch" in output
     assert "SKIP aio-ovn" in output
     assert "components:" in output
+    assert "verification: openstack-resource:shared_file_system/share" in output

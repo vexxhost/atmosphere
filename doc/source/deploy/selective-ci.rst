@@ -16,7 +16,7 @@ idempotence actions.
 Policy
 ======
 
-The policy is stored in ``ci/molecule-plan.yaml`` and has three sections:
+The policy is stored in ``ci/molecule-plan.yaml`` and has four sections:
 
 ``jobs``
   Static Zuul jobs which can consume a decision.
@@ -24,6 +24,11 @@ The policy is stored in ``ci/molecule-plan.yaml`` and has three sections:
 ``rules``
   Shared paths, ignored paths, focused scenario paths, and conservative
   full-suite fallbacks.
+
+``verification_checks``
+  Focused, read-only checks keyed by verification profile. Supported check
+  kinds query OpenStack resources, run OpenStack client commands, or wait for
+  Kubernetes deployments.
 
 ``components``
   Role and chart ownership, direct CI dependencies, verification profiles, and
@@ -68,11 +73,32 @@ targets.
 
 During selective AIO verification, Tempest receives the union of
 ``tempest_tests`` for the changed components. The expressions are passed
-through Tempest's ``include-list`` support and combined with ``--smoke``. A
-component without expressions, including any such component in a multi-target
-change, uses the ordinary smoke selection against the services available in
-its deployment closure. This provides a conservative fallback for services
-whose image has no dedicated smoke-test namespace.
+to one Tempest regular expression which also requires the ``smoke`` test
+attribute. This selects the intersection of the component namespaces and the
+smoke suite instead of adding unrelated smoke tests.
+
+Verification profiles can also resolve to ``verification_checks``. An
+``openstack-resource`` check uses ``openstack.cloud.resources`` against the
+deployed public API and its configured certificate authority. A successful
+query proves that authentication, service discovery, TLS, and the target API
+are working even when the result is empty. Barbican, Placement, Heat, Magnum,
+and Manila use these checks. Octavia keeps its plugin tests and also receives
+an API check.
+
+An ``openstack-cli`` check runs an argument list through the deployed
+``openstack`` wrapper and generated ``openrc`` file. The OpenStack CLI
+component requests a token this way, covering the wrapper container,
+authentication, and certificate configuration. A ``kubernetes-deployment``
+check waits until the named deployment is Available. The OpenStack exporter
+component waits for both its API and database exporters; their readiness probes
+exercise the metrics endpoints.
+
+A component with neither Tempest expressions nor a verification check uses the
+ordinary smoke selection against the services available in its deployment
+closure. This is the conservative fallback. In a multi-target change,
+verification checks cover their own components without disabling focused
+Tempest expressions from other targets. Full-fallback AIO jobs execute every
+declared verification check.
 
 Zuul artifacts
 ==============
@@ -92,9 +118,13 @@ scheduled job at runtime and reports its exact decision. The selective jobs
 disable Zuul's implicit configuration-update override because the planner,
 policy, playbook, and Zuul configuration paths already bypass every exclusion.
 
-The selective AIO jobs allow fifteen minutes for Keycloak and ten minutes for
-the Nova, Neutron, and Octavia Helm operations. Clean database migrations and
+The selective AIO jobs allow thirty minutes for Keycloak and ten minutes for
+the Nova, Neutron, Octavia, and Manila Helm operations. Keycloak's startup
+probe also allows twenty-five minutes so Kubernetes does not restart the
+service during its initial database migration. Clean database migrations and
 initial service rollouts can exceed their normal timeouts on a busy test node
 even when they complete successfully. The complete AIO Molecule lifecycle has
 a 150-minute command limit so full fallback runs have enough time to finish
-idempotence and verification.
+idempotence and verification. The enclosing Zuul job has a 180-minute limit,
+reserving another thirty minutes for preparation and post-run artifact
+collection.
