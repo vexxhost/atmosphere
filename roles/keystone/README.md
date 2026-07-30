@@ -1,5 +1,7 @@
 # `keystone`
 
+This role deploys the OpenStack Identity service.
+
 ## Integrating with LDAP
 
 ### FreeIPA
