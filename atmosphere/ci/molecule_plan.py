@@ -17,17 +17,30 @@ from typing import Any, Iterable, Sequence
 import yaml
 
 _VERIFICATION_CHECK_FIELDS = {
+    "host-command": {"arguments", "kind"},
+    "kubernetes-daemonset": {"kind", "name", "namespace"},
     "kubernetes-deployment": {"kind", "name", "namespace"},
+    "kubernetes-node": {"kind"},
+    "kubernetes-resource": {
+        "api_version",
+        "kind",
+        "name",
+        "namespace",
+        "resource_kind",
+    },
+    "kubernetes-statefulset": {"kind", "name", "namespace"},
     "openstack-cli": {"arguments", "kind"},
     "openstack-resource": {"kind", "service", "type"},
 }
 _COMPONENT_FIELDS = {
     "backend_requires",
     "charts",
+    "check_profiles",
     "jobs",
     "paths",
     "requires",
     "roles",
+    "run_tempest",
     "stacks",
     "tag",
     "tempest_tests",
@@ -335,7 +348,7 @@ class Planner:
                 for key in sorted(expected - {"arguments", "kind"}):
                     if not isinstance(check.get(key), str) or not check[key]:
                         raise PolicyError(f"{field}.{key} must be a string")
-                if kind == "openstack-cli":
+                if kind in {"host-command", "openstack-cli"}:
                     arguments = check.get("arguments")
                     if (
                         not isinstance(arguments, list)
@@ -389,10 +402,31 @@ class Planner:
                 component.get("verification_profiles"),
                 f"components.{component_name}.verification_profiles",
             )
+            check_profiles = _strings(
+                component.get("check_profiles"),
+                f"components.{component_name}.check_profiles",
+            )
+            for profile in check_profiles:
+                if profile not in self.verification_checks:
+                    raise PolicyError(
+                        f"components.{component_name}.check_profiles references "
+                        f"unknown verification check profile {profile!r}"
+                    )
             tempest_tests = _strings(
                 component.get("tempest_tests"),
                 f"components.{component_name}.tempest_tests",
             )
+            if "run_tempest" in component and not isinstance(
+                component["run_tempest"], bool
+            ):
+                raise PolicyError(
+                    f"components.{component_name}.run_tempest must be a boolean"
+                )
+            if component.get("run_tempest") is False and tempest_tests:
+                raise PolicyError(
+                    f"components.{component_name}.run_tempest cannot be false "
+                    "when tempest_tests are configured"
+                )
             for index, pattern in enumerate(tempest_tests):
                 try:
                     re.compile(pattern)
@@ -694,8 +728,10 @@ class Planner:
                     "components": [],
                     "ansible_tags": [],
                     "verification_profiles": profiles,
-                    "verification_checks": self._verification_checks(roots),
-                    "tempest_tests": self._tempest_test_patterns(roots),
+                    # Non-AIO scenarios own their verification lifecycle and
+                    # do not execute the AIO verifier or Tempest selection.
+                    "verification_checks": [],
+                    "tempest_tests": [],
                     "run_tempest": False,
                 }
             decisions[job_name] = decision
@@ -883,11 +919,13 @@ class Planner:
     def _tempest_test_patterns(self, targets: Iterable[str]) -> list[str]:
         patterns: set[str] = set()
         for target in targets:
+            if not self._component_requires_tempest(target):
+                continue
             target_patterns = _strings(
                 self.components[target].get("tempest_tests"),
                 f"components.{target}.tempest_tests",
             )
-            if not target_patterns and not self._verification_checks([target]):
+            if not target_patterns:
                 return []
             patterns.update(target_patterns)
         return sorted(patterns)
@@ -899,8 +937,8 @@ class Planner:
         checks: dict[str, dict[str, Any]] = {}
         for target in targets:
             profiles = _strings(
-                self.components[target].get("verification_profiles"),
-                f"components.{target}.verification_profiles",
+                self.components[target].get("check_profiles"),
+                f"components.{target}.check_profiles",
             )
             for profile in profiles:
                 for check_value in self.verification_checks.get(profile, []):
@@ -912,16 +950,19 @@ class Planner:
                     checks[key] = dict(check)
         return [checks[key] for key in sorted(checks)]
 
-    def _tempest_required(self, targets: Iterable[str]) -> bool:
-        for target in targets:
-            if _strings(
-                self.components[target].get("tempest_tests"),
+    def _component_requires_tempest(self, target: str) -> bool:
+        component = self.components[target]
+        if "run_tempest" in component:
+            return component["run_tempest"]
+        return bool(
+            _strings(
+                component.get("tempest_tests"),
                 f"components.{target}.tempest_tests",
-            ):
-                return True
-            if not self._verification_checks([target]):
-                return True
-        return False
+            )
+        ) or not self._verification_checks([target])
+
+    def _tempest_required(self, targets: Iterable[str]) -> bool:
+        return any(self._component_requires_tempest(target) for target in targets)
 
     def _full_plan(
         self,
@@ -1050,6 +1091,15 @@ def render_plan(plan: dict[str, Any]) -> str:
                     label = f"{check['service']}/{check['type']}"
                 elif check["kind"] == "openstack-cli":
                     label = "openstack " + " ".join(check["arguments"])
+                elif check["kind"] == "host-command":
+                    label = " ".join(check["arguments"])
+                elif check["kind"] == "kubernetes-node":
+                    label = "Ready"
+                elif check["kind"] == "kubernetes-resource":
+                    label = (
+                        f"{check['resource_kind']}:"
+                        f"{check['namespace']}/{check['name']}"
+                    )
                 else:
                     label = f"{check['namespace']}/{check['name']}"
                 checks.append(f"{check['kind']}:{label}")

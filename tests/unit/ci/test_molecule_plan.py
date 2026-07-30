@@ -265,6 +265,27 @@ def test_openstack_cli_uses_focused_client_check(planner: Planner) -> None:
     ]
 
 
+def test_staffeln_waits_for_api_and_conductor_deployments(
+    planner: Planner,
+) -> None:
+    plan = plan_path(planner, "roles/staffeln/tasks/main.yml")
+    decision = plan["job_decisions"]["aio-openvswitch"]
+
+    assert decision["run_tempest"] is False
+    assert decision["verification_checks"] == [
+        {
+            "kind": "kubernetes-deployment",
+            "name": "staffeln-api",
+            "namespace": "openstack",
+        },
+        {
+            "kind": "kubernetes-deployment",
+            "name": "staffeln-conductor",
+            "namespace": "openstack",
+        },
+    ]
+
+
 def test_openstack_exporter_waits_for_both_deployments(planner: Planner) -> None:
     plan = plan_path(planner, "roles/openstack_exporter/tasks/main.yml")
     decision = plan["job_decisions"]["aio-openvswitch"]
@@ -282,6 +303,71 @@ def test_openstack_exporter_waits_for_both_deployments(planner: Planner) -> None
             "namespace": "openstack",
         },
     ]
+
+
+def test_descriptive_profiles_do_not_select_unrelated_checks(
+    planner: Planner,
+) -> None:
+    plan = plan_path(planner, "roles/node_feature_discovery/tasks/main.yml")
+    decision = plan["job_decisions"]["aio-openvswitch"]
+
+    assert decision["verification_profiles"] == ["monitoring"]
+    assert decision["run_tempest"] is False
+    assert decision["verification_checks"] == [
+        {
+            "kind": "kubernetes-daemonset",
+            "name": "node-feature-discovery-worker",
+            "namespace": "monitoring",
+        },
+        {
+            "kind": "kubernetes-deployment",
+            "name": "node-feature-discovery-master",
+            "namespace": "monitoring",
+        },
+    ]
+
+
+def test_ipmi_exporter_uses_only_its_actual_kubernetes_dependency(
+    planner: Planner,
+) -> None:
+    plan = plan_path(planner, "roles/ipmi_exporter/tasks/main.yml")
+
+    assert components(plan) == {"ipmi-exporter", "kubernetes"}
+    assert components(plan).isdisjoint({"keycloak", "kube-prometheus-stack"})
+
+
+def test_smartctl_exporter_keeps_prometheus_operator_dependency(
+    planner: Planner,
+) -> None:
+    plan = plan_path(planner, "roles/smartctl_exporter/tasks/main.yml")
+
+    assert components(plan) >= {"kube-prometheus-stack", "smartctl-exporter"}
+
+
+def test_lpfc_relies_on_portable_converge_and_idempotence(
+    planner: Planner,
+) -> None:
+    plan = plan_path(planner, "roles/lpfc/tasks/main.yml")
+    decision = plan["job_decisions"]["aio-openvswitch"]
+
+    assert decision["run_tempest"] is False
+    assert decision["verification_checks"] == []
+
+
+def test_plan_renderer_supports_foundation_check_kinds(planner: Planner) -> None:
+    plan = planner.plan(
+        [
+            Change(status="M", path="playbooks/ceph.yml"),
+            Change(status="M", path="roles/kubernetes/tasks/main.yml"),
+            Change(status="M", path="roles/valkey/tasks/main.yml"),
+        ]
+    )
+
+    rendered = render_plan(plan)
+
+    assert "host-command:cephadm shell -- ceph status" in rendered
+    assert "kubernetes-node:Ready" in rendered
+    assert "kubernetes-statefulset:openstack/valkey-node" in rendered
 
 
 def test_magnum_uses_broad_openstack_environment(
@@ -362,6 +448,32 @@ def test_neutron_creates_backend_specific_jobs(
     assert r"^neutron_tempest_plugin\." in ovs["tempest_tests"]
 
 
+@pytest.mark.parametrize(
+    ("role", "job_name"),
+    [
+        ("coredns", "aio-openvswitch"),
+        ("frr_k8s", "aio-ovn"),
+        ("openvswitch", "aio-openvswitch"),
+        ("ovn", "aio-ovn"),
+    ],
+)
+def test_network_foundations_run_focused_neutron_tests(
+    planner: Planner,
+    role: str,
+    job_name: str,
+) -> None:
+    plan = plan_path(planner, f"roles/{role}/tasks/main.yml")
+    decision = plan["job_decisions"][job_name]
+
+    assert "neutron" in decision["components"]
+    assert decision["run_tempest"] is True
+    assert set(decision["tempest_tests"]) == {
+        r"^neutron_tempest_plugin\.",
+        r"^tempest\.api\.network\.",
+        r"^tempest\.scenario\.test_network_",
+    }
+
+
 def test_csi_provider_paths_select_only_related_scenario(
     planner: Planner,
 ) -> None:
@@ -373,6 +485,16 @@ def test_csi_provider_paths_select_only_related_scenario(
     assert not local["job_decisions"]["aio-openvswitch"]["run"]
     assert rbd["job_decisions"]["csi-rbd"]["run"]
     assert not rbd["job_decisions"]["csi-local-path-provisioner"]["run"]
+
+
+def test_scenario_specific_jobs_do_not_receive_aio_checks(
+    planner: Planner,
+) -> None:
+    ceph = plan_path(planner, "playbooks/ceph.yml")
+    kubernetes = plan_path(planner, "roles/kubernetes/tasks/main.yml")
+
+    assert ceph["job_decisions"]["csi-rbd"]["verification_checks"] == []
+    assert kubernetes["job_decisions"]["keycloak"]["verification_checks"] == []
 
 
 def test_keycloak_change_uses_focused_scenario(
@@ -419,15 +541,81 @@ def test_unknown_runtime_path_falls_back_to_every_job(
             for check in checks
             if check["kind"] == "openstack-cli"
         } == {("token", "issue")}
-        assert {
+        deployments = {
             (check["namespace"], check["name"])
             for check in checks
             if check["kind"] == "kubernetes-deployment"
-        } == {
+        }
+        assert deployments == {
+            ("monitoring", "kube-prometheus-stack-operator"),
+            ("monitoring", "loki-gateway"),
+            ("monitoring", "node-feature-discovery-master"),
+            ("monitoring", "prometheus-pushgateway"),
+            ("openstack", "memcached-memcached"),
             ("openstack", "openstack-database-exporter"),
             ("openstack", "openstack-exporter"),
+            ("openstack", "staffeln-api"),
+            ("openstack", "staffeln-conductor"),
+            ("rook-ceph", "rook-ceph-operator"),
+        }
+        assert {
+            (check["namespace"], check["name"])
+            for check in checks
+            if check["kind"] == "kubernetes-daemonset"
+        } == {
+            ("monitoring", "goldpinger"),
+            ("monitoring", "ipmi-exporter"),
+            ("monitoring", "node-feature-discovery-worker"),
+            ("monitoring", "prometheus-smartctl-exporter-0"),
+            ("monitoring", "vector"),
+            ("openstack", "keepalived"),
+        }
+        assert {
+            (check["namespace"], check["name"])
+            for check in checks
+            if check["kind"] == "kubernetes-statefulset"
+        } == {
+            ("monitoring", "loki"),
+            ("openstack", "valkey-node"),
+        }
+        assert {
+            (
+                check["api_version"],
+                check["resource_kind"],
+                check["namespace"],
+                check["name"],
+            )
+            for check in checks
+            if check["kind"] == "kubernetes-resource"
+        } == {
+            ("ceph.rook.io/v1", "CephCluster", "openstack", "ceph"),
+            ("v1", "Endpoints", "openstack", "ceph-mon"),
+            ("v1", "Service", "openstack", "ceph-mon"),
+        }
+        assert sum(check["kind"] == "kubernetes-node" for check in checks) == 1
+        assert {
+            tuple(check["arguments"])
+            for check in checks
+            if check["kind"] == "host-command"
+        } == {
+            ("cephadm", "shell", "--", "ceph", "status"),
+            ("systemctl", "is-active", "iscsid"),
+            ("systemctl", "is-active", "multipathd"),
+            ("udevadm", "control", "--ping"),
         }
     assert plan["job_decisions"]["csi-rbd"]["verification_checks"] == []
+
+
+@pytest.mark.parametrize("service", ["designate", "ironic"])
+def test_inactive_openstack_service_uses_full_fallback(
+    planner: Planner,
+    service: str,
+) -> None:
+    plan = plan_path(planner, f"roles/{service}/tasks/main.yml")
+
+    assert plan["mode"] == "full"
+    assert all(decision["run"] for decision in plan["job_decisions"].values())
+    assert plan["reasons"] == ["the service is not enabled by the AIO scenario"]
 
 
 def test_empty_change_list_falls_back_to_every_job(
@@ -613,6 +801,42 @@ def test_empty_openstack_cli_arguments_are_rejected() -> None:
         Planner(invalid)
 
 
+def test_unknown_check_profile_is_rejected() -> None:
+    policy = yaml.safe_load(POLICY_PATH.read_text(encoding="utf-8"))
+    invalid = copy.deepcopy(policy)
+    invalid["components"]["keystone"]["check_profiles"] = ["missing"]
+
+    with pytest.raises(
+        PolicyError,
+        match=r"components\.keystone\.check_profiles references unknown",
+    ):
+        Planner(invalid)
+
+
+def test_run_tempest_must_be_boolean() -> None:
+    policy = yaml.safe_load(POLICY_PATH.read_text(encoding="utf-8"))
+    invalid = copy.deepcopy(policy)
+    invalid["components"]["lpfc"]["run_tempest"] = "false"
+
+    with pytest.raises(
+        PolicyError,
+        match=r"components\.lpfc\.run_tempest must be a boolean",
+    ):
+        Planner(invalid)
+
+
+def test_tempest_patterns_cannot_be_disabled() -> None:
+    policy = yaml.safe_load(POLICY_PATH.read_text(encoding="utf-8"))
+    invalid = copy.deepcopy(policy)
+    invalid["components"]["glance"]["run_tempest"] = False
+
+    with pytest.raises(
+        PolicyError,
+        match=r"components\.glance\.run_tempest cannot be false",
+    ):
+        Planner(invalid)
+
+
 def test_every_declared_role_maps_to_its_component(
     planner: Planner,
 ) -> None:
@@ -696,6 +920,20 @@ def test_every_component_pair_produces_the_union_of_individual_plans(
                 for check in left["verification_checks"] + right["verification_checks"]
             }
             assert checks == expected_checks, (left_name, right_name, job_name)
+
+
+def test_every_isolated_aio_component_has_focused_verification(
+    planner: Planner,
+) -> None:
+    for component_name in planner.components:
+        plan = plan_path(planner, component_path(planner, component_name))
+        for job_name, decision in plan["job_decisions"].items():
+            if decision["scenario"] != "aio" or not decision["run"]:
+                continue
+            assert not (decision["run_tempest"] and not decision["tempest_tests"]), (
+                component_name,
+                job_name,
+            )
 
 
 def test_every_role_is_explicitly_classified(planner: Planner) -> None:
@@ -789,6 +1027,11 @@ def test_selective_ci_uses_main_sequential_molecule_flow() -> None:
     assert "openstack.cloud.resources" in verifier
     assert "Run selected OpenStack client commands" in verifier
     assert "Wait for selected Kubernetes deployments" in verifier
+    assert "Wait for selected Kubernetes resources" in verifier
+    assert "Wait for selected Kubernetes daemon sets" in verifier
+    assert "Wait for selected Kubernetes stateful sets" in verifier
+    assert "Wait for the selected Kubernetes cluster" in verifier
+    assert "Run selected host commands" in verifier
     assert "go build" not in converge
     assert "./bin/atmosphere" not in runner
     assert "dependency_options" not in policy

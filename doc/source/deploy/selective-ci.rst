@@ -35,17 +35,17 @@ The policy is stored in ``ci/molecule-plan.yaml`` and has these sections:
   full-suite fallbacks.
 
 ``verification_checks``
-  Focused, read-only checks keyed by verification profile. Supported check
-  kinds query OpenStack resources, run OpenStack client commands, or wait for
-  Kubernetes deployments.
+  Reusable focused checks. Supported check kinds query OpenStack resources,
+  run OpenStack client or host commands, and wait for Kubernetes Deployments,
+  DaemonSets, StatefulSets, named resources, or ready Nodes.
 
 ``components``
-  CI dependencies, verification profiles, and exceptions to the defaults. A
-  component automatically owns ``roles/<component_name>`` with hyphens changed
-  to underscores and ``charts/<component_name>``. The ``roles`` and ``charts``
-  fields are only needed for aliases or explicit empty ownership. A component
-  can also declare ``tempest_tests`` regular expressions to restrict Tempest
-  to its smoke tests.
+  CI dependencies, descriptive verification profiles, explicit
+  ``check_profiles``, and exceptions to the defaults. A component automatically
+  owns ``roles/<component_name>`` with hyphens changed to underscores and
+  ``charts/<component_name>``. The ``roles`` and ``charts`` fields are only
+  needed for aliases or explicit empty ownership. A component can also declare
+  ``tempest_tests`` regular expressions to restrict Tempest to its smoke tests.
 
 Dependencies describe the test environment, not deployment concurrency. For
 example, a Keystone change includes Kubernetes, Ceph-backed CSI, the Percona
@@ -58,6 +58,14 @@ assigned to that job and then expands their shared dependency closure. For
 example, a Neutron change selects both network backends, while an unrelated
 Open vSwitch-only target is not added to the OVN job. Verification profiles
 and checks are scoped the same way.
+
+Low-level network targets such as Open vSwitch, OVN, FRR, and CoreDNS deploy
+Neutron as a test-only requirement and run the focused network Tempest tests.
+Components without a Tempest namespace can instead declare focused readiness
+checks; Staffeln, for example, waits for its API and conductor deployments.
+Designate and Ironic are not enabled by the AIO scenario, so their paths retain
+the complete fallback instead of claiming focused coverage which the scenario
+cannot provide.
 
 Changing the policy
 ===================
@@ -133,8 +141,10 @@ to one Tempest regular expression which also requires the ``smoke`` test
 attribute. This selects the intersection of the component namespaces and the
 smoke suite instead of adding unrelated smoke tests.
 
-Verification profiles can also resolve to ``verification_checks``. An
-``openstack-resource`` check uses ``openstack.cloud.resources`` against the
+Components select reusable ``verification_checks`` through
+``check_profiles``. Descriptive ``verification_profiles`` remain independent,
+so two monitoring components do not accidentally execute each other's checks.
+An ``openstack-resource`` check uses ``openstack.cloud.resources`` against the
 deployed public API and its configured certificate authority. A successful
 query proves that authentication, service discovery, TLS, and the target API
 are working even when the result is empty. Barbican, Placement, Heat, Magnum,
@@ -147,14 +157,21 @@ component requests a token this way, covering the wrapper container,
 authentication, and certificate configuration. A ``kubernetes-deployment``
 check waits until the named deployment is Available. The OpenStack exporter
 component waits for both its API and database exporters; their readiness probes
-exercise the metrics endpoints.
+exercise the metrics endpoints. DaemonSet and StatefulSet checks wait for their
+ready replica counts, while the Node check requires a Ready Kubernetes node.
+Host commands use argument lists without shell interpretation and cover
+services such as Ceph, iSCSI, and Multipath where Kubernetes has no resource to
+query. Focused checks apply only to AIO jobs; CSI and Keycloak scenarios retain
+their own complete Molecule verification lifecycle.
 
 A component with neither Tempest expressions nor a verification check uses the
 ordinary smoke selection against the services available in its deployment
 closure. This is the conservative fallback. In a multi-target change,
 verification checks cover their own components without disabling focused
 Tempest expressions from other targets. Full-fallback AIO jobs execute every
-declared verification check.
+declared verification check. A host role with no portable runtime resource can
+set ``run_tempest: false`` and rely on Molecule converge and idempotence; this
+exception is explicit and cannot be combined with Tempest expressions.
 
 Zuul artifacts
 ==============

@@ -185,9 +185,9 @@ rules:
       - reno.yaml
       - renovate.json
 
-# Focused read-only checks keyed by the verification profiles used below.
-# These provide coverage when the Tempest image does not include a
-# component-specific plugin or test.
+# Focused checks referenced explicitly by component ``check_profiles``. These
+# provide coverage when the Tempest image does not include a component-specific
+# plugin or when a foundation component has no OpenStack API.
 verification_checks:
   secrets:
     - kind: openstack-resource
@@ -225,6 +225,112 @@ verification_checks:
     - kind: kubernetes-deployment
       namespace: openstack
       name: openstack-database-exporter
+  staffeln:
+    - kind: kubernetes-deployment
+      namespace: openstack
+      name: staffeln-api
+    - kind: kubernetes-deployment
+      namespace: openstack
+      name: staffeln-conductor
+  ceph:
+    - kind: host-command
+      arguments:
+        - cephadm
+        - shell
+        - --
+        - ceph
+        - status
+  kubernetes:
+    - kind: kubernetes-node
+  valkey:
+    - kind: kubernetes-statefulset
+      namespace: openstack
+      name: valkey-node
+  keepalived:
+    - kind: kubernetes-daemonset
+      namespace: openstack
+      name: keepalived
+  node-feature-discovery:
+    - kind: kubernetes-deployment
+      namespace: monitoring
+      name: node-feature-discovery-master
+    - kind: kubernetes-daemonset
+      namespace: monitoring
+      name: node-feature-discovery-worker
+  kube-prometheus-stack:
+    - kind: kubernetes-deployment
+      namespace: monitoring
+      name: kube-prometheus-stack-operator
+  loki:
+    - kind: kubernetes-statefulset
+      namespace: monitoring
+      name: loki
+    - kind: kubernetes-deployment
+      namespace: monitoring
+      name: loki-gateway
+  vector:
+    - kind: kubernetes-daemonset
+      namespace: monitoring
+      name: vector
+  goldpinger:
+    - kind: kubernetes-daemonset
+      namespace: monitoring
+      name: goldpinger
+  ipmi-exporter:
+    - kind: kubernetes-daemonset
+      namespace: monitoring
+      name: ipmi-exporter
+  smartctl-exporter:
+    - kind: kubernetes-daemonset
+      namespace: monitoring
+      name: prometheus-smartctl-exporter-0
+  prometheus-pushgateway:
+    - kind: kubernetes-deployment
+      namespace: monitoring
+      name: prometheus-pushgateway
+  multipathd:
+    - kind: host-command
+      arguments:
+        - systemctl
+        - is-active
+        - multipathd
+  iscsi:
+    - kind: host-command
+      arguments:
+        - systemctl
+        - is-active
+        - iscsid
+  udev:
+    - kind: host-command
+      arguments:
+        - udevadm
+        - control
+        - --ping
+  memcached:
+    - kind: kubernetes-deployment
+      namespace: openstack
+      name: memcached-memcached
+  rook-ceph:
+    - kind: kubernetes-deployment
+      namespace: rook-ceph
+      name: rook-ceph-operator
+  rook-ceph-cluster:
+    - kind: kubernetes-resource
+      api_version: ceph.rook.io/v1
+      resource_kind: CephCluster
+      namespace: openstack
+      name: ceph
+  ceph-provisioners:
+    - kind: kubernetes-resource
+      api_version: v1
+      resource_kind: Service
+      namespace: openstack
+      name: ceph-mon
+    - kind: kubernetes-resource
+      api_version: v1
+      resource_kind: Endpoints
+      namespace: openstack
+      name: ceph-mon
 
 # Most components run in the Open vSwitch AIO job. Components only declare jobs
 # when they need a different scenario or network backend.
@@ -291,6 +397,8 @@ components:
     jobs:
       - aio-openvswitch
       - csi-rbd
+    check_profiles:
+      - ceph
     verification_profiles:
       - foundation
       - storage
@@ -307,6 +415,8 @@ components:
       - csi-local-path-provisioner
       - csi-rbd
       - keycloak
+    check_profiles:
+      - kubernetes
     verification_profiles:
       - foundation
 
@@ -390,6 +500,8 @@ components:
     requires:
       - cluster-issuer
       - csi
+    check_profiles:
+      - valkey
     verification_profiles:
       - cache
 
@@ -404,12 +516,16 @@ components:
   keepalived:
     stacks:
       - kubernetes-workload
+    check_profiles:
+      - keepalived
     verification_profiles:
       - infrastructure
 
   node-feature-discovery:
     stacks:
       - kubernetes-workload
+    check_profiles:
+      - node-feature-discovery
     verification_profiles:
       - monitoring
 
@@ -418,24 +534,32 @@ components:
       - cluster-issuer
       - csi
       - keycloak
+    check_profiles:
+      - kube-prometheus-stack
     verification_profiles:
       - monitoring
 
   loki:
     requires:
       - csi
+    check_profiles:
+      - loki
     verification_profiles:
       - observability
 
   vector:
     requires:
       - loki
+    check_profiles:
+      - vector
     verification_profiles:
       - observability
 
   goldpinger:
     stacks:
       - kubernetes-workload
+    check_profiles:
+      - goldpinger
     verification_profiles:
       - monitoring
 
@@ -443,7 +567,9 @@ components:
     charts:
       - prometheus-ipmi-exporter
     stacks:
-      - monitoring-foundation
+      - kubernetes-workload
+    check_profiles:
+      - ipmi-exporter
     verification_profiles:
       - monitoring
 
@@ -452,38 +578,53 @@ components:
       - prometheus-smartctl-exporter
     stacks:
       - monitoring-foundation
+    check_profiles:
+      - smartctl-exporter
     verification_profiles:
       - monitoring
 
   prometheus-pushgateway:
     stacks:
       - monitoring-foundation
+    check_profiles:
+      - prometheus-pushgateway
     verification_profiles:
       - monitoring
 
   lpfc:
     charts: []
+    # The role deliberately has no runtime resource on hosts without FC HBAs;
+    # converge and idempotence are its complete portable verification.
+    run_tempest: false
     verification_profiles:
       - host-storage
 
   multipathd:
     charts: []
+    check_profiles:
+      - multipathd
     verification_profiles:
       - host-storage
 
   iscsi:
     charts: []
+    check_profiles:
+      - iscsi
     verification_profiles:
       - host-storage
 
   udev:
     charts: []
+    check_profiles:
+      - udev
     verification_profiles:
       - host-storage
 
   memcached:
     stacks:
       - kubernetes-workload
+    check_profiles:
+      - memcached
     verification_profiles:
       - cache
 
@@ -498,12 +639,16 @@ components:
   barbican:
     stacks:
       - openstack-api
+    check_profiles:
+      - secrets
     verification_profiles:
       - secrets
 
   rook-ceph:
     stacks:
       - kubernetes-workload
+    check_profiles:
+      - rook-ceph
     verification_profiles:
       - storage
 
@@ -512,12 +657,16 @@ components:
       - ceph
       - keystone
       - rook-ceph
+    check_profiles:
+      - rook-ceph-cluster
     verification_profiles:
       - storage
 
   ceph-provisioners:
     stacks:
       - ceph-kubernetes
+    check_profiles:
+      - ceph-provisioners
     verification_profiles:
       - storage
 
@@ -532,8 +681,10 @@ components:
   staffeln:
     stacks:
       - openstack-api
+    check_profiles:
+      - staffeln
     verification_profiles:
-      - volume
+      - staffeln
 
   cinder:
     stacks:
@@ -548,14 +699,22 @@ components:
   placement:
     stacks:
       - openstack-api
+    check_profiles:
+      - placement
     verification_profiles:
       - placement
 
   openvswitch:
     stacks:
       - kubernetes-workload
+    test_requires:
+      - neutron
     verification_profiles:
       - network
+    tempest_tests:
+      - '^tempest\.api\.network\.'
+      - '^neutron_tempest_plugin\.'
+      - '^tempest\.scenario\.test_network_'
 
   frr-k8s:
     tag: frr_k8s
@@ -564,30 +723,53 @@ components:
       - ovn
     jobs:
       - aio-ovn
+    test_requires:
+      - neutron
     verification_profiles:
       - network
+    tempest_tests:
+      - '^tempest\.api\.network\.'
+      - '^neutron_tempest_plugin\.'
+      - '^tempest\.scenario\.test_network_'
 
   ovn:
     requires:
       - openvswitch
     jobs:
       - aio-ovn
+    test_requires:
+      - neutron
     verification_profiles:
       - network
+    tempest_tests:
+      - '^tempest\.api\.network\.'
+      - '^neutron_tempest_plugin\.'
+      - '^tempest\.scenario\.test_network_'
 
   libvirt:
     stacks:
       - kubernetes-workload
     requires:
       - cluster-issuer
+    test_requires:
+      - nova
     verification_profiles:
       - compute
+    tempest_tests:
+      - '^tempest\.api\.compute\.'
+      - '^tempest\.scenario\.test_server_'
 
   coredns:
     stacks:
       - kubernetes-workload
+    test_requires:
+      - neutron
     verification_profiles:
       - network
+    tempest_tests:
+      - '^tempest\.api\.network\.'
+      - '^neutron_tempest_plugin\.'
+      - '^tempest\.scenario\.test_network_'
 
   nova:
     requires:
@@ -627,6 +809,8 @@ components:
     test_requires:
       - glance
       - neutron
+    check_profiles:
+      - orchestration
     verification_profiles:
       - orchestration
 
@@ -635,6 +819,8 @@ components:
       - barbican
       - neutron
       - nova
+    check_profiles:
+      - load-balancer
     verification_profiles:
       - load-balancer
     tempest_tests:
@@ -652,6 +838,8 @@ components:
       - heat
       - neutron
       - octavia
+    check_profiles:
+      - container-infrastructure
     verification_profiles:
       - container-infrastructure
 
@@ -660,6 +848,8 @@ components:
       - cinder
       - neutron
       - nova
+    check_profiles:
+      - shared-file-system
     verification_profiles:
       - shared-file-system
 
@@ -677,6 +867,8 @@ components:
     requires:
       - cinder
       - neutron
+    check_profiles:
+      - monitoring
     verification_profiles:
       - monitoring
 
@@ -684,5 +876,7 @@ components:
     charts: []
     stacks:
       - openstack-api
+    check_profiles:
+      - identity-client
     verification_profiles:
       - identity-client
