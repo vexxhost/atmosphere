@@ -734,6 +734,7 @@ def test_full_aio_jobs_have_timeout_headroom() -> None:
         assert jobs[job_name]["timeout"] == 10800
         assert jobs[job_name]["vars"]["atmosphere_ci_molecule_timeout"] == 9000
         assert jobs[job_name]["vars"]["keycloak_helm_timeout"] == "30m0s"
+        assert jobs[job_name]["vars"]["nova_helm_timeout"] == "20m0s"
         assert jobs[job_name]["vars"]["keycloak_helm_values"] == {
             "startupProbe": {"failureThreshold": 300}
         }

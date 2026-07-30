@@ -168,12 +168,13 @@ scheduled job at runtime and reports its exact decision. The selective jobs
 disable Zuul's implicit configuration-update override because the planner,
 policy, playbook, and Zuul configuration paths already bypass every exclusion.
 
-The selective AIO jobs allow thirty minutes for Keycloak and ten minutes for
-the Nova, Neutron, Octavia, and Manila Helm operations. Keycloak's startup
-probe also allows twenty-five minutes so Kubernetes does not restart the
-service during its initial database migration. Clean database migrations and
-initial service rollouts can exceed their normal timeouts on a busy test node
-even when they complete successfully. The complete AIO Molecule lifecycle has
+The selective AIO jobs allow thirty minutes for Keycloak, twenty minutes for
+Nova, and ten minutes for the Neutron, Octavia, and Manila Helm operations.
+Keycloak's startup probe also allows twenty-five minutes so Kubernetes does
+not restart the service during its initial database migration. Clean database
+migrations and initial service rollouts can exceed their normal timeouts on a
+busy test node even when they complete successfully. The complete AIO Molecule
+lifecycle has
 a 150-minute command limit so full fallback runs have enough time to finish
 idempotence and verification. The enclosing Zuul job has a 180-minute limit,
 reserving another thirty minutes for preparation and post-run artifact
