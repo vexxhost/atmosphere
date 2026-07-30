@@ -1,5 +1,7 @@
 # `cinder`
 
+This role deploys the OpenStack Block Storage service.
+
 ## Operations
 
 ### Auditing orphan attachments
