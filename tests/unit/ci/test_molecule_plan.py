@@ -35,7 +35,34 @@ def components(plan: dict, job: str = "aio-openvswitch") -> set[str]:
 
 
 def test_policy_is_valid(planner: Planner) -> None:
-    assert planner.policy["version"] == 1
+    assert planner.policy["version"] == 2
+
+
+def test_component_defaults_and_inferred_ownership_reduce_policy_noise(
+    planner: Planner,
+) -> None:
+    assert "jobs" not in planner.raw_components["glance"]
+    assert "roles" not in planner.raw_components["ingress-nginx"]
+    assert "charts" not in planner.raw_components["ingress-nginx"]
+    assert planner.components["glance"]["jobs"] == ["aio-openvswitch"]
+    assert planner.components["ingress-nginx"]["roles"] == ["ingress_nginx"]
+    assert planner.components["ingress-nginx"]["charts"] == ["ingress-nginx"]
+
+
+def test_dependency_stacks_expand_to_identity_dependencies(planner: Planner) -> None:
+    assert planner.components["keycloak"]["requires"] == [
+        "cluster-issuer",
+        "ingress-nginx",
+        "percona-xtradb-cluster",
+    ]
+    assert planner.components["keystone"]["requires"] == [
+        "cluster-issuer",
+        "ingress-nginx",
+        "keycloak",
+        "memcached",
+        "percona-xtradb-cluster",
+        "rabbitmq-cluster-operator",
+    ]
 
 
 def test_keystone_uses_small_sequential_closure(planner: Planner) -> None:
@@ -74,6 +101,38 @@ def test_glance_includes_storage_and_identity_only(
         {"cinder", "heat", "magnum", "manila", "neutron", "nova"}
     )
     assert decision["tempest_tests"] == [r"^tempest\.api\.image\."]
+
+
+def test_glance_and_keystone_changes_use_the_union_scope(planner: Planner) -> None:
+    plan = planner.plan(
+        [
+            Change(status="M", path="roles/glance/tasks/main.yml"),
+            Change(status="M", path="roles/keystone/tasks/main.yml"),
+        ]
+    )
+    decision = plan["job_decisions"]["aio-openvswitch"]
+
+    assert plan["targets"] == ["glance", "keystone"]
+    assert set(decision["components"]) == {
+        "ceph",
+        "ceph-provisioners",
+        "cert-manager",
+        "cluster-issuer",
+        "csi",
+        "glance",
+        "ingress-nginx",
+        "keycloak",
+        "keystone",
+        "kubernetes",
+        "memcached",
+        "percona-xtradb-cluster",
+        "percona-xtradb-cluster-operator",
+        "rabbitmq-cluster-operator",
+    }
+    assert decision["tempest_tests"] == [
+        r"^tempest\.api\.identity\.",
+        r"^tempest\.api\.image\.",
+    ]
 
 
 def test_manila_includes_functional_dependencies(
@@ -402,6 +461,61 @@ def test_component_graph_cycle_is_rejected() -> None:
 
     with pytest.raises(PolicyError, match="cycle"):
         Planner(invalid)
+
+
+def test_dependency_stack_cycle_is_rejected() -> None:
+    policy = yaml.safe_load(POLICY_PATH.read_text(encoding="utf-8"))
+    invalid = copy.deepcopy(policy)
+    invalid["dependency_stacks"]["public-endpoint"]["stacks"] = ["keycloak-foundation"]
+
+    with pytest.raises(PolicyError, match="dependency stack graph contains a cycle"):
+        Planner(invalid)
+
+
+def test_unknown_dependency_stack_is_rejected() -> None:
+    policy = yaml.safe_load(POLICY_PATH.read_text(encoding="utf-8"))
+    invalid = copy.deepcopy(policy)
+    invalid["components"]["keycloak"]["stacks"] = ["missing-database"]
+
+    with pytest.raises(PolicyError, match="unknown dependency stack"):
+        Planner(invalid)
+
+
+def test_keycloak_backend_stack_can_migrate_without_changing_keystone_database() -> (
+    None
+):
+    policy = yaml.safe_load(POLICY_PATH.read_text(encoding="utf-8"))
+    migrated = copy.deepcopy(policy)
+    migrated["components"]["cloudnative-pg-operator"] = {
+        "charts": ["cloudnative-pg"],
+        "jobs": ["keycloak"],
+        "requires": ["cert-manager"],
+        "roles": ["cloudnative_pg_operator"],
+        "verification_profiles": ["database"],
+    }
+    migrated["components"]["keycloak-postgresql"] = {
+        "charts": [],
+        "jobs": ["keycloak"],
+        "requires": ["cloudnative-pg-operator", "csi"],
+        "roles": ["keycloak_postgresql"],
+        "verification_profiles": ["database"],
+    }
+    migrated["dependency_stacks"]["keycloak-foundation"]["requires"] = [
+        "keycloak-postgresql"
+    ]
+
+    migrated_planner = Planner(migrated)
+    plan = plan_path(migrated_planner, "roles/keystone/tasks/main.yml")
+    closure = components(plan)
+
+    assert migrated_planner.components["keycloak"]["requires"] == [
+        "cluster-issuer",
+        "ingress-nginx",
+        "keycloak-postgresql",
+    ]
+    assert "keycloak-postgresql" in closure
+    assert "cloudnative-pg-operator" in closure
+    assert "percona-xtradb-cluster" in closure
 
 
 def test_duplicate_policy_values_are_rejected() -> None:

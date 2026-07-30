@@ -21,6 +21,21 @@ _VERIFICATION_CHECK_FIELDS = {
     "openstack-cli": {"arguments", "kind"},
     "openstack-resource": {"kind", "service", "type"},
 }
+_COMPONENT_FIELDS = {
+    "backend_requires",
+    "charts",
+    "jobs",
+    "paths",
+    "requires",
+    "roles",
+    "stacks",
+    "tag",
+    "tempest_tests",
+    "test_requires",
+    "verification_profiles",
+}
+_COMPONENT_DEFAULT_FIELDS = {"jobs"}
+_DEPENDENCY_STACK_FIELDS = {"requires", "stacks"}
 
 
 class PolicyError(ValueError):
@@ -164,7 +179,16 @@ class Planner:
     def __init__(self, policy: dict[str, Any]) -> None:
         self.policy = policy
         self.jobs = _mapping(policy.get("jobs"), "jobs")
-        self.components = _mapping(policy.get("components"), "components")
+        self.component_defaults = _mapping(
+            policy.get("component_defaults", {}),
+            "component_defaults",
+        )
+        self.dependency_stacks = _mapping(
+            policy.get("dependency_stacks", {}),
+            "dependency_stacks",
+        )
+        self.raw_components = _mapping(policy.get("components"), "components")
+        self.components = self._resolve_components()
         self.verification_checks = _mapping(
             policy.get("verification_checks", {}),
             "verification_checks",
@@ -185,9 +209,90 @@ class Planner:
             raise PolicyError("policy document must be a mapping")
         return cls(policy)
 
+    def _resolve_components(self) -> dict[str, dict[str, Any]]:
+        """Apply defaults and dependency stacks to component declarations."""
+
+        unexpected_defaults = sorted(
+            set(self.component_defaults) - _COMPONENT_DEFAULT_FIELDS
+        )
+        if unexpected_defaults:
+            raise PolicyError(
+                "component_defaults contains unsupported keys: "
+                f"{', '.join(unexpected_defaults)}"
+            )
+        default_jobs = _strings(
+            self.component_defaults.get("jobs"),
+            "component_defaults.jobs",
+        )
+        defaults = {"jobs": default_jobs} if default_jobs else {}
+
+        expanded_stacks: dict[str, list[str]] = {}
+        expanding: set[str] = set()
+
+        def expand_stack(name: str) -> list[str]:
+            if name in expanded_stacks:
+                return expanded_stacks[name]
+            if name not in self.dependency_stacks:
+                raise PolicyError(f"unknown dependency stack {name!r}")
+            if name in expanding:
+                raise PolicyError(
+                    f"dependency stack graph contains a cycle at {name!r}"
+                )
+
+            expanding.add(name)
+            field = f"dependency_stacks.{name}"
+            stack = _mapping(self.dependency_stacks[name], field)
+            unexpected = sorted(set(stack) - _DEPENDENCY_STACK_FIELDS)
+            if unexpected:
+                raise PolicyError(
+                    f"{field} contains unsupported keys: {', '.join(unexpected)}"
+                )
+
+            dependencies: list[str] = []
+            for nested in _strings(stack.get("stacks"), f"{field}.stacks"):
+                dependencies.extend(expand_stack(nested))
+            for dependency in _strings(stack.get("requires"), f"{field}.requires"):
+                if dependency not in self.raw_components:
+                    raise PolicyError(
+                        f"{field} requires unknown component {dependency!r}"
+                    )
+                dependencies.append(dependency)
+
+            expanding.remove(name)
+            expanded_stacks[name] = _unique(dependencies)
+            return expanded_stacks[name]
+
+        for stack_name in self.dependency_stacks:
+            expand_stack(stack_name)
+
+        resolved: dict[str, dict[str, Any]] = {}
+        for component_name, component_value in self.raw_components.items():
+            field = f"components.{component_name}"
+            raw_component = _mapping(component_value, field)
+            unexpected = sorted(set(raw_component) - _COMPONENT_FIELDS)
+            if unexpected:
+                raise PolicyError(
+                    f"{field} contains unsupported keys: {', '.join(unexpected)}"
+                )
+
+            component = dict(defaults)
+            component.update(raw_component)
+            stack_names = _strings(component.get("stacks"), f"{field}.stacks")
+            dependencies: list[str] = []
+            for stack_name in stack_names:
+                dependencies.extend(expand_stack(stack_name))
+            dependencies.extend(
+                _strings(component.get("requires"), f"{field}.requires")
+            )
+            component["requires"] = _unique(dependencies)
+            component.setdefault("roles", [component_name.replace("-", "_")])
+            component.setdefault("charts", [component_name])
+            resolved[component_name] = component
+        return resolved
+
     def _validate(self, rules: list[Any]) -> None:
-        if self.policy.get("version") != 1:
-            raise PolicyError("policy version must be 1")
+        if self.policy.get("version") != 2:
+            raise PolicyError("policy version must be 2")
         if not self.jobs:
             raise PolicyError("at least one job must be configured")
         if not self.components:

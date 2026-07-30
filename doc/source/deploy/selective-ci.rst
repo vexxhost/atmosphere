@@ -16,10 +16,19 @@ idempotence actions.
 Policy
 ======
 
-The policy is stored in ``ci/molecule-plan.yaml`` and has four sections:
+The policy is stored in ``ci/molecule-plan.yaml`` and has these sections:
 
 ``jobs``
   Static Zuul jobs which can consume a decision.
+
+``component_defaults``
+  Values inherited by components unless they declare an exception. Most
+  components use the Open vSwitch AIO job, so they do not repeat it.
+
+``dependency_stacks``
+  Reusable groups of test-environment dependencies. Stacks can include other
+  stacks, allowing services to share definitions such as
+  ``identity-foundation`` and ``ceph-backed-openstack-api``.
 
 ``rules``
   Shared paths, ignored paths, focused scenario paths, and conservative
@@ -31,9 +40,12 @@ The policy is stored in ``ci/molecule-plan.yaml`` and has four sections:
   Kubernetes deployments.
 
 ``components``
-  Role and chart ownership, direct CI dependencies, verification profiles, and
-  the jobs which exercise each component. A component can also declare
-  ``tempest_tests`` regular expressions to restrict Tempest to its smoke tests.
+  CI dependencies, verification profiles, and exceptions to the defaults. A
+  component automatically owns ``roles/<component_name>`` with hyphens changed
+  to underscores and ``charts/<component_name>``. The ``roles`` and ``charts``
+  fields are only needed for aliases or explicit empty ownership. A component
+  can also declare ``tempest_tests`` regular expressions to restrict Tempest
+  to its smoke tests.
 
 Dependencies describe the test environment, not deployment concurrency. For
 example, a Keystone change includes Kubernetes, Ceph-backed CSI, the Percona
@@ -45,9 +57,47 @@ Changing the policy
 ===================
 
 Add or update a component in ``ci/molecule-plan.yaml`` when introducing a role
-or chart. Keep dependencies explicit and prefer the narrowest job which performs
-meaningful verification. Shared code should use a ``full`` rule unless its
-impact is safely bounded.
+or chart. Use an existing dependency stack before adding direct requirements,
+and add a new stack when several components share the same environment. Declare
+ownership and jobs only when they differ from the inferred defaults. Shared
+code should use a ``full`` rule unless its impact is safely bounded.
+
+For example, migrating only Keycloak from PXC to a PostgreSQL operator does not
+require editing Keystone, Glance, or their path matching. Add components for
+the operator and database, then change the database required by
+``keycloak-foundation``:
+
+.. code-block:: yaml
+
+   dependency_stacks:
+     keycloak-foundation:
+       stacks:
+         - public-endpoint
+       requires:
+         - keycloak-postgresql
+
+   components:
+     cloudnative-pg-operator:
+       charts:
+         - cloudnative-pg
+       jobs:
+         - keycloak
+       roles:
+         - cloudnative_pg_operator
+
+     keycloak-postgresql:
+       charts: []
+       jobs:
+         - keycloak
+       requires:
+         - cloudnative-pg-operator
+         - csi
+       roles:
+         - keycloak_postgresql
+
+Keystone continues to receive PXC from ``identity-foundation`` for its own
+database while receiving PostgreSQL transitively through Keycloak. The policy
+validator rejects unknown components and dependency-stack cycles.
 
 Validate the policy and inspect representative plans locally:
 
