@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import copy
+import itertools
+import json
 import re
 from pathlib import Path
 
@@ -28,6 +30,15 @@ def planner() -> Planner:
 
 def plan_path(planner: Planner, path: str) -> dict:
     return planner.plan([Change(status="M", path=path)])
+
+
+def component_path(planner: Planner, component_name: str) -> str:
+    roles = planner.components[component_name]["roles"]
+    if roles:
+        return f"roles/{roles[0]}/tasks/main.yml"
+    if component_name == "ceph":
+        return "playbooks/ceph.yml"
+    raise AssertionError(f"{component_name} has no representative change path")
 
 
 def components(plan: dict, job: str = "aio-openvswitch") -> set[str]:
@@ -622,6 +633,69 @@ def test_every_declared_chart_and_patch_maps_to_its_component(
                     f"{chart_root}/{chart}/templates/deployment.yaml",
                 )
                 assert component_name in plan["targets"]
+
+
+def test_every_component_pair_produces_the_union_of_individual_plans(
+    planner: Planner,
+) -> None:
+    individual = {
+        name: plan_path(planner, component_path(planner, name))
+        for name in planner.components
+    }
+
+    for left_name, right_name in itertools.combinations(planner.components, 2):
+        combined = planner.plan(
+            [
+                Change(status="M", path=component_path(planner, left_name)),
+                Change(status="M", path=component_path(planner, right_name)),
+            ]
+        )
+
+        for job_name, decision in combined["job_decisions"].items():
+            left = individual[left_name]["job_decisions"][job_name]
+            right = individual[right_name]["job_decisions"][job_name]
+
+            assert decision["run"] is (left["run"] or right["run"])
+            for field in (
+                "targets",
+                "components",
+                "ansible_tags",
+                "verification_profiles",
+            ):
+                assert set(decision[field]) == set(left[field]) | set(right[field]), (
+                    left_name,
+                    right_name,
+                    job_name,
+                    field,
+                )
+
+            running = [item for item in (left, right) if item["run"]]
+            broad_tempest = any(
+                item["run_tempest"] and not item["tempest_tests"] for item in running
+            )
+            expected_tempest = (
+                set()
+                if broad_tempest
+                else set(left["tempest_tests"]) | set(right["tempest_tests"])
+            )
+            assert set(decision["tempest_tests"]) == expected_tempest, (
+                left_name,
+                right_name,
+                job_name,
+            )
+            assert decision["run_tempest"] is any(
+                item["run_tempest"] for item in running
+            )
+
+            checks = {
+                json.dumps(check, sort_keys=True)
+                for check in decision["verification_checks"]
+            }
+            expected_checks = {
+                json.dumps(check, sort_keys=True)
+                for check in left["verification_checks"] + right["verification_checks"]
+            }
+            assert checks == expected_checks, (left_name, right_name, job_name)
 
 
 def test_every_role_is_explicitly_classified(planner: Planner) -> None:

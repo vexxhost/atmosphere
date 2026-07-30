@@ -53,6 +53,12 @@ XtraDB Cluster, Keycloak, RabbitMQ, Memcached, ingress, and certificate
 components. It does not include Glance, Nova, Manila, Magnum, or other unrelated
 OpenStack APIs.
 
+For a multi-component change, each job receives only the changed targets
+assigned to that job and then expands their shared dependency closure. For
+example, a Neutron change selects both network backends, while an unrelated
+Open vSwitch-only target is not added to the OVN job. Verification profiles
+and checks are scoped the same way.
+
 Changing the policy
 ===================
 

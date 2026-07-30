@@ -675,6 +675,16 @@ class Planner:
                     }
                 )
             else:
+                profiles = sorted(
+                    {
+                        profile
+                        for root in roots
+                        for profile in _strings(
+                            self.components[root].get("verification_profiles"),
+                            f"components.{root}.verification_profiles",
+                        )
+                    }
+                )
                 decision = {
                     "run": True,
                     "reason": "selected by changed components",
@@ -683,9 +693,9 @@ class Planner:
                     "targets": roots,
                     "components": [],
                     "ansible_tags": [],
-                    "verification_profiles": sorted(all_profiles),
-                    "verification_checks": all_verification_checks,
-                    "tempest_tests": all_tempest_tests,
+                    "verification_profiles": profiles,
+                    "verification_checks": self._verification_checks(roots),
+                    "tempest_tests": self._tempest_test_patterns(roots),
                     "run_tempest": False,
                 }
             decisions[job_name] = decision
