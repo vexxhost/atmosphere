@@ -129,11 +129,12 @@ release-note-only changes produce a no-op plan. A path which matches no rule or
 component produces a full plan so a new runtime area cannot silently lose test
 coverage.
 
-In Zuul, the planner compares the speculative merge commit at ``HEAD`` with its
-first parent at ``HEAD^1``. For an ordinary pull request, the first parent is
-the target branch. For a pull request with ``Depends-On`` changes, it also
-contains those dependencies, so only the current pull request selects test
-targets.
+In Zuul, an ordinary pull request is compared with the merge base of ``HEAD``
+and its target branch. This includes every commit in the pull request rather
+than only the most recent commit. For a pull request with ``Depends-On``
+changes, the planner compares ``HEAD`` with ``HEAD^1`` because that first parent
+is the speculative dependency state. This keeps dependency changes out of the
+current pull request's test selection.
 
 During selective AIO verification, Tempest receives the union of
 ``tempest_tests`` for the changed components. The expressions are passed

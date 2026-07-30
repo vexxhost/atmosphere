@@ -288,7 +288,9 @@
 
 - project:
     vars:
-      atmosphere_ci_plan_base: HEAD^1
+      atmosphere_ci_plan_base: >-
+        {{ 'HEAD^1' if (zuul['items'] | length) > 1
+        else 'origin/' ~ zuul['branch'] }}
       atmosphere_ci_plan_head: HEAD
     check:
       jobs:
