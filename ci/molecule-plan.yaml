@@ -1,5 +1,5 @@
 ---
-version: 1
+version: 2
 
 # These jobs form the selector's complete execution set. Zuul uses generated
 # irrelevant-files filters to omit jobs assigned exclusively to other paths,
@@ -226,9 +226,64 @@ verification_checks:
       namespace: openstack
       name: openstack-database-exporter
 
-# Dependencies below are CI test-environment requirements. They are deliberately
-# independent from any deployment orchestrator and resolve only to tags already
-# present in the sequential playbooks on main.
+# Most components run in the Open vSwitch AIO job. Components only declare jobs
+# when they need a different scenario or network backend.
+component_defaults:
+  jobs:
+    - aio-openvswitch
+
+# Reusable test-environment dependency stacks keep deployment structure out of
+# individual service declarations. Stacks can compose other stacks. A backend
+# migration should normally change one stack while service ownership and
+# verification remain unchanged.
+dependency_stacks:
+  kubernetes-workload:
+    requires:
+      - kubernetes
+
+  ceph-kubernetes:
+    requires:
+      - ceph
+      - kubernetes
+
+  public-endpoint:
+    requires:
+      - cluster-issuer
+      - ingress-nginx
+
+  keycloak-foundation:
+    stacks:
+      - public-endpoint
+    requires:
+      - percona-xtradb-cluster
+
+  identity-foundation:
+    stacks:
+      - public-endpoint
+    requires:
+      - keycloak
+      - memcached
+      - percona-xtradb-cluster
+      - rabbitmq-cluster-operator
+
+  openstack-api:
+    requires:
+      - keystone
+
+  ceph-backed-openstack-api:
+    stacks:
+      - openstack-api
+    requires:
+      - ceph-provisioners
+
+  monitoring-foundation:
+    requires:
+      - kube-prometheus-stack
+
+# Components infer ownership of ``roles/<name_with_underscores>`` and
+# ``charts/<name>``. The ``roles`` and ``charts`` keys below are only aliases
+# or explicit empty ownership declarations. Dependencies resolve to Ansible
+# tags already present in the sequential playbooks on main.
 components:
   ceph:
     roles: []
@@ -265,9 +320,8 @@ components:
       - ibm_block_csi_driver
     charts:
       - hpe-csi-driver
-    requires:
-      - ceph
-      - kubernetes
+    stacks:
+      - ceph-kubernetes
     jobs:
       - csi-local-path-provisioner
       - csi-rbd
@@ -275,22 +329,18 @@ components:
       - csi
 
   cert-manager:
-    roles:
-      - cert_manager
     charts:
       - cert-manager
       - cert-manager-webhook-infoblox-wapi
       - godaddy-webhook
-    requires:
-      - kubernetes
+    stacks:
+      - kubernetes-workload
     jobs:
       - keycloak
     verification_profiles:
       - infrastructure
 
   cluster-issuer:
-    roles:
-      - cluster_issuer
     charts: []
     requires:
       - cert-manager
@@ -300,22 +350,14 @@ components:
       - infrastructure
 
   ingress-nginx:
-    roles:
-      - ingress_nginx
-    charts:
-      - ingress-nginx
-    requires:
-      - kubernetes
+    stacks:
+      - kubernetes-workload
     jobs:
       - keycloak
     verification_profiles:
       - infrastructure
 
   rabbitmq-cluster-operator:
-    roles:
-      - rabbitmq_cluster_operator
-    charts:
-      - rabbitmq-cluster-operator
     requires:
       - cert-manager
     jobs:
@@ -324,8 +366,6 @@ components:
       - messaging
 
   percona-xtradb-cluster-operator:
-    roles:
-      - percona_xtradb_cluster_operator
     charts:
       - pxc-operator
     requires:
@@ -336,8 +376,6 @@ components:
       - database
 
   percona-xtradb-cluster:
-    roles:
-      - percona_xtradb_cluster
     charts:
       - pxc-db
     requires:
@@ -352,265 +390,174 @@ components:
     requires:
       - cluster-issuer
       - csi
-    jobs:
-      - aio-openvswitch
     verification_profiles:
       - cache
 
   keycloak:
-    requires:
-      - cluster-issuer
-      - ingress-nginx
-      - percona-xtradb-cluster
+    stacks:
+      - keycloak-foundation
     jobs:
       - keycloak
     verification_profiles:
       - keycloak-federation
 
   keepalived:
-    requires:
-      - kubernetes
-    jobs:
-      - aio-openvswitch
+    stacks:
+      - kubernetes-workload
     verification_profiles:
       - infrastructure
 
   node-feature-discovery:
-    roles:
-      - node_feature_discovery
-    charts:
-      - node-feature-discovery
-    requires:
-      - kubernetes
-    jobs:
-      - aio-openvswitch
+    stacks:
+      - kubernetes-workload
     verification_profiles:
       - monitoring
 
   kube-prometheus-stack:
-    roles:
-      - kube_prometheus_stack
-    charts:
-      - kube-prometheus-stack
     requires:
       - cluster-issuer
       - csi
       - keycloak
-    jobs:
-      - aio-openvswitch
     verification_profiles:
       - monitoring
 
   loki:
     requires:
       - csi
-    jobs:
-      - aio-openvswitch
     verification_profiles:
       - observability
 
   vector:
     requires:
       - loki
-    jobs:
-      - aio-openvswitch
     verification_profiles:
       - observability
 
   goldpinger:
-    requires:
-      - kubernetes
-    jobs:
-      - aio-openvswitch
+    stacks:
+      - kubernetes-workload
     verification_profiles:
       - monitoring
 
   ipmi-exporter:
-    roles:
-      - ipmi_exporter
     charts:
       - prometheus-ipmi-exporter
-    requires:
-      - kube-prometheus-stack
-    jobs:
-      - aio-openvswitch
+    stacks:
+      - monitoring-foundation
     verification_profiles:
       - monitoring
 
   smartctl-exporter:
-    roles:
-      - smartctl_exporter
     charts:
       - prometheus-smartctl-exporter
-    requires:
-      - kube-prometheus-stack
-    jobs:
-      - aio-openvswitch
+    stacks:
+      - monitoring-foundation
     verification_profiles:
       - monitoring
 
   prometheus-pushgateway:
-    roles:
-      - prometheus_pushgateway
-    charts:
-      - prometheus-pushgateway
-    requires:
-      - kube-prometheus-stack
-    jobs:
-      - aio-openvswitch
+    stacks:
+      - monitoring-foundation
     verification_profiles:
       - monitoring
 
   lpfc:
     charts: []
-    jobs:
-      - aio-openvswitch
     verification_profiles:
       - host-storage
 
   multipathd:
     charts: []
-    jobs:
-      - aio-openvswitch
     verification_profiles:
       - host-storage
 
   iscsi:
     charts: []
-    jobs:
-      - aio-openvswitch
     verification_profiles:
       - host-storage
 
   udev:
     charts: []
-    jobs:
-      - aio-openvswitch
     verification_profiles:
       - host-storage
 
   memcached:
-    requires:
-      - kubernetes
-    jobs:
-      - aio-openvswitch
+    stacks:
+      - kubernetes-workload
     verification_profiles:
       - cache
 
   keystone:
-    requires:
-      - ingress-nginx
-      - keycloak
-      - memcached
-      - percona-xtradb-cluster
-      - rabbitmq-cluster-operator
-    jobs:
-      - aio-openvswitch
+    stacks:
+      - identity-foundation
     verification_profiles:
       - identity
     tempest_tests:
       - '^tempest\.api\.identity\.'
 
   barbican:
-    requires:
-      - keystone
-    jobs:
-      - aio-openvswitch
+    stacks:
+      - openstack-api
     verification_profiles:
       - secrets
 
   rook-ceph:
-    roles:
-      - rook_ceph
-    charts:
-      - rook-ceph
-    requires:
-      - kubernetes
-    jobs:
-      - aio-openvswitch
+    stacks:
+      - kubernetes-workload
     verification_profiles:
       - storage
 
   rook-ceph-cluster:
-    roles:
-      - rook_ceph_cluster
-    charts:
-      - rook-ceph-cluster
     requires:
       - ceph
       - keystone
       - rook-ceph
-    jobs:
-      - aio-openvswitch
     verification_profiles:
       - storage
 
   ceph-provisioners:
-    roles:
-      - ceph_provisioners
-    charts:
-      - ceph-provisioners
-    requires:
-      - ceph
-      - kubernetes
-    jobs:
-      - aio-openvswitch
+    stacks:
+      - ceph-kubernetes
     verification_profiles:
       - storage
 
   glance:
-    requires:
-      - ceph-provisioners
-      - keystone
-    jobs:
-      - aio-openvswitch
+    stacks:
+      - ceph-backed-openstack-api
     verification_profiles:
       - image
     tempest_tests:
       - '^tempest\.api\.image\.'
 
   staffeln:
-    requires:
-      - keystone
-    jobs:
-      - aio-openvswitch
+    stacks:
+      - openstack-api
     verification_profiles:
       - volume
 
   cinder:
-    requires:
-      - ceph-provisioners
-      - keystone
+    stacks:
+      - ceph-backed-openstack-api
     test_requires:
       - glance
-    jobs:
-      - aio-openvswitch
     verification_profiles:
       - volume
     tempest_tests:
       - '^tempest\.api\.volume\.'
 
   placement:
-    requires:
-      - keystone
-    jobs:
-      - aio-openvswitch
+    stacks:
+      - openstack-api
     verification_profiles:
       - placement
 
   openvswitch:
-    requires:
-      - kubernetes
-    jobs:
-      - aio-openvswitch
+    stacks:
+      - kubernetes-workload
     verification_profiles:
       - network
 
   frr-k8s:
-    roles:
-      - frr_k8s
-    charts:
-      - frr-k8s
     tag: frr_k8s
     requires:
       - kubernetes
@@ -629,19 +576,16 @@ components:
       - network
 
   libvirt:
+    stacks:
+      - kubernetes-workload
     requires:
       - cluster-issuer
-      - kubernetes
-    jobs:
-      - aio-openvswitch
     verification_profiles:
       - compute
 
   coredns:
-    requires:
-      - kubernetes
-    jobs:
-      - aio-openvswitch
+    stacks:
+      - kubernetes-workload
     verification_profiles:
       - network
 
@@ -652,8 +596,6 @@ components:
       - placement
     test_requires:
       - neutron
-    jobs:
-      - aio-openvswitch
     verification_profiles:
       - compute
     tempest_tests:
@@ -680,13 +622,11 @@ components:
       - '^tempest\.scenario\.test_network_'
 
   heat:
-    requires:
-      - keystone
+    stacks:
+      - openstack-api
     test_requires:
       - glance
       - neutron
-    jobs:
-      - aio-openvswitch
     verification_profiles:
       - orchestration
 
@@ -695,17 +635,16 @@ components:
       - barbican
       - neutron
       - nova
-    jobs:
-      - aio-openvswitch
     verification_profiles:
       - load-balancer
     tempest_tests:
       - '^octavia_tempest_plugin\.'
 
   magnum:
+    stacks:
+      - openstack-api
     requires:
       - glance
-      - keystone
     test_requires:
       - barbican
       - cinder
@@ -713,8 +652,6 @@ components:
       - heat
       - neutron
       - octavia
-    jobs:
-      - aio-openvswitch
     verification_profiles:
       - container-infrastructure
 
@@ -723,43 +660,29 @@ components:
       - cinder
       - neutron
       - nova
-    jobs:
-      - aio-openvswitch
     verification_profiles:
       - shared-file-system
 
   horizon:
-    requires:
-      - keystone
+    stacks:
+      - openstack-api
     test_requires:
       - nova
-    jobs:
-      - aio-openvswitch
     verification_profiles:
       - dashboard
     tempest_tests:
       - '^tempest\.scenario\.test_dashboard_basic_ops\.'
 
   openstack-exporter:
-    roles:
-      - openstack_exporter
-    charts:
-      - openstack-exporter
     requires:
       - cinder
       - neutron
-    jobs:
-      - aio-openvswitch
     verification_profiles:
       - monitoring
 
   openstack-cli:
-    roles:
-      - openstack_cli
     charts: []
-    requires:
-      - keystone
-    jobs:
-      - aio-openvswitch
+    stacks:
+      - openstack-api
     verification_profiles:
       - identity-client
