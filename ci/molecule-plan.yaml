@@ -185,6 +185,47 @@ rules:
       - reno.yaml
       - renovate.json
 
+# Focused read-only checks keyed by the verification profiles used below.
+# These provide coverage when the Tempest image does not include a
+# component-specific plugin or test.
+verification_checks:
+  secrets:
+    - kind: openstack-resource
+      service: key_manager
+      type: secret
+  placement:
+    - kind: openstack-resource
+      service: placement
+      type: resource_provider
+  orchestration:
+    - kind: openstack-resource
+      service: orchestration
+      type: stack
+  load-balancer:
+    - kind: openstack-resource
+      service: load_balancer
+      type: load_balancer
+  container-infrastructure:
+    - kind: openstack-resource
+      service: container_infrastructure_management
+      type: cluster
+  shared-file-system:
+    - kind: openstack-resource
+      service: shared_file_system
+      type: share
+  identity-client:
+    - kind: openstack-cli
+      arguments:
+        - token
+        - issue
+  monitoring:
+    - kind: kubernetes-deployment
+      namespace: openstack
+      name: openstack-exporter
+    - kind: kubernetes-deployment
+      namespace: openstack
+      name: openstack-database-exporter
+
 # Dependencies below are CI test-environment requirements. They are deliberately
 # independent from any deployment orchestrator and resolve only to tags already
 # present in the sequential playbooks on main.
