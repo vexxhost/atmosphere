@@ -18,8 +18,12 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: ironic-console-pods
+  namespace: {{ .Values.console.namespace | default .Release.Namespace }}
 rules:
   - apiGroups: [""]
-    resources: ["pods", "secrets"]
-    verbs: ["create", "delete", "get", "list", "watch"]
+    resources: ["pods"]
+    verbs: ["create", "delete", "deletecollection", "get", "list", "patch"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["create", "delete", "deletecollection", "get", "list", "patch"]
 {{- end }}

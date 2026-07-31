@@ -1,3 +1,5 @@
+#!/bin/bash
+
 {{/*
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,19 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */}}
 
-{{- if .Values.manifests.rolebinding_console_pods }}
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: ironic-console-pods
-  namespace: {{ .Values.console.namespace | default .Release.Namespace }}
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: ironic-console-pods
-subjects:
-  - kind: ServiceAccount
-    name: ironic-conductor
-    namespace: {{ .Release.Namespace }}
-{{- end }}
+set -ex
+
+cp -vaRf /usr/share/novnc/* /tmp/usr/share/novnc/
+
+# Modern noVNC releases use vnc_lite.html in place of vnc_auto.html.
+if [[ ! -e /tmp/usr/share/novnc/vnc_auto.html ]] && \
+   [[ -e /tmp/usr/share/novnc/vnc_lite.html ]]; then
+  cp /tmp/usr/share/novnc/vnc_lite.html \
+    /tmp/usr/share/novnc/vnc_auto.html
+fi

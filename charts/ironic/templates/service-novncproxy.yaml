@@ -23,6 +23,12 @@ spec:
   ports:
     - name: m-novncproxy
       port: {{ tuple "baremetal_vnc_proxy" "internal" "novncproxy" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+    {{- if .Values.network.novncproxy.node_port.enabled }}
+      nodePort: {{ .Values.network.novncproxy.node_port.port }}
+    {{- end }}
   selector:
 {{ tuple $envAll "ironic" "novncproxy" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+  {{- if .Values.network.novncproxy.node_port.enabled }}
+  type: NodePort
+  {{- end }}
 {{- end }}

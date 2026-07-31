@@ -208,6 +208,10 @@ limitations under the License.
 {{- $_ := set .Values.conf.ironic.api "port" (tuple "baremetal" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup") -}}
 {{- end -}}
 
+{{- if and .Values.conf.ironic.vnc.enabled (empty .Values.conf.ironic.vnc.public_url) -}}
+{{- $_ := tuple "baremetal_vnc_proxy" "public" "novncproxy" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup" | set .Values.conf.ironic.vnc "public_url" -}}
+{{- end -}}
+
 {{- if and (empty .Values.conf.logging.handler_fluent) (has "fluent" .Values.conf.logging.handlers.keys) -}}
 {{- $fluentd_host := tuple "fluentd" "internal" $envAll | include "helm-toolkit.endpoints.hostname_namespaced_endpoint_lookup" }}
 {{- $fluentd_port := tuple "fluentd" "internal" "service" $envAll | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
@@ -230,6 +234,7 @@ data:
   ironic.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.ironic | b64enc }}
   logging.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.logging | b64enc }}
   policy.yaml: {{ toYaml .Values.conf.policy | b64enc }}
+  ironic-console-pod.yaml: {{ tuple "etc/_ironic-console-pod.yaml.tpl" . | include "helm-toolkit.utils.template" | b64enc }}
 {{- include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conf.tftp_map_file "key" "tftp-map-file" "format" "Secret" ) | indent 2 }}
 {{- include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conf.nginx "key" "nginx.conf" "format" "Secret" ) | indent 2 }}
 {{- end }}
