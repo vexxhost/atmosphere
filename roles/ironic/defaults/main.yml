@@ -26,10 +26,21 @@ ironic_ingress_class_name: "{{ atmosphere_ingress_class_name }}"
 # List of annotations to apply to the Ingress
 ironic_ingress_annotations: {}
 
-# VNC console access for baremetal nodes
+# Enable Ironic bare metal graphical console support. This deploys
+# ironic-novncproxy and grants ironic-conductor access to dynamic console Pods.
 ironic_vnc_enabled: false
+ironic_vnc_container_provider: kubernetes
+ironic_vnc_novnc_web: /usr/share/novnc
+ironic_vnc_public_url: "https://{{ openstack_helm_endpoints_ironic_novnc_host }}/vnc_auto.html"
 ironic_vnc_ingress_class_name: "{{ atmosphere_ingress_class_name }}"
 ironic_vnc_ingress_annotations: {}
+ironic_vnc_kubernetes_pod_timeout: 120
+
+# Optional driver/interface overrides. Keep hardware types unset to use
+# Ironic's defaults while allowing out-of-tree drivers to register additions.
+ironic_enabled_hardware_types: null
+ironic_enabled_console_interfaces: redfish-graphical,no-console
+ironic_enabled_network_interfaces: flat,neutron
 
 # Ironic bare metal network used for PXE
 ironic_bare_metal_network_manage: true

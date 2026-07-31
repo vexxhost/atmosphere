@@ -12,6 +12,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */}}
 
+{{- define "ironicNovncproxyProbeTemplate" }}
+tcpSocket:
+  port: {{ tuple "baremetal_vnc_proxy" "internal" "novncproxy" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+{{- end }}
+
 {{- if .Values.manifests.deployment_novncproxy }}
 {{- $envAll := . }}
 
@@ -55,9 +60,27 @@ spec:
 {{ if $envAll.Values.pod.tolerations.ironic.enabled }}
 {{ tuple $envAll "ironic" | include "helm-toolkit.snippets.kubernetes_tolerations" | indent 10 }}
 {{ end }}
+{{- if .Values.pod.useHostNetwork.novncproxy }}
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+{{- end }}
       terminationGracePeriodSeconds: {{ .Values.pod.lifecycle.termination_grace_period.novncproxy.timeout | default "30" }}
       initContainers:
 {{ tuple $envAll "novncproxy" $mounts_ironic_novncproxy_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+        - name: ironic-novncproxy-init-assets
+{{ tuple $envAll "ironic_novncproxy_assets" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.novncproxy | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+          command:
+            - /tmp/ironic-novncproxy-init-assets.sh
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: ironic-bin
+              mountPath: /tmp/ironic-novncproxy-init-assets.sh
+              subPath: ironic-novncproxy-init-assets.sh
+              readOnly: true
+            - name: pod-usr-share-novnc
+              mountPath: /tmp/usr/share/novnc
       containers:
         - name: ironic-novncproxy
 {{ tuple $envAll "ironic_novncproxy" | include "helm-toolkit.snippets.image" | indent 10 }}
@@ -66,12 +89,8 @@ spec:
             - /tmp/ironic-novncproxy.sh
           ports:
             - containerPort: {{ tuple "baremetal_vnc_proxy" "internal" "novncproxy" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
-          readinessProbe:
-            tcpSocket:
-              port: {{ tuple "baremetal_vnc_proxy" "internal" "novncproxy" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
-          livenessProbe:
-            tcpSocket:
-              port: {{ tuple "baremetal_vnc_proxy" "internal" "novncproxy" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+{{ dict "envAll" $envAll "component" "novncproxy" "container" "default" "type" "liveness" "probeTemplate" (include "ironicNovncproxyProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ dict "envAll" $envAll "component" "novncproxy" "container" "default" "type" "readiness" "probeTemplate" (include "ironicNovncproxyProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
           volumeMounts:
             - name: pod-tmp
               mountPath: /tmp
@@ -93,6 +112,9 @@ spec:
               mountPath: /etc/ironic/policy.yaml
               subPath: policy.yaml
               readOnly: true
+            - name: pod-usr-share-novnc
+              mountPath: /usr/share/novnc
+              readOnly: true
 {{ if $mounts_ironic_novncproxy.volumeMounts }}{{ toYaml $mounts_ironic_novncproxy.volumeMounts | indent 12 }}{{ end }}
       volumes:
         - name: pod-tmp
@@ -101,6 +123,8 @@ spec:
           configMap:
             name: ironic-bin
             defaultMode: 0555
+        - name: pod-usr-share-novnc
+          emptyDir: {}
         - name: ironic-etc
           secret:
             secretName: ironic-etc

@@ -76,6 +76,19 @@
     image: "{{ ironic_python_agent_deploy_ramdisk_name }}"
   register: ironic_python_agent_deploy_ramdisk
 
+- name: Validate bare metal console configuration
+  when: ironic_vnc_enabled | bool
+  ansible.builtin.assert:
+    that:
+      - ironic_vnc_container_provider == 'kubernetes'
+      - atmosphere_images.get('ironic_console') is string
+      - >-
+        '@sha256:' in
+        (atmosphere_images.get('ironic_console') | default(''))
+    fail_msg: >-
+      Bare metal graphical consoles require the Kubernetes container provider
+      and a digest-pinned atmosphere_image_overrides.ironic_console image.
+
 - name: Deploy Helm chart
   run_once: true
   kubernetes.core.helm:
@@ -96,7 +109,7 @@
     openstack_helm_ingress_annotations: "{{ ironic_ingress_annotations }}"
     openstack_helm_ingress_class_name: "{{ ironic_ingress_class_name }}"
 
-- name: Create VNC Proxy Ingress
+- name: Create noVNC Ingress
   when: ironic_vnc_enabled | bool
   ansible.builtin.include_role:
     name: openstack_helm_ingress
@@ -104,11 +117,5 @@
     openstack_helm_ingress_endpoint: baremetal_vnc_proxy
     openstack_helm_ingress_service_name: ironic-novncproxy
     openstack_helm_ingress_service_port: 6090
-    openstack_helm_ingress_annotations: >-
-      {{
-        ironic_vnc_ingress_annotations | combine({
-          "nginx.ingress.kubernetes.io/proxy-read-timeout": "3600",
-          "nginx.ingress.kubernetes.io/proxy-send-timeout": "3600"
-        })
-      }}
+    openstack_helm_ingress_annotations: "{{ _ironic_novncproxy_ingress_annotations | combine(ironic_vnc_ingress_annotations) }}"
     openstack_helm_ingress_class_name: "{{ ironic_vnc_ingress_class_name }}"

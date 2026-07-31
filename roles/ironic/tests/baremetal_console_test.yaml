@@ -1,0 +1,123 @@
+suite: baremetal console
+tests:
+  - it: should not deploy baremetal console by default
+    templates:
+      - templates/deployment-novncproxy.yaml
+      - templates/service-novncproxy.yaml
+      - templates/role-console-pods.yaml
+      - templates/rolebinding-console-pods.yaml
+    asserts:
+      - template: templates/deployment-novncproxy.yaml
+        hasDocuments:
+          count: 0
+      - template: templates/service-novncproxy.yaml
+        hasDocuments:
+          count: 0
+      - template: templates/role-console-pods.yaml
+        hasDocuments:
+          count: 0
+      - template: templates/rolebinding-console-pods.yaml
+        hasDocuments:
+          count: 0
+
+  - it: should deploy baremetal console proxy and dynamic Pod RBAC
+    release:
+      namespace: test-console
+    templates:
+      - templates/configmap-bin.yaml
+      - templates/configmap-etc.yaml
+      - templates/deployment-novncproxy.yaml
+      - templates/service-novncproxy.yaml
+      - templates/role-console-pods.yaml
+      - templates/rolebinding-console-pods.yaml
+      - templates/statefulset-conductor.yaml
+    set:
+      images:
+        tags:
+          ironic_novncproxy_assets: example.com/novnc-assets@sha256:0123456789abcdef
+      conf:
+        ironic:
+          vnc:
+            enabled: true
+            public_url: http://baremetal-console.example.com/vnc_auto.html
+            console_image: example.com/ironic-console:latest
+      manifests:
+        deployment_novncproxy: true
+        service_novncproxy: true
+        role_console_pods: true
+        rolebinding_console_pods: true
+    asserts:
+      - template: templates/configmap-bin.yaml
+        documentIndex: 0
+        matchRegex:
+          path: data["ironic-novncproxy-init-assets.sh"]
+          pattern: 'cp -vaRf /usr/share/novnc'
+      - template: templates/deployment-novncproxy.yaml
+        documentIndex: 3
+        equal:
+          path: metadata.name
+          value: ironic-novncproxy
+      - template: templates/deployment-novncproxy.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.initContainers[1].image
+          value: example.com/novnc-assets@sha256:0123456789abcdef
+      - template: templates/deployment-novncproxy.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.containers[0].ports[0].containerPort
+          value: 6090
+      - template: templates/deployment-novncproxy.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.containers[0].volumeMounts[2].mountPath
+          value: /etc/ironic/ironic.conf
+      - template: templates/configmap-etc.yaml
+        documentIndex: 0
+        isNotEmpty:
+          path: data["ironic-console-pod.yaml"]
+      - template: templates/statefulset-conductor.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.initContainers[1].name
+          value: ironic-conductor-kubectl-init
+      - template: templates/statefulset-conductor.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.initContainers[1].command[2]
+          value: cp "$(command -v kubectl)" /tmp/kubectl/kubectl
+      - template: templates/statefulset-conductor.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.containers[0].volumeMounts[7].mountPath
+          value: /etc/ironic/ironic-console-pod.yaml
+      - template: templates/statefulset-conductor.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.containers[0].volumeMounts[8].mountPath
+          value: /usr/local/bin/kubectl
+      - template: templates/service-novncproxy.yaml
+        documentIndex: 0
+        equal:
+          path: metadata.name
+          value: ironic-novncproxy
+      - template: templates/service-novncproxy.yaml
+        documentIndex: 0
+        equal:
+          path: spec.ports[0].port
+          value: 6090
+      - template: templates/role-console-pods.yaml
+        documentIndex: 0
+        equal:
+          path: metadata.name
+          value: ironic-console-pods
+      - template: templates/role-console-pods.yaml
+        documentIndex: 0
+        equal:
+          path: metadata.namespace
+          value: test-console
+      - template: templates/rolebinding-console-pods.yaml
+        documentIndex: 0
+        equal:
+          path: subjects[0].name
+          value: ironic-conductor

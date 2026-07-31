@@ -12,19 +12,30 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */}}
 
-{{- if .Values.manifests.rolebinding_console_pods }}
+{{- if .Values.manifests.network_policy_console }}
 ---
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
 metadata:
-  name: ironic-console-pods
+  name: ironic-console-rfb
   namespace: {{ .Values.console.namespace | default .Release.Namespace }}
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: ironic-console-pods
-subjects:
-  - kind: ServiceAccount
-    name: ironic-conductor
-    namespace: {{ .Release.Namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app: ironic
+      component: ironic-console
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Release.Namespace }}
+          podSelector:
+            matchLabels:
+              application: ironic
+              component: novnc-proxy
+      ports:
+        - protocol: TCP
+          port: 5900
 {{- end }}

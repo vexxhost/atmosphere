@@ -41,28 +41,19 @@ _ironic_helm_values:
           - ironic-rabbit-init
           # NOTE(mnaser): We're managing all the networks via Ansible.
           # - ironic-manage-cleaning-network
-      novncproxy:
-        jobs:
-          - ironic-db-sync
-          - ironic-ks-user
-          - ironic-ks-endpoints
-          - ironic-rabbit-init
   conf:
     ironic:
       DEFAULT:
         log_config_append: null
-        enabled_network_interfaces: flat,neutron
+        enabled_hardware_types: "{{ ironic_enabled_hardware_types if ironic_enabled_hardware_types else omit }}"
+        enabled_console_interfaces: "{{ ironic_enabled_console_interfaces if ironic_vnc_enabled | bool else omit }}"
+        enabled_network_interfaces: "{{ ironic_enabled_network_interfaces }}"
         default_network_interface: flat
         rbac_service_role_elevated_access: true
       conductor:
         clean_step_priority_override: deploy.erase_devices_express:5
         deploy_kernel: "{{ ironic_python_agent_deploy_kernel.images.0.id }}"
         deploy_ramdisk: "{{ ironic_python_agent_deploy_ramdisk.images.0.id }}"
-      vnc:
-        enabled: "{{ ironic_vnc_enabled }}"
-        host_ip: 0.0.0.0
-        port: 6090
-        container_provider: kubernetes
       database:
         connection_recycle_time: 600
         max_overflow: 50
@@ -80,6 +71,30 @@ _ironic_helm_values:
         kernel_append_params: "ipa-insecure=true systemd.journald.forward_to_console=yes"
       service_catalog:
         valid_interfaces: public
+      vnc:
+        enabled: "{{ ironic_vnc_enabled | bool }}"
+        public_url: "{{ ironic_vnc_public_url if ironic_vnc_enabled | bool else omit }}"
+        novnc_web: "{{ ironic_vnc_novnc_web }}"
+        container_provider: "{{ ironic_vnc_container_provider }}"
+        console_image: "{{ atmosphere_images.get('ironic_console', omit) }}"
+        kubernetes_container_template: >-
+          {{
+            '/etc/ironic/ironic-console-pod.yaml'
+            if (
+              ironic_vnc_enabled | bool
+              and ironic_vnc_container_provider == 'kubernetes'
+            )
+            else omit
+          }}
+        kubernetes_pod_timeout: >-
+          {{
+            ironic_vnc_kubernetes_pod_timeout
+            if (
+              ironic_vnc_enabled | bool
+              and ironic_vnc_container_provider == 'kubernetes'
+            )
+            else omit
+          }}
     rabbitmq:
       policies:
         - vhost: "ironic"
@@ -99,13 +114,24 @@ _ironic_helm_values:
     replicas:
       api: 3
       conductor: 3
-      novncproxy: 3
   manifests:
+    deployment_novncproxy: "{{ ironic_vnc_enabled | bool }}"
     ingress_api: false
     service_ingress_api: false
     # NOTE(mnaser): We're managing all the networks via Ansible.
     job_manage_cleaning_network: false
-    deployment_novncproxy: "{{ ironic_vnc_enabled | bool }}"
     service_novncproxy: "{{ ironic_vnc_enabled | bool }}"
-    role_console_pods: "{{ ironic_vnc_enabled | bool }}"
-    rolebinding_console_pods: "{{ ironic_vnc_enabled | bool }}"
+    role_console_pods: >-
+      {{
+        (ironic_vnc_enabled | bool)
+        and ironic_vnc_container_provider == 'kubernetes'
+      }}
+    rolebinding_console_pods: >-
+      {{
+        (ironic_vnc_enabled | bool)
+        and ironic_vnc_container_provider == 'kubernetes'
+      }}
+
+_ironic_novncproxy_ingress_annotations:
+  nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+  nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
