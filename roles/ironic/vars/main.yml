@@ -41,6 +41,12 @@ _ironic_helm_values:
           - ironic-rabbit-init
           # NOTE(mnaser): We're managing all the networks via Ansible.
           # - ironic-manage-cleaning-network
+      novncproxy:
+        jobs:
+          - ironic-db-sync
+          - ironic-ks-user
+          - ironic-ks-endpoints
+          - ironic-rabbit-init
   conf:
     ironic:
       DEFAULT:
@@ -52,6 +58,11 @@ _ironic_helm_values:
         clean_step_priority_override: deploy.erase_devices_express:5
         deploy_kernel: "{{ ironic_python_agent_deploy_kernel.images.0.id }}"
         deploy_ramdisk: "{{ ironic_python_agent_deploy_ramdisk.images.0.id }}"
+      vnc:
+        enabled: "{{ ironic_vnc_enabled }}"
+        host_ip: 0.0.0.0
+        port: 6090
+        container_provider: kubernetes
       database:
         connection_recycle_time: 600
         max_overflow: 50
@@ -88,8 +99,13 @@ _ironic_helm_values:
     replicas:
       api: 3
       conductor: 3
+      novncproxy: 3
   manifests:
     ingress_api: false
     service_ingress_api: false
     # NOTE(mnaser): We're managing all the networks via Ansible.
     job_manage_cleaning_network: false
+    deployment_novncproxy: "{{ ironic_vnc_enabled | bool }}"
+    service_novncproxy: "{{ ironic_vnc_enabled | bool }}"
+    role_console_pods: "{{ ironic_vnc_enabled | bool }}"
+    rolebinding_console_pods: "{{ ironic_vnc_enabled | bool }}"
