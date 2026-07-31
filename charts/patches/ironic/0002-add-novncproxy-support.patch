@@ -1,6 +1,38 @@
+diff --git a/ironic/templates/bin/_ironic-novncproxy-init-assets.sh.tpl b/ironic/templates/bin/_ironic-novncproxy-init-assets.sh.tpl
+new file mode 100644
+index 0000000..8b64e76
+--- /dev/null
++++ b/ironic/templates/bin/_ironic-novncproxy-init-assets.sh.tpl
+@@ -0,0 +1,26 @@
++#!/bin/bash
++
++{{/*
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++   http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++*/}}
++
++set -ex
++
++cp -vaRf /usr/share/novnc/* /tmp/usr/share/novnc/
++
++# Modern noVNC releases use vnc_lite.html in place of vnc_auto.html.
++if [[ ! -e /tmp/usr/share/novnc/vnc_auto.html ]] && \
++   [[ -e /tmp/usr/share/novnc/vnc_lite.html ]]; then
++  cp /tmp/usr/share/novnc/vnc_lite.html \
++    /tmp/usr/share/novnc/vnc_auto.html
++fi
 diff --git a/ironic/templates/bin/_ironic-novncproxy.sh.tpl b/ironic/templates/bin/_ironic-novncproxy.sh.tpl
 new file mode 100644
-index 00000000..8030b048
+index 0000000..8030b04
 --- /dev/null
 +++ b/ironic/templates/bin/_ironic-novncproxy.sh.tpl
 @@ -0,0 +1,19 @@
@@ -24,24 +56,49 @@ index 00000000..8030b048
 +
 +exec ironic-novncproxy --config-file /etc/ironic/ironic.conf
 diff --git a/ironic/templates/configmap-bin.yaml b/ironic/templates/configmap-bin.yaml
-index 96668032..f6eae914 100644
+index 9666803..6279806 100644
 --- a/ironic/templates/configmap-bin.yaml
 +++ b/ironic/templates/configmap-bin.yaml
-@@ -52,6 +52,8 @@ data:
+@@ -52,6 +52,10 @@ data:
  {{ tuple "bin/_ironic-conductor.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
    ironic-conductor-init.sh: |
  {{ tuple "bin/_ironic-conductor-init.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
++  ironic-novncproxy-init-assets.sh: |
++{{ tuple "bin/_ironic-novncproxy-init-assets.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
 +  ironic-novncproxy.sh: |
 +{{ tuple "bin/_ironic-novncproxy.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
  {{- if .Values.conductor.pxe.enabled }}
  {{ include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conductor.pxe.script "key" "ironic-conductor-pxe.sh") | indent 2 }}
  {{ include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conductor.pxe.init_script "key" "ironic-conductor-pxe-init.sh") | indent 2 }}
+diff --git a/ironic/templates/configmap-etc.yaml b/ironic/templates/configmap-etc.yaml
+index 8b25336..8f0f500 100644
+--- a/ironic/templates/configmap-etc.yaml
++++ b/ironic/templates/configmap-etc.yaml
+@@ -208,6 +208,10 @@ limitations under the License.
+ {{- $_ := set .Values.conf.ironic.api "port" (tuple "baremetal" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup") -}}
+ {{- end -}}
+
++{{- if and .Values.conf.ironic.vnc.enabled (empty .Values.conf.ironic.vnc.public_url) -}}
++{{- $_ := tuple "baremetal_vnc_proxy" "public" "novncproxy" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup" | set .Values.conf.ironic.vnc "public_url" -}}
++{{- end -}}
++
+ {{- if and (empty .Values.conf.logging.handler_fluent) (has "fluent" .Values.conf.logging.handlers.keys) -}}
+ {{- $fluentd_host := tuple "fluentd" "internal" $envAll | include "helm-toolkit.endpoints.hostname_namespaced_endpoint_lookup" }}
+ {{- $fluentd_port := tuple "fluentd" "internal" "service" $envAll | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+@@ -230,6 +234,7 @@ data:
+   ironic.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.ironic | b64enc }}
+   logging.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.logging | b64enc }}
+   policy.yaml: {{ toYaml .Values.conf.policy | b64enc }}
++  ironic-console-pod.yaml: {{ tuple "etc/_ironic-console-pod.yaml.tpl" . | include "helm-toolkit.utils.template" | b64enc }}
+ {{- include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conf.tftp_map_file "key" "tftp-map-file" "format" "Secret" ) | indent 2 }}
+ {{- include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conf.nginx "key" "nginx.conf" "format" "Secret" ) | indent 2 }}
+ {{- end }}
 diff --git a/ironic/templates/deployment-novncproxy.yaml b/ironic/templates/deployment-novncproxy.yaml
 new file mode 100644
-index 00000000..67c22cb3
+index 0000000..e7b584a
 --- /dev/null
 +++ b/ironic/templates/deployment-novncproxy.yaml
-@@ -0,0 +1,109 @@
+@@ -0,0 +1,133 @@
 +{{/*
 +Licensed under the Apache License, Version 2.0 (the "License");
 +you may not use this file except in compliance with the License.
@@ -55,6 +112,11 @@ index 00000000..67c22cb3
 +See the License for the specific language governing permissions and
 +limitations under the License.
 +*/}}
++
++{{- define "ironicNovncproxyProbeTemplate" }}
++tcpSocket:
++  port: {{ tuple "baremetal_vnc_proxy" "internal" "novncproxy" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
++{{- end }}
 +
 +{{- if .Values.manifests.deployment_novncproxy }}
 +{{- $envAll := . }}
@@ -99,9 +161,27 @@ index 00000000..67c22cb3
 +{{ if $envAll.Values.pod.tolerations.ironic.enabled }}
 +{{ tuple $envAll "ironic" | include "helm-toolkit.snippets.kubernetes_tolerations" | indent 10 }}
 +{{ end }}
++{{- if .Values.pod.useHostNetwork.novncproxy }}
++      hostNetwork: true
++      dnsPolicy: ClusterFirstWithHostNet
++{{- end }}
 +      terminationGracePeriodSeconds: {{ .Values.pod.lifecycle.termination_grace_period.novncproxy.timeout | default "30" }}
 +      initContainers:
 +{{ tuple $envAll "novncproxy" $mounts_ironic_novncproxy_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
++        - name: ironic-novncproxy-init-assets
++{{ tuple $envAll "ironic_novncproxy_assets" | include "helm-toolkit.snippets.image" | indent 10 }}
++{{ tuple $envAll $envAll.Values.pod.resources.novncproxy | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
++          command:
++            - /tmp/ironic-novncproxy-init-assets.sh
++          volumeMounts:
++            - name: pod-tmp
++              mountPath: /tmp
++            - name: ironic-bin
++              mountPath: /tmp/ironic-novncproxy-init-assets.sh
++              subPath: ironic-novncproxy-init-assets.sh
++              readOnly: true
++            - name: pod-usr-share-novnc
++              mountPath: /tmp/usr/share/novnc
 +      containers:
 +        - name: ironic-novncproxy
 +{{ tuple $envAll "ironic_novncproxy" | include "helm-toolkit.snippets.image" | indent 10 }}
@@ -110,12 +190,8 @@ index 00000000..67c22cb3
 +            - /tmp/ironic-novncproxy.sh
 +          ports:
 +            - containerPort: {{ tuple "baremetal_vnc_proxy" "internal" "novncproxy" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
-+          readinessProbe:
-+            tcpSocket:
-+              port: {{ tuple "baremetal_vnc_proxy" "internal" "novncproxy" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
-+          livenessProbe:
-+            tcpSocket:
-+              port: {{ tuple "baremetal_vnc_proxy" "internal" "novncproxy" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
++{{ dict "envAll" $envAll "component" "novncproxy" "container" "default" "type" "liveness" "probeTemplate" (include "ironicNovncproxyProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
++{{ dict "envAll" $envAll "component" "novncproxy" "container" "default" "type" "readiness" "probeTemplate" (include "ironicNovncproxyProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
 +          volumeMounts:
 +            - name: pod-tmp
 +              mountPath: /tmp
@@ -137,6 +213,9 @@ index 00000000..67c22cb3
 +              mountPath: /etc/ironic/policy.yaml
 +              subPath: policy.yaml
 +              readOnly: true
++            - name: pod-usr-share-novnc
++              mountPath: /usr/share/novnc
++              readOnly: true
 +{{ if $mounts_ironic_novncproxy.volumeMounts }}{{ toYaml $mounts_ironic_novncproxy.volumeMounts | indent 12 }}{{ end }}
 +      volumes:
 +        - name: pod-tmp
@@ -145,18 +224,168 @@ index 00000000..67c22cb3
 +          configMap:
 +            name: ironic-bin
 +            defaultMode: 0555
++        - name: pod-usr-share-novnc
++          emptyDir: {}
 +        - name: ironic-etc
 +          secret:
 +            secretName: ironic-etc
 +            defaultMode: 0444
 +{{ if $mounts_ironic_novncproxy.volumes }}{{ toYaml $mounts_ironic_novncproxy.volumes | indent 8 }}{{ end }}
 +{{- end }}
+diff --git a/ironic/templates/etc/_ironic-console-pod.yaml.tpl b/ironic/templates/etc/_ironic-console-pod.yaml.tpl
+new file mode 100644
+index 0000000..4909ad9
+--- /dev/null
++++ b/ironic/templates/etc/_ironic-console-pod.yaml.tpl
+@@ -0,0 +1,95 @@
++{{/*
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++   http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++*/}}
++
++apiVersion: v1
++kind: Secret
++metadata:
++  name: "ironic-console-{{ "{{ uuid }}" }}"
++  namespace: {{ .Values.console.namespace | default .Release.Namespace }}
++  labels:
++    app: ironic
++    component: ironic-console
++    conductor: "{{ "{{ conductor }}" }}"
++    app.kubernetes.io/instance: {{ .Release.Name | quote }}
++    app.kubernetes.io/managed-by: ironic
++stringData:
++  app-info: |-
++    {{ "{{ app_info }}" }}
++---
++apiVersion: v1
++kind: Pod
++metadata:
++  name: "ironic-console-{{ "{{ uuid }}" }}"
++  namespace: {{ .Values.console.namespace | default .Release.Namespace }}
++  labels:
++    app: ironic
++    component: ironic-console
++    conductor: "{{ "{{ conductor }}" }}"
++    app.kubernetes.io/instance: {{ .Release.Name | quote }}
++    app.kubernetes.io/managed-by: ironic
++spec:
++  automountServiceAccountToken: false
++  enableServiceLinks: {{ .Values.console.pod.enableServiceLinks }}
++{{- with .Values.console.pod.securityContext }}
++  securityContext:
++{{ toYaml . | indent 4 }}
++{{- end }}
++  containers:
++    - name: console
++      image: "{{ "{{ image }}" }}"
++      imagePullPolicy: {{ .Values.images.pull_policy | quote }}
++{{- with .Values.console.container.ports }}
++      ports:
++{{ toYaml . | indent 8 }}
++{{- end }}
++{{- with .Values.console.container.readinessProbe }}
++      readinessProbe:
++{{ toYaml . | indent 8 }}
++{{- end }}
++{{- with .Values.console.container.livenessProbe }}
++      livenessProbe:
++{{ toYaml . | indent 8 }}
++{{- end }}
++{{- with .Values.console.container.securityContext }}
++      securityContext:
++{{ toYaml . | indent 8 }}
++{{- end }}
++      resources:
++        requests:
++          cpu: 250m
++          memory: 256Mi
++        limits:
++          cpu: 500m
++          memory: 1024Mi
++{{- with .Values.console.container.volumeMounts }}
++      volumeMounts:
++{{ toYaml . | indent 8 }}
++{{- end }}
++      env:
++        - name: APP
++          value: "{{ "{{ app }}" }}"
++        - name: READ_ONLY
++          value: "{{ "{{ read_only }}" }}"
++        - name: APP_INFO
++          valueFrom:
++            secretKeyRef:
++              name: "ironic-console-{{ "{{ uuid }}" }}"
++              key: app-info
++{{- with .Values.console.container.env }}
++{{ toYaml . | indent 8 }}
++{{- end }}
++{{- with .Values.console.volumes }}
++  volumes:
++{{ toYaml . | indent 4 }}
++{{- end }}
+diff --git a/ironic/templates/network-policy-console.yaml b/ironic/templates/network-policy-console.yaml
+new file mode 100644
+index 0000000..8e128cf
+--- /dev/null
++++ b/ironic/templates/network-policy-console.yaml
+@@ -0,0 +1,41 @@
++{{/*
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++   http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++*/}}
++
++{{- if .Values.manifests.network_policy_console }}
++---
++apiVersion: networking.k8s.io/v1
++kind: NetworkPolicy
++metadata:
++  name: ironic-console-rfb
++  namespace: {{ .Values.console.namespace | default .Release.Namespace }}
++spec:
++  podSelector:
++    matchLabels:
++      app: ironic
++      component: ironic-console
++  policyTypes:
++    - Ingress
++  ingress:
++    - from:
++        - namespaceSelector:
++            matchLabels:
++              kubernetes.io/metadata.name: {{ .Release.Namespace }}
++          podSelector:
++            matchLabels:
++              application: ironic
++              component: novnc-proxy
++      ports:
++        - protocol: TCP
++          port: 5900
++{{- end }}
 diff --git a/ironic/templates/role-console-pods.yaml b/ironic/templates/role-console-pods.yaml
 new file mode 100644
-index 00000000..68e10d3a
+index 0000000..e91dcb2
 --- /dev/null
 +++ b/ironic/templates/role-console-pods.yaml
-@@ -0,0 +1,25 @@
+@@ -0,0 +1,29 @@
 +{{/*
 +Licensed under the Apache License, Version 2.0 (the "License");
 +you may not use this file except in compliance with the License.
@@ -177,17 +406,21 @@ index 00000000..68e10d3a
 +kind: Role
 +metadata:
 +  name: ironic-console-pods
++  namespace: {{ .Values.console.namespace | default .Release.Namespace }}
 +rules:
 +  - apiGroups: [""]
-+    resources: ["pods", "secrets"]
-+    verbs: ["create", "delete", "get", "list", "watch"]
++    resources: ["pods"]
++    verbs: ["create", "delete", "deletecollection", "get", "list", "patch"]
++  - apiGroups: [""]
++    resources: ["secrets"]
++    verbs: ["create", "delete", "deletecollection", "get", "list", "patch"]
 +{{- end }}
 diff --git a/ironic/templates/rolebinding-console-pods.yaml b/ironic/templates/rolebinding-console-pods.yaml
 new file mode 100644
-index 00000000..35af05dc
+index 0000000..d93ba21
 --- /dev/null
 +++ b/ironic/templates/rolebinding-console-pods.yaml
-@@ -0,0 +1,29 @@
+@@ -0,0 +1,30 @@
 +{{/*
 +Licensed under the Apache License, Version 2.0 (the "License");
 +you may not use this file except in compliance with the License.
@@ -208,6 +441,7 @@ index 00000000..35af05dc
 +kind: RoleBinding
 +metadata:
 +  name: ironic-console-pods
++  namespace: {{ .Values.console.namespace | default .Release.Namespace }}
 +roleRef:
 +  apiGroup: rbac.authorization.k8s.io
 +  kind: Role
@@ -219,10 +453,10 @@ index 00000000..35af05dc
 +{{- end }}
 diff --git a/ironic/templates/service-novncproxy.yaml b/ironic/templates/service-novncproxy.yaml
 new file mode 100644
-index 00000000..cc74be25
+index 0000000..7779bc2
 --- /dev/null
 +++ b/ironic/templates/service-novncproxy.yaml
-@@ -0,0 +1,28 @@
+@@ -0,0 +1,34 @@
 +{{/*
 +Licensed under the Apache License, Version 2.0 (the "License");
 +you may not use this file except in compliance with the License.
@@ -248,11 +482,67 @@ index 00000000..cc74be25
 +  ports:
 +    - name: m-novncproxy
 +      port: {{ tuple "baremetal_vnc_proxy" "internal" "novncproxy" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
++    {{- if .Values.network.novncproxy.node_port.enabled }}
++      nodePort: {{ .Values.network.novncproxy.node_port.port }}
++    {{- end }}
 +  selector:
 +{{ tuple $envAll "ironic" "novncproxy" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
++  {{- if .Values.network.novncproxy.node_port.enabled }}
++  type: NodePort
++  {{- end }}
 +{{- end }}
+diff --git a/ironic/templates/statefulset-conductor.yaml b/ironic/templates/statefulset-conductor.yaml
+index 920d4af..9dadcaf 100644
+--- a/ironic/templates/statefulset-conductor.yaml
++++ b/ironic/templates/statefulset-conductor.yaml
+@@ -65,6 +65,17 @@ spec:
+ {{ end }}
+       initContainers:
+ {{ tuple $envAll "conductor" $mounts_ironic_conductor_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
++{{- if and .Values.conf.ironic.vnc.enabled (eq .Values.conf.ironic.vnc.container_provider "kubernetes") }}
++        - name: ironic-conductor-kubectl-init
++{{ tuple $envAll "ironic_kubectl" | include "helm-toolkit.snippets.image" | indent 10 }}
++          command:
++            - /bin/sh
++            - -c
++            - cp "$(command -v kubectl)" /tmp/kubectl/kubectl
++          volumeMounts:
++            - name: pod-kubectl-bin
++              mountPath: /tmp/kubectl
++{{- end }}
+ {{- if $envAll.Values.conductor.pxe.enabled }}
+         - name: ironic-conductor-pxe-init
+ {{ tuple $envAll "ironic_pxe_init" | include "helm-toolkit.snippets.image" | indent 10 }}
+@@ -197,6 +208,16 @@ spec:
+               mountPath: /etc/ironic/policy.yaml
+               subPath: policy.yaml
+               readOnly: true
++{{- if and .Values.conf.ironic.vnc.enabled (eq .Values.conf.ironic.vnc.container_provider "kubernetes") }}
++            - name: ironic-etc
++              mountPath: /etc/ironic/ironic-console-pod.yaml
++              subPath: ironic-console-pod.yaml
++              readOnly: true
++            - name: pod-kubectl-bin
++              mountPath: /usr/local/bin/kubectl
++              subPath: kubectl
++              readOnly: true
++{{- end }}
+             - name: host-var-lib-ironic
+               mountPath: /var/lib/ironic
+             - name: host-run
+@@ -260,6 +281,10 @@ spec:
+           emptyDir: {}
+         - name: pod-var-cache-ironic
+           emptyDir: {}
++{{- if and .Values.conf.ironic.vnc.enabled (eq .Values.conf.ironic.vnc.container_provider "kubernetes") }}
++        - name: pod-kubectl-bin
++          emptyDir: {}
++{{- end }}
+         - name: ironic-bin
+           configMap:
+             name: ironic-bin
 diff --git a/ironic/values.yaml b/ironic/values.yaml
-index 2228bfc3..ab74cf18 100644
+index 2228bfc..ec85e97 100644
 --- a/ironic/values.yaml
 +++ b/ironic/values.yaml
 @@ -27,6 +27,9 @@ labels:
@@ -265,15 +555,37 @@ index 2228bfc3..ab74cf18 100644
    job:
      node_selector_key: openstack-control-plane
      node_selector_value: enabled
-@@ -50,6 +53,7 @@ images:
+@@ -47,9 +50,12 @@ images:
+     rabbit_init: docker.io/rabbitmq:3.13-management
+     ironic_api: docker.io/openstackhelm/ironic:2024.1-ubuntu_jammy
+     ironic_conductor: docker.io/openstackhelm/ironic:2024.1-ubuntu_jammy
++    ironic_kubectl: quay.io/airshipit/ceph-config-helper:latest-ubuntu_jammy
      ironic_pxe: docker.io/openstackhelm/ironic:2024.1-ubuntu_jammy
      ironic_pxe_init: docker.io/openstackhelm/ironic:2024.1-ubuntu_jammy
      ironic_pxe_http: docker.io/nginx:1.13.3
 +    ironic_novncproxy: docker.io/openstackhelm/ironic:2024.1-ubuntu_jammy
++    ironic_novncproxy_assets: quay.io/airshipit/nova:2026.1-ubuntu_noble
      dep_check: quay.io/airshipit/kubernetes-entrypoint:latest-ubuntu_focal
      image_repo_sync: docker.io/docker:17.07.0
    pull_policy: "IfNotPresent"
-@@ -302,6 +306,17 @@ network:
+@@ -144,6 +150,16 @@ conf:
+       send_service_user_token: true
+     swift:
+       auth_url: null
++    vnc:
++      enabled: false
++      host_ip: 0.0.0.0
++      port: 6090
++      public_url: null
++      novnc_web: /usr/share/novnc
++      container_provider: kubernetes
++      console_image: null
++      kubernetes_container_template: /etc/ironic/ironic-console-pod.yaml
++      kubernetes_pod_timeout: 120
+     oslo_policy:
+       policy_file: /etc/ironic/policy.yaml
+   logging:
+@@ -302,6 +318,33 @@ network:
      node_port:
        enabled: false
        port: 30511
@@ -288,10 +600,26 @@ index 2228bfc3..ab74cf18 100644
 +    node_port:
 +      enabled: false
 +      port: 30690
++
++console:
++  namespace: null
++  pod:
++    enableServiceLinks: false
++    securityContext: {}
++  container:
++    ports:
++      - name: rfb
++        containerPort: 5900
++    readinessProbe: {}
++    livenessProbe: {}
++    securityContext: {}
++    env: []
++    volumeMounts: []
++  volumes: []
 
  bootstrap:
    image:
-@@ -378,6 +393,19 @@ dependencies:
+@@ -378,6 +421,19 @@ dependencies:
            service: baremetal
          - endpoint: internal
            service: oslo_messaging
@@ -311,7 +639,7 @@ index 2228bfc3..ab74cf18 100644
      db_drop:
        services:
          - endpoint: internal
-@@ -623,6 +651,21 @@ endpoints:
+@@ -623,6 +679,21 @@ endpoints:
      port:
        api:
          default: 8088
@@ -333,7 +661,29 @@ index 2228bfc3..ab74cf18 100644
    fluentd:
      namespace: null
      name: fluentd
-@@ -678,9 +721,15 @@ pod:
+@@ -658,6 +729,21 @@ pod:
+         - key: node-role.kubernetes.io/control-plane
+           operator: Exists
+           effect: NoSchedule
++  probes:
++    novncproxy:
++      default:
++        liveness:
++          enabled: true
++          params:
++            initialDelaySeconds: 30
++            periodSeconds: 60
++            timeoutSeconds: 15
++        readiness:
++          enabled: true
++          params:
++            initialDelaySeconds: 30
++            periodSeconds: 60
++            timeoutSeconds: 15
+   mounts:
+     ironic_api:
+       init_container: null
+@@ -678,9 +764,15 @@ pod:
        ironic_db_sync:
          volumeMounts:
          volumes:
@@ -349,7 +699,7 @@ index 2228bfc3..ab74cf18 100644
    lifecycle:
      upgrades:
        deployments:
-@@ -692,9 +741,13 @@ pod:
+@@ -692,9 +784,13 @@ pod:
      disruption_budget:
        api:
          min_available: 0
@@ -363,7 +713,7 @@ index 2228bfc3..ab74cf18 100644
    resources:
      enabled: false
      api:
-@@ -711,6 +764,13 @@ pod:
+@@ -711,6 +807,13 @@ pod:
        limits:
          memory: "1024Mi"
          cpu: "2000m"
@@ -377,7 +727,7 @@ index 2228bfc3..ab74cf18 100644
      jobs:
        bootstrap:
          requests:
-@@ -784,6 +844,7 @@ pod:
+@@ -784,6 +887,7 @@ pod:
            cpu: "2000m"
    useHostNetwork:
      conductor: true
@@ -385,7 +735,15 @@ index 2228bfc3..ab74cf18 100644
    useHostIPC:
      conductor: true
 
-@@ -818,4 +879,8 @@ manifests:
+@@ -810,6 +914,7 @@ manifests:
+   job_manage_cleaning_network: true
+   job_rabbit_init: true
+   pdb_api: true
++  network_policy_console: false
+   network_policy: false
+   secret_db: true
+   secret_keystone: true
+@@ -818,4 +923,8 @@ manifests:
    service_api: true
    service_ingress_api: true
    statefulset_conductor: true

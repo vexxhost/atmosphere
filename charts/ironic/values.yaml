@@ -50,10 +50,12 @@ images:
     rabbit_init: docker.io/rabbitmq:3.13-management
     ironic_api: docker.io/openstackhelm/ironic:2024.1-ubuntu_jammy
     ironic_conductor: docker.io/openstackhelm/ironic:2024.1-ubuntu_jammy
+    ironic_kubectl: quay.io/airshipit/ceph-config-helper:latest-ubuntu_jammy
     ironic_pxe: docker.io/openstackhelm/ironic:2024.1-ubuntu_jammy
     ironic_pxe_init: docker.io/openstackhelm/ironic:2024.1-ubuntu_jammy
     ironic_pxe_http: docker.io/nginx:1.13.3
     ironic_novncproxy: docker.io/openstackhelm/ironic:2024.1-ubuntu_jammy
+    ironic_novncproxy_assets: quay.io/airshipit/nova:2026.1-ubuntu_noble
     dep_check: quay.io/airshipit/kubernetes-entrypoint:latest-ubuntu_focal
     image_repo_sync: docker.io/docker:17.07.0
   pull_policy: "IfNotPresent"
@@ -148,6 +150,16 @@ conf:
       send_service_user_token: true
     swift:
       auth_url: null
+    vnc:
+      enabled: false
+      host_ip: 0.0.0.0
+      port: 6090
+      public_url: null
+      novnc_web: /usr/share/novnc
+      container_provider: kubernetes
+      console_image: null
+      kubernetes_container_template: /etc/ironic/ironic-console-pod.yaml
+      kubernetes_pod_timeout: 120
     oslo_policy:
       policy_file: /etc/ironic/policy.yaml
   logging:
@@ -317,6 +329,22 @@ network:
     node_port:
       enabled: false
       port: 30690
+
+console:
+  namespace: null
+  pod:
+    enableServiceLinks: false
+    securityContext: {}
+  container:
+    ports:
+      - name: rfb
+        containerPort: 5900
+    readinessProbe: {}
+    livenessProbe: {}
+    securityContext: {}
+    env: []
+    volumeMounts: []
+  volumes: []
 
 bootstrap:
   image:
@@ -701,6 +729,21 @@ pod:
         - key: node-role.kubernetes.io/control-plane
           operator: Exists
           effect: NoSchedule
+  probes:
+    novncproxy:
+      default:
+        liveness:
+          enabled: true
+          params:
+            initialDelaySeconds: 30
+            periodSeconds: 60
+            timeoutSeconds: 15
+        readiness:
+          enabled: true
+          params:
+            initialDelaySeconds: 30
+            periodSeconds: 60
+            timeoutSeconds: 15
   mounts:
     ironic_api:
       init_container: null
@@ -871,6 +914,7 @@ manifests:
   job_manage_cleaning_network: true
   job_rabbit_init: true
   pdb_api: true
+  network_policy_console: false
   network_policy: false
   secret_db: true
   secret_keystone: true

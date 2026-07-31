@@ -13,9 +13,15 @@ import (
 )
 
 var (
+	//go:embed defaults/main.yml
+	defaultsFile []byte
+
 	//go:embed vars/main.yml
 	varsFile []byte
 	vars     Vars
+
+	//go:embed tasks/main.yml
+	tasksFile []byte
 )
 
 type Vars struct {
@@ -62,4 +68,13 @@ func TestHelmValues(t *testing.T) {
 	testutils.TestDatabaseConf(t, vals.Conf.Ironic.Database)
 	testutils.TestAllPodsHaveRuntimeClass(t, vals)
 	testutils.TestAllPodsHavePriorityClass(t, vals)
+}
+
+func TestBaremetalConsoleImageUsesAtmosphereCatalog(t *testing.T) {
+	require.NotContains(t, string(defaultsFile), "ironic_vnc_image")
+	require.Contains(t, string(tasksFile),
+		"atmosphere_images.get('ironic_console') is string")
+	require.Contains(t, string(varsFile),
+		`console_image: "{{ atmosphere_images.get('ironic_console', omit) }}"`)
+	require.NotContains(t, string(varsFile), "ironic_vnc_image")
 }
