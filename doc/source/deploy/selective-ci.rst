@@ -64,7 +64,8 @@ Neutron as a test-only requirement and run the focused network Tempest tests.
 Components without a Tempest namespace can instead declare focused readiness
 checks; Staffeln, for example, waits for its API and conductor deployments.
 Octavia requires Valkey explicitly because its API and worker pods mount the
-Valkey jobboard certificate secret.
+Valkey jobboard certificate secret. It also requires Cinder because amphora
+instances boot from volumes.
 Designate and Ironic are not enabled by the AIO scenario, so their paths retain
 the complete fallback instead of claiming focused coverage which the scenario
 cannot provide.

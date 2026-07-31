@@ -389,12 +389,12 @@ def test_magnum_uses_broad_openstack_environment(
     assert components(plan).isdisjoint({"horizon", "manila", "openstack-exporter"})
 
 
-def test_octavia_includes_valkey_jobboard_dependency(
+def test_octavia_includes_runtime_dependencies(
     planner: Planner,
 ) -> None:
     plan = plan_path(planner, "roles/octavia/tasks/main.yml")
 
-    assert components(plan) >= {"octavia", "valkey"}
+    assert components(plan) >= {"cinder", "octavia", "valkey"}
 
 
 def test_horizon_includes_compute_for_dashboard_login(
