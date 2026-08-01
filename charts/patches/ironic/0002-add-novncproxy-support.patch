@@ -335,10 +335,10 @@ index 0000000..4909ad9
 +{{- end }}
 diff --git a/ironic/templates/network-policy-console.yaml b/ironic/templates/network-policy-console.yaml
 new file mode 100644
-index 0000000..8e128cf
+index 0000000..b9b7b38
 --- /dev/null
 +++ b/ironic/templates/network-policy-console.yaml
-@@ -0,0 +1,41 @@
+@@ -0,0 +1,48 @@
 +{{/*
 +Licensed under the Apache License, Version 2.0 (the "License");
 +you may not use this file except in compliance with the License.
@@ -376,6 +376,13 @@ index 0000000..8e128cf
 +            matchLabels:
 +              application: ironic
 +              component: novncproxy
++        - namespaceSelector:
++            matchLabels:
++              kubernetes.io/metadata.name: {{ .Release.Namespace }}
++          podSelector:
++            matchLabels:
++              application: nova
++              component: novnc-proxy
 +      ports:
 +        - protocol: TCP
 +          port: 5900

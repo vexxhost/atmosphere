@@ -116,6 +116,11 @@ _ironic_helm_values:
       conductor: 3
   manifests:
     deployment_novncproxy: "{{ ironic_vnc_enabled | bool }}"
+    network_policy_console: >-
+      {{
+        (ironic_vnc_enabled | bool)
+        and (ironic_vnc_network_policy_enabled | bool)
+      }}
     ingress_api: false
     service_ingress_api: false
     # NOTE(mnaser): We're managing all the networks via Ansible.

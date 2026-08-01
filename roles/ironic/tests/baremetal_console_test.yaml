@@ -137,3 +137,13 @@ tests:
         equal:
           path: spec.ingress[0].from[0].podSelector.matchLabels.component
           value: novncproxy
+      - template: templates/network-policy-console.yaml
+        documentIndex: 0
+        equal:
+          path: spec.ingress[0].from[1].podSelector.matchLabels.application
+          value: nova
+      - template: templates/network-policy-console.yaml
+        documentIndex: 0
+        equal:
+          path: spec.ingress[0].from[1].podSelector.matchLabels.component
+          value: novnc-proxy

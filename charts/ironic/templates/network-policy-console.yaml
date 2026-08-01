@@ -35,6 +35,13 @@ spec:
             matchLabels:
               application: ironic
               component: novncproxy
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Release.Namespace }}
+          podSelector:
+            matchLabels:
+              application: nova
+              component: novnc-proxy
       ports:
         - protocol: TCP
           port: 5900
