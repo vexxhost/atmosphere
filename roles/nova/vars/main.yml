@@ -12,6 +12,21 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+_nova_default_image_tags: >-
+  {{
+    atmosphere_images
+    | vexxhost.atmosphere.openstack_helm_image_tags('nova')
+  }}
+
+_nova_vnc_image_tags: >-
+  {{
+    {
+      'nova_novncproxy_assets': nova_novnc_assets_image
+    }
+    if nova_novnc_assets_image
+    else {}
+  }}
+
 _nova_helm_values:
   endpoints: "{{ openstack_helm_endpoints }}"
   labels:
@@ -20,7 +35,11 @@ _nova_helm_values:
         node_selector_key: openstack-control-plane
         node_selector_value: enabled
   images:
-    tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('nova') }}"
+    tags: >-
+      {{
+        _nova_default_image_tags
+        | combine(_nova_vnc_image_tags)
+      }}
   network:
     backend:
       - "{{ atmosphere_network_backend | default('openvswitch') }}"
@@ -120,6 +139,8 @@ _nova_helm_values:
     nova_ironic:
       DEFAULT:
         force_config_drive: true
+      ironic:
+        vnc_console_state_timeout: "{{ nova_ironic_vnc_console_state_timeout }}"
     nova_api_uwsgi:
       uwsgi:
         chunked-input-limit: "4096000"
@@ -163,8 +184,7 @@ _nova_helm_values:
     service_ingress_placement: false
     service_placement: false
     service_ingress_spiceproxy: false
-    # NOTE(mnaser): Enable this once we've got Ironic deployed.
-    statefulset_compute_ironic: false
+    statefulset_compute_ironic: "{{ nova_ironic_vnc_enabled | bool }}"
 
 _nova_novnc_ingress_annotations:
   nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
