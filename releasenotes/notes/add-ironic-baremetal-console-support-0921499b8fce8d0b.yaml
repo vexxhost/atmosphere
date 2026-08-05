@@ -1,14 +1,15 @@
 ---
 features:
   - |
-    Add optional graphical console support for Ironic bare metal nodes. When
-    ``ironic_vnc_enabled`` is enabled and
-    ``atmosphere_image_overrides.ironic_console`` is set,
-    Atmosphere deploys an
-    ``ironic-novncproxy`` endpoint and configures Ironic's Kubernetes console
-    container provider for the ``redfish-graphical`` console interface. The
-    feature is disabled by default and retains the ``no-console`` interface for
-    drivers that do not provide graphical consoles.
+    Add graphical console support for Ironic bare metal nodes. Atmosphere
+    deploys an ``ironic-novncproxy`` endpoint and configures Ironic's Kubernetes
+    console container provider for the ``redfish-graphical`` console interface.
+    The feature is disabled by default until the BMC transport, certificate,
+    authentication, and noVNC endpoint prerequisites are configured. Enable it
+    with ``ironic_vnc_enabled`` and configure a digest-pinned console backend
+    through ``atmosphere_image_overrides.ironic_console``. The image must
+    provide the expected application contract. The ``no-console`` interface
+    remains available for drivers that do not provide graphical consoles.
 
     The console backend image is supplied through the centralized
     ``atmosphere_images.ironic_console`` catalog entry, normally configured
@@ -17,6 +18,14 @@ features:
     ``atmosphere_image_overrides.ironic_novncproxy_assets``. Atmosphere does
     not alter the browser application's JavaScript while staging its static
     assets.
+
+    Console pods expose separate liveness and authenticated BMC readiness
+    endpoints. The role supports private CA Secrets, TLS policy, bounded
+    sessions, and explicit insecure transport overrides. Disabling
+    the feature or moving its namespace drains active console resources before
+    applying the new configuration using Atmosphere's system-scoped OpenStack
+    cloud. Feature disable resets affected nodes to ``no-console`` before the
+    graphical interface is removed.
 
     Operators can also use ``ironic_enabled_hardware_types`` and
     ``ironic_enabled_network_interfaces`` to register additional Ironic

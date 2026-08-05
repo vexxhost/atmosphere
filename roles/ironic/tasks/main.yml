@@ -12,6 +12,258 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+- name: Validate Ironic bare metal console endpoint
+  when: ironic_vnc_enabled | bool
+  ansible.builtin.assert:
+    that:
+      - ironic_vnc_container_provider == 'kubernetes'
+      - ironic_vnc_namespace is string
+      - ironic_vnc_namespace | length > 0
+      - atmosphere_images.get('ironic_console') is string
+      - >-
+        '@sha256:' in
+        (atmosphere_images.get('ironic_console') | default(''))
+      - ironic_vnc_cloud is string
+      - ironic_vnc_cloud | length > 0
+      - openstack_helm_endpoints_ironic_novnc_host is string
+      - openstack_helm_endpoints_ironic_novnc_host | length > 0
+      - >-
+        openstack_helm_endpoints_ironic_novnc_host
+        != openstack_helm_endpoints_ironic_api_host
+      - ironic_vnc_tls_minimum_version in ['1.2', '1.3']
+      - ironic_vnc_ca_mount_path is string
+      - ironic_vnc_ca_mount_path is match('^/')
+      - "'/' not in ironic_vnc_ca_secret_key"
+      - ironic_vnc_connect_timeout | float > 0
+      - ironic_vnc_handshake_timeout | float > 0
+      - ironic_vnc_idle_timeout | float > 0
+      - ironic_vnc_session_timeout | float > 0
+      - ironic_vnc_readiness_interval | float > 0
+      - ironic_vnc_token_timeout | int >= 10
+      - ironic_vnc_max_clients | int > 0
+      - ironic_vnc_max_clients_per_source | int > 0
+      - >-
+        ironic_vnc_max_clients_per_source | int
+        <= ironic_vnc_max_clients | int
+    fail_msg: >-
+      Ironic graphical console support requires a digest-pinned
+      atmosphere_image_overrides.ironic_console image, an isolated Kubernetes
+      namespace, distinct API/noVNC endpoints, positive session limits, and
+      valid TLS settings.
+
+- name: Read deployed Ironic Helm values for console cleanup
+  run_once: true
+  ansible.builtin.command:
+    cmd: >-
+      helm get values {{ ironic_helm_release_name }}
+      --namespace {{ ironic_helm_release_namespace }}
+      --kubeconfig {{ ironic_helm_kubeconfig }}
+      --output json
+  register: _ironic_deployed_helm_values
+  changed_when: false
+  failed_when: _ironic_deployed_helm_values.rc not in [0, 1]
+  no_log: true
+
+- name: List nodes using the graphical console interface
+  when: not (ironic_vnc_enabled | bool)
+  run_once: true
+  ansible.builtin.command:
+    cmd: >-
+      openstack baremetal node list
+      --fields uuid console_interface
+      --format json
+  environment:
+    OS_CLOUD: "{{ ironic_vnc_cloud }}"
+  register: _ironic_console_node_list
+  retries: 5
+  delay: 2
+  until: _ironic_console_node_list.rc == 0
+  changed_when: false
+
+- name: Select nodes requiring a console interface reset
+  when: not (ironic_vnc_enabled | bool)
+  run_once: true
+  ansible.builtin.set_fact:
+    _ironic_graphical_console_nodes: >-
+      {{
+        _ironic_console_node_list.stdout
+        | from_json
+        | selectattr('Console Interface', 'equalto', 'redfish-graphical')
+        | map(attribute='UUID')
+        | list
+      }}
+
+- name: Select deployed Ironic console namespace
+  run_once: true
+  ansible.builtin.set_fact:
+    _ironic_deployed_console_namespace: >-
+      {{
+        (
+          (
+            _ironic_deployed_helm_values.stdout
+            | from_json
+          ).get('console', {}).get('namespace')
+          | default(ironic_helm_release_namespace, true)
+        )
+        if (
+          _ironic_deployed_helm_values.rc == 0
+          and _ironic_deployed_helm_values.stdout | length > 0
+        )
+        else ironic_helm_release_namespace
+      }}
+  no_log: true
+
+- name: Discover Ironic console pods
+  run_once: true
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ ironic_helm_kubeconfig }}"
+    api_version: v1
+    kind: Pod
+    namespace: "{{ _ironic_deployed_console_namespace }}"
+    label_selectors:
+      - app=ironic
+      - component=ironic-console
+  register: _ironic_console_pods
+
+- name: Discover Ironic console secrets
+  run_once: true
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ ironic_helm_kubeconfig }}"
+    api_version: v1
+    kind: Secret
+    namespace: "{{ _ironic_deployed_console_namespace }}"
+    label_selectors:
+      - app=ironic
+      - component=ironic-console
+  register: _ironic_console_secrets
+  no_log: true
+
+- name: Select console resources that require draining
+  run_once: true
+  ansible.builtin.set_fact:
+    _ironic_console_resources_to_drain: >-
+      {{
+        (
+          _ironic_console_pods.resources
+          + _ironic_console_secrets.resources
+        )
+        if (
+          not (ironic_vnc_enabled | bool)
+          or _ironic_deployed_console_namespace
+             != ironic_vnc_namespace
+        )
+        else []
+      }}
+  no_log: true
+
+- name: Disable consoles before feature disable or namespace move
+  when: _ironic_console_resources_to_drain | length > 0
+  run_once: true
+  ansible.builtin.command:
+    cmd: >-
+      openstack baremetal node console disable {{ item }}
+  environment:
+    OS_CLOUD: "{{ ironic_vnc_cloud }}"
+  loop: >-
+    {{
+      _ironic_console_resources_to_drain
+      | map(attribute='metadata.name')
+      | map('regex_replace', '^ironic-console-', '')
+      | unique
+      | list
+    }}
+  register: _ironic_console_disable
+  retries: 5
+  delay: 2
+  until: _ironic_console_disable.rc == 0
+  changed_when: true
+
+- name: Wait for drained console resources to disappear
+  when: _ironic_console_resources_to_drain | length > 0
+  run_once: true
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ ironic_helm_kubeconfig }}"
+    api_version: v1
+    kind: "{{ item.kind }}"
+    name: "{{ item.metadata.name }}"
+    namespace: "{{ item.metadata.namespace }}"
+  register: _ironic_console_drained_resource
+  until: _ironic_console_drained_resource.resources | length == 0
+  retries: 60
+  delay: 2
+  loop: "{{ _ironic_console_resources_to_drain }}"
+  no_log: true
+
+- name: Reset console interfaces before feature disable
+  when: not (ironic_vnc_enabled | bool)
+  run_once: true
+  ansible.builtin.command:
+    cmd: >-
+      openstack baremetal node set
+      --console-interface no-console
+      {{ item }}
+  environment:
+    OS_CLOUD: "{{ ironic_vnc_cloud }}"
+  loop: "{{ _ironic_graphical_console_nodes | default([]) }}"
+  register: _ironic_console_interface_reset
+  retries: 5
+  delay: 2
+  until: _ironic_console_interface_reset.rc == 0
+  changed_when: true
+
+- name: Ensure the isolated Ironic console namespace exists
+  when:
+    - ironic_vnc_enabled | bool
+    - ironic_vnc_container_provider == 'kubernetes'
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ ironic_helm_kubeconfig }}"
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ ironic_vnc_namespace }}"
+        labels:
+          app.kubernetes.io/managed-by: atmosphere
+          app.kubernetes.io/part-of: ironic
+
+- name: Read configured BMC CA Secret
+  when:
+    - ironic_vnc_enabled | bool
+    - >-
+      ironic_vnc_ca_secret_name
+      | default('', true)
+      | length > 0
+  run_once: true
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ ironic_helm_kubeconfig }}"
+    api_version: v1
+    kind: Secret
+    name: "{{ ironic_vnc_ca_secret_name }}"
+    namespace: "{{ ironic_vnc_namespace }}"
+  register: _ironic_vnc_ca_secret
+  no_log: true
+
+- name: Validate configured BMC CA Secret
+  when:
+    - ironic_vnc_enabled | bool
+    - >-
+      ironic_vnc_ca_secret_name
+      | default('', true)
+      | length > 0
+  run_once: true
+  ansible.builtin.assert:
+    that:
+      - _ironic_vnc_ca_secret.resources | length == 1
+      - >-
+        ironic_vnc_ca_secret_key
+        in _ironic_vnc_ca_secret.resources.0.data
+    fail_msg: >-
+      The configured BMC CA Secret or key does not exist in the isolated
+      console namespace.
+  no_log: true
+
 - name: Create bare metal network
   when: ironic_bare_metal_network_manage | bool
   ansible.builtin.import_tasks: network/create.yml
@@ -75,55 +327,6 @@
     cloud: atmosphere
     image: "{{ ironic_python_agent_deploy_ramdisk_name }}"
   register: ironic_python_agent_deploy_ramdisk
-
-- name: Validate bare metal console configuration
-  when: ironic_vnc_enabled | bool
-  ansible.builtin.assert:
-    that:
-      - ironic_vnc_container_provider == 'kubernetes'
-      - atmosphere_images.get('ironic_console') is string
-      - >-
-        '@sha256:' in
-        (atmosphere_images.get('ironic_console') | default(''))
-      - ironic_vnc_tls_minimum_version in ['1.2', '1.3']
-      - ironic_vnc_ca_mount_path is string
-      - ironic_vnc_ca_mount_path is match('^/')
-      - ironic_vnc_ca_secret_key is string
-      - ironic_vnc_ca_secret_key | length > 0
-      - "'/' not in ironic_vnc_ca_secret_key"
-    fail_msg: >-
-      Bare metal graphical consoles require the Kubernetes container provider
-      and a digest-pinned atmosphere_image_overrides.ironic_console image. TLS
-      settings require a supported minimum version, an absolute CA mount path,
-      and a Secret key without path separators.
-
-- name: Read configured BMC CA Secret
-  when:
-    - ironic_vnc_enabled | bool
-    - ironic_vnc_ca_secret_name | default('', true) | length > 0
-  run_once: true
-  kubernetes.core.k8s_info:
-    kubeconfig: "{{ ironic_helm_kubeconfig }}"
-    api_version: v1
-    kind: Secret
-    name: "{{ ironic_vnc_ca_secret_name }}"
-    namespace: "{{ ironic_helm_release_namespace }}"
-  register: _ironic_vnc_ca_secret
-  no_log: true
-
-- name: Validate configured BMC CA Secret
-  when:
-    - ironic_vnc_enabled | bool
-    - ironic_vnc_ca_secret_name | default('', true) | length > 0
-  run_once: true
-  ansible.builtin.assert:
-    that:
-      - _ironic_vnc_ca_secret.resources | length == 1
-      - ironic_vnc_ca_secret_key in _ironic_vnc_ca_secret.resources.0.data
-    fail_msg: >-
-       The configured BMC CA Secret or key does not exist in the Ironic release
-       namespace.
-    no_log: true
 
 - name: Deploy Helm chart
   run_once: true

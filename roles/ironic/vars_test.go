@@ -1,6 +1,7 @@
 package ironic
 
 import (
+	"bytes"
 	_ "embed"
 	"os"
 	"testing"
@@ -29,6 +30,8 @@ type Vars struct {
 }
 
 type Defaults struct {
+	BaremetalConsoleEnabled           bool   `yaml:"ironic_vnc_enabled"`
+	BaremetalConsoleTokenTimeout      int    `yaml:"ironic_vnc_token_timeout"`
 	BaremetalConsoleAllowInsecureTLS  bool   `yaml:"ironic_vnc_allow_insecure_tls"`
 	BaremetalConsoleCASecretName      string `yaml:"ironic_vnc_ca_secret_name"`
 	BaremetalConsoleCASecretKey       string `yaml:"ironic_vnc_ca_secret_key"`
@@ -108,6 +111,26 @@ func TestBaremetalConsoleTLSContract(t *testing.T) {
 		require.Contains(t, string(varsFile), expected)
 	}
 
-	require.Contains(t, string(tasksFile),
-		"ironic_vnc_ca_secret_key in _ironic_vnc_ca_secret.resources.0.data")
+	require.Contains(t, string(tasksFile), `ironic_vnc_ca_secret_key
+        in _ironic_vnc_ca_secret.resources.0.data`)
+}
+
+func TestBaremetalConsoleDefaults(t *testing.T) {
+	var defaults Defaults
+	err := yaml.UnmarshalWithOptions(defaultsFile, &defaults)
+	require.NoError(t, err)
+
+	require.False(t, defaults.BaremetalConsoleEnabled)
+	require.Equal(t, 600, defaults.BaremetalConsoleTokenTimeout)
+}
+
+func TestBaremetalConsoleNetworkPolicyManifestGate(t *testing.T) {
+	const manifest = "network_policy_console: >-"
+	require.Equal(t, 1, bytes.Count(varsFile, []byte(manifest)))
+	require.Contains(t, string(varsFile), `network_policy_console: >-
+      {{
+        (ironic_vnc_enabled | bool)
+        and (ironic_vnc_network_policy_enabled | bool)
+        and ironic_vnc_container_provider == 'kubernetes'
+      }}`)
 }
