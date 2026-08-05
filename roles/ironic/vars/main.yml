@@ -29,8 +29,70 @@ _ironic_helm_values:
       runtimeClassName: "{{ ironic_vnc_pod.runtimeClassName }}"
     container:
       resources: "{{ ironic_vnc_pod.resources }}"
-      volumeMounts: "{{ ironic_vnc_pod.scratchVolumeMounts }}"
-    volumes: "{{ ironic_vnc_pod.scratchVolumes }}"
+      env: >-
+        {{
+          [
+            {
+              'name': 'ALLOW_INSECURE_TLS',
+              'value': ironic_vnc_allow_insecure_tls | bool | string | lower
+            },
+            {
+              'name': 'BMC_TLS_MINIMUM_VERSION',
+              'value': ironic_vnc_tls_minimum_version | string
+            }
+          ]
+          + (
+            [
+              {
+                'name': 'BMC_TLS_CIPHERS',
+                'value': ironic_vnc_tls_ciphers | string
+              }
+            ]
+            if ironic_vnc_tls_ciphers
+            else []
+          )
+          + (
+            [
+              {
+                'name': 'BMC_CA_FILE',
+                'value': ironic_vnc_ca_mount_path ~ '/' ~ ironic_vnc_ca_secret_key
+              }
+            ]
+            if ironic_vnc_ca_secret_name
+            else []
+          )
+        }}
+      volumeMounts: >-
+        {{
+          ironic_vnc_pod.scratchVolumeMounts + ([
+            {
+              'name': 'bmc-ca',
+              'mountPath': ironic_vnc_ca_mount_path,
+              'readOnly': true
+            }
+          ]
+          if ironic_vnc_ca_secret_name
+          else [])
+        }}
+    volumes: >-
+      {{
+        ironic_vnc_pod.scratchVolumes + ([
+          {
+            'name': 'bmc-ca',
+            'secret': {
+              'secretName': ironic_vnc_ca_secret_name,
+              'items': [
+                {
+                  'key': ironic_vnc_ca_secret_key,
+                  'path': ironic_vnc_ca_secret_key
+                }
+              ]
+            }
+          }
+        ]
+        if ironic_vnc_ca_secret_name
+        else [])
+      }}
   bootstrap:
     image:
       enabled: false
