@@ -86,8 +86,10 @@
     release_namespace: "{{ tempest_helm_release_namespace }}"
     kubeconfig: "{{ tempest_helm_kubeconfig }}"
     values: "{{ _tempest_helm_values | combine(_tempest_network_backend_settings[atmosphere_network_backend], recursive=True) | combine(tempest_helm_values, recursive=True) }}" # noqa: yaml[line-length]
+    force: true
     wait: true
     wait_timeout: 20m
+  register: _tempest_helm_result
 
 - name: Get tempest job object
   kubernetes.core.k8s_info:
@@ -96,6 +98,13 @@
     name: tempest-run-tests
     namespace: openstack
   register: _tempest_job_obj
+
+- name: Fail when tempest job was not created
+  ansible.builtin.fail:
+    msg: >-
+      Tempest Helm deployment did not create tempest-run-tests:
+      {{ _tempest_helm_result.msg | default(_tempest_helm_result.stderr | default('no Helm error reported')) }}
+  when: _tempest_job_obj.resources | length == 0
 
 - name: Get tempest log
   kubernetes.core.k8s_log:
