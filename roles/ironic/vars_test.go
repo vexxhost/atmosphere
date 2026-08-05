@@ -28,6 +28,14 @@ type Vars struct {
 	openstack_helm.HelmValues `yaml:"_ironic_helm_values"`
 }
 
+type Defaults struct {
+	BaremetalConsoleAllowInsecureTLS  bool   `yaml:"ironic_vnc_allow_insecure_tls"`
+	BaremetalConsoleCASecretName      string `yaml:"ironic_vnc_ca_secret_name"`
+	BaremetalConsoleCASecretKey       string `yaml:"ironic_vnc_ca_secret_key"`
+	BaremetalConsoleCAMountPath       string `yaml:"ironic_vnc_ca_mount_path"`
+	BaremetalConsoleTLSMinimumVersion string `yaml:"ironic_vnc_tls_minimum_version"`
+}
+
 func TestMain(m *testing.M) {
 	t := &testing.T{}
 	err := yaml.UnmarshalWithOptions(varsFile, &vars)
@@ -77,4 +85,29 @@ func TestBaremetalConsoleImageUsesAtmosphereCatalog(t *testing.T) {
 	require.Contains(t, string(varsFile),
 		`console_image: "{{ atmosphere_images.get('ironic_console', omit) }}"`)
 	require.NotContains(t, string(varsFile), "ironic_vnc_image")
+}
+
+func TestBaremetalConsoleTLSContract(t *testing.T) {
+	var defaults Defaults
+	err := yaml.UnmarshalWithOptions(defaultsFile, &defaults)
+	require.NoError(t, err)
+	require.False(t, defaults.BaremetalConsoleAllowInsecureTLS)
+	require.Empty(t, defaults.BaremetalConsoleCASecretName)
+	require.Equal(t, "ca.crt", defaults.BaremetalConsoleCASecretKey)
+	require.Equal(t, "/etc/ironic-console-ca", defaults.BaremetalConsoleCAMountPath)
+	require.Equal(t, "1.2", defaults.BaremetalConsoleTLSMinimumVersion)
+
+	for _, expected := range []string{
+		"'name': 'ALLOW_INSECURE_TLS'",
+		"'name': 'BMC_TLS_MINIMUM_VERSION'",
+		"'name': 'BMC_TLS_CIPHERS'",
+		"'name': 'BMC_CA_FILE'",
+		"'secretName': ironic_vnc_ca_secret_name",
+		"'key': ironic_vnc_ca_secret_key",
+	} {
+		require.Contains(t, string(varsFile), expected)
+	}
+
+	require.Contains(t, string(tasksFile),
+		"ironic_vnc_ca_secret_key in _ironic_vnc_ca_secret.resources.0.data")
 }

@@ -85,9 +85,45 @@
       - >-
         '@sha256:' in
         (atmosphere_images.get('ironic_console') | default(''))
+      - ironic_vnc_tls_minimum_version in ['1.2', '1.3']
+      - ironic_vnc_ca_mount_path is string
+      - ironic_vnc_ca_mount_path is match('^/')
+      - ironic_vnc_ca_secret_key is string
+      - ironic_vnc_ca_secret_key | length > 0
+      - "'/' not in ironic_vnc_ca_secret_key"
     fail_msg: >-
       Bare metal graphical consoles require the Kubernetes container provider
-      and a digest-pinned atmosphere_image_overrides.ironic_console image.
+      and a digest-pinned atmosphere_image_overrides.ironic_console image. TLS
+      settings require a supported minimum version, an absolute CA mount path,
+      and a Secret key without path separators.
+
+- name: Read configured BMC CA Secret
+  when:
+    - ironic_vnc_enabled | bool
+    - ironic_vnc_ca_secret_name | default('', true) | length > 0
+  run_once: true
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ ironic_helm_kubeconfig }}"
+    api_version: v1
+    kind: Secret
+    name: "{{ ironic_vnc_ca_secret_name }}"
+    namespace: "{{ ironic_helm_release_namespace }}"
+  register: _ironic_vnc_ca_secret
+  no_log: true
+
+- name: Validate configured BMC CA Secret
+  when:
+    - ironic_vnc_enabled | bool
+    - ironic_vnc_ca_secret_name | default('', true) | length > 0
+  run_once: true
+  ansible.builtin.assert:
+    that:
+      - _ironic_vnc_ca_secret.resources | length == 1
+      - ironic_vnc_ca_secret_key in _ironic_vnc_ca_secret.resources.0.data
+    fail_msg: >-
+       The configured BMC CA Secret or key does not exist in the Ironic release
+       namespace.
+    no_log: true
 
 - name: Deploy Helm chart
   run_once: true

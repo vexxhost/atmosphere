@@ -13,6 +13,72 @@
 # under the License.
 
 _ironic_helm_values:
+  console:
+    container:
+      env: >-
+        {{
+          [
+            {
+              'name': 'ALLOW_INSECURE_TLS',
+              'value': ironic_vnc_allow_insecure_tls | bool | string | lower
+            },
+            {
+              'name': 'BMC_TLS_MINIMUM_VERSION',
+              'value': ironic_vnc_tls_minimum_version | string
+            }
+          ]
+          + (
+            [
+              {
+                'name': 'BMC_TLS_CIPHERS',
+                'value': ironic_vnc_tls_ciphers | string
+              }
+            ]
+            if ironic_vnc_tls_ciphers
+            else []
+          )
+          + (
+            [
+              {
+                'name': 'BMC_CA_FILE',
+                'value': ironic_vnc_ca_mount_path ~ '/' ~ ironic_vnc_ca_secret_key
+              }
+            ]
+            if ironic_vnc_ca_secret_name
+            else []
+          )
+        }}
+      volumeMounts: >-
+        {{
+          [
+            {
+              'name': 'bmc-ca',
+              'mountPath': ironic_vnc_ca_mount_path,
+              'readOnly': true
+            }
+          ]
+          if ironic_vnc_ca_secret_name
+          else []
+        }}
+    volumes: >-
+      {{
+        [
+          {
+            'name': 'bmc-ca',
+            'secret': {
+              'secretName': ironic_vnc_ca_secret_name,
+              'items': [
+                {
+                  'key': ironic_vnc_ca_secret_key,
+                  'path': ironic_vnc_ca_secret_key
+                }
+              ]
+            }
+          }
+        ]
+        if ironic_vnc_ca_secret_name
+        else []
+      }}
   endpoints: "{{ openstack_helm_endpoints }}"
   images:
     tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('ironic') }}"

@@ -24,3 +24,31 @@ Set `atmosphere_image_overrides.ironic_novncproxy_assets` to a digest-pinned
 image when different browser assets are required. The replacement image must
 provide `/usr/share/novnc`; the chart copies these files without rewriting
 JavaScript.
+
+### BMC TLS trust
+
+Console backends can trust a private BMC certificate authority from a
+Kubernetes Secret in the Ironic release namespace. The Secret is validated
+before the Helm release is changed, mounted read-only in each dynamic console
+Pod, and exposed to the backend through `BMC_CA_FILE`:
+
+```yaml
+ironic_vnc_ca_secret_name: bmc-ca
+ironic_vnc_ca_secret_key: ca.crt
+```
+
+The backend image must consume the `BMC_CA_FILE`,
+`BMC_TLS_MINIMUM_VERSION`, and optional `BMC_TLS_CIPHERS` environment
+variables. TLS 1.2 is the default minimum. To set an explicit cipher policy:
+
+```yaml
+ironic_vnc_tls_minimum_version: "1.3"
+ironic_vnc_tls_ciphers: TLS_AES_256_GCM_SHA384
+```
+
+Certificate verification can be disabled explicitly when the selected backend
+supports that policy:
+
+```yaml
+ironic_vnc_allow_insecure_tls: true
+```
