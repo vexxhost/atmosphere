@@ -51,3 +51,7 @@
     wait_condition:
       type: ClusterAvailable
       status: "True"
+  register: _rabbitmq_cluster_deployment
+  retries: 3
+  delay: 5
+  until: _rabbitmq_cluster_deployment is not failed
