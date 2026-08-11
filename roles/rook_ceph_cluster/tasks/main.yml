@@ -115,11 +115,12 @@
 
 - name: Create OpenStack service project
   run_once: true
-  changed_when: false
-  ansible.builtin.command:
-    cmd: openstack project create --or-show --enable --domain service service
-  environment:
-    OS_CLOUD: atmosphere
+  openstack.cloud.project:
+    cloud: atmosphere
+    name: service
+    domain: service
+    enabled: true
+    state: present
 
 - name: Create OpenStack user
   openstack.cloud.identity_user:
@@ -130,16 +131,13 @@
 
 # NOTE(mnaser): https://storyboard.openstack.org/#!/story/2010579
 - name: Grant access to "service" project
-  changed_when: false
-  ansible.builtin.command:
-    cmd: >-
-      openstack role add
-      --user-domain service
-      --project service
-      --user {{ openstack_helm_endpoints.identity.auth.rgw.username }}
-      admin
-  environment:
-    OS_CLOUD: atmosphere
+  openstack.cloud.role_assignment:
+    cloud: atmosphere
+    user: "{{ openstack_helm_endpoints.identity.auth.rgw.username }}"
+    user_domain: service
+    role: admin
+    project: service
+    project_domain: service
 
 - name: Create OpenStack service
   openstack.cloud.catalog_service:
