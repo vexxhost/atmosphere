@@ -1,6 +1,16 @@
 # Copyright (c) 2025 VEXXHOST, Inc.
 # SPDX-License-Identifier: Apache-2.0
 
+- name: Create namespace
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ valkey_helm_release_namespace }}"
+
 - name: Create TLS resources
   kubernetes.core.k8s:
     state: present
