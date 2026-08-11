@@ -12,6 +12,16 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+- name: Create namespace
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: monitoring
+
 - name: Deploy service
   kubernetes.core.k8s:
     state: present
