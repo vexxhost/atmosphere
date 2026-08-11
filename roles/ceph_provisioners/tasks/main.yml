@@ -48,7 +48,7 @@
       kind: Service
       metadata:
         name: ceph-mon
-        namespace: openstack
+        namespace: "{{ ceph_provisioners_helm_release_namespace }}"
         labels:
           application: ceph
       spec:
@@ -72,7 +72,7 @@
       kind: Endpoints
       metadata:
         name: ceph-mon
-        namespace: openstack
+        namespace: "{{ ceph_provisioners_helm_release_namespace }}"
         labels:
           application: ceph
       subsets:
@@ -109,7 +109,7 @@
       type: kubernetes.io/rbd
       metadata:
         name: pvc-ceph-client-key
-        namespace: openstack
+        namespace: "{{ ceph_provisioners_helm_release_namespace }}"
         labels:
           application: ceph
       stringData:
