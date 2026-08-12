@@ -12,16 +12,6 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Create namespace
-  run_once: true
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: v1
-      kind: Namespace
-      metadata:
-        name: "{{ ceph_provisioners_helm_release_namespace }}"
-
 - name: Collect "ceph mon dump" output from a monitor
   delegate_to: "{{ groups[ceph_provisioners_ceph_mon_group][0] }}"
   run_once: true
@@ -40,29 +30,34 @@
       }}
   loop: "{{ _ceph_mon_dump.stdout | from_json | community.general.json_query('mons[*].addr') | map('regex_replace', '(.*):(.*)', '\\1') }}"
 
-- name: Create Ceph service
+- name: Create Ceph namespace and service
   kubernetes.core.k8s:
     state: present
     definition:
-      apiVersion: v1
-      kind: Service
-      metadata:
-        name: ceph-mon
-        namespace: "{{ ceph_provisioners_helm_release_namespace }}"
-        labels:
-          application: ceph
-      spec:
-        clusterIP: None
-        ports:
-          - name: mon
-            port: 6789
-            targetPort: 6789
-          - name: mon-msgr2
-            port: 3300
-            targetPort: 3300
-          - name: metrics
-            port: 9283
-            targetPort: 9283
+      - apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: "{{ ceph_provisioners_helm_release_namespace }}"
+
+      - apiVersion: v1
+        kind: Service
+        metadata:
+          name: ceph-mon
+          namespace: "{{ ceph_provisioners_helm_release_namespace }}"
+          labels:
+            application: ceph
+        spec:
+          clusterIP: None
+          ports:
+            - name: mon
+              port: 6789
+              targetPort: 6789
+            - name: mon-msgr2
+              port: 3300
+              targetPort: 3300
+            - name: metrics
+              port: 9283
+              targetPort: 9283
 
 - name: Create Ceph endpoints
   kubernetes.core.k8s:
