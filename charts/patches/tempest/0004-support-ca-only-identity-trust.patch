@@ -1,0 +1,23 @@
+diff --git a/tempest/templates/job-ks-user.yaml b/tempest/templates/job-ks-user.yaml
+--- a/tempest/templates/job-ks-user.yaml
++++ b/tempest/templates/job-ks-user.yaml
+@@ -23,7 +23,7 @@ helm.sh/hook-weight: "-1"
+ {{- if .Values.helm3_hook }}
+ {{- $_ := set $ksUserJob "jobAnnotations" (include "metadata.annotations.job.ks_user" . | fromYaml) -}}
+ {{- end }}
+-{{- if or .Values.manifests.certificates .Values.tls.identity -}}
++{{- if and (or .Values.manifests.certificates .Values.tls.identity) (not .Values.tls.identity_ca_only) -}}
+ {{- $_ := set $ksUserJob "tlsSecret" .Values.secrets.tls.identity.api.internal -}}
+ {{- end -}}
+ {{ $ksUserJob | include "helm-toolkit.manifests.job_ks_user" }}
+diff --git a/tempest/values.yaml b/tempest/values.yaml
+--- a/tempest/values.yaml
++++ b/tempest/values.yaml
+@@ -376,6 +376,7 @@ endpoints:
+
+ tls:
+   identity: false
++  identity_ca_only: false
+
+ manifests:
+   configmap_bin: true

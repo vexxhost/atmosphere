@@ -1,3 +1,308 @@
+- job:
+    name: atmosphere-molecule-aio-openvswitch-selective
+    parent: atmosphere-molecule-aio-openvswitch
+    timeout: 10800
+    match-on-config-updates: false
+    irrelevant-files:
+      - '^playbooks/csi\.yml$'
+      - '^molecule/csi/.*$'
+      - '^molecule/keycloak/.*$'
+      - '^roles/local_path_provisioner/.*$'
+      - '^charts/local-path-provisioner/.*$'
+      - '^charts/patches/local-path-provisioner/.*$'
+      - '^roles/ceph_csi_rbd/.*$'
+      - '^charts/ceph-csi-rbd/.*$'
+      - '^charts/patches/ceph-csi-rbd/.*$'
+      - '^\.agents/.*$'
+      - '^\.github/.*$'
+      - '^\.gitignore$'
+      - '^\.gitreview$'
+      - '^\.pre-commit-config\.yaml$'
+      - '^\.vale\.ini$'
+      - '^AGENTS\.md$'
+      - '^CLAUDE\.md$'
+      - '^CODEOWNERS$'
+      - '^LICENSE$'
+      - '^README\.md$'
+      - '^doc/.*$'
+      - '^releasenotes/.*$'
+      - '^reno\.yaml$'
+      - '^renovate\.json$'
+      - '^roles/(cert_manager|cluster_issuer|csi|frr_k8s|hpe_nimble_csi|ibm_block_csi_driver)/.*$'
+      - '^roles/(ingress_nginx|keycloak|ovn|percona_xtradb_cluster|percona_xtradb_cluster_operator)/.*$'
+      - '^roles/(portworx|powerstore_csi|rabbitmq_cluster_operator|storpool_csi)/.*$'
+      - '^charts/(patches/)?(cert-manager|cert-manager-webhook-infoblox-wapi|frr-k8s)/.*$'
+      - '^charts/(patches/)?(godaddy-webhook|hpe-csi-driver|ingress-nginx|keycloak|ovn|pxc-db)/.*$'
+      - '^charts/(patches/)?(pxc-operator|rabbitmq-cluster-operator)/.*$'
+    pre-run:
+      - test-playbooks/molecule/prepare.yml
+    run:
+      - test-playbooks/molecule/selective-run.yml
+    post-run:
+      - test-playbooks/molecule/post.yml
+    vars:
+      atmosphere_ci_job: aio-openvswitch
+      atmosphere_ci_molecule_timeout: 9000
+      csi_driver: rbd
+      keycloak_helm_timeout: 30m0s
+      keycloak_helm_values:
+        startupProbe:
+          failureThreshold: 300
+      neutron_helm_timeout: 10m0s
+      nova_helm_timeout: 20m0s
+      octavia_helm_timeout: 10m0s
+      manila_helm_timeout: 10m0s
+
+- job:
+    name: atmosphere-molecule-aio-ovn-selective
+    parent: atmosphere-molecule-aio-ovn
+    timeout: 10800
+    match-on-config-updates: false
+    irrelevant-files:
+      - '^playbooks/ceph\.yml$'
+      - '^playbooks/csi\.yml$'
+      - '^molecule/csi/.*$'
+      - '^molecule/keycloak/.*$'
+      - '^roles/local_path_provisioner/.*$'
+      - '^charts/local-path-provisioner/.*$'
+      - '^charts/patches/local-path-provisioner/.*$'
+      - '^roles/ceph_csi_rbd/.*$'
+      - '^charts/ceph-csi-rbd/.*$'
+      - '^charts/patches/ceph-csi-rbd/.*$'
+      - '^Cargo\.lock$'
+      - '^Cargo\.toml$'
+      - '^crates/ovsinit/.*$'
+      - '^\.agents/.*$'
+      - '^\.github/.*$'
+      - '^\.gitignore$'
+      - '^\.gitreview$'
+      - '^\.pre-commit-config\.yaml$'
+      - '^\.vale\.ini$'
+      - '^AGENTS\.md$'
+      - '^CLAUDE\.md$'
+      - '^CODEOWNERS$'
+      - '^LICENSE$'
+      - '^README\.md$'
+      - '^doc/.*$'
+      - '^releasenotes/.*$'
+      - '^reno\.yaml$'
+      - '^renovate\.json$'
+      - '^roles/(barbican|ceph_provisioners|cert_manager|cinder|cluster_issuer|coredns|csi|glance)/.*$'
+      - '^roles/(goldpinger|heat|horizon|hpe_nimble_csi|ibm_block_csi_driver|ingress_nginx)/.*$'
+      - '^roles/(ipmi_exporter|iscsi|keepalived|keycloak|keystone|kube_prometheus_stack|libvirt|loki)/.*$'
+      - '^roles/(lpfc|magnum|manila|memcached|multipathd|node_feature_discovery|nova|octavia)/.*$'
+      - '^roles/(openstack_cli|openstack_exporter|openvswitch|percona_xtradb_cluster)/.*$'
+      - '^roles/(percona_xtradb_cluster_operator|placement|portworx|powerstore_csi)/.*$'
+      - '^roles/(prometheus_pushgateway|rabbitmq_cluster_operator|rook_ceph|rook_ceph_cluster)/.*$'
+      - '^roles/(smartctl_exporter|staffeln|storpool_csi|udev|valkey|vector)/.*$'
+      - '^charts/(patches/)?(barbican|ceph-provisioners|cert-manager)/.*$'
+      - '^charts/(patches/)?(cert-manager-webhook-infoblox-wapi|cinder|coredns|glance)/.*$'
+      - '^charts/(patches/)?(godaddy-webhook|goldpinger|heat|horizon|hpe-csi-driver)/.*$'
+      - '^charts/(patches/)?(ingress-nginx|keepalived|keycloak|keystone|kube-prometheus-stack)/.*$'
+      - '^charts/(patches/)?(libvirt|loki|magnum|manila|memcached|node-feature-discovery|nova)/.*$'
+      - '^charts/(patches/)?(octavia|openstack-exporter|openvswitch|placement)/.*$'
+      - '^charts/(patches/)?(prometheus-ipmi-exporter|prometheus-pushgateway)/.*$'
+      - '^charts/(patches/)?(prometheus-smartctl-exporter|pxc-db|pxc-operator)/.*$'
+      - '^charts/(patches/)?(rabbitmq-cluster-operator|rook-ceph|rook-ceph-cluster|staffeln)/.*$'
+      - '^charts/(patches/)?(valkey|vector)/.*$'
+    pre-run:
+      - test-playbooks/molecule/prepare.yml
+    run:
+      - test-playbooks/molecule/selective-run.yml
+    post-run:
+      - test-playbooks/molecule/post.yml
+    vars:
+      atmosphere_ci_job: aio-ovn
+      atmosphere_ci_molecule_timeout: 9000
+      csi_driver: rbd
+      keycloak_helm_timeout: 30m0s
+      keycloak_helm_values:
+        startupProbe:
+          failureThreshold: 300
+      neutron_helm_timeout: 10m0s
+      nova_helm_timeout: 20m0s
+      octavia_helm_timeout: 10m0s
+      manila_helm_timeout: 10m0s
+
+- job:
+    name: atmosphere-molecule-csi-local-path-provisioner-selective
+    parent: atmosphere-molecule-csi-local-path-provisioner
+    match-on-config-updates: false
+    irrelevant-files:
+      - '^playbooks/ceph\.yml$'
+      - '^molecule/keycloak/.*$'
+      - '^roles/ceph_csi_rbd/.*$'
+      - '^charts/ceph-csi-rbd/.*$'
+      - '^charts/patches/ceph-csi-rbd/.*$'
+      - '^Cargo\.lock$'
+      - '^Cargo\.toml$'
+      - '^crates/ovsinit/.*$'
+      - '^\.agents/.*$'
+      - '^\.github/.*$'
+      - '^\.gitignore$'
+      - '^\.gitreview$'
+      - '^\.pre-commit-config\.yaml$'
+      - '^\.vale\.ini$'
+      - '^AGENTS\.md$'
+      - '^CLAUDE\.md$'
+      - '^CODEOWNERS$'
+      - '^LICENSE$'
+      - '^README\.md$'
+      - '^doc/.*$'
+      - '^releasenotes/.*$'
+      - '^reno\.yaml$'
+      - '^renovate\.json$'
+      - '^roles/(barbican|ceph_provisioners|cert_manager|cinder|cluster_issuer|coredns|frr_k8s|glance)/.*$'
+      - '^roles/(goldpinger|heat|horizon|ingress_nginx|ipmi_exporter|iscsi|keepalived|keycloak)/.*$'
+      - '^roles/(keystone|kube_prometheus_stack|libvirt|loki|lpfc|magnum|manila|memcached|multipathd)/.*$'
+      - '^roles/(neutron|node_feature_discovery|nova|octavia|openstack_cli|openstack_exporter)/.*$'
+      - '^roles/(openvswitch|ovn|percona_xtradb_cluster|percona_xtradb_cluster_operator|placement)/.*$'
+      - '^roles/(prometheus_pushgateway|rabbitmq_cluster_operator|rook_ceph|rook_ceph_cluster)/.*$'
+      - '^roles/(smartctl_exporter|staffeln|udev|valkey|vector)/.*$'
+      - '^charts/(patches/)?(barbican|ceph-provisioners|cert-manager)/.*$'
+      - '^charts/(patches/)?(cert-manager-webhook-infoblox-wapi|cinder|coredns|frr-k8s|glance)/.*$'
+      - '^charts/(patches/)?(godaddy-webhook|goldpinger|heat|horizon|ingress-nginx|keepalived)/.*$'
+      - '^charts/(patches/)?(keycloak|keystone|kube-prometheus-stack|libvirt|loki|magnum|manila)/.*$'
+      - '^charts/(patches/)?(memcached|neutron|node-feature-discovery|nova|octavia)/.*$'
+      - '^charts/(patches/)?(openstack-exporter|openvswitch|ovn|placement)/.*$'
+      - '^charts/(patches/)?(prometheus-ipmi-exporter|prometheus-pushgateway)/.*$'
+      - '^charts/(patches/)?(prometheus-smartctl-exporter|pxc-db|pxc-operator)/.*$'
+      - '^charts/(patches/)?(rabbitmq-cluster-operator|rook-ceph|rook-ceph-cluster|staffeln)/.*$'
+      - '^charts/(patches/)?(valkey|vector)/.*$'
+    pre-run:
+      - test-playbooks/molecule/prepare.yml
+    run:
+      - test-playbooks/molecule/selective-run.yml
+    post-run:
+      - test-playbooks/molecule/post.yml
+    vars:
+      atmosphere_ci_job: csi-local-path-provisioner
+
+- job:
+    name: atmosphere-molecule-csi-rbd-selective
+    parent: atmosphere-molecule-csi-rbd
+    match-on-config-updates: false
+    irrelevant-files:
+      - '^molecule/keycloak/.*$'
+      - '^roles/local_path_provisioner/.*$'
+      - '^charts/local-path-provisioner/.*$'
+      - '^charts/patches/local-path-provisioner/.*$'
+      - '^Cargo\.lock$'
+      - '^Cargo\.toml$'
+      - '^crates/ovsinit/.*$'
+      - '^\.agents/.*$'
+      - '^\.github/.*$'
+      - '^\.gitignore$'
+      - '^\.gitreview$'
+      - '^\.pre-commit-config\.yaml$'
+      - '^\.vale\.ini$'
+      - '^AGENTS\.md$'
+      - '^CLAUDE\.md$'
+      - '^CODEOWNERS$'
+      - '^LICENSE$'
+      - '^README\.md$'
+      - '^doc/.*$'
+      - '^releasenotes/.*$'
+      - '^reno\.yaml$'
+      - '^renovate\.json$'
+      - '^roles/(barbican|ceph_provisioners|cert_manager|cinder|cluster_issuer|coredns|frr_k8s|glance)/.*$'
+      - '^roles/(goldpinger|heat|horizon|ingress_nginx|ipmi_exporter|iscsi|keepalived|keycloak)/.*$'
+      - '^roles/(keystone|kube_prometheus_stack|libvirt|loki|lpfc|magnum|manila|memcached|multipathd)/.*$'
+      - '^roles/(neutron|node_feature_discovery|nova|octavia|openstack_cli|openstack_exporter)/.*$'
+      - '^roles/(openvswitch|ovn|percona_xtradb_cluster|percona_xtradb_cluster_operator|placement)/.*$'
+      - '^roles/(prometheus_pushgateway|rabbitmq_cluster_operator|rook_ceph|rook_ceph_cluster)/.*$'
+      - '^roles/(smartctl_exporter|staffeln|udev|valkey|vector)/.*$'
+      - '^charts/(patches/)?(barbican|ceph-provisioners|cert-manager)/.*$'
+      - '^charts/(patches/)?(cert-manager-webhook-infoblox-wapi|cinder|coredns|frr-k8s|glance)/.*$'
+      - '^charts/(patches/)?(godaddy-webhook|goldpinger|heat|horizon|ingress-nginx|keepalived)/.*$'
+      - '^charts/(patches/)?(keycloak|keystone|kube-prometheus-stack|libvirt|loki|magnum|manila)/.*$'
+      - '^charts/(patches/)?(memcached|neutron|node-feature-discovery|nova|octavia)/.*$'
+      - '^charts/(patches/)?(openstack-exporter|openvswitch|ovn|placement)/.*$'
+      - '^charts/(patches/)?(prometheus-ipmi-exporter|prometheus-pushgateway)/.*$'
+      - '^charts/(patches/)?(prometheus-smartctl-exporter|pxc-db|pxc-operator)/.*$'
+      - '^charts/(patches/)?(rabbitmq-cluster-operator|rook-ceph|rook-ceph-cluster|staffeln)/.*$'
+      - '^charts/(patches/)?(valkey|vector)/.*$'
+    pre-run:
+      - test-playbooks/molecule/prepare.yml
+    run:
+      - test-playbooks/molecule/selective-run.yml
+    post-run:
+      - test-playbooks/molecule/post.yml
+    vars:
+      atmosphere_ci_job: csi-rbd
+
+- job:
+    name: atmosphere-molecule-keycloak-selective
+    parent: atmosphere-molecule-keycloak
+    timeout: 3600
+    match-on-config-updates: false
+    irrelevant-files:
+      - '^playbooks/ceph\.yml$'
+      - '^playbooks/csi\.yml$'
+      - '^molecule/csi/.*$'
+      - '^roles/local_path_provisioner/.*$'
+      - '^charts/local-path-provisioner/.*$'
+      - '^charts/patches/local-path-provisioner/.*$'
+      - '^roles/ceph_csi_rbd/.*$'
+      - '^charts/ceph-csi-rbd/.*$'
+      - '^charts/patches/ceph-csi-rbd/.*$'
+      - '^Cargo\.lock$'
+      - '^Cargo\.toml$'
+      - '^crates/ovsinit/.*$'
+      - '^\.agents/.*$'
+      - '^\.github/.*$'
+      - '^\.gitignore$'
+      - '^\.gitreview$'
+      - '^\.pre-commit-config\.yaml$'
+      - '^\.vale\.ini$'
+      - '^AGENTS\.md$'
+      - '^CLAUDE\.md$'
+      - '^CODEOWNERS$'
+      - '^LICENSE$'
+      - '^README\.md$'
+      - '^doc/.*$'
+      - '^releasenotes/.*$'
+      - '^reno\.yaml$'
+      - '^renovate\.json$'
+      - '^roles/(barbican|ceph_provisioners|cinder|coredns|csi|frr_k8s|glance|goldpinger|heat|horizon)/.*$'
+      - '^roles/(hpe_nimble_csi|ibm_block_csi_driver|ipmi_exporter|iscsi|keepalived|keystone)/.*$'
+      - '^roles/(kube_prometheus_stack|libvirt|loki|lpfc|magnum|manila|memcached|multipathd|neutron)/.*$'
+      - '^roles/(node_feature_discovery|nova|octavia|openstack_cli|openstack_exporter|openvswitch|ovn)/.*$'
+      - '^roles/(placement|portworx|powerstore_csi|prometheus_pushgateway|rook_ceph|rook_ceph_cluster)/.*$'
+      - '^roles/(smartctl_exporter|staffeln|storpool_csi|udev|valkey|vector)/.*$'
+      - '^charts/(patches/)?(barbican|ceph-provisioners|cinder|coredns|frr-k8s|glance|goldpinger)/.*$'
+      - '^charts/(patches/)?(heat|horizon|hpe-csi-driver|keepalived|keystone)/.*$'
+      - '^charts/(patches/)?(kube-prometheus-stack|libvirt|loki|magnum|manila|memcached|neutron)/.*$'
+      - '^charts/(patches/)?(node-feature-discovery|nova|octavia|openstack-exporter|openvswitch)/.*$'
+      - '^charts/(patches/)?(ovn|placement|prometheus-ipmi-exporter|prometheus-pushgateway)/.*$'
+      - '^charts/(patches/)?(prometheus-smartctl-exporter|rook-ceph|rook-ceph-cluster|staffeln)/.*$'
+      - '^charts/(patches/)?(valkey|vector)/.*$'
+    pre-run:
+      - test-playbooks/molecule/prepare.yml
+    run:
+      - test-playbooks/molecule/selective-run.yml
+    post-run:
+      - test-playbooks/molecule/post.yml
+    vars:
+      atmosphere_ci_job: keycloak
+
 - project:
-    templates:
-      - atmosphere-molecule-jobs
+    vars:
+      atmosphere_ci_plan_base: >-
+        {{ 'HEAD^1' if (zuul['items'] | length) > 1
+        else 'origin/' ~ zuul['branch'] }}
+      atmosphere_ci_plan_head: HEAD
+    check:
+      jobs:
+        - atmosphere-molecule-aio-openvswitch-selective
+        - atmosphere-molecule-aio-ovn-selective
+        - atmosphere-molecule-csi-local-path-provisioner-selective
+        - atmosphere-molecule-csi-rbd-selective
+        - atmosphere-molecule-keycloak-selective
+    gate:
+      jobs:
+        - atmosphere-molecule-aio-openvswitch-selective
+        - atmosphere-molecule-aio-ovn-selective
+        - atmosphere-molecule-csi-local-path-provisioner-selective
+        - atmosphere-molecule-csi-rbd-selective
+        - atmosphere-molecule-keycloak-selective

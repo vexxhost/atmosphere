@@ -19,3 +19,63 @@ tempest_helm_chart_ref: /usr/local/src/tempest
 tempest_helm_release_namespace: openstack
 tempest_helm_kubeconfig: "{{ kubeconfig_path | default('/etc/kubernetes/admin.conf') }}"
 tempest_helm_values: {}
+
+# Whether to trust the private CA used by the cluster issuer.
+#
+# tempest_cluster_issuer_ca_enabled: true
+tempest_cluster_issuer_ca_enabled: >-
+  {{ cluster_issuer_type in ['self-signed', 'ca'] }}
+
+# Namespace containing the cluster issuer CA secret.
+#
+# tempest_cluster_issuer_ca_namespace: cert-manager
+tempest_cluster_issuer_ca_namespace: cert-manager
+
+# Name of the cluster issuer CA secret.
+#
+# tempest_cluster_issuer_ca_source_secret_name: cert-manager-selfsigned-ca
+tempest_cluster_issuer_ca_source_secret_name: >-
+  {{
+    (
+      cluster_issuer_self_signed_secret_name
+      | default('cert-manager-selfsigned-ca')
+    )
+    if cluster_issuer_type == 'self-signed'
+    else (
+      cluster_issuer_ca_secret_name
+      | default('cert-manager-issuer-ca')
+    )
+  }}
+
+# Name of the CA secret copied into the Tempest namespace.
+#
+# tempest_cluster_issuer_ca_secret_name: tempest-cluster-issuer-ca
+tempest_cluster_issuer_ca_secret_name: tempest-cluster-issuer-ca
+
+# CI deployment mode used to limit Tempest to deployed services.
+#
+# tempest_ci_mode: selective
+tempest_ci_mode: "{{ lookup('env', 'ATMOSPHERE_CI_MODE') | default('full', true) }}"
+
+# Components available to Tempest during a selective CI deployment.
+#
+# tempest_ci_components:
+#   - keystone
+tempest_ci_components: >-
+  {{
+    lookup('env', 'ATMOSPHERE_CI_COMPONENTS')
+    .split(',')
+    | reject('equalto', '')
+    | list
+  }}
+
+# Regular expressions used to select Tempest tests during selective CI.
+#
+# tempest_ci_test_patterns:
+#   - '^tempest\.api\.identity\.'
+tempest_ci_test_patterns: >-
+  {{
+    lookup('env', 'ATMOSPHERE_CI_TEMPEST_INCLUDE')
+    | default('[]', true)
+    | from_json
+  }}

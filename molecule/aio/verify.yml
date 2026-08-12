@@ -15,8 +15,16 @@
 - name: Run tests
   hosts: localhost
   gather_facts: false
+  tags:
+    - always
   tasks:
     - name: Run "stestr" tests
+      when: >-
+        {{
+          lookup('env', 'ATMOSPHERE_CI_RUN_STESTR')
+          | default('true', true)
+          | bool
+        }}
       become: true
       ansible.builtin.shell: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}/.venv/bin/stestr run"
       args:
@@ -25,5 +33,195 @@
         KUBECONFIG: /root/.kube/config
         ATMOSPHERE_NETWORK_BACKEND: "{{ atmosphere_network_backend }}"
 
+- name: Verify selected OpenStack APIs
+  hosts: controllers[0]
+  gather_facts: false
+  become: true
+  vars:
+    _atmosphere_ci_verification_checks: >-
+      {{
+        lookup('env', 'ATMOSPHERE_CI_VERIFICATION_CHECKS')
+        | default('[]', true)
+        | from_json
+      }}
+    _atmosphere_ci_openstack_resource_checks: >-
+      {{
+        _atmosphere_ci_verification_checks
+        | selectattr('kind', 'equalto', 'openstack-resource')
+        | list
+      }}
+    _atmosphere_ci_openstack_cli_checks: >-
+      {{
+        _atmosphere_ci_verification_checks
+        | selectattr('kind', 'equalto', 'openstack-cli')
+        | list
+      }}
+    _atmosphere_ci_kubernetes_deployment_checks: >-
+      {{
+        _atmosphere_ci_verification_checks
+        | selectattr('kind', 'equalto', 'kubernetes-deployment')
+        | list
+      }}
+    _atmosphere_ci_kubernetes_daemonset_checks: >-
+      {{
+        _atmosphere_ci_verification_checks
+        | selectattr('kind', 'equalto', 'kubernetes-daemonset')
+        | list
+      }}
+    _atmosphere_ci_kubernetes_statefulset_checks: >-
+      {{
+        _atmosphere_ci_verification_checks
+        | selectattr('kind', 'equalto', 'kubernetes-statefulset')
+        | list
+      }}
+    _atmosphere_ci_kubernetes_node_checks: >-
+      {{
+        _atmosphere_ci_verification_checks
+        | selectattr('kind', 'equalto', 'kubernetes-node')
+        | list
+      }}
+    _atmosphere_ci_kubernetes_resource_checks: >-
+      {{
+        _atmosphere_ci_verification_checks
+        | selectattr('kind', 'equalto', 'kubernetes-resource')
+        | list
+      }}
+    _atmosphere_ci_host_command_checks: >-
+      {{
+        _atmosphere_ci_verification_checks
+        | selectattr('kind', 'equalto', 'host-command')
+        | list
+      }}
+  tasks:
+    - name: Query selected OpenStack service resources
+      openstack.cloud.resources:
+        cloud: atmosphere
+        service: "{{ item.service }}"
+        type: "{{ item.type }}"
+      loop: "{{ _atmosphere_ci_openstack_resource_checks }}"
+      loop_control:
+        label: "{{ item.service }}/{{ item.type }}"
+
+    - name: Run selected OpenStack client commands
+      ansible.builtin.command:
+        argv: >-
+          {{
+            [
+              '/bin/bash',
+              '-c',
+              '. /root/openrc && exec openstack "$@"',
+              'openstack'
+            ]
+            + item.arguments
+          }}
+      changed_when: false
+      loop: "{{ _atmosphere_ci_openstack_cli_checks }}"
+      loop_control:
+        label: "openstack {{ item.arguments | join(' ') }}"
+
+    - name: Wait for selected Kubernetes deployments
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: Deployment
+        namespace: "{{ item.namespace }}"
+        name: "{{ item.name }}"
+      register: _atmosphere_ci_deployment
+      until:
+        - _atmosphere_ci_deployment.resources | length == 1
+        - >-
+          _atmosphere_ci_deployment.resources[0].status.availableReplicas
+          | default(0) | int
+          >=
+          _atmosphere_ci_deployment.resources[0].spec.replicas
+          | default(1) | int
+      retries: 60
+      delay: 5
+      loop: "{{ _atmosphere_ci_kubernetes_deployment_checks }}"
+      loop_control:
+        label: "{{ item.namespace }}/{{ item.name }}"
+
+    - name: Wait for selected Kubernetes resources
+      kubernetes.core.k8s_info:
+        api_version: "{{ item.api_version }}"
+        kind: "{{ item.resource_kind }}"
+        namespace: "{{ item.namespace }}"
+        name: "{{ item.name }}"
+      register: _atmosphere_ci_resource
+      until: _atmosphere_ci_resource.resources | length == 1
+      retries: 60
+      delay: 5
+      loop: "{{ _atmosphere_ci_kubernetes_resource_checks }}"
+      loop_control:
+        label: "{{ item.resource_kind }} {{ item.namespace }}/{{ item.name }}"
+
+    - name: Wait for selected Kubernetes daemon sets
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: DaemonSet
+        namespace: "{{ item.namespace }}"
+        name: "{{ item.name }}"
+      register: _atmosphere_ci_daemonset
+      until:
+        - _atmosphere_ci_daemonset.resources | length == 1
+        - >-
+          _atmosphere_ci_daemonset.resources[0].status.numberReady
+          | default(0) | int
+          >=
+          _atmosphere_ci_daemonset.resources[0].status.desiredNumberScheduled
+          | default(0) | int
+      retries: 60
+      delay: 5
+      loop: "{{ _atmosphere_ci_kubernetes_daemonset_checks }}"
+      loop_control:
+        label: "{{ item.namespace }}/{{ item.name }}"
+
+    - name: Wait for selected Kubernetes stateful sets
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: StatefulSet
+        namespace: "{{ item.namespace }}"
+        name: "{{ item.name }}"
+      register: _atmosphere_ci_statefulset
+      until:
+        - _atmosphere_ci_statefulset.resources | length == 1
+        - >-
+          _atmosphere_ci_statefulset.resources[0].status.readyReplicas
+          | default(0) | int
+          >=
+          _atmosphere_ci_statefulset.resources[0].spec.replicas
+          | default(1) | int
+      retries: 60
+      delay: 5
+      loop: "{{ _atmosphere_ci_kubernetes_statefulset_checks }}"
+      loop_control:
+        label: "{{ item.namespace }}/{{ item.name }}"
+
+    - name: Wait for the selected Kubernetes cluster
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Node
+      register: _atmosphere_ci_nodes
+      until:
+        - _atmosphere_ci_nodes.resources | length > 0
+        - >-
+          _atmosphere_ci_nodes.resources[0].status.conditions
+          | selectattr('type', 'equalto', 'Ready')
+          | selectattr('status', 'equalto', 'True')
+          | list
+          | length == 1
+      retries: 60
+      delay: 5
+      loop: "{{ _atmosphere_ci_kubernetes_node_checks }}"
+
+    - name: Run selected host commands
+      ansible.builtin.command:
+        argv: "{{ item.arguments }}"
+      changed_when: false
+      loop: "{{ _atmosphere_ci_host_command_checks }}"
+      loop_control:
+        label: "{{ item.arguments | join(' ') }}"
+
 - name: Run Tempest tests
   ansible.builtin.import_playbook: vexxhost.atmosphere.tempest
+  tags:
+    - always

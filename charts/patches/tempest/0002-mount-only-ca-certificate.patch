@@ -1,0 +1,13 @@
+diff --git a/tempest/templates/job-run-tests.yaml b/tempest/templates/job-run-tests.yaml
+--- a/tempest/templates/job-run-tests.yaml
++++ b/tempest/templates/job-run-tests.yaml
+@@ -101,7 +101,7 @@ spec:
+             - name: stestr
+               mountPath: /.stestr
+             - name: tempest-reports
+               mountPath: /var/lib/tempest/data
+-{{- dict "enabled" (or .Values.manifests.certificates .Values.tls.identity) "name" .Values.secrets.tls.identity.api.internal "path" "/etc/tempest/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
++{{- dict "enabled" (or .Values.manifests.certificates .Values.tls.identity) "name" .Values.secrets.tls.identity.api.internal "path" "/etc/tempest/certs" "certs" (tuple "ca.crt") | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
+       volumes:
+         - name: pod-tmp
+           emptyDir: {}

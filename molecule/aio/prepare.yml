@@ -4,6 +4,8 @@
 - name: Prepare
   hosts: all
   become: true
+  tags:
+    - always
   tasks:
     - name: Workaround system hostname
       block:
@@ -30,6 +32,8 @@
 
 - name: Generate workspace
   ansible.builtin.import_playbook: vexxhost.atmosphere.generate_workspace
+  tags:
+    - always
   vars:
     workspace_path: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}"
     domain_name: "{{ ansible_default_ipv4['address'].replace('.', '-') }}.nip.io"
@@ -37,6 +41,8 @@
 - name: Setup networking
   hosts: all
   become: true
+  tags:
+    - always
   vars:
     management_bridge: "br-mgmt"
   tasks:
@@ -75,6 +81,10 @@
 
 - name: Create fake devices for Ceph
   ansible.builtin.import_playbook: vexxhost.ceph.create_fake_devices
+  tags:
+    - always
 
 - name: Prepare system for Neutron
   ansible.builtin.import_playbook: ../shared/prepare/neutron.yml
+  tags:
+    - always

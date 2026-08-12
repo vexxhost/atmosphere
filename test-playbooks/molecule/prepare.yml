@@ -1,0 +1,45 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Prepare selective Molecule plan
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Generate selective Molecule plan
+      run_once: true # noqa: run-once[task]
+      changed_when: false
+      ansible.builtin.command:
+        argv:
+          - uv
+          - run
+          - python
+          - -m
+          - atmosphere.ci.molecule_plan
+          - --config
+          - ci/molecule-plan.yaml
+          - plan
+          - --base
+          - "{{ atmosphere_ci_plan_base }}"
+          - --head
+          - "{{ atmosphere_ci_plan_head }}"
+          - --format
+          - json
+          - --output
+          - ci-plan.json
+      args:
+        chdir: "{{ zuul.project.src_dir }}"
+
+    - name: Render selective Molecule plan
+      run_once: true # noqa: run-once[task]
+      changed_when: false
+      ansible.builtin.command:
+        argv:
+          - uv
+          - run
+          - python
+          - -m
+          - atmosphere.ci.molecule_plan
+          - render
+          - ci-plan.json
+      args:
+        chdir: "{{ zuul.project.src_dir }}"

@@ -1,0 +1,29 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Publish selective Molecule plan
+  hosts: all
+  gather_facts: false
+  become: true
+  vars:
+    _atmosphere_ci_work_dir: "{{ zuul.project.src_dir }}"
+  tasks:
+    - name: Check for selective Molecule plan
+      ansible.builtin.stat:
+        path: "{{ _atmosphere_ci_work_dir }}/ci-plan.json"
+      register: _atmosphere_ci_plan
+
+    - name: Create log directory
+      when: _atmosphere_ci_plan.stat.exists
+      ansible.builtin.file:
+        path: /tmp/logs
+        state: directory
+        mode: "0755"
+
+    - name: Copy selective Molecule plan to logs
+      when: _atmosphere_ci_plan.stat.exists
+      ansible.builtin.copy:
+        src: "{{ _atmosphere_ci_work_dir }}/ci-plan.json"
+        dest: /tmp/logs/ci-plan-{{ atmosphere_ci_job }}.json
+        remote_src: true
+        mode: "0644"

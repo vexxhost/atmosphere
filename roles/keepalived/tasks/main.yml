@@ -12,6 +12,17 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+- name: Create namespace
+  run_once: true
+  when: keepalived_enabled | bool
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: openstack
+
 - name: Deploy service
   run_once: true
   when: keepalived_enabled | bool

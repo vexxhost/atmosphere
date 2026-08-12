@@ -1,0 +1,10 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Start progress monitor chunk for {{ _atmosphere_ci_phase }}
+  when:
+    - not (_atmosphere_ci_phase_result.finished | default(false) | bool)
+    - >-
+      (_atmosphere_ci_phase_poll_count | int)
+      < (_atmosphere_ci_phase_max_polls | int)
+  ansible.builtin.include_tasks: poll-command.yml

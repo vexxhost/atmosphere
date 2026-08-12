@@ -14,12 +14,18 @@
 
 - name: Install Ceph
   ansible.builtin.import_playbook: vexxhost.atmosphere.ceph
+  tags:
+    - ceph
 
 - name: Install Kubernetes
   ansible.builtin.import_playbook: vexxhost.atmosphere.kubernetes
+  tags:
+    - kubernetes
 
 - name: Install CSI
   ansible.builtin.import_playbook: vexxhost.atmosphere.csi
+  tags:
+    - csi
 
 - name: Deploy Infrastructure
   ansible.builtin.import_playbook: vexxhost.atmosphere.infrastructure
@@ -33,6 +39,8 @@
 - name: Configure networking
   hosts: all
   become: true
+  tags:
+    - always
   tasks:
     - name: Add IP address to "br-ex"
       changed_when: false

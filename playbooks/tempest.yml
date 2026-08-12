@@ -12,9 +12,14 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- hosts: controllers[0]
+- name: Run Tempest tests
+  hosts: controllers[0]
   become: true
   roles:
     - role: tempest
+      when: >-
+        lookup('env', 'ATMOSPHERE_CI_RUN_TEMPEST')
+        | default('true', true)
+        | bool
       tags:
         - tempest
