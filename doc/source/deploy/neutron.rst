@@ -7,6 +7,18 @@ configurations to optimize and tailor network performance. This includes
 integrating hardware acceleration technologies to enhance networking
 capabilities within your OpenStack environment.
 
+**********************
+Helm Operation Timeout
+**********************
+
+``neutron_helm_timeout`` sets the maximum time allowed for Neutron Helm
+operations. It accepts a Go duration string such as ``10m0s`` and defaults to
+``5m0s``.
+
+.. code-block:: yaml
+
+    neutron_helm_timeout: 10m0s
+
 *********************
 Hardware Acceleration
 *********************
