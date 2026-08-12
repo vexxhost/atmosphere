@@ -31,6 +31,7 @@
   loop: "{{ _ceph_mon_dump.stdout | from_json | community.general.json_query('mons[*].addr') | map('regex_replace', '(.*):(.*)', '\\1') }}"
 
 - name: Create Ceph namespace and service
+  run_once: true
   kubernetes.core.k8s:
     state: present
     definition:
