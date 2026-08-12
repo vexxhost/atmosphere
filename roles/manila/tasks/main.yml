@@ -29,6 +29,7 @@
     create_namespace: true
     kubeconfig: /etc/kubernetes/admin.conf
     values: "{{ _manila_helm_values | combine(manila_helm_values, recursive=True) }}"
+    timeout: "{{ manila_helm_timeout }}"
 
 - name: Create Ingress
   ansible.builtin.include_role:
