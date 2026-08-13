@@ -45,7 +45,12 @@ _ironic_helm_values:
     ironic:
       DEFAULT:
         log_config_append: null
-        enabled_boot_interfaces: "{{ ironic_enabled_boot_interfaces }}"
+        enabled_boot_interfaces: >-
+          {{
+            ironic_enabled_boot_interfaces
+            if ironic_redfish_virtual_media_enabled | bool
+            else omit
+          }}
         enabled_network_interfaces: flat,neutron
         grub_config_path: >-
           {{

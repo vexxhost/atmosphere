@@ -26,15 +26,10 @@ ironic_ingress_class_name: "{{ atmosphere_ingress_class_name }}"
 # List of annotations to apply to the Ingress
 ironic_ingress_annotations: {}
 
-# Advertise Redfish virtual media by default. Compatible nodes still opt in by
-# selecting the redfish-virtual-media boot interface.
-ironic_enabled_boot_interfaces: ipxe,pxe,redfish-virtual-media
-
-# Configure the deployment-specific local publisher and UEFI bootloader
-# settings used by Redfish virtual media. Keep these settings opt-in because
-# Redfish power or management support does not guarantee usable virtual media,
-# a BMC-reachable publisher, or the required ESP in the selected Ironic image.
-ironic_redfish_virtual_media_enabled: false
+# Enable Redfish virtual media by default for Redfish-backed deployments.
+# Deployments that do not enable the Redfish hardware type can opt out. Nodes
+# still select the redfish-virtual-media boot interface individually.
+ironic_redfish_virtual_media_enabled: true
 ironic_redfish_virtual_media_use_swift: false
 ironic_redfish_virtual_media_bootloader_by_arch: >-
   x86_64:file:///usr/share/ironic/esp/x86_64.img
@@ -42,6 +37,7 @@ ironic_redfish_virtual_media_grub_config_path: EFI/ubuntu/grub.cfg
 ironic_redfish_virtual_media_file_url_allowed_paths:
   - /var/lib/ironic
   - /usr/share/ironic/esp
+ironic_enabled_boot_interfaces: ipxe,pxe,redfish-virtual-media
 
 # Ironic bare metal network used for PXE
 ironic_bare_metal_network_manage: true

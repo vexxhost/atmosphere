@@ -51,18 +51,19 @@ func TestRedfishVirtualMediaDefaults(t *testing.T) {
 	err := yaml.UnmarshalWithOptions(defaultsFile, &defaults)
 	require.NoError(t, err)
 	require.Equal(t, "ipxe,pxe,redfish-virtual-media", defaults.EnabledBootInterfaces)
-	require.False(t, defaults.RedfishVirtualMediaEnabled)
+	require.True(t, defaults.RedfishVirtualMediaEnabled)
 	require.False(t, defaults.RedfishVirtualMediaUseSwift)
 	require.Equal(t, "x86_64:file:///usr/share/ironic/esp/x86_64.img", defaults.RedfishVirtualMediaBootloaderByArch)
 	require.Equal(t, "EFI/ubuntu/grub.cfg", defaults.RedfishVirtualMediaGrubConfigPath)
 	require.Contains(t, defaults.RedfishVirtualMediaFileURLAllowedPaths, "/usr/share/ironic/esp")
 }
 
-func TestRedfishVirtualMediaBootInterfaceIsAlwaysAdvertised(t *testing.T) {
+func TestRedfishVirtualMediaBootInterfaceFollowsFeature(t *testing.T) {
 	var ironicVars IronicVars
 	err := yaml.UnmarshalWithOptions(varsFile, &ironicVars)
 	require.NoError(t, err)
-	require.Equal(t, "{{ ironic_enabled_boot_interfaces }}", ironicVars.HelmValues.Conf.Ironic.Default.EnabledBootInterfaces)
+	require.Contains(t, ironicVars.HelmValues.Conf.Ironic.Default.EnabledBootInterfaces, "if ironic_redfish_virtual_media_enabled | bool")
+	require.Contains(t, ironicVars.HelmValues.Conf.Ironic.Default.EnabledBootInterfaces, "else omit")
 }
 
 func TestMain(m *testing.M) {
