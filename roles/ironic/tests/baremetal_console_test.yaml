@@ -6,6 +6,7 @@ tests:
       - templates/service-novncproxy.yaml
       - templates/role-console-pods.yaml
       - templates/rolebinding-console-pods.yaml
+      - templates/network-policy-console.yaml
     asserts:
       - template: templates/deployment-novncproxy.yaml
         hasDocuments:
@@ -19,6 +20,9 @@ tests:
       - template: templates/rolebinding-console-pods.yaml
         hasDocuments:
           count: 0
+      - template: templates/network-policy-console.yaml
+        hasDocuments:
+          count: 0
 
   - it: should deploy baremetal console proxy and dynamic Pod RBAC
     release:
@@ -30,6 +34,7 @@ tests:
       - templates/service-novncproxy.yaml
       - templates/role-console-pods.yaml
       - templates/rolebinding-console-pods.yaml
+      - templates/network-policy-console.yaml
       - templates/statefulset-conductor.yaml
     set:
       images:
@@ -46,6 +51,7 @@ tests:
         service_novncproxy: true
         role_console_pods: true
         rolebinding_console_pods: true
+        network_policy_console: true
     asserts:
       - template: templates/configmap-bin.yaml
         documentIndex: 0
@@ -121,3 +127,13 @@ tests:
         equal:
           path: subjects[0].name
           value: ironic-conductor
+      - template: templates/network-policy-console.yaml
+        documentIndex: 0
+        equal:
+          path: spec.ingress[0].from[0].podSelector.matchLabels.application
+          value: ironic
+      - template: templates/network-policy-console.yaml
+        documentIndex: 0
+        equal:
+          path: spec.ingress[0].from[0].podSelector.matchLabels.component
+          value: novncproxy
