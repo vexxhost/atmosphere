@@ -24,3 +24,8 @@ Set `atmosphere_image_overrides.ironic_novncproxy_assets` to a digest-pinned
 image when different browser assets are required. The replacement image must
 provide `/usr/share/novnc`; the chart copies these files without rewriting
 JavaScript.
+
+The console NetworkPolicy is enabled with graphical consoles by default and
+allows RFB connections from both `ironic-novncproxy` and `nova-novncproxy` in
+the OpenStack namespace. Set `ironic_vnc_network_policy_enabled: false` only
+when policy enforcement is intentionally managed outside this role.
