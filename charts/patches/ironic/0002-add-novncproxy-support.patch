@@ -1,6 +1,8 @@
-diff -Naur a/ironic/templates/bin/_ironic-novncproxy-init-assets.sh.tpl b/ironic/templates/bin/_ironic-novncproxy-init-assets.sh.tpl
---- a/ironic/templates/bin/_ironic-novncproxy-init-assets.sh.tpl	1970-01-01 08:00:00.000000000 +0800
-+++ b/ironic/templates/bin/_ironic-novncproxy-init-assets.sh.tpl	2026-08-13 16:22:08.125738776 +0800
+diff --git a/ironic/templates/bin/_ironic-novncproxy-init-assets.sh.tpl b/ironic/templates/bin/_ironic-novncproxy-init-assets.sh.tpl
+new file mode 100644
+index 0000000..8b64e76
+--- /dev/null
++++ b/ironic/templates/bin/_ironic-novncproxy-init-assets.sh.tpl
 @@ -0,0 +1,26 @@
 +#!/bin/bash
 +
@@ -28,9 +30,11 @@ diff -Naur a/ironic/templates/bin/_ironic-novncproxy-init-assets.sh.tpl b/ironic
 +  cp /tmp/usr/share/novnc/vnc_lite.html \
 +    /tmp/usr/share/novnc/vnc_auto.html
 +fi
-diff -Naur a/ironic/templates/bin/_ironic-novncproxy.sh.tpl b/ironic/templates/bin/_ironic-novncproxy.sh.tpl
---- a/ironic/templates/bin/_ironic-novncproxy.sh.tpl	1970-01-01 08:00:00.000000000 +0800
-+++ b/ironic/templates/bin/_ironic-novncproxy.sh.tpl	2026-08-13 16:22:08.109738780 +0800
+diff --git a/ironic/templates/bin/_ironic-novncproxy.sh.tpl b/ironic/templates/bin/_ironic-novncproxy.sh.tpl
+new file mode 100644
+index 0000000..8030b04
+--- /dev/null
++++ b/ironic/templates/bin/_ironic-novncproxy.sh.tpl
 @@ -0,0 +1,19 @@
 +#!/bin/bash
 +
@@ -51,10 +55,11 @@ diff -Naur a/ironic/templates/bin/_ironic-novncproxy.sh.tpl b/ironic/templates/b
 +set -ex
 +
 +exec ironic-novncproxy --config-file /etc/ironic/ironic.conf
-diff -Naur a/ironic/templates/configmap-bin.yaml b/ironic/templates/configmap-bin.yaml
---- a/ironic/templates/configmap-bin.yaml	2024-08-14 06:17:04.000000000 +0800
-+++ b/ironic/templates/configmap-bin.yaml	2026-08-13 16:22:08.129738774 +0800
-@@ -52,6 +52,10 @@
+diff --git a/ironic/templates/configmap-bin.yaml b/ironic/templates/configmap-bin.yaml
+index 9666803..6279806 100644
+--- a/ironic/templates/configmap-bin.yaml
++++ b/ironic/templates/configmap-bin.yaml
+@@ -52,6 +52,10 @@ data:
  {{ tuple "bin/_ironic-conductor.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
    ironic-conductor-init.sh: |
  {{ tuple "bin/_ironic-conductor-init.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
@@ -65,46 +70,14 @@ diff -Naur a/ironic/templates/configmap-bin.yaml b/ironic/templates/configmap-bi
  {{- if .Values.conductor.pxe.enabled }}
  {{ include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conductor.pxe.script "key" "ironic-conductor-pxe.sh") | indent 2 }}
  {{ include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conductor.pxe.init_script "key" "ironic-conductor-pxe-init.sh") | indent 2 }}
-diff -Naur a/ironic/templates/configmap-etc.yaml b/ironic/templates/configmap-etc.yaml
---- a/ironic/templates/configmap-etc.yaml	2024-08-14 06:17:04.000000000 +0800
-+++ b/ironic/templates/configmap-etc.yaml	2026-08-13 16:22:08.129738774 +0800
-@@ -47,6 +47,32 @@
- {{- $_ := set .Values.conf.ironic.keystone_authtoken "memcache_secret_key" ( default ( randAlphaNum 64 ) .Values.endpoints.oslo_cache.auth.memcache_secret_key ) -}}
- {{- end -}}
- 
-+{{- if .Values.conf.ironic.service_user.send_service_user_token -}}
-+
-+{{- if empty .Values.conf.ironic.service_user.auth_url -}}
-+{{- $_ := tuple "identity" "internal" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup" | set .Values.conf.ironic.service_user "auth_url" -}}
-+{{- end -}}
-+{{- if empty .Values.conf.ironic.service_user.region_name -}}
-+{{- $_ := set .Values.conf.ironic.service_user "region_name" .Values.endpoints.identity.auth.ironic.region_name -}}
-+{{- end -}}
-+{{- if empty .Values.conf.ironic.service_user.project_name -}}
-+{{- $_ := set .Values.conf.ironic.service_user "project_name" .Values.endpoints.identity.auth.ironic.project_name -}}
-+{{- end -}}
-+{{- if empty .Values.conf.ironic.service_user.project_domain_name -}}
-+{{- $_ := set .Values.conf.ironic.service_user "project_domain_name" .Values.endpoints.identity.auth.ironic.project_domain_name -}}
-+{{- end -}}
-+{{- if empty .Values.conf.ironic.service_user.user_domain_name -}}
-+{{- $_ := set .Values.conf.ironic.service_user "user_domain_name" .Values.endpoints.identity.auth.ironic.user_domain_name -}}
-+{{- end -}}
-+{{- if empty .Values.conf.ironic.service_user.username -}}
-+{{- $_ := set .Values.conf.ironic.service_user "username" .Values.endpoints.identity.auth.ironic.username -}}
-+{{- end -}}
-+{{- if empty .Values.conf.ironic.service_user.password -}}
-+{{- $_ := set .Values.conf.ironic.service_user "password" .Values.endpoints.identity.auth.ironic.password -}}
-+{{- end -}}
-+
-+{{- end -}}
-+
- {{- if empty .Values.conf.ironic.database.connection -}}
- {{- $_ := tuple "oslo_db" "internal" "ironic" "mysql" . | include "helm-toolkit.endpoints.authenticated_endpoint_uri_lookup"| set .Values.conf.ironic.database "connection" -}}
- {{- end -}}
-@@ -182,6 +208,10 @@
+diff --git a/ironic/templates/configmap-etc.yaml b/ironic/templates/configmap-etc.yaml
+index 8b25336..8f0f500 100644
+--- a/ironic/templates/configmap-etc.yaml
++++ b/ironic/templates/configmap-etc.yaml
+@@ -208,6 +208,10 @@ limitations under the License.
  {{- $_ := set .Values.conf.ironic.api "port" (tuple "baremetal" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup") -}}
  {{- end -}}
- 
+
 +{{- if and .Values.conf.ironic.vnc.enabled (empty .Values.conf.ironic.vnc.public_url) -}}
 +{{- $_ := tuple "baremetal_vnc_proxy" "public" "novncproxy" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup" | set .Values.conf.ironic.vnc "public_url" -}}
 +{{- end -}}
@@ -112,7 +85,7 @@ diff -Naur a/ironic/templates/configmap-etc.yaml b/ironic/templates/configmap-et
  {{- if and (empty .Values.conf.logging.handler_fluent) (has "fluent" .Values.conf.logging.handlers.keys) -}}
  {{- $fluentd_host := tuple "fluentd" "internal" $envAll | include "helm-toolkit.endpoints.hostname_namespaced_endpoint_lookup" }}
  {{- $fluentd_port := tuple "fluentd" "internal" "service" $envAll | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
-@@ -204,6 +234,7 @@
+@@ -230,6 +234,7 @@ data:
    ironic.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.ironic | b64enc }}
    logging.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.logging | b64enc }}
    policy.yaml: {{ toYaml .Values.conf.policy | b64enc }}
@@ -120,9 +93,11 @@ diff -Naur a/ironic/templates/configmap-etc.yaml b/ironic/templates/configmap-et
  {{- include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conf.tftp_map_file "key" "tftp-map-file" "format" "Secret" ) | indent 2 }}
  {{- include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conf.nginx "key" "nginx.conf" "format" "Secret" ) | indent 2 }}
  {{- end }}
-diff -Naur a/ironic/templates/deployment-novncproxy.yaml b/ironic/templates/deployment-novncproxy.yaml
---- a/ironic/templates/deployment-novncproxy.yaml	1970-01-01 08:00:00.000000000 +0800
-+++ b/ironic/templates/deployment-novncproxy.yaml	2026-08-13 16:22:08.129738774 +0800
+diff --git a/ironic/templates/deployment-novncproxy.yaml b/ironic/templates/deployment-novncproxy.yaml
+new file mode 100644
+index 0000000..e7b584a
+--- /dev/null
++++ b/ironic/templates/deployment-novncproxy.yaml
 @@ -0,0 +1,133 @@
 +{{/*
 +Licensed under the Apache License, Version 2.0 (the "License");
@@ -257,9 +232,11 @@ diff -Naur a/ironic/templates/deployment-novncproxy.yaml b/ironic/templates/depl
 +            defaultMode: 0444
 +{{ if $mounts_ironic_novncproxy.volumes }}{{ toYaml $mounts_ironic_novncproxy.volumes | indent 8 }}{{ end }}
 +{{- end }}
-diff -Naur a/ironic/templates/etc/_ironic-console-pod.yaml.tpl b/ironic/templates/etc/_ironic-console-pod.yaml.tpl
---- a/ironic/templates/etc/_ironic-console-pod.yaml.tpl	1970-01-01 08:00:00.000000000 +0800
-+++ b/ironic/templates/etc/_ironic-console-pod.yaml.tpl	2026-08-13 16:22:08.129738774 +0800
+diff --git a/ironic/templates/etc/_ironic-console-pod.yaml.tpl b/ironic/templates/etc/_ironic-console-pod.yaml.tpl
+new file mode 100644
+index 0000000..4909ad9
+--- /dev/null
++++ b/ironic/templates/etc/_ironic-console-pod.yaml.tpl
 @@ -0,0 +1,95 @@
 +{{/*
 +Licensed under the Apache License, Version 2.0 (the "License");
@@ -356,9 +333,11 @@ diff -Naur a/ironic/templates/etc/_ironic-console-pod.yaml.tpl b/ironic/template
 +  volumes:
 +{{ toYaml . | indent 4 }}
 +{{- end }}
-diff -Naur a/ironic/templates/network-policy-console.yaml b/ironic/templates/network-policy-console.yaml
---- a/ironic/templates/network-policy-console.yaml	1970-01-01 08:00:00.000000000 +0800
-+++ b/ironic/templates/network-policy-console.yaml	2026-08-13 16:22:08.145738769 +0800
+diff --git a/ironic/templates/network-policy-console.yaml b/ironic/templates/network-policy-console.yaml
+new file mode 100644
+index 0000000..8e128cf
+--- /dev/null
++++ b/ironic/templates/network-policy-console.yaml
 @@ -0,0 +1,41 @@
 +{{/*
 +Licensed under the Apache License, Version 2.0 (the "License");
@@ -401,9 +380,46 @@ diff -Naur a/ironic/templates/network-policy-console.yaml b/ironic/templates/net
 +        - protocol: TCP
 +          port: 5900
 +{{- end }}
-diff -Naur a/ironic/templates/rolebinding-console-pods.yaml b/ironic/templates/rolebinding-console-pods.yaml
---- a/ironic/templates/rolebinding-console-pods.yaml	1970-01-01 08:00:00.000000000 +0800
-+++ b/ironic/templates/rolebinding-console-pods.yaml	2026-08-13 16:22:08.129738774 +0800
+diff --git a/ironic/templates/role-console-pods.yaml b/ironic/templates/role-console-pods.yaml
+new file mode 100644
+index 0000000..e91dcb2
+--- /dev/null
++++ b/ironic/templates/role-console-pods.yaml
+@@ -0,0 +1,29 @@
++{{/*
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++   http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++*/}}
++
++{{- if .Values.manifests.role_console_pods }}
++---
++apiVersion: rbac.authorization.k8s.io/v1
++kind: Role
++metadata:
++  name: ironic-console-pods
++  namespace: {{ .Values.console.namespace | default .Release.Namespace }}
++rules:
++  - apiGroups: [""]
++    resources: ["pods"]
++    verbs: ["create", "delete", "deletecollection", "get", "list", "patch"]
++  - apiGroups: [""]
++    resources: ["secrets"]
++    verbs: ["create", "delete", "deletecollection", "get", "list", "patch"]
++{{- end }}
+diff --git a/ironic/templates/rolebinding-console-pods.yaml b/ironic/templates/rolebinding-console-pods.yaml
+new file mode 100644
+index 0000000..d93ba21
+--- /dev/null
++++ b/ironic/templates/rolebinding-console-pods.yaml
 @@ -0,0 +1,30 @@
 +{{/*
 +Licensed under the Apache License, Version 2.0 (the "License");
@@ -435,42 +451,11 @@ diff -Naur a/ironic/templates/rolebinding-console-pods.yaml b/ironic/templates/r
 +    name: ironic-conductor
 +    namespace: {{ .Release.Namespace }}
 +{{- end }}
-diff -Naur a/ironic/templates/role-console-pods.yaml b/ironic/templates/role-console-pods.yaml
---- a/ironic/templates/role-console-pods.yaml	1970-01-01 08:00:00.000000000 +0800
-+++ b/ironic/templates/role-console-pods.yaml	2026-08-13 16:22:08.129738774 +0800
-@@ -0,0 +1,29 @@
-+{{/*
-+Licensed under the Apache License, Version 2.0 (the "License");
-+you may not use this file except in compliance with the License.
-+You may obtain a copy of the License at
-+
-+   http://www.apache.org/licenses/LICENSE-2.0
-+
-+Unless required by applicable law or agreed to in writing, software
-+distributed under the License is distributed on an "AS IS" BASIS,
-+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-+See the License for the specific language governing permissions and
-+limitations under the License.
-+*/}}
-+
-+{{- if .Values.manifests.role_console_pods }}
-+---
-+apiVersion: rbac.authorization.k8s.io/v1
-+kind: Role
-+metadata:
-+  name: ironic-console-pods
-+  namespace: {{ .Values.console.namespace | default .Release.Namespace }}
-+rules:
-+  - apiGroups: [""]
-+    resources: ["pods"]
-+    verbs: ["create", "delete", "deletecollection", "get", "list", "patch"]
-+  - apiGroups: [""]
-+    resources: ["secrets"]
-+    verbs: ["create", "delete", "deletecollection", "get", "list", "patch"]
-+{{- end }}
-diff -Naur a/ironic/templates/service-novncproxy.yaml b/ironic/templates/service-novncproxy.yaml
---- a/ironic/templates/service-novncproxy.yaml	1970-01-01 08:00:00.000000000 +0800
-+++ b/ironic/templates/service-novncproxy.yaml	2026-08-13 16:22:08.129738774 +0800
+diff --git a/ironic/templates/service-novncproxy.yaml b/ironic/templates/service-novncproxy.yaml
+new file mode 100644
+index 0000000..7779bc2
+--- /dev/null
++++ b/ironic/templates/service-novncproxy.yaml
 @@ -0,0 +1,34 @@
 +{{/*
 +Licensed under the Apache License, Version 2.0 (the "License");
@@ -506,10 +491,11 @@ diff -Naur a/ironic/templates/service-novncproxy.yaml b/ironic/templates/service
 +  type: NodePort
 +  {{- end }}
 +{{- end }}
-diff -Naur a/ironic/templates/statefulset-conductor.yaml b/ironic/templates/statefulset-conductor.yaml
---- a/ironic/templates/statefulset-conductor.yaml	2026-08-13 16:22:59.005724562 +0800
-+++ b/ironic/templates/statefulset-conductor.yaml	2026-08-13 16:22:08.129738774 +0800
-@@ -65,6 +65,17 @@
+diff --git a/ironic/templates/statefulset-conductor.yaml b/ironic/templates/statefulset-conductor.yaml
+index 920d4af..9dadcaf 100644
+--- a/ironic/templates/statefulset-conductor.yaml
++++ b/ironic/templates/statefulset-conductor.yaml
+@@ -65,6 +65,17 @@ spec:
  {{ end }}
        initContainers:
  {{ tuple $envAll "conductor" $mounts_ironic_conductor_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
@@ -527,7 +513,7 @@ diff -Naur a/ironic/templates/statefulset-conductor.yaml b/ironic/templates/stat
  {{- if $envAll.Values.conductor.pxe.enabled }}
          - name: ironic-conductor-pxe-init
  {{ tuple $envAll "ironic_pxe_init" | include "helm-toolkit.snippets.image" | indent 10 }}
-@@ -197,6 +208,16 @@
+@@ -197,6 +208,16 @@ spec:
                mountPath: /etc/ironic/policy.yaml
                subPath: policy.yaml
                readOnly: true
@@ -544,7 +530,7 @@ diff -Naur a/ironic/templates/statefulset-conductor.yaml b/ironic/templates/stat
              - name: host-var-lib-ironic
                mountPath: /var/lib/ironic
              - name: host-run
-@@ -260,6 +281,10 @@
+@@ -260,6 +281,10 @@ spec:
            emptyDir: {}
          - name: pod-var-cache-ironic
            emptyDir: {}
@@ -555,10 +541,11 @@ diff -Naur a/ironic/templates/statefulset-conductor.yaml b/ironic/templates/stat
          - name: ironic-bin
            configMap:
              name: ironic-bin
-diff -Naur a/ironic/values.yaml b/ironic/values.yaml
---- a/ironic/values.yaml	2024-08-14 06:17:04.000000000 +0800
-+++ b/ironic/values.yaml	2026-08-13 16:22:08.129738774 +0800
-@@ -27,6 +27,9 @@
+diff --git a/ironic/values.yaml b/ironic/values.yaml
+index 2228bfc..ec85e97 100644
+--- a/ironic/values.yaml
++++ b/ironic/values.yaml
+@@ -27,6 +27,9 @@ labels:
    conductor:
      node_selector_key: openstack-control-plane
      node_selector_value: enabled
@@ -568,7 +555,7 @@ diff -Naur a/ironic/values.yaml b/ironic/values.yaml
    job:
      node_selector_key: openstack-control-plane
      node_selector_value: enabled
-@@ -47,9 +50,12 @@
+@@ -47,9 +50,12 @@ images:
      rabbit_init: docker.io/rabbitmq:3.13-management
      ironic_api: docker.io/openstackhelm/ironic:2024.1-ubuntu_jammy
      ironic_conductor: docker.io/openstackhelm/ironic:2024.1-ubuntu_jammy
@@ -581,30 +568,8 @@ diff -Naur a/ironic/values.yaml b/ironic/values.yaml
      dep_check: quay.io/airshipit/kubernetes-entrypoint:latest-ubuntu_focal
      image_repo_sync: docker.io/docker:17.07.0
    pull_policy: "IfNotPresent"
-@@ -106,6 +112,7 @@
-     conductor:
-       api_url: null
-     database:
-+      max_retries: -1
-       connection: null
-     deploy:
-       http_root: /var/lib/openstack-helm/httpboot
-@@ -119,6 +126,8 @@
-     inspector:
-       auth_type: password
-     keystone_authtoken:
-+      service_token_roles: service
-+      service_token_roles_required: true
-       auth_type: password
-       auth_version: v3
-     neutron:
-@@ -136,8 +145,21 @@
-       ipxe_enabled: true
-     service_catalog:
-       auth_type: password
-+    service_user:
-+      auth_type: password
-+      send_service_user_token: true
+@@ -144,6 +150,16 @@ conf:
+       send_service_user_token: true
      swift:
        auth_url: null
 +    vnc:
@@ -620,7 +585,7 @@ diff -Naur a/ironic/values.yaml b/ironic/values.yaml
      oslo_policy:
        policy_file: /etc/ironic/policy.yaml
    logging:
-@@ -296,6 +318,33 @@
+@@ -302,6 +318,33 @@ network:
      node_port:
        enabled: false
        port: 30511
@@ -651,10 +616,10 @@ diff -Naur a/ironic/values.yaml b/ironic/values.yaml
 +    env: []
 +    volumeMounts: []
 +  volumes: []
- 
+
  bootstrap:
    image:
-@@ -372,6 +421,19 @@
+@@ -378,6 +421,19 @@ dependencies:
            service: baremetal
          - endpoint: internal
            service: oslo_messaging
@@ -674,25 +639,7 @@ diff -Naur a/ironic/values.yaml b/ironic/values.yaml
      db_drop:
        services:
          - endpoint: internal
-@@ -471,7 +533,7 @@
-         user_domain_name: default
-         project_domain_name: default
-       glance:
--        role: admin
-+        role: admin,service
-         region_name: RegionOne
-         username: glance
-         password: password
-@@ -479,7 +541,7 @@
-         user_domain_name: service
-         project_domain_name: service
-       ironic:
--        role: admin
-+        role: admin,service
-         region_name: RegionOne
-         username: ironic
-         password: password
-@@ -617,6 +679,21 @@
+@@ -623,6 +679,21 @@ endpoints:
      port:
        api:
          default: 8088
@@ -714,7 +661,7 @@ diff -Naur a/ironic/values.yaml b/ironic/values.yaml
    fluentd:
      namespace: null
      name: fluentd
-@@ -652,6 +729,21 @@
+@@ -658,6 +729,21 @@ pod:
          - key: node-role.kubernetes.io/control-plane
            operator: Exists
            effect: NoSchedule
@@ -736,7 +683,7 @@ diff -Naur a/ironic/values.yaml b/ironic/values.yaml
    mounts:
      ironic_api:
        init_container: null
-@@ -672,9 +764,15 @@
+@@ -678,9 +764,15 @@ pod:
        ironic_db_sync:
          volumeMounts:
          volumes:
@@ -752,7 +699,7 @@ diff -Naur a/ironic/values.yaml b/ironic/values.yaml
    lifecycle:
      upgrades:
        deployments:
-@@ -686,9 +784,13 @@
+@@ -692,9 +784,13 @@ pod:
      disruption_budget:
        api:
          min_available: 0
@@ -766,7 +713,7 @@ diff -Naur a/ironic/values.yaml b/ironic/values.yaml
    resources:
      enabled: false
      api:
-@@ -705,6 +807,13 @@
+@@ -711,6 +807,13 @@ pod:
        limits:
          memory: "1024Mi"
          cpu: "2000m"
@@ -780,15 +727,15 @@ diff -Naur a/ironic/values.yaml b/ironic/values.yaml
      jobs:
        bootstrap:
          requests:
-@@ -778,6 +887,7 @@
+@@ -784,6 +887,7 @@ pod:
            cpu: "2000m"
    useHostNetwork:
      conductor: true
 +    novncproxy: false
    useHostIPC:
      conductor: true
- 
-@@ -804,6 +914,7 @@
+
+@@ -810,6 +914,7 @@ manifests:
    job_manage_cleaning_network: true
    job_rabbit_init: true
    pdb_api: true
@@ -796,7 +743,7 @@ diff -Naur a/ironic/values.yaml b/ironic/values.yaml
    network_policy: false
    secret_db: true
    secret_keystone: true
-@@ -812,4 +923,8 @@
+@@ -818,4 +923,8 @@ manifests:
    service_api: true
    service_ingress_api: true
    statefulset_conductor: true
