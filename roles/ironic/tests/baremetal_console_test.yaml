@@ -40,6 +40,8 @@ tests:
       images:
         tags:
           ironic_novncproxy_assets: example.com/novnc-assets@sha256:0123456789abcdef
+      console:
+        namespace: test-console-runtime
       conf:
         ironic:
           vnc:
@@ -63,6 +65,11 @@ tests:
         equal:
           path: metadata.name
           value: ironic-novncproxy
+      - template: templates/deployment-novncproxy.yaml
+        documentIndex: 3
+        equal:
+          path: spec.selector.matchLabels.component
+          value: novncproxy
       - template: templates/deployment-novncproxy.yaml
         documentIndex: 3
         equal:
@@ -110,6 +117,11 @@ tests:
       - template: templates/service-novncproxy.yaml
         documentIndex: 0
         equal:
+          path: spec.selector.component
+          value: novncproxy
+      - template: templates/service-novncproxy.yaml
+        documentIndex: 0
+        equal:
           path: spec.ports[0].port
           value: 6090
       - template: templates/role-console-pods.yaml
@@ -121,12 +133,42 @@ tests:
         documentIndex: 0
         equal:
           path: metadata.namespace
-          value: test-console
+          value: test-console-runtime
+      - template: templates/role-console-pods.yaml
+        documentIndex: 0
+        contains:
+          path: rules[0].verbs
+          content: deletecollection
+      - template: templates/role-console-pods.yaml
+        documentIndex: 0
+        contains:
+          path: rules[0].verbs
+          content: list
+      - template: templates/rolebinding-console-pods.yaml
+        documentIndex: 0
+        equal:
+          path: metadata.namespace
+          value: test-console-runtime
       - template: templates/rolebinding-console-pods.yaml
         documentIndex: 0
         equal:
           path: subjects[0].name
           value: ironic-conductor
+      - template: templates/rolebinding-console-pods.yaml
+        documentIndex: 0
+        equal:
+          path: subjects[0].namespace
+          value: test-console
+      - template: templates/network-policy-console.yaml
+        documentIndex: 0
+        equal:
+          path: metadata.namespace
+          value: test-console-runtime
+      - template: templates/network-policy-console.yaml
+        documentIndex: 0
+        equal:
+          path: spec.ingress[0].ports[0].port
+          value: 5900
       - template: templates/network-policy-console.yaml
         documentIndex: 0
         equal:
