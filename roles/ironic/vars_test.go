@@ -26,6 +26,7 @@ type Vars struct {
 }
 
 type Defaults struct {
+	EnabledBootInterfaces                  string   `yaml:"ironic_enabled_boot_interfaces"`
 	RedfishVirtualMediaEnabled             bool     `yaml:"ironic_redfish_virtual_media_enabled"`
 	RedfishVirtualMediaUseSwift            bool     `yaml:"ironic_redfish_virtual_media_use_swift"`
 	RedfishVirtualMediaBootloaderByArch    string   `yaml:"ironic_redfish_virtual_media_bootloader_by_arch"`
@@ -33,15 +34,35 @@ type Defaults struct {
 	RedfishVirtualMediaFileURLAllowedPaths []string `yaml:"ironic_redfish_virtual_media_file_url_allowed_paths"`
 }
 
+type IronicVars struct {
+	HelmValues struct {
+		Conf struct {
+			Ironic struct {
+				Default struct {
+					EnabledBootInterfaces string `yaml:"enabled_boot_interfaces"`
+				} `yaml:"DEFAULT"`
+			} `yaml:"ironic"`
+		} `yaml:"conf"`
+	} `yaml:"_ironic_helm_values"`
+}
+
 func TestRedfishVirtualMediaDefaults(t *testing.T) {
 	var defaults Defaults
 	err := yaml.UnmarshalWithOptions(defaultsFile, &defaults)
 	require.NoError(t, err)
+	require.Equal(t, "ipxe,pxe,redfish-virtual-media", defaults.EnabledBootInterfaces)
 	require.False(t, defaults.RedfishVirtualMediaEnabled)
 	require.False(t, defaults.RedfishVirtualMediaUseSwift)
 	require.Equal(t, "x86_64:file:///usr/share/ironic/esp/x86_64.img", defaults.RedfishVirtualMediaBootloaderByArch)
 	require.Equal(t, "EFI/ubuntu/grub.cfg", defaults.RedfishVirtualMediaGrubConfigPath)
 	require.Contains(t, defaults.RedfishVirtualMediaFileURLAllowedPaths, "/usr/share/ironic/esp")
+}
+
+func TestRedfishVirtualMediaBootInterfaceIsAlwaysAdvertised(t *testing.T) {
+	var ironicVars IronicVars
+	err := yaml.UnmarshalWithOptions(varsFile, &ironicVars)
+	require.NoError(t, err)
+	require.Equal(t, "{{ ironic_enabled_boot_interfaces }}", ironicVars.HelmValues.Conf.Ironic.Default.EnabledBootInterfaces)
 }
 
 func TestMain(m *testing.M) {
