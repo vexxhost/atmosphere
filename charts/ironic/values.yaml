@@ -331,17 +331,44 @@ network:
       port: 30690
 
 console:
+  # Required when the Kubernetes console provider or its RBAC and
+  # NetworkPolicy manifests are enabled. The namespace must exist before the
+  # chart creates cross-namespace resources.
   namespace: null
   pod:
+    annotations: {}
     enableServiceLinks: false
+    imagePullSecrets: []
+    nodeSelector: {}
+    affinity: {}
+    tolerations: []
+    topologySpreadConstraints: []
+    priorityClassName: null
+    runtimeClassName: null
     securityContext: {}
   container:
     ports:
       - name: rfb
         containerPort: 5900
-    readinessProbe: {}
+    startupProbe:
+      tcpSocket:
+        port: rfb
+      periodSeconds: 2
+      failureThreshold: 60
+    readinessProbe:
+      tcpSocket:
+        port: rfb
+      periodSeconds: 2
+      failureThreshold: 3
     livenessProbe: {}
     securityContext: {}
+    resources:
+      requests:
+        cpu: 250m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 1024Mi
     env: []
     volumeMounts: []
   volumes: []

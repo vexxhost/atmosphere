@@ -16,6 +16,21 @@ _ironic_helm_values:
   endpoints: "{{ openstack_helm_endpoints }}"
   images:
     tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('ironic') }}"
+  console:
+    namespace: "{{ ironic_vnc_namespace if ironic_vnc_enabled | bool else omit }}"
+    pod:
+      annotations: "{{ ironic_vnc_pod.annotations }}"
+      nodeSelector: "{{ ironic_vnc_pod.nodeSelector }}"
+      tolerations: "{{ ironic_vnc_pod.tolerations }}"
+      affinity: "{{ ironic_vnc_pod.affinity }}"
+      topologySpreadConstraints: "{{ ironic_vnc_pod.topologySpreadConstraints }}"
+      imagePullSecrets: "{{ ironic_vnc_pod.imagePullSecrets }}"
+      priorityClassName: "{{ ironic_vnc_pod.priorityClassName }}"
+      runtimeClassName: "{{ ironic_vnc_pod.runtimeClassName }}"
+    container:
+      resources: "{{ ironic_vnc_pod.resources }}"
+      volumeMounts: "{{ ironic_vnc_pod.scratchVolumeMounts }}"
+    volumes: "{{ ironic_vnc_pod.scratchVolumes }}"
   bootstrap:
     image:
       enabled: false
@@ -121,6 +136,12 @@ _ironic_helm_values:
     # NOTE(mnaser): We're managing all the networks via Ansible.
     job_manage_cleaning_network: false
     service_novncproxy: "{{ ironic_vnc_enabled | bool }}"
+    network_policy_console: >-
+      {{
+        (ironic_vnc_enabled | bool)
+        and ironic_vnc_container_provider == 'kubernetes'
+        and (ironic_vnc_network_policy_enabled | bool)
+      }}
     role_console_pods: >-
       {{
         (ironic_vnc_enabled | bool)

@@ -8,6 +8,7 @@ immutable console backend image that implements Ironic's `APP`, `APP_INFO`, and
 
 ```yaml
 ironic_vnc_enabled: true
+ironic_vnc_namespace: openstack-ironic-vnc
 atmosphere_image_overrides:
   ironic_console: registry.example.com/ironic-console@sha256:<digest>
 ```
@@ -15,6 +16,14 @@ atmosphere_image_overrides:
 The `ironic_console` entry is optional while graphical consoles are disabled.
 When enabled, the role requires a digest-pinned override and passes it to
 Ironic as the dynamic console backend image.
+
+The namespace defaults to
+`{{ ironic_helm_release_namespace }}-ironic-vnc`; for the standard `openstack`
+release this is `openstack-ironic-vnc`. The role creates the namespace and
+enables its RFB NetworkPolicy by default. The Ironic API and noVNC endpoint
+hosts must be distinct. Disabling the feature fails while dynamic console Pods
+or Secrets remain, and removes the role-owned noVNC Ingress only after that
+preflight succeeds.
 
 The role deploys `ironic-novncproxy`, configures the Kubernetes console
 container provider, and enables both `redfish-graphical` and `no-console`.

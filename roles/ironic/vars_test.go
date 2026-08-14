@@ -78,3 +78,16 @@ func TestBaremetalConsoleImageUsesAtmosphereCatalog(t *testing.T) {
 		`console_image: "{{ atmosphere_images.get('ironic_console', omit) }}"`)
 	require.NotContains(t, string(varsFile), "ironic_vnc_image")
 }
+
+func TestBaremetalConsoleSafeDefaults(t *testing.T) {
+	require.Contains(t, string(defaultsFile),
+		`ironic_vnc_namespace: "{{ ironic_helm_release_namespace }}-ironic-vnc"`)
+	require.Contains(t, string(defaultsFile),
+		"ironic_vnc_network_policy_enabled: true")
+	require.Contains(t, string(defaultsFile), "ironic_vnc_disable_mode: fail")
+	require.Contains(t, string(varsFile),
+		`namespace: "{{ ironic_vnc_namespace if ironic_vnc_enabled | bool else omit }}"`)
+	require.Contains(t, string(varsFile), "network_policy_console: >-")
+	require.Contains(t, string(tasksFile), "Create bare metal console namespace")
+	require.Contains(t, string(tasksFile), "Remove disabled noVNC Ingress")
+}

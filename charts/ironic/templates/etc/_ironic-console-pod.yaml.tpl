@@ -12,11 +12,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */}}
 
+{{- $consoleNamespace := required "console.namespace is required when the Kubernetes console provider is enabled" .Values.console.namespace }}
+
 apiVersion: v1
 kind: Secret
 metadata:
   name: "ironic-console-{{ "{{ uuid }}" }}"
-  namespace: {{ .Values.console.namespace | default .Release.Namespace }}
+  namespace: {{ $consoleNamespace }}
   labels:
     app: ironic
     component: ironic-console
@@ -31,16 +33,46 @@ apiVersion: v1
 kind: Pod
 metadata:
   name: "ironic-console-{{ "{{ uuid }}" }}"
-  namespace: {{ .Values.console.namespace | default .Release.Namespace }}
+  namespace: {{ $consoleNamespace }}
   labels:
     app: ironic
     component: ironic-console
     conductor: "{{ "{{ conductor }}" }}"
     app.kubernetes.io/instance: {{ .Release.Name | quote }}
     app.kubernetes.io/managed-by: ironic
+{{- with .Values.console.pod.annotations }}
+  annotations:
+{{ toYaml . | indent 4 }}
+{{- end }}
 spec:
   automountServiceAccountToken: false
   enableServiceLinks: {{ .Values.console.pod.enableServiceLinks }}
+{{- with .Values.console.pod.imagePullSecrets }}
+  imagePullSecrets:
+{{ toYaml . | indent 4 }}
+{{- end }}
+{{- with .Values.console.pod.nodeSelector }}
+  nodeSelector:
+{{ toYaml . | indent 4 }}
+{{- end }}
+{{- with .Values.console.pod.affinity }}
+  affinity:
+{{ toYaml . | indent 4 }}
+{{- end }}
+{{- with .Values.console.pod.tolerations }}
+  tolerations:
+{{ toYaml . | indent 4 }}
+{{- end }}
+{{- with .Values.console.pod.topologySpreadConstraints }}
+  topologySpreadConstraints:
+{{ toYaml . | indent 4 }}
+{{- end }}
+{{- with .Values.console.pod.priorityClassName }}
+  priorityClassName: {{ . | quote }}
+{{- end }}
+{{- with .Values.console.pod.runtimeClassName }}
+  runtimeClassName: {{ . | quote }}
+{{- end }}
 {{- with .Values.console.pod.securityContext }}
   securityContext:
 {{ toYaml . | indent 4 }}
@@ -51,6 +83,10 @@ spec:
       imagePullPolicy: {{ .Values.images.pull_policy | quote }}
 {{- with .Values.console.container.ports }}
       ports:
+{{ toYaml . | indent 8 }}
+{{- end }}
+{{- with .Values.console.container.startupProbe }}
+      startupProbe:
 {{ toYaml . | indent 8 }}
 {{- end }}
 {{- with .Values.console.container.readinessProbe }}
@@ -66,12 +102,7 @@ spec:
 {{ toYaml . | indent 8 }}
 {{- end }}
       resources:
-        requests:
-          cpu: 250m
-          memory: 256Mi
-        limits:
-          cpu: 500m
-          memory: 1024Mi
+{{ toYaml .Values.console.container.resources | indent 8 }}
 {{- with .Values.console.container.volumeMounts }}
       volumeMounts:
 {{ toYaml . | indent 8 }}

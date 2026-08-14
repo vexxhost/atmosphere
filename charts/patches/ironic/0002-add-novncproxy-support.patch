@@ -1,9 +1,9 @@
 diff --git a/ironic/templates/bin/_ironic-novncproxy-init-assets.sh.tpl b/ironic/templates/bin/_ironic-novncproxy-init-assets.sh.tpl
 new file mode 100644
-index 0000000..8b64e76
+index 0000000..0929484
 --- /dev/null
 +++ b/ironic/templates/bin/_ironic-novncproxy-init-assets.sh.tpl
-@@ -0,0 +1,26 @@
+@@ -0,0 +1,29 @@
 +#!/bin/bash
 +
 +{{/*
@@ -30,6 +30,9 @@ index 0000000..8b64e76
 +  cp /tmp/usr/share/novnc/vnc_lite.html \
 +    /tmp/usr/share/novnc/vnc_auto.html
 +fi
++
++test -s /tmp/usr/share/novnc/vnc_auto.html
++test -s /tmp/usr/share/novnc/core/rfb.js
 diff --git a/ironic/templates/bin/_ironic-novncproxy.sh.tpl b/ironic/templates/bin/_ironic-novncproxy.sh.tpl
 new file mode 100644
 index 0000000..8030b04
@@ -71,7 +74,7 @@ index 9666803..6279806 100644
  {{ include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conductor.pxe.script "key" "ironic-conductor-pxe.sh") | indent 2 }}
  {{ include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conductor.pxe.init_script "key" "ironic-conductor-pxe-init.sh") | indent 2 }}
 diff --git a/ironic/templates/configmap-etc.yaml b/ironic/templates/configmap-etc.yaml
-index 8b25336..8f0f500 100644
+index 8b25336..e0978fd 100644
 --- a/ironic/templates/configmap-etc.yaml
 +++ b/ironic/templates/configmap-etc.yaml
 @@ -208,6 +208,10 @@ limitations under the License.
@@ -85,11 +88,13 @@ index 8b25336..8f0f500 100644
  {{- if and (empty .Values.conf.logging.handler_fluent) (has "fluent" .Values.conf.logging.handlers.keys) -}}
  {{- $fluentd_host := tuple "fluentd" "internal" $envAll | include "helm-toolkit.endpoints.hostname_namespaced_endpoint_lookup" }}
  {{- $fluentd_port := tuple "fluentd" "internal" "service" $envAll | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
-@@ -230,6 +234,7 @@ data:
+@@ -230,6 +234,9 @@ data:
    ironic.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.ironic | b64enc }}
    logging.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.logging | b64enc }}
    policy.yaml: {{ toYaml .Values.conf.policy | b64enc }}
++{{- if and .Values.conf.ironic.vnc.enabled (eq .Values.conf.ironic.vnc.container_provider "kubernetes") }}
 +  ironic-console-pod.yaml: {{ tuple "etc/_ironic-console-pod.yaml.tpl" . | include "helm-toolkit.utils.template" | b64enc }}
++{{- end }}
  {{- include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conf.tftp_map_file "key" "tftp-map-file" "format" "Secret" ) | indent 2 }}
  {{- include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conf.nginx "key" "nginx.conf" "format" "Secret" ) | indent 2 }}
  {{- end }}
@@ -234,10 +239,10 @@ index 0000000..e7b584a
 +{{- end }}
 diff --git a/ironic/templates/etc/_ironic-console-pod.yaml.tpl b/ironic/templates/etc/_ironic-console-pod.yaml.tpl
 new file mode 100644
-index 0000000..4909ad9
+index 0000000..f09254d
 --- /dev/null
 +++ b/ironic/templates/etc/_ironic-console-pod.yaml.tpl
-@@ -0,0 +1,95 @@
+@@ -0,0 +1,126 @@
 +{{/*
 +Licensed under the Apache License, Version 2.0 (the "License");
 +you may not use this file except in compliance with the License.
@@ -252,11 +257,13 @@ index 0000000..4909ad9
 +limitations under the License.
 +*/}}
 +
++{{- $consoleNamespace := required "console.namespace is required when the Kubernetes console provider is enabled" .Values.console.namespace }}
++
 +apiVersion: v1
 +kind: Secret
 +metadata:
 +  name: "ironic-console-{{ "{{ uuid }}" }}"
-+  namespace: {{ .Values.console.namespace | default .Release.Namespace }}
++  namespace: {{ $consoleNamespace }}
 +  labels:
 +    app: ironic
 +    component: ironic-console
@@ -271,16 +278,46 @@ index 0000000..4909ad9
 +kind: Pod
 +metadata:
 +  name: "ironic-console-{{ "{{ uuid }}" }}"
-+  namespace: {{ .Values.console.namespace | default .Release.Namespace }}
++  namespace: {{ $consoleNamespace }}
 +  labels:
 +    app: ironic
 +    component: ironic-console
 +    conductor: "{{ "{{ conductor }}" }}"
 +    app.kubernetes.io/instance: {{ .Release.Name | quote }}
 +    app.kubernetes.io/managed-by: ironic
++{{- with .Values.console.pod.annotations }}
++  annotations:
++{{ toYaml . | indent 4 }}
++{{- end }}
 +spec:
 +  automountServiceAccountToken: false
 +  enableServiceLinks: {{ .Values.console.pod.enableServiceLinks }}
++{{- with .Values.console.pod.imagePullSecrets }}
++  imagePullSecrets:
++{{ toYaml . | indent 4 }}
++{{- end }}
++{{- with .Values.console.pod.nodeSelector }}
++  nodeSelector:
++{{ toYaml . | indent 4 }}
++{{- end }}
++{{- with .Values.console.pod.affinity }}
++  affinity:
++{{ toYaml . | indent 4 }}
++{{- end }}
++{{- with .Values.console.pod.tolerations }}
++  tolerations:
++{{ toYaml . | indent 4 }}
++{{- end }}
++{{- with .Values.console.pod.topologySpreadConstraints }}
++  topologySpreadConstraints:
++{{ toYaml . | indent 4 }}
++{{- end }}
++{{- with .Values.console.pod.priorityClassName }}
++  priorityClassName: {{ . | quote }}
++{{- end }}
++{{- with .Values.console.pod.runtimeClassName }}
++  runtimeClassName: {{ . | quote }}
++{{- end }}
 +{{- with .Values.console.pod.securityContext }}
 +  securityContext:
 +{{ toYaml . | indent 4 }}
@@ -291,6 +328,10 @@ index 0000000..4909ad9
 +      imagePullPolicy: {{ .Values.images.pull_policy | quote }}
 +{{- with .Values.console.container.ports }}
 +      ports:
++{{ toYaml . | indent 8 }}
++{{- end }}
++{{- with .Values.console.container.startupProbe }}
++      startupProbe:
 +{{ toYaml . | indent 8 }}
 +{{- end }}
 +{{- with .Values.console.container.readinessProbe }}
@@ -306,12 +347,7 @@ index 0000000..4909ad9
 +{{ toYaml . | indent 8 }}
 +{{- end }}
 +      resources:
-+        requests:
-+          cpu: 250m
-+          memory: 256Mi
-+        limits:
-+          cpu: 500m
-+          memory: 1024Mi
++{{ toYaml .Values.console.container.resources | indent 8 }}
 +{{- with .Values.console.container.volumeMounts }}
 +      volumeMounts:
 +{{ toYaml . | indent 8 }}
@@ -335,10 +371,10 @@ index 0000000..4909ad9
 +{{- end }}
 diff --git a/ironic/templates/network-policy-console.yaml b/ironic/templates/network-policy-console.yaml
 new file mode 100644
-index 0000000..8e128cf
+index 0000000..81b0eea
 --- /dev/null
 +++ b/ironic/templates/network-policy-console.yaml
-@@ -0,0 +1,41 @@
+@@ -0,0 +1,42 @@
 +{{/*
 +Licensed under the Apache License, Version 2.0 (the "License");
 +you may not use this file except in compliance with the License.
@@ -354,12 +390,13 @@ index 0000000..8e128cf
 +*/}}
 +
 +{{- if .Values.manifests.network_policy_console }}
++{{- $consoleNamespace := required "console.namespace is required when the console NetworkPolicy is enabled" .Values.console.namespace }}
 +---
 +apiVersion: networking.k8s.io/v1
 +kind: NetworkPolicy
 +metadata:
 +  name: ironic-console-rfb
-+  namespace: {{ .Values.console.namespace | default .Release.Namespace }}
++  namespace: {{ $consoleNamespace }}
 +spec:
 +  podSelector:
 +    matchLabels:
@@ -382,44 +419,9 @@ index 0000000..8e128cf
 +{{- end }}
 diff --git a/ironic/templates/role-console-pods.yaml b/ironic/templates/role-console-pods.yaml
 new file mode 100644
-index 0000000..e91dcb2
+index 0000000..fa9b052
 --- /dev/null
 +++ b/ironic/templates/role-console-pods.yaml
-@@ -0,0 +1,29 @@
-+{{/*
-+Licensed under the Apache License, Version 2.0 (the "License");
-+you may not use this file except in compliance with the License.
-+You may obtain a copy of the License at
-+
-+   http://www.apache.org/licenses/LICENSE-2.0
-+
-+Unless required by applicable law or agreed to in writing, software
-+distributed under the License is distributed on an "AS IS" BASIS,
-+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-+See the License for the specific language governing permissions and
-+limitations under the License.
-+*/}}
-+
-+{{- if .Values.manifests.role_console_pods }}
-+---
-+apiVersion: rbac.authorization.k8s.io/v1
-+kind: Role
-+metadata:
-+  name: ironic-console-pods
-+  namespace: {{ .Values.console.namespace | default .Release.Namespace }}
-+rules:
-+  - apiGroups: [""]
-+    resources: ["pods"]
-+    verbs: ["create", "delete", "deletecollection", "get", "list", "patch"]
-+  - apiGroups: [""]
-+    resources: ["secrets"]
-+    verbs: ["create", "delete", "deletecollection", "get", "list", "patch"]
-+{{- end }}
-diff --git a/ironic/templates/rolebinding-console-pods.yaml b/ironic/templates/rolebinding-console-pods.yaml
-new file mode 100644
-index 0000000..d93ba21
---- /dev/null
-+++ b/ironic/templates/rolebinding-console-pods.yaml
 @@ -0,0 +1,30 @@
 +{{/*
 +Licensed under the Apache License, Version 2.0 (the "License");
@@ -435,13 +437,50 @@ index 0000000..d93ba21
 +limitations under the License.
 +*/}}
 +
++{{- if .Values.manifests.role_console_pods }}
++{{- $consoleNamespace := required "console.namespace is required when console Pod RBAC is enabled" .Values.console.namespace }}
++---
++apiVersion: rbac.authorization.k8s.io/v1
++kind: Role
++metadata:
++  name: ironic-console-pods
++  namespace: {{ $consoleNamespace }}
++rules:
++  - apiGroups: [""]
++    resources: ["pods"]
++    verbs: ["create", "delete", "deletecollection", "get", "list", "patch"]
++  - apiGroups: [""]
++    resources: ["secrets"]
++    verbs: ["create", "delete", "deletecollection", "get", "list", "patch"]
++{{- end }}
+diff --git a/ironic/templates/rolebinding-console-pods.yaml b/ironic/templates/rolebinding-console-pods.yaml
+new file mode 100644
+index 0000000..55b2a91
+--- /dev/null
++++ b/ironic/templates/rolebinding-console-pods.yaml
+@@ -0,0 +1,31 @@
++{{/*
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++   http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++*/}}
++
 +{{- if .Values.manifests.rolebinding_console_pods }}
++{{- $consoleNamespace := required "console.namespace is required when console Pod RBAC is enabled" .Values.console.namespace }}
 +---
 +apiVersion: rbac.authorization.k8s.io/v1
 +kind: RoleBinding
 +metadata:
 +  name: ironic-console-pods
-+  namespace: {{ .Values.console.namespace | default .Release.Namespace }}
++  namespace: {{ $consoleNamespace }}
 +roleRef:
 +  apiGroup: rbac.authorization.k8s.io
 +  kind: Role
@@ -542,7 +581,7 @@ index 920d4af..9dadcaf 100644
            configMap:
              name: ironic-bin
 diff --git a/ironic/values.yaml b/ironic/values.yaml
-index 2228bfc..ec85e97 100644
+index 2228bfc..4ccbf1f 100644
 --- a/ironic/values.yaml
 +++ b/ironic/values.yaml
 @@ -27,6 +27,9 @@ labels:
@@ -585,7 +624,7 @@ index 2228bfc..ec85e97 100644
      oslo_policy:
        policy_file: /etc/ironic/policy.yaml
    logging:
-@@ -302,6 +318,33 @@ network:
+@@ -302,6 +318,60 @@ network:
      node_port:
        enabled: false
        port: 30511
@@ -602,24 +641,51 @@ index 2228bfc..ec85e97 100644
 +      port: 30690
 +
 +console:
++  # Required when the Kubernetes console provider or its RBAC and
++  # NetworkPolicy manifests are enabled. The namespace must exist before the
++  # chart creates cross-namespace resources.
 +  namespace: null
 +  pod:
++    annotations: {}
 +    enableServiceLinks: false
++    imagePullSecrets: []
++    nodeSelector: {}
++    affinity: {}
++    tolerations: []
++    topologySpreadConstraints: []
++    priorityClassName: null
++    runtimeClassName: null
 +    securityContext: {}
 +  container:
 +    ports:
 +      - name: rfb
 +        containerPort: 5900
-+    readinessProbe: {}
++    startupProbe:
++      tcpSocket:
++        port: rfb
++      periodSeconds: 2
++      failureThreshold: 60
++    readinessProbe:
++      tcpSocket:
++        port: rfb
++      periodSeconds: 2
++      failureThreshold: 3
 +    livenessProbe: {}
 +    securityContext: {}
++    resources:
++      requests:
++        cpu: 250m
++        memory: 256Mi
++      limits:
++        cpu: 500m
++        memory: 1024Mi
 +    env: []
 +    volumeMounts: []
 +  volumes: []
 
  bootstrap:
    image:
-@@ -378,6 +421,19 @@ dependencies:
+@@ -378,6 +448,19 @@ dependencies:
            service: baremetal
          - endpoint: internal
            service: oslo_messaging
@@ -639,7 +705,7 @@ index 2228bfc..ec85e97 100644
      db_drop:
        services:
          - endpoint: internal
-@@ -623,6 +679,21 @@ endpoints:
+@@ -623,6 +706,21 @@ endpoints:
      port:
        api:
          default: 8088
@@ -661,7 +727,7 @@ index 2228bfc..ec85e97 100644
    fluentd:
      namespace: null
      name: fluentd
-@@ -658,6 +729,21 @@ pod:
+@@ -658,6 +756,21 @@ pod:
          - key: node-role.kubernetes.io/control-plane
            operator: Exists
            effect: NoSchedule
@@ -683,7 +749,7 @@ index 2228bfc..ec85e97 100644
    mounts:
      ironic_api:
        init_container: null
-@@ -678,9 +764,15 @@ pod:
+@@ -678,9 +791,15 @@ pod:
        ironic_db_sync:
          volumeMounts:
          volumes:
@@ -699,7 +765,7 @@ index 2228bfc..ec85e97 100644
    lifecycle:
      upgrades:
        deployments:
-@@ -692,9 +784,13 @@ pod:
+@@ -692,9 +811,13 @@ pod:
      disruption_budget:
        api:
          min_available: 0
@@ -713,7 +779,7 @@ index 2228bfc..ec85e97 100644
    resources:
      enabled: false
      api:
-@@ -711,6 +807,13 @@ pod:
+@@ -711,6 +834,13 @@ pod:
        limits:
          memory: "1024Mi"
          cpu: "2000m"
@@ -727,7 +793,7 @@ index 2228bfc..ec85e97 100644
      jobs:
        bootstrap:
          requests:
-@@ -784,6 +887,7 @@ pod:
+@@ -784,6 +914,7 @@ pod:
            cpu: "2000m"
    useHostNetwork:
      conductor: true
@@ -735,7 +801,7 @@ index 2228bfc..ec85e97 100644
    useHostIPC:
      conductor: true
 
-@@ -810,6 +914,7 @@ manifests:
+@@ -810,6 +941,7 @@ manifests:
    job_manage_cleaning_network: true
    job_rabbit_init: true
    pdb_api: true
@@ -743,7 +809,7 @@ index 2228bfc..ec85e97 100644
    network_policy: false
    secret_db: true
    secret_keystone: true
-@@ -818,4 +923,8 @@ manifests:
+@@ -818,4 +950,8 @@ manifests:
    service_api: true
    service_ingress_api: true
    statefulset_conductor: true

@@ -32,9 +32,33 @@ ironic_vnc_enabled: false
 ironic_vnc_container_provider: kubernetes
 ironic_vnc_novnc_web: /usr/share/novnc
 ironic_vnc_public_url: "https://{{ openstack_helm_endpoints_ironic_novnc_host }}/vnc_auto.html"
+ironic_vnc_namespace: "{{ ironic_helm_release_namespace }}-ironic-vnc"
+ironic_vnc_namespace_labels: {}
+ironic_vnc_namespace_annotations: {}
+ironic_vnc_previous_namespaces: []
+ironic_vnc_network_policy_enabled: true
+ironic_vnc_disable_mode: fail
 ironic_vnc_ingress_class_name: "{{ atmosphere_ingress_class_name }}"
 ironic_vnc_ingress_annotations: {}
 ironic_vnc_kubernetes_pod_timeout: 120
+ironic_vnc_pod:
+  annotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  topologySpreadConstraints: []
+  imagePullSecrets: []
+  priorityClassName: null
+  runtimeClassName: null
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+  scratchVolumes: []
+  scratchVolumeMounts: []
 
 # Optional driver/interface overrides. Keep hardware types unset to use
 # Ironic's defaults while allowing out-of-tree drivers to register additions.
