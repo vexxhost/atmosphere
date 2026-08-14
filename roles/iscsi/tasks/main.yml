@@ -4,6 +4,10 @@
   ansible.builtin.package:
     name: "{{ 'iscsi-initiator-utils' if ansible_os_family == 'RedHat' else 'open-iscsi' }}"
     state: present
+  register: _install_iscsi
+  retries: 5
+  delay: 10
+  until: _install_iscsi is not failed
 
 - name: Ensure iscsid is started
   ansible.builtin.service:

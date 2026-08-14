@@ -1,0 +1,65 @@
+---
+fixes:
+  - |
+    Lowered the Ansible-core floor in ``pyproject.toml`` from
+    ``>=2.20`` back to ``>=2.15.9`` so that Atmosphere remains
+    installable on Ubuntu 22.04, whose Python 3.10 interpreter can't
+    satisfy the Python 3.12 requirement of Ansible-core 2.20. On
+    Ubuntu 26.04 pip still resolves to the newest compatible release,
+    preserving the Python 3.14 deployment path.
+  - |
+    Fixed the ``ceph_provisioners``, ``ceph_csi_rbd``, and
+    ``rook_ceph_cluster`` roles to call the new ``vexxhost.ceph.key_info``
+    module when reading existing CephX keys. Recent versions of the
+    ``vexxhost.ceph`` collection removed ``state: info`` from the
+    ``vexxhost.ceph.key`` module.
+  - |
+    Fixed the ``storage_to_ceph_provisioners_helm_values`` filter plugin so
+    it unwraps Ansible lazy value wrappers before validating the
+    ``atmosphere_storage`` input. Ansible-core 2.20, which Ubuntu 26.04
+    requires, wraps rendered values in lazy containers that previously
+    broke the Pydantic discriminated-union check.
+  - |
+    Pinned ``containerd_limit_open_file_num`` to ``1048576`` when importing
+    the Kubernetes and Ceph playbooks. Ubuntu 26.04 resolves
+    ``LimitNOFILE=infinity`` to ``2147483584``, which every container
+    inherits. Workloads that iterate through inherited file descriptors
+    before ``execve``, such as HAProxy external-check scripts spawned by
+    the Percona XtraDB cluster, then spend tens of seconds in the close
+    loop and time out.
+  - |
+    Raised the default Keycloak ``resourcesPreset`` from ``small`` to
+    ``large``. Keycloak 24 runs its Quarkus augmentation step on first
+    boot and needs more than the 1536 MiB allowed by the ``medium``
+    preset to complete before its HTTP port becomes reachable; smaller
+    presets trigger an ``OOMKilled``. Operators can still override the
+    preset through ``keycloak_helm_values``.
+  - |
+    Raised the Helm timeout for the Neutron release to 15 minutes. The
+    Neutron ``db-sync`` post-install hook replays the full Alembic
+    migration chain on a fresh install and exceeds the default
+    five-minute Helm hook timeout, causing the release to fail.
+  - |
+    Defined the default ``magnum_images`` list directly in the Magnum
+    and ``magnum_pre`` role defaults, removing the ``_magnum_images``
+    variable indirection. Ansible-core 2.20 wraps the rendered template
+    in a lazy container that the ``loop`` keyword rejects with ``must
+    resolve to a 'list', not 'str'``.
+  - |
+    Migrated the molecule scenarios to access Ansible facts through
+    ``ansible_facts['fact_name']`` instead of the legacy top-level
+    ``ansible_*`` variables. Ansible-core 2.20 deprecates automatic
+    injection of these variables and removes the behaviour in 2.24.
+  - |
+    Raised the Helm timeout for the Tempest release to 30 minutes and
+    added a polling retry loop on the Tempest Job lookup. The Tempest
+    suite now takes longer than the previous 20-minute Helm wait on
+    Ubuntu 26.04, which caused the Job status check to race the
+    Kubernetes controller and fail even when every test passed.
+  - |
+    Rewrote the Magnum ``api-paste.ini`` so that it mounts the
+    oslo.middleware health check as an app under ``/healthcheck``
+    instead of as a pipeline filter. The Magnum ``main`` image ships
+    oslo.middleware 8.0, which refuses the legacy filter form and
+    crashes ``magnum-api`` on startup.
+

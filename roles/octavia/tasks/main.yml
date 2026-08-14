@@ -17,6 +17,7 @@
     file: generate_resources.yml
 
 - name: Create CAs & Issuers
+  when: not (_pre_role_active | default(false))
   kubernetes.core.k8s:
     state: present
     definition:
@@ -56,6 +57,7 @@
     - octavia-server
 
 - name: Create certificate for Octavia clients
+  when: not (_pre_role_active | default(false))
   kubernetes.core.k8s:
     state: present
     definition:
@@ -84,6 +86,7 @@
       size: {{ octavia_tls_client_private_key_size }}
 
 - name: Create admin compute quotaset
+  when: not (_pre_role_active | default(false))
   openstack.cloud.quota:
     cloud: atmosphere
     # NOTE(okozachenko): It uses project name instead of id.

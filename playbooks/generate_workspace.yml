@@ -385,6 +385,12 @@
       ansible.builtin.tempfile:
         state: file
         prefix: "{{ item }}"
+        # NOTE(rlin): Place tempfiles under the workspace (disk-backed) rather
+        #             than the system default (which is tmpfs on Ubuntu 24.04+).
+        #             The openssh_keypair module calls chattr on the generated
+        #             files, which fails with "Operation not supported" on
+        #             tmpfs.
+        path: "{{ workspace_path }}"
       register: _ssh_key_file
       # NOTE(mnaser): We don't want to override existing secrets, so we generate
       #               a new one if and only if it doesn't exist
