@@ -95,6 +95,10 @@
     gigabytes: -1
     security_group: -1
     security_group_rule: -1
+  register: _octavia_admin_compute_quotaset
+  retries: 60
+  delay: 5
+  until: _octavia_admin_compute_quotaset is not failed
 
 - name: Deploy Helm chart
   run_once: true
@@ -104,18 +108,16 @@
     release_namespace: "{{ octavia_helm_release_namespace }}"
     create_namespace: true
     kubeconfig: "{{ octavia_helm_kubeconfig }}"
+    timeout: "{{ octavia_helm_timeout }}"
     values: "{{ _octavia_helm_values | combine(octavia_helm_values, recursive=True) }}"
 
 - name: Add implied roles
   run_once: true
-  ansible.builtin.shell: |
-    set -o posix
-    source /etc/profile.d/atmosphere.sh
-    openstack implied role create \
-      --implied-role {{ item.implies }} \
+  ansible.builtin.command:
+    cmd: >-
+      openstack implied role create
+      --implied-role {{ item.implies }}
       {{ item.role }}
-  args:
-    executable: /bin/bash
   loop:
     - role: member
       implies: load-balancer_member
