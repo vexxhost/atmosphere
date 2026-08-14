@@ -12,6 +12,15 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+- name: Fail if atmosphere_ceph_enabled is set
+  ansible.builtin.fail:
+    msg: >-
+      The "atmosphere_ceph_enabled" variable is no longer supported.
+      Please use the "atmosphere_storage" variable to configure storage
+      backends instead. Refer to the storage configuration documentation
+      for migration instructions.
+  when: atmosphere_ceph_enabled is defined
+
 - name: Create CA certificates
   kubernetes.core.k8s:
     state: present
@@ -53,6 +62,10 @@
   loop:
     - libvirt-vnc
     - libvirt-api
+
+- name: Generate Helm values (storage)
+  ansible.builtin.set_fact:
+    _libvirt_helm_values: "{{ _libvirt_helm_values | combine(_atmosphere_storage_config | vexxhost.atmosphere.storage_to_libvirt_helm_values, recursive=True) }}"
 
 - name: Deploy Helm chart
   run_once: true

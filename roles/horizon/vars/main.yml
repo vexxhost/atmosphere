@@ -17,6 +17,8 @@ _horizon_helm_values:
   images:
     tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('horizon') }}"
   pod:
+    labels:
+      include_app_kubernetes_io: false
     security_context:
       horizon:
         pod:
@@ -60,6 +62,15 @@ _horizon_helm_values:
         - monitoring
         - neutron_vpnaas_dashboard
         - octavia_dashboard
+    rabbitmq:
+      policies:
+        - vhost: "horizon"
+          name: "ha_ttl_horizon"
+          definition:
+            message-ttl: 70000
+          priority: 0
+          apply-to: all
+          pattern: '^(?!(amq\.|reply_)).*'
   manifests:
     ingress_api: false
     service_ingress_api: false

@@ -27,31 +27,42 @@ fi
 set -ex
 if [ "x$STORAGE_BACKEND" == "xcinder.volume.drivers.rbd.RBDDriver" ]; then
   ceph -s
-  function ensure_pool () {
-    ceph osd pool stats $1 || ceph osd pool create $1 $2
-    if [[ $(ceph mgr versions | awk '/version/{print $3}' | cut -d. -f1) -ge 12 ]]; then
-        ceph osd pool application enable $1 $3
-    fi
-    size_protection=$(ceph osd pool get $1 nosizechange | cut -f2 -d: | tr -d '[:space:]')
-    ceph osd pool set $1 nosizechange 0
-    ceph osd pool set $1 size ${RBD_POOL_REPLICATION} --yes-i-really-mean-it
-    ceph osd pool set $1 nosizechange ${size_protection}
-    ceph osd pool set $1 crush_rule "${RBD_POOL_CRUSH_RULE}"
-  }
-  ensure_pool ${RBD_POOL_NAME} ${RBD_POOL_CHUNK_SIZE} ${RBD_POOL_APP_NAME}
+
+  # If RBD_DATA_POOL is set, pools are managed externally (e.g., by Rook)
+  # Skip pool creation and only set up user with proper OSD caps
+  if [ -n "${RBD_DATA_POOL:-}" ]; then
+    echo "RBD_DATA_POOL is set, assuming pools are managed externally (Rook)"
+    echo "Skipping pool creation, will only create user/keyring"
+    OSD_CAPS="profile rbd pool=${RBD_POOL_NAME}, profile rbd pool=${RBD_DATA_POOL}"
+  else
+    function ensure_pool () {
+      ceph osd pool stats $1 || ceph osd pool create $1 $2
+      if [[ $(ceph mgr versions | awk '/version/{print $3}' | cut -d. -f1) -ge 12 ]]; then
+          ceph osd pool application enable $1 $3
+      fi
+      size_protection=$(ceph osd pool get $1 nosizechange | cut -f2 -d: | tr -d '[:space:]')
+      ceph osd pool set $1 nosizechange 0
+      ceph osd pool set $1 size ${RBD_POOL_REPLICATION} --yes-i-really-mean-it
+      ceph osd pool set $1 nosizechange ${size_protection}
+      ceph osd pool set $1 crush_rule "${RBD_POOL_CRUSH_RULE}"
+    }
+
+    ensure_pool ${RBD_POOL_NAME} ${RBD_POOL_CHUNK_SIZE} ${RBD_POOL_APP_NAME}
+    OSD_CAPS="profile rbd"
+  fi
 
   if USERINFO=$(ceph auth get client.${RBD_POOL_USER}); then
     echo "Cephx user client.${RBD_POOL_USER} already exist."
     echo "Update its cephx caps"
     ceph auth caps client.${RBD_POOL_USER} \
       mon "profile rbd" \
-      osd "profile rbd"
+      osd "${OSD_CAPS}"
     ceph auth get client.${RBD_POOL_USER} -o ${KEYRING}
   else
     #NOTE(JCL): Restrict Cinder permissions to what is needed. MON Read only and RBD access to Cinder pool only.
     ceph auth get-or-create client.${RBD_POOL_USER} \
       mon "profile rbd" \
-      osd "profile rbd" \
+      osd "${OSD_CAPS}" \
       -o ${KEYRING}
   fi
 

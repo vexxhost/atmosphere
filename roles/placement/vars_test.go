@@ -32,6 +32,22 @@ func TestMain(m *testing.M) {
 }
 
 func TestHelmValues(t *testing.T) {
+	// (rlin): Before you add any new priority class here.
+	// Make sure we do use snippets tool
+	// helm-toolkit.snippets.kubernetes_pod_priority_class
+	// for the actual template. Like:
+	// {{ tuple "heat_api" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" }}
+	vars.HelmValues.Pod.PriorityClass = map[string]string{
+		"placement": "high-priority",
+	}
+	// (rlin): Before you add any new runtime class here.
+	// Make sure we do use snippets tool
+	// helm-toolkit.snippets.kubernetes_pod_runtime_class
+	// for the actual template. Like:
+	// {{ tuple "heat_api" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" }}
+	vars.HelmValues.Pod.RuntimeClass = map[string]string{
+		"placement": "kata-clh",
+	}
 	vals, err := openstack_helm.CoalescedHelmValues("../../charts/placement", &vars.HelmValues)
 	require.NoError(t, err)
 

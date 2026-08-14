@@ -19,6 +19,13 @@ _valkey_helm_values:
     nodeSelector:
       openstack-control-plane: enabled
     podAntiAffinityPreset: hard
+    resources:
+      requests:
+        cpu: 500m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 1024Mi
   sentinel:
     enabled: true
     image:
@@ -38,3 +45,11 @@ _valkey_helm_values:
       registry: "{{ atmosphere_images['redis_exporter'] | vexxhost.kubernetes.docker_image('domain') }}"
       repository: "{{ atmosphere_images['redis_exporter'] | vexxhost.kubernetes.docker_image('path') }}"
       tag: "{{ atmosphere_images['redis_exporter'] | vexxhost.kubernetes.docker_image('tag') }}"
+  primary:
+    resources:
+      requests:
+        cpu: 500m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 1024Mi

@@ -1,0 +1,26 @@
+diff --git a/glance/templates/deployment-api.yaml b/glance/templates/deployment-api.yaml
+index d88856ff..25a3d96b 100644
+--- a/glance/templates/deployment-api.yaml
++++ b/glance/templates/deployment-api.yaml
+@@ -75,6 +75,8 @@ spec:
+         configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
+ {{ dict "envAll" $envAll "podName" "glance-api" "containerNames" ( list "glance-perms" "glance-api" "init" "nginx" ) | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+     spec:
++{{ tuple "glance_api" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple "glance_api" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
+       serviceAccountName: {{ $serviceAccountName }}
+ {{ dict "envAll" $envAll "application" "glance" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+       affinity:
+diff --git a/glance/templates/pod-rally-test.yaml b/glance/templates/pod-rally-test.yaml
+index 0ca17eb2..acbd5b4d 100644
+--- a/glance/templates/pod-rally-test.yaml
++++ b/glance/templates/pod-rally-test.yaml
+@@ -44,6 +44,8 @@ spec:
+     {{ .Values.labels.test.node_selector_key }}: {{ .Values.labels.test.node_selector_value }}
+ {{ dict "envAll" $envAll "application" "test" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 2 }}
+   restartPolicy: Never
++{{ tuple "glance_tests" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 2 }}
++{{ tuple "glance_tests" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 2 }}
+   serviceAccountName: {{ $serviceAccountName }}
+   initContainers:
+ {{ tuple $envAll "tests" $mounts_tests_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 4 }}

@@ -1,0 +1,9 @@
+---
+fixes:
+  - Fixed containers failing to validate TLS certificates on
+    Red Hat-based systems. The issue occurred when mounting the OpenSSL
+    trusted certificate bundle (``/etc/pki/ca-trust/extracted/openssl/ca-bundle.trust.crt``)
+    which uses the "TRUSTED CERTIFICATE" format that's incompatible with
+    Go applications. The configuration now uses the standard PEM format
+    bundle (``/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem``) on
+    Red Hat systems, which resolves certificate validation errors.

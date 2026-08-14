@@ -22,6 +22,69 @@ If you are using the Ceph storage solution that Atmosphere deploys out of the
 box, no additional configuration is required. The necessary settings are
 automatically applied during the installation process.
 
+External Ceph cluster
+=====================
+
+You can configure the CSI driver to connect to an external Ceph cluster without
+requiring SSH access to the Ceph monitors.
+
+First, create a pool on your external Ceph cluster for Kubernetes storage:
+
+.. code-block:: bash
+
+    ceph osd pool create kube
+    ceph osd pool application enable kube rbd
+    ceph osd pool set kube pg_autoscale_mode on
+
+Next, create a user with the appropriate capabilities for the CSI driver:
+
+.. code-block:: bash
+
+    ceph auth get-or-create client.kube \
+        mon 'profile rbd' \
+        mgr 'profile rbd pool=kube' \
+        osd 'profile rbd pool=kube'
+
+Retrieve the cluster ID:
+
+.. code-block:: bash
+
+    ceph fsid
+
+Retrieve the monitor addresses:
+
+.. code-block:: bash
+
+    ceph mon dump -f json | jq -r '.mons[].addr | split(":")[0]'
+
+Retrieve the keyring for the user:
+
+.. code-block:: bash
+
+    ceph auth get-key client.kube
+
+Finally, configure your Ansible inventory with the retrieved values:
+
+.. code-block:: yaml
+
+    ceph_csi_rbd_ceph_fsid: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+    ceph_csi_rbd_monitors:
+      - "10.0.0.1"
+      - "10.0.0.2"
+      - "10.0.0.3"
+    ceph_csi_rbd_keyring: "AQD...=="
+
+Replace the placeholder values with the actual values from your Ceph cluster.
+When you define these variables, Atmosphere skips the SSH-based discovery and
+user creation tasks.
+
+.. admonition:: Pool and user names
+    :class: tip
+
+    If you want to use different names for the pool or user, you can set
+    ``ceph_csi_rbd_pool`` and ``ceph_csi_rbd_id`` respectively. Make sure the
+    user capabilities match the pool name you configure.
+
 ***************
 Dell PowerStore
 ***************
@@ -114,3 +177,47 @@ the StorPool CSI driver by updating your Ansible inventory as follows:
 
 The ``storpool_csi_template`` variable specifies the StorPool template to use
 for the deployment which is set to ``k8s`` in the example above.
+
+*******************
+HPE Nimble storage
+*******************
+
+For environments using HPE Nimble storage (including HPE Alletra 5000/6000),
+configure the HPE Nimble CSI driver by updating your Ansible inventory as
+follows:
+
+.. code-block:: yaml
+
+    csi_driver: hpe-nimble
+    hpe_nimble_csi_backend: <FILL IN>
+    hpe_nimble_csi_username: <FILL IN>
+    hpe_nimble_csi_password: <FILL IN>
+    hpe_nimble_csi_access_protocol: iscsi  # iscsi or fc
+
+Make sure that you replace ``<FILL IN>`` with actual values relevant to your HPE
+Nimble configuration. The backend address should be the management IP or
+host name of your Nimble storage array. The
+``hpe_nimble_csi_access_protocol`` variable defaults to ``iscsi``.
+
+.. admonition:: Prerequisites
+    :class: important
+
+    The HPE Nimble CSI driver requires:
+
+    - Nimble OS 5.x or later on the storage array
+    - A user account on the Nimble array with at least ``poweruser`` role
+    - For iSCSI mode (``hpe_nimble_csi_access_protocol: iscsi``):
+
+      - iSCSI initiator software installed on compute nodes (automatically
+        handled by the ``iscsi`` role)
+      - Network connectivity between compute nodes and the Nimble array on a
+        flat network (the driver doesn't support iSCSI traffic routing)
+    - For Fibre Channel mode (``hpe_nimble_csi_access_protocol: fc``):
+
+      - ``multipathd`` and ``sg3_utils`` installed on compute nodes
+      - Fibre Channel zoning and World Wide Port Name (WWPN) initiator groups
+        configured on the array
+      - ``open-iscsi`` is not required
+
+For more information about the HPE CSI Driver, refer to the `HPE Storage
+Container Orchestrator Documentation <https://scod.hpedev.io/csi_driver/index.html>`_.
