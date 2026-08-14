@@ -20,6 +20,11 @@ neutron_helm_release_namespace: openstack
 neutron_helm_kubeconfig: "{{ kubeconfig_path | default('/etc/kubernetes/admin.conf') }}"
 neutron_helm_values: {}
 
+# Time to wait for Helm operations to complete, using Go duration syntax.
+#
+# neutron_helm_timeout: 10m0s
+neutron_helm_timeout: 5m0s
+
 # List of networks to provision inside OpenStack
 neutron_networks: []
 
@@ -35,3 +40,10 @@ neutron_designate_integration_enabled: false
 # Enable neutron policy server to force external
 # policy check neutron port and address pairs actions.
 neutron_policy_server_integration_enabled: true
+
+# List of SSH keys for generic switch ML2 plugin configuration.
+#
+# neutron_genericswitch_keys:
+#   - name: switch1_key_file_name
+#     key: <private ssh key content>
+neutron_genericswitch_keys: []

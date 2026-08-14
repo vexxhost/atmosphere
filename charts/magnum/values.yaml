@@ -53,15 +53,11 @@ images:
 conf:
   paste:
     composite:main:
-      use: egg:Paste#urlmap
-      /healthcheck: healthcheck
+      paste.composite_factory: magnum.api:root_app_factory
       /: api
+      /healthcheck: healthcheck
     pipeline:api:
       pipeline: cors request_id authtoken api_v1
-    app:healthcheck:
-      paste.app_factory: oslo_middleware:Healthcheck.app_factory
-      backends: disable_by_file
-      disable_by_file_path: /etc/magnum/healthcheck_disable
     app:api_v1:
       paste.app_factory: magnum.api.app:app_factory
     filter:authtoken:
@@ -72,6 +68,10 @@ conf:
     filter:cors:
       paste.filter_factory: oslo_middleware.cors:filter_factory
       oslo_config_project: magnum
+    app:healthcheck:
+      paste.app_factory: oslo_middleware:Healthcheck.app_factory
+      backends: disable_by_file
+      disable_by_file_path: /etc/magnum/healthcheck_disable
   policy: {}
   magnum:
     DEFAULT:

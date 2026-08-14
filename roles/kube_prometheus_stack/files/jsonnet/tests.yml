@@ -2,6 +2,37 @@
 # SPDX-License-Identifier: Apache-2.0
 
 tests:
+  # NodeNetworkMulticast - should NOT fire for sustained traffic below the
+  # capacity-planning threshold.
+  - interval: 1m
+    input_series:
+      - series: 'node_network_receive_multicast_total{device="bond0",instance="192.0.2.10:9100",job="node-exporter"}'
+        values: '0+30000x1500'
+    alert_rule_test:
+      - eval_time: 25h
+        alertname: NodeNetworkMulticast
+        exp_alerts: []
+
+  # NodeNetworkMulticast - should fire only after the high rate is sustained
+  # for the full 24-hour capacity-planning window.
+  - interval: 1m
+    input_series:
+      - series: 'node_network_receive_multicast_total{device="bond0",instance="192.0.2.10:9100",job="node-exporter"}'
+        values: '0+120000x1500'
+    alert_rule_test:
+      - eval_time: 25h
+        alertname: NodeNetworkMulticast
+        exp_alerts:
+          - exp_labels:
+              device: bond0
+              instance: 192.0.2.10:9100
+              job: node-exporter
+              severity: P5
+            exp_annotations:
+              summary: "Node network: sustained multicast or broadcast traffic is increasing packet-processing load"
+              description: "192.0.2.10:9100 interface bond0 has received 2000.00 multicast or broadcast packets per second over the last 5 minutes, above the 1,000 packets per second capacity-planning threshold for 24 hours. Normal behavior is below 1,000 packets per second or limited to short bursts."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#nodenetworkmulticast"
+
   - interval: 1m
     input_series:
       - series: 'openstack_neutron_network{id="4cf895c9-c3d1-489e-b02e-59b5c8976809",is_external="false",is_shared="false",name="public",provider_network_type="vlan",provider_physical_network="external",provider_segmentation_id="3",status="ACTIVE",subnets="54d6f61d-db07-451c-9ab3-b9609b6b6f0b",tags="tag1,tag2",tenant_id="4fd44f30292945e481c7b8a0c8908869"} 0'
@@ -147,6 +178,78 @@ tests:
               description: "Average IO latency on nvme0n1 at 192.0.2.2:9100 is 50ms over the last 5 minutes, which exceeds the threshold of 20ms. Normal SSD latency is below 1ms and normal HDD latency is below 15ms."
               runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#nodediskhighlatency"
 
+  # NodeMemoryHighUtilization - negative test (huge pages reserved but free)
+  - interval: 1m
+    input_series:
+      - series: 'node_memory_MemTotal_bytes{instance="192.0.2.3:9100", job="node-exporter"}'
+        values: '1000x20'
+      - series: 'node_memory_MemAvailable_bytes{instance="192.0.2.3:9100", job="node-exporter"}'
+        values: '50x20'
+      - series: 'node_memory_HugePages_Free{instance="192.0.2.3:9100", job="node-exporter"}'
+        values: '200x20'
+      - series: 'node_memory_Hugepagesize_bytes{instance="192.0.2.3:9100", job="node-exporter"}'
+        values: '4x20'
+    alert_rule_test:
+      - eval_time: 16m
+        alertname: NodeMemoryHighUtilization
+        exp_alerts: []
+
+  # NodeMemoryHighUtilization - positive test (real high utilization, alert fires)
+  - interval: 1m
+    input_series:
+      - series: 'node_memory_MemTotal_bytes{instance="192.0.2.4:9100", job="node-exporter"}'
+        values: '1000x20'
+      - series: 'node_memory_MemAvailable_bytes{instance="192.0.2.4:9100", job="node-exporter"}'
+        values: '50x20'
+      - series: 'node_memory_HugePages_Free{instance="192.0.2.4:9100", job="node-exporter"}'
+        values: '20x20'
+      - series: 'node_memory_Hugepagesize_bytes{instance="192.0.2.4:9100", job="node-exporter"}'
+        values: '1x20'
+    alert_rule_test:
+      - eval_time: 16m
+        alertname: NodeMemoryHighUtilization
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+              instance: "192.0.2.4:9100"
+              job: node-exporter
+            exp_annotations:
+              summary: "Node memory: high utilization can affect host and workload stability"
+              description: "Computed node memory utilization at 192.0.2.4:9100 is 93.00%, exceeding the threshold of 90% for 15 minutes. This computation includes free huge page capacity (node_memory_HugePages_Free * node_memory_Hugepagesize_bytes) in available memory to avoid false positives on compute nodes backed by huge pages. Normal behavior is below 90% sustained utilization."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#nodememoryhighutilization"
+
+  # NodeMemoryHighUtilization - negative test (no huge page metrics, normal memory usage)
+  - interval: 1m
+    input_series:
+      - series: 'node_memory_MemTotal_bytes{instance="192.0.2.5:9100", job="node-exporter"}'
+        values: '1000x20'
+      - series: 'node_memory_MemAvailable_bytes{instance="192.0.2.5:9100", job="node-exporter"}'
+        values: '150x20'
+    alert_rule_test:
+      - eval_time: 16m
+        alertname: NodeMemoryHighUtilization
+        exp_alerts: []
+
+  # NodeMemoryHighUtilization - positive test (no huge page metrics, high memory usage)
+  - interval: 1m
+    input_series:
+      - series: 'node_memory_MemTotal_bytes{instance="192.0.2.6:9100", job="node-exporter"}'
+        values: '1000x20'
+      - series: 'node_memory_MemAvailable_bytes{instance="192.0.2.6:9100", job="node-exporter"}'
+        values: '50x20'
+    alert_rule_test:
+      - eval_time: 16m
+        alertname: NodeMemoryHighUtilization
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+              instance: "192.0.2.6:9100"
+              job: node-exporter
+            exp_annotations:
+              summary: "Node memory: high utilization can affect host and workload stability"
+              description: "Computed node memory utilization at 192.0.2.6:9100 is 95.00%, exceeding the threshold of 90% for 15 minutes. This computation includes free huge page capacity (node_memory_HugePages_Free * node_memory_Hugepagesize_bytes) in available memory to avoid false positives on compute nodes backed by huge pages. Normal behavior is below 90% sustained utilization."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#nodememoryhighutilization"
+
   - interval: 1m
     input_series:
       - series: 'mysql_up{instance="percona-xtradb-pxc-0", job="pxc"}'
@@ -229,6 +332,56 @@ tests:
             exp_annotations:
               summary: Percona XtraDB Cluster is down
               description: All replicas are down.
+
+  - interval: 1m
+    input_series:
+      - series: 'ipmi_sel_events_latest_timestamp{instance="192.0.2.10",name="uncorrectable_memory_error"}'
+        values: '0x2880'
+    alert_rule_test:
+      - eval_time: 2d
+        alertname: IpmiUncorrectableMemoryError
+        exp_alerts: []
+
+  - interval: 1m
+    input_series:
+      - series: 'ipmi_sel_events_latest_timestamp{instance="192.0.2.10",name="uncorrectable_memory_error"}'
+        values: '172740x2880'
+    alert_rule_test:
+      - eval_time: 2d
+        alertname: IpmiUncorrectableMemoryError
+        exp_alerts:
+          - exp_labels:
+              instance: 192.0.2.10
+              severity: P1
+            exp_annotations:
+              summary: "IPMI: recent uncorrectable memory error may affect host stability on 192.0.2.10"
+              description: "The metric ipmi_sel_events_latest_timestamp{name=\"uncorrectable_memory_error\"} for 192.0.2.10 indicates the most recent uncorrectable memory SEL event is 1m 0s old, which is within the alert window of 24 hours. Normal behavior is that no uncorrectable memory SEL events occur, or the latest such event is older than 24 hours."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#ipmiuncorrectablememoryerror"
+
+  - interval: 1m
+    input_series:
+      - series: 'ipmi_sel_events_latest_timestamp{instance="192.0.2.11",name="unrecoverable_cpu_error"}'
+        values: '0x2880'
+    alert_rule_test:
+      - eval_time: 2d
+        alertname: IpmiUnrecoverableCpuError
+        exp_alerts: []
+
+  - interval: 1m
+    input_series:
+      - series: 'ipmi_sel_events_latest_timestamp{instance="192.0.2.11",name="unrecoverable_cpu_error"}'
+        values: '172740x2880'
+    alert_rule_test:
+      - eval_time: 2d
+        alertname: IpmiUnrecoverableCpuError
+        exp_alerts:
+          - exp_labels:
+              instance: 192.0.2.11
+              severity: P1
+            exp_annotations:
+              summary: "IPMI: recent unrecoverable CPU error may affect host stability on 192.0.2.11"
+              description: "The metric ipmi_sel_events_latest_timestamp{name=\"unrecoverable_cpu_error\"} for 192.0.2.11 indicates the most recent unrecoverable CPU SEL event is 1m 0s old, which is within the alert window of 24 hours. Normal behavior is that no unrecoverable CPU SEL events occur, or the latest such event is older than 24 hours."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#ipmiunrecoverablecpuerror"
 
   - interval: 1m
     input_series:
@@ -960,3 +1113,471 @@ tests:
               summary: "CoreDNS: instance has disappeared from Prometheus target discovery"
               description: "CoreDNS has disappeared from Prometheus target discovery for more than 15 minutes. This could indicate a crashed CoreDNS pod or a misconfigured scrape target."
               runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#corednsdown"
+
+  # SmartctlDiskUnhealthy - should NOT fire when SMART status is healthy
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_smart_status{device="/dev/sda",instance="192.0.2.10"}'
+        values: '1x10'
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: SmartctlDiskUnhealthy
+        exp_alerts: []
+
+  # SmartctlDiskUnhealthy - should fire when SMART status is 0
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_smart_status{device="/dev/sda",instance="192.0.2.10"}'
+        values: '0x10'
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: SmartctlDiskUnhealthy
+        exp_alerts:
+          - exp_labels:
+              severity: P2
+              device: /dev/sda
+              instance: 192.0.2.10
+            exp_annotations:
+              summary: "Disk: SMART overall health check failed"
+              description: 'The SMART overall-health self-assessment for disk /dev/sda on node 192.0.2.10 is reporting failure (smartctl_device_smart_status=0). The drive firmware predicts imminent failure. Normal value is 1.'
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskunhealthy"
+
+  # SmartctlDiskCriticalWarning - should NOT fire when bitfield is 0
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_critical_warning{device="/dev/nvme0",instance="192.0.2.10"}'
+        values: '0x10'
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: SmartctlDiskCriticalWarning
+        exp_alerts: []
+
+  # SmartctlDiskCriticalWarning - should fire when bitfield is set
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_critical_warning{device="/dev/nvme0",instance="192.0.2.10"}'
+        values: '4x10'
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: SmartctlDiskCriticalWarning
+        exp_alerts:
+          - exp_labels:
+              severity: P2
+              device: /dev/nvme0
+              instance: 192.0.2.10
+            exp_annotations:
+              summary: "Disk: NVMe critical warning bit set"
+              description: 'The NVMe critical_warning bitfield for disk /dev/nvme0 on node 192.0.2.10 is 4 (normal is 0). Bits indicate available spare below threshold, temperature above critical, NVM subsystem reliability degraded, media in read-only mode, or volatile memory backup failed.'
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskcriticalwarning"
+
+  # SmartctlDiskAvailableSpareLow - should NOT fire when spare is above threshold
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_available_spare{device="/dev/nvme0",instance="192.0.2.10"}'
+        values: '90x10'
+      - series: 'smartctl_device_available_spare_threshold{device="/dev/nvme0",instance="192.0.2.10"}'
+        values: '10x10'
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: SmartctlDiskAvailableSpareLow
+        exp_alerts: []
+
+  # SmartctlDiskAvailableSpareLow - should fire when spare drops below threshold
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_available_spare{device="/dev/nvme0",instance="192.0.2.10"}'
+        values: '5x10'
+      - series: 'smartctl_device_available_spare_threshold{device="/dev/nvme0",instance="192.0.2.10"}'
+        values: '10x10'
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: SmartctlDiskAvailableSpareLow
+        exp_alerts:
+          - exp_labels:
+              severity: P2
+              device: /dev/nvme0
+              instance: 192.0.2.10
+            exp_annotations:
+              summary: "Disk: NVMe available spare below manufacturer threshold"
+              description: 'The NVMe available spare on disk /dev/nvme0 on node 192.0.2.10 is 5%, which is below the manufacturer-defined threshold. The drive has nearly exhausted its reserve blocks; failure is imminent. Normal is well above the threshold (typically 100% on a healthy drive).'
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskavailablesparelow"
+
+  # SmartctlDiskWearoutCritical - should NOT fire when wear is below 90%
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_percentage_used{device="/dev/sda",instance="192.0.2.10"}'
+        values: '85x20'
+    alert_rule_test:
+      - eval_time: 16m
+        alertname: SmartctlDiskWearoutCritical
+        exp_alerts: []
+
+  # SmartctlDiskWearoutCritical - should fire when wear exceeds 90%
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_percentage_used{device="/dev/sda",instance="192.0.2.10"}'
+        values: '95x20'
+    alert_rule_test:
+      - eval_time: 16m
+        alertname: SmartctlDiskWearoutCritical
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+              device: /dev/sda
+              instance: 192.0.2.10
+            exp_annotations:
+              summary: "Disk: NVMe wear level critical"
+              description: 'The NVMe disk /dev/sda on node 192.0.2.10 reports 95% of its rated endurance used (smartctl_device_percentage_used), exceeding the 90% threshold. Plan immediate replacement. Normal operating range is below 75%. (NVMe-only; SATA drives are covered by SmartctlDiskAttributeFailing.)'
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskwearoutcritical"
+
+  # SmartctlDiskPendingSectorsGrowing - should NOT fire when count is stable (no growth)
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_attribute{device="/dev/sda",instance="192.0.2.10",attribute_id="197",attribute_name="Current_Pending_Sector",attribute_value_type="raw"}'
+        values: '4x1500'
+    alert_rule_test:
+      - eval_time: 25h
+        alertname: SmartctlDiskPendingSectorsGrowing
+        exp_alerts: []
+
+  # SmartctlDiskPendingSectorsGrowing - should fire when count grows over 24h
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_attribute{device="/dev/sda",instance="192.0.2.10",attribute_id="197",attribute_name="Current_Pending_Sector",attribute_value_type="raw"}'
+        values: '0+1x1500'
+    alert_rule_test:
+      - eval_time: 25h
+        alertname: SmartctlDiskPendingSectorsGrowing
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+              device: /dev/sda
+              instance: 192.0.2.10
+              attribute_id: "197"
+              attribute_name: Current_Pending_Sector
+              attribute_value_type: raw
+            exp_annotations:
+              summary: "Disk: pending sector count growing"
+              description: 'The SATA disk /dev/sda on node 192.0.2.10 added 1440 sectors awaiting reallocation in the last 24 hours (Current_Pending_Sector, attribute 197). Normal is zero growth: a stable non-zero count is harmless (those sectors will be remapped on next write), but ongoing growth indicates active media degradation.'
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskpendingsectorsgrowing"
+
+  # SmartctlDiskUncorrectableSectorsGrowing - should NOT fire when count is stable (no growth)
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_attribute{device="/dev/sda",instance="192.0.2.10",attribute_id="198",attribute_name="Offline_Uncorrectable",attribute_value_type="raw"}'
+        values: '2x1500'
+    alert_rule_test:
+      - eval_time: 25h
+        alertname: SmartctlDiskUncorrectableSectorsGrowing
+        exp_alerts: []
+
+  # SmartctlDiskUncorrectableSectorsGrowing - should fire when count grows over 24h
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_attribute{device="/dev/sda",instance="192.0.2.10",attribute_id="198",attribute_name="Offline_Uncorrectable",attribute_value_type="raw"}'
+        values: '0+1x1500'
+    alert_rule_test:
+      - eval_time: 25h
+        alertname: SmartctlDiskUncorrectableSectorsGrowing
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+              device: /dev/sda
+              instance: 192.0.2.10
+              attribute_id: "198"
+              attribute_name: Offline_Uncorrectable
+              attribute_value_type: raw
+            exp_annotations:
+              summary: "Disk: uncorrectable sector count growing"
+              description: 'The SATA disk /dev/sda on node 192.0.2.10 added 1440 offline-uncorrectable sectors in the last 24 hours (Offline_Uncorrectable, attribute 198). Normal is zero growth: a stable non-zero count is harmless, but ongoing growth indicates confirmed unrecoverable data loss in newly affected LBAs.'
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskuncorrectablesectorsgrowing"
+
+  # SmartctlDiskMediaErrorsGrowing - should NOT fire when count is stable (no growth)
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_media_errors{device="/dev/nvme0",instance="192.0.2.10"}'
+        values: '5x1500'
+    alert_rule_test:
+      - eval_time: 25h
+        alertname: SmartctlDiskMediaErrorsGrowing
+        exp_alerts: []
+
+  # SmartctlDiskMediaErrorsGrowing - should fire when count grows over 24h
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_media_errors{device="/dev/nvme0",instance="192.0.2.10"}'
+        values: '0+1x1500'
+    alert_rule_test:
+      - eval_time: 25h
+        alertname: SmartctlDiskMediaErrorsGrowing
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+              device: /dev/nvme0
+              instance: 192.0.2.10
+            exp_annotations:
+              summary: "Disk: NVMe media errors increasing"
+              description: 'The NVMe disk /dev/nvme0 on node 192.0.2.10 accumulated 1440 new media errors in the last 24 hours (smartctl_device_media_errors). Normal is zero growth over time. New errors indicate active uncorrectable ECC failures or LBA tag mismatches.'
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskmediaerrorsgrowing"
+
+  # SmartctlDiskWearoutWarning - should NOT fire when wear is below 75%
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_percentage_used{device="/dev/sda",instance="192.0.2.10"}'
+        values: '70x80'
+    alert_rule_test:
+      - eval_time: 1h5m
+        alertname: SmartctlDiskWearoutWarning
+        exp_alerts: []
+
+  # SmartctlDiskWearoutWarning - should fire when wear exceeds 75%
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_percentage_used{device="/dev/sda",instance="192.0.2.10"}'
+        values: '80x80'
+    alert_rule_test:
+      - eval_time: 1h5m
+        alertname: SmartctlDiskWearoutWarning
+        exp_alerts:
+          - exp_labels:
+              severity: P4
+              device: /dev/sda
+              instance: 192.0.2.10
+            exp_annotations:
+              summary: "Disk: NVMe wear level elevated"
+              description: 'The NVMe disk /dev/sda on node 192.0.2.10 reports 80% of its rated endurance used (smartctl_device_percentage_used), exceeding the 75% threshold. Plan replacement during the next maintenance window. Normal operating range is below 75%. (NVMe-only; SATA drives are covered by SmartctlDiskAttributeFailing.)'
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskwearoutwarning"
+
+  # SmartctlDiskTemperatureHigh - should NOT fire when temperature is normal
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_temperature{device="/dev/sda",instance="192.0.2.10",temperature_type="current"}'
+        values: '45x80'
+    alert_rule_test:
+      - eval_time: 1h5m
+        alertname: SmartctlDiskTemperatureHigh
+        exp_alerts: []
+
+  # SmartctlDiskTemperatureHigh - should fire when temperature exceeds 65°C
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_temperature{device="/dev/sda",instance="192.0.2.10",temperature_type="current"}'
+        values: '70x80'
+    alert_rule_test:
+      - eval_time: 1h5m
+        alertname: SmartctlDiskTemperatureHigh
+        exp_alerts:
+          - exp_labels:
+              severity: P4
+              device: /dev/sda
+              instance: 192.0.2.10
+              temperature_type: current
+            exp_annotations:
+              summary: "Disk: temperature sustained high"
+              description: 'The disk /dev/sda on node 192.0.2.10 has run at 70°C for over an hour, exceeding the 65°C threshold. Normal operating temperature is below 50°C for HDDs and below 60°C for SSDs. Check chassis cooling and airflow.'
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldisktemperaturehigh"
+
+  # SmartctlDiskReallocatedSectorsGrowing - should NOT fire when count is stable
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_attribute{device="/dev/sda",instance="192.0.2.10",attribute_id="5",attribute_name="Reallocated_Sector_Ct",attribute_value_type="raw"}'
+        values: '12x1500'
+    alert_rule_test:
+      - eval_time: 25h
+        alertname: SmartctlDiskReallocatedSectorsGrowing
+        exp_alerts: []
+
+  # SmartctlDiskReallocatedSectorsGrowing - should fire when count grows over 24h
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_attribute{device="/dev/sda",instance="192.0.2.10",attribute_id="5",attribute_name="Reallocated_Sector_Ct",attribute_value_type="raw"}'
+        values: '0+1x1500'
+    alert_rule_test:
+      - eval_time: 25h
+        alertname: SmartctlDiskReallocatedSectorsGrowing
+        exp_alerts:
+          - exp_labels:
+              severity: P4
+              device: /dev/sda
+              instance: 192.0.2.10
+              attribute_id: "5"
+              attribute_name: Reallocated_Sector_Ct
+              attribute_value_type: raw
+            exp_annotations:
+              summary: "Disk: reallocated sector count growing"
+              description: 'The SATA disk /dev/sda on node 192.0.2.10 reallocated 1440 additional sectors in the last 24 hours (Reallocated_Sector_Ct, attribute 5). Normal is zero growth: a stable non-zero count is harmless, but ongoing reallocation indicates active media degradation.'
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskreallocatedsectorsgrowing"
+
+  # SmartctlDiskSelfTestFailed - should NOT fire when error count is 0
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_self_test_log_error_count{device="/dev/sda",instance="192.0.2.10",self_test_log_type="standard"}'
+        values: '0x80'
+    alert_rule_test:
+      - eval_time: 1h5m
+        alertname: SmartctlDiskSelfTestFailed
+        exp_alerts: []
+
+  # SmartctlDiskSelfTestFailed - should fire when error count > 0
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_self_test_log_error_count{device="/dev/sda",instance="192.0.2.10",self_test_log_type="standard"}'
+        values: '1x80'
+    alert_rule_test:
+      - eval_time: 1h5m
+        alertname: SmartctlDiskSelfTestFailed
+        exp_alerts:
+          - exp_labels:
+              severity: P4
+              device: /dev/sda
+              instance: 192.0.2.10
+              self_test_log_type: standard
+            exp_annotations:
+              summary: "Disk: SATA SMART self-test reported errors"
+              description: 'The SATA disk /dev/sda on node 192.0.2.10 has 1 entries in its SMART self-test error log (self_test_log_type=standard). Normal is 0. Even one failed self-test indicates the drive could not complete an internal integrity check. (SATA-only; the upstream exporter does not surface NVMe self-test results.)'
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskselftestfailed"
+
+  # SmartctlDiskAttributeFailing - should NOT fire when value is above thresh
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_attribute{device="/dev/sda",instance="192.0.2.10",attribute_id="5",attribute_name="Reallocated_Sector_Ct",attribute_value_type="value"}'
+        values: '100x20'
+      - series: 'smartctl_device_attribute{device="/dev/sda",instance="192.0.2.10",attribute_id="5",attribute_name="Reallocated_Sector_Ct",attribute_value_type="thresh"}'
+        values: '10x20'
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: SmartctlDiskAttributeFailing
+        exp_alerts: []
+
+  # SmartctlDiskAttributeFailing - should NOT fire when thresh is 0 (informational attribute)
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_attribute{device="/dev/sda",instance="192.0.2.10",attribute_id="194",attribute_name="Temperature_Celsius",attribute_value_type="value"}'
+        values: '0x20'
+      - series: 'smartctl_device_attribute{device="/dev/sda",instance="192.0.2.10",attribute_id="194",attribute_name="Temperature_Celsius",attribute_value_type="thresh"}'
+        values: '0x20'
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: SmartctlDiskAttributeFailing
+        exp_alerts: []
+
+  # SmartctlDiskAttributeFailing - should fire when value drops to/below thresh
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_device_attribute{device="/dev/sda",instance="192.0.2.10",attribute_id="233",attribute_name="Media_Wearout_Indicator",attribute_value_type="value"}'
+        values: '8x20'
+      - series: 'smartctl_device_attribute{device="/dev/sda",instance="192.0.2.10",attribute_id="233",attribute_name="Media_Wearout_Indicator",attribute_value_type="thresh"}'
+        values: '10x20'
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: SmartctlDiskAttributeFailing
+        exp_alerts:
+          - exp_labels:
+              severity: P2
+              device: /dev/sda
+              instance: 192.0.2.10
+              attribute_id: "233"
+              attribute_name: Media_Wearout_Indicator
+            exp_annotations:
+              summary: "Disk: SMART attribute below failure threshold"
+              description: 'The SMART attribute Media_Wearout_Indicator (id 233) on disk /dev/sda on node 192.0.2.10 has dropped to a normalized value of 8, at or below the threshold the drive firmware uses to declare the attribute failing. Normal is for the value to stay well above its threshold. The drive itself is signalling imminent failure of this attribute (e.g., wear-leveling, reallocation, or a vendor-specific prefailure indicator).'
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskattributefailing"
+
+  # SmartctlDiskScsiUncorrectedErrors - should NOT fire when error counters are flat
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_read_total_uncorrected_errors{device="/dev/sdb",instance="192.0.2.10"}'
+        values: '0x1500'
+      - series: 'smartctl_write_total_uncorrected_errors{device="/dev/sdb",instance="192.0.2.10"}'
+        values: '0x1500'
+    alert_rule_test:
+      - eval_time: 25h
+        alertname: SmartctlDiskScsiUncorrectedErrors
+        exp_alerts: []
+
+  # SmartctlDiskScsiUncorrectedErrors - should fire when read errors grow
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_read_total_uncorrected_errors{device="/dev/sdb",instance="192.0.2.10"}'
+        values: '0+1x1500'
+      - series: 'smartctl_write_total_uncorrected_errors{device="/dev/sdb",instance="192.0.2.10"}'
+        values: '0x1500'
+    alert_rule_test:
+      - eval_time: 25h
+        alertname: SmartctlDiskScsiUncorrectedErrors
+        exp_alerts:
+          - exp_labels:
+              severity: P3
+              device: /dev/sdb
+              instance: 192.0.2.10
+            exp_annotations:
+              summary: "Disk: SCSI/SAS uncorrected I/O errors"
+              description: 'The SCSI/SAS disk /dev/sdb on node 192.0.2.10 accumulated 1440 new uncorrected read/write errors in the last 24 hours. Normal is zero growth: any non-zero increase indicates the drive could not recover I/O via on-disk ECC, which means data loss or imminent failure.'
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskscsiuncorrectederrors"
+
+  # SmartctlDiskScsiGrownDefectsGrowing - should NOT fire when count is stable
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_scsi_grown_defect_list{device="/dev/sdb",instance="192.0.2.10"}'
+        values: '7x1500'
+    alert_rule_test:
+      - eval_time: 25h
+        alertname: SmartctlDiskScsiGrownDefectsGrowing
+        exp_alerts: []
+
+  # SmartctlDiskScsiGrownDefectsGrowing - should fire when count grows over 24h
+  - interval: 1m
+    input_series:
+      - series: 'smartctl_scsi_grown_defect_list{device="/dev/sdb",instance="192.0.2.10"}'
+        values: '0+1x1500'
+    alert_rule_test:
+      - eval_time: 25h
+        alertname: SmartctlDiskScsiGrownDefectsGrowing
+        exp_alerts:
+          - exp_labels:
+              severity: P4
+              device: /dev/sdb
+              instance: 192.0.2.10
+            exp_annotations:
+              summary: "Disk: SCSI/SAS grown defect list growing"
+              description: 'The SCSI/SAS disk /dev/sdb on node 192.0.2.10 added 1440 entries to its grown defect list in the last 24 hours. Normal is zero growth: a stable non-zero count is harmless, but ongoing growth means the drive is actively reallocating bad blocks.'
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#smartctldiskscsigrowndefectsgrowing"
+
+  # GeneveTransmitErrors - should NOT fire when error rate is below threshold
+  - interval: 1m
+    input_series:
+      - series: 'node_network_transmit_errs_total{job="node-exporter",instance="192.0.2.10:9100",device="tenant-geneve0"}'
+        values: '0+0x30'
+      - series: 'node_ethtool_info{job="node-exporter",instance="192.0.2.10:9100",device="tenant-geneve0",driver="geneve"}'
+        values: '1x30'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: GeneveTransmitErrors
+        exp_alerts: []
+
+  # GeneveTransmitErrors - should fire when sustained error rate exceeds 1.67/s for 15m
+  # Counter increments by 200/min = 3.33/s, well above 1.67/s threshold.
+  - interval: 1m
+    input_series:
+      - series: 'node_network_transmit_errs_total{job="node-exporter",instance="192.0.2.10:9100",device="tenant-geneve0"}'
+        values: '0+200x30'
+      - series: 'node_ethtool_info{job="node-exporter",instance="192.0.2.10:9100",device="tenant-geneve0",driver="geneve"}'
+        values: '1x30'
+      - series: 'node_network_transmit_errs_total{job="node-exporter",instance="192.0.2.11:9100",device="eth0"}'
+        values: '0+200x30'
+      - series: 'node_ethtool_info{job="node-exporter",instance="192.0.2.11:9100",device="eth0",driver="mlx5_core"}'
+        values: '1x30'
+    alert_rule_test:
+      - eval_time: 25m
+        alertname: GeneveTransmitErrors
+        exp_alerts:
+          - exp_labels:
+              job: node-exporter
+              instance: 192.0.2.10:9100
+              device: tenant-geneve0
+              driver: geneve
+              severity: P3
+            exp_annotations:
+              summary: "Geneve overlay: transmit failures may affect tenant traffic on a compute host"
+              description: "192.0.2.10:9100 interface tenant-geneve0 has averaged 3.33 transmit errors per second over the last 5 minutes (threshold > 1.67/s, ~100/min). Normal behavior is zero sustained transmit errors on Geneve tunnel interfaces."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#genevetransmiterrors"
