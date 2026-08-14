@@ -4,7 +4,9 @@
 
 Graphical console support is disabled by default. Enable it and provide an
 immutable console backend image that implements Ironic's `APP`, `APP_INFO`, and
-`READ_ONLY` environment contract and listens for RFB connections on port 5900:
+`READ_ONLY` environment contract and listens for RFB connections on port 5900.
+The selected image must also support `KEYBOARD_MODE`, `KEYBOARD_DIAGNOSTICS`,
+`PRINTABLE_KEY_HOLD`, and `PRINTABLE_KEY_INTERVAL`:
 
 ```yaml
 ironic_vnc_enabled: true
@@ -75,9 +77,13 @@ the corresponding explicit override.
 which authenticates against the Redfish system resource and probes the AMI KVM
 path without opening a graphical session. Connection, handshake, idle,
 session, console-token, global-client, and per-source limits are role
-variables. `ironic_vnc_token_timeout` defaults to Ironic's
-600-second lifetime; increase it only when the additional bearer-token exposure
-is acceptable for the operator workflow. Disabling
+variables. Set `ironic_vnc_keyboard_diagnostics: true` to log one
+aggregate message, key-down, key-up, and pointer count when each writable
+console session closes. The diagnostic does not record key values, text,
+client addresses, console URLs, or tokens, and is disabled by default.
+`ironic_vnc_token_timeout` defaults to Ironic's 600-second
+lifetime; increase it only when the additional bearer-token exposure is
+acceptable for the operator workflow. Disabling
 the feature or changing `ironic_vnc_namespace` first disables
 affected node consoles and waits for their Pods and Secrets to disappear.
 Feature disable also resets nodes from `redfish-graphical` to `no-console`
