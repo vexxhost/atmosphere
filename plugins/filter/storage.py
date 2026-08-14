@@ -55,8 +55,8 @@ class ErasureCodedSpec(_StrictBase):
 
     @model_validator(mode="after")
     def _validate_coding_params(self) -> Self:
-        if self.m >= self.k:
-            raise ValueError(f"m ({self.m}) must be less than k ({self.k})")
+        if self.m > self.k:
+            raise ValueError(f"m ({self.m}) must not exceed k ({self.k})")
         return self
 
 
@@ -419,6 +419,73 @@ class VolumeBackendStorpool(_HostAttachedVolumeBackend):
         }
 
 
+class _VolumeBackendNimbleBase(_HostAttachedVolumeBackend):
+    """HPE Nimble Storage volume backend."""
+
+    type: Literal["nimble"]
+    address: str = Field(description="Management address (IP or hostname).")
+    username: str = Field(description="Username credential.")
+    password: str = Field(description="Password credential.")
+    nimble_subnet_label: str = Field(
+        default="*",
+        description="Subnet label used by the HPE Nimble driver.",
+    )
+
+    @property
+    def cinder_driver(self) -> str:
+        raise NotImplementedError
+
+    def cinder_backend_config(self, name: str) -> dict[str, Any]:
+        """Generate Cinder backend config for HPE Nimble Storage."""
+        return {
+            "volume_backend_name": name,
+            "volume_driver": self.cinder_driver,
+            "san_ip": self.address,
+            "san_login": self.username,
+            "san_password": self.password,
+            "nimble_subnet_label": self.nimble_subnet_label,
+            "use_multipath_for_image_xfer": True,
+        }
+
+    def amend_cinder(self, result: HelmValues, name: str) -> None:
+        """Amend Cinder Helm values for an HPE Nimble volume backend."""
+        super().amend_cinder(result, name)
+        result["conf"]["backends"][name] = self.cinder_backend_config(name)
+        result.setdefault("pod", {})
+        result["pod"]["useHostNetwork"] = {"volume": True}
+        result["pod"]["security_context"] = {
+            "cinder_volume": {
+                "container": {
+                    "cinder_volume": {
+                        "privileged": True,
+                    }
+                }
+            },
+        }
+
+
+class VolumeBackendNimbleISCSI(_VolumeBackendNimbleBase):
+    protocol: Literal["iscsi"]
+
+    @property
+    def cinder_driver(self) -> str:
+        return "cinder.volume.drivers.hpe.nimble.NimbleISCSIDriver"
+
+
+class VolumeBackendNimbleFC(_VolumeBackendNimbleBase):
+    protocol: Literal["fc"]
+
+    @property
+    def cinder_driver(self) -> str:
+        return "cinder.volume.drivers.hpe.nimble.NimbleFCDriver"
+
+
+VolumeBackendNimble = Annotated[
+    Union[VolumeBackendNimbleISCSI, VolumeBackendNimbleFC],
+    Field(discriminator="protocol"),
+]
+
+
 VolumeBackend = Annotated[
     Union[
         VolumeBackendRbd,
@@ -426,6 +493,7 @@ VolumeBackend = Annotated[
         VolumeBackendPowerstore,
         VolumeBackendPure,
         VolumeBackendStorpool,
+        VolumeBackendNimble,
     ],
     Field(discriminator="type"),
 ]
@@ -482,11 +550,30 @@ EphemeralBackend = Annotated[
 ]
 
 
+def _drop_none_backends(data: Any) -> Any:
+    """Drop backend entries explicitly set to ``None``.
+
+    Role defaults include an ``rbd1`` backend for Ceph deployments.  When a
+    config repo replaces that backend set, Ansible's recursive combine leaves
+    the default entry in place unless the repo can explicitly null it out.
+    """
+    if not isinstance(data, dict):
+        return data
+    backends = data.get("backends")
+    if isinstance(backends, dict):
+        data["backends"] = {
+            name: spec for name, spec in backends.items() if spec is not None
+        }
+    return data
+
+
 class ImageStorageConfig(_StrictBase):
     default: str = Field(description="Name of the default image backend.")
     backends: dict[str, ImageBackend] = Field(
         min_length=1, description="Mapping of backend name to image backend config."
     )
+
+    _drop_none_backends = model_validator(mode="before")(_drop_none_backends)
 
     @model_validator(mode="after")
     def _validate_default_in_backends(self) -> Self:
@@ -502,6 +589,8 @@ class VolumeStorageConfig(_StrictBase):
     backends: dict[str, VolumeBackend] = Field(
         min_length=1, description="Mapping of backend name to volume backend config."
     )
+
+    _drop_none_backends = model_validator(mode="before")(_drop_none_backends)
 
     @model_validator(mode="after")
     def _validate_default_in_backends(self) -> Self:
@@ -556,6 +645,57 @@ class StorageConfig(_StrictBase):
         default=None, description="Ephemeral disk configuration (Nova)."
     )
 
+    @model_validator(mode="before")
+    @classmethod
+    def _drop_inactive_discriminator_fields(cls, data: Any) -> Any:
+        """Trim fields that belong to a different discriminator variant.
+
+        The role-default ``_atmosphere_storage`` ships rbd-specific keys
+        (``pool``, ``replication``, ``crush_rule``, ``user``) under the
+        top-level ``backup`` (and, for symmetry, ``ephemeral``) blocks so
+        Ceph deployments work out of the box. Non-Ceph deployments
+        override these blocks via ``atmosphere_storage`` (for example
+        ``backup: {type: none}``). Ansible's ``combine(recursive=True)``
+        merges the rbd-specific keys into the user override, and the
+        resulting non-rbd variant rejects them via ``extra="forbid"``
+        with a confusing pydantic error referencing keys the user never
+        set.
+
+        Drop keys that the active variant does not declare *and* that
+        another variant of the same discriminated union does declare,
+        so the merge succeeds. Keys belonging to no variant (genuine
+        typos within the chosen variant) are left untouched so strict
+        validation still flags them.
+        """
+        if not isinstance(data, dict):
+            return data
+        for field, variants in (
+            ("backup", (BackupBackendRbd, BackupBackendNone)),
+            ("ephemeral", (EphemeralBackendRbd, EphemeralBackendLocal)),
+        ):
+            block = data.get(field)
+            if not isinstance(block, dict):
+                continue
+            chosen_type = block.get("type")
+            target = next(
+                (
+                    v
+                    for v in variants
+                    if v.model_fields["type"].annotation.__args__[0] == chosen_type
+                ),
+                None,
+            )
+            if target is None:
+                continue
+            allowed = set(target.model_fields)
+            other_variant_only = {
+                key for v in variants if v is not target for key in v.model_fields
+            } - allowed
+            data[field] = {
+                k: v for k, v in block.items() if k not in other_variant_only
+            }
+        return data
+
 
 def _deep_unwrap(obj: Any) -> Any:
     """Recursively unwrap Ansible lazy templating wrappers into plain types."""
@@ -598,6 +738,11 @@ def storage_to_cinder_helm_values(raw: Any) -> HelmValues:
         backends_config.keys()
     )
     result["conf"]["cinder"]["DEFAULT"]["default_volume_type"] = default_backend
+    if isinstance(
+        backends_config.get(default_backend),
+        (VolumeBackendRbd, VolumeBackendRbdEc),
+    ):
+        result["ceph_client"] = {"internal_ceph_backend": default_backend}
 
     if backup is not None:
         backup.amend_cinder_backup(result)
@@ -701,29 +846,43 @@ def storage_to_libvirt_helm_values(raw: Any) -> HelmValues:
     ephemeral = storage.ephemeral
     default_backend_name = volumes.default if volumes else None
     backends_config = volumes.backends if volumes else {}
+    seen_ceph_secrets: set[tuple[str, str]] = set()
 
     ceph_conf: dict[str, Any] = {"enabled": False}
 
     if isinstance(ephemeral, EphemeralBackendRbd):
         ceph_conf["enabled"] = True
 
+    default_backend = (
+        backends_config.get(default_backend_name) if default_backend_name else None
+    )
+    if isinstance(default_backend, LibvirtSecretSpec):
+        secret_uuid = str(default_backend.secret_uuid)
+        ceph_conf["enabled"] = True
+        ceph_conf["cinder"] = {
+            "user": default_backend.user,
+            "secret_uuid": secret_uuid,
+        }
+        seen_ceph_secrets.add((default_backend.user, secret_uuid))
+
     for name, backend in backends_config.items():
         if not isinstance(backend, LibvirtSecretSpec):
             continue
-        ceph_conf["enabled"] = True
         if name == default_backend_name:
-            ceph_conf["cinder"] = {
+            continue
+        ceph_conf["enabled"] = True
+        secret_uuid = str(backend.secret_uuid)
+        ceph_secret = (backend.user, secret_uuid)
+        if ceph_secret in seen_ceph_secrets:
+            continue
+        seen_ceph_secrets.add(ceph_secret)
+        ceph_conf.setdefault("additional_users", []).append(
+            {
                 "user": backend.user,
-                "secret_uuid": str(backend.secret_uuid),
+                "secret_uuid": secret_uuid,
+                "secret_name": f"cinder-volume-rbd-keyring-{name.replace('_', '-')}",
             }
-        else:
-            ceph_conf.setdefault("additional_users", []).append(
-                {
-                    "user": backend.user,
-                    "secret_uuid": str(backend.secret_uuid),
-                    "secret_name": f"cinder-volume-rbd-keyring-{name.replace('_', '-')}",
-                }
-            )
+        )
 
     return {"conf": {"ceph": ceph_conf}}
 
