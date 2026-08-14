@@ -1,0 +1,34 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+galaxy_info:
+  author: VEXXHOST, Inc.
+  description: >-
+    Pre-tasks for Neutron that install the Helm chart and create the
+    network ingress. Runs in parallel with the main `neutron` role under
+    the parallel deploy orchestrator so that the heavy Helm install does
+    not have to wait for Nova to come up; only the post-install network
+    creation (which hits the AZ check) waits on Nova.
+  license: Apache-2.0
+  min_ansible_version: 5.5.0
+  standalone: false
+  platforms:
+    - name: EL
+      versions:
+        - "8"
+        - "9"
+    - name: Ubuntu
+      versions:
+        - focal
+        - jammy
+
+dependencies:
+  - role: defaults
+  - role: openstack_helm_endpoints
+    vars:
+      openstack_helm_endpoints_chart: neutron
+      openstack_helm_endpoints_skip_cluster_creation: true
+  - role: vexxhost.kubernetes.upload_helm_chart
+    vars:
+      upload_helm_chart_src: "{{ neutron_helm_chart_path }}"
+      upload_helm_chart_dest: "{{ neutron_helm_chart_ref }}"
