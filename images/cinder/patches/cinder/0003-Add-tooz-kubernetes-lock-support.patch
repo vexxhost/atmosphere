@@ -1,0 +1,231 @@
+From 9176c2ab593cd131e8763693f17f9d84dc7cbd42 Mon Sep 17 00:00:00 2001
+From: ricolin <rlin@vexxhost.com>
+Date: Tue, 5 Aug 2025 11:26:29 +0800
+Subject: [PATCH] Add tooz kubernetes lock support
+
+Allow Cinder to comsume kubernetes lock from tooz.
+Additionally, some lock name tunning are introduced to fit with
+tooz kubernetes lock limitation.
+
+Some lock name chanages for kubernetes lock:
+* replace all '_' to '-'.
+* Use string instead of bytes for kubernetes lock name.
+* try to trim uuid in name to meet with lock name lenght limit if possible.
+  Current limit is 63 bytes.
+
+Change-Id: I8b9151ac077e496e887960cf8534763e82b593f1
+Signed-off-by: ricolin <rlin@vexxhost.com>
+---
+ cinder/coordination.py                        | 49 +++++++++++-
+ cinder/tests/unit/test_coordination.py        | 77 +++++++++++++++++++
+ ...der-k8s-lock-support-50efbfd5063c6e50.yaml | 21 +++++
+ 3 files changed, 144 insertions(+), 3 deletions(-)
+ create mode 100644 releasenotes/notes/add-cinder-k8s-lock-support-50efbfd5063c6e50.yaml
+
+diff --git a/cinder/coordination.py b/cinder/coordination.py
+index afa5f8803..77bfffc92 100644
+--- a/cinder/coordination.py
++++ b/cinder/coordination.py
+@@ -21,7 +21,7 @@ import inspect
+ import os
+ import re
+ import sys
+-from typing import Callable, Optional
++from typing import Callable, Optional, Union
+ import uuid
+ 
+ import decorator
+@@ -102,8 +102,42 @@ class Coordinator(object):
+         :param str name: The lock name that is used to identify it
+             across all nodes.
+         """
++
++        backend_url = cfg.CONF.coordination.backend_url
+         # NOTE(bluex): Tooz expects lock name as a byte string.
+-        lock_name = (self.prefix + name).encode('ascii')
++        lock_name: Union[str, bytes] = (self.prefix + name).encode('ascii')
++        if backend_url.startswith('kubernetes://'):
++            # Kubernetes lock (tooz kubernetes lock) currently can't
++            # accept "_" and bytes as lock name input.
++            lock_name = str((self.prefix + name)).replace("_", "-")
++            if len(lock_name) > 63:
++                err_msg = (
++                    'Unable to comsume kubernetes lock as length for '
++                    f'lock name ({lock_name}) is over 63 bytes and unable '
++                    'to determine how to trim the lock name.'
++                )
++                # NOTE(ricolin) tooz Kubernetes lock are limited to 63 bytes,
++                # so we need to shorten the UUID if the total string length
++                # exceeds this limit.
++                uuid_pattern = (
++                    r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-"
++                    r"[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
++                )
++                match = re.search(uuid_pattern, lock_name, re.IGNORECASE)
++                if match is not None:
++                    lock_name = lock_name.replace(
++                        match.group(0),
++                        match.group(0)[:max(-28, 63 - len(lock_name))]
++                    )
++                if len(lock_name) > 63 and "-" in lock_name:
++                    # Try to reduce '-' to meet with lock name length.
++                    # So for example, the lock_name can become
++                    # "cinderattachmentupdated791240a$LONG_HOST_NAME"
++                    # if really needs.
++                    lock_name = lock_name.replace("-", "")
++                if len(lock_name) > 63:
++                    # Lock name is too long for a shortcut
++                    raise exception.LockCreationFailed(_(err_msg))
+         if self.coordinator is not None:
+             return self.coordinator.get_lock(lock_name)
+         else:
+@@ -141,7 +175,16 @@ def __acquire(lock, blocking, f_name):
+     t1 = timeutils.now()
+     name = utils.convert_str(lock.name)
+     LOG.debug('Acquiring lock "%s" by "%s"', name, f_name)
+-    lock.acquire(blocking)
++    backend_url = cfg.CONF.coordination.backend_url
++    if backend_url.startswith('kubernetes://'):
++        # Kubernetes lock currently can't have timeout=None case.
++        # If blocking is true, timeout will be None
++        # Kubernetes events have a default time-to-live (TTL)
++        # of 60 minutes, after which they are automatically cleaned up.
++        blocking = blocking if blocking is not True else 3600
++        lock.acquire(blocking, expire=86400)
++    else:
++        lock.acquire(blocking)
+     t2 = timeutils.now()
+     LOG.debug('Lock "%s" acquired by "%s" :: waited %0.3fs',
+               name, f_name, t2 - t1)
+diff --git a/cinder/tests/unit/test_coordination.py b/cinder/tests/unit/test_coordination.py
+index a1fc47508..4343f5713 100644
+--- a/cinder/tests/unit/test_coordination.py
++++ b/cinder/tests/unit/test_coordination.py
+@@ -21,6 +21,7 @@ import tooz.coordination
+ import tooz.locking
+ 
+ from cinder import coordination
++from cinder import exception
+ from cinder.tests.unit import test
+ 
+ 
+@@ -100,6 +101,53 @@ class CoordinatorTestCase(test.TestCase):
+             self.assertRaises(Locked, agent2.get_lock(lock_name).acquire)
+         self.assertNotIn(expected_name, MockToozLock.active_locks)
+ 
++    @mock.patch('cinder.coordination.cfg.CONF.coordination.backend_url')
++    def test_coordinator_lock_k8s_lock(self, mock_backend_url):
++        mock_backend_url.return_value = "kubernetes://"
++        agent = coordination.Coordinator()
++        uuid = "d791240a-e5ff-4d36-ba32-e5d33887ebc8"
++
++        # general k8s lock case
++        lock_name = f"attachment_update-{uuid}-instance"
++        agent.coordinator = mock.Mock()
++        agent.get_lock(lock_name)
++        expect_lock_name = lock_name.replace('_', '-')
++
++        agent.coordinator.get_lock.assert_called_once_with(expect_lock_name)
++
++        expected_msg = ("Unable to comsume kubernetes lock as length "
++                        "for lock name (%s) is over 63 bytes "
++                        "and unable to determine how to trim "
++                        "the lock name.")
++
++        # With uuid but too long
++        long_lock_name = f"cinder-attachment_update-{uuid}-instance{'a' * 36}"
++        uuid_msg = expected_msg % long_lock_name.replace('_', '-')
++        msg = self.assertRaises(exception.LockCreationFailed,
++                                agent.get_lock,
++                                long_lock_name)
++        self.assertEqual(uuid_msg, str(msg))
++
++        # lock name longer than 63 bytes but got uuid for trim.
++        lock_name = f"cinder-attachment_update-{uuid}-instance"
++        agent.coordinator = mock.Mock()
++        agent.get_lock(lock_name)
++        expect_lock_name = (
++            f"cinder-attachment-update-{uuid[:max(-28, 63 - len(lock_name))]}"
++            "-instance"
++        )
++        agent.coordinator.get_lock.assert_called_once_with(expect_lock_name)
++
++        # lock name longer than 63 bytes but got - for trim.
++        lock_name = f"cinder-attachment_update-{uuid}-instance{'-' * 64}"
++        agent.coordinator = mock.Mock()
++        agent.get_lock(lock_name)
++        expect_lock_name = (
++            f"cinderattachmentupdate{uuid[:max(-28, 63 - len(lock_name))]}"
++            "instance"
++        )
++        agent.coordinator.get_lock.assert_called_once_with(expect_lock_name)
++
+     @mock.patch('tooz.coordination.get_coordinator')
+     def test_coordinator_offline(self, get_coordinator):
+         crd = get_coordinator.return_value
+@@ -233,6 +281,35 @@ class CoordinationTestCase(test.TestCase):
+ 
+         self.assertEqual(['foo', 'bar'], inspect.getfullargspec(func)[0])
+ 
++    @mock.patch('cinder.coordination.cfg.CONF.coordination.backend_url')
++    @mock.patch('oslo_utils.timeutils.now', side_effect=[1, 2])
++    def test___acquire_k8s_lock(self, mock_now, mock_backend_url):
++        mock_backend_url.return_value = "kubernetes://"
++        lock = mock.Mock()
++        # Using getattr to avoid AttributeError: module 'cinder.coordination'
++        # has no attribute '_CoordinationTestCase__acquire'
++        res = getattr(coordination, '__acquire')(lock, mock.sentinel.blocking,
++                                                 mock.sentinel.f_name)
++        self.assertEqual(2, res)
++        self.assertEqual(2, mock_now.call_count)
++        mock_now.assert_has_calls([mock.call(), mock.call()])
++        lock.acquire.assert_called_once_with(mock.sentinel.blocking,
++                                             expire=86400)
++
++    @mock.patch('cinder.coordination.cfg.CONF.coordination.backend_url')
++    @mock.patch('oslo_utils.timeutils.now', side_effect=[1, 2])
++    def test___acquire_k8s_lock_blocking(self, mock_now, mock_backend_url):
++        mock_backend_url.return_value = "kubernetes://"
++        lock = mock.Mock()
++        # Using getattr to avoid AttributeError: module 'cinder.coordination'
++        # has no attribute '_CoordinationTestCase__acquire'
++        res = getattr(coordination, '__acquire')(lock, True,
++                                                 mock.sentinel.f_name)
++        self.assertEqual(2, res)
++        self.assertEqual(2, mock_now.call_count)
++        mock_now.assert_has_calls([mock.call(), mock.call()])
++        lock.acquire.assert_called_once_with(3600, expire=86400)
++
+     @mock.patch('oslo_utils.timeutils.now', side_effect=[1, 2])
+     def test___acquire(self, mock_now):
+         lock = mock.Mock()
+diff --git a/releasenotes/notes/add-cinder-k8s-lock-support-50efbfd5063c6e50.yaml b/releasenotes/notes/add-cinder-k8s-lock-support-50efbfd5063c6e50.yaml
+new file mode 100644
+index 000000000..5cf04d48e
+--- /dev/null
++++ b/releasenotes/notes/add-cinder-k8s-lock-support-50efbfd5063c6e50.yaml
+@@ -0,0 +1,21 @@
++---
++features:
++  - |
++    Cinder now supports Kubernetes-based coordination locks using the
++    ``tooz`` library. This update enables distributed locking in
++    Kubernetes environments without requiring external services like etcd
++    or ZooKeeper when OpenStack environments are deployed on Kubernetes.
++    It improves reliability and simplifies deployment for
++    containerized Cinder services.
++
++    To use this feature, configure the coordination backend in ``cinder.conf``
++    as follows
++
++    .. code-block:: ini
++
++        [coordination]
++        backend_url = kubernetes://namespace=openstack
++
++    To comsume Kubernetes lock support,
++    it requires ``tooz >= 7.0.0``, additional dependency packages ``sherlock``
++    and ``kubernetes`` installed, and appropriate Kubernetes RBAC permissions.
+-- 
+2.25.1
+
