@@ -68,6 +68,8 @@
             packages =
               with pkgs;
               [
+                crane
+                jq
                 cargo
                 clippy
                 docutils
@@ -75,15 +77,15 @@
                 go
                 jsonnet-bundler
                 kubernetes-helm
+                pandoc
                 patchutils
                 pre-commit
-                python311Packages.tox
+                python312Packages.tox
                 reno
                 renovate
                 rust-analyzer
                 rustc
                 uv
-                vale
               ]
               ++ (builtins.attrValues config.treefmt.build.programs);
           };

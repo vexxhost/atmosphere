@@ -1,8 +1,7 @@
-diff --git a/barbican/values.yaml b/charts/barbican/values.yaml
-index 3991d2ba..86abf1d3 100644
+diff --git a/barbican/values.yaml b/barbican/values.yaml
 --- a/barbican/values.yaml
 +++ b/barbican/values.yaml
-@@ -360,15 +360,20 @@ conf:
+@@ -360,18 +360,23 @@
      uwsgi:
        add-header: "Connection: close"
        buffer-size: 65535
@@ -22,4 +21,8 @@ index 3991d2ba..86abf1d3 100644
 +      socket-timeout: 10
        thunder-lock: true
        worker-reload-mercy: 80
-       wsgi-file: /var/lib/openstack/bin/barbican-wsgi-api
+-      wsgi-file: /var/lib/openstack/bin/barbican-wsgi-api
++      module: "barbican.wsgi.api:application"
+       processes: 1
+   barbican:
+     DEFAULT:

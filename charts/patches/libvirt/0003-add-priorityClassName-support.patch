@@ -1,0 +1,25 @@
+diff --git a/libvirt/templates/daemonset-libvirt.yaml b/libvirt/templates/daemonset-libvirt.yaml
+index a64318e9..508f163c 100644
+--- a/libvirt/templates/daemonset-libvirt.yaml
++++ b/libvirt/templates/daemonset-libvirt.yaml
+@@ -65,6 +65,7 @@ spec:
+         configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
+         configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
+     spec:
++{{ tuple "libvirt" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
+ {{ dict "envAll" $envAll "application" "libvirt" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+       serviceAccountName: {{ $serviceAccountName }}
+       nodeSelector:
+diff --git a/libvirt/values.yaml b/libvirt/values.yaml
+index 626efd3a..8ff4b8f4 100644
+--- a/libvirt/values.yaml
++++ b/libvirt/values.yaml
+@@ -217,6 +217,8 @@ conf:
+       fi
+ 
+ pod:
++  priorityClassName:
++    libvirt: ""
+   probes:
+     libvirt:
+       libvirt:
