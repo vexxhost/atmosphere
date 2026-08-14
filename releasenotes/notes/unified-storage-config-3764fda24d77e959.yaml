@@ -1,0 +1,29 @@
+---
+features:
+  - |
+    Storage configuration is now unified under a single
+    ``atmosphere_storage`` variable. Instead of configuring storage across
+    multiple per-service variables, all backend definitions live in one
+    place organized by purpose (images, volumes, backups, ephemeral).
+    The system automatically derives the required Helm values for Cinder,
+    Glance, Nova, libvirt, and Ceph Provisioners. Both Cinder and Glance
+    support multiple backends. See the ``storage`` documentation page for
+    the full configuration reference.
+upgrade:
+  - |
+    The ``atmosphere_storage`` variable provides sensible defaults using
+    the integrated Ceph cluster for images, volumes, and backups, with
+    local (qcow2) ephemeral disks for Nova. Override any part by setting
+    ``atmosphere_storage`` in your inventory. Your overrides merge on top
+    of the built-in defaults. Existing per-service overrides (for
+    example, ``cinder_helm_values``) continue to work and take precedence
+    over the derived values.
+  - |
+    The ``atmosphere_ceph_enabled`` variable is no longer supported.
+    Deployments that set this variable will fail with an error message
+    during the playbook run. Remove ``atmosphere_ceph_enabled`` from your
+    inventory and configure ``atmosphere_storage`` instead. If you
+    previously set ``atmosphere_ceph_enabled: true``, the defaults
+    already use Ceph, so no further action is necessary. If you set it to
+    ``false``, define ``atmosphere_storage`` with your non-Ceph backends.
+    See the storage documentation for migration instructions.
