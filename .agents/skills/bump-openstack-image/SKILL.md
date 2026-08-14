@@ -187,10 +187,7 @@ Use the `fixes` category when a reason was provided, otherwise use
 `upgrade`. Write in natural English from the project's perspective.
 Avoid using the raw package name (for example write "the Cluster API
 driver for Magnum" instead of "magnum-cluster-api"). Wrap technical
-terms such as config option names in RST double backticks. Run `vale`
-before committing:
-
-    vale releasenotes/notes/<note-file>.yaml
+terms such as config option names in RST double backticks.
 
 Example:
 
