@@ -30,13 +30,17 @@ type Vars struct {
 }
 
 type Defaults struct {
-	BaremetalConsoleEnabled           bool   `yaml:"ironic_vnc_enabled"`
-	BaremetalConsoleTokenTimeout      int    `yaml:"ironic_vnc_token_timeout"`
-	BaremetalConsoleAllowInsecureTLS  bool   `yaml:"ironic_vnc_allow_insecure_tls"`
-	BaremetalConsoleCASecretName      string `yaml:"ironic_vnc_ca_secret_name"`
-	BaremetalConsoleCASecretKey       string `yaml:"ironic_vnc_ca_secret_key"`
-	BaremetalConsoleCAMountPath       string `yaml:"ironic_vnc_ca_mount_path"`
-	BaremetalConsoleTLSMinimumVersion string `yaml:"ironic_vnc_tls_minimum_version"`
+	BaremetalConsoleEnabled              bool    `yaml:"ironic_vnc_enabled"`
+	BaremetalConsoleKeyboardMode         string  `yaml:"ironic_vnc_keyboard_mode"`
+	BaremetalConsoleKeyboardDiagnostics  bool    `yaml:"ironic_vnc_keyboard_diagnostics"`
+	BaremetalConsolePrintableKeyHold     float64 `yaml:"ironic_vnc_printable_key_hold"`
+	BaremetalConsolePrintableKeyInterval float64 `yaml:"ironic_vnc_printable_key_interval"`
+	BaremetalConsoleTokenTimeout         int     `yaml:"ironic_vnc_token_timeout"`
+	BaremetalConsoleAllowInsecureTLS     bool    `yaml:"ironic_vnc_allow_insecure_tls"`
+	BaremetalConsoleCASecretName         string  `yaml:"ironic_vnc_ca_secret_name"`
+	BaremetalConsoleCASecretKey          string  `yaml:"ironic_vnc_ca_secret_key"`
+	BaremetalConsoleCAMountPath          string  `yaml:"ironic_vnc_ca_mount_path"`
+	BaremetalConsoleTLSMinimumVersion    string  `yaml:"ironic_vnc_tls_minimum_version"`
 }
 
 func TestMain(m *testing.M) {
@@ -121,7 +125,37 @@ func TestBaremetalConsoleDefaults(t *testing.T) {
 	require.NoError(t, err)
 
 	require.False(t, defaults.BaremetalConsoleEnabled)
+	require.Equal(t, "paced-tap", defaults.BaremetalConsoleKeyboardMode)
+	require.False(t, defaults.BaremetalConsoleKeyboardDiagnostics)
+	require.Equal(t, 0.020, defaults.BaremetalConsolePrintableKeyHold)
+	require.Equal(t, 0.035, defaults.BaremetalConsolePrintableKeyInterval)
 	require.Equal(t, 600, defaults.BaremetalConsoleTokenTimeout)
+}
+
+func TestBaremetalConsoleKeyboardEnvironment(t *testing.T) {
+	var values struct {
+		HelmValues struct {
+			Console struct {
+				Container struct {
+					Env string `yaml:"env"`
+				} `yaml:"container"`
+			} `yaml:"console"`
+		} `yaml:"_ironic_helm_values"`
+	}
+	require.NoError(t, yaml.UnmarshalWithOptions(varsFile, &values))
+
+	environment := values.HelmValues.Console.Container.Env
+	for _, expected := range []string{
+		"{'name': 'KEYBOARD_MODE', 'value': ironic_vnc_keyboard_mode | string}",
+		"'name': 'KEYBOARD_DIAGNOSTICS'",
+		"'value': ironic_vnc_keyboard_diagnostics | bool | string | lower",
+		"'name': 'PRINTABLE_KEY_HOLD'",
+		"'value': ironic_vnc_printable_key_hold | float | string",
+		"'name': 'PRINTABLE_KEY_INTERVAL'",
+		"'value': ironic_vnc_printable_key_interval | float | string",
+	} {
+		require.Contains(t, environment, expected)
+	}
 }
 
 func TestBaremetalConsoleNetworkPolicyManifestGate(t *testing.T) {
