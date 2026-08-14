@@ -77,6 +77,7 @@
                 go
                 jsonnet-bundler
                 kubernetes-helm
+                pandoc
                 patchutils
                 pre-commit
                 python312Packages.tox
@@ -85,7 +86,6 @@
                 rust-analyzer
                 rustc
                 uv
-                vale
               ]
               ++ (builtins.attrValues config.treefmt.build.programs);
           };
