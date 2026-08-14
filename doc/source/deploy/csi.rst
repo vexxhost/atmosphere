@@ -177,3 +177,47 @@ the StorPool CSI driver by updating your Ansible inventory as follows:
 
 The ``storpool_csi_template`` variable specifies the StorPool template to use
 for the deployment which is set to ``k8s`` in the example above.
+
+*******************
+HPE Nimble storage
+*******************
+
+For environments using HPE Nimble storage (including HPE Alletra 5000/6000),
+configure the HPE Nimble CSI driver by updating your Ansible inventory as
+follows:
+
+.. code-block:: yaml
+
+    csi_driver: hpe-nimble
+    hpe_nimble_csi_backend: <FILL IN>
+    hpe_nimble_csi_username: <FILL IN>
+    hpe_nimble_csi_password: <FILL IN>
+    hpe_nimble_csi_access_protocol: iscsi  # iscsi or fc
+
+Make sure that you replace ``<FILL IN>`` with actual values relevant to your HPE
+Nimble configuration. The backend address should be the management IP or
+host name of your Nimble storage array. The
+``hpe_nimble_csi_access_protocol`` variable defaults to ``iscsi``.
+
+.. admonition:: Prerequisites
+    :class: important
+
+    The HPE Nimble CSI driver requires:
+
+    - Nimble OS 5.x or later on the storage array
+    - A user account on the Nimble array with at least ``poweruser`` role
+    - For iSCSI mode (``hpe_nimble_csi_access_protocol: iscsi``):
+
+      - iSCSI initiator software installed on compute nodes (automatically
+        handled by the ``iscsi`` role)
+      - Network connectivity between compute nodes and the Nimble array on a
+        flat network (the driver doesn't support iSCSI traffic routing)
+    - For Fibre Channel mode (``hpe_nimble_csi_access_protocol: fc``):
+
+      - ``multipathd`` and ``sg3_utils`` installed on compute nodes
+      - Fibre Channel zoning and World Wide Port Name (WWPN) initiator groups
+        configured on the array
+      - ``open-iscsi`` is not required
+
+For more information about the HPE CSI Driver, refer to the `HPE Storage
+Container Orchestrator Documentation <https://scod.hpedev.io/csi_driver/index.html>`_.

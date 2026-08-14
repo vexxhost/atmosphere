@@ -16,9 +16,92 @@
   ansible.builtin.import_tasks:
     file: generate_resources.yml
 
-- name: Run parallelizable pre-tasks (sequential mode only)
-  ansible.builtin.import_tasks: _pre.yml
+- name: Create CAs & Issuers
   when: not (_pre_role_active | default(false))
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      - apiVersion: cert-manager.io/v1
+        kind: Certificate
+        metadata:
+          name: "{{ item }}-ca"
+          namespace: openstack
+        spec:
+          isCA: true
+          commonName: "{{ octavia_tls_server_common_name if item == 'octavia-server' else octavia_tls_client_common_name }}"
+          secretName: "{{ item }}-ca"
+          duration: 87600h0m0s
+          renewBefore: 720h0m0s
+          privateKey: "{{ private_key | from_yaml }}"
+          issuerRef:
+            name: self-signed
+            kind: ClusterIssuer
+            group: cert-manager.io
+
+      - apiVersion: cert-manager.io/v1
+        kind: Issuer
+        metadata:
+          name: "{{ item }}"
+          namespace: openstack
+        spec:
+          ca:
+            secretName: "{{ item }}-ca"
+  vars:
+    # NOTE(mnaser): Unfortuantely, Ansible renders all variables as strings so
+    #               we do this workaround to make sure the size is an integer.
+    private_key: |
+      algorithm: "{{ octavia_tls_server_private_key_algorithm if item == 'octavia-server' else octavia_tls_client_private_key_algorithm }}"
+      size: {{ octavia_tls_server_private_key_size if item == 'octavia-server' else octavia_tls_client_private_key_size }}
+  loop:
+    - octavia-client
+    - octavia-server
+
+- name: Create certificate for Octavia clients
+  when: not (_pre_role_active | default(false))
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: cert-manager.io/v1
+      kind: Certificate
+      metadata:
+        name: octavia-client-certs
+        namespace: openstack
+      spec:
+        commonName: "{{ octavia_tls_client_common_name }}"
+        secretName: octavia-client-certs
+        additionalOutputFormats:
+          - type: CombinedPEM
+        duration: 87600h0m0s
+        renewBefore: 720h0m0s
+        privateKey: "{{ private_key | from_yaml }}"
+        issuerRef:
+          name: octavia-client
+          kind: Issuer
+          group: cert-manager.io
+  vars:
+    # NOTE(mnaser): Unfortuantely, Ansible renders all variables as strings so
+    #               we do this workaround to make sure the size is an integer.
+    private_key: |
+      algorithm: "{{ octavia_tls_client_private_key_algorithm }}"
+      size: {{ octavia_tls_client_private_key_size }}
+
+- name: Create admin compute quotaset
+  when: not (_pre_role_active | default(false))
+  openstack.cloud.quota:
+    cloud: atmosphere
+    # NOTE(okozachenko): It uses project name instead of id.
+    name: admin
+    instances: -1
+    cores: -1
+    ram: -1
+    volumes: -1
+    gigabytes: -1
+    security_group: -1
+    security_group_rule: -1
+  register: _octavia_admin_compute_quotaset
+  retries: 60
+  delay: 5
+  until: _octavia_admin_compute_quotaset is not failed
 
 - name: Wait for Octavia client certificate secret
   # The Certificate resources above are issued asynchronously by cert-manager.
@@ -48,6 +131,7 @@
     release_namespace: "{{ octavia_helm_release_namespace }}"
     create_namespace: true
     kubeconfig: "{{ octavia_helm_kubeconfig }}"
+    timeout: "{{ octavia_helm_timeout }}"
     values: "{{ _octavia_helm_values | combine(octavia_helm_values, recursive=True) }}"
 
 - name: Add implied roles

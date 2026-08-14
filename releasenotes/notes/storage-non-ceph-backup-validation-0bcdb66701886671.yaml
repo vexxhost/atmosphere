@@ -1,0 +1,15 @@
+---
+fixes:
+  - |
+    Atmosphere now accepts ``atmosphere_storage.backup.type: none`` and
+    ``atmosphere_storage.ephemeral.type: local`` in non-Ceph
+    deployments. The storage filter drops Ceph-only keys inherited from
+    the role defaults before validation, so those overrides succeed
+    while typos in the chosen variant still raise an error.
+  - |
+    Atmosphere now lets operators null out the role-default ``rbd1``
+    backend in ``atmosphere_storage.images.backends`` and
+    ``atmosphere_storage.volumes.backends``. The storage filter drops
+    ``null`` backend entries before validation, which keeps non-Ceph
+    layouts on the correct Cinder code path and prevents an empty
+    ``cinder-storage-init`` Job from rendering during upgrades.
