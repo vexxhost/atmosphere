@@ -37,6 +37,12 @@ identify which branches already have an open or merged backport PR — skip
 those. Sort the remaining branches **newest first** (e.g. `stable/2025.1`
 before `stable/2024.2` before `stable/zed`).
 
+Also record whether the original PR has labels that the automated workflow
+would copy to backport PRs. Mirror `.github/workflows/backports.yaml`
+`copy_labels_pattern`; currently, copy `skip-release-notes` when it exists on
+the original PR so reno checks do not require a release note for note-exempt
+changes.
+
 ### 3. Process branches one by one (cascade strategy)
 
 Use a **cascade strategy**: cherry-pick onto the newest branch first, fix any
@@ -109,6 +115,16 @@ backported changes before pushing.
 
 ### 7. Push and open a PR
 
+If the original PR has `skip-release-notes`, pass that label to every backport
+PR:
+
+```bash
+COPY_LABEL_ARGS=()
+if gh pr view <PR> --repo vexxhost/atmosphere --json labels --jq '.labels[].name' | grep -qx 'skip-release-notes'; then
+  COPY_LABEL_ARGS+=(--label skip-release-notes)
+fi
+```
+
 ```bash
 git push origin backport-<PR>-to-<branch>
 
@@ -117,7 +133,8 @@ gh pr create \
   --base <branch> \
   --head backport-<PR>-to-<branch> \
   --title "[Backport <branch>] <original PR title>" \
-  --body "# Description\nBackport of #<PR> to \`<branch>\`."
+  --body "# Description\nBackport of #<PR> to \`<branch>\`." \
+  "${COPY_LABEL_ARGS[@]}"
 ```
 
 ### 8. Clean up
