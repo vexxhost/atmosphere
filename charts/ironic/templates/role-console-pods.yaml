@@ -13,12 +13,13 @@ limitations under the License.
 */}}
 
 {{- if .Values.manifests.role_console_pods }}
+{{- $consoleNamespace := required "console.namespace is required when console Pod RBAC is enabled" .Values.console.namespace }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: ironic-console-pods
-  namespace: {{ .Values.console.namespace | default .Release.Namespace }}
+  namespace: {{ $consoleNamespace }}
 rules:
   - apiGroups: [""]
     resources: ["pods"]
