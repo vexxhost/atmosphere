@@ -1,0 +1,60 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: snapshotgroupclasses.storage.hpe.com
+spec:
+  conversion:
+    strategy: None
+  group: storage.hpe.com
+  names:
+    kind: SnapshotGroupClass
+    listKind: SnapshotGroupClassList
+    plural: snapshotgroupclasses
+    singular: snapshotgroupclass
+  scope: Cluster
+  versions:
+  - name: v1
+    schema:
+      openAPIV3Schema:
+        description: SnapshotGroupClass specifies parameters that a underlying
+          storage system uses when creating a volumegroup snapshot. A specific SnapshotGroupClass
+          is used by specifying its name in a VolumeGroupSnapshot object. SnapshotGroupClasses
+          are non-namespaced
+        properties:
+          apiVersion:
+            description: APIVersion defines the versioned schema of this representation
+              of an object.
+            type: string
+          deletionPolicy:
+            description: deletionPolicy determines whether a SnapshotGroupContent
+              created through the SnapshotGroupClass should be deleted when its
+              bound SnapshotGroup is deleted. Supported values are "Retain" and
+              "Delete". "Retain" means that the SnapshotGroupContent and its physical
+              snapshotGroup on underlying storage system are kept. "Delete" means that
+              the SnapshotGroupContent and its physical snapshotGroup on underlying
+              storage system are deleted. Required.
+            enum:
+            - Delete
+            - Retain
+            type: string
+          snapshotter:
+            description: snapshotter is the name of the storage driver that handles this
+              SnapshotGroupClass. Required.
+            type: string
+          kind:
+            description: Kind is a string value representing the REST resource
+              this object represents.
+            type: string
+          parameters:
+            additionalProperties:
+                type: string
+            description: parameters is a key-value map with storage driver specific
+              parameters for creating snapshotGroups. These values are opaque to Kubernetes.
+            type: object
+        required:
+        - deletionPolicy
+        - snapshotter
+        type: object
+    served: true
+    storage: true
