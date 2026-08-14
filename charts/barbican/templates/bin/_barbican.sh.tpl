@@ -18,7 +18,12 @@ set -ex
 COMMAND="${@:-start}"
 
 function start () {
+{{- if eq "gunicorn" .Values.wsgi.backend }}
+  exec gunicorn --config /tmp/gunicorn.conf.py barbican.wsgi.api:application
+{{- end }}
+{{- if eq "uwsgi" .Values.wsgi.backend }}
   exec uwsgi --ini /etc/barbican/barbican-api-uwsgi.ini
+{{- end }}
 }
 
 function stop () {
