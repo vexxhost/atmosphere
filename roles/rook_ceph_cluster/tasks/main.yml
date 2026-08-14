@@ -47,6 +47,7 @@
   register: _rook_ceph_cluster_mon_auth_data
 
 - name: Create RGW user password secret
+  no_log: true
   run_once: true
   kubernetes.core.k8s:
     state: present
@@ -109,6 +110,7 @@
     values: "{{ _rook_ceph_cluster_helm_values | combine(rook_ceph_cluster_helm_values, recursive=True) }}"
 
 - name: Create OpenStack user
+  no_log: true
   openstack.cloud.identity_user:
     cloud: atmosphere
     name: "{{ openstack_helm_endpoints.identity.auth.rgw.username }}"
