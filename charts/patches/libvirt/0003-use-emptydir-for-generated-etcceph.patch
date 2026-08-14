@@ -1,0 +1,24 @@
+diff --git a/libvirt/templates/daemonset-libvirt.yaml b/libvirt/templates/daemonset-libvirt.yaml
+index 7a537b403..c8c4d58ff 100644
+--- a/libvirt/templates/daemonset-libvirt.yaml
++++ b/libvirt/templates/daemonset-libvirt.yaml
+@@ -279,9 +279,6 @@ spec:
+             {{- if .Values.conf.ceph.enabled }}
+             - name: etcceph
+               mountPath: /etc/ceph
+-              {{- if or ( gt .Capabilities.KubeVersion.Major "1" ) ( ge .Capabilities.KubeVersion.Minor "10" ) }}
+-              mountPropagation: Bidirectional
+-              {{- end }}
+             {{- if empty .Values.conf.ceph.cinder.keyring }}
+             - name: ceph-keyring
+               mountPath: /tmp/client-keyring
+@@ -325,8 +322,7 @@ spec:
+             defaultMode: 0444
+         {{- if .Values.conf.ceph.enabled }}
+         - name: etcceph
+-          hostPath:
+-            path: /var/lib/openstack-helm/compute/libvirt
++          emptyDir: {}
+         - name: ceph-etc
+           configMap:
+             name: {{ .Values.ceph_client.configmap }}

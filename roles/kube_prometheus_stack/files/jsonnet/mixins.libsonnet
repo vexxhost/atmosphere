@@ -299,7 +299,9 @@ local mixins = {
     },
   goldpinger: (import 'goldpinger.libsonnet'),
   nginx: (import 'nginx.libsonnet'),
+  network: (import 'network.libsonnet'),
   openstack: (import 'openstack.libsonnet'),
+  smartctl: (import 'smartctl.libsonnet'),
 } + (import 'legacy.libsonnet');
 
 {
