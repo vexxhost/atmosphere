@@ -90,6 +90,32 @@ _STORPOOL_BACKEND = {
     "template": "hybrid-2ssd",
 }
 
+_NIMBLE_ISCSI_BACKEND = {
+    "type": "nimble",
+    "protocol": "iscsi",
+    "address": "10.0.0.3",
+    "username": "admin",
+    "password": "secret",
+}
+
+_NIMBLE_FC_BACKEND = {
+    "type": "nimble",
+    "protocol": "fc",
+    "address": "10.0.0.3",
+    "username": "admin",
+    "password": "secret",
+}
+
+_NIMBLE_POD_SECURITY_CONTEXT = {
+    "cinder_volume": {
+        "container": {
+            "cinder_volume": {
+                "privileged": True,
+            }
+        }
+    }
+}
+
 
 class _LazyValue:
     def __init__(self, value):
@@ -140,8 +166,47 @@ class TestValidation:
                 }
             )
 
-    def test_erasure_coded_m_ge_k_rejected(self):
-        with pytest.raises(ValidationError, match="m.*must be less than k"):
+    def test_backup_none_drops_rbd_keys_from_recursive_combine(self):
+        """Mimic Ansible's ``combine(recursive=True)`` of role defaults
+        with a non-Ceph user override that flips ``backup.type`` to
+        ``none``. The rbd keys leaked from defaults must not cause
+        validation to fail.
+        """
+        cfg = StorageConfig.model_validate(
+            {
+                **DEFAULT_STORAGE,
+                "backup": {
+                    **DEFAULT_STORAGE["backup"],
+                    "type": "none",
+                },
+            }
+        )
+        assert cfg.backup is not None
+        assert cfg.backup.type == "none"
+
+    def test_ephemeral_local_drops_rbd_keys_from_recursive_combine(self):
+        cfg = StorageConfig.model_validate(
+            {
+                **DEFAULT_STORAGE,
+                "ephemeral": {
+                    **DEFAULT_STORAGE["ephemeral"],
+                    "type": "local",
+                },
+            }
+        )
+        assert cfg.ephemeral is not None
+        assert cfg.ephemeral.type == "local"
+
+    def test_typo_in_backup_none_still_rejected(self):
+        """Pruning only drops keys that belong to *another* variant of
+        the same union. Genuine typos within the chosen variant must
+        still trigger ``extra="forbid"``.
+        """
+        with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+            StorageConfig.model_validate({"backup": {"type": "none", "typo": "value"}})
+
+    def test_erasure_coded_m_gt_k_rejected(self):
+        with pytest.raises(ValidationError, match="m.*must not exceed k"):
             StorageConfig.model_validate(
                 {
                     "volumes": {
@@ -164,29 +229,32 @@ class TestValidation:
                 }
             )
 
-    def test_erasure_coded_m_equal_k_rejected(self):
-        with pytest.raises(ValidationError, match="m.*must be less than k"):
-            StorageConfig.model_validate(
-                {
-                    "volumes": {
-                        "default": "ec1",
-                        "backends": {
-                            "ec1": {
-                                "type": "rbd-ec",
-                                "pool": "test",
-                                "erasure_coded": {
-                                    "k": 3,
-                                    "m": 3,
-                                    "failure_domain": "host",
-                                },
-                                "metadata_replication": 3,
-                                "user": "cinder",
-                                "secret_uuid": "457eb676-33da-42ec-9a8c-9293d545c337",
-                            }
-                        },
-                    }
+    def test_erasure_coded_m_equal_k_valid(self):
+        cfg = StorageConfig.model_validate(
+            {
+                "volumes": {
+                    "default": "ec1",
+                    "backends": {
+                        "ec1": {
+                            "type": "rbd-ec",
+                            "pool": "test",
+                            "erasure_coded": {
+                                "k": 3,
+                                "m": 3,
+                                "failure_domain": "host",
+                            },
+                            "metadata_replication": 3,
+                            "user": "cinder",
+                            "secret_uuid": "457eb676-33da-42ec-9a8c-9293d545c337",
+                        }
+                    },
                 }
-            )
+            }
+        )
+
+        assert cfg.volumes is not None
+        backend = cfg.volumes.backends["ec1"]
+        assert getattr(backend, "erasure_coded").m == 3
 
     def test_image_default_not_in_backends(self):
         with pytest.raises(ValidationError, match="default.*not in backends"):
@@ -228,6 +296,43 @@ class TestValidation:
                     }
                 }
             )
+
+    def test_volume_backend_set_to_none_is_dropped(self):
+        cfg = StorageConfig.model_validate(
+            {
+                "volumes": {
+                    "default": "ceph",
+                    "backends": {
+                        "rbd1": None,
+                        "ceph": {
+                            "type": "rbd",
+                            "pool": "vms",
+                            "user": "cinder",
+                            "secret_uuid": "af49f2ad-75fc-4a0c-8ec0-f6e35bac5413",
+                        },
+                    },
+                },
+            }
+        )
+
+        assert cfg.volumes is not None
+        assert set(cfg.volumes.backends) == {"ceph"}
+
+    def test_image_backend_set_to_none_is_dropped(self):
+        cfg = StorageConfig.model_validate(
+            {
+                "images": {
+                    "default": "cinder_store",
+                    "backends": {
+                        "rbd1": None,
+                        "cinder_store": {"type": "cinder"},
+                    },
+                },
+            }
+        )
+
+        assert cfg.images is not None
+        assert set(cfg.images.backends) == {"cinder_store"}
 
     def test_invalid_backend_type_rejected(self):
         with pytest.raises(ValidationError):
@@ -326,6 +431,44 @@ class TestStorageToCinderHelmValues:
         assert backend["image_volume_cache_max_count"] == 50
         assert result["conf"]["cinder"]["DEFAULT"]["enabled_backends"] == "rbd1"
         assert result["conf"]["cinder"]["DEFAULT"]["default_volume_type"] == "rbd1"
+        assert result["ceph_client"]["internal_ceph_backend"] == "rbd1"
+
+    def test_renamed_default_rbd_masks_rbd1(self):
+        storage = {
+            **DEFAULT_STORAGE,
+            "volumes": {
+                "default": "ceph",
+                "backends": {
+                    "rbd1": None,
+                    "ceph": {
+                        "type": "rbd",
+                        "pool": "vms",
+                        "user": "cinder",
+                        "secret_uuid": "af49f2ad-75fc-4a0c-8ec0-f6e35bac5413",
+                    },
+                    "ecpool": {
+                        "type": "rbd-ec",
+                        "pool": "ecpool_metadata",
+                        "data_pool": "ecpool",
+                        "user": "ec-pool",
+                        "secret_uuid": "0a5880da-fae4-469e-9d3c-b64c12030c9d",
+                        "metadata_replication": 3,
+                        "erasure_coded": {
+                            "k": 2,
+                            "m": 2,
+                            "failure_domain": "host",
+                        },
+                    },
+                },
+            },
+        }
+
+        result = storage_to_cinder_helm_values(storage)
+
+        assert set(result["conf"]["backends"]) == {"ceph", "ecpool"}
+        assert result["conf"]["cinder"]["DEFAULT"]["enabled_backends"] == "ceph,ecpool"
+        assert result["conf"]["cinder"]["DEFAULT"]["default_volume_type"] == "ceph"
+        assert result["ceph_client"]["internal_ceph_backend"] == "ceph"
 
     def test_rbd_custom_chunk_size(self):
         storage = {
@@ -609,6 +752,99 @@ class TestStorageToCinderHelmValues:
         mounts = result["pod"]["mounts"]["cinder_volume"]
         assert len(mounts["volumeMounts"]) == 2
         assert len(mounts["volumes"]) == 2
+
+    def test_nimble_iscsi_backend(self):
+        storage = {
+            **DEFAULT_STORAGE,
+            "volumes": {
+                "default": "nimble",
+                "backends": {"nimble": _NIMBLE_ISCSI_BACKEND},
+            },
+            "backup": {"type": "none"},
+        }
+        result = storage_to_cinder_helm_values(storage)
+
+        backend = result["conf"]["backends"]["nimble"]
+        assert (
+            backend["volume_driver"]
+            == "cinder.volume.drivers.hpe.nimble.NimbleISCSIDriver"
+        )
+        assert backend["san_ip"] == "10.0.0.3"
+        assert backend["san_login"] == "admin"
+        assert backend["san_password"] == "secret"
+        assert backend["nimble_subnet_label"] == "*"
+        assert backend["use_multipath_for_image_xfer"] is True
+        assert result["conf"]["enable_iscsi"] is True
+        assert result["pod"]["useHostNetwork"] == {"volume": True}
+        assert result["pod"]["security_context"] == _NIMBLE_POD_SECURITY_CONTEXT
+
+    def test_nimble_backend_custom_subnet_label(self):
+        storage = {
+            **DEFAULT_STORAGE,
+            "volumes": {
+                "default": "nimble",
+                "backends": {
+                    "nimble": {
+                        **_NIMBLE_ISCSI_BACKEND,
+                        "nimble_subnet_label": "storage-prod",
+                    }
+                },
+            },
+            "backup": {"type": "none"},
+        }
+        result = storage_to_cinder_helm_values(storage)
+
+        backend = result["conf"]["backends"]["nimble"]
+        assert backend["nimble_subnet_label"] == "storage-prod"
+
+    def test_nimble_with_rbd1_default_nulled_out(self):
+        storage = {
+            "images": {
+                "default": "cinder_store",
+                "backends": {
+                    "rbd1": None,
+                    "cinder_store": {"type": "cinder"},
+                },
+            },
+            "volumes": {
+                "default": "nimble1",
+                "backends": {
+                    "rbd1": None,
+                    "nimble1": _NIMBLE_ISCSI_BACKEND,
+                },
+            },
+            "backup": {"type": "none"},
+        }
+        result = storage_to_cinder_helm_values(storage)
+
+        assert "rbd1" not in result["conf"]["backends"]
+        assert result["storage"] == "nimble"
+        assert result["manifests"]["job_storage_init"] is False
+        assert result["conf"]["enable_iscsi"] is True
+
+    def test_nimble_fc_backend(self):
+        storage = {
+            **DEFAULT_STORAGE,
+            "volumes": {
+                "default": "nimble",
+                "backends": {"nimble": _NIMBLE_FC_BACKEND},
+            },
+            "backup": {"type": "none"},
+        }
+        result = storage_to_cinder_helm_values(storage)
+
+        backend = result["conf"]["backends"]["nimble"]
+        assert backend["volume_driver"] == (
+            "cinder.volume.drivers.hpe.nimble.NimbleFCDriver"
+        )
+        assert backend["san_ip"] == "10.0.0.3"
+        assert backend["san_login"] == "admin"
+        assert backend["san_password"] == "secret"
+        assert backend["nimble_subnet_label"] == "*"
+        assert backend["use_multipath_for_image_xfer"] is True
+        assert result["conf"]["enable_iscsi"] is True
+        assert result["pod"]["useHostNetwork"] == {"volume": True}
+        assert result["pod"]["security_context"] == _NIMBLE_POD_SECURITY_CONTEXT
 
     def test_no_backup(self):
         storage = {
@@ -974,6 +1210,85 @@ class TestStorageToLibvirtHelmValues:
         assert len(additional) == 2
         users = {u["user"] for u in additional}
         assert users == {"cinder-ssd", "cinder-nvme"}
+
+    def test_duplicate_libvirt_secret_is_not_repeated(self):
+        storage = {
+            "volumes": {
+                "default": "ceph",
+                "backends": {
+                    "ceph": {
+                        "type": "rbd",
+                        "pool": "vms",
+                        "user": "cinder",
+                        "secret_uuid": "af49f2ad-75fc-4a0c-8ec0-f6e35bac5413",
+                    },
+                    "ecpool": {
+                        "type": "rbd-ec",
+                        "pool": "ecpool_metadata",
+                        "data_pool": "ecpool",
+                        "user": "ec-pool",
+                        "secret_uuid": "0a5880da-fae4-469e-9d3c-b64c12030c9d",
+                        "metadata_replication": 3,
+                        "erasure_coded": {
+                            "k": 3,
+                            "m": 2,
+                            "failure_domain": "host",
+                        },
+                    },
+                    "rust": {
+                        "type": "rbd",
+                        "pool": "vms_hdd",
+                        "user": "cinder",
+                        "secret_uuid": "af49f2ad-75fc-4a0c-8ec0-f6e35bac5413",
+                    },
+                },
+            },
+        }
+
+        result = storage_to_libvirt_helm_values(storage)
+
+        assert result["conf"]["ceph"]["cinder"]["user"] == "cinder"
+        additional = result["conf"]["ceph"]["additional_users"]
+        assert len(additional) == 1
+        assert additional[0]["user"] == "ec-pool"
+        assert additional[0]["secret_name"] == "cinder-volume-rbd-keyring-ecpool"
+
+    def test_libvirt_renamed_default_rbd_masks_rbd1(self):
+        storage = {
+            "volumes": {
+                "default": "ceph",
+                "backends": {
+                    "rbd1": None,
+                    "ceph": {
+                        "type": "rbd",
+                        "pool": "vms",
+                        "user": "cinder",
+                        "secret_uuid": "af49f2ad-75fc-4a0c-8ec0-f6e35bac5413",
+                    },
+                    "ecpool": {
+                        "type": "rbd-ec",
+                        "pool": "ecpool_metadata",
+                        "data_pool": "ecpool",
+                        "user": "ec-pool",
+                        "secret_uuid": "0a5880da-fae4-469e-9d3c-b64c12030c9d",
+                        "metadata_replication": 3,
+                        "erasure_coded": {
+                            "k": 2,
+                            "m": 2,
+                            "failure_domain": "host",
+                        },
+                    },
+                },
+            },
+        }
+
+        result = storage_to_libvirt_helm_values(storage)
+
+        assert result["conf"]["ceph"]["cinder"]["user"] == "cinder"
+        additional = result["conf"]["ceph"]["additional_users"]
+        assert len(additional) == 1
+        assert additional[0]["user"] == "ec-pool"
+        assert additional[0]["secret_name"] == "cinder-volume-rbd-keyring-ecpool"
 
     def test_no_ceph(self):
         storage = {
