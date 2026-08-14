@@ -11,9 +11,6 @@ inputs:
   network_backend:
     description: Network backend to use for the test
     default: openvswitch
-  depot_build_id:
-    description: Depot build ID to use for the test
-    default: ''
   use_mirrors:
     description: Use mirrors for container images
     default: "true"
@@ -34,7 +31,7 @@ runs:
         sudo mkdir -p /var/lib/etcd
         sudo mount -t tmpfs -o nodev,nosuid,size=512M tmpfs /var/lib/etcd
 
-    - uses: astral-sh/setup-uv@v6
+    - uses: step-security/setup-uv@ccf0a26ce9117d9e99292b0ce953ea5d9ffe778e # v7.3.0
 
     - shell: bash
       run: |
@@ -43,11 +40,6 @@ runs:
       env:
         UV_PYTHON_DOWNLOADS: never
         UV_PYTHON_PREFERENCE: only-system
-
-    - uses: depot/setup-action@v1
-      if: ${{ inputs.depot_build_id != '' }}
-      with:
-        oidc: true
 
     - shell: bash
       if: ${{ inputs.use_mirrors == 'true' }}
@@ -69,9 +61,8 @@ runs:
       run: rm -rfv /usr/local/bin/helm || true
 
     - shell: bash
-      run: sudo --preserve-env=ANSIBLE_PYTHON_INTERPRETER,ATMOSPHERE_NETWORK_BACKEND,DEPOT_BUILD_ID,DEPOT_TOKEN,MOLECULE_CSI_DRIVER env "PATH=$PATH" molecule test -s ${{ inputs.scenario }}
+      run: sudo --preserve-env=ANSIBLE_PYTHON_INTERPRETER,ATMOSPHERE_NETWORK_BACKEND,MOLECULE_CSI_DRIVER env "PATH=$PATH" molecule test -s ${{ inputs.scenario }}
       env:
         ANSIBLE_PYTHON_INTERPRETER: /usr/bin/python3
         ATMOSPHERE_NETWORK_BACKEND: ${{ inputs.network_backend }}
-        DEPOT_BUILD_ID: ${{ inputs.depot_build_id }}
         MOLECULE_CSI_DRIVER: ${{ inputs.csi_driver }}

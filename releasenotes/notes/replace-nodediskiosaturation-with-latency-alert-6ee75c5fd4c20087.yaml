@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    The ``NodeDiskHighLatency`` alert replaces ``NodeDiskIOSaturation``.
+    The old alert measured disk queue depth, which produces false positives
+    on SSD and RAID devices. The new alert measures actual per-operation IO
+    latency with a threshold of 20ms sustained for 1 hour, catching genuinely
+    degraded storage without alert noise.

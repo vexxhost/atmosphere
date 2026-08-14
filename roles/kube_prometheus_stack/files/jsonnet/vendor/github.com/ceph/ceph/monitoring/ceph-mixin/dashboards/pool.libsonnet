@@ -23,14 +23,25 @@ local g = import 'grafonnet/grafana.libsonnet';
         'dashboard'
       )
     )
+    .addLinks([
+      $.addLinkSchema(
+        asDropdown=true,
+        icon='external link',
+        includeVars=true,
+        keepTime=true,
+        tags=[],
+        targetBlank=false,
+        title='Browse Dashboards',
+        tooltip='',
+        type='dashboards',
+        url=''
+      ),
+    ])
     .addTemplate(
       g.template.datasource('datasource', 'prometheus', 'default', label='Data Source')
     )
     .addTemplate(
       $.addClusterTemplate()
-    )
-    .addTemplate(
-      $.addJobTemplate()
     )
     .addTemplate(
       g.template.custom(label='TopK',
@@ -57,7 +68,7 @@ local g = import 'grafonnet/grafana.libsonnet';
         'Pools with Compression',
         'Count of the pools that have compression enabled',
         'current',
-        'count(ceph_pool_metadata{%(matchers)s, compression_mode!="none"})' % $.matchers(),
+        'count(ceph_pool_metadata{compression_mode!="none", %(matchers)s})' % $.matchers(),
         null,
         '',
         3,
@@ -158,36 +169,264 @@ local g = import 'grafonnet/grafana.libsonnet';
         3,
         3
       ),
-      $.addTableSchema(
-        '$datasource',
-        '',
-        { col: 5, desc: true },
-        [
-          $.overviewStyle('', 'Time', 'hidden', 'short'),
-          $.overviewStyle('', 'instance', 'hidden', 'short'),
-          $.overviewStyle('', 'job', 'hidden', 'short'),
-          $.overviewStyle('Pool Name', 'name', 'string', 'short'),
-          $.overviewStyle('Pool ID', 'pool_id', 'hidden', 'none'),
-          $.overviewStyle('Compression Factor', 'Value #A', 'number', 'none'),
-          $.overviewStyle('% Used', 'Value #D', 'number', 'percentunit', 'value', ['70', '85']),
-          $.overviewStyle('Usable Free', 'Value #B', 'number', 'bytes'),
-          $.overviewStyle('Compression Eligibility', 'Value #C', 'number', 'percent'),
-          $.overviewStyle('Compression Savings', 'Value #E', 'number', 'bytes'),
-          $.overviewStyle('Growth (5d)', 'Value #F', 'number', 'bytes', 'value', ['0', '0']),
-          $.overviewStyle('IOPS', 'Value #G', 'number', 'none'),
-          $.overviewStyle('Bandwidth', 'Value #H', 'number', 'Bps'),
-          $.overviewStyle('', '__name__', 'hidden', 'short'),
-          $.overviewStyle('', 'type', 'hidden', 'short'),
-          $.overviewStyle('', 'compression_mode', 'hidden', 'short'),
-          $.overviewStyle('Type', 'description', 'string', 'short'),
-          $.overviewStyle('Stored', 'Value #J', 'number', 'bytes'),
-          $.overviewStyle('', 'Value #I', 'hidden', 'short'),
-          $.overviewStyle('Compression', 'Value #K', 'string', 'short', null, [], [{ text: 'ON', value: '1' }]),
+
+      $.addTableExtended(
+        datasource='${datasource}',
+        title='Pool Overview',
+        gridPosition={ h: 6, w: 24, x: 0, y: 3 },
+        options={
+          footer: {
+            fields: '',
+            reducer: ['sum'],
+            countRows: false,
+            enablePagination: false,
+            show: false,
+          },
+          frameIndex: 1,
+          showHeader: true,
+        },
+        custom={ align: 'auto', cellOptions: { type: 'auto' }, filterable: true, inspect: false },
+        thresholds={
+          mode: 'absolute',
+          steps: [
+            { color: 'green', value: null },
+            { color: 'red', value: 80 },
+          ],
+        },
+        overrides=[
+          {
+            matcher: { id: 'byName', options: 'Time' },
+            properties: [
+              { id: 'unit', value: 'short' },
+              { id: 'decimals', value: 2 },
+            ],
+          },
+          {
+            matcher: { id: 'byName', options: 'instance' },
+            properties: [
+              { id: 'unit', value: 'short' },
+              { id: 'decimals', value: 2 },
+            ],
+          },
+          {
+            matcher: { id: 'byName', options: 'job' },
+            properties: [
+              { id: 'unit', value: 'short' },
+              { id: 'decimals', value: 2 },
+            ],
+          },
+          {
+            matcher: { id: 'byName', options: 'name' },
+            properties: [
+              { id: 'displayName', value: 'Pool Name' },
+              { id: 'unit', value: 'short' },
+              { id: 'decimals', value: 2 },
+            ],
+          },
+          {
+            matcher: { id: 'byName', options: 'pool_id' },
+            properties: [
+              { id: 'displayName', value: 'Pool ID' },
+              { id: 'unit', value: 'none' },
+              { id: 'decimals', value: 2 },
+            ],
+          },
+          {
+            matcher: { id: 'byName', options: 'Value #A' },
+            properties: [
+              { id: 'displayName', value: 'Compression Factor' },
+              { id: 'unit', value: 'none' },
+              { id: 'decimals', value: 2 },
+            ],
+          },
+          {
+            matcher: { id: 'byName', options: 'Value #D' },
+            properties: [
+              { id: 'displayName', value: '% Used' },
+              { id: 'unit', value: 'percentunit' },
+              { id: 'decimals', value: 2 },
+              { id: 'custom.cellOptions', value: { type: 'color-text' } },
+              {
+                id: 'thresholds',
+                value: {
+                  mode: 'absolute',
+                  steps: [
+                    {
+                      color: 'rgba(245, 54, 54, 0.9)',
+                      value: null,
+                    },
+                    {
+                      color: 'rgba(237, 129, 40, 0.89)',
+                      value: 70,
+                    },
+                    {
+                      color: 'rgba(50, 172, 45, 0.97)',
+                      value: 85,
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+          {
+            matcher: { id: 'byName', options: 'Value #B' },
+            properties: [
+              { id: 'displayName', value: 'Usable Free' },
+              { id: 'unit', value: 'bytes' },
+              { id: 'decimals', value: 2 },
+            ],
+          },
+          {
+            matcher: { id: 'byName', options: 'Value #C' },
+            properties: [
+              { id: 'displayName', value: 'Compression Eligibility' },
+              { id: 'unit', value: 'percent' },
+              { id: 'decimals', value: 2 },
+            ],
+          },
+          {
+            matcher: { id: 'byName', options: 'Value #E' },
+            properties: [
+              { id: 'displayName', value: 'Compression Savings' },
+              { id: 'unit', value: 'bytes' },
+              { id: 'decimals', value: 2 },
+            ],
+          },
+          {
+            matcher: { id: 'byName', options: 'Value #F' },
+            properties: [
+              { id: 'displayName', value: 'Growth (5d)' },
+              { id: 'unit', value: 'bytes' },
+              { id: 'decimals', value: 2 },
+              { id: 'custom.cellOptions', value: { type: 'color-text' } },
+              {
+                id: 'thresholds',
+                value: {
+                  mode: 'absolute',
+                  steps: [
+                    {
+                      color: 'rgba(245, 54, 54, 0.9)',
+                      value: null,
+                    },
+                    {
+                      color: 'rgba(237, 129, 40, 0.89)',
+                      value: 70,
+                    },
+                    {
+                      color: 'rgba(50, 172, 45, 0.97)',
+                      value: 85,
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+          {
+            matcher: { id: 'byName', options: 'Value #G' },
+            properties: [
+              { id: 'displayName', value: 'IOPS' },
+              { id: 'unit', value: 'none' },
+              { id: 'decimals', value: 2 },
+            ],
+          },
+          {
+            matcher: { id: 'byName', options: 'Value #H' },
+            properties: [
+              { id: 'displayName', value: 'Bandwidth' },
+              { id: 'unit', value: 'Bps' },
+              { id: 'decimals', value: 2 },
+            ],
+          },
+          {
+            matcher: { id: 'byName', options: '__name__' },
+            properties: [
+              { id: 'unit', value: 'short' },
+              { id: 'decimals', value: 2 },
+            ],
+          },
+          {
+            matcher: { id: 'byName', options: 'type' },
+            properties: [
+              { id: 'unit', value: 'short' },
+              { id: 'decimals', value: 2 },
+            ],
+          },
+          {
+            matcher: { id: 'byName', options: 'compression_mode' },
+            properties: [
+              { id: 'unit', value: 'short' },
+              { id: 'decimals', value: 2 },
+            ],
+          },
+          {
+            matcher: { id: 'byName', options: 'description' },
+            properties: [
+              { id: 'displayName', value: 'Type' },
+              { id: 'unit', value: 'short' },
+              { id: 'decimals', value: 2 },
+            ],
+          },
+          {
+            matcher: { id: 'byName', options: 'Value #J' },
+            properties: [
+              { id: 'displayName', value: 'Stored' },
+              { id: 'unit', value: 'bytes' },
+              { id: 'decimals', value: 2 },
+            ],
+          },
+          {
+            matcher: { id: 'byName', options: 'Value #I' },
+            properties: [
+              { id: 'unit', value: 'short' },
+              { id: 'decimals', value: 2 },
+            ],
+          },
+          {
+            matcher: { id: 'byName', options: 'Value #K' },
+            properties: [
+              { id: 'displayName', value: 'Compression' },
+              { id: 'unit', value: 'short' },
+              { id: 'decimals', value: 2 },
+            ],
+          },
         ],
-        'Pool Overview',
-        'table'
+        pluginVersion='10.4.0'
       )
-      .addTargets(
+      .addTransformations([
+        {
+          id: 'merge',
+          options: {},
+        },
+        {
+          id: 'seriesToRows',
+          options: {},
+        },
+        {
+          id: 'organize',
+          options: {
+            excludeByName: {
+              Time: true,
+              'Value #A': true,
+              instance: true,
+              job: true,
+              pool_id: true,
+              'Value #B': false,
+              'Value #C': true,
+              __name__: true,
+              compression_mode: true,
+              type: true,
+              'Value #I': true,
+              'Value #K': true,
+              'Value #D': false,
+              'Value #E': true,
+              cluster: true,
+            },
+            indexByName: {},
+            renameByName: {},
+            includeByName: {},
+          },
+        },
+      ]).addTargets(
         [
           $.addTargetSchema(
             |||
@@ -282,79 +521,91 @@ local g = import 'grafonnet/grafana.libsonnet';
             true
           ),
           $.addTargetSchema(
-            'ceph_pool_metadata{%(matchers)s, compression_mode!="none"}' % $.matchers(), 'K', 'table', 1, true
+            'ceph_pool_metadata{compression_mode!="none", %(matchers)s}' % $.matchers(), 'K', 'table', 1, true
           ),
           $.addTargetSchema('', 'L', '', '', null),
         ]
-      ) + { gridPos: { x: 0, y: 3, w: 24, h: 6 } },
-      $.simpleGraphPanel(
-        {},
-        'Top $topk Client IOPS by Pool',
-        'This chart shows the sum of read and write IOPS from all clients by pool',
-        'short',
-        'IOPS',
-        0,
-        |||
-          topk($topk,
-            round(
-              (
-                rate(ceph_pool_rd{%(matchers)s}[$__rate_interval]) +
-                  rate(ceph_pool_wr{%(matchers)s}[$__rate_interval])
-              ), 1
-            ) * on(pool_id) group_left(instance,name) ceph_pool_metadata{%(matchers)s})
-        ||| % $.matchers(),
-        '{{name}} ',
-        0,
-        9,
-        12,
-        8
+      ),
+
+      $.timeSeriesPanel(
+        title='Top $topk Client IOPS by Pool',
+        datasource='$datasource',
+        gridPosition={ x: 0, y: 9, w: 12, h: 8 },
+        unit='short',
+        axisLabel='IOPS',
+        drawStyle='line',
+        fillOpacity=8,
+        tooltip={ mode: 'multi', sort: 'none' },
+        colorMode='palette-classic',
+        spanNulls=true,
       )
-      .addTarget(
+      .addTargets([
+        $.addTargetSchema(
+          |||
+            topk($topk,
+              round(
+                (
+                  rate(ceph_pool_rd{%(matchers)s}[$__rate_interval]) +
+                  rate(ceph_pool_wr{%(matchers)s}[$__rate_interval])
+                ), 1
+              ) * on(pool_id) group_left(instance,name) ceph_pool_metadata{%(matchers)s}
+            )
+          ||| % $.matchers(),
+          '{{name}}'
+        ),
         $.addTargetSchema(
           |||
             topk($topk,
               rate(ceph_pool_wr{%(matchers)s}[$__rate_interval]) +
-                on(pool_id) group_left(instance,name) ceph_pool_metadata{%(matchers)s}
+              on(pool_id) group_left(instance,name) ceph_pool_metadata{%(matchers)s}
             )
           ||| % $.matchers(),
           '{{name}} - write'
-        )
-      ),
-      $.simpleGraphPanel(
-        {},
-        'Top $topk Client Bandwidth by Pool',
-        'The chart shows the sum of read and write bytes from all clients, by pool',
-        'Bps',
-        'Throughput',
-        0,
-        |||
-          topk($topk,
-            (
-              rate(ceph_pool_rd_bytes{%(matchers)s}[$__rate_interval]) +
+        ),
+      ]),
+      $.timeSeriesPanel(
+        title='Top $topk Client Bandwidth by Pool',
+        datasource='$datasource',
+        gridPosition={ x: 12, y: 9, w: 12, h: 8 },
+        unit='Bps',
+        axisLabel='Throughput',
+        drawStyle='line',
+        fillOpacity=8,
+        tooltip={ mode: 'multi', sort: 'none' },
+        colorMode='palette-classic',
+        spanNulls=true,
+      )
+      .addTargets([
+        $.addTargetSchema(
+          |||
+            topk($topk,
+              (
+                rate(ceph_pool_rd_bytes{%(matchers)s}[$__rate_interval]) +
                 rate(ceph_pool_wr_bytes{%(matchers)s}[$__rate_interval])
-            ) * on(pool_id) group_left(instance, name) ceph_pool_metadata{%(matchers)s}
-          )
-        ||| % $.matchers(),
-        '{{name}}',
-        12,
-        9,
-        12,
-        8
-      ),
-      $.simpleGraphPanel(
-        {},
-        'Pool Capacity Usage (RAW)',
-        'Historical view of capacity usage, to help identify growth and trends in pool consumption',
-        'bytes',
-        'Capacity Used',
-        0,
-        'ceph_pool_bytes_used{%(matchers)s} * on(pool_id) group_right ceph_pool_metadata{%(matchers)s}' % $.matchers(),
-        '{{name}}',
-        0,
-        17,
-        24,
-        7
-      ),
+              ) * on(pool_id) group_left(instance, name) ceph_pool_metadata{%(matchers)s}
+            )
+          ||| % $.matchers(),
+          '{{name}}'
+        ),
+      ]),
+      $.timeSeriesPanel(
+        title='Pool Capacity Usage (RAW)',
+        datasource='$datasource',
+        gridPosition={ x: 0, y: 17, w: 24, h: 7 },
+        unit='bytes',
+        axisLabel='Capacity Used',
+        drawStyle='line',
+        fillOpacity=8,
+        tooltip={ mode: 'multi', sort: 'none' },
+        colorMode='palette-classic',
+        spanNulls=true,
+      )
+      .addTargets([
+        $.addTargetSchema(
+          'ceph_pool_bytes_used{%(matchers)s} * on(pool_id) group_right ceph_pool_metadata{%(matchers)s}' % $.matchers(),
+          '{{name}}'
+        ),
+      ]),
     ]),
   'pool-detail.json':
     $.dashboardSchema(
@@ -387,14 +638,25 @@ local g = import 'grafonnet/grafana.libsonnet';
         'dashboard'
       )
     )
+    .addLinks([
+      $.addLinkSchema(
+        asDropdown=true,
+        icon='external link',
+        includeVars=true,
+        keepTime=true,
+        tags=[],
+        targetBlank=false,
+        title='Browse Dashboards',
+        tooltip='',
+        type='dashboards',
+        url=''
+      ),
+    ])
     .addTemplate(
       g.template.datasource('datasource', 'prometheus', 'default', label='Data Source')
     )
     .addTemplate(
       $.addClusterTemplate()
-    )
-    .addTemplate(
-      $.addJobTemplate()
     )
     .addTemplate(
       $.addTemplateSchema('pool_name',
@@ -419,7 +681,7 @@ local g = import 'grafonnet/grafana.libsonnet';
         '.7,.8',
         |||
           (ceph_pool_stored{%(matchers)s} / (ceph_pool_stored{%(matchers)s} + ceph_pool_max_avail{%(matchers)s})) *
-            on(pool_id) group_left(instance, name) ceph_pool_metadata{%(matchers)s, name=~"$pool_name"}
+            on(pool_id) group_left(instance, name) ceph_pool_metadata{name=~"$pool_name", %(matchers)s}
         ||| % $.matchers(),
         'time_series',
         0,
@@ -439,7 +701,7 @@ local g = import 'grafonnet/grafana.libsonnet';
         'current',
         |||
           (ceph_pool_max_avail{%(matchers)s} / deriv(ceph_pool_stored{%(matchers)s}[6h])) *
-            on(pool_id) group_left(instance, name) ceph_pool_metadata{%(matchers)s, name=~"$pool_name"} > 0
+            on(pool_id) group_left(instance, name) ceph_pool_metadata{name=~"$pool_name", %(matchers)s} > 0
         ||| % $.matchers(),
         'time_series',
         7,
@@ -447,106 +709,111 @@ local g = import 'grafonnet/grafana.libsonnet';
         5,
         7
       ),
-      $.simpleGraphPanel(
-        {
-          read_op_per_sec:
-            '#3F6833',
-          write_op_per_sec: '#E5AC0E',
-        },
-        '$pool_name Object Ingress/Egress',
-        '',
-        'ops',
-        'Objects out(-) / in(+) ',
-        null,
-        |||
-          deriv(ceph_pool_objects{%(matchers)s}[1m]) *
-            on(pool_id) group_left(instance, name) ceph_pool_metadata{%(matchers)s, name=~"$pool_name"}
-        ||| % $.matchers(),
-        'Objects per second',
-        12,
-        0,
-        12,
-        7
-      ),
-      $.simpleGraphPanel(
-        {
-          read_op_per_sec: '#3F6833',
-          write_op_per_sec: '#E5AC0E',
-        },
-        '$pool_name Client IOPS',
-        '',
-        'iops',
-        'Read (-) / Write (+)',
-        null,
-        |||
-          rate(ceph_pool_rd{%(matchers)s}[$__rate_interval]) *
-            on(pool_id) group_left(instance,name) ceph_pool_metadata{%(matchers)s, name=~"$pool_name"}
-        ||| % $.matchers(),
-        'reads',
-        0,
-        7,
-        12,
-        7
+      $.timeSeriesPanel(
+        title='$pool_name Object Ingress/Egress',
+        datasource='$datasource',
+        gridPosition={ x: 12, y: 0, w: 12, h: 7 },
+        unit='ops',
+        axisLabel='Objects out(-) / in(+)',
+        drawStyle='line',
+        fillOpacity=8,
+        tooltip={ mode: 'multi', sort: 'none' },
+        colorMode='palette-classic',
+        spanNulls=true,
       )
-      .addSeriesOverride({ alias: 'reads', transform: 'negative-Y' })
-      .addTarget(
+      .addTargets([
+        $.addTargetSchema(
+          |||
+            deriv(ceph_pool_objects{%(matchers)s}[1m]) *
+              on(pool_id) group_left(instance, name) ceph_pool_metadata{name=~"$pool_name", %(matchers)s}
+          ||| % $.matchers(),
+          'Objects per second'
+        ),
+      ]),
+      $.timeSeriesPanel(
+        title='$pool_name Client IOPS',
+        datasource='$datasource',
+        gridPosition={ x: 0, y: 7, w: 12, h: 7 },
+        unit='iops',
+        axisLabel='Read (-) / Write (+)',
+        drawStyle='line',
+        fillOpacity=8,
+        tooltip={ mode: 'multi', sort: 'none' },
+        colorMode='palette-classic',
+        spanNulls=true,
+      )
+      .addTargets([
+        $.addTargetSchema(
+          |||
+            rate(ceph_pool_rd{%(matchers)s}[$__rate_interval]) *
+              on(pool_id) group_left(instance, name) ceph_pool_metadata{name=~"$pool_name", %(matchers)s}
+          ||| % $.matchers(),
+          'reads'
+        ),
         $.addTargetSchema(
           |||
             rate(ceph_pool_wr{%(matchers)s}[$__rate_interval]) *
-              on(pool_id) group_left(instance, name) ceph_pool_metadata{%(matchers)s, name=~"$pool_name"}
+              on(pool_id) group_left(instance, name) ceph_pool_metadata{name=~"$pool_name", %(matchers)s}
           ||| % $.matchers(),
           'writes'
-        )
-      ),
-      $.simpleGraphPanel(
-        {
-          read_op_per_sec: '#3F6833',
-          write_op_per_sec: '#E5AC0E',
-        },
-        '$pool_name Client Throughput',
-        '',
-        'Bps',
-        'Read (-) / Write (+)',
-        null,
-        |||
-          rate(ceph_pool_rd_bytes{%(matchers)s}[$__rate_interval]) +
-            on(pool_id) group_left(instance, name) ceph_pool_metadata{%(matchers)s, name=~"$pool_name"}
-        ||| % $.matchers(),
-        'reads',
-        12,
-        7,
-        12,
-        7
+        ),
+      ])
+      .addSeriesOverride({
+        alias: 'reads',
+        transform: 'negative-Y',
+      }),
+      $.timeSeriesPanel(
+        title='$pool_name Client Throughput',
+        datasource='$datasource',
+        gridPosition={ x: 12, y: 7, w: 12, h: 7 },
+        unit='Bps',
+        axisLabel='Read (-) / Write (+)',
+        drawStyle='line',
+        fillOpacity=8,
+        tooltip={ mode: 'multi', sort: 'none' },
+        colorMode='palette-classic',
+        spanNulls=true,
       )
-      .addSeriesOverride({ alias: 'reads', transform: 'negative-Y' })
-      .addTarget(
+      .addTargets([
+        $.addTargetSchema(
+          |||
+            rate(ceph_pool_rd_bytes{%(matchers)s}[$__rate_interval]) +
+              on(pool_id) group_left(instance, name) ceph_pool_metadata{name=~"$pool_name", %(matchers)s}
+          ||| % $.matchers(),
+          'reads'
+        ),
         $.addTargetSchema(
           |||
             rate(ceph_pool_wr_bytes{%(matchers)s}[$__rate_interval]) +
-              on(pool_id) group_left(instance,name) ceph_pool_metadata{%(matchers)s, name=~"$pool_name"}
+              on(pool_id) group_left(instance, name) ceph_pool_metadata{name=~"$pool_name", %(matchers)s}
           ||| % $.matchers(),
           'writes'
-        )
-      ),
-      $.simpleGraphPanel(
-        {
-          read_op_per_sec: '#3F6833',
-          write_op_per_sec: '#E5AC0E',
-        },
-        '$pool_name Objects',
-        '',
-        'short',
-        'Objects',
-        null,
-        |||
-          ceph_pool_objects{%(matchers)s} *
-            on(pool_id) group_left(instance,name) ceph_pool_metadata{%(matchers)s, name=~"$pool_name"}
-        ||| % $.matchers(),
-        'Number of Objects',
-        0,
-        14,
-        12,
-        7
-      ),
+        ),
+      ])
+      .addSeriesOverride({
+        alias: 'reads',
+        transform: 'negative-Y',
+      }),
+      $.timeSeriesPanel(
+        title='$pool_name Objects',
+        datasource='$datasource',
+        gridPosition={ x: 0, y: 14, w: 12, h: 7 },
+        unit='short',
+        axisLabel='Objects',
+        drawStyle='line',
+        fillOpacity=8,
+        tooltip={ mode: 'multi', sort: 'none' },
+        colorMode='palette-classic',
+        spanNulls=true,
+      )
+      .addTargets([
+        $.addTargetSchema(
+          |||
+            ceph_pool_objects{%(matchers)s} *
+              on(pool_id) group_left(instance, name) ceph_pool_metadata{name=~"$pool_name", %(matchers)s}
+          ||| % $.matchers(),
+          'Number of Objects'
+        ),
+      ]),
     ]),
 }

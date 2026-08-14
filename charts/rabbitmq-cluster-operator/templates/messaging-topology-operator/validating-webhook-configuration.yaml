@@ -3,7 +3,7 @@ Copyright Broadcom, Inc. All Rights Reserved.
 SPDX-License-Identifier: APACHE-2.0
 */}}
 
-{{- if .Values.msgTopologyOperator.enabled }}
+{{- if and (eq .Values.msgTopologyOperator.enabled true) (not .Values.msgTopologyOperator.skipCreateAdmissionWebhookConfig) }}
 {{- $versionLabel := dict "app.kubernetes.io/version" ( include "common.images.version" ( dict "imageRoot" .Values.msgTopologyOperator.image "chart" .Chart ) ) }}
 {{- $labels := include "common.tplvalues.merge" ( dict "values" ( list .Values.commonLabels $versionLabel ) "context" . ) }}
 {{/*
@@ -186,6 +186,30 @@ webhooks:
           - UPDATE
         resources:
           - permissions
+    sideEffects: None
+  - admissionReviewVersions:
+      - v1
+    clientConfig:
+      {{- if not .Values.useCertManager }}
+      caBundle: {{ include "common.secrets.lookup" (dict "secret" $secretName "key" "ca.crt" "defaultValue" (default $ca.Cert .Values.msgTopologyOperator.existingWebhookCertCABundle) "context" $) }}
+      {{- end }}
+      service:
+        name: {{ template "rmqco.msgTopologyOperator.webhook.fullname" . }}
+        namespace: {{ include "common.names.namespace" . | quote }}
+        path: /validate-rabbitmq-com-v1beta1-topicpermission
+        port: {{ .Values.msgTopologyOperator.service.ports.webhook }}
+    failurePolicy: Fail
+    name: vtopicpermission.kb.io
+    rules:
+      - apiGroups:
+          - rabbitmq.com
+        apiVersions:
+          - v1beta1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - topicpermissions
     sideEffects: None
   - admissionReviewVersions:
       - v1

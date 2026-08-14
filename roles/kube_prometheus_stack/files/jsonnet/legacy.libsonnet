@@ -109,6 +109,37 @@
             },
           ],
         },
+        {
+          name: 'ipmi-exporter-sel',
+          rules: [
+            {
+              alert: 'IpmiUncorrectableMemoryError',
+              expr: 'time() - max by (instance) (ipmi_sel_events_latest_timestamp{name="uncorrectable_memory_error"}) < 86400',
+              'for': '2m',
+              labels: {
+                severity: 'P1',
+              },
+              annotations: {
+                summary: 'IPMI: recent uncorrectable memory error may affect host stability on {{ $labels.instance }}',
+                description: 'The metric ipmi_sel_events_latest_timestamp{name="uncorrectable_memory_error"} for {{ $labels.instance }} indicates the most recent uncorrectable memory SEL event is {{ $value | humanizeDuration }} old, which is within the alert window of 24 hours. Normal behavior is that no uncorrectable memory SEL events occur, or the latest such event is older than 24 hours.',
+                runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#ipmiuncorrectablememoryerror',
+              },
+            },
+            {
+              alert: 'IpmiUnrecoverableCpuError',
+              expr: 'time() - max by (instance) (ipmi_sel_events_latest_timestamp{name="unrecoverable_cpu_error"}) < 86400',
+              'for': '2m',
+              labels: {
+                severity: 'P1',
+              },
+              annotations: {
+                summary: 'IPMI: recent unrecoverable CPU error may affect host stability on {{ $labels.instance }}',
+                description: 'The metric ipmi_sel_events_latest_timestamp{name="unrecoverable_cpu_error"} for {{ $labels.instance }} indicates the most recent unrecoverable CPU SEL event is {{ $value | humanizeDuration }} old, which is within the alert window of 24 hours. Normal behavior is that no unrecoverable CPU SEL events occur, or the latest such event is older than 24 hours.',
+                runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#ipmiunrecoverablecpuerror',
+              },
+            },
+          ],
+        },
       ],
     },
   },
@@ -143,14 +174,6 @@
               },
             },
             {
-              alert: 'NodeHighMemoryUsage',
-              expr: '(node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 < 2.5',
-              'for': '2m',
-              labels: {
-                severity: 'critical',
-              },
-            },
-            {
               alert: 'NodeHighCpuUsage',
               expr: "sum by(instance)(irate(node_cpu_seconds_total{mode='idle'}[5m])) < 1",
               'for': '2m',
@@ -164,24 +187,6 @@
               'for': '5m',
               labels: {
                 severity: 'P5',
-              },
-            },
-          ],
-        },
-        {
-          name: 'network',
-          rules: [
-            {
-              alert: 'NodeNetworkMulticast',
-              expr: 'rate(node_network_receive_multicast_total[1m]) > 1000',
-              'for': '5m',
-              labels: {
-                severity: 'critical',
-              },
-              annotations: {
-                summary: 'High multicast traffic on node {{ $labels.instance }}: {{ $value }} packets/sec',
-                description: 'This can result in high software interrupt load on the node which can bring network performance down.',
-                runbook_url: 'https://github.com/vexxhost/atmosphere/tree/main/roles/kube_prometheus_stack#NodeNetworkMulticast',
               },
             },
           ],

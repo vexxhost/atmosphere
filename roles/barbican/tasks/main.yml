@@ -40,22 +40,19 @@
 
 - name: Add implied roles
   run_once: true
-  ansible.builtin.shell: |
-    set -o posix
-    source /etc/profile.d/atmosphere.sh
-    openstack implied role create \
-      --implied-role {{ item.implies }} \
+  ansible.builtin.command:
+    cmd: >-
+      openstack implied role create
+      --implied-role {{ item.implies }}
       {{ item.role }}
-  args:
-    executable: /bin/bash
   loop:
     - role: member
       implies: creator
   environment:
     OS_CLOUD: atmosphere
-  register: _octavia_implied_role_create
-  changed_when: _octavia_implied_role_create.rc == 0
-  failed_when: _octavia_implied_role_create.rc != 0 and 'Duplicate entry.' not in _octavia_implied_role_create.stderr
+  register: _barbican_implied_role_create
+  changed_when: _barbican_implied_role_create.rc == 0
+  failed_when: _barbican_implied_role_create.rc != 0 and 'Duplicate entry.' not in _barbican_implied_role_create.stderr
   retries: 10
   delay: 1
-  until: _octavia_implied_role_create.rc == 0 or 'Duplicate entry.' in _octavia_implied_role_create.stderr
+  until: _barbican_implied_role_create.rc == 0 or 'Duplicate entry.' in _barbican_implied_role_create.stderr
