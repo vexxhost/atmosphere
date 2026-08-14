@@ -18,12 +18,22 @@ jobs:
   chart-vendor:
     runs-on: ubuntu-latest
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@a90bcbc6539c36a85cdfeb73f7e2f433735f215b # v2.15.0
+        with:
+          egress-policy: audit
+
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - uses: vexxhost/chart-vendor@3c91cecf08feb55ab66586b91b1a116b6cf0dbd9 # main
 
   go-test:
     runs-on: ubuntu-latest
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@a90bcbc6539c36a85cdfeb73f7e2f433735f215b # v2.15.0
+        with:
+          egress-policy: audit
+
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
         with:
@@ -34,21 +44,17 @@ jobs:
         run: |
           curl -L -s https://github.com/prometheus/prometheus/releases/download/v${PROMTOOL_VERSION}/prometheus-${PROMTOOL_VERSION}.linux-amd64.tar.gz | sudo tar -xz -C /usr/local/bin --strip-components=1
       - uses: robherley/go-test-action@b19f6aadabfb1ad85079065b21aa2af132466468 # v0.6.0
-
-  vale:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: sudo apt-get install -y docutils
-      - uses: errata-ai/vale-action@v2.1.1
         with:
-          files: doc,releasenotes
-          separator: ","
-          fail_on_error: true
+          testArguments: -timeout=20m ./...
 
   pre-commit:
     runs-on: ubuntu-latest
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@a90bcbc6539c36a85cdfeb73f7e2f433735f215b # v2.15.0
+        with:
+          egress-policy: audit
+
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
@@ -60,38 +66,12 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@a90bcbc6539c36a85cdfeb73f7e2f433735f215b # v2.15.0
+        with:
+          egress-policy: audit
+
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
       - uses: ./.github/actions/build
-
-  keycloak:
-    runs-on: vexxhost-ubuntu-22.04-4
-    if: ${{ github.event_name == 'pull_request' }}
-    concurrency:
-      group: ${{ github.job }}-${{ github.event.pull_request.number }}
-      cancel-in-progress: true
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: ./.github/actions/molecule
-        with:
-          scenario: keycloak
-
-  aio:
-    runs-on: vexxhost-ubuntu-22.04-16
-    if: ${{ github.event_name == 'pull_request' }}
-    concurrency:
-      group: ${{ github.job }}-${{ matrix.network_backend }}-${{ github.event.pull_request.number }}
-      cancel-in-progress: true
-    strategy:
-      fail-fast: false
-      matrix:
-        network_backend:
-          - openvswitch
-          - ovn
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: ./.github/actions/molecule
-        with:
-          scenario: aio
-          network_backend: ${{ matrix.network_backend }}

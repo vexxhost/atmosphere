@@ -22,6 +22,10 @@
   ansible.builtin.set_fact:
     _cinder_helm_values: "{{ _cinder_helm_values | combine(__cinder_staffeln_helm_values, recursive=True) }}"
 
+- name: Append Helm values (storage)
+  ansible.builtin.set_fact:
+    _cinder_helm_values: "{{ _cinder_helm_values | combine(_atmosphere_storage_config | vexxhost.atmosphere.storage_to_cinder_helm_values, recursive=True) }}"
+
 - name: Deploy Helm chart
   run_once: true
   kubernetes.core.helm:

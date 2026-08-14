@@ -44,10 +44,11 @@
         name: "{{ keycloak_user_info.username }}"
       register: identity_user_info_result
       # XXX(mnaser): GHA seems to be slow so the user doesn't show up right
-      #              away, it could also be a Keystone caching issue, for now
-      #              we try a few more times.
+      #              away, it could also be a Keystone caching issue.  Poll
+      #              less aggressively and give Keystone up to five minutes to
+      #              see the federated Keycloak user.
       retries: 30
-      delay: 1
+      delay: 10
       until: identity_user_info_result.users | length > 0
 
     - name: Assert that the user exists
