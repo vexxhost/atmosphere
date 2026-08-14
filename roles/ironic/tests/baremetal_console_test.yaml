@@ -2,12 +2,17 @@ suite: baremetal console
 tests:
   - it: should not deploy baremetal console by default
     templates:
+      - templates/configmap-etc.yaml
       - templates/deployment-novncproxy.yaml
       - templates/service-novncproxy.yaml
       - templates/role-console-pods.yaml
       - templates/rolebinding-console-pods.yaml
       - templates/network-policy-console.yaml
     asserts:
+      - template: templates/configmap-etc.yaml
+        documentIndex: 0
+        notExists:
+          path: data["ironic-console-pod.yaml"]
       - template: templates/deployment-novncproxy.yaml
         hasDocuments:
           count: 0
@@ -37,6 +42,8 @@ tests:
       - templates/network-policy-console.yaml
       - templates/statefulset-conductor.yaml
     set:
+      console:
+        namespace: test-console-ironic-vnc
       images:
         tags:
           ironic_novncproxy_assets: example.com/novnc-assets@sha256:0123456789abcdef
@@ -121,12 +128,22 @@ tests:
         documentIndex: 0
         equal:
           path: metadata.namespace
-          value: test-console
+          value: test-console-ironic-vnc
+      - template: templates/rolebinding-console-pods.yaml
+        documentIndex: 0
+        equal:
+          path: metadata.namespace
+          value: test-console-ironic-vnc
       - template: templates/rolebinding-console-pods.yaml
         documentIndex: 0
         equal:
           path: subjects[0].name
           value: ironic-conductor
+      - template: templates/network-policy-console.yaml
+        documentIndex: 0
+        equal:
+          path: metadata.namespace
+          value: test-console-ironic-vnc
       - template: templates/network-policy-console.yaml
         documentIndex: 0
         equal:

@@ -24,3 +24,6 @@ if [[ ! -e /tmp/usr/share/novnc/vnc_auto.html ]] && \
   cp /tmp/usr/share/novnc/vnc_lite.html \
     /tmp/usr/share/novnc/vnc_auto.html
 fi
+
+test -s /tmp/usr/share/novnc/vnc_auto.html
+test -s /tmp/usr/share/novnc/core/rfb.js
