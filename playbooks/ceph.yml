@@ -14,6 +14,15 @@
 
 - hosts: "{{ target | default('all') }}"
   become: true
+  pre_tasks:
+    - name: Fail if atmosphere_ceph_enabled is set
+      ansible.builtin.fail:
+        msg: >-
+          The "atmosphere_ceph_enabled" variable is no longer supported.
+          Please use the "atmosphere_storage" variable to configure storage
+          backends instead. Refer to the storage configuration documentation
+          for migration instructions.
+      when: atmosphere_ceph_enabled is defined
   roles:
     - role: defaults
   post_tasks:

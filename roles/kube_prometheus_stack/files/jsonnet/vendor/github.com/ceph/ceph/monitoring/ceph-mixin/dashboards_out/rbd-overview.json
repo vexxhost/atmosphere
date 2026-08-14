@@ -47,7 +47,20 @@
    "graphTooltip": 0,
    "hideControls": false,
    "id": null,
-   "links": [ ],
+   "links": [
+      {
+         "asDropdown": true,
+         "icon": "external link",
+         "includeVars": true,
+         "keepTime": true,
+         "tags": [ ],
+         "targetBlank": false,
+         "title": "Browse Dashboards",
+         "tooltip": "",
+         "type": "dashboards",
+         "url": ""
+      }
+   ],
    "panels": [
       {
          "aliasColors": { },
@@ -55,7 +68,16 @@
          "dashLength": 10,
          "dashes": false,
          "datasource": "$datasource",
-         "description": "",
+         "description": "RBD per-image IO statistics are disabled by default.\n\nPlease refer to https://docs.ceph.com/en/latest/mgr/prometheus/#rbd-io-statistics for information about how to enable those optionally.",
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "fillOpacity": 8,
+                  "showPoints": "never"
+               },
+               "unit": "short"
+            }
+         },
          "fill": 1,
          "fillGradient": 0,
          "gridPos": {
@@ -80,7 +102,7 @@
          "lines": true,
          "linewidth": 1,
          "links": [ ],
-         "nullPointMode": "null",
+         "nullPointMode": "null as zero",
          "percentage": false,
          "pointradius": 5,
          "points": false,
@@ -92,14 +114,14 @@
          "steppedLine": false,
          "targets": [
             {
-               "expr": "round(sum(rate(ceph_rbd_write_ops{job=~\"$job\"}[$__rate_interval])))",
+               "expr": "round(sum(rate(ceph_rbd_write_ops{cluster=~\"$cluster\", }[$__rate_interval])))",
                "format": "time_series",
                "intervalFactor": 1,
                "legendFormat": "Writes",
                "refId": "A"
             },
             {
-               "expr": "round(sum(rate(ceph_rbd_read_ops{job=~\"$job\"}[$__rate_interval])))",
+               "expr": "round(sum(rate(ceph_rbd_read_ops{cluster=~\"$cluster\", }[$__rate_interval])))",
                "format": "time_series",
                "intervalFactor": 1,
                "legendFormat": "Reads",
@@ -115,7 +137,7 @@
             "sort": 0,
             "value_type": "individual"
          },
-         "type": "graph",
+         "type": "timeseries",
          "xaxis": {
             "buckets": null,
             "mode": "time",
@@ -148,7 +170,16 @@
          "dashLength": 10,
          "dashes": false,
          "datasource": "$datasource",
-         "description": "",
+         "description": "RBD per-image IO statistics are disabled by default.\n\nPlease refer to https://docs.ceph.com/en/latest/mgr/prometheus/#rbd-io-statistics for information about how to enable those optionally.",
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "fillOpacity": 8,
+                  "showPoints": "never"
+               },
+               "unit": "Bps"
+            }
+         },
          "fill": 1,
          "fillGradient": 0,
          "gridPos": {
@@ -173,7 +204,7 @@
          "lines": true,
          "linewidth": 1,
          "links": [ ],
-         "nullPointMode": "null",
+         "nullPointMode": "null as zero",
          "percentage": false,
          "pointradius": 5,
          "points": false,
@@ -185,14 +216,14 @@
          "steppedLine": false,
          "targets": [
             {
-               "expr": "round(sum(rate(ceph_rbd_write_bytes{job=~\"$job\"}[$__rate_interval])))",
+               "expr": "round(sum(rate(ceph_rbd_write_bytes{cluster=~\"$cluster\", }[$__rate_interval])))",
                "format": "time_series",
                "intervalFactor": 1,
                "legendFormat": "Write",
                "refId": "A"
             },
             {
-               "expr": "round(sum(rate(ceph_rbd_read_bytes{job=~\"$job\"}[$__rate_interval])))",
+               "expr": "round(sum(rate(ceph_rbd_read_bytes{cluster=~\"$cluster\", }[$__rate_interval])))",
                "format": "time_series",
                "intervalFactor": 1,
                "legendFormat": "Read",
@@ -208,7 +239,7 @@
             "sort": 0,
             "value_type": "individual"
          },
-         "type": "graph",
+         "type": "timeseries",
          "xaxis": {
             "buckets": null,
             "mode": "time",
@@ -241,7 +272,16 @@
          "dashLength": 10,
          "dashes": false,
          "datasource": "$datasource",
-         "description": "",
+         "description": "RBD per-image IO statistics are disabled by default.\n\nPlease refer to https://docs.ceph.com/en/latest/mgr/prometheus/#rbd-io-statistics for information about how to enable those optionally.",
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "fillOpacity": 8,
+                  "showPoints": "never"
+               },
+               "unit": "ns"
+            }
+         },
          "fill": 1,
          "fillGradient": 0,
          "gridPos": {
@@ -266,7 +306,7 @@
          "lines": true,
          "linewidth": 1,
          "links": [ ],
-         "nullPointMode": "null",
+         "nullPointMode": "null as zero",
          "percentage": false,
          "pointradius": 5,
          "points": false,
@@ -278,14 +318,14 @@
          "steppedLine": false,
          "targets": [
             {
-               "expr": "round(\n  sum(rate(ceph_rbd_write_latency_sum{job=~\"$job\"}[$__rate_interval])) /\n    sum(rate(ceph_rbd_write_latency_count{job=~\"$job\"}[$__rate_interval]))\n)\n",
+               "expr": "round(\n  sum(rate(ceph_rbd_write_latency_sum{cluster=~\"$cluster\", }[$__rate_interval])) /\n    sum(rate(ceph_rbd_write_latency_count{cluster=~\"$cluster\", }[$__rate_interval]))\n)\n",
                "format": "time_series",
                "intervalFactor": 1,
                "legendFormat": "Write",
                "refId": "A"
             },
             {
-               "expr": "round(\n  sum(rate(ceph_rbd_read_latency_sum{job=~\"$job\"}[$__rate_interval])) /\n    sum(rate(ceph_rbd_read_latency_count{job=~\"$job\"}[$__rate_interval]))\n)\n",
+               "expr": "round(\n  sum(rate(ceph_rbd_read_latency_sum{cluster=~\"$cluster\", }[$__rate_interval])) /\n    sum(rate(ceph_rbd_read_latency_count{cluster=~\"$cluster\", }[$__rate_interval]))\n)\n",
                "format": "time_series",
                "intervalFactor": 1,
                "legendFormat": "Read",
@@ -301,7 +341,7 @@
             "sort": 0,
             "value_type": "individual"
          },
-         "type": "graph",
+         "type": "timeseries",
          "xaxis": {
             "buckets": null,
             "mode": "time",
@@ -330,8 +370,107 @@
       },
       {
          "columns": [ ],
-         "datasource": "$datasource",
-         "description": "",
+         "datasource": "${datasource}",
+         "description": "RBD per-image IO statistics are disabled by default.\n\nPlease refer to https://docs.ceph.com/en/latest/mgr/prometheus/#rbd-io-statistics for information about how to enable those optionally.",
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "align": "null",
+                  "cellOptions": {
+                     "type": "auto"
+                  },
+                  "filterable": true,
+                  "inspect": false
+               },
+               "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                     {
+                        "color": "green",
+                        "value": null
+                     },
+                     {
+                        "color": "red",
+                        "value": 80
+                     }
+                  ]
+               }
+            },
+            "overrides": [
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "pool"
+                  },
+                  "properties": [
+                     {
+                        "id": "displayName",
+                        "value": "Pool"
+                     },
+                     {
+                        "id": "unit",
+                        "value": "short"
+                     },
+                     {
+                        "id": "decimals",
+                        "value": 2
+                     },
+                     {
+                        "id": "custom.align",
+                        "value": null
+                     }
+                  ]
+               },
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "image"
+                  },
+                  "properties": [
+                     {
+                        "id": "displayName",
+                        "value": "Image"
+                     },
+                     {
+                        "id": "unit",
+                        "value": "short"
+                     },
+                     {
+                        "id": "decimals",
+                        "value": 2
+                     },
+                     {
+                        "id": "custom.align",
+                        "value": null
+                     }
+                  ]
+               },
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "Value"
+                  },
+                  "properties": [
+                     {
+                        "id": "displayName",
+                        "value": "IOPS"
+                     },
+                     {
+                        "id": "unit",
+                        "value": "iops"
+                     },
+                     {
+                        "id": "decimals",
+                        "value": 2
+                     },
+                     {
+                        "id": "custom.align",
+                        "value": null
+                     }
+                  ]
+               }
+            ]
+         },
          "gridPos": {
             "h": 7,
             "w": 8,
@@ -340,83 +479,24 @@
          },
          "id": 5,
          "links": [ ],
-         "sort": {
-            "col": 3,
-            "desc": true
+         "options": {
+            "footer": {
+               "countRows": false,
+               "enablePagination": false,
+               "fields": "",
+               "reducer": [
+                  "sum"
+               ],
+               "show": false
+            },
+            "frameIndex": 1,
+            "showHeader": true
          },
-         "styles": [
-            {
-               "alias": "Pool",
-               "colorMode": null,
-               "colors": [
-                  "rgba(245, 54, 54, 0.9)",
-                  "rgba(237, 129, 40, 0.89)",
-                  "rgba(50, 172, 45, 0.97)"
-               ],
-               "dateFormat": "YYYY-MM-DD HH:mm:ss",
-               "decimals": 2,
-               "mappingType": 1,
-               "pattern": "pool",
-               "thresholds": [ ],
-               "type": "string",
-               "unit": "short",
-               "valueMaps": [ ]
-            },
-            {
-               "alias": "Image",
-               "colorMode": null,
-               "colors": [
-                  "rgba(245, 54, 54, 0.9)",
-                  "rgba(237, 129, 40, 0.89)",
-                  "rgba(50, 172, 45, 0.97)"
-               ],
-               "dateFormat": "YYYY-MM-DD HH:mm:ss",
-               "decimals": 2,
-               "mappingType": 1,
-               "pattern": "image",
-               "thresholds": [ ],
-               "type": "string",
-               "unit": "short",
-               "valueMaps": [ ]
-            },
-            {
-               "alias": "IOPS",
-               "colorMode": null,
-               "colors": [
-                  "rgba(245, 54, 54, 0.9)",
-                  "rgba(237, 129, 40, 0.89)",
-                  "rgba(50, 172, 45, 0.97)"
-               ],
-               "dateFormat": "YYYY-MM-DD HH:mm:ss",
-               "decimals": 2,
-               "mappingType": 1,
-               "pattern": "Value",
-               "thresholds": [ ],
-               "type": "number",
-               "unit": "iops",
-               "valueMaps": [ ]
-            },
-            {
-               "alias": "",
-               "colorMode": null,
-               "colors": [
-                  "rgba(245, 54, 54, 0.9)",
-                  "rgba(237, 129, 40, 0.89)",
-                  "rgba(50, 172, 45, 0.97)"
-               ],
-               "dateFormat": "YYYY-MM-DD HH:mm:ss",
-               "decimals": 2,
-               "mappingType": 1,
-               "pattern": "/.*/",
-               "thresholds": [ ],
-               "type": "hidden",
-               "unit": "short",
-               "valueMaps": [ ]
-            }
-         ],
+         "pluginVersion": "10.4.0",
+         "styles": "",
          "targets": [
             {
-               "expr": "topk(10,\n  (\n    sort((\n      rate(ceph_rbd_write_ops{job=~\"$job\"}[$__rate_interval]) +\n        on (image, pool, namespace) rate(ceph_rbd_read_ops{job=~\"$job\"}[$__rate_interval])\n    ))\n  )\n)\n",
+               "expr": "topk(10,\n  (\n    sort((\n      rate(ceph_rbd_write_ops{cluster=~\"$cluster\", }[$__rate_interval]) +\n        on (image, pool, namespace) rate(ceph_rbd_read_ops{cluster=~\"$cluster\", }[$__rate_interval])\n    ))\n  )\n)\n",
                "format": "table",
                "instant": true,
                "intervalFactor": 1,
@@ -427,13 +507,119 @@
          "timeFrom": null,
          "timeShift": null,
          "title": "Highest IOPS",
-         "transform": "table",
+         "transformations": [
+            {
+               "id": "merge",
+               "options": {
+                  "reducers": [ ]
+               }
+            }
+         ],
          "type": "table"
       },
       {
          "columns": [ ],
-         "datasource": "$datasource",
-         "description": "",
+         "datasource": "${datasource}",
+         "description": "RBD per-image IO statistics are disabled by default.\n\nPlease refer to https://docs.ceph.com/en/latest/mgr/prometheus/#rbd-io-statistics for information about how to enable those optionally.",
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "align": "null",
+                  "cellOptions": {
+                     "type": "auto"
+                  },
+                  "filterable": true,
+                  "inspect": false
+               },
+               "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                     {
+                        "color": "green",
+                        "value": null
+                     },
+                     {
+                        "color": "red",
+                        "value": 80
+                     }
+                  ]
+               }
+            },
+            "overrides": [
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "pool"
+                  },
+                  "properties": [
+                     {
+                        "id": "displayName",
+                        "value": "Pool"
+                     },
+                     {
+                        "id": "unit",
+                        "value": "short"
+                     },
+                     {
+                        "id": "decimals",
+                        "value": 2
+                     },
+                     {
+                        "id": "custom.align",
+                        "value": null
+                     }
+                  ]
+               },
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "image"
+                  },
+                  "properties": [
+                     {
+                        "id": "displayName",
+                        "value": "Image"
+                     },
+                     {
+                        "id": "unit",
+                        "value": "short"
+                     },
+                     {
+                        "id": "decimals",
+                        "value": 2
+                     },
+                     {
+                        "id": "custom.align",
+                        "value": null
+                     }
+                  ]
+               },
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "Value"
+                  },
+                  "properties": [
+                     {
+                        "id": "displayName",
+                        "value": "Throughput"
+                     },
+                     {
+                        "id": "unit",
+                        "value": "Bps"
+                     },
+                     {
+                        "id": "decimals",
+                        "value": 2
+                     },
+                     {
+                        "id": "custom.align",
+                        "value": null
+                     }
+                  ]
+               }
+            ]
+         },
          "gridPos": {
             "h": 7,
             "w": 8,
@@ -442,83 +628,24 @@
          },
          "id": 6,
          "links": [ ],
-         "sort": {
-            "col": 3,
-            "desc": true
+         "options": {
+            "footer": {
+               "countRows": false,
+               "enablePagination": false,
+               "fields": "",
+               "reducer": [
+                  "sum"
+               ],
+               "show": false
+            },
+            "frameIndex": 1,
+            "showHeader": true
          },
-         "styles": [
-            {
-               "alias": "Pool",
-               "colorMode": null,
-               "colors": [
-                  "rgba(245, 54, 54, 0.9)",
-                  "rgba(237, 129, 40, 0.89)",
-                  "rgba(50, 172, 45, 0.97)"
-               ],
-               "dateFormat": "YYYY-MM-DD HH:mm:ss",
-               "decimals": 2,
-               "mappingType": 1,
-               "pattern": "pool",
-               "thresholds": [ ],
-               "type": "string",
-               "unit": "short",
-               "valueMaps": [ ]
-            },
-            {
-               "alias": "Image",
-               "colorMode": null,
-               "colors": [
-                  "rgba(245, 54, 54, 0.9)",
-                  "rgba(237, 129, 40, 0.89)",
-                  "rgba(50, 172, 45, 0.97)"
-               ],
-               "dateFormat": "YYYY-MM-DD HH:mm:ss",
-               "decimals": 2,
-               "mappingType": 1,
-               "pattern": "image",
-               "thresholds": [ ],
-               "type": "string",
-               "unit": "short",
-               "valueMaps": [ ]
-            },
-            {
-               "alias": "Throughput",
-               "colorMode": null,
-               "colors": [
-                  "rgba(245, 54, 54, 0.9)",
-                  "rgba(237, 129, 40, 0.89)",
-                  "rgba(50, 172, 45, 0.97)"
-               ],
-               "dateFormat": "YYYY-MM-DD HH:mm:ss",
-               "decimals": 2,
-               "mappingType": 1,
-               "pattern": "Value",
-               "thresholds": [ ],
-               "type": "number",
-               "unit": "Bps",
-               "valueMaps": [ ]
-            },
-            {
-               "alias": "",
-               "colorMode": null,
-               "colors": [
-                  "rgba(245, 54, 54, 0.9)",
-                  "rgba(237, 129, 40, 0.89)",
-                  "rgba(50, 172, 45, 0.97)"
-               ],
-               "dateFormat": "YYYY-MM-DD HH:mm:ss",
-               "decimals": 2,
-               "mappingType": 1,
-               "pattern": "/.*/",
-               "thresholds": [ ],
-               "type": "hidden",
-               "unit": "short",
-               "valueMaps": [ ]
-            }
-         ],
+         "pluginVersion": "10.4.0",
+         "styles": "",
          "targets": [
             {
-               "expr": "topk(10,\n  sort(\n    sum(\n      rate(ceph_rbd_read_bytes{job=~\"$job\"}[$__rate_interval]) +\n        rate(ceph_rbd_write_bytes{job=~\"$job\"}[$__rate_interval])\n    ) by (pool, image, namespace)\n  )\n)\n",
+               "expr": "topk(10,\n  sort(\n    sum(\n      rate(ceph_rbd_read_bytes{cluster=~\"$cluster\", }[$__rate_interval]) +\n        rate(ceph_rbd_write_bytes{cluster=~\"$cluster\", }[$__rate_interval])\n    ) by (pool, image, namespace)\n  )\n)\n",
                "format": "table",
                "instant": true,
                "intervalFactor": 1,
@@ -529,13 +656,119 @@
          "timeFrom": null,
          "timeShift": null,
          "title": "Highest Throughput",
-         "transform": "table",
+         "transformations": [
+            {
+               "id": "merge",
+               "options": {
+                  "reducers": [ ]
+               }
+            }
+         ],
          "type": "table"
       },
       {
          "columns": [ ],
-         "datasource": "$datasource",
-         "description": "",
+         "datasource": "${datasource}",
+         "description": "RBD per-image IO statistics are disabled by default.\n\nPlease refer to https://docs.ceph.com/en/latest/mgr/prometheus/#rbd-io-statistics for information about how to enable those optionally.",
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "align": "null",
+                  "cellOptions": {
+                     "type": "auto"
+                  },
+                  "filterable": true,
+                  "inspect": false
+               },
+               "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                     {
+                        "color": "green",
+                        "value": null
+                     },
+                     {
+                        "color": "red",
+                        "value": 80
+                     }
+                  ]
+               }
+            },
+            "overrides": [
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "pool"
+                  },
+                  "properties": [
+                     {
+                        "id": "displayName",
+                        "value": "Pool"
+                     },
+                     {
+                        "id": "unit",
+                        "value": "short"
+                     },
+                     {
+                        "id": "decimals",
+                        "value": 2
+                     },
+                     {
+                        "id": "custom.align",
+                        "value": null
+                     }
+                  ]
+               },
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "image"
+                  },
+                  "properties": [
+                     {
+                        "id": "displayName",
+                        "value": "Image"
+                     },
+                     {
+                        "id": "unit",
+                        "value": "short"
+                     },
+                     {
+                        "id": "decimals",
+                        "value": 2
+                     },
+                     {
+                        "id": "custom.align",
+                        "value": null
+                     }
+                  ]
+               },
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "Value"
+                  },
+                  "properties": [
+                     {
+                        "id": "displayName",
+                        "value": "Latency"
+                     },
+                     {
+                        "id": "unit",
+                        "value": "ns"
+                     },
+                     {
+                        "id": "decimals",
+                        "value": 2
+                     },
+                     {
+                        "id": "custom.align",
+                        "value": null
+                     }
+                  ]
+               }
+            ]
+         },
          "gridPos": {
             "h": 7,
             "w": 8,
@@ -544,83 +777,24 @@
          },
          "id": 7,
          "links": [ ],
-         "sort": {
-            "col": 3,
-            "desc": true
+         "options": {
+            "footer": {
+               "countRows": false,
+               "enablePagination": false,
+               "fields": "",
+               "reducer": [
+                  "sum"
+               ],
+               "show": false
+            },
+            "frameIndex": 1,
+            "showHeader": true
          },
-         "styles": [
-            {
-               "alias": "Pool",
-               "colorMode": null,
-               "colors": [
-                  "rgba(245, 54, 54, 0.9)",
-                  "rgba(237, 129, 40, 0.89)",
-                  "rgba(50, 172, 45, 0.97)"
-               ],
-               "dateFormat": "YYYY-MM-DD HH:mm:ss",
-               "decimals": 2,
-               "mappingType": 1,
-               "pattern": "pool",
-               "thresholds": [ ],
-               "type": "string",
-               "unit": "short",
-               "valueMaps": [ ]
-            },
-            {
-               "alias": "Image",
-               "colorMode": null,
-               "colors": [
-                  "rgba(245, 54, 54, 0.9)",
-                  "rgba(237, 129, 40, 0.89)",
-                  "rgba(50, 172, 45, 0.97)"
-               ],
-               "dateFormat": "YYYY-MM-DD HH:mm:ss",
-               "decimals": 2,
-               "mappingType": 1,
-               "pattern": "image",
-               "thresholds": [ ],
-               "type": "string",
-               "unit": "short",
-               "valueMaps": [ ]
-            },
-            {
-               "alias": "Latency",
-               "colorMode": null,
-               "colors": [
-                  "rgba(245, 54, 54, 0.9)",
-                  "rgba(237, 129, 40, 0.89)",
-                  "rgba(50, 172, 45, 0.97)"
-               ],
-               "dateFormat": "YYYY-MM-DD HH:mm:ss",
-               "decimals": 2,
-               "mappingType": 1,
-               "pattern": "Value",
-               "thresholds": [ ],
-               "type": "number",
-               "unit": "ns",
-               "valueMaps": [ ]
-            },
-            {
-               "alias": "",
-               "colorMode": null,
-               "colors": [
-                  "rgba(245, 54, 54, 0.9)",
-                  "rgba(237, 129, 40, 0.89)",
-                  "rgba(50, 172, 45, 0.97)"
-               ],
-               "dateFormat": "YYYY-MM-DD HH:mm:ss",
-               "decimals": 2,
-               "mappingType": 1,
-               "pattern": "/.*/",
-               "thresholds": [ ],
-               "type": "hidden",
-               "unit": "short",
-               "valueMaps": [ ]
-            }
-         ],
+         "pluginVersion": "10.4.0",
+         "styles": "",
          "targets": [
             {
-               "expr": "topk(10,\n  sum(\n    rate(ceph_rbd_write_latency_sum{job=~\"$job\"}[$__rate_interval]) /\n      clamp_min(rate(ceph_rbd_write_latency_count{job=~\"$job\"}[$__rate_interval]), 1) +\n      rate(ceph_rbd_read_latency_sum{job=~\"$job\"}[$__rate_interval]) /\n      clamp_min(rate(ceph_rbd_read_latency_count{job=~\"$job\"}[$__rate_interval]), 1)\n  ) by (pool, image, namespace)\n)\n",
+               "expr": "topk(10,\n  sum(\n    rate(ceph_rbd_write_latency_sum{cluster=~\"$cluster\", }[$__rate_interval]) /\n      clamp_min(rate(ceph_rbd_write_latency_count{cluster=~\"$cluster\", }[$__rate_interval]), 1) +\n      rate(ceph_rbd_read_latency_sum{cluster=~\"$cluster\", }[$__rate_interval]) /\n      clamp_min(rate(ceph_rbd_read_latency_count{cluster=~\"$cluster\", }[$__rate_interval]), 1)\n  ) by (pool, image, namespace)\n)\n",
                "format": "table",
                "instant": true,
                "intervalFactor": 1,
@@ -631,7 +805,14 @@
          "timeFrom": null,
          "timeShift": null,
          "title": "Highest Latency",
-         "transform": "table",
+         "transformations": [
+            {
+               "id": "merge",
+               "options": {
+                  "reducers": [ ]
+               }
+            }
+         ],
          "type": "table"
       }
    ],
@@ -660,36 +841,16 @@
             "type": "datasource"
          },
          {
-            "allValue": ".+",
-            "current": { },
-            "datasource": "$datasource",
-            "hide": 2,
-            "includeAll": true,
-            "label": "cluster",
-            "multi": true,
-            "name": "cluster",
-            "options": [ ],
-            "query": "label_values(ceph_osd_metadata, cluster)",
-            "refresh": 1,
-            "regex": "(.*)",
-            "sort": 1,
-            "tagValuesQuery": "",
-            "tags": [ ],
-            "tagsQuery": "",
-            "type": "query",
-            "useTags": false
-         },
-         {
-            "allValue": ".+",
+            "allValue": null,
             "current": { },
             "datasource": "$datasource",
             "hide": 0,
-            "includeAll": true,
-            "label": "job",
-            "multi": true,
-            "name": "job",
+            "includeAll": false,
+            "label": "cluster",
+            "multi": false,
+            "name": "cluster",
             "options": [ ],
-            "query": "label_values(ceph_osd_metadata{}, job)",
+            "query": "label_values(ceph_health_status, cluster)",
             "refresh": 1,
             "regex": "(.*)",
             "sort": 1,

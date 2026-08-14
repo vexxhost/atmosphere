@@ -1,4 +1,4 @@
-FROM golang:1.22.2 as build
+FROM golang:1.22.2@sha256:d5302d40dc5fbbf38ec472d1848a9d2391a13f93293a6a5b0b87c99dc0eaa6ae as build
 
 # build via Makefile target helm-test-image in root
 # Makefile. Building from this directory will not be
@@ -7,7 +7,7 @@ COPY . /src/loki
 WORKDIR /src/loki
 RUN make clean && make BUILD_IN_CONTAINER=false helm-test
 
-FROM alpine:3.18.5
+FROM alpine:3.18.5@sha256:34871e7290500828b39e22294660bee86d966bc0017544e848dd9a255cdf59e0
 RUN apk add --update --no-cache ca-certificates=20230506-r0
 COPY --from=build /src/loki/production/helm/loki/src/helm-test/helm-test /usr/bin/helm-test
 ENTRYPOINT [ "/usr/bin/helm-test" ]

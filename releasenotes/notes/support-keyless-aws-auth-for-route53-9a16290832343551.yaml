@@ -1,0 +1,20 @@
+---
+features:
+  - |
+    The Route53 DNS-01 solver for the ``cluster_issuer`` role now supports
+    keyless AWS authentication alongside the existing long-lived access
+    key flow. A new ``cluster_issuer_acme_route53_auth`` variable selects the
+    authentication mode, which can use static access keys (the default),
+    ambient credentials picked up from the pod environment, or OIDC-based
+    ``AssumeRoleWithWebIdentity`` using a projected ServiceAccount token.
+
+    The OIDC mode works with any Kubernetes cluster whose service account
+    issuer is publicly resolvable by AWS, including on-premises clusters, and
+    removes the need for long-lived IAM credentials.
+
+    A new ``cluster_issuer_acme_route53_role_arn`` variable also sets the IAM
+    role ARN to assume. The OIDC mode needs this variable.
+upgrade:
+  - |
+    The default Route53 authentication mode remains ``static``, so existing
+    deployments continue to work without changes.

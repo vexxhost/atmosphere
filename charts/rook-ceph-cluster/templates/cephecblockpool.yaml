@@ -22,10 +22,16 @@ apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
   name: {{ $ecblockpool.storageClass.name }}
-  {{- if $ecblockpool.storageClass.isDefault }}
+{{- if $ecblockpool.storageClass.labels }}
+  labels:
+{{ toYaml $ecblockpool.storageClass.labels | indent 4 }}
+{{- end }}
   annotations:
-    storageclass.kubernetes.io/is-default-class: "true"
-  {{end}}
+    storageclass.kubernetes.io/is-default-class: "{{ if default false $ecblockpool.storageClass.isDefault }}true{{ else }}false{{ end }}"
+{{- if $ecblockpool.storageClass.annotations }}
+{{ toYaml $ecblockpool.storageClass.annotations | indent 4 }}
+{{- end }}
+
 {{- if $root.Values.csiDriverNamePrefix }}
 provisioner: {{ $root.Values.csiDriverNamePrefix }}.rbd.csi.ceph.com
 {{- else }}
@@ -41,11 +47,11 @@ parameters:
   # The secrets contain Ceph admin credentials. These are generated automatically by the operator
   # in the same namespace as the cluster.
   csi.storage.k8s.io/provisioner-secret-name: rook-csi-rbd-provisioner
-  csi.storage.k8s.io/provisioner-secret-namespace: rook-ceph # namespace:cluster
+  csi.storage.k8s.io/provisioner-secret-namespace: {{ $root.Release.Namespace }} # namespace:cluster
   csi.storage.k8s.io/controller-expand-secret-name: rook-csi-rbd-provisioner
-  csi.storage.k8s.io/controller-expand-secret-namespace: rook-ceph # namespace:cluster
+  csi.storage.k8s.io/controller-expand-secret-namespace: {{ $root.Release.Namespace }} # namespace:cluster
   csi.storage.k8s.io/node-stage-secret-name: rook-csi-rbd-node
-  csi.storage.k8s.io/node-stage-secret-namespace: rook-ceph # namespace:cluster
+  csi.storage.k8s.io/node-stage-secret-namespace: {{ $root.Release.Namespace }} # namespace:cluster
   # Specify the filesystem type of the volume. If not specified, csi-provisioner
   # will set default as `ext4`.
   csi.storage.k8s.io/fstype: ext4
