@@ -20,6 +20,11 @@ manila_helm_release_namespace: openstack
 manila_helm_kubeconfig: "{{ kubeconfig_path | default('/etc/kubernetes/admin.conf') }}"
 manila_helm_values: {}
 
+# Maximum time allowed for Manila Helm operations.
+#
+# manila_helm_timeout: 10m0s
+manila_helm_timeout: 5m0s
+
 # Class name to use for the Ingress
 manila_ingress_class_name: "{{ atmosphere_ingress_class_name }}"
 
@@ -35,7 +40,7 @@ manila_flavor_extra_specs: {}
 
 # Service instance image
 manila_image_name: manila-service-image
-manila_image_url: "https://object-storage.public.mtl1.vexxhost.net/swift/v1/b98c5fdfb9be4e39a34b93d0b425ac2b/atmosphere-images/manila-{{ atmosphere_version | regex_replace('-beta.','b') }}.qcow2" # noqa yaml[line-length]
+manila_image_url: https://github.com/vexxhost/manila-service-images/releases/download/2026.05-3/manila-service-image.qcow2
 manila_image_container_format: bare
 manila_image_disk_format: qcow2
 
