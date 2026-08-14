@@ -1,14 +1,33 @@
 # Copyright (c) 2025 VEXXHOST, Inc.
 # SPDX-License-Identifier: Apache-2.0
 
-ansible:
-  cfg:
+dependency:
+  name: galaxy
+driver:
+  name: default
+  options:
+    managed: False
+    ansible_connection_options:
+      ansible_become: "true"
+      ansible_connection: local
+platforms:
+  - name: instance
+    groups:
+      - controllers
+      - cephs
+      - computes
+provisioner:
+  name: ansible
+  ansible_args:
+    - "--inventory=${ATMOSPHERE_ZUUL_INVENTORY:-/dev/null}"
+  config_options:
     defaults:
       callbacks_enabled: ansible.posix.profile_tasks
     connection:
       pipelining: true
-  executor:
-    backend: ansible-playbook
-    args:
-      ansible_playbook:
-        - --inventory=${MOLECULE_PROJECT_DIRECTORY}/inventory.yaml
+  inventory:
+    links:
+      host_vars: "${ATMOSPHERE_ANSIBLE_VARS_PATH-$MOLECULE_SCENARIO_DIRECTORY}/host_vars"
+      group_vars: "${ATMOSPHERE_ANSIBLE_VARS_PATH-$MOLECULE_SCENARIO_DIRECTORY}/group_vars"
+verifier:
+  name: ansible
