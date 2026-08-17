@@ -1,0 +1,39 @@
+# Copyright (c) 2025 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+_cloudnative_pg_helm_values:
+  image:
+    repository: "{{ atmosphere_images['cloudnative_pg'] | vexxhost.kubernetes.docker_image('name') }}"
+    tag: "{{ atmosphere_images['cloudnative_pg'] | vexxhost.kubernetes.docker_image('tag') }}"
+  fullnameOverride: cloudnative-pg
+  nodeSelector:
+    openstack-control-plane: enabled
+  resources:
+    limits:
+      cpu: 500m
+
+_cloudnative_pg_barman_cloud_helm_values:
+  image:
+    registry: "{{ atmosphere_images['cloudnative_pg_barman_cloud'] | vexxhost.kubernetes.docker_image('domain') }}"
+    repository: "{{ atmosphere_images['cloudnative_pg_barman_cloud'] | vexxhost.kubernetes.docker_image('path') }}"
+    tag: "{{ atmosphere_images['cloudnative_pg_barman_cloud'] | vexxhost.kubernetes.docker_image('tag') }}"
+  sidecarImage:
+    registry: "{{ atmosphere_images['cloudnative_pg_barman_cloud_sidecar'] | vexxhost.kubernetes.docker_image('domain') }}"
+    repository: "{{ atmosphere_images['cloudnative_pg_barman_cloud_sidecar'] | vexxhost.kubernetes.docker_image('path') }}"
+    tag: "{{ atmosphere_images['cloudnative_pg_barman_cloud_sidecar'] | vexxhost.kubernetes.docker_image('tag') }}"
+  fullnameOverride: cloudnative-pg-barman-cloud
+  nodeSelector:
+    openstack-control-plane: enabled
+  resources:
+    limits:
+      cpu: 500m
+
+_cloudnative_pg_kubectl_plugin_artifact_goarch_groups:
+  aarch64: arm64
+
+cloudnative_pg_kubectl_plugin_artifact_goarch: >-
+  {%- if ansible_facts['architecture'] in _cloudnative_pg_kubectl_plugin_artifact_goarch_groups -%}
+  {{ _cloudnative_pg_kubectl_plugin_artifact_goarch_groups[ansible_facts['architecture']] }}
+  {%- else -%}
+  {{ ansible_facts['architecture'] }}
+  {%- endif -%}
