@@ -12,7 +12,45 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Get the Kuberentes service for Percona XtraDB Cluster
+- name: Validate Keycloak database vendor
+  ansible.builtin.assert:
+    that:
+      - keycloak_database_vendor in ['mysql', 'postgres']
+    fail_msg: >-
+      keycloak_database_vendor must be either "mysql" or "postgres".
+
+- name: Validate PostgreSQL settings
+  when: keycloak_database_vendor == 'postgres'
+  ansible.builtin.assert:
+    that:
+      - keycloak_postgresql_host | length > 0
+      - keycloak_postgresql_secret_name | length > 0
+      - keycloak_postgresql_secret_key | length > 0
+    fail_msg: >-
+      Set keycloak_postgresql_host, keycloak_postgresql_secret_name, and
+      keycloak_postgresql_secret_key when using the PostgreSQL backend.
+
+- name: Check for completed PostgreSQL migration
+  run_once: true
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: ConfigMap
+    name: "{{ keycloak_database_migration_marker_name }}"
+    namespace: "{{ keycloak_helm_release_namespace }}"
+  register: _keycloak_database_migration_marker
+  failed_when: false
+
+- name: Prevent reverting a migrated deployment to MySQL
+  run_once: true
+  ansible.builtin.assert:
+    that:
+      - _keycloak_database_migration_marker.resources | default([]) | length == 0 or keycloak_database_vendor == 'postgres'
+    fail_msg: >-
+      This deployment has already been migrated to PostgreSQL. Set
+      keycloak_database_vendor to "postgres" before running Atmosphere again.
+
+- name: Get the Kubernetes service for Percona XtraDB Cluster
+  when: keycloak_database_vendor == 'mysql'
   run_once: true
   kubernetes.core.k8s_info:
     kind: Service
@@ -21,6 +59,7 @@
   register: _pxc_service
 
 - name: Install MySQL python package
+  when: keycloak_database_vendor == 'mysql'
   ansible.builtin.pip:
     name: PyMySQL
   register: _keycloak_pip_install
@@ -29,6 +68,7 @@
   until: _keycloak_pip_install is not failed
 
 - name: Check MySQL ready
+  when: keycloak_database_vendor == 'mysql'
   run_once: true
   community.mysql.mysql_info:
     login_host: "{{ _pxc_service.resources[0].spec.clusterIP }}"
@@ -42,6 +82,7 @@
   delay: 5
 
 - name: Create Keycloak database
+  when: keycloak_database_vendor == 'mysql'
   run_once: true
   community.mysql.mysql_db:
     login_host: "{{ _pxc_service.resources[0].spec.clusterIP }}"
@@ -50,6 +91,7 @@
     name: "{{ keycloak_database_name }}"
 
 - name: Create a Keycloak user
+  when: keycloak_database_vendor == 'mysql'
   run_once: true
   community.mysql.mysql_user:
     login_host: "{{ _pxc_service.resources[0].spec.clusterIP }}"
@@ -61,6 +103,7 @@
     priv: "{{ keycloak_database_name }}.*:ALL"
 
 - name: Disable pxc strict mode
+  when: keycloak_database_vendor == 'mysql'
   run_once: true
   community.mysql.mysql_query:
     login_host: "{{ _pxc_service.resources[0].spec.clusterIP }}"
@@ -106,6 +149,7 @@
     ingress_annotations: "{{ _keycloak_ingress_annotations | combine(keycloak_ingress_annotations, recursive=True) }}"
 
 - name: Enable pxc strict mode
+  when: keycloak_database_vendor == 'mysql'
   run_once: true
   community.mysql.mysql_query:
     login_host: "{{ _pxc_service.resources[0].spec.clusterIP }}"

@@ -1,0 +1,28 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+keycloak_database_migration_namespace: "{{ keycloak_helm_release_namespace | default('auth-system') }}"
+keycloak_database_migration_marker_name: keycloak-postgresql-migration
+keycloak_database_migration_pvc_name: keycloak-database-migration
+keycloak_database_migration_storage_class: general
+keycloak_database_migration_storage_size: 1Gi
+keycloak_database_migration_export_job_name: keycloak-export-mysql
+keycloak_database_migration_import_job_name: keycloak-import-postgresql
+keycloak_database_migration_poll_retries: 360
+keycloak_database_migration_poll_delay: 5
+keycloak_database_migration_cleanup: true
+keycloak_database_migration_image: ""
+
+keycloak_database_migration_source_host: "{{ openstack_helm_endpoints.oslo_db.hosts.default }}.openstack"
+keycloak_database_migration_source_port: 3306
+keycloak_database_migration_source_name: "{{ keycloak_database_name | default('keycloak') }}"
+keycloak_database_migration_source_username: "{{ keycloak_database_username | default('keycloak') }}"
+keycloak_database_migration_source_secret_name: keycloak-externaldb
+keycloak_database_migration_source_secret_key: db-password
+
+keycloak_database_migration_target_host: "{{ keycloak_postgresql_host }}"
+keycloak_database_migration_target_port: "{{ keycloak_postgresql_port }}"
+keycloak_database_migration_target_name: "{{ keycloak_database_name | default('keycloak') }}"
+keycloak_database_migration_target_username: "{{ keycloak_database_username | default('keycloak') }}"
+keycloak_database_migration_target_secret_name: "{{ keycloak_postgresql_secret_name }}"
+keycloak_database_migration_target_secret_key: "{{ keycloak_postgresql_secret_key }}"

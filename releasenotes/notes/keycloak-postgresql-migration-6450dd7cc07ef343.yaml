@@ -1,0 +1,11 @@
+---
+features:
+  - Adds support for running Keycloak against a dedicated external PostgreSQL
+    database rather than the shared MySQL/PXC cluster.
+upgrade:
+  - Before upgrading Keycloak beyond 24.0.5, configure
+    ``keycloak_database_vendor`` as ``postgres`` along with an empty
+    PostgreSQL database and its application secret, then run
+    ``playbooks/keycloak-migrate-to-postgresql.yml``. The playbook stops
+    Keycloak, exports and imports the data with the image currently deployed,
+    and restores the MySQL-backed release if migration fails.

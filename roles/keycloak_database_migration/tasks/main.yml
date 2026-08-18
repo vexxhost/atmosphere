@@ -1,0 +1,213 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Check for completed Keycloak database migration
+  run_once: true
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: ConfigMap
+    name: "{{ keycloak_database_migration_marker_name }}"
+    namespace: "{{ keycloak_database_migration_namespace }}"
+  register: _keycloak_database_migration_marker
+
+- name: Report completed Keycloak database migration
+  when: _keycloak_database_migration_marker.resources | length > 0
+  run_once: true
+  ansible.builtin.debug:
+    msg: Keycloak has already been migrated to PostgreSQL.
+
+- name: Migrate Keycloak database to PostgreSQL
+  when: _keycloak_database_migration_marker.resources | length == 0
+  run_once: true
+  block:
+    - name: Check MySQL application secret
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Secret
+        name: "{{ keycloak_database_migration_source_secret_name }}"
+        namespace: "{{ keycloak_database_migration_namespace }}"
+      register: _keycloak_database_migration_source_secret
+
+    - name: Check PostgreSQL application secret
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Secret
+        name: "{{ keycloak_database_migration_target_secret_name }}"
+        namespace: "{{ keycloak_database_migration_namespace }}"
+      register: _keycloak_database_migration_target_secret
+
+    - name: Get Keycloak StatefulSet
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: StatefulSet
+        name: "{{ keycloak_helm_release_name | default('keycloak') }}"
+        namespace: "{{ keycloak_database_migration_namespace }}"
+      register: _keycloak_database_migration_statefulset
+
+    - name: Validate migration prerequisites
+      ansible.builtin.assert:
+        that:
+          - keycloak_database_migration_target_host | length > 0
+          - keycloak_database_migration_target_name | length > 0
+          - keycloak_database_migration_target_username | length > 0
+          - _keycloak_database_migration_source_secret.resources | length == 1
+          - _keycloak_database_migration_target_secret.resources | length == 1
+          - >-
+            _keycloak_database_migration_source_secret.resources[0].data[
+            keycloak_database_migration_source_secret_key] | default('') | length > 0
+          - >-
+            _keycloak_database_migration_target_secret.resources[0].data[
+            keycloak_database_migration_target_secret_key] | default('') | length > 0
+          - _keycloak_database_migration_statefulset.resources | length == 1
+          - >-
+            (_keycloak_database_migration_statefulset.resources[0].status.readyReplicas | default(0) | int) ==
+            (_keycloak_database_migration_statefulset.resources[0].spec.replicas | default(1) | int)
+        fail_msg: >-
+          A PostgreSQL host, database, username, both application secrets
+          including their configured password keys, and a fully ready Keycloak
+          StatefulSet are required before migration.
+
+    - name: Record current Keycloak image
+      ansible.builtin.set_fact:
+        _keycloak_database_migration_image: >-
+          {{ keycloak_database_migration_image | default(
+          (_keycloak_database_migration_statefulset.resources[0].spec.template.spec.containers |
+          selectattr('name', 'equalto', 'keycloak') | map(attribute='image') | first), true) }}
+
+    - name: Validate Keycloak migration image
+      ansible.builtin.assert:
+        that:
+          - _keycloak_database_migration_image | length > 0
+        fail_msg: >-
+          Could not identify the Keycloak image from the running StatefulSet.
+          Set keycloak_database_migration_image explicitly before retrying.
+
+    - name: Remove previous migration jobs
+      kubernetes.core.k8s:
+        state: absent
+        api_version: batch/v1
+        kind: Job
+        name: "{{ item }}"
+        namespace: "{{ keycloak_database_migration_namespace }}"
+        wait: true
+      loop:
+        - "{{ keycloak_database_migration_export_job_name }}"
+        - "{{ keycloak_database_migration_import_job_name }}"
+
+    - name: Remove previous migration volume
+      kubernetes.core.k8s:
+        state: absent
+        api_version: v1
+        kind: PersistentVolumeClaim
+        name: "{{ keycloak_database_migration_pvc_name }}"
+        namespace: "{{ keycloak_database_migration_namespace }}"
+        wait: true
+
+    - name: Create migration volume
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: PersistentVolumeClaim
+          metadata:
+            name: "{{ keycloak_database_migration_pvc_name }}"
+            namespace: "{{ keycloak_database_migration_namespace }}"
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            storageClassName: "{{ keycloak_database_migration_storage_class }}"
+            resources:
+              requests:
+                storage: "{{ keycloak_database_migration_storage_size }}"
+
+    - name: Stop Keycloak for a consistent export
+      kubernetes.core.k8s_scale:
+        api_version: apps/v1
+        kind: StatefulSet
+        name: "{{ keycloak_helm_release_name | default('keycloak') }}"
+        namespace: "{{ keycloak_database_migration_namespace }}"
+        replicas: 0
+        wait: true
+        wait_timeout: 300
+
+    - name: Export, import, and cut over Keycloak
+      block:
+        - name: Export Keycloak from MySQL
+          ansible.builtin.include_tasks:
+            file: run_job.yml
+          vars:
+            _keycloak_database_migration_job_name: "{{ keycloak_database_migration_export_job_name }}"
+            _keycloak_database_migration_job_args:
+              - export
+              - --dir
+              - /migration
+              - --users
+              - different_files
+              - --users-per-file
+              - "1000"
+            _keycloak_database_migration_job_env: "{{ _keycloak_database_migration_export_env }}"
+
+        - name: Import Keycloak into PostgreSQL
+          ansible.builtin.include_tasks:
+            file: run_job.yml
+          vars:
+            _keycloak_database_migration_job_name: "{{ keycloak_database_migration_import_job_name }}"
+            _keycloak_database_migration_job_args:
+              - import
+              - --dir
+              - /migration
+              - --override
+              - "true"
+            _keycloak_database_migration_job_env: "{{ _keycloak_database_migration_import_env }}"
+
+        - name: Deploy Keycloak with PostgreSQL
+          ansible.builtin.include_role:
+            name: keycloak
+          vars:
+            keycloak_database_vendor: postgres
+
+        - name: Record completed PostgreSQL migration
+          kubernetes.core.k8s:
+            state: present
+            definition:
+              apiVersion: v1
+              kind: ConfigMap
+              metadata:
+                name: "{{ keycloak_database_migration_marker_name }}"
+                namespace: "{{ keycloak_database_migration_namespace }}"
+              data:
+                source: mysql
+                target: postgres
+                sourceImage: "{{ _keycloak_database_migration_image }}"
+
+        - name: Remove migration jobs and volume
+          when: keycloak_database_migration_cleanup | bool
+          kubernetes.core.k8s:
+            state: absent
+            api_version: "{{ item.api_version }}"
+            kind: "{{ item.kind }}"
+            name: "{{ item.name }}"
+            namespace: "{{ keycloak_database_migration_namespace }}"
+          loop:
+            - api_version: batch/v1
+              kind: Job
+              name: "{{ keycloak_database_migration_export_job_name }}"
+            - api_version: batch/v1
+              kind: Job
+              name: "{{ keycloak_database_migration_import_job_name }}"
+            - api_version: v1
+              kind: PersistentVolumeClaim
+              name: "{{ keycloak_database_migration_pvc_name }}"
+      rescue:
+        - name: Restore Keycloak with MySQL
+          ansible.builtin.include_role:
+            name: keycloak
+          vars:
+            keycloak_database_vendor: mysql
+
+        - name: Fail the PostgreSQL migration
+          ansible.builtin.fail:
+            msg: >-
+              Keycloak migration to PostgreSQL failed. The MySQL-backed
+              Keycloak release has been restored; inspect the migration job
+              logs before retrying.

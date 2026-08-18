@@ -1,0 +1,18 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: Migrate Keycloak from MySQL to PostgreSQL
+  hosts: controllers
+  become: true
+  pre_tasks:
+    - name: Require PostgreSQL as the configured Keycloak backend
+      ansible.builtin.assert:
+        that:
+          - keycloak_database_vendor | default('mysql') == 'postgres'
+        fail_msg: >-
+          Set keycloak_database_vendor to "postgres" in the deployment
+          configuration before running this migration playbook.
+  roles:
+    - role: keycloak_database_migration
+      tags:
+        - keycloak-database-migration
