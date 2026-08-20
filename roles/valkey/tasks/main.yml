@@ -2,9 +2,15 @@
 # SPDX-License-Identifier: Apache-2.0
 
 - name: Create TLS resources
+  run_once: true
   kubernetes.core.k8s:
     state: present
     definition:
+      - apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: "{{ valkey_helm_release_namespace }}"
+
       - apiVersion: cert-manager.io/v1
         kind: Certificate
         metadata:
