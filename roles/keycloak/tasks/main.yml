@@ -20,7 +20,14 @@
     namespace: openstack
   register: _pxc_service
 
-- name: Install MySQL python package
+- name: Install MySQL Python package from distro
+  when: ansible_facts['os_family'] == 'Debian'
+  ansible.builtin.package:
+    name: python3-pymysql
+    state: present
+
+- name: Install MySQL Python package with pip
+  when: ansible_facts['os_family'] != 'Debian'
   ansible.builtin.pip:
     name: PyMySQL
   register: _keycloak_pip_install
