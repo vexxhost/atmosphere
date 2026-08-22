@@ -1,7 +1,8 @@
 diff --git a/cinder/templates/bin/_storage-init.sh.tpl b/cinder/templates/bin/_storage-init.sh.tpl
---- a/cinder/templates/bin/_storage-init.sh.tpl	2026-02-04 19:23:59.438149067 +0000
-+++ b/cinder/templates/bin/_storage-init.sh.tpl	2026-02-04 19:23:10.433253997 +0000
-@@ -27,31 +27,42 @@
+index 4f945e2..b9eb2ac 100644
+--- a/cinder/templates/bin/_storage-init.sh.tpl
++++ b/cinder/templates/bin/_storage-init.sh.tpl
+@@ -27,31 +27,42 @@ fi
  set -ex
  if [ "x$STORAGE_BACKEND" == "xcinder.volume.drivers.rbd.RBDDriver" ]; then
    ceph -s
@@ -18,11 +19,11 @@ diff --git a/cinder/templates/bin/_storage-init.sh.tpl b/cinder/templates/bin/_s
 -  }
 -  ensure_pool ${RBD_POOL_NAME} ${RBD_POOL_CHUNK_SIZE} ${RBD_POOL_APP_NAME}
 +
-+  # If RBD_DATA_POOL is set, pools are managed externally (e.g., by Rook)
-+  # Skip pool creation and only set up user with proper OSD caps
++  # If RBD_DATA_POOL is set, pools are managed externally (for example by Rook).
++  # Skip pool creation and only set up the user with the required OSD caps.
 +  if [ -n "${RBD_DATA_POOL:-}" ]; then
-+    echo "RBD_DATA_POOL is set, assuming pools are managed externally (Rook)"
-+    echo "Skipping pool creation, will only create user/keyring"
++    echo "RBD_DATA_POOL is set, assuming pools are managed externally"
++    echo "Skipping pool creation and only creating the user keyring"
 +    OSD_CAPS="profile rbd pool=${RBD_POOL_NAME}, profile rbd pool=${RBD_DATA_POOL}"
 +  else
 +    function ensure_pool () {
@@ -59,9 +60,10 @@ diff --git a/cinder/templates/bin/_storage-init.sh.tpl b/cinder/templates/bin/_s
    fi
  
 diff --git a/cinder/templates/deployment-backup.yaml b/cinder/templates/deployment-backup.yaml
---- a/cinder/templates/deployment-backup.yaml	2026-02-04 19:24:00.798173907 +0000
-+++ b/cinder/templates/deployment-backup.yaml	2026-02-04 19:23:10.433253997 +0000
-@@ -93,8 +93,7 @@
+index f45f583..c1f999b 100644
+--- a/cinder/templates/deployment-backup.yaml
++++ b/cinder/templates/deployment-backup.yaml
+@@ -93,8 +93,7 @@ spec:
          {{ end }}
          {{- range $name := rest (splitList "," (include "cinder.utils.ceph_backend_list" $envAll)) }}
            {{- $backend := index $envAll.Values.conf.backends $name }}
@@ -71,7 +73,7 @@ diff --git a/cinder/templates/deployment-backup.yaml b/cinder/templates/deployme
  {{ tuple $envAll "cinder_backup" | include "helm-toolkit.snippets.image" | indent 10 }}
  {{ dict "envAll" $envAll "application" "cinder_backup" "container" "ceph_keyring_placement" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
            command:
-@@ -115,17 +114,23 @@
+@@ -115,17 +114,23 @@ spec:
                mountPath: /tmp/ceph-keyring.sh
                subPath: ceph-keyring.sh
                readOnly: true
@@ -97,7 +99,7 @@ diff --git a/cinder/templates/deployment-backup.yaml b/cinder/templates/deployme
          {{- end }}
          {{- if (contains "cinder.backup.drivers.posix" .Values.conf.cinder.DEFAULT.backup_driver) }}
          - name: ceph-backup-volume-perms
-@@ -330,6 +335,13 @@
+@@ -332,6 +337,13 @@ spec:
          - name: ceph-keyring
            secret:
              secretName: {{ .Values.secrets.rbd.volume | quote }}
@@ -112,9 +114,10 @@ diff --git a/cinder/templates/deployment-backup.yaml b/cinder/templates/deployme
          - name: external-ceph-keyring
            secret:
 diff --git a/cinder/templates/deployment-volume.yaml b/cinder/templates/deployment-volume.yaml
---- a/cinder/templates/deployment-volume.yaml	2026-02-04 19:24:00.798173907 +0000
-+++ b/cinder/templates/deployment-volume.yaml	2026-02-04 19:23:10.433253997 +0000
-@@ -70,8 +70,7 @@
+index 6f69b8b..cd66d89 100644
+--- a/cinder/templates/deployment-volume.yaml
++++ b/cinder/templates/deployment-volume.yaml
+@@ -70,8 +70,7 @@ spec:
  {{ tuple $envAll "volume" $mounts_cinder_volume_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
          {{- range $name := rest (splitList "," (include "cinder.utils.ceph_backend_list" $envAll)) }}
            {{- $backend := index $envAll.Values.conf.backends $name }}
@@ -124,7 +127,7 @@ diff --git a/cinder/templates/deployment-volume.yaml b/cinder/templates/deployme
  {{ tuple $envAll "cinder_volume" | include "helm-toolkit.snippets.image" | indent 10 }}
  {{ dict "envAll" $envAll "application" "cinder_volume" "container" "ceph_keyring_placement" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
            command:
-@@ -92,17 +91,23 @@
+@@ -92,17 +91,23 @@ spec:
                mountPath: /tmp/ceph-keyring.sh
                subPath: ceph-keyring.sh
                readOnly: true
@@ -149,7 +152,7 @@ diff --git a/cinder/templates/deployment-volume.yaml b/cinder/templates/deployme
          {{- end }}
          {{- if eq ( split "://" .Values.conf.cinder.coordination.backend_url )._0 "file" }}
          - name: ceph-coordination-volume-perms
-@@ -327,6 +332,13 @@
+@@ -339,6 +344,13 @@ spec:
          - name: ceph-keyring
            secret:
              secretName: {{ .Values.secrets.rbd.volume | quote }}
@@ -164,9 +167,10 @@ diff --git a/cinder/templates/deployment-volume.yaml b/cinder/templates/deployme
          - name: external-ceph-keyring
            secret:
 diff --git a/cinder/templates/job-storage-init.yaml b/cinder/templates/job-storage-init.yaml
---- a/cinder/templates/job-storage-init.yaml	2026-02-04 19:23:59.438149067 +0000
-+++ b/cinder/templates/job-storage-init.yaml	2026-02-04 19:23:10.433253997 +0000
-@@ -101,8 +101,7 @@
+index 350b013..fdd5061 100755
+--- a/cinder/templates/job-storage-init.yaml
++++ b/cinder/templates/job-storage-init.yaml
+@@ -101,8 +101,7 @@ spec:
        containers:
          {{- range $name, $backend := .Values.conf.backends }}
            {{- if (eq "true" ( dict "backend" $backend | include "cinder.utils.is_ceph_backend" )) }}
@@ -176,7 +180,7 @@ diff --git a/cinder/templates/job-storage-init.yaml b/cinder/templates/job-stora
  {{ tuple $envAll "cinder_storage_init" | include "helm-toolkit.snippets.image" | indent 10 }}
  {{ tuple $envAll $envAll.Values.pod.resources.jobs.storage_init | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
            env:
-@@ -114,18 +113,28 @@
+@@ -114,18 +113,28 @@ spec:
                value: {{ $backend.volume_driver | quote }}
              - name: RBD_POOL_NAME
                value: {{ $backend.rbd_pool | quote }}
@@ -209,7 +213,7 @@ diff --git a/cinder/templates/job-storage-init.yaml b/cinder/templates/job-stora
            command:
              - /tmp/storage-init.sh
            volumeMounts:
-@@ -147,7 +156,6 @@
+@@ -147,7 +156,6 @@ spec:
                subPath: key
                readOnly: true
              {{- end }}
@@ -217,24 +221,3 @@ diff --git a/cinder/templates/job-storage-init.yaml b/cinder/templates/job-stora
          {{- end }}
        {{- end }}
        volumes:
-diff --git a/cinder/values.yaml b/cinder/values.yaml
---- a/cinder/values.yaml	2026-02-04 19:24:00.794173834 +0000
-+++ b/cinder/values.yaml	2026-02-04 19:23:38.821772511 +0000
-@@ -787,6 +787,17 @@
-         crush_rule: replicated_rule
-         chunk_size: 8
-         app_name: cinder-volume
-+
-+    # Erasure-coded pools should be created via Rook CephBlockPool CRDs.
-+    # Configure backends with rbd_data_pool to use EC pools:
-+    #
-+    # backends:
-+    #   rbd_ec:
-+    #     volume_driver: cinder.volume.drivers.rbd.RBDDriver
-+    #     rbd_pool: cinder.volumes.ec           # metadata pool (replicated)
-+    #     rbd_data_pool: cinder.volumes.ec.data # data pool (erasure-coded)
-+    #     rbd_user: cinder-ec
-+    #     ...
-   cinder:
-     DEFAULT:
-       volume_usage_audit_period: hour
