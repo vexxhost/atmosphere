@@ -104,6 +104,10 @@ def check_agent_status(transport):
                          " agent")
         sys.exit(0)
 
+    finally:
+        if transport:
+            transport.cleanup()
+
 
 def sriov_readiness_check():
     """Checks the sriov configuration on the sriov nic's"""
@@ -152,7 +156,6 @@ def get_rabbitmq_ports():
 def tcp_socket_state_check(agentq):
     """Check if the tcp socket to rabbitmq is in Established state"""
     rabbit_sock_count = 0
-    parentId = 0
     if agentq == "l3_agent":
         proc = "neutron-l3-agen"
     elif agentq == "dhcp_agent":
@@ -168,12 +171,7 @@ def tcp_socket_state_check(agentq):
         try:
             with p.oneshot():
                 if proc in " ".join(p.cmdline()):
-                    if parentId == 0:
-                        parentId = p.pid
-                    else:
-                        if p.ppid() == parentId:
-                            continue
-                    pcon = p.connections()
+                    pcon = getattr(p, "net_connections", p.connections)()
                     for con in pcon:
                         try:
                             port = con.raddr[1]
@@ -217,10 +215,6 @@ def test_socket_liveness():
                                           required=False))
     cfg.CONF(sys.argv[1:])
 
-    if "ovn_metadata_agent.ini" not in ','.join(sys.argv):
-        agentq = "metadata_agent"
-        tcp_socket_state_check(agentq)
-
     try:
         metadata_proxy_socket = cfg.CONF.metadata_proxy_socket
     except cfg.NoSuchOptError:
@@ -244,8 +238,8 @@ def test_socket_liveness():
               "Neutron Metadata agent: "
         if se.strerror:
             sys.stderr.write(msg + se.strerror)
-        elif getattr(se, "message", False):
-            sys.stderr.write(msg + se.message)
+        else:
+            sys.stderr.write(msg + getattr(se, "message"))
         sys.exit(1)  # return failure
     except Exception as ex:
         message = getattr(ex, "message", str(ex))

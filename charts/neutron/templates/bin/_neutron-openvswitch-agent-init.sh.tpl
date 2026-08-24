@@ -416,8 +416,15 @@ function get_driver_by_address {
 }
 
 function get_address_by_nicname {
-  if [[ -e /sys/class/net/$1/device ]]; then
-    readlink -f /sys/class/net/$1/device | xargs basename
+  if [[ -e /sys/class/net/$1 ]]; then
+    local pci_address=$(readlink -f /sys/class/net/$1/device | xargs basename)
+    if [[ -e /sys/bus/pci/devices/${pci_address} ]]; then
+      echo ${pci_address}
+    else
+      echo "PCI id for interface $1 cannot be found" >&2
+    fi
+  else
+    echo "Interface name $1 cannot be found" >&2
   fi
 }
 
