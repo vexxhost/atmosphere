@@ -1,0 +1,13 @@
+apiVersion: v1
+metadata:
+  name: keystone-openid-metadata
+  namespace: "{{ keystone_helm_release_namespace }}"
+  labels:
+    application: keystone
+kind: ConfigMap
+data:
+{% for domain in keystone_domains %}
+  {{ domain.name }}-oidc-client: '{"client_id":"{{ domain.keycloak_client_id }}","client_secret":"{{ domain.keycloak_client_secret }}","response_type":"id_token"}'
+  {{ domain.name }}-oidc-conf: '{"scope":"{{ domain.keycloak_scopes }}"}'
+  {{ domain.name }}-oidc-provider: '{{ lookup('url', domain.keycloak_server_url ~ "/realms/" ~ domain.keycloak_realm ~ "/.well-known/openid-configuration", validate_certs=keystone_oidc_ssl_validate_server) }}'
+{% endfor %}

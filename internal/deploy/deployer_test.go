@@ -6,6 +6,7 @@ package deploy
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"strings"
 	"sync"
 	"testing"
@@ -26,7 +27,7 @@ type deployEvent struct {
 	endedAt   time.Time
 }
 
-func (d *trackingDeployer) Deploy(ctx context.Context, component Component) error {
+func (d *trackingDeployer) Deploy(ctx context.Context, component Component, preGate func(context.Context) error) error {
 	// Mirror only the PreRoleName branching needed by this test helper;
 	// this doesn't exercise AnsibleDeployer internals.
 	if component.PreRoleName == "" {
@@ -40,6 +41,11 @@ func (d *trackingDeployer) Deploy(ctx context.Context, component Component) erro
 
 	go func() {
 		defer wg.Done()
+		if preGate != nil {
+			if err := preGate(ctx); err != nil {
+				return
+			}
+		}
 		d.recordRole(component.Name, component.PreRoleName)
 	}()
 
@@ -134,7 +140,7 @@ func TestDeploy_PreRoleRunsInParallel(t *testing.T) {
 		Hosts:       "controllers[0]",
 	}
 
-	deployer.Deploy(context.Background(), component)
+	deployer.Deploy(context.Background(), component, nil)
 
 	if len(deployer.events) != 2 {
 		t.Fatalf("expected 2 deploy events, got %d", len(deployer.events))
@@ -175,7 +181,7 @@ func TestDeploy_NoPreRoleRunsSingle(t *testing.T) {
 		Hosts:    "controllers[0]",
 	}
 
-	deployer.Deploy(context.Background(), component)
+	deployer.Deploy(context.Background(), component, nil)
 
 	if len(deployer.events) != 1 {
 		t.Fatalf("expected 1 deploy event, got %d", len(deployer.events))
@@ -205,4 +211,30 @@ func TestRenderPlaybook_WithEnvironmentAndPreRole(t *testing.T) {
 	if !strings.Contains(mainPlaybook, "_pre_role_active: true") {
 		t.Error("main playbook should include _pre_role_active")
 	}
+}
+
+func TestComponentRegistry_PreRoleComponents(t *testing.T) {
+preRoleComponents := []string{}
+for _, c := range Components {
+if c.PreRoleName != "" {
+preRoleComponents = append(preRoleComponents, fmt.Sprintf("%s (pre: %s)", c.Name, c.PreRoleName))
+}
+}
+
+if len(preRoleComponents) == 0 {
+t.Fatal("expected at least one component with PreRoleName")
+}
+
+// Verify known components have pre-roles
+found := map[string]bool{}
+for _, c := range Components {
+found[c.Name] = c.PreRoleName != ""
+}
+
+if !found["octavia"] {
+t.Error("octavia should have a pre-role")
+}
+if !found["magnum"] {
+t.Error("magnum should have a pre-role")
+}
 }

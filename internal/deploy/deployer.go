@@ -44,9 +44,13 @@ func configureSubprocess(cmd *exec.Cmd) {
 	cmd.WaitDelay = subprocessCancelGracePeriod
 }
 
-// Deployer deploys a single component.
+// Deployer deploys a single component. When preGate is non-nil, it gates the
+// pre-role: the pre-role goroutine waits for preGate to return nil (typically
+// after PreRoleDependsOn components complete) before running. The main role
+// always starts immediately. For components without a pre-role, preGate is
+// ignored.
 type Deployer interface {
-	Deploy(ctx context.Context, component Component) error
+	Deploy(ctx context.Context, component Component, preGate func(context.Context) error) error
 }
 
 // AnsibleDeployer deploys components by spawning ansible-playbook subprocesses.
@@ -57,7 +61,7 @@ type AnsibleDeployer struct {
 	Output io.Writer
 }
 
-func (a *AnsibleDeployer) Deploy(ctx context.Context, component Component) error {
+func (a *AnsibleDeployer) Deploy(ctx context.Context, component Component, preGate func(context.Context) error) error {
 	if component.PreRoleName == "" {
 		return a.runRole(ctx, component, component.RoleName)
 	}
@@ -65,6 +69,11 @@ func (a *AnsibleDeployer) Deploy(ctx context.Context, component Component) error
 	g, ctx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
+		if preGate != nil {
+			if err := preGate(ctx); err != nil {
+				return err
+			}
+		}
 		return a.runRole(ctx, component, component.PreRoleName)
 	})
 

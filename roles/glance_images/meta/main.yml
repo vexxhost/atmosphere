@@ -1,0 +1,30 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+galaxy_info:
+  author: VEXXHOST, Inc.
+  description: >-
+    Uploads Glance images. Runs as a separate component so that downstream
+    services (Nova, Magnum, etc.) only have to wait for the Glance API to
+    be installed (the `glance` component) and not for image downloads to
+    finish.
+  license: Apache-2.0
+  min_ansible_version: 5.5.0
+  standalone: false
+  platforms:
+    - name: EL
+      versions:
+        - "8"
+        - "9"
+    - name: Ubuntu
+      versions:
+        - focal
+        - jammy
+
+dependencies:
+  - role: defaults
+  - role: openstack_helm_endpoints
+    vars:
+      openstack_helm_endpoints_chart: glance
+      openstack_helm_endpoints_skip_cluster_creation: true
+  - role: openstacksdk

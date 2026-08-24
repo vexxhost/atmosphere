@@ -1,0 +1,17 @@
+---
+features:
+  - |
+    The parallel deployment orchestrator now runs Magnum in parallel with
+    Barbican and Heat instead of after them. An audit showed that these
+    dependencies were configuration-only references and don't require the
+    dependent service to run at install time. Magnum retains install-time
+    dependencies on Keystone and Glance because it creates identity
+    resources and uploads cluster images during deployment.
+  - |
+    The Rook Ceph cluster role now depends on Keystone directly rather than
+    on Barbican. The previous Barbican dependency was mis-declared: the
+    role only creates an identity user and catalog service in Keystone. A
+    new readiness check on the ``keystone-api`` Deployment runs before the
+    OpenStack API calls, and the role now creates both the ``service``
+    domain and the ``service`` project itself so it no longer relies on
+    another chart's ks-user job to create them first.

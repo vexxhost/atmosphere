@@ -1,0 +1,93 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Create CAs & Issuers
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      - apiVersion: cert-manager.io/v1
+        kind: Certificate
+        metadata:
+          name: "{{ item }}-ca"
+          namespace: openstack
+        spec:
+          isCA: true
+          commonName: "{{ octavia_tls_server_common_name if item == 'octavia-server' else octavia_tls_client_common_name }}"
+          secretName: "{{ item }}-ca"
+          duration: 87600h0m0s
+          renewBefore: 720h0m0s
+          privateKey: "{{ private_key | from_yaml }}"
+          issuerRef:
+            name: self-signed
+            kind: ClusterIssuer
+            group: cert-manager.io
+
+      - apiVersion: cert-manager.io/v1
+        kind: Issuer
+        metadata:
+          name: "{{ item }}"
+          namespace: openstack
+        spec:
+          ca:
+            secretName: "{{ item }}-ca"
+  vars:
+    # NOTE(mnaser): Unfortunately, Ansible renders all variables as strings so
+    #               we do this workaround to make sure the size is an integer.
+    private_key: |
+      algorithm: "{{ octavia_tls_server_private_key_algorithm if item == 'octavia-server' else octavia_tls_client_private_key_algorithm }}"
+      size: {{ octavia_tls_server_private_key_size if item == 'octavia-server' else octavia_tls_client_private_key_size }}
+  loop:
+    - octavia-client
+    - octavia-server
+
+- name: Create certificate for Octavia clients
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: cert-manager.io/v1
+      kind: Certificate
+      metadata:
+        name: octavia-client-certs
+        namespace: openstack
+      spec:
+        commonName: "{{ octavia_tls_client_common_name }}"
+        secretName: octavia-client-certs
+        additionalOutputFormats:
+          - type: CombinedPEM
+        duration: 87600h0m0s
+        renewBefore: 720h0m0s
+        privateKey: "{{ private_key | from_yaml }}"
+        issuerRef:
+          name: octavia-client
+          kind: Issuer
+          group: cert-manager.io
+  vars:
+    # NOTE(mnaser): Unfortunately, Ansible renders all variables as strings so
+    #               we do this workaround to make sure the size is an integer.
+    private_key: |
+      algorithm: "{{ octavia_tls_client_private_key_algorithm }}"
+      size: {{ octavia_tls_client_private_key_size }}
+
+- name: Create admin compute quotaset
+  openstack.cloud.quota:
+    cloud: atmosphere
+    # NOTE(okozachenko): It uses project name instead of id.
+    name: admin
+    instances: -1
+    cores: -1
+    ram: -1
+    volumes: -1
+    gigabytes: -1
+    security_group: -1
+    security_group_rule: -1
