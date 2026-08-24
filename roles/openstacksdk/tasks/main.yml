@@ -27,6 +27,11 @@
     break_system_packages: >-
       {{ ansible_facts['distribution'] == 'Ubuntu' and
          ansible_facts['distribution_version'] is version('24.04', '>=') }}
+    extra_args: >-
+      {{ '--ignore-installed'
+         if ansible_facts['distribution'] == 'Ubuntu' and
+            ansible_facts['distribution_version'] is version('24.04', '>=')
+         else omit }}
   register: _openstacksdk_pip_install
   retries: 3
   delay: 5
