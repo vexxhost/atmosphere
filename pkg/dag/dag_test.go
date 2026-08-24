@@ -347,6 +347,64 @@ func TestRunStopsDependentsOnError(t *testing.T) {
 	_ = strings.TrimSpace // keep strings import used if trimmed in future
 }
 
+func TestRunLetsInflightNodesFinishOnError(t *testing.T) {
+	g := NewGraph[string]()
+	for _, n := range []string{"fail", "inflight"} {
+		_ = g.AddNode(n, n)
+	}
+
+	inflightStarted := make(chan struct{})
+	var inflightCompleted atomic.Bool
+	wantErr := errors.New("boom")
+
+	err := g.Run(context.Background(), 0, func(ctx context.Context, id string, _ string) error {
+		switch id {
+		case "fail":
+			<-inflightStarted
+			return wantErr
+		case "inflight":
+			close(inflightStarted)
+			select {
+			case <-time.After(20 * time.Millisecond):
+				inflightCompleted.Store(true)
+				return nil
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+		}
+		return nil
+	})
+
+	if !errors.Is(err, wantErr) {
+		t.Fatalf("expected wantErr, got %v", err)
+	}
+	if !inflightCompleted.Load() {
+		t.Fatal("in-flight node was cancelled after its sibling failed")
+	}
+}
+
+func TestRunCancelsInflightNodesWithParentContext(t *testing.T) {
+	g := NewGraph[string]()
+	_ = g.AddNode("inflight", "inflight")
+
+	ctx, cancel := context.WithCancel(context.Background())
+	started := make(chan struct{})
+	result := make(chan error, 1)
+	go func() {
+		result <- g.Run(ctx, 0, func(ctx context.Context, _ string, _ string) error {
+			close(started)
+			<-ctx.Done()
+			return ctx.Err()
+		})
+	}()
+
+	<-started
+	cancel()
+	if err := <-result; !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context.Canceled, got %v", err)
+	}
+}
+
 // TestRunConcurrencyCap asserts the global concurrency cap limits in-flight
 // nodes across the whole graph (not just within one wave).
 func TestRunConcurrencyCap(t *testing.T) {

@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Prevents a failed parallel deployment component from cancelling unrelated
+    components that are already running. In-flight components now finish on
+    the caller context, avoiding Helm releases left in a ``context canceled``
+    state, while pending dependents still stop after the first failure.

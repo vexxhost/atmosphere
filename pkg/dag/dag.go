@@ -185,25 +185,28 @@ func (g *Graph[T]) Run(ctx context.Context, concurrency int, fn func(ctx context
 
 	priorities := g.CriticalPath()
 
-	eg, ctx := errgroup.WithContext(ctx)
+	eg, schedulingCtx := errgroup.WithContext(ctx)
 	for id, val := range g.nodes {
 		id, val := id, val
 		eg.Go(func() error {
 			for _, dep := range g.edges[id] {
 				select {
 				case <-done[dep]:
-				case <-ctx.Done():
-					return ctx.Err()
+				case <-schedulingCtx.Done():
+					return schedulingCtx.Err()
 				}
 			}
 
 			if sched != nil {
-				if err := sched.acquire(ctx, priorities[id]); err != nil {
+				if err := sched.acquire(schedulingCtx, priorities[id]); err != nil {
 					return err
 				}
 				defer sched.release()
 			}
 
+			// A sibling failure stops new scheduling but must not cancel work
+			// already in flight. The parent context still propagates an explicit
+			// caller cancellation to active components.
 			if err := fn(ctx, id, val); err != nil {
 				return err
 			}
