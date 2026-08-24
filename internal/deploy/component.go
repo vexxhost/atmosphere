@@ -50,6 +50,14 @@ type Component struct {
 	// OpenStack resources, downloading images) overlaps with the Helm install.
 	// Both must complete before the component is considered done.
 	PreRoleName string
+	// PreRoleDependsOn lists component Names that must complete before the
+	// pre-role may start. When empty, the pre-role starts as soon as the
+	// component's own DependsOn are satisfied (the current behaviour). When
+	// set, the main role still starts eagerly while the pre-role waits.
+	// This enables asymmetric gating — e.g. keystone's Keycloak realm
+	// creation (pre-role) waits for keycloak while the keystone Helm install
+	// (main role) runs in parallel with keycloak startup.
+	PreRoleDependsOn []string
 }
 
 // EffectiveTag returns the Ansible tag for this component.
@@ -127,6 +135,9 @@ var Components = []Component{
 		RoleName:  "ingress_nginx",
 		Hosts:     "controllers",
 		DependsOn: []string{"kubernetes"},
+		// Helm install talks to apiserver; counts toward k8s-api cap to
+		// prevent Wave 2 fan-out from overloading a single-node apiserver.
+		Resources: []string{"k8s-api"},
 	},
 	{
 		Name:      "rabbitmq-cluster-operator",
@@ -134,6 +145,7 @@ var Components = []Component{
 		RoleName:  "rabbitmq_cluster_operator",
 		Hosts:     "controllers",
 		DependsOn: []string{"cert-manager"},
+		Resources: []string{"k8s-api"},
 	},
 	{
 		Name:      "percona-xtradb-cluster-operator",
@@ -141,6 +153,7 @@ var Components = []Component{
 		RoleName:  "percona_xtradb_cluster_operator",
 		Hosts:     "controllers",
 		DependsOn: []string{"cert-manager"},
+		Resources: []string{"k8s-api"},
 	},
 	{
 		Name:      "percona-xtradb-cluster",
@@ -148,6 +161,7 @@ var Components = []Component{
 		RoleName:  "percona_xtradb_cluster",
 		Hosts:     "controllers",
 		DependsOn: []string{"percona-xtradb-cluster-operator", "csi"},
+		Resources: []string{"k8s-api"},
 	},
 	{
 		Name:      "valkey",
@@ -155,6 +169,7 @@ var Components = []Component{
 		RoleName:  "valkey",
 		Hosts:     "controllers",
 		DependsOn: []string{"kubernetes", "csi", "cluster-issuer"},
+		Resources: []string{"k8s-api"},
 	},
 	{
 		Name:      "keycloak",
@@ -162,14 +177,14 @@ var Components = []Component{
 		RoleName:  "keycloak",
 		Hosts:     "controllers",
 		DependsOn: []string{"percona-xtradb-cluster", "ingress-nginx"},
+		Resources: []string{"k8s-api"},
 	},
 	{
 		Name:      "keepalived",
 		Type:      RoleType,
 		RoleName:  "keepalived",
 		Hosts:     "controllers",
-		// memcached creates the openstack namespace that keepalived uses.
-		DependsOn: []string{"memcached"},
+		DependsOn: []string{"kubernetes"},
 	},
 
 	// Monitoring (RoleType, Hosts: "controllers[0]")
@@ -179,6 +194,7 @@ var Components = []Component{
 		RoleName:  "node_feature_discovery",
 		Hosts:     "controllers[0]",
 		DependsOn: []string{"kubernetes"},
+		Resources: []string{"k8s-api"},
 	},
 	{
 		Name:      "kube-prometheus-stack",
@@ -186,6 +202,7 @@ var Components = []Component{
 		RoleName:  "kube_prometheus_stack",
 		Hosts:     "controllers[0]",
 		DependsOn: []string{"kubernetes", "csi", "cluster-issuer", "keycloak"},
+		Resources: []string{"k8s-api", "keycloak-admin"},
 	},
 	{
 		Name:      "loki",
@@ -193,6 +210,7 @@ var Components = []Component{
 		RoleName:  "loki",
 		Hosts:     "controllers[0]",
 		DependsOn: []string{"kubernetes", "csi"},
+		Resources: []string{"k8s-api"},
 	},
 	{
 		Name:      "vector",
@@ -200,6 +218,7 @@ var Components = []Component{
 		RoleName:  "vector",
 		Hosts:     "controllers[0]",
 		DependsOn: []string{"loki"},
+		Resources: []string{"k8s-api"},
 	},
 	{
 		Name:      "goldpinger",
@@ -207,6 +226,7 @@ var Components = []Component{
 		RoleName:  "goldpinger",
 		Hosts:     "controllers[0]",
 		DependsOn: []string{"kubernetes"},
+		Resources: []string{"k8s-api"},
 	},
 	{
 		Name:      "ipmi-exporter",
@@ -214,6 +234,7 @@ var Components = []Component{
 		RoleName:  "ipmi_exporter",
 		Hosts:     "controllers[0]",
 		DependsOn: []string{"kube-prometheus-stack"},
+		Resources: []string{"k8s-api"},
 	},
 	{
 		Name:      "prometheus-pushgateway",
@@ -221,6 +242,7 @@ var Components = []Component{
 		RoleName:  "prometheus_pushgateway",
 		Hosts:     "controllers[0]",
 		DependsOn: []string{"kube-prometheus-stack"},
+		Resources: []string{"k8s-api"},
 	},
 
 	// OS Configuration (RoleType, Hosts: "controllers:computes")
@@ -254,18 +276,34 @@ var Components = []Component{
 
 	// OpenStack (RoleType, Hosts: "controllers[0]")
 	{
+		// Pre-pull all known Atmosphere container images on every node
+		// so later component Helm installs do not stall in
+		// ImagePulling. Best-effort: failures are non-fatal because
+		// the kubelet falls back to on-demand pulls.
+		Name:        "image-warmup",
+		Type:        RoleType,
+		RoleName:    "image_warmup",
+		Hosts:       "controllers:computes",
+		DependsOn:   []string{"kubernetes"},
+		GatherFacts: boolPtr(false),
+	},
+	{
 		Name:      "memcached",
 		Type:      RoleType,
 		RoleName:  "memcached",
 		Hosts:     "controllers[0]",
 		DependsOn: []string{"kubernetes"},
+		Resources: []string{"k8s-api"},
 	},
 	{
-		Name:      "keystone",
-		Type:      RoleType,
-		RoleName:  "keystone",
-		Hosts:     "controllers[0]",
-		DependsOn: []string{"keycloak", "ingress-nginx", "rabbitmq-cluster-operator", "percona-xtradb-cluster", "memcached"},
+		Name:             "keystone",
+		Type:             RoleType,
+		RoleName:         "keystone",
+		PreRoleName:      "keystone_pre",
+		Hosts:            "controllers[0]",
+		DependsOn:        []string{"ingress-nginx", "rabbitmq-cluster-operator", "percona-xtradb-cluster", "memcached"},
+		PreRoleDependsOn: []string{"keycloak"},
+		Resources:        []string{"k8s-api", "keycloak-admin"},
 	},
 	{
 		Name:      "barbican",
@@ -273,6 +311,7 @@ var Components = []Component{
 		RoleName:  "barbican",
 		Hosts:     "controllers[0]",
 		DependsOn: []string{"keystone"},
+		Resources: []string{"k8s-api"},
 	},
 	{
 		Name:        "rook-ceph",
@@ -281,14 +320,16 @@ var Components = []Component{
 		Hosts:       "controllers[0]",
 		DependsOn:   []string{"kubernetes"},
 		Environment: cephEnvironment,
+		Resources:   []string{"k8s-api"},
 	},
 	{
 		Name:        "rook-ceph-cluster",
 		Type:        RoleType,
 		RoleName:    "rook_ceph_cluster",
 		Hosts:       "controllers[0]",
-		DependsOn:   []string{"rook-ceph", "ceph", "barbican"},
+		DependsOn:   []string{"rook-ceph", "ceph", "keystone"},
 		Environment: cephEnvironment,
+		Resources:   []string{"k8s-api"},
 	},
 	{
 		Name:        "ceph-provisioners",
@@ -297,6 +338,7 @@ var Components = []Component{
 		Hosts:       "controllers[0]",
 		DependsOn:   []string{"ceph", "kubernetes"},
 		Environment: cephEnvironment,
+		Resources:   []string{"k8s-api"},
 	},
 	{
 		Name:      "glance",
@@ -304,6 +346,17 @@ var Components = []Component{
 		RoleName:  "glance",
 		Hosts:     "controllers[0]",
 		DependsOn: []string{"keystone"},
+		Resources: []string{"k8s-api"},
+	},
+	{
+		// Image uploads run as a separate component so they do not block
+		// downstream services (Nova, Magnum, etc.) which only need the
+		// Glance API to be deployed.
+		Name:      "glance-images",
+		Type:      RoleType,
+		RoleName:  "glance_images",
+		Hosts:     "controllers[0]",
+		DependsOn: []string{"glance"},
 	},
 	{
 		Name:      "staffeln",
@@ -319,6 +372,7 @@ var Components = []Component{
 		RoleName:  "cinder",
 		Hosts:     "controllers[0]",
 		DependsOn: []string{"keystone", "ceph-provisioners"},
+		Resources: []string{"k8s-api"},
 	},
 	{
 		Name:      "placement",
@@ -326,6 +380,7 @@ var Components = []Component{
 		RoleName:  "placement",
 		Hosts:     "controllers[0]",
 		DependsOn: []string{"keystone"},
+		Resources: []string{"k8s-api"},
 	},
 
 	// SDN (RoleType, Hosts: "controllers:computes", GatherFacts: false)
@@ -377,13 +432,24 @@ var Components = []Component{
 		RoleName:  "nova",
 		Hosts:     "controllers[0]",
 		DependsOn: []string{"placement", "glance", "libvirt"},
+		Resources: []string{"k8s-api"},
 	},
 	{
-		Name:      "neutron",
-		Type:      RoleType,
-		RoleName:  "neutron",
-		Hosts:     "controllers[0]",
-		DependsOn: []string{"keystone", "ovn", "coredns"},
+		// The pre-role does the Helm install (heavy, ~5 min) and only
+		// requires keystone/OVN/coredns. The main role's only remaining
+		// work is the post-install "Create networks" task, which hits
+		// neutron-server's AZ check that needs Nova compute to have
+		// registered the default availability zone "nova". Splitting
+		// the role lets the install overlap with Nova while the cheap
+		// network creation continues to wait on Nova.
+		Name:             "neutron",
+		Type:             RoleType,
+		RoleName:         "neutron",
+		PreRoleName:      "neutron_pre",
+		Hosts:            "controllers[0]",
+		DependsOn:        []string{"nova"},
+		PreRoleDependsOn: []string{"keystone", "ovn", "coredns"},
+		Resources:        []string{"k8s-api"},
 	},
 	{
 		Name:      "heat",
@@ -391,30 +457,33 @@ var Components = []Component{
 		RoleName:  "heat",
 		Hosts:     "controllers[0]",
 		DependsOn: []string{"keystone"},
+		Resources: []string{"k8s-api"},
 	},
 	{
-		Name:      "octavia",
-		Type:      RoleType,
-		RoleName:  "octavia",
-		Hosts:     "controllers[0]",
-		DependsOn: []string{"keystone", "nova", "neutron"},
+		Name:        "octavia",
+		Type:        RoleType,
+		RoleName:    "octavia",
+		PreRoleName: "octavia_pre",
+		Hosts:       "controllers[0]",
+		DependsOn:   []string{"keystone", "nova", "neutron"},
+		Resources:   []string{"k8s-api"},
 	},
 	{
-		Name:      "magnum",
-		Type:      RoleType,
-		RoleName:  "magnum",
-		Hosts:     "controllers[0]",
-		DependsOn: []string{"octavia", "barbican", "heat"},
+		Name:        "magnum",
+		Type:        RoleType,
+		RoleName:    "magnum",
+		PreRoleName: "magnum_pre",
+		Hosts:       "controllers[0]",
+		DependsOn:   []string{"keystone", "glance"},
+		Resources:   []string{"k8s-api"},
 	},
 	{
 		Name:      "manila",
 		Type:      RoleType,
 		RoleName:  "manila",
 		Hosts:     "controllers[0]",
-		// The Manila role uses the combined openstack.cloud.quota module,
-		// which reads Octavia load-balancer quotas before updating compute,
-		// volume, and network limits.
-		DependsOn: []string{"keystone", "nova", "neutron", "cinder", "octavia"},
+		DependsOn: []string{"keystone", "nova", "neutron", "cinder"},
+		Resources: []string{"k8s-api"},
 	},
 	{
 		Name:      "horizon",
@@ -422,6 +491,7 @@ var Components = []Component{
 		RoleName:  "horizon",
 		Hosts:     "controllers[0]",
 		DependsOn: []string{"keystone"},
+		Resources: []string{"k8s-api"},
 	},
 	{
 		Name:      "openstack-exporter",
