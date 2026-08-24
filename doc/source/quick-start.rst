@@ -83,6 +83,16 @@ command:
 
     $ tox -e molecule-aio-openvswitch
 
+Both scenarios run the parallel deployment orchestrator. The molecule
+``converge`` step builds the ``atmosphere`` Go binary from the
+repository and invokes ``atmosphere deploy --inventory ./inventory.yaml``,
+so the all-in-one host receives every component in parallel waves
+instead of running roles sequentially. To exercise a subset, set
+``atmosphere_deploy_tags`` to a comma-separated list and re-run
+``converge``. The orchestrator resolves the requested tags along with
+their dependencies and runs them in waves. For details on the
+orchestrator itself, see :doc:`deploy/parallel`.
+
 Once the deployment is done, it will have a full deployment of all services
 inside the same host, so you can use the cloud from the same machine by
 referencing the usage section.
