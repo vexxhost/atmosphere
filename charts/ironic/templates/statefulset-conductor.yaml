@@ -253,6 +253,9 @@ spec:
               mountPath: /var/lib/openstack-helm
 {{ if $mounts_ironic_conductor.volumeMounts }}{{ toYaml $mounts_ironic_conductor.volumeMounts | indent 12 }}{{ end }}
 {{- end }}
+        {{- with .Values.conductor.extraContainers }}
+        {{- tpl (toYaml .) $ | nindent 8 }}
+        {{- end }}
       volumes:
         - name: pod-tmp
           emptyDir: {}

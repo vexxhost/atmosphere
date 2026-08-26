@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"testing"
 
 	"github.com/goccy/go-yaml"
@@ -24,6 +25,12 @@ func TestPrometheusRules(t *testing.T) {
 
 	var rules map[string]any
 	require.NoError(t, json.Unmarshal([]byte(jsonStr), &rules), "failed to parse jsonnet output")
+
+	dns1123Subdomain := regexp.MustCompile(`^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$`)
+	for name := range rules {
+		require.LessOrEqual(t, len(name), 253, "rule map key %q exceeds the DNS subdomain limit", name)
+		require.Regexp(t, dns1123Subdomain, name, "rule map key %q must be a DNS-1123 subdomain", name)
+	}
 
 	tempDir := t.TempDir()
 

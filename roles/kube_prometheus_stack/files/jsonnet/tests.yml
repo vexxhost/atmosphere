@@ -97,6 +97,168 @@ tests:
               summary: "Active Ironic node has an unexpected power state"
               description: "Active Ironic node powered-off-node (node-off) has reported power off for more than 15 minutes."
 
+  - interval: 1m
+    input_series:
+      - series: 'openstack_ironic_node{id="node-stale",name="stale-node",provision_state="active",power_state="power on",maintenance="false"}'
+        values: '1x45'
+    alert_rule_test:
+      - eval_time: 40m
+        alertname: IronicSensorPayloadStale
+        exp_alerts:
+          - exp_labels:
+              id: node-stale
+              name: stale-node
+              provision_state: active
+              power_state: power on
+              maintenance: "false"
+              node_uuid: node-stale
+              severity: P4
+            exp_annotations:
+              summary: "Active Ironic node sensor payload is stale"
+              description: "Active Ironic node stale-node (node-stale) has had no fresh hardware sensor payload for at least 30 minutes."
+
+  - interval: 1m
+    input_series:
+      - series: 'openstack_ironic_node{id="node-fresh",name="fresh-node",provision_state="active",power_state="power on",maintenance="false"}'
+        values: '1x45'
+      - series: 'baremetal_last_payload_timestamp_seconds{node_uuid="node-fresh",node_name="fresh-node",instance_uuid="instance-fresh"}'
+        values: '2400x45'
+    alert_rule_test:
+      - eval_time: 40m
+        alertname: IronicSensorPayloadStale
+        exp_alerts: []
+
+  - interval: 1m
+    input_series:
+      - series: 'openstack_ironic_node{id="node-available",name="available-node",provision_state="available",power_state="power on",maintenance="false"}'
+        values: '1x45'
+    alert_rule_test:
+      - eval_time: 40m
+        alertname: IronicSensorPayloadStale
+        exp_alerts: []
+
+  - interval: 1m
+    input_series:
+      - series: 'openstack_ironic_node{id="node-transitioned",name="transitioned-node",provision_state="active",power_state="power on",maintenance="false"}'
+        values: '1x29 stale _x15'
+      - series: 'openstack_ironic_node{id="node-transitioned",name="transitioned-node",provision_state="available",power_state="power on",maintenance="false"}'
+        values: '_x29 1x15'
+    alert_rule_test:
+      - eval_time: 40m
+        alertname: IronicSensorPayloadStale
+        exp_alerts: []
+
+  - interval: 1m
+    input_series:
+      - series: 'openstack_ironic_node{id="node-hot",name="hot-node",provision_state="active",power_state="power on",maintenance="false"}'
+        values: '1x10'
+      - series: 'baremetal_temperature_status{node_uuid="node-hot",node_name="hot-node",instance_uuid="instance-hot",sensor_id="gpu0"}'
+        values: '2x10'
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: IronicActiveNodeTemperatureCritical
+        exp_alerts:
+          - exp_labels:
+              node_uuid: node-hot
+              node_name: hot-node
+              instance_uuid: instance-hot
+              sensor_id: gpu0
+              severity: P3
+            exp_annotations:
+              summary: "Active Ironic node temperature is critical"
+              description: "Temperature sensor gpu0 on active Ironic node hot-node (node-hot) is critical."
+
+  - interval: 1m
+    input_series:
+      - series: 'openstack_ironic_node{id="node-inventory",name="inventory-node",provision_state="available",power_state="power on",maintenance="false"}'
+        values: '1x10'
+      - series: 'baremetal_temperature_status{node_uuid="node-inventory",node_name="inventory-node",instance_uuid="",sensor_id="cpu0"}'
+        values: '2x10'
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: IronicActiveNodeTemperatureCritical
+        exp_alerts: []
+
+  - interval: 1m
+    input_series:
+      - series: 'openstack_ironic_node{id="node-power",name="power-node",provision_state="active",power_state="power on",maintenance="false"}'
+        values: '1x10'
+      - series: 'baremetal_power_status{node_uuid="node-power",node_name="power-node",instance_uuid="instance-power",sensor_id="psu0"}'
+        values: '2x10'
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: IronicActiveNodePowerCritical
+        exp_alerts:
+          - exp_labels:
+              node_uuid: node-power
+              node_name: power-node
+              instance_uuid: instance-power
+              sensor_id: psu0
+              severity: P3
+            exp_annotations:
+              summary: "Active Ironic node power sensor is critical"
+              description: "Power sensor psu0 on active Ironic node power-node (node-power) is critical."
+
+  - interval: 1m
+    input_series:
+      - series: 'openstack_ironic_node{id="node-fan",name="fan-node",provision_state="active",power_state="power on",maintenance="false"}'
+        values: '1x10'
+      - series: 'baremetal_fan_status{node_uuid="node-fan",node_name="fan-node",instance_uuid="instance-fan",sensor_id="fan0"}'
+        values: '2x10'
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: IronicActiveNodeFanCritical
+        exp_alerts:
+          - exp_labels:
+              node_uuid: node-fan
+              node_name: fan-node
+              instance_uuid: instance-fan
+              sensor_id: fan0
+              severity: P3
+            exp_annotations:
+              summary: "Active Ironic node fan is critical"
+              description: "Fan sensor fan0 on active Ironic node fan-node (node-fan) is critical."
+
+  - interval: 1m
+    input_series:
+      - series: 'openstack_ironic_node{id="node-drive",name="drive-node",provision_state="active",power_state="power on",maintenance="false"}'
+        values: '1x10'
+      - series: 'baremetal_drive_status{node_uuid="node-drive",node_name="drive-node",instance_uuid="instance-drive",sensor_id="drive0"}'
+        values: '2x10'
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: IronicActiveNodeDriveCritical
+        exp_alerts:
+          - exp_labels:
+              node_uuid: node-drive
+              node_name: drive-node
+              instance_uuid: instance-drive
+              sensor_id: drive0
+              severity: P4
+            exp_annotations:
+              summary: "Active Ironic node drive is critical"
+              description: "Drive sensor drive0 on active Ironic node drive-node (node-drive) is critical."
+
+  - interval: 1m
+    input_series:
+      - series: 'openstack_ironic_node{id="node-warning",name="warning-node",provision_state="active",power_state="power on",maintenance="false"}'
+        values: '1x20'
+      - series: 'baremetal_fan_status{node_uuid="node-warning",node_name="warning-node",instance_uuid="instance-warning",sensor_id="fan0"}'
+        values: '1x20'
+    alert_rule_test:
+      - eval_time: 16m
+        alertname: IronicActiveNodeHardwareWarning
+        exp_alerts:
+          - exp_labels:
+              node_uuid: node-warning
+              node_name: warning-node
+              instance_uuid: instance-warning
+              sensor_id: fan0
+              severity: P5
+            exp_annotations:
+              summary: "Active Ironic node hardware sensor reports a warning"
+              description: "Hardware sensor fan0 on active Ironic node warning-node (node-warning) has reported a warning for 15 minutes."
+
   # NodeNetworkMulticast - should NOT fire for sustained traffic below the
   # capacity-planning threshold.
   - interval: 1m

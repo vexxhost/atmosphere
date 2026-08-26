@@ -4,7 +4,17 @@ _kube_prometheus_stack_ironic_lifecycle_enabled: >-
     atmosphere_ironic_enabled | default(false) | bool
     and openstack_exporter_baremetal_enabled | default(false) | bool
   }}
-_kube_prometheus_stack_rules: >-
+_kube_prometheus_stack_ironic_sensor_exporter_enabled: >-
+  {{
+    atmosphere_ironic_enabled | default(false) | bool
+    and ironic_prometheus_exporter_enabled | default(false) | bool
+  }}
+_kube_prometheus_stack_ironic_sensor_alerts_enabled: >-
+  {{
+    _kube_prometheus_stack_ironic_lifecycle_enabled | bool
+    and _kube_prometheus_stack_ironic_sensor_exporter_enabled | bool
+  }}
+_kube_prometheus_stack_lifecycle_rules: >-
   {{
     _kube_prometheus_stack_compiled_rules
     if _kube_prometheus_stack_ironic_lifecycle_enabled | bool
@@ -12,6 +22,16 @@ _kube_prometheus_stack_rules: >-
     (_kube_prometheus_stack_compiled_rules
      | dict2items
      | rejectattr('key', 'equalto', 'ironic')
+     | items2dict)
+  }}
+_kube_prometheus_stack_rules: >-
+  {{
+    _kube_prometheus_stack_lifecycle_rules
+    if _kube_prometheus_stack_ironic_sensor_alerts_enabled | bool
+    else
+    (_kube_prometheus_stack_lifecycle_rules
+     | dict2items
+     | rejectattr('key', 'equalto', 'ironic-sensors')
      | items2dict)
   }}
 

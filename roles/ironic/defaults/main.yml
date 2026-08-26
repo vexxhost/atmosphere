@@ -20,6 +20,21 @@ ironic_helm_release_namespace: openstack
 ironic_helm_kubeconfig: "{{ kubeconfig_path | default('/etc/kubernetes/admin.conf') }}"
 ironic_helm_values: {}
 
+# Hardware sensor metrics
+ironic_prometheus_exporter_enabled: false
+ironic_prometheus_exporter_port: 9608
+ironic_prometheus_exporter_workers: 1
+ironic_prometheus_exporter_sensor_interval: 600
+ironic_prometheus_exporter_collect_undeployed_nodes: false
+ironic_prometheus_exporter_image_pull_policy: IfNotPresent
+ironic_prometheus_exporter_resources:
+  requests:
+    memory: 64Mi
+    cpu: 50m
+  limits:
+    memory: 256Mi
+    cpu: 500m
+
 # Class name to use for the Ingress
 ironic_ingress_class_name: "{{ atmosphere_ingress_class_name }}"
 
