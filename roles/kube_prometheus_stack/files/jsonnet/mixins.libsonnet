@@ -104,6 +104,7 @@ local mixins = {
   },
   coredns: (import 'coredns.libsonnet'),
   geneve: (import 'geneve.libsonnet'),
+  ironic: (import 'ironic.libsonnet'),
   kube: (import 'vendor/github.com/kubernetes-monitoring/kubernetes-mixin/mixin.libsonnet') + {
     _config+:: {
       kubeApiserverSelector: 'job="apiserver"',
