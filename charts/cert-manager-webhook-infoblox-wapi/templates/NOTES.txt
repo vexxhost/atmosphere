@@ -1,0 +1,50 @@
+🎉 {{ include "webhook.fullname" . }} has been successfully installed!
+
+📋 NEXT STEPS:
+
+1. Verify the webhook is running:
+   kubectl get pods -n {{ .Release.Namespace }} -l app={{ include "webhook.name" . }}
+
+2. Check the webhook logs:
+   kubectl logs -n {{ .Release.Namespace }} -l app={{ include "webhook.name" . }}
+
+3. Create an Issuer or ClusterIssuer that uses this webhook. Example:
+
+   apiVersion: cert-manager.io/v1
+   kind: ClusterIssuer
+   metadata:
+     name: letsencrypt-production
+   spec:
+     acme:
+       email: your-email@example.com
+       server: https://acme-v02.api.letsencrypt.org/directory
+       privateKeySecretRef:
+         name: letsencrypt-account-key
+       solvers:
+       - dns01:
+           webhook:
+             groupName: {{ .Values.groupName }}
+             solverName: infoblox-wapi
+             config:
+               host: your-infoblox-server.example.com
+               view: "Your DNS View"
+               usernameSecretRef:
+                 name: infoblox-credentials
+                 key: username
+               passwordSecretRef:
+                 name: infoblox-credentials
+                 key: password
+
+4. Don't forget to create the Infoblox credentials secret:
+   kubectl create secret generic infoblox-credentials \
+     -n {{ .Release.Namespace }} \
+     --from-literal=username=YOUR_USERNAME \
+     --from-literal=password=YOUR_PASSWORD
+
+📚 For more information, visit:
+   https://github.com/sarg3nt/cert-manager-webhook-infoblox-wapi
+
+⚙️  Configuration:
+   - Group Name: {{ .Values.groupName }}
+   - Namespace: {{ .Release.Namespace }}
+   - Replicas: {{ .Values.replicaCount }}
