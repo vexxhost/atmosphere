@@ -281,6 +281,45 @@ limitations under the License.
 {{- end -}}
 {{- end -}}
 
+{{- if .Values.conf.nova.barbican.send_service_user_token -}}
+
+{{- if empty .Values.conf.nova.barbican.auth_endpoint -}}
+{{- $_ := tuple "identity" "internal" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup" | set .Values.conf.nova.barbican "auth_endpoint" -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.barbican.barbican_region_name -}}
+{{- $_ := set .Values.conf.nova.barbican "barbican_region_name" .Values.endpoints.identity.auth.barbican.region_name -}}
+{{- end -}}
+
+{{- end -}}
+
+{{- if .Values.conf.nova.barbican_service_user.auth_type -}}
+{{- if eq .Values.conf.nova.barbican_service_user.auth_type "password" -}}
+
+{{- if empty .Values.conf.nova.barbican_service_user.auth_url -}}
+{{- $_ := tuple "identity" "internal" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup" | set .Values.conf.nova.barbican_service_user "auth_url" -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.barbican_service_user.region_name -}}
+{{- $_ := set .Values.conf.nova.barbican_service_user "region_name" .Values.endpoints.identity.auth.barbican.region_name -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.barbican_service_user.project_name -}}
+{{- $_ := set .Values.conf.nova.barbican_service_user "project_name" .Values.endpoints.identity.auth.barbican.project_name -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.barbican_service_user.project_domain_name -}}
+{{- $_ := set .Values.conf.nova.barbican_service_user "project_domain_name" .Values.endpoints.identity.auth.barbican.project_domain_name -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.barbican_service_user.user_domain_name -}}
+{{- $_ := set .Values.conf.nova.barbican_service_user "user_domain_name" .Values.endpoints.identity.auth.barbican.user_domain_name -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.barbican_service_user.username -}}
+{{- $_ := set .Values.conf.nova.barbican_service_user "username" .Values.endpoints.identity.auth.barbican.username -}}
+{{- end -}}
+{{- if empty .Values.conf.nova.barbican_service_user.password -}}
+{{- $_ := set .Values.conf.nova.barbican_service_user "password" .Values.endpoints.identity.auth.barbican.password -}}
+{{- end -}}
+
+{{- end -}}
+{{- end -}}
+
 {{- if empty .Values.conf.nova.DEFAULT.osapi_compute_listen_port -}}
 {{- $_ := tuple "compute" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" | set .Values.conf.nova.DEFAULT "osapi_compute_listen_port" -}}
 {{- end -}}

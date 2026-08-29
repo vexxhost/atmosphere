@@ -28,3 +28,28 @@ barbican_ingress_annotations: {}
 
 # Barbican key encryption key
 barbican_kek: "{{ undef(hint='You must specify a Barbican key encryption key') }}"
+
+# Allow admin role to access all Barbican secrets.
+#
+# Enabling this allows users with the admin role to access any secret in
+# Barbican, regardless of ownership. This is useful for administrative tasks
+# and troubleshooting but has security implications.
+#
+# WARNING: This setting reduces secret isolation between projects.
+#
+# barbican_policy_admin_secret_access: true
+barbican_policy_admin_secret_access: false
+
+# Allow Nova service user to access Barbican secrets for vTPM operations.
+#
+# When enabled, the Nova service account can retrieve Barbican secrets from
+# any project. This is required for Nova to automatically start vTPM-enabled
+# VMs after a physical server reboot, as Nova needs to decrypt the vTPM data
+# stored in Barbican.
+#
+# WARNING: This setting allows the Nova service account to read any secret
+# in Barbican. Only enable this if you use vTPM and require automatic VM
+# restart after compute node reboots.
+#
+# barbican_policy_nova_secret_access: true
+barbican_policy_nova_secret_access: false
