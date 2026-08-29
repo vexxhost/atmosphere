@@ -236,6 +236,13 @@ local mixins = {
                   description: 'Computed node memory utilization at {{ $labels.instance }} is {{ printf "%.2f" $value }}%, exceeding the threshold of 90% for 15 minutes. This computation includes free huge page capacity (node_memory_HugePages_Free * node_memory_Hugepagesize_bytes) in available memory to avoid false positives on compute nodes backed by huge pages. Normal behavior is below 90% sustained utilization.',
                   runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#nodememoryhighutilization',
                 },
+              } else if rule.alert == 'NodeBondingDegraded' then rule {
+                'for': '1m',
+                annotations+: {
+                  summary: 'Node network: bond interface degraded',
+                  description: 'Bond {{ $labels.master }} on {{ $labels.instance }} has fewer active slaves than configured slaves for more than 1 minute. This can precede node unreachable, Ceph heartbeat, and Kubernetes NotReady alerts when the bond carries management or storage traffic.',
+                  runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#nodebondingdegraded',
+                },
               } else rule
               for rule in group.rules
             ],
@@ -290,6 +297,25 @@ local mixins = {
                   summary: 'Node disk: high IO latency affecting workloads',
                   description: 'Average IO latency on {{ $labels.device }} at {{ $labels.instance }} is {{ $value | humanizeDuration }} over the last 5 minutes, which exceeds the threshold of 20ms. Normal SSD latency is below 1ms and normal HDD latency is below 15ms.',
                   runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#nodediskhighlatency',
+                },
+              },
+              {
+                alert: 'NodePhysicalNetworkTransmitErrors',
+                expr: |||
+                  (
+                    increase(node_network_transmit_errs_total{%(nodeExporterSelector)s}[5m])
+                    * on(instance, device) group_left(driver)
+                    node_ethtool_info{%(nodeExporterSelector)s, driver!~"^(bonding|bridge|dummy|geneve|tun|tap|veth|vxlan|openvswitch)$"}
+                  ) > 0
+                ||| % mixins.node._config,
+                'for': '5m',
+                labels: {
+                  severity: 'warning',
+                },
+                annotations: {
+                  summary: 'Node network: physical interface transmit errors',
+                  description: '{{ $labels.instance }} physical interface {{ $labels.device }} using driver {{ $labels.driver }} recorded {{ printf "%.0f" $value }} transmit errors in the last 5 minutes. Normal behavior is zero transmit errors on production underlay interfaces; driver, firmware, cable, switch port, or PCIe issues can make the host unreachable before Kubernetes or Ceph alerts fire.',
+                  runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#nodephysicalnetworktransmiterrors',
                 },
               },
             ],
