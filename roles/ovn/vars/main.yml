@@ -38,6 +38,37 @@ _ovn_helm_values:
       DEFAULT:
         bgp_driver: frr_k8s
   pod:
+    envs:
+      ovsdb_nb:
+        - name: OVN_LOGLEVEL_NB
+          value: "-vconsole:info -vfile:info"
+        - name: OVN_KUBERNETES_STATEFULSET
+          value: ovn-ovsdb-nb
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: ENABLE_IPSEC
+          value: "false"
+        - name: OVN_NB_RAFT_ELECTION_TIMER
+          value: "10000"
+        - name: OVN_NORTHD_PROBE_INTERVAL
+          value: "30000"
+      ovsdb_sb:
+        - name: OVN_LOGLEVEL_SB
+          value: "-vconsole:info -vfile:info"
+        - name: OVN_KUBERNETES_STATEFULSET
+          value: ovn-ovsdb-sb
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: ENABLE_IPSEC
+          value: "false"
+        - name: OVN_SB_RAFT_ELECTION_TIMER
+          value: "10000"
+        - name: OVN_NORTHD_PROBE_INTERVAL
+          value: "30000"
     labels:
       include_app_kubernetes_io: false
     probes:
