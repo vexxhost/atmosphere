@@ -57,22 +57,26 @@
       url: "{{ ironic_python_agent_deploy_ramdisk_url }}"
       format: ari
   vars:
+    glance_image_cloud: "{{ ironic_python_agent_image_cloud }}"
     glance_image_name: "{{ item.name }}"
     glance_image_url: "{{ item.url }}"
     glance_image_container_format: "{{ item.format }}"
     glance_image_disk_format: "{{ item.format }}"
+    glance_image_owner: "{{ ironic_python_agent_image_owner }}"
+    glance_image_owner_domain: "{{ ironic_python_agent_image_owner_domain }}"
+    glance_image_is_public: "{{ ironic_python_agent_image_is_public }}"
 
 - name: Get details on the kernel image
   run_once: true
   openstack.cloud.image_info:
-    cloud: atmosphere
+    cloud: "{{ ironic_python_agent_image_cloud }}"
     image: "{{ ironic_python_agent_deploy_kernel_name }}"
   register: ironic_python_agent_deploy_kernel
 
 - name: Get details on the ramdisk image
   run_once: true
   openstack.cloud.image_info:
-    cloud: atmosphere
+    cloud: "{{ ironic_python_agent_image_cloud }}"
     image: "{{ ironic_python_agent_deploy_ramdisk_name }}"
   register: ironic_python_agent_deploy_ramdisk
 
