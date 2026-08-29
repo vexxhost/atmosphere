@@ -78,3 +78,11 @@ _keycloak_helm_values:
     openstack-control-plane: enabled
   metrics:
     enabled: true
+  # NOTE: The upstream chart defaults to `resourcesPreset: small`
+  # (512Mi request, 768Mi limit) which is not enough for Keycloak 24
+  # to finish its Quarkus augmentation step at first boot; the pod
+  # gets OOMKilled. The `medium` preset (1536Mi) is still too tight
+  # on Ubuntu 26.04 with current Bitnami images — use `large` (3Gi)
+  # which leaves comfortable headroom. Operators can still override
+  # via `keycloak_helm_values`.
+  resourcesPreset: "large"
