@@ -110,6 +110,47 @@ func TestKubeconform(t *testing.T) {
 						}
 					}
 
+					if chart.Name() == "thanos" {
+						deploymentUpdateStrategy := map[string]interface{}{
+							"type": "RollingUpdate",
+							"rollingUpdate": map[string]interface{}{
+								"maxSurge":       0,
+								"maxUnavailable": 1,
+							},
+						}
+						pdb := map[string]interface{}{
+							"create":       true,
+							"minAvailable": 2,
+						}
+
+						values["existingObjstoreSecret"] = "thanos-object-storage"
+						values["query"] = map[string]interface{}{
+							"replicaCount":   3,
+							"updateStrategy": deploymentUpdateStrategy,
+							"pdb":            pdb,
+						}
+						values["queryFrontend"] = map[string]interface{}{
+							"enabled":        true,
+							"replicaCount":   3,
+							"updateStrategy": deploymentUpdateStrategy,
+							"pdb":            pdb,
+						}
+						values["compactor"] = map[string]interface{}{
+							"enabled": true,
+							"persistence": map[string]interface{}{
+								"enabled": true,
+							},
+						}
+						values["storegateway"] = map[string]interface{}{
+							"enabled":      true,
+							"replicaCount": 3,
+							"pdb":          pdb,
+							"persistence": map[string]interface{}{
+								"enabled": true,
+							},
+						}
+					}
+
 					rel, err := client.Run(chart, values)
 					require.NoError(t, err)
 
