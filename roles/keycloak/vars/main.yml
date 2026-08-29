@@ -22,25 +22,24 @@ _keycloak_helm_values:
   containerSecurityContext:
     readOnlyRootFilesystem: false
     runAsUser: 1000
-  # Note(okozachenko1203): Mysql vendor is not supported by bitnami helm chart. As a workaround,
-  #                        we have to define jdbc connection string explicitly along side
-  #                        `externalDatabase` helm values.
+  # The upstream Keycloak image does not consume Bitnami's database variables,
+  # so configure the database using native KC_DB options.
   extraEnvVars:
     - name: KC_FEATURES
       value: "token-exchange,admin-fine-grained-authz"
     - name: KC_PROXY
       value: edge
     - name: KC_DB
-      value: mysql
+      value: "{{ keycloak_database_vendor }}"
     - name: KC_DB_URL
-      value: "jdbc:mysql://{{ openstack_helm_endpoints.oslo_db.hosts.default }}.openstack:3306/{{ keycloak_database_name }}"
+      value: "jdbc:{{ keycloak_database_jdbc_scheme }}://{{ keycloak_database_host }}:{{ keycloak_database_port }}/{{ keycloak_database_name }}"
     - name: KC_DB_USERNAME
       value: "{{ keycloak_database_username }}"
     - name: KC_DB_PASSWORD
       valueFrom:
         secretKeyRef:
-          key: db-password
-          name: keycloak-externaldb
+          key: "{{ keycloak_database_password_secret_key }}"
+          name: "{{ keycloak_database_existing_secret | default(keycloak_helm_release_name + '-externaldb', true) }}"
   command:
     - /opt/keycloak/bin/kc.sh
     - --verbose
@@ -57,11 +56,13 @@ _keycloak_helm_values:
     adminPassword: "{{ keycloak_admin_password }}"
     adminUser: "{{ keycloak_admin_username }}"
   externalDatabase:
-    host: "{{ openstack_helm_endpoints.oslo_db.hosts.default }}.openstack"
-    port: 3306
+    host: "{{ keycloak_database_host }}"
+    port: "{{ keycloak_database_port }}"
     database: "{{ keycloak_database_name }}"
     user: "{{ keycloak_database_username }}"
-    password: "{{ keycloak_database_password }}"
+    password: "{{ keycloak_database_password if keycloak_database_existing_secret | length == 0 else '' }}"
+    existingSecret: "{{ keycloak_database_existing_secret }}"
+    existingSecretPasswordKey: "{{ keycloak_database_password_secret_key }}"
   image:
     registry: "{{ atmosphere_images['keycloak'] | vexxhost.kubernetes.docker_image('domain') }}"
     repository: "{{ atmosphere_images['keycloak'] | vexxhost.kubernetes.docker_image('path') }}"

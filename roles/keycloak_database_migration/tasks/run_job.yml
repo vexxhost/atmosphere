@@ -1,0 +1,81 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+- name: "Create migration job {{ _keycloak_database_migration_job_name }}"
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: batch/v1
+      kind: Job
+      metadata:
+        name: "{{ _keycloak_database_migration_job_name }}"
+        namespace: "{{ keycloak_database_migration_namespace }}"
+      spec:
+        backoffLimit: 0
+        template:
+          metadata:
+            labels:
+              app.kubernetes.io/name: keycloak-database-migration
+          spec:
+            automountServiceAccountToken: false
+            restartPolicy: Never
+            nodeSelector:
+              openstack-control-plane: enabled
+            securityContext:
+              fsGroup: 1000
+            containers:
+              - name: keycloak
+                image: "{{ _keycloak_database_migration_image }}"
+                imagePullPolicy: IfNotPresent
+                command:
+                  - /opt/keycloak/bin/kc.sh
+                args: "{{ _keycloak_database_migration_job_args }}"
+                env: "{{ _keycloak_database_migration_job_env }}"
+                securityContext:
+                  allowPrivilegeEscalation: false
+                  readOnlyRootFilesystem: false
+                  runAsNonRoot: true
+                  runAsUser: 1000
+                  capabilities:
+                    drop:
+                      - ALL
+                volumeMounts:
+                  - name: migration
+                    mountPath: /migration
+            volumes:
+              - name: migration
+                persistentVolumeClaim:
+                  claimName: "{{ keycloak_database_migration_pvc_name }}"
+
+- name: "Wait for migration job {{ _keycloak_database_migration_job_name }}"
+  run_once: true
+  kubernetes.core.k8s_info:
+    api_version: batch/v1
+    kind: Job
+    name: "{{ _keycloak_database_migration_job_name }}"
+    namespace: "{{ keycloak_database_migration_namespace }}"
+  register: _keycloak_database_migration_job
+  retries: "{{ keycloak_database_migration_poll_retries }}"
+  delay: "{{ keycloak_database_migration_poll_delay }}"
+  until:
+    - _keycloak_database_migration_job.resources | length == 1
+    - >-
+      (_keycloak_database_migration_job.resources[0].status.succeeded | default(0) | int) == 1 or
+      (_keycloak_database_migration_job.resources[0].status.failed | default(0) | int) > 0
+
+- name: "Get migration job logs {{ _keycloak_database_migration_job_name }}"
+  run_once: true
+  kubernetes.core.k8s_log:
+    namespace: "{{ keycloak_database_migration_namespace }}"
+    label_selectors:
+      - "job-name={{ _keycloak_database_migration_job_name }}"
+  register: _keycloak_database_migration_job_log
+  failed_when: false
+
+- name: "Verify migration job succeeded {{ _keycloak_database_migration_job_name }}"
+  run_once: true
+  ansible.builtin.assert:
+    that:
+      - (_keycloak_database_migration_job.resources[0].status.succeeded | default(0) | int) == 1
+    fail_msg: "{{ _keycloak_database_migration_job_log.log | default('Keycloak migration job failed without logs.') }}"

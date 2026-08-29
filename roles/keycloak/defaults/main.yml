@@ -33,7 +33,24 @@ keycloak_ingress_cluster_issuer: "{{ atmosphere_ingress_cluster_issuer }}"
 keycloak_admin_username: admin
 keycloak_admin_password: "{{ undef(hint='You must specify a Keycloak admin password using keycloak_admin_password') }}"
 
+keycloak_database_vendor: mysql
 keycloak_database_username: keycloak
 keycloak_database_password: "{{ undef('You must specify a Keycloak database password using keycloak_database_password') }}"
 keycloak_database_name: keycloak
+keycloak_postgresql_host: ""
+keycloak_postgresql_port: 5432
+keycloak_postgresql_secret_name: keycloak-postgresql
+keycloak_postgresql_secret_key: password
+keycloak_database_host: >-
+  {{ keycloak_postgresql_host if keycloak_database_vendor == 'postgres' else
+  openstack_helm_endpoints.oslo_db.hosts.default + '.openstack' }}
+keycloak_database_port: >-
+  {{ keycloak_postgresql_port if keycloak_database_vendor == 'postgres' else 3306 }}
+keycloak_database_jdbc_scheme: >-
+  {{ 'postgresql' if keycloak_database_vendor == 'postgres' else 'mysql' }}
+keycloak_database_existing_secret: >-
+  {{ keycloak_postgresql_secret_name if keycloak_database_vendor == 'postgres' else '' }}
+keycloak_database_password_secret_key: >-
+  {{ keycloak_postgresql_secret_key if keycloak_database_vendor == 'postgres' else 'db-password' }}
+keycloak_database_migration_marker_name: keycloak-postgresql-migration
 keycloak_host_tls_secret_name: "{{ openstack_helm_ingress_secret_name | default(keycloak_host + '-tls')}}"
