@@ -54,6 +54,12 @@ exec:
 {{- end }}
 {{- end }}
 
+{{- define "openvswitch.daemonset.selectorLabels" -}}
+release_group: {{ .Values.release_group | default .Release.Name }}
+application: openvswitch
+component: server
+{{- end }}
+
 {{- if .Values.manifests.daemonset }}
 {{- $envAll := . }}
 
@@ -71,7 +77,7 @@ metadata:
 spec:
   selector:
     matchLabels:
-{{ tuple $envAll "openvswitch" "server" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 6 }}
+{{ include "openvswitch.daemonset.selectorLabels" $envAll | indent 6 }}
 {{ tuple $envAll "ovs" | include "helm-toolkit.snippets.kubernetes_upgrades_daemonset" | indent 2 }}
   template:
     metadata:
@@ -230,6 +236,38 @@ It should be handled through lcore and pmd core masks. */}}
               mountPath: /sys/bus/pci/drivers
             - name: cgroup
               mountPath: /sys/fs/cgroup
+{{- end }}
+{{- if .Values.pod.sidecars.exporter }}
+        - name: exporter
+{{ tuple $envAll "openvswitch_exporter" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.ovs.exporter | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "ovs" "container" "exporter" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          args:
+            - --web.listen-address=:9272
+          ports:
+            - name: metrics
+              containerPort: 9272
+          readinessProbe:
+            httpGet:
+              path: /
+              port: metrics
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 60
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /
+              port: metrics
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 60
+            timeoutSeconds: 5
+            failureThreshold: 3
+          volumeMounts:
+            - name: run-openvswitch
+              mountPath: /var/run/openvswitch
 {{- end }}
       volumes:
         - name: pod-tmp
