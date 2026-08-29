@@ -15,14 +15,14 @@ limitations under the License.
 {{- define "novaApiMetadataLivenessProbeTemplate" }}
 httpGet:
   scheme: {{ tuple "compute_metadata" "service" "metadata" . | include "helm-toolkit.endpoints.keystone_endpoint_scheme_lookup" | upper }}
-  path: /
+  path: /healthcheck
   port: {{ .Values.network.metadata.port }}
 {{- end }}
 
 {{- define "novaApiMetadataReadinessProbeTemplate" }}
 httpGet:
   scheme: {{ tuple "compute_metadata" "service" "metadata" . | include "helm-toolkit.endpoints.keystone_endpoint_scheme_lookup" | upper }}
-  path: /
+  path: /healthcheck
   port: {{ .Values.network.metadata.port }}
 {{- end }}
 

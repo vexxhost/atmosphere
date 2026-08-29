@@ -71,7 +71,7 @@ spec:
           readinessProbe:
             httpGet:
               scheme: {{ tuple "dns" "internal" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_scheme_lookup" | upper }}
-              path: /
+              path: /healthcheck
               port: {{ tuple "dns" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
           volumeMounts:
             - name: designate-bin
