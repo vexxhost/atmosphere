@@ -1,0 +1,13 @@
+---
+features:
+  - |
+    Ironic hardware sensor metrics can now be collected with the upstream
+    Ironic Prometheus Exporter by setting
+    ``ironic_prometheus_exporter_enabled``. Atmosphere injects the exporter
+    through ``conductor.extraContainers`` and shares its metrics directory
+    through the generic conductor mount hooks without replacing existing
+    list entries. The ``PodMonitor``, dashboards, and alerts are disabled by
+    default and gated by ``atmosphere_ironic_enabled``. Active-node alerting
+    additionally requires ``openstack_exporter_baremetal_enabled``. The
+    exporter uses the same Ironic runtime image as the conductor, which
+    supplies the notification driver, HTTP application, and uWSGI.

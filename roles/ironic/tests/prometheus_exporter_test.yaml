@@ -1,0 +1,113 @@
+suite: prometheus exporter extra container
+templates:
+  - templates/configmap-bin.yaml
+  - templates/configmap-etc.yaml
+  - templates/statefulset-conductor.yaml
+tests:
+  - it: should not render an exporter without an extra container
+    asserts:
+      - template: templates/statefulset-conductor.yaml
+        documentIndex: 3
+        notContains:
+          path: spec.template.spec.containers
+          content:
+            name: ironic-prometheus-exporter
+      - template: templates/statefulset-conductor.yaml
+        documentIndex: 3
+        notContains:
+          path: spec.template.spec.volumes
+          content:
+            name: ironic-prometheus-metrics
+
+  - it: should append the exporter and preserve other extra containers
+    set:
+      images:
+        tags:
+          ironic_conductor: test.example/ironic:latest
+      conductor:
+        extraContainers:
+          - name: existing-sidecar
+            image: test.example/existing:latest
+          - name: ironic-prometheus-exporter
+            image: "{{ .Values.images.tags.ironic_conductor }}"
+            command:
+              - uwsgi
+            args:
+              - --http-socket
+              - 0.0.0.0:19608
+              - --processes
+              - "2"
+              - --master
+              - --die-on-term
+              - --need-app
+              - --module
+              - ironic_prometheus_exporter.app.wsgi:application
+            ports:
+              - name: metrics
+                containerPort: 19608
+                protocol: TCP
+            volumeMounts:
+              - name: ironic-prometheus-metrics
+                mountPath: /var/lib/ironic/metrics
+      pod:
+        mounts:
+          ironic_conductor:
+            ironic_conductor:
+              volumeMounts:
+                - name: ironic-prometheus-metrics
+                  mountPath: /var/lib/ironic/metrics
+              volumes:
+                - name: ironic-prometheus-metrics
+                  emptyDir: {}
+    asserts:
+      - template: templates/statefulset-conductor.yaml
+        documentIndex: 3
+        contains:
+          path: spec.template.spec.containers
+          any: true
+          content:
+            name: existing-sidecar
+            image: test.example/existing:latest
+      - template: templates/statefulset-conductor.yaml
+        documentIndex: 3
+        contains:
+          path: spec.template.spec.containers
+          any: true
+          content:
+            name: ironic-prometheus-exporter
+            image: test.example/ironic:latest
+            command:
+              - uwsgi
+            args:
+              - --http-socket
+              - 0.0.0.0:19608
+              - --processes
+              - "2"
+              - --master
+              - --die-on-term
+              - --need-app
+              - --module
+              - ironic_prometheus_exporter.app.wsgi:application
+            ports:
+              - name: metrics
+                containerPort: 19608
+                protocol: TCP
+            volumeMounts:
+              - name: ironic-prometheus-metrics
+                mountPath: /var/lib/ironic/metrics
+      - template: templates/statefulset-conductor.yaml
+        documentIndex: 3
+        contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          any: true
+          content:
+            name: ironic-prometheus-metrics
+            mountPath: /var/lib/ironic/metrics
+      - template: templates/statefulset-conductor.yaml
+        documentIndex: 3
+        contains:
+          path: spec.template.spec.volumes
+          any: true
+          content:
+            name: ironic-prometheus-metrics
+            emptyDir: {}

@@ -12,6 +12,20 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+- name: Validate Ironic Prometheus exporter service gate
+  ansible.builtin.assert:
+    that:
+      - atmosphere_ironic_enabled | default(false) | bool
+      - ironic_prometheus_exporter_port | int > 0
+      - ironic_prometheus_exporter_port | int < 65536
+      - ironic_prometheus_exporter_workers | int > 0
+      - ironic_prometheus_exporter_sensor_interval | int >= 60
+    fail_msg: >-
+      Ironic Prometheus exporter requires atmosphere_ironic_enabled=true,
+      a valid TCP port, at least one worker, and a sensor interval of at
+      least 60 seconds.
+  when: ironic_prometheus_exporter_enabled | bool
+
 - name: Create bare metal network
   when: ironic_bare_metal_network_manage | bool
   ansible.builtin.import_tasks: network/create.yml
@@ -76,6 +90,263 @@
     image: "{{ ironic_python_agent_deploy_ramdisk_name }}"
   register: ironic_python_agent_deploy_ramdisk
 
+- name: Build base Ironic Helm values
+  ansible.builtin.set_fact:
+    _ironic_effective_helm_values: >-
+      {{ _ironic_helm_values | combine(ironic_helm_values, recursive=True) }}
+
+- name: Read existing Ironic exporter Helm values
+  ansible.builtin.set_fact:
+    _ironic_notification_driver: >-
+      {{
+        _ironic_effective_helm_values
+        .get('conf', {})
+        .get('ironic', {})
+        .get('oslo_messaging_notifications', {})
+        .get('driver', [])
+      }}
+    _ironic_conductor_extra_containers: >-
+      {{
+        _ironic_effective_helm_values
+        .get('conductor', {})
+        .get('extraContainers', [])
+        | default([], true)
+      }}
+    _ironic_conductor_volume_mounts: >-
+      {{
+        _ironic_effective_helm_values
+        .get('pod', {})
+        .get('mounts', {})
+        .get('ironic_conductor', {})
+        .get('ironic_conductor', {})
+        .get('volumeMounts', [])
+        | default([], true)
+      }}
+    _ironic_conductor_volumes: >-
+      {{
+        _ironic_effective_helm_values
+        .get('pod', {})
+        .get('mounts', {})
+        .get('ironic_conductor', {})
+        .get('ironic_conductor', {})
+        .get('volumes', [])
+        | default([], true)
+      }}
+  when: ironic_prometheus_exporter_enabled | bool
+
+- name: Validate existing Ironic exporter Helm values
+  ansible.builtin.assert:
+    that:
+      - >-
+        _ironic_conductor_extra_containers is sequence
+        and _ironic_conductor_extra_containers is not string
+        and _ironic_conductor_extra_containers is not mapping
+      - >-
+        _ironic_conductor_volume_mounts is sequence
+        and _ironic_conductor_volume_mounts is not string
+        and _ironic_conductor_volume_mounts is not mapping
+      - >-
+        _ironic_conductor_volumes is sequence
+        and _ironic_conductor_volumes is not string
+        and _ironic_conductor_volumes is not mapping
+      - >-
+        (_ironic_conductor_extra_containers | select('mapping') | list | length)
+        == (_ironic_conductor_extra_containers | length)
+      - >-
+        (_ironic_conductor_volume_mounts | select('mapping') | list | length)
+        == (_ironic_conductor_volume_mounts | length)
+      - >-
+        (_ironic_conductor_volumes | select('mapping') | list | length)
+        == (_ironic_conductor_volumes | length)
+      - >-
+        'ironic-prometheus-exporter' not in
+        (_ironic_conductor_extra_containers
+         | map(attribute='name', default='') | list)
+      - >-
+        'ironic-prometheus-metrics' not in
+        (_ironic_conductor_volume_mounts
+         | map(attribute='name', default='') | list)
+      - >-
+        '/var/lib/ironic/metrics' not in
+        (_ironic_conductor_volume_mounts
+         | map(attribute='mountPath', default='') | list)
+      - >-
+        'ironic-prometheus-metrics' not in
+        (_ironic_conductor_volumes
+         | map(attribute='name', default='') | list)
+      - ironic_prometheus_exporter_resources is mapping
+      - >-
+        _ironic_effective_helm_values
+        .get('images', {})
+        .get('tags', {})
+        .get('ironic_conductor', '') | length > 0
+    fail_msg: >-
+      Ironic exporter integration requires list-valued extraContainers,
+      conductor volumeMounts, and conductor volumes; mapping entries; an
+      ironic_conductor image; and no pre-existing objects that use the
+      reserved ironic-prometheus-exporter or ironic-prometheus-metrics names.
+  when: ironic_prometheus_exporter_enabled | bool
+
+- name: Validate existing Ironic notification driver format
+  ansible.builtin.assert:
+    that:
+      - >-
+        _ironic_notification_driver is string
+        or (_ironic_notification_driver is sequence
+            and _ironic_notification_driver is not string
+            and _ironic_notification_driver is not mapping)
+        or (_ironic_notification_driver is mapping
+            and _ironic_notification_driver.get('type', '') == 'multistring'
+            and _ironic_notification_driver.get('values', []) is sequence
+            and _ironic_notification_driver.get('values', []) is not string
+            and _ironic_notification_driver.get('values', []) is not mapping)
+    fail_msg: >-
+      Ironic notification drivers must be a string, a list, or a Helm toolkit
+      multistring mapping before prometheus_exporter can be appended.
+  when: ironic_prometheus_exporter_enabled | bool
+
+- name: Normalize existing Ironic notification drivers
+  ansible.builtin.set_fact:
+    _ironic_notification_drivers: >-
+      {{
+        [_ironic_notification_driver]
+        if _ironic_notification_driver is string
+        else (_ironic_notification_driver.get('values', [])
+              if _ironic_notification_driver is mapping
+              else _ironic_notification_driver)
+      }}
+  when: ironic_prometheus_exporter_enabled | bool
+
+- name: Add Ironic Prometheus exporter Helm values
+  ansible.builtin.set_fact:
+    _ironic_effective_helm_values: >-
+      {{
+        _ironic_effective_helm_values
+        | combine(
+            {
+              'conf': {
+                'ironic': {
+                  'metrics': {'backend': 'collector'},
+                  'oslo_messaging_notifications': {
+                    'driver': {
+                      'type': 'multistring',
+                      'values': (
+                        _ironic_notification_drivers
+                        | reject('equalto', 'prometheus_exporter')
+                        | list
+                      ) + ['prometheus_exporter'],
+                    },
+                    'location': '/var/lib/ironic/metrics',
+                  },
+                  'sensor_data': {
+                    'enable_for_undeployed_nodes': (
+                      ironic_prometheus_exporter_collect_undeployed_nodes
+                      | bool
+                    ),
+                    'interval': ironic_prometheus_exporter_sensor_interval,
+                    'send_sensor_data': true,
+                  },
+                },
+              },
+              'conductor': {
+                'extraContainers': _ironic_conductor_extra_containers + [
+                  {
+                    'name': 'ironic-prometheus-exporter',
+                    'image': (
+                      _ironic_effective_helm_values
+                      .get('images', {})
+                      .get('tags', {})
+                      .get('ironic_conductor')
+                    ),
+                    'imagePullPolicy': (
+                      ironic_prometheus_exporter_image_pull_policy
+                    ),
+                    'command': ['uwsgi'],
+                    'args': [
+                      '--http-socket',
+                      '0.0.0.0:'
+                      ~ (ironic_prometheus_exporter_port | string),
+                      '--processes',
+                      ironic_prometheus_exporter_workers | string,
+                      '--master',
+                      '--die-on-term',
+                      '--need-app',
+                      '--module',
+                      'ironic_prometheus_exporter.app.wsgi:application',
+                    ],
+                    'env': [
+                      {
+                        'name': 'IRONIC_CONFIG',
+                        'value': '/etc/ironic/ironic.conf',
+                      },
+                    ],
+                    'ports': [
+                      {
+                        'name': 'metrics',
+                        'containerPort': (
+                          ironic_prometheus_exporter_port | int
+                        ),
+                        'protocol': 'TCP',
+                      },
+                    ],
+                    'livenessProbe': {
+                      'httpGet': {
+                        'path': '/metrics',
+                        'port': 'metrics',
+                      },
+                      'initialDelaySeconds': 10,
+                      'periodSeconds': 30,
+                    },
+                    'readinessProbe': {
+                      'httpGet': {
+                        'path': '/metrics',
+                        'port': 'metrics',
+                      },
+                      'initialDelaySeconds': 5,
+                      'periodSeconds': 10,
+                    },
+                    'resources': ironic_prometheus_exporter_resources,
+                    'volumeMounts': [
+                      {
+                        'name': 'ironic-etc',
+                        'mountPath': '/etc/ironic/ironic.conf',
+                        'subPath': 'ironic.conf',
+                        'readOnly': true,
+                      },
+                      {
+                        'name': 'ironic-prometheus-metrics',
+                        'mountPath': '/var/lib/ironic/metrics',
+                      },
+                    ],
+                  },
+                ],
+              },
+              'pod': {
+                'mounts': {
+                  'ironic_conductor': {
+                    'ironic_conductor': {
+                      'volumeMounts': _ironic_conductor_volume_mounts + [
+                        {
+                          'name': 'ironic-prometheus-metrics',
+                          'mountPath': '/var/lib/ironic/metrics',
+                        },
+                      ],
+                      'volumes': _ironic_conductor_volumes + [
+                        {
+                          'name': 'ironic-prometheus-metrics',
+                          'emptyDir': {},
+                        },
+                      ],
+                    },
+                  },
+                },
+              },
+            },
+            recursive=True
+          )
+      }}
+  when: ironic_prometheus_exporter_enabled | bool
+
 - name: Deploy Helm chart
   run_once: true
   kubernetes.core.helm:
@@ -84,7 +355,7 @@
     release_namespace: "{{ ironic_helm_release_namespace }}"
     create_namespace: true
     kubeconfig: "{{ ironic_helm_kubeconfig }}"
-    values: "{{ _ironic_helm_values | combine(ironic_helm_values, recursive=True) }}"
+    values: "{{ _ironic_effective_helm_values }}"
 
 - name: Create Ingress
   ansible.builtin.include_role:

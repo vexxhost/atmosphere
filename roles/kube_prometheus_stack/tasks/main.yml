@@ -300,11 +300,59 @@
   tags:
     - kube-prometheus-stack-crds
 
+- name: Validate Ironic sensor monitoring service gate
+  ansible.builtin.assert:
+    that:
+      - atmosphere_ironic_enabled | default(false) | bool
+    fail_msg: >-
+      ironic_prometheus_exporter_enabled requires
+      atmosphere_ironic_enabled=true.
+  when: ironic_prometheus_exporter_enabled | default(false) | bool
+  tags:
+    - kube-prometheus-stack-ironic
+
+- name: Manage Ironic Prometheus exporter PodMonitor
+  run_once: true
+  kubernetes.core.k8s:
+    state: >-
+      {{
+        'present'
+        if _kube_prometheus_stack_ironic_sensor_exporter_enabled | bool
+        else 'absent'
+      }}
+    definition:
+      apiVersion: monitoring.coreos.com/v1
+      kind: PodMonitor
+      metadata:
+        name: ironic-prometheus-exporter
+        namespace: "{{ kube_prometheus_stack_helm_release_namespace }}"
+        labels:
+          release: "{{ kube_prometheus_stack_helm_release_name }}"
+      spec:
+        namespaceSelector:
+          matchNames:
+            - "{{ ironic_helm_release_namespace | default('openstack') }}"
+        selector:
+          matchLabels:
+            application: ironic
+            component: conductor
+        podMetricsEndpoints:
+          - port: metrics
+            path: /metrics
+            interval: 60s
+            scrapeTimeout: 30s
+            relabelings:
+              - sourceLabels:
+                  - __meta_kubernetes_pod_name
+                targetLabel: instance
+  tags:
+    - kube-prometheus-stack-ironic
+
 - name: Deploy additional dashboards
   run_once: true
   kubernetes.core.k8s:
     state: "{{ item.state }}"
-    template: configmap-dashboard.yaml.j2
+    definition: "{{ lookup('ansible.builtin.template', 'configmap-dashboard.yaml.j2') | from_yaml }}"
   loop:
     - name: haproxy
       state: present
@@ -338,6 +386,13 @@
           'present'
           if (atmosphere_ironic_enabled | default(false) | bool
               and openstack_exporter_baremetal_enabled | default(false) | bool)
+          else 'absent'
+        }}
+    - name: ironic-sensors
+      state: >-
+        {{
+          'present'
+          if _kube_prometheus_stack_ironic_sensor_exporter_enabled | bool
           else 'absent'
         }}
   tags:

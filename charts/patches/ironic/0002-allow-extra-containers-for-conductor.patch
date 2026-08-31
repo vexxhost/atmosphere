@@ -1,0 +1,28 @@
+diff --git a/ironic/templates/statefulset-conductor.yaml b/ironic/templates/statefulset-conductor.yaml
+index 920d4afc1..f4d29b248 100644
+--- a/ironic/templates/statefulset-conductor.yaml
++++ b/ironic/templates/statefulset-conductor.yaml
+@@ -253,6 +253,9 @@ spec:
+               mountPath: /var/lib/openstack-helm
+ {{ if $mounts_ironic_conductor.volumeMounts }}{{ toYaml $mounts_ironic_conductor.volumeMounts | indent 12 }}{{ end }}
+ {{- end }}
++        {{- with .Values.conductor.extraContainers }}
++        {{- tpl (toYaml .) $ | nindent 8 }}
++        {{- end }}
+       volumes:
+         - name: pod-tmp
+           emptyDir: {}
+diff --git a/ironic/values.yaml b/ironic/values.yaml
+index 2228bfc34..5a6e16483 100644
+--- a/ironic/values.yaml
++++ b/ironic/values.yaml
+@@ -208,6 +208,9 @@ conf:
+       datefmt: "%Y-%m-%d %H:%M:%S"
+ 
+ conductor:
++  # -- Additional containers to add to the conductor pods
++  ## Note: Supports use of custom Helm templates
++  extraContainers: []
+   http:
+     enabled: true
+     init_script: |
