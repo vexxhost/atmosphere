@@ -332,6 +332,14 @@
       state: present
     - name: rbd-details
       state: present
+    - name: ironic
+      state: >-
+        {{
+          'present'
+          if (atmosphere_ironic_enabled | default(false) | bool
+              and openstack_exporter_baremetal_enabled | default(false) | bool)
+          else 'absent'
+        }}
   tags:
     - kube-prometheus-stack-dashboards
 
