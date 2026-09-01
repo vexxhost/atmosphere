@@ -4,6 +4,7 @@ tests:
     templates:
       - templates/daemonset-health-manager.yaml
       - templates/deployment-api.yaml
+      - templates/deployment-driver-agent.yaml
       - templates/deployment-housekeeping.yaml
       - templates/deployment-worker.yaml
       - templates/job-db-sync.yaml
@@ -14,6 +15,10 @@ tests:
         notExists:
           path: spec.template.spec.runtimeClassName
       - template: templates/deployment-api.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.spec.runtimeClassName
+      - template: templates/deployment-driver-agent.yaml
         documentIndex: 3
         notExists:
           path: spec.template.spec.runtimeClassName
@@ -38,6 +43,7 @@ tests:
     templates:
       - templates/daemonset-health-manager.yaml
       - templates/deployment-api.yaml
+      - templates/deployment-driver-agent.yaml
       - templates/deployment-housekeeping.yaml
       - templates/deployment-worker.yaml
       - templates/job-db-sync.yaml
@@ -47,6 +53,7 @@ tests:
         runtimeClassName:
           octavia_health_manager: kata-clh
           octavia_api: kata-clh
+          octavia_driver_agent: kata-clh
           octavia_housekeeping: kata-clh
           octavia_worker: kata-clh
           db_sync: kata-clh
@@ -58,6 +65,11 @@ tests:
           path: spec.template.spec.runtimeClassName
           value: kata-clh
       - template: templates/deployment-api.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.runtimeClassName
+          value: kata-clh
+      - template: templates/deployment-driver-agent.yaml
         documentIndex: 3
         equal:
           path: spec.template.spec.runtimeClassName

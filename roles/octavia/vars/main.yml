@@ -23,7 +23,7 @@ _octavia_helm_values:
     labels:
       include_app_kubernetes_io: false
     mounts:
-      octavia_api:
+      octavia_driver_agent:
         octavia_driver_agent:
           volumeMounts:
             - name: octavia-server-ca
@@ -37,6 +37,7 @@ _octavia_helm_values:
             - name: octavia-client-certs
               secret:
                 secretName: octavia-client-certs
+      octavia_api:
         octavia_api:
           volumeMounts:
             - name: octavia-server-ca
@@ -206,6 +207,7 @@ _octavia_helm_values:
           apply-to: all
           pattern: '^(?!(amq\.|reply_)).*'
   manifests:
+    deployment_driver_agent: false
     ingress_api: false
     service_ingress_api: false
 
@@ -213,6 +215,11 @@ __octavia_ovn_helm_values:
   conf:
     octavia:
       api_settings:
-        enabled_provider_drivers: 'amphora:The Octavia Amphora driver.,octavia:Deprecated alias of the Octavia Amphora driver.,ovn:Octavia OVN driver.'
+        enabled_provider_drivers: amphorav2:'The v2 amphora driver.',amphora:'The Octavia Amphora driver.',octavia:'Deprecated name of Amphora driver.',ovn:'Octavia OVN driver.'
       driver_agent:
         enabled_provider_agents: 'ovn'
+      ovn:
+        ovn_nb_connection: tcp:ovn-ovsdb-nb:6641
+        ovn_sb_connection: tcp:ovn-ovsdb-sb:6642
+  manifests:
+    deployment_driver_agent: true
