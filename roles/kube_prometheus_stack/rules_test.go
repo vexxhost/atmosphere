@@ -13,17 +13,44 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestPrometheusRules(t *testing.T) {
+func evaluateRules(t *testing.T, path string) map[string]any {
+	t.Helper()
+
 	vm := jsonnet.MakeVM()
 	vm.Importer(&jsonnet.FileImporter{
 		JPaths: []string{"files/jsonnet", "files/jsonnet/vendor"},
 	})
 
-	jsonStr, err := vm.EvaluateFile("files/jsonnet/rules.jsonnet")
+	jsonStr, err := vm.EvaluateFile(path)
 	require.NoError(t, err, "failed to evaluate jsonnet file")
 
 	var rules map[string]any
 	require.NoError(t, json.Unmarshal([]byte(jsonStr), &rules), "failed to parse jsonnet output")
+	return rules
+}
+
+func TestAdditionalPrometheusRules(t *testing.T) {
+	rules := evaluateRules(t, "files/jsonnet/rules.jsonnet")
+	additionalRules := evaluateRules(t, "testdata/additional-rules.jsonnet")
+
+	for name, rule := range additionalRules {
+		require.NotContains(t, rules, name, "additional rule must use a unique top-level key")
+		rules[name] = rule
+
+		tempDir := t.TempDir()
+		filePath := filepath.Join(tempDir, name+".yaml")
+		ruleData, err := yaml.Marshal(rule)
+		require.NoError(t, err, "failed to marshal additional rule %s", name)
+		require.NoError(t, os.WriteFile(filePath, ruleData, 0644), "failed to write additional rule %s", name)
+
+		output, err := exec.Command("promtool", "check", "rules", filePath).CombinedOutput()
+		require.NoError(t, err, "promtool failed: %s", string(output))
+	}
+	require.Contains(t, rules, "site-custom")
+}
+
+func TestPrometheusRules(t *testing.T) {
+	rules := evaluateRules(t, "files/jsonnet/rules.jsonnet")
 
 	tempDir := t.TempDir()
 
