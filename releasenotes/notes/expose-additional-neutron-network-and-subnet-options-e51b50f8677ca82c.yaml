@@ -1,0 +1,20 @@
+---
+features:
+  - |
+    Operators can configure additional properties on each Neutron network and
+    subnet declared through ``neutron_networks``. New network properties
+    include the administrative state, DNS domain, default external network
+    flag, VLAN transparency, and owning project. New subnet properties include
+    explicit allocation pools, a description, extra attributes, prefix length,
+    owning project, subnet pool, and default subnet pool selection.
+
+    Subnets use the ID returned by network creation and inherit the parent
+    network's project unless they specify a project explicitly. The
+    ``is_default`` and
+    ``is_vlan_transparent`` network properties are creation-only; Atmosphere
+    reports an error rather than silently ignoring a requested change on an
+    existing network.
+  - |
+    Operators can set a gateway address and DNS name servers on the Ironic bare
+    metal subnet through ``ironic_bare_metal_subnet_gateway_ip`` and
+    ``ironic_bare_metal_subnet_dns_nameservers``.

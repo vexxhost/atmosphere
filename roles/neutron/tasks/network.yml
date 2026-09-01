@@ -1,0 +1,105 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+- name: Create network
+  openstack.cloud.network:
+    cloud: atmosphere
+    # Network settings
+    name: "{{ neutron_network.name }}"
+    admin_state_up: "{{ neutron_network.admin_state_up | default(omit) }}"
+    dns_domain: "{{ neutron_network.dns_domain | default(omit) }}"
+    external: "{{ neutron_network.external | default(omit) }}"
+    is_default: "{{ neutron_network.is_default | default(omit) }}"
+    is_vlan_transparent: "{{ neutron_network.is_vlan_transparent | default(omit) }}"
+    mtu_size: "{{ neutron_network.mtu_size | default(omit) }}"
+    port_security_enabled: "{{ neutron_network.port_security_enabled | default(omit) }}"
+    project: "{{ neutron_network.project | default(omit) }}"
+    provider_network_type: "{{ neutron_network.provider_network_type | default(omit) }}"
+    provider_physical_network: "{{ neutron_network.provider_physical_network | default(omit) }}"
+    provider_segmentation_id: "{{ neutron_network.provider_segmentation_id | default(omit) }}"
+    shared: "{{ neutron_network.shared | default(omit) }}"
+  # NOTE(mnaser): This often fails since the SSL certificates are not
+  #               ready yet. We need to wait for them to be ready.
+  retries: 60
+  delay: 5
+  register: _neutron_network_result
+  until: _neutron_network_result is not failed
+
+- name: Validate creation-only network properties
+  when:
+    - neutron_network.is_default is defined or neutron_network.is_vlan_transparent is defined
+  ansible.builtin.assert:
+    that:
+      - >-
+        neutron_network.is_default is not defined or
+        (
+          _neutron_network_result.network.is_default is defined and
+          (_neutron_network_result.network.is_default | bool) ==
+          (neutron_network.is_default | bool)
+        )
+      - >-
+        neutron_network.is_vlan_transparent is not defined or
+        (
+          _neutron_network_result.network.is_vlan_transparent is defined and
+          (_neutron_network_result.network.is_vlan_transparent | bool) ==
+          (neutron_network.is_vlan_transparent | bool)
+        )
+    fail_msg: >-
+      Network {{ neutron_network.name }} does not match the requested
+      creation-only properties. Recreate the network to change is_default or
+      is_vlan_transparent.
+    quiet: true
+
+- name: Create subnets
+  vexxhost.atmosphere.subnet:
+    cloud: atmosphere
+    # Subnet settings
+    network: "{{ _neutron_network_result.id }}"
+    name: "{{ subnet.name }}"
+    allocation_pool_end: >-
+      {{
+        omit if subnet.allocation_pools is defined
+        else subnet.allocation_pool_end | default(omit)
+      }}
+    allocation_pool_start: >-
+      {{
+        omit if subnet.allocation_pools is defined
+        else subnet.allocation_pool_start | default(omit)
+      }}
+    allocation_pools: "{{ subnet.allocation_pools | default(omit) }}"
+    cidr: "{{ subnet.cidr | default(omit) }}"
+    description: "{{ subnet.description | default(omit) }}"
+    dns_nameservers: "{{ subnet.dns_nameservers | default(omit) }}"
+    enable_dhcp: "{{ subnet.enable_dhcp | default(omit) }}"
+    extra_attrs: "{{ subnet.extra_attrs | default(omit) }}"
+    gateway_ip: "{{ subnet.gateway_ip | default(omit) }}"
+    host_routes: "{{ subnet.host_routes | default(omit) }}"
+    ip_version: "{{ subnet.ip_version | default(omit) }}"
+    ipv6_address_mode: "{{ subnet.ipv6_address_mode | default(omit) }}"
+    ipv6_ra_mode: "{{ subnet.ipv6_ra_mode | default(omit) }}"
+    no_gateway_ip: "{{ subnet.no_gateway_ip | default(omit) }}"
+    prefix_length: "{{ subnet.prefix_length | default(omit) }}"
+    project: "{{ subnet.project | default(neutron_network.project | default(omit)) }}"
+    subnet_pool: "{{ subnet.subnet_pool | default(omit) }}"
+    use_default_subnet_pool: "{{ subnet.use_default_subnet_pool | default(omit) }}"
+  loop: "{{ neutron_network.subnets }}"
+  loop_control:
+    label: "{{ subnet.name }}"
+    loop_var: subnet
+  # NOTE(mnaser): This often fails since the SSL certificates are not
+  #               ready yet. We need to wait for them to be ready.
+  retries: 60
+  delay: 5
+  register: _neutron_subnet_result
+  until: _neutron_subnet_result is not failed
