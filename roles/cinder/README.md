@@ -7,6 +7,12 @@ replica keeps a stable, unique Cinder host identity across restarts. Tooz locks
 are coordinated through the TLS-enabled Valkey Sentinel service deployed by
 Atmosphere.
 
+The defaults target Atmosphere's `valkey.openstack.svc.cluster.local:26379`
+Sentinel service and `valkey-server-certs` TLS secret. Deployments that rename
+or externalize Valkey can override `cinder_coordination_host`,
+`cinder_coordination_port`, and `cinder_coordination_secret_name`, or provide a
+complete `cinder_coordination_backend_url`.
+
 The default RBD volume driver supports Cinder Active-Active operation. A custom
 driver must declare `SUPPORTS_ACTIVE_ACTIVE` before it can join the volume
 cluster. For a driver that does not support Active-Active, use one volume

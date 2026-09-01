@@ -40,10 +40,20 @@ cinder_volume_cluster_name: atmosphere-cinder-volume
 # cinder_coordination_sentinel_name: myprimary
 cinder_coordination_sentinel_name: atmosphere
 
+# Hostname of the Valkey Sentinel service used by Cinder.
+#
+# cinder_coordination_host: valkey.example.svc.cluster.local
+cinder_coordination_host: valkey.openstack.svc.cluster.local
+
+# Port of the Valkey Sentinel service used by Cinder.
+#
+# cinder_coordination_port: 26379
+cinder_coordination_port: 26379
+
 # Secret containing the Valkey client TLS certificate and CA.
 #
 # cinder_coordination_secret_name: valkey-server-certs
-cinder_coordination_secret_name: "{{ valkey_server_certificate_secret_name }}"
+cinder_coordination_secret_name: valkey-server-certs
 
 # Mount path for the Valkey client TLS certificate and CA.
 #
@@ -55,8 +65,9 @@ cinder_coordination_tls_path: /etc/cinder/coordination
 # cinder_coordination_backend_url: redis://valkey:26379?sentinel=atmosphere
 cinder_coordination_backend_url: >-
   {{
-    'redis://' ~ valkey_helm_release_name ~ '.' ~ valkey_helm_release_namespace ~
-    '.svc.cluster.local:26379?sentinel=' ~ cinder_coordination_sentinel_name ~
+    'redis://' ~ cinder_coordination_host ~ ':' ~
+    (cinder_coordination_port | string) ~
+    '?sentinel=' ~ cinder_coordination_sentinel_name ~
     '&ssl=true&sentinel_ssl=true' ~
     '&ssl_certfile=' ~ cinder_coordination_tls_path ~ '/tls.crt' ~
     '&ssl_keyfile=' ~ cinder_coordination_tls_path ~ '/tls.key' ~
