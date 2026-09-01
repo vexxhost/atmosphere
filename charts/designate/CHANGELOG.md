@@ -1,6 +1,16 @@
 # Release notes
 
-## 2025.1.0-15
+## 2025.2.0-2
+
+## 2025.2.0
+
+- Add a periodic job to clean Designate services which not report
+  it's heartbeat within two heartbeat interval cycle.
+
+### New Features
+
+- Update apparmor values to use security_context instead of annotations.
+- Add support for runtimeClassName and priorityClassName
 
 ## 2025.1.0
 

@@ -39,12 +39,8 @@ spec:
 {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 12 }}
 {{ dict "envAll" $envAll "podName" "designate-service-cleaner" "containerNames" (list "init" "designate-service-cleaner" ) | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
         spec:
-{{ with .Values.pod.priorityClassName.designate_service_cleaner }}
-          priorityClassName: {{ . }}
-{{ end }}
-{{ with .Values.pod.runtimeClassName.designate_service_cleaner }}
-          runtimeClassName: {{ . }}
-{{ end }}
+{{ tuple "designate_service_cleaner" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 10 }}
+{{ tuple "designate_service_cleaner" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 10 }}
           serviceAccountName: {{ $serviceAccountName }}
           restartPolicy: OnFailure
           nodeSelector:
