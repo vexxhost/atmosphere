@@ -1,0 +1,99 @@
+suite: active-active
+templates:
+  - templates/configmap-bin.yaml
+  - templates/configmap-etc.yaml
+  - templates/deployment-backup.yaml
+  - templates/deployment-volume.yaml
+  - templates/statefulset-backup.yaml
+  - templates/statefulset-volume.yaml
+tests:
+  - it: should use deployments by default
+    asserts:
+      - template: templates/deployment-volume.yaml
+        hasDocuments:
+          count: 4
+      - template: templates/deployment-volume.yaml
+        documentIndex: 3
+        isKind:
+          of: Deployment
+      - template: templates/deployment-backup.yaml
+        hasDocuments:
+          count: 4
+      - template: templates/deployment-backup.yaml
+        documentIndex: 3
+        isKind:
+          of: Deployment
+      - template: templates/statefulset-volume.yaml
+        hasDocuments:
+          count: 0
+      - template: templates/statefulset-backup.yaml
+        hasDocuments:
+          count: 0
+
+  - it: should give active-active workers stable unique hosts
+    set:
+      conf:
+        cinder:
+          DEFAULT:
+            cluster: atmosphere-cinder-volume
+            host: null
+      manifests:
+        deployment_backup: false
+        deployment_volume: false
+        statefulset_backup: true
+        statefulset_volume: true
+      pod:
+        replicas:
+          backup: 3
+          volume: 3
+    asserts:
+      - template: templates/deployment-volume.yaml
+        hasDocuments:
+          count: 0
+      - template: templates/deployment-backup.yaml
+        hasDocuments:
+          count: 0
+      - template: templates/statefulset-volume.yaml
+        hasDocuments:
+          count: 4
+      - template: templates/statefulset-volume.yaml
+        documentIndex: 3
+        isKind:
+          of: StatefulSet
+      - template: templates/statefulset-volume.yaml
+        documentIndex: 3
+        equal:
+          path: spec.replicas
+          value: 3
+      - template: templates/statefulset-volume.yaml
+        documentIndex: 3
+        equal:
+          path: spec.serviceName
+          value: cinder-volume
+      - template: templates/statefulset-volume.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.containers[?(@.name=='cinder-volume')].env[?(@.name=='HOSTNAME')].valueFrom.fieldRef.fieldPath
+          value: metadata.name
+      - template: templates/statefulset-backup.yaml
+        hasDocuments:
+          count: 4
+      - template: templates/statefulset-backup.yaml
+        documentIndex: 3
+        isKind:
+          of: StatefulSet
+      - template: templates/statefulset-backup.yaml
+        documentIndex: 3
+        equal:
+          path: spec.replicas
+          value: 3
+      - template: templates/statefulset-backup.yaml
+        documentIndex: 3
+        equal:
+          path: spec.serviceName
+          value: cinder-backup
+      - template: templates/statefulset-backup.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.containers[?(@.name=='cinder-backup')].env[?(@.name=='HOSTNAME')].valueFrom.fieldRef.fieldPath
+          value: metadata.name

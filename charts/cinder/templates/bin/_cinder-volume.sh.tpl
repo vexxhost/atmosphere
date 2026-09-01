@@ -15,7 +15,16 @@ limitations under the License.
 */}}
 
 set -ex
+
+{{- if empty .Values.conf.cinder.DEFAULT.host }}
+cat > /tmp/cinder-volume-host.conf << EOF
+[DEFAULT]
+host = ${HOSTNAME}
+EOF
+{{- end }}
+
 exec cinder-volume \
      --config-file /etc/cinder/cinder.conf \
      --config-file /etc/cinder/conf/backends.conf \
-     --config-file /tmp/pod-shared/internal_tenant.conf
+     --config-file /tmp/pod-shared/internal_tenant.conf{{ if empty .Values.conf.cinder.DEFAULT.host }} \
+     --config-file /tmp/cinder-volume-host.conf{{ end }}

@@ -21,16 +21,54 @@ __cinder_helm_values:
       include_app_kubernetes_io: false
     replicas:
       api: 3
+      volume: "{{ cinder_volume_replicas }}"
       scheduler: 3
+      backup: "{{ cinder_backup_replicas }}"
     mounts:
+      cinder_api:
+        cinder_api:
+          volumeMounts:
+            - name: cinder-coordination-tls
+              mountPath: "{{ cinder_coordination_tls_path }}"
+              readOnly: true
+          volumes:
+            - name: cinder-coordination-tls
+              secret:
+                secretName: "{{ cinder_coordination_secret_name }}"
+      cinder_scheduler:
+        cinder_scheduler:
+          volumeMounts:
+            - name: cinder-coordination-tls
+              mountPath: "{{ cinder_coordination_tls_path }}"
+              readOnly: true
+          volumes:
+            - name: cinder-coordination-tls
+              secret:
+                secretName: "{{ cinder_coordination_secret_name }}"
+      cinder_backup:
+        cinder_backup:
+          volumeMounts:
+            - name: cinder-coordination-tls
+              mountPath: "{{ cinder_coordination_tls_path }}"
+              readOnly: true
+          volumes:
+            - name: cinder-coordination-tls
+              secret:
+                secretName: "{{ cinder_coordination_secret_name }}"
       cinder_volume:
         cinder_volume:
           volumeMounts:
             - name: cinder-tmp
               mountPath: /var/lib/cinder/tmp
+            - name: cinder-coordination-tls
+              mountPath: "{{ cinder_coordination_tls_path }}"
+              readOnly: true
           volumes:
             - name: cinder-tmp
               emptyDir: {}
+            - name: cinder-coordination-tls
+              secret:
+                secretName: "{{ cinder_coordination_secret_name }}"
     security_context:
       cinder_volume:
         container:
@@ -42,6 +80,8 @@ __cinder_helm_values:
     cinder:
       DEFAULT:
         allowed_direct_url_schemes: cinder
+        cluster: "{{ cinder_volume_cluster_name }}"
+        host: null
         log_config_append: null
         os_region_name: "{{ openstack_helm_endpoints['identity']['auth']['cinder']['region_name'] }}"
         volume_usage_audit_period: hour
@@ -56,6 +96,8 @@ __cinder_helm_values:
         max_overflow: 50
         max_pool_size: 5
         pool_timeout: 30
+      coordination:
+        backend_url: "{{ cinder_coordination_backend_url }}"
       oslo_messaging_notifications:
         driver: noop
       privsep_osbrick:
@@ -70,9 +112,13 @@ __cinder_helm_values:
           apply-to: all
           pattern: '^(?!(amq\.|reply_)).*'
   manifests:
+    deployment_backup: false
+    deployment_volume: false
     ingress_api: false
     job_clean: false
     service_ingress_api: false
+    statefulset_backup: true
+    statefulset_volume: true
 
 __cinder_staffeln_helm_values:
   conf:

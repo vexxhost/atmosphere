@@ -1,0 +1,17 @@
+---
+features:
+  - |
+    Cinder volume and backup services now run as StatefulSets with three
+    replicas. Each replica has a stable, unique Cinder host identity, and the
+    volume services join the ``atmosphere-cinder-volume`` Active-Active
+    cluster.
+  - |
+    Cinder now uses the existing TLS-enabled Valkey Sentinel deployment for
+    Tooz distributed locks instead of relying on per-pod file locks.
+upgrade:
+  - |
+    Active-Active support is storage-driver dependent. The default RBD driver
+    supports it. Before upgrading a deployment that uses another Cinder volume
+    driver, confirm that the driver declares ``SUPPORTS_ACTIVE_ACTIVE``. If it
+    does not, keep ``cinder_volume_replicas`` at ``1`` and set
+    ``cinder_volume_cluster_name`` to ``null``.

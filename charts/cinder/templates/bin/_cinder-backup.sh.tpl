@@ -15,5 +15,14 @@ limitations under the License.
 */}}
 
 set -ex
+
+{{- if empty .Values.conf.cinder.DEFAULT.host }}
+cat > /tmp/cinder-backup-host.conf << EOF
+[DEFAULT]
+host = ${HOSTNAME}
+EOF
+{{- end }}
+
 exec cinder-backup \
-     --config-file /etc/cinder/cinder.conf
+     --config-file /etc/cinder/cinder.conf{{ if empty .Values.conf.cinder.DEFAULT.host }} \
+     --config-file /tmp/cinder-backup-host.conf{{ end }}

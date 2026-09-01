@@ -12,7 +12,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */}}
 
-{{- if .Values.manifests.deployment_volume }}
+{{- if and .Values.manifests.deployment_volume (not .Values.manifests.statefulset_volume) }}
 {{- $envAll := . }}
 
 {{- $internal_ceph_backend := .Values.ceph_client.internal_ceph_backend }}
