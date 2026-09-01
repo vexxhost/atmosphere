@@ -100,6 +100,12 @@
   delay: 5
   until: _octavia_admin_compute_quotaset is not failed
 
+- name: Enable the OVN provider
+  when: atmosphere_network_backend == 'ovn'
+  run_once: true
+  ansible.builtin.set_fact:
+    _octavia_helm_values: "{{ _octavia_helm_values | combine(__octavia_ovn_helm_values, recursive=True) }}"
+
 - name: Deploy Helm chart
   run_once: true
   kubernetes.core.helm:
