@@ -20,8 +20,6 @@
     admin_state_up: "{{ neutron_network.admin_state_up | default(omit) }}"
     dns_domain: "{{ neutron_network.dns_domain | default(omit) }}"
     external: "{{ neutron_network.external | default(omit) }}"
-    is_default: "{{ neutron_network.is_default | default(omit) }}"
-    is_vlan_transparent: "{{ neutron_network.is_vlan_transparent | default(omit) }}"
     mtu_size: "{{ neutron_network.mtu_size | default(omit) }}"
     port_security_enabled: "{{ neutron_network.port_security_enabled | default(omit) }}"
     project: "{{ neutron_network.project | default(omit) }}"
@@ -35,31 +33,6 @@
   delay: 5
   register: _neutron_network_result
   until: _neutron_network_result is not failed
-
-- name: Validate creation-only network properties
-  when:
-    - neutron_network.is_default is defined or neutron_network.is_vlan_transparent is defined
-  ansible.builtin.assert:
-    that:
-      - >-
-        neutron_network.is_default is not defined or
-        (
-          _neutron_network_result.network.is_default is defined and
-          (_neutron_network_result.network.is_default | bool) ==
-          (neutron_network.is_default | bool)
-        )
-      - >-
-        neutron_network.is_vlan_transparent is not defined or
-        (
-          _neutron_network_result.network.is_vlan_transparent is defined and
-          (_neutron_network_result.network.is_vlan_transparent | bool) ==
-          (neutron_network.is_vlan_transparent | bool)
-        )
-    fail_msg: >-
-      Network {{ neutron_network.name }} does not match the requested
-      creation-only properties. Recreate the network to change is_default or
-      is_vlan_transparent.
-    quiet: true
 
 - name: Create subnets
   vexxhost.atmosphere.subnet:
