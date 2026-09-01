@@ -46,6 +46,7 @@ tests:
         namespace: test-console-ironic-vnc
       images:
         tags:
+          ironic_kubectl: example.com/kubectl@sha256:fedcba9876543210
           ironic_novncproxy_assets: example.com/novnc-assets@sha256:0123456789abcdef
       conf:
         ironic:
@@ -94,6 +95,11 @@ tests:
         equal:
           path: spec.template.spec.initContainers[1].name
           value: ironic-conductor-kubectl-init
+      - template: templates/statefulset-conductor.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.initContainers[1].image
+          value: example.com/kubectl@sha256:fedcba9876543210
       - template: templates/statefulset-conductor.yaml
         documentIndex: 3
         equal:
