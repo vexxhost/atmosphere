@@ -1,0 +1,56 @@
+From 0cfe43ca5897a9f9e6b9fa710d6b831bd907e950 Mon Sep 17 00:00:00 2001
+From: Guilherme Steinmuller <gsteinmuller@vexxhost.com>
+Date: Wed, 29 Jul 2026 15:40:20 -0300
+Subject: [PATCH] Fix Neutron agent health probes
+
+Mark the DHCP agent liveness probe so RabbitMQ connectivity failures do
+not cause pod restarts. Inspect every matching Neutron process for
+RabbitMQ sockets because worker processes own the established
+connections.
+
+Signed-off-by: Guilherme Steinmuller <gsteinmuller@vexxhost.com>
+---
+ neutron/templates/bin/_health-probe.py.tpl    | 8 +-------
+ neutron/templates/daemonset-dhcp-agent.yaml   | 1 +
+ 2 files changed, 2 insertions(+), 7 deletions(-)
+
+diff --git a/neutron/templates/bin/_health-probe.py.tpl b/neutron/templates/bin/_health-probe.py.tpl
+index b5e170bc..0b38ec1e 100644
+--- a/neutron/templates/bin/_health-probe.py.tpl
++++ b/neutron/templates/bin/_health-probe.py.tpl
+@@ -152,7 +152,6 @@ def get_rabbitmq_ports():
+ def tcp_socket_state_check(agentq):
+     """Check if the tcp socket to rabbitmq is in Established state"""
+     rabbit_sock_count = 0
+-    parentId = 0
+     if agentq == "l3_agent":
+         proc = "neutron-l3-agen"
+     elif agentq == "dhcp_agent":
+@@ -168,12 +167,7 @@ def tcp_socket_state_check(agentq):
+         try:
+             with p.oneshot():
+                 if proc in " ".join(p.cmdline()):
+-                    if parentId == 0:
+-                        parentId = p.pid
+-                    else:
+-                        if p.ppid() == parentId:
+-                            continue
+-                    pcon = p.connections()
++                    pcon = getattr(p, "net_connections", p.connections)()
+                     for con in pcon:
+                         try:
+                             port = con.raddr[1]
+diff --git a/neutron/templates/daemonset-dhcp-agent.yaml b/neutron/templates/daemonset-dhcp-agent.yaml
+index 75266dd6..496ffe11 100644
+--- a/neutron/templates/daemonset-dhcp-agent.yaml
++++ b/neutron/templates/daemonset-dhcp-agent.yaml
+@@ -38,6 +38,7 @@ exec:
+     - /etc/neutron/dhcp_agent.ini
+     - --agent-queue-name
+     - dhcp_agent
++    - --liveness-probe
+ {{- if .Values.pod.use_fqdn.neutron_agent }}
+     - --use-fqdn
+ {{- end }}
+--
+2.50.1
