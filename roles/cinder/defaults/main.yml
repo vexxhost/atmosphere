@@ -20,6 +20,60 @@ cinder_helm_release_namespace: openstack
 cinder_helm_kubeconfig: "{{ kubeconfig_path | default('/etc/kubernetes/admin.conf') }}"
 cinder_helm_values: {}
 
+# Number of Cinder volume replicas. Drivers must support Active-Active mode.
+#
+# cinder_volume_replicas: 1
+cinder_volume_replicas: 3
+
+# Number of Cinder backup replicas.
+#
+# cinder_backup_replicas: 1
+cinder_backup_replicas: 3
+
+# Cinder Active-Active cluster name. Set to null for unsupported drivers.
+#
+# cinder_volume_cluster_name: null
+cinder_volume_cluster_name: atmosphere-cinder-volume
+
+# Valkey Sentinel primary set used for Cinder's Tooz locks.
+#
+# cinder_coordination_sentinel_name: myprimary
+cinder_coordination_sentinel_name: atmosphere
+
+# Hostname of the Valkey Sentinel service used by Cinder.
+#
+# cinder_coordination_host: valkey.example.svc.cluster.local
+cinder_coordination_host: valkey.openstack.svc.cluster.local
+
+# Port of the Valkey Sentinel service used by Cinder.
+#
+# cinder_coordination_port: 26379
+cinder_coordination_port: 26379
+
+# Secret containing the Valkey client TLS certificate and CA.
+#
+# cinder_coordination_secret_name: valkey-server-certs
+cinder_coordination_secret_name: valkey-server-certs
+
+# Mount path for the Valkey client TLS certificate and CA.
+#
+# cinder_coordination_tls_path: /etc/cinder/coordination
+cinder_coordination_tls_path: /etc/cinder/coordination
+
+# Tooz backend URL for Cinder distributed locks.
+#
+# cinder_coordination_backend_url: redis://valkey:26379?sentinel=atmosphere
+cinder_coordination_backend_url: >-
+  {{
+    'redis://' ~ cinder_coordination_host ~ ':' ~
+    (cinder_coordination_port | string) ~
+    '?sentinel=' ~ cinder_coordination_sentinel_name ~
+    '&ssl=true&sentinel_ssl=true' ~
+    '&ssl_certfile=' ~ cinder_coordination_tls_path ~ '/tls.crt' ~
+    '&ssl_keyfile=' ~ cinder_coordination_tls_path ~ '/tls.key' ~
+    '&ssl_ca_certs=' ~ cinder_coordination_tls_path ~ '/ca.crt'
+  }}
+
 # Class name to use for the Ingress
 cinder_ingress_class_name: "{{ atmosphere_ingress_class_name }}"
 
