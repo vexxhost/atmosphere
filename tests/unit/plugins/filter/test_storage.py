@@ -117,6 +117,27 @@ _NIMBLE_POD_SECURITY_CONTEXT = {
 }
 
 
+class _LazyValue:
+    def __init__(self, value):
+        self._value = value
+
+
+class _AnsibleLazyTemplateDict(dict):
+    pass
+
+
+def _lazy_storage(raw):
+    if isinstance(raw, dict):
+        return _AnsibleLazyTemplateDict(
+            {_lazy_storage(key): _lazy_storage(value) for key, value in raw.items()}
+        )
+    if isinstance(raw, list):
+        return [_lazy_storage(value) for value in raw]
+    if isinstance(raw, str):
+        return _LazyValue(raw)
+    return raw
+
+
 class TestValidation:
     def test_empty_storage_is_valid(self):
         cfg = StorageConfig.model_validate({})
@@ -1332,6 +1353,12 @@ class TestStorageToLibvirtHelmValues:
 class TestStorageToCephProvisionersHelmValues:
     def test_no_ec_backends(self):
         result = storage_to_ceph_provisioners_helm_values(DEFAULT_STORAGE)
+        assert result == {}
+
+    def test_ansible_lazy_values_are_unwrapped(self):
+        result = storage_to_ceph_provisioners_helm_values(
+            _lazy_storage(DEFAULT_STORAGE)
+        )
         assert result == {}
 
     def test_no_volumes_config(self):

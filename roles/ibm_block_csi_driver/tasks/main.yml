@@ -3,9 +3,11 @@
 - name: Deploy CSI
   kubernetes.core.k8s:
     state: present
-    template:
-      - path: ibm-block-csi-operator.yaml.j2
-      - path: csi.ibm.com_v1_ibmblockcsi_cr.yaml.j2
+    definition: >-
+      {{
+        (lookup('ansible.builtin.template', 'ibm-block-csi-operator.yaml.j2') | from_yaml_all | list)
+        + (lookup('ansible.builtin.template', 'csi.ibm.com_v1_ibmblockcsi_cr.yaml.j2') | from_yaml_all | list)
+      }}
 
 - name: Create Secret
   kubernetes.core.k8s:
