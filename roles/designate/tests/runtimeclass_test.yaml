@@ -2,6 +2,7 @@ suite: runtimeclass
 tests:
   - it: should support not having a runtime class
     templates:
+      - templates/cron-job-service.cleaner.yaml
       - templates/deployment-api.yaml
       - templates/deployment-central.yaml
       - templates/deployment-mdns.yaml
@@ -10,6 +11,10 @@ tests:
       - templates/deployment-worker.yaml
       - templates/job-db-sync.yaml
     asserts:
+      - template: templates/cron-job-service.cleaner.yaml
+        documentIndex: 1
+        notExists:
+          path: spec.jobTemplate.spec.template.spec.runtimeClassName
       - template: templates/deployment-api.yaml
         documentIndex: 3
         notExists:
@@ -41,6 +46,7 @@ tests:
 
   - it: should support setting a runtime class
     templates:
+      - templates/cron-job-service.cleaner.yaml
       - templates/deployment-api.yaml
       - templates/deployment-central.yaml
       - templates/deployment-mdns.yaml
@@ -55,10 +61,16 @@ tests:
           designate_central: kata-clh
           designate_mdns: kata-clh
           designate_producer: kata-clh
+          designate_service_cleaner: kata-clh
           designate_sink: kata-clh
           designate_worker: kata-clh
           db_sync: kata-clh
     asserts:
+      - template: templates/cron-job-service.cleaner.yaml
+        documentIndex: 1
+        equal:
+          path: spec.jobTemplate.spec.template.spec.runtimeClassName
+          value: kata-clh
       - template: templates/deployment-api.yaml
         documentIndex: 3
         equal:
