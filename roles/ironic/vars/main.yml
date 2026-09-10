@@ -45,13 +45,37 @@ _ironic_helm_values:
     ironic:
       DEFAULT:
         log_config_append: null
+        enabled_boot_interfaces: >-
+          {{
+            ironic_enabled_boot_interfaces
+            if ironic_redfish_virtual_media_enabled | bool
+            else omit
+          }}
         enabled_network_interfaces: flat,neutron
+        grub_config_path: >-
+          {{
+            ironic_redfish_virtual_media_grub_config_path
+            if ironic_redfish_virtual_media_enabled | bool
+            else omit
+          }}
         default_network_interface: flat
         rbac_service_role_elevated_access: true
       conductor:
         clean_step_priority_override: deploy.erase_devices_express:5
         deploy_kernel: "{{ ironic_python_agent_deploy_kernel.images.0.id }}"
         deploy_ramdisk: "{{ ironic_python_agent_deploy_ramdisk.images.0.id }}"
+        bootloader_by_arch: >-
+          {{
+            ironic_redfish_virtual_media_bootloader_by_arch
+            if ironic_redfish_virtual_media_enabled | bool
+            else omit
+          }}
+        file_url_allowed_paths: >-
+          {{
+            ironic_redfish_virtual_media_file_url_allowed_paths
+            if ironic_redfish_virtual_media_enabled | bool
+            else omit
+          }}
       database:
         connection_recycle_time: 600
         max_overflow: 50
@@ -67,6 +91,13 @@ _ironic_helm_values:
         rescuing_network: "{{ ironic_bare_metal_network_name }}"
       pxe:
         kernel_append_params: "ipa-insecure=true systemd.journald.forward_to_console=yes"
+      redfish:
+        use_swift: >-
+          {{
+            ironic_redfish_virtual_media_use_swift | bool
+            if ironic_redfish_virtual_media_enabled | bool
+            else omit
+          }}
       service_catalog:
         valid_interfaces: public
     rabbitmq:
