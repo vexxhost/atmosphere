@@ -1339,6 +1339,7 @@ conf:
       use: egg:Paste#urlmap
       /: neutronversions_composite
       /v2.0: neutronapi_v2_0
+      /healthcheck: healthcheck
     composite:neutronapi_v2_0:
       use: call:neutron.auth:pipeline_factory
       noauth: cors http_proxy_to_wsgi request_id catch_errors extensions neutronapiapp_v2_0
@@ -1369,6 +1370,10 @@ conf:
       paste.app_factory: neutron.pecan_wsgi.app:versions_factory
     app:neutronapiapp_v2_0:
       paste.app_factory: neutron.api.v2.router:APIRouter.factory
+    app:healthcheck:
+      paste.app_factory: oslo_middleware:Healthcheck.app_factory
+      backends: disable_by_file
+      disable_by_file_path: /var/run/neutron/healthcheck_disable
     filter:osprofiler:
       paste.filter_factory: osprofiler.web:WsgiMiddleware.factory
   neutron_api_uwsgi:
