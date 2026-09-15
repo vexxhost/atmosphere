@@ -8,6 +8,8 @@ import (
 
 	"github.com/goccy/go-yaml"
 	"github.com/stretchr/testify/require"
+	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/chartutil"
 
 	"github.com/vexxhost/atmosphere/internal/openstack_helm"
 	"github.com/vexxhost/atmosphere/internal/testutils"
@@ -135,6 +137,27 @@ func TestBaremetalConsoleDefaults(t *testing.T) {
 
 	require.False(t, defaults.BaremetalConsoleEnabled)
 	require.Equal(t, 600, defaults.BaremetalConsoleTokenTimeout)
+}
+
+func TestBaremetalConsoleReadinessProbeReplacesTCPHandler(t *testing.T) {
+	roleValues, err := chartutil.ReadValues(varsFile)
+	require.NoError(t, err)
+	probe, err := roleValues.Table("_ironic_helm_values.console.container.readinessProbe")
+	require.NoError(t, err)
+	chart, err := loader.Load("../../charts/ironic")
+	require.NoError(t, err)
+	merged, err := chartutil.CoalesceValues(chart, map[string]interface{}{
+		"console": map[string]interface{}{
+			"container": map[string]interface{}{
+				"readinessProbe": map[string]interface{}(probe),
+			},
+		},
+	})
+	require.NoError(t, err)
+	readiness, err := merged.Table("console.container.readinessProbe")
+	require.NoError(t, err)
+	require.NotContains(t, readiness, "tcpSocket")
+	require.Equal(t, map[string]interface{}{"path": "/readyz", "port": "health"}, readiness["httpGet"])
 }
 
 func TestBaremetalConsoleNetworkPolicyManifestGate(t *testing.T) {
