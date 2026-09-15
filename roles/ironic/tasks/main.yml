@@ -102,6 +102,7 @@
           (
             _ironic_deployed_helm_values.stdout
             | from_json
+            | default({}, true)
           ).get('console', {}).get('namespace')
           | default(ironic_helm_release_namespace, true)
         )
