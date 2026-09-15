@@ -25,6 +25,14 @@ nova_helm_values: {}
 # nova_helm_timeout: 10m0s
 nova_helm_timeout: 5m0s
 
+# Enable Nova's standard remote console flow for bare metal instances. The
+# nova-compute-ironic image must include Ironic VNC console support.
+nova_ironic_vnc_enabled: false
+nova_ironic_vnc_console_state_timeout: 60
+
+# Optional digest-pinned noVNC browser assets shared by the Nova proxy.
+nova_novnc_assets_image: null
+
 # Private SSH key used for cold & live migration
 nova_ssh_key: "{{ undef(hint='You must specifiy an SSH key for Nova.') }}"
 
