@@ -76,6 +76,92 @@
     image: "{{ ironic_python_agent_deploy_ramdisk_name }}"
   register: ironic_python_agent_deploy_ramdisk
 
+- name: Validate bare metal console lifecycle policy
+  ansible.builtin.assert:
+    that:
+      - ironic_vnc_disable_mode in ['fail']
+    fail_msg: >-
+      ironic_vnc_disable_mode currently supports only the fail-safe 'fail'
+      policy. Drain modes require the ownership-scoped lifecycle extension.
+
+- name: Inspect disabled console resources
+  when: not (ironic_vnc_enabled | bool)
+  run_once: true
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: "{{ item.0 }}"
+    namespace: "{{ item.1 }}"
+    label_selectors:
+      - app=ironic
+      - component=ironic-console
+    kubeconfig: "{{ ironic_helm_kubeconfig }}"
+  loop: >-
+    {{
+      ['Pod', 'Secret']
+      | product(
+          ([ironic_vnc_namespace] + ironic_vnc_previous_namespaces) | unique
+        )
+      | list
+    }}
+  register: _ironic_vnc_disabled_resources
+
+- name: Refuse to disable consoles with provider resources present
+  when:
+    - not (ironic_vnc_enabled | bool)
+    - ironic_vnc_disable_mode == 'fail'
+  run_once: true
+  ansible.builtin.assert:
+    that:
+      - >-
+        _ironic_vnc_disabled_resources.results
+        | map(attribute='resources')
+        | map('length')
+        | sum == 0
+    fail_msg: >-
+      Refusing to disable graphical consoles while dynamic console Pods or
+      Secrets remain. Disable active sessions through Ironic before retrying.
+
+- name: Validate enabled bare metal console configuration
+  when: ironic_vnc_enabled | bool
+  ansible.builtin.assert:
+    that:
+      - ironic_vnc_container_provider == 'kubernetes'
+      - ironic_vnc_namespace | length > 0
+      - ironic_vnc_namespace != ironic_helm_release_namespace
+      - >-
+        openstack_helm_endpoints_ironic_novnc_host !=
+        openstack_helm_endpoints_ironic_api_host
+      - >-
+        (ironic_vnc_public_url | urlsplit('hostname')) ==
+        openstack_helm_endpoints_ironic_novnc_host
+      - atmosphere_images.get('ironic_console') is string
+      - >-
+        atmosphere_images.get('ironic_console', '')
+        is match('^.+@sha256:[0-9a-f]{64}$')
+      - >-
+        'ironic_novncproxy_assets' not in atmosphere_image_overrides
+        or
+        atmosphere_image_overrides.get('ironic_novncproxy_assets', '')
+        is match('^.+@sha256:[0-9a-f]{64}$')
+    fail_msg: >-
+      Bare metal graphical consoles require the Kubernetes container provider
+      with a dedicated namespace, distinct API and noVNC hosts, a matching
+      public URL, and complete digest-pinned custom console images.
+
+- name: Create bare metal console namespace
+  when: ironic_vnc_enabled | bool
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ ironic_helm_kubeconfig }}"
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ ironic_vnc_namespace }}"
+        labels: "{{ ironic_vnc_namespace_labels }}"
+        annotations: "{{ ironic_vnc_namespace_annotations }}"
+
 - name: Deploy Helm chart
   run_once: true
   kubernetes.core.helm:
@@ -95,3 +181,25 @@
     openstack_helm_ingress_service_port: 6385
     openstack_helm_ingress_annotations: "{{ ironic_ingress_annotations }}"
     openstack_helm_ingress_class_name: "{{ ironic_ingress_class_name }}"
+
+- name: Create noVNC Ingress
+  when: ironic_vnc_enabled | bool
+  ansible.builtin.include_role:
+    name: openstack_helm_ingress
+  vars:
+    openstack_helm_ingress_endpoint: baremetal_vnc_proxy
+    openstack_helm_ingress_service_name: ironic-novncproxy
+    openstack_helm_ingress_service_port: 6090
+    openstack_helm_ingress_annotations: "{{ _ironic_novncproxy_ingress_annotations | combine(ironic_vnc_ingress_annotations) }}"
+    openstack_helm_ingress_class_name: "{{ ironic_vnc_ingress_class_name }}"
+
+- name: Remove disabled noVNC Ingress
+  when: not (ironic_vnc_enabled | bool)
+  run_once: true
+  kubernetes.core.k8s:
+    state: absent
+    kubeconfig: "{{ ironic_helm_kubeconfig }}"
+    api_version: networking.k8s.io/v1
+    kind: Ingress
+    namespace: "{{ ironic_helm_release_namespace }}"
+    name: baremetal-vnc-proxy
