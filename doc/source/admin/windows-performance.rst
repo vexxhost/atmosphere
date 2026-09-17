@@ -2,7 +2,7 @@ Windows performance
 ===================
 
 Hyper-V enlightened VMCS
------------------------
+------------------------
 
 Windows guests that run Hyper-V, including for virtualization-based security
 (VBS) and memory integrity (HVCI), can use enlightened VMCS (eVMCS) to reduce
