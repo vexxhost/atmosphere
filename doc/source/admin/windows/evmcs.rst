@@ -1,43 +1,39 @@
-Hyper-V enlightened VMCS
-========================
+Preparing hosts for eVMCS
+=========================
 
-Windows guests that run Hyper-V, including for virtualization-based security
-(VBS) and memory integrity (HVCI), can use enlightened VMCS (eVMCS) to reduce
-nested virtualization overhead. This can improve performance when these
-features are active; the benefit depends on the workload. Benchmark with and
-without eVMCS: QEMU notes that it disables some virtualization features,
-including posted interrupts, which can offset the benefit.
+Hyper-V enlightened VMCS (eVMCS) is an Intel-specific optimization for nested
+Hyper-V workloads. See :doc:`/user/windows/evmcs` for benefits and image
+configuration.
 
-Requirements
-------------
+Host prerequisites
+------------------
 
-Use Intel KVM compute hosts with nested virtualization enabled and VMX exposed
-to the guest. Nova schedules images that request eVMCS only on hosts advertising
-the ``HW_CPU_X86_INTEL_VMX`` Placement trait. eVMCS is an Intel VMX optimization;
-AMD hosts aren't eligible for this setting. This restriction doesn't apply to
-Windows guests or vTPM generally. See the `QEMU Hyper-V documentation
-<https://www.qemu.org/docs/master/system/i386/hyperv.html#existing-enlightenments>`_.
+Upgrade all Nova services to an image with eVMCS support before offering the
+feature. Use Intel KVM compute hosts with nested virtualization enabled and VMX
+exposed to guests by the configured guest CPU model.
 
-Upgrade all Nova services to an image with eVMCS support before enabling it.
-eVMCS doesn't enable Hyper-V or VBS inside Windows; configure those features in
-the guest as needed. For Windows images that need a TPM, see
-:doc:`../emulated-tpm`. vTPM is a separate feature and doesn't require eVMCS.
-
-Enable eVMCS
-------------
-
-Set these properties on the Windows image before creating instances:
+Nova requires the ``HW_CPU_X86_INTEL_VMX`` Placement trait for images that
+request eVMCS. Check an intended compute host:
 
 .. code-block:: console
 
-   $ openstack image set <image-name-or-uuid> \
-       --property os_type=windows \
-       --property hw_hyperv_evmcs=true
+   $ COMPUTE_UUID=$(openstack resource provider list --name <compute-host> -f value -c uuid)
+   $ openstack resource provider trait list "$COMPUTE_UUID"
 
-Create new instances from that image. Updating image properties doesn't change
-existing instances. If no eligible Intel host is available, scheduling fails
-with ``No valid host``.
+Confirm that ``HW_CPU_X86_INTEL_VMX`` is present. This trait is a scheduling
+prerequisite; it doesn't replace checking nested virtualization and the guest
+CPU model. AMD hosts aren't eligible for eVMCS. Don't manually add the Intel
+trait to an unsupported host.
 
-eVMCS is disabled by default. To disable it for future instances, set
-``hw_hyperv_evmcs=false`` on the image. This feature doesn't add Mode-Based
-Execution Control (MBEC) support.
+Rollout
+-------
+
+Validate a Windows canary with VBS or Hyper-V enabled, including performance
+and migration between the intended hosts, before wider use. QEMU notes that
+eVMCS disables some virtualization features, including posted interrupts, so
+benchmark the workload with and without it. See the `QEMU Hyper-V documentation
+<https://www.qemu.org/docs/master/system/i386/hyperv.html#existing-enlightenments>`_.
+
+Users enable eVMCS through :doc:`image properties </user/windows/evmcs>`; don't
+add ``hv-evmcs`` to ``cpu_model_extra_flags``. eVMCS is a Hyper-V enlightenment,
+and this change doesn't add Mode-Based Execution Control (MBEC) support.

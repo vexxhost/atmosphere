@@ -2,9 +2,9 @@
 Emulated Trusted Platform Module (vTPM)
 #######################################
 
-Atmosphere ships with the vTPM features enabled by default, so you just need
-to verify that it's setup optionally and either configure a flavor or an image
-to use it.
+Atmosphere enables vTPM support by default. This guide covers host capability
+checks and administrator-managed flavors. Users can follow
+:doc:`/user/emulated-tpm` to configure their own images and create instances.
 
 Verify the configuration (optional)
 ===================================
@@ -56,45 +56,9 @@ the CRB model:
      --property hw:tpm_version=2.0 \
      --property hw:tpm_model=tpm-crb
 
-Image configuration
--------------------
+User configuration
+------------------
 
-You can also configure the vTPM on an image using the ``hw_tpm_version`` and
-``hw_tpm_model`` image metadata properties. For example, to configure an image
-to use the TPM 2.0 with CRB model:
-
-.. code-block:: console
-
- $ openstack image set <image-name-or-uuid> \
-     --property hw_tpm_version=2.0 \
-     --property hw_tpm_model=tpm-crb
-
-This can be useful if you need to enable the vTPM feature without having operator
-access to the cloud or for specific images such as Windows versions that require
-a TPM to be present.
-
-Create an instance with vTPM
-============================
-
-Once you've configured the vTPM, you can create an instance using the flavor or
-image you configured. For example, to create an instance using the flavor we
-created previously:
-
-.. code-block:: console
-
- $ openstack server create --flavor test.vtpm test-instance
-
-Or using an image:
-
-.. code-block:: console
-
- $ openstack server create --image <image-name-or-uuid> test-instance
-
-The instance should now have the vTPM device available.
-
-Related Windows guidance
-========================
-
-See :doc:`windows/index` for related Windows security and performance guidance.
-vTPM provides a TPM device for the guest; the Intel-specific eVMCS optimization
-reduces nested Hyper-V overhead. The features can be configured independently.
+For image properties and instance creation, see :doc:`/user/emulated-tpm`.
+Administrators maintaining shared images can use the same instructions.
+For related host preparation, see :doc:`windows/index`.
