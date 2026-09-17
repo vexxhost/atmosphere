@@ -20,7 +20,24 @@
     namespace: openstack
   register: _pxc_service
 
-- name: Install MySQL python package
+- name: Install MySQL Python package using package manager
+  when: >-
+    (ansible_facts['distribution'] == 'Ubuntu'
+    and ansible_facts['distribution_major_version'] is version('22', '>'))
+    or (ansible_facts['distribution'] == 'Debian'
+    and ansible_facts['distribution_major_version'] is version('12', '>'))
+  ansible.builtin.package:
+    name: python3-pymysql
+    state: present
+
+- name: Install MySQL Python package using pip
+  when: >-
+    not (
+      (ansible_facts['distribution'] == 'Ubuntu'
+      and ansible_facts['distribution_major_version'] is version('22', '>'))
+      or (ansible_facts['distribution'] == 'Debian'
+      and ansible_facts['distribution_major_version'] is version('12', '>'))
+    )
   ansible.builtin.pip:
     name: PyMySQL
   register: _keycloak_pip_install
