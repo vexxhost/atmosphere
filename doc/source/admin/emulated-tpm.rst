@@ -91,3 +91,10 @@ Or using an image:
  $ openstack server create --image <image-name-or-uuid> test-instance
 
 The instance should now have the vTPM device available.
+
+Related Windows guidance
+========================
+
+See :doc:`windows/index` for related Windows security and performance guidance.
+vTPM provides a TPM device for the guest; the Intel-specific eVMCS optimization
+reduces nested Hyper-V overhead. The features can be configured independently.

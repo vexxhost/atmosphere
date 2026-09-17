@@ -4,6 +4,22 @@ Windows guest administration
 This section covers features and operational guidance for running Windows
 workloads on Atmosphere.
 
+Security and performance
+------------------------
+
+Windows security features have different requirements:
+
+* :doc:`../emulated-tpm` explains how to provide TPM 2.0 for Windows 11 and
+  features such as TPM-backed BitLocker key protection. vTPM support isn't
+  restricted to Intel hosts.
+* :doc:`evmcs` describes an Intel-specific optimization for guests running
+  Hyper-V, including virtualization-based security (VBS) and memory integrity
+  (HVCI). It can reduce nested virtualization overhead while those features
+  remain enabled.
+
+vTPM and eVMCS serve different purposes and can be configured independently.
+Neither setting enables VBS inside Windows.
+
 .. toctree::
    :maxdepth: 2
 
