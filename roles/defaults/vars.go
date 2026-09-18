@@ -33,6 +33,20 @@ func getKubernetesVersion() (string, error) {
 	return version, nil
 }
 
+func getCephVersion() (string, error) {
+	path, err := yaml.PathString("$.ceph_version")
+	if err != nil {
+		return "", err
+	}
+
+	var version string
+	if err := path.Read(bytes.NewReader(varsFile), &version); err != nil {
+		return "", err
+	}
+
+	return version, nil
+}
+
 func GetImages() (map[string]string, error) {
 	// Replace {{ release }} with the actual release value
 	modifiedVarsFile := []byte(strings.ReplaceAll(string(varsFile), "{{ atmosphere_release }}", release))
@@ -46,6 +60,13 @@ func GetImages() (map[string]string, error) {
 		return nil, err
 	}
 	modifiedVarsFile = []byte(strings.ReplaceAll(string(modifiedVarsFile), "{{ atmosphere_kubernetes_version }}", kubernetesVersion))
+
+	// Resolve the Ceph version from the same vars file as the image template.
+	cephVersion, err := getCephVersion()
+	if err != nil {
+		return nil, err
+	}
+	modifiedVarsFile = []byte(strings.ReplaceAll(string(modifiedVarsFile), "{{ ceph_version }}", cephVersion))
 
 	path, err := yaml.PathString("$._atmosphere_images")
 	if err != nil {
