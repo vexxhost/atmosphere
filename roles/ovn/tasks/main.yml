@@ -14,6 +14,7 @@
 
 - name: Replace unnecessary label in ovn-controller daemonset
   run_once: true
+  delegate_to: "{{ groups['controllers'][0] }}"
   when: atmosphere_network_backend == 'ovn'
   block:
     - name: Check if ovn_controller DaemonSet exists
@@ -24,7 +25,6 @@
         name: ovn-controller
         kubeconfig: "{{ ovn_helm_kubeconfig }}"
       register: _ovn_controller_ds_info
-      failed_when: false
 
     - name: Delete existing ovn controller DaemonSet if type label is found
       kubernetes.core.k8s:
