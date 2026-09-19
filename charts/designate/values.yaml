@@ -402,6 +402,7 @@ conf:
       /: osapi_dns_versions
       /v2: osapi_dns_v2
       /admin: osapi_dns_admin
+      /healthcheck: healthcheck
     composite:osapi_dns_versions:
       use: call:designate.api.middleware:auth_pipeline_factory
       noauth: http_proxy_to_wsgi cors maintenance faultwrapper osapi_dns_app_versions
@@ -420,6 +421,10 @@ conf:
       keystone: http_proxy_to_wsgi cors request_id faultwrapper authtoken keystonecontext maintenance normalizeuri osapi_dns_app_admin
     app:osapi_dns_app_admin:
       paste.app_factory: designate.api.admin:factory
+    app:healthcheck:
+      paste.app_factory: oslo_middleware:Healthcheck.app_factory
+      backends: disable_by_file
+      disable_by_file_path: /var/run/designate/healthcheck_disable
     filter:cors:
       paste.filter_factory: oslo_middleware.cors:filter_factory
       oslo_config_project: designate
