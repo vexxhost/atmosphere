@@ -12,6 +12,28 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+- name: Generate Loki alert rule files
+  ansible.builtin.set_fact:
+    _loki_alert_rule_files: "{{ _loki_default_alert_rule_files | combine(loki_alert_rule_files, recursive=True) }}"
+
+- name: Ensure Loki namespace exists
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ loki_helm_kubeconfig }}"
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ loki_helm_release_namespace }}"
+
+- name: Create Loki alert rules ConfigMap
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ loki_helm_kubeconfig }}"
+    definition: "{{ _loki_alert_rules_configmap | combine({'data': _loki_alert_rule_files}, recursive=True) }}"
+
 - name: Deploy Helm chart
   run_once: true
   kubernetes.core.helm:
