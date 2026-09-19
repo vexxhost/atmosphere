@@ -1057,6 +1057,51 @@ intervention and may precede a crash.
 5. If the error recurs, schedule hardware maintenance and replace the
    affected CPU or motherboard as needed.
 
+``LibvirtPodRestarts``
+======================
+
+This alert fires when a libvirt pod's main container restarts more than three
+times on the same node within one hour and the condition remains true for
+15 minutes. Repeated libvirt restarts are an early signal for the stale mount
+leak because each restart can recreate Ceph ``subPath`` bind mounts.
+
+**Likely Root Causes**
+
+- libvirt liveness or readiness checks failing.
+- libvirt crashing because of host resource pressure or configuration errors.
+- TLS, Ceph, or RBD configuration preventing libvirt from becoming healthy.
+- Manual force deletion or repeated pod recreation during troubleshooting.
+
+**Diagnostic and Remediation Steps**
+
+1. Identify the affected node and libvirt pod:
+
+   .. code-block:: console
+
+     kubectl -n openstack get pods -o wide | grep libvirt
+
+2. Inspect recent restarts and events:
+
+   .. code-block:: console
+
+     kubectl -n openstack describe pod <libvirt-pod>
+     kubectl -n openstack logs <libvirt-pod> -c libvirt --previous --tail=200
+
+3. Check whether the node filesystem mount count has started growing:
+
+   .. code-block:: console
+
+     kubectl -n monitoring exec svc/kube-prometheus-stack-prometheus -- \
+       promtool query instant http://localhost:9090 \
+       'count by (instance, job) (node_filesystem_device_error{job="node-exporter"})'
+
+4. If restarts continue and the node mount count is growing, stop deleting the
+   pod and follow the ``NodeFilesystemMountsHigh`` cleanup procedure.
+
+5. Deploy the libvirt chart fix that defaults the ``/etc/ceph`` mount
+   propagation to ``HostToContainer`` and keeps ``Bidirectional`` as an
+   explicit override only where required.
+
 ``MySQLGaleraOutOfSync``
 ========================
 
@@ -1171,6 +1216,119 @@ true per-operation latency at the block device layer.
 7. If the disk shows degradation or failure, plan a replacement. For RAID arrays,
    replace the failed member. For standalone disks, migrate workloads before
    the disk fails completely.
+
+``NodeFilesystemMountsHigh``
+============================
+
+This alert fires when node-exporter reports more than 100 filesystem mount
+entries for a node for at least 30 minutes. It uses the existing
+``node_filesystem_device_error`` series as a proxy for the host filesystem
+mount set, after the node-exporter filesystem collector applies its configured
+mount point exclusions.
+
+**Likely Root Causes**
+
+- Stale bind mounts left behind after repeated pod recreation.
+- Kubernetes ``subPath`` mounts that weren't cleaned up after container
+  lifecycle events.
+- libvirt/Ceph bind mounts accumulating after repeated libvirt pod restarts.
+- CSI, ``kubelet``, or host maintenance cleanup issues leaving mounts behind.
+
+**Diagnostic and Remediation Steps**
+
+1. Confirm the current mount count from Prometheus:
+
+   .. code-block:: console
+
+      kubectl -n monitoring exec svc/kube-prometheus-stack-prometheus -- \
+        promtool query instant http://localhost:9090 \
+        'count by (instance, job) (node_filesystem_device_error{job="node-exporter",instance="<instance>"})'
+
+2. Compare the value with the deployment's historical baseline if the node has
+   an intentionally high mount count.
+
+3. Check whether node-exporter filesystem collection is slowing down or failing:
+
+   .. code-block:: console
+
+      kubectl -n monitoring exec svc/kube-prometheus-stack-prometheus -- \
+        promtool query instant http://localhost:9090 \
+        'node_scrape_collector_duration_seconds{job="node-exporter",collector="filesystem",instance="<instance>"}'
+
+      kubectl -n monitoring exec svc/kube-prometheus-stack-prometheus -- \
+        promtool query instant http://localhost:9090 \
+        'node_scrape_collector_success{job="node-exporter",collector="filesystem",instance="<instance>"}'
+
+4. On the affected node, identify repeated mount targets:
+
+   .. code-block:: console
+
+      awk '{print $5}' /proc/1/mountinfo | sort | uniq -c | sort -nr | head
+
+5. If the affected node is a compute host, check whether libvirt restarted
+   recently:
+
+   .. code-block:: console
+
+      kubectl -n openstack get pods -o wide | grep libvirt
+      kubectl -n openstack describe pod <libvirt-pod>
+
+6. Avoid repeated force deletion of the affected pod while the mount count is
+   growing. Repeated restarts can make stale bind mount buildup worse on
+   affected chart versions.
+
+7. If you need cleanup on a compute host, disable scheduling to the affected
+   Nova compute service first, remove only stale host bind mounts, recreate the
+   affected pod, and verify service health before re-enabling scheduling. Don't
+   restart virtual machine processes as part of stale mount cleanup.
+
+``NodeFilesystemMountsVeryHigh``
+================================
+
+This alert fires when node-exporter reports more than 1000 filesystem mount
+entries for a node for at least 10 minutes. At this level, host processes that
+scan mounted filesystems can consume elevated CPU and node responsiveness may
+degrade.
+
+**Likely Root Causes**
+
+- The same causes as ``NodeFilesystemMountsHigh``, with a larger stale mount
+  buildup.
+- Repeated pod deletion or restart attempts while stale mounts remain present.
+- A stuck cleanup process or ``kubelet`` issue that can keep the mount table
+  growing.
+
+**Diagnostic and Remediation Steps**
+
+1. Treat this as user-impacting for workloads on the affected node.
+   If the node is a compute host, verify Nova service state:
+
+   .. code-block:: console
+
+      openstack compute service list --service nova-compute --host <compute-host>
+
+2. Confirm the mount count and check the most repeated mount targets:
+
+   .. code-block:: console
+
+      kubectl -n monitoring exec svc/kube-prometheus-stack-prometheus -- \
+        promtool query instant http://localhost:9090 \
+        'count by (instance, job) (node_filesystem_device_error{job="node-exporter",instance="<instance>"})'
+
+      awk '{print $5}' /proc/1/mountinfo | sort | uniq -c | sort -nr | head
+
+3. Temporarily disable scheduling to the affected compute service before
+   cleanup:
+
+   .. code-block:: console
+
+      openstack compute service set --disable <compute-host> nova-compute
+
+4. Clean only stale bind mounts from the host mount namespace, recreate the
+   affected pod, and verify service health.
+
+5. Re-enable scheduling only after the filesystem mount count returns to normal
+   and the affected service is healthy.
 
 ``NodeMemoryHighUtilization``
 =============================
