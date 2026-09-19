@@ -226,6 +226,30 @@ Dell PowerStore (``powerstore``)
     password: <password>
     protocol: iscsi    # or fc
 
+NetApp ONTAP (``netapp``)
+=========================
+
+NetApp ONTAP integration using the OpenStack Cinder NetApp unified driver.
+Atmosphere supports the ``iscsi``, ``fc``, ``nfs``, and ``nvme`` Cinder
+protocols.
+
+For additional options, see the `Cinder NetApp volume driver documentation
+<https://docs.openstack.org/cinder/latest/configuration/block-storage/drivers/netapp-volume-driver.html>`_.
+
+.. code-block:: yaml
+
+    type: netapp
+    protocol: iscsi    # or fc, nfs, nvme
+    address: <management_ip_or_hostname>
+    username: <username>
+    password: <password>
+    vserver: <svm_name>
+    transport_type: https  # optional, defaults to https
+    server_port: 443       # optional, defaults to 443
+    nfs_shares_config:     # optional, for nfs backends
+      - 10.0.0.20:/cinder
+    netapp_options: {}     # optional additional Cinder NetApp options
+
 Pure storage (``pure``)
 =======================
 
@@ -295,9 +319,9 @@ these values:
 ``type: none``
   Disable the Cinder backup service and its storage-init job.
 
-For non-Ceph volume backends such as PowerStore, Pure Storage, StorPool, or
-Nimble, set ``backup.type: none`` unless you still plan to use Ceph for
-backups.
+For non-Ceph volume backends such as PowerStore, NetApp, Pure Storage,
+StorPool, or Nimble, set ``backup.type: none`` unless you still plan to use
+Ceph for backups.
 
 If you keep Ceph backups while using a non-Ceph volume backend, define the
 backup block explicitly:
@@ -392,6 +416,34 @@ Using HPE Nimble storage
             password: secret
             protocol: iscsi
             nimble_subnet_label: "*"
+      backup:
+        type: none
+      ephemeral:
+        type: local
+
+Using NetApp ONTAP storage
+==========================
+
+.. code-block:: yaml
+
+    atmosphere_storage:
+      images:
+        default: cinder_store
+        backends:
+          rbd1: null
+          cinder_store:
+            type: cinder
+      volumes:
+        default: netapp1
+        backends:
+          rbd1: null
+          netapp1:
+            type: netapp
+            protocol: iscsi
+            address: 10.0.0.10
+            username: admin
+            password: secret
+            vserver: svm_cinder
       backup:
         type: none
       ephemeral:
