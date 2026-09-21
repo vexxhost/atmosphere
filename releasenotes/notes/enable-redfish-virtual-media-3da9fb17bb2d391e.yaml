@@ -1,0 +1,21 @@
+---
+features:
+  - |
+    Enables the Ironic configuration required for Redfish virtual-media
+    deployment by default for Redfish-backed deployments. This advertises the
+    ``redfish-virtual-media`` boot interface, disables Swift temporary URLs,
+    configures the x86_64 UEFI bootloader ESP, and writes GRUB configuration to
+    the Ubuntu signed GRUB prefix.
+
+    Deployments that do not enable the Redfish hardware type can opt out with
+    ``ironic_redfish_virtual_media_enabled: false``. Compatible bare metal
+    nodes still select the ``redfish-virtual-media`` boot interface
+    individually, so existing PXE or iPXE selections are unchanged.
+
+    Runtime image selection remains managed through
+    ``atmosphere_image_overrides``. Deployments must select an Ironic image
+    that contains the configured bootloader ESP and required virtual-media
+    implementation.
+
+    Nodes using Redfish virtual media also need a BMC-reachable media publisher
+    URL.

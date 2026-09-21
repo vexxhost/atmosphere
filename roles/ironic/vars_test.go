@@ -13,6 +13,9 @@ import (
 )
 
 var (
+	//go:embed defaults/main.yml
+	defaultsFile []byte
+
 	//go:embed vars/main.yml
 	varsFile []byte
 	vars     Vars
@@ -20,6 +23,47 @@ var (
 
 type Vars struct {
 	openstack_helm.HelmValues `yaml:"_ironic_helm_values"`
+}
+
+type Defaults struct {
+	EnabledBootInterfaces                  string   `yaml:"ironic_enabled_boot_interfaces"`
+	RedfishVirtualMediaEnabled             bool     `yaml:"ironic_redfish_virtual_media_enabled"`
+	RedfishVirtualMediaUseSwift            bool     `yaml:"ironic_redfish_virtual_media_use_swift"`
+	RedfishVirtualMediaBootloaderByArch    string   `yaml:"ironic_redfish_virtual_media_bootloader_by_arch"`
+	RedfishVirtualMediaGrubConfigPath      string   `yaml:"ironic_redfish_virtual_media_grub_config_path"`
+	RedfishVirtualMediaFileURLAllowedPaths []string `yaml:"ironic_redfish_virtual_media_file_url_allowed_paths"`
+}
+
+type IronicVars struct {
+	HelmValues struct {
+		Conf struct {
+			Ironic struct {
+				Default struct {
+					EnabledBootInterfaces string `yaml:"enabled_boot_interfaces"`
+				} `yaml:"DEFAULT"`
+			} `yaml:"ironic"`
+		} `yaml:"conf"`
+	} `yaml:"_ironic_helm_values"`
+}
+
+func TestRedfishVirtualMediaDefaults(t *testing.T) {
+	var defaults Defaults
+	err := yaml.UnmarshalWithOptions(defaultsFile, &defaults)
+	require.NoError(t, err)
+	require.Equal(t, "ipxe,pxe,redfish-virtual-media", defaults.EnabledBootInterfaces)
+	require.True(t, defaults.RedfishVirtualMediaEnabled)
+	require.False(t, defaults.RedfishVirtualMediaUseSwift)
+	require.Equal(t, "x86_64:file:///usr/share/ironic/esp/x86_64.img", defaults.RedfishVirtualMediaBootloaderByArch)
+	require.Equal(t, "EFI/ubuntu/grub.cfg", defaults.RedfishVirtualMediaGrubConfigPath)
+	require.Contains(t, defaults.RedfishVirtualMediaFileURLAllowedPaths, "/usr/share/ironic/esp")
+}
+
+func TestRedfishVirtualMediaBootInterfaceFollowsFeature(t *testing.T) {
+	var ironicVars IronicVars
+	err := yaml.UnmarshalWithOptions(varsFile, &ironicVars)
+	require.NoError(t, err)
+	require.Contains(t, ironicVars.HelmValues.Conf.Ironic.Default.EnabledBootInterfaces, "if ironic_redfish_virtual_media_enabled | bool")
+	require.Contains(t, ironicVars.HelmValues.Conf.Ironic.Default.EnabledBootInterfaces, "else omit")
 }
 
 func TestMain(m *testing.M) {
@@ -38,9 +82,9 @@ func TestHelmValues(t *testing.T) {
 	// for the actual template. Like:
 	// {{ tuple "heat_api" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" }}
 	vars.HelmValues.Pod.PriorityClass = map[string]string{
-		"bootstrap": "high-priority",
-		"db_sync": "high-priority",
-		"ironic_api": "high-priority",
+		"bootstrap":        "high-priority",
+		"db_sync":          "high-priority",
+		"ironic_api":       "high-priority",
 		"ironic_conductor": "high-priority",
 	}
 	// (rlin): Before you add any new runtime class here.
@@ -49,9 +93,9 @@ func TestHelmValues(t *testing.T) {
 	// for the actual template. Like:
 	// {{ tuple "heat_api" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" }}
 	vars.HelmValues.Pod.RuntimeClass = map[string]string{
-		"bootstrap": "kata-clh",
-		"db_sync": "kata-clh",
-		"ironic_api": "kata-clh",
+		"bootstrap":        "kata-clh",
+		"db_sync":          "kata-clh",
+		"ironic_api":       "kata-clh",
 		"ironic_conductor": "kata-clh",
 	}
 	vals, err := openstack_helm.CoalescedHelmValues("../../charts/ironic", &vars.HelmValues)
