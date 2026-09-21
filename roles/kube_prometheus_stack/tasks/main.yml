@@ -335,6 +335,63 @@
   tags:
     - kube-prometheus-stack-dashboards
 
+- name: Validate Thanos object storage configuration
+  run_once: true
+  ansible.builtin.assert:
+    that:
+      - >-
+        thanos_object_storage_existing_secret | default('') | length > 0
+        or thanos_object_storage_config | default({}) | length > 0
+      - >-
+        (thanos_helm_release_namespace | default('monitoring')) ==
+        kube_prometheus_stack_helm_release_namespace
+    fail_msg: >-
+      Thanos requires either thanos_object_storage_existing_secret or
+      thanos_object_storage_config, and Thanos must share the
+      kube-prometheus-stack namespace.
+  when: thanos_enabled | default(false) | bool
+
+- name: Create Thanos object storage secret
+  no_log: true
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ kube_prometheus_stack_helm_kubeconfig }}"
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: "{{ _kube_prometheus_stack_thanos_object_storage_secret_name }}"
+        namespace: "{{ kube_prometheus_stack_helm_release_namespace }}"
+      stringData: >-
+        {{
+          dict([[
+            thanos_object_storage_secret_key | default('objstore.yml'),
+            thanos_object_storage_config | to_nice_yaml
+          ]])
+        }}
+  when:
+    - thanos_enabled | default(false) | bool
+    - thanos_object_storage_existing_secret | default('') | length == 0
+
+- name: Validate existing Thanos object storage secret
+  no_log: true
+  run_once: true
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Secret
+    name: "{{ _kube_prometheus_stack_thanos_object_storage_secret_name }}"
+    namespace: "{{ kube_prometheus_stack_helm_release_namespace }}"
+    kubeconfig: "{{ kube_prometheus_stack_helm_kubeconfig }}"
+  register: _kube_prometheus_stack_thanos_object_storage_secret
+  failed_when: >-
+    _kube_prometheus_stack_thanos_object_storage_secret.resources | length != 1
+    or (thanos_object_storage_secret_key | default('objstore.yml'))
+      not in (_kube_prometheus_stack_thanos_object_storage_secret.resources[0].data | default({}))
+  when:
+    - thanos_enabled | default(false) | bool
+    - thanos_object_storage_existing_secret | default('') | length > 0
+
 - name: Deploy Helm chart
   run_once: true
   kubernetes.core.helm:
@@ -343,4 +400,14 @@
     release_namespace: "{{ kube_prometheus_stack_helm_release_namespace }}"
     create_namespace: true
     kubeconfig: "{{ kube_prometheus_stack_helm_kubeconfig }}"
-    values: "{{ _kube_prometheus_stack_helm_values | combine(kube_prometheus_stack_helm_values, recursive=True) }}"
+    values: >-
+      {{
+        _kube_prometheus_stack_helm_values |
+          combine(
+            _kube_prometheus_stack_thanos_helm_values
+            if thanos_enabled | default(false) | bool
+            else {},
+            recursive=True
+          ) |
+          combine(kube_prometheus_stack_helm_values, recursive=True)
+      }}

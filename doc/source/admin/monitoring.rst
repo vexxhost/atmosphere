@@ -206,6 +206,91 @@ Prometheus as the data source. You can find more examples of how to do
 this in the Grafana Helm chart `Import Dashboards <https://github.com/grafana/helm-charts/tree/main/charts/grafana#import-dashboards>`_
 documentation.
 
+Long-term metrics storage
+=========================
+
+Atmosphere can archive Prometheus metrics in S3-compatible object storage with
+Thanos. This deployment adds a Thanos sidecar to Prometheus and deploys Query,
+Query Frontend, Store Gateway, and Compactor. Grafana uses Query Frontend as its
+Prometheus-compatible data source so dashboards can query both recent and
+archived metrics.
+
+Thanos is disabled by default. Before enabling it, create the object storage
+bucket and either provide its configuration in the inventory or create a
+Secret in the ``monitoring`` namespace. The bucket must be dedicated to Thanos.
+
+The following example configures an S3-compatible endpoint directly in the
+inventory:
+
+.. code-block:: yaml
+
+  thanos_enabled: true
+  thanos_object_storage_config:
+    type: S3
+    config:
+      bucket: atmosphere-metrics
+      endpoint: s3.example.com
+      access_key: ACCESS_KEY
+      secret_key: SECRET_KEY
+      insecure: false
+
+Store credentials in an encrypted inventory file. Atmosphere writes this
+configuration to the ``thanos-object-storage`` Secret without logging its
+contents.
+
+To use a Secret that is managed outside Atmosphere, set its name instead:
+
+.. code-block:: yaml
+
+  thanos_enabled: true
+  thanos_object_storage_existing_secret: thanos-object-storage
+
+The Secret must contain the object storage configuration under the
+``objstore.yml`` key. Use ``thanos_object_storage_secret_key`` when the Secret
+uses a different key.
+
+By default, Thanos keeps raw samples for 30 days, five-minute samples for 180
+days, and one-hour samples for 10 years. Override these periods with
+``thanos_compactor_retention_resolution_raw``,
+``thanos_compactor_retention_resolution_5m``, and
+``thanos_compactor_retention_resolution_1h``. The
+``thanos_helm_values`` variable can override any other chart value.
+
+Production placement and all-in-one deployments
+------------------------------------------------
+
+The production defaults run three Query, Query Frontend, and Store Gateway
+replicas with hard pod anti-affinity, disruption budgets that keep two replicas
+available, and explicit resource requests and limits. This requires three
+Kubernetes nodes labelled ``openstack-control-plane=enabled``. Query and Query
+Frontend use a no-surge rolling strategy that makes one replica unavailable at
+a time, allowing them to update across the same three eligible nodes.
+
+An all-in-one deployment has only one eligible node, so it must reduce the
+replicated components to one replica. Smaller cache and Compactor volumes also
+avoid consuming production-sized storage in a disposable environment:
+
+.. code-block:: yaml
+
+  thanos_query_replicas: 1
+  thanos_query_frontend_replicas: 1
+  thanos_store_gateway_replicas: 1
+  thanos_pod_anti_affinity_preset: soft
+  thanos_pdb_min_available: 0
+  thanos_store_gateway_storage_size: 5Gi
+  thanos_compactor_storage_size: 10Gi
+
+The soft anti-affinity override avoids imposing a production topology rule on
+the single-node environment. An all-in-one environment also needs an
+S3-compatible endpoint; a test-only MinIO deployment can be supplied through
+``thanos_helm_values``, but production deployments should use external, durable
+object storage. Setting the disruption budget to zero is required if the single
+node needs to be drained voluntarily.
+
+Thanos and kube-prometheus-stack must use the same release namespace because
+both workloads mount the same object-storage Secret. Their release names may be
+changed independently.
+
 ************
 Viewing data
 ************

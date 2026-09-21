@@ -284,7 +284,12 @@ _kube_prometheus_stack_helm_values:
       - name: Prometheus
         type: prometheus
         uid: prometheus
-        url: '{% raw %}http://{{ printf "%s-prometheus.%s" .Release.Name .Release.Namespace }}:9090{% endraw %}'
+        url: >-
+          {{
+            thanos_query_frontend_url | default('http://thanos-query-frontend.monitoring.svc.cluster.local:9090')
+            if thanos_enabled | default(false) | bool
+            else '{% raw %}http://{{ printf "%s-prometheus.%s" .Release.Name .Release.Namespace }}:9090{% endraw %}'
+          }}
         access: proxy
         isDefault: true
         editable: false
@@ -812,6 +817,32 @@ _kube_prometheus_stack_helm_values:
       data:
         certificate-template.yml: |
           {{ kube_prometheus_stack_prometheus_tls_template | to_nice_yaml }}
+
+_kube_prometheus_stack_thanos_object_storage_secret_name: >-
+  {{
+    thanos_object_storage_existing_secret | default('')
+    if thanos_object_storage_existing_secret | default('') | length > 0
+    else thanos_object_storage_secret_name | default('thanos-object-storage')
+  }}
+
+_kube_prometheus_stack_thanos_helm_values:
+  prometheusOperator:
+    thanosImage:
+      registry: "{{ atmosphere_images['thanos'] | vexxhost.kubernetes.docker_image('domain') }}"
+      repository: "{{ atmosphere_images['thanos'] | vexxhost.kubernetes.docker_image('path') }}"
+      tag: "{{ atmosphere_images['thanos'] | vexxhost.kubernetes.docker_image('tag') }}"
+  prometheus:
+    thanosService:
+      enabled: true
+    thanosServiceMonitor:
+      enabled: true
+    prometheusSpec:
+      thanos:
+        image: "{{ atmosphere_images['thanos'] }}"
+        objectStorageConfig:
+          existingSecret:
+            name: "{{ _kube_prometheus_stack_thanos_object_storage_secret_name }}"
+            key: "{{ thanos_object_storage_secret_key | default('objstore.yml') }}"
 
 _kube_prometheus_stack_tls_template:
   apiVersion: cert-manager.io/v1

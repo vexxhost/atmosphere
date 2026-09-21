@@ -64,3 +64,17 @@ func TestCreateKeycloakRolesTask(t *testing.T) {
 
 	assert.Equal(t, true, task["no_log"])
 }
+
+func TestCreateThanosObjectStorageSecretTask(t *testing.T) {
+	task := getTaskByName("Create Thanos object storage secret")
+	require.NotNil(t, task)
+
+	assert.Equal(t, true, task["no_log"])
+}
+
+func TestValidateExistingThanosObjectStorageSecretTask(t *testing.T) {
+	task := getTaskByName("Validate existing Thanos object storage secret")
+	require.NotNil(t, task)
+
+	assert.Equal(t, true, task["no_log"])
+}

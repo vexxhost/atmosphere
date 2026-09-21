@@ -115,6 +115,13 @@ provisioner:
         kube_prometheus_stack_prometheus_host: "prometheus.{{ domain_name }}"
         kube_prometheus_stack_alertmanager_host: "alertmanager.{{ domain_name }}"
         kube_prometheus_stack_grafana_host: "grafana.{{ domain_name }}"
+        thanos_query_replicas: 1
+        thanos_query_frontend_replicas: 1
+        thanos_store_gateway_replicas: 1
+        thanos_pod_anti_affinity_preset: soft
+        thanos_pdb_min_available: 0
+        thanos_store_gateway_storage_size: 5Gi
+        thanos_compactor_storage_size: 10Gi
         # Memcached
         openstack_helm_endpoints_memcached_secret_key: secrete123
         # RabbitMQ
