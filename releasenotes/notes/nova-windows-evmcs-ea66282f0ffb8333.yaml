@@ -4,3 +4,9 @@ features:
     for Windows guests on Intel hosts. Set ``hw_hyperv_evmcs=true`` on a Windows
     image to reduce nested virtualization overhead for Hyper-V and
     virtualization-based security workloads. Existing instances are unchanged.
+fixes:
+  - |
+    The default Nova image now installs ``pyroute2``, which the os-vif OVS
+    plugin imports at runtime but which os-vif's published wheel does not
+    declare. Without it a compute node could not load the plugin, so plugging
+    OVS VIFs failed with ``KeyError: 'ovs'`` and instance builds failed.
