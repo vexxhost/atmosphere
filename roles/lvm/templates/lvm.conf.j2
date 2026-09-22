@@ -1,0 +1,36 @@
+{% set used_lvm_devices = [] %}
+{% set cinder_lvm_devices_filter_override = [] %}
+{% if cinder_lvm_devices_filter_override|length > 0 %}
+    {% set used_lvm_devices = cinder_lvm_devices_filter_override %}
+{% else %}
+    {% set multipath_devices = multipath_devices.stdout.split('\n') %}
+    {% if multipath_devices|length > 0 %}
+        {% for device in multipath_devices %}
+            {% if device != '' %}
+                {% set multipath_device = '"a|^/dev/mapper/' + multipath_device + '|"' %}
+                {% if used_lvm_devices.append(multipath_device) %}{% endif %}
+            {% endif %}
+        {% endfor %}
+    {% endif %}
+
+# Ansible Discovered Multipath Devices {{ multipath_devices }}
+{% endif %}
+
+{# Add additional patterns from variables #}
+{% for pattern in lvm_filter_extra_patterns %}
+{% set _ = used_lvm_devices.append('"a|' + pattern + '|"') %}
+{% endfor %}
+
+{% if used_lvm_devices|length <= 0 %}
+    {# If there are no LVM devices present, allow all devices to be scanned #}
+    {% if used_lvm_devices.append('"r|.*|"') %}{% endif %}
+{% else %}
+    {# Append 'loop.*' to the list to help with AIO deployments. #}
+    {% if used_lvm_devices.append('"a|loop.*|"') %}{% endif %}
+    {# Disable scanning any other devices than the ones listed. #}
+    {% if used_lvm_devices.append('"r|.*|"') %}{% endif %}
+{% endif %}
+
+devices {
+    filter = [ {{ used_lvm_devices|join(', ') }} ]
+}
