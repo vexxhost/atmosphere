@@ -13,6 +13,7 @@ _percona_xtradb_cluster_spec:
     autoRecovery: true
     configuration: |
       [mysqld]
+      bind_address=::
       max_connections=8192
       innodb_buffer_pool_size=4096M
       # Skip reverse DNS lookup of clients
@@ -80,31 +81,31 @@ _percona_xtradb_cluster_spec:
         parse-resolv-conf
 
       frontend galera-in
-        bind *:3309 accept-proxy
-        bind *:3306
+        bind [::]:3309 accept-proxy
+        bind [::]:3306
         mode tcp
         option clitcpka
         default_backend galera-nodes
 
       frontend galera-admin-in
-        bind *:33062
+        bind [::]:33062
         mode tcp
         option clitcpka
         default_backend galera-admin-nodes
 
       frontend galera-replica-in
-        bind *:3307
+        bind [::]:3307
         mode tcp
         option clitcpka
         default_backend galera-replica-nodes
 
       frontend galera-mysqlx-in
-        bind *:33060
+        bind [::]:33060
         mode tcp
         option clitcpka
         default_backend galera-mysqlx-nodes
 
       frontend stats
-        bind *:8404
+        bind [::]:8404
         mode http
         http-request use-service prometheus-exporter if { path /metrics }
