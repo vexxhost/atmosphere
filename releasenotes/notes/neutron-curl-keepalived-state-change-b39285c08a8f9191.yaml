@@ -1,0 +1,11 @@
+---
+fixes:
+  - |
+    The Neutron image now includes ``curl``, which the HA keepalived
+    state-change monitor introduced in Neutron 28 needs in order to report
+    router state changes to the L3 agent over its unix socket. Without it the
+    monitor exited immediately with status 127 and was respawned on every
+    ``check_child_processes_interval``, so an HA router never transitioned to
+    primary and never programmed its external gateway. Floating IPs were
+    created and associated correctly but no traffic reached the instance, which
+    made SSH to any instance floating IP time out.
