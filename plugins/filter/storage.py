@@ -702,6 +702,31 @@ def _parse(raw: Any) -> StorageConfig:
     return StorageConfig.model_validate(raw)
 
 
+def storage_uses_ceph(raw: Any) -> bool:
+    """Return whether a storage configuration requires Ceph."""
+
+    storage = _parse(raw)
+    images = storage.images
+    volumes = storage.volumes
+
+    return any(
+        (
+            images is not None
+            and any(
+                isinstance(backend, ImageBackendRbd)
+                for backend in images.backends.values()
+            ),
+            volumes is not None
+            and any(
+                isinstance(backend, (VolumeBackendRbd, VolumeBackendRbdEc))
+                for backend in volumes.backends.values()
+            ),
+            isinstance(storage.backup, BackupBackendRbd),
+            isinstance(storage.ephemeral, EphemeralBackendRbd),
+        )
+    )
+
+
 def storage_to_cinder_helm_values(raw: Any) -> HelmValues:
     """Derive Cinder Helm values from atmosphere_storage."""
 
@@ -897,6 +922,7 @@ def storage_to_ceph_provisioners_helm_values(raw: Any) -> HelmValues:
 class FilterModule(object):
     def filters(self) -> dict[str, Any]:
         return {
+            "storage_uses_ceph": storage_uses_ceph,
             "storage_to_cinder_helm_values": storage_to_cinder_helm_values,
             "storage_to_glance_helm_values": storage_to_glance_helm_values,
             "storage_to_nova_helm_values": storage_to_nova_helm_values,
