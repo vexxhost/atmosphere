@@ -42,6 +42,183 @@ the repair command:
         --config-file /etc/neutron/plugins/ml2/ml2_conf.ini \
         --ovn-neutron_sync_mode repair
 
+
+Troubleshooting the customers network
+=====================================
+
+When you need to troubleshoot the customers network you can assign a Neutron port to the network and create a port and namespace to troubleshoot the network
+
+1. Create a Netron network port inside the network that needs to be troubleshooted
+1. Select the node you want to run this pod on on the nodeSelectorTerms 
+2. Change the values of HM_PORT_ID and use the ID of the Neutron port
+3. Change the values of HW_PORT_MAC and use the MAC address of the Neutron port
+4. Change the values of HW_IP_ADDR and use the IP address of the Neutron port
+5. Change the values of HW_IP_GW
+
+.. code-block:: yaml 
+
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: netshoot-ovn
+      labels:
+        app: netshoot-ovn
+    spec:
+      hostNetwork: true
+      restartPolicy: Never
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchFields:
+              - key: metadata.name
+                operator: In
+                values:
+                - compute1
+    
+      initContainers:
+      - name: ovn-init
+        image: quay.io/vexxhost/openvswitch:latest
+        securityContext:
+          privileged: true
+          capabilities:
+            add: ["NET_ADMIN"]
+        env:
+          - name: HM_PORT_ID
+            value: "34b82bc6-003b-4fe2-a45c-fdb8d00df490"
+          - name: HM_PORT_MAC
+            value: "fa:16:3e:55:3d:c2"
+          - name: HW_IP_ADDR
+            value: "192.168.0.176"
+          - name: HW_IP_GW
+            value: "192.168.0.1"
+        command:
+          - /bin/sh
+          - -c
+          - |
+            set -ex
+            hostname
+            TAPNAME="nsh-$(echo ${HM_PORT_ID}|cut -b-11)"
+    
+            echo "[ovn-init] Waiting for OVS socket..."
+            ovs-vsctl --no-wait show
+    
+            echo "[ovn-init] Adding network namespaces"
+            ip netns add netshoot-ns
+    
+            echo "[ovn-init] Creating OVN port ${TAPNAME}"
+            ovs-vsctl --may-exist add-port br-int ${TAPNAME} \
+              -- set Interface ${TAPNAME} type=internal \
+              -- set Interface ${TAPNAME} external-ids:iface-status=active \
+              -- set Interface ${TAPNAME} external-ids:attached-mac=$HM_PORT_MAC \
+              -- set Interface ${TAPNAME} external-ids:iface-id=$HM_PORT_ID \
+              -- set Interface ${TAPNAME} external-ids:skip_cleanup=false
+    
+            echo "[ovn-init] Moving interface to namespace"
+            ip link set ${TAPNAME} netns netshoot-ns
+            ip netns exec netshoot-ns ip link set dev ${TAPNAME} address $HM_PORT_MAC
+            ip netns exec netshoot-ns ip link set ${TAPNAME} up
+            ip netns exec netshoot-ns ip addr add ${HW_IP_ADDR}/24 dev ${TAPNAME}
+            ip netns exec netshoot-ns ip route add default via ${HW_IP_GW} dev ${TAPNAME}
+            
+            echo "[ovn-init] OVN port setup complete."
+    
+        volumeMounts:
+          - name: host-run
+            mountPath: /var/run/openvswitch
+          - name: host-netns
+            mountPath: /run/netns
+            mountPropagation: Bidirectional
+          - name: run
+            mountPath: /run
+    
+      containers:
+      - name: netshoot
+        image: nicolaka/netshoot:latest
+        securityContext:
+          privileged: true
+          capabilities:
+            add: ["NET_ADMIN"]
+        env:
+          - name: HM_PORT_ID
+            value: "34b82bc6-003b-4fe2-a45c-fdb8d00df490"
+          - name: HM_PORT_MAC
+            value: "fa:16:3e:55:3d:c2"
+        command:
+          - /bin/sh
+          - -c
+          - |
+            echo "[netshoot] Entering netshoot-ns namespace"
+    
+            ip netns exec netshoot-ns /bin/bash
+            sleep 3600
+        volumeMounts:
+          - name: host-run
+            mountPath: /var/run/openvswitch
+          - name: host-netns
+            mountPath: /run/netns
+          - name: run
+            mountPath: /run
+    
+      - name: cleanup
+        image: quay.io/vexxhost/openvswitch:latest
+        securityContext:
+          privileged: true
+          capabilities:
+            add: ["NET_ADMIN"]
+        env:
+          - name: HM_PORT_ID
+            value: "34b82bc6-003b-4fe2-a45c-fdb8d00df490"
+          - name: HM_PORT_MAC
+            value: "fa:16:3e:55:3d:c2"
+        lifecycle:
+          preStop:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  echo "[cleanup] Removing OVN port and namespace"
+                  TAPNAME="nsh-$(echo ${HM_PORT_ID}|cut -b-11)"
+    
+                  # Delete interface from netns
+                  ip netns exec netshoot-ns ip link delete ${TAPNAME}
+    
+                  # Delete the namespace
+                  ip netns delete netshoot-ns
+    
+                  # Delete port from OVS/OVN bridge
+                  ovs-vsctl --if-exists del-port br-int ${TAPNAME}
+    
+                  echo "[cleanup] Cleanup complete"
+        volumeMounts:
+    
+          - name: host-run
+            mountPath: /var/run/openvswitch
+          - name: host-netns
+            mountPath: /run/netns
+            mountPropagation: Bidirectional
+          - name: run
+            mountPath: /run
+    
+      volumes:
+        - name: host-run
+          hostPath:
+            path: /var/run/openvswitch
+        - name: host-netns
+          hostPath:
+            path: /run/netns
+        - name: run
+          hostPath:
+            path: /run
+
+.. important::
+   The clean up does not work currently you need todo this by hand with the commands:
+
+   1. Take the openvswitch pod that is located on the right node:
+         kubectl -n openstack exec -it openvswitch-hbgxs -- ovs-vsctl del-port br-int nsh-34b82bc6-00
+   2. Delete the network namespace from the node
+         ip netns delete netshoot-ns
 **********************
 Compute Service (Nova)
 **********************
