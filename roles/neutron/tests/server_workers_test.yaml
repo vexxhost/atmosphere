@@ -1,0 +1,65 @@
+suite: Neutron server workers
+templates:
+  - templates/deployment-workers.yaml
+tests:
+  - it: should not deploy the OVN worker for a non-OVN backend
+    set:
+      network:
+        backend:
+          - openvswitch
+      manifests:
+        deployment_periodic_worker: true
+        deployment_ovn_maintenance_worker: true
+    asserts:
+      - hasDocuments:
+          count: 4
+      - documentIndex: 3
+        equal:
+          path: metadata.name
+          value: neutron-periodic-worker
+
+  - it: should deploy both dedicated workers for an OVN backend
+    set:
+      network:
+        backend:
+          - ovn
+      manifests:
+        deployment_periodic_worker: true
+        deployment_ovn_maintenance_worker: true
+    asserts:
+      - hasDocuments:
+          count: 8
+      - documentIndex: 6
+        isKind:
+          of: Deployment
+      - documentIndex: 6
+        equal:
+          path: metadata.name
+          value: neutron-periodic-worker
+      - documentIndex: 6
+        equal:
+          path: spec.replicas
+          value: 1
+      - documentIndex: 6
+        equal:
+          path: spec.template.spec.containers[0].command[0]
+          value: /tmp/neutron-periodic-worker.sh
+      - documentIndex: 7
+        isKind:
+          of: Deployment
+      - documentIndex: 7
+        equal:
+          path: metadata.name
+          value: neutron-ovn-maintenance-worker
+      - documentIndex: 7
+        equal:
+          path: spec.replicas
+          value: 1
+      - documentIndex: 7
+        equal:
+          path: spec.template.spec.initContainers[1].command[0]
+          value: /tmp/neutron-ovn-init.sh
+      - documentIndex: 7
+        equal:
+          path: spec.template.spec.containers[0].command[0]
+          value: /tmp/neutron-ovn-maintenance-worker.sh
