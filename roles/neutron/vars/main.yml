@@ -25,6 +25,8 @@ __neutron_helm_values:
     replicas:
       server: 3
       rpc_server: 3
+      periodic_worker: 1
+      ovn_maintenance_worker: 1
     sidecars:
       neutron_policy_server: true
   conf:
@@ -101,6 +103,7 @@ __neutron_helm_values:
           apply-to: all
           pattern: '^(?!(amq\.|reply_)).*'
   manifests:
+    deployment_periodic_worker: true
     ingress_server: false
     service_ingress_server: false
 
@@ -157,6 +160,7 @@ __neutron_ovn_helm_values:
     daemonset_ovn_metadata_agent: true
     daemonset_ovn_vpn_agent: true
     daemonset_ovs_agent: false
+    deployment_ovn_maintenance_worker: true
 
 __neutron_policy_server_helm_values:
   conf:
