@@ -19,7 +19,7 @@ the compute nodes resource provider:
  | COMPUTE_SECURITY_TPM_1_2 |
  | COMPUTE_SECURITY_TPM_2_0 |
 
-In the example above, ``$HOST`` is the hostname of the compute node where you
+In the example above, ``$HOST`` is the ``hostname`` of the compute node where you
 want to verify that vTPM support is enabled.
 
 Configuring vTPM
@@ -91,3 +91,74 @@ Or using an image:
  $ openstack server create --image <image-name-or-uuid> test-instance
 
 The instance should now have the vTPM device available.
+
+Automatic VM restart after compute node reboot
+==============================================
+
+When a compute node reboots, Nova attempts to restart vTPM-enabled virtual
+machines automatically. However, this requires Nova to access Barbican secrets
+that store the vTPM data. By default, Nova can't access secrets created in user
+projects, which causes the virtual machine restart to fail.
+
+Atmosphere provides configuration options to allow Nova to access these secrets.
+
+.. warning::
+
+   Enabling these options has security implications. When enabled, the Nova
+   service account or users with the admin role can access any secret in
+   Barbican, not just vTPM-related secrets. Consider the security implications
+   before enabling these options.
+
+Enabling Nova service access
+----------------------------
+
+To allow the Nova service account to access Barbican secrets for vTPM operations,
+add the following to your inventory:
+
+.. code-block:: yaml
+
+   barbican_policy_nova_secret_access: true
+
+This allows the Nova service user (which has the ``service`` role) to read and
+decrypt any secret in Barbican. This is the recommended option if you need
+automatic vTPM VM restart after compute node reboots.
+
+Enabling admin access
+---------------------
+
+To allow users with the admin role to access all Barbican secrets, add the
+following to your inventory:
+
+.. code-block:: yaml
+
+   barbican_policy_admin_secret_access: true
+
+This is useful for administrative tasks and troubleshooting, but it reduces
+secret isolation between projects.
+
+Combining both options
+----------------------
+
+Both options can be enabled together:
+
+.. code-block:: yaml
+
+   barbican_policy_admin_secret_access: true
+   barbican_policy_nova_secret_access: true
+
+Security considerations
+-----------------------
+
+When these options are enabled:
+
+- **Nova service access**: The Nova service account can read any secret in
+  Barbican, including secrets that aren't related to vTPM. This is necessary
+  because Nova needs to decrypt vTPM data stored in user projects.
+
+- **Admin access**: Users with the admin role in any project can read secrets
+  from other projects. This breaks the default project-level isolation of
+  Barbican secrets.
+
+If you use Barbican for storing sensitive data beyond vTPM (such as encryption
+keys for volumes or other applications), consider the impact of enabling these
+options on your security posture.
