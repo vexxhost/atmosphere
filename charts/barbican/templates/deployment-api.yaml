@@ -72,6 +72,12 @@ spec:
             - name: REQUESTS_CA_BUNDLE
               value: "/etc/barbican/certs/ca.crt"
 {{- end }}
+{{- if eq "gunicorn" .Values.wsgi.backend }}
+            - name: PORT
+              value: "{{ tuple "key_manager" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}"
+            - name: GUNICORN_CMD_ARGS
+              value: "{{ .Values.wsgi.gunicorn_cmd_args | default "" }}"
+{{- end }}
           lifecycle:
             preStop:
               exec:
@@ -91,10 +97,6 @@ spec:
               mountPath: /tmp
             - name: etcbarbican
               mountPath: /etc/barbican
-            - name: barbican-etc
-              mountPath: /etc/barbican/barbican-api-uwsgi.ini
-              subPath: barbican-api-uwsgi.ini
-              readOnly: true
             - name: barbican-etc
               mountPath: /etc/barbican/barbican.conf
               subPath: barbican.conf
@@ -121,6 +123,18 @@ spec:
               mountPath: /tmp/barbican.sh
               subPath: barbican.sh
               readOnly: true
+            {{- if eq "gunicorn" .Values.wsgi.backend }}
+            - name: barbican-bin
+              mountPath: /tmp/gunicorn.conf.py
+              subPath: gunicorn.conf.py
+              readOnly: true
+            {{- end }}
+            {{- if eq "uwsgi" .Values.wsgi.backend }}
+            - name: barbican-etc
+              mountPath: /etc/barbican/barbican-api-uwsgi.ini
+              subPath: barbican-api-uwsgi.ini
+              readOnly: true
+            {{- end }}
 {{- dict "enabled" .Values.tls.oslo_db "name" .Values.endpoints.oslo_db.auth.admin.secret.tls.internal "path" "/etc/mysql/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
 {{- dict "enabled" .Values.tls.identity "name" .Values.secrets.tls.key_manager.api.internal "path" "/etc/barbican/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
 {{- dict "enabled" $envAll.Values.tls.oslo_messaging "name" $envAll.Values.endpoints.oslo_messaging.auth.admin.secret.tls.internal "path" "/etc/rabbitmq/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
