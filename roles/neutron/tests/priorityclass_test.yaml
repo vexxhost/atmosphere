@@ -15,6 +15,7 @@ tests:
       - templates/daemonset-ovs-agent.yaml
       - templates/daemonset-sriov-agent.yaml
       - templates/deployment-ironic-agent.yaml
+      - templates/deployment-workers.yaml
       - templates/deployment-rpc_server.yaml
       - templates/deployment-server.yaml
       - templates/pod-rally-test.yaml
@@ -26,6 +27,7 @@ tests:
       network:
         backend:
           - openvswitch
+          - ovn
           - sriov
           - linuxbridge
       manifests:
@@ -35,6 +37,8 @@ tests:
         daemonset_ovn_metadata_agent: true
         daemonset_ovn_vpn_agent: true
         deployment_ironic_agent: true
+        deployment_periodic_worker: true
+        deployment_ovn_maintenance_worker: true
     asserts:
       - template: templates/daemonset-bagpipe-bgp.yaml
         documentIndex: 2
@@ -86,6 +90,14 @@ tests:
           path: spec.template.spec.priorityClassName
       - template: templates/deployment-ironic-agent.yaml
         documentIndex: 3
+        notExists:
+          path: spec.template.spec.priorityClassName
+      - template: templates/deployment-workers.yaml
+        documentIndex: 6
+        notExists:
+          path: spec.template.spec.priorityClassName
+      - template: templates/deployment-workers.yaml
+        documentIndex: 7
         notExists:
           path: spec.template.spec.priorityClassName
       - template: templates/deployment-rpc_server.yaml
@@ -124,6 +136,7 @@ tests:
       - templates/daemonset-ovs-agent.yaml
       - templates/daemonset-sriov-agent.yaml
       - templates/deployment-ironic-agent.yaml
+      - templates/deployment-workers.yaml
       - templates/deployment-rpc_server.yaml
       - templates/deployment-server.yaml
       - templates/pod-rally-test.yaml
@@ -135,6 +148,7 @@ tests:
       network:
         backend:
           - openvswitch
+          - ovn
           - sriov
           - linuxbridge
       pod:
@@ -149,6 +163,8 @@ tests:
           neutron_netns_cleanup_cron: platform
           ovn_vpn_agent: platform
           neutron_ovn_metadata_agent: platform
+          neutron_ovn_maintenance_worker: platform
+          neutron_periodic_worker: platform
           neutron_ovs_agent: platform
           neutron_sriov_agent: platform
           neutron_ironic_agent: platform
@@ -164,6 +180,8 @@ tests:
         daemonset_ovn_metadata_agent: true
         daemonset_ovn_vpn_agent: true
         deployment_ironic_agent: true
+        deployment_periodic_worker: true
+        deployment_ovn_maintenance_worker: true
     asserts:
       - template: templates/daemonset-bagpipe-bgp.yaml
         documentIndex: 2
@@ -227,6 +245,16 @@ tests:
           value: platform
       - template: templates/deployment-ironic-agent.yaml
         documentIndex: 3
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/deployment-workers.yaml
+        documentIndex: 6
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/deployment-workers.yaml
+        documentIndex: 7
         equal:
           path: spec.template.spec.priorityClassName
           value: platform
