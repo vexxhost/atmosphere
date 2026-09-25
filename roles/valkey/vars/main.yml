@@ -33,6 +33,9 @@ _valkey_helm_values:
       repository: "{{ atmosphere_images['valkey_sentinel'] | vexxhost.kubernetes.docker_image('path') }}"
       tag: "{{ atmosphere_images['valkey_sentinel'] | vexxhost.kubernetes.docker_image('tag') }}"
     primarySet: atmosphere
+    resources:
+      limits:
+        cpu: 1000m
   tls:
     enabled: true
     existingSecret: "{{ valkey_server_certificate_secret_name }}"
@@ -45,6 +48,9 @@ _valkey_helm_values:
       registry: "{{ atmosphere_images['redis_exporter'] | vexxhost.kubernetes.docker_image('domain') }}"
       repository: "{{ atmosphere_images['redis_exporter'] | vexxhost.kubernetes.docker_image('path') }}"
       tag: "{{ atmosphere_images['redis_exporter'] | vexxhost.kubernetes.docker_image('tag') }}"
+    resources:
+      limits:
+        cpu: 1000m
   primary:
     resources:
       requests:
