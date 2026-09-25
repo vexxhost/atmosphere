@@ -1,6 +1,7 @@
 package neutron
 
 import (
+	"bytes"
 	_ "embed"
 	"os"
 	"testing"
@@ -38,24 +39,24 @@ func TestHelmValues(t *testing.T) {
 	// for the actual template. Like:
 	// {{ tuple "heat_api" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" }}
 	vars.HelmValues.Pod.PriorityClass = map[string]string{
-		"bootstrap": "high-priority",
-		"bagpipe_bgp": "high-priority",
-		"bgp_dragent": "high-priority",
-		"db_sync": "high-priority",
-		"neutron_dhcp_agent": "high-priority",
-		"neutron_l2gw_agent": "high-priority",
-		"neutron_l3_agent": "high-priority",
-		"neutron_lb_agent": "high-priority",
-		"neutron_metadata_agent": "high-priority",
+		"bootstrap":                  "high-priority",
+		"bagpipe_bgp":                "high-priority",
+		"bgp_dragent":                "high-priority",
+		"db_sync":                    "high-priority",
+		"neutron_dhcp_agent":         "high-priority",
+		"neutron_l2gw_agent":         "high-priority",
+		"neutron_l3_agent":           "high-priority",
+		"neutron_lb_agent":           "high-priority",
+		"neutron_metadata_agent":     "high-priority",
 		"neutron_netns_cleanup_cron": "high-priority",
-		"ovn_vpn_agent": "high-priority",
+		"ovn_vpn_agent":              "high-priority",
 		"neutron_ovn_metadata_agent": "high-priority",
-		"neutron_ovs_agent": "high-priority",
-		"neutron_sriov_agent": "high-priority",
-		"neutron_ironic_agent": "high-priority",
-		"neutron_rpc_server": "high-priority",
-		"neutron_server": "high-priority",
-		"neutron_tests": "high-priority",
+		"neutron_ovs_agent":          "high-priority",
+		"neutron_sriov_agent":        "high-priority",
+		"neutron_ironic_agent":       "high-priority",
+		"neutron_rpc_server":         "high-priority",
+		"neutron_server":             "high-priority",
+		"neutron_tests":              "high-priority",
 	}
 	// (rlin): Before you add any new runtime class here.
 	// Make sure we do use snippets tool
@@ -63,24 +64,24 @@ func TestHelmValues(t *testing.T) {
 	// for the actual template. Like:
 	// {{ tuple "heat_api" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" }}
 	vars.HelmValues.Pod.RuntimeClass = map[string]string{
-		"bootstrap": "kata-clh",
-		"bagpipe_bgp": "kata-clh",
-		"bgp_dragent": "kata-clh",
-		"db_sync": "kata-clh",
-		"neutron_dhcp_agent": "kata-clh",
-		"neutron_l2gw_agent": "kata-clh",
-		"neutron_l3_agent": "kata-clh",
-		"neutron_lb_agent": "kata-clh",
-		"neutron_metadata_agent": "kata-clh",
+		"bootstrap":                  "kata-clh",
+		"bagpipe_bgp":                "kata-clh",
+		"bgp_dragent":                "kata-clh",
+		"db_sync":                    "kata-clh",
+		"neutron_dhcp_agent":         "kata-clh",
+		"neutron_l2gw_agent":         "kata-clh",
+		"neutron_l3_agent":           "kata-clh",
+		"neutron_lb_agent":           "kata-clh",
+		"neutron_metadata_agent":     "kata-clh",
 		"neutron_netns_cleanup_cron": "kata-clh",
-		"ovn_vpn_agent": "kata-clh",
+		"ovn_vpn_agent":              "kata-clh",
 		"neutron_ovn_metadata_agent": "kata-clh",
-		"neutron_ovs_agent": "kata-clh",
-		"neutron_sriov_agent": "kata-clh",
-		"neutron_ironic_agent": "kata-clh",
-		"neutron_rpc_server": "kata-clh",
-		"neutron_server": "kata-clh",
-		"neutron_tests": "kata-clh",
+		"neutron_ovs_agent":          "kata-clh",
+		"neutron_sriov_agent":        "kata-clh",
+		"neutron_ironic_agent":       "kata-clh",
+		"neutron_rpc_server":         "kata-clh",
+		"neutron_server":             "kata-clh",
+		"neutron_tests":              "kata-clh",
 	}
 	vals, err := openstack_helm.CoalescedHelmValues("../../charts/neutron", &vars.HelmValues)
 	require.NoError(t, err)
@@ -88,4 +89,23 @@ func TestHelmValues(t *testing.T) {
 	testutils.TestDatabaseConf(t, vals.Conf.Neutron.Database)
 	testutils.TestAllPodsHaveRuntimeClass(t, vals)
 	testutils.TestAllPodsHavePriorityClass(t, vals)
+}
+
+func TestOVNBFDDefaults(t *testing.T) {
+	path, err := yaml.PathString("$.__neutron_ovn_helm_values.conf.neutron.ovn")
+	require.NoError(t, err)
+
+	var ovnConf struct {
+		HAFailoverStrategy string `yaml:"ha_failover_strategy"`
+		BFDMinRX           int    `yaml:"bfd_min_rx"`
+		BFDMinTX           int    `yaml:"bfd_min_tx"`
+		BFDMult            int    `yaml:"bfd_mult"`
+	}
+	err = path.Read(bytes.NewReader(varsFile), &ovnConf)
+	require.NoError(t, err)
+
+	require.Equal(t, "manual", ovnConf.HAFailoverStrategy)
+	require.Equal(t, 1000, ovnConf.BFDMinRX)
+	require.Equal(t, 100, ovnConf.BFDMinTX)
+	require.Equal(t, 5, ovnConf.BFDMult)
 }
