@@ -281,7 +281,7 @@ authentication. Create the secret in the same namespace as the Prometheus
 deployment based on the `Ingress NGINX annotations <https://github.com/kubernetes/ingress-nginx/blob/main/docs/user-guide/nginx-configuration/annotations.md#annotations>`_.
 
 Restricting by address
-~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
 
 To restrict Prometheus UI access to specific IP addresses, make the following
 changes to your inventory:
@@ -297,6 +297,58 @@ changes to your inventory:
 
 In this example, the configuration restricts access to the IP range
 ``10.0.0.0/24`` and the IP address ``172.10.0.1``.
+
+Extending Prometheus rules
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Atmosphere compiles its bundled Prometheus rules from Jsonnet. To add custom
+rules without copying or replacing the bundled rules, set
+``kube_prometheus_stack_additional_rules_jsonnet_path`` to a Jsonnet file in
+the Ansible files search path. For example, place the file at
+``files/jsonnet/additional-rules.jsonnet`` next to the playbook and add the
+following inventory value:
+
+.. code-block:: yaml
+
+  kube_prometheus_stack_additional_rules_jsonnet_path: jsonnet/additional-rules.jsonnet
+
+The Jsonnet file must evaluate to the same map accepted by the Helm chart's
+``additionalPrometheusRulesMap`` value. Each top-level key identifies one
+``PrometheusRule`` resource:
+
+.. code-block:: jsonnet
+
+  {
+    'site-custom': {
+      groups: [
+        {
+          name: 'site.custom',
+          rules: [
+            {
+              alert: 'SiteCustomAlert',
+              expr: 'vector(1) == 1',
+              'for': '10m',
+              labels: {
+                severity: 'warning',
+              },
+              annotations: {
+                summary: 'A site-specific condition is active',
+              },
+            },
+          ],
+        },
+      ],
+    },
+  }
+
+Atmosphere merges this map into its bundled rules. A unique top-level key adds
+a rule resource, while a key matching a bundled resource replaces only that
+resource. Imports in the custom Jsonnet file are resolved relative to that
+file through the Ansible files search path.
+
+For complete replacement of all bundled rules, set the advanced
+``kube_prometheus_stack_rules_jsonnet_path`` variable instead. The replacement
+file must produce the complete ``additionalPrometheusRulesMap`` value.
 
 Alertmanager
 ============
