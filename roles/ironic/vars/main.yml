@@ -19,6 +19,11 @@ _ironic_helm_values:
   console:
     namespace: "{{ ironic_vnc_namespace if ironic_vnc_enabled | bool else omit }}"
     pod:
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       annotations: "{{ ironic_vnc_pod.annotations }}"
       nodeSelector: "{{ ironic_vnc_pod.nodeSelector }}"
       tolerations: "{{ ironic_vnc_pod.tolerations }}"
@@ -28,9 +33,101 @@ _ironic_helm_values:
       priorityClassName: "{{ ironic_vnc_pod.priorityClassName }}"
       runtimeClassName: "{{ ironic_vnc_pod.runtimeClassName }}"
     container:
+      ports:
+        - name: rfb
+          containerPort: 5900
+        - name: health
+          containerPort: 8080
+      readinessProbe:
+        tcpSocket: null
+        httpGet:
+          path: /readyz
+          port: health
+        initialDelaySeconds: 1
+        periodSeconds: 2
+        timeoutSeconds: 1
+        failureThreshold: 10
+      livenessProbe:
+        httpGet:
+          path: /healthz
+          port: health
+        periodSeconds: 10
+        timeoutSeconds: 2
+        failureThreshold: 3
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+            - ALL
+        readOnlyRootFilesystem: true
       resources: "{{ ironic_vnc_pod.resources }}"
-      volumeMounts: "{{ ironic_vnc_pod.scratchVolumeMounts }}"
-    volumes: "{{ ironic_vnc_pod.scratchVolumes }}"
+      env: >-
+        {{
+          [
+            {
+              'name': 'ALLOW_INSECURE_TRANSPORT',
+              'value': ironic_vnc_allow_insecure_transport | bool | string | lower
+            },
+            {
+              'name': 'ALLOW_INSECURE_TLS',
+              'value': ironic_vnc_allow_insecure_tls | bool | string | lower
+            },
+            {'name': 'BMC_TLS_MINIMUM_VERSION', 'value': ironic_vnc_tls_minimum_version | string},
+            {'name': 'CONNECT_TIMEOUT', 'value': ironic_vnc_connect_timeout | string},
+            {'name': 'HANDSHAKE_TIMEOUT', 'value': ironic_vnc_handshake_timeout | string},
+            {'name': 'IDLE_TIMEOUT', 'value': ironic_vnc_idle_timeout | string},
+            {'name': 'SESSION_TIMEOUT', 'value': ironic_vnc_session_timeout | string},
+            {'name': 'READINESS_INTERVAL', 'value': ironic_vnc_readiness_interval | string},
+            {'name': 'MAX_CLIENTS', 'value': ironic_vnc_max_clients | string},
+            {'name': 'MAX_CLIENTS_PER_SOURCE', 'value': ironic_vnc_max_clients_per_source | string}
+          ]
+          + (
+            [{'name': 'BMC_TLS_CIPHERS', 'value': ironic_vnc_tls_ciphers | string}]
+            if ironic_vnc_tls_ciphers
+            else []
+          )
+          + (
+            [
+              {
+                'name': 'BMC_CA_FILE',
+                'value': ironic_vnc_ca_mount_path ~ '/' ~ ironic_vnc_ca_secret_key
+              }
+            ]
+            if ironic_vnc_ca_secret_name
+            else []
+          )
+        }}
+      volumeMounts: >-
+        {{
+          ironic_vnc_pod.scratchVolumeMounts + ([
+            {
+              'name': 'bmc-ca',
+              'mountPath': ironic_vnc_ca_mount_path,
+              'readOnly': true
+            }
+          ]
+          if ironic_vnc_ca_secret_name
+          else [])
+        }}
+    volumes: >-
+      {{
+        ironic_vnc_pod.scratchVolumes + ([
+          {
+            'name': 'bmc-ca',
+            'secret': {
+              'secretName': ironic_vnc_ca_secret_name,
+              'items': [
+                {
+                  'key': ironic_vnc_ca_secret_key,
+                  'path': ironic_vnc_ca_secret_key
+                }
+              ]
+            }
+          }
+        ]
+        if ironic_vnc_ca_secret_name
+        else [])
+      }}
   bootstrap:
     image:
       enabled: false
@@ -89,6 +186,7 @@ _ironic_helm_values:
       vnc:
         enabled: "{{ ironic_vnc_enabled | bool }}"
         public_url: "{{ ironic_vnc_public_url if ironic_vnc_enabled | bool else omit }}"
+        token_timeout: "{{ ironic_vnc_token_timeout }}"
         novnc_web: "{{ ironic_vnc_novnc_web }}"
         container_provider: "{{ ironic_vnc_container_provider }}"
         console_image: "{{ atmosphere_images.get('ironic_console', omit) }}"
@@ -139,8 +237,8 @@ _ironic_helm_values:
     network_policy_console: >-
       {{
         (ironic_vnc_enabled | bool)
-        and ironic_vnc_container_provider == 'kubernetes'
         and (ironic_vnc_network_policy_enabled | bool)
+        and ironic_vnc_container_provider == 'kubernetes'
       }}
     role_console_pods: >-
       {{
