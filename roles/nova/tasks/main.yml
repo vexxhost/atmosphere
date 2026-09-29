@@ -44,6 +44,31 @@
   ansible.builtin.set_fact:
     _nova_helm_values: "{{ _nova_helm_values | combine(_atmosphere_storage_config | vexxhost.atmosphere.storage_to_nova_helm_values, recursive=True) }}"
 
+- name: Validate Nova bare metal VNC configuration
+  when: nova_ironic_vnc_enabled | bool
+  vars:
+    _nova_effective_helm_values: >-
+      {{
+        _nova_helm_values
+        | combine(nova_helm_values, recursive=True)
+      }}
+  ansible.builtin.assert:
+    that:
+      - >-
+        'none' in
+        _nova_effective_helm_values.conf.nova.vnc.auth_schemes.split(',')
+      - >-
+        _nova_effective_helm_values.manifests.statefulset_compute_ironic
+        | bool
+      - nova_ironic_vnc_console_state_timeout | int > 0
+      - >-
+        not nova_novnc_assets_image
+        or '@sha256:' in nova_novnc_assets_image
+    fail_msg: >-
+      Nova bare metal VNC requires nova-compute-ironic, the none VNC
+      authentication scheme, and a positive console-state timeout. A custom
+      nova_novnc_assets_image must be digest-pinned.
+
 - name: Deploy Helm chart
   run_once: true
   kubernetes.core.helm:
