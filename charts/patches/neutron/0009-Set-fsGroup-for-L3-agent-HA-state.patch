@@ -1,0 +1,30 @@
+From 4fd215a7a99a90f3979e25b72192e907b9c5b2a7 Mon Sep 17 00:00:00 2001
+From: Dong Ma <dong.ma@vexxhost.com>
+Date: Fri, 9 Oct 2026 23:08:00 +0800
+Subject: [PATCH] Set fsGroup for L3 agent HA state
+
+The L3 agent runs as the neutron user, but the HA state directory is backed by
+an emptyDir volume.  Set the pod fsGroup so the agent can write keepalived
+state files under /var/lib/neutron/ha_confs.
+
+Signed-off-by: Dong Ma <dong.ma@vexxhost.com>
+Change-Id: I7dbac47a0dd8432b6861d7537ab444264a05a60a
+---
+ neutron/values.yaml | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/neutron/values.yaml b/neutron/values.yaml
+index eb5a4230..9dd86047 100644
+--- a/neutron/values.yaml
++++ b/neutron/values.yaml
+@@ -582,6 +582,7 @@ pod:
+     neutron_l3_agent:
+       pod:
+         runAsUser: 42424
++        fsGroup: 42424
+       container:
+         neutron_l3_agent:
+           readOnlyRootFilesystem: true
+-- 
+2.51.0
+
