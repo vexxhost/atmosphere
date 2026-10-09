@@ -42,6 +42,10 @@ You can override any part of the configuration by setting
 the built-in defaults using a recursive merge, so you only need to
 specify the parts you want to change.
 
+Atmosphere deploys the Rook Ceph roles only when the resolved storage
+configuration contains an RBD-backed Ceph entry. Configurations with no
+Ceph storage skip those roles.
+
 The built-in defaults are equivalent to:
 
 .. code-block:: yaml
