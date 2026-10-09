@@ -1221,6 +1221,69 @@ VM workloads while preserving normal behavior elsewhere.
    compute scheduling changes. If normal memory runs out, move workloads,
    increase host capacity, or resolve memory leaks.
 
+``NodeUptimeExceeded``
+======================
+
+This alert fires at P4 when a node has been running for more than 180 days for
+1 hour, and at P3 when it has been running for more than 365 days for 30
+minutes. It calculates uptime from ``node_boot_time_seconds``. Long uptime does
+not prove that hardware has degraded, but it indicates that planned
+maintenance is overdue and that kernel, firmware, or driver state has not been
+refreshed by a reboot.
+
+**Likely Root Causes**
+
+- A maintenance window has been deferred.
+- Workloads have not been evacuated because the cluster lacks spare capacity.
+- Kernel, firmware, or driver updates are waiting for a reboot.
+
+**Diagnostic and Remediation Steps**
+
+1. Confirm the node uptime and last boot time:
+
+   .. code-block:: console
+
+      uptime -p
+      who -b
+
+2. Confirm that the cluster has enough capacity and redundancy to move both
+   Kubernetes and OpenStack workloads away from the node. For a control plane
+   node, preserve Kubernetes, etcd, and Ceph quorum throughout the maintenance.
+
+3. Drain Kubernetes workloads from the node:
+
+   .. code-block:: console
+
+      kubectl drain <node-name> --ignore-daemonsets --delete-emptydir-data
+
+4. If this is a compute node, disable scheduling and live migrate its virtual
+   machines:
+
+   .. code-block:: console
+
+      openstack compute service set --disable <node-name> nova-compute
+      nova host-evacuate-live <node-name>
+      openstack server list --host <node-name>
+
+   Do not continue until the server list is empty and the migrations have
+   completed successfully.
+
+5. Reboot the node during the maintenance window:
+
+   .. code-block:: console
+
+      sudo systemctl reboot
+
+6. After the node is healthy, return it to service and confirm that its uptime
+   metric has reset:
+
+   .. code-block:: console
+
+      kubectl uncordon <node-name>
+      openstack compute service set --enable <node-name> nova-compute
+
+   Skip the OpenStack commands for nodes that do not run ``nova-compute``.
+
 ``NginxIngressCriticalErrorBudgetBurn``
 =======================================
 
