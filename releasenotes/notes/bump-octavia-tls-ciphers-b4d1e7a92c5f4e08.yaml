@@ -1,0 +1,13 @@
+---
+fixes:
+  - |
+    The Octavia container image now includes the fix for a HAProxy
+    configuration injection through the ``tls_ciphers`` field of a
+    listener or pool. A project member could set ``tls_ciphers`` to text
+    that is not an OpenSSL cipher string, and that text was interpolated
+    unquoted after ``ciphers`` on the amphora HAProxy ``server`` line, so
+    embedded whitespace, comments, or newlines were consumed as HAProxy
+    configuration. Cipher strings containing characters outside the
+    OpenSSL set are now rejected by the API, and invalid values already
+    stored in the database fall back to the configured default ciphers
+    when the configuration is generated.
