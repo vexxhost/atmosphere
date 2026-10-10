@@ -1,0 +1,31 @@
+---
+features:
+  - |
+    Add optional graphical console support for Ironic bare metal nodes. When
+    ``ironic_vnc_enabled`` is enabled and
+    ``atmosphere_image_overrides.ironic_console`` is set,
+    Atmosphere deploys an
+    ``ironic-novncproxy`` endpoint and configures Ironic's Kubernetes console
+    container provider for the ``redfish-graphical`` console interface. The
+    feature is disabled by default and retains the ``no-console`` interface for
+    drivers that do not provide graphical consoles.
+
+    Enabled consoles use a dedicated namespace named from the Ironic Helm
+    release with an ``-ironic-vnc`` suffix. Atmosphere creates the namespace,
+    enables its RFB NetworkPolicy by default, requires distinct API and noVNC
+    hosts, and refuses a disable operation while dynamic console resources
+    remain. Console Pod placement, pull Secrets, scratch storage, and resource
+    requests and limits are configurable.
+
+    The console backend image is supplied through the centralized
+    ``atmosphere_images.ironic_console`` catalog entry, normally configured
+    through ``atmosphere_image_overrides.ironic_console``.
+    Operators can replace the noVNC browser-assets image through
+    ``atmosphere_image_overrides.ironic_novncproxy_assets``. Atmosphere does
+    not alter the browser application's JavaScript while staging its static
+    assets, and verifies that the required noVNC entry point and RFB module are
+    present before starting the proxy.
+
+    Operators can also use ``ironic_enabled_hardware_types`` and
+    ``ironic_enabled_network_interfaces`` to register additional Ironic
+    hardware types and network interfaces required by their deployment.

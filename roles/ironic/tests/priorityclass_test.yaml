@@ -3,12 +3,22 @@ tests:
   - it: should support not having a priority class
     templates:
       - templates/deployment-api.yaml
+      - templates/deployment-novncproxy.yaml
       - templates/statefulset-conductor.yaml
       - templates/job-db-sync.yaml
       - templates/job-bootstrap.yaml
+    set:
+      manifests:
+        deployment_novncproxy: true
     asserts:
       - template: templates/deployment-api.yaml
         documentIndex: 3
+        notExists:
+          path: spec.template.spec.priorityClassName
+      - template: templates/deployment-novncproxy.yaml
+        documentSelector:
+          path: kind
+          value: Deployment
         notExists:
           path: spec.template.spec.priorityClassName
       - template: templates/statefulset-conductor.yaml
@@ -27,19 +37,30 @@ tests:
   - it: should support setting a priority class
     templates:
       - templates/deployment-api.yaml
+      - templates/deployment-novncproxy.yaml
       - templates/statefulset-conductor.yaml
       - templates/job-db-sync.yaml
       - templates/job-bootstrap.yaml
     set:
+      manifests:
+        deployment_novncproxy: true
       pod:
         priorityClassName:
           ironic_api: platform
+          ironic_novncproxy: platform
           ironic_conductor: platform
           db_sync: platform
           bootstrap: platform
     asserts:
       - template: templates/deployment-api.yaml
         documentIndex: 3
+        equal:
+          path: spec.template.spec.priorityClassName
+          value: platform
+      - template: templates/deployment-novncproxy.yaml
+        documentSelector:
+          path: kind
+          value: Deployment
         equal:
           path: spec.template.spec.priorityClassName
           value: platform
