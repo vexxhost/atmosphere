@@ -12,6 +12,150 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+- name: Verify Thanos
+  hosts: controllers[0]
+  become: true
+  gather_facts: false
+  tags:
+    - thanos
+  vars:
+    _verify_thanos_release_name: "{{ thanos_helm_release_name | default('thanos') }}"
+    _verify_thanos_namespace: "{{ thanos_helm_release_namespace | default('monitoring') }}"
+    _verify_thanos_kubeconfig: "{{ thanos_helm_kubeconfig | default('/etc/kubernetes/admin.conf') }}"
+    _verify_thanos_query_frontend_url: >-
+      {{
+        thanos_query_frontend_url |
+        default(
+          'http://' ~ _verify_thanos_release_name ~ '-query-frontend.' ~
+          _verify_thanos_namespace ~ '.svc.cluster.local:9090'
+        )
+      }}
+    _verify_prometheus_release_name: >-
+      {{ kube_prometheus_stack_helm_release_name | default('kube-prometheus-stack') }}
+    _verify_prometheus_namespace: >-
+      {{ kube_prometheus_stack_helm_release_namespace | default('monitoring') }}
+    _verify_thanos_object_storage_secret_name: >-
+      {{
+        thanos_object_storage_existing_secret | default('')
+        if thanos_object_storage_existing_secret | default('') | length > 0
+        else thanos_object_storage_secret_name | default('thanos-object-storage')
+      }}
+    _verify_thanos_object_storage_secret_key: >-
+      {{ thanos_object_storage_secret_key | default('objstore.yml') }}
+  tasks:
+    - name: Verify Thanos rollouts
+      ansible.builtin.command:
+        cmd: >-
+          kubectl --kubeconfig {{ _verify_thanos_kubeconfig }}
+          --namespace {{ _verify_thanos_namespace }}
+          rollout status {{ item }} --timeout=10m
+      changed_when: false
+      loop:
+        - deployment/{{ _verify_thanos_release_name }}-query
+        - deployment/{{ _verify_thanos_release_name }}-query-frontend
+        - deployment/{{ _verify_thanos_release_name }}-compactor
+        - statefulset/{{ _verify_thanos_release_name }}-storegateway
+      when: thanos_enabled | default(false) | bool
+
+    - name: Get Thanos Query Frontend service
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Service
+        name: "{{ _verify_thanos_release_name }}-query-frontend"
+        namespace: "{{ _verify_thanos_namespace }}"
+        kubeconfig: "{{ _verify_thanos_kubeconfig }}"
+      register: _thanos_query_frontend_service
+      when: thanos_enabled | default(false) | bool
+
+    - name: Set Thanos Query Frontend service URL
+      ansible.builtin.set_fact:
+        _verify_thanos_internal_query_frontend_url: >-
+          http://{{ _thanos_query_frontend_service.resources[0].spec.clusterIP }}:9090
+      when: thanos_enabled | default(false) | bool
+
+    - name: Query Thanos through Query Frontend
+      ansible.builtin.uri:
+        url: >-
+          {{ _verify_thanos_internal_query_frontend_url }}/api/v1/query?query=up
+        return_content: true
+      register: _thanos_query_result
+      retries: 30
+      delay: 10
+      until:
+        - >-
+          (_thanos_query_result.json | default({})).status | default('') ==
+          'success'
+        - >-
+          ((_thanos_query_result.json | default({})).data | default({})).result |
+          default([]) | length > 0
+      when: thanos_enabled | default(false) | bool
+
+    - name: Get Thanos StoreAPI endpoints
+      ansible.builtin.uri:
+        url: >-
+          {{ _verify_thanos_internal_query_frontend_url }}/api/v1/stores
+        return_content: true
+      register: _thanos_store_apis
+      retries: 30
+      delay: 10
+      until:
+        - >-
+          (_thanos_store_apis.json | default({})).status | default('') ==
+          'success'
+        - >-
+          ((_thanos_store_apis.json | default({})).data | default({})).sidecar |
+          default([]) | length > 0
+        - >-
+          ((_thanos_store_apis.json | default({})).data | default({})).store |
+          default([]) | length > 0
+      when: thanos_enabled | default(false) | bool
+
+    - name: Verify Thanos StoreAPI endpoints are healthy
+      ansible.builtin.assert:
+        that:
+          - item.lastError is none
+      loop: >-
+        {{
+          _thanos_store_apis.json.data.sidecar |
+          union(_thanos_store_apis.json.data.store)
+        }}
+      when: thanos_enabled | default(false) | bool
+
+    - name: Get Prometheus resource
+      kubernetes.core.k8s_info:
+        api_version: monitoring.coreos.com/v1
+        kind: Prometheus
+        name: "{{ _verify_prometheus_release_name }}-prometheus"
+        namespace: "{{ _verify_prometheus_namespace }}"
+        kubeconfig: "{{ _verify_thanos_kubeconfig }}"
+      register: _thanos_prometheus
+      when: thanos_enabled | default(false) | bool
+
+    - name: Verify Prometheus uses the Thanos sidecar and object storage
+      ansible.builtin.assert:
+        that:
+          - _thanos_prometheus.resources | length == 1
+          - _thanos_prometheus.resources[0].spec.thanos.image | length > 0
+          - >-
+            _thanos_prometheus.resources[0].spec.thanos.objectStorageConfig.name ==
+            _verify_thanos_object_storage_secret_name
+          - >-
+            _thanos_prometheus.resources[0].spec.thanos.objectStorageConfig.key ==
+            _verify_thanos_object_storage_secret_key
+      when: thanos_enabled | default(false) | bool
+
+    - name: Verify Grafana uses Thanos Query Frontend
+      ansible.builtin.command:
+        cmd: >-
+          kubectl --kubeconfig {{ _verify_thanos_kubeconfig }}
+          --namespace {{ _verify_prometheus_namespace }}
+          exec deployment/{{ _verify_prometheus_release_name }}-grafana
+          --container grafana -- grep -F
+          'url: {{ _verify_thanos_query_frontend_url }}'
+          /etc/grafana/provisioning/datasources/datasource.yaml
+      changed_when: false
+      when: thanos_enabled | default(false) | bool
+
 - name: Run tests
   hosts: localhost
   gather_facts: false
