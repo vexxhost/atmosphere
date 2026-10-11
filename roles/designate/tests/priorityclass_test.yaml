@@ -2,6 +2,7 @@ suite: priorityclass
 tests:
   - it: should support not having a priority class
     templates:
+      - templates/cron-job-service.cleaner.yaml
       - templates/deployment-api.yaml
       - templates/deployment-central.yaml
       - templates/deployment-mdns.yaml
@@ -10,6 +11,10 @@ tests:
       - templates/deployment-worker.yaml
       - templates/job-db-sync.yaml
     asserts:
+      - template: templates/cron-job-service.cleaner.yaml
+        documentIndex: 1
+        notExists:
+          path: spec.jobTemplate.spec.template.spec.priorityClassName
       - template: templates/deployment-api.yaml
         documentIndex: 3
         notExists:
@@ -41,6 +46,7 @@ tests:
 
   - it: should support setting a priority class
     templates:
+      - templates/cron-job-service.cleaner.yaml
       - templates/deployment-api.yaml
       - templates/deployment-central.yaml
       - templates/deployment-mdns.yaml
@@ -55,10 +61,16 @@ tests:
           designate_central: platform
           designate_mdns: platform
           designate_producer: platform
+          designate_service_cleaner: platform
           designate_sink: platform
           designate_worker: platform
           db_sync: platform
     asserts:
+      - template: templates/cron-job-service.cleaner.yaml
+        documentIndex: 1
+        equal:
+          path: spec.jobTemplate.spec.template.spec.priorityClassName
+          value: platform
       - template: templates/deployment-api.yaml
         documentIndex: 3
         equal:

@@ -1,0 +1,14 @@
+diff --git a/designate/templates/cron-job-service.cleaner.yaml b/designate/templates/cron-job-service.cleaner.yaml
+--- a/designate/templates/cron-job-service.cleaner.yaml
++++ b/designate/templates/cron-job-service.cleaner.yaml
+@@ -39,8 +39,8 @@ spec:
+ {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 12 }}
+ {{ dict "envAll" $envAll "podName" "designate-service-cleaner" "containerNames" (list "init" "designate-service-cleaner" ) | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+         spec:
+-{{ tuple "designate_service_cleaner" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
+-{{ tuple "designate_service_cleaner" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
++{{ tuple "designate_service_cleaner" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 10 }}
++{{ tuple "designate_service_cleaner" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 10 }}
+           serviceAccountName: {{ $serviceAccountName }}
+           restartPolicy: OnFailure
+           nodeSelector:
