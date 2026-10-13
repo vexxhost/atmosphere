@@ -95,3 +95,20 @@
     openstack_helm_ingress_service_port: 6385
     openstack_helm_ingress_annotations: "{{ ironic_ingress_annotations }}"
     openstack_helm_ingress_class_name: "{{ ironic_ingress_class_name }}"
+
+- name: Create VNC Proxy Ingress
+  when: ironic_vnc_enabled | bool
+  ansible.builtin.include_role:
+    name: openstack_helm_ingress
+  vars:
+    openstack_helm_ingress_endpoint: baremetal_vnc_proxy
+    openstack_helm_ingress_service_name: ironic-novncproxy
+    openstack_helm_ingress_service_port: 6090
+    openstack_helm_ingress_annotations: >-
+      {{
+        ironic_vnc_ingress_annotations | combine({
+          "nginx.ingress.kubernetes.io/proxy-read-timeout": "3600",
+          "nginx.ingress.kubernetes.io/proxy-send-timeout": "3600"
+        })
+      }}
+    openstack_helm_ingress_class_name: "{{ ironic_vnc_ingress_class_name }}"
