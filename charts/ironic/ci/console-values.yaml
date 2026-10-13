@@ -1,0 +1,55 @@
+---
+conf:
+  ironic:
+    vnc:
+      enabled: true
+      console_image: example.com/ironic-console@sha256:0123456789abcdef
+
+console:
+  namespace: openstack-ironic-console
+  pod:
+    annotations:
+      example.com/console: enabled
+    imagePullSecrets:
+      - name: console-registry
+    nodeSelector:
+      node-role.kubernetes.io/console: enabled
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution: []
+    tolerations:
+      - key: node-role.kubernetes.io/console
+        operator: Exists
+    topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: ScheduleAnyway
+        labelSelector:
+          matchLabels:
+            app: ironic
+            component: ironic-console
+    priorityClassName: system-cluster-critical
+    runtimeClassName: runc
+  container:
+    livenessProbe:
+      tcpSocket:
+        port: rfb
+    securityContext:
+      allowPrivilegeEscalation: false
+    env:
+      - name: CONSOLE_TEST
+        value: enabled
+    volumeMounts:
+      - name: console-scratch
+        mountPath: /var/lib/ironic-console
+  volumes:
+    - name: console-scratch
+      emptyDir: {}
+
+manifests:
+  deployment_novncproxy: true
+  network_policy_console: true
+  role_console_pods: true
+  rolebinding_console_pods: true
+  service_novncproxy: true
+...
