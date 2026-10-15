@@ -41,15 +41,97 @@
     openstack_helm_ingress_annotations: "{{ manila_ingress_annotations }}"
     openstack_helm_ingress_class_name: "{{ manila_ingress_class_name }}"
 
-- name: Update service tenant quotas
-  openstack.cloud.quota:
-    cloud: atmosphere
-    # NOTE(okozachenko): It uses project name instead of id.
-    name: service
-    instances: -1
-    cores: -1
-    ram: -1
-    volumes: -1
-    gigabytes: -1
-    security_group: -1
-    security_group_rule: -1
+- name: Ensure unlimited service project quotas
+  vars:
+    _manila_service_quota_resources:
+      - instances
+      - cores
+      - ram
+      - volumes
+      - gigabytes
+      - secgroups
+      - secgroup-rules
+    _manila_service_quota_limits: >-
+      {{ _manila_service_quota_show.stdout | from_json | items2dict(key_name='Resource', value_name='Limit') }}
+    _manila_service_quota_needs_update: >-
+      {{ _manila_service_quota_resources | map('extract', _manila_service_quota_limits) | map('int') | reject('equalto', -1) | list | length > 0 }}
+  block:
+    - name: Read service project quotas
+      ansible.builtin.command:
+        argv: [openstack, --os-cloud, atmosphere, quota, show, --all, -f, json, service]
+      register: _manila_service_quota_show
+      changed_when: false
+      check_mode: false
+      retries: 60
+      delay: 5
+      until: _manila_service_quota_show is succeeded
+
+    - name: Validate service project quota output
+      ansible.builtin.assert:
+        that:
+          - _manila_service_quota_resources | difference(_manila_service_quota_limits.keys()) | length == 0
+          - >-
+            _manila_service_quota_resources | map('extract', _manila_service_quota_limits) | map('string')
+            | select('match', '^-?[0-9]+$') | list | length == _manila_service_quota_resources | length
+        fail_msg: The OpenStack CLI did not return all required numeric quota limits.
+        quiet: true
+
+    - name: Report pending service project quota changes
+      ansible.builtin.debug:
+        msg: The service project quotas will be set to unlimited.
+      changed_when: true
+      when:
+        - ansible_check_mode
+        - _manila_service_quota_needs_update | bool
+
+    - name: Set unlimited service project quotas
+      ansible.builtin.command:
+        argv:
+          - openstack
+          - --os-cloud
+          - atmosphere
+          - quota
+          - set
+          - --instances
+          - "-1"
+          - --cores
+          - "-1"
+          - --ram
+          - "-1"
+          - --volumes
+          - "-1"
+          - --gigabytes
+          - "-1"
+          - --secgroups
+          - "-1"
+          - --secgroup-rules
+          - "-1"
+          - service
+      register: _manila_service_quota_set
+      changed_when: true
+      when:
+        - not ansible_check_mode
+        - _manila_service_quota_needs_update | bool
+      retries: 60
+      delay: 5
+      until: _manila_service_quota_set is succeeded
+
+    - name: Verify unlimited service project quotas
+      ansible.builtin.command:
+        argv: [openstack, --os-cloud, atmosphere, quota, show, --all, -f, json, service]
+      vars:
+        _manila_service_quota_verified_limits: >-
+          {{ _manila_service_quota_verify.stdout | from_json | items2dict(key_name='Resource', value_name='Limit') }}
+      register: _manila_service_quota_verify
+      changed_when: false
+      when:
+        - not ansible_check_mode
+        - _manila_service_quota_set is changed
+      retries: 60
+      delay: 5
+      until:
+        - _manila_service_quota_verify is succeeded
+        - _manila_service_quota_resources | difference(_manila_service_quota_verified_limits.keys()) | length == 0
+        - >-
+          _manila_service_quota_resources | map('extract', _manila_service_quota_verified_limits) | map('string')
+          | select('equalto', '-1') | list | length == _manila_service_quota_resources | length
