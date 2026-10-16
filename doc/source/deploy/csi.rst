@@ -210,6 +210,12 @@ backend object, and StorageClass without waiting for a successful backend bind.
     and multipath configuration on every Kubernetes node. Atmosphere
     configures ``find_multipaths no`` by default.
 
+    When Trident SAN host preparation and multipath configuration are enabled,
+    the OpenStack ``multipathd`` role also follows
+    ``trident_csi_multipath_find_multipaths`` (default: ``"no"``), including
+    when the OpenStack playbook runs separately. You can override the generic
+    role's setting with ``multipathd_find_multipaths``.
+
     For iSCSI, Atmosphere installs the Trident iSCSI host packages, starts the
     required services, and ensures an initiator name exists.
 
