@@ -63,8 +63,30 @@ jobs:
           pin-images: false
       - uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd # v3.0.1
 
+  python-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@a90bcbc6539c36a85cdfeb73f7e2f433735f215b # v2.15.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: step-security/setup-uv@ccf0a26ce9117d9e99292b0ce953ea5d9ffe778e # v7.3.0
+      - name: Run release manifest plugin tests
+        run: |
+          uv run --no-project --python 3.12 \
+            --with 'ansible-core>=2.15.9' --with pytest --with pytest-ansible --with pyyaml \
+            python -m pytest \
+              tests/unit/plugins/filter/test_resolve_images.py \
+              tests/unit/plugins/lookup/test_release_manifest.py
+
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      pull-requests: read
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@a90bcbc6539c36a85cdfeb73f7e2f433735f215b # v2.15.0
@@ -75,3 +97,42 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/build
+
+      - name: Login to GitHub Container Registry
+        if: github.event_name == 'push'
+        uses: step-security/docker-login-action@c3e677aae8393bc9c81cfdf9709648720ea4bd4d # v3.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate release manifest tags
+        id: meta
+        if: github.event_name == 'push'
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ghcr.io/vexxhost/atmosphere-release
+          flavor: |
+            latest=false
+          tags: |
+            type=sha,prefix=,format=long
+            type=ref,event=branch
+
+      # NOTE: Publish the release manifest that Zuul tested for the merged pull
+      #       request when its image inputs match this commit; otherwise the
+      #       manifest generated above is published and marked as untested.
+      - name: Publish release manifest
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          mapfile -t refs <<< "${TAGS}"
+          lookup=()
+          pr=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/pulls" \
+            --jq '([.[] | select(.merged_at != null)][0] // empty) | "\(.number) \(.head.sha)"' || true)
+          if [ -n "${pr}" ]; then
+            read -r change patchset <<< "${pr}"
+            lookup=(--zuul-api https://zuul.oss.vexxhost.dev/api --change "${change}" --patchset "${patchset}")
+          fi
+          go run ./cmd/atmosphere-release publish --file "${RUNNER_TEMP}/release-manifest.yaml" "${lookup[@]}" "${refs[@]}"
