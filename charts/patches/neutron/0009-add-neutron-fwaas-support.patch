@@ -1,8 +1,8 @@
 diff --git a/neutron/templates/bin/_db-sync.sh.tpl b/neutron/templates/bin/_db-sync.sh.tpl
-index 58edecf..89d1859 100644
+index 58edecf..9c9d18f 100644
 --- a/neutron/templates/bin/_db-sync.sh.tpl
 +++ b/neutron/templates/bin/_db-sync.sh.tpl
-@@ -22,9 +22,21 @@ neutron-db-manage \
+@@ -22,5 +22,8 @@ neutron-db-manage \
    --config-file /etc/neutron/plugins/tungstenfabric/tf_plugin.ini \
  {{- else }}
    --config-file /etc/neutron/plugins/ml2/ml2_conf.ini \
@@ -11,19 +11,6 @@ index 58edecf..89d1859 100644
 +  --config-file /etc/neutron/neutron_fwaas.conf \
  {{- end }}
    upgrade head
- 
-+{{- if contains "firewall_v2" .Values.conf.neutron.DEFAULT.service_plugins }}
-+neutron-db-manage \
-+  --config-file /etc/neutron/neutron.conf \
-+  --config-file /etc/neutron/plugins/ml2/ml2_conf.ini \
-+  --config-file /etc/neutron/neutron_fwaas.conf \
-+  --subproject neutron-fwaas \
-+  upgrade head
-+{{- end }}
-+
- {{- if .Values.conf.plugins.taas.taas.enabled }}
- neutron-db-manage \
-   --config-file /etc/neutron/neutron.conf \
 diff --git a/neutron/templates/bin/_neutron-rpc-server.sh.tpl b/neutron/templates/bin/_neutron-rpc-server.sh.tpl
 index 6c64c13..8a7fce5 100644
 --- a/neutron/templates/bin/_neutron-rpc-server.sh.tpl

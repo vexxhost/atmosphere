@@ -19,16 +19,19 @@ tests:
           of: ConfigMap
       - matchRegex:
           path: data["neutron-server.sh"]
-          pattern: --config-file /etc/neutron/neutron_fwaas\\.conf
+          pattern: --config-file /etc/neutron/neutron_fwaas[.]conf
       - matchRegex:
           path: data["neutron-rpc-server.sh"]
-          pattern: --config-file /etc/neutron/neutron_fwaas\\.conf
+          pattern: --config-file /etc/neutron/neutron_fwaas[.]conf
       - matchRegex:
           path: data["db-sync.sh"]
-          pattern: --config-file /etc/neutron/neutron_fwaas\\.conf
-      - matchRegex:
+          pattern: --config-file /etc/neutron/neutron_fwaas[.]conf
+      - notMatchRegex:
           path: data["db-sync.sh"]
           pattern: --subproject neutron-fwaas
+      - matchRegex:
+          path: data["db-sync.sh"]
+          pattern: '(?s)neutron-db-manage\s+\\\s+--config-file /etc/neutron/neutron[.]conf.*upgrade head'
 
   - it: should mount neutron_fwaas.conf in neutron-rpc-server when firewall_v2 is enabled
     templates:
@@ -45,9 +48,9 @@ tests:
             service_plugins: qos,ovn-router,segments,trunk,log,ovn-vpnaas,firewall_v2,taas,tapmirror
     asserts:
       - hasDocuments:
-          count: 2
+          count: 4
       - template: templates/deployment-rpc_server.yaml
-        documentIndex: 1
+        documentIndex: 3
         contains:
           path: spec.template.spec.containers[0].volumeMounts
           content:
