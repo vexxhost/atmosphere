@@ -1,0 +1,43 @@
+# Builds the atmosphere-release command and attaches it, with the release
+# manifest, to the GitHub release created for each Atmosphere version.
+version: 2
+
+project_name: atmosphere-release
+
+builds:
+  - id: atmosphere-release
+    main: ./cmd/atmosphere-release
+    binary: atmosphere-release
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+
+archives:
+  - id: atmosphere-release
+    formats:
+      - tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - none*
+
+checksum:
+  name_template: "{{ .ProjectName }}_{{ .Version }}_checksums.txt"
+
+changelog:
+  disable: true
+
+release:
+  # NOTE: The release and its notes are created before this runs; only add
+  #       assets to it.
+  mode: keep-existing
+  extra_files:
+    - glob: "{{ .Env.RELEASE_MANIFEST }}"
