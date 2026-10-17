@@ -1,5 +1,14 @@
 # `image_manifest`
 
+> **Warning**
+>
+> This role is deprecated and will be removed in a future release. Use
+> `atmosphere-release mirror` instead, which copies a release without changing
+> image digests, supports registries that limit nested repository paths, works
+> for disconnected environments and writes the `atmosphere_image_mirrors` rules
+> for your inventory. See the "Container images and mirrors" section of the
+> deployment guide.
+
 Since Atmosphere uses containers for all of its components, it is important to
 make sure that the images are available to the cluster.  By default, all of the
 images are loaded by default using the `vexxhost.atmosphere.defaults` role which
