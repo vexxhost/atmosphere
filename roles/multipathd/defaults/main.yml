@@ -20,4 +20,18 @@
 #
 #               See: https://bugs.launchpad.net/kolla-ansible/+bug/1982777
 multipathd_user_friendly_names: false
+# Keep the generic role aligned with Trident SAN host preparation, including
+# when the OpenStack playbook runs without the CSI playbook's role defaults.
+multipathd_find_multipaths: >-
+  {{
+    trident_csi_multipath_find_multipaths | default('no')
+    if (
+      csi_driver | default('') == 'trident' and
+      trident_csi_configure_san | default(
+        trident_csi_storage_driver | default('ontap-san') in
+        ['ontap-san', 'ontap-san-economy']
+      ) | bool and
+      trident_csi_configure_multipath | default(true) | bool
+    ) else 'yes'
+  }}
 multipathd_repository: "ppa:vexxhost/backports"
