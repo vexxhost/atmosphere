@@ -333,6 +333,7 @@ data:
   neutron_sudoers: {{ $envAll.Values.conf.neutron_sudoers | b64enc }}
   rootwrap.conf: {{ $envAll.Values.conf.rootwrap | b64enc }}
   auto_bridge_add: {{ toJson $envAll.Values.conf.auto_bridge_add | b64enc }}
+  neutron_fwaas.conf: {{ default "\"\"" (include "helm-toolkit.utils.to_oslo_conf" $envAll.Values.conf.neutron_fwaas | b64enc) }}
   neutron_vpnaas.conf: {{ default "\"\"" (include "helm-toolkit.utils.to_oslo_conf" $envAll.Values.conf.neutron_vpnaas | b64enc) }}
 {{- if .Values.conf.netoffload.enabled }}
   netoffload: {{ toJson $envAll.Values.conf.netoffload | b64enc }}
