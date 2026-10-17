@@ -231,4 +231,27 @@ _atmosphere_images:
   valkey_sentinel: "{{ atmosphere_image_prefix }}docker.io/bitnamilegacy/valkey-sentinel:8.0.2-debian-12-r4"
   vector: "{{ atmosphere_image_prefix }}docker.io/timberio/vector:0.38.0-debian"
 
-atmosphere_images: '{{ _atmosphere_images | combine(atmosphere_image_overrides, recursive=True) }}'
+# NOTE: Images come from the release manifest when one is configured, or from
+#       the list above. The mirror rules and image prefix are applied next,
+#       then the per-image overrides.
+atmosphere_images: >-
+  {{
+    (
+      (
+        query('vexxhost.atmosphere.release_manifest', atmosphere_release_manifest,
+              kubernetes_version=atmosphere_kubernetes_version,
+              prefix=atmosphere_image_prefix, mirrors=atmosphere_image_mirrors,
+              ca_file=atmosphere_release_manifest_ca_file) | first
+        | vexxhost.atmosphere.resolve_images(prefix=atmosphere_image_prefix,
+                                             mirrors=atmosphere_image_mirrors)
+      )
+      if atmosphere_release_manifest | default('', true) | length > 0 else
+      (
+        _atmosphere_images
+        | vexxhost.atmosphere.resolve_images(prefix=atmosphere_image_prefix,
+                                             mirrors=atmosphere_image_mirrors,
+                                             strip_prefix=True)
+      )
+    )
+    | combine(atmosphere_image_overrides, recursive=True)
+  }}
