@@ -233,4 +233,27 @@ _atmosphere_images:
   tempest_run_tests: "{{ atmosphere_image_prefix }}ghcr.io/vexxhost/tempest:latest@sha256:724b43c9b63562a6795ece99b6f5b428b0040a1f0e87af188675f521b47c525a"
   vector: "{{ atmosphere_image_prefix }}docker.io/timberio/vector:0.37.1-debian"
 
-atmosphere_images: '{{ _atmosphere_images | combine(atmosphere_image_overrides, recursive=True) }}'
+# NOTE: Images come from the release manifest when one is configured, or from
+#       the list above. The mirror rules and image prefix are applied next,
+#       then the per-image overrides.
+atmosphere_images: >-
+  {{
+    (
+      (
+        query('vexxhost.atmosphere.release_manifest', atmosphere_release_manifest,
+              kubernetes_version=atmosphere_kubernetes_version,
+              prefix=atmosphere_image_prefix, mirrors=atmosphere_image_mirrors,
+              ca_file=atmosphere_release_manifest_ca_file) | first
+        | vexxhost.atmosphere.resolve_images(prefix=atmosphere_image_prefix,
+                                             mirrors=atmosphere_image_mirrors)
+      )
+      if atmosphere_release_manifest | default('', true) | length > 0 else
+      (
+        _atmosphere_images
+        | vexxhost.atmosphere.resolve_images(prefix=atmosphere_image_prefix,
+                                             mirrors=atmosphere_image_mirrors,
+                                             strip_prefix=True)
+      )
+    )
+    | combine(atmosphere_image_overrides, recursive=True)
+  }}
