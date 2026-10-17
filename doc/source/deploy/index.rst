@@ -15,6 +15,7 @@ and setup.
 
    inventory
    csi
+   images
    certificates
    cinder
    glance
