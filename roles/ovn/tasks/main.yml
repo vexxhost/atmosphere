@@ -58,6 +58,7 @@
 
 - name: Deploy Helm chart
   run_once: true
+  delegate_to: "{{ groups['controllers'][0] }}"
   when: atmosphere_network_backend == 'ovn'
   kubernetes.core.helm:
     name: "{{ ovn_helm_release_name }}"
