@@ -1,0 +1,488 @@
+From db0f389019746552ecee1ce1f774a6efa3404675 Mon Sep 17 00:00:00 2001
+From: Dong Ma <dong.ma@vexxhost.com>
+Date: Thu, 24 Sep 2026 12:49:52 +0800
+Subject: [PATCH] fix(neutron): deploy periodic and OVN maintenance workers
+
+Change-Id: I5b4e15e1edf1a57f55dbb285090ae70677d600b4
+Signed-off-by: Dong Ma <dong.ma@vexxhost.com>
+---
+ .../_neutron-ovn-maintenance-worker.sh.tpl    |  46 +++++
+ .../bin/_neutron-periodic-worker.sh.tpl       |  48 +++++
+ neutron/templates/configmap-bin.yaml   |   4 +
+ .../neutron/templates/deployment-workers.yaml | 192 ++++++++++++++++++
+ neutron/values.yaml                    |  80 ++++++++
+ 5 files changed, 370 insertions(+)
+ create mode 100644 neutron/templates/bin/_neutron-ovn-maintenance-worker.sh.tpl
+ create mode 100644 neutron/templates/bin/_neutron-periodic-worker.sh.tpl
+ create mode 100644 neutron/templates/deployment-workers.yaml
+
+diff --git a/neutron/templates/bin/_neutron-ovn-maintenance-worker.sh.tpl b/neutron/templates/bin/_neutron-ovn-maintenance-worker.sh.tpl
+new file mode 100644
+index 0000000000000000000000000000000000000000..39d94ced560c24e1f722d17a5a754b0976fc9093
+--- /dev/null
++++ b/neutron/templates/bin/_neutron-ovn-maintenance-worker.sh.tpl
+@@ -0,0 +1,46 @@
++#!/bin/bash
++
++{{/*
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++   http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++*/}}
++
++set -ex
++COMMAND="${@:-start}"
++
++function start () {
++  exec neutron-ovn-maintenance-worker \
++        --config-file /etc/neutron/neutron.conf \
++        --config-file /tmp/pod-shared/ovn.ini \
++{{- if contains "vpnaas" .Values.conf.neutron.DEFAULT.service_plugins }}
++        --config-file /etc/neutron/neutron_vpnaas.conf \
++{{- end }}
++{{- if contains "ovn-vpnaas" .Values.conf.neutron.DEFAULT.service_plugins }}
++        --config-file /etc/neutron/neutron_ovn_vpn_agent.ini \
++{{- end }}
++{{- if .Values.conf.plugins.taas.taas.enabled }}
++        --config-file /etc/neutron/taas_plugin.ini \
++{{- end }}
++{{- if ( has "sriov" .Values.network.backend ) }}
++        --config-file /etc/neutron/plugins/ml2/sriov_agent.ini \
++{{- end }}
++{{- if .Values.conf.plugins.l2gateway }}
++        --config-file /etc/neutron/l2gw_plugin.ini \
++{{- end }}
++        --config-file /etc/neutron/plugins/ml2/ml2_conf.ini
++}
++
++function stop () {
++  kill -TERM 1
++}
++
++$COMMAND
+diff --git a/neutron/templates/bin/_neutron-periodic-worker.sh.tpl b/neutron/templates/bin/_neutron-periodic-worker.sh.tpl
+new file mode 100644
+index 0000000000000000000000000000000000000000..be8bcff8f2fb85eb4c3b9c636a287365a7460a6d
+--- /dev/null
++++ b/neutron/templates/bin/_neutron-periodic-worker.sh.tpl
+@@ -0,0 +1,48 @@
++#!/bin/bash
++
++{{/*
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++   http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++*/}}
++
++set -ex
++COMMAND="${@:-start}"
++
++function start () {
++  exec neutron-periodic-workers \
++        --config-file /etc/neutron/neutron.conf \
++{{- if ( has "ovn" .Values.network.backend ) }}
++        --config-file /tmp/pod-shared/ovn.ini \
++{{- end }}
++{{- if contains "vpnaas" .Values.conf.neutron.DEFAULT.service_plugins }}
++        --config-file /etc/neutron/neutron_vpnaas.conf \
++{{- end }}
++{{- if contains "ovn-vpnaas" .Values.conf.neutron.DEFAULT.service_plugins }}
++        --config-file /etc/neutron/neutron_ovn_vpn_agent.ini \
++{{- end }}
++{{- if .Values.conf.plugins.taas.taas.enabled }}
++        --config-file /etc/neutron/taas_plugin.ini \
++{{- end }}
++{{- if ( has "sriov" .Values.network.backend ) }}
++        --config-file /etc/neutron/plugins/ml2/sriov_agent.ini \
++{{- end }}
++{{- if .Values.conf.plugins.l2gateway }}
++        --config-file /etc/neutron/l2gw_plugin.ini \
++{{- end }}
++        --config-file /etc/neutron/plugins/ml2/ml2_conf.ini
++}
++
++function stop () {
++  kill -TERM 1
++}
++
++$COMMAND
+diff --git a/neutron/templates/configmap-bin.yaml b/neutron/templates/configmap-bin.yaml
+index 87b2b798d6f2e5d28802832de28300b141e552f8..a31265c6d4c0f84ce813b79ae001c0d7be316dfe 100644
+--- a/neutron/templates/configmap-bin.yaml
++++ b/neutron/templates/configmap-bin.yaml
+@@ -95,6 +95,10 @@ data:
+ {{ tuple "bin/_neutron-policy-server.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+   neutron-rpc-server.sh: |
+ {{ tuple "bin/_neutron-rpc-server.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
++  neutron-periodic-worker.sh: |
++{{ tuple "bin/_neutron-periodic-worker.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
++  neutron-ovn-maintenance-worker.sh: |
++{{ tuple "bin/_neutron-ovn-maintenance-worker.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+   neutron-ironic-agent-init.sh: |
+ {{ tuple "bin/_neutron-ironic-agent-init.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+   neutron-ironic-agent.sh: |
+diff --git a/neutron/templates/deployment-workers.yaml b/neutron/templates/deployment-workers.yaml
+new file mode 100644
+index 0000000000000000000000000000000000000000..207b995caf6465ae6bc3241744fb187e8afeac2b
+--- /dev/null
++++ b/neutron/templates/deployment-workers.yaml
+@@ -0,0 +1,192 @@
++{{/*
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++   http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++*/}}
++
++{{- define "neutron.server_worker.deployment" }}
++{{- $envAll := .envAll }}
++{{- $component := .component }}
++{{- $dependencyOpts := dict "envAll" $envAll "dependencyMixinParam" $envAll.Values.network.backend "dependencyKey" $component }}
++{{- $_ := include "helm-toolkit.utils.dependency_resolver" $dependencyOpts | toString | fromYaml }}
++{{- $application := .application }}
++{{- $container := .container }}
++{{- $script := .script }}
++{{- $mounts := index $envAll.Values.pod.mounts $application $application }}
++{{- $mountsInit := index $envAll.Values.pod.mounts $application "init_container" }}
++{{- $labels := index $envAll.Values.labels $component }}
++{{- $resources := index $envAll.Values.pod.resources $component }}
++{{- $replicas := index $envAll.Values.pod.replicas $component }}
++{{- $terminationGracePeriod := index $envAll.Values.pod.lifecycle.termination_grace_period $component "timeout" }}
++{{- $serviceAccountName := printf "neutron-%s" (replace "_" "-" $component) }}
++{{ tuple $envAll "pod_dependency" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
++---
++apiVersion: apps/v1
++kind: Deployment
++metadata:
++  name: {{ $serviceAccountName }}
++  annotations:
++    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
++  labels:
++{{ tuple $envAll "neutron" $component | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
++spec:
++  replicas: {{ $replicas }}
++  selector:
++    matchLabels:
++{{ tuple $envAll "neutron" $component | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 6 }}
++{{ tuple $envAll | include "helm-toolkit.snippets.kubernetes_upgrades_deployment" | indent 2 }}
++  template:
++    metadata:
++      labels:
++{{ tuple $envAll "neutron" $component | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
++      annotations:
++{{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
++        configmap-bin-hash: {{ tuple "configmap-bin.yaml" $envAll | include "helm-toolkit.utils.hash" }}
++        configmap-etc-hash: {{ tuple "configmap-etc.yaml" $envAll | include "helm-toolkit.utils.hash" }}
++{{ dict "envAll" $envAll "podName" $serviceAccountName "containerNames" (list $container "init") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
++    spec:
++{{ dict "envAll" $envAll "application" $application | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
++{{ tuple $application $envAll | include "helm-toolkit.snippets.kubernetes_pod_priority_class" | indent 6 }}
++{{ tuple $application $envAll | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" | indent 6 }}
++      serviceAccountName: {{ $serviceAccountName }}
++      affinity:
++{{ tuple $envAll "neutron" $component | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
++      nodeSelector:
++        {{ $labels.node_selector_key }}: {{ $labels.node_selector_value }}
++{{ if $envAll.Values.pod.tolerations.neutron.enabled }}
++{{ tuple $envAll "neutron" | include "helm-toolkit.snippets.kubernetes_tolerations" | indent 6 }}
++{{ end }}
++      terminationGracePeriodSeconds: {{ $terminationGracePeriod | default "30" }}
++      initContainers:
++{{ tuple $envAll "pod_dependency" $mountsInit | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
++{{- if has "ovn" $envAll.Values.network.backend }}
++        - name: ovn-neutron-init
++{{ tuple $envAll $application | include "helm-toolkit.snippets.image" | indent 10 }}
++          command:
++            - /tmp/neutron-ovn-init.sh
++          volumeMounts:
++            - name: pod-shared
++              mountPath: /tmp/pod-shared
++            - name: neutron-bin
++              mountPath: /tmp/neutron-ovn-init.sh
++              subPath: neutron-ovn-init.sh
++              readOnly: true
++{{- end }}
++      containers:
++        - name: {{ $container }}
++{{ tuple $envAll $application | include "helm-toolkit.snippets.image" | indent 10 }}
++{{ tuple $envAll $resources | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
++{{ dict "envAll" $envAll "application" $application "container" $application | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
++          command:
++            - /tmp/{{ $script }}.sh
++            - start
++{{- if or $envAll.Values.manifests.certificates $envAll.Values.tls.identity }}
++          env:
++            - name: REQUESTS_CA_BUNDLE
++              value: "/etc/neutron/certs/ca.crt"
++{{- end }}
++          lifecycle:
++            preStop:
++              exec:
++                command:
++                  - /tmp/{{ $script }}.sh
++                  - stop
++          volumeMounts:
++            - name: pod-tmp
++              mountPath: /tmp
++            - name: pod-shared
++              mountPath: /tmp/pod-shared
++            - name: pod-var-neutron
++              mountPath: {{ $envAll.Values.conf.neutron.DEFAULT.state_path }}
++            - name: neutron-bin
++              mountPath: /tmp/{{ $script }}.sh
++              subPath: {{ $script }}.sh
++              readOnly: true
++            - name: neutron-etc
++              mountPath: /etc/neutron/neutron.conf
++              subPath: neutron.conf
++              readOnly: true
++            - name: neutron-etc
++              mountPath: /etc/neutron/plugins/ml2/ml2_conf.ini
++              subPath: ml2_conf.ini
++              readOnly: true
++{{- if has "sriov" $envAll.Values.network.backend }}
++            - name: neutron-etc
++              mountPath: /etc/neutron/plugins/ml2/sriov_agent.ini
++              subPath: sriov_agent.ini
++              readOnly: true
++{{- end }}
++{{- if $envAll.Values.conf.plugins.taas.taas.enabled }}
++            - name: neutron-etc
++              mountPath: /etc/neutron/taas_plugin.ini
++              subPath: taas_plugin.ini
++              readOnly: true
++{{- end }}
++{{- if $envAll.Values.conf.plugins.l2gateway }}
++            - name: neutron-etc
++              mountPath: /etc/neutron/l2gw_plugin.ini
++              subPath: l2gw_plugin.ini
++              readOnly: true
++{{- end }}
++            - name: neutron-etc
++              mountPath: /etc/neutron/policy.yaml
++              subPath: policy.yaml
++              readOnly: true
++{{- if contains "vpnaas" $envAll.Values.conf.neutron.DEFAULT.service_plugins }}
++            - name: neutron-etc
++              mountPath: /etc/neutron/neutron_vpnaas.conf
++              subPath: neutron_vpnaas.conf
++              readOnly: true
++{{- end }}
++{{- if contains "ovn-vpnaas" $envAll.Values.conf.neutron.DEFAULT.service_plugins }}
++            - name: neutron-etc
++              mountPath: /etc/neutron/neutron_ovn_vpn_agent.ini
++              subPath: neutron_ovn_vpn_agent.ini
++              readOnly: true
++{{- end }}
++{{- if $envAll.Values.conf.neutron.DEFAULT.log_config_append }}
++            - name: neutron-etc
++              mountPath: {{ $envAll.Values.conf.neutron.DEFAULT.log_config_append }}
++              subPath: {{ base $envAll.Values.conf.neutron.DEFAULT.log_config_append }}
++              readOnly: true
++{{- end }}
++{{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_db.auth.admin.secret.tls.internal "path" "/etc/mysql/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
++{{- dict "enabled" (or $envAll.Values.manifests.certificates $envAll.Values.tls.identity) "name" $envAll.Values.secrets.tls.network.server.internal "path" "/etc/neutron/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
++{{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_messaging.auth.admin.secret.tls.internal "path" "/etc/rabbitmq/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
++{{ if $mounts.volumeMounts }}{{ toYaml $mounts.volumeMounts | indent 12 }}{{ end }}
++      volumes:
++        - name: pod-tmp
++          emptyDir: {}
++        - name: pod-shared
++          emptyDir: {}
++        - name: pod-var-neutron
++          emptyDir: {}
++        - name: neutron-bin
++          configMap:
++            name: neutron-bin
++            defaultMode: 0555
++        - name: neutron-etc
++          secret:
++            secretName: neutron-etc
++            defaultMode: 0444
++{{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_db.auth.admin.secret.tls.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
++{{- dict "enabled" (or $envAll.Values.manifests.certificates $envAll.Values.tls.identity) "name" $envAll.Values.secrets.tls.network.server.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
++{{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_messaging.auth.admin.secret.tls.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
++{{ if $mounts.volumes }}{{ toYaml $mounts.volumes | indent 8 }}{{ end }}
++{{- end }}
++
++{{- if and .Values.manifests.deployment_periodic_worker (eq .Values.conf.neutron.DEFAULT.core_plugin "ml2") }}
++{{- include "neutron.server_worker.deployment" (dict "envAll" . "component" "periodic_worker" "application" "neutron_periodic_worker" "container" "neutron-periodic-worker" "script" "neutron-periodic-worker") }}
++{{- end }}
++
++{{- if and .Values.manifests.deployment_ovn_maintenance_worker (has "ovn" .Values.network.backend) }}
++{{- include "neutron.server_worker.deployment" (dict "envAll" . "component" "ovn_maintenance_worker" "application" "neutron_ovn_maintenance_worker" "container" "neutron-ovn-maintenance-worker" "script" "neutron-ovn-maintenance-worker") }}
++{{- end }}
+diff --git a/neutron/values.yaml b/neutron/values.yaml
+index 0f3c1ead0e9ce20fe6c882b35a182aba9979ca51..f0c5c634f3627ab2184347e8d7bf7cbaf92af4df 100644
+--- a/neutron/values.yaml
++++ b/neutron/values.yaml
+@@ -34,6 +34,8 @@ images:
+     neutron_server: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
+     neutron_policy_server: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
+     neutron_rpc_server: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
++    neutron_periodic_worker: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
++    neutron_ovn_maintenance_worker: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
+     neutron_dhcp: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
+     neutron_metadata: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
+     neutron_ovn_metadata: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
+@@ -103,6 +105,12 @@ labels:
+   rpc_server:
+     node_selector_key: openstack-control-plane
+     node_selector_value: enabled
++  periodic_worker:
++    node_selector_key: openstack-control-plane
++    node_selector_value: enabled
++  ovn_maintenance_worker:
++    node_selector_key: openstack-control-plane
++    node_selector_value: enabled
+   ironic_agent:
+     node_selector_key: openstack-control-plane
+     node_selector_value: enabled
+@@ -362,6 +370,32 @@ dependencies:
+           service: oslo_cache
+         - endpoint: internal
+           service: identity
++    periodic_worker:
++      jobs:
++        - neutron-db-sync
++        - neutron-rabbit-init
++      services:
++        - endpoint: internal
++          service: oslo_db
++        - endpoint: internal
++          service: oslo_messaging
++        - endpoint: internal
++          service: oslo_cache
++        - endpoint: internal
++          service: identity
++    ovn_maintenance_worker:
++      jobs:
++        - neutron-db-sync
++        - neutron-rabbit-init
++      services:
++        - endpoint: internal
++          service: oslo_db
++        - endpoint: internal
++          service: oslo_messaging
++        - endpoint: internal
++          service: oslo_cache
++        - endpoint: internal
++          service: identity
+     ironic_agent:
+       jobs:
+         - neutron-db-sync
+@@ -665,6 +699,20 @@ pod:
+         neutron_rpc_server:
+           allowPrivilegeEscalation: false
+           readOnlyRootFilesystem: true
++    neutron_periodic_worker:
++      pod:
++        runAsUser: 42424
++      container:
++        neutron_periodic_worker:
++          allowPrivilegeEscalation: false
++          readOnlyRootFilesystem: true
++    neutron_ovn_maintenance_worker:
++      pod:
++        runAsUser: 42424
++      container:
++        neutron_ovn_maintenance_worker:
++          allowPrivilegeEscalation: false
++          readOnlyRootFilesystem: true
+     neutron_sriov_agent:
+       pod:
+         runAsUser: 42424
+@@ -722,6 +770,16 @@ pod:
+       neutron_rpc_server:
+         volumeMounts:
+         volumes:
++    neutron_periodic_worker:
++      init_container: null
++      neutron_periodic_worker:
++        volumeMounts:
++        volumes:
++    neutron_ovn_maintenance_worker:
++      init_container: null
++      neutron_ovn_maintenance_worker:
++        volumeMounts:
++        volumes:
+     neutron_dhcp_agent:
+       init_container: null
+       neutron_dhcp_agent:
+@@ -808,6 +866,8 @@ pod:
+   replicas:
+     server: 1
+     rpc_server: 1
++    periodic_worker: 1
++    ovn_maintenance_worker: 1
+     ironic_agent: 1
+   lifecycle:
+     upgrades:
+@@ -863,6 +923,10 @@ pod:
+         timeout: 30
+       rpc_server:
+         timeout: 30
++      periodic_worker:
++        timeout: 30
++      ovn_maintenance_worker:
++        timeout: 30
+       ironic_agent:
+         timeout: 30
+   resources:
+@@ -952,6 +1016,20 @@ pod:
+       limits:
+         memory: "1024Mi"
+         cpu: "2000m"
++    periodic_worker:
++      requests:
++        memory: "128Mi"
++        cpu: "100m"
++      limits:
++        memory: "1024Mi"
++        cpu: "2000m"
++    ovn_maintenance_worker:
++      requests:
++        memory: "128Mi"
++        cpu: "100m"
++      limits:
++        memory: "1024Mi"
++        cpu: "2000m"
+     neutron_policy_server:
+       requests:
+         memory: "128Mi"
+@@ -2698,6 +2776,8 @@ manifests:
+   deployment_ironic_agent: false
+   deployment_server: true
+   deployment_rpc_server: true
++  deployment_periodic_worker: false
++  deployment_ovn_maintenance_worker: false
+   ingress_server: true
+   job_bootstrap: true
+   job_db_init: true
+-- 
+2.39.5 (Apple Git-154)
+
+
