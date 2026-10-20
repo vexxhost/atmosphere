@@ -79,6 +79,38 @@ local burnRateExpr(tier) = |||
               runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#nginxingresslowerrorbudgetburn',
             },
           },
+          {
+            alert: 'NginxIngressTLSCertificateExpiringSoon',
+            expr: |||
+              (nginx_ingress_controller_ssl_expire_time_seconds{secret_name!=""} - time() < 21 * 24 * 3600)
+              and
+              (nginx_ingress_controller_ssl_expire_time_seconds{secret_name!=""} - time() >= 7 * 24 * 3600)
+            |||,
+            'for': '1h',
+            labels: {
+              severity: 'P3',
+            },
+            annotations: {
+              summary: 'NGINX Ingress TLS: certificate for {{ $labels.host }} expires within 21 days',
+              description: 'The certificate serving {{ $labels.host }} has {{ $value | humanizeDuration }} remaining, below the 21-day warning threshold. It should renew automatically via cert-manager; normal behavior is renewal before expiry.',
+              runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#nginxingresstlscertificateexpiringsoon',
+            },
+          },
+          {
+            alert: 'NginxIngressTLSCertificateExpiringCritical',
+            expr: |||
+              nginx_ingress_controller_ssl_expire_time_seconds{secret_name!=""} - time() < 7 * 24 * 3600
+            |||,
+            'for': '1h',
+            labels: {
+              severity: 'P2',
+            },
+            annotations: {
+              summary: 'NGINX Ingress TLS: certificate for {{ $labels.host }} expires within 7 days',
+              description: 'The certificate serving {{ $labels.host }} has {{ $value | humanizeDuration }} remaining, below the 7-day critical threshold. Check cert-manager and renew or replace the certificate before it expires; normal behavior is renewal before expiry.',
+              runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#nginxingresstlscertificateexpiringcritical',
+            },
+          },
         ],
       },
     ],

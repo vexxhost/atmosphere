@@ -1581,3 +1581,61 @@ tests:
               summary: "Geneve overlay: transmit failures may affect tenant traffic on a compute host"
               description: "192.0.2.10:9100 interface tenant-geneve0 has averaged 3.33 transmit errors per second over the last 5 minutes (threshold > 1.67/s, ~100/min). Normal behavior is zero sustained transmit errors on Geneve tunnel interfaces."
               runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#genevetransmiterrors"
+
+  # NginxIngressTLSCertificateExpiringSoon - should NOT fire when more than 21 days remain
+  - interval: 1m
+    input_series:
+      - series: 'nginx_ingress_controller_ssl_expire_time_seconds{host="test.example.com",namespace="test",secret_name="test-tls"}'
+        values: '2592000x150'
+    alert_rule_test:
+      - eval_time: 2h
+        alertname: NginxIngressTLSCertificateExpiringSoon
+        exp_alerts: []
+
+  # NginxIngressTLSCertificateExpiringSoon - should fire when 14 days remain
+  - interval: 1m
+    input_series:
+      - series: 'nginx_ingress_controller_ssl_expire_time_seconds{host="test.example.com",namespace="test",secret_name="test-tls"}'
+        values: '1216800x150'
+    alert_rule_test:
+      - eval_time: 2h
+        alertname: NginxIngressTLSCertificateExpiringSoon
+        exp_alerts:
+          - exp_labels:
+              host: test.example.com
+              namespace: test
+              secret_name: test-tls
+              severity: P3
+            exp_annotations:
+              summary: "NGINX Ingress TLS: certificate for test.example.com expires within 21 days"
+              description: "The certificate serving test.example.com has 14d 0h 0m 0s remaining, below the 21-day warning threshold. It should renew automatically via cert-manager; normal behavior is renewal before expiry."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#nginxingresstlscertificateexpiringsoon"
+
+  # NginxIngressTLSCertificateExpiringCritical - should NOT fire when more than 7 days remain
+  - interval: 1m
+    input_series:
+      - series: 'nginx_ingress_controller_ssl_expire_time_seconds{host="test.example.com",namespace="test",secret_name="test-tls"}'
+        values: '2592000x150'
+    alert_rule_test:
+      - eval_time: 2h
+        alertname: NginxIngressTLSCertificateExpiringCritical
+        exp_alerts: []
+
+  # NginxIngressTLSCertificateExpiringCritical - should fire when 3 days remain
+  - interval: 1m
+    input_series:
+      - series: 'nginx_ingress_controller_ssl_expire_time_seconds{host="test.example.com",namespace="test",secret_name="test-tls"}'
+        values: '266400x150'
+    alert_rule_test:
+      - eval_time: 2h
+        alertname: NginxIngressTLSCertificateExpiringCritical
+        exp_alerts:
+          - exp_labels:
+              host: test.example.com
+              namespace: test
+              secret_name: test-tls
+              severity: P2
+            exp_annotations:
+              summary: "NGINX Ingress TLS: certificate for test.example.com expires within 7 days"
+              description: "The certificate serving test.example.com has 3d 0h 0m 0s remaining, below the 7-day critical threshold. Check cert-manager and renew or replace the certificate before it expires; normal behavior is renewal before expiry."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#nginxingresstlscertificateexpiringcritical"

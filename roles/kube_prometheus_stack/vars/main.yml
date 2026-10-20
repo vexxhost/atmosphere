@@ -58,6 +58,14 @@ _kube_prometheus_stack_helm_values:
             - service
             - namespace
         - source_matchers:
+            - alertname = "NginxIngressTLSCertificateExpiringCritical"
+          target_matchers:
+            - alertname = "NginxIngressTLSCertificateExpiringSoon"
+          equal:
+            - host
+            - namespace
+            - secret_name
+        - source_matchers:
             - alertname = "CoreDNSCriticalErrorBudgetBurn"
           target_matchers:
             - alertname =~ "CoreDNSHighErrorBudgetBurn|CoreDNSModerateErrorBudgetBurn|CoreDNSLowErrorBudgetBurn"

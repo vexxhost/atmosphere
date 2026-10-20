@@ -1442,6 +1442,90 @@ confirm the issue is both sustained and ongoing. At this burn rate, the entire
 6. Review recent deployments or configuration changes that might have
    introduced the issue.
 
+``NginxIngressTLSCertificateExpiringCritical``
+===============================================
+
+This P2 alert fires when an ingress-nginx serving certificate has less than
+7 days remaining before expiry. It is suppressed by this alert's 21-day P3
+warning for the same host, namespace, and TLS secret. The alert only tracks
+secret-backed certificates served by ingress-nginx; the controller's default
+fake certificate is excluded.
+
+**Likely Root Causes**
+
+- cert-manager could not renew the certificate because an issuer, ACME order,
+  or challenge failed
+- The certificate Secret was manually created or is not managed by cert-manager
+- DNS, network, or issuer credentials prevented renewal
+- The certificate was renewed in a different Secret, but ingress-nginx still
+  serves the old one
+
+**Diagnostic and Remediation Steps**
+
+1. Check the certificate and renewal resources for the affected host:
+
+   .. code-block:: console
+
+     kubectl get certificates,certificaterequests,orders,challenges -A
+     kubectl describe certificate -n <namespace> <certificate-name>
+
+2. Check the certificate Secret and the certificate actually served by the
+   public endpoint:
+
+   .. code-block:: console
+
+     kubectl get secret -n <namespace> <secret-name> -o yaml
+     openssl s_client -connect <host>:443 -servername <host> </dev/null 2>/dev/null | \
+       openssl x509 -noout -dates -subject
+
+3. Review issuer health, cert-manager logs, and recent events:
+
+   .. code-block:: console
+
+     kubectl get clusterissuers,issuers -A
+     kubectl logs -n cert-manager deploy/cert-manager --since=1h
+     kubectl get events -A --sort-by='.lastTimestamp'
+
+4. Resolve the issuance failure or update the Ingress to reference the renewed
+   TLS Secret. Confirm that ingress-nginx serves the renewed certificate and
+   that the alert clears.
+
+``NginxIngressTLSCertificateExpiringSoon``
+===========================================
+
+This P3 alert fires when a secret-backed certificate served by ingress-nginx
+has between 7 and 21 days remaining before expiry. Certificates should renew
+automatically through cert-manager before they expire. The alert excludes the
+default fake certificate and is suppressed when the same host and TLS Secret
+in the same namespace reaches the 7-day P2 threshold.
+
+**Likely Root Causes**
+
+- cert-manager renewal is delayed or has started failing
+- The certificate is not managed by cert-manager and requires manual renewal
+- An issuer, DNS challenge, or certificate Secret configuration needs attention
+
+**Diagnostic and Remediation Steps**
+
+1. Find the certificate Secret for the affected host and inspect its
+   Certificate, CertificateRequest, Order, and Challenge resources:
+
+   .. code-block:: console
+
+     kubectl get certificates,certificaterequests,orders,challenges -A
+     kubectl describe certificate -n <namespace> <certificate-name>
+
+2. Review the issuer status and cert-manager events. Resolve any failed
+   challenge or renewal attempt before the certificate reaches the 7-day alert
+   threshold.
+
+3. Verify the expiry of the certificate actually served by the public endpoint:
+
+   .. code-block:: console
+
+     openssl s_client -connect <host>:443 -servername <host> </dev/null 2>/dev/null | \
+       openssl x509 -noout -dates -subject
+
 ``NodeNetworkMulticast``
 ========================
 
