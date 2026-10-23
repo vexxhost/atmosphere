@@ -20,6 +20,15 @@ kube_prometheus_stack_helm_release_namespace: monitoring
 kube_prometheus_stack_helm_kubeconfig: "{{ kubeconfig_path | default('/etc/kubernetes/admin.conf') }}"
 kube_prometheus_stack_helm_values: {}
 
+# Jsonnet source for the bundled Prometheus rules. Changing this path replaces
+# all bundled rules and is intended as an advanced escape hatch.
+kube_prometheus_stack_rules_jsonnet_path: "jsonnet/rules.jsonnet"
+
+# Optional Jsonnet source whose resulting additionalPrometheusRulesMap is
+# merged into the bundled rules. A matching top-level key replaces that
+# bundled PrometheusRule resource; unique keys add new resources.
+kube_prometheus_stack_additional_rules_jsonnet_path: null
+
 kube_prometheus_stack_node_exporter_tls_template: "{{ _kube_prometheus_stack_tls_template }}"
 kube_prometheus_stack_node_exporter_config:
   tls_server_config:
