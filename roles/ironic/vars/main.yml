@@ -16,8 +16,6 @@ _ironic_helm_values:
   endpoints: "{{ openstack_helm_endpoints }}"
   images:
     tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('ironic') }}"
-  console:
-    namespace: "{{ ironic_helm_release_namespace }}-ironic-vnc"
   bootstrap:
     image:
       enabled: false
@@ -96,13 +94,7 @@ _ironic_helm_values:
       api: 3
       conductor: 3
   manifests:
-    deployment_novncproxy: true
     ingress_api: false
     service_ingress_api: false
     # NOTE(mnaser): We're managing all the networks via Ansible.
     job_manage_cleaning_network: false
-    namespace_console: true
-    network_policy_console: true
-    role_console_pods: true
-    rolebinding_console_pods: true
-    service_novncproxy: true

@@ -333,10 +333,9 @@ network:
       port: 30690
 
 console:
-  # Namespace for the console Pods and their credential Secrets. Required when
-  # the Kubernetes console provider or its RBAC and NetworkPolicy manifests are
-  # enabled. Set manifests.namespace_console to have the chart create it with
-  # the restricted Pod Security Standard enforced.
+  # Namespace for the console Pods and their credential Secrets. Defaults to
+  # the release namespace with an "-ironic-vnc" suffix. The chart creates it
+  # with the restricted Pod Security Standard enforced.
   namespace: null
   pod:
     annotations: {}
@@ -973,8 +972,8 @@ manifests:
   job_manage_cleaning_network: true
   job_rabbit_init: true
   pdb_api: true
-  namespace_console: false
-  network_policy_console: false
+  namespace_console: true
+  network_policy_console: true
   network_policy: false
   secret_db: true
   secret_keystone: true
@@ -983,8 +982,8 @@ manifests:
   service_api: true
   service_ingress_api: true
   statefulset_conductor: true
-  deployment_novncproxy: false
-  service_novncproxy: false
-  role_console_pods: false
-  rolebinding_console_pods: false
+  deployment_novncproxy: true
+  service_novncproxy: true
+  role_console_pods: true
+  rolebinding_console_pods: true
 ...

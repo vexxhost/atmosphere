@@ -12,7 +12,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */}}
 
-{{- $consoleNamespace := required "console.namespace is required when the Kubernetes console provider is enabled" .Values.console.namespace }}
+{{- $consoleNamespace := .Values.console.namespace | default (printf "%s-ironic-vnc" .Release.Namespace) }}
 
 apiVersion: v1
 kind: Secret

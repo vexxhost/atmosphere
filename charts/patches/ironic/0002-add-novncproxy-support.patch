@@ -1,74 +1,3 @@
-diff --git a/ironic/ci/console-values.yaml b/ironic/ci/console-values.yaml
-new file mode 100644
-index 0000000..dca9ce8
---- /dev/null
-+++ b/ironic/ci/console-values.yaml
-@@ -0,0 +1,55 @@
-+---
-+conf:
-+  ironic:
-+    vnc:
-+      enabled: true
-+      console_image: example.com/ironic-console@sha256:0123456789abcdef
-+
-+console:
-+  namespace: openstack-ironic-console
-+  pod:
-+    annotations:
-+      example.com/console: enabled
-+    imagePullSecrets:
-+      - name: console-registry
-+    nodeSelector:
-+      node-role.kubernetes.io/console: enabled
-+    affinity:
-+      podAntiAffinity:
-+        preferredDuringSchedulingIgnoredDuringExecution: []
-+    tolerations:
-+      - key: node-role.kubernetes.io/console
-+        operator: Exists
-+    topologySpreadConstraints:
-+      - maxSkew: 1
-+        topologyKey: kubernetes.io/hostname
-+        whenUnsatisfiable: ScheduleAnyway
-+        labelSelector:
-+          matchLabels:
-+            app: ironic
-+            component: ironic-console
-+    priorityClassName: system-cluster-critical
-+    runtimeClassName: runc
-+  container:
-+    livenessProbe:
-+      tcpSocket:
-+        port: rfb
-+    securityContext:
-+      allowPrivilegeEscalation: false
-+    env:
-+      - name: CONSOLE_TEST
-+        value: enabled
-+    volumeMounts:
-+      - name: console-scratch
-+        mountPath: /var/lib/ironic-console
-+  volumes:
-+    - name: console-scratch
-+      emptyDir: {}
-+
-+manifests:
-+  deployment_novncproxy: true
-+  network_policy_console: true
-+  role_console_pods: true
-+  rolebinding_console_pods: true
-+  service_novncproxy: true
-+...
-diff --git a/ironic/ci/default-values.yaml b/ironic/ci/default-values.yaml
-new file mode 100644
-index 0000000..bbc2eba
---- /dev/null
-+++ b/ironic/ci/default-values.yaml
-@@ -0,0 +1,4 @@
-+---
-+# Exercise the chart with its default, disabled console configuration.
-+{}
-+...
 diff --git a/ironic/templates/bin/_ironic-novncproxy-init-assets.sh.tpl b/ironic/templates/bin/_ironic-novncproxy-init-assets.sh.tpl
 new file mode 100644
 index 0000000..0929484
@@ -171,7 +100,7 @@ index 8b25336..e0978fd 100644
  {{- end }}
 diff --git a/ironic/templates/deployment-novncproxy.yaml b/ironic/templates/deployment-novncproxy.yaml
 new file mode 100644
-index 0000000..e7b584a
+index 0000000..a048e21
 --- /dev/null
 +++ b/ironic/templates/deployment-novncproxy.yaml
 @@ -0,0 +1,133 @@
@@ -194,7 +123,7 @@ index 0000000..e7b584a
 +  port: {{ tuple "baremetal_vnc_proxy" "internal" "novncproxy" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
 +{{- end }}
 +
-+{{- if .Values.manifests.deployment_novncproxy }}
++{{- if and .Values.manifests.deployment_novncproxy .Values.conf.ironic.vnc.enabled }}
 +{{- $envAll := . }}
 +
 +{{- $mounts_ironic_novncproxy := .Values.pod.mounts.ironic_novncproxy.ironic_novncproxy }}
@@ -310,7 +239,7 @@ index 0000000..e7b584a
 +{{- end }}
 diff --git a/ironic/templates/etc/_ironic-console-pod.yaml.tpl b/ironic/templates/etc/_ironic-console-pod.yaml.tpl
 new file mode 100644
-index 0000000..dd16a27
+index 0000000..26e9156
 --- /dev/null
 +++ b/ironic/templates/etc/_ironic-console-pod.yaml.tpl
 @@ -0,0 +1,127 @@
@@ -328,7 +257,7 @@ index 0000000..dd16a27
 +limitations under the License.
 +*/}}
 +
-+{{- $consoleNamespace := required "console.namespace is required when the Kubernetes console provider is enabled" .Values.console.namespace }}
++{{- $consoleNamespace := .Values.console.namespace | default (printf "%s-ironic-vnc" .Release.Namespace) }}
 +
 +apiVersion: v1
 +kind: Secret
@@ -443,7 +372,7 @@ index 0000000..dd16a27
 +{{- end }}
 diff --git a/ironic/templates/namespace-console.yaml b/ironic/templates/namespace-console.yaml
 new file mode 100644
-index 0000000..5a56a46
+index 0000000..9b364ba
 --- /dev/null
 +++ b/ironic/templates/namespace-console.yaml
 @@ -0,0 +1,25 @@
@@ -461,8 +390,8 @@ index 0000000..5a56a46
 +limitations under the License.
 +*/}}
 +
-+{{- if .Values.manifests.namespace_console }}
-+{{- $consoleNamespace := required "console.namespace is required when the console namespace is enabled" .Values.console.namespace }}
++{{- if and .Values.manifests.namespace_console .Values.conf.ironic.vnc.enabled (eq .Values.conf.ironic.vnc.container_provider "kubernetes") }}
++{{- $consoleNamespace := .Values.console.namespace | default (printf "%s-ironic-vnc" .Release.Namespace) }}
 +---
 +apiVersion: v1
 +kind: Namespace
@@ -474,7 +403,7 @@ index 0000000..5a56a46
 +{{- end }}
 diff --git a/ironic/templates/network-policy-console.yaml b/ironic/templates/network-policy-console.yaml
 new file mode 100644
-index 0000000..cfa23b9
+index 0000000..2e81634
 --- /dev/null
 +++ b/ironic/templates/network-policy-console.yaml
 @@ -0,0 +1,56 @@
@@ -492,8 +421,8 @@ index 0000000..cfa23b9
 +limitations under the License.
 +*/}}
 +
-+{{- if .Values.manifests.network_policy_console }}
-+{{- $consoleNamespace := required "console.namespace is required when the console NetworkPolicy is enabled" .Values.console.namespace }}
++{{- if and .Values.manifests.network_policy_console .Values.conf.ironic.vnc.enabled (eq .Values.conf.ironic.vnc.container_provider "kubernetes") }}
++{{- $consoleNamespace := .Values.console.namespace | default (printf "%s-ironic-vnc" .Release.Namespace) }}
 +---
 +apiVersion: networking.k8s.io/v1
 +kind: NetworkPolicy
@@ -536,7 +465,7 @@ index 0000000..cfa23b9
 +{{- end }}
 diff --git a/ironic/templates/role-console-pods.yaml b/ironic/templates/role-console-pods.yaml
 new file mode 100644
-index 0000000..fa9b052
+index 0000000..220576b
 --- /dev/null
 +++ b/ironic/templates/role-console-pods.yaml
 @@ -0,0 +1,30 @@
@@ -554,8 +483,8 @@ index 0000000..fa9b052
 +limitations under the License.
 +*/}}
 +
-+{{- if .Values.manifests.role_console_pods }}
-+{{- $consoleNamespace := required "console.namespace is required when console Pod RBAC is enabled" .Values.console.namespace }}
++{{- if and .Values.manifests.role_console_pods .Values.conf.ironic.vnc.enabled (eq .Values.conf.ironic.vnc.container_provider "kubernetes") }}
++{{- $consoleNamespace := .Values.console.namespace | default (printf "%s-ironic-vnc" .Release.Namespace) }}
 +---
 +apiVersion: rbac.authorization.k8s.io/v1
 +kind: Role
@@ -572,7 +501,7 @@ index 0000000..fa9b052
 +{{- end }}
 diff --git a/ironic/templates/rolebinding-console-pods.yaml b/ironic/templates/rolebinding-console-pods.yaml
 new file mode 100644
-index 0000000..55b2a91
+index 0000000..9c66e74
 --- /dev/null
 +++ b/ironic/templates/rolebinding-console-pods.yaml
 @@ -0,0 +1,31 @@
@@ -590,8 +519,8 @@ index 0000000..55b2a91
 +limitations under the License.
 +*/}}
 +
-+{{- if .Values.manifests.rolebinding_console_pods }}
-+{{- $consoleNamespace := required "console.namespace is required when console Pod RBAC is enabled" .Values.console.namespace }}
++{{- if and .Values.manifests.rolebinding_console_pods .Values.conf.ironic.vnc.enabled (eq .Values.conf.ironic.vnc.container_provider "kubernetes") }}
++{{- $consoleNamespace := .Values.console.namespace | default (printf "%s-ironic-vnc" .Release.Namespace) }}
 +---
 +apiVersion: rbac.authorization.k8s.io/v1
 +kind: RoleBinding
@@ -609,7 +538,7 @@ index 0000000..55b2a91
 +{{- end }}
 diff --git a/ironic/templates/service-novncproxy.yaml b/ironic/templates/service-novncproxy.yaml
 new file mode 100644
-index 0000000..7779bc2
+index 0000000..e657b40
 --- /dev/null
 +++ b/ironic/templates/service-novncproxy.yaml
 @@ -0,0 +1,34 @@
@@ -627,7 +556,7 @@ index 0000000..7779bc2
 +limitations under the License.
 +*/}}
 +
-+{{- if .Values.manifests.service_novncproxy }}
++{{- if and .Values.manifests.service_novncproxy .Values.conf.ironic.vnc.enabled }}
 +{{- $envAll := . }}
 +---
 +apiVersion: v1
@@ -665,7 +594,7 @@ index 920d4af..0710f32 100644
                mountPath: /var/lib/ironic
              - name: host-run
 diff --git a/ironic/values.yaml b/ironic/values.yaml
-index 2228bfc..c3f998d 100644
+index 2228bfc..5a985b2 100644
 --- a/ironic/values.yaml
 +++ b/ironic/values.yaml
 @@ -27,6 +27,12 @@ labels:
@@ -707,7 +636,7 @@ index 2228bfc..c3f998d 100644
      oslo_policy:
        policy_file: /etc/ironic/policy.yaml
    logging:
-@@ -302,6 +320,90 @@ network:
+@@ -302,6 +320,89 @@ network:
      node_port:
        enabled: false
        port: 30511
@@ -724,10 +653,9 @@ index 2228bfc..c3f998d 100644
 +      port: 30690
 +
 +console:
-+  # Namespace for the console Pods and their credential Secrets. Required when
-+  # the Kubernetes console provider or its RBAC and NetworkPolicy manifests are
-+  # enabled. Set manifests.namespace_console to have the chart create it with
-+  # the restricted Pod Security Standard enforced.
++  # Namespace for the console Pods and their credential Secrets. Defaults to
++  # the release namespace with an "-ironic-vnc" suffix. The chart creates it
++  # with the restricted Pod Security Standard enforced.
 +  namespace: null
 +  pod:
 +    annotations: {}
@@ -798,7 +726,7 @@ index 2228bfc..c3f998d 100644
  
  bootstrap:
    image:
-@@ -378,6 +480,19 @@ dependencies:
+@@ -378,6 +479,19 @@ dependencies:
            service: baremetal
          - endpoint: internal
            service: oslo_messaging
@@ -818,7 +746,7 @@ index 2228bfc..c3f998d 100644
      db_drop:
        services:
          - endpoint: internal
-@@ -623,6 +738,21 @@ endpoints:
+@@ -623,6 +737,21 @@ endpoints:
      port:
        api:
          default: 8088
@@ -840,7 +768,7 @@ index 2228bfc..c3f998d 100644
    fluentd:
      namespace: null
      name: fluentd
-@@ -658,6 +788,21 @@ pod:
+@@ -658,6 +787,21 @@ pod:
          - key: node-role.kubernetes.io/control-plane
            operator: Exists
            effect: NoSchedule
@@ -862,7 +790,7 @@ index 2228bfc..c3f998d 100644
    mounts:
      ironic_api:
        init_container: null
-@@ -678,9 +823,15 @@ pod:
+@@ -678,9 +822,15 @@ pod:
        ironic_db_sync:
          volumeMounts:
          volumes:
@@ -878,7 +806,7 @@ index 2228bfc..c3f998d 100644
    lifecycle:
      upgrades:
        deployments:
-@@ -692,9 +843,13 @@ pod:
+@@ -692,9 +842,13 @@ pod:
      disruption_budget:
        api:
          min_available: 0
@@ -892,7 +820,7 @@ index 2228bfc..c3f998d 100644
    resources:
      enabled: false
      api:
-@@ -711,6 +866,13 @@ pod:
+@@ -711,6 +865,13 @@ pod:
        limits:
          memory: "1024Mi"
          cpu: "2000m"
@@ -906,7 +834,7 @@ index 2228bfc..c3f998d 100644
      jobs:
        bootstrap:
          requests:
-@@ -784,6 +946,7 @@ pod:
+@@ -784,6 +945,7 @@ pod:
            cpu: "2000m"
    useHostNetwork:
      conductor: true
@@ -914,21 +842,21 @@ index 2228bfc..c3f998d 100644
    useHostIPC:
      conductor: true
  
-@@ -810,6 +973,8 @@ manifests:
+@@ -810,6 +972,8 @@ manifests:
    job_manage_cleaning_network: true
    job_rabbit_init: true
    pdb_api: true
-+  namespace_console: false
-+  network_policy_console: false
++  namespace_console: true
++  network_policy_console: true
    network_policy: false
    secret_db: true
    secret_keystone: true
-@@ -818,4 +983,8 @@ manifests:
+@@ -818,4 +982,8 @@ manifests:
    service_api: true
    service_ingress_api: true
    statefulset_conductor: true
-+  deployment_novncproxy: false
-+  service_novncproxy: false
-+  role_console_pods: false
-+  rolebinding_console_pods: false
++  deployment_novncproxy: true
++  service_novncproxy: true
++  role_console_pods: true
++  rolebinding_console_pods: true
  ...

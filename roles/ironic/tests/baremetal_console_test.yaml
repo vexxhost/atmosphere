@@ -53,12 +53,6 @@ tests:
             enabled: true
             public_url: http://baremetal-console.example.com/vnc_auto.html
             console_image: example.com/ironic-console:latest
-      manifests:
-        deployment_novncproxy: true
-        service_novncproxy: true
-        role_console_pods: true
-        rolebinding_console_pods: true
-        network_policy_console: true
     asserts:
       - template: templates/configmap-bin.yaml
         documentIndex: 0
@@ -186,16 +180,21 @@ tests:
           value: novnc-proxy
 
   - it: should create a restricted console namespace with egress limits
+    release:
+      namespace: openstack
     templates:
       - templates/namespace-console.yaml
       - templates/network-policy-console.yaml
     set:
-      console:
-        namespace: test-console-ns
-      manifests:
-        namespace_console: true
-        network_policy_console: true
+      conf:
+        ironic:
+          vnc:
+            enabled: true
     asserts:
+      - template: templates/namespace-console.yaml
+        equal:
+          path: metadata.name
+          value: openstack-ironic-vnc
       - template: templates/namespace-console.yaml
         equal:
           path: metadata.labels["pod-security.kubernetes.io/enforce"]

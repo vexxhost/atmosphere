@@ -17,7 +17,7 @@ tcpSocket:
   port: {{ tuple "baremetal_vnc_proxy" "internal" "novncproxy" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
 {{- end }}
 
-{{- if .Values.manifests.deployment_novncproxy }}
+{{- if and .Values.manifests.deployment_novncproxy .Values.conf.ironic.vnc.enabled }}
 {{- $envAll := . }}
 
 {{- $mounts_ironic_novncproxy := .Values.pod.mounts.ironic_novncproxy.ironic_novncproxy }}
