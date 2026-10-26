@@ -51,8 +51,9 @@ spec:
   imagePullSecrets:
 {{ toYaml . | indent 4 }}
 {{- end }}
-{{- with .Values.console.pod.nodeSelector }}
   nodeSelector:
+    {{ .Values.labels.console.node_selector_key }}: {{ .Values.labels.console.node_selector_value | quote }}
+{{- with .Values.console.pod.nodeSelector }}
 {{ toYaml . | indent 4 }}
 {{- end }}
 {{- with .Values.console.pod.affinity }}

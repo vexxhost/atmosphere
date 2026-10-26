@@ -17,21 +17,7 @@ _ironic_helm_values:
   images:
     tags: "{{ atmosphere_images | vexxhost.atmosphere.openstack_helm_image_tags('ironic') }}"
   console:
-    namespace: "{{ _ironic_console_namespace }}"
-    pod:
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 42424
-        runAsGroup: 42424
-        seccompProfile:
-          type: RuntimeDefault
-    container:
-      securityContext:
-        allowPrivilegeEscalation: false
-        privileged: false
-        capabilities:
-          drop:
-            - ALL
+    namespace: "{{ ironic_helm_release_namespace }}-ironic-vnc"
   bootstrap:
     image:
       enabled: false
@@ -115,12 +101,8 @@ _ironic_helm_values:
     service_ingress_api: false
     # NOTE(mnaser): We're managing all the networks via Ansible.
     job_manage_cleaning_network: false
+    namespace_console: true
     network_policy_console: true
     role_console_pods: true
     rolebinding_console_pods: true
     service_novncproxy: true
-
-# Namespace for the console Pods and their credential Secrets, kept separate so
-# ironic-conductor's access is limited to them and the Pods can be locked down
-# with the restricted Pod Security Standard.
-_ironic_console_namespace: "{{ ironic_helm_release_namespace }}-ironic-vnc"

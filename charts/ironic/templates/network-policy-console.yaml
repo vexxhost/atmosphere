@@ -27,6 +27,9 @@ spec:
       component: ironic-console
   policyTypes:
     - Ingress
+{{- if .Values.console.egress }}
+    - Egress
+{{- end }}
   ingress:
     - from:
         - namespaceSelector:
@@ -46,4 +49,8 @@ spec:
       ports:
         - protocol: TCP
           port: 5900
+{{- with .Values.console.egress }}
+  egress:
+{{ toYaml . | indent 4 }}
+{{- end }}
 {{- end }}

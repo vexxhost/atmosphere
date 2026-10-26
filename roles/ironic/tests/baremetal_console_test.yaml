@@ -44,7 +44,6 @@ tests:
     set:
       images:
         tags:
-          ironic_kubectl: example.com/kubectl@sha256:fedcba9876543210
           ironic_novncproxy_assets: example.com/novnc-assets@sha256:0123456789abcdef
       console:
         namespace: test-console-runtime
@@ -98,28 +97,8 @@ tests:
       - template: templates/statefulset-conductor.yaml
         documentIndex: 3
         equal:
-          path: spec.template.spec.initContainers[1].name
-          value: ironic-conductor-kubectl-init
-      - template: templates/statefulset-conductor.yaml
-        documentIndex: 3
-        equal:
-          path: spec.template.spec.initContainers[1].image
-          value: example.com/kubectl@sha256:fedcba9876543210
-      - template: templates/statefulset-conductor.yaml
-        documentIndex: 3
-        equal:
-          path: spec.template.spec.initContainers[1].command[2]
-          value: cp "$(command -v kubectl)" /tmp/kubectl/kubectl
-      - template: templates/statefulset-conductor.yaml
-        documentIndex: 3
-        equal:
           path: spec.template.spec.containers[0].volumeMounts[7].mountPath
           value: /etc/ironic/ironic-console-pod.yaml
-      - template: templates/statefulset-conductor.yaml
-        documentIndex: 3
-        equal:
-          path: spec.template.spec.containers[0].volumeMounts[8].mountPath
-          value: /usr/local/bin/kubectl
       - template: templates/service-novncproxy.yaml
         documentIndex: 0
         equal:
@@ -205,3 +184,29 @@ tests:
         equal:
           path: spec.ingress[0].from[1].podSelector.matchLabels.component
           value: novnc-proxy
+
+  - it: should create a restricted console namespace with egress limits
+    templates:
+      - templates/namespace-console.yaml
+      - templates/network-policy-console.yaml
+    set:
+      console:
+        namespace: test-console-ns
+      manifests:
+        namespace_console: true
+        network_policy_console: true
+    asserts:
+      - template: templates/namespace-console.yaml
+        equal:
+          path: metadata.labels["pod-security.kubernetes.io/enforce"]
+          value: restricted
+      - template: templates/network-policy-console.yaml
+        contains:
+          path: spec.policyTypes
+          content: Egress
+      - template: templates/network-policy-console.yaml
+        contains:
+          path: spec.egress[1].ports
+          content:
+            protocol: TCP
+            port: 443
