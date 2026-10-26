@@ -1,12 +1,7 @@
 ---
 features:
   - |
-    Adds opt-in Nova remote console support for bare metal instances. The Nova
-    role can deploy ``nova-compute-ironic`` with the Ironic VNC state timeout,
-    select digest-pinned noVNC assets, and allow ``nova-novncproxy`` to reach
-    dynamic Ironic console provider Pods.
-security:
-  - |
-    Enables the dynamic console provider NetworkPolicy by default whenever
-    Ironic graphical consoles are enabled. Both Ironic and Nova noVNC proxies
-    are admitted to the RFB backend port.
+    The Ironic graphical console NetworkPolicy now also admits
+    ``nova-novncproxy``, so bare metal instances can use Nova's standard remote
+    console API when ``nova-compute-ironic`` is enabled and its image includes
+    the Ironic VNC console driver.
