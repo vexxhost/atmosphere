@@ -70,6 +70,13 @@ _kube_prometheus_stack_helm_values:
           target_matchers:
             - alertname = "CoreDNSLowErrorBudgetBurn"
         - source_matchers:
+            - alertname = "NodeFilesystemMountsVeryHigh"
+          target_matchers:
+            - alertname = "NodeFilesystemMountsHigh"
+          equal:
+            - instance
+            - job
+        - source_matchers:
             - alertname = "SmartctlDiskUnhealthy"
           target_matchers:
             - alertname =~ "SmartctlDisk(CriticalWarning|AvailableSpareLow|WearoutCritical|WearoutWarning|PendingSectorsGrowing|UncorrectableSectorsGrowing|MediaErrorsGrowing|ReallocatedSectorsGrowing|TemperatureHigh|SelfTestFailed|AttributeFailing|ScsiUncorrectedErrors|ScsiGrownDefectsGrowing)"
