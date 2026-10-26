@@ -13,16 +13,7 @@ Open a console on a bare metal instance
 =======================================
 
 Users open consoles for their bare metal instances through Nova, the same way
-they do for virtual machines. This requires ``nova-compute-ironic``, which is
-not deployed by default. Enable it with:
-
-.. code-block:: yaml
-
-    nova_helm_values:
-      manifests:
-        statefulset_compute_ironic: true
-
-Users can then get a console URL for a bare metal instance:
+they do for virtual machines:
 
 .. code-block:: console
 

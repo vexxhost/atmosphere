@@ -67,20 +67,6 @@ spec:
       terminationGracePeriodSeconds: {{ .Values.pod.lifecycle.termination_grace_period.novncproxy.timeout | default "30" }}
       initContainers:
 {{ tuple $envAll "novncproxy" $mounts_ironic_novncproxy_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
-        - name: ironic-novncproxy-init-assets
-{{ tuple $envAll "ironic_novncproxy_assets" | include "helm-toolkit.snippets.image" | indent 10 }}
-{{ tuple $envAll $envAll.Values.pod.resources.novncproxy | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
-          command:
-            - /tmp/ironic-novncproxy-init-assets.sh
-          volumeMounts:
-            - name: pod-tmp
-              mountPath: /tmp
-            - name: ironic-bin
-              mountPath: /tmp/ironic-novncproxy-init-assets.sh
-              subPath: ironic-novncproxy-init-assets.sh
-              readOnly: true
-            - name: pod-usr-share-novnc
-              mountPath: /tmp/usr/share/novnc
       containers:
         - name: ironic-novncproxy
 {{ tuple $envAll "ironic_novncproxy" | include "helm-toolkit.snippets.image" | indent 10 }}
@@ -112,9 +98,6 @@ spec:
               mountPath: /etc/ironic/policy.yaml
               subPath: policy.yaml
               readOnly: true
-            - name: pod-usr-share-novnc
-              mountPath: /usr/share/novnc
-              readOnly: true
 {{ if $mounts_ironic_novncproxy.volumeMounts }}{{ toYaml $mounts_ironic_novncproxy.volumeMounts | indent 12 }}{{ end }}
       volumes:
         - name: pod-tmp
@@ -123,8 +106,6 @@ spec:
           configMap:
             name: ironic-bin
             defaultMode: 0555
-        - name: pod-usr-share-novnc
-          emptyDir: {}
         - name: ironic-etc
           secret:
             secretName: ironic-etc

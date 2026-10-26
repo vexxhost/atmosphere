@@ -33,7 +33,6 @@ tests:
     release:
       namespace: test-console
     templates:
-      - templates/configmap-bin.yaml
       - templates/configmap-etc.yaml
       - templates/deployment-novncproxy.yaml
       - templates/service-novncproxy.yaml
@@ -42,23 +41,15 @@ tests:
       - templates/network-policy-console.yaml
       - templates/statefulset-conductor.yaml
     set:
-      images:
-        tags:
-          ironic_novncproxy_assets: example.com/novnc-assets@sha256:0123456789abcdef
       console:
         namespace: test-console-runtime
       conf:
         ironic:
           vnc:
             enabled: true
-            public_url: http://baremetal-console.example.com/vnc_auto.html
+            public_url: http://ironic-novncproxy.test-console.svc:6090/vnc_lite.html
             console_image: example.com/ironic-console:latest
     asserts:
-      - template: templates/configmap-bin.yaml
-        documentIndex: 0
-        matchRegex:
-          path: data["ironic-novncproxy-init-assets.sh"]
-          pattern: 'cp -vaRf /usr/share/novnc'
       - template: templates/deployment-novncproxy.yaml
         documentIndex: 3
         equal:
@@ -71,9 +62,9 @@ tests:
           value: novncproxy
       - template: templates/deployment-novncproxy.yaml
         documentIndex: 3
-        equal:
-          path: spec.template.spec.initContainers[1].image
-          value: example.com/novnc-assets@sha256:0123456789abcdef
+        lengthEqual:
+          path: spec.template.spec.initContainers
+          count: 1
       - template: templates/deployment-novncproxy.yaml
         documentIndex: 3
         equal:
