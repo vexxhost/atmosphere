@@ -5,6 +5,8 @@ Monitoring and operations
 Atmosphere includes a Grafana deployment with dashboards created by default and
 a Prometheus deployment that collects metrics from the cluster and sends alerts
 to Alertmanager. Loki also collects logs from the cluster using Vector.
+The default dashboards include an OpenStack deployment capacity view that uses
+Placement metrics to show schedulable vCPU, RAM, and disk capacity.
 
 ******************************
 Philosophy and alerting levels
@@ -186,6 +188,10 @@ To manage Grafana dashboards through Helm, include the dashboard definitions
 within your configuration file. This approach enables version-controlled
 dashboard configurations that you can replicate across different deployments
 without manual intervention.
+
+Atmosphere also ships default Grafana dashboard ``ConfigMap`` objects from the
+``kube_prometheus_stack`` role. These dashboards are loaded by Grafana's
+dashboard sidecar when the monitoring stack is deployed.
 
 For example, you can define a dashboard in the Helm values like this:
 
