@@ -38,14 +38,17 @@
         - barbican
 
     - role: rook_ceph
+      when: _atmosphere_storage_config | vexxhost.atmosphere.storage_uses_ceph
       tags:
         - rook-ceph
 
     - role: rook_ceph_cluster
+      when: _atmosphere_storage_config | vexxhost.atmosphere.storage_uses_ceph
       tags:
         - rook-ceph-cluster
 
     - role: ceph_provisioners
+      when: _atmosphere_storage_config | vexxhost.atmosphere.storage_uses_ceph
       tags:
         - ceph-provisioners
 
