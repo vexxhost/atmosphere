@@ -55,6 +55,27 @@
   ansible.builtin.set_fact:
     _neutron_helm_values: "{{ _neutron_helm_values | combine(__neutron_policy_server_helm_values, recursive=True) }}"
 
+- name: Fail if policy overrides still use the removed policy server sidecar
+  vars:
+    _neutron_sidecar_policy_rules: >-
+      {{
+        (neutron_helm_values.conf | default({})).policy | default({})
+        | dict2items
+        | selectattr('value', 'string')
+        | selectattr('value', 'search', ':9697')
+        | map(attribute='key')
+        | list
+      }}
+  ansible.builtin.assert:
+    that:
+      - _neutron_sidecar_policy_rules | length == 0
+    fail_msg: >-
+      The Neutron policy server no longer runs as a sidecar on port 9697. Replace
+      the http://neutron-server:9697/... checks in these policy rules with the
+      in-process checks (address_pair, port_update, port_delete or quarantine):
+      {{ _neutron_sidecar_policy_rules | join(', ') }}
+    quiet: true
+
 - name: Deploy Helm chart
   run_once: true
   kubernetes.core.helm:
