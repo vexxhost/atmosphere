@@ -1,4 +1,8 @@
 ---
+features:
+  - |
+    The new ``keycloak_features`` variable enables additional Keycloak
+    features on top of the ones that Keycloak enables by default.
 security:
   - |
     Keycloak is upgraded from ``24.0.5`` to ``26.8.1``, which includes all
@@ -14,8 +18,12 @@ upgrade:
     ``9000``.
   - |
     The legacy token exchange and version 1 of fine-grained admin permissions
-    stay enabled, so exchanging tokens from an external identity provider
-    keeps working as before.
+    are no longer enabled, since Keycloak has deprecated both. Integrations
+    that exchange tokens from an external identity provider should move to
+    federated client authentication or the JWT authorization grant, as
+    described in the authentication guide. To keep the legacy token exchange
+    working during the move, set ``keycloak_features`` to
+    ``token-exchange:v1`` and ``admin-fine-grained-authz:v1``.
   - |
     The ``community.general`` collection is upgraded to ``11.4.9``, which
     requires ``ansible-core`` 2.16 or later.
