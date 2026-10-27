@@ -12,7 +12,24 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-- name: Install openstacksdk
+- name: Install openstacksdk using package manager
+  when: >-
+    (ansible_facts['distribution'] == 'Ubuntu'
+    and ansible_facts['distribution_major_version'] is version('22', '>'))
+    or (ansible_facts['distribution'] == 'Debian'
+    and ansible_facts['distribution_major_version'] is version('12', '>'))
+  ansible.builtin.package:
+    name: python3-openstacksdk
+    state: present
+
+- name: Install openstacksdk using pip
+  when: >-
+    not (
+      (ansible_facts['distribution'] == 'Ubuntu'
+      and ansible_facts['distribution_major_version'] is version('22', '>'))
+      or (ansible_facts['distribution'] == 'Debian'
+      and ansible_facts['distribution_major_version'] is version('12', '>'))
+    )
   ansible.builtin.pip:
     name: >-
       {{ 'openstacksdk==' + openstacksdk_version
