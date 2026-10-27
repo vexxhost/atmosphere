@@ -26,8 +26,19 @@ _keycloak_helm_values:
   #                        we have to define jdbc connection string explicitly along side
   #                        `externalDatabase` helm values.
   extraEnvVars:
+    # NOTE(mnaser): External to internal token exchange is only implemented by
+    #               the legacy token exchange, which requires the v1 version of
+    #               fine-grained admin permissions. Both are pinned explicitly
+    #               since the unversioned names resolve to newer versions.
     - name: KC_FEATURES
-      value: "token-exchange,admin-fine-grained-authz"
+      value: "token-exchange:v1,admin-fine-grained-authz:v1"
+    - name: KC_BOOTSTRAP_ADMIN_USERNAME
+      value: "{{ keycloak_admin_username }}"
+    - name: KC_BOOTSTRAP_ADMIN_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          key: admin-password
+          name: "{{ keycloak_helm_release_name }}"
     - name: KC_PROXY_HEADERS
       value: xforwarded
     - name: KC_DB
@@ -50,8 +61,8 @@ _keycloak_helm_values:
     - --http-port=8080
     - --proxy-headers=xforwarded
     - --hostname-strict=false
-    - --spi-events-listener-jboss-logging-success-level=info
-    - --spi-events-listener-jboss-logging-error-level=warn
+    - --spi-events-listener--jboss-logging--success-level=info
+    - --spi-events-listener--jboss-logging--error-level=warn
     - --transaction-xa-enabled=false
     - --metrics-enabled=true
   auth:

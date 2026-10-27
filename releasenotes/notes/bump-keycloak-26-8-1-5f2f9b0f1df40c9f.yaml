@@ -1,0 +1,27 @@
+---
+security:
+  - |
+    Keycloak is upgraded from ``24.0.5`` to ``26.8.1``, which includes all
+    upstream security fixes released since the previous version.
+upgrade:
+  - |
+    The Keycloak database schema is migrated automatically when the new
+    version starts, and the migration can't be reversed. Take a backup of the
+    Keycloak database before upgrading so that you can roll back if needed.
+    Users need to sign in again after the upgrade.
+  - |
+    Keycloak metrics are now scraped from the management interface on port
+    ``9000``.
+  - |
+    The legacy token exchange and version 1 of fine-grained admin permissions
+    stay enabled, so exchanging tokens from an external identity provider
+    keeps working as before.
+  - |
+    The ``community.general`` collection is upgraded to ``11.4.9``, which
+    requires ``ansible-core`` 2.16 or later.
+fixes:
+  - |
+    Strict mode on the database cluster is now relaxed and restored on every
+    node while Keycloak is deployed, instead of only on the node that serves
+    the connection. A mismatch between nodes could evict a database node from
+    the cluster during a Keycloak schema migration.
