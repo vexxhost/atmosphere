@@ -53,20 +53,6 @@ The examples below use the following placeholders:
   ``atmosphere`` by default.
 - ``<OIDC_TOKEN>``: The token issued by your identity provider.
 
-.. note::
-
-   Previous versions enabled the legacy token exchange
-   (``grant_type=urn:ietf:params:oauth:grant-type:token-exchange``) for this
-   purpose. Keycloak has deprecated it, and it's no longer enabled by default.
-   To keep existing integrations working while you move them to one of the
-   methods below, enable it again with the ``keycloak_features`` variable:
-
-   .. code-block:: yaml
-
-      keycloak_features:
-        - token-exchange:v1
-        - admin-fine-grained-authz:v1
-
 Configure the identity provider
 ===============================
 
