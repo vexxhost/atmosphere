@@ -60,3 +60,42 @@ on control plane nodes as a non-root user without a service account token.
 Only the Ironic and Nova console proxies can connect to them, and they can
 only make outbound DNS and HTTP(S) connections, so the BMC web interface must
 be reachable on port 80 or 443.
+
+Restrict web traffic to BMC networks
+----------------------------------
+
+The default egress rules allow HTTP(S) to any destination. To prevent console
+Pods from reaching unrelated web services, override ``console.egress`` with
+the BMC management subnets. For example, replace ``192.0.2.0/24`` below with
+your BMC network:
+
+.. code-block:: yaml
+
+    ironic_helm_values:
+      console:
+        egress:
+          - to:
+              - namespaceSelector:
+                  matchLabels:
+                    kubernetes.io/metadata.name: kube-system
+                podSelector:
+                  matchLabels:
+                    k8s-app: kube-dns
+            ports:
+              - protocol: UDP
+                port: 53
+              - protocol: TCP
+                port: 53
+          - to:
+              - ipBlock:
+                  cidr: 192.0.2.0/24
+            ports:
+              - protocol: TCP
+                port: 80
+              - protocol: TCP
+                port: 443
+
+This list replaces the default rules, so retain DNS access when the BMC
+addresses use hostnames. For a BMC emulator running in Kubernetes, select
+its namespace and Pods instead of using an IP block, and allow the port
+used by those Pods.
