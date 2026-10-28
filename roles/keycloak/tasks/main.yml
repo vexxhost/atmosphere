@@ -60,37 +60,68 @@
     host: "%"
     priv: "{{ keycloak_database_name }}.*:ALL"
 
-- name: Disable pxc strict mode
+# NOTE(mnaser): Keycloak schema migrations write to tables without a primary
+#               key, which strict mode rejects. The mode must match on every
+#               node, otherwise a statement replicated to the cluster can
+#               succeed on one node and fail on the others, which evicts the
+#               node that ran it from the cluster.
+- name: Get the Percona XtraDB Cluster pods
   run_once: true
-  community.mysql.mysql_query:
-    login_host: "{{ _pxc_service.resources[0].spec.clusterIP }}"
-    login_user: root
-    login_password: "{{ openstack_helm_endpoints.oslo_db.auth.admin.password }}"
-    query: "set global pxc_strict_mode='PERMISSIVE'"
-
-- name: Deploy Helm chart
-  run_once: true
-  kubernetes.core.helm:
-    name: "{{ keycloak_helm_release_name }}"
-    chart_ref: "{{ keycloak_helm_chart_ref }}"
-    release_namespace: "{{ keycloak_helm_release_namespace }}"
-    create_namespace: true
-    kubeconfig: /etc/kubernetes/admin.conf
-    wait: true
-    timeout: "{{ keycloak_helm_timeout }}"
-    values: "{{ _keycloak_helm_values | combine(keycloak_helm_values, recursive=True) }}"
-
-- name: Wait until keycloak ready
   kubernetes.core.k8s_info:
-    api_version: apps/v1
-    kind: StatefulSet
-    name: "{{ keycloak_helm_release_name }}"
-    namespace: "{{ keycloak_helm_release_namespace }}"
-  register: _keycloak_sts
-  retries: 120
-  delay: 5
-  until:
-    - _keycloak_sts.resources[0].status.replicas == _keycloak_sts.resources[0].status.readyReplicas
+    kind: Pod
+    namespace: openstack
+    label_selectors:
+      - app.kubernetes.io/component=pxc
+      - app.kubernetes.io/instance=percona-xtradb
+  register: _pxc_pods
+
+- name: Deploy Keycloak with relaxed strict mode
+  block:
+    - name: Disable pxc strict mode
+      run_once: true
+      community.mysql.mysql_query:
+        login_host: "{{ item.status.podIP }}"
+        login_user: root
+        login_password: "{{ openstack_helm_endpoints.oslo_db.auth.admin.password }}"
+        query: "set global pxc_strict_mode='PERMISSIVE'"
+      loop: "{{ _pxc_pods.resources }}"
+      loop_control:
+        label: "{{ item.metadata.name }}"
+
+    - name: Deploy Helm chart
+      run_once: true
+      kubernetes.core.helm:
+        name: "{{ keycloak_helm_release_name }}"
+        chart_ref: "{{ keycloak_helm_chart_ref }}"
+        release_namespace: "{{ keycloak_helm_release_namespace }}"
+        create_namespace: true
+        kubeconfig: /etc/kubernetes/admin.conf
+        wait: true
+        timeout: "{{ keycloak_helm_timeout }}"
+        values: "{{ _keycloak_helm_values | combine(keycloak_helm_values, recursive=True) }}"
+
+    - name: Wait until keycloak ready
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: StatefulSet
+        name: "{{ keycloak_helm_release_name }}"
+        namespace: "{{ keycloak_helm_release_namespace }}"
+      register: _keycloak_sts
+      retries: 120
+      delay: 5
+      until:
+        - _keycloak_sts.resources[0].status.replicas == _keycloak_sts.resources[0].status.readyReplicas
+  always:
+    - name: Enable pxc strict mode
+      run_once: true
+      community.mysql.mysql_query:
+        login_host: "{{ item.status.podIP }}"
+        login_user: root
+        login_password: "{{ openstack_helm_endpoints.oslo_db.auth.admin.password }}"
+        query: "set global pxc_strict_mode='MASTER'"
+      loop: "{{ _pxc_pods.resources }}"
+      loop_control:
+        label: "{{ item.metadata.name }}"
 
 - name: Create Keycloak Ingress
   ansible.builtin.include_role:
@@ -104,11 +135,3 @@
     ingress_service_port: 80
     ingress_secret_name: "{{ keycloak_host_tls_secret_name }}"
     ingress_annotations: "{{ _keycloak_ingress_annotations | combine(keycloak_ingress_annotations, recursive=True) }}"
-
-- name: Enable pxc strict mode
-  run_once: true
-  community.mysql.mysql_query:
-    login_host: "{{ _pxc_service.resources[0].spec.clusterIP }}"
-    login_user: root
-    login_password: "{{ openstack_helm_endpoints.oslo_db.auth.admin.password }}"
-    query: "set global pxc_strict_mode='MASTER'"
