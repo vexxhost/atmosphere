@@ -103,7 +103,8 @@ round trip. They are referenced in the Neutron policy file like this:
      - Block deleting a port that another port uses as an allowed address pair.
    * - ``quarantine:security_group=quarantine``
      - Block project members from changing the security groups, allowed address
-       pairs or port security of a quarantined port.
+       pairs or port security of a quarantined port. Disabled by default, see
+       `Quarantining an instance`_.
 
 With ``strict=0``, the address pair checks compare only IP addresses and ignore
 MAC addresses.
@@ -115,6 +116,18 @@ deployment configuration.
 
 Quarantining an instance
 ========================
+
+Quarantine is disabled by default. To enable it, set the following variable in
+the deployment configuration:
+
+.. code-block:: yaml
+
+   neutron_policy_server_quarantine_enabled: true
+
+Enabling quarantine sets the Neutron ``update_port`` policy to Neutron's default
+rule with the ``quarantine`` check added for project members. If you already
+override ``update_port`` in ``neutron_helm_values``, your rule takes precedence,
+so add ``quarantine:security_group=quarantine`` to it yourself.
 
 A port is quarantined when it has a security group named ``quarantine`` that
 belongs to a different project than the port. Project members cannot attach
