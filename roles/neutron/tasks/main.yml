@@ -55,6 +55,13 @@
   ansible.builtin.set_fact:
     _neutron_helm_values: "{{ _neutron_helm_values | combine(__neutron_policy_server_helm_values, recursive=True) }}"
 
+- name: Append Helm values (neutron_policy_server quarantine)
+  when:
+    - neutron_policy_server_integration_enabled | bool
+    - neutron_policy_server_quarantine_enabled | bool
+  ansible.builtin.set_fact:
+    _neutron_helm_values: "{{ _neutron_helm_values | combine(__neutron_policy_server_quarantine_helm_values, recursive=True) }}"
+
 - name: Fail if policy overrides still use the removed policy server sidecar
   vars:
     _neutron_sidecar_policy_rules: >-
