@@ -3,8 +3,11 @@ features:
   - |
     Administrators can quarantine an instance by replacing the security groups
     on its ports with an administrative security group named ``quarantine``
-    and locking it. Project members can no longer change the security groups,
-    allowed address pairs or port security of a quarantined port.
+    and locking it. Project members then can't change the security groups,
+    allowed address pairs or port security of a quarantined port. Quarantine is
+    disabled by default. Set ``neutron_policy_server_quarantine_enabled`` to
+    ``true`` to enable it, which sets the Neutron ``update_port`` policy to
+    Neutron's default rule with the quarantine check added.
 upgrade:
   - |
     The Neutron policy server checks now run inside the Neutron API server, and
