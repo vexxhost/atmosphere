@@ -7,4 +7,5 @@ Configuration Guide
 
    ingress
    horizon
+   libvirt
    rabbitmq
