@@ -81,8 +81,9 @@ begins on the destination host, so the guest arrives with only the DAC label:
              if __name__ == "__main__":
                  sys.exit(main())
 
-The chart renders each script as a Helm template, so escape any literal
-``{{`` sequences in your scripts.
+The chart renders each script as a Helm template with the chart context, so
+scripts can reference values such as ``{{ .Release.Namespace }}``. Escape any
+literal ``{{`` sequences in your scripts.
 
 .. note::
 

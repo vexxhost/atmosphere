@@ -1,0 +1,27 @@
+From: Mohammed Naser <mnaser@vexxhost.com>
+Subject: [PATCH] [libvirt] Render hook scripts with the chart context
+
+The hook scripts were rendered with "tpl $v .", where "." is the script
+string inside the range loop. Helm 3 requires the second argument of
+tpl to be the chart values and fails with:
+
+  wrong type for value; expected chartutil.Values; got string
+
+Pass $envAll instead. Scripts can now reference .Values and .Release.
+
+Drop this patch once the chart is bumped to a release that includes
+the fix.
+---
+diff --git a/libvirt/templates/configmap-bin.yaml b/libvirt/templates/configmap-bin.yaml
+index 0ff74c9..bf0ab50 100644
+--- a/libvirt/templates/configmap-bin.yaml
++++ b/libvirt/templates/configmap-bin.yaml
+@@ -41,7 +41,7 @@ data:
+ {{- if .Values.conf.hooks.enabled }}
+ {{- range $k, $v := .Values.conf.hooks.scripts }}
+   {{ $k }}: |
+-{{ tpl $v . | indent 4 }}
++{{ tpl $v $envAll | indent 4 }}
+ {{- end }}
+ {{- end }}
+ {{- end }}
