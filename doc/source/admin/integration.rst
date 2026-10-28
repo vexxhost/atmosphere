@@ -80,14 +80,70 @@ For a deeper dive into the Azure AD configuration within Keycloak, consult the
 Neutron Policy Server
 *********************
 
-The `Neutron Policy Server <https://github.com/vexxhost/neutron-policy-server>`_ is a
-straightforward service that provides the ability to manage and enforce policy more
-complex policy rules inside Neutron.
+The `Neutron Policy Server <https://github.com/vexxhost/neutron-policy-server>`_
+provides policy checks that need more context than the Neutron policy file can
+express, such as looking up other ports or security groups in the database.
 
-This service runs as a sidecar WSGI server that responds to ``oslo.policy`` ``HttpCheck``
-rules which are configured into the Neutron policy file.
+The checks are installed in the Neutron image and run inside the Neutron API
+server as ``oslo.policy`` rule checks, so they add no extra service or network
+round trip. They are referenced in the Neutron policy file like this:
 
-By default, the policy server is enabled and the Neutron policy is updated to include
-the necessary checks.  In order to disable the policy server, set the
-``neutron_policy_server_integration_enabled`` variable to ``false`` in the deployment
-configuration.
+.. list-table::
+   :header-rows: 1
+
+   * - Check
+     - Purpose
+   * - ``address_pair:strict=1``
+     - Only allow allowed address pairs that point to addresses of ports in
+       the same network and project.
+   * - ``port_update:strict=1``
+     - Block changes to the IP or MAC address of a port that another port uses
+       as an allowed address pair.
+   * - ``port_delete:strict=1``
+     - Block deleting a port that another port uses as an allowed address pair.
+   * - ``quarantine:security_group=quarantine``
+     - Block project members from changing the security groups, allowed address
+       pairs or port security of a quarantined port. Disabled by default, see
+       `Quarantining an instance`_.
+
+With ``strict=0``, the address pair checks compare only IP addresses and ignore
+MAC addresses.
+
+By default, the policy server checks are enabled and the Neutron policy is
+updated to include them. In order to disable them, set the
+``neutron_policy_server_integration_enabled`` variable to ``false`` in the
+deployment configuration.
+
+Quarantining an instance
+========================
+
+Quarantine is disabled by default. To enable it, set the following variable in
+the deployment configuration:
+
+.. code-block:: yaml
+
+   neutron_policy_server_quarantine_enabled: true
+
+Enabling quarantine sets the Neutron ``update_port`` policy to Neutron's default
+rule with the ``quarantine`` check added for project members. If you already
+override ``update_port`` in ``neutron_helm_values``, your rule takes precedence,
+so add ``quarantine:security_group=quarantine`` to it yourself.
+
+A port is quarantined when it has a security group named ``quarantine`` that
+belongs to a different project than the port. Project members cannot attach
+security groups from other projects to their ports, so only an administrator
+can place a port in quarantine.
+
+To quarantine an instance:
+
+#. As an administrator, create a security group named ``quarantine`` in an
+   administrative project, with rules that allow only the traffic you need,
+   such as access from a security operations network.
+#. Replace all security groups on each of the instance's ports with the
+   ``quarantine`` security group. Don't leave the project's own security groups
+   on the port, since project members can still change their rules.
+#. Lock the instance so that project members cannot attach or detach network
+   interfaces.
+
+To release the instance, an administrator restores the original security groups
+on its ports and unlocks it.

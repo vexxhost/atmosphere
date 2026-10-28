@@ -10,6 +10,7 @@ from ansible_collections.vexxhost.atmosphere.plugins.filter.storage import (
     storage_to_glance_helm_values,
     storage_to_libvirt_helm_values,
     storage_to_nova_helm_values,
+    storage_uses_ceph,
 )
 from pydantic import ValidationError
 
@@ -1393,11 +1394,51 @@ class TestStorageToCephProvisionersHelmValues:
         )
 
 
+class TestStorageUsesCeph:
+    @pytest.mark.parametrize(
+        "storage, expected",
+        [
+            ({}, False),
+            (DEFAULT_STORAGE, True),
+            ({"images": DEFAULT_STORAGE["images"]}, True),
+            (
+                {
+                    "volumes": {
+                        "default": "rbd-ec",
+                        "backends": {"rbd-ec": _EC_BACKEND},
+                    }
+                },
+                True,
+            ),
+            ({"backup": DEFAULT_STORAGE["backup"]}, True),
+            ({"ephemeral": DEFAULT_STORAGE["ephemeral"]}, True),
+            (
+                {
+                    "images": {
+                        "default": "cinder",
+                        "backends": {"cinder": {"type": "cinder"}},
+                    },
+                    "volumes": {
+                        "default": "powerstore",
+                        "backends": {"powerstore": _POWERSTORE_BACKEND},
+                    },
+                    "backup": {"type": "none"},
+                    "ephemeral": {"type": "local"},
+                },
+                False,
+            ),
+        ],
+    )
+    def test_detects_rbd_storage(self, storage, expected):
+        assert storage_uses_ceph(storage) is expected
+
+
 class TestFilterModule:
     def test_returns_all_filters(self):
         fm = FilterModule()
         filters = fm.filters()
         assert set(filters.keys()) == {
+            "storage_uses_ceph",
             "storage_to_cinder_helm_values",
             "storage_to_glance_helm_values",
             "storage_to_nova_helm_values",
