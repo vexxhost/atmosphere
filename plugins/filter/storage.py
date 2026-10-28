@@ -793,6 +793,21 @@ def storage_to_glance_helm_values(raw: Any) -> HelmValues:
     return result
 
 
+def storage_to_manila_image_disk_format(raw: Any) -> str:
+    """Choose a compatible Manila service-image format for the Glance store."""
+
+    storage = _parse(raw)
+    images = storage.images
+    if images is None:
+        return "qcow2"
+
+    default_backend = images.backends.get(images.default)
+    if isinstance(default_backend, ImageBackendCinder):
+        return "raw"
+
+    return "qcow2"
+
+
 def storage_to_nova_helm_values(raw: Any) -> HelmValues:
     """Derive Nova Helm values from atmosphere_storage."""
 
@@ -925,6 +940,7 @@ class FilterModule(object):
             "storage_uses_ceph": storage_uses_ceph,
             "storage_to_cinder_helm_values": storage_to_cinder_helm_values,
             "storage_to_glance_helm_values": storage_to_glance_helm_values,
+            "storage_to_manila_image_disk_format": storage_to_manila_image_disk_format,
             "storage_to_nova_helm_values": storage_to_nova_helm_values,
             "storage_to_libvirt_helm_values": storage_to_libvirt_helm_values,
             "storage_to_ceph_provisioners_helm_values": storage_to_ceph_provisioners_helm_values,

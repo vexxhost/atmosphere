@@ -42,7 +42,13 @@ manila_flavor_extra_specs: {}
 manila_image_name: manila-service-image
 manila_image_url: https://github.com/vexxhost/manila-service-images/releases/download/2026.05-3/manila-service-image.qcow2
 manila_image_container_format: bare
-manila_image_disk_format: qcow2
+# Cinder-backed Glance stores require raw images. Inventory may override this
+# derived default for deployments with a different image-store contract.
+manila_image_disk_format: >-
+  {{
+    _atmosphere_storage_config
+    | vexxhost.atmosphere.storage_to_manila_image_disk_format
+  }}
 
 # Service instance authentication
 manila_ssh_key: "{{ undef('You must provide a private SSH key using manila_ssh_key') }}"

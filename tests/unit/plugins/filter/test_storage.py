@@ -9,6 +9,7 @@ from ansible_collections.vexxhost.atmosphere.plugins.filter.storage import (
     storage_to_cinder_helm_values,
     storage_to_glance_helm_values,
     storage_to_libvirt_helm_values,
+    storage_to_manila_image_disk_format,
     storage_to_nova_helm_values,
     storage_uses_ceph,
 )
@@ -1044,6 +1045,34 @@ class TestStorageToGlanceHelmValues:
         assert "conf" not in result
 
 
+class TestStorageToManilaImageDiskFormat:
+    def test_defaults_to_qcow2_for_rbd_images(self):
+        assert storage_to_manila_image_disk_format(DEFAULT_STORAGE) == "qcow2"
+
+    def test_uses_raw_when_cinder_is_the_default_image_backend(self):
+        storage = {
+            **DEFAULT_STORAGE,
+            "images": {
+                "default": "cinder_store",
+                "backends": {"cinder_store": {"type": "cinder"}},
+            },
+        }
+        assert storage_to_manila_image_disk_format(storage) == "raw"
+
+    def test_keeps_qcow2_when_cinder_is_not_the_default_image_backend(self):
+        storage = {
+            **DEFAULT_STORAGE,
+            "images": {
+                "default": "rbd1",
+                "backends": {
+                    **DEFAULT_STORAGE["images"]["backends"],
+                    "cinder_store": {"type": "cinder"},
+                },
+            },
+        }
+        assert storage_to_manila_image_disk_format(storage) == "qcow2"
+
+
 class TestStorageToNovaHelmValues:
     def test_rbd_ephemeral(self):
         result = storage_to_nova_helm_values(DEFAULT_STORAGE)
@@ -1441,6 +1470,7 @@ class TestFilterModule:
             "storage_uses_ceph",
             "storage_to_cinder_helm_values",
             "storage_to_glance_helm_values",
+            "storage_to_manila_image_disk_format",
             "storage_to_nova_helm_values",
             "storage_to_libvirt_helm_values",
             "storage_to_ceph_provisioners_helm_values",
