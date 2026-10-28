@@ -532,7 +532,8 @@ _kube_prometheus_stack_helm_values:
             app.kubernetes.io/component: metrics
             app.kubernetes.io/name: keycloak
         endpoints:
-          - port: http
+          - port: http-management
+            path: /metrics
             relabelings: *relabelings_instance_to_pod_name
       - name: memcached
         jobLabel: application
