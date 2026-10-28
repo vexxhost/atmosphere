@@ -25,7 +25,6 @@
 - name: Create Keycloak realm
   no_log: true
   run_once: true
-  changed_when: false
   community.general.keycloak_realm:
     # Keycloak settings
     auth_keycloak_url: "{{ kube_prometheus_stack_keycloak_server_url }}"
@@ -43,7 +42,6 @@
 - name: Add client roles in "id_token"
   no_log: true
   run_once: true
-  changed_when: false
   community.general.keycloak_clientscope:
     # Keycloak settings
     auth_keycloak_url: "{{ kube_prometheus_stack_keycloak_server_url }}"
@@ -55,15 +53,39 @@
     # Client scope settings
     name: roles
     realm: "{{ kube_prometheus_stack_keycloak_realm }}"
+    # NOTE(mnaser): This is the built-in "roles" client scope, and the module
+    #               compares the full list of protocol mappers, so all of the
+    #               built-in mappers are listed with their default settings.
+    #               Only "id.token.claim" on "client roles" is changed. Values
+    #               are strings since that is how Keycloak returns them.
     protocol_mappers:
+      - name: realm roles
+        protocol: openid-connect
+        protocolMapper: oidc-usermodel-realm-role-mapper
+        config:
+          access.token.claim: "true"
+          claim.name: realm_access.roles
+          introspection.token.claim: "true"
+          jsonType.label: String
+          multivalued: "true"
+          user.attribute: foo
+      - name: audience resolve
+        protocol: openid-connect
+        protocolMapper: oidc-audience-resolve-mapper
+        config:
+          access.token.claim: "true"
+          introspection.token.claim: "true"
       - name: client roles
         protocol: openid-connect
         protocolMapper: oidc-usermodel-client-role-mapper
         config:
+          access.token.claim: "true"
           claim.name: "resource_access.${client_id}.roles"
-          access.token.claim: true
-          id.token.claim: true
-          multivalued: true
+          id.token.claim: "true"
+          introspection.token.claim: "true"
+          jsonType.label: String
+          multivalued: "true"
+          user.attribute: foo
 
 - name: Retrieve "etcd" CA certificate
   run_once: true
@@ -151,6 +173,8 @@
     # Realm settings
     realm: "{{ kube_prometheus_stack_keycloak_realm }}"
     client_id: "{{ secret.password.item.id }}"
+    client_authenticator_type: client-secret
+    public_client: false
     secret: "{{ secret.resources[0].data.password | b64decode }}"
     redirect_uris: "{{ secret.password.item.redirect_uris }}"
     protocol_mappers:
