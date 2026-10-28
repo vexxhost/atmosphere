@@ -18,7 +18,7 @@ AppArmor security label. The libvirt pods don't use AppArmor, so live migrating
 these guests into Atmosphere fails with
 ``Security driver model 'apparmor' is not available``. The following ``qemu``
 hook removes those labels from the incoming guest definition when the migration
-begins on the destination host:
+begins on the destination host, so the guest arrives with only the DAC label:
 
 .. code-block:: yaml
 
@@ -29,19 +29,57 @@ begins on the destination host:
          scripts:
            qemu: |
              #!/usr/bin/env python3
+             # Called as: /etc/libvirt/hooks/qemu <guest> <operation> <sub-op> <extra>
+             #
+             # For "migrate begin", libvirt passes the incoming domain XML on
+             # stdin and uses whatever this script prints in its place. Printing
+             # nothing keeps the original XML, which this script does for every
+             # other operation, when there is nothing to strip, and on errors, so
+             # the hook is never the reason a migration fails.
+
              import sys
              import xml.etree.ElementTree as ET
+             from io import StringIO
 
-             if sys.argv[2:4] != ["migrate", "begin"]:
-                 sys.exit(0)
 
-             domain = ET.fromstring(sys.stdin.read())
-             for parent in domain.iter():
-                 for child in list(parent):
-                     if child.tag == "seclabel" and child.get("model") == "apparmor":
-                         parent.remove(child)
+             def strip_apparmor(xml):
+                 # Keep the original namespace prefixes (such as the "nova:"
+                 # metadata) instead of generated ns0/ns1 ones.
+                 for _, (prefix, uri) in ET.iterparse(StringIO(xml), events=("start-ns",)):
+                     ET.register_namespace(prefix, uri)
 
-             print(ET.tostring(domain, encoding="unicode"))
+                 root = ET.fromstring(xml)
+                 removed = 0
+                 # Domain level <seclabel> and per-device <source><seclabel>.
+                 for parent in root.iter():
+                     for child in list(parent):
+                         if child.tag == "seclabel" and child.get("model") == "apparmor":
+                             parent.remove(child)
+                             removed += 1
+
+                 if not removed:
+                     return None
+                 return ET.tostring(root, encoding="unicode")
+
+
+             def main():
+                 if len(sys.argv) < 3 or sys.argv[2:4] != ["migrate", "begin"]:
+                     return 0
+
+                 xml = sys.stdin.read()
+                 try:
+                     out = strip_apparmor(xml)
+                 except Exception as exc:
+                     sys.stderr.write("qemu hook: leaving XML unchanged: %s\n" % exc)
+                     return 0
+
+                 if out:
+                     sys.stdout.write(out)
+                 return 0
+
+
+             if __name__ == "__main__":
+                 sys.exit(main())
 
 The chart renders each script as a Helm template, so escape any literal
 ``{{`` sequences in your scripts.
