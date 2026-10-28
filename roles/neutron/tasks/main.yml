@@ -51,6 +51,13 @@
   ansible.builtin.set_fact:
     _neutron_helm_values: "{{ _neutron_helm_values | combine(__neutron_policy_server_helm_values, recursive=True) }}"
 
+- name: Append Helm values (neutron_policy_server quarantine)
+  when:
+    - neutron_policy_server_integration_enabled | bool
+    - neutron_policy_server_quarantine_enabled | bool
+  ansible.builtin.set_fact:
+    _neutron_helm_values: "{{ _neutron_helm_values | combine(__neutron_policy_server_quarantine_helm_values, recursive=True) }}"
+
 - name: Append Helm values (mount neutron genericswitch keys)
   when: neutron_genericswitch_keys | length > 0
   ansible.builtin.set_fact:
