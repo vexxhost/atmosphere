@@ -84,12 +84,12 @@ spec:
           readinessProbe:
             httpGet:
               scheme: {{ tuple "cloudformation" "service" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_scheme_lookup" | upper }}
-              path: /
+              path: /healthcheck
               port: {{ tuple "cloudformation" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
           livenessProbe:
             httpGet:
               scheme: {{ tuple "cloudformation" "service" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_scheme_lookup" | upper }}
-              path: /
+              path: /healthcheck
               port: {{ tuple "cloudformation" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
             initialDelaySeconds: 10
           volumeMounts:

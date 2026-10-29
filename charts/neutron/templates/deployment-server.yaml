@@ -18,12 +18,12 @@ exec:
   command:
     - python
     - -c
-    - "import requests; requests.get('http://127.0.0.1:{{ tuple "network" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}')"
+    - "import requests; requests.get('http://127.0.0.1:{{ tuple "network" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}/healthcheck')"
 initialDelaySeconds: 30
 {{- else }}
 httpGet:
   scheme: {{ tuple "network" "service" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_scheme_lookup" | upper }}
-  path: /
+  path: /healthcheck
   port: {{ tuple "network" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
 {{- end }}
 {{- end }}
@@ -33,12 +33,12 @@ exec:
   command:
     - python
     - -c
-    - "import requests; requests.get('http://127.0.0.1:{{ tuple "network" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}')"
+    - "import requests; requests.get('http://127.0.0.1:{{ tuple "network" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}/healthcheck')"
 initialDelaySeconds: 30
 {{- else }}
 httpGet:
   scheme: {{ tuple "network" "service" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_scheme_lookup" | upper }}
-  path: /
+  path: /healthcheck
   port: {{ tuple "network" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
 {{- end }}
 {{- end }}
@@ -142,7 +142,7 @@ spec:
           readinessProbe:
             httpGet:
               scheme: HTTPS
-              path: /
+              path: /healthcheck
               port: {{ tuple "network" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
           command:
             - /tmp/nginx.sh
