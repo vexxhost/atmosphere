@@ -16,9 +16,19 @@
   ansible.builtin.import_tasks:
     file: generate_resources.yml
 
-- name: Generate public key for SSH private key
-  ansible.builtin.import_tasks:
-    file: generate_public_key.yml
+- name: Create secret with the SSH keys
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: "{{ manila_helm_release_name }}-ssh-keys"
+        namespace: "{{ manila_helm_release_namespace }}"
+      type: Opaque
+      data:
+        id_rsa: "{{ manila_ssh_key | b64encode }}"
+        id_rsa.pub: "{{ manila_ssh_key | vexxhost.atmosphere.ssh_public_key | b64encode }}"
 
 - name: Deploy Helm chart
   run_once: true
