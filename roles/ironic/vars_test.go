@@ -61,3 +61,20 @@ func TestHelmValues(t *testing.T) {
 	testutils.TestAllPodsHaveRuntimeClass(t, vals)
 	testutils.TestAllPodsHavePriorityClass(t, vals)
 }
+func TestDisabledLogConfigRendersEmptyValue(t *testing.T) {
+	var values struct {
+		HelmValues struct {
+			Conf struct {
+				Ironic struct {
+					Default map[string]any `yaml:"DEFAULT"`
+				} `yaml:"ironic"`
+			} `yaml:"conf"`
+		} `yaml:"_ironic_helm_values"`
+	}
+	err := yaml.UnmarshalWithOptions(varsFile, &values)
+	require.NoError(t, err)
+	require.Contains(t, values.HelmValues.Conf.Ironic.Default,
+		"log_config_append")
+	require.Equal(t, "",
+		values.HelmValues.Conf.Ironic.Default["log_config_append"])
+}
