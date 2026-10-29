@@ -48,4 +48,8 @@ data:
 {{- include "helm-toolkit.scripts.rabbit_init" . | indent 4 }}
   simple_crypto_kek_rewrap.py: |
 {{ tuple "bin/_simple_crypto_kek_rewrap.py.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+{{- if eq "gunicorn" .Values.wsgi.backend }}
+  gunicorn.conf.py: |
+{{ tuple "bin/_gunicorn.conf.py.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+{{- end }}
 {{- end }}
