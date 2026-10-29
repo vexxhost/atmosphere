@@ -187,6 +187,18 @@ spec:
               subPath: l2gw_plugin.ini
               readOnly: true
             {{ end }}
+            {{- if contains "vpnaas" .Values.conf.neutron.DEFAULT.service_plugins }}
+            - name: neutron-etc
+              mountPath: /etc/neutron/neutron_vpnaas.conf
+              subPath: neutron_vpnaas.conf
+              readOnly: true
+            {{- end }}
+            {{- if contains "ovn-vpnaas" .Values.conf.neutron.DEFAULT.service_plugins }}
+            - name: neutron-etc
+              mountPath: /etc/neutron/neutron_ovn_vpn_agent.ini
+              subPath: neutron_ovn_vpn_agent.ini
+              readOnly: true
+            {{- end }}
             - name: neutron-etc
               mountPath: /etc/neutron/api-paste.ini
               subPath: api-paste.ini
