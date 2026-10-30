@@ -45,6 +45,7 @@ _ironic_helm_values:
     ironic:
       DEFAULT:
         log_config_append: null
+        enabled_console_interfaces: redfish-graphical,no-console
         enabled_network_interfaces: flat,neutron
         default_network_interface: flat
         rbac_service_role_elevated_access: true
@@ -69,6 +70,10 @@ _ironic_helm_values:
         kernel_append_params: "ipa-insecure=true systemd.journald.forward_to_console=yes"
       service_catalog:
         valid_interfaces: public
+      vnc:
+        enabled: true
+        public_url: "http://ironic-novncproxy.{{ ironic_helm_release_namespace }}.svc:6090/vnc_lite.html"
+        console_image: "{{ atmosphere_images['ironic_console'] }}"
     rabbitmq:
       policies:
         - vhost: "ironic"

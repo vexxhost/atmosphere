@@ -1,0 +1,202 @@
+suite: baremetal console
+tests:
+  - it: should not deploy baremetal console by default
+    templates:
+      - templates/configmap-etc.yaml
+      - templates/deployment-novncproxy.yaml
+      - templates/service-novncproxy.yaml
+      - templates/role-console-pods.yaml
+      - templates/rolebinding-console-pods.yaml
+      - templates/network-policy-console.yaml
+    asserts:
+      - template: templates/configmap-etc.yaml
+        documentIndex: 0
+        notExists:
+          path: data["ironic-console-pod.yaml"]
+      - template: templates/deployment-novncproxy.yaml
+        hasDocuments:
+          count: 0
+      - template: templates/service-novncproxy.yaml
+        hasDocuments:
+          count: 0
+      - template: templates/role-console-pods.yaml
+        hasDocuments:
+          count: 0
+      - template: templates/rolebinding-console-pods.yaml
+        hasDocuments:
+          count: 0
+      - template: templates/network-policy-console.yaml
+        hasDocuments:
+          count: 0
+
+  - it: should deploy baremetal console proxy and dynamic Pod RBAC
+    release:
+      namespace: test-console
+    templates:
+      - templates/configmap-etc.yaml
+      - templates/deployment-novncproxy.yaml
+      - templates/service-novncproxy.yaml
+      - templates/role-console-pods.yaml
+      - templates/rolebinding-console-pods.yaml
+      - templates/network-policy-console.yaml
+      - templates/statefulset-conductor.yaml
+    set:
+      console:
+        namespace: test-console-runtime
+      conf:
+        ironic:
+          vnc:
+            enabled: true
+            public_url: http://ironic-novncproxy.test-console.svc:6090/vnc_lite.html
+            console_image: example.com/ironic-console:latest
+    asserts:
+      - template: templates/deployment-novncproxy.yaml
+        documentIndex: 3
+        equal:
+          path: metadata.name
+          value: ironic-novncproxy
+      - template: templates/deployment-novncproxy.yaml
+        documentIndex: 3
+        equal:
+          path: spec.selector.matchLabels.component
+          value: novncproxy
+      - template: templates/deployment-novncproxy.yaml
+        documentIndex: 3
+        lengthEqual:
+          path: spec.template.spec.initContainers
+          count: 1
+      - template: templates/deployment-novncproxy.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.containers[0].ports[0].containerPort
+          value: 6090
+      - template: templates/deployment-novncproxy.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.containers[0].volumeMounts[2].mountPath
+          value: /etc/ironic/ironic.conf
+      - template: templates/configmap-etc.yaml
+        documentIndex: 0
+        isNotEmpty:
+          path: data["ironic-console-pod.yaml"]
+      - template: templates/statefulset-conductor.yaml
+        documentIndex: 3
+        equal:
+          path: spec.template.spec.containers[0].volumeMounts[7].mountPath
+          value: /etc/ironic/ironic-console-pod.yaml
+      - template: templates/service-novncproxy.yaml
+        documentIndex: 0
+        equal:
+          path: metadata.name
+          value: ironic-novncproxy
+      - template: templates/service-novncproxy.yaml
+        documentIndex: 0
+        equal:
+          path: spec.selector.component
+          value: novncproxy
+      - template: templates/service-novncproxy.yaml
+        documentIndex: 0
+        equal:
+          path: spec.ports[0].port
+          value: 6090
+      - template: templates/role-console-pods.yaml
+        documentIndex: 0
+        equal:
+          path: metadata.name
+          value: ironic-console-pods
+      - template: templates/role-console-pods.yaml
+        documentIndex: 0
+        equal:
+          path: metadata.namespace
+          value: test-console-runtime
+      - template: templates/role-console-pods.yaml
+        documentIndex: 0
+        contains:
+          path: rules[0].verbs
+          content: deletecollection
+      - template: templates/role-console-pods.yaml
+        documentIndex: 0
+        contains:
+          path: rules[0].verbs
+          content: list
+      - template: templates/rolebinding-console-pods.yaml
+        documentIndex: 0
+        equal:
+          path: metadata.namespace
+          value: test-console-runtime
+      - template: templates/rolebinding-console-pods.yaml
+        documentIndex: 0
+        equal:
+          path: subjects[0].name
+          value: ironic-conductor
+      - template: templates/rolebinding-console-pods.yaml
+        documentIndex: 0
+        equal:
+          path: subjects[0].namespace
+          value: test-console
+      - template: templates/network-policy-console.yaml
+        documentIndex: 0
+        equal:
+          path: metadata.namespace
+          value: test-console-runtime
+      - template: templates/network-policy-console.yaml
+        documentIndex: 0
+        equal:
+          path: spec.ingress[0].ports[0].port
+          value: 5900
+      - template: templates/network-policy-console.yaml
+        documentIndex: 0
+        equal:
+          path: metadata.namespace
+          value: test-console-runtime
+      - template: templates/network-policy-console.yaml
+        documentIndex: 0
+        equal:
+          path: spec.ingress[0].from[0].podSelector.matchLabels.application
+          value: ironic
+      - template: templates/network-policy-console.yaml
+        documentIndex: 0
+        equal:
+          path: spec.ingress[0].from[0].podSelector.matchLabels.component
+          value: novncproxy
+      - template: templates/network-policy-console.yaml
+        documentIndex: 0
+        equal:
+          path: spec.ingress[0].from[1].podSelector.matchLabels.application
+          value: nova
+      - template: templates/network-policy-console.yaml
+        documentIndex: 0
+        equal:
+          path: spec.ingress[0].from[1].podSelector.matchLabels.component
+          value: novnc-proxy
+
+  - it: should create a restricted console namespace with egress limits
+    release:
+      namespace: openstack
+    templates:
+      - templates/namespace-console.yaml
+      - templates/network-policy-console.yaml
+    set:
+      conf:
+        ironic:
+          vnc:
+            enabled: true
+    asserts:
+      - template: templates/namespace-console.yaml
+        equal:
+          path: metadata.name
+          value: openstack-ironic-vnc
+      - template: templates/namespace-console.yaml
+        equal:
+          path: metadata.labels["pod-security.kubernetes.io/enforce"]
+          value: restricted
+      - template: templates/network-policy-console.yaml
+        contains:
+          path: spec.policyTypes
+          content: Egress
+      - template: templates/network-policy-console.yaml
+        contains:
+          path: spec.egress[1].ports
+          content:
+            protocol: TCP
+            port: 443
