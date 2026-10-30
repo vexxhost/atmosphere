@@ -1531,3 +1531,174 @@ tests:
               summary: "Geneve overlay: transmit failures may affect tenant traffic on a compute host"
               description: "192.0.2.10:9100 interface tenant-geneve0 has averaged 3.33 transmit errors per second over the last 5 minutes (threshold > 1.67/s, ~100/min). Normal behavior is zero sustained transmit errors on Geneve tunnel interfaces."
               runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#genevetransmiterrors"
+
+  # NginxIngressTLSCertificateExpiringSoon - should NOT fire when 30 days remain
+  - interval: 1m
+    input_series:
+      - series: 'nginx_ingress_controller_ssl_expire_time_seconds{job="ingress-nginx",instance="ctl1",class="k8s.io/ingress-nginx",namespace="openstack",host="keystone.example.com",secret_name="wildcard-certs",identifier="1-100"}'
+        values: '2592000x150'
+      - series: 'nginx_ingress_controller_ssl_expire_time_seconds{job="ingress-nginx",instance="ctl2",class="k8s.io/ingress-nginx",namespace="openstack",host="keystone.example.com",secret_name="wildcard-certs",identifier="1-100"}'
+        values: '2592000x150'
+      - series: 'nginx_ingress_controller_ssl_expire_time_seconds{job="ingress-nginx",instance="ctl3",class="k8s.io/ingress-nginx",namespace="openstack",host="keystone.example.com",secret_name="wildcard-certs",identifier="1-100"}'
+        values: '2592000x150'
+    alert_rule_test:
+      - eval_time: 2h
+        alertname: NginxIngressTLSCertificateExpiringSoon
+        exp_alerts: []
+
+  # NginxIngressTLSCertificateExpiringSoon - should fire once per Secret when 14 days remain, even
+  # though every controller reports the shared wildcard certificate for every host
+  - interval: 1m
+    input_series:
+      - series: 'nginx_ingress_controller_ssl_expire_time_seconds{job="ingress-nginx",instance="ctl1",class="k8s.io/ingress-nginx",namespace="openstack",host="keystone.example.com",secret_name="wildcard-certs",identifier="1-100"}'
+        values: '1216800x150'
+      - series: 'nginx_ingress_controller_ssl_expire_time_seconds{job="ingress-nginx",instance="ctl2",class="k8s.io/ingress-nginx",namespace="openstack",host="keystone.example.com",secret_name="wildcard-certs",identifier="1-100"}'
+        values: '1216800x150'
+      - series: 'nginx_ingress_controller_ssl_expire_time_seconds{job="ingress-nginx",instance="ctl3",class="k8s.io/ingress-nginx",namespace="openstack",host="keystone.example.com",secret_name="wildcard-certs",identifier="1-100"}'
+        values: '1216800x150'
+      - series: 'nginx_ingress_controller_ssl_expire_time_seconds{job="ingress-nginx",instance="ctl1",class="k8s.io/ingress-nginx",namespace="openstack",host="nova.example.com",secret_name="wildcard-certs",identifier="1-100"}'
+        values: '1216800x150'
+      - series: 'nginx_ingress_controller_ssl_expire_time_seconds{job="ingress-nginx",instance="ctl2",class="k8s.io/ingress-nginx",namespace="openstack",host="nova.example.com",secret_name="wildcard-certs",identifier="1-100"}'
+        values: '1216800x150'
+      - series: 'nginx_ingress_controller_ssl_expire_time_seconds{job="ingress-nginx",instance="ctl3",class="k8s.io/ingress-nginx",namespace="openstack",host="nova.example.com",secret_name="wildcard-certs",identifier="1-100"}'
+        values: '1216800x150'
+    alert_rule_test:
+      - eval_time: 2h
+        alertname: NginxIngressTLSCertificateExpiringSoon
+        exp_alerts:
+          - exp_labels:
+              namespace: openstack
+              secret_name: wildcard-certs
+              severity: P3
+            exp_annotations:
+              summary: "NGINX Ingress TLS: certificate expires within 21 days"
+              description: "The TLS certificate in Secret openstack/wildcard-certs served by NGINX Ingress expires in 14d 0h 0m 0s, which is below the 21-day warning threshold. cert-manager renews certificates when a third of their lifetime remains (30 days for a 90-day certificate), so renewal has stalled or the certificate is managed manually. Normal behavior is more than 21 days remaining."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#nginxingresstlscertificateexpiringsoon"
+
+  # NginxIngressTLSCertificateExpiringSoon - should fire with the earliest expiry when one controller
+  # still serves the old certificate after the Secret was renewed
+  - interval: 1m
+    input_series:
+      - series: 'nginx_ingress_controller_ssl_expire_time_seconds{job="ingress-nginx",instance="ctl1",class="k8s.io/ingress-nginx",namespace="monitoring",host="grafana.example.com",secret_name="grafana-tls",identifier="1-200"}'
+        values: '5191200x150'
+      - series: 'nginx_ingress_controller_ssl_expire_time_seconds{job="ingress-nginx",instance="ctl2",class="k8s.io/ingress-nginx",namespace="monitoring",host="grafana.example.com",secret_name="grafana-tls",identifier="1-200"}'
+        values: '5191200x150'
+      - series: 'nginx_ingress_controller_ssl_expire_time_seconds{job="ingress-nginx",instance="ctl3",class="k8s.io/ingress-nginx",namespace="monitoring",host="grafana.example.com",secret_name="grafana-tls",identifier="1-100"}'
+        values: '1216800x150'
+    alert_rule_test:
+      - eval_time: 2h
+        alertname: NginxIngressTLSCertificateExpiringSoon
+        exp_alerts:
+          - exp_labels:
+              namespace: monitoring
+              secret_name: grafana-tls
+              severity: P3
+            exp_annotations:
+              summary: "NGINX Ingress TLS: certificate expires within 21 days"
+              description: "The TLS certificate in Secret monitoring/grafana-tls served by NGINX Ingress expires in 14d 0h 0m 0s, which is below the 21-day warning threshold. cert-manager renews certificates when a third of their lifetime remains (30 days for a 90-day certificate), so renewal has stalled or the certificate is managed manually. Normal behavior is more than 21 days remaining."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#nginxingresstlscertificateexpiringsoon"
+
+  # NginxIngressTLSCertificateExpiringSoon - should NOT fire for the controller default certificate,
+  # which has no Secret
+  - interval: 1m
+    input_series:
+      - series: 'nginx_ingress_controller_ssl_expire_time_seconds{job="ingress-nginx",instance="ctl1",class="k8s.io/ingress-nginx",namespace="openstack",host="keystone.example.com",identifier=""}'
+        values: '1216800x150'
+      - series: 'nginx_ingress_controller_ssl_expire_time_seconds{job="ingress-nginx",instance="ctl2",class="k8s.io/ingress-nginx",namespace="openstack",host="keystone.example.com",identifier=""}'
+        values: '1216800x150'
+      - series: 'nginx_ingress_controller_ssl_expire_time_seconds{job="ingress-nginx",instance="ctl3",class="k8s.io/ingress-nginx",namespace="openstack",host="keystone.example.com",identifier=""}'
+        values: '1216800x150'
+    alert_rule_test:
+      - eval_time: 2h
+        alertname: NginxIngressTLSCertificateExpiringSoon
+        exp_alerts: []
+
+  # NginxIngressTLSCertificateExpiringSoon - should keep firing after crossing 7 days while
+  # NginxIngressTLSCertificateExpiringCritical is pending (Alertmanager inhibits it afterwards)
+  - interval: 1m
+    input_series:
+      - series: 'nginx_ingress_controller_ssl_expire_time_seconds{job="ingress-nginx",instance="ctl1",class="k8s.io/ingress-nginx",namespace="openstack",host="keystone.example.com",secret_name="wildcard-certs",identifier="1-100"}'
+        values: '612000x240'
+      - series: 'nginx_ingress_controller_ssl_expire_time_seconds{job="ingress-nginx",instance="ctl2",class="k8s.io/ingress-nginx",namespace="openstack",host="keystone.example.com",secret_name="wildcard-certs",identifier="1-100"}'
+        values: '612000x240'
+      - series: 'nginx_ingress_controller_ssl_expire_time_seconds{job="ingress-nginx",instance="ctl3",class="k8s.io/ingress-nginx",namespace="openstack",host="keystone.example.com",secret_name="wildcard-certs",identifier="1-100"}'
+        values: '612000x240'
+    alert_rule_test:
+      - eval_time: 2h30m
+        alertname: NginxIngressTLSCertificateExpiringSoon
+        exp_alerts:
+          - exp_labels:
+              namespace: openstack
+              secret_name: wildcard-certs
+              severity: P3
+            exp_annotations:
+              summary: "NGINX Ingress TLS: certificate expires within 21 days"
+              description: "The TLS certificate in Secret openstack/wildcard-certs served by NGINX Ingress expires in 6d 23h 30m 0s, which is below the 21-day warning threshold. cert-manager renews certificates when a third of their lifetime remains (30 days for a 90-day certificate), so renewal has stalled or the certificate is managed manually. Normal behavior is more than 21 days remaining."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#nginxingresstlscertificateexpiringsoon"
+      - eval_time: 2h30m
+        alertname: NginxIngressTLSCertificateExpiringCritical
+        exp_alerts: []
+      - eval_time: 3h30m
+        alertname: NginxIngressTLSCertificateExpiringSoon
+        exp_alerts:
+          - exp_labels:
+              namespace: openstack
+              secret_name: wildcard-certs
+              severity: P3
+            exp_annotations:
+              summary: "NGINX Ingress TLS: certificate expires within 21 days"
+              description: "The TLS certificate in Secret openstack/wildcard-certs served by NGINX Ingress expires in 6d 22h 30m 0s, which is below the 21-day warning threshold. cert-manager renews certificates when a third of their lifetime remains (30 days for a 90-day certificate), so renewal has stalled or the certificate is managed manually. Normal behavior is more than 21 days remaining."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#nginxingresstlscertificateexpiringsoon"
+      - eval_time: 3h30m
+        alertname: NginxIngressTLSCertificateExpiringCritical
+        exp_alerts:
+          - exp_labels:
+              namespace: openstack
+              secret_name: wildcard-certs
+              severity: P2
+            exp_annotations:
+              summary: "NGINX Ingress TLS: certificate expires within 7 days and will break HTTPS for its hosts"
+              description: "The TLS certificate in Secret openstack/wildcard-certs served by NGINX Ingress expires in 6d 22h 30m 0s, which is below the 7-day critical threshold. Every host using this Secret fails TLS verification once it expires. Normal behavior is more than 21 days remaining."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#nginxingresstlscertificateexpiringcritical"
+
+  # NginxIngressTLSCertificateExpiringCritical - should NOT fire when 10 days remain
+  - interval: 1m
+    input_series:
+      - series: 'nginx_ingress_controller_ssl_expire_time_seconds{job="ingress-nginx",instance="ctl1",class="k8s.io/ingress-nginx",namespace="openstack",host="keystone.example.com",secret_name="wildcard-certs",identifier="1-100"}'
+        values: '871200x150'
+      - series: 'nginx_ingress_controller_ssl_expire_time_seconds{job="ingress-nginx",instance="ctl2",class="k8s.io/ingress-nginx",namespace="openstack",host="keystone.example.com",secret_name="wildcard-certs",identifier="1-100"}'
+        values: '871200x150'
+      - series: 'nginx_ingress_controller_ssl_expire_time_seconds{job="ingress-nginx",instance="ctl3",class="k8s.io/ingress-nginx",namespace="openstack",host="keystone.example.com",secret_name="wildcard-certs",identifier="1-100"}'
+        values: '871200x150'
+    alert_rule_test:
+      - eval_time: 2h
+        alertname: NginxIngressTLSCertificateExpiringCritical
+        exp_alerts: []
+
+  # NginxIngressTLSCertificateExpiringCritical - should fire once per Secret when 3 days remain
+  - interval: 1m
+    input_series:
+      - series: 'nginx_ingress_controller_ssl_expire_time_seconds{job="ingress-nginx",instance="ctl1",class="k8s.io/ingress-nginx",namespace="openstack",host="keystone.example.com",secret_name="wildcard-certs",identifier="1-100"}'
+        values: '266400x150'
+      - series: 'nginx_ingress_controller_ssl_expire_time_seconds{job="ingress-nginx",instance="ctl2",class="k8s.io/ingress-nginx",namespace="openstack",host="keystone.example.com",secret_name="wildcard-certs",identifier="1-100"}'
+        values: '266400x150'
+      - series: 'nginx_ingress_controller_ssl_expire_time_seconds{job="ingress-nginx",instance="ctl3",class="k8s.io/ingress-nginx",namespace="openstack",host="keystone.example.com",secret_name="wildcard-certs",identifier="1-100"}'
+        values: '266400x150'
+      - series: 'nginx_ingress_controller_ssl_expire_time_seconds{job="ingress-nginx",instance="ctl1",class="k8s.io/ingress-nginx",namespace="openstack",host="nova.example.com",secret_name="wildcard-certs",identifier="1-100"}'
+        values: '266400x150'
+      - series: 'nginx_ingress_controller_ssl_expire_time_seconds{job="ingress-nginx",instance="ctl2",class="k8s.io/ingress-nginx",namespace="openstack",host="nova.example.com",secret_name="wildcard-certs",identifier="1-100"}'
+        values: '266400x150'
+      - series: 'nginx_ingress_controller_ssl_expire_time_seconds{job="ingress-nginx",instance="ctl3",class="k8s.io/ingress-nginx",namespace="openstack",host="nova.example.com",secret_name="wildcard-certs",identifier="1-100"}'
+        values: '266400x150'
+    alert_rule_test:
+      - eval_time: 2h
+        alertname: NginxIngressTLSCertificateExpiringCritical
+        exp_alerts:
+          - exp_labels:
+              namespace: openstack
+              secret_name: wildcard-certs
+              severity: P2
+            exp_annotations:
+              summary: "NGINX Ingress TLS: certificate expires within 7 days and will break HTTPS for its hosts"
+              description: "The TLS certificate in Secret openstack/wildcard-certs served by NGINX Ingress expires in 3d 0h 0m 0s, which is below the 7-day critical threshold. Every host using this Secret fails TLS verification once it expires. Normal behavior is more than 21 days remaining."
+              runbook_url: "https://vexxhost.github.io/atmosphere/admin/monitoring.html#nginxingresstlscertificateexpiringcritical"
