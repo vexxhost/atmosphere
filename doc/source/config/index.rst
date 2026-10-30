@@ -8,4 +8,5 @@ Configuration Guide
    ingress
    horizon
    libvirt
+   magnum
    rabbitmq
