@@ -1442,6 +1442,163 @@ confirm the issue is both sustained and ongoing. At this burn rate, the entire
 6. Review recent deployments or configuration changes that might have
    introduced the issue.
 
+``NginxIngressTLSCertificateExpiringCritical``
+==============================================
+
+This alert fires when a TLS certificate that NGINX Ingress loads from a
+Kubernetes Secret expires in less than 7 days. Once the certificate expires,
+clients connecting to any host that uses the Secret fail TLS verification, so
+the alert pages regardless of business hours. The alert uses the earliest
+expiry reported by any NGINX Ingress controller and produces one alert per
+Secret, so a wildcard certificate shared by many hosts raises a single alert.
+It ignores the controller's built-in default certificate. While this alert
+fires, Alertmanager suppresses ``NginxIngressTLSCertificateExpiringSoon`` for
+the same Secret.
+
+**Likely Root Causes**
+
+- cert-manager can't renew the certificate because an ACME order or challenge
+  is failing, DNS records are wrong, the issuer's credentials expired, or the
+  issuer hit a rate limit
+- cert-manager doesn't manage the certificate, for example an existing wildcard
+  certificate configured with ``openstack_helm_ingress_secret_name``, and
+  nobody replaced it
+- cert-manager renewed the Secret, but one or more NGINX Ingress controllers
+  still serve the previous certificate
+- The Ingress references a different Secret than the one cert-manager renews
+
+**Diagnostic and Remediation Steps**
+
+1. Use the ``namespace`` and ``secret_name`` alert labels to list the hosts
+   that use the Secret and the days remaining on each NGINX Ingress controller:
+
+   .. code-block:: console
+
+     kubectl -n monitoring exec svc/kube-prometheus-stack-prometheus -- \
+       promtool query instant http://localhost:9090 \
+       '(nginx_ingress_controller_ssl_expire_time_seconds{namespace="<namespace>",secret_name="<secret-name>"} - time()) / 86400'
+
+2. Check the expiry date of the certificate stored in the Secret:
+
+   .. code-block:: console
+
+     kubectl -n <namespace> get secret <secret-name> -o jsonpath='{.data.tls\.crt}' | \
+       base64 -d | openssl x509 -noout -subject -issuer -enddate
+
+   If the Secret already holds a renewed certificate, skip to step 5.
+
+3. If cert-manager manages the Secret, find the matching ``Certificate`` (the
+   ``SECRET`` column) and check why renewal failed:
+
+   .. code-block:: console
+
+     kubectl -n <namespace> get certificates -o wide
+     kubectl -n <namespace> describe certificate <certificate-name>
+     kubectl -n <namespace> get certificaterequests,orders,challenges
+     kubectl get clusterissuers
+     kubectl -n cert-manager logs deploy/cert-manager --since=1h | grep <certificate-name>
+
+   Fix the failing issuer, DNS record, or credentials. cert-manager retries
+   automatically with a backoff. To retry immediately, run
+   ``cmctl renew -n <namespace> <certificate-name>``.
+
+4. If cert-manager doesn't manage the Secret, obtain a renewed certificate and
+   replace the Secret contents, as described in :doc:`../deploy/certificates`:
+
+   .. code-block:: console
+
+     kubectl -n <namespace> create secret tls <secret-name> \
+       --cert=/path/to/tls.crt --key=/path/to/tls.key \
+       --dry-run=client -o yaml | kubectl apply -f -
+
+   Repeat this for every namespace that holds a copy of the Secret.
+
+5. Confirm that every NGINX Ingress controller serves the renewed certificate.
+   The controllers run on the host network of each control plane node, so check
+   each node with the hostname from step 1:
+
+   .. code-block:: console
+
+     openssl s_client -connect <node-ip>:443 -servername <host> </dev/null 2>/dev/null | \
+       openssl x509 -noout -enddate
+
+   If a controller still serves the previous certificate, check its logs for
+   reload errors and restart it:
+
+   .. code-block:: console
+
+     kubectl -n ingress-nginx logs ds/ingress-nginx-controller --tail=200 | grep -i -E 'certificate|reload'
+     kubectl -n ingress-nginx rollout restart ds/ingress-nginx-controller
+
+``NginxIngressTLSCertificateExpiringSoon``
+==========================================
+
+This alert fires when a TLS certificate that NGINX Ingress loads from a
+Kubernetes Secret expires in less than 21 days. cert-manager renews a
+certificate when a third of its lifetime remains, which is 30 days for a
+90-day certificate, so this alert means that renewal has stalled for more than
+a week or that nobody manages the certificate. The alert uses the earliest
+expiry reported by any NGINX Ingress controller, produces one alert per
+Secret, and ignores the controller's built-in default certificate. Once the
+certificate reaches 7 days, ``NginxIngressTLSCertificateExpiringCritical``
+pages and Alertmanager suppresses this alert.
+
+.. note::
+
+   Certificate authorities are moving to shorter lifetimes. With 64-day
+   certificates, cert-manager renews at about 21 days remaining, and with
+   45-day certificates at 15 days remaining, so this alert may fire during
+   normal renewals.
+
+**Likely Root Causes**
+
+- cert-manager renewal attempts are failing because of an ACME challenge, DNS,
+  issuer credentials, or rate limits
+- cert-manager doesn't manage the certificate, for example an existing wildcard
+  certificate configured with ``openstack_helm_ingress_secret_name``, and it
+  needs manual replacement
+- cert-manager renewed the Secret, but one or more NGINX Ingress controllers
+  still serve the previous certificate
+
+**Diagnostic and Remediation Steps**
+
+Resolve this alert before the certificate reaches 7 days remaining. The steps
+match those for ``NginxIngressTLSCertificateExpiringCritical``:
+
+1. Use the ``namespace`` and ``secret_name`` alert labels to list the hosts
+   that use the Secret and the days remaining on each NGINX Ingress controller:
+
+   .. code-block:: console
+
+     kubectl -n monitoring exec svc/kube-prometheus-stack-prometheus -- \
+       promtool query instant http://localhost:9090 \
+       '(nginx_ingress_controller_ssl_expire_time_seconds{namespace="<namespace>",secret_name="<secret-name>"} - time()) / 86400'
+
+2. Check the expiry date of the certificate stored in the Secret. If it
+   already holds a renewed certificate, confirm that every controller serves it
+   and restart any that don't, as described in step 5 of
+   ``NginxIngressTLSCertificateExpiringCritical``:
+
+   .. code-block:: console
+
+     kubectl -n <namespace> get secret <secret-name> -o jsonpath='{.data.tls\.crt}' | \
+       base64 -d | openssl x509 -noout -subject -issuer -enddate
+
+3. If cert-manager manages the Secret, check the ``Certificate`` status and the
+   cert-manager logs for the failing renewal, and fix the issuer, DNS record,
+   or credentials:
+
+   .. code-block:: console
+
+     kubectl -n <namespace> get certificates -o wide
+     kubectl -n <namespace> describe certificate <certificate-name>
+     kubectl -n <namespace> get certificaterequests,orders,challenges
+     kubectl -n cert-manager logs deploy/cert-manager --since=1h | grep <certificate-name>
+
+4. If cert-manager doesn't manage the Secret, schedule the replacement of the
+   certificate in every namespace that holds a copy, as described in
+   :doc:`../deploy/certificates`.
+
 ``NodeNetworkMulticast``
 ========================
 
