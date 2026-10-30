@@ -6,6 +6,17 @@ local errorRatio(window) = |||
   sum by (service) (rate(nginx_ingress_controller_requests[%(window)s]))
 ||| % { window: window };
 
+// NOTE: Every ingress-nginx controller pod reports every certificate, once per
+//       host. Taking the earliest expiry per Secret produces a single alert for
+//       a certificate shared by many hosts (such as a wildcard certificate) and
+//       still catches a controller that serves an older copy. Certificates
+//       without a Secret (the controller's default certificate) are excluded.
+local certificateExpiryExpr(days) = |||
+  min by (namespace, secret_name) (
+    nginx_ingress_controller_ssl_expire_time_seconds{secret_name!=""}
+  ) - time() < %(days)d * 24 * 3600
+||| % { days: days };
+
 local burnRateExpr(tier) = |||
   (
   %(longRatio)s) > %(threshold)s
@@ -81,33 +92,30 @@ local burnRateExpr(tier) = |||
           },
           {
             alert: 'NginxIngressTLSCertificateExpiringSoon',
-            expr: |||
-              (nginx_ingress_controller_ssl_expire_time_seconds{secret_name!=""} - time() < 21 * 24 * 3600)
-              and
-              (nginx_ingress_controller_ssl_expire_time_seconds{secret_name!=""} - time() >= 7 * 24 * 3600)
-            |||,
+            // NOTE: This alert keeps firing below 7 days so there is no gap
+            //       while the P2 alert is pending. Alertmanager inhibits it
+            //       once NginxIngressTLSCertificateExpiringCritical fires.
+            expr: certificateExpiryExpr(21),
             'for': '1h',
             labels: {
               severity: 'P3',
             },
             annotations: {
-              summary: 'NGINX Ingress TLS: certificate for {{ $labels.host }} expires within 21 days',
-              description: 'The certificate serving {{ $labels.host }} has {{ $value | humanizeDuration }} remaining, below the 21-day warning threshold. It should renew automatically via cert-manager; normal behavior is renewal before expiry.',
+              summary: 'NGINX Ingress TLS: certificate expires within 21 days',
+              description: 'The TLS certificate in Secret {{ $labels.namespace }}/{{ $labels.secret_name }} served by NGINX Ingress expires in {{ $value | humanizeDuration }}, which is below the 21-day warning threshold. cert-manager renews certificates when a third of their lifetime remains (30 days for a 90-day certificate), so renewal has stalled or the certificate is managed manually. Normal behavior is more than 21 days remaining.',
               runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#nginxingresstlscertificateexpiringsoon',
             },
           },
           {
             alert: 'NginxIngressTLSCertificateExpiringCritical',
-            expr: |||
-              nginx_ingress_controller_ssl_expire_time_seconds{secret_name!=""} - time() < 7 * 24 * 3600
-            |||,
+            expr: certificateExpiryExpr(7),
             'for': '1h',
             labels: {
               severity: 'P2',
             },
             annotations: {
-              summary: 'NGINX Ingress TLS: certificate for {{ $labels.host }} expires within 7 days',
-              description: 'The certificate serving {{ $labels.host }} has {{ $value | humanizeDuration }} remaining, below the 7-day critical threshold. Check cert-manager and renew or replace the certificate before it expires; normal behavior is renewal before expiry.',
+              summary: 'NGINX Ingress TLS: certificate expires within 7 days and will break HTTPS for its hosts',
+              description: 'The TLS certificate in Secret {{ $labels.namespace }}/{{ $labels.secret_name }} served by NGINX Ingress expires in {{ $value | humanizeDuration }}, which is below the 7-day critical threshold. Every host using this Secret fails TLS verification once it expires. Normal behavior is more than 21 days remaining.',
               runbook_url: 'https://vexxhost.github.io/atmosphere/admin/monitoring.html#nginxingresstlscertificateexpiringcritical',
             },
           },
