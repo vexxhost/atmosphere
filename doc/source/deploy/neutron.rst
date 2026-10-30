@@ -7,6 +7,33 @@ configurations to optimize and tailor network performance. This includes
 integrating hardware acceleration technologies to enhance networking
 capabilities within your OpenStack environment.
 
+*********************
+Firewall as a Service
+*********************
+
+Firewall as a Service (FWaaS) is enabled by default for ML2/OVN deployments.
+The ``firewall_v2`` service plugin uses the OVN firewall driver to apply
+firewall policies to router interface ports. The driver does not support
+attaching firewall groups to instance ports.
+
+The Neutron API and RPC servers load ``/etc/neutron/neutron_fwaas.conf``.
+The standard database migration creates and updates the FWaaS tables along
+with those of the other installed Neutron plugins. No separate FWaaS
+migration command is needed.
+
+Horizon includes the firewall dashboard by default. It displays the Firewall
+Groups panel when Neutron advertises the ``fwaas_v2`` extension.
+
+After deployment, verify that the extension is available and the firewall
+group API responds:
+
+.. code-block:: console
+
+    openstack extension list --network
+    openstack firewall group list
+
+ML2/OVS deployments do not enable FWaaS by default.
+
 **********************
 Helm Operation Timeout
 **********************
