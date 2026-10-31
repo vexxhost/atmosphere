@@ -125,7 +125,7 @@ __neutron_ovn_helm_values:
   conf:
     neutron:
       DEFAULT:
-        service_plugins: qos,ovn-router,segments,trunk,log,ovn-vpnaas,taas,tapmirror
+        service_plugins: qos,ovn-router,segments,trunk,log,ovn-vpnaas,firewall_v2,taas,tapmirror
       ovn:
         ovn_emit_need_to_frag: true
       service_providers:
@@ -138,6 +138,9 @@ __neutron_ovn_helm_values:
         extensions: vpnaas
       vpnagent:
         vpn_device_driver: neutron_vpnaas.services.vpn.device_drivers.ovn_ipsec.OvnStrongSwanDriver
+    neutron_fwaas:
+      service_providers:
+        service_provider: "FIREWALL_V2:fwaas_db:neutron_fwaas.services.firewall.service_drivers.ovn.firewall_l3_driver.OVNFwaasDriver:default"
     plugins:
       ml2_conf:
         agent:

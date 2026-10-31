@@ -1,0 +1,13 @@
+---
+features:
+  - |
+    OVN deployments now enable Neutron Firewall as a Service (FWaaS) by
+    default. The ``firewall_v2`` service plugin uses the OVN
+    firewall driver, and Horizon includes the firewall dashboard.
+    The standard database migration creates the FWaaS tables.
+upgrade:
+  - |
+    Existing OVN clouds gain the FWaaS API and Horizon firewall panel on
+    upgrade. Operators who override ``conf.neutron.DEFAULT.service_plugins``
+    in ``neutron_helm_values`` must add ``firewall_v2`` to that list to
+    enable FWaaS.
