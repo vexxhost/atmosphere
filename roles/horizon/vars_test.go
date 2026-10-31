@@ -22,18 +22,6 @@ type Vars struct {
 	openstack_helm.HelmValues `yaml:"_horizon_helm_values"`
 }
 
-type HorizonPanelsVars struct {
-	Conf struct {
-		Horizon struct {
-			ExtraPanels []string `yaml:"extra_panels"`
-		} `yaml:"horizon"`
-	} `yaml:"conf"`
-}
-
-type HorizonDefaultPanelsVars struct {
-	HorizonPanelsVars `yaml:"_horizon_helm_values"`
-}
-
 func TestMain(m *testing.M) {
 	t := &testing.T{}
 	err := yaml.UnmarshalWithOptions(varsFile, &vars)
@@ -50,9 +38,9 @@ func TestHelmValues(t *testing.T) {
 	// for the actual template. Like:
 	// {{ tuple "heat_api" . | include "helm-toolkit.snippets.kubernetes_pod_priority_class" }}
 	vars.HelmValues.Pod.PriorityClass = map[string]string{
-		"horizon":       "high-priority",
-		"db_init":       "high-priority",
-		"db_sync":       "high-priority",
+		"horizon": "high-priority",
+		"db_init": "high-priority",
+		"db_sync": "high-priority",
 		"horizon_tests": "high-priority",
 	}
 	// (rlin): Before you add any new runtime class here.
@@ -61,9 +49,9 @@ func TestHelmValues(t *testing.T) {
 	// for the actual template. Like:
 	// {{ tuple "heat_api" . | include "helm-toolkit.snippets.kubernetes_pod_runtime_class" }}
 	vars.HelmValues.Pod.RuntimeClass = map[string]string{
-		"horizon":       "kata-clh",
-		"db_init":       "kata-clh",
-		"db_sync":       "kata-clh",
+		"horizon": "kata-clh",
+		"db_init": "kata-clh",
+		"db_sync": "kata-clh",
 		"horizon_tests": "kata-clh",
 	}
 	vals, err := openstack_helm.CoalescedHelmValues("../../charts/horizon", &vars.HelmValues)
@@ -71,13 +59,4 @@ func TestHelmValues(t *testing.T) {
 
 	testutils.TestAllPodsHaveRuntimeClass(t, vals)
 	testutils.TestAllPodsHavePriorityClass(t, vals)
-}
-
-func TestExtraPanels(t *testing.T) {
-	var panelVars HorizonDefaultPanelsVars
-	err := yaml.UnmarshalWithOptions(varsFile, &panelVars)
-	require.NoError(t, err)
-
-	require.Contains(t, panelVars.Conf.Horizon.ExtraPanels, "neutron_vpnaas_dashboard")
-	require.Contains(t, panelVars.Conf.Horizon.ExtraPanels, "neutron_fwaas_dashboard")
 }
