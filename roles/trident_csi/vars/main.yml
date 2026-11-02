@@ -13,6 +13,10 @@
 # under the License.
 
 ---
+# Shared with multipathd so standalone OpenStack runs use the same defaults.
+_trident_csi_multipath_defaults: >-
+  {{ lookup('ansible.builtin.file', role_path ~ '/vars/multipath.yml') | from_yaml }}
+
 _trident_csi_backend_default_options:
   useREST: "{{ trident_csi_use_rest | bool }}"
   defaults:

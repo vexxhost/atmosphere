@@ -51,9 +51,7 @@ trident_csi_supported_access_protocols:
   - nvme
   - nfs
   - smb
-trident_csi_san_storage_drivers:
-  - ontap-san
-  - ontap-san-economy
+trident_csi_san_storage_drivers: "{{ _trident_csi_multipath_defaults.san_storage_drivers }}"
 trident_csi_nas_storage_drivers:
   - ontap-nas
   - ontap-nas-economy
@@ -77,7 +75,7 @@ trident_csi_nas_type_map:
   nfs: nfs
   smb: smb
 
-trident_csi_storage_driver: ontap-san
+trident_csi_storage_driver: "{{ _trident_csi_multipath_defaults.storage_driver }}"
 # SAN access protocol for ``ontap-san`` volumes.
 # Use ``fc`` or ``nvme`` only with ``trident_csi_storage_driver: ontap-san``.
 # Use ``nfs`` or ``smb`` with the ONTAP NAS drivers.
@@ -178,9 +176,9 @@ trident_csi_san_services:
     default:
       - multipathd
 trident_csi_initiator_name_path: /etc/iscsi/initiatorname.iscsi
-trident_csi_configure_multipath: true
+trident_csi_configure_multipath: "{{ _trident_csi_multipath_defaults.configure_multipath }}"
 trident_csi_multipath_conf_path: /etc/multipath.conf
-trident_csi_multipath_find_multipaths: "no"
+trident_csi_multipath_find_multipaths: "{{ _trident_csi_multipath_defaults.find_multipaths }}"
 
 trident_csi_storage_class_name: general
 trident_csi_storage_class_default: true

@@ -47,6 +47,26 @@
       The selected trident_csi_access_protocol is not supported by
       trident_csi_storage_driver.
 
+- name: Exclude local disks from Trident multipath mapping
+  ansible.builtin.blockinfile:
+    path: "{{ trident_csi_multipath_conf_path }}"
+    create: true
+    owner: root
+    group: root
+    mode: "0644"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK: multipath local disks"
+    state: "{{ 'present' if multipathd_blacklist_wwids | default([]) | length > 0 else 'absent' }}"
+    block: |
+      blacklist {
+      {% for wwid in multipathd_blacklist_wwids | default([]) %}
+          wwid {{ wwid | to_json }}
+      {% endfor %}
+      }
+  register: _trident_csi_multipath_blacklist
+  when:
+    - trident_csi_configure_san | bool
+    - trident_csi_configure_multipath | bool
+
 - name: Install Trident SAN host packages
   ansible.builtin.package:
     name: "{{ _trident_csi_san_package_names }}"
@@ -184,7 +204,8 @@
     - trident_csi_configure_multipath | bool
     - >-
       (_trident_csi_multipath_line.changed | default(false)) or
-      (_trident_csi_multipath_block.changed | default(false))
+      (_trident_csi_multipath_block.changed | default(false)) or
+      (_trident_csi_multipath_blacklist.changed | default(false))
 
 - name: Create Trident namespace
   run_once: true

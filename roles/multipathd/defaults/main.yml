@@ -22,16 +22,28 @@
 multipathd_user_friendly_names: false
 # Keep the generic role aligned with Trident SAN host preparation, including
 # when the OpenStack playbook runs without the CSI playbook's role defaults.
+#
+# multipathd_find_multipaths: "yes"
 multipathd_find_multipaths: >-
   {{
-    trident_csi_multipath_find_multipaths | default('no')
+    trident_csi_multipath_find_multipaths |
+    default(_trident_csi_multipath_defaults.find_multipaths)
     if (
       csi_driver | default('') == 'trident' and
       trident_csi_configure_san | default(
-        trident_csi_storage_driver | default('ontap-san') in
-        ['ontap-san', 'ontap-san-economy']
+        trident_csi_storage_driver |
+        default(_trident_csi_multipath_defaults.storage_driver) in
+        (trident_csi_san_storage_drivers |
+         default(_trident_csi_multipath_defaults.san_storage_drivers))
       ) | bool and
-      trident_csi_configure_multipath | default(true) | bool
+      trident_csi_configure_multipath |
+      default(_trident_csi_multipath_defaults.configure_multipath) | bool
     ) else 'yes'
   }}
+
+# Local disk WWIDs to exclude from multipath mapping on this host.
+#
+# multipathd_blacklist_wwids:
+#   - "3600508b1001c5e8f0000000000000001"
+multipathd_blacklist_wwids: []
 multipathd_repository: "ppa:vexxhost/backports"
