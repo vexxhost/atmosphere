@@ -1,6 +1,7 @@
 # Copyright (c) 2026 VEXXHOST, Inc.
 # SPDX-License-Identifier: Apache-2.0
 
+from inspect import signature
 from pathlib import Path
 
 import pytest
@@ -18,12 +19,19 @@ except ImportError:
 ROOT = Path(__file__).resolve().parents[3]
 
 
+def load_vars(loader, path):
+    options = {}
+    if "trusted_as_template" in signature(loader.load_from_file).parameters:
+        options["trusted_as_template"] = True
+    return loader.load_from_file(str(path), **options)
+
+
 def render(value, overrides):
     loader = DataLoader()
-    defaults = loader.load_from_file(str(ROOT / "roles/multipathd/defaults/main.yml"))
+    defaults = load_vars(loader, ROOT / "roles/multipathd/defaults/main.yml")
     if overrides.get("csi_driver") == "trident":
-        defaults["_trident_csi_multipath_defaults"] = loader.load_from_file(
-            str(ROOT / "roles/trident_csi/vars/multipath.yml")
+        defaults["_trident_csi_multipath_defaults"] = load_vars(
+            loader, ROOT / "roles/trident_csi/vars/multipath.yml"
         )
     return Templar(loader=loader, variables={**defaults, **overrides}).template(
         trust_as_template(value)
@@ -81,7 +89,7 @@ def test_local_disk_exclusions():
 
 def test_trident_applies_same_local_disk_exclusions():
     loader = DataLoader()
-    tasks = loader.load_from_file(str(ROOT / "roles/trident_csi/tasks/main.yml"))
+    tasks = load_vars(loader, ROOT / "roles/trident_csi/tasks/main.yml")
     task = next(
         t for t in tasks if t.get("register") == "_trident_csi_multipath_blacklist"
     )
@@ -96,8 +104,8 @@ def test_trident_applies_same_local_disk_exclusions():
 
 def test_trident_backend_and_storage_class_options():
     loader = DataLoader()
-    defaults = loader.load_from_file(str(ROOT / "roles/trident_csi/defaults/main.yml"))
-    variables = loader.load_from_file(str(ROOT / "roles/trident_csi/vars/main.yml"))
+    defaults = load_vars(loader, ROOT / "roles/trident_csi/defaults/main.yml")
+    variables = load_vars(loader, ROOT / "roles/trident_csi/vars/main.yml")
     templar = Templar(
         loader=loader,
         variables={
