@@ -124,9 +124,8 @@ Trident CSI driver by updating your Ansible inventory as follows:
     trident_csi_management_lif: <FILL IN>
     trident_csi_username: <FILL IN>
     trident_csi_password: <FILL IN>
-    trident_csi_fs_type: ext4
 
-Use ``trident`` as the Atmosphere ``csi_driver`` value.  The Kubernetes CSI
+Use ``trident`` as the Atmosphere ``csi_driver`` value. The Kubernetes CSI
 provisioner remains ``csi.trident.netapp.io``, and the backend driver is
 selected separately with values such as ``ontap-san``,
 ``ontap-san-economy``, or ``ontap-nas``.
@@ -155,7 +154,6 @@ Kubernetes nodes with host HBA presentation and switch zoning already in place:
     trident_csi_management_lif: <FILL IN>
     trident_csi_username: <FILL IN>
     trident_csi_password: <FILL IN>
-    trident_csi_fs_type: ext4
 
 The ``ontap-san`` driver also supports NVMe/TCP by setting
 ``trident_csi_access_protocol: nvme``. The ``ontap-san-economy`` driver
@@ -171,7 +169,6 @@ If you need shared ``ReadWriteMany`` PVCs, use an ONTAP NAS backend instead:
     trident_csi_management_lif: <FILL IN>
     trident_csi_username: <FILL IN>
     trident_csi_password: <FILL IN>
-    trident_csi_fs_type: nfs
 
 The ONTAP NAS drivers also support SMB for Windows nodes by setting
 ``trident_csi_access_protocol: smb``.
@@ -182,18 +179,31 @@ filesystem for ONTAP NAS volumes. For ``trident_csi_access_protocol: smb``,
 Atmosphere omits ``trident_csi_fs_type`` by default.
 
 Atmosphere does not set ``trident_csi_svm`` or ``trident_csi_data_lif`` by
-default.  Set ``trident_csi_svm`` only when using cluster-scoped credentials
+default. Set ``trident_csi_svm`` only when using cluster-scoped credentials
 and the backend must target a specific SVM. Set ``trident_csi_data_lif`` only
 for NAS backends when a specific data LIF must be selected. Do not set
 ``trident_csi_data_lif`` for SAN backends.
 
-By default, Atmosphere sets the following backend options:
+The driver uses the bundled Trident 26.10.0 operator Helm chart. Its operator,
+Trident, autosupport, Helm hook, and CSI sidecar images are pinned in the release
+manifest and use ``atmosphere_image_prefix`` and ``atmosphere_image_mirrors``.
+No installer archive is downloaded during deployment. Set
+``trident_csi_namespace`` to choose the installation namespace.
+
+Periodic NetApp autosupport reporting is silenced by default. Set
+``trident_csi_silence_autosupport: false`` to enable it.
+
+By default, Trident chooses the ONTAP API according to the backend and ONTAP
+version. NVMe backends always require REST. ``trident_csi_use_rest`` accepts
+``null`` for automatic selection, ``true`` for REST, or ``false`` for ZAPI;
+explicit ZAPI selection is rejected for NVMe. Use REST with ASA r2 systems.
+
+The default volume name template includes ``trident_csi_storage_prefix``:
 
 .. code-block:: yaml
 
-    trident_csi_use_rest: false
     trident_csi_name_template: >-
-      {{ .volume.Name }}_{{ .volume.Namespace }}_{{ .volume.RequestName }}
+      {{ .config.StoragePrefix }}{{ .volume.Name }}_{{ .volume.Namespace }}_{{ .volume.RequestName }}
 
 You can pass additional backend options through
 ``trident_csi_backend_options`` and additional StorageClass parameters through
@@ -213,9 +223,10 @@ backend object, and StorageClass without waiting for a successful backend bind.
     This policy can map local disks that have a WWID, including root, LVM,
     and Ceph OSD disks. Before enabling it, identify the local disks on
     every affected host and exclude their WWIDs with host-specific
-    ``multipathd_blacklist_wwids`` values. Both the Trident and OpenStack
-    playbooks apply these exclusions. Do not blacklist ONTAP LUNs needed by
-    Trident. For example, in ``host_vars/<host>.yml``:
+    ``multipathd_blacklist_wwids`` values. The shared ``multipathd`` role
+    applies these exclusions in both the Trident and OpenStack playbooks.
+    Do not blacklist ONTAP LUNs needed by Trident. For example, in
+    ``host_vars/<host>.yml``:
 
     .. code-block:: yaml
 
@@ -236,9 +247,17 @@ backend object, and StorageClass without waiting for a successful backend bind.
     packages that Trident expects. FC switch zoning and host HBA presentation
     still need to be in place before you deploy the role.
 
-    You can disable the multipath edit by setting
+    You can disable Trident's multipath configuration by setting
     ``trident_csi_configure_multipath: false`` if your hosts already manage
-    that configuration elsewhere.
+    that configuration elsewhere. Set ``multipathd_find_multipaths``
+    explicitly when overriding the OpenStack playbook's policy.
+
+The ``ci / trident-smoke`` job installs the role into a disposable Kind cluster
+using a non-default namespace and a dummy ONTAP backend. It checks installation
+readiness and the StorageClass without provisioning volumes. Run the same
+playbook against a disposable cluster with
+``ansible-playbook -i localhost, molecule/csi/trident-smoke.yml``. Volume
+creation, attachment, and I/O still require a real ONTAP system.
 
 *********
 IBM Block

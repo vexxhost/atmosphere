@@ -13,29 +13,24 @@
 # under the License.
 
 ---
-trident_csi_version: "26.02.0"
-trident_csi_installer_url: >-
-  {{
-    'https://github.com/NetApp/trident/releases/download/v' ~
-    trident_csi_version ~
-    '/trident-installer-' ~
-    trident_csi_version ~
-    '.tar.gz'
-  }}
-trident_csi_installer_checksum: ""
-trident_csi_installer_archive: >-
-  /var/lib/trident-installer-{{ trident_csi_version }}.tar.gz
-trident_csi_installer_directory: >-
-  /var/lib/trident-installer-{{ trident_csi_version }}
-trident_csi_orchestrator_crd: >-
-  trident.netapp.io_tridentorchestrators_crd_post1.16.yaml
-trident_csi_operator_bundle: bundle.yaml
+# Vendored chart and deployment settings.
+#
+# trident_csi_helm_release_name: trident-operator
+trident_csi_helm_release_name: trident-operator
+trident_csi_helm_chart_path: "../../charts/trident-operator/"
+trident_csi_helm_chart_ref: /usr/local/src/trident-operator
+trident_csi_helm_values: {}
 
 trident_csi_namespace: trident
 trident_csi_kubeconfig: >-
   {{ kubeconfig_path | default('/etc/kubernetes/admin.conf') }}
 trident_csi_orchestrator_name: trident
 trident_csi_orchestrator_options: {}
+
+# Silence periodic NetApp autosupport reporting.
+#
+# trident_csi_silence_autosupport: true
+trident_csi_silence_autosupport: true
 trident_csi_orchestrator_wait_retries: 120
 trident_csi_orchestrator_wait_delay: 10
 
@@ -87,9 +82,12 @@ trident_csi_backend_config_name: ontap-san
 trident_csi_backend_name: "{{ trident_csi_backend_config_name }}"
 trident_csi_backend_secret_name: "{{ trident_csi_backend_config_name }}-secret"
 trident_csi_backend_deletion_policy: retain
-trident_csi_use_rest: false
+# Leave API selection to Trident except for NVMe, which requires REST.
+#
+# trident_csi_use_rest: true
+trident_csi_use_rest: null
 trident_csi_name_template: !unsafe >-
-  {{ .volume.Name }}_{{ .volume.Namespace }}_{{ .volume.RequestName }}
+  {{ .config.StoragePrefix }}{{ .volume.Name }}_{{ .volume.Namespace }}_{{ .volume.RequestName }}
 trident_csi_backend_options: {}
 trident_csi_wait_for_backend: true
 trident_csi_backend_wait_retries: 60
@@ -177,7 +175,6 @@ trident_csi_san_services:
       - multipathd
 trident_csi_initiator_name_path: /etc/iscsi/initiatorname.iscsi
 trident_csi_configure_multipath: "{{ _trident_csi_multipath_defaults.configure_multipath }}"
-trident_csi_multipath_conf_path: /etc/multipath.conf
 trident_csi_multipath_find_multipaths: "{{ _trident_csi_multipath_defaults.find_multipaths }}"
 
 trident_csi_storage_class_name: general

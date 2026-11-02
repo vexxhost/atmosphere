@@ -47,25 +47,11 @@
       The selected trident_csi_access_protocol is not supported by
       trident_csi_storage_driver.
 
-- name: Exclude local disks from Trident multipath mapping
-  ansible.builtin.blockinfile:
-    path: "{{ trident_csi_multipath_conf_path }}"
-    create: true
-    owner: root
-    group: root
-    mode: "0644"
-    marker: "# {mark} ANSIBLE MANAGED BLOCK: multipath local disks"
-    state: "{{ 'present' if multipathd_blacklist_wwids | default([]) | length > 0 else 'absent' }}"
-    block: |
-      blacklist {
-      {% for wwid in multipathd_blacklist_wwids | default([]) %}
-          wwid {{ wwid | to_json }}
-      {% endfor %}
-      }
-  register: _trident_csi_multipath_blacklist
-  when:
-    - trident_csi_configure_san | bool
-    - trident_csi_configure_multipath | bool
+- name: Validate NVMe backend API
+  ansible.builtin.assert:
+    that:
+      - trident_csi_access_protocol != 'nvme' or _trident_csi_backend_options.useREST | bool
+    fail_msg: NVMe backends require useREST enabled.
 
 - name: Install Trident SAN host packages
   ansible.builtin.package:
@@ -80,6 +66,18 @@
         _trident_csi_san_protocol_packages[ansible_os_family] |
         default(_trident_csi_san_protocol_packages.default)
       }}
+
+- name: Configure Trident SAN multipathing
+  ansible.builtin.include_role:
+    name: multipathd
+  vars:
+    multipathd_find_multipaths: "{{ trident_csi_multipath_find_multipaths }}"
+  when:
+    - trident_csi_configure_san | bool
+    - trident_csi_configure_multipath | bool
+
+- name: Apply Trident multipath configuration before starting services
+  ansible.builtin.meta: flush_handlers
 
 - name: Start Trident SAN services
   ansible.builtin.service:
@@ -133,131 +131,15 @@
         group: root
         mode: "0644"
 
-- name: Check multipath configuration
-  ansible.builtin.stat:
-    path: "{{ trident_csi_multipath_conf_path }}"
-  register: _trident_csi_multipath_conf
-  when:
-    - trident_csi_configure_san | bool
-    - trident_csi_configure_multipath | bool
-
-- name: Read multipath configuration
-  ansible.builtin.slurp:
-    src: "{{ trident_csi_multipath_conf_path }}"
-  register: _trident_csi_multipath_conf_content
-  when:
-    - trident_csi_configure_san | bool
-    - trident_csi_configure_multipath | bool
-    - _trident_csi_multipath_conf.stat.exists
-
-- name: Set multipath configuration content fact
-  ansible.builtin.set_fact:
-    _trident_csi_multipath_conf_text: >-
-      {{
-        _trident_csi_multipath_conf_content.content |
-        default('') |
-        b64decode
-      }}
-  when:
-    - trident_csi_configure_san | bool
-    - trident_csi_configure_multipath | bool
-
-- name: Update existing find_multipaths setting
-  ansible.builtin.lineinfile:
-    path: "{{ trident_csi_multipath_conf_path }}"
-    regexp: '^\s*find_multipaths\s+'
-    line: "    find_multipaths {{ trident_csi_multipath_find_multipaths }}"
-  register: _trident_csi_multipath_line
-  when:
-    - trident_csi_configure_san | bool
-    - trident_csi_configure_multipath | bool
-    - >-
-      'find_multipaths' in
-      (_trident_csi_multipath_conf_text | default(''))
-
-- name: Add Trident multipath defaults
-  ansible.builtin.blockinfile:
-    path: "{{ trident_csi_multipath_conf_path }}"
-    create: true
-    owner: root
-    group: root
-    mode: "0644"
-    marker: "# {mark} ANSIBLE MANAGED BLOCK: NetApp Trident CSI"
-    block: |
-      defaults {
-          find_multipaths {{ trident_csi_multipath_find_multipaths }}
-      }
-  register: _trident_csi_multipath_block
-  when:
-    - trident_csi_configure_san | bool
-    - trident_csi_configure_multipath | bool
-    - >-
-      'find_multipaths' not in
-      (_trident_csi_multipath_conf_text | default(''))
-
-- name: Restart multipathd after Trident multipath changes
-  ansible.builtin.service:
-    name: multipathd
-    state: restarted
-  when:
-    - trident_csi_configure_san | bool
-    - trident_csi_configure_multipath | bool
-    - >-
-      (_trident_csi_multipath_line.changed | default(false)) or
-      (_trident_csi_multipath_block.changed | default(false)) or
-      (_trident_csi_multipath_blacklist.changed | default(false))
-
-- name: Create Trident namespace
+- name: Deploy Trident operator Helm chart
   run_once: true
-  kubernetes.core.k8s:
-    state: present
+  kubernetes.core.helm:
+    name: "{{ trident_csi_helm_release_name }}"
+    chart_ref: "{{ trident_csi_helm_chart_ref }}"
+    release_namespace: "{{ trident_csi_namespace }}"
+    create_namespace: true
     kubeconfig: "{{ trident_csi_kubeconfig }}"
-    definition:
-      apiVersion: v1
-      kind: Namespace
-      metadata:
-        name: "{{ trident_csi_namespace }}"
-
-- name: Create Trident installer directory
-  run_once: true
-  ansible.builtin.file:
-    path: "{{ trident_csi_installer_directory }}"
-    state: directory
-    owner: root
-    group: root
-    mode: "0755"
-
-- name: Download Trident installer package
-  run_once: true
-  ansible.builtin.get_url:
-    url: "{{ trident_csi_installer_url }}"
-    dest: "{{ trident_csi_installer_archive }}"
-    checksum: "{{ trident_csi_installer_checksum | default(omit, true) }}"
-    owner: root
-    group: root
-    mode: "0644"
-
-- name: Extract Trident installer package
-  run_once: true
-  ansible.builtin.unarchive:
-    src: "{{ trident_csi_installer_archive }}"
-    dest: "{{ trident_csi_installer_directory }}"
-    remote_src: true
-    extra_opts:
-      - --strip-components=1
-    creates: "{{ trident_csi_installer_directory }}/deploy"
-
-- name: Create TridentOrchestrator CRD
-  run_once: true
-  kubernetes.core.k8s:
-    state: present
-    kubeconfig: "{{ trident_csi_kubeconfig }}"
-    src: >-
-      {{
-        trident_csi_installer_directory ~
-        '/deploy/crds/' ~
-        trident_csi_orchestrator_crd
-      }}
+    values: "{{ _trident_csi_helm_values | combine(trident_csi_helm_values, recursive=True) }}"
 
 - name: Wait for TridentOrchestrator CRD
   run_once: true
@@ -270,18 +152,6 @@
   retries: 60
   delay: 5
   until: _trident_csi_orchestrator_crd.resources | length > 0
-
-- name: Deploy Trident operator
-  run_once: true
-  kubernetes.core.k8s:
-    state: present
-    kubeconfig: "{{ trident_csi_kubeconfig }}"
-    src: >-
-      {{
-        trident_csi_installer_directory ~
-        '/deploy/' ~
-        trident_csi_operator_bundle
-      }}
 
 - name: Create TridentOrchestrator
   run_once: true
