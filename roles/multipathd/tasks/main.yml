@@ -12,6 +12,12 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+- name: Load Trident defaults for multipath policy
+  ansible.builtin.include_vars:
+    file: "{{ role_path }}/../trident_csi/vars/multipath.yml"
+    name: _trident_csi_multipath_defaults
+  when: csi_driver | default('') == 'trident'
+
 - name: Add backports PPA
   ansible.builtin.apt_repository:
     repo: "{{ multipathd_repository }}"

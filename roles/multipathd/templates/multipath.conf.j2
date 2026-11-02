@@ -52,6 +52,9 @@ devices {
 }
 
 blacklist {
+{% for wwid in multipathd_blacklist_wwids %}
+      wwid {{ wwid | to_json }}
+{% endfor %}
       devnode "^pxd[0-9]*"
       devnode "^pxd*"
       device {

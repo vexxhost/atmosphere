@@ -210,6 +210,19 @@ backend object, and StorageClass without waiting for a successful backend bind.
     and multipath configuration on every Kubernetes node. Atmosphere
     configures ``find_multipaths no`` by default.
 
+    This policy can map local disks that have a WWID, including root, LVM,
+    and Ceph OSD disks. Before enabling it, identify the local disks on
+    every affected host and exclude their WWIDs with host-specific
+    ``multipathd_blacklist_wwids`` values. Both the Trident and OpenStack
+    playbooks apply these exclusions. Do not blacklist ONTAP LUNs needed by
+    Trident. For example, in ``host_vars/<host>.yml``:
+
+    .. code-block:: yaml
+
+        multipathd_blacklist_wwids:
+          - "<local-root-disk-wwid>"
+          - "<local-ceph-osd-disk-wwid>"
+
     When Trident SAN host preparation and multipath configuration are enabled,
     the OpenStack ``multipathd`` role also follows
     ``trident_csi_multipath_find_multipaths`` (default: ``"no"``), including
