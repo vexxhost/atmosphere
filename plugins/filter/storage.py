@@ -561,8 +561,11 @@ def _drop_none_backends(data: Any) -> Any:
         return data
     backends = data.get("backends")
     if isinstance(backends, dict):
-        data["backends"] = {
-            name: spec for name, spec in backends.items() if spec is not None
+        return {
+            **data,
+            "backends": {
+                name: spec for name, spec in backends.items() if spec is not None
+            },
         }
     return data
 
@@ -727,9 +730,23 @@ def storage_uses_ceph(raw: Any) -> bool:
     )
 
 
+def _masked_backend_names(raw: Any, section: str) -> list[str]:
+    """Return backend names explicitly set to ``None`` in raw input."""
+    if not isinstance(raw, dict):
+        return []
+    storage_section = raw.get(section)
+    if not isinstance(storage_section, dict):
+        return []
+    backends = storage_section.get("backends")
+    if not isinstance(backends, dict):
+        return []
+    return [name for name, backend in backends.items() if backend is None]
+
+
 def storage_to_cinder_helm_values(raw: Any) -> HelmValues:
     """Derive Cinder Helm values from atmosphere_storage."""
 
+    masked_backend_names = _masked_backend_names(raw, "volumes")
     storage = _parse(raw)
     volumes = storage.volumes
     backup = storage.backup
@@ -737,6 +754,9 @@ def storage_to_cinder_helm_values(raw: Any) -> HelmValues:
     backends_config = volumes.backends if volumes else {}
 
     result: HelmValues = {"conf": {"backends": {}, "cinder": {"DEFAULT": {}}}}
+
+    for name in masked_backend_names:
+        result["conf"]["backends"][name] = None
 
     for name, backend in backends_config.items():
         backend.amend_cinder(result, name)

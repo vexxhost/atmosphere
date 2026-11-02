@@ -94,6 +94,9 @@ the inherited ``rbd1`` entries to ``null``. This keeps the storage
 configuration on the non-Ceph path instead of running with both the default
 Ceph backend and the new backend.
 
+The Cinder Helm values preserve these ``null`` entries so the chart also
+removes its default backend, Ceph keyring setup, and volume type creation.
+
 For a fully non-Ceph deployment:
 
 1. Set ``images.default`` and ``volumes.default`` to your non-Ceph backends.

@@ -391,6 +391,30 @@ class TestValidation:
 
 
 class TestStorageToCinderHelmValues:
+    @pytest.mark.parametrize(
+        "backend",
+        [
+            _POWERSTORE_BACKEND,
+            _PURE_ISCSI_BACKEND,
+            _NIMBLE_ISCSI_BACKEND,
+            _STORPOOL_BACKEND,
+        ],
+    )
+    def test_backend_masks_survive_repeated_rendering(self, backend):
+        storage = {
+            "volumes": {
+                "default": "external",
+                "backends": {"rbd1": None, "unused": None, "external": backend},
+            },
+            "backup": {"type": "none"},
+        }
+        for _ in range(2):
+            result = storage_to_cinder_helm_values(storage)
+            assert result["conf"]["backends"]["rbd1"] is None
+            assert result["conf"]["backends"]["unused"] is None
+            assert result["conf"]["cinder"]["DEFAULT"]["enabled_backends"] == "external"
+        assert storage["volumes"]["backends"]["rbd1"] is None
+
     def test_default_rbd(self):
         result = storage_to_cinder_helm_values(DEFAULT_STORAGE)
         assert result["storage"] == "ceph"
@@ -797,7 +821,7 @@ class TestStorageToCinderHelmValues:
         }
         result = storage_to_cinder_helm_values(storage)
 
-        assert "rbd1" not in result["conf"]["backends"]
+        assert result["conf"]["backends"]["rbd1"] is None
         assert result["storage"] == "nimble"
         assert result["manifests"]["job_storage_init"] is False
         assert result["conf"]["enable_iscsi"] is True
