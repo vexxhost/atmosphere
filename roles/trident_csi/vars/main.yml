@@ -18,15 +18,50 @@ _trident_csi_multipath_defaults: >-
   {{ lookup('ansible.builtin.file', role_path ~ '/vars/multipath.yml') | from_yaml }}
 
 _trident_csi_backend_default_options:
-  useREST: "{{ trident_csi_use_rest | bool }}"
   defaults:
     nameTemplate: "{{ trident_csi_name_template }}"
+
+_trident_csi_backend_rest_options: >-
+  {{
+    {'useREST': trident_csi_use_rest | bool}
+    if trident_csi_use_rest is not none else
+    ({'useREST': true} if trident_csi_access_protocol == 'nvme' else {})
+  }}
 
 _trident_csi_backend_options: >-
   {{
     _trident_csi_backend_default_options |
+    combine(_trident_csi_backend_rest_options) |
     combine(trident_csi_backend_options, recursive=True)
   }}
+
+_trident_csi_orchestrator_default_options:
+  tridentImage: "{{ atmosphere_images['trident'] }}"
+  autosupportImage: "{{ atmosphere_images['trident_autosupport'] }}"
+  silenceAutosupport: "{{ trident_csi_silence_autosupport | bool }}"
+
+_trident_csi_orchestrator_options: >-
+  {{
+    _trident_csi_orchestrator_default_options |
+    combine(trident_csi_orchestrator_options, recursive=True)
+  }}
+
+_trident_csi_helm_values:
+  createTridentOrchestrator: false
+  operatorDebug: false
+  operatorImage: "{{ atmosphere_images['trident_operator'] }}"
+  tridentImage: "{{ atmosphere_images['trident'] }}"
+  tridentAutosupportImage: "{{ atmosphere_images['trident_autosupport'] }}"
+  helmHookImage: "{{ atmosphere_images['trident_helm_hook'] }}"
+  operatorExtraEnv:
+    DEFAULT_TRIDENT_IMAGE: "{{ atmosphere_images['trident'] }}"
+    DEFAULT_TRIDENT_AUTOSUPPORT_IMAGE: "{{ atmosphere_images['trident_autosupport'] }}"
+    TRIDENT_CSI_SIDECAR_PROVISIONER_IMAGE: "{{ atmosphere_images['trident_csi_provisioner'] }}"
+    TRIDENT_CSI_SIDECAR_ATTACHER_IMAGE: "{{ atmosphere_images['trident_csi_attacher'] }}"
+    TRIDENT_CSI_SIDECAR_RESIZER_IMAGE: "{{ atmosphere_images['trident_csi_resizer'] }}"
+    TRIDENT_CSI_SIDECAR_SNAPSHOTTER_IMAGE: "{{ atmosphere_images['trident_csi_snapshotter'] }}"
+    TRIDENT_CSI_SIDECAR_NODE_DRIVER_REGISTRAR_IMAGE: "{{ atmosphere_images['trident_csi_node_driver_registrar'] }}"
+    TRIDENT_CSI_SIDECAR_LIVENESS_PROBE_IMAGE: "{{ atmosphere_images['trident_csi_liveness_probe'] }}"
 
 _trident_csi_storage_class_base_parameters:
   backendType: "{{ trident_csi_storage_driver }}"

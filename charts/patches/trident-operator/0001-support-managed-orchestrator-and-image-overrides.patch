@@ -1,0 +1,51 @@
+From: Yaguang Tang <yaguang.tang@vexxhost.com>
+Subject: [PATCH] Support managed orchestrators and operator image overrides
+
+Allow Atmosphere to own the TridentOrchestrator and pin every operator-managed
+CSI sidecar through Trident's supported image environment variables.
+
+Signed-off-by: Yaguang Tang <yaguang.tang@vexxhost.com>
+---
+diff --git a/trident-operator/values.yaml b/trident-operator/values.yaml
+--- a/trident-operator/values.yaml
++++ b/trident-operator/values.yaml
+@@ -3,6 +3,12 @@
+ 
+ # helmHookImage specifies the image used for Helm hook jobs
+ helmHookImage: "alpine/k8s:1.33.0"
++
++# Let Atmosphere manage the orchestrator separately from the operator chart.
++createTridentOrchestrator: true
++
++# Override the operator's default images, including its CSI sidecars.
++operatorExtraEnv: {}
+ 
+ ## Node labels for pod assignment
+ ## ref: https://kubernetes.io/docs/user-guide/node-selection/
+diff --git a/trident-operator/templates/deployment.yaml b/trident-operator/templates/deployment.yaml
+--- a/trident-operator/templates/deployment.yaml
++++ b/trident-operator/templates/deployment.yaml
+@@ -53,6 +53,10 @@
+         - -debug
+         {{- end }}
+         env:
++        {{- range $name, $value := .Values.operatorExtraEnv }}
++        - name: {{ $name }}
++          value: {{ $value | quote }}
++        {{- end }}
+         - name: POD_NAME
+           valueFrom:
+             fieldRef:
+diff --git a/trident-operator/templates/tridentorchestrator.yaml b/trident-operator/templates/tridentorchestrator.yaml
+--- a/trident-operator/templates/tridentorchestrator.yaml
++++ b/trident-operator/templates/tridentorchestrator.yaml
+@@ -1,3 +1,4 @@
++{{- if .Values.createTridentOrchestrator }}
+ apiVersion: trident.netapp.io/v1
+ kind: TridentOrchestrator
+ metadata:
+@@ -109,3 +110,4 @@
+   {{- if .Values.hostNetwork }}
+   hostNetwork: {{ .Values.hostNetwork }}
+   {{- end }}
++{{- end }}

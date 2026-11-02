@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+{{- if .Values.deploymentAnnotations }}
+  annotations:
+{{ toYaml .Values.deploymentAnnotations | indent 4 }}
+{{- end }}
+  labels:
+    app: operator.trident.netapp.io
+  name: trident-operator
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: operator.trident.netapp.io
+      name: trident-operator
+  template:
+    metadata:
+    {{- if .Values.podAnnotations }}
+      annotations:
+{{ toYaml .Values.podAnnotations | indent 8 }}
+    {{- end }}
+      labels:
+        app: operator.trident.netapp.io
+        name: trident-operator
+        {{- if and (eq .Values.cloudProvider "Azure") (ne .Values.cloudIdentity "") }}
+        azure.workload.identity/use: 'true'
+        {{- end }}
+    spec:
+      {{- if .Values.affinity }}
+      affinity:
+{{- toYaml .Values.affinity | nindent 8 }}       
+    {{- end }}
+      {{- if .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.nodeSelector | indent 8 }}
+      {{- end }}
+      {{- if .Values.tolerations }}
+      tolerations:
+{{ toYaml .Values.tolerations | indent 8 }}
+      {{- end }}
+      serviceAccountName: trident-operator
+      containers:
+      - command:
+        - /trident-operator
+        {{- if or .Values.anfConfigurator.enabled .Values.ontapConfigurator.enabled }}
+        - -configurator-reconcile-interval={{ .Values.configuratorReconcileInterval }}
+        {{- end }}
+        {{- if .Values.operatorDebug }}
+        - -debug
+        {{- end }}
+        env:
+        {{- range $name, $value := .Values.operatorExtraEnv }}
+        - name: {{ $name }}
+          value: {{ $value | quote }}
+        {{- end }}
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: OPERATOR_NAME
+          value: trident-operator
+        {{- if and (eq .Values.cloudProvider "Azure") (eq .Values.cloudIdentity "") }}
+        - name: AZURE_CREDENTIAL_FILE
+          value: /etc/kubernetes/azure.json
+        volumeMounts:
+          - name: azure-cred
+            mountPath: /etc/kubernetes
+        {{- end }}
+        image: {{ include "trident-operator.image" $ }}
+        imagePullPolicy: {{ .Values.imagePullPolicy }}
+        name: trident-operator
+        securityContext:
+          readOnlyRootFilesystem: true
+        {{- if (include "trident-operator.hasResources" .Values.resources.operator) }}
+        resources:
+          {{- include "trident-operator.resources" .Values.resources.operator | indent 10 }}
+        {{- end }}
+      {{- if and (eq .Values.cloudProvider "Azure") (eq .Values.cloudIdentity "") }}
+      volumes:
+      - name: azure-cred
+        hostPath:
+          path: /etc/kubernetes
+          type: DirectoryOrCreate
+      {{- end }}
