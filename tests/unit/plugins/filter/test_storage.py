@@ -378,6 +378,39 @@ class TestValidation:
                 }
             )
 
+    @pytest.mark.parametrize(
+        "option",
+        [
+            "volume_backend_name",
+            "volume_driver",
+            "netapp_storage_family",
+            "netapp_storage_protocol",
+            "netapp_server_hostname",
+            "netapp_server_port",
+            "netapp_login",
+            "netapp_password",
+            "netapp_vserver",
+            "netapp_transport_type",
+            "use_multipath_for_image_xfer",
+            "nfs_shares_config",
+        ],
+    )
+    def test_netapp_options_cannot_override_managed_fields(self, option):
+        with pytest.raises(ValidationError, match="cannot override managed options"):
+            StorageConfig.model_validate(
+                {
+                    "volumes": {
+                        "default": "netapp",
+                        "backends": {
+                            "netapp": {
+                                **_NETAPP_ISCSI_BACKEND,
+                                "netapp_options": {option: "override"},
+                            },
+                        },
+                    },
+                }
+            )
+
     def test_erasure_coded_k_below_minimum_rejected(self):
         with pytest.raises(ValidationError):
             StorageConfig.model_validate(

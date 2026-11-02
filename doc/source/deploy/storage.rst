@@ -257,6 +257,18 @@ For additional options, see the `Cinder NetApp volume driver documentation
       - 10.0.0.20:/cinder
     netapp_options: {}     # optional additional Cinder NetApp options
 
+``netapp_options`` accepts additional driver settings. Keys managed by the
+typed configuration, including credentials, protocol, driver, backend name,
+and ``nfs_shares_config``, are rejected. Use their dedicated fields instead.
+
+Prepare the Cinder volume hosts and every compute host for the chosen
+protocol before provisioning volumes. Configure iSCSI initiators and
+multipathing for iSCSI, or HBA presentation, switch zoning, and multipathing
+for Fibre Channel. For NVMe/TCP, install the NVMe tools, load ``nvme_tcp``,
+and configure a persistent host NQN. The Cinder backend configuration does
+not run Trident's Kubernetes host preparation. Validate volume creation,
+attachment, and I/O against your ONTAP SVM before production use.
+
 Pure storage (``pure``)
 =======================
 

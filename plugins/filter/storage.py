@@ -315,20 +315,20 @@ class VolumeBackendNetApp(_HostAttachedVolumeBackend):
     )
 
     @model_validator(mode="after")
-    def _validate_nfs_shares_config(self) -> Self:
-        if (
-            self.protocol == "nfs"
-            and self.nfs_shares_config is None
-            and "nfs_shares_config" not in self.netapp_options
-        ):
+    def _validate_options(self) -> Self:
+        if self.protocol == "nfs" and self.nfs_shares_config is None:
+            raise ValueError("NetApp NFS backends require nfs_shares_config")
+        reserved = self._typed_cinder_backend_config("").keys() | {"nfs_shares_config"}
+        collisions = reserved & self.netapp_options.keys()
+        if collisions:
             raise ValueError(
-                "NetApp NFS backends require nfs_shares_config or "
-                "netapp_options.nfs_shares_config"
+                "netapp_options cannot override managed options: "
+                + ", ".join(sorted(collisions))
             )
         return self
 
-    def cinder_backend_config(self, name: str) -> dict[str, Any]:
-        """Generate Cinder backend config for NetApp ONTAP."""
+    def _typed_cinder_backend_config(self, name: str) -> dict[str, Any]:
+        """Generate the NetApp options managed by the typed configuration."""
         config: dict[str, Any] = {
             "volume_backend_name": name,
             "volume_driver": "cinder.volume.drivers.netapp.common.NetAppDriver",
@@ -344,8 +344,11 @@ class VolumeBackendNetApp(_HostAttachedVolumeBackend):
         }
         if self.nfs_shares_config is not None:
             config["nfs_shares_config"] = self.nfs_shares_config
-        config.update(self.netapp_options)
         return config
+
+    def cinder_backend_config(self, name: str) -> dict[str, Any]:
+        """Generate Cinder backend config for NetApp ONTAP."""
+        return {**self._typed_cinder_backend_config(name), **self.netapp_options}
 
     def amend_cinder(self, result: HelmValues, name: str) -> None:
         """Amend Cinder Helm values for a NetApp ONTAP volume backend."""
