@@ -31,6 +31,9 @@ galaxy_info:
 dependencies:
   - role: defaults
   - role: vexxhost.kubernetes.upload_helm_chart
+    delegate_to: "{{ groups['controllers'][0] }}"
     vars:
+      # Synchronize targets the original play host, so use copy for delegation.
+      upload_helm_chart_method: copy
       upload_helm_chart_src: "{{ ovn_helm_chart_path }}"
       upload_helm_chart_dest: "{{ ovn_helm_chart_ref }}"
