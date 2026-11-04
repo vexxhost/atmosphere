@@ -1,0 +1,56 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- if and .Values.manifests.network_policy_console .Values.conf.ironic.vnc.enabled (eq .Values.conf.ironic.vnc.container_provider "kubernetes") }}
+{{- $consoleNamespace := .Values.console.namespace | default (printf "%s-ironic-vnc" .Release.Namespace) }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ironic-console-rfb
+  namespace: {{ $consoleNamespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app: ironic
+      component: ironic-console
+  policyTypes:
+    - Ingress
+{{- if .Values.console.egress }}
+    - Egress
+{{- end }}
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Release.Namespace }}
+          podSelector:
+            matchLabels:
+              application: ironic
+              component: novncproxy
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Release.Namespace }}
+          podSelector:
+            matchLabels:
+              application: nova
+              component: novnc-proxy
+      ports:
+        - protocol: TCP
+          port: 5900
+{{- with .Values.console.egress }}
+  egress:
+{{ toYaml . | indent 4 }}
+{{- end }}
+{{- end }}

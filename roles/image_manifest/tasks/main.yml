@@ -1,3 +1,12 @@
+- name: Warn that this role is deprecated
+  ansible.builtin.debug:
+    msg: >-
+      DEPRECATED: the image_manifest role will be removed in a future release.
+      Use "atmosphere-release mirror" instead: it mirrors a release without
+      changing image digests, supports registries that limit nested paths and
+      writes the atmosphere_image_mirrors rules for your inventory. See the
+      "Container images and mirrors" section of the deployment guide.
+
 - name: Check if file already exists
   when: image_manifest_force is false
   block:

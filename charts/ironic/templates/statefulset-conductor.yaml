@@ -197,6 +197,12 @@ spec:
               mountPath: /etc/ironic/policy.yaml
               subPath: policy.yaml
               readOnly: true
+{{- if and .Values.conf.ironic.vnc.enabled (eq .Values.conf.ironic.vnc.container_provider "kubernetes") }}
+            - name: ironic-etc
+              mountPath: /etc/ironic/ironic-console-pod.yaml
+              subPath: ironic-console-pod.yaml
+              readOnly: true
+{{- end }}
             - name: host-var-lib-ironic
               mountPath: /var/lib/ironic
             - name: host-run

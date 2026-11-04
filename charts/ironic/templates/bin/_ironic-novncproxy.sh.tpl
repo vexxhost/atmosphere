@@ -15,14 +15,5 @@ limitations under the License.
 */}}
 
 set -ex
-COMMAND="${@:-start}"
 
-function start () {
-  exec uwsgi --ini /etc/neutron/neutron-policy-server-uwsgi.ini
-}
-
-function stop () {
-  kill -TERM 1
-}
-
-$COMMAND
+exec ironic-novncproxy --config-file /etc/ironic/ironic.conf

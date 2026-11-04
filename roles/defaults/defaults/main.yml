@@ -20,6 +20,27 @@ atmosphere_ingress_cluster_issuer: atmosphere
 atmosphere_ingress_annotations: {}
 atmosphere_image_prefix: ""
 
+# Release manifest to deploy images from: a file path, or an OCI reference
+# such as "ghcr.io/vexxhost/atmosphere-release:v7.9.0". An OCI reference is
+# read through atmosphere_image_mirrors and atmosphere_image_prefix, like every
+# image. When empty, the images listed in this role are used.
+atmosphere_release_manifest: ""
+
+# CA certificate file on the Ansible controller to trust, in addition to the
+# system certificates, when downloading atmosphere_release_manifest from a
+# registry that uses a private CA.
+atmosphere_release_manifest_ca_file: ""
+
+# Mirror rules applied to every image. Each rule redirects images from a
+# "source" (registry, namespace or repository) to a "mirror" location; the
+# most specific rule wins and atmosphere_image_prefix applies to images that
+# no rule matches. "atmosphere-release mirror" writes these rules.
+#
+# atmosphere_image_mirrors:
+#   - source: docker.io
+#     mirror: harbor.example.com/dockerhub-proxy
+atmosphere_image_mirrors: []
+
 # Kubernetes
 atmosphere_kubernetes_version: "1.28.13"
 

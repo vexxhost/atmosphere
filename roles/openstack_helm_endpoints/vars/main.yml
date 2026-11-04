@@ -13,6 +13,8 @@
 # under the License.
 
 _openstack_helm_endpoints_ignore:
+  # The Ironic noVNC proxy is an internal service using chart defaults.
+  - baremetal_vnc_proxy
   - ceph_mon
   - ceph_object_store
   - cloudwatch
@@ -469,15 +471,6 @@ _openstack_helm_endpoints_container_infra:
     host_fqdn_override:
       public:
         host: "{{ openstack_helm_endpoints_magnum_api_host }}"
-    port:
-      api:
-        public: 443
-  container_infra_registry:
-    scheme:
-      public: https
-    host_fqdn_override:
-      public:
-        host: "{{ openstack_helm_endpoints_magnum_registry_host }}"
     port:
       api:
         public: 443

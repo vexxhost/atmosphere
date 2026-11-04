@@ -1,0 +1,75 @@
+From 9443055a2502e64ff6a0acffb8b9d6e629a10953 Mon Sep 17 00:00:00 2001
+From: "Mosher, Jaymes (jm616v)" <jm616v@att.com>
+Date: Tue, 30 Sep 2025 16:41:24 -0600
+Subject: [PATCH] [libvirt] Add support for configuring hook scripts
+
+Allow configuring hook scripts for libvirt, that are called by the
+daemon on various events.
+
+https: //www.libvirt.org/hooks.html
+
+Backported from https://review.opendev.org/c/openstack/openstack-helm/+/962632
+with the values.yaml context adjusted for the vendored 1.1.0 chart, which
+does not have the TLS script block the upstream change applies after. Drop
+this patch once the chart is bumped to a release that includes it.
+
+Change-Id: I7cf06741dfdc8e9b97179d45975bd97b460855a9
+Signed-off-by: Mosher, Jaymes (jm616v) <jm616v@att.com>
+---
+diff --git a/libvirt/templates/configmap-bin.yaml b/libvirt/templates/configmap-bin.yaml
+index e82df516..0ff74c9f 100644
+--- a/libvirt/templates/configmap-bin.yaml
++++ b/libvirt/templates/configmap-bin.yaml
+@@ -38,6 +38,12 @@ data:
+ {{- end }}
+ {{- include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conf.init_modules.script "key" "libvirt-init-modules.sh") | indent 2 }}
+ {{- include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conf.dynamic_options.script "key" "init-dynamic-options.sh") | indent 2 }}
++{{- if .Values.conf.hooks.enabled }}
++{{- range $k, $v := .Values.conf.hooks.scripts }}
++  {{ $k }}: |
++{{ tpl $v . | indent 4 }}
++{{- end }}
++{{- end }}
+ {{- end }}
+ {{- end }}
+ {{- if .Values.manifests.configmap_bin }}
+diff --git a/libvirt/templates/daemonset-libvirt.yaml b/libvirt/templates/daemonset-libvirt.yaml
+index 582438f8..fbd1fa7b 100644
+--- a/libvirt/templates/daemonset-libvirt.yaml
++++ b/libvirt/templates/daemonset-libvirt.yaml
+@@ -347,6 +347,14 @@ spec:
+               subPath: key
+               readOnly: true
+             {{- end }}
++            {{- if .Values.conf.hooks.enabled }}
++            {{- range $k, $v := .Values.conf.hooks.scripts }}
++            - name: libvirt-bin
++              mountPath: /etc/libvirt/hooks/{{ $k }}
++              subPath: {{ $k }}
++              readOnly: true
++            {{- end }}
++            {{- end }}
+ {{ if $mounts_libvirt.volumeMounts }}{{ toYaml $mounts_libvirt.volumeMounts | indent 12 }}{{ end }}
+         {{- if .Values.pod.sidecars.libvirt_exporter.enabled }}
+         - name: libvirt-exporter
+diff --git a/libvirt/values.yaml b/libvirt/values.yaml
+index cd2a623d..c73fb4c3 100644
+--- a/libvirt/values.yaml
++++ b/libvirt/values.yaml
+@@ -215,6 +215,16 @@ conf:
+           echo "Nested virtualization is not supported"
+         fi
+       fi
++  hooks:
++    # Libvirt hook scripts, that are placed in /etc/libvirt/hooks
++    enabled: false
++    scripts:
++      # daemon:
++      # qemu:
++      # lxc:
++      # libxl:
++      # bhyve:
++      # network:
+ 
+ pod:
+   priorityClassName:

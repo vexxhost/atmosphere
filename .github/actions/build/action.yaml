@@ -5,6 +5,12 @@ inputs:
   pin-images:
     description: Pin images in the collection
     default: "true"
+  manifest:
+    description: >-
+      Release manifest (file or OCI reference) to pin the images from. When
+      empty, a manifest is generated from the source tree and written to
+      $RUNNER_TEMP/release-manifest.yaml.
+    default: ""
 
 runs:
   using: composite
@@ -37,7 +43,15 @@ runs:
         fi
 
     - shell: bash
-      if: ${{ inputs.pin-images == 'true' }}
+      if: ${{ inputs.pin-images == 'true' && inputs.manifest == '' }}
       run: |
-        go run cmd/pinimages/pinimages.go
+        go run ./cmd/atmosphere-release generate --write-vars --output "${RUNNER_TEMP}/release-manifest.yaml"
+        cat ./roles/defaults/vars/main.yml
+
+    - shell: bash
+      if: ${{ inputs.pin-images == 'true' && inputs.manifest != '' }}
+      env:
+        MANIFEST: ${{ inputs.manifest }}
+      run: |
+        go run ./cmd/atmosphere-release write-vars "${MANIFEST}"
         cat ./roles/defaults/vars/main.yml
