@@ -273,6 +273,12 @@ spec:
               mountPath: /etc/neutron/policy.yaml
               subPath: policy.yaml
               readOnly: true
+            {{- if contains "firewall_v2" .Values.conf.neutron.DEFAULT.service_plugins }}
+            - name: neutron-etc
+              mountPath: /etc/neutron/neutron_fwaas.conf
+              subPath: neutron_fwaas.conf
+              readOnly: true
+            {{- end }}
             {{- if contains "vpnaas" .Values.conf.neutron.DEFAULT.service_plugins }}
             - name: neutron-etc
               mountPath: /etc/neutron/neutron_vpnaas.conf

@@ -28,6 +28,9 @@ function start () {
 {{- if contains "ovn-vpnaas" .Values.conf.neutron.DEFAULT.service_plugins }}
   confs+=" --config-file /etc/neutron/neutron_ovn_vpn_agent.ini" \
 {{- end }}
+{{- if contains "firewall_v2" .Values.conf.neutron.DEFAULT.service_plugins }}
+  confs+=" --config-file /etc/neutron/neutron_fwaas.conf" \
+{{- end }}
 {{- if .Values.conf.plugins.taas.taas.enabled }}
   confs+=" --config-file /etc/neutron/taas_plugin.ini"
 {{- end }}
