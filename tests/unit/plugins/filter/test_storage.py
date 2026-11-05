@@ -9,8 +9,8 @@ from ansible_collections.vexxhost.atmosphere.plugins.filter.storage import (
     storage_to_cinder_helm_values,
     storage_to_glance_helm_values,
     storage_to_libvirt_helm_values,
-    storage_to_service_image_disk_format,
     storage_to_nova_helm_values,
+    storage_to_service_image_disk_format,
     storage_uses_ceph,
 )
 from pydantic import ValidationError
