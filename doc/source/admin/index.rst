@@ -23,3 +23,4 @@ information to ensure stable and efficient operation of the system.
    pmem
    troubleshooting
    upgrading
+   windows/index

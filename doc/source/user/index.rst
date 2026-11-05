@@ -6,3 +6,5 @@ User Guide
    :maxdepth: 2
 
    auth
+   emulated-tpm
+   windows/index
