@@ -1,0 +1,46 @@
+diff --git a/glance/templates/deployment-api.yaml b/glance/templates/deployment-api.yaml
+--- a/glance/templates/deployment-api.yaml
++++ b/glance/templates/deployment-api.yaml
+@@ -18,11 +18,11 @@ exec:
+   command:
+     - python
+     - -c
+-    - "import requests; requests.get('http://127.0.0.1:{{ tuple "image" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}')"
++    - "import requests; requests.get('http://127.0.0.1:{{ tuple "image" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}/healthcheck')"
+ {{- else }}
+ httpGet:
+   scheme: {{ tuple "image" "service" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_scheme_lookup" | upper }}
+-  path: /
++  path: /healthcheck
+   port: {{ tuple "image" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+ {{- end }}
+ {{- end }}
+@@ -33,11 +33,11 @@ exec:
+   command:
+     - python
+     - -c
+-    - "import requests; requests.get('http://127.0.0.1:{{ tuple "image" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}')"
++    - "import requests; requests.get('http://127.0.0.1:{{ tuple "image" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}/healthcheck')"
+ {{- else }}
+ httpGet:
+   scheme: {{ tuple "image" "service" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_scheme_lookup" | upper }}
+-  path: /
++  path: /healthcheck
+   port: {{ tuple "image" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+ {{- end }}
+ {{- end }}
+diff --git a/glance/values.yaml b/glance/values.yaml
+--- a/glance/values.yaml
++++ b/glance/values.yaml
+@@ -169,9 +169,9 @@ conf:
+     app:apiv2app:
+       paste.app_factory: glance.api.v2.router:API.factory
+     app:healthcheck:
+-      paste.app_factory: oslo_middleware:Healthcheck.app_factory
++      paste.app_factory: oslo_middleware:Healthcheck.app_factory
+       backends: disable_by_file
+-      disable_by_file_path: /etc/glance/healthcheck_disable
++      disable_by_file_path: /var/run/glance/healthcheck_disable
+     filter:versionnegotiation:
+       paste.filter_factory: glance.api.middleware.version_negotiation:VersionNegotiationFilter.factory
+     filter:cache:
