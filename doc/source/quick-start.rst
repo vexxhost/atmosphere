@@ -32,15 +32,21 @@ and all the OpenStack services inside a single machine.
     changes.  It's recommended to run it inside a virtual machine or a
     physical machine that can be dedicated to this purpose.
 
-In order to get started, you'll need a **Ubuntu 22.04** system with the
-following minimum system requirements:
+Use a new dedicated host for each release.  An all-in-one deployment changes
+the operating system, networking, storage, and container runtime.  Reusing a
+host from an earlier release can hide problems or leave incompatible state.
+
+Requirements
+------------
+
+You need an **Ubuntu 22.04** system with the following minimum system
+requirements:
 
 - Cores: 8 threads (or vCPUs)
 - Memory: 32GB
 
-If you're looking to run Kubernetes clusters, you'll need more memory
-for the workloads, it following minimum is recommended (but more memory
-is always better!):
+If you plan to run Kubernetes clusters, the following resources are
+recommended:
 
 - Cores: 16 threads (or vCPUs)
 - Memory: 64GB
@@ -48,44 +54,249 @@ is always better!):
 .. admonition:: Nested Virtualization
     :class: warning
 
-    If you're running this inside a virtual machine, it is **extremely**
-    important that the virtual machines supported nested virtualization,
-    otherwise the performance of the VMs will be un-usable.
+    If you run the all-in-one inside a virtual machine, the hypervisor must
+    expose nested virtualization.  Without it, instances may fail to start or
+    perform poorly.
 
-You'll need to start by installing all of the necessary dependencies first,
-**you also need to make sure you run all of these commands as ``root``**:
+Prepare the host
+----------------
+
+Connect to the host and become ``root``.  Run all remaining commands in this
+section from the root shell:
 
 .. code-block:: console
 
     $ sudo -i
     $ apt-get update
-    $ apt-get install git tox
+    $ apt-get install -y curl git tmux tox
+    $ apt-get purge -y snapd
 
-Once done, you can clone the repository locally and switch to the
-``atmosphere`` directory:
-
-.. code-block:: console
-
-    $ git clone https://github.com/vexxhost/atmosphere.git
-    $ cd atmosphere
-
-Once you're in the directory, you can deploy the all-in-one environment
-by running the following command as ``root``:
+Confirm that the host has enough resources and, for a virtual machine, access
+to KVM:
 
 .. code-block:: console
 
-    $ tox -e molecule-aio-ovn
+    $ nproc
+    $ free -h
+    $ df -h /
+    $ test -e /dev/kvm && ls -l /dev/kvm
+    $ lsblk -o NAME,TYPE,SIZE,MOUNTPOINTS
 
-If you want to use the ML2/Open vSwitch plugin, you can run the following
-command:
+Do not continue with a virtual machine if ``/dev/kvm`` is missing.  Record any
+empty data disks shown by ``lsblk``.  Never select the disk mounted at ``/`` as
+a Ceph data device.
+
+Select a release
+----------------
+
+Clone Atmosphere and check out an exact release tag.  Replace ``v7.8.1`` with
+the release you want to deploy.  Keeping the version in an environment
+variable makes this procedure reusable for later releases:
 
 .. code-block:: console
 
-    $ tox -e molecule-aio-openvswitch
+    $ export ATMOSPHERE_VERSION=v7.8.1
+    $ git clone https://github.com/vexxhost/atmosphere.git /root/atmosphere
+    $ cd /root/atmosphere
+    $ git checkout --detach "$ATMOSPHERE_VERSION"
+    $ test "$(git describe --tags --exact-match)" = "$ATMOSPHERE_VERSION"
+    $ git rev-parse HEAD
 
-Once the deployment is done, it will have a full deployment of all services
-inside the same host, so you can use the cloud from the same machine by
-referencing the usage section.
+The exact-tag check prevents an accidental deployment from a moving branch or
+an untagged commit.
+
+Create the inventory and AIO configuration
+------------------------------------------
+
+The all-in-one host performs the controller, compute, and Ceph roles.  Download
+the example inventory and single-node defaults published with this guide.  The
+documentation copies remain available after you check out an older release
+tag.  Their URLs include the release tag so configuration from one release is
+not silently used with another:
+
+.. code-block:: console
+
+    $ install -d -m 0755 group_vars/all group_vars/cephs
+    $ curl --fail --location --output inventory.yaml \
+        "https://vexxhost.github.io/atmosphere/_static/aio/${ATMOSPHERE_VERSION}/inventory.yaml"
+    $ curl --fail --location --output group_vars/all/molecule.yml \
+        "https://vexxhost.github.io/atmosphere/_static/aio/${ATMOSPHERE_VERSION}/molecule.yml"
+
+Do not substitute configuration from another release if either download
+fails.  Each release must publish its matching files before it can use this
+standalone AIO procedure.
+
+The inventory uses a local connection and places ``instance`` in the
+``controllers``, ``computes``, and ``cephs`` groups.  Validate it before making
+changes to the host:
+
+.. code-block:: console
+
+    $ tox -e venv -- ansible-inventory -i inventory.yaml --graph
+
+The output must show ``instance`` under all three groups.  An empty group would
+cause Ansible to skip deployment plays while appearing to complete them.
+
+Configure Ceph storage
+----------------------
+
+For a test host with only its operating-system disk, use the loop-backed Ceph
+devices created by the AIO preparation playbook:
+
+.. code-block:: console
+
+    $ curl --fail --location --output group_vars/cephs/osds.yml \
+        "https://vexxhost.github.io/atmosphere/_static/aio/${ATMOSPHERE_VERSION}/osds-loopback.yml"
+
+The resulting configuration uses these paths:
+
+.. code-block:: yaml
+
+    ceph_osd_devices:
+      - /dev/ceph-instance-osd0/data
+      - /dev/ceph-instance-osd1/data
+      - /dev/ceph-instance-osd2/data
+
+If the host has dedicated, empty data disks, create
+``group_vars/cephs/osds.yml`` with their persistent device paths instead.  For
+example:
+
+.. code-block:: yaml
+
+    ceph_osd_devices:
+      - /dev/disk/by-id/scsi-example-disk-1
+      - /dev/disk/by-id/scsi-example-disk-2
+      - /dev/disk/by-id/scsi-example-disk-3
+
+Use paths under ``/dev/disk/by-id`` when possible so the configuration does not
+depend on kernel device ordering.  The selected devices are erased during the
+deployment.
+
+Release compatibility checks
+----------------------------
+
+Before starting a new release, inspect the available deployer:
+
+.. code-block:: console
+
+    $ test -x ./bin/atmosphere && echo "Atmosphere deployer available" || echo "Using Molecule fallback"
+
+Use ``./bin/atmosphere`` when the release provides it.  Releases without that
+command use the Molecule fallback described below.
+
+.. admonition:: Atmosphere v7.8.1
+    :class: warning
+
+    The ``v7.8.1`` tag contains Molecule 25 configuration but pins Molecule 24
+    in ``tox.ini``.  For this tag only, update the three dependency entries
+    before starting the deployment:
+
+    .. code-block:: console
+
+        $ sed -i \
+            -e 's/molecule==24.9.0/molecule==25.11.0\n  molecule-plugins[docker]/' \
+            -e 's/ansible-compat==24.10.0/ansible-compat>=25.1.4/' \
+            tox.ini
+
+    Do not carry this edit into a later release without first checking that
+    release's ``tox.ini`` and ``molecule/aio/molecule.yml``.
+
+Start the deployment
+--------------------
+
+Run the deployment inside ``tmux`` so it continues if the SSH connection
+closes.  The session also retains the final output after the command exits:
+
+.. code-block:: console
+
+    $ tmux new -d -s atmosphere \; set-option remain-on-exit on
+
+For an OVN deployment with the Atmosphere deployer, run:
+
+.. code-block:: console
+
+    $ tmux send-keys -t atmosphere \
+        'cd /root/atmosphere && ATMOSPHERE_NETWORK_BACKEND=ovn ./bin/atmosphere deploy -i ./inventory.yaml' Enter
+
+If the release does not provide ``./bin/atmosphere``, use the Molecule OVN
+fallback:
+
+.. code-block:: console
+
+    $ tmux send-keys -t atmosphere \
+        'cd /root/atmosphere && ATMOSPHERE_DEBUG=true tox -e molecule-aio-ovn' Enter
+
+For ML2/Open vSwitch with the Atmosphere deployer, set
+``ATMOSPHERE_NETWORK_BACKEND=openvswitch``.  With Molecule, replace
+``molecule-aio-ovn`` with ``molecule-aio-openvswitch``.  OVN and Open vSwitch
+are different networking backends; choose one before the initial deployment
+and keep it for later runs.
+
+Monitor the deployment
+----------------------
+
+Check progress without attaching to the session:
+
+.. code-block:: console
+
+    $ tmux ls
+    $ tmux capture-pane -t atmosphere -p -S -200 | tail -100
+
+Early output must show that Ansible gathers facts and runs tasks against
+``instance``.  Stop and correct the inventory if the output contains any of
+the following messages:
+
+.. code-block:: text
+
+    Unable to parse .../inventory.yaml as an inventory source
+    provided hosts list is empty
+    Could not match supplied host pattern, ignoring: controllers
+    Could not match supplied host pattern, ignoring: cephs
+    Could not match supplied host pattern, ignoring: computes
+
+A converge action in which every deployment play is skipped is a failure, even
+if Molecule labels the action successful.
+
+The complete deployment can take more than an hour.  It is successful only
+when the retained output ends with a zero exit status and the Molecule or
+Atmosphere success summary.  For the Molecule fallback, look for output similar
+to:
+
+.. code-block:: text
+
+    molecule-aio-ovn: OK
+    congratulations :)
+
+The verification stage runs the integration tests.  Do not use Kubernetes pod
+status alone to decide that installation has finished because services can be
+running before the deployment and verification command completes.
+
+Validate the environment
+------------------------
+
+After the deployment succeeds, load the generated OpenStack credentials and
+check all three layers:
+
+.. code-block:: console
+
+    $ source /root/openrc
+    $ cephadm shell -- ceph status
+    $ kubectl get nodes
+    $ kubectl get pods --all-namespaces
+    $ openstack service list
+    $ openstack network list
+    $ openstack image list
+
+The integration-test results remain in the ``atmosphere`` tmux session.  Keep
+the session until you have reviewed them.  You can remove the completed session
+afterward:
+
+.. code-block:: console
+
+    $ tmux kill-session -t atmosphere
+
+Once validation succeeds, use the cloud from the same machine by following the
+usage section below.
 
 Multi-node
 ==========
