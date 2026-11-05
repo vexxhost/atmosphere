@@ -15,8 +15,8 @@ DOCUMENTATION = """
   version_added: 1.0.0
   description:
     - Filter plugins that convert a unified atmosphere_storage configuration
-      into per-service Helm values for Cinder, Glance, Nova, Libvirt, and
-      Ceph Provisioners.
+      into per-service Helm values and service-image disk formats for Cinder,
+      Glance, Nova, Libvirt, and Ceph Provisioners.
   author:
     - VEXXHOST, Inc.
 """
@@ -793,8 +793,8 @@ def storage_to_glance_helm_values(raw: Any) -> HelmValues:
     return result
 
 
-def storage_to_manila_image_disk_format(raw: Any) -> str:
-    """Choose a compatible Manila service-image format for the Glance store."""
+def storage_to_service_image_disk_format(raw: Any) -> str:
+    """Choose a service-image disk format compatible with the Glance store."""
 
     storage = _parse(raw)
     images = storage.images
@@ -940,7 +940,7 @@ class FilterModule(object):
             "storage_uses_ceph": storage_uses_ceph,
             "storage_to_cinder_helm_values": storage_to_cinder_helm_values,
             "storage_to_glance_helm_values": storage_to_glance_helm_values,
-            "storage_to_manila_image_disk_format": storage_to_manila_image_disk_format,
+            "storage_to_service_image_disk_format": storage_to_service_image_disk_format,
             "storage_to_nova_helm_values": storage_to_nova_helm_values,
             "storage_to_libvirt_helm_values": storage_to_libvirt_helm_values,
             "storage_to_ceph_provisioners_helm_values": storage_to_ceph_provisioners_helm_values,

@@ -42,12 +42,13 @@ manila_flavor_extra_specs: {}
 manila_image_name: manila-service-image
 manila_image_url: https://github.com/vexxhost/manila-service-images/releases/download/2026.05-3/manila-service-image.qcow2
 manila_image_container_format: bare
-# Cinder-backed Glance stores require raw images. Inventory may override this
-# derived default for deployments with a different image-store contract.
+# Select the target service-image disk format from the default Glance backend.
+# The image upload role converts the source image to this format before upload.
+# Inventory may override this value for a compatible image-store contract.
 manila_image_disk_format: >-
   {{
     _atmosphere_storage_config
-    | vexxhost.atmosphere.storage_to_manila_image_disk_format
+    | vexxhost.atmosphere.storage_to_service_image_disk_format
   }}
 
 # Service instance authentication
