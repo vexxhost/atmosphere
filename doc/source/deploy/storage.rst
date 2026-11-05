@@ -94,6 +94,9 @@ the inherited ``rbd1`` entries to ``null``. This keeps the storage
 configuration on the non-Ceph path instead of running with both the default
 Ceph backend and the new backend.
 
+The Cinder Helm values preserve these ``null`` entries so the chart also
+removes its default backend, Ceph keyring setup, and volume type creation.
+
 For a fully non-Ceph deployment:
 
 1. Set ``images.default`` and ``volumes.default`` to your non-Ceph backends.
@@ -230,6 +233,42 @@ Dell PowerStore (``powerstore``)
     password: <password>
     protocol: iscsi    # or fc
 
+NetApp ONTAP (``netapp``)
+=========================
+
+NetApp ONTAP integration using the OpenStack Cinder NetApp unified driver.
+Atmosphere supports the ``iscsi``, ``fc``, ``nfs``, and ``nvme`` Cinder
+protocols.
+
+For additional options, see the `Cinder NetApp volume driver documentation
+<https://docs.openstack.org/cinder/latest/configuration/block-storage/drivers/netapp-volume-driver.html>`_.
+
+.. code-block:: yaml
+
+    type: netapp
+    protocol: iscsi    # or fc, nfs, nvme
+    address: <management_ip_or_hostname>
+    username: <username>
+    password: <password>
+    vserver: <svm_name>
+    transport_type: https  # optional, defaults to https
+    server_port: 443       # optional, defaults to 443
+    nfs_shares_config:     # optional, for nfs backends
+      - 10.0.0.20:/cinder
+    netapp_options: {}     # optional additional Cinder NetApp options
+
+``netapp_options`` accepts additional driver settings. Keys managed by the
+typed configuration, including credentials, protocol, driver, backend name,
+and ``nfs_shares_config``, are rejected. Use their dedicated fields instead.
+
+Prepare the Cinder volume hosts and every compute host for the chosen
+protocol before provisioning volumes. Configure iSCSI initiators and
+multipathing for iSCSI, or HBA presentation, switch zoning, and multipathing
+for Fibre Channel. For NVMe/TCP, install the NVMe tools, load ``nvme_tcp``,
+and configure a persistent host NQN. The Cinder backend configuration does
+not run Trident's Kubernetes host preparation. Validate volume creation,
+attachment, and I/O against your ONTAP SVM before production use.
+
 Pure storage (``pure``)
 =======================
 
@@ -299,9 +338,9 @@ these values:
 ``type: none``
   Disable the Cinder backup service and its storage-init job.
 
-For non-Ceph volume backends such as PowerStore, Pure Storage, StorPool, or
-Nimble, set ``backup.type: none`` unless you still plan to use Ceph for
-backups.
+For non-Ceph volume backends such as PowerStore, NetApp, Pure Storage,
+StorPool, or Nimble, set ``backup.type: none`` unless you still plan to use
+Ceph for backups.
 
 If you keep Ceph backups while using a non-Ceph volume backend, define the
 backup block explicitly:
@@ -368,6 +407,34 @@ Using Dell PowerStore
             username: admin
             password: secret
             protocol: iscsi
+      backup:
+        type: none
+      ephemeral:
+        type: local
+
+Using NetApp ONTAP storage
+==========================
+
+.. code-block:: yaml
+
+    atmosphere_storage:
+      images:
+        default: cinder_store
+        backends:
+          rbd1: null
+          cinder_store:
+            type: cinder
+      volumes:
+        default: netapp1
+        backends:
+          rbd1: null
+          netapp1:
+            type: netapp
+            protocol: iscsi
+            address: 10.0.0.10
+            username: admin
+            password: secret
+            vserver: svm_cinder
       backup:
         type: none
       ephemeral:

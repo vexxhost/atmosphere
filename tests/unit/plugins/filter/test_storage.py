@@ -79,6 +79,15 @@ _POWERSTORE_BACKEND = {
     "protocol": "iscsi",
 }
 
+_NETAPP_ISCSI_BACKEND = {
+    "type": "netapp",
+    "protocol": "iscsi",
+    "address": "10.0.0.10",
+    "username": "admin",
+    "password": "secret",
+    "vserver": "svm_cinder",
+}
+
 _PURE_ISCSI_BACKEND = {
     "type": "pure",
     "protocol": "iscsi",
@@ -108,6 +117,16 @@ _NIMBLE_FC_BACKEND = {
 }
 
 _NIMBLE_POD_SECURITY_CONTEXT = {
+    "cinder_volume": {
+        "container": {
+            "cinder_volume": {
+                "privileged": True,
+            }
+        }
+    }
+}
+
+_NETAPP_POD_SECURITY_CONTEXT = {
     "cinder_volume": {
         "container": {
             "cinder_volume": {
@@ -343,6 +362,55 @@ class TestValidation:
                 }
             )
 
+    def test_netapp_nfs_requires_shares_config(self):
+        with pytest.raises(ValidationError, match="NetApp NFS backends require"):
+            StorageConfig.model_validate(
+                {
+                    "volumes": {
+                        "default": "netapp",
+                        "backends": {
+                            "netapp": {
+                                **_NETAPP_ISCSI_BACKEND,
+                                "protocol": "nfs",
+                            },
+                        },
+                    },
+                }
+            )
+
+    @pytest.mark.parametrize(
+        "option",
+        [
+            "volume_backend_name",
+            "volume_driver",
+            "netapp_storage_family",
+            "netapp_storage_protocol",
+            "netapp_server_hostname",
+            "netapp_server_port",
+            "netapp_login",
+            "netapp_password",
+            "netapp_vserver",
+            "netapp_transport_type",
+            "use_multipath_for_image_xfer",
+            "nfs_shares_config",
+        ],
+    )
+    def test_netapp_options_cannot_override_managed_fields(self, option):
+        with pytest.raises(ValidationError, match="cannot override managed options"):
+            StorageConfig.model_validate(
+                {
+                    "volumes": {
+                        "default": "netapp",
+                        "backends": {
+                            "netapp": {
+                                **_NETAPP_ISCSI_BACKEND,
+                                "netapp_options": {option: "override"},
+                            },
+                        },
+                    },
+                }
+            )
+
     def test_erasure_coded_k_below_minimum_rejected(self):
         with pytest.raises(ValidationError):
             StorageConfig.model_validate(
@@ -391,6 +459,30 @@ class TestValidation:
 
 
 class TestStorageToCinderHelmValues:
+    @pytest.mark.parametrize(
+        "backend",
+        [
+            _POWERSTORE_BACKEND,
+            _PURE_ISCSI_BACKEND,
+            _NIMBLE_ISCSI_BACKEND,
+            _STORPOOL_BACKEND,
+        ],
+    )
+    def test_backend_masks_survive_repeated_rendering(self, backend):
+        storage = {
+            "volumes": {
+                "default": "external",
+                "backends": {"rbd1": None, "unused": None, "external": backend},
+            },
+            "backup": {"type": "none"},
+        }
+        for _ in range(2):
+            result = storage_to_cinder_helm_values(storage)
+            assert result["conf"]["backends"]["rbd1"] is None
+            assert result["conf"]["backends"]["unused"] is None
+            assert result["conf"]["cinder"]["DEFAULT"]["enabled_backends"] == "external"
+        assert storage["volumes"]["backends"]["rbd1"] is None
+
     def test_default_rbd(self):
         result = storage_to_cinder_helm_values(DEFAULT_STORAGE)
         assert result["storage"] == "ceph"
@@ -445,7 +537,8 @@ class TestStorageToCinderHelmValues:
 
         result = storage_to_cinder_helm_values(storage)
 
-        assert set(result["conf"]["backends"]) == {"ceph", "ecpool"}
+        assert set(result["conf"]["backends"]) == {"rbd1", "ceph", "ecpool"}
+        assert result["conf"]["backends"]["rbd1"] is None
         assert result["conf"]["cinder"]["DEFAULT"]["enabled_backends"] == "ceph,ecpool"
         assert result["conf"]["cinder"]["DEFAULT"]["default_volume_type"] == "ceph"
         assert result["ceph_client"]["internal_ceph_backend"] == "ceph"
@@ -626,6 +719,132 @@ class TestStorageToCinderHelmValues:
         result = storage_to_cinder_helm_values(storage)
         assert result["conf"]["backends"]["ps"]["storage_protocol"] == "FC"
 
+    def test_netapp_iscsi_backend(self):
+        storage = {
+            **DEFAULT_STORAGE,
+            "volumes": {
+                "default": "netapp",
+                "backends": {"netapp": _NETAPP_ISCSI_BACKEND},
+            },
+            "backup": {"type": "none"},
+        }
+        result = storage_to_cinder_helm_values(storage)
+
+        backend = result["conf"]["backends"]["netapp"]
+        assert (
+            backend["volume_driver"]
+            == "cinder.volume.drivers.netapp.common.NetAppDriver"
+        )
+        assert backend["netapp_storage_family"] == "ontap_cluster"
+        assert backend["netapp_storage_protocol"] == "iscsi"
+        assert backend["netapp_server_hostname"] == "10.0.0.10"
+        assert backend["netapp_server_port"] == 443
+        assert backend["netapp_login"] == "admin"
+        assert backend["netapp_password"] == "secret"
+        assert backend["netapp_vserver"] == "svm_cinder"
+        assert backend["netapp_transport_type"] == "https"
+        assert backend["use_multipath_for_image_xfer"] is True
+        assert result["conf"]["enable_iscsi"] is True
+        assert result["pod"]["useHostNetwork"] == {"volume": True}
+        assert result["pod"]["security_context"] == _NETAPP_POD_SECURITY_CONTEXT
+        assert result["manifests"]["job_storage_init"] is False
+
+    def test_netapp_fc_backend(self):
+        storage = {
+            **DEFAULT_STORAGE,
+            "volumes": {
+                "default": "netapp",
+                "backends": {
+                    "netapp": {**_NETAPP_ISCSI_BACKEND, "protocol": "fc"},
+                },
+            },
+            "backup": {"type": "none"},
+        }
+        result = storage_to_cinder_helm_values(storage)
+
+        backend = result["conf"]["backends"]["netapp"]
+        assert backend["netapp_storage_protocol"] == "fc"
+        assert backend["use_multipath_for_image_xfer"] is True
+
+    def test_netapp_nfs_backend_with_shares_config(self):
+        storage = {
+            **DEFAULT_STORAGE,
+            "volumes": {
+                "default": "netapp",
+                "backends": {
+                    "netapp": {
+                        **_NETAPP_ISCSI_BACKEND,
+                        "protocol": "nfs",
+                        "nfs_shares_config": ["10.0.0.20:/cinder"],
+                    },
+                },
+            },
+            "backup": {"type": "none"},
+        }
+        result = storage_to_cinder_helm_values(storage)
+
+        backend = result["conf"]["backends"]["netapp"]
+        assert backend["netapp_storage_protocol"] == "nfs"
+        assert backend["nfs_shares_config"] == ["10.0.0.20:/cinder"]
+
+    def test_netapp_backend_custom_options(self):
+        storage = {
+            **DEFAULT_STORAGE,
+            "volumes": {
+                "default": "netapp",
+                "backends": {
+                    "netapp": {
+                        **_NETAPP_ISCSI_BACKEND,
+                        "protocol": "nvme",
+                        "transport_type": "http",
+                        "server_port": 80,
+                        "use_multipath_for_image_xfer": False,
+                        "netapp_options": {
+                            "netapp_lun_space_reservation": "disabled",
+                            "netapp_lun_ostype": "linux",
+                        },
+                    },
+                },
+            },
+            "backup": {"type": "none"},
+        }
+        result = storage_to_cinder_helm_values(storage)
+
+        backend = result["conf"]["backends"]["netapp"]
+        assert backend["netapp_storage_protocol"] == "nvme"
+        assert backend["netapp_transport_type"] == "http"
+        assert backend["netapp_server_port"] == 80
+        assert backend["use_multipath_for_image_xfer"] is False
+        assert backend["netapp_lun_space_reservation"] == "disabled"
+        assert backend["netapp_lun_ostype"] == "linux"
+
+    def test_netapp_with_rbd1_default_nulled_out(self):
+        storage = {
+            "images": {
+                "default": "cinder_store",
+                "backends": {
+                    "rbd1": None,
+                    "cinder_store": {"type": "cinder"},
+                },
+            },
+            "volumes": {
+                "default": "netapp1",
+                "backends": {
+                    "rbd1": None,
+                    "netapp1": _NETAPP_ISCSI_BACKEND,
+                },
+            },
+            "backup": {"type": "none"},
+            "ephemeral": {"type": "local"},
+        }
+        result = storage_to_cinder_helm_values(storage)
+
+        assert result["conf"]["backends"]["rbd1"] is None
+        assert result["storage"] == "netapp"
+        assert result["conf"]["cinder"]["DEFAULT"]["enabled_backends"] == "netapp1"
+        assert result["conf"]["cinder"]["DEFAULT"]["default_volume_type"] == "netapp1"
+        assert result["manifests"]["job_storage_init"] is False
+
     def test_pure_iscsi_backend(self):
         storage = {
             **DEFAULT_STORAGE,
@@ -797,7 +1016,7 @@ class TestStorageToCinderHelmValues:
         }
         result = storage_to_cinder_helm_values(storage)
 
-        assert "rbd1" not in result["conf"]["backends"]
+        assert result["conf"]["backends"]["rbd1"] is None
         assert result["storage"] == "nimble"
         assert result["manifests"]["job_storage_init"] is False
         assert result["conf"]["enable_iscsi"] is True
@@ -1095,6 +1314,18 @@ class TestStorageToNovaHelmValues:
             },
         }
         result = storage_to_nova_helm_values(storage)
+        assert result["conf"]["enable_iscsi"] is True
+
+    def test_iscsi_from_netapp_volume_backend(self):
+        storage = {
+            "ephemeral": {"type": "local"},
+            "volumes": {
+                "default": "netapp",
+                "backends": {"netapp": _NETAPP_ISCSI_BACKEND},
+            },
+        }
+        result = storage_to_nova_helm_values(storage)
+        assert result["conf"]["ceph"]["enabled"] is False
         assert result["conf"]["enable_iscsi"] is True
 
     def test_rbd_volumes_no_iscsi(self):
