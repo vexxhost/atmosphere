@@ -21,3 +21,4 @@ information to ensure stable and efficient operation of the system.
    monitoring
    troubleshooting
    upgrading
+   windows/index
