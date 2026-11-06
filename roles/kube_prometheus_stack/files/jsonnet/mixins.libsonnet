@@ -302,6 +302,7 @@ local mixins = {
   network: (import 'network.libsonnet'),
   openstack: (import 'openstack.libsonnet'),
   smartctl: (import 'smartctl.libsonnet'),
+  uptime: (import 'uptime.libsonnet'),
 } + (import 'legacy.libsonnet');
 
 {
