@@ -2,56 +2,33 @@
 
 defaults {
     user_friendly_names {{ multipathd_user_friendly_names | bool | ternary('yes', 'no') }}
-    find_multipaths yes
+    find_multipaths {{ multipathd_find_multipaths }}
 }
 
 devices {
+{% for array in multipathd_arrays or _multipathd_legacy_arrays %}
+{% for device in multipathd_array_profiles[array].devices %}
     device {
-        vendor                      "NVME"
-        product                     "Pure Storage FlashArray"
-        path_selector               "queue-length 0"
-        path_grouping_policy        group_by_prio
-        prio                        ana
-        failback                    immediate
-        fast_io_fail_tmo            10
-        user_friendly_names         no
-        no_path_retry               0
-        features                    0
-        dev_loss_tmo                60
+        vendor {{ device.vendor | to_json }}
+        product {{ device.product | to_json }}
+{% for key, value in (device.settings | default({})).items() %}
+        {{ key }} {{ value | to_json }}
+{% endfor %}
     }
-    device {
-        vendor                   "PURE"
-        product                  "FlashArray"
-        path_selector            "service-time 0"
-        hardware_handler         "1 alua"
-        path_grouping_policy     group_by_prio
-        prio                     alua
-        failback                 immediate
-        path_checker             tur
-        fast_io_fail_tmo         10
-        user_friendly_names      no
-        no_path_retry            0
-        features                 0
-        dev_loss_tmo             600
-    }
-    device {
-        vendor               "Nimble"
-        product              "Server"
-        path_grouping_policy group_by_prio
-        prio                 "alua"
-        hardware_handler     "1 alua"
-        path_selector        "service-time 0"
-        path_checker         tur
-        no_path_retry        30
-        failback             immediate
-        fast_io_fail_tmo     5
-        dev_loss_tmo         infinity
-        rr_min_io_rq         1
-        rr_weight            uniform
-    }
+{% endfor %}
+{% endfor %}
 }
 
 blacklist {
+{% if multipathd_arrays | length > 0 %}
+      device {
+        vendor ".*"
+        product ".*"
+      }
+{% endif %}
+{% for wwid in multipathd_blacklist_wwids %}
+      wwid {{ wwid | to_json }}
+{% endfor %}
       devnode "^pxd[0-9]*"
       devnode "^pxd*"
       device {
@@ -59,3 +36,16 @@ blacklist {
         product "Virtual disk"
       }
 }
+{% if multipathd_arrays | length > 0 %}
+
+blacklist_exceptions {
+{% for array in multipathd_arrays %}
+{% for device in multipathd_array_profiles[array].devices %}
+    device {
+        vendor {{ device.vendor | to_json }}
+        product {{ device.product | to_json }}
+    }
+{% endfor %}
+{% endfor %}
+}
+{% endif %}

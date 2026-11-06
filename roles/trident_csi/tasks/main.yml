@@ -1,0 +1,151 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+
+---
+- name: Validate Trident configuration
+  ansible.builtin.import_tasks: validate.yml
+
+- name: Validate Trident CSI configuration
+  ansible.builtin.assert:
+    that:
+      - trident_csi_management_lif is defined
+      - trident_csi_username is defined
+      - trident_csi_password is defined
+    fail_msg: >-
+      Trident CSI requires trident_csi_management_lif, trident_csi_username
+      and trident_csi_password.
+
+- name: Prepare Trident host services
+  ansible.builtin.import_tasks: hosts.yml
+  when: trident_csi_prepare_hosts | bool
+
+- name: Upload Trident operator Helm chart
+  run_once: true
+  ansible.builtin.include_role:
+    name: vexxhost.kubernetes.upload_helm_chart
+  vars:
+    upload_helm_chart_src: "{{ trident_csi_helm_chart_path }}"
+    upload_helm_chart_dest: "{{ trident_csi_helm_chart_ref }}"
+
+- name: Deploy Trident operator Helm chart
+  run_once: true
+  kubernetes.core.helm:
+    name: "{{ trident_csi_helm_release_name }}"
+    chart_ref: "{{ trident_csi_helm_chart_ref }}"
+    release_namespace: "{{ trident_csi_namespace }}"
+    create_namespace: true
+    kubeconfig: "{{ trident_csi_kubeconfig }}"
+    values: "{{ _trident_csi_helm_values | combine(trident_csi_helm_values, recursive=True) }}"
+
+- name: Wait for TridentOrchestrator CRD
+  run_once: true
+  kubernetes.core.k8s_info:
+    api_version: apiextensions.k8s.io/v1
+    kind: CustomResourceDefinition
+    kubeconfig: "{{ trident_csi_kubeconfig }}"
+    name: tridentorchestrators.trident.netapp.io
+  register: _trident_csi_orchestrator_crd
+  retries: 60
+  delay: 5
+  until: _trident_csi_orchestrator_crd.resources | length > 0
+
+- name: Create TridentOrchestrator
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ trident_csi_kubeconfig }}"
+    template:
+      - path: tridentorchestrator.yaml.j2
+
+- name: Wait for Trident installation
+  run_once: true
+  kubernetes.core.k8s_info:
+    api_version: trident.netapp.io/v1
+    kind: TridentOrchestrator
+    kubeconfig: "{{ trident_csi_kubeconfig }}"
+    name: "{{ trident_csi_orchestrator_name }}"
+  register: _trident_csi_orchestrator
+  retries: "{{ trident_csi_orchestrator_wait_retries }}"
+  delay: "{{ trident_csi_orchestrator_wait_delay }}"
+  until:
+    - _trident_csi_orchestrator.resources | length > 0
+    - >-
+      (_trident_csi_orchestrator.resources[0].status.status | default('')) ==
+      'Installed'
+
+- name: Wait for TridentBackendConfig CRD
+  run_once: true
+  kubernetes.core.k8s_info:
+    api_version: apiextensions.k8s.io/v1
+    kind: CustomResourceDefinition
+    kubeconfig: "{{ trident_csi_kubeconfig }}"
+    name: tridentbackendconfigs.trident.netapp.io
+  register: _trident_csi_backend_config_crd
+  retries: 60
+  delay: 5
+  until: _trident_csi_backend_config_crd.resources | length > 0
+
+- name: Create Trident backend credentials
+  run_once: true
+  no_log: true
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ trident_csi_kubeconfig }}"
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: "{{ trident_csi_backend_secret_name }}"
+        namespace: "{{ trident_csi_namespace }}"
+      type: Opaque
+      stringData:
+        username: "{{ trident_csi_username }}"
+        password: "{{ trident_csi_password }}"
+
+- name: Create Trident backend
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ trident_csi_kubeconfig }}"
+    template:
+      - path: backend.yaml.j2
+
+- name: Wait for Trident backend binding
+  run_once: true
+  kubernetes.core.k8s_info:
+    api_version: trident.netapp.io/v1
+    kind: TridentBackendConfig
+    kubeconfig: "{{ trident_csi_kubeconfig }}"
+    name: "{{ trident_csi_backend_config_name }}"
+    namespace: "{{ trident_csi_namespace }}"
+  register: _trident_csi_backend_config
+  retries: "{{ trident_csi_backend_wait_retries }}"
+  delay: "{{ trident_csi_backend_wait_delay }}"
+  until:
+    - _trident_csi_backend_config.resources | length > 0
+    - >-
+      (_trident_csi_backend_config.resources[0].status.phase |
+      default('')) == 'Bound'
+    - >-
+      (_trident_csi_backend_config.resources[0].status.lastOperationStatus |
+      default('')) == 'Success'
+  when: trident_csi_wait_for_backend | bool
+
+- name: Create Trident StorageClass
+  run_once: true
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ trident_csi_kubeconfig }}"
+    template:
+      - path: storageclass.yaml.j2

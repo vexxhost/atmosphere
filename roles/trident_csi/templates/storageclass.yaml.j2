@@ -1,0 +1,12 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: "{{ trident_csi_storage_class_name }}"
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "{{ trident_csi_storage_class_default | bool | lower }}"
+provisioner: csi.trident.netapp.io
+allowVolumeExpansion: {{ trident_csi_storage_class_allow_volume_expansion | bool | lower }}
+reclaimPolicy: "{{ trident_csi_storage_class_reclaim_policy }}"
+volumeBindingMode: "{{ trident_csi_storage_class_volume_binding_mode }}"
+parameters:
+{{ _trident_csi_storage_class_parameters | to_nice_yaml(indent=2) | indent(2, true) }}

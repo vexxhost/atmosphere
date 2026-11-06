@@ -1,0 +1,112 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+---
+- name: Install Trident without an ONTAP array
+  hosts: localhost
+  connection: local
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+    csi_driver: trident
+    trident_csi_namespace: trident-smoke
+    trident_csi_helm_chart_path: "{{ playbook_dir }}/../../charts/trident-operator/"
+    trident_csi_helm_chart_ref: "{{ lookup('env', 'RUNNER_TEMP') | default('/tmp', true) }}/trident-operator-chart"
+    trident_csi_kubeconfig: "{{ lookup('env', 'KUBECONFIG') | default(lookup('env', 'HOME') ~ '/.kube/config', true) }}"
+    trident_csi_storage_driver: ontap-nas
+    trident_csi_access_protocol: nfs
+    trident_csi_management_lif: 192.0.2.10
+    trident_csi_username: smoke-test
+    trident_csi_password: smoke-test
+    trident_csi_configure_san: false
+    trident_csi_prepare_hosts: false
+    trident_csi_wait_for_backend: false
+  roles:
+    - vexxhost.atmosphere.trident_csi
+  tasks:
+    - name: Read Trident controller pods
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ trident_csi_kubeconfig }}"
+        api_version: v1
+        kind: Pod
+        namespace: "{{ trident_csi_namespace }}"
+        label_selectors:
+          - app=controller.csi.trident.netapp.io
+      register: _trident_smoke_controllers
+      retries: 60
+      delay: 5
+      until: _trident_smoke_controllers.resources | length > 0
+
+    - name: Check pinned Trident controller and sidecar images
+      ansible.builtin.assert:
+        that:
+          - _trident_smoke_expected_controller_images | difference(_trident_smoke_controller_images) | length == 0
+          - _trident_smoke_controller_images | difference(_trident_smoke_expected_controller_images) | length == 0
+      loop: "{{ _trident_smoke_controllers.resources }}"
+      loop_control:
+        label: "{{ item.metadata.name }}"
+      vars:
+        _trident_smoke_controller_images: "{{ item.spec.containers | map(attribute='image') | list }}"
+        _trident_smoke_expected_controller_images:
+          - "{{ atmosphere_images['trident'] }}"
+          - "{{ atmosphere_images['trident_autosupport'] }}"
+          - "{{ atmosphere_images['trident_csi_provisioner'] }}"
+          - "{{ atmosphere_images['trident_csi_attacher'] }}"
+          - "{{ atmosphere_images['trident_csi_resizer'] }}"
+          - "{{ atmosphere_images['trident_csi_snapshotter'] }}"
+
+    - name: Wait for Trident node pods
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ trident_csi_kubeconfig }}"
+        api_version: apps/v1
+        kind: DaemonSet
+        namespace: "{{ trident_csi_namespace }}"
+        name: trident-node-linux
+      register: _trident_smoke_nodes
+      retries: 60
+      delay: 10
+      until:
+        - _trident_smoke_nodes.resources | length == 1
+        - _trident_smoke_nodes.resources[0].status.numberReady | default(0) | int > 0
+
+    - name: Check pinned Trident Linux node images
+      ansible.builtin.assert:
+        that:
+          - _trident_smoke_expected_node_images | difference(_trident_smoke_node_images) | length == 0
+          - _trident_smoke_node_images | difference(_trident_smoke_expected_node_images) | length == 0
+      vars:
+        _trident_smoke_node_images: >-
+          {{ _trident_smoke_nodes.resources[0].spec.template.spec.containers | map(attribute='image') | list }}
+        _trident_smoke_expected_node_images:
+          - "{{ atmosphere_images['trident'] }}"
+          - "{{ atmosphere_images['trident_csi_node_driver_registrar'] }}"
+
+    - name: Read the Trident StorageClass
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ trident_csi_kubeconfig }}"
+        api_version: storage.k8s.io/v1
+        kind: StorageClass
+        name: general
+      register: _trident_smoke_storage_class
+
+    - name: Check StorageClass provisioning parameters
+      ansible.builtin.assert:
+        that:
+          - _trident_smoke_storage_class.resources | length == 1
+          - _trident_smoke_storage_class.resources[0].provisioner == 'csi.trident.netapp.io'
+          - _trident_smoke_storage_class.resources[0].parameters.backendType == 'ontap-nas'
+          - _trident_smoke_storage_class.resources[0].parameters.fsType == 'nfs'
+
+    - name: Read the dummy ONTAP backend
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ trident_csi_kubeconfig }}"
+        api_version: trident.netapp.io/v1
+        kind: TridentBackendConfig
+        namespace: "{{ trident_csi_namespace }}"
+        name: "{{ trident_csi_backend_config_name }}"
+      register: _trident_smoke_backend
+
+    - name: Check backend object creation
+      ansible.builtin.assert:
+        that:
+          - _trident_smoke_backend.resources | length == 1
+          - _trident_smoke_backend.resources[0].spec.storageDriverName == 'ontap-nas'

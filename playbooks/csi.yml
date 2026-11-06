@@ -12,8 +12,36 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+- name: Prepare Trident Kubernetes nodes
+  # Matches the default Trident node selector; workloads using persistent
+  # volumes only run on the OpenStack control plane.
+  hosts: controllers
+  become: true
+  # Facts are gathered only for Trident so other drivers never contact these hosts.
+  gather_facts: false
+  any_errors_fatal: true
+  strategy: linear
+  tasks:
+    - name: Prepare Trident nodes
+      when: csi_driver | default('rbd') == 'trident'
+      tags:
+        - csi
+      block:
+        - name: Gather facts for Trident host preparation
+          ansible.builtin.setup:
+
+        - name: Prepare Trident host services
+          ansible.builtin.include_role:
+            name: trident_csi
+            tasks_from: prepare
+            apply:
+              tags:
+                - csi
+
 - hosts: controllers
   become: true
+  vars:
+    trident_csi_prepare_hosts: false
   roles:
     - role: csi
       tags:
