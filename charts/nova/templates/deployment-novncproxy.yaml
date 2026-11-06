@@ -55,6 +55,9 @@ spec:
 {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
         configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
         configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
+        {{- if .Values.manifests.configmap_sunrise_novnc }}
+        configmap-sunrise-novnc-hash: {{ tuple "configmap-sunrise-novnc.yaml" . | include "helm-toolkit.utils.hash" }}
+        {{- end }}
 {{ tuple "nova_novncproxy" . | include "helm-toolkit.snippets.custom_pod_annotations" | indent 8 }}
 {{ dict "envAll" $envAll "podName" "nova-novncproxy" "containerNames" (list "nova-novncproxy" "nova-novncproxy-init-assets" "nova-novncproxy-init" "init") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
     spec:
@@ -115,6 +118,20 @@ spec:
               readOnly: true
             - name: pod-usr-share-novnc
               mountPath: /tmp/usr/share/novnc
+            {{- if .Values.manifests.configmap_sunrise_novnc }}
+            - name: sunrise-novnc
+              mountPath: /usr/share/novnc/sunrise.html
+              subPath: sunrise.html
+              readOnly: true
+            - name: sunrise-novnc
+              mountPath: /usr/share/novnc/sunrise.css
+              subPath: sunrise.css
+              readOnly: true
+            - name: sunrise-novnc
+              mountPath: /usr/share/novnc/sunrise.js
+              subPath: sunrise.js
+              readOnly: true
+            {{- end }}
       containers:
         - name: nova-novncproxy
 {{ tuple $envAll "nova_novncproxy" | include "helm-toolkit.snippets.image" | indent 10 }}
@@ -172,6 +189,19 @@ spec:
           emptyDir: {}
         - name: pod-shared
           emptyDir: {}
+        {{- if .Values.manifests.configmap_sunrise_novnc }}
+        - name: sunrise-novnc
+          configMap:
+            defaultMode: 420
+            name: sunrise-novnc
+            items:
+              - key: sunrise.html
+                path: sunrise.html
+              - key: sunrise.css
+                path: sunrise.css
+              - key: sunrise.js
+                path: sunrise.js
+        {{- end }}
         {{- if $vencrypt_enabled }}
         - name: {{ .Values.secrets.tls.compute_novnc_proxy.vencrypt.internal }}
           secret:

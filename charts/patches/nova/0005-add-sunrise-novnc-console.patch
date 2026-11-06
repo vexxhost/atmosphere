@@ -1,0 +1,265 @@
+diff --git a/nova/files/sunrise.css b/nova/files/sunrise.css
+new file mode 100644
+index 000000000..c452c8b84
+--- /dev/null
++++ b/nova/files/sunrise.css
+@@ -0,0 +1,51 @@
++:root {
++  color-scheme: dark;
++}
++
++html,
++body {
++  width: 100%;
++  height: 100%;
++  margin: 0;
++  padding: 0;
++  overflow: hidden;
++  background: #000;
++  color: #fff;
++  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
++  font-size: 11px;
++}
++
++#status {
++  position: fixed;
++  inset: 0;
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  background: #000;
++  color: rgb(255 255 255 / 60%);
++  font-weight: 500;
++  letter-spacing: 0;
++  pointer-events: none;
++  transition: opacity 200ms ease;
++}
++
++#status.hidden {
++  opacity: 0;
++}
++
++#screen {
++  width: 100%;
++  height: 100%;
++  background: #000;
++}
++
++/* noVNC sets an inline cursor on every frame. Keep a local cursor visible. */
++#screen,
++#screen canvas {
++  cursor: default !important;
++}
++
++#noVNC_control_bar_anchor,
++#noVNC_control_bar {
++  display: none !important;
++}
+diff --git a/nova/files/sunrise.html b/nova/files/sunrise.html
+new file mode 100644
+index 000000000..e5998933f
+--- /dev/null
++++ b/nova/files/sunrise.html
+@@ -0,0 +1,14 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="utf-8" />
++  <title>Sunrise Console</title>
++  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
++  <link rel="stylesheet" href="./sunrise.css" />
++</head>
++<body>
++  <div id="status">Connecting…</div>
++  <div id="screen"></div>
++  <script type="module" src="./sunrise.js"></script>
++</body>
++</html>
+diff --git a/nova/files/sunrise.js b/nova/files/sunrise.js
+new file mode 100644
+index 000000000..cce024986
+--- /dev/null
++++ b/nova/files/sunrise.js
+@@ -0,0 +1,81 @@
++import RFB from "./core/rfb.js";
++
++const params = new URLSearchParams(window.location.search);
++const path = params.get("path") || "";
++const parentOriginParam = params.get("parentOrigin");
++
++function trustedParentOrigin(value) {
++  if (!value) return null;
++  try {
++    const parsed = new URL(value);
++    return parsed.protocol === "http:" || parsed.protocol === "https:"
++      ? parsed.origin
++      : null;
++  } catch {
++    return null;
++  }
++}
++
++const parentOrigin = trustedParentOrigin(parentOriginParam);
++const protocol = window.location.protocol === "https:" ? "wss" : "ws";
++const port = window.location.port ? `:${window.location.port}` : "";
++const webSocketUrl = `${protocol}://${window.location.hostname}${port}/${path}`;
++const status = document.getElementById("status");
++
++function setStatus(message, hidden = false) {
++  status.textContent = message;
++  status.classList.toggle("hidden", hidden);
++}
++
++let rfb;
++try {
++  rfb = new RFB(document.getElementById("screen"), webSocketUrl);
++  rfb.viewOnly = false;
++  rfb.scaleViewport = true;
++  rfb.resizeSession = true;
++  rfb.background = "#000";
++  rfb.showDotCursor = true;
++} catch (error) {
++  setStatus(`Failed to initialize: ${error.message}`);
++  throw error;
++}
++
++rfb.addEventListener("connect", () => setStatus("Connected", true));
++rfb.addEventListener("disconnect", (event) =>
++  setStatus(event.detail.clean ? "Disconnected" : "Connection lost"),
++);
++rfb.addEventListener("credentialsrequired", () => setStatus("Credentials required"));
++rfb.addEventListener("securityfailure", (event) =>
++  setStatus(`Authentication failed: ${event.detail.reason || ""}`),
++);
++
++window.addEventListener("message", (event) => {
++  if (!parentOrigin || event.origin !== parentOrigin || event.source !== window.parent) {
++    return;
++  }
++
++  const { type, payload } = event.data || {};
++  if (!rfb || typeof type !== "string") return;
++
++  switch (type) {
++    case "sunrise:ctrlAltDel":
++      rfb.sendCtrlAltDel();
++      break;
++    case "sunrise:sendKey":
++      rfb.sendKey(payload?.keysym, payload?.code, payload?.down);
++      break;
++    case "sunrise:disconnect":
++      rfb.disconnect();
++      break;
++    case "sunrise:focus":
++      rfb.focus();
++      break;
++    case "sunrise:ping":
++      event.source?.postMessage({ type: "sunrise:pong" }, parentOrigin);
++      break;
++  }
++});
++
++if (parentOrigin && window.parent !== window) {
++  window.parent.postMessage({ type: "sunrise:ready" }, parentOrigin);
++}
+diff --git a/nova/templates/configmap-sunrise-novnc.yaml b/nova/templates/configmap-sunrise-novnc.yaml
+new file mode 100644
+index 000000000..5996d7490
+--- /dev/null
++++ b/nova/templates/configmap-sunrise-novnc.yaml
+@@ -0,0 +1,28 @@
++{{/*
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++   http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++*/}}
++
++{{- if and .Values.manifests.configmap_sunrise_novnc (eq .Values.console.console_kind "novnc") }}
++---
++apiVersion: v1
++kind: ConfigMap
++metadata:
++  name: sunrise-novnc
++data:
++  sunrise.html: |
++{{ .Files.Get "files/sunrise.html" | indent 4 }}
++  sunrise.css: |
++{{ .Files.Get "files/sunrise.css" | indent 4 }}
++  sunrise.js: |
++{{ .Files.Get "files/sunrise.js" | indent 4 }}
++{{- end }}
+diff --git a/nova/templates/deployment-novncproxy.yaml b/nova/templates/deployment-novncproxy.yaml
+index 5cd435d31..a2f990f42 100644
+--- a/nova/templates/deployment-novncproxy.yaml
++++ b/nova/templates/deployment-novncproxy.yaml
+@@ -55,6 +55,9 @@ spec:
+ {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
+         configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
+         configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
++        {{- if .Values.manifests.configmap_sunrise_novnc }}
++        configmap-sunrise-novnc-hash: {{ tuple "configmap-sunrise-novnc.yaml" . | include "helm-toolkit.utils.hash" }}
++        {{- end }}
+ {{ tuple "nova_novncproxy" . | include "helm-toolkit.snippets.custom_pod_annotations" | indent 8 }}
+ {{ dict "envAll" $envAll "podName" "nova-novncproxy" "containerNames" (list "nova-novncproxy" "nova-novncproxy-init-assets" "nova-novncproxy-init" "init") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+     spec:
+@@ -115,6 +118,20 @@ spec:
+               readOnly: true
+             - name: pod-usr-share-novnc
+               mountPath: /tmp/usr/share/novnc
++            {{- if .Values.manifests.configmap_sunrise_novnc }}
++            - name: sunrise-novnc
++              mountPath: /usr/share/novnc/sunrise.html
++              subPath: sunrise.html
++              readOnly: true
++            - name: sunrise-novnc
++              mountPath: /usr/share/novnc/sunrise.css
++              subPath: sunrise.css
++              readOnly: true
++            - name: sunrise-novnc
++              mountPath: /usr/share/novnc/sunrise.js
++              subPath: sunrise.js
++              readOnly: true
++            {{- end }}
+       containers:
+         - name: nova-novncproxy
+ {{ tuple $envAll "nova_novncproxy" | include "helm-toolkit.snippets.image" | indent 10 }}
+@@ -172,6 +189,19 @@ spec:
+           emptyDir: {}
+         - name: pod-shared
+           emptyDir: {}
++        {{- if .Values.manifests.configmap_sunrise_novnc }}
++        - name: sunrise-novnc
++          configMap:
++            defaultMode: 420
++            name: sunrise-novnc
++            items:
++              - key: sunrise.html
++                path: sunrise.html
++              - key: sunrise.css
++                path: sunrise.css
++              - key: sunrise.js
++                path: sunrise.js
++        {{- end }}
+         {{- if $vencrypt_enabled }}
+         - name: {{ .Values.secrets.tls.compute_novnc_proxy.vencrypt.internal }}
+           secret:
+diff --git a/nova/values.yaml b/nova/values.yaml
+index a1d063f87..90b55d2c9 100644
+--- a/nova/values.yaml
++++ b/nova/values.yaml
+@@ -2573,6 +2573,7 @@ manifests:
+   certificates: false
+   configmap_bin: true
+   configmap_etc: true
++  configmap_sunrise_novnc: true
+   cron_job_cell_setup: true
+   cron_job_service_cleaner: true
+   cron_job_archive_deleted_rows: false

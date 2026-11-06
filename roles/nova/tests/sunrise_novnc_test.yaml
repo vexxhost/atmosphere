@@ -1,0 +1,85 @@
+suite: Sunrise noVNC console
+tests:
+  - it: should deploy the Sunrise assets by default
+    templates:
+      - templates/configmap-sunrise-novnc.yaml
+      - templates/deployment-novncproxy.yaml
+    asserts:
+      - template: templates/configmap-sunrise-novnc.yaml
+        hasDocuments:
+          count: 1
+      - template: templates/configmap-sunrise-novnc.yaml
+        isKind:
+          of: ConfigMap
+      - template: templates/configmap-sunrise-novnc.yaml
+        isNotEmpty:
+          path: data["sunrise.html"]
+      - template: templates/configmap-sunrise-novnc.yaml
+        isNotEmpty:
+          path: data["sunrise.css"]
+      - template: templates/configmap-sunrise-novnc.yaml
+        isNotEmpty:
+          path: data["sunrise.js"]
+      - template: templates/deployment-novncproxy.yaml
+        documentIndex: 3
+        isNotEmpty:
+          path: spec.template.metadata.annotations["configmap-sunrise-novnc-hash"]
+      - template: templates/deployment-novncproxy.yaml
+        documentIndex: 3
+        contains:
+          path: spec.template.spec.initContainers[2].volumeMounts
+          content:
+            name: sunrise-novnc
+            mountPath: /usr/share/novnc/sunrise.html
+            subPath: sunrise.html
+            readOnly: true
+      - template: templates/deployment-novncproxy.yaml
+        documentIndex: 3
+        contains:
+          path: spec.template.spec.initContainers[2].volumeMounts
+          content:
+            name: sunrise-novnc
+            mountPath: /usr/share/novnc/sunrise.css
+            subPath: sunrise.css
+            readOnly: true
+      - template: templates/deployment-novncproxy.yaml
+        documentIndex: 3
+        contains:
+          path: spec.template.spec.initContainers[2].volumeMounts
+          content:
+            name: sunrise-novnc
+            mountPath: /usr/share/novnc/sunrise.js
+            subPath: sunrise.js
+            readOnly: true
+      - template: templates/deployment-novncproxy.yaml
+        documentIndex: 3
+        contains:
+          path: spec.template.spec.volumes
+          content:
+            name: sunrise-novnc
+            configMap:
+              defaultMode: 420
+              name: sunrise-novnc
+              items:
+                - key: sunrise.html
+                  path: sunrise.html
+                - key: sunrise.css
+                  path: sunrise.css
+                - key: sunrise.js
+                  path: sunrise.js
+
+  - it: should allow the Sunrise assets to be disabled
+    templates:
+      - templates/configmap-sunrise-novnc.yaml
+      - templates/deployment-novncproxy.yaml
+    set:
+      manifests:
+        configmap_sunrise_novnc: false
+    asserts:
+      - template: templates/configmap-sunrise-novnc.yaml
+        hasDocuments:
+          count: 0
+      - template: templates/deployment-novncproxy.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.template.metadata.annotations["configmap-sunrise-novnc-hash"]
