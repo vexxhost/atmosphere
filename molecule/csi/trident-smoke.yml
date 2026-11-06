@@ -18,10 +18,42 @@
     trident_csi_username: smoke-test
     trident_csi_password: smoke-test
     trident_csi_configure_san: false
+    trident_csi_prepare_hosts: false
     trident_csi_wait_for_backend: false
   roles:
     - vexxhost.atmosphere.trident_csi
   tasks:
+    - name: Read Trident controller pods
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ trident_csi_kubeconfig }}"
+        api_version: v1
+        kind: Pod
+        namespace: "{{ trident_csi_namespace }}"
+        label_selectors:
+          - app=controller.csi.trident.netapp.io
+      register: _trident_smoke_controllers
+      retries: 60
+      delay: 5
+      until: _trident_smoke_controllers.resources | length > 0
+
+    - name: Check pinned Trident controller and sidecar images
+      ansible.builtin.assert:
+        that:
+          - _trident_smoke_expected_controller_images | difference(_trident_smoke_controller_images) | length == 0
+          - _trident_smoke_controller_images | difference(_trident_smoke_expected_controller_images) | length == 0
+      loop: "{{ _trident_smoke_controllers.resources }}"
+      loop_control:
+        label: "{{ item.metadata.name }}"
+      vars:
+        _trident_smoke_controller_images: "{{ item.spec.containers | map(attribute='image') | list }}"
+        _trident_smoke_expected_controller_images:
+          - "{{ atmosphere_images['trident'] }}"
+          - "{{ atmosphere_images['trident_autosupport'] }}"
+          - "{{ atmosphere_images['trident_csi_provisioner'] }}"
+          - "{{ atmosphere_images['trident_csi_attacher'] }}"
+          - "{{ atmosphere_images['trident_csi_resizer'] }}"
+          - "{{ atmosphere_images['trident_csi_snapshotter'] }}"
+
     - name: Wait for Trident node pods
       kubernetes.core.k8s_info:
         kubeconfig: "{{ trident_csi_kubeconfig }}"
@@ -35,6 +67,18 @@
       until:
         - _trident_smoke_nodes.resources | length == 1
         - _trident_smoke_nodes.resources[0].status.numberReady | default(0) | int > 0
+
+    - name: Check pinned Trident Linux node images
+      ansible.builtin.assert:
+        that:
+          - _trident_smoke_expected_node_images | difference(_trident_smoke_node_images) | length == 0
+          - _trident_smoke_node_images | difference(_trident_smoke_expected_node_images) | length == 0
+      vars:
+        _trident_smoke_node_images: >-
+          {{ _trident_smoke_nodes.resources[0].spec.template.spec.containers | map(attribute='image') | list }}
+        _trident_smoke_expected_node_images:
+          - "{{ atmosphere_images['trident'] }}"
+          - "{{ atmosphere_images['trident_csi_node_driver_registrar'] }}"
 
     - name: Read the Trident StorageClass
       kubernetes.core.k8s_info:

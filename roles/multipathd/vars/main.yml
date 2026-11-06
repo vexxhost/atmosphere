@@ -1,0 +1,76 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+---
+# New arrays use the multipath-tools hardware table's default device settings.
+# https://github.com/opensvc/multipath-tools/blob/master/libmultipath/hwtable.c
+_multipathd_array_profiles:
+  netapp_ontap:
+    devices:
+      - vendor: NETAPP
+        product: LUN.*
+      - vendor: NVME
+        product: ^NetApp ONTAP Controller.*
+  pure_flasharray:
+    devices:
+      - vendor: PURE
+        product: FlashArray
+        settings:
+          path_selector: service-time 0
+          hardware_handler: 1 alua
+          path_grouping_policy: group_by_prio
+          prio: alua
+          failback: immediate
+          path_checker: tur
+          fast_io_fail_tmo: 10
+          user_friendly_names: "no"
+          no_path_retry: 0
+          features: 0
+          dev_loss_tmo: 600
+  pure_flasharray_nvme:
+    devices:
+      - vendor: NVME
+        product: Pure Storage FlashArray
+        settings:
+          path_selector: queue-length 0
+          path_grouping_policy: group_by_prio
+          prio: ana
+          failback: immediate
+          fast_io_fail_tmo: 10
+          user_friendly_names: "no"
+          no_path_retry: 0
+          features: 0
+          dev_loss_tmo: 60
+  nimble:
+    devices:
+      - vendor: Nimble
+        product: Server
+        settings:
+          path_grouping_policy: group_by_prio
+          prio: alua
+          hardware_handler: 1 alua
+          path_selector: service-time 0
+          path_checker: tur
+          no_path_retry: 30
+          failback: immediate
+          fast_io_fail_tmo: 5
+          dev_loss_tmo: infinity
+          rr_min_io_rq: 1
+          rr_weight: uniform
+  powerstore:
+    devices:
+      - vendor: DellEMC
+        product: PowerStore
+      - vendor: NVME
+        product: dellemc-powerstore
+
+_multipathd_legacy_arrays:
+  - pure_flasharray_nvme
+  - pure_flasharray
+  - nimble
+
+_multipathd_selected_devices: >-
+  {{
+    multipathd_arrays | map('extract', multipathd_array_profiles) |
+    map(attribute='devices') | flatten(levels=1)
+  }}

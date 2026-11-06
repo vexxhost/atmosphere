@@ -1,0 +1,88 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+---
+- name: Check NVMe TCP kernel module availability
+  ansible.builtin.command:
+    cmd: modinfo nvme-tcp
+  changed_when: false
+  failed_when: false
+  register: _trident_csi_nvme_tcp_module
+
+- name: Install additional NVMe TCP kernel modules
+  ansible.builtin.package:
+    name: "{{ trident_csi_nvme_kernel_package }}"
+    state: present
+  when: _trident_csi_nvme_tcp_module.rc != 0
+
+- name: Load NVMe TCP kernel module
+  community.general.modprobe:
+    name: nvme-tcp
+    state: present
+
+- name: Create persistent kernel module directory
+  ansible.builtin.file:
+    path: /etc/modules-load.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Persist NVMe TCP kernel module
+  ansible.builtin.copy:
+    content: "nvme-tcp\n"
+    dest: /etc/modules-load.d/trident-nvme-tcp.conf
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Check NVMe host NQN file
+  ansible.builtin.stat:
+    path: "{{ trident_csi_nvme_hostnqn_path }}"
+  register: _trident_csi_hostnqn_file
+
+- name: Read existing NVMe host NQN
+  ansible.builtin.slurp:
+    src: "{{ trident_csi_nvme_hostnqn_path }}"
+  register: _trident_csi_hostnqn_content
+  when: _trident_csi_hostnqn_file.stat.exists
+
+- name: Configure missing NVMe host NQN
+  when: (_trident_csi_hostnqn_content.content | default('') | b64decode | trim | length) == 0
+  block:
+    - name: Generate NVMe host NQN
+      ansible.builtin.command:
+        cmd: nvme gen-hostnqn
+      changed_when: true
+      register: _trident_csi_generated_hostnqn
+
+    - name: Create NVMe configuration directory
+      ansible.builtin.file:
+        path: "{{ trident_csi_nvme_hostnqn_path | dirname }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Write NVMe host NQN
+      ansible.builtin.copy:
+        content: "{{ _trident_csi_generated_hostnqn.stdout | trim }}\n"
+        dest: "{{ trident_csi_nvme_hostnqn_path }}"
+        owner: root
+        group: root
+        mode: "0644"
+
+- name: Read configured NVMe host NQN
+  ansible.builtin.slurp:
+    src: "{{ trident_csi_nvme_hostnqn_path }}"
+  register: _trident_csi_hostnqn_content
+
+- name: Record NVMe host NQN
+  ansible.builtin.set_fact:
+    _trident_csi_nvme_hostnqn: "{{ _trident_csi_hostnqn_content.content | b64decode | trim }}"
+
+- name: Validate NVMe host NQN
+  ansible.builtin.assert:
+    that:
+      - _trident_csi_nvme_hostnqn is match('^nqn\.[^\s]+$')
+    fail_msg: "Expected one nonempty NQN in {{ trident_csi_nvme_hostnqn_path }}."

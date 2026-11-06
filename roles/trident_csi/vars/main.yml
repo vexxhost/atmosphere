@@ -13,10 +13,6 @@
 # under the License.
 
 ---
-# Shared with multipathd so standalone OpenStack runs use the same defaults.
-_trident_csi_multipath_defaults: >-
-  {{ lookup('ansible.builtin.file', role_path ~ '/vars/multipath.yml') | from_yaml }}
-
 _trident_csi_backend_default_options:
   defaults:
     nameTemplate: "{{ trident_csi_name_template }}"
@@ -39,6 +35,8 @@ _trident_csi_orchestrator_default_options:
   tridentImage: "{{ atmosphere_images['trident'] }}"
   autosupportImage: "{{ atmosphere_images['trident_autosupport'] }}"
   silenceAutosupport: "{{ trident_csi_silence_autosupport | bool }}"
+  controllerPluginNodeSelector: "{{ trident_csi_node_selector }}"
+  nodePluginNodeSelector: "{{ trident_csi_node_selector }}"
 
 _trident_csi_orchestrator_options: >-
   {{
@@ -48,6 +46,7 @@ _trident_csi_orchestrator_options: >-
 
 _trident_csi_helm_values:
   createTridentOrchestrator: false
+  nodeSelector: "{{ trident_csi_node_selector }}"
   operatorDebug: false
   operatorImage: "{{ atmosphere_images['trident_operator'] }}"
   tridentImage: "{{ atmosphere_images['trident'] }}"
