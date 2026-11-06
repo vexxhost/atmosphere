@@ -121,6 +121,7 @@ Trident CSI driver by updating your Ansible inventory as follows:
 .. code-block:: yaml
 
     csi_driver: trident
+    multipathd_arrays: [netapp_ontap]
     trident_csi_management_lif: <FILL IN>
     trident_csi_username: <FILL IN>
     trident_csi_password: <FILL IN>
@@ -151,6 +152,7 @@ Kubernetes nodes with host HBA presentation and switch zoning already in place:
     csi_driver: trident
     trident_csi_storage_driver: ontap-san
     trident_csi_access_protocol: fc
+    multipathd_arrays: [netapp_ontap]
     trident_csi_management_lif: <FILL IN>
     trident_csi_username: <FILL IN>
     trident_csi_password: <FILL IN>
@@ -170,13 +172,9 @@ If you need shared ``ReadWriteMany`` PVCs, use an ONTAP NAS backend instead:
     trident_csi_username: <FILL IN>
     trident_csi_password: <FILL IN>
 
-The ONTAP NAS drivers also support SMB for Windows nodes by setting
-``trident_csi_access_protocol: smb``.
-
 For ``trident_csi_access_protocol: nfs``, Atmosphere defaults
-``trident_csi_fs_type`` to ``nfs`` because Trident will always present an NFS
-filesystem for ONTAP NAS volumes. For ``trident_csi_access_protocol: smb``,
-Atmosphere omits ``trident_csi_fs_type`` by default.
+``trident_csi_fs_type`` to ``nfs`` because Trident presents an NFS filesystem
+for ONTAP NAS volumes. Atmosphere installs NFS client tools on each node.
 
 Atmosphere does not set ``trident_csi_svm`` or ``trident_csi_data_lif`` by
 default. Set ``trident_csi_svm`` only when using cluster-scoped credentials
@@ -198,12 +196,17 @@ version. NVMe backends always require REST. ``trident_csi_use_rest`` accepts
 ``null`` for automatic selection, ``true`` for REST, or ``false`` for ZAPI;
 explicit ZAPI selection is rejected for NVMe. Use REST with ASA r2 systems.
 
-The default volume name template includes ``trident_csi_storage_prefix``:
+The default volume name template includes ``trident_csi_storage_prefix`` and
+truncates the PVC name so ONTAP volume names stay within length limits. Mark
+custom templates with ``!unsafe`` so Ansible does not try to render them:
 
 .. code-block:: yaml
 
-    trident_csi_name_template: >-
-      {{ .config.StoragePrefix }}{{ .volume.Name }}_{{ .volume.Namespace }}_{{ .volume.RequestName }}
+    trident_csi_name_template: !unsafe >-
+      {{ .config.StoragePrefix }}{{ .volume.Name }}_{{ .volume.Namespace }}_{{ printf "%.63s" .volume.RequestName }}
+
+The Trident backend is named after ``trident_csi_storage_driver`` by default.
+Set ``trident_csi_backend_config_name`` to choose a different name.
 
 You can pass additional backend options through
 ``trident_csi_backend_options`` and additional StorageClass parameters through
@@ -213,51 +216,75 @@ For test environments that do not have access to ONTAP yet, set
 ``trident_csi_wait_for_backend: false`` so the role can validate the operator,
 backend object, and StorageClass without waiting for a successful backend bind.
 
-.. admonition:: SAN multipathing
-    :class: warning
+Host preparation
+================
 
-    For ``ontap-san`` backends, Trident requires working SAN host preparation
-    and multipath configuration on every Kubernetes node. Atmosphere
-    configures ``find_multipaths no`` by default.
+The CSI playbook prepares the controllers before installing the operator,
+backend and StorageClass. Atmosphere schedules every workload that uses
+persistent volumes on the control plane, so the Trident operator, controller
+plugin and node plugin run only on nodes labelled
+``openstack-control-plane: enabled``. Compute nodes are not changed by Trident;
+the ``multipathd`` and ``iscsi`` roles continue to manage them for Cinder.
 
-    This policy can map local disks that have a WWID, including root, LVM,
-    and Ceph OSD disks. Before enabling it, identify the local disks on
-    every affected host and exclude their WWIDs with host-specific
-    ``multipathd_blacklist_wwids`` values. The shared ``multipathd`` role
-    applies these exclusions in both the Trident and OpenStack playbooks.
-    Do not blacklist ONTAP LUNs needed by Trident. For example, in
-    ``host_vars/<host>.yml``:
+If workloads with persistent volumes run on other nodes, change
+``trident_csi_node_selector`` to include them and make sure those nodes are
+prepared in the same way as controllers. Volumes cannot attach on nodes without
+the Trident node plugin.
 
-    .. code-block:: yaml
+For iSCSI, it installs the required tools, sets
+``node.session.scan = manual``, starts the services and ensures each node has
+an initiator name. Existing names are preserved and duplicates among
+controllers cause an error.
 
-        multipathd_blacklist_wwids:
-          - "<local-root-disk-wwid>"
-          - "<local-ceph-osd-disk-wwid>"
+The ``node.session.scan`` setting applies host-wide. On hosts that are both
+controllers and computes it also covers Cinder iSCSI attachments. The
+OpenStack block storage connector scans the LUNs it attaches explicitly, so
+attachments are unaffected.
 
-    When Trident SAN host preparation and multipath configuration are enabled,
-    the OpenStack ``multipathd`` role also follows
-    ``trident_csi_multipath_find_multipaths`` (default: ``"no"``), including
-    when the OpenStack playbook runs separately. You can override the generic
-    role's setting with ``multipathd_find_multipaths``.
+For NVMe/TCP, it installs ``nvme-cli`` and any missing extra kernel modules,
+loads ``nvme-tcp`` and persists it in ``/etc/modules-load.d/``. Missing or empty
+``/etc/nvme/hostnqn`` files are generated; existing NQNs are preserved and
+checked for duplicates. RHEL nodes require version 9 or later for NVMe/TCP.
+For Fibre Channel, host HBA presentation and switch zoning must be configured
+before deployment.
 
-    For iSCSI, Atmosphere installs the Trident iSCSI host packages, starts the
-    required services, and ensures an initiator name exists.
+SAN multipathing
+================
 
-    For Fibre Channel, Atmosphere installs the FC helper and multipath
-    packages that Trident expects. FC switch zoning and host HBA presentation
-    still need to be in place before you deploy the role.
+Set ``multipathd_arrays`` in inventory for the controllers. Include
+``netapp_ontap`` and every other array that the host needs. Compute nodes only
+need the arrays used by Cinder. For example, controllers that use ONTAP for
+Trident and computes that use Pure for Cinder can have these group variables:
 
-    You can disable Trident's multipath configuration by setting
-    ``trident_csi_configure_multipath: false`` if your hosts already manage
-    that configuration elsewhere. Set ``multipathd_find_multipaths``
-    explicitly when overriding the OpenStack playbook's policy.
+.. code-block:: yaml
 
-The ``ci / trident-smoke`` job installs the role into a disposable Kind cluster
-using a non-default namespace and a dummy ONTAP backend. It checks installation
-readiness and the StorageClass without provisioning volumes. Run the same
-playbook against a disposable cluster with
-``ansible-playbook -i localhost, molecule/csi/trident-smoke.yml``. Volume
-creation, attachment, and I/O still require a real ONTAP system.
+    # group_vars/controllers.yml
+    multipathd_arrays: [netapp_ontap]
+
+    # group_vars/computes.yml
+    multipathd_arrays: [pure_flasharray]
+
+The shared ``multipathd`` role sets ``find_multipaths no``, blocks unknown
+devices and allows only the selected array vendor/product matches. This
+protects local root, LVM, Ceph OSD and Nova disks without requiring their WWIDs.
+An array omitted from the list is blocked. CSI and standalone OpenStack runs
+use the same host inventory, so they retain the same policy.
+
+Available profiles are ``netapp_ontap``, ``pure_flasharray``,
+``pure_flasharray_nvme``, ``nimble`` and ``powerstore``. With an empty list,
+the existing multipath policy remains unchanged. SAN preparation requires
+``netapp_ontap`` in the list and ``multipathd_find_multipaths: "no"``.
+``multipathd_blacklist_wwids`` is an optional exclusion for individual LUNs;
+do not list required array LUNs there, as WWID exclusions take precedence.
+
+If another system manages multipath, set
+``trident_csi_configure_multipath: false`` to skip configuration changes;
+the SAN inventory requirements still apply. Before enabling array filtering
+on existing hosts, check ``multipath -ll`` and ``multipath -v3 -d`` for local
+disks and each enabled array, and validate volume attachment on computes.
+When ``multipathd_arrays`` is set, the ``multipathd`` role also fails before
+changing the configuration if an active multipath map belongs to an array that
+is not listed.
 
 *********
 IBM Block

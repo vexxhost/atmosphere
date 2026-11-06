@@ -1,0 +1,77 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+name: trident
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/trident.yaml
+      - charts/patches/trident-operator/**
+      - charts/trident-operator/**
+      - galaxy.yml
+      - molecule/csi/trident-smoke.yml
+      - plugins/**
+      - roles/defaults/**
+      - roles/trident_csi/**
+  push:
+    branches:
+      - main
+      - stable/*
+    paths:
+      - .github/workflows/trident.yaml
+      - charts/patches/trident-operator/**
+      - charts/trident-operator/**
+      - galaxy.yml
+      - molecule/csi/trident-smoke.yml
+      - plugins/**
+      - roles/defaults/**
+      - roles/trident_csi/**
+
+permissions: {}
+
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@a90bcbc6539c36a85cdfeb73f7e2f433735f215b # v2.15.0
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: step-security/setup-uv@ccf0a26ce9117d9e99292b0ce953ea5d9ffe778e # v7.3.0
+      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
+        with:
+          version: v3.19.0
+      - uses: helm/kind-action@92086f6be054225fa813e0a4b13787fc9088faab # v1.13.0
+        with:
+          version: v0.30.0
+          cluster_name: trident-smoke
+          kubectl_version: v1.34.0
+      - name: Label the node as an OpenStack controller
+        run: kubectl label nodes --all openstack-control-plane=enabled
+      - name: Install the Ansible smoke-test environment
+        run: |
+          uv venv "${RUNNER_TEMP}/trident-venv" --python 3.12
+          uv pip install --python "${RUNNER_TEMP}/trident-venv/bin/python" \
+            'ansible-core==2.18.6' kubernetes pyyaml jmespath
+          echo "${RUNNER_TEMP}/trident-venv/bin" >> "${GITHUB_PATH}"
+          "${RUNNER_TEMP}/trident-venv/bin/ansible-galaxy" collection install \
+            kubernetes.core:2.4.0 vexxhost.kubernetes:3.5.0 \
+            -p "${RUNNER_TEMP}/collections"
+          mkdir -p "${RUNNER_TEMP}/collections/ansible_collections/vexxhost"
+          ln -s "${GITHUB_WORKSPACE}" "${RUNNER_TEMP}/collections/ansible_collections/vexxhost/atmosphere"
+      - name: Install and verify Trident without ONTAP
+        env:
+          ANSIBLE_COLLECTIONS_PATH: ${{ runner.temp }}/collections
+        run: ansible-playbook -i localhost, molecule/csi/trident-smoke.yml
+      - name: Collect Trident diagnostics
+        if: failure()
+        run: |
+          kubectl get pods -A -o wide
+          kubectl get tridentorchestrators -o yaml
+          kubectl get events -n trident-smoke --sort-by=.lastTimestamp
+          kubectl logs -n trident-smoke deployment/trident-operator --all-containers=true --tail=200

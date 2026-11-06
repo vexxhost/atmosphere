@@ -27,6 +27,20 @@ trident_csi_kubeconfig: >-
 trident_csi_orchestrator_name: trident
 trident_csi_orchestrator_options: {}
 
+# Node labels for the Trident operator, controller plugin and node plugin.
+# Volumes can only attach on nodes that run the node plugin, and those nodes
+# must be prepared by the CSI playbook, which targets controllers.
+#
+# trident_csi_node_selector:
+#   openstack-control-plane: enabled
+trident_csi_node_selector:
+  openstack-control-plane: enabled
+
+# Prepare the current hosts when using this role outside the CSI playbook.
+#
+# trident_csi_prepare_hosts: true
+trident_csi_prepare_hosts: true
+
 # Silence periodic NetApp autosupport reporting.
 #
 # trident_csi_silence_autosupport: true
@@ -45,8 +59,9 @@ trident_csi_supported_access_protocols:
   - fc
   - nvme
   - nfs
-  - smb
-trident_csi_san_storage_drivers: "{{ _trident_csi_multipath_defaults.san_storage_drivers }}"
+trident_csi_san_storage_drivers:
+  - ontap-san
+  - ontap-san-economy
 trident_csi_nas_storage_drivers:
   - ontap-nas
   - ontap-nas-economy
@@ -57,7 +72,6 @@ trident_csi_san_access_protocols:
   - nvme
 trident_csi_nas_access_protocols:
   - nfs
-  - smb
 trident_csi_fc_storage_drivers:
   - ontap-san
 trident_csi_nvme_storage_drivers:
@@ -68,17 +82,16 @@ trident_csi_san_type_map:
   nvme: nvme
 trident_csi_nas_type_map:
   nfs: nfs
-  smb: smb
 
-trident_csi_storage_driver: "{{ _trident_csi_multipath_defaults.storage_driver }}"
+trident_csi_storage_driver: ontap-san
 # SAN access protocol for ``ontap-san`` volumes.
 # Use ``fc`` or ``nvme`` only with ``trident_csi_storage_driver: ontap-san``.
-# Use ``nfs`` or ``smb`` with the ONTAP NAS drivers.
+# Use ``nfs`` with the ONTAP NAS drivers.
 #
 # trident_csi_access_protocol: iscsi
 trident_csi_access_protocol: iscsi
 trident_csi_backend_version: 1
-trident_csi_backend_config_name: ontap-san
+trident_csi_backend_config_name: "{{ trident_csi_storage_driver }}"
 trident_csi_backend_name: "{{ trident_csi_backend_config_name }}"
 trident_csi_backend_secret_name: "{{ trident_csi_backend_config_name }}-secret"
 trident_csi_backend_deletion_policy: retain
@@ -86,8 +99,13 @@ trident_csi_backend_deletion_policy: retain
 #
 # trident_csi_use_rest: true
 trident_csi_use_rest: null
+# ONTAP volume name template. The PVC name is truncated to keep FlexVol names
+# within ONTAP's 203-character limit.
+#
+# trident_csi_name_template: !unsafe >-
+#   {{ .config.StoragePrefix }}{{ .volume.Name }}
 trident_csi_name_template: !unsafe >-
-  {{ .config.StoragePrefix }}{{ .volume.Name }}_{{ .volume.Namespace }}_{{ .volume.RequestName }}
+  {{ .config.StoragePrefix }}{{ .volume.Name }}_{{ .volume.Namespace }}_{{ printf "%.63s" .volume.RequestName }}
 trident_csi_backend_options: {}
 trident_csi_wait_for_backend: true
 trident_csi_backend_wait_retries: 60
@@ -102,9 +120,24 @@ trident_csi_storage_prefix: atmosphere_
 trident_csi_configure_san: >-
   {{ trident_csi_storage_driver in trident_csi_san_storage_drivers }}
 trident_csi_configure_iscsi: >-
-  {{ trident_csi_configure_san and trident_csi_access_protocol == 'iscsi' }}
+  {{ trident_csi_configure_san | bool and trident_csi_access_protocol == 'iscsi' }}
 trident_csi_configure_fc: >-
-  {{ trident_csi_configure_san and trident_csi_access_protocol == 'fc' }}
+  {{ trident_csi_configure_san | bool and trident_csi_access_protocol == 'fc' }}
+
+# NFS client tools for each supported operating system family.
+#
+# trident_csi_nfs_packages:
+#   Debian: nfs-common
+#   RedHat: nfs-utils
+trident_csi_nfs_packages:
+  Debian: nfs-common
+  RedHat: nfs-utils
+
+# Extra kernel modules are needed only when nvme-tcp is not already available.
+#
+# trident_csi_nvme_kernel_package: "linux-modules-extra-{{ ansible_kernel }}"
+trident_csi_nvme_kernel_package: >-
+  {{ ('linux-modules-extra-' if ansible_os_family == 'Debian' else 'kernel-modules-extra-') ~ ansible_kernel }}
 trident_csi_san_packages:
   iscsi:
     Debian:
@@ -155,6 +188,7 @@ trident_csi_san_services:
       - multipathd
     RedHat:
       - iscsid
+      - iscsi
       - multipathd
     default:
       - iscsid
@@ -174,8 +208,12 @@ trident_csi_san_services:
     default:
       - multipathd
 trident_csi_initiator_name_path: /etc/iscsi/initiatorname.iscsi
-trident_csi_configure_multipath: "{{ _trident_csi_multipath_defaults.configure_multipath }}"
-trident_csi_multipath_find_multipaths: "{{ _trident_csi_multipath_defaults.find_multipaths }}"
+trident_csi_configure_multipath: true
+
+# Persistent NVMe host identifier; existing nonempty values are preserved.
+#
+# trident_csi_nvme_hostnqn_path: /etc/nvme/hostnqn
+trident_csi_nvme_hostnqn_path: /etc/nvme/hostnqn
 
 trident_csi_storage_class_name: general
 trident_csi_storage_class_default: true
@@ -187,7 +225,6 @@ trident_csi_default_fs_type_map:
   fc: ext4
   nvme: ext4
   nfs: nfs
-  smb: ""
 trident_csi_fs_type: >-
   {{ trident_csi_default_fs_type_map[trident_csi_access_protocol] }}
 trident_csi_storage_class_parameters: {}
