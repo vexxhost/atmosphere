@@ -401,6 +401,16 @@ Using HPE Nimble storage
       ephemeral:
         type: local
 
+Manila service images with Cinder-backed Glance
+===============================================
+
+When the default image backend is Cinder, Atmosphere converts and uploads the
+Manila service image as ``raw``. The Cinder Glance store rejects the supplied
+``qcow2`` service image. Other image backends continue to use the ``qcow2``
+default. Set ``manila_image_disk_format`` explicitly only when a custom Glance
+configuration requires a different target format; the image upload role
+converts the image data to the selected format before uploading it.
+
 Glance with multiple backends
 =============================
 
