@@ -1,8 +1,7 @@
 ---
 fixes:
   - |
-    The OpenStack Helm API charts for Barbican, Cinder, Designate, Glance,
-    Heat, Magnum, Neutron, and Nova now route Kubernetes probes to a
-    dedicated ``/healthcheck`` endpoint backed by ``oslo.middleware``. This
-    avoids API probe failures when the root path doesn't provide a reliable
-    health signal.
+    The API probes for Barbican, Cinder, Glance, Heat API and CloudFormation,
+    Magnum, Neutron, and Nova now use the ``oslo.middleware`` ``/healthcheck``
+    endpoint. The disable file uses the writable ``/tmp`` volume, and the
+    Glance and Neutron probes report HTTP errors when TLS is enabled.

@@ -301,14 +301,6 @@ conf:
       use: egg:Paste#urlmap
       /: heat-api-cfn-standalone-pipeline
       /healthcheck: healthcheck
-    composite:heat-api-cloudwatch:
-      use: egg:Paste#urlmap
-      /: heat-api-cloudwatch-pipeline
-      /healthcheck: healthcheck
-    composite:heat-api-cloudwatch-standalone:
-      use: egg:Paste#urlmap
-      /: heat-api-cloudwatch-standalone-pipeline
-      /healthcheck: healthcheck
     pipeline:heat-api-pipeline:
       pipeline: cors request_id faultwrap http_proxy_to_wsgi versionnegotiation osprofiler authurl authtoken audit context apiv1app
     pipeline:heat-api-standalone-pipeline:
@@ -319,9 +311,9 @@ conf:
       pipeline: cors http_proxy_to_wsgi cfnversionnegotiation osprofiler ec2authtoken authtoken audit context apicfnv1app
     pipeline:heat-api-cfn-standalone-pipeline:
       pipeline: cors http_proxy_to_wsgi cfnversionnegotiation ec2authtoken context apicfnv1app
-    pipeline:heat-api-cloudwatch-pipeline:
+    pipeline:heat-api-cloudwatch:
       pipeline: cors versionnegotiation osprofiler ec2authtoken authtoken audit context apicwapp
-    pipeline:heat-api-cloudwatch-standalone-pipeline:
+    pipeline:heat-api-cloudwatch-standalone:
       pipeline: cors versionnegotiation ec2authtoken context apicwapp
     app:apiv1app:
       paste.app_factory: heat.common.wsgi:app_factory
@@ -335,7 +327,7 @@ conf:
     app:healthcheck:
       paste.app_factory: oslo_middleware:Healthcheck.app_factory
       backends: disable_by_file
-      disable_by_file_path: /var/run/heat/healthcheck_disable
+      disable_by_file_path: /tmp/healthcheck_disable
     filter:versionnegotiation:
       paste.filter_factory: heat.common.wsgi:filter_factory
       heat.filter_factory: heat.api.openstack:version_negotiation_filter

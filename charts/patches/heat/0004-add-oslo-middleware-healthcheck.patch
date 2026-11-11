@@ -1,7 +1,7 @@
 diff --git a/heat/templates/deployment-api.yaml b/heat/templates/deployment-api.yaml
 --- a/heat/templates/deployment-api.yaml
 +++ b/heat/templates/deployment-api.yaml
-@@ -84,12 +84,12 @@ spec:
+@@ -84,12 +84,12 @@
            readinessProbe:
              httpGet:
                scheme: {{ tuple "orchestration" "service" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_scheme_lookup" | upper }}
@@ -19,7 +19,7 @@ diff --git a/heat/templates/deployment-api.yaml b/heat/templates/deployment-api.
 diff --git a/heat/templates/deployment-cfn.yaml b/heat/templates/deployment-cfn.yaml
 --- a/heat/templates/deployment-cfn.yaml
 +++ b/heat/templates/deployment-cfn.yaml
-@@ -84,12 +84,12 @@ spec:
+@@ -84,12 +84,12 @@
            readinessProbe:
              httpGet:
                scheme: {{ tuple "cloudformation" "service" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_scheme_lookup" | upper }}
@@ -34,22 +34,10 @@ diff --git a/heat/templates/deployment-cfn.yaml b/heat/templates/deployment-cfn.
                port: {{ tuple "cloudformation" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
              initialDelaySeconds: 10
            volumeMounts:
-diff --git a/heat/templates/deployment-cloudwatch.yaml b/heat/templates/deployment-cloudwatch.yaml
---- a/heat/templates/deployment-cloudwatch.yaml
-+++ b/heat/templates/deployment-cloudwatch.yaml
-@@ -78,7 +78,7 @@ spec:
-           readinessProbe:
-             httpGet:
-               scheme: {{ tuple "cloudwatch" "service" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_scheme_lookup" | upper }}
--              path: /
-+              path: /healthcheck
-               port: {{ tuple "cloudwatch" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
-           volumeMounts:
-             - name: pod-tmp
 diff --git a/heat/values.yaml b/heat/values.yaml
 --- a/heat/values.yaml
 +++ b/heat/values.yaml
-@@ -281,19 +281,47 @@ conf:
+@@ -281,15 +281,35 @@
                properties:
                  length: 40
    paste:
@@ -74,14 +62,6 @@ diff --git a/heat/values.yaml b/heat/values.yaml
 +      use: egg:Paste#urlmap
 +      /: heat-api-cfn-standalone-pipeline
 +      /healthcheck: healthcheck
-+    composite:heat-api-cloudwatch:
-+      use: egg:Paste#urlmap
-+      /: heat-api-cloudwatch-pipeline
-+      /healthcheck: healthcheck
-+    composite:heat-api-cloudwatch-standalone:
-+      use: egg:Paste#urlmap
-+      /: heat-api-cloudwatch-standalone-pipeline
-+      /healthcheck: healthcheck
 +    pipeline:heat-api-pipeline:
        pipeline: cors request_id faultwrap http_proxy_to_wsgi versionnegotiation osprofiler authurl authtoken audit context apiv1app
 -    pipeline:heat-api-standalone:
@@ -96,22 +76,16 @@ diff --git a/heat/values.yaml b/heat/values.yaml
 -    pipeline:heat-api-cfn-standalone:
 +    pipeline:heat-api-cfn-standalone-pipeline:
        pipeline: cors http_proxy_to_wsgi cfnversionnegotiation ec2authtoken context apicfnv1app
--    pipeline:heat-api-cloudwatch:
-+    pipeline:heat-api-cloudwatch-pipeline:
+     pipeline:heat-api-cloudwatch:
        pipeline: cors versionnegotiation osprofiler ec2authtoken authtoken audit context apicwapp
--    pipeline:heat-api-cloudwatch-standalone:
-+    pipeline:heat-api-cloudwatch-standalone-pipeline:
-       pipeline: cors versionnegotiation ec2authtoken context apicwapp
-     app:apiv1app:
-       paste.app_factory: heat.common.wsgi:app_factory
-@@ -304,6 +332,10 @@ conf:
+@@ -304,6 +324,10 @@
      app:apicwapp:
        paste.app_factory: heat.common.wsgi:app_factory
        heat.app_factory: heat.api.cloudwatch:API
 +    app:healthcheck:
 +      paste.app_factory: oslo_middleware:Healthcheck.app_factory
 +      backends: disable_by_file
-+      disable_by_file_path: /var/run/heat/healthcheck_disable
++      disable_by_file_path: /tmp/healthcheck_disable
      filter:versionnegotiation:
        paste.filter_factory: heat.common.wsgi:filter_factory
        heat.filter_factory: heat.api.openstack:version_negotiation_filter

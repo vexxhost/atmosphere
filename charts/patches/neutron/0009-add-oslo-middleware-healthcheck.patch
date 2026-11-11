@@ -1,12 +1,12 @@
 diff --git a/neutron/templates/deployment-server.yaml b/neutron/templates/deployment-server.yaml
 --- a/neutron/templates/deployment-server.yaml
 +++ b/neutron/templates/deployment-server.yaml
-@@ -18,12 +18,12 @@ exec:
+@@ -18,12 +18,12 @@
    command:
      - python
      - -c
 -    - "import requests; requests.get('http://127.0.0.1:{{ tuple "network" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}')"
-+    - "import requests; requests.get('http://127.0.0.1:{{ tuple "network" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}/healthcheck')"
++    - "import requests; requests.get('http://127.0.0.1:{{ tuple "network" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}/healthcheck', timeout=2).raise_for_status()"
  initialDelaySeconds: 30
  {{- else }}
  httpGet:
@@ -16,12 +16,12 @@ diff --git a/neutron/templates/deployment-server.yaml b/neutron/templates/deploy
    port: {{ tuple "network" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
  {{- end }}
  {{- end }}
-@@ -33,12 +33,12 @@ exec:
+@@ -33,12 +33,12 @@
    command:
      - python
      - -c
 -    - "import requests; requests.get('http://127.0.0.1:{{ tuple "network" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}')"
-+    - "import requests; requests.get('http://127.0.0.1:{{ tuple "network" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}/healthcheck')"
++    - "import requests; requests.get('http://127.0.0.1:{{ tuple "network" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}/healthcheck', timeout=2).raise_for_status()"
  initialDelaySeconds: 30
  {{- else }}
  httpGet:
@@ -31,7 +31,7 @@ diff --git a/neutron/templates/deployment-server.yaml b/neutron/templates/deploy
    port: {{ tuple "network" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
  {{- end }}
  {{- end }}
-@@ -142,7 +142,7 @@ spec:
+@@ -142,7 +142,7 @@
            readinessProbe:
              httpGet:
                scheme: HTTPS
@@ -43,7 +43,7 @@ diff --git a/neutron/templates/deployment-server.yaml b/neutron/templates/deploy
 diff --git a/neutron/values.yaml b/neutron/values.yaml
 --- a/neutron/values.yaml
 +++ b/neutron/values.yaml
-@@ -1339,6 +1339,7 @@ conf:
+@@ -1326,6 +1326,7 @@
        use: egg:Paste#urlmap
        /: neutronversions_composite
        /v2.0: neutronapi_v2_0
@@ -51,14 +51,14 @@ diff --git a/neutron/values.yaml b/neutron/values.yaml
      composite:neutronapi_v2_0:
        use: call:neutron.auth:pipeline_factory
        noauth: cors http_proxy_to_wsgi request_id catch_errors extensions neutronapiapp_v2_0
-@@ -1369,6 +1370,10 @@ conf:
+@@ -1356,6 +1357,10 @@
        paste.app_factory: neutron.pecan_wsgi.app:versions_factory
      app:neutronapiapp_v2_0:
        paste.app_factory: neutron.api.v2.router:APIRouter.factory
 +    app:healthcheck:
 +      paste.app_factory: oslo_middleware:Healthcheck.app_factory
 +      backends: disable_by_file
-+      disable_by_file_path: /var/run/neutron/healthcheck_disable
++      disable_by_file_path: /tmp/healthcheck_disable
      filter:osprofiler:
        paste.filter_factory: osprofiler.web:WsgiMiddleware.factory
    neutron_api_uwsgi:
