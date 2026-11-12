@@ -15,6 +15,59 @@
 - name: Create user and assert it exists inside Keystone
   hosts: all
   tasks:
+    - name: Get Keycloak admin access token
+      no_log: true
+      run_once: true
+      delegate_to: localhost
+      ansible.builtin.uri:
+        url: "https://{{ keycloak_host }}/realms/master/protocol/openid-connect/token"
+        method: POST
+        body_format: form-urlencoded
+        body:
+          client_id: admin-cli
+          username: admin
+          password: "{{ keycloak_admin_password }}"
+          grant_type: password
+        status_code: [200]
+        validate_certs: "{{ cluster_issuer_type != 'self-signed' }}"
+      register: keycloak_admin_access_token
+
+    - name: Get Keystone Keycloak client
+      no_log: true
+      run_once: true
+      delegate_to: localhost
+      ansible.builtin.uri:
+        url: "https://{{ keycloak_host }}/admin/realms/atmosphere/clients?clientId=keystone"
+        headers:
+          Authorization: "Bearer {{ keycloak_admin_access_token.json.access_token }}"
+        status_code: [200]
+        validate_certs: "{{ cluster_issuer_type != 'self-signed' }}"
+      register: keycloak_keystone_client
+
+    - name: Assert Keystone Keycloak client exists
+      run_once: true
+      ansible.builtin.assert:
+        that:
+          - keycloak_keystone_client.json | length == 1
+
+    - name: Get default scopes for Keystone Keycloak client
+      no_log: true
+      run_once: true
+      delegate_to: localhost
+      ansible.builtin.uri:
+        url: "https://{{ keycloak_host }}/admin/realms/atmosphere/clients/{{ keycloak_keystone_client.json[0].id }}/default-client-scopes"
+        headers:
+          Authorization: "Bearer {{ keycloak_admin_access_token.json.access_token }}"
+        status_code: [200]
+        validate_certs: "{{ cluster_issuer_type != 'self-signed' }}"
+      register: keycloak_keystone_client_default_scopes
+
+    - name: Assert Keystone Keycloak client has Admin API scope
+      run_once: true
+      ansible.builtin.assert:
+        that:
+          - "'kc-admin-api' in (keycloak_keystone_client_default_scopes.json | map(attribute='name') | list)"
+
     - name: Create Keycloak user
       run_once: true
       delegate_to: localhost
