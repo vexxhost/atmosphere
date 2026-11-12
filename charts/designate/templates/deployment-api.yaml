@@ -71,9 +71,11 @@ spec:
           readinessProbe:
             httpGet:
               scheme: {{ tuple "dns" "internal" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_scheme_lookup" | upper }}
-              path: /
+              path: /healthcheck
               port: {{ tuple "dns" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
           volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
             - name: designate-bin
               mountPath: /tmp/designate-api.sh
               subPath: designate-api.sh
@@ -106,6 +108,8 @@ spec:
             {{- end }}
 {{ if $mounts_designate_api.volumeMounts }}{{ toYaml $mounts_designate_api.volumeMounts | indent 12 }}{{ end }}
       volumes:
+        - name: pod-tmp
+          emptyDir: {}
         - name: pod-etc-designate
           emptyDir: {}
         - name: pod-var-cache-designate

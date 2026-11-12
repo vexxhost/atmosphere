@@ -9,10 +9,11 @@ ensure the smooth and secure operation of the system.
 API Health Checks
 *****************
 
-The Barbican, Cinder, Glance, Heat API and CloudFormation, Magnum, Neutron,
-and Nova API probes use the ``/healthcheck`` endpoint. This endpoint checks
-whether the API can serve requests and whether a local disable file exists;
-it does not check authentication, database, or messaging dependencies.
+The API probes for Barbican, Cinder, Designate, Glance, Heat API and
+CloudFormation, Keystone, Magnum, Manila, Neutron, Nova, and Octavia use the
+``/healthcheck`` endpoint. This endpoint checks whether the API can serve
+requests and whether a local disable file exists; it does not check
+authentication, database, or messaging dependencies.
 
 The disable file is ``/tmp/healthcheck_disable`` inside each API container.
 The ``/tmp`` directory uses a writable temporary volume, so the service user

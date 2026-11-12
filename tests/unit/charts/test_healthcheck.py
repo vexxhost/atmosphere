@@ -1,6 +1,8 @@
 # Copyright (c) 2026 VEXXHOST, Inc.
 # SPDX-License-Identifier: Apache-2.0
 
+import base64
+import configparser
 import json
 import pathlib
 import re
@@ -17,11 +19,44 @@ ROOT = pathlib.Path(__file__).resolve().parents[3]
 DEPLOYMENTS = {
     "barbican": ["api"],
     "cinder": ["api"],
+    "designate": ["api"],
     "glance": ["api"],
     "heat": ["api", "cfn"],
+    "keystone": ["api"],
     "magnum": ["api"],
+    "manila": ["api"],
     "neutron": ["server"],
     "nova": ["api-metadata", "api-osapi"],
+    "octavia": ["api"],
+}
+CONFIG_FILES = {
+    "barbican": "barbican-api-paste.ini",
+    "glance": "glance-api-paste.ini",
+    "keystone": "keystone.conf",
+    "octavia": "octavia.conf",
+}
+ROOT_COMPOSITES = {
+    "barbican": {"api": ["main"]},
+    "cinder": {"api": ["osapi_volume"]},
+    "designate": {"api": ["osapi_dns"]},
+    "glance": {
+        "api": [
+            "glance-api",
+            "glance-api-caching",
+            "glance-api-cachemanagement",
+            "glance-api-keystone",
+            "glance-api-keystone+caching",
+            "glance-api-keystone+cachemanagement",
+        ]
+    },
+    "heat": {
+        "api": ["heat-api", "heat-api-standalone", "heat-api-custombackend"],
+        "cfn": ["heat-api-cfn", "heat-api-cfn-standalone"],
+    },
+    "magnum": {"api": ["main"]},
+    "manila": {"api": ["osapi_share"]},
+    "neutron": {"server": ["neutron"]},
+    "nova": {"api-metadata": ["metadata"], "api-osapi": ["osapi_compute"]},
 }
 pytestmark = pytest.mark.skipif(shutil.which("helm") is None, reason="Helm is required")
 
@@ -38,6 +73,7 @@ def render_chart():
             for deployment in DEPLOYMENTS[chart]:
                 manifests["deployment_" + deployment.replace("-", "_")] = True
             manifests["certificates"] = tls
+            manifests["configmap_etc"] = True
             overrides = {"manifests": manifests}
             if tls:
                 service = "image" if chart == "glance" else "network"
@@ -51,7 +87,8 @@ def render_chart():
                                 }
                             }
                         }
-                    }
+                    },
+                    "oslo_messaging": {"port": {"amqp_tls": {"default": 5671}}},
                 }
             result = subprocess.run(
                 [
@@ -69,43 +106,109 @@ def render_chart():
                 capture_output=True,
                 check=True,
             )
-            deployments = [
-                document
-                for document in yaml.safe_load_all(result.stdout)
-                if document and document.get("kind") == "Deployment"
+            documents = [
+                document for document in yaml.safe_load_all(result.stdout) if document
             ]
-            cache[chart, tls] = values, deployments
+            deployments = [d for d in documents if d["kind"] == "Deployment"]
+            secrets = {
+                d["metadata"]["name"]: d for d in documents if d["kind"] == "Secret"
+            }
+            cache[chart, tls] = secrets, deployments
         return cache[chart, tls]
 
     return render
 
 
-@pytest.mark.parametrize("chart", DEPLOYMENTS)
-def test_disable_file_uses_writable_volume(render_chart, chart):
-    values, deployments = render_chart(chart)
-    marker = pathlib.PurePosixPath(
-        values["conf"]["paste"]["app:healthcheck"]["disable_by_file_path"]
-    )
-    assert marker.is_absolute()
+def mounted_config(chart, filename, container, volumes, secrets):
+    path = f"/etc/{chart}/{filename}"
+    mount = next(m for m in container["volumeMounts"] if m["mountPath"] == path)
+    assert mount["subPath"] == filename
+    secret = secrets[volumes[mount["name"]]["secret"]["secretName"]]
+    config = configparser.ConfigParser(interpolation=None)
+    config.read_string(base64.b64decode(secret["data"][filename]).decode())
+    return config
+
+
+@pytest.mark.parametrize(
+    "chart,component",
+    [
+        (chart, component)
+        for chart, components in DEPLOYMENTS.items()
+        for component in components
+    ],
+    ids=[
+        f"{chart}-{component}"
+        for chart, components in DEPLOYMENTS.items()
+        for component in components
+    ],
+)
+def test_rendered_healthcheck_config_and_mounts(render_chart, chart, component):
+    secrets, deployments = render_chart(chart)
     assert len(deployments) == len(DEPLOYMENTS[chart])
-    for deployment in deployments:
-        pod = deployment["spec"]["template"]["spec"]
-        volumes = {volume["name"]: volume for volume in pod["volumes"]}
-        for container in pod["containers"]:
-            if container["name"] == "nginx":
-                continue
-            mounts = [
-                mount
-                for mount in container["volumeMounts"]
-                if marker.is_relative_to(mount["mountPath"])
-                and not mount.get("readOnly", False)
-                and "emptyDir" in volumes[mount["name"]]
-            ]
-            assert mounts, f"{deployment['metadata']['name']}: {marker} is not writable"
-            for probe_name in ["readinessProbe", "livenessProbe"]:
-                probe = container.get(probe_name)
-                if probe:
-                    assert probe["httpGet"]["path"] == "/healthcheck"
+    deployment = next(
+        d for d in deployments if d["metadata"]["name"] == f"{chart}-{component}"
+    )
+    pod = deployment["spec"]["template"]["spec"]
+    volumes = {volume["name"]: volume for volume in pod["volumes"]}
+    for container in pod["containers"]:
+        if container["name"] == "nginx":
+            continue
+        config = mounted_config(
+            chart, CONFIG_FILES.get(chart, "api-paste.ini"), container, volumes, secrets
+        )
+        if chart in ["keystone", "octavia"]:
+            sections = [config["healthcheck"]]
+            if chart == "octavia":
+                assert config.getboolean("api_settings", "healthcheck_enabled")
+        else:
+            sections = []
+            for root in ROOT_COMPOSITES[chart][component]:
+                app = config[f"composite:{root}"]["/healthcheck"]
+                section = config[f"app:{app}"]
+                assert (
+                    section["paste.app_factory"]
+                    == "oslo_middleware:Healthcheck.app_factory"
+                )
+                sections.append(section)
+        for section in sections:
+            assert section["backends"] == "disable_by_file"
+            assert section["disable_by_file_path"] == "/tmp/healthcheck_disable"
+        if chart == "manila":
+            service_config = mounted_config(
+                chart, "manila.conf", container, volumes, secrets
+            )
+            assert (
+                service_config["DEFAULT"]["api_paste_config"]
+                == "/etc/manila/api-paste.ini"
+            )
+        marker = pathlib.PurePosixPath("/tmp/healthcheck_disable")
+        mounts = [
+            m
+            for m in container["volumeMounts"]
+            if marker.is_relative_to(m["mountPath"])
+        ]
+        mount = max(
+            mounts, key=lambda m: len(pathlib.PurePosixPath(m["mountPath"]).parts)
+        )
+        assert not mount.get("readOnly", False)
+        assert "emptyDir" in volumes[mount["name"]]
+        assert container["readinessProbe"]["httpGet"]["path"] == "/healthcheck"
+        for probe_name in ["readinessProbe", "livenessProbe"]:
+            probe = container.get(probe_name)
+            if probe:
+                assert probe["httpGet"]["path"] == "/healthcheck"
+
+
+def test_neutron_tls_nginx_healthcheck_probe(render_chart):
+    _, deployments = render_chart("neutron", tls=True)
+    nginx = next(
+        c
+        for d in deployments
+        for c in d["spec"]["template"]["spec"]["containers"]
+        if c["name"] == "nginx"
+    )
+    assert nginx["readinessProbe"]["httpGet"]["path"] == "/healthcheck"
+    assert nginx["readinessProbe"]["httpGet"]["scheme"] == "HTTPS"
 
 
 @pytest.mark.parametrize("chart", ["glance", "neutron"])
