@@ -6,6 +6,30 @@ Atmosphere deploys Magnum with the `Cluster API driver for Magnum
 <https://github.com/vexxhost/magnum-cluster-api>`_, together with Cluster API
 and the Cluster API provider for OpenStack.
 
+***********************
+Keystone authentication
+***********************
+
+The Magnum chart sets ``keystone_authtoken.www_authenticate_uri`` to a Keystone
+v3 URL for trustee authentication. It uses the internal identity endpoint by
+default, including when the shared endpoint path is ``/``. Existing
+``auth_uri`` overrides supply the base URL, and explicit
+``www_authenticate_uri`` values take precedence.
+
+Recent identity middleware releases no longer read the deprecated ``auth_uri``
+option. The supported option lets commands such as ``openstack coe cluster
+list`` authenticate the trustee domain administrator without an HTTP 500 error.
+
+To use a different URL, set the following Helm override:
+
+.. code-block:: yaml
+
+   magnum_helm_values:
+     conf:
+       magnum:
+         keystone_authtoken:
+           www_authenticate_uri: https://identity.example.com/v3
+
 *****************************************
 Kubelet serving certificate verification
 *****************************************
