@@ -41,6 +41,9 @@
               virtual_router_id {{ keepalived_vrid }}
               priority 150
               nopreempt
+            {% if keepalived_lower_prio_no_advert | bool %}
+              lower_prio_no_advert true
+            {% endif %}
 
               virtual_ipaddress {
                 {{ keepalived_vip }}
