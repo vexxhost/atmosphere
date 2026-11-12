@@ -13,6 +13,7 @@
 # under the License.
 
 - hosts: "{{ target | default('all') }}"
+  any_errors_fatal: true
   become: true
   roles:
     - role: defaults
@@ -29,6 +30,13 @@
       ansible.builtin.set_fact:
         atmosphere_images: "{{ atmosphere_images }}"
         atmosphere_kubernetes_version: "{{ atmosphere_kubernetes_version }}"
+        atmosphere_kubernetes_upgrade_compatibility: "{{ atmosphere_kubernetes_upgrade_compatibility }}"
+        atmosphere_kubernetes_cilium_values: >-
+          {{
+            (_atmosphere_kubernetes_upgrade_cilium_values
+             if atmosphere_kubernetes_upgrade_compatibility | bool else {})
+            | vexxhost.kubernetes.cilium_upgrade_values(cilium_helm_values | default({}))
+          }}
       tags:
         - always
 
@@ -45,8 +53,11 @@
     cilium_node_image: "{{ atmosphere_images['cilium_node'] }}"
     cilium_operator_image: "{{ atmosphere_images['cilium_operator'] }}"
     kube_vip_image: "{{ atmosphere_images['kube_vip'] }}"
+    cilium_helm_values: "{{ atmosphere_kubernetes_cilium_values }}"
+    kubernetes_upgrade_lifecycle_role: "{{ 'vexxhost.atmosphere.kubernetes_upgrade_compatibility' if atmosphere_kubernetes_upgrade_compatibility | bool else '' }}"
 
 - hosts: "{{ target | default('all') }}"
+  any_errors_fatal: true
   become: true
   roles:
     - role: vexxhost.atmosphere.kubernetes_node_labels
@@ -56,6 +67,7 @@
 # NOTE(mnaser): Add task to uninstall "unattended-upgrades" to avoid system
 #               upgrades during the deployment
 - hosts: "{{ target | default('all') }}"
+  any_errors_fatal: true
   become: true
   gather_facts: false
   tasks:

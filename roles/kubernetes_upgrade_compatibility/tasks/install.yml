@@ -1,0 +1,23 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+---
+- name: Create protected discovery recovery directories
+  delegate_to: "{{ item }}"
+  ansible.builtin.file:
+    path: /var/lib/atmosphere/kubernetes-upgrade
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+  loop: "{{ (_atmosphere_kubernetes_upgrade_discovery_hosts + [kubernetes_bootstrap_node | default(groups[kubernetes_control_plane_group | default('controllers')][0])]) | unique }}"
+
+- name: Install the bounded discovery recovery helper
+  delegate_to: "{{ item }}"
+  ansible.builtin.copy:
+    src: discovery.py
+    dest: /var/lib/atmosphere/kubernetes-upgrade/discovery.py
+    owner: root
+    group: root
+    mode: "0700"
+  loop: "{{ (_atmosphere_kubernetes_upgrade_discovery_hosts + [kubernetes_bootstrap_node | default(groups[kubernetes_control_plane_group | default('controllers')][0])]) | unique }}"

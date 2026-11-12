@@ -1,0 +1,33 @@
+# Copyright (c) 2026 VEXXHOST, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+---
+- name: Read the existing Cilium release values
+  delegate_to: "{{ groups[kubernetes_control_plane_group | default('controllers')][0] }}"
+  kubernetes.core.helm_info:
+    kubeconfig: /etc/kubernetes/admin.conf
+    name: "{{ cilium_helm_release_name | default('cilium') }}"
+    release_namespace: "{{ cilium_helm_release_namespace | default('kube-system') }}"
+  register: atmosphere_existing_cilium
+  no_log: true
+
+- name: Apply the existing cluster Cilium configuration with discovery protection
+  when: >-
+    atmosphere_existing_cilium.status is defined and
+    (atmosphere_existing_cilium.status['values'] | default({}) | from_yaml | default({}, true)
+     | combine(atmosphere_kubernetes_cilium_values, recursive=True))
+    != (atmosphere_existing_cilium.status['values'] | default({}) | from_yaml | default({}, true))
+  block:
+    - name: Protect discovery before Cilium changes
+      ansible.builtin.include_tasks: prepare.yml
+
+    - name: Reconcile Cilium before controller upgrades
+      ansible.builtin.include_role:
+        name: vexxhost.kubernetes.cilium
+      vars:
+        cilium_node_image: "{{ atmosphere_images['cilium_node'] }}"
+        cilium_operator_image: "{{ atmosphere_images['cilium_operator'] }}"
+        cilium_helm_values: "{{ atmosphere_kubernetes_cilium_values }}"
+  always:
+    - name: Restore discovery after Cilium reconciliation
+      ansible.builtin.include_tasks: restore.yml
