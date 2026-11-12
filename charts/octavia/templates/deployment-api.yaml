@@ -76,9 +76,11 @@ spec:
           readinessProbe:
             httpGet:
               scheme: {{ tuple "load_balancer" "internal" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_scheme_lookup" | upper }}
-              path: /
+              path: /healthcheck
               port: {{ tuple "load_balancer" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
           volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
             - name: pod-etc-octavia
               mountPath: /etc/octavia
             - name: octavia-bin
@@ -101,6 +103,8 @@ spec:
             {{- end }}
 {{ if $mounts_octavia_api.volumeMounts }}{{ toYaml $mounts_octavia_api.volumeMounts | indent 12 }}{{ end }}
       volumes:
+        - name: pod-tmp
+          emptyDir: {}
         - name: pod-etc-octavia
           emptyDir: {}
         - name: octavia-bin

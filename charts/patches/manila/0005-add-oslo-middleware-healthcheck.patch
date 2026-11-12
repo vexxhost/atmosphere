@@ -1,0 +1,66 @@
+diff --git a/manila/templates/deployment-api.yaml b/manila/templates/deployment-api.yaml
+--- a/manila/templates/deployment-api.yaml
++++ b/manila/templates/deployment-api.yaml
+@@ -83,7 +83,7 @@
+           readinessProbe:
+             httpGet:
+               scheme: HTTP
+-              path: /
++              path: /healthcheck
+               port: {{ tuple "share" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+           volumeMounts:
+             - name: pod-tmp
+diff --git a/manila/values.yaml b/manila/values.yaml
+--- a/manila/values.yaml
++++ b/manila/values.yaml
+@@ -411,7 +411,49 @@
+           service: oslo_messaging
+ 
+ conf:
+-  paste: {}
++  paste:
++    composite:osapi_share:
++      use: call:manila.api:root_app_factory
++      /: apiversions
++      /healthcheck: healthcheck
++      /v2: openstack_share_api_v2
++    composite:openstack_share_api_v2:
++      use: call:manila.api.middleware.auth:pipeline_factory
++      noauth: cors request_id faultwrap http_proxy_to_wsgi sizelimit osprofiler noauth apiv2
++      noauthv2: cors request_id faultwrap http_proxy_to_wsgi sizelimit osprofiler noauthv2 apiv2
++      keystone: cors request_id faultwrap http_proxy_to_wsgi sizelimit osprofiler authtoken keystonecontext apiv2
++      keystone_nolimit: cors request_id faultwrap http_proxy_to_wsgi sizelimit osprofiler authtoken keystonecontext apiv2
++    filter:faultwrap:
++      paste.filter_factory: manila.api.middleware.fault:FaultWrapper.factory
++    filter:noauth:
++      paste.filter_factory: manila.api.middleware.auth:NoAuthMiddleware.factory
++    filter:noauthv2:
++      paste.filter_factory: manila.api.middleware.auth:NoAuthMiddlewarev2_60.factory
++    filter:sizelimit:
++      paste.filter_factory: oslo_middleware.sizelimit:RequestBodySizeLimiter.factory
++    filter:osprofiler:
++      paste.filter_factory: osprofiler.web:WsgiMiddleware.factory
++    filter:http_proxy_to_wsgi:
++      paste.filter_factory: oslo_middleware.http_proxy_to_wsgi:HTTPProxyToWSGI.factory
++    app:apiv2:
++      paste.app_factory: manila.api.v2.router:APIRouter.factory
++    pipeline:apiversions:
++      pipeline: cors request_id faultwrap http_proxy_to_wsgi osshareversionapp
++    app:osshareversionapp:
++      paste.app_factory: manila.api.versions:VersionsRouter.factory
++    filter:keystonecontext:
++      paste.filter_factory: manila.api.middleware.auth:ManilaKeystoneContext.factory
++    filter:authtoken:
++      paste.filter_factory: keystonemiddleware.auth_token:filter_factory
++    filter:cors:
++      paste.filter_factory: oslo_middleware.cors:filter_factory
++      oslo_config_project: manila
++    filter:request_id:
++      paste.filter_factory: oslo_middleware.request_id:RequestId.factory
++    app:healthcheck:
++      paste.app_factory: oslo_middleware:Healthcheck.app_factory
++      backends: disable_by_file
++      disable_by_file_path: /tmp/healthcheck_disable
+   policy: {}
+   manila_sudoers: |
+     # This sudoers file supports rootwrap for both Kolla and LOCI Images.

@@ -5,6 +5,31 @@ Maintenance Guide
 This guide provides instructions for regular maintenance tasks necessary to
 ensure the smooth and secure operation of the system.
 
+*****************
+API Health Checks
+*****************
+
+The API probes for Barbican, Cinder, Designate, Glance, Heat API and
+CloudFormation, Keystone, Magnum, Manila, Neutron, Nova, and Octavia use the
+``/healthcheck`` endpoint. This endpoint checks whether the API can serve
+requests and whether a local disable file exists; it does not check
+authentication, database, or messaging dependencies.
+
+The disable file is ``/tmp/healthcheck_disable`` inside each API container.
+The ``/tmp`` directory uses a writable temporary volume, so the service user
+can create the file even when the container root filesystem is read-only.
+Creating the file makes the endpoint return HTTP 503. Removing it restores
+HTTP 200:
+
+.. code-block:: console
+
+    $ kubectl -n openstack exec <api-pod> -c <api-container> -- touch /tmp/healthcheck_disable
+    $ kubectl -n openstack exec <api-pod> -c <api-container> -- rm /tmp/healthcheck_disable
+
+Liveness probes also use this endpoint where configured. Leaving the file
+in place can restart the API container. The file survives container restarts
+in the same Pod, so remove it to allow the API to recover.
+
 ********************************
 Evacuating Nodes for Maintenance
 ********************************

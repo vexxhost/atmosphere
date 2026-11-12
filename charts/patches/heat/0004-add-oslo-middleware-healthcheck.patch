@@ -1,0 +1,91 @@
+diff --git a/heat/templates/deployment-api.yaml b/heat/templates/deployment-api.yaml
+--- a/heat/templates/deployment-api.yaml
++++ b/heat/templates/deployment-api.yaml
+@@ -84,12 +84,12 @@
+           readinessProbe:
+             httpGet:
+               scheme: {{ tuple "orchestration" "service" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_scheme_lookup" | upper }}
+-              path: /
++              path: /healthcheck
+               port: {{ tuple "orchestration" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+           livenessProbe:
+             httpGet:
+               scheme: {{ tuple "orchestration" "service" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_scheme_lookup" | upper }}
+-              path: /
++              path: /healthcheck
+               port: {{ tuple "orchestration" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+             initialDelaySeconds: 10
+           volumeMounts:
+diff --git a/heat/templates/deployment-cfn.yaml b/heat/templates/deployment-cfn.yaml
+--- a/heat/templates/deployment-cfn.yaml
++++ b/heat/templates/deployment-cfn.yaml
+@@ -84,12 +84,12 @@
+           readinessProbe:
+             httpGet:
+               scheme: {{ tuple "cloudformation" "service" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_scheme_lookup" | upper }}
+-              path: /
++              path: /healthcheck
+               port: {{ tuple "cloudformation" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+           livenessProbe:
+             httpGet:
+               scheme: {{ tuple "cloudformation" "service" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_scheme_lookup" | upper }}
+-              path: /
++              path: /healthcheck
+               port: {{ tuple "cloudformation" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+             initialDelaySeconds: 10
+           volumeMounts:
+diff --git a/heat/values.yaml b/heat/values.yaml
+--- a/heat/values.yaml
++++ b/heat/values.yaml
+@@ -281,15 +281,35 @@
+               properties:
+                 length: 40
+   paste:
+-    pipeline:heat-api:
++    composite:heat-api:
++      use: egg:Paste#urlmap
++      /: heat-api-pipeline
++      /healthcheck: healthcheck
++    composite:heat-api-standalone:
++      use: egg:Paste#urlmap
++      /: heat-api-standalone-pipeline
++      /healthcheck: healthcheck
++    composite:heat-api-custombackend:
++      use: egg:Paste#urlmap
++      /: heat-api-custombackend-pipeline
++      /healthcheck: healthcheck
++    composite:heat-api-cfn:
++      use: egg:Paste#urlmap
++      /: heat-api-cfn-pipeline
++      /healthcheck: healthcheck
++    composite:heat-api-cfn-standalone:
++      use: egg:Paste#urlmap
++      /: heat-api-cfn-standalone-pipeline
++      /healthcheck: healthcheck
++    pipeline:heat-api-pipeline:
+       pipeline: cors request_id faultwrap http_proxy_to_wsgi versionnegotiation osprofiler authurl authtoken audit context apiv1app
+-    pipeline:heat-api-standalone:
++    pipeline:heat-api-standalone-pipeline:
+       pipeline: cors request_id faultwrap http_proxy_to_wsgi versionnegotiation authurl authpassword context apiv1app
+-    pipeline:heat-api-custombackend:
++    pipeline:heat-api-custombackend-pipeline:
+       pipeline: cors request_id faultwrap versionnegotiation context custombackendauth apiv1app
+-    pipeline:heat-api-cfn:
++    pipeline:heat-api-cfn-pipeline:
+       pipeline: cors http_proxy_to_wsgi cfnversionnegotiation osprofiler ec2authtoken authtoken audit context apicfnv1app
+-    pipeline:heat-api-cfn-standalone:
++    pipeline:heat-api-cfn-standalone-pipeline:
+       pipeline: cors http_proxy_to_wsgi cfnversionnegotiation ec2authtoken context apicfnv1app
+     pipeline:heat-api-cloudwatch:
+       pipeline: cors versionnegotiation osprofiler ec2authtoken authtoken audit context apicwapp
+@@ -304,6 +324,10 @@
+     app:apicwapp:
+       paste.app_factory: heat.common.wsgi:app_factory
+       heat.app_factory: heat.api.cloudwatch:API
++    app:healthcheck:
++      paste.app_factory: oslo_middleware:Healthcheck.app_factory
++      backends: disable_by_file
++      disable_by_file_path: /tmp/healthcheck_disable
+     filter:versionnegotiation:
+       paste.filter_factory: heat.common.wsgi:filter_factory
+       heat.filter_factory: heat.api.openstack:version_negotiation_filter

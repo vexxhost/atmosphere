@@ -1,0 +1,25 @@
+diff --git a/keystone/templates/deployment-api.yaml b/keystone/templates/deployment-api.yaml
+--- a/keystone/templates/deployment-api.yaml
++++ b/keystone/templates/deployment-api.yaml
+@@ -15,7 +15,7 @@
+ {{- define "apiProbeTemplate" }}
+ httpGet:
+   scheme: {{ tuple "identity" "service" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_scheme_lookup" | upper }}
+-  path: /v3/
++  path: /healthcheck
+   port: {{ tuple "identity" "service" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+ {{- end }}
+ 
+diff --git a/keystone/values.yaml b/keystone/values.yaml
+--- a/keystone/values.yaml
++++ b/keystone/values.yaml
+@@ -532,6 +532,9 @@
+       max_token_size: 255
+       # NOTE(rk760n): if you need auth notifications to be sent, uncomment it
+       # notification_opt_out: ""
++    healthcheck:
++      backends: disable_by_file
++      disable_by_file_path: /tmp/healthcheck_disable
+     token:
+       provider: fernet
+       # 12 hours
