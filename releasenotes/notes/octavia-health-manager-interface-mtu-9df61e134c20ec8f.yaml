@@ -1,4 +1,6 @@
 ---
-features:
-  - The Octavia health manager interface MTU can now be configured with
-    ``octavia_health_manager_interface_mtu``.
+fixes:
+  - The Octavia health manager now reads the management network MTU from Neutron
+    and sets the Open vSwitch ``mtu_request`` for ``o-hm0`` automatically. This
+    prevents Open vSwitch from resetting the interface MTU to the bridge minimum.
+    Recreate the health manager pods after changing the network MTU in Neutron.
