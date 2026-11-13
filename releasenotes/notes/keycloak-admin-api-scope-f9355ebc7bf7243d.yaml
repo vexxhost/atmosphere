@@ -4,3 +4,9 @@ fixes:
     Updates Keycloak to ``26.8.2`` and assigns the built-in
     ``kc-admin-api`` client scope to the Keystone service account. This keeps
     Keystone able to use the Keycloak Admin REST API after the upgrade.
+upgrade:
+  - |
+    Run the Keystone role immediately after upgrading Keycloak to reconcile
+    the ``kc-admin-api`` client scope before using federated identity lookups.
+    For deployments with more than one Keycloak replica, stop and upgrade all
+    replicas together: Keycloak 26.8.2 does not support a rolling upgrade.

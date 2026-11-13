@@ -62,11 +62,13 @@
         validate_certs: "{{ cluster_issuer_type != 'self-signed' }}"
       register: keycloak_keystone_client_default_scopes
 
-    - name: Assert Keystone Keycloak client has Admin API scope
+    - name: Assert Keystone Keycloak client has expected default scopes
       run_once: true
       ansible.builtin.assert:
         that:
           - "'kc-admin-api' in (keycloak_keystone_client_default_scopes.json | map(attribute='name') | list)"
+          - "'profile' in (keycloak_keystone_client_default_scopes.json | map(attribute='name') | list)"
+          - "'email' in (keycloak_keystone_client_default_scopes.json | map(attribute='name') | list)"
 
     - name: Create Keycloak user
       run_once: true
