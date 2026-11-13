@@ -20,20 +20,18 @@ set -ex
 
 HM_PORT_ID=$(cat /tmp/pod-shared/HM_PORT_ID)
 HM_PORT_MAC=$(cat /tmp/pod-shared/HM_PORT_MAC)
+HM_PORT_MTU=$(cat /tmp/pod-shared/HM_PORT_MTU)
 
 ovs-vsctl --no-wait show
 
 ovs-vsctl --may-exist add-port br-int o-hm0 \
         -- set Interface o-hm0 type=internal \
         -- set Interface o-hm0 external-ids:iface-status=active \
-        -- set Interface o-hm0 external-ids:attached-mac=$HM_PORT_MAC \
-        -- set Interface o-hm0 external-ids:iface-id=$HM_PORT_ID \
-        -- set Interface o-hm0 external-ids:skip_cleanup=true{{- if .Values.network.health_manager.interface_mtu }} \
-        -- set Interface o-hm0 mtu_request={{ .Values.network.health_manager.interface_mtu }}{{- end }}
+        -- set Interface o-hm0 external-ids:attached-mac="$HM_PORT_MAC" \
+        -- set Interface o-hm0 external-ids:iface-id="$HM_PORT_ID" \
+        -- set Interface o-hm0 external-ids:skip_cleanup=true \
+        -- set Interface o-hm0 mtu_request="$HM_PORT_MTU"
 
-ip link set dev o-hm0 address $HM_PORT_MAC
-{{- if .Values.network.health_manager.interface_mtu }}
-ip link set dev o-hm0 mtu {{ .Values.network.health_manager.interface_mtu }}
-{{- end }}
+ip link set dev o-hm0 address "$HM_PORT_MAC"
 
 iptables -I INPUT -i o-hm0 -p udp --dport {{ .Values.conf.octavia.health_manager.bind_port }} -j ACCEPT
