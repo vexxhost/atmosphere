@@ -67,49 +67,29 @@
   kubernetes.core.k8s:
     template: configmap-openid-metadata.yml.j2
 
-- name: Get Keycloak admin access tokens
-  no_log: true
+# NOTE: Keycloak 26.8.2+ only accepts Admin REST API tokens that carry the
+#       built-in "kc-admin-api" client scope. Older servers do not have it, so
+#       look it up first. Check mode makes this a read-only lookup: the scope
+#       is returned in "end_state" when it exists, and nothing is created.
+- name: Check for the Keycloak Admin API client scope
   run_once: true
-  ansible.builtin.uri:
-    url: "{{ item.keycloak_server_url }}/realms/{{ item.keycloak_user_realm_name }}/protocol/openid-connect/token"
-    method: POST
-    body_format: form-urlencoded
-    body:
-      client_id: "{{ item.keycloak_admin_client_id }}"
-      username: "{{ item.keycloak_admin_user }}"
-      password: "{{ item.keycloak_admin_password }}"
-      grant_type: password
-    status_code: [200]
+  check_mode: true
+  changed_when: false
+  community.general.keycloak_clientscope:
+    # Keycloak settings
+    auth_keycloak_url: "{{ item.keycloak_server_url }}"
+    auth_realm: "{{ item.keycloak_user_realm_name }}"
+    auth_client_id: "{{ item.keycloak_admin_client_id }}"
+    auth_username: "{{ item.keycloak_admin_user }}"
+    auth_password: "{{ item.keycloak_admin_password }}"
     validate_certs: "{{ cluster_issuer_type != 'self-signed' }}"
-  register: _keystone_keycloak_admin_access_tokens
+    # Client scope settings
+    realm: "{{ item.keycloak_realm }}"
+    name: kc-admin-api
+  register: _keystone_keycloak_admin_api_scope
   loop: "{{ keystone_domains }}"
   loop_control:
     label: "{{ item.name }}"
-
-- name: Get Keycloak client scopes
-  no_log: true
-  run_once: true
-  ansible.builtin.uri:
-    url: "{{ item.item.keycloak_server_url }}/admin/realms/{{ item.item.keycloak_realm }}/client-scopes"
-    headers:
-      Authorization: "Bearer {{ item.json.access_token }}"
-    status_code: [200]
-    validate_certs: "{{ cluster_issuer_type != 'self-signed' }}"
-  register: _keystone_keycloak_client_scopes
-  loop: "{{ _keystone_keycloak_admin_access_tokens.results }}"
-  loop_control:
-    label: "{{ item.item.name }}"
-
-- name: Identify Keycloak realms with the Admin API scope
-  run_once: true
-  ansible.builtin.set_fact:
-    _keystone_keycloak_admin_api_scope_realms: >-
-      {{ (_keystone_keycloak_admin_api_scope_realms | default([])) + [item.item.item.keycloak_realm] }}
-  loop: "{{ _keystone_keycloak_client_scopes.results }}"
-  loop_control:
-    label: "{{ item.item.item.name }}"
-  when: >-
-    item.json | selectattr('name', 'equalto', 'kc-admin-api') | list | length > 0
 
 - name: Create Keycloak clients
   no_log: true
@@ -142,22 +122,23 @@
   run_once: true
   community.general.keycloak_client:
     # Keycloak settings
-    auth_keycloak_url: "{{ item.keycloak_server_url }}"
-    auth_realm: "{{ item.keycloak_user_realm_name }}"
-    auth_client_id: "{{ item.keycloak_admin_client_id }}"
-    auth_username: "{{ item.keycloak_admin_user }}"
-    auth_password: "{{ item.keycloak_admin_password }}"
+    auth_keycloak_url: "{{ item.item.keycloak_server_url }}"
+    auth_realm: "{{ item.item.keycloak_user_realm_name }}"
+    auth_client_id: "{{ item.item.keycloak_admin_client_id }}"
+    auth_username: "{{ item.item.keycloak_admin_user }}"
+    auth_password: "{{ item.item.keycloak_admin_password }}"
     validate_certs: "{{ cluster_issuer_type != 'self-signed' }}"
     # Realm settings
-    realm: "{{ item.keycloak_realm }}"
-    client_id: "{{ item.keycloak_client_id }}"
+    realm: "{{ item.item.keycloak_realm }}"
+    client_id: "{{ item.item.keycloak_client_id }}"
     default_client_scopes:
       - kc-admin-api
+    # NOTE: "patch" only adds missing scopes and keeps the existing ones.
     client_scopes_behavior: patch
-  loop: "{{ keystone_domains }}"
+  loop: "{{ _keystone_keycloak_admin_api_scope.results }}"
   loop_control:
-    label: "{{ item.name }}"
-  when: item.keycloak_realm in (_keystone_keycloak_admin_api_scope_realms | default([]))
+    label: "{{ item.item.name }}"
+  when: item.end_state | length > 0
 
 - name: Assign realm-management roles to service account
   no_log: true
