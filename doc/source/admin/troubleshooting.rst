@@ -91,6 +91,18 @@ to it by simply executing the following:
     $ kubectl -n openstack exec -it deploy/octavia-worker -- ssh 172.24.0.148
 
 
+Health manager interface MTU
+============================
+
+The health manager reads its Neutron port's network MTU when its pod initializes
+and sets the Open vSwitch ``mtu_request`` for ``o-hm0``. This prevents Open vSwitch
+from resetting the interface MTU to the bridge minimum. The DHCP client continues
+to request the MTU advertised by Neutron; no separate inventory setting is needed.
+
+After changing the management network MTU in Neutron, recreate the health manager
+pods to refresh their MTU requests. Restarting only the health manager container
+does not rerun the initialization containers that read the network MTU.
+
 Listener with ``provisioning_status`` stuck in ``ERROR``
 ========================================================
 
