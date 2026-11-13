@@ -33,6 +33,8 @@ images:
     netoffload: ghcr.io/vexxhost/netoffload:v1.0.1
     neutron_server: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
     neutron_rpc_server: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
+    neutron_periodic_worker: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
+    neutron_ovn_maintenance_worker: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
     neutron_dhcp: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
     neutron_metadata: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
     neutron_ovn_metadata: docker.io/openstackhelm/neutron:2024.1-ubuntu_jammy
@@ -100,6 +102,12 @@ labels:
     node_selector_key: openstack-control-plane
     node_selector_value: enabled
   rpc_server:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
+  periodic_worker:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
+  ovn_maintenance_worker:
     node_selector_key: openstack-control-plane
     node_selector_value: enabled
   ironic_agent:
@@ -349,6 +357,32 @@ dependencies:
         - endpoint: internal
           service: identity
     rpc_server:
+      jobs:
+        - neutron-db-sync
+        - neutron-rabbit-init
+      services:
+        - endpoint: internal
+          service: oslo_db
+        - endpoint: internal
+          service: oslo_messaging
+        - endpoint: internal
+          service: oslo_cache
+        - endpoint: internal
+          service: identity
+    periodic_worker:
+      jobs:
+        - neutron-db-sync
+        - neutron-rabbit-init
+      services:
+        - endpoint: internal
+          service: oslo_db
+        - endpoint: internal
+          service: oslo_messaging
+        - endpoint: internal
+          service: oslo_cache
+        - endpoint: internal
+          service: identity
+    ovn_maintenance_worker:
       jobs:
         - neutron-db-sync
         - neutron-rabbit-init
@@ -659,6 +693,20 @@ pod:
         neutron_rpc_server:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
+    neutron_periodic_worker:
+      pod:
+        runAsUser: 42424
+      container:
+        neutron_periodic_worker:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+    neutron_ovn_maintenance_worker:
+      pod:
+        runAsUser: 42424
+      container:
+        neutron_ovn_maintenance_worker:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
     neutron_sriov_agent:
       pod:
         runAsUser: 42424
@@ -714,6 +762,16 @@ pod:
     neutron_rpc_server:
       init_container: null
       neutron_rpc_server:
+        volumeMounts:
+        volumes:
+    neutron_periodic_worker:
+      init_container: null
+      neutron_periodic_worker:
+        volumeMounts:
+        volumes:
+    neutron_ovn_maintenance_worker:
+      init_container: null
+      neutron_ovn_maintenance_worker:
         volumeMounts:
         volumes:
     neutron_dhcp_agent:
@@ -802,6 +860,8 @@ pod:
   replicas:
     server: 1
     rpc_server: 1
+    periodic_worker: 1
+    ovn_maintenance_worker: 1
     ironic_agent: 1
   lifecycle:
     upgrades:
@@ -856,6 +916,10 @@ pod:
       server:
         timeout: 30
       rpc_server:
+        timeout: 30
+      periodic_worker:
+        timeout: 30
+      ovn_maintenance_worker:
         timeout: 30
       ironic_agent:
         timeout: 30
@@ -940,6 +1004,20 @@ pod:
           memory: "1024Mi"
           cpu: "2000m"
     server:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "1024Mi"
+        cpu: "2000m"
+    periodic_worker:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "1024Mi"
+        cpu: "2000m"
+    ovn_maintenance_worker:
       requests:
         memory: "128Mi"
         cpu: "100m"
@@ -2666,6 +2744,8 @@ manifests:
   deployment_ironic_agent: false
   deployment_server: true
   deployment_rpc_server: true
+  deployment_periodic_worker: false
+  deployment_ovn_maintenance_worker: false
   ingress_server: true
   job_bootstrap: true
   job_db_init: true

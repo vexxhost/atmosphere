@@ -1,0 +1,66 @@
+suite: Neutron server workers
+tests:
+  - it: should not deploy the OVN worker for a non-OVN backend
+    templates:
+      - templates/deployment-workers.yaml
+    set:
+      network:
+        backend:
+          - openvswitch
+      manifests:
+        deployment_periodic_worker: true
+        deployment_ovn_maintenance_worker: true
+    asserts:
+      - hasDocuments:
+          count: 4
+      - documentSelector:
+          path: spec.template.spec.serviceAccountName
+          value: neutron-periodic-worker
+        isKind:
+          of: Deployment
+      - notExists:
+          path: spec.template.spec.containers[?(@.name == "neutron-ovn-maintenance-worker")]
+
+  - it: should deploy both dedicated workers for an OVN backend
+    templates:
+      - templates/deployment-workers.yaml
+    set:
+      network:
+        backend:
+          - ovn
+      manifests:
+        deployment_periodic_worker: true
+        deployment_ovn_maintenance_worker: true
+    asserts:
+      - hasDocuments:
+          count: 8
+      - documentSelector:
+          path: spec.template.spec.serviceAccountName
+          value: neutron-periodic-worker
+        equal:
+          path: spec.replicas
+          value: 1
+      - documentSelector:
+          path: spec.template.spec.serviceAccountName
+          value: neutron-periodic-worker
+        equal:
+          path: spec.template.spec.containers[0].command[0]
+          value: /tmp/neutron-periodic-worker.sh
+      - documentSelector:
+          path: spec.template.spec.serviceAccountName
+          value: neutron-ovn-maintenance-worker
+        equal:
+          path: spec.replicas
+          value: 1
+      - documentSelector:
+          path: spec.template.spec.serviceAccountName
+          value: neutron-ovn-maintenance-worker
+        equal:
+          path: spec.template.spec.initContainers[1].command[0]
+          value: /tmp/neutron-ovn-init.sh
+      - documentSelector:
+          path: spec.template.spec.serviceAccountName
+          value: neutron-ovn-maintenance-worker
+        equal:
+          path: spec.template.spec.containers[0].command[0]
+          value: /tmp/neutron-ovn-maintenance-worker.sh

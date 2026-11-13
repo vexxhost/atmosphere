@@ -1,0 +1,13 @@
+---
+fixes:
+  - |
+    Deploys the dedicated ``neutron-periodic-workers`` process for ML2
+    environments and the ``neutron-ovn-maintenance-worker`` process for OVN
+    environments. Neutron API processes run under uWSGI and do not schedule
+    these background tasks themselves, so the workers are required for plugin
+    periodic tasks, OVN consistency checks, and one-time data migrations.
+
+    The chart-level manifests remain disabled by default for compatibility
+    with its default Neutron 2024.1 image. The Atmosphere Neutron role enables
+    the periodic worker for ML2 deployments and the maintenance worker for OVN
+    deployments.
