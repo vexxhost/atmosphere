@@ -93,11 +93,15 @@ tests:
         notExists:
           path: spec.template.spec.runtimeClassName
       - template: templates/deployment-workers.yaml
-        documentIndex: 6
+        documentSelector:
+          path: spec.template.spec.serviceAccountName
+          value: neutron-periodic-worker
         notExists:
           path: spec.template.spec.runtimeClassName
       - template: templates/deployment-workers.yaml
-        documentIndex: 7
+        documentSelector:
+          path: spec.template.spec.serviceAccountName
+          value: neutron-ovn-maintenance-worker
         notExists:
           path: spec.template.spec.runtimeClassName
       - template: templates/deployment-rpc_server.yaml
@@ -249,12 +253,16 @@ tests:
           path: spec.template.spec.runtimeClassName
           value: kata-clh
       - template: templates/deployment-workers.yaml
-        documentIndex: 6
+        documentSelector:
+          path: spec.template.spec.serviceAccountName
+          value: neutron-periodic-worker
         equal:
           path: spec.template.spec.runtimeClassName
           value: kata-clh
       - template: templates/deployment-workers.yaml
-        documentIndex: 7
+        documentSelector:
+          path: spec.template.spec.serviceAccountName
+          value: neutron-ovn-maintenance-worker
         equal:
           path: spec.template.spec.runtimeClassName
           value: kata-clh

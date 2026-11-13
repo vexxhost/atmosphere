@@ -152,6 +152,12 @@ spec:
               subPath: neutron_ovn_vpn_agent.ini
               readOnly: true
 {{- end }}
+{{- if contains "firewall_v2" $envAll.Values.conf.neutron.DEFAULT.service_plugins }}
+            - name: neutron-etc
+              mountPath: /etc/neutron/neutron_fwaas.conf
+              subPath: neutron_fwaas.conf
+              readOnly: true
+{{- end }}
 {{- if $envAll.Values.conf.neutron.DEFAULT.log_config_append }}
             - name: neutron-etc
               mountPath: {{ $envAll.Values.conf.neutron.DEFAULT.log_config_append }}

@@ -1,8 +1,8 @@
 suite: Neutron server workers
-templates:
-  - templates/deployment-workers.yaml
 tests:
   - it: should not deploy the OVN worker for a non-OVN backend
+    templates:
+      - templates/deployment-workers.yaml
     set:
       network:
         backend:
@@ -13,12 +13,17 @@ tests:
     asserts:
       - hasDocuments:
           count: 4
-      - documentIndex: 3
-        equal:
-          path: metadata.name
+      - documentSelector:
+          path: spec.template.spec.serviceAccountName
           value: neutron-periodic-worker
+        isKind:
+          of: Deployment
+      - notExists:
+          path: spec.template.spec.containers[?(@.name == "neutron-ovn-maintenance-worker")]
 
   - it: should deploy both dedicated workers for an OVN backend
+    templates:
+      - templates/deployment-workers.yaml
     set:
       network:
         backend:
@@ -29,37 +34,33 @@ tests:
     asserts:
       - hasDocuments:
           count: 8
-      - documentIndex: 6
-        isKind:
-          of: Deployment
-      - documentIndex: 6
-        equal:
-          path: metadata.name
+      - documentSelector:
+          path: spec.template.spec.serviceAccountName
           value: neutron-periodic-worker
-      - documentIndex: 6
         equal:
           path: spec.replicas
           value: 1
-      - documentIndex: 6
+      - documentSelector:
+          path: spec.template.spec.serviceAccountName
+          value: neutron-periodic-worker
         equal:
           path: spec.template.spec.containers[0].command[0]
           value: /tmp/neutron-periodic-worker.sh
-      - documentIndex: 7
-        isKind:
-          of: Deployment
-      - documentIndex: 7
-        equal:
-          path: metadata.name
+      - documentSelector:
+          path: spec.template.spec.serviceAccountName
           value: neutron-ovn-maintenance-worker
-      - documentIndex: 7
         equal:
           path: spec.replicas
           value: 1
-      - documentIndex: 7
+      - documentSelector:
+          path: spec.template.spec.serviceAccountName
+          value: neutron-ovn-maintenance-worker
         equal:
           path: spec.template.spec.initContainers[1].command[0]
           value: /tmp/neutron-ovn-init.sh
-      - documentIndex: 7
+      - documentSelector:
+          path: spec.template.spec.serviceAccountName
+          value: neutron-ovn-maintenance-worker
         equal:
           path: spec.template.spec.containers[0].command[0]
           value: /tmp/neutron-ovn-maintenance-worker.sh

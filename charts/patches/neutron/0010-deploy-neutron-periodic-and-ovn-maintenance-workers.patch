@@ -1,27 +1,23 @@
-From c6c76a7433a0656ab97f9436df7b5c32805bb6f3 Mon Sep 17 00:00:00 2001
 From: Dong Ma <dong.ma@vexxhost.com>
-Date: Thu, 24 Sep 2026 12:49:52 +0800
 Subject: [PATCH] fix(neutron): deploy periodic and OVN maintenance workers
 
-Change-Id: I5b4e15e1edf1a57f55dbb285090ae70677d600b4
-Signed-off-by: Dong Ma <dong.ma@vexxhost.com>
+Backport of https://review.opendev.org/c/openstack/openstack-helm/+/1001717
+adapted to the vendored 0.3.47 chart. Drop this patch once the chart is
+bumped to a release that includes the upstream change.
 ---
- .../_neutron-ovn-maintenance-worker.sh.tpl    |  46 +++++
- .../bin/_neutron-periodic-worker.sh.tpl       |  48 +++++
- neutron/templates/configmap-bin.yaml          |   4 +
- neutron/templates/deployment-workers.yaml     | 192 ++++++++++++++++++
- neutron/values.yaml                           |  80 ++++++++
- 5 files changed, 370 insertions(+)
- create mode 100644 charts/neutron/templates/bin/_neutron-ovn-maintenance-worker.sh.tpl
- create mode 100644 charts/neutron/templates/bin/_neutron-periodic-worker.sh.tpl
- create mode 100644 charts/neutron/templates/deployment-workers.yaml
+ neutron/templates/bin/_neutron-ovn-maintenance-worker.sh.tpl |  49 +++++
+ neutron/templates/bin/_neutron-periodic-worker.sh.tpl        |  51 ++++++
+ neutron/templates/configmap-bin.yaml                         |   4 +
+ neutron/templates/deployment-workers.yaml                    | 198 +++++++++++++++++
+ neutron/values.yaml                                          |  80 +++++++
+ 5 files changed, 382 insertions(+)
 
 diff --git a/neutron/templates/bin/_neutron-ovn-maintenance-worker.sh.tpl b/neutron/templates/bin/_neutron-ovn-maintenance-worker.sh.tpl
 new file mode 100644
-index 000000000..39d94ced5
+index 0000000..a73d9a9
 --- /dev/null
 +++ b/neutron/templates/bin/_neutron-ovn-maintenance-worker.sh.tpl
-@@ -0,0 +1,46 @@
+@@ -0,0 +1,49 @@
 +#!/bin/bash
 +
 +{{/*
@@ -51,6 +47,9 @@ index 000000000..39d94ced5
 +{{- if contains "ovn-vpnaas" .Values.conf.neutron.DEFAULT.service_plugins }}
 +        --config-file /etc/neutron/neutron_ovn_vpn_agent.ini \
 +{{- end }}
++{{- if contains "firewall_v2" .Values.conf.neutron.DEFAULT.service_plugins }}
++        --config-file /etc/neutron/neutron_fwaas.conf \
++{{- end }}
 +{{- if .Values.conf.plugins.taas.taas.enabled }}
 +        --config-file /etc/neutron/taas_plugin.ini \
 +{{- end }}
@@ -70,10 +69,10 @@ index 000000000..39d94ced5
 +$COMMAND
 diff --git a/neutron/templates/bin/_neutron-periodic-worker.sh.tpl b/neutron/templates/bin/_neutron-periodic-worker.sh.tpl
 new file mode 100644
-index 000000000..be8bcff8f
+index 0000000..5b7dd87
 --- /dev/null
 +++ b/neutron/templates/bin/_neutron-periodic-worker.sh.tpl
-@@ -0,0 +1,48 @@
+@@ -0,0 +1,51 @@
 +#!/bin/bash
 +
 +{{/*
@@ -105,6 +104,9 @@ index 000000000..be8bcff8f
 +{{- if contains "ovn-vpnaas" .Values.conf.neutron.DEFAULT.service_plugins }}
 +        --config-file /etc/neutron/neutron_ovn_vpn_agent.ini \
 +{{- end }}
++{{- if contains "firewall_v2" .Values.conf.neutron.DEFAULT.service_plugins }}
++        --config-file /etc/neutron/neutron_fwaas.conf \
++{{- end }}
 +{{- if .Values.conf.plugins.taas.taas.enabled }}
 +        --config-file /etc/neutron/taas_plugin.ini \
 +{{- end }}
@@ -123,7 +125,7 @@ index 000000000..be8bcff8f
 +
 +$COMMAND
 diff --git a/neutron/templates/configmap-bin.yaml b/neutron/templates/configmap-bin.yaml
-index 393491ca2..c699ae6c7 100644
+index 393491c..c699ae6 100644
 --- a/neutron/templates/configmap-bin.yaml
 +++ b/neutron/templates/configmap-bin.yaml
 @@ -93,6 +93,10 @@ data:
@@ -139,10 +141,10 @@ index 393491ca2..c699ae6c7 100644
    neutron-ironic-agent.sh: |
 diff --git a/neutron/templates/deployment-workers.yaml b/neutron/templates/deployment-workers.yaml
 new file mode 100644
-index 000000000..207b995ca
+index 0000000..547f81b
 --- /dev/null
 +++ b/neutron/templates/deployment-workers.yaml
-@@ -0,0 +1,192 @@
+@@ -0,0 +1,198 @@
 +{{/*
 +Licensed under the Apache License, Version 2.0 (the "License");
 +you may not use this file except in compliance with the License.
@@ -297,6 +299,12 @@ index 000000000..207b995ca
 +              subPath: neutron_ovn_vpn_agent.ini
 +              readOnly: true
 +{{- end }}
++{{- if contains "firewall_v2" $envAll.Values.conf.neutron.DEFAULT.service_plugins }}
++            - name: neutron-etc
++              mountPath: /etc/neutron/neutron_fwaas.conf
++              subPath: neutron_fwaas.conf
++              readOnly: true
++{{- end }}
 +{{- if $envAll.Values.conf.neutron.DEFAULT.log_config_append }}
 +            - name: neutron-etc
 +              mountPath: {{ $envAll.Values.conf.neutron.DEFAULT.log_config_append }}
@@ -336,7 +344,7 @@ index 000000000..207b995ca
 +{{- include "neutron.server_worker.deployment" (dict "envAll" . "component" "ovn_maintenance_worker" "application" "neutron_ovn_maintenance_worker" "container" "neutron-ovn-maintenance-worker" "script" "neutron-ovn-maintenance-worker") }}
 +{{- end }}
 diff --git a/neutron/values.yaml b/neutron/values.yaml
-index bc075e7c8..a4a867768 100644
+index bc075e7..a4a8677 100644
 --- a/neutron/values.yaml
 +++ b/neutron/values.yaml
 @@ -33,6 +33,8 @@ images:
@@ -482,6 +490,3 @@ index bc075e7c8..a4a867768 100644
    ingress_server: true
    job_bootstrap: true
    job_db_init: true
--- 
-2.39.5 (Apple Git-154)
-
